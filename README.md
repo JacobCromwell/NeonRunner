@@ -62,7 +62,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, and `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
@@ -210,8 +210,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     pays a bonus when it's destroyed. Now and then (as it arrives, and once more if there's room) it speeds up
     beside you for a few seconds so you can see it, then drops back: its sides are solid but harmless (a lane
     change into it bumps you back) and it gives way as you move toward it. Beside a runner by a wall it pulls up
-    two lanes in, leaving the lane between free. The generator keeps a calm stretch for a showing in every chase
-    that has room for one, wherever you run. It gives up after about 25 s (in quick play,
+    two lanes in, leaving the lane between free. A hover truck or a Gilded Sentinel doesn't stop it as long as you
+    keep a free lane: a hover truck's lane counts as a wall (beside one it pulls up two lanes in on your other side),
+    and it keeps clear of a hover truck bursting in and a Sentinel's swing. Where a level's first bait comes right
+    after its start, it arrives in the run-up and shows itself there. The generator keeps a calm stretch for a
+    showing in every chase that has room for one, wherever you run. It gives up after about 25 s (in quick play,
     `--features=octodog,enforcer_truck`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
@@ -407,7 +410,8 @@ Smooth frames), the music's pause duck and death dip, level pacing, the campaign
 recency curve for pick weights (in a campaign level), the wider gaps and the cyborgs planted in charge paths (in a
 level that asks for them: **Wider gaps**, **Charge paths**) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
-changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
+changes also reshape the level, so press **Restart level** to rebuild it (a restart or retry reuses the level it
+built, so it starts at once, until something the build reads changes, here or anywhere). **Save** writes the values back to
 their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
 tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
@@ -451,6 +455,8 @@ tools/godot.sh smoke [options]  40 s of the real game, headless; prints only pro
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP3s unchanged)
 tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
+tools/godot.sh doodads [--only=a,b] [--review]   regenerate the zone doodads' picture cards
+                                (assets/sprites/doodads/; --review writes the atlases to build/doodad_review/)
 tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
 ```
@@ -483,10 +489,12 @@ many Buzz Overdrives revved or let the runner pass:
 its header lists the options).
 
 `tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase over simulated runs of the
-levels with the truck, a god-mode runner keeping to each lane in turn: its showings, its planned showing window and
-whether it was used, and why a chase had none: `godot --headless --fixed-fps 60 -s res://tools/measure/enforcer_shows.gd
--- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N] [--out=build/measure/x.json]` (all six
-levels at every lane count and lane take about twenty minutes; its header lists the options).
+levels with the truck, a god-mode runner keeping to each lane in turn: its showings, its planned showing window,
+whether that comes before the chase's first bait and whether it was used, and why a chase had none; the totals count
+the chases with a window before their bait and the runs with a showing: `godot --headless --fixed-fps 60 -s
+res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N]
+[--out=build/measure/x.json]` (all six levels at every lane count and lane, on their own seeds, take about three
+minutes; its header lists the options).
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
 (obstacle rows, holes, enemies, big attacks, mechanics, zone doodads and the pushes a runner who ignores them
@@ -515,6 +523,12 @@ shaders first drawn after the load, and under xvfb it also counts draw calls and
 `godot --headless --fixed-fps 60 -s
 res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
 (the whole campaign takes about fifteen minutes; its header lists the options).
+
+`tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
+level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the
+time from pressing retry to the run starting (a retry of the same level reuses the level it built):
+`godot --headless -s res://tools/measure/level_builds.gd -- [--repeat=3] [--bosses] [--passes=corporate/2:5]
+[--retry=corporate/2,dead_zone/1]` (its header lists the options).
 
 `tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
 available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a

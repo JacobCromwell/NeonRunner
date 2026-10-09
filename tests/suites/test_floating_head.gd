@@ -14,7 +14,12 @@ extends TestSuite
 ##   warning; a player who keeps moving escapes every bomb and one who stands still is hit; the first
 ##   run lasts 15-20 s; the rules hold on the real arena at every lane count; every attempt plays out
 ##   the same way; the blast's damage rules, and a wall runner beside it is safe;
-## - the reveal (its face powers on once) and the later, shorter runs of the faster phases.
+## - the reveal (its face powers on once) and the later, shorter runs of the faster phases;
+## - the later runs' salvos (owner's request, October 9, 2026; task E1g): 2-4 spots marked at once, the
+##   nearest first and each next one further along the track, each leaving the runner one lane on 3
+##   lanes and a choice of two from 5 (up to two and three bombs); a way through them all is always left,
+##   a runner who weaves along it escapes every bomb and one who stands still is hit by the first; the
+##   rules hold on the real arena; every attempt plays out the same way.
 ## Every fight here runs at the City's speed (21 m/s), as the campaign plays it (GDD §3; task E1f:
 ## FloatingHeadBot.campaign_tuning).
 
@@ -42,6 +47,7 @@ func run() -> void:
 	await _test_same_every_attempt()
 	await _test_blast_rules()
 	await _test_reveal_and_later_runs()
+	await _test_salvos()
 	await _test_route_in()
 
 
@@ -99,9 +105,16 @@ func _sounds(head: BossEncounter, sound: StringName) -> int:
 
 
 ## A runner who keeps moving: when a lock strikes its lane, it switches to the free lane the rules
-## leave it (once per lock). Call it every physics frame.
+## leave it (once per lock); in a salvo, it heads for the lane the way through the spots still ahead of
+## it leads to (FloatingHeadBombing.dodge_lane), one lane a frame. Call it every physics frame.
 func _dodge(head: FloatingHead, dodged: Dictionary) -> void:
 	var b: FloatingHeadBombing = head.bombing
+	if b.target.has("spots"):
+		var at: int = head.player_lane()
+		var to: int = b.dodge_lane(at, head.world.player.distance)
+		if to >= 0 and to != at:
+			head.world.player.press(&"move_right" if to > at else &"move_left")
+		return
 	if b.target.is_empty() or dodged.has(b.target["lock"]):
 		return
 	dodged[b.target["lock"]] = true
@@ -166,6 +179,53 @@ func _lock_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, la
 	return false
 
 
+## The lanes a runner keeping a salvo's rules could be in past each of its spots, rechecked from the
+## arena's layout: from the runner's lane at most max_escape_lanes to a free lane at the first spot, then
+## at most salvo_max_shift from spot to spot, every lane on the way clear from where it sets off (the
+## runner's spot, then the spot before) to past the spot (the runner's own lane is theirs to run). One
+## set per spot, up to the first that leaves none.
+func _salvo_reach(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, lanes_count: int, pace: float) -> Array:
+	var pl: int = int(lock["player_lane"])
+	var from: float = float(lock["d0"])
+	var reach_set: Array[int] = [pl]
+	var spots: Array = lock["spots"]
+	var out: Array = []
+	for k: int in spots.size():
+		var lanes: Array = spots[k]["lanes"]
+		var at: float = float(spots[k]["at"])
+		var reach: int = t.max_escape_lanes if k == 0 else t.salvo_max_shift
+		var next: Array[int] = []
+		for r: int in reach_set:
+			for e: int in lanes_count:
+				if lanes.has(e) or next.has(e) or absi(e - r) > reach:
+					continue
+				var ok: bool = true
+				for l: int in range(mini(r, e), maxi(r, e) + 1):
+					if (l != pl or k > 0) and not _floor_clear(layout, l, from, at + t.escape_clear_after * pace):
+						ok = false
+				if ok:
+					next.append(e)
+		out.append(next)
+		if next.is_empty():
+			break
+		reach_set = next
+		from = at
+	return out
+
+
+## A salvo's rules, rechecked from the arena's layout: every spot lands on clear roof, and a way runs
+## through them all (_salvo_reach never runs out).
+func _salvo_fair(layout: LevelLayout, t: FloatingHeadTuning, lock: Dictionary, lanes_count: int, pace: float) -> bool:
+	var spots: Array = lock["spots"]
+	for spot: Dictionary in spots:
+		var at: float = float(spot["at"])
+		for l: int in spot["lanes"]:
+			if not _floor_clear(layout, l, at - t.clear_before_impact * pace, at + t.clear_after_impact * pace):
+				return false
+	var sets: Array = _salvo_reach(layout, t, lock, lanes_count, pace)
+	return sets.size() == spots.size() and not (sets[-1] as Array).is_empty()
+
+
 # --- Data and preview ----------------------------------------------------------------------------
 
 func _test_data() -> void:
@@ -181,8 +241,9 @@ func _test_data() -> void:
 		return
 	var t := def.tuning as FloatingHeadTuning
 	check(t != null and t.resource_path == "res://data/bosses/city_boss_tuning.tres", "its numbers are its own tuning resource")
-	check(is_equal_approx(t.first_run_seconds, 16.0 * 0.7) and is_equal_approx(t.later_run_seconds, 8.0 * 0.7),
-		"every bombing run is 30%% shorter (%.1f s, %.1f s)" % [t.first_run_seconds, t.later_run_seconds])
+	check(is_equal_approx(t.first_run_seconds, 16.0 * 0.7), "the first bombing run is 30%% shorter (%.1f s)" % t.first_run_seconds)
+	check(is_equal_approx(t.later_run_seconds, 6.5),
+		"the later runs are a little longer than 5.6 s for their salvos (%.1f s; owner, October 9, 2026)" % t.later_run_seconds)
 	check(t.later_run_seconds > 0.0 and t.later_run_seconds < t.first_run_seconds and t.later_runs >= 1 and t.later_runs <= 2,
 		"GDD §10: once or twice it rises for a shorter run (%d of %.1f s)" % [t.later_runs, t.later_run_seconds])
 	check(def.phase_count() == 3 and def.phase_list()[0].intro_seconds >= 3.0, "three phases; the first's intro is the entrance")
@@ -394,6 +455,11 @@ func _test_bombing_run() -> void:
 				straddles += 1
 		check(locks.size() >= 4, "the light locks on again and again (%d locks) %s" % [locks.size(), tag])
 		check(straddles >= 1 and straddles < locks.size(), "some locks straddle two lanes (%d) %s" % [straddles, tag])
+		var salvos: int = 0
+		for l: Dictionary in locks:
+			if l.has("spots"):
+				salvos += 1
+		check(salvos == 0, "the first run marks one spot at a time, as before the salvos (E1g) %s" % tag)
 		print("  Floating Head's first run %s: %d locks (%d over two lanes), %d bombs" % [tag, locks.size(), straddles,
 			blasts.size()])
 		# Every blast was a lock's: the same spot, after the whole warning.
@@ -616,6 +682,208 @@ func _test_reveal_and_later_runs() -> void:
 			check(start.is_empty(), "phase %d: no run" % (phase + 1))
 		check(_events(head, &"reveal").is_empty(), "phase %d: no second reveal" % (phase + 1))
 		await sim.free_world(world)
+
+
+# --- Salvos --------------------------------------------------------------------------------------
+
+## The later runs' salvos (owner's request, October 9, 2026; task E1g).
+func _test_salvos() -> void:
+	var t := def.tuning as FloatingHeadTuning
+	check(t.salvo_spots_in(0) == 1, "the first run marks one spot at a time (E1g)")
+	check(t.salvo_min_spots == 2 and t.salvo_spots_in(1) == 4 and t.salvo_spots_in(2) == 4,
+		"the later runs drop salvos of 2 to 4 spots (owner, October 9, 2026)")
+	check(t.salvo_spacing < 12.0, "its spots lie closer together than the first 12 m (owner: tighter; %.1f m)" % t.salvo_spacing)
+	check(t.salvo_wide_lanes == 5 and t.salvo_wide_bombs == 3 and t.salvo_bombs == 2,
+		"a spot takes up to three bombs from 5 lanes, two below (owner: harder on 5 or more lanes)")
+	check(t.salvo_choices == 1 and t.salvo_wide_choices == 2,
+		"a spot leaves one lane on 3 lanes (a path to take) and a choice of two from 5 lanes (owner)")
+	# Seconds from one spot's blast to the next: salvo_spacing at 18 m/s, as long at any speed.
+	var gap: float = t.salvo_spacing / MovementTuning.REFERENCE_SPEED
+	var sizes: Dictionary = {}
+	var spots_seen: int = 0
+	var pairs: int = 0
+	var widest: int = 0
+	var circles_fogged: int = 0
+	for phase: int in [1, 2]:
+		for lanes: int in LANES:
+			var pair: Array = _fight(_plain_def(), lanes, {"phase": phase})
+			var world: RunWorld = pair[0]
+			var head: FloatingHead = pair[1]
+			var tag: String = "(phase %d, %d lanes)" % [phase + 1, lanes]
+			var dodged: Dictionary = {}
+			var inside: Array[int] = [0]
+			var unwarned: Array[int] = [0]
+			var seen: Dictionary = {}
+			var done: bool = await _until(world, func() -> bool:
+				var b: FloatingHeadBombing = head.bombing
+				if b.target.has("spots") and not seen.has(b.target["lock"]):
+					# The lock's first frame: every spot's circle shows already, before its bombs fall.
+					seen[b.target["lock"]] = true
+					for spot: Dictionary in b.target["spots"]:
+						for l: int in spot["lanes"]:
+							if not head.props.warned(l, float(spot["at"]) - 0.5, float(spot["at"]) + 0.5):
+								unwarned[0] += 1
+					for d: Dictionary in b._drops:
+						var circle := d["circle"] as MeshInstance3D
+						var m := circle.material_override as BaseMaterial3D
+						if m == null or not m.disable_fog or not m.emission.is_equal_approx(BossProps.WARNING_COLOR):
+							circles_fogged += 1
+				_dodge(head, dodged)
+				if _inside_blast(head):
+					inside[0] += 1
+				return head.step == FloatingHead.Step.FACE_OFF or not world.player.alive, 30.0)
+			check(done and world.player.alive, "a runner who weaves along the way through escapes every bomb %s" % tag)
+			check(inside[0] == 0, "and is never inside a blast %s" % tag)
+			check(unwarned[0] == 0, "every spot's red circle shows from the lock, before its bombs fall %s" % tag)
+			var lt: float = t.lock_seconds / head.phase().pace
+			var locks: Array[Dictionary] = _events(head, &"lock")
+			var blasts: Array[Dictionary] = _events(head, &"blast")
+			check(not locks.is_empty(), "the light locks on %s" % tag)
+			var shaped: bool = true
+			var wide: bool = lanes >= t.salvo_wide_lanes
+			var most_bombs: int = t.salvo_wide_bombs if wide else t.salvo_bombs
+			var choices: int = t.salvo_wide_choices if wide else t.salvo_choices
+			var stepped_clear: int = 0
+			var off_choices: int = 0
+			var aimed: bool = true
+			var spaced: bool = true
+			var timed: bool = true
+			var unfair: int = 0
+			var bombs: int = 0
+			for l: Dictionary in locks:
+				if not l.has("spots"):
+					shaped = false
+					continue
+				var spots: Array = l["spots"]
+				shaped = shaped and spots.size() >= t.salvo_min_spots and spots.size() <= t.salvo_spots_in(phase)
+				sizes[spots.size()] = true
+				aimed = aimed and (spots[0]["lanes"] as Array).has(int(l["player_lane"])) \
+					and is_equal_approx(float(spots[0]["at"]), float(l["at"]))
+				for k: int in spots.size():
+					var spot_lanes: Array = spots[k]["lanes"]
+					bombs += spot_lanes.size()
+					if wide:
+						widest = maxi(widest, spot_lanes.size())
+					else:
+						spots_seen += 1
+						if spot_lanes.size() == 2:
+							pairs += 1
+					# Side by side: one block of lanes, at most most_bombs wide.
+					shaped = shaped and spot_lanes.size() >= 1 and spot_lanes.size() <= most_bombs \
+						and int(spot_lanes[-1]) - int(spot_lanes[0]) == spot_lanes.size() - 1
+					timed = timed and absf(float(spots[k]["warning"]) - (lt + k * gap)) < 0.01
+					if k > 0:
+						spaced = spaced and absf(float(spots[k]["at"]) - float(spots[k - 1]["at"])
+							- t.salvo_spacing * head.run_pace()) < 0.01
+				if not _salvo_fair(world.layout, t, l, lanes, head.run_pace()):
+					unfair += 1
+				# Past every spot the runner has the street's choice of lanes: one on 3 lanes, two from 5.
+				for left: Array in _salvo_reach(world.layout, t, l, lanes, head.run_pace()):
+					if left.size() != choices:
+						off_choices += 1
+				# No lane in the runner's reach at the first spot is clear of every spot.
+				for e: int in lanes:
+					var hit: bool = absi(e - int(l["player_lane"])) > t.max_escape_lanes
+					for spot: Dictionary in spots:
+						hit = hit or (spot["lanes"] as Array).has(e)
+					if not hit:
+						stepped_clear += 1
+			check(shaped, "every lock marks %d to %d spots, 1 to %d bombs side by side each %s" % [t.salvo_min_spots,
+				t.salvo_spots_in(phase), most_bombs, tag])
+			check(off_choices == 0, "past every spot the runner has %d lane%s to be in (%d spots off) %s" % [choices,
+				"" if choices == 1 else "s", off_choices, tag])
+			check(stepped_clear == 0, "a runner can't step clear of a whole salvo (%d lanes clear) %s" % [stepped_clear, tag])
+			check(aimed, "the nearest spot is where a single lock's would be, on the runner's lane %s" % tag)
+			check(spaced, "each next spot lies salvo_spacing further along the track %s" % tag)
+			check(timed, "each spot blows %.2f s after the one before, the first after the warning %s" % [gap, tag])
+			check(unfair == 0, "every salvo leaves a way through it (%d unfair) %s" % [unfair, tag])
+			# Every blast is a spot's, after its own warning: nearest first, each as the runner gets there.
+			var matched: bool = true
+			for bl: Dictionary in blasts:
+				var found: bool = false
+				for l: Dictionary in locks:
+					for spot: Dictionary in l.get("spots", []):
+						if (spot["lanes"] as Array).has(bl["lane"]) and is_equal_approx(float(spot["at"]), float(bl["at"])):
+							var wait: float = float(bl["t"]) - float(l["t"])
+							found = wait >= float(spot["warning"]) - 0.02 and wait <= float(spot["warning"]) + 0.05
+				matched = matched and found
+			check(matched and blasts.size() == bombs, "bombs fall only on the spots, each after its warning (%d of %d) %s" % [
+				blasts.size(), bombs, tag])
+			check(_sounds(head, &"searchlight_lock") == locks.size() and _sounds(head, &"bomb_whistle") == bombs,
+				"every lock is heard, and every bomb whistles as it falls %s" % tag)
+			var end: Array[Dictionary] = _events(head, &"run_end")
+			var late: bool = end.is_empty()
+			for bl: Dictionary in blasts:
+				late = late or float(bl["t"]) > float(end[0]["t"]) + 0.02
+			check(not late, "its last bomb lands before the run ends %s" % tag)
+			print("  Floating Head's run in phase %d %s: %d salvos, %d bombs" % [phase + 1, tag, locks.size(), bombs])
+			await sim.free_world(world)
+	check(sizes.size() >= 2, "salvos come in different sizes (%s spots)" % [sizes.keys()])
+	check(pairs >= 1 and pairs < spots_seen, "on 3 lanes some spots take two bombs side by side, others one (%d of %d)" % [
+		pairs, spots_seen])
+	check(widest == t.salvo_wide_bombs, "on 5 and 6 lanes some spots take %d bombs side by side" % t.salvo_wide_bombs)
+	check(circles_fogged == 0, "every target circle is the same red at any distance, out of the fog (owner)")
+	# A runner who stands still is hit by the first spot's bomb, where it goes off.
+	for lanes: int in LANES:
+		var pair: Array = _fight(_plain_def(), lanes, {"phase": 1})
+		var world: RunWorld = pair[0]
+		var head: FloatingHead = pair[1]
+		var cause: Array[String] = [""]
+		world.player.died.connect(func(c: String) -> void: cause[0] = c)
+		await _until(world, func() -> bool: return not world.player.alive, 15.0)
+		var locks: Array[Dictionary] = _events(head, &"lock")
+		var blasts: Array[Dictionary] = _events(head, &"blast")
+		var first: bool = not locks.is_empty() and not blasts.is_empty()
+		for bl: Dictionary in blasts:
+			first = first and is_equal_approx(float(bl["at"]), float(locks[0]["at"]))
+		check(not world.player.alive and cause[0] == FloatingHeadBombing.BOMB_NAME and first,
+			"a runner who stands still is hit by a salvo's first spot (%s) (%d lanes)" % [cause[0], lanes])
+		await sim.free_world(world)
+	# On the real arena (its holes and fences), every salvo still leaves a way through.
+	for phase: int in [1, 2]:
+		for lanes: int in LANES:
+			var pair: Array = _fight(def, lanes, {"phase": phase})
+			var world: RunWorld = pair[0]
+			var head: FloatingHead = pair[1]
+			world.player.god_mode = true
+			world.player.grapples = 1_000_000
+			var dodged: Dictionary = {}
+			var inside: Array[int] = [0]
+			await _until(world, func() -> bool:
+				_dodge(head, dodged)
+				if _inside_blast(head):
+					inside[0] += 1
+				return head.step == FloatingHead.Step.FACE_OFF, 30.0)
+			var locks: Array[Dictionary] = _events(head, &"lock")
+			var unfair: int = 0
+			for l: Dictionary in locks:
+				if not l.has("spots") or not _salvo_fair(world.layout, head.tuning, l, lanes, head.run_pace()):
+					unfair += 1
+			var tag: String = "(phase %d, %d lanes)" % [phase + 1, lanes]
+			check(not locks.is_empty(), "salvos fall on the real arena too (%d) %s" % [locks.size(), tag])
+			check(unfair == 0, "every salvo lands on clear roof and leaves a way through (%d unfair) %s" % [unfair, tag])
+			check(inside[0] == 0, "the weaving runner is never inside a blast %s" % tag)
+			await sim.free_world(world)
+	# Two attempts with the same moves play out the same way.
+	var runs: Array[String] = []
+	for attempt: int in 2:
+		var pair: Array = _fight(def, 5, {"phase": 1})
+		var world: RunWorld = pair[0]
+		var head: FloatingHead = pair[1]
+		world.player.god_mode = true
+		world.player.grapples = 1_000_000
+		var dodged: Dictionary = {}
+		await _until(world, func() -> bool:
+			_dodge(head, dodged)
+			return head.step == FloatingHead.Step.FACE_OFF, 30.0)
+		var log: PackedStringArray = []
+		for e: Dictionary in head.events:
+			if e["event"] in [&"lock", &"blast", &"run_start", &"run_end"]:
+				log.append("%s %.3f %s %s %s" % [e["event"], float(e["t"]), e.get("lanes", e.get("lane", "")),
+					e.get("at", ""), e.get("spots", "")])
+		runs.append("\n".join(log))
+		await sim.free_world(world)
+	check(runs[0] == runs[1] and runs[0].contains("lock"), "every attempt at a salvo run plays out the same way")
 
 
 # --- The route in -----------------------------------------------------------------------------------

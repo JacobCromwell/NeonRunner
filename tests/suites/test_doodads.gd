@@ -54,6 +54,7 @@ func run() -> void:
 	_test_keep_outs()
 	await _test_track()
 	_test_skins()
+	_test_cards()
 	await _test_push()
 	await _test_jump_and_slide()
 	await _test_mid_switch()
@@ -444,11 +445,62 @@ func _test_skins() -> void:
 					var glows: bool = false
 					for surface: int in inst.mesh.get_surface_count():
 						var arrays: Array = inst.mesh.surface_get_arrays(surface)
-						for col: Color in arrays[Mesh.ARRAY_COLOR]:
-							glows = glows or col.a > 0.0
-					check(not glows and inst.material_override == MeshKit.solid(), "%s's %s doodad is lit, never glowing" % [file, size])
+						if arrays[Mesh.ARRAY_COLOR] != null:
+							for col: Color in arrays[Mesh.ARRAY_COLOR]:
+								glows = glows or col.a > 0.0
+					var lit: bool = inst.material_override == MeshKit.solid() or DoodadCards.is_card_material(inst.material_override)
+					check(not glows and lit, "%s's %s doodad is lit, never glowing" % [file, size])
 				body.free()
 	check(skins >= 7, "every skin's doodads looked at (%d)" % skins)
+
+
+## The zones' picture cards (DoodadCards; owner's request October 9, 2026): every zone's manifest
+## loads and gives each size class a look, was painted for today's box sizes (rerun `tools/godot.sh
+## doodads` after changing MovementTuning's doodad sizes), and every card shows a picture from its
+## atlas on a plane inside its box. The card shader never emits light.
+func _test_cards() -> void:
+	var shader := load(DoodadCards.SHADER_PATH) as Shader
+	check(shader != null and not shader.code.contains("EMISSION"), "the doodad card shader is lit scenery, never emissive")
+	for zone: String in DoodadCards.ZONES:
+		var cards := DoodadCards.for_zone(zone)
+		check(cards.ok, "%s has doodad cards (tools/godot.sh doodads)" % zone)
+		if not cards.ok:
+			continue
+		var m: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DoodadCards.DIR.path_join(zone + ".json")))
+		var import := ConfigFile.new()
+		check(import.load(String(m["atlas"]) + ".import") == OK
+			and int(import.get_value("params", "compress/mode", -1)) == 2 and bool(import.get_value("params", "mipmaps/generate", false)),
+			"%s's atlas is VRAM-compressed with mipmaps (a cheap load mid-run; no shimmer far away)" % zone)
+		var boxes: Dictionary = m["boxes"]
+		var images: Dictionary = m["images"]
+		for size: StringName in LevelLayout.DOODAD_SIZES:
+			var box: Vector3 = tuning.doodad_size(size)
+			var drawn: Array = boxes.get(String(size), [])
+			check(drawn.size() == 3 and Vector3(float(drawn[0]), float(drawn[1]), float(drawn[2])).is_equal_approx(box),
+				"%s's %s pictures were painted for today's box %s (%s): rerun tools/godot.sh doodads" % [zone, size, box, drawn])
+			var looks: Array = cards.designs.get(String(size), [])
+			check(not looks.is_empty(), "%s has a %s look" % [zone, size])
+			for d: Dictionary in looks:
+				var tag: String = "%s's %s look %s" % [zone, size, d["name"]]
+				check(not (d["cards"] as Array).is_empty(), "%s has cards" % tag)
+				# Its mesh carries the look's main colours: vertex colours that never glow, and its metadata.
+				var mesh: ArrayMesh = cards.mesh_for(d, box)
+				var palette: PackedColorArray = mesh.get_meta(DoodadCards.COLORS_META, PackedColorArray())
+				var listed: bool = palette.size() == (d["colors"] as Array).size() and palette.size() > 0
+				for c: Color in mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]:
+					var known: bool = false
+					for p: Color in palette:
+						known = known or Color(c.r, c.g, c.b).is_equal_approx(p) or Color(c.r, c.g, c.b).to_rgba32() == p.to_rgba32()
+					listed = listed and known and c.a == 0.0
+				check(listed, "%s's mesh carries its main colours, never glowing (%s)" % [tag, palette])
+				for c: Dictionary in d["cards"]:
+					var rect: Array = c["rect"]
+					var at: float = float(c["at"])
+					check(images.has(String(c["image"])), "%s shows a picture in its atlas (%s)" % [tag, c["image"]])
+					check(String(c["plane"]) in ["x", "y", "z"] and at >= 0.0 and at <= 1.0, "%s's cards lie on planes inside its box" % tag)
+					check(rect.size() == 4 and float(rect[0]) >= 0.0 and float(rect[1]) >= 0.0 and float(rect[2]) <= 1.0
+						and float(rect[3]) <= 1.0 and float(rect[0]) < float(rect[2]) and float(rect[1]) < float(rect[3]),
+						"%s's cards stay inside its box (%s)" % [tag, rect])
 
 
 # --- The push on real physics ------------------------------------------------------------------
