@@ -36,8 +36,9 @@
   Standing them earlier (before those passes) took the stretches the passes add enemies and rows in: the final
   levels on 3 lanes then came out about 28% denser instead of 30% (the sample was at 30.3% before the walls), and
   any wall at all, even one a level, pushed them under; and it took a crowded level's few doodad stretches (Golden 1
-  lost all its doodads on 5 and 6 lanes). So each wall now costs a few plain pieces where it stands (0 to 7 a level
-  in the suite's sample) rather than the level losing the danger the owner asked for, and in a crowded level the
+  lost all its doodads on 5 and 6 lanes). So the walls now cost a few plain pieces where they stand (4 to 12 a level
+  for 3 or 4 walls in the suite's sample; the final levels on 3 lanes stay 30.3% and 31.2% denser) rather than the
+  level losing the danger the owner asked for, and in a crowded level the
   walls get fewer fair spots (where a level ends up with none, one makes room by taking out an enemy, as the
   introduction may). Is that the right trade, or should the walls count toward the requested danger (each is a
   hit across every lane)?
