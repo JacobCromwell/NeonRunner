@@ -14,6 +14,16 @@ extends Node3D
 ##    would get there. Leaving the lane dodges it; it's too tall to jump.
 ## Every few locks (straddle_every) the light spreads over two lanes side by side: two bombs, and the
 ## free side is the way out. A player who keeps moving can always escape (the fairness rules below).
+## Salvos (owner's request, October 9, 2026; task E1g; FloatingHeadTuning, group Salvos): in a phase
+## whose run drops them (every run after the first), a lock marks 2-4 spots at once instead of one, each
+## struck by one bomb or two side by side. The nearest is where a single lock's would be; each next one
+## lies salvo_spacing further along the track and strikes the lane the way past the one before leads
+## to, so the runner weaves from one to the next. Every spot's red circle shows at the lock, while the
+## later spots' bombs are still in the bay: the runner sees the whole way through. The bombs leave the
+## bay one spot after another, each falling for the warning's length, and blow up nearest first, each
+## as the runner gets there; the light moves on to the next spot as each one blows. Fairness: every spot keeps
+## a single lock's rules, and from one to the next the way through moves at most salvo_max_shift lanes,
+## through lanes free of holes and fences (way_through).
 ## Fairness: a lock happens only where the lanes it strikes are free of holes and fences around the
 ## blast (it lands on a roof), where a lane it doesn't strike lies at most max_escape_lanes away with
 ## it and every lane on the way free of holes and fences from the player to past the blast (the dodge is
@@ -23,7 +33,8 @@ extends Node3D
 ## the fireball and, in an outer lane, keeps clear of a wall runner beside it.
 ## Nothing depends on how long the fight has lasted: random picks come from the fight's seeded rng and
 ## time from the physics step, so every attempt plays out the same way for the same inputs.
-## The run ends run_seconds after the light switches on; the last blast lands before it ends.
+## The run ends run_seconds after the light switches on; the last blast lands before it ends (a salvo
+## that wouldn't is cut short, down to least_spots()).
 
 enum Step { IDLE, SWEEP_OUT, SWEEP_IN, LOCK }
 
@@ -32,8 +43,8 @@ const LIGHT_WHITE := Color(0.85, 0.92, 1.0)
 const LIGHT_RED := Color(1.0, 0.16, 0.1)
 const FIRE := Color(1.0, 0.36, 0.12)
 const FIRE_HOT := Color(1.0, 0.8, 0.5)
-## Bombs, blasts and fireballs kept ready (two locks' worth, one of them a straddle).
-const POOL: int = 4
+## Bombs, blasts and fireballs kept ready (a whole salvo's: four spots of two bombs).
+const POOL: int = 8
 ## How fast the spot catches up along the track after a blast, beyond the runner's own speed (at
 ## 18 m/s; at the run's pace, so it takes as long at any speed).
 const CATCH_UP: float = 60.0
@@ -49,6 +60,10 @@ const WHISTLE_SECONDS: float = 0.9
 ## 18 m/s, at the run's pace).
 const CEILING_BEFORE: float = 8.0
 const CEILING_AFTER: float = 4.0
+## In a salvo the light moves sideways to the next spot this many times faster than it sweeps.
+const SPOT_SWEEP: float = 3.0
+## A runner is past a salvo's spot once its hurtbox is this far beyond the blast's far edge.
+const PAST_MARGIN: float = 0.3
 
 var head: FloatingHead
 var tuning: FloatingHeadTuning
@@ -66,14 +81,19 @@ var locks: int = 0
 ## The light's spot: its world x and its track distance.
 var spot_x: float = 0.0
 var spot_d: float = 0.0
-## The lock in progress: {lanes: Array[int], at, x, lock, impact} (clock times), or empty.
+## The lock in progress: {lanes: Array[int], at, x, lock, impact} (clock times), or empty. A salvo's
+## also holds its spots, {lanes, at, x, impact} each, the nearest first (its own lanes, at, x and
+## impact are the nearest spot's).
 var target: Dictionary = {}
 
-## Bombs on their way: {lane, at, x, release, impact, whistle, released, whistled, circle, bomb, from}.
+## Bombs on their way: {lane, at, x, release, impact, whistle, released, whistled, circle, bomb, from}
+## (a salvo's also spot_x, the middle of its spot).
 var _drops: Array[Dictionary] = []
 ## Blasts burning: {hazard, fire, material, x, at, start}.
 var _blasts: Array[Dictionary] = []
 var _out_lane: int = 0
+## The spots the next salvo may have (a seeded pick each round; 0 outside salvo runs).
+var _salvo: int = 0
 var _settled: float = 0.0
 ## Seconds since the light began its sweep (it sweeps at least sweep_seconds between locks).
 var _swept: float = 0.0
@@ -147,6 +167,7 @@ func start(seconds: float) -> void:
 	spot_x = 0.0
 	spot_d = world.player.distance + _lead()
 	_out_lane = _pick_out_lane()
+	_salvo = _pick_salvo()
 	_set_step(Step.SWEEP_OUT)
 	_swept = 0.0
 	head.body.bay_open = true
@@ -254,11 +275,18 @@ func _update_light(delta: float) -> void:
 				if _settled >= tuning.settle_seconds / head.pace() and _swept >= tuning.sweep_seconds / head.pace():
 					_try_lock()
 		Step.LOCK:
-			pass
+			# A salvo: the light rests on the next spot to blow, and moves on as each one does.
+			var next: Dictionary = _next_spot()
+			if not next.is_empty():
+				spot_d = move_toward(spot_d, float(next["at"]), (world.player.speed + head.metres(CATCH_UP)) * delta)
+				spot_x = move_toward(spot_x, float(next["x"]), sweep * SPOT_SWEEP)
 
 
 ## Locks on the runner's lane where the spot rests, if the rules allow it there now.
 func _try_lock() -> void:
+	if salvo_size() > 1:
+		_try_salvo()
+		return
 	var lt: float = lock_time()
 	if run_time + lt > run_seconds:
 		return
@@ -358,6 +386,250 @@ func _set_step(next: Step) -> void:
 	_settled = 0.0
 
 
+# --- Salvos ------------------------------------------------------------------------------------
+
+## The most spots one of this phase's salvos may have (1: one spot at a time, as in the first run).
+func salvo_size() -> int:
+	return tuning.salvo_spots_in(head.phase_index)
+
+
+## Seconds from one spot's blast to the next one's in a salvo: salvo_spacing at the run's speed (as
+## long at any speed, and the phase's pace doesn't shorten it: the runner switches lanes no faster).
+func spot_gap_time() -> float:
+	return head.metres(tuning.salvo_spacing) / maxf(world.player.speed, 0.1)
+
+
+## The fewest spots one of this phase's salvos may have: salvo_min_spots, or salvo_size() if smaller.
+func least_spots() -> int:
+	return mini(tuning.salvo_min_spots, salvo_size())
+
+
+## The spots the next salvo may have: a seeded pick from least_spots() to salvo_size() (0 when this
+## phase's run drops no salvos, and then no pick is made).
+func _pick_salvo() -> int:
+	var most: int = salvo_size()
+	if most <= 1:
+		return 0
+	var least: int = least_spots()
+	return least + head.rng.randi() % (most - least + 1)
+
+
+## Locks a salvo on the runner's lane where the spot rests, if the rules allow one there now: as many
+## of its spots as land before the run ends, least_spots() at least.
+func _try_salvo() -> void:
+	var lt: float = lock_time()
+	var gap: float = spot_gap_time()
+	var fit: int = floori((run_seconds - run_time - lt) / gap + 0.0001) + 1
+	var most: int = mini(_salvo, fit)
+	if most < least_spots():
+		return
+	var pl: int = head.player_lane()
+	var spots: Array[Dictionary] = plan_salvo(pl, spot_d, most)
+	if spots.is_empty():
+		return
+	locks += 1
+	var geo: TrackGeometry = world.geo
+	var logged: Array[Dictionary] = []
+	for i: int in spots.size():
+		var spot: Dictionary = spots[i]
+		var lanes: Array[int] = spot["lanes"]
+		var at: float = spot["at"]
+		var x: float = 0.0
+		for l: int in lanes:
+			x += geo.lane_x(l)
+		x /= lanes.size()
+		var impact: float = clock + lt + i * gap
+		spot["x"] = x
+		spot["impact"] = impact
+		# Its bombs leave the bay one spot after another, each falling for the warning's length; every
+		# circle shows now.
+		for j: int in lanes.size():
+			var lane: int = lanes[j]
+			_drops.append({"lane": lane, "at": at, "x": geo.lane_x(lane), "spot_x": x,
+				"release": impact - lt + j * SECOND_BOMB_DELAY, "impact": impact,
+				"whistle": maxf(clock, impact - _whistle), "released": false, "whistled": false,
+				"circle": head.props.circle_warning(at, lane, tuning.blast_radius), "bomb": null, "from": Vector3.ZERO})
+		logged.append({"lanes": lanes.duplicate(), "at": at, "warning": impact - clock})
+	var first: Dictionary = spots[0]
+	spot_x = float(first["x"])
+	target = {"lanes": first["lanes"], "at": first["at"], "x": first["x"], "lock": clock, "impact": first["impact"],
+		"spots": spots}
+	head.sound(&"searchlight_lock", spot_world())
+	var first_lanes: Array[int] = first["lanes"]
+	head.log_event(&"lock", {"lanes": first_lanes.duplicate(), "at": first["at"], "player_lane": pl,
+		"d0": world.player.distance, "warning": lt, "straddle": first_lanes.size() > 1, "spots": logged})
+	_set_step(Step.LOCK)
+
+
+## A salvo for a runner in lane `pl`, its nearest spot at track distance `at`: up to `most` spots,
+## {lanes: Array[int], at} each, the nearest first, or none if fewer than least_spots() are fair now.
+## Each spot strikes the lane the way past the one before leads to (the runner's own for the first),
+## alone or, by a seeded pick, with a lane beside it, where the spot keeps a single lock's rules
+## (fair: clear roof, no pickup, no ceiling, a way out within reach); the way out is a seeded pick among
+## the nearest. A salvo whose next spot can't be fair ends there.
+func plan_salvo(pl: int, at: float, most: int) -> Array[Dictionary]:
+	var spots: Array[Dictionary] = []
+	var gap: float = head.metres(tuning.salvo_spacing)
+	var lane: int = pl
+	var from: float = world.player.distance
+	for k: int in most:
+		var spot_at: float = at + k * gap
+		var pick: Dictionary = _pick_spot(lane, from, spot_at, k == 0)
+		if pick.is_empty():
+			break
+		spots.append({"lanes": pick["lanes"], "at": spot_at})
+		lane = pick["way"]
+		from = spot_at
+	if spots.size() < least_spots():
+		spots.clear()
+	return spots
+
+
+## One spot of a salvo at `at` on the way's `lane`, which the way reaches at `from` (the runner's spot
+## for the first): {lanes, way} or empty if no spot there is fair.
+func _pick_spot(lane: int, from: float, at: float, first: bool) -> Dictionary:
+	if head.ceiling_between(at - head.metres(CEILING_BEFORE), at + head.metres(CEILING_AFTER)):
+		return {}
+	var n: int = world.geo.lane_count
+	var options: Array = []
+	if n >= 3 and head.rng.randf() < tuning.salvo_pair_chance:
+		var sides: Array[int] = [-1, 1]
+		if head.rng.randf() < 0.5:
+			sides.reverse()
+		for s: int in sides:
+			var other: int = lane + s
+			if other >= 0 and other < n:
+				var pair: Array[int] = [mini(lane, other), maxi(lane, other)]
+				options.append(pair)
+	var single: Array[int] = [lane]
+	options.append(single)
+	for lanes: Array[int] in options:
+		var clear: bool = true
+		for l: int in lanes:
+			if not _clear(l, at - head.metres(tuning.clear_before_impact), at + head.metres(tuning.clear_after_impact)) \
+					or _pickup_near(l, at):
+				clear = false
+				break
+		if not clear:
+			continue
+		var ways: Array[int] = _ways_out(lanes, lane, from, at, first)
+		if not ways.is_empty():
+			return {"lanes": lanes, "way": ways[head.rng.randi() % ways.size()]}
+	return {}
+
+
+## The nearest lanes out of a spot on `lanes` at `at` for a way in `lane` from `from`: not struck, at
+## most max_escape_lanes away for the first spot and salvo_max_shift for the rest, with every lane on
+## the way (the way's own too, after the first spot) free of holes and fences from `from` to
+## escape_clear_after past the spot.
+func _ways_out(lanes: Array[int], lane: int, from: float, at: float, first: bool) -> Array[int]:
+	var reach: int = tuning.max_escape_lanes if first else tuning.salvo_max_shift
+	var until: float = at + head.metres(tuning.escape_clear_after)
+	var n: int = world.geo.lane_count
+	var out: Array[int] = []
+	for dist: int in range(1, reach + 1):
+		for s: int in [-1, 1]:
+			var e: int = lane + s * dist
+			if e < 0 or e >= n or lanes.has(e):
+				continue
+			var ok: bool = true
+			for l: int in range(mini(lane, e), maxi(lane, e) + 1):
+				if (l != lane or not first) and not _clear(l, from, until):
+					ok = false
+					break
+			if ok:
+				out.append(e)
+		if not out.is_empty():
+			break
+	return out
+
+
+## A way through `spots` (a salvo's, {lanes, at} each, the nearest first) for a runner in `pl` at
+## `d0`: the lane to be in at each spot, with as few lane switches as can be, or empty if there is none.
+## It keeps the salvo's rules: from the runner to the first spot it moves at most max_escape_lanes and
+## from one spot to the next at most salvo_max_shift, through lanes free of holes and fences from where
+## it sets off (the runner's spot, or the spot before) to escape_clear_after past the spot (the
+## runner's own lane is theirs to run, as for any lock).
+func way_through(spots: Array, pl: int, d0: float) -> Array[int]:
+	var way: Array[int] = []
+	var n: int = world.geo.lane_count
+	var cost: Dictionary = {pl: 0}
+	var back: Array[Dictionary] = []
+	var from: float = d0
+	for k: int in spots.size():
+		var lanes: Array = spots[k]["lanes"]
+		var at: float = float(spots[k]["at"])
+		var until: float = at + head.metres(tuning.escape_clear_after)
+		var reach: int = tuning.max_escape_lanes if k == 0 else tuning.salvo_max_shift
+		var next: Dictionary = {}
+		var prev: Dictionary = {}
+		var starts: Array = cost.keys()
+		starts.sort()
+		for r: int in starts:
+			for e: int in range(maxi(r - reach, 0), mini(r + reach, n - 1) + 1):
+				var c: int = int(cost[r]) + absi(e - r)
+				if lanes.has(e) or (next.has(e) and int(next[e]) <= c):
+					continue
+				var ok: bool = true
+				for l: int in range(mini(r, e), maxi(r, e) + 1):
+					if (l != pl or k > 0) and not _clear(l, from, until):
+						ok = false
+						break
+				if ok:
+					next[e] = c
+					prev[e] = r
+		if next.is_empty():
+			return way
+		cost = next
+		back.append(prev)
+		from = at
+	# The cheapest lane at the last spot (the nearest the runner's on a tie), then back to the first.
+	var best: int = -1
+	for e: int in cost:
+		if best < 0 or int(cost[e]) < int(cost[best]) or (int(cost[e]) == int(cost[best])
+				and (absi(e - pl) < absi(best - pl) or (absi(e - pl) == absi(best - pl) and e < best))):
+			best = e
+	way.resize(spots.size())
+	var lane: int = best
+	for k: int in range(spots.size() - 1, -1, -1):
+		way[k] = lane
+		lane = int(back[k][lane])
+	return way
+
+
+## The salvo's spots a runner at track distance `d0` hasn't run past yet (the nearest first; none
+## outside a salvo).
+func spots_ahead(d0: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if not target.has("spots"):
+		return out
+	var past: float = tuning.blast_depth * 0.5 + world.tuning.hurtbox_size.z * 0.5 + PAST_MARGIN
+	for spot: Dictionary in target["spots"]:
+		if float(spot["at"]) + past > d0:
+			out.append(spot)
+	return out
+
+
+## Where a runner in lane `pl` at `d0` should be for the next salvo spot ahead of them, on a way
+## through the rest (way_through): -1 outside a salvo, past its last spot or with no way through.
+func dodge_lane(pl: int, d0: float) -> int:
+	var ahead: Array[Dictionary] = spots_ahead(d0)
+	if ahead.is_empty():
+		return -1
+	var way: Array[int] = way_through(ahead, pl, d0)
+	return way[0] if not way.is_empty() else -1
+
+
+## The salvo's next spot to blow (none outside a salvo, or once its last has blown).
+func _next_spot() -> Dictionary:
+	if not target.has("spots"):
+		return {}
+	for spot: Dictionary in target["spots"]:
+		if float(spot["impact"]) > clock + 0.0001:
+			return spot
+	return {}
+
+
 # --- Bombs and blasts ---------------------------------------------------------------------------
 
 func _update_drops() -> void:
@@ -366,7 +638,8 @@ func _update_drops() -> void:
 		if not d["released"] and clock >= float(d["release"]):
 			d["released"] = true
 			d["bomb"] = _free_bomb()
-			d["from"] = head.body.bay_world() + Vector3((float(d["x"]) - float(target.get("x", d["x"]))) * 0.4, 0.0, 0.0)
+			var mid: float = float(d.get("spot_x", target.get("x", d["x"])))
+			d["from"] = head.body.bay_world() + Vector3((float(d["x"]) - mid) * 0.4, 0.0, 0.0)
 		if not d["whistled"] and clock >= float(d["whistle"]):
 			d["whistled"] = true
 			head.sound(&"bomb_whistle", Vector3(float(d["x"]), 1.0, TrackGeometry.world_z(float(d["at"]))))
@@ -382,6 +655,7 @@ func _update_drops() -> void:
 	if step == Step.LOCK and _drops.is_empty():
 		target = {}
 		_out_lane = _pick_out_lane()
+		_salvo = _pick_salvo()
 		_set_step(Step.SWEEP_OUT)
 		_swept = 0.0
 
@@ -477,6 +751,9 @@ func _update_visuals(delta: float) -> void:
 	var rz: float = tuning.spot_radius
 	if not target.is_empty():
 		var lanes: Array = target["lanes"]
+		var next: Dictionary = _next_spot()
+		if not next.is_empty():
+			lanes = next["lanes"]
 		rx = tuning.blast_radius * 1.2 + (world.geo.lane_width * 0.5 if lanes.size() > 1 else 0.0)
 		rz = tuning.blast_radius * 1.3
 	var over_hole: bool = target.is_empty() and head.arena != null \

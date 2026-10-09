@@ -19,9 +19,10 @@ extends Resource
 ## (FloatingHead.run_pace, metres, before_face), as the generator stretches its patterns, so the fight
 ## plays the same in seconds at any speed, and its warnings keep their seconds:
 ## - the fairness margins (clear_before_impact, clear_after_impact, escape_clear_after,
-##   sweep_clear_after), where the cyborgs drop (drop_ahead), the towers (tower_spacing, tower_first,
-##   tower_clear_before, tower_clear_after, tower_ahead: the time from the clip to the pin), and the
-##   crash (crash_ahead, crash_search, crash_clear_before, crash_clear_after);
+##   sweep_clear_after), a salvo's spacing (salvo_spacing), where the cyborgs drop (drop_ahead), the
+##   towers (tower_spacing, tower_first, tower_clear_before, tower_clear_after, tower_ahead: the time
+##   from the clip to the pin), and the crash (crash_ahead, crash_search, crash_clear_before,
+##   crash_clear_after);
 ## - the ways up: ramp_length (its lead-in with it; its top end stays on the ship's face), and the
 ##   distances before the pinned ship's face where a way up sets the runner off onto its weak points
 ##   (wall_entry_before, wall_jump_before, pad_before_face, ceiling_end_before_face and the window's
@@ -86,6 +87,25 @@ extends Resource
 @export_range(0, 8) var straddle_every: int = 3
 ## The light's spot on the floor (radius): a lane wide; a straddle's spans both lanes.
 @export_range(0.5, 3.0, 0.05, "suffix:m") var spot_radius: float = 1.35
+
+@export_group("Salvos")
+## Owner's request (October 9, 2026; task E1g): after the first run, a lock marks a salvo of spots at
+## once instead of one: from salvo_min_spots up to the phase's number here, each struck by one bomb or by
+## two side by side. The nearest spot is where a single lock's would be, and each next one lies
+## salvo_spacing further along the track, so the runner sees the whole way through before the bombs are
+## released. One number per phase's run (the last for any later phase); 1 = one spot at a time (the
+## first run, unchanged).
+@export var salvo_spots: PackedInt32Array = [1, 4, 4]
+@export_range(2, 6) var salvo_min_spots: int = 2
+## DESIGN-TBD (docs/questions/e1g.md): the distance along the track from one spot of a salvo to the
+## next: the time to run past one blast and switch lanes before the next. The runner doesn't switch
+## lanes faster in the later phases, so the phase's pace doesn't shorten it.
+@export_range(6.0, 30.0, 0.5, "suffix:m") var salvo_spacing: float = 12.0
+## DESIGN-TBD (docs/questions/e1g.md): the chance that a spot covers two lanes side by side.
+@export_range(0.0, 1.0, 0.05) var salvo_pair_chance: float = 0.4
+## DESIGN-TBD (docs/questions/e1g.md): from one spot to the next, the way through moves at most this
+## many lanes (from the runner to the first spot, max_escape_lanes, like any lock).
+@export_range(1, 2) var salvo_max_shift: int = 1
 
 @export_group("Bombs")
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 87): the bomb is aimed at where the player will be:
@@ -387,6 +407,13 @@ func cyborgs_in_drop(index: int) -> int:
 	if cyborgs_per_drop.is_empty():
 		return 1
 	return maxi(cyborgs_per_drop[clampi(index, 0, cyborgs_per_drop.size() - 1)], 1)
+
+
+## The most spots in one salvo in phase `index`'s run (Salvos): 1 = one spot at a time.
+func salvo_spots_in(index: int) -> int:
+	if salvo_spots.is_empty():
+		return 1
+	return maxi(salvo_spots[clampi(index, 0, salvo_spots.size() - 1)], 1)
 
 
 ## `reference` metres before the pinned ship's face where a way up sets the runner off onto its weak
