@@ -100,7 +100,8 @@ func _refresh() -> void:
 	elif encounter.phase_count() > 1:
 		var count: String = "%d/%d" % [encounter.phase_index + 1, encounter.phase_count()]
 		text = "%s · %s" % [encounter.phase().title(encounter.phase_index).to_upper(), count]
-		# A long name (the final villain's) keeps its room: the phase shows its number alone.
+		# A long name (the final villain's) keeps its room: the phase shows its number alone (DESIGN-TBD,
+		# docs/questions/e5d.md, E5d-a 12).
 		if not _fits(text):
 			text = count
 	phase_label.text = text

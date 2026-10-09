@@ -110,7 +110,8 @@ the fight) or `data/bosses/golden_boss_skin.tres` (`GoldenCourtSkin`) unless it 
     every 160 m.
 11. **The entrance's timing** (proposed in the GDD): the first phase's intro is 5.5 s: the suit rises 60 m
     over 3.2 s, the cape unfurls from 1 s over 2.6 s, the chime rings at 1.6 s (the Resonator's G5, C6 and E6,
-    0.85 s apart, each doubled an octave and two below, with the court's echo: `gc_chime`); then the first
+    0.7 s apart where the Resonator's are 0.42 s, each doubled an octave and two below, with the court's
+    echo: `gc_chime`; every sound effect stays under 2.5 s, so the rise's rumble tapers off under the chime); then the first
     beat 0.8 s into the pattern. A later stage 1 phase's 3 s intro: the suit reels back (0.22 rad) and
     recovers.
 12. **The fight's numbers for now:** 600 health; pars 330 s (two stars) and 260 s (three) and a 400 s time

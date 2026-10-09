@@ -187,7 +187,9 @@ static func squadron_size(lanes: int) -> int:
 
 
 ## The lanes a vertical pass covers at `lanes` lanes with `parity` (0: lanes 1, 3, 5 counting from 1, which
-## takes the outer lanes on 3 and 5 lanes; 1: lanes 2, 4, 6): every other lane.
+## takes the outer lanes on 3 and 5 lanes; 1: lanes 2, 4, 6): every other lane. DESIGN-TBD (docs/questions/
+## e5d.md, E5d-a 5): on 6 lanes the first pass (parity 0) takes only the left outer lane, as the GDD's
+## "lanes 1, 3, 5" says.
 static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 	var out: Array[int] = []
 	for lane: int in lanes:

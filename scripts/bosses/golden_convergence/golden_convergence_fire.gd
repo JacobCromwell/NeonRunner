@@ -32,6 +32,7 @@ const RAKES: int = 3
 const LINES: int = 3
 ## Lanes a line spans at most.
 const LANES_MAX: int = 6
+## DESIGN-TBD (docs/questions/e5d.md, E5d-a 4: a jump doesn't dodge a vertical pass either).
 ## A rake's hitbox: a share of the lane's width, its height (over a jump's reach) and its depth along the
 ## lane (longer than it moves in a frame, so it can't step past a runner).
 const RAKE_WIDTH_SHARE: float = 0.72

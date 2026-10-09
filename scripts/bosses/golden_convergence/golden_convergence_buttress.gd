@@ -15,6 +15,8 @@ extends Node3D
 ## - smash() (E5d-b's Fist Slam, E5d-d's Pounce): it crumbles over crumble_seconds (the pier breaks and sinks,
 ##   the flying arch falls away, dust), its sides no longer block, and `smashed` tells the encounter;
 ## - span(), opening_x(), spark_point(), lean, lane, at: where it stands, for the attacks that use it.
+## DESIGN-TBD (docs/questions/e5d.md, E5d-a 8): its size and how soon it rises are in the tuning; its sides
+## block a switch into its lane, not one out of the arch while inside it.
 ## Its look: the palace's white and cream marble with gold trims (never glowing: safe things look safe), the
 ## cult's emblem in gold relief over the arch, a pinnacle with a gold finial on the pier, and the flying arch
 ## leaping up and out over the balustrade beyond the view. The legs keep inside its lane's edges, and the

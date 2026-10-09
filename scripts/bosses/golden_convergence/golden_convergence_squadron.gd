@@ -7,6 +7,8 @@ extends BossPart
 ## a strafe brings them out; the strafe (GoldenConvergenceStrafe) says where each one is, which way it flies,
 ## what its guns aim at and whether they fire (set_drone), and this draws it: the rotors turning, the
 ## gatling spinning up and its muzzle flashing (warm white; steady with Reduced flashing), a gentle bob.
+## DESIGN-TBD (docs/questions/e5d.md, E5d-a 3): the look without red (the eye a cold white, the band unlit
+## gold) and its size (GoldenConvergenceTuning.drone_scale).
 ## A part of the boss that's no target and has no touch of its own (GDD §10: "weapons never target the
 ## squadron"; it only hurts through its fire, GoldenConvergenceFire): immune to weapons, no hitbox,
 ## is_obstacle.
