@@ -2,29 +2,92 @@
 
 [ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
 [ext_resource type="Script" path="res://scripts/campaign/boss_phase.gd" id="2_phase"]
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="3_level"]
+[ext_resource type="Resource" path="res://data/bosses/golden_boss_tuning.tres" id="4_tuning"]
+[ext_resource type="Resource" path="res://data/bosses/golden_boss_skin.tres" id="5_skin"]
 
-[sub_resource type="Resource" id="stage_1"]
+[sub_resource type="Resource" id="phase_1"]
 script = ExtResource("2_phase")
-display_name = "Stage 1"
+display_name = "The Golden Suit"
 health_share = 1.0
 hits = 1
-intro_seconds = 2.0
+pace = 1.0
+intro_seconds = 5.5
 
-[sub_resource type="Resource" id="stage_2"]
+[sub_resource type="Resource" id="phase_2"]
 script = ExtResource("2_phase")
-display_name = "Stage 2"
+display_name = "The Golden Suit"
 health_share = 1.0
 hits = 1
+pace = 1.1
+intro_seconds = 3.0
+
+[sub_resource type="Resource" id="phase_3"]
+script = ExtResource("2_phase")
+display_name = "The Golden Suit"
+health_share = 1.0
+hits = 1
+pace = 1.2
+intro_seconds = 3.0
+
+[sub_resource type="Resource" id="phase_4"]
+script = ExtResource("2_phase")
+display_name = "The Magnate"
+health_share = 1.0
+hits = 1
+pace = 1.0
 checkpoint = true
-intro_seconds = 2.0
+intro_seconds = 4.0
+
+[sub_resource type="Resource" id="phase_5"]
+script = ExtResource("2_phase")
+display_name = "The Magnate"
+health_share = 1.0
+hits = 1
+pace = 1.15
+intro_seconds = 2.5
+
+[sub_resource type="Resource" id="phase_6"]
+script = ExtResource("2_phase")
+display_name = "The Magnate"
+health_share = 1.0
+hits = 1
+pace = 1.3
+intro_seconds = 2.5
+
+[sub_resource type="Resource" id="arena"]
+script = ExtResource("3_level")
+id = &"golden_boss_arena"
+display_name = "The Grand Court"
+level_seed = 1601
+duration_seconds = 60.0
+difficulty = 0.0
+difficulty_ramp = 0.0
+features = PackedStringArray()
+skin = ExtResource("5_skin")
+start_clear_distance = 90.0
 
 [resource]
 script = ExtResource("1_script")
 id = &"golden_boss"
-display_name = "The final villain"
-notes = "DESIGN-TBD: the fight is still to be designed (GDD §10). The all-powerful controller of this world, propped up by the cult (GDD §1). Unlike the other bosses, the final fight has a checkpoint halfway, where the villain may change into a second stage, and it may run a little longer than the others."
-phases = Array[ExtResource("2_phase")]([SubResource("stage_1"), SubResource("stage_2")])
+display_name = "The Golden Convergence"
+preview_scene = "res://scenes/bosses/golden_convergence.tscn"
+notes = "GDD §10: the final villain. A giant golden suit, a gaudy man-made relic with the calm golden face of the cult and a dull red tear, floats at the far end of the Grand Court, its burgundy cape billowing. Stage 1: dodge its Helidrone Strafe (take cover in a Flying Buttress's arch from the horizontal passes), its Fist Slams and its Missile Barrage, and hurl its squadron into the Refill Ship from an anti-grav pad, three times. Stage 2, from the fight's checkpoint halfway: The Magnate himself, burnt and roaring, hunts the runner from behind; bait his Pounce into a buttress and stomp the red ports on his spine. Being built (task E5d): debug builds preview it with --boss=golden_boss."
+weapon_share_cap = 0.17
+weapons_can_end_phase = true
+phases = Array[ExtResource("2_phase")]([SubResource("phase_1"), SubResource("phase_2"), SubResource("phase_3"), SubResource("phase_4"), SubResource("phase_5"), SubResource("phase_6")])
+arena = SubResource("arena")
+arena_laps = 2
+tuning = ExtResource("4_tuning")
+music = &"golden"
+health = 600.0
+payout_credits = 1000
+defeat_score = 10000
+two_star_seconds = 330.0
+three_star_seconds = 260.0
+time_bonus_seconds = 400.0
 armor_rule = true
-armor_delay_min = 15.0
-armor_delay_max = 17.0
+armor_delay_min = 22.0
+armor_delay_max = 22.0
 armor_pickups_per_phase = 1
+armor_when_unprotected = true
