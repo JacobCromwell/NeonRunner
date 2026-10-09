@@ -8,6 +8,12 @@ extends Resource
 ## continue.
 
 @export var id: StringName = &""
+## The name the fight's random choices are seeded with (BossEncounter: its spins, lanes, parts and the
+## enemies it brings; rng_key()), so it plays the same on every attempt. Empty: its id. A boss whose id
+## changed keeps its old one here, so its fight makes the same random choices: The House, moved from the
+## Marketplace to the Casino (owner, October 8, 2026; task K2), keeps `marketplace_boss` (it now runs at
+## the Casino's 23 m/s with enemy scaling 0.5625).
+@export var seed_id: StringName = &""
 @export var display_name: String = "Boss"
 ## The fight: a scene whose root extends BossEncounter (scripts/bosses/boss_encounter.gd).
 ## Empty = not built yet (placeholder card).
@@ -87,6 +93,11 @@ extends Resource
 
 func is_built() -> bool:
 	return scene != "" and ResourceLoader.exists(scene)
+
+
+## What the fight's random choices are seeded with: seed_id, or the id without one.
+func rng_key() -> String:
+	return String(seed_id if seed_id != &"" else id)
 
 
 ## A copy of this boss that plays its preview scene (a fight still being built), or null if it has

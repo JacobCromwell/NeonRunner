@@ -123,7 +123,8 @@ func _test_pause() -> void:
 
 func _test_slots_and_demo() -> void:
 	# The City's boss is built (task E1d; test_floating_head_defeat.gd plays its whole flow), and Gangland's
-	# (E4b), the Marketplace's and the Dead Zone's; the Golden Palace's is still a placeholder card.
+	# (E4b), the Casino's (The House, the Marketplace's before K2) and the Dead Zone's; the Golden Palace's is
+	# still a placeholder card.
 	App.play_step(App.campaign.step("golden/boss"))
 	check(App.screen is SlotScreen and App.run == null, "an unbuilt boss shows its placeholder card")
 	var card := App.screen as SlotScreen

@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_script")
-id = &"marketplace_outro"
-title = "Beyond the Marketplace"
-placeholder_text = "DESIGN-TBD: a short scene leaving the market for the casino district."
+id = &"casino_outro"
+title = "Beyond the Casino"
+placeholder_text = "DESIGN-TBD: a short scene after The House, heading for the corporate district."

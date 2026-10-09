@@ -9,7 +9,9 @@ extends CyborgGunTuning
 ## Health is in plain laser tier 1 shots, rounded to a whole shot at the level's enemy_scaling
 ## (BarnacleTurret): 5 from quick play to the Corporate zone and 6 in the Dead Zone and the Golden
 ## Zone, so it takes slightly more to kill later, never by much (GDD §9.8). Laser tier 1 takes two
-## more shots than that (PowerupTuning.tier1_extra_shots, GDD §8): 7 where it first appears.
+## more shots than that (PowerupTuning.tier1_extra_shots, GDD §8): 7 where it first appears. Its
+## health_late is 5.9 (6 before the Casino's levels re-spaced the campaign's enemy scaling, task K2),
+## so Corporate 2 keeps its 5.
 ## Its reload shortens across the campaign (reload_early → reload_late): it fires somewhat faster.
 ##
 ## Its bolts are faster than the cyborg's: a runner closes in on a turret at run speed, so a slow bolt
@@ -42,10 +44,11 @@ extends CyborgGunTuning
 @export_range(0.0, 1.0, 0.05) var ceiling_share_late: float = 0.65
 ## GDD §9.8: at most 2 per ceiling. The share of turreted ceilings that get a second turret, early and
 ## late, from pair_min_scaling on only (none in the level that introduces it, Marketplace 1), never
-## on the level's first turreted ceiling.
+## on the level's first turreted ceiling. 0.4: from Marketplace 2 on (0.45 before the Casino's levels
+## re-spaced the campaign's enemy scaling, task K2).
 @export_range(0.0, 1.0, 0.05) var pair_share_early: float = 0.3
 @export_range(0.0, 1.0, 0.05) var pair_share_late: float = 0.5
-@export_range(0.0, 1.0, 0.05) var pair_min_scaling: float = 0.45
+@export_range(0.0, 1.0, 0.05) var pair_min_scaling: float = 0.4
 ## A turret stands at least this long (at run speed) past its ceiling's last pad: the rider sees it
 ## pop out before taking the pad, and its first burst fits in (a charge-up from the pad, then
 ## min_warning_time of flight).

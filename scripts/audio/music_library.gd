@@ -22,7 +22,9 @@ const BUS: StringName = &"Music"
 @export var zone_tracks: Dictionary = {}
 ## Boss id -> replacement for that fight only. Unmatched bosses keep their default track.
 @export var boss_tracks: Dictionary = {}
-## Replacement track -> original track whose level-complete sound should be retained.
+## Replacement track -> original track whose level-complete sound should be retained. Also a zone's
+## default track that reuses another zone's file while its own is DESIGN-TBD (GDD §11: no more generated
+## songs) -> that zone's track: the Casino's plays the Marketplace's and ends on its riff (task K2).
 @export var riff_tracks: Dictionary = {}
 
 @export_group("Pause duck")

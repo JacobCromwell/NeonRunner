@@ -12,11 +12,14 @@ extends EnemyTuning
 
 @export_group("Charges")
 ## GDD §9.4: 2–3 charges early, up to 4 at the maximum; then it gives up. A dog makes a random
-## number of charges between the scaled min and max.
-@export_range(1, 6) var charges_min_early: int = 2
-@export_range(1, 6) var charges_max_early: int = 3
-@export_range(1, 6) var charges_min_late: int = 3
-@export_range(1, 6) var charges_max_late: int = 4
+## number of charges between the scaled min and max, each rounded to whole charges (charges_range).
+## Not whole numbers themselves, so the step from the early counts to the late ones can fall between
+## two levels: the late 3.25 and 4.25 (still 3 and 4 at the campaign's end) put it between Marketplace
+## 1 and 2, where it was before the Casino's levels re-spaced the campaign's enemy scaling (task K2).
+@export_range(1.0, 6.0, 0.05) var charges_min_early: float = 2.0
+@export_range(1.0, 6.0, 0.05) var charges_max_early: float = 3.0
+@export_range(1.0, 6.0, 0.05) var charges_min_late: float = 3.25
+@export_range(1.0, 6.0, 0.05) var charges_max_late: float = 4.25
 
 @export_group("Wind-up & lunge")
 ## DESIGN-TBD: seconds of wind-up (crouch, tentacles flare, growl) before each lunge. The aim is
