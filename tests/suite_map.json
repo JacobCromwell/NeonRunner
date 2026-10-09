@@ -39,7 +39,7 @@
     {"match": "scripts/world/wall_*_tuning.gd", "tier": "full"},
     {"match": "scripts/world/ramp_launch.gd", "tier": "full"},
     {"match": "scripts/world/wide_gap_*.gd", "tier": "full", "suites": ["wide_gaps", "enforcer_truck_runs"]},
-    {"match": "scripts/world/charge_path_*.gd", "tier": "full", "suites": ["charge_paths", "octodog", "buzz_overdrive", "cyborg"]},
+    {"match": "scripts/world/charge_path_*.gd", "tier": "full", "suites": ["charge_paths", "octodog", "buzz_overdrive", "cyborg", "dash_walls"]},
     {"match": "scripts/world/hazard.gd", "tier": "full"},
     {"match": "scripts/world/dash_breakable.gd", "tier": "full", "suites": ["doodads", "powerups", "dash_walls"]},
     {"match": "scripts/world/dash_wall_tuning.gd", "tier": "full", "suites": ["dash_walls"]},
