@@ -24,8 +24,10 @@ const RIGS: int = 2
 ## The square's frame is this wide, its fill this see-through.
 const FRAME: float = 0.16
 const FILL_ALPHA: float = 0.16
-## The shadow's darkest (sRGB black's alpha).
+## The shadow's darkest (black's alpha) on the marble, and on the Compatibility renderer, which blends in sRGB
+## space: the same alpha comes out much darker there (GoldenConvergenceMagnate's shadow's, E5d polish).
 const SHADOW_ALPHA: float = 0.62
+const SHADOW_ALPHA_COMPAT: float = 0.36
 const SHADOW_SHADER: String = "res://scripts/bosses/golden_convergence/golden_convergence_shadow.gdshader"
 ## The impact's rubble and dust: pale marble, never in a hazard colour.
 const RUBBLE := Color(0.82, 0.79, 0.72)
@@ -39,6 +41,8 @@ var rigs: Array[Dictionary] = []
 var hits: Array[Dictionary] = []
 
 var _t: float = 0.0
+## SHADOW_ALPHA, or SHADOW_ALPHA_COMPAT on the Compatibility renderer.
+var _shadow_alpha: float = SHADOW_ALPHA
 
 
 func _build() -> void:
@@ -49,6 +53,7 @@ func _build() -> void:
 	display_name = "the golden fist"
 	is_obstacle = true
 	immune_to_weapons = true
+	_shadow_alpha = shadow_alpha_for(RenderingServer.get_current_rendering_method())
 	var frame_mat: Material = GreyboxMaterials.glow(BossProps.WARNING_COLOR, 2.6, 0.8)
 	var fill_mat: Material = GreyboxMaterials.glow(BossProps.WARNING_COLOR, 1.2, FILL_ALPHA)
 	var shader := load(SHADOW_SHADER) as Shader
@@ -162,8 +167,13 @@ func set_shadow(i: int, x: float, at: float, size: float, k: float) -> void:
 	var c: float = clampf(k, 0.0, 1.0)
 	var s: float = size * (0.45 + 0.55 * c)
 	shadow.global_transform = Transform3D(Basis.from_scale(Vector3(s, 1.0, s)), Vector3(x, 0.025, TrackGeometry.world_z(at)))
-	(rig["shadow_mat"] as ShaderMaterial).set_shader_parameter(&"darkness", SHADOW_ALPHA * (0.25 + 0.75 * c))
+	(rig["shadow_mat"] as ShaderMaterial).set_shader_parameter(&"darkness", _shadow_alpha * (0.25 + 0.75 * c))
 	shadow.visible = true
+
+
+## The shadow's darkest on rendering method `method` (RenderingServer.get_current_rendering_method()).
+static func shadow_alpha_for(method: String) -> float:
+	return SHADOW_ALPHA_COMPAT if method == "gl_compatibility" else SHADOW_ALPHA
 
 
 func hide_shadow(i: int) -> void:

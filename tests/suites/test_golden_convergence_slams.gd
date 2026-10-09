@@ -53,6 +53,7 @@ func run() -> void:
 	await _test_sequences()
 	await _test_tower()
 	await _test_warning()
+	_test_shadow_renderers()
 	await _test_reduced_flashing()
 	await _test_same_every_attempt()
 
@@ -722,6 +723,22 @@ func _test_warning() -> void:
 	check(reach_ok, "the fist reaches its mark on its telescoping arm as it lands (%s m off)" % [seen["reach"]])
 	check(hints.count("golden_boss/fist") == 1, "the fist's hint comes with its first warning")
 	await sim.free_world(world)
+
+
+## E5d polish: the fist's shadow darkens the white marble as much on the Compatibility renderer, which blends in
+## sRGB space (the same alpha comes out much darker there), as on Forward+ and Mobile, which blend in linear space:
+## a lighter alpha there, as The Magnate's shadow has.
+func _test_shadow_renderers() -> void:
+	var fwd: float = GoldenConvergenceFist.shadow_alpha_for("forward_plus")
+	var compat: float = GoldenConvergenceFist.shadow_alpha_for("gl_compatibility")
+	var marble: float = 0.835
+	var linear: float = Color(marble, marble, marble).srgb_to_linear().r * (1.0 - fwd)
+	var on_fwd: float = Color(linear, linear, linear).linear_to_srgb().r
+	var on_compat: float = marble * (1.0 - compat)
+	check(is_equal_approx(fwd, GoldenConvergenceFist.SHADOW_ALPHA) and is_equal_approx(GoldenConvergenceFist.shadow_alpha_for("mobile"), fwd)
+		and is_equal_approx(compat, GoldenConvergenceMagnate.SHADOW_ALPHA_COMPAT) and absf(on_fwd - on_compat) < 0.03,
+		"the fist's shadow is as dark on every renderer: %.2f on Forward+ and Mobile, %.2f on Compatibility (the marble at %.2f, %.2f)" % [
+		fwd, compat, on_fwd, on_compat])
 
 
 func _test_reduced_flashing() -> void:

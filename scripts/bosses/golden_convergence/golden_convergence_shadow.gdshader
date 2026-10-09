@@ -1,6 +1,8 @@
 // The Golden Convergence's fist shadow on the floor (GDD §10, the Fist Slam: "its shadow grows on the floor";
 // GoldenConvergenceFist.set_shadow): a soft round dark patch on a unit quad, `darkness` its middle's alpha.
-// Never glowing (it darkens what's under it), nothing animated, the same on every renderer.
+// Never glowing (it darkens what's under it), nothing animated. The Compatibility renderer blends in sRGB space,
+// where the same alpha darkens far more: the fist gives it a lighter `darkness` there (SHADOW_ALPHA_COMPAT), so
+// the shadow reads the same on every renderer.
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled, fog_disabled;
 
