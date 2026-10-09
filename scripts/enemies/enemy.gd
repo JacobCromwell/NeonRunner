@@ -153,6 +153,23 @@ func dash_wall_lift(at: float, half_length: float, from_height: float, closing_s
 	return 0.0
 
 
+## True if `front` (the front of a ground enemy ahead of the runner, moving away from them) has reached the face
+## of a dash wall still standing between it and the runner (task H7a; GDD §9.14): it can't drive through a
+## building, so it leaves play there (an Octodog running off ahead or pacing, a Buzz Overdrive speeding off after
+## letting the runner pass). Only standing walls count, and the runner breaks each one as they reach it.
+func dash_wall_reached(front: float) -> bool:
+	if world == null or world.layout == null or world.layout.dash_walls.is_empty():
+		return false
+	var p: float = world.player_distance()
+	for w: Dictionary in world.layout.dash_walls:
+		if bool(w.get("smashed", false)):
+			continue
+		var face: float = float(w["start"])
+		if face > p and front >= face:
+			return true
+	return false
+
+
 ## Where weapons aim and effects appear.
 func aim_point() -> Vector3:
 	return global_position + Vector3(0.0, 0.8, 0.0)

@@ -26,8 +26,8 @@ extends Enemy
 ## (task FIX2), a tank that rolls in claims its turn claim_seconds before its rev (claiming(): another
 ## type's big attack that gets ready meanwhile waits), then asks as its rev would start: with another
 ## type's attack begun before its claim still on, it lets the runner pass (no rev, no warning, no cut:
-## it speeds off ahead, out of view, and its floor stays whole), so it never revs into another big
-## attack. A boss's tank (no roll: Hostile Takeover's drop) and every tank with the switch off
+## it speeds off ahead, out of view or to a dash wall standing ahead, and its floor stays whole), so it
+## never revs into another big attack. A boss's tank (no roll: Hostile Takeover's drop) and every tank with the switch off
 ## (GameRules.big_attacks_take_turns) rev as planned, as before (takes_turns()).
 ## Its rev and charge sound from its own voice on the blade, so they come from where it is as it rolls
 ## and charges past (the world's voices stay where a sound started), at full volume from a charge's
@@ -178,7 +178,9 @@ func _tick(delta: float) -> void:
 			TrackGeometry.world_z(float(cut["end"])) - position.z)
 	front = _front_for(p)
 	position = world.lane_point(lane, front)
-	if state == State.PASS and front - p > tuning.appear_distance:
+	# Speeding off ahead after letting the runner pass, it's gone once out of view, or where it meets a dash wall
+	# still standing ahead of them (task H7a: it can't drive through a building).
+	if state == State.PASS and (front - p > tuning.appear_distance or dash_wall_reached(front)):
 		_gone()
 	if state == State.CHARGE:
 		_hurt_charge_contacts(_hitbox, blade_from)
@@ -338,7 +340,8 @@ func _lets_runner_pass() -> bool:
 
 
 ## It lets the runner pass (GDD §9; task FIX2): no rev, no warning, no cut (its floor stays whole for
-## good, FloorCut.stop); it speeds off ahead of them (_passing_front) and is gone once out of view.
+## good, FloorCut.stop); it speeds off ahead of them (_passing_front) and is gone once out of view, or where it
+## meets a dash wall still standing ahead of them (Enemy.dash_wall_reached; task H7a).
 func _pass() -> void:
 	state = State.PASS
 	_passed = true

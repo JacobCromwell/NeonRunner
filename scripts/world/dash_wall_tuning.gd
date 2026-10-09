@@ -60,3 +60,10 @@ const PATH: String = "res://data/tuning/dash_walls.tres"
 static func load_default() -> DashWallTuning:
 	var res: Resource = load(PATH) if ResourceLoader.exists(PATH) else null
 	return res as DashWallTuning if res is DashWallTuning else DashWallTuning.new()
+
+
+## The stretch wall entry `w` (LevelLayout.dash_walls) keeps clear in every lane: approach_seconds before its face
+## to after_seconds past its back, at `dash_speed` (the level's run speed plus PowerupTuning.dash_speed_bonus).
+## DashWallRules.footprint and CyborgRules.obstacle_spans (a panic cyborg cowers before it) use it.
+func footprint(w: Dictionary, dash_speed: float) -> Vector2:
+	return Vector2(float(w["start"]) - approach_seconds * dash_speed, float(w["end"]) + after_seconds * dash_speed)

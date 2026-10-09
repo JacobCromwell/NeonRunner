@@ -158,7 +158,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   you through, claws don't, and a generator's EMP switches them off. They're never where a ramp launches you
   along their wall, never beside a sign or a window cyborg, and the outer lane beside them is always clear
   to drop into (in quick play, `--features=wall_fences,wall_fences_partial`). Dash walls (from Corporate 1,
-  2 to 4 a level, placeholder counts): a building standing across every floor lane, in the zone's own colours.
+  1 to 4 a level, placeholder counts): a building standing across every floor lane, in the zone's own colours.
   Dash through it and it crumbles into rubble; without the dash (not owned, switched off or on cooldown) you
   crash through it and take one hit, which the armor or a shield absorbs (with neither, it kills); a run along
   a side wall passes it. They stand far enough apart for the dash's longest cooldown to be over before the next,

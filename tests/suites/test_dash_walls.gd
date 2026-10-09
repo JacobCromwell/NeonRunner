@@ -31,6 +31,9 @@ extends TestSuite
 const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
+const TankScript := preload("res://scripts/enemies/buzz_overdrive.gd")
+const TankRules := preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+const CyborgRules := preload("res://scripts/enemies/cyborg_rules.gd")
 ## Every level that has dash walls.
 const LEVELS: PackedStringArray = ["corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2",
 	"golden/3"]
@@ -63,6 +66,7 @@ func run() -> void:
 	_test_generator()
 	_test_introduction()
 	_test_after_danger_density()
+	_test_hush()
 	_test_feature_absent()
 	await _test_track()
 	_test_damage_rules()
@@ -78,6 +82,8 @@ func run() -> void:
 	await _test_truck_gives_way()
 	await _test_truck_bursts_through()
 	await _test_drone_rises()
+	await _test_panic_cyborg()
+	await _test_ground_enemies_leave()
 
 
 # --- Helpers -------------------------------------------------------------------------------------
@@ -197,7 +203,7 @@ func _test_generator() -> void:
 				for w: String in gen.warnings:
 					warned = warned or w.contains("dash wall")
 				check(not warned, "no warning about dash walls %s %s" % [tag, gen.warnings])
-				check(config.dash_walls >= 2 and config.dash_walls <= 4, "the level asks for 2 to 4 walls %s" % tag)
+				check(config.dash_walls >= 1 and config.dash_walls <= 4, "the level asks for 1 to 4 walls %s" % tag)
 				if k == 0:
 					check(layout.dash_walls.size() == config.dash_walls,
 						"the campaign level gets its %d walls (%d) %s" % [config.dash_walls, layout.dash_walls.size(), tag])
@@ -324,6 +330,24 @@ func _reaches(spans: Array[Vector2], span: Vector2) -> bool:
 		if s.x <= span.y + 0.001 and s.y >= span.x - 0.001:
 			return true
 	return false
+
+
+## The Hush (Dead Zone 2; GDD §5: "long silent stretches broken by sudden threats") keeps its quiet stretches free of
+## walls as the fill and danger density passes do (DashWallRules.plan_for, `quiet`): on its own seed at 3, 5 and 6
+## lanes every wall stands in a burst.
+func _test_hush() -> void:
+	for lanes: int in [3, 5, 6]:
+		var config: LevelConfig = campaign.configure(campaign.step("dead_zone/2"), lanes)
+		check(config.paced_in_bursts(), "The Hush is paced in bursts")
+		var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+		check(not gen.layout.dash_walls.is_empty(), "it has its walls (%d lanes)" % lanes)
+		for w: Dictionary in gen.layout.dash_walls:
+			var fp: Vector2 = DashWallRules.footprint(gen, w)
+			var quiet: bool = false
+			for q: Vector2 in gen.quiet_stretches():
+				quiet = quiet or (q.x <= fp.y and q.y >= fp.x)
+			check(not quiet, "the wall at %.0f m stands in a burst, out of every quiet stretch (%d lanes)" % [
+				float(w["start"]), lanes])
 
 
 ## A level without the feature draws nothing: no walls and no dash_walls key (a level of every zone before the
@@ -770,6 +794,9 @@ func _test_hint() -> void:
 			hint = h
 	check(String(hint.get("trigger", "")) == "dash_wall" and String(hint.get("text", "")).contains("{dash}")
 		and String(hint.get("text", "")).to_lower().contains("dash through"), "the hint says to dash through (%s)" % [hint])
+	var text: String = String(hint.get("text", "")).to_lower()
+	check(text.contains("armor") and text.contains("shield") and text.contains("kills"),
+		"and what a crash without the dash costs: the armor or the shield, else a death (%s)" % text)
 	for with_wall: bool in [true, false]:
 		var world := RunWorld.new()
 		world.config = LevelConfig.new()
@@ -898,3 +925,116 @@ func _test_drone_rises() -> void:
 	check(is_instance_valid(d) and d.lift < 0.5, "and comes back down past it (%.2f m up)" % (d.lift if is_instance_valid(d) else -1.0))
 	check(not wound_near[0], "it never winds up with the wall within its barrage's reach")
 	await sim.free_world(w)
+
+
+## A panic cyborg ahead of a wall (task H7a; CyborgRules.obstacle_spans holds every wall's footprint): its run
+## stops its obstacle margin short of the wall's clear approach, so it never runs through the standing wall nor
+## cowers in the clear stretch behind it; one standing past a wall never walks back into that stretch.
+func _test_panic_cyborg() -> void:
+	var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+	var t: DashWallTuning = DashWallTuning.load_default()
+	var face: float = 150.0
+	var layout := RunSim.layout(3, 600.0)
+	var w_entry: Dictionary = _wall(face)
+	layout.dash_walls.append(w_entry)
+	var w: RunWorld = sim.build_world(layout)
+	w.player.god_mode = true
+	var fp: Vector2 = t.footprint(w_entry, w.tuning.run_speed + powerups.dash_speed_bonus)
+	var margin: float = CyborgRules.obstacle_margin_at(ct, w.tuning.pace())
+	# Its run unclamped (panic_run_max) would carry it past the wall.
+	var home: float = face - 30.0
+	check(home + ct.panic_run_max * w.tuning.pace() > face + tuning.dash_wall_depth, "the cyborg's own run would reach past the wall")
+	var c := w.director.spawn({"type": "cyborg", "at": home, "lane": 0, "side": 0, "seed": 4,
+		"params": {"panic": true, "fires": false}}) as Cyborg
+	var behind := w.director.spawn({"type": "cyborg", "at": fp.y + margin + 2.0, "lane": 2, "side": 0, "seed": 5,
+		"params": {"panic": false, "fires": false}}) as Cyborg
+	check(c.is_panic and c.run_limit <= fp.x - margin + 0.01,
+		"its run stops short of the wall's clear approach (%.1f, the approach from %.1f)" % [c.run_limit, fp.x])
+	check(behind.walk_limit >= fp.y + margin - 0.01,
+		"one past the wall walks back no further than past its clear stretch (%.1f, the stretch to %.1f)" % [behind.walk_limit, fp.y])
+	var furthest: Array = [home]
+	var fled: Array = [false]
+	# Its instance id, not the cyborg: the lambda outlives it (it retires behind the runner).
+	var c_id: int = c.get_instance_id()
+	await _run_until(w, 12.0, func() -> bool:
+		var it := instance_from_id(c_id) as Cyborg
+		if it != null and it.alive:
+			furthest[0] = maxf(furthest[0], it.track_distance())
+			fled[0] = fled[0] or it.mode == Cyborg.Mode.FLEE
+		return w.player.distance > face + 20.0)
+	check(fled[0], "it fled from the runner")
+	check(furthest[0] < fp.x, "and never got into the wall's footprint (%.1f m, the approach from %.1f m)" % [furthest[0], fp.x])
+	await sim.free_world(w)
+
+
+## Ground enemies ahead of the runner never drive through a standing wall (task H7a; Enemy.dash_wall_reached): an
+## Octodog running off ahead (or pacing) leaves play at the wall's face, and a Buzz Overdrive that lets the runner
+## pass, speeding off ahead, is gone there.
+func _test_ground_enemies_leave() -> void:
+	var face: float = 200.0
+	var layout := RunSim.layout(3, 800.0)
+	layout.dash_walls.append(_wall(face))
+	var w: RunWorld = sim.build_world(layout)
+	w.player.god_mode = true
+	var dog := w.director.spawn({"type": "octodog", "at": 120.0, "lane": 2, "side": 0, "seed": 5, "params": {}}) as Octodog
+	dog.call("_set_phase", Octodog.Phase.LEAVE)
+	var step: float = (w.tuning.run_speed + 40.0) / Engine.physics_ticks_per_second
+	var furthest: Array = [dog.track_distance()]
+	var gone_at: Array = [-1.0]
+	# Its instance id, not the dog: the lambda outlives it.
+	var dog_id: int = dog.get_instance_id()
+	await _run_until(w, 10.0, func() -> bool:
+		var it := instance_from_id(dog_id) as Octodog
+		if it != null and not it.is_queued_for_deletion():
+			furthest[0] = maxf(furthest[0], it.track_distance())
+		elif gone_at[0] < 0.0:
+			gone_at[0] = w.player.distance
+		return gone_at[0] >= 0.0 or w.player.distance > face)
+	check(gone_at[0] >= 0.0 and gone_at[0] < face,
+		"the Octodog running off ahead left play before the runner reached the wall (%.1f m)" % gone_at[0])
+	check(furthest[0] + Octodog.DASH_WALL_REACH <= face + step,
+		"at the wall's face, never through it (its front got to %.1f m, the face %.1f m)" % [
+			furthest[0] + Octodog.DASH_WALL_REACH, face])
+	await sim.free_world(w)
+
+	var bt := EnemyDirector.tuning_for("buzz_overdrive") as BuzzOverdriveTuning
+	var cut: Dictionary = TankRules.plan_for(bt, 1, 120.0, tuning.run_speed, tuning.pace(), 8.0 / 14.0)
+	var tank_face: float = FloorCutPlan.warn_at(cut) + float(cut["charge"]) + 30.0
+	layout = RunSim.layout(3, 900.0)
+	layout.cuts.append(cut)
+	layout.enemies.append({"type": "buzz_overdrive", "at": float(cut["end"]), "lane": 1, "side": 0, "seed": 11,
+		"params": {}})
+	layout.dash_walls.append(_wall(tank_face))
+	w = sim.build_world(layout)
+	w.player.god_mode = true
+	w.player.setup(w.tuning, w.geo, 0)
+	# The tank's instance id once it's in play (0 before): the lambda outlives it.
+	var tank_id: Array = [0]
+	var passed: Array = [false]
+	var before_gone: Array = [-INF]
+	var gone: Array = [false]
+	var player_then: Array = [INF]
+	await _run_until(w, 25.0, func() -> bool:
+		if tank_id[0] == 0:
+			for e: Enemy in w.director.active:
+				if is_instance_valid(e) and e.type_id == &"buzz_overdrive":
+					tank_id[0] = e.get_instance_id()
+		var tk := instance_from_id(int(tank_id[0])) as Enemy if tank_id[0] != 0 else null
+		if tk == null:
+			return w.player.distance > tank_face
+		var state: int = int(tk.get("state"))
+		if not passed[0] and state == TankScript.State.ROLL:
+			tk.call("_pass")
+			passed[0] = true
+		elif state == TankScript.State.PASS:
+			before_gone[0] = maxf(before_gone[0], float(tk.get("front")))
+		elif state == TankScript.State.GONE and passed[0] and not gone[0]:
+			gone[0] = true
+			player_then[0] = w.player.distance
+		return gone[0] or w.player.distance > tank_face)
+	check(passed[0] and gone[0], "the Buzz Overdrive let the runner pass and was gone")
+	check(before_gone[0] < tank_face and player_then[0] < tank_face,
+		"at the standing wall's face, ahead of the runner (it got to %.1f m, the face %.1f m; the runner at %.1f m)" % [
+			before_gone[0], tank_face, player_then[0]])
+	await sim.free_world(w)
+

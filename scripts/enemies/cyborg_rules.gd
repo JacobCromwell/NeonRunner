@@ -16,6 +16,7 @@ extends RefCounted
 
 const RUN_AFTER: Array[String] = ["hover_truck"]
 const TUNING_PATH: String = "res://data/enemies/cyborg.tres"
+const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 
 
 static func apply(gen: LevelGenerator) -> void:
@@ -41,12 +42,21 @@ static func apply(gen: LevelGenerator) -> void:
 
 ## Every floor obstacle's [start, end] along the track, any lane: gaps, fences, ramps, anti-grav
 ## pads, speed pads, zone doodads (GDD §3; placed after these rules, so only the Cyborg's walk and
-## panic run meet them), and every ceiling section's landing zone (`zones`, CeilingZones; the level's
-## pacing at run speed). The floor under a ceiling isn't one (GDD §3).
+## panic run meet them), every dash wall's footprint (task H7a; DashWallTuning.footprint: its clear
+## approach, the wall and the stretch past it at the dash's speed; placed after these rules too, so a panic
+## run stops before a wall's approach and never runs through it or cowers in the clear stretch behind it),
+## and every ceiling section's landing zone (`zones`, CeilingZones; the level's pacing at run speed). The
+## floor under a ceiling isn't one (GDD §3).
 static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: CeilingZones) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for d: Dictionary in layout.doodads:
 		out.append(Vector2(d["start"], d["end"]))
+	if not layout.dash_walls.is_empty():
+		var dt: DashWallTuning = DashWallTuning.load_default()
+		var pt := load(POWERUPS_PATH) as PowerupTuning if ResourceLoader.exists(POWERUPS_PATH) else null
+		var dash_speed: float = t.run_speed + (pt.dash_speed_bonus if pt != null else 0.0)
+		for w: Dictionary in layout.dash_walls:
+			out.append(dt.footprint(w, dash_speed))
 	for g: Dictionary in layout.gaps:
 		out.append(Vector2(g["start"], g["end"]))
 	for f: Dictionary in layout.fences:
@@ -75,6 +85,26 @@ static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 ## speed (GDD §3: a faster zone is never secretly tighter). The rules, the Cyborg and the tests use it.
 static func obstacle_margin_at(t: CyborgTuning, pace: float) -> float:
 	return t.obstacle_margin * pace
+
+
+## Where a cyborg standing at `home` may walk back to and run ahead to (Vector2(walk_limit, run_limit), track
+## distances), keeping obstacle_margin_at from every one of obstacle_spans (`spans`, the level's): its walk
+## (CyborgTuning.walk_max back toward the runner) stops past what lies behind it, its panic run (panic_run_max,
+## at the level's pace) short of what lies ahead, and one standing in a span goes nowhere. `level_length` caps
+## the run. The Cyborg (_compute_limits) and the tests use it.
+static func limits(spans: Array[Vector2], t: CyborgTuning, pace: float, home: float, level_length: float) -> Vector2:
+	var margin: float = obstacle_margin_at(t, pace)
+	var walk_limit: float = home - t.walk_max
+	var run_limit: float = minf(home + t.panic_run_max * pace, level_length - margin)
+	for s: Vector2 in spans:
+		if s.y <= home:
+			walk_limit = maxf(walk_limit, s.y + margin)
+		elif s.x >= home:
+			run_limit = minf(run_limit, s.x - margin)
+		else:
+			walk_limit = home
+			run_limit = home
+	return Vector2(minf(walk_limit, home), maxf(run_limit, home))
 
 
 ## True if any span comes within `margin` of the track distance `d`.

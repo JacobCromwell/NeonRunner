@@ -48,8 +48,9 @@ extends RefCounted
 ## - Spacing (GDD §9.14, proposed): faces at least spacing_for() apart, the dash's longest cooldown and
 ##   cooldown_margin_seconds of run plus the ground the dash itself covers, so the dash spent on one wall is
 ##   back before the next. With keep_dash_baits, nothing else that invites a dash comes within that spacing
-##   before a face: a Buzz Overdrive's charge meeting the runner (a panic dash smashes it, GDD §9.9) and a fence
-##   generator (its hint says to dash through it). A zone doodad isn't one: it never needs the dash (it only
+##   before a face: a Buzz Overdrive's charge meeting the runner (a panic dash smashes it, GDD §9.9), a fence
+##   generator (its hint says to dash through it) and the end of a Tithe Collector's stay (its hint says to catch
+##   it by dashing through it, among others; bait_of). A zone doodad isn't one: it never needs the dash (it only
 ##   pushes the runner aside, and no hint sends the dash at it), so it keeps off the footprint only.
 ## - The wall route (GDD §9.14: "a player running on a side wall passes it"): from wall_route_seconds before
 ##   its face to its back, at least one side wall holds no sign (a sign blocks the entry and hurts); the side
@@ -61,6 +62,8 @@ extends RefCounted
 ##   path (task G7) keeps its encounter (ChargePathPlacement.encounter_span: from its charger's claim to past its
 ##   strike) as every big attack does. And a zone doodad keeps its push's lead before it and the level's spacing
 ##   past it (doodad_span), as it keeps them from a wall placed before it.
+## - A level's quiet stretches (The Hush, GDD §5: "long silent stretches"; LevelGenerator.quiet_stretches), as the
+##   fill and danger density passes keep them, unless that leaves the level with no wall: then one stands in one.
 ## Plain holes and fences (never a pulsing fence or one a fence generator powers; in the second stage the fill
 ## pass's and the danger density pass's as well) in a footprint, and the signs on one side wall where both
 ## block the route, are taken out to make room (clear_plain_pieces: taking content out never makes a level
@@ -76,7 +79,8 @@ extends RefCounted
 ## for in each, the best fair spot in that part taken: nothing to take out first, then the nearest), then the
 ## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
 ## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
-## introduction does (_make_room, over the whole level; never a planted cyborg or its charger), and one with no
+## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
+## Overdrive an Enforcer Truck counts among its baits), and one with no
 ## fair spot even then gets a warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream
 ## (LevelGenerator.rng_for), so the passes before it place exactly what they did; a level without the feature
 ## (or with a count of 0) draws nothing and is built byte for byte as before.
@@ -106,6 +110,7 @@ const BUZZ: String = "buzz_overdrive"
 const TITHE_LEAD: float = 5.0
 const CYBORG: String = "cyborg"
 const TRUCK: String = "hover_truck"
+const ENFORCER: String = "enforcer_truck"
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 ## Enemy types whose attacks a wall's footprint needn't keep off (enemy_spans), as a wider gap needn't
@@ -259,8 +264,7 @@ static func spacing_for(gen: LevelGenerator, t: DashWallTuning = null, pt: Power
 ## approach before its face, itself, and the clear stretch past its back (Plan.footprint).
 static func footprint(gen: LevelGenerator, w: Dictionary, t: DashWallTuning = null) -> Vector2:
 	var tt: DashWallTuning = t if t != null else tuning()
-	var v: float = dash_speed(gen)
-	return Vector2(float(w["start"]) - tt.approach_seconds * v, float(w["end"]) + tt.after_seconds * v)
+	return tt.footprint(w, dash_speed(gen))
 
 
 ## The first stage (with the rules, after every other feature's: RUN_AFTER): a level that gives the feature a
@@ -327,6 +331,13 @@ static func after_doodads(gen: LevelGenerator) -> void:
 			chosen = most
 	for at: float in chosen:
 		_place(gen, plan, at, faces)
+	# Kept out of the quiet stretches, a level paced in bursts may have no room left: one stands in a quiet
+	# stretch rather than none at all.
+	if faces.is_empty() and not gen.quiet_stretches().is_empty():
+		plan = plan_for(gen, t, false, false)
+		var at: float = plan.best(plan.lo, plan.hi, (plan.lo + plan.hi) * 0.5, faces)
+		if not is_nan(at):
+			_place(gen, plan, at, faces)
 	if faces.is_empty() and _make_room(gen, plan, plan.lo, plan.hi):
 		plan = plan_for(gen, t)
 		var at: float = plan.best(plan.lo, plan.hi, (plan.lo + plan.hi) * 0.5, faces)
@@ -376,8 +387,9 @@ static func _first_apart(spots: Array[float], gap: float, want: int) -> Array[fl
 ## What a level's walls keep, and where on its track a face may stand (see the header): with `checking`,
 ## for a finished layout (problems()), everything already there counts against a footprint, the zone doodads
 ## and every hole and fence too, and the wall gaps and wall fences against the route; while placing, plain
-## pieces only cost what taking them out costs.
-static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bool = false) -> Plan:
+## pieces only cost what taking them out costs, and with `quiet` a level's quiet stretches stay clear too (The
+## Hush's long silent stretches, LevelGenerator.quiet_stretches, as the fill and danger density passes keep them).
+static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bool = false, quiet: bool = true) -> Plan:
 	var p := Plan.new()
 	p.gen = gen
 	p.t = t if t != null else tuning()
@@ -428,6 +440,9 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 	# A wider gap (task G7: the second stage comes after them) from its take-off margin to its landing margin.
 	for zone: Vector2 in WideGapPlacement.keep_outs(gen):
 		p.mark_span(p.blocked, zone)
+	if quiet and not checking:
+		for q: Vector2 in gen.quiet_stretches():
+			p.mark_span(p.blocked, q)
 	for d: Dictionary in lay.doodads:
 		p.mark_span(p.blocked, doodad_span(gen, d) if not checking else Vector2(float(d["start"]), float(d["end"])))
 	var hooks: Dictionary = {}
@@ -509,6 +524,7 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> b
 	for c: Dictionary in planted:
 		mark_fixed.call(ChargePathPlacement.encounter_span(gen, c), false)
 		chargers.append(ChargePathPlacement.charger_of(lay, c))
+	var enforcer_baits: Array[float] = _enforcer_baits(lay)
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if _counts(k):
 			mark_fixed.call(Vector2(float(k["from"]), float(k["to"])), false)
@@ -516,10 +532,11 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> b
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		var type: String = String(e.get("type", ""))
-		# Never a host (its chase is planned on it), nor a cyborg planted in a charge's path or its charger (task
-		# G7: the encounter goes whole or not at all, and it keeps its own count).
+		# Never a host (its chase is planned on it), a cyborg planted in a charge's path or its charger (task G7: the
+		# encounter goes whole or not at all, and it keeps its own count), nor a Buzz Overdrive an Enforcer Truck
+		# counts among its baits (GDD §9.13: each truck has one, EnforcerTruckRules).
 		var mine: bool = MAKE_ROOM_TYPES.has(type) and not bool((e.get("params", {}) as Dictionary).get("host", false)) \
-			and not planted.has(e) and not chargers.has(e)
+			and not planted.has(e) and not chargers.has(e) and not _is_enforcer_bait(gen, e, enforcer_baits)
 		if mine:
 			removable.append(e)
 		for span: Vector2 in enemy_spans(gen, e, hooks):
@@ -551,18 +568,16 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> b
 			for f: Dictionary in FenceGenerator.fences_in_reach(lay, geo, float(e["at"]), int(e["lane"]), gt.emp_radius):
 				if not bool(f.get("pulsing", false)):
 					mark_enemy.call(e, Vector2(float(f["at"]) - half, float(f["at"]) + half), false)
+	# The baits' spacing: a removable enemy's goes with it, any other's stays.
 	if plan.t.keep_dash_baits:
-		for e: Dictionary in removable:
-			var bait: float = NAN
-			match String(e.get("type", "")):
-				BUZZ:
-					var cut: Dictionary = BuzzRules.cut_of(lay, e)
-					if not cut.is_empty():
-						bait = FloorCutPlan.meet(cut, gen.speed)
-				GENERATOR:
-					bait = float(e["at"])
-			if not is_nan(bait):
+		for e: Dictionary in lay.enemies:
+			var bait: float = bait_of(gen, e)
+			if is_nan(bait):
+				continue
+			if removable.has(e):
 				mark_enemy.call(e, Vector2(bait, bait + plan.spacing), true)
+			else:
+				mark_fixed.call(Vector2(bait, bait + plan.spacing), true)
 	# The faces only removable enemies keep, fewest first, then earliest.
 	var candidates: Array[int] = []
 	for i: int in range(first_i, last_i + 1):
@@ -622,6 +637,31 @@ static func _counts(k: Dictionary) -> bool:
 	return String(k.get("type", "")) != FEATURE and not k.has("lane")
 
 
+## Where the level's Enforcer Trucks' baits charge (their params' "baits": EnforcerTruckRules.baits_in).
+static func _enforcer_baits(lay: LevelLayout) -> Array[float]:
+	var out: Array[float] = []
+	for e: Dictionary in lay.enemies:
+		if String(e.get("type", "")) == ENFORCER:
+			for b: Variant in (e.get("params", {}) as Dictionary).get("baits", []):
+				out.append(float(b))
+	return out
+
+
+## True if enemy entry `e` is a Buzz Overdrive whose charge an Enforcer Truck counts among its baits (`baits`:
+## _enforcer_baits; EnforcerTruckRules.bait_points puts a tank's at its cut's charge_at).
+static func _is_enforcer_bait(gen: LevelGenerator, e: Dictionary, baits: Array[float]) -> bool:
+	if baits.is_empty() or String(e.get("type", "")) != BUZZ:
+		return false
+	var cut: Dictionary = BuzzRules.cut_of(gen.layout, e)
+	if cut.is_empty():
+		return false
+	var at: float = FloorCutPlan.charge_at(cut)
+	for b: float in baits:
+		if absf(b - at) < 0.01:
+			return true
+	return false
+
+
 ## The fences a fence generator powers (FenceGenerator.fences_in_reach): with the pulsing ones, the fences a
 ## wall never takes out to make room (the `pulsing` feature counts those; a generator powering nothing goes).
 static func powered_fences(gen: LevelGenerator) -> Array[Dictionary]:
@@ -664,10 +704,8 @@ static func enemy_spans(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -
 	if floor_span.y >= floor_span.x:
 		out.append(floor_span)
 	if type == TITHE:
-		var tt := EnemyDirector.tuning_for(TITHE) as TitheCollectorTuning
-		var stay: float = tt.stay_seconds() if tt != null else 12.0
 		var at: float = float(e["at"])
-		out.append(Vector2(at - TITHE_LEAD, at + stay * gen.speed))
+		out.append(Vector2(at - TITHE_LEAD, at + tithe_stay_seconds() * gen.speed))
 	return out
 
 
@@ -692,19 +730,38 @@ static func truck_entrance(gen: LevelGenerator, at: float) -> Vector2:
 
 
 ## Where the runner may spend the dash on something else (DashWallTuning.keep_dash_baits; GDD §9.14: nothing
-## that needs the dash comes just before a wall): each Buzz Overdrive's charge where it meets the runner and each
-## fence generator (a zone doodad never needs the dash: see the header).
+## that needs the dash comes just before a wall): each Buzz Overdrive's charge where it meets the runner, each
+## fence generator, and the end of each Tithe Collector's stay (a zone doodad never needs the dash: see the header).
 static func bait_points(gen: LevelGenerator) -> Array[float]:
 	var out: Array[float] = []
 	for e: Dictionary in gen.layout.enemies:
-		match String(e.get("type", "")):
-			BUZZ:
-				var cut: Dictionary = BuzzRules.cut_of(gen.layout, e)
-				if not cut.is_empty():
-					out.append(FloorCutPlan.meet(cut, gen.speed))
-			GENERATOR:
-				out.append(float(e["at"]))
+		var b: float = bait_of(gen, e)
+		if not is_nan(b):
+			out.append(b)
 	return out
+
+
+## Where enemy entry `e` invites the dash (bait_points), or NAN if it doesn't: a Buzz Overdrive's charge where it
+## meets the runner (a panic dash smashes it, GDD §9.9), a fence generator's spot (its hint says to dash through
+## it), and a Tithe Collector's at the end of its stay (its hint says to catch it by stomping, shooting or dashing
+## through it, GDD §9.12: the last moment of its stay is the latest a dash can catch it; as enemy_spans keeps it).
+static func bait_of(gen: LevelGenerator, e: Dictionary) -> float:
+	match String(e.get("type", "")):
+		BUZZ:
+			var cut: Dictionary = BuzzRules.cut_of(gen.layout, e)
+			if not cut.is_empty():
+				return FloorCutPlan.meet(cut, gen.speed)
+		GENERATOR:
+			return float(e["at"])
+		TITHE:
+			return float(e["at"]) + tithe_stay_seconds() * gen.speed
+	return NAN
+
+
+## A Tithe Collector's stay (TitheCollectorTuning.stay_seconds; 12 s without its tuning).
+static func tithe_stay_seconds() -> float:
+	var tt := EnemyDirector.tuning_for(TITHE) as TitheCollectorTuning
+	return tt.stay_seconds() if tt != null else 12.0
 
 
 ## What closes the wall route on wall `side` (-1 left, 1 right): its signs, and with `checking` its wall gaps

@@ -81,7 +81,10 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ## - at least one side wall open to run past it (no sign from wall_route_seconds before its face to its back),
 ##   and neither holds a wall gap or a wall fence there;
 ## - nothing that invites a dash comes within the spacing before its face (a Buzz Overdrive's charge meeting
-##   the runner, a fence generator; a zone doodad never needs the dash, so it keeps off the footprint only);
+##   the runner, a fence generator, the end of a Tithe Collector's stay; a zone doodad never needs the dash, so it
+##   keeps off the footprint only);
+## - no panic cyborg's run reaches its footprint, nor any cyborg's walk back (CyborgRules.limits, as the Cyborg
+##   clamps them: it never runs through a standing wall nor cowers in its clear stretch);
 ## - and the generator's own re-check finds nothing (DashWallRules.problems: the enemies' keep-outs too).
 static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.dash_walls.is_empty():
@@ -100,6 +103,10 @@ static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: Leve
 	var spacing: float = (longest + t.cooldown_margin_seconds) * speed + pt.dash_duration * pt.dash_speed_bonus
 	var route: float = t.wall_route_seconds * speed
 	var half: float = tuning.fence_depth * 0.5
+	var tithe_tuning := EnemyDirector.tuning_for("tithe_collector") as TitheCollectorTuning
+	var tithe_stay: float = tithe_tuning.stay_seconds() if tithe_tuning != null else 12.0
+	var cyborg_tuning := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+	var cyborg_spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning, zones)
 	suite.check(config.has_feature("dash_wall"), "dash walls only in a level with the feature " + tag)
 	var start: float = config.feature_start("dash_wall") * layout.length
 	var prev: float = -INF
@@ -159,9 +166,22 @@ static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: Leve
 						bait = FloorCutPlan.meet(cut, speed)
 				"generator":
 					bait = float(e["at"])
+				"tithe_collector":
+					bait = float(e["at"]) + tithe_stay * speed
 			if not is_nan(bait):
 				suite.check(not (bait >= face - spacing and bait <= face),
 					"%s has no %s inviting the dash in the spacing before it (%.0f m)" % [at, e["type"], bait])
+		for c: Dictionary in layout.enemies:
+			if String(c.get("type", "")) != "cyborg":
+				continue
+			var home: float = float(c["at"])
+			var reach: Vector2 = CyborgRules.limits(cyborg_spans, cyborg_tuning, tuning.pace(), home, layout.length)
+			if home < face:
+				suite.check(reach.y < fp.x, "%s: the cyborg at %.1f m runs no further than %.1f m, short of its clear approach (%.1f m)" % [
+					at, home, reach.y, fp.x])
+			else:
+				suite.check(reach.x > fp.y, "%s: the cyborg at %.1f m walks back no further than %.1f m, past its clear stretch (%.1f m)" % [
+					at, home, reach.x, fp.y])
 	var gen := LevelGenerator.for_layout(config, suite.tuning, layout)
 	var problems: PackedStringArray = DashWallRulesScript.problems(gen)
 	suite.check(problems.is_empty(), "the dash walls keep every placement rule %s %s" % [tag, problems])
