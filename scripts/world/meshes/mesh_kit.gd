@@ -226,7 +226,9 @@ const PAT_CASINO_BRASS: int = 83
 ## its index across the arch. Opaque and faked: no transparency.
 const PAT_CASINO_VAULT: int = 84
 ## A lit casino sign (UV in metres, x to the viewer's right, y up), glowing: COLOR is the light
-## (warm white, violet or blue); param = seed (0-99) + 100 * the panel's height in decimetres.
+## (warm white, violet or blue); param = seed (0-99) + 100 * the panel's height in decimetres, plus
+## 100000 for a named casino's board (dark panel and tube only: its real letters, CasinoLettering,
+## are geometry over it).
 const PAT_CASINO_SIGN: int = 85
 ## A hanging banner (UV.x 0-1 across it, UV.y metres down from its top): COLOR is the cloth; param = its
 ## length in decimetres + 1000 * a seed. Never glowing.

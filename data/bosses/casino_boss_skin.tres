@@ -9,3 +9,4 @@ bunting_height = 28.0
 overhang_min_height = 14.5
 eave_height = 34.0
 hangings = false
+flush_faces = true

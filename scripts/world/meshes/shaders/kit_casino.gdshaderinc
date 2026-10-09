@@ -157,11 +157,11 @@ vec3 cas_brass_surface(vec3 base, vec3 w, vec3 n, vec3 eye, float param) {
 
 // PAT_CASINO_VAULT (84): one pane of the glass roof (GDD §5, the owner's reference: a vaulted roof of
 // glass and iron), opaque and faked so it costs nothing on a phone: dark night-blue glass in thin iron
-// frames, warmer low on the arch where it catches the lamplit haze of the street, with the stars
-// glimpsed through it and a slow diagonal sweep of reflected light. UV 0-1 across the pane (x along
-// the arch, y along the track); param = the pane's width in centimetres + 1000 * its index across the
-// arch (a seed with the pane's place along the street). No transparency: the sky shows only through the
-// panes the builder leaves out.
+// frames, warmer low on the arch where it catches the lamplit haze of the street, with a few faint
+// stars painted in it (small specks, never a pane-sized patch: the roof is whole, owner, October 9, 2026,
+// and nothing here may read as a hole) and a slow diagonal sweep of reflected light. UV 0-1 across the
+// pane (x along the arch, y along the track); param = the pane's width in centimetres + 1000 * its index
+// across the arch (a seed with the pane's place along the street). No transparency.
 vec3 cas_vault(vec3 base, vec3 w, vec2 uv, float param) {
 	float wcm = mod(param, 1000.0);
 	float idx = floor(param / 1000.0);
@@ -178,7 +178,7 @@ vec3 cas_vault(vec3 base, vec3 w, vec2 uv, float param) {
 	float detail = 1.0 - smoothstep(0.03, 0.12, aa);
 	vec2 sg = floor(uv * size * 5.0);
 	float star = step(0.975, hash12(sg + cell * 17.0)) * detail * (1.0 - low);
-	glass = mix(glass, cas_star * 0.7, star * 0.8);
+	glass = mix(glass, cas_star * 0.4, star * 0.55);
 	float sweep = smoothstep(0.35, 0.5, fract((uv.x * size.x * 0.35 + uv.y * size.y * 0.2) * 0.3 + cell * 0.7));
 	glass += cas_lamp * 0.03 * sweep * low;
 	vec3 iron = base;
@@ -222,10 +222,14 @@ float cas_logo(vec2 p, float kind, float aa) {
 // Lotus", drawn without words like every skin's lettering): a dark panel, a tube of light round its
 // edge, a brand mark and one or two rows of chunky glyphs. COLOR is the light (warm white, violet or
 // blue, never a hazard hue). UV in metres on the panel, x to the viewer's right, y up; param = seed
-// (0-99) + 100 * the panel's height in decimetres. The border's bulbs breathe slowly, steady with
-// Reduced flashing. Returns the glow mask.
+// (0-99) + 100 * the panel's height in decimetres, plus 100000 for the named casinos' boards (task K3:
+// CasinoLettering lays real letters over them, so the panel keeps its dark face and tube of light only,
+// with no mark and no glyph rows). The border's bulbs breathe slowly, steady with Reduced flashing.
+// Returns the glow mask.
 vec3 cas_sign(vec3 base, vec2 uv, float param, float t, out float glow_mask) {
 	float code = floor(param + 0.5);
+	float named = step(100000.0, code);
+	code = mod(code, 100000.0);
 	float seed = mod(code, 100.0);
 	float height = max(floor(code / 100.0) * 0.1, 0.5);
 	vec2 fw = max(fwidth(uv), vec2(1e-4));
@@ -262,7 +266,7 @@ vec3 cas_sign(vec3 base, vec2 uv, float param, float t, out float glow_mask) {
 	float word = step(0.22, hash12(vec2(floor(cellx / 4.0), row) + seed)) * step(cellx, 10.0 + 14.0 * hash11(seed + row));
 	float on = inside * step(0.14, g.x) * step(g.x, 0.86) * stroke * word;
 	on = mix(on, 0.3 * inside * word, smoothstep(0.03, 0.15, aa / max(lh, 0.05)));
-	float lit = max(on, logo);
+	float lit = max(on, logo) * (1.0 - named);
 	col = mix(col, base, lit);
 	glow_mask = max(glow_mask, lit);
 	return col;
