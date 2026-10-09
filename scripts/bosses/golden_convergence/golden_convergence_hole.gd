@@ -3,32 +3,39 @@ extends RefCounted
 ## A Fist Slam's hole (GDD §10: "it leaves a large square hole at least two lanes wide at once (the floor turns
 ## into a gap during play, as it does under the Buzz Overdrive's cut) ... Its edges glow the usual gap-edge
 ## orange"; task E5d-b). The slam plans a row of floor cuts in every lane (FloorCut, task B4) before its
-## sequence begins and opens the footprint's lanes at once at the impact (FloorCut.advance_to). Each lane's cut
-## draws its own look, and the standard look (ZoneSkin.standard_floor_cut) would leave a stray orange lip, a
-## dark line and a wall of the hole's inside down the middle wherever two opened lanes meet. So:
-## - build(): the Grand Court's floor cut look (GoldenCourtSkin.floor_cut calls it): the palace floor's break
+## sequence begins, since the footprint isn't known until the lock, and opens the footprint's lanes at once at
+## the impact (FloorCut.advance_to). Only two or three lanes of a row ever open, so a row costs next to nothing
+## until it does (E5d polish, the review's mobile performance finding: a look built for every lane of every row
+## made about 8 meshes a cut in the chunk-build frame, outside the dressing budget, and drew every lane's hidden
+## inside under the floor):
+## - the Grand Court's floor_cut() (GoldenCourtSkin) draws nothing when the track builds a cut: a cut that never
+##   opens is the floor as ever (the track draws it in slices);
+## - open(cuts, skin): at the impact, the look of the whole square hole over the footprint's cuts, before they
+##   open: one look across its lanes (no lips, dark lines or walls between them), the palace floor's break
 ##   (GoldenPalaceFloor.cut's style: the orange lips right on the collision edges with a dark line before them,
-##   the strip along the top of the inside's walls, the halo on the far side, the well's deep shade below),
-##   with every part along one side of the cut (the lip on the neighbouring lane's floor, its dark line, the
-##   strip, the inside's wall under them) a node of its own tagged with its side (meta SIDE_META), the parts
-##   across the lane (the near and far lips, their dark lines, the far strip, the inside's end walls) running
-##   the lane's whole floor so side by side they meet without a seam, and the far halo a node of its own;
-## - join(cuts): at the impact, the cuts opened together lose the parts that face another opened cut, and
-##   their halos give way to one across the whole hole: one square hole, the usual orange edges round it and
-##   a dark inside. The parts go from their FloorCutSection, so the cut never shows them again;
+##   the strip along the top of the inside's walls, the halo on the far side, the well's deep shade below), its
+##   parts registered on the first lane's cut (FloorCutSection: the inside a static, the side lips a span, the
+##   near lip a front the cut moves to where its floor ends, the far lip and the halo fars), so the cut shows them
+##   as it opens and holds;
+## - its meshes are made once for each footprint at the fight's lane count and row (prewarm(), with the fight:
+##   every row is as long as the hole is wide) and shared, kept in the skin (GoldenCourtSkin.hole_meshes), in the
+##   hole's own space (z from its far end), and placed by a node at the row: a hole costs six nodes and five draws
+##   from the moment it opens, never a mesh built mid-fight;
 ## - footprint(): the lanes a slam opens around the lane its fist locked onto (GDD §10, proposed: "two lanes
 ##   wide on 3 lanes, three on 5 or 6, as long as it is wide, around the locked lane (moved inward at the
 ##   track's edge)"), hole_lanes() how many.
-## Nothing in it glows but the orange edges, and nothing flickers. A cut that never opens (a lane of the row
-## outside the footprint) is the floor as ever: the track draws it in slices, and its look stays under them.
+## Nothing in it glows but the orange edges, and nothing flickers.
 
-## The side a part runs along (-1 left, 1 right) on its node; HALO on the far halo.
+## The side a part runs along on its node (-1 left, 1 right, 0 across or both); HALO on the far halo.
 const SIDE_META: StringName = &"hole_side"
 const HALO: int = 2
 ## The halo reaches this far past the hole's sides and this far below and above the strip (the palace
 ## floor's break: ZoneSkin.standard_floor_cut's).
 const HALO_SPILL: float = 0.15
 const HALO_BELOW: float = 0.25
+## Its parts by name, in order: the inside (a static), the side lips (a span), the near lip (a front), the far
+## side (a far), the halo (a far).
+const PARTS: Array[StringName] = [&"inside", &"sides", &"near", &"far", &"halo"]
 
 
 ## The lanes a slam opens around `lane` (where its fist locked) on a track of `lanes` lanes: hole_lanes() of
@@ -54,9 +61,79 @@ static func hole_lanes(lanes: int) -> int:
 	return clampi(2 if lanes <= 4 else 3, 1, maxi(lanes - 1, 1))
 
 
-## The Grand Court's look of floor cut `cut` (a Fist Slam row's lane), drawn with `skin`'s palace floor
-## materials and colours, its parts registered on `cut` (FloorCutSection) and side parts tagged.
-static func build(parent: Node3D, cut: FloorCutSection, skin: GoldenPalaceSkin) -> void:
+## Makes the meshes of every hole a slam can open on `geo`'s track with rows `length` long (every footprint),
+## kept in `skin` (the fight's load: never mid-fight). Returns how many footprints.
+static func prewarm(skin: GoldenCourtSkin, geo: TrackGeometry, length: float) -> int:
+	var w: int = hole_lanes(geo.lane_count)
+	var n: int = 0
+	for first: int in range(0, maxi(geo.lane_count - w, 0) + 1):
+		meshes(skin, geo, first, first + w - 1, length)
+		n += 1
+	return n
+
+
+## The look of the square hole over `cuts` (one slam's footprint on `geo`'s track: the same row in side-by-side
+## lanes), made as it opens (call it before FloorCut.advance_to): its parts placed at the row under the first
+## lane's cut and registered on it (FloorCutSection), from `skin`'s shared meshes. Returns the node holding them
+## (null when there's nothing to open, or another skin drew the cuts' looks already: a review's --skin=).
+static func open(cuts: Array[FloorCut], skin: ZoneSkin, geo: TrackGeometry) -> Node3D:
+	var court := skin as GoldenCourtSkin
+	var lo: FloorCut = null
+	var hi: FloorCut = null
+	for fc: FloorCut in cuts:
+		if fc == null or not is_instance_valid(fc):
+			continue
+		if lo == null or fc.lane < lo.lane:
+			lo = fc
+		if hi == null or fc.lane > hi.lane:
+			hi = fc
+	if court == null or lo == null:
+		return null
+	var section: FloorCutSection = lo.section
+	var m: Dictionary = meshes(court, geo, lo.lane, hi.lane, section.length())
+	var look: Node3D = lo.get_node_or_null(^"Look") as Node3D
+	var holder := Node3D.new()
+	holder.name = "Hole"
+	(look if look != null else lo as Node3D).add_child(holder)
+	# The hole's own space: its far end at z = 0 (FloorCut moves the near lip on from there, relative to it).
+	holder.position = Vector3(0.0, 0.0, TrackGeometry.world_z(section.end))
+	for part: StringName in PARTS:
+		var mesh: Mesh = m.get(part)
+		if mesh == null:
+			continue
+		var node: MeshInstance3D = MeshBatch.add_instance(holder, mesh, "Hole" + String(part).capitalize())
+		node.set_meta(SIDE_META, HALO if part == &"halo" else 0)
+		match part:
+			&"inside":
+				section.add_static(node)
+			&"sides":
+				section.add_span(node)
+			&"near":
+				section.add_front(node)
+			_:
+				section.add_far(node)
+	return holder
+
+
+## The meshes of the hole over lanes `first` to `last` of `geo`'s track, `length` along it, in the hole's own
+## space (x across as on the track, y up from the floor's top, z from its far end toward the runner): {inside,
+## sides (null at a track edge on both sides), near, far, halo}, made once and kept in `skin`.
+static func meshes(skin: GoldenCourtSkin, geo: TrackGeometry, first: int, last: int, length: float) -> Dictionary:
+	var x0: float = geo.lane_floor_span(first).x
+	var x1: float = geo.lane_floor_span(last).y
+	var key: String = "%d|%d|%d|%.3f|%.3f|%.3f|%s|%s|%s|%.3f" % [geo.lane_count, first, last, x0, x1, length,
+		skin.gap_edge_color.to_html(), skin.gap_inside_color.to_html(), skin.vein_color.to_html(), skin.canal_depth]
+	var found: Variant = skin.hole_meshes.get(key)
+	if found is Dictionary:
+		return found
+	var made: Dictionary = _build(skin, x0, x1, first > 0, last < geo.lane_count - 1, length)
+	skin.hole_meshes[key] = made
+	return made
+
+
+## Builds the hole's meshes (meshes()): the palace floor's break round the whole hole from x0 to x1, the side
+## lips only where a lane runs beside it (`left`, `right`).
+static func _build(skin: GoldenPalaceSkin, x0: float, x1: float, left: bool, right: bool, length: float) -> Dictionary:
 	var solid: Material = skin.solid_material()
 	var glow: Material = skin.glow_material()
 	var edge: Color = skin.gap_edge_color
@@ -69,153 +146,54 @@ static func build(parent: Node3D, cut: FloorCutSection, skin: GoldenPalaceSkin) 
 	var lip_glow: float = GoldenPalaceFloor.LIP_GLOW
 	var strip_glow: float = GoldenPalaceFloor.STRIP_GLOW
 	var strip_h: float = ZoneSkin.CUT_STRIP_HEIGHT
-	var x0: float = cut.x0
-	var x1: float = cut.x1
 	var w: float = x1 - x0
-	var z0: float = -cut.start
-	var z1: float = -cut.end
-	var length: float = cut.length()
+	# The far end at z = 0, the near end `length` toward the runner.
+	var zf: float = 0.0
+	var zn: float = length
 	var top: float = -ZoneSkin.CUT_STRIP_TOP
 	var y: float = ZoneSkin.CUT_LIP_LIFT
 	var inset: float = ZoneSkin.CUT_WALL_INSET
 	var wall: float = depth + top
-	# The inside's end walls, below the floor, across the lane's whole floor (joined lanes' meet).
-	var ends := MeshBatch.new()
-	var e: MeshLayer = ends.layer(solid)
-	e.rect(Vector3(x0, -depth, z1 + inset), Vector3(w, 0, 0), Vector3(0, wall, 0), inside, 0.0, pattern)
-	e.rect(Vector3(x1, -depth, z0 - inset), Vector3(-w, 0, 0), Vector3(0, wall, 0), inside, 0.0, pattern)
-	_add(cut, ends.commit(parent, "HoleEnds"), &"static", 0)
-	for side: int in [-1, 1]:
-		# The inside's wall along this side, just inside the lane's edge, facing into the hole.
-		var walls := MeshBatch.new()
-		var s: MeshLayer = walls.layer(solid)
-		if side < 0:
-			s.rect(Vector3(x0 + inset, -depth, z0), Vector3(0, 0, -length), Vector3(0, wall, 0), inside, 0.0, pattern)
-		else:
-			s.rect(Vector3(x1 - inset, -depth, z1), Vector3(0, 0, length), Vector3(0, wall, 0), inside, 0.0, pattern)
-		_add(cut, walls.commit(parent, "HoleWall%s" % ("L" if side < 0 else "R")), &"static", side)
-		if not cut.has_neighbour(side):
-			continue
-		# Along the cut on this side: the lip on the neighbouring lane's floor right at the edge, the dark line
-		# outside it, and the strip along the top of the inside's wall.
-		var along := MeshBatch.new()
-		var a: MeshLayer = along.layer(solid)
-		var ex: float = cut.edge_x(side)
-		var lx: float = ex - lip if side < 0 else ex
-		a.rect(Vector3(lx, y, z0), Vector3(lip, 0, 0), Vector3(0, 0, -length), edge, lip_glow)
-		var dx: float = lx - dark if side < 0 else ex + lip
-		a.rect(Vector3(dx, y, z0), Vector3(dark, 0, 0), Vector3(0, 0, -length), dark_color)
-		if side < 0:
-			a.rect(Vector3(x0 + inset + 0.004, top - strip_h, z0), Vector3(0, 0, -length), Vector3(0, strip_h, 0), edge, strip_glow)
-		else:
-			a.rect(Vector3(x1 - inset - 0.004, top - strip_h, z1), Vector3(0, 0, length), Vector3(0, strip_h, 0), edge, strip_glow)
-		_add(cut, along.commit(parent, "HoleEdge%s" % ("L" if side < 0 else "R")), &"span", side)
-	# The floor's far end where the cut has got to (built at its end, moved to its front): its lip and dark line.
+	var out: Dictionary = {}
+	# The inside, below the floor: its end walls across the whole hole, its side walls just inside its sides.
+	var ins := MeshBatch.new()
+	var s: MeshLayer = ins.layer(solid)
+	s.rect(Vector3(x0, -depth, zf + inset), Vector3(w, 0, 0), Vector3(0, wall, 0), inside, 0.0, pattern)
+	s.rect(Vector3(x1, -depth, zn - inset), Vector3(-w, 0, 0), Vector3(0, wall, 0), inside, 0.0, pattern)
+	s.rect(Vector3(x0 + inset, -depth, zn), Vector3(0, 0, -length), Vector3(0, wall, 0), inside, 0.0, pattern)
+	s.rect(Vector3(x1 - inset, -depth, zf), Vector3(0, 0, length), Vector3(0, wall, 0), inside, 0.0, pattern)
+	out[&"inside"] = ins.to_mesh()
+	# Along its sides where a lane runs beside it: the lip on that lane's floor right at the edge, the dark line
+	# outside it, and the strip along the top of the inside's wall.
+	var along := MeshBatch.new()
+	var a: MeshLayer = along.layer(solid)
+	if left:
+		a.rect(Vector3(x0 - lip, y, zn), Vector3(lip, 0, 0), Vector3(0, 0, -length), edge, lip_glow)
+		a.rect(Vector3(x0 - lip - dark, y, zn), Vector3(dark, 0, 0), Vector3(0, 0, -length), dark_color)
+		a.rect(Vector3(x0 + inset + 0.004, top - strip_h, zn), Vector3(0, 0, -length), Vector3(0, strip_h, 0), edge, strip_glow)
+	if right:
+		a.rect(Vector3(x1, y, zn), Vector3(lip, 0, 0), Vector3(0, 0, -length), edge, lip_glow)
+		a.rect(Vector3(x1 + lip, y, zn), Vector3(dark, 0, 0), Vector3(0, 0, -length), dark_color)
+		a.rect(Vector3(x1 - inset - 0.004, top - strip_h, zf), Vector3(0, 0, length), Vector3(0, strip_h, 0), edge, strip_glow)
+	out[&"sides"] = along.to_mesh()
+	# The floor's far end where the cut has got to, built at the hole's far end (FloorCut moves it to its front):
+	# its lip and dark line, across the whole hole.
 	var near := MeshBatch.new()
 	var n: MeshLayer = near.layer(solid)
-	n.rect(Vector3(x0, y, z1 + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
-	n.rect(Vector3(x0, y, z1 + lip + dark), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
-	_add(cut, near.commit(parent, "HoleFront"), &"front", 0)
-	# The far side, facing the player: the lip on the floor beyond it, its dark line, the strip along the top
-	# of its face.
+	n.rect(Vector3(x0, y, zf + lip), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
+	n.rect(Vector3(x0, y, zf + lip + dark), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
+	out[&"near"] = near.to_mesh()
+	# The far side, facing the runner: the lip on the floor beyond it, its dark line, the strip along the top of
+	# its face.
 	var far := MeshBatch.new()
 	var f: MeshLayer = far.layer(solid)
-	f.rect(Vector3(x0, y, z1), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
-	f.rect(Vector3(x0, y, z1 - lip), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
-	f.rect(Vector3(x0, top - strip_h, z1 + inset + 0.004), Vector3(w, 0, 0), Vector3(0, strip_h, 0), edge, strip_glow)
-	_add(cut, far.commit(parent, "HoleFar"), &"far", 0)
-	# The halo that carries the far side from afar: a node of its own (join() makes one across a whole hole).
-	_add(cut, halo(parent, glow, edge, x0 - HALO_SPILL, x1 + HALO_SPILL, z1), &"far", HALO)
-
-
-## The far side's halo over world x [from, to] at the far end `z1` (world z): an additive streak along the top
-## of the hole's far face, the palace floor's.
-static func halo(parent: Node3D, glow: Material, edge: Color, from: float, to: float, z1: float) -> MeshInstance3D:
-	var batch := MeshBatch.new()
-	var strip_h: float = ZoneSkin.CUT_STRIP_HEIGHT
-	var top: float = -ZoneSkin.CUT_STRIP_TOP
-	batch.layer(glow).rect(Vector3(from, top - strip_h - HALO_BELOW, z1 + 0.05), Vector3(to - from, 0, 0),
+	f.rect(Vector3(x0, y, zf), Vector3(w, 0, 0), Vector3(0, 0, -lip), edge, lip_glow)
+	f.rect(Vector3(x0, y, zf - lip), Vector3(w, 0, 0), Vector3(0, 0, -dark), dark_color)
+	f.rect(Vector3(x0, top - strip_h, zf + inset + 0.004), Vector3(w, 0, 0), Vector3(0, strip_h, 0), edge, strip_glow)
+	out[&"far"] = far.to_mesh()
+	# The halo that carries the far side from afar: an additive streak along the top of its face.
+	var halo := MeshBatch.new()
+	halo.layer(glow).rect(Vector3(x0 - HALO_SPILL, top - strip_h - HALO_BELOW, zf + 0.05), Vector3(w + HALO_SPILL * 2.0, 0, 0),
 		Vector3(0, strip_h + HALO_BELOW * 2.0, 0), edge, GoldenPalaceFloor.EDGE_HALO, MeshKit.SHAPE_STREAK)
-	return batch.commit(parent, "HoleHalo")
-
-
-static func _add(cut: FloorCutSection, node: MeshInstance3D, kind: StringName, side: int) -> void:
-	if node == null:
-		return
-	node.set_meta(SIDE_META, side)
-	match kind:
-		&"static":
-			cut.add_static(node)
-		&"span":
-			cut.add_span(node)
-		&"front":
-			cut.add_front(node)
-		_:
-			cut.add_far(node)
-
-
-## The cuts of one hole, opened together (side by side, in any order): every part along a side that faces
-## another of them goes, and their halos give way to one across the whole hole. Returns the parts taken away.
-static func join(cuts: Array[FloorCut]) -> int:
-	var lanes: Dictionary = {}
-	for fc: FloorCut in cuts:
-		if fc != null and is_instance_valid(fc):
-			lanes[fc.lane] = fc
-	if lanes.size() < 2:
-		return 0
-	var removed: int = 0
-	var lo: FloorCut = null
-	var hi: FloorCut = null
-	var halo_parts: Array = []
-	for lane: int in lanes:
-		var fc: FloorCut = lanes[lane]
-		if lo == null or fc.lane < lo.lane:
-			lo = fc
-		if hi == null or fc.lane > hi.lane:
-			hi = fc
-		for side: int in [-1, 1]:
-			if lanes.has(lane + side):
-				removed += _take(fc.section, side)
-		halo_parts.append_array(_parts(fc.section, HALO))
-	if halo_parts.is_empty():
-		return removed
-	# One halo from the hole's left edge to its right, where the first lane's was.
-	var first := halo_parts[0] as MeshInstance3D
-	var glow: Material = first.mesh.surface_get_material(0) if first.mesh != null else null
-	var parent: Node3D = first.get_parent() as Node3D
-	var edge: Color = Color(ZoneSkin.CUT_EDGE_COLOR)
-	var colors: Variant = first.mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR] if first.mesh != null else null
-	if colors is PackedColorArray and not (colors as PackedColorArray).is_empty():
-		edge = Color((colors as PackedColorArray)[0], 1.0)
-	for fc: FloorCut in lanes.values():
-		removed += _take(fc.section, HALO)
-	if parent != null and glow != null:
-		var whole: MeshInstance3D = halo(parent, glow, edge, lo.section.x0 - HALO_SPILL, hi.section.x1 + HALO_SPILL, -lo.section.end)
-		_add(lo.section, whole, &"far", HALO)
-		whole.visible = lo.began()
-	return removed
-
-
-## The parts of `section` tagged `side` (any kind).
-static func _parts(section: FloorCutSection, side: int) -> Array:
-	var out: Array = []
-	for list: Array in [section.statics, section.spans, section.fronts, section.fars]:
-		for node: Variant in list:
-			if is_instance_valid(node) and int((node as Node).get_meta(SIDE_META, 0)) == side:
-				out.append(node)
+	out[&"halo"] = halo.to_mesh()
 	return out
-
-
-## Takes the parts of `section` tagged `side` out of it and frees them. Returns how many.
-static func _take(section: FloorCutSection, side: int) -> int:
-	var count: int = 0
-	for list: Array in [section.statics, section.spans, section.fronts, section.fars]:
-		for i: int in range(list.size() - 1, -1, -1):
-			var node: Variant = list[i]
-			if not is_instance_valid(node) or int((node as Node).get_meta(SIDE_META, 0)) != side:
-				continue
-			list.remove_at(i)
-			(node as Node3D).visible = false
-			(node as Node).queue_free()
-			count += 1
-	return count

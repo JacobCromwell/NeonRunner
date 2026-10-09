@@ -18,8 +18,8 @@ extends GoldenConvergenceAttack
 ## 4. the fall (slam_fall_seconds), then the impact as the runner reaches its point: a slam ON the runner
 ##    lands as they reach the middle of its row (they're under it unless they've left the footprint); a slam
 ##    AHEAD lands slam_ahead_seconds before they reach its row (its hole to be jumped or gone round). The
-##    footprint's floor cuts open at once (FloorCut.advance_to) and read as one square hole
-##    (GoldenConvergenceHole.join); the fist's touch (an enemy attack over the footprint from the floor to
+##    footprint's floor cuts open at once (FloorCut.advance_to) as one square hole, its look made as it opens
+##    (GoldenConvergenceHole.open); the fist's touch (an enemy attack over the footprint from the floor to
 ##    above a jump) is live for slam_hit_seconds; rubble, dust, a shake, gc_slam and gc_break. A runner under
 ##    it who lives through the touch (the armor or the shield blocks it, the dash passes, invulnerable) has
 ##    the floor under them held for GameRules.cut_hold_seconds (FloorCut.hold_under): a moment to jump out or
@@ -27,7 +27,8 @@ extends GoldenConvergenceAttack
 ## 5. the fist plunges into the hole and goes back to rest at his side (slam_back_seconds over the pace).
 ## The holes: each slam's row is planned before the sequence begins (floor cuts must lie past the built track,
 ## BossArena.stream_from(), about 180 m ahead), a cut in every lane of the row, since the footprint isn't
-## known until the lock; the lanes outside the footprint never open. The sequence is planned from the beat
+## known until the lock; the lanes outside the footprint never open, and a cut draws nothing until it opens (the
+## court's floor_cut: a row costs the track next to nothing to build). The sequence is planned from the beat
 ## before it while that one plays (its ends_at), or from a phase's start (its first beat), or for a phase the
 ## Refill Ship's hit ends from its chain reaction (plan_phase_ahead, E5d-c), or at the latest when its beat begins
 ## (the first fist then comes out at once and stalks the runner's lane until its warning).
@@ -113,11 +114,16 @@ func _new_tower() -> GoldenConvergenceTower:
 	return tower
 
 
-## The towers' meshes at the run's length, now (not mid-fight).
+## The towers' meshes at the run's length and every hole's (each footprint's at the run's lane count), now (not
+## mid-fight).
 func prewarm() -> void:
 	var length: float = _tower_length()
 	for tower: GoldenConvergenceTower in towers:
 		tower.prewarm(length)
+	var skin := boss.world.skin as GoldenCourtSkin
+	if skin != null:
+		var geo: TrackGeometry = boss.world.geo
+		GoldenConvergenceHole.prewarm(skin, geo, GoldenConvergenceHole.hole_lanes(geo.lane_count) * geo.lane_width)
 
 
 ## The phase's slam script (a letter a slam).
@@ -558,11 +564,13 @@ func _impact(s: Dictionary) -> void:
 	var opened: Array[FloorCut] = []
 	for lane: Variant in s["lanes"]:
 		var fc: FloorCut = boss.world.track.floor_cut(int(lane), row.y)
-		if fc == null:
-			continue
+		if fc != null:
+			opened.append(fc)
+	# The square hole's look over the footprint (made as it opens, from the fight's shared meshes), then the floor
+	# goes: the cuts show it as they open.
+	GoldenConvergenceHole.open(opened, boss.world.skin, boss.world.geo)
+	for fc: FloorCut in opened:
 		fc.advance_to(fc.start)
-		opened.append(fc)
-	GoldenConvergenceHole.join(opened)
 	var box: Vector2 = s["sq"]
 	fist.set_touch(i, box.x, box.y, row.x, row.y)
 	fist.impact(box.x, box.y, row.x, row.y)

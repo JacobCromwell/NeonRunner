@@ -52,6 +52,10 @@ extends GoldenPalaceSkin
 const SCREEN_BRIGHTNESS: float = 0.9
 const COURT_FEED_SHADER: String = "res://scripts/bosses/golden_convergence/golden_court_feed.gdshader"
 
+## A Fist Slam's hole's meshes by footprint and row (GoldenConvergenceHole.meshes: made once, with the fight, and
+## shared by every hole of that footprint).
+var hole_meshes: Dictionary = {}
+
 
 ## The giant screens' material: one for every tower's screen (the handles below drive it).
 func court_feed_material() -> ShaderMaterial:
@@ -107,11 +111,12 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
-## E5d-b: a floor cut in the Grand Court is a Fist Slam's hole (its plain laps have none of their own): the
-## palace floor's break, drawn side by side so the lanes a fist opens together read as one square hole
-## (GoldenConvergenceHole.build and join).
-func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
-	GoldenConvergenceHole.build(parent, cut, self)
+## E5d-b: a floor cut in the Grand Court is a Fist Slam's hole (its plain laps have none of their own). A slam
+## cuts every lane of its row but opens only its footprint's, so nothing is drawn here when the track builds a cut
+## (E5d polish: no meshes in the chunk's frame, no hidden inside under the floor): the slam draws the whole square
+## hole as it opens (GoldenConvergenceHole.open), from meshes made with the fight (hole_meshes).
+func floor_cut(_parent: Node3D, _cut: FloorCutSection) -> void:
+	pass
 
 
 ## No wall gaps on a boss's track (BossArena): the court around one is drawn all the same.

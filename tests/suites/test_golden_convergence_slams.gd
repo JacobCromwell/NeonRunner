@@ -240,15 +240,32 @@ func _test_holes(lanes: int) -> void:
 	var row_len: float = GoldenConvergenceHole.hole_lanes(lanes) * world.geo.lane_width
 	check(cuts == lanes and row.x >= stream - 0.01 and is_equal_approx(row.y - row.x, row_len),
 		"its row is cut in every lane, past the built track, as long as the hole is wide (%d cuts, %.1f m) %s" % [cuts, row.y - row.x, tag])
-	var whole := {"ok": true, "seen": false}
+	# E5d polish: the court's floor_cut draws nothing; every footprint's meshes were made with the fight.
+	var skin := world.skin as GoldenCourtSkin
+	var made: int = skin.hole_meshes.size() if skin != null else -1
+	var footprints: int = lanes - GoldenConvergenceHole.hole_lanes(lanes) + 1
+	check(skin != null and made >= footprints, "every footprint's hole meshes are made with the fight (%d for %d footprints) %s" % [
+		made, footprints, tag])
+	var whole := {"ok": true, "seen": false, "built": false, "bare": true}
 	await _run(world, bot, 20.0, func() -> bool: return int(s["stage"]) >= GoldenConvergenceSlams.SlamStage.HIT, func() -> void:
-		if int(s["stage"]) >= GoldenConvergenceSlams.SlamStage.HIT or world.player.distance < row.x - 120.0:
+		if int(s["stage"]) >= GoldenConvergenceSlams.SlamStage.HIT:
+			return
+		# Built, the row's cuts draw nothing until the impact: no mesh in the chunk's frame, no hidden inside.
+		for lane: int in lanes:
+			var built: FloorCut = world.track.floor_cut(lane, row.y)
+			if built != null:
+				whole["built"] = true
+				whole["bare"] = bool(whole["bare"]) and built.find_children("*", "MeshInstance3D", true, false).is_empty() \
+					and built.section.statics.is_empty() and built.section.fars.is_empty()
+		if world.player.distance < row.x - 120.0:
 			return
 		whole["seen"] = true
 		for lane: int in lanes:
 			whole["ok"] = bool(whole["ok"]) and _floor_at(world, lane, (row.x + row.y) * 0.5))
 	await tree.physics_frame
 	check(bool(whole["seen"]) and bool(whole["ok"]), "the floor is whole in every lane until the impact %s" % tag)
+	check(bool(whole["built"]) and bool(whole["bare"]),
+		"until the impact a row's cuts draw nothing (no mesh, no inside under the floor) in any lane %s" % tag)
 	var lanes_open: Array = s["lanes"]
 	var right: bool = true
 	for lane: int in lanes:
@@ -278,6 +295,29 @@ func _test_holes(lanes: int) -> void:
 					faults.append("lane %d keeps its %s side's %s" % [int(lane), "left" if tagged < 0 else "right", (node as Node).name])
 	check(faults.is_empty() and halos == 1, "it reads as one square hole: nothing left between its lanes, one halo across (%s; %d halos) %s" % [
 		", ".join(faults), halos, tag])
+	# Its look: the hole's five parts under its first lane's cut, each the fight's shared mesh (none made at the
+	# impact); nothing under the other lanes' cuts, opened or not.
+	var shared: Array = []
+	for m: Variant in skin.hole_meshes.values():
+		shared.append_array((m as Dictionary).values())
+	var parts: Array[Node] = []
+	var elsewhere: int = 0
+	for lane: int in lanes:
+		var fc: FloorCut = world.track.floor_cut(lane, row.y)
+		if fc == null:
+			continue
+		var found: Array[Node] = fc.find_children("*", "MeshInstance3D", true, false)
+		if lane == int(lanes_open[0]):
+			parts = found
+		else:
+			elsewhere += found.size()
+	var all_shared: bool = not parts.is_empty()
+	for part: Node in parts:
+		all_shared = all_shared and shared.has((part as MeshInstance3D).mesh)
+	check(parts.size() >= 4 and parts.size() <= GoldenConvergenceHole.PARTS.size() and all_shared and elsewhere == 0
+		and skin.hole_meshes.size() == made,
+		"it's drawn as it opens: %d parts under its first lane's cut, all shared meshes (%s), none under the others (%d), no mesh made (%d -> %d) %s" % [
+			parts.size(), all_shared, elsewhere, made, skin.hole_meshes.size(), tag])
 	_check_look(fcs, world, tag)
 	check(world.player.alive, "and the runner who left the footprint runs on (%s) %s" % [cause[0], tag])
 	await sim.free_world(world)
