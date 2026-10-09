@@ -178,8 +178,19 @@ func _test_endless() -> void:
 	if ctx != null:
 		check(not ctx.config.guarantee_features and city_3.guarantee_features,
 			"endless skips the campaign's every-feature guarantee (a 20-minute level needs no rebuilds)")
-		check(ctx.config.sky == null and city_3.sky != null and _cloud_amount(App.run) == 0.0,
-			"endless has the zone's own sky, not its last level's dawn (City 3 keeps it)")
+	App.show_title()
+	# With Gangland reached, endless copies Gangland 3 but not its own sky (or the street's light under it).
+	for s: CampaignStep in App.campaign.steps():
+		if s.index < App.campaign.step("gangland/3").index:
+			App.profile.record_run(s.id, 0, true, 100, 3, 10.0)
+	var rotor_wash: LevelConfig = App.campaign.step("gangland/3").level
+	App.start_endless()
+	App.begin_run()
+	await physics_frames(3)
+	var gang: RunContext = App.run.context if App.run != null else null
+	check(gang != null and gang.config.features == rotor_wash.features and gang.config.sky == null
+		and _cloud_amount(App.run) == 0.0 and ZoneSkin.scenery_tint_now == Color.WHITE and rotor_wash.sky != null,
+		"endless in Gangland plays Gangland 3's features under the zone's own sky (Gangland 3 keeps its own)")
 	App.show_title()
 	# With the Dead Zone reached, endless copies The Hush but not its own remix: its pacing in bursts,
 	# the hosts it picks more often, or its darkness.
@@ -225,7 +236,8 @@ func _test_darker_level() -> void:
 
 
 ## A level's own sky (LevelConfig.sky; owner, October 8, 2026) reaches its run: Gangland 3's run has its
-## cloudy blood-red sky and fog, and Gangland 2's the zone's own.
+## cloudy blood-red sky, fog and street light, the Sewer Swarm's fight after it the same, Gangland 2's the
+## zone's own, and the street's light comes back when the run ends.
 func _test_level_sky() -> void:
 	await _campaign_level("gangland/3")
 	var run: LevelRun = App.run
@@ -236,11 +248,22 @@ func _test_level_sky() -> void:
 	var env: Environment = run.get_world_3d().environment
 	check(env != null and is_equal_approx(_cloud_amount(run), float(sky.sky["cloud_amount"]))
 		and env.fog_light_color == sky.fog_color, "its run's sky is cloudy, and the fog takes its colour")
+	check(ZoneSkin.scenery_tint_now == sky.scenery_tint, "and the street's light follows it")
+	App.start_boss(App.campaign.step("gangland/boss"))
+	App.begin_run()
+	await physics_frames(10)
+	check(App.run != null and App.run.context.config.sky == sky and is_equal_approx(_cloud_amount(App.run),
+		float(sky.sky["cloud_amount"])) and ZoneSkin.scenery_tint_now == sky.scenery_tint,
+		"the Sewer Swarm's fight keeps Gangland 3's sky and street light")
 	await _campaign_level("gangland/2")
 	check(App.run != null and App.run.context.config.sky == null and _cloud_amount(App.run) == 0.0
 		and App.run.get_world_3d().environment.fog_light_color == (App.run.world.skin as GanglandSkin).fog_color,
 		"Gangland 2's run has the zone's own sky")
+	check(ZoneSkin.scenery_tint_now == Color.WHITE, "and the zone's own street light")
+	await _campaign_level("gangland/3")
 	App.show_title()
+	await physics_frames(2)
+	check(ZoneSkin.scenery_tint_now == Color.WHITE, "the street's light comes back when the run ends")
 
 
 ## The cloud cover of a run's sky (0 when the shader's default, no clouds, holds).

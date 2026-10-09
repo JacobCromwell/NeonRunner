@@ -209,12 +209,14 @@ func begin() -> void:
 	world.start()
 
 
-## A level's darker lighting ends with its run (ZoneSkin.apply_darkness sets a global uniform), unless
-## a newer run has set its own since.
+## A level's darker lighting and the street's light under its own sky end with its run
+## (ZoneSkin.apply_darkness and set_scenery_tint set global uniforms), unless a newer run has set its
+## own since.
 func _exit_tree() -> void:
 	if _lighting_run == self:
 		_lighting_run = null
 		ZoneSkin.set_scenery_light(1.0)
+		ZoneSkin.set_scenery_tint(Color.WHITE)
 
 
 ## Continues after a death (revive item or rewarded ad). The App calls this.

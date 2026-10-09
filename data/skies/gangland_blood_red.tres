@@ -21,3 +21,4 @@ sky = Dictionary[String, Variant]({
 "cloud_lit_focus": 0.0
 })
 fog_color = Color(0.3, 0.09, 0.06, 1)
+scenery_tint = Color(1, 0.68, 0.6, 1)
