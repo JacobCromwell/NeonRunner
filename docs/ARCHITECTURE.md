@@ -3406,7 +3406,7 @@ never ends, and a level never starts, unattended.
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
-| `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres` | the Dead Zone's intro, the owner's story beat (below) |
+| `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -3568,27 +3568,33 @@ the first time, with cold mesh caches) and costs about 0.6 ms a step, at most ab
 `_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
 behind the camera and the actors).
 
-**The Dead Zone's intro** (`DeadZoneIntro`, task F2c; the owner's story beat, October 9, 2026, GDD §6 Cinematics;
-what it leaves open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in `data/cinematics/dead_zone_intro_tuning.tres`):
-12.6 s before Dead Zone 1, on a stretch of the zone's street in the level's lanes. A smoking crater is a gap in the
-runner's lane (`CineStageDef.gaps`), so it looks like one; the runner lies on their back on its floor 1.42 m down,
-stirs, shakes their head as they sit up, gets to their feet, staggers to the far wall and reaches up. The camera
-looks down into it from high over its far end, the street beyond and the cyborgs down it in view. At 5.75 s it
-cuts to ground level 1.3 m beyond the far edge: at first only the runner's hands come up over the edge and grab
-it, then they climb out (`CinePoses.climb`, the hands holding the edge) and stand on the street as the camera rises
-and pulls back. Throughout, 16 m down the street behind the crater, two cyborgs lie still with their screens dark
-and a host crouches over them, working at them; as the runner gets up it looks over, the camera zooming in on it
-past the runner's shoulder; at 9.65 s the cut to an extreme close-up of its screen face, its corrupted grin
-glitching harder (the shader's `glitch`, 1.8), looking into the camera; then black, and the level. The actors are
-the timeline's; the crater's inside is the cinematic's own prop, `DeadZoneCrater`, built on the stage so it hides
-with it: a floor of the zone's own street plates (`ZoneSkin.floor_segment`) tipped this way and that, slabs leaning
-on its walls and rubble (the skin's solid material, in greys), three thin columns of the Dead Zone's smoke
-(`dead_smoke.gdshader`) kept off the camera's line to the cyborgs, and a faint cold light. The street stays built
-back down to the haze behind the cyborgs (`_stage_near`). It sets up in about 18 ms (about 240 ms the first time,
-with cold mesh caches) and costs at most about 2 ms a step (headless, `test_dead_zone_intro`); the crater adds 5
-draw calls. It adds no asset files. It added to the toolkit the poses that play out over time (`CinePoses`, a
-cyborg's `lie` and `crouch`), `look_up` and a cyborg's head turn, models on the cinematic's clock, and sound events
-at their own level.
+**The Dead Zone's intro** (`DeadZoneIntro`, task F2c; the owner's story beats and answers, October 9, 2026, GDD §6
+Cinematics; what they leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in
+`data/cinematics/dead_zone_intro_tuning.tres`): 14.3 s before Dead Zone 1, on a stretch of the zone's street in the
+level's lanes. A smoking crater is a gap in the runner's lane (`CineStageDef.gaps`), so it looks like one; the runner
+lies on their back on its floor 1.42 m down, stirs, shakes their head as they sit up, gets to their feet, staggers to
+the far wall and reaches up. The camera looks down into it from high over its far end, the street beyond and the
+cyborgs down it in view. At 5.75 s it cuts to ground level 1.3 m beyond the far edge: at first only the runner's
+hands come up over the edge and grab it, then they climb out (`CinePoses.climb`, the hands holding the edge) and
+stand on the street as the camera rises and pulls back. Throughout, 16 m down the street behind the crater, two
+cyborgs lie still with their screens dark and a host crouches over them, working at them; as the runner gets up it
+looks over, and at 8.6 s, mid-turn, the cut to a medium shot of it from the runner's side, so it turns to look into
+the camera. At 10 s the cut to an extreme close-up of its screen face: the camera straight in front of the screen as
+it is at the cut (`frame_face`, measured from the head, the head held still: `CyborgBody.twitches`), the whole face
+filling 80% of the picture inside the letterbox (its height, or its width on a screen narrower than the face),
+pushing in to 92%, its corrupted grin glitching harder (the shader's `glitch`, 1.8). At 11.5 s it starts to fade to
+black, and the zone's title card ("ZONE 5", "DEAD ZONE", from the zone's data as the flyovers' are) comes up with
+it and holds on the black; then the level. The actors are the timeline's; the crater's inside is the cinematic's own
+prop, `DeadZoneCrater`, built on the stage so it hides with it: a floor of the zone's own street plates
+(`ZoneSkin.floor_segment`) tipped this way and that, slabs leaning on its walls and rubble (the skin's solid
+material, in greys), three thin columns of the Dead Zone's smoke (`dead_smoke.gdshader`) kept off the camera's line
+to the cyborgs, and a faint cold light. The street stays built back down to the haze behind the cyborgs
+(`_stage_near`). Its sounds are its own, where the game's didn't fit (`tools/asset_gen/sfx_bank_cinematics.gd`, none
+of them a hazard's warning): `crater_smoulder`, `rubble_shift`, `edge_grab`, `host_turn` and `host_glitch`; the
+zone's track fades in under them. It sets up in about 19 ms (about 240 ms the first time, with cold mesh caches) and
+costs at most about 2 ms a step (headless, `test_dead_zone_intro`); the crater adds 5 draw calls. It added to the
+toolkit the poses that play out over time (`CinePoses`, a cyborg's `lie` and `crouch`), `look_up` and a cyborg's head
+turn, models on the cinematic's clock, and sound events at their own level.
 
 ## Economy and saving
 
@@ -4089,7 +4095,8 @@ getting up and reaching for the far wall, two cuts (to ground level beyond the f
 at first only the hands over the edge, the hands holding the edge as they climb out, the runner up on the street,
 the three cyborgs in view until the close-up (two lying still with their screens dark, the host crouched), the host
 looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
-zone's music and the end on black; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
+its own sounds; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's

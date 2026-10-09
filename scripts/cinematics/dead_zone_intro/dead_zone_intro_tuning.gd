@@ -5,16 +5,22 @@ extends Resource
 ## moment they shake themselves and start to pull themselves out; a cut to ground level, where at first only their
 ## hands are seen grabbing the edge, then they pull themselves up; throughout, cyborgs in the distance, two lying
 ## still and a third crouched over them, doing who knows what; as the runner pulls themselves up, the crouched one
-## looks over, a host; a cut to an extreme close-up of its glitching face looking menacingly at the camera; then
-## black. The rest (timings, distances, the camera's exact places, the sounds) is DESIGN-TBD (docs/questions/f2c.md).
+## looks over, a host; a cut to a medium shot of it, then to an extreme close-up of its glitching face filling the
+## picture, looking menacingly at the camera; as it starts to fade to black, the zone's title card (the owner's
+## answers, October 9, 2026). The rest (timings, distances, the camera's exact places, the sounds) is DESIGN-TBD
+## (docs/questions/f2c.md).
 ## Times are seconds from the start; points are track space (CineStage: x metres right of the runner's lane, y up,
 ## z ahead), most of them from the crater's far edge, the one the runner climbs out over.
 
 @export_group("Timing")
 ## GDD §1: 5-15 s. It ends on black: the level opens on its own view.
-@export_range(5.0, 15.0, 0.1, "suffix:s") var duration: float = 12.6
+@export_range(5.0, 15.0, 0.1, "suffix:s") var duration: float = 14.3
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_in: float = 1.4
-@export_range(0.0, 2.0, 0.05, "suffix:s") var fade_out: float = 1.1
+## The close-up starts to fade to black at `fade_at`, over `fade_out`; the zone's title card comes up as it does,
+## and stays on the black for `card_seconds` in all (its own fades included), ending before the cinematic does.
+@export_range(5.0, 15.0, 0.05, "suffix:s") var fade_at: float = 11.5
+@export_range(0.0, 2.0, 0.05, "suffix:s") var fade_out: float = 1.2
+@export_range(1.0, 5.0, 0.05, "suffix:s") var card_seconds: float = 2.7
 ## The zone's music comes in over this, quietly, from the start.
 @export_range(0.0, 8.0, 0.1, "suffix:s") var music_fade: float = 5.0
 ## The stretch of street (metres; the finish line the track builder draws at its end stays out of view).
@@ -85,13 +91,13 @@ extends Resource
 @export_range(10.0, 60.0, 0.5, "suffix:m") var host_back: float = 16.0
 @export_range(-180.0, 180.0, 1.0, "suffix:°") var host_yaw: float = -90.0
 ## The two lying still: each one's place from the host (x across, z along) and heading (degrees).
-@export var body_a: Vector3 = Vector3(0.85, 0.0, 0.35)
+@export var body_a: Vector3 = Vector3(0.85, 0.0, -0.15)
 @export_range(-180.0, 180.0, 1.0, "suffix:°") var body_a_yaw: float = 20.0
-@export var body_b: Vector3 = Vector3(1.1, 0.0, -0.75)
+@export var body_b: Vector3 = Vector3(1.15, 0.0, -1.1)
 @export_range(-180.0, 180.0, 1.0, "suffix:°") var body_b_yaw: float = -140.0
 ## As the runner pulls themselves up, it looks over: its head turns (and comes up) this far over this long.
-@export_range(3.0, 10.0, 0.05, "suffix:s") var look_at: float = 8.15
-@export_range(0.1, 1.5, 0.05, "suffix:s") var look_seconds: float = 0.45
+@export_range(3.0, 10.0, 0.05, "suffix:s") var look_at: float = 8.25
+@export_range(0.1, 1.5, 0.05, "suffix:s") var look_seconds: float = 0.8
 @export_range(-150.0, 150.0, 1.0, "suffix:°") var look_turn: float = 92.0
 @export_range(-90.0, 90.0, 1.0, "suffix:°") var look_up: float = 78.0
 
@@ -103,8 +109,7 @@ extends Resource
 @export var high_look_to: Vector3 = Vector3(-0.5, -0.7, -5.0)
 @export_range(30.0, 90.0, 1.0, "suffix:°") var high_fov: float = 58.0
 ## The cut to ground level (`cut_at`): low on the street beyond the far edge, looking back over it and down the
-## street, then (from `rise_from`) rising a little as the runner gets up, and (from `push_from`) closing in on the
-## host down the street as it looks over.
+## street, then (from `rise_from`) rising a little as the runner gets up.
 @export_range(3.0, 8.0, 0.05, "suffix:s") var cut_at: float = 5.75
 @export var ground_at: Vector3 = Vector3(-0.5, 0.16, 1.3)
 @export var ground_look: Vector3 = Vector3(-0.15, 0.16, -10.0)
@@ -112,14 +117,22 @@ extends Resource
 @export_range(3.0, 10.0, 0.05, "suffix:s") var rise_from: float = 6.9
 @export var risen_at: Vector3 = Vector3(-0.85, 0.42, 2.7)
 @export var risen_look: Vector3 = Vector3(-0.7, 0.6, -10.0)
-@export_range(3.0, 10.0, 0.05, "suffix:s") var push_from: float = 8.6
-@export_range(10.0, 60.0, 1.0, "suffix:°") var push_fov: float = 16.0
-## The cut to the host's face (`close_up_at`): from in front of its screen, a little below it, pushing in.
-## Offsets from the host (x across, y up, z along the track, the way its face turns to look).
-@export_range(5.0, 14.0, 0.05, "suffix:s") var close_up_at: float = 9.65
-@export var face_at: Vector3 = Vector3(0.26, 0.99, 0.28)
-@export var close_from: Vector3 = Vector3(0.02, -0.1, 0.75)
-@export var close_to: Vector3 = Vector3(0.0, -0.06, 0.42)
+## The cut to a medium shot of the host (`medium_at`), as it turns to look: from the runner's side of it, in front
+## of where its face turns (the bodies lie just beyond it), so it turns to look into the camera, easing in. Points
+## from the host (x across, y up, z along the track).
+@export_range(5.0, 12.0, 0.05, "suffix:s") var medium_at: float = 8.6
+@export var medium_from: Vector3 = Vector3(0.0, 0.8, 2.6)
+@export var medium_to: Vector3 = Vector3(0.05, 0.8, 2.15)
+@export var medium_look: Vector3 = Vector3(0.3, 0.74, 0.0)
+@export_range(20.0, 70.0, 1.0, "suffix:°") var medium_fov: float = 40.0
+## The cut to the extreme close-up (`close_up_at`): straight in front of its screen as it is at the cut, a little
+## below its middle, the whole face filling `close_fill_from` of the picture (inside the letterbox: its height, or
+## its width on a screen narrower than the face), pushing in until it fills `close_fill_to` by the time it's black.
+## Its head holds still for it (no twitches), so the face stays whole.
+@export_range(5.0, 14.0, 0.05, "suffix:s") var close_up_at: float = 10.0
+@export_range(0.5, 1.0, 0.01) var close_fill_from: float = 0.8
+@export_range(0.5, 1.0, 0.01) var close_fill_to: float = 0.92
+@export_range(0.0, 0.2, 0.005, "suffix:m") var close_below: float = 0.03
 @export_range(10.0, 70.0, 1.0, "suffix:°") var close_fov: float = 36.0
 ## Its screen glitches harder close up (its shader's glitch: 1 for every host).
 @export_range(1.0, 3.0, 0.05) var close_glitch: float = 1.8

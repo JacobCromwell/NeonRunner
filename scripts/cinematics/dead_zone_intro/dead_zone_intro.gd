@@ -6,8 +6,9 @@ extends CinematicSequencer
 ## to ground level: at first only their hands, grabbing the edge, then they pull themselves up and over and get
 ## to their feet. Throughout, cyborgs down the street in the distance: two lying still, a third crouched over
 ## them, doing who knows what to them. As the runner gets up it looks over: a host (GDD §9.7), its screen
-## glitching purple. A cut to an extreme close-up of its glitching face, staring into the camera; then black,
-## and the level.
+## glitching purple. A cut to a medium shot of it as it turns to stare into the camera, then to an extreme
+## close-up of its glitching face filling the picture; as that starts to fade to black, the zone's title card,
+## held on the black; then the level.
 ##
 ## On the toolkit: the runner and the three cyborgs are the timeline's actors, in poses the toolkit plays out over
 ## time (CinePoses: the runner lying, getting up and climbing out, its hands holding the edge; CyborgBody: lying
@@ -29,6 +30,10 @@ const SHAKE_KEYS_PER_TURN: int = 2
 ## The numbers playing (numbers, or NUMBERS_PATH's).
 var n: DeadZoneIntroTuning
 var crater: DeadZoneCrater
+## The close-up's two camera keys (frame_face points them at the host's screen at the cut).
+var _close_from: CineCameraKey
+var _close_to: CineCameraKey
+var _framed: bool = false
 
 
 func _numbers() -> DeadZoneIntroTuning:
@@ -59,13 +64,57 @@ func _make_timeline() -> CineTimeline:
 	return t
 
 
-## The close-up: the host's screen glitches harder (its shader's glitch; every host's is 1).
+## The close-up: the host's head holds still and its screen glitches harder (its shader's glitch; every host's
+## is 1).
 func _on_cue(cue_name: StringName) -> void:
 	if cue_name != &"close_up":
 		return
 	var host := actors.get(&"host") as CineActorNode
-	if host != null and host.body != null and host.body.material != null:
+	if host == null or host.body == null:
+		return
+	host.body.twitches = false
+	if host.body.material != null:
 		host.body.material.set_shader_parameter(&"glitch", n.close_glitch)
+
+
+## On the close-up's first step, once the host is posed for it (head still) and before the camera moves, the
+## close-up's keys are pointed at its face (frame_face).
+func _on_advance(_delta: float) -> void:
+	if _framed or time < n.close_up_at:
+		return
+	_framed = true
+	var host := actors.get(&"host") as CineActorNode
+	if host != null and host.body != null:
+		frame_face(host)
+
+
+## Points the close-up's keys (riding with the host) at its screen as it is now: the camera straight in front of
+## it, close_below under its middle, far enough off that the whole screen, its face, fills close_fill_from of the
+## picture inside the letterbox (its height, or its width on a screen narrower than the face), pushing in until it
+## fills close_fill_to by the time it's black.
+func frame_face(host: CineActorNode) -> void:
+	var head: Node3D = host.body.rig.joint(&"head")
+	var rect: Vector4 = CyborgSuit.screen_rect(host.body.look)
+	var z: float = CyborgSuit.SCREEN_CENTER.z
+	var xf: Transform3D = head.global_transform
+	var middle: Vector3 = xf * Vector3((rect.x + rect.z) * 0.5, (rect.y + rect.w) * 0.5, z)
+	var height: float = (xf * Vector3(0.0, rect.w, z) - xf * Vector3(0.0, rect.y, z)).length()
+	var width: float = (xf * Vector3(rect.z, 0.0, z) - xf * Vector3(rect.x, 0.0, z)).length()
+	var facing: Vector3 = (xf.basis * Vector3.FORWARD).normalized()
+	# Offsets from the host in track axes (x right, y up, z ahead: world z turned round).
+	var rel: Vector3 = middle - host.global_position
+	var face := Vector3(rel.x, rel.y, -rel.z)
+	var ahead := Vector3(facing.x, facing.y, -facing.z)
+	var below := Vector3(0.0, -n.close_below, 0.0)
+	# The picture's size a metre off (the camera's field of view is its height's; the letterbox takes off the bars).
+	var view: Vector2 = camera.get_viewport().get_visible_rect().size if camera != null else Vector2(16.0, 9.0)
+	var tall: float = 2.0 * tan(deg_to_rad(n.close_fov) * 0.5)
+	var per_metre := Vector2(tall * view.x / maxf(view.y, 1.0), tall * (1.0 - 2.0 * CineOverlay.BAR_SHARE))
+	var fit: float = maxf(height / per_metre.y, width / per_metre.x)
+	_close_from.position = face + ahead * fit / n.close_fill_from + below
+	_close_to.position = face + ahead * fit / n.close_fill_to + below
+	_close_from.target = face
+	_close_to.target = face
 
 
 ## The camera looks back down the street past the cyborgs into the haze: the street stays built that far back.
@@ -96,9 +145,9 @@ func host_point() -> Vector3:
 	return Vector3(x, 0.0, n.crater_end - n.host_back)
 
 
-## Its face, where the close-up looks (track space): n.face_at from the host.
-func face_point() -> Vector3:
-	return host_point() + n.face_at
+## A point given from the host, in track space.
+func from_host(p: Vector3) -> Vector3:
+	return host_point() + p
 
 
 # --- The runner -------------------------------------------------------------------------------------
@@ -261,7 +310,8 @@ func _add_cyborgs(t: CineTimeline) -> void:
 # --- The cameras ------------------------------------------------------------------------------------
 
 ## High over the crater easing in; the cut to ground level beyond its far edge, rising a little as the runner gets
-## up, then closing in on the host down the street as it looks over; the cut to its face, pushing in.
+## up; the cut to a medium shot of the host as it looks over, easing in; the cut to its face, pushing in (the
+## close-up's keys ride with the host, pointed at its screen at the cut: frame_face).
 func _add_camera(t: CineTimeline) -> void:
 	var k: CineCameraKey = t.shot(0.0, from_edge(n.high_from), from_edge(n.high_look_from), CinePath.Move.LINEAR, n.high_fov)
 	k = t.shot(n.cut_at - 0.004, from_edge(n.high_to), from_edge(n.high_look_to), CinePath.Move.LINEAR, n.high_fov)
@@ -269,16 +319,21 @@ func _add_camera(t: CineTimeline) -> void:
 	k.easing = Tween.EASE_OUT
 	t.shot(n.cut_at, from_edge(n.ground_at), from_edge(n.ground_look), CinePath.Move.CUT, n.ground_fov)
 	t.shot(n.rise_from, from_edge(n.ground_at), from_edge(n.ground_look), CinePath.Move.LINEAR, n.ground_fov)
-	t.shot(n.push_from, from_edge(n.risen_at), from_edge(n.risen_look), CinePath.Move.LINEAR, n.ground_fov)
-	t.shot(n.close_up_at - 0.004, from_edge(n.risen_at), face_point(), CinePath.Move.LINEAR, n.push_fov)
-	k = t.shot(n.close_up_at, n.face_at + n.close_from, n.face_at, CinePath.Move.CUT, n.close_fov)
-	k.follow = &"host"
-	k.watch = &"host"
-	k = t.shot(n.duration, n.face_at + n.close_to, n.face_at, CinePath.Move.LINEAR, n.close_fov)
-	k.follow = &"host"
-	k.watch = &"host"
+	t.shot(n.medium_at - 0.004, from_edge(n.risen_at), from_edge(n.risen_look), CinePath.Move.LINEAR, n.ground_fov)
+	t.shot(n.medium_at, from_host(n.medium_from), from_host(n.medium_look), CinePath.Move.CUT, n.medium_fov)
+	k = t.shot(n.close_up_at - 0.004, from_host(n.medium_to), from_host(n.medium_look), CinePath.Move.LINEAR, n.medium_fov)
 	k.trans = Tween.TRANS_SINE
-	k.easing = Tween.EASE_IN
+	k.easing = Tween.EASE_OUT
+	# Until the cut points them at its screen (frame_face), they look at about where its face will be.
+	var face := Vector3(n.medium_look.x, n.medium_look.y + 0.3, n.medium_look.z)
+	_close_from = t.shot(n.close_up_at, face + Vector3(0.0, 0.0, 0.6), face, CinePath.Move.CUT, n.close_fov)
+	_close_from.follow = &"host"
+	_close_from.watch = &"host"
+	_close_to = t.shot(n.fade_at + n.fade_out, face + Vector3(0.0, 0.0, 0.5), face, CinePath.Move.LINEAR, n.close_fov)
+	_close_to.follow = &"host"
+	_close_to.watch = &"host"
+	_close_to.trans = Tween.TRANS_SINE
+	_close_to.easing = Tween.EASE_OUT
 
 
 # --- Sounds and effects -----------------------------------------------------------------------------
@@ -286,13 +341,15 @@ func _add_camera(t: CineTimeline) -> void:
 func _add_events(t: CineTimeline) -> void:
 	t.effect(0.0, CineEvent.FADE_IN, n.fade_in)
 	t.music(0.0, CineEvent.ZONE_MUSIC, n.music_fade)
-	# Rubble shifting as the runner sits up; the hands slapping onto the edge; a knee onto it.
-	t.sound(n.sit_at - 0.2, &"doodad_push", -10.0)
-	t.sound(n.grab_at, &"doodad_push")
-	t.sound(n.knee_at - 0.1, &"doodad_push", -6.0)
-	# The host's screen crackling as it turns to look; close up, its glitch rising, and whispering under it.
-	t.sound(n.look_at, &"host_short", -6.0)
+	# The crater smouldering; rubble shifting as the runner sits up; the hands slapping onto the edge; a knee onto it.
+	t.sound(0.2, &"crater_smoulder")
+	t.sound(n.sit_at - 0.2, &"rubble_shift")
+	t.sound(n.grab_at, &"edge_grab")
+	t.sound(n.knee_at - 0.1, &"rubble_shift", -4.0)
+	# The host's neck grinding and its screen crackling as it turns to look; close up, its corrupted screen.
+	t.sound(n.look_at, &"host_turn")
 	t.cue(n.close_up_at, &"close_up")
-	t.sound(n.close_up_at, &"magnate_glitch")
-	t.sound(n.close_up_at + 0.2, &"sleep_taker_whisper", -8.0)
-	t.effect(n.duration - n.fade_out, CineEvent.FADE_OUT, n.fade_out)
+	t.sound(n.close_up_at, &"host_glitch")
+	# As the close-up starts to fade to black, the zone's title card, held on the black.
+	t.effect(n.fade_at, CineEvent.FADE_OUT, n.fade_out)
+	t.card(n.fade_at, "{zone}", "ZONE {zone_number}", n.card_seconds)

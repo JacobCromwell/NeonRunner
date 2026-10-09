@@ -436,10 +436,12 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 (`scripts/cinematics/dead_zone_intro/`) in the Dead Zone's intro slot, in place of the arrival flyover. A smoking
 crater, a gap in the street, with the runner lying in it; they shake themselves, get up and reach for its edge; at
 ground level, at first only their hands grab the edge, then they climb out; throughout, two cyborgs lie still down
-the street with a host crouched over them, which looks over as the runner gets up; an extreme close-up of its
-glitching face; black. It adds to the toolkit the poses that play out over time (the runner lying, getting up and
+the street with a host crouched over them, which looks over as the runner gets up; a medium shot of it, then an
+extreme close-up of its glitching face filling the picture; the zone's title card as it fades to black (the owner's
+answers, the same day). It adds to the toolkit the poses that play out over time (the runner lying, getting up and
 climbing out; a cyborg lying still and crouching), a head tip (`look_up`) and a cyborg's head turn, models moving
-on the cinematic's clock, and sound events at their own level. The staging choices are in `docs/questions/f2c.md`.
+on the cinematic's clock, and sound events at their own level; and five sounds of its own
+(`tools/asset_gen/sfx_bank_cinematics.gd`). The staging choices still open are in `docs/questions/f2c.md`.
 
 ---
 

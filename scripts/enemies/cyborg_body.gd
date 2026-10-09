@@ -77,6 +77,9 @@ var screen_power: float = 1.0
 ## head's own frame. Its chest, neck and head share the turn (HEAD_TURN_SHARE) and the tip (HEAD_TIP_SHARE: the
 ## chest a little, so a crouched one straightens to look up).
 var head_turn := Vector2.ZERO
+## Its head jerks now and then (the twitches, standing, walking or crouched); a cinematic may hold it still for
+## a close-up of its face.
+var twitches: bool = true
 ## The shared rig and this cyborg's own material.
 var rig: HumanoidRig
 var material: ShaderMaterial
@@ -343,7 +346,7 @@ func _animate(delta: float) -> void:
 func _add_jitter() -> void:
 	if _dead or (not upper_body_only and (pose == Pose.RUN_AWAY or pose == Pose.LIE)):
 		return
-	var twitching: bool = upper_body_only or pose == Pose.IDLE or pose == Pose.WALK or pose == Pose.CROUCH
+	var twitching: bool = twitches and (upper_body_only or pose == Pose.IDLE or pose == Pose.WALK or pose == Pose.CROUCH)
 	var extra: Dictionary = Poses.jitter(_t, _twitch_phase, twitching and not _aiming)
 	for joint: int in extra:
 		var node: Node3D = rig.joint(HumanoidRig.JOINT_NAMES[joint])
