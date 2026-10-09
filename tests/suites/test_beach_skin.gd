@@ -50,14 +50,19 @@ func run() -> void:
 	check(skin != null, "the beach skin loads")
 	if skin == null:
 		return
-	# No new enemy assets (the owner, October 9, 2026): the Beach's enemies wear an existing look.
-	check(CyborgSuit.LOOKS.has(CyborgSuit.look_for(skin.enemy_variant)) and BeachSkin.new().enemy_variant == skin.enemy_variant,
-		"the beach's enemies wear an existing look (%s)" % skin.enemy_variant)
-	check(not ResourceLoader.exists("res://data/zones/beach.tres"), "the Beach is not a campaign zone yet")
+	# No new enemy assets (the owner, October 9, 2026): the Beach's enemies wear an existing look, the owner's
+	# pick of "whatever fits the theme": the Casino Mob Enforcer.
+	check(CyborgSuit.LOOKS.has(CyborgSuit.look_for(skin.enemy_variant)) and BeachSkin.new().enemy_variant == skin.enemy_variant
+		and skin.enemy_variant == &"casino", "the beach's enemies wear the Casino Mob Enforcer's existing look (%s)" % skin.enemy_variant)
+	# The Beach may have a provisional zone file (data/zones/beach.tres), but it is not in the campaign.
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	check(campaign != null and not campaign.zones.any(func(z: ZoneDef) -> bool: return z != null and z.id == &"beach"),
+		"the Beach is not a campaign zone yet")
 	start_error_count()
 	var env: Environment = skin.make_environment()
 	check(env != null and env.sky != null and env.glow_enabled and env.fog_enabled, "the beach environment has a sky, glow and fog")
 	_palette(skin)
+	_sunset(skin)
 	_sky(skin)
 	for lanes: int in [3, 5, 6]:
 		await whole_level(skin, "beach", BEACH_LEVEL_PATH, lanes)
@@ -67,6 +72,8 @@ func run() -> void:
 	_floor(skin)
 	_boardwalk(skin)
 	await _clear_play_space(skin)
+	await _open_stretches(skin)
+	await _splash(skin)
 	_calm_band(skin)
 	_over_street(skin)
 	_dressing(skin)
@@ -126,6 +133,59 @@ func _palette(skin: BeachSkin) -> void:
 		if _near_colour(c, skin.gap_edge_color) or _near_colour(c, skin.sign_frame_color):
 			like_edge.append(str(c))
 	check(like_edge.is_empty(), "no floor, wall or paint is drawn in a gap edge's or a sign frame's colour: %s" % ", ".join(like_edge))
+
+
+## The Beach's sunset sky (data/skies/beach_sunset.tres, a LevelSky for the last Beach level; the owner, October 9,
+## 2026: "the sun starting to set. Not dark, but the sun's starting to have some purples and oranges in the sky"):
+## it takes the sky shader's own uniforms, stays under the glow threshold (only hazards glow), has no stars, is clearly
+## brighter than the Marketplace's sunset ("not dark"), blue still overhead but softer, warm and purple low down, a
+## glow of orange toward the far end, clouds lit orange and pink over lavender, and its sea, hills and fog
+## re-coloured to match.
+func _sunset(skin: BeachSkin) -> void:
+	var sunset := load("res://data/skies/beach_sunset.tres") as LevelSky
+	check(sunset != null and sunset.use_fog_color, "the Beach's sunset sky loads, with a fog colour")
+	if sunset == null:
+		return
+	var env: Environment = skin.level_environment(0.0, sunset)
+	var day: Environment = skin.make_environment()
+	var m := env.sky.sky_material as ShaderMaterial
+	var names: Array[String] = []
+	for u: Dictionary in m.shader.get_shader_uniform_list():
+		names.append(String(u["name"]))
+	var known: bool = true
+	for uniform: String in sunset.sky:
+		known = known and names.has(uniform)
+	check(known and env.fog_light_color == sunset.fog_color and day.fog_light_color != sunset.fog_color,
+		"it sets the sky shader's own uniforms and the fog's colour over the day's, and leaves the day alone")
+	var el: float = 0.02
+	var horizon: Color = _linear(m, "horizon_color") + _linear(m, "haze_color") * (float(m.get_shader_parameter("haze_strength"))
+		* exp(-el / float(m.get_shader_parameter("haze_height")))) + _linear(m, "sun_glow_color") \
+		* (float(m.get_shader_parameter("sun_glow_strength")) * exp(-el / float(m.get_shader_parameter("sun_glow_height"))))
+	var lit: Color = _linear(m, "cloud_lit_color")
+	check(maxf(horizon.r, maxf(horizon.g, horizon.b)) < env.glow_hdr_threshold and maxf(lit.r, maxf(lit.g, lit.b)) < env.glow_hdr_threshold,
+		"the sunset never glows (brightest %.2f, under %.2f)" % [maxf(horizon.r, maxf(horizon.g, horizon.b)), env.glow_hdr_threshold])
+	check(float(m.get_shader_parameter("star_amount")) == 0.0 and float(m.get_shader_parameter("moon_radius")) == 0.0, "no stars, no moon")
+	# Not dark: well above the Marketplace's sunset overhead and at the horizon.
+	var market := load("res://data/skies/marketplace_sunset.tres") as LevelSky
+	var zenith: Color = _linear(m, "zenith_color")
+	var market_zenith: Color = (market.sky["zenith_color"] as Color).srgb_to_linear()
+	check(_linear_luminance(sunset.sky["zenith_color"]) >= 0.05 and _linear_luminance(sunset.sky["zenith_color"]) >= 3.0 * _linear_luminance(market.sky["zenith_color"]),
+		"clearly brighter overhead than the Marketplace's sunset (%.3f vs %.3f)" % [_linear_luminance(sunset.sky["zenith_color"]), _linear_luminance(market.sky["zenith_color"])])
+	var z: Color = sunset.sky["zenith_color"]
+	check(z.b > z.r and z.b > z.g and zenith.b > market_zenith.b, "blue still overhead")
+	check(horizon.r > horizon.g and horizon.g > horizon.b * 0.9 and horizon.r > 0.5, "warm at the horizon (%s)" % horizon)
+	var haze: Color = sunset.sky["haze_color"]
+	var glow: Color = sunset.sky["sun_glow_color"]
+	check(haze.r > haze.g and haze.b > haze.g and glow.r > glow.g and glow.g > glow.b and float(sunset.sky["sun_glow_strength"]) > 0.15,
+		"purple-pink haze low down and an orange glow toward the far end")
+	var shadow: Color = sunset.sky["cloud_color"]
+	var cloud: Color = sunset.sky["cloud_lit_color"]
+	check(float(sunset.sky["cloud_amount"]) > 0.3 and cloud.r > cloud.g and cloud.g > cloud.b and shadow.b > shadow.g and shadow.r > shadow.g,
+		"clouds lit orange and pink over lavender shadows")
+	var sea: Color = sunset.sky["abyss_color"]
+	var hills: Color = sunset.sky["skyline_color"]
+	check(sea != skin.abyss_color and hills != skin.skyline_color and sea.b > sea.r and sunset.fog_color.r > sunset.fog_color.b,
+		"the sea and the hills are re-coloured, the fog warm")
 
 
 ## The sky: bright daytime, with an island and a sea; its brightest (the horizon's colour with the haze and the
@@ -252,9 +312,11 @@ func _gaps(skin: BeachSkin) -> void:
 		inside, darkest, GAP_CONTRAST, plates, joints])
 	# The water is filled to near the rim (like the reference's tanks) and a fall that ends a run sinks into it;
 	# the chase camera stays above the floor, so above the water, even at that depth.
-	check(skin.pool_depth >= 0.4 and skin.pool_depth <= 1.2 and skin.pool_depth < tuning.fall_death_depth,
-		"the water lies 0.4-1.2 m under the rim, and a fall that ends a run sinks into it: %.2f m vs %.1f m" % [skin.pool_depth,
-		tuning.fall_death_depth])
+	# Below the grapple's pit_depth (the hook fires there, so a grappled runner never reaches the water), above it
+	# by a margin, and above the fall that ends a run.
+	check(skin.pool_depth >= tuning.pit_depth + 0.05 and skin.pool_depth <= 1.2 and skin.pool_depth < tuning.fall_death_depth,
+		"the water lies under the grapple's pit depth (%.2f m) and 1.2 m under the rim, and a fall that ends a run sinks into it: %.2f m vs %.1f m" % [
+		tuning.pit_depth, skin.pool_depth, tuning.fall_death_depth])
 	var camera_low: float = tuning.camera_height - tuning.fall_death_depth * tuning.camera_follow_y
 	check(camera_low > 1.0, "the chase camera at the fall's depth is still above the floor and the water (%.2f m)" % camera_low)
 	# It reads as water, not as black steel: a saturated deep teal, far from the steel's grey and the pads' cyan glow.
@@ -337,7 +399,7 @@ func _gaps(skin: BeachSkin) -> void:
 			for chunk: Node in built.get_children():
 				if not seen.has(chunk):
 					seen[chunk] = true
-					under += _check_below_floor(chunk, skin, layout.length, shade, bad)
+					under += _check_below_floor(chunk, skin, TrackGeometry.new(lanes, tuning).wall_x(), layout.length, shade, bad)
 			d += TrackBuilder.CHUNK_LENGTH
 		check(bad.is_empty() and under > 0, "below the floor there is only the tank's black steel, dark water and the orange edge " +
 			"(%d lanes, %d vertices): %s" % [lanes, under, ", ".join(bad)])
@@ -359,7 +421,7 @@ func _inside_luminance(skin: BeachSkin) -> float:
 ## Checks every vertex of the skin's meshes in `chunk` below the floor (hazards and triggers aside, and the
 ## finish gantry's posts at `finish`): the tank's steel, the water, an orange strip, the halo. Returns how many
 ## there were; problems (up to four) go to `bad`.
-func _check_below_floor(chunk: Node, skin: BeachSkin, finish: float, shade: float, bad: PackedStringArray) -> int:
+func _check_below_floor(chunk: Node, skin: BeachSkin, wall: float, finish: float, shade: float, bad: PackedStringArray) -> int:
 	var count: int = 0
 	for node: Node in nodes_of(chunk, func(n: Node) -> bool: return n is MeshInstance3D):
 		var m := node as MeshInstance3D
@@ -375,6 +437,10 @@ func _check_below_floor(chunk: Node, skin: BeachSkin, finish: float, shade: floa
 			for i: int in verts.size():
 				var p: Vector3 = m.global_transform * verts[i]
 				if p.y >= -0.01 or absf(-p.z - finish) < 1.0:
+					continue
+				# The open beach beyond the wall line (BeachOpen: the sand, the sea, the scenery, the street's seawall) is
+				# seen from outside the street, never through a pool; its own checks are in _open_stretches.
+				if absf(p.x) > wall - 0.001 and roundi(uv2[i].x) != MeshKit.PAT_BEACH_TANK:
 					continue
 				count += 1
 				var c: Color = colors[i]
@@ -589,6 +655,186 @@ func _over_street(skin: BeachSkin) -> void:
 	check(tuning.ceiling_height + BeachCeilings.TOP_LIMIT < BeachShacks.OVER_STREET_MIN,
 		"no ceiling reaches the walls' overhangs: %.1f m over its underside at %.1f m, under %.1f m" % [BeachCeilings.TOP_LIMIT,
 			tuning.ceiling_height, BeachShacks.OVER_STREET_MIN])
+
+
+## The open stretches (BeachSkin.wall_gap, BeachOpen; the owner, October 9, 2026: much longer sections without
+## side walls, "the player can see the surrounding area a little bit better"): hand-built layouts with 100-200 m
+## gaps on one wall and on both, at 3, 5 and 6 lanes. Within the build and surface budgets, no collision added; the
+## standard orange marks stay (the leading edge on the wall's face, the lip along the floor's edge); and inside a
+## gap nothing glows but them, nothing stands up within 4 m of the wall line (nothing to run on), nothing
+## reaches into the street, every lit colour is muted; the scenery is placed the same whichever chunk builds it,
+## keeps its distances, and shows all its kinds; the sea has a shoreline.
+func _open_stretches(skin: BeachSkin) -> void:
+	var sets: Array = [[[1, 60.0, 260.0]], [[-1, 100.0, 300.0]], [[-1, 120.0, 330.0], [1, 150.0, 340.0]]]
+	for lanes: int in [3, 5, 6]:
+		var wall: float = TrackGeometry.new(lanes, tuning).wall_x()
+		for gaps: Array in sets:
+			var layout: LevelLayout = RunSim.layout(lanes, 420.0)
+			var tag: String = "(%d lanes, %s)" % [lanes, str(gaps)]
+			for g: Array in gaps:
+				layout.wall_gaps.append({"side": int(g[0]), "start": float(g[1]), "end": float(g[2])})
+			# The budgets and collision, as for any level.
+			var dressed: Dictionary = await build_all(layout, skin, BUILD_TIMING_PASSES)
+			var bare: Dictionary = await build_all(layout, ZoneSkin.new())
+			var mean_factor: float = load_factor(dressed["reference_times"], MEAN_SAFETY_MARGIN, MEAN_FACTOR_CAP)
+			var max_factor: float = load_factor(dressed["reference_times"], MAX_SAFETY_MARGIN, MAX_FACTOR_CAP)
+			var mean: float = mean_ms(dressed["times"])
+			var worst: float = max_ms(dressed["times"])
+			var surfaces: float = float(dressed["surfaces"]) / dressed["chunks"]
+			check(mean < BUILD_BUDGET_MEAN_MS * mean_factor and worst < BUILD_BUDGET_MAX_MS * max_factor,
+				"open stretches build within budget %s: mean %.2f ms, max %.2f ms (load factor %.2fx/%.2fx)" % [tag, mean, worst, mean_factor, max_factor])
+			check(lanes != 5 or surfaces < SURFACE_BUDGET_PER_CHUNK, "open stretches stay under the surface budget %s: %.1f" % [tag, surfaces])
+			check(dressed["collision_objects"] == bare["collision_objects"] and dressed["collision_shapes"] == bare["collision_shapes"],
+				"open stretches add no collision %s" % tag)
+			# What is drawn inside each gap.
+			var edge: Color = skin.gap_edge_color
+			var faults: PackedStringArray = []
+			var lead := {-1: false, 1: false}
+			var tally := {"lip": 0, "beach": 0, "shore": 0}
+			await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, mat: Material) -> void:
+				if mat == skin.drift_material():
+					return
+				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+				var colors: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+				var xf: Transform3D = m.global_transform
+				for k: int in verts.size():
+					var p: Vector3 = xf * verts[k]
+					var c: Color = colors[k]
+					for g: Dictionary in layout.wall_gaps:
+						var side: int = int(g["side"])
+						var along: float = -p.z
+						var past: float = p.x * float(side) - wall
+						if p.x * float(side) < 0.0:
+							continue
+						if c.r > 0.9 and c.g < 0.5 and c.b < 0.2 and p.y > 3.0 and absf(past) < 0.6 and absf(along - float(g["start"])) < 0.6:
+							lead[side] = true
+						if along > float(g["start"]) - 0.001 and along < float(g["end"]) + 0.001:
+							if c.a > 0.001 and _same_rgb(c, edge) and p.y < 0.1 and past < 0.001 and past > -0.4:
+								tally["lip"] += 1
+							if p.y < -1.3 and past > 0.001:
+								tally["beach"] += 1
+								tally["shore"] += 1 if _same_rgb(c, skin.foam_color) else 0
+						if along < float(g["start"]) + 1.0 or along > float(g["end"]) - 1.0:
+							continue
+						if c.a > 0.001 and not _same_rgb(c, edge) and faults.size() < 6:
+							faults.append("a glow %s at %s in %s/%s" % [c, p, m.get_parent().name, m.name])
+						if c.a == 0.0 and _chroma(c) > MAX_SURFACE_CHROMA + 0.001 and faults.size() < 6:
+							faults.append("a loud colour %s at %s" % [c, p])
+						if c.a == 0.0 and p.y > 0.05 and past > -0.001 and past < 4.0 and faults.size() < 6:
+							faults.append("something stands up %.1f m past the wall line at %s" % [past, p])
+						if c.a == 0.0 and p.y > 0.06 and past < -0.001 and faults.size() < 6:
+							faults.append("something stands in the street at %s" % p))
+			check(faults.is_empty(), "inside the gaps nothing glows but the orange marks, nothing stands near the wall line or in the street, "
+				+ "every colour is muted %s: %s" % [tag, ", ".join(faults)])
+			var led: bool = true
+			for g: Array in gaps:
+				led = led and lead[int(g[0])]
+			check(led and tally["lip"] > 0, "the standard orange leading edge and lip stay %s (lip %d vertices)" % [tag, tally["lip"]])
+			check(tally["beach"] > 100, "the open beach and sea are drawn below the street %s (%d vertices)" % [tag, tally["beach"]])
+			check(tally["shore"] > 0, "the sea has a shoreline of foam %s" % tag)
+	# The scenery: the same whichever chunk builds it (a stretch split anywhere gives the same items), clear of the
+	# gap's ends and the wall line, on the dry sand, in all five kinds.
+	var open: BeachOpen = skin.open()
+	var gap := Vector2(100.0, 700.0)
+	for side: int in [-1, 1]:
+		var whole: Array[Dictionary] = open.placed(side, gap.x, gap.y, gap)
+		var halves: Array[Dictionary] = open.placed(side, gap.x, 333.3, gap)
+		halves.append_array(open.placed(side, 333.3, gap.y, gap))
+		var kinds: Dictionary = {}
+		var bad: PackedStringArray = []
+		for item: Dictionary in whole:
+			kinds[item["kind"]] = true
+			var d: float = item["d"]
+			var lat: float = item["lat"]
+			if d < gap.x + skin.open_margin or d >= gap.y - skin.open_margin or lat < skin.open_near \
+					or lat > BeachOpen.shore(side, d) - BeachOpen.WET - 5.0:
+				bad.append("%s at %.1f m, %.1f m out" % [item["kind"], d, lat])
+		check(whole.size() == halves.size() and str(whole.size()) != "0" and bad.is_empty() and kinds.size() == 5,
+			"the scenery keeps to its places over a 600 m stretch, side %d: %d items in %d kinds, split anywhere the same %d: %s" % [
+			side, whole.size(), kinds.size(), halves.size(), ", ".join(bad.slice(0, 3))])
+		check(str(open.placed(side, 200.0, 300.0, gap)) == str(open.placed(side, 200.0, 300.0, gap)), "and deterministic")
+	var near: float = INF
+	var far: float = -INF
+	for d: float in range(0, 3000, 25):
+		for side: int in [-1, 1]:
+			near = minf(near, BeachOpen.shore(side, d))
+			far = maxf(far, BeachOpen.shore(side, d))
+	check(near >= 12.0 and far > 50.0, "the shoreline swings between near and far (%.1f to %.1f m past the wall line)" % [near, far])
+
+
+## A fall makes a splash (BeachWaterWatch, BeachSplash; the owner, October 9, 2026): built only when the runner's
+## height crosses the water's surface going down inside the piece of street it watches (never above the water, in
+## the grapple's pit, past the piece's ends or beside the street, and once per fall), at the entry point on the
+## water; unlit foam (no glow, no hazard hue), no collision, and it frees itself. In a real RunWorld: a runner
+## who runs into a pool splashes once, one who jumps it or has a grapple hook (which fires at pit_depth, above
+## the water) doesn't, and a street with no pool has none.
+func _splash(skin: BeachSkin) -> void:
+	var water: float = -skin.pool_depth
+	var watch := BeachWaterWatch.new()
+	tree.root.add_child(watch)
+	watch.setup(0.0, 40.0, water, 6.0)
+	var none: bool = not watch.observe(Vector3(0, 0.3, -20), 20.0) and not watch.observe(Vector3(0, -0.2, -20), 20.0) \
+		and not watch.observe(Vector3(0, -tuning.pit_depth, -20), 20.0) and watch.get_child_count() == 0
+	check(none, "no splash above the water or in the grapple's pit (%.2f m, the water at %.2f m)" % [tuning.pit_depth, skin.pool_depth])
+	check(watch.observe(Vector3(1.0, water - 0.05, -22.0), 22.0) and watch.splashes == 1 and watch.get_child_count() == 1
+		and watch.get_child(0) is BeachSplash, "crossing the water going down makes one splash")
+	var splash := watch.get_child(0) as BeachSplash
+	check(splash.global_position.is_equal_approx(Vector3(1.0, water, -22.0)), "at the entry point, on the water (%s)" % splash.global_position)
+	check(not watch.observe(Vector3(1.0, -2.0, -23.0), 23.0) and not watch.observe(Vector3(1.0, -3.0, -23.5), 23.5) and watch.splashes == 1,
+		"sinking on makes no more")
+	var other := BeachWaterWatch.new()
+	tree.root.add_child(other)
+	other.setup(0.0, 40.0, water, 6.0)
+	other.observe(Vector3(0, 0.2, -50), 50.0)
+	var elsewhere: bool = not other.observe(Vector3(0, water - 0.1, -50), 50.0)
+	other.observe(Vector3(9.0, 0.2, -20), 20.0)
+	elsewhere = elsewhere and not other.observe(Vector3(9.0, water - 0.1, -20), 20.0) and other.get_child_count() == 0
+	check(elsewhere, "none past the piece's ends or beside the street")
+	var bad: PackedStringArray = []
+	for node: Node in splash.find_children("*", "", true, false):
+		if node is CollisionObject3D or node is CollisionShape3D or node is Light3D:
+			bad.append(str(node.get_class()))
+		var mi := node as GeometryInstance3D
+		if mi != null and mi.material_override is StandardMaterial3D:
+			var m := mi.material_override as StandardMaterial3D
+			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED or m.emission_enabled or _chroma(m.albedo_color) > 0.15:
+				bad.append("a lit, glowing or coloured material")
+	check(bad.is_empty() and _chroma(BeachSplash.FOAM) < 0.15 and BeachSplash.FOAM.v < 1.0, "the splash is unlit white foam: no collision, no light, no glow %s" % str(bad))
+	# It frees itself after LIFE, however long a frame takes.
+	splash.advance(BeachSplash.LIFE * 0.5)
+	check(not splash.is_queued_for_deletion(), "a splash lives its LIFE")
+	splash.advance(BeachSplash.LIFE)
+	check(splash.is_queued_for_deletion(), "and frees itself")
+	watch.queue_free()
+	other.queue_free()
+	await tree.process_frame
+	check(not is_instance_valid(splash), "freed")
+	# In a real run.
+	var sim := RunSim.new(tree, tuning)
+	sim.trace = true
+	for variant: Array in [["falls into a pool", true, [], 0.0, 1, false], ["jumps it", true, [[66.0, &"jump"]], 0.0, 0, true],
+			["has a grapple hook and a short pool", true, [], 3.0, 0, true], ["runs on a street with no pool", false, [], 0.0, 0, true]]:
+		var layout: LevelLayout = RunSim.layout(5, 200.0)
+		if variant[1]:
+			layout.gaps.append({"lane": 2, "start": 70.0, "end": 70.0 + (variant[3] if variant[3] > 0.0 else 6.0)})
+		var config := LevelConfig.new()
+		config.lane_count = 5
+		config.skin = skin
+		var world: RunWorld = sim.build_world(layout, null, null, config)
+		if variant[3] > 0.0:
+			world.player.grapples = 1
+		var r: Dictionary = await sim.step_world(world, 7.0, variant[2])
+		var splashes: Array[Node] = world.find_children("BeachSplash", "", true, false)
+		var lowest: float = 0.0
+		for frame: Dictionary in r["trace"]:
+			lowest = minf(lowest, float(frame["h"]))
+		var expected: int = int(variant[4])
+		check(splashes.size() == expected and world.player.alive == bool(variant[5]),
+			"a runner who %s: %d splashes (wanted %d), %s, lowest %.2f m" % [variant[0], splashes.size(), expected,
+			"alive" if world.player.alive else "fell", lowest])
+		if variant[3] > 0.0:
+			check(lowest >= -tuning.pit_depth - 0.05, "a grappled runner never reaches the water (%.2f m, the pit at %.2f m)" % [lowest, tuning.pit_depth])
+		await sim.free_world(world)
 
 
 ## The reference's colour at street level and above, within the colour rule: seven bamboo tones that tell

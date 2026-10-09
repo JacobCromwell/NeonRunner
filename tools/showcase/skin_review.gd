@@ -37,6 +37,10 @@ extends Node3D
 ##                   within it. Shot view adds, for each narrow ceiling, the view riding it (the chase
 ##                   camera under it looking up), its far end from below, and the ceiling from the
 ##                   floor beside it.
+##   --open          long side wall gaps (the wall left out for 100-200 m, as the Beach's levels do; any skin's
+##                   wall_gap look): the right wall from 340 m, the left from 420 m, both from 640 m. The shot view
+##                   adds, after the others, the game camera at the start of each stretch, well into it, and a
+##                   look across it from the lane beside the opening, and from above.
 ##   --from=D        the run starts at track distance D (to render only a stretch, such as a drop off
 ##                   a far end)
 ##   --reduced-flashing  Settings > Reduced flashing on (steady warnings instead of flicker)
@@ -51,6 +55,9 @@ extends Node3D
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const LENGTH: float = 900.0
 ## A gap in the middle lane seen from afar (shots 13-16), and how far ahead of the camera it is.
+## With --open: the long wall gaps, as Vector3(side, start, end): the right wall's, the left wall's, then both.
+const OPEN_GAPS: Array[Vector3] = [Vector3(1, 340.0, 500.0), Vector3(-1, 420.0, 620.0), Vector3(1, 640.0, 780.0),
+	Vector3(-1, 640.0, 780.0)]
 const FAR_GAP: float = 830.0
 const FAR_GAP_AHEAD: Array[float] = [150.0, 100.0, 60.0, 30.0]
 ## Where the ceilings start and how long they are (moved a little to get each Marketplace kind).
@@ -202,6 +209,10 @@ func _layout() -> LevelLayout:
 	out.ramps.append({"side": 1, "at": 300.0})
 	out.gaps.append({"lane": 0, "start": 690.0, "end": 697.0})
 	out.gaps.append({"lane": lanes - 1, "start": 700.0, "end": 707.0})
+	# With --open, long wall gaps (see OPEN_GAPS), over open street.
+	if _flag("open"):
+		for g: Vector3 in OPEN_GAPS:
+			out.wall_gaps.append({"side": int(g.x), "start": g.y, "end": g.z})
 	# Gaps coming up in open street, for the distance shots.
 	out.gaps.append({"lane": mid, "start": FAR_GAP, "end": FAR_GAP + 7.0})
 	out.gaps.append({"lane": maxi(mid - 1, 0), "start": FAR_GAP + 20.0, "end": FAR_GAP + 27.0})
@@ -464,6 +475,20 @@ func _shot_list() -> Array:
 	if skin.has_method(&"cult_emblems"):
 		for found: Dictionary in _first_of_each_kind(&"cult_emblems", w):
 			out.append(_close_up(found, w, 4.0, 1.0, 10.0, "the first cult emblem on a %s" % found["kind"]))
+	# With --open: the game camera at the start of each stretch, well into it, and across it from the lane beside
+	# the opening and from above.
+	if _flag("open"):
+		for g: Vector3 in OPEN_GAPS:
+			var side: float = g.x
+			var label: String = "the %s wall's open stretch" % ("right" if side > 0.0 else "left")
+			out.append([g.y - 30.0, Vector3(0.0, tuning.camera_height, -(g.y - 22.0)), Vector3(0.0, 1.0, -(g.y + 30.0)),
+				"%s, from the game camera as it starts" % label])
+			out.append([g.y + 20.0, Vector3(0.0, tuning.camera_height, -(g.y + 50.0)), Vector3(0.0, 1.0, -(g.y + 100.0)),
+				"%s, 50 m in" % label])
+			out.append([g.y + 20.0, Vector3(side * (w - 1.5), 2.6, -(g.y + 40.0)), Vector3(side * 25.0, 0.5, -(g.y + 70.0)),
+				"%s, from the lane beside the opening, looking out" % label])
+			out.append([g.y + 20.0, Vector3(side * (w + 2.0), 18.0, -(g.y + 30.0)), Vector3(side * 22.0, -1.4, -(g.y + 80.0)),
+				"%s, from above the beach" % label])
 	return out
 
 

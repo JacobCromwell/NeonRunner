@@ -111,15 +111,38 @@ func _prepare() -> void:
 		_feed = skin.feed_material()
 
 
-## The wall gaps TrackBuilder is about to dress near a chunk (BeachSkin.note_wall_gaps): remembered, so the
-## strings of lights across the street (drawn with the left wall) skip a mast over a gap on either wall.
+## The wall gaps TrackBuilder is about to dress near a chunk (BeachSkin.note_wall_gaps; the gaps of `side` within a
+## chunk's length of it): remembered, replacing the last chunk's, so the strings of lights across the street (drawn with
+## the left wall) skip a mast over a gap on either wall, and a shack leaves out whatever of it would hang in a gap.
 func note_gaps(side: int, gaps: Array[Vector2]) -> void:
-	var list: Array = _gaps[side]
-	for g: Vector2 in gaps:
-		if not list.has(g):
-			list.append(g)
-	if list.size() > 64:
-		list.pop_front()
+	_gaps[side] = gaps.duplicate()
+
+
+## Whether `side`'s wall has a gap overlapping the track distances [u0, u1] (among the gaps noted).
+func _in_gap(side: int, u0: float, u1: float) -> bool:
+	for g: Vector2 in _gaps[side]:
+		if g.x < u1 and g.y > u0:
+			return true
+	return false
+
+
+## How far an item of the kind reaches along the wall from its middle (a veranda's width is its own): a shack
+## cut by a wall gap leaves out what would stand over the gap.
+func _reach(item: Dictionary) -> float:
+	match StringName(item["kind"]):
+		&"billboard":
+			return 4.5
+		&"sign":
+			return 3.2
+		&"palm", &"industry":
+			return 4.5
+		&"swag":
+			return 1.8
+		&"lanterns":
+			return 1.4
+		&"mask":
+			return 0.7
+	return 3.0
 
 
 ## Whether a gap on either wall lies within `margin` metres of track distance `d`.
@@ -276,21 +299,24 @@ func _shack(batch: MeshBatch, b: Shack, face_x: float, start: float, end: float)
 	_wall(solid, side, face_x, u0, u1, 0.0, skin.band_top, b.bamboo, param)
 	# The upper storeys, with the recessed verandas' openings left out.
 	var holes: Array[Rect2] = []
+	var alcoves: Array[Dictionary] = []
 	for a: Dictionary in b.alcoves:
-		holes.append(Rect2(float(a["u0"]), float(a["y0"]), float(a["u1"]) - float(a["u0"]), ALCOVE_HEIGHT))
+		if not _in_gap(side, float(a["u0"]) - 0.3, float(a["u1"]) + 0.3):
+			alcoves.append(a)
+			holes.append(Rect2(float(a["u0"]), float(a["y0"]), float(a["u1"]) - float(a["u0"]), ALCOVE_HEIGHT))
 	for piece: PackedFloat64Array in open_rects(u0, u1, skin.band_top, b.height, holes):
 		_wall(solid, side, face_x, piece[0], piece[1], piece[2], piece[3], b.bamboo, param)
 	# Its near end, where it stands above a lower neighbour, and its roof.
 	if b.b0 >= start and b.b0 < end:
 		_near_end(solid, b, face_x)
 	_roof(solid, b, face_x, u0, u1)
-	for a: Dictionary in b.alcoves:
+	for a: Dictionary in alcoves:
 		var mid: float = (float(a["u0"]) + float(a["u1"])) * 0.5
 		if mid >= start and mid < end:
 			_alcove(batch, b, a, face_x)
 	for item: Dictionary in b.items:
 		var at: float = item["at"]
-		if at >= start and at < end:
+		if at >= start and at < end and not _in_gap(side, at - _reach(item), at + _reach(item)):
 			_item(batch, b, item, face_x)
 
 
@@ -353,6 +379,27 @@ func _near_end(solid: MeshLayer, b: Shack, face_x: float) -> void:
 		var fringe: float = 0.3 if b.height >= OVER_STREET_MIN else 0.0
 		_quad(solid, Vector3(eave_x, b.height, z), Vector3(eave_x, b.height + fringe, z), Vector3(ridge_x, b.height + ROOF_RISE, z),
 			Vector3(ridge_x, b.height, z), Vector3(0, 0, 1), thatch, MeshKit.PAT_BEACH_THATCH, 0.0)
+
+
+## The end of the shack the wall starts again with at track distance `at` after a wall gap (BeachOpen), drawn
+## where the gap cut it: its end facing the runner from `y0` (the open beach below) up to its roofline and, under
+## a thatched roof, the gable, END_DEPTH back from the face. It stands 0.02 m into the gap, over the standard
+## gap mark's dark slab (ZoneSkin.standard_wall_gap), so the cut reads as a shack's end, not a black block.
+func gap_end_cap(batch: MeshBatch, side: int, face_x: float, at: float, y0: float) -> void:
+	_prepare()
+	var b: Shack = shack(side, lot_run(side, floori((at + 0.01) / skin.lot_length)))
+	var solid: MeshLayer = batch.layer(_solid)
+	var x_back: float = face_x + side * END_DEPTH
+	var x0: float = minf(face_x, x_back)
+	var z: float = -(at - 0.02)
+	solid.rect(Vector3(x0, y0, z), Vector3(END_DEPTH, 0, 0), Vector3(0, b.height - y0, 0), b.bamboo, 0.0, MeshKit.PAT_BEACH_WALL,
+		Vector2(x0, y0), Vector2(x0 + END_DEPTH, b.height), float(b.seed * 8))
+	if b.roof == Roof.THATCH:
+		var ridge_x: float = face_x + side * ROOF_DEPTH
+		var eave_x: float = face_x - side * (EAVE_OUT if b.height >= OVER_STREET_MIN else 0.0)
+		var fringe: float = 0.3 if b.height >= OVER_STREET_MIN else 0.0
+		_quad(solid, Vector3(eave_x, b.height, z), Vector3(eave_x, b.height + fringe, z), Vector3(ridge_x, b.height + ROOF_RISE, z),
+			Vector3(ridge_x, b.height, z), Vector3(0, 0, 1), skin.thatch_color, MeshKit.PAT_BEACH_THATCH, 0.0)
 
 
 ## A shack's roof between track distances u0 and u1: a thatched slope up to the ridge, with the eave's fringe

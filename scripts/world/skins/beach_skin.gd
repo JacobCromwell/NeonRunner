@@ -83,7 +83,7 @@ extends ZoneSkin
 @export var kerb_color: Color = Color(0.62, 0.49, 0.30)
 
 @export_group("Pools")
-## DESIGN-TBD (docs/questions/d10.md): the owner's decision that gaps are pools of water. The pool tank is
+## The owner's decision that gaps are pools of water (docs/questions/d10.md). The pool tank is
 ## black and gunmetal steel with rust streaks, flush in the sand (the reference's tanks stand proud of it:
 ## a raised rim would read as an obstacle that isn't there), filled to pool_depth below the floor like the
 ## reference's near-full tanks: seen from the game camera (4.2 m up) the water shows from about ten metres,
@@ -94,7 +94,7 @@ extends ZoneSkin
 ## and soft glints (also unlit), never glowing (the reference's glowing turquoise is too close to the
 ## anti-grav pads' cyan), and darker than any floor (tests/suites/test_beach_skin.gd): a pool still reads as
 ## a hole like every gap.
-@export_range(0.4, 1.2, 0.05, "suffix:m") var pool_depth: float = 0.65
+@export_range(0.4, 1.2, 0.05, "suffix:m") var pool_depth: float = 0.45
 ## The tank's black steel above the water, kept far darker than any floor material.
 @export var gap_inside_color: Color = Color(0.06, 0.065, 0.075)
 @export var tank_rust_color: Color = Color(0.26, 0.12, 0.06)
@@ -107,6 +107,27 @@ extends ZoneSkin
 ## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the tonemapper
 ## lift the green, and it must stay orange, not sign yellow.
 @export var gap_edge_color: Color = Color(1.0, 0.25, 0.04)
+
+@export_group("Open stretches")
+## The owner (October 9, 2026): "much longer sections where there aren't sidewalls, and the player can see the
+## surrounding area a little bit better". Where a side wall has a gap (BeachOpen) the street is a promenade
+## beach_drop above an open beach: sand, a shoreline (damp sand, foam, turquoise shallows, deeper water) and
+## scenery (palms, umbrellas and loungers, surfboards stuck in the sand, a low hut), unlit muted colours.
+## DESIGN-TBD (docs/questions/d10.md): the drop, the shore and the scenery's amounts are placeholders.
+@export_range(0.8, 3.0, 0.05, "suffix:m") var beach_drop: float = 1.4
+@export var wet_sand_color: Color = Color(0.50, 0.40, 0.28)
+@export var foam_color: Color = Color(0.93, 0.95, 0.93)
+@export var sea_shallow_color: Color = Color(0.50, 0.80, 0.74)
+@export var sea_mid_color: Color = Color(0.22, 0.62, 0.66)
+@export var sea_deep_color: Color = Color(0.12, 0.50, 0.58)
+## Scenery per 12 m cell of a side's open stretch (chances), how far it stays from a gap's ends and from the
+## wall line (nothing near the wall line stands up like a wall to run on, nothing reaches into the street).
+@export_range(0.0, 1.0, 0.01) var open_palm_share: float = 0.5
+@export_range(0.0, 1.0, 0.01) var open_umbrella_share: float = 0.4
+@export_range(0.0, 1.0, 0.01) var open_board_share: float = 0.3
+@export_range(0.0, 1.0, 0.01) var open_hut_share: float = 0.45
+@export_range(4.0, 30.0, 0.5, "suffix:m") var open_margin: float = 9.0
+@export_range(6.0, 30.0, 0.5, "suffix:m") var open_near: float = 9.0
 
 @export_group("Motion")
 ## The still floor's motion cues (the owner's review): per 40 m of track, sand blowing along the street,
@@ -255,15 +276,17 @@ var _shacks: BeachShacks
 var _ceilings: BeachCeilings
 var _props: BeachProps
 var _doodads: BeachDoodads
+var _open: BeachOpen
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a ceiling across every lane
 ## reaches from wall to wall, and a narrow one knows which of its sides reach a wall.
 var _wall_x: float = 0.0
 
 
 func _init() -> void:
-	# No new enemy assets for the Beach (the owner, October 9, 2026): the base cyborg, clean enemies.
-	# DESIGN-TBD (docs/questions/d10.md): which existing look the Beach's enemies wear.
-	enemy_variant = &"city"
+	# No new enemy assets for the Beach (the owner, October 9, 2026): "reuse one of the existing cyborg looks,
+	# whatever fits the theme of this zone the best": the Casino Mob Enforcer (a mob running the bars and
+	# lounges fits a party strip, and the Barnacle Turret's furry creature look, on &"casino", suits a beach).
+	enemy_variant = &"casino"
 
 
 func make_environment() -> Environment:
@@ -297,21 +320,37 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	var batch := MeshBatch.new()
 	shacks().build(batch, side, face_x, start, end)
 	sand().below_wall(batch, side, face_x, start, end)
+	# The beach and the sea run on behind the shacks, so a gap never shows an edge of the world.
+	open().ground(batch, side, face_x, start, end, BeachShacks.END_DEPTH)
 	if side < 0:
 		sand().below(batch, absf(face_x), start, end)
 		shacks().overhead(batch, absf(face_x), start, end)
+		watch_water(parent, absf(face_x), start, end)
 	batch.commit(parent)
 
 
-## A wall gap (ZoneSkin.wall_gap), and with the left wall the pool water below (the street below it still
-## needs its water, and the strings of lights across it are left out: no building to hang them from).
+## A wall gap (ZoneSkin.wall_gap; the owner, October 9, 2026: long open stretches): the surrounding beach and
+## sea beyond the wall line, chunk by chunk (BeachOpen) with the standard gap marks, and with the left wall the
+## pool water below (the street below it still needs its water, and the strings of lights across it are left
+## out: no building to hang them from).
 func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	_wall_x = absf(face_x)
-	super(parent, side, face_x, start, end, gap)
+	var batch := MeshBatch.new()
+	open().build(batch, side, face_x, start, end, gap)
+	sand().below_wall(batch, side, face_x, start, end)
 	if side < 0:
-		var batch := MeshBatch.new()
 		sand().below(batch, absf(face_x), start, end)
-		batch.commit(parent)
+		watch_water(parent, absf(face_x), start, end)
+	batch.commit(parent)
+
+
+## The watch for a fall into the pool water under [start, end) of the street (BeachWaterWatch: it makes the splash
+## when the runner crosses the water's surface; inert outside a RunWorld). Built with the left wall's piece, which
+## carries the water plane.
+func watch_water(parent: Node3D, half_width: float, start: float, end: float) -> void:
+	var watch := BeachWaterWatch.new()
+	watch.setup(start, end, -pool_depth, half_width)
+	parent.add_child(watch)
 
 
 ## The wall gaps near the chunk about to be built (ZoneSkin.note_wall_gaps): kept, so the strings of lights
@@ -498,6 +537,12 @@ func props() -> BeachProps:
 	if _props == null:
 		_props = BeachProps.new(self)
 	return _props
+
+
+func open() -> BeachOpen:
+	if _open == null:
+		_open = BeachOpen.new(self)
+	return _open
 
 
 func doodads() -> BeachDoodads:

@@ -136,6 +136,7 @@ volume_db = {
 "slide": -8.0,
 "slow_time_off": -4.5,
 "slow_time_on": -1.0,
+"splash": -4.5,
 "star": -6.0,
 "stomp": -2.0,
 "swarm_chitter": -2.0,
@@ -199,6 +200,7 @@ pitch_variation = {
 "octodog_lunge": 0.04,
 "screech_swipe": 0.05,
 "slide": 0.05,
+"splash": 0.05,
 "stomp": 0.04,
 "wall_enter": 0.04,
 "wall_jump": 0.03
