@@ -13,8 +13,8 @@ extends SkinSuite
 ##   keep-out (WallGapPlacement.keep_outs) and with no wall credit inside one; City levels and every
 ##   boss arena have none, and a level is otherwise the same without the feature.
 
-const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "corporate/1",
-	"corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "casino/1", "casino/2",
+	"corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
 const WITHOUT: Array = ["city/1", "city/2", "city/3"]
 
 

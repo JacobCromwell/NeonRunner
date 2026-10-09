@@ -100,7 +100,7 @@
     {"match": "data/world/*", "suites": ["cult_emblem", "cult_feed", "*_skin"]},
     {"match": "data/bosses/city_boss*", "suites": ["floating_head*", "bosses"]},
     {"match": "data/bosses/gangland_boss*", "suites": ["sewer_swarm*", "bosses"]},
-    {"match": "data/bosses/marketplace_boss*", "suites": ["the_house*", "bosses"]},
+    {"match": "data/bosses/casino_boss*", "suites": ["the_house*", "bosses"]},
     {"match": "data/bosses/corporate_boss*", "suites": ["hostile_takeover*", "bosses"]},
     {"match": "data/bosses/dead_zone_boss*", "suites": ["sleep_taker*", "bosses"]},
     {"match": "data/bosses/*", "suites": ["bosses"]},

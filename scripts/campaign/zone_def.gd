@@ -1,7 +1,7 @@
 class_name ZoneDef
 extends Resource
-## One zone (GDD §6): 1–3 levels plus a boss, with its own look (skin) and music. Zones that
-## aren't designed yet are placeholders: listed as "coming soon", with no levels.
+## One zone (GDD §6): 1–3 levels plus a boss (the Marketplace has none), with its own look (skin) and
+## music. Zones that aren't designed yet are placeholders: listed as "coming soon", with no levels.
 
 @export var id: StringName = &""
 @export var display_name: String = ""
@@ -17,15 +17,18 @@ extends Resource
 @export var levels: Array[LevelConfig] = []
 ## The run speed of the zone's levels (GDD §3, owner's playtest September 30, 2026: about 21 m/s in
 ## the Neon City, rising zone by zone to about 25 m/s in the Golden Zone). A level may set its own
-## (LevelConfig.run_speed); 0: the movement tuning's base run speed. Boss fights keep the base speed.
-## The generator stretches its patterns and margins with it, and the enemies their along-track
-## distances and speeds, so every warning and reaction window keeps its seconds
-## (MovementTuning.pace). DESIGN-TBD: each zone's value (a straight rise from 21 to 25 m/s).
+## (LevelConfig.run_speed); 0: the movement tuning's base run speed. The zone's boss fight runs at it too
+## (Campaign.run_speed_for). The generator stretches its patterns and margins with it, and the enemies their
+## along-track distances and speeds, so every warning and reaction window keeps its seconds
+## (MovementTuning.pace). DESIGN-TBD: each zone's value (a straight rise from 21 to 25 m/s over the first six
+## zones; the Casino's 23, added between the Marketplace's 22.6 and Corporate's 23.4, docs/questions/k2.md).
 @export_range(0.0, 40.0, 0.1, "suffix:m/s") var run_speed: float = 0.0
 ## Optional cinematic before the first level.
 @export var intro: CinematicDef
 ## Optional cinematic before the boss.
 @export var boss_intro: CinematicDef
+## The zone's boss (GDD §10); none for a zone that leads straight into the next (the Marketplace, into the
+## Casino: owner, October 8, 2026).
 @export var boss: BossDef
 ## Optional cinematic after the boss.
 @export var outro: CinematicDef

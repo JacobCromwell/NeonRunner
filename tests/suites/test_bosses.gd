@@ -113,9 +113,13 @@ func _test_data() -> void:
 		check(sfx.stream(sound) != null, "the test boss's sound %s exists" % sound)
 
 	# The campaign's boss slots carry the standard armor rule (GDD §10: 15–17 s; the Floating Head 10–15).
+	# The Marketplace has none (GDD §10: it leads straight into the Casino, whose boss The House now is).
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for zone: ZoneDef in campaign.zones:
 		var b: BossDef = zone.boss
+		if b == null:
+			check(zone.id == &"marketplace", "only the Marketplace has no boss slot (%s)" % zone.id)
+			continue
 		var gentle: bool = zone.id == &"city"
 		check(b.armor_rule and is_equal_approx(b.armor_delay_min, 10.0 if gentle else 15.0)
 			and is_equal_approx(b.armor_delay_max, 15.0 if gentle else 17.0),
