@@ -436,10 +436,12 @@ many Buzz Overdrives revved or let the runner pass:
 its header lists the options).
 
 `tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase over simulated runs of the
-levels with the truck, a god-mode runner keeping to each lane in turn: its showings, its planned showing window and
-whether it was used, and why a chase had none: `godot --headless --fixed-fps 60 -s res://tools/measure/enforcer_shows.gd
--- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N] [--out=build/measure/x.json]` (all six
-levels at every lane count and lane take about twenty minutes; its header lists the options).
+levels with the truck, a god-mode runner keeping to each lane in turn: its showings, its planned showing window,
+whether that comes before the chase's first bait and whether it was used, and why a chase had none; the totals count
+the chases with a window before their bait and the runs with a showing: `godot --headless --fixed-fps 60 -s
+res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N]
+[--out=build/measure/x.json]` (all six levels at every lane count and lane, on their own seeds, take about three
+minutes; its header lists the options).
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
 (obstacle rows, holes, enemies, big attacks, mechanics, zone doodads and the pushes a runner who ignores them
