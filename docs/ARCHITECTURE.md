@@ -886,9 +886,9 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     what's in play). Its stay must leave the runner a lane to dodge into for everything blocking their lane
     (`can_dodge`: holes, fences, doodads, floor enemies, a floor cut's lane window; with `DODGE_ROOM_SECONDS`
     to step around each) at 3, 5 and 6 lanes; to a runner by a wall (an outer lane) it shows itself two lanes
-    in, leaving them the lane between (`sides`, `escape_lane`; task C6c, DESIGN-TBD: beside them it would take
-    their only lane to dodge into, and at 5 and 6 lanes it would hide up to 25 m of their lane from the camera,
-    which sits inward of them), held to the same rule both ways (the lane between open where theirs is blocked,
+    in, leaving them the lane between (`sides`, `escape_lane`; task C6c, the owner's answer of October 9, 2026,
+    GDD §9.13 "Room to show itself": beside them it would take their only lane to dodge into, and at 5 and 6 lanes
+    it would hide up to 25 m of their lane from the camera, which sits inward of them), held to the same rule both ways (the lane between open where theirs is blocked,
     theirs open where the lane between is); never to a runner off the floor; and its own lane must be clear
     where the camera sees it there (`lane_clear`: no fence, doodad, floor enemy, pad, speed pad or ramp, nor a
     hole too wide to hop until it's rejoined the runner's lane; it hops the others), so it's never beside a
@@ -1130,11 +1130,12 @@ at least `bait_before_seconds` before it would give up (`in_chase`); where it ca
 the feature's start, never while a bait attacks (`arrival_keep_outs`: an Octodog's planned charges, a Buzz
 Overdrive's attack window), up to `per_level_max` (2) a level, never two at once (each one's chase and drop
 back `spacing_seconds` from the next); in a level paced in bursts it arrives in a burst where it can
-(`pacing_pools`). The earliest baits get them first (with its showing windows planned, the ones whose chases hold
-the most windows: Showing windows, below). Its params list the baits in its chase (`baits`).
+(`pacing_pools`). The earliest baits get them first (with its showing windows planned, the ones whose chases have
+room for its showing before their bait: Showing windows, below). Its params list the baits in its chase (`baits`).
 Corporate 2 introduces it at a start of its own, 5% into the level (before the Tithe Collector's 10%; the
 level's only baits at 3 and 6 lanes come within its first 32 s), so its first truck arrives within the
-campaign's introduction reach.
+campaign's introduction reach (on other seeds an introduction whose first bait has no room may come later: Showing
+windows, below).
 It takes no room: `keep_out()` is empty and it uses no floor, and its entries take seeds of their own, so a
 level with the feature is the same level plus its trucks and their showing windows (below), but for the danger
 density pass, which counts every enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six
@@ -1157,10 +1158,21 @@ preferred first) before mid-chase, mid-chase before its first bait before after 
 stretch, it takes out what's in the way, only what the showing needs gone: plain holes and fences (never a pulsing
 fence or one a fence generator powers), plain cyborgs, window cyborgs and Screeches (never a host, the first of a
 kind the level introduces, or the last of its kind or of one of the level's features: the generator would build the
-level again for a missing feature). The baits that get trucks are those whose chases hold the
-most windows (then the most chases, then the earliest; a level that introduces the truck keeps its first bait's
-chase). The window goes in the truck's params (`show`: {at, from, to}); `gen.show_window_result` reports each
-chase (its window, its arrival against the preferred one, what it took out, or why none). Every later pass keeps
+level again for a missing feature). **Which baits get trucks** (task C6d; the owner, October 9, 2026, GDD §9.13
+"Room to show itself": it shows itself before the player can bait it, and a chase with no room for that gives its
+truck to another bait's chase that has room): of every set of baits whose chases fit together (planned along the
+track, each one again around the chases before it), the one with the most windows before their first bait, then the
+most windows, then the most chases, then the earliest (`_choose`). A pair is also planned the other way round, the
+later chase's window first and the earlier truck arriving earlier around it (`_plan_set`); the planner itself tries
+every arrival a bait allows, the earliest too, before it settles for a window after the bait. A level that
+introduces the truck keeps its first bait's chase where that has room before its bait, and otherwise moves its
+introduction only to a chase where it shows itself before its bait (its first-encounter hint is the level intro's,
+and the cyborg planted in a charge path that teaches it comes earlier in the campaign, `test_charge_paths`). A later
+window whose take-outs would now leave none of a kind after an earlier window's is planned again
+(`ShowPlanner.still_fits`; none in the sampled builds). The window goes in the truck's params (`show`: {at, from,
+to}); `gen.show_window_result` reports each chase (its bait, its window, its arrival against the preferred one,
+what it took out, or why none) and each bait's own chase (`baits`: a window before or after the bait, or none, and
+whether it got a truck). Every later pass keeps
 off each window, `WINDOW_EDGE` (1 m) wider, as a **calm stretch** (`doodad_keep_outs` entries with `calm: true`):
 nothing it adds may stand or attack there, but it's no attack, so nothing keeps a spacing from it and it shapes no
 pass's search for room. The danger density pass rejects an enemy (where it stands, `CALM_ROOM` either side, and its
@@ -1183,7 +1195,22 @@ bands stay as they were; the windows cost the six levels about 2% of their enemi
 3281 to 3226 on their own seeds: what they took out, and what the fill pass and the pass's rows found no room
 for). Every level without the truck, and every level with it with the switch off, builds exactly as before. The
 planning adds about a quarter to those levels' build time (50-330 ms a build; the longest, Dead Zone 1 at 5 lanes,
-1.9 s against 1.7 s). DESIGN-TBD (`docs/OPEN_QUESTIONS.md` items 382–386).
+1.9 s against 1.7 s). Task C6d (which baits get trucks, above) changes nothing on the levels' own seeds (every
+campaign build is byte for byte as before): 9 of the 23 chases have a window before their bait (8 as it arrives,
+1 mid-chase), 7 one after it, 7 none, and no other bait with room is left for any of those 14. The level's only
+usable bait comes too soon for any showing before it (Golden 1 at 3 and 6 lanes, Golden 2 and 3 at 6: a Buzz
+Overdrive revs 6.4 s in, 4 s after the run-up; Corporate 2 at 6 lanes: an Octodog's charges at the start keep the
+truck from arriving earlier than 4.5 s before its Buzz Overdrive's turn), its only chase has a hover truck or a
+Gilded Sentinel about throughout (Dead Zone 1 at 6 lanes, Golden 2 at 3, Golden 3 at 5), or its other bait with room
+already has the level's other truck (Corporate 2 at 5 lanes: its introduction, a Tithe Collector about and then its
+bait too near; Dead Zone 1 at 3 lanes; Dead Zone 2 at 5 and 6 lanes), or neither of its two baits has room (Dead Zone
+2 at 3 lanes: pulsing fences and no lane beside a runner by the wall before its first; a hover truck over its
+second). On 8 other seeds each (144 builds), 9 builds change: 71 of 226 chases have a window before their bait
+against 63 of 227 (27 after it against 32); in two a level keeps one truck that shows itself where it had two that
+didn't, and in one a pair planned the other way round gets back the second truck C6c's order dropped. A wider gap
+(task G7) comes before a window only where that window comes after its bait (6 of 27). DESIGN-TBD: items 386
+(`docs/OPEN_QUESTIONS.md`) and the chases no bait with room is left for (`docs/questions/c6d.md`); items 382–385
+are the owner's answers.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -3597,7 +3624,13 @@ it, two lanes in from a runner by a wall (C6c); `EnforcerTruckRoom.can_dodge` ne
 both ways two lanes in); its showing windows (C6c: on every level that lists it at 3, 5 and 6 lanes, own seed and
 another, each planned window lies in its chase and holds in the finished level, `ShowPlanner.problem_of`, with no
 zone doodad, filler, wider gap, danger density row or enemy, or planted cyborg in it; Corporate 2 at 3 lanes plans
-its first truck's arrival showing; the windows each level gets are printed); its blast (seen wherever it goes off, never
+its first truck's arrival showing; the windows each level gets are printed); the chases with room (C6d: on a plain
+track with two Octodogs, one truck a level goes to the bait whose chase has room for its showing before it, the
+introduction too, and stays at the first where that has room, and two a level take both; on every level that lists
+it at 3, 5 and 6 lanes, own seed and two others, every truck, moved or arriving earlier, keeps its placement rules,
+and a truck without a window before its bait has no free bait with one that its level could give it beside its other
+truck, nor a level with fewer trucks than it may have; Corporate 2 always introduces it; the chases' windows before
+and after the bait are printed); its blast (seen wherever it goes off, never
 in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
@@ -3807,13 +3840,15 @@ of running (what stays the same at every speed)
 --routes=ramp,wall,ceiling`; `--e1c` measures E1c's numbers, `--second-move` adds the in-air move; the
 default run takes a few minutes).
 
-`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b, C6c) over
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b, C6c, C6d) over
 simulated runs of the campaign's levels with the truck, a god-mode runner keeping to each lane in turn (AttackWatch's,
 jumping the holes in its lane, baiting nothing): each truck's arrival, its showings (`+` for the arrival showing),
-its planned window and whether a showing began in it, and for a chase without one why not (`show_problem()`'s shares,
-or what destroyed it before its window was due); the totals by lane count (`godot --headless --fixed-fps 60 -s
-res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N]
-[--out=build/measure/x.json]`; all six levels at 3, 5 and 6 lanes, every lane, take about twenty minutes).
+its planned window, whether that comes before its chase's first bait (`gen.show_window_result`) and whether a showing
+began in it, and for a chase without one why not (`show_problem()`'s shares, or what destroyed it before its window
+was due); the totals by lane count, of the chases (each once: with a window before their bait, after it, none) and
+of the runs (`godot --headless --fixed-fps 60 -s res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2]
+[--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N] [--out=build/measure/x.json]`; all six levels at 3, 5 and 6
+lanes, every lane, take about three minutes on their own seeds).
 
 `tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
 own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the
