@@ -7,8 +7,9 @@ extends RefCounted
 ## action &"dash" starts the juggernaut dash on the Player itself (PowerupTuning's duration and speed, as
 ## DashPowerup.trigger does, with no cooldown); any other is pressed.
 ## `probes`: distances at which to record the player's state in result["at"][distance].
-## The result also holds how many times zone doodads pushed the player ("pushes") and how many the dash
-## smashed ("smashes").
+## The result also holds how many times zone doodads pushed the player ("pushes") and how many things the dash
+## smashed ("smashes"), and the dash walls they crashed through without it ("crashes") or passed on a side wall
+## ("wall_passes"; task H7a).
 ##
 ## Full worlds (enemies, projectiles, credits, score) for interaction tests:
 ##   var world: RunWorld = sim.build_world(layout, loadout)
@@ -90,6 +91,8 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	result["grounded"] = player.grounded
 	result["pushes"] = player.pushes
 	result["smashes"] = player.smashes
+	result["crashes"] = player.crashes
+	result["wall_passes"] = player.wall_passes
 	world.queue_free()
 	await tree.process_frame
 	return result

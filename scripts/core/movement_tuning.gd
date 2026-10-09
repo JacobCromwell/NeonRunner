@@ -163,11 +163,12 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(6.0, 16.0, 0.1, "suffix:m") var dash_wall_height: float = 9.0
 ## DESIGN-TBD: how deep the building is along the track (the runner bursts through it in a tenth of a second).
 @export_range(0.5, 6.0, 0.1, "suffix:m") var dash_wall_depth: float = 2.5
-## DESIGN-TBD: the strip beside each side wall the building leaves open, from the wall face in (GDD §9.14:
-## "it blocks only the floor"): a wall runner's body reaches about a hurtbox's height (1.09 m) out from the
-## wall, a floor runner's in the middle of the outer lane to half a lane's width (1.2 m) less half its body
-## from the wall face, so the hitbox's edge (this plus dash_wall_inset in) lies between the two: it catches
-## the floor runner and never the wall runner.
+## DESIGN-TBD: the strip beside each side wall the building leaves open, from the side wall's face in (GDD
+## §9.14: "it blocks only the floor"; a player running on a side wall passes it). The hitbox's edge, this plus
+## dash_wall_inset in from the wall's face, lies between the two runners' bodies: a wall runner's reaches a
+## hurtbox's height (1.09 m) out from the wall's face, so it stays about 0.26 m clear of it; a floor runner's
+## in the middle of the outer lane comes to wall_margin plus half a lane less half its body (1.28 m) from the
+## wall's face, so most of it (0.38 m of its 0.45 m) is inside it.
 @export_range(0.9, 1.6, 0.01, "suffix:m") var dash_wall_wall_room: float = 1.2
 ## DESIGN-TBD: how much smaller the hitbox is than the look, at its sides and its face.
 @export_range(0.0, 0.5, 0.01, "suffix:m") var dash_wall_inset: float = 0.15

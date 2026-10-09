@@ -6,8 +6,9 @@ extends RefCounted
 ##   lane is a hole is longer than a jump (a floor cut's stretch counts as a hole), fences stand on
 ##   floor, ramps stand on floor with no sign at their wall entry, nothing lies in the end-clear
 ##   stretch, every ceiling keeps GDD §3 (check_ceilings), every zone doodad stands where its push is
-##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), and the level's wider gaps
-##   keep theirs (check_wide_gaps, task G7).
+##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), the level's wider gaps
+##   keep theirs (check_wide_gaps, task G7), and every dash wall stands where it's fair (check_dash_walls,
+##   task H7a).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -26,6 +27,7 @@ extends RefCounted
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 const BuzzOverdriveRulesScript = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+const DashWallRulesScript = preload("res://scripts/enemies/dash_wall_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 
@@ -64,6 +66,106 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_cuts(suite, layout, config, tag)
 	check_wall_fences(suite, layout, config, tag)
 	check_wide_gaps(suite, layout, config, tag)
+	check_dash_walls(suite, layout, config, tag)
+
+
+## Dash walls (task H7a; GDD §9.14, owner, October 8, 2026), wherever the generator stands one (dash_wall_rules.gd),
+## at any lane count, at the level's own run speed (DashWallTuning's times are seconds at it, or at the dash's
+## speed, so they hold at every zone's speed):
+## - only in a level with the `dash_wall` feature, never before its start; MovementTuning.dash_wall_depth deep;
+##   its footprint between the run-up and the end-clear stretch;
+## - faces at least the spacing apart (the dash's longest cooldown, the margin, and the ground a dash adds);
+## - its footprint (approach_seconds before its face to after_seconds past its back, at the dash's speed) holds
+##   no hole, fence, floor cut's window, doodad, speed pad, pad's zone, ramp or the wall run it launches, and no
+##   ceiling from its start to its landing zone's end ("no ceiling overlaps a dash wall");
+## - at least one side wall open to run past it (no sign from wall_route_seconds before its face to its back),
+##   and neither holds a wall gap or a wall fence there;
+## - nothing that invites a dash comes within the spacing before its face (a Buzz Overdrive's charge meeting
+##   the runner, a fence generator, a zone doodad);
+## - and the generator's own re-check finds nothing (DashWallRules.problems: the enemies' keep-outs too).
+static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	if layout.dash_walls.is_empty():
+		return
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var speed: float = tuning.run_speed
+	var t: DashWallTuning = DashWallTuning.load_default()
+	var pt := load("res://data/tuning/powerups.tres") as PowerupTuning
+	var zones := CeilingZones.make(config, tuning)
+	var dash: float = speed + pt.dash_speed_bonus
+	var approach: float = t.approach_seconds * dash
+	var after: float = t.after_seconds * dash
+	var longest: float = pt.dash_cooldown
+	for c: float in pt.dash_upgrade_cooldowns:
+		longest = maxf(longest, c)
+	var spacing: float = (longest + t.cooldown_margin_seconds) * speed + pt.dash_duration * pt.dash_speed_bonus
+	var route: float = t.wall_route_seconds * speed
+	var half: float = tuning.fence_depth * 0.5
+	suite.check(config.has_feature("dash_wall"), "dash walls only in a level with the feature " + tag)
+	var start: float = config.feature_start("dash_wall") * layout.length
+	var prev: float = -INF
+	for w: Dictionary in layout.dash_walls:
+		var face: float = float(w["start"])
+		var back: float = float(w["end"])
+		var at: String = "the dash wall at %.1f m %s" % [face, tag]
+		suite.check(face >= start - 0.01, "%s comes after its feature's start (%.0f m)" % [at, start])
+		suite.check(absf(back - face - tuning.dash_wall_depth) < 0.01, "%s is %.2f m deep" % [at, tuning.dash_wall_depth])
+		suite.check(face - approach >= config.start_clear_distance - 0.01 and back + after <= layout.length - config.end_clear_distance + 0.01,
+			"%s keeps its footprint between the run-up and the end-clear stretch" % at)
+		suite.check(face - prev >= spacing - 0.01, "%s is %.0f m after the one before (at least %.0f m)" % [at, face - prev, spacing])
+		prev = face
+		var fp := Vector2(face - approach, back + after)
+		for g: Dictionary in layout.gaps:
+			suite.check(not (float(g["start"]) <= fp.y and float(g["end"]) >= fp.x), "%s has no hole around it (%.1f m)" % [at, float(g["start"])])
+		for f: Dictionary in layout.fences:
+			suite.check(not (float(f["at"]) - half <= fp.y and float(f["at"]) + half >= fp.x), "%s has no fence around it (%.1f m)" % [at, float(f["at"])])
+		for c: Dictionary in layout.cuts:
+			var win: Vector2 = FloorCutPlan.window(c, speed)
+			suite.check(not (win.x <= fp.y and win.y >= fp.x), "%s isn't in a floor cut's window (%.0f-%.0f m)" % [at, win.x, win.y])
+		for d: Dictionary in layout.doodads:
+			suite.check(not (float(d["start"]) <= fp.y and float(d["end"]) >= fp.x), "%s has no doodad around it" % at)
+			suite.check(not (float(d["start"]) >= face - spacing and float(d["start"]) <= face), "%s has no doodad in the spacing before it (%.1f m)" % [at, float(d["start"])])
+		for sp: Dictionary in layout.speed_pads:
+			suite.check(not (float(sp["at"]) <= fp.y and float(sp["at"]) + tuning.speed_pad_length >= fp.x), "%s has no speed pad around it" % at)
+		for pad: Dictionary in layout.pads:
+			var zone: Vector2 = zones.pad_zone(float(pad["at"]))
+			suite.check(not (zone.x <= fp.y and zone.y >= fp.x), "%s has no anti-grav pad around it" % at)
+		for r: Dictionary in layout.ramps:
+			var run_end: float = maxf(RampLaunch.of(r, tuning, speed).end(), float(r["at"]) + tuning.ramp_length)
+			suite.check(not (float(r["at"]) <= fp.y and run_end >= fp.x), "%s has no ramp or ramp wall run around it" % at)
+		for h: Dictionary in layout.hulls:
+			var landing: Vector2 = zones.landing_zone(h)
+			suite.check(not (float(h["start"]) <= fp.y and landing.y >= fp.x),
+				"%s has no ceiling or landing zone around it (%.0f-%.0f m)" % [at, float(h["start"]), landing.y])
+		var win := Vector2(face - route, back)
+		var open: int = 0
+		for side: int in [-1, 1]:
+			var clear: bool = true
+			for sg: Dictionary in layout.signs:
+				if int(sg["side"]) == side and float(sg["start"]) <= win.y and float(sg["end"]) >= win.x:
+					clear = false
+			open += 1 if clear else 0
+			for wg: Dictionary in layout.wall_gaps:
+				suite.check(not (int(wg["side"]) == side and float(wg["start"]) <= win.y and float(wg["end"]) >= win.x),
+					"%s has no side wall gap beside it" % at)
+			for wf: Dictionary in layout.wall_fences:
+				suite.check(not (int(wf["side"]) == side and float(wf["at"]) + half >= win.x and float(wf["at"]) - half <= win.y),
+					"%s has no wall fence beside it" % at)
+		suite.check(open > 0, "%s leaves a side wall open to run past it (GDD §9.14)" % at)
+		for e: Dictionary in layout.enemies:
+			var bait: float = NAN
+			match String(e.get("type", "")):
+				"buzz_overdrive":
+					var cut: Dictionary = BuzzOverdriveRulesScript.cut_of(layout, e)
+					if not cut.is_empty():
+						bait = FloorCutPlan.meet(cut, speed)
+				"generator":
+					bait = float(e["at"])
+			if not is_nan(bait):
+				suite.check(not (bait >= face - spacing and bait <= face),
+					"%s has no %s inviting the dash in the spacing before it (%.0f m)" % [at, e["type"], bait])
+	var gen := LevelGenerator.for_layout(config, suite.tuning, layout)
+	var problems: PackedStringArray = DashWallRulesScript.problems(gen)
+	suite.check(problems.is_empty(), "the dash walls keep every placement rule %s %s" % [tag, problems])
 
 
 ## Wall fences (task B5; GDD §9.1: "never where a ramp launches the player into one while it's on, and

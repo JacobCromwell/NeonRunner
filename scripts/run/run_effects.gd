@@ -265,6 +265,7 @@ func crumble(b: DashBreakable, push: Vector3 = Vector3.ZERO) -> void:
 		# From the face's foot (the face toward the runner is the box's far end in z, the track running to -z).
 		_wall_dust.global_position = Vector3(box.get_center().x, DUST_HEIGHT, box.end.z)
 		_wall_dust.emission_box_extents = Vector3(box.size.x * 0.5, DUST_HEIGHT * 0.8, box.size.z * 0.3)
+		_wall_dust.visible = true
 		_wall_dust.restart()
 		_wall_dust.emitting = true
 	shake(t.wall_shake_strength, t.wall_shake_time)
@@ -298,6 +299,8 @@ func _ensure_crumble() -> void:
 	add_child(_wall_rubble)
 	var dust := CPUParticles3D.new()
 	dust.name = "WallDust"
+	# Hidden until a wall first crumbles (crumble shows it), so ShaderWarmup draws its material at the load.
+	dust.visible = false
 	dust.emitting = false
 	dust.one_shot = true
 	dust.explosiveness = 0.85

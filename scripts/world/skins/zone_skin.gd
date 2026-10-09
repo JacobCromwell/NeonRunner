@@ -808,8 +808,9 @@ static func default_dash_wall_mesh(size: Vector3, look: int, colors: PackedColor
 
 
 ## One crack of the default dash wall look: a zigzag of thin segments from `from` (x, y on the face) heading
-## at `angle`, `segments` long, kept within `bounds` (x min, x max, y min, y max), standing proud of the walls
-## to the face (z `face`) so it shows on the walls and the trim alike.
+## at `angle`, `segments` long, kept within `bounds` (x min, x max, y min, y max), standing proud of the walls,
+## the plinth and the floor slabs to just short of the face (z `face`), so it shows on them and stays inside
+## the wall's box.
 static func _dash_wall_crack(s: MeshLayer, from: Vector2, angle: float, segments: int, rng: RandomNumberGenerator,
 		bounds: Vector4, face: float, color: Color) -> void:
 	var p: Vector2 = from
@@ -826,7 +827,7 @@ static func _dash_wall_crack(s: MeshLayer, from: Vector2, angle: float, segments
 		var mid: Vector2 = (p + q) * 0.5
 		var depth: float = DASH_WALL_RECESS + 0.02
 		var xform := Transform3D(Basis(Vector3.BACK, d.angle()) * Basis.from_scale(Vector3(d.length() + width, width, depth)),
-			Vector3(mid.x, mid.y, face - depth * 0.5 + 0.005))
+			Vector3(mid.x, mid.y, face - depth * 0.5 - 0.002))
 		s.box_xform(xform, color, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY)
 		p = q
 		width *= 0.82
