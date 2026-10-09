@@ -150,6 +150,16 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
     in it glows or flickers (the kit's solid material, its colours' glow 0), so Reduced flashing leaves it
     as it is; its pool is made with its material on, so ShaderWarmup draws it at the load. Numbers in
     "Doodad smashes";
+  - a dash wall breaking (task H7a; `Player.smashed` with a wall, whatever broke it: the dash, a crash or a
+    pass on a side wall, or a hover truck bursting through one) **crumbles** (`RunEffects.crumble`): a bigger
+    `RubbleBurst` of its own (made with `RubbleBurst.new(wall_rubble_pieces)`, up to 64 pieces, larger ones,
+    flung out of the lanes and up in the wall's look's colours), a one-shot cloud of see-through dust out of
+    the wall's lower face (a `CPUParticles3D` on the fireball's puff material, fading as the camera nears it,
+    so the camera coming through a moment later keeps sight of the street), and a heavier shake
+    (`wall_shake_*`), with the crash's sound (`dash_wall_smash.wav`). It emits `crumbled(breakable)` for tests
+    and tools. Made in `setup()` for a level with dash walls (hidden, so ShaderWarmup draws both at the load),
+    one of each: walls stand at least the dash's longest cooldown apart, so one crumbles at a time. Nothing in
+    it glows or flickers; Screen shake scales its shake. Numbers in "Dash walls";
   - **hit-stop** (`RunEffects.freeze`, a few hundredths of a second on a kill or a stomp): while
     `RunEffects.freeze_left` counts down, `RunCamera._process` skips `_update` entirely, holding the
     camera's exact transform and fov while the player, the enemies and the generator keep moving at
@@ -232,7 +242,7 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   for the level's first two drawn frames: every material on the run's hidden nodes (pools, the weapon's
   effects), the effects' glow and the fireball's three looks (`FireballPool.materials`), one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
   each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
-  ceilings, doodads, gap edges, the finish line). It keeps the samples' materials until the next level's
+  ceilings, doodads, a dash wall in a level that has them, gap edges, the finish line). It keeps the samples' materials until the next level's
   stage, so their shaders stay built for a look first met later. After it no shader on Gangland 3 is first
   drawn mid-run. The track pieces are dressed on hazards and trigger areas made once a process and never
   freed while the game runs (out of the tree; their looks move onto plain nodes in the stage): **a warm-up
@@ -329,6 +339,7 @@ most in a frame higher by the warm-up's samples in the level's first two frames.
 | `data/tuning/pickups.tres` (`PickupTuning`) | in-run pickups: where they appear, taking them, the charge cap, the look |
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
+| `data/tuning/dash_walls.tres` (`DashWallTuning`) | dash walls (H7a): the clear stretch around one, the wall route, the spacing's margin and the dash baits, the introduction's window, clearing plain pieces (how many a level is `LevelConfig.dash_walls`; the wall's size is the movement tuning's "Dash walls", its crumble the speed effects' "Dash walls") |
 | `data/tuning/wall_gaps.tres` (`WallGapTuning`) | side wall gaps (Zone 2 on): spacing (easy/hard), jitter, length, the share on both walls, and the keep-out margins, all in seconds at the level's run speed (a boss arena that opts in has its own: `LevelConfig.wall_gap_tuning`) |
 | `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
@@ -345,9 +356,10 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
 ## Damage and interactions: one place (CLAUDE.md principle 8)
 
 - **Hazards declare, `DamageRules` decides.** A `Hazard` (`scripts/world/hazard.gd`) is an Area3D on
-  the hazard layer with properties: `is_electrical`, `is_enemy_attack`, `is_solid`, `dash_passes`,
-  `steals_share` (a thief's touch, below), `enemy` (owning enemy or null) and `part` (`&"body"`,
-  `&"top"`, `&"weak_point"`, `&"attack"`).
+  the hazard layer with properties: `is_electrical`, `is_enemy_attack`, `is_solid`, `armor_blocks_solid`
+  (a solid hit armor absorbs all the same: a dash wall's crash, below), `breakable` (what any contact breaks:
+  a dash wall), `dash_passes`, `steals_share` (a thief's touch, below), `enemy` (owning enemy or null) and
+  `part` (`&"body"`, `&"top"`, `&"weak_point"`, `&"attack"`).
 - The player checks contacts each frame (a swept shape query) and calls `Player.receive_hit(hazard,
   stomping)`, which asks `DamageRules.resolve()` and applies the outcome: `IGNORE`,
   `BLOCKED_ARMOR`, `BLOCKED_SHIELD` (then ~1 s invulnerability), `KILL`, `DEFEAT_ENEMY` (claws or
@@ -516,9 +528,39 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   (`doodad_smash.wav`), the pieces (`RunEffects.rubble`) and a light shake (Speed effects). It costs
   nothing and scores nothing, and DamageRules never sees it. Enemies' fairness checks read the layout
   (`LevelLayout.doodad_between`), so they hold an attack by a smashed doodad's stretch as they did before it
-  broke: the same on every attempt. An attempt without a dash is exactly as before. The shared path task
-  H7a's dash walls can extend: a `DashBreakable` of another `kind` (with its own `<kind>_smash` event and
-  sound), `Player.smashed` and `RunEffects.rubble`.
+  broke: the same on every attempt. An attempt without a dash is exactly as before. Task H7a's dash walls
+  share the path: a `DashBreakable` of another `kind` (with its own `<kind>_smash` event and sound),
+  `Player.smashed` and the run's effects.
+- **Dash walls: dash through, or take a hit** (GDD §9.14, owner, October 8, 2026; task H7a). A building
+  standing across every floor lane (the generator, the track and the look below). The track builds each as a
+  `DashBreakable` of kind `dash_wall` on a layer of its own (`TrackBuilder.LAYER_DASH_WALL`: the box its look
+  fills; never a lane blocker, a wall blocker or a hazard itself) with one Hazard child, its hitbox: the box
+  less `MovementTuning.dash_wall_inset` at its sides and its face, from `TrackBuilder.DASH_WALL_FLOOR_LIFT`
+  above the floor to its top (a slide never passes under it, and it's taller than any jump), declaring
+  `is_solid`, `armor_blocks_solid` and `breakable` (the wall). It breaks as the runner reaches it, whatever
+  they do (`Player._check_dash_walls`, after `_check_doodads`, before the triggers and hazards), so it never
+  stands between the chase camera and them:
+  - **the dash** claims it as it claims a doodad (`_dash_claims`: the dash lasts until the body gets there;
+    the query reaches as far as the dash still covers) and smashes it a frame before the body would touch it
+    (broken by `dash`): no hit, the lane and the speed kept;
+  - **a wall runner** beside it (their hurtbox clear of the hitbox across and up: the strip of
+    `dash_wall_wall_room` the building leaves by each side wall; `_in_wall_way`) passes it: it crumbles as
+    their front reaches its face (broken by `pass`), costing nothing;
+  - **anyone else** meets its hitbox: the crash (`_check_hazards` → `receive_hit`). DamageRules decides it as
+    any hit, with one declared exception: armor that is up blocks a hazard with `armor_blocks_solid` (GDD
+    §9.14: "armor or the shield absorbs it", an exception to the rule that armor never blocks solid
+    collisions; nothing else declares it, so a sign or a truck's body stays a hit armor never blocks), then
+    the shield, else it kills ("dash wall"); god mode and the invulnerability window ignore it, the dash
+    passes it. Whatever the outcome, `receive_hit` breaks a hazard's `breakable` (broken by `crash`, or
+    `dash` for a dashing body), so the runner goes on through it after an absorbed hit, with the usual
+    invulnerability.
+  `Player._break(b, how)` does it: `DashBreakable.smash(how)` (its entry marked `smashed` and `broken_by`, its
+  box and hitbox off, its look hidden), the counts (`smashes`, `crashes`, `wall_passes`), `smashed(b)` and the
+  `dash_wall_smash` event: RunEffects crumbles it (Speed effects) and the event plays the crash
+  (`dash_wall_smash.wav`). It stays broken for the attempt (never built again), and a retry rebuilds it whole.
+  Scores nothing (DESIGN-TBD, `docs/questions/h7a.md`). The layout counts a wall as a doodad in every lane
+  (`LevelLayout.doodad_between`, and `dash_wall_between`), broken or not, so every enemy that holds an attack
+  by a doodad holds it by a wall the same on every attempt.
 
 ## Enemies
 
@@ -774,6 +816,27 @@ and `enemy_uses_floor(entry)` read all of this; `CeilingZones`, `floor_clear` an
 respect it. An enemy that can't reach the ceiling stays consistent with it at run time: cyborgs, window
 cyborgs and hover trucks hold fire at a player riding a ceiling, the drone and the Bad Dream wait
 below, the Octodog never winds up and a screech stays in its manhole.
+
+**Dash walls** (task H7a; GDD §9.14: a building across every floor lane, which the runner breaks as they
+reach it). Every enemy that holds an attack by a zone doodad holds it by a wall (`LevelLayout.doodad_between`
+counts the walls in every lane, broken or not, so the same on every attempt): the cyborgs' guns
+(`CyborgGun.path_clear`), the Octodog's charge, the Resonator's pulses, the drone's barrage, the hover truck's
+cannon and the Enforcer Truck's volleys (their escape). What moves ahead of the runner deals with a standing
+wall in its way (DESIGN-TBD, `docs/questions/h7a.md`):
+- **the hover truck gives way** (`HoverTruck._wall_ahead`): a standing wall coming within the time it needs to
+  drop behind the runner (`HoverTruckTuning.give_way_seconds` from its offset, `WALL_GIVE_WAY_MARGIN` more)
+  sends it from pacing or from alongside into its lurch back, and it holds back, revving for no forward lurch
+  (`_attack_seconds`), until the runner has broken the wall, then follows them through; where it can't drop
+  back (the runner in its lane behind it, ridden, leaving ahead) its nose bursts through a standing wall it
+  reaches (`_burst_dash_walls`: broken by `hover_truck`, the crumble and its crash; one whose chunk isn't built
+  is marked broken in the layout). So the runner meets every wall first, and the generator keeps walls off the
+  truck's entrance only;
+- **flyers rise over it** (`Enemy.dash_wall_lift(at, half_length, from_height, closing_speed)`: the wall's top
+  plus `DASH_WALL_CLEARANCE` from when a climb at `DASH_WALL_CLIMB_SPEED` must start until the body is past the
+  wall's back; 0 with no standing wall in its way): the heli drone in every state (`lift`, added to its height;
+  its wind-up never starts while a wall is within its barrage's reach or its climb), the Resonator (pulling away,
+  or resting at its spot past one) and a fleeing Tithe Collector;
+- the Enforcer Truck drives behind the runner, so it only ever meets a wall already broken.
 
 **A ceiling enemy: the Barnacle Turret** (C1, GDD §9.8). `barnacle_turret.gd` (`BarnacleTurret`), its
 tuning (`BarnacleTurretTuning`, `data/enemies/barnacle_turret.tres`), its model
@@ -1841,6 +1904,56 @@ turned down, constraints). `plant()` writes one encounter, and the tests plant t
   one comes before Corporate 2's first Enforcer (Marketplace 1 at 3 and 5 lanes, Gangland 2 at 6). DESIGN-TBD
   (`docs/questions/g7.md`): the line, the parked tank, the numbers and the counts.
 
+**Dash walls** (task H7a; GDD §9.14, owner, October 8, 2026: a building standing across every floor lane, which
+the runner dashes through; introduced in Corporate 1 after the Buzz Overdrive, and in every level after it).
+`LevelLayout.dash_walls` holds `{start (its face), end (its back), seed}` (marked `smashed` and `broken_by` once
+broken in an attempt), left out of `to_dict()` while empty, so a level without them is the same data as before.
+`dash_wall_rules.gd` (`scripts/enemies/`) places them, numbers in `DashWallTuning` (`data/tuning/dash_walls.tres`,
+F6 "Dash walls"), how many in `LevelConfig.dash_walls` (2 to 4 by level, DESIGN-TBD), the wall's size in
+`MovementTuning` ("Dash walls"). The feature has no patterns: its `apply()` runs after the rules of every other
+feature (its `RUN_AFTER` lists them all), from `rng_for("dash_wall")`, so it plans on the level's final enemies,
+ceilings, pads, ramps and cuts, the rules before it place exactly what they did, and a level with a count of 0
+(or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
+- **A footprint in every lane**, from `approach_seconds` before the face to `after_seconds` past the back, at the
+  dash's speed (the run's plus `PowerupTuning.dash_speed_bonus`): no hole or floor cut's window, fence, doodad,
+  speed pad, pad's zone, ramp or the wall run it launches, no ceiling from its start to the end of its landing
+  zone ("no ceiling overlaps a dash wall"), and no enemy's attack: what the fill pass keeps for an enemy and its
+  floor (`enemy_spans`, as a wider gap keeps them: a floor cyborg's obstacle margin only, whose bolts never land
+  near a wall; a planned Resonator's pulses only; a Tithe Collector's whole stay; a hover truck's entrance only,
+  since it gives way; nothing for the heli drone and the Enforcer Truck, `NO_KEEP_TYPES`) and what the rules keep
+  doodads off in every lane (a Bad Dream's chase, a Gilded Sentinel's turn; a rule's keep-out of one lane, the
+  hover truck's, doesn't count). Plain holes and fences there (never a pulsing fence or one a fence generator
+  powers) are taken out to make room (`clear_plain_pieces`); a spot needing nothing taken out is preferred.
+- **Spacing**: faces at least `spacing_for()` apart (the dash's longest cooldown, 8 s at tier 1, and
+  `cooldown_margin_seconds` of run, plus the ground a dash adds), and with `keep_dash_baits` nothing else that
+  invites a dash within that spacing before a face (a Buzz Overdrive's charge meeting the runner, a fence
+  generator, and, as they come after, a zone doodad: `bait_keep_outs`).
+- **The wall route**: from `wall_route_seconds` before the face to the back, at least one side wall holds no sign
+  (where both do, those of the side with fewer go), and the side wall gaps and wall fences keep off both walls
+  there (`wall_keep_outs`, `WallGapPlacement.keep_outs`; the wall fences' drop windows keep off the footprint).
+- **How many, and where**: up to the level's count, spread through the level (a part each, a seeded spot aimed
+  for, the best fair spot in the part), then the best of the rest. Corporate 1 (`feature_starts`, 0.42) introduces
+  them first, at the first fair spot from the start; where none comes within `intro_window_seconds` the
+  introduction makes room (`_make_room`): the face there the fewest enemies of `MAKE_ROOM_TYPES` block (a Buzz
+  Overdrive with its cut, a fence generator, a cyborg, a window cyborg, a screech; anything else blocking rules a
+  face out) loses them, unless that leaves a feature with nothing or moves any feature's first (each feature's
+  introduction stays where it was). A level with the feature and no fair spot at all gets a warning (every
+  feature appears).
+After the rules everything keeps off them: the fill pass (`fill_keep_outs`, every footprint in every lane), the
+danger density pass, the wider gaps, the planted cyborgs, the wall fences' drop windows and the zone doodads
+(`doodad_keep_outs()`, through `rules_doodad_keep_outs`), the doodads over the baits' spacing too, the side wall
+gaps (`wall_keep_outs`), and the credits (none inside a wall: `LevelLayout.doodad_between` counts a wall in every
+lane, so a dropped credit or a floor cut's lane never lands in one either). `problems(gen)` re-checks a finished
+layout (the tests, `LayoutChecks.check_dash_walls`). Every campaign level gets its full count on its own seed at 3,
+5 and 6 lanes, and the walls keep every introduction on time (test_campaign's late ones stay 6 of 69).
+
+**Dash walls on the track.** `TrackBuilder._build_dash_wall` builds each in the chunk where it stands (Damage and
+interactions: the box on `LAYER_DASH_WALL`, the forgiving hitbox), sized by `TrackBuilder.dash_wall_size()` (as
+wide as the floor less `dash_wall_wall_room` beside each side wall, `dash_wall_height` tall, its stretch deep) and
+`dash_wall_hitbox()`, and has the zone skin dress it (`ZoneSkin.dash_wall`, Zone skins) and name its pieces'
+colours (`dash_wall_debris_colors`). `dash_wall_for(entry)` finds a built one; one broken in this attempt is never
+built again.
+
 ## Power-ups
 
 `PowerupController` (`scripts/powerups/powerup_controller.gd`) runs one `PowerupModule` per owned,
@@ -1897,7 +2010,7 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
 
 A `ZoneSkin` (`scripts/world/skins/zone_skin.gd`) decorates abstract pieces through hooks
 (`floor_segment`, `floor_cut`, `wall_section`, `fence`, `wall_fence`, `wall_sign`, `ceiling_section` (by
-default `hull`), `pad`, `ramp`, `speed_pad`, `doodad`, `finish_line`, `make_environment`). Skins add visuals
+default `hull`), `pad`, `ramp`, `speed_pad`, `doodad`, `dash_wall`, `finish_line`, `make_environment`). Skins add visuals
 only, never collision or gameplay. Hazards keep one colour and shape language in every zone (pink
 crackle = electric fence).
 `TrackBuilder` also calls `note_wall_enemies(side, start, end, enemies)` just before `wall_section()`
@@ -1991,6 +2104,41 @@ and keeps to:
   name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls, extends this over several
   seeds and both push sides: dressed, inside the box, on the shared `MeshKit.solid()` alone, never
   glowing, and the identical (cached) mesh every time the same size, side and seed are drawn again.
+
+**Dash walls' looks** (task H7a built the hook and a default in every skin; task H7b gives each zone its own,
+built from its side-wall kit; GDD §9.14: "the same assets as the side walls, but ... facing towards the player,
+looking like a building in the middle of the street"). What a look gets and keeps to:
+- *The hook*: `dash_wall(body, size, look_seed)`. `body` is the wall's node (a `DashBreakable`), centred on the
+  box its look fills, `size` (width across the track, height, depth along it; `TrackBuilder.dash_wall_size`):
+  the floor is at -size.y / 2, its face toward the oncoming runner at +size.z / 2, and its sides stop short of
+  the side walls by the strip a wall runner passes it in (`MovementTuning.dash_wall_wall_room`, 1.2 m). By
+  default about 9.6 to 12 m wide (3 to 6 lanes), 9 m tall, 2.5 m deep (DESIGN-TBD). `look_seed` varies the look
+  (the same seed, the same look; `MeshKit.hash_i`, never a random number generator). Add everything as
+  children of `body`, never top-level: the break hides `body` whole (`DashBreakable.smash`).
+- *Inside the box, filling its face*: its hitbox is the box 0.15 m smaller at its sides and its face
+  (`dash_wall_inset`, forgiving), so what looks like contact is contact, and the open strip beside each side
+  wall shows that a wall runner passes it. Nothing outside the box (an awning, a sign arm, a balcony).
+- *A building's face, solid and safe*: it reads as something to dash through (cracks or a breakable look are
+  welcome), with nothing in a hazard colour that glows (pink, yellow and black, red, orange, green, cyan) and
+  nothing that reads as a sign, a fence, a barrier's stripes or an enemy. A cue, if any, in the dash's own
+  language (`PlayerSuit.GLOW_PALE`), never a hazard's; nothing that flickers (or it honours Reduced flashing).
+- *Cheap*: one mesh per wall from cached templates (the kit's `MeshBatch`; the default caches by size, look,
+  colours and material in a static dictionary), drawn on the Compatibility renderer; ShaderWarmup draws one at
+  the load (look seed 0, the level's size).
+- *Its pieces' colours*: `dash_wall_debris_colors(body, look_seed)`, asked right after `dash_wall()` dressed
+  it (TrackBuilder keeps the answer on the `DashBreakable`; `RunEffects.crumble` flings its pieces in them): by
+  default the colours its meshes were tagged with (`tag_debris_colors`), else its walls' and trim's. Lit
+  colours only: the pieces never glow.
+- *The default* (`default_dash_wall_mesh(size, look, colors)`): a plain three-storey facade (pilasters at its
+  sides, a plinth and a cornice, floor slabs, a row of dark windows in each storey with some ground-floor
+  shutters, cracks spreading across its ground storey), four looks by seed, in `dash_wall_colors()` (walls,
+  trim, glass, cracks: each zone returns its own side walls' colours; `dash_wall_palette` otherwise), lit by
+  `dash_wall_material()` (the zone's own `solid_material()` where it has one, else `MeshKit.solid()`). H7b can
+  override `dash_wall_colors()` alone, or `dash_wall()` (and `dash_wall_debris_colors()` if its meshes aren't
+  tagged) for a look of its own; `tools/showcase/dash_wall_review.tscn -- --take=look --skin=<zone>` shows it.
+- *Tested*: `test_dash_walls`' `_test_skins` builds every skin's wall at 3 and 6 lanes over five seeds: under its
+  node, inside its box and filling its face, never glowing, on a lit material, the same mesh for the same box
+  and seed, a few looks, and its pieces' colours its look's own.
 
 **Floor cuts' looks** (B4; GDD §9.9: the floor a cut takes "becomes a gap ... The cut edges glow the
 usual gap-edge orange"). The track draws a cut lane's floor itself, in slices of the skin's own
@@ -3683,6 +3831,26 @@ fairness measure for a runner who dashes through (The generator, Zone doodads). 
 action. The simulated runs of
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
 back after a doodad's push (`AttackWatch.keep_lane`).
+`test_dash_walls` checks dash walls (task H7a; GDD §9.14): the layout data (no key without them, copy and
+append, a wall a doodad in every lane, broken or not); the generator over every level with the feature at 3, 5
+and 6 lanes on its own seed and two others (the level's count on its own seed, at least one on any, no warning,
+every wall fair by `LayoutChecks.check_dash_walls`, the same every build); Corporate 1's introduction right
+after its start at every lane count, alone, and no other level introducing them; a level without the feature
+or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
+armor absorbs and that breaks it, across the floor lanes and short of the side walls, taller than any jump, the
+skin's hook and colours, a broken one never built); the damage rules (the dash, armor, the shield, a kill, god
+mode, the invulnerability window; a sign still a hit armor never blocks); on real physics at 3, 5 and 6 lanes in
+every lane, a dash smashing it before the body touches it (no hit, the lane and the distance run unchanged), a
+crash killing a runner with no protection at its face (the outer lanes too) and breaking it, a dash that ends
+short crashing, a jump and a slide crashing, a dash in the air smashing it, a wall runner passing it on either
+wall; a full world (the armor, then the shield absorbing a crash with the invulnerability window, god mode, the
+wall broken each time; the crumble in the Corporate look: its pieces in its colours, lit, the dust, the heavier
+shake Screen shake scales away, the crash's sound, Reduced flashing changing nothing, the warm-up drawing its
+look, pieces and dust); a LevelRun of Corporate 1 (it stays broken through a death and a revive, and a retry
+rebuilds it whole); every skin's look; the hint; a hover truck giving way (pacing ahead, behind the runner as
+they reach the wall, no rev near it, pacing again past it) and bursting through when boxed in; and a heli drone
+rising over one, back down past it, never winding up with a wall in its barrage's reach. `RunSim` reports
+`crashes` and `wall_passes`.
 `test_floor_cuts` checks floor cuts (B4; GDD §9.9) with the grey-box stand-in: the plan's geometry and
 the layout data; the track's piece (its slices, its collision, a hold and a stop); on real
 physics at 3, 5 and 6 lanes, the floor gone exactly behind the cause and whole ahead of it, a runner in
@@ -3856,7 +4024,10 @@ zone doodads (`doodad_review`: the runner pushed by a small, a medium and a larg
 switch into one's side blocked, with others standing in the other inner lanes at five lanes or more, in
 any zone's look, through the game camera or a close one, `--hitboxes` for their bodies; `--dash` smashes
 them instead, task H5: a small and a medium one head-on, a large one from the side, then a dash that ends
-short of a fourth and pushes, `--reduced-flashing`), floor cuts
+short of a fourth and pushes, `--reduced-flashing`), dash walls (`dash_wall_review`, task H7a: three walls in
+any zone's look at its speed, `--take=smash` (the dash), `crash` (the armor, then the shield, then a kill),
+`pass` (on the side wall) or `look` (a still in front of one, for task H7b's looks), `--hitboxes`,
+`--reduced-flashing`, `--god`), floor cuts
 (`floor_cut_review`: the stand-in's warning, charge and the gap it leaves beside a runner who switched
 out, in any zone's look at any lane count and speed, through the game camera or a high one; `--stay`
 for an armor block and the floor's hold, `--kill=D` for a cut stopped where its cause dies,
