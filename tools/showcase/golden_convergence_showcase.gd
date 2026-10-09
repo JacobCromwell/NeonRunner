@@ -2,7 +2,7 @@ extends Node3D
 ## The Golden Convergence up close and in scripted runs, for visual review (GDD §10, task E5d; not part of
 ## the game). It builds the fight the way the game does (its arena, the Grand Court, in its look), with a
 ## runner who plays it by its warnings (GoldenConvergenceBot) or stands still. The fight itself:
-## ./play.sh --boss=golden_boss (debug builds; a preview until E5d-d). Render frames on both renderers, e.g.:
+## ./play.sh --level=golden/boss (or --boss=golden_boss). Render frames on both renderers, e.g.:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot4 --path . --resolution 960x540 --fixed-fps 10 \
 ##     --write-movie build/gc/f.png --quit-after 80 res://tools/showcase/golden_convergence_showcase.tscn \
 ##     -- --scenario=model --lanes=5
@@ -30,8 +30,21 @@ extends Node3D
 ##             its side lying flush as the wall, the runner on it, the tower sinking away behind
 ##   barrage   (E5d-b) the Missile Barrage alone with no wall (god mode, the runner in the middle lane): the
 ##             hatches, the salvo climbing and hanging, the dive, the marks spreading and filling in, the fire
+##   refill    (E5d-c) the Refill Ship's beat alone, the bot going for the pad: the ship flying in beside the
+##             causeway, its feed line to the shoulder with missiles riding it, the strafe's first pass, the cage
+##             coming up, the ship down over the runner, the generator stomped, the pad, the chain reaction
+##             (--way=generator/dash/armor/miss: how the bot gets in, or lets it go by)
+##   cage      (E5d-c) the same from high behind the runner (--cam=high by default): the cage, its sides, the
+##             generator's pulse switching it off, the pad
+##   chain     (E5d-c) the same from beside the track (--cam=side by default): the ride, the ripple along the racks,
+##             the ship spinning off and exploding, the blast up the line into the shoulder (--phase=3: the third
+##             ship, the suit bursting open, the transition)
+##   missed    (E5d-c) the bot lets the pad go by: the strafe fires on, the ship climbs back, finishes and flies
+##             off, and the loop comes round to the slams
+##   stage1    (E5d-c) stage 1 as it comes, from phase 1's pattern, the bot playing (no god mode)
+##   whole     (E5d-c) the whole fight from the entrance to the defeat, the bot playing (no god mode)
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 25), --phase=N,
-## --script=VVHvVHv (the strafe's passes), --cam=run/side/high, --still, --reduced-flashing, --events
+## --script=VVHvVHv (the strafe's passes), --cam=run/side/high, --still, --reduced-flashing, --events, --way=...
 ## (prints each of the boss's events with its frame, for picking frames), --burst (front and face: the chest's
 ## plates burst open, both shoulders' pipes blown out: the later steps' damage states).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-55 (the chime at 16); strafe (after the phase's intro):
@@ -61,6 +74,8 @@ var _events_seen: int = 0
 var _still: bool = false
 var _burst: bool = false
 var _view: String = "run"
+var _way: StringName = &"generator"
+var _view_given: bool = false
 
 
 func _ready() -> void:
@@ -82,6 +97,9 @@ func _ready() -> void:
 			script_arg = v
 		elif arg.begins_with("--cam="):
 			_view = v
+			_view_given = true
+		elif arg.begins_with("--way="):
+			_way = StringName(v)
 		elif arg == "--reduced-flashing":
 			RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0)
 			Settings.flashing_reduced = true
@@ -106,6 +124,7 @@ func _ready() -> void:
 			beats.append("strafe:%s" % ("H" if scenario == "buttress" else "V"))
 		t.phase_beats = beats
 	_slam_beats(t)
+	_refill_beats(t, script_arg)
 	def.tuning = t
 	var tuning := (load("res://data/tuning/movement.tres") as MovementTuning).duplicate() as MovementTuning
 	tuning.run_speed = speed
@@ -122,13 +141,23 @@ func _ready() -> void:
 		ctx.boss_resume = {"phase": 0, "time": 0.0}
 	if phase <= 0 and scenario in SLAM_SCENARIOS:
 		ctx.boss_resume = {"phase": 0, "time": 0.0}
+	if phase <= 0 and scenario in REFILL_SCENARIOS and scenario != "whole":
+		ctx.boss_resume = {"phase": 0, "time": 0.0}
 	boss = BossEncounter.create(def) as GoldenConvergence
 	var arena: BossArena = boss.plan_arena(ctx)
 	world = RunWorld.new()
 	world.name = "World"
 	add_child(world)
+	# The Refill Ship's ways in that need an item: the dash, the armor.
+	var loadout: Loadout = null
+	if scenario in REFILL_SCENARIOS and (_way == &"dash" or _way == &"armor"):
+		loadout = Loadout.new()
+		if _way == &"dash":
+			loadout.tiers[&"dash"] = 1
+		else:
+			loadout.armor = true
 	world.build(ctx.config, arena.layout, tuning, load("res://data/tuning/game_rules.tres") as GameRules,
-		load("res://data/tuning/powerups.tres") as PowerupTuning, null, load("res://data/audio/sfx_library.tres") as SfxLibrary)
+		load("res://data/tuning/powerups.tres") as PowerupTuning, loadout, load("res://data/audio/sfx_library.tres") as SfxLibrary)
 	boss.setup(world, ctx, arena)
 	if scenario in ["strafe", "fight", "buttress"] and not _still:
 		bot = GoldenConvergenceBot.new(boss)
@@ -138,6 +167,7 @@ func _ready() -> void:
 		world.player.god_mode = true
 		bot = null
 	_slam_runner()
+	_refill_runner()
 	var env := WorldEnvironment.new()
 	env.environment = world.skin.level_environment(ctx.config.darkness)
 	add_child(env)
@@ -247,11 +277,48 @@ func _follow_cam() -> void:
 		_tower_cam(p)
 		return
 	if _view == "side":
+		if scenario in REFILL_SCENARIOS:
+			# Wide from beside the track on the side away from the ship's station: the ship, its line and the suit.
+			var side: int = -int(boss.refill.p.get("side", -1)) if not boss.refill.p.is_empty() else 1
+			_cam.fov = 70.0
+			_cam.global_position = p + Vector3(side * (world.geo.wall_x() + 34.0), 9.0, 6.0)
+			_cam.look_at(p + Vector3(-side * 6.0, 9.0, -34.0), Vector3.UP)
+			return
 		_cam.global_position = p + Vector3(world.geo.wall_x() + 14.0, 6.0, -14.0)
 		_cam.look_at(p + Vector3(0.0, 2.0, -22.0), Vector3.UP)
 	else:
 		_cam.global_position = p + Vector3(0.0, 22.0, 18.0)
 		_cam.look_at(p + Vector3(0.0, 0.0, -30.0), Vector3.UP)
+
+
+# --- E5d-c: the Refill Ship -----------------------------------------------------------------------------------
+
+const REFILL_SCENARIOS: Array[String] = ["refill", "cage", "chain", "missed", "stage1", "whole"]
+
+
+## The scenario's beats: the Refill Ship's beat alone, every phase (refill, cage, chain, missed); the fight's own
+## (stage1, whole).
+func _refill_beats(t: GoldenConvergenceTuning, script_arg: String) -> void:
+	if scenario not in ["refill", "cage", "chain", "missed"]:
+		return
+	var beats := PackedStringArray()
+	var loops := PackedInt32Array()
+	for i: int in t.phase_beats.size():
+		beats.append("refill:%s" % (script_arg if script_arg != "" else "VVH") if i < GoldenConvergence.STAGE_2 else t.phase_beats[i])
+		loops.append(0)
+	t.phase_beats = beats
+	t.loop_from = loops
+	if not _view_given:
+		_view = {"cage": "high", "chain": "side"}.get(scenario, "run")
+
+
+## Who runs it: the bot (no god mode), going for the pad its way (--way), or letting it go by (missed).
+func _refill_runner() -> void:
+	if scenario not in REFILL_SCENARIOS:
+		return
+	bot = GoldenConvergenceBot.new(boss)
+	bot.refill_way = &"miss" if scenario == "missed" else _way
+	world.player.god_mode = false
 
 
 # --- E5d-b: the Fist Slam, the toppled tower and the Missile Barrage ------------------------------------------

@@ -28,8 +28,9 @@ extends GoldenConvergenceAttack
 ## The holes: each slam's row is planned before the sequence begins (floor cuts must lie past the built track,
 ## BossArena.stream_from(), about 180 m ahead), a cut in every lane of the row, since the footprint isn't
 ## known until the lock; the lanes outside the footprint never open. The sequence is planned from the beat
-## before it while that one plays (its ends_at), or from a phase's start (its first beat), or at the latest
-## when its beat begins (the first fist then comes out at once and stalks the runner's lane until its warning).
+## before it while that one plays (its ends_at), or from a phase's start (its first beat), or for a phase the
+## Refill Ship's hit ends from its chain reaction (plan_phase_ahead, E5d-c), or at the latest when its beat begins
+## (the first fist then comes out at once and stalks the runner's lane until its warning).
 ## The chances (GDD §10: "two slams land at a Flying Buttress"): a Flying Buttress stands in an inner lane
 ## where the chance slam lands, its row dug just in front of the gate (so a hole sharing the gate's lane never
 ## goes through it: on 3 lanes the middle lane is the only inner one), coming into view buttress_sight before
@@ -78,8 +79,10 @@ var finishing: Array[Dictionary] = []
 var sequences: int = 0
 var ended: bool = false
 var ended_by_hit: bool = false
-## The beat a plan is for ("phase:beat number"), and how it was made (&"ahead", &"phase", &"start").
+## The beat a plan is for ("phase:beat number"), the phase it's for, and how it was made (&"ahead", &"phase",
+## &"start", &"chain": E5d-c's Refill Ship, the next phase's first slams planned from its chain reaction).
 var plan_key: String = ""
+var plan_phase: int = -1
 var planned_by: StringName = &""
 ## Rows planned this fight (their cuts are on the track for good; a cut never opened is the floor).
 var rows_planned: int = 0
@@ -200,20 +203,22 @@ func _key(played: int) -> String:
 
 # --- Planning -------------------------------------------------------------------------------------------
 
-## Plans the phase's sequence for a beat starting as the runner reaches `start_d`: each slam's points at the
-## run speed, its row's floor cuts in every lane (past the built track: the whole sequence moves on if its
-## first row would be nearer), the chances' gates.
-func _plan(start_d: float) -> void:
+## Plans phase `phase`'s sequence (the current phase's by default) for a beat starting as the runner reaches
+## `start_d`: each slam's points at the run speed, its row's floor cuts in every lane (past the built track: the
+## whole sequence moves on if its first row would be nearer), the chances' gates.
+func _plan(start_d: float, phase: int = -1) -> void:
+	var index: int = boss.phase_index if phase < 0 else phase
+	plan_phase = index
 	var t: GoldenConvergenceTuning = boss.tuning
 	var geo: TrackGeometry = boss.world.geo
 	var v: float = boss.speed_planned()
-	var p: float = boss.pace()
+	var p: float = maxf(boss.def.phase_list()[index].pace, 0.05)
 	var lanes: int = boss.lane_count()
-	var letters: String = script_for(boss.phase_index)
+	var letters: String = script_for(index)
 	var row_len: float = GoldenConvergenceHole.hole_lanes(lanes) * geo.lane_width
 	var gap: float = v * t.slam_gap / p
 	var ahead: float = v * t.slam_ahead_seconds
-	_rng.seed = hash([String(boss.def.id), "slams", boss.phase_index, rows_planned, boss.rng.seed])
+	_rng.seed = hash([String(boss.def.id), "slams", index, rows_planned, boss.rng.seed])
 	var first_impact: float = start_d + v * (t.slam_out_seconds / p + t.slam_track_seconds + t.slam_lock_seconds)
 	var first_ahead: bool = letters.length() > 0 and letters[0].to_upper() == "A"
 	var first_row: float = first_impact + ahead if first_ahead else first_impact - row_len * 0.5
@@ -262,7 +267,7 @@ func _plan(start_d: float) -> void:
 	if boss.arena != null:
 		boss.arena.add_pieces(cuts)
 	boss.log_event(&"slams_planned", {"script": letters, "first_impact": first_impact, "start": start_d,
-		"by": planned_by, "rows": slams.size(), "stream_from": earliest - ROW_MARGIN})
+		"by": planned_by, "rows": slams.size(), "stream_from": earliest - ROW_MARGIN, "for_phase": index})
 
 
 ## The side a chance gate's arch leans to: the nearer edge, either way from the middle lane by the seed.
@@ -286,6 +291,35 @@ func _discard() -> void:
 			(b as GoldenConvergenceButtress).sink()
 	slams.clear()
 	plan_key = ""
+	plan_phase = -1
+
+
+## E5d-c: plans phase `index`'s first slams beat ahead of time, from where it will begin (`start_d`): the Refill
+## Ship's chain reaction knows when its hit will end the phase it's in, so the next phase opens with its first
+## fist on time (its holes past the built track already) instead of stalking the runner while they're planned. The
+## plan is kept through the phase's change (clear()) and played when that phase's first beat begins. False if that
+## phase doesn't open with slams.
+func plan_phase_ahead(index: int, start_d: float) -> bool:
+	if index >= GoldenConvergence.STAGE_2 or index >= boss.phase_count() or stage == Stage.ON or boss.is_defeated():
+		return false
+	var beats: Array[Dictionary] = boss.tuning.beats_for(index)
+	if beats.is_empty() or beats[0]["kind"] != kind:
+		return false
+	_discard()
+	plan_key = "%d:%d" % [index, boss.beats_played + 1]
+	planned_by = &"chain"
+	_plan(start_d, index)
+	return true
+
+
+## True if the plan is a later phase's, made ahead of it (plan_phase_ahead) and not begun.
+func _kept_ahead() -> bool:
+	if planned_by != &"chain" or plan_phase < boss.phase_index or slams.is_empty():
+		return false
+	for s: Dictionary in slams:
+		if int(s["stage"]) != SlamStage.PLANNED:
+			return false
+	return true
 
 
 ## Plans the next slams beat ahead of time, from the beat under way (its ends_at), so its holes lie past the
@@ -326,15 +360,15 @@ func _plan_phase(index: int) -> void:
 	if beats.is_empty() or beats[0]["kind"] != kind or boss.beat_index >= 0:
 		return
 	var key: String = _key(boss.beats_played + 1)
-	if key == plan_key:
-		return
 	var intro: float = boss.def.phase_list()[index].intro_seconds
 	var left: float = maxf(intro - (boss.state_time if boss.state == BossEncounter.State.INTRO else intro), 0.0)
-	_discard()
-	plan_key = key
-	planned_by = &"phase"
-	_plan(boss.player_distance() + boss.speed_planned() * (left + boss.tuning.first_beat_delay / boss.pace()))
-	# Attacks don't tick in the intro: a gate due to rise before the pattern begins rises now.
+	if key != plan_key:
+		_discard()
+		plan_key = key
+		planned_by = &"phase"
+		_plan(boss.player_distance() + boss.speed_planned() * (left + boss.tuning.first_beat_delay / boss.pace()))
+	# Attacks don't tick in the intro: a gate due to rise before the pattern begins rises now (a plan made ahead by
+	# the Refill Ship's chain too).
 	_place_buttresses(boss.speed_planned() * left)
 
 
@@ -724,15 +758,22 @@ func _goal(s: Dictionary, d: float) -> Dictionary:
 # --- Hold, clear ---------------------------------------------------------------------------------------
 
 ## Everything gone at once (a phase's end, the defeat), safely: the touches off, the marks gone, the arms
-## easing back to rest, the plan dropped (its cuts stay whole). A tower already down stays its time.
+## easing back to rest, the plan dropped (its cuts stay whole), unless it's a later phase's made ahead by the
+## Refill Ship's chain (E5d-c: kept for that phase's first beat). A tower already down stays its time.
 func clear() -> void:
 	super()
 	fist.clear()
-	for s: Dictionary in in_play():
+	var keep: bool = _kept_ahead() and not boss.is_defeated()
+	for s: Dictionary in finishing:
 		if int(s["stage"]) < SlamStage.DONE:
 			s["stage"] = SlamStage.SKIPPED
+	if not keep:
+		for s: Dictionary in slams:
+			if int(s["stage"]) < SlamStage.DONE:
+				s["stage"] = SlamStage.SKIPPED
 	finishing.clear()
-	_discard()
+	if not keep:
+		_discard()
 	stage = Stage.IDLE
 	ended = false
 	ended_by_hit = false

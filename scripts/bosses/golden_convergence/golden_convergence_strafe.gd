@@ -27,11 +27,12 @@ extends GoldenConvergenceAttack
 ## pace), each anchored to where the runner will be (warn_at, planned at the run speed when the strafe
 ## starts), so a pass always comes where it was planned to: the same every attempt. Nothing else is on the
 ## track during a strafe (the beat script plays one beat at a time).
-## Extension points (E5d-c, the Refill Ship): hold(true) stops its fire and takes its warnings away at once,
-## the squadron hovering at hold_station (a Callable giving drone i's world point, or the station ahead), and
-## hold(false) plans the passes left on from the runner; a pad (the runner's movement_event &"pad" while the
-## squadron is out) hurls the whole squadron up (GDD §9.6's rule) and ends the strafe, and `hurled` says so
-## (the chain reaction starts there; GoldenConvergenceSquadron.hurl_rise sets how high they go).
+## The Refill Ship (E5d-c, GoldenConvergenceRefill) plays a strafe with it (`refill`): hold(true) stops its fire
+## and takes its warnings away at once, the squadron hovering at hold_station (a Callable giving drone i's world
+## point: beside the ship, under its racks; or the station ahead), no gate rising meanwhile, and hold(false) plans
+## the passes left on from the runner; a pad (the runner's movement_event &"pad" while the squadron is out) hurls
+## the whole squadron up (GDD §9.6's rule) and ends the strafe, and `hurled` says so (the chain reaction starts
+## there; GoldenConvergenceSquadron.hurl_rise sets how high they go: up into the ship's racks).
 
 ## The squadron was hurled up by a pad: the strafe is over (E5d-c: the Refill Ship's chain reaction).
 signal hurled
@@ -208,14 +209,17 @@ func tick(delta: float) -> void:
 	stage_time += delta
 	match stage:
 		Stage.EMERGE:
-			_place_buttresses()
+			if not held:
+				_place_buttresses()
 			_fly(delta)
 			if stage_time >= boss.tuning.emerge_seconds:
 				stage = Stage.PASSES
 				stage_time = 0.0
 		Stage.PASSES:
-			_place_buttresses()
 			if not held:
+				# Held (the Refill Ship's cage), no gate rises for a pass planned before the hold: the passes left
+				# are planned on from where the runner is on release.
+				_place_buttresses()
 				_tick_passes(delta)
 			_fly(delta)
 			if current < 0 and _all_done():

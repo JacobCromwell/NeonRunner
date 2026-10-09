@@ -21,7 +21,11 @@ extends RefCounted
 ## - The Magnate (E5d-d, _read_magnate, the stage 2 block at the end): out of a Pounce's square's lane once it
 ##   locks, into a bait's buttress lane before the lock and then onto his back for the stomp, a low Cable Lash
 ##   jumped and a high one slid under;
-## - E5d-c's Refill Ship cage and pad: a stub (_read_refill) returning no lane until that step fills it;
+## - the Refill Ship's cage (E5d-c, _read_refill, the block before stage 2's): by `refill_way`, into the
+##   generator's lane and a stomp onto it (a jump timed to come down on its top), then into the pad's lane in the
+##   air once its pulse has switched the cage off, and onto the pad; or into the pad's lane and the dash through
+##   the front fence; or out of the cage's and the generator's lanes (a missed pad); it rides the belly up there and
+##   lands where it drops;
 ## - otherwise it keeps to `home_lane` (if set).
 ## It never jumps or slides through the strafe (a jump doesn't dodge it); on the floor it moves one lane a
 ## frame toward the lane it wants.
@@ -77,9 +81,9 @@ func _read_barrage() -> Dictionary:
 	return _read_missiles()
 
 
-## E5d-c: the Refill Ship (the generator, the pad in its cage).
+## E5d-c: the Refill Ship (the generator, the pad in its cage): see the block before stage 2's.
 func _read_refill() -> Dictionary:
-	return {}
+	return _read_cage()
 
 
 ## E5d-d: The Magnate (out of his Pounce's lane, the buttress's bait, the stomp, the Cable Lash): see the stage 2
@@ -343,6 +347,77 @@ func _protect(br: GoldenConvergenceBarrage) -> void:
 		if powerups != null and powerups.has_method(&"try_dash") and bool(powerups.call(&"try_dash")):
 			_dashed_for = br.barrages
 			log.append({"t": boss.fight_time(), "action": &"dash", "why": "through the fire"})
+
+
+# --- E5d-c: the Refill Ship's cage --------------------------------------------------------------------------
+# _read_cage, by what it shows, `reaction` late, once the cage is up (GoldenConvergenceCage):
+# - &"generator": to the generator's lane; a jump `stomp_lead()` before it, timed to come down on its top (a stomp:
+#   its pulse switches the cage off); in the air, into the pad's lane (the side fence is dark); onto the pad;
+# - &"dash": to the pad's lane at once, and the dash `dash_lead` before the front fence (so it's dashing as it
+#   passes through), onto the pad;
+# - &"miss": out of the pad's and the generator's lanes until it's past the cage (the loop comes round again);
+# - &"armor": to the pad's lane and through the front fence on the armor (or the shield), onto the pad.
+
+## How it gets onto the pad (&"generator", &"dash", &"armor") or lets it go by (&"miss").
+var refill_way: StringName = &"generator"
+## Starts the dash this far (metres at the run speed's second: run speed × dash_lead) before the front fence.
+var dash_lead: float = 0.2
+
+var _gen_jumped: int = -1
+var _cage_dashed: int = -1
+
+
+## The Refill Ship's cage: the lane it wants ({} for none).
+func _read_cage() -> Dictionary:
+	var r: GoldenConvergenceRefill = boss.refill
+	if r == null or not r.cage_up():
+		return {}
+	var c: GoldenConvergenceCage = r.cage
+	var plan: Dictionary = c.plan
+	var n: int = int(plan["n"])
+	var now: float = boss.fight_time()
+	var me: int = _target if _target >= 0 else boss.player_lane()
+	if not _seen_long_enough("cage%d" % n, now):
+		return {"lane": me, "why": "a cage (reacting)"}
+	var player: Player = boss.world.player
+	var d: float = player.distance
+	var pad_lane: int = int(plan["lane"])
+	var gen_lane: int = int(plan["gen_lane"])
+	var gen: FenceGenerator = c.generator
+	var gen_up: bool = gen != null and is_instance_valid(gen) and gen.alive
+	match refill_way:
+		&"miss":
+			if me == pad_lane or me == gen_lane:
+				return {"lane": _nearest_free([pad_lane, gen_lane], me), "why": "around the cage"}
+			return {"lane": me, "why": "beside the cage"}
+		&"dash":
+			if player.surface == Player.Surface.FLOOR and player.lane == pad_lane and _cage_dashed != n \
+					and d >= float(plan["front_at"]) - boss.speed() * dash_lead - 2.0:
+				var powerups: Node = boss.world.powerups
+				if powerups != null and powerups.has_method(&"try_dash") and bool(powerups.call(&"try_dash")):
+					_cage_dashed = n
+					log.append({"t": now, "action": &"dash", "why": "through the cage's fence"})
+			return {"lane": pad_lane, "why": "into the cage's lane, to dash in"}
+		&"armor":
+			return {"lane": pad_lane, "why": "into the cage's lane, through the fence on the armor"}
+	# The generator: knock it out, then into the pad's lane.
+	if not gen_up:
+		return {"lane": pad_lane, "why": "into the cage, its fences dark"}
+	if player.surface == Player.Surface.FLOOR and player.grounded and player.lane == gen_lane and _gen_jumped != n:
+		var ahead: float = float(plan["gen_at"]) - d
+		if ahead <= stomp_generator_lead() and ahead > 0.0:
+			_gen_jumped = n
+			_press(&"jump", "stomp the cage's generator")
+	return {"lane": gen_lane, "why": "to the cage's generator"}
+
+
+## How far before a generator to jump so the runner comes down on its top: up to the jump's top and back down to
+## the generator's top, at the runner's speed (the Sleep Taker's bot's).
+func stomp_generator_lead() -> float:
+	var t: MovementTuning = boss.world.tuning
+	var top: float = FenceGenerator.TOP_Y
+	var t_down: float = sqrt(2.0 * maxf(t.jump_height - top, 0.0) / (t.gravity() * t.fall_gravity_multiplier))
+	return boss.speed() * (t.jump_time_to_apex + t_down)
 
 
 # --- Stage 2, The Magnate (E5d-d) ------------------------------------------------------------------------

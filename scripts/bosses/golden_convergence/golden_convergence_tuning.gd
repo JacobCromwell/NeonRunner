@@ -45,11 +45,11 @@ extends Resource
 ## `kind` or `kind:argument`. Kinds: strafe (the Helidrone Strafe; its argument is its pass script: V a
 ## vertical pass head-on, v a vertical pass from behind, H a horizontal pass), slams (the Fist Slam, E5d-b),
 ## barrage (the Missile Barrage, E5d-b), refill (the Refill Ship with a Helidrone Strafe, its argument that
-## strafe's script; E5d-c), and stage 2's pounce and lash (The Magnate, E5d-d). A beat whose attack isn't
-## built yet is a stub the pattern skips (GoldenConvergence: until E5d-c a refill beat plays its strafe
-## alone). Phase 1: the strafe on its own (3 passes, it teaches the strafe), then slams, a barrage and the
-## Refill Ship with a 3-pass strafe; phases 2 and 3: slams, a barrage, slams, a barrage, then the Refill Ship
-## with a 7-pass strafe (the 4th and 7th from behind).
+## strafe's script; E5d-c), and stage 2's overtake, pounce and lash (The Magnate, E5d-d). A beat kind with no
+## attack registered is a stub the pattern skips (GoldenConvergence: beat_stub). Phase 1: the strafe on its own
+## (3 passes, it teaches the strafe), then slams, a barrage and the Refill Ship with a 3-pass strafe; phases 2
+## and 3: slams, a barrage, slams, a barrage, then the Refill Ship with a 7-pass strafe (the 4th and 7th from
+## behind).
 @export var phase_beats: PackedStringArray = PackedStringArray([
 	"strafe:VVH,slams,barrage,refill:VVH",
 	"slams,barrage,slams,barrage,refill:VVHvVHv",
@@ -236,6 +236,74 @@ extends Resource
 ## The missiles hang this high over the causeway in front of the suit, in the run camera's view (framing:
 ## GoldenConvergenceBarrage.APEX_AHEAD).
 @export_range(10.0, 80.0, 1.0, "suffix:m") var missile_apex_height: float = 22.0
+
+# --- E5d-c: the Refill Ship ------------------------------------------------------------------------------
+
+@export_group("Refill Ship: the ship")
+## DESIGN-TBD (GDD §10, proposed: "a gilded cult cargo ship, its flat plated belly across every lane at ceiling
+## height, racks of missiles along its flanks, pacing the runner while it refills"): it flies in from behind and
+## above the runner over ship_in_seconds to its station beside the causeway on the fed shoulder's side,
+## ship_side out from the track's middle (beyond the balustrade, so the strafe's passes have the track),
+## ship_station_ahead ahead of the runner and its belly ship_station_height up (framing, kept in metres), and
+## paces them there while it refills: the feed line shoots out to the shoulder's pipes feed_reach_seconds after it
+## arrives, a missile riding up it every feed_every seconds at feed_speed along the line.
+@export_range(0.5, 6.0, 0.05, "suffix:s") var ship_in_seconds: float = 2.4
+@export_range(12.0, 60.0, 0.5, "suffix:m") var ship_side: float = 22.0
+@export_range(0.0, 80.0, 0.5, "suffix:m") var ship_station_ahead: float = 36.0
+@export_range(8.0, 40.0, 0.5, "suffix:m") var ship_station_height: float = 11.0
+@export_range(0.1, 2.0, 0.05, "suffix:s") var feed_reach_seconds: float = 0.5
+@export_range(0.1, 2.0, 0.05, "suffix:s") var feed_every: float = 0.45
+@export_range(5.0, 80.0, 1.0, "suffix:m/s") var feed_speed: float = 30.0
+
+@export_group("Refill Ship: the cage")
+## DESIGN-TBD (GDD §10: "the squadron holds its fire while the cage comes up and the runner goes for it"): the
+## cage comes up once the beat's strafe has flown cage_after passes (the squadron holds its fire from then), and
+## the runner reaches its front fence cage_lead later at the run speed (time to read it, reach the generator's
+## lane from the farthest lane and stomp it). Its fences flicker in with the fence warning over cage_flicker, then
+## switch on.
+@export_range(0, 6) var cage_after: int = 1
+@export_range(2.5, 10.0, 0.05, "suffix:s") var cage_lead: float = 4.5
+@export_range(0.2, 2.0, 0.05, "suffix:s") var cage_flicker: float = 1.0
+## DESIGN-TBD (GDD §10: "the front fence placed so a jump over it lands past the pad"; proposed: "the cage's sides
+## are fences running along the pad lane's edges, from the front fence to past the pad"): the pad is
+## cage_pad_length deep, just behind the front fence (shorter than a level's pad, so even the earliest jump that
+## clears the fence comes down past it at 18 m/s); the sides are cage_side_height tall (above a jump's reach: a
+## switch into the cage touches one, in the air too) and run cage_side_past past the pad (at 18 m/s).
+@export_range(0.8, 2.5, 0.05, "suffix:m") var cage_pad_length: float = 1.4
+@export_range(1.8, 4.0, 0.05, "suffix:m") var cage_side_height: float = 2.4
+@export_range(0.0, 6.0, 0.1, "suffix:m") var cage_side_past: float = 1.5
+## DESIGN-TBD (GDD §10: "the generator stands in a lane next to the cage, just before it, with room after its
+## pulse to switch into the pad's lane"): it stands generator_before (at 18 m/s) before the front fence, so a
+## stomp's bounce comes down before the cage (and a dash through it has room to switch in).
+@export_range(6.0, 40.0, 0.5, "suffix:m") var generator_before: float = 16.0
+
+@export_group("Refill Ship: the ride")
+## DESIGN-TBD: as the cage comes up the ship comes over the causeway and down to the ceiling's height over
+## descend_seconds, its belly over every lane and the runner (pacing them: they're under it RIDER metres behind
+## its middle, GoldenConvergenceShipModel), settled settle_before before the runner reaches the front fence. A
+## runner past the pad by miss_after (at 18 m/s) and not riding it has missed it: the strafe fires on, the ship
+## climbs back to its station over climb_seconds, finishes refilling finish_seconds later and flies off over
+## leave_seconds (GDD §10: "the ship finishes refilling and flies off").
+@export_range(0.5, 5.0, 0.05, "suffix:s") var descend_seconds: float = 2.0
+@export_range(0.3, 3.0, 0.05, "suffix:s") var settle_before: float = 1.0
+@export_range(0.5, 10.0, 0.25, "suffix:m") var miss_after: float = 3.0
+@export_range(0.5, 5.0, 0.05, "suffix:s") var climb_seconds: float = 1.6
+@export_range(0.0, 5.0, 0.05, "suffix:s") var finish_seconds: float = 1.5
+@export_range(0.5, 6.0, 0.05, "suffix:s") var leave_seconds: float = 2.2
+
+@export_group("Refill Ship: the chain reaction")
+## DESIGN-TBD (GDD §10: the pad "hurls the whole squadron up into the Refill Ship, setting off a chain reaction":
+## the ship's missiles explode, it spins off to the side and explodes, the squadron explodes, "the explosion races
+## up the feed line into his shoulders, and the boss takes damage"; "the runner falls back to the floor
+## unharmed"). Seconds from the pad: the drones, hurled up from where they hold beside the ship, crash into its
+## missile racks; its missiles explode in a ripple along the racks from ripple_at over ripple_seconds; the ship
+## spins off to the side from spin_at (its belly gone: the runner drops back to the floor) over spin_seconds and
+## explodes; the blast races up the feed line over blast_seconds, into his shoulder, and the hit lands.
+@export_range(0.0, 1.5, 0.05, "suffix:s") var ripple_at: float = 0.3
+@export_range(0.2, 2.0, 0.05, "suffix:s") var ripple_seconds: float = 0.8
+@export_range(0.6, 3.0, 0.05, "suffix:s") var spin_at: float = 1.4
+@export_range(0.4, 3.0, 0.05, "suffix:s") var spin_seconds: float = 1.3
+@export_range(0.3, 2.0, 0.05, "suffix:s") var blast_seconds: float = 0.9
 
 @export_group("The court")
 ## DESIGN-TBD (GDD §10: "no side walls ... a low golden balustrade bumps the runner back"): the walls are

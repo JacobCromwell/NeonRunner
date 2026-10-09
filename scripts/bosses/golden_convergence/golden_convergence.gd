@@ -2,12 +2,10 @@ class_name GoldenConvergence
 extends BossEncounter
 ## The Golden Convergence, the Golden Zone's boss and the final villain (GDD §10: "a giant mechanical
 ## construct, a golden exoskeleton that the villain rides inside ... It floats in the distance ahead of the
-## runner"; the man inside is The Magnate). Task E5d, in four steps, each merging on its own: E5d-a (this
-## one) the golden suit, the Grand Court, the entrance, the Helidrone Strafe and the Flying Buttress, phase
-## 1's opening strafe, the slot's preview, its tuning, sounds, showcase, bot and tests; E5d-b the Fist Slam
-## and the Missile Barrage; E5d-c the Refill Ship, stage 1's three phases and the suit's damage; E5d-d stage
-## 2, The Magnate, the defeat and the campaign slot. Until E5d-d it plays as a preview: debug builds start it
-## with --boss=golden_boss (BossDef.preview_scene), the campaign keeps its card.
+## runner"; the man inside is The Magnate). Task E5d, in four steps: E5d-a the golden suit, the Grand Court,
+## the entrance, the Helidrone Strafe and the Flying Buttress; E5d-b the Fist Slam and the Missile Barrage; E5d-c
+## the Refill Ship, stage 1's three phases and the suit's damage, the campaign slot; E5d-d stage 2, The Magnate,
+## and the defeat. The campaign plays it after Golden 3 (`./play.sh --level=golden/boss`, or `--boss=golden_boss`).
 ##
 ## The arena (GDD §10, proposed): the Grand Court, a plain causeway (_plan_lap clears every lap: no holes,
 ## fences, ceilings, doodads or enemies of its own; every danger is the boss's) in its own look
@@ -22,31 +20,33 @@ extends BossEncounter
 ## 1. Its intro. The first phase's is the entrance (GDD §10, proposed): it rises into view at the far end
 ##    from the depths beside the causeway, its cape unfurling into its cloud, and the cult's three-note
 ##    chime (the Resonator's notes, gc_chime) rings out huge and slow; the calm golden face looks down the
-##    causeway at the runner. A later stage 1 phase's: it reels back from the blast and recovers (reel). Stage
-##    2's (phases 4-6, The Magnate, E5d-d: the block at the end): phase 4's the transition (on a retry from the
-##    checkpoint too), phases 5 and 6's his hurl clear after a stomp.
+##    causeway at the runner. A later stage 1 phase's: it reels back from the blast and recovers (reel), its
+##    shoulders showing the ships' damage so far (one shoulder's pipes blown out in phase 2, both in phase 3).
+##    Stage 2's (phases 4-6, The Magnate, E5d-d: the block at the end): phase 4's the transition (on a retry
+##    from the checkpoint too), phases 5 and 6's his hurl clear after a stomp.
 ## 2. Its pattern: a beat script (GoldenConvergenceTuning.phase_beats), one beat at a time, beat_gap apart
 ##    (divided by the phase's pace): phase 1 the strafe on its own (3 passes), slams, a barrage, the Refill
 ##    Ship with a strafe, then from the slams again (loop_from); phases 2 and 3 slams, a barrage, slams, a
 ##    barrage and the Refill Ship with a 7-pass strafe, round and round. Each beat kind is an attack of its
-##    own class (GoldenConvergenceAttack: start, tick, busy, hold, clear; register_attack): E5d-a's is the
-##    Helidrone Strafe (GoldenConvergenceStrafe); a beat whose attack isn't built yet is a stub the pattern
-##    skips and logs (beat_stub), except that until E5d-c builds the Refill Ship a refill beat plays its
-##    strafe alone, so the preview's phases loop the strafe (and the 7-pass strafe in phases 2 and 3).
+##    own class (GoldenConvergenceAttack: start, tick, busy, hold, clear, ends_at, gap_after; register_attack):
+##    the Helidrone Strafe (GoldenConvergenceStrafe), the Fist Slam (GoldenConvergenceSlams), the Missile
+##    Barrage (GoldenConvergenceBarrage), the Refill Ship (GoldenConvergenceRefill: its chain reaction's hit,
+##    a third of the suit's health, ends the phase), stage 2's (below); a beat kind with no attack registered is
+##    a stub the pattern skips and logs (beat_stub).
 ## Nothing in a pattern depends on how long the fight or the attempt has lasted (no escalation); random
-## choices come from seeds of the fight (each strafe's own), time from the physics step: every attempt with
+## choices come from seeds of the fight (each attack's own), time from the physics step: every attempt with
 ## the same inputs plays the same. Distances that stand for a time follow the run's pace (run_pace(): the
 ## Golden Zone's 25 m/s in the campaign). Every warning plays through sound() (logged) and shows on the floor
 ## (BossProps' red lines, or cross_warning's bars across a lane). Numbers: GoldenConvergenceTuning
 ## (data/bosses/golden_boss_tuning.tres), all DESIGN-TBD (docs/questions/e5d.md).
 ##
-## Extension points for the later steps: register_attack() (each attack's file), place_buttress() and the
-## buttress pool (GoldenConvergenceButtress: at, lane, lean, span(), smash()), court.open_wall()/close_wall(),
-## the suit's handles (set_arm, pipes_open, set_pipes_broken, burst, cape_point, pipe_mouth, hand_point), the
-## strafe's hold() and `hurled` (the Refill Ship's chain reaction), the skin's feed (GoldenCourtSkin.set_feed,
-## set_feed_blackout), tuning groups per attack, and the stage 2 stub (_on_phase_started).
+## Its handles for each attack: register_attack() (each attack's file), place_buttress() and the buttress pool
+## (GoldenConvergenceButtress: at, lane, lean, span(), smash()), court.open_wall()/close_wall(), the suit's
+## handles (set_arm, pipes_open, set_pipes_broken, burst, cape_point, pipe_mouth, hand_point), the strafe's
+## hold() and `hurled` (the Refill Ship's chain reaction), an EMP reaching a part (_on_part_emp: the Refill
+## Ship's cage), the skin's feed (GoldenCourtSkin.set_feed, set_feed_blackout), tuning groups per attack.
 
-enum Step { ENTER, FLOAT, REEL, IDLE }
+enum Step { ENTER, FLOAT, REEL }
 
 const SUIT_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence/golden_convergence_suit.gd")
 const SQUADRON_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence/golden_convergence_squadron.gd")
@@ -68,9 +68,10 @@ var squadron: GoldenConvergenceSquadron
 var fire: GoldenConvergenceFire
 var court: GoldenConvergenceCourt
 var strafe: GoldenConvergenceStrafe
-## E5d-b's attacks: the Fist Slam (its toppled towers too) and the Missile Barrage.
+## E5d-b's attacks: the Fist Slam (its toppled towers too) and the Missile Barrage; E5d-c's Refill Ship.
 var slams: GoldenConvergenceSlams
 var barrage: GoldenConvergenceBarrage
+var refill: GoldenConvergenceRefill
 ## The attacks by beat kind (register_attack).
 var attacks: Dictionary = {}
 var buttresses: Array[GoldenConvergenceButtress] = []
@@ -134,7 +135,9 @@ func _build_boss() -> void:
 	register_attack(slams)
 	barrage = GoldenConvergenceBarrage.new(self)
 	register_attack(barrage)
-	# E5d-c: register_attack(GoldenConvergenceRefill.new(self)); E5d-d: stage 2's.
+	# E5d-c: the Refill Ship (its ship, its cage), after the strafe it holds and hurls.
+	refill = GoldenConvergenceRefill.new(self)
+	register_attack(refill)
 	for attack: GoldenConvergenceAttack in attacks.values():
 		attack.prewarm()
 	_build_stage_two()
@@ -148,6 +151,12 @@ func _build_boss() -> void:
 ## Adds an attack the beat script can play, under its beat kind (GoldenConvergenceAttack.kind).
 func register_attack(attack: GoldenConvergenceAttack) -> void:
 	attacks[attack.kind] = attack
+
+
+## The normal enemies it brings into play itself, readied with the fight's load (BossEncounter.warm_enemies):
+## the Refill Ship's cage generator.
+func warm_enemies() -> Array[Dictionary]:
+	return [{"type": "generator", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}}]
 
 
 ## The kit's solid material with the Golden Zone's gold (the court's own: the suit and the buttresses are
@@ -336,7 +345,18 @@ func _on_phase_started(index: int) -> void:
 		_set_step(Step.REEL)
 		suit.unfurl = 1.0
 		log_event(&"reel")
+	if index < STAGE_2:
+		_show_damage(index)
 	_place_suit()
+
+
+## The suit's damage for stage 1's phase `index` (GDD §10: "Each hit shows: the first blows out one shoulder's
+## pipes, the second the other's"): from phase 2 its right shoulder's (the first ship's), from phase 3 both. The
+## Refill Ship's blast blows each out as it lands; a phase begun another way (weapons ended the last, a review's
+## --phase) shows the same.
+func _show_damage(index: int) -> void:
+	suit.set_pipes_broken(-1, index >= 1)
+	suit.set_pipes_broken(1, index >= 2)
 
 
 func _intro_tick(delta: float) -> void:
@@ -377,10 +397,14 @@ func _pattern_tick(delta: float) -> void:
 	_t += delta
 	court.tick()
 	_tick_buttresses(delta)
+	var phase_now: int = phase_index
 	for attack: GoldenConvergenceAttack in attacks.values():
 		attack.tick(delta)
-	if step != Step.IDLE:
-		_tick_beats(delta)
+		if phase_index != phase_now or state != State.FIGHT:
+			# An attack's hit ended the phase (the Refill Ship's chain reaction): the next phase's intro has begun.
+			_place_suit()
+			return
+	_tick_beats(delta)
 	_place_suit()
 
 
@@ -398,7 +422,7 @@ func _tick_beats(delta: float) -> void:
 	_next_beat()
 
 
-## Starts the phase's next beat, skipping the stubs (beats whose attack isn't built yet); with none to play
+## Starts the phase's next beat, skipping the stubs (beat kinds with no attack registered); with none to play
 ## in its whole loop it idles.
 func _next_beat() -> void:
 	if beats.is_empty():
@@ -429,20 +453,20 @@ func _log_idle() -> void:
 	beat_wait = INF
 
 
-## The attack that plays `beat`, or null (a stub: its attack isn't built yet).
+## The attack that plays `beat`, or null (a stub: no attack of its kind is registered).
 func _attack_for(beat: Dictionary) -> GoldenConvergenceAttack:
-	var kind: StringName = beat["kind"]
-	if attacks.has(kind):
-		return attacks[kind]
-	# E5d-a's stand-in until E5d-c builds the Refill Ship (GoldenConvergenceRefill): a refill beat plays its
-	# strafe alone (the strafe sees the beat's kind: GoldenConvergenceStrafe.refill).
-	if kind == &"refill" and attacks.has(&"strafe"):
-		return attacks[&"strafe"]
-	return null
+	return attacks.get(beat["kind"]) as GoldenConvergenceAttack
 
 
 func _on_phase_ended(_index: int) -> void:
 	_clear_attacks()
+
+
+## An EMP reached one of its parts (every part hears it once): the Refill Ship's cage answers its generator's
+## (GoldenConvergenceCage.emp). Nothing else of it cares.
+func _on_part_emp(part: BossPart, center: Vector3, radius: float) -> void:
+	if refill != null and part == refill.ship:
+		refill.on_emp(center, radius)
 
 
 func _clear_attacks() -> void:
