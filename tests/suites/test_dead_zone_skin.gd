@@ -31,15 +31,10 @@ const MAX_SURFACE_CHROMA: float = 0.04
 ## A glowing colour this saturated (HSV) must keep to the decorative hues (blue to violet).
 const GLOW_SATURATION_LIMIT: float = 0.35
 ## Gaps: the street's lowest broad shading factor (kit_dead_zone.gdshaderinc, dz_street: the plates'
-## tone, the burn marks and the rubble spills; the ash only lightens it), PAT_DZ_UNDER's brightest
-## factor, and how much darker than the darkest street a gap's inside must stay (linear luminance).
+## tone, the burn marks and the rubble spills; the ash only lightens it). What is below the street is held
+## to SkinSuite.hole_share(): PAT_DZ_UNDER caps its result at COLOR (gap_inside_color for the walls, void_floor_color for
+## the void's floor), so those two are its true peaks.
 const STREET_SHADE_MIN: float = 0.7
-const UNDER_MAX_FACTOR: float = 1.0
-## (Task H3, GDD §9.9: a hole shows the ruined basements and the void's rubble, dim but recognisable: its
-## brightest colour (PAT_DZ_UNDER's factors never pass 1) may reach this share of the darkest street at its
-## darkest shading, where it used to be 0.35. The street is the darkest of the zones' floors, so the share is
-## the highest of them, and what is drawn is dimmer still: the patterns darken the colour.)
-const GAP_CONTRAST: float = 1.3
 ## The showcase track's gap (SkinSuite.showcase_track): lane 3 of 5, 50-57 m.
 const GAP_LANE := Vector2(1.2, 3.6)
 const GAP := Vector2(50.0, 57.0)
@@ -238,8 +233,9 @@ func _surfaces(skin: DeadZoneSkin) -> void:
 		count[0], plumes[0]])
 
 
-## Gaps read as holes at a glance (CLAUDE.md readability rules): whatever a gap shows is deep shade far
-## darker than the street can be drawn, and nothing in it glows but the orange edge; no floor is drawn
+## Gaps read as holes at a glance (CLAUDE.md readability rules): whatever a gap shows (the ruined basements and
+## the rubble, task H3) stays clearly darker than the street as rendered (SkinSuite.hole_share), and nothing in
+## it glows but the orange edge; no floor is drawn
 ## in (or near) the edge's colour; the showcase gap carries the full orange edge on both sides (the
 ## lip on the street right at the collision edge, the strip along the top of its cut, and on the far
 ## side the halo). Checked over whole levels at 3 and 5 lanes: below the street there is nothing but
@@ -247,9 +243,7 @@ func _surfaces(skin: DeadZoneSkin) -> void:
 func _gaps(skin: DeadZoneSkin) -> void:
 	var shade := Color(STREET_SHADE_MIN, STREET_SHADE_MIN, STREET_SHADE_MIN)
 	var darkest: float = minf(_linear_luminance(skin.road_color * shade), _linear_luminance(skin.gutter_color * shade))
-	var inside: float = _linear_luminance(skin.gap_inside_color * Color(UNDER_MAX_FACTOR, UNDER_MAX_FACTOR, UNDER_MAX_FACTOR))
-	check(inside < darkest * GAP_CONTRAST, "a gap's inside stays far darker than the darkest street: %.4f vs %.4f" % [inside,
-		darkest])
+	check_hole_share("the Dead Zone", [skin.gap_inside_color], [skin.void_floor_color], darkest)
 	var like_edge: PackedStringArray = []
 	for c: Color in [skin.road_color, skin.gutter_color, skin.ash_color, skin.lane_marking_color, skin.rubble_color,
 			skin.bridge_color, skin.slab_color, skin.seam_color]:
@@ -291,7 +285,7 @@ func _gaps(skin: DeadZoneSkin) -> void:
 		"the near edge's orange lip ends right at the collision edge: %s" % near_lip)
 	check(halo, "the far edge carries its orange halo toward the approaching runner")
 	await free_track(track)
-	var limit: float = inside + 0.0001
+	var limit: float = maxf(_linear_luminance(skin.gap_inside_color), _linear_luminance(skin.void_floor_color)) + 0.0001
 	for lanes: int in [3, 5]:
 		var layout: LevelLayout = level(DZ_LEVEL_PATH, lanes, 0.6, 9)
 		var bad: PackedStringArray = []

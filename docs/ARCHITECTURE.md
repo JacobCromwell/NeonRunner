@@ -2042,9 +2042,12 @@ recognisable from the runner's camera, in gaps and cuts alike). The runner's cam
 what it sees of a hole is mostly the far end face of a gap and the first few metres of a long hole's walls,
 and the bottom only from nearby or above: the scenery is on the faces first, the plane second. Each look is
 one pattern in the solid kit, steady (nothing flashes: no Reduced flashing case) and all albedo (nothing
-glows), `COLOR` its peak and the pattern only ever darkening it, and the zone's `kit_solid` sheen is cut to a
-quarter below the street (`sheen_k`, patterns 31, 41, 53, 54, 71) so it never drowns them at a hole's grazing
-walls:
+glows), `COLOR` its peak and the result capped at it (plus, for the quay and the water, exactly the sky's and
+the lamps' colours), and the zone's `kit_solid` sheen is cut to a quarter below the street (`sheen_k`,
+patterns 31, 41, 53, 54, 71) so it never drowns them at a hole's grazing walls. On the Compatibility renderer
+alone the same patterns are lifted by `UNDER_COMPAT_GAMMA` (0.85): it shows dark values darker than Forward+
+(the same colours drew as near-black), and the lift brings the holes to within a few luma points of
+Forward+'s, never past it.
 - *Golden Zone* (`PAT_UNDERDECK`, `PAT_CANAL`): a stone quay of round arches on piers, one a lane across an
   end face and one every two lanes along a side, the canal's light wavering on the stone and shimmering in
   the arches toward the water, and the water below, ripples sliding with the current, the dusk's sky
@@ -2056,18 +2059,24 @@ walls:
   shows stone and not the hall's outside). DESIGN-TBD (docs/questions/h3.md).
 - *Corporate* (`PAT_CORP_UNDER`): a carriage's side with its band of dim cold windows, the guideway beams
   on their piers with a lighter top edge (`guideway_color`) over a wet concrete trench with joints and
-  puddles (`trench_color`) and the trench's retaining walls (mode 5); the plaza's deck edge a slab with a pale
-  fascia over a lower level of painted bays, 9 m down in the data (`trench_depth`, 18 m for the trains).
-- *Dead Zone* (`PAT_DZ_UNDER`): the road's broken layers and rebar, then the ruined basements, concrete with
-  formwork lines, a pilaster every 3.6 m and a pipe run, and far down a rubble floor with paler slabs and,
-  in a few patches, dull embers in its cracks (albedo only, dark; kept minimal and never near the orange).
-The hole must still read as a hole at a glance, so each zone's skin suite holds the peak of everything below
-the street to a share of the darkest floor at its darkest shading (`GAP_CONTRAST`: 0.65 Golden, 1.3 Corporate
-and Dead Zone, whose floors are the darkest, 0.35 the palace's white marble; the rendered pixels are dimmer
-still, since the patterns darken the colours), nothing glows below but the orange edges, and the cut is
-never brighter than the zone's gap (`test_floor_cuts`' `_inside_limit`) nor, in these five skins, black (the
-plane an open cut's ray meets is at least `BELOW_MIN_LUMINANCE`). The trade-off for the owner to confirm is in
-docs/questions/h3.md.
+  puddles (`trench_color`) and the trench's retaining walls (mode 5: they, and the plaza's lower-level walls,
+  were built facing away from the street and never drew; they face it now); the plaza's deck edge a slab with
+  a pale fascia over a lower level of painted bays, 9 m down in the data (`trench_depth`, 18 m for the
+  trains). Hostile Takeover's arena (`HostileTakeoverSkin` extends `CorporateSkin`) inherits the gap look: its
+  carriage ends, its guideway colour and the cut through its train (its moving street below is its own).
+- *Dead Zone* (`PAT_DZ_UNDER`): the road's broken layers and rebar, then the ruined basements, concrete
+  with formwork courses, a row of dark window slots under pale lintels, a pilaster between bays, a pipe run
+  and ash on the sills, a slope of rubble blocks at the foot, and far down (`void_floor_color`) a rubble
+  floor with paler slabs and pale ash in its cracks: greys only (the first build's embers sat at the gap
+  edge's hue and were dropped).
+The hole must still read as a hole at a glance. `SkinSuite.hole_share()` (`tests/helpers/skin_suite.gd`)
+holds each zone to it with the true peaks of its patterns: the brightest thing drawn below the street,
+rendered (the kit lights a wall's side 0.70 and a face seen from above 0.92), over the darkest the street
+is drawn, rendered, must be at most `HOLE_SHARE_MAX` (0.8); each suite prints its share (Corporate 0.70,
+Golden 0.72, Dead Zone 0.75, Golden Palace 0.22). Nothing glows below but the orange edges, the cut is never
+brighter than the zone's gap (`test_floor_cuts`' `_inside_limit`) nor, in these five skins, black (the
+plane an open cut's ray meets is at least `BELOW_MIN_LUMINANCE`). The trade-off for the owner to confirm is
+in docs/questions/h3.md.
 
 `test_floor_cuts` builds every skin in `data/skins/` (and Hostile Takeover's train, the grey box and the
 plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges on the

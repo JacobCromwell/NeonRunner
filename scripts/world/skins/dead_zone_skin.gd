@@ -92,7 +92,12 @@ extends ZoneSkin
 ## darkening with depth, but showing what is there (PAT_DZ_UNDER; task H3, GDD §9.9), so a hole reads
 ## as a hole at a glance and still shows the ruins. The brightest it is drawn: kept far darker than the
 ## street (tests/suites/test_dead_zone_skin.gd).
-@export var gap_inside_color: Color = Color(0.15, 0.15, 0.16)
+@export var gap_inside_color: Color = Color(0.13, 0.13, 0.135)
+## DESIGN-TBD (docs/questions/h3.md): the void's floor far below (the rubble field the holes end in; the
+## brightest it is drawn: PAT_DZ_UNDER only darkens it). Its own colour because the floor is a top face,
+## seen straight on, which the kit lights more than a wall (0.92 against 0.70): darker, so that it stays
+## as far under the street as the walls do.
+@export var void_floor_color: Color = Color(0.105, 0.105, 0.11)
 ## How far the void under the street goes down (deeper than a fall that ends the run, so a fall never
 ## visibly lands).
 @export_range(4.5, 20.0, 0.1, "suffix:m") var void_depth: float = 7.0

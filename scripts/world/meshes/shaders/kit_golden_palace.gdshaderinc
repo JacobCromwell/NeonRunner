@@ -43,7 +43,8 @@ vec3 golden_palace_floor(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float par
 // it reads as a hole at a glance, like every zone's gap, and never lights like the floor above), but
 // (task H3, GDD §9.9) showing what is there: a stairwell, its stone steps going down in treads and risers
 // (diagonal along a long side, level across a face), and far below the lower hall's marble in slabs with
-// a pool of light on it. Steady, all albedo. param: 0 a face, 1 the lower hall's floor.
+// a pool of light on it. Steady, all albedo, COLOR the peak of both (capped at it: the palace suite counts COLOR
+// and nothing more). param: 0 a face, 1 the lower hall's floor.
 vec3 golden_palace_well(vec3 base, vec3 w, vec3 n, float param) {
 	if (param > 0.5) {
 		vec2 p = w.xz;
@@ -51,12 +52,13 @@ vec3 golden_palace_well(vec3 base, vec3 w, vec3 n, float param) {
 		vec2 q = p / vec2(2.4, 3.6);
 		vec2 fq = fwp / vec2(2.4, 3.6);
 		float joint = max(filtered_pulse(q.x + 0.5, fq.x, 0.0, 0.025), filtered_pulse(q.y, fq.y, 0.0, 0.02));
-		vec3 col = base * (0.78 + 0.3 * value_noise(p * vec2(0.5, 0.35)));
+		vec3 col = base * (0.6 + 0.25 * value_noise(p * vec2(0.5, 0.35)));
 		col *= 1.0 - 0.55 * joint;
-		// The light well: a pool of soft light every 22 m down the hall, on its axis and wide.
+		// The light well: a pool of soft light every 22 m down the hall, on its axis and wide. It lifts the
+		// stone toward COLOR and never past it (capped: COLOR is the peak the palace suite counts).
 		vec2 pc = vec2(p.x / 4.2, (fract(p.y / 22.0 + 0.5) - 0.5) * 22.0 / 6.5);
-		col *= 1.0 + 0.9 * exp(-dot(pc, pc));
-		return col;
+		col *= 1.0 + 0.6 * exp(-dot(pc, pc));
+		return min(col, base);
 	}
 	bool side = abs(n.x) > 0.5;
 	float h = side ? w.z : w.x;
@@ -70,7 +72,7 @@ vec3 golden_palace_well(vec3 base, vec3 w, vec3 n, float param) {
 	float tread = 0.5 + 0.5 * step(0.5, fract(s));
 	float depth = mix(1.0, 0.3, smoothstep(-0.2, -5.2, w.y));
 	float pier = filtered_pulse(h / 3.6, fh / 3.6, 0.0, 0.1);
-	return base * (0.8 + 0.2 * tread - 0.4 * riser - 0.18 * pier) * depth;
+	return min(base * (0.8 + 0.2 * tread - 0.4 * riser - 0.18 * pier) * depth, base);
 }
 
 // PAT_PALACE_PANEL (72): the colonnade's flush wall panel, floor to the entablature (world position,

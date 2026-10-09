@@ -32,16 +32,11 @@ const CORP_LEVEL_PATH: String = "res://data/levels/corporate_2.tres"
 const MAX_SURFACE_CHROMA: float = 0.45
 ## A glowing colour this saturated (HSV) must keep to the decorative hues (blue to violet).
 const GLOW_SATURATION_LIMIT: float = 0.35
-## Gaps: the floor shading's lowest broad factor (a freight car's corrugation, sheet tone and
-## shoulders; kit_corporate.gdshaderinc, corp_roof), PAT_CORP_UNDER's brightest factor (the top of a
-## face), and how much darker than the darkest floor a gap's inside must stay (linear luminance).
+## Gaps: the floor shading's lowest broad factor (a freight car's corrugation, sheet tone and shoulders;
+## kit_corporate.gdshaderinc, corp_roof). What is below the running surface is held to SkinSuite.hole_share():
+## PAT_CORP_UNDER caps its result at COLOR, so the walls' (gap_inside_color), the guideways' (guideway_color) and the
+## trench's or lower level's (trench_color) are its true peaks.
 const FLOOR_SHADE_MIN: float = 0.6
-const UNDER_MAX_FACTOR: float = 1.0
-## (Task H3, GDD §9.9: a gap shows the trench under the maglev line, or the plaza's lower level, dim but
-## recognisable: the brightest colour below (the guideways' steel, PAT_CORP_UNDER's factors never pass 1) may
-## reach this share of the darkest floor at its darkest shading, which is the military freight cars' olive in
-## deep shade, where it used to be 0.35. What is drawn is dimmer still: the patterns darken the colours.)
-const GAP_CONTRAST: float = 1.3
 ## The showcase track's gap (SkinSuite.showcase_track): lane 3 of 5, 50-57 m.
 const GAP_LANE := Vector2(1.2, 3.6)
 const GAP := Vector2(50.0, 57.0)
@@ -261,11 +256,8 @@ func _gaps(skin: CorporateSkin, what: String) -> void:
 		darkest = minf(darkest, _linear_luminance(c * Color(FLOOR_SHADE_MIN, FLOOR_SHADE_MIN, FLOOR_SHADE_MIN)))
 		if _near_colour(c, skin.gap_edge_color):
 			like_edge.append(str(c))
-	var inside: float = 0.0
-	for c: Color in [skin.gap_inside_color, skin.guideway_color, skin.trench_color]:
-		inside = maxf(inside, _linear_luminance(c * Color(UNDER_MAX_FACTOR, UNDER_MAX_FACTOR, UNDER_MAX_FACTOR)))
-	check(inside < darkest * GAP_CONTRAST, "%s: a gap's inside stays far darker than the darkest floor: %.4f vs %.4f" % [
-		what, inside, darkest])
+	# The beams are seen from above and from the side: counted as tops (the brighter shading).
+	check_hole_share(what, [skin.gap_inside_color], [skin.guideway_color, skin.trench_color], darkest)
 	check(like_edge.is_empty(), "%s: no floor is drawn in the gap edge's colour: %s" % [what, ", ".join(like_edge)])
 	var track: TrackBuilder = showcase_track(skin)
 	var strip := Vector2(INF, -INF)

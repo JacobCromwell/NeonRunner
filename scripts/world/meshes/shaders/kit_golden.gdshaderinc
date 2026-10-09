@@ -30,6 +30,10 @@ uniform float golden_flow = 1.4;
 uniform float golden_canal_y = -5.5;
 uniform vec3 golden_canal_sky = vec3(0.06, 0.065, 0.1);
 uniform vec3 golden_canal_lamp = vec3(0.07, 0.055, 0.035);
+// What the quay's and the water's patterns may add, at their very brightest, is exactly these colours (every
+// coefficient below is at most 1 and the results are capped at COLOR plus them): the Golden skin suite's
+// contrast guard counts exactly these peaks (test_golden_skin.gd, _gaps), so a hole stays clearly darker
+// than the walkways whatever glints on it.
 // Falling water's foam, and the gold of trims woven or set into other patterns (banner edges, the
 // coffers' rosettes, the boutique boards' lettering) and the cream of the coffers' ribs.
 uniform vec3 golden_foam = vec3(0.9, 0.92, 0.92);
@@ -175,8 +179,9 @@ vec3 golden_walkway(vec3 base, vec3 w, vec3 n, vec3 eye, vec2 uv, float param) {
 // reads a canal: the quay under the deck, a masonry wall of round arches on piers, one every 4.8 m
 // (recessed and dark inside, with a dark joint around each and courses on the stone), going down to the water,
 // and near the water the canal's light wavering on the stone in a net of ripples that fades out a metre
-// and a half up. Steady (a slow drift, never a flash), all albedo. COLOR is the stone's shade at the
-// deck's level; the water is at world height golden_canal_y.
+// and a half up. Steady (a slow drift, never a flash), all albedo. COLOR is the stone's brightest (the
+// pattern only darkens it) and the water's light adds at most golden_canal_sky:
+// the peak test_golden_skin counts. The water is at world height golden_canal_y.
 vec3 golden_under(vec3 base, vec3 w, vec3 n, float t) {
 	bool side = abs(n.x) > 0.5;
 	float h = side ? w.z : w.x;
@@ -207,8 +212,9 @@ vec3 golden_under(vec3 base, vec3 w, vec3 n, float t) {
 	vec3 shimmer = golden_canal_sky * (0.3 + 0.7 * web) * (0.5 + 0.5 * low);
 	vec3 col = mix(stone, base * 0.18 + shimmer, opening * (1.0 - fascia));
 	// And on the stone itself a metre or so up from the water.
-	col += golden_canal_sky * (1.0 - smoothstep(0.1, 1.3, above)) * (0.15 + 0.85 * web) * 0.7 * (1.0 - opening);
-	return col;
+	col += golden_canal_sky * (1.0 - smoothstep(0.1, 1.3, above)) * (0.15 + 0.85 * web) * 0.7
+		* (1.0 - opening);
+	return min(col, base + golden_canal_sky);
 }
 
 // PAT_CANAL (54): the canal far below the walkways, seen only through gaps and cuts: dark water
@@ -217,11 +223,12 @@ vec3 golden_under(vec3 base, vec3 w, vec3 n, float t) {
 // the canal in the Golden Zone"): slow ripples; the dusk's sky laid on it more the lower the eye (a
 // still sheen), broken into glints that slide with the current; and the walkways' lamps wavering
 // on it, warm white and faint. All of it is albedo (never emissive) and steady, so it needs nothing for
-// Reduced flashing, and it stays well under the walkways' darkest gold (test_golden_skin).
+// Reduced flashing. COLOR is the water's brightest (the ripples only darken it), and the sky and the lamps
+// add at most golden_canal_sky and golden_canal_lamp: the peak test_golden_skin counts.
 vec3 golden_canal(vec3 base, vec3 w, vec3 eye, float t) {
 	vec2 p = vec2(w.x, w.z - t * golden_flow);
 	float ripple = value_noise(p * vec2(1.1, 0.3)) * 0.6 + value_noise(p * vec2(2.9, 0.9) + 7.0) * 0.4;
-	vec3 col = base * (0.7 + 0.5 * ripple);
+	vec3 col = base * (0.55 + 0.45 * ripple);
 	// The sky on the water: a sheen toward the horizon, and sparse glints where a ripple faces it.
 	float fres = pow(1.0 - clamp(eye.y, 0.0, 1.0), 2.0);
 	float glint = smoothstep(0.7, 0.93, value_noise(p * vec2(4.6, 1.5) + 11.0));
@@ -232,8 +239,9 @@ vec3 golden_canal(vec3 base, vec3 w, vec3 eye, float t) {
 	float here = step(0.45, hash12(id + 31.0));
 	vec2 at = vec2(0.5 + 0.25 * (hash12(id + 5.0) - 0.5), 0.5);
 	vec2 d = (fract(cell) - at) * vec2(1.6, 3.2);
-	col += golden_canal_lamp * here * (1.0 - smoothstep(0.0, 0.55, length(d))) * (0.7 + 0.3 * value_noise(p * 3.0));
-	return col;
+	col += golden_canal_lamp * here * (1.0 - smoothstep(0.0, 0.55, length(d)))
+		* (0.7 + 0.3 * value_noise(p * 3.0));
+	return min(col, base + golden_canal_sky + golden_canal_lamp);
 }
 
 // PAT_WATER (55): falling water, scenery only (GDD §5: waterfalls and fountains off the ceilings):

@@ -185,6 +185,9 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 ## it carry theirs, and no wall stands at the facade at a gap here) and no bottom: only the far end,
 ## where the lane's truck went on, a dark face as tall as a truck (the road is `road_depth` down, not
 ## 8 m of box). The orange edges and the halo are the standard ones.
+## DESIGN-TBD (docs/questions/h3.md, question 2): a gap's far side is the next truck's cab, with lights; a
+## cut's far end has no cab, so it is a plain dark face (never lit: lights there would be glows that
+## mean something else beside the cut's orange).
 func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
 	standard_floor_cut(parent, cut, solid_material(), glow_material(), {
 		"edge": gap_edge_color, "inside": CUT_INSIDE_COLOR, "depth": road_depth, "end_depth": truck_height,

@@ -116,15 +116,18 @@ vec3 dz_street(vec3 base, vec3 w, vec2 uv, float param) {
 }
 
 // PAT_DZ_UNDER (41): everything below the street, seen only through holes and cuts: the broken road's cut,
-// the lanes' sides, the building faces below the street and the void's floor far below. It stays dim and
-// darkens with depth (a hole reads as a hole at a glance: far darker than the street, nothing lit and
-// nothing that looks like a floor you could land on at street level), but (task H3, GDD §9.9: "inside the
-// cut, the player sees the zone's own scenery below the street") it shows what is there: the road's broken
-// layers and rebar at the top, then the street's ruined basements, a concrete wall with its formwork
-// lines, a square pilaster every 3.6 m, a pipe run along it and a rubble slope below, and far down the
-// void's floor, a field of rubble with paler broken slabs in it and, in a few patches, dull embers in its cracks. All albedo, steady, and COLOR is the
-// peak: the concrete's colour at the road's level. param: 0 a face across the lane, 1 a face along it,
-// 2 the void's floor.
+// the lanes' sides, the building faces below the street and the void's floor far below. It stays dim (a
+// hole reads as a hole at a glance: far darker than the street, nothing lit and nothing that looks like a
+// floor you could land on at street level), but (task H3, GDD §9.9: "inside the cut, the player sees the
+// zone's own scenery below the street") it shows what is there, in greys, ash and concrete only: under
+// the road's broken layers and rebar, the ruined basements the street was built over, a concrete wall of
+// formwork courses with a row of dark window slots under pale lintels (one a bay, so 3.6 m along a side
+// and 2 m across an end face), square pilasters between them, a pipe run, ash on the sills, and at the
+// foot a slope of rubble blocks; far down the void's floor, a field of rubble with paler broken slabs and
+// ash in its cracks. The detail is in the first few metres, which is all the runner's camera sees of a
+// hole's walls, and the depth fade is gentle. All albedo, steady. COLOR is the PEAK (capped at it, per
+// channel: the suite's contrast guard counts COLOR and nothing more); everything shown is darker, the
+// windows far darker. param: 0 a face across the lane, 1 a face along it, 2 the void's floor.
 vec3 dz_under(vec3 base, vec3 w, vec3 n, float param) {
 	float mode = floor(param + 0.5);
 	if (mode > 1.5) {
@@ -132,31 +135,44 @@ vec3 dz_under(vec3 base, vec3 w, vec3 n, float param) {
 		float lump = value_noise(p * 0.9) * 0.6 + value_noise(p * 2.7 + 5.0) * 0.4;
 		float slab = smoothstep(0.6, 0.74, value_noise(p * vec2(0.5, 0.38) + 11.0));
 		float crack = 1.0 - smoothstep(0.0, 0.07, abs(value_noise(p * 0.8 + 3.0) - 0.5));
-		// The rubble's cracks in a few patches smoulder, dull and dark (albedo only: embers kept minimal, never
-		// a glow, never close to the orange edge).
-		float ember = crack * step(0.58, value_noise(p * 0.3 + 17.0)) * (0.5 + 0.5 * value_noise(p * 1.9 + 2.0));
-		vec3 col = base * (0.35 + 0.55 * lump + 0.1 * slab) * (1.0 - 0.3 * crack);
-		return mix(col, base * vec3(1.9, 0.8, 0.5), ember * 0.8);
+		// Ash settled in the cracks (pale grey, never a warm hue).
+		vec3 col = base * (0.35 + 0.5 * lump + 0.15 * slab) * (1.0 - 0.3 * crack);
+		col = mix(col, base * 0.95, crack * step(0.5, value_noise(p * 0.3 + 17.0)) * 0.6);
+		return min(col, base);
 	}
-	float h = abs(n.x) > 0.5 ? w.z : w.x;
+	bool side = abs(n.x) > 0.5;
+	float h = side ? w.z : w.x;
 	float fh = max(fwidth(h), 1e-4);
 	float fy = max(fwidth(w.y), 1e-4);
 	float grain = 0.88 + 0.12 * value_noise(vec2(h * 2.3, w.y * 3.1));
+	// The road's own cut: dark broken layers and rebar, just under the street.
 	float layers = 0.3 * band(w.y, -0.36, -0.3, fy) + 0.2 * band(w.y, -0.66, -0.6, fy);
 	float rebar = filtered_pulse(h / 0.25, fh / 0.25, 0.0, 0.12) * band(w.y, -0.52, -0.46, fy);
-	// The ruined basement under the road's layers.
+	vec3 road = base * 0.8 * (1.0 - layers - 0.3 * rebar) * grain;
+	// The basement: bays along the wall, a window slot in each between pilasters.
+	float bay = side ? 3.6 : 2.0;
+	float u = (fract(h / bay) - 0.5) * bay;
+	float half_w = bay * 0.3;
 	float form = filtered_pulse(w.y / 0.55, fy / 0.55, 0.0, 0.08);
-	float pilaster = filtered_pulse(h / 3.6, fh / 3.6, 0.0, 0.2);
-	float pipe = band(w.y, -2.9, -2.45, fy);
-	float pipe_hi = band(w.y, -2.8, -2.7, fy);
-	float rubble = (1.0 - smoothstep(-6.2, -5.4, w.y)) * (0.5 + 0.5 * value_noise(vec2(h * 1.7, w.y * 2.2)));
-	float depth = mix(1.0, 0.4, smoothstep(-0.8, -6.5, w.y));
+	float pilaster = 1.0 - band(u, -bay * 0.5 + 0.35, bay * 0.5 - 0.35, fh);
+	float slot = band(u, -half_w, half_w, fh) * band(w.y, -2.15, -1.2, fy);
+	float lintel = band(u, -half_w - 0.12, half_w + 0.12, fh) * band(w.y, -1.2, -1.05, fy);
+	float sill = band(u, -half_w - 0.12, half_w + 0.12, fh) * band(w.y, -2.3, -2.15, fy);
+	float pipe = band(w.y, -3.0, -2.55, fy);
+	float pipe_hi = band(w.y, -2.88, -2.76, fy);
+	vec3 wall = base * (0.72 + 0.28 * pilaster) * (1.0 - 0.3 * form) * grain;
+	wall = mix(wall, base * 0.1, slot);
+	wall = mix(wall, base * 0.95, max(lintel, sill) * 0.9);
+	wall = mix(wall, base * (0.3 + 0.55 * pipe_hi), pipe);
+	// The rubble slope at the wall's foot: blocks of paler and darker concrete.
+	float foot = 1.0 - smoothstep(-5.0, -4.2, w.y);
+	vec2 q = vec2(h * 1.3 + w.y * 0.4, w.y * 1.6);
+	float block = hash12(floor(q) + 3.0);
+	vec3 rubble = base * (0.4 + 0.55 * block) * (0.85 + 0.15 * value_noise(q * 3.0));
+	wall = mix(wall, rubble, foot);
+	float depth = mix(1.0, 0.55, smoothstep(-1.0, -7.0, w.y));
 	float in_wall = 1.0 - smoothstep(-0.9, -0.7, w.y);
-	vec3 road = base * (1.0 - layers - 0.3 * rebar) * grain;
-	vec3 wall = base * (0.55 + 0.45 * pilaster) * (1.0 - 0.22 * form) * grain;
-	wall = mix(wall, base * (0.3 + 0.6 * pipe_hi), pipe);
-	wall = mix(wall, base * (0.5 + 0.5 * grain), rubble);
-	return mix(road, wall, in_wall) * depth;
+	return min(mix(road, wall, in_wall) * depth, base);
 }
 
 // PAT_DZ_TOWER (42): a burnt-out tower of the dead city (DeadTowers): one of the Neon City's towers

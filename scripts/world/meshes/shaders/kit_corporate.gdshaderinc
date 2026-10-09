@@ -99,8 +99,9 @@ vec3 corp_roof(vec3 base, vec3 w, vec2 uv, float param) {
 // street level), but (task H3, GDD §9.9: "the trench under the maglev line") it shows what is there: a
 // carriage's body with its band of dim cold windows, under it the guideway beams on their piers with a
 // lighter edge along the top, and far below a wet concrete trench with its joints and puddles; or, under
-// the plaza, the deck's slab edge over a lower level of painted bays. COLOR is the peak, the shade at the
-// running surface's level; everything below it is only ever darker. All albedo and steady.
+// the plaza, the deck's slab edge over a lower level of painted bays. COLOR is the PEAK (the result is
+// capped at it per channel: the suites' contrast guard counts COLOR and nothing more);
+// everything below is only ever darker. All albedo and steady.
 // param: 0 a face across the lane (a carriage's end), 1 a face along it (a carriage's side, the trench's
 // walls), 2 the trench's floor, 3 a guideway beam or pier, 4 the plaza's lower level, 5 the plaza deck's
 // edge (a slab).
@@ -110,6 +111,7 @@ vec3 corp_under(vec3 base, vec3 w, vec3 n, float param) {
 	float fh = max(fwidth(h), 1e-4);
 	float fy = max(fwidth(w.y), 1e-4);
 	float fz = max(fwidth(w.z), 1e-4);
+	vec3 col;
 	if (mode > 3.5 && mode < 4.5) {
 		// The plaza's lower level: concrete in painted bays (a line every 2.6 m across, a long line
 		// down each lane's edge), worn and stained.
@@ -118,41 +120,41 @@ vec3 corp_under(vec3 base, vec3 w, vec3 n, float param) {
 		float bay = filtered_pulse(p.y / 2.6, fwp.y / 2.6, 0.0, 0.04);
 		float lane_line = filtered_pulse(p.x / 2.4 + 0.5, fwp.x / 2.4, 0.0, 0.025);
 		float stain = value_noise(p * vec2(0.4, 0.25) + 6.0);
-		vec3 col = base * (0.5 + 0.35 * stain);
-		return mix(col, base * 0.95, max(bay, lane_line) * 0.7);
-	}
-	if (mode > 1.5 && mode < 3.5) {
+		col = mix(base * (0.5 + 0.35 * stain), base * 0.95, max(bay, lane_line) * 0.7);
+	} else if (mode > 1.5 && mode < 3.5) {
 		if (mode < 2.5) {
 			// The trench floor: wet concrete slabs, a joint every 6 m, puddles reflecting the cold sky.
 			vec2 p = w.xz;
 			float joint = filtered_pulse(p.y / 6.0, fz / 6.0, 0.0, 0.03);
 			float puddle = smoothstep(0.58, 0.7, value_noise(p * vec2(0.4, 0.22) + 3.0));
 			float mottle = value_noise(p * vec2(0.9, 0.6));
-			return base * (0.4 + 0.25 * mottle + 0.35 * puddle) * (1.0 - 0.5 * joint);
+			col = base * (0.4 + 0.25 * mottle + 0.35 * puddle) * (1.0 - 0.5 * joint);
+		} else {
+			// A guideway beam or pier: steel, its top edge lighter (the face that catches the sky), a pier
+			// ringed every 1.7 m.
+			float top = band(w.y, -6.1, -5.55, fy);
+			float ring = filtered_pulse(w.y / 1.7, fy / 1.7, 0.0, 0.1);
+			float up = max(n.y, 0.0);
+			col = base * (0.55 + 0.45 * max(top, up)) * (1.0 - 0.3 * ring * (1.0 - up));
 		}
-		// A guideway beam or pier: steel, its top edge lighter (the face that catches the sky), a pier ringed
-		// every 1.7 m.
-		float top = band(w.y, -6.1, -5.55, fy);
-		float ring = filtered_pulse(w.y / 1.7, fy / 1.7, 0.0, 0.1);
-		float up = max(n.y, 0.0);
-		return base * (0.55 + 0.45 * max(top, up)) * (1.0 - 0.3 * ring * (1.0 - up));
-	}
-	if (mode > 4.5) {
+	} else if (mode > 4.5) {
 		// The plaza deck's edge: a pale fascia along the top, then the slab's concrete down to the lower level.
 		float fascia = band(w.y, -0.6, 0.0, fy);
 		float form = filtered_pulse(w.y / 0.5, fy / 0.5, 0.0, 0.07);
 		float col_h = filtered_pulse(h / 7.2, fh / 7.2, 0.0, 0.12);
 		float depth = mix(1.0, 0.4, smoothstep(-0.6, -8.0, w.y));
-		return base * (0.62 + 0.38 * fascia + 0.25 * col_h - 0.22 * form) * depth;
+		col = base * (0.62 + 0.38 * fascia + 0.25 * col_h - 0.22 * form) * depth;
+	} else {
+		float depth = mix(1.0, 0.4, smoothstep(-0.12, -3.2, w.y));
+		// A band of dim cold windows under the eaves (a carriage's cabin, or a cab's windscreen on an end)
+		// and panel joints.
+		float windows = band(w.y, -1.9, -0.7, fy);
+		float joints = filtered_pulse(h / 2.4, fh / 2.4, 0.0, 0.02);
+		vec3 body = base * (0.9 - 0.3 * joints);
+		vec3 glass = base * vec3(0.7, 0.85, 1.0);
+		col = mix(body, glass, windows * 0.75) * depth;
 	}
-	float depth = mix(1.0, 0.4, smoothstep(-0.12, -3.2, w.y));
-	// A band of dim cold windows under the eaves (a carriage's cabin, or a cab's windscreen on an end) and
-	// panel joints.
-	float windows = band(w.y, -1.9, -0.7, fy);
-	float joints = filtered_pulse(h / 2.4, fh / 2.4, 0.0, 0.02);
-	vec3 body = base * (0.9 - 0.3 * joints);
-	vec3 glass = base * vec3(0.72, 0.95, 1.3);
-	return mix(body, glass, windows * 0.75) * depth;
+	return min(col, base);
 }
 
 // PAT_CORP_PAVING (32): a plaza's paving (world xz, so lanes and pieces join seamlessly): large

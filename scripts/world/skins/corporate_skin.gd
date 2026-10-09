@@ -104,9 +104,9 @@ enum FloorStyle { MAGLEV, PLAZA }
 ## trench. These are the brightest each is drawn (the patterns only darken them): kept far darker than
 ## any roof (tests/suites/test_corporate_skin.gd). The faces, the guideways' steel and the trench's wet
 ## concrete (or the plaza's lower level).
-@export var gap_inside_color: Color = Color(0.16, 0.17, 0.19)
-@export var guideway_color: Color = Color(0.18, 0.19, 0.21)
-@export var trench_color: Color = Color(0.13, 0.14, 0.16)
+@export var gap_inside_color: Color = Color(0.15, 0.16, 0.18)
+@export var guideway_color: Color = Color(0.125, 0.135, 0.155)
+@export var trench_color: Color = Color(0.105, 0.115, 0.13)
 ## The guideway beams' tops and the trench's floor, below the depth at which a fall ends the run, so
 ## a fall never visibly lands.
 @export_range(4.5, 20.0, 0.1, "suffix:m") var guideway_depth: float = 5.6
