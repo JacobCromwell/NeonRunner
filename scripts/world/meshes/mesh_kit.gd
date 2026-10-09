@@ -207,6 +207,31 @@ const PAT_PALACE_PANEL: int = 72
 const PALACE_JOINT_LEFT: int = 1
 const PALACE_JOINT_RIGHT: int = 2
 
+## The Casino's surface patterns of the solid kit shader (kit_casino.gdshaderinc), ids 80-89 (task K1): a
+## covered casino street at night (GDD §5, Zone 4). Dark iron and aged brass are lit metal, never neon;
+## only the signs' lettering and borders glow, in warm white, violet or blue.
+## The street's paving along one lane (world position; UV.x 0-1 across the lane): flagstones, brass
+## inlaid along both edges and across every 6 m, soft lamplight pools, a wet sheen. param = the lane's
+## key (a seed for the tones).
+const PAT_CASINO_STREET: int = 80
+## Everything under the street, seen only through gaps: deep shade darkening with depth (darkens
+## COLOR): param 0 a face across the lane, 1 a face along it, 2 the trench's floor.
+const PAT_CASINO_UNDER: int = 81
+## Dark iron (world position): param 0 a plate with seams and rivets, 1 the underside of a ceiling
+## (beams every 3 m along the track), 2 a girder.
+const PAT_CASINO_IRON: int = 82
+## Aged brass lit as polished metal: COLOR is the brass, param how polished it is (0-1).
+const PAT_CASINO_BRASS: int = 83
+## One pane of the glass roof (UV 0-1 over the pane): param = the pane's width in centimetres + 1000 *
+## its index across the arch. Opaque and faked: no transparency.
+const PAT_CASINO_VAULT: int = 84
+## A lit casino sign (UV in metres, x to the viewer's right, y up), glowing: COLOR is the light
+## (warm white, violet or blue); param = seed (0-99) + 100 * the panel's height in decimetres.
+const PAT_CASINO_SIGN: int = 85
+## A hanging banner (UV.x 0-1 across it, UV.y metres down from its top): COLOR is the cloth; param = its
+## length in decimetres + 1000 * a seed. Never glowing.
+const PAT_CASINO_BANNER: int = 86
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 ## How far the glow under a ceiling's end band (ceiling_end) reaches back from the band, under the
 ## ceiling. It never reaches past the far end.
