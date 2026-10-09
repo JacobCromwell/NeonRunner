@@ -15,9 +15,13 @@ extends TestSuite
 ##   one; one who runs on falls in.
 ## - An Enforcer Truck following a runner who jumps one is wrecked in it (the player's kill), at 3, 5 and 6
 ##   lanes, at quick play's speed and at Corporate 2's; it hops a level's ordinary row.
-## - Corporate 2 (the Enforcer's first level) at 3, 5 and 6 lanes: the first Enforcer's chase holds a wider gap
-##   (prefer_enforcer_chases), and played from the level's start by a scripted runner (god mode, grapples) that
-##   lines up in one of its hole lanes and jumps it, the truck following is wrecked in it.
+## - Corporate 2 (the Enforcer's first level) at 3, 5 and 6 lanes: the first Enforcer's chase holds a wider gap past
+##   its showing window (prefer_enforcer_chases; task C6e: none before it) where the chase leaves room (at 2 of the 3
+##   lane counts at least: at 6 lanes its window comes after its bait, at its chase's end), and played from the level's
+##   start by a scripted runner (god mode, grapples) that lines up in one of its hole lanes and jumps it, the truck
+##   following is wrecked in it.
+## - Task C6e: no wider gap comes in an Enforcer Truck's chase before its showing (from its arrival to its window's
+##   end: it would wreck the truck before it has shown itself), and every level keeps its wider gaps.
 
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const LANES: Array[int] = [3, 5, 6]
@@ -36,6 +40,7 @@ func run() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	_test_tuning()
 	_test_campaign(campaign)
+	_test_before_showings(campaign)
 	_test_off(campaign)
 	_test_fillers(campaign)
 	await _test_jumps(campaign)
@@ -72,6 +77,13 @@ func _test_campaign(campaign: Campaign) -> void:
 				"%s: the pass placed them all, as it reports (%s)" % [tag, result.get("constraints", "no report")])
 			LayoutChecks.check_wide_gaps(self, layout, config, tag)
 			_check_fillers(gen, rows, tag)
+			# Task C6e: none comes in an Enforcer Truck's chase before its showing (from its arrival to its window's end).
+			var before: PackedStringArray = []
+			for keep: Vector2 in EnforcerRules.wide_gap_keep_outs(layout):
+				for row: Dictionary in rows:
+					if float(row["start"]) < keep.y and float(row["end"]) > keep.x:
+						before.append("%.0f m in %.0f-%.0f m" % [float(row["start"]), keep.x, keep.y])
+			check(before.is_empty(), "%s: no wider gap in an Enforcer Truck's chase before its showing (%s)" % [tag, ", ".join(before)])
 			var grid := FloorRoute.new(layout, movement)
 			var lanes_txt: PackedStringArray = []
 			for row: Dictionary in rows:
@@ -86,6 +98,39 @@ func _test_campaign(campaign: Campaign) -> void:
 				GapDensity.rows(layout).size(), layout.gaps.size(), ", ".join(lanes_txt), int(result.get("widened", 0)),
 				int(result.get("added", 0)), int(result.get("cleared", 0)), int(result.get("taken_out", 0))])
 		print("  %s: %s" % [s.id, "; ".join(line)])
+
+
+## Task C6e (approved with C6d's follow-up): on every level with the Enforcer Truck at 3, 5 and 6 lanes, on another
+## seed, no wider gap comes in a truck's chase before its showing (from its arrival to its window's end), and the level
+## keeps its wider gaps; how many sit in a chase past its window is printed.
+func _test_before_showings(campaign: Campaign) -> void:
+	var lines: PackedStringArray = []
+	for id: String in ["corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]:
+		var in_chase: int = 0
+		var builds: int = 0
+		for lanes: int in LANES:
+			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
+			config.level_seed = 9101
+			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+			var movement: MovementTuning = config.movement_for(tuning)
+			var rows: Array[Dictionary] = WideGapPlacement.wide_rows(gen.layout, movement.jump_distance(movement.run_speed),
+				et.max_hop_jump_fraction)
+			var tag: String = "%s at %d lanes, seed %d" % [id, lanes, config.level_seed]
+			var before: PackedStringArray = []
+			for keep: Vector2 in EnforcerRules.wide_gap_keep_outs(gen.layout):
+				for row: Dictionary in rows:
+					if float(row["start"]) < keep.y and float(row["end"]) > keep.x:
+						before.append("%.0f m in %.0f-%.0f m" % [float(row["start"]), keep.x, keep.y])
+			check(rows.size() == config.wide_gaps and before.is_empty(),
+				"%s keeps its %d wider gaps (%d), none in a truck's chase before its showing (%s)" % [tag, config.wide_gaps,
+				rows.size(), ", ".join(before)])
+			builds += 1
+			for chase: Vector2 in WideGapPlacement._chases(gen):
+				for row: Dictionary in rows:
+					if float(row["start"]) >= chase.x and float(row["end"]) <= chase.y:
+						in_chase += 1
+		lines.append("%s %d of %d builds" % [id, in_chase, builds])
+	print("  wider gaps in a chase past its showing window (seed 9101): " + ", ".join(lines))
 
 
 ## A boss arena never gets them, even asked; quick play and the prototype level ask for none and draw nothing;
@@ -282,6 +327,7 @@ func _truck(w: RunWorld) -> EnforcerTruck:
 ## lane of it (the nearest the middle) a few seconds before and jumps it midway through its take-off window; the
 ## truck following is wrecked in it.
 func _test_corporate_2(campaign: Campaign) -> void:
+	var ran: int = 0
 	for lanes: int in LANES:
 		var config: LevelConfig = campaign.configure(campaign.step("corporate/2"), lanes)
 		config.skin = null  # the grey box: skins never change gameplay
@@ -296,13 +342,23 @@ func _test_corporate_2(campaign: Campaign) -> void:
 		if trucks.is_empty():
 			continue
 		var at: float = float(trucks[0]["at"])
+		# Settled behind the runner, past its showing window (task C6e), before it may drop back.
 		var chase := Vector2(at + et.bait_after_seconds * v, at + (et.chase_seconds - WideGapPlacement.CHASE_END_SECONDS) * v)
+		var window: Vector2 = EnforcerRules.window_of(trucks[0])
+		if window.y > window.x:
+			chase.x = maxf(chase.x, window.y + EnforcerRules.WINDOW_EDGE)
 		var row: Dictionary = {}
 		for r: Dictionary in WideGapPlacement.wide_rows(layout, jump, et.max_hop_jump_fraction):
 			if float(r["start"]) >= chase.x and float(r["end"]) <= chase.y:
 				row = r
 				break
-		check(not row.is_empty(), "%s: its first Enforcer's chase (%.0f-%.0f m) holds a wider gap" % [tag, chase.x, chase.y])
+		if chase.y - chase.x < 3.0 * v:
+			# Its window ends with its chase (after its bait): no room for one past it there.
+			print("  %s: its first Enforcer's chase leaves no room past its window (%.0f-%.0f m)" % [tag, window.x, window.y])
+			continue
+		check(not row.is_empty(), "%s: its first Enforcer's chase past its showing window (%.0f-%.0f m) holds a wider gap" % [tag,
+			chase.x, chase.y])
+		ran += 1
 		if row.is_empty():
 			continue
 		var middle: int = lanes / 2
@@ -346,3 +402,4 @@ func _test_corporate_2(campaign: Campaign) -> void:
 		print("  %s: wider gap at %.0f m in the chase %.0f-%.0f m: the truck %s" % [tag, start, chase.x, chase.y,
 			("wrecked: " + down) if down != "" else "not wrecked"])
 		await sim.free_world(w)
+	check(ran >= 2, "Corporate 2 leads its first truck into a wider gap at %d of the 3 lane counts" % ran)
