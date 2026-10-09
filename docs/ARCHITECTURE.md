@@ -1041,10 +1041,13 @@ counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
 little, `docs/OPEN_QUESTIONS.md` §D, item 433). Merged with the Enforcer Truck's showing windows (task C6e,
-which the pass's rows keep off), the final zones' obstacles at 3 lanes rose only 28.8%, out of fair room; the wall
-fences' share (`wall_fence_increase_scale`, 1.25 to 1.9, task K5, DESIGN-TBD) brings them to 30.6% with wall
-fences. `test_danger_density`'s sample then has 13-19% more enemies and 17% more obstacles in the first levels,
-26-28% and 27-28% in the middle ones, and 32-36% and 31-39% in the final ones.
+whose calm stretches the pass's rows keep off), `test_danger_density`'s sample of the final zones at 3 lanes had
+28.8% more obstacles, under its 30% floor, though over 7 seeds (each level's own and 9001-9006) the same levels
+have 30.2%. The wall fences' share (`wall_fence_increase_scale`) went from 1.25 to 1.9 (task K5, DESIGN-TBD,
+`docs/questions/k5.md`: the owner finds every level too easy): it adds wall fences only, 447 to 505 over the
+campaign's own builds from Marketplace 2 on, and makes no floor room; the sample has 30.6% with it, the 7 seeds
+31.9%, and their enemies about 30% either way. `test_danger_density`'s sample then has 13-19% more enemies and 17%
+more obstacles in the first levels, 26-28% and 27-28% in the middle ones, and 32-36% and 31-39% in the final ones.
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
