@@ -8,7 +8,9 @@ extends RefCounted
 ## - hard: what blocks a runner's dodge (holes, floor cuts' lane windows, fences, doodads, floor enemies), and of
 ##   that, must_leave: what the runner has to leave the lane for (doodads, floor enemies, a floor cut's lane
 ##   window; holes and fences they can jump or slide);
-## - solid: what the truck never drives through on screen (fences, doodads, floor enemies);
+## - solid: what the truck never drives through on screen (fences, doodads, floor enemies, and a dash wall in every
+##   lane: task H7a's walls stand across the street until the runner breaks them, and a showing puts its front
+##   ahead of the runner, so it never shows itself where its view would reach a wall);
 ## - soft: what the runner may need (pads, speed pads, ramps);
 ## - deadly: what would wreck it (gaps too wide to hop, floor cuts' lane windows); it hops the other gaps.
 ## And: where its baits' turns begin (an Octodog's planned wind-ups; a Buzz Overdrive's claim on its turn before
@@ -81,6 +83,12 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 	for d: Dictionary in layout.doodads:
 		for key: String in ["hard", "must", "solid"]:
 			_add(by[key], int(d["lane"]), float(d["start"]), float(d["end"]))
+	# A dash wall (task H7a) stands in every lane: it would drive into it ahead of the runner, who breaks it only as
+	# they reach it. (The generator keeps every wall off its planned showing windows; this keeps its other showings
+	# off them too.)
+	for w: Dictionary in layout.dash_walls:
+		for l: int in lanes:
+			_add(by["solid"], l, float(w["start"]), float(w["end"]))
 	for p: Dictionary in layout.pads:
 		_add(by["soft"], int(p["lane"]), float(p["at"]) - mt.pad_length, float(p["at"]) + mt.pad_length)
 	for p: Dictionary in layout.speed_pads:

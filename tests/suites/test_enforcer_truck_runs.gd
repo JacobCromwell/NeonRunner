@@ -236,14 +236,16 @@ static func _beside(lane: int, lanes: int) -> int:
 
 
 ## Watches `truck`'s wreck from the frame it's destroyed until it's gone (the owner, October 8, 2026: every way
-## it's destroyed ends in a visible explosion): {blast (it blew up), explode (the blast's sound), lurch (seconds
-## from its wreck to its blast), puffs (frames its fireball showed), seen (frames a puff's upper half was on
-## screen in the run camera's resting view of the runner, EnforcerTruckView), covers (a puff ever stood between
-## that camera and the runner), at (where it went off), top (the highest its wreck's look rose as it lurched on:
-## its body and riders, EnforcerTruckModel.profile), roof (that look's top at rest) and camera (the run camera's
-## height at rest)}.
+## it's destroyed ends in a visible explosion, one of the shared fireballs, GDD §11): {blast (it blew up), explode
+## (the blast's sound), lurch (seconds from its wreck to its blast), puffs (frames its fireball burned, carried along
+## with the wreck), seen (frames the fireball's upper half was on screen in the run camera's resting view of the
+## runner, EnforcerTruckView), covers (it left smoke, or its ball, its size about its middle, ever crossed that
+## camera's line of sight to the runner's middle), carried (it moved with the wreck, which falls back at blast_drift),
+## at (where it went off), top (the highest its wreck's look rose as it lurched on: its body and riders,
+## EnforcerTruckModel.profile), roof (that look's top at rest) and camera (the run camera's height at rest)}.
 func _watch_blast(w: RunWorld, truck: EnforcerTruck) -> Dictionary:
-	var out := {"blast": false, "explode": false, "lurch": -1.0, "seen": 0, "covers": false, "puffs": 0, "top": -INF}
+	var out := {"blast": false, "explode": false, "lurch": -1.0, "seen": 0, "covers": false, "puffs": 0, "top": -INF,
+		"carried": true}
 	var wrecked: float = w.level_time()
 	var look: StringName = EnforcerTruckModel.look_of(w.skin.enemy_variant if w.skin != null else &"city")
 	var boxes: Array[AABB] = EnforcerTruckModel.profile(look, truck.tuning.body_size, truck.riders)
@@ -252,36 +254,45 @@ func _watch_blast(w: RunWorld, truck: EnforcerTruck) -> Dictionary:
 		roof = maxf(roof, c.y)
 	out["roof"] = roof
 	out["camera"] = EnforcerTruckView.of_runner(w.tuning, w.geo, w.player.lane, w.player.distance).origin.y
+	var pool: FireballPool = w.effects.fireballs()
+	var slot: FireballPool.Slot = null
+	var offset := Vector3.ZERO
 	for i: int in int(3.0 / frame):
 		if not _valid(truck):
 			break
 		if not bool(out["blast"]) and truck.model.visible:
 			for c: Vector3 in EnforcerTruckView.corners(boxes):
 				out["top"] = maxf(float(out["top"]), (truck.model.global_transform * c).y)
-		var blast: EnforcerTruckBlast = truck.get(&"_blast") as EnforcerTruckBlast
 		if not bool(out["blast"]) and _count(truck, "blast") > 0:
 			out["blast"] = true
 			out["lurch"] = w.level_time() - wrecked
-			out["at"] = "went off %.2f m behind the runner, %.2f m up, %.2f m across" % [w.player.distance
-				+ blast.global_position.z, blast.global_position.y, blast.global_position.x - w.player.position.x]
-		if bool(out["blast"]) and blast.visible:
-			var spheres: Array[Vector4] = blast.spheres()
-			if not spheres.is_empty():
-				out["puffs"] = int(out["puffs"]) + 1
+			slot = pool.latest
+			if slot == null or slot.carrier != truck:
+				out["covers"] = true
+				out["covered"] = "no fireball carried by its wreck"
+				slot = null
+			else:
+				offset = slot.center - truck.global_position
+				out["at"] = "went off %.2f m behind the runner, %.2f m up, %.2f m across" % [w.player.distance
+					+ slot.center.z, slot.center.y, slot.center.x - w.player.position.x]
+				if slot.smoked:
+					out["covers"] = true
+					out["covered"] = "it left smoke"
+		if slot != null and slot.left > 0.0 and slot.carrier == truck:
+			out["puffs"] = int(out["puffs"]) + 1
+			# Carried: where it began on the wreck (a frame's lag at most: the pool follows it after the physics step).
+			if slot.center.distance_to(truck.global_position + offset) > 0.5:
+				out["carried"] = false
 			var view := EnforcerTruckView.of_runner(w.tuning, w.geo, w.player.lane, w.player.distance)
-			var on: bool = false
-			for sphere: Vector4 in spheres:
-				var c: Vector3 = truck.global_transform * Vector3(sphere.x, sphere.y, sphere.z)
-				on = on or view.on_screen(c + Vector3(0.0, sphere.w * 0.5, 0.0), 0.0)
-				for p: Vector3 in EnforcerTruckView.runner_points(w.tuning, w.player.position.x, w.player.distance):
-					if _segment_hits_sphere(view.origin, p, c, sphere.w):
-						if not bool(out["covers"]):
-							out["covered"] = "puff (%.2f, %.2f, %.2f behind) r %.2f, runner point (%.2f, %.2f), t %.2f" % [
-								c.x - w.player.position.x, c.y, w.player.distance + c.z, sphere.w, p.x - w.player.position.x, p.y,
-								blast.t]
-						out["covers"] = true
-			if on:
+			var c: Vector3 = slot.center
+			if view.on_screen(c + Vector3(0.0, slot.size * 0.5, 0.0), 0.0):
 				out["seen"] = int(out["seen"]) + 1
+			var points: PackedVector3Array = EnforcerTruckView.runner_points(w.tuning, w.player.position.x, w.player.distance)
+			var middle: Vector3 = points[points.size() - 1]
+			if _segment_hits_sphere(view.origin, middle, c, slot.size) and not bool(out["covers"]):
+				out["covered"] = "its ball (%.2f, %.2f, %.2f behind) r %.2f over the runner's middle" % [c.x - w.player.position.x,
+					c.y, w.player.distance + c.z, slot.size]
+				out["covers"] = true
 		out["explode"] = truck.sounds_played.has(&"truck_explode")
 		await tree.physics_frame
 	return out
@@ -303,9 +314,10 @@ func _check_blast(tag: String, kind: String, r: Dictionary) -> void:
 	check(top <= float(r.get("roof", 0.0)) + 0.25 and top <= float(r.get("camera", 0.0)) - 0.75,
 		"%s %s: as it lurches on under the camera, its wreck never rises over its roof and riders (but for a roll), well under the camera (%.2f m up; its roof %.2f m, the camera %.2f m)"
 		% [tag, kind, top, float(r.get("roof", 0.0)), float(r.get("camera", 0.0))])
-	check(int(r.get("puffs", 0)) > 0 and int(r.get("seen", 0)) >= int(r.get("puffs", 0)) * 3 / 4 and not bool(r.get("covers", true)),
-		"%s %s: the camera sees its fireball (%d of %d frames), never in front of the runner (%s) %s" % [tag, kind,
-		int(r.get("seen", 0)), int(r.get("puffs", 0)), r.get("at", ""), r.get("covered", "")])
+	check(int(r.get("puffs", 0)) > 0 and int(r.get("seen", 0)) >= int(r.get("puffs", 0)) * 3 / 4 and not bool(r.get("covers", true))
+		and bool(r.get("carried", false)),
+		"%s %s: the camera sees its fireball (%d of %d frames), carried along with its wreck, never over the runner (%s) %s" % [
+		tag, kind, int(r.get("seen", 0)), int(r.get("puffs", 0)), r.get("at", ""), r.get("covered", "")])
 
 
 # --- Following ------------------------------------------------------------------------------------

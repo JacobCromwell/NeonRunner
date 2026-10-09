@@ -174,12 +174,16 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
     (`shake()` and `freeze()` both no-op at 0); the field-of-view kick, the lean and the speed lines
     stay on regardless, since none of them snap or strobe.
 - **Explosions** (task H6, the owner, October 8, 2026, GDD §11: "a yellow and red fireball"). Every explosion in
-  the game is one call, `RunEffects.fireball(pos, size, smoke, pace, spread)`, a pooled `FireballPool`
+  the game is one call, `RunEffects.fireball(pos, size, smoke, pace, spread, carrier)`, a pooled `FireballPool`
   (`scripts/run/fireball_pool.gd`, built by `RunEffects.setup`). `size` is the fireball's radius in metres
   (`SpeedFxTuning.fireball_scale` multiplies all of them); the pool does the rest, scaled by it: a yellow core
   that blooms into orange and red, rolling outward and up, embers thrown out of it and dark smoke after
   (`smoke` off for a quick one; `pace` plays it faster; `spread` holds its fire in nearer its centre; a bigger
   one plays slower, `fireball_big_size`, so a boss's takes its time: 1.0 s of fire at 3 m, 1.7 s at 9 m or more).
+  A fireball burns where it was set off unless it has a `carrier`, a node kept in the runner's frame (the
+  Enforcer Truck's wreck, which blows up where the chase camera sees it and falls back slowly): its slot's
+  emitters then draw in their own space and the pool moves them with the carrier each frame
+  (`FireballPool._carry`), so the fire and everything it threw go along, until the carrier leaves the tree.
   It is **four `CPUParticles3D` a slot** (core flash, fire, smoke, embers), billboards of one soft, lumpy blob
   texture drawn once by the CPU, in unshaded `StandardMaterial3D`s (additive for fire and embers, see-through
   for smoke; `vertex_color_is_srgb`, so the ramps' colours are the inspector colours the Compatibility
@@ -208,14 +212,17 @@ Every number is `SpeedFxTuning` (`scripts/run/speed_fx_tuning.gd`, `data/tuning/
   Screen shake setting) and sound stay. A blast on the street is lifted out of the floor (`size * 0.45` up).
   `fireball_played(pos, size)` announces each one (tests, tools). Who calls it, at what size: the drone's hit
   (1.0) and crash (2.4); the hover truck's explosion (3.8, set out from the wall it skids into) and its burst
-  through the wall (2.6, quick); the Buzz Overdrive (3.0), the Enforcer truck (3.6) and a fence generator (1.2,
+  through the wall (2.6, quick); the Buzz Overdrive (3.0), the Enforcer truck (its blast's radius: 1.3, 0.85 in the
+  runner's lane; carried along with its wreck, held in, no smoke, its fire as long as `blast_seconds`; task C6b's
+  wreck, merged October 9, 2026) and a fence generator (1.2,
   held in, quick and smokeless since the runner stands on it; inside the EMP's cyan ring: `RunWorld.emp` is unchanged); the plain missile's hit (0.9, quick) and the heavy
   missile's blast (2.2, inside the cyan ring that shows its splash: `WeaponFx.missile_pop`, `blast`); Hostile
   Takeover's defeat (`HostileTakeoverLobby.blast`, five fireballs rolling on, 10.8 m down to 5.4 m); the Floating
   Head's crash (9, 6.75 and 5.4 at the wreck and its ends, no smoke: the wreck has its own) and its tower's
-  landing on the ship (3.2); The House's collapse (7 and 4.9); and each bomb blast of the Floating Head and The
-  House (the blast's radius, held in to 0.45 of the free spread, quick, no smoke: what looks like a hit is a hit,
-  and the fireball is gone about when the hitbox is; their timing, warnings and hitboxes are untouched). The
+  landing on the ship (3.2); The House's collapse (7 and 4.9); each bomb blast of the Floating Head (its salvos'
+  too, task E1g) and The House (the blast's radius, held in to 0.45 of the free spread, quick, no smoke: what looks
+  like a hit is a hit, and the fireball is gone about when the hitbox is; their timing, warnings and hitboxes are
+  untouched); and the City outro's roadblock blast (2.0, from a one-slot pool of the outro's own). The
   Sleep Taker's wisps and chunks, the Sewer Swarm and plain deaths are not explosions and keep their looks.
   `tools/showcase/fireball_showcase.tscn` plays each of them through the real code
   (`--scenario=sizes|drone|drone_pad|truck|truck_burst|buzz|enforcer|enforcer_close|generator|missile|bomb|bomb_straddle`,
@@ -846,7 +853,10 @@ wall in its way (DESIGN-TBD, `docs/questions/h7a.md`):
   footprint, `DashWallTuning.footprint`; `CyborgRules.limits`, which the Cyborg's `_compute_limits` uses): it never
   runs through a standing wall nor cowers in the clear stretch behind it, and one past a wall never walks back
   into that stretch;
-- the Enforcer Truck drives behind the runner, so it only ever meets a wall already broken.
+- the Enforcer Truck drives behind the runner, so it only ever meets a wall already broken; when it shows itself
+  (C6b) it pulls up beside the runner, its front ahead of them, so the generator keeps every wall off its planned
+  showing windows (its rules' calm stretches, which `DashWallRules` counts with the rules' keep-outs) and in play
+  it never shows itself where its view would reach a wall (`EnforcerTruckRoom`: a wall is solid in every lane).
 
 **A ceiling enemy: the Barnacle Turret** (C1, GDD §9.8). `barnacle_turret.gd` (`BarnacleTurret`), its
 tuning (`BarnacleTurretTuning`, `data/enemies/barnacle_turret.tres`), its model
@@ -1067,7 +1077,7 @@ Octodog or a Buzz Overdrive). `enforcer_truck.gd` (`EnforcerTruck`), its tuning 
 `data/enemies/enforcer_truck.tres`, F6 "Enemy: Enforcer Truck"), its model (`enforcer_truck_model.gd`), its
 marker (`enforcer_truck_marker.gd`), its rules (`enforcer_truck_rules.gd`, The generator; it has no
 patterns), where and how it shows itself (`enforcer_truck_room.gd`, `enforcer_truck_view.gd`; task C6b), its
-blast (`enforcer_truck_blast.gd`; C6b), its sounds (`tools/asset_gen/sfx_bank_enforcer.gd`: `enforcer_siren`,
+blast (one of the shared fireballs, `RunEffects.fireball`; C6b, task H6), its sounds (`tools/asset_gen/sfx_bank_enforcer.gd`: `enforcer_siren`,
 `_whine`, `_laser`, `_pickup`, `_crash` as it's hit; every wreck's blast is the hover truck's `truck_explode`)
 and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/questions/c6.md`, `c6b.md`):
 - **The chase.** Where its entry's `at` says (the runner's distance), its siren whoops and it drives in from
@@ -1178,15 +1188,16 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
   Octodog's lunge, a Buzz Overdrive's charge or cut, a gap too wide to hop) lurches on into the chase camera's
   view over `wreck_surge_seconds` (its front to `wreck_gap` behind the runner; in a hole, until its nose meets
   the far edge; spinning out from a charge, nose-diving on its rear into a hole so nothing of it rises into the
-  camera it passes under), trailing sparks, then blows up (`_explode`): its model and riders gone in an
-  `EnforcerTruckBlast` (a few swelling unshaded puffs, a white-hot core, dark smoke and an additive floor glow;
-  `blast_radius`, smaller and flatter in the runner's lane, `blast_radius_in_lane`, so it never stands between
-  the camera and the runner), the shared `RunEffects` fire, smoke and debris (a chunk for each rider), a shake
-  and `truck_explode`. It burns `blast_seconds` in the runner's frame, falling back at `blast_drift`, and the
-  truck is freed after it. Reduced flashing: no core, its fire and floor glow coming up over a moment. Ten draw
-  calls for about a second; drawn with the level's warm-up (`EnforcerTruckBlast.warm_look`). A blast fades its
-  own copies of its materials built the same way: `Resource.duplicate()` drops an unshaded
-  `StandardMaterial3D`'s emission, so a duplicate would build a shader the warm-up never drew.
+  camera it passes under), trailing sparks, then blows up (`_explode`): its model and riders gone in one of the
+  shared yellow-and-red fireballs (`RunEffects.fireball`, GDD §11, the owner, October 8, 2026: every explosion is
+  one; merged in from task H6), as big as its blast (`blast_size`: `blast_radius`, smaller in the runner's lane,
+  `blast_radius_in_lane`), its fire burning `blast_seconds` (`fire_pace`), held in (`FIRE_SPREAD`, less in the
+  runner's lane) and with no smoke, so everything it draws only adds light and nothing of it can hide the
+  runner; the shared `RunEffects` smoke burst and debris (a chunk for each rider), a shake and `truck_explode`.
+  The fireball is carried along with the wreck (its `carrier`: the pool moves it with the truck node), so it
+  burns where the chase camera sees it, falling back at `blast_drift`, and the truck is freed after
+  `blast_seconds`; the pool then lets it go. Reduced flashing softens it as it does every fireball, and its
+  materials are drawn with the level's effects (`ShaderWarmup`).
 - **Cheap.** A few transforms a frame, its hole checks walking each lane's gaps with a cursor; its bolts
   are the projectile pool's. A showing's checks read the stretches `EnforcerTruckRoom` indexed at load.
 
@@ -3747,9 +3758,11 @@ Gangland), where they drop in, land and run off; Gangland's intro follows.
 `CityOutroSet` holds the props, all visual only and built from the game's own models: the ship from
 `FloatingHeadModel` (hull, face screen with the fight's shader, jaw, wreck), `BarnacleTurretModel` turned
 over, `EnforcerTruckModel`, the drone's model (`drone.gd`'s static `add_model`, which the enemy uses too),
-`EnforcerTruckBlast`, and a code-built barricade. The side street's floor and both openings' building fronts
-come from the stage's skin (`ZoneSkin.floor_segment`, `wall_section`), so they follow the zone's look.
-Reduced flashing holds the dying face's glitch and the light bar steady, and the blast has no white-hot core.
+the blast (one of the shared fireballs, GDD §11, from a one-slot `FireballPool` of its own built with the props,
+`build_blast`: a cinematic has no `RunEffects`), and a code-built barricade. The side street's floor and both
+openings' building fronts come from the stage's skin (`ZoneSkin.floor_segment`, `wall_section`), so they follow
+the zone's look. Reduced flashing holds the dying face's glitch and the light bar steady, and softens the blast's
+fireball (no white-hot core).
 Music: the zone's track, fading as the runner leaps; the web demo, which ends after this, never loads
 Gangland's. Cost (headless, `test_city_outro`): about 25 ms to set up (about 220 ms the first time, with cold
 mesh caches), about 10 ms for the cut (under black), at most about 3 ms a step, and its props add about 65

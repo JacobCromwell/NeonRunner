@@ -6,8 +6,9 @@ extends TestSuite
 ## renderer, with no collision and no light; it fades out as the camera nears it and never whites out the view;
 ## Reduced flashing softens it (as long as ever, but from nothing, never white-hot, and never brighter than the
 ## normal one at any moment); the shader warm-up draws its materials; and each explosion that is not a boss's (the drone's hit and
-## crash, the hover truck's wreck and its burst through the wall, the Buzz Overdrive, the Enforcer truck, a
-## fence generator, the missiles, the Hostile Takeover lobby's blast) calls it, at the size its code names. The
+## crash, the hover truck's wreck and its burst through the wall, the Buzz Overdrive, the Enforcer truck's blast
+## once its wreck has lurched into view (carried along with it: a fireball may follow a node), a fence generator, the
+## missiles, the Hostile Takeover lobby's blast) calls it, at the size its code names. The
 ## bosses' own explosions and the bombs' blasts are checked in their fights' suites (test_floating_head,
 ## test_floating_head_defeat, test_the_house_attacks, test_the_house_phases, test_hostile_takeover_fight).
 
@@ -32,6 +33,7 @@ func run() -> void:
 	await _test_hover_truck()
 	await _test_buzz_overdrive()
 	await _test_enforcer_truck()
+	await _test_carried()
 	await _test_generator()
 	await _test_missiles()
 	await _test_lobby_blast()
@@ -471,28 +473,97 @@ func _test_buzz_overdrive() -> void:
 	await sim.free_world(w)
 
 
+## The Enforcer Truck: its wreck lurches into view and blows up where the chase camera sees it (task C6b), in one
+## shared fireball as big as its blast (EnforcerTruck.blast_size), with no smoke, carried along with its wreck (which
+## falls back at blast_drift) until the wreck is gone, blast_seconds later; softened with Reduced flashing.
 func _test_enforcer_truck() -> void:
-	var layout := RunSim.layout(3, 800.0)
-	layout.enemies.append({"type": "enforcer_truck", "at": 1.0, "lane": 1, "side": 0, "seed": 7, "params": {}})
-	var w: RunWorld = sim.build_world(layout, Loadout.new())
-	var sizes: Array[float] = _collect(w)
-	w.player.god_mode = true
-	await tree.physics_frame
-	w.player.running = true
-	var truck: EnforcerTruck = null
-	await _run_until(w, 6.0, func() -> bool:
+	for reduced: bool in [false, true]:
+		_set_reduced(reduced)
+		var tag: String = "(Reduced flashing)" if reduced else ""
+		var layout := RunSim.layout(3, 800.0)
+		layout.enemies.append({"type": "enforcer_truck", "at": 1.0, "lane": 1, "side": 0, "seed": 7, "params": {}})
+		var w: RunWorld = sim.build_world(layout, Loadout.new())
+		var sizes: Array[float] = _collect(w)
+		w.player.god_mode = true
+		await tree.physics_frame
+		w.player.running = true
+		var truck: EnforcerTruck = null
+		await _run_until(w, 6.0, func() -> bool:
+			for e: Variant in w.director.active:
+				if is_instance_valid(e) and e is EnforcerTruck:
+					return true
+			return false)
 		for e: Variant in w.director.active:
 			if is_instance_valid(e) and e is EnforcerTruck:
-				return true
-		return false)
-	for e: Variant in w.director.active:
-		if is_instance_valid(e) and e is EnforcerTruck:
-			truck = e as EnforcerTruck
-	check(truck != null, "the Enforcer truck arrives")
-	if truck != null:
+				truck = e as EnforcerTruck
+		check(truck != null, "the Enforcer truck arrives %s" % tag)
+		if truck == null:
+			await sim.free_world(w)
+			continue
+		var t: EnforcerTruckTuning = truck.tuning
 		truck.defeat(&"weapon")
-		check(sizes == [EnforcerTruck.FIRE_SIZE], "wrecked it goes up in a fireball (%s)" % [sizes])
-	await sim.free_world(w)
+		check(sizes.is_empty(), "wrecked, it doesn't blow up at once: its wreck lurches into view first %s" % tag)
+		var blew: bool = await _run_until(w, 2.0, func() -> bool:
+			return truck.history.any(func(h: Array) -> bool: return String(h[0]) == "blast"))
+		var pool: FireballPool = w.effects.fireballs()
+		var slot: FireballPool.Slot = pool.latest
+		var in_lane: bool = bool(truck.get(&"_wreck_in_lane"))
+		check(blew and sizes.size() == 1 and is_equal_approx(sizes[0], truck.blast_size(in_lane)),
+			"then it goes up in one fireball, as big as its blast (%s, %.2f m) %s" % [sizes, truck.blast_size(in_lane), tag])
+		check(slot != null and slot.carrier == truck and not slot.smoked and pool.last_reduced == reduced,
+			"carried along with its wreck, with no smoke%s %s" % [", softened" if reduced else "", tag])
+		if slot == null or slot.carrier != truck:
+			await sim.free_world(w)
+			continue
+		# It stays where it went off behind the runner, falling back with the wreck at blast_drift.
+		var behind0: float = w.player.distance + slot.center.z
+		var t0: float = w.level_time()
+		await _run_until(w, 0.4, func() -> bool: return false)
+		var fell: float = w.player.distance + slot.center.z - behind0
+		var want: float = t.blast_drift * (w.level_time() - t0)
+		check(is_instance_valid(truck) and absf(fell - want) < 0.5,
+			"it keeps up with the runner, falling back %.2f m in %.2f s (the wreck: %.2f m) %s" % [fell, w.level_time() - t0, want, tag])
+		var gone: bool = await _run_until(w, t.blast_seconds + 0.5, func() -> bool: return not is_instance_valid(truck))
+		var burned: float = w.level_time() - t0
+		check(gone and burned <= t.blast_seconds + 0.1, "the wreck is gone as its fire burns out (%.2f s after it blew up) %s" % [
+			burned, tag])
+		await sim.free_world(w)
+	_set_reduced(false)
+
+
+## A fireball given a carrier (RunEffects.fireball's `carrier`) moves with it, everything it has thrown included (its
+## emitters draw in their own space then), and is let go when the carrier leaves the tree; a fireball without one burns
+## where it was set off, in world space, as the next one in the same slot does.
+func _test_carried() -> void:
+	_set_reduced(false)
+	var world: RunWorld = _world()
+	var fx: RunEffects = world.effects
+	var pool: FireballPool = fx.fireballs()
+	var carrier := Node3D.new()
+	world.add_child(carrier)
+	carrier.global_position = Vector3(0.0, 0.0, -20.0)
+	fx.fireball(carrier.global_position + Vector3(1.0, 1.5, 0.5), 1.5, false, 1.0, 1.0, carrier)
+	var slot: FireballPool.Slot = pool.latest
+	var local: bool = slot.fire.local_coords and slot.core.local_coords and slot.embers.local_coords
+	carrier.global_position += Vector3(0.0, 0.0, -6.0)
+	await tree.process_frame
+	await tree.process_frame
+	var moved: Vector3 = slot.center - Vector3(1.0, 1.5, -25.5)
+	check(slot.carrier == carrier and local and moved.length() < 0.01 and slot.fire.global_position.distance_to(slot.center) < 0.01,
+		"a carried fireball moves with its carrier, its particles with it (%s off)" % [moved])
+	carrier.queue_free()
+	await tree.process_frame
+	var at: Vector3 = slot.center
+	await tree.process_frame
+	check(slot.carrier == null and slot.center == at, "once its carrier is gone it burns out where it was")
+	# The slot's next fireball, uncarried, draws in world space again.
+	for i: int in pool.slots.size():
+		fx.fireball(Vector3(float(i), 2.0, -30.0), 1.0, false)
+	var world_space: bool = true
+	for s: FireballPool.Slot in pool.slots:
+		world_space = world_space and s.carrier == null and not s.fire.local_coords and not s.smoke.local_coords
+	check(world_space, "a fireball with no carrier burns in world space, in any slot")
+	await sim.free_world(world)
 
 
 func _test_generator() -> void:

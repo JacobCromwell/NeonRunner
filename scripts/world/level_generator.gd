@@ -13,7 +13,8 @@ extends RefCounted
 ##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
 ##    Last of them, a dash wall's introduction (the `dash_wall` feature, task H7a; dash_wall_rules.gd: a
 ##    building across every floor lane the runner dashes through) where the level gives the feature a start,
-##    which every pass after the rules keeps off (fill_keep_outs, doodad_keep_outs, the rules' keep-outs).
+##    which every pass after the rules keeps off (fill_keep_outs, doodad_keep_outs, the rules' keep-outs). The
+##    walls in turn keep off the rules' calm stretches (an Enforcer Truck's showing windows, task C6c).
 ## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
 ##    stretches. Around it, danger density (LevelConfig.danger_density_increase; DangerDensity,
 ##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
@@ -1729,8 +1730,8 @@ static func _hits_any(spans: Array[Vector2], from: float, to: float) -> bool:
 
 ## What the level's features' rules keep zone doodads off (`static func doodad_keep_outs(gen:
 ## LevelGenerator) -> Array[Dictionary]` on a feature's rules script), in the order of the features:
-## the lane-bound attacks while they run, {from, to} in every lane (a Bad Dream's chase) or {lane, from,
-## to} in one (a hover truck's lane for its whole stay), and calm stretches, {from, to, calm: true} in
+## the lane-bound attacks while they run, {from, to} in every lane (a Bad Dream's chase; a dash wall's
+## footprint, task H7a) or {lane, from, to} in one (a hover truck's lane for its whole stay), and calm stretches, {from, to, calm: true} in
 ## every lane (an Enforcer Truck's showing window, task C6c): nothing a later pass adds stands or attacks
 ## in one, but nothing keeps a spacing from it. Floor cuts keep off them too (cut_problem).
 func rules_doodad_keep_outs() -> Array[Dictionary]:

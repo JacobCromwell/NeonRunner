@@ -6,8 +6,8 @@ extends TestSuite
 ## left wall, which the camera pans to and back from; they hop back startled and run the other way, leaping
 ## out of the right wall's opening as a blast goes off behind them; the scene cuts to the next zone's street
 ## under black, where they land and run off); the camera never goes through a wall, only out through the
-## openings; Reduced flashing (the glitch and the light bar steady, no white-hot core in the blast; the
-## overlay's flash is test_cinematics'); skipping; the landing
+## openings; its blast is one of the shared fireballs (GDD §11); Reduced flashing (the glitch and the light bar
+## steady, the blast's fireball softened; the overlay's flash is test_cinematics'); skipping; the landing
 ## follows the next zone's skin in the campaign's data; what it costs to set up and to play; and the App's
 ## flow (it plays after the boss, Gangland's intro follows, and the web demo plays it before its end screen).
 
@@ -174,8 +174,10 @@ func _test_beats(lanes: int) -> void:
 		if absf(t - seq.t_leap - 0.1) < STEP * 0.5:
 			left_through_opening = rp.x > seq.stage.wall_x(1) and seq.stage.wall_open(1, rp.z, 0.5)
 		if absf(t - seq.t_blast - 0.15) < STEP * 0.5:
-			var blast_pos: Vector3 = p.blast.global_position if p.blast != null else Vector3.INF
-			blast_behind = p.blast != null and p.blast.visible \
+			# Its blast is one of the shared fireballs (GDD §11), from the props' own pool.
+			var fire: FireballPool = p.fireballs
+			var blast_pos: Vector3 = fire.latest.center if fire != null and fire.latest != null else Vector3.INF
+			blast_behind = fire != null and fire.plays == 1 and fire.active() == 1 and fire.visible \
 				and cam.global_position.distance_to(runner.global_position) < cam.global_position.distance_to(blast_pos)
 		if seq.landed_stage and not city_hidden:
 			city_hidden = not p.ship.visible and not p.side_street.visible and not cyborgs[0].visible
@@ -243,7 +245,9 @@ func _test_reduced_flashing() -> void:
 			bar_steady = bar_steady and seq.props.truck.flash_phase == -1
 	check(glitches.size() == 1, "Reduced flashing: the dying face's glitch holds still (%s)" % [glitches.keys()])
 	check(bar_steady, "Reduced flashing: the truck's light bar is steady, both halves lit")
-	check(seq.props.blast != null and seq.props.blast.reduced, "Reduced flashing: the blast has no white-hot core")
+	var fire: FireballPool = seq.props.fireballs
+	check(fire != null and fire.plays == 1 and fire.last_reduced,
+		"Reduced flashing: the blast's fireball plays softened (no white-hot core, swelling up instead of popping)")
 	Settings.flashing_reduced = reduced
 	await _free(seq)
 	seq = _start()

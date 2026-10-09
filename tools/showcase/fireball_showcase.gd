@@ -14,9 +14,9 @@ extends Node3D
 ##   truck           a hover truck stomped: it spins out and explodes
 ##   truck_burst     a hover truck bursting through the wall (its bangs, then the burst; nothing is defeated)
 ##   buzz            a Buzz Overdrive shot down
-##   enforcer        an Enforcer truck wrecked at its follow gap
-##   enforcer_close  an Enforcer truck wrecked at its closest gap, right behind the runner (the camera is almost
-##                   in the explosion: it fades out as the camera nears)
+##   enforcer        an Enforcer truck wrecked at its follow gap: its wreck lurches into view and blows up there,
+##                   its fireball carried along with it (task C6b)
+##   enforcer_close  an Enforcer truck wrecked at its closest gap, right behind the runner
 ##   generator       a fence generator destroyed as the runner reaches it (the EMP ring stays cyan)
 ##   smoke_clear     the pool's smoke clearing: eight fireballs with smoke on the left, and once they are all over
 ##                   eight quick ones without on the right (no smoke may come back where the first ones were)

@@ -36,10 +36,13 @@ extends RefCounted
 ##   until they've broken the wall, and follows them through; its cannon holds fire near one), so only its
 ##   entrance keeps the walls off (truck_entrance: it bangs on the wall, bursts out and settles); where it
 ##   can't drop back (the runner in its lane behind it, ridden, leaving ahead) it bursts through the wall as
-##   it burst out of the building (HoverTruck._burst_dash_walls). The Enforcer Truck needs nothing: it drives
-##   behind the runner, and a wall always breaks as the runner reaches it (a dash, a crash or a pass on a side
-##   wall: Player._check_dash_walls), so it only ever meets a broken one and drives on through; its volleys
-##   never start with a wall in the escape (as with a doodad).
+##   it burst out of the building (HoverTruck._burst_dash_walls). The Enforcer Truck's attacks need nothing: it
+##   drives behind the runner, and a wall always breaks as the runner reaches it (a dash, a crash or a pass on a
+##   side wall: Player._check_dash_walls), so it only ever meets a broken one and drives on through; its volleys
+##   never start with a wall in the escape (as with a doodad). When it shows itself (task C6b) it pulls up beside
+##   the runner, its front ahead of them: the walls keep off its planned showing windows (the calm stretches its
+##   rules keep, enforcer_truck_rules.gd, counted with the rules' keep-outs below), and in play it never shows itself
+##   where its view would reach a wall (EnforcerTruckRoom: a wall is solid in every lane).
 ## - The flyers ahead of the runner (the heli drone, which stays until it's downed, the Resonator pulling away
 ##   or between its pulses, a Tithe Collector fleeing) rise over a standing wall in their way
 ##   (Enemy.dash_wall_lift); the drone and the truck's cannon hold their fire near one, and the Resonator's
@@ -116,7 +119,8 @@ const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 ## Enemy types whose attacks a wall's footprint needn't keep off (enemy_spans), as a wider gap needn't
 ## (WideGapPlacement.NO_KEEP_TYPES): the heli drone (no barrage starts near a wall, and it rises over one:
 ## Drone._doodad_in_reach, Enemy.dash_wall_lift) and the Enforcer Truck (it drives behind the runner, and no
-## volley starts with a wall in the escape: LevelLayout.doodad_between counts the walls in every lane).
+## volley starts with a wall in the escape: LevelLayout.doodad_between counts the walls in every lane; its
+## showing windows are its rules' calm stretches, kept off with the rules' keep-outs, _counts).
 const NO_KEEP_TYPES: PackedStringArray = ["drone", "enforcer_truck"]
 ## Seconds a hover truck's entrance keeps the walls off past the time it needs to drop behind the runner
 ## (truck_entrance): its first moments of pacing.
@@ -632,8 +636,9 @@ static func _take_out(gen: LevelGenerator, going: Array, before: Dictionary) -> 
 
 
 ## True if rules keep-out `k` (LevelGenerator.rules_doodad_keep_outs) keeps the walls off: one of every lane
-## (a Bad Dream's chase, a Gilded Sentinel's turn), never the walls' own, and never one of a single lane (the
-## hover truck's: the truck bursts through a wall in its way, see the header).
+## (a Bad Dream's chase, a Gilded Sentinel's turn, an Enforcer Truck's showing window: a calm stretch, task C6c),
+## never the walls' own, and never one of a single lane (the hover truck's: the truck bursts through a wall in its
+## way, see the header).
 static func _counts(k: Dictionary) -> bool:
 	return String(k.get("type", "")) != FEATURE and not k.has("lane")
 

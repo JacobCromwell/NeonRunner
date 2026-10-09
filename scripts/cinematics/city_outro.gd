@@ -117,6 +117,7 @@ func _build_props(f: CityOutroTuning) -> void:
 	add_child(props)
 	props.build_ship(stage, boss_tuning if boss_tuning != null else FloatingHeadTuning.new())
 	props.build_roadblock(stage, f, side_mid, 7)
+	props.build_blast()
 	props.build_opening(stage, f, stop_z + (f.opening_after - f.opening_before) * 0.5,
 		(f.opening_before + f.opening_after) * 0.5)
 
@@ -386,7 +387,6 @@ func _on_advance(delta: float) -> void:
 		charge = clampf((time - f.charge_at) / maxf(launch - f.charge_at, 0.05), 0.0, 1.0)
 	props.update_roadblock(time, delta, time >= f.siren_at, f.light_bar_rate, target, charge)
 	props.update_bolts(time)
-	props.update_blast(delta)
 
 
 ## The dying ship: it hangs ahead of the runner, wallowing, its face tearing into static (held still with
