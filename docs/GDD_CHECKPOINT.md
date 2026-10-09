@@ -246,6 +246,7 @@ Level names approved by the owner (September 26, 2026).
 
 - **Credits** are scattered across floor, walls, and ceiling in **several clearly distinguishable denominations**.
 - **High-value credits sit in risky spots:** gap edges, next to enemies, near hazards, far along wall runs.
+- **Wall-hop credits** (owner, October 9, 2026): a gentle nudge toward the wall hop (§3). Some long walls carry **high-value credits further along than one wall run reaches**, so only a player inventive enough to wall hop collects them. *(Proposed)* From Gangland on, about once a level, on a stretch of wall long enough with no wall gap.
 - **Each run produces two numbers:**
   1. **Level score:** credits collected plus bonuses (enemy kills, ramp multipliers, etc.). Feeds stars and level leaderboards. **Never spent.**
   2. **Credits earned:** added to the wallet and spent in the shop.
