@@ -35,8 +35,8 @@ extends Resource
 @export_range(0.5, 2.5, 0.05, "suffix:m") var weave_side: float = 1.4
 
 @export_group("The first screeches")
-## The owner's beats: one at the first, three at the second (`second_right` on the right, the rest on the left),
-## eleven at the third (`third_left` on the left, `third_right` on the right).
+## The owner's beats: one at the first, three at the second (one on the right, leaping over the runner's lane,
+## two on the left), eleven at the third (`third_left` on the left, `third_right` on the right).
 @export_range(0.5, 5.0, 0.05, "suffix:s") var first_burst: float = 2.0
 @export_range(0.5, 6.0, 0.05, "suffix:s") var second_burst: float = 3.0
 @export_range(0.5, 7.0, 0.05, "suffix:s") var third_burst: float = 4.0

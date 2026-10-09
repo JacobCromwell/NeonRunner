@@ -158,8 +158,12 @@ func update(t: float) -> void:
 	wave.set_wave(1, 0.0, 0.0, rise)
 	wave.set_motion(0.0, 0.0, heat, 1.0)
 	wave.set_life(1.0, rise, 0, 0.0)
+	# Only the risen are drawn (their ranks run with the instance index).
+	wave.show_up_to(rise)
+	var formed: float = clampf(rise * 1.3, 0.0, 1.0)
 	mass.set_motion(1.0, 0.0, heat, 1.0)
-	mass.set_life(1.0, clampf(rise * 1.3, 0.0, 1.0), 0, 0.0)
+	mass.set_life(1.0, formed, 0, 0.0)
+	mass.show_up_to(formed)
 	# The heart is the cut's, in the middle of the wall (the runner's lane, as the cut looks back down it).
 	var cut: bool = t >= n.cut_at
 	heart.visible = cut
@@ -216,11 +220,28 @@ func _update_mound(t: float) -> void:
 		var basis := Basis.looking_at(tangent, up)
 		var s: float = _scale * (0.8 + 0.4 * _hash(i, 6))
 		basis = basis.scaled(Vector3(s, s, s))
+		# MultiMesh's layout: the basis by rows and the origin, then the colour, then the custom data.
 		var o: int = i * 20
-		var row: Array[float] = [basis.x.x, basis.y.x, basis.z.x, local.x, basis.x.y, basis.y.y, basis.z.y, local.y,
-			basis.x.z, basis.y.z, basis.z.z, local.z, 1.0, 1.0, 1.0, 1.0, 0.0, MOUND_BRISTLE, 0.8, _hash(i, 7) * 10.0]
-		for k: int in 20:
-			_mound_buffer[o + k] = row[k]
+		_mound_buffer[o] = basis.x.x
+		_mound_buffer[o + 1] = basis.y.x
+		_mound_buffer[o + 2] = basis.z.x
+		_mound_buffer[o + 3] = local.x
+		_mound_buffer[o + 4] = basis.x.y
+		_mound_buffer[o + 5] = basis.y.y
+		_mound_buffer[o + 6] = basis.z.y
+		_mound_buffer[o + 7] = local.y
+		_mound_buffer[o + 8] = basis.x.z
+		_mound_buffer[o + 9] = basis.y.z
+		_mound_buffer[o + 10] = basis.z.z
+		_mound_buffer[o + 11] = local.z
+		_mound_buffer[o + 12] = 1.0
+		_mound_buffer[o + 13] = 1.0
+		_mound_buffer[o + 14] = 1.0
+		_mound_buffer[o + 15] = 1.0
+		_mound_buffer[o + 16] = 0.0
+		_mound_buffer[o + 17] = MOUND_BRISTLE
+		_mound_buffer[o + 18] = 0.8
+		_mound_buffer[o + 19] = _hash(i, 7) * 10.0
 	mound.multimesh.buffer = _mound_buffer
 
 

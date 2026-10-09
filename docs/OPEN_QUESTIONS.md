@@ -2575,15 +2575,18 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     one leaps over the runner's lane as they slide under it, and the other two land in the lane ahead and swipe as
     the runner weaves round them (1.4 m to the right). The eleven land either side of the runner's lane and rear up
     and swipe as the runner runs straight between them. Each then gives chase and falls behind (`jump_at`,
-    `slide_at`, `weave_at`, `third_land`, `chase_share`).
+    `slide_at`, `weave_at`, `third_land`, `chase_share`). In play a screech comes out only when the player is in its
+    lane and dashes straight along it (GDD §9.5); here the first beats' screeches leap sideways out of the next lane
+    into or across the runner's. Is that all right for a cinematic?
 388. **How the wall behind the runner is shown** ("soon we see that there is a wall or wave of screeches behind the
     character"). Placeholder: the camera stays at ground level (0.47–0.75 m up). It rides low behind the runner
     until 5 s, then swings round their right side (5.0–6.4 s) to low in front of them, looking back past them at
     the wall. Should it look back over the runner's shoulder instead (the runner out of view)?
 389. **Where the manholes are** ("manhole covers on either side of him"). Placeholder: rows one lane over on both
-    sides of the runner, one every 6.5 m a side, the sides staggered.
+    sides of the runner, one every 6.5 m a side, the sides staggered. The runner runs in the start lane, the fight's,
+    which on 6 lanes is half a lane right of the street's middle.
 390. **What the wall looks like.** Placeholder: one wave across the street (6 m tall, its crest curling 8.5 m
-    forward over the runner, as the fight's strike from behind does), with the rest of the swarm 26 m behind it. It
+    forward over the runner, as the fight's strike from behind does), with the rest of the swarm behind it, 26 m long. It
     rises from 6.3 s, 32 m behind the runner, and closes to 9 m by the cut. As it closes it heats toward
     enemy-attack red (0.25 to 0.5 on the fight's scale), the fight's colour for an attack. Should a cinematic use
     that warning colour at all?
@@ -2597,9 +2600,9 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     own view, whose Rising carries on from here. There is no card naming the boss, since the beat has none and GDD
     §1 asks for little or no words; the City's boss intro shows one ("ZONE 1 · BOSS / FLOATING HEAD"). Should
     Gangland's show one too, over the cut or the black?
-393. **How many screeches.** Placeholder: 15 in the beats; 2 to 6 out of each manhole in the pour; 110 dropping
-    from the sky (45 on a low-end device); 900 in the wave and 560 behind it (360 and 220 on a low-end device). The
-    phone test (risk test R4, task E3) should check these with the fight's.
+393. **How many screeches.** Placeholder: 15 in the beats; 2 to 6 out of each manhole in the pour (half as many
+    on a low-end device); 110 dropping from the sky (45); 900 in the wave and 560 behind it (360 and 220); 110 heaped
+    round the hollow in the cut (50). The phone test (risk test R4, task E3) should check these with the fight's.
 394. **Its speed.** Placeholder: the runner runs at Gangland's run speed (21.8 m/s), the fight's, so the fight
     follows at the same pace.
 395. **Slots.** This answers part of items 11 and 200: Gangland now has a boss intro as

@@ -88,9 +88,11 @@ func _on_advance(_delta: float) -> void:
 	swarm.update(time)
 
 
-## The street must stay built under the swarm behind the runner (a stretch of it out of the run camera's sight).
+## The street must stay built under the swarm behind the runner (a stretch of it out of the camera's sight
+## until the wall rises). The track builder builds ahead of this too, so it holds where the wall will be when it
+## rises: before then, the street still reaches well ahead of the camera looking down it.
 func _stage_near(near: float) -> float:
-	return minf(near, runner_z(time) - n.gap_start - n.mass_length - 5.0)
+	return minf(near, runner_z(maxf(time, n.wall_from)) - n.gap_start - n.mass_length - 5.0)
 
 
 # --- The runner -------------------------------------------------------------------------------------
@@ -195,7 +197,7 @@ func wall_foot_z(t: float) -> float:
 	return runner_z(t) - wall_gap(t)
 
 
-## The middle of the street (track x: the runner's lane is a lane off it on an even count).
+## The middle of the street (track x: on an even lane count the runner's lane is half a lane right of it).
 func street_middle() -> float:
 	return (stage.wall_x(-1) + stage.wall_x(1)) * 0.5
 
@@ -244,8 +246,8 @@ func camera_at(at: float) -> Array:
 	var a1: float = atan2(n.front.x, n.front.z)
 	var radius: float = lerpf(Vector2(n.behind.x, n.behind.z).length(), Vector2(n.front.x, n.front.z).length(), s)
 	var a: float = lerpf(a0, a1, s)
-	var side: float = minf(radius, minf(n.swing_side, stage.wall_x(1) - n.swing_wall))
-	var pos: Vector3 = r + Vector3(side * sin(a), lerpf(n.behind.y, n.front.y, s), radius * cos(a))
+	var side: float = minf(radius * sin(a), minf(n.swing_side, stage.wall_x(1) - n.swing_wall))
+	var pos: Vector3 = r + Vector3(side, lerpf(n.behind.y, n.front.y, s), radius * cos(a))
 	var middle: Vector3 = r + Vector3(0.0, 1.0, 0.0)
 	var target: Vector3 = (r + n.behind_look).lerp(middle, smoothstep(0.0, 1.0, s * 2.0)) if s < 0.5 \
 		else middle.lerp(r + n.front_look, smoothstep(0.0, 1.0, s * 2.0 - 1.0))

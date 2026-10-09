@@ -2506,7 +2506,9 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 
 `Campaign` lists `ZoneDef`s; each built zone contributes steps: optional intro cinematic, its
 levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step ids (`city/1`,
-`city/boss`, ...) key the save file, so they never change. Difficulty comes from a campaign-wide curve
+`city/boss`, ...) key the save file, so they never change. A cinematic slot added after a save had passed it
+(Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
+unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
 plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
 
 The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`,
@@ -3152,7 +3154,8 @@ A script's props (models of its own that aren't actors) are plain nodes it adds 
 moves in `_on_advance()` from `time`, so they keep time when a test steps the clock (added on the stage, they hide
 with it when it ends). If they stand further back than the camera and the actors (a horde behind the runner),
 `_stage_near(near)` returns how far back the stage must stay built (the track builder keeps only 30 m behind
-`near`). `switch_stage(def, skin)` cuts to another stretch on the same lanes (track space stays put; cut under
+`near`, and builds 180 m ahead of it: hold it back only as far as the props need, or the street ahead of a camera
+looking down it ends short). `switch_stage(def, skin)` cuts to another stretch on the same lanes (track space stays put; cut under
 black, since building one takes a few frames).
 
 Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
@@ -3213,8 +3216,8 @@ and `swarm_lair.gdshader`; the beats' fifteen on the sewer screech's own body, `
 rain in one MultiMesh of its crowd body, placed in script from the clock) and `SwarmIntroSwarm` (the wall's two
 `SwarmCrowd`s, the hollow, its mound in a MultiMesh, the Host on the rig with `SwarmHostPerson`'s look darkened
 by its tint, and the glint, `swarm_intro_glint.gdshader`). Everything is worked out from the time, so stepping or
-skipping it shows the same; anything behind the wall's foot is hidden (lost in it), and nothing is drawn within
-0.9 m of the camera. Crowd sizes are data, smaller on a low-end device. It sets up in about 15 ms (about 230 ms
+skipping it shows the same; anything behind the wall's foot is hidden (lost in it), and no screech is drawn
+within 0.9 m of the camera. Crowd sizes are data, smaller on a low-end device. It sets up in about 15 ms (about 230 ms
 the first time, with cold mesh caches) and costs about 0.6 ms a step, at most about 3 ms (headless,
 `test_sewer_swarm_intro`); its props add about 25 draw calls. It adds no asset files, and one toolkit hook,
 `_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m

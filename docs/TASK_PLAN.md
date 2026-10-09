@@ -462,6 +462,6 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 ## Still to design with the owner
 
 - **Bosses:** the final villain with its second stage (the other five are designed, GDD §10).
-- **Cinematics:** story beats for each slot but Gangland's boss intro (GDD §10, Sewer Swarm).
+- **Cinematics:** story beats for each slot but the City's outro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

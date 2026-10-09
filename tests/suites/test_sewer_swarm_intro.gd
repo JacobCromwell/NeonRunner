@@ -6,9 +6,10 @@ extends TestSuite
 ## left and six on the right), each out of a manhole one lane over that rattles first; the runner never touching
 ## a screech (they jump, slide and weave); more and more screeches pouring out and dropping from out of the
 ## camera's view, beside the runner and never in their lane; the wall rising behind them and closing in; the
-## swarm's dark heart and the Host's glint only in the cut; the fight's music; ending on black; what it costs to
-## set up and to play; Reduced flashing (the glint a slow, faint glow); skipping; and the App's flow (skipping it
-## starts the Sewer Swarm). Its campaign flow from Gangland 3 is test_sewer_swarm_whole's.
+## swarm's dark heart and the Host's glint only in the cut; the fight's music; ending on black; the street built
+## far enough ahead; what it costs to set up and to play; Reduced flashing (the glint a slow, faint glow); the
+## low-end crowd sizes; skipping; saves from before the slot (they keep what they unlocked); and the App's flow
+## (skipping it starts the Sewer Swarm). Its campaign flow from Gangland 3 is test_sewer_swarm_whole's.
 
 const LANES: Array[int] = [3, 5, 6]
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
@@ -30,6 +31,9 @@ const SCREECH_TALL: float = 0.45
 ## Costs, headless: setting it up and a step of its clock (generous, so a busy machine doesn't fail them: they
 ## catch a gross regression; the measured numbers are printed, about 15-30 ms and 3 ms), and what its props may
 ## add to a frame (draw calls).
+## Looking down the street before the wall rises, the camera sees it built at least this far ahead (Gangland's fog
+## thickens to its full by about 165 m).
+const STREET_AHEAD: float = 150.0
 const SETUP_BUDGET_MSEC: float = 1500.0
 const STEP_BUDGET_MSEC: float = 25.0
 const PROP_DRAW_CALLS: int = 60
@@ -49,7 +53,9 @@ func run() -> void:
 		await _check_swarm_intro(lanes)
 	App.rules.lanes_pc = lanes_pc
 	await _test_glint_reduced()
+	await _test_low_end()
 	await _test_skip()
+	_test_old_save()
 	await _test_app_flow()
 	if music != null:
 		if _music_before == &"":
@@ -179,6 +185,7 @@ func _check_swarm_intro(lanes: int) -> void:
 	var steps: int = 0
 	var worst_step: float = 0.0
 	var max_calls: int = 0
+	var street_ahead: float = INF
 	while not seq.done and steps < 2000:
 		var s0: int = Time.get_ticks_usec()
 		seq.advance(STEP)
@@ -187,6 +194,9 @@ func _check_swarm_intro(lanes: int) -> void:
 		steps += 1
 		max_calls = maxi(max_calls, seq.props_draw_calls())
 		var t: float = seq.time
+		if t < n.swing_from and not seq.done:
+			street_ahead = minf(street_ahead, seq.stage.track._next_chunk * TrackBuilder.CHUNK_LENGTH
+				- seq.stage.to_track(seq.camera.global_position).z)
 		if seq.done:
 			break
 		var cam: Vector3 = seq.camera.global_position
@@ -265,6 +275,8 @@ func _check_swarm_intro(lanes: int) -> void:
 	check(setup_msec < SETUP_BUDGET_MSEC and worst_step < STEP_BUDGET_MSEC,
 		"%s: cheap enough: %.1f ms to set up, at most %.2f ms a step" % [tag, setup_msec, worst_step])
 	check(max_calls <= PROP_DRAW_CALLS, "%s: its props add at most %d draw calls (%d)" % [tag, PROP_DRAW_CALLS, max_calls])
+	check(street_ahead >= STREET_AHEAD, "%s: looking down the street, it's built at least %.0f m ahead (%.0f m)" % [
+		tag, STREET_AHEAD, street_ahead])
 	print("  swarm intro, %s: setup %.1f ms, worst step %.2f ms, props %d draw calls, %d crowd screeches" % [
 		tag, setup_msec, worst_step, max_calls, sc.crowd_kind.size()])
 	await _free(seq)
@@ -290,7 +302,31 @@ func _test_glint_reduced() -> void:
 	await _free(seq)
 
 
-# --- Skipping and the App ---------------------------------------------------------------------------
+## On a low-end device it draws fewer: the data's low-end crowd sizes.
+func _test_low_end() -> void:
+	var s: CampaignStep = _step()
+	var seq := (load(s.cinematic.scene) as PackedScene).instantiate() as SewerSwarmIntro
+	seq.low_end = true
+	tree.root.add_child(seq)
+	seq.play(s.cinematic, s)
+	seq.set_process(false)
+	var n: SewerSwarmIntroTuning = seq.n
+	var rain: int = 0
+	var pour: int = 0
+	for k: int in seq.screeches.crowd_kind:
+		rain += 1 if k == SwarmIntroScreeches.Kind.RAIN else 0
+		pour += 1 if k == SwarmIntroScreeches.Kind.POUR else 0
+	var full: SewerSwarmIntro = _start()
+	var full_pour: int = full.screeches.crowd_kind.size() - n.rain_count
+	check(seq.swarm.wave.count == n.wave_creatures_low_end and seq.swarm.mass.count == n.mass_creatures_low_end
+		and seq.swarm.mound.multimesh.instance_count == n.mound_creatures_low_end and rain == n.rain_count_low_end
+		and pour < full_pour, "a low-end device draws the low-end crowds (wave %d, mass %d, mound %d, rain %d, pour %d of %d)" % [
+		seq.swarm.wave.count, seq.swarm.mass.count, seq.swarm.mound.multimesh.instance_count, rain, pour, full_pour])
+	await _free(full)
+	await _free(seq)
+
+
+# --- Skipping, saves and the App --------------------------------------------------------------------
 
 func _test_skip() -> void:
 	for at: float in [1.0, 5.5, 10.0]:
@@ -308,6 +344,27 @@ func _test_skip() -> void:
 		seq.skip()
 		check(ends[0] == 1, "finished fires once, at %.1f s" % at)
 		await _free(seq)
+
+
+## A save from before the slot was added (it had beaten Gangland and gone on) keeps what it unlocked: the Sewer Swarm
+## stays open and Continue goes on from where it was, not back to the intro; a save that hasn't passed it yet
+## still meets it before the fight.
+func _test_old_save() -> void:
+	var saved: Profile = App.profile
+	var old := Profile.new()
+	SampleProfiles.complete_until(old, App.campaign, "marketplace/2")
+	old.records.erase(Profile.record_key("gangland/boss_intro", 0))
+	App.profile = old
+	var next: CampaignStep = App.next_unfinished_step()
+	check(App.step_unlocked(App.campaign.step("gangland/boss")) and next != null and next.id == "marketplace/2",
+		"a save from before the slot keeps the Sewer Swarm open and goes on from Marketplace 2 (%s)" % [next.id if next != null else "-"])
+	var current := Profile.new()
+	SampleProfiles.complete_until(current, App.campaign, "gangland/boss_intro")
+	App.profile = current
+	next = App.next_unfinished_step()
+	check(not App.step_unlocked(App.campaign.step("gangland/boss")) and next != null and next.id == "gangland/boss_intro",
+		"a save just past Gangland 3 meets the intro before the fight (%s)" % [next.id if next != null else "-"])
+	App.profile = saved
 
 
 func _test_app_flow() -> void:
