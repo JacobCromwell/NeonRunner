@@ -410,13 +410,14 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 | F2 | **Cinematic content** | owner's story beats | – | T2 |
 | F2a | **The Neon City's outro** (the owner's beats, October 8, 2026) | F1 | M | T2 |
 | F2b | **Gangland boss intro** (the owner's beat, October 9, 2026) | F1 | M | T2 |
+| F2c | **The Dead Zone's intro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a and F2b have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b and F2c have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -430,6 +431,15 @@ level, screeches burst out of the manholes after the runner (one, then three, th
 and drop from the sky, a wall of them chases the runner down, and one cut shows the Host's glint in the dark heart
 of the swarm. It adds one toolkit hook: `_stage_near()`, to keep the street built under props behind the camera.
 The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
+
+**F2c: the Dead Zone's intro** (owner, October 9, 2026; GDD §6, Cinematics). **Done:** `DeadZoneIntro`
+(`scripts/cinematics/dead_zone_intro/`) in the Dead Zone's intro slot, in place of the arrival flyover. A smoking
+crater, a gap in the street, with the runner lying in it; they shake themselves, get up and reach for its edge; at
+ground level, at first only their hands grab the edge, then they climb out; throughout, two cyborgs lie still down
+the street with a host crouched over them, which looks over as the runner gets up; an extreme close-up of its
+glitching face; black. It adds to the toolkit the poses that play out over time (the runner lying, getting up and
+climbing out; a cyborg lying still and crouching), a head tip (`look_up`) and a cyborg's head turn, models moving
+on the cinematic's clock, and sound events at their own level. The staging choices are in `docs/questions/f2c.md`.
 
 ---
 
@@ -468,7 +478,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro and F2b's Gangland boss intro). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro and F2c's Dead Zone intro). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -477,6 +487,6 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 ## Still to design with the owner
 
 - **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/OPEN_QUESTIONS.md` items 416–503).
-- **Cinematics:** story beats for each slot but the City's outro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
+- **Cinematics:** story beats for each slot but the City's outro, the Dead Zone's intro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

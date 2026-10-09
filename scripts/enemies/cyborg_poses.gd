@@ -74,6 +74,30 @@ const WINDOW := {
 	UPPER_ARM_L: Vector3(46, 8, 14), FOREARM_L: Vector3(52, 0, 0),
 }
 
+## Lying still on its front (cinematics, CyborgBody.Pose.LIE): sprawled, one arm flung out ahead, its
+## screen turned to one side. DESIGN-TBD (docs/questions/f2c.md): this and CROUCH are placeholder poses.
+const LIE := {
+	"root_rot": Vector3(-86, 0, 6),
+	CHEST: Vector3(-4, 0, 8), NECK: Vector3(8, 0, 0), HEAD: Vector3(14, 40, 0),
+	UPPER_ARM_R: Vector3(150, 0, 30), FOREARM_R: Vector3(20, 0, 0),
+	UPPER_ARM_L: Vector3(8, 0, 22), FOREARM_L: Vector3(30, 0, 0),
+	THIGH_R: Vector3(-4, 0, 16), SHIN_R: Vector3(-14, 0, 0), FOOT_R: Vector3(-50, 0, 0),
+	THIGH_L: Vector3(2, 0, 6), SHIN_L: Vector3(-30, 0, 0), FOOT_L: Vector3(-45, 0, 0),
+}
+
+## Crouched low over something in front of it (cinematics, CyborgBody.Pose.CROUCH), its hands down on it
+## and its screen bowed over it.
+const CROUCH := {
+	PELVIS: Vector3(-12, 0, 0), CHEST: Vector3(-40, 0, 0), NECK: Vector3(-12, 0, 0), HEAD: Vector3(-24, 0, 0),
+	THIGH_R: Vector3(108, 0, 18), SHIN_R: Vector3(-142, 0, 0), FOOT_R: Vector3(38, 0, 0),
+	THIGH_L: Vector3(70, 0, 22), SHIN_L: Vector3(-138, 0, 0), FOOT_L: Vector3(-10, 0, 0),
+	UPPER_ARM_R: Vector3(66, 12, 10), FOREARM_R: Vector3(40, 0, 0),
+	UPPER_ARM_L: Vector3(74, 16, 8), FOREARM_L: Vector3(30, 0, 0),
+}
+## Crouched, it works at what's in front of it: each arm in turn tugs back this often (seconds), the chest
+## and screen dipping into it.
+const CROUCH_TUG_PERIOD: float = 1.4
+
 ## A window cyborg once defeated: slumped over the sill, arms hanging out.
 const SLUMP := {
 	CHEST: Vector3(-55, 0, 6), NECK: Vector3(-12, 0, 0), HEAD: Vector3(-20, 16, 0),
@@ -135,6 +159,28 @@ static func window(p: HumanoidPose, time: float, t: HumanoidAnimTuning, lean: fl
 	p.add_table(WINDOW, 1.0)
 	p.add_deg(CHEST, Vector3(-lean, 0.0, 0.0))
 	p.ground = 0.0
+
+
+## Lying still (`mirrored`: the other way round, so two bodies don't lie alike).
+static func lie(p: HumanoidPose, mirrored: bool) -> void:
+	p.reset()
+	p.add_table(LIE, 1.0, mirrored)
+
+
+## Crouched over something, working at it (`busy` 0-1: it stops, its hands still, as it looks up from it): each
+## arm tugs back in turn, sharply, and eases forward again, the chest and screen dipping with it.
+static func crouch(p: HumanoidPose, time: float, busy: float = 1.0) -> void:
+	p.reset()
+	p.add_table(CROUCH, 1.0)
+	var u: float = fposmod(time / CROUCH_TUG_PERIOD, 1.0)
+	for side: int in [-1, 1]:
+		var k: float = fposmod(u + (0.0 if side > 0 else 0.5), 1.0)
+		# A quick pull back over the first fifth of its turn, easing forward over the rest.
+		var tug: float = smoothstep(0.0, 0.2, k) * (1.0 - smoothstep(0.2, 1.0, k)) * busy
+		p.add_limb(UPPER_ARM_R, side, Vector3(-22.0 * tug, 0.0, 4.0 * tug))
+		p.add_limb(FOREARM_R, side, Vector3(30.0 * tug, 0.0, 0.0))
+		p.add_deg(CHEST, Vector3(4.0 * tug, 0.0, side * 3.0 * tug))
+		p.add_deg(HEAD, Vector3(-6.0 * tug, side * 5.0 * tug, 0.0))
 
 
 static func slump(p: HumanoidPose) -> void:

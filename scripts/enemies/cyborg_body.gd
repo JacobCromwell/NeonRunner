@@ -15,6 +15,7 @@ extends GunModel
 ## API (unchanged from the pre-rig body):
 ##   build(variant, host, upper_body_only, visual_seed)   variant: the skin's enemy_variant
 ##   set_pose(pose), set_move_speed(m/s), aim_at(world point) / clear_aim()
+##   head_turn (yaw, pitch radians: its head turned on top of the pose), snap(), advance(delta)
 ##   set_expression(face), set_charge(0–1: the arm cannon's charge glow, the attack telegraph)
 ##   muzzle_position(), flash() (hit), die(cause) (death animation; emits `death_finished`)
 ##   draw_call_count()
@@ -22,7 +23,9 @@ extends GunModel
 
 signal death_finished
 
-enum Pose { IDLE, WALK, AIM, RUN_AWAY, COWER }
+## LIE (lying still, its screen dark) and CROUCH (crouched low over something in front of it) are for
+## cinematics (CineActorNode).
+enum Pose { IDLE, WALK, AIM, RUN_AWAY, COWER, LIE, CROUCH }
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const Poses = preload("res://scripts/enemies/cyborg_poses.gd")
@@ -52,6 +55,10 @@ const DEAD_TINT := Color(0.03, 0.03, 0.035, 0.55)
 ## Leg joints, hidden for a window cyborg's upper body.
 const LEG_JOINTS: Array[int] = [HumanoidPose.THIGH_L, HumanoidPose.SHIN_L, HumanoidPose.FOOT_L,
 	HumanoidPose.THIGH_R, HumanoidPose.SHIN_R, HumanoidPose.FOOT_R]
+## How head_turn is shared out: chest, neck, head.
+const HEAD_JOINTS: Array[int] = [HumanoidPose.CHEST, HumanoidPose.NECK, HumanoidPose.HEAD]
+const HEAD_TURN_SHARE: Array[float] = [0.25, 0.3, 0.45]
+const HEAD_TIP_SHARE: Array[float] = [0.2, 0.35, 0.45]
 
 ## The skin's enemy_variant it was built for, and the look that dresses it (CyborgSuit.look_for).
 var variant: StringName = &"city"
@@ -66,6 +73,10 @@ var move_speed: float = 0.0
 var lean: float = 0.0
 ## The screen's power (1 on, 0 dark): a defeated cyborg's switches off.
 var screen_power: float = 1.0
+## Its head turned on top of its pose (radians): x left (+) or right about its upright, y up (+) or down in the
+## head's own frame. Its chest, neck and head share the turn (HEAD_TURN_SHARE) and the tip (HEAD_TIP_SHARE: the
+## chest a little, so a crouched one straightens to look up).
+var head_turn := Vector2.ZERO
 ## The shared rig and this cyborg's own material.
 var rig: HumanoidRig
 var material: ShaderMaterial
@@ -87,6 +98,8 @@ var _glitch_left: float = 0.0
 var _glitch_rest: float = 0.0
 var _flash_left: float = 0.0
 var _dead: bool = false
+## Which way round it lies (Pose.LIE), from its visual seed, so two bodies don't lie alike.
+var _lie_mirrored: bool = false
 
 
 ## Builds the body. `p_variant` is the skin's enemy_variant; `visual_seed` only varies visuals (glitch
@@ -98,6 +111,7 @@ func build(p_variant: StringName, p_host: bool = false, p_upper_body_only: bool 
 	host = p_host
 	upper_body_only = p_upper_body_only
 	_vis_rng.seed = visual_seed
+	_lie_mirrored = visual_seed % 2 == 1
 	_t = _vis_rng.randf() * 10.0
 	_twitch_phase = _vis_rng.randf() * 10.0
 	_root = Node3D.new()
@@ -121,7 +135,19 @@ func build(p_variant: StringName, p_host: bool = false, p_upper_body_only: bool 
 
 
 func set_pose(p: Pose) -> void:
+	if p == pose:
+		return
+	# Lying still, its screen is dark; up again, it comes back on.
+	if p == Pose.LIE and not _dead:
+		_set_screen_power(0.0)
+	elif pose == Pose.LIE and not _dead:
+		_set_screen_power(1.0)
 	pose = p
+
+
+## The next animation step snaps to its pose instead of blending into it (a cinematic's first frame).
+func snap() -> void:
+	_snap = true
 
 
 ## Walking or running speed, for the stride.
@@ -213,6 +239,13 @@ func die(cause: StringName) -> void:
 
 
 func _process(delta: float) -> void:
+	advance(delta)
+
+
+## Moves it on by `delta` seconds: its twitches, glitches and flashes, and its pose blending toward the one set.
+## It runs by itself each frame (_process); a cinematic drives it on its own clock instead (CineActorNode, with
+## processing off), so stepping the clock shows the same.
+func advance(delta: float) -> void:
 	if rig == null:
 		return
 	_t += delta
@@ -281,6 +314,11 @@ func _animate(delta: float) -> void:
 				Poses.run_away(_tgt, _phase, _t, run)
 			Pose.COWER:
 				Poses.cower(_tgt, _t)
+			Pose.LIE:
+				Poses.lie(_tgt, _lie_mirrored)
+			Pose.CROUCH:
+				# Turning its head to look up from its work, it stops.
+				Poses.crouch(_tgt, _t + _twitch_phase, 1.0 - smoothstep(0.2, 0.8, absf(head_turn.x)))
 			_:
 				Poses.idle(_tgt, _t, walk, hunch)
 	if _aiming and pose != Pose.RUN_AWAY and not _dead:
@@ -296,19 +334,32 @@ func _animate(delta: float) -> void:
 	_mix = tmp
 	rig.apply_pose(_cur)
 	_add_jitter()
+	_turn_head()
 	_aim_arm(k)
 
 
-## The twitches (standing, walking and in a window; not while aiming, fleeing, cowering or dead) and
-## the tremor (not while fleeing or dead), straight onto the posed joints.
+## The twitches (standing, walking, crouching and in a window; not while aiming, fleeing, cowering, lying
+## still or dead) and the tremor (not while fleeing, lying still or dead), straight onto the posed joints.
 func _add_jitter() -> void:
-	if _dead or (pose == Pose.RUN_AWAY and not upper_body_only):
+	if _dead or (not upper_body_only and (pose == Pose.RUN_AWAY or pose == Pose.LIE)):
 		return
-	var twitching: bool = upper_body_only or pose == Pose.IDLE or pose == Pose.WALK
+	var twitching: bool = upper_body_only or pose == Pose.IDLE or pose == Pose.WALK or pose == Pose.CROUCH
 	var extra: Dictionary = Poses.jitter(_t, _twitch_phase, twitching and not _aiming)
 	for joint: int in extra:
 		var node: Node3D = rig.joint(HumanoidRig.JOINT_NAMES[joint])
 		node.rotation += extra[joint]
+
+
+## head_turn, straight onto the posed joints: the head lifted in its own frame, then turned about the upright,
+## so a bowed head (crouched) turns to look without rolling over.
+func _turn_head() -> void:
+	if head_turn == Vector2.ZERO or _dead or not is_inside_tree():
+		return
+	for j: int in HEAD_JOINTS.size():
+		var node: Node3D = rig.joint(HumanoidRig.JOINT_NAMES[HEAD_JOINTS[j]])
+		node.rotate_object_local(Vector3.RIGHT, head_turn.y * HEAD_TIP_SHARE[j])
+		var up: Vector3 = global_basis.y.normalized()
+		node.global_rotate(up, head_turn.x * HEAD_TURN_SHARE[j])
 
 
 ## The stride follows the ground covered (like the player's), so the feet don't skate.
