@@ -6,15 +6,18 @@ extends RefCounted
 ## wall face from the pool tanks' level up past the wall-run band, in a pattern of its own (MeshKit.
 ## PAT_BEACH_WALL, laid out by world position so shacks and chunk cuts join): bamboo culms, woven palm mats,
 ## weathered planks, rusty corrugated sheets, shut roller shutters and serving hatches, flush wordless surf
-## posters, between bamboo posts, with the wall-run height marks (unlit paint) at 2 m and 4 m. The band stays
+## posters, painted doors and surfboards, between bamboo posts, with the wall-run height marks (a thin line of a
+## slightly darker shade) at 2 m and 4 m. The band stays
 ## calm and closed up to band_top: nothing opens, glows, sticks out or looks like a window (a window cyborg's)
 ## or a vent. Everything decorative starts at decor_min_height (8 m):
 ## - the upper storeys' bamboo and the dark timber course at each floor;
 ## - a thatched roof on most (a gable at its near end, its eave reaching out over the street only on a shack
 ##   whose roofline is at OVER_STREET_MIN or higher), else a flat tin roof;
 ## - recessed upper verandas (a bar with a counter, bottles, paper lanterns and, on some, a TV playing the cult's
-##   feed; a lounge; a deck with surfboards and chairs), their bamboo railings flush with the wall's plane;
-## - carved tiki masks (unlit wood, no glowing eyes), swags of string lights and paper lanterns along the face;
+##   feed; a lounge; a deck with surfboards and chairs), their bamboo railings flush with the wall's plane and, on
+##   a bar or a lounge, an unlit striped awning's valance across the top of the opening;
+## - carved tiki masks (unlit wood, no glowing eyes), swags of string lights and clusters of paper lanterns
+##   (unlit muted shells, a warm-white glow inside) hung on the face;
 ## - on the roof, set back from the face: neon silhouette signs (a palm, a wave, a flamingo, a cocktail, a
 ##   surfboard, the sun or a tiki totem, never words; violet, blue or warm white), billboards (some playing the
 ##   cult's feed), surfboard racks, flags, palm trees, and the black rust-streaked industrial structures of the
@@ -60,6 +63,7 @@ const KEY_RACK: int = 300
 const KEY_FLAG: int = 400
 const KEY_MASK: int = 500
 const KEY_SWAG: int = 600
+const KEY_LANTERNS: int = 700
 const KEY_ALCOVE: int = 10000
 const MIRRORED: int = 1000000
 
@@ -242,6 +246,11 @@ func _place_items(b: Shack) -> void:
 				b.items.append({"kind": &"mask", "at": u, "y": y + 0.9 * MeshKit.hash01(b.side, b.id, 32 + j), "variant": j % 4})
 			elif r < 0.5 and u + 3.0 < b.b1 - 0.5:
 				b.items.append({"kind": &"swag", "at": u + 1.5, "y": b.height - 0.7, "variant": j % 3})
+			elif r < 0.74 and not _in_alcove(b, u, 1.2):
+				# A cluster of paper lanterns on a bracket, on the first or second storey above the band.
+				var level: int = MeshKit.hash_i(b.side, b.id * 16 + j, 33) % (b.storeys - 2)
+				b.items.append({"kind": &"lanterns", "at": u + 0.5 + MeshKit.hash01(b.side, b.id * 16 + j, 34),
+					"y": skin.decor_min_height + 3.2 + float(level) * skin.storey_height, "variant": MeshKit.hash_i(b.side, b.id * 16 + j, 35) % 4})
 			u += 3.0
 			j += 1
 
@@ -408,6 +417,8 @@ func _item(batch: MeshBatch, b: Shack, item: Dictionary, face_x: float) -> void:
 			solid.append(_template(KEY_MASK + int(item["variant"]), side), place(face_x, at, float(item["y"])))
 		&"swag":
 			_swag(batch, side, face_x, at, float(item["y"]), int(item["variant"]))
+		&"lanterns":
+			solid.append(_template(KEY_LANTERNS + int(item["variant"]) % 4, side), place(face_x, at, float(item["y"])))
 		&"sign":
 			_sign(batch, b, item, face_x)
 		&"billboard":
@@ -934,6 +945,8 @@ func _build_alcove(kind: int, width: float, seed: int) -> MeshLayer:
 	for y: float in [1.05, 0.55]:
 		t.box(Vector3(0.06, y, 0), Vector3(0.07, 0.06, width), skin.post_color, 0.0, MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES,
 			MeshKit.beach_timber_param(2, 0, seed + 7))
+	if kind != Verandah.DECK:
+		_valance(t, width, hh, (seed + kind) % 3)
 	match kind:
 		Verandah.BAR:
 			# A counter along the back wall with a shelf of bottles over it, paper lanterns hung from the ceiling.
@@ -972,13 +985,61 @@ func _build_alcove(kind: int, width: float, seed: int) -> MeshLayer:
 	return t
 
 
+## A striped awning's valance across the top of an alcove's opening, flush with the face: strips alternating a
+## muted paint (turquoise, coral or sea blue by `pick`) and cream, 0.4 m tall, unlit (never the hazard frame's
+## yellow and black).
+func _valance(t: MeshLayer, width: float, hh: float, pick: int) -> void:
+	var paints: Array[int] = [0, 1, 4]
+	var a: Color = skin.paint_colors[paints[pick % 3] % skin.paint_colors.size()] * 0.95
+	var b: Color = skin.cream_color * 0.95
+	var n: int = maxi(roundi(width / 0.45), 4)
+	var strip: float = width / float(n)
+	for i: int in n:
+		var z0: float = -width * 0.5 + strip * float(i)
+		t.rect(Vector3(0.05, hh - 0.42, z0 + strip), Vector3(0, 0, -strip), Vector3(0, 0.42, 0), a if i % 2 == 0 else b)
+
+
 ## A paper lantern hung at `at`: a cord, a muted unlit shell, and the warm-white glow inside it (a small glowing
-## panel at its foot, seen from the street below).
-func _lantern(t: MeshLayer, at: Vector3, colour: int) -> void:
+## panel at its foot, seen from the street below). `size` scales it (1 inside a veranda, more on a face).
+func _lantern(t: MeshLayer, at: Vector3, colour: int, size: float = 1.0) -> void:
 	var shell: Color = skin.lantern_shell_colors[colour % skin.lantern_shell_colors.size()]
-	t.box(at + Vector3(0, 0.3, 0), Vector3(0.02, 0.4, 0.02), skin.timber_color * 0.5)
-	t.prism(at - Vector3(0, 0.13, 0), 0.17, 0.3, 6, shell, 0.0, MeshKit.PAT_PLAIN, true)
-	t.box(at + Vector3(0, -0.145, 0), Vector3(0.16, 0.02, 0.16), skin.lamp_color, skin.lamp_glow)
+	t.box(at + Vector3(0, 0.3 * size, 0), Vector3(0.02, 0.4 * size, 0.02), skin.timber_color * 0.5)
+	t.prism(at - Vector3(0, 0.13 * size, 0), 0.17 * size, 0.3 * size, 6, shell, 0.0, MeshKit.PAT_PLAIN, true)
+	t.box(at + Vector3(0, -0.145 * size, 0), Vector3(0.16 * size, 0.02, 0.16 * size), skin.lamp_color, skin.lamp_glow)
+
+
+## A cluster of paper lanterns hung from a short bracket on the face, its top at the origin (variant 0-3: three
+## staggered, two, four in a row, three on one cord): unlit muted shells (turquoise, coral, mustard, sea blue,
+## sage) with the warm-white glow inside. Each stays within LIP of the face (its middle 0.02 m out, 0.22 m
+## across), and none hangs below decor_min_height: the bracket stands 11.2 m or more up, its lowest lantern
+## under 2.8 m below it.
+func lanterns_template(variant: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_LANTERNS + variant, side)
+
+
+func _build_lanterns(variant: int) -> MeshLayer:
+	var t := MeshLayer.new()
+	var size: float = 1.3
+	var spots: Array[Vector3] = []
+	match variant:
+		0:
+			spots = [Vector3(0, -0.9, -0.55), Vector3(0, -1.6, 0.0), Vector3(0, -1.1, 0.55)]
+		1:
+			spots = [Vector3(0, -1.0, -0.3), Vector3(0, -1.7, 0.3)]
+		2:
+			spots = [Vector3(0, -0.9, -0.9), Vector3(0, -1.5, -0.3), Vector3(0, -0.9, 0.3), Vector3(0, -1.5, 0.9)]
+		_:
+			spots = [Vector3(0, -0.8, 0.0), Vector3(0, -1.6, 0.0), Vector3(0, -2.4, 0.0)]
+	var half: float = 0.2
+	for sp: Vector3 in spots:
+		half = maxf(half, absf(sp.z) + 0.2)
+	t.box(Vector3(0.05, 0.0, 0), Vector3(0.1, 0.07, half * 2.0), skin.timber_color * 0.6)
+	for i: int in spots.size():
+		var sp: Vector3 = spots[i]
+		# The cord from the bracket, then the lantern (its middle 0.02 m out of the face).
+		t.box(Vector3(0.02, sp.y * 0.5 + 0.1, sp.z), Vector3(0.02, -sp.y - 0.2, 0.02), skin.timber_color * 0.5)
+		_lantern(t, Vector3(0.02, sp.y, sp.z), i + variant, size)
+	return t
 
 
 ## The template with `key` (a KEY_* plus its variant), built once: as it is (the street at +x) for the left wall,
@@ -1000,6 +1061,8 @@ func _build(key: int) -> MeshLayer:
 	if key >= KEY_ALCOVE:
 		var k: int = key - KEY_ALCOVE
 		return _build_alcove(k / 100, 4.0 + float((k % 100) / 10), k % 10)
+	if key >= KEY_LANTERNS:
+		return _build_lanterns(key - KEY_LANTERNS)
 	if key >= KEY_SWAG:
 		return _build_swag(key - KEY_SWAG)
 	if key >= KEY_MASK:

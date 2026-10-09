@@ -28,12 +28,14 @@ const MAX_SURFACE_CHROMA: float = 0.5
 ## A glowing colour this saturated (HSV) must keep to the decorative hues (blue to violet).
 const GLOW_SATURATION_LIMIT: float = 0.35
 ## Gaps: the brightest factors PAT_BEACH_TANK and PAT_BEACH_WATER give their colours (kit_beach.gdshaderinc:
-## the steel's panels and rivets at most 1.25, its rust streaks half of tank_rust_color; the water 1.12), and
-## how much darker than the darkest floor area a pool's inside must stay (linear luminance).
+## the steel's panels and rivets at most 1.25, its rust streaks never lighter than tank_rust_color; the water
+## 1.12 of its colour, its glints never lighter than water_glint_color), and how much of the darkest large
+## floor area's luminance (sand, boardwalk, kerb) a pool's inside may reach: 40%, a real margin, so the water
+## reads as teal water yet a pool is still a hole at a glance.
 const TANK_MAX_FACTOR: float = 1.25
-const TANK_RUST_FACTOR: float = 0.5
+const TANK_RUST_FACTOR: float = 1.0
 const WATER_MAX_FACTOR: float = 1.12
-const GAP_CONTRAST: float = 0.35
+const GAP_CONTRAST: float = 0.4
 ## The sand's darkest area (its drifts, damp patches and the wet rim round a pool), the boardwalk's, the
 ## kerb's and the plates': the darkest factors the patterns give their colours.
 const SAND_DARKEST: float = 0.55
@@ -67,6 +69,7 @@ func run() -> void:
 	await _clear_play_space(skin)
 	_calm_band(skin)
 	_over_street(skin)
+	_dressing(skin)
 	_ceilings(skin)
 	await _cult_emblem(skin)
 	await _cult_feed(skin)
@@ -228,25 +231,36 @@ func _surfaces(skin: BeachSkin) -> void:
 
 ## Gaps are pools and read as holes at a glance, as in every zone (CLAUDE.md readability rules): whatever a pool
 ## shows is the black steel of its tank or dark water, far darker than any floor can be drawn, and nothing in
-## it glows but the orange edge; the water lies deeper than a fall that ends a run; no floor is drawn in the
+## it glows but the orange edge; the water lies a fall that ends a run sinks into; no floor is drawn in the
 ## edge's colour; the showcase pool carries the full orange edge on both sides (the lip on the floor right at
 ## the collision edge with a steel coping beside it, the strip along the top of the tank's wall, and on the far
 ## side the halo). Checked over whole levels at 3 and 5 lanes.
 func _gaps(skin: BeachSkin) -> void:
-	# The darkest floor areas: the sand's drifts, the planks, the plates and the kerb; their joints the thin darkest.
+	# The darkest large floor areas: the sand's drifts, the planks and the kerb (the bolted plates are a few small
+	# patches, the joints thin lines: the inside must stay under those too).
 	var areas: Array[float] = [_linear_luminance(skin.sand_color * Color(SAND_DARKEST, SAND_DARKEST, SAND_DARKEST)),
 		_linear_luminance(skin.boardwalk_color * Color(BOARD_DARKEST, BOARD_DARKEST, BOARD_DARKEST)),
-		_linear_luminance(skin.plate_color * Color(PLATE_DARKEST, PLATE_DARKEST, PLATE_DARKEST)),
 		_linear_luminance(skin.kerb_color * Color(KERB_DARKEST, KERB_DARKEST, KERB_DARKEST))]
 	var darkest: float = INF
 	for l: float in areas:
 		darkest = minf(darkest, l)
+	var plates: float = _linear_luminance(skin.plate_color * Color(PLATE_DARKEST, PLATE_DARKEST, PLATE_DARKEST))
 	var joints: float = _linear_luminance(skin.plank_gap_color * Color(JOINT_DARKEST, JOINT_DARKEST, JOINT_DARKEST))
 	var inside: float = _inside_luminance(skin)
-	check(inside < darkest * GAP_CONTRAST and inside < joints, "a pool's inside stays far darker than the darkest floor: %.4f vs %.4f (joints %.4f)" % [
-		inside, darkest, joints])
-	check(skin.pool_depth > tuning.fall_death_depth + 0.5, "the water lies deeper than a fall that ends a run: %.1f m vs %.1f m" % [
-		skin.pool_depth, tuning.fall_death_depth])
+	check(inside <= darkest * GAP_CONTRAST and inside < joints and inside < plates,
+		"a pool's inside stays darker than the darkest floor by a real margin: %.4f vs %.4f x %.2f (plates %.4f, joints %.4f)" % [
+		inside, darkest, GAP_CONTRAST, plates, joints])
+	# The water is filled to near the rim (like the reference's tanks) and a fall that ends a run sinks into it;
+	# the chase camera stays above the floor, so above the water, even at that depth.
+	check(skin.pool_depth >= 0.4 and skin.pool_depth <= 1.2 and skin.pool_depth < tuning.fall_death_depth,
+		"the water lies 0.4-1.2 m under the rim, and a fall that ends a run sinks into it: %.2f m vs %.1f m" % [skin.pool_depth,
+		tuning.fall_death_depth])
+	var camera_low: float = tuning.camera_height - tuning.fall_death_depth * tuning.camera_follow_y
+	check(camera_low > 1.0, "the chase camera at the fall's depth is still above the floor and the water (%.2f m)" % camera_low)
+	# It reads as water, not as black steel: a saturated deep teal, far from the steel's grey and the pads' cyan glow.
+	check(skin.water_color.s > 0.6 and skin.water_color.h > 0.45 and skin.water_color.h < 0.56 and skin.gap_inside_color.s < 0.25
+		and skin.water_glint_color.s > 0.6 and skin.water_glint_color.h > 0.45 and skin.water_glint_color.h < 0.56,
+		"the water is a deep teal (%s, glints %s), the tank's steel grey (%s)" % [skin.water_color, skin.water_glint_color, skin.gap_inside_color])
 	var like_edge: PackedStringArray = []
 	for c: Color in [skin.sand_color, skin.sand_light_color, skin.boardwalk_color, skin.plate_color, skin.rust_color, skin.kerb_color,
 			skin.coping_color]:
@@ -303,7 +317,7 @@ func _gaps(skin: BeachSkin) -> void:
 	check(halo, "the far edge carries its orange halo toward the approaching runner")
 	check(coping.y - coping.x >= BeachSand.COPING - 0.001 and near_coping.y - near_coping.x >= BeachSand.COPING - 0.001,
 		"a steel coping lies just outside each orange lip (%s, %s)" % [coping, near_coping])
-	check(water, "the pool's water lies pool_depth (%.1f m) below the floor" % skin.pool_depth)
+	check(water, "the pool's water lies pool_depth (%.2f m) below the floor" % skin.pool_depth)
 	await free_track(track)
 	# Whole levels, chunk by chunk: below the floor only the tank's steel, the water, the strips and the halo.
 	var shade: float = inside + 0.0001
@@ -332,13 +346,14 @@ func _gaps(skin: BeachSkin) -> void:
 
 
 ## The brightest a pool's inside can be drawn (linear luminance): the tank's steel and rivets, its rust
-## streaks, the water, and the tide mark at the water's level.
+## streaks, the water with its glints, and the tide mark at the water's level.
 func _inside_luminance(skin: BeachSkin) -> float:
 	var f: float = TANK_MAX_FACTOR
-	return maxf(maxf(_linear_luminance(skin.gap_inside_color * Color(f, f, f)),
-		_linear_luminance(skin.tank_rust_color * Color(TANK_RUST_FACTOR, TANK_RUST_FACTOR, TANK_RUST_FACTOR))),
-		maxf(_linear_luminance(skin.water_color * Color(WATER_MAX_FACTOR, WATER_MAX_FACTOR, WATER_MAX_FACTOR)),
-			_linear_luminance(skin.tide_color * Color(0.2, 0.2, 0.2))))
+	var r: float = TANK_RUST_FACTOR
+	var w: float = WATER_MAX_FACTOR
+	return maxf(maxf(_linear_luminance(skin.gap_inside_color * Color(f, f, f)), _linear_luminance(skin.tank_rust_color * Color(r, r, r))),
+		maxf(maxf(_linear_luminance(skin.water_color * Color(w, w, w)), _linear_luminance(skin.water_glint_color)),
+			_linear_luminance(skin.tide_color)))
 
 
 ## Checks every vertex of the skin's meshes in `chunk` below the floor (hazards and triggers aside, and the
@@ -368,7 +383,7 @@ func _check_below_floor(chunk: Node, skin: BeachSkin, finish: float, shade: floa
 					var pattern: int = roundi(uv2[i].x)
 					var strip: bool = _same_rgb(c, skin.gap_edge_color) and c.a >= BeachSand.STRIP_GLOW - 0.001
 					var dark: bool = (pattern == MeshKit.PAT_BEACH_TANK and _same_rgb(c, skin.gap_inside_color) or pattern == MeshKit.PAT_BEACH_WATER
-						and _same_rgb(c, skin.water_color)) and c.a == 0.0 and _linear_luminance(c * Color(1.25, 1.25, 1.25)) <= shade * 1.3
+						and _same_rgb(c, skin.water_color)) and c.a == 0.0 and _linear_luminance(c) <= shade
 					if not strip and not dark:
 						what = "%s pattern %d" % [c, pattern]
 				elif material == skin.glow_material():
@@ -575,6 +590,79 @@ func _over_street(skin: BeachSkin) -> void:
 		"no ceiling reaches the walls' overhangs: %.1f m over its underside at %.1f m, under %.1f m" % [BeachCeilings.TOP_LIMIT,
 			tuning.ceiling_height, BeachShacks.OVER_STREET_MIN])
 
+
+## The reference's colour at street level and above, within the colour rule: seven bamboo tones that tell
+## neighbouring shacks apart; the wall-run height marks a thin line of a slightly darker shade (a multiplier near 0.7,
+## never a dark cable); paints that include turquoise, coral and sea blue; clusters of paper lanterns hung on the
+## faces above decor_min_height, within LIP of the face, unlit muted shells with the warm-white glow inside; and
+## striped awnings (muted paint and cream, unlit) across the top of the verandas' openings.
+func _dressing(skin: BeachSkin) -> void:
+	var tones: PackedColorArray = skin.bamboo_colors
+	var apart: bool = tones.size() >= 7
+	for i: int in tones.size():
+		for j: int in range(i + 1, tones.size()):
+			var d: Color = tones[i] - tones[j]
+			if sqrt(d.r * d.r + d.g * d.g + d.b * d.b) < 0.05:
+				apart = false
+	check(apart, "the shacks' bamboo comes in seven or more tones that differ from each other (%d)" % tones.size())
+	var m: Color = skin.wall_mark_color
+	check(skin.wall_height_marks.size() == 2 and minf(m.r, minf(m.g, m.b)) >= 0.6 and maxf(m.r, maxf(m.g, m.b)) <= 0.85 and _chroma(m) < 0.1,
+		"the wall-run marks are a slightly darker shade of the wall, not a dark line: x%s" % m)
+	var named: Array[String] = ["turquoise", "coral", "sea blue"]
+	var wanted: Array[Color] = [Color(0.22, 0.54, 0.56), Color(0.76, 0.42, 0.34), Color(0.28, 0.42, 0.62)]
+	for k: int in wanted.size():
+		var found: bool = false
+		for c: Color in skin.paint_colors:
+			var d: Color = c - wanted[k]
+			found = found or sqrt(d.r * d.r + d.g * d.g + d.b * d.b) < 0.12
+		check(found, "the paints include a muted %s" % named[k])
+	# Lantern clusters on the faces, all above decor_min_height and below the roofline.
+	var sh: BeachShacks = skin.shacks()
+	var clusters: int = 0
+	var bad: PackedStringArray = []
+	for side: int in [-1, 1]:
+		var lot: float = skin.lot_length
+		var span: Vector2i = sh.lot_run(side, 0)
+		while span.x * lot < 3000.0:
+			var b: BeachShacks.Shack = sh.shack(side, span)
+			for item: Dictionary in b.items:
+				if StringName(item["kind"]) == &"lanterns":
+					clusters += 1
+					if float(item["y"]) - 2.8 < skin.decor_min_height - 0.001 or float(item["y"]) > b.height - 0.5:
+						bad.append("%.1f m up on a %.1f m shack" % [float(item["y"]), b.height])
+			span = sh.lot_run(side, span.y + 1)
+	check(clusters > 20 and bad.is_empty(), "paper lanterns hang in clusters on the faces above %.0f m (%d clusters): %s" % [
+		skin.decor_min_height, clusters, ", ".join(bad.slice(0, 4))])
+	var faults: PackedStringArray = []
+	var glows: int = 0
+	for variant: int in 4:
+		var t: MeshLayer = sh.lanterns_template(variant)
+		for i: int in t.size():
+			var p: Vector3 = t.verts[i]
+			var c: Color = t.colors[i]
+			if p.y < -2.8 or p.x > BeachShacks.LIP:
+				faults.append("%s in variant %d" % [p, variant])
+			if c.a > 0.001:
+				glows += 1
+				if not _same_rgb(c, skin.lamp_color):
+					faults.append("a glow %s" % c)
+			elif _hazard_hue_lit(c):
+				faults.append("a shell %s" % c)
+	check(faults.is_empty() and glows > 0, "each lantern cluster stays within %.2f m of the face, glows warm white inside unlit shells: %s" % [
+		BeachShacks.LIP, ", ".join(faults.slice(0, 4))])
+	# The striped awning on the verandas: a muted paint strip and a cream one, flush, unlit.
+	var strips: Dictionary = {}
+	var t2: MeshLayer = sh.alcove_template(0, 5.0, 1)
+	for i: int in t2.size():
+		var p: Vector3 = t2.verts[i]
+		if absf(p.x - 0.05) < 0.001 and p.y > BeachShacks.ALCOVE_HEIGHT - 0.45 and t2.colors[i].a == 0.0 and roundi(t2.uv2s[i].x) == MeshKit.PAT_PLAIN:
+			strips[t2.colors[i].to_html(false)] = true
+	check(strips.size() == 2, "a veranda's awning is striped in two unlit colours (%s)" % str(strips.keys()))
+
+
+## A lit colour a hazard could be mistaken for when it is bright and saturated (the lanterns' shells are muted).
+func _hazard_hue_lit(c: Color) -> bool:
+	return _chroma(c) > MAX_SURFACE_CHROMA
 
 ## Every kind of ceiling, on streets of 3, 5 and 6 lanes over every number of their lanes, full width or narrow
 ## and pushed against a wall (task B3): a flat underside covering exactly its lanes (a footbridge reaches from
@@ -894,7 +982,7 @@ func _shader(skin: BeachSkin) -> void:
 	var uniforms: Array[String] = []
 	for u: Dictionary in skin.solid_material().shader.get_shader_uniform_list():
 		uniforms.append(String(u["name"]))
-	check(uniforms.has("bc_paint_a") and uniforms.has("bc_pool_depth") and uniforms.has("bc_daylight"),
+	check(uniforms.has("bc_paint_a") and uniforms.has("bc_pool_depth") and uniforms.has("bc_daylight") and uniforms.has("bc_water_glint"),
 		"the beach's patterns are part of the solid material's shader")
 	check(include.contains("reduced_flashing") and include.count("TIME") == 0 and include.contains("float t) {"),
 		"the water ripple honours Reduced flashing, and only the water takes the time")

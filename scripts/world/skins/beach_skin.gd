@@ -8,8 +8,8 @@ extends ZoneSkin
 ## lights, and black rust-streaked industrial tanks, chimneys and dishes rising behind them (the
 ## cyberpunk touch), palm trees between. A bright tropical afternoon.
 ## Floors are sand with boardwalk runs (BeachSand): weathered planks with rusty bolted steel plates over
-## stretches of some lanes. Gaps are POOLS (the owner's decision): deep black steel pool tanks sunk flush
-## in the sand, their dark water far below the floor, deeper than a fall that ends a run; the orange edge
+## stretches of some lanes. Gaps are POOLS (the owner's decision): black steel pool tanks sunk flush
+## in the sand and filled nearly to the rim with dark teal water (a fall that ends a run sinks into it); the orange edge
 ## language sits right on the collision edge as in every zone, with a dark steel coping beside it so it
 ## pops against the bright sand.
 ## Walls (BeachShacks) are shacks 1-3 lots long and two to four storeys: bamboo, palm mats, planks and
@@ -85,17 +85,23 @@ extends ZoneSkin
 @export_group("Pools")
 ## DESIGN-TBD (docs/questions/d10.md): the owner's decision that gaps are pools of water. The pool tank is
 ## black and gunmetal steel with rust streaks, flush in the sand (the reference's tanks stand proud of it:
-## a raised rim would read as an obstacle that isn't there), its water pool_depth below the floor, deeper
-## than a fall that ends a run (MovementTuning.fall_death_depth, 4 m), so a fall never visibly lands. The
-## water is a deep unlit teal, darker with depth, and NEVER glows (the reference's glowing turquoise is too
-## close to the anti-grav pads' cyan): a pool reads as a hole like every gap.
-@export_range(4.5, 12.0, 0.1, "suffix:m") var pool_depth: float = 6.0
-## Everything under the floor, seen only through gaps: deep shade that only darkens with depth, kept far
-## darker than any floor material (tests/suites/test_beach_skin.gd).
+## a raised rim would read as an obstacle that isn't there), filled to pool_depth below the floor like the
+## reference's near-full tanks: seen from the game camera (4.2 m up) the water shows from about ten metres,
+## where one far below the floor would hide behind the near edge. The fall that ends a run (MovementTuning.
+## fall_death_depth, 4 m) goes on into the water: a falling runner (or an Octodog, a wreck) sinks out of sight
+## into the opaque water, and the chase camera (4.2 m + 0.45 of the runner's height) is still 2.4 m above the
+## floor at that depth, so it never goes under the water. The water is a deep unlit teal with slow ripples
+## and soft glints (also unlit), never glowing (the reference's glowing turquoise is too close to the
+## anti-grav pads' cyan), and darker than any floor (tests/suites/test_beach_skin.gd): a pool still reads as
+## a hole like every gap.
+@export_range(0.4, 1.2, 0.05, "suffix:m") var pool_depth: float = 0.65
+## The tank's black steel above the water, kept far darker than any floor material.
 @export var gap_inside_color: Color = Color(0.06, 0.065, 0.075)
-@export var tank_rust_color: Color = Color(0.20, 0.10, 0.06)
+@export var tank_rust_color: Color = Color(0.26, 0.12, 0.06)
 @export var tide_color: Color = Color(0.07, 0.12, 0.13)
-@export var water_color: Color = Color(0.015, 0.055, 0.065)
+## The water's deep teal and its brightest glint (sky streaks on the ripples), both unlit.
+@export var water_color: Color = Color(0.02, 0.15, 0.17)
+@export var water_glint_color: Color = Color(0.03, 0.175, 0.20)
 ## The steel coping beside a pool's orange lip, so the orange pops against the bright sand.
 @export var coping_color: Color = Color(0.09, 0.095, 0.105)
 ## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the tonemapper
@@ -135,16 +141,18 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var veranda_share: float = 0.6
 @export_range(0.0, 1.0, 0.01) var industry_share: float = 0.5
 @export_range(0.0, 1.0, 0.01) var palm_share: float = 0.6
-## The bamboo of the walls: honey, sun-greyed, pale, green-grey (sRGB, lit, never glowing).
+## The bamboo of the walls, a building each: honey, sun-greyed, pale straw, dark teak, orange-brown, warm tan,
+## warm honey (sRGB, lit, never glowing), so neighbouring shacks read apart.
 @export var bamboo_colors: PackedColorArray = PackedColorArray([
-	Color(0.69, 0.49, 0.23), Color(0.66, 0.56, 0.38), Color(0.70, 0.55, 0.32), Color(0.72, 0.58, 0.38)])
+	Color(0.69, 0.49, 0.23), Color(0.60, 0.54, 0.42), Color(0.72, 0.62, 0.40), Color(0.47, 0.31, 0.17),
+	Color(0.64, 0.40, 0.19), Color(0.58, 0.45, 0.28), Color(0.70, 0.55, 0.32)])
 @export var bamboo_dark_color: Color = Color(0.34, 0.23, 0.11)
 @export var thatch_color: Color = Color(0.68, 0.53, 0.26)
 @export var thatch_dark_color: Color = Color(0.30, 0.23, 0.13)
 @export var timber_color: Color = Color(0.45, 0.35, 0.25)
-## Muted painted boards (teal, coral, mustard, sage, dusty blue), unlit.
+## Muted painted boards, doors, surfboards and awnings (turquoise, coral, mustard, sage, sea blue), unlit.
 @export var paint_colors: PackedColorArray = PackedColorArray([
-	Color(0.33, 0.50, 0.52), Color(0.62, 0.42, 0.34), Color(0.62, 0.55, 0.34), Color(0.45, 0.50, 0.40), Color(0.36, 0.40, 0.55)])
+	Color(0.22, 0.54, 0.56), Color(0.76, 0.42, 0.34), Color(0.66, 0.56, 0.32), Color(0.45, 0.52, 0.40), Color(0.28, 0.42, 0.62)])
 @export var cream_color: Color = Color(0.86, 0.82, 0.70)
 ## The black rust-streaked industrial steel (tanks, water towers, chimneys, dishes).
 @export var steel_color: Color = Color(0.095, 0.10, 0.11)
@@ -155,7 +163,9 @@ extends ZoneSkin
 	Color(0.22, 0.34, 0.24), Color(0.27, 0.38, 0.25), Color(0.20, 0.31, 0.26)])
 ## The wall-run height marks (GDD §3: how high a wall run is): unlit paint at 2 m and 4 m.
 @export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
-@export var wall_mark_color: Color = Color(0.22, 0.14, 0.08)
+## DESIGN-TBD: a thin painted line a slightly darker shade of the wall (a multiplier on its colour, so it
+## shows on bamboo, planks and paint alike without reading as a cable): the kind you find when you look for it.
+@export var wall_mark_color: Color = Color(0.70, 0.68, 0.66)
 
 @export_group("Lights and signs")
 ## Decorative glows are warm white, violet and blue only (the reference's pink, yellow, cyan, green and
@@ -169,10 +179,10 @@ extends ZoneSkin
 @export var lamp_color: Color = Color(1.0, 0.9, 0.74)
 @export_range(0.0, 1.5, 0.05) var lamp_glow: float = 0.7
 @export var lantern_shell_colors: PackedColorArray = PackedColorArray([
-	Color(0.62, 0.42, 0.34), Color(0.62, 0.55, 0.34), Color(0.33, 0.50, 0.52), Color(0.45, 0.50, 0.40)])
+	Color(0.76, 0.42, 0.34), Color(0.66, 0.56, 0.32), Color(0.22, 0.54, 0.56), Color(0.28, 0.42, 0.62), Color(0.45, 0.52, 0.40)])
 ## Unlit flags and bunting.
 @export var flag_colors: PackedColorArray = PackedColorArray([
-	Color(0.62, 0.42, 0.34), Color(0.33, 0.50, 0.52), Color(0.86, 0.82, 0.70), Color(0.36, 0.40, 0.55)])
+	Color(0.76, 0.42, 0.34), Color(0.22, 0.54, 0.56), Color(0.86, 0.82, 0.70), Color(0.28, 0.42, 0.62)])
 ## Strings of lights across the street, one slot every string_spacing metres (a share of them built), no
 ## lower than string_height (clear of every ceiling's TOP_LIMIT).
 @export_range(20.0, 200.0, 1.0, "suffix:m") var string_spacing: float = 48.0
@@ -458,7 +468,7 @@ func _solid_params() -> Dictionary:
 		"bc_sand_light": srgb(sand_light_color), "bc_sand_dark": srgb(sand_dark_color), "bc_shell": srgb(shell_color),
 		"bc_pebble": srgb(pebble_color), "bc_plank_gap": srgb(plank_gap_color), "bc_plate": srgb(plate_color),
 		"bc_rust": srgb(rust_color), "bc_steel": srgb(steel_color), "bc_steel_rust": srgb(steel_rust_color),
-		"bc_tank_rust": srgb(tank_rust_color), "bc_tide": srgb(tide_color), "bc_pool_depth": pool_depth, "bc_bamboo_dark": srgb(bamboo_dark_color),
+		"bc_tank_rust": srgb(tank_rust_color), "bc_tide": srgb(tide_color), "bc_water_glint": srgb(water_glint_color), "bc_pool_depth": pool_depth, "bc_bamboo_dark": srgb(bamboo_dark_color),
 		"bc_thatch_dark": srgb(thatch_dark_color), "bc_timber": srgb(timber_color),
 		"bc_paint_a": srgb(paints[0]), "bc_paint_b": srgb(paints[1]), "bc_paint_c": srgb(paints[2]),
 		"bc_paint_d": srgb(paints[3]), "bc_paint_e": srgb(paints[4]), "bc_cream": srgb(cream_color),

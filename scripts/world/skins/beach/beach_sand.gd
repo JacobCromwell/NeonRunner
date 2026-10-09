@@ -13,13 +13,14 @@ extends RefCounted
 ## Where a gap borders the segment it is a POOL: the floor ends in the orange edge glow right on the
 ## collision edge (a lip on the floor and a strip along the top of the tank's wall, as bright as every
 ## zone's, and a soft halo along the far side), with a dark steel coping just outside the lip so the
-## orange pops against the bright sand, and below it there is only the black steel of the pool tank
-## (MeshKit.PAT_BEACH_TANK in the skin's gap_inside_color: deep shade that only darkens with depth)
-## dropping pool_depth to the dark water (MeshKit.PAT_BEACH_WATER): a pool reads as a hole at a glance,
-## and nothing in it is lit, glowing or floor-like. The tank is flush with the floor (the reference's
-## stands proud of it: a raised rim would read as an obstacle that isn't there). Every segment also
-## carries its sides along its lane edges in the same steel, hidden under the neighbouring lane unless
-## that lane has a pool.
+## orange pops against the sand, and below it the black rust-streaked steel of the pool tank
+## (MeshKit.PAT_BEACH_TANK in the skin's gap_inside_color) running down pool_depth (well under a metre) to
+## the water (MeshKit.PAT_BEACH_WATER: opaque, unlit deep teal with ripples and glints, darker than any floor):
+## a pool reads as a hole at a glance and, once the near edge stops hiding it, as water, and nothing in it is lit,
+## glowing or floor-like. A runner who falls goes on down past the water (fall_death_depth) and out of sight
+## into it. The tank is flush with the floor (the reference's stands proud of it: a raised rim would read as
+## an obstacle that isn't there). Every segment also carries its sides along its lane edges in the same
+## steel, hidden under the neighbouring lane unless that lane has a pool.
 ## Chunk space: x across, y up (the floor at y = 0), z = -distance.
 
 ## The orange edge language: a lip on the floor's last 0.18 m and a strip along the top of the tank's wall
@@ -151,7 +152,7 @@ func _kerb(s: MeshLayer, x0: float, x1: float, a: float, b: float) -> void:
 
 ## Where the pool ends at distance d (facing the player when facing = 1, away when -1): the steel coping
 ## and the orange lip on the floor's edge, the orange strip along the top of the tank's wall, then the wall
-## dropping into the dark.
+## running down to the water.
 func _edge(s: MeshLayer, x0: float, x1: float, d: float, lip: float, cope: float, facing: float) -> void:
 	var z: float = -d
 	var w: float = x1 - x0
@@ -213,8 +214,8 @@ func is_boardwalk(lane: int, k: int) -> bool:
 ## A floor cut through the beach (task B4; GDD §9.9): the sand or boardwalk split open down the lane (the
 ## track hides the floor as the cut runs, FloorCutSection). The floor beside it and beyond it ends in the
 ## pool's edge (the steel coping, the orange lip right on the collision edge, a strip along the top of the
-## cut and the soft halo on its far side), and below everything is the black steel of the pool tank dropping
-## to the dark water, like any gap: nothing in it is lit, glowing or floor-like.
+## cut and the soft halo on its far side), and below everything is the black steel of the pool tank running
+## down to the water, like any gap: nothing in it is lit, glowing or floor-like.
 func cut(parent: Node3D, section: FloorCutSection) -> void:
 	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
 		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_BEACH_TANK,
@@ -237,7 +238,7 @@ func below_wall(batch: MeshBatch, side: int, face_x: float, start: float, end: f
 			MeshKit.PAT_BEACH_TANK, Vector2.ZERO, Vector2.ONE, 2.0)
 
 
-## The pool's water far below the floor, across the whole street (neither belongs to a lane, so the skin adds
+## The pool's water pool_depth below the floor, across the whole street (neither belongs to a lane, so the skin adds
 ## it to the left wall's mesh), and the sand blowing along the street, the leaves drifting and the speed
 ## streaks (the still floor's motion cues), for one chunk.
 func below(batch: MeshBatch, half_width: float, start: float, end: float) -> void:

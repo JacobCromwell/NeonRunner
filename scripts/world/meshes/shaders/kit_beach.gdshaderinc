@@ -31,24 +31,27 @@ uniform vec3 bc_steel_rust = vec3(0.30, 0.15, 0.08);
 uniform vec3 bc_tank_rust = vec3(0.20, 0.10, 0.06);
 // The pool: the tide mark on the tank walls and the deep water far below.
 uniform vec3 bc_tide = vec3(0.07, 0.12, 0.13);
-uniform float bc_pool_depth = 6.0;
+// The water's brightest glint (its base is the vertex colour); the water lies bc_pool_depth below the floor.
+uniform vec3 bc_water_glint = vec3(0.03, 0.175, 0.20);
+uniform float bc_pool_depth = 0.65;
 // Bamboo, thatch and weathered timber.
 uniform vec3 bc_bamboo_dark = vec3(0.34, 0.23, 0.11);
 uniform vec3 bc_thatch_dark = vec3(0.30, 0.23, 0.13);
 uniform vec3 bc_timber = vec3(0.45, 0.35, 0.25);
-// Painted boards, five muted unlit paints (never a hazard's glow): teal, coral, mustard, sage, dusty blue.
-uniform vec3 bc_paint_a = vec3(0.33, 0.50, 0.52);
-uniform vec3 bc_paint_b = vec3(0.62, 0.42, 0.34);
-uniform vec3 bc_paint_c = vec3(0.62, 0.55, 0.34);
-uniform vec3 bc_paint_d = vec3(0.45, 0.50, 0.40);
-uniform vec3 bc_paint_e = vec3(0.36, 0.40, 0.55);
+// Painted boards, doors, surfboards and awnings, five muted unlit paints (never a hazard's glow): turquoise,
+// coral, mustard, sage, sea blue.
+uniform vec3 bc_paint_a = vec3(0.22, 0.54, 0.56);
+uniform vec3 bc_paint_b = vec3(0.76, 0.42, 0.34);
+uniform vec3 bc_paint_c = vec3(0.66, 0.56, 0.32);
+uniform vec3 bc_paint_d = vec3(0.45, 0.52, 0.40);
+uniform vec3 bc_paint_e = vec3(0.28, 0.42, 0.62);
 uniform vec3 bc_cream = vec3(0.86, 0.82, 0.70);
 // The calm band: below this height every wall is flush, closed and solid-looking; the wall-run height
 // marks (unlit paint) at bc_mark_a and bc_mark_b.
 uniform float bc_band_top = 7.2;
 uniform float bc_mark_a = 2.0;
 uniform float bc_mark_b = 4.0;
-uniform vec3 bc_mark = vec3(0.22, 0.14, 0.08);
+uniform vec3 bc_mark = vec3(0.70, 0.68, 0.66);
 // The kit lights a wall with its night-city factor (0.7); the Beach is in bright afternoon sun, so its
 // walls, thatch and timber (the lit upright surfaces) take this much more (a factor on their albedo).
 uniform float bc_daylight = 1.2;
@@ -178,30 +181,33 @@ vec3 bc_poster(vec2 uv, vec2 size, float kind, float seed, float fw) {
 
 // A bamboo culm texture: `across` the culm's width direction and `along` its length (metres); fa and fl
 // the pixel footprints in those directions. `base` is the culm's honey or grey; `seed` varies the rows.
+// Culms are 0.15 m wide with a dark seam between, a node every half metre, a tone of their own, and in
+// bundles of three a tone shared (so a wall of them still shows its bundles where the culms blur).
 vec3 bc_bamboo(vec3 base, float across, float along, float fa, float fl, float seed) {
-	float period = 0.12;
+	float period = 0.15;
 	float cell = floor(across / period);
 	float u = fract(across / period);
 	float r = hash12(vec2(cell, seed));
 	float r2 = hash12(vec2(cell + 7.0, seed + 1.0));
-	vec3 culm = base * (0.9 + 0.2 * r);
+	float bundle = 0.92 + 0.16 * hash12(vec2(floor(cell / 3.0), seed + 4.0));
+	vec3 culm = base * (0.86 + 0.22 * r) * bundle;
 	// Some culms are greyed by the sun.
-	culm = mix(culm, vec3(dot(culm, vec3(0.34))) * vec3(1.0, 1.0, 0.94), step(0.8, r2) * 0.4);
-	float round_shade = 0.9 + 0.2 * sin(u * 3.1416);
+	culm = mix(culm, vec3(dot(culm, vec3(0.34))) * vec3(1.0, 1.0, 0.94), step(0.75, r2) * 0.45);
+	float round_shade = 0.88 + 0.24 * sin(u * 3.1416);
 	// Nodes: a darker ring with a pale bulge beside it, a few every culm.
 	float np = 0.5 + 0.22 * r2;
 	float nv = fract((along + r * 3.0) / np);
 	float nfw = fl / np;
 	float ring = 1.0 - smoothstep(0.03, 0.03 + nfw + 0.01, nv);
 	float bulge = smoothstep(0.03, 0.08 + nfw, nv) * (1.0 - smoothstep(0.08 + nfw, 0.16 + nfw, nv));
-	culm *= round_shade * (1.0 - 0.28 * ring + 0.05 * bulge);
+	culm *= round_shade * (1.0 - 0.3 * ring + 0.06 * bulge);
 	// The dark seam between neighbouring culms.
 	float seam = min(u, 1.0 - u) * period;
-	float gap = 1.0 - smoothstep(0.003, 0.003 + max(fa, 0.005), seam);
-	culm = mix(culm, bc_bamboo_dark * 0.7, gap * 0.6);
-	// Far off, the detail averages out.
-	float lod = smoothstep(0.03, 0.17, fa / period);
-	return mix(culm, base * 0.93, lod);
+	float gap = 1.0 - smoothstep(0.004, 0.004 + max(fa, 0.006), seam);
+	culm = mix(culm, bc_bamboo_dark * 0.7, gap * 0.7);
+	// Far off, the detail averages out (to the bundle's tone).
+	float lod = smoothstep(0.12, 0.5, fa / period);
+	return mix(culm, base * 0.9 * bundle, lod);
 }
 
 // --- Floor patterns ---------------------------------------------------------------------------
@@ -350,64 +356,87 @@ vec3 bc_boardwalk(vec3 base, vec3 w, vec2 uv, float param) {
 }
 
 // PAT_BEACH_TANK (82): everything below the floor, seen only through the pools: the black steel walls of a
-// pool tank, dark and unlit: panels with rivet rows, rust streaking down from the rim, a pale tide mark
-// above the water (a hint of what is below), and a shade that only deepens with depth, so a pool reads as
-// a hole at a glance. param: 0 a face across the lane, 1 a face along it, 2 the building faces below the
-// street. COLOR is the steel at the rim; this only ever darkens it (a factor below 1.1).
+// pool tank above the water (bc_pool_depth deep, a metre or less): panels with rivet rows, rust streaking down
+// from the rim, a lighter flange just under it, a pale stained tide mark and a wet dark line at the water. It
+// stays dark: COLOR is the steel, the panels and rivets at most 1.25 of it, the rust never lighter than
+// bc_tank_rust. param: 0 a face across the lane, 1 a face along it, 2 the building faces below the street.
 vec3 bc_tank(vec3 base, vec3 w, vec3 n, float param) {
 	float h = abs(n.x) > 0.5 ? w.z : w.x;
 	vec2 fwp = max(vec2(fwidth(h), fwidth(w.y)), vec2(1e-4));
 	float fpm = max(fwp.x, fwp.y);
 	float detail = 1.0 - smoothstep(0.03, 0.2, fpm);
-	vec2 pc = vec2(h / 1.8, w.y / 1.4);
+	float pd = bc_pool_depth;
+	vec2 pc = vec2(h / 1.8, -w.y / 0.4);
 	vec2 cell = floor(pc);
 	vec2 fc = fract(pc);
 	vec3 col = base * (0.85 + 0.15 * hash12(cell + 5.0));
-	// Panel seams and rivets along them.
-	float seam = min(min(fc.x, 1.0 - fc.x) * 1.8, min(fc.y, 1.0 - fc.y) * 1.4);
+	// Panel seams (courses 0.4 m tall) and rivets along them.
+	float seam = min(min(fc.x, 1.0 - fc.x) * 1.8, min(fc.y, 1.0 - fc.y) * 0.4);
 	float line = 1.0 - smoothstep(0.012, 0.012 + max(fpm, 0.008), seam);
 	col *= 1.0 - 0.45 * line;
-	float rivet_row = 1.0 - smoothstep(0.035, 0.035 + max(fpm, 0.01), abs(min(fc.y, 1.0 - fc.y) * 1.4 - 0.07));
+	float rivet_row = 1.0 - smoothstep(0.035, 0.035 + max(fpm, 0.01), abs(min(fc.y, 1.0 - fc.y) * 0.4 - 0.05));
 	float rivet = rivet_row * step(0.85, abs(fract(h / 0.22) - 0.5) * 2.0) * detail;
 	col *= 1.0 + 0.2 * rivet;
-	// Rust streaking down from the rim and from each panel's top edge.
-	float streak = smoothstep(0.55, 0.85, value_noise(vec2(h * 3.2 + cell.x * 3.1, w.y * 0.45)));
-	float fall = 1.0 - smoothstep(0.0, 3.2, -w.y);
-	float panel_top = 1.0 - smoothstep(0.0, 0.35, 1.0 - fc.y);
-	col = mix(col, bc_tank_rust * 0.5, clamp(streak * fall * 0.75 + panel_top * streak * 0.3, 0.0, 0.8));
 	// A flange just under the rim: the steel's own tone, a little lighter than its panels.
-	float flange = band(w.y, -0.55, -0.14, fwp.y);
-	col = mix(col, base, flange * 0.7);
-	// The tide mark just above the water, pale and stained.
-	float tide = band(w.y, -bc_pool_depth + 0.15, -bc_pool_depth + 0.8, fwp.y) * (0.6 + 0.4 * value_noise(vec2(h * 2.0, 4.0)));
-	col = mix(col, bc_tide, tide * 0.7);
-	// Dark steel, darker with depth.
-	float depth = mix(1.0, 0.2, smoothstep(-0.1, -3.4, w.y));
-	return col * depth;
+	float flange = band(w.y, -0.3, -0.14, fwp.y);
+	col = mix(col, base * 1.2, flange * 0.7);
+	// Rust streaking down from the rim and from each panel's top edge, thicker toward the rim, never gone.
+	float streak = smoothstep(0.5, 0.82, value_noise(vec2(h * 3.2 + cell.x * 3.1, w.y * 1.1)));
+	float fall = 1.0 - 0.55 * smoothstep(0.0, pd, -w.y);
+	float panel_top = (1.0 - smoothstep(0.0, 0.12, fc.y)) * (0.4 + 0.6 * hash12(cell + 9.0));
+	col = mix(col, bc_tank_rust, clamp(streak * fall * 0.85 + panel_top * streak * 0.3, 0.0, 0.85));
+	// The tide mark just above the water, pale and stained, and the wet dark steel at the waterline.
+	float tide = band(w.y, -pd + 0.05, -pd + 0.2, fwp.y) * (0.6 + 0.4 * value_noise(vec2(h * 2.0, 4.0)));
+	col = mix(col, bc_tide, tide * 0.75);
+	col *= 1.0 - 0.4 * band(w.y, -pd - 0.01, -pd + 0.05, fwp.y);
+	return col;
 }
 
-// PAT_BEACH_WATER (83): the pool's water far below the floor, seen only through the pools: deep unlit teal,
-// slow caustic ridges drifting over it (the time slowed to a stand by Reduced flashing), never lighter
-// than 1.12 of its colour, so it stays as dark as a hole's inside must be.
+// PAT_BEACH_WATER (83): the pool's water, filled nearly to the rim: opaque, unlit deep teal (COLOR) with
+// long ripples running across the street, slow caustic ridges and soft glints, streaks of sky stretched
+// along the street (bc_water_glint, never lighter than that), all of it drifting slowly (the time slowed to a
+// stand by Reduced flashing). Seen from the game camera at a grazing angle: the ripples and the glints
+// average out where a pixel spans them. Never lighter than the glint colour or 1.12 of COLOR.
 vec3 bc_water(vec3 base, vec3 w, float t) {
-	float ts = t * (1.0 - 0.9 * reduced_flashing) * 0.12;
-	vec2 q = w.xz * 0.8;
-	float a = value_noise(q + vec2(ts, -ts * 0.7));
-	float b = value_noise(q * 2.3 + vec2(-ts * 1.1, ts) + 7.0);
+	float ts = t * (1.0 - 0.9 * reduced_flashing);
+	vec2 p = w.xz;
+	vec2 fwp = max(fwidth(p), vec2(1e-4));
+	// Long ripples: crests across the street, warped by a slow noise; fine ones fade where they are sub-pixel.
+	float warp = value_noise(vec2(p.x * 0.7, p.y * 0.15 - ts * 0.04)) * 2.0;
+	float crest = 0.5 + 0.5 * sin(p.y * 1.7 + warp * 3.0 - ts * 0.5);
+	float crest_fade = 1.0 - smoothstep(0.2, 0.6, fwp.y * 1.7 / 6.2832);
+	// Caustic ridges, drifting.
+	vec2 q = p * 0.8;
+	float a = value_noise(q + vec2(ts * 0.12, -ts * 0.08));
+	float b = value_noise(q * 2.3 + vec2(-ts * 0.13, ts * 0.12) + 7.0);
 	float ridge = pow(clamp(1.0 - abs(a + b - 1.0), 0.0, 1.0), 6.0);
-	return base * (0.82 + 0.3 * ridge);
+	vec3 col = base * (0.9 + 0.1 * mix(0.5, crest, crest_fade) + 0.12 * ridge);
+	// Glints: narrow streaks along the street, brightest where a ripple's crest and a slow noise meet.
+	float gl = smoothstep(0.62, 0.9, value_noise(vec2(p.x * 2.6, p.y * 0.22 + ts * 0.15)) * (0.55 + 0.45 * crest));
+	float gl_fade = 1.0 - smoothstep(0.15, 0.5, fwp.x * 2.6);
+	col = mix(col, bc_water_glint, gl * gl_fade * 0.85);
+	return col;
 }
 
 // --- Walls ------------------------------------------------------------------------------------------
 
-// PAT_BEACH_WALL (84): a shack's face, flush with the wall's plane, laid out in bays 3-5 m along the track
-// by world position (so shacks and chunk cuts join): between bamboo posts each bay is bamboo culms, a
-// woven palm mat, weathered planks, rusty corrugated sheets, a painted roller shutter or serving hatch (shut,
-// flush), or bamboo with surf posters pasted on (wordless). Up to bc_band_top (the wall-run band) it stays
-// calm and closed: nothing opens, glows, juts or looks like a window (a window cyborg's) or a vent, and the
-// wall-run height marks (unlit paint) run across it at bc_mark_a and bc_mark_b; above, the upper storeys are
-// bamboo, mats and planks with a dark timber course under each veranda floor. param = the building's seed
-// (0-999) * 8 (the low bits are free). COLOR is the building's bamboo honey or grey.
+// PAT_BEACH_WALL (84): a shack's face, flush with the wall's plane, laid out in bays 3-4.8 m along the track
+// by world position (so shacks and chunk cuts join), each bay with a tone of its own, between bamboo
+// posts: bamboo culms, a woven palm mat, weathered planks, rusty corrugated sheets, a painted door, roller
+// shutter or serving hatch (shut, flush), bamboo with surf posters pasted on, painted vertical boards, a
+// mural, a bay of painted surfboards, or culms laid sideways. Up to bc_band_top (the wall-run band) it stays calm and
+// closed: nothing opens, glows, juts or looks like a window (a window cyborg's) or a vent, and the wall-run
+// height marks (a thin line, a slightly darker shade of the wall: bc_mark is a multiplier) run across it at
+// bc_mark_a and bc_mark_b; above, the upper storeys are bamboo, mats, planks and slats with a dark timber
+// course under each veranda floor. Big sun-bleached and honey drifts lie over every bay, so a wall seen
+// edge-on (where fine culms blur) is never one flat tone. param = the building's seed (0-999) * 8 (the low
+// bits are free). COLOR is the building's bamboo honey, grey or teak.
+vec3 bc_door_paint(float k) {
+	// Turquoise, coral or mustard: never a glassy sea blue, which would read as a window.
+	float i = mod(floor(k), 3.0);
+	return i < 0.5 ? bc_paint_a : (i < 1.5 ? bc_paint_b : bc_paint_c);
+}
+
 vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 	float u = abs(n.x) > 0.5 ? w.z : w.x;
 	float v = w.y;
@@ -422,37 +451,45 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 	float bayu = us - bi * bay_w;
 	float r = hash12(vec2(bi, seed));
 	bool upper = v > bc_band_top;
-	float style = r < 0.2 ? 0.0 : (r < 0.3 ? 1.0 : (r < 0.4 ? 2.0 : (r < 0.54 ? 3.0 : (r < 0.66 ? 4.0 : (r < 0.76 ? 5.0 : (r < 0.9 ? 6.0 : 7.0))))));
+	// The styles: 0 bamboo, 1 mat, 2 planks, 3 rusty sheets, 4 painted door/shutter/hatch, 5 bamboo and posters,
+	// 6 painted boards, 7 mural, 8 surfboards, 9 culms laid sideways.
+	float style = r < 0.26 ? 0.0 : (r < 0.36 ? 1.0 : (r < 0.46 ? 2.0 : (r < 0.52 ? 3.0 : (r < 0.61 ? 4.0 : (r < 0.67 ? 5.0
+		: (r < 0.75 ? 6.0 : (r < 0.79 ? 7.0 : (r < 0.89 ? 8.0 : 9.0))))))));
 	if (upper) {
-		// The upper storeys: bamboo, mats and planks.
+		// The upper storeys: bamboo, mats, planks and slats.
 		float r2 = hash12(vec2(bi + 40.0, seed));
-		style = r2 < 0.5 ? 0.0 : (r2 < 0.75 ? 1.0 : 2.0);
+		style = r2 < 0.42 ? 0.0 : (r2 < 0.66 ? 1.0 : (r2 < 0.82 ? 2.0 : 9.0));
 	}
-	vec3 col = base;
+	// This bay's tone: a little lighter, darker or greyer than its neighbours'.
+	float bay_tone = 0.88 + 0.24 * hash12(vec2(bi + 3.0, seed + 8.0));
+	vec3 bay = mix(base, vec3(dot(base, vec3(0.34, 0.33, 0.33))) * vec3(1.04, 1.0, 0.92), 0.35 * smoothstep(0.55, 0.9, hash12(vec2(bi + 11.0, seed + 5.0))));
+	bay *= bay_tone;
+	float weather = 1.0;
+	vec3 col = bay;
 	if (style < 0.5) {
 		// Bamboo culms, standing.
-		col = bc_bamboo(base, us, v, fwp.x, fwp.y, seed);
+		col = bc_bamboo(bay, us, v, fwp.x, fwp.y, seed);
 	} else if (style < 1.5) {
 		// A woven palm mat: diagonals over two tones, framed by two bamboo rails.
 		vec2 d = vec2(us + v, us - v) / 0.16;
 		vec2 cd = floor(d);
 		float weave = mod(cd.x + cd.y, 2.0);
-		vec3 mat = base * mix(0.86, 1.04, weave) * (0.94 + 0.12 * hash12(cd * 0.37 + seed));
+		vec3 mat = bay * mix(0.84, 1.06, weave) * (0.94 + 0.12 * hash12(cd * 0.37 + seed));
 		float fine = 1.0 - smoothstep(0.03, 0.03 + max(fwp.x, fwp.y) / 0.16, min(fract(d.x), fract(d.y)));
-		mat *= 1.0 - 0.14 * fine * detail;
-		col = mix(mat, base * 0.95, smoothstep(0.1, 0.35, fpm / 0.16));
+		mat *= 1.0 - 0.16 * fine * detail;
+		col = mix(mat, bay * 0.95, smoothstep(0.12, 0.45, fpm / 0.16));
 		float rail = max(band(v, 0.85, 0.97, fwp.y), band(v, 3.25, 3.37, fwp.y));
-		col = mix(col, bc_bamboo(base * 1.05, v, us, fwp.y, fwp.x, seed + 3.0), rail);
+		col = mix(col, bc_bamboo(bay * 1.05, v, us, fwp.y, fwp.x, seed + 3.0), rail);
 	} else if (style < 2.5) {
-		// Weathered planks, laid across, with staggered butt joints and nails.
+		// Weathered planks, laid across, with staggered butt joints and nails; every plank a tone of its own.
 		float bh = 0.2;
 		float row = floor(v / bh);
 		float fr = fract(v / bh);
 		float off = hash11(row * 3.7 + seed) * 1.8;
 		float col_i = floor((us + off) / 1.8);
-		float tone = 0.8 + 0.34 * hash12(vec2(row, col_i + seed));
-		vec3 plank = mix(bc_timber, base, 0.45) * 1.15 * tone;
-		plank = mix(plank, vec3(dot(plank, vec3(0.34))) * vec3(1.04, 1.0, 0.92), 0.15);
+		float tone = 0.76 + 0.4 * hash12(vec2(row, col_i + seed));
+		vec3 plank_avg = mix(bc_timber, bay, 0.45) * 1.15 * tone;
+		vec3 plank = mix(plank_avg, vec3(dot(plank_avg, vec3(0.34))) * vec3(1.04, 1.0, 0.92), 0.15);
 		float edge_y = min(fr, 1.0 - fr) * bh;
 		float gap_y = 1.0 - smoothstep(0.003, 0.003 + max(fwp.y, 0.005), edge_y);
 		float fx = fract((us + off) / 1.8) * 1.8;
@@ -460,10 +497,12 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 		plank = mix(plank, bc_bamboo_dark * 0.55, max(gap_y, gap_x * 0.8) * 0.8);
 		float nail = (1.0 - smoothstep(0.008, 0.008 + fpm, abs(min(fx, 1.8 - fx) - 0.1))) * (1.0 - smoothstep(0.008, 0.008 + fpm, abs(fr - 0.5) * bh));
 		plank = mix(plank, bc_bamboo_dark * 0.5, nail * (1.0 - smoothstep(0.01, 0.045, fpm)));
-		col = mix(plank, bc_timber * 0.95, smoothstep(0.1, 0.35, fpm / 0.2));
+		// The rows are horizontal lines: they hold up in a grazing view, where only the joints and nails blur.
+		col = mix(plank, plank_avg * 0.9, smoothstep(0.12, 0.5, fwp.y / bh));
 	} else if (style < 3.5) {
 		// Rusty corrugated sheets: ribs every 0.18 m, rust blooms and streaks, an overlap at each sheet's edge.
 		// Mostly rust-brown; a few keep faded paint.
+		weather = 0.5;
 		float sheet = floor(us / 0.9);
 		float sr = hash12(vec2(sheet, seed + 21.0));
 		vec3 paint = mix(bc_rust * 1.1, bc_warm_paint(seed + sheet) * 0.85, step(0.78, sr));
@@ -478,35 +517,55 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 		sh *= 1.0 - 0.3 * lap;
 		col = sh;
 	} else if (style < 4.5) {
-		// A painted shutter or serving hatch, shut and flush: a muted painted panel in a darker frame (a roller
-		// shutter's fine slats, or a hatch's boards with a diagonal brace). The bay's wall around it is bamboo.
-		float hatch_w = 2.4;
+		// A painted door, roller shutter or serving hatch, shut and flush: a muted turquoise, coral or blue panel in
+		// a darker frame (a door's vertical boards and hinge straps, a shutter's fine slats, a hatch's boards and
+		// brace). The bay's wall around it is bamboo.
+		weather = 0.6;
 		float cu = bayu - bay_w * 0.5;
-		bool shutter = hash11(bi * 1.3 + seed) < 0.5;
-		float y0 = shutter ? 0.0 : 0.9;
-		float y1 = shutter ? 2.5 : 2.3;
-		col = bc_bamboo(base, us, v, fwp.x, fwp.y, seed);
-		vec2 q = vec2(abs(cu) - hatch_w * 0.5, abs(v - (y0 + y1) * 0.5) - (y1 - y0) * 0.5);
+		float type = floor(hash11(bi * 1.3 + seed) * 3.0);
+		bool door = type < 0.5;
+		bool shutter = type > 0.5 && type < 1.5;
+		float hw = door ? 0.7 : 1.3;
+		float y0 = (door || shutter) ? 0.0 : 0.9;
+		float y1 = door ? 2.35 : (shutter ? 2.5 : 2.3);
+		col = bc_bamboo(bay, us, v, fwp.x, fwp.y, seed);
+		vec2 q = vec2(abs(cu) - hw, abs(v - (y0 + y1) * 0.5) - (y1 - y0) * 0.5);
 		float dd = max(q.x, q.y);
 		float inside = 1.0 - smoothstep(-fpm, fpm, dd);
-		vec3 paint = bc_warm_paint(seed + bi * 3.0);
+		// A serving hatch is never a glassy blue: warm paints (coral, mustard, sage), so nothing reads as a window.
+		vec3 paint = (door || shutter) ? bc_door_paint(seed + bi * 3.0) : (hash11(bi * 2.1 + seed) < 0.5 ? bc_paint_b : bc_paint_c);
 		vec3 panel = paint;
-		if (shutter) {
-			panel *= 0.9 + 0.1 * sin(v / 0.07 * 6.2832) * (1.0 - smoothstep(0.1, 0.4, fwp.y / 0.07));
+		if (door) {
+			float pb = floor((cu + hw) / 0.2);
+			panel *= 0.9 + 0.1 * hash12(vec2(pb, bi + seed));
+			float seam_d = 1.0 - smoothstep(0.004, 0.004 + max(fwp.x, 0.005), (0.5 - abs(fract((cu + hw) / 0.2) - 0.5)) * 0.2);
+			panel = mix(panel, paint * 0.55, seam_d * 0.7 * (1.0 - smoothstep(0.02, 0.1, fwp.x)));
+			float strap = max(band(v, 0.45, 0.56, fwp.y), band(v, 1.75, 1.86, fwp.y));
+			panel = mix(panel, bc_bamboo_dark * 0.7, strap * 0.85);
+		} else if (shutter) {
+			// Roller slats: a dark line every 0.08 m, plus a bar and a lock at the bottom.
+			float sl = 0.5 - abs(fract(v / 0.08) - 0.5);
+			float sline = 1.0 - smoothstep(0.02, 0.02 + max(fwp.y / 0.08, 0.03), sl);
+			panel *= 1.0 - 0.28 * sline * (1.0 - smoothstep(0.1, 0.45, fwp.y / 0.08));
+			panel = mix(panel, paint * 0.6, band(v, 0.0, 0.14, fwp.y));
 		} else {
 			float pb = floor(cu / 0.3);
 			panel *= 0.9 + 0.1 * hash12(vec2(pb, bi + seed));
 			float seam_x = 1.0 - smoothstep(0.004, 0.004 + max(fwp.x, 0.005), (0.5 - abs(fract(cu / 0.3) - 0.5)) * 0.3);
 			panel = mix(panel, paint * 0.55, seam_x * 0.7 * detail);
 			float brace = 1.0 - smoothstep(0.04, 0.04 + fpm, abs((cu * 0.6) - (v - 1.6)) * 0.7);
-			panel = mix(panel, paint * 0.65, brace * 0.7 * step(abs(cu), hatch_w * 0.5));
+			panel = mix(panel, paint * 0.65, brace * 0.7 * step(abs(cu), hw));
 		}
+		// The paint worn through to grey wood in patches, and streaked down from the top.
+		float worn = smoothstep(0.55, 0.85, value_noise(vec2(us * 1.7, v * 0.9) + seed)) * (1.0 - smoothstep(0.2, 0.6, fpm / 0.2));
+		panel = mix(panel, bc_timber * 0.95, worn * 0.55);
 		float frame = 1.0 - smoothstep(0.07, 0.07 + fpm, -dd);
 		panel = mix(panel, bc_bamboo_dark * 0.9, frame);
 		col = mix(col, panel, inside);
 	} else if (style > 5.5 && style < 6.5) {
 		// Painted vertical boards, beach-hut style: wide stripes of two muted paints in groups of three boards,
 		// dark seams, the paint worn through to weathered wood in patches.
+		weather = 0.4;
 		float bd = 0.18;
 		float bn = floor(us / bd);
 		float group = floor(bn / 3.0);
@@ -519,9 +578,10 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 		float edge_b = min(fract(us / bd), 1.0 - fract(us / bd)) * bd;
 		boards = mix(boards, bc_bamboo_dark * 0.6, (1.0 - smoothstep(0.003, 0.003 + max(fwp.x, 0.005), edge_b)) * 0.7);
 		col = mix(boards, paint * 0.9, smoothstep(0.08, 0.3, fwp.x / bd));
-	} else if (style > 6.5) {
+	} else if (style > 6.5 && style < 7.5) {
 		// A surf mural: a big painted panel on bamboo (a sun, waves, a palm, a board, a flamingo or a glass).
-		col = bc_bamboo(base, us, v, fwp.x, fwp.y, seed);
+		weather = 0.6;
+		col = bc_bamboo(bay, us, v, fwp.x, fwp.y, seed);
 		vec2 msz = vec2(bay_w - 0.7, 2.3);
 		vec2 mq = vec2(bayu - bay_w * 0.5, v - 2.55);
 		if (abs(mq.x) < msz.x * 0.5 && abs(mq.y) < msz.y * 0.5) {
@@ -529,10 +589,42 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 			float fwq = max(fwp.x, fwp.y) / (min(msz.x, msz.y) * 0.78);
 			col = bc_poster(mq + msz * 0.5, msz, kind, seed + bi * 3.0, max(fwq, 0.004)) * (0.92 + 0.08 * value_noise(vec2(u, v) * 5.0));
 		}
+	} else if (style > 7.5 && style < 8.5) {
+		// Surfboards mounted flush on bamboo: two or three painted boards (muted coral, sea blue, teal, sage,
+		// mustard) standing or hung at a slight slant, each with a cream stripe, a pale nose and a dark outline.
+		weather = 0.7;
+		col = bc_bamboo(bay, us, v, fwp.x, fwp.y, seed);
+		float count = 2.0 + step(0.5, hash12(vec2(bi, seed + 6.0)));
+		for (int i = 0; i < 3; i++) {
+			float fi = float(i);
+			if (fi < count) {
+				float cx = bay_w * (0.5 + (fi - (count - 1.0) * 0.5) * (0.74 / count)) + (hash12(vec2(bi + fi, seed + 12.0)) - 0.5) * 0.25;
+				float len = 1.9 + 0.7 * hash12(vec2(bi + fi * 3.0, seed + 14.0));
+				float cy = 0.35 + len * 0.5 + 1.1 * hash12(vec2(bi + fi * 5.0, seed + 16.0)) * step(0.5, fi);
+				float ang = (hash12(vec2(bi + fi, seed + 18.0)) - 0.5) * 0.14;
+				vec2 q = bc_rot(vec2(bayu - cx, v - cy), ang);
+				float t = clamp(q.y / (len * 0.5), -1.0, 1.0);
+				float half_w = 0.23 * (1.0 - pow(abs(t), q.y > 0.0 ? 2.4 : 3.2));
+				float sd = max(abs(q.x) - half_w, abs(q.y) - len * 0.5);
+				float cover = 1.0 - smoothstep(-fpm, fpm, sd);
+				if (cover > 0.0) {
+					vec3 pc = bc_paint(seed + bi * 2.0 + fi * 3.0 + 1.0);
+					vec3 board = pc * 0.95;
+					board = mix(board, bc_cream * 0.95, step(0.62, t) * 0.9);
+					board = mix(board, bc_cream * 0.95, 1.0 - smoothstep(0.02, 0.02 + fpm, abs(q.x)));
+					board = mix(board, bc_bamboo_dark * 0.7, 1.0 - smoothstep(0.0, 0.025 + fpm, -sd));
+					col = mix(col, board, cover);
+				}
+			}
+		}
+	} else if (style > 8.5) {
+		// Culms laid sideways, a slat wall: rows of bamboo along the wall (the rows hold up in a grazing view).
+		col = bc_bamboo(bay, v, us, fwp.y, fwp.x, seed + 9.0);
 	} else {
 		// Bamboo with a surf poster or two pasted on, wordless: a sun, waves, a palm, a board, a flamingo or a
 		// glass, at chest height.
-		col = bc_bamboo(base, us, v, fwp.x, fwp.y, seed);
+		weather = 0.8;
+		col = bc_bamboo(bay, us, v, fwp.x, fwp.y, seed);
 		for (int i = 0; i < 2; i++) {
 			float fi = float(i);
 			float pcx = bay_w * (0.3 + 0.4 * fi) + (hash12(vec2(bi, seed + fi)) - 0.5) * 0.4;
@@ -548,12 +640,19 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 		}
 	}
 	// Where a pixel spans a whole bay or more (a wall seen edge-on, close to it), the bays average out.
-	col = mix(col, base * 0.95, smoothstep(0.35 * bay_w, bay_w, fwp.x));
+	col = mix(col, bay * 0.95, smoothstep(0.35 * bay_w, bay_w, fwp.x));
+	// Weathering that survives a grazing view (where the fine culms blur): big drifts lighter and darker, and
+	// patches the sun has bleached grey, over bamboo, mats and planks; the paints take less of it.
+	float drift = value_noise(vec2(us * 0.3, v * 0.45) + seed * 3.0);
+	float bleach = smoothstep(0.55, 0.85, value_noise(vec2(us * 0.21 + 17.0, v * 0.3 + seed)));
+	vec3 grey = vec3(dot(col, vec3(0.34, 0.33, 0.33)));
+	col *= mix(1.0, 0.86 + 0.28 * drift, weather);
+	col = mix(col, grey * vec3(1.03, 1.0, 0.93), bleach * 0.3 * weather);
 	// A bamboo pole at each bay's edge (its culm runs up the pole); far off, its average over the bay.
 	float pd = min(bayu, bay_w - bayu);
 	float post = mix(1.0 - smoothstep(0.065, 0.075, pd), 0.14 / bay_w, smoothstep(0.05, 0.2, fwp.x));
 	if (post > 0.0) {
-		col = mix(col, bc_bamboo(base * 1.08, pd, v, fwp.x, fwp.y, seed + 5.0), post);
+		col = mix(col, bc_bamboo(bay * 1.08, pd, v, fwp.x, fwp.y, seed + 5.0), post);
 	}
 	if (upper) {
 		// A dark timber course under each veranda floor: the storeys' floor lines.
@@ -563,10 +662,10 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 	} else {
 		// The sand blown against the foot of the wall.
 		float sandy = (1.0 - smoothstep(0.0, 0.5, v)) * (0.5 + 0.5 * value_noise(vec2(u * 2.0, 1.0)));
-		col = mix(col, bc_sand_dark, sandy * 0.55);
-		// The wall-run height marks, unlit paint.
-		float marks = max(band(v, bc_mark_a - 0.025, bc_mark_a + 0.025, fwp.y), band(v, bc_mark_b - 0.025, bc_mark_b + 0.025, fwp.y));
-		col = mix(col, bc_mark, clamp(marks, 0.0, 1.0) * 0.9);
+		col = mix(col, bc_sand_dark, sandy * 0.45);
+		// The wall-run height marks: thin lines of a slightly darker shade (bc_mark is a multiplier).
+		float marks = max(band(v, bc_mark_a - 0.018, bc_mark_a + 0.018, fwp.y), band(v, bc_mark_b - 0.018, bc_mark_b + 0.018, fwp.y));
+		col = mix(col, col * bc_mark, clamp(marks, 0.0, 1.0) * 0.9);
 	}
 	return col;
 }
