@@ -1950,7 +1950,7 @@ underside, and check the drop on both renderers (`skin_review --narrow`, Review 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
 and `GoldenSkin` (Zone 6, the Golden Zone). `BeachSkin` (task D10, the Beach) is a seventh look that no
-zone or level uses yet (the owner hasn't placed it in the campaign: `test_campaign` pins six zones); it is
+campaign zone uses yet (the owner hasn't placed it in the campaign: `test_campaign` pins six zones); it is
 shown with `--skin=beach` in quick play and in `skin_review`. `GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
@@ -1972,10 +1972,10 @@ value, the one thing a new zone's skin sets for its enemies:
 | Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
-| Beach (D10, not in the campaign yet) | `&"city"` | the base (Static TV Head) | clean |
+| Beach (D10, not in the campaign yet) | `&"casino"` | the Casino Mob Enforcer | clean |
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
-Marketplace) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
+Marketplace, the Beach) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
 colours from the zone variant (`BarnacleTurretModel.PALETTES`; a new zone's variant gets the default
 gunmetal until it has its own).
 
@@ -2322,12 +2322,15 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
   `PAT_PALACE_FLOOR` (70), `PAT_PALACE_WELL` (71) and `PAT_PALACE_PANEL` (72).
 
 **The Beach** (task D10, the owner's request of October 9, 2026; `docs/art/reference/beach_zone.jpg`; not in
-the campaign yet, so no zone, level or music: `data/skins/beach_skin.tres` is shown with `--skin=beach` and
+the campaign yet, so no campaign zone, level or music: `data/skins/beach_skin.tres` is shown with `--skin=beach` and
 `tools/showcase/skin_review.tscn -- --skin=beach`): `BeachSkin` (`scripts/world/skins/beach_skin.gd`) is a bright
 tropical afternoon on a shore: a sandy street running down to a turquoise sea and a palm island, between bamboo
 shacks and tiki bars, with black rust-streaked industrial tanks behind them. No new enemy assets: its
-`enemy_variant` is `&"city"` (the base look; `DESIGN-TBD`, `docs/questions/d10.md`). The gaps are pools, the
-owner's decision. Hooks overridden, builders in `scripts/world/skins/beach/`:
+`enemy_variant` is `&"casino"`, the Marketplace's Casino Mob Enforcer (the owner: "reuse one of the existing
+cyborg looks, whatever fits the theme of this zone the best"; the pick is a placeholder,
+`docs/questions/d10.md`). The gaps are pools, the owner's decision, and the walls open on the beach (the
+owner's answer on side walls: "much longer sections where there aren't sidewalls"). Hooks overridden,
+builders in `scripts/world/skins/beach/`:
 - *The floor* (`BeachSand`): sand (`PAT_BEACH_SAND`: wind ripples, drifts, footprints, flat shells, a damp rim
   round a pool) with boardwalk runs (`PAT_BEACH_BOARDWALK`: planks across the lane, rusty steel plates
   bolted on), runs of one to three `boardwalk_slot`-metre slots hashed by lane and slot (`boardwalk_runs()`, so the runs of
@@ -2339,14 +2342,29 @@ owner's decision. Hooks overridden, builders in `scripts/world/skins/beach/`:
   most 40% of the luminance of the darkest sand, boardwalk or kerb, and under the plates' and joints';
   `test_beach_skin` computes the budget from the skin's colours: tank steel, rust, tide mark, water). Water is
   opaque, unlit deep teal (`PAT_BEACH_WATER`: long ripples, slow caustics, soft glints) filled to `pool_depth`
-  0.65 m under the rim, like the reference's near-full tanks: from the game camera (4.2 m up) water six metres
-  down hides behind the near edge beyond a few metres, this shows from ten or more. Above it, the tank's wall
+  0.45 m under the rim (the owner: "it's pretty good as it is", closer to the rim; deeper than the grapple's
+  `pit_depth`, 0.35 m, which `test_beach_skin` pins), like the reference's near-full tanks: from the game camera
+  (4.2 m up) water six metres down hides behind the near edge beyond a few metres, this shows from ten or more.
+  Above it, the tank's wall
   is black rust-streaked steel (`PAT_BEACH_TANK`: panels, rivets, a flange under the rim, a tide mark and a wet
   line). The fall that ends a run (`fall_death_depth` 4 m) goes on into the water: a runner (an Octodog, a
   wreck) sinks out of sight into the opaque plane, and the chase camera (`camera_height` + `camera_follow_y` x
   the runner's height) is still 2.4 m above the floor at that depth, so it never goes under the water
   (pinned by `test_beach_skin`). Blowing sand, drifting leaves and petals and speed streaks
   (`MeshKit.drift_particles`) are the still floor's motion cue.
+- *The splash* (`BeachWaterWatch`, `BeachSplash`; the owner: "a fall makes a splash"): `wall_section` and
+  `wall_gap` add a `BeachWaterWatch` beside the left wall's water plane, which finds the `RunWorld` up the
+  tree as `MarketCitizen` does and reads the runner's position and track distance (a read-only visual
+  watcher: no collision, no gameplay state written). When the runner's height crosses the water going down
+  inside its stretch of street (a floor or a cut's hole never lets that happen anywhere else), it adds a
+  `BeachSplash` on the water, a one-shot that frees itself after 1.2 s (a crown of foam, droplets, two
+  spreading rings; unlit off-white, no glow, no flash, so nothing for Reduced flashing to turn off) and plays
+  the `splash` sound (`tools/asset_gen/sfx_bank_player.gd`, `RunWorld.play_sfx_at`). A grappled runner never
+  splashes: the hook fires at `pit_depth`, above the water. The fall's death comes about 0.3 s after the
+  splash, and the death screen's pause about a second after that, so the splash plays out under the
+  overlay's lead-in. Only the runner splashes (what falls after it, such as an Octodog baited into a gap,
+  doesn't). Review a real fall on both renderers with `tools/showcase/splash_review.tscn` (`--skin`,
+  `--sky`, `--lanes`, `--grapple`, `--side`), a `RunWorld` with a pool in the runner's lane and no jump.
 - *The walls* (`BeachShacks`): shacks one to three 12 m lots long, two to four storeys (`lot_run()`), all
   variety hashed from lot indices. Up to `band_top` (7.2 m) a face is flush and calm, drawn by
   `PAT_BEACH_WALL` from world position in bays of 3 to 4.8 m between bamboo posts, every bay a tone of its own
@@ -2369,6 +2387,22 @@ owner's decision. Hooks overridden, builders in `scripts/world/skins/beach/`:
   hashed spots. Wall decorations are cached `MeshLayer` templates in left-wall space with the right wall's
   mirrored copies cached once, so building a chunk is plain translations (a 5-lane chunk builds in about
   3 ms, under 25 surfaces). `note_wall_gaps()` is forwarded for the shared hooks.
+- *Open stretches* (`BeachSkin.wall_gap`, `BeachOpen` in `beach_open.gd`; the owner: "much longer sections where
+  there aren't sidewalls, and the player can see the surrounding area a little bit better"): where a level
+  opens the side wall (`TrackBuilder` passes each chunk's slice of the gap, any length, to `wall_gap`), the
+  skin draws the standard gap marks (`ZoneSkin.standard_wall_gap`: the orange lip, the 6 m dark end slabs, the
+  orange stripes) and, chunk by chunk with every position hashed from the track distance (so a stretch is
+  the same however chunks cut it): the beach, from the wall line outward and 1.4 m below the street
+  (`beach_drop`: sand, a wet band, a foam line, shallows, the mid sea and the deep, the shoreline swinging
+  16-64 m past the wall line, 8 m quads), and on it palms, umbrellas with loungers, surfboards stuck in the sand
+  and now and then a bamboo and thatch hut, kept dry, `open_margin` (9 m) from the gap's ends and `open_near`
+  (9 m) from the wall line so nothing stands near the runner or the lip, with no collision. The shack at
+  each end of a gap is closed with a timber gable (`BeachShacks.gap_end_cap`), and the walls' own pieces
+  carry the beach on behind them (`BeachOpen.ground`), so the view past a shack's end isn't the void. Every
+  chunk stays inside the build budget (`SkinSuite`: under 32 surfaces for a five-lane chunk) with a stretch
+  open on either or both sides (`test_beach_skin`, hand-built layouts through `RunSim.layout`). Review: `skin_review --skin=beach --open`
+  (four shots per stretch: the game camera at the start and 50 m in, from the lane beside the opening, from
+  above), and `--view=run --from=<distance>` with the same flag.
 - *The ceilings* (`BeachCeilings`; `kind_of()` by the ceiling's width and the walls it reaches, weights
   `footbridge_weight`, `veranda_weight`, `barge_weight`): a boardwalk footbridge across every lane, a veranda
   deck cantilevered from one building (narrow, reaching one wall) and a hovering party barge (any width, or
@@ -2386,7 +2420,13 @@ owner's decision. Hooks overridden, builders in `scripts/world/skins/beach/`:
   on roof billboards, never in the wall-run band. `feed_boards()` (kinds `deck_tv`, `roof_board`) and
   `cult_emblems()` (kinds `sign`, `billboard`) list them for `skin_review`.
 - *The sky and sea*: `night_sky.gdshader` by day, through its existing uniforms (a blue zenith, white
-  cumulus, a warm sun glow toward the far end; nothing blooms) plus three default-off ones: `skyline_hills`
+  cumulus, a warm sun glow toward the far end; nothing blooms), and, for a level that wants the owner's
+  sunset ("the sun starting to set. Not dark, but the sun's starting to have some purples and oranges in the
+  sky"), `data/skies/beach_sunset.tres`, a `LevelSky` to name in `LevelConfig.sky` (a periwinkle zenith, a
+  peach horizon, a violet-pink haze, an orange sun glow, orange and pink clouds over lavender shadows, no
+  stars, a sea re-coloured to a deep blue; at least three times as bright overhead as the Marketplace's
+  sunset and under the glow threshold; `test_beach_skin` pins it; review it with
+  `skin_review --skin=beach --sky=beach_sunset`), plus three default-off uniforms: `skyline_hills`
   and `skyline_scale` turn the skyline into smooth low hills (an island, no lit windows) standing on the
   sea, and `abyss_depth` (0.3 by default) is how far below the horizon the sky becomes the abyss colour (the
   Beach: 0.05, a turquoise sea starting at the horizon).
@@ -3844,8 +3884,11 @@ filling, back), a zone skin
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
 lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
-a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
-turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
+a run that tries moves past their edges; `--open` opens the side walls over four stretches, with shots
+of each from the game camera, from beside the opening and from above (a skin's `wall_gap` hook, the Beach's
+open beach); `--from=D` starts the run further on, `--reduced-flashing`
+turns Reduced flashing on), the Beach's splash (`splash_review`: a real `RunWorld` with a skin, a pool in the
+runner's lane and the game camera, for a real fall; `--skin`, `--sky`, `--lanes`, `--grapple`, `--side`), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
 the App plays it, or the toolkit's sampler), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
