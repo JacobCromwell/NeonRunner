@@ -605,7 +605,7 @@ class ShowPlanner:
 	## - CLAIM: as AROUND, its bait's claim on its turn may come during it (it begins before the claim, which only holds
 	##   back the attacks that get ready during it): out of view show_margin_seconds before a Buzz Overdrive's rev, its
 	##   warning (EnforcerTruckRoom.hold_claimed; an Octodog's turn as before). The truck doesn't give way to that claim
-	##   in play.
+	##   in play. DESIGN-TBD (docs/questions/c6e.md): anywhere in a level, not only in its calm start.
 	## - CALM: the level's calm start (its run-up), where no window fits between the run-up's end and the first bait:
 	##   as CLAIM, the truck arriving inside the run-up (calm_start_min_seconds into the run at the earliest) right
 	##   behind the runner (at its follow gap) and showing itself as it arrives; nothing taken out (calm_start_takes_out
@@ -1026,7 +1026,8 @@ class ShowPlanner:
 	## _)) fits beside in `r_room` (EnforcerTruckRoom.layout_lane), or -1 if one fits beside every lane. Outside CLASSIC
 	## mode (task C6e) its dodge checks are clipped to its stay (as the truck's in play), and one runner lane no showing
 	## could reach (EnforcerTruckRoom.unreachable: beside a hover truck at 3 lanes, or with only a cut's lane to show
-	## itself in) may be left out (_excused); two such lanes leave the window none.
+	## itself in) may be left out (_excused); two such lanes leave the window none. DESIGN-TBD (docs/questions/c6e.md):
+	## a runner keeping to the lane left out doesn't see that showing.
 	func _lanes_fail(r_room: EnforcerTruckRoom, starts: Array[Vector4], seed: int) -> int:
 		var classic: bool = mode == Mode.CLASSIC
 		var excused: Array[int] = []
