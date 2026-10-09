@@ -33,8 +33,9 @@ const BALUSTRADE_Y: float = 1.1
 var boss: GoldenConvergence
 var magnate: GoldenConvergenceMagnate
 var mode: Mode = Mode.OFF
-## Who moves him while DRIVEN (an attack, the transition, the defeat).
-var driver: Object = null
+## Who moves him while DRIVEN (an attack, the transition, the defeat): its instance id (0: nobody). An id, not
+## the object: the drivers hold the chase, so holding them back would keep both alive after the fight.
+var driver: int = 0
 ## The lane he follows and his world x.
 var lane: int = 0
 var x: float = 0.0
@@ -64,23 +65,23 @@ func begin(at_lane: int = -1) -> void:
 	x = boss.world.geo.lane_x(lane)
 	_lane_log.clear()
 	mode = Mode.FOLLOW
-	driver = null
+	driver = 0
 	_breath_t = 0.0
 	_growl_t = boss.tuning.growl_every * 0.5
 
 
 ## An attack (or the transition, the defeat) moves him from now on.
 func drive(by: Object) -> void:
-	driver = by
+	driver = by.get_instance_id()
 	mode = Mode.DRIVEN
 
 
 ## `by` is done with him: he drops back behind the runner from where he is (along the balustrade on `side`, -1
 ## or 1, if he's on it; 0 straight back).
 func drop_back(by: Object, side: int = 0) -> void:
-	if driver != by and mode == Mode.DRIVEN:
+	if driver != by.get_instance_id() and mode == Mode.DRIVEN:
 		return
-	driver = null
+	driver = 0
 	var d: float = boss.player_distance()
 	var from: Vector3 = magnate.global_position
 	_ret = {"from": from, "rel0": -from.z - d, "t": 0.0, "seconds": boss.tuning.drop_back_seconds / boss.pace(),
@@ -96,7 +97,7 @@ func home() -> bool:
 ## Off: nothing moves him (before the transition, after the defeat).
 func stop() -> void:
 	mode = Mode.OFF
-	driver = null
+	driver = 0
 	alarm = 0.0
 
 
