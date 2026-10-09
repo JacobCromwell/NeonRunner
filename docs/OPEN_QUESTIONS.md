@@ -2569,21 +2569,60 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     A host's Bad Dream chase doesn't keep a window off: it only comes if the player kills the host, and the showing
     then waits for it. Placeholder: those two values (`DESIGN-TBD` in `data/enemies/enforcer_truck.tres`). OK?
 
+**Gangland's boss intro** (from F2b; the owner's beat, GDD §10 Sewer Swarm "Intro cinematic"; numbers in `data/cinematics/sewer_swarm_intro.tres`, code in `scripts/cinematics/sewer_swarm_intro/`; review with `tools/showcase/cinematic_review.tscn -- --slot=gangland/boss_intro`, or play `--level=gangland/boss_intro`)
+387. **How the runner dodges** ("easily avoids it", "dodges those", "runs past them"). Placeholder: the first
+    screech pounces into the runner's lane and lands under them as they jump over it. Of the next three, the lone
+    one leaps over the runner's lane as they slide under it, and the other two land in the lane ahead and swipe as
+    the runner weaves round them (1.4 m to the right). The eleven land either side of the runner's lane and rear up
+    and swipe as the runner runs straight between them. Each then gives chase and falls behind (`jump_at`,
+    `slide_at`, `weave_at`, `third_land`, `chase_share`). In play a screech comes out only when the player is in its
+    lane and dashes straight along it (GDD §9.5); here the first beats' screeches leap sideways out of the next lane
+    into or across the runner's. Is that all right for a cinematic?
+388. **How the wall behind the runner is shown** ("soon we see that there is a wall or wave of screeches behind the
+    character"). Placeholder: the camera stays at ground level (0.47–0.75 m up). It rides low behind the runner
+    until 5 s, then swings round their right side (5.0–6.4 s) to low in front of them, looking back past them at
+    the wall. Should it look back over the runner's shoulder instead (the runner out of view)?
+389. **Where the manholes are** ("manhole covers on either side of him"). Placeholder: rows one lane over on both
+    sides of the runner, one every 6.5 m a side, the sides staggered. The runner runs in the start lane, the fight's,
+    which on 6 lanes is half a lane right of the street's middle.
+390. **What the wall looks like.** Placeholder: one wave across the street (6 m tall, its crest curling 8.5 m
+    forward over the runner, as the fight's strike from behind does), with the rest of the swarm behind it, 26 m long. It
+    rises from 6.3 s, 32 m behind the runner, and closes to 9 m by the cut. As it closes it heats toward
+    enemy-attack red (0.25 to 0.5 on the fight's scale), the fight's colour for an attack. Should a cinematic use
+    that warning colour at all?
+391. **The cut** ("a dark area, and inside that dark area, we can just make out a glint of the host"). Placeholder:
+    at 9.6 s, one cut to low between the runner and the wall, looking up into a dark hollow in the middle of the
+    mass (1.9 × 2.3 m), with screeches heaped and crawling round its rim. The Host is held up inside it, its look
+    darkened to a faint silhouette with a sickly edge. The implant at its temple glints red once, 0.9 s into the
+    cut (with Reduced flashing, a slow, faint glow). Is the glint right, or should it be the Host's eyes, or the
+    implants on its back (the fight's weak points)?
+392. **How it ends.** Placeholder: 2.4 s after the cut it fades to black (12 s in all), and the fight starts on its
+    own view, whose Rising carries on from here. There is no card naming the boss, since the beat has none and GDD
+    §1 asks for little or no words; the City's boss intro shows one ("ZONE 1 · BOSS / FLOATING HEAD"). Should
+    Gangland's show one too, over the cut or the black?
+393. **How many screeches.** Placeholder: 15 in the beats; 2 to 6 out of each manhole in the pour (half as many
+    on a low-end device); 110 dropping from the sky (45); 900 in the wave and 560 behind it (360 and 220); 110 heaped
+    round the hollow in the cut (50). The phone test (risk test R4, task E3) should check these with the fight's.
+394. **Its speed.** Placeholder: the runner runs at Gangland's run speed (21.8 m/s), the fight's, so the fight
+    follows at the same pace.
+395. **Slots.** This answers part of items 11 and 200: Gangland now has a boss intro as
+    well as the City. Should the other zones' bosses get one?
+
 **The Floating Head's salvos** (from E1g; group "Salvos" and `later_run_seconds` in `data/bosses/city_boss_tuning.tres`,
 F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §10; review with
 `tools/showcase/floating_head_showcase.tscn -- --scenario=bombing --phase=1` or `--phase=2`, with `--lanes=3`, `5` or `6`)
-387. **Which runs drop salvos** (GDD §10: "the next bombing run"). The fight has two later runs, at the start of phases 2
+396. **Which runs drop salvos** (GDD §10: "the next bombing run"). The fight has two later runs, at the start of phases 2
     and 3. Placeholder: both drop salvos (`salvo_spots` = 1, 4, 4; the first run keeps one spot at a time). Should the
     third phase's run go back to one spot at a time (1, 4, 1)?
-388. **How much harder on 5 or more lanes** (owner: "increase the difficulty on five or more lanes"). With one or two
+397. **How much harder on 5 or more lanes** (owner: "increase the difficulty on five or more lanes"). With one or two
     bombs a spot, a runner on a wide street can step clear of a whole salvo. Placeholder: from 5 lanes
     (`salvo_wide_lanes`) a spot takes up to three bombs side by side (`salvo_wide_bombs`), placed to leave the runner as
     few lanes as possible but never none, so after the first spot there is usually one way through
     (`salvo_wide_choices` = 1; 2 would leave a choice of two lanes). On 3 lanes a spot keeps one or two bombs, two 40%
     of the time (`salvo_pair_chance`). Is three bombs a spot right (beyond the one or two first asked for), and is one
     way through too hard?
-389. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
+398. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
     (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
     lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
-390. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
+399. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
     (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?
