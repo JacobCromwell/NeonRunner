@@ -68,8 +68,8 @@ const CAPE_ANCHOR_Z: float = -3.6
 const CAPE_ANCHOR_HALF: float = 11.0
 ## Colours (sRGB): the gold, a deeper bronze for joints and bores, the dark of the pipes' mouths, the tear's
 ## dull red (well under the hazards' saturation and brightness: it never reads as a weak point).
-const GOLD := Color(0.84, 0.64, 0.3)
-const GOLD_PALE := Color(0.92, 0.78, 0.46)
+const GOLD := Color(0.85, 0.67, 0.42)
+const GOLD_PALE := Color(0.92, 0.8, 0.53)
 const BRONZE := Color(0.48, 0.33, 0.16)
 const BORE := Color(0.06, 0.05, 0.045)
 ## The chest's cavity behind its plates: a dark bronze.
