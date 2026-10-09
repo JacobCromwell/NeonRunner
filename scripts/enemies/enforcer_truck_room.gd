@@ -307,10 +307,10 @@ func shadow_clear(l: int, r: int, t: EnforcerTruckTuning, d: float, seconds: flo
 ## The lanes a showing beside a runner in lane `r` may take, the outer one first (the camera sits inward of the
 ## runner, so the truck there covers less of the street); `seed` picks the side for a runner in the middle lane.
 ## A runner in an outer lane (by a wall) has one: two lanes in, the lane between them left free for them to dodge
-## into (escape_lane). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 382, task C6c): beside them on their inner side it would take
-## their only lane to dodge into, and at 5 and 6 lanes it would stand under the camera (which sits inward of a
-## runner by a wall) and hide up to 25 m of the floor of their lane; two lanes in it hides nothing of their lane
-## or the lane between (EnforcerTruckView.check).
+## into (escape_lane; the owner, October 9, 2026, GDD §9.13 "Room to show itself", answering docs/OPEN_QUESTIONS.md
+## item 382): beside them on their inner side it would take their only lane to dodge into, and at 5 and 6 lanes it
+## would stand under the camera (which sits inward of a runner by a wall) and hide up to 25 m of the floor of their
+## lane; two lanes in it hides nothing of their lane or the lane between (EnforcerTruckView.check).
 func sides(r: int, seed: int) -> Array[int]:
 	var n: int = hard.size()
 	var out: Array[int] = []
