@@ -1867,7 +1867,9 @@ indoors as well as out.) What a look gets and keeps to:
   weathering; `DoodadKit`: the shared motifs in the concept art's flat-paint-and-ink style: planks,
   corrugated sheet, wheels, awnings, crates, foliage, see-through window frames, stains) by one script per
   zone (`tools/asset_gen/doodad_art/<zone>_art.gd`), and packed into one atlas per zone,
-  `assets/sprites/doodads/<zone>.png` (imported VRAM-compressed with mipmaps), with a manifest
+  `assets/sprites/doodads/<zone>.png` (imported lossless with mipmaps: a few hundred KB each to
+  download instead of about 2.8 MB a texture format VRAM-compressed; `DoodadCards` keeps one zone's in
+  memory at a time, about 11 MB), with a manifest
   `<zone>.json`: where each picture sits, the boxes they were painted for, and each size class's looks.
   A look is a list of cards (`DoodadArtSet`, `tools/asset_gen/doodad_art_set.gd`): `{plane, at, rect,
   image, flip}`, a picture on one of the box's faces (`plane` "z" across the lane, its front at `at` = 1;

@@ -467,6 +467,10 @@ func _test_cards() -> void:
 		if not cards.ok:
 			continue
 		var m: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(DoodadCards.DIR.path_join(zone + ".json")))
+		var import := ConfigFile.new()
+		check(import.load(String(m["atlas"]) + ".import") == OK
+			and int(import.get_value("params", "compress/mode", -1)) == 0 and bool(import.get_value("params", "mipmaps/generate", false)),
+			"%s's atlas is stored lossless with mipmaps (small downloads; no shimmer far away)" % zone)
 		var boxes: Dictionary = m["boxes"]
 		var images: Dictionary = m["images"]
 		for size: StringName in LevelLayout.DOODAD_SIZES:

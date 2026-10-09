@@ -29,9 +29,13 @@ var _uv: Dictionary = {}
 var _meshes: Dictionary = {}
 
 
-## The cards of `zone` (city, gangland, marketplace, corporate, dead_zone, golden), loaded once.
+## The cards of `zone` (city, gangland, marketplace, corporate, dead_zone, golden), loaded once and
+## kept while that zone is in use. Loading another zone lets go of the one before: an atlas is the
+## biggest texture a level holds (stored lossless, for small downloads, so uncompressed in memory), and
+## a session needs one zone's at a time. Doodads already built keep their own mesh and material.
 static func for_zone(p_zone: String) -> DoodadCards:
 	if not _sets.has(p_zone):
+		_sets.clear()
 		_sets[p_zone] = DoodadCards.new(p_zone)
 	return _sets[p_zone]
 
