@@ -29,7 +29,7 @@ uniform float time_scale = 1.0;
 uniform float pleats = 7.0;
 uniform float pleat_depth = 2.4;
 // Burgundy velvet and the black of its folds (sRGB).
-uniform vec3 cloth_color = vec3(0.46, 0.06, 0.11);
+uniform vec3 cloth_color = vec3(0.31, 0.03, 0.075);
 uniform vec3 fold_color = vec3(0.025, 0.01, 0.015);
 // Where its light comes from (the suit's space, roughly the court's warm overhead light).
 uniform vec3 light_dir = vec3(0.25, 0.85, 0.45);
@@ -78,7 +78,7 @@ void fragment() {
 	// sheet's inside, and a faint sheen at grazing angles.
 	float lit = 0.32 + 0.68 * max(dot(n, l), 0.0);
 	float trough = smoothstep(0.05, -0.85, v_wave);
-	float fold = clamp(max(trough * 0.8, v_fold * 0.92) + v_v * 0.18 + v_sheet * 0.14, 0.0, 1.0);
+	float fold = clamp(max(trough * 0.9, v_fold * 0.95) + v_v * 0.24 + v_sheet * 0.18, 0.0, 1.0);
 	vec3 col = mix(to_linear(cloth_color), to_linear(fold_color), fold) * lit;
 	float rim = pow(1.0 - clamp(dot(nv, normalize(-VERTEX)), 0.0, 1.0), 3.0);
 	col += to_linear(cloth_color) * rim * 0.25 * (1.0 - fold);

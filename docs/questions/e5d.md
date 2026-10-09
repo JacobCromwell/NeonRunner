@@ -67,7 +67,7 @@ the fight) or `data/bosses/golden_boss_skin.tres` (`GoldenCourtSkin`) unless it 
    tentacle pipes, the middle ones trailing back over the causeway, the outer ones splaying out past its
    edges and down toward the pools; the cape a cloud fanned out behind it from the shoulders, up over the
    halo and down past its sides, deep pleats with black troughs (`golden_convergence_cape.gdshader`,
-   `cloth_color` 0.46/0.06/0.11 sRGB, never glowing). Is this the suit you pictured?
+   `cloth_color` 0.31/0.03/0.075 sRGB, darker burgundy with more black in its folds after the orchestrator's review, never glowing; the suit's gold a little richer than the palace's, 0.84/0.64/0.30). Is this the suit you pictured?
 3. **The squadron's look** (GDD §10: "the heli drone's model, never coloured red"): the heli drone's model at
    1.45x (`drone_scale`), its red eye and band redrawn in a cold white glow and unlit gold, no amber
    (`add_model(..., hostile = false)` in `scripts/enemies/drone.gd`). Their fire and its warnings stay the
