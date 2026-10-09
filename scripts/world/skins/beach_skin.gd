@@ -65,7 +65,7 @@ extends ZoneSkin
 @export_group("Sand and boardwalk")
 ## The sand: warm tan, mid-bright rather than white (a pool beside it must read against it), with its
 ## light and dark drifts, flat shells and pebbles (drawn, never built).
-@export var sand_color: Color = Color(0.66, 0.54, 0.38)
+@export var sand_color: Color = Color(0.70, 0.58, 0.41)
 @export var sand_light_color: Color = Color(0.82, 0.72, 0.54)
 @export var sand_dark_color: Color = Color(0.58, 0.47, 0.32)
 @export var shell_color: Color = Color(0.84, 0.78, 0.68)
@@ -137,9 +137,9 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var palm_share: float = 0.6
 ## The bamboo of the walls: honey, sun-greyed, pale, green-grey (sRGB, lit, never glowing).
 @export var bamboo_colors: PackedColorArray = PackedColorArray([
-	Color(0.76, 0.60, 0.32), Color(0.68, 0.58, 0.38), Color(0.76, 0.64, 0.42), Color(0.64, 0.58, 0.36)])
+	Color(0.78, 0.56, 0.26), Color(0.66, 0.56, 0.38), Color(0.80, 0.62, 0.36), Color(0.72, 0.58, 0.38)])
 @export var bamboo_dark_color: Color = Color(0.34, 0.23, 0.11)
-@export var thatch_color: Color = Color(0.62, 0.50, 0.28)
+@export var thatch_color: Color = Color(0.68, 0.53, 0.26)
 @export var thatch_dark_color: Color = Color(0.30, 0.23, 0.13)
 @export var timber_color: Color = Color(0.45, 0.35, 0.25)
 ## Muted painted boards (teal, coral, mustard, sage, dusty blue), unlit.
@@ -391,11 +391,18 @@ func cult_emblems(side: int, face_x: float, start: float, end: float) -> Array[D
 
 ## The emblem's warm-white neon, and its unlit bronze (the chosen option's own colours).
 func emblem_color() -> Color:
-	return CultEmblem.default_scheme(CultFeed.emblem_option())["neon"]
+	return _emblem_scheme()["neon"]
 
 
 func emblem_metal_color() -> Color:
-	return CultEmblem.default_scheme(CultFeed.emblem_option())["metal"]
+	return _emblem_scheme()["metal"]
+
+
+## The chosen emblem's colours (CultEmblem.default_scheme), looked up once.
+func _emblem_scheme() -> Dictionary:
+	if not _materials.has(&"emblem"):
+		_materials[&"emblem"] = CultEmblem.default_scheme(CultFeed.emblem_option())
+	return _materials[&"emblem"]
 
 
 # --- Shared materials (built once per skin, shared by every mesh) ------------------------

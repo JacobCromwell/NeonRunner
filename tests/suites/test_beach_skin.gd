@@ -24,7 +24,7 @@ const BEACH_SKIN_PATH: String = "res://data/skins/beach_skin.tres"
 ## The richest campaign level before a likely slot for the Beach (it has no levels of its own yet).
 const BEACH_LEVEL_PATH: String = "res://data/levels/corporate_2.tres"
 ## Lit (non-glowing) surfaces stay below this chroma (brightest minus darkest channel); the fence pink is about 0.8.
-const MAX_SURFACE_CHROMA: float = 0.45
+const MAX_SURFACE_CHROMA: float = 0.55
 ## A glowing colour this saturated (HSV) must keep to the decorative hues (blue to violet).
 const GLOW_SATURATION_LIMIT: float = 0.35
 ## Gaps: the brightest factors PAT_BEACH_TANK and PAT_BEACH_WATER give their colours (kit_beach.gdshaderinc:

@@ -36,6 +36,8 @@ const LIP: float = 0.25
 ## The lowest anything hangs out over the street (the strings of lights, the thatch eaves, a palm leaning over
 ## it), above the highest a ceiling rises (BeachCeilings.TOP_LIMIT over the ceiling height, plus its thickness).
 const OVER_STREET_MIN: float = 12.0
+## The longest piece a shack's face is drawn in (see _wall).
+const WALL_PIECE: float = 8.0
 ## How far a shack's near end face goes back from the street (seen only above lower neighbours).
 const END_DEPTH: float = 7.0
 ## A thatched roof: its ridge's depth behind the face and its rise over the eave; an eave's reach over the street.
@@ -49,9 +51,19 @@ const ALCOVE_HEIGHT: float = 3.0
 const STATION: float = 6.0
 ## A mast's thickness, and how far behind the face's plane its foot stands.
 const MAST: float = 0.12
-const MAST_BACK: float = 0.4
+## How far behind the face's plane a string's anchors (and its masts) are.
+const STRING_BACK: float = 0.1
 ## The cult's emblem's clear square around its mark, as a multiple of the mark's size.
 const EMBLEM_MARGIN: float = 1.3
+## Template keys (a kind's base plus its variant) and the offset of a template's mirrored copy.
+const KEY_PALM: int = 100
+const KEY_INDUSTRY: int = 200
+const KEY_RACK: int = 300
+const KEY_FLAG: int = 400
+const KEY_MASK: int = 500
+const KEY_SWAG: int = 600
+const KEY_ALCOVE: int = 10000
+const MIRRORED: int = 1000000
 
 ## One shack's layout, computed from its lot run alone.
 class Shack:
@@ -76,12 +88,25 @@ var skin: BeachSkin:
 var _skin: WeakRef
 var _shacks: Dictionary = {}
 var _templates: Dictionary = {}
+var _strings: Dictionary = {}
+## The skin's shared materials, looked up once (every lookup through the skin costs microseconds a call).
+var _solid: ShaderMaterial
+var _glow: ShaderMaterial
+var _feed: ShaderMaterial
 ## The wall gaps noted so far, by side (note_gaps): masts for a string of lights never stand over one.
 var _gaps: Dictionary = {-1: [], 1: []}
 
 
 func _init(p_skin: BeachSkin) -> void:
 	_skin = weakref(p_skin)
+
+
+## Looks the skin's materials up once.
+func _prepare() -> void:
+	if _solid == null:
+		_solid = skin.solid_material()
+		_glow = skin.glow_material()
+		_feed = skin.feed_material()
 
 
 ## The wall gaps TrackBuilder is about to dress near a chunk (BeachSkin.note_wall_gaps): remembered, so the
@@ -106,6 +131,7 @@ func gap_near(d: float, margin: float) -> bool:
 
 ## Adds the shacks of one wall side between two track distances.
 func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
+	_prepare()
 	var lot: float = skin.lot_length
 	var span: Vector2i = lot_run(side, floori(start / lot))
 	while span.x * lot < end:
@@ -236,7 +262,7 @@ func _shack(batch: MeshBatch, b: Shack, face_x: float, start: float, end: float)
 	var u1: float = minf(b.b1, end)
 	if u1 <= u0 + 0.001:
 		return
-	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var solid: MeshLayer = batch.layer(_solid)
 	var side: int = b.side
 	var param: float = float(b.seed * 8)
 	# The band: flush, closed, solid-looking, floor to band_top.
@@ -267,12 +293,18 @@ func _wall(layer: MeshLayer, side: int, face_x: float, u0: float, u1: float, y0:
 		param: float, pattern: int = MeshKit.PAT_BEACH_WALL) -> void:
 	if u1 <= u0 + 0.0005 or y1 <= y0 + 0.0005:
 		return
-	if side < 0:
-		layer.rect(Vector3(face_x, y0, -u0), Vector3(0, 0, -(u1 - u0)), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
-			Vector2(u0, y0), Vector2(u1, y1), param)
-	else:
-		layer.rect(Vector3(face_x, y0, -u1), Vector3(0, 0, u1 - u0), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
-			Vector2(u1, y0), Vector2(u0, y1), param)
+	# Long faces are drawn in pieces of at most WALL_PIECE metres: one triangle spanning the camera and 40 m of wall
+	# interpolates the pattern coordinates badly close to the camera (a speckled wall) on some rasterizers.
+	var steps: int = maxi(ceili((u1 - u0) / WALL_PIECE), 1)
+	for i: int in steps:
+		var a: float = lerpf(u0, u1, float(i) / float(steps))
+		var b: float = lerpf(u0, u1, float(i + 1) / float(steps))
+		if side < 0:
+			layer.rect(Vector3(face_x, y0, -a), Vector3(0, 0, -(b - a)), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
+				Vector2(a, y0), Vector2(b, y1), param)
+		else:
+			layer.rect(Vector3(face_x, y0, -b), Vector3(0, 0, b - a), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
+				Vector2(b, y0), Vector2(a, y1), param)
 
 
 ## The pieces of the face [u0, u1] x [y0, y1] left once `holes` (Rect2 over (track distance, height)) are taken
@@ -350,8 +382,8 @@ func _roof(solid: MeshLayer, b: Shack, face_x: float, u0: float, u1: float) -> v
 
 
 ## A four-cornered face wound to face `outward` (Godot's front faces wind clockwise; MeshLayer.quad).
-func _quad(layer: MeshLayer, a: Vector3, b: Vector3, c: Vector3, d: Vector3, outward: Vector3, color: Color, pattern: int,
-		param: float, glow: float = 0.0) -> void:
+func _quad(layer: MeshLayer, a: Vector3, b: Vector3, c: Vector3, d: Vector3, outward: Vector3, color: Color, pattern: int = 0,
+		param: float = 0.0, glow: float = 0.0) -> void:
 	if (b - a).cross(c - a).dot(outward) > 0.0:
 		layer.quad(a, d, c, b, color, glow, pattern, param)
 	else:
@@ -360,29 +392,28 @@ func _quad(layer: MeshLayer, a: Vector3, b: Vector3, c: Vector3, d: Vector3, out
 
 # --- Items --------------------------------------------------------------------------------------
 
-## The transform that places a template (face at x = 0, street at +x) at track distance `at` and height `y`
-## on the wall `side` whose face is at face_x: mirrored for the right wall.
-static func place(side: int, face_x: float, at: float, y: float) -> Transform3D:
-	var basis := Basis.IDENTITY if side < 0 else Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
-	return Transform3D(basis, Vector3(face_x, y, -at))
+## The transform that places a template (see `_template`) at track distance `at` and height `y` on the wall whose
+## face is at face_x: a translation only (the right wall's templates are mirrored once, when first asked for).
+static func place(face_x: float, at: float, y: float) -> Transform3D:
+	return Transform3D(Basis.IDENTITY, Vector3(face_x, y, -at))
 
 
 func _item(batch: MeshBatch, b: Shack, item: Dictionary, face_x: float) -> void:
-	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var solid: MeshLayer = batch.layer(_solid)
 	var at: float = item["at"]
 	var side: int = b.side
 	match StringName(item["kind"]):
 		&"palm":
-			solid.append(palm_template(int(item["variant"]) % 3), place(side, face_x + side * float(item["back"]), at, b.height - 1.5))
+			solid.append(_template(KEY_PALM + int(item["variant"]) % 3, side), place(face_x + side * float(item["back"]), at, b.height - 1.5))
 		&"industry":
-			solid.append(industry_template(int(item["industry"]), int(item["variant"])), place(side, face_x + side * float(item["back"]),
-				at, b.height - 0.1))
+			solid.append(_template(KEY_INDUSTRY + int(item["industry"]) * 8 + int(item["variant"]), side),
+				place(face_x + side * float(item["back"]), at, b.height - 0.1))
 		&"rack":
-			solid.append(rack_template(int(item["variant"]) % 3), place(side, face_x + side * float(item["back"]), at, b.height))
+			solid.append(_template(KEY_RACK + int(item["variant"]) % 3, side), place(face_x + side * float(item["back"]), at, b.height))
 		&"flag":
-			solid.append(flag_template(int(item["variant"]) % 4), place(side, face_x + side * float(item["back"]), at, b.height))
+			solid.append(_template(KEY_FLAG + int(item["variant"]) % 4, side), place(face_x + side * float(item["back"]), at, b.height))
 		&"mask":
-			solid.append(mask_template(int(item["variant"])), place(side, face_x, at, float(item["y"])))
+			solid.append(_template(KEY_MASK + int(item["variant"]), side), place(face_x, at, float(item["y"])))
 		&"swag":
 			_swag(batch, side, face_x, at, float(item["y"]), int(item["variant"]))
 		&"sign":
@@ -396,7 +427,7 @@ func _item(batch: MeshBatch, b: Shack, item: Dictionary, face_x: float) -> void:
 func _board_frame(solid: MeshLayer, x0: float, x1: float, y0: float, y1: float, z: float, roof_y: float) -> void:
 	var dark: Color = skin.timber_color * 0.55
 	solid.box(Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5, z - 0.06), Vector3(x1 - x0 + 0.24, y1 - y0 + 0.24, 0.12), dark, 0.0,
-		MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES & ~MeshKit.FACE_PZ, MeshKit.beach_timber_param(1, 1, 5))
+		MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES & ~(MeshKit.FACE_PZ | MeshKit.FACE_NZ), MeshKit.beach_timber_param(1, 1, 5))
 	for x: float in [x0 + 0.3, x1 - 0.3]:
 		if y0 - roof_y > 0.1:
 			solid.box(Vector3(x, (y0 + roof_y) * 0.5, z - 0.1), Vector3(0.12, y0 - roof_y, 0.12), skin.post_color, 0.0,
@@ -407,7 +438,7 @@ func _board_frame(solid: MeshLayer, x0: float, x1: float, y0: float, y1: float, 
 ## outline and a frame glowing in a tube colour (violet, blue or warm white), a soft halo behind; on some, the
 ## cult's emblem as a warm-white badge on a board of its own under it.
 func _sign(batch: MeshBatch, b: Shack, item: Dictionary, face_x: float) -> void:
-	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var solid: MeshLayer = batch.layer(_solid)
 	var side: int = b.side
 	var info: Dictionary = sign_spec(b, item, face_x)
 	var x0: float = info["x0"]
@@ -420,7 +451,7 @@ func _sign(batch: MeshBatch, b: Shack, item: Dictionary, face_x: float) -> void:
 	_board_frame(solid, x0, x0 + w, y0, y0 + h, z, roof_y)
 	solid.rect(Vector3(x0, y0, z), Vector3(w, 0, 0), Vector3(0, h, 0), tube, skin.neon_glow, MeshKit.PAT_BEACH_NEON,
 		Vector2.ZERO, Vector2(w, h), MeshKit.beach_neon_param(int(item["glyph"]), w, h))
-	var glow: MeshLayer = batch.layer(skin.glow_material())
+	var glow: MeshLayer = batch.layer(_glow)
 	glow.rect(Vector3(x0 - 0.5, y0 - 0.5, z + 0.1), Vector3(w + 1.0, 0, 0), Vector3(0, h + 1.0, 0), tube, 0.16, MeshKit.SHAPE_RADIAL)
 	if item.get("emblem", false):
 		var e: float = skin.emblem_min_size
@@ -446,7 +477,7 @@ func sign_spec(b: Shack, item: Dictionary, face_x: float) -> Dictionary:
 ## A billboard on a roof, set back from the face, facing the runner: a frame with the cult's feed playing in it,
 ## or a painted wordless poster (and on some the cult's emblem as a warm-white badge in its lower corner).
 func _billboard(batch: MeshBatch, b: Shack, item: Dictionary, face_x: float) -> void:
-	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var solid: MeshLayer = batch.layer(_solid)
 	var spec: Dictionary = billboard_spec(b, item, face_x)
 	var x0: float = spec["x0"]
 	var w: float = spec["width"]
@@ -455,7 +486,7 @@ func _billboard(batch: MeshBatch, b: Shack, item: Dictionary, face_x: float) -> 
 	var z: float = -float(item["at"])
 	_board_frame(solid, x0, x0 + w, y0, y0 + h, z, b.height)
 	if item["feed"]:
-		CultFeed.screen(batch.layer(skin.feed_material()), Vector3(x0, y0, z + 0.02), Vector3(w, 0, 0), Vector3(0, h, 0),
+		CultFeed.screen(batch.layer(_feed), Vector3(x0, y0, z + 0.02), Vector3(w, 0, 0), Vector3(0, h, 0),
 			skin.feed_board_brightness, b.seed)
 		return
 	solid.rect(Vector3(x0, y0, z + 0.02), Vector3(w, 0, 0), Vector3(0, h, 0), skin.cream_color, 0.0, MeshKit.PAT_BEACH_PAINT,
@@ -488,7 +519,7 @@ func _mark(solid: MeshLayer, c: Vector3, e: float, color: Color, glow_amount: fl
 
 ## A swag of string lights along the face (3 m long, hung from two hooks), its bulbs warm white, blue or violet.
 func _swag(batch: MeshBatch, side: int, face_x: float, at: float, y: float, variant: int) -> void:
-	batch.layer(skin.solid_material()).append(swag_template(variant), place(side, face_x, at, y))
+	batch.layer(_solid).append(_template(KEY_SWAG + variant, side), place(face_x, at, y))
 
 
 # --- Verandas -----------------------------------------------------------------------------------
@@ -499,10 +530,11 @@ func _swag(batch: MeshBatch, side: int, face_x: float, at: float, y: float, vari
 func _alcove(batch: MeshBatch, b: Shack, a: Dictionary, face_x: float) -> void:
 	var width: float = float(a["u1"]) - float(a["u0"])
 	var mid: float = (float(a["u0"]) + float(a["u1"])) * 0.5
-	batch.layer(skin.solid_material()).append(alcove_template(int(a["kind"]), width, b.seed), place(b.side, face_x, mid, float(a["y0"])))
+	batch.layer(_solid).append(_template(KEY_ALCOVE + int(a["kind"]) * 100 + roundi(width - 4.0) * 10 + b.seed % 4, b.side),
+		place(face_x, mid, float(a["y0"])))
 	if a["tv"]:
 		var spec: Dictionary = tv_spec(b, a, face_x)
-		CultFeed.wall_screen(batch.layer(skin.feed_material()), b.side, float(spec["x"]), float(spec["d0"]), float(spec["width"]),
+		CultFeed.wall_screen(batch.layer(_feed), b.side, float(spec["x"]), float(spec["d0"]), float(spec["width"]),
 			float(spec["y0"]), float(spec["height"]), skin.feed_tv_brightness, b.seed)
 
 
@@ -523,6 +555,7 @@ func tv_spec(b: Shack, a: Dictionary, face_x: float) -> Dictionary:
 ## Strings of lights across the street between masts on both walls, one slot every string_spacing metres (a
 ## string_share of them built), no lower than string_height, with bunting on some; built with the left wall.
 func overhead(batch: MeshBatch, wall: float, start: float, end: float) -> void:
+	_prepare()
 	var spacing: float = skin.string_spacing
 	var k: int = floori(start / spacing)
 	while float(k) * spacing < end:
@@ -532,59 +565,79 @@ func overhead(batch: MeshBatch, wall: float, start: float, end: float) -> void:
 		k += 1
 
 
-## The string in slot `k`: its distance (at), its anchors' height, its sag, whether it is bunting, or empty if
-## the slot has none (or a mast would stand over a wall gap).
+## The string in slot `k`: its distance (at), its anchors' height (y: the lowest of its bulbs and bunting stay
+## above OVER_STREET_MIN), its sag and tilt (from a few quantized steps, so a few templates serve every string),
+## whether it is bunting, or empty if the slot has none (or a mast would stand over a wall gap).
 func string_spec(k: int) -> Dictionary:
 	if MeshKit.hash01(k, 3, 81) >= skin.string_share:
 		return {}
 	var at: float = (float(k) + 0.2 + 0.6 * MeshKit.hash01(k, 4, 81)) * skin.string_spacing
 	if gap_near(at, 3.0):
 		return {}
-	var y: float = skin.string_height + 0.6 + 2.0 * MeshKit.hash01(k, 5, 81)
-	return {"at": at, "y": y, "sag": 0.9 + 0.3 * MeshKit.hash01(k, 6, 81), "bunting": MeshKit.hash01(k, 7, 81) < 0.35,
-		"tilt": (MeshKit.hash01(k, 8, 81) - 0.5) * 1.2}
+	var y: float = skin.string_height + 1.15 + 2.0 * MeshKit.hash01(k, 5, 81)
+	var sag_i: int = MeshKit.hash_i(k, 6, 81) % 3
+	var tilt_i: int = MeshKit.hash_i(k, 8, 81) % 5
+	return {"at": at, "y": y, "sag_i": sag_i, "tilt_i": tilt_i, "bunting": MeshKit.hash01(k, 7, 81) < 0.35}
 
 
 func _string(batch: MeshBatch, spec: Dictionary, wall: float) -> void:
-	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var solid: MeshLayer = batch.layer(_solid)
 	var at: float = spec["at"]
 	var y: float = spec["y"]
-	var sag: float = spec["sag"]
-	var tilt: float = spec["tilt"]
+	var tilt: float = float(int(spec["tilt_i"]) - 2) * 0.3
 	var z: float = -at
-	# The masts: from the roofline up to the anchor, behind the face's plane; a hook on the face of a shack that
-	# is already taller than the anchor.
-	var ends: Array[Vector3] = []
+	# The masts: from the roofline up to the anchor, just behind the face's plane; a hook on the face of a shack
+	# that is already taller than the anchor.
 	for side: int in [-1, 1]:
-		var span: Vector2i = lot_run(side, floori(at / skin.lot_length))
-		var b: Shack = shack(side, span)
+		var b: Shack = shack(side, lot_run(side, floori(at / skin.lot_length)))
 		var ya: float = y + tilt * float(side) * 0.5
-		var x: float = side * (wall + MAST_BACK) if ya > b.height else side * wall
+		var x: float = float(side) * (wall + STRING_BACK)
 		if ya > b.height:
 			solid.box(Vector3(x, (b.height + ya) * 0.5, z), Vector3(MAST, ya - b.height, MAST), skin.post_color, 0.0,
 				MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES & ~MeshKit.FACE_NY, MeshKit.beach_timber_param(0, 0, 4))
 		else:
-			solid.box(Vector3(x - side * 0.04, ya, z), Vector3(0.1, 0.12, 0.12), skin.post_color)
-		ends.append(Vector3(x, ya, z))
-	var a: Vector3 = ends[0]
-	var c: Vector3 = ends[1]
-	var count: int = 16
+			solid.box(Vector3(float(side) * (wall + 0.02), ya, z), Vector3(0.1, 0.12, 0.12), skin.post_color)
+	solid.append(_string_template(wall, int(spec["sag_i"]), int(spec["tilt_i"]), bool(spec["bunting"])), Transform3D(Basis.IDENTITY, Vector3(0, y, z)))
+
+
+## A string of lights or bunting across a street whose walls stand at ±wall: its anchors at x = ±(wall +
+## STRING_BACK), at heights ∓tilt/2 (the template's own height 0), sagging `sag` at the middle.
+func _string_template(wall: float, sag_i: int, tilt_i: int, bunting: bool) -> MeshLayer:
+	var key: int = roundi(wall * 10.0) * 100 + sag_i * 20 + tilt_i * 2 + (1 if bunting else 0)
+	var found: MeshLayer = _strings.get(key)
+	if found != null:
+		return found
+	var t := MeshLayer.new()
+	var sag: float = 0.9 + 0.2 * float(sag_i)
+	var tilt: float = float(tilt_i - 2) * 0.3
+	var a := Vector3(-(wall + STRING_BACK), -tilt * 0.5, 0.0)
+	var c := Vector3(wall + STRING_BACK, tilt * 0.5, 0.0)
+	var count: int = 14
 	var prev: Vector3 = a
+	var wire: Color = skin.timber_color * 0.5
 	for i: int in range(1, count + 1):
-		var t: float = float(i) / float(count)
-		var p: Vector3 = a.lerp(c, t)
-		p.y -= sag * 4.0 * t * (1.0 - t)
-		var seg: Vector3 = p - prev
-		solid.box_xform(Transform3D(Basis.looking_at(seg.normalized(), Vector3.UP).scaled_local(Vector3(0.03, 0.03, seg.length())),
-			(p + prev) * 0.5), skin.timber_color * 0.5)
-		if spec["bunting"]:
+		var f: float = float(i) / float(count)
+		var p: Vector3 = a.lerp(c, f)
+		p.y -= sag * 4.0 * f * (1.0 - f)
+		# The wire: a thin ribbon facing the runner (the street's axis), seen across the street.
+		t.quad(prev + Vector3(0, 0.02, 0), p + Vector3(0, 0.02, 0), p - Vector3(0, 0.02, 0), prev - Vector3(0, 0.02, 0), wire)
+		if bunting:
 			if i % 2 == 0 and i < count:
-				var col: Color = skin.flag_colors[(i / 2 + int(at)) % skin.flag_colors.size()]
-				solid.quad(p, p + Vector3(0.2, 0.0, 0.0), p + Vector3(0.1, -0.5, 0.0), p + Vector3(0.1, -0.5, 0.0), col, 0.0)
-				solid.quad(p, p + Vector3(0.1, -0.5, 0.0), p + Vector3(0.1, -0.5, 0.0), p + Vector3(0.2, 0.0, 0.0), col, 0.0)
+				var col: Color = skin.flag_colors[(i / 2 + sag_i) % skin.flag_colors.size()]
+				t.quad(p, p + Vector3(0.2, 0.0, 0.0), p + Vector3(0.1, -0.45, 0.0), p + Vector3(0.1, -0.45, 0.0), col, 0.0)
+				t.quad(p, p + Vector3(0.1, -0.45, 0.0), p + Vector3(0.1, -0.45, 0.0), p + Vector3(0.2, 0.0, 0.0), col * 0.85, 0.0)
 		elif i < count:
-			solid.box(p + Vector3(0, -0.09, 0), Vector3(0.12, 0.12, 0.12), _bulb_color(i + int(at)), skin.lamp_glow)
+			_bulb_cross(t, p + Vector3(0, -0.1, 0), 0.07, _bulb_color(i + tilt_i), skin.lamp_glow)
 		prev = p
+	_strings[key] = t
+	return t
+
+
+## A bulb as two crossed quads (one facing +x, one facing +z), `half` its half size: cheap, and lit from
+## wherever it is seen along the street or across it.
+func _bulb_cross(layer: MeshLayer, c: Vector3, half: float, color: Color, glow_amount: float) -> void:
+	layer.quad(c + Vector3(0, half, half), c + Vector3(0, half, -half), c + Vector3(0, -half, -half), c + Vector3(0, -half, half), color, glow_amount)
+	layer.quad(c + Vector3(-half, half, 0), c + Vector3(half, half, 0), c + Vector3(half, -half, 0), c + Vector3(-half, -half, 0), color, glow_amount)
 
 
 ## The colour of the bulb numbered `i` on a string: warm white, blue or violet (decorative glows only).
@@ -653,8 +706,8 @@ func emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictio
 ## A palm tree: a leaning, ringed trunk and a crown of drooping fronds, its foot at the origin, standing
 ## (variant 0-2) 8.5, 7 or 10 m to its crown. Its trunk is inside the shack; the crown's fronds stay behind the
 ## face (a palm set back so far that its leaves never reach out over the street).
-func palm_template(variant: int) -> MeshLayer:
-	return _cached("palm_%d" % variant, func() -> MeshLayer: return _build_palm(variant))
+func palm_template(variant: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_PALM + variant, side)
 
 
 func _build_palm(variant: int) -> MeshLayer:
@@ -674,11 +727,8 @@ func _build_palm(variant: int) -> MeshLayer:
 		t.prism_xform(Transform3D(Basis(Vector3(r0, 0, 0), axis, Vector3(0, 0, r0)), a), 6, skin.trunk_color, 0.0,
 			MeshKit.PAT_BEACH_TIMBER, false, MeshKit.beach_timber_param(0, 2, variant))
 	var crown := Vector3(lean, hgt, 0.0)
-	# Coconuts.
-	for i: int in 3:
-		var a: float = TAU * float(i) / 3.0 + 0.4
-		t.prism(crown + Vector3(cos(a) * 0.22, -0.3, sin(a) * 0.22), 0.1, 0.16, 5, skin.timber_color * 0.7, 0.0, MeshKit.PAT_PLAIN)
-	# Fronds: arching blades drooping from the crown, each a strip of quads seen from above and from below.
+	# Fronds: arching blades drooping from the crown, each a strip of quads seen from below (the crown is always
+	# far above the runner's eye).
 	var fronds: int = 9
 	for i: int in fronds:
 		var ang: float = TAU * (float(i) + 0.5 * float(variant)) / float(fronds) + 0.2 * float(variant)
@@ -689,20 +739,19 @@ func _build_palm(variant: int) -> MeshLayer:
 		var pts: Array[Vector3] = [crown + Vector3(0, 0.1, 0), crown + dir * reach * 0.38 + Vector3(0, 0.62, 0),
 			crown + dir * reach * 0.72 + Vector3(0, 0.55, 0), crown + dir * reach + Vector3(0, -0.45, 0)]
 		var widths: Array[float] = [0.18, 0.5, 0.42, 0.04]
-		for s: int in 3:
-			var a0: Vector3 = pts[s] - side * widths[s]
-			var a1: Vector3 = pts[s] + side * widths[s]
-			var b0: Vector3 = pts[s + 1] - side * widths[s + 1]
-			var b1: Vector3 = pts[s + 1] + side * widths[s + 1]
-			t.quad(a0, b0, b1, a1, col, 0.0)
-			t.quad(a0, a1, b1, b0, col * 0.8, 0.0)
+		for k: int in 3:
+			var a0: Vector3 = pts[k] - side * widths[k]
+			var a1: Vector3 = pts[k] + side * widths[k]
+			var b0: Vector3 = pts[k + 1] - side * widths[k + 1]
+			var b1: Vector3 = pts[k + 1] + side * widths[k + 1]
+			_quad(t, a0, b0, b1, a1, Vector3.DOWN, col)
 	return t
 
 
 ## The black industrial structures behind the shacks (the reference's rooftop tanks and chimneys), foot at
 ## the origin: kind 0 a tank, 1 a water tower, 2 a chimney, 3 a dish and antennas; variant 0-7 varies sizes.
-func industry_template(kind: int, variant: int) -> MeshLayer:
-	return _cached("industry_%d_%d" % [kind, variant], func() -> MeshLayer: return _build_industry(kind, variant))
+func industry_template(kind: int, variant: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_INDUSTRY + kind * 8 + variant, side)
 
 
 func _build_industry(kind: int, variant: int) -> MeshLayer:
@@ -714,13 +763,14 @@ func _build_industry(kind: int, variant: int) -> MeshLayer:
 		0:
 			var r: float = 2.0 * scale
 			var h: float = 6.0 + 3.0 * float(variant % 3)
-			t.prism(Vector3.ZERO, r, h, 12, steel, 0.0, MeshKit.PAT_BEACH_STEEL, true, 0.0)
-			t.prism(Vector3(0, h, 0), r * 0.55, 0.5, 12, steel * 1.2, 0.0, MeshKit.PAT_BEACH_STEEL, true, 0.0)
-			t.prism(Vector3(0, h * 0.82, 0), r * 1.05, 0.14, 12, steel * 1.4, 0.0, MeshKit.PAT_BEACH_STEEL, true, 0.0)
+			t.prism(Vector3.ZERO, r, h, 10, steel, 0.0, MeshKit.PAT_BEACH_STEEL, false, 0.0)
+			t.prism(Vector3(0, h, 0), r, 0.1, 10, steel * 1.2, 0.0, MeshKit.PAT_BEACH_STEEL, true, 0.0)
+			t.prism(Vector3(0, h + 0.1, 0), r * 0.55, 0.45, 10, steel * 1.2, 0.0, MeshKit.PAT_BEACH_STEEL, true, 0.0)
+			t.prism(Vector3(0, h * 0.82, 0), r * 1.05, 0.14, 10, steel * 1.4, 0.0, MeshKit.PAT_BEACH_STEEL, false, 0.0)
 			# A pipe down its side and a ladder.
-			t.prism(Vector3(r * 0.9, 0, 0.5), 0.2, h * 0.9, 6, rust * 0.6, 0.0, MeshKit.PAT_BEACH_STEEL, true, 1.0)
-			for yy: int in range(1, int(h)):
-				t.box(Vector3(r * 0.98, float(yy), -0.5), Vector3(0.06, 0.06, 0.5), steel * 1.5)
+			t.prism(Vector3(r * 0.9, 0, 0.5), 0.2, h * 0.9, 5, rust * 0.6, 0.0, MeshKit.PAT_BEACH_STEEL, false, 1.0)
+			for z: float in [-0.7, -0.3]:
+				t.box(Vector3(r * 0.98, h * 0.45, z), Vector3(0.06, h * 0.9, 0.06), steel * 1.5, 0.0, MeshKit.PAT_PLAIN, MeshKit.NO_BOTTOM)
 		1:
 			var r: float = 1.7 * scale
 			var leg: float = 4.5
@@ -770,8 +820,8 @@ func _cone(layer: MeshLayer, base: Vector3, r: float, height: float, sides: int,
 
 ## A rack of surfboards on a roof: two timber posts, rails and five boards standing in it in muted paints with
 ## a pale stripe, its foot at the origin (the boards face +z, toward the runner).
-func rack_template(variant: int) -> MeshLayer:
-	return _cached("rack_%d" % variant, func() -> MeshLayer: return _build_rack(variant))
+func rack_template(variant: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_RACK + variant, side)
 
 
 func _build_rack(variant: int) -> MeshLayer:
@@ -790,13 +840,15 @@ func _build_rack(variant: int) -> MeshLayer:
 		var paint: Color = skin.paint_colors[(i + variant) % skin.paint_colors.size()]
 		var board := Basis(Vector3(half.x, 0, 0), Vector3(0, 0, half.z), Vector3(0, half.y, 0))
 		t.prism_xform(Transform3D(board, Vector3(x, 0.15 + len * 0.5, 0.02 * float(i % 2))), 6, paint, 0.0, MeshKit.PAT_PLAIN, true)
-		t.box(Vector3(x, 0.15 + len * 0.5, 0.02 * float(i % 2) + 0.052), Vector3(0.07, len * 0.9, 0.012), skin.cream_color)
+		var zf: float = 0.02 * float(i % 2) + 0.053
+		t.quad(Vector3(x - 0.035, 0.15 + len * 0.95, zf), Vector3(x + 0.035, 0.15 + len * 0.95, zf), Vector3(x + 0.035, 0.15 + len * 0.05, zf),
+			Vector3(x - 0.035, 0.15 + len * 0.05, zf), skin.cream_color)
 	return t
 
 
 ## A flag on a pole on a roof, unlit: a pole and a pennant, its foot at the origin.
-func flag_template(variant: int) -> MeshLayer:
-	return _cached("flag_%d" % variant, func() -> MeshLayer: return _build_flag(variant))
+func flag_template(variant: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_FLAG + variant, side)
 
 
 func _build_flag(variant: int) -> MeshLayer:
@@ -813,8 +865,8 @@ func _build_flag(variant: int) -> MeshLayer:
 
 ## A carved tiki mask on the face (unlit wood, no glowing eyes), 1 m tall, 0.2 m proud of the wall: a brow,
 ## two eye slots, a nose, a wide mouth and a thatch crest.
-func mask_template(variant: int) -> MeshLayer:
-	return _cached("mask_%d" % variant, func() -> MeshLayer: return _build_mask(variant))
+func mask_template(variant: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_MASK + variant, side)
 
 
 func _build_mask(variant: int) -> MeshLayer:
@@ -837,32 +889,32 @@ func _build_mask(variant: int) -> MeshLayer:
 
 ## A swag of string lights (3 m long) along the face, hung from two hooks: a wire and nine bulbs in warm
 ## white, blue and violet; variant 0-2 shifts which. The bulbs glow; the wire is dark timber.
-func swag_template(variant: int) -> MeshLayer:
-	return _cached("swag_%d" % variant, func() -> MeshLayer: return _build_swag(variant))
+func swag_template(variant: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_SWAG + variant, side)
 
 
 func _build_swag(variant: int) -> MeshLayer:
 	var t := MeshLayer.new()
 	var count: int = 9
 	var prev := Vector3(0.1, 0.0, 1.5)
+	var wire: Color = skin.timber_color * 0.5
 	for i: int in range(1, count + 1):
 		var f: float = float(i) / float(count)
 		var p := Vector3(0.1, -0.4 * 4.0 * f * (1.0 - f), 1.5 - 3.0 * f)
-		var seg: Vector3 = p - prev
-		t.box_xform(Transform3D(Basis.looking_at(seg.normalized(), Vector3.UP).scaled_local(Vector3(0.025, 0.025, seg.length())),
-			(p + prev) * 0.5), skin.timber_color * 0.5)
+		# The wire: a thin ribbon facing the street (+x).
+		t.quad(prev + Vector3(0, 0.015, 0), p + Vector3(0, 0.015, 0), p - Vector3(0, 0.015, 0), prev - Vector3(0, 0.015, 0), wire)
 		if i < count:
-			t.box(p + Vector3(0.0, -0.1, 0.0), Vector3(0.11, 0.11, 0.11), _bulb_color(i + variant), skin.lamp_glow)
+			_bulb_cross(t, p + Vector3(0.0, -0.08, 0.0), 0.055, _bulb_color(i + variant), skin.lamp_glow)
 		prev = p
 	for z: float in [-1.5, 1.5]:
-		t.box(Vector3(0.05, 0.0, z), Vector3(0.1, 0.12, 0.12), skin.post_color)
+		t.box(Vector3(0.05, 0.0, z), Vector3(0.1, 0.12, 0.12), skin.post_color, 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NX)
 	return t
 
 
 ## An alcove's inside, its floor at the origin, centred along the track, `width` wide, ALCOVE_DEPTH behind the
 ## face, ALCOVE_HEIGHT tall (kind 0 a bar, 1 a lounge, 2 a deck), with the bamboo railing at the face (flush).
-func alcove_template(kind: int, width: float, seed: int) -> MeshLayer:
-	return _cached("alcove_%d_%s_%d" % [kind, width, seed % 4], func() -> MeshLayer: return _build_alcove(kind, width, seed))
+func alcove_template(kind: int, width: float, seed: int, side: int = -1) -> MeshLayer:
+	return _template(KEY_ALCOVE + kind * 100 + roundi(width - 4.0) * 10 + seed % 4, side)
 
 
 func _build_alcove(kind: int, width: float, seed: int) -> MeshLayer:
@@ -897,10 +949,11 @@ func _build_alcove(kind: int, width: float, seed: int) -> MeshLayer:
 				MeshKit.ALL_FACES & ~MeshKit.FACE_NY, MeshKit.beach_timber_param(2, 1, seed + 5))
 			t.box(Vector3(-d + 0.45, 1.06, 0), Vector3(0.66, 0.06, width - 0.74), skin.timber_color * 0.65)
 			t.box(Vector3(-d + 0.12, 1.55, 0), Vector3(0.22, 0.06, width - 1.2), skin.timber_color * 0.7)
-			var bottles: int = maxi(roundi((width - 1.6) / 0.28), 3)
+			var bottles: int = maxi(roundi((width - 1.6) / 0.55), 3)
 			for i: int in bottles:
 				var z: float = -(width - 1.6) * 0.5 + (width - 1.6) * (float(i) + 0.5) / float(bottles)
-				t.box(Vector3(-d + 0.12, 1.72, z), Vector3(0.09, 0.28, 0.09), skin.paint_colors[(i + seed) % skin.paint_colors.size()] * 0.8)
+				t.box(Vector3(-d + 0.12, 1.72, z), Vector3(0.11, 0.28, 0.11), skin.paint_colors[(i + seed) % skin.paint_colors.size()] * 0.8,
+					0.0, MeshKit.PAT_PLAIN, MeshKit.NO_BOTTOM)
 			for i: int in 3:
 				_lantern(t, Vector3(-d * 0.45, hh - 0.5 - 0.12 * float(i % 2), -hw + width * (float(i) + 0.5) / 3.0), (i + seed) % 4)
 		Verandah.LOUNGE:
@@ -936,10 +989,34 @@ func _lantern(t: MeshLayer, at: Vector3, colour: int) -> void:
 	t.box(at + Vector3(0, -0.145, 0), Vector3(0.16, 0.02, 0.16), skin.lamp_color, skin.lamp_glow)
 
 
-## A cached template: `build` once, then the same MeshLayer every time.
-func _cached(id: String, build: Callable) -> MeshLayer:
-	var found: MeshLayer = _templates.get(id)
-	if found == null:
-		found = build.call()
-		_templates[id] = found
-	return found
+## The template with `key` (a KEY_* plus its variant), built once: as it is (the street at +x) for the left wall,
+## mirrored once for the right wall (so appending it is a plain translation, never a flip of every vertex).
+func _template(key: int, side: int) -> MeshLayer:
+	var found: MeshLayer = _templates.get(key + (MIRRORED if side > 0 else 0))
+	if found != null:
+		return found
+	var built: MeshLayer = _build(key)
+	_templates[key] = built
+	var mirrored := MeshLayer.new()
+	mirrored.append(built, Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)), Vector3.ZERO))
+	_templates[key + MIRRORED] = mirrored
+	return mirrored if side > 0 else built
+
+
+## Builds the template with `key` (see _template).
+func _build(key: int) -> MeshLayer:
+	if key >= KEY_ALCOVE:
+		var k: int = key - KEY_ALCOVE
+		return _build_alcove(k / 100, 4.0 + float((k % 100) / 10), k % 10)
+	if key >= KEY_SWAG:
+		return _build_swag(key - KEY_SWAG)
+	if key >= KEY_MASK:
+		return _build_mask(key - KEY_MASK)
+	if key >= KEY_FLAG:
+		return _build_flag(key - KEY_FLAG)
+	if key >= KEY_RACK:
+		return _build_rack(key - KEY_RACK)
+	if key >= KEY_INDUSTRY:
+		var k: int = key - KEY_INDUSTRY
+		return _build_industry(k / 8, k % 8)
+	return _build_palm(key - KEY_PALM)
