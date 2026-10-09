@@ -54,9 +54,9 @@ extends Resource
 	"strafe:VVH,slams,barrage,refill:VVH",
 	"slams,barrage,slams,barrage,refill:VVHvVHv",
 	"slams,barrage,slams,barrage,refill:VVHvVHv",
-	"pounce",
-	"pounce,lash",
-	"pounce,lash",
+	"overtake,pounce,pounce:bait",
+	"pounce,lash:low,pounce:bait,lash:high",
+	"pounce,lash:high,lash:low,pounce:bait,lash:low,lash:high",
 ])
 ## GDD §10 ("a missed pad: the ship finishes refilling and flies off, and the phase's loop starts again from
 ## the slams"): once a phase's last beat is over, its pattern goes on from this beat (0 = the first): phase
@@ -196,3 +196,155 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 		if lane % 2 == parity % 2:
 			out.append(lane)
 	return out
+
+
+# --- Stage 2, The Magnate (task E5d-d) -----------------------------------------------------------------
+# Its beats (phase_beats, phases 4-6): overtake (he shows himself, GoldenConvergenceOvertake), pounce (the
+# Pounce; `pounce:bait` with a Flying Buttress for the bait, GoldenConvergencePounce) and lash (the Cable Lash,
+# `lash:low` or `lash:high`, GoldenConvergenceLash). DESIGN-TBD (docs/questions/e5d.md, E5d-d): phase 4 an
+# overtake, a Pounce and a Pounce with the bait, looped; phase 5 adds a low and a high Lash between the Pounces;
+# phase 6 more Lashes, faster (its pace). A missed bait comes around again with the loop (no escalation).
+
+@export_group("The Magnate")
+## DESIGN-TBD (GDD §10, Second stage: "two to three times the runner's size"): his size, 1 the model's
+## (GoldenConvergenceMagnateModel: about 3.5 m from snout to rump and 1.8 m at the shoulder on all fours,
+## about 2.6 times the runner's 1.28 m reared up).
+@export_range(0.5, 2.0, 0.01) var magnate_scale: float = 1.0
+## DESIGN-TBD (GDD §10, optional: "cracks leaking the cult's warm white glow, as if the broadcast lives inside
+## him"): how much of the cult's warm white shows in his cracks (0: none, dark cracks).
+@export_range(0.0, 1.0, 0.05) var crack_glow: float = 0.55
+## DESIGN-TBD (GDD §10, proposed: "behind the runner, his shadow and a marker at the screen's bottom edge show
+## his lane"): the chase. He keeps this far behind the runner (framing, kept in metres: behind the camera), takes
+## up the runner's lane this long after they change it, at this sideways speed.
+@export_range(8.0, 30.0, 0.5, "suffix:m") var chase_gap: float = 10.5
+@export_range(0.0, 2.0, 0.05, "suffix:s") var chase_lane_delay: float = 0.6
+@export_range(2.0, 30.0, 0.5, "suffix:m/s") var chase_side_speed: float = 10.0
+## His breathing and growls behind the runner, this many seconds apart (positional, from where he is).
+@export_range(0.5, 5.0, 0.1, "suffix:s") var breath_every: float = 1.6
+@export_range(2.0, 15.0, 0.5, "suffix:s") var growl_every: float = 5.5
+## Done with an attack, he drops back behind the runner over this long (divided by the phase's pace), along a
+## balustrade where he's on one.
+@export_range(0.5, 4.0, 0.05, "suffix:s") var drop_back_seconds: float = 1.6
+
+@export_group("The Magnate: the transition")
+## DESIGN-TBD (GDD §10, proposed: "the third ship's blast bursts the suit open; its golden plates fall away and
+## the empty suit crashes down beside the causeway. The Magnate claws his way out, roars, and leaps over the
+## runner to land behind them"): phase 4's intro (BossPhase.intro_seconds), on a retry from the checkpoint too.
+## The chest's plates burst open over burst_seconds and fly off from plates_off_at; he claws out of the man's room
+## from claw_at over claw_seconds; roars at roar_at (the feed switches to his face); the empty suit topples
+## off the causeway's side from suit_fall_at over suit_fall_seconds (pacing the runner, never over the track);
+## he leaps off it at leap_at, over the runner, landing behind them transition_leap_seconds later.
+@export_range(0.1, 2.0, 0.05, "suffix:s") var burst_seconds: float = 0.5
+@export_range(0.0, 3.0, 0.05, "suffix:s") var plates_off_at: float = 0.35
+@export_range(0.0, 3.0, 0.05, "suffix:s") var claw_at: float = 0.55
+@export_range(0.3, 3.0, 0.05, "suffix:s") var claw_seconds: float = 1.1
+@export_range(0.0, 5.0, 0.05, "suffix:s") var roar_at: float = 1.75
+@export_range(0.0, 5.0, 0.05, "suffix:s") var suit_fall_at: float = 2.3
+@export_range(0.5, 5.0, 0.05, "suffix:s") var suit_fall_seconds: float = 2.2
+@export_range(0.5, 6.0, 0.05, "suffix:s") var leap_at: float = 2.75
+@export_range(0.5, 3.0, 0.05, "suffix:s") var transition_leap_seconds: float = 1.5
+
+@export_group("The Magnate: the overtake")
+## DESIGN-TBD (GDD §10: "he overtakes along a wall or ceiling, lands ahead, then drops back"; proposed: the
+## balustrades, out of the runner's reach): an overtake beat lasts this long (divided by the phase's pace): up
+## onto the nearer balustrade, past the runner along it to overtake_ahead ahead (framing), a leap across the
+## causeway high over the lanes (overtake_height) onto the other balustrade, then back behind the runner.
+@export_range(2.0, 10.0, 0.1, "suffix:s") var overtake_seconds: float = 4.4
+@export_range(5.0, 40.0, 0.5, "suffix:m") var overtake_ahead: float = 15.0
+@export_range(3.0, 12.0, 0.5, "suffix:m") var overtake_height: float = 6.5
+
+@export_group("The Magnate: the Pounce")
+## DESIGN-TBD (GDD §10, proposed: "with a roar, his marker turns red and he leaps from behind over the runner,
+## locking onto their lane about a second before he lands; a red square marks where he'll land, ahead in that
+## lane. Dodge: leave the lane. He crashes down, then bounds off onto a balustrade or an arch and drops back
+## behind"). The roar (and the marker red) comes pounce_windup before his leap; the leap lasts pounce_flight;
+## its last lock_seconds (never divided by the phase's pace: the dodge keeps its second) the lane is locked and
+## the red square shows. The rest of the windup and the flight are divided by the pace.
+@export_range(0.2, 2.0, 0.05, "suffix:s") var pounce_windup: float = 0.75
+@export_range(1.0, 3.0, 0.05, "suffix:s") var pounce_flight: float = 1.7
+@export_range(0.8, 2.0, 0.05, "suffix:s") var lock_seconds: float = 1.05
+## He lands this long (at the run speed) before the runner would reach the square: in front of them, where
+## they'd be. The square is crash_depth deep along the lane (his body, metres).
+@export_range(0.0, 0.6, 0.01, "suffix:s") var land_lead: float = 0.15
+@export_range(2.0, 6.0, 0.1, "suffix:m") var crash_depth: float = 3.6
+## The leap's height over the runner.
+@export_range(3.0, 12.0, 0.25, "suffix:m") var pounce_apex: float = 5.5
+## The crash: an enemy attack over this share of the lane's width, up to crash_height (above a jump's reach),
+## live from his landing until the runner is past the square (at least crash_min, at most crash_max; he
+## crouches there meanwhile); then he bounds off onto a balustrade over bound_seconds (divided by the pace).
+@export_range(0.4, 1.0, 0.01) var crash_width_share: float = 0.84
+@export_range(2.8, 6.0, 0.05, "suffix:m") var crash_height: float = 3.2
+@export_range(0.1, 1.0, 0.05, "suffix:s") var crash_min: float = 0.3
+@export_range(0.3, 2.5, 0.05, "suffix:s") var crash_max: float = 1.2
+@export_range(0.2, 2.0, 0.05, "suffix:s") var bound_seconds: float = 0.55
+
+@export_group("The Magnate: the bait")
+## DESIGN-TBD (GDD §10, proposed: "a Flying Buttress comes up ahead for every second Pounce. Locked onto the
+## buttress's lane as the runner reaches it, he crashes into the gate, too big to fit through, and is stunned:
+## he slumps in its rubble across two lanes, his back to the runner, the red ports on his spine glowing. The
+## runner stomps a port by jumping onto his back (from either lane). If they haven't by the time they're nearly
+## on him, he shakes free and leaps away (a miss), and the bait comes around again"). A bait Pounce raises its
+## buttress (an inner lane, by the fight's seed) bait_sight before the runner reaches it (at least
+## buttress_sight); his landing is timed so that, locked onto its lane, he crashes into the gate stun_lead before
+## the runner reaches his back (never divided by the pace: the way onto his back keeps its time).
+@export_range(4.0, 12.0, 0.1, "suffix:s") var bait_sight: float = 6.5
+@export_range(0.8, 3.0, 0.05, "suffix:s") var stun_lead: float = 1.6
+## The release: a runner still on the floor stun_release (at the run speed) short of his back, or one past him,
+## and he shakes free and leaps away (a miss) before they reach him.
+@export_range(0.1, 0.6, 0.01, "suffix:s") var stun_release: float = 0.25
+## His weak points: a stomp box over his back in each of his two lanes, reaching stun_reach (at 18 m/s,
+## stretched by the run's pace) from his back toward the runner and stun_stomp_top above it: generous, like The
+## House's hopper and the Floating Head's domes.
+@export_range(0.5, 6.0, 0.1, "suffix:m") var stun_reach: float = 3.5
+@export_range(0.1, 1.0, 0.05, "suffix:m") var stun_stomp_top: float = 0.4
+## After a stomp he hurls himself clear, howling, and drops back behind over this long: the next phase's intro
+## (BossPhase.intro_seconds).
+@export_range(1.0, 5.0, 0.05, "suffix:s") var hurl_seconds: float = 2.3
+
+@export_group("The Magnate: the Cable Lash")
+## DESIGN-TBD (GDD §10, proposed: "running along a balustrade beside the track, he rears back one of his
+## broadcast cables (with a rising crackle) and whips it across every lane ahead: low, jump it; high, slide under
+## it. A red line across the floor shows where it will sweep, as with the Floating Head's lasers"). He runs up
+## along a balustrade (lash_run_up, divided by the pace) and plants himself where the cable will cross; the
+## warning (the rearing, the crackle, the red line across every lane and thin red aim lines at its heights) lasts
+## lash_warning (never divided by the pace); the whip crosses every lane in lash_sweep and lies across them
+## lash_cross_lead before the runner gets there, until lash_after after they're past; then he yanks it back
+## (lash_yank) and drops back.
+@export_range(1.0, 4.0, 0.05, "suffix:s") var lash_run_up: float = 2.3
+@export_range(0.8, 2.0, 0.05, "suffix:s") var lash_warning: float = 1.25
+@export_range(0.1, 0.8, 0.05, "suffix:s") var lash_sweep: float = 0.25
+@export_range(0.1, 1.0, 0.05, "suffix:s") var lash_cross_lead: float = 0.3
+@export_range(0.1, 1.0, 0.05, "suffix:s") var lash_after: float = 0.35
+@export_range(0.1, 1.0, 0.05, "suffix:s") var lash_yank: float = 0.4
+## Its heights, as the Floating Head's sweeps': a low lash at lash_low (jump it: a sliding runner is 0.45 m
+## tall); a high one a cable at lash_high and a second above it at lash_high_top, the shape of a gapped fence
+## (slide under both: a standing runner meets the lower one, a jump can't clear the upper one or fit between
+## them). The cables' hitboxes are lash_radius thick (thinner than drawn).
+@export_range(0.1, 0.8, 0.01, "suffix:m") var lash_low: float = 0.35
+@export_range(0.55, 1.05, 0.01, "suffix:m") var lash_high: float = 0.85
+@export_range(1.2, 2.2, 0.05, "suffix:m") var lash_high_top: float = 1.9
+@export_range(0.03, 0.3, 0.01, "suffix:m") var lash_radius: float = 0.09
+
+@export_group("The Magnate: the defeat")
+## DESIGN-TBD (GDD §10, proposed: "the third stomp: he convulses, his cables tear out of his back one by one, and
+## the screens on the towers glitch and go dark, one after another outward. The music cuts out with them. In the
+## silence he collapses on the causeway ahead, the last light in his cracks goes out, and the runner runs past
+## him; then the victory riff"). He lurches ahead of the runner over defeat_lurch, into the lane furthest from
+## them, defeat_ahead (at the run speed) in front; a cable tears out every tear_every from tear_at; the screens
+## glitch, and go dark outward from him at blackout_speed (out to blackout_reach, then every screen in the world),
+## from blackout_at, when the music cuts out (over music_cut); he collapses once the last cable is out, over
+## collapse_seconds, the light in his cracks dying over crack_fade.
+@export_range(0.3, 3.0, 0.05, "suffix:s") var defeat_lurch: float = 1.2
+@export_range(0.5, 3.0, 0.05, "suffix:s") var defeat_ahead: float = 1.5
+@export_range(0.0, 3.0, 0.05, "suffix:s") var tear_at: float = 0.6
+@export_range(0.1, 1.0, 0.05, "suffix:s") var tear_every: float = 0.3
+@export_range(0.0, 3.0, 0.05, "suffix:s") var blackout_at: float = 0.9
+@export_range(10.0, 300.0, 5.0, "suffix:m/s") var blackout_speed: float = 90.0
+@export_range(100.0, 2000.0, 10.0, "suffix:m") var blackout_reach: float = 700.0
+@export_range(0.0, 2.0, 0.05, "suffix:s") var music_cut: float = 0.25
+@export_range(0.3, 3.0, 0.05, "suffix:s") var collapse_seconds: float = 1.1
+@export_range(0.3, 4.0, 0.05, "suffix:s") var crack_fade: float = 1.4
+## DESIGN-TBD (docs/questions/e5d.md, 13: "should the riff play at all, or should the fight end in silence like
+## the Sleep Taker's?"): the victory riff once the runner is past him (riff_after later), or silence.
+@export var victory_riff_on: bool = true
+@export_range(0.0, 2.0, 0.05, "suffix:s") var riff_after: float = 0.35
