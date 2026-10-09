@@ -568,8 +568,8 @@ func _test_smashed_stand_again(id: String) -> void:
 
 
 ## The targets for _test_smashed_stand_again in `world`'s layout: the level's first dash wall, and the last zone doodad
-## in the runner's starting lane between the run-up's end and 60 m before the wall's clear approach, by their indices
-## ({doodad, wall}); {} if there's none.
+## in the runner's starting lane from 20 m past the run-up's end to 120 m before the wall's face (the dash is back by
+## then), by their indices ({doodad, wall}); {} if there's none.
 func _smash_targets(world: RunWorld) -> Dictionary:
 	var lay: LevelLayout = world.layout
 	if lay.dash_walls.is_empty():
