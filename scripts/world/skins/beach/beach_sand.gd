@@ -240,10 +240,25 @@ func below_wall(batch: MeshBatch, side: int, face_x: float, start: float, end: f
 
 ## The pool's water pool_depth below the floor, across the whole street (neither belongs to a lane, so the skin adds
 ## it to the left wall's mesh), and the sand blowing along the street, the leaves drifting and the speed
-## streaks (the still floor's motion cues), for one chunk.
+## streaks (the still floor's motion cues), for one piece of the left wall (a whole chunk or part of one, where the
+## wall switches between standing and open inside it).
 func below(batch: MeshBatch, half_width: float, start: float, end: float) -> void:
 	batch.layer(skin.solid_material()).rect(Vector3(-half_width, -skin.pool_depth, -start), Vector3(half_width * 2.0, 0, 0),
 		Vector3(0, 0, -(end - start)), skin.water_color, 0.0, MeshKit.PAT_BEACH_WATER)
-	MeshKit.drift_particles(batch.layer(skin.drift_material()), start, end, TrackBuilder.CHUNK_LENGTH, half_width - 0.7,
-		7.0, skin.sand_count, skin.leaf_count, skin.streak_count,
-		PackedColorArray([skin.sand_grain_color, skin.leaf_color, skin.streak_color]))
+	drift(batch, half_width, start, end)
+
+
+## The motion cues of every drift slice that starts inside [start, end): the piece holding a slice's start gives
+## the whole slice, so a chunk gets exactly one copy however its left wall is cut into pieces.
+## MeshKit.drift_particles alone places only the slices that fit whole inside the range it is given, so a chunk
+## whose left wall switched between standing and open inside it (two pieces, neither covering the slice) got no
+## sand, leaves or streaks at all.
+func drift(batch: MeshBatch, half_width: float, start: float, end: float) -> void:
+	var slice: float = TrackBuilder.CHUNK_LENGTH
+	var colors := PackedColorArray([skin.sand_grain_color, skin.leaf_color, skin.streak_color])
+	var layer: MeshLayer = batch.layer(skin.drift_material())
+	var index: int = ceili(start / slice - 0.001)
+	while float(index) * slice < end - 0.001:
+		MeshKit.drift_particles(layer, float(index) * slice, float(index + 1) * slice, slice, half_width - 0.7, 7.0,
+			skin.sand_count, skin.leaf_count, skin.streak_count, colors)
+		index += 1

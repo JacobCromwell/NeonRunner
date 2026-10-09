@@ -76,6 +76,7 @@ func run() -> void:
 	_boardwalk(skin)
 	await _clear_play_space(skin)
 	await _open_stretches(skin)
+	await _drift_in_every_chunk(skin)
 	await _splash(skin)
 	_calm_band(skin)
 	_over_street(skin)
@@ -765,6 +766,53 @@ func _open_stretches(skin: BeachSkin) -> void:
 	check(near >= 12.0 and far > 50.0, "the shoreline swings between near and far (%.1f to %.1f m past the wall line)" % [near, far])
 
 
+## The still floor's motion cues (the blowing sand, drifting leaves and speed streaks, BeachSand.drift) reach every chunk, one
+## copy each, however the left wall is cut into pieces: a chunk whose left wall switches between standing and open
+## inside it is two pieces, and MeshKit.drift_particles alone puts only whole 40 m slices inside the range it is given,
+## so those chunks (16 of 90 in Tiki Tides, 25 of 93 in Sunset Strip at 5 lanes) had none. Hand-built layouts with the
+## left wall opening and closing inside chunks at 3, 5 and 6 lanes, and the Beach's own two levels (open walls) at 5.
+func _drift_in_every_chunk(skin: BeachSkin) -> void:
+	var per_chunk: int = (skin.sand_count + skin.leaf_count + skin.streak_count) * 6
+	var cases: Array = []
+	for lanes: int in [3, 5, 6]:
+		var layout: LevelLayout = RunSim.layout(lanes, 420.0)
+		for g: Array in [[-1, 70.0, 150.0], [-1, 205.0, 215.0], [-1, 290.0, 333.0], [1, 100.0, 130.0]]:
+			layout.wall_gaps.append({"side": int(g[0]), "start": float(g[1]), "end": float(g[2])})
+		cases.append(["hand-built, %d lanes" % lanes, layout])
+	for path: String in ["res://data/levels/beach_1.tres", "res://data/levels/beach_2.tres"]:
+		cases.append(["%s, 5 lanes" % path.get_file().get_basename(), level(path, 5, 0.6)])
+	for entry: Array in cases:
+		var layout: LevelLayout = entry[1]
+		# The chunks whose left wall switches between standing and open inside them.
+		var switching: Dictionary = {}
+		for g: Dictionary in layout.wall_gaps:
+			if int(g["side"]) != -1:
+				continue
+			for edge: float in [float(g["start"]), float(g["end"])]:
+				if fmod(edge, TrackBuilder.CHUNK_LENGTH) > 0.01:
+					switching[int(edge / TrackBuilder.CHUNK_LENGTH)] = true
+		# Drift vertices per chunk (by the chunk's root node): one copy of the set each, and chunk 0, which starts
+		# behind the run's start (TrackBuilder), a whole number of them.
+		var drift: Dictionary = {}
+		await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, mat: Material) -> void:
+			var root: Node = m
+			while root.get_parent() != null and not (root.get_parent() is TrackBuilder):
+				root = root.get_parent()
+			if not drift.has(root.get_instance_id()):
+				drift[root.get_instance_id()] = {"name": root.name, "vertices": 0}
+			if mat == skin.drift_material():
+				drift[root.get_instance_id()]["vertices"] += (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size())
+		var short: PackedStringArray = []
+		for key: int in drift:
+			var found: int = drift[key]["vertices"]
+			var first: bool = drift[key]["name"] == &"Chunk0"
+			if (first and (found < per_chunk or found % per_chunk != 0)) or (not first and found != per_chunk):
+				short.append("%s: %d vertices" % [drift[key]["name"], found])
+		check(not drift.is_empty() and short.is_empty() and not switching.is_empty(),
+			("every chunk has exactly one set of sand, leaves and streaks (%d vertices) with the left wall switching inside %d of "
+			+ "%d chunks (%s): %s") % [per_chunk, switching.size(), drift.size(), entry[0], ", ".join(short.slice(0, 4))])
+
+
 ## A fall makes a splash (BeachWaterWatch, BeachSplash; the owner, October 9, 2026): built only when the runner's
 ## height crosses the water's surface going down inside the piece of street it watches (never above the water, in
 ## the grapple's pit, past the piece's ends or beside the street, and once per fall), at the entry point on the
@@ -773,6 +821,9 @@ func _open_stretches(skin: BeachSkin) -> void:
 ## the water) doesn't, and a street with no pool has none.
 func _splash(skin: BeachSkin) -> void:
 	var water: float = -skin.pool_depth
+	# The street's own light (no level sky, no darkness) while the unit checks run; restored at the end.
+	ZoneSkin.set_scenery_tint(Color.WHITE)
+	ZoneSkin.set_scenery_light(1.0)
 	var watch := BeachWaterWatch.new()
 	tree.root.add_child(watch)
 	watch.setup(0.0, 40.0, water, 6.0)
@@ -803,6 +854,28 @@ func _splash(skin: BeachSkin) -> void:
 			if m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED or m.emission_enabled or _chroma(m.albedo_color) > 0.15:
 				bad.append("a lit, glowing or coloured material")
 	check(bad.is_empty() and _chroma(BeachSplash.FOAM) < 0.15 and BeachSplash.FOAM.v < 1.0, "the splash is unlit white foam: no collision, no light, no glow %s" % str(bad))
+	# It is the water's foam, so the street's light reaches it as it reaches the water (G8: scenery_tint under a level's
+	# own sky, scenery_light under its darkness): FOAM as it was in the zone's own light, warmed under the Beach's
+	# sunset tint (never brighter), dimmer in a darker level, and the materials wear that colour.
+	var day := BeachSplash.new()
+	var sunset_tint: Color = (load("res://data/skies/beach_sunset.tres") as LevelSky).scenery_tint
+	ZoneSkin.set_scenery_tint(sunset_tint)
+	var warm := BeachSplash.new()
+	ZoneSkin.set_scenery_tint(Color.WHITE)
+	ZoneSkin.set_scenery_light(0.5)
+	var dark := BeachSplash.new()
+	ZoneSkin.set_scenery_light(1.0)
+	var worn: bool = true
+	for node: Node in warm.get_children():
+		var gi := node as GeometryInstance3D
+		if gi != null and gi.material_override is StandardMaterial3D:
+			worn = worn and _same_rgb((gi.material_override as StandardMaterial3D).albedo_color, warm.foam)
+	check(_same_rgb(day.foam, BeachSplash.FOAM) and warm.foam.r > warm.foam.b + 0.04 and warm.foam.r <= BeachSplash.FOAM.r + 0.001
+		and warm.foam.g <= BeachSplash.FOAM.g + 0.001 and warm.foam.b < BeachSplash.FOAM.b and worn and dark.foam.v < BeachSplash.FOAM.v - 0.1
+		and _chroma(warm.foam) < 0.15, "the splash's foam takes the street's light: %s in the zone's light, %s in the sunset's (%s), %s at light 0.5" % [
+		day.foam.to_html(false), warm.foam.to_html(false), sunset_tint, dark.foam.to_html(false)])
+	for made: BeachSplash in [day, warm, dark]:
+		made.free()
 	# It frees itself after LIFE, however long a frame takes.
 	splash.advance(BeachSplash.LIFE * 0.5)
 	check(not splash.is_queued_for_deletion(), "a splash lives its LIFE")
@@ -838,6 +911,8 @@ func _splash(skin: BeachSkin) -> void:
 		if variant[3] > 0.0:
 			check(lowest >= -tuning.pit_depth - 0.05, "a grappled runner never reaches the water (%.2f m, the pit at %.2f m)" % [lowest, tuning.pit_depth])
 		await sim.free_world(world)
+	ZoneSkin.set_scenery_tint(Color.WHITE)
+	ZoneSkin.set_scenery_light(1.0)
 
 
 ## The reference's colour at street level and above, within the colour rule: seven bamboo tones that tell

@@ -7,10 +7,18 @@ extends Node3D
 ## one-shot that frees itself after LIFE seconds, built on demand from a handful of shared static meshes and a few
 ## nodes (CPUParticles3D for the droplets, which the Compatibility renderer draws too).
 ## Placed with its origin on the water's surface at the entry point.
+## It is the water's own foam, so it takes the street's light as the water does (G8): its colour is multiplied by the
+## light a level sets, `ZoneSkin.scenery_light_now` (a level's darkness) and `scenery_tint_now` (a level sky's street
+## light, the Beach's sunset warms it), once when it is made (a splash lives 1.2 s). It is not a kit shader, so it
+## can't read the global uniforms; the two values are the ones `ZoneSkin.set_scenery_light` and `set_scenery_tint`
+## keep beside them. Its glow stays none and it still ignores the sun: foam is white paint on the water.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 525): the splash's look (a crown, droplets and two rings, 1.2 s) and its
+## `splash` sound are placeholders.
 
 ## How long it lives, seconds.
 const LIFE: float = 1.2
-## The foam and the droplets' colour (a touch of aqua so it sits in the water; under the glow threshold).
+## The foam and the droplets' colour in the zone's own light (a touch of aqua so it sits in the water; under the
+## glow threshold); the splash wears it in the street's light (in_street_light).
 const FOAM := Color(0.93, 0.98, 0.97)
 ## The ring's reach (radius, metres) and how long it spreads.
 const RING_REACH: float = 2.4
@@ -27,6 +35,8 @@ static var _drop_mesh: SphereMesh
 
 ## Seconds since it was made (advance() moves it on; _process does while the game runs).
 var age: float = 0.0
+## FOAM in the street's light as it was when the splash was made.
+var foam: Color = FOAM
 var _ring: MeshInstance3D
 var _ring_late: MeshInstance3D
 var _crown: MeshInstance3D
@@ -36,6 +46,7 @@ var _foam_mat: StandardMaterial3D
 
 func _init() -> void:
 	name = "BeachSplash"
+	foam = in_street_light(FOAM)
 	_foam_mat = _material()
 	_ring = _part(_ring_mesh_shared(), _foam_mat)
 	_ring_late = _part(_ring_mesh_shared(), _foam_mat)
@@ -85,7 +96,7 @@ func advance(delta: float) -> void:
 	_crown.visible = t < CROWN_RISE + CROWN_FALL
 	# Every part's own fade is in its material (they share one: the crown thins as the rings do).
 	var life: float = clampf(t / LIFE, 0.0, 1.0)
-	_foam_mat.albedo_color = Color(FOAM, 0.75 * (1.0 - life * life))
+	_foam_mat.albedo_color = Color(foam, 0.75 * (1.0 - life * life))
 	if age >= LIFE:
 		queue_free()
 
@@ -96,6 +107,16 @@ func _spread(ring: MeshInstance3D, t: float, time: float, reach: float, start: f
 	ring.visible = t > 0.0 and k < 1.0
 	var radius: float = lerpf(start, reach, 1.0 - pow(1.0 - k, 2.0))
 	ring.scale = Vector3(radius, 1.0, radius)
+
+
+## A colour in the street's light: the light a level sets (its darkness) and its sky's tint multiply its linear colour,
+## as the scenery's shaders multiply theirs (ZoneSkin.scenery_light_now, scenery_tint_now; white and 1 in the zone's own
+## light, so the day levels' foam is FOAM as it was).
+static func in_street_light(color: Color) -> Color:
+	var linear: Color = color.srgb_to_linear()
+	var light: float = ZoneSkin.scenery_light_now
+	var tint: Color = ZoneSkin.scenery_tint_now
+	return Color(linear.r * light * tint.r, linear.g * light * tint.g, linear.b * light * tint.b, color.a).linear_to_srgb()
 
 
 # --- Parts and shared meshes -------------------------------------------------------------------------
@@ -117,7 +138,7 @@ func _material() -> StandardMaterial3D:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.albedo_color = FOAM
+	m.albedo_color = foam
 	m.vertex_color_use_as_albedo = true
 	m.no_depth_test = false
 	m.disable_fog = false
@@ -127,7 +148,7 @@ func _material() -> StandardMaterial3D:
 func _particle_material() -> StandardMaterial3D:
 	var m := _material()
 	m.vertex_color_use_as_albedo = true
-	m.albedo_color = Color(FOAM, 1.0)
+	m.albedo_color = Color(foam, 1.0)
 	return m
 
 

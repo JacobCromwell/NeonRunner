@@ -2597,14 +2597,19 @@ builders in `scripts/world/skins/beach/`:
   wreck) sinks out of sight into the opaque plane, and the chase camera (`camera_height` + `camera_follow_y` x
   the runner's height) is still 2.4 m above the floor at that depth, so it never goes under the water
   (pinned by `test_beach_skin`). Blowing sand, drifting leaves and petals and speed streaks
-  (`MeshKit.drift_particles`) are the still floor's motion cue.
+  (`MeshKit.drift_particles`) are the still floor's motion cue: `BeachSand.drift` gives every 40 m slice to the
+  left-wall piece that holds its start, so each chunk has exactly one copy even where the wall switches
+  between standing and open inside it (the shared call alone places only slices that fit whole inside a
+  piece's range, which left 18-27% of the Beach's chunks without; `test_beach_skin` checks every chunk).
 - *The splash* (`BeachWaterWatch`, `BeachSplash`; the owner: "a fall makes a splash"): `wall_section` and
   `wall_gap` add a `BeachWaterWatch` beside the left wall's water plane, which finds the `RunWorld` up the
   tree as `MarketCitizen` does and reads the runner's position and track distance (a read-only visual
   watcher: no collision, no gameplay state written). When the runner's height crosses the water going down
   inside its stretch of street (a floor or a cut's hole never lets that happen anywhere else), it adds a
   `BeachSplash` on the water, a one-shot that frees itself after 1.2 s (a crown of foam, droplets, two
-  spreading rings; unlit off-white, no glow, no flash, so nothing for Reduced flashing to turn off) and plays
+  spreading rings; unlit off-white, no glow, no flash, so nothing for Reduced flashing to turn off; it is the
+  water's foam, so it takes the street's light as the water does, `scenery_light_now` and `scenery_tint_now`
+  once when it is made, `BeachSplash.in_street_light`) and plays
   the `splash` sound (`tools/asset_gen/sfx_bank_player.gd`, `RunWorld.play_sfx_at`). A grappled runner never
   splashes: the hook fires at `pit_depth`, above the water. The fall's death comes about 0.3 s after the
   splash, and the death screen's pause about a second after that, so the splash plays out under the
@@ -2685,8 +2690,8 @@ builders in `scripts/world/skins/beach/`:
 - *Shader patterns* (ids 80-89, `kit_beach.gdshaderinc`, with `kit_solid.gdshader` including it after
   `face_coords()` and dispatching on the id): colours arrive as sRGB `Vector3` uniforms (`BeachSkin.srgb()`)
   so both renderers agree, `bc_daylight` lifts the lit upright surfaces for the afternoon sun (the kit's
-  `shade` is a night city's), and the water's caustics slow to a stand under Reduced flashing
-  (`reduced_flashing`; nothing else in the zone moves with `TIME`, which `test_beach_skin` checks). Review it
+  `shade` is a night city's), and the water's drift (its ripples, caustics and glints) slows to a tenth of its speed under Reduced
+  flashing (`reduced_flashing`; nothing else in the zone moves with `TIME`, which `test_beach_skin` checks). Review it
   on both renderers: `skin_review` (`--view=shot`, `--view=run`, `--narrow`), `doodad_review`,
   `floor_cut_review` and `wall_fence_review` with `--skin=beach`.
 
