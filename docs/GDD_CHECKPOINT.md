@@ -160,6 +160,9 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Only the scenery is new:** the zone's walls, floor, ceilings and background. It **reuses the Marketplace's enemies and characters** as they are (the Casino Mob Enforcer cyborgs, its heli drones, hover trucks and the rest): no new enemy, cyborg, vehicle or character looks.
 - **Two levels, then The House** (§10), which moves here from the Marketplace.
 - Floor, gaps and ceiling pieces: chosen by the art agent from the reference *(to confirm)*.
+- **The glass roof is whole** (owner, October 9, 2026): no broken or missing panes.
+- **Two named casinos** (owner, October 9, 2026): their big signs carry real lettering, **"Gasket's House of Chance"** and **"The Brass Lotus"** (the names in the reference image). No pedestrians on the street; the Marketplace's citizens in the shop windows are enough.
+- **Music:** the owner supplies the Casino's song (October 9, 2026).
 
 **Zone 5: Corporate.** Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. Floor: roofs of maglev trains or plazas *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and similar, and occasionally a military ship.
 
@@ -191,8 +194,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 3 · Rotor Wash | Fence generators and **heli drones** |
 | 3. Marketplace | 1 · Awning Alley | The **Barnacle Turret** (§9.8), the first ceiling hazard |
 | | 2 · Shopfront Sparks | **Wall fences** (§9.1), plus screeches from wall vents in the shopfronts *(proposed)* |
-| 4. Casino | 1 · *(name to come)* | Nothing new: the Marketplace's enemies and mechanics in a new setting (owner, October 8, 2026). What each Casino level adds is still to design *(to confirm)* |
-| | 2 · *(name to come)* | Then **The House** (§10) |
+| 4. Casino | 1 · Brass Arcade | Nothing new: the Marketplace's enemies and mechanics in a new setting (owner, October 8, 2026). What each Casino level adds is still to design *(to confirm)* |
+| | 2 · House Edge | Then **The House** (§10) |
 | 5. Corporate | 1 · Maglev Line | **Buzz Overdrive** (§9.9) |
 | | 2 · Checkpoint Plaza | The **Tithe Collector** (§9.12) and the **Enforcer Truck** (§9.13, owner, October 4, 2026), with a heavier military presence *(proposed)* |
 | 6. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
@@ -201,7 +204,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
 
-Level names approved by the owner (September 26, 2026).
+Level names approved by the owner (September 26, 2026; the Casino's on October 9, 2026).
 
 **Skies show progression** (owner, October 8, 2026). Most levels keep their zone's sky; a zone's last level changes it, so the player sees time passing and what lies ahead:
 - **Neon City 3:** the sun just starting to rise, with pinks and purples touching the undersides of clouds.
@@ -229,6 +232,7 @@ Level names approved by the owner (September 26, 2026).
   - **Campaign:** fixed seeds (same layout every attempt).
   - **Endless mode:** random layouts.
   - Each level's difficulty can be tuned individually, with an automatic curve making each level slightly harder than the last.
+  - **No level gets easier when levels are added** (owner, October 9, 2026, after adding the Casino): every level is too easy, at least on PC. The Marketplace keeps at least the difficulty it had (a little harder is welcome), and Corporate and the zones after it may get harder.
   - Because lane counts differ, "level 5" on PC is not identical to "level 5" on mobile. This is intended: PC is harder.
   - Handmade set pieces (e.g. boss arenas) are allowed.
 - **Replay features:**

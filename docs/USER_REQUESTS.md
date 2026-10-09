@@ -19,6 +19,13 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] Add a Casino zone right after the Marketplace: two Marketplace levels on the way to the Casino, then two Casino levels, then The House, which moves from the Marketplace to the Casino. Don't create new character or enemy skins (no new cyborg, truck, heli drone and so on): use the Marketplace's. Only the walls, floors, ceilings and background change, following the owner's reference image (`docs/art/reference/casino_zone.webp`). Tasks K1 (the skin) and K2 (the campaign). DONE: the Casino is Zone 4 with two levels (*Brass Arcade* and *House Edge*, proposed names) and The House; the Marketplace has its two levels and no boss. Open points for the owner: `docs/OPEN_QUESTIONS.md` §D, items 369–389 (the skin's look, the 17-level difficulty curve, music, level names).
 
+## Casino follow-up (October 9, 2026)
+
+- [ ] No level gets easier with the Casino added: every level is too easy, at least on PC. Corporate and beyond being harder is fine; the Marketplace levels should stay as difficult as they were, or be a little harder. (Task K4.)
+- [x] The Casino's level names, *Brass Arcade* and *House Edge*, are approved.
+- [x] The owner adds the Casino's song in a separate change (nothing to do here).
+- [ ] The Casino's glass ceiling is whole, and its signs use real lettering: "Gasket's House of Chance" and "The Brass Lotus". No pedestrians. (Task K3.)
+
 ## Level skies (October 8, 2026)
 
 - [x] Gangland 3's sky becomes a cloudy blood red, to show the player is coming up on a fiery section; Gangland 1 and 2 keep theirs. DONE: `data/skies/gangland_blood_red.tres`.

@@ -2506,11 +2506,13 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     a crown, a chip or a die) and rows of glyphs, and vertical blade signs run lettering down their board like
     "The Brass Lotus". Should the Casino's two named signs be drawn as real lettering once the project has a
     way to draw words on a sign (a texture of each sign)? Until then no sign says "HAZARD" or anything else.
+    **Answered (owner, October 9, 2026):** real lettering, with the names "Gasket's House of Chance" and "The Brass Lotus" (GDD §5, Zone 4; task K3).
 372. **Pedestrians far down the street.** The reference has a few small figures far down the street. The owner
     said no new characters, and the Marketplace's citizens only play in shop windows (they react to the runner
     and The House's crowds cheer and duck through them). Placeholder: **none**: the street is empty, as the
     Marketplace's is. Should a few of the Marketplace's citizens also stand far down the street as tiny,
     fogged silhouettes (scenery only, never in the lanes), or are the shop windows enough?
+    **Answered (owner, October 9, 2026):** no pedestrians; the shop windows are enough (GDD §5, Zone 4).
 373. **How much each kind of piece appears (placeholder shares).** The balconies, pipes, air-conditioning units,
     planters, banners, lanterns, fans and girders across the street, and how often each ceiling kind turns up
     (footbridge 3, pipe-bundle gantry 3, sign gantry 2): all exports on `CasinoSkin` (groups "Facades", "Vault",
@@ -2522,6 +2524,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     carrying heavy banners, lanterns on chains and the occasional still ceiling fan. Nothing hangs below 16 m
     over the lanes (the arrival flyover's and The House's limits). The ceiling fans don't turn (a static mesh).
     Is the broken glass right for a "gaudy, warm and a little seedy" casino, or should the roof be whole?
+    **Answered (owner, October 9, 2026):** the roof is whole, with no broken or missing panes (GDD §5, Zone 4; task K3).
 375. **Doodads.** The Marketplace's potted plants, casino machines and hedge rows are reused unchanged in the
     Casino's palette (dark brass-trimmed cabinets, deep-green plants). Does the Casino want doodads of its own
     (a roulette table, a velvet-rope queue, a fruit machine)? GDD §3 only names the Marketplace's.
@@ -2554,6 +2557,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
 381. **The Casino's level names** (GDD §5: "(name to come)"). Proposed: Casino 1 *Brass Arcade* (the covered
     street, its brass pipes), Casino 2 *House Edge* (The House follows it) (`display_name` in
     `data/levels/casino_1.tres`, `casino_2.tres`).
+    **Answered (owner, October 9, 2026):** *Brass Arcade* and *House Edge* are approved (GDD §5).
 382. **What each Casino level adds** (GDD §5: "still to design"). Placeholder: both play Marketplace 2's
     features (everything up to the wall fences and the shopfronts' vent screeches) with no introductions
     (`feature_starts` empty) and no extra pick weights (Marketplace 2's extra weight on vent screeches was for
@@ -2575,6 +2579,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Corporate 1's 0.557), which keeps their difficulty-gated patterns and spacing as they were (not their
     recency ages or completion bonuses, which follow a level's place in the campaign either way). What the
     re-spaced curve changes is listed below ("What the re-spaced curve changes"). Which does the owner want?
+    **Answered (owner, October 9, 2026):** no level gets easier: every level is too easy, at least on PC. The Marketplace keeps at least its old difficulty (a little harder is welcome), and Corporate and beyond may get harder (GDD §6; task K4).
 
     | Level | Difficulty before | after | Enemy scaling before | after |
     |---|---|---|---|---|
@@ -2698,6 +2703,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     generated default in its cinematics and The House's fight, and the Marketplace's level-complete riff
     (`data/audio/music_library.tres`: `files`, `zone_tracks`, `riff_tracks`). Will the owner supply a Casino
     song, and should The House get a boss song of its own?
+    **Answered (owner, October 9, 2026):** the owner adds the Casino's song in a separate change; The House keeps the Casino's music until then.
 388. **The Casino's cinematics** (GDD §6). Placeholders: its intro plays the arrival flyover over the Casino
     (title "The Casino"; its card names the zone: ZONE 4, CASINO), its outro is a placeholder card "Beyond
     the Casino: a short scene after The House, heading for the corporate district"
