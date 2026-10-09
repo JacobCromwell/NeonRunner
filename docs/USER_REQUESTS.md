@@ -31,6 +31,13 @@ NOTE: Mark tasks as done as you complete them.
     - **Side walls:** each wall stands on about 50% of a Beach level, down from about 97%, in open stretches of 2 s or more (median about 117 m). The walls' own keep-outs (ramps' wall runs, wall enemies, signs, ceilings) leave a few walls standing on up to about 65%. The beach, the sea and palms show beyond (`BeachOpen`).
     - **Levels:** provisional Beach levels outside the campaign, set up for the recommended slot. Play them with `--level=beach/1` and `--level=beach/2`.
     - **Open questions:** in `docs/questions/d10.md` and `d10b.md`.
+- [ ] The Beach joins the campaign (October 9, 2026):
+  - "Put the beach between the corporate and dead zone."
+  - "Keep in mind that there will be a boss battle for the beach, but it has not yet been created."
+  - "Do not worry about any new enemies at this time."
+  - "Create level names that fit the theme": Beach 1 is **Tiki Tides** and Beach 2 **Sunset Strip**.
+
+  Then a PR, merged to main. Task D10c.
 
 ## Zone 1 outro (October 8, 2026)
 
