@@ -359,8 +359,15 @@ death, R, F6's Restart level) alike. A boss fight's arena never comes here: its 
   random seed each) and keeps nothing.
 - **Every run plays a copy.** The kept build is never played: each run, the first too, gets a
   `LevelLayout.copy()` of its own, since a run changes its layout as it goes (an EMP marks fences `disabled`
-  in it, the track numbers its fences, a boss arena's next lap or endless mode's next stretch joins it, and an
-  enemy's entry is its own one level deep only). A generated layout holds plain data only, no Object and no
+  in it, the track numbers its fences, the dash smashes a zone doodad and a dash wall breaks in it, their
+  entries marked `smashed` (and a wall's `broken_by`) and never built again that attempt (tasks H5 and H7a,
+  `DashBreakable`), a boss arena's next lap or endless mode's next stretch joins it, and an enemy's entry is
+  its own one level deep only). So a retry's world, built anew (`RunWorld.build`) from a fresh copy, has every
+  doodad and wall standing whole: an attempt that smashed or broke them marked only its own copy (the H merge;
+  `test_level_cache`'s `_test_smashed_stand_again` dashes through a doodad and a wall at Dead Zone 1, dies, and
+  checks both retries: the build's layout exactly, both built whole with the same node, place, layers, shapes and
+  look, and an attempt without the dash playing exactly as on a fresh build; `_test_nothing_leaks` smashes and
+  marks every one). A generated layout holds plain data only, no Object and no
   list or dictionary in two places (a copy would make two of it): `test_level_cache` checks two levels, and a
   probe found neither in any campaign level at 3, 5 and 6 lanes. So **`LevelLayout.copy()` must copy every
   field a layout has**: a list added to LevelLayout must join `copy()`, or every run would play without it
@@ -604,8 +611,9 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   side (a hover truck's, a boss's prop) still bumps a dashing player. `DashBreakable.smash()` switches off its
   collision (its body, its lane blocker and its standable top) and hides its look, and marks its layout
   entry `smashed` (as an EMP marks a fence `disabled`), which `TrackBuilder._build_doodad` never builds:
-  it stays broken for the rest of the attempt, a revive in place too, and a retry generates the level
-  again, every doodad whole (a test that runs one layout twice gives each run its own copy). The player
+  it stays broken for the rest of the attempt, a revive in place too, and a retry plays a fresh copy of the
+  level's build in a world built anew (`LevelCache`, task PERF2: the mark was on the attempt's own copy), every
+  doodad whole (a test that runs one layout twice gives each run its own copy). The player
   emits `smashed(breakable)` and the `doodad_smash` movement event (`<kind>_smash`): the crunch
   (`doodad_smash.wav`), the pieces (`RunEffects.rubble`) and a light shake (Speed effects). It costs
   nothing and scores nothing, and DamageRules never sees it. Enemies' fairness checks read the layout
@@ -640,7 +648,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   `Player._break(b, how)` does it: `DashBreakable.smash(how)` (its entry marked `smashed` and `broken_by`, its
   box and hitbox off, its look hidden), the counts (`smashes`, `crashes`, `wall_passes`), `smashed(b)` and the
   `dash_wall_smash` event: RunEffects crumbles it (Speed effects) and the event plays the crash
-  (`dash_wall_smash.wav`). It stays broken for the attempt (never built again), and a retry rebuilds it whole.
+  (`dash_wall_smash.wav`). It stays broken for the attempt (never built again), and a retry rebuilds it whole
+  (a fresh copy of the level's build, as for a doodad).
   Scores nothing (DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 653). The layout counts a wall as a doodad in every lane
   (`LevelLayout.doodad_between`, and `dash_wall_between`), broken or not, so every enemy that holds an attack
   by a doodad holds it by a wall the same on every attempt.
@@ -4870,8 +4879,12 @@ layouts holding plain data only, the warnings coming with a reused level, a seed
 an EMP in its script) at Gangland 3 and Corporate 2 at 5 lanes playing the same with the cache off, on its first
 run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits, the
 enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
-either retry (and the kept build untouched), the debug keys, F6 edits and another level building again, and
-endless mode building on every run and keeping nothing.
+either retry (and the kept build untouched; every zone doodad and dash wall smashed or marked, then all of them
+standing as the retry's track is built), an attempt at Dead Zone 1 at 3 lanes dashing through a doodad and a dash
+wall, then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
+and look; the restart's standing in the physics world) and the restart, not dashing, playing as on a fresh build
+(tasks H5 and H7a, the H merge), the debug keys, F6 edits and another level building again, and endless mode
+building on every run and keeping nothing.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees

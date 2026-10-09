@@ -16,9 +16,11 @@ extends Area3D
 ## `<kind>_smash` movement event (its sound: `doodad_smash.wav`, `dash_wall_smash.wav`; and a shake).
 ##
 ## It stays broken for the rest of the attempt: smash() marks its layout entry (`entry`, "smashed"), which
-## the track builder never builds again, and a chunk is built once in a world anyway. A retry generates
-## the level again, so every one of them stands whole on the next attempt, and an attempt that never
-## touches one leaves it as it was: its seeded run is exactly as before.
+## the track builder never builds again, and a chunk is built once in a world anyway. The entry is the
+## attempt's own: every run plays its own copy of the level's build (LevelCache, task PERF2: a retry reuses
+## the build but never plays it, and its world is built anew), so every one of them stands whole on the next
+## attempt (test_level_cache), and an attempt that never touches one leaves it as it was: its seeded run is
+## exactly as before.
 ##
 ## Enemies' fairness checks read the layout (LevelLayout.doodad_between, which counts a dash wall in every
 ## lane), not the node, so they treat a smashed one's stretch as they did before it broke: an attack that

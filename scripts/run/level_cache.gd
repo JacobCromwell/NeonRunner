@@ -21,10 +21,12 @@ extends RefCounted
 ##
 ## The kept build is never handed out: every run plays its own LevelLayout.copy(), the first run too,
 ## since a run changes its layout as it goes (an EMP switches fences off in it, the track numbers its fences,
-## a boss arena's next lap or endless mode's next stretch joins it, and an enemy's entry is the enemy's own
-## one level deep only). A layout holds plain data (no Object, and no list or dictionary in two places), so a
-## copy plays exactly as the build would. The build's generator warnings come with every copy, for LevelRun
-## to print as it always has.
+## the dash smashes a zone doodad and a dash wall breaks in it, their entries marked "smashed" and never built
+## again that attempt (DashBreakable, tasks H5 and H7a), a boss arena's next lap or endless mode's next stretch
+## joins it, and an enemy's entry is the enemy's own one level deep only). So a retry's world, built anew from a
+## fresh copy, has every doodad and dash wall standing whole (test_level_cache). A layout holds plain data (no
+## Object, and no list or dictionary in two places), so a copy plays exactly as the build would. The build's
+## generator warnings come with every copy, for LevelRun to print as it always has.
 ##
 ## A tunable the generator reads from anywhere but the config, the movement tuning, the patterns and
 ## TUNING_DIRS must join the key here, or a run after a change to it could play the level built before.

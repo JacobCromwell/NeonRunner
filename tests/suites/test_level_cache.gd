@@ -17,7 +17,12 @@ extends TestSuite
 ##   switched off, at Gangland 3 and Corporate 2 (a floor cut, a thief, an Enforcer Truck) at 5 lanes.
 ## - Nothing leaks into the next attempt: after an attempt that changed its world and layout every way play can
 ##   (and more), each retry starts from the build's layout, with every enemy still to come, every credit,
-##   every fence on, no floor cut begun, the build's length and no score; the kept build is untouched.
+##   every fence on, no floor cut begun, every zone doodad and dash wall standing, the build's length and no score;
+##   the kept build is untouched.
+## - Smashed doodads and dash walls stand again (tasks H5 and H7a, the H merge): an attempt at Dead Zone 1 (3 lanes)
+##   that dashes through a doodad and a dash wall, then dies, marks them in its own layout only; both retries reuse the
+##   build, start from its layout exactly and build both whole (the same node, place, layers, shapes and look, standing
+##   in the physics world), and the restart, not dashing, plays exactly as an attempt on a fresh build (the cache off).
 ## - Builds again where a build can differ: a new seed, lane count or difficulty (quick play's debug keys), an
 ##   edit in the live tuning panel (F6) to the movement tuning or an enemy type's tuning (a restart after it
 ##   reuses the new build), another level; endless mode builds on every run, a new level each time, and keeps
@@ -29,6 +34,10 @@ const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const REVIEW_ARGS: PackedStringArray = ["--lanes=5", "--god", "--nofall"]
 ## When a scripted attempt sets off its EMP (_play).
 const EMP_SECONDS: float = 6.0
+## How far before a doodad or a dash wall _drive starts the dash (test_doodads' retry dashes from as far).
+const DASH_LEAD: float = 8.0
+## The smashed-and-retried attempts' review aids (_test_smashed_stand_again): 3 lanes, no deaths and no falls.
+const SMASH_ARGS: PackedStringArray = ["--lanes=3", "--god", "--nofall"]
 
 var main: Node
 
@@ -51,6 +60,7 @@ func run() -> void:
 	await _test_retries_play_the_same("gangland/3", 24.0, ["credits", "fences_off"])
 	await _test_retries_play_the_same("corporate/2", 44.0, ["credits", "kills", "cuts"])
 	await _test_nothing_leaks("corporate/2")
+	await _test_smashed_stand_again("dead_zone/1")
 	await _test_builds_again()
 	await _test_endless()
 	App._review_args = saved_args
@@ -378,35 +388,61 @@ func _test_nothing_leaks(id: String) -> void:
 		for f: Dictionary in world.layout.fences + world.layout.wall_fences:
 			if f.get("disabled", false):
 				disabled += 1
+		var marked: int = 0
+		for e: Dictionary in world.layout.doodads + world.layout.dash_walls:
+			if e.has("smashed") or e.has("broken_by"):
+				marked += 1
 		# The track built ahead a chunk at a time (this attempt is thrown away after): every fence and floor cut of
-		# the stretch the last attempt spoiled, as it's built.
+		# the stretch the last attempt spoiled, as it's built, and every zone doodad and dash wall of the level
+		# (tasks H5 and H7a: the last attempt smashed or marked every one).
 		var seen: Dictionary = {"fences": 0, "off": 0, "cuts": 0, "begun": 0}
+		var breakables: Dictionary = {}
+		var broken: PackedStringArray = []
 		var d: float = 0.0
-		while d <= 900.0:
+		while d <= maxf(900.0, world.layout.length):
 			world.track.update(d, 0.0)
-			for h: Hazard in world.track.fence_hazards() + world.track.wall_fence_hazards():
-				seen["fences"] = int(seen["fences"]) + 1
-				# Off for good (an EMP: Hazard.set_enabled), not a pulsing fence in its off time.
-				if h.state == Hazard.State.OFF and h._pulse_on <= 0.0:
-					seen["off"] = int(seen["off"]) + 1
-			for cut: FloorCut in world.track.floor_cuts():
-				seen["cuts"] = int(seen["cuts"]) + 1
-				if cut.began() or cut.stopped:
-					seen["begun"] = int(seen["begun"]) + 1
+			if d <= 900.0:
+				for h: Hazard in world.track.fence_hazards() + world.track.wall_fence_hazards():
+					seen["fences"] = int(seen["fences"]) + 1
+					# Off for good (an EMP: Hazard.set_enabled), not a pulsing fence in its off time.
+					if h.state == Hazard.State.OFF and h._pulse_on <= 0.0:
+						seen["off"] = int(seen["off"]) + 1
+				for cut: FloorCut in world.track.floor_cuts():
+					seen["cuts"] = int(seen["cuts"]) + 1
+					if cut.began() or cut.stopped:
+						seen["begun"] = int(seen["begun"]) + 1
+			for b: DashBreakable in _breakables(world.track):
+				if breakables.has(b.get_instance_id()):
+					continue
+				breakables[b.get_instance_id()] = true
+				if not _stands(b):
+					broken.append("%s at %.0f m" % [b.kind, float(b.entry.get("start", 0.0))])
 			d += TrackBuilder.CHUNK_LENGTH
 		check(disabled == 0, "with no fence of its layout switched off")
 		check(int(seen["off"]) == 0 and int(seen["fences"]) > 0, "and every fence on as the track is built (%d of %d looks off)" % [
 			seen["off"], seen["fences"]])
 		check(int(seen["begun"]) == 0 and int(seen["cuts"]) > 0, "and no floor cut begun (%d looks at its cuts)" % seen["cuts"])
+		check(marked == 0 and broken.is_empty() and breakables.size() == world.layout.doodads.size() + world.layout.dash_walls.size()
+			and not world.layout.dash_walls.is_empty(),
+			"and every zone doodad and dash wall of the level standing as the track is built (%d doodads, %d walls; %d marked; broken: %s)" % [
+			world.layout.doodads.size(), world.layout.dash_walls.size(), marked, ", ".join(broken)])
 	check(_layout_dump(LevelCache._layout) == kept, "the kept build is untouched by the attempts")
 
 
 ## Changes `world`'s run every way play can, and more: brings a stretch into play and kills every enemy in it,
-## switches every fence off with one EMP, runs every floor cut built, collects credits, lengthens the track, and
+## switches every fence off with one EMP, runs every floor cut built, smashes every zone doodad and dash wall built
+## (as the dash does, tasks H5 and H7a) and marks every other one's entry, collects credits, lengthens the track, and
 ## edits the layout's entries in place. Returns what it did ({what}).
 func _spoil(world: RunWorld) -> Dictionary:
 	world.track.update(700.0, 30.0)
 	world.director.update(700.0)
+	var smashed: int = 0
+	for b: DashBreakable in _breakables(world.track):
+		if b.smash(&"dash"):
+			smashed += 1
+	for e: Dictionary in world.layout.doodads + world.layout.dash_walls:
+		e["smashed"] = true
+		e["broken_by"] = "dash"
 	var kills: int = 0
 	for e: Enemy in world.director.active.duplicate():
 		if is_instance_valid(e) and e.alive:
@@ -432,8 +468,226 @@ func _spoil(world: RunWorld) -> Dictionary:
 			(e["params"] as Dictionary)["spoiled"] = true
 	if not world.layout.credits.is_empty():
 		world.layout.credits[0]["value"] = 999
-	return {"what": "killed %d enemies, switched %d fences off, ran %d floor cuts, took %d credits and lengthened its track" % [
-		kills, off, cuts, taken]}
+	return {"what": ("killed %d enemies, switched %d fences off, ran %d floor cuts, smashed %d doodads and dash walls (and"
+		+ " marked every one), took %d credits and lengthened its track") % [kills, off, cuts, smashed, taken]}
+
+
+# --- Smashed doodads and dash walls stand again (the H merge) -----------------------------------------
+
+## Tasks H5 and H7a meet PERF2 (the H merge): the dash smashes a zone doodad, and a dash wall breaks as the runner
+## reaches it, each marked in the attempt's own copy of the layout ("smashed", a wall's "broken_by") and never built
+## again in that attempt's world (TrackBuilder). A retry plays a fresh copy of the kept build in a world built anew, so
+## both stand again. At campaign level `id` (3 lanes: its first doodad stands in the runner's starting lane, well
+## before its first wall; god mode and no falls, every item, the dash at its top tier), each from PLAY:
+## - an attempt that never dashes, the cache off (a fresh build, as before PERF2), past the wall: pushed by the doodad,
+##   crashing through the wall (god mode);
+## - the first run with the cache: it dashes through the doodad and the wall (each smashed, the wall broken by the
+##   dash, each node's look hidden and its collision off), then dies; the kept build is never marked;
+## - its restart in place (LevelRun.restart) reuses the build and starts from its layout exactly (nothing marked); as the
+##   runner comes up to them the doodad and the wall are built whole, exactly as on the first run (the same node in the
+##   same place, on the same layers with the same shapes, the same look: mesh, material and pieces' colours) and
+##   standing in the physics world; not dashing, it plays exactly as the attempt on a fresh build: the same runner's
+##   trace and events (the doodad's push, the wall's crash);
+## - the results screen's retry (App.retry) reuses the build too, from its layout exactly, with both built whole as the
+##   track is built ahead.
+func _test_smashed_stand_again(id: String) -> void:
+	var saved_args: PackedStringArray = App._review_args
+	App._review_args = SMASH_ARGS
+	var step: CampaignStep = App.campaign.step(id)
+	# An attempt that never dashes, on a fresh build.
+	LevelCache.enabled = false
+	_restock()
+	App.start_level(step)
+	await tree.process_frame
+	var pick: Dictionary = _smash_targets(App.run.world)
+	check(not pick.is_empty(), "%s at 3 lanes has a doodad in the runner's lane well before its first dash wall" % id)
+	if pick.is_empty():
+		LevelCache.enabled = true
+		App._review_args = saved_args
+		return
+	App.begin_run()
+	var fresh: Dictionary = await _drive(App.run.world, pick, false)
+	# The first run with the cache: it dashes through both, then dies.
+	LevelCache.enabled = true
+	LevelCache.forget()
+	_restock()
+	App.start_level(step)
+	await tree.process_frame
+	var built: String = _layout_dump(App.run.world.layout)
+	var kept: String = _layout_dump(LevelCache._layout)
+	App.begin_run()
+	var first: Dictionary = await _drive(App.run.world, pick, true)
+	var w: RunWorld = App.run.world
+	var doodad: Dictionary = w.layout.doodads[int(pick["doodad"])]
+	var wall: Dictionary = w.layout.dash_walls[int(pick["wall"])]
+	var tag: String = "%s (3 lanes; the doodad at %.0f m, the wall at %.0f m)" % [id, float(doodad["start"]), float(wall["start"])]
+	check(bool(first["doodad_broke"]) and bool(doodad.get("smashed", false)) and String(first["doodad_sig"]) != "",
+		"%s: the dash smashes the doodad, marked in the run's layout, its look hidden and its collision off (%s)" % [tag, first["events"]])
+	check(bool(first["wall_broke"]) and bool(wall.get("smashed", false)) and String(wall.get("broken_by", "")) == "dash"
+		and String(first["wall_sig"]) != "", "%s: and breaks the wall, broken by the dash, likewise" % tag)
+	w.player._die("test hazard")
+	await physics_frames(6)
+	check(App.run.state == LevelRun.State.DEAD, "%s: the runner dies" % tag)
+	check(_layout_dump(LevelCache._layout) == kept and not kept.contains("smashed") and not kept.contains("broken_by"),
+		"%s: the kept build was never marked" % tag)
+	# Its restart in place: both whole, and an attempt without the dash plays as on a fresh build.
+	_restock()
+	App.run.restart()
+	check(LevelCache.last_reused and _layout_dump(App.run.world.layout) == built,
+		"%s, its restart (LevelRun.restart): it reuses the build, from its layout exactly (nothing marked)" % tag)
+	await tree.process_frame
+	App.begin_run()
+	var again: Dictionary = await _drive(App.run.world, pick, false)
+	check(String(again["doodad_sig"]) == String(first["doodad_sig"]) and bool(again["doodad_stood"]),
+		"%s, its restart: the doodad built whole, as on the first run (the same node, place, layers, shapes and look), standing" % tag)
+	check(String(again["wall_sig"]) == String(first["wall_sig"]) and bool(again["wall_stood"]),
+		"%s, its restart: the wall built whole, as on the first run, standing" % tag)
+	check(again["trace"] == fresh["trace"] and again["events"] == fresh["events"] and int(fresh["pushes"]) >= 1
+		and int(fresh["crashes"]) >= 1, "%s, its restart without the dash plays as on a fresh build: the same trace (%s) and events (%s)" % [
+		tag, _first_diff(again["trace"], fresh["trace"]), _first_diff(again["events"], fresh["events"])])
+	# The results screen's retry: a new LevelRun, both whole as the track is built ahead.
+	_restock()
+	App.retry(App.run.context)
+	var world: RunWorld = App.run.world
+	check(LevelCache.last_reused and _layout_dump(world.layout) == built,
+		"%s, the results screen's retry (App.retry): it reuses the build, from its layout exactly" % tag)
+	# The track built ahead (this attempt is thrown away after; not begun, so nothing joins the physics world).
+	var ahead: Dictionary = {}
+	for k: String in ["doodad", "wall"]:
+		var entry: Dictionary = world.layout.doodads[int(pick["doodad"])] if k == "doodad" \
+			else world.layout.dash_walls[int(pick["wall"])]
+		world.track.update(float(entry["start"]) - 60.0, 0.0)
+		world.track.dress_all()
+		var b: DashBreakable = _breakable_of(world, entry)
+		ahead[k] = _breakable_sig(b) if b != null else ""
+		ahead[k + "_stood"] = b != null and _stands(b)
+	check(String(ahead["doodad"]) == String(first["doodad_sig"]) and bool(ahead["doodad_stood"])
+		and String(ahead["wall"]) == String(first["wall_sig"]) and bool(ahead["wall_stood"]),
+		"%s, the results screen's retry: the doodad and the wall built whole, as on the first run" % tag)
+	App._review_args = saved_args
+
+
+## The targets for _test_smashed_stand_again in `world`'s layout: the level's first dash wall, and the last zone doodad
+## in the runner's starting lane between the run-up's end and 60 m before the wall's clear approach, by their indices
+## ({doodad, wall}); {} if there's none.
+func _smash_targets(world: RunWorld) -> Dictionary:
+	var lay: LevelLayout = world.layout
+	if lay.dash_walls.is_empty():
+		return {}
+	var face: float = float(lay.dash_walls[0]["start"])
+	var best: int = -1
+	for i: int in lay.doodads.size():
+		var d: Dictionary = lay.doodads[i]
+		if int(d["lane"]) == world.player.lane and float(d["start"]) > world.config.start_clear_distance + 20.0 \
+				and float(d["end"]) < face - 120.0:
+			best = i
+	return {} if best < 0 else {"doodad": best, "wall": 0}
+
+
+## Plays the App's run (begun) until the runner is past the picked dash wall (or out of time), keeping to their lane:
+## with `dash`, dashing from DASH_LEAD before the picked doodad and before the wall. Notes each one's node as first
+## built and dressed (_breakable_sig) and whether it stood then (its layers on, its look shown, in the physics world),
+## whether each broke (its node's look hidden and collision off), and the runner's trace and events, pushes and crashes.
+func _drive(world: RunWorld, pick: Dictionary, dash: bool) -> Dictionary:
+	var doodad: Dictionary = world.layout.doodads[int(pick["doodad"])]
+	var wall: Dictionary = world.layout.dash_walls[int(pick["wall"])]
+	var p: Player = world.player
+	var out: Dictionary = {"doodad_sig": "", "wall_sig": "", "doodad_stood": false, "wall_stood": false,
+		"doodad_broke": false, "wall_broke": false}
+	var trace := PackedStringArray()
+	var events := PackedStringArray()
+	p.movement_event.connect(func(kind: StringName) -> void:
+		events.append("%.3f %s" % [world.level_time(), kind]))
+	var targets: Dictionary = {"doodad": doodad, "wall": wall}
+	var frames: int = int((float(wall["end"]) / world.tuning.run_speed + 15.0) * 60.0)
+	for i: int in frames:
+		if p.distance > float(wall["end"]) + 5.0:
+			break
+		for k: String in targets:
+			var entry: Dictionary = targets[k]
+			if dash and p.distance >= float(entry["start"]) - DASH_LEAD and p.distance < float(entry["start"]) \
+					and not bool(entry.get("smashed", false)) and not p.dashing:
+				world.powerups.call(&"try_dash")
+			var b: DashBreakable = _breakable_of(world, entry)
+			if b == null:
+				continue
+			if String(out[k + "_sig"]) == "" and not b.debris_colors.is_empty() and not b.is_smashed():
+				out[k + "_sig"] = _breakable_sig(b)
+				out[k + "_stood"] = _stands(b) and _occupied(world, b)
+			if b.is_smashed() and not bool(out[k + "_broke"]):
+				out[k + "_broke"] = not b.visible and b.collision_layer == 0 and not _occupied(world, b)
+		await tree.physics_frame
+		if i % 30 == 0:
+			trace.append("%.3f %.4f %d %d %.4f" % [world.level_time(), p.distance, p.lane, p.surface, p.h])
+	out["trace"] = trace
+	out["events"] = events
+	out["pushes"] = p.pushes
+	out["crashes"] = p.crashes
+	out["smashes"] = p.smashes
+	return out
+
+
+## Every DashBreakable (a zone doodad or a dash wall) under `node`.
+static func _breakables(node: Node) -> Array[DashBreakable]:
+	var out: Array[DashBreakable] = []
+	for child: Node in node.find_children("*", "Area3D", true, false):
+		if child is DashBreakable:
+			out.append(child as DashBreakable)
+	return out
+
+
+## The built node of layout entry `entry` (a doodad's or a dash wall's) in `world`, or null.
+static func _breakable_of(world: RunWorld, entry: Dictionary) -> DashBreakable:
+	for b: DashBreakable in _breakables(world.track):
+		if is_same(b.entry, entry) and not b.is_queued_for_deletion():
+			return b
+	return null
+
+
+## True if `b` stands: not smashed, its look shown, its own layers and every collision object's under it on.
+static func _stands(b: DashBreakable) -> bool:
+	if b.is_smashed() or not b.visible or b.collision_layer == 0:
+		return false
+	for node: Node in b.find_children("*", "CollisionObject3D", true, false):
+		if (node as CollisionObject3D).collision_layer == 0:
+			return false
+	return true
+
+
+## True if the physics world has something of `b` on its layers inside its box (as the push, the lane blocker and the
+## dash's approach check find it).
+static func _occupied(world: RunWorld, b: DashBreakable) -> bool:
+	var shape := BoxShape3D.new()
+	shape.size = b.size * Vector3(0.6, 0.6, 0.6)
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = shape
+	q.collide_with_areas = true
+	q.collide_with_bodies = true
+	q.collision_mask = TrackBuilder.LAYER_DOODAD | TrackBuilder.LAYER_LANE_BLOCKER | TrackBuilder.LAYER_DASH_WALL \
+		| TrackBuilder.LAYER_HAZARD
+	q.transform = Transform3D(Basis.IDENTITY, b.global_position)
+	return not world.player.get_world_3d().direct_space_state.intersect_shape(q, 1).is_empty()
+
+
+## A built doodad's or dash wall's node as text: its kind, place and box, whether it shows, its layers and its pieces'
+## colours; every collision object and shape under it (class, place, layers, box); and its look, each mesh and
+## material by identity (the skins cache them: the same look builds the very same ones), the hitbox view's boxes aside.
+static func _breakable_sig(b: DashBreakable) -> String:
+	var parts: PackedStringArray = ["%s %s %s shown %s layers %d/%d colours %s" % [b.kind, b.global_position, b.size,
+		b.visible, b.collision_layer, b.collision_mask, b.debris_colors]]
+	for node: Node in b.find_children("*", "", true, false):
+		if node is CollisionObject3D:
+			var co := node as CollisionObject3D
+			parts.append("%s %s layers %d/%d" % [co.get_class(), co.global_position, co.collision_layer, co.collision_mask])
+		elif node is CollisionShape3D:
+			var cs := node as CollisionShape3D
+			var box := cs.shape as BoxShape3D
+			parts.append("shape %s %s off %s" % [cs.global_position, box.size if box != null else Vector3.ZERO, cs.disabled])
+		elif node is MeshInstance3D and not node.is_in_group(&"debug_hitbox"):
+			var mi := node as MeshInstance3D
+			parts.append("look %s mesh %d material %d shown %s" % [mi.position, mi.mesh.get_instance_id() if mi.mesh != null else 0,
+				mi.material_override.get_instance_id() if mi.material_override != null else 0, mi.visible])
+	return "\n".join(parts)
 
 
 # --- Building again -------------------------------------------------------------------------------

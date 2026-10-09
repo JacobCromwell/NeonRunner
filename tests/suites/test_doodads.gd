@@ -1224,8 +1224,9 @@ func _test_dash_world() -> void:
 ## 3 lanes (its own seed, the dash carried; god mode and no falls, since the runner just keeps to the
 ## middle lane, where every doodad stands at 3 lanes) dashes into its first doodad. Through a death and a
 ## revive it stays smashed (its entry marked, nothing on its layers where it stood). LevelRun's retry
-## generates the level again: the very same layout as before the smash, that doodad whole on the track,
-## and a runner who doesn't dash is pushed by it.
+## plays a fresh copy of the level's build (LevelCache, task PERF2; the smash marked only the attempt's own
+## copy): the very same layout as before the smash, that doodad whole on the track, and a runner who
+## doesn't dash is pushed by it.
 func _test_dash_retry() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var ctx := RunContext.new()
@@ -1262,11 +1263,12 @@ func _test_dash_retry() -> void:
 	check(run.state == LevelRun.State.RUNNING and w.player.alive and bool(d.get("smashed", false)) and not _solid_at(w, d)
 		and (body == null or body.collision_layer == 0), "through a death and a revive it stays smashed: nothing builds it again")
 	run.restart(run.context.retry())
+	var reused: bool = LevelCache.last_reused
 	await tree.physics_frame
 	w = run.world
 	var again: Dictionary = w.layout.doodads[0]
-	check(JSON.stringify(w.layout.to_dict()) == before and not again.has("smashed"),
-		"a retry generates the very same level, the doodad whole in its data")
+	check(JSON.stringify(w.layout.to_dict()) == before and not again.has("smashed") and (reused or not LevelCache.enabled),
+		"a retry plays the very same level, a copy of its build (reused: %s), the doodad whole in its data" % reused)
 	await _run_until(w, limit, func() -> bool: return w.player.distance >= float(again["start"]) - 8.0)
 	var rebuilt: DashBreakable = _breakable_for(w.track, again)
 	check(rebuilt != null and not rebuilt.is_smashed() and rebuilt.visible

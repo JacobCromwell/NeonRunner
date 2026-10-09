@@ -690,8 +690,9 @@ func _test_world_crumble() -> void:
 ## It stays broken for the rest of the attempt, and a retry rebuilds it whole. A quick run of Corporate 1 at 3
 ## lanes (its own seed, the walls' introduction moved to the run-up's end so the first comes early; god mode and
 ## no falls, the runner keeping to the middle lane) crashes through its first wall. Through a death and a revive
-## it stays broken (its entry marked, nothing standing there). LevelRun's retry generates the level again: the
-## very same layout as before the crash, the wall whole on the track.
+## it stays broken (its entry marked, nothing standing there). LevelRun's retry plays a fresh copy of the level's
+## build (LevelCache, task PERF2; the crash marked only the attempt's own copy): the very same layout as before the
+## crash, the wall whole on the track.
 func _test_retry() -> void:
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
@@ -726,11 +727,13 @@ func _test_retry() -> void:
 	check(run.state == LevelRun.State.RUNNING and w.player.alive and bool(wall.get("smashed", false)) and not _standing_at(w, wall),
 		"through a death and a revive it stays broken: nothing builds it again")
 	run.restart(run.context.retry())
+	var reused: bool = LevelCache.last_reused
 	await tree.physics_frame
 	w = run.world
 	var again: Dictionary = w.layout.dash_walls[0]
-	check(JSON.stringify(w.layout.to_dict()) == before and not again.has("smashed"),
-		"a retry generates the very same level, the wall whole in its data")
+	check(JSON.stringify(w.layout.to_dict()) == before and not again.has("smashed") and not again.has("broken_by")
+		and (reused or not LevelCache.enabled),
+		"a retry plays the very same level, a copy of its build (LevelCache, task PERF2; reused: %s), the wall whole in its data" % reused)
 	await _run_until(w, limit, func() -> bool: return w.player.distance >= float(again["start"]) - 30.0)
 	var rebuilt: DashBreakable = w.track.dash_wall_for(again)
 	check(rebuilt != null and not rebuilt.is_smashed() and rebuilt.visible and rebuilt.collision_layer == TrackBuilder.LAYER_DASH_WALL
