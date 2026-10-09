@@ -12,6 +12,13 @@ extends SkinSuite
 ## - the generator: Zone 2 on places a few, deterministically, rarely on both walls, clear of every
 ##   keep-out (WallGapPlacement.keep_outs) and with no wall credit inside one; City levels and every
 ##   boss arena have none, and a level is otherwise the same without the feature.
+## - a level's own numbers (LevelConfig.wall_gap_tuning, task D10b): null in every campaign level, which places
+##   its gaps by the shared file (a copy of its numbers builds the same level); a level's own numbers are the
+##   ones it's built by, and change nothing but its wall gaps and the wall credits a gap takes;
+## - open walls (WallGapTuning.coverage_target, the Beach's; task D10b) on made-up tracks at 3, 5 and 6 lanes:
+##   each wall opens what its keep-outs leave free in stretches at least open_seconds_min long, down to its
+##   target, both walls at once within both_open_max; a wall whose keep-outs leave too little stands more, and
+##   nothing opens through a keep-out (test_beach_levels checks the Beach's real levels).
 
 const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "corporate/1",
 	"corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
@@ -45,6 +52,8 @@ func run() -> void:
 	_test_campaign_levels()
 	_test_without()
 	_test_bosses()
+	_test_level_tuning()
+	_test_open_walls()
 
 
 static func _layout(lanes: int, gaps: Array, length: float = 400.0) -> LevelLayout:
@@ -203,7 +212,6 @@ func _test_refused_entry() -> void:
 
 ## The generator: Zone 2 on, deterministic, rare, rarely on both walls, clear of the keep-outs.
 func _test_campaign_levels() -> void:
-	var t: WallGapTuning = WallGapPlacement.tuning()
 	var per_minute: Array[float] = []
 	var events: int = 0
 	var bilateral: int = 0
@@ -215,6 +223,7 @@ func _test_campaign_levels() -> void:
 				if k > 0:
 					config.level_seed = 7300 + k
 				var tag: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
+				var t: WallGapTuning = WallGapPlacement.tuning_for(config)
 				var patterns: Array = LevelGenerator.load_for(config)
 				var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
 				var layout: LevelLayout = gen.layout
@@ -311,3 +320,173 @@ func _test_bosses() -> void:
 				continue
 			var boss_config: LevelConfig = campaign.configure_boss(step, 5)
 			check(not boss_config.has_feature(WallGapPlacement.FEATURE), "%s's campaign fight lists no wall gaps" % def.id)
+
+
+## Task D10b: a level's own numbers (LevelConfig.wall_gap_tuning). Every campaign level has none and places its
+## gaps by the shared file, as before; a level built with a copy of the shared numbers is the same level; a
+## level's own numbers are the ones it's built by, and they change nothing but its wall gaps (and the wall
+## credits a gap takes).
+func _test_level_tuning() -> void:
+	var shared: WallGapTuning = WallGapPlacement.tuning()
+	check(shared.resource_path == WallGapPlacement.TUNING_PATH and not shared.opens_walls(),
+		"the shared numbers are %s, with open walls off" % WallGapPlacement.TUNING_PATH)
+	check(WallGapPlacement.tuning_for(null) == shared, "no level: the shared numbers")
+	for s: CampaignStep in campaign.steps():
+		if s.is_level():
+			check(s.level.wall_gap_tuning == null and WallGapPlacement.tuning_for(campaign.configure(s, 5)) == shared,
+				"%s has no wall-gap numbers of its own: the shared ones" % s.id)
+	for id: String in ["gangland/1", "corporate/2"]:
+		var config: LevelConfig = campaign.configure(campaign.step(id), 5)
+		var patterns: Array = LevelGenerator.load_for(config)
+		var base: LevelLayout = LayoutCache.generate(config, tuning, patterns)
+		var copy: LevelConfig = config.duplicate() as LevelConfig
+		copy.wall_gap_tuning = shared.duplicate() as WallGapTuning
+		check(WallGapPlacement.tuning_for(copy) == copy.wall_gap_tuning, "%s: a level's own numbers are the ones it uses" % id)
+		var same: LevelLayout = LevelGenerator.new().generate(copy, tuning, patterns)
+		check(JSON.stringify(same.to_dict()) == JSON.stringify(base.to_dict()),
+			"%s with a copy of the shared numbers of its own is the same level" % id)
+		var longer: WallGapTuning = shared.duplicate() as WallGapTuning
+		longer.length_seconds_min = 2.5
+		longer.length_seconds_max = 2.5
+		copy.wall_gap_tuning = longer
+		var other: LevelLayout = LevelGenerator.new().generate(copy, tuning, patterns)
+		var v: float = config.movement_for(tuning).run_speed
+		var exact: bool = not other.wall_gaps.is_empty()
+		for g: Dictionary in other.wall_gaps:
+			exact = exact and absf(float(g["end"]) - float(g["start"]) - 2.5 * v) < 0.01
+		check(exact, "%s: its own numbers place its gaps (all 2.5 s long): %s" % [id, other.wall_gaps.slice(0, 3)])
+		var a: Dictionary = other.to_dict()
+		var b: Dictionary = base.to_dict()
+		for key: String in ["wall_gaps", "credits"]:
+			a.erase(key)
+			b.erase(key)
+		check(JSON.stringify(a) == JSON.stringify(b), "%s: its own numbers change nothing but the wall gaps" % id)
+		var kept: bool = true
+		for c: Dictionary in other.credits:
+			kept = kept and base.credits.has(c)
+		check(kept, "%s: they take wall credits away, never add any" % id)
+
+
+## Open walls (WallGapTuning.coverage_target; task D10b) on made-up 3000 m tracks at the reference speed, at 3, 5
+## and 6 lanes:
+## - nothing on the walls: each wall opens to its target in long stretches, the second taking what the first
+##   left standing, so both walls are open at once only where they meet;
+## - signs every 40 m along the left wall: no stretch between them is long enough to open, so that wall stands
+##   whole, and the right wall still opens to its target;
+## - a target of 0.8 on both walls: at most both_open_max of the track is open on both walls at once;
+## - a ceiling over the outer lanes, signs, a wall fence, a window cyborg and a ramp: no gap reaches into what
+##   its wall keeps, and a free stretch shorter than open_seconds_min stays standing.
+## The same tracks with the shared numbers get the rare short gaps (open walls off).
+func _test_open_walls() -> void:
+	for lanes: int in [3, 5, 6]:
+		var tag: String = "(%d lanes)" % lanes
+		var open: WallGapTuning = WallGapPlacement.tuning().duplicate() as WallGapTuning
+		open.coverage_target = 0.5
+		open.open_seconds_min = 2.0
+		open.solid_seconds_min = 2.0
+		open.both_open_max = 0.3
+		# Nothing on the walls.
+		var gen: LevelGenerator = _open_walls_track(lanes, open, [])
+		var length: float = gen.layout.length
+		for side: int in [-1, 1]:
+			var spans: Array[Vector2] = gen.layout.wall_gap_spans(side, -INF, INF)
+			var stands: float = 1.0 - WallGapPlacement.span_total(spans) / length
+			check(absf(stands - 0.5) < 0.01, "an empty wall %d stands on its target half (%.3f) %s" % [side, stands, tag])
+			check(spans.size() == 1, "in one long open stretch %s: %s" % [tag, spans])
+		var both: float = WallGapPlacement.span_total(WallGapPlacement.spans_overlap(
+			gen.layout.wall_gap_spans(-1, -INF, INF), gen.layout.wall_gap_spans(1, -INF, INF))) / length
+		check(both < 0.1, "the second wall keeps what the first left standing: %.0f%% open on both %s" % [both * 100.0, tag])
+		_check_open_walls(gen, open, tag + " empty")
+		var rare: LevelGenerator = _open_walls_track(lanes, null, [])
+		var short: bool = not rare.layout.wall_gaps.is_empty()
+		for g: Dictionary in rare.layout.wall_gaps:
+			short = short and float(g["end"]) - float(g["start"]) <= WallGapPlacement.tuning().length_seconds_max * rare.speed + 0.01
+		check(short, "the shared numbers on the same track: the rare short gaps %s" % tag)
+		# Signs every 40 m on the left wall.
+		var signs: Array[Dictionary] = []
+		var at: float = 50.0
+		while at < 3000.0:
+			signs.append({"kind": "sign", "side": -1, "start": at, "end": at + 6.0})
+			at += 40.0
+		gen = _open_walls_track(lanes, open, signs)
+		check(gen.layout.wall_gap_spans(-1, -INF, INF).is_empty(), "a wall with no free stretch long enough stands whole %s" % tag)
+		var right: float = 1.0 - WallGapPlacement.span_total(gen.layout.wall_gap_spans(1, -INF, INF)) / length
+		check(absf(right - 0.5) < 0.01, "the other wall still opens to its target (%.3f) %s" % [right, tag])
+		_check_open_walls(gen, open, tag + " signs")
+		# A target of 0.8 on both walls: both open at once on at most both_open_max of the track.
+		var wide: WallGapTuning = open.duplicate() as WallGapTuning
+		wide.coverage_target = 0.8
+		gen = _open_walls_track(lanes, wide, [])
+		both = WallGapPlacement.span_total(WallGapPlacement.spans_overlap(gen.layout.wall_gap_spans(-1, -INF, INF),
+			gen.layout.wall_gap_spans(1, -INF, INF)))
+		check(both <= wide.both_open_max * length + 0.01 and both >= wide.both_open_max * length - 2.0 * wide.open_seconds_min * gen.speed,
+			"both walls open at once on at most both_open_max of the track (%.0f of %.0f m) %s" % [both, wide.both_open_max * length, tag])
+		_check_open_walls(gen, wide, tag + " wide")
+		# Pieces on the walls: nothing opens into what a wall keeps, nor a free stretch too short to open.
+		var pieces: Array[Dictionary] = [
+			{"kind": "hull", "start": 400.0, "end": 480.0},
+			{"kind": "sign", "side": 1, "start": 900.0, "end": 908.0},
+			{"kind": "sign", "side": 1, "start": 940.0, "end": 948.0},
+			{"kind": "wall_fence", "side": -1, "at": 1300.0},
+			{"kind": "enemy", "side": 1, "at": 1700.0},
+			{"kind": "ramp", "side": -1, "at": 2100.0},
+		]
+		gen = _open_walls_track(lanes, open, pieces)
+		check(gen.layout.wall_supported(1, 924.0), "a free stretch shorter than open_seconds_min stands %s" % tag)
+		check(gen.layout.wall_supported(-1, 440.0) and gen.layout.wall_supported(1, 440.0), "a ceiling over the outer lanes keeps both walls %s" % tag)
+		_check_open_walls(gen, open, tag + " pieces")
+
+
+## A made-up level with the wall_gaps feature, `tuning`'s own wall-gap numbers (null: the shared ones), a 3000 m
+## track and `pieces` on it ({kind: hull | sign | wall_fence | enemy | ramp, ...}), with its wall gaps placed.
+func _open_walls_track(lanes: int, own: WallGapTuning, pieces: Array[Dictionary]) -> LevelGenerator:
+	var config := LevelConfig.new()
+	config.id = &"open_walls"
+	config.lane_count = lanes
+	config.features = PackedStringArray([WallGapPlacement.FEATURE])
+	config.wall_gap_tuning = own
+	var layout: LevelLayout = RunSim.layout(lanes, 3000.0)
+	for p: Dictionary in pieces:
+		match String(p["kind"]):
+			"hull":
+				layout.hulls.append({"start": float(p["start"]), "end": float(p["end"])})
+			"sign":
+				layout.signs.append({"side": int(p["side"]), "start": float(p["start"]), "end": float(p["end"]),
+					"lanes": [layout.outer_lane(int(p["side"]))]})
+			"wall_fence":
+				layout.wall_fences.append({"side": int(p["side"]), "at": float(p["at"]), "band": "full",
+					"pulse_on": 1.0, "pulse_off": 1.5, "phase": 0.0})
+			"enemy":
+				layout.enemies.append({"type": "window_cyborg", "at": float(p["at"]), "lane": 0, "side": int(p["side"]),
+					"seed": 1, "params": {}})
+			"ramp":
+				layout.ramps.append({"side": int(p["side"]), "at": float(p["at"])})
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
+	WallGapPlacement.place(gen)
+	return gen
+
+
+## Open walls' rules on `gen`'s layout, with numbers `t`: each gap at least open_seconds_min long and clear of
+## its wall's keep-outs, between the run-up and the end-clear stretch; gaps on a wall never touch; each wall
+## open on no more than its target (and a step's worth), both walls at once on no more than both_open_max.
+func _check_open_walls(gen: LevelGenerator, t: WallGapTuning, tag: String) -> void:
+	var layout: LevelLayout = gen.layout
+	var min_open: float = t.open_seconds_min * gen.speed
+	var spans: Array = []
+	for side: int in [-1, 1]:
+		var mine: Array[Vector2] = layout.wall_gap_spans(side, -INF, INF)
+		spans.append(mine)
+		var keeps: Array[Vector2] = WallGapPlacement.keep_outs(gen, layout, side, t)
+		var prev: float = -INF
+		for g: Vector2 in mine:
+			check(g.y - g.x >= min_open - 0.01, "an open stretch at least open_seconds_min long (%.1f m) %s" % [g.y - g.x, tag])
+			check(g.x >= gen.config.start_clear_distance and g.y <= layout.length - gen.config.end_clear_distance,
+				"open between the run-up and the end-clear stretch %s" % tag)
+			check(g.x > prev + 0.01, "gaps on a wall never touch %s" % tag)
+			prev = g.y
+			for kp: Vector2 in keeps:
+				check(not (g.x < kp.y - 0.01 and g.y > kp.x + 0.01), "gap %s clear of keep-out %s %s" % [g, kp, tag])
+		check(WallGapPlacement.span_total(mine) <= t.coverage_target * layout.length + 0.01,
+			"wall %d open on no more than its target %s" % [side, tag])
+	var both: float = WallGapPlacement.span_total(WallGapPlacement.spans_overlap(spans[0], spans[1]))
+	check(both <= t.both_open_max * layout.length + 0.01, "both walls open at once within both_open_max %s" % tag)

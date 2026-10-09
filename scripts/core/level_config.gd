@@ -60,7 +60,8 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   generator places them, WallFencePlacement)
 ## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
 ##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena (no patterns:
-##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres)
+##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres, or the level's
+##   own, wall_gap_tuning)
 ## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
 ##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
 ##   so a level needs octodog or buzz_overdrive for it to appear)
@@ -161,6 +162,12 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## 0 turns it off: the level is built exactly as before. DESIGN-TBD: 1 in every campaign level with Octodogs
 ## or Buzz Overdrives (Gangland 2 on), so the player meets it several times before the Enforcer Truck.
 @export_range(0, 4) var charge_path_cyborgs: int = 0
+## The level's own side wall gaps (task D10b; the owner, October 9, 2026, on the Beach: "I want this zone to feel
+## more open ... have them appear about 50% of the time that they are now currently appearing"): the numbers
+## WallGapPlacement places the `wall_gaps` feature's gaps by (WallGapTuning). The Beach's levels take
+## data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length. Null: the shared
+## data/tuning/wall_gaps.tres (every campaign level), and the level is built exactly as before.
+@export var wall_gap_tuning: WallGapTuning
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are
