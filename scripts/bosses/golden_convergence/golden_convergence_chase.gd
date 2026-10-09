@@ -22,8 +22,9 @@ enum Mode { OFF, FOLLOW, DRIVEN, RETURN }
 const FADE_RATE: float = 3.0
 ## His shadow behind the runner: it ends this far behind them (the screen's bottom shows the floor from about
 ## 3 m behind the runner), this wide.
-const SHADOW_END: float = 1.2
-const SHADOW_WIDTH: float = 1.7
+const SHADOW_END: float = 0.6
+const SHADOW_LENGTH: float = 6.5
+const SHADOW_WIDTH: float = 2.0
 ## Where a balustrade's top is (out from the wall's line, over the causeway's edge) when the skin doesn't say.
 const BALUSTRADE_OUT: float = 0.55
 const BALUSTRADE_Y: float = 1.1
@@ -173,11 +174,11 @@ func _tick_signs(delta: float, behind: bool) -> void:
 	_shown = move_toward(_shown, 1.0 if out_of_view else 0.0, FADE_RATE * delta)
 	magnate.set_marker(magnate.global_position.x, _shown, alarm)
 	if out_of_view:
-		# Stretched forward from him to just behind the runner, so its end shows at the screen's bottom.
-		var start: float = d + rel
+		# Cast forward from him (the court's light behind him), its darkest at the screen's bottom edge just
+		# behind the runner, so it shows his lane.
 		var end: float = d - SHADOW_END
-		magnate.set_shadow(Vector3(magnate.global_position.x, 0.0, TrackGeometry.world_z((start + end) * 0.5)),
-			maxf(end - start, 1.0), SHADOW_WIDTH, _shown)
+		magnate.set_shadow(Vector3(magnate.global_position.x, 0.0, TrackGeometry.world_z(end - SHADOW_LENGTH * 0.5)),
+			SHADOW_LENGTH, SHADOW_WIDTH, _shown)
 	elif mode != Mode.OFF:
 		# In view: under him, smaller and fainter the higher he is.
 		var p: Vector3 = magnate.global_position

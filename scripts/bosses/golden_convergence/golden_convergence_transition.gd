@@ -48,7 +48,9 @@ var suit_down: bool = false
 
 var _done: Dictionary = {}
 var _plates: Array[Dictionary] = []
-var _suit_from: Transform3D
+## The suit's part of the transition goes on after he lands, until it's down: seconds into it.
+var _suit_falling: bool = false
+var _suit_time: float = 0.0
 var _leap_from: Vector3
 var _leap_rel: float = 0.0
 var _hurl_from: Vector3
@@ -76,6 +78,8 @@ func start() -> void:
 	suit.set_pipes_broken(-1, true)
 	suit.set_pipes_broken(1, true)
 	fall_side = -1 if boss.rng.randf() < 0.5 else 1
+	_suit_falling = true
+	_suit_time = 0.0
 	chase.drive(self)
 	magnate.hide_all()
 	magnate.immune_to_weapons = true
@@ -92,6 +96,17 @@ func start_hurl() -> void:
 	kind = &"hurl"
 	time = 0.0
 	hurls += 1
+	if not magnate.shown():
+		# A review starting past phase 4 (--phase=5): the suit's already gone, the feed his, he's behind.
+		boss.suit.visible = false
+		boss.suit.immune_to_weapons = true
+		var skin := boss.world.skin as GoldenCourtSkin
+		if skin != null:
+			skin.set_feed(1, 1.0, 0.0)
+		chase.begin(boss.player_lane())
+		chase.place(Vector3(boss.world.geo.lane_x(boss.player_lane()), 0.0,
+			TrackGeometry.world_z(boss.player_distance() - boss.tuning.chase_gap)), 0.0, 0.0)
+	magnate.immune_to_weapons = false
 	_hurl_from = magnate.global_position
 	var lane_x: float = boss.world.geo.lane_x(boss.player_lane())
 	_hurl_side = 1 if _hurl_from.x >= lane_x else -1
@@ -109,6 +124,9 @@ func busy() -> bool:
 
 func tick(delta: float) -> void:
 	_tick_plates(delta)
+	if _suit_falling:
+		_suit_time += delta
+		_tick_suit()
 	if kind == &"":
 		return
 	time += delta
@@ -132,27 +150,6 @@ func _tick_transition(delta: float) -> void:
 		boss.world.effects.shake(0.45, 0.6)
 	if _once(&"plates", t.plates_off_at):
 		_throw_plates()
-	# The suit: floating (and reeling a little) until it topples off the causeway's side.
-	var fall_k: float = clampf((time - t.suit_fall_at) / maxf(t.suit_fall_seconds, 0.05), 0.0, 1.0)
-	var base: Transform3D = boss.suit_transform()
-	if time < t.suit_fall_at:
-		suit.reel = 0.35 * sin(PI * clampf(time / maxf(t.suit_fall_at, 0.05), 0.0, 1.0))
-		suit.set_pose(base)
-		_suit_from = base
-	elif not suit_down:
-		var e: float = fall_k * fall_k
-		var roll := Basis(Vector3.BACK, -fall_side * SUIT_ROLL * e)
-		var at: Vector3 = base.origin + Vector3(fall_side * SUIT_OUT * (1.0 - (1.0 - fall_k) * (1.0 - fall_k)), -SUIT_DOWN * e, 0.0)
-		suit.set_pose(Transform3D(base.basis * roll, at))
-		if _once(&"fall_sound", t.suit_fall_at):
-			boss.sound(&"magnate_suit_fall", boss.sound_point(at))
-		if fall_k >= 1.0:
-			suit_down = true
-			suit.visible = false
-			var splash := Vector3(fall_side * (boss.world.geo.wall_x() + 25.0), -18.0, at.z)
-			boss.world.effects.burst(splash, Color(0.75, 0.72, 0.66), 50, 5.0)
-			boss.world.effects.shake(0.4, 0.5)
-			boss.log_event(&"suit_down", {"side": fall_side})
 	# He claws out of the man's room, roars, and leaps over the runner.
 	if time < t.claw_at:
 		return
@@ -162,6 +159,8 @@ func _tick_transition(delta: float) -> void:
 		# Out of the cavity onto the chest's rim, facing the runner.
 		var at: Vector3 = cavity + suit.global_transform.basis * Vector3(0.0, -0.6 + 0.6 * k, -1.8 * (1.0 - k))
 		magnate.play(&"claw" if time < t.roar_at else &"roar")
+		# Burning from the blast: his cracks smoulder bright as he comes out of the dark, settling as he roars.
+		magnate.crack_light = lerpf(3.0, 1.0, clampf((time - t.roar_at) / 0.8, 0.0, 1.0))
 		chase.place(at, PI, delta)
 		if _once(&"emerge", t.claw_at):
 			boss.log_event(&"magnate_emerges")
@@ -194,6 +193,34 @@ func _tick_transition(delta: float) -> void:
 		magnate.immune_to_weapons = false
 		chase.begin(boss.player_lane())
 		boss.log_event(&"transition_done")
+
+
+## The suit: floating (and reeling a little from the burst) until it topples off the causeway's side into the
+## pools, pacing the runner, never over the track; then it's gone.
+func _tick_suit() -> void:
+	var t: GoldenConvergenceTuning = boss.tuning
+	var suit: GoldenConvergenceSuit = boss.suit
+	var fall_k: float = clampf((_suit_time - t.suit_fall_at) / maxf(t.suit_fall_seconds, 0.05), 0.0, 1.0)
+	var base: Transform3D = boss.suit_transform()
+	if _suit_time < t.suit_fall_at:
+		suit.reel = 0.35 * sin(PI * clampf(_suit_time / maxf(t.suit_fall_at, 0.05), 0.0, 1.0))
+		suit.set_pose(base)
+		return
+	var e: float = fall_k * fall_k
+	var roll := Basis(Vector3.BACK, -fall_side * SUIT_ROLL * e)
+	var at: Vector3 = base.origin + Vector3(fall_side * SUIT_OUT * (1.0 - (1.0 - fall_k) * (1.0 - fall_k)), -SUIT_DOWN * e, 0.0)
+	suit.set_pose(Transform3D(base.basis * roll, at))
+	if not _done.has(&"fall_sound"):
+		_done[&"fall_sound"] = true
+		boss.sound(&"magnate_suit_fall", boss.sound_point(at))
+	if fall_k >= 1.0:
+		_suit_falling = false
+		suit_down = true
+		suit.visible = false
+		var splash := Vector3(fall_side * (boss.world.geo.wall_x() + 25.0), -18.0, at.z)
+		boss.world.effects.burst(splash, Color(0.75, 0.72, 0.66), 50, 5.0)
+		boss.world.effects.shake(0.4, 0.5)
+		boss.log_event(&"suit_down", {"side": fall_side})
 
 
 ## The feed's glitch fading out after the switch to his face.
@@ -270,6 +297,7 @@ func _tick_hurl(delta: float) -> void:
 ## Nothing under way; thrown plates gone (a fresh phase, a test).
 func clear() -> void:
 	kind = &""
+	_suit_falling = false
 	for pl: Dictionary in _plates:
 		if is_instance_valid(pl["node"]):
 			(pl["node"] as Node).queue_free()

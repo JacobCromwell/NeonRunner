@@ -48,7 +48,8 @@ var rise: float = 0.0
 ## The jaw's opening (0-1) over what his anim gives; the head's turn (radians, + to his left).
 var jaw_open: float = 0.0
 var head_turn: float = 0.0
-## 0-1: the light in his cracks (times the tuning's crack_glow), his convulsions, the ports' glow.
+## The light in his cracks (times the tuning's crack_glow: 1 his own, up to 3 burning from the burst), his
+## convulsions (0-1), the ports' glow (0-1).
 var crack_light: float = 1.0
 var shudder: float = 0.0
 var ports_glow: float = 0.0
@@ -158,7 +159,7 @@ func _build_rig() -> void:
 		node.name = "Cable%d" % i
 		node.position = sockets[i]
 		# Trailing back and a little out to its side.
-		node.rotation = Vector3(0.25, signf(sockets[i].x) * 0.25, 0.0)
+		node.rotation = Vector3(0.0, signf(sockets[i].x) * 0.18, 0.0)
 		_chest.add_child(node)
 		var mat: ShaderMaterial = GoldenConvergenceMagnateModel.cable_material(float(i) * 1.37)
 		var mesh: MeshInstance3D = MeshBatch.add_instance(node, m["cable"], "Wire")
@@ -532,7 +533,7 @@ func restore_cables() -> void:
 		var node: Node3D = c["node"]
 		node.top_level = false
 		node.position = c["socket"]
-		node.rotation = Vector3(0.25, signf((c["socket"] as Vector3).x) * 0.25, 0.0)
+		node.rotation = Vector3(0.0, signf((c["socket"] as Vector3).x) * 0.18, 0.0)
 		node.visible = true
 		c["on"] = true
 	cables_on = _cables.size()
@@ -551,16 +552,17 @@ func _process(delta: float) -> void:
 	if not _root.visible:
 		return
 	_animate(delta)
-	_body_material.set_shader_parameter(&"crack_glow", tuning.crack_glow * clampf(crack_light, 0.0, 1.0))
+	_body_material.set_shader_parameter(&"crack_glow", tuning.crack_glow * clampf(crack_light, 0.0, 3.0))
 	_body_material.set_shader_parameter(&"shudder", clampf(shudder, 0.0, 1.0))
 	var steady: bool = Settings.flashing_reduced
 	var pulse: float = 1.0 if steady else 0.85 + 0.15 * sin(_time * 7.0)
 	_port_material.emission_energy_multiplier = lerpf(PORT_DIM, PORT_BRIGHT, clampf(ports_glow, 0.0, 1.0)) * pulse
-	var ground: float = maxf(_chest.global_position.y - global_position.y, 0.2)
+	# The sockets' height over the ground (his back's, as he crouches, leaps or slumps).
+	var ground: float = maxf(_chest.global_position.y - global_position.y + 0.6 * tuning.magnate_scale, 0.2)
 	for c: Dictionary in _cables:
 		var mat: ShaderMaterial = c["material"]
 		if bool(c["on"]):
-			mat.set_shader_parameter(&"ground", ground + 0.4)
+			mat.set_shader_parameter(&"ground", ground / maxf(tuning.magnate_scale, 0.1))
 			mat.set_shader_parameter(&"trail", clampf(absf(rise) / 6.0, 0.0, 1.0) if anim in [&"leap", &"hurl"] else 0.0)
 		else:
 			_fly_cable(c, delta)

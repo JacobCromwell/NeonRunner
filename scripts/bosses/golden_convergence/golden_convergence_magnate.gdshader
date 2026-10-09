@@ -21,7 +21,7 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 
 // The warm white in his cracks (0: none), the cracks' cells per metre, their colours (sRGB).
 uniform float crack_glow = 0.55;
-uniform float crack_scale = 3.6;
+uniform float crack_scale = 6.5;
 uniform vec3 crack_color : source_color = vec3(1.0, 0.93, 0.82);
 uniform vec3 crack_dark : source_color = vec3(0.03, 0.027, 0.025);
 // The court's warm key light (world space) and the cool fill from the vault.
@@ -97,17 +97,23 @@ void fragment() {
 	vec3 h = normalize(l + view_w);
 	float spec = pow(max(dot(n, h), 0.0), 18.0) * (0.25 + 0.5 * v_param);
 	col += base * spec * metal * 0.9;
-	// The cracks: the cell network on this face's main plane (in his own space).
+	// The cracks: the cell network on this face's main plane (in his own space), fine and uneven.
 	vec3 on = abs(normalize(cross(dFdx(v_obj), dFdy(v_obj))));
 	vec2 q = on.y > max(on.x, on.z) ? v_obj.xz : (on.x > on.z ? v_obj.zy : v_obj.xy);
+	q += vec2(value_noise(q * 2.3), value_noise(q * 2.3 + 7.1)) * 0.12;
 	vec2 c = cells(q * crack_scale);
 	float aa = fwidth(c.x) + 1e-4;
-	float crack = (1.0 - smoothstep(0.07, 0.07 + aa * 1.5, c.x)) * v_crack;
-	float core = (1.0 - smoothstep(0.025, 0.025 + aa, c.x)) * v_crack;
+	// Wider and narrower as they run (burnt paper splits unevenly), fading where they get too fine to draw.
+	float w = 0.035 + 0.03 * value_noise(q * 5.0);
+	float fade = 1.0 - smoothstep(0.08, 0.3, aa);
+	float crack = (1.0 - smoothstep(w, w + aa * 1.5, c.x)) * v_crack * fade;
+	float core = (1.0 - smoothstep(w * 0.35, w * 0.35 + aa, c.x)) * v_crack * fade;
+	// Only some of them leak light, in patches, as if the broadcast shows through where he's burnt deepest.
+	float leak = smoothstep(0.45, 0.75, value_noise(q * 1.1 + 3.0));
 	// The plates between them, toned like burnt paper or slag.
-	col *= mix(1.0, mix(0.7, 1.2, c.y), v_crack);
+	col *= mix(1.0, mix(0.72, 1.18, c.y), v_crack);
 	col = mix(col, to_linear(crack_dark), crack);
-	// The cult's warm white leaking from the cracks' cores.
-	col += to_linear(crack_color) * core * crack_glow * 2.0;
+	// The cult's warm white leaking from those cracks' cores.
+	col += to_linear(crack_color) * core * leak * crack_glow * 1.5;
 	ALBEDO = col;
 }

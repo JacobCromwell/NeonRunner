@@ -32,28 +32,29 @@ extends RefCounted
 ## chest, the jaw's hinge on the head, the legs' tops (x mirrored: the front on the chest, the hind on the hips).
 const CHEST_PIVOT := Vector3(0.0, 1.22, -0.3)
 const HIPS_PIVOT := Vector3(0.0, 1.06, 0.42)
-const NECK_AT := Vector3(0.0, 0.2, -0.98)
-const JAW_AT := Vector3(0.0, -0.02, -0.62)
-const FRONT_LEG := Vector3(0.46, -0.1, -0.6)
-const HIND_LEG := Vector3(0.38, -0.06, 0.36)
+const NECK_AT := Vector3(0.0, 0.26, -1.05)
+const JAW_AT := Vector3(0.0, -0.02, -0.64)
+const FRONT_LEG := Vector3(0.5, -0.12, -0.62)
+const HIND_LEG := Vector3(0.36, -0.05, 0.32)
 const UPPER_FRONT: float = 0.74
 const LOWER_FRONT: float = 0.72
 const UPPER_HIND: float = 0.68
 const LOWER_HIND: float = 0.76
 ## The red ports along his spine (the chest's three, the hips' two), in their halves' space.
-const PORTS_CHEST: Array[Vector3] = [Vector3(0.0, 0.54, -0.62), Vector3(0.0, 0.6, -0.24), Vector3(0.0, 0.5, 0.14)]
-const PORTS_HIPS: Array[Vector3] = [Vector3(0.0, 0.45, 0.02), Vector3(0.0, 0.46, 0.38)]
-## The ribcage's ellipsoid (the chest's space) and the haunches' (the hips').
-const RIBS_AT := Vector3(0.0, 0.05, -0.3)
-const RIBS := Vector3(0.62, 0.56, 0.74)
-const HAUNCH_AT := Vector3(0.0, 0.0, 0.22)
-const HAUNCH := Vector3(0.52, 0.48, 0.62)
+const PORTS_CHEST: Array[Vector3] = [Vector3(0.0, 0.64, -0.62), Vector3(0.0, 0.69, -0.24), Vector3(0.0, 0.6, 0.14)]
+const PORTS_HIPS: Array[Vector3] = [Vector3(0.0, 0.41, 0.02), Vector3(0.0, 0.41, 0.38)]
+## The ribcage's ellipsoid (the chest's space) and the haunches' (the hips'): a hunched predator, his shoulders
+## high and broad, his haunches lower.
+const RIBS_AT := Vector3(0.0, 0.08, -0.3)
+const RIBS := Vector3(0.7, 0.62, 0.82)
+const HAUNCH_AT := Vector3(0.0, 0.0, 0.2)
+const HAUNCH := Vector3(0.46, 0.44, 0.56)
 const PORT_RADIUS: float = 0.12
 ## The broadcast cables' sockets on his back (the chest's space), and a cable's length and thickness.
-const CABLE_SOCKETS: Array[Vector3] = [Vector3(-0.22, 0.5, -0.44), Vector3(0.22, 0.5, -0.44), Vector3(-0.28, 0.48, -0.04),
-	Vector3(0.28, 0.48, -0.04), Vector3(-0.2, 0.42, 0.3), Vector3(0.2, 0.42, 0.3)]
+const CABLE_SOCKETS: Array[Vector3] = [Vector3(-0.24, 0.64, -0.44), Vector3(0.24, 0.64, -0.44), Vector3(-0.3, 0.58, -0.04),
+	Vector3(0.3, 0.58, -0.04), Vector3(-0.22, 0.44, 0.3), Vector3(0.22, 0.44, 0.3)]
 const CABLE_LENGTH: float = 5.6
-const CABLE_RADIUS: float = 0.075
+const CABLE_RADIUS: float = 0.055
 const CABLE_SEGMENTS: int = 14
 ## His body's extent at rest (his root's space): what a camera or a test sees of him (stun spans, the release).
 const BODY_LENGTH: float = 3.5
@@ -100,10 +101,10 @@ static func meshes() -> Dictionary:
 		"hips": _hips(),
 		"head": _head(),
 		"jaw": _jaw(),
-		"upper_front": _limb(UPPER_FRONT, 0.17, 0.13, 0.19, false),
-		"lower_front": _limb(LOWER_FRONT, 0.12, 0.1, 0.13, true),
-		"upper_hind": _limb(UPPER_HIND, 0.2, 0.15, 0.24, false),
-		"lower_hind": _limb(LOWER_HIND, 0.12, 0.1, 0.13, true),
+		"upper_front": _limb(UPPER_FRONT, 0.21, 0.16, 0.23, false),
+		"lower_front": _limb(LOWER_FRONT, 0.14, 0.11, 0.15, true),
+		"upper_hind": _limb(UPPER_HIND, 0.21, 0.15, 0.25, false),
+		"lower_hind": _limb(LOWER_HIND, 0.13, 0.1, 0.14, true),
 		"tatters": _tatters(),
 		"ports_chest": _ports(PORTS_CHEST),
 		"ports_hips": _ports(PORTS_HIPS),
@@ -237,7 +238,7 @@ static func _chest() -> ArrayMesh:
 	var paint := func(p: Vector3) -> Color: return _skin_at(p, 0.38)
 	_ellipsoid(s, RIBS_AT, RIBS, 6, 12, SKIN, 1.0, KIND_LIT, 0.0, -PI * 0.5, PI * 0.5, -PI, PI, Basis.IDENTITY, paint)
 	for side: float in [-1.0, 1.0]:
-		_ellipsoid(s, Vector3(side * 0.36, 0.3, -0.58), Vector3(0.34, 0.32, 0.4), 4, 8, SKIN, 1.0, KIND_LIT, 0.0,
+		_ellipsoid(s, Vector3(side * 0.42, 0.36, -0.6), Vector3(0.4, 0.38, 0.46), 4, 8, SKIN, 1.0, KIND_LIT, 0.0,
 			-PI * 0.3, PI * 0.5, -PI, PI, Basis(Vector3.BACK, side * 0.35), paint)
 	# The spine's ridge between the ports: bony knuckles, burnt; a dark socket's rim round each port.
 	for z: float in [-0.86, -0.43, -0.05, 0.34]:
@@ -280,9 +281,9 @@ static func _head() -> ArrayMesh:
 		-PI, PI, Basis(Vector3.RIGHT, 0.3), paint)
 	# The skull and the snout (the upper jaw).
 	var skull := Vector3(0.0, 0.12, -0.52)
-	var skull_r := Vector3(0.29, 0.28, 0.32)
+	var skull_r := Vector3(0.32, 0.31, 0.35)
 	_ellipsoid(s, skull, skull_r, 6, 10, SKIN, 1.0, KIND_LIT, 0.0, -PI * 0.5, PI * 0.5, -PI, PI, Basis.IDENTITY, paint)
-	_ellipsoid(s, Vector3(0.0, 0.02, -0.82), Vector3(0.19, 0.13, 0.2), 4, 8, SKIN_DARK, 1.0, KIND_LIT, 0.0, -PI * 0.15,
+	_ellipsoid(s, Vector3(0.0, 0.01, -0.86), Vector3(0.21, 0.14, 0.24), 4, 8, SKIN_DARK, 1.0, KIND_LIT, 0.0, -PI * 0.15,
 		PI * 0.5, -PI, PI, Basis.IDENTITY, paint)
 	# The mask on his left: a shell of cast gold over that half of his face (from the snout's middle round to
 	# the side of his head), fused on, its rim a little proud of the skin.
@@ -291,32 +292,45 @@ static func _head() -> ArrayMesh:
 		-PI, -PI * 0.52)
 	_ellipsoid(s, Vector3(-0.005, 0.02, -0.83), Vector3(0.205, 0.145, 0.215), 3, 3, MASK_GOLD, 0.0, KIND_METAL, 0.65,
 		-PI * 0.1, PI * 0.45, -PI, -PI * 0.55)
-	# Its closed eye: a heavy lid's crease curving down; the tear from under it down the cheek, a dull red
-	# (unpolished: it never glows).
-	var eye_l: Vector3 = skull + Vector3(-0.13, 0.08, -0.32)
+	# Its closed eye on the mask's surface: a heavy lid's crease curving down; the tear from under it down the
+	# cheek, a dull red (unpolished: it never glows).
+	var mask_at: Vector3 = skull + Vector3(0.0, 0.0, -0.02)
+	var eye_l := Vector2(-0.14, skull.y + 0.08)
 	for k: int in 4:
 		var a0: float = lerpf(-1.0, 1.0, float(k) / 4.0)
 		var a1: float = lerpf(-1.0, 1.0, float(k + 1) / 4.0)
-		var p0: Vector3 = eye_l + Vector3(a0 * 0.075, -0.018 * (1.0 - a0 * a0), -0.01)
-		var p1: Vector3 = eye_l + Vector3(a1 * 0.075, -0.018 * (1.0 - a1 * a1), -0.01)
-		_quad(s, p0, p1, p1 + Vector3(0.0, -0.016, 0.0), p0 + Vector3(0.0, -0.016, 0.0), Vector3(0.0, 0.0, -1.0), MASK_CREASE, 0.0)
-	var tear0: Vector3 = eye_l + Vector3(0.02, -0.05, -0.012)
-	var tear1: Vector3 = eye_l + Vector3(0.035, -0.19, 0.02)
-	_quad(s, tear0 + Vector3(-0.012, 0.0, 0.0), tear0 + Vector3(0.012, 0.0, 0.0), tear1 + Vector3(0.016, 0.0, 0.0),
-		tear1 + Vector3(-0.016, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), TEAR, 0.0)
-	_ellipsoid(s, tear1 + Vector3(0.0, -0.018, 0.0), Vector3(0.024, 0.026, 0.012), 2, 4, TEAR, 0.0)
+		var q0 := Vector2(eye_l.x + a0 * 0.085, eye_l.y - 0.022 * (1.0 - a0 * a0))
+		var q1 := Vector2(eye_l.x + a1 * 0.085, eye_l.y - 0.022 * (1.0 - a1 * a1))
+		_quad(s, _on(mask_at, mask_r, q0, 0.012), _on(mask_at, mask_r, q1, 0.012), _on(mask_at, mask_r, q1 + Vector2(0.0, -0.02), 0.012),
+			_on(mask_at, mask_r, q0 + Vector2(0.0, -0.02), 0.012), Vector3(0.0, 0.0, -1.0), MASK_CREASE, 0.0)
+	var t0 := Vector2(eye_l.x + 0.025, eye_l.y - 0.055)
+	var t1 := Vector2(eye_l.x + 0.04, eye_l.y - 0.21)
+	_quad(s, _on(mask_at, mask_r, t0 + Vector2(-0.013, 0.0), 0.014), _on(mask_at, mask_r, t0 + Vector2(0.013, 0.0), 0.014),
+		_on(mask_at, mask_r, t1 + Vector2(0.017, 0.0), 0.014), _on(mask_at, mask_r, t1 + Vector2(-0.017, 0.0), 0.014),
+		Vector3(0.0, 0.0, -1.0), TEAR, 0.0)
+	_ellipsoid(s, _on(mask_at, mask_r, t1 + Vector2(0.0, -0.02), 0.01), Vector3(0.026, 0.028, 0.014), 2, 4, TEAR, 0.0)
 	# His real eye on the right: wide and pale, its pupil dark, under a heavy brow knotted in rage.
-	var eye_r: Vector3 = skull + Vector3(0.14, 0.07, -0.3)
-	_ellipsoid(s, eye_r, Vector3(0.06, 0.045, 0.03), 2, 6, EYE, 0.0)
-	_ellipsoid(s, eye_r + Vector3(0.0, 0.0, -0.024), Vector3(0.022, 0.026, 0.01), 2, 4, PUPIL, 0.0)
-	_quad(s, eye_r + Vector3(-0.09, 0.07, -0.04), eye_r + Vector3(0.1, 0.11, 0.0), eye_r + Vector3(0.1, 0.06, 0.03),
-		eye_r + Vector3(-0.09, 0.03, -0.05), Vector3(0.2, 0.6, -1.0), SKIN_DARK, 1.0)
+	var eye_q := Vector2(0.15, skull.y + 0.07)
+	var eye_r: Vector3 = _on(skull, skull_r, eye_q, 0.0)
+	_ellipsoid(s, eye_r, Vector3(0.065, 0.048, 0.032), 2, 6, EYE, 0.0)
+	_ellipsoid(s, eye_r + Vector3(0.0, 0.0, -0.026), Vector3(0.024, 0.028, 0.01), 2, 4, PUPIL, 0.0)
+	_quad(s, _on(skull, skull_r, eye_q + Vector2(-0.1, 0.075), 0.03), _on(skull, skull_r, eye_q + Vector2(0.11, 0.12), 0.03),
+		_on(skull, skull_r, eye_q + Vector2(0.11, 0.07), 0.05), _on(skull, skull_r, eye_q + Vector2(-0.1, 0.035), 0.05),
+		Vector3(0.2, 0.6, -1.0), SKIN_DARK, 1.0)
 	# The upper teeth, under the snout's rim (his real side's bared, the mask's shut behind its gold).
+	var snout := Vector3(0.0, 0.01, -0.86)
+	var snout_r := Vector3(0.21, 0.14, 0.24)
 	for k: int in 5:
-		var x: float = lerpf(-0.04, 0.15, float(k) / 4.0)
-		var z: float = -0.92 + absf(x) * 0.6
-		_spike(s, Vector3(x, -0.06, z), Vector3(x, -0.17, z - 0.01), 0.025, 3, BONE, 0.0)
+		var x: float = lerpf(-0.04, 0.17, float(k) / 4.0)
+		var z: float = snout.z - snout_r.z * sqrt(maxf(1.0 - pow(x / snout_r.x, 2.0), 0.0)) * 0.9
+		_spike(s, Vector3(x, -0.04, z), Vector3(x, -0.16, z - 0.01), 0.026, 3, BONE, 0.0)
 	return batch.to_mesh()
+
+
+## The point on the front (-z) of the ellipsoid at `center` with `radii` at (x, y) = `q`, `lift` out from it.
+static func _on(center: Vector3, radii: Vector3, q: Vector2, lift: float) -> Vector3:
+	var k: float = 1.0 - pow((q.x - center.x) / radii.x, 2.0) - pow((q.y - center.y) / radii.y, 2.0)
+	return Vector3(q.x, q.y, center.z - radii.z * sqrt(maxf(k, 0.0)) - lift)
 
 
 ## The lower jaw (its hinge at the origin, reaching forward along -z) and its teeth.
@@ -324,7 +338,7 @@ static func _jaw() -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(null)
 	var paint := func(p: Vector3) -> Color: return _skin_at(p + Vector3(0.0, 9.0, 0.0), 0.1)
-	_ellipsoid(s, Vector3(0.0, -0.06, -0.24), Vector3(0.18, 0.08, 0.28), 3, 8, SKIN_DARK, 1.0, KIND_LIT, 0.0, -PI * 0.5,
+	_ellipsoid(s, Vector3(0.0, -0.07, -0.26), Vector3(0.2, 0.085, 0.3), 3, 8, SKIN_DARK, 1.0, KIND_LIT, 0.0, -PI * 0.5,
 		PI * 0.5, -PI, PI, Basis.IDENTITY, paint)
 	# The mouth's inside: dark (never red: red is the weak points' and the warnings').
 	_quad(s, Vector3(-0.13, 0.0, -0.06), Vector3(0.13, 0.0, -0.06), Vector3(0.1, 0.0, -0.44), Vector3(-0.1, 0.0, -0.44),
@@ -361,12 +375,12 @@ static func _tatters() -> ArrayMesh:
 	var s: MeshLayer = batch.layer(null)
 	var roots: Array[Vector3] = [Vector3(-0.5, 0.36, -0.62), Vector3(0.5, 0.36, -0.62), Vector3(-0.3, 0.52, -0.15),
 		Vector3(0.32, 0.5, -0.1), Vector3(0.0, 0.56, 0.12), Vector3(-0.46, 0.3, 0.2), Vector3(0.48, 0.28, 0.24)]
-	var lengths: Array[float] = [1.05, 0.95, 1.35, 1.2, 1.5, 0.9, 1.0]
+	var lengths: Array[float] = [1.5, 1.35, 1.9, 1.7, 2.1, 1.3, 1.45]
 	for i: int in roots.size():
 		var root: Vector3 = roots[i]
 		var side: float = signf(root.x) if absf(root.x) > 0.05 else 0.0
 		var length: float = lengths[i]
-		var width: float = 0.3 - 0.03 * float(i % 3)
+		var width: float = 0.42 - 0.04 * float(i % 3)
 		var segs: int = 4
 		var prev_l := Vector3.ZERO
 		var prev_r := Vector3.ZERO
