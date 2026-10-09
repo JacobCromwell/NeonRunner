@@ -235,7 +235,7 @@ func look_tick(delta: float) -> void:
 func _tick_hatches(delta: float) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var want: float = 0.0
-	if stage in [Stage.HATCH, Stage.CLIMB]:
+	if stage == Stage.HATCH or stage == Stage.CLIMB:
 		want = 1.0
 	if stage == Stage.CLIMB and not plan.is_empty():
 		# Shut again once the last missile is out.

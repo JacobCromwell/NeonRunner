@@ -101,7 +101,7 @@ func busy() -> bool:
 
 ## A warning shows or the crash is live (pickups and the bot read it).
 func warning_on() -> bool:
-	return stage in [Stage.ROAR, Stage.FLIGHT, Stage.CRASH]
+	return stage == Stage.ROAR or stage == Stage.FLIGHT or stage == Stage.CRASH
 
 
 ## True while he lies stunned (his weak points live).

@@ -105,11 +105,16 @@ var _feed_t: float = 0.0
 var _ride_sound: float = 0.0
 var _hatch: float = 0.0
 var _hatch_side: int = -1
-## A ship move under way blends from where it was: {x, y, rel, roll, pitch} at its start.
-var _from: Dictionary = {}
+## A ship move under way blends from where it was at its start: its place relative to the runner (x, y, and its
+## middle this far ahead of the runner) and its turn (pitch, yaw, roll). E5d polish: two vectors, not a Dictionary
+## made a frame.
+var _from_at := Vector3.ZERO
+var _from_turn := Vector3.ZERO
 var _move_t: float = 0.0
-## The ship's pose relative to the runner, as last placed.
-var _rel: Dictionary = {}
+## The ship's pose relative to the runner as last placed (the same two), and whether it has been since it came.
+var _rel_at := Vector3.ZERO
+var _rel_turn := Vector3.ZERO
+var _placed: bool = false
 var _riding: bool = false
 
 
@@ -174,7 +179,8 @@ func start(beat: Dictionary) -> void:
 	ship.set_shown(true)
 	ship.set_belly(false)
 	_set_ship(ShipStage.ARRIVE)
-	_from = _arrive_from()
+	_from_at = _arrive_at()
+	_from_turn = _arrive_turn()
 	_place_ship(d)
 	boss.squadron.hurl_rise = HURL_RISE_DEFAULT
 	boss.strafe.start({"kind": &"refill", "arg": script})
@@ -466,8 +472,7 @@ func _blast_lands() -> void:
 
 # --- The ship's flight --------------------------------------------------------------------------------
 
-## Where the ship is relative to the runner for its stage: {x, y, rel (its middle ahead of the runner), roll,
-## pitch}, blended from where a move began.
+## Where the ship is relative to the runner for its stage (_pose_now), blended from where a move began.
 func _tick_ship(delta: float, d: float) -> void:
 	_move_t += delta
 	match ship_stage:
@@ -496,92 +501,96 @@ func _tick_ship(delta: float, d: float) -> void:
 
 func _set_ship(next: ShipStage) -> void:
 	if ship_stage != ShipStage.HIDDEN and ship_stage != ShipStage.GONE:
-		_from = _current_rel()
+		_from_at = _rel_at if _placed else _station_at()
+		_from_turn = _rel_turn if _placed else _station_turn()
 	ship_stage = next
 	_move_t = 0.0
 
 
 ## The ship's pose now, relative to the runner at `d`.
 func _place_ship(d: float) -> void:
-	var r: Dictionary = _rel_now(d)
-	_rel = r
-	var basis := Basis.from_euler(Vector3(float(r["pitch"]), float(r.get("yaw", 0.0)), float(r["roll"])))
-	ship.set_pose(Transform3D(basis, Vector3(float(r["x"]), float(r["y"]), TrackGeometry.world_z(d + float(r["rel"])))))
+	_pose_now(d)
+	_placed = true
+	ship.set_pose(Transform3D(Basis.from_euler(_rel_turn), Vector3(_rel_at.x, _rel_at.y, TrackGeometry.world_z(d + _rel_at.z))))
 
 
-func _current_rel() -> Dictionary:
-	return _rel.duplicate() if not _rel.is_empty() else _station()
-
-
-func _rel_now(d: float) -> Dictionary:
+## Its pose for its stage now, relative to the runner at `d`: sets _rel_at (x, y, its middle ahead of the runner)
+## and _rel_turn (pitch, yaw, roll).
+func _pose_now(d: float) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
+	var side: float = float(p.get("side", -1))
 	match ship_stage:
 		ShipStage.ARRIVE:
 			var k: float = _progress(d, float(p["start"]), float(p["arrive_to"]))
-			var out: Dictionary = _blend(_arrive_from(), _station(), 1.0 - pow(1.0 - k, 2.2))
-			out["roll"] = float(out["roll"]) - float(p["side"]) * 0.18 * sin(PI * k)
-			return out
+			var e: float = 1.0 - pow(1.0 - k, 2.2)
+			_rel_at = _arrive_at().lerp(_station_at(), e)
+			_rel_turn = _arrive_turn().lerp(_station_turn(), e) - Vector3(0.0, 0.0, side * 0.18 * sin(PI * k))
 		ShipStage.STATION, ShipStage.FINISH:
-			return _blend(_from, _station(), smoothstep(0.0, 1.0, clampf(_move_t / 0.6, 0.0, 1.0)))
+			_blend_to(_station_at(), _station_turn(), smoothstep(0.0, 1.0, clampf(_move_t / 0.6, 0.0, 1.0)))
 		ShipStage.DESCEND:
 			var k: float = smoothstep(0.0, 1.0, _progress(d, float(p["desc_from"]), float(p["desc_to"])))
-			var out: Dictionary = _blend(_from, _low(), k)
-			out["roll"] = float(out["roll"]) + float(p["side"]) * 0.22 * sin(PI * k)
-			return out
+			_blend_to(_low_at(), Vector3.ZERO, k)
+			_rel_turn.z += side * 0.22 * sin(PI * k)
 		ShipStage.LOW:
-			return _blend(_from, _low(), clampf(_move_t / 0.2, 0.0, 1.0))
+			_blend_to(_low_at(), Vector3.ZERO, clampf(_move_t / 0.2, 0.0, 1.0))
 		ShipStage.CLIMB:
-			var k: float = smoothstep(0.0, 1.0, _progress(d, float(p["miss_at"]), float(p["climb_to"])))
-			return _blend(_from, _station(), k)
+			_blend_to(_station_at(), _station_turn(), smoothstep(0.0, 1.0, _progress(d, float(p["miss_at"]), float(p["climb_to"]))))
 		ShipStage.LEAVE:
 			var k: float = _progress(d, float(p["finish_to"]), float(p["leave_to"]))
-			return _blend(_from, _leave_to(), k * k)
+			_blend_to(_leave_at(), _leave_turn(), k * k)
 		ShipStage.SPIN:
 			var k: float = clampf(_move_t / maxf(t.spin_seconds, 0.05), 0.0, 1.0)
-			var side: int = int(p["side"])
-			var out: Dictionary = _from.duplicate()
 			var e: float = k * k
-			out["x"] = float(_from["x"]) + side * (boss.world.geo.wall_x() + SPIN_OUT) * (1.0 - (1.0 - k) * (1.0 - k))
-			out["y"] = float(_from["y"]) - SPIN_DOWN * e
-			out["rel"] = float(_from["rel"]) + SPIN_AHEAD * k
-			out["roll"] = float(_from["roll"]) + side * SPIN_ROLL * e
-			out["pitch"] = float(_from["pitch"]) - 0.35 * k
-			out["yaw"] = -side * 0.4 * k
-			return out
-	return _station()
+			_rel_at = _from_at + Vector3(side * (boss.world.geo.wall_x() + SPIN_OUT) * (1.0 - (1.0 - k) * (1.0 - k)),
+				-SPIN_DOWN * e, SPIN_AHEAD * k)
+			_rel_turn = Vector3(_from_turn.x - 0.35 * k, -side * 0.4 * k, _from_turn.z + side * SPIN_ROLL * e)
+		_:
+			_rel_at = _station_at()
+			_rel_turn = _station_turn()
 
 
-## Its station beside the causeway on the fed shoulder's side (framing, gently bobbing).
-func _station() -> Dictionary:
+## The pose `k` (0-1) of the way from where the move began to `at` turned `turn`.
+func _blend_to(at: Vector3, turn: Vector3, k: float) -> void:
+	_rel_at = _from_at.lerp(at, k)
+	_rel_turn = _from_turn.lerp(turn, k)
+
+
+## Its station beside the causeway on the fed shoulder's side (framing, gently bobbing): where, and its turn.
+func _station_at() -> Vector3:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var side: int = int(p.get("side", -1))
-	return {"x": side * t.ship_side, "y": t.ship_station_height + 0.35 * sin(_t * 1.1), "rel": t.ship_station_ahead,
-		"roll": side * 0.04 * sin(_t * 0.7), "pitch": 0.0, "yaw": 0.0}
+	return Vector3(side * t.ship_side, t.ship_station_height + 0.35 * sin(_t * 1.1), t.ship_station_ahead)
 
 
-## Down over the causeway at the ceiling's height, the runner RIDER behind its middle.
-func _low() -> Dictionary:
-	return {"x": 0.0, "y": boss.world.tuning.ceiling_height, "rel": GoldenConvergenceShipModel.RIDER, "roll": 0.0,
-		"pitch": 0.0, "yaw": 0.0}
-
-
-func _arrive_from() -> Dictionary:
+func _station_turn() -> Vector3:
 	var side: int = int(p.get("side", -1))
-	return {"x": side * boss.tuning.ship_side * 0.6, "y": ARRIVE_HIGH, "rel": -ARRIVE_BEHIND, "roll": 0.0, "pitch": 0.12,
-		"yaw": 0.0}
+	return Vector3(0.0, 0.0, side * 0.04 * sin(_t * 0.7))
 
 
-func _leave_to() -> Dictionary:
+## Down over the causeway at the ceiling's height, the runner RIDER behind its middle (level).
+func _low_at() -> Vector3:
+	return Vector3(0.0, boss.world.tuning.ceiling_height, GoldenConvergenceShipModel.RIDER)
+
+
+## Where it comes in from: high, behind the runner, its nose a little down.
+func _arrive_at() -> Vector3:
 	var side: int = int(p.get("side", -1))
-	return {"x": side * boss.tuning.ship_side * LEAVE_OUT, "y": LEAVE_HIGH, "rel": LEAVE_AHEAD, "roll": side * 0.2,
-		"pitch": -0.12, "yaw": 0.0}
+	return Vector3(side * boss.tuning.ship_side * 0.6, ARRIVE_HIGH, -ARRIVE_BEHIND)
 
 
-static func _blend(a: Dictionary, b: Dictionary, k: float) -> Dictionary:
-	var out: Dictionary = {}
-	for key: String in ["x", "y", "rel", "roll", "pitch", "yaw"]:
-		out[key] = lerpf(float(a.get(key, 0.0)), float(b.get(key, 0.0)), k)
-	return out
+func _arrive_turn() -> Vector3:
+	return Vector3(0.12, 0.0, 0.0)
+
+
+## Where it goes as it leaves: far ahead, high, out to its side, banking away.
+func _leave_at() -> Vector3:
+	var side: int = int(p.get("side", -1))
+	return Vector3(side * boss.tuning.ship_side * LEAVE_OUT, LEAVE_HIGH, LEAVE_AHEAD)
+
+
+func _leave_turn() -> Vector3:
+	var side: int = int(p.get("side", -1))
+	return Vector3(-0.12, 0.0, side * 0.2)
 
 
 static func _progress(d: float, from: float, to: float) -> float:
@@ -677,8 +686,9 @@ func clear() -> void:
 	p = {}
 	ship_stage = ShipStage.HIDDEN
 	feed = FeedStage.NONE
-	_from = {}
-	_rel = {}
+	_from_at = Vector3.ZERO
+	_from_turn = Vector3.ZERO
+	_placed = false
 	_riding = false
 	if ship != null and is_instance_valid(ship):
 		ship.set_shown(false)

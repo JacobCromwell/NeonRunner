@@ -20,6 +20,8 @@ extends RefCounted
 
 ## Blockers start this far behind the runner.
 const BEHIND: float = 10.0
+## Both sides, left then right (a constant to go through: E5d polish, no list made a frame).
+const SIDES: Array[int] = [-1, 1]
 
 var boss: GoldenConvergence
 ## The open stretches: {id, side, from, to}.
@@ -45,7 +47,7 @@ func tick() -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var stretch: float = maxf(t.wall_block_stretch, 5.0)
 	var ahead: float = d + t.wall_block_ahead
-	for side: int in [-1, 1]:
+	for side: int in SIDES:
 		var from: float = maxf(float(_laid.get(side, -INF)), d - BEHIND)
 		while from < ahead:
 			_lay(side, from, from + stretch)

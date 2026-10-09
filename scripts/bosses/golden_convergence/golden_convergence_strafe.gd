@@ -50,6 +50,8 @@ const FOLLOW_RATE: float = 4.5
 const SWEEP_OUT: float = 9.0
 ## The live line stops burning at the latest this long after its sweep (a runner who's down), seconds.
 const LINE_TIMEOUT: float = 3.0
+## No pass (an empty, read-only stand-in: between passes).
+const NO_PASS: Dictionary = {}
 
 var squadron: GoldenConvergenceSquadron
 var fire: GoldenConvergenceFire
@@ -74,6 +76,18 @@ var _pace: float = 1.0
 var _hints: int = 0
 ## E5d-b: where the strafe will be over (ends_at).
 var _ends_at: float = -1.0
+## Drone i's pose now, as _pose() leaves it for _fly() (E5d polish: no Dictionary per drone a frame): where it
+## goes, whether it goes there exactly or eases, where it faces and aims (or the defaults: its way, ahead and
+## down), whether it fires, its guns' spin, its pitch.
+var _pose_pos := Vector3.ZERO
+var _pose_exact: bool = false
+var _pose_facing := Vector3.ZERO
+var _pose_faces: bool = false
+var _pose_aim := Vector3.ZERO
+var _pose_aims: bool = false
+var _pose_firing: bool = false
+var _pose_spin: float = 0.0
+var _pose_pitch: float = 0.15
 
 
 func _init(p_boss: GoldenConvergence) -> void:
@@ -90,7 +104,10 @@ func busy() -> bool:
 
 ## A pass warns or its fire is live.
 func warning_on() -> bool:
-	return current >= 0 and int(passes[current]["stage"]) in [PassStage.WARN, PassStage.FIRE]
+	if current < 0:
+		return false
+	var st: int = int(passes[current]["stage"])
+	return st == PassStage.WARN or st == PassStage.FIRE
 
 
 ## Starts a strafe flying `beat`'s script (its argument: "VVH", "VVHvVHv").
@@ -406,7 +423,7 @@ func _tick_line(p: Dictionary) -> void:
 			if lane == opening and not bool(p["sparked"]):
 				_spark(p)
 	# The walls: the one it starts from at once, the other as the sweep gets there.
-	for side: int in [-1, 1]:
+	for side: int in GoldenConvergenceCourt.SIDES:
 		var on: bool = side == -dir or s >= 1.0
 		var wall_open: bool = boss.court.is_open(side, line_at)
 		fire.set_line_wall(0, side, on, wall_open)
@@ -495,18 +512,16 @@ func _lane_side(lane: int) -> int:
 func _fly(delta: float) -> void:
 	var n: int = squadron.size()
 	var k: float = 1.0 - exp(-FOLLOW_RATE * delta)
-	var p: Dictionary = passes[current] if current >= 0 else {}
+	var p: Dictionary = passes[current] if current >= 0 else NO_PASS
 	for i: int in n:
-		var pose: Dictionary = _pose(i, p)
-		var at: Vector3 = pose["pos"]
+		_pose(i, p)
+		var at: Vector3 = _pose_pos
 		var now: Vector3 = squadron.drone_base(i) if squadron.flying(i) else boss.cape_point(i)
-		var exact: bool = bool(pose.get("exact", false))
-		var pos: Vector3 = at if exact else now.lerp(at, k)
-		var facing: Vector3 = pose.get("facing", at - now)
-		var aim: Vector3 = pose.get("aim", pos + Vector3(0.0, -3.0, 6.0))
-		var firing: bool = bool(pose.get("firing", false))
-		squadron.set_drone(i, pos, facing, aim, firing, float(pose.get("spin", 0.0)), float(pose.get("pitch", 0.15)))
-		if firing:
+		var pos: Vector3 = at if _pose_exact else now.lerp(at, k)
+		var facing: Vector3 = _pose_facing if _pose_faces else at - now
+		var aim: Vector3 = _pose_aim if _pose_aims else pos + Vector3(0.0, -3.0, 6.0)
+		squadron.set_drone(i, pos, facing, aim, _pose_firing, _pose_spin, _pose_pitch)
+		if _pose_firing:
 			fire.set_tracer(i, squadron.muzzle_point(i), aim)
 		else:
 			fire.hide_tracer(i)
@@ -514,37 +529,38 @@ func _fly(delta: float) -> void:
 		squadron.stow(i)
 
 
-## Drone `i`'s pose now ({pos, facing, aim, firing, spin, pitch, exact}) for pass `p` ({} between passes).
-func _pose(i: int, p: Dictionary) -> Dictionary:
+## Drone `i`'s pose now for pass `p` (NO_PASS between passes): fills the _pose_ fields (_fly).
+func _pose(i: int, p: Dictionary) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var geo: TrackGeometry = boss.world.geo
 	var d: float = boss.player_distance()
 	if stage == Stage.RETURN:
-		return {"pos": boss.cape_point(i), "facing": Vector3.FORWARD, "pitch": -0.1}
+		_set_pose(boss.cape_point(i), Vector3.FORWARD, -0.1)
+		return
 	if held:
 		# Led by the run's motion (the hold station paces the runner), so they hold at their places rather than
 		# trailing them by a follower's lag (speed / FOLLOW_RATE).
 		var held_at: Vector3 = hold_station.call(i) if hold_station.is_valid() else _station(i, d)
-		return {"pos": held_at + Vector3(0.0, 0.0, -boss.speed() / FOLLOW_RATE), "facing": Vector3.BACK}
+		_set_pose(held_at + Vector3(0.0, 0.0, -boss.speed() / FOLLOW_RATE), Vector3.BACK, 0.15)
+		return
 	if stage == Stage.EMERGE or p.is_empty():
-		return {"pos": _station(i, d), "facing": Vector3.BACK}
+		_set_pose(_station(i, d), Vector3.BACK, 0.15)
+		return
 	var warn: bool = int(p["stage"]) == PassStage.WARN
 	var tf: float = float(p["t"]) - t.warning_seconds
 	var spin: float = clampf(float(p["t"]) / t.warning_seconds, 0.0, 1.0) if warn else 1.0
 	if String(p["kind"]) == "H":
-		var lines: Array[float] = [float(p["line_at"])]
-		for s: Variant in p["shows"]:
-			lines.append(float(s))
-		var line: float = lines[mini(i, lines.size() - 1)]
+		# Drone 0 flies the live line, the others the lines for show (the last of them any more).
+		var shows: Array = p["shows"]
+		var line: float = float(p["line_at"]) if i == 0 or shows.is_empty() else float(shows[mini(i - 1, shows.size() - 1)])
 		var dir: int = int(p["dir"])
 		var half: float = geo.wall_x() + SWEEP_OUT
 		var s_now: float = 0.0 if warn else clampf(tf / maxf(t.sweep_seconds, 0.05), 0.0, 1.0)
 		var x: float = _sweep_x(s_now, dir, half)
-		var pos := Vector3(x, t.line_fly_height + 0.6 * i, TrackGeometry.world_z(line + 3.0))
-		var aim := Vector3(_sweep_x(s_now, dir, geo.wall_x() + 1.0), 0.1, TrackGeometry.world_z(line))
-		var firing: bool = not warn and s_now < 1.0 and (i == 0 or not p.has("shows_done"))
-		return {"pos": pos, "facing": Vector3(dir, 0.0, 0.0), "aim": aim, "firing": firing, "spin": spin, "exact": not warn,
-			"pitch": 0.2}
+		_set_pose(Vector3(x, t.line_fly_height + 0.6 * i, TrackGeometry.world_z(line + 3.0)), Vector3(dir, 0.0, 0.0), 0.2)
+		_set_aim(Vector3(_sweep_x(s_now, dir, geo.wall_x() + 1.0), 0.1, TrackGeometry.world_z(line)),
+			not warn and s_now < 1.0 and (i == 0 or not p.has("shows_done")), spin, not warn)
+		return
 	var lanes: Array = p["lanes"]
 	var behind: bool = String(p["kind"]) == "v"
 	var lane: int = -1
@@ -565,11 +581,30 @@ func _pose(i: int, p: Dictionary) -> Dictionary:
 	else:
 		front = float(p["front"])
 	var ahead: float = -t.rake_lead if behind else t.rake_lead
-	var pos := Vector3(x, y, TrackGeometry.world_z(front + ahead))
-	var aim := Vector3(x, 0.1, TrackGeometry.world_z(front))
-	var firing: bool = not warn and climb <= 0.0
-	return {"pos": pos, "facing": Vector3.FORWARD if behind else Vector3.BACK, "aim": aim, "firing": firing,
-		"spin": spin if climb <= 0.0 else 0.2, "exact": not warn, "pitch": 0.3}
+	_set_pose(Vector3(x, y, TrackGeometry.world_z(front + ahead)), Vector3.FORWARD if behind else Vector3.BACK, 0.3)
+	_set_aim(Vector3(x, 0.1, TrackGeometry.world_z(front)), not warn and climb <= 0.0, spin if climb <= 0.0 else 0.2,
+		not warn)
+
+
+## A pose going to `pos` (easing), facing `facing`, at `pitch`, aiming ahead and down, holding its fire.
+func _set_pose(pos: Vector3, facing: Vector3, pitch: float) -> void:
+	_pose_pos = pos
+	_pose_exact = false
+	_pose_facing = facing
+	_pose_faces = true
+	_pose_aims = false
+	_pose_firing = false
+	_pose_spin = 0.0
+	_pose_pitch = pitch
+
+
+## The pose's aim at `aim`, its fire, its guns' spin, and whether it goes to its place exactly.
+func _set_aim(aim: Vector3, firing: bool, spin: float, exact: bool) -> void:
+	_pose_aim = aim
+	_pose_aims = true
+	_pose_firing = firing
+	_pose_spin = spin
+	_pose_exact = exact
 
 
 ## The covered lane nearest the track's middle (the spare drone holds above it).

@@ -73,8 +73,10 @@ var strafe: GoldenConvergenceStrafe
 var slams: GoldenConvergenceSlams
 var barrage: GoldenConvergenceBarrage
 var refill: GoldenConvergenceRefill
-## The attacks by beat kind (register_attack).
+## The attacks by beat kind (register_attack), and the same attacks in the order they were registered (E5d polish:
+## what the frame's code goes through, so no list of them is made a frame).
 var attacks: Dictionary = {}
+var attack_list: Array[GoldenConvergenceAttack] = []
 var buttresses: Array[GoldenConvergenceButtress] = []
 var step: Step = Step.FLOAT
 var step_time: float = 0.0
@@ -139,7 +141,7 @@ func _build_boss() -> void:
 	# E5d-c: the Refill Ship (its ship, its cage), after the strafe it holds and hurls.
 	refill = GoldenConvergenceRefill.new(self)
 	register_attack(refill)
-	for attack: GoldenConvergenceAttack in attacks.values():
+	for attack: GoldenConvergenceAttack in attack_list:
 		attack.prewarm()
 	_build_stage_two()
 	var skin := world.skin as GoldenCourtSkin
@@ -149,9 +151,15 @@ func _build_boss() -> void:
 	_place_suit()
 
 
-## Adds an attack the beat script can play, under its beat kind (GoldenConvergenceAttack.kind).
+## Adds an attack the beat script can play, under its beat kind (GoldenConvergenceAttack.kind); one of a kind
+## already there takes its place, in attack_list too.
 func register_attack(attack: GoldenConvergenceAttack) -> void:
+	var old: GoldenConvergenceAttack = attacks.get(attack.kind) as GoldenConvergenceAttack
 	attacks[attack.kind] = attack
+	if old != null:
+		attack_list[attack_list.find(old)] = attack
+	else:
+		attack_list.append(attack)
 
 
 ## The normal enemies it brings into play itself, readied with the fight's load (BossEncounter.warm_enemies):
@@ -226,7 +234,7 @@ func hint(key: String) -> void:
 
 ## True while one of its attacks warns or strikes.
 func warning_active() -> bool:
-	for attack: GoldenConvergenceAttack in attacks.values():
+	for attack: GoldenConvergenceAttack in attack_list:
 		if attack.warning_on():
 			return true
 	return false
@@ -400,7 +408,7 @@ func _pattern_tick(delta: float) -> void:
 	court.tick()
 	_tick_buttresses(delta)
 	var phase_now: int = phase_index
-	for attack: GoldenConvergenceAttack in attacks.values():
+	for attack: GoldenConvergenceAttack in attack_list:
 		attack.tick(delta)
 		if phase_index != phase_now or state != State.FIGHT:
 			# An attack's hit ended the phase (the Refill Ship's chain reaction): the next phase's intro has begun.
@@ -472,7 +480,7 @@ func _on_part_emp(part: BossPart, center: Vector3, radius: float) -> void:
 
 
 func _clear_attacks() -> void:
-	for attack: GoldenConvergenceAttack in attacks.values():
+	for attack: GoldenConvergenceAttack in attack_list:
 		attack.clear()
 	beat_attack = null
 
@@ -480,7 +488,7 @@ func _clear_attacks() -> void:
 ## Every frame its attacks don't tick (a phase's intro, the defeat): what they show eases on to rest
 ## (GoldenConvergenceAttack.look_tick: an arm back from the track, the hatches shut, a tower down).
 func _look_tick(delta: float) -> void:
-	for attack: GoldenConvergenceAttack in attacks.values():
+	for attack: GoldenConvergenceAttack in attack_list:
 		attack.look_tick(delta)
 
 
@@ -583,7 +591,7 @@ func _stage_two_tick(delta: float, intro: bool) -> void:
 	_tick_buttresses(delta)
 	transition.tick(delta)
 	if not intro:
-		for attack: GoldenConvergenceAttack in attacks.values():
+		for attack: GoldenConvergenceAttack in attack_list:
 			attack.tick(delta)
 		if not transition.busy():
 			_tick_beats(delta)

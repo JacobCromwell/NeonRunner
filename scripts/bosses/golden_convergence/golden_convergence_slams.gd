@@ -65,6 +65,8 @@ const CONTACT: float = 2.2
 const PLUNGE: float = 0.4
 ## The fist's shadow at its fullest (metres across).
 const SHADOW_SIZE: float = 7.0
+## No slam (an empty, read-only stand-in: _driving).
+const NO_SLAM: Dictionary = {}
 
 var fist: GoldenConvergenceFist
 var towers: Array[GoldenConvergenceTower] = []
@@ -95,6 +97,18 @@ var _pace: float = 1.0
 ## Per fist: the arm's handles now {target, blend, extend, fist}.
 var _arms: Array[Dictionary] = []
 var _hinted_bait: bool = false
+## The last key _key() made and what for (phase, beats played): asked every frame while the beat before slams
+## plays, made once (E5d polish: no string formatted a frame).
+var _key_for := Vector2i(-1, -1)
+var _key_made: String = ""
+## Where a slam's fist should be now (_goal fills these every frame for each arm: E5d polish, no Dictionary a frame):
+## its target (world space), the arm's blend, its reach (a share of the arm's reach to it), a fist or an open hand,
+## and whether the arm goes there exactly or eases.
+var _goal_target := Vector3.ZERO
+var _goal_blend: float = 0.0
+var _goal_reach: float = 0.0
+var _goal_fist: bool = false
+var _goal_exact: bool = false
 
 
 func _init(p_boss: GoldenConvergence) -> void:
@@ -141,10 +155,22 @@ func busy() -> bool:
 
 ## A slam's warning shows (from its red square to its touch).
 func warning_on() -> bool:
-	for s: Dictionary in in_play():
-		if int(s["stage"]) in [SlamStage.TRACK, SlamStage.LOCKED, SlamStage.FALL, SlamStage.HIT]:
+	for s: Dictionary in finishing:
+		if _warning_stage(int(s["stage"])):
+			return true
+	for s: Dictionary in slams:
+		if _warning_stage(int(s["stage"])):
 			return true
 	return false
+
+
+static func _warning_stage(st: int) -> bool:
+	return st >= SlamStage.TRACK and st <= SlamStage.HIT
+
+
+## Down or going back to rest: its touch, then its arm's way back.
+static func _down(st: int) -> bool:
+	return st == SlamStage.HIT or st == SlamStage.BACK
 
 
 ## Where the sequence under way will be over: its last slam's touch done.
@@ -188,7 +214,8 @@ func _fits(d: float) -> bool:
 	return not slams.is_empty() and float(slams[0]["track_at"]) >= d - 0.01
 
 
-## The slams under way: those finishing from a dropped plan, then the plan's.
+## The slams under way: those finishing from a dropped plan, then the plan's (a new list: tests; the frame's own code
+## goes through `finishing` and `slams`).
 func in_play() -> Array[Dictionary]:
 	if finishing.is_empty():
 		return slams
@@ -206,7 +233,11 @@ func _letters() -> String:
 
 ## "phase:beat number" for the beat started as the encounter's `played`th.
 func _key(played: int) -> String:
-	return "%d:%d" % [boss.phase_index, played]
+	var at := Vector2i(boss.phase_index, played)
+	if at != _key_for:
+		_key_for = at
+		_key_made = "%d:%d" % [at.x, at.y]
+	return _key_made
 
 
 # --- Planning -------------------------------------------------------------------------------------------
@@ -343,7 +374,7 @@ func _lean(lane: int, lanes: int) -> int:
 ## pickups off (their floor warnings go).
 func _discard() -> void:
 	for s: Dictionary in slams:
-		if int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK]:
+		if _down(int(s["stage"])):
 			finishing.append(s)
 		elif int(s["stage"]) < SlamStage.HIT and s.get("marker") != null:
 			boss.props.remove(s["marker"] as Node)
@@ -449,11 +480,17 @@ func tick(delta: float) -> void:
 	else:
 		for s: Dictionary in slams:
 			# A sequence over: its last fist goes on back to rest.
-			if int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK]:
+			if _down(int(s["stage"])):
 				_advance(s, d, delta)
-	for s: Dictionary in finishing:
+	# Those finishing play on to rest, then leave the list (kept in place, in order: no new list a frame).
+	var kept: int = 0
+	for i: int in finishing.size():
+		var s: Dictionary = finishing[i]
 		_advance(s, d, delta)
-	finishing = finishing.filter(func(s: Dictionary) -> bool: return int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK])
+		if _down(int(s["stage"])):
+			finishing[kept] = s
+			kept += 1
+	finishing.resize(kept)
 	_marks()
 	_pose_arms(delta)
 	for tower: GoldenConvergenceTower in towers:
@@ -480,7 +517,7 @@ func _over() -> bool:
 ## carries them past).
 func _advance(s: Dictionary, d: float, delta: float) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
-	if int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK]:
+	if _down(int(s["stage"])):
 		s["t"] = float(s["t"]) + delta
 	for guard: int in 8:
 		match int(s["stage"]):
@@ -518,7 +555,8 @@ func _advance(s: Dictionary, d: float, delta: float) -> void:
 				s["stage"] = SlamStage.DONE
 			_:
 				break
-	if int(s["stage"]) in [SlamStage.OUT, SlamStage.TRACK]:
+	var st: int = int(s["stage"])
+	if st == SlamStage.OUT or st == SlamStage.TRACK:
 		_follow(s, 1.0 - exp(-FOLLOW_RATE * delta))
 
 
@@ -749,29 +787,30 @@ func _info(s: Dictionary) -> Dictionary:
 
 ## The red squares and the shadows for the slams warning now.
 func _marks() -> void:
-	var shown: Array[bool] = [false, false]
+	# The fists whose marks show (bits).
+	var shown: int = 0
 	var d: float = boss.player_distance()
 	for s: Dictionary in slams:
 		var st: int = int(s["stage"])
 		if st < SlamStage.TRACK or st > SlamStage.FALL:
 			continue
 		var i: int = int(s["fist"])
-		shown[i] = true
+		shown |= 1 << i
 		var row: Vector2 = s["row"]
 		var sq: Vector2 = s["sq"]
 		var k: float = clampf((d - float(s["track_at"])) / maxf(float(s["impact_at"]) - float(s["track_at"]), 0.01), 0.0, 1.0)
 		fist.set_square(i, sq.x, sq.y, row.x, row.y, k)
 		fist.set_shadow(i, float(s["x"]), float(s["mid"]), SHADOW_SIZE, k)
-	for i: int in shown.size():
-		if not shown[i]:
+	for i: int in GoldenConvergenceFist.RIGS:
+		if (shown & (1 << i)) == 0:
 			fist.hide_square(i)
 			fist.hide_shadow(i)
 
 
 ## Where the fist of slam `s` is now (world space; its goal, the arm reaching for it).
 func _fist_point(s: Dictionary) -> Vector3:
-	var goal: Dictionary = _goal(s, boss.player_distance())
-	return goal.get("target", Vector3.ZERO)
+	_goal(s, boss.player_distance())
+	return _goal_target
 
 
 ## Drives both arms toward their goals: exact while a fist is over the track and coming down, easing back
@@ -785,11 +824,7 @@ func _pose_arms(delta: float) -> void:
 	var k: float = 1.0 - exp(-ARM_RATE * delta)
 	for i: int in _arms.size():
 		var side: int = -1 if i == 0 else 1
-		var driving: Dictionary = {}
-		for s: Dictionary in in_play():
-			if int(s["fist"]) == i and int(s["stage"]) in [SlamStage.OUT, SlamStage.TRACK, SlamStage.LOCKED,
-					SlamStage.FALL, SlamStage.HIT, SlamStage.BACK]:
-				driving = s
+		var driving: Dictionary = _driving(i)
 		var arm: Dictionary = _arms[i]
 		if driving.is_empty():
 			# Easing back to rest; once there, the arm is left alone (nothing of the slams drives it).
@@ -805,49 +840,77 @@ func _pose_arms(delta: float) -> void:
 				arm["active"] = false
 		else:
 			arm["active"] = true
-			var goal: Dictionary = _goal(driving, d)
-			var target: Vector3 = goal["target"]
-			var extend: float = suit.extend_for(side, target, pose) * float(goal["reach"])
-			if bool(goal["exact"]):
+			_goal(driving, d)
+			var target: Vector3 = _goal_target
+			var extend: float = suit.extend_for(side, target, pose) * _goal_reach
+			if _goal_exact:
 				arm["target"] = target
-				arm["blend"] = float(goal["blend"])
+				arm["blend"] = _goal_blend
 				arm["extend"] = extend
 			else:
 				arm["target"] = (arm["target"] as Vector3).lerp(target, k) if float(arm["blend"]) > 0.05 else target
-				arm["blend"] = lerpf(float(arm["blend"]), float(goal["blend"]), k)
+				arm["blend"] = lerpf(float(arm["blend"]), _goal_blend, k)
 				arm["extend"] = lerpf(float(arm["extend"]), extend, k)
-			arm["fist"] = bool(goal["fist"])
+			arm["fist"] = _goal_fist
 		suit.set_arm(side, arm["target"], float(arm["blend"]), float(arm["extend"]), bool(arm["fist"]))
 
 
-## Where slam `s`'s fist should be now: {target (world space), blend, reach (a share of the arm's reach to it),
-## fist, exact}.
-func _goal(s: Dictionary, d: float) -> Dictionary:
+## The slam whose fist `i` drives its arm now (the last of the finishing, then the plan's, from its way out to its
+## way back), or NO_SLAM.
+func _driving(i: int) -> Dictionary:
+	var found: Dictionary = NO_SLAM
+	for s: Dictionary in finishing:
+		if int(s["fist"]) == i and _arm_stage(int(s["stage"])):
+			found = s
+	for s: Dictionary in slams:
+		if int(s["fist"]) == i and _arm_stage(int(s["stage"])):
+			found = s
+	return found
+
+
+static func _arm_stage(st: int) -> bool:
+	return st >= SlamStage.OUT and st <= SlamStage.BACK
+
+
+## Where slam `s`'s fist should be now: _goal_target (world space), _goal_blend, _goal_reach (a share of the arm's
+## reach to it), _goal_fist, _goal_exact.
+func _goal(s: Dictionary, d: float) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var z: float = TrackGeometry.world_z(float(s["mid"]))
 	var x: float = float(s["x"])
-	var hover := Vector3(x, t.fist_hover_height, z)
+	_goal_target = Vector3(x, t.fist_hover_height, z)
+	_goal_blend = 0.0
+	_goal_reach = 0.0
+	_goal_fist = false
+	_goal_exact = false
 	match int(s["stage"]):
 		SlamStage.OUT:
 			var span: float = maxf(boss.speed_planned() * t.slam_out_seconds / maxf(_pace, 0.05), 0.5)
 			var u: float = smoothstep(0.0, 1.0, clampf((d - float(s["out_from"])) / span, 0.0, 1.0))
-			return {"target": hover, "blend": u, "reach": u, "fist": u > 0.25, "exact": false}
+			_goal_blend = u
+			_goal_reach = u
+			_goal_fist = u > 0.25
 		SlamStage.TRACK, SlamStage.LOCKED:
 			var k: float = clampf((d - float(s["track_at"])) / maxf(float(s["fall_at"]) - float(s["track_at"]), 0.01), 0.0, 1.0)
-			var y: float = lerpf(t.fist_hover_height, t.fist_raise_height, smoothstep(0.0, 1.0, k))
-			return {"target": Vector3(x, y, z), "blend": 1.0, "reach": 1.0, "fist": true, "exact": true}
+			_set_goal(Vector3(x, lerpf(t.fist_hover_height, t.fist_raise_height, smoothstep(0.0, 1.0, k)), z), 1.0, true, true)
 		SlamStage.FALL:
 			var k: float = clampf((d - float(s["fall_at"])) / maxf(float(s["impact_at"]) - float(s["fall_at"]), 0.01), 0.0, 1.0)
-			var y: float = lerpf(t.fist_raise_height, CONTACT, k * k)
-			return {"target": Vector3(x, y, z), "blend": 1.0, "reach": 1.0, "fist": true, "exact": true}
+			_set_goal(Vector3(x, lerpf(t.fist_raise_height, CONTACT, k * k), z), 1.0, true, true)
 		SlamStage.HIT:
 			var k: float = smoothstep(0.0, 1.0, clampf(float(s["t"]) / maxf(t.slam_hit_seconds, 0.01), 0.0, 1.0))
-			return {"target": Vector3(x, lerpf(CONTACT, PLUNGE, k), z), "blend": 1.0, "reach": 1.0, "fist": true, "exact": true}
+			_set_goal(Vector3(x, lerpf(CONTACT, PLUNGE, k), z), 1.0, true, true)
 		SlamStage.BACK:
 			var back: float = maxf(t.slam_back_seconds / maxf(_pace, 0.05), 0.05)
 			var u: float = smoothstep(0.0, 1.0, clampf((float(s["t"]) - t.slam_hit_seconds) / back, 0.0, 1.0))
-			return {"target": Vector3(x, PLUNGE, z), "blend": 1.0 - u, "reach": 1.0 - u, "fist": u < 0.75, "exact": false}
-	return {"target": hover, "blend": 0.0, "reach": 0.0, "fist": false, "exact": false}
+			_set_goal(Vector3(x, PLUNGE, z), 1.0 - u, u < 0.75, false)
+
+
+func _set_goal(target: Vector3, blend: float, as_fist: bool, exact: bool) -> void:
+	_goal_target = target
+	_goal_blend = blend
+	_goal_reach = blend
+	_goal_fist = as_fist
+	_goal_exact = exact
 
 
 # --- Hold, clear ---------------------------------------------------------------------------------------

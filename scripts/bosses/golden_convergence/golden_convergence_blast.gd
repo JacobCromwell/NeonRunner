@@ -71,6 +71,9 @@ var _smoke_n: int = 0
 var _smoke_shown_at := PackedVector3Array()
 var _smoke_shown_radius := PackedFloat32Array()
 var _smoke_shown_color := PackedColorArray()
+## Fireballs and smoke puffs on (shown or still to come): with none on and nothing left shown, tick() has nothing to
+## do (the ship ticks it every frame of the fight).
+var _live: int = 0
 
 
 func _init() -> void:
@@ -158,6 +161,8 @@ static func ball() -> ArrayMesh:
 ## m/s, with its smoke rolling up out of it.
 func fire(at: Vector3, radius: float, life: float, drift: Vector3 = Vector3.ZERO) -> void:
 	var i: int = _slot(_f_on, _f_age, _f_life)
+	if _f_on[i] == 0:
+		_live += 1
 	_f_on[i] = 1
 	_f_age[i] = 0.0
 	_f_life[i] = maxf(life, 0.1)
@@ -173,6 +178,8 @@ func fire(at: Vector3, radius: float, life: float, drift: Vector3 = Vector3.ZERO
 ## `life` seconds later, rising and drifting `drift` m/s.
 func smoke(at: Vector3, radius: float, life: float, drift: Vector3 = Vector3(0.0, 1.4, 0.0), delay: float = 0.0) -> void:
 	var i: int = _slot(_s_on, _s_age, _s_life)
+	if _s_on[i] == 0:
+		_live += 1
 	_s_on[i] = 1
 	_s_age[i] = 0.0
 	_s_life[i] = maxf(life, 0.1)
@@ -237,6 +244,7 @@ func drawers() -> Array[MultiMeshInstance3D]:
 func clear() -> void:
 	_f_on.fill(0)
 	_s_on.fill(0)
+	_live = 0
 	_fire.multimesh.visible_instance_count = 0
 	_smoke.multimesh.visible_instance_count = 0
 	_fire_n = 0
@@ -248,6 +256,8 @@ func clear() -> void:
 ## The puffs on by `delta` seconds: each fireball swells, reddens, darkens and fades; each smoke puff comes up,
 ## swells, rises and thins out.
 func tick(delta: float) -> void:
+	if _live == 0 and _fire_n == 0 and _smoke_n == 0:
+		return
 	var reduced: bool = Settings.flashing_reduced
 	var fm: MultiMesh = _fire.multimesh
 	var n: int = 0
@@ -259,6 +269,7 @@ func tick(delta: float) -> void:
 		var life: float = _f_life[i]
 		if age >= life:
 			_f_on[i] = 0
+			_live -= 1
 			continue
 		var u: float = age / life
 		var swell: float = minf(age / SWELL, 1.0)
@@ -304,6 +315,7 @@ func tick(delta: float) -> void:
 		var life: float = _s_life[i]
 		if age >= life:
 			_s_on[i] = 0
+			_live -= 1
 			continue
 		var u: float = age / life
 		var r: float = _s_size[i] * (0.45 + 0.55 * smoothstep(0.0, 0.6, u))

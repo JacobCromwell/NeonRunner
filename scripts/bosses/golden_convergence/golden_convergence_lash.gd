@@ -105,7 +105,7 @@ func busy() -> bool:
 
 ## Its warning shows or a cable is live.
 func warning_on() -> bool:
-	return stage in [Stage.WARN, Stage.WHIP, Stage.HOLD]
+	return stage == Stage.WARN or stage == Stage.WHIP or stage == Stage.HOLD
 
 
 ## The heights its cables cross the runner's path at, for `kind`.

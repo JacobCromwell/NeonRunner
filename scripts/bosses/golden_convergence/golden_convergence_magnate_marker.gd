@@ -27,16 +27,24 @@ var alarm: float = 0.0
 var shown: float = 0.0
 ## Where it was drawn last (screen pixels; tests and the showcase read it).
 var screen_point := Vector2.ZERO
+## Whether its last draw showed it (hidden, it's drawn once more to clear it, then left alone), and its backing's
+## and chevron's outlines, reused every frame (E5d polish: nothing made a frame).
+var _drawn: bool = false
+var _backing := PackedVector2Array()
+var _chevron := PackedVector2Array()
 
 
 func _init() -> void:
 	name = "MagnateMarker"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_backing.resize(4)
+	_chevron.resize(4)
 
 
 func _process(_delta: float) -> void:
-	queue_redraw()
+	if shown > 0.01 or _drawn:
+		queue_redraw()
 
 
 ## Its colour now (tests).
@@ -61,7 +69,8 @@ func place() -> Vector2:
 
 
 func _draw() -> void:
-	if shown <= 0.01:
+	_drawn = shown > 0.01
+	if not _drawn:
 		return
 	var tip: Vector2 = place()
 	var s: float = UiTheme.px(1.0)
@@ -71,10 +80,16 @@ func _draw() -> void:
 	var c: Color = color()
 	var dark := Color(0.02, 0.02, 0.03, 0.75 * a)
 	# A dark backing, then the chevron pointing up, and two claw marks over it.
-	draw_colored_polygon(PackedVector2Array([tip + Vector2(0.0, -3.0 * s), tip + Vector2(w + 4.0 * s, h + 2.0 * s),
-		tip + Vector2(0.0, h * 0.55), tip + Vector2(-w - 4.0 * s, h + 2.0 * s)]), dark)
-	draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(w, h), tip + Vector2(0.0, h * 0.42), tip + Vector2(-w, h)]),
-		Color(c, a))
+	_backing[0] = tip + Vector2(0.0, -3.0 * s)
+	_backing[1] = tip + Vector2(w + 4.0 * s, h + 2.0 * s)
+	_backing[2] = tip + Vector2(0.0, h * 0.55)
+	_backing[3] = tip + Vector2(-w - 4.0 * s, h + 2.0 * s)
+	draw_colored_polygon(_backing, dark)
+	_chevron[0] = tip
+	_chevron[1] = tip + Vector2(w, h)
+	_chevron[2] = tip + Vector2(0.0, h * 0.42)
+	_chevron[3] = tip + Vector2(-w, h)
+	draw_colored_polygon(_chevron, Color(c, a))
 	for k: int in 2:
 		var x0: float = (float(k) - 0.5) * 9.0 * s
 		draw_line(tip + Vector2(x0 - 2.0 * s, -15.0 * s), tip + Vector2(x0 + 2.0 * s, -6.0 * s), Color(c, a), 2.5 * s, true)

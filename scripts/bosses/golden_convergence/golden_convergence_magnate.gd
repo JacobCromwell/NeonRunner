@@ -91,8 +91,71 @@ var _blocker: Area3D
 var _blocker_shape: BoxShape3D
 var _gait: float = 0.0
 var _time: float = 0.0
-## The joints' angles now (blended toward each frame's target).
-var _pose: Dictionary = {}
+## The joints' angles now (`_now`, blended toward each frame's target, `_goal`): two poses made once and reused
+## every drawn frame (E5d polish: no Dictionary or formatted key a frame). `_posed`: `_now` has had a goal.
+var _now := JointPose.new()
+var _goal := JointPose.new()
+var _posed: bool = false
+
+
+## A pose of his rig's joints: the body's height and turn, the spine's flex, the neck's nod and turn, the jaw, the
+## legs' splay, and each leg's two angles (upper about its top, lower about its knee; legs 0-1 the front, 2-3 the
+## hind, left first).
+class JointPose:
+	extends RefCounted
+	var body_y: float = 0.0
+	var body_rot: Vector3 = Vector3.ZERO
+	var chest: float = 0.0
+	var hips: float = 0.0
+	var neck: float = 0.0
+	var neck_turn: float = 0.0
+	var jaw: float = 0.0
+	var splay: float = 0.0
+	var legs: Array[Vector2] = [Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]
+	## The legs a goal has set this frame (bits); the others stand.
+	var legs_set: int = 0
+
+	## Back to a neutral goal: everything at rest, no leg set.
+	func reset() -> void:
+		body_y = 0.0
+		body_rot = Vector3.ZERO
+		chest = 0.0
+		hips = 0.0
+		neck = 0.0
+		neck_turn = 0.0
+		jaw = 0.0
+		splay = 0.0
+		legs_set = 0
+
+	func set_leg(i: int, angles: Vector2) -> void:
+		legs[i] = angles
+		legs_set |= 1 << i
+
+	## Takes `other`'s joints at once (the first frame he's shown).
+	func copy(other: JointPose) -> void:
+		body_y = other.body_y
+		body_rot = other.body_rot
+		chest = other.chest
+		hips = other.hips
+		neck = other.neck
+		neck_turn = other.neck_turn
+		jaw = other.jaw
+		splay = other.splay
+		for i: int in legs.size():
+			legs[i] = other.legs[i]
+
+	## Eases every joint `k` of the way toward `goal`'s.
+	func ease_to(goal: JointPose, k: float) -> void:
+		body_y = lerpf(body_y, goal.body_y, k)
+		body_rot = body_rot.lerp(goal.body_rot, k)
+		chest = lerpf(chest, goal.chest, k)
+		hips = lerpf(hips, goal.hips, k)
+		neck = lerpf(neck, goal.neck, k)
+		neck_turn = lerpf(neck_turn, goal.neck_turn, k)
+		jaw = lerpf(jaw, goal.jaw, k)
+		splay = lerpf(splay, goal.splay, k)
+		for i: int in legs.size():
+			legs[i] = legs[i].lerp(goal.legs[i], k)
 
 
 func _build() -> void:
@@ -588,7 +651,7 @@ func _process(delta: float) -> void:
 		var mat: ShaderMaterial = c["material"]
 		if bool(c["on"]):
 			mat.set_shader_parameter(&"ground", ground / maxf(tuning.magnate_scale, 0.1))
-			mat.set_shader_parameter(&"trail", clampf(absf(rise) / 6.0, 0.0, 1.0) if anim in [&"leap", &"hurl"] else 0.0)
+			mat.set_shader_parameter(&"trail", clampf(absf(rise) / 6.0, 0.0, 1.0) if anim == &"leap" or anim == &"hurl" else 0.0)
 		else:
 			_fly_cable(c, delta)
 	_smoke.emitting = anim != &"collapse" or anim_time < 0.5
@@ -613,123 +676,117 @@ func _fly_cable(c: Dictionary, delta: float) -> void:
 ## His pose this frame: each joint toward what `anim` wants (blended), his legs reaching the ground.
 func _animate(delta: float) -> void:
 	_gait = fmod(_gait + delta * clampf(absf(speed) * STRIDES_PER_METRE, 1.2, 3.6), 1.0)
-	var t: Dictionary = _target_pose()
-	var k: float = 1.0 - exp(-BLEND_RATE * delta)
-	for key: String in t:
-		var target: Variant = t[key]
-		if not _pose.has(key):
-			_pose[key] = target
-		elif target is float:
-			_pose[key] = lerpf(float(_pose[key]), float(target), k)
-		elif target is Vector3:
-			_pose[key] = (_pose[key] as Vector3).lerp(target as Vector3, k)
-	_body.position = Vector3(0.0, float(_pose["body_y"]), 0.0)
-	_body.rotation = _pose["body_rot"]
-	_chest.rotation = Vector3(float(_pose["chest"]), 0.0, 0.0)
-	_hips.rotation = Vector3(float(_pose["hips"]), 0.0, 0.0)
-	_neck.rotation = Vector3(float(_pose["neck"]), float(_pose["neck_turn"]) + head_turn, 0.0)
-	_jaw.rotation = Vector3(-maxf(float(_pose["jaw"]), jaw_open) * 0.85, 0.0, 0.0)
+	_target_pose()
+	if _posed:
+		_now.ease_to(_goal, 1.0 - exp(-BLEND_RATE * delta))
+	else:
+		_now.copy(_goal)
+		_posed = true
+	_body.position = Vector3(0.0, _now.body_y, 0.0)
+	_body.rotation = _now.body_rot
+	_chest.rotation = Vector3(_now.chest, 0.0, 0.0)
+	_hips.rotation = Vector3(_now.hips, 0.0, 0.0)
+	_neck.rotation = Vector3(_now.neck, _now.neck_turn + head_turn, 0.0)
+	_jaw.rotation = Vector3(-maxf(_now.jaw, jaw_open) * 0.85, 0.0, 0.0)
 	for i: int in _legs.size():
 		var leg: Dictionary = _legs[i]
-		var a: Vector2 = _pose["leg%d" % i]
-		(leg["top"] as Node3D).rotation = Vector3(a.x, 0.0, float(_pose["splay"]) * float(leg["side"]))
+		var a: Vector2 = _now.legs[i]
+		(leg["top"] as Node3D).rotation = Vector3(a.x, 0.0, _now.splay * float(leg["side"]))
 		(leg["knee"] as Node3D).rotation = Vector3(a.y, 0.0, 0.0)
 	_body_material.set_shader_parameter(&"sway", clampf(0.6 + absf(speed) * 0.03, 0.5, 1.4))
 
 
-## The joints' targets for what he's doing now: {body_y, body_rot, chest, hips, neck, neck_turn, jaw, splay,
-## leg0..leg3 (Vector2: upper, lower)}.
-func _target_pose() -> Dictionary:
-	var p: Dictionary = {"body_y": 0.0, "body_rot": Vector3.ZERO, "chest": 0.0, "hips": 0.0, "neck": 0.0, "neck_turn": 0.0,
-		"jaw": 0.0, "splay": 0.0}
+## Sets `_goal` to the joints' targets for what he's doing now (any leg it leaves stands).
+func _target_pose() -> void:
+	var p: JointPose = _goal
+	p.reset()
 	var tau: float = TAU * _gait
 	match anim:
 		&"run", &"stagger":
-			p["body_y"] = 0.07 * sin(tau * 2.0) - 0.04
-			p["chest"] = 0.1 * sin(tau)
-			p["hips"] = -0.1 * sin(tau)
-			p["neck"] = -0.08 * sin(tau) - (0.35 if anim == &"stagger" else 0.05)
-			p["body_rot"] = Vector3(clampf(rise * 0.03, -0.3, 0.3), 0.0, 0.0)
+			p.body_y = 0.07 * sin(tau * 2.0) - 0.04
+			p.chest = 0.1 * sin(tau)
+			p.hips = -0.1 * sin(tau)
+			p.neck = -0.08 * sin(tau) - (0.35 if anim == &"stagger" else 0.05)
+			p.body_rot = Vector3(clampf(rise * 0.03, -0.3, 0.3), 0.0, 0.0)
 			if anim == &"stagger":
-				p["body_rot"] = Vector3(-0.1, 0.0, 0.18 * sin(anim_time * 9.0))
-				p["jaw"] = 0.5
+				p.body_rot = Vector3(-0.1, 0.0, 0.18 * sin(anim_time * 9.0))
+				p.jaw = 0.5
 			for i: int in _legs.size():
-				p["leg%d" % i] = _gallop_leg(i, float(p["body_y"]))
+				p.set_leg(i, _gallop_leg(i, p.body_y))
 		&"stand", &"crouch":
 			var low: float = -0.32 if anim == &"crouch" else 0.0
-			p["body_y"] = low + 0.015 * sin(_time * 2.4)
-			p["neck"] = -0.25 if anim == &"crouch" else 0.05
+			p.body_y = low + 0.015 * sin(_time * 2.4)
+			p.neck = -0.25 if anim == &"crouch" else 0.05
 			for i: int in _legs.size():
-				p["leg%d" % i] = _stand_leg(i, low)
+				p.set_leg(i, _stand_leg(i, low))
 		&"leap", &"hurl":
 			var pitch: float = clampf(-rise * 0.05, -0.5, 0.5)
-			p["body_rot"] = Vector3(pitch, 0.0, 0.25 * sin(anim_time * 5.0) if anim == &"hurl" else 0.0)
-			p["neck"] = 0.25 if anim == &"hurl" else 0.1
-			p["jaw"] = 0.9 if anim == &"hurl" else 0.15
-			p["chest"] = -0.08
-			p["hips"] = 0.08
-			p["leg0"] = Vector2(1.15, -0.25)
-			p["leg1"] = Vector2(1.05, -0.3)
-			p["leg2"] = Vector2(-1.05, 0.35)
-			p["leg3"] = Vector2(-0.95, 0.3)
+			p.body_rot = Vector3(pitch, 0.0, 0.25 * sin(anim_time * 5.0) if anim == &"hurl" else 0.0)
+			p.neck = 0.25 if anim == &"hurl" else 0.1
+			p.jaw = 0.9 if anim == &"hurl" else 0.15
+			p.chest = -0.08
+			p.hips = 0.08
+			p.set_leg(0, Vector2(1.15, -0.25))
+			p.set_leg(1, Vector2(1.05, -0.3))
+			p.set_leg(2, Vector2(-1.05, 0.35))
+			p.set_leg(3, Vector2(-0.95, 0.3))
 		&"roar":
-			p["body_y"] = 0.05
-			p["body_rot"] = Vector3(0.28, 0.0, 0.0)
-			p["chest"] = 0.08
-			p["neck"] = 0.55 + 0.05 * sin(anim_time * 14.0)
-			p["jaw"] = 1.0
-			p["leg0"] = Vector2(0.55, -0.85)
-			p["leg1"] = Vector2(0.45, -0.75)
-			p["leg2"] = _stand_leg(2, 0.0)
-			p["leg3"] = _stand_leg(3, 0.0)
+			p.body_y = 0.05
+			p.body_rot = Vector3(0.28, 0.0, 0.0)
+			p.chest = 0.08
+			p.neck = 0.55 + 0.05 * sin(anim_time * 14.0)
+			p.jaw = 1.0
+			p.set_leg(0, Vector2(0.55, -0.85))
+			p.set_leg(1, Vector2(0.45, -0.75))
+			p.set_leg(2, _stand_leg(2, 0.0))
+			p.set_leg(3, _stand_leg(3, 0.0))
 		&"rear":
 			# Reared back on his hind legs, the cable raised behind him, his front claws up.
-			p["body_y"] = -0.15
-			p["body_rot"] = Vector3(0.75, 0.0, 0.0)
-			p["chest"] = 0.15
-			p["neck"] = -0.45
-			p["jaw"] = 0.45
-			p["leg0"] = Vector2(1.5 + 0.1 * sin(anim_time * 8.0), -1.3)
-			p["leg1"] = Vector2(1.35 + 0.1 * sin(anim_time * 8.0 + 1.0), -1.2)
-			p["leg2"] = Vector2(0.35, -0.6)
-			p["leg3"] = Vector2(0.45, -0.7)
+			p.body_y = -0.15
+			p.body_rot = Vector3(0.75, 0.0, 0.0)
+			p.chest = 0.15
+			p.neck = -0.45
+			p.jaw = 0.45
+			p.set_leg(0, Vector2(1.5 + 0.1 * sin(anim_time * 8.0), -1.3))
+			p.set_leg(1, Vector2(1.35 + 0.1 * sin(anim_time * 8.0 + 1.0), -1.2))
+			p.set_leg(2, Vector2(0.35, -0.6))
+			p.set_leg(3, Vector2(0.45, -0.7))
 		&"whip":
 			# The whip: lunging forward and twisting toward the track.
-			p["body_y"] = -0.1
-			p["body_rot"] = Vector3(-0.15, 0.45, 0.0)
-			p["neck"] = 0.15
-			p["jaw"] = 0.8
+			p.body_y = -0.1
+			p.body_rot = Vector3(-0.15, 0.45, 0.0)
+			p.neck = 0.15
+			p.jaw = 0.8
 			for i: int in _legs.size():
-				p["leg%d" % i] = _stand_leg(i, -0.1)
+				p.set_leg(i, _stand_leg(i, -0.1))
 		&"slump", &"collapse":
 			# Down on his belly in the rubble, legs splayed, head down; breathing hard (stunned) or still.
 			var breath: float = 0.04 * sin(_time * 3.2) if anim == &"slump" else 0.0
-			p["body_y"] = -0.62 + breath
-			p["body_rot"] = Vector3(-0.05, 0.0, 0.22 if anim == &"slump" else 0.42)
-			p["neck"] = -0.5 if anim == &"slump" else -0.7
-			p["neck_turn"] = 0.35
-			p["jaw"] = 0.3 if anim == &"slump" else 0.45
-			p["splay"] = 0.55
-			p["leg0"] = Vector2(1.25, -0.35)
-			p["leg1"] = Vector2(1.2, -0.3)
-			p["leg2"] = Vector2(-1.25, 0.25)
-			p["leg3"] = Vector2(-1.2, 0.2)
+			p.body_y = -0.62 + breath
+			p.body_rot = Vector3(-0.05, 0.0, 0.22 if anim == &"slump" else 0.42)
+			p.neck = -0.5 if anim == &"slump" else -0.7
+			p.neck_turn = 0.35
+			p.jaw = 0.3 if anim == &"slump" else 0.45
+			p.splay = 0.55
+			p.set_leg(0, Vector2(1.25, -0.35))
+			p.set_leg(1, Vector2(1.2, -0.3))
+			p.set_leg(2, Vector2(-1.25, 0.25))
+			p.set_leg(3, Vector2(-1.2, 0.2))
 		&"claw":
 			# Clawing his way out: head down, his front legs reaching and pulling in turn.
-			p["body_rot"] = Vector3(-0.45, 0.0, 0.0)
-			p["neck"] = 0.2
-			p["jaw"] = 0.4
-			p["leg0"] = Vector2(1.5 + 0.45 * sin(anim_time * 6.0), -0.6)
-			p["leg1"] = Vector2(1.5 + 0.45 * sin(anim_time * 6.0 + PI), -0.6)
-			p["leg2"] = Vector2(0.4, -0.9)
-			p["leg3"] = Vector2(0.5, -0.9)
+			p.body_rot = Vector3(-0.45, 0.0, 0.0)
+			p.neck = 0.2
+			p.jaw = 0.4
+			p.set_leg(0, Vector2(1.5 + 0.45 * sin(anim_time * 6.0), -0.6))
+			p.set_leg(1, Vector2(1.5 + 0.45 * sin(anim_time * 6.0 + PI), -0.6))
+			p.set_leg(2, Vector2(0.4, -0.9))
+			p.set_leg(3, Vector2(0.5, -0.9))
 		_:
 			for i: int in _legs.size():
-				p["leg%d" % i] = _stand_leg(i, 0.0)
+				p.set_leg(i, _stand_leg(i, 0.0))
 	for i: int in _legs.size():
-		if not p.has("leg%d" % i):
-			p["leg%d" % i] = _stand_leg(i, float(p["body_y"]))
-	return p
+		if (p.legs_set & (1 << i)) == 0:
+			p.set_leg(i, _stand_leg(i, p.body_y))
 
 
 ## Leg `i` at a gallop: its foot sweeping back along the ground under him (the stance), then lifted forward

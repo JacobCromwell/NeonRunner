@@ -38,6 +38,9 @@ const CAP_OPEN: float = 1.9
 ## the sleeves stretch with them, so the fist reaches the track from where the suit floats). DESIGN-TBD
 ## (docs/questions/e5d.md, E5d-b 6: a stretched arm, or the suit leaning in for its slams).
 const EXTEND_MAX: float = 2.4
+## Where the squadron's drones come out of the cape and go back in (its cloud beside and above the shoulders, in
+## the suit's space; cape_point).
+const CAPE_POINTS: Array[Vector3] = [Vector3(-24.0, 6.0, -15.0), Vector3(24.0, 6.0, -15.0), Vector3(0.0, 24.0, -16.0)]
 
 var tuning: GoldenConvergenceTuning
 var unfurl: float = 1.0
@@ -280,8 +283,7 @@ func head_point() -> Vector3:
 ## Where drone `i` of the squadron comes out of (and goes back into) the cape: in its cloud beside and above
 ## the shoulders (world space).
 func cape_point(i: int) -> Vector3:
-	var points: Array[Vector3] = [Vector3(-24.0, 6.0, -15.0), Vector3(24.0, 6.0, -15.0), Vector3(0.0, 24.0, -16.0)]
-	return _root.global_transform * points[i % points.size()]
+	return _root.global_transform * CAPE_POINTS[i % CAPE_POINTS.size()]
 
 
 ## Weapons aim at its chest (within the best weapons' reach at its distance).
