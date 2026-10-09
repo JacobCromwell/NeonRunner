@@ -1183,7 +1183,7 @@ bands stay as they were; the windows cost the six levels about 2% of their enemi
 3281 to 3226 on their own seeds: what they took out, and what the fill pass and the pass's rows found no room
 for). Every level without the truck, and every level with it with the switch off, builds exactly as before. The
 planning adds about a quarter to those levels' build time (50-330 ms a build; the longest, Dead Zone 1 at 5 lanes,
-1.9 s against 1.7 s). DESIGN-TBD (`docs/questions/c6c.md`).
+1.9 s against 1.7 s). DESIGN-TBD (`docs/OPEN_QUESTIONS.md` items 382–386).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from

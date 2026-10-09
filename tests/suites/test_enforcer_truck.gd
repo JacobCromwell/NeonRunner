@@ -303,7 +303,7 @@ func _test_show_view() -> void:
 			fits.size()])
 	check(unfit.is_empty(), "every pair fits in the room's table (%s)" % [unfit])
 	# Beside the runner its inner neighbour lane would hide the floor of a runner by a wall's lane at 5 and 6 lanes
-	# (the camera sits inward of them): why it goes two lanes in (task C6c, DESIGN-TBD docs/questions/c6c.md).
+	# (the camera sits inward of them): why it goes two lanes in (task C6c, DESIGN-TBD docs/OPEN_QUESTIONS.md item 382).
 	var hidden: PackedStringArray = []
 	for lanes: int in [5, 6]:
 		var c: Dictionary = EnforcerTruckView.check(tuning, lanes, 0, 1, t.show_ahead,

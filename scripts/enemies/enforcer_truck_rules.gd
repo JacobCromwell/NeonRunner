@@ -50,7 +50,7 @@ extends RefCounted
 ## what the danger density pass adds for its higher enemy count. It has no patterns: these rules place every one. A
 ## level with no bait its chase can take gets none (GDD §9.13: it appears where Octodogs or Buzz Overdrives
 ## appear). DESIGN-TBD (docs/questions/c6.md): the bait's place in its chase, the spacing, which baits get one;
-## (docs/questions/c6c.md) the showing window, what it may take out, the chases without one.
+## (docs/OPEN_QUESTIONS.md items 383–385) the showing window, what it may take out, the chases without one.
 
 const TYPE: String = "enforcer_truck"
 ## Every feature whose rules place, move or drop enemies, plan charges or cuts, or add ceilings: the trucks
@@ -436,7 +436,7 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 ## room for one, else the earliest mid-chase one before its first bait; then a shorter stay (show_min_seconds at
 ## least); then both taking things out; then all of that again allowing a runner off the floor in a lane; else, at
 ## the preferred arrival, the same after its first bait (a runner who didn't destroy it with that bait sees it
-## then). DESIGN-TBD (docs/questions/c6c.md): what it may take out, the order.
+## then). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 383): what it may take out, the order.
 class ShowPlanner:
 	extends RefCounted
 	## Seconds after its arrival a mid-chase showing may begin, past the time it takes to close in to its follow gap.
