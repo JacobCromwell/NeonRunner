@@ -115,7 +115,8 @@ func _count(r: Resonator, event: String) -> int:
 func _test_numbers() -> void:
 	check(t.health_at(1.0) == 15.0 and t.score_value > 0 and not t.uses_floor,
 		"15 laser tier 1 shots, a score, and it never uses the floor (%.0f)" % t.health_at(1.0))
-	var golden_1: float = 12.0 / 14.0
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var golden_1: float = campaign.level_progress(campaign.step("golden/1").level_index)
 	check(t.zone_t(golden_1) < 0.1 and is_equal_approx(t.zone_t(1.0), 1.0) and t.zone_t(0.0) == 0.0,
 		"its early numbers are Golden 1's and its late ones Golden 3's (zone_t %.2f at Golden 1)" % t.zone_t(golden_1))
 	check(t.pulse_rest_at(1.0) < t.pulse_rest_at(golden_1) and t.wave_speed_at(1.0) > t.wave_speed_at(golden_1)

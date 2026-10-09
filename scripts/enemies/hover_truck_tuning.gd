@@ -93,8 +93,10 @@ extends EnemyTuning
 @export_group("Window shooters")
 ## GDD §9.3: window shooters scale from 0 early to 1–2 by the final levels (rounded down). They fire
 ## bolts just after the cannon, in the same telegraphed volley (their guns glow during the charge).
-@export_range(0.0, 3.0, 0.1) var shooters_early: float = 0.0
-@export_range(0.0, 3.0, 0.1) var shooters_late: float = 2.0
+## 0.2 to 2.1 (0 to 2 before the Casino's levels re-spaced the campaign's enemy scaling, task K2): one
+## from Marketplace 2 and two at the Golden Palace, where they were.
+@export_range(0.0, 3.0, 0.1) var shooters_early: float = 0.2
+@export_range(0.0, 3.0, 0.1) var shooters_late: float = 2.1
 @export_range(0.1, 1.5, 0.05, "suffix:s") var shooter_delay: float = 0.35
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var bolt_speed_early: float = 12.0
 @export_range(4.0, 30.0, 0.5, "suffix:m/s") var bolt_speed_late: float = 15.0
@@ -112,9 +114,11 @@ extends EnemyTuning
 ## A new truck comes at least this long after the previous one's lane is free again.
 @export_range(0.0, 60.0, 1.0, "suffix:s") var min_gap_seconds: float = 6.0
 ## GDD §9.3: rare early, more frequent later. At most this many trucks in a level, scaled with the
-## level's enemy_scaling (rounded down): 1 early, up to 3 by the last levels.
-@export_range(1.0, 5.0, 0.1) var max_per_level_early: float = 1.0
-@export_range(1.0, 5.0, 0.1) var max_per_level_late: float = 3.0
+## level's enemy_scaling (rounded down): 1 early, up to 3 by the last levels. 1.2 to 3.1 (1 to 3 before
+## the Casino's levels re-spaced the campaign's enemy scaling, task K2): two from Marketplace 2 and
+## three at the Golden Palace, where they were.
+@export_range(1.0, 5.0, 0.1) var max_per_level_early: float = 1.2
+@export_range(1.0, 5.0, 0.1) var max_per_level_late: float = 3.1
 ## When the level has ramps, route (a) gets a ramp on the truck's side this long after the burst.
 @export_range(2.0, 30.0, 0.5, "suffix:s") var ramp_after_seconds: float = 7.0
 ## A level with the hover_truck feature always gets at least one truck (the patterns may pick

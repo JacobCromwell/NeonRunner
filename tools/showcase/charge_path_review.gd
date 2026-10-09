@@ -27,7 +27,7 @@ const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const RULES_PATH: String = "res://data/tuning/game_rules.tres"
 const OctodogRules = preload("res://scripts/enemies/octodog_rules.gd")
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
-const ZONE_SPEEDS: Dictionary = {"city": 21.0, "gangland": 21.8, "marketplace": 22.6, "corporate": 23.4,
+const ZONE_SPEEDS: Dictionary = {"city": 21.0, "gangland": 21.8, "marketplace": 22.6, "casino": 23.0, "corporate": 23.4,
 	"corporate_plaza": 23.4, "dead_zone": 24.2, "golden": 25.0, "golden_palace": 25.0}
 ## Seconds after the dog's wind-up starts that the runner leaves the far lane.
 const DOG_REACTION: float = 0.3
@@ -86,7 +86,7 @@ func _build_run(skin: ZoneSkin, lanes: int, lane: int, speed: float) -> void:
 	var config := LevelConfig.new()
 	config.lane_count = lanes
 	config.skin = skin
-	config.enemy_scaling = 0.64
+	config.enemy_scaling = 11.0 / 16.0  # Corporate 2's
 	config.features = PackedStringArray(["cyborg", "octodog", "buzz_overdrive"])
 	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
 	var t: ChargePathTuning = ChargePathPlacement.tuning()

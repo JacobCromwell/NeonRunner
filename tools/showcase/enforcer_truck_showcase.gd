@@ -149,7 +149,7 @@ func _build_run(skin: ZoneSkin, lanes: int, speed: float) -> void:
 	var config := LevelConfig.new()
 	config.lane_count = lanes
 	config.skin = skin
-	config.enemy_scaling = 0.64
+	config.enemy_scaling = 11.0 / 16.0  # Corporate 2's
 	world = RunWorld.new()
 	add_child(world)
 	world.build(config, layout, tuning, load(RULES_PATH) as GameRules, null, Loadout.new(),
