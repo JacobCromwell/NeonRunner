@@ -19,8 +19,9 @@ extends Resource
 @export var use_fog_color: bool = true
 @export var fog_color: Color = Color(0.2, 0.15, 0.2)
 ## The street's light under this sky: a factor on each channel of the scenery's lit colour, for linear
-## space like a level's darkness (white = the zone's own light; ZoneSkin.set_scenery_tint). Only the
-## scenery's lit surfaces take it, never a glow, an enemy or the runner.
+## space like a level's darkness (white = the zone's own light; ZoneSkin.set_scenery_tint). Only lit
+## surfaces drawn with the scenery's shaders take it (a boss model built from the kit's solid shader too,
+## as with darkness; open question 406), never a glow, a hazard, an enemy's own shader or the runner.
 @export var scenery_tint: Color = Color.WHITE
 
 

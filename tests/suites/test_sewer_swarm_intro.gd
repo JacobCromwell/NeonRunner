@@ -47,6 +47,7 @@ func run() -> void:
 	var music: MusicDirector = MusicDirector.instance()
 	_music_before = music.current() if music != null else &""
 	_test_slot()
+	await _test_sky()
 	var lanes_pc: int = App.rules.lanes_pc
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
@@ -66,6 +67,17 @@ func run() -> void:
 
 func _step() -> CampaignStep:
 	return App.campaign.step("gangland/boss_intro")
+
+
+## The intro plays under the fight's sky (G8; CineStage.sky_for): Gangland 3's blood-red sky and the
+## street's light under it, so the sky holds from the level through the intro to the fight.
+func _test_sky() -> void:
+	var sky: LevelSky = App.campaign.step("gangland/3").level.sky
+	var seq: SewerSwarmIntro = _start()
+	check(seq != null and seq.stage != null and sky != null and seq.stage.sky == sky
+		and ZoneSkin.scenery_tint_now == sky.scenery_tint, "it plays under Gangland 3's sky and street light")
+	await _free(seq)
+	ZoneSkin.set_scenery_tint(Color.WHITE)
 
 
 ## A SewerSwarmIntro for Gangland's boss-intro slot, in the tree, its clock stepped by the test.

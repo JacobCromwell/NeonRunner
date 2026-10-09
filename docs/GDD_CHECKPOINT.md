@@ -199,8 +199,8 @@ Level names approved by the owner (September 26, 2026).
 - **Neon City 1:** the sun just starting to rise, with pinks and purples touching the undersides of clouds. *(Moved from City 3, which fits it less well thematically; City 2 and 3 keep the dark night sky.)*
 - **Gangland 3:** a cloudy, blood-red sky, warning that a fiery stretch lies ahead.
 - **Marketplace:** a darkening sky as the sun sets, with deep blues and pinks at the very bottom of the sky. The owner asked for it on the zone's third level; the Marketplace has two, so it is on **Marketplace 2**, its last (confirmed by the owner, October 9, 2026).
-- **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's, The House under Marketplace 2's), and so does the boss's intro before it.
-- **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, enemies and the runner keep their colours and light, and the sky never glows.
+- **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's, The House under Marketplace 2's). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
+- **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
 
 **15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 

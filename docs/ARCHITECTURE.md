@@ -2030,7 +2030,9 @@ factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (
 `ZoneSkin.energy_factor()` for the environment) converts it for the Compatibility renderer's sRGB
 space, so both renderers dim alike. A new skin gets it by drawing its scenery with the kit, or by
 reading `scenery_light` (through `light_factor`) in a shader of its own, or by overriding
-`apply_darkness()` (calling it first). Only the run that set the light last resets it when it ends
+`apply_darkness()` (calling it first). A scenery shader of its own also multiplies its lit colour by
+`scenery_tint` right after (a level sky's street light; `test_level_sky` checks every shader that reads
+`scenery_light` does). Only the run that set the light last resets it when it ends
 (`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
 
 **A level's own sky** (`LevelConfig.sky`, a `LevelSky` in `data/skies/`; owner, October 8, 2026). Most
@@ -2048,7 +2050,9 @@ white without a level sky); the darkness comes after, as for any level. The tint
 uniform `scenery_tint` (project.godot, a `vec3`): every scenery shader that follows a level's darkness
 multiplies its lit colour by it right after `light_factor(scenery_light)` (one multiply per pixel; the
 Compatibility renderer's sRGB equivalent is worked out once in `set_scenery_tint()`, not per pixel), and
-no glow, hazard, enemy or runner shader reads it. A tint only dims or tints (each channel at most 1), and
+no glow, hazard, enemy or runner shader reads it. A boss model built from the kit's solid shader (The
+House's cabinet, the Swarm Host's body and pipe) takes it as a level's darkness reaches it; its glowing
+parts don't (open question 406). A tint only dims or tints (each channel at most 1), and
 the run puts it back to white when it ends (`LevelRun`). Nothing else changes: the ambient light, the sun,
 every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a sky
 stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
@@ -2061,8 +2065,9 @@ toward `sun_glow_direction` by `cloud_lit_focus` (0: lit from all around, as by 
 lower clouds, on their thin edges and on each cloud's side facing the light). The clouds cost six octaves
 of value noise per visible sky pixel, only where a level has them; no `TIME`, so the sky's radiance still
 never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky and light
-(`App.start_endless`), as do a zone's intro and outro; a boss's intro (the Sewer Swarm's) is under the
-fight's sky, so the sky holds from the level through the intro to the fight (`CineStage.sky_for`, the
+(`App.start_endless`), as do a zone's intro and outro (open question 405); a boss's intro (the Sewer
+Swarm's) is under the fight's sky, so the sky holds from the level through the intro to the fight (open
+question 404) (`CineStage.sky_for`, the
 arena's own or the zone's last level's; `CineStage.build` passes it to `level_environment(0.0, sky)`).
 `skin_review` takes `--sky=name` to look at one.
 
@@ -3113,7 +3118,7 @@ never ends, and a level never starts, unattended.
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, the runner's head turn `look`, a cyborg's face, aim and charge) and its node in play |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
-| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0)`) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
@@ -3127,7 +3132,9 @@ counted from the start lane too (a lane past the street's edge is left out).
 
 **The stage picks up the slot's look from the zone's data.** A stage def without a skin of its own takes
 the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
-(`BossDef.arena.skin`) if it has one. Its lanes default to the device's (`App.lane_count()`), so the street
+(`BossDef.arena.skin`) if it has one. Before a boss it is under the fight's sky too (`CineStage.sky_for`: the
+arena's own level sky, else the zone's last level's, as `Campaign.configure_boss` gives the fight; G8), and the
+street's light under it; a zone's intro and outro keep the zone's own sky. Its lanes default to the device's (`App.lane_count()`), so the street
 matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
 boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
 playing carries on, so a song the owner adds later under that name just plays (no music is generated for
