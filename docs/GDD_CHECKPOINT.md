@@ -102,6 +102,15 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
   - The Marketplace: plenty of plants and casino machines.
   - The other zones' doodads follow each zone's look.
   - They never hurt. Running into one **pushes the player into a neighbouring lane**: the side with room, or, if both sides have room, a side chosen per doodad (the same on every attempt).
+  - **Their look** (owner, October 9, 2026): each doodad stays a simple box with a picture of the object drawn on it, and the parts that are open air are see-through (a stall's open middle between its counter and its little roof, a van's empty windows, the bays of a colonnade). Never a jumble of shapes. The looks, approved the same day:
+    - The Neon City: a street vending machine or a pillar covered in posters (small), a street-food stall (medium), a little shop with a roll-down shutter (large).
+    - Gangland: a stack of rusted oil drums (small), a burned-out van (medium), a broken-down tin shack with a half-open shutter (large).
+    - The Marketplace: a potted palm or a flowering bush (small), a vendor's stall with a wooden base, a post in each corner, a striped little roof and its goods in the open middle (medium), a bank of slot machines back to back (large).
+    - Corporate: a steel planter with a trimmed shrub (small), a glass security booth (medium), a military supply container (large).
+    - The Dead Zone: a broken concrete column (small), a rubble heap (medium), a burned-out bus (large).
+    - The Golden Zone, outdoors and in the Golden Palace: a robed statue on a plinth or a gilded urn with a shrub (small), a wall fountain (medium), a colonnade with red drapes (large).
+  - A doodad doesn't show which way it will push (owner, October 9, 2026: no hint needed).
+  - Its outline may dip below the full height at its edges (the rubble heap) as long as its middle stays high, so it still reads as too tall to jump. Doodads are lit like the street around them, with no coloured edge glow.
   - *(Proposed:)* a push never lands the player on a gap or a hazard, and it costs nothing else.
 
 ---
