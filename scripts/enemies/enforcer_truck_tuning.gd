@@ -5,8 +5,10 @@ extends EnemyTuning
 ## after a short delay (about 0.8 s), shows itself by its headlights and light bar on the floor of its lane
 ## and a marker at the screen's bottom edge, fires warned lasers down the runner's lane, picks up cyborgs
 ## left alive in its lane (up to 3, proposed), gives up after about 25 s, and dies only to an Octodog's lunge
-## or a Buzz Overdrive's charge baited into it, a Buzz Overdrive's cut, or a gap too wide to hop. Every other
-## number here is a placeholder (DESIGN-TBD, docs/questions/c6.md). Seconds stay the same at every zone's
+## or a Buzz Overdrive's charge baited into it, a Buzz Overdrive's cut, or a gap too wide to hop. Since October 8,
+## 2026 it also shows itself now and then (speeding up into view beside the runner for a few seconds), and blows
+## up where the player sees it. Every other number here is a placeholder (DESIGN-TBD, docs/questions/c6.md and
+## docs/questions/c6b.md). Seconds stay the same at every zone's
 ## speed; its gaps behind the runner are plain metres (the camera's view behind the runner doesn't change with
 ## the speed), so its bolts, which take bolt_flight_seconds to reach the runner, keep their timing too.
 
@@ -105,6 +107,82 @@ extends EnemyTuning
 ## Seconds it takes to drop back out of sight after giving up, kept clear of the next one too.
 @export_range(0.0, 10.0, 0.5, "suffix:s") var leave_seconds: float = 4.0
 
+@export_group("Showing itself")
+## The owner (October 8, 2026; GDD §9.13 "Showing itself"): behind the camera its model is never seen, so every
+## so often it speeds up into view beside the runner, stays a few seconds, then drops back. DESIGN-TBD
+## (docs/questions/c6b.md): at most this many showings a chase, one as it arrives (show_on_arrival) and the rest
+## mid-chase where there's room.
+@export_range(0, 4) var show_count: int = 2
+## It shows itself as it arrives where there's room then, so the runner sees what's chasing them.
+@export var show_on_arrival: bool = true
+## The owner: it "only stays on screen for a few seconds before falling back" (proposed about 3 s alongside).
+## It drops back sooner when something stands in its lane ahead (it never drives through it), but never before
+## show_min_seconds: it shows itself only where its lane is clear for that long.
+@export_range(1.0, 8.0, 0.1, "suffix:s") var show_seconds: float = 3.0
+@export_range(0.5, 8.0, 0.1, "suffix:s") var show_min_seconds: float = 1.5
+## DESIGN-TBD: its front's distance ahead of the runner while it's beside them, in a lane next to theirs: the
+## chase camera then shows its whole model, its light bar and its riders (EnforcerTruckView.check), and it never
+## hides the runner. It shows itself only in a lane where that holds.
+@export_range(2.0, 8.0, 0.1, "suffix:m") var show_ahead: float = 4.0
+## How fast it closes in from behind the camera to come alongside, how fast it drops back once its time is up,
+## and how fast when it gives way (the runner moving toward its lane, an attack's warning or a bait coming):
+## metres a second relative to the runner.
+@export_range(4.0, 30.0, 0.5, "suffix:m/s") var show_close_speed: float = 14.0
+@export_range(4.0, 30.0, 0.5, "suffix:m/s") var show_drop_speed: float = 11.0
+@export_range(4.0, 40.0, 0.5, "suffix:m/s") var show_yield_speed: float = 18.0
+## DESIGN-TBD: seconds of chase from a showing's end before the next showing may start.
+@export_range(0.0, 20.0, 0.5, "suffix:s") var show_spacing_seconds: float = 6.0
+## DESIGN-TBD: its first volley waits up to this long past its time (first_volley_seconds) for its first showing,
+## while one can still come before its bait: the runner sees what's chasing them before it fires.
+@export_range(0.0, 10.0, 0.5, "suffix:s") var show_wait_seconds: float = 4.0
+## Seconds of running kept spare around a showing: it's back behind the runner this long (and close_lead_seconds
+## more) before a bait's warning (an Octodog's wind-up, a Buzz Overdrive's rev), and the floor it needs stays
+## clear this much longer.
+@export_range(0.0, 5.0, 0.1, "suffix:s") var show_margin_seconds: float = 1.0
+## DESIGN-TBD: how far ahead of the runner no enemy may be in its lane or beyond it (toward that side's wall)
+## while it's alongside: from the camera it would hide one there. It gives way when one comes that close.
+@export_range(0.0, 80.0, 1.0, "suffix:m") var show_shadow_reach: float = 30.0
+## Its sides are safe but solid while it shows itself (GDD §9.3, the hover truck's): a lane change into it is
+## bumped back. The solid side reaches this far ahead of its front too, so the runner can't step in just ahead.
+@export_range(0.0, 4.0, 0.1, "suffix:m") var blocker_ahead: float = 1.5
+## Its siren swells as it pulls alongside: it starts this many decibels under its full volume.
+@export_range(0.0, 40.0, 1.0, "suffix:dB") var siren_swell_db: float = 18.0
+## Task C6c (the owner's request, GDD §9.13 "Showing itself": the player should see what's behind them): the
+## generator plans a showing window in every chase it can (enforcer_truck_rules.gd, ShowPlanner), a calm stretch
+## the later passes keep off, where it can show itself wherever the runner is; off, its showings come only where
+## the level happens to leave room (as before task C6c), and the level is built as it was then. The owner (October 9,
+## 2026, GDD §9.13 "Room to show itself", answering docs/OPEN_QUESTIONS.md items 383–385): its cost (about 2% fewer
+## enemies and obstacles on its levels) is accepted; a truck shows itself before the player can bait it, arriving
+## early enough for its window to come before its first bait, and a chase with no room for one gives its truck to
+## another bait's chase that has room (task C6d). DESIGN-TBD (docs/OPEN_QUESTIONS.md items 400–403): a truck no bait with room is
+## left for keeps its chase, its window after the bait or none.
+@export var show_window_planned: bool = true
+## How much later than planned a showing in its window may begin and still find its room (the runner jumping or
+## changing lanes as it's due): the window holds that much more.
+## DESIGN-TBD: 1 s (docs/OPEN_QUESTIONS.md item 386).
+@export_range(0.0, 3.0, 0.25, "suffix:s") var show_window_slack_seconds: float = 1.0
+## It claims its turn among the big attacks this long before its planned showing (as a Buzz Overdrive claims its
+## turn before its rev): another type's big attack that gets ready meanwhile (a drone's barrage, a Resonator's pulse)
+## waits for it, and one already on is over by the time it's due.
+## DESIGN-TBD: 2 s (docs/OPEN_QUESTIONS.md item 386).
+@export_range(0.0, 5.0, 0.25, "suffix:s") var show_claim_seconds: float = 2.0
+
+@export_group("Wreck")
+## The owner (October 8, 2026): however it's destroyed (a charge, a cut, a gap too wide to hop) it blows up where
+## the player sees it. Behind the camera it would blow up unseen, so its wreck lurches on into view first, until
+## its front is wreck_gap behind the runner (a wreck already that close stays where it is), over
+## wreck_surge_seconds, and blows up there: in a hole, at the hole's far edge if its nose gets there first.
+## DESIGN-TBD (docs/questions/c6b.md).
+@export_range(1.6, 6.0, 0.1, "suffix:m") var wreck_gap: float = 2.8
+@export_range(0.1, 1.0, 0.05, "suffix:s") var wreck_surge_seconds: float = 0.3
+## The blast: how long its fire and smoke last, how big its fireball grows (metres; smaller in the runner's lane,
+## where it must stay under the camera's line of sight to them), and how fast it falls back behind the runner
+## (it keeps most of the truck's speed, so it stays in view).
+@export_range(0.3, 2.0, 0.05, "suffix:s") var blast_seconds: float = 0.9
+@export_range(0.5, 4.0, 0.05, "suffix:m") var blast_radius: float = 1.3
+@export_range(0.3, 4.0, 0.05, "suffix:m") var blast_radius_in_lane: float = 0.85
+@export_range(0.0, 10.0, 0.1, "suffix:m/s") var blast_drift: float = 0.5
+
 @export_group("Look")
 ## Its size: width (inside its lane), roof height and length behind its front.
 @export var body_size: Vector3 = Vector3(2.2, 2.4, 6.4)
@@ -132,6 +210,38 @@ func volley_interval(riders: int) -> float:
 ## at least that long before the rev (so before a Buzz Overdrive claims its turn, claim_seconds, too).
 func hold_seconds() -> float:
 	return close_lead_seconds + volley_seconds()
+
+
+## Seconds its gap behind the runner takes to ease `distance` metres at up to `speed` metres a second (its
+## easing, gap_rate, takes over near the end), to within a quarter of a metre.
+func ease_seconds(distance: float, speed: float) -> float:
+	var d: float = absf(distance)
+	if d <= 0.25:
+		return 0.0
+	var rate: float = maxf(gap_rate, 0.01)
+	var knee: float = maxf(speed, 0.01) / rate
+	return maxf(d - knee, 0.0) / maxf(speed, 0.01) + log(maxf(minf(d, knee), 0.25) / 0.25) / rate
+
+
+## Seconds a showing takes from `from_gap` behind the runner (its front): closing in (show_close_seconds),
+## alongside for `hold` seconds (show_seconds when negative), and dropping back to follow_gap.
+func show_total_seconds(from_gap: float, hold: float = -1.0) -> float:
+	return show_close_seconds(from_gap) + (show_seconds if hold < 0.0 else hold) \
+		+ ease_seconds(follow_gap + show_ahead, show_drop_speed)
+
+
+## Seconds it takes to come alongside the runner from `from_gap` behind them: at gap_speed_max while it's
+## further back than follow_gap (as it arrives), then at show_close_speed.
+func show_close_seconds(from_gap: float) -> float:
+	if from_gap > follow_gap:
+		return (from_gap - follow_gap) / maxf(gap_speed_max, 0.01) + ease_seconds(follow_gap + show_ahead, show_close_speed)
+	return ease_seconds(from_gap + show_ahead, show_close_speed)
+
+
+## Seconds it takes to drop back from alongside the runner until it's out of the camera's view (its front out
+## of view: the camera sees no more than out_of_view behind the runner).
+func show_drop_view_seconds(out_of_view: float) -> float:
+	return ease_seconds(show_ahead + out_of_view, show_drop_speed)
 
 
 ## How close it comes behind the runner during an Octodog's attack, in a level at `pace`

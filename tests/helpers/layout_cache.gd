@@ -38,6 +38,8 @@ class _Entry:
 	var gap_density_result: Dictionary
 	var wide_gap_result: Dictionary
 	var charge_path_result: Dictionary
+	var danger_density_result: Dictionary
+	var show_window_result: Dictionary
 
 
 static var _cache: Dictionary = {}  ## String signature (_key) -> _Entry
@@ -57,8 +59,9 @@ static func generate(config: LevelConfig, tuning: MovementTuning, patterns: Arra
 
 
 ## generate(), with a LevelGenerator standing in for the one that built it: `LevelGenerator.for_layout`
-## over a copy() of the cached layout, with its attempts/warnings/picks/fills filled in from the
-## cached build. A caller that reads those fields, or calls one of the generator's pure, read-only
+## over a copy() of the cached layout, with its attempts/warnings/picks/fills and its passes' reports
+## (gap density, wider gaps, charge paths, danger density, the Enforcer Trucks' showing windows) filled
+## in from the cached build. A caller that reads those fields, or calls one of the generator's pure, read-only
 ## queries that only look at config/pace/layout.length -- feature_start, feature_share_at,
 ## difficulty_at, quiet_at, quiet_stretches, stretch_end, burst_index, placeable_features,
 ## enemy_keep_out -- sees exactly what the real build saw, without paying for a real build again.
@@ -80,6 +83,8 @@ static func generator(config: LevelConfig, tuning: MovementTuning, patterns: Arr
 	gen.gap_density_result = entry.gap_density_result.duplicate(true)
 	gen.wide_gap_result = entry.wide_gap_result.duplicate(true)
 	gen.charge_path_result = entry.charge_path_result.duplicate(true)
+	gen.danger_density_result = entry.danger_density_result.duplicate(true)
+	gen.show_window_result = entry.show_window_result.duplicate(true)
 	return gen
 
 
@@ -108,6 +113,8 @@ static func _build(config: LevelConfig, tuning: MovementTuning, patterns: Array)
 	e.gap_density_result = gen.gap_density_result.duplicate(true)
 	e.wide_gap_result = gen.wide_gap_result.duplicate(true)
 	e.charge_path_result = gen.charge_path_result.duplicate(true)
+	e.danger_density_result = gen.danger_density_result.duplicate(true)
+	e.show_window_result = gen.show_window_result.duplicate(true)
 	return e
 
 

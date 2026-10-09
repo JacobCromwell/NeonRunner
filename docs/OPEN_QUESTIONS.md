@@ -2434,3 +2434,236 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Corporate 2's first Enforcer. Never the introduction of the Octodog or the Buzz Overdrive.
     - Placeholder: `charge_path_cyborgs = 1` in those levels, `skip_introductions` and `attack_margin_seconds`
     2 s in `data/tuning/charge_paths.tres`.
+
+**Level skies** (from G8; each level's `sky` in `data/levels/*.tres`, `scripts/world/skins/level_sky.gd`)
+361. **The Marketplace's "third level"** (GDD §5, "Skies show progression"). The owner asked for the sunset on the
+    Marketplace's third level, but the zone has two (GDD §5's schedule). Placeholder: the sunset is on
+    Marketplace 2, the zone's last level, like City 3 and Gangland 3 (`data/levels/marketplace_2.tres`, `sky`;
+    `DESIGN-TBD` on `LevelConfig.sky`). Move it to Marketplace 1, or keep it on the last level?
+    **Answered (owner, October 9, 2026):** keep it on Marketplace 2, the zone's last level (GDD §5).
+362. **The boss after each of these levels** (GDD §10). The Floating Head, the Sewer Swarm and The House, and each
+    zone's outro, keep their zone's own sky, so the dawn goes back to night for the fight (and the blood red back
+    to Gangland's dust, the sunset back to the Marketplace's warm dusk). Placeholder: the zone's own sky
+    (`Campaign.configure_boss` gives the arena no level sky). Should each fight keep its zone's last level's sky?
+    **Answered (owner, October 8, 2026):** yes. The fight keeps the sky of the level before it, and the boss's
+    intro too (`Campaign.configure_boss`, `CineStage.sky_for`); the dawn moved to City 1, so the Floating Head
+    keeps the City's night (GDD §5).
+363. **The street's light under the new skies** (GDD §5). Only the sky and the distant haze change; the scenery's
+    lighting stays the zone's: the Marketplace's low sun still gilds the upper floors of one side under the
+    darker sunset sky, and the City's street stays lit as at night under the dawn. Placeholder: unchanged.
+    Should the street's light follow (for example a little of The Hush's darkness on Marketplace 2)?
+    **Answered (owner, October 8, 2026):** yes, as it adds little code and no performance cost: each level sky's
+    `scenery_tint` (the global `scenery_tint`, one multiply per scenery pixel; GDD §5).
+
+**The Enforcer Truck shows itself; its explosion** (from C6b; groups "Showing itself" and "Wreck" in `data/enemies/enforcer_truck.tres`, F6; review with `tools/showcase/enforcer_truck_showcase.tscn -- --scenario=show` or `--scenario=cut`)
+364. **How often players will see it** (GDD §9.13 "Showing itself": "every so often"). A showing needs about 7 s
+    between its arrival and its bait's turn (pulling up, about 3 s alongside, dropping back, a margin), with a lane
+    beside the runner kept clear. Many campaign chases put the bait sooner or fill the lanes beside the runner
+    (fences, doodads, holes), so it often can't show. In Corporate 2's own build, a runner keeping to the middle
+    lane sees no showing at 3 lanes, one at 5 and none at 6. Placeholder: at most `show_count` (2) showings, one
+    on arrival and one mid-chase, only where every rule holds (`data/enemies/enforcer_truck.tres`; `DESIGN-TBD` on
+    `EnforcerTruckTuning.show_count`). Should the generator keep room for the arrival showing (a later bait, or a
+    clear stretch beside the runner's lane after it arrives)? That would be a change to the generator and the
+    level data, so it needs a core task. Or is a rare showing fine?
+365. **A runner in an outer lane** (GDD §9.13: "never takes the only free lane"). A runner in an outer lane has only
+    one lane beside them, so the truck never shows itself to them. Placeholder: no showing while the runner is in
+    an outer lane (`EnforcerTruck.show_lane_now`). Is that right, even though it means a player who keeps to the
+    wall never sees it?
+366. **Its first volley waits for its first showing.** So the runner sees what's chasing them before it fires,
+    the first volley waits up to `show_wait_seconds` (4 s) past its time, as long as a showing can still come
+    before the bait. Placeholder: as described (`DESIGN-TBD` on `show_wait_seconds`). Keep this, or fire on time?
+367. **Other attacks during a showing** (GDD §9, big attacks take turns). A showing takes a big attack's turn. A hover
+    truck and a Gilded Sentinel can't wait, so while one is in play or about to arrive the truck doesn't show
+    itself. A Resonator's pulse waits for the showing to end, as it waits for a volley (up to the director's
+    `turn_wait_max`, 8 s). Placeholder: `EnforcerTruckRoom.NO_SHOW_TYPES`. OK?
+368. **Where the blast happens** (owner, October 8, 2026: a visible explosion). Behind the camera a blast would be
+    unseen. So a wrecked truck first lurches forward into view over `wreck_surge_seconds` (0.3 s), until its front
+    is `wreck_gap` (2.8 m) behind the runner, or reaches the far edge of the hole it fell in. Then it blows up and
+    falls back slowly (`blast_drift`). This bends the physics a little so the blast is readable. It's smaller and
+    lower in the runner's lane (`blast_radius_in_lane` 0.85 m, against `blast_radius` 1.3 m beside them) so it
+    never hides them. Placeholder: those values (`DESIGN-TBD` on the "Wreck" group). OK, or should a wreck behind
+    the camera show differently (only fire and debris rising into view)?
+
+**The Neon City's outro** (from F2a; the owner's beats, GDD §6 Cinematics; numbers in `data/cinematics/city_outro_tuning.tres`, code in `scripts/cinematics/city_outro.gd` and `city_outro_set.gd`; review with `tools/showcase/cinematic_review.tscn -- --slot=city/outro`)
+369. **Its length** (GDD §1: 5–15 s). The owner's beats are many. Placeholder: 15.0 s, the top of the range
+    (`duration`): about 2 s for the crash, 3 s for the stop and the look, 3 s on the roadblock, 2 s for the escape
+    and leap, and 4.4 s for the landing in Gangland. Should it run longer, or should Gangland's intro flyover (next,
+    9.5 s) be shortened or dropped after it, since the outro already lands the runner in Gangland?
+370. **Where the roadblock stands** ("He looks to the left, and there we see a barricade"). Placeholder: the left
+    wall opens onto a side street, built from the City's own truck roofs laid across it and lined with its building
+    fronts. The roadblock stands at its mouth, a few metres ahead of where the runner stops (`side_*` values). Is a
+    side street what the owner pictured, or should the roadblock block the main street?
+371. **The barricade's look.** Placeholder: low concrete blocks with navy and white rails, in the Enforcer Truck's
+    police paint and never a hazard colour, with a cold-white floodlight at each end. The Barnacle Turrets stand in
+    the gaps between the blocks like cannons (`CityOutroSet._barricade_mesh`). Should it look like Gangland's crate
+    and container barricades instead?
+372. **Which battle truck.** Placeholder: the Enforcer Truck (police-style, light bar, two cyborg gunners on its
+    roof), because its model was already built to be shown on its own. The hover truck (Neon City 3's mini-boss) is
+    the one the player has actually met by Zone 1's end. Which one?
+373. **Turrets and drone.** Placeholder: 3 turrets (`turrets`) in the mechanical City look, and the heli drone over
+    the truck. The player meets neither in Zone 1 (the drone arrives in Gangland 3, the turret in the Marketplace),
+    so the outro previews both. Intended?
+374. **"Runs in the opposite direction".** Placeholder: away from the roadblock. The runner hops back to the right,
+    startled, then sprints right and slightly ahead to an opening in the right wall, and leaps out over the drop to
+    the road far below. The other reading is a U-turn back the way they came. Which did the owner mean?
+375. **The explosion.** Placeholder: the roadblock fires a red volley (each cyborg and turret), which blows up the
+    truck roof the runner just leapt from (the Enforcer Truck's blast, bigger: `blast_*` values). The camera is out
+    over the drop, so the runner flies toward it with the fireball behind them. Should it be something else, such
+    as the battle truck firing or the Floating Head's wreck going up?
+376. **The cut to Gangland.** Placeholder: the runner falls into the haze toward the road far below. The picture goes
+    to black for about half a second, then the runner drops into a Gangland street from about 7 m, lands, glances
+    left and right, and runs off. The cut happens under black because building Gangland's street takes a few frames.
+    Is a cut to black acceptable, or should the camera follow the fall all the way down? A continuous fall would
+    need the City's road below to become Gangland's street, a bigger job.
+377. **Runner animation.** The rig has no "stop and look" or "startled" animation. Placeholders: a head turn shared by
+    chest, neck and head (the toolkit's new `look` on cinematic keys), and a small hop back (`startle_hop`, 0.35 m)
+    that uses the jump pose. Should it have a proper startled pose?
+378. **Music.** Placeholder: the City's track plays and fades out as the runner leaps, and Gangland's comes in with
+    its intro. No music was made for cinematics (GDD §11). Should the outro have its own sting?
+379. **The web demo.** The demo ends after Zone 1, and the outro belongs to Zone 1, so the demo plays it (Gangland's
+    landing included) before the store-link screen, a teaser for Zone 2. Wanted, or should the demo go straight to
+    the store links (GDD §10's wording could be read that way)?
+380. **The crash plays twice** (the owner's first beat; GDD §10's defeat). The fight's defeat already plays the
+    dying lurch, the plunge and the crash (`FloatingHead`). After the results and the shop, the outro opens on the
+    same crash again from the run camera, as the beats ask. Placeholder: as described (`fall_start`,
+    `fall_seconds`). Keep it, or open the outro on the wreck already down and smoking?
+381. **The side street's marked edges.** The left opening is built as a level's wall gap, so the zone's wall-gap
+    look marks it as a level marks a drop: an orange lip along the main street's edge across the side street's
+    mouth (although its floor carries on), and orange edge columns framing the roadblock. That goes against "safe
+    things look safe". The right opening is a real drop, so its marks are right. Placeholder: both marked
+    (`CineStageDef.wall_gaps`). Give the toolkit a way to open a wall without the drop's marks, for openings
+    onto floor?
+
+**Room for the Enforcer Truck to show itself in every chase** (from C6c; the showing windows in `scripts/enemies/enforcer_truck_rules.gd` (`ShowPlanner`), group "Showing itself" in `data/enemies/enforcer_truck.tres`; count showings per chase with `tools/measure/enforcer_shows.gd`)
+382. **A runner by a wall** (GDD §9.13 "Showing itself": "never takes the only free lane"; follows question 365). A
+    runner in an outer lane used to never see the truck. Beside them on their inner side it would take their only
+    lane to dodge into, and at 5 and 6 lanes it would also hide up to 25 m of their lane from the camera (the camera
+    sits inward of a runner by a wall). Placeholder: it pulls up two lanes in and leaves the lane between free; the
+    "never the only free lane" rule holds both ways (the lane between stays open wherever the runner's lane is
+    blocked, and the runner's lane wherever the lane between is). Its whole look stays on screen and it hides nothing
+    of their lane or the lane between (`EnforcerTruckRoom.sides`, `escape_lane`, `EnforcerTruckView.check`;
+    `DESIGN-TBD`). Is two lanes in right?
+    **Answered (owner, October 9, 2026):** yes: two lanes in, with the lane between left free (GDD §9.13).
+383. **What a showing window may take out** (the owner's request against the danger density request). Where a chase
+    has no calm stretch where it can show itself to a runner in every lane, the generator takes out only what's in the
+    way: plain holes and fences (never a pulsing fence or one a fence generator powers), and plain cyborgs, window
+    cyborgs and Screeches (never a host, the first of a kind the level introduces, or the last of its kind or of one
+    of the level's features). Every
+    later pass keeps its additions off each window, but nothing keeps a spacing from one. On the six levels' own seeds
+    at 3, 5 and 6 lanes the windows cost about 2% of their enemies and of their obstacles (592 to 580 enemies, 3281 to
+    3226 obstacles; from +3 to -14 obstacles a level), and the danger density pass's measured increases stay in their
+    bands. Placeholder: `ShowPlanner.REMOVABLE_TYPES` and the window's stretch (`enforcer_truck_rules.gd`,
+    `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Is that cost acceptable?
+    **Answered (owner, October 9, 2026):** yes: the cost is accepted (GDD §9.13).
+384. **Chases with no window** (7 of the 23 chases on the levels' own seeds). In four, a hover truck or a Gilded
+    Sentinel is about for the whole chase, and the truck never shows itself while one is (question 367). The other
+    three have no calm stretch at all: Corporate 2 at 5 lanes (the truck's introduction, among an Octodog's charges, a
+    Tithe Collector and a Buzz Overdrive's attack), Dead Zone 1 at 3 lanes (pulsing fences, a ramp's wall run and a
+    Screech at the level's start), and Dead Zone 2 at 6 lanes (rows of fences with a pad in their gap). Three more
+    windows hold for most lanes but not all: a runner who takes a pad onto a ceiling, or a ramp onto a wall, in that
+    lane misses that showing. Placeholder: the baits that get trucks are the ones whose chases hold the most windows,
+    and a level that introduces the truck keeps its first bait's chase. Should a chase with no room for a showing get
+    no truck (another bait instead), or should the hover truck and the Gilded Sentinel make room?
+    **Answered (owner, October 9, 2026):** move the truck to a chase with room whenever the level has another bait (GDD §9.13; task C6d).
+385. **Windows after the bait** (6 of the 16). Where the bait comes right after the truck arrives (at some lane counts
+    the Golden levels' first truck arrives at the end of the run-up and their first Buzz Overdrive revs 4 s later), no
+    showing fits before it, so the window comes after the first bait. A player who destroys the truck with that bait sees its wreck blow up instead, and a wider gap later in
+    the chase (task G7) can wreck it first too: in the simulated runs, 18 of the 75 runner runs with a window lost the
+    truck before its window. Placeholder: as described (`ShowPlanner.plan`). Is a showing after the bait worth its
+    calm stretch, or should those chases arrive later?
+    **Answered (owner, October 9, 2026):** yes: those trucks arrive earlier, so the showing comes before the bait (GDD §9.13; task C6d).
+386. **Making the window's showing happen** (GDD §9, big attacks take turns). The truck claims its turn among the big
+    attacks `show_claim_seconds` (2 s) before its window is due, so a drone's barrage or a Resonator's pulse that gets
+    ready meanwhile waits for the showing (up to the director's `turn_wait_max`), and its own volleys hold so none is
+    on as the window comes. The window also holds if the showing begins up to `show_window_slack_seconds` (1 s) late.
+    A host's Bad Dream chase doesn't keep a window off: it only comes if the player kills the host, and the showing
+    then waits for it. Placeholder: those two values (`DESIGN-TBD` in `data/enemies/enforcer_truck.tres`). OK?
+
+**Gangland's boss intro** (from F2b; the owner's beat, GDD §10 Sewer Swarm "Intro cinematic"; numbers in `data/cinematics/sewer_swarm_intro.tres`, code in `scripts/cinematics/sewer_swarm_intro/`; review with `tools/showcase/cinematic_review.tscn -- --slot=gangland/boss_intro`, or play `--level=gangland/boss_intro`)
+387. **How the runner dodges** ("easily avoids it", "dodges those", "runs past them"). Placeholder: the first
+    screech pounces into the runner's lane and lands under them as they jump over it. Of the next three, the lone
+    one leaps over the runner's lane as they slide under it, and the other two land in the lane ahead and swipe as
+    the runner weaves round them (1.4 m to the right). The eleven land either side of the runner's lane and rear up
+    and swipe as the runner runs straight between them. Each then gives chase and falls behind (`jump_at`,
+    `slide_at`, `weave_at`, `third_land`, `chase_share`). In play a screech comes out only when the player is in its
+    lane and dashes straight along it (GDD §9.5); here the first beats' screeches leap sideways out of the next lane
+    into or across the runner's. Is that all right for a cinematic?
+388. **How the wall behind the runner is shown** ("soon we see that there is a wall or wave of screeches behind the
+    character"). Placeholder: the camera stays at ground level (0.47–0.75 m up). It rides low behind the runner
+    until 5 s, then swings round their right side (5.0–6.4 s) to low in front of them, looking back past them at
+    the wall. Should it look back over the runner's shoulder instead (the runner out of view)?
+389. **Where the manholes are** ("manhole covers on either side of him"). Placeholder: rows one lane over on both
+    sides of the runner, one every 6.5 m a side, the sides staggered. The runner runs in the start lane, the fight's,
+    which on 6 lanes is half a lane right of the street's middle.
+390. **What the wall looks like.** Placeholder: one wave across the street (6 m tall, its crest curling 8.5 m
+    forward over the runner, as the fight's strike from behind does), with the rest of the swarm behind it, 26 m long. It
+    rises from 6.3 s, 32 m behind the runner, and closes to 9 m by the cut. As it closes it heats toward
+    enemy-attack red (0.25 to 0.5 on the fight's scale), the fight's colour for an attack. Should a cinematic use
+    that warning colour at all?
+391. **The cut** ("a dark area, and inside that dark area, we can just make out a glint of the host"). Placeholder:
+    at 9.6 s, one cut to low between the runner and the wall, looking up into a dark hollow in the middle of the
+    mass (1.9 × 2.3 m), with screeches heaped and crawling round its rim. The Host is held up inside it, its look
+    darkened to a faint silhouette with a sickly edge. The implant at its temple glints red once, 0.9 s into the
+    cut (with Reduced flashing, a slow, faint glow). Is the glint right, or should it be the Host's eyes, or the
+    implants on its back (the fight's weak points)?
+392. **How it ends.** Placeholder: 2.4 s after the cut it fades to black (12 s in all), and the fight starts on its
+    own view, whose Rising carries on from here. There is no card naming the boss, since the beat has none and GDD
+    §1 asks for little or no words; the City's boss intro shows one ("ZONE 1 · BOSS / FLOATING HEAD"). Should
+    Gangland's show one too, over the cut or the black?
+393. **How many screeches.** Placeholder: 15 in the beats; 2 to 6 out of each manhole in the pour (half as many
+    on a low-end device); 110 dropping from the sky (45); 900 in the wave and 560 behind it (360 and 220); 110 heaped
+    round the hollow in the cut (50). The phone test (risk test R4, task E3) should check these with the fight's.
+394. **Its speed.** Placeholder: the runner runs at Gangland's run speed (21.8 m/s), the fight's, so the fight
+    follows at the same pace.
+395. **Slots.** This answers part of items 11 and 200: Gangland now has a boss intro as
+    well as the City. Should the other zones' bosses get one?
+
+**The Floating Head's salvos** (from E1g; group "Salvos" and `later_run_seconds` in `data/bosses/city_boss_tuning.tres`,
+F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §10; review with
+`tools/showcase/floating_head_showcase.tscn -- --scenario=bombing --phase=1` or `--phase=2`, with `--lanes=3`, `5` or `6`)
+396. **Which runs drop salvos** (GDD §10: "the next bombing run"). The fight has two later runs, at the start of phases 2
+    and 3. Placeholder: both drop salvos (`salvo_spots` = 1, 4, 4; the first run keeps one spot at a time). Should the
+    third phase's run go back to one spot at a time (1, 4, 1)?
+397. **How much harder on 5 or more lanes** (owner: "increase the difficulty on five or more lanes"). With one or two
+    bombs a spot, a runner on a wide street can step clear of a whole salvo. Placeholder: from 5 lanes
+    (`salvo_wide_lanes`) a spot takes up to three bombs side by side (`salvo_wide_bombs`), placed to leave the runner as
+    few lanes as possible but never none, so after the first spot there is usually one way through
+    (`salvo_wide_choices` = 1; 2 would leave a choice of two lanes). On 3 lanes a spot keeps one or two bombs, two 40%
+    of the time (`salvo_pair_chance`). Is three bombs a spot right (beyond the one or two first asked for), and is one
+    way through too hard?
+398. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
+    (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
+    lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
+399. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
+    (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?
+
+**Every chase shows its truck** (from C6d; `_choose` and `ShowPlanner` in `scripts/enemies/enforcer_truck_rules.gd`; count chases and showings with `tools/measure/enforcer_shows.gd`)
+400. **Chases no bait with room is left for** (GDD §9.13 "Room to show itself"; follows questions 384 and 385). On the
+    levels' own seeds, 14 of the 23 chases still have no window before their bait, and no move or earlier arrival
+    gives them one. In 8 builds the level has a single usable bait: it comes too soon for any showing before it (Golden
+    1 at 3 and 6 lanes, Golden 2 and 3 at 6: a Buzz Overdrive revs 4 s after the run-up; Corporate 2 at 6 lanes: an
+    Octodog charging at the start keeps its truck from arriving earlier), or a hover truck or a Gilded Sentinel is
+    about for its whole chase (Dead Zone 1 at 6 lanes, Golden 2 at 3, Golden 3 at 5). In the other 6 chases the level's
+    other bait already has its other truck (see the next question), or neither bait has room (Dead Zone 2 at 3 lanes).
+    Placeholder: the truck keeps its chase, its showing after the bait where one fits (7 chases), else none
+    (`_choose` in `enforcer_truck_rules.gd`; `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Dropping those
+    trucks would leave 9 of the 18 builds with none (Corporate 2 at 6 lanes among them, its introduction). With 8 other
+    seeds of each level (162 builds) the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no
+    window from having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another
+    way (the level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
+401. **Two trucks, one chase with room** (Corporate 2 at 5 lanes, Dead Zone 1 at 3 lanes, Dead Zone 2 at 5 and 6 lanes, on
+    their own seeds). The only bait whose chase has room before it has one truck; the other truck has nowhere with room
+    to go. Placeholder: both stay, so in Corporate 2 at 5 lanes the introduction (14 s in, among a Tithe Collector's
+    visit and then its own Buzz Overdrive's turn too close) shows itself only at the second truck (59 s). Or should such
+    a level keep only the truck that shows itself (one truck instead of two; Corporate 2's introduction at 59 s)?
+402. **One truck that shows itself, or two that don't** (other seeds). Where giving a truck to a chase with room leaves
+    the level's other truck no chase (they'd overlap), the level keeps the one that shows itself before its bait: 2 of
+    144 builds on 8 other seeds lose a truck so (Corporate 2 at 6 lanes, Golden 1 at 5), and 1 gains one back that C6c's
+    order dropped (Golden 2 at 5). Placeholder: the most windows before the bait count before the number of trucks
+    (`_choose`), as C6c counted windows before trucks. Right?
+403. **An introduction that moves late** (other seeds). Where Corporate 2's first bait has no room, its introduction
+    moves to the first chase where it shows itself before its bait: in 3 of its 24 builds on 8 other seeds, from 8 s to
+    71 s or 82 s into the level (and from 70 s to 90 s), past the reach the campaign asks of an introduction (about 19 s
+    into the level: 12 s past its start). Its first-encounter hint and the charge-path cyborg before it hold (the hint
+    is on the level intro, the cyborg earlier in the campaign). Placeholder: it moves (it never moves on the level's own seeds). Or keep the introduction
+    early, unseen, when the room is that far?

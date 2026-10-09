@@ -35,6 +35,8 @@ const FACE := Color(0.82, 0.9, 1.0)
 ## Where a rider crouches on the roof (x, and z from the front), in boarding order: the two hatches behind the
 ## light bar, then the gun ring further back.
 const RIDER_SLOTS: Array[Vector2] = [Vector2(-0.5, 3.55), Vector2(0.5, 3.55), Vector2(0.0, 4.9)]
+## Its looks (look_of).
+const LOOKS: Array[StringName] = [&"clean", &"weathered", &"gilded"]
 ## A rider's height over the roof (its screen head's top) and the gun ring's lift for the third.
 const RIDER_HEIGHT: float = 0.74
 const RING_LIFT: float = 0.12
@@ -154,6 +156,22 @@ func solid_vertices() -> PackedVector3Array:
 			var verts: PackedVector3Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
 			for v: Vector3 in verts:
 				out.append(xf * v)
+	return out
+
+
+## Its look as boxes in the model's space, for what the camera sees of it (EnforcerTruckView): its body with
+## its headlights and light bar, and each of the first `riders` riders on its roof. Each box holds every vertex
+## of its part, so a box hides a little more than the part itself.
+static func profile(look: StringName, size: Vector3, riders: int) -> Array[AABB]:
+	var m: Dictionary = meshes_for(look, size)
+	var body: AABB = (m["body"] as Mesh).get_aabb()
+	for part: String in ["lamps", "bar_red", "bar_blue"]:
+		body = body.merge((m[part] as Mesh).get_aabb())
+	var out: Array[AABB] = [body]
+	var rider: AABB = (m["rider_body"] as Mesh).get_aabb().merge((m["rider_face"] as Mesh).get_aabb())
+	for i: int in mini(riders, RIDER_SLOTS.size()):
+		var s: Vector2 = RIDER_SLOTS[i]
+		out.append(AABB(rider.position + Vector3(s.x, size.y + (RING_LIFT if i == 2 else 0.0), s.y), rider.size))
 	return out
 
 

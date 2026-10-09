@@ -87,6 +87,18 @@ func _bosses(campaign: Campaign) -> void:
 	check(with_sky >= 2, "the Sewer Swarm and The House fight under their zone's last level's sky (%d fights)" % with_sky)
 	check(campaign.configure_boss(campaign.step("city/boss"), 5).sky == null,
 		"the Floating Head under the City's own night sky (City 3 has it)")
+	# A boss's intro is under the fight's sky, between the level and the fight; a zone's own intro and
+	# outro keep the zone's.
+	for s: CampaignStep in campaign.steps():
+		if s.kind != CampaignStep.Kind.BOSS:
+			continue
+		var fight: LevelSky = campaign.configure_boss(s, 5).sky
+		check(CineStage.sky_for(null, s.zone, &"boss_intro") == fight
+			and CineStage.sky_for(null, s.zone, &"intro") == null and CineStage.sky_for(null, s.zone, &"outro") == null,
+			"%s's intro is under the fight's sky; the zone's intro and outro under its own" % s.id)
+	var gangland: ZoneDef = campaign.step("gangland/boss").zone
+	check(gangland.boss_intro != null and CineStage.sky_for(null, gangland, &"boss_intro") == campaign.step("gangland/3").level.sky,
+		"the Sewer Swarm's intro keeps Gangland 3's blood-red sky")
 
 
 func _last_level(campaign: Campaign, zone: ZoneDef) -> CampaignStep:

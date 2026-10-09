@@ -23,3 +23,7 @@ extends Resource
 @export var gaps: PackedVector3Array = PackedVector3Array()
 ## Anti-grav pads: (lane from the start lane, where along the track).
 @export var pads: PackedVector2Array = PackedVector2Array()
+## Openings in the side walls: (side, start, end), side -1 the left wall and 1 the right. The track builder
+## leaves the wall out there and the skin dresses the opening as in a level (ZoneSkin.wall_gap: its marked
+## edges, and in the City the road far below), so a cinematic can look out of the street.
+@export var wall_gaps: PackedVector3Array = PackedVector3Array()

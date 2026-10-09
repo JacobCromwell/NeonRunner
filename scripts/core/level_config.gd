@@ -113,9 +113,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## The level's own sky over its zone's (owner, October 8, 2026: a few levels show the time of day or the
 ## weather turning; GDD §5, "Skies show progression"): the sky, the distance fog and the street's light
 ## under it change (LevelSky, ZoneSkin.level_environment); the boss fight after the level keeps it
-## (Campaign.configure_boss). Null: the zone's own sky. Gameplay never depends on it.
-## DESIGN-TBD (docs/questions/g8.md): the owner asked for the Marketplace's sunset on its third level; the
-## zone has two, so Marketplace 2 has it.
+## (Campaign.configure_boss), and so does its boss's intro (CineStage.sky_for). The owner asked for the
+## Marketplace's sunset on its third level; the zone has two, so Marketplace 2 has it (confirmed October
+## 9, 2026). Null: the zone's own sky. Gameplay never depends on it.
 @export var sky: LevelSky
 
 @export_group("Pacing")
