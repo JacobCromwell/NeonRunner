@@ -8,11 +8,13 @@ extends BossPart
 ##   one of the fiery trails behind them (additive, the hazards' red-orange);
 ## - the red target marks (set_mark, hide_marks): a red ring per mark that spreads in, its inside filling in as
 ##   the missiles dive (`fill`, 0-1), pulsing as BossProps' red lines do (steady with Reduced flashing): one
-##   MultiMesh of rings, one of fills;
+##   MultiMesh of rings, one of fills, in the red lines' see-through glowing red (golden_convergence_floor
+##   .gdshader: blended, not added, so they read red on the white marble);
 ## - the fire (set_fire, fire_off): an enemy attack hitbox over each lane's stretch (fire_height high: a jump
 ##   only delays it), the outer lanes' kept clear of a wall runner's body lying across the wall's foot, so the
-##   wall is safe at every height; flames over every lane and a burning floor (golden_convergence_barrage
-##   .gdshader: additive, its flicker steady with Reduced flashing, lifted on the Compatibility renderer);
+##   wall is safe at every height; flames over every lane (golden_convergence_barrage.gdshader: additive, their
+##   flicker steady with Reduced flashing, lifted on the Compatibility renderer) on a burning floor laid red-hot
+##   over each lane (golden_convergence_floor.gdshader, blended like the marks);
 ##   `hit` reports each touch;
 ## - burst(at): a missile's blast where it lands (a spark burst; none with Reduced flashing, the fire's glow
 ##   is enough).
@@ -32,6 +34,7 @@ const WALL_CLEAR: float = 0.06
 const FLAME_STEP: float = 1.3
 const FLAMES_MAX: int = 320
 const SHADER: String = "res://scripts/bosses/golden_convergence/golden_convergence_barrage.gdshader"
+const FLOOR_SHADER: String = "res://scripts/bosses/golden_convergence/golden_convergence_floor.gdshader"
 ## The missiles' body (bronze, never glowing) and size.
 const BODY := Color(0.42, 0.3, 0.18)
 const NOSE := Color(0.72, 0.56, 0.32)
@@ -73,11 +76,12 @@ func _build() -> void:
 	var shader := load(SHADER) as Shader
 	_missiles = _multimesh("Missiles", _missile_mesh(), null, MAX)
 	_trails = _multimesh("Trails", _cross_quad(), _shader_mat(shader, 2), MAX)
-	_rings = _multimesh("Rings", _flat_quad(), _shader_mat(shader, 3), MAX)
-	_fills = _multimesh("Fills", _flat_quad(), _shader_mat(shader, 4), MAX)
+	var floor_shader := load(FLOOR_SHADER) as Shader
+	_rings = _multimesh("Rings", _flat_quad(), _shader_mat(floor_shader, 3), MAX)
+	_fills = _multimesh("Fills", _flat_quad(), _shader_mat(floor_shader, 4), MAX)
 	_flame_mat = _shader_mat(shader, 0)
 	_flames = _multimesh("Flames", _cross_quad(), _flame_mat, FLAMES_MAX)
-	_floor_mat = _shader_mat(shader, 1)
+	_floor_mat = _shader_mat(floor_shader, 1)
 	for i: int in MAX:
 		_marks.append({"pos": Vector3.ZERO, "radius": 1.0, "shown": 0.0, "fill": 0.0, "t": 0.0, "on": false})
 	for k: int in LANES_MAX:
@@ -287,9 +291,11 @@ func set_fire(from: float, to: float) -> Array[Dictionary]:
 		hazard.position = Vector3.ZERO
 		(rig["holder"] as Node3D).global_position = Vector3((x0 + x1) * 0.5, height * 0.5, TrackGeometry.world_z((from + to) * 0.5))
 		hazard.set_enabled(true)
+		# The burning floor over just what burns: the lanes' floor edge to edge (no unburnt strip between two
+		# lanes), the outer lanes' out to their fire's edge short of the wall.
 		var glow: MeshInstance3D = rig["floor"]
-		glow.global_transform = Transform3D(Basis.from_scale(Vector3(geo.lane_width, 1.0, to - from)),
-			Vector3(geo.lane_x(k), 0.045, TrackGeometry.world_z((from + to) * 0.5)))
+		glow.global_transform = Transform3D(Basis.from_scale(Vector3(x1 - x0, 1.0, to - from)),
+			Vector3((x0 + x1) * 0.5, 0.045, TrackGeometry.world_z((from + to) * 0.5)))
 		glow.visible = true
 		rig["on"] = true
 		rig["from"] = from

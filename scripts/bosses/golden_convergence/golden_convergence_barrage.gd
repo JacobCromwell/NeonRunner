@@ -34,11 +34,18 @@ signal barrage_landed(info: Dictionary)
 enum Stage { IDLE, HATCH, CLIMB, HANG, DIVE, FIRE }
 
 const MISSILES_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence/golden_convergence_missiles.gd")
-## The missiles hang this far ahead of where the runner is as they hang, spread this much along and across the
-## track, this much above and below missile_apex_height (framing).
+## The missiles hang in the run camera's view, in front of the suit (it floats suit_ahead, 64 m, ahead, keeping
+## pace with the runner; so do they, until they dive): this far ahead of the runner, spread this much along
+## the track, out to either side of his chest from APEX_SIDE_MIN to APEX_SIDE_MAX (against his dark cape and
+## the sky, not his gold), this much above and below missile_apex_height (framing). Their climb arcs up out of
+## the top of the view first.
 const APEX_AHEAD: float = 46.0
-const APEX_SPREAD: float = 12.0
-const APEX_HEIGHT_SPREAD: float = 4.0
+const APEX_SPREAD: float = 5.0
+const APEX_SIDE_MIN: float = 8.0
+const APEX_SIDE_MAX: float = 26.0
+const APEX_HEIGHT_SPREAD: float = 2.5
+## How far above its pipe a missile's climb reaches for (its curve's pull: it peaks about half this higher).
+const CLIMB_PULL: float = 30.0
 ## Each mark spreads in over this long once it shows.
 const MARK_IN: float = 0.15
 ## The hatches close this long once the last missile is out.
@@ -54,7 +61,8 @@ var burn_time: float = 0.0
 ## Barrages fired this fight (E5d-c: the Refill Ship comes after the phase's).
 var barrages: int = 0
 ## The barrage under way: {start, hatch_at, climb_at, hang_at, land_at (track distances the runner reaches),
-## from, to (the fire's stretch), marks: Array[{lane, at, pos, apex, shows_at, launch_at, pipe, mouth}],
+## from, to (the fire's stretch), marks: Array[{lane, at, pos, hang (x, height, metres ahead of the runner),
+## shows, launch, pipe, mouth}],
 ## markers: Array[Node3D]}.
 var plan: Dictionary = {}
 
@@ -154,11 +162,12 @@ func _plan() -> void:
 			var stagger: float = (0.3 if lane % 2 == 1 else -0.05) * spacing
 			var at: float = clampf(from + (float(r) + 0.5) * spacing + stagger, from + t.mark_radius, to - t.mark_radius)
 			var x: float = geo.lane_x(lane) + (_rng.randf() - 0.5) * geo.lane_width * 0.2
-			var apex := Vector3((_rng.randf() * 2.0 - 1.0) * (geo.half_width() + 6.0),
+			var side: float = -1.0 if marks.size() % 2 == 0 else 1.0
+			var hang := Vector3(side * lerpf(APEX_SIDE_MIN, APEX_SIDE_MAX, _rng.randf()),
 				t.missile_apex_height + (_rng.randf() * 2.0 - 1.0) * APEX_HEIGHT_SPREAD,
-				TrackGeometry.world_z(climb_at + APEX_AHEAD + (_rng.randf() * 2.0 - 1.0) * APEX_SPREAD))
+				APEX_AHEAD + (_rng.randf() * 2.0 - 1.0) * APEX_SPREAD)
 			order.append(marks.size())
-			marks.append({"lane": lane, "at": at, "pos": Vector3(x, 0.0, TrackGeometry.world_z(at)), "apex": apex,
+			marks.append({"lane": lane, "at": at, "pos": Vector3(x, 0.0, TrackGeometry.world_z(at)), "hang": hang,
 				"pipe": marks.size() % (GoldenConvergenceModel.PIPE_COUNT * 2), "mouth": Vector3.ZERO, "launched": false})
 	# The marks spread over the floor in a scattered order; the missiles leave in another.
 	for i: int in range(order.size() - 1, 0, -1):
@@ -272,7 +281,9 @@ func _fly(d: float) -> void:
 		var pipe: int = int(m["pipe"])
 		var side: int = -1 if pipe < GoldenConvergenceModel.PIPE_COUNT else 1
 		var mouth: Vector3 = boss.suit.pipe_mouth(side) + Vector3(side * (float(pipe % GoldenConvergenceModel.PIPE_COUNT) - 1.5) * 1.5, 0.0, 0.0)
-		var apex: Vector3 = m["apex"]
+		# Where it hangs: pacing the runner until the dive, which leaves from where it hung then.
+		var hang: Vector3 = m["hang"]
+		var apex := Vector3(hang.x, hang.y, TrackGeometry.world_z(minf(d, hang_at) + hang.z))
 		var pos: Vector3
 		var dir: Vector3
 		var trail: float = 1.0
@@ -287,7 +298,7 @@ func _fly(d: float) -> void:
 				m["mouth"] = mouth
 			var u: float = clampf((climb - launch) / maxf(1.0 - launch, 0.01), 0.0, 1.0)
 			var from: Vector3 = m["mouth"]
-			var ctrl: Vector3 = from + Vector3(0.0, 34.0, 0.0)
+			var ctrl: Vector3 = from + Vector3(0.0, CLIMB_PULL, 0.0)
 			pos = _bezier(from, ctrl, apex, u)
 			dir = _bezier(from, ctrl, apex, minf(u + 0.02, 1.0)) - pos
 			trail = clampf(u * 4.0, 0.0, 1.0)

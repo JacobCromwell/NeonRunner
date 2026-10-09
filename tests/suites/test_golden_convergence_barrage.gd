@@ -174,7 +174,12 @@ func _test_warning_and_fire(lanes: int, speed: float) -> void:
 	world.player.god_mode = true
 	var br: GoldenConvergenceBarrage = boss.barrage
 	var seen := {"hatch": 0.0, "marks": 0, "missiles": 0, "warned_lanes": true, "fill": 0.0, "early": [], "live_frames": 0,
-		"outran": 0.0, "dashed": false, "covered": true}
+		"outran": 0.0, "dashed": false, "covered": true, "hang_frames": 0, "hang_over_top": -INF, "hang_before_suit": INF,
+		"floor_fits": true}
+	# The run camera's top edge, above level (RunCamera: camera_distance behind the runner, camera_height up,
+	# looking at a metre up camera_look_ahead ahead).
+	var pitch: float = atan2(tuning.camera_height - 1.0, tuning.camera_distance + tuning.camera_look_ahead)
+	var top: float = deg_to_rad(tuning.camera_fov * 0.5) - pitch
 	var hints: Array[String] = []
 	boss.hint_due.connect(func(key: String) -> void: hints.append(key))
 	await _run(world, null, 30.0, func() -> bool: return not _events(boss, &"barrage_out").is_empty(), func() -> void:
@@ -187,6 +192,15 @@ func _test_warning_and_fire(lanes: int, speed: float) -> void:
 			if live:
 				(seen["early"] as Array).append(boss.fight_time())
 			seen["fill"] = maxf(float(seen["fill"]), br.missiles.mark_ring(0).y)
+			if br.stage == GoldenConvergenceBarrage.Stage.HANG:
+				# Hanging where the runner sees them: under the view's top edge, in front of the suit.
+				seen["hang_frames"] = int(seen["hang_frames"]) + 1
+				for m: Dictionary in br.plan["marks"]:
+					var hang: Vector3 = m["hang"]
+					var ahead: float = hang.z
+					var up: float = atan2(hang.y - tuning.camera_height, ahead + tuning.camera_distance)
+					seen["hang_over_top"] = maxf(float(seen["hang_over_top"]), up - top)
+					seen["hang_before_suit"] = minf(float(seen["hang_before_suit"]), boss.tuning.suit_ahead - ahead)
 			var from: float = float(br.plan["from"])
 			var to: float = float(br.plan["to"])
 			for lane: int in lanes:
@@ -204,7 +218,14 @@ func _test_warning_and_fire(lanes: int, speed: float) -> void:
 						continue
 					var x: float = world.geo.lane_x(int(rig["lane"]))
 					seen["covered"] = bool(seen["covered"]) and float(rig["x0"]) <= x - tuning.hurtbox_size.x * 0.5 \
-						and float(rig["x1"]) >= x + tuning.hurtbox_size.x * 0.5 and float(rig["from"]) <= d - 1.0 and float(rig["to"]) >= d + 1.0)
+						and float(rig["x1"]) >= x + tuning.hurtbox_size.x * 0.5 and float(rig["from"]) <= d - 1.0 and float(rig["to"]) >= d + 1.0
+					# The burning floor lies over just what burns (no unburnt strip between two lanes).
+					var glow: Node3D = rig["floor"]
+					var span: Vector3 = glow.global_transform.basis.get_scale()
+					var at: Vector3 = glow.global_position
+					seen["floor_fits"] = bool(seen["floor_fits"]) and glow.visible \
+						and absf(at.x - span.x * 0.5 - float(rig["x0"])) < 0.01 and absf(at.x + span.x * 0.5 - float(rig["x1"])) < 0.01 \
+						and absf(span.z - (float(rig["to"]) - float(rig["from"]))) < 0.01)
 	var warned: Array[Dictionary] = _events(boss, &"barrage_warned")
 	var fire: Array[Dictionary] = _events(boss, &"barrage_fire")
 	var out: Array[Dictionary] = _events(boss, &"barrage_out")
@@ -221,6 +242,10 @@ func _test_warning_and_fire(lanes: int, speed: float) -> void:
 		"the hatches open, the missiles fly and the marks spread over the floor (%d marks, %d missiles) %s" % [seen["marks"], seen["missiles"], tag])
 	check(bool(seen["warned_lanes"]), "its marks are floor warnings over every lane of its stretch (pickups keep off) %s" % tag)
 	check(float(seen["fill"]) > 0.9, "the marks fill in as the missiles dive (%.2f) %s" % [seen["fill"], tag])
+	check(int(seen["hang_frames"]) > 0 and float(seen["hang_over_top"]) < 0.0 and float(seen["hang_before_suit"]) > 2.0,
+		"the missiles hang in the run camera's view (%.1f deg under its top edge at the least), in front of the suit (%.1f m) %s" % [
+			-rad_to_deg(float(seen["hang_over_top"])), seen["hang_before_suit"], tag])
+	check(bool(seen["floor_fits"]), "the burning floor lies over just what burns, lane to lane %s" % tag)
 	check((seen["early"] as Array).is_empty(), "nothing burns before the marks are full %s" % tag)
 	var burnt: float = float(out[0]["t"]) - float(fire[0]["t"])
 	check(absf(burnt - t.fire_seconds) < 0.03 and absf(float(seen["live_frames"]) / Engine.physics_ticks_per_second - t.fire_seconds) < 0.05,

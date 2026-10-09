@@ -20,6 +20,16 @@ extends Node3D
 ##   wall      a wall opened beside the runner's outer lane (court.open_wall, a plain stand-in slab for the toppled
 ##             tower E5d-b brings) and a vertical pass over it, the fire climbing the wall's foot (--cam=side)
 ##   fight     the fight as it comes, with the bot
+##   slams     (E5d-b) the phase's Fist Slam sequence alone, through the run camera, the bot dodging the fists ON
+##             it and jumping the holes AHEAD, never baiting (--phase=2 for the later script; --still: the
+##             runner stands in the middle lane, god mode, its falls saved)
+##   bait      (E5d-b) the slams then the barrage, the bot baiting the first chance's fist into its Flying
+##             Buttress: the gate smashed, the tower toppling beside the causeway, the runner onto its wall as
+##             the missiles' marks fill in, on it through the fire
+##   tower     (E5d-b) the bait from across the track, the camera on the side away from the tower: its fall,
+##             its side lying flush as the wall, the runner on it, the tower sinking away behind
+##   barrage   (E5d-b) the Missile Barrage alone with no wall (god mode, the runner in the middle lane): the
+##             hatches, the salvo climbing and hanging, the dive, the marks spreading and filling in, the fire
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 25), --phase=N,
 ## --script=VVHvVHv (the strafe's passes), --cam=run/side/high, --still, --reduced-flashing, --events
 ## (prints each of the boss's events with its frame, for picking frames), --burst (front and face: the chest's
@@ -29,6 +39,13 @@ extends Node3D
 ## buttress rising at 110, the second pass's warning at 114 and its rake 126-134, the horizontal pass's warning
 ## at 150 and its sweep 161-175, the squadron back into the cape by 198; buttress and wall: the warning at 79,
 ## the fire 91-105.
+## E5d-b, at 5 lanes and 18 m/s: slams: the first fist out from frame 63, its warning (the red square, the
+## shadow) at 96, the lock at 104, the impact and the square hole at 114; the second slam 116-134, the third
+## (AHEAD) 136-154. bait and tower: the bait's lock at 124, the gate smashed and the tower toppling at 134
+## (tower: the wide shot of the whole fall to 149), down as the wall at 149; the barrage's launch at 139, the
+## missiles hanging about 145-153, the dive and the marks filling in 154-163, the fire 164-179 with the runner
+## on the wall; the tower sinks behind from about 238. barrage: the hatches at 63, the launch at 68, the hang
+## 78-83, the dive 83-93, the fire 93-108.
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 
@@ -88,6 +105,7 @@ func _ready() -> void:
 		for i: int in t.phase_beats.size():
 			beats.append("strafe:%s" % ("H" if scenario == "buttress" else "V"))
 		t.phase_beats = beats
+	_slam_beats(t)
 	def.tuning = t
 	var tuning := (load("res://data/tuning/movement.tres") as MovementTuning).duplicate() as MovementTuning
 	tuning.run_speed = speed
@@ -101,6 +119,8 @@ func _ready() -> void:
 		ctx.boss_resume = {"phase": phase - 1}
 	elif scenario in ["strafe", "buttress", "wall", "fight"]:
 		# Past the entrance: straight to the pattern.
+		ctx.boss_resume = {"phase": 0, "time": 0.0}
+	if phase <= 0 and scenario in SLAM_SCENARIOS:
 		ctx.boss_resume = {"phase": 0, "time": 0.0}
 	boss = BossEncounter.create(def) as GoldenConvergence
 	var arena: BossArena = boss.plan_arena(ctx)
@@ -117,6 +137,7 @@ func _ready() -> void:
 	if scenario == "wall":
 		world.player.god_mode = true
 		bot = null
+	_slam_runner()
 	var env := WorldEnvironment.new()
 	env.environment = world.skin.level_environment(ctx.config.darkness)
 	add_child(env)
@@ -222,9 +243,76 @@ func _hold_still() -> void:
 ## A camera beside the track (side) or high over it (high), following the runner.
 func _follow_cam() -> void:
 	var p: Vector3 = world.player.global_position
+	if _view == "tower":
+		_tower_cam(p)
+		return
 	if _view == "side":
 		_cam.global_position = p + Vector3(world.geo.wall_x() + 14.0, 6.0, -14.0)
 		_cam.look_at(p + Vector3(0.0, 2.0, -22.0), Vector3.UP)
 	else:
 		_cam.global_position = p + Vector3(0.0, 22.0, 18.0)
 		_cam.look_at(p + Vector3(0.0, 0.0, -30.0), Vector3.UP)
+
+
+# --- E5d-b: the Fist Slam, the toppled tower and the Missile Barrage ------------------------------------------
+
+const SLAM_SCENARIOS: Array[String] = ["slams", "bait", "tower", "barrage"]
+
+
+## The scenario's beats, every phase: the slams alone, the slams then the barrage, the barrage alone.
+func _slam_beats(t: GoldenConvergenceTuning) -> void:
+	if scenario not in SLAM_SCENARIOS:
+		return
+	var line: String = {"slams": "slams", "bait": "slams,barrage", "tower": "slams,barrage", "barrage": "barrage"}[scenario]
+	var beats := PackedStringArray()
+	var loops := PackedInt32Array()
+	for i: int in t.phase_beats.size():
+		beats.append(line)
+		loops.append(0)
+	t.phase_beats = beats
+	# Round again from the first beat (phase 1 loops from its second in the fight).
+	t.loop_from = loops
+	if scenario == "tower" and _view == "run":
+		_view = "tower"
+
+
+## Who runs it: the bot (never baiting in slams), or a runner standing in the middle lane in god mode whose
+## falls are saved (barrage, slams --still).
+func _slam_runner() -> void:
+	if scenario not in SLAM_SCENARIOS:
+		return
+	if scenario == "barrage" or _still:
+		bot = null
+		world.player.god_mode = true
+		world.player.grapples = 1_000_000
+		return
+	bot = GoldenConvergenceBot.new(boss)
+	bot.baits = scenario != "slams"
+	world.player.god_mode = false
+
+
+## Across the track from the tower (the side away from the first chance's gate lean, or from the tower down),
+## high enough to see its side lie flush along the causeway, the runner in view; while a tower falls, a wide
+## shot from far across the track takes in the whole fall (it starts off screen behind the runner).
+func _tower_cam(p: Vector3) -> void:
+	for tower: GoldenConvergenceTower in boss.slams.towers:
+		if tower.state == GoldenConvergenceTower.State.FALLING:
+			var mid: float = tower.foot + tower.length * 0.5
+			var face: float = tower.side * (world.geo.wall_x() + boss.tuning.tower_width * 0.5)
+			_cam.fov = 75.0
+			_cam.global_position = Vector3(face - tower.side * 160.0, tower.length * 0.5, TrackGeometry.world_z(mid))
+			_cam.look_at(Vector3(face, tower.length * 0.45, TrackGeometry.world_z(mid)), Vector3.UP)
+			return
+	_cam.fov = 60.0
+	var side: int = 1
+	var down: Array[GoldenConvergenceTower] = boss.slams.towers_down()
+	if not down.is_empty():
+		side = down[0].side
+	else:
+		for s: Dictionary in boss.slams.slams:
+			if bool(s["chance"]):
+				side = int(s["lean"])
+				break
+	var wall_x: float = world.geo.wall_x()
+	_cam.global_position = p + Vector3(-side * (wall_x + 9.0), 10.0, 8.0)
+	_cam.look_at(Vector3(side * wall_x * 0.6, 2.0, p.z - 34.0), Vector3.UP)

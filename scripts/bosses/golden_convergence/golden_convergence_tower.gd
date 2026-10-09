@@ -6,10 +6,10 @@ extends Node3D
 ## never lands on the track. It stays for about 8-12 seconds"; task E5d-b). One pooled tower (the slams keep a
 ## pool, GoldenConvergenceSlams), built once in code in the Grand Court's look (GoldenCourtSkin: white marble,
 ## gold bands, lit windows, a gold crown and spire) at the length the run's speed gives it:
-## - fall(side, foot, wall_from, wall_to): it appears standing beside the causeway on `side`, its foot at track
-##   distance `foot` (behind the runner, out of view), and topples forward along the track over
-##   tower_fall_seconds (an accelerating fall, with a rumble: gc_topple), landing in a cloud of dust and a
-##   shake (both honour the settings: the shake through RunEffects, no flash at all). It lies beside the
+## - topple(side, foot, length, wall_from, wall_to): it appears standing beside the causeway on `side`, its
+##   foot at track distance `foot` (behind the runner, out of view: "off screen"), and topples forward along the
+##   track over tower_fall_seconds (an accelerating fall, with a rumble: gc_topple), landing in a cloud of dust
+##   and a shake (both honour the settings: the shake through RunEffects, no flash at all). It lies beside the
 ##   causeway, its side flush with the wall's face from just inside the balustrade outward; as it lands, the
 ##   court opens the wall on `side` over [wall_from, wall_to] (GoldenConvergenceCourt.open_wall), so the
 ##   runner can wall-run it (and wall hop on it), and the strafe's wall rules read it;

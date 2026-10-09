@@ -233,8 +233,9 @@ extends Resource
 ## Red target marks per lane over its stretch (one missile each), and their size.
 @export_range(2, 10) var marks_per_lane: int = 5
 @export_range(0.4, 1.2, 0.05, "suffix:m") var mark_radius: float = 0.95
-## The missiles hang this high over the causeway, spread over the stretch they'll strike (framing).
-@export_range(15.0, 80.0, 1.0, "suffix:m") var missile_apex_height: float = 34.0
+## The missiles hang this high over the causeway in front of the suit, in the run camera's view (framing:
+## GoldenConvergenceBarrage.APEX_AHEAD).
+@export_range(10.0, 80.0, 1.0, "suffix:m") var missile_apex_height: float = 22.0
 
 @export_group("The court")
 ## DESIGN-TBD (GDD §10: "no side walls ... a low golden balustrade bumps the runner back"): the walls are
