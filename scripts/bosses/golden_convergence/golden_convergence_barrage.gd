@@ -38,7 +38,7 @@ const MISSILES_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence
 ## pace with the runner; so do they, until they dive): this far ahead of the runner, spread this much along
 ## the track, out to either side of his chest from APEX_SIDE_MIN to APEX_SIDE_MAX (against his dark cape and
 ## the sky, not his gold), this much above and below missile_apex_height (framing). Their climb arcs up out of
-## the top of the view first.
+## the top of the view first. DESIGN-TBD (docs/questions/e5d.md, E5d-b 10).
 const APEX_AHEAD: float = 46.0
 const APEX_SPREAD: float = 5.0
 const APEX_SIDE_MIN: float = 8.0

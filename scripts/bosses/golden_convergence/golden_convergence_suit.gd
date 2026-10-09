@@ -35,7 +35,8 @@ const HALO_SPIN: float = 0.05
 ## The pipes' hatch swings this far open (radians).
 const CAP_OPEN: float = 1.9
 ## E5d-b: how far an arm's segments telescope at most (1: each slid out of the one before, nested; beyond it
-## the sleeves stretch with them, so the fist reaches the track from where the suit floats).
+## the sleeves stretch with them, so the fist reaches the track from where the suit floats). DESIGN-TBD
+## (docs/questions/e5d.md, E5d-b 6: a stretched arm, or the suit leaning in for its slams).
 const EXTEND_MAX: float = 2.4
 
 var tuning: GoldenConvergenceTuning
