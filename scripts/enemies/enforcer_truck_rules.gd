@@ -759,16 +759,32 @@ class ShowPlanner:
 		return out
 
 
-	## True if the layout keeps at least one enemy of each type in `gone` without them.
+	## True if the layout keeps at least one enemy of each type in `gone` without them, and every feature of the level
+	## they could stand for that it has now (LevelGenerator.feature_positions: a cyborg that isn't a host, a Screech
+	## from a wall vent; the generator builds the level again where one goes missing, GDD §5).
 	func _leaves_one_each(gone: Array[Dictionary]) -> bool:
 		var left: Dictionary = {}
 		for e: Dictionary in gen.layout.enemies:
 			var type: String = String(e.get("type", ""))
 			left[type] = int(left.get(type, 0)) + 1
+		var features: Dictionary = {}
 		for e: Dictionary in gone:
 			var type: String = String(e.get("type", ""))
 			left[type] = int(left.get(type, 0)) - 1
 			if int(left[type]) < 1:
+				return false
+			features[type] = true
+			if type == "screech":
+				features["screech_vents"] = true
+		var rest := LevelLayout.new()
+		rest.lane_count = gen.layout.lane_count
+		rest.length = gen.layout.length
+		for e: Dictionary in gen.layout.enemies:
+			if not _in(gone, e):
+				rest.enemies.append(e)
+		for feature: String in features:
+			if gen.config.has_feature(feature) and not LevelGenerator.feature_positions(gen.layout, feature).is_empty() \
+					and LevelGenerator.feature_positions(rest, feature).is_empty():
 				return false
 		return true
 
