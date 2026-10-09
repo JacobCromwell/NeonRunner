@@ -23,8 +23,10 @@ extends MarketplaceSkin
 ## brass is lit metal (never neon), and the hazards stay the brightest, most saturated things on screen.
 ## Phones: the glass vault is opaque and faked (no transparency), nothing here is a real-time light,
 ## and every part is drawn with the one solid material and the one glow material in a chunk's batches.
-## DESIGN-TBD (docs/questions/k1.md): the floor and gap look, the glow palette, the signs' names, the
-## sky and the pedestrians.
+## DESIGN-TBD (docs/questions/k1.md): the floor and gap look (1), the glow palette (2), the signs' names (3:
+## lit signs carry a mark and glyphs, never words), pedestrians far down the street (4: there are none; the
+## Marketplace's citizens play in the shop windows only), how busy the street is (5), the glass roof (6), the
+## doodads (7: the Marketplace's, in the Casino's palette) and The House's plainer arena (8).
 
 @export_group("Street")
 ## DESIGN-TBD (docs/questions/k1.md 1): the paving: dark flagstones, brass inlaid along the lanes.
@@ -39,7 +41,7 @@ extends MarketplaceSkin
 @export_group("Iron and brass")
 ## The facades' dark iron, four tones.
 @export var iron_colors: PackedColorArray = PackedColorArray([
-	Color(0.18, 0.165, 0.165), Color(0.2, 0.175, 0.165), Color(0.155, 0.165, 0.18), Color(0.21, 0.185, 0.175)])
+	Color(0.2, 0.17, 0.155), Color(0.22, 0.18, 0.155), Color(0.175, 0.165, 0.165), Color(0.235, 0.195, 0.165)])
 ## Dark painted iron: girders, ribs, cornices, balcony rails.
 @export var iron_color: Color = Color(0.13, 0.12, 0.125)
 ## Aged brass: the pipes, the rails, the trims and the frames. Lit metal, never neon.
@@ -63,11 +65,12 @@ extends MarketplaceSkin
 @export var pane_color: Color = Color(0.05, 0.085, 0.14)
 @export var pane_lit_color: Color = Color(0.3, 0.21, 0.13)
 @export var star_color: Color = Color(0.8, 0.84, 0.95)
-## DESIGN-TBD (docs/questions/k1.md 3): how often an iron girder crosses the street under the vault,
-## carrying banners and lanterns; and the shares of bays with a lantern, a ceiling fan and banners.
+## DESIGN-TBD (docs/questions/k1.md 6): the glass roof as a whole (broken panes, still fans) and how often an
+## iron girder crosses the street under it, carrying banners and lanterns; the shares of bays with a lantern, a
+## ceiling fan and banners.
 @export_range(10.0, 120.0, 1.0, "suffix:m") var crossbeam_spacing: float = 32.0
 @export_range(0.0, 1.0, 0.01) var lantern_share: float = 0.5
-@export_range(0.0, 1.0, 0.01) var fan_share: float = 0.18
+@export_range(0.0, 1.0, 0.01) var fan_share: float = 0.28
 @export_range(0.0, 1.0, 0.01) var banner_share: float = 0.7
 ## Heavy cloth in muted aubergine, ochre, indigo and slate (lit, never glowing), and its width.
 @export var banner_colors: PackedColorArray = PackedColorArray([
@@ -75,7 +78,7 @@ extends MarketplaceSkin
 @export_range(0.8, 3.0, 0.1, "suffix:m") var banner_width: float = 1.8
 
 @export_group("Casino ceilings")
-## DESIGN-TBD (docs/questions/k1.md 3): how often each kind of ceiling appears, as relative weights (a
+## DESIGN-TBD (docs/questions/k1.md 5): how often each kind of ceiling appears, as relative weights (a
 ## footbridge across the street needs a ceiling across every lane; narrower ones become gantries).
 @export_range(0.0, 10.0, 0.1) var footbridge_weight: float = 3.0
 @export_range(0.0, 10.0, 0.1) var gantry_weight: float = 3.0
@@ -86,11 +89,13 @@ extends MarketplaceSkin
 ## out), and decorative signs, lights and machinery start at decor_min_height.
 @export_range(5.0, 12.0, 0.25, "suffix:m") var band_top: float = 7.0
 ## Balconies, pipes, air-conditioning units and blade signs (the things that stand out of a face by more
-## than a hand's width) start no lower than this: the facades are flush below it. The Casino's own is
-## decor_min_height; The House's arena raises it above the machine (13.5 m: nothing hangs over the lanes
-## below about 14.4 m but ceilings, and the machine fills the street to 35 cm off the walls).
-@export_range(6.0, 20.0, 0.25, "suffix:m") var overhang_min_height: float = 8.0
-## DESIGN-TBD (docs/questions/k1.md 3): how many balconies, pipe runs, air-conditioning units and
+## than a hand's width, over the outer lane) start no lower than this: the facades are flush below it. The
+## Casino's own is 10 m (nothing hangs over the lanes below about 10 m but ceilings: the arrival flyover's
+## camera flies under 9.5 m); The House's arena raises it above the machine (13.5 m: nothing hangs over the
+## lanes below about 14.4 m but ceilings, and the machine fills the street to 35 cm off the walls).
+## DESIGN-TBD (docs/questions/k1.md 8): the arena is plainer than the street leading to it.
+@export_range(6.0, 20.0, 0.25, "suffix:m") var overhang_min_height: float = 10.0
+## DESIGN-TBD (docs/questions/k1.md 5): how many balconies, pipe runs, air-conditioning units and
 ## planters the facades carry: per building, the chance of each.
 @export_range(0.0, 1.0, 0.01) var balcony_share: float = 0.55
 @export_range(0.0, 1.0, 0.01) var pipe_share: float = 0.55
@@ -181,7 +186,8 @@ func _casino_palette() -> void:
 	girder_color = Color(0.17, 0.16, 0.16)
 	concrete_color = Color(0.2, 0.18, 0.17)
 	soffit_color = Color(0.2, 0.18, 0.17)
-	# Doodads: dark cabinets with brass trim, dim screens, deep-green plants in dark pots.
+	# Doodads (DESIGN-TBD, docs/questions/k1.md 7: the Marketplace's own, in the Casino's palette): dark cabinets
+	# with brass trim, dim screens, deep-green plants in dark pots.
 	doodad_pot_color = Color(0.3, 0.22, 0.17)
 	doodad_plant_colors = PackedColorArray([Color(0.16, 0.24, 0.15), Color(0.2, 0.28, 0.17), Color(0.14, 0.2, 0.14)])
 	doodad_cabinet_colors = PackedColorArray([Color(0.14, 0.1, 0.13), Color(0.11, 0.12, 0.16)])

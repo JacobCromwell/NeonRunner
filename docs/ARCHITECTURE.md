@@ -2172,11 +2172,11 @@ paved street, warm lamplight and haze.
   as `MarketStalls` is). The suite pins it over whole levels at 3, 5 and 6 lanes.
 - *The calm band.* Every wall is flush from the street up past `band_top` (7 m): the facade shader paints
   its pipes there (a brass pipe along the top of each storey, risers) and nothing opens, glows or sticks out
-  (no vent-like shape: the screeches' lairs). Balconies, brass pipes with brackets and risers,
-  air-conditioning units, blade signs and wall lamps start at `overhang_min_height` (`decor_min_height`, 8 m,
-  by default) and stand out of the face by under a metre (the arrival flyover's camera keeps a metre inside
-  the walls); decorative signs, banners, lamps and bulbs never sit lower than `decor_min_height` and are
-  never framed in a hazard's stripes.
+  (no vent-like shape: the screeches' lairs). Balconies, brass pipes and risers, air-conditioning units and
+  blade signs start at `overhang_min_height` (10 m: nothing hangs over the lanes below it but ceilings, the
+  arrival flyover's rule) and stand out of the face by under a metre (the flyover's camera keeps a metre
+  inside the walls); flat decoration (decorative signs, banners, wall lamps, marquee bulbs) never sits lower
+  than `decor_min_height` (8 m) and is never framed in a hazard's stripes.
 - *The glass vault is background* (never a ceiling the player can use). `CasinoVault` springs it from the
   facades' top (`eave_height`, 22 m) and arches it over the street (higher over a wider one: `arch_of()`),
   in bays (`bay_length`) built from cached templates in a few variants: iron ribs and purlins, and the

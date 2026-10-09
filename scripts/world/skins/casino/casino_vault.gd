@@ -18,7 +18,7 @@ extends RefCounted
 ## (k + 1) * bay_length) and belongs to the call whose range holds its start.
 
 ## Segments of the arch, and panes along a bay.
-const ARC_SEGMENTS: int = 10
+const ARC_SEGMENTS: int = 8
 const PANES_PER_BAY: int = 3
 ## Template variants of a bay (which panes are missing, by hash).
 const VARIANTS: int = 4
@@ -152,8 +152,8 @@ func _bay(arch: Dictionary, variant: int) -> MeshLayer:
 		var basis := Basis(along * (chord + 0.06), outward * RIB_THICK, Vector3(0.0, 0.0, RIB_DEPTH))
 		t.box_xform(Transform3D(basis, mid), iron, 0.0, MeshKit.PAT_CASINO_IRON,
 			MeshKit.FACE_NY | MeshKit.FACE_PZ | MeshKit.FACE_NZ, 2.0)
-	# Purlins running along the street at every vertex of the arch, a brass one at the crown.
-	for i: int in ARC_SEGMENTS + 1:
+	# Purlins running along the street at every other vertex of the arch, a brass one at the crown.
+	for i: int in range(0, ARC_SEGMENTS + 1, 2):
 		var p: Vector2 = points[i]
 		var brass: bool = i == ARC_SEGMENTS / 2
 		t.box(Vector3(p.x, p.y - 0.02, -length * 0.5), Vector3(0.2, 0.2, length), skin.brass_dim_color if brass else iron, 0.0,
@@ -232,11 +232,11 @@ func _banners(solid: MeshLayer, k: int, bz: float, beam_y: float, span: float, l
 ## A ceiling fan hung with its hub at `at`: a brass hub on a rod, four iron blades.
 func _fan(solid: MeshLayer, at: Vector3, k: int) -> void:
 	solid.box(at + Vector3(0, 0.7, 0), Vector3(0.05, 1.4, 0.05), skin.iron_color)
-	solid.prism(at + Vector3(0, -0.12, 0), 0.26, 0.24, 8, skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS, true, 0.5)
+	solid.prism(at + Vector3(0, -0.12, 0), 0.34, 0.26, 8, skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS, true, 0.5)
 	var turn: float = TAU * MeshKit.hash01(k, 66)
 	for i: int in 4:
 		var angle: float = turn + float(i) * PI * 0.5
 		var dir := Vector3(cos(angle), 0.0, sin(angle))
-		var basis := Basis(dir * 1.7, Vector3(0, 0.035, 0), dir.cross(Vector3.UP) * 0.38)
-		solid.box_xform(Transform3D(basis, at + dir * 1.05 + Vector3(0, -0.2, 0)), skin.iron_color, 0.0,
+		var basis := Basis(dir * 2.3, Vector3(0, 0.04, 0), dir.cross(Vector3.UP) * 0.5)
+		solid.box_xform(Transform3D(basis, at + dir * 1.4 + Vector3(0, -0.2, 0)), skin.iron_color, 0.0,
 			MeshKit.PAT_CASINO_IRON, MeshKit.ALL_FACES, 2.0)

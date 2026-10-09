@@ -96,6 +96,8 @@
     {"match": "data/tuning/*", "tier": "full"},
     {"match": "data/zones/*", "tier": "full"},
     {"match": "data/campaign/*", "tier": "full"},
+    {"match": "data/skins/casino_skin*", "suites": ["casino_skin", "skin_budget"]},
+    {"match": "data/bosses/casino_boss_skin*", "suites": ["casino_skin", "the_house*", "bosses"]},
     {"match": "data/skins/*", "suites": ["skin_budget"]},
     {"match": "data/skies/*", "suites": ["level_sky", "app_flow"]},
     {"match": "data/world/*", "suites": ["cult_emblem", "cult_feed", "*_skin"]},

@@ -13,7 +13,8 @@ extends MarketFacades
 ## big lit signs, banners of heavy cloth, all unframed (hazard signs wear the yellow/black frame) and
 ## none below `decor_min_height`.
 ## Nothing vent-like at the foot of the walls (the screeches' lairs, GDD §5, §9.5), nothing glowing or
-## sticking out through the wall-run band (`band_top`): every wall is flush from the street up past it.
+## sticking out through the wall-run band (`band_top`): every wall is flush from the street up past it,
+## and what stands out of a face by more than a hand's width starts at `overhang_min_height`.
 ## All variety comes from hashing lot indices, so chunk cuts never change a building.
 
 ## How many storeys a balcony may hang from, and its reach (metres).
@@ -100,7 +101,7 @@ const FACE_AGAINST: Dictionary = {-1: MeshKit.FACE_NX, 1: MeshKit.FACE_PX}
 
 ## Thick brass pipes along the face (the reference's pipes and ducts): one or two runs along the
 ## building between the first storey above the calm band and the roof, with a flange at the building's
-## ends and brackets every few metres, and on some a riser up the face. Nothing lower than
+## ends, and on some a riser up the face. Nothing lower than
 ## overhang_min_height.
 func _pipes(solid: MeshLayer, b: MarketFacades.Building, face_x: float, u0: float, u1: float) -> void:
 	var side: int = b.side
@@ -117,11 +118,6 @@ func _pipes(solid: MeshLayer, b: MarketFacades.Building, face_x: float, u0: floa
 			_flange(solid, x, y, b.b0 + 0.05, radius)
 		if u1 >= b.b1 - 0.01:
 			_flange(solid, x, y, b.b1 - 0.05, radius)
-		var d: float = ceilf(u0 / 5.0) * 5.0
-		while d < u1:
-			solid.box(Vector3(face_x - side * 0.06, y - radius * 0.2, -d), Vector3(0.1, radius * 2.0 + 0.1, 0.12), skin.girder_color,
-				0.0, MeshKit.PAT_CASINO_IRON, MeshKit.FACE_PZ | MeshKit.FACE_NZ | MeshKit.FACE_NY | (MeshKit.FACE_NX if side > 0 else MeshKit.FACE_PX), 2.0)
-			d += 5.0
 	# A riser near the building's start, from the first run's height down toward the calm band's top.
 	if MeshKit.hash01(side, b.id, 109) < 0.5:
 		var rd: float = b.b0 + 0.9 + 1.2 * MeshKit.hash01(side, b.id, 110)
@@ -190,23 +186,32 @@ func _lamp(side: int) -> MeshBatch:
 func _lounge_extras(_batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacades.Building, face_x: float,
 		_u0: float, _u1: float, start: float, end: float) -> void:
 	var side: int = b.side
-	var top_storey: int = floori((b.height - 1.0 - skin.gallery_top - 0.2) / STOREY)
 	var cells: int = floori((b.b1 - b.b0) / b.cell)
-	for k: int in cells:
-		var cx: float = b.grid_start + (float(k) + 0.5) * b.cell
-		if cx < start or cx >= end:
-			continue
-		var column: int = MeshKit.hash_i(b.seed, k, 5)
-		for storey: int in range(1, top_storey + 1):
-			var floor_y: float = skin.gallery_top + 0.2 + storey * STOREY
-			if floor_y < csk.overhang_min_height + 0.2:
+	var first_storey: int = maxi(1, ceili((csk.overhang_min_height - 0.2 - skin.gallery_top) / STOREY))
+	var top_storey: int = floori((b.height - 1.0 - skin.gallery_top - 0.2) / STOREY)
+	var usable: int = top_storey - first_storey + 1
+	if cells > 0 and usable > 0:
+		# Balconies and units go to slots (a window cell and a storey) picked by hash and spread by a stride
+		# coprime with the slot count, so every pick is a different slot and the cost follows the number
+		# placed, not the number of slots.
+		var slots: int = cells * usable
+		var balconies: int = roundi(float(slots) * csk.balcony_share * 0.34)
+		var units: int = roundi(float(slots) * csk.unit_share * 0.3)
+		var stride: int = 7 if slots % 7 != 0 else 11
+		var first: int = MeshKit.hash_i(b.seed, side, 71) % slots
+		for j: int in balconies + units:
+			var slot: int = (first + j * stride) % slots
+			var k: int = floori(float(slot) / float(usable))
+			var cx: float = b.grid_start + (float(k) + 0.5) * b.cell
+			if cx < start or cx >= end:
 				continue
-			var bits: int = (column >> ((storey * 3) % 30)) & 7
-			if bits < 2 and MeshKit.hash01(b.seed, k, storey) < csk.balcony_share * 1.4:
+			var storey: int = first_storey + slot % usable
+			var floor_y: float = skin.gallery_top + 0.2 + storey * STOREY
+			if j < balconies:
 				solid.append(_balcony(side, (b.seed + k + storey) % 3), Transform3D(Basis.IDENTITY, Vector3(face_x, floor_y, -cx)))
-			elif bits >= 6 and floor_y + 0.25 >= csk.overhang_min_height and MeshKit.hash01(b.seed, k, storey + 40) < csk.unit_share * 1.2:
-				solid.append(_unit(side), Transform3D(Basis.IDENTITY, Vector3(face_x, floor_y + 0.25,
-					-(cx + (0.4 if bits == 6 else -0.4)))))
+			else:
+				var shift: float = 0.4 if (slot & 1) == 0 else -0.4
+				solid.append(_unit(side), Transform3D(Basis.IDENTITY, Vector3(face_x, floor_y + 0.25, -(cx + shift))))
 	# Blade signs sticking out over the street, high up: lit, unframed (a hazard sign wears the frame).
 	var signs: int = MeshKit.hash_i(side, b.id, 50) % 3
 	for i: int in signs:
@@ -361,7 +366,8 @@ func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacad
 		MeshKit.SHAPE_FLAT)
 
 
-## Where a casino's big sign goes: the screen's plane (x), bottom (y0), height (h) and length, in the
+## Where a casino's big sign goes (DESIGN-TBD, docs/questions/k1.md 3: its lettering is rows of glyphs, as every
+## skin's, so "Gasket's House of Chance" can't be spelled): the screen's plane (x), bottom (y0), height (h) and length, in the
 ## mid-height of its face (always above decor_min_height); empty if the casino is too small for one.
 func _casino_sign(b: MarketFacades.Building, face_x: float) -> Dictionary:
 	var length: float = minf(b.b1 - b.b0 - 3.0, 12.0)

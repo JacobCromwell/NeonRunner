@@ -679,7 +679,8 @@ func _arena(skin: CasinoSkin, arena: CasinoSkin) -> void:
 		return
 	check(arena.bunting_height >= 25.0, "the arena strings nothing low over the street (%.1f m)" % arena.bunting_height)
 	check(arena.overhang_min_height >= ARENA_CLEARANCE, "and its facades are flush up to %.1f m" % arena.overhang_min_height)
-	check(skin.overhang_min_height <= skin.decor_min_height + 0.01, "the Casino's own overhangs start at decor_min_height")
+	check(skin.overhang_min_height >= 10.0 and skin.overhang_min_height >= skin.decor_min_height,
+		"the Casino's own overhangs start no lower than the arrival flyover's 10 m (%.1f m)" % skin.overhang_min_height)
 	var geo := TrackGeometry.new(6, tuning)
 	var wall: float = geo.wall_x()
 	var intrusions: PackedStringArray = []
