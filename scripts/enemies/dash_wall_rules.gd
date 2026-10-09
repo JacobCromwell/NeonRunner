@@ -59,8 +59,8 @@ extends RefCounted
 ## - A wider gap (task G7) from its take-off margin to its landing margin (WideGapPlacement.keep_outs), as it
 ##   keeps off a wall: each stays the only demand at its take-off and landing. A cyborg planted in a charge's
 ##   path (task G7) keeps its encounter (ChargePathPlacement.encounter_span: from its charger's claim to past its
-##   strike) as every big attack does. And a zone doodad keeps its push's lead before it (doodad_span), as it
-##   keeps it from a wall placed before it.
+##   strike) as every big attack does. And a zone doodad keeps its push's lead before it and the level's spacing
+##   past it (doodad_span), as it keeps them from a wall placed before it.
 ## Plain holes and fences (never a pulsing fence or one a fence generator powers; in the second stage the fill
 ## pass's and the danger density pass's as well) in a footprint, and the signs on one side wall where both
 ## block the route, are taken out to make room (clear_plain_pieces: taking content out never makes a level
@@ -671,12 +671,13 @@ static func enemy_spans(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -
 	return out
 
 
-## What zone doodad `d` keeps a wall's footprint off, placed after it (the second stage): itself and its push's lead
-## before it (LevelGenerator.doodad_lead_for), so its push never comes in a wall's clear stretch, as a doodad
-## placed after a wall keeps its lead from the footprint (LevelGenerator._place_doodads). Past it nothing more: it
-## only pushes the runner aside, and a wall stands across every lane, so no lane needs crossing back before one.
+## What zone doodad `d` keeps a wall's footprint off, placed after it (the second stage), as a doodad placed after a
+## wall keeps them from its footprint (LevelGenerator._place_doodads): its push's lead before it
+## (LevelGenerator.doodad_lead_for), so its push never comes in a wall's clear stretch, and the level's spacing
+## past it (doodad_after), so a runner who dashes through it has time to see what it hid (task H5).
 static func doodad_span(gen: LevelGenerator, d: Dictionary) -> Vector2:
-	return Vector2(float(d["start"]) - LevelGenerator.doodad_lead_for(gen.tuning), float(d["end"]))
+	var end: float = float(d["end"])
+	return Vector2(float(d["start"]) - LevelGenerator.doodad_lead_for(gen.tuning), end + gen.doodad_after(end))
 
 
 ## A hover truck at `at`: its entrance, the stretch a wall's footprint keeps off (enemy_spans), from the start of

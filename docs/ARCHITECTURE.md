@@ -1925,8 +1925,8 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (2 to 4 by level, DESIGN-
   danger the owner asked for (`test_danger_density`), and a crowded level's few doodad stretches. A wall there
   takes out the plain pieces in its way (the fill pass's and the danger density pass's too), and keeps off every
   wider gap's zone (`WideGapPlacement.keep_outs`), every planted cyborg's encounter
-  (`ChargePathPlacement.encounter_span`) and every doodad with its push's lead before it (`doodad_span`), as each
-  keeps off a wall placed before it. A level left with no wall at all makes room for one
+  (`ChargePathPlacement.encounter_span`) and every doodad with its push's lead before it and the level's spacing
+  past it (`doodad_span`), as each keeps off a wall placed before it. A level left with no wall at all makes room for one
   as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger).
 Both draw from `rng_for("dash_wall")`, so the passes before them place exactly what they did, and a level with a
 count of 0 (or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
@@ -1962,8 +1962,8 @@ every lane), the danger density pass, the wider gaps, the planted cyborgs and th
 the side wall gaps and wall fences beside them (`wall_keep_outs`), and the credits (none inside a wall:
 `LevelLayout.doodad_between` counts a wall in every lane, so a dropped credit or a floor cut's lane never lands in
 one either). `problems(gen)` re-checks a finished layout (the tests, `LayoutChecks.check_dash_walls`). Every
-campaign level gets its full count on its own seed at 3, 5 and 6 lanes (Golden 1 asks for 2 and Golden 3 for 3:
-their crowded tracks have room for no more on 5 and 6 lanes).
+campaign level gets its full count on its own seed at 3, 5 and 6 lanes (Golden 1 and Golden 3 ask for 2: their
+crowded tracks have room for no more on some lane counts).
 
 **Dash walls on the track.** `TrackBuilder._build_dash_wall` builds each in the chunk where it stands (Damage and
 interactions: the box on `LAYER_DASH_WALL`, the forgiving hitbox), sized by `TrackBuilder.dash_wall_size()` (as
@@ -3823,7 +3823,8 @@ Golden level's ceilings run on physics at 25 m/s, and F6's Save keeping the base
 `test_doodads` checks zone doodads (G5; GDD §3): a level without them is the same data as before and a
 share of 0 changes nothing (every piece, enemy, pick and fill stays with a share; only credits inside a
 doodad go; City 1's extra gaps, which FIX4 may send elsewhere around a doodad, keep its own gaps and their
-count, task G7), placement over 216 levels at 3, 5 and 6 lanes (every difficulty, with and without every
+count, task G7; dash walls past an introduction, which come after the doodads, left out of the comparison,
+task H7a), placement over 216 levels at 3, 5 and 6 lanes (every difficulty, with and without every
 built feature, at the highest share: `check_doodads`, `check_layout` and `check_rules`, deterministic),
 every campaign level's doodads and City 1's gentle start, the rules' keep-outs (a Bad Dream's chase, a
 hover truck's lane) and the enemies' own checks, the track's bodies (never a hazard, a standable top,

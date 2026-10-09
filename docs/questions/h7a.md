@@ -1,13 +1,13 @@
 # H7a, dash walls (the mechanism): open questions
 
 - **How many a level** (GDD §9.14 gives none; the brief: 2–4, rising). Placeholder: `LevelConfig.dash_walls`,
-  2 in Corporate 1 and 2, Dead Zone 2 and Golden 1, 3 in Dead Zone 1 and Golden 3, 4 in Golden 2 (0 to 8 in the
-  F6 "Level pacing" section). The generator places up to that many (every campaign level gets its full count on
-  its own seed at 3, 5 and 6 lanes). Golden 1 and Golden 3 ask for fewer than the brief's rising 2 to 4 would
-  give them because their tracks are the most crowded (Golden 1 on 5 lanes has room for two walls, Golden 3 on 6
-  lanes for three: the walls past an introduction take the room the other passes leave, below). Endless mode and
-  quick play keep their base level's count, however long the level. How many should each level have, and should
-  endless mode scale them with its length?
+  2 in Corporate 1 and 2, Dead Zone 2, Golden 1 and Golden 3, 3 in Dead Zone 1, 4 in Golden 2 (0 to 8 in the F6
+  "Level pacing" section). The generator places up to that many (every campaign level gets its full count on its
+  own seed at 3, 5 and 6 lanes). Golden 1 and Golden 3 ask for fewer than the brief's rising 2 to 4 would give
+  them because their tracks are the most crowded (each has room for two on some lane count: the walls past an
+  introduction take the room the other passes leave, below). Endless mode and quick play keep their base level's
+  count, however long the level. How many should each level have, and should endless mode scale them with its
+  length?
 - **Where Corporate 1 introduces them** (GDD §9.14, proposed: "Corporate 1, after the Buzz Overdrive's
   introduction"). Placeholder: `feature_starts["dash_wall"] = 0.42` in `data/levels/corporate_1.tres` (the Buzz
   Overdrive's is 0.1, the partial wall fences' 0.5). The introduction stands at the first fair spot from its start;
