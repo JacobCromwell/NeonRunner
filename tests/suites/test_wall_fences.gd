@@ -23,6 +23,13 @@ extends SkinSuite
 const LEVELS: Array = ["marketplace/2", "casino/1", "casino/2", "corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2",
 	"golden/1", "golden/2", "golden/3"]
 const WITHOUT: Array = ["city/1", "city/2", "city/3", "gangland/1", "gangland/2", "gangland/3", "marketplace/1"]
+## Builds on their level's own seed, as [id, lanes], whose introduction may come later than intro_seconds
+## after its start: neither wall has a fair spot that close to it (WallFencePlacement.keep_outs), so the
+## placement takes the first fair one past it, as it must. Marketplace 2 at 3 lanes on task K4's curve: its
+## signs, window cyborgs and a ramp on the walls, the outer lanes' pieces and its big attacks and floor cuts
+## take both walls through those 10 s, and its first full-height one comes at 15.4 s. Each case checks that
+## its walls are still taken there, and that it still comes late (else it leaves this list).
+const LATE_INTRODUCTIONS: Array = [["marketplace/2", 3]]
 
 var sim: RunSim
 var campaign: Campaign
@@ -407,8 +414,8 @@ func _test_campaign_levels() -> void:
 ## GDD §6 and the schedule (GDD §5): Marketplace 2 brings in full-height wall fences and Corporate 1
 ## partial ones, each gently: nothing of the kind before its start; its first one is the introduction,
 ## with a long off time and no other wall fence near it on either wall; it comes within intro_seconds
-## of the start on the level's own seed and on most others (a big attack can hold it back), mostly where
-## no enemy is about.
+## of the start on the level's own seed (but where no fair spot is that close, LATE_INTRODUCTIONS) and on
+## most others (a big attack can hold it back), mostly where no enemy is about.
 func _test_introductions() -> void:
 	var t: WallFenceTuning = WallFencePlacement.tuning()
 	var on_time: int = 0
@@ -449,15 +456,37 @@ func _test_introductions() -> void:
 							"no other wall fence near the introduction, on either wall %s" % tag)
 				var within: bool = float(first["at"]) <= start + t.intro_seconds * gen.speed + 0.01
 				on_time += 1 if within else 0
-				if k == 0:
+				var late_s: float = (float(first["at"]) - start) / gen.speed
+				if k == 0 and LATE_INTRODUCTIONS.has([id, lanes]):
+					var why: String = _walls_taken(gen, layout, start, start + t.intro_seconds * gen.speed, t)
+					check(not within and why != "", ("%s meets its first `%s` late (%.1f s) only because neither wall has a fair spot "
+						+ "within %.0f s of the start (%s); else take it off LATE_INTRODUCTIONS %s") % [id, feature, late_s,
+						t.intro_seconds, why if why != "" else "one has", tag])
+					print("  %s: its first `%s` at %.1f s, both walls taken before (%s)" % [tag, feature, late_s, why])
+				elif k == 0:
 					check(within, "%s meets its first `%s` within %.0f s of the start (%.1f s) %s" % [id, feature, t.intro_seconds,
-						(float(first["at"]) - start) / gen.speed, tag])
+						late_s, tag])
 				if within:
 					calm += 1 if _calm(gen, layout, first, t) else 0
 	check(on_time * 4 >= total * 3, "most introductions come within %.0f s of the start (%d of %d)" % [t.intro_seconds, on_time, total])
 	check(calm * 2 >= on_time, "most of those where no enemy is about (%d of %d)" % [calm, on_time])
 	print("  wall fence introductions: %d of %d within %.0f s of the start, %d of those where no enemy is about" % [on_time,
 		total, t.intro_seconds, calm])
+
+
+## What keeps a wall fence off both walls of `layout` from `lo` to `hi` (WallFencePlacement.keep_outs: the
+## reasons whose stretches reach in there, joined), or "" if either wall has a fair spot there. The passes
+## after the wall fences only add pieces, so a spot fair here was fair when they were placed.
+func _walls_taken(gen: LevelGenerator, layout: LevelLayout, lo: float, hi: float, t: WallFenceTuning) -> String:
+	var whys: Dictionary = {}
+	for side: int in [-1, 1]:
+		var keeps: Array[Dictionary] = WallFencePlacement.keep_outs(gen, layout, side, t)
+		if WallFencePlacement.first_free(WallFencePlacement.merged(keeps), lo, hi) != INF:
+			return ""
+		for k: Dictionary in keeps:
+			if float(k["to"]) >= lo and float(k["from"]) <= hi:
+				whys[String(k["why"])] = true
+	return ", ".join(PackedStringArray(whys.keys()))
 
 
 ## True if no enemy is about (what the fill pass keeps for it) within wall fence `w`'s drop window.

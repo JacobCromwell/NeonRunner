@@ -84,8 +84,8 @@ const INTRODUCTION_REACH: float = 210.0
 ## (task K2: they took half of that count's budget, and the Casino's re-spaced curve reshuffled the levels'
 ## own layouts: the generator's introductions are as often late as before, 16.7% and 16.4% of 396 seeded
 ## ones, but the levels' own seeds then had 6 late of 66, 3 of them wall gaps, and now 9). Left out, the
-## levels' own seeds have 6 late of 63, the check's limit (3 before): docs/OPEN_QUESTIONS.md §D, item 386 lists
-## them for the owner.
+## levels' own seeds had 6 late of 63 on K2's curve, the check's limit (3 before; docs/OPEN_QUESTIONS.md §D,
+## item 386 lists them for the owner), and have 5 on task K4's (docs/questions/k4.md).
 const SPACED_FROM_START: Array = ["wall_gaps"]
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
 ## Marketplace's boss, and the Marketplace's outro led to Corporate (_test_old_saves).
@@ -108,6 +108,7 @@ func run() -> void:
 	_test_slots(campaign)
 	_test_schedule(campaign)
 	_test_curve_and_lengths(campaign)
+	_test_no_level_easier(campaign)
 	_test_skins(campaign)
 	_test_levels_generate(campaign)
 	_test_ceiling_gauntlets(campaign)
@@ -315,6 +316,42 @@ func _test_schedule(campaign: Campaign) -> void:
 	var corporate_2: LevelConfig = campaign.step("corporate/2").level
 	check(corporate_2.feature_weight("drone") > 1.0 and corporate_2.feature_weight("hover_truck") > 1.0,
 		"Corporate 2 has a heavier military presence (GDD §5, proposed)")
+
+
+## No level gets easier when levels are added (owner, October 9, 2026, GDD §6; task K4): every level the
+## campaign had before the Casino is at least as hard as on the 15-level linear curve it had then (the
+## campaign without the Casino's zone, at exponent 1), City 1 and Golden 3 as they were; the Marketplace's at
+## least as hard (a little harder is welcome). The curve's exponent (data/campaign/campaign.tres) lifts the
+## early and middle levels, and leaves enemy scaling linear.
+func _test_no_level_easier(campaign: Campaign) -> void:
+	var before := campaign.duplicate() as Campaign
+	var zones: Array[ZoneDef] = []
+	for z: ZoneDef in campaign.zones:
+		if z.id != &"casino":
+			zones.append(z)
+	before.zones = zones
+	before.difficulty_curve_exponent = 1.0
+	check(before.level_count() == 15, "the campaign before the Casino had 15 levels (%d)" % before.level_count())
+	check(campaign.difficulty_curve_exponent < 1.0, "the curve is concave: it lifts the early and middle levels (%.2f)"
+		% campaign.difficulty_curve_exponent)
+	var lines: PackedStringArray = []
+	for s: CampaignStep in before.steps():
+		if not s.is_level():
+			continue
+		var was: float = before.configure(s, 5).difficulty
+		var now: float = campaign.configure(campaign.step(s.id), 5).difficulty
+		check(now >= was - 0.0005, "%s is no easier than before the Casino (%.3f, was %.3f)" % [s.id, now, was])
+		if s.id == "city/1" or s.id == "golden/3":
+			check(is_equal_approx(now, was), "%s keeps its difficulty (%.3f)" % [s.id, now])
+		lines.append("%s %.3f→%.3f" % [s.id, was, now])
+	print("  difficulty against the 15-level curve before the Casino: %s" % ", ".join(lines))
+	# The exponent bends the difficulty only: enemy scaling stays linear over the 17 levels, which task K2's
+	# moved thresholds (docs/OPEN_QUESTIONS.md §D, item 385) were set against.
+	for s: CampaignStep in campaign.steps():
+		if s.is_level():
+			var linear: float = float(s.level_index) / float(campaign.planned_level_count() - 1)
+			check(is_equal_approx(campaign.configure(s, 5).enemy_scaling, linear),
+				"%s keeps its linear enemy scaling (%.4f)" % [s.id, campaign.configure(s, 5).enemy_scaling])
 
 
 ## Each level is slightly harder than the last (GDD §6), up to Golden 2's peak (GDD §5, proposed), the

@@ -938,7 +938,9 @@ counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15
 0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
-little, `docs/OPEN_QUESTIONS.md` §D, item 386).
+little, `docs/OPEN_QUESTIONS.md` §D, item 386). On task K4's curve `test_danger_density`'s sample has
+13-19% more enemies and 17% more obstacles in the first levels, 26-28% and 26-27% in the middle ones,
+and 32-36% and 31-38% in the final ones (x1.327 enemies at 3 lanes).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -1630,10 +1632,12 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). On the 17-level curve (task K2) the first Enforcer
-  chase holds one in 9 of the 18 level and lane builds that have trucks, Corporate 2 at 3 and 6 lanes, where the
-  truck following the runner over it is wrecked in play; at 5 lanes nothing fits in its chase, and
-  `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  one fewer on a seed not the level's own, never none). On task K4's curve the first Enforcer chase holds one
+  in 9 of the 18 level and lane builds that have trucks (as on K2's 17-level linear curve, not the same ones),
+  Corporate 2 at 3, 5 and 6 lanes, where the truck following the runner over it is wrecked in play (K2's left
+  5 lanes' chase full); at 5 lanes it comes 35 m into the chase, so a runner who leads the truck straight
+  there wrecks it before its first volley (`test_enforcer_truck_runs` allows a build with no volley only
+  that way). `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
@@ -2542,11 +2546,19 @@ Marketplace, which leads straight into the Casino (owner, October 8, 2026): its 
 Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
-over the 17 levels (FB 4, FB 5), re-spaced when the Casino's two came in (task K2: each existing level's
-difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from 0.56 to 0.60;
-the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every existing
-level keeps its own, `docs/OPEN_QUESTIONS.md` §D, items 384-386); which level is the peak (proposed: Golden 2, with Golden 3 a little
-below it) and the remaining level lengths (DESIGN-TBD, run 120–150 s) stay open.
+over the 17 levels (FB 4, FB 5). When the Casino's two came in, task K2 re-spaced it linearly (each
+existing level's difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from
+0.56 to 0.60; the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every
+existing level keeps its own, `docs/OPEN_QUESTIONS.md` §D, items 384-386). The owner then ruled that no
+level gets easier when levels are added (GDD §6, October 9, 2026), so `difficulty_curve_exponent` bends it
+(0.79, task K4, DESIGN-TBD): every level is at least as hard as on the 15-level linear curve before the
+Casino (Marketplace 2 binds that up to about 0.84), the Marketplace a little harder (0.469 and 0.516, from
+0.443 and 0.500), City 2 to Gangland 3 0.03-0.04 harder, Corporate 1 to Golden 2 0.02-0.10 harder, City 1
+(0.05) and Golden 3 (0.85) as they were, and each level at least 0.04 harder than the last (Golden 3
+aside). `enemy_scaling` stays linear (K2's thresholds stand), and `test_campaign` checks every level
+against the 15-level curve (`docs/questions/k4.md`: the table and why 0.79). Which level is the peak
+(proposed: Golden 2, with Golden 3 a little below it) and the remaining level lengths (DESIGN-TBD, run
+120–150 s) stay open.
 Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via
 `data/levels/city_1.tres`'s `duration_seconds`; all other level durations stay unchanged.
 At the City's 21 m/s this moves its finish line from 2310 to 1155 metres. The existing generator
