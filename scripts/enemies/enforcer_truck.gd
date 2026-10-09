@@ -176,7 +176,7 @@ var _yielding: bool = false
 var _last_show_end: float = -INF
 var _bumped: bool = false
 ## True while the showing on is its planned window's and its bait's claim on its turn may come during it (task C6e:
-## the window's mode "claim" or "calm"): it's out of view before its bait's warning instead of back before its claim.
+## the window's mode "claim" or "calm"): it's out of view before a Buzz Overdrive's rev instead of back before its claim.
 var _show_claim: bool = false
 ## The layout's side of what its showings need (EnforcerTruckRoom), read once.
 var _room: EnforcerTruckRoom
@@ -747,7 +747,7 @@ func show_lane_now() -> Array:
 	var chase_left: float = tuning.chase_seconds - _clock
 	var to_bait: float = _seconds_to_bait()
 	var to_fixed: float = _seconds_to_fixed()
-	var hold: float = EnforcerTruckRoom.hold_before_warning(tuning, gap, _seconds_to_warning(), chase_left, to_fixed) \
+	var hold: float = EnforcerTruckRoom.hold_claimed(tuning, gap, _seconds_to_rev(), _seconds_to_dog(), chase_left, to_fixed) \
 		if claim_ok else EnforcerTruckRoom.hold_for(tuning, gap, to_bait, chase_left, to_fixed)
 	if hold < tuning.show_min_seconds:
 		if to_fixed - tuning.show_margin_seconds < minf(to_bait - tuning.show_margin_seconds - tuning.close_lead_seconds, chase_left):
@@ -839,8 +839,11 @@ func _must_give_way() -> bool:
 	var left: float = _show_seconds_left()
 	# A bait sooner than the showing was planned for (half its margin to spare: an Octodog not planned in the
 	# layout, a wait that moved one on).
-	var bait_near: bool = _seconds_to_warning() <= left + tuning.show_margin_seconds * 0.5 if _show_claim \
-		else _bait_near(left + tuning.show_margin_seconds * 0.5 + tuning.close_lead_seconds)
+	var bait_near: bool = _bait_near(left + tuning.show_margin_seconds * 0.5 + tuning.close_lead_seconds)
+	if _show_claim:
+		# A Buzz Overdrive's claim may come during it: only its rev, and an Octodog's turn, count (task C6e).
+		bait_near = _seconds_to_rev() <= left + tuning.show_margin_seconds * 0.5 \
+			or _seconds_to_dog() <= left + tuning.show_margin_seconds * 0.5 + tuning.close_lead_seconds
 	if _attack_on(false, _show_claim) or bait_near or _seconds_to_fixed() <= left + tuning.show_margin_seconds * 0.5:
 		return true
 	var held: Array[bool] = _held_lanes(left)
@@ -1090,36 +1093,46 @@ func _seconds_to_bait() -> float:
 	return best
 
 
-## Seconds of running until one of its baits' warnings, as far as a showing its bait's claim may come during goes
-## (task C6e; EnforcerTruckRoom.warnings, hold_before_warning): an Octodog winding up or charging (0), or with charges
-## left, close_lead_seconds before its stop; a Buzz Overdrive revving or charging (0), or parked or rolling, its rev;
-## or the next of the layout's (INF: none).
-func _seconds_to_warning() -> float:
+## Seconds of running until a Buzz Overdrive's rev, its warning (task C6e; a showing its claim may come during is out of
+## view before it, EnforcerTruckRoom.hold_claimed): 0 while one revs or charges, or one parked or rolling's, or the
+## layout's next (EnforcerTruckRoom.revs; INF: none).
+func _seconds_to_rev() -> float:
 	var pd: float = world.player_distance()
 	var v: float = _plan_speed()
-	var best: float = _room.seconds_to_warning(pd, v)
+	var best: float = EnforcerTruckRoom.seconds_to(_room.revs, pd, v)
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or not e.alive or e.type_id != &"buzz_overdrive":
+			continue
+		var s: int = int(e.get(&"state"))
+		if s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+			return 0.0
+		var cut: Dictionary = e.get(&"cut")
+		if (s == BuzzScript.State.PARKED or s == BuzzScript.State.ROLL) and not cut.is_empty():
+			best = minf(best, maxf(FloorCutPlan.warn_at(cut) - pd, 0.0) / v)
+	return best
+
+
+## Seconds of running until an Octodog's turn (task C6e; _seconds_to_bait's Octodogs): 0 while one winds up or
+## charges, or one with charges left's stop, or the layout's next planned wind-up (EnforcerTruckRoom.dog_turns; INF:
+## none).
+func _seconds_to_dog() -> float:
+	var pd: float = world.player_distance()
+	var v: float = _plan_speed()
+	var best: float = EnforcerTruckRoom.seconds_to(_room.dog_turns, pd, v)
 	var scaling: float = world.config.enemy_scaling if world.config != null else 0.0
 	for e: Enemy in world.director.active:
-		if not is_instance_valid(e) or not e.alive:
+		if not is_instance_valid(e) or not e.alive or not (e is Octodog):
 			continue
-		if e is Octodog:
-			var dog := e as Octodog
-			if dog.in_doghouse:
-				continue
-			match dog.phase:
-				Octodog.Phase.WINDUP, Octodog.Phase.LUNGE, Octodog.Phase.TURN, Octodog.Phase.SPRINT, Octodog.Phase.PACE:
-					return 0.0
-				Octodog.Phase.IDLE:
-					if dog.charges_done < dog.charges:
-						var stop: float = _dog_tuning.stop_distance(maxf(world.player.speed, 1.0), scaling, world.tuning.pace())
-						best = minf(best, maxf(maxf(dog.track_distance() - pd - stop, 0.0) / v - tuning.close_lead_seconds, 0.0))
-		elif e.type_id == &"buzz_overdrive":
-			var s: int = int(e.get(&"state"))
-			if s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+		var dog := e as Octodog
+		if dog.in_doghouse:
+			continue
+		match dog.phase:
+			Octodog.Phase.WINDUP, Octodog.Phase.LUNGE, Octodog.Phase.TURN, Octodog.Phase.SPRINT, Octodog.Phase.PACE:
 				return 0.0
-			var cut: Dictionary = e.get(&"cut")
-			if (s == BuzzScript.State.PARKED or s == BuzzScript.State.ROLL) and not cut.is_empty():
-				best = minf(best, maxf(FloorCutPlan.warn_at(cut) - pd, 0.0) / v)
+			Octodog.Phase.IDLE:
+				if dog.charges_done < dog.charges:
+					var stop: float = _dog_tuning.stop_distance(maxf(world.player.speed, 1.0), scaling, world.tuning.pace())
+					best = minf(best, maxf(dog.track_distance() - pd - stop, 0.0) / v)
 	return best
 
 

@@ -14,7 +14,7 @@ extends RefCounted
 ## - held: where a hover truck holds the lane (task C6e): a wall to the runner (its sides are solid), never the
 ##   truck's lane, and a showing never stands between the runner and it (it would hide it).
 ## And: where its baits' turns begin (an Octodog's planned wind-ups; a Buzz Overdrive's claim on its turn before
-## its rev) and their warnings, where the attacks that can't wait for a turn are on (fixed: a hover truck's entrance,
+## its rev) and the Buzz Overdrives' revs, where the attacks that can't wait for a turn are on (fixed: a hover truck's entrance,
 ## a Gilded Sentinel's turn; task C6e), where a hover truck or a Gilded Sentinel comes into play (quiet: the
 ## generator's first try still plans its windows away from them, NO_SHOW_TYPES), and
 ## the layout's enemies by where they stand (for what its body could hide from the camera: floor enemies in their
@@ -59,10 +59,11 @@ var deadly: Array[PackedVector2Array] = []
 var held: Array[PackedVector2Array] = []
 ## Where its baits' turns begin (runner distances, in order).
 var baits: PackedFloat32Array = PackedFloat32Array()
-## Where its baits' warnings begin, as far as a showing its bait's claim may come during goes (task C6e,
-## hold_before_warning): a Buzz Overdrive's rev, an Octodog's planned wind-up less close_lead_seconds (where it closes
-## up behind the runner for it). Runner distances, in order.
-var warnings: PackedFloat32Array = PackedFloat32Array()
+## Where its baits' turns begin that aren't a claim (an Octodog's planned wind-ups: it closes up behind the runner
+## close_lead_seconds before one), and where the Buzz Overdrives that claim theirs rev (their warning; task C6e,
+## hold_claimed). Runner distances, in order.
+var dog_turns: PackedFloat32Array = PackedFloat32Array()
+var revs: PackedFloat32Array = PackedFloat32Array()
 ## The attacks that can't wait for a turn (task C6e): Vector2(where the runner is as one begins, where it's over), in
 ## order: each hover truck's entrance (from its banging, its warning, to its burst through the wall and its emerging
 ## into its lane) and each Gilded Sentinel's turn (from its claim, GildedSentinelTuning.claim_window, to its last
@@ -116,7 +117,8 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 	for r: Dictionary in layout.ramps:
 		_add(by["soft"], layout.outer_lane(int(r["side"])), float(r["at"]) - mt.ramp_length, float(r["at"]) + mt.ramp_length)
 	var warns: Array[float] = []
-	var limits: Array[float] = []
+	var dogs: Array[float] = []
+	var revs_at: Array[float] = []
 	var buzz := EnemyDirector.tuning_for("buzz_overdrive") as BuzzOverdriveTuning
 	for e: Dictionary in layout.enemies:
 		var type: String = String(e.get("type", ""))
@@ -127,13 +129,13 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 			"octodog":
 				for a: Variant in (e.get("params", {}) as Dictionary).get("charge_at", []):
 					warns.append(float(a))
-					limits.append(float(a) - t.close_lead_seconds * run_speed)
+					dogs.append(float(a))
 			"buzz_overdrive":
 				var cut: Dictionary = BuzzRules.cut_of(layout, e)
 				if not cut.is_empty():
 					var claim: float = float(cut.get("claim_seconds", buzz.claim_seconds if buzz != null else 2.5))
 					warns.append(FloorCutPlan.warn_at(cut) - maxf(claim, least_claim) * run_speed)
-					limits.append(FloorCutPlan.warn_at(cut))
+					revs_at.append(FloorCutPlan.warn_at(cut))
 			"hover_truck":
 				var ht := EnemyDirector.tuning_for(type) as HoverTruckTuning
 				if ht != null:
@@ -161,8 +163,10 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 			room.planned.append(Vector2(at, geometry.lane_x(clampi(int(e.get("lane", 0)), 0, lanes - 1))))
 	warns.sort()
 	room.baits = PackedFloat32Array(warns)
-	limits.sort()
-	room.warnings = PackedFloat32Array(limits)
+	dogs.sort()
+	room.dog_turns = PackedFloat32Array(dogs)
+	revs_at.sort()
+	room.revs = PackedFloat32Array(revs_at)
 	room.fixed.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
 	room.quiet.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
 	room.planned.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
@@ -245,20 +249,19 @@ static func hold_for(t: EnforcerTruckTuning, gap: float, to_bait: float, chase_l
 	return minf(t.show_seconds, room_left - close_in - drop)
 
 
-## hold_for for a showing its bait's claim on its turn may come during (task C6e; ShowPlanner's CLAIM and CALM modes,
-## the owner's answer to docs/OPEN_QUESTIONS.md item 400: it shows itself before the bait, the bait staying where it
-## is): a Buzz Overdrive's claim only holds back the attacks that get ready during it, and one begun before it carries
-## on, so the showing need only be out of view (no longer holding the turn) show_margin_seconds before its bait's
-## warning, `to_warning` seconds from now (its rev; an Octodog's wind-up less close_lead_seconds: warnings), and back
-## behind the runner before the rest as hold_for.
-static func hold_before_warning(t: EnforcerTruckTuning, gap: float, to_warning: float, chase_left: float,
+## hold_for for a showing a Buzz Overdrive's claim on its turn may come during (task C6e; ShowPlanner's CLAIM and CALM
+## modes, the owner's answer to docs/OPEN_QUESTIONS.md item 400: it shows itself before the bait, the bait staying
+## where it is): the claim only holds back the attacks that get ready during it, and one begun before it carries on,
+## so the showing need only be out of view (no longer holding the turn) show_margin_seconds before the tank's rev, its
+## warning, `to_rev` seconds from now; and back behind the runner, as hold_for, show_margin_seconds and
+## close_lead_seconds before an Octodog's wind-up `to_dog` seconds from now (it closes up for it), show_margin_seconds
+## before `to_fixed` and before `chase_left`.
+static func hold_claimed(t: EnforcerTruckTuning, gap: float, to_rev: float, to_dog: float, chase_left: float,
 		to_fixed: float = INF) -> float:
 	var close_in: float = t.show_close_seconds(gap)
 	var out_of_view: float = t.show_drop_view_seconds(OUT_OF_VIEW)
-	var drop: float = t.ease_seconds(t.follow_gap + t.show_ahead, t.show_drop_speed)
-	var by_warning: float = to_warning - t.show_margin_seconds - close_in - out_of_view
-	var by_rest: float = minf(chase_left, to_fixed - t.show_margin_seconds) - close_in - drop
-	return minf(t.show_seconds, minf(by_warning, by_rest))
+	var by_rev: float = to_rev - t.show_margin_seconds - close_in - out_of_view
+	return minf(by_rev, hold_for(t, gap, to_dog, chase_left, to_fixed))
 
 
 ## Seconds of running from `d` until the next of the layout's baits' turns (INF: none).
@@ -267,10 +270,10 @@ func seconds_to_bait(d: float, v: float) -> float:
 	return maxf(baits[i] - d, 0.0) / maxf(v, 0.01) if i < baits.size() else INF
 
 
-## Seconds of running from `d` until the next of the layout's baits' warnings (warnings; INF: none).
-func seconds_to_warning(d: float, v: float) -> float:
-	var i: int = warnings.bsearch(d - 1.0)
-	return maxf(warnings[i] - d, 0.0) / maxf(v, 0.01) if i < warnings.size() else INF
+## Seconds of running from `d` until the next of `marks` (runner distances, in order: dog_turns, revs; INF: none).
+static func seconds_to(marks: PackedFloat32Array, d: float, v: float) -> float:
+	var i: int = marks.bsearch(d - 1.0)
+	return maxf(marks[i] - d, 0.0) / maxf(v, 0.01) if i < marks.size() else INF
 
 
 ## Seconds of running from `d` until the next attack that can't wait for a turn (fixed) begins: 0 while one is on,
@@ -489,16 +492,25 @@ func sides(r: int, seed: int, held_by_lane: Array[bool] = []) -> Array[int]:
 ## lanes past it and any lane between them and the truck (EnforcerTruckView.check, to 60 m ahead), with every
 ## rider it may carry, in every one of its looks (so the layout's plan is the same in every zone's skin), for every
 ## pair of a runner lane and a lane it may show itself in (sides(): next to a runner with a lane on each side, two
-## lanes in from one by a wall or a hover truck's lane, task C6e) at `lanes` lanes: runner lane * 64 + truck lane.
+## lanes in from one by a wall, and two lanes in from one beside an outer lane a hover truck holds, task C6e) at `lanes`
+## lanes: runner lane * 64 + truck lane. (A hover truck holds the outer lane on its side, HoverTruckRules.)
 static func fits_for(mt: MovementTuning, t: EnforcerTruckTuning, lanes: int) -> Dictionary:
 	var out: Dictionary = {}
 	var profiles: Array = []
 	for look: StringName in EnforcerTruckModel.LOOKS:
 		profiles.append(EnforcerTruckModel.profile(look, t.body_size, EnforcerTruckModel.RIDER_SLOTS.size()))
 	for r: int in lanes:
-		var ls: Array[int] = [r - 2, r - 1, r + 1, r + 2]
+		var ls: Array[int] = []
+		if r > 0 and r < lanes - 1:
+			ls.append_array([r - 1, r + 1])
+			if r == 1:
+				ls.append(3)
+			if r == lanes - 2:
+				ls.append(lanes - 4)
+		else:
+			ls.append(r + (2 if r == 0 else -2))
 		for l: int in ls:
-			if l < 0 or l >= lanes:
+			if l < 0 or l >= lanes or out.has(r * 64 + l):
 				continue
 			var ok: bool = true
 			for profile: Array[AABB] in profiles:

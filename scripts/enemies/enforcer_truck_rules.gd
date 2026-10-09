@@ -603,8 +603,9 @@ class ShowPlanner:
 	##   can't wait for a turn (EnforcerTruckRoom.fixed: a hover truck's entrance, a Sentinel's turn), from its claim on
 	##   its turn on. Their attacks that take turns (the hover truck's cannon and forward lurch) wait for it.
 	## - CLAIM: as AROUND, its bait's claim on its turn may come during it (it begins before the claim, which only holds
-	##   back the attacks that get ready during it): out of view show_margin_seconds before its bait's warning
-	##   (EnforcerTruckRoom.hold_before_warning). The truck doesn't give way to that claim in play.
+	##   back the attacks that get ready during it): out of view show_margin_seconds before a Buzz Overdrive's rev, its
+	##   warning (EnforcerTruckRoom.hold_claimed; an Octodog's turn as before). The truck doesn't give way to that claim
+	##   in play.
 	## - CALM: the level's calm start (its run-up), where no window fits between the run-up's end and the first bait:
 	##   as CLAIM, the truck arriving inside the run-up (calm_start_min_seconds into the run at the earliest) right
 	##   behind the runner (at its follow gap) and showing itself as it arrives; nothing taken out.
@@ -798,8 +799,8 @@ class ShowPlanner:
 
 
 	## How long a showing beginning with the runner at `d`, its front `gap` behind them, `chase_left` seconds before
-	## its chase ends, may stay alongside in the current mode (EnforcerTruckRoom.hold_for; hold_before_warning in
-	## CLAIM and CALM; outside CLASSIC, off the attacks that can't wait for a turn).
+	## its chase ends, may stay alongside in the current mode (EnforcerTruckRoom.hold_for; hold_claimed in CLAIM and
+	## CALM; outside CLASSIC, off the attacks that can't wait for a turn).
 	func _hold(gap: float, d: float, chase_left: float) -> float:
 		var v: float = gen.speed
 		if mode == Mode.CLASSIC:
@@ -807,7 +808,8 @@ class ShowPlanner:
 		var to_fixed: float = room.seconds_to_fixed(d, v)
 		if mode == Mode.AROUND:
 			return EnforcerTruckRoom.hold_for(t, gap, room.seconds_to_bait(d, v), chase_left, to_fixed)
-		return EnforcerTruckRoom.hold_before_warning(t, gap, room.seconds_to_warning(d, v), chase_left, to_fixed)
+		return EnforcerTruckRoom.hold_claimed(t, gap, EnforcerTruckRoom.seconds_to(room.revs, d, v),
+			EnforcerTruckRoom.seconds_to(room.dog_turns, d, v), chase_left, to_fixed)
 
 
 	## The mode a window's params ("show") were planned in.
