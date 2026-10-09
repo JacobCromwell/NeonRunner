@@ -163,6 +163,15 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
 - **Final level: the Golden Palace.** The player runs **inside** the palace, which is so huge and grand that its interior is basically the size of a city. It plays like any other level; only the skin is an interior (floors, walls and ceilings are the palace's own halls, galleries and arches). The final boss follows it.
 
+**A seventh zone: the Beach** (owner, October 9, 2026; reference image `docs/art/reference/beach_zone.jpg`).
+- **Look:** a sandy lane between bamboo tiki bars, surf shops and lounges, running down to the sea.
+- **Floor and gaps:** the floor is sand and boardwalk, and **the gaps are pools of water.** A fall makes a splash.
+- **Side walls:** they stand **about half as often as in other zones**, in long open stretches, so the player sees the surroundings.
+- **Enemies:** **no new enemy assets**; the zone reuses existing enemies, and its cyborgs wear an existing zone look.
+- **Signs:** wordless, like every zone's.
+- **Place in the campaign:** not decided yet. It won't be the last zone.
+- **Still to decide:** whether it breaks "every zone introduces at least one new enemy" (below), and its boss.
+
 **Colour rule for every zone** *(proposed)*: zones may use colours close to hazard colours (red and gold in the Golden Zone, blue awnings in the Marketplace, fire in the Dead Zone), but only as **non-glowing** materials or dim background elements. Only hazards glow in hazard colours, so pink, yellow and black, red, orange, green and cyan keep their meaning everywhere.
 
 ### The cult (decided September 26, 2026)
@@ -199,6 +208,7 @@ Level names approved by the owner (September 26, 2026).
 - **Neon City 3:** the sun just starting to rise, with pinks and purples touching the undersides of clouds.
 - **Gangland 3:** a cloudy, blood-red sky, warning that a fiery stretch lies ahead.
 - **Marketplace:** a darkening sky as the sun sets, with deep blues and pinks at the very bottom of the sky. The owner asked for it on the zone's third level; the Marketplace has two, so it is on **Marketplace 2**, its last *(to confirm)*.
+- **The Beach** (owner, October 9, 2026): daylight on its first level; on its last, the sun starting to set, not dark, with some purples and oranges in the sky.
 - Only the sky and the distant haze change. Hazards keep their colours, and the sky never glows.
 
 **15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
