@@ -38,3 +38,4 @@ panic_speed = 8.5
 panic_run_max = 45.0
 panic_spread = 2.6
 host_bonus = 1500
+weapon_host_bonus = 0

@@ -6,9 +6,9 @@ extends Enemy
 ## running to each of its fences.
 ## - Destroyed by a **stomp** or the **dash** only. **Weapons never set it off** (GDD §9.1, decided
 ##   September 26, 2026): immune_to_weapons keeps it off auto-fire's target list and blocks all
-##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash); the
-##   same rule as for hosts, whom auto-fire never targets (GDD §9.7), so an EMP is always the
-##   player's choice. Claws and plain contact don't destroy it (FB 73); its body is solid, so
+##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash), so an
+##   EMP is always the player's choice (hosts had the same rule until October 8, 2026; weapons now hit
+##   them, GDD §9.7). Claws and plain contact don't destroy it (FB 73); its body is solid, so
 ##   running into it hurts like any solid obstacle (armor doesn't help).
 ## - Destroying it sets off an EMP (RunWorld.emp): every fence within emp_radius (DESIGN-TBD, in
 ##   data/enemies/generator.tres) switches off for the rest of the level, and every enemy hears it

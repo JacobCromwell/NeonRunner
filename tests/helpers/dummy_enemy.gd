@@ -12,10 +12,10 @@ func _build() -> void:
 	stompable = bool(p.get("stompable", true))
 	claw_immune = bool(p.get("claw_immune", false))
 	dash_kills = bool(p.get("dash_kills", true))
+	# A host is a declared property of its own: weapons hit hosts (GDD §9.7, owner, October 8, 2026), so
+	# "immune" asks for immune_to_weapons separately.
 	is_host = bool(p.get("host", false))
-	# Setting is_host already implies immune_to_weapons (Enemy); "immune" lets a test ask for it
-	# without a host too.
-	immune_to_weapons = immune_to_weapons or bool(p.get("immune", false))
+	immune_to_weapons = bool(p.get("immune", false))
 	max_health = float(p.get("health", 3.0))
 	score_value = 100
 	position = world.lane_point(int(spawn.get("lane", 1)), float(spawn.get("at", 30.0)))

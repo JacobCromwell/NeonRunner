@@ -96,7 +96,7 @@ The owner reviewed every placeholder below. **GB** means "From the R1 core-movem
 - FB 14: quitting from the pause menu keeps 20%, like a death (§4).
 - FB 27: big attacks of different enemy types take turns (§9). The owner may revert this after playtesting, since early playtests felt not very challenging.
 - FB 53: the music dips on death, and the level-complete riff plays in each zone's key (§11).
-- FB 71: hosts are immune to all weapon damage (§9.7).
+- FB 71: hosts are immune to all weapon damage (§9.7). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 389–394.)*
 - FB 85: no screeches in the Neon City (§9.5).
 - P2 4: Buzz Overdrive also appears in the Golden Zone (§9.9; a recording error, corrected).
 - P2 7: Dead Zone 2 has fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats (§5).
@@ -343,7 +343,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
   window cyborgs at a player on their own wall; cyborgs stand at least 10 m from gaps, fences, ramps
   and pads. *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*
 71. **Hosts:** never panic; the kill bonus is 1,500. It's paid, and the Bad Dream released, on any
-  kill, even a stray direct weapon hit (auto-fire never aims at hosts).
+  kill, even a stray direct weapon hit (auto-fire never aims at hosts). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 389–394.)*
 72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
   from the wall. They can't be stomped.
 73. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
@@ -2584,3 +2584,63 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     hit). With the longer stay, two overlap when their patterns are closer than about 255 m at 23.4 m/s (Corporate 2
     at 6 lanes has gaps of 70, 98 and 160 m between its seven); they overlapped before too, less often. Placeholder:
     allowed. At most one at a time would need a reserved window of `stay_seconds()` after each one.
+
+**Weapons hit hosts** (from H8, owner, October 8, 2026, GDD §9.7)
+389. **The score for a weapon kill of a host.** GDD §9.7 says a stomp, claws or the dash still earn the big host bonus;
+    it doesn't say what a weapon kill earns. Placeholder: a weapon kill (direct hit or heavy-missile splash) pays an
+    ordinary cyborg kill (200) and no host bonus (`CyborgTuning.weapon_host_bonus` 0, `DESIGN-TBD`); a stomp, claws or
+    the dash still pay 1,500 on top. Should a weapon kill earn a smaller host bonus, or nothing?
+390. **Should an Octodog's lunge or a Buzz Overdrive's charge kill a host?** A charge is no weapon, so hosts stay out of
+    a charge's reach as before (`Enemy.charge_can_hurt`, `DESIGN-TBD`). A charge killing a host would release a Bad
+    Dream nobody chose to release. Wanted?
+391. **Where a chase begins after a weapon kill: the lurk.** Weapons kill hosts 0.6–1.5 s of run before the runner
+    reaches them (tiers 2–4; tier 1 never does). Released there, a chase began up to 37 m early: inside a wall fence's
+    drop window the generator keeps off chases in 12 of 45 runs, with up to 10.17 s without a pad (the guarantee is
+    10 s). Placeholder (`DESIGN-TBD` in `scripts/enemies/bad_dream.gd`): a Bad Dream bursting out further ahead than
+    its hover spot (7.5 m) rises out of its host as usual, then **lurks** over that spot, harmless, maw closed and dim,
+    holding no other attack back, until the runner is within 7.5 m; then its chase begins exactly as for a stomped
+    host. Measured: chases begin at most 14 m before the host's spot (a stomp: up to 9 m), with the same pads as a
+    stomp's, nothing kept off chases met, no fizzle or overlap. An EMP dissolves a lurking one where it hangs. Is the
+    lurk right, or should the chase start at the kill?
+392. **Laser tier 1 hardly ever kills a host** (7 shots, 42 m range: about 2 s before the runner arrives; in the
+    measured runs it never did). The cost of carrying the weapon into host levels is real from tier 2 on (missiles
+    reach 70 m). As intended, or should tier 1 reach hosts too?
+393. **The first-encounter hint** (`data/hints/hints.json`, `host`). Placeholder: "Glitching cyborgs carry something
+    worse, and killing one sets it loose. Your weapon fires at them too: switch it off in the shop to leave them be."
+    (was "... Think before you stomp one.") Right wording?
+394. **Follow-up for a later core generator task: plan the chase keep-outs from where a chase can begin.** The
+    generator keeps things off each chase from its host's spot (`host_rules.gd`, `BadDreamTuning.chase_stretch`), but a
+    chase can begin up to about 15.5 m earlier after a weapon release (the host's walk toward the runner plus the
+    hover spot), about 9 m after a stomp. On the campaign's own seeds nothing kept off chases lies there
+    (`test_host_releases`), but on another seed (Dead Zone 1, 3 lanes, seed 9001, which endless-style random seeds
+    could hit) a chase began inside a wall fence's drop window; its first claws came well after, so nothing could hit
+    the runner. Proposed: start the keep-outs at the host's spot less (`walk_max` + `hover_ahead`), or add seeds that
+    aren't the levels' own to the layout check.
+
+**The dash smashes doodads** (from H5, owner, October 8, 2026, GDD §3; numbers in `SpeedFxTuning`'s "Doodad smashes" group, F6 "Speed effects")
+395. **What a smash looks and sounds like.** The doodad vanishes as the runner reaches it and 10–28 solid pieces (by its
+    size) fly out in its look's own colours, carry on along the runner's way, tumble and shrink away within 0.9 s, with
+    a light shake (0.1) and a crunch (crack, thump, crumbling, clatter; `doodad_smash`, -5 dB). No fireball, flash or
+    hit-stop; the pieces never glow. More or bigger pieces, a dust cloud, a zone-specific sound?
+396. **A dashing switch into a doodad's side** isn't blocked: it breaks where the body meets it, no clank or bump. Other
+    solid sides (a hover truck's, a boss prop) still bump a dashing player. Or should only a head-on dash smash?
+    (`Player._lane_blocked(target, dash_through)`, `DESIGN-TBD`.)
+397. **A dash that ends just short of a doodad.** It smashes only if the dash lasts until the body gets there (counting a
+    fading speed boost); otherwise the doodad pushes as usual, so the body never sinks into it. A reached doodad still
+    breaks up to 0.1 s after the dash's last frame (`Player.SMASH_CLAIM_GRACE`, `DESIGN-TBD`). Or should any doodad touched
+    within a fixed time after the dash be smashed?
+398. **No score for a smash.** A doodad is scenery and the dash is the reward (`Player._smash`, `DESIGN-TBD`). A small bonus
+    would make smashing something to chase. Wanted?
+399. **Attacks near a smashed doodad.** Enemies that hold an attack while a doodad stands where it would land (a drone's
+    barrage, a hover truck's cannon, an Octodog charge, a Resonator pulse, cyborg bolts) read the level's plan, so after
+    a smash they still hold off along that stretch; every attempt plays the same, and the attack only waits a moment
+    longer. Or let them attack once it's gone? (`DashBreakable`, `DESIGN-TBD`.)
+400. **Telling the player.** Nothing new tells the player the dash smashes doodads (the shop's dash text already says
+    "Barrel through enemies and obstacles"; no first-encounter hint). A hint the first time a runner carrying the dash
+    meets a doodad, or a line in the shop?
+401. **A dash started during a doodad's push** doesn't smash that doodad: the push completes and the doodad stands. If the
+    player then steers back into it with the dash on, the dash takes it where the body meets it. Or should a dash during
+    the push smash it at once? (`Player._check_doodads`, `DESIGN-TBD`.)
+    - Measured, not a question: over every campaign level at 3, 5 and 6 lanes (270 doodads), the next thing after a
+    doodad comes at least 0.72 s after its front at the dash's speed (0.68 s after its end); a reaction plus a lane switch
+    takes 0.49 s, so the generator is unchanged.
