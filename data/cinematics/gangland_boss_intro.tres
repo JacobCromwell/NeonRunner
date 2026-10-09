@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"gangland_boss_intro"
+title = "The swarm rises"
+scene = "res://scenes/cinematics/sewer_swarm_intro.tscn"
+placeholder_text = "Screeches burst out of the manholes after the runner, more and more of them, until a wall of them chases the runner down; in its dark heart, a glint of the Host."

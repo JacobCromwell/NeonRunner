@@ -394,19 +394,27 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 | F1 | **Cinematic toolkit** | – | M | T2 |
 | F2 | **Cinematic content** | owner's story beats | – | T2 |
 | F2a | **The Neon City's outro** (the owner's beats, October 8, 2026) | F1 | M | T2 |
+| F2b | **Gangland boss intro** (the owner's beat, October 9, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a is the first slot to have them.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a and F2b have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
 trucks and lands in Gangland. It adds four toolkit features any cinematic can use: wall openings on a stage,
 a head turn for the runner, a per-frame hook for a script's props, and cutting to another zone's stretch.
 The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
+
+**F2b: Gangland's boss intro** (owner, October 9, 2026; GDD §10, Sewer Swarm, "Intro cinematic"). **Done:**
+`SewerSwarmIntro` (`scripts/cinematics/sewer_swarm_intro/`) in Gangland's boss-intro slot, a new slot. At ground
+level, screeches burst out of the manholes after the runner (one, then three, then eleven), more and more pour out
+and drop from the sky, a wall of them chases the runner down, and one cut shows the Host's glint in the dark heart
+of the swarm. It adds one toolkit hook: `_stage_near()`, to keep the street built under props behind the camera.
+The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 
 ---
 
@@ -445,7 +453,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** E5d (the final villain), F2 (cinematic content, apart from F2a's City outro). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** E5d (the final villain), F2 (cinematic content, apart from F2a's City outro and F2b's Gangland boss intro). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -454,6 +462,6 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 ## Still to design with the owner
 
 - **Bosses:** the final villain with its second stage (the other five are designed, GDD §10).
-- **Cinematics:** story beats for each slot.
+- **Cinematics:** story beats for each slot but the City's outro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

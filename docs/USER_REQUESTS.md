@@ -15,6 +15,10 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] The Octodog and Buzz Overdrive's charge attacks should hurt other enemies if they charge into them. If having enemies being able to hurt each other drastically increases the complexity of the code, then write that out to the user requests and do not implement that feature for now. However, if it does not greatly increase the complexity of the code, then please implement it.
 
+## Gangland boss intro (October 9, 2026)
+
+- [x] The intro cinematic for the Gangland boss (the Swarm Host), at ground level so we feel in the runner's shoes: the runner runs down the middle of the street between manhole covers; at 2 s one screech jumps out of a manhole and the runner easily avoids it; a second later three (two on one side, one on the other), which the runner dodges; a second later five on the left and six on the right, which the runner runs past; then more and more pour out, and drop from the sky out of view, landing and running beside the runner; soon a wall or wave of screeches chases the runner; as it gets closer, one cut to the mass: in a dark area inside it, a glint of the Host. DONE (task F2b): `SewerSwarmIntro` in Gangland's boss-intro slot (GDD §10; what the beat leaves open is open questions 387–395).
+
 ## Zone 1 outro (October 8, 2026)
 
 - [x] The outro after the Floating Head, if it doesn't cost too much in code complexity, storage or performance. The boss crashes. The camera comes down to the runner's level. The runner stops and looks left at a barricade guarded by Barnacle Turrets standing on the floor like cannons, a row of five cyborgs, a battle truck behind them and a heli drone above it, all reusing the game's assets. The camera pans back to the startled runner, who runs the other way and jumps off a truck. An explosion goes off behind them, and they land in Gangland. DONE (task F2a): `CityOutro`. It is code only, with no new files to download, and the City outro's own tests check what it costs at 3, 5 and 6 lanes. The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.

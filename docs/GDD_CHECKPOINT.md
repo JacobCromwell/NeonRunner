@@ -217,6 +217,7 @@ Level names approved by the owner (September 26, 2026).
 - **Bosses:** one at the end of each zone. Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
   - **Zone 1 outro** (owner, October 8, 2026): the Floating Head crashes to the ground. The camera comes down from its usual place, a little above and behind the runner, to the runner's level. The runner is running, stops, and looks to the left: a **barricade guarded by many enemies**, all reusing the game's own assets. **Barnacle Turrets stand on the floor** instead of the ceiling, so they look like cannons, with a **row of five cyborgs**, **one of the battle trucks** behind them, and a **heli drone** above it. The camera pans back to the runner, who is startled by so many enemies and runs the other way. The runner **jumps off a truck**, an **explosion** goes off behind them, and they **land in Gangland**. Built in task F2a; the staging choices made to fill in these beats are open questions (`docs/OPEN_QUESTIONS.md` §D, items 369–381).
+  - **Gangland boss intro** (owner, October 9, 2026): see §10, Sewer Swarm ("Intro cinematic"). Built in task F2b; the staging choices made to fill in the beat are open questions (`docs/OPEN_QUESTIONS.md` §D, items 387–395).
 - **Estimated first playthrough:** roughly 20–50 minutes. This is a known risk for a paid Steam game (Steam's refund window is 2 hours of play), so replay value is critical.
 - **Levels are built by a rule-based generator** from obstacle and enemy patterns plus a difficulty value, fitted to the device's lane count.
   - **Campaign:** fixed seeds (same layout every attempt).
@@ -587,6 +588,14 @@ Shared interaction rules apply unless stated otherwise:
 - **Sewer Swarm** (Gangland). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
   - **What it is:** a mutant horde of screeches rising from the sewers. It builds up on both sides of the street, and a mob attacks while the horde shifts **ahead of and behind** the player.
   - **The Host** at the heart of the swarm: a **poor person with electronic components fused to their sickly body**, mostly hidden under the screeches latched onto them. An unconnected monster, not one of the villain's (§1).
+  - **Intro cinematic** (owner's story beat, October 9, 2026; Gangland's boss-intro slot, before the fight). The camera stays **at ground level** throughout, so the player feels more in the runner's shoes.
+    - The runner runs down the middle of the street, with **manhole covers on either side**.
+    - After **2 seconds**, **one** screech jumps out of a manhole. The runner easily avoids it and keeps moving forward.
+    - **A second later**, **three** jump out of manholes on either side, **two on one side and one on the other**. The runner dodges them.
+    - **A second later**, **five on the left and six on the right**. The runner runs past them.
+    - Then **more and more** pour out of the manholes. They also start **dropping from the sky**, from outside the camera's view, landing on the ground and **running beside the runner**.
+    - Soon a **wall or wave of screeches** is seen behind the runner, running after them.
+    - As the wall gets closer, **one cut** to the mass of screeches: in a **dark area** inside it, a **glint of the Host** in the middle of the swarm can just be made out.
   - **The fight is Gangland's final exam** (screeches, ramps, baiting, fences) in three phases of about 30 seconds each:
     1. **Rising:** manholes and wall vents shake all along both sides, and screeches pour out and merge into clusters at the roadside. A cluster **surges down a lane** ahead of the player, with a red lane line and a rising chitter as the warning.
     2. **Surrounded:** clusters also strike **from behind**. The warning is a **chittering sound** plus a **visible rising wave of the swarm** on screen, curling like a breaking wave or a scorpion's stinger, about to strike its lane. The swarm also **climbs the walls**, taking them away as an escape route, but only **temporarily**, and the phase must stay engaging: **one wall at a time for a few seconds, alternating sides**, so one wall is always free.
