@@ -483,6 +483,16 @@ func _test_cards() -> void:
 			for d: Dictionary in looks:
 				var tag: String = "%s's %s look %s" % [zone, size, d["name"]]
 				check(not (d["cards"] as Array).is_empty(), "%s has cards" % tag)
+				# Its mesh carries the look's main colours: vertex colours that never glow, and its metadata.
+				var mesh: ArrayMesh = cards.mesh_for(d, box)
+				var palette: PackedColorArray = mesh.get_meta(DoodadCards.COLORS_META, PackedColorArray())
+				var listed: bool = palette.size() == (d["colors"] as Array).size() and palette.size() > 0
+				for c: Color in mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]:
+					var known: bool = false
+					for p: Color in palette:
+						known = known or Color(c.r, c.g, c.b).is_equal_approx(p) or Color(c.r, c.g, c.b).to_rgba32() == p.to_rgba32()
+					listed = listed and known and c.a == 0.0
+				check(listed, "%s's mesh carries its main colours, never glowing (%s)" % [tag, palette])
 				for c: Dictionary in d["cards"]:
 					var rect: Array = c["rect"]
 					var at: float = float(c["at"])

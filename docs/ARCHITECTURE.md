@@ -1958,8 +1958,10 @@ indoors as well as out.) What a look gets and keeps to:
   light, double-sided, a soft neutral sheen, `scenery_light` and `scenery_tint` like the scenery, never
   emissive), so a doodad is one draw call, the same on the Compatibility renderer. A zone without a
   manifest, or a size class without a look, falls back to the default (below). Each design keeps its
-  main colours in the manifest (`colors`), for anything that ever needs the look's colours (a smashed
-  doodad's pieces). After changing `MovementTuning`'s doodad sizes, rerun `tools/godot.sh doodads`
+  main colours in the manifest (`colors`), and its mesh carries them as vertex colours (one a card,
+  alpha 0 like the kit's lit colours: never a glow; the card shader ignores them) and as its
+  `debris_colors` metadata (`DoodadCards.COLORS_META`), for anything that needs the look's colours (a
+  smashed doodad's pieces). After changing `MovementTuning`'s doodad sizes, rerun `tools/godot.sh doodads`
   (`test_doodads` fails until the manifests match the boxes).
 - *The default* (`default_doodad_mesh`): a low-poly block in the skin's `doodad_palette` (body, top,
   base) on the plain `MeshKit.solid()`, still used by the grey box and by any new zone before its art: a

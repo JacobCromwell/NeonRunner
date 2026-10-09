@@ -16,6 +16,9 @@ const DIR: String = "res://assets/sprites/doodads"
 const SHADER_PATH: String = "res://scripts/world/meshes/shaders/doodad_card.gdshader"
 ## The zones with cards (tools/asset_gen/doodad_art_gen.gd paints one atlas for each).
 const ZONES: Array[String] = ["city", "gangland", "marketplace", "corporate", "dead_zone", "golden"]
+## The metadata a look's mesh carries its main colours in, as every doodad look's mesh does for its
+## pieces' colours when the dash smashes it (task H5; ZoneSkin.DEBRIS_COLORS_META where it's defined).
+const COLORS_META: StringName = &"debris_colors"
 
 static var _sets: Dictionary = {}
 
@@ -111,16 +114,32 @@ func mesh_for(d: Dictionary, size: Vector3) -> ArrayMesh:
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
-	for c: Dictionary in d["cards"]:
-		_add_card(c, size, verts, normals, uvs, indices)
+	# The look's main colours (the manifest's `colors`), one a card, as vertex colours like the mesh
+	# kit's: alpha 0, so never a glow (the card shader ignores them; tests and the smashed doodad's
+	# pieces read them), and as the mesh's COLORS_META.
+	var palette := PackedColorArray()
+	for hex: String in d.get("colors", []):
+		palette.append(Color.html(hex))
+	if palette.is_empty():
+		palette.append(Color(0.3, 0.31, 0.35))
+	var colors := PackedColorArray()
+	var cards: Array = d["cards"]
+	for i: int in cards.size():
+		var before: int = verts.size()
+		_add_card(cards[i], size, verts, normals, uvs, indices)
+		var c: Color = palette[i % palette.size()]
+		for k: int in verts.size() - before:
+			colors.append(Color(c.r, c.g, c.b, 0.0))
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.set_meta(COLORS_META, palette)
 	_meshes[key] = mesh
 	return mesh
 
