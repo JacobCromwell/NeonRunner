@@ -227,8 +227,9 @@ func _test_data() -> void:
 		return
 	var t := def.tuning as FloatingHeadTuning
 	check(t != null and t.resource_path == "res://data/bosses/city_boss_tuning.tres", "its numbers are its own tuning resource")
-	check(is_equal_approx(t.first_run_seconds, 16.0 * 0.7) and is_equal_approx(t.later_run_seconds, 8.0 * 0.7),
-		"every bombing run is 30%% shorter (%.1f s, %.1f s)" % [t.first_run_seconds, t.later_run_seconds])
+	check(is_equal_approx(t.first_run_seconds, 16.0 * 0.7), "the first bombing run is 30%% shorter (%.1f s)" % t.first_run_seconds)
+	check(is_equal_approx(t.later_run_seconds, 6.5),
+		"the later runs are a little longer than 5.6 s for their salvos (%.1f s; owner, October 9, 2026)" % t.later_run_seconds)
 	check(t.later_run_seconds > 0.0 and t.later_run_seconds < t.first_run_seconds and t.later_runs >= 1 and t.later_runs <= 2,
 		"GDD §10: once or twice it rises for a shorter run (%d of %.1f s)" % [t.later_runs, t.later_run_seconds])
 	check(def.phase_count() == 3 and def.phase_list()[0].intro_seconds >= 3.0, "three phases; the first's intro is the entrance")
@@ -677,11 +678,16 @@ func _test_salvos() -> void:
 	check(t.salvo_spots_in(0) == 1, "the first run marks one spot at a time (E1g)")
 	check(t.salvo_min_spots == 2 and t.salvo_spots_in(1) == 4 and t.salvo_spots_in(2) == 4,
 		"the later runs drop salvos of 2 to 4 spots (owner, October 9, 2026)")
+	check(t.salvo_spacing < 12.0, "its spots lie closer together than the first 12 m (owner: tighter; %.1f m)" % t.salvo_spacing)
+	check(t.salvo_wide_lanes == 5 and t.salvo_wide_bombs > 2,
+		"from 5 lanes a spot may take more than two bombs (owner: harder on 5 or more lanes)")
 	# Seconds from one spot's blast to the next: salvo_spacing at 18 m/s, as long at any speed.
 	var gap: float = t.salvo_spacing / MovementTuning.REFERENCE_SPEED
 	var sizes: Dictionary = {}
 	var spots_seen: int = 0
 	var pairs: int = 0
+	var widest: int = 0
+	var circles_fogged: int = 0
 	for phase: int in [1, 2]:
 		for lanes: int in LANES:
 			var pair: Array = _fight(_plain_def(), lanes, {"phase": phase})
@@ -701,6 +707,11 @@ func _test_salvos() -> void:
 						for l: int in spot["lanes"]:
 							if not head.props.warned(l, float(spot["at"]) - 0.5, float(spot["at"]) + 0.5):
 								unwarned[0] += 1
+					for d: Dictionary in b._drops:
+						var circle := d["circle"] as MeshInstance3D
+						var m := circle.material_override as BaseMaterial3D
+						if m == null or not m.disable_fog or not m.emission.is_equal_approx(BossProps.WARNING_COLOR):
+							circles_fogged += 1
 				_dodge(head, dodged)
 				if _inside_blast(head):
 					inside[0] += 1
@@ -713,6 +724,9 @@ func _test_salvos() -> void:
 			var blasts: Array[Dictionary] = _events(head, &"blast")
 			check(not locks.is_empty(), "the light locks on %s" % tag)
 			var shaped: bool = true
+			var wide: bool = lanes >= t.salvo_wide_lanes
+			var most_bombs: int = t.salvo_wide_bombs if wide else 2
+			var stepped_clear: int = 0
 			var aimed: bool = true
 			var spaced: bool = true
 			var timed: bool = true
@@ -729,20 +743,35 @@ func _test_salvos() -> void:
 					and is_equal_approx(float(spots[0]["at"]), float(l["at"]))
 				for k: int in spots.size():
 					var spot_lanes: Array = spots[k]["lanes"]
-					spots_seen += 1
 					bombs += spot_lanes.size()
-					if spot_lanes.size() == 2:
-						pairs += 1
-					shaped = shaped and (spot_lanes.size() == 1 or (spot_lanes.size() == 2
-						and absi(int(spot_lanes[1]) - int(spot_lanes[0])) == 1))
+					if wide:
+						widest = maxi(widest, spot_lanes.size())
+					else:
+						spots_seen += 1
+						if spot_lanes.size() == 2:
+							pairs += 1
+					# Side by side: one block of lanes, at most most_bombs wide.
+					shaped = shaped and spot_lanes.size() >= 1 and spot_lanes.size() <= most_bombs \
+						and int(spot_lanes[-1]) - int(spot_lanes[0]) == spot_lanes.size() - 1
 					timed = timed and absf(float(spots[k]["warning"]) - (lt + k * gap)) < 0.01
 					if k > 0:
 						spaced = spaced and absf(float(spots[k]["at"]) - float(spots[k - 1]["at"])
 							- t.salvo_spacing * head.run_pace()) < 0.01
 				if not _salvo_fair(world.layout, t, l, lanes, head.run_pace()):
 					unfair += 1
-			check(shaped, "every lock marks %d to %d spots, one bomb or two side by side each %s" % [t.salvo_min_spots,
-				t.salvo_spots_in(phase), tag])
+				# On a wide street no lane in the runner's reach at the first spot is clear of every spot.
+				if wide:
+					for e: int in lanes:
+						var hit: bool = absi(e - int(l["player_lane"])) > t.max_escape_lanes
+						for spot: Dictionary in spots:
+							hit = hit or (spot["lanes"] as Array).has(e)
+						if not hit:
+							stepped_clear += 1
+			check(shaped, "every lock marks %d to %d spots, 1 to %d bombs side by side each %s" % [t.salvo_min_spots,
+				t.salvo_spots_in(phase), most_bombs, tag])
+			if wide:
+				check(stepped_clear == 0, "a runner can't step clear of a whole salvo on a wide street (%d lanes clear) %s" % [
+					stepped_clear, tag])
 			check(aimed, "the nearest spot is where a single lock's would be, on the runner's lane %s" % tag)
 			check(spaced, "each next spot lies salvo_spacing further along the track %s" % tag)
 			check(timed, "each spot blows %.2f s after the one before, the first after the warning %s" % [gap, tag])
@@ -769,8 +798,10 @@ func _test_salvos() -> void:
 			print("  Floating Head's run in phase %d %s: %d salvos, %d bombs" % [phase + 1, tag, locks.size(), bombs])
 			await sim.free_world(world)
 	check(sizes.has(t.salvo_min_spots) and sizes.size() >= 2, "salvos come in different sizes (%s spots)" % [sizes.keys()])
-	check(pairs >= 1 and pairs < spots_seen, "some spots take two bombs side by side, others one (%d of %d)" % [pairs,
-		spots_seen])
+	check(pairs >= 1 and pairs < spots_seen, "on 3 lanes some spots take two bombs side by side, others one (%d of %d)" % [
+		pairs, spots_seen])
+	check(widest == t.salvo_wide_bombs, "on 5 and 6 lanes some spots take %d bombs side by side" % t.salvo_wide_bombs)
+	check(circles_fogged == 0, "every target circle is the same red at any distance, out of the fog (owner)")
 	# A runner who stands still is hit by the first spot's bomb, where it goes off.
 	for lanes: int in LANES:
 		var pair: Array = _fight(_plain_def(), lanes, {"phase": 1})
