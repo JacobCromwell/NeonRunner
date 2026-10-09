@@ -15,7 +15,8 @@ extends RefCounted
 ##   its chase ("baits").
 ## - Up to per_level_max a level (GDD §9.13: up to two), never two at once: each one's chase, and the
 ##   seconds it takes to drop back, keep spacing_seconds from the next one's arrival. The level's earliest
-##   baits get them first.
+##   baits get them first (with its showing windows planned, those whose chases have room for its showing before
+##   their bait: below).
 ## - Where it may arrive: after the run-up and the feature's start, and never while another bait attacks (an
 ##   Octodog's planned charges, a Buzz Overdrive's rev and charge). In a level paced in bursts (The Hush) it
 ##   arrives in a burst where it can (LevelGenerator.pacing_pools). Its chase may run on to the level's end.
@@ -32,9 +33,14 @@ extends RefCounted
 ##   begins show_window_slack_seconds late; first one where no runner is sent off the floor (a pad's ceiling, a
 ##   ramp's wall run) before it has stayed alongside, else one where a runner in that lane may miss it. As it
 ##   arrives (its arrival showing) where any of its arrivals has one, else the earliest mid-chase one before its
-##   first bait, else one after it; the arrival moves to where one fits (the preferred arrival first), and the
-##   baits that get trucks are the ones whose chases hold the most windows (the introduction kept). Where the level
-##   leaves none, it takes out what's in the way (ShowPlanner's class doc). Its params hold it ("show": {at: where
+##   first bait, else one after it; the arrival moves to where one fits (the preferred arrival first, then every
+##   other the bait allows, the earliest too). Which baits get trucks (task C6d; the owner, October 9, 2026, GDD
+##   §9.13 "Room to show itself": it shows itself before the player can bait it, and a chase with no room for that
+##   gives its truck to another bait's chase that has room): the ones whose chases hold the most windows before
+##   their first bait, then the most windows, then the most chases (_choose; a pair is also planned with the later
+##   window first, the earlier truck arriving earlier around it); the level's introduction keeps its first bait's
+##   chase where that has room before its bait. Where the level leaves none, it takes out what's in the way
+##   (ShowPlanner's class doc). Its params hold it ("show": {at: where
 ##   the runner is as it begins, from and to: the stretch it keeps}), and every later pass keeps off it in every
 ##   lane as a calm stretch, WINDOW_EDGE wider (doodad_keep_outs: nothing they add may stand or attack in it, but
 ##   nothing keeps a spacing from it: the danger density pass's enemies and rows, the cyborgs in charge paths, the
@@ -49,8 +55,8 @@ extends RefCounted
 ## windows (where those move its arrivals, what they take out and what they keep the later passes off), and by
 ## what the danger density pass adds for its higher enemy count. It has no patterns: these rules place every one. A
 ## level with no bait its chase can take gets none (GDD §9.13: it appears where Octodogs or Buzz Overdrives
-## appear). DESIGN-TBD (docs/questions/c6.md): the bait's place in its chase, the spacing, which baits get one;
-## (docs/OPEN_QUESTIONS.md items 383–385) the showing window, what it may take out, the chases without one.
+## appear). DESIGN-TBD (docs/questions/c6.md): the bait's place in its chase, the spacing; (docs/questions/c6d.md)
+## a truck that no bait with room is left for (it keeps its chase, its window after the bait or none).
 
 const TYPE: String = "enforcer_truck"
 ## Every feature whose rules place, move or drop enemies, plan charges or cuts, or add ceilings: the trucks
@@ -114,6 +120,7 @@ static func apply(gen: LevelGenerator) -> void:
 			planner.why_none = String(o["why"])
 			report.append(_place(gen, t, planner, baits, o["spots"], o["plan"],
 				hash([gen.config.level_seed, TYPE, report.size()])))
+			report[-1]["bait"] = float(baits[int(o["bait"])]["at"])
 	gen.show_window_result = {"planned": planner != null, "chases": report, "baits": by_bait}
 
 
@@ -157,18 +164,19 @@ static func _choose(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPl
 		var key: Array[int] = []
 		key.assign(set_)
 		# Along the track first: a set that doesn't fit so isn't one (the other orders only move its arrivals).
-		var plans: Array[Dictionary] = [_plan_set(gen, t, planner, orders, keep_outs, alone, key, -1)]
-		if plans[0].is_empty():
+		var plan: Dictionary = _plan_set(gen, t, planner, orders, keep_outs, alone, key, -1)
+		if plan.is_empty():
 			continue
+		# A later chase's window planned first, the earlier trucks arriving earlier around it.
 		for k: int in range(1, key.size()):
 			var other: Dictionary = _plan_set(gen, t, planner, orders, keep_outs, alone, key, key[k])
-			if not other.is_empty() and (other["score"] as Vector3i) > (plans[0]["score"] as Vector3i):
-				plans[0] = other
-		var score: Vector3i = plans[0]["score"]
+			if not other.is_empty() and (other["score"] as Vector3i) > (plan["score"] as Vector3i):
+				plan = other
+		var score: Vector3i = plan["score"]
 		if score > best_score or (score == best_score and _earlier(key, best_key)):
 			best_score = score
 			best_key = key
-			best = plans[0]["picked"]
+			best = plan["picked"]
 	for i: int in orders.size():
 		var o: Dictionary = alone[i]
 		report.append({"at": float(baits[i]["at"]), "chase": float(o.get("at", INF)), "span": o.get("span", Vector2(INF, -INF)),
@@ -235,7 +243,8 @@ static func _earlier(a: Array[int], b: Array[int]) -> bool:
 
 
 ## Adds a truck arriving at `spots[0]`, or where showing window `plan` (ShowPlanner.plan) has it arrive, taking out
-## what the window needs gone. Returns its line of the report: {at, preferred, arrivals, window, taken_out, why}.
+## what the window needs gone. Returns its line of the report: {at, preferred, arrivals, window, taken_out, why}
+## (apply adds its bait's charge, `bait`).
 static func _place(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPlanner, baits: Array[Dictionary],
 		spots: Array[float], plan: Dictionary, seed: int) -> Dictionary:
 	var at: float = spots[0]
@@ -495,7 +504,8 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 ## room for one, else the earliest mid-chase one before its first bait; then a shorter stay (show_min_seconds at
 ## least); then both taking things out; then all of that again allowing a runner off the floor in a lane; else, at
 ## the preferred arrival, the same after its first bait (a runner who didn't destroy it with that bait sees it
-## then). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 383): what it may take out, the order.
+## then; the rules give the truck to another bait's chase with a window before its bait wherever the level has one,
+## task C6d). What it may take out, and that cost: the owner's (October 9, 2026; docs/OPEN_QUESTIONS.md item 383).
 class ShowPlanner:
 	extends RefCounted
 	## Seconds after its arrival a mid-chase showing may begin, past the time it takes to close in to its follow gap.
