@@ -7,8 +7,9 @@ extends BossPart
 ##   of the lane's width from the floor to above a jump's reach (so a jump doesn't dodge it: leaving the lane
 ##   does), RAKE_DEPTH long around the front its guns rake, with the burning streak of its impacts there and a
 ##   flare of sparks; in an outer lane the fire also climbs the wall beside it to wall_fire_height (GDD §10:
-##   "fire in an outer lane hits a runner low on the wall but not one high up"), drawn on the wall's face
-##   where the wall is open (GoldenConvergenceCourt; nobody can be on a closed one);
+##   "fire in an outer lane hits a runner low on the wall but not one high up"; the main box keeps clear of a
+##   wall runner's body lying across the wall's foot), drawn on the wall's face where the wall is open
+##   (GoldenConvergenceCourt; nobody can be on a closed one);
 ## - a horizontal pass's lines (set_line): the live line across every lane but the buttress's opening, from
 ##   the floor to above a jump (line_height, GDD §10 proposed: a jump doesn't dodge it) and up both walls at
 ##   every height (wall_line_height), each lane's part lit as the sweep reaches it: a burning streak on the
@@ -200,6 +201,8 @@ func set_rake_lane(slot: int, lane: int) -> void:
 	(rig["wall_hazard"] as Hazard).set_enabled(on and side != 0)
 	if on and side != 0:
 		_size_wall_hazard(rig, lane, side)
+	elif on:
+		_size_rake_hazard(rig)
 	if not on:
 		(rig["wall"] as Node3D).visible = false
 		(rig["node"] as Node3D).global_position = Vector3(0.0, -200.0, 0.0)
@@ -225,16 +228,30 @@ func set_rake_front(slot: int, front: float, wall_open: bool) -> void:
 			Vector3(face - side * 0.05, tuning.wall_fire_height * 0.5, 0.0))
 
 
-## The wall's part of an outer lane's rake: from the edge of the rake's main box out past the wall's face,
-## from the floor up to wall_fire_height (a wall runner whose feet are above it is safe).
+## An outer lane's rake beside the wall on `side`: its main box keeps clear of a wall runner's body (it lies
+## across the wall's foot, out from the wall's face by the runner's hurtbox height, Player on the wall), and
+## the wall's part takes over from there out past the wall's face, from the floor up to wall_fire_height: a
+## runner in the lane is hit at any height a jump reaches, one on the wall only while low (GDD §10: "fire in
+## an outer lane hits a runner low on the wall but not one high up").
 func _size_wall_hazard(rig: Dictionary, lane: int, side: int) -> void:
 	var geo: TrackGeometry = world.geo
-	var inner: float = geo.lane_width * RAKE_WIDTH_SHARE * 0.5
-	var outer: float = absf(side * geo.wall_x() - geo.lane_x(lane)) + 0.45
+	var half: float = geo.lane_width * RAKE_WIDTH_SHARE * 0.5
+	var to_wall: float = absf(side * geo.wall_x() - geo.lane_x(lane))
+	var edge: float = clampf(to_wall - world.tuning.hurtbox_size.y - 0.05, 0.0, half)
+	var main: Hazard = rig["hazard"]
+	_resize(main, Vector3(half + edge, RAKE_HEIGHT, RAKE_DEPTH))
+	main.position = Vector3(side * (edge - half) * 0.5, RAKE_HEIGHT * 0.5, 0.0)
+	var outer: float = to_wall + 0.45
 	var hazard: Hazard = rig["wall_hazard"]
-	var size := Vector3(outer - inner, tuning.wall_fire_height, RAKE_DEPTH)
-	_resize(hazard, size)
-	hazard.position = Vector3(side * (inner + outer) * 0.5, tuning.wall_fire_height * 0.5, 0.0)
+	_resize(hazard, Vector3(outer - edge, tuning.wall_fire_height, RAKE_DEPTH))
+	hazard.position = Vector3(side * (edge + outer) * 0.5, tuning.wall_fire_height * 0.5, 0.0)
+
+
+## A middle lane's rake: its main box over the lane's middle.
+func _size_rake_hazard(rig: Dictionary) -> void:
+	var main: Hazard = rig["hazard"]
+	_resize(main, Vector3(world.geo.lane_width * RAKE_WIDTH_SHARE, RAKE_HEIGHT, RAKE_DEPTH))
+	main.position = Vector3(0.0, RAKE_HEIGHT * 0.5, 0.0)
 
 
 # --- Horizontal passes -----------------------------------------------------------------------------

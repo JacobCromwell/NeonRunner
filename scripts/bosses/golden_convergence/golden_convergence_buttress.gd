@@ -113,7 +113,7 @@ func place(p_lane: int, p_at: float, p_lean: int) -> void:
 	_blocker.collision_layer = TrackBuilder.LAYER_LANE_BLOCKER
 	_apply()
 	boss.sound(&"gc_buttress", boss.sound_point(global_position))
-	boss.log_event(&"buttress_placed", {"lane": lane, "at": at, "lean": lean})
+	boss.log_event(&"buttress_placed", {"lane": lane, "at": at, "lean": lean, "runner": boss.player_distance()})
 
 
 ## Back to the pool: hidden, out of the way, blocking nothing.

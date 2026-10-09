@@ -15,14 +15,14 @@
   "slow": [
     "campaign", "generator", "danger_density", "city_gaps", "wall_fences", "wall_gaps", "pace", "doodads", "frame_times",
     "floating_head_routes", "floating_head_faceoff", "floating_head_stomps", "floating_head_defeat",
-    "hostile_takeover_fight", "sleep_taker_fight", "sleep_taker_attacks", "sewer_swarm_fight",
+    "hostile_takeover_fight", "golden_convergence_fight", "sleep_taker_fight", "sleep_taker_attacks", "sewer_swarm_fight",
     "sewer_swarm_whole", "sewer_swarm_surrounded", "the_house_attacks", "the_house_phases", "the_house_fight",
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
     "enforcer_truck_runs", "wide_gaps", "charge_paths"
   ],
   "medium": [
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
-    "gilded_sentinel", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
+    "gilded_sentinel", "golden_convergence", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo"
   ],
   "rules": [
@@ -103,6 +103,7 @@
     {"match": "data/bosses/marketplace_boss*", "suites": ["the_house*", "bosses"]},
     {"match": "data/bosses/corporate_boss*", "suites": ["hostile_takeover*", "bosses"]},
     {"match": "data/bosses/dead_zone_boss*", "suites": ["sleep_taker*", "bosses"]},
+    {"match": "data/bosses/golden_boss*", "suites": ["golden_convergence*", "bosses", "campaign"]},
     {"match": "data/bosses/*", "suites": ["bosses"]},
     {"match": "data/cinematics/*", "suites": ["cinematics", "city_outro"]},
     {"match": "data/audio/*", "suites": ["audio", "web_demo"]},
@@ -114,6 +115,7 @@
     {"match": "tests/run_tests.gd", "tier": "full"},
     {"match": "tests/suite_map.json", "suites": []},
     {"match": "tools/asset_gen/sfx_bank_enforcer.gd", "suites": ["audio", "enforcer_truck"]},
+    {"match": "tools/asset_gen/sfx_bank_golden_convergence.gd", "suites": ["audio", "golden_convergence"]},
     {"match": "tools/asset_gen/sfx*", "suites": ["audio"]},
     {"match": "tools/asset_gen/music*", "suites": ["audio"]},
     {"match": "tools/web/*", "suites": ["web_demo"]},
