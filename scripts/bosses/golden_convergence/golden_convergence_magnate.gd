@@ -32,8 +32,10 @@ const BLEND_RATE: float = 16.0
 ## The ports' glow: dim while he hunts, bright and pulsing while stunned (steady with Reduced flashing).
 const PORT_DIM: float = 1.6
 const PORT_BRIGHT: float = 4.2
-## His shadow's darkness on the marble.
-const SHADOW_ALPHA: float = 0.55
+## His shadow's darkness on the marble, and on the Compatibility renderer (which blends in sRGB space: the
+## same alpha comes out much darker there).
+const SHADOW_ALPHA: float = 0.62
+const SHADOW_ALPHA_COMPAT: float = 0.36
 ## The gallop's stride as his feet sweep under him (metres) and its rate per metre run.
 const STRIDE: float = 1.25
 const STRIDES_PER_METRE: float = 0.14
@@ -53,6 +55,8 @@ var head_turn: float = 0.0
 var crack_light: float = 1.0
 var shudder: float = 0.0
 var ports_glow: float = 0.0
+## 0 alive to 1 dead: the ports' red going out with the light in his cracks (his defeat).
+var ports_dead: float = 0.0
 ## Cables still on his back (tear_cable throws one off).
 var cables_on: int = 0
 var marker: GoldenConvergenceMagnateMarker
@@ -74,6 +78,7 @@ var _cables: Array[Dictionary] = []
 var _smoke: CPUParticles3D
 var _shadow: MeshInstance3D
 var _shadow_material: StandardMaterial3D
+var _shadow_alpha: float = SHADOW_ALPHA
 var _canvas: CanvasLayer
 var _voice: AudioStreamPlayer3D
 var _crash_rig: Node3D
@@ -281,8 +286,10 @@ func _build_shadow() -> void:
 	_shadow_material = StandardMaterial3D.new()
 	_shadow_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_shadow_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_shadow_material.albedo_color = Color(0.02, 0.018, 0.016, SHADOW_ALPHA)
-	_shadow_material.albedo_texture = _soft_texture()
+	var compat: bool = RenderingServer.get_current_rendering_method() == "gl_compatibility"
+	_shadow_alpha = SHADOW_ALPHA_COMPAT if compat else SHADOW_ALPHA
+	_shadow_material.albedo_color = Color(0.02, 0.018, 0.016, _shadow_alpha)
+	_shadow_material.albedo_texture = _shadow_texture()
 	_shadow_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	plane.material = _shadow_material
 	_shadow = MeshInstance3D.new()
@@ -293,7 +300,22 @@ func _build_shadow() -> void:
 	add_child(_shadow)
 
 
-## A soft round blob (white, its alpha fading to the edge): his shadow, the smoke's puffs.
+## His shadow's blob: solid most of the way out (it has to read on the court's bright marble), its edge soft.
+static func _shadow_texture() -> GradientTexture2D:
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.7, 1.0])
+	g.colors = PackedColorArray([Color(1.0, 1.0, 1.0, 1.0), Color(1.0, 1.0, 1.0, 0.95), Color(1.0, 1.0, 1.0, 0.0)])
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.width = 64
+	t.height = 64
+	t.fill = GradientTexture2D.FILL_RADIAL
+	t.fill_from = Vector2(0.5, 0.5)
+	t.fill_to = Vector2(1.0, 0.5)
+	return t
+
+
+## A soft round blob (white, its alpha fading to the edge): the smoke's puffs.
 static func _soft_texture() -> GradientTexture2D:
 	var g := Gradient.new()
 	g.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
@@ -472,7 +494,7 @@ func set_shadow(at: Vector3, length: float, width: float, alpha: float) -> void:
 	if not _shadow.visible:
 		return
 	_shadow.global_transform = Transform3D(Basis.from_scale(Vector3(width, 1.0, length)), Vector3(at.x, 0.025, at.z))
-	_shadow_material.albedo_color = Color(0.02, 0.018, 0.016, SHADOW_ALPHA * clampf(alpha, 0.0, 1.0))
+	_shadow_material.albedo_color = Color(0.02, 0.018, 0.016, _shadow_alpha * clampf(alpha, 0.0, 1.0))
 
 
 ## Where his shadow lies (tests): its middle and size, or null while there's none.
@@ -556,7 +578,10 @@ func _process(delta: float) -> void:
 	_body_material.set_shader_parameter(&"shudder", clampf(shudder, 0.0, 1.0))
 	var steady: bool = Settings.flashing_reduced
 	var pulse: float = 1.0 if steady else 0.85 + 0.15 * sin(_time * 7.0)
-	_port_material.emission_energy_multiplier = lerpf(PORT_DIM, PORT_BRIGHT, clampf(ports_glow, 0.0, 1.0)) * pulse
+	var life: float = 1.0 - clampf(ports_dead, 0.0, 1.0)
+	_port_material.emission_energy_multiplier = lerpf(PORT_DIM, PORT_BRIGHT, clampf(ports_glow, 0.0, 1.0)) * pulse * life
+	_port_material.albedo_color = GoldenConvergenceMagnateModel.PORT_DEAD.lerp(GoldenConvergenceMagnateModel.PORT_RED,
+		life)
 	# The sockets' height over the ground (his back's, as he crouches, leaps or slumps).
 	var ground: float = maxf(_chest.global_position.y - global_position.y + 0.6 * tuning.magnate_scale, 0.2)
 	for c: Dictionary in _cables:

@@ -7,7 +7,7 @@ extends RefCounted
 ## him whenever no attack does:
 ## - following: chase_gap behind the runner (behind the camera: never seen), in the lane the runner was in
 ##   chase_lane_delay ago (the Enforcer Truck's way), galloping; his shadow lies on the floor of his lane,
-##   stretched forward so its end shows at the screen's bottom, his marker under his lane at the bottom edge
+##   stretched forward past the runner so it shows at the screen's bottom, his marker under his lane at the bottom edge
 ##   (red for a Pounce's warning: `alarm`), his breathing and growls heard from where he is;
 ## - an attack takes him (drive) and gives him back (drop_back): he drops back behind the runner from wherever
 ##   it left him over drop_back_seconds (divided by the phase's pace), along a balustrade when he's on one, down
@@ -20,11 +20,12 @@ enum Mode { OFF, FOLLOW, DRIVEN, RETURN }
 
 ## How fast his shadow and marker fade in and out (1/s).
 const FADE_RATE: float = 3.0
-## His shadow behind the runner: it ends this far behind them (the screen's bottom shows the floor from about
-## 3 m behind the runner), this wide.
-const SHADOW_END: float = 0.6
-const SHADOW_LENGTH: float = 6.5
-const SHADOW_WIDTH: float = 2.0
+## His shadow while he's behind the runner: a long soft blob on the floor of his lane, its front end this far
+## ahead of the runner and its darkest middle just behind them (the run camera's view ends only just behind the
+## runner's feet), this long and this wide.
+const SHADOW_END: float = -2.5
+const SHADOW_LENGTH: float = 7.0
+const SHADOW_WIDTH: float = 2.2
 ## Where a balustrade's top is (out from the wall's line, over the causeway's edge) when the skin doesn't say.
 const BALUSTRADE_OUT: float = 0.55
 const BALUSTRADE_Y: float = 1.1
@@ -102,7 +103,9 @@ func stop() -> void:
 ## Every physics frame of stage 2.
 func tick(delta: float) -> void:
 	_note_lane()
-	var behind: bool = mode == Mode.FOLLOW or mode == Mode.RETURN
+	# His shadow and marker show wherever he's behind the runner out of sight: following, dropping back, or
+	# driven there (a Pounce's roar turns the marker red before he leaps).
+	var behind: bool = mode != Mode.OFF
 	match mode:
 		Mode.FOLLOW:
 			_follow(delta)
@@ -176,8 +179,8 @@ func _tick_signs(delta: float, behind: bool) -> void:
 	_shown = move_toward(_shown, 1.0 if out_of_view else 0.0, FADE_RATE * delta)
 	magnate.set_marker(magnate.global_position.x, _shown, alarm)
 	if out_of_view:
-		# Cast forward from him (the court's light behind him), its darkest at the screen's bottom edge just
-		# behind the runner, so it shows his lane.
+		# Cast forward from him (the court's light behind him) along his lane, past the runner: its darkest
+		# middle just behind them at the screen's bottom, so it shows his lane.
 		var end: float = d - SHADOW_END
 		magnate.set_shadow(Vector3(magnate.global_position.x, 0.0, TrackGeometry.world_z(end - SHADOW_LENGTH * 0.5)),
 			SHADOW_LENGTH, SHADOW_WIDTH, _shown)

@@ -11,6 +11,7 @@ extends Node3D
 ##   magnate     (default) him up close beside the runner, the camera swinging round him, cycling what he does:
 ##               run, roar, leap, rear, whip, slump (stunned, the ports bright), collapse
 ##   face        a close-up of his face: the mask's half with its tear, his roaring half
+##   feed        a tower's screen square on, showing his roaring face (the feed in stage 2)
 ##   transition  phase 4's intro through the run camera: the suit bursts, its plates fly off, he claws out and
 ##               roars (the feed switches to his face), the suit topples off the causeway, he leaps over the runner
 ##   chase       behind the runner (his shadow, the marker at the bottom edge), then an overtake along the
@@ -29,10 +30,11 @@ extends Node3D
 ## --reduced-flashing, --events (prints each of the boss's events with its frame, for picking frames), --still,
 ## --miss, --kind=low|high.
 ## Frames worth a look (at --fixed-fps 10, 18 m/s, 5 lanes; --events prints the rest): transition: the burst at 0-6,
-## the plates off from 4, his roar at 18, the suit toppling 23-45, the leap over the runner 28-42; pounce: the roar
-## at about 58, the leap 66, the square 72, the crash 82; bait: the buttress at 58, the lock about 95, the stun
-## about 106, the stomp about 120; lash: the warning about 78, the whip 90; defeat: the stomp about 72, the cables
-## and the screens 72-100, the collapse about 96, the runner past about 112.
+## the plates off from 4, his roar at 18, the suit toppling 23-45, the leap over the runner 28-42; chase: his
+## shadow and marker 45-57; pounce: the roar (the marker red) at 58, the leap 65, the square 72, the crash 83;
+## bait: the buttress at 58, the roar 80, the lock 94, the stun 105, the stomp 120, the hurl 121-127; lash: the
+## run-up 58-80, the warning 81, the whip 94; defeat: the stomp at 93, the cables 99-114, the screens dying from
+## 102, the collapse 117, the runner past about 130.
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 

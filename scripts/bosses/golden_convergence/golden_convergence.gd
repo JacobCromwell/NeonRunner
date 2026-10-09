@@ -23,8 +23,8 @@ extends BossEncounter
 ##    from the depths beside the causeway, its cape unfurling into its cloud, and the cult's three-note
 ##    chime (the Resonator's notes, gc_chime) rings out huge and slow; the calm golden face looks down the
 ##    causeway at the runner. A later stage 1 phase's: it reels back from the blast and recovers (reel). Stage
-##    2 (phases 4-6, The Magnate) is E5d-d's: until then the suit idles there and nothing attacks (a stub, so
-##    --phase=4 plays: the checkpoint is stored as for any checkpoint phase).
+##    2's (phases 4-6, The Magnate, E5d-d: the block at the end): phase 4's the transition (on a retry from the
+##    checkpoint too), phases 5 and 6's his hurl clear after a stomp.
 ## 2. Its pattern: a beat script (GoldenConvergenceTuning.phase_beats), one beat at a time, beat_gap apart
 ##    (divided by the phase's pace): phase 1 the strafe on its own (3 passes), slams, a barrage, the Refill
 ##    Ship with a strafe, then from the slams again (loop_from); phases 2 and 3 slams, a barrage, slams, a

@@ -434,10 +434,11 @@ func _test_chase(lanes: int) -> void:
 		"the marker at the screen's bottom edge shows his lane, in the cult's warm white %s" % tag)
 	var shadow: Variant = m.shadow_box()
 	var box: AABB = shadow if shadow is AABB else AABB()
-	var near_end: float = box.position.z - world.player.global_position.z
+	var pz: float = world.player.global_position.z
+	var middle: float = box.get_center().z - pz
 	check(shadow is AABB and box.position.x <= lane_x and box.end.x >= lane_x and box.size.x < world.geo.lane_width * 1.2
-		and near_end > 0.0 and near_end < 1.5 and box.size.z > 3.0,
-		"his shadow lies on the floor of his lane behind the runner, ending just behind them (%.2f m) %s" % [near_end, tag])
+		and box.position.z < pz - 1.0 and box.end.z > pz + 2.0 and middle > 0.0 and middle < 2.0,
+		"his shadow lies on the floor of his lane past the runner, its middle just behind them (%.2f m) %s" % [middle, tag])
 	check(int(rec["hot"]) == 0 and int(rec["in_view"]) == 0 and m.touches.is_empty(),
 		"behind the camera, nothing of his solid or harmful %s" % tag)
 	await sim.free_world(world)
@@ -485,7 +486,7 @@ func _test_pounce(lanes: int, speed: float) -> void:
 	await _run(world, bot, 40.0, func() -> bool: return _events(boss, &"pounce_bound").size() >= 2, func() -> void:
 		if pc.stage == GoldenConvergencePounce.Stage.ROAR:
 			rec["roar_frames"] = int(rec["roar_frames"]) + 1
-			if m.marker.alarm >= 1.0 and m.marker.color().is_equal_approx(GoldenConvergenceMagnateMarker.ALARM):
+			if m.marker.alarm >= 1.0 and m.marker.shown > 0.9 and m.marker.color().is_equal_approx(GoldenConvergenceMagnateMarker.ALARM):
 				rec["red"] = int(rec["red"]) + 1
 		var sq: Dictionary = pc.square()
 		if not sq.is_empty() and not boss.props.warned(int(sq["lane"]), float(sq["from"]), float(sq["to"])):
@@ -850,7 +851,8 @@ func _test_defeat(riff_on: bool) -> void:
 		and float(collapse[0]["at"]) > float(collapse[0]["runner"]) and int(rec["in_way"]) == 0,
 		"he collapses on the causeway ahead once his last cable is out, in a lane away from the runner, never in their way %s" % tag)
 	check(int(rec["hot"]) == 0, "nothing of his can hurt the runner after the defeat %s" % tag)
-	check(m.crack_light <= 0.0 and float(rec["light_at_past"]) >= 0.0, "the last light in his cracks goes out %s" % tag)
+	check(m.crack_light <= 0.0 and float(rec["light_at_past"]) >= 0.0 and m.ports_dead >= 1.0,
+		"the last light in his cracks goes out, his ports' red with it %s" % tag)
 	var past: Array[Dictionary] = _events(boss, &"runner_past")
 	var riff: Array[Dictionary] = _events(boss, &"riff")
 	var over: Array[Dictionary] = _events(boss, &"defeat_over")

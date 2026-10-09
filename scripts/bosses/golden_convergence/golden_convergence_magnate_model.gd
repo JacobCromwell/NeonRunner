@@ -81,6 +81,8 @@ const CABLE := Color(0.13, 0.12, 0.11)
 const CABLE_BAND := Color(0.46, 0.37, 0.21)
 ## The ports' red: the weak points' (FloatingHeadModel.WEAK, the hover truck's).
 const PORT_RED := Color(1.0, 0.08, 0.1)
+## A dead port (his defeat): burnt dark, no glow.
+const PORT_DEAD := Color(0.12, 0.05, 0.045)
 ## Kinds (UV2.x) the body shader reads.
 const KIND_LIT: int = 0
 const KIND_CLOTH: int = 1

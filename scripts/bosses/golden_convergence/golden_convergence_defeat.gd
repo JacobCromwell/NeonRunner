@@ -17,7 +17,7 @@ extends RefCounted
 ##   (MusicDirector.stop over music_cut); past blackout_reach every screen in the world is dark (the feed's
 ##   power off);
 ## - once his last cable is out he collapses where he is (magnate_collapse; the light in his cracks dies over
-##   crack_fade): anchored on the causeway, in silence;
+##   crack_fade, and his ports' red with it): anchored on the causeway, in silence;
 ## - the runner runs past him; riff_after later the victory riff (the music's own riff, chosen before it cut), or
 ##   silence (victory_riff_on off: docs/questions/e5d.md 13); then it's over (victory_over).
 ## The encounter's victory_riff() is false: the riff is this sequence's, not LevelRun's at the defeat.
@@ -147,6 +147,7 @@ func _tick_down(delta: float, t: GoldenConvergenceTuning) -> void:
 	_down_t += delta
 	magnate.shudder = maxf(0.6 * (1.0 - _down_t / maxf(t.collapse_seconds, 0.05)), 0.0)
 	magnate.crack_light = clampf(1.0 - _down_t / maxf(t.crack_fade, 0.05), 0.0, 1.0)
+	magnate.ports_dead = 1.0 - magnate.crack_light
 	var d: float = boss.player_distance()
 	if passed_at < 0.0 and d > collapse_at + GoldenConvergenceMagnateModel.BODY_LENGTH * 0.5 + 1.0:
 		passed_at = time

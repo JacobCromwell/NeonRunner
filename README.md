@@ -318,7 +318,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout).
   The Golden Convergence, the Golden Zone's boss and the final villain, is being built in four steps (task
   E5d); `--boss=golden_boss` previews what's there at 18 m/s (`--phase=4` starts at its halfway checkpoint,
-  stage 2, still a stub). In the Grand Court, a golden causeway through the palace's vast hall with low
+  stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
   balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
   a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
   dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
@@ -328,6 +328,16 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Buttress rising in an inner lane (run through the arch, or dash). Phase 1 opens with a V-V-H strafe; the
   Fist Slam, the Missile Barrage, the Refill Ship (which damages the suit) and The Magnate come in the
   next steps (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
+  Stage 2 (task E5d-d), from the halfway checkpoint: the suit bursts open and The Magnate, burnt and roaring,
+  claws out as every screen switches to his face, and leaps over the runner to hunt them from behind (his
+  shadow and a marker at the bottom of the screen show his lane). His Pounce: a roar as the marker turns red,
+  a leap over the runner, locking onto their lane about a second before he lands, a red square where he will
+  (leave the lane; a jump won't clear him). Every second Pounce raises a Flying Buttress: be in its lane as he
+  locks on and he crashes into its gate, stunned across two lanes; jump onto his back to stomp a red port on
+  his spine, one stomp a phase. From phase 5 his Cable Lash whips across every lane after a rising crackle and
+  a red line (low: jump it; high: slide under it). When he falls the feed dies: his cables tear out, the
+  screens go dark outward, the music cuts out, and he collapses as the runner runs past
+  (`tools/showcase/golden_convergence_magnate_showcase.tscn` shows him and each part).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.

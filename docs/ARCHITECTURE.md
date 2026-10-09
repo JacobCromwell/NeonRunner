@@ -3096,6 +3096,39 @@ listens for `strafe.hurled`/`squadron.hurled_out` (`squadron.hurl_rise`), and sh
 adds its group to `GoldenConvergenceTuning`, its reader to `GoldenConvergenceBot` and its sounds to the
 bank.
 
+**Stage 2, The Magnate, and the defeat** (GDD §10, task E5d-d; it replaces stage 2's stub above). Phases 4-6
+are his: `_on_phase_started` starts `transition` (phase 4's intro: the transition, the same from the checkpoint
+on a retry; phases 5-6: his hurl clear after a stomp) and `_stage_two_tick` runs the intro, then the phase's
+beat script (`overtake`, `pounce`, `pounce:bait`, `lash:low`, `lash:high`) with the same `_tick_beats`, and the
+chase every frame. He is one `BossPart` (`magnate`), the fight's body from the transition on: weapons chip him
+once he's out of the suit, and a stomp on a weak point over his back while he's stunned ends the phase
+(`_on_weak_point_hit`); the third ends the fight, and `_on_defeated` starts `defeat` (the feed dies), which
+holds the results until the runner is past him (`victory_over()`) and plays its own riff (`victory_riff()`
+false). Every attack plans from the runner's distance at the run speed when it starts; warnings keep their
+seconds over the phase's pace, the rest is divided by it; framing (where he is relative to the runner) is kept
+in metres. In `scripts/bosses/golden_convergence/`:
+
+| File | What |
+|---|---|
+| `golden_convergence_magnate.gd` (`GoldenConvergenceMagnate`) | his part: the rig (`set_pose(xform)`, `play(anim)`: run, stand, crouch, leap, roar, rear, whip, slump, collapse, claw, stagger, hurl, hidden; legs reaching the ground, the jaw, the tatters, `speed`, `rise`, `shudder`, `crack_light`, `ports_glow`), everything of his that can touch the runner, each off unless an attack switches it on (`set_crash`: the Pounce's enemy attack box; `set_lash_band(i)`: a cable's; `set_weak_box(i)`: a weak point, `add_weak_point`; `set_blocker`: his solid but safe sides, a lane blocker of its own that a defeat leaves alone), `touches` (tests), his shadow (`set_shadow`, `shadow_box`), the marker (`set_marker`), `breathe(sound)`, the cables (`tear_cable(i)`, `restore_cables`, `socket_point`), `head_point`, `back_point`, `body_aabb`, `draw_stats`, `meshes`; never a target before the transition (`targetable`) |
+| `golden_convergence_magnate_model.gd` (`GoldenConvergenceMagnateModel`) | his meshes, built once in code and shared: the ribcage and haunches (gold splashes), the head (half the calm mask with its dull red tear, his roaring half), the jaw, the legs' segments, the tatters, the ports (their own glowing material: the only hazard colour on him), a cable; `BODY_*`, the rig's joints, the colours (all inside the lit surfaces' chroma limit) |
+| `golden_convergence_magnate.gdshader`, `golden_convergence_magnate_cable.gdshader` | his body (unshaded with a fixed warm key light: the burnt cell-network cracks in his own space, the cult's warm white leaking from some, `crack_glow`; the tatters' sway; the defeat's `shudder`, gentler with Reduced flashing) and a cable (drooping from its socket to the ground behind him, swaying, trailing in a leap) |
+| `golden_convergence_magnate_marker.gd` (`GoldenConvergenceMagnateMarker`) | the marker at the screen's bottom edge under his lane (the Enforcer Truck's way, its own CanvasLayer under the HUD): a chevron with two claw marks, the feed's warm white, the enemy attacks' red at a Pounce's warning (`alarm`); `color()`, `screen_point` |
+| `golden_convergence_chase.gd` (`GoldenConvergenceChase`) | his moves between attacks: following `chase_gap` behind in the lane the runner was in `chase_lane_delay` ago (`begin`), his shadow (a soft blob on the floor of his lane, past the runner) and marker while he's behind out of sight, breath and growls; `drive(by)` (an attack, the transition or the defeat moves him), `drop_back(by, side)` (back behind the runner, along a balustrade first and into his lane only behind the camera), `place()` (every mover's: his gallop's rate, his leap's pitch), `balustrade_x/y`, `alarm`, `home()` |
+| `golden_convergence_transition.gd` (`GoldenConvergenceTransition`) | phase 4's intro (`start`: the chest bursts, `suit.burst`, its plates flung off; he claws out of the man's room, roars as the feed switches to his face; the empty suit topples off the causeway's side into the pools, never over the track; he leaps over the runner and the chase begins) and phases 5-6's (`start_hurl`: a howling leap onto a balustrade, then the drop back); `played`, `hurls`, `suit_down` |
+| `golden_convergence_overtake.gd` (`GoldenConvergenceOvertake`) | the beat `overtake`: along the nearer balustrade past the runner, across the causeway high over every lane onto the other balustrade ahead, back behind; nothing of it can touch the runner |
+| `golden_convergence_pounce.gd` (`GoldenConvergencePounce`) | the beats `pounce` and `pounce:bait`: the roar and the red marker, the leap following the runner's lane until `lock_seconds` before he lands, the red square (`square()`, a floor warning), the crash over the square above a jump, the bound onto a balustrade; the bait's buttress (`place_buttress`), his aim at the gate while the runner is in its lane, the stun across two lanes (`stunned()`, his weak points and sides, the buttress smashed), the release (`release_gap()`: a runner on the floor that close to his back, or past him, and he shakes free: a miss), `on_stomp()`; `pounces`, `baits`, `stuns`, `misses`, `stomps` |
+| `golden_convergence_lash.gd` (`GoldenConvergenceLash`) | the beats `lash:low` and `lash:high`: the run-up along a balustrade, the warning (rearing, the crackle, a `cross_warning` over every lane, aim lines at its heights), the whip across every lane at `lash_low` or `lash_high`/`lash_high_top` (enemy attack boxes, the enemy attacks' red), the yank, the drop back; `heights_for`, `live_cables()` |
+| `golden_convergence_defeat.gd` (`GoldenConvergenceDefeat`) | the feed dies: the throes (lurching ahead into the lane furthest from the runner), the cables torn out one by one, the screens dying outward from him (`GoldenCourtSkin.set_feed_blackout`, a pop at each) and the music cut (`MusicDirector.stop`), the collapse ahead out of the runner's way (his sides bump a switch into him), the crack light out, the runner past him, the riff (or silence: `victory_riff_on`), `over()`; its events carry their own `time` (the fight's clock stops at the defeat) |
+| `golden_court_feed.gdshader` (E5d-a's) | stage 2's feed (`feed_mode` 1): his roaring face, the mask's half and the burnt half (`magnate_face`, `burn_cells`) |
+| `tools/asset_gen/sfx_bank_magnate.gd` | his sounds: `magnate_roar` (a Pounce's warning, the transition's screech), `magnate_growl`, `magnate_breath`, `magnate_leap`, `magnate_crash`, `magnate_slam`, `magnate_stun`, `magnate_stomp`, `magnate_howl`, `magnate_crackle` (a Lash's warning, as long as `lash_warning`), `magnate_whip`, `magnate_tear`, `magnate_screens`, `magnate_screen`, `magnate_burst`, `magnate_suit_fall`, `magnate_suit_down`, `magnate_death`, `magnate_collapse` |
+| `tools/showcase/golden_convergence_magnate_showcase.tscn` | close-ups and scripted runs (`--scenario=magnate/face/feed/transition/chase/pounce/bait/lash/defeat/fight`, `--lanes`, `--speed`, `--cam=run/side/high`, `--kind=low/high`, `--still`, `--miss`, `--reduced-flashing`, `--events`) |
+
+`GoldenConvergenceBot._read_magnate` plays stage 2 by what it shows: out of a Pounce's square once it shows,
+into the buttress's lane before the lock (`takes_bait`) and out of the gate's square into his other lane, a
+jump onto his back `stomp_lead()` before it (`stomps`), a low Lash jumped and a high one slid under
+(`answers_lash`, `wrong_lash`). Hints: `boss:golden_boss/pounce`, `/stun`, `/lash`.
+
 ## Cinematics
 
 GDD §1 tells the story mostly through the zones themselves, plus 5–15 second cinematics between levels and
@@ -3532,6 +3565,26 @@ raked lane (once its warning is over) or out of the arch (jumping or not), the a
 dash through the live line, the wall rule (low on an open wall hit by an outer lane's rake, high up safe;
 the live line hitting a wall runner high up), a pad hurling the squadron and ending the strafe, the hold, and
 40 s played the same on two attempts.
+`test_golden_convergence_magnate` builds stage 2 (E5d-d) a part at a time (`test_golden_convergence`'s stub
+check is now the transition starting stage 2): its beat scripts, sounds and hints; his look (two to three
+times the runner's size, inside the chroma limit but the ports, the dull red tear, the cracks' warm white
+against the runner's copper, grey smoke, his draw budget, no target before the transition); the transition
+from the checkpoint and again on a retry, and from phase 3's end (the order, the feed switching, nothing live,
+the leap high over the runner, landing behind in their lane, the suit never down onto the track); the chase at
+3 and 6 lanes (the lane delay, the marker and the shadow in his lane, nothing solid or harmful); the overtake
+(never in a lane in sight); the Pounce at 3 lanes 18 m/s and 6 lanes 25 m/s (the red marker with the roar, the
+lock at least a second before he lands, the square a floor warning, the crash live only after he lands and
+only over the square, above a jump; a runner who stays is hit, jumping or not; the armor blocks it); the bait
+(the stun across two lanes, a weak point over each, his sides; the stomp ending the phase and the hurl;
+refused, a Pounce like any other and the bait again); the release; a switch into him bumping, never hurting;
+the Cable Lash low and high (the warning as long as `lash_warning`, the red line over every lane, the cable
+across every lane before the runner gets there; a runner who doesn't answer, or answers the other way, is hit;
+the armor blocks it); the defeat with and without the riff (the cables one by one, the screens dark outward
+to every one, the music cut, the collapse ahead out of the way, the crack light out, the runner past, only then
+`victory_over`); Reduced flashing. `test_golden_convergence_magnate_fight` plays stage 2 from the checkpoint
+with `GoldenConvergenceBot` and no god mode at 3, 5 and 6 lanes and 18 and 25 m/s (won untouched, three stomps,
+the paces, every Pounce locked a second ahead, every Lash warned), the release at every lane count and speed,
+and the whole stage the same on two attempts.
 `test_sewer_swarm` builds the Sewer Swarm (E4) at 3, 5
 and 6 lanes and 18 and 21.8 m/s: its slot (built, the campaign's step plays it; phase 1 two clusters, phase 2
 the rest, phase 3 three hits; its par times; weapons within its cap; its new sounds and hints), its
