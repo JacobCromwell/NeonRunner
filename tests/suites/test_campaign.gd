@@ -180,6 +180,8 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the Marketplace's boss step plays The House's fight (task E5a-b)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"corporate":
 			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
+		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"golden":
+			check(s.boss != null and s.boss.is_built(), "the Golden Zone's boss step plays The Golden Convergence's fight (task E5d-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):

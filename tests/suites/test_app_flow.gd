@@ -122,15 +122,24 @@ func _test_pause() -> void:
 
 
 func _test_slots_and_demo() -> void:
-	# The City's boss is built (task E1d; test_floating_head_defeat.gd plays its whole flow), and Gangland's
-	# (E4b), the Marketplace's and the Dead Zone's; the Golden Palace's is still a placeholder card.
-	App.play_step(App.campaign.step("golden/boss"))
+	# Every zone's boss is built (the Golden Convergence last, task E5d-c; test_golden_convergence_whole.gd plays
+	# its campaign step): a boss not yet built still shows its placeholder card, here an unbuilt stand-in in the
+	# Golden Zone's boss step, put back after.
+	var step: CampaignStep = App.campaign.step("golden/boss")
+	var built: BossDef = step.boss
+	var stand_in := built.duplicate() as BossDef
+	stand_in.scene = ""
+	stand_in.preview_scene = ""
+	step.boss = stand_in
+	App.play_step(step)
 	check(App.screen is SlotScreen and App.run == null, "an unbuilt boss shows its placeholder card")
 	var card := App.screen as SlotScreen
 	if card == null:
+		step.boss = built
 		return
 	App.complete_step(card.step)
 	App.advance_from(card.step)
+	step.boss = built
 	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "golden/outro",
 		"continuing moves on to the next step (the outro cinematic slot)")
 	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
