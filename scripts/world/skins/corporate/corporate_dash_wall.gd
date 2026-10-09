@@ -17,6 +17,8 @@ extends RefCounted
 ## where the cladding has come away: it reads as solid, and as something that breaks. Nothing glows (no lit
 ## offices: the wall is a dead block between the lit towers, its glass catching the sky), nothing in a hazard
 ## colour, nothing that reads as a sign (the brand's paint appears only as a plain dark band).
+## DESIGN-TBD (docs/questions/h7b.md): which four buildings the wall is, and its cracks as the only cue; the GDD says only
+## "the same building faces".
 ## Meshes are cached by size and look and shared by every wall.
 
 ## How far the facade plane sits back from the box's face (the relief the pilasters, canopy and cornice have).

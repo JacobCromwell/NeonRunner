@@ -16,6 +16,8 @@ extends RefCounted
 ## a hazard colour, and no sign, no awning of stripes (stripes are a barrier's), no citizen in a window (the
 ## windows show goods alone), no casino (its bulbs would be a sign). Meshes are cached by size and look and shared
 ## by every wall.
+## DESIGN-TBD (docs/questions/h7b.md): which four buildings the wall is, and its cracks as the only cue; the GDD says only
+## "the same building faces".
 
 ## How far the facade plane sits back from the box's face.
 const FACE_BACK: float = 0.55

@@ -16,6 +16,8 @@ extends RefCounted
 ## in them glows or plays the cult's feed or shows its emblem (a screen is a sign), nothing is red (no tapestry:
 ## a banner is a sign), nothing is an alcove with a statue (a statue reads as a Gilded Sentinel). Nothing in a
 ## hazard colour, nothing glows. Meshes are cached by size and look and shared by every wall.
+## DESIGN-TBD (docs/questions/h7b.md): which four buildings the wall is, and its cracks as the only cue; the GDD says only
+## "the same building faces".
 
 ## How far the panel plane sits back from the box's face.
 const FACE_BACK: float = 0.6
@@ -228,5 +230,5 @@ func _finish(s: MeshLayer, size: Vector3, wall_z: float, stone: Color, seed: int
 
 ## A marble tone: the palace's white and cream marbles (the floor's), a shade warmer than the walls.
 func _stone(tone: int) -> Color:
-	var picks: Array[int] = [1, 3, 2]
-	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()]
+	var picks: Array[int] = [3, 1, 2]
+	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()].darkened(0.1)

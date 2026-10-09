@@ -702,8 +702,10 @@ static func _doodad_face(layer: MeshLayer, a: Vector3, b: Vector3, c: Vector3, d
 ##   nothing that flickers (or it must honour Reduced flashing).
 ## The pieces it crumbles into take its colours (dash_wall_debris_colors). The default is a plain three-storey
 ## facade in dash_wall_colors(): pilasters, floor slabs, a plinth and a cornice, rows of dark windows and
-## cracks across its face (default_dash_wall_mesh), lit by dash_wall_material(). A zone overrides
-## dash_wall_colors() to build it from its own side walls' palette, or this whole hook for a look of its own.
+## cracks across its face (default_dash_wall_mesh), lit by dash_wall_material(): the grey box's, and a skin's that
+## has no look of its own. Every zone has one (task H7b): a block built from its own side walls' facade shader,
+## patterns and colours (scripts/world/skins/<zone>/<zone>_dash_wall.gd, with the helpers they share in
+## DashWallKit), drawing with the materials the skin names in dash_wall_materials().
 func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
 	var colors: PackedColorArray = dash_wall_colors()
 	var material: Material = dash_wall_material()

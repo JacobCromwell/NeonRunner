@@ -16,6 +16,8 @@ extends RefCounted
 ## breakable. Nothing glows (no embers: the Dead Zone's only glows are the towers' high embers, and a dash wall
 ## stands at the runner's height), nothing in a hazard colour, and no billboard or neon (a sign reads as a
 ## hazard's). Meshes are cached by size and look and shared by every wall.
+## DESIGN-TBD (docs/questions/h7b.md): which four buildings the wall is, and its cracks as the only cue; the GDD says only
+## "the same building faces".
 
 ## How far the facade plane sits back from the box's face.
 const FACE_BACK: float = 0.55

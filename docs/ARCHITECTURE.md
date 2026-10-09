@@ -2123,7 +2123,7 @@ and keeps to:
   seeds and both push sides: dressed, inside the box, on the shared `MeshKit.solid()` alone, never
   glowing, and the identical (cached) mesh every time the same size, side and seed are drawn again.
 
-**Dash walls' looks** (task H7a built the hook and a default in every skin; task H7b gives each zone its own,
+**Dash walls' looks** (task H7a built the hook and a default in every skin; task H7b gave each zone its own,
 built from its side-wall kit; GDD §9.14: "the same assets as the side walls, but ... facing towards the player,
 looking like a building in the middle of the street"). What a look gets and keeps to:
 - *The hook*: `dash_wall(body, size, look_seed)`. `body` is the wall's node (a `DashBreakable`), centred on the
@@ -2140,23 +2140,45 @@ looking like a building in the middle of the street"). What a look gets and keep
   welcome), with nothing in a hazard colour that glows (pink, yellow and black, red, orange, green, cyan) and
   nothing that reads as a sign, a fence, a barrier's stripes or an enemy. A cue, if any, in the dash's own
   language (`PlayerSuit.GLOW_PALE`), never a hazard's; nothing that flickers (or it honours Reduced flashing).
-- *Cheap*: one mesh per wall from cached templates (the kit's `MeshBatch`; the default caches by size, look,
-  colours and material in a static dictionary), drawn on the Compatibility renderer; ShaderWarmup draws one at
-  the load (look seed 0, the level's size).
+- *Cheap*: one mesh per wall from cached templates (the kit's `MeshBatch`), drawn on the Compatibility renderer;
+  ShaderWarmup draws one at the load (look seed 0, the level's size).
+- *Its materials*: the surfaces of a look's mesh draw with materials the skin names in `dash_wall_materials()`
+  (default `MeshKit.solid()` and `dash_wall_material()`, the zone's own `solid_material()` where it has one): a
+  zone that builds its wall from its facade shader lists that too (the City, Corporate, Gangland, the Marketplace
+  and the Golden Zone: `[solid_material(), facade_material()]`; the Dead Zone and the Golden Palace draw on the
+  solid kit alone). Every vertex has `COLOR.a` 0: no lit window, no ember, no fire, no bulb (a facade shader's
+  flicker, embers and chasing lights are all behind that share, or above the heights a wall reaches), so a wall
+  never flickers and Reduced flashing changes nothing about it.
 - *Its pieces' colours*: `dash_wall_debris_colors(body, look_seed)`, asked right after `dash_wall()` dressed
   it (TrackBuilder keeps the answer on the `DashBreakable`; `RunEffects.crumble` flings its pieces in them): by
-  default the colours its meshes were tagged with (`tag_debris_colors`), else its walls' and trim's. Lit
-  colours only: the pieces never glow.
-- *The default* (`default_dash_wall_mesh(size, look, colors)`): a plain three-storey facade (pilasters at its
-  sides, a plinth and a cornice, floor slabs, a row of dark windows in each storey with some ground-floor
-  shutters, cracks spreading across its ground storey), four looks by seed, in `dash_wall_colors()` (walls,
-  trim, glass, cracks: each zone returns its own side walls' colours; `dash_wall_palette` otherwise), lit by
-  `dash_wall_material()` (the zone's own `solid_material()` where it has one, else `MeshKit.solid()`). H7b can
-  override `dash_wall_colors()` alone, or `dash_wall()` (and `dash_wall_debris_colors()` if its meshes aren't
-  tagged) for a look of its own; `tools/showcase/dash_wall_review.tscn -- --take=look --skin=<zone>` shows it.
+  default the colours its meshes were tagged with (`tag_debris_colors`, which `DashWallKit.finish` does), else its
+  walls' and trim's. Lit colours only: the pieces never glow.
+- *Each zone's look* (`scripts/world/skins/<zone>/<zone>_dash_wall.gd`, a builder the skin owns like its towers and
+  doodads, `mesh_for(size, look_seed)` caching one mesh per size, layout and tone): four layouts by `look_seed % 4`
+  and three tones by `look_seed / 4 % 3`, each a block with depth (the facade set back from the box's face, its
+  piers, cornice and canopies standing out to it, its sides in the zone's material, a little roof plant on its top
+  where it is a roofed building), cracks and a chipped patch with rebar as the "this breaks" cue, in the zone's own
+  facade styles and solid patterns, colours and motifs (nothing that is a sign or an enemy: no banner, screen,
+  statue, billboard, laundry or bulb):
+  Corporate (`CorporateDashWall`: a curtain-wall tower's foot, a lobby, a military compound's front, a podium
+  building), the Dead Zone (`DeadDashWall`: a burnt tower's foot, a skeleton, a blast with its rubble, a bunker),
+  the Golden Zone (`GoldenDashWall`: a rusticated palace, windows, a mirror-glass tower's foot, a gatehouse), the
+  Golden Palace (`GoldenPalaceDashWall`: a pilastered marble block, galleries, arched windows, a hall block),
+  the City (`CityDashWall`: its four window grids), Gangland (`GanglandDashWall`: a ruined block, a balcony block, a
+  patched shop, a collapsed corner) and the Marketplace (`MarketDashWall`: two shop rows, a market hall, an arcade).
+  What they share is `DashWallKit` (`scripts/world/skins/dash_wall_kit.gd`): the helpers that lay things in the box
+  by height above the floor (`box`, `face`, `bay_faces` for whole windows and arches, `face_profile` and
+  `broken_profile` for broken tops, `column`, `frame_rect`, `arch_head`, `finials`, `roof_plant`), `cracks` and
+  `spall`, and `dress`, which puts a cached mesh on the node. The hook's default (`default_dash_wall_mesh`) now only
+  serves the grey box and a skin without a look of its own (`dash_wall_colors()` is the palette it and the debris
+  fall back on).
+- *Review*: `tools/showcase/dash_wall_review.tscn -- --take=look|smash|crash|pass --skin=<zone> [--seed=N]`: `look`
+  holds a camera still in front of the first wall (`--seed=0` to `3` shows each layout in turn), the others run the
+  real world through the game's camera.
 - *Tested*: `test_dash_walls`' `_test_skins` builds every skin's wall at 3 and 6 lanes over five seeds: under its
-  node, inside its box and filling its face, never glowing, on a lit material, the same mesh for the same box
-  and seed, a few looks, and its pieces' colours its look's own.
+  node, inside its box and filling its face, every vertex unlit and every surface on a material the skin names,
+  the same mesh for the same box and seed, a few looks, one small mesh (at most 3 surfaces and 8000 vertices), its
+  pieces' colours its look's own, every zone having a look of its own, and every look built in a moment.
 
 **Floor cuts' looks** (B4; GDD §9.9: the floor a cut takes "becomes a gap ... The cut edges glow the
 usual gap-edge orange"). The track draws a cut lane's floor itself, in slices of the skin's own

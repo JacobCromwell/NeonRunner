@@ -15,6 +15,8 @@ extends RefCounted
 ## solid, and breakable. Nothing glows (no lamps, no fires, no TV: the shader's lit share is 0), nothing in a hazard
 ## colour, no laundry or ad (a sign), no crate wall (a barricade is a hazard's). Meshes are cached by size and look and
 ## shared by every wall.
+## DESIGN-TBD (docs/questions/h7b.md): which four buildings the wall is, and its cracks as the only cue; the GDD says only
+## "the same building faces".
 
 ## How far the facade plane sits back from the box's face.
 const FACE_BACK: float = 0.5

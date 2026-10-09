@@ -18,6 +18,8 @@ extends RefCounted
 ## in the windows: the shader's lit share is 0, and its windows are dark glass or gold mirror), nothing in a hazard
 ## colour, and no statue, banner or screen (a statue reads as a Gilded Sentinel, a banner or a screen as a sign).
 ## Meshes are cached by size and look and shared by every wall.
+## DESIGN-TBD (docs/questions/h7b.md): which four buildings the wall is, and its cracks as the only cue; the GDD says only
+## "the same building faces".
 
 ## How far the facade plane sits back from the box's face.
 const FACE_BACK: float = 0.6
@@ -250,11 +252,11 @@ func _body(solid: MeshLayer, size: Vector3, z: float, top: float, color: Color) 
 		MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY, 0.0)
 
 
-## A stone colour for a tone: the zone's cream, champagne and ivory cladding (warmer than the walls beside it, so the
-## building stands out of them).
+## A stone colour for a tone: the zone's champagne, cream and ivory cladding, a shade deeper than the walls beside it,
+## so the building stands out of them at a distance (the walls' own white would lose it).
 func _stone(tone: int) -> Color:
-	var picks: Array[int] = [1, 3, 2]
-	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()]
+	var picks: Array[int] = [3, 1, 2]
+	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()].darkened(0.1)
 
 
 ## What says "this breaks": hairline cracks (a darker shade of the marble's veins) spreading across the face from a

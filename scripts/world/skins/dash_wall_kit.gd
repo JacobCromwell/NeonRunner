@@ -23,6 +23,7 @@ const CRACK_THIN: float = 0.82
 const CRACK_OUT: float = 0.04
 ## How much of the box's height the roofline leaves for what stands on the roof (plant, a mast, finials): the
 ## building's own top, its cornice or parapet, is at size.y - ROOF.
+## DESIGN-TBD (docs/questions/h7b.md): how much of the box the roof plant takes.
 const ROOF: float = 1.0
 
 
@@ -131,25 +132,6 @@ static func broken_profile(size: Vector3, rng: RandomNumberGenerator, bites: int
 			h -= hole.z * maxf(0.0, 1.0 - absf(x - hole.x) / hole.y)
 		out.append(size.y if i == 0 or i == n else clampf(h, floor_h, size.y))
 	return out
-
-
-## A facade shader's piece on one of the building's sides (x = +/- half the width), seen from the street at an
-## angle on the approach: from depth `z0` (back) to `z1` (front), height `h0` to `h1`, facing out along x
-## (`side` -1 faces -x, +1 faces +x). UV runs (distance from the front, height + uv_h).
-static func side_face(layer: MeshLayer, size: Vector3, side: int, z0: float, z1: float, h0: float, h1: float,
-		color: Color, style: int, seed: float, uv_h: float = 0.0, lit: float = 0.0) -> void:
-	var x: float = float(side) * size.x * 0.5
-	var y0: float = h0 - size.y * 0.5
-	var y1: float = h1 - size.y * 0.5
-	# Clockwise seen from outside: for +x, looking back toward -x, +z is on the left.
-	if side > 0:
-		layer.quad_uv(Vector3(x, y0, z1), Vector3(x, y1, z1), Vector3(x, y1, z0), Vector3(x, y0, z0),
-			Vector2(0.0, h0 + uv_h), Vector2(0.0, h1 + uv_h), Vector2(z1 - z0, h1 + uv_h), Vector2(z1 - z0, h0 + uv_h),
-			color, lit, style, seed)
-	else:
-		layer.quad_uv(Vector3(x, y0, z0), Vector3(x, y1, z0), Vector3(x, y1, z1), Vector3(x, y0, z1),
-			Vector2(z1 - z0, h0 + uv_h), Vector2(z1 - z0, h1 + uv_h), Vector2(0.0, h1 + uv_h), Vector2(0.0, h0 + uv_h),
-			color, lit, style, seed)
 
 
 ## An octagonal half column standing out of the facade plane `z` (its axis at x, z), from height `h0` to `h1`:
