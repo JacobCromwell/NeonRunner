@@ -2477,3 +2477,43 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     lower in the runner's lane (`blast_radius_in_lane` 0.85 m, against `blast_radius` 1.3 m beside them) so it
     never hides them. Placeholder: those values (`DESIGN-TBD` on the "Wreck" group). OK, or should a wreck behind
     the camera show differently (only fire and debris rising into view)?
+
+**The Neon City's outro** (from F2a; the owner's beats, GDD §6 Cinematics; numbers in `data/cinematics/city_outro_tuning.tres`, code in `scripts/cinematics/city_outro.gd` and `city_outro_set.gd`; review with `tools/showcase/cinematic_review.tscn -- --slot=city/outro`)
+369. **Its length** (GDD §1: 5–15 s). The owner's beats are many. Placeholder: 15.0 s, the top of the range
+    (`duration`): about 2 s for the crash, 3 s for the stop and the look, 3 s on the roadblock, 2 s for the escape
+    and leap, and 4.4 s for the landing in Gangland. Should it run longer, or should Gangland's intro flyover (next,
+    9.5 s) be shortened or dropped after it, since the outro already lands the runner in Gangland?
+370. **Where the roadblock stands** ("He looks to the left, and there we see a barricade"). Placeholder: the left
+    wall opens onto a side street, built from the City's own truck roofs laid across it and lined with its building
+    fronts. The roadblock stands at its mouth, a few metres ahead of where the runner stops (`side_*` values). Is a
+    side street what the owner pictured, or should the roadblock block the main street?
+371. **The barricade's look.** Placeholder: low concrete blocks with navy and white rails, in the Enforcer Truck's
+    police paint and never a hazard colour, with a cold-white floodlight at each end. The Barnacle Turrets stand in
+    the gaps between the blocks like cannons (`CityOutroSet._barricade_mesh`). Should it look like Gangland's crate
+    and container barricades instead?
+372. **Which battle truck.** Placeholder: the Enforcer Truck (police-style, light bar, two cyborg gunners on its
+    roof), because its model was already built to be shown on its own. The hover truck (Neon City 3's mini-boss) is
+    the one the player has actually met by Zone 1's end. Which one?
+373. **Turrets and drone.** Placeholder: 3 turrets (`turrets`) in the mechanical City look, and the heli drone over
+    the truck. The player meets neither in Zone 1 (the drone arrives in Gangland 3, the turret in the Marketplace),
+    so the outro previews both. Intended?
+374. **"Runs in the opposite direction".** Placeholder: away from the roadblock. The runner hops back to the right,
+    startled, then sprints right and slightly ahead to an opening in the right wall, and leaps out over the drop to
+    the road far below. The other reading is a U-turn back the way they came. Which did the owner mean?
+375. **The explosion.** Placeholder: the roadblock fires a red volley (each cyborg and turret), which blows up the
+    truck roof the runner just leapt from (the Enforcer Truck's blast, bigger: `blast_*` values). The camera is out
+    over the drop, so the runner flies toward it with the fireball behind them. Should it be something else, such
+    as the battle truck firing or the Floating Head's wreck going up?
+376. **The cut to Gangland.** Placeholder: the runner falls into the haze toward the road far below. The picture goes
+    to black for about half a second, then the runner drops into a Gangland street from about 7 m, lands, glances
+    left and right, and runs off. The cut happens under black because building Gangland's street takes a few frames.
+    Is a cut to black acceptable, or should the camera follow the fall all the way down? A continuous fall would
+    need the City's road below to become Gangland's street, a bigger job.
+377. **Runner animation.** The rig has no "stop and look" or "startled" animation. Placeholders: a head turn shared by
+    chest, neck and head (the toolkit's new `look` on cinematic keys), and a small hop back (`startle_hop`, 0.35 m)
+    that uses the jump pose. Should it have a proper startled pose?
+378. **Music.** Placeholder: the City's track plays and fades out as the runner leaps, and Gangland's comes in with
+    its intro. No music was made for cinematics (GDD §11). Should the outro have its own sting?
+379. **The web demo.** The demo ends after Zone 1, and the outro belongs to Zone 1, so the demo plays it (Gangland's
+    landing included) before the store-link screen, a teaser for Zone 2. Wanted, or should the demo go straight to
+    the store links (GDD §10's wording could be read that way)?

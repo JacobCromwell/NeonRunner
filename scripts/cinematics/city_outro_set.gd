@@ -8,12 +8,12 @@ extends Node3D
 ##   the fight's face shader): it hangs dying in the air, its face tearing into static (held still with
 ##   Reduced flashing), loses power and plunges into the street, where it becomes the fight's wreck, its
 ##   torn-off face falling flat before it, with grey dust and smoke (no flash), as in the fight's defeat.
-## - The roadblock in a side street on the left (DESIGN-TBD, docs/questions/f2a.md 2-5): the zone's own floor
-##   laid across the side street (ZoneSkin.floor_segment, so it follows the skin: the City's truck roofs), a
-##   low barricade of concrete blocks with police-blue and white rails, Barnacle Turrets standing in it on
-##   the floor like cannons (BarnacleTurretModel, turned over), a battle truck behind (EnforcerTruckModel,
-##   its light bar alternating red and blue, steady with Reduced flashing) and a heli drone over it (the
-##   drone's own model). The five cyborgs are the cinematic's actors (CineActor), not props.
+## - The roadblock in a side street on the left (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, items 370-373): the
+##   zone's own floor laid across the side street (ZoneSkin.floor_segment, so it follows the skin: the City's
+##   truck roofs), a low barricade of concrete blocks with police-blue and white rails, Barnacle Turrets
+##   standing in it on the floor like cannons (BarnacleTurretModel, turned over), a battle truck behind
+##   (EnforcerTruckModel, its light bar alternating red and blue, steady with Reduced flashing) and a heli
+##   drone over it (the drone's own model). The five cyborgs are the cinematic's actors (CineActor), not props.
 ## - The roadblock's shots (enemy-fire red bolts) and the blast they make behind the runner as they leap
 ##   (EnforcerTruckBlast: no white-hot core and a softer fire with Reduced flashing).
 ## Every colour keeps the game's language: red only on the enemies' charge-ups, their fire and the light
@@ -249,7 +249,7 @@ func build_roadblock(stage: CineStage, f: CityOutroTuning, mid: float, visual_se
 		turret.build(stage.skin.enemy_variant, visual_seed + i)
 		turret.set_emerged(1.0)
 		turrets.append(turret)
-	# DESIGN-TBD (docs/questions/f2a.md 4): the Enforcer Truck; the hover truck is the one Zone 1 has shown.
+	# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 372): the Enforcer Truck; the hover truck is the one Zone 1 has shown.
 	var truck_tuning := load(TRUCK_TUNING_PATH) as EnforcerTruckTuning
 	truck = EnforcerTruckModel.new()
 	truck.name = "Truck"
@@ -307,9 +307,9 @@ static func turret_slots(f: CityOutroTuning, width: float) -> Array[float]:
 	return out
 
 
-## DESIGN-TBD (docs/questions/f2a.md 3): the barricade across the side street at `depth` in, concrete blocks
-## between the turrets' places, police rails on the blocks, and a floodlight on a post at each end, facing the
-## street.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 371): the barricade across the side street at `depth` in,
+## concrete blocks between the turrets' places, police rails on the blocks, and a floodlight on a post at each
+## end, facing the street.
 static func _barricade_mesh(width: float, slots: Array[float], depth: float) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var m: MeshLayer = batch.layer(MeshKit.solid())

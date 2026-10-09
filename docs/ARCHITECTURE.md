@@ -3104,7 +3104,7 @@ zone's floor pieces. It sets up in about 15-40 ms and costs about 0.3 ms a frame
 cheap on the web, where the demo plays the City's two.
 
 **The City outro** (`CityOutro`, task F2a; the owner's beats, GDD §6 Cinematics; its staging is DESIGN-TBD,
-`docs/questions/f2a.md`; numbers in `data/cinematics/city_outro_tuning.tres`): 15 s. From the run camera's view
+`docs/OPEN_QUESTIONS.md` §D, items 369–379; numbers in `data/cinematics/city_outro_tuning.tres`): 15 s. From the run camera's view
 the dying Floating Head plunges into the street ahead and becomes the fight's wreck. The camera comes down to
 the runner's level as they stop. They look left, and the camera pans over their shoulder to a roadblock at the
 mouth of a side street opening off the left wall. The roadblock is Barnacle Turrets standing on the floor like

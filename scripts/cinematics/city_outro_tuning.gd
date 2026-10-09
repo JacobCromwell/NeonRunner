@@ -2,14 +2,15 @@ class_name CityOutroTuning
 extends Resource
 ## The City outro's numbers (CityOutro; data/cinematics/city_outro_tuning.tres). The story beats are the
 ## owner's (GDD §6, Cinematics, October 8, 2026); the timing, the staging and every distance here are
-## DESIGN-TBD placeholders (docs/questions/f2a.md) until the owner has watched it.
+## DESIGN-TBD placeholders (docs/OPEN_QUESTIONS.md §D, items 369–379) until the owner has watched it.
 ##
 ## Distances are along the track from where the runner starts (track space, CineStage), at the run speed
 ## (MovementTuning.run_speed); sideways distances are from the walls' faces or the start lane, so the scene
 ## reads the same at 3, 5 and 6 lanes.
 
 @export_group("Timing")
-## DESIGN-TBD (docs/questions/f2a.md 1): how long it lasts. GDD §1 asks for 5-15 s; the owner's beats are many.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 369): how long it lasts. GDD §1 asks for 5-15 s; the owner's
+## beats are many.
 @export_range(8.0, 30.0, 0.1, "suffix:s") var duration: float = 15.0
 ## The picture fades in from black at the start.
 @export_range(0.0, 2.0, 0.05, "suffix:s") var fade_in: float = 0.5

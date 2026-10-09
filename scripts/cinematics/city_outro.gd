@@ -2,7 +2,7 @@ class_name CityOutro
 extends CinematicSequencer
 ## The Neon City's outro (task F2a; the owner's story beats, GDD §6 Cinematics, October 8, 2026): after the
 ## Floating Head, on the way to Gangland. The staging, timing and look are DESIGN-TBD placeholders
-## (docs/questions/f2a.md) until the owner has watched it.
+## (docs/OPEN_QUESTIONS.md §D, items 369–379) until the owner has watched it.
 ## 1. The Floating Head crashes. Seen from the run camera (above and behind the runner, as in play), the
 ##    dying ship plunges into the street ahead and breaks up into the fight's wreck (CityOutroSet).
 ## 2. The camera comes down to the runner's level as they slow to a stop, the wreck smoking ahead.
@@ -133,13 +133,13 @@ func _runner(t: CineTimeline, f: CityOutroTuning) -> void:
 	_turned(r.at(settle, Vector3(0.0, 0.0, stop_z)), 0.0, 0.0)
 	_turned(_eased(r.at(settle + f.look_seconds, Vector3(0.0, 0.0, stop_z))), f.look_body_degrees, f.look_degrees)
 	_turned(r.at(f.startle_at, Vector3(0.0, 0.0, stop_z)), f.look_body_degrees, f.look_degrees)
-	# DESIGN-TBD (docs/questions/f2a.md 9): startled, a hop back to the right (the jump pose), the head
+	# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 377): startled, a hop back to the right (the jump pose), the head
 	# snapping round; they land facing their way out.
 	var hop: CineActorKey = r.at(f.startle_at + f.startle_seconds * 0.45, Vector3(0.3, f.startle_hop, stop_z - 0.15))
 	_turned(_eased(hop, Tween.TRANS_SINE, Tween.EASE_OUT), -10.0, 15.0)
 	var landing: CineActorKey = _eased(r.at(t_flee, Vector3(0.55, 0.0, stop_z - 0.2)), Tween.TRANS_SINE, Tween.EASE_IN)
 	landing.face_path = true
-	# DESIGN-TBD (docs/questions/f2a.md 6): "the opposite direction" is away from the roadblock, at a
+	# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 374): "the opposite direction" is away from the roadblock, at a
 	# sprint to the right wall's opening (speeding up from a standstill).
 	_eased(r.at(t_leap, Vector3(edge.x, 0.0, edge.y)), Tween.TRANS_QUAD, Tween.EASE_IN)
 	# The leap off the truck roof: a jump's arc out over the drop, falling on under the same pull.
@@ -286,7 +286,7 @@ func _events(t: CineTimeline, f: CityOutroTuning) -> void:
 	t.sound(f.charge_at, &"cyborg_charge")
 	t.sound(f.charge_at + 0.15, &"barnacle_charge")
 	t.sound(t_leap, &"jump")
-	t.music(t_leap, &"", f.music_fade)  # DESIGN-TBD (docs/questions/f2a.md 10): no sting of its own.
+	t.music(t_leap, &"", f.music_fade)  # DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 378): no sting of its own.
 	var launch: float = t_blast - f.shots_seconds
 	t.sound(launch - 0.12, &"cyborg_shot")
 	t.sound(launch, &"barnacle_shot")
@@ -315,7 +315,7 @@ func _on_cue(cue_name: StringName) -> void:
 			_to_next_zone()
 
 
-## DESIGN-TBD (docs/questions/f2a.md 7): the roadblock's volley, a bolt from each cyborg's arm cannon and
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 375): the roadblock's volley, a bolt from each cyborg's arm cannon and
 ## each turret's muzzle, landing on the edge the runner leaps from as the blast goes off.
 func _volley() -> void:
 	var f: CityOutroTuning = numbers()
@@ -334,7 +334,7 @@ func _volley() -> void:
 		props.add_bolt(muzzle, target, launch, f.shots_seconds)
 
 
-## DESIGN-TBD (docs/questions/f2a.md 8): cuts to the next zone's street (its skin from the campaign's
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 376): cuts to the next zone's street (its skin from the campaign's
 ## data) under black, rather than following the fall all the way down.
 func _to_next_zone() -> void:
 	props.hide_city()
