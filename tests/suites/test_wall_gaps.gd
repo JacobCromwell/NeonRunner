@@ -19,7 +19,10 @@ extends SkinSuite
 ## - open walls (WallGapTuning.coverage_target, the Beach's; task D10b) on made-up tracks at 3, 5 and 6 lanes:
 ##   each wall opens what its keep-outs leave free in stretches at least open_seconds_min long, down to its
 ##   target, both walls at once within both_open_max; a wall whose keep-outs leave too little stands more, and
-##   nothing opens through a keep-out (test_beach_levels checks the Beach's real levels).
+##   nothing opens through a keep-out; a wall standing between two open stretches stands at least
+##   solid_seconds_min, even where only a lone wall fence holds it up; a narrower clearance of a level's own
+##   narrows the keep-outs around signs, wall fences and ceilings, never the margins that time a wall run around
+##   ramps and wall enemies (task D10c review; test_beach_levels checks the Beach's real levels).
 
 ## The levels with the shared numbers' few, rare gaps (the Beach's open their walls by their own numbers: task D10b,
 ## test_beach_levels).
@@ -446,6 +449,50 @@ func _test_open_walls() -> void:
 		check(gen.layout.wall_supported(1, 924.0), "a free stretch shorter than open_seconds_min stands %s" % tag)
 		check(gen.layout.wall_supported(-1, 440.0) and gen.layout.wall_supported(1, 440.0), "a ceiling over the outer lanes keeps both walls %s" % tag)
 		_check_open_walls(gen, open, tag + " pieces")
+		# A lone wall fence in a wall that opens everywhere else (a high target and no limit on both walls at once, so
+		# nothing needs to stand again): its keep-out alone would hold up a few metres of wall between two open
+		# stretches, and the wall flickers; it stands solid_seconds_min around it instead, open right up to it on both
+		# sides (the ceiling near the end only adds a short open stretch after it).
+		var tall: WallGapTuning = open.duplicate() as WallGapTuning
+		tall.coverage_target = 0.9
+		tall.both_open_max = 1.0
+		var lone: LevelGenerator = _open_walls_track(lanes, tall, [{"kind": "wall_fence", "side": -1, "at": 1300.0},
+			{"kind": "hull", "start": 2700.0, "end": 2900.0}])
+		var around: Vector2 = Vector2.ZERO
+		for piece: Vector2 in lone.layout.wall_solid_pieces(-1, 1000.0, 1600.0):
+			if piece.x <= 1300.0 and piece.y >= 1300.0:
+				around = piece
+		var lone_open: Array[Vector2] = lone.layout.wall_gap_spans(-1, -INF, INF)
+		var open_before: bool = false
+		var open_after: bool = false
+		for g: Vector2 in lone_open:
+			open_before = open_before or absf(g.y - around.x) < 0.01
+			open_after = open_after or absf(g.x - around.y) < 0.01
+		check(open_before and open_after and absf(around.y - around.x - tall.solid_seconds_min * lone.speed) < 0.01
+			and absf((around.x + around.y) * 0.5 - 1300.0) < 0.01,
+			"the wall around a lone wall fence stands solid_seconds_min, centred on it, with the wall open either side (%s, %s) %s"
+			% [around, lone_open, tag])
+		_check_open_walls(lone, tall, tag + " lone fence")
+		# A narrower clearance of its own (the Beach's) narrows the keep-outs around a sign, a wall fence and a
+		# ceiling, never the margins that time a wall run around a ramp and a wall enemy.
+		var narrow: WallGapTuning = open.duplicate() as WallGapTuning
+		narrow.clear_seconds = open.clear_seconds - 0.15
+		var less: float = 0.15 * gen.speed
+		for piece: Array in [[-1, 2100.0, 0.0], [1, 1700.0, 0.0], [1, 904.0, less], [-1, 1300.0, less], [-1, 440.0, less]]:
+			var side: int = piece[0]
+			var shared_keep: Vector2 = _keep_around(WallGapPlacement.keep_outs(gen, gen.layout, side, open), float(piece[1]))
+			var own_keep: Vector2 = _keep_around(WallGapPlacement.keep_outs(gen, gen.layout, side, narrow), float(piece[1]))
+			check(absf(own_keep.x - (shared_keep.x + float(piece[2]))) < 0.01 and absf(own_keep.y - (shared_keep.y - float(piece[2]))) < 0.01,
+				"wall %d at %.0f m keeps %s with a narrower clearance (%s, shared %s) %s" % [side, piece[1],
+					"its margins" if float(piece[2]) == 0.0 else "less", own_keep, shared_keep, tag])
+
+
+## The keep-out of `keeps` (sorted, merged) that holds track distance `at`, or Vector2.ZERO.
+static func _keep_around(keeps: Array[Vector2], at: float) -> Vector2:
+	for k: Vector2 in keeps:
+		if k.x <= at and k.y >= at:
+			return k
+	return Vector2.ZERO
 
 
 ## A made-up level with the wall_gaps feature, `tuning`'s own wall-gap numbers (null: the shared ones), a 3000 m
@@ -483,6 +530,7 @@ func _open_walls_track(lanes: int, own: WallGapTuning, pieces: Array[Dictionary]
 func _check_open_walls(gen: LevelGenerator, t: WallGapTuning, tag: String) -> void:
 	var layout: LevelLayout = gen.layout
 	var min_open: float = t.open_seconds_min * gen.speed
+	var min_solid: float = t.solid_seconds_min * gen.speed
 	var spans: Array = []
 	for side: int in [-1, 1]:
 		var mine: Array[Vector2] = layout.wall_gap_spans(side, -INF, INF)
@@ -494,6 +542,8 @@ func _check_open_walls(gen: LevelGenerator, t: WallGapTuning, tag: String) -> vo
 			check(g.x >= gen.config.start_clear_distance and g.y <= layout.length - gen.config.end_clear_distance,
 				"open between the run-up and the end-clear stretch %s" % tag)
 			check(g.x > prev + 0.01, "gaps on a wall never touch %s" % tag)
+			check(prev == -INF or g.x - prev >= min_solid - 0.01,
+				"the wall stands at least solid_seconds_min between two open stretches (%.1f m) %s" % [g.x - prev, tag])
 			prev = g.y
 			for kp: Vector2 in keeps:
 				check(not (g.x < kp.y - 0.01 and g.y > kp.x + 0.01), "gap %s clear of keep-out %s %s" % [g, kp, tag])

@@ -116,7 +116,9 @@ static func place(gen: LevelGenerator) -> void:
 ## Each closing takes a whole stretch, or the part it needs (at least solid_seconds_min) from an end of it that
 ## meets standing wall already (_close_down), and leaves no open stretch shorter than open_seconds_min, so a
 ## wall only ever stands again where it was free to open: never through a keep-out. A wall whose keep-outs
-## leave less than its target free stays below it.
+## leave less than its target free stays below it. And a wall that stands between two open stretches stands at
+## least solid_seconds_min, the walls never flickering: one held up only by a lone keep-out (a wall fence, a sign)
+## stands longer around it, from the start and again after the closings (_no_short_stands; task D10c review).
 static func _open_walls(gen: LevelGenerator, t: WallGapTuning, keeps: Array, from: float, last: float,
 		rng: RandomNumberGenerator) -> void:
 	var lay: LevelLayout = gen.layout
@@ -124,7 +126,7 @@ static func _open_walls(gen: LevelGenerator, t: WallGapTuning, keeps: Array, fro
 	var min_solid: float = t.solid_seconds_min * gen.speed
 	var open: Array[Array] = []
 	for i: int in 2:
-		open.append(open_stretches(keeps[i], from, last, min_open))
+		open.append(_no_short_stands(open_stretches(keeps[i], from, last, min_open), min_solid, min_open))
 	var want: float = t.coverage_target * lay.length
 	var order: Array[int] = [0, 1]
 	if span_total(open[1]) > span_total(open[0]):
@@ -159,8 +161,39 @@ static func _open_walls(gen: LevelGenerator, t: WallGapTuning, keeps: Array, fro
 			break
 		open[i] = after
 	for i: int in 2:
-		for g: Vector2 in open[i]:
+		var mine: Array[Vector2] = []
+		mine.assign(open[i])
+		for g: Vector2 in _no_short_stands(mine, min_solid, min_open):
 			lay.wall_gaps.append({"side": -1 if i == 0 else 1, "start": g.x, "end": g.y})
+
+
+## One wall's open stretches `open` (sorted) with every stretch of wall standing between two of them at least
+## `min_solid` long (coverage mode; task D10c review: a wall held up only by a lone wall fence's or sign's keep-out
+## stood about 17 m, under a second, between two open stretches, and the walls flickered). A standing piece that
+## is shorter stands longer, into the open stretches either side, as evenly as they allow while each keeps
+## `min_open`; if together they can't give enough, the shorter of the two stands whole. Only ever closes what was
+## open, so every keep-out still holds.
+static func _no_short_stands(open: Array[Vector2], min_solid: float, min_open: float) -> Array[Vector2]:
+	var out: Array[Vector2] = open.duplicate()
+	var i: int = 1
+	while i < out.size():
+		var a: Vector2 = out[i - 1]
+		var b: Vector2 = out[i]
+		var need: float = min_solid - (b.x - a.y)
+		if need <= EPSILON:
+			i += 1
+			continue
+		var room_a: float = maxf(a.y - a.x - min_open, 0.0)
+		var room_b: float = maxf(b.y - b.x - min_open, 0.0)
+		if room_a + room_b < need:
+			out.remove_at(i - 1 if a.y - a.x <= b.y - b.x else i)
+			i = maxi(i - 1, 1)
+			continue
+		var take_a: float = clampf(need * 0.5, need - room_b, room_a)
+		out[i - 1] = Vector2(a.x, a.y - take_a)
+		out[i] = Vector2(b.x + need - take_a, b.y)
+		i += 1
+	return out
 
 
 ## The stretches of [from, last] that `keeps` (sorted, merged: keep_outs) leave free, each KEEP_MARGIN clear of
@@ -295,10 +328,15 @@ static func _starts_blocked(keeps: Array, length: float) -> Array[Vector2]:
 
 
 ## The stretches of track wall `side` of `lay` must keep whole (a gap may not overlap them), at the
-## generator's run speed, each widened by clear_seconds: see the header.
+## generator's run speed, each widened by clear_seconds: see the header. The margins that time a wall run (a
+## ramp's, from before its launch to past its longest wall run, and a wall enemy's either side of it, a Gilded
+## Sentinel's section with it) never narrow with a level's own clearance: they take the shared file's, or the
+## level's own where that's wider (task D10c review: the Beach's 0.35 s clearance had them 0.15 s under the shared
+## ones). With the shared numbers it's the same clearance throughout, so every other level keeps its gaps.
 static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallGapTuning) -> Array[Vector2]:
 	var v: float = gen.speed
 	var clear: float = t.clear_seconds * v
+	var timing: float = maxf(t.clear_seconds, tuning().clear_seconds) * v
 	var raw: Array[Vector2] = []
 	raw.append(Vector2(-INF, gen.config.start_clear_distance))
 	raw.append(Vector2(lay.length - gen.config.end_clear_distance, INF))
@@ -309,17 +347,18 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	for w: Dictionary in lay.wall_fences:
 		if int(w["side"]) == side:
 			raw.append(Vector2(float(w["at"]) - fence_half, float(w["at"]) + fence_half))
+	var timed: Array[Vector2] = []
 	var enemy: float = t.wall_enemy_seconds * v
 	for e: Dictionary in lay.enemies:
 		if int(e.get("side", 0)) != side:
 			continue
 		var at: float = float(e["at"])
-		raw.append(Vector2(at - enemy, at + enemy))
+		timed.append(Vector2(at - enemy, at + enemy))
 		if String(e.get("type", "")) == "gilded_sentinel":
-			raw.append(WallFencePlacement.sentinel_wall_section(gen, e))
+			timed.append(WallFencePlacement.sentinel_wall_section(gen, e))
 	for r: Dictionary in lay.ramps:
 		if int(r["side"]) == side:
-			raw.append(Vector2(float(r["at"]) - t.ramp_before_seconds * v,
+			timed.append(Vector2(float(r["at"]) - t.ramp_before_seconds * v,
 				WallFencePlacement.ramp_run_end(gen, r) + t.ramp_after_seconds * v))
 	var outer: int = lay.outer_lane(side)
 	for h: Dictionary in lay.hulls:
@@ -328,6 +367,8 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	var out: Array[Vector2] = []
 	for k: Vector2 in raw:
 		out.append(Vector2(k.x - clear, k.y + clear))
+	for k: Vector2 in timed:
+		out.append(Vector2(k.x - timing, k.y + timing))
 	# Task G7: every wider gap, on both walls, with its own margin (WideGapTuning.wall_gap_clear_seconds), so a
 	# runner on a wall over one is never dropped into it.
 	out.append_array(WideGapPlacement.wall_keep_outs(gen))

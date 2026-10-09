@@ -35,7 +35,8 @@ extends Resource
 @export_group("Clearance")
 ## Seconds of run kept between a wall gap and anything on or using its wall (a sign, a wall fence, a
 ## wall enemy or a Gilded Sentinel's niche, a ceiling reaching that wall), so nothing hangs off a
-## missing wall.
+## missing wall. A level's own may be narrower (the Beach's), but the margins that time a wall run, around
+## a ramp and a wall enemy, never narrow below the shared file's (WallGapPlacement.keep_outs).
 @export_range(0.0, 3.0, 0.05, "suffix:s") var clear_seconds: float = 0.5
 ## Seconds of run kept clear before a ramp on the gap's wall and after the longest wall run it can
 ## launch (with claws and a speed pad's boost), so a ramp always launches onto solid wall.

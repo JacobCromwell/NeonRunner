@@ -1821,12 +1821,17 @@ into long open stretches (`WallGapPlacement._open_walls`, from the same random s
   from an end that meets standing wall already (`_close_down`). So the second wall keeps more of what both had
   open;
 - while both walls are open at once over more than `both_open_max` (0.3) of the level, the wall with more open
-  stands again over the shortest such stretch.
+  stands again over the shortest such stretch;
+- a wall standing between two open stretches stands at least `solid_seconds_min` (2 s), so the walls never
+  flicker: one held up only by a lone keep-out (a wall fence's or a sign's, about 17 m) stands longer around it,
+  into the open stretches either side as evenly as they allow while each keeps `open_seconds_min`, or the shorter
+  of the two stands whole (`_no_short_stands`, from the start and again after the closings; task D10c review).
 Every keep-out above holds, so a wall whose keep-outs (mostly ceilings reaching it, ramps' wall runs and wall
 enemies) leave it less free stands more. The Beach's clearance around signs, wall fences, wall enemies and
 ceilings is narrower (`clear_seconds` 0.35 s against 0.5, about 8 m of wall either side at its 23.8 m/s); the
-margins that time a wall run, before a ramp and past its longest run and either side of a wall enemy, are the
-shared ones. Placed last as before, the open walls change nothing else in a level: built with the shared tuning,
+margins that time a wall run, before a ramp and past its longest run and either side of a wall enemy, never narrow
+with it: `keep_outs` widens those by the shared file's `clear_seconds` (or the level's own, where wider), so they
+are the shared ones (task D10c review). Placed last as before, the open walls change nothing else in a level: built with the shared tuning,
 the Beach's levels are the same levels but for their gaps (the same signs, wall fences, ramps, window cyborgs
 and wall vents, and no wall credit fell in a gap, since those lie along ramps' wall runs: all 54 builds below).
 Over both Beach levels at 3, 5 and 6 lanes as the campaign configures them (task D10c), on their own seeds and
@@ -4478,8 +4483,7 @@ introduction until PLAY is pressed (`App.begin_run`), and the script presses it 
 (a run that never started, never left the introduction, or whose runner never moved; plus Godot's own
 script errors) and exits 1 on any. `--smoke-report` also prints what the run did, `--smoke-frames=N` shortens
 it, `--smoke-hold` withholds PLAY (the check's own test, `test_smoke_play`). Quick play (`smoke` with no
-arguments) is unchanged, and so is a zone outside the campaign (`--level=beach/1`, task D10b), which plays as
-quick play from its first frame. The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
+arguments) is unchanged; `--level=beach/1` is the Beach's campaign step like any other (task D10c). The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
 so it finds the run's `State.READY` through the script's constant map.
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the

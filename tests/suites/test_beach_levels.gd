@@ -20,9 +20,12 @@ extends TestSuite
 ##   free, never on less than 1 - coverage_target; over all the builds the median wall stands in AIM; every gap
 ##   at least open_seconds_min long, between the run-up and the end-clear stretch, clear of its wall's keep-outs
 ##   (WallGapPlacement.keep_outs: signs, wall fences, wall enemies, ceilings reaching the wall, ramps' launches
-##   and longest wall runs, wider gaps), never touching the next (standing wall between); most of the open
-##   length in stretches of 100 m and more; both walls open at once on no more than both_open_max of the level;
-##   no wall credit in a gap; the same gaps on a second build;
+##   and longest wall runs, wider gaps), the wall standing at least solid_seconds_min between two of them (so the
+##   walls never flicker); most of the open length in stretches of 100 m and more; both walls open at once on no
+##   more than both_open_max of the level; the same gaps on a second build;
+## - what the walls hold, checked on its own rather than through keep_outs (so a keep-out it forgot would show):
+##   every sign, wall fence, wall enemy, ceiling reaching a wall, ramp launch with its longest wall run, wall
+##   credit and wider gap's walls on solid wall;
 ## - the wall features still there: on the levels' own seeds, the same level with the shared tuning is the same
 ##   level but for its wall gaps (the signs, wall fences, ramps, window cyborgs and wall vents all stay where
 ##   they are, and only wall credits go);
@@ -149,20 +152,22 @@ func _test_data() -> void:
 	check(last.sky != null and last.sky.resource_path == "res://data/skies/beach_sunset.tres",
 		"the Beach's last level shows its sunset (data/skies/beach_sunset.tres)")
 	# The Beach's numbers: open walls, and the margins that time a wall run (a ramp's launch and longest run, a
-	# wall enemy's wall entry) the shared ones; only the visual clearance may be its own.
+	# wall enemy's wall entry) the shared ones; only the clearance around signs, wall fences and ceilings is its own
+	# (narrower), which keep_outs never lets narrow those margins (test_wall_gaps checks the keep-outs themselves).
 	var open := load(OPEN_WALLS_PATH) as WallGapTuning
 	var shared: WallGapTuning = WallGapPlacement.tuning()
 	check(open.opens_walls() and open.both_open_max < 0.5, "the Beach's walls open, both at once on less than half the level")
 	check(is_equal_approx(open.ramp_before_seconds, shared.ramp_before_seconds)
 		and is_equal_approx(open.ramp_after_seconds, shared.ramp_after_seconds)
-		and is_equal_approx(open.wall_enemy_seconds, shared.wall_enemy_seconds) and open.clear_seconds > 0.0,
-		"the Beach keeps the shared margins around ramps and wall enemies")
+		and is_equal_approx(open.wall_enemy_seconds, shared.wall_enemy_seconds)
+		and open.clear_seconds > 0.0 and open.clear_seconds < shared.clear_seconds,
+		"the Beach keeps the shared margins around ramps and wall enemies; only its clearance is narrower")
 
 
 ## Every build of both levels (see the header), then the open walls' figures over all of them.
 func _test_levels() -> void:
 	var stats := {"stands": [] as Array[float], "open": 0.0, "long": 0.0, "stretches": 0, "both": [] as Array[float],
-		"trucks": 0, "truck_builds": 0}
+		"trucks": 0, "truck_builds": 0, "between": [] as Array[float], "pieces": {}}
 	for number: int in [1, 2]:
 		for lanes: int in [3, 5, 6]:
 			for level_seed: int in [0] + OTHER_SEEDS:
@@ -184,9 +189,13 @@ func _test_levels() -> void:
 		aimed += 1 if s >= AIM.x and s <= AIM.y else 0
 	var both: Array[float] = stats["both"]
 	both.sort()
-	print("  beach walls stand %.1f-%.1f%% (median %.1f%%; %d of %d walls in %.0f-%.0f%%); %d open stretches, %.0f%% of the open length in %.0f m and more; both open %.1f-%.1f%%" % [
+	var between: Array[float] = stats["between"]
+	between.sort()
+	print("  beach walls stand %.1f-%.1f%% (median %.1f%%; %d of %d walls in %.0f-%.0f%%); %d open stretches, %.0f%% of the open length in %.0f m and more; both open %.1f-%.1f%%; %d standing pieces between two open stretches, the shortest %.0f m" % [
 		stands[0] * 100.0, stands[-1] * 100.0, median * 100.0, aimed, stands.size(), AIM.x * 100.0, AIM.y * 100.0,
-		int(stats["stretches"]), long_share * 100.0, LONG_METRES, both[0] * 100.0, both[-1] * 100.0])
+		int(stats["stretches"]), long_share * 100.0, LONG_METRES, both[0] * 100.0, both[-1] * 100.0, between.size(),
+		between[0] if not between.is_empty() else 0.0])
+	print("  on solid wall in every build: %s" % [stats["pieces"]])
 
 
 ## One build of a Beach level (`own`: on its own seed): fairness, features, open walls (_check_open_walls), and on
@@ -219,9 +228,7 @@ func _check_level(config: LevelConfig, tag: String, own: bool, stats: Dictionary
 		check(present, "has `%s` %s" % [f, tag])
 	check(not layout.signs.is_empty(), "has wall signs " + tag)
 	_check_open_walls(gen, config, tag, stats)
-	for c: Dictionary in layout.credits:
-		if c["surface"] == "wall":
-			check(layout.wall_supported(int(c["side"]), float(c["at"])), "no wall credit in a gap %s" % tag)
+	_check_wall_pieces(gen, tag, stats)
 	if not own:
 		return
 	var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
@@ -251,6 +258,7 @@ func _check_open_walls(gen: LevelGenerator, config: LevelConfig, tag: String, st
 	var from: float = config.start_clear_distance
 	var last: float = length - config.end_clear_distance
 	var min_open: float = t.open_seconds_min * gen.speed
+	var min_solid: float = t.solid_seconds_min * gen.speed
 	var sides: Array = []
 	for side: int in [-1, 1]:
 		var w: String = "(wall %d) %s" % [side, tag]
@@ -261,7 +269,12 @@ func _check_open_walls(gen: LevelGenerator, config: LevelConfig, tag: String, st
 		for g: Vector2 in spans:
 			check(g.y - g.x >= min_open - 0.01, "an open stretch at least open_seconds_min long (%.1f m) %s" % [g.y - g.x, w])
 			check(g.x >= from and g.y <= last, "open between the run-up and the end-clear stretch %s" % w)
-			check(g.x > prev + 0.01, "standing wall between two open stretches %s" % w)
+			if prev > -INF:
+				# The walls never flicker: a wall that stands again between two open stretches stands at least
+				# solid_seconds_min, however little holds it up (a lone wall fence, a sign).
+				check(g.x - prev >= min_solid - 0.01, "the wall stands at least solid_seconds_min between two open stretches (%.1f m from %.0f m) %s"
+					% [g.x - prev, prev, w])
+				(stats["between"] as Array[float]).append(g.x - prev)
 			prev = g.y
 			for kp: Vector2 in keeps:
 				check(not (g.x < kp.y - 0.01 and g.y > kp.x + 0.01), "gap %s clear of keep-out %s %s" % [g, kp, w])
@@ -280,6 +293,46 @@ func _check_open_walls(gen: LevelGenerator, config: LevelConfig, tag: String, st
 	(stats["both"] as Array[float]).append(both / length)
 	check(both <= t.both_open_max * length + 0.01, "both walls open at once on %.1f%% of the level, at most %.0f%% %s" % [
 		both / length * 100.0, t.both_open_max * 100.0, tag])
+
+
+## What the walls hold, on solid wall in one build, checked on its own rather than through WallGapPlacement.keep_outs
+## (so a keep-out it forgot would show): every sign and wall fence over its whole length, every wall enemy (a window
+## cyborg, a wall vent, a hover truck's burst, a Gilded Sentinel) a metre either side of its spot, every ceiling
+## reaching a wall over its length, every ramp from its launch to the end of its longest wall run
+## (WallFencePlacement.ramp_run_end: with claws and a speed pad's boost), every wall credit, and both walls over
+## every wider gap (a runner on them is never dropped into one). Counts them into `stats`.
+func _check_wall_pieces(gen: LevelGenerator, tag: String, stats: Dictionary) -> void:
+	var layout: LevelLayout = gen.layout
+	var counts: Dictionary = stats["pieces"]
+	var outer_lanes: Dictionary = {-1: layout.outer_lane(-1), 1: layout.outer_lane(1)}
+	for s: Dictionary in layout.signs:
+		_on_wall(layout, int(s["side"]), float(s["start"]), float(s["end"]), "sign", tag, counts)
+	var fence_half: float = gen.tuning.fence_depth * 0.5
+	for f: Dictionary in layout.wall_fences:
+		_on_wall(layout, int(f["side"]), float(f["at"]) - fence_half, float(f["at"]) + fence_half, "wall fence", tag, counts)
+	for e: Dictionary in layout.enemies:
+		var side: int = int(e.get("side", 0))
+		if side != 0:
+			_on_wall(layout, side, float(e["at"]) - 1.0, float(e["at"]) + 1.0, String(e["type"]), tag, counts)
+	for h: Dictionary in layout.hulls:
+		for side: int in [-1, 1]:
+			if layout.hull_covers(h, int(outer_lanes[side])):
+				_on_wall(layout, side, float(h["start"]), float(h["end"]), "ceiling", tag, counts)
+	for r: Dictionary in layout.ramps:
+		_on_wall(layout, int(r["side"]), float(r["at"]), WallFencePlacement.ramp_run_end(gen, r), "ramp's wall run", tag, counts)
+	for c: Dictionary in layout.credits:
+		if c["surface"] == "wall":
+			_on_wall(layout, int(c["side"]), float(c["at"]), float(c["at"]), "wall credit", tag, counts)
+	for row: Vector2 in WideGapPlacement.rows_of(gen):
+		for side: int in [-1, 1]:
+			_on_wall(layout, side, row.x, row.y, "wall beside a wider gap", tag, counts)
+
+
+## Checks that wall `side` is solid over [from, to] (no wall gap overlaps it), counting `what` in `counts`.
+func _on_wall(layout: LevelLayout, side: int, from: float, to: float, what: String, tag: String, counts: Dictionary) -> void:
+	var gaps: Array[Vector2] = layout.wall_gap_spans(side, from - 0.001, to + 0.001)
+	check(gaps.is_empty(), "%s on wall %d over %.1f-%.1f m stands on solid wall (gaps %s) %s" % [what, side, from, to, gaps, tag])
+	counts[what] = int(counts.get(what, 0)) + 1
 
 
 ## The command line: --level=beach/1 is the Beach's campaign step, with the full flow (its level introduction, then
