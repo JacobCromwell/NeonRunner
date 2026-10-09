@@ -14,7 +14,7 @@ numbered items stay in place even when answered, because code comments and the o
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - The House (Marketplace boss): revisit after playtesting (GDD §10).
-- The final villain's fight: full breakdown.
+- The Golden Convergence (the final villain): designed with the owner and built on October 9, 2026 (GDD §10, task E5d). The owner's review of the parts Claude filled in under the owner's mandate, and the build's placeholders, is `docs/questions/e5d.md`.
 
 ### 3. Player character
 - Player customization (GDD §11 covers the character itself).
