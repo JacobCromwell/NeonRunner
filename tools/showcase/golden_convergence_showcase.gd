@@ -16,16 +16,18 @@ extends Node3D
 ##   entrance  the fight's start through the run camera: it rises at the far end, the cape unfurls, the chime
 ##   strafe    through the run camera, the first strafe (V, V, H) with the bot dodging and taking cover
 ##             (--still: the runner stands in the middle lane, god mode)
-##   buttress  a horizontal pass seen from beside the track: the gate, the live line, the lines for show
-##   wall      a wall opened beside the runner's outer lane (court.open_wall) and a vertical pass over it, the
-##             fire climbing the wall's foot (--cam=side)
+##   buttress  a horizontal pass: the gate, the live line, the lines for show (--cam=side: from beside the track)
+##   wall      a wall opened beside the runner's outer lane (court.open_wall, a plain stand-in slab for the toppled
+##             tower E5d-b brings) and a vertical pass over it, the fire climbing the wall's foot (--cam=side)
 ##   fight     the fight as it comes, with the bot
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 25), --phase=N,
 ## --script=VVHvVHv (the strafe's passes), --cam=run/side/high, --still, --reduced-flashing, --events
 ## (prints each of the boss's events with its frame, for picking frames).
-## Frames worth a look (at --fixed-fps 10): entrance 0-55; strafe: the squadron out of the cape from about
-## frame 6, the first pass's warning about 16 and its rake 28-36, the second 44-64, the buttress rising about
-## 46 and the horizontal pass 76-92.
+## Frames worth a look (at --fixed-fps 10): entrance 0-55 (the chime at 16); strafe (after the phase's intro):
+## the squadron out of the cape from about frame 63, the first pass's warning at 79 and its rake 91-99, the
+## buttress rising at 110, the second pass's warning at 114 and its rake 126-134, the horizontal pass's warning
+## at 150 and its sweep 161-175, the squadron back into the cape by 198; buttress and wall: the warning at 79,
+## the fire 91-105.
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 
@@ -137,7 +139,19 @@ func _ready() -> void:
 		# The runner by the right wall; the wall there open for the passes.
 		for i: int in lanes:
 			world.player.press(&"move_right")
-		boss.court.open_wall(1, world.player.distance + 20.0, world.player.distance + 2000.0)
+		var from: float = world.player.distance + 20.0
+		var to: float = world.player.distance + 2000.0
+		boss.court.open_wall(1, from, to)
+		# A plain stand-in for the wall E5d-b's toppled tower brings (the court itself has none).
+		var slab := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(1.0, 12.0, to - from)
+		slab.mesh = box
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.82, 0.78, 0.7)
+		slab.material_override = mat
+		world.add_child(slab)
+		slab.global_position = Vector3(world.geo.wall_x() + 0.5, 6.0, TrackGeometry.world_z((from + to) * 0.5))
 
 
 func _physics_process(delta: float) -> void:
