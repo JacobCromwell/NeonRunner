@@ -641,15 +641,21 @@ Shared interaction rules apply unless stated otherwise:
 - **The Golden Convergence** (Golden Zone; the final villain). Owner's design, in progress (October 9, 2026). More attacks and the fight's phases are still to be described.
   - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside is **The Magnate**.
   - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
-  - **Stage 1, the golden suit:** several phases, built from three attacks: the **Helidrone Strafe**, the **Fist Slam** and the **Missile Barrage** (all below). The suit takes damage when the player destroys a **Refill Ship** (below).
+  - **Stage 1, the golden suit:** **three phases**, built from three attacks: the **Helidrone Strafe**, the **Fist Slam** and the **Missile Barrage** (all below). The suit takes damage when the player destroys a **Refill Ship** (below): **each ship destroyed takes a third of its health.** **Weapons chip** at it slowly, by the Floating Head's rule: even the best weapon saves at most one ship over the whole stage.
+    - **Phase 1:** a Helidrone Strafe on its own (3 passes, no pad; it teaches the strafe), then a Fist Slam sequence, a Missile Barrage, and the Refill Ship with a Helidrone Strafe.
+    - **Phases 2 and 3:** Fist Slams, Missile Barrage, Fist Slams, Missile Barrage, then the Refill Ship with a Helidrone Strafe (7 passes).
+    - **A missed pad:** the ship finishes refilling and flies off, and the phase's loop starts again from the slams. It never gets harder (no escalation, above).
   - **Damaging the suit: the Refill Ship** (owner's design, October 9, 2026):
-    - **When:** after the boss has fired its Missile Barrages *(open: how many; the owner suggested two)*, a **ship comes in to refill his missiles**.
+    - **When:** after the boss has fired its Missile Barrages (**one in phase 1, two in later phases**), a **ship comes in to refill his missiles**. It feeds them to him along a **line running to his shoulder pipes**.
     - **The ship is a ceiling,** like most ships in the game.
     - **The way up:** an **anti-grav pad** under the ship, **caged by electric fences** (§9.1). A runner who touches a fence is hit unless they **dash** through or first **knock out the cage's generator** (a stomp or the dash), whose pulse switches the fences off. Armor and the shield get through a fence at the cost of a hit, as usual.
+      - **A closed cage:** fences in the lanes beside the pad as well, and the front fence placed so a jump over it lands past the pad. The only ways in are the dash, the generator, or spending armor or the shield.
+      - **The generator** stands in a **lane next to the cage, just before it**, with room after its pulse to switch into the pad's lane.
+      - **A clear route:** the lanes the runner needs for the generator and the pad are never under the strafe's fire when the runner could reasonably be there, and no horizontal pass lands while the cage is coming up.
     - **The squadron:** around then, a **Helidrone Strafe** is starting or under way. Stepping on the pad **hurls the whole squadron up into the Refill Ship** (the heli drone pad rule, §9.6), setting off a **chain reaction**:
       - the ship **goes spinning off to the side and explodes**, and the missiles it carries all explode;
       - the squadron explodes, which **ends that strafe**;
-      - **the boss takes damage**;
+      - the explosion **races up the feed line into his shoulders**, and **the boss takes damage**. Each hit shows: the first blows out one shoulder's pipes, the second the other's, and the third **bursts the suit open**, burning the man inside: the second stage's entrance;
       - the runner **falls back to the floor unharmed**.
     - **Again and again:** a new Refill Ship comes after each later attack phase, until the suit is destroyed and the second stage begins.
   - **Armor pickups:** the standard armor rule, triggered when the player has **lost all their armor**, with the **longest delay of any boss fight** (owner, October 9, 2026): **22 seconds**.
