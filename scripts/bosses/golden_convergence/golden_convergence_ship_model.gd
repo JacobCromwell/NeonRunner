@@ -10,12 +10,14 @@ extends RefCounted
 ##   where a rider would drop, read like a gap's edge), nothing hanging below it; its skirts; a long gilded cargo
 ##   hull over it with gold bands and the cult's emblem in relief on its flanks and stern; the racks' decks out
 ##   past the belly's edges along both flanks, their rails and cradles; a pointed prow; the bridge at the stern
-##   with its dark windows; the feed boom on the bow (a gold mast and arm whose nozzle the feed line leaves from:
-##   BOOM_TIP); the engines at the stern, glowing a pale blue (the Golden Zone's yachts'), their halos above the
+##   with its dark windows; the feed boom amidships (a gold mast and arm whose nozzle the feed line leaves from:
+##   BOOM_TIP, high on the ship so the line runs up across the sky to the shoulder); the engines at the stern,
+##   glowing a pale blue (the Golden Zone's yachts'), their halos above the
 ##   underside and fading near the camera (MeshKit.stern_halo), as every ship's;
 ## - rack_missile: one of the missiles lying in its racks (bronze with a gold nose, never glowing: the barrage's
 ##   look, smaller), RACK_ROWS rows along each flank (rack_slots);
-## - line_segment: a piece of the feed line (a hose of dark bronze with gold bands), a unit along +y;
+## - line_segment: a piece of the feed line (a gilded hose with bronze bands: it reads against the cape's dark cloud
+##   and the sky alike), a unit along +y;
 ## - line_missile: a missile riding up the line, smaller still.
 ## Nothing on it glows but its lamps (warm white), its engines (pale blue) and the end band (the ceilings'
 ## orange): never a hazard colour on a safe thing (CLAUDE.md readability rules).
@@ -47,7 +49,7 @@ const LAMP_SPACING: float = 7.5
 ## The prow's tip ahead of the belly's bow end, and its height.
 const PROW: float = 4.0
 ## The feed boom's nozzle (where the line leaves the ship), local.
-const BOOM_TIP := Vector3(0.0, 7.2, -LENGTH * 0.5 - 0.6)
+const BOOM_TIP := Vector3(0.0, 7.3, -3.4)
 ## A rack missile's size, a riding missile's size, and the line's radius.
 const MISSILE_LENGTH: float = 2.3
 const MISSILE_RADIUS: float = 0.27
@@ -63,7 +65,7 @@ const GOLD := Color(0.85, 0.67, 0.42)
 const BRONZE := Color(0.42, 0.3, 0.17)
 const MISSILE := Color(0.42, 0.3, 0.18)
 const NOSE := Color(0.72, 0.56, 0.32)
-const LINE := Color(0.3, 0.22, 0.13)
+const LINE := Color(0.88, 0.72, 0.46)
 const GLASS := Color(0.1, 0.11, 0.13)
 
 static var _cache: Dictionary = {}
@@ -285,12 +287,11 @@ static func _bridge(s: MeshLayer, hw: float) -> void:
 			MeshKit.PAT_GLASS, MeshKit.FACE_PX if side > 0.0 else MeshKit.FACE_NX)
 
 
-## The feed boom on the bow: a gold mast rising from the hull's top, an arm reaching forward over the prow to
-## the nozzle the line leaves from (BOOM_TIP).
+## The feed boom amidships: a gold mast rising from the hull's spine, an arm reaching forward and up to the
+## nozzle the line leaves from (BOOM_TIP).
 static func _boom(s: MeshLayer) -> void:
-	var zf: float = -LENGTH * 0.5
-	var foot := Vector3(0.0, HULL_TOP, zf + HULL_BOW_INSET + 3.2)
-	var knee := Vector3(0.0, BOOM_TIP.y + 0.2, zf + HULL_BOW_INSET + 2.2)
+	var foot := Vector3(0.0, HULL_TOP + 0.35, BOOM_TIP.z + 2.4)
+	var knee := Vector3(0.0, BOOM_TIP.y - 0.6, BOOM_TIP.z + 1.6)
 	s.prism_xform(_along(foot, knee, 0.42), 8, GOLD, 0.0, MeshKit.PAT_GOLD, true, 0.85)
 	s.prism_xform(_along(knee, BOOM_TIP, 0.3), 8, GOLD, 0.0, MeshKit.PAT_GOLD, true, 0.85)
 	s.prism_xform(_along(BOOM_TIP + Vector3(0.0, 0.0, 0.45), BOOM_TIP - Vector3(0.0, 0.0, 0.3), 0.5), 8, BRONZE)
@@ -333,8 +334,8 @@ static func _missile(skin: GoldenSkin, length: float, radius: float) -> ArrayMes
 static func _segment(skin: GoldenSkin) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(skin.solid_material())
-	s.prism(Vector3.ZERO, 1.0, 1.0, 8, LINE, 0.0, MeshKit.PAT_PLAIN, false)
-	s.prism(Vector3.ZERO, 1.12, 0.12, 8, GOLD, 0.0, MeshKit.PAT_GOLD, true, 0.85)
+	s.prism(Vector3.ZERO, 1.0, 1.0, 8, LINE, 0.0, MeshKit.PAT_GOLD, false, 0.6)
+	s.prism(Vector3.ZERO, 1.14, 0.14, 8, BRONZE, 0.0, MeshKit.PAT_PLAIN, true)
 	return batch.to_mesh()
 
 

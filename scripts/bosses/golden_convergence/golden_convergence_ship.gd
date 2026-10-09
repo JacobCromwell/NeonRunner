@@ -55,6 +55,8 @@ var _racks: MultiMeshInstance3D
 var _segments: MultiMeshInstance3D
 var _riders: MultiMeshInstance3D
 var _fires: Array[Dictionary] = []
+## Fireballs still to come (an explosion's later blasts): {delay, at, radius, life, drift}.
+var _pending: Array[Dictionary] = []
 ## The line: its ends (world), how far it has shot out (0-1), how much of it from the ship's end has burnt away
 ## (0-1), whether it shows; the riding missiles' places along it (0-1), and the clock for the next.
 var _line_on: bool = false
@@ -246,14 +248,20 @@ func explode_rack(i: int) -> void:
 		sparks_shown += 1
 
 
-## It blows up where it is: fireballs over its length, debris and sparks (no sparks with Reduced flashing), dark
-## smoke; it's gone.
+## It blows up where it is: a string of fireballs along its length over half a second, debris and sparks (no
+## sparks with Reduced flashing), dark smoke; it's gone.
 func explode() -> void:
 	var length: float = GoldenConvergenceShipModel.LENGTH
-	for k: int in 3:
-		var at: Vector3 = global_transform * Vector3(0.0, 2.0, lerpf(-length * 0.35, length * 0.35, float(k) / 2.0))
-		fireball(at, 6.5 - float(k), 1.1 + 0.15 * float(k), Vector3(0.0, 1.5, 0.0))
-		world.effects.burst(at, SMOKE, 40, 3.0)
+	var spots: Array[Vector3] = [Vector3(0.0, 2.0, 0.0), Vector3(-half_width * 0.6, 1.0, -length * 0.3),
+		Vector3(half_width * 0.5, 2.5, length * 0.28), Vector3(0.0, 3.5, -length * 0.42), Vector3(-half_width * 0.3, 1.5, length * 0.42)]
+	for k: int in spots.size():
+		var at: Vector3 = global_transform * spots[k]
+		var radius: float = 7.0 - 0.8 * float(k)
+		if k == 0:
+			fireball(at, radius, 1.2, Vector3(0.0, 1.8, 0.0))
+		else:
+			_pending.append({"delay": 0.08 + 0.09 * float(k), "at": at, "radius": radius, "life": 0.9, "drift": Vector3(0.0, 1.5, 0.0)})
+		world.effects.burst(at, SMOKE, 30, 3.0)
 	world.effects.debris(global_position + Vector3(0.0, 2.0, 0.0), GoldenConvergenceShipModel.GOLD, 24, 2.2)
 	if not Settings.flashing_reduced:
 		world.effects.burst(global_position + Vector3(0.0, 2.0, 0.0), FIRE_HOT, 48, 3.2)
@@ -414,6 +422,12 @@ static func _rod(a: Vector3, b: Vector3, r: float) -> Transform3D:
 
 func _tick(delta: float) -> void:
 	_t += delta
+	for i: int in range(_pending.size() - 1, -1, -1):
+		var pend: Dictionary = _pending[i]
+		pend["delay"] = float(pend["delay"]) - delta
+		if float(pend["delay"]) <= 0.0:
+			_pending.remove_at(i)
+			fireball(pend["at"], float(pend["radius"]), float(pend["life"]), pend["drift"])
 	for f: Dictionary in _fires:
 		if not bool(f["on"]):
 			continue
@@ -429,6 +443,7 @@ func _tick(delta: float) -> void:
 
 ## Every fireball out at once (a test, a fresh fight).
 func fires_out() -> void:
+	_pending.clear()
 	for f: Dictionary in _fires:
 		f["on"] = false
 		(f["node"] as Node3D).visible = false

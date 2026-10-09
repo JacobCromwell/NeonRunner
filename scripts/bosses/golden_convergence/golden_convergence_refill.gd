@@ -425,7 +425,7 @@ func _tick_chain(delta: float, d: float) -> void:
 		if float(chain["blast_step"]) <= 0.0 and u < 1.0:
 			chain["blast_step"] = BLAST_STEP
 			var at: Vector3 = ship.line_point(u)
-			ship.fireball(at, 1.7, 0.4)
+			ship.fireball(at, 2.6, 0.45)
 			if not Settings.flashing_reduced:
 				boss.world.effects.burst(at, GoldenConvergenceShip.FIRE, 8, 0.6)
 		if u >= 1.0:
