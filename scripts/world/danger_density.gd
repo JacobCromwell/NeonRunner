@@ -84,6 +84,9 @@ extends RefCounted
 ##   on the lift), speed pads, floor cuts, the rules' lane-less keep-outs but those of the tuning's
 ##   keep_out_exempt_features (a host's chase), quiet stretches (The Hush) and plain ceilings
 ##   (_plain_ceiling_keeps: one the level won't put a gauntlet under yet stays plain whole);
+## - the rules' calm stretches (an Enforcer Truck's showing window, task C6c: Plan.calm) take nothing either
+##   half adds, no enemy where it stands (CALM_ROOM either side) or attacks, no piece of a row; but nothing
+##   keeps the clearance from one, and they shape no room, so the pass draws as it would without them;
 ## - with the clearance, its window overlaps at most overlap_max other attack windows, all of the
 ##   tuning's twin_tolerated_types and none a host's (a twin's own group apart): every big threat (a
 ##   drone, a resonator's pulse, an Octodog, a Buzz Overdrive, a Gilded Sentinel) keeps its stretch;
