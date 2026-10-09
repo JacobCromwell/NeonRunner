@@ -4129,9 +4129,9 @@ look; another for each thing the build reads: seed, lane count, difficulty, feat
 run speed, the recency curve, the movement, placement, danger density and enemy tunings edited in place as F6
 does, the patterns, the build flavor), `LevelLayout.copy()` copying every field into lists of its own, generated
 layouts holding plain data only, the warnings coming with a reused level, a seeded scripted attempt (dashes and
-an EMP in its script) at Gangland 3 and Corporate 2 at 5 lanes playing the same with the cache off, on its first
-run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits, the
-enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
+an EMP in its script) at Gangland 3 (5 lanes) and Corporate 2 (3 lanes) playing the same with the cache off, on
+its first run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits,
+the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
 either retry (and the kept build untouched), the debug keys, F6 edits and another level building again, and
 endless mode building on every run and keeping nothing.
 `test_web_demo` checks the web demo's preset, its export filter against
