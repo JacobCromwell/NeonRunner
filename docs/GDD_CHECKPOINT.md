@@ -566,7 +566,7 @@ Shared interaction rules apply unless stated otherwise:
   | 3. Marketplace | The House |
   | 4. Corporate | Hostile Takeover |
   | 5. Dead Zone | Sleep Taker |
-  | 6. Golden Zone | The final villain |
+  | 6. Golden Zone | The Golden Convergence (the final villain) |
 
 - **Floating Head** (Neon City). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
   - **What it is:** a **giant ship**. Its back is a **giant cybernetic propaganda face** that watches over the city and **shouts its propaganda**.
@@ -636,29 +636,38 @@ Shared interaction rules apply unless stated otherwise:
   - **Defeat:** the gunship spins away and explodes; the locomotive derails and ploughs through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture.
   - **Missed weak points** come around again (no time limit, no escalation). Weapons chip; stomps do the real damage.
   - **Pickups:** the standard armor rule (15–17 seconds).
-- **The final villain** (Golden Zone). Owner's design, in progress (October 9, 2026). More attacks and the fight's phases are still to be described.
-  - **Name** *(open)*: the owner's current candidates are **The Golden Convergence** and **The Tyrannical Magnate** ("Golden Lord" and "Golden Hun" were dropped).
-  - **What it is:** a **giant mechanical construct** that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner.
+- **The Golden Convergence** (Golden Zone; the final villain). Owner's design, in progress (October 9, 2026). More attacks and the fight's phases are still to be described.
+  - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside gets his own name for the second stage *(open)*.
+  - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
+  - **Second stage** (the fight's halfway checkpoint): the golden suit is destroyed, and the man comes out as a **twisted abomination, burnt blackish grey** by its destruction. His attacks are still to be described.
   - **Look:**
     - A man's shape, a giant golden behemoth, with **extra-large shoulders, arms and hands**.
-    - **A calm human face, cast in gold, with a red tear.**
+    - **A calm human face, cast in gold, with a red tear.** The tear is a **dull red and never glows**, so it never reads as a weak point.
+    - **Decoration:** the cult's own symbols (the Convergent Triad, halo rings like the Resonator's), gold filigree, and signs of wealth, ego and self-righteousness. **No real-world religious symbols.**
     - **Pipes** come out of its shoulders. They fire missiles (an attack still to be described).
     - **No legs:** metallic pipes, almost like tentacles, trail from its lower body and run out beyond the view.
     - **The cape** doesn't have to follow physics: a huge, undulating cloud of **burgundy** cloth with lots of **black folds and shadows**, billowing from the boss's back. It **never glows** (the colour rule, §5), so red hazards and warnings stay readable. It's scenery, not an attack.
   - **Helidrone Strafe** (owner's attack):
-    - **The squadron:** heli drones (the heli drone's model, **never coloured red**) come **out of the cape**, move and fire as one, and then leave. It's a single attack, not separate enemies.
+    - **The squadron:** heli drones (the heli drone's model, **never coloured red**) come **out of the cape**, move and fire as one through all of the strafe's passes, and then leave. It's a single attack, not separate enemies.
     - **Size:** one drone for every other lane (half the lanes, rounded up): **2 on 3 lanes, 3 on 5 or 6 lanes**.
     - **Fixed paths:** unlike a normal heli drone, it never tracks the player. On each pass the drones fly a fixed line and rake the floor with fire.
-      - **Vertical pass:** the drones fly down the lanes, raking every other lane. The covered lanes **switch between passes** (odd lanes, then even lanes), so each vertical pass moves the player.
-      - **Horizontal pass:** the drones fly from wall to wall, raking a line across the track. The player dodges it **behind a Flying Buttress** (below) or with **the dash**. Horizontal passes are **less frequent** than vertical ones.
+      - **Vertical pass:** the drones fly down the lanes, raking every other lane. The covered lanes **switch between passes** (odd lanes, then even lanes), so each vertical pass moves the player. Most come **head-on**; some come **from behind** the player.
+      - **The spare drone:** when a pass covers fewer lanes than there are drones (on 5 lanes, 3 then 2; on 3 lanes, 2 then 1), the spare drone pulls up above the formation and holds its fire, so a drone never flies over a safe lane.
+      - **Horizontal pass:** the drones fly from wall to wall, raking a line across the track **and up both walls at every height**. The player dodges it **through a Flying Buttress** (below) or with **the dash**. Horizontal passes are **less frequent** than vertical ones.
+      - **Extra lines for show:** a horizontal pass rakes **several lines** across the track, further down the field, so it looks busier than it is. **Only one line is live**: the one at the Flying Buttress, with the red warning line. *(Proposed)* The extra lines get no red warning line and no buttress, their fire is over well before the runner reaches them, and they leave only dark, non-glowing scorch marks (what looks like a hit is a hit, §3).
       - Together, the passes draw a hatch pattern over the track, one pass after another, a second or two apart.
-    - **Passes per strafe:** **3 in phase 1, 7 in later phases.**
+    - **Passes per strafe:** **3 in phase 1, 7 in later phases**, in a **fixed script** (learnable, and fair for par times): **V-V-H** in phase 1 and **V-V-H-V-V-H-V** in later phases (V = vertical, H = horizontal). *(Proposed)* Every phase 1 pass comes head-on; one or two of the 7-pass strafe's vertical passes come from behind.
     - **Warning:** before each pass, a **red line on the floor** where the fire will land, about a second ahead, and a gatling **spin-up whine**.
     - **Walls:** fire in an outer lane hits a runner **low on the wall** but not one **high up** (what looks like a hit is a hit, §3).
     - **Weapons never target the squadron.**
     - **Anti-grav pads** destroy the whole squadron, as they do heli drones (§9.6). In this fight pads appear only at set moments *(still to be described)*.
     - Nothing else is on the track during a strafe.
-  - **Flying Buttress** (owner's new doodad for this fight): **taller than other doodads**. It looks like it holds up buildings out of sight on either side of the track, and may run out beyond the view (the unseen part isn't rendered). It stands on an **inner lane, never an outer one**, so the player has to move to take cover behind it from a horizontal pass. *(Open: its exact shape, and how it shelters a runner from fire raking down.)*
+  - **Flying Buttress** (owner's new doodad for this fight): **taller than other doodads**. It looks like it holds up buildings out of sight on either side of the track, and may run out beyond the view (the unseen part isn't rendered).
+    - **A gate:** its pier rises from an **inner lane, never an outer one**, with a tall arched opening at its foot that the runner runs through. Its flying arch leaps from the top of the pier out over the wall toward the unseen building. The player has to move into its lane to take cover.
+    - **How it shelters:** the squadron rakes the horizontal pass's live line exactly along the buttress, so the bullets spark off the stone above the opening. The **red warning line crosses every lane except the opening.**
+    - The sides of the gate are solid but safe, like any doodad: a lane switch into one bumps the player.
+    - **When:** for now it appears **only for horizontal passes**, so a buttress in view means one is coming. The owner plans to use it in another attack too.
+    - **Fairness:** one buttress for each horizontal pass, always there (the dash is a bonus, not required: every boss must be beatable without bought items). It comes into view well before its line, and there's always time to reach it from the farthest lane (up to four lane switches on 6 lanes).
 
 ---
 
