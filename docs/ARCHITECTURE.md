@@ -1164,7 +1164,10 @@ truck to another bait's chase that has room): of every set of baits whose chases
 track, each one again around the chases before it), the one with the most windows before their first bait, then the
 most windows, then the most chases, then the earliest (`_choose`). A pair is also planned the other way round, the
 later chase's window first and the earlier truck arriving earlier around it (`_plan_set`); the planner itself tries
-every arrival a bait allows, the earliest too, before it settles for a window after the bait. A level that
+every arrival a bait allows, the earliest too, before it settles for a window after the bait. At an arrival with a
+bait under way (a Buzz Overdrive that claimed its turn before the truck arrives, its rev still to come: the rules keep
+arrivals off its attack, not its claim) no window counts as before the bait, since its charge comes first
+(`ShowPlanner._under_way`); the fallback after the bait starts after that attack. A level that
 introduces the truck keeps its first bait's chase where that has room before its bait, and otherwise moves its
 introduction only to a chase where it shows itself before its bait (its first-encounter hint is the level intro's,
 and the cyborg planted in a charge path that teaches it comes earlier in the campaign, `test_charge_paths`). A later
@@ -1205,10 +1208,15 @@ Gilded Sentinel about throughout (Dead Zone 1 at 6 lanes, Golden 2 at 3, Golden 
 already has the level's other truck (Corporate 2 at 5 lanes: its introduction, a Tithe Collector about and then its
 bait too near; Dead Zone 1 at 3 lanes; Dead Zone 2 at 5 and 6 lanes), or neither of its two baits has room (Dead Zone
 2 at 3 lanes: pulsing fences and no lane beside a runner by the wall before its first; a hover truck over its
-second). On 8 other seeds each (144 builds), 9 builds change: 71 of 226 chases have a window before their bait
-against 63 of 227 (27 after it against 32); in two a level keeps one truck that shows itself where it had two that
-didn't, and in one a pair planned the other way round gets back the second truck C6c's order dropped. A wider gap
-(task G7) comes before a window only where that window comes after its bait (6 of 27). DESIGN-TBD: item 386
+second). With 8 other seeds of each (162 builds in all), 9 builds change, all on other seeds: 71 of 226 chases have
+a window before their bait against 63 of 227 (27 after it against 32), and a runner keeping to each lane in turn sees
+the truck in 434 of 1058 runs against 421 of 1064 (a window before the bait brings its showing in 320 of 331 runs; in
+the other 11 the runner is on a ceiling or a wall as it's due, in a lane its window wasn't planned to hold for (6),
+its arrival showing begins but gives way before it comes alongside (4, in builds C6d left as they were), or a
+Resonator holds its lane (1)); in two builds a level keeps one truck that shows itself
+where it had two that didn't, and in one a pair planned the other way round gets back the second truck C6c's order
+dropped. A wider gap (task G7) comes before a window only where that window comes after its bait (6 of 27).
+DESIGN-TBD: item 386
 (`docs/OPEN_QUESTIONS.md`) and the chases no bait with room is left for (`docs/questions/c6d.md`); items 382–385
 are the owner's answers.
 
@@ -3626,9 +3634,11 @@ another, each planned window lies in its chase and holds in the finished level, 
 zone doodad, filler, wider gap, danger density row or enemy, or planted cyborg in it; Corporate 2 at 3 lanes plans
 its first truck's arrival showing; the windows each level gets are printed); the chases with room (C6d: on a plain
 track with two Octodogs, one truck a level goes to the bait whose chase has room for its showing before it, the
-introduction too, and stays at the first where that has room, and two a level take both; on every level that lists
-it at 3, 5 and 6 lanes, own seed and two others, every truck, moved or arriving earlier, keeps its placement rules,
-and a truck without a window before its bait has no free bait with one that its level could give it beside its other
+introduction too, and stays at the first where that has room, and two a level take both; a truck arriving between
+a Buzz Overdrive's claim and its rev gets its window after that attack, counted after the bait, and one arriving
+after it shows itself as it arrives; on every level that lists it at 3, 5 and 6 lanes, own seed and two others,
+every truck, moved or arriving earlier, keeps its placement rules, no window counted before the bait comes after a
+bait's charge, and a truck without one has no free bait with one that its level could give it beside its other
 truck, nor a level with fewer trucks than it may have; Corporate 2 always introduces it; the chases' windows before
 and after the bait are printed); its blast (seen wherever it goes off, never
 in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'

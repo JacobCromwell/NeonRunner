@@ -9,10 +9,10 @@
   other bait already has its other truck (see the next question), or neither bait has room (Dead Zone 2 at 3 lanes).
   Placeholder: the truck keeps its chase, its showing after the bait where one fits (7 chases), else none
   (`_choose` in `enforcer_truck_rules.gd`; `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Dropping those
-  trucks would leave 9 of the 18 builds with none (Corporate 2 at 6 lanes among them, its introduction). On 8 other
-  seeds of each level the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no window from
-  having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another way (the
-  level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
+  trucks would leave 9 of the 18 builds with none (Corporate 2 at 6 lanes among them, its introduction). With 8 other
+  seeds of each level (162 builds) the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no
+  window from having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another
+  way (the level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
 - **Two trucks, one chase with room** (Corporate 2 at 5 lanes, Dead Zone 1 at 3 lanes, Dead Zone 2 at 5 and 6 lanes, on
   their own seeds). The only bait whose chase has room before it has one truck; the other truck has nowhere with room
   to go. Placeholder: both stay, so in Corporate 2 at 5 lanes the introduction (14 s in, among a Tithe Collector's
