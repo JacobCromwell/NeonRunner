@@ -7,23 +7,26 @@ extends RefCounted
 ## from its lower body ... The cape ... a huge, undulating cloud of burgundy cloth with lots of black folds and
 ## shadows ... It never glows"), built once in code at its reference size (the suit's local space: its waist
 ## at the origin, +y up, +z its front, toward the runner) and shared: about 23 m from the waist to its crown,
-## 30 m across the shoulders, its hands hanging to about 17 m below the shoulders, its pipes trailing 45 m
-## down and back. Low-poly and flat-shaded through the mesh kit's solid shader (MeshKit.solid with the Golden
+## 30 m across the shoulders, its hands hanging to about 17 m below the shoulders, its tentacle pipes trailing
+## about 70 m back, the outer ones out past the causeway's edges. Low-poly and flat-shaded through the mesh kit's solid shader (MeshKit.solid with the Golden
 ## Zone's gold: PAT_GOLD, reflective metal lit by the scene, never emissive), in a few meshes, one per moving
 ## part (the encounter's GoldenConvergenceSuit puts them on nodes):
 ##   torso       the trunk, the huge pauldrons, the collar, the belt, the pelvis the pipes trail from, gold
 ##               filigree and the Convergent Triad in gold relief on its chest (gold alone: no red stone,
 ##               red means a weak point)
-##   plates      the chest's two front plates (E5d-d: the third ship's blast bursts them open), left and right
-##   head        the calm face (a relief on the head's front: brow, closed lids, nose, lips, chin), the dull
-##               red tear down its right cheek (PAT_PLAIN, never glowing), its cowl and crest
-##   halo        two rings and a spoked disc behind the head, the Resonator's halos made huge
+##   plates      the chest's two front plates (the third ship's blast bursts them open: stage 2's entrance),
+##               left and right
+##   head        the calm face (a relief on the head's front: brow, heavy half-closed lids, a straight nose,
+##               closed lips with a faint smile, chin; its marks coloured per corner, face_color), the dull red
+##               tear from under its left eye (the runner's right; unpolished, never glowing), a three-pointed
+##               diadem
+##   halo        two rings joined by rays behind the head, the Resonator's halos made huge
 ##   upper_arm, forearm, segment (one telescoping golden segment, E5d-b's arm), hand (open), fist
-##   pipes      a shoulder's cluster of missile pipes (E5d-b's barrage), pipe_cap one pipe's cap (they hinge
-##               open), pipes_torn the cluster blown out (E5d-c)
-##   tentacles   the pipes trailing down and back from the pelvis, beyond the view
-##   cape        the cape's cloud (its own shader: golden_convergence_cape.gdshader), two sheets of a grid,
-##               UV the cloth's (u across, v down from the shoulders)
+##   pipes      a shoulder's row of missile pipes (E5d-b's barrage), pipe_cap the hatch over their mouths (it
+##               hinges open: hatch_hinge), pipes_torn the row blown out (E5d-c)
+##   tentacles   the pipes trailing from the pelvis, beyond the view
+##   cape        the cape's cloud (its own shader: golden_convergence_cape.gdshader), two sheets of a grid
+##               fanned out behind the suit, UV the cloth's (u across, v out from the shoulders)
 
 ## Arm proportions (metres at scale 1): the shoulder joint, the upper arm and forearm, and the telescoping
 ## segments nested inside the forearm (E5d-b slides them out: GoldenConvergenceSuit.arm_extend).
@@ -561,7 +564,7 @@ static func _head(material: Material) -> ArrayMesh:
 	return _mesh(batch)
 
 
-## The halo: two rings and a spoked disc (the Resonator's halos, huge), behind the head, upright.
+## The halo: two rings joined by rays (the Resonator's halos, huge), behind the head, upright.
 static func _halo(material: Material) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(material)
@@ -571,7 +574,7 @@ static func _halo(material: Material) -> ArrayMesh:
 			var a: float = TAU * float(k) / 28.0
 			pts.append(Vector3(cos(a) * ring.x, sin(a) * ring.x, 0.0))
 		_tube(s, pts, ring.y, ring.y, 5, GOLD_PALE, MeshKit.PAT_GOLD, 0.92, true)
-	# Rays from the inner ring to the outer, and three points where the Triad's arrows would meet.
+	# Rays from the inner ring to the outer, every fourth (three of them, as the Triad's arrows) reaching past it.
 	for k: int in 12:
 		var a: float = TAU * float(k) / 12.0
 		var dir := Vector3(cos(a), sin(a), 0.0)
@@ -736,8 +739,8 @@ static func _ring_dir(a: float) -> Vector3:
 	return side * cos(a) + up * sin(a)
 
 
-## The pipes that trail from the pelvis (no legs): metallic tentacles, ridged, curving down and back far out
-## of view.
+## The pipes that trail from the pelvis (no legs): metallic tentacles, ridged, each in its own slow S-curve,
+## trailing back far out of view.
 static func _tentacles(material: Material) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(material)

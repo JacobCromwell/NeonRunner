@@ -78,10 +78,10 @@ the fight) or `data/bosses/golden_boss_skin.tres` (`GoldenCourtSkin`) unless it 
 5. **The first pass on 6 lanes.** "The first pass covers the outer lanes (lanes 1, 3, 5 counting from 1)":
    on 3 and 5 lanes those take both outer lanes; on 6 lanes lanes 1, 3 and 5 take only the left one (lane 6
    is safe on the first pass). Built as written (`GoldenConvergenceTuning.covered_lanes`, parity 0 first).
-6. **The strafe's timings** (GDD §10: "about a second ahead"; "a second or two apart"): the red lines show
-   1.15 s before the fire lands where the runner is (`warning_seconds`, never divided by the pace); a head-on
-   pass rakes 42 m of lane toward the runner at 55 m/s, so a runner who stays is hit about 1.4 s after the
-   lines show; a pass from behind about 2 s after; the next pass's warning 1.5 s after a pass's fire
+6. **The strafe's timings** (GDD §10: "about a second ahead"; "a second or two apart"): the red lines and
+   the whine come 1.15 s before the guns open up at the far end of the raked stretch (`warning_seconds`,
+   never divided by the pace); a head-on pass rakes 42 m of lane toward the runner at 55 m/s, so a runner who
+   stays is hit about 1.4 s after the lines show; a pass from behind about 2 s after; the next pass's warning 1.5 s after a pass's fire
    (`pass_gap`, divided by the phase's pace); out of the cape 1.6 s, back 2.2 s. The squadron waits 40 m
    ahead and 12 m up between passes and rakes from 7 m up.
 7. **The horizontal pass:** the sweep crosses the track in 0.55 s; the live line burns whole 0.3 s before
@@ -99,8 +99,10 @@ the fight) or `data/bosses/golden_boss_skin.tres` (`GoldenCourtSkin`) unless it 
 9. **The walls:** where nothing opens a wall, both walls are taken away (`BossProps.block_wall`) from just
    behind the runner to 240 m ahead (`wall_block_ahead`), so a move past an outer lane bumps them back with
    the clank, as the GDD says. An open wall (E5d-b's toppled tower) is fired on low (an outer lane's rake
-   climbs it to 1.5 m, `wall_fire_height`: a wall runner whose feet are higher is safe) and at every height
-   by the live line (7 m, `wall_line_height`).
+   climbs it to 1.5 m, `wall_fire_height`: a wall runner above it is safe, so a wall run is safe for about
+   its first second, from its 2.2 m entry, and hit low in the rest of its slide; the rake's box in the lane
+   keeps clear of a wall runner's body) and at every height by the live line (7 m, `wall_line_height`).
+   Is "low" about right?
 10. **The Grand Court's numbers:** the balustrade 1.1 m tall with lamp posts every 5 m; the pools 22 m below;
     a tower every 120 m along each side (alternating), 30 m out, each with a 17 m feed screen 24 m up showing
     the calm golden face and the emblem in turn (`golden_court_feed.gdshader`; stage 2's roaring Magnate is a
