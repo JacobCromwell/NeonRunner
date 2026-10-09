@@ -608,7 +608,8 @@ class ShowPlanner:
 	##   in play.
 	## - CALM: the level's calm start (its run-up), where no window fits between the run-up's end and the first bait:
 	##   as CLAIM, the truck arriving inside the run-up (calm_start_min_seconds into the run at the earliest) right
-	##   behind the runner (at its follow gap) and showing itself as it arrives; nothing taken out.
+	##   behind the runner (at its follow gap) and showing itself as it arrives; nothing taken out (calm_start_takes_out
+	##   off).
 	## After the bait (the last resort): CLASSIC, then AROUND.
 	enum Mode { CLASSIC, AROUND, CLAIM, CALM }
 	## Each mode's name in a window's params ("show": {mode}; CLASSIC's windows carry none, as before).
@@ -701,7 +702,7 @@ class ShowPlanner:
 		# Sentinel (the same as CLASSIC in a level with neither), then with its bait's claim during it. Why none: what
 		# kept the most of the last mode's tries out, and of the calm start's and the fallback's after it.
 		for m: Mode in [Mode.CLASSIC, Mode.AROUND, Mode.CLAIM]:
-			if m == Mode.AROUND and room.quiet.is_empty():
+			if (m == Mode.AROUND and room.quiet.is_empty()) or (m == Mode.CLAIM and not _revs_near(free)):
 				continue
 			mode = m
 			counts.clear()
@@ -766,6 +767,23 @@ class ShowPlanner:
 						return w
 					c += OFFSET_STEP
 		return {}
+
+
+	## True if a Buzz Overdrive revs within reach of a chase arriving at any of `free` (from the first arrival to the last
+	## one's chase end, its margins and a claim's reach more): with none, CLAIM's hold is AROUND's (hold_claimed is
+	## hold_for then) and its checks only stricter, so it plans no window AROUND didn't and plan() skips it.
+	func _revs_near(free: Array[float]) -> bool:
+		if free.is_empty() or room.revs.is_empty():
+			return false
+		var lo: float = free[0]
+		var hi: float = free[0]
+		for at: float in free:
+			lo = minf(lo, at)
+			hi = maxf(hi, at)
+		var reach: float = hi + (t.chase_seconds + t.show_margin_seconds + t.close_lead_seconds + maxf(least_claim, 6.0)) \
+			* gen.speed
+		var i: int = room.revs.bsearch(lo)
+		return i < room.revs.size() and room.revs[i] <= reach
 
 
 	## plan()'s window in the level's calm start (CALM, task C6e): the truck arriving at any of `calm_spots` (inside the

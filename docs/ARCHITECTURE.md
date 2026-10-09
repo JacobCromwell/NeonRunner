@@ -1717,9 +1717,12 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   with those taken out (`_clearing`: never a pulsing fence or one a fence generator powers; `GeneratorRules.
   keep_powered` after: taking content out never makes a level unfair).
 - **Which.** With `prefer_enforcer_chases`, one first in each Enforcer Truck's chase (from `bait_after_seconds`
-  after it arrives to `CHASE_END_SECONDS` before it gives up), from the first source with one there, so the
-  runner can lead it in; then the rest spread through the level, each source used up before the next, rows
-  across most of the lanes (a jump) before single holes.
+  after it arrives, or from its showing window's end where that's later, to `CHASE_END_SECONDS` before it gives
+  up), from the first source with one there, so the runner can lead it in; then the rest spread through the level,
+  each source used up before the next, rows across most of the lanes (a jump) before single holes. None comes in a
+  chase before its showing, from the truck's arrival to its window's end (task C6e, approved with C6d's follow-up;
+  `EnforcerRules.wide_gap_keep_outs`, a `row_only` keep in `keeps_of`): it would wreck the truck before it has
+  shown itself.
 - **After it.** The fill pass keeps its usual margin from the wider rows as from any piece; the danger density
   pass's floor pieces keep off each zone as it stands (`DangerDensity._index_obstacles`: its margins are the
   level's spacing already), City 1's extra gaps keep it narrowed by their own margin (`GapDensity._protected`,
@@ -3695,7 +3698,16 @@ after it shows itself as it arrives; on every level that lists it at 3, 5 and 6 
 every truck, moved or arriving earlier, keeps its placement rules, no window counted before the bait comes after a
 bait's charge, and a truck without one has no free bait with one that its level could give it beside its other
 truck, nor a level with fewer trucks than it may have; Corporate 2 always introduces it; the chases' windows before
-and after the bait are printed); its blast (seen wherever it goes off, never
+and after the bait are printed); room beside a hover truck and a Gilded Sentinel (C6e: a hover truck's lane held over
+its stay and its entrance an attack that can't wait, at 3, 5 and 6 lanes: the truck never takes that lane nor stands
+between the runner and it, a runner beside it sees it two lanes in, the lane between free, and at 3 lanes only a
+runner in its lane has a lane for it; a Sentinel's turn from its claim, a showing back before it; a window planned
+beside each, the runner keeping a free lane; a showing whose bait's claim may come during it out of view before the
+rev); the calm start (C6e: on a plain track at the Golden Zone's pace, its Buzz Overdrive revving 4 s after the
+run-up, the truck arrives inside the run-up from `calm_start_min_seconds`, shows itself as it arrives, out of view
+before the rev, its bait where it was, nothing taken out and nothing else attacking there; none before the data
+minimum; every campaign window in the calm start takes nothing out); both trucks kept where a level has two but room
+for one showing (Corporate 2 at 5 lanes, Dead Zone 1 at 3, Dead Zone 2 at 5 and 6); its blast (seen wherever it goes off, never
 in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
@@ -3717,7 +3729,12 @@ never firing meanwhile, its siren swelling, a lane change into it bumped back un
 only free lane (zone doodads at 3, 5 and 6 lanes), two lanes in from a runner by a wall (C6c), turns both ways, a
 bait close behind its arrival keeping it back and a later one shortening its stay, its baits still destroying it, a
 planned window bringing its showing (C6c: its claim holding another type's attack back, no volley meanwhile), the
-same every attempt; and Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
+same every attempt; beside a hover truck holding lane 0 (C6e: at 5 lanes a runner in lane 1 sees it in lane 3 and
+its showings and the hover truck's attacks never overlap; at 3 lanes it never shows itself there) and a Gilded
+Sentinel (its stay shortened, out of view before the Sentinel's claim, which swings as planned); in the calm start
+(C6e: arriving inside the run-up at its follow gap from the data minimum, alongside as it arrives, out of view before
+the tank's rev, no volley and nothing else on meanwhile, the tank revving as planned, the same every attempt); and
+Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
 truck (god mode, grapples): each destroyed by a charge it dodged or in a wider gap (task G7), no overlap with
 its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
 alongside (the showings it makes are printed).
@@ -3731,8 +3748,12 @@ same on every attempt; every filler at the fill pass's spacing from every wider 
 where a filler had to go for a longer row); on real physics at quick play's speed and every campaign level's, at 3, 5 and 6 lanes, a
 jump early, midway and late in the take-off window clears one and running on falls in; an Enforcer Truck
 following a runner who jumps one wrecked in it (the player's kill) and hopping a 0.5-of-a-jump row, at 3, 5 and
-6 lanes, at 18 and 23.4 m/s; and Corporate 2's own build at 3, 5 and 6 lanes played from its start (god mode,
-grapples) until the runner leads its first truck over the wider gap in its chase, where it's wrecked.
+6 lanes, at 18 and 23.4 m/s; none in an Enforcer Truck's chase before its showing (from its arrival to its window's
+end; task C6e) in any campaign build, nor on another seed of each level with the truck, each keeping its wider gaps
+(one fewer allowed off its own seed; how many sit in a chase past its window is printed); and Corporate 2's own
+build at 3, 5 and 6 lanes played from its start (god mode, grapples) until the runner leads its first truck over
+the wider gap in its chase past its window, where it's wrecked (at 3 and 5 lanes: at 6 its window comes after its
+bait, at its chase's end).
 `test_charge_paths` checks the cyborgs in charge paths (task G7; The generator, Cyborgs in charge paths): every
 campaign level's count and LayoutChecks.check_charge_paths at 3, 5 and 6 lanes (a plain floor cyborg, never a
 host; its charger's planned path through it, in view, holding its fire, nothing around it), one before
