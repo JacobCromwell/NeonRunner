@@ -639,7 +639,8 @@ Shared interaction rules apply unless stated otherwise:
 - **The Golden Convergence** (Golden Zone; the final villain). Owner's design, in progress (October 9, 2026). More attacks and the fight's phases are still to be described.
   - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside gets his own name for the second stage *(open)*.
   - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
-  - **Second stage** (the fight's halfway checkpoint): the golden suit is destroyed, and the man comes out as a **twisted abomination, burnt blackish grey** by its destruction. His attacks are still to be described.
+  - **Stage 1, the golden suit:** several phases, built from three attacks: the **Helidrone Strafe** (below), a **Fist Smash** and a **Missile Barrage** from the shoulder pipes (both still to be described). How the suit takes damage is still to be described.
+  - **Second stage** (the fight's halfway checkpoint): the golden suit is destroyed, and the man **pulls himself out of its wreckage, screeching an animal roar of rage**. He's a **twisted abomination, burnt blackish grey** by the suit's destruction. His look is open to change (owner, October 9, 2026: the least fleshed-out part of the fight), and his attacks are still to be described.
   - **Look:**
     - A man's shape, a giant golden behemoth, with **extra-large shoulders, arms and hands**.
     - **A calm human face, cast in gold, with a red tear.** The tear is a **dull red and never glows**, so it never reads as a weak point.
