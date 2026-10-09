@@ -54,6 +54,7 @@
     {"match": "scripts/world/skins/marketplace*", "suites": ["marketplace_skin", "marketplace_citizens", "skin_budget", "doodads"], "names": false},
     {"match": "scripts/world/skins/corporate*", "suites": ["corporate_skin", "skin_budget", "doodads"], "names": false},
     {"match": "scripts/world/skins/dead_zone*", "suites": ["dead_zone_skin", "skin_budget", "doodads"], "names": false},
+    {"match": "scripts/world/skins/beach*", "suites": ["beach_skin", "skin_budget", "doodads"], "names": false},
     {"match": "scripts/world/skins/golden_palace*", "suites": ["golden_palace_skin", "skin_budget", "doodads"], "names": false},
     {"match": "scripts/world/skins/golden*", "suites": ["golden_skin", "golden_palace_skin", "skin_budget", "doodads"], "names": false},
     {"match": "scripts/world/skins/*", "tier": "merge", "suites": ["*_skin", "skin_budget", "doodads"], "names": false},

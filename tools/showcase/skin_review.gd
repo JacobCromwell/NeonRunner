@@ -45,7 +45,8 @@ extends Node3D
 ## bridging the street, viaduct, gunship), and for the Dead Zone two charred bridges and two dead
 ## buildings, found by asking the skin which kind a spot gets (with --narrow, a narrow ceiling can't be
 ## a Corporate tower across the street, so that one goes first, and the Dead Zone's narrow ones are its
-## slabs and fallen spans, whatever the spot).
+## slabs and fallen spans, whatever the spot), and for the Beach a footbridge, a barge, then (with --narrow)
+## veranda decks against the walls (across every lane: footbridges and barges).
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const LENGTH: float = 900.0
@@ -225,6 +226,7 @@ func _hull_starts() -> Array[float]:
 	var market := skin as MarketplaceSkin
 	var corporate := skin as CorporateSkin
 	var dead := skin as DeadZoneSkin
+	var beach := skin as BeachSkin
 	if market != null:
 		wanted = [MarketCeilings.Kind.BRIDGE, MarketCeilings.Kind.OVERPASS, MarketCeilings.Kind.SHIP, MarketCeilings.Kind.AD]
 		kind_of = market.ceilings().kind_of
@@ -243,6 +245,12 @@ func _hull_starts() -> Array[float]:
 			# A narrow ceiling's kind comes from its lanes: a fallen span in mid-street, a slab at an edge.
 			wanted = [DeadCeilings.Kind.BRIDGE, DeadCeilings.Kind.SPAN, DeadCeilings.Kind.SLAB, DeadCeilings.Kind.SLAB]
 		kind_of = dead.ceilings().kind_of
+	elif beach != null:
+		# The Beach's footbridge across every lane, then (narrow) a veranda deck against a wall and barges.
+		wanted = [BeachCeilings.Kind.FOOTBRIDGE, BeachCeilings.Kind.BARGE, BeachCeilings.Kind.FOOTBRIDGE, BeachCeilings.Kind.BARGE]
+		if _narrow:
+			wanted = [BeachCeilings.Kind.FOOTBRIDGE, BeachCeilings.Kind.BARGE, BeachCeilings.Kind.VERANDA, BeachCeilings.Kind.VERANDA]
+		kind_of = beach.ceilings().kind_of
 	else:
 		return out
 	var geo := TrackGeometry.new(lanes, tuning)
