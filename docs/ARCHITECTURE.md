@@ -2005,15 +2005,84 @@ must read as a hole at a glance like any gap: orange edges right on the collisio
 nothing else glowing, nothing flickering. `ZoneSkin.standard_floor_cut(parent, cut, solid, glow, style)`
 builds all of it from a style (the edge and inside colours, the inside's darkening pattern, depth, lip
 sizes and glows, a dark line beside the lips, the inside's walls and ribs); the default hook uses it
-with the skin's `gap_edge_color` and `gap_inside_color`. The zones where the Buzz Overdrive appears draw
-their own floor's cut: Corporate's maglev a carriage roof sliced open down to its frame
-(`CorporateTrains.cut`), its plaza the deck split over the lower level (`CorporatePlaza.cut`), the Dead
-Zone's street split with broken plates hanging into the void (`DeadStreet.cut`), the Golden Zone's
-walkway cut over the canal (`GoldenWalkways.cut`) and the Golden Palace's marble floor broken into the
-well (`GoldenPalaceFloor.cut`). `test_floor_cuts` builds every skin in `data/skins/` (and the grey box
-and the plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges
-on the collision edge, a dark inside, nothing else glowing, and the build cost against the same chunks
-without a cut; review a new look with `floor_cut_review` (Review tools) on both renderers.
+with the skin's `gap_edge_color` and `gap_inside_color`, and only the grey box and the plain `ZoneSkin`
+keep it (no zone scenery below them to show: its box has a bottom of its own). Every zone draws its own
+floor's cut: Corporate's maglev a carriage roof sliced open down to its frame (`CorporateTrains.cut`),
+its plaza the deck split over the lower level (`CorporatePlaza.cut`), the Dead Zone's street split with
+broken plates hanging into the void (`DeadStreet.cut`), the Golden Zone's walkway cut over the canal
+(`GoldenWalkways.cut`), the Golden Palace's marble floor broken into the well (`GoldenPalaceFloor.cut`),
+and, since task H3, the City's hover truck sliced open over the road (`CitySkin.floor_cut`), Gangland's
+street split into the strata (`GanglandSkin.floor_cut`) and the Marketplace's stall roofs opened onto the
+stalls' shade (`MarketplaceSkin.floor_cut`).
+
+*What a cut shows below the street* (task H3; GDD §9.9, the owner, October 8, 2026: "bottoms of buzzsaw
+cuts/gaps in the floor should show a zone specific background": "inside the cut, the player sees the zone's
+own scenery below the street, the same as through an ordinary gap ... never a dark box"). A gap shows
+the zone's own plane far below the street (the City's road with its traffic, Gangland's crater floor, the
+market floor, the trench under the maglev with its guideway, the plaza's lower level, the Dead Zone's
+void, the canal, the palace's well), drawn once per chunk with the left wall's mesh (`wall_section` and
+`wall_gap`, `side < 0`, across the whole street and the whole chunk, so it lies under every lane and
+every cut), between the sides the neighbouring lanes' own floors draw down to it. A cut is the same
+hole, so it follows two rules: **it draws no bottom** (`bottom: false`, whatever the skin: the plane is
+the bottom, `test_floor_cuts`' `_check_below` casts rays down every skin's open cut and holds each to
+meet a plane deep below, never the cut's own face), and **it doesn't copy what the neighbours already
+draw**: the long side walls are left to the neighbouring lanes' own sides (`walls: false`, the style the
+City, Gangland and the Marketplace set; the Corporate, Dead Zone and Golden looks keep walls of their
+own because they're the same shade and pattern as those sides, and Hostile Takeover's train, one wide
+roof with no sides between its lanes, needs its walls). Only the two end faces, which the next piece
+of floor doesn't draw, stay: in the gap's own shade and pattern, and no deeper than the floor itself
+goes (`end_depth`: a hover truck is 2.6 m tall with the road 14 m below). A zone's cut must therefore
+look like its gap with the orange edges added: in the City the road and its traffic between the trucks'
+own ribbed sides, in Gangland the strata walls, in the Marketplace the stalls' brown shade. Compare them
+with `floor_cut_review --compare` (Review tools).
+
+*What the zones show there* (task H3's second part, the coordinator's decision: matching the gap was not enough
+where the planes below were drawn almost black; the owner's "never a dark box" wants the zone's scenery
+recognisable from the runner's camera, in gaps and cuts alike). The runner's camera looks along the track, so
+what it sees of a hole is mostly the far end face of a gap and the first few metres of a long hole's walls,
+and the bottom only from nearby or above: the scenery is on the faces first, the plane second. Each look is
+one pattern in the solid kit, steady (nothing flashes: no Reduced flashing case) and all albedo (nothing
+glows), `COLOR` its peak and the result capped at it (plus, for the quay and the water, exactly the sky's and
+the lamps' colours), and the zone's `kit_solid` sheen is cut to a quarter below the street (`sheen_k`,
+patterns 31, 41, 53, 54, 71) so it never drowns them at a hole's grazing walls. On the Compatibility renderer
+alone the same patterns are lifted by `UNDER_COMPAT_GAMMA` (0.85): it shows dark values darker than Forward+
+(the same colours drew as near-black), and the lift brings the holes to within a few luma points of
+Forward+'s, never past it.
+- *Golden Zone* (`PAT_UNDERDECK`, `PAT_CANAL`): a stone quay of round arches on piers, one a lane across an
+  end face and one every two lanes along a side, the canal's light wavering on the stone and shimmering in
+  the arches toward the water, and the water below, ripples sliding with the current, the dusk's sky
+  laid on it more the lower the eye (a sheen and glints) and the walkways' lamps wavering on it
+  (`canal_sky_color`, `canal_lamp_color`).
+- *Golden Palace* (`PAT_PALACE_WELL`): a stairwell, its steps descending along a side in treads and
+  risers, and far below the lower hall's marble in slabs with a soft pool of light every 22 m
+  (`well_floor_color`, with the well's side walls now drawn down both sides, so a hole in an outer lane
+  shows stone and not the hall's outside). DESIGN-TBD (docs/questions/h3.md).
+- *Corporate* (`PAT_CORP_UNDER`): a carriage's side with its band of dim cold windows, the guideway beams
+  on their piers with a lighter top edge (`guideway_color`) over a wet concrete trench with joints and
+  puddles (`trench_color`) and the trench's retaining walls (mode 5: they, and the plaza's lower-level walls,
+  were built facing away from the street and never drew; they face it now); the plaza's deck edge a slab with
+  a pale fascia over a lower level of painted bays, 9 m down in the data (`trench_depth`, 18 m for the
+  trains). Hostile Takeover's arena (`HostileTakeoverSkin` extends `CorporateSkin`) inherits the gap look: its
+  carriage ends, its guideway colour and the cut through its train (its moving street below is its own).
+- *Dead Zone* (`PAT_DZ_UNDER`): the road's broken layers and rebar, then the ruined basements, concrete
+  with formwork courses, a row of dark window slots under pale lintels, a pilaster between bays, a pipe run
+  and ash on the sills, a slope of rubble blocks at the foot, and far down (`void_floor_color`) a rubble
+  floor with paler slabs and pale ash in its cracks: greys only (the first build's embers sat at the gap
+  edge's hue and were dropped).
+The hole must still read as a hole at a glance. `SkinSuite.hole_share()` (`tests/helpers/skin_suite.gd`)
+holds each zone to it with the true peaks of its patterns: the brightest thing drawn below the street,
+rendered (the kit lights a wall's side 0.70 and a face seen from above 0.92), over the darkest the street
+is drawn, rendered, must be at most `HOLE_SHARE_MAX` (0.8); each suite prints its share (Corporate 0.70,
+Golden 0.72, Dead Zone 0.75, Golden Palace 0.22). Nothing glows below but the orange edges, the cut is never
+brighter than the zone's gap (`test_floor_cuts`' `_inside_limit`) nor, in these five skins, black (the
+plane an open cut's ray meets is at least `BELOW_MIN_LUMINANCE`). The trade-off for the owner to confirm is
+in docs/questions/h3.md.
+
+`test_floor_cuts` builds every skin in `data/skins/` (and Hostile Takeover's train, the grey box and the
+plain `ZoneSkin`) at 3 and 5 lanes, in an outer and a middle lane, and checks the orange edges on the
+collision edge, a dark inside, nothing else glowing, and the build cost against the same chunks without a
+cut, and opens each zone's cut to cast rays down it (above); review a new look with `floor_cut_review`
+(Review tools) on both renderers.
 
 **Wall fences' looks** (B5; GDD §9.1: "the same pink crackle, strung across the wall-run path between emitters
 on the facade, the way a floor fence crosses a lane"). The hook `wall_fence(hazard, size, side, band, floor_y)`
@@ -3860,7 +3929,9 @@ short of a fourth and pushes, `--reduced-flashing`), floor cuts
 (`floor_cut_review`: the stand-in's warning, charge and the gap it leaves beside a runner who switched
 out, in any zone's look at any lane count and speed, through the game camera or a high one; `--stay`
 for an armor block and the floor's hold, `--kill=D` for a cut stopped where its cause dies,
-`--reduced-flashing`), wall fences (`wall_fence_review`: full-height ones held off, in their warning and on,
+`--reduced-flashing`; `--compare` for a cut and an ordinary gap of the same stretch either side of the
+runner, the cut open from the start with no cause, to see that the cut shows what the zone's gap does
+(task H3), `--outer` for the outermost lanes, `--top` for a camera looking straight down), wall fences (`wall_fence_review`: full-height ones held off, in their warning and on,
 then low and high ones on both walls, in any zone's look at any lane count, through the game camera with a
 runner beside them or along the wall (`--wall`), or a fixed one beside the track (`--camera=side --at=D`);
 `--cycle` lets them pulse on the level clock, `--reduced-flashing`),
