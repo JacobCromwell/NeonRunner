@@ -812,10 +812,6 @@ func _test_guarantee() -> void:
 	check(none and Rules.places_any(), "with no truck allowed (per_level_max 0) the guarantee asks for none")
 
 
-## Its rules only add its trucks: with danger density off (whose enemy count counts them) and the wider gaps off
-## (task G7: they go in a truck's chase first), Corporate 2 and Golden 2 are the same level with or without the
-## feature but for the trucks.
-
 ## Task C6c (GDD §9.13 "Showing itself", the owner, October 8, 2026): each chase's planned showing window, on every
 ## campaign level with the truck at 3, 5 and 6 lanes (its own seed and another). Where one is planned (its params'
 ## "show"), it lies in its chase (as it arrives, or later before it gives up) and holds in the finished level
