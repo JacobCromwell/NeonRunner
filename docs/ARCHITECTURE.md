@@ -1623,9 +1623,10 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). An Enforcer chase holds one in 11 of the 18
-  level and lane builds that have trucks, Corporate 2 at every lane count, where the truck following the runner
-  over it is wrecked in play. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  one fewer on a seed not the level's own, never none). On the 17-level curve (task K2) the first Enforcer
+  chase holds one in 9 of the 18 level and lane builds that have trucks, Corporate 2 at 3 and 6 lanes, where the
+  truck following the runner over it is wrecked in play; at 5 lanes nothing fits in its chase, and
+  `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
