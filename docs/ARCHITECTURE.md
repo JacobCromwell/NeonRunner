@@ -2185,10 +2185,11 @@ paved street, warm lamplight and haze.
   than `decor_min_height` (8 m) and is never framed in a hazard's stripes.
 - *The glass vault is background* (never a ceiling the player can use). `CasinoVault` springs it from the
   facades' top (`eave_height`, 22 m) and arches it over the street (higher over a wider one: `arch_of()`),
-  in bays (`bay_length`) built from cached templates in a few variants: iron ribs and purlins, and the
-  panes (`PAT_CASINO_VAULT`: dark night-blue glass in iron frames, warmer low on the arch, a few stars),
-  **opaque and faked** (no transparency, the phone rule) with a share missing (`pane_open_share`) so the
-  night sky shows through. It is built with the left wall (`wall_section` and `wall_gap`, so a wall gap's
+  in bays (`bay_length`) built from one cached template per street width: iron ribs and purlins, and the
+  panes (`PAT_CASINO_VAULT`: dark night-blue glass in iron frames, warmer low on the arch, a few faint
+  painted stars), **opaque and faked** (no transparency, the phone rule). **The roof is whole** (owner,
+  October 9, 2026: no broken or missing panes; the suite counts every pane of every bay, the arena's too), so
+  the night reads only as the glass's tint. It is built with the left wall (`wall_section` and `wall_gap`, so a wall gap's
   parts keep their roof): a bay belongs to the call whose range holds its start. Hung from it, by hash:
   girders across the street carrying banners of heavy cloth, lanterns on chains (an emissive box and a
   soft halo: no real light) and still ceiling fans. **Nothing hangs below `bunting_height` over the lanes**
@@ -2196,6 +2197,23 @@ paved street, warm lamplight and haze.
   `TheHouseTuning.height`, `scripts/bosses/the_house/the_house_tuning.gd`). A girder under the eave runs wall
   to wall (`girder_of()`; only one hung in the roof itself ends where the glass does) and a fan's blades stay
   inside the glass (`fan_of()`: it moves to the middle of a narrow street, or is dropped).
+- *Real lettering on the two named casinos* (task K3; owner, October 9, 2026: "Gasket's House of Chance"
+  and "The Brass Lotus", the names in the reference). `CasinoLettering` turns the project's own Exo 2 (OFL,
+  `assets/fonts/exo2`) into flat clockwise triangles once per process through `TextMesh` (curve step 6, weight
+  800, about 9 ms; built when `CasinoSkin.facades()` is first made, so while a level loads, never in a chunk
+  built during a run) and keeps them as plain vertex arrays in four layouts (Gasket's two lines on its board,
+  its one line on a strip, GASKET'S stacked down a blade; the Brass Lotus's board and its stacked blade). A
+  sign is one `MeshLayer.append` of a cached, coloured layout into the chunk's solid layer (about 15 us): no
+  `Label3D`, no `SubViewport`, no node, no surface or draw call of its own. Each casino building with a big
+  sign carries one name by hash (`CasinoLettering.pick()`): on its board (the sign's shader panel is dark
+  with a tube of light and no glyph rows: `NAMED_PANEL`; a casino whose big sign plays the cult's feed gets
+  Gasket's name as a strip over the screen, and the Brass Lotus's only on its blade) and on a blade sign
+  standing 0.8 m out of the wall at one end of the building, above `overhang_min_height`, where a runner
+  sees its face-on column of letters from afar (a board is seen along its face). `CasinoFacades.named_signs()`
+  lists them for reviews and tests. The letters are the warm white `lettering_color`, glowing just over the
+  bloom threshold (`lettering_glow`), never a hazard hue, never below `decor_min_height`, static (nothing
+  to flash). They add about 2.5k vertices to a chunk of about 11-12k and nothing to its surfaces or its
+  build time.
 - *Ceilings from their lanes* (task B3). `CasinoCeilings` builds a footbridge between the balconies (only
   across every lane, as the Marketplace's bridging building), a gantry carrying a bundle of brass pipes and a
   sign gantry (a big lit sign or the cult's feed on an iron frame), from the collision box and lane
@@ -2209,14 +2227,15 @@ paved street, warm lamplight and haze.
   billboard drops from 26 m above the 6 m ceiling (`TheHouseCeiling.DROP_FROM`, slab 0.9 m, its sign 2.5 m
   more), so the arena also raises the roof (`eave_height` 34 m, whatever the street's width: the suite
   checks the roof's underside clears the billboard's top across the whole street at 3, 5 and 6 lanes) and
-  hangs nothing from it (`hangings` off; `bunting_height` stays at 28 m).
+  hangs nothing from it (`hangings` off; `bunting_height` stays at 28 m). Its blade signs start above 15 m,
+  its boards lie flat on the wall.
 - *The colour rule* (GDD §5): the reference glows pink, cyan, green and orange; here those never glow near
   the track. Lit signs, marquees and lamps are warm white, violet or blue; brass is lit metal (nothing of
   brass or iron carries glow); the reference's coloured boards are dim painted signs in muted rose, teal,
   moss and ochre. The marquee bulbs and the signs' breathing honour Reduced flashing (the `reduced_flashing`
   uniform; the suite reads both shaders for it).
-- *Tested*: `test_casino_skin` (the Marketplace's checks adapted, plus the vault, the arena and the
-  citizens). Review it with `skin_review --skin=casino` (it asks the Casino for its ceiling kinds before the
+- *Tested*: `test_casino_skin` (the Marketplace's checks adapted, plus the vault, the arena, the lettering and
+  the citizens). Review it with `skin_review --skin=casino` (it asks the Casino for its ceiling kinds before the
   Marketplace, which it builds on) and a boss quick play with the arena skin on both renderers.
 
 **The Golden Zone** (`scripts/world/skins/golden/`): `GoldenWalkways` (the floor: golden walkways over

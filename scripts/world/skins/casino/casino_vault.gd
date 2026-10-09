@@ -5,11 +5,13 @@ extends RefCounted
 ## facades' top (`eave_height`) and arches over the street; its crown is higher over a wider street. It is
 ## background: far above anything the player can reach, and never a ceiling (a ceiling is a gameplay
 ## piece at the usual height, CasinoCeilings), so nothing about it is meant to read as a surface to use.
-## Built in bays (`bay_length`, three panes each) that repeat down the street from cached templates
-## (a few variants, so the missing panes don't repeat every bay): iron ribs along the arch, purlins
-## running along the street, and the panes themselves, quads of the solid kit shader's PAT_CASINO_VAULT:
-## dark glass in thin iron frames, opaque and faked (no transparency, GDD §5 and the phone rules), with
-## the night sky showing only through the panes the template leaves out. Hung from it, per bay by hash:
+## Built in bays (`bay_length`, three panes each) that repeat down the street from one cached template per
+## street width: iron ribs along the arch, purlins running along the street, and the panes themselves,
+## quads of the solid kit shader's PAT_CASINO_VAULT: dark night-blue glass in thin iron frames, opaque and
+## faked (no transparency, GDD §5 and the phone rules). The roof is whole (owner, October 9, 2026: no
+## broken or missing panes), so the night reads only as the glass's own tint, with a few faint stars
+## painted in it; the shader varies each pane's tone by its place along the street, so the repeating
+## bays don't show. Hung from it, per bay by hash:
 ## iron girders across the street carrying banners of heavy cloth, lanterns on chains and ceiling fans
 ## (a girder under the eave runs from wall to wall; the arena hangs nothing, `hangings`: The House's
 ## billboard drops through that space). Nothing hangs below `bunting_height` over the lanes (the arrival
@@ -22,8 +24,6 @@ extends RefCounted
 ## Segments of the arch, and panes along a bay.
 const ARC_SEGMENTS: int = 8
 const PANES_PER_BAY: int = 3
-## Template variants of a bay (which panes are missing, by hash).
-const VARIANTS: int = 4
 ## An arch rib's depth along the street and thickness across it.
 const RIB_DEPTH: float = 0.5
 const RIB_THICK: float = 0.42
@@ -61,7 +61,7 @@ func build(batch: MeshBatch, half_width: float, start: float, end: float) -> voi
 	var k: int = ceili(start / length - 0.0001)
 	while float(k) * length < end - 0.0001:
 		var z: float = -float(k) * length
-		solid.append(_bay(arch, MeshKit.hash_i(k, 5, 17) % VARIANTS), Transform3D(Basis.IDENTITY, Vector3(0, 0, z)))
+		solid.append(_bay(arch), Transform3D(Basis.IDENTITY, Vector3(0, 0, z)))
 		_hangings(solid, glow, arch, k, z)
 		k += 1
 	# The springer beams along the tops of both walls, where the roof meets them (built here, not with
@@ -133,11 +133,10 @@ static func half_span_at(arch: Dictionary, y: float) -> float:
 
 # --- A bay --------------------------------------------------------------------------------------
 
-## One bay of the roof (variant 0..VARIANTS-1) in bay space: z from 0 (its near end, where its rib stands)
-## to -bay_length. Cached per arch and variant.
-func _bay(arch: Dictionary, variant: int) -> MeshLayer:
-	var id: String = "%d_%d_%s_%s_%s" % [roundi(float(arch["half_width"]) * 100.0), variant, skin.pane_open_share,
-		skin.bay_length, skin.eave_height]
+## One bay of the roof in bay space: z from 0 (its near end, where its rib stands) to -bay_length, every
+## pane there. Cached per arch.
+func _bay(arch: Dictionary) -> MeshLayer:
+	var id: String = "%d_%s_%s" % [roundi(float(arch["half_width"]) * 100.0), skin.bay_length, skin.eave_height]
 	var found: MeshLayer = _bays.get(id)
 	if found != null:
 		return found
@@ -148,16 +147,12 @@ func _bay(arch: Dictionary, variant: int) -> MeshLayer:
 	var length: float = skin.bay_length
 	var pane_len: float = length / PANES_PER_BAY
 	var iron: Color = skin.iron_color
-	# The panes: dark glass in thin iron frames; some are missing (the sky shows through).
+	# The panes: dark glass in thin iron frames, every one of them there.
 	for i: int in ARC_SEGMENTS:
 		var p0: Vector2 = points[i]
 		var p1: Vector2 = points[i + 1]
 		var wcm: int = roundi(p0.distance_to(p1) * 100.0)
 		for m: int in PANES_PER_BAY:
-			# More are missing high on the arch than low on it.
-			var share: float = skin.pane_open_share * (0.5 + 1.0 - float(absi(2 * i + 1 - ARC_SEGMENTS)) / ARC_SEGMENTS)
-			if MeshKit.hash01(variant, i, m + 31) < share:
-				continue
 			var z0: float = -float(m) * pane_len
 			var z1: float = -float(m + 1) * pane_len
 			# Corners clockwise seen from below (inside the roof): UV.x across the pane, UV.y along it.

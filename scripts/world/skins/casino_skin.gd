@@ -23,10 +23,11 @@ extends MarketplaceSkin
 ## brass is lit metal (never neon), and the hazards stay the brightest, most saturated things on screen.
 ## Phones: the glass vault is opaque and faked (no transparency), nothing here is a real-time light,
 ## and every part is drawn with the one solid material and the one glow material in a chunk's batches.
+## Owner's answers (October 9, 2026; GDD §5, Zone 4; task K3): the glass roof is whole (374), the two named
+## casinos' big signs carry real lettering, "Gasket's House of Chance" and "The Brass Lotus" (371, CasinoLettering),
+## and there are no pedestrians (372: the Marketplace's citizens in the shop windows are enough).
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 369-376): the floor and gap look (369), the glow palette
-## (370), the signs' names (371: lit signs carry a mark and glyphs, never words), pedestrians far down the
-## street (372: there are none; the Marketplace's citizens play in the shop windows only), how busy the
-## street is (373), the glass roof (374), the doodads (375: the Marketplace's, in the Casino's palette) and
+## (370), how busy the street is (373), the doodads (375: the Marketplace's, in the Casino's palette) and
 ## The House's plainer arena (376).
 
 @export_group("Street")
@@ -64,15 +65,12 @@ extends MarketplaceSkin
 @export_range(2.0, 14.0, 0.5, "suffix:m") var vault_rise_max: float = 9.0
 ## The roof is built in bays this long (three panes each), repeating down the street.
 @export_range(4.0, 16.0, 0.5, "suffix:m") var bay_length: float = 8.0
-## Share of panes missing (broken glass: the night sky shows through).
-@export_range(0.0, 0.5, 0.01) var pane_open_share: float = 0.1
 ## The glass at night: deep blue, warmer low on the arch where it catches the lamplit haze.
 @export var pane_color: Color = Color(0.05, 0.085, 0.14)
 @export var pane_lit_color: Color = Color(0.3, 0.21, 0.13)
 @export var star_color: Color = Color(0.8, 0.84, 0.95)
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 374): the glass roof as a whole (broken panes, still fans) and how often an
-## iron girder crosses the street under it, carrying banners and lanterns; the shares of bays with a lantern, a
-## ceiling fan and banners.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 373): how often an iron girder crosses the street under the
+## (whole) roof, carrying banners and lanterns; the shares of bays with a lantern, a ceiling fan and banners.
 ## Whether anything hangs from the roof at all. The arena turns it off: The House's billboard drops through
 ## the space under the roof (from far above its ceiling), so nothing may be strung across it.
 @export var hangings: bool = true
@@ -113,6 +111,10 @@ extends MarketplaceSkin
 @export var ivy_color: Color = Color(0.16, 0.23, 0.15)
 ## Signs' dark panels and the lit lettering's palette (warm white, violet and blue only).
 @export var sign_panel_color: Color = Color(0.07, 0.065, 0.075)
+## The named casinos' real letters (CasinoLettering): warm white, lit but not hot (the brass frames and the
+## tubes of light round them carry the colour), and how much they glow.
+@export var lettering_color: Color = Color(0.98, 0.91, 0.74)
+@export_range(0.0, 2.0, 0.05) var lettering_glow: float = 0.3
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 370): the reference's pink, cyan, green and orange boards, kept as dim
 ## painted signs in muted dusty rose, teal, moss and ochre: lit like any wall, never glowing (the hazard
 ## colours glow only on hazards), a share of the blade signs.
@@ -210,8 +212,10 @@ func _casino_palette() -> void:
 
 
 func make_environment() -> Environment:
-	# A night over the covered street: the zenith nearly black with a few stars (glimpsed through the
-	# roof's missing panes and over the far end of the street), the horizon a warm lamplit haze, and a
+	# The named signs' letters again (cinematic stages build an environment before any wall).
+	CasinoLettering.warm()
+	# A night over the covered street: the zenith nearly black with a few stars (seen only through the wall
+	# gaps and over the far end of the street: the roof is whole), the horizon a warm lamplit haze, and a
 	# skyline in silhouette that the fog swallows. Nothing in the sky glows.
 	var sky := {"zenith_color": sky_zenith_color, "horizon_color": sky_horizon_color, "haze_color": haze_color,
 		"haze_strength": haze_strength, "haze_height": 0.2, "abyss_color": abyss_color, "skyline_color": skyline_color,
@@ -316,6 +320,9 @@ static func srgb(c: Color) -> Vector3:
 ## shop windows for the citizens, the feed's billboards).
 func facades() -> MarketFacades:
 	if _facades == null:
+		# The named signs' letters (a few ms, once per process) are built when the skin first dresses a wall,
+		# which is while a level loads, never in a chunk built during a run.
+		CasinoLettering.warm()
 		_facades = CasinoFacades.new(self)
 	return _facades
 

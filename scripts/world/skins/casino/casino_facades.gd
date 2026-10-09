@@ -22,8 +22,27 @@ const BALCONY_REACH: float = 0.95
 ## Added to the lit sign's size: its frame around the panel.
 const FRAME: float = 0.16
 
+## The names' lettering (task K3): how far the letters stand in front of their board, the room kept round them
+## on a board (across, up), the padding of a strip over a feed sign and the gap above that sign, and the Brass
+## Lotus's blade: how far out of the wall it reaches (under a metre with its brackets: the arrival flyover's
+## camera keeps a metre inside the walls), how far the board stands from the face, how tall a capital is on it,
+## the least that is still legible (a casino under a low roof gets none rather than tiny letters), the board's
+## padding above and below the letters, and how far its letters stand in front of it.
+const LETTER_LIFT: float = 0.03
+const BOARD_MARGIN := Vector2(0.55, 0.5)
+const STRIP_PAD: float = 0.25
+const STRIP_GAP: float = 0.2
+const BLADE_REACH: float = 0.8
+const BLADE_SETBACK: float = 0.15
+const BLADE_LETTER: float = 0.64
+const BLADE_LETTER_MIN: float = 0.4
+const BLADE_PAD: float = 0.35
+const BLADE_LETTER_LIFT: float = 0.02
+
 ## Wall lamps built once per side (_lamp).
 var _lamp_templates: Dictionary = {}
+## The lettering in the skin's colour, built once per layout (_letters).
+var _lettering: Dictionary = {}
 
 
 ## The skin, typed as the Casino's (the base class keeps the Marketplace's type for its own use).
@@ -328,7 +347,10 @@ func _blade_sign(solid: MeshLayer, glow: MeshLayer, side: int, x: float, d: floa
 
 ## Casino dressing: a marquee of bulbs along a storey line and up the corners, a big lit sign (or the
 ## cult's feed) with a brass frame and halo, and a bulb marquee, everything flat on the face and above
-## decor_min_height.
+## decor_min_height. Each casino with a big sign carries one of the two names, in real letters (task K3,
+## CasinoLettering): on its sign (Gasket's as a strip over it if it plays the feed; the Brass Lotus's
+## feed sign has none) and on a tall blade sign at one end of the building, where a runner sees it face-on
+## from afar (GASKET'S, or THE BRASS LOTUS, stacked down it).
 func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacades.Building, face_x: float, u0: float, u1: float,
 		start: float, end: float) -> void:
 	var side: int = b.side
@@ -341,8 +363,24 @@ func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacad
 				MeshKit.PAT_BULBS)
 	var mid: float = (b.b0 + b.b1) * 0.5
 	var spec: Dictionary = _casino_sign(b, face_x)
-	if mid < start or mid >= end or spec.is_empty():
+	if spec.is_empty():
 		return
+	var names: Array[Dictionary] = _name_specs(b, face_x, spec)
+	if mid >= start and mid < end:
+		_big_sign(batch, solid, glow, b, face_x, spec, names)
+	for piece: Dictionary in names:
+		var at: float = piece["at"]
+		if at >= start and at < end:
+			_name_piece(solid, glow, b, face_x, piece)
+
+
+## The casino's big sign: a brass-edged frame, the face (a lit sign whose panel is dark and tube-edged for
+## its name's letters, or the cult's feed) and the halo; the cult's emblem in a corner if the letters leave
+## room.
+func _big_sign(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacades.Building, face_x: float, spec: Dictionary,
+		names: Array[Dictionary]) -> void:
+	var side: int = b.side
+	var mid: float = (b.b0 + b.b1) * 0.5
 	var h: float = spec["h"]
 	var sy: float = spec["y0"]
 	var length: float = spec["length"]
@@ -357,9 +395,14 @@ func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacad
 		CultFeed.screen(batch.layer(skin.feed_material()), screen[0], screen[1], screen[2], skin.feed_board_brightness, b.seed)
 		color = CultFeed.FEED_COLOR
 	else:
-		var param: float = float((b.seed % 100) + 100 * roundi(h * 10.0))
+		var param: float = float((b.seed % 100) + 100 * roundi(h * 10.0)) + CasinoLettering.NAMED_PANEL
 		solid.rect(screen[0], screen[1], screen[2], color, 0.6, MeshKit.PAT_CASINO_SIGN, Vector2.ZERO, Vector2(length, h), param)
-		if skin.carries_emblem(b.seed, 60):
+		# The cult's emblem only where the letters leave its corner free (it's about 28% of the sign's height).
+		var room: float = length
+		for piece: Dictionary in names:
+			if piece["kind"] == &"board":
+				room = length - (piece["box"] as Vector2).x
+		if skin.carries_emblem(b.seed, 60) and room * 0.5 >= maxf(h * 0.28, skin.emblem_min_size) * 1.3:
 			_corner_emblem(solid, side, sx, d0, length, sy, h)
 	# The halo lies flat on the wall behind the frame and the face (under the arena's rule: nothing more than
 	# 30 cm out of a face below overhang_min_height, where The House fills the street to 35 cm off the walls).
@@ -367,8 +410,7 @@ func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacad
 		MeshKit.SHAPE_FLAT)
 
 
-## Where a casino's big sign goes (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 371: its lettering is rows of glyphs, as every
-## skin's, so "Gasket's House of Chance" can't be spelled): the screen's plane (x), bottom (y0), height (h) and length, in the
+## Where a casino's big sign goes: the screen's plane (x), bottom (y0), height (h) and length, in the
 ## mid-height of its face (always above decor_min_height); empty if the casino is too small for one.
 func _casino_sign(b: MarketFacades.Building, face_x: float) -> Dictionary:
 	var length: float = minf(b.b1 - b.b0 - 3.0, 12.0)
@@ -377,6 +419,170 @@ func _casino_sign(b: MarketFacades.Building, face_x: float) -> Dictionary:
 		return {}
 	var y0: float = skin.decor_min_height + 2.0 + 2.5 * MeshKit.hash01(b.side, b.id, 66)
 	return {"x": face_x - b.side * 0.1, "y0": y0, "h": h, "length": length}
+
+
+# --- The names ----------------------------------------------------------------------------------
+
+## DESIGN-TBD (docs/questions/k3.md 2 and 3): the strip over a feed sign, the blade of every named casino and
+## the names appearing on casinos' signs alone.
+## The pieces of lettering of casino `b` (the building with a big sign `spec`): each {name (CasinoLettering
+## NAME_*), kind (&"board": on the big sign, &"strip": over a sign that plays the feed, &"blade": a tall blade
+## sign at one end of the building), layout, at (the distance along the wall that decides which chunk builds it), x (the plane of the
+## letters, or for a blade the middle of its letters across it), y (their centre), scale (metres per cap height), box (their block, in metres), y_min, and for
+## a strip or a blade its board's y0, height and length}. By hash of the building: the same every build.
+func _name_specs(b: MarketFacades.Building, face_x: float, spec: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var side: int = b.side
+	var which: int = CasinoLettering.pick(side, b.id)
+	var feed: bool = skin.shows_feed(b.seed, 62)
+	var mid: float = (b.b0 + b.b1) * 0.5
+	var h: float = spec["h"]
+	var sy: float = spec["y0"]
+	var length: float = spec["length"]
+	var plane: float = float(spec["x"]) - side * LETTER_LIFT
+	if not feed:
+		var layout: int = CasinoLettering.Layout.LOTUS_BOARD
+		if which == CasinoLettering.NAME_GASKETS:
+			layout = CasinoLettering.Layout.GASKETS_BOARD
+		var s: float = CasinoLettering.fit(layout, Vector2(length - 2.0 * BOARD_MARGIN.x, h - 2.0 * BOARD_MARGIN.y))
+		if s > 0.0:
+			var box: Vector2 = CasinoLettering.layout_size(layout) * s
+			out.append({"name": which, "kind": &"board", "layout": layout, "at": mid, "x": plane, "y": sy + h * 0.5, "scale": s,
+				"box": box, "y_min": sy + h * 0.5 - box.y * 0.5})
+	elif which == CasinoLettering.NAME_GASKETS:
+		# A strip of one line over the screen, in its own brass frame.
+		var layout: int = CasinoLettering.Layout.GASKETS_STRIP
+		var s: float = CasinoLettering.fit(layout, Vector2(length - 2.0 * BOARD_MARGIN.x, 99.0))
+		if s > 0.0:
+			var box: Vector2 = CasinoLettering.layout_size(layout) * s
+			var strip_h: float = box.y + 2.0 * STRIP_PAD
+			var strip_y0: float = sy + h + FRAME + STRIP_GAP
+			out.append({"name": which, "kind": &"strip", "layout": layout, "at": mid, "x": plane, "y": strip_y0 + strip_h * 0.5,
+				"scale": s, "box": box, "y_min": strip_y0 + strip_h * 0.5 - box.y * 0.5, "board_y0": strip_y0, "board_h": strip_h,
+				"board_length": length})
+	# Both names carry a blade sign (a casino's tall sign sticking out of the wall, seen face-on from afar).
+	var blade: int = CasinoLettering.Layout.LOTUS_BLADE
+	if which == CasinoLettering.NAME_GASKETS:
+		blade = CasinoLettering.Layout.GASKETS_BLADE
+	var blade_size: Vector2 = CasinoLettering.layout_size(blade)
+	var blade_y0: float = csk.overhang_min_height + 0.6
+	var room: float = b.height - 0.6 - blade_y0 - 2.0 * BLADE_PAD
+	var blade_s: float = minf(BLADE_LETTER, room / blade_size.y) if blade_size.y > 0.0 else 0.0
+	if blade_s >= BLADE_LETTER_MIN:
+		var box: Vector2 = blade_size * blade_s
+		var board_h: float = box.y + 2.0 * BLADE_PAD
+		var at: float = b.b0 + 1.0 if MeshKit.hash01(side, b.id, 69) < 0.5 else b.b1 - 1.0
+		var letters_x: float = face_x - side * (BLADE_REACH * 0.5 + BLADE_SETBACK)
+		out.append({"name": which, "kind": &"blade", "layout": blade, "at": at, "x": letters_x, "y": blade_y0 + board_h * 0.5,
+			"scale": blade_s, "box": box, "y_min": blade_y0 + board_h * 0.5 - box.y * 0.5, "board_y0": blade_y0,
+			"board_h": board_h})
+	return out
+
+
+## The casinos' lettering (for reviews and tests, like MarketplaceSkin.feed_boards()): the pieces of
+## _name_specs() whose `at` lies in [start, end), each with its side and the centre of its letters.
+func named_signs(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lot: float = skin.lot_length
+	var span: Vector2i = MeshKit.lot_run(side, floori(start / lot), 0.45, 3, 3)
+	while span.x * lot < end:
+		var b: MarketFacades.Building = building(side, span)
+		if b.kind == MarketFacades.Kind.CASINO:
+			var spec: Dictionary = _casino_sign(b, face_x)
+			if not spec.is_empty():
+				for piece: Dictionary in _name_specs(b, face_x, spec):
+					var at: float = piece["at"]
+					if at >= start and at < end:
+						var entry: Dictionary = piece.duplicate()
+						entry["side"] = side
+						entry["center"] = Vector3(float(piece["x"]), float(piece["y"]), -at)
+						out.append(entry)
+		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
+	return out
+
+
+## Builds one piece of lettering: the board of a strip or a blade (the big sign's own is built with it), then
+## the letters themselves, in the skin's lettering colour, a little in front of their board.
+func _name_piece(solid: MeshLayer, glow: MeshLayer, b: MarketFacades.Building, face_x: float, piece: Dictionary) -> void:
+	var side: int = b.side
+	var s: float = piece["scale"]
+	var letters: MeshLayer = _letters(piece["layout"])
+	var kind: StringName = piece["kind"]
+	if kind == &"strip":
+		_strip_board(solid, glow, b, face_x, piece)
+	elif kind == &"blade":
+		_lotus_blade(solid, glow, b, face_x, piece)
+		# The blade faces the approaching player (+z), its letters a little in front of the face.
+		solid.append(letters, Transform3D(Basis.from_scale(Vector3(s, s, s)),
+			Vector3(float(piece["x"]), float(piece["y"]), -float(piece["at"]) + BLADE_LETTER_LIFT)))
+		return
+	# On a wall: u to the viewer's right along the wall, v up, n out toward the street.
+	var u := Vector3(0, 0, -1) if side < 0 else Vector3(0, 0, 1)
+	var n := Vector3(-side, 0, 0)
+	var centre_z: float = -(b.b0 + b.b1) * 0.5
+	solid.append(letters, Transform3D(Basis(u * s, Vector3(0, s, 0), n * s), Vector3(float(piece["x"]), float(piece["y"]), centre_z)))
+
+
+## The coloured lettering template of a layout (CasinoLettering.layer()), built once per skin.
+func _letters(layout: int) -> MeshLayer:
+	var found: MeshLayer = _lettering.get(layout)
+	if found == null:
+		found = CasinoLettering.layer(layout, csk.lettering_color, csk.lettering_glow)
+		_lettering[layout] = found
+	return found
+
+
+## The dark strip over a feed sign that carries Gasket's name: a brass-edged frame and a tube-lit face.
+func _strip_board(solid: MeshLayer, _glow: MeshLayer, b: MarketFacades.Building, face_x: float, piece: Dictionary) -> void:
+	var side: int = b.side
+	var mid: float = (b.b0 + b.b1) * 0.5
+	var y0: float = piece["board_y0"]
+	var h: float = piece["board_h"]
+	var length: float = piece["board_length"]
+	solid.box(Vector3(face_x - side * 0.04, y0 + h * 0.5, -mid), Vector3(0.08, h + FRAME * 2.0, length + FRAME * 2.0),
+		csk.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS, MeshKit.ALL_FACES & ~FACE_AGAINST[side], 0.4)
+	var screen: Array = _wall_screen(side, face_x - side * 0.1, mid - length * 0.5, length, y0, h)
+	var color: Color = skin.neon_colors[b.seed % skin.neon_colors.size()]
+	var param: float = float((b.seed % 100) + 100 * roundi(h * 10.0)) + CasinoLettering.NAMED_PANEL
+	solid.rect(screen[0], screen[1], screen[2], color, 0.6, MeshKit.PAT_CASINO_SIGN, Vector2.ZERO, Vector2(length, h), param)
+
+
+## The Brass Lotus's blade sign: a tall dark board standing out of the wall (like the reference's), in brass
+## edges and a tube of light, facing the approaching player, under a metre out of the face (the arrival
+## flyover's camera keeps a metre inside the walls) and above overhang_min_height. Its letters are placed by
+## the caller.
+func _lotus_blade(solid: MeshLayer, glow: MeshLayer, b: MarketFacades.Building, face_x: float, piece: Dictionary) -> void:
+	var side: int = b.side
+	var d: float = piece["at"]
+	var y0: float = piece["board_y0"]
+	var h: float = piece["board_h"]
+	var inner: float = face_x - side * (BLADE_REACH + 0.15)
+	var outer: float = face_x - side * 0.15
+	var x_min: float = minf(inner, outer)
+	var mid_x: float = (inner + outer) * 0.5
+	var dark: Color = csk.sign_panel_color
+	for by: float in [y0 + h - 0.3, y0 + 0.3]:
+		solid.box(Vector3((face_x + outer) * 0.5, by, -d), Vector3(0.18, 0.06, 0.06), csk.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
+			MeshKit.ALL_FACES, 0.4)
+	solid.box(Vector3(mid_x, y0 + h * 0.5, -d - 0.05), Vector3(BLADE_REACH, h, 0.08), dark, 0.0, MeshKit.PAT_PLAIN,
+		MeshKit.ALL_FACES & ~MeshKit.FACE_PZ)
+	# Brass caps at both ends and rails down both edges.
+	for cy: float in [y0 + h - 0.02, y0 + 0.02]:
+		solid.box(Vector3(mid_x, cy, -d - 0.05), Vector3(BLADE_REACH + 0.08, 0.08, 0.12), csk.brass_color, 0.0,
+			MeshKit.PAT_CASINO_BRASS, MeshKit.ALL_FACES, 0.5)
+	for rx: float in [inner, outer]:
+		solid.box(Vector3(rx, y0 + h * 0.5, -d - 0.05), Vector3(0.05, h, 0.12), csk.brass_color, 0.0, MeshKit.PAT_CASINO_BRASS,
+			MeshKit.ALL_FACES, 0.5)
+	var band: float = BLADE_REACH - 0.1
+	var top: float = y0 + h - 0.1
+	var length: float = h - 0.2
+	var color: Color = skin.neon_colors[b.seed % skin.neon_colors.size()]
+	var param: float = float((b.seed % 100) + 100 * roundi(band * 10.0)) + CasinoLettering.NAMED_PANEL
+	solid.rect(Vector3(x_min + (BLADE_REACH - band) * 0.5, top, -d + 0.004), Vector3(0, -length, 0), Vector3(band, 0, 0), color, 0.6,
+		MeshKit.PAT_CASINO_SIGN, Vector2.ZERO, Vector2(length, band), param)
+	# The halo stands just behind the board (hidden by it, showing round it), so it never veils the letters.
+	glow.rect(Vector3(x_min - 0.5, y0 - 0.4, -d - 0.015), Vector3(BLADE_REACH + 1.0, 0, 0), Vector3(0, h + 0.8, 0), color, 0.1,
+		MeshKit.SHAPE_FLAT)
 
 
 ## An arcade hall: a lit name board over the middle, high up, with a brass frame.
