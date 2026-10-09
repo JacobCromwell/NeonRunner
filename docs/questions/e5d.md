@@ -194,3 +194,8 @@ Barrage). Every number below is in `data/bosses/golden_boss_tuning.tres` (`Golde
     no scorch marks (the strafe's do); it dies down over 0.35 s after its 1.5 s.
 12. **Pickups keep off** a slam's rows and the barrage's stretch (both are floor warnings, like the strafe's
     red lines).
+13. **One armor hit plus the dash is a tight fit** at 1.5 s of fire (1.6 s of protection, as the GDD gives
+    it): two armor hits and armor plus the shield carry the runner through on their own, but with the armor
+    and the dash the dash has to start within about 0.1 s of the fire landing (so the armor's second follows
+    it) or within the last 0.1 s of the armor's second. A runner who dashes at any other moment burns. Is that
+    the "a bit toasty" you meant, or should the fire be a little shorter (1.3-1.4 s gives a 0.2-0.3 s window)?
