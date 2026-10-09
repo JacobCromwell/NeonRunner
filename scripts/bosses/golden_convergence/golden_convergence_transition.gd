@@ -9,7 +9,7 @@ extends RefCounted
 ##   way out of the man's room (`claw`), roars (magnate_roar, the screech) as the towers' screens switch to his
 ##   roaring face (GoldenCourtSkin.set_feed mode 1, a glitch fading out: steady with Reduced flashing); the empty
 ##   suit topples off the causeway's side into the pools (pacing the runner, never over the track) with a crash
-##   (magnate_suit_fall); he leaps off it high over the runner and lands behind them, where the chase takes him
+##   (magnate_suit_fall; magnate_suit_down as it hits the water); he leaps off it high over the runner and lands behind them, where the chase takes him
 ##   (GoldenConvergenceChase.begin). From then the suit is gone (hidden, never a target) and he can be hurt;
 ## - phases 5 and 6's, the hurl (proposed: "after a stomp he hurls himself clear, roaring, and drops back
 ##   behind"): from where he is, a howling leap up onto the balustrade away from the runner, then the chase's
@@ -220,6 +220,7 @@ func _tick_suit() -> void:
 		var splash := Vector3(fall_side * (boss.world.geo.wall_x() + 25.0), -18.0, at.z)
 		boss.world.effects.burst(splash, Color(0.75, 0.72, 0.66), 50, 5.0)
 		boss.world.effects.shake(0.4, 0.5)
+		boss.sound(&"magnate_suit_down", boss.sound_point(splash))
 		boss.log_event(&"suit_down", {"side": fall_side})
 
 

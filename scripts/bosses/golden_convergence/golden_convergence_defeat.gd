@@ -77,12 +77,19 @@ func start() -> void:
 	magnate.ports_glow = 0.0
 	boss.sound(&"magnate_death", boss.sound_point(magnate.head_point()))
 	boss.world.effects.shake(0.5, 0.6)
-	boss.log_event(&"defeat_start", {"lane": lane, "runner_lane": pl, "riff": _riff})
+	_log(&"defeat_start", {"lane": lane, "runner_lane": pl, "riff": _riff})
 
 
 ## True once the runner is past him and the riff (or the silence) has come.
 func over() -> bool:
 	return step == Step.OVER
+
+
+## Logs one of the defeat's events with its `time` (seconds into the defeat: the fight's clock stops at it).
+func _log(event: StringName, extra: Dictionary = {}) -> void:
+	var entry: Dictionary = extra.duplicate()
+	entry["time"] = time
+	boss.log_event(event, entry)
 
 
 func tick(delta: float) -> void:
@@ -131,7 +138,7 @@ func _collapse() -> void:
 	magnate.speed = 0.0
 	boss.sound(&"magnate_collapse", boss.sound_point(magnate.global_position))
 	boss.world.effects.burst(magnate.global_position + Vector3(0.0, 0.4, 0.0), Color(0.6, 0.57, 0.52), 30, 1.6)
-	boss.log_event(&"collapse", {"lane": lane, "at": collapse_at, "runner": boss.player_distance(),
+	_log(&"collapse", {"lane": lane, "at": collapse_at, "runner": boss.player_distance(),
 		"runner_lane": boss.player_lane()})
 
 
@@ -143,14 +150,14 @@ func _tick_down(delta: float, t: GoldenConvergenceTuning) -> void:
 	var d: float = boss.player_distance()
 	if passed_at < 0.0 and d > collapse_at + GoldenConvergenceMagnateModel.BODY_LENGTH * 0.5 + 1.0:
 		passed_at = time
-		boss.log_event(&"runner_past", {"runner": d})
+		_log(&"runner_past", {"runner": d})
 	if passed_at >= 0.0 and time >= passed_at + t.riff_after and magnate.crack_light <= 0.0:
 		if t.victory_riff_on and not riff_played:
 			riff_played = true
 			boss.world.play_sfx(_riff)
-			boss.log_event(&"riff", {"name": _riff})
+			_log(&"riff", {"name": _riff})
 		step = Step.OVER
-		boss.log_event(&"defeat_over")
+		_log(&"defeat_over")
 
 
 ## His cables tear out one by one.
@@ -164,7 +171,7 @@ func _tick_cables(t: GoldenConvergenceTuning) -> void:
 			boss.world.effects.burst(socket, Color(1.0, 0.93, 0.82), 16, 0.5)
 			boss.world.effects.burst(socket, Color(0.25, 0.23, 0.21), 10, 0.7)
 			boss.sound(&"magnate_tear", boss.sound_point(socket))
-			boss.log_event(&"cable_torn", {"n": torn})
+			_log(&"cable_torn", {"n": torn})
 		torn += 1
 
 
@@ -182,8 +189,8 @@ func _tick_screens(t: GoldenConvergenceTuning) -> void:
 			music.stop(t.music_cut)
 		music_cut = true
 		boss.sound(&"magnate_screens", boss.sound_point(blackout_center))
-		boss.log_event(&"music_cut")
-		boss.log_event(&"blackout_start", {"center": blackout_center})
+		_log(&"music_cut")
+		_log(&"blackout_start", {"center": blackout_center})
 	blackout_radius = (time - t.blackout_at) * t.blackout_speed
 	if skin != null:
 		var dead: bool = blackout_radius >= t.blackout_reach

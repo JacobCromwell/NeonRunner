@@ -149,9 +149,11 @@ func _return(delta: float) -> void:
 	var px: float
 	var py: float
 	if side != 0:
-		# Along the balustrade until he's behind the camera, then down into his lane.
+		# Along the balustrade until he's behind the camera, then down into his lane (never into a lane in sight).
 		var bx: float = balustrade_x(side)
-		var k: float = clampf((u - 0.65) / 0.35, 0.0, 1.0)
+		var cam: float = boss.world.tuning.camera_distance + 0.5
+		var behind: float = clampf((-rel - cam) / maxf(boss.tuning.chase_gap - cam, 0.5), 0.0, 1.0)
+		var k: float = 1.0 if u >= 1.0 else minf(clampf((u - 0.65) / 0.35, 0.0, 1.0), behind)
 		px = lerpf(lerpf(from.x, bx, clampf(u / 0.2, 0.0, 1.0)), home_x, k * k * (3.0 - 2.0 * k))
 		py = lerpf(lerpf(from.y, balustrade_y(), clampf(u / 0.2, 0.0, 1.0)), 0.0, k)
 	else:
