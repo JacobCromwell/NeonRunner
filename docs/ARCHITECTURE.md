@@ -3193,7 +3193,7 @@ mesh caches), about 10 ms for the cut (under black), at most about 3 ms a step, 
 draw calls. It adds no asset files.
 
 **Gangland's boss intro** (`SewerSwarmIntro`, task F2b; the owner's story beat, October 9, 2026, GDD §10 Sewer Swarm;
-what it leaves open is DESIGN-TBD, `docs/questions/f2b.md`; numbers in `data/cinematics/sewer_swarm_intro.tres`):
+what it leaves open is DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, items 387–395; numbers in `data/cinematics/sewer_swarm_intro.tres`):
 12 s before the Sewer Swarm, on a plain stretch of the fight's arena look in the fight's lanes, the runner
 running at the fight's speed (the zone's) down the start lane between rows of manholes one lane over, the camera
 at ground level throughout (0.47-0.75 m up). The beats: one screech at 2 s (it pounces into the runner's lane

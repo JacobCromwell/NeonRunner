@@ -5,7 +5,7 @@ extends Resource
 ## other), eleven at 4 s (five on the left, six on the right), then more and more pouring out and dropping from
 ## the sky, a wall of them chasing the runner, and one cut to the mass with the Host's glint in its dark heart; the
 ## camera at ground level throughout. The rest (how the runner dodges, distances, counts, the camera's exact
-## places) is DESIGN-TBD (docs/questions/f2b.md). Times are seconds from the start; points are track space
+## places) is DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 387–395). Times are seconds from the start; points are track space
 ## (CineStage: x metres right of the runner's lane, y up, z ahead).
 
 @export_group("Timing")

@@ -414,7 +414,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 level, screeches burst out of the manholes after the runner (one, then three, then eleven), more and more pour out
 and drop from the sky, a wall of them chases the runner down, and one cut shows the Host's glint in the dark heart
 of the swarm. It adds one toolkit hook: `_stage_near()`, to keep the street built under props behind the camera.
-The staging choices are in `docs/questions/f2b.md`.
+The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 
 ---
 

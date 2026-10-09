@@ -17,7 +17,7 @@ extends CinematicSequencer
 ## (_on_advance), so a test or a tool stepping it sees the same. Visual only: no hitboxes. The stage is a plain
 ## stretch of the fight's arena look (CineStage.skin_for) in as many lanes as the fight, and the runner runs at
 ## the fight's speed. Its numbers are data: `numbers`, by default data/cinematics/sewer_swarm_intro.tres
-## (SewerSwarmIntroTuning). DESIGN-TBD (docs/questions/f2b.md): what the owner's beats leave open.
+## (SewerSwarmIntroTuning). DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 387–395): what the owner's beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/sewer_swarm_intro.tres"
 ## The runner's path has a key this often through a jump or a weave (and every half second otherwise).
