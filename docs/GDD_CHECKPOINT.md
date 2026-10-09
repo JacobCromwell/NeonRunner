@@ -636,7 +636,29 @@ Shared interaction rules apply unless stated otherwise:
   - **Defeat:** the gunship spins away and explodes; the locomotive derails and ploughs through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture.
   - **Missed weak points** come around again (no time limit, no escalation). Weapons chip; stomps do the real damage.
   - **Pickups:** the standard armor rule (15–17 seconds).
-- **Remaining boss:** the final villain's fight *(open)*.
+- **The final villain** (Golden Zone). Owner's design, in progress (October 9, 2026). More attacks and the fight's phases are still to be described.
+  - **Name** *(open)*: the owner's current candidates are **The Golden Convergence** and **The Tyrannical Magnate** ("Golden Lord" and "Golden Hun" were dropped).
+  - **What it is:** a **giant mechanical construct** that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner.
+  - **Look:**
+    - A man's shape, a giant golden behemoth, with **extra-large shoulders, arms and hands**.
+    - **A calm human face, cast in gold, with a red tear.**
+    - **Pipes** come out of its shoulders. They fire missiles (an attack still to be described).
+    - **No legs:** metallic pipes, almost like tentacles, trail from its lower body and run out beyond the view.
+    - **The cape** doesn't have to follow physics: a huge, undulating cloud of **burgundy** cloth with lots of **black folds and shadows**, billowing from the boss's back. It **never glows** (the colour rule, §5), so red hazards and warnings stay readable. It's scenery, not an attack.
+  - **Helidrone Strafe** (owner's attack):
+    - **The squadron:** heli drones (the heli drone's model, **never coloured red**) come **out of the cape**, move and fire as one, and then leave. It's a single attack, not separate enemies.
+    - **Size:** one drone for every other lane (half the lanes, rounded up): **2 on 3 lanes, 3 on 5 or 6 lanes**.
+    - **Fixed paths:** unlike a normal heli drone, it never tracks the player. On each pass the drones fly a fixed line and rake the floor with fire.
+      - **Vertical pass:** the drones fly down the lanes, raking every other lane. The covered lanes **switch between passes** (odd lanes, then even lanes), so each vertical pass moves the player.
+      - **Horizontal pass:** the drones fly from wall to wall, raking a line across the track. The player dodges it **behind a Flying Buttress** (below) or with **the dash**. Horizontal passes are **less frequent** than vertical ones.
+      - Together, the passes draw a hatch pattern over the track, one pass after another, a second or two apart.
+    - **Passes per strafe:** **3 in phase 1, 7 in later phases.**
+    - **Warning:** before each pass, a **red line on the floor** where the fire will land, about a second ahead, and a gatling **spin-up whine**.
+    - **Walls:** fire in an outer lane hits a runner **low on the wall** but not one **high up** (what looks like a hit is a hit, §3).
+    - **Weapons never target the squadron.**
+    - **Anti-grav pads** destroy the whole squadron, as they do heli drones (§9.6). In this fight pads appear only at set moments *(still to be described)*.
+    - Nothing else is on the track during a strafe.
+  - **Flying Buttress** (owner's new doodad for this fight): **taller than other doodads**. It looks like it holds up buildings out of sight on either side of the track, and may run out beyond the view (the unseen part isn't rendered). It stands on an **inner lane, never an outer one**, so the player has to move to take cover behind it from a horizontal pass. *(Open: its exact shape, and how it shelters a runner from fire raking down.)*
 
 ---
 
