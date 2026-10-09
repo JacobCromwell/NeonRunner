@@ -63,7 +63,7 @@ func _block(facade: MeshLayer, solid: MeshLayer, size: Vector3, style: int, tone
 	var wall_z: float = hz - FACE_BACK
 	var wall: Color = _wall(tone + style)
 	var seed: float = float(MeshKit.hash_i(style, tone, 111) % 997)
-	var top: float = size.y - CORNICE
+	var top: float = DashWallKit.roof_of(size) - CORNICE
 	var storey: float = STOREYS[style]
 	DashWallKit.box(solid, size, -hx, hx, 0.0, top, -hz, wall_z, wall.darkened(0.05), MeshKit.PAT_CONCRETE,
 		MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY, 0.0)
@@ -80,13 +80,14 @@ func _block(facade: MeshLayer, solid: MeshLayer, size: Vector3, style: int, tone
 		DashWallKit.box(solid, size, minf(side * hx, side * (hx - PIER)), maxf(side * hx, side * (hx - PIER)), 0.0, top, wall_z - 0.1, hz,
 			wall.lightened(0.05), MeshKit.PAT_CONCRETE, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.0)
 	# The cornice, and a trim of dead neon tube along it (paint, never lit).
-	DashWallKit.box(solid, size, -hx, hx, size.y - CORNICE, size.y, -hz, hz, wall.lightened(0.1), MeshKit.PAT_CONCRETE,
+	DashWallKit.box(solid, size, -hx, hx, DashWallKit.roof_of(size) - CORNICE, DashWallKit.roof_of(size), -hz, hz, wall.lightened(0.1), MeshKit.PAT_CONCRETE,
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 0.0)
 	var tube: Color = skin.neon_colors[(tone + style) % skin.neon_colors.size()].darkened(0.45)
-	DashWallKit.box(solid, size, -hx + 0.06, hx - 0.06, size.y - CORNICE + 0.1, size.y - CORNICE + 0.22, hz - 0.05, hz, tube,
+	DashWallKit.box(solid, size, -hx + 0.06, hx - 0.06, DashWallKit.roof_of(size) - CORNICE + 0.1, DashWallKit.roof_of(size) - CORNICE + 0.22, hz - 0.05, hz, tube,
 		MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
-	DashWallKit.box(solid, size, -hx + 0.03, hx - 0.03, size.y - CORNICE - 0.1, size.y - CORNICE, wall_z + 0.05, hz - 0.03,
+	DashWallKit.box(solid, size, -hx + 0.03, hx - 0.03, DashWallKit.roof_of(size) - CORNICE - 0.1, DashWallKit.roof_of(size) - CORNICE, wall_z + 0.05, hz - 0.03,
 		Color(0.02, 0.022, 0.04), MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_NY)
+	DashWallKit.roof_plant(solid, size, wall.lightened(0.05), skin.neon_colors[(tone + style) % skin.neon_colors.size()].darkened(0.5), MeshKit.PAT_CONCRETE, 0.0, tone + style)
 	_damage(solid, size, wall_z, tone + style, Vector4(-hx + 0.9, hx - 0.9, 0.9, top - 0.6), wall)
 
 
@@ -102,5 +103,5 @@ func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, 
 	DashWallKit.cracks(solid, size, z + 0.01, at, 2 + seed % 2, Color(0.015, 0.015, 0.025), seed, 0.9)
 	var px: float = lerpf(at.x + 0.9, at.y - 0.9, MeshKit.hash01(seed, 5, 69))
 	var py: float = lerpf(at.z + 0.1, maxf(at.z + 0.2, at.w - 1.0), MeshKit.hash01(seed, 6, 69))
-	DashWallKit.spall(solid, size, px - 0.6, px + 0.6, py, py + 0.8, z + 0.01, 0.1, wall.darkened(0.5), wall.darkened(0.25),
+	DashWallKit.spall(solid, size, px - 0.6, px + 0.6, py, py + 0.8, z + 0.01, 0.1, wall.darkened(0.5), Color(0.1, 0.1, 0.14),
 		MeshKit.PAT_CONCRETE, 0.0)

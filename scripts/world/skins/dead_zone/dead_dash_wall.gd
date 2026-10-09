@@ -82,6 +82,7 @@ func _tower_foot(s: MeshLayer, size: Vector3, tone: int, rng: RandomNumberGenera
 	_windows(s, size, wall_z, tops, wall, style, param)
 	_ledge(s, size, wall_z, wall, rng)
 	_posts(s, size, wall_z, tops)
+	_foot_rubble(s, size, wall_z, rng, 9)
 	_damage(s, size, wall_z, tone, Vector4(-hx + 0.9, hx - 0.9, 0.9, TOP_MIN - 0.5), wall)
 
 
@@ -134,6 +135,7 @@ func _skeleton(s: MeshLayer, size: Vector3, tone: int, rng: RandomNumberGenerato
 				DashWallKit.box(s, size, x0, x1, h - 0.1, h + 0.28, wall_z - 0.05, wall_z + 0.2, steel, MeshKit.PAT_DZ_STEEL,
 					MeshKit.ALL_FACES, 0.0)
 	_posts(s, size, wall_z, PackedFloat32Array())
+	_foot_rubble(s, size, wall_z, rng, 9)
 	_damage(s, size, wall_z, tone + 2, Vector4(-hx + 0.9, hx - 0.9, 0.9, FOOT - 0.4), wall)
 
 
@@ -207,6 +209,7 @@ func _bunker(s: MeshLayer, size: Vector3, tone: int, rng: RandomNumberGenerator)
 				s.box_xform(Transform3D(bend, Vector3(rx, top - size.y * 0.5 + 0.4, wall_z - 0.3)), steel, 0.0, MeshKit.PAT_DZ_STEEL)
 		x += w
 	_posts(s, size, wall_z, PackedFloat32Array())
+	_foot_rubble(s, size, wall_z, rng, 10)
 	_damage(s, size, wall_z, tone + 6, Vector4(-hx + 0.9, hx - 0.9, 1.2, top - 0.4), concrete)
 
 
@@ -268,6 +271,18 @@ func _profile(size: Vector3, rng: RandomNumberGenerator, bites: int) -> PackedFl
 	return DashWallKit.broken_profile(size, rng, bites, TOP_MIN, STEP)
 
 
+## Rubble lying along the foot of the face: `count` chunks of broken concrete, none over 0.6 m high, in front of the
+## cladding (a ruin's own litter; the runner dashes through the wall, never over it).
+func _foot_rubble(s: MeshLayer, size: Vector3, z: float, rng: RandomNumberGenerator, count: int) -> void:
+	var hx: float = size.x * 0.5
+	var hz: float = size.z * 0.5
+	for i: int in count:
+		var dim := Vector3(rng.randf_range(0.35, 0.9), rng.randf_range(0.25, 0.5), rng.randf_range(0.35, 0.8))
+		var cx: float = rng.randf_range(-hx + 0.9 + dim.x * 0.5, hx - 0.9 - dim.x * 0.5)
+		var cz: float = rng.randf_range(z + dim.z * 0.3, hz - dim.z * 0.5)
+		_chunk(s, size, Vector3(cx, dim.y * 0.5, cz), dim, rng, _wall(i).darkened(rng.randf_range(0.0, 0.3)))
+
+
 ## A chunk of broken concrete at `at` (its centre, in the wall's space... y measured from the box's middle), `dim`
 ## across, turned at random.
 func _chunk(s: MeshLayer, size: Vector3, at: Vector3, dim: Vector3, rng: RandomNumberGenerator, color: Color) -> void:
@@ -287,5 +302,5 @@ func _damage(s: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, wall
 	var patch: float = 1.3
 	var px: float = lerpf(at.x + patch, at.y - patch, MeshKit.hash01(seed, 5, 19))
 	var py: float = lerpf(at.z + 0.1, maxf(at.z + 0.2, at.w - patch), MeshKit.hash01(seed, 6, 19))
-	DashWallKit.spall(s, size, px - patch * 0.5, px + patch * 0.5, py, py + patch * 0.8, z, 0.12, skin.soot_color.lightened(0.5),
-		wall.darkened(0.35), MeshKit.PAT_DZ_CONCRETE, 0.0)
+	DashWallKit.spall(s, size, px - patch * 0.5, px + patch * 0.5, py, py + patch * 0.8, z, 0.12, skin.soot_color.lightened(0.12),
+		skin.steel_color.lightened(0.35), MeshKit.PAT_DZ_CONCRETE, 0.0)

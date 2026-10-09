@@ -73,7 +73,7 @@ func _shop_row(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, size: Vect
 	var seed: float = float(MeshKit.hash_i(tone, windows, 91) % 997)
 	var g0: float = skin.gallery_bottom
 	var g1: float = skin.gallery_top
-	var top: float = size.y - CORNICE
+	var top: float = DashWallKit.roof_of(size) - CORNICE
 	_body(solid, size, wall_z, top, stucco)
 	DashWallKit.face(facade, size, -hx, hx, 0.0, g0, wall_z, stucco, MarketFacades.STYLE_LOWER, seed, hx, 0.0)
 	# The shop windows: evenly spaced between piers, the displays the walls' own window templates.
@@ -98,6 +98,7 @@ func _shop_row(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, size: Vect
 	# The strip at each end the bays don't reach: stucco piers up the full height.
 	_end_piers(solid, size, wall_z, top, stucco)
 	_cornice(solid, size, wall_z, stucco)
+	DashWallKit.roof_plant(solid, size, skin.window_metal_color, skin.window_metal_color.darkened(0.3), MeshKit.PAT_TECH, 1.0, tone + windows)
 	if lean_to:
 		_lean_to(solid, size, wall_z, g1)
 	_damage(solid, size, wall_z, tone + windows, Vector4(-hx + 1.0, hx - 1.0, g1 + 0.8, top - 0.6), stucco)
@@ -110,19 +111,23 @@ func _hall(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> voi
 	var wall_z: float = hz - FACE_BACK
 	var stucco: Color = _stucco(tone + 4)
 	var seed: float = float(MeshKit.hash_i(tone, 7, 93) % 997)
-	var top: float = size.y - CORNICE
+	var top: float = DashWallKit.roof_of(size) - CORNICE
 	_body(solid, size, wall_z, top, stucco)
 	DashWallKit.face(facade, size, -hx, hx, 0.0, skin.gallery_bottom, wall_z, stucco, MarketFacades.STYLE_LOWER, seed, hx, 0.0)
 	# The hall's own style from the plinth to the cornice: smooth panels through the band, the vault over them,
 	# cut into whole 4.2 m bays so its arches are never cut by the building's edge.
+	# The shader's grime tide starts at storey_base, so the face is lifted to start there at the plinth's top: the panels
+	# (to calm_top - 0.6) and the vault over them then sit about 2 m lower than on the walls, and show whole.
 	DashWallKit.bay_faces(facade, size, -hx + 0.5, hx - 0.5, 4.2, skin.gallery_bottom, top, wall_z, stucco, MarketFacades.STYLE_HALL,
-		seed, 0.0, 2)
+		seed, skin.gallery_top + 0.2 - skin.gallery_bottom, 2)
 	_end_piers(solid, size, wall_z, top, stucco)
 	# A stucco band across the hall where the panels end and the vault begins.
-	DashWallKit.box(solid, size, -hx, hx, (skin.decor_min_height - 1.0) - 0.65, (skin.decor_min_height - 1.0) - 0.4, wall_z - 0.02, wall_z + 0.14,
-		skin.trim_color, MeshKit.PAT_STUCCO, MeshKit.ALL_FACES, 0.0)
+	var vault: float = skin.decor_min_height - 1.0 - 0.6 - (skin.gallery_top + 0.2 - skin.gallery_bottom)
+	DashWallKit.box(solid, size, -hx, hx, vault - 0.12, vault + 0.1, wall_z - 0.02, wall_z + 0.14, skin.trim_color, MeshKit.PAT_STUCCO,
+		MeshKit.ALL_FACES, 0.0)
 	_cornice(solid, size, wall_z, stucco)
-	_damage(solid, size, wall_z, tone + 5, Vector4(-hx + 1.0, hx - 1.0, 1.0, (skin.decor_min_height - 1.0) - 1.0), stucco)
+	DashWallKit.roof_plant(solid, size, skin.window_metal_color, skin.window_metal_color.darkened(0.3), MeshKit.PAT_TECH, 1.0, tone + 9)
+	_damage(solid, size, wall_z, tone + 5, Vector4(-hx + 1.0, hx - 1.0, 1.0, vault - 0.5), stucco)
 
 
 ## A shop window `width` wide with its left edge at x: the display template of the walls (a left wall's, face at
@@ -164,7 +169,7 @@ func _end_piers(solid: MeshLayer, size: Vector3, wall_z: float, top: float, stuc
 func _cornice(solid: MeshLayer, size: Vector3, wall_z: float, stucco: Color) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	var top: float = size.y
+	var top: float = DashWallKit.roof_of(size)
 	DashWallKit.box(solid, size, -hx, hx, top - CORNICE, top, -hz, hz, skin.trim_color, MeshKit.PAT_STUCCO,
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 0.0)
 	DashWallKit.box(solid, size, -hx + 0.03, hx - 0.03, top - CORNICE - 0.1, top - CORNICE, wall_z + 0.05, hz - 0.03,
@@ -204,5 +209,5 @@ func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, 
 	DashWallKit.cracks(solid, size, z + 0.01, at, 2 + seed % 2, Color(0.2, 0.16, 0.12), seed)
 	var px: float = lerpf(at.x + 0.9, at.y - 0.9, MeshKit.hash01(seed, 5, 49))
 	var py: float = lerpf(at.z + 0.1, maxf(at.z + 0.2, at.w - 1.0), MeshKit.hash01(seed, 6, 49))
-	DashWallKit.spall(solid, size, px - 0.6, px + 0.6, py, py + 0.8, z + 0.01, 0.1, Color(0.42, 0.26, 0.2), stucco.darkened(0.15),
+	DashWallKit.spall(solid, size, px - 0.6, px + 0.6, py, py + 0.8, z + 0.01, 0.1, stucco.darkened(0.3), Color(0.3, 0.28, 0.26),
 		MeshKit.PAT_PLAIN, 0.0)

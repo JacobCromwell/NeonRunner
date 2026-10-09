@@ -24,6 +24,9 @@ const FACE_BACK: float = 0.6
 ## The cornice's height, and the half columns' and pilasters' radius.
 const CORNICE: float = 0.4
 const COLUMN: float = 0.3
+## The entablature's frieze is drawn this much lower than the walls' (8.6 m): the whole of its gold fluting then shows
+## under the cornice of a roof at size.y - ROOF.
+const FRIEZE_DROP: float = 0.6
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: GoldenSkin:
@@ -70,19 +73,21 @@ func _rustic(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> v
 	var wall_z: float = hz - FACE_BACK
 	var stone: Color = _stone(tone)
 	var seed: float = float(3 * (7 + tone))
-	_body(solid, size, wall_z, size.y - CORNICE, stone)
+	_body(solid, size, wall_z, DashWallKit.roof_of(size) - CORNICE, stone)
 	var x0: float = -hx + COLUMN * 2.0
 	var x1: float = hx - COLUMN * 2.0
 	_foot(facade, size, wall_z, seed)
-	DashWallKit.face(facade, size, -hx, hx, skin.band_top, skin.frieze_top, wall_z, stone, GoldenFacades.STYLE_FRIEZE, seed, hx, 0.0)
-	var bays: int = DashWallKit.bay_faces(facade, size, x0, x1, 3.6, skin.plinth_top, skin.band_top, wall_z, stone,
+	_frieze(facade, size, wall_z, stone, seed)
+	var bays: int = DashWallKit.bay_faces(facade, size, x0, x1, 3.6, skin.plinth_top, skin.band_top - FRIEZE_DROP, wall_z, stone,
 		GoldenFacades.STYLE_BAND, seed, 0.0, 2)
 	var w: float = (x1 - x0) / float(bays)
 	for k: int in bays + 1:
-		_column(solid, size, x0 + w * float(k), wall_z + COLUMN * 0.4, skin.plinth_top, skin.band_top - 0.2, stone)
+		_column(solid, size, x0 + w * float(k), wall_z + COLUMN * 0.4, skin.plinth_top, skin.band_top - FRIEZE_DROP - 0.2, stone)
+	_string_courses(solid, size, wall_z, skin.band_top - FRIEZE_DROP)
 	_cornice(solid, size, stone, wall_z)
 	_end_piers(solid, size, wall_z, stone)
-	_damage(solid, size, wall_z, tone, Vector4(-hx + 1.0, hx - 1.0, 1.2, skin.band_top - 0.8), stone)
+	_finials(solid, size, stone)
+	_damage(solid, size, wall_z, tone, Vector4(-hx + 1.0, hx - 1.0, 1.2, skin.band_top - FRIEZE_DROP - 0.8), stone)
 
 
 ## A rusticated palace: stone to a gold slab band, a storey of tall windows in their gold frames above it.
@@ -93,7 +98,7 @@ func _windows(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> 
 	var stone: Color = _stone(tone + 1)
 	var seed: float = float(3 * (11 + tone) + 0)
 	var base_top: float = 4.1
-	var top: float = size.y - CORNICE
+	var top: float = DashWallKit.roof_of(size) - CORNICE
 	_body(solid, size, wall_z, top, stone)
 	_foot(facade, size, wall_z, seed)
 	DashWallKit.bay_faces(facade, size, -hx + COLUMN * 2.0, hx - COLUMN * 2.0, 3.6, skin.plinth_top, base_top, wall_z, stone,
@@ -106,8 +111,10 @@ func _windows(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> 
 	# A gold slab band across the foot of the windows' storey, standing out of the face.
 	DashWallKit.box(solid, size, -hx, hx, base_top - 0.12, base_top + 0.16, wall_z - 0.05, hz - 0.05, skin.gold_color,
 		MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.9)
+	_string_courses(solid, size, wall_z, base_top)
 	_cornice(solid, size, stone, wall_z)
 	_end_piers(solid, size, wall_z, stone)
+	_finials(solid, size, stone)
 	_damage(solid, size, wall_z, tone + 2, Vector4(-hx + 1.0, hx - 1.0, 1.0, base_top - 0.6), stone)
 
 
@@ -120,7 +127,7 @@ func _tower(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> vo
 	var stone: Color = _stone(tone + 2)
 	var seed: float = float(3 * (5 + tone) + 1)
 	var base_top: float = 3.4
-	var top: float = size.y - CORNICE
+	var top: float = DashWallKit.roof_of(size) - CORNICE
 	_body(solid, size, wall_z, top, stone)
 	_foot(facade, size, wall_z, seed)
 	DashWallKit.face(facade, size, -hx, hx, skin.plinth_top, base_top, wall_z, stone, GoldenFacades.STYLE_BAND, seed, hx, 0.0)
@@ -135,8 +142,10 @@ func _tower(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> vo
 		var x: float = lerpf(-hx + COLUMN * 2.0 + 0.3, hx - COLUMN * 2.0 - 0.3, float(k) / float(fins))
 		DashWallKit.box(solid, size, x - 0.07, x + 0.07, base_top + 0.38, top, wall_z - 0.02, wall_z + 0.3, skin.gold_color,
 			MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.9)
+	_string_courses(solid, size, wall_z, base_top)
 	_cornice(solid, size, stone, wall_z)
 	_end_piers(solid, size, wall_z, stone)
+	_finials(solid, size, stone)
 	_damage(solid, size, wall_z, tone + 4, Vector4(-hx + 1.0, hx - 1.0, 0.9, base_top - 0.5), stone)
 
 
@@ -148,22 +157,34 @@ func _gatehouse(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -
 	var wall_z: float = hz - FACE_BACK
 	var stone: Color = _stone(tone + 3)
 	var seed: float = float(3 * (13 + tone) + 1)
-	_body(solid, size, wall_z, size.y - CORNICE, stone)
+	_body(solid, size, wall_z, DashWallKit.roof_of(size) - CORNICE, stone)
 	_foot(facade, size, wall_z, seed)
-	DashWallKit.face(facade, size, -hx, hx, skin.plinth_top, skin.band_top, wall_z, stone, GoldenFacades.STYLE_BAND, seed, hx, 0.0)
-	DashWallKit.face(facade, size, -hx, hx, skin.band_top, skin.frieze_top, wall_z, stone, GoldenFacades.STYLE_FRIEZE, seed, hx, 0.0)
+	DashWallKit.face(facade, size, -hx, hx, skin.plinth_top, skin.band_top - FRIEZE_DROP, wall_z, stone, GoldenFacades.STYLE_BAND, seed, hx, 0.0)
+	_frieze(facade, size, wall_z, stone, seed)
 	var bays: int = maxi(2, roundi(size.x / 4.5))
 	for k: int in bays + 1:
 		var x: float = lerpf(-hx + COLUMN * 2.0, hx - COLUMN * 2.0, float(k) / float(bays))
-		DashWallKit.box(solid, size, x - 0.2, x + 0.2, skin.plinth_top, skin.frieze_top, wall_z - 0.02, wall_z + 0.25, stone.lightened(0.04),
+		DashWallKit.box(solid, size, x - 0.2, x + 0.2, skin.plinth_top, DashWallKit.roof_of(size) - CORNICE, wall_z - 0.02, wall_z + 0.25, stone.lightened(0.04),
 			MeshKit.PAT_MARBLE, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.0)
-		DashWallKit.box(solid, size, x - 0.26, x + 0.26, skin.frieze_top - 0.3, skin.frieze_top, wall_z - 0.02, wall_z + 0.3,
+		DashWallKit.box(solid, size, x - 0.26, x + 0.26, DashWallKit.roof_of(size) - CORNICE - 0.3, DashWallKit.roof_of(size) - CORNICE, wall_z - 0.02, wall_z + 0.3,
 			skin.gold_color, MeshKit.PAT_GOLD, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 0.9)
 		DashWallKit.box(solid, size, x - 0.26, x + 0.26, skin.plinth_top, skin.plinth_top + 0.3, wall_z - 0.02, wall_z + 0.3,
 			skin.granite_color, MeshKit.PAT_MARBLE, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 1.0)
+	_string_courses(solid, size, wall_z, skin.band_top - FRIEZE_DROP)
 	_cornice(solid, size, stone, wall_z)
 	_end_piers(solid, size, wall_z, stone)
-	_damage(solid, size, wall_z, tone + 6, Vector4(-hx + 1.0, hx - 1.0, 1.2, skin.band_top - 0.8), stone)
+	_finials(solid, size, stone)
+	_damage(solid, size, wall_z, tone + 6, Vector4(-hx + 1.0, hx - 1.0, 1.2, skin.band_top - FRIEZE_DROP - 0.8), stone)
+
+
+## Gold string courses where the band's inlay lines run (the wall-run marks, 2 m and 4 m: the shader draws them on
+## every face of the band), standing a little out of the face up to `up_to`: the lines read as the building's own.
+func _string_courses(solid: MeshLayer, size: Vector3, wall_z: float, up_to: float) -> void:
+	var hx: float = size.x * 0.5
+	for mark: float in skin.wall_height_marks:
+		if mark < up_to - 0.1:
+			DashWallKit.box(solid, size, -hx + COLUMN * 2.0, hx - COLUMN * 2.0, mark - 0.045, mark + 0.045, wall_z - 0.01, wall_z + 0.05,
+				skin.gold_color, MeshKit.PAT_GOLD, MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY, 0.9)
 
 
 ## The granite plinth at the foot of every look, polished slabs under a gold kick line, standing a little out
@@ -174,17 +195,31 @@ func _foot(facade: MeshLayer, size: Vector3, wall_z: float, seed: float) -> void
 		hx, 0.0)
 
 
+## The entablature's frieze across the whole width, from just under the band's top up to the roof line (its gold
+## fluting runs under the cornice).
+func _frieze(facade: MeshLayer, size: Vector3, wall_z: float, stone: Color, seed: float) -> void:
+	var hx: float = size.x * 0.5
+	DashWallKit.face(facade, size, -hx, hx, skin.band_top - FRIEZE_DROP, DashWallKit.roof_of(size), wall_z, stone,
+		GoldenFacades.STYLE_FRIEZE, seed, hx, FRIEZE_DROP)
+
+
 ## The marble cornice standing out to the face, with its gold line and a gold rail's cap on top.
 func _cornice(solid: MeshLayer, size: Vector3, stone: Color, wall_z: float) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	var top: float = size.y
+	var top: float = DashWallKit.roof_of(size)
 	DashWallKit.box(solid, size, -hx, hx, top - CORNICE, top, -hz, hz, stone.lightened(0.04), MeshKit.PAT_MARBLE,
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 0.0)
 	DashWallKit.box(solid, size, -hx + 0.03, hx - 0.03, top - CORNICE - 0.12, top - CORNICE, wall_z + 0.05, hz - 0.03, stone.darkened(0.2),
 		MeshKit.PAT_MARBLE, MeshKit.FACE_PZ | MeshKit.FACE_NY, 0.0)
 	DashWallKit.box(solid, size, -hx + 0.02, hx - 0.02, top - CORNICE + 0.08, top - CORNICE + 0.2, hz - 0.01, hz, skin.gold_color,
 		MeshKit.PAT_GOLD, MeshKit.FACE_PZ, 0.9)
+
+
+## Urn finials on the roof line over the end piers and the middle: a stone plinth, an urn, a gold cap, reaching up to
+## the box's top.
+func _finials(solid: MeshLayer, size: Vector3, stone: Color) -> void:
+	DashWallKit.finials(solid, size, stone.lightened(0.04), skin.gold_color, MeshKit.PAT_MARBLE, MeshKit.PAT_GOLD)
 
 
 ## Square piers at both ends of the face, from the floor to the cornice, standing out to the box's face: the
@@ -194,7 +229,7 @@ func _end_piers(solid: MeshLayer, size: Vector3, wall_z: float, stone: Color) ->
 	var hz: float = size.z * 0.5
 	for side: float in [-1.0, 1.0]:
 		DashWallKit.box(solid, size, minf(side * hx, side * (hx - COLUMN * 2.0)), maxf(side * hx, side * (hx - COLUMN * 2.0)), 0.0,
-			size.y - CORNICE, wall_z - 0.1, hz, stone.lightened(0.03), MeshKit.PAT_MARBLE, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 1.0)
+			DashWallKit.roof_of(size) - CORNICE, wall_z - 0.1, hz, stone.lightened(0.03), MeshKit.PAT_MARBLE, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 1.0)
 		DashWallKit.box(solid, size, minf(side * hx, side * (hx - COLUMN * 2.0 - 0.04)),
 			maxf(side * hx, side * (hx - COLUMN * 2.0 - 0.04)), 0.0, 0.3, wall_z - 0.1, hz, skin.granite_color,
 			MeshKit.PAT_MARBLE, MeshKit.FACE_PZ | MeshKit.FACE_PX | MeshKit.FACE_NX, 1.0)
@@ -223,11 +258,6 @@ func _stone(tone: int) -> Color:
 
 
 ## What says "this breaks": hairline cracks (a darker shade of the marble's veins) spreading across the face from a
-## few points, and a chipped block (a recess of the grey stone behind it) where the cladding has come away. `at`
-## bounds both (x0, x1, h0, h1).
-func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, stone: Color) -> void:
-	DashWallKit.cracks(solid, size, z + 0.01, at, 2 + seed % 2, skin.vein_color.darkened(0.55), seed, 0.6)
-	var px: float = lerpf(at.x + 0.8, at.y - 0.8, MeshKit.hash01(seed, 5, 29))
-	var py: float = lerpf(at.z + 0.1, maxf(at.z + 0.2, at.w - 0.9), MeshKit.hash01(seed, 6, 29))
-	DashWallKit.spall(solid, size, px - 0.45, px + 0.45, py, py + 0.7, z + 0.01, 0.1, stone.darkened(0.3), stone.darkened(0.12),
-		MeshKit.PAT_MARBLE, 1.0)
+## few points (the elite's city keeps its stone clean: no fallen patches). `at` bounds them (x0, x1, h0, h1).
+func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, _stone: Color) -> void:
+	DashWallKit.cracks(solid, size, z + 0.01, at, 3, skin.vein_color.darkened(0.55), seed, 0.6)

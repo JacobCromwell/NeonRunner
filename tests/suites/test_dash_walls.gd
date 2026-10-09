@@ -24,7 +24,9 @@ extends TestSuite
 ##   a heavier shake that Screen shake scales away, the crash's sound), Reduced flashing changes nothing; the
 ##   warm-up draws its look and its crumble while the level loads.
 ## - It stays broken for the attempt, through a death and a revive, and a retry rebuilds it whole.
-## - Every skin dresses it inside its box, lit and never glowing, and names its pieces' colours; the hint.
+## - Every skin dresses it inside its box, lit and never glowing, and names its pieces' colours; every zone's own look
+##   (task H7b: built from its side-wall kit, a few layouts by seed, on the surfaces the skin names, one small mesh
+##   built in a moment) keeps to the same contract; the hint.
 ## - The enemies: a hover truck gives way to a wall (it drops behind the runner, who meets the wall first) and
 ##   bursts through one it can't give way to; a heli drone rises over one and holds its barrage near it.
 
@@ -36,6 +38,13 @@ const LEVELS: PackedStringArray = ["corporate/1", "corporate/2", "dead_zone/1", 
 	"golden/3"]
 ## Seeds other than a level's own tried per level and lane count.
 const OTHER_SEEDS: int = 2
+## A wall's look is one small mesh: at most this many surfaces and vertices, built (the first time, in a skin whose
+## materials already exist) in under these milliseconds on average and at most (DESIGN-TBD: measured about 1 ms and
+## 4000 vertices; the room is for a loaded machine).
+const WALL_SURFACES_MAX: int = 3
+const WALL_VERTICES_MAX: int = 8000
+const WALL_BUILD_MEAN_MS: float = 12.0
+const WALL_BUILD_MAX_MS: float = 60.0
 ## How far into the body a frame may carry it while a wall still stands (metres): rounding only.
 const TOUCH_TOLERANCE: float = 0.02
 const O = DamageRules.Outcome
@@ -747,6 +756,11 @@ func _test_skins() -> void:
 						lit_materials = lit_materials and mat != null and mat in skin.dash_wall_materials()
 					check(not glows and lit_materials, "lit, never glowing (materials the skin names) %s" % tag)
 					meshes[inst.mesh] = true
+					var vertices: int = 0
+					for surface: int in inst.mesh.get_surface_count():
+						vertices += inst.mesh.surface_get_array_len(surface)
+					check(inst.mesh.get_surface_count() <= WALL_SURFACES_MAX and vertices <= WALL_VERTICES_MAX,
+						"one small mesh (%d surfaces, %d vertices) %s" % [inst.mesh.get_surface_count(), vertices, tag])
 				var inside: bool = not colors.is_empty()
 				for c: Color in colors:
 					var found: bool = false
@@ -760,7 +774,43 @@ func _test_skins() -> void:
 					"the same mesh for the same box and seed (built once) %s" % tag)
 				body.free()
 				twin.free()
-			check(meshes.size() >= 2, "a few looks over the seeds (%d) (%s, %d lanes)" % [meshes.size(), names[i], lanes])
+			check(meshes.size() >= 4, "a few looks over the seeds (%d) (%s, %d lanes)" % [meshes.size(), names[i], lanes])
+	for i: int in skins.size():
+		if names[i] != "grey box":
+			check(_has_own_hook(skins[i], "dash_wall"), "the zone has a look of its own (%s)" % names[i])
+	_test_skin_build_times(skins, names)
+
+
+## Whether `skin`'s own script (not the base ZoneSkin's) defines the method `hook`.
+func _has_own_hook(skin: ZoneSkin, hook: String) -> bool:
+	for m: Dictionary in (skin.get_script() as Script).get_script_method_list():
+		if m["name"] == hook:
+			return true
+	return false
+
+
+## A zone's walls are cheap to build: every layout and tone (12 seeds) in a box of a size not built before, in a skin
+## whose materials already exist (they are made the first time a wall is, and again by every chunk's walls).
+func _test_skin_build_times(skins: Array[ZoneSkin], names: PackedStringArray) -> void:
+	var geo := TrackGeometry.new(6, tuning)
+	for i: int in skins.size():
+		var skin: ZoneSkin = skins[i]
+		skin.dash_wall_materials()
+		var size: Vector3 = TrackBuilder.dash_wall_size(geo, tuning, tuning.dash_wall_depth)
+		size.x += 0.0371
+		var total: float = 0.0
+		var worst: float = 0.0
+		for look_seed: int in 12:
+			var body := Node3D.new()
+			var t0: int = Time.get_ticks_usec()
+			skin.dash_wall(body, size, look_seed)
+			var ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
+			total += ms
+			worst = maxf(worst, ms)
+			body.free()
+		print("  dash wall (%s, 12 looks built): mean %.2f ms, max %.2f ms" % [names[i], total / 12.0, worst])
+		check(total / 12.0 < WALL_BUILD_MEAN_MS and worst < WALL_BUILD_MAX_MS, "a wall builds in a moment (%s: mean %.2f ms, max %.2f ms)" % [
+			names[i], total / 12.0, worst])
 
 
 ## The first-encounter hint (data/hints/hints.json, trigger dash_wall): it says to dash through, names the dash

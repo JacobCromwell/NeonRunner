@@ -6,7 +6,8 @@ extends RefCounted
 ## cladding between brushed steel pilasters (corp_facade.gdshader's PODIUM, with its smoked-glass lobby on some),
 ## the towers' glass curtain walls and fins above a steel canopy, the military's prefab blast walls and armour
 ## plating, steel cornices, all in the zone's own colours. Four looks by the wall's seed:
-## - 0 a finned tower's foot: the podium's cladding under a steel canopy, the vertical fins of the fins towers over it;
+## - 0 a tower's foot: the podium's cladding under a steel canopy, a curtain wall of dark glass in light steel
+##   mullions over it, steel fins standing out of the glass;
 ## - 1 a lobby: the podium's smoked-glass lobby under the canopy, precast concrete over it with ribbon windows
 ##   in deep steel frames;
 ## - 2 a military compound's front: blast walls with an armoured block set back over them, a row of slit windows;
@@ -54,7 +55,7 @@ func mesh_for(size: Vector3, look_seed: int) -> ArrayMesh:
 	var solid: MeshLayer = batch.layer(skin.solid_material())
 	match look:
 		0:
-			_fin_tower(facade, solid, size, tone)
+			_glass_tower(facade, solid, size, tone)
 		1:
 			_lobby(facade, solid, size, tone)
 		2:
@@ -66,25 +67,27 @@ func mesh_for(size: Vector3, look_seed: int) -> ArrayMesh:
 	return mesh
 
 
-## A finned tower's foot: the podium's cladding up to a steel canopy, the fins of the fins towers over it up to
-## the cornice, steel pilasters at its ends.
-func _fin_tower(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> void:
+## A tower's foot: the podium's cladding up to a steel canopy, a curtain wall over it up to the cornice with steel
+## fins standing out of the glass, steel pilasters at its ends.
+func _glass_tower(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
 	var wall_z: float = hz - FACE_BACK
-	var upper_top: float = size.y - CORNICE
+	var upper_top: float = DashWallKit.roof_of(size) - CORNICE
 	var podium: Color = _cladding(tone)
-	var tower: Color = skin.facade_colors[(2 + tone) % skin.facade_colors.size()].lightened(0.1)
+	var tower: Color = skin.facade_colors[(2 + tone) % skin.facade_colors.size()].lightened(0.15)
 	var steel: Color = skin.pilaster_color
 	# A seed whose podium has no lobby: the cladding stays solid.
 	var seed: float = DashWallKit.seed_where(100 * tone + 11, 1.7, 0.3, 0.45, false)
 	_body(solid, size, wall_z, upper_top, podium)
 	DashWallKit.face(facade, size, -hx, hx, 0.0, CANOPY_AT, wall_z, podium, CorporateTowers.STYLE_PODIUM, seed, hx, 0.0)
 	DashWallKit.face(facade, size, -hx + PILASTER, hx - PILASTER, CANOPY_AT + CANOPY_THICK, upper_top, wall_z, tower,
-		CorporateTowers.STYLE_FINS, seed, hx, skin.band_top - CANOPY_AT)
+		CorporateTowers.STYLE_CURTAIN, seed, hx, skin.band_top - CANOPY_AT)
+	_fins(solid, size, wall_z, upper_top, steel)
 	_canopy(solid, size, wall_z, steel, tone)
 	_pilasters(solid, size, wall_z, upper_top, steel)
 	_cornice(solid, size, steel)
+	DashWallKit.roof_plant(solid, size, skin.gunmetal_color.lightened(0.12), steel, MeshKit.PAT_CORP_PLATE, 2.0, tone)
 	_damage(solid, size, wall_z, tone, Vector4(-hx + 0.9, hx - 0.9, 0.9, upper_top - 0.6), podium, 1.4)
 
 
@@ -94,7 +97,7 @@ func _lobby(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> vo
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
 	var wall_z: float = hz - FACE_BACK
-	var upper_top: float = size.y - CORNICE
+	var upper_top: float = DashWallKit.roof_of(size) - CORNICE
 	var podium: Color = _cladding(tone + 1)
 	var concrete: Color = skin.concrete_color.darkened(0.12 * float(tone))
 	var steel: Color = skin.pilaster_color
@@ -108,10 +111,13 @@ func _lobby(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> vo
 	var dark := Color(0.04, 0.05, 0.06)
 	var bay: float = (size.x - 2.0 * PILASTER) / float(maxi(2, roundi((size.x - 2.0 * PILASTER) / 3.2)))
 	var bays: int = roundi((size.x - 2.0 * PILASTER) / bay)
-	for row: int in 2:
-		var h0: float = CANOPY_AT + CANOPY_THICK + 0.55 + 1.9 * float(row)
-		if h0 + 1.2 > upper_top - 0.3:
-			continue
+	# One ribbon of windows or two, spread evenly over the storeys' height.
+	var from: float = CANOPY_AT + CANOPY_THICK
+	var available: float = upper_top - from
+	var rows: int = 2 if available > 3.9 else 1
+	var gap: float = (available - float(rows) * 1.2) / float(rows + 1)
+	for row: int in rows:
+		var h0: float = from + gap + (1.2 + gap) * float(row)
 		for b: int in bays:
 			var x0: float = -hx + PILASTER + bay * float(b) + 0.3
 			var x1: float = -hx + PILASTER + bay * float(b + 1) - 0.3
@@ -122,6 +128,7 @@ func _lobby(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> vo
 	_canopy(solid, size, wall_z, steel, tone)
 	_pilasters(solid, size, wall_z, upper_top, steel)
 	_cornice(solid, size, steel)
+	DashWallKit.roof_plant(solid, size, skin.gunmetal_color.lightened(0.12), steel, MeshKit.PAT_CORP_PLATE, 2.0, tone + 2)
 	_damage(solid, size, wall_z, tone + 2, Vector4(-hx + 0.9, hx - 0.9, 0.9, upper_top - 0.6), concrete, 1.5)
 
 
@@ -130,7 +137,7 @@ func _lobby(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> vo
 func _compound(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	var h_top: float = size.y
+	var h_top: float = DashWallKit.roof_of(size)
 	var wall_z: float = hz - 0.12
 	var block_z: float = hz - 1.15
 	var wall_top: float = 3.3
@@ -167,8 +174,9 @@ func _compound(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) ->
 		DashWallKit.box(solid, size, minf(side * hx, side * (hx - 0.4)), maxf(side * hx, side * (hx - 0.4)), 0.0,
 			wall_top + 0.14, wall_z - 0.1, hz, gun, MeshKit.PAT_CORP_PLATE, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 1.0)
 	_cornice(solid, size, gun)
-	_damage(solid, size, wall_z, tone + 3, Vector4(-hx + 0.8, hx - 0.8, 0.5, wall_top - 0.3), olive, 1.2)
-	_damage(solid, size, block_z, tone + 5, Vector4(-hx + 0.8, hx - 0.8, wall_top + 0.5, top - 0.5), armour, 1.0)
+	DashWallKit.roof_plant(solid, size, gun.lightened(0.1), gun.lightened(0.25), MeshKit.PAT_CORP_PLATE, 1.0, tone + 3)
+	_damage(solid, size, wall_z, tone + 3, Vector4(-hx + 0.8, hx - 0.8, 0.5, wall_top - 0.3), olive, 0.9, 1)
+	_damage(solid, size, block_z, tone + 5, Vector4(-hx + 0.8, hx - 0.8, wall_top + 0.5, top - 0.5), armour, 1.0, 2)
 
 
 ## A podium building: the calm band's cladding in steel pilasters up to the steel fascia, a plant floor under
@@ -176,7 +184,7 @@ func _compound(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) ->
 func _podium(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	var h_top: float = size.y
+	var h_top: float = DashWallKit.roof_of(size)
 	var wall_z: float = hz - FACE_BACK * 0.6
 	var podium: Color = _cladding(tone + 2)
 	var steel: Color = skin.pilaster_color
@@ -204,6 +212,7 @@ func _podium(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> v
 			MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 2.0)
 		k += 1
 	_cornice(solid, size, steel)
+	DashWallKit.roof_plant(solid, size, skin.gunmetal_color.lightened(0.12), steel, MeshKit.PAT_CORP_PLATE, 2.0, tone + 7)
 	_damage(solid, size, wall_z, tone + 7, Vector4(-hx + 0.9, hx - 0.9, 0.9, band - 0.6), podium, 1.6)
 
 
@@ -221,6 +230,17 @@ func _canopy(solid: MeshLayer, size: Vector3, wall_z: float, steel: Color, tone:
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 2.0)
 	DashWallKit.box(solid, size, -hx + 0.02, hx - 0.02, CANOPY_AT + 0.08, CANOPY_AT + 0.24, hz - 0.01, hz,
 		skin.brand_paint_color if tone != 1 else steel.darkened(0.3), MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+
+
+## Steel fins standing out of the curtain wall, every FIN_SPACING metres from the canopy up to the cornice.
+func _fins(solid: MeshLayer, size: Vector3, wall_z: float, top: float, steel: Color) -> void:
+	var hx: float = size.x * 0.5
+	var k: int = 1
+	while -hx + float(k) * FIN_SPACING < hx - PILASTER - 0.4:
+		var x: float = -hx + float(k) * FIN_SPACING
+		DashWallKit.box(solid, size, x - FIN_WIDTH * 0.5, x + FIN_WIDTH * 0.5, CANOPY_AT + CANOPY_THICK, top, wall_z - 0.02,
+			wall_z + 0.22, steel.darkened(0.12), MeshKit.PAT_CORP_PLATE, MeshKit.ALL_FACES, 2.0)
+		k += 1
 
 
 ## The block's body behind its face: its sides and top only (the face is the facade's), from the floor up to
@@ -245,7 +265,7 @@ func _pilasters(solid: MeshLayer, size: Vector3, wall_z: float, top: float, colo
 func _cornice(solid: MeshLayer, size: Vector3, color: Color) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	var h_top: float = size.y
+	var h_top: float = DashWallKit.roof_of(size)
 	DashWallKit.box(solid, size, -hx, hx, h_top - CORNICE, h_top, -hz, hz, color, MeshKit.PAT_CORP_PLATE,
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 2.0)
 	DashWallKit.box(solid, size, -hx + 0.04, hx - 0.04, h_top - CORNICE - 0.1, h_top - CORNICE, hz - FACE_BACK, hz - 0.05,
@@ -254,10 +274,10 @@ func _cornice(solid: MeshLayer, size: Vector3, color: Color) -> void:
 
 ## What says "this breaks": cracks spreading across the face from a few points, and a patch (or two) where the
 ## cladding has come away, showing the dark concrete behind. `at` bounds both (x0, x1, h0, h1).
-func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, wall: Color, patch: float) -> void:
-	var crack: Color = Color(0.025, 0.028, 0.034)
-	DashWallKit.cracks(solid, size, z, at, 2 + seed % 2, crack, seed)
+func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, wall: Color, patch: float, hits: int = 2) -> void:
+	var crack: Color = Color(0.03, 0.034, 0.04)
+	DashWallKit.cracks(solid, size, z, at, hits, crack, seed)
 	var px: float = lerpf(at.x + patch, at.y - patch, MeshKit.hash01(seed, 5, 9))
 	var py: float = lerpf(at.z + 0.2, at.w - patch, MeshKit.hash01(seed, 6, 9))
-	DashWallKit.spall(solid, size, px - patch * 0.5, px + patch * 0.5, py, py + patch * 0.8, z, 0.12, wall.darkened(0.55),
-		wall.darkened(0.3), MeshKit.PAT_CORP_PLATE, 3.0)
+	DashWallKit.spall(solid, size, px - patch * 0.4, px + patch * 0.4, py, py + patch * 0.7, z, 0.12, wall.darkened(0.32),
+		skin.gunmetal_color.lightened(0.2), MeshKit.PAT_CORP_PLATE, 3.0)

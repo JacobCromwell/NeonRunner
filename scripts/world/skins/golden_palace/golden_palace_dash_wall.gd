@@ -74,9 +74,9 @@ func _pilastered(s: MeshLayer, size: Vector3, tone: int) -> void:
 		var x1: float = xs[b + 1] - PILASTER - 0.35
 		# A moulded panel in each bay: a gold-bordered recess, an upper and a lower one.
 		_panel(s, size, x0, x1, 0.9, 3.9, wall_z, stone)
-		_panel(s, size, x0, x1, 4.4, skin.frieze_top - 0.5, wall_z, stone)
+		_panel(s, size, x0, x1, 4.4, DashWallKit.roof_of(size) - CORNICE - 0.4, wall_z, stone)
 	_pilasters(s, size, xs, wall_z, stone)
-	_finish(s, size, wall_z, stone, tone, Vector4(-hx + 1.0, hx - 1.0, 1.0, size.y - 1.2))
+	_finish(s, size, wall_z, stone, tone, Vector4(-hx + 1.0, hx - 1.0, 1.0, DashWallKit.roof_of(size) - 1.2))
 
 
 ## A gallery: a row of gold-framed galleries (dark rooms behind a gold frame) high over a plain marble base.
@@ -125,7 +125,7 @@ func _hall(s: MeshLayer, size: Vector3, tone: int) -> void:
 	var xs: Array[float] = _bay_edges(size, bays)
 	DashWallKit.box(s, size, -hx, hx, 0.0, 1.6, wall_z - 0.05, wall_z + 0.25, skin.granite_color, MeshKit.PAT_MARBLE,
 		MeshKit.ALL_FACES, 1.0)
-	for h: float in [1.6, 4.9, skin.frieze_top - 0.7]:
+	for h: float in [1.6, 4.9, DashWallKit.roof_of(size) - CORNICE - 0.8]:
 		DashWallKit.box(s, size, -hx, hx, h, h + 0.14, wall_z - 0.02, wall_z + 0.22, skin.gold_color, MeshKit.PAT_GOLD,
 			MeshKit.ALL_FACES, 0.9)
 	# The coffered frieze: a row of gold-bordered square coffers under the cornice.
@@ -133,7 +133,7 @@ func _hall(s: MeshLayer, size: Vector3, tone: int) -> void:
 	var cw: float = (size.x - 1.2) / float(coffers)
 	for k: int in coffers:
 		var cx: float = -hx + 0.6 + cw * (float(k) + 0.5)
-		DashWallKit.frame_rect(s, size, cx - cw * 0.5 + 0.18, cx + cw * 0.5 - 0.18, skin.frieze_top - 0.52, size.y - CORNICE - 0.18,
+		DashWallKit.frame_rect(s, size, cx - cw * 0.5 + 0.18, cx + cw * 0.5 - 0.18, DashWallKit.roof_of(size) - CORNICE - 0.7, DashWallKit.roof_of(size) - CORNICE - 0.18,
 			wall_z + 0.04, 0.06, 0.06, skin.gold_color, MeshKit.PAT_GOLD, 0.9)
 	_pilasters(s, size, xs, wall_z, stone)
 	_finish(s, size, wall_z, stone, tone + 3, Vector4(-hx + 1.0, hx - 1.0, 1.8, 4.5))
@@ -144,7 +144,7 @@ func _hall(s: MeshLayer, size: Vector3, tone: int) -> void:
 func _shell(s: MeshLayer, size: Vector3, wall_z: float, stone: Color) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	var top: float = size.y - CORNICE
+	var top: float = DashWallKit.roof_of(size) - CORNICE
 	DashWallKit.box(s, size, -hx, hx, 0.0, top, -hz, wall_z, stone, MeshKit.PAT_PALACE_PANEL,
 		MeshKit.FACE_PZ | MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY, 0.0)
 	DashWallKit.box(s, size, -hx, hx, 0.0, 0.7, wall_z - 0.05, wall_z + 0.18, skin.granite_color, MeshKit.PAT_MARBLE,
@@ -169,11 +169,11 @@ func _pilasters(s: MeshLayer, size: Vector3, xs: Array[float], wall_z: float, st
 	var hz: float = size.z * 0.5
 	for k: int in xs.size():
 		var end: bool = k == 0 or k == xs.size() - 1
-		DashWallKit.column(s, size, xs[k], wall_z + PILASTER * 0.5, 0.8, size.y - CORNICE - 0.05, PILASTER * (1.15 if end else 1.0),
+		DashWallKit.column(s, size, xs[k], wall_z + PILASTER * 0.5, 0.8, DashWallKit.roof_of(size) - CORNICE - 0.05, PILASTER * (1.15 if end else 1.0),
 			skin.granite_color, stone.lightened(0.04), skin.gold_color, MeshKit.PAT_MARBLE, MeshKit.PAT_MARBLE, MeshKit.PAT_GOLD, 0.9)
 	for side: float in [-1.0, 1.0]:
 		DashWallKit.box(s, size, minf(side * hx, side * (hx - PILASTER)), maxf(side * hx, side * (hx - PILASTER)), 0.0,
-			size.y - CORNICE, wall_z - 0.1, hz, stone.lightened(0.02), MeshKit.PAT_MARBLE,
+			DashWallKit.roof_of(size) - CORNICE, wall_z - 0.1, hz, stone.lightened(0.02), MeshKit.PAT_MARBLE,
 			MeshKit.ALL_FACES, 1.0)
 
 
@@ -188,9 +188,13 @@ func _panel(s: MeshLayer, size: Vector3, x0: float, x1: float, h0: float, h1: fl
 ## A gallery (a gold-framed opening onto a dark hall, its sides in shadow) or, `arched`, a window with a round
 ## head: the frame stands out of the panel, the dark behind it is unlit.
 func _gallery(s: MeshLayer, size: Vector3, x0: float, x1: float, h0: float, h1: float, wall_z: float, arched: bool) -> void:
-	var dark := Color(0.09, 0.085, 0.085)
+	var dark := Color(0.13, 0.1, 0.085)
+	var far := Color(0.24, 0.19, 0.145)
 	var rect_top: float = h1 - (x1 - x0) * 0.5 if arched else h1
+	# The hall behind: a warm dark, the far floor a shade lighter at the foot of the opening, so it reads as a room
+	# and never as a screen.
 	DashWallKit.box(s, size, x0, x1, h0, rect_top, wall_z - 0.3, wall_z + 0.02, dark, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	DashWallKit.box(s, size, x0, x1, h0, h0 + (rect_top - h0) * 0.28, wall_z - 0.3, wall_z + 0.025, far, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
 	if arched:
 		var r: float = (x1 - x0) * 0.5
 		var cx: float = (x0 + x1) * 0.5
@@ -211,18 +215,15 @@ func _gallery(s: MeshLayer, size: Vector3, x0: float, x1: float, h0: float, h1: 
 func _finish(s: MeshLayer, size: Vector3, wall_z: float, stone: Color, seed: int, at: Vector4) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	var top: float = size.y
+	var top: float = DashWallKit.roof_of(size)
 	DashWallKit.box(s, size, -hx, hx, top - CORNICE, top, -hz, hz, stone.lightened(0.04), MeshKit.PAT_MARBLE,
 		MeshKit.ALL_FACES & ~MeshKit.FACE_NY, 0.0)
 	DashWallKit.box(s, size, -hx + 0.03, hx - 0.03, top - CORNICE - 0.14, top - CORNICE, wall_z + 0.05, hz - 0.03, stone.darkened(0.25),
 		MeshKit.PAT_MARBLE, MeshKit.FACE_PZ | MeshKit.FACE_NY, 0.0)
 	DashWallKit.box(s, size, -hx + 0.02, hx - 0.02, top - CORNICE + 0.1, top - CORNICE + 0.24, hz - 0.01, hz, skin.gold_color,
 		MeshKit.PAT_GOLD, MeshKit.FACE_PZ, 0.9)
-	DashWallKit.cracks(s, size, wall_z + 0.03, at, 2 + seed % 2, skin.vein_color.darkened(0.55), seed, 0.6)
-	var px: float = lerpf(at.x + 0.8, at.y - 0.8, MeshKit.hash01(seed, 5, 39))
-	var py: float = lerpf(at.z + 0.1, maxf(at.z + 0.2, at.w - 0.9), MeshKit.hash01(seed, 6, 39))
-	DashWallKit.spall(s, size, px - 0.45, px + 0.45, py, py + 0.7, wall_z + 0.03, 0.1, stone.darkened(0.3), stone.darkened(0.12),
-		MeshKit.PAT_MARBLE, 1.0)
+	DashWallKit.finials(s, size, stone.lightened(0.04), skin.gold_color, MeshKit.PAT_MARBLE, MeshKit.PAT_GOLD)
+	DashWallKit.cracks(s, size, wall_z + 0.03, at, 3, skin.vein_color.darkened(0.55), seed, 0.6)
 
 
 ## A marble tone: the palace's white and cream marbles (the floor's), a shade warmer than the walls.

@@ -222,5 +222,5 @@ func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, 
 	DashWallKit.cracks(solid, size, z + 0.01, at, 2 + seed % 2, skin.soot_color, seed, 0.8)
 	var px: float = lerpf(at.x + 0.9, at.y - 0.9, MeshKit.hash01(seed, 5, 59))
 	var py: float = lerpf(at.z + 0.1, maxf(at.z + 0.2, at.w - 1.0), MeshKit.hash01(seed, 6, 59))
-	DashWallKit.spall(solid, size, px - 0.6, px + 0.6, py, py + 0.8, z + 0.01, 0.1, wall.darkened(0.45), wall.darkened(0.2),
+	DashWallKit.spall(solid, size, px - 0.6, px + 0.6, py, py + 0.8, z + 0.01, 0.1, wall.darkened(0.45), skin.rust_color,
 		MeshKit.PAT_CONCRETE, 0.0)

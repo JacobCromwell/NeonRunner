@@ -18,10 +18,16 @@ extends RefCounted
 
 ## The cracks' crawl: how thick a crack is at its start, how it thins, and how far it stands out of the face
 ## it lies on (metres).
-const CRACK_WIDTH: float = 0.07
+const CRACK_WIDTH: float = 0.05
 const CRACK_THIN: float = 0.82
 const CRACK_OUT: float = 0.04
+## How much of the box's height the roofline leaves for what stands on the roof (plant, a mast, finials): the
+## building's own top, its cornice or parapet, is at size.y - ROOF.
+const ROOF: float = 1.0
 
+
+## Every face but the bottom (a box standing on something).
+const ALL_BUT_BOTTOM: int = MeshKit.ALL_FACES & ~MeshKit.FACE_NY
 
 ## The wall's node dressed with a cached look (ZoneSkin.dash_wall): one shadowless mesh instance, its surfaces
 ## drawing with the materials the builder gave its layers.
@@ -187,9 +193,52 @@ static func arch_head(layer: MeshLayer, size: Vector3, cx: float, h: float, radi
 				0.0, pattern, param)
 
 
+## The height of the building's own top (its roof line, where its cornice ends) in a box of `size`: what stands
+## on the roof reaches the box's top above it.
+static func roof_of(size: Vector3) -> float:
+	return size.y - ROOF
+
+
+## Plant on the roof: a few boxes (air handlers, a stair bulkhead) of 0.45 to 0.85 m standing on the roof line,
+## set back from the face and spread across the width, and a thin mast up to the box's top: the silhouette of a
+## building against the sky, and the top of the box reached. `color` is the plant's body, `trim` its caps; `pattern`
+## and `param` the solid kit's.
+static func roof_plant(layer: MeshLayer, size: Vector3, color: Color, trim: Color, pattern: int, param: float, seed: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(["dash_wall_roof", seed])
+	var hx: float = size.x * 0.5
+	var hz: float = size.z * 0.5
+	var roof: float = roof_of(size)
+	var x: float = -hx + rng.randf_range(0.9, 1.5)
+	var mast_x: float = lerpf(-hx * 0.6, hx * 0.6, rng.randf())
+	while x < hx - 1.8:
+		var w: float = minf(rng.randf_range(1.2, 2.6), hx - 0.6 - x)
+		var h: float = rng.randf_range(0.45, 0.85)
+		var d: float = rng.randf_range(0.7, 1.1)
+		var z: float = rng.randf_range(-hz + 0.5, hz - 1.4)
+		if absf(x + w * 0.5 - mast_x) > 0.6:
+			box(layer, size, x, x + w, roof, roof + h, z - d * 0.5, z + d * 0.5, color, pattern, ALL_BUT_BOTTOM, param)
+			box(layer, size, x - 0.04, x + w + 0.04, roof + h, roof + h + 0.05, z - d * 0.5 - 0.04, z + d * 0.5 + 0.04, trim, MeshKit.PAT_PLAIN)
+		x += w + rng.randf_range(0.5, 1.8)
+	box(layer, size, mast_x - 0.045, mast_x + 0.045, roof, size.y, -0.3, -0.2, trim, MeshKit.PAT_PLAIN, ALL_BUT_BOTTOM)
+
+
+## Urn finials on the roof line over both ends of the face and its middle (the Golden Zone's parapets): a plinth of
+## `stone`, an urn (an octagonal prism), a cap of `gold`, 1 m tall in all, so the top of the box is reached.
+static func finials(layer: MeshLayer, size: Vector3, stone: Color, gold: Color, stone_pattern: int, gold_pattern: int) -> void:
+	var hx: float = size.x * 0.5
+	var roof: float = roof_of(size)
+	var y: float = roof - size.y * 0.5
+	for x: float in [-hx + 0.45, 0.0, hx - 0.45]:
+		layer.box(Vector3(x, y + 0.12, 0.0), Vector3(0.7, 0.24, 0.7), stone, 0.0, stone_pattern, ALL_BUT_BOTTOM, 1.0)
+		layer.prism(Vector3(x, y + 0.24, 0.0), 0.3, 0.5, 8, stone, 0.0, stone_pattern, true, 1.0)
+		layer.prism(Vector3(x, y + 0.74, 0.0), 0.17, 0.26, 8, gold, 0.0, gold_pattern, true, 0.9)
+
+
 ## A mesh of cracks (dark, unlit, standing CRACK_OUT proud of a face at depth `z`) spreading from `hits` points
-## within the x and height bounds `at` (x0, x1, h0, h1): a breakable face. The cracks' own random numbers come
-## from `seed`, so a look's cracks never change.
+## within the x and height bounds `at` (x0, x1, h0, h1): a breakable face. Each is a few thin jagged arms with a
+## branch or two. The cracks' own random numbers come from `seed`, so a look's cracks never change. `thickness`
+## scales their width.
 static func cracks(layer: MeshLayer, size: Vector3, z: float, at: Vector4, hits: int, color: Color, seed: int,
 		thickness: float = 1.0) -> void:
 	var rng := RandomNumberGenerator.new()
@@ -197,22 +246,26 @@ static func cracks(layer: MeshLayer, size: Vector3, z: float, at: Vector4, hits:
 	for k: int in hits:
 		var from := Vector2(lerpf(at.x, at.y, (float(k) + rng.randf_range(0.2, 0.8)) / float(hits)),
 			rng.randf_range(at.z, at.w))
-		var arms: int = rng.randi_range(4, 6)
+		var arms: int = rng.randi_range(3, 4)
 		for a: int in arms:
 			var angle: float = TAU * (float(a) + rng.randf_range(-0.3, 0.3)) / float(arms)
-			_crack(layer, size, from, angle, rng.randi_range(3, 5), rng, at, z, color, thickness)
+			var end: Vector2 = _crack(layer, size, from, angle, rng.randi_range(4, 6), rng, at, z, color, thickness, 0.5)
+			# A branch off the arm's far end, thinner.
+			if rng.randf() < 0.6:
+				_crack(layer, size, end, angle + rng.randf_range(-1.0, 1.0), rng.randi_range(2, 3), rng, at, z, color,
+					thickness * 0.7, 0.35)
 
 
-## One crack: a zigzag of thin segments from `from` (x, height on the face) heading at `angle`, kept inside
-## the bounds `at`, a little thinner each segment.
+## One crack: a zigzag of thin segments from `from` (x, height on the face) heading at `angle`, kept inside the bounds
+## `at`, each segment `reach` metres at most and a little thinner than the last. Returns where it ends.
 static func _crack(layer: MeshLayer, size: Vector3, from: Vector2, angle: float, segments: int,
-		rng: RandomNumberGenerator, at: Vector4, z: float, color: Color, thickness: float) -> void:
+		rng: RandomNumberGenerator, at: Vector4, z: float, color: Color, thickness: float, reach: float) -> Vector2:
 	var p: Vector2 = from
 	var heading: float = angle
 	var width: float = CRACK_WIDTH * thickness
 	for i: int in segments:
-		heading += rng.randf_range(-0.6, 0.6)
-		var length: float = rng.randf_range(0.45, 1.0) * (1.0 - 0.12 * float(i))
+		heading += rng.randf_range(-0.7, 0.7)
+		var length: float = rng.randf_range(0.5, 1.0) * reach * (1.0 - 0.1 * float(i))
 		var q: Vector2 = p + Vector2(cos(heading), sin(heading)) * length
 		q = Vector2(clampf(q.x, at.x, at.y), clampf(q.y, at.z, at.w))
 		var d: Vector2 = q - p
@@ -224,19 +277,27 @@ static func _crack(layer: MeshLayer, size: Vector3, from: Vector2, angle: float,
 		layer.box_xform(xform, color, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY)
 		p = q
 		width *= CRACK_THIN
+	return p
 
 
-## A patch where the cladding has fallen away: a dark recess `depth` deep into the wall at depth `z`, x0 to x1
-## and height h0 to h1, with its rim of broken edge, for a wall that has been standing too long. `bare` is the
-## colour of what shows behind (concrete, brick, a dark void).
+## A patch where the cladding has fallen away: a ragged recess (three overlapping rectangles `depth` deep into the
+## wall at depth `z`, around x0 to x1 and height h0 to h1) of `bare` (concrete, brick, a dark void), a pair of bent
+## `edge` coloured rebar bars across it. For a wall that has been standing too long.
 static func spall(layer: MeshLayer, size: Vector3, x0: float, x1: float, h0: float, h1: float, z: float, depth: float,
 		bare: Color, edge: Color, pattern: int = MeshKit.PAT_PLAIN, param: float = 0.0) -> void:
-	box(layer, size, x0, x1, h0, h1, z - depth, z + 0.03, bare, pattern, MeshKit.FACE_PZ, param)
-	var rim: float = 0.1
-	box(layer, size, x0 - rim, x1 + rim, h1, h1 + rim, z - depth, z + 0.05, edge, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_PY)
-	box(layer, size, x0 - rim, x1 + rim, h0 - rim, h0, z - depth, z + 0.05, edge, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
-	box(layer, size, x0 - rim, x0, h0, h1, z - depth, z + 0.05, edge, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_NX)
-	box(layer, size, x1, x1 + rim, h0, h1, z - depth, z + 0.05, edge, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_PX)
+	var w: float = x1 - x0
+	var h: float = h1 - h0
+	var front: float = z + 0.03
+	# The ragged outline: the main block, a lobe off one lower corner and a notch up one side.
+	box(layer, size, x0, x1, h0, h1, z - depth, front, bare, pattern, MeshKit.FACE_PZ, param)
+	box(layer, size, x1 - w * 0.2, x1 + w * 0.3, h0 - h * 0.15, h0 + h * 0.45, z - depth, front, bare, pattern, MeshKit.FACE_PZ, param)
+	box(layer, size, x0 - w * 0.2, x0 + w * 0.25, h0 + h * 0.4, h1 + h * 0.2, z - depth, front, bare, pattern, MeshKit.FACE_PZ, param)
+	# The rebar: two bars bent across the hole, standing a little out of it.
+	for k: int in 2:
+		var y: float = h0 + h * (0.3 + 0.35 * float(k))
+		var bar := Basis(Vector3.BACK, 0.08 * (1.0 - 2.0 * float(k))).scaled_local(Vector3(w * 1.15, 0.05, 0.05))
+		layer.box_xform(Transform3D(bar, Vector3((x0 + x1) * 0.5, y - size.y * 0.5, front + 0.025)), edge, 0.0, MeshKit.PAT_PLAIN,
+			MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY)
 
 
 ## The facade shaders' hash11 (kit_common.gdshaderinc), so a look can know what a shader will draw for a seed
