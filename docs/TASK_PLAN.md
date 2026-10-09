@@ -393,6 +393,8 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 3. **E5d-c:** the Refill Ship (the ship, its feed line and belly ceiling, the fence cage with its lengthwise sides and its generator, the pad, the strafe holding its fire, the chain reaction and its damage) and stage 1's three phases with their loops and the suit's damage; the bot wins stage 1 at 3, 5 and 6 lanes.
 4. **E5d-d:** stage 2, The Magnate (his model, the transition and the checkpoint, the chase with its marker and overtakes, the Pounce, the buttress bait, the stun and the stomp, the Cable Lash), the defeat (the feed dies), the campaign slot (`scene`), par times and rewards; the bot wins the whole fight.
 
+**Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`).
+
 ### F. Cinematics
 
 | ID | Task | Needs | Size | Tier |
@@ -451,7 +453,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro). E5d is designed (October 9, 2026) and being built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 

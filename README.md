@@ -17,9 +17,8 @@ stars and payouts); a test boss shows the framework at work. The Neon City's bos
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
 Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketplace's House after
 Marketplace 2 (`--boss=marketplace_boss`), the Corporate zone's Hostile Takeover after Corporate 2
-(`--boss=corporate_boss`), and Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`); the
-Golden Zone's final villain, The Golden Convergence, is being built (task E5d: debug builds preview it with
-`--boss=golden_boss`; the campaign keeps its placeholder card until it's done). The short cinematics are built with a code-driven cinematic toolkit
+(`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), and the
+Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
 over the zone, and the outros are placeholder cards.
@@ -316,9 +315,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   most of all. Its crowds are hundreds of screeches
   drawn with a MultiMesh and a shader, their sizes in data for the phone test
   (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout).
-  The Golden Convergence, the Golden Zone's boss and the final villain, is being built in four steps (task
-  E5d); `--boss=golden_boss` previews what's there at 18 m/s (`--phase=4` starts at its halfway checkpoint,
-  stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
+  The Golden Convergence, the Golden Zone's boss and the final villain (task E5d), plays in the campaign after
+  Golden 3 at the zone's 25 m/s (debug builds: `--level=golden/boss`, or `--boss=golden_boss` at 18 m/s;
+  `--phase=4` starts at its halfway checkpoint, stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
   balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
   a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
   dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
@@ -333,9 +332,18 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   gate, and the tower it held up topples beside the causeway, its side a wall for about 10 s. The Missile
   Barrage warms up as it falls: the shoulder pipes open, missiles climb with a roar, hang, then dive with a
   rising whistle while red marks fill in, and every lane burns for about 1.5 s; the tower's wall is the
-  clean escape (armor plus the dash, two armor hits or armor plus the shield also get through). The Refill
-  Ship (which damages the suit) comes in the next step
-  (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
+  clean escape (armor plus the dash, two armor hits or armor plus the shield also get through). Then the
+  Refill Ship, the only way to damage the suit: a gilded cargo ship flies in beside the causeway and feeds a
+  shoulder's pipes along a line, missiles riding up it, while the squadron comes out for a strafe; after its
+  first pass the squadron holds its fire, hovering beside the ship, as a closed cage flickers up ahead: an
+  anti-grav pad behind a front fence, fences along its sides, a generator in the lane beside it. Stomp the
+  generator (its pulse switches the cage off) and switch onto the pad, dash through the front fence, or take
+  it on the armor or the shield (a jump over the fence lands past the pad). The ship has come down over the
+  runner: the pad flips them up onto its belly and hurls the squadron into its missile racks; the missiles go
+  up along the racks, the ship spins away and explodes, the runner drops back to the floor, and the blast
+  races up the line into the suit's shoulder. The first ship blows out one shoulder's pipes, the second the
+  other's, the third bursts the suit open; miss the pad and the ship flies off, and the phase comes round
+  again from the slams (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
   Stage 2 (task E5d-d), from the halfway checkpoint: the suit bursts open and The Magnate, burnt and roaring,
   claws out as every screen switches to his face, and leaps over the runner to hunt them from behind (his
   shadow and a marker at the bottom of the screen show his lane). His Pounce: a roar as the marker turns red,

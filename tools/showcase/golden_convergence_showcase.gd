@@ -59,6 +59,11 @@ extends Node3D
 ## missiles hanging about 145-153, the dive and the marks filling in 154-163, the fire 164-179 with the runner
 ## on the wall; the tower sinks behind from about 238. barrage: the hatches at 63, the launch at 68, the hang
 ## 78-83, the dive 83-93, the fire 93-108.
+## E5d-c, at 5 lanes and 18 m/s (refill, cage and chain alike): the ship flying in from frame 63, the feed line out
+## at 87, the cage flickering in at 99 and on at 109, the ship down over the runner at 134, the generator stomped
+## at 135, the pad at 144, the ripple from 147, the ship spinning off at 158 (the runner landing at 165),
+## exploding at 171, the blast up the line and the hit at 180. --phase=3: the pad at 118, the hit at 154 and the
+## transition to 197.
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 

@@ -287,3 +287,93 @@ showcase (`res://tools/showcase/golden_convergence_magnate_showcase.tscn`, its h
     boss part, within the fight's weapon cap (`weapon_share_cap`, one sixth over the whole fight). As in
     stage 1, `weapons_can_end_phase` is on, so a runner with enough weapon damage left could end one of his
     phases without a stomp. Should stage 2 only end on stomps?
+
+## E5d-c
+
+Built in task E5d-c (the Refill Ship, its closed cage and the chain reaction: the only way to damage the golden
+suit; stage 1 played through, and the whole fight in the campaign). Every number below is in
+`data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`'s "Refill Ship" groups, F6 in the fight) unless it
+says otherwise, marked `DESIGN-TBD` in code. Review it with `./play.sh --boss=golden_boss` (or `--level=golden/boss`)
+and the showcase (`res://tools/showcase/golden_convergence_showcase.tscn`: `--scenario=refill`, `cage`, `chain`,
+`missed`, `stage1`, `whole`; its header lists the options).
+
+1. **The ship's look** (GDD §10, proposed: "a gilded cult cargo ship"): a 34 m gilded cargo hull over a flat
+   plated belly as wide as the causeway (every lane, wall to wall), the ceilings' orange band at both ends of the
+   belly; two rows of bronze missiles in open racks along each flank (never glowing: the barrage's look); a
+   pointed prow, the bridge at the stern with dark windows, pale blue engines (the Golden Zone's yachts'); a gold
+   feed boom amidships whose gilded hose (bronze bands) runs up across the sky to the shoulder pipes, missiles
+   riding up it. Is it the ship you pictured? (`golden_convergence_ship_model.gd`.)
+2. **Which shoulder it feeds:** the one whose pipes are whole, his right first (the runner's left), then his
+   left; in phase 3, with both blown out, his right's torn stubs (`GoldenConvergenceRefill.fed_side`). The ship
+   waits on that side.
+3. **The ship's flight** (proposed: "pacing the runner while it refills"): it flies in from 46 m behind and 30 m
+   above the runner over 2.4 s (`ship_in_seconds`) to its station beside the causeway on the fed side, 22 m out
+   from the middle, 36 m ahead and 11 m up (`ship_side`, `ship_station_ahead`, `ship_station_height`: framing,
+   beyond the balustrade so the strafe has the track); the feed line shoots out to the shoulder 0.5 s after it
+   arrives (`feed_reach_seconds`), the hatch over the pipes opens, and a missile rides up the line every 0.45 s
+   at 30 m/s (`feed_every`, `feed_speed`). As the cage comes up it comes over the causeway and down to the
+   ceiling's height over 2 s, settled 1 s before the runner reaches the front fence (`descend_seconds`,
+   `settle_before`), the runner 4 m behind its middle.
+4. **When the cage comes up, and the hold** (GDD §10: "the squadron holds its fire while the cage comes up and
+   the runner goes for it"): once the beat's strafe has flown one pass (`cage_after` 1: in phase 1's V-V-H, after
+   the first vertical pass; one pass is always left for after the pad), 4.5 s ahead of the runner (`cage_lead`:
+   time to read it, reach the generator's lane from the farthest lane and stomp it). The squadron holds from
+   then until the runner is past the pad, hovering in formation beside the ship under its racks; on a miss it
+   fires its passes left, planned on from where the runner is. Is 4.5 s the right lead?
+5. **The cage's numbers** (GDD §10: "the front fence placed so a jump over it lands past the pad"; proposed:
+   "the cage's sides are fences running along the pad lane's edges"): the front fence is a full fence across the
+   pad's lane; the pad is 1.4 m deep (`cage_pad_length`, shorter than a level's), right behind it, so even the
+   latest takeoff that clears the front fence comes down past it at 18 m/s (the tests sweep every takeoff at 18
+   and 25 m/s); the sides are 2.4 m tall (`cage_side_height`, above a jump: a lane switch into the cage touches
+   one in the air too) and run 1.5 m (at 18 m/s) past the pad (`cage_side_past`). The pad is in an inner lane (by
+   the fight's seed), so there's a lane on both sides. Its fences flicker in for 1 s with the fence warning
+   (`cage_flicker`) before they switch on, so the cage always comes up in sight. Is a 1.4 m pad easy enough to
+   hit on a phone?
+6. **The generator** (GDD §10: "in a lane next to the cage, just before it, with room after its pulse to switch
+   into the pad's lane"): the game's fence generator, in the lane beside the pad's (left or right by the seed),
+   16 m (at 18 m/s) before the front fence (`generator_before`: a stomp's bounce comes down before the cage), a
+   pink conduit along the lane seam to the cage. Its own pulse switches the whole cage off whatever the EMP's
+   radius; any other EMP switches off only the fences it reaches (GDD §9.1's distance rule). Should its pulse
+   only reach as far as any EMP (the far side fence might then stay on)?
+7. **Weapons never target the ship, the generator or the fences** (proposed): the ship is immune and never a
+   target; the generator is immune like every generator (weapons never set one off: GDD §9.1); the fences are
+   hazards. Weapons still chip the suit. Should a weapon be able to set off the generator (a third way in)?
+8. **The chain reaction's timing** (GDD §10: the pad "hurls the whole squadron up into the Refill Ship, setting off
+   a chain reaction"): from the pad, the drones crash into its racks; the missiles go up in a ripple along the
+   racks from 0.3 s over 0.8 s (`ripple_at`, `ripple_seconds`), outward from where the drones hit; the ship spins
+   off to the fed side from 1.4 s over 1.3 s (`spin_at`, `spin_seconds`), its belly gone, so the runner rides it
+   about 1.4 s and drops back to the floor, landing about 0.6 s later; it explodes beside the causeway past the
+   balustrade, and the blast races up the line into his shoulder in 0.9 s (`blast_seconds`): the hit lands 3.6 s
+   after the pad. The squadron is gone with the ship (that strafe is over).
+9. **The cage sinks away once its pad is ridden** (0.35 s, harmless at once), so the camera doesn't pass through
+   its fences as it ducks under the belly.
+10. **The hits show** (GDD §10: "the first blows out one shoulder's pipes, the second the other's, and the third
+    bursts the suit open"): the first ship's blast blows out his right shoulder's pipes, the second's his left's.
+    The third's ends phase 3: the transition's burst is the only blast then (the ship's adds none), so a retry
+    from the checkpoint shows the same burst. A phase ended by weapons (they can end a phase:
+    `weapons_can_end_phase`) shows the same damage as a ship's hit would have (`GoldenConvergence._show_damage`).
+11. **The next phase's first slams are planned from the chain reaction** (E5d-b question 7, "the first slam can
+    stalk"): the chain knows when its hit will land, so at the Golden Zone's 25 m/s phases 2 and 3 open with
+    their first fist on time (`GoldenConvergenceSlams.plan_phase_ahead`). At quick play's 18 m/s the built track
+    (about 180 m ahead) still reaches past where it would land, so it comes as soon as the track allows, about
+    2.7 s late (about 4 s if planned at the phase's start), the fist stalking the runner's lane meanwhile. A
+    phase ended by weapons still plans at its start, and its first fist can stalk.
+12. **A missed pad** (GDD §10: "the ship finishes refilling and flies off, and the phase's loop starts again
+    from the slams"): a runner 3 m (at 18 m/s) past the pad without riding it has missed it (`miss_after`); the
+    ship climbs back to its station over 1.6 s, finishes refilling 1.5 s later and flies off ahead and away over
+    2.2 s (`climb_seconds`, `finish_seconds`, `leave_seconds`), while the strafe fires its passes left; the
+    beat is over when both are, and the loop goes on from the slams (planned while the ship flies off). The
+    next ship is the same (no escalation).
+13. **Par times** (E5d-a question 12): measured from the test bot's clean fight (every pad ridden by the
+    generator, never hit, no armor): 198.2 s from the entrance to the defeat at the Golden Zone's 25 m/s at 3, 5
+    and 6 lanes (stage 1 won at 122.0 s), and 208.7 s at quick play's 18 m/s (stage 1 at 132.4 s: phase 1's
+    first slams wait longer for their holes at the lower speed). Set the way Hostile Takeover's are (74 s and 96 s
+    over its clean 68.6 s): three stars at 214 s, two at 277 s, and the time bonus runs out at 340 s, a little
+    past two stars as the provisional 400 s was past 330 s (`data/bosses/golden_boss.tres`). The fight is three
+    times longer than any other boss's; are these the right margins?
+14. **Its sounds** (`tools/asset_gen/sfx_bank_golden_convergence.gd`, none pitch-varied): the ship's engines
+    droning in (`gc_ship`, as long as its flight in), the feed line's pneumatic shot and coupling clank
+    (`gc_feed`), missiles clattering up the line (`gc_ride`, every 1.3 s while it feeds), the fence warning
+    as the cage flickers in, the drones' hurl (E5d-a's), the ripple along the racks (`gc_ripple`), the ship's
+    crash (`gc_crash`), the blast racing up the line (`gc_blast`), the pipes blowing out (`gc_pipes`) and, on a
+    miss, the ship leaving (`gc_leave`).
