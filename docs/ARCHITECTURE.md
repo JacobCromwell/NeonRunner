@@ -354,7 +354,7 @@ arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`) and the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) and the Gangland outro's (`gangland_outro_tuning.tres`, `GanglandOutroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -3399,11 +3399,12 @@ never ends, and a level never starts, unattended.
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, the runner's head turn `look`, a cyborg's face, aim and charge) and its node in play |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
-| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
+| `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props and the sports car |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -3555,6 +3556,42 @@ the first time, with cold mesh caches) and costs about 0.6 ms a step, at most ab
 `test_sewer_swarm_intro`); its props add about 25 draw calls. It adds no asset files, and one toolkit hook,
 `_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
 behind the camera and the actors).
+
+**Gangland's outro** (`GanglandOutro`, task F2c; the owner's beats, October 9, 2026, GDD §6 Cinematics; what they
+leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in `data/cinematics/gangland_outro_tuning.tres`):
+21.2 s after the Sewer Swarm, both stretches picking up where the fight ended (`CineStageDef.after_fight`: the
+arena's look under Gangland 3's blood-red sky), on the level's lanes. The fight's music fades out as it opens. Low
+beside the Host, who lies freed against a heap of rubble, implants dark, looking back up the street: four screeches
+sniff at them, look up as the runner comes walking down the street, bristle and scuttle off into the gutters. Over
+the runner's shoulder as they walk up and stop beside the Host. Low in front of the Host: trembling (harder as they
+strain), they look up, sit up a little and hold a golden key out to the runner; it glints (a bell chime and a slow
+halo); the runner leans in and takes it (both arms reach for the same point, so the hands meet and the key passes
+from one to the other), the Host sinks back, the runner looks at the key. Black, and the cut (`switch_stage`) to
+another stretch where the car is parked: low off its front corner as the runner walks up holding out the key, the
+car unlocking with a chirp and two blinks of its lights (one slow glow with Reduced flashing), its scissor door
+swinging up; the runner steps in and sits, out of sight once the door is half down; its lights and engine come on.
+Cut to the road behind it, at road level (0.16 m up, the owner's ask), as it launches, wheels spinning up, and
+drives off down the street into the distance; black, and the Marketplace's intro.
+
+`GanglandOutroSet` holds the first scene's props, built on its stage: the rubble (slabs, chunks and rebar in the
+street's kit material, one draw call), the Host (`SwarmHostPerson` on the humanoid rig, its glow dimmed; posed by
+script: reclined, breathing, trembling, the offering arm turned toward the hand-off point) and the screeches
+(`ScreechModel`, as in play). `SportsCarModel` is the car, built by code: a faceted wedge lofted through eleven
+cross-sections (a blade of a nose, a raked windshield, flared fenders over angular wheel wells, a dark intake
+behind the door, a wing), a scissor door hinged at its front edge over a dark cabin with a seat, four wheels that
+turn with the distance driven, head and tail lights, running lights, glow underneath and headlight pools (MeshKit's
+glow material, scaled by its lights). Its paint (`sports_car.gdshader`) is unshaded, like the kit: a fake key light
+and a fake street mirrored in it (a sharp horizon, shopfront neon streaming back as it drives) under a clear coat,
+so it shines the same on the Compatibility renderer; it follows a level's light and the street's tint under a
+level's sky. Its look (size, paint, accent) is data. The key is the cinematic's own node (it goes from the first
+scene into the second), held in a hand joint. The runner's reach, lean, look at the key, raised key and sitting
+down are layered on their pose in `_on_advance` (`aim_arm` turns an arm toward a point; the rig sets every joint
+afresh each update, so nothing builds up). Shots looking back up the street keep it built behind them
+(`_stage_near`). Its sounds are six new ones (`tools/asset_gen/sfx_bank_cinematics.gd`: `screech_sniff`,
+`key_glint`, `car_unlock`, `car_door`, `car_start` as its lights come on and `car_drive` at the launch) and the
+fight's `host_short` and `swarm_scatter`. Cost (headless, `test_gangland_outro`): about 25 ms to set up (about 350 ms the first time, with
+cold mesh caches), about 20 ms for the cut to the car (under black), about 10 ms on the two hard cuts (the street
+building ahead) and about 0.4 ms a step otherwise; its props add about 22 draw calls (the Host on the rig is 16).
 
 ## Economy and saving
 
@@ -4046,7 +4083,16 @@ speed, the camera at ground level and in the street, cutting once, the owner's b
 and one on the other, five left and six right, each manhole rattling first), the runner never touching a
 screech, more and more pouring out and dropping from out of view, never in the runner's lane, the wall rising
 and closing in, the heart and its glint only in the cut, and ending on black with the fight's music; Reduced
-flashing; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+flashing; `skip()`; and its setup and step costs. `test_gangland_outro` checks Gangland's outro (F2c): its slot;
+`after_fight` (the fight's look and sky after it, the zone's own without it, so the City outro's look is unchanged);
+the car's shape (a long, low wedge, a scissor door, lights and turning wheels); at 3, 5 and 6 lanes its beats in
+order (the screeches sniffing, then gone before the runner arrives, never near the camera; a walk, not a run; the
+Host trembling harder as they hold the key up; the hands meeting; the key in one hand, then the other; the glint;
+the cut to the car; the unlock's blinks; the door up as the runner gets in, the runner out of sight, the door down;
+the lights on; the camera at road level as it drives straight off into the distance), the camera in the street and
+above it, the street built 150 m wherever it looks, only the fight's music fading, its costs and draw calls; Reduced
+flashing (one slow glow for the unlock); `skip()`; and the App's flow (the Marketplace's intro follows).
+`test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
@@ -4309,7 +4355,7 @@ skin lists, or a scripted run with a ceiling ride and a wall run, in a level's d
 lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
 a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
 turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
-the App plays it, or the toolkit's sampler), and comparison
+the App plays it, or the toolkit's sampler; `--from=S` starts S seconds in), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

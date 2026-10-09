@@ -475,7 +475,7 @@ chase and a volley, showing itself beside the runner and bumping a lane change b
 too-wide gap, each ending in its blast, its model; `--scenario=chase|show|octodog|buzz|cut|gap|model`), a wider gap
 jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), an Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`),
-any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+any campaign slot's cinematic and the cinematic toolkit's sampler, from any moment with `--from=S`); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
