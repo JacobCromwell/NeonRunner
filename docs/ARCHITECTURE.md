@@ -2205,7 +2205,7 @@ paved street, warm lamplight and haze.
   its one line on a strip, GASKET'S stacked down a blade; the Brass Lotus's board and its stacked blade). A
   sign is one `MeshLayer.append` of a cached, coloured layout into the chunk's solid layer (about 15 us): no
   `Label3D`, no `SubViewport`, no node, no surface or draw call of its own. **Only a few casinos are named**
-  (two famous ones, not a chain; DESIGN-TBD, `docs/questions/k3.md` 1): `CasinoFacades._name_of()` cuts the
+  (two famous ones, not a chain; DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, item 390): `CasinoFacades._name_of()` cuts the
   street into periods of `name_spacing` metres (100, both walls together), picks at most one casino with a big
   sign in each by hash (from the period's middle half if it has one) and alternates the names from period to
   period, a pure function of the street's layout so every chunk agrees; a `name_spacing` of 0 names every

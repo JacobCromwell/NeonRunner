@@ -116,7 +116,7 @@ extends MarketplaceSkin
 ## The named casinos (task K3): one casino with a big sign in every this many metres of street (both walls
 ## together) is one of the two famous ones, Gasket's House of Chance and The Brass Lotus alternating, so no name
 ## is nearer than this to itself; the other casinos keep their glyph boards. 0 names every casino with a big
-## sign. DESIGN-TBD (docs/questions/k3.md 1): two famous casinos or a chain of them.
+## sign. DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 390): two famous casinos or a chain of them.
 @export_range(0.0, 400.0, 5.0, "suffix:m") var name_spacing: float = 100.0
 ## Signs' dark panels and the lit lettering's palette (warm white, violet and blue only).
 @export var sign_panel_color: Color = Color(0.07, 0.065, 0.075)
