@@ -6,7 +6,8 @@
 //     (still with Reduced flashing), dying down with `level`. Near opaque: a see-through red over white marble
 //     reads pink, the fences' colour (the orchestrator's review of E5d-b's frames);
 //   3 a target mark's ring: a flat quad, a red ring at its edge;
-//   4 a target mark's fill: a flat quad, a red disc (its size is how far it has filled in).
+//   4 a target mark's fill: a flat quad, a red disc (its size is how far it has filled in), near opaque like the
+//     burning floor: at 60 % over the white marble it read salmon, toward the fences' pink (E5d polish).
 // The part pulses the marks (steady with Reduced flashing); nothing here flickers. Blended, not added, so it
 // reads the same on Forward+, Mobile and Compatibility; it fades out far away itself.
 shader_type spatial;
@@ -25,7 +26,7 @@ uniform vec3 ember_color = vec3(1.0, 0.55, 0.12);
 // Over 1 it blooms like the red lines' glow where the renderer has bloom.
 uniform float energy = 1.6;
 uniform float ring_alpha = 1.0;
-uniform float fill_alpha = 0.6;
+uniform float fill_alpha = 0.95;
 uniform float burn_alpha = 0.94;
 // How hot the floor still burns (0 out, 1 full): it dies down after the burn.
 uniform float level = 1.0;

@@ -16,7 +16,9 @@ extends TestSuite
 ## - the layers of protection, the real player standing in it: the free armor alone dies, one armor hit and the
 ##   dash get through, two armor hits do, the armor and the shield do, no protection dies at once;
 ## - no wall: the barrage comes anyway and hits; it follows its slams in the beat script;
-## - Reduced flashing: the marks steady, no blasts.
+## - Reduced flashing: the marks steady, no blasts;
+## - E5d polish: the marks' fill and the burning floor read red on the court's white marble on both renderers'
+##   blending, never toward the fences' pink.
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -37,6 +39,7 @@ func run() -> void:
 		check(false, "the Golden Convergence's fight is built")
 		return
 	_test_numbers()
+	_test_marks_read_red()
 	for lanes: int in LANES:
 		for speed: float in SPEEDS:
 			await _test_warning_and_fire(lanes, speed)
@@ -47,6 +50,62 @@ func run() -> void:
 	await _test_stacking()
 	await _test_no_wall()
 	await _test_reduced_flashing()
+
+
+# --- The marks' red ------------------------------------------------------------------------------------------
+
+## The court's white marble as the run camera shows it (sRGB; frames of the barrage on both renderers).
+const MARBLE := Color(0.835, 0.83, 0.81)
+
+
+## E5d polish (the review: a fill of 60 % red over the white marble may read salmon or pink): the marks' fill, its
+## ring and the burning floor laid over the marble come out red, their green and blue well under their red, both
+## where the renderer blends in linear space (Forward+, Mobile: then shown in sRGB) and where it blends in sRGB
+## (Compatibility, which takes the authored colour as it is).
+func _test_marks_read_red() -> void:
+	var code: String = (load("res://scripts/bosses/golden_convergence/golden_convergence_floor.gdshader") as Shader).code
+	var mark: PackedFloat64Array = _uniform(code, "mark_color")
+	var energy: float = _uniform(code, "energy")[0]
+	var faults: PackedStringArray = []
+	check(mark.size() == 3, "the marks' colour is the floor shader's mark_color (%s)" % [mark])
+	if mark.size() != 3:
+		return
+	for part: String in ["fill_alpha", "ring_alpha"]:
+		var a: float = _uniform(code, part)[0]
+		var src := Color(mark[0], mark[1], mark[2])
+		for linear: bool in [true, false]:
+			var out: Color = _blend(src, energy, a, linear)
+			if out.g > 0.32 * out.r or out.b > 0.32 * out.r:
+				faults.append("%s %.2f %s: %s" % [part, a, "linear" if linear else "sRGB", out])
+	check(faults.is_empty(), "the target marks read red on the white marble on every renderer, never salmon or pink (%s)" % [
+		", ".join(faults)])
+
+
+## The numbers a shader's uniform `uniform_name` defaults to in its `code` (headless runs compile no shader).
+static func _uniform(code: String, uniform_name: String) -> PackedFloat64Array:
+	var re := RegEx.new()
+	re.compile("uniform\\s+\\w+\\s+" + uniform_name + "\\s*=\\s*(?:vec3\\()?([-0-9., ]+)\\)?;")
+	var m: RegExMatch = re.search(code)
+	var out := PackedFloat64Array()
+	if m != null:
+		for v: String in m.get_string(1).split(",", false):
+			out.append(float(v.strip_edges()))
+	if out.is_empty():
+		out.append(NAN)
+	return out
+
+
+## The colour shown where `src` (sRGB, times `energy`) is laid at `alpha` over MARBLE, blending in linear space (then
+## clipped and shown in sRGB) or straight in sRGB.
+static func _blend(src: Color, energy: float, alpha: float, linear: bool) -> Color:
+	if linear:
+		var s: Color = src.srgb_to_linear() * energy
+		var d: Color = MARBLE.srgb_to_linear()
+		var o := Color(s.r * alpha + d.r * (1.0 - alpha), s.g * alpha + d.g * (1.0 - alpha), s.b * alpha + d.b * (1.0 - alpha))
+		return Color(minf(o.r, 1.0), minf(o.g, 1.0), minf(o.b, 1.0)).linear_to_srgb()
+	var c: Color = src * energy
+	var out := Color(c.r * alpha + MARBLE.r * (1.0 - alpha), c.g * alpha + MARBLE.g * (1.0 - alpha), c.b * alpha + MARBLE.b * (1.0 - alpha))
+	return Color(minf(out.r, 1.0), minf(out.g, 1.0), minf(out.b, 1.0))
 
 
 # --- Helpers ------------------------------------------------------------------------------------------------
