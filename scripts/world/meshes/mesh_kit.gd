@@ -320,21 +320,25 @@ static func walkway_param(flags: int, width: float) -> float:
 
 
 ## The PAT_BEACH_SAND / PAT_BEACH_BOARDWALK parameter: `flags` (BEACH_*), the piece's `length` in metres (to
-## an eighth; UV.y runs in metres from its near end, for the wet rim round a pool) and the lane's `lane_hash`.
+## a quarter, up to 63; UV.y runs in metres from its near end, for the wet rim round a pool) and the lane's
+## `lane_hash` (0-15). A pattern parameter is interpolated across a face, and a rasterizer's interpolation of
+## a constant can be a few units in the last place off: every Beach parameter stays under 2^20, so a decoder
+## that rounds to the nearest whole number always reads what was written.
 static func sand_param(flags: int, length: float, lane_hash: int) -> float:
-	return float((flags & 63) + 64 * clampi(roundi(length * 8.0), 0, 1023) + 65536 * (lane_hash & 63))
+	return float((flags & 63) + 64 * clampi(roundi(length * 4.0), 0, 255) + 16384 * (lane_hash & 15))
 
 
-## The PAT_BEACH_PAINT parameter: a painted board of `width` by `height` metres with `glyph` (GLYPH_*) in
-## paints picked by `seed` (0-99).
+## The PAT_BEACH_PAINT parameter: a painted board of `width` by `height` metres (to a decimetre, up to 6.3)
+## with `glyph` (GLYPH_*) in paints picked by `seed` (0-31).
 static func beach_art_param(glyph: int, width: float, height: float, seed: int) -> float:
-	return float(posmod(seed, 100) + 100 * posmod(glyph, 10) + 1000 * clampi(roundi(height * 10.0), 1, 99)
-		+ 100000 * clampi(roundi(width * 10.0), 1, 99))
+	return float(posmod(seed, 32) + 32 * posmod(glyph, 8) + 256 * clampi(roundi(height * 10.0), 1, 63)
+		+ 16384 * clampi(roundi(width * 10.0), 1, 63))
 
 
-## The PAT_BEACH_NEON parameter: a neon board of `width` by `height` metres with `glyph` (GLYPH_*).
+## The PAT_BEACH_NEON parameter: a neon board of `width` by `height` metres (to a decimetre, up to 6.3) with
+## `glyph` (GLYPH_*).
 static func beach_neon_param(glyph: int, width: float, height: float) -> float:
-	return float(posmod(glyph, 8) + 8 * clampi(roundi(height * 10.0), 1, 255) + 2048 * clampi(roundi(width * 10.0), 1, 99))
+	return float(posmod(glyph, 8) + 8 * clampi(roundi(height * 10.0), 1, 63) + 512 * clampi(roundi(width * 10.0), 1, 63))
 
 
 ## The PAT_BEACH_TIMBER parameter: culms, boards or a trunk running along `axis` (0 y, 1 x, 2 z) in `style`

@@ -31,6 +31,9 @@ uniform float skyline_ruin = 0.0;
 // buildings; skyline_scale scales every height (the Beach's island on the horizon is low).
 uniform float skyline_hills = 0.0;
 uniform float skyline_scale = 1.0;
+// How far below the horizon (sin of the elevation) the sky has become the abyss colour: the default is a deep
+// fall; a short one (the Beach) is a sea that starts at the horizon.
+uniform float abyss_depth = 0.3;
 // Columns of smoke rising from the skyline, lit from below by fires (0 = none).
 uniform float smoke_amount = 0.0;
 uniform vec3 smoke_color : source_color = vec3(0.08, 0.07, 0.07);
@@ -78,6 +81,8 @@ vec4 skyline(float az, float el, float count, float lo, float hi, float seed, ve
 	float spire = step(0.8, hash11(id * 5.3 + seed)) * step(abs(fx - 0.5), 0.03) * step(el, h + 0.025)
 		* (1.0 - skyline_ruin) * (1.0 - skyline_hills);
 	float inside = max(step(w0, fx) * step(fx, w1) * step(el, h), spire);
+	// Hills stand on the sea: nothing of them below the horizon.
+	inside *= mix(1.0, step(0.0, el), skyline_hills);
 	vec2 wc = vec2(floor(fx * 9.0), floor(el * 260.0));
 	float lit = step(1.0 - lit_share * (1.0 - 0.9 * skyline_ruin), hash12(wc + id * 3.1 + seed));
 	// A ruined city shows no lights below the horizon (the intact one is a sea of them).
@@ -147,7 +152,7 @@ void sky() {
 		float facing = max(dot(normalize(d.xz + vec2(1e-4, 0.0)), toward), 0.0);
 		col += to_linear(sun_glow_color) * (sun_glow_strength * pow(facing, sun_glow_focus) * exp(-max(el, 0.0) / sun_glow_height));
 	}
-	col = mix(col, to_linear(abyss_color), smoothstep(0.0, -0.3, el));
+	col = mix(col, to_linear(abyss_color), smoothstep(0.0, -abyss_depth, el));
 
 	if (el > 0.08 && star_amount > 0.0) {
 		vec2 sp = vec2(az * 160.0, el * 160.0);

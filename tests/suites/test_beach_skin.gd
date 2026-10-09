@@ -24,7 +24,7 @@ const BEACH_SKIN_PATH: String = "res://data/skins/beach_skin.tres"
 ## The richest campaign level before a likely slot for the Beach (it has no levels of its own yet).
 const BEACH_LEVEL_PATH: String = "res://data/levels/corporate_2.tres"
 ## Lit (non-glowing) surfaces stay below this chroma (brightest minus darkest channel); the fence pink is about 0.8.
-const MAX_SURFACE_CHROMA: float = 0.55
+const MAX_SURFACE_CHROMA: float = 0.5
 ## A glowing colour this saturated (HSV) must keep to the decorative hues (blue to violet).
 const GLOW_SATURATION_LIMIT: float = 0.35
 ## Gaps: the brightest factors PAT_BEACH_TANK and PAT_BEACH_WATER give their colours (kit_beach.gdshaderinc:
@@ -138,7 +138,7 @@ func _sky(skin: BeachSkin) -> void:
 	var names: Array[String] = []
 	for u: Dictionary in m.shader.get_shader_uniform_list():
 		names.append(String(u["name"]))
-	for uniform: String in ["zenith_color", "horizon_color", "haze_color", "abyss_color", "skyline_color", "skyline_hills", "skyline_scale",
+	for uniform: String in ["zenith_color", "horizon_color", "haze_color", "abyss_color", "skyline_color", "skyline_hills", "skyline_scale", "abyss_depth",
 			"sun_glow_strength", "cloud_amount", "cloud_color", "cloud_lit_color"]:
 		check(names.has(uniform) and m.get_shader_parameter(uniform) != null, "the sky sets %s" % uniform)
 	check(float(m.get_shader_parameter("skyline_hills")) > 0.5 and float(m.get_shader_parameter("moon_radius")) == 0.0
@@ -810,7 +810,16 @@ func _signs(skin: BeachSkin) -> void:
 	check(tubes.size() == 3, "in violet, blue and warm white: %s" % str(tubes.keys()))
 	for glyph: int in MeshKit.GLYPH_COUNT:
 		var param: float = MeshKit.beach_neon_param(glyph, 2.6, 1.9)
-		check(int(param) % 8 == glyph and int(param / 8.0) % 256 == 19 and int(param / 2048.0) == 26, "a neon sign's glyph, height and width round-trip (%d)" % glyph)
+		check(int(param) % 8 == glyph and int(param / 8.0) % 64 == 19 and int(param / 512.0) == 26, "a neon sign's glyph, height and width round-trip (%d)" % glyph)
+	# A painted board's too, and every pattern parameter stays small enough for a rasterizer's interpolation of a
+	# constant (a few units in the last place off) to round back to what was written: under 2^20.
+	var art: float = MeshKit.beach_art_param(5, 4.4, 2.5, 77)
+	check(int(art) % 32 == 77 % 32 and int(art / 32.0) % 8 == 5 and int(art / 256.0) % 64 == 25 and int(art / 16384.0) == 44,
+		"a painted board's seed, glyph, height and width round-trip (%s)" % art)
+	var biggest: float = maxf(maxf(MeshKit.sand_param(63, 100.0, 99), MeshKit.beach_art_param(9, 99.0, 99.0, 99)),
+		maxf(MeshKit.beach_neon_param(9, 99.0, 99.0), MeshKit.beach_timber_param(3, 3, 99)))
+	check(biggest < 1048576.0, "every Beach pattern parameter stays under 2^20 (%s)" % biggest)
+	check(MeshKit.sand_param(63, 100.0, 99) == 63.0 + 64.0 * 255.0 + 16384.0 * 3.0, "a sand parameter keeps its flags, its length (a quarter of a metre) and its lane")
 	# A hazard sign's painted board: the frame is the hazard, the board's paints are muted.
 	var track: TrackBuilder = showcase_track(skin)
 	var boards: int = 0

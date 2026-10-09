@@ -36,8 +36,6 @@ const LIP: float = 0.25
 ## The lowest anything hangs out over the street (the strings of lights, the thatch eaves, a palm leaning over
 ## it), above the highest a ceiling rises (BeachCeilings.TOP_LIMIT over the ceiling height, plus its thickness).
 const OVER_STREET_MIN: float = 12.0
-## The longest piece a shack's face is drawn in (see _wall).
-const WALL_PIECE: float = 8.0
 ## How far a shack's near end face goes back from the street (seen only above lower neighbours).
 const END_DEPTH: float = 7.0
 ## A thatched roof: its ridge's depth behind the face and its rise over the eave; an eave's reach over the street.
@@ -293,18 +291,12 @@ func _wall(layer: MeshLayer, side: int, face_x: float, u0: float, u1: float, y0:
 		param: float, pattern: int = MeshKit.PAT_BEACH_WALL) -> void:
 	if u1 <= u0 + 0.0005 or y1 <= y0 + 0.0005:
 		return
-	# Long faces are drawn in pieces of at most WALL_PIECE metres: one triangle spanning the camera and 40 m of wall
-	# interpolates the pattern coordinates badly close to the camera (a speckled wall) on some rasterizers.
-	var steps: int = maxi(ceili((u1 - u0) / WALL_PIECE), 1)
-	for i: int in steps:
-		var a: float = lerpf(u0, u1, float(i) / float(steps))
-		var b: float = lerpf(u0, u1, float(i + 1) / float(steps))
-		if side < 0:
-			layer.rect(Vector3(face_x, y0, -a), Vector3(0, 0, -(b - a)), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
-				Vector2(a, y0), Vector2(b, y1), param)
-		else:
-			layer.rect(Vector3(face_x, y0, -b), Vector3(0, 0, b - a), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
-				Vector2(b, y0), Vector2(a, y1), param)
+	if side < 0:
+		layer.rect(Vector3(face_x, y0, -u0), Vector3(0, 0, -(u1 - u0)), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
+			Vector2(u0, y0), Vector2(u1, y1), param)
+	else:
+		layer.rect(Vector3(face_x, y0, -u1), Vector3(0, 0, u1 - u0), Vector3(0, y1 - y0, 0), color, 0.0, pattern,
+			Vector2(u1, y0), Vector2(u0, y1), param)
 
 
 ## The pieces of the face [u0, u1] x [y0, y1] left once `holes` (Rect2 over (track distance, height)) are taken

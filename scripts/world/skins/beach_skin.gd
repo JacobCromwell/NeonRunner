@@ -37,9 +37,9 @@ extends ZoneSkin
 @export var haze_color: Color = Color(0.94, 0.96, 0.98)
 @export_range(0.0, 2.0, 0.05) var haze_strength: float = 0.2
 ## The sea below the horizon, beyond the end of the street: a muted turquoise.
-@export var abyss_color: Color = Color(0.12, 0.46, 0.50)
+@export var abyss_color: Color = Color(0.05, 0.55, 0.62)
 ## The island on the horizon: a low green-grey silhouette (the sky's far skyline, with no lit windows).
-@export var skyline_color: Color = Color(0.28, 0.46, 0.44)
+@export var skyline_color: Color = Color(0.17, 0.38, 0.30)
 ## The warm glow of the sun toward the far end of the street, and the white cumulus over it.
 @export var sun_glow_color: Color = Color(1.0, 0.92, 0.72)
 @export_range(0.0, 1.0, 0.01) var sun_glow_strength: float = 0.2
@@ -137,7 +137,7 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var palm_share: float = 0.6
 ## The bamboo of the walls: honey, sun-greyed, pale, green-grey (sRGB, lit, never glowing).
 @export var bamboo_colors: PackedColorArray = PackedColorArray([
-	Color(0.78, 0.56, 0.26), Color(0.66, 0.56, 0.38), Color(0.80, 0.62, 0.36), Color(0.72, 0.58, 0.38)])
+	Color(0.69, 0.49, 0.23), Color(0.66, 0.56, 0.38), Color(0.70, 0.55, 0.32), Color(0.72, 0.58, 0.38)])
 @export var bamboo_dark_color: Color = Color(0.34, 0.23, 0.11)
 @export var thatch_color: Color = Color(0.68, 0.53, 0.26)
 @export var thatch_dark_color: Color = Color(0.30, 0.23, 0.13)
@@ -261,7 +261,7 @@ func make_environment() -> Environment:
 	var sky := {"zenith_color": srgb(sky_zenith_color), "horizon_color": srgb(sky_horizon_color),
 		"horizon_falloff": 0.5, "haze_color": srgb(haze_color), "haze_strength": haze_strength, "haze_height": 0.14,
 		"abyss_color": srgb(abyss_color), "skyline_color": srgb(skyline_color), "window_color": srgb(skyline_color),
-		"moon_radius": 0.0, "star_amount": 0.0, "skyline_hills": 1.0, "skyline_scale": 0.4, "sun_glow_color": srgb(sun_glow_color),
+		"moon_radius": 0.0, "star_amount": 0.0, "skyline_hills": 1.0, "skyline_scale": 0.9, "abyss_depth": 0.05, "sun_glow_color": srgb(sun_glow_color),
 		"sun_glow_direction": sun_glow_direction, "sun_glow_strength": sun_glow_strength, "sun_glow_focus": 2.0,
 		"sun_glow_height": 0.16, "cloud_amount": cloud_amount, "cloud_scale": cloud_scale, "cloud_opacity": 0.92,
 		"cloud_color": srgb(cloud_color), "cloud_lit_color": srgb(cloud_lit_color), "cloud_lit_focus": 0.35}

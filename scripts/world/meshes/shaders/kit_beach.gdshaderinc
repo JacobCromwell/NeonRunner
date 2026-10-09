@@ -206,7 +206,7 @@ vec3 bc_bamboo(vec3 base, float across, float along, float fa, float fl, float s
 // --- Floor patterns ---------------------------------------------------------------------------
 // The floor patterns' parameter (BeachSand.sand_param): bits 0-5 flags (1 a lane beside on the left, 2 on
 // the right, 4 a pool at the piece's near end, 8 at its far end, 16 an alternate lane tone, 32 the kerb),
-// bits 6-15 the piece's length in eighths of a metre (UV.y runs in metres from its near end), bits 16-21
+// bits 6-13 the piece's length in quarter metres (UV.y runs in metres from its near end), bits 14-17
 // the lane's hash. UV.x runs -1 to 1 across the lane.
 
 // PAT_BEACH_SAND (80): the beach. Wind ripples running down the street, broad light and dark drifts,
@@ -221,7 +221,7 @@ vec3 bc_sand(vec3 base, vec3 w, vec2 uv, float param) {
 	float fu = max(fwidth(uv.x), 1e-4);
 	float detail = 1.0 - smoothstep(0.03, 0.18, fpm);
 	int flags = int(param + 0.5);
-	float len = float((flags >> 6) & 1023) * 0.125;
+	float len = float((flags >> 6) & 255) * 0.25;
 	// Broad drifts, light and dark.
 	float dune = value_noise(p * vec2(0.45, 0.11) + 3.0) * 0.6 + value_noise(p * vec2(1.7, 0.4) + 11.0) * 0.4;
 	vec3 col = mix(base * 0.93, base * 1.07, dune);
@@ -302,7 +302,7 @@ vec3 bc_boardwalk(vec3 base, vec3 w, vec2 uv, float param) {
 	float fu = max(fwidth(uv.x), 1e-4);
 	float detail = 1.0 - smoothstep(0.03, 0.18, fpm);
 	int flags = int(param + 0.5);
-	float lane = float((flags >> 16) & 63);
+	float lane = float((flags >> 14) & 15);
 	float lx = uv.x * 1.2;
 	float bw = 0.205;
 	float j = floor(p.y / bw);
@@ -321,7 +321,7 @@ vec3 bc_boardwalk(vec3 base, vec3 w, vec2 uv, float param) {
 	col = mix(col, bc_plank_gap, max(gap, butt * 0.8));
 	// Nail heads near the lane's edges.
 	float nail = (1.0 - smoothstep(0.012, 0.012 + fpm, abs(abs(lx) - 0.93))) * (1.0 - smoothstep(0.012, 0.012 + fpm, abs(f - 0.5) * bw));
-	col = mix(col, bc_plank_gap * 0.7, nail * detail);
+	col = mix(col, bc_plank_gap * 0.7, nail * (1.0 - smoothstep(0.012, 0.05, fpm)));
 	// Rusty steel plates, one in some 3.4 m cells of each lane, bolted at the corners.
 	float pc = floor((p.y + 0.9 * hash11(lane)) / 3.4);
 	if (hash12(vec2(pc, lane + 3.0)) > 0.52) {
@@ -334,7 +334,7 @@ vec3 bc_boardwalk(vec3 base, vec3 w, vec2 uv, float param) {
 		vec3 plate = mix(bc_plate * (0.85 + 0.25 * hash12(vec2(pc, lane))), bc_rust, rust * 0.75);
 		plate *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, 0.05 + fpm, -pd));
 		vec2 bq = abs(pq) - vec2(0.72, 0.5);
-		float bolt = (1.0 - smoothstep(0.028, 0.028 + fpm, max(abs(bq.x), abs(bq.y)))) * detail;
+		float bolt = (1.0 - smoothstep(0.028, 0.028 + fpm, max(abs(bq.x), abs(bq.y)))) * (1.0 - smoothstep(0.03, 0.1, fpm));
 		plate = mix(plate, bc_plank_gap * 0.8, bolt);
 		col = mix(col, plate, inside);
 	}
@@ -413,7 +413,7 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 	vec2 fwp = max(vec2(fwidth(u), fwidth(v)), vec2(1e-4));
 	float fpm = max(fwp.x, fwp.y);
 	float detail = 1.0 - smoothstep(0.03, 0.16, fpm);
-	float seed = floor(param / 8.0);
+	float seed = floor((param + 4.0) / 8.0);
 	float bay_w = 3.0 + 1.8 * hash11(seed * 2.3 + 1.0);
 	float shift = hash11(seed * 1.7) * bay_w;
 	float us = u + shift;
@@ -458,7 +458,7 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 		float gap_x = 1.0 - smoothstep(0.003, 0.003 + max(fwp.x, 0.005), min(fx, 1.8 - fx));
 		plank = mix(plank, bc_bamboo_dark * 0.55, max(gap_y, gap_x * 0.8) * 0.8);
 		float nail = (1.0 - smoothstep(0.008, 0.008 + fpm, abs(min(fx, 1.8 - fx) - 0.1))) * (1.0 - smoothstep(0.008, 0.008 + fpm, abs(fr - 0.5) * bh));
-		plank = mix(plank, bc_bamboo_dark * 0.5, nail * detail);
+		plank = mix(plank, bc_bamboo_dark * 0.5, nail * (1.0 - smoothstep(0.01, 0.045, fpm)));
 		col = mix(plank, bc_timber * 0.95, smoothstep(0.1, 0.35, fpm / 0.2));
 	} else if (style < 3.5) {
 		// Rusty corrugated sheets: ribs every 0.18 m, rust blooms and streaks, an overlap at each sheet's edge.
@@ -625,15 +625,15 @@ vec3 bc_steel_pat(vec3 base, vec3 w, vec3 n, float param) {
 }
 
 // PAT_BEACH_PAINT (87): a painted board with a wordless poster: a hazard sign's content, a billboard's back.
-// UV in metres on the panel (x across, y up); param = seed (0-99) + 100 * glyph (0-6) + 1000 * the panel's
-// height in decimetres + 100000 * its width in decimetres. Muted unlit paints and a cream border: never a
+// UV in metres on the panel (x across, y up); param = seed (0-31) + 32 * glyph (0-6) + 256 * the panel's
+// height in decimetres + 16384 * its width in decimetres (MeshKit.beach_art_param). Muted unlit paints and a cream border: never a
 // glowing hazard colour.
 vec3 bc_board(vec2 uv, float param) {
 	float code = floor(param + 0.5);
-	float seed = mod(code, 100.0);
-	float kind = mod(floor(code / 100.0), 10.0);
-	float hdm = mod(floor(code / 1000.0), 100.0);
-	float wdm = floor(code / 100000.0);
+	float seed = mod(code, 32.0);
+	float kind = mod(floor(code / 32.0), 8.0);
+	float hdm = mod(floor(code / 256.0), 64.0);
+	float wdm = floor(code / 16384.0);
 	vec2 size = vec2(wdm * 0.1, hdm * 0.1);
 	if (wdm < 0.5) {
 		size.x = size.y;
@@ -646,13 +646,13 @@ vec3 bc_board(vec2 uv, float param) {
 // PAT_BEACH_NEON (88): a neon silhouette sign: a dark board with a glyph's outline (a palm, a wave, a
 // flamingo, a cocktail, a surfboard, the sun or a tiki totem; never words) and a thin frame glowing in
 // COLOR (violet, blue or warm white only: pink, yellow, orange, green and cyan belong to hazards). UV in
-// metres (x across, y up); param = glyph (0-6) + 8 * the board's height in decimetres + 8 * 256 * its
-// width in decimetres. Reduced flashing needs nothing here: it doesn't flicker.
+// metres (x across, y up); param = glyph (0-6) + 8 * the board's height in decimetres + 512 * its width in
+// decimetres (MeshKit.beach_neon_param). Reduced flashing needs nothing here: it doesn't flicker.
 vec3 bc_neon(vec3 base, vec2 uv, float param, vec3 dark, inout float glow) {
 	float code = floor(param + 0.5);
 	float kind = mod(code, 8.0);
-	float hdm = mod(floor(code / 8.0), 256.0);
-	float wdm = floor(code / 2048.0);
+	float hdm = mod(floor(code / 8.0), 64.0);
+	float wdm = floor(code / 512.0);
 	vec2 size = vec2(wdm * 0.1, hdm * 0.1);
 	float scale = min(size.x, size.y) * 0.78;
 	vec2 q = (uv - size * 0.5) / scale;
