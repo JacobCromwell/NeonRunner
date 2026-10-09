@@ -24,3 +24,4 @@ sky = Dictionary[String, Variant]({
 "sun_glow_height": 0.05
 })
 fog_color = Color(0.62, 0.42, 0.5, 1)
+scenery_tint = Color(0.76, 0.66, 0.82, 1)

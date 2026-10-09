@@ -67,7 +67,8 @@ func _play() -> void:
 		stage = CineStage.new()
 		stage.name = "Stage"
 		add_child(stage)
-		stage.build(stage_def, CineStage.skin_for(stage_def, zone, slot), tuning)
+		stage.build(stage_def, CineStage.skin_for(stage_def, zone, slot), tuning, 0,
+			CineStage.sky_for(stage_def, zone, slot))
 	playing = _make_timeline()
 	if playing == null:
 		push_warning("CinematicSequencer: %s has no timeline" % (def.id if def != null else name))
@@ -132,10 +133,11 @@ func _stage_near(near: float) -> float:
 
 
 ## Cuts to another stretch: builds a stage from `stage_def` dressed in `skin` (null: the slot's own, as
-## _stage_def()'s), on the same lanes, so track space stays where it was and every key goes on meaning
-## the same place; the stage before goes (hidden, its environment out of the world, then freed), and the
-## actors and the camera carry on in the new one. Building a stage takes a few frames' time (the arrival
-## flyover's takes 15-40 ms): cut under a fade or a flash. Returns the new stage.
+## _stage_def()'s, under the slot's sky, CineStage.sky_for; another look keeps its zone's own), on the same
+## lanes, so track space stays where it was and every key goes on meaning the same place; the stage before
+## goes (hidden, its environment out of the world, then freed), and the actors and the camera carry on in
+## the new one. Building a stage takes a few frames' time (the arrival flyover's takes 15-40 ms): cut under
+## a fade or a flash. Returns the new stage.
 func switch_stage(stage_def: CineStageDef, skin: ZoneSkin = null) -> CineStage:
 	var lanes: int = stage.geo.lane_count if stage != null else 0
 	var old: CineStage = stage
@@ -147,7 +149,11 @@ func switch_stage(stage_def: CineStageDef, skin: ZoneSkin = null) -> CineStage:
 	if old != null:
 		move_child(stage, old.get_index())
 		old.queue_free()
-	stage.build(stage_def, skin if skin != null else CineStage.skin_for(stage_def, zone, slot), tuning, lanes)
+	if skin != null:
+		stage.build(stage_def, skin, tuning, lanes)
+	else:
+		stage.build(stage_def, CineStage.skin_for(stage_def, zone, slot), tuning, lanes,
+			CineStage.sky_for(stage_def, zone, slot))
 	for node: CineActorNode in actors.values():
 		node.stage = stage
 	var look: String = stage.skin.resource_path.get_file().get_basename()

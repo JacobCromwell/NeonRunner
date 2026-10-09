@@ -5,6 +5,8 @@
 shader_type spatial;
 
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 uniform vec4 albedo : source_color = vec4(1.0);
 
 void fragment() {
@@ -15,6 +17,6 @@ void fragment() {
 #else
 	float light = scenery_light;
 #endif
-	ALBEDO = albedo.rgb * light;
+	ALBEDO = albedo.rgb * light * scenery_tint;
 	ROUGHNESS = 0.8;
 }
