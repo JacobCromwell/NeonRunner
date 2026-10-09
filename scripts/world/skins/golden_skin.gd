@@ -469,6 +469,13 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
+## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the Golden Zone's own facades: white stone,
+## gold trim (unlit), its glass and cracks a darker shade of the marble's veins. The Golden Palace's halls
+## take it too. Task H7b builds the real face from the zone's facades.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([stone_colors[0], gold_color, glass_color, vein_color.darkened(0.45)])
+
+
 ## A gilded planter (small), a fountain (medium) or a robed statue on a plinth (large): GoldenDoodads.
 ## The statue is never the Gilded Sentinels' armoured guard (see GoldenDoodads' header).
 func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:

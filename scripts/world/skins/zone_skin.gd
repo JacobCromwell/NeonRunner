@@ -73,6 +73,20 @@ const WALL_GAP_TRAILING_GLOW: float = 0.5
 
 ## The default doodad meshes, by size, push side and palette (built once each).
 static var _doodad_meshes: Dictionary = {}
+## The default dash wall meshes (dash_wall()), by size, look, palette and material (built once each).
+static var _dash_wall_meshes: Dictionary = {}
+
+## The default dash wall look (dash_wall(), task H7a): how many looks it varies between (by the wall's seed),
+## a storey's height, the plinth along its foot, the cornice along its top, the pilasters at its sides, how
+## far the walls between them sit back from its face, a window bay's width and its window's size (metres).
+const DASH_WALL_LOOKS: int = 4
+const DASH_WALL_STOREY: float = 3.0
+const DASH_WALL_PLINTH: float = 0.8
+const DASH_WALL_CORNICE: float = 0.7
+const DASH_WALL_PILASTER: float = 0.45
+const DASH_WALL_RECESS: float = 0.14
+const DASH_WALL_BAY: float = 2.4
+const DASH_WALL_WINDOW := Vector2(1.2, 1.45)
 ## The standard wall fence look's emitter meshes (wall_fence_mounts), built once each.
 static var _wall_fence_meshes: Dictionary = {}
 
@@ -101,6 +115,14 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 ## facade that hold the field, in a dark, unlit metal (sRGB) so only the pink glows. A zone may set its
 ## own, or draw its own emitters by overriding wall_fence().
 @export var wall_fence_mount_color: Color = Color(0.2, 0.21, 0.24)
+
+@export_group("Dash walls")
+## The colours of the default dash wall look (dash_wall(), task H7a), sRGB: its walls, its trim (pilasters,
+## floor slabs, plinth and cornice), its windows' glass and its cracks. Lit, never glowing (GDD §5's colour
+## rule: only hazards glow in hazard colours; a dash wall is solid and safe to dash through). A zone returns
+## its own side walls' colours from dash_wall_colors() instead; this is the fallback.
+@export var dash_wall_palette: PackedColorArray = PackedColorArray([Color(0.35, 0.36, 0.39), Color(0.25, 0.26, 0.29),
+	Color(0.07, 0.08, 0.1), Color(0.035, 0.035, 0.045)])
 
 
 func make_environment() -> Environment:
@@ -639,6 +661,175 @@ static func _doodad_face(layer: MeshLayer, a: Vector3, b: Vector3, c: Vector3, d
 		layer.quad(a, d, c, b, color)
 	else:
 		layer.quad(a, b, c, d, color)
+
+
+## A dash wall (task H7a; GDD §9.14, owner, October 8, 2026: "use the same assets as the side walls, but ...
+## facing towards the player, looking like a building in the middle of the street"): a building standing
+## across every floor lane, which the runner dashes through and which crumbles into rubble. `body` is its node
+## (TrackBuilder._build_dash_wall, a DashBreakable), centred on the box its look fills, `size` (width across
+## the track, height, depth along it): the floor is at -size.y / 2, its face toward the oncoming runner at
+## +size.z / 2, and its sides stop short of the side walls by the strip a wall runner passes it in
+## (MovementTuning.dash_wall_wall_room). `look_seed` varies the look (the same seed, the same look).
+## Every look keeps to these (and task H7b's per-zone looks, built from each zone's side-wall kit, must too):
+## - inside the box, filling its face: its hitbox is the box a little smaller (forgiving), so what looks like
+##   contact is contact, and the open strip beside each side wall shows that a wall runner passes it;
+## - a building's face, solid: it reads as something to dash through, with nothing in a hazard colour that
+##   glows (GDD §5) and nothing that reads as a sign, a fence, a barrier's stripes or an enemy; cracks or a
+##   breakable look are welcome; a cue, if any, in the dash's own language (PlayerSuit.GLOW_PALE), never a
+##   hazard's;
+## - everything under `body` (no top-level nodes): the break hides `body` whole (DashBreakable.smash);
+## - cheap: one mesh per wall from cached templates (the kit's MeshBatch), drawn on the Compatibility renderer;
+##   nothing that flickers (or it must honour Reduced flashing).
+## The pieces it crumbles into take its colours (dash_wall_debris_colors). The default is a plain three-storey
+## facade in dash_wall_colors(): pilasters, floor slabs, a plinth and a cornice, rows of dark windows and
+## cracks across its face (default_dash_wall_mesh), lit by dash_wall_material(). A zone overrides
+## dash_wall_colors() to build it from its own side walls' palette, or this whole hook for a look of its own.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	var colors: PackedColorArray = dash_wall_colors()
+	var material: Material = dash_wall_material()
+	var look: int = posmod(look_seed, DASH_WALL_LOOKS)
+	var key: String = var_to_str([size, look, colors, material.get_instance_id()])
+	var mesh: ArrayMesh = _dash_wall_meshes.get(key)
+	if mesh == null:
+		mesh = default_dash_wall_mesh(size, look, colors)
+		_dash_wall_meshes[key] = mesh
+	var inst := MeshInstance3D.new()
+	inst.name = "Look"
+	inst.mesh = mesh
+	inst.material_override = material
+	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	body.add_child(inst)
+
+
+## The default dash wall look's colours (dash_wall()), sRGB: walls, trim, window glass and cracks. A zone
+## returns its own side walls' (task H7a); dash_wall_palette otherwise.
+func dash_wall_colors() -> PackedColorArray:
+	return dash_wall_palette
+
+
+## The material the default dash wall look draws with: the zone's own lit kit material where it has one
+## (solid_material(), so the wall is lit and dimmed like its side walls), else the kit's (MeshKit.solid()).
+func dash_wall_material() -> Material:
+	if has_method("solid_material"):
+		var m: Variant = call("solid_material")
+		if m is Material:
+			return m
+	return MeshKit.solid()
+
+
+## The colours a dash wall's pieces fly off in when it crumbles (task H7a; RunEffects), for `body` as
+## dash_wall() dressed it (TrackBuilder asks right after): its look's own main lit colours, which the look's
+## builder tagged its meshes with (tag_debris_colors; the default does), else its walls' and trim's
+## (dash_wall_colors()). A skin may override it. Lit colours only: the pieces never glow.
+func dash_wall_debris_colors(body: Node3D, _look_seed: int) -> PackedColorArray:
+	var out := PackedColorArray()
+	for node: Node in body.find_children("*", "MeshInstance3D", true, false):
+		var mesh: Mesh = (node as MeshInstance3D).mesh
+		if mesh != null and mesh.has_meta(DEBRIS_COLORS_META):
+			out.append_array(mesh.get_meta(DEBRIS_COLORS_META) as PackedColorArray)
+	if out.is_empty():
+		var colors: PackedColorArray = dash_wall_colors()
+		for i: int in mini(colors.size(), 2):
+			out.append(colors[i])
+	return out
+
+
+## The default dash wall look (dash_wall()) for a box of `size`, look `look` (0 to DASH_WALL_LOOKS - 1), in
+## `colors` (walls, trim, glass, cracks; sRGB): a facade of DASH_WALL_STOREY storeys on a plinth under a
+## cornice, between pilasters at its sides, its walls set back DASH_WALL_RECESS from its face, with a row of
+## dark windows in each storey (a bay of DASH_WALL_BAY each) and cracks spreading across its lower storeys
+## from where a runner hits it. Its face, sides and top only (nobody sees its back or its underside before it
+## breaks). Lit, never glowing, inside the box. One surface for a lit kit material.
+static func default_dash_wall_mesh(size: Vector3, look: int, colors: PackedColorArray) -> ArrayMesh:
+	var wall: Color = colors[0] if colors.size() > 0 else Color(0.35, 0.36, 0.39)
+	var trim: Color = colors[1] if colors.size() > 1 else wall.darkened(0.3)
+	var glass: Color = colors[2] if colors.size() > 2 else Color(0.07, 0.08, 0.1)
+	var crack: Color = colors[3] if colors.size() > 3 else glass.darkened(0.5)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(["dash_wall", look])
+	var hx: float = size.x * 0.5
+	var y0: float = -size.y * 0.5
+	var top: float = size.y * 0.5
+	var back: float = -size.z * 0.5
+	var face: float = size.z * 0.5
+	var wall_face: float = face - minf(DASH_WALL_RECESS, size.z * 0.25)
+	var pil: float = minf(DASH_WALL_PILASTER, size.x * 0.1)
+	var plinth_top: float = y0 + minf(DASH_WALL_PLINTH, size.y * 0.15)
+	var cornice_bottom: float = top - minf(DASH_WALL_CORNICE, size.y * 0.12)
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(null)
+	var shown: int = MeshKit.FACE_PZ | MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY
+	# The walls between the pilasters, set back from the face; a tone per look.
+	var tone: float = [0.0, 0.05, -0.04, 0.09][look % 4]
+	s.box_between(Vector3(-hx + pil, plinth_top, back), Vector3(hx - pil, cornice_bottom, wall_face),
+		wall.lightened(tone) if tone > 0.0 else wall.darkened(-tone), 0.0, MeshKit.PAT_PLAIN, shown)
+	# The pilasters at its sides, the plinth along its foot and the cornice along its top, out to the face.
+	for side: float in [-1.0, 1.0]:
+		s.box_between(Vector3(side * hx, y0, back), Vector3(side * (hx - pil), cornice_bottom, face), trim, 0.0,
+			MeshKit.PAT_PLAIN, shown)
+	s.box_between(Vector3(-hx + pil, y0, back), Vector3(hx - pil, plinth_top, face - 0.04), trim.darkened(0.2), 0.0,
+		MeshKit.PAT_PLAIN, shown)
+	s.box_between(Vector3(-hx, cornice_bottom, back), Vector3(hx, top, face), trim, 0.0, MeshKit.PAT_PLAIN, shown)
+	# Storeys: a floor slab at each, and a row of windows in each bay.
+	var inner: float = size.x - 2.0 * pil
+	var bays: int = maxi(1, floori(inner / DASH_WALL_BAY))
+	var bay: float = inner / float(bays)
+	var storey: float = DASH_WALL_STOREY
+	var y: float = plinth_top
+	var level: int = 0
+	while y + storey * 0.6 <= cornice_bottom:
+		var y1: float = minf(y + storey, cornice_bottom)
+		if level > 0:
+			s.box_between(Vector3(-hx + pil, y - 0.11, back), Vector3(hx - pil, y + 0.11, face - 0.03), trim, 0.0,
+				MeshKit.PAT_PLAIN, shown)
+		var win := Vector2(minf(DASH_WALL_WINDOW.x, bay * 0.6), minf(DASH_WALL_WINDOW.y, (y1 - y) * 0.6))
+		var cy: float = (y + y1) * 0.5 + (0.0 if level > 0 else -0.1)
+		for b: int in bays:
+			var cx: float = -hx + pil + bay * (b + 0.5)
+			# The ground storey's are shuttered on some looks (a shop front), the rest dark glass in a frame.
+			var shuttered: bool = level == 0 and (look + b) % 3 == 0
+			var pane: Color = trim.darkened(0.35) if shuttered else glass
+			s.box(Vector3(cx, cy, wall_face + 0.015), Vector3(win.x, win.y, 0.03), pane, 0.0,
+				MeshKit.PAT_GRILLE if shuttered else MeshKit.PAT_GLASS, MeshKit.FACE_PZ)
+			MeshKit.frame(s, Vector3(cx, cy, wall_face + 0.04), win.x + 0.16, win.y + 0.16, 0.08, 0.08, trim)
+		y = y1
+		level += 1
+	# Cracks spreading from where a runner hits it, across the lower storeys: a breakable face.
+	var hits: int = 2 + look % 2
+	for k: int in hits:
+		var at := Vector2(lerpf(-hx + pil + 0.6, hx - pil - 0.6, (k + rng.randf_range(0.25, 0.75)) / float(hits)),
+			y0 + rng.randf_range(1.1, 1.9))
+		var arms: int = rng.randi_range(4, 6)
+		for a: int in arms:
+			var angle: float = TAU * (a + rng.randf_range(-0.3, 0.3)) / float(arms)
+			_dash_wall_crack(s, at, angle, rng.randi_range(3, 5), rng, Vector4(-hx + 0.05, hx - 0.05, y0 + 0.05,
+				top - 0.05), face, crack)
+	return tag_debris_colors(batch.to_mesh(), batch)
+
+
+## One crack of the default dash wall look: a zigzag of thin segments from `from` (x, y on the face) heading
+## at `angle`, `segments` long, kept within `bounds` (x min, x max, y min, y max), standing proud of the walls
+## to the face (z `face`) so it shows on the walls and the trim alike.
+static func _dash_wall_crack(s: MeshLayer, from: Vector2, angle: float, segments: int, rng: RandomNumberGenerator,
+		bounds: Vector4, face: float, color: Color) -> void:
+	var p: Vector2 = from
+	var heading: float = angle
+	var width: float = 0.07
+	for i: int in segments:
+		heading += rng.randf_range(-0.6, 0.6)
+		var length: float = rng.randf_range(0.45, 1.0) * (1.0 - 0.12 * i)
+		var q: Vector2 = p + Vector2(cos(heading), sin(heading)) * length
+		q = Vector2(clampf(q.x, bounds.x, bounds.y), clampf(q.y, bounds.z, bounds.w))
+		var d: Vector2 = q - p
+		if d.length() < 0.05:
+			break
+		var mid: Vector2 = (p + q) * 0.5
+		var depth: float = DASH_WALL_RECESS + 0.02
+		var xform := Transform3D(Basis(Vector3.BACK, d.angle()) * Basis.from_scale(Vector3(d.length() + width, width, depth)),
+			Vector3(mid.x, mid.y, face - depth * 0.5 + 0.005))
+		s.box_xform(xform, color, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ | MeshKit.FACE_PY | MeshKit.FACE_NY)
+		p = q
+		width *= 0.82
 
 
 func finish_line(_parent: Node3D, _width: float, _distance: float) -> void:

@@ -328,6 +328,12 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
+## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in Gangland's own facades: sandstone walls, umber
+## trim, sooty glass and soot in its cracks. Task H7b builds the real face from the zone's ruins.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([facade_colors[0], facade_colors[facade_colors.size() - 1], Color(0.09, 0.08, 0.07), soot_color])
+
+
 ## Burned-out car wrecks (small and medium) and a broken-down shop (large): GanglandDoodads.
 func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
 	doodads().build(body, size, size_class, side, look_seed)

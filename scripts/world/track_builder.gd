@@ -23,9 +23,17 @@ const LAYER_LANE_BLOCKER: int = 64
 ## pushes the player into a neighbouring lane (Player). Never a hazard: no hit, and shots and
 ## weapons never see it.
 const LAYER_DOODAD: int = 128
+## Dash walls' boxes (task H7a; GDD §9.14): the box a wall's look fills, which the Player's approach check
+## finds (Player._check_dash_walls: the dash smashing it a frame before contact, a wall runner passing beside
+## it). Its hitbox is a Hazard on the hazard layer, a little smaller (dash_wall_hitbox). Never a hazard or a
+## lane blocker itself.
+const LAYER_DASH_WALL: int = 256
 ## A doodad's body in the hitbox view (debug_toggle_hitboxes): see-through blue, apart from the
 ## hazards' red.
 const DOODAD_DEBUG := Color(0.2, 0.55, 1.0, 0.3)
+## A dash wall's hitbox starts this far above the floor: a slide (its body from the floor up) still meets
+## it, and the floor's own top never counts as touching it.
+const DASH_WALL_FLOOR_LIFT: float = 0.05
 ## A floor cut's lane is drawn in slices this long (and cut at chunk cuts), which it hides as its front
 ## passes them and shortens the one its front is in (FloorCut): short enough that one shortened slice
 ## barely shows, long enough to keep a chunk's build cheap.
@@ -66,6 +74,8 @@ var _level_time: float = 0.0
 var _fence_nodes: Dictionary = {}
 ## Built wall fence hazards by their index in layout.wall_fences (task B5), likewise.
 var _wall_fence_nodes: Dictionary = {}
+## Built dash walls (task H7a), in the order they were built (dash_wall_for, dash_wall_nodes).
+var _dash_wall_nodes: Array[DashBreakable] = []
 ## The skin's calls still to make (dress_budget_usec), in order: [chunk start, chunk root, Callable].
 var _dressing: Array[Array] = []
 ## The chunk being built (_build_chunk): its start and root, for the calls it queues.
@@ -85,6 +95,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_buckets.clear()
 	_fence_nodes.clear()
 	_wall_fence_nodes.clear()
+	_dash_wall_nodes.clear()
 	_cut_nodes.clear()
 	_dressing.clear()
 	_next_chunk = 0
@@ -217,6 +228,43 @@ func wall_fence_hazards() -> Array[Hazard]:
 	return out
 
 
+## The built dash wall for layout entry `w` (LevelLayout.dash_walls; task H7a), or null until the chunk where it
+## stands is built (and once it's freed behind the player, or if it was broken before it was built).
+func dash_wall_for(w: Dictionary) -> DashBreakable:
+	for node: DashBreakable in _dash_wall_nodes:
+		if is_instance_valid(node) and not node.is_queued_for_deletion() and is_same(node.entry, w):
+			return node
+	return null
+
+
+## Every dash wall built and still on the track (tests, review tools), in track order.
+func dash_wall_nodes() -> Array[DashBreakable]:
+	var out: Array[DashBreakable] = []
+	for node: DashBreakable in _dash_wall_nodes:
+		if is_instance_valid(node) and not node.is_queued_for_deletion():
+			out.append(node)
+	return out
+
+
+## A dash wall's look's box (task H7a; GDD §9.14), `depth` long along the track: as wide as the floor less
+## MovementTuning.dash_wall_wall_room beside each side wall (the strip a wall runner passes it in), and
+## dash_wall_height tall. Vector3(width, height, depth), centred across the track.
+static func dash_wall_size(p_geo: TrackGeometry, t: MovementTuning, depth: float) -> Vector3:
+	return Vector3(2.0 * (p_geo.wall_x() - t.dash_wall_wall_room), t.dash_wall_height, depth)
+
+
+## A dash wall's hitbox inside its look's box `size` (dash_wall_size), centred on the box's middle: the box
+## less MovementTuning.dash_wall_inset at its sides and its face (forgiving, CLAUDE.md principle 4), from
+## DASH_WALL_FLOOR_LIFT above the floor to its top. AABB in the box's own space (its face toward the runner at
+## +z, its floor at -y).
+static func dash_wall_hitbox(size: Vector3, t: MovementTuning) -> AABB:
+	var inset: float = clampf(t.dash_wall_inset, 0.0, size.z * 0.5)
+	var half := size * 0.5
+	var from := Vector3(-half.x + inset, -half.y + DASH_WALL_FLOOR_LIFT, -half.z)
+	var to := Vector3(half.x - inset, half.y, half.z - inset)
+	return AABB(from, to - from)
+
+
 func set_hitboxes_visible(on: bool) -> void:
 	show_hitboxes = on
 	for node: Node in get_tree().get_nodes_in_group(&"debug_hitbox"):
@@ -245,6 +293,7 @@ func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int) -
 	_bucket("ramps", pieces.ramps, "at", tuning.ramp_length)
 	_bucket("speed_pads", pieces.speed_pads, "at", tuning.speed_pad_length)
 	_bucket("doodads", pieces.doodads, "start", 0.0, "end")
+	_bucket("dash_walls", pieces.dash_walls, "start", 0.0, "end")
 	# A floor cut is built in the chunk where its stretch starts, which stays until the player is past
 	# its cause's spot; each chunk draws the slices of its lane's floor within it.
 	for c: Dictionary in pieces.cuts:
@@ -333,6 +382,8 @@ func _build_chunk(index: int) -> void:
 		_build_speed_pad(root, sp)
 	for d: Dictionary in bucket.get("doodads", []):
 		_build_doodad(root, d)
+	for w: Dictionary in bucket.get("dash_walls", []):
+		_build_dash_wall(root, w)
 
 
 ## A skin call for the chunk being built: made now, or queued with a dressing budget (dress_budget_usec).
@@ -589,6 +640,60 @@ func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	_dress(func() -> void:
 		skin.doodad(area, size, size_class, side, look_seed)
 		area.debris_colors = skin.doodad_debris_colors(area, size_class, side, look_seed))
+
+
+## A dash wall (task H7a; GDD §9.14, owner, October 8, 2026: a building across the street "facing towards the
+## player", which the runner dashes through): a DashBreakable of kind &"dash_wall" over its layout entry's
+## stretch (start, its face toward the runner, to end), as wide as the floor less the strip beside each side
+## wall a wall runner passes it in, and taller than any jump (dash_wall_size). Two things in the physics world:
+## the DashBreakable itself on the dash wall layer, the box its look fills, which the Player's approach check
+## finds (the dash smashes it a frame before contact; a wall runner passing beside it breaks it as they reach
+## its face, so it never stands between the camera and them); and its hitbox, a Hazard child on the hazard
+## layer a little smaller than the look (dash_wall_hitbox: forgiving), solid, which armor absorbs all the same
+## (Hazard.armor_blocks_solid) and which breaks the wall at any contact (Hazard.breakable): without the dash
+## it's one hit (DamageRules), and the runner goes on through it. It's no lane blocker and no wall blocker:
+## it stands across every lane, and the side walls stay open. The skin dresses it (ZoneSkin.dash_wall) and
+## names the colours its pieces fly off in (ZoneSkin.dash_wall_debris_colors). One broken on this attempt (its
+## entry marked "smashed") is never built again.
+func _build_dash_wall(root: Node3D, w: Dictionary) -> void:
+	if bool(w.get("smashed", false)):
+		return
+	var start: float = float(w["start"])
+	var end: float = float(w["end"])
+	var size: Vector3 = dash_wall_size(geo, tuning, end - start)
+	var wall := DashBreakable.new()
+	wall.name = "DashWall"
+	wall.kind = &"dash_wall"
+	wall.entry = w
+	wall.size = size
+	wall.collision_layer = LAYER_DASH_WALL
+	wall.collision_mask = 0
+	wall.monitoring = false
+	wall.position = Vector3(0.0, size.y * 0.5, -(start + end) * 0.5)
+	root.add_child(wall)
+	_add_shape(wall, size)
+	var box: AABB = dash_wall_hitbox(size, tuning)
+	var hazard := Hazard.new()
+	hazard.name = "Hitbox"
+	hazard.hazard_name = "dash wall"
+	hazard.is_solid = true
+	hazard.armor_blocks_solid = true
+	hazard.breakable = wall
+	hazard.size = box.size
+	hazard.collision_layer = LAYER_HAZARD
+	hazard.collision_mask = 0
+	hazard.monitoring = false
+	hazard.position = box.get_center()
+	wall.add_child(hazard)
+	_add_shape(hazard, box.size)
+	var debug := GreyboxMaterials.add_box(hazard, Vector3.ZERO, box.size * 1.01, GreyboxMaterials.debug_hitbox())
+	debug.add_to_group(&"debug_hitbox")
+	debug.visible = show_hitboxes
+	_dash_wall_nodes.append(wall)
+	var look_seed: int = int(w.get("seed", 0))
+	_dress(func() -> void:
+		skin.dash_wall(wall, size, look_seed)
+		wall.debris_colors = skin.dash_wall_debris_colors(wall, look_seed))
 
 
 func _hazard(root: Node3D, center: Vector3, size: Vector3, layers: int) -> Hazard:

@@ -379,6 +379,12 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
+## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the Marketplace's own facades: sun-bleached
+## stucco, its pale trim, dark glass and earthy cracks. Task H7b builds the real face from the zone's shopfronts.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([stucco_colors[0], trim_color, Color(0.12, 0.13, 0.15), Color(0.22, 0.17, 0.13)])
+
+
 ## A potted plant (small), a bank of casino machines (medium) or a planted hedge row (large): MarketDoodads.
 func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
 	doodads().build(body, size, size_class, side, look_seed)

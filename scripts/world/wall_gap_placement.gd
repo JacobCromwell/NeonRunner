@@ -18,7 +18,8 @@ extends RefCounted
 ##   enemy on its wall (a Gilded Sentinel's whole wall section and niche, sentinel_wall_section), every
 ##   ceiling reaching its wall, and a ramp on its wall from before its launch to past its longest
 ##   wall run (keep_outs); and both walls keep clear of every wider floor gap (task G7,
-##   WideGapPlacement.wall_keep_outs), so a wall runner is never dropped into one.
+##   WideGapPlacement.wall_keep_outs), so a wall runner is never dropped into one; and both walls stay whole
+##   beside every dash wall (task H7a, DashWallRules.wall_keep_outs: a runner on a side wall passes it).
 ## - Deliberately NOT kept: the outer lane's floor beside a gap. The owner decided players should see
 ##   gaps coming, so a drop may land the runner in front of whatever the outer lane holds.
 ##
@@ -27,6 +28,8 @@ extends RefCounted
 
 const FEATURE: String = "wall_gaps"
 const TUNING_PATH: String = "res://data/tuning/wall_gaps.tres"
+## The dash walls' rules (task H7a): both walls stay whole beside a dash wall (wall_keep_outs).
+const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
 
 
 ## Every level's numbers (data/tuning/wall_gaps.tres).
@@ -147,4 +150,8 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	# Task G7: every wider gap, on both walls, with its own margin (WideGapTuning.wall_gap_clear_seconds), so a
 	# runner on a wall over one is never dropped into it.
 	out.append_array(WideGapPlacement.wall_keep_outs(gen))
+	# Task H7a: beside every dash wall both walls stay whole (GDD §9.14: a runner on a side wall passes it), from
+	# its wall route's start to its back (DashWallRules.wall_keep_outs), with the usual margin.
+	for k: Vector2 in DashWallRules.wall_keep_outs(gen):
+		out.append(Vector2(k.x - clear, k.y + clear))
 	return WallFencePlacement.merged(out)

@@ -11,6 +11,9 @@ extends RefCounted
 ## 2. Enemy rules: for every feature with a script at res://scripts/enemies/<feature>_rules.gd,
 ##    its static `apply(gen: LevelGenerator)` runs (e.g. drone anti-grav pad schedules). Rules that
 ##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
+##    Last of them, the dash walls (the `dash_wall` feature, task H7a; dash_wall_rules.gd): buildings
+##    across every floor lane the runner dashes through, where the level's final track leaves room, which
+##    every pass after the rules keeps off (fill_keep_outs, doodad_keep_outs, the rules' keep-outs).
 ## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
 ##    stretches. Around it, danger density (LevelConfig.danger_density_increase; DangerDensity,
 ##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
@@ -110,6 +113,8 @@ extends RefCounted
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 ## The danger density pass (LevelConfig.danger_density_increase); no class_name, so loaded here.
 const DangerDensity := preload("res://scripts/world/danger_density.gd")
+## The dash walls' rules (task H7a), whose footprints and dash baits the fill pass and the doodads keep off.
+const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
 const RULES_DIR: String = "res://scripts/enemies"
 ## The most builds generate() makes to have every feature appear (guarantee_features). Past it the
 ## level keeps the build that missed the fewest, with a warning. Most levels take one to three; The
@@ -1323,9 +1328,10 @@ static func is_filler(pattern: Dictionary) -> bool:
 ## before its end); every enemy from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses
 ## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
 ## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
-## Resonator's visit, a drone wave until its first pad); a level's quiet stretches; and every floor
-## cut, in every lane, from its warning to its end (FloorCutPlan.window). (Zone doodads come after the
-## fill pass, into what it leaves: _place_doodads.)
+## Resonator's visit, a drone wave until its first pad); a level's quiet stretches; every floor cut, in
+## every lane, from its warning to its end (FloorCutPlan.window); and every dash wall's footprint, in every
+## lane (task H7a, DashWallRules.footprint: its clear approach, the wall and the clear stretch past it).
+## (Zone doodads come after the fill pass, into what it leaves: _place_doodads.)
 func fill_keep_outs(patterns: Array) -> Dictionary:
 	var out: Array[Vector4] = []
 	var half: float = tuning.fence_depth * 0.5
@@ -1350,6 +1356,10 @@ func fill_keep_outs(patterns: Array) -> Dictionary:
 	for c: Dictionary in layout.cuts:
 		var w: Vector2 = FloorCutPlan.window(c, speed)
 		out.append(_keep(w.x, w.y))
+	# A dash wall (task H7a), in every lane: its clear approach, the wall and the clear stretch past it.
+	for dw: Dictionary in layout.dash_walls:
+		var fp: Vector2 = DashWallRules.footprint(self, dw)
+		out.append(_keep(fp.x, fp.y))
 	var activity: Array[Vector2] = []
 	for k: Vector4 in out:
 		activity.append(Vector2(k.x, k.y))
@@ -1637,7 +1647,10 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
 ## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
 ## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
-## player in a cut (and its whole window is a fill keep-out, in every lane, already).
+## player in a cut (and its whole window is a fill keep-out, in every lane, already). And no doodad stands
+## just before a dash wall (task H7a; GDD §9.14: nothing else that needs the dash comes just before one):
+## the dash smashes a doodad, so none stands within the dash's longest cooldown before a wall's face
+## (DashWallRules.bait_keep_outs).
 func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
@@ -1652,6 +1665,7 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Ar
 			lane_keeps.append(k)
 		else:
 			out.append(Vector2(float(k["from"]), float(k["to"])))
+	out.append_array(DashWallRules.bait_keep_outs(self))
 	return out
 
 
@@ -2090,9 +2104,9 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 			_add_credit(far_d, "ceiling", far_lane, 0, 0.6, 25 if rng.randf() < 0.7 else 5, true)
 
 
-## Drops credits that would sit inside a hazard or a zone doodad, over a hole the player can't reach,
-## or in a floor cut's lane while it's on (they'd lure the player into its way, then hang over the
-## gap it leaves).
+## Drops credits that would sit inside a hazard, a zone doodad or a dash wall (task H7a), over a hole the
+## player can't reach, or in a floor cut's lane while it's on (they'd lure the player into its way, then
+## hang over the gap it leaves).
 func _drop_unsafe_credits() -> void:
 	var kept: Array[Dictionary] = []
 	for c: Dictionary in layout.credits:
@@ -2105,7 +2119,8 @@ func _drop_unsafe_credits() -> void:
 				continue
 			if not c["risky"] and _fence_near(lane, d, 1.5):
 				continue
-			# Inside a zone doodad (or just at its ends): a trail that runs into one stops there.
+			# Inside a zone doodad or a dash wall (or just at its ends; LevelLayout.doodad_between counts a wall
+			# in every lane): a trail that runs into one stops there.
 			if layout.doodad_between(d - DOODAD_CREDIT_MARGIN, d + DOODAD_CREDIT_MARGIN, lane):
 				continue
 			if layout.cut_between(d - 0.5, d + 0.5, lane):

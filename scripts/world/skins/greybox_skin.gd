@@ -157,3 +157,10 @@ func speed_pad(trigger: Area3D, size: Vector3) -> void:
 
 func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	GreyboxMaterials.add_box(parent, Vector3(0.0, 0.02, -distance), Vector3(width, 0.05, 0.6), GreyboxMaterials.glow(finish_color, 3.0))
+
+
+## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the grey box's walls, lightened so it reads
+## as a solid block against them.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([wall_color.lightened(0.3), wall_color.lightened(0.15), Color(0.05, 0.05, 0.07),
+		Color(0.02, 0.02, 0.03)])

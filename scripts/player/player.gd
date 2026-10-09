@@ -15,7 +15,9 @@ signal died(cause: String)
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
 ## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
 ## doodad shoved the player into a neighbouring lane), doodad_smash (the dash broke a zone doodad apart:
-## `<kind>_smash` for a DashBreakable of another kind), robbed (a thief's touch took credits, GDD §9.12),
+## `<kind>_smash` for a DashBreakable of another kind: dash_wall_smash, a dash wall crumbling, task H7a,
+## whether the dash smashed it, the runner crashed through it or passed it on a side wall),
+## robbed (a thief's touch took credits, GDD §9.12),
 ## wall_missing (a wall entry refused where a wall gap leaves no wall: no bump, there's nothing to
 ## bump against), wall_gap_drop (a wall runner reached a wall gap and dropped off into the outer lane).
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
@@ -34,9 +36,10 @@ signal item_gained(item: StringName)
 signal armor_changed
 ## The player's contact defeated an enemy (cause: &"stomp", &"claws" or &"dash").
 signal enemy_contact(enemy: Enemy, cause: StringName)
-## The dash broke something apart (GDD §3, owner, October 8, 2026: a zone doodad; task H5): it has
-## switched off its collision and hidden its look (DashBreakable.smash), and the `<kind>_smash` movement
-## event follows. RunEffects flings its pieces.
+## The dash broke something apart (GDD §3, owner, October 8, 2026: a zone doodad; task H5), or a dash wall
+## broke as the runner reached it (GDD §9.14; task H7a: the dash smashed it, they crashed through it, or they
+## passed it on a side wall; DashBreakable.broken_by says which): it has switched off its collision and hidden
+## its look (DashBreakable.smash), and the `<kind>_smash` movement event follows. RunEffects flings its pieces.
 signal smashed(breakable: DashBreakable)
 signal revived
 
@@ -146,8 +149,12 @@ var _push_doodad: int = 0
 var _push_ignore_left: float = 0.0
 ## How many times zone doodads have pushed the player this run (tests and tools).
 var pushes: int = 0
-## How many zone doodads the dash has smashed this run (tests and tools).
+## How many zone doodads and dash walls the dash has smashed this run (tests and tools).
 var smashes: int = 0
+## How many dash walls the runner crashed through without the dash (one hit each, GDD §9.14), and passed on a
+## side wall, this run (task H7a; tests and tools).
+var crashes: int = 0
+var wall_passes: int = 0
 ## The doodads the dash has claimed (GDD §3: dashing into one smashes it), by instance id: each breaks
 ## when the body reaches it instead of pushing (_check_doodads). Kept while dashing and for
 ## SMASH_CLAIM_GRACE after (_smash_grace_left), then let go.
@@ -155,6 +162,9 @@ var _smash_claims: Dictionary = {}
 var _smash_grace_left: float = 0.0
 var _doodad_shape := BoxShape3D.new()
 var _doodad_query := PhysicsShapeQueryParameters3D.new()
+## The dash walls ahead (task H7a, _check_dash_walls): a query on their layer.
+var _wall_shape := BoxShape3D.new()
+var _wall_query := PhysicsShapeQueryParameters3D.new()
 var _dash_left: float = 0.0
 var _dash_bonus: float = 0.0
 var _last_speed_pad: int = 0
@@ -196,6 +206,10 @@ func _ready() -> void:
 	_doodad_query.collide_with_areas = true
 	_doodad_query.collide_with_bodies = false
 	_doodad_query.collision_mask = TrackBuilder.LAYER_DOODAD
+	_wall_query.shape = _wall_shape
+	_wall_query.collide_with_areas = true
+	_wall_query.collide_with_bodies = false
+	_wall_query.collision_mask = TrackBuilder.LAYER_DASH_WALL
 
 
 func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> void:
@@ -234,6 +248,8 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_push_ignore_left = 0.0
 	pushes = 0
 	smashes = 0
+	crashes = 0
+	wall_passes = 0
 	_smash_claims.clear()
 	_smash_grace_left = 0.0
 	invulnerable_left = 0.0
@@ -314,11 +330,18 @@ func defense() -> DamageRules.Defense:
 
 ## Resolves one contact with a hazard (obstacle, enemy hitbox or projectile) and applies the
 ## outcome. `stomping`: the player is dropping onto it from above. Returns the outcome.
+## A breakable obstacle's contact (Hazard.breakable: a dash wall, task H7a) also breaks it, whatever the
+## outcome (DamageRules: the dash's pass, a hit the armor or the shield absorbs, a kill, god mode or the
+## invulnerability window alike; GDD §9.14: "the wall breaks either way"), before the outcome applies, so
+## the runner who lives goes on through it.
 func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 	if not alive:
 		return DamageRules.Outcome.IGNORE
 	var d: DamageRules.Defense = defense()
 	var outcome: DamageRules.Outcome = DamageRules.resolve(hazard, d, stomping)
+	var b: DashBreakable = hazard.breakable
+	if b != null and is_instance_valid(b) and not b.is_smashed():
+		_break(b, &"dash" if d.dashing else &"crash")
 	match outcome:
 		DamageRules.Outcome.BLOCKED_ARMOR:
 			invulnerable_left = rules.hit_invulnerability
@@ -375,8 +398,8 @@ func revive() -> void:
 
 
 ## The juggernaut dash (GDD §8): passes through hazards for `duration` seconds, `speed_bonus` faster,
-## and smashes the zone doodads it runs into (GDD §3, _check_doodads). Cooldowns belong to the power-up
-## that calls this.
+## and smashes the zone doodads (GDD §3, _check_doodads) and the dash walls (GDD §9.14, _check_dash_walls)
+## it runs into. Cooldowns belong to the power-up that calls this.
 func start_dash(duration: float, speed_bonus: float) -> void:
 	if not alive:
 		return
@@ -466,6 +489,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_apply_transform(delta)
 	_check_doodads(motion)
+	_check_dash_walls(motion)
 	_check_triggers(motion)
 	_check_hazards(motion)
 
@@ -1071,6 +1095,76 @@ func _start_push(area: Area3D, doodad_lane: int, dir: int, own_side: int) -> voi
 ## True if a push may end in `target`: a lane of the track no solid side fills beside the player.
 func _push_room(target: int) -> bool:
 	return target >= 0 and target < geo.lane_count and not _lane_blocked(target)
+
+
+# --- Dash walls ---------------------------------------------------------------------------------
+
+## GDD §9.14 (owner, October 8, 2026; task H7a): a dash wall stands across every floor lane, and it breaks as
+## the runner reaches it, whatever they do, so it never stands between the chase camera and them:
+## - dashing into it smashes it (no damage, the lane and the speed kept), a frame before the body would
+##   touch it: claimed as a doodad is (_dash_claims: the dash lasts until the body gets there, a fading
+##   boost counted; the claim outlives the dash by SMASH_CLAIM_GRACE), broken when the body's front meets its
+##   face (the box its look fills, TrackBuilder.LAYER_DASH_WALL);
+## - a runner on a side wall beside it (their body clear of its hitbox across and up: the strip it leaves
+##   open, MovementTuning.dash_wall_wall_room) passes it: it crumbles as their front reaches its face, and it
+##   costs nothing;
+## - anyone else meets its hitbox (_check_hazards, after this): the crash, one hit (DamageRules: the armor or
+##   the shield absorbs it, else it kills), which breaks it too (receive_hit).
+## A dash that ends before the body gets there leaves it unclaimed: the body meets its hitbox, a crash.
+func _check_dash_walls(motion: float) -> void:
+	var depth: float = tuning.visual_size.z
+	var front: float = distance + depth * 0.5
+	var back: float = distance - depth * 0.5
+	var reach: float = maxf(_dash_reach() if dashing else 0.0, motion) + 0.05
+	# Across the whole track, and every height a runner reaches: whatever surface they're on.
+	_wall_shape.size = Vector3(geo.wall_x() * 2.0 + 2.0, tuning.ceiling_height + 4.0, front + reach - back)
+	_wall_query.transform = Transform3D(Basis.IDENTITY, Vector3(0.0, _wall_shape.size.y * 0.5 - 1.0,
+		TrackGeometry.world_z((back + front + reach) * 0.5)))
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_wall_query, 4):
+		var b := hit["collider"] as DashBreakable
+		if b == null or b.is_smashed() or b.kind != &"dash_wall":
+			continue
+		var gap: float = float(b.entry["start"]) - front
+		if _dash_claims(b, gap):
+			# The body meets its face by the next frame (or is level with it already): it breaks now, untouched.
+			if gap <= motion:
+				_break(b, &"dash")
+			continue
+		if gap <= motion and not _in_wall_way(b):
+			# A wall runner beside it: it crumbles as they reach it, and they run on past.
+			_break(b, &"pass")
+
+
+## True if the body (its hurtbox now, across and up) lies within dash wall `b`'s hitbox's width and height:
+## running on, it meets it (a crash) rather than passing beside it.
+func _in_wall_way(b: DashBreakable) -> bool:
+	var hitbox: Hazard = b.hitbox()
+	if hitbox == null:
+		return true
+	var mine: AABB = hurtbox_aabb()
+	var c: Vector3 = hitbox.global_position
+	var half: Vector3 = hitbox.size * 0.5
+	return mine.position.x < c.x + half.x and mine.end.x > c.x - half.x \
+		and mine.position.y < c.y + half.y and mine.end.y > c.y - half.y
+
+
+## Dash wall `b` breaks as the runner reaches it (GDD §9.14; DashBreakable.smash with `how`: &"dash", &"crash"
+## or &"pass"): `smashed` and the `dash_wall_smash` event follow (RunEffects crumbles it, the event plays the
+## crash). What the crash costs is receive_hit's (DamageRules); a smash or a pass costs nothing and scores
+## nothing. DESIGN-TBD (docs/questions/h7a.md): no score for breaking one.
+func _break(b: DashBreakable, how: StringName) -> void:
+	_smash_claims.erase(b.get_instance_id())
+	if not b.smash(how):
+		return
+	match how:
+		&"dash":
+			smashes += 1
+		&"crash":
+			crashes += 1
+		_:
+			wall_passes += 1
+	smashed.emit(b)
+	_event(StringName("%s_smash" % b.kind))
 
 
 # --- Triggers & hazards ----------------------------------------------------
