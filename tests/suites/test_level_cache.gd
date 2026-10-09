@@ -11,10 +11,10 @@ extends TestSuite
 ## - The generator's warnings come with a reused level, and a run's changes to its copy never reach the kept
 ##   build or the next copy.
 ## - Retries reuse the build both ways (LevelRun.restart, and the results screen's retry through the App), and a
-##   seeded scripted attempt plays exactly as with the cache off (every run building its level, as before):
-##   the same layout, the runner's trace and events, kills and credits, the enemies' event log, the score and
-##   the EMPs, in Gangland 3 (fence generators) and Corporate 2 (a floor cut, a thief, an Enforcer Truck), at 5
-##   lanes.
+##   seeded scripted attempt (lane switches, jumps, slides and dashes, and an EMP over the fences ahead) plays
+##   exactly as with the cache off (every run building its level, as before): the same layout, the runner's
+##   trace and events, kills and credits, the enemies' event log, the floor cuts begun, the score and the fences
+##   switched off, at Gangland 3 and Corporate 2 (a floor cut, a thief, an Enforcer Truck) at 5 lanes.
 ## - Nothing leaks into the next attempt: after an attempt that changed its world and layout every way play can
 ##   (and more), each retry starts from the build's layout, with every enemy still to come, every credit,
 ##   every fence on, no floor cut begun, the build's length and no score; the kept build is untouched.
