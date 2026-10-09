@@ -1231,9 +1231,60 @@ its arrival showing begins but gives way before it comes alongside (4, in builds
 Resonator holds its lane (1)); in two builds a level keeps one truck that shows itself
 where it had two that didn't, and in one a pair planned the other way round gets back the second truck C6c's order
 dropped. A wider gap (task G7) comes before a window only where that window comes after its bait (6 of 27).
+
+**Making room** (task C6e; the owner, October 9, 2026, GDD §9.13 "Making room where there is none", answering items
+367, 400 and 401). Where no window fits before the first bait as C6c and C6d planned it (`ShowPlanner`'s CLASSIC mode,
+unchanged, so a chase that had one keeps it), the planner tries three more ways, in order (each window's params
+carry its `mode`: "around", "claim" or "calm"; CLASSIC's none):
+- **AROUND: beside a hover truck or a Gilded Sentinel** (they no longer stop a showing, as long as the runner keeps a
+  free lane). `EnforcerTruckRoom` reads each hover truck's lane as held over its stay (`held`, `held_lanes`): a wall
+  to the runner, never the truck's lane, and never with the truck between the runner and it (`sides`,
+  `escape_lane`, `can_dodge`, `shadow_clear` and `layout_lane` take the held lanes; `fits_for` adds the views two
+  lanes in from a runner beside it). What can't wait for a turn (`fixed`: a hover truck's entrance, from its banging
+  to its emerging, `entrance`; a Sentinel's turn, from its claim to its last swing, `sentinel_turn`) is never on as
+  the truck claims its turn for the window or begins, and the showing is back `show_margin_seconds` before the next
+  (`hold_for`'s `to_fixed`); their other attacks take turns and wait for it. A window here may leave out one runner
+  lane no showing could reach (`EnforcerTruckRoom.unreachable`: every lane beside it held, a floor cut's, or hiding
+  the hover truck; its report's `excused`), never two; and it reads what blocks the runner's lane only as far as its
+  stay reaches (`layout_lane`'s `clip`, as the truck in play does).
+- **CLAIM: its bait's claim during it.** As AROUND, with a Buzz Overdrive's claim on its turn coming during the
+  showing (it begins before the claim, which only holds back attacks that get ready later), out of view
+  `show_margin_seconds` before the tank's rev (`hold_claimed`; `EnforcerTruckRoom.revs`, an Octodog's turn as before,
+  `dog_turns`); skipped where no tank revs near the chase (`_revs_near`: it would plan nothing AROUND didn't).
+- **CALM: the calm start.** For the chase of a level's first bait, the truck may arrive inside the run-up, from
+  `calm_start_min_seconds` (0.5 s, DESIGN-TBD) into the run and the feature's start, at its follow gap, and show
+  itself as it arrives (`_calm_spots`, latest first; `arrival_problem`'s `calm`), its bait where it was; it takes
+  nothing out (`calm_start_takes_out` off, DESIGN-TBD), and it fires no volley in the run-up. Nothing in the run-up
+  shows on screen but the HUD, which no truck can cover (hints come on the level introduction before PLAY).
+- **Both trucks** stay where a level has two but room for one showing (item 401, as built), and wider gaps keep off
+  each chase from its arrival to its window's end (Wider gaps, Which).
+
+On the six levels' own seeds 12 of the 23 chases get a window before their bait against 9 (Dead Zone 1 at 6 lanes
+beside its hover truck, 1767-1962 m; Golden 1 at 3 lanes in the calm start, the truck arriving at 12 m with its
+window from the start to 177 m, where it had one after its bait at 293-508 m; Golden 2 at 3 lanes with its Buzz
+Overdrive's claim, 138-360 m), and every other build's windows stay where they were. A runner keeping to each lane
+in turn (`tools/measure/enforcer_shows.gd`) sees the truck in 73 of 106 runs against 57. The 11 chases still without
+one: a hover truck at 3 lanes leaves two of the three runner lanes no free lane (Dead Zone 2's second truck), rows
+of fences with a pad in their gap or pulsing fences leave a runner lane no lane beside it (Dead Zone 1 at 3 lanes,
+Dead Zone 2 at 3 and 6), the level's other chase leaves a second truck only arrivals too near its bait (Dead Zone 2 at
+5 lanes), a Tithe Collector is about over the only stretch its bait leaves (Corporate 2 at 5 lanes, its
+introduction, and at 6), the calm start has room only by taking out what's in the first
+patterns (Golden 1 and 2 at 6 lanes, Golden 3 at 5: 2, 8 and 2 pieces; `calm_start_takes_out` on would give them
+theirs), and Golden 3 at 6 lanes has a fence a generator powers there. Of the 33 runs without a showing, 21 are in
+the five chases with no window at all, 9 in chases whose window comes after the bait that destroyed the truck first
+(the measuring runner never dodges), and 3 in chases with one before: the runner lane a window leaves out beside a
+hover truck (Dead Zone 1 at 6 lanes, lane 5), a pad sending the runner onto a ceiling as it's due (Golden 2 at 3
+lanes, lane 0), and an arrival showing given way to a passing attack (Corporate 2 at 5 lanes, lane 0). With 8 other
+seeds of each (144 builds), 132 of 204 chases have a window before their bait against 62 of 203, and the truck shows
+itself in 637 of 957 runs against 377 of 952; a window before the bait brings its showing in 298 of 307 runs in
+CLASSIC, 132 of 177 beside a hover truck or a Sentinel (one of their attacks begun before the truck's claim still on
+as it's due, 33), 150 of 175 with a claim and 27 of 28 in the calm start. The windows the new modes plan take out
+about 1% more of those levels' obstacles (on their own seeds 580 enemies and 3226 obstacles before, 577 and 3219
+after; on the other seeds 4756 and 26686, 4734 and 26399), every build keeps its wider gaps, and every level without
+the truck builds exactly as before.
 DESIGN-TBD: item 386
-(`docs/OPEN_QUESTIONS.md`) and the chases no bait with room is left for (items 400–403); items 382–385
-are the owner's answers.
+(`docs/OPEN_QUESTIONS.md`), the chases no bait with room is left for (items 402–403), and C6e's placeholders
+(`docs/questions/c6e.md`); items 382–385, 367, 400 and 401 are the owner's answers.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -1735,9 +1786,11 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). An Enforcer chase holds one in 11 of the 18
-  level and lane builds that have trucks, Corporate 2 at every lane count, where the truck following the runner
-  over it is wrecked in play. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  one fewer on a seed not the level's own, never none). An Enforcer chase holds one past its showing window in 6
+  of the 18 level and lane builds that have trucks (8 before task C6e kept them off the chase before a showing:
+  Corporate 2 and Golden 2 at 6 lanes, whose windows come after their bait, lost theirs), Corporate 2 at 3 and 5
+  lanes among them, where the truck following the runner over it is wrecked in play; none comes before a window
+  (6 did, in chases whose window comes after their bait), and every build keeps its count. Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
