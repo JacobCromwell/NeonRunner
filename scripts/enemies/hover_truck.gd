@@ -20,6 +20,14 @@ extends Enemy
 ##   truck_rev, flashing spikes, glowing thrusters, a light thrown ahead) and only when a player in
 ##   its lane could still get out. The spikes' hitbox is narrower than the lane, so a player beside
 ##   it or on the wall next to it is never caught.
+## - Dash walls (task H7a; GDD §9.14; DESIGN-TBD, docs/questions/h7a.md): it gives way to one. A standing
+##   wall coming within the time it needs to drop behind the runner (_wall_ahead: HoverTruckTuning
+##   .give_way_seconds, WALL_GIVE_WAY_MARGIN more) sends it into its lurch back from pacing or from alongside,
+##   and it holds back, revving for no forward lurch, until the runner has broken the wall: the runner meets
+##   every wall first, and the truck follows them through. Its cannon holds fire near one (_doodad_in_reach).
+##   Where it can't drop back (the runner is in its lane behind it, ridden, leaving ahead) its nose bursts
+##   through a standing wall it reaches, as it burst out of the building (_burst_dash_walls). The generator
+##   keeps the walls off its entrance only (dash_wall_rules.gd, truck_entrance).
 ## - Kill: land on its roof (a moving floor surface; routes: a ramp onto the wall then a wall jump,
 ##   or get ahead of it during a backward lurch, run on the wall and jump on as it lurches forward)
 ##   and stomp the glowing red weak point on the lower cab roof. While ridden it eases back so the
@@ -54,6 +62,9 @@ const FIRE_BURST_SIZE: float = 2.6
 const FIRE_OFF_WALL: float = 2.2
 ## How long the wreck's node outlasts its explosion.
 const BOOM_SECONDS: float = 0.45
+## Task H7a (DESIGN-TBD): seconds of run past the time it needs to drop behind the runner at which a standing
+## dash wall ahead makes it give way (_wall_ahead).
+const WALL_GIVE_WAY_MARGIN: float = 0.6
 
 ## Models per zone variant and shape, built once.
 static var _models: Dictionary = {}
@@ -68,6 +79,8 @@ var offset_speed: float = 0.0
 var shooters: int = 0
 ## What happened so far (tests and the debug HUD read these; times are level times, -1 = not yet).
 var bangs: int = 0
+## Dash walls it burst through (task H7a).
+var walls_burst: int = 0
 var first_bang_time: float = -1.0
 var burst_time: float = -1.0
 var leave_time: float = -1.0
@@ -211,6 +224,7 @@ func _tick(delta: float) -> void:
 				_update_cycle(delta)
 	if state != State.HIDDEN and state != State.BANGING:
 		_place()
+		_burst_dash_walls()
 	_animate(delta)
 
 
@@ -373,6 +387,9 @@ func _update_cycle(delta: float) -> void:
 				# The player is in its lane ahead of it (it can't pace past them): the threat there is
 				# the forward lurch, after its warning.
 				_enter(State.LEAVING if due else State.HOLD_BACK)
+			elif _giving_way():
+				# Task H7a: a dash wall ahead: it drops behind the runner and lets them break it first.
+				_enter(State.LEAVING if due else State.LURCH_BACK)
 			elif (_pace_clock >= _pace_time or due) and _charge_left < 0.0 and _volley.is_empty():
 				_enter(State.LEAVING if due else State.LURCH_BACK)
 		State.LURCH_BACK:
@@ -387,9 +404,10 @@ func _update_cycle(delta: float) -> void:
 			_aim_for(tune.back_offset, tune.drift_speed, tune.drift_accel)
 			if due:
 				_enter(State.LEAVING)
-			elif _state_time >= tune.hold_back_seconds and _escape_ok() \
+			elif _state_time >= tune.hold_back_seconds and _escape_ok() and not _wall_ahead(_attack_seconds()) \
 					and not world.director.major_attack_blocked(self):
-				# GDD §9: it holds back until no other type's big attack is on, then revs.
+				# GDD §9: it holds back until no other type's big attack is on, then revs; task H7a: nor
+				# while a dash wall comes before its forward lurch and its stay alongside are over.
 				_enter(State.REV)
 		State.REV:
 			_aim_for(offset, tune.drift_speed, tune.drift_accel)
@@ -403,6 +421,8 @@ func _update_cycle(delta: float) -> void:
 			_aim_for(tune.alongside_offset, tune.drift_speed, tune.drift_accel)
 			if due or _state_time >= tune.alongside_seconds:
 				_enter(State.LEAVING if due else State.PACE)
+			elif _giving_way():
+				_enter(State.LURCH_BACK)
 		State.RIDDEN:
 			if not player_riding():
 				_enter(State.LEAVING if due else State.HOLD_BACK)
@@ -556,7 +576,7 @@ func _can_fire() -> bool:
 ## and out of its lane until it has left, so this holds back only a truck that stays longer.
 ## DESIGN-TBD (docs/questions/g5.md 5).
 func _doodad_in_reach() -> bool:
-	if world.layout.doodads.is_empty():
+	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty():
 		return false
 	var p: Player = world.player
 	var seconds: float = tune.cannon_charge_seconds + maxf(offset, 0.0) / maxf(tune.shell_speed_at(_scaling), 1.0) \
@@ -680,6 +700,73 @@ func _place() -> void:
 
 func _front_point() -> Vector3:
 	return global_position + global_basis * Vector3(0.0, 1.0, -tune.length * 0.5 - tune.nose_length)
+
+
+## The face (track distance) of the nearest standing dash wall the runner hasn't reached yet, or INF.
+func _next_wall() -> float:
+	var p: Player = world.player
+	var best: float = INF
+	for w: Dictionary in world.layout.dash_walls:
+		var face: float = float(w["start"])
+		if not bool(w.get("smashed", false)) and face >= p.distance - 1.0 and face < best:
+			best = face
+	return best
+
+
+## True if the runner comes to a standing dash wall within the time the truck needs to drop behind them from
+## where it is now (HoverTruckTuning.give_way_seconds) with WALL_GIVE_WAY_MARGIN and `extra_seconds` more
+## (task H7a).
+func _wall_ahead(extra_seconds: float = 0.0) -> bool:
+	if world.layout.dash_walls.is_empty():
+		return false
+	var face: float = _next_wall()
+	if is_inf(face):
+		return false
+	var p: Player = world.player
+	var seconds: float = tune.give_way_seconds(offset) + WALL_GIVE_WAY_MARGIN + extra_seconds
+	return face - p.distance <= seconds * maxf(p.speed, 1.0)
+
+
+## True if it gives way to a dash wall now (_wall_ahead; task H7a): one is coming, and it can drop back (the
+## runner isn't in its lane behind it: it never backs into them).
+func _giving_way() -> bool:
+	return _wall_ahead() and not (player_in_lane() and offset - tune.length * 0.5 > 0.0)
+
+
+## Seconds from the rev's start until its forward lurch and its stay alongside are over, and it could give way
+## again (task H7a: no rev while a dash wall comes within them).
+func _attack_seconds() -> float:
+	return tune.rev_seconds + 2.0 + tune.alongside_seconds + tune.give_way_seconds(tune.alongside_offset)
+
+
+## GDD §9.14 (task H7a): a standing dash wall its nose reaches (anywhere along its body, so one it emerged
+## beside goes too) is burst through as it burst out of the building: it breaks (DashBreakable.smash, broken
+## by &"hover_truck"; one whose chunk isn't built yet is marked broken in the layout, so it's never built)
+## and crumbles with its crash, flung along the truck's way (RunEffects.crumble, dash_wall_smash). The
+## runner then finds it broken: it costs them nothing.
+func _burst_dash_walls() -> void:
+	var walls: Array[Dictionary] = world.layout.dash_walls
+	if walls.is_empty() or state == State.WRECKED:
+		return
+	var centre: float = world.player.distance + offset
+	var tip: float = centre + tune.length * 0.5 + tune.nose_length
+	var rear: float = centre - tune.length * 0.5
+	for w: Dictionary in walls:
+		if bool(w.get("smashed", false)) or float(w["start"]) > tip or float(w["end"]) < rear:
+			continue
+		var b: DashBreakable = world.track.dash_wall_for(w) if world.track != null else null
+		if b == null:
+			w["smashed"] = true
+			w["broken_by"] = "hover_truck"
+			walls_burst += 1
+			continue
+		if not b.smash(&"hover_truck"):
+			continue
+		walls_burst += 1
+		var push := Vector3(0.0, 0.0, -maxf(world.player.speed + offset_speed, 0.0))
+		if world.effects != null:
+			world.effects.crumble(b, push)
+		world.play_sfx_at(&"dash_wall_smash", _front_point())
 
 
 ## A point on the wall face it bursts through: `along` metres from its burst point, `height` up.

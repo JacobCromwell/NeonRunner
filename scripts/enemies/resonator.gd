@@ -16,6 +16,9 @@ extends Enemy
 ##    in the zone it rests less between pulses, its waves roll faster, and some pulses send a second
 ##    wave double_gap behind the first.
 ## 4. After its pulses it pulls away ahead, powering down, and is gone.
+## Dash walls (task H7a; GDD §9.14): it rises over a standing one in its way and back down past it
+## (Enemy.dash_wall_lift, `lift`): pulling away, or resting at its spot beyond one. Its waves never meet one
+## (pulse_clear counts the walls as it counts doodads, and the generator keeps the walls off its visits).
 ## Dodge: jump the wave, or be on a wall or the ceiling: the wave travels along the floor only, and its
 ## hitbox stops short of a wall runner's body (ResonatorTuning.band_half_width).
 ## Kill: weapons (auto-fire targets its core: 17 laser tier 1 shots), or wait it out. It hovers too high
@@ -136,6 +139,10 @@ var _run_pace: float = 1.0
 ## Track distance of the Resonator (its core), and where the generator put it.
 var _d: float = 0.0
 var _at: float = 0.0
+## Metres it has risen over hover_height to clear a dash wall in its way (task H7a), back to 0 past it; and
+## its track distance a frame ago (how fast it comes at a wall).
+var lift: float = 0.0
+var _prev_d: float = NAN
 var _rel: float = 0.0
 var _state_time: float = 0.0
 var _anchors: Array[float] = []
@@ -276,7 +283,17 @@ func _tick(delta: float) -> void:
 			_d = p + _rel
 	_roll_waves(delta, p)
 	_last_p = p
+	_update_lift(delta)
 	_place()
+
+
+## Rises over a standing dash wall in its way, and back down past it (task H7a; Enemy.dash_wall_lift), at the
+## speed it comes at the wall (the runner's while it paces them, more as it pulls away, none at rest).
+func _update_lift(delta: float) -> void:
+	var closing: float = (_d - _prev_d) / maxf(delta, 0.0001) if not is_nan(_prev_d) else world.player.speed
+	_prev_d = _d
+	var need: float = dash_wall_lift(_d, 0.85 * tune.model_scale, tune.hover_height, maxf(closing, 1.0))
+	lift = move_toward(lift, maxf(need - tune.hover_height, 0.0), DASH_WALL_CLIMB_SPEED * delta)
 
 
 func _set_state(next: State) -> void:
@@ -575,7 +592,7 @@ func _on_defeated(_cause: StringName) -> void:
 func _place() -> void:
 	if state == State.DOWN:
 		return
-	position = Vector3(tune.sway * sin(_sway_t), tune.hover_height + 0.12 * sin(_bob_t * 1.9),
+	position = Vector3(tune.sway * sin(_sway_t), tune.hover_height + lift + 0.12 * sin(_bob_t * 1.9),
 		TrackGeometry.world_z(_d))
 
 

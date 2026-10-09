@@ -16,14 +16,27 @@ extends RefCounted
 ##   wall route (below), pad's zone, ramp or the wall run it launches, speed pad, ceiling from its start to the
 ##   end of its landing zone (GDD §9.14: no ceiling overlaps a dash wall; nor the safe landing zone), floor
 ##   cut's window (a Buzz Overdrive's cut), and no enemy's keep-out or floor (what the fill pass keeps for it,
-##   LevelGenerator.enemy_keep_out: its attack never lands at the wall) nor what the rules keep doodads off
-##   (a Bad Dream's chase, a Gilded Sentinel's turn, and a hover truck's whole stay, here in every lane).
+##   LevelGenerator.enemy_keep_out: its attack never lands at the wall) nor what the rules keep doodads off in
+##   every lane (a Bad Dream's chase, a Gilded Sentinel's turn), as a wider gap keeps off them
+##   (WideGapPlacement.keeps_of): a floor cyborg's obstacle margin only and a planned Resonator's pulses only
+##   (enemy_spans). A rule's keep-out of one lane (the hover truck's lane for its whole stay) is about what
+##   stands in that lane; the truck has a rule of its own (below).
 ## - The Tithe Collector's whole stay: it flies ahead of the runner, low in the lanes, and would reach a
 ##   standing wall before them.
-## - The hover truck (it hovers ahead of the runner in the outer lane for its whole stay) never shares a
-##   wall's stretch: its stay is one of the rules' keep-outs. The Enforcer Truck needs nothing: it drives
-##   behind the runner, and a wall always breaks as the runner reaches it (a dash, a crash or a pass on a
-##   side wall: Player._check_dash_walls), so it only ever meets a broken one and drives on through.
+## - The trucks (GDD §9.3, §9.13; the simplest fair rules, DESIGN-TBD): the hover truck gives way to a wall
+##   (HoverTruck._wall_ahead: from pacing or alongside it drops behind the runner, holds back without revving
+##   until they've broken the wall, and follows them through; its cannon holds fire near one), so only its
+##   entrance keeps the walls off (truck_entrance: it bangs on the wall, bursts out and settles); where it
+##   can't drop back (the runner in its lane behind it, ridden, leaving ahead) it bursts through the wall as
+##   it burst out of the building (HoverTruck._burst_dash_walls). The Enforcer Truck needs nothing: it drives
+##   behind the runner, and a wall always breaks as the runner reaches it (a dash, a crash or a pass on a side
+##   wall: Player._check_dash_walls), so it only ever meets a broken one and drives on through; its volleys
+##   never start with a wall in the escape (as with a doodad).
+## - The flyers ahead of the runner (the heli drone, which stays until it's downed, the Resonator pulling away
+##   or between its pulses, a Tithe Collector fleeing) rise over a standing wall in their way
+##   (Enemy.dash_wall_lift); the drone and the truck's cannon hold their fire near one, and the Resonator's
+##   waves never meet one (they read LevelLayout.doodad_between, which counts the walls in every lane), so the
+##   heli drone keeps nothing (NO_KEEP_TYPES).
 ## - Spacing (GDD §9.14, proposed): faces at least spacing_for() apart, the dash's longest cooldown and
 ##   cooldown_margin_seconds of run plus the ground the dash itself covers, so the dash spent on one wall is
 ##   back before the next. With keep_dash_baits, nothing else that invites a dash comes within that spacing
@@ -71,6 +84,18 @@ const GENERATOR: String = "generator"
 const BUZZ: String = "buzz_overdrive"
 ## Metres before a Tithe Collector's spot its stay is kept from (it appears ahead of the runner there).
 const TITHE_LEAD: float = 5.0
+const CYBORG: String = "cyborg"
+const TRUCK: String = "hover_truck"
+const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
+const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
+## Enemy types whose attacks a wall's footprint needn't keep off (enemy_spans), as a wider gap needn't
+## (WideGapPlacement.NO_KEEP_TYPES): the heli drone (no barrage starts near a wall, and it rises over one:
+## Drone._doodad_in_reach, Enemy.dash_wall_lift) and the Enforcer Truck (it drives behind the runner, and no
+## volley starts with a wall in the escape: LevelLayout.doodad_between counts the walls in every lane).
+const NO_KEEP_TYPES: PackedStringArray = ["drone", "enforcer_truck"]
+## Seconds a hover truck's entrance keeps the walls off past the time it needs to drop behind the runner
+## (truck_entrance): its first moments of pacing.
+const TRUCK_SETTLE_SECONDS: float = 1.0
 
 
 ## One level's walls, at its run speed: what they keep (metres) and where on its track a face may stand.
@@ -304,7 +329,7 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 		for span: Vector2 in enemy_spans(gen, e, hooks):
 			p.mark_span(p.blocked, span)
 	for k: Dictionary in gen.rules_doodad_keep_outs():
-		if String(k.get("type", "")) != FEATURE:
+		if _counts(k):
 			p.mark_span(p.blocked, Vector2(float(k["from"]), float(k["to"])))
 	if p.t.keep_dash_baits:
 		for b: float in bait_points(gen, checking):
@@ -323,6 +348,13 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 	return p
 
 
+## True if rules keep-out `k` (LevelGenerator.rules_doodad_keep_outs) keeps the walls off: one of every lane
+## (a Bad Dream's chase, a Gilded Sentinel's turn), never the walls' own, and never one of a single lane (the
+## hover truck's: the truck bursts through a wall in its way, see the header).
+static func _counts(k: Dictionary) -> bool:
+	return String(k.get("type", "")) != FEATURE and not k.has("lane")
+
+
 ## The fences a fence generator powers (FenceGenerator.fences_in_reach): with the pulsing ones, the fences a
 ## wall never takes out to make room (the `pulsing` feature counts those; a generator powering nothing goes).
 static func powered_fences(gen: LevelGenerator) -> Array[Dictionary]:
@@ -335,22 +367,52 @@ static func powered_fences(gen: LevelGenerator) -> Array[Dictionary]:
 	return out
 
 
-## The stretches enemy entry `e` keeps a wall's footprint off (see the header): what the fill pass keeps for
-## it (LevelGenerator.enemy_keep_out) and the floor it uses, and for a Tithe Collector its whole stay.
+## The stretches enemy entry `e` keeps a wall's footprint off (see the header), as a wider gap's are kept
+## (WideGapPlacement.keeps_of): what the fill pass keeps for it (LevelGenerator.enemy_keep_out) and the floor
+## it uses; for a floor cyborg its obstacle margin either side (CyborgRules.obstacle_margin_at: its bolts never
+## land near a wall, CyborgGun.path_clear); for a planned Resonator each pulse, from its warning until its wave
+## has passed (DangerDensity.resonator_pulse_windows: between them it only hovers, rising over a wall, and
+## every pulse waits for floor clear of walls, Resonator.pulse_clear); for a Tithe Collector its whole stay;
+## nothing for NO_KEEP_TYPES.
 static func enemy_spans(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -> Array[Vector2]:
 	var out: Array[Vector2] = []
+	var type: String = String(e.get("type", ""))
+	if NO_KEEP_TYPES.has(type):
+		return out
+	if type == CYBORG:
+		var ct := EnemyDirector.tuning_for(CYBORG) as CyborgTuning
+		var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
+		out.append(Vector2(float(e["at"]) - margin, float(e["at"]) + margin))
+		return out
+	if type == TRUCK:
+		out.append(truck_entrance(gen, float(e["at"])))
+		return out
+	var pulses: Array[Vector2] = LevelGenerator.DangerDensity.resonator_pulse_windows(gen, e)
+	if not pulses.is_empty():
+		return pulses
 	var k: Vector2 = gen.enemy_keep_out(e, hooks)
 	if k.y >= k.x:
 		out.append(k)
 	var floor_span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
 	if floor_span.y >= floor_span.x:
 		out.append(floor_span)
-	if String(e.get("type", "")) == TITHE:
+	if type == TITHE:
 		var tt := EnemyDirector.tuning_for(TITHE) as TitheCollectorTuning
 		var stay: float = tt.stay_seconds() if tt != null else 12.0
 		var at: float = float(e["at"])
 		out.append(Vector2(at - TITHE_LEAD, at + stay * gen.speed))
 	return out
+
+
+## A hover truck at `at`: its entrance, the stretch a wall's footprint keeps off (enemy_spans), from the start of
+## its lane's window (it bangs on the wall, then bursts out: HoverTruckRules.window_start) until it has
+## emerged and had the time it needs to drop behind the runner (HoverTruckTuning.give_way_seconds, with
+## TRUCK_SETTLE_SECONDS more): from then on it gives way to a wall ahead (HoverTruck: it drops behind the
+## runner and holds back until they've broken it), so the rest of its stay needn't keep the walls off.
+static func truck_entrance(gen: LevelGenerator, at: float) -> Vector2:
+	var t: HoverTruckTuning = HoverTruckRules.tuning()
+	var give_way: float = t.emerge_seconds + t.give_way_seconds(t.pace_offset) + TRUCK_SETTLE_SECONDS
+	return Vector2(HoverTruckRules.window_start(t, at, gen.pace), at + give_way * gen.speed)
 
 
 ## Where the runner may spend the dash on something else (DashWallTuning.keep_dash_baits; GDD §9.14: nothing
@@ -533,7 +595,7 @@ static func _why(gen: LevelGenerator, plan: Plan, face: float) -> String:
 				found.append("%s at %.1f m" % [e.get("type", "?"), float(e["at"])])
 				break
 	for k: Dictionary in gen.rules_doodad_keep_outs():
-		if String(k.get("type", "")) != FEATURE and float(k["from"]) <= fp.y and float(k["to"]) >= fp.x:
+		if _counts(k) and float(k["from"]) <= fp.y and float(k["to"]) >= fp.x:
 			found.append("a rule's keep-out %.1f-%.1f m" % [float(k["from"]), float(k["to"])])
 	if plan.t.keep_dash_baits:
 		for b: float in bait_points(gen, true):
