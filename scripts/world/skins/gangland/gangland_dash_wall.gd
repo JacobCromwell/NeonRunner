@@ -22,9 +22,10 @@ extends RefCounted
 const FACE_BACK: float = 0.5
 ## The broken top never goes lower than this.
 const TOP_MIN: float = 6.2
-## The facade styles the ruins use (facade.gdshader: 1 punched, 3 tall slots, 2 ribbon) and their storey heights.
-const STYLES: Array[int] = [1, 3, 1, 2]
-const STOREYS: Array[float] = [3.3, 3.0, 3.3, 3.3]
+## The facade styles the ruins use (GanglandRuins.STYLES: facade.gdshader's 1 punched, 3 tall slots, 2 ribbon) and
+## their storey heights (GanglandRuins.STOREYS, by style).
+const STYLES: Array[int] = GanglandRuins.STYLES
+const STOREYS: Array[float] = GanglandRuins.STOREYS
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: GanglandSkin:

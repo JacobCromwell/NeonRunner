@@ -94,7 +94,7 @@ func _shop_row(batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, size: Vect
 	_pier(solid, size, -hx, -hx + END_PIER - PIER * 0.0, g0, g1, wall_z, stucco)
 	_pier(solid, size, hx - END_PIER + PIER, hx, g0, g1, wall_z, stucco)
 	# The storeys over them: stucco, rounded windows in aluminium frames, shutters down; cells in whole bays.
-	var cell: float = [2.6, 3.0, 2.2, 3.4][int(seed) % 4]
+	var cell: float = MarketFacades.CELL_WIDTHS[int(seed) % 4]
 	DashWallKit.bay_faces(facade, size, -hx + 0.5, hx - 0.5, cell, g1, top, wall_z, stucco, MarketFacades.STYLE_UPPER, seed,
 		0.0, 2)
 	# The strip at each end the bays don't reach: stucco piers up the full height.

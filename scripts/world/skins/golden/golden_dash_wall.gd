@@ -106,8 +106,8 @@ func _windows(facade: MeshLayer, solid: MeshLayer, size: Vector3, tone: int) -> 
 	DashWallKit.bay_faces(facade, size, -hx + COLUMN * 2.0, hx - COLUMN * 2.0, 3.6, skin.plinth_top, base_top, wall_z, stone,
 		GoldenFacades.STYLE_BAND, seed, 0.0, 2)
 	# The windows' storey: its floor line (the slab band) at base_top, so a storey's cells start there; the cell
-	# width by seed (golden_facade.gdshader: 3.0, 3.4, 2.8 or 3.8).
-	var cell: float = [3.0, 3.4, 2.8, 3.8][int(seed) % 4]
+	# width by seed (golden_facade.gdshader's, GoldenFacades._cell_width).
+	var cell: float = GoldenFacades._cell_width(int(seed))
 	DashWallKit.bay_faces(facade, size, -hx + COLUMN * 2.0, hx - COLUMN * 2.0, cell, base_top, top, wall_z, stone,
 		GoldenFacades.STYLE_UPPER, seed, skin.frieze_top - base_top, 2)
 	# A gold slab band across the foot of the windows' storey, standing out of the face.
@@ -252,14 +252,14 @@ func _body(solid: MeshLayer, size: Vector3, z: float, top: float, color: Color) 
 		MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PY, 0.0)
 
 
-## A stone colour for a tone: the zone's champagne, cream and ivory cladding, a shade deeper than the walls beside it,
-## so the building stands out of them at a distance (the walls' own white would lose it).
+## A stone colour for a tone: the zone's champagne, cream and ivory cladding, warmed toward the gold and a shade
+## deeper than the walls beside it, so the building stands out of them at a distance (their own white would lose it).
 func _stone(tone: int) -> Color:
 	var picks: Array[int] = [3, 1, 2]
-	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()].darkened(0.1)
+	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()].lerp(skin.gold_color, 0.3).darkened(0.12)
 
 
 ## What says "this breaks": hairline cracks (a darker shade of the marble's veins) spreading across the face from a
 ## few points (the elite's city keeps its stone clean: no fallen patches). `at` bounds them (x0, x1, h0, h1).
 func _damage(solid: MeshLayer, size: Vector3, z: float, seed: int, at: Vector4, _stone: Color) -> void:
-	DashWallKit.cracks(solid, size, z + 0.01, at, 3, skin.vein_color.darkened(0.55), seed, 0.6)
+	DashWallKit.cracks(solid, size, z + 0.01, at, 3, skin.vein_color.darkened(0.55), seed, 0.75)

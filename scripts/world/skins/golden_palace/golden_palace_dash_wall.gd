@@ -225,10 +225,10 @@ func _finish(s: MeshLayer, size: Vector3, wall_z: float, stone: Color, seed: int
 	DashWallKit.box(s, size, -hx + 0.02, hx - 0.02, top - CORNICE + 0.1, top - CORNICE + 0.24, hz - 0.01, hz, skin.gold_color,
 		MeshKit.PAT_GOLD, MeshKit.FACE_PZ, 0.9)
 	DashWallKit.finials(s, size, stone.lightened(0.04), skin.gold_color, MeshKit.PAT_MARBLE, MeshKit.PAT_GOLD)
-	DashWallKit.cracks(s, size, wall_z + 0.03, at, 3, skin.vein_color.darkened(0.55), seed, 0.6)
+	DashWallKit.cracks(s, size, wall_z + 0.03, at, 3, skin.vein_color.darkened(0.55), seed, 0.75)
 
 
 ## A marble tone: the palace's white and cream marbles (the floor's), a shade warmer than the walls.
 func _stone(tone: int) -> Color:
 	var picks: Array[int] = [3, 1, 2]
-	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()].darkened(0.1)
+	return skin.stone_colors[picks[tone % picks.size()] % skin.stone_colors.size()].lerp(skin.gold_color, 0.3).darkened(0.12)

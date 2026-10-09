@@ -18,7 +18,7 @@ extends RefCounted
 
 ## The cracks' crawl: how thick a crack is at its start, how it thins, and how far it stands out of the face
 ## it lies on (metres).
-const CRACK_WIDTH: float = 0.05
+const CRACK_WIDTH: float = 0.06
 const CRACK_THIN: float = 0.82
 const CRACK_OUT: float = 0.04
 ## How much of the box's height the roofline leaves for what stands on the roof (plant, a mast, finials): the
