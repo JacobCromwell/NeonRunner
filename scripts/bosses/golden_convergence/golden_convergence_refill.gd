@@ -61,10 +61,12 @@ const ARRIVE_HIGH: float = 30.0
 const LEAVE_AHEAD: float = 220.0
 const LEAVE_HIGH: float = 55.0
 const LEAVE_OUT: float = 1.6
-## Spinning off: out past the walls' line this far, down this far (toward the pools beside the causeway), rolling
-## this far over (its belly turning away), surging this far ahead of where it rode (into the run camera's view).
+## Spinning off: out past the walls' line this far, down this far (a little: E5d polish, it used to sink 10 m, below
+## the deck, and explode out of the cameras' sight), rolling this far over (its belly turning away), surging this
+## far ahead of where it rode (into the run camera's view): it explodes beside the causeway above its level, where the
+## run camera and the side see it (GoldenConvergenceShip.explode).
 const SPIN_OUT: float = 10.0
-const SPIN_DOWN: float = 10.0
+const SPIN_DOWN: float = 1.5
 const SPIN_ROLL: float = 2.3
 const SPIN_AHEAD: float = 30.0
 ## The hatch over the fed pipes swings open or shut over this long.
@@ -410,9 +412,11 @@ func _tick_chain(delta: float, d: float) -> void:
 	var explode_at: float = t.spin_at + t.spin_seconds
 	if ct >= explode_at and not bool(chain["exploded"]):
 		chain["exploded"] = true
-		var at: Vector3 = ship.global_position
-		chain["from_rel"] = Vector3(ship.boom_point().x, ship.boom_point().y, -ship.boom_point().z - d)
+		var at: Vector3 = ship.blast_center()
+		# The blast races up the line from where the ship goes off (its boom, rolled over, points below the deck).
+		chain["from_rel"] = Vector3(at.x, at.y + 1.5, -at.z - d)
 		ship.explode()
+		ship.set_line(Vector3(at.x, at.y + 1.5, at.z), boss.suit.pipe_mouth(int(chain["side"])), 1.0)
 		boss.sound(&"gc_crash", boss.sound_point(at))
 		boss.world.effects.shake(0.6, 0.8)
 		feed = FeedStage.BURN
@@ -447,7 +451,7 @@ func _blast_lands() -> void:
 	if not burst_suit:
 		suit.set_pipes_broken(side, true)
 		ship.fireball(mouth, 4.5, 0.9)
-		boss.world.effects.burst(mouth, GoldenConvergenceShip.SMOKE, 30, 2.4)
+		ship.smoke(mouth + Vector3(0.0, 2.0, 0.0), 4.0, 2.4)
 		if not Settings.flashing_reduced:
 			boss.world.effects.burst(mouth, GoldenConvergenceShip.FIRE_HOT, 30, 1.8)
 		boss.world.effects.shake(0.45, 0.5)

@@ -14,7 +14,10 @@ extends TestSuite
 ##   the racks ripple, it spins off and explodes, the blast races up the line and the hit lands (a third of the
 ##   suit's health: the phase ends; the first ship blows out his right shoulder's pipes); the runner falls back to
 ##   clear floor unharmed; weapons never target the ship or the generator; its sounds and hints;
-## - Reduced flashing (no sparks; the fireballs still show) and screen shake off (none);
+## - Reduced flashing (no sparks; the fireballs still show, no hot flash in them) and screen shake off (none);
+## - E5d polish, the chain reaction's fire: saturated orange-red fireballs and dark smoke (never a pale peach), all of
+##   it above the causeway's level, the ship's blast beside the causeway and in the run camera's view; two draws,
+##   nothing made mid-fight;
 ## - a missed pad: the ship finishes refilling and flies off while the strafe fires on; the beat ends where ends_at()
 ##   said; the loop goes on from the slams (planned ahead of their beat), and the next ship is the same;
 ## - the chain reaction plans the next phase's first slams, which open that phase on time;
@@ -61,6 +64,8 @@ func run() -> void:
 	await _test_ride(&"dash", 3, 25.0)
 	await _test_ride(&"armor", 6, 25.0)
 	await _test_reduced()
+	for lanes: int in [3, 6]:
+		await _test_blast(lanes)
 	await _test_missed()
 	await _test_next_phase_planned()
 	await _test_phase_three()
@@ -556,11 +561,80 @@ func _test_reduced() -> void:
 	world.effects.shake_scale = 0.0
 	var shakes := {"n": 0}
 	world.effects.shake_requested.connect(func(_s: float, _d: float) -> void: shakes["n"] = int(shakes["n"]) + 1)
-	await _run(world, _bot(boss), 60.0, func() -> bool: return boss.phase_index >= 1)
-	Settings.flashing_reduced = was
 	var ship: GoldenConvergenceShip = boss.refill.ship
+	var heat := {"max": 0.0}
+	await _run(world, _bot(boss), 60.0, func() -> bool: return boss.phase_index >= 1, func() -> void:
+		for f: Dictionary in ship.blast().shown(true):
+			heat["max"] = maxf(float(heat["max"]), float(f["heat"])))
+	Settings.flashing_reduced = was
 	check(boss.refill.hits == 1 and ship.sparks_shown == 0 and ship.fireballs_shown > 10 and int(shakes["n"]) == 0,
 		"with Reduced flashing and the screen shake off, the chain reaction shows no sparks (%d fireballs) and never shakes the screen" % ship.fireballs_shown)
+	check(float(heat["max"]) <= GoldenConvergenceBlast.SOFT_HEAT + 0.001,
+		"and its fireballs never flash hot (their hearts at most %.2f, %.2f seen)" % [GoldenConvergenceBlast.SOFT_HEAT, heat["max"]])
+	await sim.free_world(world)
+
+
+## E5d polish (the review: the chain reaction's explosions read a washed-out peach against the bright court, and the
+## ship exploded below the deck, out of the side camera's sight; the owner: "the ship goes spinning off to the side and
+## exploding, and the missiles should all explode"): from the pad to the hit, every fireball is a saturated orange to
+## red and every puff of smoke dark, all of it above the causeway's level; the ship's own blast goes off beside the
+## causeway, past the balustrade, where the run camera's resting view sees it; its fire hot at heart (no Reduced
+## flashing); drawn by the blast's two MultiMeshes, with no node made during it.
+func _test_blast(lanes: int) -> void:
+	var tag: String = "(%d lanes, 25 m/s)" % lanes
+	var pair: Array = _fight(lanes, 25.0, null, -1, "refill:VVH")
+	var world: RunWorld = pair[0]
+	var boss: GoldenConvergence = pair[1]
+	var r: GoldenConvergenceRefill = boss.refill
+	var ship: GoldenConvergenceShip = r.ship
+	var blast: GoldenConvergenceBlast = ship.blast()
+	var nodes_before: int = ship.find_children("*", "", true, false).size()
+	var w := {"low": INF, "pale": [], "light_smoke": [], "heat": 0.0, "big": 0, "beside": true, "seen": 0, "frames": 0,
+		"exploded": -1.0, "fires": 0}
+	await _run(world, _bot(boss), 60.0, func() -> bool: return boss.phase_index >= 1, func() -> void:
+		if r.stage != GoldenConvergenceRefill.Stage.CHAIN:
+			return
+		var fires: Array[Dictionary] = blast.shown(true)
+		w["fires"] = maxi(int(w["fires"]), fires.size())
+		for f: Dictionary in fires:
+			var c: Color = f["color"]
+			w["low"] = minf(float(w["low"]), (f["at"] as Vector3).y)
+			w["heat"] = maxf(float(w["heat"]), float(f["heat"]))
+			if c.a > 0.2 and not ((c.h <= 0.1 or c.h >= 0.97) and c.s >= 0.8):
+				(w["pale"] as Array).append(c)
+		for puff: Dictionary in blast.shown(false):
+			var c: Color = puff["color"]
+			w["low"] = minf(float(w["low"]), (puff["at"] as Vector3).y)
+			if c.v > 0.3:
+				(w["light_smoke"] as Array).append(c)
+		var exploded: Dictionary = _first(boss, &"ship_exploded")
+		if exploded.is_empty() or boss.fight_time() > float(exploded["t"]) + 1.0:
+			return
+		# The ship's own blast (its big fireballs) in its first second.
+		var view := EnforcerTruckView.of_runner(world.tuning, world.geo, world.player.lane, world.player.distance)
+		var on: bool = false
+		for f: Dictionary in fires:
+			if float(f["radius"]) < 3.0:
+				continue
+			w["big"] = int(w["big"]) + 1
+			var at: Vector3 = f["at"]
+			w["beside"] = bool(w["beside"]) and absf(at.x) > world.geo.wall_x()
+			on = on or view.on_screen(at + Vector3(0.0, float(f["radius"]) * 0.5, 0.0), 0.0)
+		w["frames"] = int(w["frames"]) + 1
+		if on:
+			w["seen"] = int(w["seen"]) + 1)
+	check(r.hits == 1, "the pad ridden, the chain reaction plays to its hit %s" % tag)
+	check((w["pale"] as Array).is_empty() and (w["light_smoke"] as Array).is_empty() and int(w["fires"]) > 0,
+		"every fireball a saturated orange to red, every puff of smoke dark, never a pale peach (%s; %s) %s" % [
+		(w["pale"] as Array).slice(0, 2), (w["light_smoke"] as Array).slice(0, 2), tag])
+	check(float(w["low"]) > 1.0, "all of its fire and smoke above the causeway's level (the lowest at %.1f m) %s" % [w["low"], tag])
+	check(int(w["big"]) > 0 and bool(w["beside"]) and int(w["seen"]) >= int(w["frames"]) * 3 / 4,
+		"the ship's blast goes off beside the causeway, past the balustrade, in the run camera's view (%d of %d frames) %s" % [
+		w["seen"], w["frames"], tag])
+	check(float(w["heat"]) > 0.8, "its fireballs are hot at heart without Reduced flashing (%.2f) %s" % [w["heat"], tag])
+	check(ship.find_children("*", "", true, false).size() == nodes_before and blast.drawers().size() == 2,
+		"pooled: its fire and smoke are two MultiMeshes, no node made during the chain (%d nodes, %d before) %s" % [
+		ship.find_children("*", "", true, false).size(), nodes_before, tag])
 	await sim.free_world(world)
 
 

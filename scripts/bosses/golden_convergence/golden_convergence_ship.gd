@@ -14,14 +14,16 @@ extends BossPart
 ## - the feed line from its boom's nozzle to the suit's shoulder pipes (set_line: a gilded hose shooting out over
 ##   `reach`, a gentle sag; ride(): missiles riding up it to the shoulder), and its burning away as the chain's
 ##   blast races up it (burn_line);
-## - the chain reaction's fire (fireball: a swelling, reddening, fading ball, softer with Reduced flashing; spark
-##   bursts only without it; dark smoke either way) and the ship's own end (explode: it's gone in a blast).
+## - the chain reaction's fire (GoldenConvergenceBlast, E5d polish: fireball() a saturated orange fireball laid over
+##   what's behind it, reddening and fading, dark smoke rolling up out of it, softer with Reduced flashing; smoke()
+##   on its own; spark bursts only without Reduced flashing) and the ship's own end (explode: it's gone in a blast
+##   around it in the world's up, never its roll, so a ship rolled over still explodes above the causeway's level,
+##   where the run camera and the side see it).
 ## A part of the boss that's no target (GDD §10, proposed: weapons never target the ship; DESIGN-TBD,
 ## docs/questions/e5d.md, E5d-c 7) and no kill of its own: immune to weapons, never targetable, is_obstacle; nothing
 ## on it can hurt the runner.
 
-## Fireballs at once (pooled), pieces of the feed line, missiles riding it at once.
-const FIREBALLS: int = 12
+## Pieces of the feed line, missiles riding it at once.
 const SEGMENTS: int = 18
 const RIDERS: int = 12
 ## The line's sag at its middle, over its length.
@@ -31,10 +33,13 @@ const SAG: float = 0.1
 const HOLD_DROP: float = 3.0
 const HOLD_SPACING: float = 6.0
 const HOLD_FROM: float = 4.0
-## The fire's colours (an explosion's: never on anything that stays, never on a hazard), the smoke's.
+## The sparks' colours (an explosion's: never on anything that stays, never on a hazard).
 const FIRE := Color(1.0, 0.4, 0.13)
 const FIRE_HOT := Color(1.0, 0.82, 0.55)
-const SMOKE := Color(0.2, 0.18, 0.17)
+## Its blast (explode): fireballs this big along its length, around its middle at least BLAST_LIFT above the
+## causeway (in the world's up: rolled over as it spins off, its own up points down).
+const BLAST_LIFT: float = 4.0
+const BLAST_RADIUS: float = 7.0
 
 var tuning: GoldenConvergenceTuning
 ## Its belly's half width (the walls' line plus the model's overhang).
@@ -55,9 +60,13 @@ var _root: Node3D
 var _racks: MultiMeshInstance3D
 var _segments: MultiMeshInstance3D
 var _riders: MultiMeshInstance3D
-var _fires: Array[Dictionary] = []
-## Fireballs still to come (an explosion's later blasts): {delay, at, radius, life, drift}.
-var _pending: Array[Dictionary] = []
+var _blast: GoldenConvergenceBlast
+## Fireballs still to come (an explosion's later blasts), in order: when (seconds from now), where, how big, how
+## long.
+var _pending_delay := PackedFloat32Array()
+var _pending_at := PackedVector3Array()
+var _pending_radius := PackedFloat32Array()
+var _pending_life := PackedFloat32Array()
 ## The line: its ends (world), how far it has shot out (0-1), how much of it from the ship's end has burnt away
 ## (0-1), whether it shows; the riding missiles' places along it (0-1), and the clock for the next.
 var _line_on: bool = false
@@ -103,8 +112,8 @@ func _build() -> void:
 	set_belly(false)
 	_segments = _multimesh("FeedLine", m["line_segment"], SEGMENTS, true)
 	_riders = _multimesh("Riding", m["line_missile"], RIDERS, true)
-	for i: int in FIREBALLS:
-		_fires.append(_new_fire())
+	_blast = GoldenConvergenceBlast.new()
+	add_child(_blast)
 	set_shown(false)
 
 
@@ -128,28 +137,6 @@ func _multimesh(node_name: String, mesh: Mesh, count: int, world_space: bool) ->
 		inst.extra_cull_margin = 10.0
 		_root.add_child(inst)
 	return inst
-
-
-func _new_fire() -> Dictionary:
-	var node := MeshInstance3D.new()
-	node.name = "Fireball"
-	var sphere := SphereMesh.new()
-	sphere.radius = 1.0
-	sphere.height = 2.0
-	sphere.radial_segments = 12
-	sphere.rings = 6
-	node.mesh = sphere
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.albedo_color = Color.BLACK
-	m.disable_receive_shadows = true
-	node.material_override = m
-	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	node.top_level = true
-	node.visible = false
-	add_child(node)
-	return {"node": node, "age": 0.0, "life": 0.6, "radius": 1.0, "on": false, "from": Vector3.ZERO, "drift": Vector3.ZERO}
 
 
 # --- Where it is ---------------------------------------------------------------------------------------
@@ -249,69 +236,61 @@ func explode_rack(i: int) -> void:
 		sparks_shown += 1
 
 
-## It blows up where it is: a string of fireballs along its length over half a second, debris and sparks (no
-## sparks with Reduced flashing), dark smoke; it's gone.
+## It blows up where it is: a string of fireballs along its length over half a second around its middle, lifted
+## in the world's up to at least BLAST_LIFT over the causeway (its own roll never sends the blast below the deck),
+## dark smoke rolling up and lingering, debris, sparks (none with Reduced flashing); it's gone.
 func explode() -> void:
 	var length: float = GoldenConvergenceShipModel.LENGTH
-	var spots: Array[Vector3] = [Vector3(0.0, 2.0, 0.0), Vector3(-half_width * 0.6, 1.0, -length * 0.3),
-		Vector3(half_width * 0.5, 2.5, length * 0.28), Vector3(0.0, 3.5, -length * 0.42), Vector3(-half_width * 0.3, 1.5, length * 0.42)]
+	var c: Vector3 = blast_center()
+	var spots: Array[Vector3] = [Vector3(0.0, 1.5, 0.0), Vector3(-half_width * 0.4, 0.5, -length * 0.3),
+		Vector3(half_width * 0.35, 2.0, length * 0.28), Vector3(0.0, 3.0, -length * 0.42), Vector3(-half_width * 0.2, 1.0, length * 0.42)]
 	for k: int in spots.size():
-		var at: Vector3 = global_transform * spots[k]
-		var radius: float = 7.0 - 0.8 * float(k)
+		var at: Vector3 = c + spots[k]
+		var radius: float = BLAST_RADIUS - 0.8 * float(k)
 		if k == 0:
 			fireball(at, radius, 1.2, Vector3(0.0, 1.8, 0.0))
 		else:
-			_pending.append({"delay": 0.08 + 0.09 * float(k), "at": at, "radius": radius, "life": 0.9, "drift": Vector3(0.0, 1.5, 0.0)})
-		world.effects.burst(at, SMOKE, 30, 3.0)
-	world.effects.debris(global_position + Vector3(0.0, 2.0, 0.0), GoldenConvergenceShipModel.GOLD, 24, 2.2)
+			_pending_delay.append(0.08 + 0.09 * float(k))
+			_pending_at.append(at)
+			_pending_radius.append(radius)
+			_pending_life.append(0.9)
+		_blast.smoke(at + Vector3(0.0, radius * 0.5, 0.0), radius * 1.4, 2.6, Vector3(0.0, 2.2, 0.0), 0.25 + 0.08 * float(k))
+	world.effects.debris(c + Vector3(0.0, 1.5, 0.0), GoldenConvergenceShipModel.GOLD, 24, 2.2)
 	if not Settings.flashing_reduced:
-		world.effects.burst(global_position + Vector3(0.0, 2.0, 0.0), FIRE_HOT, 48, 3.2)
+		world.effects.burst(c + Vector3(0.0, 1.5, 0.0), FIRE_HOT, 48, 3.2)
 		sparks_shown += 1
 	set_shown(false)
 
 
-## A fireball at `at` (world space), `radius` across at its fullest, gone after `life` seconds: it swells fast,
-## reddens and fades, drifting by `drift` m/s (a softer flash with Reduced flashing). Pooled: the oldest gives way.
+## Where its blast goes off (world space): its middle, at least BLAST_LIFT above the causeway in the world's up (the
+## blast racing up the feed line starts there too: its boom, rolled over, points down).
+func blast_center() -> Vector3:
+	var c: Vector3 = global_position
+	c.y = maxf(c.y, BLAST_LIFT)
+	return c
+
+
+## A fireball at `at` (world space), `radius` across at its fullest, gone after `life` seconds: it swells fast, a
+## saturated orange that reddens and darkens as it fades, drifting by `drift` m/s, its smoke rolling up out of it
+## (no flash with Reduced flashing). Pooled (GoldenConvergenceBlast): the oldest gives way.
 func fireball(at: Vector3, radius: float, life: float, drift: Vector3 = Vector3.ZERO) -> void:
-	var f: Dictionary = _fires[0]
-	for candidate: Dictionary in _fires:
-		if not bool(candidate["on"]):
-			f = candidate
-			break
-		if float(candidate["age"]) / float(candidate["life"]) > float(f["age"]) / float(f["life"]):
-			f = candidate
-	f["on"] = true
-	f["age"] = 0.0
-	f["life"] = maxf(life, 0.1)
-	f["radius"] = radius
-	f["from"] = at
-	f["drift"] = drift
-	var node: MeshInstance3D = f["node"]
-	node.global_position = at
-	node.visible = true
+	_blast.fire(at, radius, life, drift)
 	fireballs_shown += 1
-	_paint_fire(f)
+
+
+## A puff of the blast's dark smoke at `at` (world space), `radius` across at its fullest, rising for `life` seconds.
+func smoke(at: Vector3, radius: float, life: float) -> void:
+	_blast.smoke(at, radius, life)
 
 
 ## Fireballs burning now (tests).
 func fires_on() -> int:
-	var n: int = 0
-	for f: Dictionary in _fires:
-		if bool(f["on"]):
-			n += 1
-	return n
+	return _blast.fires_on()
 
 
-func _paint_fire(f: Dictionary) -> void:
-	var node: MeshInstance3D = f["node"]
-	var age: float = float(f["age"])
-	var k: float = clampf(age / float(f["life"]), 0.0, 1.0)
-	var r: float = float(f["radius"]) * (0.35 + 0.65 * (1.0 - pow(1.0 - minf(age / 0.14, 1.0), 3.0)))
-	node.scale = Vector3(r, r * 1.1, r)
-	node.global_position = (f["from"] as Vector3) + (f["drift"] as Vector3) * age
-	var hot: float = clampf(1.0 - age / 0.1, 0.0, 1.0) * (0.35 if Settings.flashing_reduced else 0.8)
-	var color: Color = FIRE.lerp(FIRE_HOT, hot) * (1.0 - k * k) * 0.9
-	(node.material_override as StandardMaterial3D).albedo_color = Color(color.r, color.g, color.b, 1.0)
+## Its fire and smoke (tests).
+func blast() -> GoldenConvergenceBlast:
+	return _blast
 
 
 # --- The feed line -------------------------------------------------------------------------------------
@@ -423,31 +402,26 @@ static func _rod(a: Vector3, b: Vector3, r: float) -> Transform3D:
 
 func _tick(delta: float) -> void:
 	_t += delta
-	for i: int in range(_pending.size() - 1, -1, -1):
-		var pend: Dictionary = _pending[i]
-		pend["delay"] = float(pend["delay"]) - delta
-		if float(pend["delay"]) <= 0.0:
-			_pending.remove_at(i)
-			fireball(pend["at"], float(pend["radius"]), float(pend["life"]), pend["drift"])
-	for f: Dictionary in _fires:
-		if not bool(f["on"]):
-			continue
-		f["age"] = float(f["age"]) + delta
-		if float(f["age"]) >= float(f["life"]):
-			f["on"] = false
-			(f["node"] as Node3D).visible = false
-			continue
-		_paint_fire(f)
+	for i: int in range(_pending_delay.size() - 1, -1, -1):
+		_pending_delay[i] = _pending_delay[i] - delta
+		if _pending_delay[i] <= 0.0:
+			fireball(_pending_at[i], _pending_radius[i], _pending_life[i], Vector3(0.0, 1.5, 0.0))
+			_pending_delay.remove_at(i)
+			_pending_at.remove_at(i)
+			_pending_radius.remove_at(i)
+			_pending_life.remove_at(i)
+	_blast.tick(delta)
 	if _line_on:
 		_draw_line()
 
 
-## Every fireball out at once (a test, a fresh fight).
+## Every fireball and puff of smoke out at once (a test, a fresh fight).
 func fires_out() -> void:
-	_pending.clear()
-	for f: Dictionary in _fires:
-		f["on"] = false
-		(f["node"] as Node3D).visible = false
+	_pending_delay.clear()
+	_pending_at.clear()
+	_pending_radius.clear()
+	_pending_life.clear()
+	_blast.clear()
 
 
 # --- For tests ---------------------------------------------------------------------------------------------
