@@ -1281,7 +1281,9 @@ CLASSIC, 132 of 177 beside a hover truck or a Sentinel (one of their attacks beg
 as it's due, 33), 150 of 175 with a claim and 27 of 28 in the calm start. The windows the new modes plan take out
 about 1% more of those levels' obstacles (on their own seeds 580 enemies and 3226 obstacles before, 577 and 3219
 after; on the other seeds 4756 and 26686, 4734 and 26399), every build keeps its wider gaps, and every level without
-the truck builds exactly as before.
+the truck builds exactly as before. The new modes add about two fifths to those levels' build time (the 18 builds on
+their own seeds, fastest of three: 13.9 s against 19.6 s; the longest, Dead Zone 1 at 5 lanes, 3.0 s against 2.1 s;
+Corporate 2 at 5 lanes 2.5 s against 0.9 s, its introduction's chase searched in every mode).
 DESIGN-TBD: item 386
 (`docs/OPEN_QUESTIONS.md`), the chases no bait with room is left for (items 402–403), and C6e's placeholders
 (`docs/questions/c6e.md`); items 382–385, 367, 400 and 401 are the owner's answers.
