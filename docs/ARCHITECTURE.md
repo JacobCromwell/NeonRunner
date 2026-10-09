@@ -935,7 +935,10 @@ tests and `tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.
 native layout through enemy and obstacle hooks around the filler pass. The per-level
 `LevelConfig.danger_density_increase` dial is calibrated to actual generated enemy and obstacle
 counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15; Gangland
-0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden 0.38.
+0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden
+0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
+measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
+little, `docs/questions/k2.md`).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 

@@ -20,7 +20,7 @@ const LANES: Array[int] = [3, 5, 6]
 ## builds the same sample, so its output shows the numbers this suite checks).
 const OTHER_SEEDS: Array[int] = [9001, 9002]
 ## The sampled levels by band: the first levels (dials 0.15 to 0.20), the middle ones (0.26 to 0.28)
-## and the final ones (0.37 to 0.38). The Hush (dead_zone/2) is checked for fairness only: its quiet
+## and the final ones (0.37 to 0.39). The Hush (dead_zone/2) is checked for fairness only: its quiet
 ## stretches stay quiet by design, so it gains less than its dial.
 const BANDS: Dictionary = {
 	"early": ["city/1", "city/2", "gangland/2"],
