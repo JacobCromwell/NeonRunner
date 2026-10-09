@@ -37,7 +37,8 @@ const HOLD_FROM: float = 4.0
 const FIRE := Color(1.0, 0.4, 0.13)
 const FIRE_HOT := Color(1.0, 0.82, 0.55)
 ## Its blast (explode): fireballs this big along its length, around its middle at least BLAST_LIFT above the
-## causeway (in the world's up: rolled over as it spins off, its own up points down).
+## causeway (in the world's up: rolled over as it spins off, its own up points down). DESIGN-TBD
+## (docs/questions/e5d.md, E5d polish 5).
 const BLAST_LIFT: float = 4.0
 const BLAST_RADIUS: float = 7.0
 

@@ -44,7 +44,7 @@ const KEEP_BEHIND: float = 30.0
 const RETRACT_SECONDS: float = 0.35
 ## E5d polish (F6's short cage_lead or a generator far out could leave it out of reach): from the cage's coming up
 ## to the generator, a runner always has this long to read it, a lane switch for every lane but one, a jump's rise
-## onto the generator, and this long to spare (lead_seconds). DESIGN-TBD (docs/questions/e5d.md, E5d polish).
+## onto the generator, and this long to spare (lead_seconds). DESIGN-TBD (docs/questions/e5d.md, E5d polish 7).
 const READ_SECONDS: float = 0.7
 const SPARE_SECONDS: float = 0.3
 

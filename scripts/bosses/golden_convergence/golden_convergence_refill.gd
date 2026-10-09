@@ -64,7 +64,7 @@ const LEAVE_OUT: float = 1.6
 ## Spinning off: out past the walls' line this far, down this far (a little: E5d polish, it used to sink 10 m, below
 ## the deck, and explode out of the cameras' sight), rolling this far over (its belly turning away), surging this
 ## far ahead of where it rode (into the run camera's view): it explodes beside the causeway above its level, where the
-## run camera and the side see it (GoldenConvergenceShip.explode).
+## run camera and the side see it (GoldenConvergenceShip.explode). DESIGN-TBD (docs/questions/e5d.md, E5d polish 5).
 const SPIN_OUT: float = 10.0
 const SPIN_DOWN: float = 1.5
 const SPIN_ROLL: float = 2.3

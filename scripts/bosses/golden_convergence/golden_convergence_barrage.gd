@@ -22,8 +22,9 @@ extends GoldenConvergenceAttack
 ##    again every frame once the invulnerability is over).
 ## The warning leaves time to reach the wall from the far side (wall_reach_seconds: the reaction, every lane
 ## switch, the wall entry and a margin; tested at 3, 5 and 6 lanes; E5d polish: the missiles hang longer where
-## F6's numbers would leave less, hang_seconds), and the burn is shorter than a wall run without claws, so a runner who got onto the wall as the marks filled drops back
-## onto floor no longer burning (or wall hops, GDD §3, to stay up).
+## F6's numbers would leave less, hang_seconds), and the burn is shorter than a wall run without claws, so a
+## runner who got onto the wall as the marks filled drops back onto floor no longer burning (or wall hops, GDD §3,
+## to stay up).
 ## Numbers: GoldenConvergenceTuning's "Missile Barrage" group (DESIGN-TBD, docs/questions/e5d.md, E5d-b).
 ## Extension points (E5d-c, the Refill Ship): `barrages` counts the barrages fired (a ship comes after the
 ## phase's); ends_at() says where the one under way will be over.

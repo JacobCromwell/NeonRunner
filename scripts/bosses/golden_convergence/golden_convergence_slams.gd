@@ -652,7 +652,8 @@ func _impact(s: Dictionary) -> void:
 ## but kept clear of a wall runner's body lying across the wall's foot, as the barrage's fire is
 ## (GoldenConvergenceMissiles.WALL_CLEAR). E5d polish: the toppled tower's wall is the barrage's refuge and the next
 ## sequence's first fist can land while it stands; the red square lies on the floor, so a runner on the wall beside
-## it is never touched, at any height, and one on the floor of its outer lane always is.
+## it is never touched, at any height, and one on the floor of its outer lane always is. DESIGN-TBD (proposed:
+## docs/questions/e5d.md, E5d polish 4).
 func touch_x(box: Vector2) -> Vector2:
 	var geo: TrackGeometry = boss.world.geo
 	var reach: float = boss.world.tuning.hurtbox_size.y + GoldenConvergenceMissiles.WALL_CLEAR
