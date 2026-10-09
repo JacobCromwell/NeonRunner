@@ -2163,7 +2163,7 @@ paved street, warm lamplight and haze.
   gives the ones the shared pieces read (neon, lamps, signs, doodads) the Casino's colours. Chunk meshes use
   the same materials as ever: the one solid and one glow material of the batch, the facade shader's own, the
   feed's, and the drift material, so the roof adds no surface of its own.
-- *The street is a floor and gaps are open service trenches* (DESIGN-TBD, `docs/questions/k1.md` 1): dark
+- *The street is a floor and gaps are open service trenches* (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 369): dark
   flagstones in running bond with brass inlaid along both edges of every lane and across it every 6 m (the
   still floor's own motion cue), pools of lamplight and a wet sheen (all in the shader, from world position,
   so chunk cuts are seamless), and the dust, scraps and speed streaks of the other skins. Under a gap

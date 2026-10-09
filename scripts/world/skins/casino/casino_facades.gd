@@ -367,7 +367,7 @@ func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacad
 		MeshKit.SHAPE_FLAT)
 
 
-## Where a casino's big sign goes (DESIGN-TBD, docs/questions/k1.md 3: its lettering is rows of glyphs, as every
+## Where a casino's big sign goes (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 371: its lettering is rows of glyphs, as every
 ## skin's, so "Gasket's House of Chance" can't be spelled): the screen's plane (x), bottom (y0), height (h) and length, in the
 ## mid-height of its face (always above decor_min_height); empty if the casino is too small for one.
 func _casino_sign(b: MarketFacades.Building, face_x: float) -> Dictionary:

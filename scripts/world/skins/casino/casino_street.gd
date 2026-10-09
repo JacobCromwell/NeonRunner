@@ -8,8 +8,8 @@ extends RefCounted
 ## lies on it: in the Casino, as in the Marketplace, manholes and vents are the screeches' lairs
 ## (GDD §9.5). The still street's motion cues are the brass bars streaming past underfoot, pools of
 ## lamplight every 12 m, and the dust, scraps and speed streaks drifting over it (CasinoStreet.below).
-## DESIGN-TBD (docs/questions/k1.md 1, 4): the street is empty (the reference's few far-off pedestrians are left
-## out: no new characters), and the gaps are open service trenches under the street: where a
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 369, 372): the street is empty (the reference's few
+## far-off pedestrians are left out: no new characters), and the gaps are open service trenches under the street: where a
 ## gap borders a piece, the paving ends in the orange edge glow right on the collision edge, as in every
 ## zone, and below it everything is deep shade (PAT_CASINO_UNDER): the trench's iron wall drops into
 ## the dark, far deeper than the fall that ends a run, so a gap reads as a hole at a glance and
