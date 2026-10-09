@@ -201,7 +201,9 @@ func _test_layout_data() -> void:
 ## are the one exception FIX4 left (docs/questions/fix4.md): a full-width widening or a new row keeps its margin
 ## from a doodad, so where both want the same stretch the extra gap goes elsewhere. There the level's own gaps
 ## stay, and as many extra gaps come, in as many lanes (_check_extra_gaps); task G7's wider gaps re-rolled City 1
-## at 3 lanes into that case.
+## at 3 lanes into that case. Dash walls past an introduction come after the doodads too (task H7a,
+## DashWallRules.after_doodads) and stand where they leave room, taking out the plain pieces in their way, so
+## both builds leave them out: what's compared is the doodads' own doing.
 func _test_share_zero() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var checked: int = 0
@@ -210,6 +212,8 @@ func _test_share_zero() -> void:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			var tag: String = "%s lanes=%d" % [id, lanes]
 			check(config.doodad_share > 0.0, "%s has doodads in its data" % tag)
+			check(not config.feature_starts.has("dash_wall"), "%s doesn't introduce dash walls %s" % [id, tag])
+			config.dash_walls = 0
 			var off: LevelConfig = config.duplicate() as LevelConfig
 			off.doodad_share = 0.0
 			var patterns: Array = LevelGenerator.load_for(config)

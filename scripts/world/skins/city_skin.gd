@@ -247,6 +247,14 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	props().finish_line(parent, width, distance)
 
 
+## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the City's own facades: a lighter shade of
+## them, so the building reads as solid against the night street, trimmed in their darker one; dark glass.
+## Task H7b builds the real face from the zone's towers.
+func dash_wall_colors() -> PackedColorArray:
+	var body: Color = facade_colors[facade_colors.size() - 1].lightened(0.16)
+	return PackedColorArray([body, facade_colors[0].lightened(0.08), Color(0.05, 0.06, 0.09), Color(0.02, 0.02, 0.03)])
+
+
 ## A pillar (small), a tiny market stall (medium) or a small storefront (large): CityDoodads.
 func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
 	doodads().build(body, size, size_class, side, look_seed)

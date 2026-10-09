@@ -173,6 +173,10 @@ func _first_at(trigger: String) -> float:
 		"speed_pad":
 			for sp: Dictionary in layout.speed_pads:
 				found.append(float(sp["at"]))
+		"dash_wall":
+			# Task H7a (GDD §9.14): the first dash wall's face.
+			for dw: Dictionary in layout.dash_walls:
+				found.append(float(dw["start"]))
 	if found.is_empty():
 		return -1.0
 	return found.min()

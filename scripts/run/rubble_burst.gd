@@ -1,7 +1,8 @@
 class_name RubbleBurst
 extends MultiMeshInstance3D
 ## One burst of broken pieces (RunEffects.rubble; task H5: a zone doodad the dash smashes, GDD §3, owner,
-## October 8, 2026; task H7a's dash walls may use it too): solid chunks in the broken thing's own colours,
+## October 8, 2026; and task H7a's dash walls, a bigger pool of bigger bursts: RunEffects.crumble): solid
+## chunks in the broken thing's own colours,
 ## flung out of its box along the runner's way and out to the sides, tumbling, falling, skidding off the
 ## floor and shrinking away. It reads as something solid breaking apart: not an explosion (no fire, no
 ## flash) and not a hazard (nothing glows, so no hazard colour can show). The chunks are the kit's lit
@@ -11,7 +12,8 @@ extends MultiMeshInstance3D
 ## hidden in between. Made once per pool slot with its material on, so ShaderWarmup draws it at the
 ## level's load like every hidden effect (its first burst never compiles a shader mid-run). Visual only.
 
-## The most pieces in one burst (a large doodad's; smaller ones fling fewer, by their volume).
+## The most pieces in one burst by default (a large doodad's; smaller ones fling fewer, by their volume). A
+## burst made with a bigger capacity (a dash wall's, RunEffects.crumble) flings up to that many.
 const MAX_PIECES: int = 28
 ## The fewest pieces in one burst.
 const MIN_PIECES: int = 10
@@ -26,6 +28,8 @@ const SKID: float = 0.55
 ## The pieces' colour when the broken thing names none (sRGB, lit).
 const PLAIN_COLOR := Color(0.4, 0.4, 0.42)
 
+## The most pieces this burst flings (MAX_PIECES unless made with another: _init).
+var capacity: int = MAX_PIECES
 ## The pieces are still flying.
 var active: bool = false
 ## The pieces of the burst playing now (or last played).
@@ -36,7 +40,7 @@ var piece_colors := PackedColorArray()
 
 var _t: float = 0.0
 var _life: float = 0.85
-## Every per-piece list is sized for MAX_PIECES once (_init) and the random stream re-seeded per burst,
+## Every per-piece list is sized for its capacity once (_init) and the random stream re-seeded per burst,
 ## so a burst allocates nothing.
 var _rng := RandomNumberGenerator.new()
 var _pos := PackedVector3Array()
@@ -48,8 +52,10 @@ var _ends := PackedFloat32Array()
 var _basis: Array[Basis] = []
 
 
-func _init() -> void:
+## A burst of at most `max_pieces` pieces (MAX_PIECES by default).
+func _init(max_pieces: int = MAX_PIECES) -> void:
 	name = "Rubble"
+	capacity = maxi(max_pieces, MIN_PIECES)
 	top_level = true
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	material_override = MeshKit.solid()
@@ -57,19 +63,19 @@ func _init() -> void:
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
 	mm.mesh = piece_mesh()
-	mm.instance_count = MAX_PIECES
+	mm.instance_count = capacity
 	mm.visible_instance_count = 0
 	multimesh = mm
 	visible = false
 	set_process(false)
-	_pos.resize(MAX_PIECES)
-	_vel.resize(MAX_PIECES)
-	_size.resize(MAX_PIECES)
-	_axis.resize(MAX_PIECES)
-	_spin.resize(MAX_PIECES)
-	_ends.resize(MAX_PIECES)
-	_basis.resize(MAX_PIECES)
-	piece_colors.resize(MAX_PIECES)
+	_pos.resize(capacity)
+	_vel.resize(capacity)
+	_size.resize(capacity)
+	_axis.resize(capacity)
+	_spin.resize(capacity)
+	_ends.resize(capacity)
+	_basis.resize(capacity)
+	piece_colors.resize(capacity)
 
 
 ## The pieces' mesh: the kit's unit box, white and lit (COLOR.a 0: no glow), plain (pattern 0); each
@@ -90,7 +96,7 @@ func play(box: AABB, colors: PackedColorArray, push: Vector3, carry: float, spre
 	var rng: RandomNumberGenerator = _rng
 	rng.seed = look_seed
 	var volume: float = box.size.x * box.size.y * box.size.z
-	count = clampi(roundi(volume * PIECES_PER_M3), MIN_PIECES, MAX_PIECES)
+	count = clampi(roundi(volume * PIECES_PER_M3), MIN_PIECES, capacity)
 	_life = maxf(life, 0.1)
 	_t = 0.0
 	var centre: Vector3 = box.get_center()

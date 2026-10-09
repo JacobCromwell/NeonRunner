@@ -128,6 +128,18 @@ static func quad() -> QuadMesh:
 	return _quad
 
 
+## The soft, lumpy blob every puff is drawn with (also a dash wall's dust, RunEffects.crumble).
+static func puff_texture() -> Texture2D:
+	_make_shared()
+	return _puff_texture
+
+
+## A see-through, unshaded billboard material for `texture`'s puffs, in their vertex colours (sRGB), fading out
+## from `near_max` to `near_min` metres of the camera: the smoke's (and a dash wall's dust, RunEffects.crumble).
+static func puff_material(texture: Texture2D, near_min: float, near_max: float) -> StandardMaterial3D:
+	return _make_material(texture, false, 1.0, near_min, near_max)
+
+
 ## A fireball at `pos`, `size` metres in radius. `smoke` leaves dark smoke behind it (off for a quick,
 ## small one that must clear at once, a bomb's); `pace` plays it faster (above 1) or slower than its size
 ## makes it; `spread` (0.25 to 1) is how far its fire and embers fly out of its centre (a bomb's is held in,

@@ -22,6 +22,10 @@ signal health_changed(enemy: Enemy)
 
 ## NPC friendly fire: defeat listeners must not award player kills, score or thief payouts.
 const CHARGE_DAMAGE_CAUSE: StringName = &"enemy_charge"
+## A flyer clears a standing dash wall's top by this much (metres), and climbs to it (and comes back down
+## after) at this speed (m/s): dash_wall_lift (task H7a). DESIGN-TBD (docs/questions/h7a.md).
+const DASH_WALL_CLEARANCE: float = 1.2
+const DASH_WALL_CLIMB_SPEED: float = 7.0
 
 # --- Declared properties (read by DamageRules, the weapon system and the score) ---------------
 var type_id: StringName = &"enemy"
@@ -125,6 +129,45 @@ func should_retire() -> bool:
 ## Where the enemy is along the track, in metres (forward = +).
 func track_distance() -> float:
 	return -global_position.z
+
+
+## The height a flyer must hold right now to clear the dash walls standing in its way (task H7a; GDD §9.14: a
+## building across the street, MovementTuning.dash_wall_height tall), or 0 when none is: the wall's top plus
+## DASH_WALL_CLEARANCE, from the moment a climb from `from_height` at DASH_WALL_CLIMB_SPEED must start for the
+## flyer to be over the wall as its front reaches the face, until its body is past the wall's back. `at` is the
+## flyer's track distance, `half_length` half its body's length along the track, and `closing_speed` how fast
+## its body comes at the wall (the runner's speed for a flyer pacing them, more for one pulling away). A flyer
+## ahead of the runner (the heli drone, the Resonator leaving, a fleeing Tithe Collector) climbs to it and back
+## down past the wall, so none flies through a building. Only standing walls count: the runner breaks each one
+## as they reach it, so a flyer ahead of them always meets it standing.
+func dash_wall_lift(at: float, half_length: float, from_height: float, closing_speed: float) -> float:
+	if world == null or world.layout == null or world.layout.dash_walls.is_empty():
+		return 0.0
+	var top: float = world.tuning.dash_wall_height + DASH_WALL_CLEARANCE
+	var lead: float = maxf(top - from_height, 0.0) / DASH_WALL_CLIMB_SPEED * maxf(closing_speed, 1.0) + half_length
+	for w: Dictionary in world.layout.dash_walls:
+		if bool(w.get("smashed", false)):
+			continue
+		if at + lead >= float(w["start"]) and at - half_length <= float(w["end"]):
+			return top
+	return 0.0
+
+
+## True if `front` (the front of a ground enemy ahead of the runner, moving away from them) has reached the face
+## of a dash wall still standing between it and the runner (task H7a; GDD §9.14): it can't drive through a
+## building, so it leaves play there (an Octodog running off ahead or pacing, a Buzz Overdrive speeding off after
+## letting the runner pass). Only standing walls count, and the runner breaks each one as they reach it.
+func dash_wall_reached(front: float) -> bool:
+	if world == null or world.layout == null or world.layout.dash_walls.is_empty():
+		return false
+	var p: float = world.player_distance()
+	for w: Dictionary in world.layout.dash_walls:
+		if bool(w.get("smashed", false)):
+			continue
+		var face: float = float(w["start"])
+		if face > p and front >= face:
+			return true
+	return false
 
 
 ## Where weapons aim and effects appear.

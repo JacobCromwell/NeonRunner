@@ -228,23 +228,15 @@ func _enter(next: Mode) -> void:
 			gun.stop()
 
 
-## Keeps the walk and the panic run clear of every obstacle (GDD §9 fairness) and of every ceiling's
-## landing zone (GDD §3: the floor there is safe to land on).
+## Keeps the walk and the panic run clear of every obstacle (GDD §9 fairness; a dash wall's clear stretch too,
+## task H7a: it never runs through a standing wall nor cowers right behind it) and of every ceiling's landing
+## zone (GDD §3: the floor there is safe to land on): CyborgRules.obstacle_spans and limits.
 func _compute_limits() -> void:
-	var margin: float = CyborgRules.obstacle_margin_at(tuning, world.tuning.pace())
-	walk_limit = home - tuning.walk_max
-	run_limit = minf(home + tuning.panic_run_max * world.tuning.pace(), world.layout.length - margin)
 	var zones := CeilingZones.make(world.config, world.tuning)
-	for s: Vector2 in CyborgRules.obstacle_spans(world.layout, world.tuning, zones):
-		if s.y <= home:
-			walk_limit = maxf(walk_limit, s.y + margin)
-		elif s.x >= home:
-			run_limit = minf(run_limit, s.x - margin)
-		else:
-			walk_limit = home
-			run_limit = home
-	walk_limit = minf(walk_limit, home)
-	run_limit = maxf(run_limit, home)
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(world.layout, world.tuning, zones)
+	var at: Vector2 = CyborgRules.limits(spans, tuning, world.tuning.pace(), home, world.layout.length)
+	walk_limit = at.x
+	run_limit = at.y
 	if stand:
 		walk_limit = home
 

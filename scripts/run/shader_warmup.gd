@@ -14,8 +14,9 @@ extends Node3D
 ## - one look of every enemy kind the level brings (EnemyDirector.warm_looks), every part of it shown
 ##   (a muzzle's charge, a lunge line);
 ## - one of each track piece the zone skin dresses: fences full and gapped in each of their states,
-##   wall fences, a sign, a pad, a ramp, a speed pad, full and narrow ceilings, every doodad size, gap
-##   edges and the finish line;
+##   wall fences, a sign, a pad, a ramp, a speed pad, full and narrow ceilings, every doodad size, a dash
+##   wall (task H7a, in a level that has them; its crumble's pieces and dust wait hidden in RunEffects, so
+##   they're sampled with the hidden nodes), gap edges and the finish line;
 ## - every credit denomination's look (CreditField.mesh_for/material_for), since a level's own layout
 ##   may carry only some of them, or none at all (a boss's track, Hostile Takeover's) and still drop
 ##   one later (a Tithe Collector's trail, a jackpot's fountain, CreditField.place).
@@ -263,6 +264,10 @@ func _sample_track(world: RunWorld) -> void:
 		var body := Node3D.new()
 		add_child(body)
 		skin.doodad(body, Vector3(box_size.x, box_size.y, 4.0), size_class, 1, 0)
+	if world.layout != null and not world.layout.dash_walls.is_empty():
+		var wall := Node3D.new()
+		add_child(wall)
+		skin.dash_wall(wall, TrackBuilder.dash_wall_size(geo, t, t.dash_wall_depth), 0)
 	var floor_root := Node3D.new()
 	add_child(floor_root)
 	var span: Vector2 = geo.lane_floor_span(0)

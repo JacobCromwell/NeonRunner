@@ -110,6 +110,35 @@ extends Resource
 ## How long a burst lasts (s): every piece has shrunk away by then.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var rubble_life: float = 0.9
 
+@export_group("Dash walls")
+## A dash wall crumbles (GDD §9.14, owner, October 8, 2026: "they will crumble and explode into rubble";
+## task H7a; Player.smashed with a wall, whatever broke it: the dash, a crash or a pass on a side wall): its
+## pieces fly in its look's own colours (RunEffects.crumble: a bigger RubbleBurst than a doodad's), a cloud of
+## dust billows out of its lower face, and the camera shakes harder than a doodad's smash (with its crash,
+## dash_wall_smash.wav). Nothing flashes or glows (Reduced flashing leaves it as it is), Screen shake scales it,
+## and the pieces and the dust clear the lanes fast (they fly out and fall behind the runner, and the dust
+## fades as the camera nears it), so the runner coming through keeps sight of the street. The counts are fixed
+## when a level loads. DESIGN-TBD (docs/questions/h7a.md): the look and the numbers.
+@export_range(0.0, 1.0, 0.01) var wall_shake_strength: float = 0.26
+@export_range(0.05, 1.0, 0.01, "suffix:s") var wall_shake_time: float = 0.34
+## The most pieces one wall flings (by its size, at most this many: a wall at 3 lanes is about half of one at 6).
+@export_range(16, 96, 1) var wall_rubble_pieces: int = 64
+## The share of the runner's speed the pieces carry on along its way: well under the runner's own, so the
+## runner and the camera overtake them within moments and they fall behind.
+@export_range(0.0, 1.5, 0.05) var wall_rubble_carry: float = 0.45
+## How fast the pieces fly out to the sides and up (m/s; each piece a share of it): out of the lanes.
+@export_range(0.0, 30.0, 0.5, "suffix:m/s") var wall_rubble_spread: float = 10.0
+@export_range(0.0, 30.0, 0.5, "suffix:m/s") var wall_rubble_lift: float = 6.5
+## A large piece's size (m) and how long a burst lasts (s).
+@export_range(0.1, 2.0, 0.02, "suffix:m") var wall_rubble_piece_size: float = 0.85
+@export_range(0.2, 3.0, 0.05, "suffix:s") var wall_rubble_life: float = 1.1
+## The dust billowing out of the wall's lower face: how many puffs (fixed when a level loads), how long they last
+## and how big they get (m), and how opaque at most (0-1). They fade out near the camera.
+@export_range(0, 40, 1) var wall_dust_puffs: int = 14
+@export_range(0.2, 3.0, 0.05, "suffix:s") var wall_dust_seconds: float = 0.9
+@export_range(0.5, 6.0, 0.1, "suffix:m") var wall_dust_size: float = 2.4
+@export_range(0.0, 1.0, 0.05) var wall_dust_opacity: float = 0.5
+
 @export_group("Thefts")
 ## A thief's theft and payout (GDD §9.12; ScoreKeeper.stolen / recovered): a stream of coins in the
 ## credit look flies from the runner to the thief, or bursts out of a caught thief into the runner

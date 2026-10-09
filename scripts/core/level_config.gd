@@ -65,6 +65,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
 ##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
 ##   so a level needs octodog or buzz_overdrive for it to appear)
+## - dash_wall: dash walls, buildings across every floor lane the runner dashes through (GDD §9.14; task
+##   H7a), from Corporate 1 (no patterns: their rules, dash_wall_rules.gd, stand up to dash_walls of them
+##   where they're fair)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -167,6 +170,14 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## 0 turns it off: the level is built exactly as before. DESIGN-TBD: 1 in every campaign level with Octodogs
 ## or Buzz Overdrives (Gangland 2 on), so the player meets it several times before the Enforcer Truck.
 @export_range(0, 4) var charge_path_cyborgs: int = 0
+## Dash walls (owner, October 8, 2026, GDD §9.14; task H7a): with the `dash_wall` feature, the generator
+## stands up to this many buildings across the level's floor lanes for the runner to dash through
+## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown
+## is over before the next (data/tuning/dash_walls.tres); fewer where the level leaves no room, never none.
+## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/questions/h7a.md): 1 to 4 by level
+## (2 in Corporate 1, up to 4 in Golden 2; a level asks for no more than its track holds on every lane count:
+## Corporate 2 and The Hush hold one); quick play's prototype level takes this default.
+@export_range(0, 8) var dash_walls: int = 3
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are

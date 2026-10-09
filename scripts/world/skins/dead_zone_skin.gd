@@ -337,6 +337,13 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
+## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the Dead Zone's own charred facades: ash grey
+## walls, darker trim, black glass and cracks. Task H7b builds the real face from the zone's dead towers.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([facade_colors[facade_colors.size() - 1], facade_colors[2 % facade_colors.size()],
+		Color(0.05, 0.05, 0.052), Color(0.02, 0.02, 0.02)])
+
+
 ## A crushed wreck (small), a rubble heap (medium) or fallen masonry (large): DeadDoodads.
 func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
 	doodads().build(body, size, size_class, side, look_seed)

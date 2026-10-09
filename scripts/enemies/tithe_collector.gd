@@ -30,7 +30,9 @@ extends Enemy
 ##   TitheCollectorTuning); any defeat (a stomp, a shot, the dash, the claws) is a catch, and
 ##   ScoreKeeper.pay_out (wired generically to every thief, task B6) bursts out everything it holds
 ##   plus its jackpot. Robbed, it flees ahead and up with what it took, exactly like the stand-in
-##   thief, until it's gone for good (should_retire) or caught on its way out.
+##   thief, until it's gone for good (should_retire) or caught on its way out. Fleeing, it rises over a
+##   standing dash wall in its way (task H7a; Enemy.dash_wall_lift); the generator keeps the walls off its
+##   whole stay, so it never meets one before.
 ## Spawn params: `approach_speed` (m/s at REFERENCE_SPEED, default the tuning's) for a place that can't
 ## hold its stay (Hostile Takeover's Board: a flatcar's roof is too short to meet it before the roof ends,
 ## task H10); every lane crossing is decided live, from the layout around it. Numbers:
@@ -138,7 +140,15 @@ func _tick(delta: float) -> void:
 		State.FLEE:
 			rel_ahead += tune.flee_speed_at(pace) * delta
 			track_d = p.distance + rel_ahead
-			height_now = minf(height_now + tune.flee_rise_at(pace) * delta, tune.flee_height)
+			# Up to its flee height, or over a standing dash wall in its way (task H7a), and back down past it.
+			var over: float = dash_wall_lift(track_d, tune.body_size.z * 0.5, height_now,
+				p.speed + tune.flee_speed_at(pace))
+			if over > 0.0:
+				height_now = move_toward(height_now, over, maxf(tune.flee_rise_at(pace), DASH_WALL_CLIMB_SPEED) * delta)
+			elif height_now > tune.flee_height:
+				height_now = move_toward(height_now, tune.flee_height, DASH_WALL_CLIMB_SPEED * delta)
+			else:
+				height_now = minf(height_now + tune.flee_rise_at(pace) * delta, tune.flee_height)
 			_lat_v = 0.0
 	_bob_t += delta
 	_place()

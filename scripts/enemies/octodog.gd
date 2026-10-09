@@ -61,6 +61,9 @@ const CEILING_LANDING: float = 25.0
 ## charge_clear(): metres kept clear of other enemies before and after a charge's stretch.
 const OTHER_ENEMY_BEFORE: float = 5.0
 const OTHER_ENEMY_MARGIN: float = 25.0
+## How far ahead of its spot its body reaches (half its length, metres): where it meets a dash wall's face
+## (should_retire).
+const DASH_WALL_REACH: float = BODY_SIZE.z * 0.5
 
 var phase: Phase = Phase.IDLE
 ## Charges planned for this dog, and lunges made so far.
@@ -672,6 +675,11 @@ func _on_defeated(cause: StringName) -> void:
 
 func should_retire() -> bool:
 	if phase == Phase.LEAVE and _d - world.player_distance() > 110.0:
+		return true
+	# Running off ahead or pacing the runner, it meets a dash wall still standing ahead of them (task H7a): it
+	# can't run through a building, so it leaves there, giving up its turn (it waits for none past that).
+	if phase in [Phase.LEAVE, Phase.SPRINT, Phase.PACE] and dash_wall_reached(_d + DASH_WALL_REACH):
+		world.director.give_up_turn(self)
 		return true
 	return super.should_retire()
 

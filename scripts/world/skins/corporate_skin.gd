@@ -382,6 +382,13 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
+## A dash wall's default look (ZoneSkin.dash_wall, task H7a) in the towers' own calm band (CorporateTowers): the
+## sterile cladding between brushed steel pilasters, dark glass. Task H7b builds the real face from the towers.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([podium_colors[2 % podium_colors.size()], pilaster_color, Color(0.08, 0.1, 0.13),
+		Color(0.035, 0.04, 0.05)])
+
+
 ## A planter (small), a security barrier or a glass kiosk (medium) or a sculpture plinth (large): CorporateDoodads.
 func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
 	doodads().build(body, size, size_class, side, look_seed)
