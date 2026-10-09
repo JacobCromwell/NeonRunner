@@ -60,7 +60,7 @@ extends RefCounted
 ## before it gives up), so the runner can lead it in: from the first of the three sources above with one there,
 ## the earliest; then the rest spread through the level, each source used up before the next. Rows across most of
 ## the lanes (a jump) come before single holes. DESIGN-TBD (docs/questions/g7.md): the width, the margins, the
-## count and which rows.
+## count and which rows; (docs/questions/k5.md) the last way, 4., only for a level with none.
 
 const TUNING_PATH: String = "res://data/tuning/wide_gaps.tres"
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
@@ -101,7 +101,8 @@ static func length_for(gen: LevelGenerator, t: WideGapTuning = null) -> float:
 ## Places the level's wider gaps (see the header). Returns its report (LevelGenerator.wide_gap_result): {}
 ## when the level asks for none (or is a boss arena); else {target, rows (each wider row's
 ## Vector2(start, end), along the track), widened (rows of the level's own made longer as they stood), added
-## (new rows), cleared (rows made longer once other pieces went) and taken_out (how many pieces went), blocked
+## (new rows), added_clearing (of those, the one the last way placed, other pieces taken out of its way:
+## _add_clearing), cleared (rows made longer once other pieces went) and taken_out (how many pieces went), blocked
 ## (what kept each of the level's own rows from widening at its far edge: "<what>" -> how many rows),
 ## constraints (why fewer than the target, if so), deferred (the level's own rows widen_deferred makes longer)},
 ## and fillers_out (how many fillers widen_deferred took out) once it has taken one out.
@@ -154,8 +155,9 @@ static func place(gen: LevelGenerator) -> Dictionary:
 	if p.rows.size() < want:
 		constraints.append("only %d of %d wider gaps fit: nowhere else has its margins clear (or the spacing)" % [
 			p.rows.size(), want])
-	return {"target": want, "rows": p.rows, "widened": p.widened, "added": p.added, "cleared": p.cleared,
-		"taken_out": p.taken_out, "blocked": blocked, "constraints": constraints, "deferred": p.deferred}
+	return {"target": want, "rows": p.rows, "widened": p.widened, "added": p.added, "added_clearing": p.added_clearing,
+		"cleared": p.cleared, "taken_out": p.taken_out, "blocked": blocked, "constraints": constraints,
+		"deferred": p.deferred}
 
 
 ## Makes longer the level's own rows place() chose (its report's `deferred`), once the fill pass has run (see the
@@ -263,6 +265,8 @@ class _Pass:
 	var rows: Array[Vector2] = []
 	var widened: int = 0
 	var added: int = 0
+	## Of `added`, the new rows the last way placed, other pieces taken out of their way (_add_clearing).
+	var added_clearing: int = 0
 	var cleared: int = 0
 	var taken_out: int = 0
 	## The level's own rows to make longer after the fill pass: {start, end (the row's), span (its wider one)}.
@@ -751,6 +755,7 @@ static func _add_clearing(p: _Pass, window: Vector2, target: float) -> bool:
 				lay.gaps.append({"lane": lane, "start": span.x, "end": span.y})
 		p.rows.append(span)
 		p.added += 1
+		p.added_clearing += 1
 		return true
 	return false
 
