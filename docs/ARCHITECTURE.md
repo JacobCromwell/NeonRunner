@@ -279,7 +279,7 @@ most in a frame higher by the warm-up's samples in the level's first two frames.
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), and the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`) and the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -2555,7 +2555,8 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
-intro play a placeholder arrival flyover, and the outros are still cards. A boss is built on the boss
+intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a), and
+the other outros are still cards. A boss is built on the boss
 framework (Bosses, below). The City's Floating Head is built
 (its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
 gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
@@ -3059,15 +3060,16 @@ never ends, and a level never starts, unattended.
 
 | File | What |
 |---|---|
-| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool) |
+| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool); a script's hooks: `_on_cue()`, `_on_advance()` (its own props on the clock), `switch_stage()` (a cut to another stretch, even another zone's) |
 | `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound`, `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
-| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, a cyborg's face, aim and charge) and its node in play |
+| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, the runner's head turn `look`, a cyborg's face, aim and charge) and its node in play |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
-| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0)`) and the run's sun; ceilings, gaps and pads; streamed in chunks like a run |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0)`) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
+| `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -3099,7 +3101,9 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 **Actors.** The runner is the real player model (`PlayerAvatar`), driven with the same movement state as
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
-keys. A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower` or `die`;
+keys; it is in the air below the floor too (falling past its edge), and a key's `look` turns its head (shared
+by its chest, neck and head, turning smoothly between keys). A cyborg (`CyborgBody`) walks or idles by its
+speed, or takes `aim`, `run_away`, `cower` or `die`;
 its keys set its face, its aim (at another actor) and its charge glow (the red glow is its attack's
 warning in play, so show it only where an attack follows). An actor faces the way it moves, or a heading
 of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no gameplay.
@@ -3138,7 +3142,15 @@ func _make_timeline() -> CineTimeline:      # `stage` is built by now
 
 func _on_cue(cue_name: StringName) -> void:  # a CUE event's moment (the `cue` signal fires too)
 	pass
+
+func _on_advance(delta: float) -> void:      # every step of the clock: move the script's own props by `time`
+	pass
 ```
+
+A script's props (models of its own that aren't actors) are plain nodes it adds in `_make_timeline()` and
+moves in `_on_advance()` from `time`, so they keep time when a test steps the clock. `switch_stage(def, skin)`
+cuts to another stretch on the same lanes (track space stays put; cut under black, since building one takes a
+few frames).
 
 Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
 (`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
@@ -3154,6 +3166,28 @@ CITY"; before a boss, the boss, as the level select does), the slot's music come
 after 9.5 s, as the level (or the fight) opens on the same view. Gaps beside the runner's lane show the
 zone's floor pieces. It sets up in about 15-40 ms and costs about 0.3 ms a frame (headless), so it stays
 cheap on the web, where the demo plays the City's two.
+
+**The City outro** (`CityOutro`, task F2a; the owner's beats, GDD §6 Cinematics; its staging is DESIGN-TBD,
+`docs/OPEN_QUESTIONS.md` §D, items 369–381; numbers in `data/cinematics/city_outro_tuning.tres`): 15 s. From the run camera's view
+the dying Floating Head plunges into the street ahead and becomes the fight's wreck. The camera comes down to
+the runner's level as they stop. They look left, and the camera pans over their shoulder to a roadblock at the
+mouth of a side street opening off the left wall. The roadblock is Barnacle Turrets standing on the floor like
+cannons, five cyborgs (actors), an Enforcer Truck behind them with its light bar going, and a heli drone over
+it. The camera pans back to the runner, who hops back startled and sprints to an opening in the right wall.
+They leap out over the drop as the roadblock's red volley blows up the roof behind them, seen from out over
+the drop. Under black it cuts (`switch_stage`) to the next zone's street (the campaign's next `ZoneDef.skin`,
+Gangland), where they drop in, land and run off; Gangland's intro follows.
+
+`CityOutroSet` holds the props, all visual only and built from the game's own models: the ship from
+`FloatingHeadModel` (hull, face screen with the fight's shader, jaw, wreck), `BarnacleTurretModel` turned
+over, `EnforcerTruckModel`, the drone's model (`drone.gd`'s static `add_model`, which the enemy uses too),
+`EnforcerTruckBlast`, and a code-built barricade. The side street's floor and both openings' building fronts
+come from the stage's skin (`ZoneSkin.floor_segment`, `wall_section`), so they follow the zone's look.
+Reduced flashing holds the dying face's glitch and the light bar steady, and the blast has no white-hot core.
+Music: the zone's track, fading as the runner leaps; the web demo, which ends after this, never loads
+Gangland's. Cost (headless, `test_city_outro`): about 25 ms to set up (about 220 ms the first time, with cold
+mesh caches), about 10 ms for the cut (under black), at most about 3 ms a step, and its props add about 65
+draw calls. It adds no asset files.
 
 ## Economy and saving
 
@@ -3486,7 +3520,13 @@ action and the Skip button, Reduced flashing, holding in the background, the sam
 in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
-next step follows, skipping, the web demo). `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+next step follows, skipping, the web demo). `test_city_outro` checks the City outro (F2a): at 3, 5 and 6
+lanes its beats in order (the crash into the wreck, the camera at the runner's level, the look left, the pan
+onto the roadblock, the startle, the leap out of the right wall's opening with the blast behind, the cut to
+the next zone and the landing), a camera that only leaves the street through an opening, only the City's
+music, its setup, cut and step costs and its props' draw calls; Reduced flashing; `skip()` at any moment;
+the landing following the next zone's skin; and the App's flow (Gangland's intro follows; the web demo plays
+it, then its end screen). `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
