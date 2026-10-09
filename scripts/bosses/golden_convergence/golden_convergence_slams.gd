@@ -236,11 +236,22 @@ func _plan(start_d: float, phase: int = -1) -> void:
 	cuts.lane_count = lanes
 	slams.clear()
 	var shift: float = 0.0
+	var least: float = row_gap()
+	# Where the last row (or its gate, a chance's) ends: the next one keeps row_gap() past it.
+	var last_end: float = -INF
 	for k: int in letters.length():
 		var letter: String = letters[k]
 		var kind: StringName = &"ahead" if letter.to_upper() == "A" else &"on"
+		var chance: bool = letter != letter.to_upper()
 		var impact_at: float = first_impact + float(k) * gap + shift
 		var row: Vector2 = _row_for(kind, impact_at, ahead, row_len)
+		# E5d polish: never nearer the last row than a lane switch's run and the margin (an ahead slam's row comes
+		# close to the next slam's on the runner at a later phase's pace): this slam and the ones after it come later.
+		if row.x < last_end + least:
+			var spread: float = last_end + least - row.x
+			shift += spread
+			impact_at += spread
+			row = _row_for(kind, impact_at, ahead, row_len)
 		# A row never lies over the cuts already on the track (a dropped plan's, never opened, stay there: a cut
 		# over a cut would draw the wrong lips): this slam and the ones after it move on past them.
 		for guard: int in 6:
@@ -255,7 +266,7 @@ func _plan(start_d: float, phase: int = -1) -> void:
 		var lock_at: float = impact_at - v * t.slam_lock_seconds
 		var track_at: float = lock_at - v * t.slam_track_seconds
 		var side: int = -1 if k % 2 == 0 else 1
-		var s := {"n": k, "letter": letter, "kind": kind, "chance": letter != letter.to_upper(), "fist": 0 if side < 0 else 1,
+		var s := {"n": k, "letter": letter, "kind": kind, "chance": chance, "fist": 0 if side < 0 else 1,
 			"side": side, "impact_at": impact_at, "row": row, "mid": (row.x + row.y) * 0.5,
 			"out_at": track_at - v * t.slam_out_seconds / p, "track_at": track_at, "lock_at": lock_at,
 			"fall_at": impact_at - v * t.slam_fall_seconds, "stage": SlamStage.PLANNED, "t": 0.0, "lane": -1, "x": 0.0,
@@ -268,6 +279,7 @@ func _plan(start_d: float, phase: int = -1) -> void:
 			s["gate_at"] = row.y + t.slam_gate_gap + t.pier_depth * 0.5
 			# The fist smashes into the gate's front, its hole in front of it.
 			s["mid"] = row.y
+		last_end = row.y + (t.slam_gate_gap + t.pier_depth if chance else 0.0)
 		for lane: int in lanes:
 			cuts.cuts.append({"lane": lane, "start": row.x, "end": row.y, "warn": row_len, "charge": 0.0, "keep": 0.0,
 				"speed": 0.0, "slam": true})
@@ -286,6 +298,14 @@ func _plan(start_d: float, phase: int = -1) -> void:
 		boss.arena.add_pieces(cuts)
 	boss.log_event(&"slams_planned", {"script": letters, "first_impact": first_impact, "start": start_d,
 		"by": planned_by, "rows": slams.size(), "stream_from": earliest - ROW_MARGIN, "for_phase": index})
+
+
+## The least gap between one slam's row (or a chance's gate) and the next one's (E5d polish): a lane switch's run
+## at the run speed plus slam_row_margin, so a runner landing past a hole can switch out of the next one's
+## footprint and two rows never meet, at every phase's pace, speed and lane count.
+func row_gap() -> float:
+	var switch: float = boss.world.tuning.lane_switch_time if boss.world != null and boss.world.tuning != null else 0.14
+	return boss.speed_planned() * (switch + boss.tuning.slam_row_margin)
 
 
 ## The row (its stretch along the track) of a slam of `kind` landing as the runner reaches `impact_at`: around it

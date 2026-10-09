@@ -188,6 +188,12 @@ extends Resource
 ## A buttress chance's hole ends this far before its gate's pier: the slam's row is dug just in front of the
 ## gate, so a hole sharing the gate's lane never goes through it (docs/questions/e5d.md, E5d-b).
 @export_range(0.0, 3.0, 0.05, "suffix:m") var slam_gate_gap: float = 0.6
+## DESIGN-TBD (E5d polish; docs/questions/e5d.md): one slam's row and the next one's (its gate, for a chance) are
+## always at least a lane switch's run apart at the run speed plus this long (GoldenConvergenceSlams.row_gap): a
+## runner landing past a hole has room to switch out of the next one's footprint, and two rows never meet. Where
+## the script's spacing (slam_gap over the pace, an ahead slam's lead) would bring them closer, the later slams
+## come that much later.
+@export_range(0.1, 1.0, 0.05, "suffix:s") var slam_row_margin: float = 0.3
 
 @export_group("The toppled tower")
 ## DESIGN-TBD (GDD §10: "the building it held up, off screen, topples forward along the track on the side

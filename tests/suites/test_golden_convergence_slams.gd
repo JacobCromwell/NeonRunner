@@ -43,6 +43,7 @@ func run() -> void:
 		return
 	_test_scripts()
 	_test_footprints()
+	await _test_row_gaps()
 	for lanes: int in LANES:
 		await _test_holes(lanes)
 	for lanes: int in LANES:
@@ -211,6 +212,79 @@ func _test_footprints() -> void:
 	check(_same(GoldenConvergenceHole.footprint(0, 5), [0, 1, 2]) and _same(GoldenConvergenceHole.footprint(4, 5), [2, 3, 4])
 		and _same(GoldenConvergenceHole.footprint(5, 6), [3, 4, 5]) and _same(GoldenConvergenceHole.footprint(0, 3), [0, 1])
 		and _same(GoldenConvergenceHole.footprint(2, 3), [1, 2]), "at the edges it moves inward")
+
+
+# --- The rows' spacing --------------------------------------------------------------------------------------
+
+## E5d polish (the review: at 18 m/s phase 3's ahead slam 2 and slam 3 on the runner overlapped by about 0.6 m on
+## 5 and 6 lanes): every slam sequence keeps each row (or a chance's gate) at least a lane switch's run plus
+## slam_row_margin before the next one, at every stage 1 phase, run speed and lane count, and still at the F6
+## ranges' tightest spacing (the shortest slam_gap, the longest ahead lead).
+func _test_row_gaps() -> void:
+	var faults: PackedStringArray = []
+	var plans: int = 0
+	var spread: int = 0
+	var t0 := def.tuning as GoldenConvergenceTuning
+	for tight: bool in [false, true]:
+		var scripts := PackedStringArray()
+		if tight:
+			# Every pair of letters in one script: on after ahead, ahead after on, chances among them.
+			scripts = PackedStringArray(["OAoaAOaoA", "AOAoAaOA", "OAooA"])
+		for lanes: int in LANES:
+			for speed: float in [18.0, 21.0, 25.0, 28.0]:
+				var pair: Array = _fight(lanes, speed, null, 0, "slams,barrage", scripts)
+				var world: RunWorld = pair[0]
+				var boss: GoldenConvergence = pair[1]
+				if tight:
+					boss.tuning.slam_gap = _range_end(t0, &"slam_gap", false)
+					boss.tuning.slam_ahead_seconds = _range_end(t0, &"slam_ahead_seconds", true)
+				var sl: GoldenConvergenceSlams = boss.slams
+				var least: float = sl.row_gap()
+				var switch_run: float = speed * tuning.lane_switch_time
+				if least < switch_run + 0.05 * speed:
+					faults.append("%d lanes, %.0f m/s: the least gap %.1f m isn't a lane switch's run (%.1f m) and a margin" % [
+						lanes, speed, least, switch_run])
+				for phase: int in GoldenConvergence.STAGE_2:
+					sl._discard()
+					# Each plan well past the last one's cuts (a dropped plan's stay on the track).
+					sl._plan(world.player.distance + 20.0 + 700.0 * phase, phase)
+					plans += 1
+					var v: float = boss.speed_planned()
+					var p: float = boss.def.phase_list()[phase].pace
+					for k: int in range(1, sl.slams.size()):
+						var a: Dictionary = sl.slams[k - 1]
+						var b: Dictionary = sl.slams[k]
+						var end: float = (a["row"] as Vector2).y
+						if bool(a["chance"]):
+							end = maxf(end, float(a["gate_at"]) + boss.tuning.pier_depth * 0.5)
+						var gap: float = (b["row"] as Vector2).x - end
+						if gap < least - 0.001:
+							faults.append("%s, %d lanes, %.0f m/s, phase %d: slams %d and %d's rows %.2f m apart (least %.2f m)" % [
+								"tight" if tight else "the script", lanes, speed, phase + 1, k, k + 1, gap, least])
+						# Never nearer each other than the script says, and later only by what the gap needs.
+						var apart: float = float(b["impact_at"]) - float(a["impact_at"])
+						if apart < v * boss.tuning.slam_gap / p - 0.01:
+							faults.append("phase %d: slams %d and %d %.2f s apart (the script's %.2f s)" % [phase + 1, k, k + 1,
+								apart / v, boss.tuning.slam_gap / p])
+						elif apart > v * boss.tuning.slam_gap / p + 0.01:
+							spread += 1
+							if absf(gap - least) > 0.01:
+								faults.append("phase %d: slams %d and %d moved on further than the gap needs (%.2f m)" % [
+									phase + 1, k, k + 1, gap])
+				await sim.free_world(world)
+	check(faults.is_empty() and plans > 0, "consecutive slam rows keep a lane switch's run and slam_row_margin apart at every phase, speed and lane count (%d plans, %d slams moved on): %s" % [
+		plans, spread, ", ".join(faults.slice(0, 4))])
+	check(spread > 0, "the later phases' ahead slams did bring rows that close, and the slams after them came later (%d)" % spread)
+
+
+## The high (`high`) or low end of property `prop`'s F6 range on `res` (its @export_range hint). The fights here
+## each play their own duplicate of the tuning, so a test may set it there.
+static func _range_end(res: Resource, prop: StringName, high: bool) -> float:
+	for info: Dictionary in res.get_property_list():
+		if StringName(info["name"]) == prop and int(info["hint"]) == PROPERTY_HINT_RANGE:
+			var parts: PackedStringArray = String(info["hint_string"]).split(",")
+			return float(parts[1] if high else parts[0])
+	return float(res.get(prop))
 
 
 # --- The holes ----------------------------------------------------------------------------------------------
@@ -548,6 +622,7 @@ func _test_sequences() -> void:
 		var gaps_ok: bool = true
 		var v: float = boss.speed_planned()
 		var pace: float = boss.pace()
+		var plan: Array[Dictionary] = boss.slams.slams
 		for k: int in impacts.size():
 			var e: Dictionary = impacts[k]
 			var letter: String = "A" if e["kind"] == &"ahead" else "O"
@@ -555,9 +630,17 @@ func _test_sequences() -> void:
 			sides_ok = sides_ok and int(e["side"]) == (-1 if k % 2 == 0 else 1)
 			if k > 0:
 				var gap: float = (float(e["impact_at"]) - float(impacts[k - 1]["impact_at"])) / v
-				gaps_ok = gaps_ok and absf(gap - boss.tuning.slam_gap / pace) < 0.01
+				# slam_gap over the pace, or later by just what keeps its row row_gap() past the last one's (E5d polish).
+				var rows_apart: float = INF
+				if k < plan.size():
+					var last_end: float = (plan[k - 1]["row"] as Vector2).y
+					if bool(plan[k - 1]["chance"]):
+						last_end = float(plan[k - 1]["gate_at"]) + boss.tuning.pier_depth * 0.5
+					rows_apart = (plan[k]["row"] as Vector2).x - last_end
+				gaps_ok = gaps_ok and (absf(gap - boss.tuning.slam_gap / pace) < 0.01
+					or (gap > boss.tuning.slam_gap / pace and absf(rows_apart - boss.slams.row_gap()) < 0.01))
 		check(kinds == want, "the slams come as the script says: %s (%s) %s" % [kinds, want, tag])
-		check(sides_ok and gaps_ok, "the fists take turns, slam_gap apart over the pace %s" % tag)
+		check(sides_ok and gaps_ok, "the fists take turns, slam_gap apart over the pace (or just enough later to keep row_gap() between rows) %s" % tag)
 		var placed: Array[Dictionary] = _events(boss, &"buttress_placed")
 		var sight_ok: bool = placed.size() == 2
 		for e: Dictionary in placed:
