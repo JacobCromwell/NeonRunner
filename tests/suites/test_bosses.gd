@@ -97,7 +97,7 @@ func _test_data() -> void:
 		and d.stars_for(true, 200.0) == 1, "one star for a win, two and three for beating the par times")
 	check(d.time_bonus(60.0) == 3000 and d.time_bonus(130.0) == 0, "the time bonus pays for every second under its mark")
 	# A fight's random choices are seeded by its id, or by the id it had before a move (BossDef.seed_id: The
-	# House keeps marketplace_boss's, test_the_house), so a renamed boss plays as it did.
+	# House keeps marketplace_boss's, test_the_house), so a renamed boss makes the same random choices.
 	var keyed := BossDef.new()
 	keyed.id = &"zone_boss"
 	var plain_key: String = keyed.rng_key()

@@ -1,7 +1,8 @@
 class_name TheHouse
 extends BossEncounter
 ## The House, the Casino's boss (GDD §10; the Marketplace's until the owner added the Casino zone, October
-## 8, 2026, task K2, and the fight itself unchanged): "a slot machine the size of a building, rolling down the
+## 8, 2026, task K2: its fight makes the same random choices, BossDef.seed_id, at the Casino's 23 m/s and
+## enemy scaling 0.5625): "a slot machine the size of a building, rolling down the
 ## market street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous", secretly the
 ## cult's casino (its emblem is worked into the machine's marquee). Task E5a: E5a-a built the machine, its
 ## arena, the spin with its three attacks and their bigger versions, the 7 buttons on the floor, the jackpot

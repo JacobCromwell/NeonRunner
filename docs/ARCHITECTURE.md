@@ -2652,8 +2652,8 @@ slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks i
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
 time from the physics step. The test boss (`TestBoss`) is a small example. `rng`, the armor pickups' and
 the parts' and brought enemies' seeds hash `BossDef.rng_key()`: the boss's id, or its `seed_id`, the id it
-had before a move, so a renamed boss plays exactly as it did (The House, `casino_boss`, keeps
-`marketplace_boss`'s; task K2).
+had before a move, so a renamed boss makes the same random choices (The House, `casino_boss`, keeps
+`marketplace_boss`'s; task K2: it now runs at 23 m/s with enemy scaling 0.5625).
 
 **The Floating Head** (GDD §10, task E1: E1a, the ship and face, the entrance, the bombing run and
 the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked towers that pin it;

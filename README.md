@@ -258,8 +258,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
   faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
   Zone. About 80 s for a runner who never misses (`--boss=dead_zone_boss`, or the campaign's
-  `--level=dead_zone/boss`). The House, the Casino's boss (the Marketplace's until the Casino was added,
-  the fight unchanged), plays after Casino 2, at the Casino's 23 m/s (its distances follow the pace too): a
+  `--level=dead_zone/boss`). The House, the Casino's boss (the Marketplace's until the Casino was added;
+  its fight makes the same random choices, now with enemy scaling 0.5625), plays after Casino 2, at the
+  Casino's 23 m/s (its distances follow the pace too): a
   towering slot machine on treads rolling down the street ahead of the runner. It pulls its lever and
   spins its three reels, and each symbol they stop on is an attack: cherries lob cherry bombs whose landing circles light up first, a
   lightning bolt rolls a pink fence across lanes (jump or slide it like any fence), a BAR slams heavy

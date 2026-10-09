@@ -10,8 +10,9 @@ extends Resource
 @export var id: StringName = &""
 ## The name the fight's random choices are seeded with (BossEncounter: its spins, lanes, parts and the
 ## enemies it brings; rng_key()), so it plays the same on every attempt. Empty: its id. A boss whose id
-## changed keeps its old one here, so its fight stays exactly as it was: The House, moved from the
-## Marketplace to the Casino (owner, October 8, 2026; task K2), still plays as `marketplace_boss`.
+## changed keeps its old one here, so its fight makes the same random choices: The House, moved from the
+## Marketplace to the Casino (owner, October 8, 2026; task K2), keeps `marketplace_boss` (it now runs at
+## the Casino's 23 m/s with enemy scaling 0.5625).
 @export var seed_id: StringName = &""
 @export var display_name: String = "Boss"
 ## The fight: a scene whose root extends BossEncounter (scripts/bosses/boss_encounter.gd).
