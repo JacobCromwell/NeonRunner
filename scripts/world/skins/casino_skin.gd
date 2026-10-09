@@ -72,12 +72,14 @@ extends MarketplaceSkin
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 420): how often an iron girder crosses the street under the
 ## (whole) roof, carrying banners and lanterns; the shares of bays with a lantern, a ceiling fan and banners.
 ## Whether anything hangs from the roof at all. The arena turns it off: The House's billboard drops through
-## the space under the roof (from far above its ceiling), so nothing may be strung across it.
+## the space under the roof (from far above its ceiling), so nothing may be strung across it. Task K5 thinned
+## these for the build budget (a girder every 32 m, a lantern in half the bays, a fan in 28%, banners on 70%
+## of a girder: docs/questions/k5-skin.md).
 @export var hangings: bool = true
-@export_range(10.0, 120.0, 1.0, "suffix:m") var crossbeam_spacing: float = 32.0
-@export_range(0.0, 1.0, 0.01) var lantern_share: float = 0.5
-@export_range(0.0, 1.0, 0.01) var fan_share: float = 0.28
-@export_range(0.0, 1.0, 0.01) var banner_share: float = 0.7
+@export_range(10.0, 120.0, 1.0, "suffix:m") var crossbeam_spacing: float = 40.0
+@export_range(0.0, 1.0, 0.01) var lantern_share: float = 0.35
+@export_range(0.0, 1.0, 0.01) var fan_share: float = 0.2
+@export_range(0.0, 1.0, 0.01) var banner_share: float = 0.6
 ## Heavy cloth in muted aubergine, ochre, indigo and slate (lit, never glowing), and its width.
 @export var banner_colors: PackedColorArray = PackedColorArray([
 	Color(0.26, 0.15, 0.3), Color(0.42, 0.3, 0.14), Color(0.16, 0.2, 0.36), Color(0.2, 0.26, 0.3)])
@@ -106,11 +108,16 @@ extends MarketplaceSkin
 ## billboard drops past the walls 12 cm from them, 32 m to 6 m in 0.7 s, through anything standing out of them.
 @export var flush_faces: bool = false
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 420): how many balconies, pipe runs, air-conditioning units and
-## planters the facades carry: per building, the chance of each.
-@export_range(0.0, 1.0, 0.01) var balcony_share: float = 0.55
-@export_range(0.0, 1.0, 0.01) var pipe_share: float = 0.55
-@export_range(0.0, 1.0, 0.01) var unit_share: float = 0.5
+## planters the facades carry: per building, the chance of each. Task K5 thinned them for the build budget (they
+## were 0.55, 0.55 and 0.5: docs/questions/k5-skin.md).
+@export_range(0.0, 1.0, 0.01) var balcony_share: float = 0.42
+@export_range(0.0, 1.0, 0.01) var pipe_share: float = 0.42
+@export_range(0.0, 1.0, 0.01) var unit_share: float = 0.25
 @export_range(0.0, 1.0, 0.01) var planter_share: float = 0.5
+## How much wider than the Marketplace's the shop windows' bays are (1 = the same): the same piers, fewer and
+## broader windows between them, each a window to build, light and (a sixth of them) fill with a citizen. Task K5
+## (DESIGN-TBD, docs/questions/k5-skin.md): a third fewer windows buy back about 0.15 ms of a chunk's build.
+@export_range(1.0, 2.0, 0.05) var bay_scale: float = 1.5
 ## Dim, unlit ivy in the planters, far from the ramps' and speed pads' hazard green.
 @export var ivy_color: Color = Color(0.16, 0.23, 0.15)
 ## The named casinos (task K3): one casino with a big sign in every this many metres of street (both walls
@@ -334,6 +341,13 @@ func facades() -> MarketFacades:
 		CasinoLettering.warm()
 		_facades = CasinoFacades.new(self)
 	return _facades
+
+
+## The citizens of the shop windows: the Marketplace's, picked without listing every window (CasinoCitizens).
+func citizens() -> MarketCitizens:
+	if _citizens == null:
+		_citizens = CasinoCitizens.new(self)
+	return _citizens
 
 
 func street() -> CasinoStreet:
