@@ -20,7 +20,7 @@ extends ZoneSkin
 ## party barge. Signs are the yellow/black hazard frame around a painted surf or bar sign; fences the
 ## same pink field between bamboo-wrapped steel posts in sand-filled drums.
 ## Colour rule (GDD §5; the reference's glowing turquoise water and its pink, yellow, cyan, green and
-## orange neon are overruled, docs/questions/d10.md): the water never glows, decorative glows are warm
+## orange neon are overruled, docs/OPEN_QUESTIONS.md, items 505–509): the water never glows, decorative glows are warm
 ## white, violet and blue only, and every paint is muted and unlit, so only hazards glow in hazard
 ## colours. The cult hides its emblem on neon signs, billboards and the barge's hull, and its feed plays
 ## on TVs behind some upper-deck bars and on some roof billboards, never in the wall-run band.
@@ -28,7 +28,7 @@ extends ZoneSkin
 ## hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
 
 @export_group("Environment")
-## DESIGN-TBD (docs/questions/d10.md): the GDD gives no time of day for the Beach. The reference's bright
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 510 and 524): the GDD gives no time of day for the Beach. The reference's bright
 ## tropical afternoon: a blue sky with white cumulus, a turquoise sea and a low palm island on the horizon
 ## down the street, warm sunlight. Daylight is a risk for the game's look: the sky stays under the glow
 ## threshold and the sand mid-bright, so neon and hazards still bloom and stay the brightest things.
@@ -83,7 +83,7 @@ extends ZoneSkin
 @export var kerb_color: Color = Color(0.62, 0.49, 0.30)
 
 @export_group("Pools")
-## The owner's decision that gaps are pools of water (docs/questions/d10.md). The pool tank is
+## The owner's decision that gaps are pools of water (docs/OPEN_QUESTIONS.md, item 512). The pool tank is
 ## black and gunmetal steel with rust streaks, flush in the sand (the reference's tanks stand proud of it:
 ## a raised rim would read as an obstacle that isn't there), filled to pool_depth below the floor like the
 ## reference's near-full tanks: seen from the game camera (4.2 m up) the water shows from about ten metres,
@@ -113,7 +113,7 @@ extends ZoneSkin
 ## surrounding area a little bit better". Where a side wall has a gap (BeachOpen) the street is a promenade
 ## beach_drop above an open beach: sand, a shoreline (damp sand, foam, turquoise shallows, deeper water) and
 ## scenery (palms, umbrellas and loungers, surfboards stuck in the sand, a low hut), unlit muted colours.
-## DESIGN-TBD (docs/questions/d10.md): the drop, the shore and the scenery's amounts are placeholders.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 521–522): the drop, the shore and the scenery's amounts are placeholders.
 @export_range(0.8, 3.0, 0.05, "suffix:m") var beach_drop: float = 1.4
 @export var wet_sand_color: Color = Color(0.50, 0.40, 0.28)
 @export var foam_color: Color = Color(0.93, 0.95, 0.93)
@@ -214,7 +214,7 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var sign_share: float = 0.55
 
 @export_group("Cult emblem")
-## DESIGN-TBD (docs/questions/d10.md): GDD §5 proposes the emblem hidden in logos and ads in every zone. A
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 520): GDD §5 proposes the emblem hidden in logos and ads in every zone. A
 ## small warm-white neon badge on some neon signs and billboards, unlit bronze on the party barge's hull,
 ## never smaller than emblem_min_size (tiny, its three-fold silhouette could read like the radiation
 ## trefoil; the kit also fades it out below about 24 pixels).
@@ -223,7 +223,7 @@ extends ZoneSkin
 @export_range(0.0, 1.5, 0.05) var emblem_glow: float = 0.55
 
 @export_group("Cult feed")
-## DESIGN-TBD (docs/questions/d10.md): the cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays on
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 520): the cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays on
 ## a TV behind some upper-deck bars and on some roof billboards, never in the wall-run band.
 @export_range(0.0, 1.0, 0.01) var feed_tv_share: float = 0.35
 @export_range(0.0, 1.0, 0.01) var feed_board_share: float = 0.3
@@ -231,7 +231,7 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 0.85
 
 @export_group("Ceilings")
-## DESIGN-TBD (docs/questions/d10.md): the three kinds of ceiling. A boardwalk footbridge between the upper
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 513): the three kinds of ceiling. A boardwalk footbridge between the upper
 ## verandas (only across every lane), a veranda deck cantilevered from the building it reaches (narrow,
 ## reaching one wall), a hovering party barge (a cyberpunk tiki boat: any width, or reaching neither
 ## wall). Relative weights of a footbridge (across every lane) and a barge; and of a veranda deck and a

@@ -6,7 +6,7 @@ extends RefCounted
 ## a painted surf or bar sign (wordless: a sun, waves, a palm, a board, a flamingo or a cocktail glass in
 ## muted paints, never glowing: the frame is the hazard). Mounts sit on the lane edges and reach at most a
 ## quarter metre into the neighbouring lane. Meshes are cached and shared by every instance.
-## DESIGN-TBD (docs/questions/d10.md): the drums and the bamboo wrap are the Beach's version of the City's
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 519): the drums and the bamboo wrap are the Beach's version of the City's
 ## exhaust stacks; the GDD fixes only the pink crackle.
 
 ## A drum's radius and height, and how far a post's bamboo wrap is from its steel core.

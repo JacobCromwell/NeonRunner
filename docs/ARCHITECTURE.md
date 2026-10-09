@@ -1837,7 +1837,7 @@ both walls are open at once on 18-30% of a level (median 29%); the open stretche
 seeds and two others). With
 the Open walls group off, the shared tuning places exactly what it did before: every
 layout of `tools/measure/level_pace.gd --dump` (every campaign level at 3, 5 and 6 lanes on its own seed and four
-others, and quick play) is byte-identical. DESIGN-TBD (`docs/questions/d10b.md`): the target, the share open on
+others, and quick play) is byte-identical. DESIGN-TBD (`docs/OPEN_QUESTIONS.md` items 526–530): the target, the share open on
 both walls, the shortest stretches and the narrower clearance.
 
 **Wider gaps** (task G7; the owner's answer to open question 352, October 7, 2026, GDD §9.13 "Holes": "every
@@ -2574,7 +2574,7 @@ tropical afternoon on a shore: a sandy street running down to a turquoise sea an
 shacks and tiki bars, with black rust-streaked industrial tanks behind them. No new enemy assets: its
 `enemy_variant` is `&"casino"`, the Marketplace's Casino Mob Enforcer (the owner: "reuse one of the existing
 cyborg looks, whatever fits the theme of this zone the best"; the pick is a placeholder,
-`docs/questions/d10.md`). The gaps are pools, the owner's decision, and the walls open on the beach (the
+`docs/OPEN_QUESTIONS.md` items 504–525). The gaps are pools, the owner's decision, and the walls open on the beach (the
 owner's answer on side walls: "much longer sections where there aren't sidewalls"). Hooks overridden,
 builders in `scripts/world/skins/beach/`:
 - *The floor* (`BeachSand`): sand (`PAT_BEACH_SAND`: wind ripples, drifts, footprints, flat shells, a damp rim
@@ -2676,7 +2676,7 @@ builders in `scripts/world/skins/beach/`:
   and `skyline_scale` turn the skyline into smooth low hills (an island, no lit windows) standing on the
   sea, and `abyss_depth` (0.3 by default) is how far below the horizon the sky becomes the abyss colour (the
   Beach: 0.05, a turquoise sea starting at the horizon).
-- *Colour rule* (departures from the reference, all in `docs/questions/d10.md`): the water never glows
+- *Colour rule* (departures from the reference, `docs/OPEN_QUESTIONS.md` items 505–509): the water never glows
   (the reference's glowing turquoise is the pads' cyan); decorative glows are warm white, violet and blue only
   (the reference's pink, yellow, cyan, green and orange neon are hazard hues); string lights and lanterns the
   same; pool frames are flush (the reference's tanks stand proud, which would read as an obstacle); no words on
@@ -2861,7 +2861,7 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in all seven zones
   and the Floating Head fight (the Beach's track `beach` stands in on the Marketplace's until it has its own,
   task D10c: its generated loop in `files`, Jackpot Plaza in `zone_tracks` and its riff in `riff_tracks`;
-  DESIGN-TBD, `docs/questions/d10c.md`). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
+  DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 543). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
   and `boss_tracks` maps a boss id to its supplied song. `App._start_run` resolves these for campaign,
   quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
   keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
@@ -2920,7 +2920,7 @@ Dead Zone, the Beach's remix included. Removing only `octodog` from the three Go
 their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
 to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
 through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected), and in the Beach between
-them (its remix; DESIGN-TBD, `docs/questions/d10c.md`: §9.9 names the Dead Zone and the Golden Zone). Each
+them (its remix; GDD §9.9 names it, `docs/OPEN_QUESTIONS.md` item 545). Each
 level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
 generator; City 1's cyborgs come late in the level), and its newest features get the most picks
 (the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
@@ -2963,7 +2963,7 @@ and every one of their layouts in `tools/measure/level_pace.gd --dump` (at 3, 5 
 others) is byte-identical; `test_campaign` also builds the six-zone campaign from the same data and compares every
 level and boss with it. A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
 as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
-(`docs/questions/d10c.md`): whether the curve is later re-spread over all 17 levels, the Beach's numbers, its
+(`docs/OPEN_QUESTIONS.md` items 535–543): whether the curve is later re-spread over all 17 levels, the Beach's numbers, its
 completion bonus, Continue for old saves, its boss, cinematics and music.
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player

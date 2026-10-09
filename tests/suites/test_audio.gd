@@ -29,7 +29,7 @@ const ZONE_SONGS: Dictionary = {
 	&"dead_zone": &"zone_5", &"golden": &"zone_6",
 }
 ## Zone tracks with no music of their own yet, standing in on another track's file, level, tempo, song and riff
-## (DESIGN-TBD, docs/questions/d10c.md; the owner, October 9, 2026: no new songs for now): the Beach's, the
+## (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 543; the owner, October 9, 2026: no new songs for now): the Beach's, the
 ## Marketplace's (task D10c).
 const STAND_INS: Dictionary = {&"beach": &"marketplace"}
 const SONG_BUDGET_BYTES: int = 30 * 1024 * 1024

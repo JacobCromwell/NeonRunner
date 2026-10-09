@@ -58,8 +58,8 @@ const LEFT_OUT: Dictionary = {
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
-## Beach between them, a remix of everything before it (owner, October 9, 2026; DESIGN-TBD,
-## docs/questions/d10c.md: §9.9 still names the Dead Zone and the Golden Zone only).
+## Beach between them, a remix of everything before it (owner, October 9, 2026; §9.9 names it since then,
+## docs/OPEN_QUESTIONS.md, item 545).
 const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "beach/2", "dead_zone/1", "dead_zone/2", "golden/1",
 	"golden/2", "golden/3"]
 ## Levels that bring nothing new (GDD §5): the Beach's, a remix of everything before it (owner, October 9,
@@ -173,7 +173,7 @@ func _test_steps(campaign: Campaign) -> void:
 ## the City's and Gangland's boss intros (the intros play placeholder flyovers, task F1, and Gangland's boss
 ## intro the owner's beats; test_cinematics checks them).
 func _test_slots(campaign: Campaign) -> void:
-	# The Beach's boss is still to be designed (GDD §10; DESIGN-TBD, docs/questions/d10c.md: its slot's name).
+	# The Beach's boss is still to be designed (GDD §10; DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 541: its slot's name).
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
 		"corporate": "Hostile Takeover", "beach": "The Beach's boss", "dead_zone": "Sleep Taker", "golden": "The Golden Convergence"}
 	for zone: ZoneDef in campaign.zones:
@@ -411,7 +411,7 @@ func _test_off_curve(campaign: Campaign) -> void:
 		last_difficulty = plain.difficulty
 		last_scaling = plain.enemy_scaling
 		check(s.level_index == before.level_index and App.rules.completion_bonus(s.level_index) == App.rules.completion_bonus(before.level_index),
-			"%s takes Corporate 2's place on the curve, and its completion bonus (DESIGN-TBD, docs/questions/d10c.md)" % s.id)
+			"%s takes Corporate 2's place on the curve, and its completion bonus (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 538)" % s.id)
 	var boss: CampaignStep = campaign.step("beach/boss")
 	for tier: int in campaign.tier_count():
 		var arena: LevelConfig = campaign.configure_boss(boss, 5, tier)
@@ -939,7 +939,7 @@ func _test_darker_lighting(campaign: Campaign) -> void:
 ## Unlocking follows the campaign order (with a fresh profile); the web demo covers Zone 1 only. The Beach
 ## (task D10c) opens after Corporate's outro, its placeholder boss slot passes on to its outro, and its outro
 ## opens the Dead Zone; a save from before the Beach keeps the Dead Zone it had open, and Continue offers it
-## the Beach (DESIGN-TBD, docs/questions/d10c.md).
+## the Beach (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 540).
 func _test_unlocking() -> void:
 	var app: Node = tree.root.get_node_or_null(^"App")
 	if app == null:

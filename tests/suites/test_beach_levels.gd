@@ -35,7 +35,7 @@ const OPEN_WALLS_PATH: String = "res://data/tuning/beach_wall_gaps.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const MUSIC_PATH: String = "res://data/audio/music_library.tres"
 const SMOKE_TOOL: String = "res://tools/smoke/smoke_play.gd"
-## The levels' lengths (DESIGN-TBD, docs/questions/d10b.md: like their neighbours, Corporate 2 and Dead Zone 1).
+## The levels' lengths (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 533: like their neighbours, Corporate 2 and Dead Zone 1).
 const DURATIONS: Array[float] = [145.0, 150.0]
 ## The levels' names (GDD §5, October 9, 2026).
 const NAMES: Array[String] = ["Tiki Tides", "Sunset Strip"]
@@ -93,7 +93,7 @@ func _test_data() -> void:
 	check(ids == PackedStringArray(STEPS) and first != null and campaign.steps()[first.index - 1].id == "corporate/outro"
 		and campaign.next_step(campaign.step(STEPS[-1])).id == "dead_zone/intro",
 		"its steps run %s, after Corporate's outro and before the Dead Zone's intro (%s)" % [", ".join(STEPS), ", ".join(ids)])
-	# No new songs (GDD §11): its track borrows ones the game has (DESIGN-TBD, docs/questions/d10c.md).
+	# No new songs (GDD §11): its track borrows ones the game has (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 543).
 	var library := load(MUSIC_PATH) as MusicLibrary
 	check(zone.music == &"beach" and library.has(zone.music) and library.path(zone.music) == library.path(&"marketplace")
 		and library.has(library.run_track(zone.music)) and library.run_track(zone.music) != zone.music,

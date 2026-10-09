@@ -19,7 +19,7 @@ extends RefCounted
 ## Behind the shacks (BeachOpen.ground with `from_lat`) the same beach and sea run on past a wall's solid
 ## stretches, so a gap never shows an edge of the world and a view over the roofs is of the shore too.
 ## Chunk space: x across (the wall line at ±wall), y up (the street at 0), z = -distance.
-## DESIGN-TBD (docs/questions/d10.md): the shore's shape, the scenery's looks and amounts, and the drop.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 521–522): the shore's shape, the scenery's looks and amounts, and the drop.
 
 ## The beach and the sea are built in segments this long (absolute track distance, so chunks line up).
 const SEG: float = 8.0

@@ -512,7 +512,7 @@ Shared interaction rules apply unless stated otherwise:
   - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
   - **No stomp** (the player would land on the blade).
 - **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
-- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **two zones after it (the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026). Its health stays at 22 shots.
+- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **zones after it (the Beach, the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026; the Beach, zone 5 since October 9, 2026, remixes everything before it). Its health stays at 22 shots.
 - **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 
 ### 9.10 Resonator (the owner's "Hymn Censer" reworked in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)

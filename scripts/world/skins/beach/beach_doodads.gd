@@ -8,7 +8,7 @@ extends RefCounted
 ## and stays inside it, in muted colours, never glowing, with no faces (no tiki masks) and nothing that reads
 ## as a sign, a fence or a barrier (test_doodads' _test_skins, test_beach_skin's doodads_ok). Meshes are cached by
 ## size, side and seed and shared by every instance.
-## DESIGN-TBD (docs/questions/d10.md): the three looks are a proposal, built from the owner's brief.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 514): the three looks are a proposal, built from the owner's brief.
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: BeachSkin:
