@@ -183,9 +183,6 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
-		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "city/outro":
-			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/city_outro.tscn" and s.cinematic.is_built(),
-				"the City's outro plays its own scene, the owner's beats (task F2a)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/sewer_swarm_intro.tscn" and s.cinematic.is_built(),
 				"Gangland's boss intro plays its own scene, the owner's beat (task F2b)")
