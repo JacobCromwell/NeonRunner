@@ -50,6 +50,11 @@ extends RefCounted
 ## 3. The level's rows that only other holes and plain fences keep from fitting, with those taken out
 ##    (_clearing: never a pulsing fence or one a fence generator powers; the generator's way to make room for a
 ##    guarantee, as PadPlacement's: taking content out never makes a level unfair).
+## 4. Only for a level none of those gave one (every level has a couple, GDD §9.13: one fewer where nothing else
+##    fits, never none): with add_rows, a new row as in 2. where only holes and plain fences are in its way, those
+##    taken out as in 3. (_add_clearing; task K5: on 306 builds of the Enforcer's levels, a Dead Zone 1 seed whose
+##    only room was an Enforcer Truck's chase before its showing, which task C6e keeps every wider gap off, and a
+##    Golden Palace seed with none at all).
 ## Which ones: with prefer_enforcer_chases, first one in each Enforcer Truck's chase, once the truck has settled
 ## behind the runner (EnforcerTruckTuning.bait_after_seconds) and before it may drop back (CHASE_END_SECONDS
 ## before it gives up), so the runner can lead it in: from the first of the three sources above with one there,
@@ -140,6 +145,8 @@ static func place(gen: LevelGenerator) -> Dictionary:
 					_add_one(p, whole, target)
 				2:
 					_clear_one(p, whole, target)
+	if p.rows.is_empty() and p.t.add_rows:
+		_add_clearing(p, whole, (whole.x + whole.y) * 0.5)
 	if p.taken_out > 0:
 		GeneratorRules.keep_powered(gen)
 	p.rows.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
@@ -693,6 +700,59 @@ static func _add_one(p: _Pass, window: Vector2, target: float) -> bool:
 	p.rows.append(best)
 	p.added += 1
 	return true
+
+
+## Like _add_one, where only holes and plain fences are in a new row's way (_clearing_at, as _clear_one widens a
+## row of the level's own): those go first. The last way, for a level none of the others gave a wider gap (see the
+## header, 4.). False if none fits in `window` either.
+static func _add_clearing(p: _Pass, window: Vector2, target: float) -> bool:
+	var gen: LevelGenerator = p.gen
+	var lay: LevelLayout = gen.layout
+	var n: int = lay.lane_count
+	var from: float = maxf(window.x, gen.config.start_clear_distance)
+	var to: float = minf(window.y, lay.length - gen.config.end_clear_distance)
+	var others: Array[Dictionary] = []
+	for k: Dictionary in p.keeps:
+		if String(k["what"]) != "a fence":
+			others.append(k)
+	# A first sift as _add_one's, but for the holes and fences (they may go): _clearing_at then decides, spot by spot.
+	var narrowest: float = maxf(minf(p.t.clear_before_seconds, p.t.clear_after_seconds),
+		minf(gen.config.spacing_seconds_easy, gen.config.spacing_seconds_hard)) * gen.speed
+	var busy: Array[Vector2] = []
+	for keep: Dictionary in others:
+		if int(keep["lane"]) < 0:
+			var v: Vector2 = keep["span"]
+			busy.append(v if bool(keep["row_only"]) else Vector2(v.x - narrowest, v.y + narrowest))
+	var spots: Array[float] = []
+	for free: Vector2 in LevelGenerator.free_stretches(busy, from, to):
+		var spot: float = free.x
+		while spot <= free.y - p.length + EPSILON:
+			spots.append(spot)
+			spot += ADD_STEP
+	spots.sort_custom(func(a: float, b: float) -> bool: return absf(a - target) < absf(b - target))
+	for start: float in spots:
+		var span := Vector2(start, start + p.length)
+		if not _spaced(p, span):
+			continue
+		var kept: Array[int] = _kept_lanes(gen, p.t, span, p.keeps)
+		if kept.size() > 1:
+			continue
+		var lanes: Array[int] = []
+		for lane: int in n:
+			if kept.is_empty() or lane != kept[0]:
+				lanes.append(lane)
+		var plan: Dictionary = _clearing_at(gen, p.t, {"start": span.x, "end": span.y, "lanes": lanes}, span, others)
+		if plan.is_empty():
+			continue
+		p.taken_out += _clear(gen, plan)
+		var open: int = kept[0] if not kept.is_empty() else p.rng.randi_range(0, n - 1)
+		for lane: int in n:
+			if lane != open or n == 1:
+				lay.gaps.append({"lane": lane, "start": span.x, "end": span.y})
+		p.rows.append(span)
+		p.added += 1
+		return true
+	return false
 
 
 ## The lanes `keeps`' one-lane keeps (keeps_of: `lane`) hold anywhere in the zone of a wider gap over `span`.

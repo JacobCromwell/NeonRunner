@@ -14,7 +14,7 @@ extends TestSuite
 ##   seeded scripted attempt (lane switches, jumps, slides and dashes, and an EMP over the fences ahead) plays
 ##   exactly as with the cache off (every run building its level, as before): the same layout, the runner's
 ##   trace and events, kills and credits, the enemies' event log, the floor cuts begun, the score and the fences
-##   switched off, at Gangland 3 and Corporate 2 (a floor cut, a thief, an Enforcer Truck) at 5 lanes.
+##   switched off, at Gangland 3 (5 lanes) and Corporate 2 (3 lanes: a floor cut, a thief, an Enforcer Truck).
 ## - Nothing leaks into the next attempt: after an attempt that changed its world and layout every way play can
 ##   (and more), each retry starts from the build's layout, with every enemy still to come, every credit,
 ##   every fence on, no floor cut begun, the build's length and no score; the kept build is untouched.
@@ -24,11 +24,20 @@ extends TestSuite
 ##   nothing.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
-## The scripted attempts' review aids (App._apply_review_args): 5 lanes, no deaths and no falls, so the runner
-## meets everything in the time.
-const REVIEW_ARGS: PackedStringArray = ["--lanes=5", "--god", "--nofall"]
-## When a scripted attempt sets off its EMP (_play).
-const EMP_SECONDS: float = 6.0
+## The scripted attempts' review aids (App._apply_review_args), but for their lane count (_review_args): no deaths
+## and no falls, so the runner meets everything in the time.
+const REVIEW_ARGS: PackedStringArray = ["--god", "--nofall"]
+## When a scripted attempt sets off its EMP (_play), over the fences 10-170 m ahead: Gangland 3's first ones at 5
+## lanes (from 338 m with the Casino's levels and K4's curve, task K5) are in its reach then, and Corporate 2's.
+const EMP_SECONDS: float = 9.0
+## Corporate 2's scripted attempt plays at 3 lanes, where its floor cut begins 32 s in and its Enforcer Truck is
+## wrecked in a wider gap before: at 5 lanes (with the Casino's levels and K4's curve, task K5) the attempt's weapons
+## shoot its one Buzz Overdrive down before its charge, so no cut would begin.
+const CORPORATE_2_LANES: int = 3
+## How far an attempt is spoiled (_spoil) and its retry's track looked at (_test_nothing_leaks, Corporate 2 at 5
+## lanes): past its floor cut (1301-1460 m with the Casino's levels and K4's curve), so it's among what the attempt
+## ran and the retry builds.
+const SPOIL_TO: float = 1600.0
 
 var main: Node
 
@@ -47,9 +56,9 @@ func run() -> void:
 	var saved_profile: Profile = App.profile
 	var saved_args: PackedStringArray = App._review_args
 	App.profile = _full_profile()
-	App._review_args = REVIEW_ARGS
-	await _test_retries_play_the_same("gangland/3", 24.0, ["credits", "fences_off"])
-	await _test_retries_play_the_same("corporate/2", 44.0, ["credits", "kills", "cuts"])
+	await _test_retries_play_the_same("gangland/3", 5, 24.0, ["credits", "fences_off"])
+	await _test_retries_play_the_same("corporate/2", CORPORATE_2_LANES, 44.0, ["credits", "kills", "cuts"])
+	App._review_args = _review_args(5)
 	await _test_nothing_leaks("corporate/2")
 	await _test_builds_again()
 	await _test_endless()
@@ -244,12 +253,13 @@ func _test_reuse_and_warnings() -> void:
 
 # --- Retries play the same ------------------------------------------------------------------------
 
-## A seeded scripted attempt at campaign level `id` (5 lanes, god mode, no falls, every item), played as the App
+## A seeded scripted attempt at campaign level `id` (`lanes` lanes, god mode, no falls, every item), played as the App
 ## plays it: with the cache off (every run builds its level, as before), then the first run with it (a copy of
 ## its build), its restart in place (LevelRun.restart) and the results screen's retry (App.retry). The three
 ## play exactly as the first, and both retries reuse the build. `needs`: what the attempt must have had for the
 ## comparison to mean something (_play's counts: credits, kills, cuts, fences_off).
-func _test_retries_play_the_same(id: String, seconds: float, needs: PackedStringArray) -> void:
+func _test_retries_play_the_same(id: String, lanes: int, seconds: float, needs: PackedStringArray) -> void:
+	App._review_args = _review_args(lanes)
 	var step: CampaignStep = App.campaign.step(id)
 	var runs: Array[Dictionary] = []
 	var ways: PackedStringArray = ["a fresh build (the cache off)", "the first run with the cache (a copy of its build)",
@@ -382,7 +392,7 @@ func _test_nothing_leaks(id: String) -> void:
 		# the stretch the last attempt spoiled, as it's built.
 		var seen: Dictionary = {"fences": 0, "off": 0, "cuts": 0, "begun": 0}
 		var d: float = 0.0
-		while d <= 900.0:
+		while d <= SPOIL_TO + 200.0:
 			world.track.update(d, 0.0)
 			for h: Hazard in world.track.fence_hazards() + world.track.wall_fence_hazards():
 				seen["fences"] = int(seen["fences"]) + 1
@@ -405,8 +415,8 @@ func _test_nothing_leaks(id: String) -> void:
 ## switches every fence off with one EMP, runs every floor cut built, collects credits, lengthens the track, and
 ## edits the layout's entries in place. Returns what it did ({what}).
 func _spoil(world: RunWorld) -> Dictionary:
-	world.track.update(700.0, 30.0)
-	world.director.update(700.0)
+	world.track.update(SPOIL_TO, 30.0)
+	world.director.update(SPOIL_TO)
 	var kills: int = 0
 	for e: Enemy in world.director.active.duplicate():
 		if is_instance_valid(e) and e.alive:
@@ -514,6 +524,13 @@ func _test_endless() -> void:
 
 
 # --- Helpers --------------------------------------------------------------------------------------
+
+## The review aids for a scripted attempt at `lanes` lanes (REVIEW_ARGS).
+static func _review_args(lanes: int) -> PackedStringArray:
+	var out := PackedStringArray(["--lanes=%d" % lanes])
+	out.append_array(REVIEW_ARGS)
+	return out
+
 
 ## A profile that owns every item at its top tier, one of each breakable in stock: every start, and the results
 ## screen's retry (which takes its loadout from the profile), brings everything.

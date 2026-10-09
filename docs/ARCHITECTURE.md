@@ -1040,9 +1040,11 @@ counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15
 0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
-little, `docs/OPEN_QUESTIONS.md` §D, item 433). On task K4's curve `test_danger_density`'s sample has
-13-19% more enemies and 17% more obstacles in the first levels, 26-28% and 26-27% in the middle ones,
-and 32-36% and 31-38% in the final ones (x1.327 enemies at 3 lanes).
+little, `docs/OPEN_QUESTIONS.md` §D, item 433). Merged with the Enforcer Truck's showing windows (task C6e,
+which the pass's rows keep off), the final zones' obstacles at 3 lanes rose only 28.8%, out of fair room; the wall
+fences' share (`wall_fence_increase_scale`, 1.25 to 1.9, task K5, DESIGN-TBD) brings them to 30.6% with wall
+fences. `test_danger_density`'s sample then has 13-19% more enemies and 17% more obstacles in the first levels,
+26-28% and 27-28% in the middle ones, and 32-36% and 31-39% in the final ones.
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -1858,7 +1860,10 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   every lane but one (the lane a hover truck keeps there, else a seeded one), slid along each free stretch
   until one fits (`_add_one`); the level's own rows that only other holes and plain fences keep from fitting,
   with those taken out (`_clearing`: never a pulsing fence or one a fence generator powers; `GeneratorRules.
-  keep_powered` after: taking content out never makes a level unfair).
+  keep_powered` after: taking content out never makes a level unfair). Last, only for a level none of those gave
+  one (one fewer where nothing else fits, never none: GDD §9.13's couple), a new row where only holes and plain
+  fences are in its way, those taken out (`_add_clearing`, task K5: on 306 builds of the Enforcer's levels a Dead
+  Zone 1 seed whose only room was a truck's chase before its showing, and a Golden Palace seed with none at all).
 - **Which.** With `prefer_enforcer_chases`, one first in each Enforcer Truck's chase (from `bait_after_seconds`
   after it arrives, or from its showing window's end where that's later, to `CHASE_END_SECONDS` before it gives
   up), from the first source with one there, so the runner can lead it in; then the rest spread through the level,
@@ -1878,12 +1883,13 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). An Enforcer chase holds one past its showing window in 6
-  of the 18 level and lane builds that have trucks (8 before task C6e kept them off the chase before a showing:
-  Corporate 2 and Golden 2 at 6 lanes, whose windows come after their bait, lost theirs), Corporate 2 at 3 and 5
-  lanes among them, where the truck following the runner over it is wrecked in play; none comes before a window
-  (6 did, in chases whose window comes after their bait), and every build keeps its count. (Counts measured before the Casino's curve (task K4) met C6e; re-measured in the merge.) Rows and holes change a little: the City levels keep theirs (one hole fewer in
-  City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
+  one fewer on a seed not the level's own, never none: the last way above sees to that). With the Casino's levels
+  and K4's curve (merged with task C6e in task K5), the first Enforcer chase holds one past its showing window in 4
+  of the 18 level and lane builds that have trucks (6 on the 15-level curve C6e was measured on, 8 before C6e kept
+  them off the chase before a showing), Corporate 2 at 3 lanes among them, where the truck following the runner
+  over it is wrecked in play (at 5 lanes its chase past its window is full, at 6 its window comes after its bait,
+  at its chase's end); none comes before a window, and every build keeps its count. Rows and holes change a
+  little: the City levels keep theirs (one hole fewer in City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
   `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level, quick play and the prototype level build

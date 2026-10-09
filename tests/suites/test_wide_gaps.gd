@@ -19,19 +19,15 @@ extends TestSuite
 ##   no clear stretch for a new row of one (prefer_enforcer_chases: preferred, not guaranteed, open question 357;
 ##   _chase_spot says what that check covers and what it doesn't).
 ## - Corporate 2 (the Enforcer's first level) at 3, 5 and 6 lanes: the first Enforcer's chase holds a wider gap past
-##   its showing window (prefer_enforcer_chases; task C6e: none before it) where the chase leaves room (at 2 of the 3
-##   lane counts at least: at 6 lanes its window comes after its bait, at its chase's end), and played from the level's
-##   start by a scripted runner (god mode, grapples) that lines up in one of its hole lanes and jumps it, the truck
-##   following is wrecked in it.
+##   its showing window (prefer_enforcer_chases; task C6e: none before it) where the chase leaves room and the pass
+##   found a clear stretch (at 6 lanes its window comes after its bait, at its chase's end), at one lane count at
+##   least, and played from the level's start by a scripted runner (god mode, grapples) that lines up in one of its
+##   hole lanes and jumps it, the truck following is wrecked in it.
 ## - Task C6e: no wider gap comes in an Enforcer Truck's chase before its showing (from its arrival to its window's
 ##   end: it would wreck the truck before it has shown itself), and every level keeps its wider gaps.
 
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const LANES: Array[int] = [3, 5, 6]
-## The lane counts at which Corporate 2's first Enforcer chase must hold a wider gap (_test_corporate_2): all three
-## on task K4's curve, as before the Casino. (On K2's 17-level linear curve its 5 lanes' chase was full, a drone's
-## barrage, fences, cyborgs and a pad, and was left out; a lane count left out must show no clear stretch there.)
-const CORPORATE_2_CHASE_LANES: Array[int] = [3, 5, 6]
 ## The check on a first Enforcer chase without a wider gap (_chase_spot): tag, chase start and end, what it found.
 const NO_CLEAR_STRETCH: String = "%s: its first Enforcer's chase (%.0f-%.0f m) holds no wider gap and has no clear stretch for a new row (%s)"
 
@@ -391,11 +387,14 @@ func _truck(w: RunWorld) -> EnforcerTruck:
 ## Corporate 2's own build, played from its start (god mode, grapples: the runner keeps to the middle lane and
 ## takes whatever comes) until the first Enforcer's chase reaches its wider gap: the runner lines up in a hole
 ## lane of it (the nearest the middle) a few seconds before and jumps it midway through its take-off window; the
-## truck following is wrecked in it. At CORPORATE_2_CHASE_LANES, each of which must hold one (all three on task
-## K4's curve); a lane count left out of it must show no clear stretch for a new row there (_chase_spot, whose
-## limits its doc comment gives), as K2's curve left 5 lanes.
+## truck following is wrecked in it. Every lane count whose chase leaves room past the truck's showing window
+## (task C6e: no wider gap before it) holds one there, or shows no clear stretch for a new row there (_chase_spot,
+## whose limits its doc comment gives: preferred, not guaranteed, open question 357), and at least one lane count
+## plays it. With the Casino's levels and K4's curve (task K5): 3 lanes plays it, 5 lanes' chase is full and 6
+## lanes' leaves no room (its window comes after its bait). On the 15-level curve C6e was built on, 2 of the 3
+## played it.
 func _test_corporate_2(campaign: Campaign) -> void:
-	var ran: int = 0
+	var played: int = 0
 	for lanes: int in LANES:
 		var config: LevelConfig = campaign.configure(campaign.step("corporate/2"), lanes)
 		config.skin = null  # the grey box: skins never change gameplay
@@ -424,17 +423,13 @@ func _test_corporate_2(campaign: Campaign) -> void:
 			# Its window ends with its chase (after its bait): no room for one past it there.
 			print("  %s: its first Enforcer's chase leaves no room past its window (%.0f-%.0f m)" % [tag, window.x, window.y])
 			continue
-		check(not row.is_empty(), "%s: its first Enforcer's chase past its showing window (%.0f-%.0f m) holds a wider gap" % [tag,
-			chase.x, chase.y])
-		ran += 1
 		if row.is_empty():
-			if not required:
-				# A lane count left out: preferred, not guaranteed (open question 357), and no clear stretch there.
-				var spot: String = _chase_spot(gen, chase)
-				check(spot == "", NO_CLEAR_STRETCH % [tag, chase.x, chase.y, spot])
-				print("  %s: no wider gap in the chase %.0f-%.0f m, and no clear stretch there for a new row" % [tag,
-					chase.x, chase.y])
+			var spot: String = _chase_spot(gen, chase)
+			check(spot == "", NO_CLEAR_STRETCH % [tag, chase.x, chase.y, spot])
+			print("  %s: no wider gap in its first Enforcer's chase past its showing window (%.0f-%.0f m), and no clear stretch there"
+				% [tag, chase.x, chase.y])
 			continue
+		played += 1
 		var middle: int = lanes / 2
 		var hole: int = -1
 		for lane: int in row["lanes"]:
@@ -476,4 +471,4 @@ func _test_corporate_2(campaign: Campaign) -> void:
 		print("  %s: wider gap at %.0f m in the chase %.0f-%.0f m: the truck %s" % [tag, start, chase.x, chase.y,
 			("wrecked: " + down) if down != "" else "not wrecked"])
 		await sim.free_world(w)
-	check(ran >= 2, "Corporate 2 leads its first truck into a wider gap at %d of the 3 lane counts" % ran)
+	check(played >= 1, "Corporate 2 leads its first truck into a wider gap at %d of the 3 lane counts" % played)

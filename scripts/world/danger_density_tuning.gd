@@ -53,10 +53,14 @@ extends Resource
 ## and aren't counted toward it.
 @export_range(0.0, 2.0, 0.05) var obstacle_increase_scale: float = 1.0
 ## The same for wall fences (the wall half, DangerDensity.apply_wall_fences: more of them where the wall
-## fences' own rules let one stand, after the level's own are placed); 0 adds none. The data asks a
-## quarter more (1.25): the wall fences' own spacing leaves fewer fair spots than the dial asks for,
-## so with 1.0 the final zones' wall fences rose only about 26% at 3 lanes, with 1.25 about 20% to 36%
-## by lane count (tools/measure/danger_density.gd). Their own rules still decide every spot.
+## fences' own rules let one stand, after the level's own are placed); 0 adds none. The data asks more than
+## the dial: the wall fences' own spacing leaves fewer fair spots than the dial asks for, so with 1.0 the final
+## zones' wall fences rose only about 26% at 3 lanes, with 1.25 about 20% to 36% by lane count
+## (tools/measure/danger_density.gd). DESIGN-TBD, 1.9 (task K5): the Enforcer Truck's showing windows (task
+## C6e), which the pass's rows keep off, left the final zones' floor at 3 lanes without room for its share, and
+## their obstacles rose 28.8% there (the band's floor is 30%; higher dials buy almost nothing, the pass being out
+## of fair room); 1.9 brings them to 30.6% with wall fences, the 5- and 6-lane bands staying under 40%.
+## Their own rules still decide every spot.
 @export_range(0.0, 2.0, 0.05) var wall_fence_increase_scale: float = 1.0
 ## Whether a planned Resonator's attack is its pulses one by one (DangerDensity.resonator_pulse_windows:
 ## each from its warning until its last wave has passed the player, as the wall fences keep off them),
