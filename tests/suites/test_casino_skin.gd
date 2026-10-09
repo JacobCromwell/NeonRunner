@@ -17,7 +17,10 @@ extends SkinSuite
 ## - decorative signs, banners and lights are unframed and never below decor_min_height, and only
 ##   hazard signs wear the striped frame;
 ## - the shop windows for the citizens are where shop_windows() says, above the vent zone, each with its
-##   display;
+##   display, in bays bay_scale wider than the Marketplace's (the same piers, fewer windows: task K5), and the
+##   citizens are the very ones MarketCitizens would place (CasinoCitizens only skips listing every window);
+## - what stands out of a wall (balconies, units, lamps, blade signs) has none of the faces a runner can't see
+##   (the wall's and the one facing away down the street: task K5, a build-time budget);
 ## - every kind of ceiling builds from the lanes it covers, full width or narrow (task B3): a flat
 ##   underside over exactly its lanes, the orange end band, the lane seams, nothing hanging below it, its
 ##   structure under the arrival flyover's height and its signs above decor_min_height;
@@ -94,6 +97,7 @@ func run() -> void:
 	await _citizens(skin)
 	_ceilings(skin)
 	_vault(skin)
+	_hidden_faces(skin)
 	await _arena(skin, arena)
 	_lettering(skin, arena)
 	_cult_emblem(skin)
@@ -479,6 +483,70 @@ func _shop_windows(skin: CasinoSkin) -> void:
 			missing += 1
 	check(not windows.is_empty() and missing == 0, "every shop window has its display built behind it (%d of %d missing)" % [
 		missing, windows.size()])
+	_picked_windows(skin, geo)
+	_wider_bays(skin)
+
+
+## CasinoFacades.windows_picked() lists the windows windows() lists whose hash is under the share, the same
+## entries in the same order (with and without a wall gap in the way): what the citizens pick from.
+func _picked_windows(skin: CasinoSkin, geo: TrackGeometry) -> void:
+	var facades: CasinoFacades = skin.facades() as CasinoFacades
+	var same: bool = true
+	var picked_total: int = 0
+	var gaps: Array[Vector2] = [Vector2(2210.0, 2230.0), Vector2(3105.0, 3120.0)]
+	for with_gaps: bool in [false, true]:
+		for side: int in [-1, 1]:
+			skin.note_wall_gaps(side, gaps if with_gaps else ([] as Array[Vector2]))
+		for r: int in 60:
+			var start: float = 2000.0 + float(r) * 40.0
+			for side: int in [-1, 1]:
+				var face_x: float = side * geo.wall_x()
+				var want: Array[Dictionary] = []
+				for w: Dictionary in skin.shop_windows(side, face_x, start, start + 40.0):
+					if MeshKit.hash01(side, MeshKit.key(float(w["at"])), CasinoCitizens.PICK_SALT) < MarketCitizens.CITIZEN_SHARE:
+						want.append(w)
+				var got: Array[Dictionary] = facades.windows_picked(side, face_x, start, start + 40.0, CasinoCitizens.PICK_SALT,
+					MarketCitizens.CITIZEN_SHARE)
+				picked_total += got.size()
+				same = same and want == got
+	for side: int in [-1, 1]:
+		skin.note_wall_gaps(side, [] as Array[Vector2])
+	check(same and picked_total > 20, "windows_picked() is windows() thinned by the hash, entry for entry (%d picked over 4.8 km)" % picked_total)
+
+
+## bay_scale widens the shop windows' bays: the same piers, the building's ends where they were, fewer and
+## broader windows (never more of them), and the same buildings otherwise.
+func _wider_bays(skin: CasinoSkin) -> void:
+	check(skin.bay_scale > 1.0, "the Casino's bays are wider than the Marketplace's (x%.2f)" % skin.bay_scale)
+	var plain := load(CASINO_SKIN_PATH).duplicate() as CasinoSkin
+	plain.bay_scale = 1.0
+	var wide: CasinoFacades = skin.facades() as CasinoFacades
+	var narrow: CasinoFacades = plain.facades() as CasinoFacades
+	var lot: float = skin.lot_length
+	var buildings: int = 0
+	var fewer: int = 0
+	var problems: PackedStringArray = []
+	for side: int in [-1, 1]:
+		var span: Vector2i = MeshKit.lot_run(side, 0, 0.45, 3, 3)
+		while span.x * lot < 1500.0:
+			var b: MarketFacades.Building = wide.building(side, span)
+			var a: MarketFacades.Building = narrow.building(side, span)
+			buildings += 1
+			fewer += 1 if b.windows.size() < a.windows.size() else 0
+			if b.windows.size() > a.windows.size() or b.windows.is_empty():
+				problems.append("building %d/%d has %d windows (plain %d)" % [side, b.id, b.windows.size(), a.windows.size()])
+			elif a.windows.size() > 1:
+				var pier_a: float = a.windows[1].x - a.windows[0].y
+				var edges_ok: bool = absf(b.windows[0].x - a.windows[0].x) < 0.001 \
+					and absf(b.windows[b.windows.size() - 1].y - a.windows[a.windows.size() - 1].y) < 0.001
+				var piers_ok: bool = true
+				for i: int in b.windows.size() - 1:
+					piers_ok = piers_ok and absf(b.windows[i + 1].x - b.windows[i].y - pier_a) < 0.001
+				if not (edges_ok and piers_ok):
+					problems.append("building %d/%d: the ends or the piers moved" % [side, b.id])
+			span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
+	check(problems.is_empty() and fewer > buildings / 3, "wider bays keep the piers and the ends and cut the windows (%d of %d buildings have fewer): %s" % [
+		fewer, buildings, ", ".join(problems.slice(0, 3))])
 
 
 ## The Marketplace citizens play in the Casino's windows (the owner's request: no new characters): the very
@@ -512,6 +580,28 @@ func _citizens(skin: CasinoSkin) -> void:
 	check(grouped == placed.size() and grouped > 0, "they join the market_citizens group The House's crowds use (%d of %d)" % [
 		grouped, placed.size()])
 	skin.note_wall_enemies(side, 0.0, 240.0, [])
+	# The same citizens as the Marketplace's own builder places (CasinoCitizens only skips listing every window),
+	# with a wall gap in the way too.
+	var plain_citizens := MarketCitizens.new(skin)
+	var gaps: Array[Vector2] = [Vector2(100.0, 130.0)]
+	var agree: bool = true
+	var compared: int = 0
+	for with_gap: bool in [false, true]:
+		skin.note_wall_gaps(side, gaps if with_gap else ([] as Array[Vector2]))
+		var theirs := Node3D.new()
+		var ours := Node3D.new()
+		plain_citizens.build(theirs, side, face_x, 0.0, 240.0)
+		skin.citizens().build(ours, side, face_x, 0.0, 240.0)
+		agree = agree and theirs.get_child_count() == ours.get_child_count()
+		for i: int in mini(theirs.get_child_count(), ours.get_child_count()):
+			var a: MarketCitizen = theirs.get_child(i) as MarketCitizen
+			var b: MarketCitizen = ours.get_child(i) as MarketCitizen
+			agree = agree and a.position == b.position and is_equal_approx(a.at, b.at)
+			compared += 1
+		theirs.free()
+		ours.free()
+	skin.note_wall_gaps(side, [] as Array[Vector2])
+	check(agree and compared > 0, "CasinoCitizens places the very citizens MarketCitizens would (%d compared, a wall gap included)" % compared)
 	var saved: bool = Settings.citizens_enabled
 	Settings.citizens_enabled = false
 	var off := Node3D.new()
@@ -747,6 +837,42 @@ func _girders_and_fans(skin: CasinoSkin, wall: float, arch: Dictionary, lanes: i
 			poking.append("bay %d (x %.2f)" % [k, at.x])
 	check(fans > 100, "ceiling fans hang at %d lanes (%d in 2000 bays)" % [lanes, fans])
 	check(poking.is_empty(), "no fan's blades or rod reach the glass at %d lanes: %s" % [lanes, ", ".join(poking.slice(0, 3))])
+
+
+## What stands out of a wall is built without the faces nobody can see (task K5: a chunk's build time follows
+## its vertices): a balcony, an air-conditioning unit, a lamp, a blade sign's frame have no face turned to the
+## wall and none facing away down the street (the camera only looks ahead), on both walls.
+func _hidden_faces(skin: CasinoSkin) -> void:
+	var facades: CasinoFacades = skin.facades() as CasinoFacades
+	var bad: PackedStringArray = []
+	var checked: int = 0
+	for side: int in [-1, 1]:
+		var pieces: Dictionary = {"balcony": [facades._balcony(side, 0), facades._balcony(side, 1), facades._balcony(side, 2)],
+			"unit": [facades._unit(side)], "lamp": [facades._lamp(side)[0]], "blade frame": [facades._blade_frame(side, 36)]}
+		for label: String in pieces:
+			for layer: MeshLayer in pieces[label]:
+				checked += 1
+				check(layer.size() > 0 and layer.size() % 3 == 0, "the casino's %s on side %d has triangles" % [label, side])
+				for i: int in range(0, layer.size(), 3):
+					var a: Vector3 = layer.verts[i]
+					var b: Vector3 = layer.verts[i + 1]
+					var c: Vector3 = layer.verts[i + 2]
+					# Front faces wind clockwise: the face looks along (c - a) x (b - a).
+					var n: Vector3 = (c - a).cross(b - a).normalized()
+					if n.z < -0.5:
+						bad.append("%s (side %d) has a face away down the street" % [label, side])
+						break
+					if n.x * float(side) > 0.5:
+						bad.append("%s (side %d) has a face toward its wall" % [label, side])
+						break
+	check(checked == 12 and bad.is_empty(), "balconies, units, lamps and blade frames keep only the faces a runner can see (%d pieces): %s" % [
+		checked, ", ".join(bad.slice(0, 3))])
+	# A balcony stays a light piece: about 130 to 220 vertices (it was up to 290 with its hidden faces).
+	var heaviest: int = 0
+	for side: int in [-1, 1]:
+		for pots: int in 3:
+			heaviest = maxi(heaviest, facades._balcony(side, pots).size())
+	check(heaviest <= 240, "the heaviest balcony is %d vertices (at most 240)" % heaviest)
 
 
 ## The arena's skin (The House is 13.5 m tall, GDD §10): its facades are flush through to 14.4 m (no

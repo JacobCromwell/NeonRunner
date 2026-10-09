@@ -2507,7 +2507,7 @@ paved street, warm lamplight and haze.
   and blade faces, the dark panel's flag, the emblem's corner and that without the font the signs keep their
   glyph rows. The letters are the warm white `lettering_color`, glowing just over the bloom threshold
   (`lettering_glow`), never a hazard hue, never below `decor_min_height`, static (nothing to flash). They add
-  under 1k vertices to a chunk of about 12-13k and nothing to its surfaces or its build time.
+  under 1k vertices to a chunk of about 10-11k and nothing to its surfaces or its build time.
 - *Ceilings from their lanes* (task B3). `CasinoCeilings` builds a footbridge between the balconies (only
   across every lane, as the Marketplace's bridging building), a gantry carrying a bundle of brass pipes and a
   sign gantry (a big lit sign or the cult's feed on an iron frame), from the collision box and lane
@@ -2530,9 +2530,31 @@ paved street, warm lamplight and haze.
   brass or iron carries glow); the reference's coloured boards are dim painted signs in muted rose, teal,
   moss and ochre. The marquee bulbs and the signs' breathing honour Reduced flashing (the `reduced_flashing`
   uniform; the suite reads both shaders for it).
-- *Tested*: `test_casino_skin` (the Marketplace's checks adapted, plus the vault, the arena, the lettering and
-  the citizens). Review it with `skin_review --skin=casino` (it asks the Casino for its ceiling kinds before the
-  Marketplace, which it builds on) and a boss quick play with the arena skin on both renderers.
+- *Build cost* (task K5; the budget is `SkinSuite.BUILD_BUDGET_MEAN_MS`, 4 ms a chunk at 6 lanes). A chunk's
+  build time follows its vertices and its calls, and the Casino is the Marketplace's walls plus a roof and
+  dressing, so it was the first skin over the line. What it costs now (6 lanes, one 40 m chunk, ms): the walls
+  2.2 (windows and piers 0.4, lounge balconies, units and blade signs 0.3, wall lamps 0.2, the casino signs
+  and names 0.2, pipes 0.1), the roof 0.35, citizens 0.3, the commit 0.25, on top of the floors, fences and
+  the track's own 1.5; vertices about 10.5k a chunk (the Marketplace's 9.8k). Kept down by: cached templates
+  for everything that repeats (a wall lamp, a lantern per chain length, a fan per quarter turn in six
+  turns, a blade sign's frame per tenth of a metre of height, balconies, units: each a bulk append of one
+  or two layers), no faces nobody can see (`CasinoFacades.SEEN_FACES`: a piece standing out of a wall keeps
+  neither the face toward the wall nor the one facing away down the street, because the camera only looks
+  ahead; `test_casino_skin` pins it), `CasinoCitizens` (the Marketplace's citizens picked from the windows'
+  positions without listing every window, the same citizens: the suite compares the two builders), and the
+  dressing's densities, which are exports (`balcony_share`, `pipe_share`, `unit_share`, `lantern_share`,
+  `fan_share`, `banner_share`, `crossbeam_spacing`, and `bay_scale`: the shop windows' bays 1.5 times the
+  Marketplace's, the same piers, a third fewer windows). Measure with `tools/godot.sh test --suite=casino_skin
+  --jobs=1` on a quiet machine, next to `--suite=marketplace_skin`: the Casino should read about what the
+  Marketplace does. The suite's load factor comes from a greybox build that mostly measures node creation, so
+  it does not notice a machine that runs GDScript slowly, which is when this skin reads closest to its budget.
+- *The street's light follows the level's sky* like every scenery shader: `casino_facade.gdshader` takes
+  `scenery_tint` where it takes `scenery_light` (its glowing parts stay untinted, as in every zone), and the
+  solid kit shader already did (`test_level_sky`).
+- *Tested*: `test_casino_skin` (the Marketplace's checks adapted, plus the vault, the arena, the lettering, the
+  citizens and the wall pieces' faces). Review it with `skin_review --skin=casino` (it asks the Casino for its
+  ceiling kinds before the Marketplace, which it builds on) and a boss quick play with the arena skin on both
+  renderers.
 
 **The Golden Zone** (`scripts/world/skins/golden/`): `GoldenWalkways` (the floor: golden walkways over
 the canal), `GoldenFacades` (the walls, and the sky bridges over the street), `GoldenCeilings`,

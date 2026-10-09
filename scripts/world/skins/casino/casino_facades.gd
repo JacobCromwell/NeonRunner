@@ -19,6 +19,8 @@ extends MarketFacades
 
 ## How far a balcony reaches out of the face (metres).
 const BALCONY_REACH: float = 0.95
+## How far a lounge's blade sign's board reaches out of the face, past its brackets.
+const LOUNGE_BLADE_REACH: float = 0.8
 ## Added to the lit sign's size: its frame around the panel.
 const FRAME: float = 0.16
 
@@ -47,6 +49,8 @@ const EMBLEM_AIR: float = 1.4
 
 ## Wall lamps built once per side (_lamp).
 var _lamp_templates: Dictionary = {}
+## The buildings whose windows have been widened (bay_scale): building() runs again for a cached building.
+var _widened: Dictionary = {}
 ## The lettering in the skin's colour, built once per layout (_letters).
 var _lettering: Dictionary = {}
 ## The named casino of each period of the street ({side, id}, or {}; _landmark()).
@@ -66,7 +70,48 @@ func building(side: int, span: Vector2i) -> MarketFacades.Building:
 	b.height = csk.eave_height
 	b.setback = 0.0
 	b.low = false
+	if csk.bay_scale > 1.01 and not _widened.has(b):
+		if _widened.size() > 600:
+			_widened.clear()
+		_widened[b] = true
+		_widen(b, csk.bay_scale)
 	return b
+
+
+## The building's shop windows at `scale` times the Marketplace's bay width: the same piers, fewer bays.
+static func _widen(b: MarketFacades.Building, scale: float) -> void:
+	var count: int = b.windows.size()
+	var wide: int = maxi(1, roundi(float(count) / scale))
+	if count < 2 or wide >= count:
+		return
+	var first: float = b.windows[0].x
+	var pier: float = b.windows[1].x - b.windows[0].y
+	var each: float = (b.windows[count - 1].y - first + pier) / float(wide)
+	b.windows.clear()
+	for k: int in wide:
+		var w0: float = first + float(k) * each
+		b.windows.append(Vector2(w0, w0 + each - pier))
+
+
+## The shop windows windows() lists whose hash (side, the window's key, salt) is under `share`, in the same
+## order and with the same entries: for a caller that wants a few of them (the citizens), without building
+## the entry of every other window. test_casino_skin checks it against windows().
+func windows_picked(side: int, face_x: float, start: float, end: float, salt: int, share: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lot: float = skin.lot_length
+	var span: Vector2i = MeshKit.lot_run(side, floori(start / lot), 0.45, 3, 3)
+	while span.x * lot < end:
+		var b: MarketFacades.Building = building(side, span)
+		for w: Vector2 in b.windows:
+			var at: float = (w.x + w.y) * 0.5
+			if at >= start and at < end and MeshKit.hash01(side, MeshKit.key(at), salt) < share \
+					and not skin.wall_gap_near(side, w.x, w.y):
+				out.append({"side": side, "at": at,
+					"center": Vector3(face_x, (skin.gallery_bottom + skin.gallery_top) * 0.5, -at),
+					"width": w.y - w.x, "bottom": skin.gallery_bottom, "top": skin.gallery_top, "depth": skin.shop_depth,
+					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": _has_tv(b, w)})
+		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
+	return out
 
 
 func _building(batch: MeshBatch, b: MarketFacades.Building, face_x: float, start: float, end: float) -> void:
@@ -124,6 +169,10 @@ func _building(batch: MeshBatch, b: MarketFacades.Building, face_x: float, start
 ## Box faces to leave out against the wall on each side (the wall is at x = face_x, the building
 ## behind it, so the face toward the building is never seen).
 const FACE_AGAINST: Dictionary = {-1: MeshKit.FACE_NX, 1: MeshKit.FACE_PX}
+## The faces of something standing out of the wall on each side that a runner can see: all but the one toward the
+## wall and the one facing away down the street (the camera follows the runner, so it only looks ahead).
+const SEEN_FACES: Dictionary = {
+	-1: MeshKit.ALL_FACES & ~(MeshKit.FACE_NX | MeshKit.FACE_NZ), 1: MeshKit.ALL_FACES & ~(MeshKit.FACE_PX | MeshKit.FACE_NZ)}
 
 
 # --- Brass pipes ------------------------------------------------------------------------------
@@ -147,9 +196,9 @@ func _pipes(solid: MeshLayer, b: MarketFacades.Building, face_x: float, u0: floa
 		var color: Color = csk.brass_color if r == 0 else csk.brass_dim_color
 		_pipe_z(solid, x, y, u0, u1, radius, color)
 		if u0 <= b.b0 + 0.01:
-			_flange(solid, x, y, b.b0 + 0.05, radius)
+			_flange(solid, side, x, y, b.b0 + 0.05, radius)
 		if u1 >= b.b1 - 0.01:
-			_flange(solid, x, y, b.b1 - 0.05, radius)
+			_flange(solid, side, x, y, b.b1 - 0.05, radius)
 	# A riser near the building's start, from the first run's height down toward the calm band's top.
 	if MeshKit.hash01(side, b.id, 109) < 0.5:
 		var rd: float = b.b0 + 0.9 + 1.2 * MeshKit.hash01(side, b.id, 110)
@@ -160,7 +209,7 @@ func _pipes(solid: MeshLayer, b: MarketFacades.Building, face_x: float, u0: floa
 			var y_bottom: float = csk.overhang_min_height + 0.2
 			if y_top > y_bottom + 1.0:
 				solid.prism(Vector3(rx, y_bottom, -rd), rr, y_top - y_bottom, 8, csk.brass_color, 0.0, MeshKit.PAT_CASINO_BRASS, false, 0.5)
-				_flange(solid, rx, y_bottom + 0.1, rd, rr)
+				_flange(solid, side, rx, y_bottom + 0.1, rd, rr)
 
 
 ## A brass pipe along the track from distance d0 to d1 (z = -d), centred at (x, y).
@@ -172,9 +221,9 @@ static func _pipe_z(s: MeshLayer, x: float, y: float, d0: float, d1: float, radi
 
 
 ## A flange ring where a pipe passes into a building or a neighbour, at distance d.
-func _flange(s: MeshLayer, x: float, y: float, d: float, radius: float) -> void:
+func _flange(s: MeshLayer, side: int, x: float, y: float, d: float, radius: float) -> void:
 	s.box(Vector3(x, y, -d), Vector3(radius * 2.0 + 0.14, radius * 2.0 + 0.14, 0.1), csk.brass_dim_color, 0.0,
-		MeshKit.PAT_CASINO_BRASS, MeshKit.ALL_FACES, 0.4)
+		MeshKit.PAT_CASINO_BRASS, SEEN_FACES[side], 0.4)
 
 
 ## Wall lamps: a brass bracket and a warm lantern every nine metres or so, above decor_min_height (a
@@ -183,6 +232,9 @@ func _flange(s: MeshLayer, x: float, y: float, d: float, radius: float) -> void:
 ## faces are kept flush (the arena) the lamp is a flat lantern, FLUSH_DEPTH deep.
 func _lamps(batch: MeshBatch, b: MarketFacades.Building, face_x: float, u0: float, u1: float) -> void:
 	var side: int = b.side
+	var lamp: Array[MeshLayer] = _lamp(side)
+	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var glow: MeshLayer = batch.layer(skin.glow_material())
 	var spacing: float = 9.0
 	var k: int = ceili(u0 / spacing)
 	while float(k) * spacing < u1:
@@ -190,32 +242,37 @@ func _lamps(batch: MeshBatch, b: MarketFacades.Building, face_x: float, u0: floa
 		var y: float = skin.decor_min_height + 0.6 + 1.6 * MeshKit.hash01(side, k, 131)
 		k += 1
 		if d >= u0 and d < u1:
-			batch.append(_lamp(side), Transform3D(Basis.IDENTITY, Vector3(face_x, y, -d)))
+			var at := Transform3D(Basis.IDENTITY, Vector3(face_x, y, -d))
+			solid.append(lamp[0], at)
+			glow.append(lamp[1], at)
 
 
-## One wall lamp on the wall on `side` (the face at x = 0, the lamp's centre at the origin).
-func _lamp(side: int) -> MeshBatch:
+## One wall lamp on the wall on `side` (the face at x = 0, the lamp's centre at the origin): [its solid parts,
+## its halo], cached.
+func _lamp(side: int) -> Array[MeshLayer]:
 	var key: int = side + (10 if csk.flush_faces else 0)
-	var found: MeshBatch = _lamp_templates.get(key)
-	if found != null:
-		return found
-	var t := MeshBatch.new()
-	var solid: MeshLayer = t.layer(skin.solid_material())
-	var glow: MeshLayer = t.layer(skin.glow_material())
+	var found: Array = _lamp_templates.get(key, [])
+	if not found.is_empty():
+		var cached: Array[MeshLayer] = [found[0], found[1]]
+		return cached
+	var solid := MeshLayer.new()
+	var glow := MeshLayer.new()
 	if csk.flush_faces:
 		solid.box(Vector3(-side * FLUSH_DEPTH * 0.5, 0.0, 0.0), Vector3(FLUSH_DEPTH, 0.34, 0.2), skin.lamp_color, 0.8)
 		solid.box(Vector3(-side * FLUSH_DEPTH * 0.5, -0.2, 0.0), Vector3(FLUSH_DEPTH, 0.05, 0.24), csk.brass_dim_color, 0.0,
 			MeshKit.PAT_CASINO_BRASS, MeshKit.ALL_FACES, 0.4)
 	else:
+		var seen: int = SEEN_FACES[side]
 		solid.box(Vector3(-side * 0.06, 0.12, 0.0), Vector3(0.12, 0.05, 0.05), csk.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
-			MeshKit.ALL_FACES, 0.4)
-		solid.box(Vector3(-side * 0.17, 0.0, 0.0), Vector3(0.2, 0.34, 0.2), skin.lamp_color, 0.8)
+			seen, 0.4)
+		solid.box(Vector3(-side * 0.17, 0.0, 0.0), Vector3(0.2, 0.34, 0.2), skin.lamp_color, 0.8, 0, seen)
 		solid.box(Vector3(-side * 0.17, -0.2, 0.0), Vector3(0.24, 0.05, 0.24), csk.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
-			MeshKit.ALL_FACES, 0.4)
+			seen, 0.4)
 	var halo: Array = _wall_screen(side, -side * 0.1, -1.5, 3.0, -1.5, 3.0)
 	glow.rect(halo[0], halo[1], halo[2], skin.lamp_color, 0.2, MeshKit.SHAPE_RADIAL)
-	_lamp_templates[key] = t
-	return t
+	_lamp_templates[key] = [solid, glow]
+	var out: Array[MeshLayer] = [solid, glow]
+	return out
 
 
 # --- A row of lounges -------------------------------------------------------------------------
@@ -281,7 +338,7 @@ func _balcony(side: int, pots: int) -> MeshLayer:
 	var toward: int = MeshKit.FACE_NX if side > 0 else MeshKit.FACE_PX
 	var wallward: int = MeshKit.FACE_PX if side > 0 else MeshKit.FACE_NX
 	s.box(Vector3(bx, 0.05, 0.0), Vector3(reach, 0.12, hw * 2.0), iron, 0.0, MeshKit.PAT_CASINO_IRON,
-		MeshKit.ALL_FACES & ~(MeshKit.FACE_PY | wallward), 0.0)
+		MeshKit.ALL_FACES & ~(MeshKit.FACE_PY | MeshKit.FACE_NZ | wallward), 0.0)
 	var rx: float = -side * (reach - 0.03)
 	s.box(Vector3(rx, 1.0, 0.0), Vector3(0.06, 0.06, hw * 2.0), csk.brass_color, 0.0, MeshKit.PAT_CASINO_BRASS,
 		MeshKit.FACE_PY | MeshKit.FACE_PZ | toward, 0.5)
@@ -292,11 +349,11 @@ func _balcony(side: int, pots: int) -> MeshLayer:
 	for i: int in 1 + pots:
 		var pz: float = (float(i) - 0.5 * float(pots)) * 0.7
 		s.box(Vector3(bx - side * 0.05, 0.36, pz), Vector3(0.42, 0.5, 0.6), Color(0.25, 0.19, 0.15), 0.0, MeshKit.PAT_PLAIN,
-			MeshKit.FACE_PZ | MeshKit.FACE_NZ | toward | MeshKit.FACE_NY)
+			MeshKit.FACE_PZ | toward)
 		s.box(Vector3(bx - side * 0.05, 0.66, pz), Vector3(0.46, 0.22, 0.64), csk.ivy_color, 0.0, MeshKit.PAT_PLAIN,
-			MeshKit.FACE_PZ | MeshKit.FACE_NZ | toward | MeshKit.FACE_PY)
+			MeshKit.FACE_PZ | toward | MeshKit.FACE_PY)
 		s.box(Vector3(rx + side * 0.02, 0.78, pz), Vector3(0.14, 0.45, 0.4), csk.ivy_color.darkened(0.12), 0.0, MeshKit.PAT_PLAIN,
-			MeshKit.FACE_PZ | MeshKit.FACE_NZ | toward)
+			MeshKit.FACE_PZ | toward)
 	_templates[key] = s
 	return s
 
@@ -314,12 +371,11 @@ func _unit(side: int) -> MeshLayer:
 	var h: float = 0.6
 	var d: float = 0.42
 	var casing := Color(0.22, 0.22, 0.2)
-	s.box(Vector3(-side * d * 0.5, h * 0.5, 0.0), Vector3(d, h, w), casing, 0.0, MeshKit.PAT_PLAIN,
-		MeshKit.ALL_FACES & ~(MeshKit.FACE_PX if side > 0 else MeshKit.FACE_NX))
+	s.box(Vector3(-side * d * 0.5, h * 0.5, 0.0), Vector3(d, h, w), casing, 0.0, MeshKit.PAT_PLAIN, SEEN_FACES[side])
 	var face: Array = _wall_screen(side, -side * (d + 0.002), -w * 0.5, w, 0.0, h)
 	s.rect(face[0], face[1], face[2], casing, 0.0, MeshKit.PAT_TECH, Vector2.ZERO, Vector2(w, h), 1.0)
 	s.box(Vector3(-side * 0.25, -0.03, 0.0), Vector3(0.5, 0.05, w * 0.7), Color(0.15, 0.15, 0.16), 0.0, MeshKit.PAT_PLAIN,
-		MeshKit.FACE_NY | MeshKit.FACE_PZ | MeshKit.FACE_NZ)
+		MeshKit.FACE_NY | MeshKit.FACE_PZ)
 	var streak: Array = _wall_screen(side, -side * 0.004, -0.06, 0.05, -1.3, 1.25)
 	s.rect(streak[0], streak[1], streak[2], skin.grime_color, 0.0)
 	_templates[key] = s
@@ -332,22 +388,15 @@ func _unit(side: int) -> MeshLayer:
 ## It stands out of the wall by under a metre (the arrival flyover's camera keeps a metre inside the
 ## walls), and is too narrow for the cult's emblem, which hides on the wall signs instead.
 func _blade_sign(solid: MeshLayer, glow: MeshLayer, side: int, x: float, d: float, y: float, k: int) -> void:
-	var h: float = 3.0 + 1.2 * MeshKit.hash01(k, 1)
-	var reach: float = 0.8
+	# The board is 3 to 4.2 m tall in tenths of a metre, so its frame (brackets, back and brass edges) is one of
+	# thirteen cached templates per side, a bulk append.
+	var steps: int = roundi((3.0 + 1.2 * MeshKit.hash01(k, 1)) * 10.0)
+	var h: float = float(steps) * 0.1
+	var reach: float = LOUNGE_BLADE_REACH
 	var inner: float = x - side * (reach + 0.15)
 	var outer: float = x - side * 0.15
 	var x_min: float = minf(inner, outer)
-	var dark: Color = csk.sign_panel_color
-	# Brackets to the wall, and the board's back and edge.
-	for by: float in [y + h - 0.25, y + 0.25]:
-		solid.box(Vector3((x + outer) * 0.5, by, -d), Vector3(0.18, 0.06, 0.06), csk.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
-			MeshKit.ALL_FACES, 0.4)
-	solid.box(Vector3((inner + outer) * 0.5, y + h * 0.5, -d - 0.05), Vector3(reach, h, 0.08), dark, 0.0,
-		MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_PZ)
-	solid.box(Vector3((inner + outer) * 0.5, y + h - 0.02, -d - 0.05), Vector3(reach + 0.08, 0.08, 0.12), csk.brass_color, 0.0,
-		MeshKit.PAT_CASINO_BRASS, MeshKit.ALL_FACES, 0.5)
-	solid.box(Vector3((inner + outer) * 0.5, y + 0.02, -d - 0.05), Vector3(reach + 0.08, 0.08, 0.12), csk.brass_color, 0.0,
-		MeshKit.PAT_CASINO_BRASS, MeshKit.ALL_FACES, 0.5)
+	solid.append(_blade_frame(side, steps), Transform3D(Basis.IDENTITY, Vector3(x, y, -d)))
 	var band: float = minf(reach * 0.8, 0.95)
 	var top: float = y + h - 0.16
 	var length: float = top - (y + 0.16)
@@ -365,6 +414,28 @@ func _blade_sign(solid: MeshLayer, glow: MeshLayer, side: int, x: float, d: floa
 			0.6, MeshKit.PAT_CASINO_SIGN, Vector2.ZERO, Vector2(length, band), param)
 		glow.rect(Vector3(x_min - 0.5, top - length - 0.4, -d + 0.2), Vector3(reach + 1.0, 0, 0), Vector3(0, length + 0.8, 0), color,
 			0.1, MeshKit.SHAPE_FLAT)
+
+
+## The frame of a lounge's blade sign `steps` tenths of a metre tall on the wall on `side`, its bottom at the origin
+## on the wall face at x = 0: brackets to the wall, the board's dark back and its two brass edges. Cached.
+func _blade_frame(side: int, steps: int) -> MeshLayer:
+	var key := Vector3i(12, side, steps)
+	var found: MeshLayer = _templates.get(key)
+	if found != null:
+		return found
+	var h: float = float(steps) * 0.1
+	var mid: float = -side * (LOUNGE_BLADE_REACH + 0.3) * 0.5
+	var seen: int = SEEN_FACES[side]
+	var s := MeshLayer.new()
+	for by: float in [h - 0.25, 0.25]:
+		s.box(Vector3(-side * 0.075, by, 0.0), Vector3(0.18, 0.06, 0.06), csk.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS, seen, 0.4)
+	s.box(Vector3(mid, h * 0.5, -0.05), Vector3(LOUNGE_BLADE_REACH, h, 0.08), csk.sign_panel_color, 0.0, MeshKit.PAT_PLAIN,
+		seen & ~MeshKit.FACE_PZ)
+	for ey: float in [h - 0.02, 0.02]:
+		s.box(Vector3(mid, ey, -0.05), Vector3(LOUNGE_BLADE_REACH + 0.08, 0.08, 0.12), csk.brass_color, 0.0, MeshKit.PAT_CASINO_BRASS,
+			seen, 0.5)
+	_templates[key] = s
+	return s
 
 
 # --- Casinos -----------------------------------------------------------------------------------

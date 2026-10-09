@@ -31,6 +31,8 @@ render_mode unshaded, cull_back;
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the scenery dims with it.
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 
 // Aged brass: the trims, bands and frames.
 uniform vec3 trim_color = vec3(0.5, 0.39, 0.22);
@@ -331,5 +333,5 @@ void fragment() {
 	if (style <= 4) {
 		col *= mix(0.9, 1.0, smoothstep(1.0, 6.0, uv.y)) * (1.0 - 0.3 * smoothstep(12.0, 26.0, uv.y));
 	}
-	ALBEDO = col * light_factor(scenery_light);
+	ALBEDO = col * light_factor(scenery_light) * scenery_tint;
 }

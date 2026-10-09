@@ -38,6 +38,8 @@ const BANNER_MARGIN: float = 1.0
 const FAN_DROP: float = 1.4
 const FAN_RADIUS: float = 2.6
 const FAN_CLEARANCE: float = 0.3
+## How many turns of a quarter a cached fan comes in.
+const FAN_TURNS: int = 6
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: CasinoSkin:
@@ -46,6 +48,9 @@ var skin: CasinoSkin:
 var _skin: WeakRef
 var _arches: Dictionary = {}
 var _bays: Dictionary = {}
+## Fans by turn and lanterns by chain length (cached, appended in bulk).
+var _fans: Dictionary = {}
+var _lanterns: Dictionary = {}
 
 
 func _init(p_skin: CasinoSkin) -> void:
@@ -199,7 +204,7 @@ func _hangings(solid: MeshLayer, glow: MeshLayer, arch: Dictionary, k: int, z: f
 		var span: float = girder["span"]
 		var bz: float = z - length * 0.5
 		solid.box(Vector3(0, beam_y, bz), Vector3(span * 2.0, 0.42, 0.34), skin.iron_color, 0.0, MeshKit.PAT_CASINO_IRON,
-			MeshKit.ALL_FACES, 2.0)
+			MeshKit.ALL_FACES & ~MeshKit.FACE_PY, 2.0)
 		solid.box(Vector3(0, beam_y - 0.24, bz + 0.17), Vector3(span * 2.0, 0.07, 0.04), skin.brass_dim_color, 0.0,
 			MeshKit.PAT_CASINO_BRASS, MeshKit.FACE_PZ, 0.4)
 		_banners(solid, k, bz, beam_y, span - BANNER_MARGIN, limit)
@@ -207,23 +212,21 @@ func _hangings(solid: MeshLayer, glow: MeshLayer, arch: Dictionary, k: int, z: f
 	if MeshKit.hash01(k, 51) < skin.lantern_share:
 		var lx: float = (MeshKit.hash01(k, 52) - 0.5) * half_width * 1.1
 		var ly_top: float = glass_at(arch, lx) - 0.1
-		var chain: float = 2.5 + 2.0 * MeshKit.hash01(k, 53)
+		# The chain's length in half metres (cached templates: a lantern is two bulk appends, not five boxes).
+		var steps: int = floori((2.5 + 2.0 * MeshKit.hash01(k, 53)) * 2.0)
+		var chain: float = float(steps) * 0.5
 		var ly: float = ly_top - chain - 0.3
 		if ly - 0.3 >= limit:
 			var lz: float = z - length * (0.25 + 0.5 * MeshKit.hash01(k, 54))
-			solid.box(Vector3(lx, ly_top - chain * 0.5, lz), Vector3(0.04, chain, 0.04), skin.iron_color)
-			solid.box(Vector3(lx, ly + 0.3, lz), Vector3(0.3, 0.12, 0.3), skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
-				MeshKit.NO_BOTTOM, 0.4)
-			solid.box(Vector3(lx, ly, lz), Vector3(0.28, 0.46, 0.28), skin.lamp_color, 0.8)
-			solid.box(Vector3(lx, ly - 0.3, lz), Vector3(0.3, 0.1, 0.3), skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
-				MeshKit.ALL_FACES & ~MeshKit.FACE_PY, 0.4)
-			glow.rect(Vector3(lx - 1.4, ly - 1.4, lz + 0.3), Vector3(2.8, 0, 0), Vector3(0, 2.8, 0), skin.lamp_color, 0.2,
-				MeshKit.SHAPE_RADIAL)
+			var lantern: Array[MeshLayer] = _lantern(steps)
+			var from_roof := Transform3D(Basis.IDENTITY, Vector3(lx, ly_top, lz))
+			solid.append(lantern[0], from_roof)
+			glow.append(lantern[1], from_roof)
 	# A ceiling fan high under the crown (its blades static: a silhouette, like the reference's).
 	var fan: Dictionary = fan_of(arch, k)
 	if not fan.is_empty():
 		var at: Vector3 = fan["at"]
-		_fan(solid, Vector3(at.x, at.y, z - length * 0.5), k)
+		solid.append(_fan(k), Transform3D(Basis.IDENTITY, Vector3(at.x, at.y, z - length * 0.5)))
 
 
 ## The girder of bay k, or {} if it has none: {y (its centre's height), span (half its length)}. Under
@@ -286,13 +289,43 @@ func _banners(solid: MeshLayer, k: int, bz: float, beam_y: float, span: float, l
 
 
 ## A ceiling fan hung with its hub at `at`: a brass hub on a rod, four iron blades.
-func _fan(solid: MeshLayer, at: Vector3, k: int) -> void:
-	solid.box(at + Vector3(0, FAN_DROP * 0.5 - 0.02, 0), Vector3(0.05, FAN_DROP - 0.04, 0.05), skin.iron_color)
-	solid.prism(at + Vector3(0, -0.12, 0), 0.34, 0.26, 8, skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS, true, 0.5)
-	var turn: float = TAU * MeshKit.hash01(k, 66)
+func _fan(k: int) -> MeshLayer:
+	# Four blades are the same fan every quarter turn: six turns of it, cached (one bulk append per fan).
+	var step: int = floori(MeshKit.hash01(k, 66) * float(FAN_TURNS))
+	var found: MeshLayer = _fans.get(step)
+	if found != null:
+		return found
+	var t := MeshLayer.new()
+	t.box(Vector3(0, FAN_DROP * 0.5 - 0.02, 0), Vector3(0.05, FAN_DROP - 0.04, 0.05), skin.iron_color)
+	t.prism(Vector3(0, -0.12, 0), 0.34, 0.26, 8, skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS, true, 0.5)
+	var turn: float = (PI * 0.5) * float(step) / float(FAN_TURNS)
 	for i: int in 4:
 		var angle: float = turn + float(i) * PI * 0.5
 		var dir := Vector3(cos(angle), 0.0, sin(angle))
 		var basis := Basis(dir * 2.3, Vector3(0, 0.04, 0), dir.cross(Vector3.UP) * 0.5)
-		solid.box_xform(Transform3D(basis, at + dir * 1.4 + Vector3(0, -0.2, 0)), skin.iron_color, 0.0,
-			MeshKit.PAT_CASINO_IRON, MeshKit.ALL_FACES, 2.0)
+		t.box_xform(Transform3D(basis, dir * 1.4 + Vector3(0, -0.2, 0)), skin.iron_color, 0.0,
+			MeshKit.PAT_CASINO_IRON, MeshKit.ALL_FACES & ~MeshKit.FACE_PY, 2.0)
+	_fans[step] = t
+	return t
+
+
+## A lantern on a chain `steps` half-metres long, hung from the origin (the roof): [its solid parts, its halo].
+func _lantern(steps: int) -> Array[MeshLayer]:
+	var found: Array = _lanterns.get(steps, [])
+	if not found.is_empty():
+		var cached: Array[MeshLayer] = [found[0], found[1]]
+		return cached
+	var chain: float = float(steps) * 0.5
+	var ly: float = -chain - 0.3
+	var solid := MeshLayer.new()
+	var glow := MeshLayer.new()
+	solid.box(Vector3(0, -chain * 0.5, 0), Vector3(0.04, chain, 0.04), skin.iron_color)
+	solid.box(Vector3(0, ly + 0.3, 0), Vector3(0.3, 0.12, 0.3), skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
+		MeshKit.NO_BOTTOM, 0.4)
+	solid.box(Vector3(0, ly, 0), Vector3(0.28, 0.46, 0.28), skin.lamp_color, 0.8)
+	solid.box(Vector3(0, ly - 0.3, 0), Vector3(0.3, 0.1, 0.3), skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS,
+		MeshKit.ALL_FACES & ~MeshKit.FACE_PY, 0.4)
+	glow.rect(Vector3(-1.4, ly - 1.4, 0.3), Vector3(2.8, 0, 0), Vector3(0, 2.8, 0), skin.lamp_color, 0.2, MeshKit.SHAPE_RADIAL)
+	_lanterns[steps] = [solid, glow]
+	var out: Array[MeshLayer] = [solid, glow]
+	return out
