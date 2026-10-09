@@ -1884,8 +1884,8 @@ ranges at 3, 5 and 6 lanes and checks all of this, so every zone's skin is held 
 underside, and check the drop on both renderers (`skin_review --narrow`, Review tools).
 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
-(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
-and `GoldenSkin` (Zone 6, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+(Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
+Corporate), `DeadZoneSkin` (Zone 6, the Dead Zone) and `GoldenSkin` (Zone 7, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
@@ -1903,12 +1903,13 @@ value, the one thing a new zone's skin sets for its enemies:
 | Neon City | `&"city"` | the base (Static TV Head) | clean |
 | Gangland | `&"scavenger"` | the Broadcast Brute | weathered |
 | Marketplace | `&"casino"` | the Casino Mob Enforcer | clean |
+| Casino (K1) | `&"casino"` | the Casino Mob Enforcer (the owner: no new character looks) | clean |
 | Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
-Marketplace) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
+Marketplace and the Casino) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
 colours from the zone variant (`BarnacleTurretModel.PALETTES`; a new zone's variant gets the default
 gunmetal until it has its own).
 
@@ -1923,8 +1924,8 @@ free: the run takes its environment from `ZoneSkin.level_environment(darkness)`,
 `apply_darkness()` dims only the scenery. The sky and the distance fog lose energy, and the global
 shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
 `MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
-glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, the Golden
-Zone's `golden_facade`, the Dead Zone's `dead_smoke`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
+glowing ones), `facade`, `shopfront`, `road`, `drift`, the Casino's `casino_facade`, the Corporate skin's
+`corp_facade`, the Golden Zone's `golden_facade`, the Dead Zone's `dead_smoke`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
 sun stay, so hazards, triggers, credits, enemies and the runner (lit or glowing by their own
 materials) read as well as anywhere. The
 factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
@@ -1998,7 +1999,11 @@ collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
 texture as a mark on a dark panel. Ids 70-79 are the Golden Palace's (task D6b, a level's own skin,
 not a zone's), in `kit_golden_palace.gdshaderinc`, after `kit_golden.gdshaderinc`'s `golden_metal()`
-and `golden_marble()`, which it calls directly.
+and `golden_marble()`, which it calls directly. Ids 80-89 are the Casino's (task K1; 80-86 in use), in
+`kit_casino.gdshaderinc`: the street's paving (`PAT_CASINO_STREET`), everything under it
+(`PAT_CASINO_UNDER`), dark iron and aged brass (`PAT_CASINO_IRON`, `PAT_CASINO_BRASS`, lit through
+`cas_metal()`, a fake reflection of the lamplit street), a pane of the glass roof (`PAT_CASINO_VAULT`), a lit
+sign (`PAT_CASINO_SIGN`) and a hanging banner (`PAT_CASINO_BANNER`).
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -2139,6 +2144,76 @@ lightest surface.
   last, as `wall_section` runs before a chunk's ceilings). Every underside is flat
   charred concrete with a steel strip and a pale line on each lane seam, and the orange far-end band.
   `mesh_for(kind, ...)` builds a given kind directly.
+
+**The Casino** (`scripts/world/skins/casino/`; task K1, GDD §5 Zone 4, the owner's reference image
+`docs/art/reference/casino_zone.webp`): `CasinoStreet` (the floor), `CasinoFacades` (the walls),
+`CasinoVault` (the glass roof and what hangs from it), `CasinoCeilings` and `CasinoProps` (fences and signs);
+its building faces use their own shader, `casino_facade.gdshader`, and it adds the patterns above. A long
+covered casino street at night under a vault of glass and iron: dark riveted iron and aged brass, a wet
+paved street, warm lamplight and haze.
+- *Scenery only, on the Marketplace's skin.* The owner asked for new walls, floor, ceilings and background
+  and no new characters, so `CasinoSkin` extends `MarketplaceSkin` and keeps its `enemy_variant = &"casino"`
+  (the Casino Mob Enforcer and the Marketplace's other enemies, as they are), its citizens (`MarketCitizens`,
+  the same class, in the same `market_citizens` group The House's crowds cheer and duck through), its plant
+  and casino-machine doodads (`MarketDoodads`, in the Casino's palette), the cult's feed and emblem, and its
+  `shop_windows()`, `reserved_near()` and `note_wall_enemies()` contract. `CasinoFacades` extends
+  `MarketFacades` and `CasinoProps` extends `MarketProps`: the same lots and windows and the same fence and
+  sign hooks, only their looks differ; `CasinoSkin.facades()` returns the Casino's. The Marketplace's own
+  export groups for what it draws itself (stalls, stucco, ships) stay unused here, and `_casino_palette()`
+  gives the ones the shared pieces read (neon, lamps, signs, doodads) the Casino's colours. Chunk meshes use
+  the same materials as ever: the one solid and one glow material of the batch, the facade shader's own, the
+  feed's, and the drift material, so the roof adds no surface of its own.
+- *The street is a floor and gaps are open service trenches* (DESIGN-TBD, `docs/questions/k1.md` 1): dark
+  flagstones in running bond with brass inlaid along both edges of every lane and across it every 6 m (the
+  still floor's own motion cue), pools of lamplight and a wet sheen (all in the shader, from world position,
+  so chunk cuts are seamless), and the dust, scraps and speed streaks of the other skins. Under a gap
+  everything is `PAT_CASINO_UNDER` in `gap_inside_color`, a deep shade that only darkens with depth and is
+  far darker than any paving, with the orange lip and strip on the collision edge (`CasinoStreet`, built
+  as `MarketStalls` is). The suite pins it over whole levels at 3, 5 and 6 lanes.
+- *The calm band.* Every wall is flush from the street up past `band_top` (7 m): the facade shader paints
+  a brass stripe there along the top of a storey, flat (no shading, so it can't read as standing out), its
+  risers and round shaded pipes start above the band (`painted_pipe()`), the casino fronts' glass and bulbs
+  start at `decor_min_height` (the grid begins there, a whole storey at a time), and nothing opens, glows or
+  sticks out (no vent-like shape: the screeches' lairs). Balconies, brass pipes and risers, air-conditioning units and
+  blade signs start at `overhang_min_height` (10 m: nothing hangs over the lanes below it but ceilings, the
+  arrival flyover's rule) and stand out of the face by under a metre (the flyover's camera keeps a metre
+  inside the walls); flat decoration (decorative signs, banners, wall lamps, marquee bulbs) never sits lower
+  than `decor_min_height` (8 m) and is never framed in a hazard's stripes.
+- *The glass vault is background* (never a ceiling the player can use). `CasinoVault` springs it from the
+  facades' top (`eave_height`, 22 m) and arches it over the street (higher over a wider one: `arch_of()`),
+  in bays (`bay_length`) built from cached templates in a few variants: iron ribs and purlins, and the
+  panes (`PAT_CASINO_VAULT`: dark night-blue glass in iron frames, warmer low on the arch, a few stars),
+  **opaque and faked** (no transparency, the phone rule) with a share missing (`pane_open_share`) so the
+  night sky shows through. It is built with the left wall (`wall_section` and `wall_gap`, so a wall gap's
+  parts keep their roof): a bay belongs to the call whose range holds its start. Hung from it, by hash:
+  girders across the street carrying banners of heavy cloth, lanterns on chains (an emissive box and a
+  soft halo: no real light) and still ceiling fans. **Nothing hangs below `bunting_height` over the lanes**
+  (16 m; the arrival flyover's camera flies under 9.5 m and The House is 13.5 m tall:
+  `TheHouseTuning.height`, `scripts/bosses/the_house/the_house_tuning.gd`). A girder under the eave runs wall
+  to wall (`girder_of()`; only one hung in the roof itself ends where the glass does) and a fan's blades stay
+  inside the glass (`fan_of()`: it moves to the middle of a narrow street, or is dropped).
+- *Ceilings from their lanes* (task B3). `CasinoCeilings` builds a footbridge between the balconies (only
+  across every lane, as the Marketplace's bridging building), a gantry carrying a bundle of brass pipes and a
+  sign gantry (a big lit sign or the cult's feed on an iron frame), from the collision box and lane
+  seams: a flat iron underside over exactly its lanes (beams every 3 m stream past a rider), flush lamps,
+  the orange far-end band, and nothing rising more than `TOP_LIMIT` (6.2 m) above the underside.
+  `mesh_for(kind, ...)` builds a given kind directly.
+- *The House's arena* (`data/bosses/casino_boss_skin.tres`): the machine is 13.5 m tall
+  (`TheHouseTuning.height`) and fills the street to 35 cm off the walls, so the arena skin raises
+  `overhang_min_height` to 14.5 m: the facades are flush below it (the casino signs' halos lie flat on the
+  wall, and the suite checks every vertex, glow and feed included, within 30 cm of the face). Phase 3's
+  billboard drops from 26 m above the 6 m ceiling (`TheHouseCeiling.DROP_FROM`, slab 0.9 m, its sign 2.5 m
+  more), so the arena also raises the roof (`eave_height` 34 m, whatever the street's width: the suite
+  checks the roof's underside clears the billboard's top across the whole street at 3, 5 and 6 lanes) and
+  hangs nothing from it (`hangings` off; `bunting_height` stays at 28 m).
+- *The colour rule* (GDD §5): the reference glows pink, cyan, green and orange; here those never glow near
+  the track. Lit signs, marquees and lamps are warm white, violet or blue; brass is lit metal (nothing of
+  brass or iron carries glow); the reference's coloured boards are dim painted signs in muted rose, teal,
+  moss and ochre. The marquee bulbs and the signs' breathing honour Reduced flashing (the `reduced_flashing`
+  uniform; the suite reads both shaders for it).
+- *Tested*: `test_casino_skin` (the Marketplace's checks adapted, plus the vault, the arena and the
+  citizens). Review it with `skin_review --skin=casino` (it asks the Casino for its ceiling kinds before the
+  Marketplace, which it builds on) and a boss quick play with the arena skin on both renderers.
 
 **The Golden Zone** (`scripts/world/skins/golden/`): `GoldenWalkways` (the floor: golden walkways over
 the canal), `GoldenFacades` (the walls, and the sky bridges over the street), `GoldenCeilings`,
