@@ -121,3 +121,76 @@ the fight) or `data/bosses/golden_boss_skin.tres` (`GoldenCourtSkin`) unless it 
 13. **Until the later steps:** a beat whose attack isn't built yet is skipped (slams, barrage: E5d-b), a
     refill beat plays its strafe alone (E5d-c), and stage 2 (phases 4-6) idles the suit with no attack
     (E5d-d), so `--boss=golden_boss --phase=4` plays.
+
+## E5d-b
+
+Built in task E5d-b (the Fist Slam with its Flying Buttress bait and the toppled tower's wall, and the Missile
+Barrage). Every number below is in `data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`, groups
+"Fist Slam", "The toppled tower" and "Missile Barrage", F6 in the fight) unless it says otherwise, marked
+`DESIGN-TBD` in code.
+
+1. **Phase 1's third slam is both ahead and a chance.** The GDD's two proposals overlap: "in phase 1, slams 1
+   and 2 come down on the runner and slam 3 ahead" and "the chances are slams that come down on the runner:
+   slams 2 and 3 in phase 1". Built as both (`slam_scripts` "Ooa": a lower-case letter is a chance), so phase
+   1's last chance is an ahead slam: its fist locks on the runner's lane and lands ahead, and a runner in the
+   gate's lane as it locks smashes the gate. Later phases ("OAooA") have no such overlap. Should phase 1's
+   third slam come down on the runner instead, or stay ahead?
+2. **Where a chance's hole is dug.** "A fist locked onto another lane digs its hole beside the buttress,
+   never through it": a chance's row ends 0.6 m before the gate's pier (`slam_gate_gap`), so its hole lies
+   in front of the gate, never through it, whichever lanes the footprint takes. On 3 lanes the middle lane is
+   the only inner lane and every two-lane footprint takes it, so the hole always opens in the gate's lane, in
+   front of it (the gate still stands). Is "in front of it" what you meant by "beside it"?
+3. **The square footprint** (GDD §10, proposed: "around the locked lane, moved inward at the edge"): two
+   lanes on 3 lanes, three on 5 and 6 (`GoldenConvergenceHole.hole_lanes`), as long along the track as it is
+   wide. On 3 lanes, from the middle lane the second lane is on the slamming fist's side (they take turns);
+   from an outer lane, the middle lane. Never every lane, so a lane switch always gets out from under it.
+4. **The fist's timing:** out over the runner's lane in 0.7 s (over the pace), the warning (the fist rising
+   from 8 m to 11 m, its shadow growing, the red square, the grind) 0.8 s before the lock, the lock 1 s before
+   it lands, the drop in the last 0.4 s; slams 2 s apart (over the pace); back to rest in 0.85 s. An ahead slam
+   lands as the runner is 1.1 s from its hole (`slam_ahead_seconds`), to be jumped or switched around. The
+   touch lasts 0.2 s from the impact and reaches 4 m up over the hole's square (`slam_hit_seconds`,
+   `slam_hit_height`: a jump doesn't clear it).
+5. **The hold after a blocked hit** (GDD §10: "the floor under the runner holds for about a second ... A dash
+   through the fist gets the same second"): it's given to any runner the touch doesn't kill: the armor or the
+   shield blocking it, the dash, and also a runner still invulnerable from an earlier hit (and god mode).
+   Only the lanes under the runner's feet hold, for `GameRules.cut_hold_seconds` (1 s). The grapple saves
+   the fall into the hole, never the hit.
+6. **The arm's reach.** The suit floats 64 m ahead, so a fist over the runner's lane is 45-70 m from its
+   shoulder: past a full telescope, each golden sleeve also stretches, up to 2.4 times its length
+   (`GoldenConvergenceSuit.EXTEND_MAX`). Is a stretched arm fine, or should the suit lean in or come closer
+   for its slams?
+7. **The first slam can stalk.** A slam's hole is a floor cut, and floor cuts must lie past the track built
+   ahead (about 200 m), so each sequence is planned while the beat before it plays (from where that beat
+   will be over): after a strafe or a barrage, the first impact comes about 2.4 s after the beat begins. A
+   phase that opens with slams (phases 2 and 3) can only plan them during its short intro, so its first fist
+   comes out at once and follows the runner's lane until its warning: its first impact comes about 4.5 s
+   after the beat begins at 25 m/s (7.7 s at quick play's 18 m/s). Fine, or should those phases open with a
+   longer intro or another attack?
+8. **A bait ends the sequence at once:** the other gate, if it's up, sinks back into the causeway the way it
+   rose; the barrage starts warming up the same frame (no gap after a bait; the usual `beat_gap` otherwise).
+9. **The toppled tower** (GDD §10: "the building it held up, off screen, topples forward along the track"):
+   it appears standing beside the causeway out of view, its foot at least 9 m behind the runner
+   (`tower_behind`; farther back so its crown ends at its wall's end), and falls forward over 1.5 s
+   (`tower_fall_seconds`), so the run camera sees only its last moment as it comes down beside the runner
+   (with a rumble, dust and a shake; no flash). It is long enough for its wall: about 230 m at 18 m/s, 300 m
+   at 25 m/s. It lies with its side flush with the wall's line, 14 m wide, its top about 9 m above the
+   causeway (`tower_width`, `tower_depth`): white marble, gold bands, lit windows on its top and outer side,
+   a gold crown and spire. Its side is the wall from the gate's front for 10 s of running
+   (`tower_wall_seconds`); once the runner is past it, it sinks into the pools behind them over 2.5 s.
+   Should more of the fall be seen (for example the tower already standing marked at the roadside ahead, as
+   the Floating Head's are)?
+10. **The barrage's warning:** the hatches open over 0.5 s, the missiles launch one after another over 0.5 s
+    and climb for 1 s, arcing up out of view, then hang 0.5 s 22 m up and about 46 m ahead, out to either side
+    of the suit's chest and keeping pace with the runner (`missile_apex_height`;
+    `GoldenConvergenceBarrage.APEX_*`), then dive for 1 s with the whistle while the marks fill in: the fire
+    lands 3 s after the hatches open, at every pace. Reaching the wall from the far side needs 1.5 s on 3
+    lanes and 2 s on 6 (a 0.7 s reaction, 0.14 s a lane switch, the 0.16 s wall entry and a 0.4 s margin:
+    `barrage_reaction`, `barrage_margin`). The red marks spread over the floor from the launch: 5 a lane
+    (`marks_per_lane`, one missile each), 0.95 m across (`mark_radius`). Like every other attack it's keyed
+    to the runner's distance at the run speed, so a dash during the warning brings the fire a little sooner.
+11. **The fire's stretch:** every lane from 3 m behind where the runner is as it lands (`fire_behind`) to as
+    far as they could run while it burns, a dash included, and 5 m more (`fire_ahead`): it can't be outrun.
+    In an outer lane it stops short of a wall runner's body, so the wall is safe at every height. It leaves
+    no scorch marks (the strafe's do); it dies down over 0.35 s after its 1.5 s.
+12. **Pickups keep off** a slam's rows and the barrage's stretch (both are floor warnings, like the strafe's
+    red lines).

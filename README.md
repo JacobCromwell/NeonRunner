@@ -325,9 +325,17 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   out of the cape and makes its passes as one. A vertical pass rakes every other lane after red lines and a
   gatling whine (switch to a lane between them; a jump doesn't clear the fire); a horizontal pass sweeps a
   line across the track and up the walls, after a red line over every lane but the arch of a Flying
-  Buttress rising in an inner lane (run through the arch, or dash). Phase 1 opens with a V-V-H strafe; the
-  Fist Slam, the Missile Barrage, the Refill Ship (which damages the suit) and The Magnate come in the
-  next steps (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
+  Buttress rising in an inner lane (run through the arch, or dash). Phase 1 opens with a V-V-H strafe. Then
+  the Fist Slam: an arm telescopes out on golden segments and its fist follows the runner's lane, rising
+  with a deep grind while its shadow grows and a red square marks the hole to come; it locks about a second
+  before it falls and smashes a square hole through the floor (on the runner or ahead of them, to be
+  jumped). Two slams a sequence land at a Flying Buttress: lead the fist onto its lane and it smashes the
+  gate, and the tower it held up topples beside the causeway, its side a wall for about 10 s. The Missile
+  Barrage warms up as it falls: the shoulder pipes open, missiles climb with a roar, hang, then dive with a
+  rising whistle while red marks fill in, and every lane burns for about 1.5 s; the tower's wall is the
+  clean escape (armor plus the dash, two armor hits or armor plus the shield also get through). The Refill
+  Ship (which damages the suit) and The Magnate come in the next steps
+  (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
