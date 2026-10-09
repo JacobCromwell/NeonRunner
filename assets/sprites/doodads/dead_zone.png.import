@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c62iwy7uadk6i"
-path="res://.godot/imported/dead_zone.png-30f1d74a9b145767dee8a1f70c20ecd4.ctex"
+path.s3tc="res://.godot/imported/dead_zone.png-30f1d74a9b145767dee8a1f70c20ecd4.s3tc.ctex"
+path.etc2="res://.godot/imported/dead_zone.png-30f1d74a9b145767dee8a1f70c20ecd4.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/sprites/doodads/dead_zone.png"
-dest_files=["res://.godot/imported/dead_zone.png-30f1d74a9b145767dee8a1f70c20ecd4.ctex"]
+dest_files=["res://.godot/imported/dead_zone.png-30f1d74a9b145767dee8a1f70c20ecd4.s3tc.ctex", "res://.godot/imported/dead_zone.png-30f1d74a9b145767dee8a1f70c20ecd4.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

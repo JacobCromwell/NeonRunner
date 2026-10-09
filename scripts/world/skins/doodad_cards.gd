@@ -31,8 +31,10 @@ var _meshes: Dictionary = {}
 
 ## The cards of `zone` (city, gangland, marketplace, corporate, dead_zone, golden), loaded once and
 ## kept while that zone is in use. Loading another zone lets go of the one before: an atlas is the
-## biggest texture a level holds (stored lossless, for small downloads, so uncompressed in memory), and
-## a session needs one zone's at a time. Doodads already built keep their own mesh and material.
+## biggest texture a level holds (about 2.8 MB VRAM-compressed), and a session needs one zone's at a
+## time. Doodads already built keep their own mesh and material. The atlases stay VRAM-compressed, so
+## loading one costs a file read: stored lossless, its decoding cost a 40 ms frame where a run without
+## the shader warm-up (headless) met its first doodad (test_frame_times).
 static func for_zone(p_zone: String) -> DoodadCards:
 	if not _sets.has(p_zone):
 		_sets.clear()

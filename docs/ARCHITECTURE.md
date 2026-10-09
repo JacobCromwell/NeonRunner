@@ -1867,9 +1867,10 @@ indoors as well as out.) What a look gets and keeps to:
   weathering; `DoodadKit`: the shared motifs in the concept art's flat-paint-and-ink style: planks,
   corrugated sheet, wheels, awnings, crates, foliage, see-through window frames, stains) by one script per
   zone (`tools/asset_gen/doodad_art/<zone>_art.gd`), and packed into one atlas per zone,
-  `assets/sprites/doodads/<zone>.png` (imported lossless with mipmaps: a few hundred KB each to
-  download instead of about 2.8 MB a texture format VRAM-compressed; `DoodadCards` keeps one zone's in
-  memory at a time, about 11 MB), with a manifest
+  `assets/sprites/doodads/<zone>.png` (imported VRAM-compressed with mipmaps, about 2.8 MB a texture
+  format: stored lossless they were a few hundred KB, but decoding one cost a 40 ms frame mid-run where
+  there's no shader warm-up; `DoodadCards` keeps one zone's in memory at a time, and the web demo leaves
+  out the zones it never shows), with a manifest
   `<zone>.json`: where each picture sits, the boxes they were painted for, and each size class's looks.
   A look is a list of cards (`DoodadArtSet`, `tools/asset_gen/doodad_art_set.gd`): `{plane, at, rect,
   image, flip}`, a picture on one of the box's faces (`plane` "z" across the lane, its front at `at` = 1;
@@ -3342,9 +3343,10 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   "get the full game" screen (`App.in_demo_scope()`). No endless mode, and no ads, purchases or
   leaderboards: the platform offers none, and no screen shows any.
 - *What it leaves out* (`tools/web/demo_filter.gd`, worked out from the data): the tests, the tools, the
-  test boss, and the music it never plays: every audio file in the music library's folders that no track
+  test boss, the music it never plays: every audio file in the music library's folders that no track
   the demo plays uses, the files of the tracks it never plays wherever they are, and those tracks'
-  level-complete riffs. The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
+  level-complete riffs; and the zone doodads' picture cards (`assets/sprites/doodads/<zone>.*`) of the
+  zones it never shows (`DemoFilter.left_out_art()`; a zone without them would draw the plain default). The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
   and each demo zone's and its boss's (`DemoFilter.demo_tracks()`). `tools/web/update_filter.gd` writes
   the preset's exclude filter from that, `tools/godot.sh web` runs it before every export, and
   `test_web_demo` fails while the preset doesn't match the data. So when a track is replaced (the owner's
