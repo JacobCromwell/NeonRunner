@@ -7,7 +7,7 @@ extends TestSuite
 ##   no new enemy assets), a difficulty, enemy scaling, danger density and run speed between Corporate 2's and
 ##   Dead Zone 1's, durations of 145 and 150 s, seeds of their own, the open-walls tuning
 ##   (data/tuning/beach_wall_gaps.tres, whose margins that time a wall run are the shared ones), and Beach 1
-##   with no sky of its own (the zone's daylight);
+##   with no sky of its own (the zone's daylight), its last level with the sunset (data/skies/beach_sunset.tres);
 ## - every build at 3, 5 and 6 lanes, on the levels' own seeds and OTHER_SEEDS, as ZoneDef.standalone_level
 ##   gives it: no warnings, the length its duration makes at the zone's speed, the campaign's fairness checks
 ##   (LayoutChecks.check_layout and check_rules), every feature the level lists in the layout (on other seeds the
@@ -122,6 +122,10 @@ func _test_data() -> void:
 		check(level.wall_gap_tuning != null and level.wall_gap_tuning.resource_path == OPEN_WALLS_PATH
 			and level.wall_gap_tuning.opens_walls(), "its walls open by the Beach's numbers %s" % tag)
 	check(zone.levels[0].sky == null, "Beach 1 has no sky of its own: the zone's daylight")
+	# The owner (October 9, 2026): the last level shows the sun starting to set, not dark.
+	var last: LevelConfig = zone.levels[zone.levels.size() - 1]
+	check(last.sky != null and last.sky.resource_path == "res://data/skies/beach_sunset.tres",
+		"the Beach's last level shows its sunset (data/skies/beach_sunset.tres)")
 	# The Beach's numbers: open walls, and the margins that time a wall run (a ramp's launch and longest run, a
 	# wall enemy's wall entry) the shared ones; only the visual clearance may be its own.
 	var open := load(OPEN_WALLS_PATH) as WallGapTuning
