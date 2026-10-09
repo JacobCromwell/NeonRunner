@@ -494,8 +494,9 @@ playtest's specifics; these are the choices made while building them. Numbers ar
    start (`dim_seconds`; on a retry from the checkpoint too) and comes back over 2 s from the defeat's start
    (`light_return_seconds`). The Magnate's body and cables dim with the court; the warm white in his cracks, his
    red ports, every hazard and warning, the runner and the pickups keep their glow. On the white marble causeway
-   it reads a little short of 30%: the floor goes from about 204 to 184 (sRGB value, about 20% less light), since
-   the towers' screens and the bloom keep theirs. Darker (0.55 to 0.6)?
+   it reads as less than 30% darker: the floor's value goes from about 205-215 to about 185-190 (sRGB; 20-27%
+   less light, but the eye reads light on a curve), and the towers' screens and the bloom keep their glow.
+   Darker (0.55 to 0.6)?
 8. **The stomp's chevrons and the stun's lead.** Green ramp chevrons in both of his lanes over the middle of the
    take-off stretch (12% of it off each end, as the cue before the Hostile Takeover's couplings), streaming toward
    him from the stun until he's stomped or shakes free (`GoldenConvergenceTakeoffMarks`). He now crashes into the
