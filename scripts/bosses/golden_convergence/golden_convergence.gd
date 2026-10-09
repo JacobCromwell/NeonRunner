@@ -28,7 +28,8 @@ extends BossEncounter
 ##    (divided by the phase's pace): phase 1 the strafe on its own (3 passes), slams, a barrage, the Refill
 ##    Ship with a strafe, then from the slams again (loop_from); phases 2 and 3 slams, a barrage, slams, a
 ##    barrage and the Refill Ship with a 7-pass strafe, round and round. Each beat kind is an attack of its
-##    own class (GoldenConvergenceAttack: start, tick, busy, hold, clear, ends_at, gap_after; register_attack):
+##    own class (GoldenConvergenceAttack: start, tick, look_tick, busy, hold, clear, ends_at, gap_after;
+##    register_attack):
 ##    the Helidrone Strafe (GoldenConvergenceStrafe), the Fist Slam (GoldenConvergenceSlams), the Missile
 ##    Barrage (GoldenConvergenceBarrage), the Refill Ship (GoldenConvergenceRefill: its chain reaction's hit,
 ##    a third of the suit's health, ends the phase), stage 2's (below); a beat kind with no attack registered is

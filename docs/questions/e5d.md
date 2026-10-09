@@ -366,8 +366,9 @@ and the showcase (`res://tools/showcase/golden_convergence_showcase.tscn`: `--sc
     next ship is the same (no escalation).
 13. **Par times** (E5d-a question 12): measured from the test bot's clean fight (every pad ridden by the
     generator, never hit, no armor): 198.2 s from the entrance to the defeat at the Golden Zone's 25 m/s at 3, 5
-    and 6 lanes (stage 1 won at 122.0 s), and 208.7 s at quick play's 18 m/s (stage 1 at 132.4 s: phase 1's
-    first slams wait longer for their holes at the lower speed). Set the way Hostile Takeover's are (74 s and 96 s
+    and 6 lanes (stage 1 won at 122.0 s), and 208.7 s at quick play's 18 m/s (stage 1 at 132.4 s: at the lower
+    speed the built track reaches further ahead in seconds, so the slams' holes, which must lie past it, come
+    later; question 11). Set the way Hostile Takeover's are (74 s and 96 s
     over its clean 68.6 s): three stars at 214 s, two at 277 s, and the time bonus runs out at 340 s, a little
     past two stars as the provisional 400 s was past 330 s (`data/bosses/golden_boss.tres`). The fight is three
     times longer than any other boss's; are these the right margins?

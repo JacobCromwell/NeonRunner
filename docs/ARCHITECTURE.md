@@ -2557,11 +2557,11 @@ continues past. A cinematic is a scene whose root extends `Cinematic` (emit `fin
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
 intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a), and
 the other outros are still cards. A boss is built on the boss
-framework (Bosses, below). The City's Floating Head is built
-(its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
-gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
-slot's `preview_scene` instead of `scene`: the campaign keeps the card, and debug builds play the
-fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.
+framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Golden Convergence last,
+task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule delay. A fight still being
+built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card, and debug
+builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded
+(`test_app_flow` and `test_screens` check the boss slot's card with an unbuilt stand-in).
 
 ## Bosses
 
