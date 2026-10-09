@@ -238,6 +238,12 @@ func marks_shown() -> int:
 	return _rings.multimesh.visible_instance_count
 
 
+## Mark `i`'s ring as drawn now: its radius (spreading in, pulsing) and its fill (tests).
+func mark_ring(i: int) -> Vector2:
+	var m: Dictionary = _marks[i]
+	return Vector2(float(m.get("r", 0.0)), float(m["fill"]))
+
+
 func _place_marks(delta: float) -> void:
 	var count: int = _rings.multimesh.visible_instance_count
 	for i: int in count:
@@ -245,6 +251,7 @@ func _place_marks(delta: float) -> void:
 		m["t"] = float(m["t"]) + delta
 		var beat: float = 1.0 if Settings.flashing_reduced else 1.0 + 0.08 * sin(float(m["t"]) * 24.0)
 		var r: float = float(m["radius"]) * float(m["shown"]) * beat
+		m["r"] = r
 		var pos: Vector3 = m["pos"]
 		_rings.multimesh.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3(r * 2.0, 1.0, r * 2.0)), pos + Vector3(0.0, 0.04, 0.0)))
 		var f: float = float(m["radius"]) * 0.82 * float(m["fill"]) * float(m["shown"])

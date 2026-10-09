@@ -71,6 +71,9 @@ var stage: Stage = Stage.IDLE
 ## out_at, track_at, lock_at, fall_at, stage, t, lane, x, sq (Vector2: the red square's x edges), lanes,
 ## buttress_lane, lean, gate_at, buttress, bait, held, marker, out_from}.
 var slams: Array[Dictionary] = []
+## Slams of a plan dropped (a new one made, a sequence over) whose fist was still down or going back: they play
+## on to rest (their touch off on time, the arm eased back) outside the plan.
+var finishing: Array[Dictionary] = []
 ## Sequences begun this fight; whether the last one ended on a buttress hit.
 var sequences: int = 0
 var ended: bool = false
@@ -127,7 +130,7 @@ func busy() -> bool:
 
 ## A slam's warning shows (from its red square to its touch).
 func warning_on() -> bool:
-	for s: Dictionary in slams:
+	for s: Dictionary in in_play():
 		if int(s["stage"]) in [SlamStage.TRACK, SlamStage.LOCKED, SlamStage.FALL, SlamStage.HIT]:
 			return true
 	return false
@@ -172,6 +175,15 @@ func start(beat: Dictionary) -> void:
 ## True if the plan's first warning can still play in full from `d`.
 func _fits(d: float) -> bool:
 	return not slams.is_empty() and float(slams[0]["track_at"]) >= d - 0.01
+
+
+## The slams under way: those finishing from a dropped plan, then the plan's.
+func in_play() -> Array[Dictionary]:
+	if finishing.is_empty():
+		return slams
+	var out: Array[Dictionary] = finishing.duplicate()
+	out.append_array(slams)
+	return out
 
 
 func _letters() -> String:
@@ -263,10 +275,12 @@ func _lean(lane: int, lanes: int) -> int:
 	return -1 if _rng.randf() < 0.5 else 1
 
 
-## Drops a plan that won't be played (its beat came too late for it): its gates still up sink away. Its cuts
-## stay on the track, whole.
+## Drops a plan that won't be played (its beat came too late for it, or it's over): its gates still up sink
+## away, a fist still down or going back plays on to rest (finishing). Its cuts stay on the track, whole.
 func _discard() -> void:
 	for s: Dictionary in slams:
+		if int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK]:
+			finishing.append(s)
 		var b: Variant = s.get("buttress")
 		if b != null and is_instance_valid(b) and (b as GoldenConvergenceButtress).standing():
 			(b as GoldenConvergenceButtress).sink()
@@ -320,6 +334,8 @@ func _plan_phase(index: int) -> void:
 	plan_key = key
 	planned_by = &"phase"
 	_plan(boss.player_distance() + boss.speed_planned() * (left + boss.tuning.first_beat_delay / boss.pace()))
+	# Attacks don't tick in the intro: a gate due to rise before the pattern begins rises now.
+	_place_buttresses(boss.speed_planned() * left)
 
 
 # --- The slams ---------------------------------------------------------------------------------------------
@@ -339,6 +355,9 @@ func tick(delta: float) -> void:
 			# A sequence over: its last fist goes on back to rest.
 			if int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK]:
 				_advance(s, d, delta)
+	for s: Dictionary in finishing:
+		_advance(s, d, delta)
+	finishing = finishing.filter(func(s: Dictionary) -> bool: return int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK])
 	_marks()
 	_pose_arms(delta)
 	for tower: GoldenConvergenceTower in towers:
@@ -577,9 +596,9 @@ func towers_down() -> Array[GoldenConvergenceTower]:
 	return out
 
 
-## Raises each chance's gate once the runner is buttress_sight from it.
-func _place_buttresses() -> void:
-	var d: float = boss.player_distance()
+## Raises each chance's gate once the runner is buttress_sight from it (or will be, `ahead` metres on).
+func _place_buttresses(ahead: float = 0.0) -> void:
+	var d: float = boss.player_distance() + ahead
 	var sight: float = boss.speed_planned() * boss.tuning.buttress_sight
 	for s: Dictionary in slams:
 		if not bool(s["chance"]) or s.get("buttress") != null or int(s["stage"]) == SlamStage.SKIPPED:
@@ -638,7 +657,7 @@ func _pose_arms(delta: float) -> void:
 	for i: int in _arms.size():
 		var side: int = -1 if i == 0 else 1
 		var driving: Dictionary = {}
-		for s: Dictionary in slams:
+		for s: Dictionary in in_play():
 			if int(s["fist"]) == i and int(s["stage"]) in [SlamStage.OUT, SlamStage.TRACK, SlamStage.LOCKED,
 					SlamStage.FALL, SlamStage.HIT, SlamStage.BACK]:
 				driving = s
@@ -709,9 +728,10 @@ func _goal(s: Dictionary, d: float) -> Dictionary:
 func clear() -> void:
 	super()
 	fist.clear()
-	for s: Dictionary in slams:
+	for s: Dictionary in in_play():
 		if int(s["stage"]) < SlamStage.DONE:
 			s["stage"] = SlamStage.SKIPPED
+	finishing.clear()
 	_discard()
 	stage = Stage.IDLE
 	ended = false
