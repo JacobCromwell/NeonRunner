@@ -1,11 +1,14 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
 ## The Golden Convergence's sounds (GDD §10, task E5d-a), in the game's 16-bit style. Its warnings sound the
 ## same every time (no pitch variation in data/audio/sfx_library.tres) and last as long as their warnings,
-## read from the fight's tuning (data/bosses/golden_boss_tuning.tres: regenerate them when those change):
+## read from the fight's tuning (data/bosses/golden_boss_tuning.tres: regenerate them when those change).
+## Like every sound effect, each is under MAX_SECONDS (test_units).
 ##   gc_rise      the entrance: something enormous rising at the far end of the court, a deep rumble and a
-##                mechanical groan swelling over rise_seconds, the cape unfurling in a heavy rush of cloth
+##                mechanical groan swelling as it rises, tapering as the chime comes in, the cape unfurling in
+##                a heavy rush of cloth from unfurl_at
 ##   gc_chime     the cult's three-note chime (the Resonator's G5, C6, E6, §9.10) rung huge and slow: each
-##                note doubled an octave and two below, ringing long, echoing round the court
+##                note doubled an octave and two below, further apart than the Resonator's, ringing on under
+##                the next, echoing round the court
 ##   gc_emerge    the squadron coming out of the cape: a rustle of cloth, three rotors spinning up
 ##   gc_whine     a pass's warning (as long as warning_seconds): the squadron's gatlings spinning up as one, a
 ##                motor climbing in three voices over barrel clicks speeding into a rattle and a rising whine
@@ -22,8 +25,10 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 const TUNING_PATH: String = "res://data/bosses/golden_boss_tuning.tres"
 ## The Resonator's chime (sfx_bank_resonator.gd): its notes, struck the same way.
 const ResonatorBank = preload("res://tools/asset_gen/sfx_bank_resonator.gd")
-## The chime's notes rung slow: seconds from the first.
-const CHIME_AT: Array[float] = [0.0, 0.85, 1.7]
+## The chime's notes rung slow (the Resonator's are 0.42 s apart): seconds from the first.
+const CHIME_AT: Array[float] = [0.0, 0.7, 1.4]
+## A sound effect's longest (test_units: every sound is under 2.5 s).
+const MAX_SECONDS: float = 2.45
 
 
 func sounds() -> Dictionary:
@@ -79,6 +84,15 @@ func _cloth(seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
 	return b
 
 
+## Fades the last `seconds` of `b` out smoothly (a long sound brought in under MAX_SECONDS).
+func _fade_out(b: PackedFloat32Array, seconds: float) -> void:
+	var n: int = b.size()
+	var span: int = mini(int(seconds * RATE), n)
+	for i: int in span:
+		var k: float = float(i) / float(maxi(span, 1))
+		b[n - 1 - i] *= k * k * (3.0 - 2.0 * k)
+
+
 ## One gatling round: a sharp crack.
 func _round(rng: RandomNumberGenerator) -> PackedFloat32Array:
 	var shot := DSP.noise(0.05, rng)
@@ -89,12 +103,13 @@ func _round(rng: RandomNumberGenerator) -> PackedFloat32Array:
 
 
 ## The entrance: a sub rumble and a mechanical groan swelling as it rises, a deep hum climbing, and the cape
-## unfurling (a heavy rush of cloth from unfurl_at).
+## unfurling (a heavy rush of cloth from unfurl_at); it tapers off as the chime comes in (MAX_SECONDS: the
+## rise itself goes on a little longer, under the chime).
 func _rise() -> PackedFloat32Array:
 	var rng := _rng(1701)
-	var d: float = clampf(tuning_value("rise_seconds", 3.2), 1.5, 5.0)
-	var unfurl_at: float = clampf(tuning_value("unfurl_at", 1.0), 0.0, d - 0.5)
-	var length: float = maxf(d, unfurl_at + 1.6) + 0.4
+	var length: float = MAX_SECONDS
+	var d: float = minf(clampf(tuning_value("rise_seconds", 3.2), 1.5, 5.0), length - 0.5)
+	var unfurl_at: float = clampf(tuning_value("unfurl_at", 1.0), 0.0, length - 0.8)
 	var b := DSP.buffer(length)
 	var rumble := DSP.noise(length, rng)
 	DSP.filter(rumble, &"lowpass", 140.0)
@@ -115,19 +130,21 @@ func _rise() -> PackedFloat32Array:
 	DSP.filter(creak, &"bandpass", 1100.0, 2.5)
 	DSP.shape(creak, d * 0.6, 0.6)
 	DSP.mix(b, creak, 0.0, 0.9)
-	DSP.mix(b, _cloth(1.8, rng), unfurl_at, 0.9)
+	DSP.mix(b, _cloth(length - unfurl_at, rng), unfurl_at, 0.9)
+	_fade_out(b, 0.5)
 	DSP.drive(b, 1.6)
 	DSP.crush(b, 10, 20000.0)
 	return b
 
 
 ## The cult's chime, huge and slow: the Resonator's mallet-and-glass notes (G5, C6, E6) on CHIME_AT, each
-## doubled an octave and two octaves down so it fills the court, ringing long, with a hall's echo.
+## doubled an octave and two octaves down so it fills the court, ringing on under the next, with a hall's
+## echo, the last note fading out by MAX_SECONDS.
 func _chime() -> PackedFloat32Array:
 	var rng := _rng(1702)
 	var resonator: RefCounted = ResonatorBank.new()
 	var hz: Array[float] = ResonatorBank.CHIME_HZ
-	var length: float = CHIME_AT[-1] + 2.6
+	var length: float = MAX_SECONDS
 	var b := DSP.buffer(length)
 	for k: int in hz.size():
 		var ring: float = length - CHIME_AT[k]
@@ -143,6 +160,7 @@ func _chime() -> PackedFloat32Array:
 		DSP.filter(echo, &"lowpass", 2600.0)
 		DSP.mix(b, echo.slice(0, maxi(echo.size() - int(tap.x * RATE), 0)), tap.x, tap.y)
 	DSP.filter(b, &"highpass", 70.0)
+	_fade_out(b, 0.6)
 	DSP.crush(b, 11, 26000.0)
 	return b
 
