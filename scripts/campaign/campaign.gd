@@ -3,7 +3,10 @@ extends Resource
 ## The campaign: zones in order (GDD §6). Each built zone contributes its steps: intro cinematic,
 ## levels, boss intro cinematic, boss, outro cinematic. Levels get their difficulty from an
 ## automatic curve across the whole campaign plus each level's own bias, and their enemy scaling
-## from their position (GDD §6).
+## from their position (GDD §6). A level off the curve (LevelConfig.off_curve, task D10c: the Beach's,
+## added between Corporate and the Dead Zone after the owner's playtests) plays at its own difficulty
+## and enemy scaling instead, and leaves the curve's count and the other levels' feature ages alone, so
+## every level on the curve keeps what it had.
 
 @export var zones: Array[ZoneDef] = []
 ## DESIGN-TBD: difficulty of the first and last campaign levels (FB 4, reopened by the owner's playtests and G1); levels in between follow the curve,
@@ -58,15 +61,16 @@ func level_count() -> int:
 	return n
 
 
-## The campaign's difficulty for level `level_index` (0-based among all levels), before its bias.
+## The campaign's difficulty for the level at place `level_index` on its curve (CampaignStep.level_index), before
+## its bias.
 func curve_difficulty(level_index: int) -> float:
 	var t: float = level_progress(level_index)
 	return lerpf(difficulty_start, difficulty_end, pow(t, difficulty_curve_exponent))
 
 
-## 0 for the first level, 1 for the last level of the planned campaign.
+## 0 for the first level on the curve, 1 for the last level of the planned campaign's curve.
 func level_progress(level_index: int) -> float:
-	var n: int = planned_level_count()
+	var n: int = curve_level_count()
 	return 0.0 if n <= 1 else clampf(float(level_index) / float(n - 1), 0.0, 1.0)
 
 
@@ -79,20 +83,40 @@ func planned_level_count() -> int:
 	return n
 
 
+## The levels the difficulty curve spans (task D10c): the planned levels but those off it (LevelConfig.off_curve:
+## the Beach's, added after the owner's playtests), so every level on it keeps its place.
+func curve_level_count() -> int:
+	var n: int = planned_level_count()
+	for s: CampaignStep in steps():
+		if s.is_level() and s.level.off_curve:
+			n -= 1
+	return n
+
+
+## The enemy scaling level step `s` plays at: its place on the curve's (level_progress), or its own off the
+## curve (LevelConfig.off_curve).
+func level_scaling(s: CampaignStep) -> float:
+	return s.level.enemy_scaling if s.level.off_curve else level_progress(s.level_index)
+
+
 func tier_count() -> int:
 	return tier_names.size()
 
 
 ## A copy of the step's level, ready to generate: lane count, difficulty (curve + bias + tier),
 ## enemy scaling, its run speed (run_speed_for), the zone's skin if the level has none, and the
-## recency curve with its features' ages (feature_ages).
+## recency curve with its features' ages (feature_ages). A level off the curve (LevelConfig.off_curve, task
+## D10c: the Beach's) keeps its own difficulty, plus the tier's bonus, and its own enemy scaling.
 func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = s.level.duplicate() as LevelConfig
 	config.lane_count = lane_count
 	var bonus: float = tier_difficulty_bonus[clampi(difficulty_tier, 0, tier_difficulty_bonus.size() - 1)] \
 		if not tier_difficulty_bonus.is_empty() else 0.0
-	config.difficulty = clampf(curve_difficulty(s.level_index) + s.level.difficulty_bias + bonus, 0.0, 1.0)
-	config.enemy_scaling = level_progress(s.level_index)
+	if s.level.off_curve:
+		config.difficulty = clampf(s.level.difficulty + bonus, 0.0, 1.0)
+	else:
+		config.difficulty = clampf(curve_difficulty(s.level_index) + s.level.difficulty_bias + bonus, 0.0, 1.0)
+	config.enemy_scaling = level_scaling(s)
 	config.run_speed = run_speed_for(s, difficulty_tier)
 	if config.skin == null and s.zone.skin != null:
 		config.skin = s.zone.skin
@@ -104,15 +128,27 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 ## How many levels ago the campaign introduced each of step `s`'s features: 0 for a feature `s`
 ## introduces (the first level that lists it), 1 for one the level before introduced, and so on.
 ## A feature left out of some levels in between (manhole screeches outside street zones) still
-## counts from its first level.
+## counts from its first level. A level on the curve counts the levels on it (their places, level_index) and
+## leaves out the levels off it (LevelConfig.off_curve, task D10c), so the levels after the Beach keep their
+## ages; a level off the curve counts every level before it, in the order they're played.
 func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 	var out: Dictionary[String, int] = {}
 	if s == null or s.level == null:
 		return out
 	for f: String in s.level.features:
 		out[f] = 0
+	if s.level.off_curve:
+		var before: Array[CampaignStep] = []
+		for other: CampaignStep in steps():
+			if other.is_level() and other.index < s.index:
+				before.append(other)
+		for i: int in before.size():
+			for f: String in before[i].level.features:
+				if out.has(f):
+					out[f] = maxi(out[f], before.size() - i)
+		return out
 	for other: CampaignStep in steps():
-		if not other.is_level() or other.level_index >= s.level_index:
+		if not other.is_level() or other.level.off_curve or other.level_index >= s.level_index:
 			continue
 		for f: String in other.level.features:
 			if out.has(f):
@@ -124,9 +160,9 @@ func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 ## difficulty plus the tier's bonus (bosses keep their own difficulty rather than the level curve),
 ## its run speed like a level's (run_speed_for: its zone's, times the tier's multiplier; GDD §3, the
 ## fight is as fast as the zone's levels), enemy scaling as in the zone's last level (enemies a boss
-## brings in fight like the zone's), the zone's skin unless the arena has its own, and the sky of the
-## level just before it unless the arena has its own (owner, October 8, 2026: a fight after a level
-## whose sky has turned keeps that sky; LevelConfig.sky).
+## brings in fight like the zone's; level_scaling, so after a level off the curve its own), the zone's
+## skin unless the arena has its own, and the sky of the level just before it unless the arena has its
+## own (owner, October 8, 2026: a fight after a level whose sky has turned keeps that sky; LevelConfig.sky).
 func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> LevelConfig:
 	var config: LevelConfig = BossArena.base_config(s.boss)
 	config.lane_count = lane_count
@@ -134,15 +170,13 @@ func configure_boss(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) 
 		if not tier_difficulty_bonus.is_empty() else 0.0
 	config.difficulty = clampf(config.difficulty + bonus, 0.0, 1.0)
 	config.run_speed = run_speed_for(s, difficulty_tier)
-	var last_level: int = 0
 	var before: CampaignStep = null
 	for other: CampaignStep in steps():
 		if other.index >= s.index:
 			break
 		if other.is_level():
-			last_level = other.level_index
 			before = other
-	config.enemy_scaling = level_progress(last_level)
+	config.enemy_scaling = level_scaling(before) if before != null else level_progress(0)
 	if config.skin == null and s.zone != null and s.zone.skin != null:
 		config.skin = s.zone.skin
 	if config.sky == null and before != null and before.zone == s.zone:
@@ -191,9 +225,14 @@ func _build_steps() -> void:
 			s.zone = zone
 			s.zone_index = zi
 			s.level = zone.levels[li]
-			s.level_index = level_index
 			s.number_in_zone = li + 1
-			level_index += 1
+			# A level off the curve (task D10c) takes the place of the level on it before it, and leaves the next
+			# level on it its own.
+			if s.level.off_curve:
+				s.level_index = maxi(level_index - 1, 0)
+			else:
+				s.level_index = level_index
+				level_index += 1
 			_append(s)
 		if zone.boss_intro != null:
 			_add_cinematic(zone, zi, "boss_intro", zone.boss_intro)

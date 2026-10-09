@@ -1,8 +1,8 @@
 class_name LevelConfig
 extends Resource
 ## One level: generator settings plus what the campaign shows. Campaign levels use fixed seeds.
-## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position;
-## standalone use (quick play, tests) takes the values stored here.
+## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position, unless the
+## level is off its curve (off_curve); standalone use (quick play, tests) takes the values stored here.
 
 ## Features the campaign schedule (GDD §5) already lists for enemies and mechanics that aren't built
 ## yet. Each does nothing until its code and patterns exist: its patterns `require` the name, its
@@ -46,6 +46,15 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0.0, 1.0, 0.05) var difficulty_ramp: float = 0.25
 ## 0 = first campaign level, 1 = last: enemies scale fire rate, speed and health with it (GDD §6).
 @export_range(0.0, 1.0, 0.05) var enemy_scaling: float = 0.0
+## Off the campaign's difficulty curve (task D10c; the owner, October 9, 2026: the Beach goes between Corporate and
+## the Dead Zone, after the playtests every other level was tuned in): the campaign plays this level at its own
+## difficulty (plus the difficulty tier's bonus; difficulty_bias doesn't apply) and enemy_scaling instead of at a
+## place on its curve, and leaves it out of the curve's count and of the other levels' feature ages, so every
+## level on the curve keeps exactly the difficulty, enemy scaling, ages and recency it had (Campaign.configure).
+## Its own feature ages count every level before it. Off: the level is on the curve, as every level was before.
+## DESIGN-TBD (docs/questions/d10c.md): the Beach's two levels; whether the curve is later re-spread over every
+## level, the Beach's included.
+@export var off_curve: bool = false
 ## Mechanics and enemies this level may use. A pattern is only picked when every entry of its
 ## `requires` list is here (GDD §6: introduce one new mechanic at a time). Core movement pieces
 ## (gaps, fences, signs, walls) need no feature. Known features:
