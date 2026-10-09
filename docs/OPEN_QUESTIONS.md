@@ -1760,8 +1760,9 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     `GoldenStatue`'s decorative poses (`&"guard"`, `&"vigil"`, `&"salute"`) scaled down to fit the box,
     which would read as more clearly "a statue" (the same kit as the ledges') at the cost of standing
     closer to the Sentinel's own silhouette.
-    *Placeholder:* `scripts/world/skins/golden/golden_doodads.gd` (`_statue`); `test_golden_skin`'s
-    `_doodad_statue_not_sentinel` guards against the doodad ever building from `GoldenStatue`.
+    *Placeholder:* since G6b the small class, painted: `tools/asset_gen/doodad_art/golden_art.gd` (`_figure`,
+    `_statue`); `test_golden_skin`'s `_doodad_statue_not_sentinel` guards against the doodad ever building from
+    `GoldenStatue`.
 
 **The Sleep Taker: hurting it, the phases and the defeat** (from E5c-b; numbers in `data/bosses/dead_zone_boss_tuning.tres`; play `--level=dead_zone/boss`, review with `tools/showcase/sleep_taker_showcase.tscn -- --scenario=lure`)
 280. **The lure** (GDD §10: "the player lures it close (it lunges toward them), then destroys the generator
@@ -2440,14 +2441,20 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Marketplace's third level, but the zone has two (GDD §5's schedule). Placeholder: the sunset is on
     Marketplace 2, the zone's last level, like City 3 and Gangland 3 (`data/levels/marketplace_2.tres`, `sky`;
     `DESIGN-TBD` on `LevelConfig.sky`). Move it to Marketplace 1, or keep it on the last level?
+    **Answered (owner, October 9, 2026):** keep it on Marketplace 2, the zone's last level (GDD §5).
 362. **The boss after each of these levels** (GDD §10). The Floating Head, the Sewer Swarm and The House, and each
     zone's outro, keep their zone's own sky, so the dawn goes back to night for the fight (and the blood red back
     to Gangland's dust, the sunset back to the Marketplace's warm dusk). Placeholder: the zone's own sky
     (`Campaign.configure_boss` gives the arena no level sky). Should each fight keep its zone's last level's sky?
+    **Answered (owner, October 8, 2026):** yes. The fight keeps the sky of the level before it
+    (`Campaign.configure_boss`); the dawn moved to City 1, so the Floating Head keeps the City's night (GDD §5).
+    The boss's intro in between is item 404; the zones' outros after these fights are item 405.
 363. **The street's light under the new skies** (GDD §5). Only the sky and the distant haze change; the scenery's
     lighting stays the zone's: the Marketplace's low sun still gilds the upper floors of one side under the
     darker sunset sky, and the City's street stays lit as at night under the dawn. Placeholder: unchanged.
     Should the street's light follow (for example a little of The Hush's darkness on Marketplace 2)?
+    **Answered (owner, October 8, 2026):** yes, as it adds little code and no performance cost: each level sky's
+    `scenery_tint` (the global `scenery_tint`, one multiply per scenery pixel; GDD §5).
 
 **The Enforcer Truck shows itself; its explosion** (from C6b; groups "Showing itself" and "Wreck" in `data/enemies/enforcer_truck.tres`, F6; review with `tools/showcase/enforcer_truck_showcase.tscn -- --scenario=show` or `--scenario=cut`)
 364. **How often players will see it** (GDD §9.13 "Showing itself": "every so often"). A showing needs about 7 s
@@ -2470,6 +2477,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     truck and a Gilded Sentinel can't wait, so while one is in play or about to arrive the truck doesn't show
     itself. A Resonator's pulse waits for the showing to end, as it waits for a volley (up to the director's
     `turn_wait_max`, 8 s). Placeholder: `EnforcerTruckRoom.NO_SHOW_TYPES`. OK?
+    **Answered (owner, October 9, 2026):** a hover truck or a Gilded Sentinel no longer stops a showing, as long as the runner keeps a free lane (GDD §9.13; task C6e). The Resonator's pulse still waits.
 368. **Where the blast happens** (owner, October 8, 2026: a visible explosion). Behind the camera a blast would be
     unseen. So a wrecked truck first lurches forward into view over `wreck_surge_seconds` (0.3 s), until its front
     is `wreck_gap` (2.8 m) behind the runner, or reaches the far edge of the hole it fell in. Then it blows up and
@@ -2478,8 +2486,258 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     never hides them. Placeholder: those values (`DESIGN-TBD` on the "Wreck" group). OK, or should a wreck behind
     the camera show differently (only fire and debris rising into view)?
 
+**The Neon City's outro** (from F2a; the owner's beats, GDD §6 Cinematics; numbers in `data/cinematics/city_outro_tuning.tres`, code in `scripts/cinematics/city_outro.gd` and `city_outro_set.gd`; review with `tools/showcase/cinematic_review.tscn -- --slot=city/outro`)
+369. **Its length** (GDD §1: 5–15 s). The owner's beats are many. Placeholder: 15.0 s, the top of the range
+    (`duration`): about 2 s for the crash, 3 s for the stop and the look, 3 s on the roadblock, 2 s for the escape
+    and leap, and 4.4 s for the landing in Gangland. Should it run longer, or should Gangland's intro flyover (next,
+    9.5 s) be shortened or dropped after it, since the outro already lands the runner in Gangland?
+370. **Where the roadblock stands** ("He looks to the left, and there we see a barricade"). Placeholder: the left
+    wall opens onto a side street, built from the City's own truck roofs laid across it and lined with its building
+    fronts. The roadblock stands at its mouth, a few metres ahead of where the runner stops (`side_*` values). Is a
+    side street what the owner pictured, or should the roadblock block the main street?
+371. **The barricade's look.** Placeholder: low concrete blocks with navy and white rails, in the Enforcer Truck's
+    police paint and never a hazard colour, with a cold-white floodlight at each end. The Barnacle Turrets stand in
+    the gaps between the blocks like cannons (`CityOutroSet._barricade_mesh`). Should it look like Gangland's crate
+    and container barricades instead?
+372. **Which battle truck.** Placeholder: the Enforcer Truck (police-style, light bar, two cyborg gunners on its
+    roof), because its model was already built to be shown on its own. The hover truck (Neon City 3's mini-boss) is
+    the one the player has actually met by Zone 1's end. Which one?
+373. **Turrets and drone.** Placeholder: 3 turrets (`turrets`) in the mechanical City look, and the heli drone over
+    the truck. The player meets neither in Zone 1 (the drone arrives in Gangland 3, the turret in the Marketplace),
+    so the outro previews both. Intended?
+374. **"Runs in the opposite direction".** Placeholder: away from the roadblock. The runner hops back to the right,
+    startled, then sprints right and slightly ahead to an opening in the right wall, and leaps out over the drop to
+    the road far below. The other reading is a U-turn back the way they came. Which did the owner mean?
+375. **The explosion.** Placeholder: the roadblock fires a red volley (each cyborg and turret), which blows up the
+    truck roof the runner just leapt from (the Enforcer Truck's blast, bigger: `blast_*` values). The camera is out
+    over the drop, so the runner flies toward it with the fireball behind them. Should it be something else, such
+    as the battle truck firing or the Floating Head's wreck going up?
+376. **The cut to Gangland.** Placeholder: the runner falls into the haze toward the road far below. The picture goes
+    to black for about half a second, then the runner drops into a Gangland street from about 7 m, lands, glances
+    left and right, and runs off. The cut happens under black because building Gangland's street takes a few frames.
+    Is a cut to black acceptable, or should the camera follow the fall all the way down? A continuous fall would
+    need the City's road below to become Gangland's street, a bigger job.
+377. **Runner animation.** The rig has no "stop and look" or "startled" animation. Placeholders: a head turn shared by
+    chest, neck and head (the toolkit's new `look` on cinematic keys), and a small hop back (`startle_hop`, 0.35 m)
+    that uses the jump pose. Should it have a proper startled pose?
+378. **Music.** Placeholder: the City's track plays and fades out as the runner leaps, and Gangland's comes in with
+    its intro. No music was made for cinematics (GDD §11). Should the outro have its own sting?
+379. **The web demo.** The demo ends after Zone 1, and the outro belongs to Zone 1, so the demo plays it (Gangland's
+    landing included) before the store-link screen, a teaser for Zone 2. Wanted, or should the demo go straight to
+    the store links (GDD §10's wording could be read that way)?
+380. **The crash plays twice** (the owner's first beat; GDD §10's defeat). The fight's defeat already plays the
+    dying lurch, the plunge and the crash (`FloatingHead`). After the results and the shop, the outro opens on the
+    same crash again from the run camera, as the beats ask. Placeholder: as described (`fall_start`,
+    `fall_seconds`). Keep it, or open the outro on the wreck already down and smoking?
+381. **The side street's marked edges.** The left opening is built as a level's wall gap, so the zone's wall-gap
+    look marks it as a level marks a drop: an orange lip along the main street's edge across the side street's
+    mouth (although its floor carries on), and orange edge columns framing the roadblock. That goes against "safe
+    things look safe". The right opening is a real drop, so its marks are right. Placeholder: both marked
+    (`CineStageDef.wall_gaps`). Give the toolkit a way to open a wall without the drop's marks, for openings
+    onto floor?
+
+**Room for the Enforcer Truck to show itself in every chase** (from C6c; the showing windows in `scripts/enemies/enforcer_truck_rules.gd` (`ShowPlanner`), group "Showing itself" in `data/enemies/enforcer_truck.tres`; count showings per chase with `tools/measure/enforcer_shows.gd`)
+382. **A runner by a wall** (GDD §9.13 "Showing itself": "never takes the only free lane"; follows question 365). A
+    runner in an outer lane used to never see the truck. Beside them on their inner side it would take their only
+    lane to dodge into, and at 5 and 6 lanes it would also hide up to 25 m of their lane from the camera (the camera
+    sits inward of a runner by a wall). Placeholder: it pulls up two lanes in and leaves the lane between free; the
+    "never the only free lane" rule holds both ways (the lane between stays open wherever the runner's lane is
+    blocked, and the runner's lane wherever the lane between is). Its whole look stays on screen and it hides nothing
+    of their lane or the lane between (`EnforcerTruckRoom.sides`, `escape_lane`, `EnforcerTruckView.check`;
+    `DESIGN-TBD`). Is two lanes in right?
+    **Answered (owner, October 9, 2026):** yes: two lanes in, with the lane between left free (GDD §9.13).
+383. **What a showing window may take out** (the owner's request against the danger density request). Where a chase
+    has no calm stretch where it can show itself to a runner in every lane, the generator takes out only what's in the
+    way: plain holes and fences (never a pulsing fence or one a fence generator powers), and plain cyborgs, window
+    cyborgs and Screeches (never a host, the first of a kind the level introduces, or the last of its kind or of one
+    of the level's features). Every
+    later pass keeps its additions off each window, but nothing keeps a spacing from one. On the six levels' own seeds
+    at 3, 5 and 6 lanes the windows cost about 2% of their enemies and of their obstacles (592 to 580 enemies, 3281 to
+    3226 obstacles; from +3 to -14 obstacles a level), and the danger density pass's measured increases stay in their
+    bands. Placeholder: `ShowPlanner.REMOVABLE_TYPES` and the window's stretch (`enforcer_truck_rules.gd`,
+    `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Is that cost acceptable?
+    **Answered (owner, October 9, 2026):** yes: the cost is accepted (GDD §9.13).
+384. **Chases with no window** (7 of the 23 chases on the levels' own seeds). In four, a hover truck or a Gilded
+    Sentinel is about for the whole chase, and the truck never shows itself while one is (question 367). The other
+    three have no calm stretch at all: Corporate 2 at 5 lanes (the truck's introduction, among an Octodog's charges, a
+    Tithe Collector and a Buzz Overdrive's attack), Dead Zone 1 at 3 lanes (pulsing fences, a ramp's wall run and a
+    Screech at the level's start), and Dead Zone 2 at 6 lanes (rows of fences with a pad in their gap). Three more
+    windows hold for most lanes but not all: a runner who takes a pad onto a ceiling, or a ramp onto a wall, in that
+    lane misses that showing. Placeholder: the baits that get trucks are the ones whose chases hold the most windows,
+    and a level that introduces the truck keeps its first bait's chase. Should a chase with no room for a showing get
+    no truck (another bait instead), or should the hover truck and the Gilded Sentinel make room?
+    **Answered (owner, October 9, 2026):** move the truck to a chase with room whenever the level has another bait (GDD §9.13; task C6d).
+385. **Windows after the bait** (6 of the 16). Where the bait comes right after the truck arrives (at some lane counts
+    the Golden levels' first truck arrives at the end of the run-up and their first Buzz Overdrive revs 4 s later), no
+    showing fits before it, so the window comes after the first bait. A player who destroys the truck with that bait sees its wreck blow up instead, and a wider gap later in
+    the chase (task G7) can wreck it first too: in the simulated runs, 18 of the 75 runner runs with a window lost the
+    truck before its window. Placeholder: as described (`ShowPlanner.plan`). Is a showing after the bait worth its
+    calm stretch, or should those chases arrive later?
+    **Answered (owner, October 9, 2026):** yes: those trucks arrive earlier, so the showing comes before the bait (GDD §9.13; task C6d).
+386. **Making the window's showing happen** (GDD §9, big attacks take turns). The truck claims its turn among the big
+    attacks `show_claim_seconds` (2 s) before its window is due, so a drone's barrage or a Resonator's pulse that gets
+    ready meanwhile waits for the showing (up to the director's `turn_wait_max`), and its own volleys hold so none is
+    on as the window comes. The window also holds if the showing begins up to `show_window_slack_seconds` (1 s) late.
+    A host's Bad Dream chase doesn't keep a window off: it only comes if the player kills the host, and the showing
+    then waits for it. Placeholder: those two values (`DESIGN-TBD` in `data/enemies/enforcer_truck.tres`). OK?
+
+**Gangland's boss intro** (from F2b; the owner's beat, GDD §10 Sewer Swarm "Intro cinematic"; numbers in `data/cinematics/sewer_swarm_intro.tres`, code in `scripts/cinematics/sewer_swarm_intro/`; review with `tools/showcase/cinematic_review.tscn -- --slot=gangland/boss_intro`, or play `--level=gangland/boss_intro`)
+387. **How the runner dodges** ("easily avoids it", "dodges those", "runs past them"). Placeholder: the first
+    screech pounces into the runner's lane and lands under them as they jump over it. Of the next three, the lone
+    one leaps over the runner's lane as they slide under it, and the other two land in the lane ahead and swipe as
+    the runner weaves round them (1.4 m to the right). The eleven land either side of the runner's lane and rear up
+    and swipe as the runner runs straight between them. Each then gives chase and falls behind (`jump_at`,
+    `slide_at`, `weave_at`, `third_land`, `chase_share`). In play a screech comes out only when the player is in its
+    lane and dashes straight along it (GDD §9.5); here the first beats' screeches leap sideways out of the next lane
+    into or across the runner's. Is that all right for a cinematic?
+388. **How the wall behind the runner is shown** ("soon we see that there is a wall or wave of screeches behind the
+    character"). Placeholder: the camera stays at ground level (0.47–0.75 m up). It rides low behind the runner
+    until 5 s, then swings round their right side (5.0–6.4 s) to low in front of them, looking back past them at
+    the wall. Should it look back over the runner's shoulder instead (the runner out of view)?
+389. **Where the manholes are** ("manhole covers on either side of him"). Placeholder: rows one lane over on both
+    sides of the runner, one every 6.5 m a side, the sides staggered. The runner runs in the start lane, the fight's,
+    which on 6 lanes is half a lane right of the street's middle.
+390. **What the wall looks like.** Placeholder: one wave across the street (6 m tall, its crest curling 8.5 m
+    forward over the runner, as the fight's strike from behind does), with the rest of the swarm behind it, 26 m long. It
+    rises from 6.3 s, 32 m behind the runner, and closes to 9 m by the cut. As it closes it heats toward
+    enemy-attack red (0.25 to 0.5 on the fight's scale), the fight's colour for an attack. Should a cinematic use
+    that warning colour at all?
+391. **The cut** ("a dark area, and inside that dark area, we can just make out a glint of the host"). Placeholder:
+    at 9.6 s, one cut to low between the runner and the wall, looking up into a dark hollow in the middle of the
+    mass (1.9 × 2.3 m), with screeches heaped and crawling round its rim. The Host is held up inside it, its look
+    darkened to a faint silhouette with a sickly edge. The implant at its temple glints red once, 0.9 s into the
+    cut (with Reduced flashing, a slow, faint glow). Is the glint right, or should it be the Host's eyes, or the
+    implants on its back (the fight's weak points)?
+392. **How it ends.** Placeholder: 2.4 s after the cut it fades to black (12 s in all), and the fight starts on its
+    own view, whose Rising carries on from here. There is no card naming the boss, since the beat has none and GDD
+    §1 asks for little or no words; the City's boss intro shows one ("ZONE 1 · BOSS / FLOATING HEAD"). Should
+    Gangland's show one too, over the cut or the black?
+393. **How many screeches.** Placeholder: 15 in the beats; 2 to 6 out of each manhole in the pour (half as many
+    on a low-end device); 110 dropping from the sky (45); 900 in the wave and 560 behind it (360 and 220); 110 heaped
+    round the hollow in the cut (50). The phone test (risk test R4, task E3) should check these with the fight's.
+394. **Its speed.** Placeholder: the runner runs at Gangland's run speed (21.8 m/s), the fight's, so the fight
+    follows at the same pace.
+395. **Slots.** This answers part of items 11 and 200: Gangland now has a boss intro as
+    well as the City. Should the other zones' bosses get one?
+
+**The Floating Head's salvos** (from E1g; group "Salvos" and `later_run_seconds` in `data/bosses/city_boss_tuning.tres`,
+F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §10; review with
+`tools/showcase/floating_head_showcase.tscn -- --scenario=bombing --phase=1` or `--phase=2`, with `--lanes=3`, `5` or `6`)
+396. **Which runs drop salvos** (GDD §10: "the next bombing run"). The fight has two later runs, at the start of phases 2
+    and 3. Placeholder: both drop salvos (`salvo_spots` = 1, 4, 4; the first run keeps one spot at a time). Should the
+    third phase's run go back to one spot at a time (1, 4, 1)?
+    **Answered (owner, October 9, 2026):** the third phase's run keeps its salvos (GDD §10).
+397. **How much harder on 5 or more lanes** (owner: "increase the difficulty on five or more lanes"). With one or two
+    bombs a spot, a runner on a wide street can step clear of a whole salvo. Placeholder: from 5 lanes
+    (`salvo_wide_lanes`) a spot takes up to three bombs side by side (`salvo_wide_bombs`), placed to leave the runner as
+    few lanes as possible but never none, so after the first spot there is usually one way through
+    (`salvo_wide_choices` = 1; 2 would leave a choice of two lanes). On 3 lanes a spot keeps one or two bombs, two 40%
+    of the time (`salvo_pair_chance`). Is three bombs a spot right (beyond the one or two first asked for), and is one
+    way through too hard?
+    **Answered (owner, October 9, 2026):** three bombs a spot is right on 5 or more lanes, leaving a choice of two lanes
+    (`salvo_wide_choices` = 2). On 3 lanes a spot leaves one lane, a forced path, with one or two bombs (`salvo_choices`
+    = 1, `salvo_bombs` = 2; `salvo_pair_chance` is gone: every street places its spots the same way). GDD §10.
+398. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
+    (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
+    lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
+399. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
+    (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?
+
+**Every chase shows its truck** (from C6d; `_choose` and `ShowPlanner` in `scripts/enemies/enforcer_truck_rules.gd`; count chases and showings with `tools/measure/enforcer_shows.gd`)
+400. **Chases no bait with room is left for** (GDD §9.13 "Room to show itself"; follows questions 384 and 385). On the
+    levels' own seeds, 14 of the 23 chases still have no window before their bait, and no move or earlier arrival
+    gives them one. In 8 builds the level has a single usable bait: it comes too soon for any showing before it (Golden
+    1 at 3 and 6 lanes, Golden 2 and 3 at 6: a Buzz Overdrive revs 4 s after the run-up; Corporate 2 at 6 lanes: an
+    Octodog charging at the start keeps its truck from arriving earlier), or a hover truck or a Gilded Sentinel is
+    about for its whole chase (Dead Zone 1 at 6 lanes, Golden 2 at 3, Golden 3 at 5). In the other 6 chases the level's
+    other bait already has its other truck (see the next question), or neither bait has room (Dead Zone 2 at 3 lanes).
+    Placeholder: the truck keeps its chase, its showing after the bait where one fits (7 chases), else none
+    (`_choose` in `enforcer_truck_rules.gd`; `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Dropping those
+    trucks would leave 9 of the 18 builds with none (Corporate 2 at 6 lanes among them, its introduction). With 8 other
+    seeds of each level (162 builds) the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no
+    window from having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another
+    way (the level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
+    **Answered (owner, October 9, 2026):** make room: the hover truck and the Sentinel let it show (with a free lane kept), and where the first bait comes right after the calm start, the truck arrives a few seconds early and shows itself at the end of it (GDD §9.13; task C6e).
+401. **Two trucks, one chase with room** (Corporate 2 at 5 lanes, Dead Zone 1 at 3 lanes, Dead Zone 2 at 5 and 6 lanes, on
+    their own seeds). The only bait whose chase has room before it has one truck; the other truck has nowhere with room
+    to go. Placeholder: both stay, so in Corporate 2 at 5 lanes the introduction (14 s in, among a Tithe Collector's
+    visit and then its own Buzz Overdrive's turn too close) shows itself only at the second truck (59 s). Or should such
+    a level keep only the truck that shows itself (one truck instead of two; Corporate 2's introduction at 59 s)?
+    **Answered (owner, October 9, 2026):** keep both trucks (GDD §9.13).
+402. **One truck that shows itself, or two that don't** (other seeds). Where giving a truck to a chase with room leaves
+    the level's other truck no chase (they'd overlap), the level keeps the one that shows itself before its bait: 2 of
+    144 builds on 8 other seeds lose a truck so (Corporate 2 at 6 lanes, Golden 1 at 5), and 1 gains one back that C6c's
+    order dropped (Golden 2 at 5). Placeholder: the most windows before the bait count before the number of trucks
+    (`_choose`), as C6c counted windows before trucks. Right?
+403. **An introduction that moves late** (other seeds). Where Corporate 2's first bait has no room, its introduction
+    moves to the first chase where it shows itself before its bait: in 3 of its 24 builds on 8 other seeds, from 8 s to
+    71 s or 82 s into the level (and from 70 s to 90 s), past the reach the campaign asks of an introduction (about 19 s
+    into the level: 12 s past its start). Its first-encounter hint and the charge-path cyborg before it hold (the hint
+    is on the level intro, the cyborg earlier in the campaign). Placeholder: it moves (it never moves on the level's own seeds). Or keep the introduction
+    early, unseen, when the room is that far?
+
+**Level skies, the owner's follow-up** (from G8, October 8–9, 2026; `scripts/cinematics/cine_stage.gd` `sky_for`, `scripts/world/skins/level_sky.gd`, `data/skies/*.tres`)
+404. **The boss's intro under the fight's sky** (GDD §5, "Skies show progression"; §10). The owner asked that the fight
+    after a level whose sky turned keeps that sky; the Sewer Swarm's intro, which plays between Gangland 3 and the
+    fight, landed on main just after. Placeholder: the intro plays under the fight's sky too (Gangland 3's blood
+    red, `CineStage.sky_for`), so the sky holds from the level through the intro to the fight. Keep it?
+405. **The cinematics around City 1's dawn and the turned-sky fights** (GDD §5). The City's intro (the arrival
+    flyover, looking up at the skyline) plays right before City 1 under the zone's own night sky, so the game's
+    first cinematic is at night and its first level at dawn. And the outros after the Sewer Swarm and The House
+    (placeholder cards for now) will be under their zone's own sky. Placeholder: a zone's intro and outro keep the
+    zone's own sky (`CineStage.sky_for` gives only a boss's intro a level sky). Should the City's intro show the
+    dawn, and should an outro keep the fight's sky?
+406. **Bosses under the street's light** (GDD §5). The street's light under a level sky (`scenery_tint`) reaches what
+    is drawn with the street's own shaders, and two fights are built partly that way: The House's cabinet dims to
+    about 70% and turns lavender under Marketplace 2's sunset, and the Swarm Host's body and pipe take Gangland 3's
+    red. Their glowing parts (weak points, reels, 7 buttons, warnings) keep their light, and a level's darkness
+    already reaches these bodies the same way. Placeholder: they are lit like the street. Or should a boss's body
+    keep its own light (a per-material opt-out in `kit_solid`)?
+
+**Making room where there is none** (from C6e; the window modes in `ShowPlanner`, `scripts/enemies/enforcer_truck_rules.gd`; `calm_start_min_seconds` and `calm_start_takes_out` in `data/enemies/enforcer_truck.tres`; count with `tools/measure/enforcer_shows.gd`)
+407. **How early in the calm start** (GDD §9.13 "Making room where there is none": "late enough that the player is
+    under way (a minimum in data)"). Placeholder: `EnforcerTruckTuning.calm_start_min_seconds` 0.5 s into the run
+    (`data/enemies/enforcer_truck.tres`, `DESIGN-TBD`). The truck arrives there at its follow gap, right behind the
+    runner, and pulls alongside as it arrives: from its usual arrival gap (45 m) it couldn't come alongside before the
+    bait (Golden 1's first Buzz Overdrive revs 4 s after the 60 m run-up). Is 0.5 s right, and is arriving close in
+    fine?
+408. **"Nothing taken out" in the calm start.** A showing there runs on past the run-up (2.4 s at the Golden Zone's
+    speed) into the level's first patterns. Placeholder: it takes nothing out anywhere, as the task asked
+    (`calm_start_takes_out` off, `DESIGN-TBD`), so it fits only where those patterns leave a lane: on the own seeds
+    Golden 1 at 3 lanes gets it, Golden 1 and 2 at 6 lanes and Golden 3 at 5 don't. Switched on, it may take out plain
+    holes, fences and cyborgs past the run-up as any other window may, and those three get a showing before their bait
+    (taking out 2, 8 and 2 pieces of their first patterns). Switch it on?
+409. **A Buzz Overdrive's claim during a showing, beyond the calm start.** Placeholder: anywhere in a level (not only
+    the calm start), a window may overlap the claim on its turn a Buzz Overdrive makes before its rev, the tank staying
+    where it is, the showing out of view `show_margin_seconds` before the rev (`ShowPlanner` CLAIM mode). It only
+    comes where no window fits before the bait otherwise. An Octodog's turn is unchanged. Keep it level-wide?
+410. **The hover truck's cannon and forward lurch wait.** Placeholder: only its entrance (banging and bursting out)
+    can't wait for a turn; its cannon shots and forward lurch take turns and wait for a showing, as other big attacks
+    do. Should they count as attacks that can't wait too (the showing fitting between them instead)?
+411. **A runner lane no showing can reach.** Placeholder: a window may leave out one runner lane no showing could reach
+    (beside a hover truck at 3 lanes, or with only a floor cut's lane beside it); a runner keeping to that lane doesn't
+    see that showing. Two such lanes leave the window out. Is one lane without the showing acceptable?
+
+**The zone doodads as picture cards** (from G6b; the owner's request of October 9, 2026: each doodad a simple box with a picture of the object on it, open air see-through; the pictures in `tools/asset_gen/doodad_art/<zone>_art.gd`, regenerated with `tools/godot.sh doodads`; review with `tools/showcase/doodad_review.tscn -- --skin=<zone> --lanes=5`. The owner answered every item the same day; GDD §3, Zone doodads, their look)
+412. **Each zone's three looks** (GDD §3; §5, each zone's mood; the owner left them to the build's recommendation).
+    Placeholder: City a vending machine or a poster pillar, a street-food stall, a little shop; Gangland oil drums, a
+    burned-out van, a broken-down shack; Marketplace a potted palm or a flowering bush, the vendor's stall, a slot-machine
+    bank; Corporate a steel planter, a security booth, a supply container; Dead Zone a broken column, a rubble heap, a
+    burned-out bus; Golden a robed statue or a gilded urn, a wall fountain, a colonnade (small, medium, large). Some
+    differ from G6's meshes (the drums, the van, the stall, the booth, the container, the column, the bus, the statue as
+    the small one, the colonnade).
+    **Answered (owner, October 9, 2026):** the looks are fine (GDD §3).
+413. **Showing the push side** (GDD §3: a push to "the side with room, a side chosen per doodad"). The old default
+    slanted a doodad's front back toward the side it pushes to; the pictures are the same from either side.
+    **Answered (owner, October 9, 2026):** no hint needed (GDD §3). The grey box's default look still slants.
+414. **A rubble heap lower at its edges** (GDD §3: a doodad reads as too tall to jump). Placeholder: a mound 2.5 m in its
+    middle and 1.5 m at its edges (`HEAP_EDGE`, `HEAP_PEAK` in `dead_zone_art.gd`); its box is 2.6 m everywhere.
+    **Answered (owner, October 9, 2026):** fine (GDD §3).
+415. **The doodads' edge sheen.** Placeholder: a soft neutral sheen at grazing angles (`doodad_card.gdshader`), where
+    the kit's violet default framed the dark zones' doodads in purple edges.
+    **Answered (owner, October 9, 2026):** fine (GDD §3).
 **The Casino skin** (from K1; the owner's reference `docs/art/reference/casino_zone.webp`; exports on `CasinoSkin`, `data/skins/casino_skin.tres` and the arena's `data/bosses/casino_boss_skin.tres`, F6; review with `./play.sh --quick --skin=casino`)
-369. **Floor and gaps: to confirm with the owner (GDD §5: "Floor, gaps and ceiling pieces: chosen by the art
+416. **Floor and gaps: to confirm with the owner (GDD §5: "Floor, gaps and ceiling pieces: chosen by the art
     agent from the reference *(to confirm)*").** The reference shows a dark, wet paved street with a few
     pedestrians far off, and no gaps. Placeholder: the floor is the street's **dark flagstones laid in running
     bond with brass inlaid along both edges of every lane**, a brass bar across the lane every 6 m (the still
@@ -2491,7 +2749,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     per lane), a gap as a broken stretch of paving with brass pipes and a dim lower level showing, and a
     different floor under each kind of building. `CasinoSkin.street_color`, `inlay_color`, `street_wet`,
     `trench_depth`; `CasinoStreet`, PAT_CASINO_STREET and PAT_CASINO_UNDER (kit_casino.gdshaderinc).
-370. **The glow palette's departure from the reference's neon (GDD §5, the colour rule).** The reference glows
+417. **The glow palette's departure from the reference's neon (GDD §5, the colour rule).** The reference glows
     pink, cyan, green and orange, which are the hazards' colours. Placeholder: lit signs, marquees and the
     lamps near the track glow **warm white, violet or blue**; brass and gold are lit metal (never neon:
     `cas_metal()` fakes a reflection of the lamplit street, nothing brass or iron carries glow); the
@@ -2500,24 +2758,24 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     lit signs is half, so the street stays amber and gold rather than cold. Hazards stay the brightest, most
     saturated things on screen (the suite checks chroma and hue). Is that the right balance of warmth and cold?
     `CasinoSkin.neon_colors`, `dim_sign_colors`, `lamp_color`, `bulb_color`.
-371. **Sign names (the reference's "Gasket's House of Chance", "The Brass Lotus", "Casino Entrance").** The
+418. **Sign names (the reference's "Gasket's House of Chance", "The Brass Lotus", "Casino Entrance").** The
     game's signs and screens carry no real words (the cult's feed is wordless; every skin's lettering is rows of
     chunky glyphs), so the names can't be spelled. Placeholder: lit signs show a brand mark (a diamond, a lotus,
     a crown, a chip or a die) and rows of glyphs, and vertical blade signs run lettering down their board like
     "The Brass Lotus". Should the Casino's two named signs be drawn as real lettering once the project has a
     way to draw words on a sign (a texture of each sign)? Until then no sign says "HAZARD" or anything else.
     **Answered (owner, October 9, 2026):** real lettering, with the names "Gasket's House of Chance" and "The Brass Lotus" (GDD §5, Zone 4; task K3).
-372. **Pedestrians far down the street.** The reference has a few small figures far down the street. The owner
+419. **Pedestrians far down the street.** The reference has a few small figures far down the street. The owner
     said no new characters, and the Marketplace's citizens only play in shop windows (they react to the runner
     and The House's crowds cheer and duck through them). Placeholder: **none**: the street is empty, as the
     Marketplace's is. Should a few of the Marketplace's citizens also stand far down the street as tiny,
     fogged silhouettes (scenery only, never in the lanes), or are the shop windows enough?
     **Answered (owner, October 9, 2026):** no pedestrians; the shop windows are enough (GDD §5, Zone 4).
-373. **How much each kind of piece appears (placeholder shares).** The balconies, pipes, air-conditioning units,
+420. **How much each kind of piece appears (placeholder shares).** The balconies, pipes, air-conditioning units,
     planters, banners, lanterns, fans and girders across the street, and how often each ceiling kind turns up
     (footbridge 3, pipe-bundle gantry 3, sign gantry 2): all exports on `CasinoSkin` (groups "Facades", "Vault",
     "Casino ceilings"), tuned by eye against the reference; the owner may want the street busier or calmer.
-374. **The glass roof (GDD §5: the vault stays high overhead as background).** Placeholder: the roof springs from
+421. **The glass roof (GDD §5: the vault stays high overhead as background).** Placeholder: the roof springs from
     the facades' top at 22 m and rises to about 26-29 m (higher over a wider street); it is **opaque and faked**
     (dark night-blue panes with a few stars, warmer where they catch the lamplit haze, 10% of the panes missing
     so the night sky shows through), with iron ribs every 8 m, girders across the street every 32 m or so
@@ -2525,21 +2783,21 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     over the lanes (the arrival flyover's and The House's limits). The ceiling fans don't turn (a static mesh).
     Is the broken glass right for a "gaudy, warm and a little seedy" casino, or should the roof be whole?
     **Answered (owner, October 9, 2026):** the roof is whole, with no broken or missing panes (GDD §5, Zone 4; task K3).
-375. **Doodads.** The Marketplace's potted plants, casino machines and hedge rows are reused unchanged in the
+422. **Doodads.** The Marketplace's potted plants, casino machines and hedge rows are reused unchanged in the
     Casino's palette (dark brass-trimmed cabinets, deep-green plants). Does the Casino want doodads of its own
     (a roulette table, a velvet-rope queue, a fruit machine)? GDD §3 only names the Marketplace's.
-376. **The House's arena** (`data/bosses/casino_boss_skin.tres`): the facades are flush below 14.5 m (no balcony,
+423. **The House's arena** (`data/bosses/casino_boss_skin.tres`): the facades are flush below 14.5 m (no balcony,
     pipe or blade sign stands out of a wall where the 13.5 m machine passes), the roof is raised to spring from
     34 m (so phase 3's billboard, which drops from about 35 m, never passes through the glass) and nothing is
     hung from it. The arena is therefore plainer than the street the player ran through to reach it; should
     the machine's arena keep the full dressing at the cost of the machine clipping through balconies, and
     should the billboard come down through a roof with a gap in it instead of under a tall one?
-377. **The fences' and signs' looks** (`CasinoProps`; the same placeholder question every zone's props raise). The
+424. **The fences' and signs' looks** (`CasinoProps`; the same placeholder question every zone's props raise). The
     GDD fixes only the pink crackle of an electric fence and the yellow-and-black stripes of a sign. Placeholder:
     the fence's field is strung between brass stanchion posts on iron plinths (the casino's velvet-rope posts,
     the pink field in place of the rope), its edge bars and its OFF look are proposals, and a sign's striped
     frame goes round a lit casino sign's face. Is the stanchion the right post for a casino fence?
-378. **Follow-up for the Marketplace (not changed here; `shopfront.gdshader` is the Marketplace's).** Its casino
+425. **Follow-up for the Marketplace (not changed here; `shopfront.gdshader` is the Marketplace's).** Its casino
     fronts (style 1) test `cy + storey > decor_top` on the cell's top, so a storey that straddles `decor_top` (6.2 to 9.4 m
     against 8 m) draws its glass and its rows of bulbs from 6.34 m, under the 8 m a decorative light may start at
     (the Casino's own shader starts the grid at `decor_top`, so it does not have this). A one-line fix there is to start
@@ -2547,29 +2805,29 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     The violet tint of its glass panels under 8 m comes from the same test.
 
 **The Casino in the campaign** (from K2; the owner added the Casino as Zone 4 on October 8, 2026, GDD §5, §6, §10; data in `data/zones/casino.tres`, `data/levels/casino_1.tres`, `casino_2.tres`, `data/bosses/casino_boss.tres`; review with `./play.sh --level=casino/1` or `--level=casino/boss`)
-379. **The Casino's tagline** (GDD §5, Zone 4). Placeholder: "A covered casino street under a vaulted glass
+426. **The Casino's tagline** (GDD §5, Zone 4). Placeholder: "A covered casino street under a vaulted glass
     roof." (`data/zones/casino.tres`). The Marketplace's tagline drops its casinos: "Stall roofs, awnings and
     a bustling open-air market." (`data/zones/marketplace.tres`).
-380. **The Casino's run speed** (GDD §3: about 21 m/s in the Neon City rising to about 25 in the Golden Zone).
+427. **The Casino's run speed** (GDD §3: about 21 m/s in the Neon City rising to about 25 in the Golden Zone).
     Placeholder: 23.0 m/s, between the Marketplace's 22.6 and Corporate's 23.4, no other zone's changed
     (`data/zones/casino.tres`, `run_speed`). The House runs at it now (GDD §3: a boss runs at its zone's
     speed), 23.0 instead of the Marketplace's 22.6.
-381. **The Casino's level names** (GDD §5: "(name to come)"). Proposed: Casino 1 *Brass Arcade* (the covered
+428. **The Casino's level names** (GDD §5: "(name to come)"). Proposed: Casino 1 *Brass Arcade* (the covered
     street, its brass pipes), Casino 2 *House Edge* (The House follows it) (`display_name` in
     `data/levels/casino_1.tres`, `casino_2.tres`).
     **Answered (owner, October 9, 2026):** *Brass Arcade* and *House Edge* are approved (GDD §5).
-382. **What each Casino level adds** (GDD §5: "still to design"). Placeholder: both play Marketplace 2's
+429. **What each Casino level adds** (GDD §5: "still to design"). Placeholder: both play Marketplace 2's
     features (everything up to the wall fences and the shopfronts' vent screeches) with no introductions
     (`feature_starts` empty) and no extra pick weights (Marketplace 2's extra weight on vent screeches was for
     their introduction), so nothing new comes until Corporate 1. `test_campaign` exempts them from "each
     level brings something new" and the Casino from "every zone introduces a new enemy", keyed to the GDD's
     owner decision.
-383. **The Casino levels' numbers.** Placeholders: 145 s and 150 s long (the campaign's levels now total 39.0
+430. **The Casino levels' numbers.** Placeholders: 145 s and 150 s long (the campaign's levels now total 39.0
     minutes, GDD §5's "about 40"); seeds 701 and 702 (no existing seed renumbered); danger density 0.27 for
     both (between Marketplace 2's 0.26 and Corporate 1's 0.28; the dial never falls); doodads 0.8 like the
     Marketplace's; Marketplace 2's spacing, fill, wide gaps, charge-path cyborgs, narrow ceilings and credit
     settings; no level sky of their own (the Casino skin's sky).
-384. **The difficulty curve over 17 levels: the owner's choice** (GDD §6: an automatic curve making each level
+431. **The difficulty curve over 17 levels: the owner's choice** (GDD §6: an automatic curve making each level
     slightly harder than the last). The curve still runs 0.1 to 0.9 and `enemy_scaling` 0 to 1, now over 17
     levels, so every level between City 1 and Golden 3 moved (the curve's step from 0.057 to 0.05 a level):
     the City, Gangland and the Marketplace got a little easier, Corporate, the Dead Zone and Golden 1 and 2 a
@@ -2579,7 +2837,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Corporate 1's 0.557), which keeps their difficulty-gated patterns and spacing as they were (not their
     recency ages or completion bonuses, which follow a level's place in the campaign either way). What the
     re-spaced curve changes is listed below ("What the re-spaced curve changes"). Which does the owner want?
-    **Answered (owner, October 9, 2026):** no level gets easier: every level is too easy, at least on PC. The Marketplace keeps at least its old difficulty (a little harder is welcome), and Corporate and beyond may get harder (GDD §6; task K4). Built in K4: the curve's exponent 0.79 (item 393 has the table).
+    **Answered (owner, October 9, 2026):** no level gets easier: every level is too easy, at least on PC. The Marketplace keeps at least its old difficulty (a little harder is welcome), and Corporate and beyond may get harder (GDD §6; task K4). Built in K4: the curve's exponent 0.79 (item 440 has the table).
 
     | Level | Difficulty before | after | Enemy scaling before | after |
     |---|---|---|---|---|
@@ -2605,7 +2863,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     the Floating Head 0.143 to 0.125, the Sewer Swarm 0.357 to 0.313, The House 0.500 (Marketplace 2's) to
     0.563 (Casino 2's: its Barnacle Turrets reload in 2.06 s instead of 2.10 and fire bolts at 17.1 m/s
     instead of 17.0, still 5 shots to kill), Hostile Takeover 0.643 to 0.688, the Sleep Taker 0.786 to 0.813.
-385. **Enemy numbers that step at an `enemy_scaling` threshold** were moved in data so that every existing
+432. **Enemy numbers that step at an `enemy_scaling` threshold** were moved in data so that every existing
     level keeps exactly what it had (the in-between numbers, such as reload times and bolt speeds, follow the
     re-spaced scaling). Should these steps move with the curve instead (for example the Casino, not
     Marketplace 2, as the first level with turret and drone pairs)?
@@ -2625,7 +2883,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
       unchanged.
     - The Resonator's place in the Golden Zone (`zone_t`: Golden 1 at 0.048, Golden 2 at 0.524, Golden 3 at
       1): `scaling_from` 0.85 to 0.86875 (`data/enemies/resonator.tres`).
-386. **What the re-spaced curve changes** (for the owner's choice of curve above; measured on the 15-level
+433. **What the re-spaced curve changes** (for the owner's choice of curve above; measured on the 15-level
     curve before the Casino, commit 74c0b5e, and on this branch):
     - **Patterns gated by difficulty** (`min_difficulty` / `max_difficulty` in `data/patterns/*.json`; a
       level's difficulty rises 0.25 across it). In the levels that got easier they come later or never: City
@@ -2698,23 +2956,23 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
         had already stopped building that way before the Casino, and no Golden 1 build at 6 lanes on seeds
         9001-9060 does now. It's re-pinned to Dead Zone 1 at 6 lanes on seed 9007 (found by building without
         `doodad_ok`), and the test now checks that its case still shows the scenario.
-387. **The Casino's music** (GDD §11: no more generated songs; the owner supplies them). Placeholder: the
+434. **The Casino's music** (GDD §11: no more generated songs; the owner supplies them). Placeholder: the
     Casino's track (`casino`) plays the Marketplace's: Jackpot Plaza in its levels, the Marketplace's
     generated default in its cinematics and The House's fight, and the Marketplace's level-complete riff
     (`data/audio/music_library.tres`: `files`, `zone_tracks`, `riff_tracks`). Will the owner supply a Casino
     song, and should The House get a boss song of its own?
     **Answered (owner, October 9, 2026):** the owner adds the Casino's song in a separate change; The House keeps the Casino's music until then.
-388. **The Casino's cinematics** (GDD §6). Placeholders: its intro plays the arrival flyover over the Casino
+435. **The Casino's cinematics** (GDD §6). Placeholders: its intro plays the arrival flyover over the Casino
     (title "The Casino"; its card names the zone: ZONE 4, CASINO), its outro is a placeholder card "Beyond
     the Casino: a short scene after The House, heading for the corporate district"
     (`data/cinematics/casino_intro.tres`, `casino_outro.tres`). The Marketplace's outro now reads "a short
     scene leaving the market for the casino district" (`marketplace_outro.tres`).
-389. **The House's leaderboard** is now `boss/casino_boss/<tier>` (it was `boss/marketplace_boss/<tier>`). No
+436. **The House's leaderboard** is now `boss/casino_boss/<tier>` (it was `boss/marketplace_boss/<tier>`). No
     platform leaderboards are registered yet (the stub serves every build); any made from the old id must use
     the new one.
 
-**The Casino's roof and named signs** (from K3; the owner's answers of October 9, 2026 to items 371, 372 and 374; exports on `CasinoSkin`, F6; lettering in `scripts/world/skins/casino/casino_lettering.gd`)
-390. **Two famous casinos, or a chain?** The owner asked for the big signs to spell "Gasket's House of Chance" and
+**The Casino's roof and named signs** (from K3; the owner's answers of October 9, 2026 to items 418, 419 and 421; exports on `CasinoSkin`, F6; lettering in `scripts/world/skins/casino/casino_lettering.gd`)
+437. **Two famous casinos, or a chain?** The owner asked for the big signs to spell "Gasket's House of Chance" and
      "The Brass Lotus" and said they love the two. Two readings:
      - *Landmarks* (built): the street is cut into periods of `CasinoSkin.name_spacing` metres, 100 by default, both
        walls together. Each period has at most one named casino (a casino with a big sign, hash-picked, from the middle
@@ -2725,20 +2983,20 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
      - *A chain*: every casino with a big sign is named, one of the two by hash (`name_spacing` 0). The street then
        reads as two brands with branches everywhere (a stretch of five "The Brass Lotus" in a row is possible).
      Which does the owner want? The spacing is one export on the skin; 0 gives the chain, 200 or more a rarer landmark.
-391. **Casinos whose big sign plays the cult's feed (35% of them).** The feed's screen stays a screen with no words on
+438. **Casinos whose big sign plays the cult's feed (35% of them).** The feed's screen stays a screen with no words on
      it (the cult's feed is wordless). Placeholder: a Gasket's casino puts its name on a one-line strip over the screen
      in its own brass frame, and a Brass Lotus casino carries its name on its tall blade sign only. Every named casino
      also has a blade sign at the far end of its building (GASKET'S, or THE BRASS LOTUS, stacked down it): a board on
      a wall is seen along its face from the street, so only the blades can be read from a distance while running.
      Is that right, or should a feed casino go without a name, or without a blade? (The House's arena has no blades:
      its faces are kept flat because the billboard slides past them; the names are on flat boards there.)
-392. **Where else the names might appear.** Only the named casinos' big signs and their blades carry words. Every other
+439. **Where else the names might appear.** Only the named casinos' big signs and their blades carry words. Every other
      sign (the lounges' blade signs, the arcade halls' name boards, the sign gantries over the street, the other
      casinos' boards) keeps its rows of glyphs, as the owner asked. Should the sign gantries (a ceiling piece, seen
      face-on from far down the street) carry one of the names too?
 
-**The curve after the Casino: no level gets easier** (from K4; the owner's answer to item 384, October 9, 2026; `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres`, F6; GDD §6)
-393. **Is this the curve the owner wants?** (GDD §6.) One exponent lifts the early and middle levels the most.
+**The curve after the Casino: no level gets easier** (from K4; the owner's answer to item 431, October 9, 2026; `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres`, F6; GDD §6)
+440. **Is this the curve the owner wants?** (GDD §6.) One exponent lifts the early and middle levels the most.
      City 2 to Gangland 3 come out 0.03 to 0.04 harder than before the Casino, more than the Marketplace's
      +0.016 and +0.026, and City 1 to City 2 is now the campaign's biggest step (+0.140; +0.107 before).
      Per-level biases could set any level by hand instead. The early curve can't get any steeper without an
@@ -2749,7 +3007,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
 
     *Background (task K4's report):*
 
-    The owner's answer to open question 384 (October 9, 2026, GDD §6): no level gets easier when levels are
+    The owner's answer to item 431 (October 9, 2026, GDD §6): no level gets easier when levels are
     added; the Marketplace keeps at least its old difficulty (a little harder is welcome); Corporate and the
     zones after it may get harder. Task K4 bends the 17-level curve with one number in data,
     `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres` (it was 1, linear; `DESIGN-TBD` on
@@ -2757,7 +3015,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     0.9 and the levels' biases (City 1 −0.05, Golden 2 +0.05, Golden 3 −0.05) are unchanged.
 
     `enemy_scaling` doesn't use the exponent (`Campaign.configure`: the level's place in the campaign, 0 → 1), so
-    it is exactly K2's, and so are its moved thresholds (item 385), the scaling of the enemies the bosses bring
+    it is exactly K2's, and so are its moved thresholds (item 432), the scaling of the enemies the bosses bring
     and the recency curve's ages. `test_campaign` checks it, and checks every level against the 15-level curve.
 
     | Level | 15-level curve (before the Casino) | K2: 17-level linear | K4: exponent 0.79 | K4 against the 15-level curve |
@@ -2803,8 +3061,8 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
         introductions (0.77).
       - **0.79: one miss.** Marketplace 2 at 3 lanes meets its first full-height wall fence 15.4 s after the
         feature's start (10 s wanted). Neither wall has a fair spot in those 10 s, so the placement does what
-        it must (question 2). Its layouts also cost Corporate 2's first truck its volley at 5 lanes, which the
-        scan didn't count (question 3).
+        it must (item 441). Its layouts also cost Corporate 2's first truck its volley at 5 lanes, which the
+        scan didn't count (item 442).
       - 0.80: three misses: that one (16.7 s), Gangland 3 at 5 lanes with one wider gap of two, and Corporate
         1's Buzz Overdrive.
       - 0.81 and 0.82: one miss, Corporate 1's Buzz Overdrive (in its first quarter at one lane count of three;
@@ -2853,7 +3111,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
         laser waits for City 3), against 881 on K2's curve. Over seven seeds City 2 averages 919 (K2's: 910),
         so that delay holds on the levels' own seeds only, on either curve.
     - **Late introductions** (`test_campaign`, the levels' own seeds): 5 of 63 (K2's: 6; the limit is 6).
-      - Marketplace 2's wall fences at 3 lanes: start 328 m, first at 675 m (question 2).
+      - Marketplace 2's wall fences at 3 lanes: start 328 m, first at 675 m (item 441).
       - Corporate 1's Buzz Overdrive at 5 lanes: start 339 m, first at 1212 m (1214 on K2's curve, 976 before
         the Casino).
       - Corporate 1's Buzz Overdrive at 6 lanes: first at 970 m (783 on K2's, 585 before), two there (one on
@@ -2869,7 +3127,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
       - No hover truck leaves before its level's ramps start. On K2's curve Gangland 1's did at 3 lanes
         (`test_hover_truck`'s `BEFORE_RAMPS` is now empty and checked both ways).
       - The danger density bands hold: 13-19% more enemies in the first levels, 26-28% in the middle ones,
-        32-36% in the final ones, and 32.7% at 3 lanes in the final ones (item 386's 29.7% question: Golden 2's
+        32-36% in the final ones, and 32.7% at 3 lanes in the final ones (item 433's 29.7% question: Golden 2's
         and 3's dials stay 0.39).
       - The cases the tests pin to a scenario on a seed were re-found where the scenario moved:
         - `test_danger_density`'s route case moves to Golden 1 at 3 lanes on seed 9005 (Dead Zone 1 at 6 lanes
@@ -2880,7 +3138,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
         - `test_enemy_director`'s control case with the attack-turn switch off moves to Gangland 3 at 3 lanes
           (2.0 s of overlaps; its 6 lanes now have none).
         - `test_charge_paths`' Golden 2 plants at 3 lanes.
-        - `test_enforcer_truck_runs`' `NO_VOLLEY_LANES`: Corporate 2 at 5 lanes fires no volley (question 3),
+        - `test_enforcer_truck_runs`' `NO_VOLLEY_LANES`: Corporate 2 at 5 lanes fires no volley (item 442),
           checked both ways.
       - Marketplace 1's first turret now stands exactly at its feature's start (316.4 m). `test_barnacle_turret`
         takes the 0.01 m rounding margin the other "nothing before its start" checks take.
@@ -2896,13 +3154,13 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
         it by moving the Octodog and Buzz Overdrive picks (`LevelGenerator.dependent_features`,
         `EnforcerTruckRules.GUARANTEED_BY`), one more each a build however many missed features ask, and none
         when the data allows no truck (`places_any`). None of 738 seeded builds misses one now.
-394. **Marketplace 2's wall fence introduction at 3 lanes comes 15.4 s after the feature's start** (GDD §9.1;
+441. **Marketplace 2's wall fence introduction at 3 lanes comes 15.4 s after the feature's start** (GDD §9.1;
      open question B5's 10 s). Its signs, window cyborgs and a ramp, the outer lanes' pieces, and its big
      attacks and floor cuts leave neither wall a fair spot before then. Is that acceptable, or should the
      generator hold room for introductions (a generator task)?
      - Placeholder: `LATE_INTRODUCTIONS` in `tests/suites/test_wall_fences.gd`, which checks that both walls
        are taken from the start right up to the introduction, and that the build is still late.
-395. **On the Enforcer's first level, its first truck can be wrecked before it ever fires** (GDD §9.13; open
+442. **On the Enforcer's first level, its first truck can be wrecked before it ever fires** (GDD §9.13; open
      questions 357, 364 and 366).
      - In Corporate 2 at 5 lanes the truck arrives at about 641 m. The first chase's wider gap is at 769 m,
        about 128 m (5.5 s) later, and covers 4 of the 5 lanes.
@@ -2919,9 +3177,9 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
      - Placeholder: `WideGapPlacement` looks for the chase's wider gap from `bait_after_seconds` (4 s) after
        the truck arrives, as before. `test_enforcer_truck_runs` allows a build with no volley only at 5 lanes
        (`NO_VOLLEY_LANES`, checked both ways), and only when its truck fell into a wider gap or a cut first.
-396. **Are these 5 late introductions acceptable?** This is item 386's question with the list above.
+443. **Are these 5 late introductions acceptable?** This is item 433's question with the list above.
      - Placeholder: none; `test_campaign`'s limit is 6 of 63.
-397. **A build whose first Sentinels are a pair** (GDD §9.11 and §6: one new thing at a time; outside K4, found
+444. **A build whose first Sentinels are a pair** (GDD §9.11 and §6: one new thing at a time; outside K4, found
      in its review). The Golden Palace at 5 lanes on seed 602 starts with a Sentinel pair. That is not a
      campaign seed: the levels' own seeds and the seed sweep's build right. `GildedSentinelRules.problems()`
      reports "the level's first Sentinel isn't alone, swinging once (its introduction)". The build is the same

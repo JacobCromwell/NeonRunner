@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/cinematics/sewer_swarm_intro/sewer_swarm_intro.gd" id="1_intro"]
+[ext_resource type="Resource" path="res://data/cinematics/sewer_swarm_intro.tres" id="2_numbers"]
+
+[node name="SewerSwarmIntro" type="Node"]
+script = ExtResource("1_intro")
+numbers = ExtResource("2_numbers")

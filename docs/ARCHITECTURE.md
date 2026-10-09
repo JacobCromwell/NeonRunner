@@ -263,6 +263,81 @@ and 2.1 s on Forward+ and 0.75, 0.36 and 0.59 s on Compatibility) and none after
 draw calls (248 to 279 a frame), primitives (44,000 to 49,000) and objects (336 to 404) are the same, the
 most in a frame higher by the warm-up's samples in the level's first two frames.
 
+### Retries reuse the built level (task PERF2, the owner's approval, October 9, 2026)
+
+Generating its level was the slow part of starting a run, and every attempt did it again, though a campaign
+level comes out the same on every attempt (GDD §6: a fixed seed). `LevelCache` (`scripts/run/level_cache.gd`)
+keeps the last level a run built: `LevelRun._build` takes a level's layout from `LevelCache.layout_for(context)`,
+which builds it the first time and hands every later run of the same level a copy of that build: the results
+screen's retry (`App.retry`, a new LevelRun) and the restart in place (`LevelRun.restart`: quick play's after a
+death, R, F6's Restart level) alike. A boss fight's arena never comes here: its plan takes 6 to 25 ms
+(`BossEncounter.plan_arena`), and a boss's `_plan_lap` may keep state of its own on the encounter.
+
+- **The key** (`LevelCache.key_for`): a build is reused only while everything the generator reads is the same:
+  the level config's stored values (seed, lane count, difficulty, features and their starts, pacing, run speed,
+  the campaign's recency curve and ages; its `skin` aside, which the generator never reads), the movement
+  tuning it is built at (`LevelConfig.movement_for`), the patterns as read from their files now
+  (`LevelGenerator.load_for`), every tuning resource in `data/tuning` and `data/enemies` by value (the
+  placement passes', the power-ups', every enemy type's: the F6 panel edits them in place, so an edit there
+  builds again), and the build flavor. Dictionaries go in as ordered pairs. **A tunable the generator reads
+  from anywhere else must join the key** (`LevelCache.TUNING_DIRS`, `key_for`), or a run after a change to it
+  could play the level built before. A new seed, lane count, level or setting builds again (quick play's debug
+  keys, `--features`, a difficulty tier), and only the last level is kept. Endless mode builds on every run (a
+  random seed each) and keeps nothing.
+- **Every run plays a copy.** The kept build is never played: each run, the first too, gets a
+  `LevelLayout.copy()` of its own, since a run changes its layout as it goes (an EMP marks fences `disabled`
+  in it, the track numbers its fences, a boss arena's next lap or endless mode's next stretch joins it, and an
+  enemy's entry is its own one level deep only). A generated layout holds plain data only, no Object and no
+  list or dictionary in two places (a copy would make two of it): `test_level_cache` checks two levels, and a
+  probe found neither in any campaign level at 3, 5 and 6 lanes. So **`LevelLayout.copy()` must copy every
+  field a layout has**: a list added to LevelLayout must join `copy()`, or every run would play without it
+  (`test_level_cache` checks every field). The build's generator warnings come with each copy; LevelRun prints
+  them on every run, as before.
+
+Measured with `tools/measure/level_builds.gd` (Review tools), headless on the build machine (4 CPUs shared with
+other agents, measured while quiet; a phone is several times slower). The time from pressing retry to the run
+starting, three retries each at 5 lanes (the call / to the next frame, when the run is built and its
+introduction is up):
+
+| Level, 5 lanes | Results screen's retry (`App.retry`), before | after | Restart in place (`LevelRun.restart`), before | after |
+|---|---|---|---|---|
+| Corporate 2 | 3194 to 3877 / 3280 to 3964 ms | 216 to 251 / 296 to 318 ms | 2642 to 3204 / 2652 to 3216 ms | 47 to 63 / 57 to 74 ms |
+| Dead Zone 1 | 4133 to 4639 / 4203 to 4722 ms | 245 to 278 / 361 to 394 ms | 3392 to 4382 / 3406 to 4394 ms | 59 to 66 / 68 to 75 ms |
+
+What is left of a retry: the key (about 15 ms), the copy (1 to 2 ms), the world's build (`RunWorld.build`), and
+through `App.retry` a whole new LevelRun (HUD, camera and, in a debug build, the debug HUD and the F6 panel). A
+level's first build pays the key and a copy on top of the generator (15 to 30 ms).
+
+Each campaign level's first build (`generate()`, the fastest of three, in ms; in brackets the builds its
+every-feature guarantee made, when more than one):
+
+| Level | 3 lanes | 5 lanes | 6 lanes |
+|---|---|---|---|
+| city/1 | 57 | 71 | 52 |
+| city/2 | 40 | 36 | 41 |
+| city/3 | 47 | 50 | 53 |
+| gangland/1 | 64 | 66 | 125 (2) |
+| gangland/2 | 58 | 90 | 76 |
+| gangland/3 | 107 | 152 | 270 (2) |
+| marketplace/1 | 138 | 95 | 203 |
+| marketplace/2 | 429 (3) | 498 (3) | 280 (2) |
+| corporate/1 | 173 (2) | 688 (4) | 386 (4) |
+| corporate/2 | 579 (3) | 2434 (4) | 386 (2) |
+| dead_zone/1 | 935 (3) | 2891 (4) | 1400 (3) |
+| dead_zone/2 | 1900 (5) | 1146 (3) | 1608 (2) |
+| golden/1 | 371 (2) | 945 (3) | 575 (2) |
+| golden/2 | 1393 (4) | 569 (2) | 592 (2) |
+| golden/3 | 316 | 406 (2) | 1158 (4) |
+
+The slowest are Dead Zone 1 at 5 lanes (2.9 s), Corporate 2 at 5 lanes (2.4 s) and Dead Zone 2 at 3 lanes (1.9
+s); the 45 builds take 23.9 s in all. Two things multiply (`level_builds.gd --passes`): the guarantee's rebuilds
+(a level missing a feature is built again whole: 2 to 5 builds in every slow one), and within a build the Enforcer
+Truck's rules (the showing planner of tasks C6c to C6e): 415 of Corporate 2's 544 ms first build at 5 lanes
+(76%), 1035 of Dead Zone 1's 1686 ms (61%, and the Buzz Overdrive's rules 371 ms, 22%); every other pass takes
+under 80 ms. Dead Zone 2 at 3 lanes is mostly its five builds (269 ms each, the truck's rules 62 ms of it).
+Making the truck's planner cheaper and sparing guarantee rebuilds is left to a task on the generator. A boss
+arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
+
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
 | File | What |
@@ -279,7 +354,7 @@ most in a frame higher by the warm-up's samples in the level's first two frames.
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), and the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`) and the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -876,7 +951,12 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
     beside the runner. It's back behind them `show_margin_seconds` + `close_lead_seconds` before a bait's
     turn (an Octodog's planned wind-up, a Buzz Overdrive's claim on its turn, from the layout and the dogs and
     tanks in play): it shortens its stay for one (`hold_for`, never under `show_min_seconds`) or doesn't show.
-    Never with a hover truck or a Gilded Sentinel in play or coming (`NO_SHOW_TYPES`: they can't wait).
+    Beside a hover truck or a Gilded Sentinel (task C6e; the owner, October 9, 2026, GDD §9.13 "Making room where
+    there is none": they no longer stop it, as long as the runner keeps a free lane), it fits between what of them
+    can't wait for a turn, a hover truck's entrance (its banging to its emerging) and a Sentinel's turn (its claim to
+    its last swing; `EnforcerTruckRoom.fixed`, `seconds_to_fixed`): never begun during one, its stay shortened to be
+    back `show_margin_seconds` before the next (`hold_for`'s `to_fixed`), giving way to one that comes sooner. Their
+    other attacks (the hover truck's cannon and forward lurch) take turns and wait for it, as a Resonator's pulse does.
   - **Solid, safe sides.** While beside the runner, a lane blocker along its body to `blocker_ahead` past its
     front (`TrackBuilder.add_lane_blocker`, `LAYER_LANE_BLOCKER`) bumps a lane change into it back (Player's
     `lane_blocked`, never a hit: its 2 m body hitbox in a 2.4 m lane leaves the bump clear of it). As the
@@ -885,16 +965,38 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
   - **Never the only free lane** (`EnforcerTruckRoom`, the layout read once by lane at load; the truck adds
     what's in play). Its stay must leave the runner a lane to dodge into for everything blocking their lane
     (`can_dodge`: holes, fences, doodads, floor enemies, a floor cut's lane window; with `DODGE_ROOM_SECONDS`
-    to step around each) at 3, 5 and 6 lanes; it never shows to a runner in an outer lane (by a wall) or off
-    the floor; and its own lane must be clear where the camera sees it there (`lane_clear`: no fence, doodad,
-    floor enemy, pad, speed pad or ramp, nor a hole too wide to hop until it's rejoined the runner's lane; it
-    hops the others), so it's never beside a lane the runner needs.
+    to step around each) at 3, 5 and 6 lanes; to a runner by a wall (an outer lane) it shows itself two lanes
+    in, leaving them the lane between (`sides`, `escape_lane`; task C6c, the owner's answer of October 9, 2026,
+    GDD §9.13 "Room to show itself": beside them it would take their only lane to dodge into, and at 5 and 6 lanes
+    it would hide up to 25 m of their lane from the camera, which sits inward of them), held to the same rule both
+    ways (the lane between open where theirs is blocked, theirs open where the lane between is); never to a runner
+    off the floor; and its own lane must be clear where the camera sees it there (`lane_clear`: no fence, doodad,
+    floor enemy, pad, speed pad or ramp, nor a hole too wide to hop until it's rejoined the runner's lane; it hops
+    the others), so it's never beside a lane the runner needs. A lane a hover truck holds (`held`, `held_lanes`: from
+    where its lane is kept free before its burst to where it has left, and one in play's; task C6e) is a wall to the
+    runner and never the truck's, and the truck never stands between the runner and it (it would hide it): a runner
+    beside it sees the truck two lanes in on their other side, the lane between left free, and at 3 lanes a runner
+    beside it has no lane for it. What blocks the runner's lane counts as far as its stay reaches (`can_dodge`'s
+    `clip`: once it's back behind them every lane is theirs), a floor cut's lane from its charge on (`leave_late`: a
+    runner baiting a Buzz Overdrive keeps to its lane until the cut runs back toward them).
   - **Never hides anything.** `EnforcerTruckView` (the run camera's resting view) checks at load, for its
     look and lane count (`fits_for`, with `EnforcerTruckModel.profile`), that every corner of it is on
     screen and nothing of the runner or the floor of their lane and the far side is behind it; enemies its
     body would hide from the camera keep it from showing (`shadow_clear`), so a hazard's warning stays in view.
   - **Seen and heard.** Its siren swells as it pulls alongside (`siren_swell_db` up to full); its marker fades
     while it's in view; its light bar and floor lights carry on as before.
+  - **Its planned window** (task C6c; The generator, Enforcer Trucks). Where the generator planned a window in
+    its chase (params `show`: `show_window()`, `show_at()`), it claims its turn among the big attacks
+    `show_claim_seconds` (2 s) before the runner reaches where the showing is due, until it begins or the runner
+    is `show_window_slack_seconds` past (`claiming()`, part of `is_major_attack_active`): another type's big
+    attack that gets ready meanwhile waits for it, one already on ends first; and it starts no volley that would
+    still be on there (`_holds_for_showing`). It still shows itself wherever play allows before; once it has,
+    the window has done its work. A showing beside the runner tries a lane clear for its whole stay first, else
+    one clear for its shortest. A window planned with its bait's claim during it (its `mode` "claim" or "calm",
+    task C6e; `_claim_window_now`) stays alongside until it must be out of view `show_margin_seconds` before the
+    Buzz Overdrive's rev (`hold_claimed`), and that claim doesn't make it give way (`_attack_on`'s `skip_claims`).
+    One planned in the level's calm start ("calm", `calm_start()`) arrives inside the run-up at its follow gap,
+    already chasing, shows itself as it arrives, and fires no volley before the run-up's end (`_ready_to_fire`).
 - **Its blast** (C6b; the owner, October 8, 2026: a visible explosion however it's destroyed). Every wreck (an
   Octodog's lunge, a Buzz Overdrive's charge or cut, a gap too wide to hop) lurches on into the chase camera's
   view over `wreck_surge_seconds` (its front to `wreck_gap` behind the runner; in a hole, until its nose meets
@@ -938,7 +1040,7 @@ counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15
 0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
-little, `docs/OPEN_QUESTIONS.md` §D, item 386). On task K4's curve `test_danger_density`'s sample has
+little, `docs/OPEN_QUESTIONS.md` §D, item 433). On task K4's curve `test_danger_density`'s sample has
 13-19% more enemies and 17% more obstacles in the first levels, 26-28% and 26-27% in the middle ones,
 and 32-36% and 31-38% in the final ones (x1.327 enemies at 3 lanes).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
@@ -1126,14 +1228,148 @@ at least `bait_before_seconds` before it would give up (`in_chase`); where it ca
 the feature's start, never while a bait attacks (`arrival_keep_outs`: an Octodog's planned charges, a Buzz
 Overdrive's attack window), up to `per_level_max` (2) a level, never two at once (each one's chase and drop
 back `spacing_seconds` from the next); in a level paced in bursts it arrives in a burst where it can
-(`pacing_pools`). The earliest baits get them first. Its params list the baits in its chase (`baits`).
+(`pacing_pools`). The earliest baits get them first (with its showing windows planned, the ones whose chases have
+room for its showing before their bait: Showing windows, below). Its params list the baits in its chase (`baits`).
 Corporate 2 introduces it at a start of its own, 5% into the level (before the Tithe Collector's 10%; the
 level's only baits at 3 and 6 lanes come within its first 32 s), so its first truck arrives within the
-campaign's introduction reach.
+campaign's introduction reach (on other seeds an introduction whose first bait has no room may come later: Showing
+windows, below).
 It takes no room: `keep_out()` is empty and it uses no floor, and its entries take seeds of their own, so a
-level with the feature is the same level plus its trucks, but for the danger density pass, which counts every
-enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six levels on their own seeds). A level with no bait its chase can take gets none (quick
-play without Octodogs or Buzz Overdrives). `problems()` re-checks every truck for the tests.
+level with the feature is the same level plus its trucks and their showing windows (below), but for the danger
+density pass, which counts every enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six
+levels on their own seeds). A level with no bait its chase can take gets none (quick play without Octodogs or Buzz
+Overdrives). `problems()` re-checks every truck for the tests.
+
+**Showing windows** (task C6c; GDD §9.13 "Showing itself", the owner, October 8, 2026: the player should see
+what's chasing them). With `EnforcerTruckTuning.show_window_planned`, the rules plan a showing window in every
+chase that has room (`ShowPlanner` in `enforcer_truck_rules.gd`), on the layout as the trucks are placed: a calm
+stretch where it can pull up beside the runner and stay alongside wherever the runner is, at the level's speed. It
+asks what the truck asks in play: no other enemy's big attack (its warning, its shots) and no enemy about near the
+runner until it has stayed alongside (`busy`: their keep-outs; a host's possible Bad Dream chase is the player's
+choice and doesn't count), no floor cut's attack, hover truck or Gilded Sentinel in the stretch, its bait's turn far
+enough off (`hold_for`), and for a runner in every lane a lane beside them where its look fits on screen, its lane
+stays clear for the whole stay, the runner keeps a lane to dodge into and it hides no enemy
+(`EnforcerTruckRoom.layout_lane`, `fits_for`), also when it begins `show_window_slack_seconds` late. Windows where
+no runner is sent off the floor (a pad's ceiling, a ramp's wall run) before it has stayed alongside come first;
+its whole stay before a shorter one (`show_min_seconds` at least); as it arrives (any of its arrivals, the
+preferred first) before mid-chase, mid-chase before its first bait before after it. Where the level leaves no such
+stretch, it takes out what's in the way, only what the showing needs gone: plain holes and fences (never a pulsing
+fence or one a fence generator powers), plain cyborgs, window cyborgs and Screeches (never a host, the first of a
+kind the level introduces, or the last of its kind or of one of the level's features: the generator would build the
+level again for a missing feature). **Which baits get trucks** (task C6d; the owner, October 9, 2026, GDD §9.13
+"Room to show itself": it shows itself before the player can bait it, and a chase with no room for that gives its
+truck to another bait's chase that has room): of every set of baits whose chases fit together (planned along the
+track, each one again around the chases before it), the one with the most windows before their first bait, then the
+most windows, then the most chases, then the earliest (`_choose`). A pair is also planned the other way round, the
+later chase's window first and the earlier truck arriving earlier around it (`_plan_set`); the planner itself tries
+every arrival a bait allows, the earliest too, before it settles for a window after the bait. At an arrival with a
+bait under way (a Buzz Overdrive that claimed its turn before the truck arrives, its rev still to come: the rules keep
+arrivals off its attack, not its claim) no window counts as before the bait, since its charge comes first
+(`ShowPlanner._under_way`); the fallback after the bait starts after that attack. A level that
+introduces the truck keeps its first bait's chase where that has room before its bait, and otherwise moves its
+introduction only to a chase where it shows itself before its bait (its first-encounter hint is the level intro's,
+and the cyborg planted in a charge path that teaches it comes earlier in the campaign, `test_charge_paths`). A later
+window whose take-outs would now leave none of a kind after an earlier window's is planned again
+(`ShowPlanner.still_fits`; none in the sampled builds). The window goes in the truck's params (`show`: {at, from,
+to}); `gen.show_window_result` reports each chase (its bait, its window, its arrival against the preferred one,
+what it took out, or why none) and each bait's own chase (`baits`: a window before or after the bait, or none, and
+whether it got a truck). Every later pass keeps
+off each window, `WINDOW_EDGE` (1 m) wider, as a **calm stretch** (`doodad_keep_outs` entries with `calm: true`):
+nothing it adds may stand or attack there, but it's no attack, so nothing keeps a spacing from it and it shapes no
+pass's search for room. The danger density pass rejects an enemy (where it stands, `CALM_ROOM` either side, and its
+attack window) or a row in one (`Plan.calm`) without changing its rooms, so its draws are as before elsewhere; the
+cyborgs planted in charge paths keep off one where they stand (`_cyborg_fits`); a wider gap keeps its row off one
+(`row_only`); a zone doodad keeps itself and its push's lead off one, which shapes none of the doodads' stretches
+(`doodad_keep_outs`' `calm`); the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
+Buzz Overdrive given a planted cyborg claims its turn earlier (`ChargePathTuning.claim_seconds`), after the trucks
+are planned: the planner assumes that claim for every one (`least_claim`), so each window still holds in the
+finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. On the six
+levels' own seeds, 16 of 23 chases get a window (8 as it arrives, 6 only after the first bait); the chases without
+one have a hover truck or a Gilded Sentinel over their whole chase (4), or no calm stretch at all (Corporate 2 at 5
+lanes: its introduction among an Octodog's charges, a Tithe Collector and a Buzz Overdrive's attack; Dead Zone 1 at 3
+lanes: pulsing fences, a ramp's wall run and a Screech; Dead Zone 2 at 6 lanes: rows of fences with a pad in their
+gap). Played with a runner keeping to each lane in turn (`tools/measure/enforcer_shows.gd`, Review tools), 57 of 106
+chases show it (32 as it arrives), against 15 of 106 before; of the 75 with a window, every one shows it but 18 whose
+truck the runner's bait or a wider gap destroyed before an after-bait window, and one whose runner a pad sent onto a
+ceiling. The danger density pass's enemy and obstacle counts on its sampled
+bands stay as they were; the windows cost the six levels about 2% of their enemies and obstacles (592 to 580 and
+3281 to 3226 on their own seeds: what they took out, and what the fill pass and the pass's rows found no room
+for). Every level without the truck, and every level with it with the switch off, builds exactly as before. The
+planning adds about a quarter to those levels' build time (50-330 ms a build; the longest, Dead Zone 1 at 5 lanes,
+1.9 s against 1.7 s). Task C6d (which baits get trucks, above) changes nothing on the levels' own seeds (every
+campaign build is byte for byte as before): 9 of the 23 chases have a window before their bait (8 as it arrives,
+1 mid-chase), 7 one after it, 7 none, and no other bait with room is left for any of those 14. The level's only
+usable bait comes too soon for any showing before it (Golden 1 at 3 and 6 lanes, Golden 2 and 3 at 6: a Buzz
+Overdrive revs 6.4 s in, 4 s after the run-up; Corporate 2 at 6 lanes: an Octodog's charges at the start keep the
+truck from arriving earlier than 4.5 s before its Buzz Overdrive's turn), its only chase has a hover truck or a
+Gilded Sentinel about throughout (Dead Zone 1 at 6 lanes, Golden 2 at 3, Golden 3 at 5), or its other bait with room
+already has the level's other truck (Corporate 2 at 5 lanes: its introduction, a Tithe Collector about and then its
+bait too near; Dead Zone 1 at 3 lanes; Dead Zone 2 at 5 and 6 lanes), or neither of its two baits has room (Dead Zone
+2 at 3 lanes: pulsing fences and no lane beside a runner by the wall before its first; a hover truck over its
+second). With 8 other seeds of each (162 builds in all), 9 builds change, all on other seeds: 71 of 226 chases have
+a window before their bait against 63 of 227 (27 after it against 32), and a runner keeping to each lane in turn sees
+the truck in 434 of 1058 runs against 421 of 1064 (a window before the bait brings its showing in 320 of 331 runs; in
+the other 11 the runner is on a ceiling or a wall as it's due, in a lane its window wasn't planned to hold for (6),
+its arrival showing begins but gives way before it comes alongside (4, in builds C6d left as they were), or a
+Resonator holds its lane (1)); in two builds a level keeps one truck that shows itself
+where it had two that didn't, and in one a pair planned the other way round gets back the second truck C6c's order
+dropped. A wider gap (task G7) comes before a window only where that window comes after its bait (6 of 27).
+
+**Making room** (task C6e; the owner, October 9, 2026, GDD §9.13 "Making room where there is none", answering items
+367, 400 and 401). Where no window fits before the first bait as C6c and C6d planned it (`ShowPlanner`'s CLASSIC mode,
+unchanged, so a chase that had one keeps it), the planner tries three more ways, in order (each window's params
+carry its `mode`: "around", "claim" or "calm"; CLASSIC's none):
+- **AROUND: beside a hover truck or a Gilded Sentinel** (they no longer stop a showing, as long as the runner keeps a
+  free lane). `EnforcerTruckRoom` reads each hover truck's lane as held over its stay (`held`, `held_lanes`): a wall
+  to the runner, never the truck's lane, and never with the truck between the runner and it (`sides`,
+  `escape_lane`, `can_dodge`, `shadow_clear` and `layout_lane` take the held lanes; `fits_for` adds the views two
+  lanes in from a runner beside it). What can't wait for a turn (`fixed`: a hover truck's entrance, from its banging
+  to its emerging, `entrance`; a Sentinel's turn, from its claim to its last swing, `sentinel_turn`) is never on as
+  the truck claims its turn for the window or begins, and the showing is back `show_margin_seconds` before the next
+  (`hold_for`'s `to_fixed`); their other attacks take turns and wait for it. A window here may leave out one runner
+  lane no showing could reach (`EnforcerTruckRoom.unreachable`: every lane beside it held, a floor cut's, or hiding
+  the hover truck; its report's `excused`), never two; and it reads what blocks the runner's lane only as far as its
+  stay reaches (`layout_lane`'s `clip`, as the truck in play does).
+- **CLAIM: its bait's claim during it.** As AROUND, with a Buzz Overdrive's claim on its turn coming during the
+  showing (it begins before the claim, which only holds back attacks that get ready later), out of view
+  `show_margin_seconds` before the tank's rev (`hold_claimed`; `EnforcerTruckRoom.revs`, an Octodog's turn as before,
+  `dog_turns`); skipped where no tank revs near the chase (`_revs_near`: it would plan nothing AROUND didn't).
+- **CALM: the calm start.** For the chase of a level's first bait, the truck may arrive inside the run-up, from
+  `calm_start_min_seconds` (0.5 s, DESIGN-TBD) into the run and the feature's start, at its follow gap, and show
+  itself as it arrives (`_calm_spots`, latest first; `arrival_problem`'s `calm`), its bait where it was; it takes
+  nothing out (`calm_start_takes_out` off, DESIGN-TBD), and it fires no volley in the run-up. Nothing in the run-up
+  shows on screen but the HUD, which no truck can cover (hints come on the level introduction before PLAY).
+- **Both trucks** stay where a level has two but room for one showing (item 401, as built), and wider gaps keep off
+  each chase from its arrival to its window's end (Wider gaps, Which).
+
+On the six levels' own seeds 12 of the 23 chases get a window before their bait against 9 (Dead Zone 1 at 6 lanes
+beside its hover truck, 1767-1962 m; Golden 1 at 3 lanes in the calm start, the truck arriving at 12 m with its
+window from the start to 177 m, where it had one after its bait at 293-508 m; Golden 2 at 3 lanes with its Buzz
+Overdrive's claim, 138-360 m), and every other build's windows stay where they were. A runner keeping to each lane
+in turn (`tools/measure/enforcer_shows.gd`) sees the truck in 73 of 106 runs against 57. The 11 chases still without
+one: a hover truck at 3 lanes leaves two of the three runner lanes no free lane (Dead Zone 2's second truck), rows
+of fences with a pad in their gap or pulsing fences leave a runner lane no lane beside it (Dead Zone 1 at 3 lanes,
+Dead Zone 2 at 3 and 6), the level's other chase leaves a second truck only arrivals too near its bait (Dead Zone 2 at
+5 lanes), a Tithe Collector is about over the only stretch its bait leaves (Corporate 2 at 5 lanes, its
+introduction, and at 6), the calm start has room only by taking out what's in the first
+patterns (Golden 1 and 2 at 6 lanes, Golden 3 at 5: 2, 8 and 2 pieces; `calm_start_takes_out` on would give them
+theirs), and Golden 3 at 6 lanes has a fence a generator powers there. Of the 33 runs without a showing, 21 are in
+the five chases with no window at all, 9 in chases whose window comes after the bait that destroyed the truck first
+(the measuring runner never dodges), and 3 in chases with one before: the runner lane a window leaves out beside a
+hover truck (Dead Zone 1 at 6 lanes, lane 5), a pad sending the runner onto a ceiling as it's due (Golden 2 at 3
+lanes, lane 0), and an arrival showing given way to a passing attack (Corporate 2 at 5 lanes, lane 0). With 8 other
+seeds of each (144 builds), 132 of 204 chases have a window before their bait against 62 of 203, and the truck shows
+itself in 637 of 957 runs against 377 of 952; a window before the bait brings its showing in 298 of 307 runs in
+CLASSIC, 132 of 177 beside a hover truck or a Sentinel (one of their attacks begun before the truck's claim still on
+as it's due, 33), 150 of 175 with a claim and 27 of 28 in the calm start. The windows the new modes plan take out
+about 1% more of those levels' obstacles (on their own seeds 580 enemies and 3226 obstacles before, 577 and 3219
+after; on the other seeds 4756 and 26686, 4734 and 26399), every build keeps its wider gaps, and every level without
+the truck builds exactly as before. The new modes add about two fifths to those levels' build time (the 18 builds on
+their own seeds, fastest of three: 13.9 s against 19.6 s; the longest, Dead Zone 1 at 5 lanes, 3.0 s against 2.1 s;
+Corporate 2 at 5 lanes 2.5 s against 0.9 s, its introduction's chase searched in every mode).
+DESIGN-TBD: item 386
+(`docs/OPEN_QUESTIONS.md`), the chases no bait with room is left for (items 402–403), and C6e's placeholders
+(items 407–411); items 382–385, 367, 400 and 401 are the owner's answers.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -1351,8 +1587,11 @@ generated layout to this, at 3, 5 and 6 lanes):
   ceiling whole from its start to the end of its landing zone (the chase camera rides below a ceiling,
   lower than a doodad's top), and what the rules keep: a rules script may declare `static func
   doodad_keep_outs(gen) -> Array[Dictionary]` with entries {from, to} (every lane: the host rules' Bad
-  Dream chases) or {lane, from, to} (that lane, which no doodad stands in or pushes into: a hover
-  truck's, until it has left; its `keep_out` already keeps every lane for its shortest stay);
+  Dream chases), {lane, from, to} (that lane, which no doodad stands in or pushes into: a hover
+  truck's, until it has left; its `keep_out` already keeps every lane for its shortest stay) or {from, to,
+  calm: true} (a calm stretch in every lane: an Enforcer Truck's showing window, task C6c: no doodad nor
+  its push's lead stands in it, but it shapes no stretch, so the doodads draw as without it elsewhere; the
+  other later passes keep their additions off it without spacing from it);
 - one at a time, `doodad_gap_seconds` from one's end to the next one's front, so a few in a row never
   make a slalom.
 Each stretch with room gets one with the level's `doodad_share` (a seeded spot in it; the next spot in a
@@ -1608,8 +1847,9 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   enemy's attack (the fill pass's keep-out with its floor; a floor cyborg's obstacle margin; a planned
   Resonator's pulses one by one, `DangerDensity.resonator_pulse_windows`: between them it only hovers and every
   pulse waits for clear floor) or the rules' doodad keep-outs (a Gilded Sentinel's strike; not a host's Bad
-  Dream chase, which the danger density pass exempts too, `keep_out_exempt_features`). No ceiling and no
-  ramp's wall run lies over the jump itself (`row_only` keeps). A keep of one lane only (a hover truck's lane
+  Dream chase, which the danger density pass exempts too, `keep_out_exempt_features`). No ceiling, no
+  ramp's wall run and no calm stretch (an Enforcer Truck's showing window, task C6c) lies over the jump itself
+  (`row_only` keeps). A keep of one lane only (a hover truck's lane
   for its whole stay, beyond the stretch it's surely there, which every lane keeps) keeps that lane: the row
   leaves it open. Window cyborgs and Barnacle Turrets (their bolts never land near a hole), thieves and the
   Enforcer Truck (`NO_KEEP_TYPES`) don't count. Wider gaps keep `spacing_seconds` (15 s) apart.
@@ -1620,9 +1860,12 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   with those taken out (`_clearing`: never a pulsing fence or one a fence generator powers; `GeneratorRules.
   keep_powered` after: taking content out never makes a level unfair).
 - **Which.** With `prefer_enforcer_chases`, one first in each Enforcer Truck's chase (from `bait_after_seconds`
-  after it arrives to `CHASE_END_SECONDS` before it gives up), from the first source with one there, so the
-  runner can lead it in; then the rest spread through the level, each source used up before the next, rows
-  across most of the lanes (a jump) before single holes.
+  after it arrives, or from its showing window's end where that's later, to `CHASE_END_SECONDS` before it gives
+  up), from the first source with one there, so the runner can lead it in; then the rest spread through the level,
+  each source used up before the next, rows across most of the lanes (a jump) before single holes. None comes in a
+  chase before its showing, from the truck's arrival to its window's end (task C6e, approved with C6d's follow-up;
+  `EnforcerRules.wide_gap_keep_outs`, a `row_only` keep in `keeps_of`): it would wreck the truck before it has
+  shown itself.
 - **After it.** The fill pass keeps its usual margin from the wider rows as from any piece; the danger density
   pass's floor pieces keep off each zone as it stands (`DangerDensity._index_obstacles`: its margins are the
   level's spacing already), City 1's extra gaps keep it narrowed by their own margin (`GapDensity._protected`,
@@ -1635,14 +1878,11 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). On task K4's curve the first Enforcer chase holds one
-  in 9 of the 18 level and lane builds that have trucks (as on K2's 17-level linear curve, not the same ones),
-  Corporate 2 at 3, 5 and 6 lanes, where the truck following the runner over it is wrecked in play (K2's left
-  5 lanes' chase full). At 3 and 5 lanes it comes about 5 s after the truck arrives (at 5 lanes 128 m on,
-  across 4 of the 5 lanes), before its first volley, which is due 3 s after it arrives and waits up to
-  `show_wait_seconds` (4 s) for a showing that doesn't come in these runs: a runner who leads the truck
-  straight there wrecks it before it fires (`test_enforcer_truck_runs`' `NO_VOLLEY_LANES`, 5 lanes;
-  `docs/OPEN_QUESTIONS.md` §D, item 395). `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  one fewer on a seed not the level's own, never none). An Enforcer chase holds one past its showing window in 6
+  of the 18 level and lane builds that have trucks (8 before task C6e kept them off the chase before a showing:
+  Corporate 2 and Golden 2 at 6 lanes, whose windows come after their bait, lost theirs), Corporate 2 at 3 and 5
+  lanes among them, where the truck following the runner over it is wrecked in play; none comes before a window
+  (6 did, in chases whose window comes after their bait), and every build keeps its count. (Counts measured before the Casino's curve (task K4) met C6e; re-measured in the merge.) Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
@@ -1665,7 +1905,9 @@ turned down, constraints). `plant()` writes one encounter, and the tests plant t
   (`Cyborg.stand`: no walk), and holds its fire while the runner is in its `hold_fire` stretch, from
   `hold_before_seconds` (1 s) before the charge's warning until `hold_after_seconds` after it has passed them,
   with no bolt of its landing there (`Cyborg._may_attack`, `CyborgGun.hold`). It keeps a cyborg's obstacle
-  margin and every ceiling's safe floor, and it never counts as the level's cyborg (`feature_positions`).
+  margin and every ceiling's safe floor, stands `CALM_ROOM` or more off every calm stretch (an Enforcer Truck's
+  showing window, task C6c: the encounter's span itself may reach one, `attack_near` leaves them out), and it
+  never counts as the level's cyborg (`feature_positions`).
 - **An Octodog's planted lunge.** Only its first, made from where it stands. The cyborg stands
   `dog_cyborg_ahead` (2.5 m, or a little more, stretched by the pace) in front of it in the lane beside, and the
   dog's params (`through_lane`, `through_at`) send its lunge along a line through it, two lanes across: it
@@ -1759,77 +2001,89 @@ side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_bud
 A run, Smooth frames): a hook never counts on the frame it's called in, and a hazard's look shows the
 hazard's state when it binds (`HazardStateVisual.bind`). Tests and review tools dress each chunk at once.
 
-**Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gives each zone its
-own, except the grey box, which keeps the plain default. `GoldenPalaceSkin` (D6b) extends `GoldenSkin`
-and doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's gilded planters,
-fountains and statues for free, unless a follow-up gives it its own interior ones.) What a look gets
-and keeps to:
+**Zone doodads' looks** (task G5 built the mechanism and a plain default; task G6 gave each zone its
+own, except the grey box, which keeps the plain default; since the owner's request of October 9, 2026,
+"keep each doodad a simple box but draw on it a picture of the object, with the open air see-through",
+every zone draws its doodads as **picture cards**. `GoldenPalaceSkin` (D6b) extends `GoldenSkin` and
+doesn't override `doodad()`, so the Golden Palace inherits the Golden Zone's looks, chosen to work
+indoors as well as out.) What a look gets and keeps to:
 - *The hook*: `doodad(body, size, size_class, side, look_seed)`. `body` is the doodad's node, centred on
   its collision box `size` (width, height, length): the floor is at -size.y / 2 and its front, where the
   player meets it, at +size.z / 2; add meshes as its children. `size_class` is `&"small"`, `&"medium"` or
   `&"large"` (`LevelLayout.DOODAD_SIZES`), whose boxes come from `MovementTuning.doodad_size()`: by
   default 1.3 × 1.4 m, 1.9 × 3.6 m and 2.0 × 6.5 m (width × length), all 2.6 m tall (DESIGN-TBD). Map
   each class to the zone's pieces of that size. `side` is the side it pushes to (-1 left, +1 right) and
-  `look_seed` a number to vary the look by (which model, a tint, its props), hashed with `MeshKit.hash_i`
-  like everything else in a skin: never a random number generator, so a doodad looks the same wherever
-  and whenever it is built.
+  `look_seed` a number to vary the look by, hashed (`MeshKit.hash_i`), never a random number generator,
+  so a doodad looks the same wherever and whenever it is built.
 - *Inside the box, filling most of it*: what looks like contact is contact (GDD §3), and it must read
-  as too tall to jump (it is) and as wide as it blocks. A burned-out car is lower than 2.6 m: stack it,
-  tip it on its side or pile its wreck high. Nothing outside the box (an awning, a branch, a sign arm):
-  the player would pass through it. Placing a piece by a formula that fits its own size against the
-  box's remaining room (`x = (hash01 - 0.5) * (size.x - piece_w)`, and the same for z and for a stack's
-  height) keeps every seed inside the box by construction; a piece built with any rotation needs a wider
-  margin budgeted in by hand (the Dead Zone's leaning masonry works out its own tilted bounds this way)
-  since `MeshInstance3D.get_aabb()` is exact and every skin suite's `doodads_ok` (below) will catch a
-  margin that was cut too fine.
+  as too tall to jump (it is) and as wide as it blocks. Every look keeps its silhouette near the box's
+  full height (a heap may dip at its edges, its middle stays high). Nothing outside the box (an awning, a
+  branch, a sign arm): the player would pass through it. Cards lie on planes inside the box by
+  construction (below), and every skin suite's `doodads_ok` checks the mesh's bounds.
 - *Solid and safe* (CLAUDE.md readability rules): the zone's non-hazard colours, nothing glowing in a
   hazard colour (pink, yellow and black, red, orange, green, cyan), nothing that reads as a sign (no
   striped frames), a fence (nothing strung between posts), a barrier or an enemy (no eyes, no faces on
-  screens; the cult's feed is the walls' business). Warm-white or zone-coloured lamps are fine if small.
-- *Its push side may show* (the default's front slants back toward it); nothing more is needed.
-- *Cheap, and on the shared material alone*: one mesh per doodad from cached templates (the kit's
-  `MeshBatch`, one layer, so a doodad is always one draw call however many of the kit's surface patterns
-  it mixes), fine on the Compatibility renderer. Every doodad's `MeshInstance3D.material_override` is the
-  plain `MeshKit.solid()` (no params), never a zone's own tuned `solid_material()`: `test_doodads`'
-  `_test_skins` and each skin suite's `doodads_ok` (`tests/helpers/skin_suite.gd`) hold every skin to
-  this, so a doodad never glows and always renders through the one shared material instance (cheaper:
-  one less state change) across every zone. It still dims with a level's darker lighting like the
-  scenery (The Hush): `scenery_light` is a *global* shader uniform, so even the bare material reads it.
+  screens; the cult's feed is the walls' business). Signs and screens on a doodad are matte paint.
+- *Picture cards* (`DoodadCards`, `scripts/world/skins/doodad_cards.gd`): each zone's pictures are
+  painted by code (`tools/asset_gen/doodad_art_gen.gd`, run with `tools/godot.sh doodads [--only=a,b]
+  [--review]`) on the CPU (`DoodadPaint`: metres on a 4× supersampled canvas, polygons, gradients, soft
+  weathering; `DoodadKit`: the shared motifs in the concept art's flat-paint-and-ink style: planks,
+  corrugated sheet, wheels, awnings, crates, foliage, see-through window frames, stains) by one script per
+  zone (`tools/asset_gen/doodad_art/<zone>_art.gd`), and packed into one atlas per zone,
+  `assets/sprites/doodads/<zone>.png` (imported VRAM-compressed with mipmaps, about 2.8 MB a texture
+  format: stored lossless they were a few hundred KB, but decoding one cost a 40 ms frame mid-run where
+  there's no shader warm-up; `DoodadCards` keeps one zone's in memory at a time, and the web demo leaves
+  out the zones it never shows), with a manifest
+  `<zone>.json`: where each picture sits, the boxes they were painted for, and each size class's looks.
+  A look is a list of cards (`DoodadArtSet`, `tools/asset_gen/doodad_art_set.gd`): `{plane, at, rect,
+  image, flip}`, a picture on one of the box's faces (`plane` "z" across the lane, its front at `at` = 1;
+  "x" along it; "y" level, the top at 1) or on a plane inside it (a palm's crossed fronds, the goods down
+  a stall's middle, a fountain's water arcs, a rubble heap's inner ridges), over the share `rect` of
+  that plane. Pictures are drawn as seen from outside, a side's front end on its left; a side seen from
+  x- mirrors it (`flip`). Where the object is open (between a stall's counter and roof, a van's empty
+  windows, a colonnade's bays) the picture is transparent and the shader drops it (alpha below one half
+  is discarded: no sorting, no blending). `DoodadCards.for_zone(zone)` loads a zone once; a look is
+  picked from `look_seed`; its mesh (one quad per card) is built once per look and size and shared by
+  every instance, on one material per zone (`doodad_card.gdshader`: unshaded with the kit's fake city
+  light, double-sided, a soft neutral sheen, `scenery_light` and `scenery_tint` like the scenery, never
+  emissive), so a doodad is one draw call, the same on the Compatibility renderer. A zone without a
+  manifest, or a size class without a look, falls back to the default (below). Each design keeps its
+  main colours in the manifest (`colors`), and its mesh carries them as vertex colours (one a card,
+  alpha 0 like the kit's lit colours: never a glow; the card shader ignores them) and as its
+  `debris_colors` metadata (`DoodadCards.COLORS_META`), for anything that needs the look's colours (a
+  smashed doodad's pieces). After changing `MovementTuning`'s doodad sizes, rerun `tools/godot.sh doodads`
+  (`test_doodads` fails until the manifests match the boxes).
 - *The default* (`default_doodad_mesh`): a low-poly block in the skin's `doodad_palette` (body, top,
-  base), still used by the grey box and by any new zone before its own task gives it a doodad() of its
-  own: a base plinth, an inset body and a top, its front slanting back toward its push side.
-- *Each zone's own look* (task G6; `scripts/world/skins/<zone>/<zone>_doodads.gd`, called from the
-  skin's `doodad()`): the Neon City (`CityDoodads`) maps the three classes straight to the GDD's three
-  ideas, smallest first: a pillar, a tiny market stall (a counter, corner poles and a flat canopy) and a
-  small storefront (a facade slab with a window row and a signboard lip). Gangland (`GanglandDoodads`)
-  gives the small and medium classes a burned-out car each (one wreck, then two nose to tail), both
-  crushed low with scavenged salvage piled on top up to the box's top (GDD §3's "stack it... or pile its
-  wreck high"), and the large class a broken-down shop (boarded shopfront, a pulled shutter, a sagging
-  roof lip, rubble at its foot). The Marketplace (`MarketDoodads`) gives the owner's "plenty of nice
-  plants, casino machines": a tall potted plant (small), a bank of two casino cabinets along the box's
-  length with a dim screen face and a marquee hump, never as bright as a hazard sign (medium), and a
-  planted hedge row of three stems of varying height (large). Corporate (`CorporateDoodads`) covers the
-  owner's list directly: a steel planter (small); a security barrier (a wide olive block and a watch
-  mast) or a glass kiosk, picked per doodad by `look_seed` (medium); a sculpture plinth, an abstract
-  steel form built from offset slabs with a brand-paint accent (large). The Dead Zone (`DeadDoodads`)
-  takes the GDD's three ideas directly, smallest first: a crushed, ash-dusted wreck with rubble piled on
-  it (small), a rubble heap of stacked, irregular concrete chunks (medium) and a slab of fallen masonry
-  leaning across the lane at a shallow angle from vertical, with a crumbled edge and rebar (large). The
-  Golden Zone (`GoldenDoodads`) takes the owner's "gilded planters, fountains, statues on plinths": a
-  gilded planter with stylized gold reed fronds (small), a fountain with a still marble basin and a thin
-  falling jet of water (`MeshKit.PAT_WATER`, scenery only, GDD §5; medium) and a robed statue on a
-  plinth (large) -- deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`,
-  task C4). The decorative wall guards now also stand at the wall base, but this lane doodad
-  never reuses their kit or its shape -- a plain draped, faceless figure with its hands clasped and
-  nothing raised -- so it can never be mistaken for the live enemy even up close. `test_golden_skin`
-  guards against the doodad script ever building itself from `GoldenStatue`.
-  None of the six needed a new mesh-kit pattern or shader include: the kit's existing patterns (e.g.
-  `PAT_GOLD`, `PAT_MARBLE`, `PAT_DZ_CONCRETE`, `PAT_CORP_PLATE`, `PAT_TECH`) already cover every zone's
-  materials, each skin picking its own colours for them through its "Doodads" export group.
+  base) on the plain `MeshKit.solid()`, still used by the grey box and by any new zone before its art: a
+  base plinth, an inset body and a top, its front slanting back toward its push side. The skins'
+  "Doodads" export groups (other than `doodad_palette`) are unused by the cards.
+- *Each zone's own look* (`scripts/world/skins/<zone>/<zone>_doodads.gd` hands the skin's doodads to its
+  zone's cards; the pictures are in `tools/asset_gen/doodad_art/<zone>_art.gd`): the Neon City a street
+  vending machine or a pillar plastered with posters (small, by seed), a street-food stall with stools,
+  a steaming pot and a corrugated roof, open between counter and roof (medium), and a little shop with a
+  roll-down shutter, a door, blinds and an unlit sign box (large). Gangland a stack of rusted oil drums
+  under a tyre (small), a burned-out van, its windscreen and windows open on a charred cab (medium), and
+  a broken-down corrugated shop with a half-open shutter on a dark inside (large). The Marketplace a
+  potted palm or a flowering bush in a tiled planter (small), the owner's vendor's stall: a plank
+  counter, corner posts, a striped little roof and its goods in the open middle (medium), and a bank of
+  slot machines back to back (large). Corporate a steel planter with a clipped topiary (small), a glass
+  security booth (medium) and a ribbed olive supply container with stencils (large), the brand colour
+  as thin flat paint. The Dead Zone a broken column on its square foot, rebar out of its break (small), a
+  heap of rubble, lower at its edges than its middle (medium), and a burned-out bus, its window frames
+  open on charred seats (large). The Golden Zone a robed statue on a marble plinth or a gilded urn with
+  a clipped topiary (small), a wall fountain with water arcing into a basin either side (medium), and a
+  colonnade with red drapes, balustrades and a coffered roof, open between its columns (large). The
+  statue is deliberately not the Gilded Sentinels' armoured guard with a halberd (`GoldenStatue`, task
+  C4): a plain draped, faceless figure, hands clasped, nothing raised, its front and back on two cards so
+  each end shows its own side. `test_golden_skin` guards against the doodad script ever building itself
+  from `GoldenStatue`.
 - *Tested*: `test_doodads`' `_test_skins` builds every skin's doodads in every class (seed 7 alone) and
-  checks the box, that nothing glows and that `doodad_palette` is muted. `SkinSuite.doodads_ok(skin,
-  name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls, extends this over several
-  seeds and both push sides: dressed, inside the box, on the shared `MeshKit.solid()` alone, never
+  checks the box, that nothing glows (the shared `MeshKit.solid()` or a zone's card material,
+  `DoodadCards.is_card_material`) and that `doodad_palette` is muted; `_test_cards` loads every zone's
+  manifest and checks it was painted for today's boxes, gives each class a look, and that every card
+  shows a picture from its atlas on a plane inside the box, and that the card shader never emits light.
+  `SkinSuite.doodads_ok(skin, name)` (`tests/helpers/skin_suite.gd`), which every zone's own suite calls,
+  extends this over several seeds and both push sides: dressed, inside the box, lit scenery, never
   glowing, and the identical (cached) mesh every time the same size, side and seed are drawn again.
 
 **Floor cuts' looks** (B4; GDD §9.9: the floor a cut takes "becomes a gap ... The cut edges glow the
@@ -1952,20 +2206,32 @@ factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (
 `ZoneSkin.energy_factor()` for the environment) converts it for the Compatibility renderer's sRGB
 space, so both renderers dim alike. A new skin gets it by drawing its scenery with the kit, or by
 reading `scenery_light` (through `light_factor`) in a shader of its own, or by overriding
-`apply_darkness()` (calling it first). Only the run that set the light last resets it when it ends
+`apply_darkness()` (calling it first). A scenery shader of its own also multiplies its lit colour by
+`scenery_tint` right after (a level sky's street light; `test_level_sky` checks every shader that reads
+`scenery_light` does). Only the run that set the light last resets it when it ends
 (`LevelRun`). `skin_review` takes `--darkness=X` to look at it.
 
 **A level's own sky** (`LevelConfig.sky`, a `LevelSky` in `data/skies/`; owner, October 8, 2026). Most
-levels keep their zone's sky; a zone's last level may show the time of day or the weather turning, for a
-sense of progression: City 3 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the
-undersides of clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the
-zone's last level, a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky).
+levels keep their zone's sky; a few show the time of day or the weather turning, for a sense of
+progression: City 1 a dawn (`city_dawn`: the sun about to rise, pinks and purples on the undersides of
+clouds), Gangland 3 a cloudy blood-red sky (`gangland_blood_red`), Marketplace 2, the zone's last level,
+a sunset (`marketplace_sunset`: deep blue overhead, pink at the bottom of the sky). The boss fight after a
+level keeps that level's sky (`Campaign.configure_boss`, unless the arena has its own), so the Sewer Swarm
+fights under Gangland 3's and The House under Marketplace 2's.
 `ZoneSkin.level_environment(darkness, sky)` builds the zone's environment, then `LevelSky.apply()` sets
 the sky's `night_sky.gdshader` uniforms over the zone's (by name; its colours go as sRGB `Vector3`s, as the
 Dead Zone's do, so both renderers draw them alike) and the distance fog's colour (so far scenery fades
-into that sky); the darkness comes after, as for any level. Nothing else changes: the ambient light, the
-sun, every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a
-sky stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
+into that sky), and `ZoneSkin.set_scenery_tint()` sets the street's light under it (`LevelSky.scenery_tint`,
+white without a level sky); the darkness comes after, as for any level. The tint is the global shader
+uniform `scenery_tint` (project.godot, a `vec3`): every scenery shader that follows a level's darkness
+multiplies its lit colour by it right after `light_factor(scenery_light)` (one multiply per pixel; the
+Compatibility renderer's sRGB equivalent is worked out once in `set_scenery_tint()`, not per pixel), and
+no glow, hazard, enemy or runner shader reads it. A boss model built from the kit's solid shader (The
+House's cabinet, the Swarm Host's body and pipe) takes it as a level's darkness reaches it; its glowing
+parts don't (open question 406). A tint only dims or tints (each channel at most 1), and
+the run puts it back to white when it ends (`LevelRun`). Nothing else changes: the ambient light, the sun,
+every glow and the fog's reach stay the zone's, so hazards read as in the zone's other levels, and a sky
+stays under the glow threshold, so it never blooms (`test_level_sky`). The zone's own environment is
 never touched (each `make_environment()` builds its own sky material). The sky shader's looks for a level
 sky all default to off, so no zone's own sky changes: `horizon_falloff` (0.55: how far down the zenith's
 colour reaches), a glow low over the horizon at a bearing (`sun_glow_*`, where the sun is about to rise
@@ -1974,9 +2240,12 @@ band at the horizon and stretched across the street; its undersides catch `cloud
 toward `sun_glow_direction` by `cloud_lit_focus` (0: lit from all around, as by Gangland's fires), on the
 lower clouds, on their thin edges and on each cloud's side facing the light). The clouds cost six octaves
 of value noise per visible sky pixel, only where a level has them; no `TIME`, so the sky's radiance still
-never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky
-(`App.start_endless`), as do boss fights (`Campaign.configure_boss` builds the arena's own config) and
-cinematics (`CineStage`: `level_environment(0.0)`). `skin_review` takes `--sky=name` to look at one.
+never updates. Endless mode, which copies its zone's last level, keeps the zone's own sky and light
+(`App.start_endless`), as do a zone's intro and outro (open question 405); a boss's intro (the Sewer
+Swarm's) is under the fight's sky, so the sky holds from the level through the intro to the fight (open
+question 404) (`CineStage.sky_for`, the
+arena's own or the zone's last level's; `CineStage.build` passes it to `level_environment(0.0, sky)`).
+`skin_review` takes `--sky=name` to look at one.
 
 The kit's solid shader (`kit_solid.gdshader`) draws surface patterns chosen per vertex (`MeshKit.PAT_*`):
 panels, glass, glyphs and chevrons for the City; worn asphalt (with sand drifts and scorch around holes),
@@ -2183,7 +2452,7 @@ paved street, warm lamplight and haze.
   gives the ones the shared pieces read (neon, lamps, signs, doodads) the Casino's colours. Chunk meshes use
   the same materials as ever: the one solid and one glow material of the batch, the facade shader's own, the
   feed's, and the drift material, so the roof adds no surface of its own.
-- *The street is a floor and gaps are open service trenches* (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 369): dark
+- *The street is a floor and gaps are open service trenches* (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 416): dark
   flagstones in running bond with brass inlaid along both edges of every lane and across it every 6 m (the
   still floor's own motion cue), pools of lamplight and a wet sheen (all in the shader, from world position,
   so chunk cuts are seamless), and the dust, scraps and speed streaks of the other skins. Under a gap
@@ -2221,7 +2490,7 @@ paved street, warm lamplight and haze.
   its one line on a strip, GASKET'S stacked down a blade; the Brass Lotus's board and its stacked blade). A
   sign is one `MeshLayer.append` of a cached, coloured layout into the chunk's solid layer (about 15 us): no
   `Label3D`, no `SubViewport`, no node, no surface or draw call of its own. **Only a few casinos are named**
-  (two famous ones, not a chain; DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, item 390): `CasinoFacades._name_of()` cuts the
+  (two famous ones, not a chain; DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, item 437): `CasinoFacades._name_of()` cuts the
   street into periods of `name_spacing` metres (100, both walls together), picks at most one casino with a big
   sign in each by hash (from the period's middle half if it has one) and alternates the names from period to
   period, a pure function of the street's layout so every chunk agrees; a `name_spacing` of 0 names every
@@ -2570,13 +2839,15 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 `Campaign` lists `ZoneDef`s; each built zone contributes steps: optional intro cinematic, its
 levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step ids (`city/1`,
 `city/boss`, ...) key the save file, so they never change (but for a zone's new place in the campaign, which a
-save migration follows: Economy and saving, Saves from before the Casino). Difficulty comes from a campaign-wide curve
+save migration follows: Economy and saving, Saves from before the Casino). A cinematic slot added after a save had passed it
+(Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
+unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
 plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
 
 The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
 `marketplace`, `casino`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
-cinematic slots (the City also a boss intro) and a boss slot from GDD §10's roster, but the
+cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster, but the
 Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
 Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
@@ -2584,14 +2855,14 @@ quietly and the menu music carries on). Only the City is in the web demo. The cu
 over the 17 levels (FB 4, FB 5). When the Casino's two came in, task K2 re-spaced it linearly (each
 existing level's difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from
 0.56 to 0.60; the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every
-existing level keeps its own, `docs/OPEN_QUESTIONS.md` §D, items 384-386). The owner then ruled that no
+existing level keeps its own, `docs/OPEN_QUESTIONS.md` §D, items 431-433). The owner then ruled that no
 level gets easier when levels are added (GDD §6, October 9, 2026), so `difficulty_curve_exponent` bends it
 (0.79, task K4, DESIGN-TBD): every level is at least as hard as on the 15-level linear curve before the
 Casino (Marketplace 2 binds that up to about 0.84), the Marketplace a little harder (0.469 and 0.516, from
 0.443 and 0.500), City 2 to Gangland 3 0.03-0.04 harder, Corporate 1 to Golden 2 0.02-0.10 harder, City 1
 (0.05) and Golden 3 (0.85) as they were, and each level at least 0.04 harder than the last (Golden 3
 aside). `enemy_scaling` stays linear (K2's thresholds stand), and `test_campaign` checks every level
-against the 15-level curve (`docs/OPEN_QUESTIONS.md` §D, item 393: the table and why 0.79). Which level is the peak
+against the 15-level curve (`docs/OPEN_QUESTIONS.md` §D, item 440: the table and why 0.79). Which level is the peak
 (proposed: Golden 2, with Golden 3 a little below it) and the remaining level lengths (DESIGN-TBD, run
 120–150 s) stay open.
 Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via
@@ -2636,7 +2907,8 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
-intro play a placeholder arrival flyover, and the outros are still cards. A boss is built on the boss
+intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
+Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), and the other outros are still cards. A boss is built on the boss
 framework (Bosses, below). The City's Floating Head is built
 (its step plays the fight); the other boss slots are still placeholders, holding the phases GDD §10
 gives each designed boss and its armor-rule delay. A fight still being built names its scene in the
@@ -2796,7 +3068,7 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 | `floating_head_body.gd` (`FloatingHeadBody`) | the body part: the model and its moving parts (face screen, jaw, searchlight gimbal, bay doors, weak-point covers that swing open with the red domes pulsing out: `weak_open`), a solid hull hitbox (`set_hull_solid`: off while pinned), a weak point over each lane near the crown's middle (generous stomp boxes, `stomp_width`/`stomp_depth`/`stomp_top`, as deep as the run's pace makes them, `stomp_depth()`; at 5 and 6 lanes the outermost ones also reach over the outer lanes out to the walls at their own height, `stomp_outer_reach`, where a wall jump or a drop off the ceiling lands: `stomp_covers_outer_lanes`, E1e) and the crown's deck (a concave shape exactly over the drawn hull, `FloatingHeadModel.deck_faces`), both off until a window opens (`set_weak_points_enabled`, `set_top_solid`; `top_height`, `weak_point_world`), the face's state (`screen_power`, `anger`, `eye_charge`, `glitch`, `jaw_open`, and `look_point` for the eyes to watch the laser's aim), where its eyes and mouth are (`eye_world`, `mouth_world`), and `exclusive_major_attack` (its lasers and bombs take turns with other big attacks). The slogan's caption band (`show_slogan`, `caption`: a Label3D in the face's cold white over a dark band the face shader draws across the screen's lower part, under the eyes; Label3D translates its text like the UI's labels). Beaten, it stays and keeps drawing itself: `power` fades its lights (per-instance copies of its kit materials' `state_glow`), `wreck(face_rest)` swaps in the wreck and lays its torn-off face in the street (cracked, framed), `crash_dust` and `start_smoke` (soft grey puffs from a radial `GradientTexture2D`) |
 | `floating_head_model.gd` (`FloatingHeadModel`) | the low-poly meshes, built in code from a `Shape` sized to the street and its lanes (MeshKit layers merged into a few surfaces: about 13 surfaces and 11k vertices; the weak points over the lanes within `weak_point_reach` of the middle), the bomb, the crown's deck faces, and `ship_transform` (its pitch and its roll about the crown over the weak points). The wreck (`_wreck`): its stern half (`WRECK_LENGTH`), torn open at both ends (the cut plating and flaps peeled outward), plated inside, dark; `wreck_inner_half` is its inside's half width at a height (the runner's room in it, tested at every lane count) |
 | `floating_head_voice.gd` (`FloatingHeadVoice`) | the propaganda: from the reveal on, a phrase every so often (`head_voice_1-4`, a seeded order and pauses of its own) from a positional player at the face, each with the next slogan (`FloatingHeadTuning.slogans`); it ducks `voice_duck_db` at once under `FloatingHead.warning_active()`, the slogan fades, and no phrase starts until the warnings have been over a moment; `cut()` stops it mid-shout for the defeat (`head_voice_cut`) |
-| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner |
+| `floating_head_bombing.gd` (`FloatingHeadBombing`) | the searchlight and the bombs: the lock (the warning: red light, `circle_warning`, lock sound, the bomb falling with its whistle), the fairness rules (`plan`, `fair`, `escape_lane`), and pooled blast hitboxes (enemy attacks) that keep clear of a wall runner. From the second run on (`salvo_size()`, E1g), a lock is a salvo (`_try_salvo`, `plan_salvo`): 2–4 spots marked at once, nearest first, each next one `salvo_spacing` further. `plan_salvo` follows every lane the runner could be in (`_reach`) and makes each spot the block of up to `spot_bombs()` lanes that leaves the fewest, but at least `spot_choices()` (one on 3 lanes, a forced path; two from `salvo_wide_lanes`, with up to three bombs); `way_through` finds a way through a salvo's spots under its rules, and `dodge_lane` gives the lane to be in for the next spot ahead (the tests' runner, `FloatingHeadBot` and the showcase use it). Its target circles (`_circle`) are `circle_warning`'s with a fog-free copy of its material, the same red at any distance |
 | `floating_head_faceoff.gd` (`FloatingHeadFaceOff`) | the face-off: the phase's attacks wait in line (`faceoff_pattern`; the first that can start fairly goes next) with a drag timed for each marked tower. Eye lasers: the warning (the eyes' `eye_charge` and whine, thin aiming beams with a sweep's aim lines or a drag's aiming spot, then the drag's `lane_warning`), a sweep's twin beams (low: both low, jump them; high: one at the waist and one above a jump's reach, like a gapped fence, slide under them) or a drag down the runner's lane leaving a burning line (keeps clear of a wall runner), each with enemy-attack hitboxes. The cyborg drop: the jaw opens (with its sound and `circle_warning`s where they land), then normal cyborgs from the director (`spawn_enemy`) fall from the mouth onto clear roof and fight. A tower's drag is a bait when the runner is in the outer lane on its side as the warning ends, or the fallback after `fallback_after` misses; either calls `FloatingHead.begin_pin`. Lasers wait while its cyborgs are ahead and share the cyborgs' airspace (`CyborgGun.AIRSPACE_META`) |
 | `floating_head_tower.gd` (`FloatingHeadTower`) | a marked tower at the roadside (flush with the facades, its head jutting out over the street above the ship's highest flight so it shows from far along the street; no hitboxes: scenery until it falls): pale concrete with white painted bands and targets, cracks and cold warning lights; the laser's cut glows red-hot as it's clipped, then it topples forward onto the ship (`fall_onto`, `rest_on`), breaks in two as it lands (`break_at`, `tower_mesh`'s sections with torn ends: the lower section drops away), and the rest crumbles away when the ship shakes free |
 | `floating_head_ramp.gd` (`FloatingHeadRamp`) | the first stomp window's way up: the tower's broken slab slammed down in a lane (`ramp_length` long, its top end `ramp_lift` above the crown at the face) in two pieces (E1e): a low lead-in over `ramp_board_share` of it, rising to its knee (`knee_height`: `ramp_board_height`, never above `side_step_limit`, what a lane switch steps up), with bevelled sides a lane switch steps up anywhere along it (`board_until`); then the steeper slab onto the crown, whose sides are a lane blocker down to the trucks. Both tops are floors (convex shapes, where they're drawn); green chevrons up both, the lead-in's edges in the ramp colour; it sinks away when the ship shakes free |
@@ -3144,15 +3416,17 @@ never ends, and a level never starts, unattended.
 
 | File | What |
 |---|---|
-| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool) |
+| `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool); a script's hooks: `_on_cue()`, `_on_advance()` (its own props on the clock), `_stage_near()` (the street kept built under props further back), `switch_stage()` (a cut to another stretch, even another zone's) |
 | `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound`, `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
-| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, a cyborg's face, aim and charge) and its node in play |
+| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, the runner's head turn `look`, a cyborg's face, aim and charge) and its node in play |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
-| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0)`) and the run's sun; ceilings, gaps and pads; streamed in chunks like a run |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
+| `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
+| `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -3162,7 +3436,9 @@ counted from the start lane too (a lane past the street's edge is left out).
 
 **The stage picks up the slot's look from the zone's data.** A stage def without a skin of its own takes
 the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
-(`BossDef.arena.skin`) if it has one. Its lanes default to the device's (`App.lane_count()`), so the street
+(`BossDef.arena.skin`) if it has one. Before a boss it is under the fight's sky too (`CineStage.sky_for`: the
+arena's own level sky, else the zone's last level's, as `Campaign.configure_boss` gives the fight; G8), and the
+street's light under it; a zone's intro and outro keep the zone's own sky. Its lanes default to the device's (`App.lane_count()`), so the street
 matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
 boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
 playing carries on, so a song the owner adds later under that name just plays (no music is generated for
@@ -3184,7 +3460,9 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 **Actors.** The runner is the real player model (`PlayerAvatar`), driven with the same movement state as
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
-keys. A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower` or `die`;
+keys; it is in the air below the floor too (falling past its edge), and a key's `look` turns its head (shared
+by its chest, neck and head, turning smoothly between keys). A cyborg (`CyborgBody`) walks or idles by its
+speed, or takes `aim`, `run_away`, `cower` or `die`;
 its keys set its face, its aim (at another actor) and its charge glow (the red glow is its attack's
 warning in play, so show it only where an attack follows). An actor faces the way it moves, or a heading
 of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no gameplay.
@@ -3223,7 +3501,18 @@ func _make_timeline() -> CineTimeline:      # `stage` is built by now
 
 func _on_cue(cue_name: StringName) -> void:  # a CUE event's moment (the `cue` signal fires too)
 	pass
+
+func _on_advance(delta: float) -> void:      # every step of the clock: move the script's own props by `time`
+	pass
 ```
+
+A script's props (models of its own that aren't actors) are plain nodes it adds in `_make_timeline()` and
+moves in `_on_advance()` from `time`, so they keep time when a test steps the clock (added on the stage, they hide
+with it when it ends). If they stand further back than the camera and the actors (a horde behind the runner),
+`_stage_near(near)` returns how far back the stage must stay built (the track builder keeps only 30 m behind
+`near`, and builds 180 m ahead of it: hold it back only as far as the props need, or the street ahead of a camera
+looking down it ends short). `switch_stage(def, skin)` cuts to another stretch on the same lanes (track space stays put; cut under
+black, since building one takes a few frames).
 
 Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
 (`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
@@ -3239,6 +3528,56 @@ CITY"; before a boss, the boss, as the level select does), the slot's music come
 after 9.5 s, as the level (or the fight) opens on the same view. Gaps beside the runner's lane show the
 zone's floor pieces. It sets up in about 15-40 ms and costs about 0.3 ms a frame (headless), so it stays
 cheap on the web, where the demo plays the City's two.
+
+**The City outro** (`CityOutro`, task F2a; the owner's beats, GDD §6 Cinematics; its staging is DESIGN-TBD,
+`docs/OPEN_QUESTIONS.md` §D, items 369–381; numbers in `data/cinematics/city_outro_tuning.tres`): 15 s. From the run camera's view
+the dying Floating Head plunges into the street ahead and becomes the fight's wreck. The camera comes down to
+the runner's level as they stop. They look left, and the camera pans over their shoulder to a roadblock at the
+mouth of a side street opening off the left wall. The roadblock is Barnacle Turrets standing on the floor like
+cannons, five cyborgs (actors), an Enforcer Truck behind them with its light bar going, and a heli drone over
+it. The camera pans back to the runner, who hops back startled and sprints to an opening in the right wall.
+They leap out over the drop as the roadblock's red volley blows up the roof behind them, seen from out over
+the drop. Under black it cuts (`switch_stage`) to the next zone's street (the campaign's next `ZoneDef.skin`,
+Gangland), where they drop in, land and run off; Gangland's intro follows.
+
+`CityOutroSet` holds the props, all visual only and built from the game's own models: the ship from
+`FloatingHeadModel` (hull, face screen with the fight's shader, jaw, wreck), `BarnacleTurretModel` turned
+over, `EnforcerTruckModel`, the drone's model (`drone.gd`'s static `add_model`, which the enemy uses too),
+`EnforcerTruckBlast`, and a code-built barricade. The side street's floor and both openings' building fronts
+come from the stage's skin (`ZoneSkin.floor_segment`, `wall_section`), so they follow the zone's look.
+Reduced flashing holds the dying face's glitch and the light bar steady, and the blast has no white-hot core.
+Music: the zone's track, fading as the runner leaps; the web demo, which ends after this, never loads
+Gangland's. Cost (headless, `test_city_outro`): about 25 ms to set up (about 220 ms the first time, with cold
+mesh caches), about 10 ms for the cut (under black), at most about 3 ms a step, and its props add about 65
+draw calls. It adds no asset files.
+
+**Gangland's boss intro** (`SewerSwarmIntro`, task F2b; the owner's story beat, October 9, 2026, GDD §10 Sewer Swarm;
+what it leaves open is DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, items 387–395; numbers in `data/cinematics/sewer_swarm_intro.tres`):
+12 s before the Sewer Swarm, on a plain stretch of the fight's arena look in the fight's lanes, the runner
+running at the fight's speed (the zone's) down the start lane between rows of manholes one lane over, the camera
+at ground level throughout (0.47-0.75 m up). The beats: one screech at 2 s (it pounces into the runner's lane
+and lands under them as they jump), three at 3 s (one leaps over the runner's lane as they slide under it, two
+land in it ahead and swipe as they weave round them), eleven at 4 s (five left, six right, landing either side of
+the runner's lane and rearing up as they run past), each out of a manhole that rattles first; then from 5 s the
+manholes around the runner burst one after another, more and more screeches pouring out, and from 5.6 s more
+drop from above the camera's view, all running beside the runner (never in their lane) and dropping back. The
+camera swings round the runner's right side (5.0-6.4 s, kept off the wall) to low in front of them looking back:
+from 6.3 s the wall rises behind them (one of the swarm's wave formations as wide as the street, the rest of the
+swarm behind it, heating toward enemy-attack red) and closes in to 9 m. At 9.6 s the one cut, to low between the
+runner and the wall, looking into a dark hollow in the middle of the mass, ringed by screeches; the Host is held
+up in the dark, a faint silhouette, and the implant at its temple glints red once (a slow, faint glow with
+Reduced flashing); then black, and the fight. The props are its own, built on the stage (so they hide with it) and moved by the clock (`_on_advance`):
+`SwarmIntroScreeches` (the manholes in one MultiMesh drawn and animated like the fight's lairs, `SwarmLairs.mesh`
+and `swarm_lair.gdshader`; the beats' fifteen on the sewer screech's own body, `ScreechModel`; the pour and the
+rain in one MultiMesh of its crowd body, placed in script from the clock) and `SwarmIntroSwarm` (the wall's two
+`SwarmCrowd`s, the hollow, its mound in a MultiMesh, the Host on the rig with `SwarmHostPerson`'s look darkened
+by its tint, and the glint, `swarm_intro_glint.gdshader`). Everything is worked out from the time, so stepping or
+skipping it shows the same; anything behind the wall's foot is hidden (lost in it), and no screech is drawn
+within 0.9 m of the camera. Crowd sizes are data, smaller on a low-end device. It sets up in about 15 ms (about 230 ms
+the first time, with cold mesh caches) and costs about 0.6 ms a step, at most about 3 ms (headless,
+`test_sewer_swarm_intro`); its props add about 25 draw calls. It adds no asset files, and one toolkit hook,
+`_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
+behind the camera and the actors).
 
 ## Economy and saving
 
@@ -3306,9 +3645,10 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   "get the full game" screen (`App.in_demo_scope()`). No endless mode, and no ads, purchases or
   leaderboards: the platform offers none, and no screen shows any.
 - *What it leaves out* (`tools/web/demo_filter.gd`, worked out from the data): the tests, the tools, the
-  test boss, and the music it never plays: every audio file in the music library's folders that no track
+  test boss, the music it never plays: every audio file in the music library's folders that no track
   the demo plays uses, the files of the tracks it never plays wherever they are, and those tracks'
-  level-complete riffs. The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
+  level-complete riffs; and the zone doodads' picture cards (`assets/sprites/doodads/<zone>.*`) of the
+  zones it never shows (`DemoFilter.left_out_art()`; a zone without them would draw the plain default). The tracks it plays are the menus' (`menu`), the City's (`city`, quick play's too)
   and each demo zone's and its boss's (`DemoFilter.demo_tracks()`). `tools/web/update_filter.gd` writes
   the preset's exclude filter from that, `tools/godot.sh web` runs it before every export, and
   `test_web_demo` fails while the preset doesn't match the data. So when a track is replaced (the owner's
@@ -3579,7 +3919,19 @@ action and the Skip button, Reduced flashing, holding in the background, the sam
 in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
-next step follows, skipping, the web demo). `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+next step follows, skipping, the web demo). `test_city_outro` checks the City outro (F2a): at 3, 5 and 6
+lanes its beats in order (the crash into the wreck, the camera at the runner's level, the look left, the pan
+onto the roadblock, the startle, the leap out of the right wall's opening with the blast behind, the cut to
+the next zone and the landing), a camera that only leaves the street through an opening, only the City's
+music, its setup, cut and step costs and its props' draw calls; Reduced flashing; `skip()` at any moment;
+the landing following the next zone's skin; and the App's flow (Gangland's intro follows; the web demo plays
+it, then its end screen). `test_sewer_swarm_intro` checks Gangland's boss intro (F2b): its slot (after
+Gangland 3, before the fight, the fight starting when it's skipped); at 3, 5 and 6 lanes the fight's look, lanes and
+speed, the camera at ground level and in the street, cutting once, the owner's beats on time (two on one side
+and one on the other, five left and six right, each manhole rattling first), the runner never touching a
+screech, more and more pouring out and dropping from out of view, never in the runner's lane, the wall rising
+and closing in, the heart and its glint only in the cut, and ending on black with the fight's music; Reduced
+flashing; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
@@ -3646,11 +3998,33 @@ bonus; weapons, splash, targeting and health bars never touch it; DamageRules ne
 the dash defeat it; hosts and generators still pass charges by and a charge's other victims earn nothing; an
 Octodog's moved-on charges ignore its entry); showing itself (C6b: its numbers; beside the runner at 3, 5 and 6
 lanes in every look, all of it on screen in the run camera's view and nothing of the runner or their side behind
-it; `EnforcerTruckRoom.can_dodge` never leaving the only free lane); its blast (seen wherever it goes off, never
+it, two lanes in from a runner by a wall (C6c); `EnforcerTruckRoom.can_dodge` never leaving the only free lane,
+both ways two lanes in); its showing windows (C6c: on every level that lists it at 3, 5 and 6 lanes, own seed and
+another, each planned window lies in its chase and holds in the finished level, `ShowPlanner.problem_of`, with no
+zone doodad, filler, wider gap, danger density row or enemy, or planted cyborg in it; Corporate 2 at 3 lanes plans
+its first truck's arrival showing; the windows each level gets are printed); the chases with room (C6d: on a plain
+track with two Octodogs, one truck a level goes to the bait whose chase has room for its showing before it, the
+introduction too, and stays at the first where that has room, and two a level take both; a truck arriving between
+a Buzz Overdrive's claim and its rev gets its window after that attack, counted after the bait, and one arriving
+after it shows itself as it arrives; on every level that lists it at 3, 5 and 6 lanes, own seed and two others,
+every truck, moved or arriving earlier, keeps its placement rules, no window counted before the bait comes after a
+bait's charge, and a truck without one has no free bait with one that its level could give it beside its other
+truck, nor a level with fewer trucks than it may have; Corporate 2 always introduces it; the chases' windows before
+and after the bait are printed); room beside a hover truck and a Gilded Sentinel (C6e: a hover truck's lane held over
+its stay and its entrance an attack that can't wait, at 3, 5 and 6 lanes: the truck never takes that lane nor stands
+between the runner and it, a runner beside it sees it two lanes in, the lane between free, and at 3 lanes only a
+runner in its lane has a lane for it; a Sentinel's turn from its claim, a showing back before it; a window planned
+beside each, the runner keeping a free lane; a showing whose bait's claim may come during it out of view before the
+rev); the calm start (C6e: on a plain track at the Golden Zone's pace, its Buzz Overdrive revving 4 s after the
+run-up, the truck arrives inside the run-up from `calm_start_min_seconds`, shows itself as it arrives, out of view
+before the rev, its bait where it was, nothing taken out and nothing else attacking there; none before the data
+minimum; every campaign window in the calm start takes nothing out); both trucks kept where a level has two but room
+for one showing (Corporate 2 at 5 lanes, Dead Zone 1 at 3, Dead Zone 2 at 5 and 6); its blast (seen wherever it goes off, never
 in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
-prints the counts), the same level without it but for its trucks, quick play without a bait having none; its
+prints the counts), the same level without it but for its trucks (its windows not planned), quick play without a
+bait having none; its
 marker, light bar and Reduced flashing; its warm-up look (its blast's too); and its data. `test_enforcer_truck_runs` plays it on
 real physics at 3, 5 and 6 lanes and at 18 and 23.4 m/s, with a scripted runner (no armor) that steps aside
 a reaction after each warning: its lane delay to the frame and its gap; a runner who stays hit by its laser,
@@ -3664,11 +4038,18 @@ volleys; the same run twice; each way it's destroyed ending in its blast a lurch
 run camera and never in front of the runner, its wreck never rising into the camera it passes under (C6b); its showings (C6b; the other runs play without them): on
 arrival and mid-chase for `show_seconds`, its whole look on screen, back to its follow gap and the runner's lane,
 never firing meanwhile, its siren swelling, a lane change into it bumped back unhurt and it giving way, never the
-only free lane (zone doodads at 3, 5 and 6 lanes) nor beside a runner in an outer lane, turns both ways, a bait
-close behind its arrival keeping it back and a later one shortening its stay, its baits still destroying it, the
-same every attempt; and Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
+only free lane (zone doodads at 3, 5 and 6 lanes), two lanes in from a runner by a wall (C6c), turns both ways, a
+bait close behind its arrival keeping it back and a later one shortening its stay, its baits still destroying it, a
+planned window bringing its showing (C6c: its claim holding another type's attack back, no volley meanwhile), the
+same every attempt; beside a hover truck holding lane 0 (C6e: at 5 lanes a runner in lane 1 sees it in lane 3 and
+its showings and the hover truck's attacks never overlap; at 3 lanes it never shows itself there) and a Gilded
+Sentinel (its stay shortened, out of view before the Sentinel's claim, which swings as planned); in the calm start
+(C6e: arriving inside the run-up at its follow gap from the data minimum, alongside as it arrives, out of view before
+the tank's rev, no volley and nothing else on meanwhile, the tank revving as planned, the same every attempt); and
+Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
 truck (god mode, grapples): each destroyed by a charge it dodged or in a wider gap (task G7), no overlap with
-its volleys, never firing while it shows itself (the showings it makes are printed).
+its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
+alongside (the showings it makes are printed).
 
 `test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
 lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off
@@ -3679,8 +4060,12 @@ same on every attempt; every filler at the fill pass's spacing from every wider 
 where a filler had to go for a longer row); on real physics at quick play's speed and every campaign level's, at 3, 5 and 6 lanes, a
 jump early, midway and late in the take-off window clears one and running on falls in; an Enforcer Truck
 following a runner who jumps one wrecked in it (the player's kill) and hopping a 0.5-of-a-jump row, at 3, 5 and
-6 lanes, at 18 and 23.4 m/s; and Corporate 2's own build at 3, 5 and 6 lanes played from its start (god mode,
-grapples) until the runner leads its first truck over the wider gap in its chase, where it's wrecked.
+6 lanes, at 18 and 23.4 m/s; none in an Enforcer Truck's chase before its showing (from its arrival to its window's
+end; task C6e) in any campaign build, nor on another seed of each level with the truck, each keeping its wider gaps
+(one fewer allowed off its own seed; how many sit in a chase past its window is printed); and Corporate 2's own
+build at 3, 5 and 6 lanes played from its start (god mode, grapples) until the runner leads its first truck over
+the wider gap in its chase past its window, where it's wrecked (at 3 and 5 lanes: at 6 its window comes after its
+bait, at its chase's end).
 `test_charge_paths` checks the cyborgs in charge paths (task G7; The generator, Cyborgs in charge paths): every
 campaign level's count and LayoutChecks.check_charge_paths at 3, 5 and 6 lanes (a plain floor cyborg, never a
 host; its charger's planned path through it, in view, holding its fire, nothing around it), one before
@@ -3732,6 +4117,17 @@ machine's bursty load cleared far less often than it cleared the frames' own tai
 of 2400 chances) -- read as load factor 1.00x on a machine other agents' test runs kept busy, while the level's
 own p99 and worst frame were plainly slower, failing under real `--jobs` load that a true reading would have
 covered.
+`test_level_cache` checks that a retry plays a copy of the last build exactly as a fresh build (task PERF2; A
+run, Retries reuse the built level): the key (the same for the same level configured again or with another
+look; another for each thing the build reads: seed, lane count, difficulty, features, feature starts, pacing,
+run speed, the recency curve, the movement, placement, danger density and enemy tunings edited in place as F6
+does, the patterns, the build flavor), `LevelLayout.copy()` copying every field into lists of its own, generated
+layouts holding plain data only, the warnings coming with a reused level, a seeded scripted attempt (dashes and
+an EMP in its script) at Gangland 3 and Corporate 2 at 5 lanes playing the same with the cache off, on its first
+run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits, the
+enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
+either retry (and the kept build untouched), the debug keys, F6 edits and another level building again, and
+endless mode building on every run and keeping nothing.
 `test_web_demo` checks the web demo's preset, its export filter against
 the data and everything the demo references, and walks the demo from the title to its end screen (see
 Platforms and build flavors). The runner frees
@@ -3842,6 +4238,18 @@ only (the dummy renderer); xvfb's software renderers give valid counts, not time
 runs on older builds too (it reads them by property names): copy it and `scripts/run/frame_monitor.gd` into
 a `git archive` of the build.
 
+`tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2; A run, Retries
+reuse the built level): each campaign level's first build (the generator's, after one untimed build in the
+process; the fastest of `--repeat=N`, with the builds its every-feature guarantee made) at each lane count,
+each campaign boss arena's plan (`--bosses`), where one build's time goes pass by pass and each enemy type's
+rules apart (`--passes=corporate/2:5`: `generate()`'s first build replayed in `LevelGenerator._build`'s order and
+checked against the generator's own; it says so when the replay no longer matches), and the time from pressing
+retry to the run starting, both ways (`--retry=corporate/2,dead_zone/1 --retry-lanes=5`: `App.retry` and
+`LevelRun.restart` on the real main scene, and whether `LevelCache` reused the build). It runs on builds from
+before the cache too, for the times before (`godot --headless -s res://tools/measure/level_builds.gd -- [--levels=]
+[--lane-counts=3,5,6] [--repeat=N] [--no-table] [--bosses] [--passes=] [--retry=] [--retries=N]`; the whole table
+takes about half a minute a repeat).
+
 `tools/measure/stomp_routes.gd` measures how forgiving the Floating Head's ways onto its head are, in its
 fight on a plain street at the City boss step's speed (21 m/s; `--speed=N` for another, 18 for the
 reference speed): the ramp's boarding window (the latest lane switch from beside it that still
@@ -3852,6 +4260,16 @@ of running (what stays the same at every speed)
 (`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- --lanes=3,5,6
 --routes=ramp,wall,ceiling`; `--e1c` measures E1c's numbers, `--second-move` adds the in-air move; the
 default run takes a few minutes).
+
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b to C6e) over
+simulated runs of the campaign's levels with the truck, a god-mode runner keeping to each lane in turn (AttackWatch's,
+jumping the holes in its lane, baiting nothing): each truck's arrival, its showings (`+` for the arrival showing),
+its planned window, whether that comes before its chase's first bait (`gen.show_window_result`) and whether a showing
+began in it, and for a chase without one why not (`show_problem()`'s shares, or what destroyed it before its window
+was due); the totals by lane count, of the chases (each once: with a window before their bait, after it, none) and
+of the runs (`godot --headless --fixed-fps 60 -s res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2]
+[--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N] [--out=build/measure/x.json]`; all six levels at 3, 5 and 6
+lanes, every lane, take about three minutes on their own seeds).
 
 `tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
 own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the

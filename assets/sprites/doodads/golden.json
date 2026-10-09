@@ -1,0 +1,605 @@
+{
+	"zone": "golden",
+	"generated_by": "tools/asset_gen/doodad_art_gen.gd (tools/godot.sh doodads)",
+	"atlas": "res://assets/sprites/doodads/golden.png",
+	"atlas_size": [
+		2048,
+		1024
+	],
+	"px_per_m": 96.0,
+	"boxes": {
+		"small": [
+			1.29999995231628,
+			2.59999990463257,
+			1.39999997615814
+		],
+		"medium": [
+			1.89999997615814,
+			2.59999990463257,
+			3.59999990463257
+		],
+		"large": [
+			2.0,
+			2.59999990463257,
+			6.5
+		]
+	},
+	"images": {
+		"colonnade_floor": [
+			8,
+			8,
+			192,
+			624
+		],
+		"colonnade_top": [
+			208,
+			8,
+			192,
+			624
+		],
+		"fountain_cap": [
+			408,
+			8,
+			38,
+			346
+		],
+		"fountain_water": [
+			454,
+			8,
+			182,
+			346
+		],
+		"colonnade_end": [
+			644,
+			8,
+			192,
+			250
+		],
+		"colonnade_side": [
+			844,
+			8,
+			624,
+			250
+		],
+		"fountain_end": [
+			1476,
+			8,
+			182,
+			250
+		],
+		"fountain_jets": [
+			1666,
+			8,
+			182,
+			250
+		],
+		"fountain_wall": [
+			8,
+			640,
+			346,
+			250
+		],
+		"urn_a": [
+			362,
+			640,
+			125,
+			221
+		],
+		"urn_b": [
+			495,
+			640,
+			134,
+			221
+		],
+		"statue_back": [
+			637,
+			640,
+			125,
+			182
+		],
+		"statue_front": [
+			770,
+			640,
+			125,
+			182
+		],
+		"statue_side": [
+			903,
+			640,
+			134,
+			182
+		],
+		"pedestal_top": [
+			1045,
+			640,
+			125,
+			134
+		],
+		"plinth_top": [
+			1178,
+			640,
+			125,
+			134
+		],
+		"urn_mouth": [
+			1311,
+			640,
+			125,
+			134
+		],
+		"plinth_front": [
+			1444,
+			640,
+			125,
+			67
+		],
+		"plinth_side": [
+			1577,
+			640,
+			134,
+			67
+		],
+		"fountain_side": [
+			8,
+			898,
+			346,
+			58
+		],
+		"pedestal_front": [
+			362,
+			898,
+			125,
+			29
+		],
+		"pedestal_side": [
+			495,
+			898,
+			134,
+			29
+		]
+	},
+	"designs": {
+		"small": [
+			{
+				"name": "robed_statue",
+				"colors": [
+					"c7a86b",
+					"e0ded4",
+					"701a1f"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.269230779106095
+						],
+						"image": "plinth_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.269230779106095
+						],
+						"image": "plinth_front",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 0.269230779106095,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "plinth_top",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.51,
+						"rect": [
+							0.0,
+							0.269230779106095,
+							1.0,
+							1.0
+						],
+						"image": "statue_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.49,
+						"rect": [
+							0.0,
+							0.269230779106095,
+							1.0,
+							1.0
+						],
+						"image": "statue_back",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.269230779106095,
+							1.0,
+							1.0
+						],
+						"image": "statue_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.269230779106095
+						],
+						"image": "plinth_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.269230779106095
+						],
+						"image": "plinth_side",
+						"flip": true
+					}
+				]
+			},
+			{
+				"name": "gilded_urn",
+				"colors": [
+					"e0ded4",
+					"c7a86b",
+					"406340"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.115384619616898
+						],
+						"image": "pedestal_front",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.115384619616898
+						],
+						"image": "pedestal_front",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 0.115384619616898,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "pedestal_top",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.115384619616898,
+							1.0,
+							1.0
+						],
+						"image": "urn_a",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.115384619616898,
+							1.0,
+							1.0
+						],
+						"image": "urn_b",
+						"flip": false
+					},
+					{
+						"plane": "y",
+						"at": 0.457692324480362,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "urn_mouth",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.115384619616898
+						],
+						"image": "pedestal_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.115384619616898
+						],
+						"image": "pedestal_side",
+						"flip": true
+					}
+				]
+			}
+		],
+		"medium": [
+			{
+				"name": "wall_fountain",
+				"colors": [
+					"e0ded4",
+					"c7a86b",
+					"94adc2"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_end",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_end",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 0.230769239233796,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_water",
+						"flip": false
+					},
+					{
+						"plane": "y",
+						"at": 0.923076956935184,
+						"rect": [
+							0.394736840784385,
+							0.0,
+							0.605263159215615,
+							1.0
+						],
+						"image": "fountain_cap",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.578947369411712,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_wall",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.421052630588288,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_wall",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.230769239233796
+						],
+						"image": "fountain_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							0.230769239233796
+						],
+						"image": "fountain_side",
+						"flip": true
+					},
+					{
+						"plane": "z",
+						"at": 0.833333333333333,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_jets",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.5,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_jets",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.166666666666667,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "fountain_jets",
+						"flip": false
+					}
+				]
+			}
+		],
+		"large": [
+			{
+				"name": "colonnade",
+				"colors": [
+					"e0ded4",
+					"c7a86b",
+					"701a1f"
+				],
+				"cards": [
+					{
+						"plane": "z",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "colonnade_end",
+						"flip": false
+					},
+					{
+						"plane": "z",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "colonnade_end",
+						"flip": true
+					},
+					{
+						"plane": "x",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "colonnade_side",
+						"flip": false
+					},
+					{
+						"plane": "x",
+						"at": 0.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "colonnade_side",
+						"flip": true
+					},
+					{
+						"plane": "y",
+						"at": 1.0,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "colonnade_top",
+						"flip": false
+					},
+					{
+						"plane": "y",
+						"at": 0.115384619616898,
+						"rect": [
+							0.0,
+							0.0,
+							1.0,
+							1.0
+						],
+						"image": "colonnade_floor",
+						"flip": false
+					}
+				]
+			}
+		]
+	}
+}

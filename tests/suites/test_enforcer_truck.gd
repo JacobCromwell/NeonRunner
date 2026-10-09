@@ -28,6 +28,7 @@ extends TestSuite
 
 const Rules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+const OctodogRules = preload("res://scripts/enemies/octodog_rules.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 ## Its levels (GDD §9.13: introduced in Corporate 2, then every later level with an Octodog or a Buzz
 ## Overdrive).
@@ -49,6 +50,8 @@ func run() -> void:
 	_test_show_numbers()
 	_test_show_view()
 	_test_room()
+	_test_room_beside_hover_truck()
+	_test_fixed_turns()
 	await _test_blast_view()
 	await _test_charge_bait()
 	await _test_weapons_never()
@@ -57,6 +60,8 @@ func run() -> void:
 	await _test_dog_past_its_entry()
 	_test_campaign()
 	_test_guarantee()
+	_test_show_windows()
+	_test_chases_with_room()
 	_test_only_its_trucks()
 	_test_quick_play()
 	await _test_marker_and_lights()
@@ -271,22 +276,54 @@ func _test_show_numbers() -> void:
 ## GDD §9.13: shown beside the runner, the chase camera shows its whole look and it never hides the runner (nor
 ## the floor of their lane and the lanes past it, the side they dodge to). In the run camera's resting view
 ## (EnforcerTruckView), at 3, 5 and 6 lanes, a runner in every lane with a lane on each side, the truck in either
-## lane beside them, every look, with three riders: every corner of it on screen, nothing of the runner or of that
-## floor (up to 2 m above it, to 60 m ahead) behind it.
+## lane beside them, and a runner by a wall, the truck two lanes in (task C6c: EnforcerTruckRoom.sides), or beside an
+## outer lane a hover truck holds, two lanes in on their other side (task C6e), every look, with three riders: every
+## corner of it on screen, nothing of the runner or of that floor (up to 2 m above it, to 60 m ahead; two lanes in,
+## the lane between them too) behind it. The room's table of where it fits (EnforcerTruckRoom.fits_for) holds every one
+## of those pairs.
 func _test_show_view() -> void:
 	var faults: PackedStringArray = []
 	var worst: float = 0.0
-	for look: StringName in [&"clean", &"weathered", &"gilded"]:
+	for look: StringName in EnforcerTruckModel.LOOKS:
 		var profile: Array[AABB] = EnforcerTruckModel.profile(look, t.body_size, EnforcerTruckModel.RIDER_SLOTS.size())
 		for lanes: int in [3, 5, 6]:
-			for r: int in range(1, lanes - 1):
-				for l: int in [r - 1, r + 1]:
+			for r: int in lanes:
+				var ls: Array[int] = []
+				if r > 0 and r < lanes - 1:
+					ls.append_array([r - 1, r + 1])
+					if r == 1 and lanes > 3:
+						ls.append(3)
+					if r == lanes - 2 and lanes > 3:
+						ls.append(lanes - 4)
+				else:
+					ls.append(r + (2 if r == 0 else -2))
+				for l: int in ls:
 					var c: Dictionary = EnforcerTruckView.check(tuning, lanes, r, l, t.show_ahead, profile)
 					worst = maxf(worst, float(c["worst"]))
 					if not bool(c["fits"]) or bool(c["hides_runner"]) or bool(c["hides_floor"]):
 						faults.append("%s %d lanes, runner %d, truck %d: %s" % [look, lanes, r, l, c])
-	check(faults.is_empty(), "beside the runner its whole look is on screen (its furthest corner %.0f%% of the way to the edge), hiding nothing of them or their side (%s)"
+	check(faults.is_empty(), "beside the runner (two lanes in from one by a wall) its whole look is on screen (its furthest corner %.0f%% of the way to the edge), hiding nothing of them or their side (%s)"
 		% [worst * 100.0, faults])
+	var unfit: PackedStringArray = []
+	for lanes: int in [3, 5, 6]:
+		var fits: Dictionary = EnforcerTruckRoom.fits_for(tuning, t, lanes)
+		for key: int in fits:
+			if not bool(fits[key]):
+				unfit.append("%d lanes: runner %d, truck %d" % [lanes, key / 64, key % 64])
+		check(fits.size() == 2 * lanes - 2 + (2 if lanes > 3 else 0),
+			"%d lanes: the room's table holds a pair for each side of every runner lane, and two lanes in beside each outer lane (%d)"
+			% [lanes, fits.size()])
+	check(unfit.is_empty(), "every pair fits in the room's table (%s)" % [unfit])
+	# Beside the runner its inner neighbour lane would hide the floor of a runner by a wall's lane at 5 and 6 lanes
+	# (the camera sits inward of them): why it goes two lanes in (task C6c; the owner's answer to docs/OPEN_QUESTIONS.md
+	# item 382, October 9, 2026).
+	var hidden: PackedStringArray = []
+	for lanes: int in [5, 6]:
+		var c: Dictionary = EnforcerTruckView.check(tuning, lanes, 0, 1, t.show_ahead,
+			EnforcerTruckModel.profile(&"clean", t.body_size, EnforcerTruckModel.RIDER_SLOTS.size()))
+		if bool(c["hides_floor"]) or bool(c["hides_runner"]):
+			hidden.append("%d lanes" % lanes)
+	check(hidden.size() == 2, "beside a runner by a wall, on their inner side, it would hide their side of the floor (%s)" % [hidden])
 	# The run camera widens with speed (never narrower than its base field of view), and the riders sit above the
 	# light bar: the profile holds them all.
 	var bare: Array[AABB] = EnforcerTruckModel.profile(&"clean", t.body_size, 0)
@@ -298,7 +335,10 @@ func _test_show_view() -> void:
 ## lanes, the runner in the middle lane: a row of holes across every lane is no free lane taken (the runner jumps
 ## it, the truck hops its gap); holes in the runner's lane and the far lane with the truck's lane free would leave it
 ## the only free one; a zone doodad in the runner's lane needs the far lane open, holes or not in the truck's lane;
-## holes a lane change apart in the runner's lane and the far lane are fine.
+## holes a lane change apart in the runner's lane and the far lane are fine. A runner by a wall (task C6c): it shows
+## itself two lanes in, leaving them the lane between (EnforcerTruckRoom.sides, escape_lane), held to the same rule
+## both ways: a doodad in the runner's lane needs the lane between open, one in the lane between needs the runner's
+## lane open (they stay in it), and a row of holes across every lane takes no free lane.
 func _test_room() -> void:
 	for lanes: int in [3, 5, 6]:
 		var r: int = lanes / 2
@@ -314,21 +354,152 @@ func _test_room() -> void:
 			["holes a lane change apart in the runner's lane and the far lane", [[r, "gap"], [o, "gap_later"]], true],
 		]
 		for case: Array in cases:
-			var layout := LevelLayout.new()
-			layout.lane_count = lanes
-			layout.length = 600.0
-			for item: Array in case[1]:
-				var lane: int = int(item[0])
-				match String(item[1]):
-					"gap":
-						layout.gaps.append({"lane": lane, "start": 100.0, "end": 106.0})
-					"gap_later":
-						layout.gaps.append({"lane": lane, "start": 106.0 + 0.3 * v, "end": 112.0 + 0.3 * v})
-					"doodad":
-						layout.doodads.append({"lane": lane, "start": 100.0, "end": 103.0, "size": "medium", "side": 1, "seed": 1})
-			var room: EnforcerTruckRoom = EnforcerTruckRoom.build(layout, TrackGeometry.new(lanes, tuning), tuning, t, v)
+			var room: EnforcerTruckRoom = _room_with(lanes, case[1], v)
 			var ok: bool = room.can_dodge(r, l, t, 50.0, 4.0, v)
 			check(ok == bool(case[2]), "%d lanes, %s: %s" % [lanes, case[0], "it may show itself" if bool(case[2]) else "it never does"])
+		# A runner by each wall: the truck two lanes in, the lane between theirs.
+		for wall: int in [0, lanes - 1]:
+			var in_: int = 1 if wall == 0 else -1
+			var between: int = wall + in_
+			var truck: int = wall + 2 * in_
+			var plain: EnforcerTruckRoom = _room_with(lanes, [], v)
+			check(plain.sides(wall, 0) == [truck] and plain.sides(wall, 1) == [truck] and plain.escape_lane(wall, truck) == between
+				and plain.escape_lane(wall, between) == -1, "%d lanes, a runner in lane %d (by a wall): it shows itself only in lane %d, two lanes in, leaving them lane %d (%s)"
+				% [lanes, wall, truck, between, plain.sides(wall, 0)])
+			var outer: Array = [
+				["a row of holes across every lane", [[wall, "gap"], [between, "gap"], [truck, "gap"]], true],
+				["a doodad in the runner's lane, the lane between open", [[wall, "doodad"]], true],
+				["a doodad in the runner's lane and a hole in the lane between", [[wall, "doodad"], [between, "gap"]], false],
+				["a doodad in the lane between, the runner's lane open", [[between, "doodad"]], true],
+				["a doodad in the lane between and a hole in the runner's lane", [[between, "doodad"], [wall, "gap"]], false],
+				["holes in the runner's lane and the lane between, the truck's lane free", [[wall, "gap"], [between, "gap"]], false],
+			]
+			for case: Array in outer:
+				var room: EnforcerTruckRoom = _room_with(lanes, case[1], v)
+				var ok: bool = room.can_dodge(wall, truck, t, 50.0, 4.0, v)
+				check(ok == bool(case[2]), "%d lanes, a runner in lane %d, the truck in lane %d, %s: %s" % [lanes, wall, truck, case[0],
+					"it may show itself" if bool(case[2]) else "it never does"])
+
+
+## Task C6e (the owner, October 9, 2026, GDD §9.13 "Making room where there is none": it may show itself while a hover
+## truck is around, as long as the runner keeps a free lane). A hover truck holding the outer lane on one side, at 3, 5
+## and 6 lanes: the room counts that lane held over its stay (from where its lane is kept free before its burst to where
+## it has left), and its entrance (its banging to its emerging) an attack that can't wait. The truck never takes the
+## held lane, never stands between the runner and it (it would hide it), and the held lane is a wall to the runner: a
+## runner beside it sees the truck two lanes in on their other side, the lane between left free; beside them with the
+## hover truck on their other side it would take their only free lane. At 3 lanes only a runner in the hover truck's
+## own lane (ahead of it or behind it) has a lane for it; at 5 and 6 lanes every runner lane but the outer one across
+## from it (whose only lane, two lanes in, lies between them and the hover truck) does. A lane is unreachable (a window
+## may leave it out) where every lane beside it is held, hides the hover truck or is a cut's.
+func _test_room_beside_hover_truck() -> void:
+	var v: float = 23.4
+	var ht: HoverTruckTuning = EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
+	for lanes: int in [3, 5, 6]:
+		var layout := LevelLayout.new()
+		layout.lane_count = lanes
+		layout.length = 2000.0
+		var h: int = lanes - 1
+		layout.enemies.append({"type": "hover_truck", "at": 400.0, "lane": h, "side": 1, "seed": 1, "params": {}})
+		var room: EnforcerTruckRoom = EnforcerTruckRoom.build(layout, TrackGeometry.new(lanes, tuning), tuning, t, v)
+		var tag: String = "(%d lanes, a hover truck in lane %d)" % [lanes, h]
+		var entrance: Vector2 = EnforcerTruckRoom.entrance(ht, 400.0, v)
+		check(room.fixed.size() == 1 and room.fixed[0].is_equal_approx(entrance) and room.seconds_to_fixed(entrance.x - 2.0 * v, v) > 1.9
+			and room.seconds_to_fixed(entrance.x + 1.0, v) == 0.0,
+			"%s its entrance (%.0f-%.0f m) is an attack that can't wait: the room has it 2 s ahead, and on" % [tag, entrance.x, entrance.y])
+		var d: float = 600.0
+		var held: Array[bool] = room.held_lanes(d - 20.0, d + 200.0)
+		check(held[h] and held.count(true) == 1 and not room.held_lanes(200.0, 300.0).has(true),
+			"%s the room holds its lane over its stay, only there (%s)" % [tag, held])
+		var faults: PackedStringArray = []
+		var reach: Array[int] = []
+		for r: int in lanes:
+			var sides: Array[int] = room.sides(r, 0, held)
+			if sides.has(h):
+				faults.append("runner %d: the hover truck's lane offered" % r)
+			var usable: int = -1
+			for l: int in sides:
+				if room.escape_lane(r, l, held) == h:
+					faults.append("runner %d, truck %d: the escape is the hover truck's lane" % [r, l])
+				if usable < 0 and room.shadow_clear(l, r, t, d, 4.0, v, held) and room.can_dodge(r, l, t, d, 4.0, v, held):
+					usable = l
+			# Beside them, the hover truck on their other side: no free lane left.
+			if r == h - 1 and room.can_dodge(r, r - 1, t, d, 4.0, v, held):
+				faults.append("runner %d: beside them in lane %d, the hover truck on their other side" % [r, r - 1])
+			if usable >= 0:
+				reach.append(r)
+			if (usable < 0) != room.unreachable(r, t, d, t.follow_gap, t.show_seconds, v, 0):
+				faults.append("runner %d: %s, yet unreachable says %s" % [r, "no lane" if usable < 0 else "lane %d" % usable,
+					room.unreachable(r, t, d, t.follow_gap, t.show_seconds, v, 0)])
+		check(faults.is_empty(), "%s it never takes the hover truck's lane, never stands between the runner and it, and the runner keeps a free lane that isn't its (%s)"
+			% [tag, "; ".join(faults)])
+		var want: Array[int] = []
+		if lanes == 3:
+			want.append(h)
+		else:
+			for r: int in lanes:
+				if r != 0:
+					want.append(r)
+		check(reach == want, "%s the runner lanes it may show itself beside: %s (%s)" % [tag, want, reach])
+		if lanes > 3:
+			check(room.sides(h - 1, 0, held) == [h - 3] and room.escape_lane(h - 1, h - 3, held) == h - 2,
+				"%s beside the hover truck's lane a runner sees it two lanes in, the lane between free (%s)" % [tag,
+				room.sides(h - 1, 0, held)])
+
+
+## Task C6e: the room's side of what can't wait for a turn and of a Buzz Overdrive's claim. A Gilded Sentinel's turn
+## runs from its claim to its last swing's cut; hold_for shortens a showing to be back behind the runner
+## show_margin_seconds before one (as before a bait), never under show_min_seconds otherwise none. hold_claimed (a
+## showing a Buzz Overdrive's claim may come during) has it out of view show_margin_seconds before the tank's rev, and
+## an Octodog's turn as hold_for has it.
+func _test_fixed_turns() -> void:
+	var v: float = 25.0
+	var st := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	var layout := LevelLayout.new()
+	layout.lane_count = 5
+	layout.length = 2000.0
+	layout.enemies.append({"type": "gilded_sentinel", "at": 500.0, "lane": 0, "side": -1, "seed": 1, "params": {"swings": 1}})
+	var room: EnforcerTruckRoom = EnforcerTruckRoom.build(layout, TrackGeometry.new(5, tuning), tuning, t, v)
+	var turn: Vector2 = st.claim_window(500.0, 1, v)
+	check(room.fixed.size() == 1 and is_equal_approx(room.fixed[0].x, turn.x) and room.fixed[0].y > turn.y,
+		"a Gilded Sentinel's turn: from its claim (%.0f m) to its last swing's end (%s)" % [turn.x, room.fixed])
+	var far: float = EnforcerTruckRoom.hold_for(t, t.follow_gap, INF, 25.0)
+	var to_fixed: float = room.seconds_to_fixed(turn.x - 5.5 * v, v)
+	var near: float = EnforcerTruckRoom.hold_for(t, t.follow_gap, INF, 25.0, to_fixed)
+	var back: float = t.show_close_seconds(t.follow_gap) + near + t.ease_seconds(t.follow_gap + t.show_ahead, t.show_drop_speed)
+	check(is_equal_approx(far, t.show_seconds) and near < far and near >= t.show_min_seconds
+		and back <= to_fixed - t.show_margin_seconds + 0.001,
+		"5.5 s before its claim a showing stays %.2f s (%.2f s with none), back behind the runner %.2f s before it" % [near, far,
+		to_fixed - back])
+	check(EnforcerTruckRoom.hold_for(t, t.follow_gap, INF, 25.0, room.seconds_to_fixed(turn.x - 3.0 * v, v)) < t.show_min_seconds
+		and room.seconds_to_fixed(turn.x + 1.0, v) == 0.0, "3 s before its claim, or during its turn, none")
+	# A Buzz Overdrive's claim may come during a showing (CLAIM and CALM windows): out of view before its rev.
+	var to_rev: float = 6.0
+	var claimed: float = EnforcerTruckRoom.hold_claimed(t, t.follow_gap, to_rev, INF, 25.0)
+	var out: float = t.show_close_seconds(t.follow_gap) + claimed + t.show_drop_view_seconds(EnforcerTruckRoom.OUT_OF_VIEW)
+	check(claimed >= t.show_min_seconds and absf(out - (to_rev - t.show_margin_seconds)) < 0.01
+		and EnforcerTruckRoom.hold_for(t, t.follow_gap, to_rev - 2.5, 25.0) < t.show_min_seconds,
+		"a Buzz Overdrive revving 6 s on: its claim (2.5 s before) leaves no showing; one its claim may come during stays %.2f s, out of view %.1f s before the rev"
+		% [claimed, to_rev - out])
+	check(is_equal_approx(EnforcerTruckRoom.hold_claimed(t, t.follow_gap, INF, 7.0, 25.0), EnforcerTruckRoom.hold_for(t, t.follow_gap, 7.0, 25.0)),
+		"an Octodog's turn counts as before (it closes up for it)")
+
+
+## A room (EnforcerTruckRoom) over a plain track of `lanes` lanes holding `items` ([lane, "gap" | "gap_later" |
+## "doodad"]) around 100 m, at run speed `v`.
+func _room_with(lanes: int, items: Array, v: float) -> EnforcerTruckRoom:
+	var layout := LevelLayout.new()
+	layout.lane_count = lanes
+	layout.length = 600.0
+	for item: Array in items:
+		var lane: int = int(item[0])
+		match String(item[1]):
+			"gap":
+				layout.gaps.append({"lane": lane, "start": 100.0, "end": 106.0})
+			"gap_later":
+				layout.gaps.append({"lane": lane, "start": 106.0 + 0.3 * v, "end": 112.0 + 0.3 * v})
+			"doodad":
+				layout.doodads.append({"lane": lane, "start": 100.0, "end": 103.0, "size": "medium", "side": 1, "seed": 1})
+	return EnforcerTruckRoom.build(layout, TrackGeometry.new(lanes, tuning), tuning, t, v)
 
 
 ## The owner (October 8, 2026): when it's destroyed there's a visible explosion. Its blast where it goes off (its
@@ -576,8 +747,7 @@ func _test_campaign() -> void:
 					config.level_seed = 9100 + k
 				var m: MovementTuning = config.movement_for(tuning)
 				var patterns: Array = LevelGenerator.load_for(config)
-				var gen: LevelGenerator = LayoutCache.generator(config, m, patterns) if k == 0 \
-					else _generate(config, m, patterns)
+				var gen: LevelGenerator = LayoutCache.generator(config, m, patterns)
 				var tag: String = "(%s, %d lanes, seed %d)" % [s.id, lanes, config.level_seed]
 				var trucks: Array[Dictionary] = Rules.trucks_in(gen.layout)
 				var problems: PackedStringArray = Rules.problems(gen)
@@ -588,6 +758,11 @@ func _test_campaign() -> void:
 					counts.append("%d lanes: %d" % [lanes, trucks.size()])
 					if String(s.id) == "corporate/2":
 						check(not trucks.is_empty(), "Corporate 2 introduces it on its own seed %s" % tag)
+					# The owner's answer to docs/OPEN_QUESTIONS.md item 401 (October 9, 2026; GDD §9.13): a level with two
+					# trucks but room for only one showing keeps both.
+					if [["corporate/2", 5], ["dead_zone/1", 3], ["dead_zone/2", 5], ["dead_zone/2", 6]].has([String(s.id), lanes]):
+						check(trucks.size() == 2, "%s keeps both its trucks, though only one has a window before its bait (%d)" % [tag,
+							trucks.size()])
 					var again: LevelLayout = LevelGenerator.new().generate(config, m, patterns)
 					check(JSON.stringify(Rules.trucks_in(again)) == JSON.stringify(trucks), "the same trucks every build " + tag)
 		check(with_baits, "%s: every truck lists the baits planned in its chase" % s.id)
@@ -626,7 +801,446 @@ func _test_guarantee() -> void:
 ## Its rules only add its trucks: with danger density off (whose enemy count counts them) and the wider gaps off
 ## (task G7: they go in a truck's chase first), Corporate 2 and Golden 2 are the same level with or without the
 ## feature but for the trucks.
+
+## Task C6c (GDD §9.13 "Showing itself", the owner, October 8, 2026): each chase's planned showing window, on every
+## campaign level with the truck at 3, 5 and 6 lanes (its own seed and another). Where one is planned (its params'
+## "show"), it lies in its chase (as it arrives, or later before it gives up) and holds in the finished level
+## (ShowPlanner.problem_of): for a runner in every lane, as its showing begins and show_window_slack_seconds later,
+## a lane beside them where its look fits on screen, its lane stays clear, they keep a lane to dodge into and it
+## hides no enemy (EnforcerTruckRoom.layout_lane), and no other big attack, floor cut, hover truck or Gilded Sentinel
+## comes meanwhile. Every pass after the trucks kept off it: no zone doodad, filler, wider gap or row the danger
+## density pass made or widened stands in it, nor any enemy that pass added or cyborg planted in a charge path
+## (where it stands or attacks). Corporate 2 at 3 lanes has its first truck's arrival showing. Each level's windows
+## are printed (gen.show_window_result: why a chase has none).
+func _test_show_windows() -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var room_m: float = LevelGenerator.DangerDensity.CALM_ROOM
+	for id: String in LEVELS:
+		var counts: PackedStringArray = []
+		for lanes: int in [3, 5, 6]:
+			for k: int in 2:
+				var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
+				if k > 0:
+					config.level_seed = 9101
+				var m: MovementTuning = config.movement_for(tuning)
+				var gen: LevelGenerator = LayoutCache.generator(config, m, LevelGenerator.load_for(config))
+				var tag: String = "(%s, %d lanes, seed %d)" % [id, lanes, config.level_seed]
+				var trucks: Array[Dictionary] = Rules.trucks_in(gen.layout)
+				var planner: Rules.ShowPlanner = Rules.ShowPlanner.make(gen, t)
+				var v: float = gen.speed
+				var windows: int = 0
+				var arrivals: int = 0
+				var faults: PackedStringArray = []
+				for e: Dictionary in trucks:
+					var at: float = float(e["at"])
+					var w: Vector2 = Rules.window_of(e)
+					if w.y < w.x:
+						continue
+					windows += 1
+					var due: float = float(((e["params"] as Dictionary)["show"] as Dictionary)["at"])
+					arrivals += 1 if absf(due - at) < 0.001 else 0
+					var where: String = "the truck at %.0f m, its window %.0f-%.0f m" % [at, w.x, w.y]
+					if due < at - 0.001 or due > at + (t.chase_seconds - t.show_min_seconds) * v or w.x >= due or w.y <= due:
+						faults.append("%s: due at %.0f m, outside its chase or its stretch" % [where, due])
+					var why: String = planner.problem_of(e)
+					if why != "":
+						faults.append("%s: %s" % [where, why])
+					for d: Dictionary in gen.layout.doodads:
+						if float(d["start"]) <= w.y and float(d["end"]) >= w.x:
+							faults.append("%s: a zone doodad at %.0f m" % [where, float(d["start"])])
+					for f: Dictionary in gen.fills:
+						if float(f["at"]) <= w.y and float(f["at"]) + float(f["used"]) >= w.x:
+							faults.append("%s: a filler at %.0f m" % [where, float(f["at"])])
+					for r: Variant in gen.wide_gap_result.get("rows", []):
+						if (r as Vector2).x <= w.y and (r as Vector2).y >= w.x:
+							faults.append("%s: a wider gap at %.0f m" % [where, (r as Vector2).x])
+					for r: Variant in gen.danger_density_result.get("rows_touched", []):
+						if float((r as Dictionary)["start"]) <= w.y and float((r as Dictionary)["end"]) >= w.x:
+							faults.append("%s: a row the danger density pass made or widened at %.0f m" % [where, float((r as Dictionary)["start"])])
+					for a: Variant in gen.danger_density_result.get("added_enemies", []):
+						var spot: float = float((a as Dictionary)["at"])
+						var kw: Vector2 = LevelGenerator.DangerDensity.attack_window(gen, a as Dictionary)
+						var lo: float = minf(spot - room_m, kw.x if kw.y >= kw.x else INF)
+						var hi: float = maxf(spot + room_m, kw.y if kw.y >= kw.x else -INF)
+						if lo <= w.y and hi >= w.x:
+							faults.append("%s: a %s the danger density pass added at %.0f m" % [where, (a as Dictionary)["type"], spot])
+					for c: Variant in gen.charge_path_result.get("planted", []):
+						var spot: float = float(((c as Dictionary)["cyborg"] as Dictionary)["at"])
+						if spot - room_m <= w.y and spot + room_m >= w.x:
+							faults.append("%s: a cyborg planted in a charge path at %.0f m" % [where, spot])
+				check(faults.is_empty(), "%s each planned showing window holds in the finished level, kept clear by every later pass (%s)"
+					% [tag, "; ".join(faults)])
+				var report: Array = gen.show_window_result.get("chases", [])
+				check(report.size() == trucks.size(), "%s the report lists each chase (%d of %d)" % [tag, report.size(), trucks.size()])
+				# Task C6e: the calm start stays calm, a window there taking nothing out (calm_start_takes_out off).
+				var calm_taken: int = 0
+				for line: Variant in report:
+					if String(((line as Dictionary)["window"] as Dictionary).get("mode", "")) == "calm":
+						calm_taken += int((line as Dictionary)["taken_out"])
+				check(t.calm_start_takes_out or calm_taken == 0, "%s a window in the calm start takes nothing out (%d)" % [tag, calm_taken])
+				if k == 0:
+					var none: PackedStringArray = []
+					var modes: PackedStringArray = []
+					for line: Variant in report:
+						var lw: Dictionary = (line as Dictionary)["window"]
+						if lw.is_empty():
+							none.append(String((line as Dictionary)["why"]))
+						elif String(lw.get("mode", "")) != "":
+							modes.append(String(lw["mode"]))
+					counts.append("%d lanes: %d of %d (%d as it arrives%s)%s" % [lanes, windows, trucks.size(), arrivals,
+						"" if modes.is_empty() else ", " + ", ".join(modes), "" if none.is_empty() else " - none: " + ", ".join(none)])
+					if id == "corporate/2" and lanes == 3:
+						var first: Dictionary = trucks[0] if not trucks.is_empty() else {}
+						var show: Dictionary = (first.get("params", {}) as Dictionary).get("show", {})
+						check(not show.is_empty() and absf(float(show["at"]) - float(first["at"])) < 0.001,
+							"Corporate 2 at 3 lanes: its first truck's showing is planned as it arrives (%s)" % [show])
+		print("  %s showing windows: %s" % [id, "; ".join(counts)])
+
+
+## Task C6d (GDD §9.13 "Room to show itself", the owner, October 9, 2026: it shows itself before the player can bait
+## it, arriving early enough for that, and a chase with no room for a showing gives its truck to another bait's chase
+## that has room).
+## - On a plain track at 3, 5 and 6 lanes with two Octodogs (their rules plan their charges): the first's first
+##   wind-up comes about 8 s past the run-up, too soon for a showing before it (with no showing in the calm start,
+##   task C6e: _test_calm_start), the second's over a minute later. One
+##   truck a level: it goes to the second, its window before its bait (C6c's choice, one window each, kept the
+##   first); a level that introduces it there moves its introduction too; with the first wind-up later, where its
+##   chase has room, the truck stays at the first. Two a level: both baits get one.
+## - Every campaign level with the truck at 3, 5 and 6 lanes, on its own seed and two others: every truck keeps its
+##   placement rules (a bait in its chase, never two at once, never arriving where none may: Rules.problems), those
+##   that arrive earlier than their preferred arrival and those that skip an earlier free bait included; a truck
+##   without a window before its bait has no bait left whose own chase has one and that its level could give a
+##   truck beside the others (gen.show_window_result's baits), nor does a level with fewer trucks than it may have;
+##   Corporate 2 always has its introduction (a truck in its layout, so the level's intro lists its first-encounter
+##   hint; the charge-path cyborg before it is test_charge_paths'). The chases' windows are printed.
+func _test_chases_with_room() -> void:
+	var keep_max: int = t.per_level_max
+	# The calm start (task C6e) would give the first dog's chase room before it (_test_calm_start covers it): kept out.
+	var keep_calm: float = t.calm_start_min_seconds
+	t.calm_start_min_seconds = 1000.0
+	for lanes: int in [3, 5, 6]:
+		# [trucks a level, introduced, where the first dog stands, the bait its truck should take (0 or 1), trucks]
+		for case: Array in [[1, false, 230.0, 1, 1], [1, true, 230.0, 1, 1], [1, false, 500.0, 0, 1],
+				[2, false, 230.0, -1, 2]]:
+			t.per_level_max = int(case[0])
+			var gen: LevelGenerator = _dogs_gen(lanes, [float(case[2]), 1500.0], bool(case[1]))
+			Rules.apply(gen)
+			var tag: String = "(%d lanes, %d a level%s, first dog at %.0f m)" % [lanes, int(case[0]),
+				", introduced" if bool(case[1]) else "", float(case[2])]
+			var baits: Array = gen.show_window_result.get("baits", [])
+			var chases: Array = gen.show_window_result.get("chases", [])
+			var own: PackedStringArray = []
+			for b: Variant in baits:
+				own.append(String((b as Dictionary)["window"]))
+			check(Rules.problems(gen).is_empty(), "its placement rules hold %s: %s" % [tag, "; ".join(Rules.problems(gen))])
+			check(baits.size() == 2 and chases.size() == int(case[4]), "%s: %d trucks for the 2 baits (%d, %d)" % [tag,
+				int(case[4]), chases.size(), baits.size()])
+			if baits.size() != 2 or chases.size() != int(case[4]):
+				continue
+			var first_room: bool = String(baits[0]["window"]) == "before"
+			check(first_room == (float(case[2]) > 300.0) and String(baits[1]["window"]) == "before",
+				"%s: the first bait's chase has room before it only when it comes later; the second's has (%s)" % [tag, own])
+			var want: int = int(case[3])
+			for c: Variant in chases:
+				var cd: Dictionary = c
+				var w: Dictionary = cd["window"]
+				var on: int = 0 if absf(float(cd["bait"]) - float(baits[0]["at"])) < 0.01 else 1
+				if want >= 0:
+					check(on == want and not w.is_empty() and not bool(w.get("after_bait", false)),
+						"%s: its truck takes bait %d, its window before it (bait %d, %s)" % [tag, want, on, w])
+				elif on == 1:
+					check(not w.is_empty() and not bool(w.get("after_bait", false)),
+						"%s: the second truck's window comes before its bait" % tag)
+	t.per_level_max = keep_max
+	t.calm_start_min_seconds = keep_calm
+	_test_bait_under_way()
+	_test_show_beside_others()
+	_test_calm_start()
+	_campaign_chases_with_room()
+
+
+## A truck arriving after a Buzz Overdrive has claimed its turn, before it revs (no rule keeps it from arriving
+## there: arrival_keep_outs start at the rev): the charge comes before any showing, so the planner counts no window
+## there as before the bait, and plans one after the attack (ShowPlanner._under_way); arriving once the attack is
+## over, the showing comes first. On a plain track at 3, 5 and 6 lanes, at quick play's speed.
+func _test_bait_under_way() -> void:
+	for lanes: int in [3, 5, 6]:
+		var layout := RunSim.layout(lanes, 3000.0)
+		var bt: BuzzOverdriveTuning = BuzzRules.tuning()
+		var cut: Dictionary = BuzzRules.plan_for(bt, lanes / 2, 600.0, tuning.run_speed, tuning.pace(), 0.0)
+		layout.cuts.append(cut)
+		layout.enemies.append({"type": "buzz_overdrive", "at": float(cut["end"]), "lane": lanes / 2, "side": 0, "seed": 4,
+			"params": {}})
+		var config := LevelConfig.new()
+		config.lane_count = lanes
+		config.features = PackedStringArray(["buzz_overdrive", "enforcer_truck"])
+		var gen := LevelGenerator.for_layout(config, tuning, layout)
+		var planner: Rules.ShowPlanner = Rules.ShowPlanner.make(gen, t)
+		var v: float = gen.speed
+		var warn: float = FloorCutPlan.warn_at(cut)
+		var claim: float = float(cut.get("claim_seconds", bt.claim_seconds))
+		var attack: Vector2 = FloorCutPlan.attack_window(cut, v)
+		var tag: String = "(%d lanes)" % lanes
+		var during: Dictionary = planner.plan([warn - claim * 0.5 * v], 0)
+		check(not during.is_empty() and bool(during.get("after_bait", false)) and float(during["from"]) >= attack.y - 0.01,
+			"%s arriving between a Buzz Overdrive's claim and its rev, its window comes after the bait's attack (%s)" % [tag,
+			during])
+		check(Rules.arrival_problem(gen, t, warn - claim * 0.5 * v, Rules.arrival_keep_outs(gen), []) == "",
+			"%s a truck may arrive there (the rules keep it off the attack itself)" % tag)
+		var later: Dictionary = planner.plan([attack.y + v], 0)
+		check(not later.is_empty() and not bool(later.get("after_bait", false)) and bool(later["arrival"]),
+			"%s arriving once its attack is over, it shows itself as it arrives (%s)" % [tag, later])
+
+
+## Task C6e (the owner, October 9, 2026, GDD §9.13 "Making room where there is none": a hover truck or a Gilded
+## Sentinel no longer stops a showing, as long as the runner keeps a free lane). On a plain track at 3, 5 and 6 lanes
+## at quick play's speed, an Octodog winding up over a minute in, and a hover truck bursting in from the far wall 15 s
+## before its wind-up (it stays over the whole chase: C6c's first try plans no window there, and the planner then plans
+## one beside it, before the bait, mode "around" or "claim") or a Gilded Sentinel whose turn comes 12 s before it.
+## For every runner lane but the one it may leave out (unreachable: across from the hover truck), a lane beside them
+## that's never the hover truck's, never between them and it, leaving them a free lane that isn't its; from where the
+## truck claims its turn for it to where it's back behind the runner (begun its slack late), neither the hover truck's
+## entrance nor the Sentinel's turn comes; it holds in the finished level. At 3 lanes the hover truck leaves two runner
+## lanes no lane: no window beside it.
+func _test_show_beside_others() -> void:
+	var lines: PackedStringArray = []
+	for lanes: int in [3, 5, 6]:
+		for other: String in ["hover_truck", "gilded_sentinel"]:
+			var gen: LevelGenerator = _dogs_gen(lanes, [1300.0], false)
+			var v: float = gen.speed
+			var warn: float = float(Rules.bait_points(gen)[0]["warn"])
+			if other == "hover_truck":
+				gen.layout.enemies.append({"type": other, "at": warn - 15.0 * v, "lane": lanes - 1, "side": 1, "seed": 2,
+					"params": {}})
+			else:
+				var st := EnemyDirector.tuning_for(other) as GildedSentinelTuning
+				var claim_to_spot: float = st.guarded_stretch(0.0, 1).x - (st.warning_seconds + st.strike_lead_seconds + st.claim_seconds) * v
+				gen.layout.enemies.append({"type": other, "at": warn - 12.0 * v - claim_to_spot, "lane": 0, "side": -1, "seed": 2,
+					"params": {"swings": 1}})
+			Rules.apply(gen)
+			var tag: String = "(%d lanes, a %s)" % [lanes, other.replace("_", " ")]
+			var trucks: Array[Dictionary] = Rules.trucks_in(gen.layout)
+			var chases: Array = gen.show_window_result.get("chases", [])
+			if trucks.size() != 1 or chases.size() != 1:
+				check(false, "%s one truck (%d)" % [tag, trucks.size()])
+				continue
+			var e: Dictionary = trucks[0]
+			var w: Dictionary = (chases[0] as Dictionary)["window"]
+			lines.append("%d lanes beside a %s: %s" % [lanes, other.replace("_", " "), "none" if w.is_empty()
+				else "%s, %s the bait, %.1f s alongside, leaving out %s" % [w["mode"], "after" if bool(w["after_bait"]) else "before",
+				float(w["hold"]), w["excused"]]])
+			if other == "hover_truck" and lanes == 3:
+				check(w.is_empty(), "%s no window beside it: it would leave two runner lanes no free lane (%s)" % [tag, w])
+				continue
+			check(not w.is_empty() and not bool(w["after_bait"]) and (other == "gilded_sentinel" or ["around", "claim"].has(String(w["mode"]))),
+				"%s a window beside it, before the bait (%s)" % [tag, w])
+			if w.is_empty():
+				continue
+			var planner: Rules.ShowPlanner = Rules.ShowPlanner.make(gen, t)
+			check(planner.problem_of(e) == "", "%s the window holds in the finished level (%s)" % [tag, planner.problem_of(e)])
+			var room: EnforcerTruckRoom = planner.room
+			var d: float = float(w["at"])
+			var gap: float = t.arrive_gap if bool(w["arrival"]) else t.follow_gap
+			var hold: float = float(w["hold"])
+			var total: float = t.show_total_seconds(gap, hold)
+			var held: Array[bool] = room.held_lanes(d - 20.0, d + (total + t.show_margin_seconds) * v + t.show_shadow_reach)
+			var excused: Array = w.get("excused", [])
+			var faults: PackedStringArray = []
+			for r: int in lanes:
+				if excused.has(r):
+					continue
+				var l: int = room.layout_lane(r, t, planner.fits, d, gap, hold, v, 0, true)
+				if l < 0 or held[l] or room.escape_lane(r, l, held) == -1 or not room.shadow_clear(l, r, t, d, total, v, held):
+					faults.append("runner %d: lane %d" % [r, l])
+			check(faults.is_empty() and excused.size() <= 1 and (other == "hover_truck" or excused.is_empty()),
+				"%s a lane beside every runner (but %s) that's never the hover truck's nor hides it, a free lane left them (%s)"
+				% [tag, excused, "; ".join(faults)])
+			var claim: float = d - t.show_claim_seconds * v
+			check(not room.fixed_in(claim, d + t.show_window_slack_seconds * v)
+				and room.seconds_to_fixed(d, v) >= total + t.show_margin_seconds - 0.01,
+				"%s none that can't wait comes from its claim (%.0f m) to its start, nor before it's back behind the runner, %.1f s to spare (%s)"
+				% [tag, claim, room.seconds_to_fixed(d, v) - total, room.fixed])
+	print("  beside a hover truck or a Gilded Sentinel: " + "; ".join(lines))
+
+
+## Task C6e (the owner, October 9, 2026, GDD §9.13 "Making room where there is none": where a level's first bait comes
+## right after its calm start, the truck arrives a few seconds early and shows itself in the last part of it, the bait
+## staying where it is). On a plain track at 3, 5 and 6 lanes at the Golden Zone's 25 m/s with its 60 m run-up, a Buzz
+## Overdrive in lane 0 rolling in from the run-up's end and revving 4 s after it (Golden 1's first bait): no window fits
+## past the run-up, so the truck arrives inside it, calm_start_min_seconds into the run or later, and shows itself as it
+## arrives (mode "calm": in play it comes from its follow gap), before the bait, out of view show_margin_seconds before
+## the rev. It keeps its placement rules, the bait stays where it was, nothing is taken out and nothing else attacks in
+## the calm start; at 3 lanes it leaves out the runner lane across from the cut (its only lane, two lanes in, is the
+## cut's). With calm_start_min_seconds past what fits it plans none: it never arrives before the data minimum.
+func _test_calm_start() -> void:
+	var v: float = 25.0
+	for lanes: int in [3, 5, 6]:
+		var gen: LevelGenerator = _calm_gen(lanes, v)
+		var bait: Dictionary = Rules.bait_points(gen)[0]
+		Rules.apply(gen)
+		var tag: String = "(%d lanes, calm start)" % lanes
+		var trucks: Array[Dictionary] = Rules.trucks_in(gen.layout)
+		var chases: Array = gen.show_window_result.get("chases", [])
+		if trucks.size() != 1 or chases.size() != 1:
+			check(false, "%s one truck (%d)" % [tag, trucks.size()])
+			continue
+		var e: Dictionary = trucks[0]
+		var c: Dictionary = chases[0]
+		var w: Dictionary = c["window"]
+		var at: float = float(e["at"])
+		var run_up: float = gen.config.start_clear_distance
+		check(Rules.is_calm_start(e) and not w.is_empty() and not bool(w["after_bait"]) and bool(w["arrival"]),
+			"%s it shows itself in the calm start, as it arrives, before its bait (%s)" % [tag, w])
+		check(at >= t.calm_start_min_seconds * v - 0.01 and at < run_up,
+			"%s it arrives inside the run-up (%.1f m of %.0f), %.1f s into the run or later (%.2f s)" % [tag, at, run_up,
+			t.calm_start_min_seconds, at / v])
+		if w.is_empty():
+			continue
+		var hold: float = float(w["hold"])
+		var out: float = float(w["at"]) + (t.show_close_seconds(t.follow_gap) + hold + t.show_drop_view_seconds(EnforcerTruckRoom.OUT_OF_VIEW)) * v
+		check(hold >= t.show_min_seconds and out <= float(bait["warn"]) - t.show_margin_seconds * v + 0.01,
+			"%s it stays alongside %.2f s, out of view %.2f s before the rev" % [tag, hold, (float(bait["warn"]) - out) / v])
+		var now: Dictionary = Rules.bait_points(gen)[0]
+		check(Rules.problems(gen).is_empty() and is_equal_approx(float(now["warn"]), float(bait["warn"]))
+			and is_equal_approx(float(now["at"]), float(bait["at"])) and int(c["taken_out"]) == 0,
+			"%s it keeps its placement rules, its bait where it was, nothing taken out (%s)" % [tag, "; ".join(Rules.problems(gen))])
+		var planner: Rules.ShowPlanner = Rules.ShowPlanner.make(gen, t)
+		check(planner.problem_of(e) == "" and not planner.room.fixed_in(0.0, run_up)
+			and Rules.arrival_keep_outs(gen).all(func(k: Vector2) -> bool: return k.x > run_up),
+			"%s the window holds in the finished level, nothing else attacks in the calm start (%s)" % [tag, planner.problem_of(e)])
+		check((w["excused"] as Array) == ([2] if lanes == 3 else []),
+			"%s the runner lanes it leaves out: %s" % [tag, w["excused"]])
+	# The data minimum: never before it.
+	var keep: float = t.calm_start_min_seconds
+	t.calm_start_min_seconds = 1.5
+	var late: LevelGenerator = _calm_gen(5, v)
+	Rules.apply(late)
+	t.calm_start_min_seconds = keep
+	var trucks: Array[Dictionary] = Rules.trucks_in(late.layout)
+	check(not trucks.is_empty() and not Rules.is_calm_start(trucks[0]) and float(trucks[0]["at"]) >= late.config.start_clear_distance,
+		"with calm_start_min_seconds at 1.5 s nothing fits in the calm start: the truck arrives past the run-up (%s)" % [trucks])
+
+
+## A plain track of `lanes` lanes, 3 km long, at `v` m/s with the default 60 m run-up, a Buzz Overdrive in lane 0 rolling
+## in from the run-up's end (task C6e: _test_calm_start).
+func _calm_gen(lanes: int, v: float) -> LevelGenerator:
+	var layout := RunSim.layout(lanes, 3000.0)
+	var config := LevelConfig.new()
+	config.lane_count = lanes
+	config.run_speed = v
+	config.features = PackedStringArray(["buzz_overdrive", "enforcer_truck"])
+	var mt: MovementTuning = config.movement_for(tuning)
+	var cut: Dictionary = BuzzRules.plan_for(BuzzRules.tuning(), 0, config.start_clear_distance, v, mt.pace(), 0.0)
+	layout.cuts.append(cut)
+	layout.enemies.append({"type": "buzz_overdrive", "at": float(cut["end"]), "lane": 0, "side": 0, "seed": 4, "params": {}})
+	return LevelGenerator.for_layout(config, tuning, layout)
+
+
+## A plain track of `lanes` lanes, 3 km long, at quick play's speed, with Octodogs standing at `dogs` (their rules plan
+## their charges), in a level listing the truck (`intro`: from 3% of the level, so the level introduces it there).
+func _dogs_gen(lanes: int, dogs: Array[float], intro: bool) -> LevelGenerator:
+	var layout := RunSim.layout(lanes, 3000.0)
+	for at: float in dogs:
+		layout.enemies.append({"type": "octodog", "at": at, "lane": 0, "side": 0, "seed": int(at), "params": {}})
+	var config := LevelConfig.new()
+	config.lane_count = lanes
+	config.features = PackedStringArray(["octodog", "enforcer_truck"])
+	if intro:
+		config.feature_starts = {"enforcer_truck": 0.03}
+	var gen := LevelGenerator.for_layout(config, tuning, layout)
+	OctodogRules.apply(gen)
+	return gen
+
+
+func _campaign_chases_with_room() -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var lines: PackedStringArray = []
+	for id: String in LEVELS:
+		var counts := {"chases": 0, "before": 0, "after": 0, "none": 0, "earlier": 0, "skipped": 0}
+		for lanes: int in [3, 5, 6]:
+			for k: int in 3:
+				var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
+				if k > 0:
+					config.level_seed = 9100 + k
+				var m: MovementTuning = config.movement_for(tuning)
+				var gen: LevelGenerator = LayoutCache.generator(config, m, LevelGenerator.load_for(config))
+				var tag: String = "(%s, %d lanes, seed %d)" % [id, lanes, config.level_seed]
+				var trucks: Array[Dictionary] = Rules.trucks_in(gen.layout)
+				var chases: Array = gen.show_window_result.get("chases", [])
+				var baits: Array = gen.show_window_result.get("baits", [])
+				check(Rules.problems(gen).is_empty() and chases.size() == trucks.size(),
+					"every truck keeps its placement rules, moved or arriving earlier %s: %s" % [tag, "; ".join(Rules.problems(gen))])
+				if id == "corporate/2":
+					check(not trucks.is_empty(), "Corporate 2 keeps its introduction (and its hint) %s" % tag)
+				var room: float = t.spacing_seconds * gen.speed
+				var spans: Array[Vector2] = []
+				for c: Variant in chases:
+					spans.append(Rules.chase_span(gen, t, float((c as Dictionary)["at"])))
+				var faults: PackedStringArray = []
+				var charges: Array[Dictionary] = Rules.bait_points(gen)
+				for i: int in chases.size():
+					var c: Dictionary = chases[i]
+					var w: Dictionary = c["window"]
+					var before: bool = not w.is_empty() and not bool(w.get("after_bait", false))
+					if before:
+						# Before the bait: no bait's charge comes between its arrival and its showing.
+						for b: Dictionary in charges:
+							if float(b["at"]) > float(c["at"]) and float(b["at"]) < float(w["at"]):
+								faults.append("the truck at %.0f m: a %s charges at %.0f m before its showing" % [float(c["at"]),
+									b["kind"], float(b["at"])])
+					counts["chases"] = int(counts["chases"]) + 1
+					var kind: String = "before" if before else ("after" if not w.is_empty() else "none")
+					counts[kind] = int(counts[kind]) + 1
+					if float(c["at"]) < float(c["preferred"]) - 0.01:
+						counts["earlier"] = int(counts["earlier"]) + 1
+					for b: Variant in baits:
+						var bd: Dictionary = b
+						if not bool(bd["chosen"]) and float(bd["chase"]) < INF and float(bd["at"]) < float(c["bait"]) - 0.01 \
+								and _fits_beside(bd["span"], spans, i, room):
+							counts["skipped"] = int(counts["skipped"]) + 1
+							break
+					if before:
+						continue
+					# A truck without a window before its bait: no free bait whose own chase has one fits beside the others.
+					for b: Variant in baits:
+						var bd: Dictionary = b
+						if not bool(bd["chosen"]) and String(bd["window"]) == "before" \
+								and _fits_beside(bd["span"], spans, i, room):
+							faults.append("the truck at %.0f m has none, and the bait at %.0f m has room" % [float(c["at"]),
+								float(bd["at"])])
+				if trucks.size() < t.per_level_max:
+					for b: Variant in baits:
+						var bd: Dictionary = b
+						if not bool(bd["chosen"]) and String(bd["window"]) == "before" \
+								and _fits_beside(bd["span"], spans, -1, room):
+							faults.append("a free bait at %.0f m has room beside its %d trucks" % [float(bd["at"]), trucks.size()])
+				check(faults.is_empty(), ("%s every truck's chase has a window before its bait wherever a free bait has room,"
+					+ " and none comes after a bait's charge (%s)") % [tag, "; ".join(faults)])
+		lines.append(("%s: %d chases, %d with a window before the bait, %d after it, %d none; %d arriving earlier than"
+			+ " preferred, %d past an earlier free bait") % [id, counts["chases"], counts["before"], counts["after"],
+			counts["none"], counts["earlier"], counts["skipped"]])
+	print("  chases with room (own seed and 2 others, 3, 5 and 6 lanes):\n    " + "\n    ".join(lines))
+
+
+## True if a chase over `span` keeps spacing `room` from every one of `spans` but the one at `skip` (-1: none).
+static func _fits_beside(span: Vector2, spans: Array[Vector2], skip: int, room: float) -> bool:
+	for j: int in spans.size():
+		if j != skip and span.x < spans[j].y + room and span.y + room > spans[j].x:
+			return false
+	return true
+
+
+## Its rules only add its trucks: with danger density off (whose enemy count counts them), the wider gaps off (task
+## G7: they go in a truck's chase first) and its showing windows not planned (task C6c: a window moves a truck's
+## arrival, takes out what's in its way and keeps the later passes off it, _test_show_windows), Corporate 2 and Golden
+## 2 are the same level with or without the feature but for the trucks.
 func _test_only_its_trucks() -> void:
+	t.show_window_planned = false
+	_only_its_trucks()
+	t.show_window_planned = true
+
+
+func _only_its_trucks() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for id: String in ["corporate/2", "golden/2"]:
 		var config: LevelConfig = campaign.configure(campaign.step(id), 5)

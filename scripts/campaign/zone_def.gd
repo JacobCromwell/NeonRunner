@@ -21,7 +21,7 @@ extends Resource
 ## (Campaign.run_speed_for). The generator stretches its patterns and margins with it, and the enemies their
 ## along-track distances and speeds, so every warning and reaction window keeps its seconds
 ## (MovementTuning.pace). DESIGN-TBD: each zone's value (a straight rise from 21 to 25 m/s over the first six
-## zones; the Casino's 23, added between the Marketplace's 22.6 and Corporate's 23.4, OPEN_QUESTIONS.md §D, item 380).
+## zones; the Casino's 23, added between the Marketplace's 22.6 and Corporate's 23.4, OPEN_QUESTIONS.md §D, item 427).
 @export_range(0.0, 40.0, 0.1, "suffix:m/s") var run_speed: float = 0.0
 ## Optional cinematic before the first level.
 @export var intro: CinematicDef

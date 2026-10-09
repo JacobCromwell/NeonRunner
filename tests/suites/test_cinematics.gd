@@ -11,6 +11,8 @@ extends TestSuite
 
 const LANES: Array[int] = [3, 5, 6]
 const SAMPLER_PATH: String = "res://tools/showcase/cinematic_sampler.tres"
+## The placeholder arrival flyover's scene; the City's outro (CityOutro) has its own suite, test_city_outro.
+const FLYOVER_SCENE: String = "res://scenes/cinematics/arrival_flyover.tscn"
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 ## The camera keeps as far under a ceiling's underside as the run camera does
 ## (MovementTuning.camera_ceiling_clearance: closer, the ceiling's end glow fills the screen) while it's
@@ -371,7 +373,7 @@ func _test_flyovers() -> void:
 	var lanes_pc: int = App.rules.lanes_pc
 	var slots: Array[CampaignStep] = []
 	for s: CampaignStep in App.campaign.steps():
-		if s.kind == CampaignStep.Kind.CINEMATIC and s.cinematic.is_built():
+		if s.kind == CampaignStep.Kind.CINEMATIC and s.cinematic.is_built() and s.cinematic.scene == FLYOVER_SCENE:
 			slots.append(s)
 	var ids: PackedStringArray = []
 	for s: CampaignStep in slots:

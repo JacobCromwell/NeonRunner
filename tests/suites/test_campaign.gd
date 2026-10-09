@@ -85,7 +85,7 @@ const INTRODUCTION_REACH: float = 210.0
 ## own layouts: the generator's introductions are as often late as before, 16.7% and 16.4% of 396 seeded
 ## ones, but the levels' own seeds then had 6 late of 66, 3 of them wall gaps, and now 9). Left out, the
 ## levels' own seeds had 6 late of 63 on K2's curve, the check's limit (3 before; docs/OPEN_QUESTIONS.md §D,
-## item 386 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 396).
+## item 433 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 443).
 const SPACED_FROM_START: Array = ["wall_gaps"]
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
 ## Marketplace's boss, and the Marketplace's outro led to Corporate (_test_old_saves).
@@ -153,7 +153,7 @@ func _test_zones(campaign: Campaign) -> void:
 func _test_steps(campaign: Campaign) -> void:
 	var expected := PackedStringArray([
 		"city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",
-		"gangland/intro", "gangland/1", "gangland/2", "gangland/3", "gangland/boss", "gangland/outro",
+		"gangland/intro", "gangland/1", "gangland/2", "gangland/3", "gangland/boss_intro", "gangland/boss", "gangland/outro",
 		"marketplace/intro", "marketplace/1", "marketplace/2", "marketplace/outro",
 		"casino/intro", "casino/1", "casino/2", "casino/boss", "casino/outro",
 		"corporate/intro", "corporate/1", "corporate/2", "corporate/boss", "corporate/outro",
@@ -182,8 +182,8 @@ func _test_steps(campaign: Campaign) -> void:
 
 ## A boss slot per zone from GDD §10's roster (none for the Marketplace, which leads straight into the
 ## Casino, whose boss The House now is: owner, October 8, 2026), and cinematic slots: every zone's intro and
-## outro, and the City's boss intro (the intros play placeholder flyovers, task F1; test_cinematics checks
-## them).
+## outro, and the City's and Gangland's boss intros (the intros play placeholder flyovers, task F1, and
+## Gangland's boss intro the owner's beats; test_cinematics checks them).
 func _test_slots(campaign: Campaign) -> void:
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "",
 		"casino": "The House", "corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The final villain"}
@@ -198,7 +198,7 @@ func _test_slots(campaign: Campaign) -> void:
 			check(zone.boss != null and String(zone.boss.id) == id + "_boss" and zone.boss.notes != "",
 				"%s's boss slot has its id and notes" % id)
 		check(zone.intro != null and zone.outro != null, "%s has intro and outro cinematic slots" % id)
-		check((zone.boss_intro != null) == (id == "city"), "only the City has a boss-intro slot")
+		check((zone.boss_intro != null) == (id in ["city", "gangland"]), "only the City and Gangland have boss-intro slots")
 		for def: CinematicDef in [zone.intro, zone.boss_intro, zone.outro]:
 			if def != null:
 				check(String(def.id).begins_with(id + "_") and def.title != "" and def.placeholder_text != "",
@@ -226,9 +226,15 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/sewer_swarm_intro.tscn" and s.cinematic.is_built(),
+				"Gangland's boss intro plays its own scene, the owner's beat (task F2b)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn"
 				and s.cinematic.is_built(), "cinematic slot %s plays the placeholder arrival flyover (task F1)" % s.id)
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.zone == campaign.zones[0] and s.id.ends_with("outro"):
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/city_outro.tscn"
+				and s.cinematic.is_built(), "the City's outro slot plays its cinematic (task F2a)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC:
 			check(s.cinematic != null and not s.cinematic.is_built(), "cinematic slot %s is still a placeholder" % s.id)
 
@@ -346,7 +352,7 @@ func _test_no_level_easier(campaign: Campaign) -> void:
 		lines.append("%s %.3f→%.3f" % [s.id, was, now])
 	print("  difficulty against the 15-level curve before the Casino: %s" % ", ".join(lines))
 	# The exponent bends the difficulty only: enemy scaling stays linear over the 17 levels, which task K2's
-	# moved thresholds (docs/OPEN_QUESTIONS.md §D, item 385) were set against.
+	# moved thresholds (docs/OPEN_QUESTIONS.md §D, item 432) were set against.
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			var linear: float = float(s.level_index) / float(campaign.planned_level_count() - 1)

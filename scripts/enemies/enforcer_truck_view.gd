@@ -106,8 +106,9 @@ static func runner_points(t: MovementTuning, x: float, distance: float) -> Packe
 ## Whether the truck shows itself well in `truck_lane` beside a runner in `runner_lane` at `lanes` lanes, its
 ## front `ahead` metres ahead of them: {fits (every corner of its look on screen), hides_runner (it stands
 ## between the camera and the runner), hides_floor (it hides a point of the floor, or anything up to 2 m above
-## it, in the runner's lane or a lane past it on the far side from the truck, from the runner to `reach` metres
-## ahead), worst (the on-screen corner nearest the screen's edge)}. `profile`: EnforcerTruckModel.profile().
+## it, in the runner's lane, a lane past it on the far side from the truck or a lane between them (two lanes in
+## from a runner by a wall, task C6c: the lane they'd dodge into), from the runner to `reach` metres ahead),
+## worst (the on-screen corner nearest the screen's edge)}. `profile`: EnforcerTruckModel.profile().
 static func check(t: MovementTuning, lanes: int, runner_lane: int, truck_lane: int, ahead: float,
 		profile: Array[AABB], reach: float = 60.0) -> Dictionary:
 	var geo := TrackGeometry.new(lanes, t)
@@ -122,14 +123,21 @@ static func check(t: MovementTuning, lanes: int, runner_lane: int, truck_lane: i
 	var hides_runner: bool = false
 	for p: Vector3 in runner_points(t, geo.lane_x(runner_lane), 0.0):
 		hides_runner = hides_runner or view.hidden(boxes, p)
-	var hides_floor: bool = false
 	var away: int = signi(runner_lane - truck_lane)
+	var seen: Array[int] = []
 	var l: int = runner_lane
-	while l >= 0 and l < lanes and not hides_floor:
+	while l >= 0 and l < lanes:
+		seen.append(l)
+		l += away
+	for between: int in range(mini(runner_lane, truck_lane) + 1, maxi(runner_lane, truck_lane)):
+		seen.append(between)
+	var hides_floor: bool = false
+	for lane: int in seen:
 		var d: float = 1.0
 		while d <= reach and not hides_floor:
 			for y: float in [0.05, 1.0, 2.0]:
-				hides_floor = hides_floor or view.hidden(boxes, Vector3(geo.lane_x(l), y, TrackGeometry.world_z(d)))
+				hides_floor = hides_floor or view.hidden(boxes, Vector3(geo.lane_x(lane), y, TrackGeometry.world_z(d)))
 			d += 1.0
-		l += away
+		if hides_floor:
+			break
 	return {"fits": fits, "hides_runner": hides_runner, "hides_floor": hides_floor, "worst": worst}

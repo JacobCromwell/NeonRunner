@@ -224,25 +224,36 @@ func quit() -> void:
 # --- Campaign ------------------------------------------------------------------------
 
 ## True if the player may start this step: the first step, one the player has done, or the one before it is
-## done. The web demo stops after its zone (GDD §2). A step done stays open even when the step before it isn't:
-## that only happens to a save from before steps were added ahead of it (the Casino's, between the Marketplace
-## and Corporate: Profile._migrate moves The House's records to the Casino's boss step, done while the Casino's
-## levels before it aren't), and the player keeps every step they had reached.
+## done (step_done). The web demo stops after its zone (GDD §2). A step done stays open even when the step
+## before it isn't: that only happens to a save from before steps were added ahead of it (the Casino's, between
+## the Marketplace and Corporate: Profile._migrate moves The House's records to the Casino's boss step, done
+## while the Casino's levels before it aren't), and the player keeps every step they had reached.
 func step_unlocked(s: CampaignStep, difficulty_tier: int = 0) -> bool:
 	if s.index == 0 or profile.is_completed(s.id, difficulty_tier):
 		return true
 	var previous: CampaignStep = campaign.steps()[s.index - 1]
-	return profile.is_completed(previous.id, difficulty_tier)
+	return step_done(previous, difficulty_tier)
+
+
+## True if this step counts as done: completed, or a cinematic slot the player had already passed when it was
+## added to the campaign (Gangland's boss intro came after saves that had beaten its boss): the step after it
+## is done. So a save keeps what it had unlocked, and Continue doesn't send the player back over it.
+func step_done(s: CampaignStep, difficulty_tier: int = 0) -> bool:
+	if profile.is_completed(s.id, difficulty_tier):
+		return true
+	var steps: Array[CampaignStep] = campaign.steps()
+	return s.kind == CampaignStep.Kind.CINEMATIC and s.index + 1 < steps.size() \
+		and step_done(steps[s.index + 1], difficulty_tier)
 
 
 func in_demo_scope(s: CampaignStep) -> bool:
 	return not BuildFlavor.is_demo() or s.zone.in_demo
 
 
-## The first step not completed yet (the "Continue" button), or null when everything is done.
+## The first step not done yet (the "Continue" button; step_done), or null when everything is done.
 func next_unfinished_step(difficulty_tier: int = 0) -> CampaignStep:
 	for s: CampaignStep in campaign.steps():
-		if not profile.is_completed(s.id, difficulty_tier):
+		if not step_done(s, difficulty_tier):
 			return s
 	return null
 

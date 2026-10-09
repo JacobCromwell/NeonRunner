@@ -1,6 +1,7 @@
 extends SceneTree
 ## Sets the "Web (demo)" preset's exclude filter in export_presets.cfg from the data
-## (tools/web/demo_filter.gd: the tracks and riffs the demo never plays, and the test boss):
+## (tools/web/demo_filter.gd: the tracks and riffs the demo never plays, the test boss, and the zone
+## doodads' pictures of the zones it never shows):
 ##   godot --headless -s res://tools/web/update_filter.gd [-- --check]
 ## `tools/godot.sh web` runs it before every export. With --check it only says whether the preset
 ## matches the data, with exit code 1 when it doesn't.

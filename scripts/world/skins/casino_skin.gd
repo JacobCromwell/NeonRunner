@@ -23,20 +23,20 @@ extends MarketplaceSkin
 ## brass is lit metal (never neon), and the hazards stay the brightest, most saturated things on screen.
 ## Phones: the glass vault is opaque and faked (no transparency), nothing here is a real-time light,
 ## and every part is drawn with the one solid material and the one glow material in a chunk's batches.
-## Owner's answers (October 9, 2026; GDD §5, Zone 4; task K3): the glass roof is whole (374), the two named
+## Owner's answers (October 9, 2026; GDD §5, Zone 4; task K3): the glass roof is whole (421), the two named
 ## casinos' big signs carry real lettering, "Gasket's House of Chance" and "The Brass Lotus" (371, CasinoLettering),
-## and there are no pedestrians (372: the Marketplace's citizens in the shop windows are enough).
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 369-376): the floor and gap look (369), the glow palette
-## (370), how busy the street is (373), the doodads (375: the Marketplace's, in the Casino's palette) and
-## The House's plainer arena (376).
+## and there are no pedestrians (419: the Marketplace's citizens in the shop windows are enough).
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 416-423): the floor and gap look (416), the glow palette
+## (417), how busy the street is (420), the doodads (422: the Marketplace's, in the Casino's palette) and
+## The House's plainer arena (423).
 
 @export_group("Street")
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 369): the paving: dark flagstones, brass inlaid along the lanes.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 416): the paving: dark flagstones, brass inlaid along the lanes.
 @export var street_color: Color = Color(0.27, 0.25, 0.25)
 @export var inlay_color: Color = Color(0.56, 0.45, 0.29)
 ## How wet the street looks, the lamps' haze on it at grazing angles (0 dry).
 @export_range(0.0, 1.0, 0.05) var street_wet: float = 0.6
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 369): how deep the service trenches under the street go (deeper than
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 416): how deep the service trenches under the street go (deeper than
 ## the fall that ends a run, so a fall never visibly lands).
 @export_range(4.5, 15.0, 0.1, "suffix:m") var trench_depth: float = 6.5
 
@@ -69,7 +69,7 @@ extends MarketplaceSkin
 @export var pane_color: Color = Color(0.05, 0.085, 0.14)
 @export var pane_lit_color: Color = Color(0.3, 0.21, 0.13)
 @export var star_color: Color = Color(0.8, 0.84, 0.95)
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 373): how often an iron girder crosses the street under the
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 420): how often an iron girder crosses the street under the
 ## (whole) roof, carrying banners and lanterns; the shares of bays with a lantern, a ceiling fan and banners.
 ## Whether anything hangs from the roof at all. The arena turns it off: The House's billboard drops through
 ## the space under the roof (from far above its ceiling), so nothing may be strung across it.
@@ -84,7 +84,7 @@ extends MarketplaceSkin
 @export_range(0.8, 3.0, 0.1, "suffix:m") var banner_width: float = 1.8
 
 @export_group("Casino ceilings")
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 373): how often each kind of ceiling appears, as relative weights (a
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 420): how often each kind of ceiling appears, as relative weights (a
 ## footbridge across the street needs a ceiling across every lane; narrower ones become gantries).
 @export_range(0.0, 10.0, 0.1) var footbridge_weight: float = 3.0
 @export_range(0.0, 10.0, 0.1) var gantry_weight: float = 3.0
@@ -99,13 +99,13 @@ extends MarketplaceSkin
 ## Casino's own is 10 m (nothing hangs over the lanes below about 10 m but ceilings: the arrival flyover's
 ## camera flies under 9.5 m); The House's arena raises it above the machine (13.5 m: nothing hangs over the
 ## lanes below about 14.4 m but ceilings, and the machine fills the street to 35 cm off the walls).
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 376): the arena is plainer than the street leading to it.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 423): the arena is plainer than the street leading to it.
 @export_range(6.0, 20.0, 0.25, "suffix:m") var overhang_min_height: float = 10.0
 ## Keeps every face flush at every height (nothing stands out of a wall by more than FLUSH_DEPTH, 10 cm: no
 ## balcony, pipe, unit or blade sign, flat lamps, flat letters): The House's arena sets it, because its phase-3
 ## billboard drops past the walls 12 cm from them, 32 m to 6 m in 0.7 s, through anything standing out of them.
 @export var flush_faces: bool = false
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 373): how many balconies, pipe runs, air-conditioning units and
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 420): how many balconies, pipe runs, air-conditioning units and
 ## planters the facades carry: per building, the chance of each.
 @export_range(0.0, 1.0, 0.01) var balcony_share: float = 0.55
 @export_range(0.0, 1.0, 0.01) var pipe_share: float = 0.55
@@ -116,7 +116,7 @@ extends MarketplaceSkin
 ## The named casinos (task K3): one casino with a big sign in every this many metres of street (both walls
 ## together) is one of the two famous ones, Gasket's House of Chance and The Brass Lotus alternating, so no name
 ## is nearer than this to itself; the other casinos keep their glyph boards. 0 names every casino with a big
-## sign. DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 390): two famous casinos or a chain of them.
+## sign. DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 437): two famous casinos or a chain of them.
 @export_range(0.0, 400.0, 5.0, "suffix:m") var name_spacing: float = 100.0
 ## Signs' dark panels and the lit lettering's palette (warm white, violet and blue only).
 @export var sign_panel_color: Color = Color(0.07, 0.065, 0.075)
@@ -124,7 +124,7 @@ extends MarketplaceSkin
 ## tubes of light round them carry the colour), and how much they glow.
 @export var lettering_color: Color = Color(0.98, 0.91, 0.74)
 @export_range(0.0, 2.0, 0.05) var lettering_glow: float = 0.3
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 370): the reference's pink, cyan, green and orange boards, kept as dim
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 417): the reference's pink, cyan, green and orange boards, kept as dim
 ## painted signs in muted dusty rose, teal, moss and ochre: lit like any wall, never glowing (the hazard
 ## colours glow only on hazards), a share of the blade signs.
 @export var dim_sign_colors: PackedColorArray = PackedColorArray([
@@ -205,7 +205,7 @@ func _casino_palette() -> void:
 	girder_color = Color(0.17, 0.16, 0.16)
 	concrete_color = Color(0.2, 0.18, 0.17)
 	soffit_color = Color(0.2, 0.18, 0.17)
-	# Doodads (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 375: the Marketplace's own, in the Casino's palette): dark cabinets
+	# Doodads (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 422: the Marketplace's own, in the Casino's palette): dark cabinets
 	# with brass trim, dim screens, deep-green plants in dark pots.
 	doodad_pot_color = Color(0.3, 0.22, 0.17)
 	doodad_plant_colors = PackedColorArray([Color(0.16, 0.24, 0.15), Color(0.2, 0.28, 0.17), Color(0.14, 0.2, 0.14)])

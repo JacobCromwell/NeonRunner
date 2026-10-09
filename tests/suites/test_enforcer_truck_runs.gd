@@ -31,15 +31,18 @@ extends TestSuite
 ##   and once more mid-chase, show_seconds alongside in a lane beside the runner's, its whole look on screen hiding
 ##   nothing of the runner, then back to its follow gap and the runner's lane, never firing meanwhile, its marker
 ##   faded and its siren swelling, its volleys still coming; its sides bump a lane change back without hurting
-##   and it gives way; it never takes the only free lane (zone doodads at 3, 5 and 6 lanes) nor shows itself to a
-##   runner in an outer lane; another type's big attack on keeps it back and one that gets ready waits for its
-##   showing; a bait close behind its arrival keeps it back, a later one shortens its stay; its baits still destroy
-##   it after it has shown itself; and it plays the same on every attempt.
+##   and it gives way; it never takes the only free lane (zone doodads at 3, 5 and 6 lanes), and to a runner by a
+##   wall it shows itself two lanes in, never in the lane between (task C6c); another type's big attack on keeps
+##   it back and one that gets ready waits for its showing; a bait close behind its arrival keeps it back, a later
+##   one shortens its stay; its baits still destroy it after it has shown itself; a showing window the generator
+##   planned (task C6c) brings its showing there: it claims its turn ahead of it and holds its volleys for it; and
+##   it plays the same on every attempt.
 ## - Corporate 2's own build at 3, 5 and 6 lanes, played to its end by a scripted runner (god mode,
 ##   grapples; it keeps to the middle lane like AttackWatch's) that baits each charge while a truck chases:
 ##   every truck that comes is destroyed by a charge the runner dodged (or a wider gap or cut it led the truck
-##   into), no other type's big attack is open during a volley, and it never fires while it shows itself nor
-##   comes closer than MIN_GAP in the runner's lane (the showings it makes there are printed).
+##   into), no other type's big attack is open during a volley, it never fires while it shows itself nor comes
+##   closer than MIN_GAP in the runner's lane, and each truck whose planned showing window comes before its
+##   first bait comes alongside (the showings it makes there are printed).
 
 const Rules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
@@ -127,6 +130,10 @@ func run() -> void:
 	await _test_show_fairness()
 	await _test_show_turns()
 	await _test_show_baits()
+	await _test_show_window()
+	await _test_show_beside_hover_truck()
+	await _test_show_beside_sentinel()
+	await _test_calm_start()
 	await _test_show_same_every_attempt()
 	await _test_corporate_2()
 
@@ -1023,8 +1030,8 @@ func _test_shows() -> void:
 					settled += 1
 					if not truck.blocking() or not truck.is_major_attack_active():
 						faults["sides not solid or no turn taken"] = true
-					if absi(truck.lane - p.lane) != 1:
-						faults["not in a lane beside the runner's"] = true
+					if absi(truck.lane - p.lane) != (2 if p.lane == 0 or p.lane == lanes - 1 else 1):
+						faults["not in a lane beside the runner's (two lanes in from one by a wall)"] = true
 					if settled > int(0.4 / frame):
 						if absf(truck.gap + t.show_ahead) > 0.35:
 							faults["front not show_ahead ahead (%.2f)" % -truck.gap] = true
@@ -1137,8 +1144,9 @@ func _test_show_bump() -> void:
 ## neighbours `left` and `right`: zone doodads (the runner must leave a lane for one) stand 3.5 s ahead in the
 ## runner's lane and in `left`, so `right` would be the only free lane there; it never shows itself in `right`
 ## while that spot lies ahead (nor in `left`, not clear). With the runner's lane free there instead, it shows
-## itself in `right` as it arrives (the runner keeps their own lane). A runner in an outer lane never sees it
-## alongside.
+## itself in `right` as it arrives (the runner keeps their own lane). A runner by a wall (task C6c,
+## EnforcerTruckRoom.sides), at 3 and 5 lanes: it comes alongside two lanes in, never in the lane between, which
+## stays theirs to dodge into.
 func _test_show_fairness() -> void:
 	for lanes: int in LANES:
 		var tag: String = _tag(lanes, paces[1])
@@ -1181,20 +1189,35 @@ func _test_show_fairness() -> void:
 				check(first_show < 0.0 or first_show > spot + 3.0, "%s doodads in the runner's lane and lane %d at %.0f m: it never takes lane %d, the only free one there (%s; first showing at %.0f m)"
 					% [tag, mid - 1, spot, mid + 1, why, first_show])
 			await sim.free_world(w)
-	# A runner in an outer lane.
-	var w: RunWorld = _world(_layout(3), paces[1], _no_volleys)
-	await _start(w)
-	w.player.press(&"move_left")
-	var truck: EnforcerTruck = null
-	var ever: bool = false
-	for i: int in int(8.0 / frame):
-		await tree.physics_frame
-		if truck == null:
-			truck = _truck(w)
-		ever = ever or (truck != null and truck.show_phase != EnforcerTruck.Show.NONE)
-	check(not ever and truck != null and truck.show_problem() == "runner in an outer lane",
-		"(3 lanes) a runner in an outer lane (no lane on each side) never has it alongside (%s)" % (truck.show_problem() if truck != null else ""))
-	await sim.free_world(w)
+	# A runner by a wall.
+	for lanes: int in [3, 5]:
+		var w: RunWorld = _world(_layout(lanes), paces[1], _no_volleys)
+		await _start(w)
+		var truck: EnforcerTruck = null
+		var lanes_held: Array[int] = []
+		var alongside: bool = false
+		var next_step: float = 0.0
+		var was: int = EnforcerTruck.Show.NONE
+		for i: int in int(10.0 / frame):
+			var p: Player = w.player
+			if p.lane > 0 and w.level_time() >= next_step:
+				next_step = w.level_time() + 0.3
+				p.press(&"move_left")
+			await tree.physics_frame
+			if truck == null:
+				truck = _truck(w)
+				continue
+			# The showings that begin with the runner settled in lane 0 (on their way there, one may begin beside them).
+			if was == EnforcerTruck.Show.NONE and truck.show_phase != EnforcerTruck.Show.NONE and p.lane == 0 \
+					and not lanes_held.has(truck.show_lane):
+				lanes_held.append(truck.show_lane)
+			was = truck.show_phase
+			alongside = alongside or (truck.show_phase == EnforcerTruck.Show.ALONGSIDE and p.lane == 0 and truck.lane == 2)
+			if alongside and truck.show_phase == EnforcerTruck.Show.NONE:
+				break
+		check(alongside and lanes_held == [2], "(%d lanes) a runner by a wall (lane 0): it comes alongside two lanes in (lane 2), never in lane 1 between them (the lanes of its showings begun there: %s)"
+			% [lanes, lanes_held])
+		await sim.free_world(w)
 
 
 ## GDD §9.13: it never shows itself during an attack's warning. Another type's big attack on as it arrives
@@ -1321,6 +1344,257 @@ static func _count_in(history: Array, event: String) -> int:
 
 ## The same showing run twice (an Octodog bait after its showing at 5 lanes and Corporate 2's pace): the same
 ## events at the same distances, the same sounds, score and runner.
+## Task C6c: a showing window the generator planned (its params' "show": where the level was kept calm for it) in
+## play, at 5 lanes and Corporate 2's pace, its arrival showing off. Another type's big attack, on from the start
+## until half a second before the window is due and ready again at once (tests/helpers/turn_dummy.gd), keeps it back
+## until then; the truck claims its turn show_claim_seconds before the window is due, so that attack waits for its
+## showing (held until the showing is out of view) rather than taking the window. It shows itself in its window (from
+## where the window's stretch begins to show_window_slack_seconds after it's due), comes alongside, and fires no volley
+## from its claim until it has dropped back.
+func _test_show_window() -> void:
+	var pace: Array = paces[1]
+	var v: float = float(pace[0])
+	var due_s: float = 7.0
+	var due: float = due_s * v
+	var layout := _layout(5)
+	(layout.enemies[0]["params"] as Dictionary)["show"] = {"at": due, "from": due - 18.0, "to": due + 210.0}
+	var w: RunWorld = _world(layout, pace, func(tt: EnforcerTruckTuning) -> void: tt.show_on_arrival = false)
+	w.player.god_mode = true
+	await _start(w)
+	var other: Enemy = w.director.spawn({"type": "blocker", "script": TURN_DUMMY, "at": 0.0, "lane": 0, "side": 0, "seed": 1,
+		"params": {"first": 0.0, "warning": 3.0, "attack": due_s - 3.5, "interval": 0.0}})
+	var bot := Runner.new(w)
+	var truck: EnforcerTruck = null
+	var began: float = -1.0
+	var alongside: float = -1.0
+	var out_of_view: float = -1.0
+	var fired: bool = false
+	for i: int in int((due_s + 8.0) / frame):
+		bot.step(truck if truck != null and is_instance_valid(truck) else null)
+		await tree.physics_frame
+		if truck == null:
+			truck = _truck(w)
+			continue
+		var d: float = w.player.distance
+		if began < 0.0 and truck.show_phase != EnforcerTruck.Show.NONE:
+			began = d
+		if alongside < 0.0 and truck.show_phase == EnforcerTruck.Show.ALONGSIDE:
+			alongside = w.level_time()
+		if alongside >= 0.0 and out_of_view < 0.0 and not truck.is_major_attack_active():
+			out_of_view = w.level_time()
+		if d >= due - t.show_claim_seconds * v and out_of_view < 0.0 and truck.volley != EnforcerTruck.Volley.IDLE:
+			fired = true
+		if out_of_view >= 0.0 and int(other.call(&"count", "start")) >= 2:
+			break
+	var spans: Array = other.call(&"spans")
+	var second: float = float(spans[1][0]) if spans.size() >= 2 else INF
+	check(began >= due - 18.0 and began <= due + t.show_window_slack_seconds * v + 1.0,
+		"(5 lanes) it shows itself in its planned window (it began with the runner at %.1f m; due at %.1f m)" % [began, due])
+	check(alongside >= 0.0 and int(other.call(&"count", "held")) > 0 and second >= out_of_view - frame and out_of_view > 0.0,
+		"(5 lanes) it claims its turn for it: the other attack ready meanwhile waits until it's out of view (its next at %.2f s, out of view %.2f s)"
+		% [second, out_of_view])
+	check(not fired, "(5 lanes) no volley from its claim until it has dropped back")
+	await sim.free_world(w)
+
+
+## Task C6e (the owner, October 9, 2026, GDD §9.13 "Making room where there is none": it may show itself while a hover
+## truck is around, as long as the runner keeps a free lane). A hover truck in play holding lane 0 for the whole run
+## (pacing, its cannon and forward lurch on; its entry in the layout, so its lane is held there), at Corporate 2's pace,
+## the runner keeping to lane 1 beside it. At 5 lanes the truck shows itself two lanes in (lane 3), the lane between
+## left free, never in the hover truck's lane nor between the runner and it, and its showings and the hover truck's
+## attacks never overlap (theirs wait for its turn). At 3 lanes it never shows itself (beside the runner it would take
+## their only free lane; two lanes in there's no lane).
+func _test_show_beside_hover_truck() -> void:
+	var pace: Array = paces[1]
+	var v: float = float(pace[0])
+	for lanes: int in [3, 5]:
+		var tag: String = _tag(lanes, pace)
+		var layout := _layout(lanes)
+		layout.enemies.append({"type": "hover_truck", "at": 3.0 * v, "lane": 0, "side": -1, "seed": 5,
+			"params": {"skip_entrance": true, "stay": 40.0}})
+		var w: RunWorld = _world(layout, pace, _no_volleys)
+		w.player.god_mode = true
+		await _start(w)
+		var bot := Runner.new(w)
+		bot.home = 1
+		var truck: EnforcerTruck = null
+		var ht: Enemy = null
+		var shown_in: Array[int] = []
+		var alongside: int = 0
+		var both: bool = false
+		var attacks: int = 0
+		var why: Dictionary = {}
+		for i: int in int(16.0 / frame):
+			bot.step(null)
+			await tree.physics_frame
+			if truck == null:
+				truck = _truck(w)
+			if ht == null:
+				ht = _first(w, &"hover_truck")
+			if truck == null or not is_instance_valid(truck) or ht == null or not is_instance_valid(ht):
+				continue
+			var p: Player = w.player
+			if p.lane != 1:
+				continue
+			if truck.show_phase != EnforcerTruck.Show.NONE and not shown_in.has(truck.show_lane):
+				shown_in.append(truck.show_lane)
+			if truck.show_phase == EnforcerTruck.Show.ALONGSIDE:
+				alongside += 1
+			elif truck.state == EnforcerTruck.State.CHASING and truck.show_phase == EnforcerTruck.Show.NONE:
+				why[truck.show_problem()] = true
+			var ht_on: bool = ht.alive and ht.is_major_attack_active()
+			attacks += 1 if ht_on else 0
+			both = both or (ht_on and truck.show_phase != EnforcerTruck.Show.NONE and truck.is_major_attack_active())
+		if lanes == 5:
+			check(shown_in == [3] and alongside > int(t.show_min_seconds / frame),
+				"%s beside a hover truck in lane 0, a runner in lane 1 sees it two lanes in, lane 3, the lane between free (lanes %s, %.1f s alongside)"
+				% [tag, shown_in, alongside * frame])
+			check(not both and attacks > 0, "%s its showings and the hover truck's attacks never overlap (theirs on %.1f s)" % [tag,
+				attacks * frame])
+		else:
+			check(shown_in.is_empty() and why.has("no lane beside the runner"),
+				"%s beside a hover truck in lane 0, a runner in the middle lane never sees it: no free lane would be left them (%s)"
+				% [tag, why.keys()])
+		await sim.free_world(w)
+
+
+## Task C6e: beside a Gilded Sentinel (it can't wait for a turn: a statue that finds another type's attack on as its
+## warning would start lets the runner pass). At 5 lanes and Corporate 2's pace, a Sentinel on the left wall claims its
+## turn 7.5 s into the run: the truck, arriving as the run starts, shows itself with its stay shortened, out of view
+## before the Sentinel claims its turn; the Sentinel then warns and swings as planned (never lets the runner pass);
+## never both on.
+func _test_show_beside_sentinel() -> void:
+	var pace: Array = paces[1]
+	var v: float = float(pace[0])
+	var st := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	var claim_at: float = 7.5 * v
+	var spot: float = claim_at - (st.guarded_stretch(0.0, 1).x - (st.warning_seconds + st.strike_lead_seconds + st.claim_seconds) * v)
+	var layout := _layout(5)
+	layout.enemies.append({"type": "gilded_sentinel", "at": spot, "lane": 0, "side": -1, "seed": 6, "params": {"swings": 1}})
+	var w: RunWorld = _world(layout, pace, _no_volleys)
+	w.player.god_mode = true
+	await _start(w)
+	var truck: EnforcerTruck = null
+	var sentinel: Enemy = null
+	var out_of_view: float = -1.0
+	var was_on: bool = false
+	var both: bool = false
+	var hold: float = -1.0
+	var events: Array = []
+	var seen: String = "no Sentinel in play"
+	for i: int in int(14.0 / frame):
+		await tree.physics_frame
+		if truck == null:
+			truck = _truck(w)
+		if sentinel == null:
+			sentinel = _first(w, &"gilded_sentinel")
+		if _valid(sentinel):
+			# Read while it's in play (it's freed once the runner is past).
+			events = sentinel.call(&"events", PackedStringArray(["swing", "pass"]))
+			seen = "%s, %s" % [sentinel.call(&"state_name"), sentinel.get(&"history")]
+		if truck == null or not is_instance_valid(truck):
+			continue
+		var on: bool = truck.show_phase != EnforcerTruck.Show.NONE and truck.is_major_attack_active()
+		if on and hold < 0.0:
+			hold = float(truck.get(&"_show_hold"))
+		if was_on and not on and out_of_view < 0.0:
+			out_of_view = w.player.distance
+		was_on = on
+		both = both or (on and _valid(sentinel) and sentinel.is_major_attack_active())
+	check(out_of_view > 0.0 and out_of_view <= claim_at and hold >= t.show_min_seconds and hold < t.show_seconds,
+		"(5 lanes) a Gilded Sentinel claiming its turn 7.5 s in: it shows itself %.2f s, out of view %.1f s before the claim"
+		% [hold, (claim_at - out_of_view) / v])
+	check(not both and not events.is_empty() and String(events[0][0]) == "swing",
+		"(5 lanes) the Sentinel swings as planned, never letting the runner pass for it, never both on (%s; %s)" % [events, seen])
+	await sim.free_world(w)
+
+
+## Task C6e (the owner, October 9, 2026, GDD §9.13 "Making room where there is none": where a level's first bait comes
+## right after its calm start, the truck arrives a few seconds early and shows itself in the last part of it). A plain
+## track at 3 lanes at the Golden Zone's 25 m/s with its 60 m run-up, its first Buzz Overdrive (lane 0) revving 4 s
+## after it, its truck planned by the rules in the calm start (_calm_run): it arrives calm_start_min_seconds into the run
+## or later, at its follow gap, shows itself as it arrives and comes alongside, out of view show_margin_seconds before
+## the tank's rev; it fires no volley before the rev; nothing else attacks meanwhile; the tank revs and charges as
+## planned (it never lets the runner pass for it). The same on every attempt.
+func _test_calm_start() -> void:
+	var r: Dictionary = await _calm_run(3)
+	var v: float = 25.0
+	check(bool(r["calm"]) and float(r["arrive"]) >= t.calm_start_min_seconds * v - 0.5 and float(r["arrive"]) < 60.0
+		and absf(float(r["gap"]) - t.follow_gap) < 1.0,
+		"(3 lanes, calm start) it arrives inside the run-up, %.1f s into the run or later (%.1f m), at its follow gap (%.1f m a frame later, closing in)"
+		% [t.calm_start_min_seconds, float(r["arrive"]), float(r["gap"])])
+	check(absf(float(r["show"]) - float(r["arrive"])) < 0.5 and float(r["alongside"]) > 0.0,
+		"(3 lanes, calm start) it shows itself as it arrives, alongside with the runner at %.0f m" % float(r["alongside"]))
+	check(float(r["out"]) > 0.0 and float(r["out"]) <= float(r["rev"]) - t.show_margin_seconds * v + 1.0,
+		"(3 lanes, calm start) out of view %.2f s before the tank's rev" % ((float(r["rev"]) - float(r["out"])) / v))
+	check(int(r["volleys"]) == 0 and not bool(r["other"]) and bool(r["revved"]) and not bool(r["passed"]),
+		"(3 lanes, calm start) no volley before the rev, nothing else attacking meanwhile, and the tank revs as planned (%s)" % [r])
+	var again: Dictionary = await _calm_run(3)
+	check(JSON.stringify(again) == JSON.stringify(r), "(3 lanes, calm start) the same on every attempt")
+
+
+## One calm-start run (_test_calm_start) at `lanes` lanes, the runner keeping to the middle lane: {calm (its window's
+## mode), arrive and gap (where it arrived, its gap then), show and alongside (where its first showing began and came
+## alongside), out (where it was out of view again), rev (where the tank's rev is due), volleys (before the rev), other
+## (another enemy's big attack on during its showing, but the tank's claim), revved, passed, history}.
+func _calm_run(lanes: int) -> Dictionary:
+	var v: float = 25.0
+	var config := LevelConfig.new()
+	config.lane_count = lanes
+	config.run_speed = v
+	config.features = PackedStringArray(["buzz_overdrive", "enforcer_truck"])
+	var mt: MovementTuning = config.movement_for(tuning)
+	var layout := RunSim.layout(lanes, 1400.0)
+	var cut: Dictionary = BuzzRules.plan_for(BuzzRules.tuning(), 0, config.start_clear_distance, v, mt.pace(), 0.0)
+	layout.cuts.append(cut)
+	layout.enemies.append({"type": "buzz_overdrive", "at": float(cut["end"]), "lane": 0, "side": 0, "seed": 4, "params": {}})
+	Rules.apply(LevelGenerator.for_layout(config, tuning, layout))
+	var trucks: Array[Dictionary] = Rules.trucks_in(layout)
+	var w: RunWorld = sim.build_world(layout, Loadout.new(), mt, config)
+	w.player.god_mode = true
+	await _start(w)
+	var bot := Runner.new(w)
+	var out := {"calm": not trucks.is_empty() and Rules.is_calm_start(trucks[0]), "arrive": -1.0, "gap": -1.0, "show": -1.0,
+		"alongside": -1.0, "out": -1.0, "rev": FloorCutPlan.warn_at(cut), "volleys": 0, "other": false, "revved": false,
+		"passed": false}
+	var truck: EnforcerTruck = null
+	var tank: Enemy = null
+	var was_on: bool = false
+	for i: int in int(12.0 / frame):
+		bot.step(truck if truck != null and is_instance_valid(truck) else null)
+		await tree.physics_frame
+		var d: float = w.player.distance
+		if truck == null:
+			truck = _truck(w)
+		if tank == null:
+			tank = _first(w, &"buzz_overdrive")
+		if truck == null or not is_instance_valid(truck):
+			continue
+		if float(out["arrive"]) < 0.0 and truck.state != EnforcerTruck.State.WAITING:
+			out["arrive"] = d
+			out["gap"] = truck.gap
+		if float(out["show"]) < 0.0 and truck.show_phase != EnforcerTruck.Show.NONE:
+			out["show"] = d
+		if float(out["alongside"]) < 0.0 and truck.show_phase == EnforcerTruck.Show.ALONGSIDE:
+			out["alongside"] = d
+		var on: bool = truck.show_phase != EnforcerTruck.Show.NONE and truck.is_major_attack_active()
+		if was_on and not on and float(out["out"]) < 0.0:
+			out["out"] = d
+		was_on = on
+		if d < float(out["rev"]):
+			out["volleys"] = truck.volleys
+		var s: int = int(tank.get(&"state")) if _valid(tank) else -1
+		out["revved"] = bool(out["revved"]) or s == BuzzScript.State.REV
+		out["passed"] = bool(out["passed"]) or s == BuzzScript.State.PASS
+		if on and _valid(tank) and (s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE):
+			out["other"] = true
+		if bool(out["revved"]) and d > float(out["rev"]) + 2.0 * v:
+			break
+	out["history"] = truck.history.duplicate(true) if truck != null and is_instance_valid(truck) else []
+	await sim.free_world(w)
+	return out
+
+
 func _test_show_same_every_attempt() -> void:
 	var a: Dictionary = await _dog_run(5, paces[1], true, true, true)
 	var b: Dictionary = await _dog_run(5, paces[1], true, true, true)
@@ -1347,11 +1621,8 @@ func _test_same_every_attempt() -> void:
 ## Overdrive's lane as it rolls in, and out half a second before it meets the runner). Every truck that
 ## comes is destroyed by a charge the runner was out of the way of, or by a wider gap or a cut the runner led
 ## it into, the player's kill; no other type's big attack is open during its volleys, and its trucks fire,
-## but at NO_VOLLEY_LANES; the runner reaches the end. At 5 lanes on task K4's curve the truck arrives at 641 m
-## and the level's wider gap at 769 m (128 m, 5.5 s on, across 4 of the 5 lanes) wrecks it, as
-## test_wide_gaps.gd plays it, before its first volley: that is due 3 s after it arrives (first_volley_seconds)
-## and waits up to show_wait_seconds (4 s) for a showing, and in these runs the truck shows itself at no lane
-## count (nor did it on K2's curve).
+## but at NO_VOLLEY_LANES; each truck whose planned showing window (task C6c) comes before its first bait comes
+## alongside; the runner reaches the end.
 func _test_corporate_2() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for lanes: int in LANES:
@@ -1382,7 +1653,8 @@ func _test_corporate_2() -> void:
 				if truck.state == EnforcerTruck.State.WAITING:
 					continue
 				var rec: Dictionary = trucks.get_or_add(id, {"down": "", "dodged": false, "riders": 0, "volleys": 0, "shows": 0,
-					"fired": false, "closest": INF})
+					"fired": false, "closest": INF, "alongside": 0, "early_window": _window_before_bait(truck)})
+				rec["alongside"] = _count(truck, "alongside")
 				rec["riders"] = truck.riders
 				rec["volleys"] = truck.volleys
 				rec["shows"] = maxi(int(rec["shows"]), truck.shows)
@@ -1397,8 +1669,10 @@ func _test_corporate_2() -> void:
 		var downs: PackedStringArray = []
 		var all_baited: bool = not trucks.is_empty()
 		var fair: bool = true
+		var windows_shown: bool = true
 		for id: int in trucks:
 			var rec: Dictionary = trucks[id]
+			windows_shown = windows_shown and (not bool(rec["early_window"]) or int(rec["alongside"]) >= 1)
 			downs.append("%s%s (%d riders, %d volleys, %d showings)" % [rec["down"], "" if bool(rec["dodged"]) else " NOT DODGED",
 				int(rec["riders"]), int(rec["volleys"]), int(rec["shows"])])
 			fair = fair and not bool(rec["fired"]) and float(rec["closest"]) >= EnforcerTruck.MIN_GAP - 0.001
@@ -1407,6 +1681,8 @@ func _test_corporate_2() -> void:
 		check(all_baited, "%s: each is destroyed by a charge the runner was out of the way of (%s)" % [tag, ", ".join(downs)])
 		check(fair, "%s: it never fires while it shows itself, and in the runner's lane never comes closer than %.1f m" % [tag,
 			EnforcerTruck.MIN_GAP])
+		check(windows_shown, "%s: each truck whose planned showing window comes before its first bait comes alongside (task C6c)"
+			% tag)
 		var pairs: PackedStringArray = []
 		for pair: String in watch.overlap_pairs:
 			if pair.contains("enforcer_truck"):
@@ -1468,6 +1744,14 @@ func _bait_step(w: RunWorld, watch: AttackWatch, bait: Dictionary, middle: int, 
 			bait.merge({"kind": "buzz", "enemy": e, "lane": int(cut["lane"]), "leave": FloorCutPlan.meet(cut, v) - 0.5 * v})
 			watch.keep_lane = int(cut["lane"])
 			return
+
+
+## True if `truck` has a planned showing window (task C6c: its params' "show") due before its first bait's charge.
+static func _window_before_bait(truck: EnforcerTruck) -> bool:
+	var params: Dictionary = truck.spawn.get("params", {})
+	var show: Dictionary = params.get("show", {})
+	var baits: Array = params.get("baits", [])
+	return not show.is_empty() and (baits.is_empty() or float(show["at"]) < float(baits[0]))
 
 
 ## True if the runner was out of the way of the charge that destroyed `truck` (an Octodog lunging at

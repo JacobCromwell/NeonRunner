@@ -420,10 +420,15 @@ static func keeps_of(gen: LevelGenerator) -> Array[Dictionary]:
 		if script == null or not script.has_method("doodad_keep_outs"):
 			continue
 		for k: Dictionary in script.call("doodad_keep_outs", gen):
-			out.append(_keep(Vector2(float(k["from"]), float(k["to"])), String(k.get("type", feature)), false,
-				int(k.get("lane", -1))))
+			# A calm stretch (an Enforcer Truck's showing window, task C6c) keeps off the wider gap itself only.
+			out.append(_keep(Vector2(float(k["from"]), float(k["to"])), String(k.get("type", feature)),
+				bool(k.get("calm", false)), int(k.get("lane", -1))))
 	for d: Dictionary in lay.doodads:
 		out.append(_keep(Vector2(float(d["start"]), float(d["end"])), "a doodad"))
+	# Task C6e: each Enforcer Truck's chase before its showing, from its arrival to its window's end, keeps the wider gap
+	# itself off (it would wreck the truck before it has shown itself; the truck hops nothing that wide).
+	for span: Vector2 in EnforcerRules.wide_gap_keep_outs(lay):
+		out.append(_keep(span, "an Enforcer Truck's chase before its showing", true))
 	return out
 
 
@@ -610,14 +615,19 @@ static func _spaced(p: _Pass, span: Vector2) -> bool:
 	return true
 
 
-## Where each Enforcer Truck chases the runner settled behind them: from bait_after_seconds after it arrives
-## until CHASE_END_SECONDS before it gives up.
+## Where each Enforcer Truck chases the runner settled behind them: from bait_after_seconds after it arrives, or from
+## its showing window's end where that's later (task C6e: no wider gap wrecks it before it has shown itself,
+## EnforcerRules.wide_gap_keep_outs), until CHASE_END_SECONDS before it gives up.
 static func _chases(gen: LevelGenerator) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var et: EnforcerTruckTuning = EnforcerRules.tuning()
 	for e: Dictionary in EnforcerRules.trucks_in(gen.layout):
 		var at: float = float(e["at"])
-		out.append(Vector2(at + et.bait_after_seconds * gen.speed, at + (et.chase_seconds - CHASE_END_SECONDS) * gen.speed))
+		var from: float = at + et.bait_after_seconds * gen.speed
+		var w: Vector2 = EnforcerRules.window_of(e)
+		if w.y > w.x:
+			from = maxf(from, w.y + EnforcerRules.WINDOW_EDGE)
+		out.append(Vector2(from, at + (et.chase_seconds - CHASE_END_SECONDS) * gen.speed))
 	return out
 
 

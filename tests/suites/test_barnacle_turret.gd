@@ -20,6 +20,7 @@ extends TestSuite
 ## - the same seed plays out the same way, and generated levels played through check every burst.
 
 const Rules = preload("res://scripts/enemies/barnacle_turret_rules.gd")
+const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const TURRET_TUNING_PATH: String = "res://data/enemies/barnacle_turret.tres"
 const TYPE: String = "barnacle_turret"
@@ -279,7 +280,9 @@ func _check_no_hazard_glow(mesh: Mesh, what: String) -> void:
 ## (LayoutChecks.check_turrets, and the shared checks), the same every time; Marketplace 1 meets its
 ## first one soon after the start, alone on its ceiling, and has no pairs; levels without the feature
 ## have none. Isolating turret placement from the additive density pass, the same level without the
-## feature is otherwise identical (bar its introduction ceiling, pad and credits).
+## feature is otherwise identical (bar its introduction ceiling, pad and credits). The Enforcer Truck's
+## showing windows (task C6c) read the turrets (one its body would hide keeps it from showing there), so
+## that comparison plans none (EnforcerTruckTuning.show_window_planned off).
 func _test_placement() -> void:
 	var pairs: int = 0
 	var added: int = 0
@@ -326,9 +329,13 @@ func _test_placement() -> void:
 				for key: Variant in per:
 					check(int(per[key]) == 1, "no pairs in Marketplace 1 " + tag)
 			# Density budgets all enemies, so removing turrets changes its additions. Compare the
-			# turret rule alone; the full-density layout still gets the fairness checks above.
+			# turret rule alone; the full-density layout still gets the fairness checks above. An Enforcer
+			# Truck's showing windows depend on where the turrets hang: neither build plans them.
 			var isolated_config: LevelConfig = config.duplicate() as LevelConfig
 			isolated_config.danger_density_increase = 0.0
+			var truck_tuning: EnforcerTruckTuning = EnforcerRules.tuning()
+			var planned: bool = truck_tuning.show_window_planned
+			truck_tuning.show_window_planned = false
 			var isolated: LevelLayout = LevelGenerator.new().generate(isolated_config, tuning,
 				LevelGenerator.load_for(isolated_config))
 			var bare: LevelConfig = isolated_config.duplicate() as LevelConfig
@@ -340,6 +347,7 @@ func _test_placement() -> void:
 			bare.feature_starts = config.feature_starts.duplicate()
 			bare.feature_starts.erase(TYPE)
 			var other: LevelLayout = LevelGenerator.new().generate(bare, tuning, LevelGenerator.load_for(bare))
+			truck_tuning.show_window_planned = planned
 			var a: Dictionary = isolated.to_dict()
 			var kept: Array = []
 			for e: Dictionary in isolated.enemies:
