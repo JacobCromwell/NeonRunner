@@ -26,9 +26,9 @@ extends SceneTree
 
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
-## The game's level cache (task PERF2), if this version has one: its stats show whether a retry reused
-## the built level.
-const LEVEL_CACHE_PATH: String = "res://scripts/run/built_level.gd"
+## The game's level cache (task PERF2), if this version has one (the tool also runs on older versions, for
+## the times before it): LevelCache.last_reused says whether a retry reused the built level.
+const LEVEL_CACHE_PATH: String = "res://scripts/run/level_cache.gd"
 
 var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
