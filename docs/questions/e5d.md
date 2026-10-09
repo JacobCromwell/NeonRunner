@@ -440,3 +440,80 @@ Built in the polish pass after the fight's review. Numbers are in `data/bosses/g
    their angles), so they stayed in his first frame's pose; his gallop, the leap's stretch, the rear, the whip and
    the slump show now. Worth a look: `res://tools/showcase/golden_convergence_magnate_showcase.tscn`,
    `--scenario=magnate`.
+
+## E5d-e
+
+Built in task E5d-e, the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)": the Claw
+Slash, the Screen Storm, the arena darker, the new beat scripts, the stomp's chevrons). The owner approved the
+playtest's specifics; these are the choices made while building them. Numbers are in
+`data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`, F6 in the fight: "The Magnate: the darkness",
+"the Claw Slash", "the Screen Storm") unless the item says otherwise, marked `DESIGN-TBD` in code.
+
+1. **Where he runs during a storm** (approved: "During a storm he runs close behind the runner where the camera
+   shows him"). He runs up onto a balustrade (the sides in turn, the first by the fight's seed) and paces the
+   runner **3 m in front of them** (`storm_ahead`), not behind. The run camera's view ends about 3.5 m behind the
+   runner, so behind them he would show at most as a head at the screen's bottom edge, and the screens crashing on
+   him would land out of sight. Up on the balustrade ahead the camera shows him whole at every lane count, the
+   screens coming down on his back read clearly (he staggers with a cry of pain), and they never come down in a
+   lane. A screen on him has no red square or shadow, since nothing there can touch the runner. The overtake beat
+   (he shows himself along a wall, lands ahead and drops back) is in none of the approved scripts, so the storms
+   are where he shows himself now; the beat still plays if a script names it (`overtake`). Is this where you want
+   him during a storm? (`GoldenConvergenceScreens`)
+2. **How many screens hit him: three a storm at every lane count** (`storm_hits`), so a storm takes a quarter of
+   a phase everywhere ("each takes about a twelfth of the phase's health (a storm about a quarter)"). That is a
+   third of a 10-screen storm on 3 lanes but only a fifth of a 16-screen storm on 6 lanes; a third of 16 would be
+   five hits, about 40% of a phase. Keep a quarter of a phase a storm, or a third of the screens?
+3. **The storm's size and pressure.** 10 screens on 3 lanes, 12 on 4, 14 on 5, 16 on 6 (`storm_screens_min`,
+   `storm_screens_max`, scaled to the lane count). The screens on the track take turns: one meant for the runner
+   (in their lane, once the fairness rule allows a screen there; it waits up to 0.4 s for that, then comes down
+   beside them) and one beside them (two lanes off rather than one, so it doesn't block the next one meant for
+   them). The model runner of the plan's test, who moves 0.35 s after each warning (The House's reaction:
+   `screen_reaction`; a lane switch with a 1.5 margin, `screen_switch_margin`; 0.1 s spare round each crash,
+   `screen_margin`), has to dodge 3.3 to 5.2 times a storm on average (200 storms at each of 3 to 6 lanes) and is
+   never struck or sent into another warning. The storm's 5 s and its 0.9 s warnings don't speed up with the phase's
+   pace (his run-up to the balustrade does). Is a storm busy enough? (`GoldenConvergenceStormPlan`)
+4. **A stomp ends its phase exactly.** In stage 2 a stomp takes whatever is left of its phase, so what the screens
+   (and weapons) chipped off doesn't carry over into the next phase: every phase is one stomp or four storms,
+   whatever came before (`GoldenConvergence.hit_damage`). The last sliver of a phase (under a hundredth of it) goes
+   with a screen's hit, so twelve twelfths always end it. A phase the screens end is followed by his hurl clear, as
+   after a stomp, and in the last phase they end the fight with the same defeat as the third stomp. Should chip
+   damage carry over instead, so a phase with many storms shortens the next one?
+5. **The Claw Slash's timings and reach.** He closes in from behind over 0.6 s (`slash_close_seconds`, over the
+   pace) to just behind the camera's view; then the warning (0.5 s, `slash_warning`, never shortened by the pace)
+   while he lunges into view to 3 m behind the runner as the swipe lands (`slash_strike_behind`). The swipe covers
+   84% of the lane's width (`slash_width_share`), from 1.2 m behind the runner to 0.8 m past them (`slash_behind`,
+   `slash_ahead`) and 3.2 m high, live for 0.12 s; a double's second warning begins 0.12 s after the first swipe
+   lands (`slash_double_gap`). The warning only begins while a lane beside the runner's is clear to switch into
+   for the whole swipe (no buttress side, hole, other floor warning or live Lash cable there); otherwise he holds
+   behind the camera for up to 2 s, then lets that slash go (`GoldenConvergenceSlash.WAIT_MAX`). Is the split
+   second right?
+6. **How the Slash's warning flashes.** His marker's red beats on and off 7 times a second (down to 30%
+   opacity; `GoldenConvergenceChase.ALARM_FLASH_HZ`) and the claw marks pulse their size about 5 times a second;
+   both hold steady with Reduced flashing. The marker is small, at the screen's bottom edge; is this rate fine?
+7. **How dark stage 2 is.** The court's light falls to 0.7 (`stage_two_light`) over 3.5 s from the transition's
+   start (`dim_seconds`; on a retry from the checkpoint too) and comes back over 2 s from the defeat's start
+   (`light_return_seconds`). The Magnate's body and cables dim with the court; the warm white in his cracks, his
+   red ports, every hazard and warning, the runner and the pickups keep their glow. On the white marble causeway
+   it reads a little short of 30%: the floor goes from about 204 to 184 (sRGB value, about 20% less light), since
+   the towers' screens and the bloom keep theirs. Darker (0.55 to 0.6)?
+8. **The stomp's chevrons and the stun's lead.** Green ramp chevrons in both of his lanes over the middle of the
+   take-off stretch (12% of it off each end, as the cue before the Hostile Takeover's couplings), streaming toward
+   him from the stun until he's stomped or shakes free (`GoldenConvergenceTakeoffMarks`). He now crashes into the
+   gate 1.75 to 1.78 s before the runner reaches his back, which leaves 1.5 s from the stun to the last take-off
+   (`stun_takeoff`).
+9. **Stage 2's beats come 0.6 s apart** (`stage_two_beat_gap`; stage 1's are 1.6 s), divided by the phase's pace.
+   A beat is over once he's back behind the runner, so nothing of one attack is still out when the next one warns.
+10. **Its sounds** (`tools/asset_gen/sfx_bank_magnate.gd`, each under 2.5 s, the two warnings never pitch-varied):
+    `magnate_snarl` (the Slash's warning: a short, sharp snarl, not the Pounce's roar), `magnate_swipe` (the
+    claws), `magnate_glitch` (a screen's warning: the rising glitch-whine), `magnate_smash` (a screen shattering),
+    `magnate_yank` (its tentacle whipping it away) and `magnate_pain` (his cry when a screen hits him).
+11. **The screens' look.** 16:9 screens 2 m wide in gilded frames, his glitching, roaring face on them (the court's
+    feed shader, held still with Reduced flashing), each on a gold tentacle 46 m long up into the vault; a crash
+    throws pale glass shards (and warm white sparks, none with Reduced flashing), and the dark, broken screen is
+    yanked away (`GoldenConvergenceTentacles`).
+12. **The hints** (`data/hints/hints.json`): `golden_boss_slash` and `golden_boss_screens` are new, and the stun's
+    now says to take off from the green chevrons.
+13. **The par times, from the longer clean fight.** The bot's clean fight now takes 217.6 to 220.2 s at 25 m/s and
+    228.2 to 229.3 s at 18 m/s (it was 198.3 to 200.1 s and 208.9 to 209.1 s); stage 2 from the checkpoint takes
+    about 96 s (it was 76 s). Three stars at 238 s, two at 308 s (Hostile Takeover's margins over a clean fight)
+    and the time bonus runs out at 378 s (they were 214, 277 and 340 s; `data/bosses/golden_boss.tres`).

@@ -30,7 +30,8 @@ extends RefCounted
 ## less).
 const WARN_SPARE: float = 0.1
 ## A slot meant for the runner waits at most ON_WAIT for the rule to let it come down in their lane (then it comes
-## down beside them); a slot no lane may take yet waits at most SLOT_SLACK, then it's let go.
+## down beside them); a slot no lane may take yet waits at most SLOT_SLACK, then it's let go. DESIGN-TBD (docs/
+## questions/e5d.md, E5d-e 3), as BESIDE_WEIGHTS.
 const ON_WAIT: float = 0.4
 const SLOT_SLACK: float = 0.5
 ## How a screen beside the runner picks its lane (by lanes from the runner's: never theirs, two off rather than one,

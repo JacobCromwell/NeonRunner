@@ -28,7 +28,8 @@ const FADE_RATE: float = 3.0
 const SHADOW_END: float = -2.5
 const SHADOW_LENGTH: float = 7.0
 const SHADOW_WIDTH: float = 2.2
-## A flashing alarm beats this many times a second (the marker never fainter than ALARM_FLASH_LOW).
+## A flashing alarm beats this many times a second (the marker never fainter than ALARM_FLASH_LOW). DESIGN-TBD
+## (docs/questions/e5d.md, E5d-e 6).
 const ALARM_FLASH_HZ: float = 7.0
 const ALARM_FLASH_LOW: float = 0.3
 ## Where a balustrade's top is (out from the wall's line, over the causeway's edge) when the skin doesn't say.

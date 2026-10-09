@@ -69,9 +69,9 @@ extends Resource
 @export_range(0.0, 6.0, 0.05, "suffix:s") var first_beat_delay: float = 0.8
 @export_range(0.0, 6.0, 0.05, "suffix:s") var beat_gap: float = 1.6
 ## DESIGN-TBD (GDD §10, the owner's playtest: stage 2 "felt slower, duller and less dangerous than stage 1";
-## proposed: "shorter gaps between beats"): stage 2's beats come this long apart instead (over the phase's pace;
-## GoldenConvergence.beat_gap()). Its beats are over once he's back behind the runner, so nothing of one attack
-## is ever still out when the next one warns.
+## approved: "shorter gaps between beats"; docs/questions/e5d.md, E5d-e 9): stage 2's beats come this long apart
+## instead (over the phase's pace; GoldenConvergence.beat_gap()). Its beats are over once he's back behind the
+## runner, so nothing of one attack is ever still out when the next one warns.
 @export_range(0.0, 6.0, 0.05, "suffix:s") var stage_two_beat_gap: float = 0.6
 
 @export_group("Helidrone Strafe: the squadron")
@@ -477,10 +477,10 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_range(0.5, 6.0, 0.1, "suffix:m") var stun_reach: float = 3.5
 @export_range(0.1, 0.6, 0.05, "suffix:m") var stun_stomp_top: float = 0.4
 ## DESIGN-TBD (GDD §10, the owner's playtest, approved: "the stun leaves time to line up the jump (at least about
-## 1.5 s from the stun to the last takeoff)"): he crashes into the gate at least this long before the runner's
-## last takeoff for a jump that comes down on his back (GoldenConvergencePounce.stun_lead_seconds: stun_lead, or
-## longer where it would leave less), at every speed. Green chevrons on the floor of his two lanes mark where to
-## take off while he's stunned (GoldenConvergenceTakeoffMarks).
+## 1.5 s from the stun to the last takeoff)"; docs/questions/e5d.md, E5d-e 8): he crashes into the gate at least
+## this long before the runner's last takeoff for a jump that comes down on his back
+## (GoldenConvergencePounce.stun_lead_seconds: stun_lead, or longer where it would leave less), at every speed. Green
+## chevrons on the floor of his two lanes mark where to take off while he's stunned (GoldenConvergenceTakeoffMarks).
 @export_range(0.8, 3.0, 0.05, "suffix:s") var stun_takeoff: float = 1.5
 ## After a stomp he hurls himself clear, howling, and drops back behind over this long: the next phase's intro
 ## (BossPhase.intro_seconds).
@@ -516,9 +516,9 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_group("The Magnate: the darkness")
 ## DESIGN-TBD (GDD §10, the owner's playtest: "the arena gets about 30% darker once stage 2 starts, a sign that
 ## The Magnate is losing control"; approved: "It fades down through the transition; hazards and warnings keep
-## their glow; the light comes back as he falls"): stage 2's light (BossEncounter.set_light_level, 1 the court's
-## own), fading down over dim_seconds from the transition's start (on a retry from the checkpoint too); from his
-## defeat's start it comes back over light_return_seconds.
+## their glow; the light comes back as he falls"; docs/questions/e5d.md, E5d-e 7): stage 2's light
+## (BossEncounter.set_light_level, 1 the court's own), fading down over dim_seconds from the transition's start (on a
+## retry from the checkpoint too); from his defeat's start it comes back over light_return_seconds.
 @export_range(0.3, 1.0, 0.01) var stage_two_light: float = 0.7
 @export_range(0.0, 6.0, 0.05, "suffix:s") var dim_seconds: float = 3.5
 @export_range(0.0, 6.0, 0.05, "suffix:s") var light_return_seconds: float = 2.0
@@ -532,7 +532,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## warning (the marker flashing red, magnate_snarl, the red claw marks where the swipe lands) comes slash_warning
 ## before the swipe (never over the pace), locked onto the runner's lane as it begins, and he lunges in meanwhile to
 ## slash_strike_behind behind the runner (framing: his claws come in at the bottom of the run camera's view as the
-## swipe lands).
+## swipe lands). The numbers: docs/questions/e5d.md, E5d-e 5.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var slash_close_seconds: float = 0.6
 @export_range(0.35, 1.0, 0.01, "suffix:s") var slash_warning: float = 0.5
 @export_range(0.5, 5.0, 0.1, "suffix:m") var slash_strike_behind: float = 3.0
@@ -556,7 +556,8 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## him"): he runs up onto a balustrade (sides in turn, the first by the fight's seed) over storm_run_up (over the
 ## phase's pace) to storm_ahead in front of the runner (framing: the run camera shows him there at every lane count)
 ## and paces them; the storm's screens crash over storm_seconds from then (never over the pace): storm_screens_min on
-## 3 lanes up to storm_screens_max on 6 (scaled to the lane count), storm_hits of them on him.
+## 3 lanes up to storm_screens_max on 6 (scaled to the lane count), storm_hits of them on him. Where he runs, how
+## many screens hit him, the storm's size: docs/questions/e5d.md, E5d-e 1-3.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var storm_run_up: float = 1.1
 @export_range(1.5, 8.0, 0.1, "suffix:m") var storm_ahead: float = 3.0
 @export_range(2.0, 8.0, 0.1, "suffix:s") var storm_seconds: float = 5.0
