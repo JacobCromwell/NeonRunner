@@ -10,14 +10,14 @@ extends MarketFacades
 ## lounges (its style numbers are shopfront.gdshader's), and the dressing above the calm band is the
 ## reference's: thick brass pipes and risers along the faces, stacked iron balconies with ivy in
 ## planters, air-conditioning units, lit blade signs ("The Brass Lotus"), casino marquees of bulbs with
-## big lit signs, banners of heavy cloth, all unframed (hazard signs wear the yellow/black frame) and
-## none below `decor_min_height`.
+## big lit signs, banners of heavy cloth, all unframed (hazard signs wear the yellow/black frame), none of
+## the flat ones below `decor_min_height` and none of the ones that stand out below `overhang_min_height`.
 ## Nothing vent-like at the foot of the walls (the screeches' lairs, GDD §5, §9.5), nothing glowing or
 ## sticking out through the wall-run band (`band_top`): every wall is flush from the street up past it,
 ## and what stands out of a face by more than a hand's width starts at `overhang_min_height`.
 ## All variety comes from hashing lot indices, so chunk cuts never change a building.
 
-## How many storeys a balcony may hang from, and its reach (metres).
+## How far a balcony reaches out of the face (metres).
 const BALCONY_REACH: float = 0.95
 ## Added to the lit sign's size: its frame around the panel.
 const FRAME: float = 0.16
@@ -101,8 +101,7 @@ const FACE_AGAINST: Dictionary = {-1: MeshKit.FACE_NX, 1: MeshKit.FACE_PX}
 
 ## Thick brass pipes along the face (the reference's pipes and ducts): one or two runs along the
 ## building between the first storey above the calm band and the roof, with a flange at the building's
-## ends, and on some a riser up the face. Nothing lower than
-## overhang_min_height.
+## ends, and on some a riser up the face. Nothing lower than overhang_min_height.
 func _pipes(solid: MeshLayer, b: MarketFacades.Building, face_x: float, u0: float, u1: float) -> void:
 	var side: int = b.side
 	if MeshKit.hash01(side, b.id, 99) >= csk.pipe_share:
