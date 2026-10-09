@@ -39,9 +39,13 @@ extends MarketplaceSkin
 @export_range(4.5, 15.0, 0.1, "suffix:m") var trench_depth: float = 6.5
 
 @export_group("Iron and brass")
-## The facades' dark iron, four tones.
+## The facades' dark iron, four tones. The walls take them as the Marketplace's stucco list does
+## (stucco_colors follows this export, set in a .tres as well as here).
 @export var iron_colors: PackedColorArray = PackedColorArray([
-	Color(0.2, 0.17, 0.155), Color(0.22, 0.18, 0.155), Color(0.175, 0.165, 0.165), Color(0.235, 0.195, 0.165)])
+	Color(0.2, 0.17, 0.155), Color(0.22, 0.18, 0.155), Color(0.175, 0.165, 0.165), Color(0.235, 0.195, 0.165)]):
+	set(value):
+		iron_colors = value
+		stucco_colors = value
 ## Dark painted iron: girders, ribs, cornices, balcony rails.
 @export var iron_color: Color = Color(0.13, 0.12, 0.125)
 ## Aged brass: the pipes, the rails, the trims and the frames. Lit metal, never neon.
@@ -68,6 +72,9 @@ extends MarketplaceSkin
 ## DESIGN-TBD (docs/questions/k1.md 6): the glass roof as a whole (broken panes, still fans) and how often an
 ## iron girder crosses the street under it, carrying banners and lanterns; the shares of bays with a lantern, a
 ## ceiling fan and banners.
+## Whether anything hangs from the roof at all. The arena turns it off: The House's billboard drops through
+## the space under the roof (from far above its ceiling), so nothing may be strung across it.
+@export var hangings: bool = true
 @export_range(10.0, 120.0, 1.0, "suffix:m") var crossbeam_spacing: float = 32.0
 @export_range(0.0, 1.0, 0.01) var lantern_share: float = 0.5
 @export_range(0.0, 1.0, 0.01) var fan_share: float = 0.28

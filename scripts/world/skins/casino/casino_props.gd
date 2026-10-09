@@ -8,8 +8,8 @@ extends MarketProps
 ## neighbouring lane. Meshes are cached and shared by every instance. It builds on the Marketplace's
 ## (MarketProps): the fence and sign hooks and the cache are the same, only the posts and the sign's
 ## face differ.
-## DESIGN-TBD (docs/questions/k1.md): the edge bars and the OFF look are proposals, as in every zone;
-## the GDD fixes only the pink crackle.
+## DESIGN-TBD (docs/questions/k1.md 9): the stanchion posts, the edge bars and the OFF look are proposals, as
+## in every zone; the GDD fixes only the pink crackle.
 
 
 ## The casino's version of the Marketplace's crates under the fence's poles: a brass stanchion post

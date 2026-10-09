@@ -361,7 +361,9 @@ func _casino(batch: MeshBatch, solid: MeshLayer, glow: MeshLayer, b: MarketFacad
 		solid.rect(screen[0], screen[1], screen[2], color, 0.6, MeshKit.PAT_CASINO_SIGN, Vector2.ZERO, Vector2(length, h), param)
 		if skin.carries_emblem(b.seed, 60):
 			_corner_emblem(solid, side, sx, d0, length, sy, h)
-	glow.rect(Vector3(sx - side * 0.4, sy - 1.0, -d0 + 1.0), Vector3(0, 0, -(length + 2.0)), Vector3(0, h + 2.0, 0), color, 0.1,
+	# The halo lies flat on the wall behind the frame and the face (under the arena's rule: nothing more than
+	# 30 cm out of a face below overhang_min_height, where The House fills the street to 35 cm off the walls).
+	glow.rect(Vector3(face_x - side * 0.06, sy - 1.0, -d0 + 1.0), Vector3(0, 0, -(length + 2.0)), Vector3(0, h + 2.0, 0), color, 0.1,
 		MeshKit.SHAPE_FLAT)
 
 

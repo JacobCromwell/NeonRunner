@@ -10,10 +10,12 @@ extends RefCounted
 ## running along the street, and the panes themselves, quads of the solid kit shader's PAT_CASINO_VAULT:
 ## dark glass in thin iron frames, opaque and faked (no transparency, GDD §5 and the phone rules), with
 ## the night sky showing only through the panes the template leaves out. Hung from it, per bay by hash:
-## iron girders across the street carrying banners of heavy cloth, lanterns on chains and ceiling fans.
-## Nothing hangs below `bunting_height` over the lanes (the arrival flyover's and The House's limits:
-## the machine is 13.5 m tall and the camera flies under 10 m), and everything is drawn with the one solid
-## and glow materials of the chunk's batch, so the roof adds no mesh surface of its own.
+## iron girders across the street carrying banners of heavy cloth, lanterns on chains and ceiling fans
+## (a girder under the eave runs from wall to wall; the arena hangs nothing, `hangings`: The House's
+## billboard drops through that space). Nothing hangs below `bunting_height` over the lanes (the arrival
+## flyover's and The House's limits: the machine is 13.5 m tall, TheHouseTuning.height, and the camera flies
+## under 10 m), and everything is drawn with the one solid and glow materials of the chunk's batch, so the
+## roof adds no mesh surface of its own.
 ## Space: chunk space (x across, y up, z = -distance); bay k covers distances [k * bay_length,
 ## (k + 1) * bay_length) and belongs to the call whose range holds its start.
 
@@ -27,6 +29,15 @@ const RIB_DEPTH: float = 0.5
 const RIB_THICK: float = 0.42
 ## Added to the least a hanging thing may reach above `bunting_height`, so nothing touches the limit.
 const HANG_MARGIN: float = 0.05
+## How far a girder runs into the wall it ends in.
+const GIRDER_EMBED: float = 0.1
+## How far a girder's banners keep from the walls (a balcony stands 0.95 m out of a face).
+const BANNER_MARGIN: float = 1.0
+## A ceiling fan hangs FAN_DROP under the roof; its blades reach FAN_RADIUS from the hub and must stay
+## FAN_CLEARANCE inside the roof.
+const FAN_DROP: float = 1.4
+const FAN_RADIUS: float = 2.6
+const FAN_CLEARANCE: float = 0.3
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: CasinoSkin:
@@ -95,6 +106,19 @@ static func height_at(arch: Dictionary, x: float) -> float:
 	var half_width: float = arch["half_width"]
 	var dx: float = minf(absf(x), half_width)
 	return float(arch["cy"]) + sqrt(maxf(rho * rho - dx * dx, 0.0))
+
+
+## The height of the glass itself at sideways position x: the panes are flat chords between the arch's
+## corners, so a little under the circle between them (0.13 m at most, on the widest street).
+static func glass_at(arch: Dictionary, x: float) -> float:
+	var points: Array[Vector2] = arch["points"]
+	var dx: float = clampf(x, points[0].x, points[points.size() - 1].x)
+	for i: int in points.size() - 1:
+		var b: Vector2 = points[i + 1]
+		if dx <= b.x + 0.0001:
+			var a: Vector2 = points[i]
+			return lerpf(a.y, b.y, clampf((dx - a.x) / maxf(b.x - a.x, 0.0001), 0.0, 1.0))
+	return points[points.size() - 1].y
 
 
 ## How far from the street's middle the arch is at height y (the circle's two sides), or -1 if y is above
@@ -168,26 +192,26 @@ func _bay(arch: Dictionary, variant: int) -> MeshLayer:
 ## The girder across the street, banners, lantern and fan of bay k (z is the bay's near end), by hash.
 ## Everything stays above bunting_height; a thing that would reach below it isn't built.
 func _hangings(solid: MeshLayer, glow: MeshLayer, arch: Dictionary, k: int, z: float) -> void:
+	if not skin.hangings:
+		return
 	var length: float = skin.bay_length
 	var limit: float = skin.bunting_height + HANG_MARGIN
 	var half_width: float = arch["half_width"]
-	var crown: float = arch["crown"]
 	# A girder across the street every crossbeam_spacing metres or so, under the roof, carrying banners.
-	var spacing_bays: int = maxi(1, roundi(skin.crossbeam_spacing / length))
-	if posmod(k + MeshKit.hash_i(k / spacing_bays, 3, 5) % spacing_bays, spacing_bays) == 0:
-		var beam_y: float = limit + 0.6 + 2.0 * MeshKit.hash01(k, 41)
-		var span: float = half_span_at(arch, beam_y + 0.3)
-		if span > 1.0:
-			var bz: float = z - length * 0.5
-			solid.box(Vector3(0, beam_y, bz), Vector3(span * 2.0, 0.42, 0.34), skin.iron_color, 0.0, MeshKit.PAT_CASINO_IRON,
-				MeshKit.ALL_FACES, 2.0)
-			solid.box(Vector3(0, beam_y - 0.24, bz + 0.17), Vector3(span * 2.0, 0.07, 0.04), skin.brass_dim_color, 0.0,
-				MeshKit.PAT_CASINO_BRASS, MeshKit.FACE_PZ, 0.4)
-			_banners(solid, k, bz, beam_y, span, limit)
+	var girder: Dictionary = girder_of(arch, k)
+	if not girder.is_empty():
+		var beam_y: float = girder["y"]
+		var span: float = girder["span"]
+		var bz: float = z - length * 0.5
+		solid.box(Vector3(0, beam_y, bz), Vector3(span * 2.0, 0.42, 0.34), skin.iron_color, 0.0, MeshKit.PAT_CASINO_IRON,
+			MeshKit.ALL_FACES, 2.0)
+		solid.box(Vector3(0, beam_y - 0.24, bz + 0.17), Vector3(span * 2.0, 0.07, 0.04), skin.brass_dim_color, 0.0,
+			MeshKit.PAT_CASINO_BRASS, MeshKit.FACE_PZ, 0.4)
+		_banners(solid, k, bz, beam_y, span - BANNER_MARGIN, limit)
 	# A lantern on a chain from the roof, warm and dim (no real light: an emissive box and a halo).
 	if MeshKit.hash01(k, 51) < skin.lantern_share:
 		var lx: float = (MeshKit.hash01(k, 52) - 0.5) * half_width * 1.1
-		var ly_top: float = height_at(arch, lx) - 0.1
+		var ly_top: float = glass_at(arch, lx) - 0.1
 		var chain: float = 2.5 + 2.0 * MeshKit.hash01(k, 53)
 		var ly: float = ly_top - chain - 0.3
 		if ly - 0.3 >= limit:
@@ -201,11 +225,48 @@ func _hangings(solid: MeshLayer, glow: MeshLayer, arch: Dictionary, k: int, z: f
 			glow.rect(Vector3(lx - 1.4, ly - 1.4, lz + 0.3), Vector3(2.8, 0, 0), Vector3(0, 2.8, 0), skin.lamp_color, 0.2,
 				MeshKit.SHAPE_RADIAL)
 	# A ceiling fan high under the crown (its blades static: a silhouette, like the reference's).
-	if MeshKit.hash01(k, 61) < skin.fan_share:
-		var drop: float = 1.4
-		var fan_y: float = crown - drop
-		if fan_y - 0.2 >= limit:
-			_fan(solid, Vector3((MeshKit.hash01(k, 62) - 0.5) * half_width * 0.4, fan_y, z - length * 0.5), k)
+	var fan: Dictionary = fan_of(arch, k)
+	if not fan.is_empty():
+		var at: Vector3 = fan["at"]
+		_fan(solid, Vector3(at.x, at.y, z - length * 0.5), k)
+
+
+## The girder of bay k, or {} if it has none: {y (its centre's height), span (half its length)}. Under
+## the eave the street is as wide as its walls, so the girder runs from one wall face into the other
+## (GIRDER_EMBED, hidden in the buildings); only a girder hung in the roof itself ends where the glass does.
+func girder_of(arch: Dictionary, k: int) -> Dictionary:
+	if not skin.hangings:
+		return {}
+	var spacing_bays: int = maxi(1, roundi(skin.crossbeam_spacing / skin.bay_length))
+	if posmod(k + MeshKit.hash_i(k / spacing_bays, 3, 5) % spacing_bays, spacing_bays) != 0:
+		return {}
+	var beam_y: float = skin.bunting_height + HANG_MARGIN + 0.6 + 2.0 * MeshKit.hash01(k, 41)
+	var span: float
+	if beam_y + 0.3 <= skin.eave_height:
+		span = float(arch["half_width"]) + GIRDER_EMBED
+	else:
+		span = half_span_at(arch, beam_y + 0.3)
+	if span <= 1.0:
+		return {}
+	return {"y": beam_y, "span": span}
+
+
+## The ceiling fan of bay k, or {} if it has none: {at (the hub: x across the street, y up)}. It hangs
+## FAN_DROP under the roof and a little off the middle; its blades (FAN_RADIUS) must stay inside the glass
+## (a narrow street's roof falls away quickly), so a fan that would poke out of it is moved to the middle,
+## and dropped if even that is too wide.
+func fan_of(arch: Dictionary, k: int) -> Dictionary:
+	if not skin.hangings or MeshKit.hash01(k, 61) >= skin.fan_share:
+		return {}
+	var limit: float = skin.bunting_height + HANG_MARGIN
+	var x: float = (MeshKit.hash01(k, 62) - 0.5) * float(arch["half_width"]) * 0.4
+	for attempt: int in 2:
+		var fan_y: float = glass_at(arch, x) - FAN_DROP
+		var tips: float = glass_at(arch, absf(x) + FAN_RADIUS)
+		if fan_y - 0.2 >= limit and tips >= fan_y - 0.2 + FAN_CLEARANCE:
+			return {"at": Vector3(x, fan_y, 0.0)}
+		x = 0.0
+	return {}
 
 
 ## Banners hung from a girder at height `beam_y` across a street whose arch is `span` wide there: two to
@@ -231,7 +292,7 @@ func _banners(solid: MeshLayer, k: int, bz: float, beam_y: float, span: float, l
 
 ## A ceiling fan hung with its hub at `at`: a brass hub on a rod, four iron blades.
 func _fan(solid: MeshLayer, at: Vector3, k: int) -> void:
-	solid.box(at + Vector3(0, 0.7, 0), Vector3(0.05, 1.4, 0.05), skin.iron_color)
+	solid.box(at + Vector3(0, FAN_DROP * 0.5 - 0.02, 0), Vector3(0.05, FAN_DROP - 0.04, 0.05), skin.iron_color)
 	solid.prism(at + Vector3(0, -0.12, 0), 0.34, 0.26, 8, skin.brass_dim_color, 0.0, MeshKit.PAT_CASINO_BRASS, true, 0.5)
 	var turn: float = TAU * MeshKit.hash01(k, 66)
 	for i: int in 4:

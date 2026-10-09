@@ -22,9 +22,10 @@ extends SkinSuite
 ##   underside over exactly its lanes, the orange end band, the lane seams, nothing hanging below it, its
 ##   structure under the arrival flyover's height and its signs above decor_min_height;
 ## - the glass vault is background: opaque (no transparency: the solid and glow materials only), far above
-##   everything the player can reach, and whatever hangs from it stays above `bunting_height`; the
-##   arena's variant (The House is 13.5 m tall) keeps every overhang above 14.4 m and its facades flush
-##   below it;
+##   everything the player can reach, and whatever hangs from it stays above `bunting_height`: its girders
+##   run wall to wall under the eave and its fans' blades stay inside the glass; the arena's variant (The
+##   House is 13.5 m tall) keeps its facades flush below 14.4 m (the street's are flush below its own 10 m),
+##   hangs nothing and raises the roof above the phase-3 billboard's drop (at 3, 5 and 6 lanes);
 ## - the cult's emblem is the owner's choice, hidden here and there on signs, never smaller than
 ##   emblem_min_size; the cult's feed (CultFeed) plays only on lit billboards and signs high up and on TVs
 ##   in some shop windows;
@@ -106,8 +107,8 @@ func _palette(skin: CasinoSkin) -> void:
 	check(bad.is_empty(), "lamps, bulbs, neon and ads keep to warm white, blue and violet: %s" % ", ".join(bad))
 	var lit: Array[Color] = [skin.street_color, skin.inlay_color, skin.iron_color, skin.brass_color, skin.brass_dim_color,
 		skin.pane_color, skin.pane_lit_color, skin.ivy_color, skin.sign_panel_color, skin.gap_inside_color]
-	for list: PackedColorArray in [skin.iron_colors, skin.shutter_colors, skin.painted_sign_colors, skin.banner_colors,
-			skin.sign_content_colors, skin.doodad_plant_colors, skin.doodad_cabinet_colors]:
+	for list: PackedColorArray in [skin.iron_colors, skin.shutter_colors, skin.painted_sign_colors, skin.dim_sign_colors,
+			skin.banner_colors, skin.sign_content_colors, skin.doodad_plant_colors, skin.doodad_cabinet_colors]:
 		lit.append_array(Array(list))
 	var loud: PackedStringArray = []
 	for c: Color in lit:
@@ -657,6 +658,12 @@ func _vault(skin: CasinoSkin) -> void:
 		check(panes > 0 and panes < full_panes and panes > full_panes * 0.7,
 			"some panes are missing and most are there: the sky shows through (%d of %d vertices)" % [panes, full_panes])
 		check(highest <= float(arch["crown"]) + 1.5, "the roof stays under its crown (%.1f m)" % highest)
+		_girders_and_fans(skin, wall, arch, lanes)
+	# The iron of the walls is the iron_colors export, whatever sets it (a .tres included).
+	var recoloured := CasinoSkin.new()
+	recoloured.iron_colors = PackedColorArray([Color(0.1, 0.1, 0.1)])
+	check(recoloured.stucco_colors == recoloured.iron_colors and skin.stucco_colors == skin.iron_colors,
+		"the walls take the iron_colors export: stucco_colors follows it")
 	# The roof builds the same for any piece of the left wall (a wall gap's part builds its own bays), and
 	# bays are never built twice: two halves make what the whole makes.
 	var geo5 := TrackGeometry.new(5, tuning)
@@ -670,38 +677,78 @@ func _vault(skin: CasinoSkin) -> void:
 		"the roof over a stretch is the roof over its pieces (%d vs %d vertices)" % [whole.vertex_count(), parts.vertex_count()])
 
 
-## The arena's skin (The House is 13.5 m tall, GDD §10): its roof and everything strung from it stay above
-## bunting_height (>= 25 m), and its facades are flush through to 14.4 m: no balcony, pipe, unit or blade
-## sign sticks out of a wall below that (the machine fills the street to 35 cm off the walls).
+## What hangs from the roof reaches what it hangs between: every girder under the eave runs from one wall
+## face to the other (the roof there is as wide as the street, and a girder that ends short floats in the air),
+## and a ceiling fan's blades stay inside the glass, at 3, 5 and 6 lanes.
+func _girders_and_fans(skin: CasinoSkin, wall: float, arch: Dictionary, lanes: int) -> void:
+	var vault: CasinoVault = skin.vault()
+	var length: float = skin.bay_length
+	var girders: int = 0
+	var short: PackedStringArray = []
+	for k: int in 300:
+		var girder: Dictionary = vault.girder_of(arch, k)
+		if girder.is_empty():
+			continue
+		girders += 1
+		var beam_y: float = girder["y"]
+		if beam_y + 0.3 > skin.eave_height:
+			continue
+		# Build its bay alone and read the girder's ends off the mesh: its box is 0.42 m tall about beam_y.
+		var batch := MeshBatch.new()
+		vault.build(batch, wall, float(k) * length, float(k + 1) * length)
+		var mesh: ArrayMesh = batch.to_mesh()
+		var reach_left: float = 0.0
+		var reach_right: float = 0.0
+		for s: int in mesh.get_surface_count():
+			if mesh.surface_get_material(s) != skin.solid_material():
+				continue
+			for v: Vector3 in mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
+				if absf(v.y - beam_y) < 0.215:
+					reach_left = maxf(reach_left, -v.x)
+					reach_right = maxf(reach_right, v.x)
+		if reach_left < wall - 0.01 or reach_right < wall - 0.01:
+			short.append("bay %d reaches %.2f / %.2f of %.2f" % [k, reach_left, reach_right, wall])
+	check(girders >= 5, "girders cross the street at %d lanes (%d in 300 bays)" % [lanes, girders])
+	check(short.is_empty(), "every girder under the eave runs from wall to wall at %d lanes: %s" % [lanes,
+		", ".join(short.slice(0, 3))])
+	var fans: int = 0
+	var poking: PackedStringArray = []
+	for k: int in 2000:
+		var fan: Dictionary = vault.fan_of(arch, k)
+		if fan.is_empty():
+			continue
+		fans += 1
+		var at: Vector3 = fan["at"]
+		# The blades' tips (their tops are 0.18 m under the hub) and the rod's top against the glass itself.
+		var tips: float = CasinoVault.glass_at(arch, absf(at.x) + CasinoVault.FAN_RADIUS)
+		var top: float = CasinoVault.glass_at(arch, at.x)
+		if tips < at.y - 0.18 + 0.1 or top < at.y + CasinoVault.FAN_DROP - 0.03:
+			poking.append("bay %d (x %.2f)" % [k, at.x])
+	check(fans > 100, "ceiling fans hang at %d lanes (%d in 2000 bays)" % [lanes, fans])
+	check(poking.is_empty(), "no fan's blades or rod reach the glass at %d lanes: %s" % [lanes, ", ".join(poking.slice(0, 3))])
+
+
+## The arena's skin (The House is 13.5 m tall, GDD §10): its facades are flush through to 14.4 m (no
+## balcony, pipe, unit, blade sign or halo sticks out of a wall below that: the machine fills the street to
+## 35 cm off the walls), nothing hangs from its roof, and the roof is above the phase-3 billboard's whole drop
+## (it comes down from 26 m over its 6 m ceiling), over the widest and the narrowest street.
 func _arena(skin: CasinoSkin, arena: CasinoSkin) -> void:
 	if arena == null:
 		check(false, "the arena skin loads")
 		return
 	check(arena.bunting_height >= 25.0, "the arena strings nothing low over the street (%.1f m)" % arena.bunting_height)
 	check(arena.overhang_min_height >= ARENA_CLEARANCE, "and its facades are flush up to %.1f m" % arena.overhang_min_height)
+	check(not arena.hangings and skin.hangings, "the arena hangs nothing from its roof (the billboard drops through the space)")
 	check(skin.overhang_min_height >= 10.0 and skin.overhang_min_height >= skin.decor_min_height,
 		"the Casino's own overhangs start no lower than the arrival flyover's 10 m (%.1f m)" % skin.overhang_min_height)
-	var geo := TrackGeometry.new(6, tuning)
-	var wall: float = geo.wall_x()
-	var intrusions: PackedStringArray = []
-	for side: int in [-1, 1]:
-		var batch := MeshBatch.new()
-		arena.facades().build(batch, side, side * wall, 0.0, 400.0)
-		var walls: ArrayMesh = batch.to_mesh()
-		for s: int in walls.get_surface_count():
-			var material: Material = walls.surface_get_material(s)
-			if material == arena.glow_material() or material == arena.feed_material():
-				continue
-			for v: Vector3 in walls.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
-				# Over the street side of the wall: how far the point stands out of the face toward the lanes.
-				var out: float = wall - absf(v.x)
-				if v.y > 0.06 and v.y < ARENA_CLEARANCE and out > 0.3 and intrusions.size() < 4:
-					intrusions.append("%s (%.2f m out of the face)" % [v, out])
-	check(intrusions.is_empty(), "the arena's facades keep everything within 0.3 m of the wall below %.1f m: %s" % [ARENA_CLEARANCE,
-		", ".join(intrusions)])
+	# The faces are flush below the overhang line, the street's as much as the arena's: nothing, glow and the
+	# feed included, stands more than 30 cm out of a face below it.
+	_flush_below(arena, ARENA_CLEARANCE, "the arena's")
+	_flush_below(skin, skin.overhang_min_height - 0.1, "the street's")
 	# The arena's roof, over the lanes: nothing below the machine's top (its springing is above it too).
+	var geo6 := TrackGeometry.new(6, tuning)
 	var roof := MeshBatch.new()
-	arena.vault().build(roof, wall, 0.0, 400.0)
+	arena.vault().build(roof, geo6.wall_x(), 0.0, 400.0)
 	var mesh: ArrayMesh = roof.to_mesh()
 	var lowest: float = INF
 	for s: int in mesh.get_surface_count():
@@ -711,6 +758,65 @@ func _arena(skin: CasinoSkin, arena: CasinoSkin) -> void:
 			lowest = minf(lowest, v.y)
 	check(lowest >= arena.eave_height - 0.7 and arena.eave_height - 0.7 > ARENA_CLEARANCE,
 		"the arena's roof, and anything hung from it, starts above The House's top and the 14.4 m limit (lowest %.2f m)" % lowest)
+	for lanes: int in [3, 5, 6]:
+		_billboard_clear(arena, lanes)
+
+
+## No vertex of the facades on `skin` stands more than 30 cm out of a wall face between the floor and
+## `limit` (both walls, 400 m), whatever material it is.
+func _flush_below(skin: CasinoSkin, limit: float, label: String) -> void:
+	var geo := TrackGeometry.new(6, tuning)
+	var wall: float = geo.wall_x()
+	var intrusions: PackedStringArray = []
+	var vertices: int = 0
+	for side: int in [-1, 1]:
+		var batch := MeshBatch.new()
+		skin.facades().build(batch, side, side * wall, 0.0, 400.0)
+		var walls: ArrayMesh = batch.to_mesh()
+		for s: int in walls.get_surface_count():
+			for v: Vector3 in walls.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
+				vertices += 1
+				# How far the point stands out of the face toward the lanes.
+				var out: float = wall - absf(v.x)
+				if v.y > 0.06 and v.y < limit and out > 0.3 and intrusions.size() < 4:
+					intrusions.append("%s (%.2f m out of the face)" % [v, out])
+	check(vertices > 0 and intrusions.is_empty(), "%s facades keep everything within 0.3 m of the wall below %.1f m: %s" % [
+		label, limit, ", ".join(intrusions)])
+
+
+## The billboard that drops over the lanes in The House's phase 3 (TheHouseCeiling: a slab DROP_FROM over
+## the ceiling, a sign on its middle, pods on its top) passes nothing: the arena's roof is above its top at
+## the start of the drop, across the board's whole width (the arch's inside less the ribs' thickness, or the
+## springer beams' underside under the eave), with 20 cm to spare.
+func _billboard_clear(arena: CasinoSkin, lanes: int) -> void:
+	var geo := TrackGeometry.new(lanes, tuning)
+	var arch: Dictionary = arena.vault().arch_of(geo.wall_x())
+	var eave: float = arena.eave_height
+	var half: float = geo.half_width() + geo.wall_margin * 0.6
+	var top: float = tuning.ceiling_height + TheHouseCeiling.DROP_FROM + TheHouseCeiling.SLAB
+	var sign_half: float = minf(half * 1.2, 6.0) * 0.5 + 0.15
+	var least: float = INF
+	var at: float = 0.0
+	var x: float = -half
+	while x <= half:
+		var need: float = top
+		if absf(x) <= sign_half:
+			need += 2.5
+		elif absf(absf(x) - half * 0.6) <= 0.7:
+			need += 0.5
+		# Above the circle's middle the glass and its ribs are the circle's rim; at the walls, the springer
+		# beams hang 0.45 m under the eave (the lower half of the circle is not built).
+		var clear: float = INF
+		if need >= float(arch["cy"]):
+			clear = float(arch["rho"]) - Vector2(x, need - float(arch["cy"])).length() - 0.3
+		if absf(x) > geo.wall_x() - 0.45:
+			clear = minf(clear, eave - 0.45 - need)
+		if clear < least:
+			least = clear
+			at = x
+		x += 0.1
+	check(least >= 0.2, "the House's billboard (%.1f m at the start of its drop) passes under the arena's roof at %d lanes (least clearance %.2f m at x %.1f)" % [
+		top + 2.5, lanes, least, at])
 
 
 ## The cult's emblem (GDD §5): the owner's choice, never hardcoded, in its scheme's warm-white neon or
