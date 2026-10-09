@@ -3377,3 +3377,21 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 545. **The Buzz Overdrive's zones** (GDD §9.9 named the Corporate zone and the two after it). The Beach's remix has it
     too, its rev a little shorter than Corporate 2's (it follows the level's enemy scaling). **Updated:** GDD §9.9
     now names the Beach, which follows from the owner's placement and the remix.
+
+**The Beach: from the review before merge** (task D10c's review, October 9, 2026)
+546. **The hover truck's roof route on an open wall** (GDD §9.3). Its route (b) onto the roof runs along the wall, so
+    it isn't there wherever that wall is open; route (a), the ramp, is kept (a ramp's wall run always stands). With
+    the Beach's walls standing on about half of a level, route (b) is missing more often there. Fine, or should a
+    hover truck's stretch keep its wall?
+547. **Wall ends near a pool.** With the Beach's open walls, a wall run ends often: 0–4 of the 16–24 wall ends in a
+    build have a pool in the outer lane within 15 m of them, so a runner dropping off there must jump at once. That
+    follows the existing rule (the outer lane beside a wall gap is deliberately not kept clear: players read gaps
+    coming). Keep it, or keep a landing clear after a wall end in the Beach?
+548. **Turquoise doors at the pads' hue.** Some painted doors and shutters in the Beach's wall-run band are a muted
+    turquoise at the anti-grav pads' hue (180°). They're unlit and far less saturated, so within the colour rule.
+    Fine, or shift them toward teal-green or sea blue?
+549. **The Bad Dream's escape rule ignores wall gaps** (`BadDream._escape_open`, `scripts/enemies/bad_dream.gd`). It
+    has the same blind spot the hover truck's had (fixed in D10c's review): it counts the wall beside a player as a
+    way out even where a side wall gap leaves no wall, and a move onto the wall there is refused. It can't happen in
+    the Beach (no hosts), and on main's levels only where a rare short gap meets a Bad Dream's chase. Placeholder:
+    unchanged. Fix it in a follow-up task?
