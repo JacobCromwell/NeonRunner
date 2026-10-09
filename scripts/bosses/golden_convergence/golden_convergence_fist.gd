@@ -73,6 +73,8 @@ func _build() -> void:
 		quad.size = Vector2.ONE
 		shadow.mesh = quad
 		var mat := ShaderMaterial.new()
+		# Drawn over the red square's fill (both see-through), so the growing shadow reads inside the square.
+		mat.render_priority = 1
 		mat.shader = shader
 		shadow.material_override = mat
 		shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -167,7 +169,7 @@ func set_shadow(i: int, x: float, at: float, size: float, k: float) -> void:
 	var shadow: MeshInstance3D = rig["shadow"]
 	var c: float = clampf(k, 0.0, 1.0)
 	var s: float = size * (0.45 + 0.55 * c)
-	shadow.global_transform = Transform3D(Basis.from_scale(Vector3(s, 1.0, s)), Vector3(x, 0.025, TrackGeometry.world_z(at)))
+	shadow.global_transform = Transform3D(Basis.from_scale(Vector3(s, 1.0, s)), Vector3(x, 0.05, TrackGeometry.world_z(at)))
 	(rig["shadow_mat"] as ShaderMaterial).set_shader_parameter(&"darkness", _shadow_alpha * (0.25 + 0.75 * c))
 	shadow.visible = true
 

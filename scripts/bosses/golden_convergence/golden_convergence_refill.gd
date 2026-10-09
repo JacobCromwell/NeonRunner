@@ -233,8 +233,14 @@ func _tick_refill(d: float) -> void:
 			_raise_cage(d)
 		return
 	if not bool(p["missed"]):
-		if d >= float(p["miss_at"]) and boss.world.player.surface != Player.Surface.CEILING:
-			_miss(d)
+		if d >= float(p["miss_at"]):
+			if boss.world.player.surface != Player.Surface.CEILING:
+				_miss(d)
+			else:
+				# A failsafe: a runner riding the belly this far past the pad with no chain (nothing should get them
+				# there; it would hang the fight, a ceiling having no way down of its own) sets it off now.
+				boss.log_event(&"refill_failsafe", {"n": int(p["n"]), "runner": d, "lane": boss.player_lane()})
+				_start_chain(d)
 		return
 	# Missed: the ship climbs back to its station, finishes refilling and flies off; the beat is over once the strafe
 	# and the ship are.
@@ -338,14 +344,15 @@ func ends_at() -> float:
 # --- The chain reaction ---------------------------------------------------------------------------------
 
 ## The pad hurled the squadron (GoldenConvergenceStrafe's pad rule): if it was the cage's pad, the chain reaction
-## begins.
+## begins. The cage's pad is the only pad in the fight (_plan_lap clears every lap's), so its stretch alone says it
+## was: not the runner's lane, which a lane switch changes at once while the body is still over the pad for a frame
+## or two (the pad fires then, and the runner rides the belly: the final review's blocker, a fight that hung).
 func _on_hurled() -> void:
 	if stage != Stage.ON or float(p.get("cage_at", -1.0)) < 0.0 or bool(p.get("missed", false)):
 		return
 	var player: Player = boss.world.player
 	var span: Dictionary = cage.plan
-	if span.is_empty() or player.lane != int(p["lane"]) or player.distance < float(span["pad_from"]) - 1.5 \
-			or player.distance > float(span["pad_to"]) + 1.5:
+	if span.is_empty() or player.distance < float(span["pad_from"]) - 1.5 or player.distance > float(span["pad_to"]) + 1.5:
 		return
 	_start_chain(player.distance)
 

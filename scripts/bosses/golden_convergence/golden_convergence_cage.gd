@@ -307,14 +307,15 @@ func put_away() -> void:
 	generator = null
 
 
-## The runner's pad fired: if it's this cage's (its lane, its stretch), the cage has done its work and sinks away at
+## The runner's pad fired: if it's this cage's (its stretch: the only pad in the fight, so not the runner's lane,
+## which a lane switch changes while the body is still over the pad), the cage has done its work and sinks away at
 ## once (the Refill Ship's chain reaction asks the same), so a runner flipping up off the pad never meets a side
 ## fence (the flip swings the body out sideways: GoldenConvergenceRefill's ways in are all covered).
 func _on_player_event(kind: StringName) -> void:
 	if kind != &"pad" or not up or _retract >= 0.0 or plan.is_empty():
 		return
 	var p: Player = boss.world.player
-	if p.lane != int(plan["lane"]) or p.distance < float(plan["pad_from"]) - 1.5 or p.distance > float(plan["pad_to"]) + 1.5:
+	if p.distance < float(plan["pad_from"]) - 1.5 or p.distance > float(plan["pad_to"]) + 1.5:
 		return
 	padded = true
 	retract()

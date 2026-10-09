@@ -113,13 +113,17 @@ static func marks_mesh(width: float, depth: float) -> ArrayMesh:
 	return batch.to_mesh()
 
 
-## His claws coming in: three broad red streaks sweeping down and across a lane `width` wide, wider than it and from
-## above his head, so they show round him from the camera behind (its foot at the origin, facing the camera).
+## His claws coming in: three broad red streaks sweeping down and across a lane `width` wide, from above his head and
+## wider than the lane up there, so they show round him from the camera behind, then down inside the lane: below head
+## height they never reach a neighbouring lane, where a runner who dodged would see claws cross them and not be hit
+## (what looks like a hit is a hit, GDD §3; the final review). Its foot at the origin, facing the camera.
 static func streaks_mesh(width: float) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(GreyboxMaterials.glow(COLOR, 4.4, 1.0))
 	var steps: int = 12
 	var span: float = width * 0.85
+	# Where the sweep ends, low: inside the lane (its half width is 0.5).
+	var span_low: float = width * 0.4
 	for k: int in 3:
 		var dz: float = (float(k) - 1.0) * 0.5
 		var lift: float = (float(k) - 1.0) * 0.28
@@ -127,7 +131,7 @@ static func streaks_mesh(width: float) -> ArrayMesh:
 		for i: int in steps + 1:
 			var u: float = float(i) / float(steps)
 			# From high on one side, sweeping down and across to low on the other.
-			var p := Vector3(lerpf(-span, span, u), 3.0 - 2.6 * u + 0.5 * sin(PI * u) + lift, dz - 0.5 * sin(PI * u))
+			var p := Vector3(lerpf(-span, span_low, u), 3.0 - 2.6 * u + 0.5 * sin(PI * u) + lift, dz - 0.5 * sin(PI * u))
 			if i > 0:
 				var along: Vector3 = p - prev
 				var thick: float = 0.12 * (0.35 + sin(PI * u))

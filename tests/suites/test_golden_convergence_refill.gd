@@ -26,6 +26,9 @@ extends TestSuite
 ##   on, a stale gate reference never moves another attack's gate, a dropped slam plan's rows stop keeping pickups
 ##   off and a new plan's rows keep off its cuts, the arms and the hatches ease to rest through a phase's intro, and
 ##   a horizontal pass first after a hold keeps its gate's full buttress_sight;
+## - the final review's blocker: a lane switch pressed as the runner reaches the pad (swept over the frames around it,
+##   on the generator's and the dash's ways in) fires the pad from another lane at least once, and whenever the pad
+##   fires the chain reaction starts and the runner never rides the belly longer than a ride does (no failsafe needed);
 ## - it plays the same on every attempt;
 ## - E5d polish, F6's ranges: at every end of cage_lead's and generator_before's the generator stays in reach (read,
 ##   switch in from the farthest lane, jump onto it, a spare moment); played at the worst ends on 6 lanes, the bot
@@ -66,6 +69,7 @@ func run() -> void:
 	await _test_ride(&"generator", 5, 18.0)
 	await _test_ride(&"dash", 3, 25.0)
 	await _test_ride(&"armor", 6, 25.0)
+	await _test_switch_over_pad()
 	await _test_reduced()
 	for lanes: int in [3, 6]:
 		await _test_blast(lanes)
@@ -556,6 +560,67 @@ func _test_ride(way: StringName, lanes: int, speed: float) -> void:
 	check(hints.has("golden_boss/refill") and hints.has("golden_boss/cage"), "with its hints %s (%s)" % [tag, hints])
 	check(r.ship.sparks_shown > 0 and int(shakes["n"]) > 0, "sparks fly and the screen shakes %s" % tag)
 	await sim.free_world(world)
+
+
+## The final review's blocker (before its fix, a fight that hung): a lane switch changes the runner's lane at once while
+## the body is still over the pad for a frame or two, so a switch pressed as they reach it fires the pad from another
+## lane; the chain reaction asked for the pad's lane, never started, and the runner rode the belly for good (a ceiling
+## has no way down of its own). Swept over the frames around the pad on the generator's and the dash's ways in: the
+## bot plays up to the pad, then switches out of its lane (and plays no more).
+func _test_switch_over_pad() -> void:
+	var mismatched: int = 0
+	var fired: int = 0
+	for way: StringName in [&"generator", &"dash"]:
+		var lanes: int = 5 if way == &"generator" else 3
+		for step: int in 7:
+			var off: float = -1.2 + 0.2 * step
+			var tag: String = "(%s, %d lanes, a switch %.1f m before the pad)" % [way, lanes, -off]
+			var loadout: Loadout = null
+			if way == &"dash":
+				loadout = Loadout.new()
+				loadout.tiers[&"dash"] = 1
+			var pair: Array = _fight(lanes, 25.0, loadout, -1, "refill:VVH")
+			var world: RunWorld = pair[0]
+			var boss: GoldenConvergence = pair[1]
+			var r: GoldenConvergenceRefill = boss.refill
+			var bot := _bot(boss, way)
+			var w := {"pad": false, "pad_lane": -1, "cage_lane": -1, "switched": false, "riding": 0, "longest": 0}
+			world.player.movement_event.connect(func(kind: StringName) -> void:
+				if kind == &"pad" and not bool(w["pad"]):
+					w["pad"] = true
+					w["pad_lane"] = world.player.lane
+					w["cage_lane"] = int(r.cage.plan.get("lane", -1)))
+			await _run(world, null, 40.0, func() -> bool:
+				return boss.phase_index >= 1 or (bool(w["switched"]) and r.stage == GoldenConvergenceRefill.Stage.DONE),
+				func() -> void:
+					var plan: Dictionary = r.cage.plan
+					if not bool(w["switched"]):
+						bot.step()
+						if r.cage.up and not plan.is_empty() and world.player.surface == Player.Surface.FLOOR \
+								and world.player.lane == int(plan["lane"]) and world.player.distance >= float(plan["pad_from"]) + off:
+							world.player.press(&"move_left" if world.player.lane > 0 else &"move_right")
+							w["switched"] = true
+					if world.player.surface == Player.Surface.CEILING:
+						w["riding"] = int(w["riding"]) + 1
+						w["longest"] = maxi(int(w["longest"]), int(w["riding"]))
+					else:
+						w["riding"] = 0)
+			# At the latest switch points the pad fires first: a ride like any other (the runner never switched).
+			check(bool(w["switched"]) or (bool(w["pad"]) and int(w["pad_lane"]) == int(w["cage_lane"])),
+				"the runner reached the pad and switched out of its lane, or rode it first %s" % tag)
+			if bool(w["pad"]):
+				fired += 1
+				if int(w["pad_lane"]) != int(w["cage_lane"]):
+					mismatched += 1
+				check(not _events(boss, &"refill_chain").is_empty() and r.cage.padded,
+					"the pad fired (from lane %d, the cage's %d): the chain reaction started and the cage sank %s" % [
+						int(w["pad_lane"]), int(w["cage_lane"]), tag])
+			check(int(w["longest"]) < int(8.0 / FRAME),
+				"the runner never rides the belly for long (%.1f s at the most) %s" % [float(w["longest"]) * FRAME, tag])
+			check(_events(boss, &"refill_failsafe").is_empty(), "no failsafe was needed %s" % tag)
+			await sim.free_world(world)
+	check(fired > 0 and mismatched > 0,
+		"a switch at the pad fired it from another lane (the review's case): %d of %d pads fired" % [mismatched, fired])
 
 
 ## Reduced flashing and the screen shake off (Settings): the chain reaction shows no sparks (its fireballs and smoke
