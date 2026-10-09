@@ -885,16 +885,28 @@ and its hint (`enemy:enforcer_truck`). DESIGN-TBD numbers throughout (`docs/ques
   - **Never the only free lane** (`EnforcerTruckRoom`, the layout read once by lane at load; the truck adds
     what's in play). Its stay must leave the runner a lane to dodge into for everything blocking their lane
     (`can_dodge`: holes, fences, doodads, floor enemies, a floor cut's lane window; with `DODGE_ROOM_SECONDS`
-    to step around each) at 3, 5 and 6 lanes; it never shows to a runner in an outer lane (by a wall) or off
-    the floor; and its own lane must be clear where the camera sees it there (`lane_clear`: no fence, doodad,
-    floor enemy, pad, speed pad or ramp, nor a hole too wide to hop until it's rejoined the runner's lane; it
-    hops the others), so it's never beside a lane the runner needs.
+    to step around each) at 3, 5 and 6 lanes; to a runner by a wall (an outer lane) it shows itself two lanes
+    in, leaving them the lane between (`sides`, `escape_lane`; task C6c, DESIGN-TBD: beside them it would take
+    their only lane to dodge into, and at 5 and 6 lanes it would hide up to 25 m of their lane from the camera,
+    which sits inward of them), held to the same rule both ways (the lane between open where theirs is blocked,
+    theirs open where the lane between is); never to a runner off the floor; and its own lane must be clear
+    where the camera sees it there (`lane_clear`: no fence, doodad, floor enemy, pad, speed pad or ramp, nor a
+    hole too wide to hop until it's rejoined the runner's lane; it hops the others), so it's never beside a
+    lane the runner needs.
   - **Never hides anything.** `EnforcerTruckView` (the run camera's resting view) checks at load, for its
     look and lane count (`fits_for`, with `EnforcerTruckModel.profile`), that every corner of it is on
     screen and nothing of the runner or the floor of their lane and the far side is behind it; enemies its
     body would hide from the camera keep it from showing (`shadow_clear`), so a hazard's warning stays in view.
   - **Seen and heard.** Its siren swells as it pulls alongside (`siren_swell_db` up to full); its marker fades
     while it's in view; its light bar and floor lights carry on as before.
+  - **Its planned window** (task C6c; The generator, Enforcer Trucks). Where the generator planned a window in
+    its chase (params `show`: `show_window()`, `show_at()`), it claims its turn among the big attacks
+    `show_claim_seconds` (2 s) before the runner reaches where the showing is due, until it begins or the runner
+    is `show_window_slack_seconds` past (`claiming()`, part of `is_major_attack_active`): another type's big
+    attack that gets ready meanwhile waits for it, one already on ends first; and it starts no volley that would
+    still be on there (`_holds_for_showing`). It still shows itself wherever play allows before; once it has,
+    the window has done its work. A showing beside the runner tries a lane clear for its whole stay first, else
+    one clear for its shortest.
 - **Its blast** (C6b; the owner, October 8, 2026: a visible explosion however it's destroyed). Every wreck (an
   Octodog's lunge, a Buzz Overdrive's charge or cut, a gap too wide to hop) lurches on into the chase camera's
   view over `wreck_surge_seconds` (its front to `wreck_gap` behind the runner; in a hole, until its nose meets
@@ -1118,14 +1130,60 @@ at least `bait_before_seconds` before it would give up (`in_chase`); where it ca
 the feature's start, never while a bait attacks (`arrival_keep_outs`: an Octodog's planned charges, a Buzz
 Overdrive's attack window), up to `per_level_max` (2) a level, never two at once (each one's chase and drop
 back `spacing_seconds` from the next); in a level paced in bursts it arrives in a burst where it can
-(`pacing_pools`). The earliest baits get them first. Its params list the baits in its chase (`baits`).
+(`pacing_pools`). The earliest baits get them first (with its showing windows planned, the ones whose chases hold
+the most windows: Showing windows, below). Its params list the baits in its chase (`baits`).
 Corporate 2 introduces it at a start of its own, 5% into the level (before the Tithe Collector's 10%; the
 level's only baits at 3 and 6 lanes come within its first 32 s), so its first truck arrives within the
 campaign's introduction reach.
 It takes no room: `keep_out()` is empty and it uses no floor, and its entries take seeds of their own, so a
-level with the feature is the same level plus its trucks, but for the danger density pass, which counts every
-enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six levels on their own seeds). A level with no bait its chase can take gets none (quick
-play without Octodogs or Buzz Overdrives). `problems()` re-checks every truck for the tests.
+level with the feature is the same level plus its trucks and their showing windows (below), but for the danger
+density pass, which counts every enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six
+levels on their own seeds). A level with no bait its chase can take gets none (quick play without Octodogs or Buzz
+Overdrives). `problems()` re-checks every truck for the tests.
+
+**Showing windows** (task C6c; GDD §9.13 "Showing itself", the owner, October 8, 2026: the player should see
+what's chasing them). With `EnforcerTruckTuning.show_window_planned`, the rules plan a showing window in every
+chase that has room (`ShowPlanner` in `enforcer_truck_rules.gd`), on the layout as the trucks are placed: a calm
+stretch where it can pull up beside the runner and stay alongside wherever the runner is, at the level's speed. It
+asks what the truck asks in play: no other enemy's big attack (its warning, its shots) and no enemy about near the
+runner until it has stayed alongside (`busy`: their keep-outs; a host's possible Bad Dream chase is the player's
+choice and doesn't count), no floor cut's attack, hover truck or Gilded Sentinel in the stretch, its bait's turn far
+enough off (`hold_for`), and for a runner in every lane a lane beside them where its look fits on screen, its lane
+stays clear for the whole stay, the runner keeps a lane to dodge into and it hides no enemy
+(`EnforcerTruckRoom.layout_lane`, `fits_for`), also when it begins `show_window_slack_seconds` late. Windows where
+no runner is sent off the floor (a pad's ceiling, a ramp's wall run) before it has stayed alongside come first;
+its whole stay before a shorter one (`show_min_seconds` at least); as it arrives (any of its arrivals, the
+preferred first) before mid-chase, mid-chase before its first bait before after it. Where the level leaves no such
+stretch, it takes out what's in the way, only what the showing needs gone: plain holes and fences (never a pulsing
+fence or one a fence generator powers), plain cyborgs, window cyborgs and Screeches (never a host, the first of a
+kind the level introduces, or the last of its kind or of one of the level's features: the generator would build the
+level again for a missing feature). The baits that get trucks are those whose chases hold the
+most windows (then the most chases, then the earliest; a level that introduces the truck keeps its first bait's
+chase). The window goes in the truck's params (`show`: {at, from, to}); `gen.show_window_result` reports each
+chase (its window, its arrival against the preferred one, what it took out, or why none). Every later pass keeps
+off each window, `WINDOW_EDGE` (1 m) wider, as a **calm stretch** (`doodad_keep_outs` entries with `calm: true`):
+nothing it adds may stand or attack there, but it's no attack, so nothing keeps a spacing from it and it shapes no
+pass's search for room. The danger density pass rejects an enemy (where it stands, `CALM_ROOM` either side, and its
+attack window) or a row in one (`Plan.calm`) without changing its rooms, so its draws are as before elsewhere; the
+cyborgs planted in charge paths keep off one where they stand (`_cyborg_fits`); a wider gap keeps its row off one
+(`row_only`); a zone doodad keeps itself and its push's lead off one, which shapes none of the doodads' stretches
+(`doodad_keep_outs`' `calm`); the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
+Buzz Overdrive given a planted cyborg claims its turn earlier (`ChargePathTuning.claim_seconds`), after the trucks
+are planned: the planner assumes that claim for every one (`least_claim`), so each window still holds in the
+finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. On the six
+levels' own seeds, 16 of 23 chases get a window (8 as it arrives, 6 only after the first bait); the chases without
+one have a hover truck or a Gilded Sentinel over their whole chase (4), or no calm stretch at all (Corporate 2 at 5
+lanes: its introduction among an Octodog's charges, a Tithe Collector and a Buzz Overdrive's attack; Dead Zone 1 at 3
+lanes: pulsing fences, a ramp's wall run and a Screech; Dead Zone 2 at 6 lanes: rows of fences with a pad in their
+gap). Played with a runner keeping to each lane in turn (`tools/measure/enforcer_shows.gd`, Review tools), 57 of 106
+chases show it (32 as it arrives), against 15 of 106 before; of the 75 with a window, every one shows it but 18 whose
+truck the runner's bait or a wider gap destroyed before an after-bait window, and one whose runner a pad sent onto a
+ceiling. The danger density pass's enemy and obstacle counts on its sampled
+bands stay as they were; the windows cost the six levels about 2% of their enemies and obstacles (592 to 580 and
+3281 to 3226 on their own seeds: what they took out, and what the fill pass and the pass's rows found no room
+for). Every level without the truck, and every level with it with the switch off, builds exactly as before. The
+planning adds about a quarter to those levels' build time (50-330 ms a build; the longest, Dead Zone 1 at 5 lanes,
+1.9 s against 1.7 s). DESIGN-TBD (`docs/OPEN_QUESTIONS.md` items 382–386).
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back
 until its start: patterns that require it aren't picked before, and the first pattern picked from
@@ -1336,8 +1394,11 @@ generated layout to this, at 3, 5 and 6 lanes):
   ceiling whole from its start to the end of its landing zone (the chase camera rides below a ceiling,
   lower than a doodad's top), and what the rules keep: a rules script may declare `static func
   doodad_keep_outs(gen) -> Array[Dictionary]` with entries {from, to} (every lane: the host rules' Bad
-  Dream chases) or {lane, from, to} (that lane, which no doodad stands in or pushes into: a hover
-  truck's, until it has left; its `keep_out` already keeps every lane for its shortest stay);
+  Dream chases), {lane, from, to} (that lane, which no doodad stands in or pushes into: a hover
+  truck's, until it has left; its `keep_out` already keeps every lane for its shortest stay) or {from, to,
+  calm: true} (a calm stretch in every lane: an Enforcer Truck's showing window, task C6c: no doodad nor
+  its push's lead stands in it, but it shapes no stretch, so the doodads draw as without it elsewhere; the
+  other later passes keep their additions off it without spacing from it);
 - one at a time, `doodad_gap_seconds` from one's end to the next one's front, so a few in a row never
   make a slalom.
 Each stretch with room gets one with the level's `doodad_share` (a seeded spot in it; the next spot in a
@@ -1593,8 +1654,9 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   enemy's attack (the fill pass's keep-out with its floor; a floor cyborg's obstacle margin; a planned
   Resonator's pulses one by one, `DangerDensity.resonator_pulse_windows`: between them it only hovers and every
   pulse waits for clear floor) or the rules' doodad keep-outs (a Gilded Sentinel's strike; not a host's Bad
-  Dream chase, which the danger density pass exempts too, `keep_out_exempt_features`). No ceiling and no
-  ramp's wall run lies over the jump itself (`row_only` keeps). A keep of one lane only (a hover truck's lane
+  Dream chase, which the danger density pass exempts too, `keep_out_exempt_features`). No ceiling, no
+  ramp's wall run and no calm stretch (an Enforcer Truck's showing window, task C6c) lies over the jump itself
+  (`row_only` keeps). A keep of one lane only (a hover truck's lane
   for its whole stay, beyond the stretch it's surely there, which every lane keeps) keeps that lane: the row
   leaves it open. Window cyborgs and Barnacle Turrets (their bolts never land near a hole), thieves and the
   Enforcer Truck (`NO_KEEP_TYPES`) don't count. Wider gaps keep `spacing_seconds` (15 s) apart.
@@ -1645,7 +1707,9 @@ turned down, constraints). `plant()` writes one encounter, and the tests plant t
   (`Cyborg.stand`: no walk), and holds its fire while the runner is in its `hold_fire` stretch, from
   `hold_before_seconds` (1 s) before the charge's warning until `hold_after_seconds` after it has passed them,
   with no bolt of its landing there (`Cyborg._may_attack`, `CyborgGun.hold`). It keeps a cyborg's obstacle
-  margin and every ceiling's safe floor, and it never counts as the level's cyborg (`feature_positions`).
+  margin and every ceiling's safe floor, stands `CALM_ROOM` or more off every calm stretch (an Enforcer Truck's
+  showing window, task C6c: the encounter's span itself may reach one, `attack_near` leaves them out), and it
+  never counts as the level's cyborg (`feature_positions`).
 - **An Octodog's planted lunge.** Only its first, made from where it stands. The cyborg stands
   `dog_cyborg_ahead` (2.5 m, or a little more, stretched by the pace) in front of it in the lane beside, and the
   dog's params (`through_lane`, `through_at`) send its lunge along a line through it, two lanes across: it
@@ -3529,11 +3593,16 @@ bonus; weapons, splash, targeting and health bars never touch it; DamageRules ne
 the dash defeat it; hosts and generators still pass charges by and a charge's other victims earn nothing; an
 Octodog's moved-on charges ignore its entry); showing itself (C6b: its numbers; beside the runner at 3, 5 and 6
 lanes in every look, all of it on screen in the run camera's view and nothing of the runner or their side behind
-it; `EnforcerTruckRoom.can_dodge` never leaving the only free lane); its blast (seen wherever it goes off, never
+it, two lanes in from a runner by a wall (C6c); `EnforcerTruckRoom.can_dodge` never leaving the only free lane,
+both ways two lanes in); its showing windows (C6c: on every level that lists it at 3, 5 and 6 lanes, own seed and
+another, each planned window lies in its chase and holds in the finished level, `ShowPlanner.problem_of`, with no
+zone doodad, filler, wider gap, danger density row or enemy, or planted cyborg in it; Corporate 2 at 3 lanes plans
+its first truck's arrival showing; the windows each level gets are printed); its blast (seen wherever it goes off, never
 in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
-prints the counts), the same level without it but for its trucks, quick play without a bait having none; its
+prints the counts), the same level without it but for its trucks (its windows not planned), quick play without a
+bait having none; its
 marker, light bar and Reduced flashing; its warm-up look (its blast's too); and its data. `test_enforcer_truck_runs` plays it on
 real physics at 3, 5 and 6 lanes and at 18 and 23.4 m/s, with a scripted runner (no armor) that steps aside
 a reaction after each warning: its lane delay to the frame and its gap; a runner who stays hit by its laser,
@@ -3547,11 +3616,13 @@ volleys; the same run twice; each way it's destroyed ending in its blast a lurch
 run camera and never in front of the runner, its wreck never rising into the camera it passes under (C6b); its showings (C6b; the other runs play without them): on
 arrival and mid-chase for `show_seconds`, its whole look on screen, back to its follow gap and the runner's lane,
 never firing meanwhile, its siren swelling, a lane change into it bumped back unhurt and it giving way, never the
-only free lane (zone doodads at 3, 5 and 6 lanes) nor beside a runner in an outer lane, turns both ways, a bait
-close behind its arrival keeping it back and a later one shortening its stay, its baits still destroying it, the
+only free lane (zone doodads at 3, 5 and 6 lanes), two lanes in from a runner by a wall (C6c), turns both ways, a
+bait close behind its arrival keeping it back and a later one shortening its stay, its baits still destroying it, a
+planned window bringing its showing (C6c: its claim holding another type's attack back, no volley meanwhile), the
 same every attempt; and Corporate 2 at 3, 5 and 6 lanes played to its end by a runner that baits each
 truck (god mode, grapples): each destroyed by a charge it dodged or in a wider gap (task G7), no overlap with
-its volleys, never firing while it shows itself (the showings it makes are printed).
+its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
+alongside (the showings it makes are printed).
 
 `test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
 lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off
@@ -3735,6 +3806,14 @@ of running (what stays the same at every speed)
 (`godot --headless --fixed-fps 60 -s res://tools/measure/stomp_routes.gd -- --lanes=3,5,6
 --routes=ramp,wall,ceiling`; `--e1c` measures E1c's numbers, `--second-move` adds the in-air move; the
 default run takes a few minutes).
+
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase (tasks C6b, C6c) over
+simulated runs of the campaign's levels with the truck, a god-mode runner keeping to each lane in turn (AttackWatch's,
+jumping the holes in its lane, baiting nothing): each truck's arrival, its showings (`+` for the arrival showing),
+its planned window and whether a showing began in it, and for a chase without one why not (`show_problem()`'s shares,
+or what destroyed it before its window was due); the totals by lane count (`godot --headless --fixed-fps 60 -s
+res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N]
+[--out=build/measure/x.json]`; all six levels at 3, 5 and 6 lanes, every lane, take about twenty minutes).
 
 `tools/measure/level_shape.gd` measures the campaign's shape: for each level at 3, 5 and 6 lanes, on its
 own seed and others, each feature's share of the pattern picks, the enemy, host and obstacle counts, the

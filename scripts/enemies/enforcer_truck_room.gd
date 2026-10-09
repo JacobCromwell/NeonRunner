@@ -13,7 +13,8 @@ extends RefCounted
 ## - deadly: what would wreck it (gaps too wide to hop, floor cuts' lane windows); it hops the other gaps.
 ## And: where its baits' turns begin (an Octodog's planned wind-ups; a Buzz Overdrive's claim on its turn before
 ## its rev), where the enemies that keep it from showing itself come into play (NO_SHOW_TYPES), and
-## the layout's enemies by where they stand (for what its body could hide from the camera).
+## the layout's enemies by where they stand (for what its body could hide from the camera: floor enemies in their
+## lanes, wall enemies at their walls, Barnacle Turrets over their lanes).
 
 ## A floor enemy keeps this much of its lane (metres either side of its reach) from a showing and an escape.
 const ENEMY_ROOM: float = 3.0
@@ -28,6 +29,9 @@ const OUT_OF_VIEW: float = 5.0
 ## it would let the runner pass). Others wait for its showing's turn as for a volley's (a Resonator's pulse moves
 ## on).
 const NO_SHOW_TYPES: Array[StringName] = [&"hover_truck", &"gilded_sentinel"]
+## Enemies that stay where the layout puts them over a lane, off the floor (a Barnacle Turret under its ceiling): the
+## layout's shadow counts them where they hang (task C6c), as the truck's in play does.
+const HANGS_OVER_LANE: PackedStringArray = ["barnacle_turret"]
 const TYPE: String = "enforcer_truck"
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 
@@ -41,14 +45,16 @@ var deadly: Array[PackedVector2Array] = []
 var baits: PackedFloat32Array = PackedFloat32Array()
 ## The enemies that keep it from showing itself: Vector2(where one comes into play, its `at`), in order.
 var quiet: Array[Vector2] = []
-## The layout's enemies: Vector2(at, world x) in order (a floor enemy at its lane's middle, a wall enemy at its
-## wall; fliers left out).
+## The layout's enemies: Vector2(at, world x) in order (a floor enemy or a Barnacle Turret at its lane's middle, a
+## wall enemy at its wall; fliers left out).
 var planned: Array[Vector2] = []
 
 
-## Reads `layout` (a level at `run_speed`, `mt` its movement tuning, `t` the truck's tuning).
+## Reads `layout` (a level at `run_speed`, `mt` its movement tuning, `t` the truck's tuning). A Buzz Overdrive's
+## turn comes `least_claim` seconds or more before its rev (the generator's plan for a pass that may give it a longer
+## claim later, ShowPlanner).
 static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuning, t: EnforcerTruckTuning,
-		run_speed: float) -> EnforcerTruckRoom:
+		run_speed: float, least_claim: float = 0.0) -> EnforcerTruckRoom:
 	var room := EnforcerTruckRoom.new()
 	room.geo = geometry
 	var lanes: int = geometry.lane_count
@@ -96,7 +102,7 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 				var cut: Dictionary = BuzzRules.cut_of(layout, e)
 				if not cut.is_empty():
 					var claim: float = float(cut.get("claim_seconds", buzz.claim_seconds if buzz != null else 2.5))
-					warns.append(FloorCutPlan.warn_at(cut) - claim * run_speed)
+					warns.append(FloorCutPlan.warn_at(cut) - maxf(claim, least_claim) * run_speed)
 		if StringName(type) in NO_SHOW_TYPES:
 			var et := EnemyDirector.tuning_for(type) as EnemyTuning
 			room.quiet.append(Vector2(at - (et.spawn_lead if et != null else 100.0), at))
@@ -109,6 +115,8 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 			room.planned.append(Vector2(at, geometry.lane_x(clampi(int(e.get("lane", 0)), 0, lanes - 1))))
 		elif int(e.get("side", 0)) != 0:
 			room.planned.append(Vector2(at, signf(float(e["side"])) * geometry.wall_x()))
+		elif HANGS_OVER_LANE.has(type):
+			room.planned.append(Vector2(at, geometry.lane_x(clampi(int(e.get("lane", 0)), 0, lanes - 1))))
 	warns.sort()
 	room.baits = PackedFloat32Array(warns)
 	room.quiet.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
@@ -190,46 +198,83 @@ func quiet_near(d: float, seconds: float, v: float) -> bool:
 
 
 ## True if lane `l` suits a showing starting with the runner at `d`, its front `gap` behind them, taking `total`
-## seconds at `v`: nothing that would wreck it until it's back in the runner's lane, and where it's in view for
-## its shortest showing nothing it would drive through or the runner may need.
-func lane_clear(l: int, t: EnforcerTruckTuning, d: float, gap: float, total: float, v: float) -> bool:
+## seconds at `v`: nothing that would wreck it until it's back in the runner's lane, and where it's in view nothing
+## it would drive through or the runner may need: for its shortest showing (show_min_seconds alongside: it drops
+## back sooner before anything in its lane ahead, EnforcerTruck._lane_ahead_clear), or with `alongside` for that
+## many seconds alongside (the generator plans a whole stay, task C6c).
+func lane_clear(l: int, t: EnforcerTruckTuning, d: float, gap: float, total: float, v: float,
+		alongside: float = -1.0) -> bool:
 	var rear: float = d - minf(gap, t.follow_gap + 2.0) - t.body_size.z - 1.0
 	if hit(deadly[l], rear, d + (total + t.show_margin_seconds + t.switch_seconds) * v):
 		return false
-	var span: Vector2 = view_stretch(t, d, gap, v)
+	var span: Vector2 = view_stretch(t, d, gap, v, alongside)
 	return not hit(solid[l], span.x, span.y) and not hit(soft[l], span.x, span.y)
 
 
-## The stretch of its lane a showing starting now has in view for its shortest showing: from its rear where it
-## comes into view (OUT_OF_VIEW behind the runner) to where its front gets before it has dropped back out of view
-## after show_min_seconds alongside.
-static func view_stretch(t: EnforcerTruckTuning, d: float, gap: float, v: float) -> Vector2:
+## The stretch of its lane a showing starting now has in view: from its rear where it comes into view (OUT_OF_VIEW
+## behind the runner) to where its front gets before it has dropped back out of view after `alongside` seconds
+## alongside (show_min_seconds, its shortest showing, when negative).
+static func view_stretch(t: EnforcerTruckTuning, d: float, gap: float, v: float, alongside: float = -1.0) -> Vector2:
+	var stay: float = t.show_min_seconds if alongside < 0.0 else alongside
 	var into_view: float = maxf(gap - t.follow_gap, 0.0) / maxf(t.gap_speed_max, 0.01) \
 		+ maxf(minf(gap, t.follow_gap) - OUT_OF_VIEW, 0.0) / maxf(t.show_close_speed, 0.01)
 	var from: float = d + into_view * v - OUT_OF_VIEW - t.body_size.z - 1.0
-	var to: float = d + (t.show_close_seconds(gap) + t.show_min_seconds + t.show_drop_view_seconds(OUT_OF_VIEW)) * v \
+	var to: float = d + (t.show_close_seconds(gap) + stay + t.show_drop_view_seconds(OUT_OF_VIEW)) * v \
 		- OUT_OF_VIEW + 2.0
 	return Vector2(from, to)
 
 
+## The one lane a runner in lane `r` has to dodge into while the truck holds lane `l`: the lane on their other side
+## while it's beside them, or the lane between them while it's two lanes in from a runner by a wall (sides(), task
+## C6c). -1 when it leaves them none (beside them, with a wall on their other side); -2 when it doesn't hem them in
+## (further off, or two lanes off with a lane on each side of them).
+func escape_lane(r: int, l: int) -> int:
+	var n: int = hard.size()
+	match absi(l - r):
+		1:
+			var o: int = 2 * r - l
+			return o if o >= 0 and o < n else -1
+		2:
+			var other: int = r - signi(l - r)
+			return (r + l) / 2 if other < 0 or other >= n else -2
+		0:
+			return -1
+	return -2
+
+
 ## True if a runner in lane `r` keeps a lane to dodge into for `seconds` from `d` while the truck holds lane `l`
-## beside them (GDD §9.13: it never takes the only free lane), as far as the layout goes, with room around each
-## place to step across: wherever they must leave their lane (must_leave), the lane on its other side is open (a
-## zone doodad's push goes there too, its side toward the truck being solid); and wherever their lane is blocked
-## otherwise (a hole or a fence they can jump), the lane on its other side is open or the truck's lane is blocked
-## there as well (a row across the lanes: the truck takes no free lane, and hops its gap).
+## (GDD §9.13: it never takes the only free lane), as far as the layout goes, with room around each place to step
+## across: wherever they must leave their lane (must_leave), the lane they dodge into (escape_lane: beside them on
+## their other side, or between them and the truck two lanes in) is open (a zone doodad's push goes there too, its
+## side toward the truck being solid); and wherever their lane is blocked otherwise (a hole or a fence they can jump),
+## that lane is open or the truck's lane is blocked there as well (a row across the lanes: the truck takes no free
+## lane, and hops its gap). Two lanes in, the lane between them is theirs to step into, beside the truck, with their
+## own lane to dodge back into: it's held to the same rule.
 func can_dodge(r: int, l: int, t: EnforcerTruckTuning, d: float, seconds: float, v: float) -> bool:
-	var o: int = 2 * r - l
-	if o < 0 or o >= hard.size() or r < 0 or r >= hard.size():
+	if r < 0 or r >= hard.size() or l < 0 or l >= hard.size():
+		return false
+	var o: int = escape_lane(r, l)
+	if o == -2:
+		return true
+	if o < 0:
 		return false
 	var to: float = d + (seconds + t.show_margin_seconds) * v
 	var step: float = DODGE_ROOM_SECONDS * v
-	var mine: PackedVector2Array = hard[r]
-	var i: int = first(mine, d)
-	while i < mine.size() and mine[i].x <= to:
-		var span: Vector2 = mine[i]
-		if hit(hard[o], span.x - step, span.y + step) \
-				and (hit(must_leave[r], span.x, span.y) or not hit(hard[l], span.x, span.y)):
+	if not _dodges(r, o, l, d, to, step):
+		return false
+	return absi(l - r) != 2 or _dodges(o, r, l, d, to, step)
+
+
+## True if wherever lane `mine` is blocked between `from` and `to`, lane `escape` is open around it (`step` either
+## side), or `mine` holds only something to jump or slide there and the truck's lane `truck` is blocked too
+## (can_dodge).
+func _dodges(mine: int, escape: int, truck: int, from: float, to: float, step: float) -> bool:
+	var spans: PackedVector2Array = hard[mine]
+	var i: int = first(spans, from)
+	while i < spans.size() and spans[i].x <= to:
+		var span: Vector2 = spans[i]
+		if hit(hard[escape], span.x - step, span.y + step) \
+				and (hit(must_leave[mine], span.x, span.y) or not hit(hard[truck], span.x, span.y)):
 			return false
 		i += 1
 	return true
@@ -261,21 +306,64 @@ func shadow_clear(l: int, r: int, t: EnforcerTruckTuning, d: float, seconds: flo
 
 ## The lanes a showing beside a runner in lane `r` may take, the outer one first (the camera sits inward of the
 ## runner, so the truck there covers less of the street); `seed` picks the side for a runner in the middle lane.
+## A runner in an outer lane (by a wall) has one: two lanes in, the lane between them left free for them to dodge
+## into (escape_lane). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 382, task C6c): beside them on their inner side it would take
+## their only lane to dodge into, and at 5 and 6 lanes it would stand under the camera (which sits inward of a
+## runner by a wall) and hide up to 25 m of the floor of their lane; two lanes in it hides nothing of their lane
+## or the lane between (EnforcerTruckView.check).
 func sides(r: int, seed: int) -> Array[int]:
+	var n: int = hard.size()
+	var out: Array[int] = []
+	if r <= 0 or r >= n - 1:
+		var l: int = r + (2 if r <= 0 else -2)
+		if l >= 0 and l < n:
+			out.append(l)
+		return out
 	var out_side: int = int(signf(geo.lane_x(r)))
 	if out_side == 0:
 		out_side = 1 if seed % 2 == 0 else -1
-	return [r + out_side, r - out_side]
-
-
-## Whether the truck's look fits on screen beside a runner, hiding neither them nor their side of the floor
-## (EnforcerTruckView.check, with every rider it may carry), for every pair of a runner lane with a lane on each
-## side and a lane beside it at `lanes` lanes: runner lane * 64 + truck lane.
-static func fits_for(mt: MovementTuning, t: EnforcerTruckTuning, lanes: int, look: StringName) -> Dictionary:
-	var out: Dictionary = {}
-	var profile: Array[AABB] = EnforcerTruckModel.profile(look, t.body_size, EnforcerTruckModel.RIDER_SLOTS.size())
-	for r: int in range(1, lanes - 1):
-		for l: int in [r - 1, r + 1]:
-			var c: Dictionary = EnforcerTruckView.check(mt, lanes, r, l, t.show_ahead, profile, 0.0)
-			out[r * 64 + l] = bool(c["fits"]) and not bool(c["hides_runner"])
+	out.append(r + out_side)
+	out.append(r - out_side)
 	return out
+
+
+## Whether the truck's look fits on screen beside a runner, hiding neither them nor the floor of their lane, the
+## lanes past it and any lane between them and the truck (EnforcerTruckView.check, to 60 m ahead), with every
+## rider it may carry, in every one of its looks (so the layout's plan is the same in every zone's skin), for every
+## pair of a runner lane and a lane it may show itself in beside them (sides(): next to a runner with a lane on each
+## side, two lanes in from one by a wall) at `lanes` lanes: runner lane * 64 + truck lane.
+static func fits_for(mt: MovementTuning, t: EnforcerTruckTuning, lanes: int) -> Dictionary:
+	var out: Dictionary = {}
+	var profiles: Array = []
+	for look: StringName in EnforcerTruckModel.LOOKS:
+		profiles.append(EnforcerTruckModel.profile(look, t.body_size, EnforcerTruckModel.RIDER_SLOTS.size()))
+	for r: int in lanes:
+		var ls: Array[int] = []
+		if r > 0 and r < lanes - 1:
+			ls.append_array([r - 1, r + 1])
+		else:
+			ls.append(r + (2 if r == 0 else -2))
+		for l: int in ls:
+			if l < 0 or l >= lanes:
+				continue
+			var ok: bool = true
+			for profile: Array[AABB] in profiles:
+				var c: Dictionary = EnforcerTruckView.check(mt, lanes, r, l, t.show_ahead, profile)
+				ok = ok and bool(c["fits"]) and not bool(c["hides_runner"]) and not bool(c["hides_floor"])
+			out[r * 64 + l] = ok
+	return out
+
+
+## The lane a showing beside a runner in lane `r` may take as far as the layout goes (show_lane_now's layout side;
+## the generator plans each chase's showing with it, task C6c), or -1: starting with the runner at `d` and its front
+## `gap` behind them at `v`, staying alongside `hold` seconds, where its look fits (`fits`: fits_for()), its lane stays
+## clear for that whole stay (lane_clear), the runner keeps a lane to dodge into (can_dodge) and it would hide none of
+## the layout's enemies (shadow_clear). `seed` picks the side for a runner in the middle lane (sides()).
+func layout_lane(r: int, t: EnforcerTruckTuning, fits: Dictionary, d: float, gap: float, hold: float, v: float,
+		seed: int) -> int:
+	var total: float = t.show_total_seconds(gap, hold)
+	for l: int in sides(r, seed):
+		if bool(fits.get(r * 64 + l, false)) and lane_clear(l, t, d, gap, total, v, hold) \
+				and can_dodge(r, l, t, d, total, v) and shadow_clear(l, r, t, d, total, v):
+			return l
+	return -1
