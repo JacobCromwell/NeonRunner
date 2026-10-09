@@ -190,7 +190,8 @@ static func _choose(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPl
 			best = plan["picked"]
 	for i: int in orders.size():
 		var o: Dictionary = alone[i]
-		report.append({"at": float(baits[i]["at"]), "chase": float(o.get("at", INF)), "span": o.get("span", Vector2(INF, -INF)),
+		report.append({"at": float(baits[i]["at"]), "chase": float(o.get("at", INF)),
+			"span": o.get("span", Vector2(INF, -INF)),
 			"window": "" if o.is_empty() or (o["plan"] as Dictionary).is_empty() else ("before" if _before_bait(o) else "after"),
 			"chosen": best_key.has(i)})
 	return best

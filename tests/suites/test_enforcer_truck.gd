@@ -761,7 +761,8 @@ func _test_chases_with_room() -> void:
 	var keep_max: int = t.per_level_max
 	for lanes: int in [3, 5, 6]:
 		# [trucks a level, introduced, where the first dog stands, the bait its truck should take (0 or 1), trucks]
-		for case: Array in [[1, false, 230.0, 1, 1], [1, true, 230.0, 1, 1], [1, false, 500.0, 0, 1], [2, false, 230.0, -1, 2]]:
+		for case: Array in [[1, false, 230.0, 1, 1], [1, true, 230.0, 1, 1], [1, false, 500.0, 0, 1],
+				[2, false, 230.0, -1, 2]]:
 			t.per_level_max = int(case[0])
 			var gen: LevelGenerator = _dogs_gen(lanes, [float(case[2]), 1500.0], bool(case[1]))
 			Rules.apply(gen)
@@ -789,7 +790,8 @@ func _test_chases_with_room() -> void:
 					check(on == want and not w.is_empty() and not bool(w.get("after_bait", false)),
 						"%s: its truck takes bait %d, its window before it (bait %d, %s)" % [tag, want, on, w])
 				elif on == 1:
-					check(not w.is_empty() and not bool(w.get("after_bait", false)), "%s: the second truck's window comes before its bait" % tag)
+					check(not w.is_empty() and not bool(w.get("after_bait", false)),
+						"%s: the second truck's window comes before its bait" % tag)
 	t.per_level_max = keep_max
 	_campaign_chases_with_room()
 
@@ -855,17 +857,21 @@ func _campaign_chases_with_room() -> void:
 					# A truck without a window before its bait: no free bait whose own chase has one fits beside the others.
 					for b: Variant in baits:
 						var bd: Dictionary = b
-						if not bool(bd["chosen"]) and String(bd["window"]) == "before" and _fits_beside(bd["span"], spans, i, room):
-							faults.append("the truck at %.0f m has none, and the bait at %.0f m has room" % [float(c["at"]), float(bd["at"])])
+						if not bool(bd["chosen"]) and String(bd["window"]) == "before" \
+								and _fits_beside(bd["span"], spans, i, room):
+							faults.append("the truck at %.0f m has none, and the bait at %.0f m has room" % [float(c["at"]),
+								float(bd["at"])])
 				if trucks.size() < t.per_level_max:
 					for b: Variant in baits:
 						var bd: Dictionary = b
-						if not bool(bd["chosen"]) and String(bd["window"]) == "before" and _fits_beside(bd["span"], spans, -1, room):
+						if not bool(bd["chosen"]) and String(bd["window"]) == "before" \
+								and _fits_beside(bd["span"], spans, -1, room):
 							faults.append("a free bait at %.0f m has room beside its %d trucks" % [float(bd["at"]), trucks.size()])
 				check(faults.is_empty(), "%s every truck's chase has a window before its bait wherever a free bait has room (%s)"
 					% [tag, "; ".join(faults)])
-		lines.append("%s: %d chases, %d with a window before the bait, %d after it, %d none; %d arriving earlier than preferred, %d past an earlier free bait"
-			% [id, counts["chases"], counts["before"], counts["after"], counts["none"], counts["earlier"], counts["skipped"]])
+		lines.append(("%s: %d chases, %d with a window before the bait, %d after it, %d none; %d arriving earlier than"
+			+ " preferred, %d past an earlier free bait") % [id, counts["chases"], counts["before"], counts["after"],
+			counts["none"], counts["earlier"], counts["skipped"]])
 	print("  chases with room (own seed and 2 others, 3, 5 and 6 lanes):\n    " + "\n    ".join(lines))
 
 
