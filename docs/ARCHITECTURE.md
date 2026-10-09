@@ -2594,6 +2594,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/marketplace_boss*.tres` | The House, the Marketplace's boss (see below; `./play.sh --boss=marketplace_boss` or `--level=marketplace/boss`) |
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss (see below; `./play.sh --level=corporate/boss`) |
 | `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a and E4b: the campaign plays it after Gangland 3, `./play.sh --boss=gangland_boss`) |
+| `scripts/bosses/golden_convergence/`, `scenes/bosses/golden_convergence.tscn`, `data/bosses/golden_boss*.tres` | The Golden Convergence, the Golden Zone's boss and the final villain (see below; being built in task E5d, a preview until E5d-d: `./play.sh --boss=golden_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -2766,8 +2767,13 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
   through `spawn_enemy("generator", ...)`, a destroyed one's EMP reaches the part (`_on_part_emp`:
   `damage(hit_damage(), &"emp")` while it's lured in), and its defeat ends in silence and a grey dawn
   (`victory_riff`, `set_scenery_light`).
-- **The final villain:** two stages, the second a `checkpoint` phase, so a death there restarts at the
-  second stage.
+- **The Golden Convergence (E5d, being built, see below):** two stages in six phases, stage 2's first a
+  `checkpoint` phase, so a death in stage 2 restarts there. Stage 1's golden suit floats out of reach (the
+  body part, chipped by weapons up to `weapon_share_cap`), its attacks each a class of its own played one
+  at a time from a beat script in its tuning (E5d-a the Helidrone Strafe with its Flying Buttresses; E5d-b
+  the Fist Slam, smashing a buttress into a toppled tower's wall through `court.open_wall`, and the Missile
+  Barrage; E5d-c the Refill Ship, its caged pad hurling the squadron into the ship, the hit that damages the
+  suit; E5d-d The Magnate's chase and the defeat).
 
 **The Sleep Taker** (GDD §10, task E5c: E5c-a, the nightmare, its arena, its entrance and its three
 attacks, weapons having no effect; E5c-b, hurting it by the generators' EMP, the three phases, the
@@ -3040,6 +3046,55 @@ phase's start, first drawn later: `ShaderWarmup` doesn't sample a pickup's look)
   the climb leaves one wall free; the Host's crouch is reached by a ramp and a wall jump at both speeds; the
   bot wins each phase and the whole fight at 3, 5 and 6 lanes at 18 and 21.8 m/s, after a death and a retry,
   and through the campaign (`test_sewer_swarm_*`).
+
+**The Golden Convergence** (GDD §10, task E5d, in four steps that merge one at a time: E5d-a, the golden
+suit, the Grand Court, the entrance, the Helidrone Strafe and the Flying Buttress, phase 1's opening strafe;
+E5d-b, the Fist Slam and the Missile Barrage; E5d-c, the Refill Ship, stage 1's three phases and the suit's
+damage; E5d-d, stage 2 (The Magnate), the defeat and the campaign slot). Until E5d-d it's a preview: its
+slot names `preview_scene`, not `scene`, so the campaign keeps its card and debug builds play it with
+`./play.sh --boss=golden_boss` (18 m/s unless given `--speed`; `--phase=4` starts at the halfway checkpoint,
+where stage 2's stub idles the suit). The arena is the Grand Court (GDD §10, proposed): plain laps
+(`_plan_lap` clears every lap: every danger is the boss's) in its own look, and no side walls: the court
+keeps both walls taken away ahead of the runner, so a move past an outer lane bumps them back with the
+clank. Each phase's pattern is a beat script in its tuning (`phase_beats`: `strafe:VVH,slams,barrage,refill:VVH`
+for phase 1, then from `loop_from`), one beat at a time, `beat_gap` apart over the phase's pace; each beat
+kind is an attack of its own class registered with the encounter, and a beat whose attack isn't built yet is
+a stub the pattern skips (`beat_stub`; until E5d-c a refill beat plays its strafe alone). Nothing depends on
+how long the fight has lasted; random choices come from seeds of the fight (each strafe's own), passes are
+anchored to the runner's distance at the run speed, so every attempt plays the same. Its tuning's distances
+that stand for a time are written at 18 m/s and multiplied by the run's pace (`run_pace()`), as the other
+bosses' are. In `scripts/bosses/golden_convergence/`:
+
+| File | What |
+|---|---|
+| `golden_convergence.gd` (`GoldenConvergence`) | the encounter: the court (`_plan_lap`), the suit's place (`suit_transform`: `suit_ahead` ahead of the runner and `suit_height` up, swaying and bobbing; rising from `rise_depth` in the entrance), each phase's intro (`_on_phase_started`/`_intro_tick`: phase 1's entrance, the rise with `gc_rise`, the cape unfurling from `unfurl_at`, the chime at `chime_at`; a later stage 1 phase's reel; stage 2's stub, `Step.IDLE`), the beat script (`_tick_beats`, `_next_beat`, `register_attack`, `_attack_for`), the buttress pool (`place_buttress(lane, at, lean)`, `buttresses_between`), `cross_warning` (a red bar across a lane: a floor warning, steady with Reduced flashing), `sound()` (plays and logs every warning), `sound_point()` (where something far off is heard), `hint(key)` (`boss:golden_boss/<key>`), `warning_active()`, `speed_planned()`, `run_pace()`, `player_lane()` |
+| `golden_convergence_attack.gd` (`GoldenConvergenceAttack`) | the base of its attacks: `start(beat)`, `tick(delta)`, `busy()`, `hold(on)`, `clear()`, `warning_on()`, `prewarm()` |
+| `golden_convergence_strafe.gd` (`GoldenConvergenceStrafe`) | the Helidrone Strafe: plans the script's passes (V head-on, v from behind, H horizontal) from the runner's distance at the run speed (`_plan`, `warn_at`), each pass's warning (`_warn`: BossProps' lane warnings over a vertical pass's stretch of every other lane, `covered_lanes` switching parity each vertical pass; `cross_warning`s over every lane but a horizontal pass's buttress opening; the whine), its fire (`_fire`, `_tick_rake`: the front closing in at `rake_speed` or gaining at `behind_rake_speed`; `_tick_line`: the sweep lighting each lane, the live line until the runner is past it, the lines for show for `show_burn`, the sparks off the buttress), the squadron's flight (`_pose`: a drone over each covered lane, the spare climbed above the formation over a covered lane, holding its fire; the station between passes), each horizontal pass's buttress `buttress_sight` ahead of its line (`_place_buttresses`, an inner lane by seed, leaning toward the nearer edge). For E5d-c: `hold(on)` (the fire and warnings gone at once, the squadron at `hold_station`, the passes left re-planned on release), the pad rule (a `pad` movement event while the squadron is out hurls it: `hurled`, the strafe over), `refill` |
+| `golden_convergence_squadron.gd` (`GoldenConvergenceSquadron`) | the squadron part: up to three of the heli drone's model drawn not hostile (`add_model(..., false)` in `scripts/enemies/drone.gd`: no red), its rotors, gatlings and muzzle flashes (steady with Reduced flashing), `set_drone`, `stow`, `hurl()` (each crashes `hurl_rise` up, `hurled_out` once all are down); immune to weapons, no touch of its own |
+| `golden_convergence_fire.gd` (`GoldenConvergenceFire`) | the strafe's fire, pooled: rakes (`set_rake_lane`, `set_rake_front`: an enemy attack hitbox over most of a lane up above a jump's reach; in an outer lane the wall's part up to `wall_fire_height` and the main box clear of a wall runner's body), lines (`set_line`, `set_line_lane`, `set_line_wall`: the live line's hitbox per lane and up both walls to `wall_line_height`; the lines for show have none), tracers, scorch marks (one MultiMesh, dark, fading over `scorch_seconds`); `hits` and the `hit` signal (the strafe logs `strafe_hit`) |
+| `golden_convergence_buttress.gd` (`GoldenConvergenceButtress`) | a pooled Flying Buttress: `place(lane, at, lean)` (rising over `buttress_rise_seconds` with `gc_buttress`; its sides a lane blocker from a lane switch's run before its front, so a switch into its lane bumps; a runner in its lane runs through the arch), `smash()` (E5d-b's fist, E5d-d's Pounce: it crumbles with `gc_crumble`, blocks nothing, `smashed`), `release()`, `span()`, `blocked_span()`, `opening_x()`, `spark_point()`, `standing()`, `in_use()`; meshes per lane count, lane and lean (`mesh_for`) |
+| `golden_convergence_court.gd` (`GoldenConvergenceCourt`) | the walls: `BossProps.block_wall` in `wall_block_stretch` stretches from just behind the runner to `wall_block_ahead` ahead; `open_wall(side, from, to)` / `close_wall(id)` (E5d-b's toppled tower), `is_open`, `blocked`, `laid_until`; a wall runner where it isn't open is dropped off (`Player.repel_from_wall`, `repels`) |
+| `golden_convergence_suit.gd` (`GoldenConvergenceSuit`) | the suit, the fight's body: weapons chip it at its chest (`aim_point`; within the upgraded weapons' 70 m at `suit_ahead`, not the tier-1 weapon's 42 m: DESIGN-TBD); no hitbox. Its handles: `unfurl`, `reel`, `set_arm(side, target, blend, extend, fist)` (the arm swinging out, its segments telescoping), `pipes_open[side]` (the hatch), `set_pipes_broken(side)`, `burst` (the chest's plates), `hand_point`, `pipe_mouth`, `head_point`, `cape_point(i)`; `draw_stats()`, `meshes()`, `cape_material()` |
+| `golden_convergence_model.gd` (`GoldenConvergenceModel`) | the suit's meshes, built once in code at its reference size and shared (the kit's solid shader with the court's gold, never emissive): the torso with the Triad in gold relief and filigree, the chest plates, the head (the calm face's relief and marks coloured per corner: `face_relief`, `face_marks`, `face_color`; the dull red tear, unpolished; the diadem), the halo, the arms and their telescoping segment, the hands, the shoulder pipes, their hatch (`hatch_hinge`) and their torn stubs, the tentacle pipes, the cape's two sheets (coarser on the Compatibility renderer): 17 instances, about 62,000 vertices |
+| `golden_convergence_cape.gdshader` | the cape's cloud: pleats radiating from the shoulders and billowing waves (on `TIME`), black troughs, velvet shading; unshaded and never glowing; `unfurl` gathers it at the shoulders for the entrance; one fine ripple fewer on Compatibility |
+| `golden_court_skin.gd` (`GoldenCourtSkin`), `golden_court_feed.gdshader` | the Grand Court (GoldenPalaceSkin's floor, sky and hazard looks; `wall_section` draws the balustrade, the pools, the towers with their feed screens, the hall's colonnade and the vault); the feed's handles for the later steps: `set_feed(mode, power, glitch)`, `set_feed_blackout(center, radius)`, `reset_feed()`, `feed_state()` |
+| `golden_convergence_tuning.gd`, `data/bosses/golden_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5d.md`), a group per part; `beats_for`, `loop_start`, `squadron_size`, `covered_lanes` |
+| `data/bosses/golden_boss.tres`, `data/bosses/golden_boss_skin.tres`, `scenes/bosses/golden_convergence.tscn` | its slot (six phases: stage 1's paces 1, 1.1, 1.2 and stage 2's 1, 1.15, 1.3, equal shares, the checkpoint at phase 4; weapons up to 0.17 and able to end a phase; the armor rule at 22 s, `armor_when_unprotected`; 1,000 credits, 10,000 points; provisional pars; the Golden Zone's music; `preview_scene`), the court's look, the scene |
+| `tools/asset_gen/sfx_bank_golden_convergence.gd` | its sounds: `gc_rise`, `gc_chime` (the Resonator's notes, huge and slow), `gc_emerge`, `gc_whine` (as long as `warning_seconds`), `gc_rake`, `gc_sweep`, `gc_spark`, `gc_buttress`, `gc_crumble`, `gc_hurl`, `gc_return` |
+| `tools/showcase/golden_convergence_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/face/entrance/strafe/buttress/wall/fight`, `--lanes`, `--speed`, `--phase`, `--script=VVHvVHv`, `--cam=run/side/high`, `--still`, `--reduced-flashing`, `--events`) |
+| `tests/helpers/golden_convergence_bot.gd` (`GoldenConvergenceBot`) | a runner who plays it by what it shows, `reaction` seconds late, one reader per attack (`_read_strafe`: out of a raked lane, into the buttress's arch; `_read_fist`, `_read_barrage`, `_read_refill`, `_read_magnate`: stubs for the later steps), `dodges`, `takes_cover`, `home_lane`, `log` |
+
+Extension points for the later steps: E5d-b adds `GoldenConvergenceSlams` and `GoldenConvergenceBarrage`
+(`register_attack` in `_build_boss`, beat kinds `slams` and `barrage`), drives the arms (`suit.set_arm`,
+`hand_point`) and the pipes (`suit.pipes_open`, `pipe_mouth`), baits buttresses (`place_buttress`,
+`buttresses_between`, `smash()`, `smashed`) and opens the toppled tower's wall (`court.open_wall`, drawn by
+the tower itself; the strafe's wall rules read `court.is_open`); E5d-c adds `GoldenConvergenceRefill` (beat
+kind `refill`, replacing the stand-in in `_attack_for`), holds the strafe (`strafe.hold`, `hold_station`),
+listens for `strafe.hurled`/`squadron.hurled_out` (`squadron.hurl_rise`), and shows the damage
+(`suit.set_pipes_broken`, `suit.burst`); E5d-d replaces stage 2's stub in `_on_phase_started` and
+`_pattern_tick`, and plays the defeat with the feed (`GoldenCourtSkin.set_feed`, `set_feed_blackout`). Each
+adds its group to `GoldenConvergenceTuning`, its reader to `GoldenConvergenceBot` and its sounds to the
+bank.
 
 ## Cinematics
 
@@ -3452,6 +3507,31 @@ attempt, quick play at two setups (phases 1 and 2 won, a death once docked, the 
 play starting over after the defeat), and the campaign at 23.4 m/s at every lane count (Corporate 2, a
 death in the fight's last phase, the retry won with three stars, the shop, the outro);
 `tools/measure/hostile_takeover.gd` plays every lane count and speed.
+`test_golden_convergence` builds The Golden Convergence's first step (E5d-a): its slot (six phases with
+their paces, the checkpoint at stage 2's first, equal shares, weapons within 0.17, the 22 s armor rule,
+payout, score, pars, music, a preview the campaign keeps carded), its sounds (warnings never pitch-varied,
+the whine as long as the warning) and hints, the beat scripts, the squadron's size and covered lanes, the
+Grand Court at 3, 5 and 6 lanes (plain laps, both walls taken away ahead and bumping the runner back, a wall
+opened, run, its end dropping the runner off, closed again, closing under a runner), the suit (no hitbox,
+targetable only once the pattern begins, its chest within the upgraded weapons' reach and not the tier-1
+weapon's, a hit chipping the fight; nothing on it glowing or past the hazards' saturation, the dull red
+tear, the cape's shader never glowing; its arms, hatches, torn pipes and plates; its draw budget), the
+entrance (the rise, the chime, the unfurl, nothing attacking or targetable, then the first strafe), the
+squadron never red or targeted, the Flying Buttress (its lean, its rise and sound, a lane switch into it
+bumped, its arch run through, smashed and crumbling, back in the pool), Reduced flashing (the muzzle flashes
+and tracers steady, flickering otherwise), the reel of a later phase, stage 2's stub from the checkpoint,
+the feed's handles and colours, and the boss bar's name and phase; `test_golden_convergence_fight` plays
+phase 1's two strafes with `GoldenConvergenceBot` and no god mode at 3, 5 and 6 lanes and 18 and 25 m/s
+(every frame: fire only on a warned lane's stretch or the live line, never the opening, and only once the
+warning is over; the fire reaching the runner's distance at least a second after its warning; drones over
+covered lanes and the spare above; the live line whole while the runner is at it; the first vertical pass
+on lanes 1, 3, 5 counting from 1 and the parity switching; each buttress in an inner lane, up
+`buttress_sight` ahead and in reach from the farthest lane; the runner untouched; the sounds and hints), the
+7-pass strafe (V-V-H-v-V-H-v, the passes from behind opening up behind the runner), a runner hit staying in a
+raked lane (once its warning is over) or out of the arch (jumping or not), the armor blocking a rake, the
+dash through the live line, the wall rule (low on an open wall hit by an outer lane's rake, high up safe;
+the live line hitting a wall runner high up), a pad hurling the squadron and ending the strafe, the hold, and
+40 s played the same on two attempts.
 `test_sewer_swarm` builds the Sewer Swarm (E4) at 3, 5
 and 6 lanes and 18 and 21.8 m/s: its slot (built, the campaign's step plays it; phase 1 two clusters, phase 2
 the rest, phase 3 three hits; its par times; weapons within its cap; its new sounds and hints), its

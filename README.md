@@ -18,7 +18,8 @@ is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss
 Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketplace's House after
 Marketplace 2 (`--boss=marketplace_boss`), the Corporate zone's Hostile Takeover after Corporate 2
 (`--boss=corporate_boss`), and Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`); the
-Golden Zone's final villain is still a placeholder slot. The short cinematics are built with a code-driven cinematic toolkit
+Golden Zone's final villain, The Golden Convergence, is being built (task E5d: debug builds preview it with
+`--boss=golden_boss`; the campaign keeps its placeholder card until it's done). The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
 describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
 over the zone, and the outros are placeholder cards.
@@ -63,7 +64,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -314,8 +315,19 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   downtime, while every attack still warns first. Weapons thin a surging cluster too, the heavy missile
   most of all. Its crowds are hundreds of screeches
   drawn with a MultiMesh and a shader, their sizes in data for the phone test
-  (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout). The Golden Zone's
-  final villain is still to be built.
+  (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout).
+  The Golden Convergence, the Golden Zone's boss and the final villain, is being built in four steps (task
+  E5d); `--boss=golden_boss` previews what's there at 18 m/s (`--phase=4` starts at its halfway checkpoint,
+  stage 2, still a stub). In the Grand Court, a golden causeway through the palace's vast hall with low
+  balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
+  a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
+  dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
+  out of the cape and makes its passes as one. A vertical pass rakes every other lane after red lines and a
+  gatling whine (switch to a lane between them; a jump doesn't clear the fire); a horizontal pass sweeps a
+  line across the track and up the walls, after a red line over every lane but the arch of a Flying
+  Buttress rising in an inner lane (run through the arch, or dash). Phase 1 opens with a V-V-H strafe; the
+  Fist Slam, the Missile Barrage, the Refill Ship (which damages the suit) and The Magnate come in the
+  next steps (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
