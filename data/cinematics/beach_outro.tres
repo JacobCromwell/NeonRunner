@@ -6,4 +6,4 @@
 script = ExtResource("1_script")
 id = &"beach_outro"
 title = "Last light"
-placeholder_text = "DESIGN-TBD: a short scene after the Beach boss, as the sun goes down, heading for the Dead Zone."
+placeholder_text = "DESIGN-TBD: a short scene after the Beach boss, as the sun goes down, heading for the Dead Zone: what puts the runner in the smoking crater the Dead Zone's intro opens on (GDD §6)."

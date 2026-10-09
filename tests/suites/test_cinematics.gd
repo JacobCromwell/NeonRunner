@@ -3,7 +3,9 @@ extends TestSuite
 ## timeline's checks, a cinematic played to its end (every event in order, `finished` once, the actors
 ## on their paths, the camera riding along), skip() ending it at once (and the pause action and the
 ## skip button asking for it), Reduced flashing, holding while the game is in the background, a
-## cinematic described in data (the review tool's sampler), every zone's arrival flyover and the City's
+## cinematic described in data (the review tool's sampler), the poses that play out over time (the runner lying,
+## getting up and climbing out with its hands on the edge; cyborgs lying still, crouching and turning their
+## heads), each sound event's own level, every zone's arrival flyover but the Dead Zone's and the City's
 ## boss intro at 3, 5 and 6 lanes (the zone's skin from its data, the level's street, a camera that
 ## never flies into a ceiling or out of the street, a runner that never runs over a hole, ending in the
 ## run camera's view), and the App's flow through a built slot: it plays, the next step follows, the
@@ -38,6 +40,8 @@ func run() -> void:
 	_test_paths()
 	_test_timeline_checks()
 	await _test_play_to_end()
+	await _test_cine_poses()
+	await _test_sound_levels()
 	await _test_skip()
 	await _test_reduced_flashing()
 	await _test_hold_in_background()
@@ -241,6 +245,87 @@ func _test_play_to_end() -> void:
 	await _free(seq)
 
 
+## The poses that play out over time (CinePoses, CyborgBody's LIE and CROUCH), the keys' progress (a key below 0
+## keeps the one before) and look_up, and the climb's hands holding the keys' position until it lets go.
+func _test_cine_poses() -> void:
+	var t := CineTimeline.new()
+	t.duration = 4.0
+	t.stage = CineStageDef.new()
+	var runner: CineActor = t.actor(&"runner")
+	var k: CineActorKey = runner.at(0.0, Vector3(0.0, 0.0, 10.0), &"lie")
+	k.progress = 0.0
+	k = runner.at(1.0, Vector3(0.0, 0.0, 10.0), &"get_up")
+	k.progress = 0.0
+	k = runner.at(2.0, Vector3(0.0, 0.0, 10.0))
+	k.progress = 1.0
+	runner.at(2.5, Vector3(0.0, 0.0, 10.0))  # Its progress below 0: it keeps 1.
+	k = runner.at(2.6, Vector3(0.0, 0.03, 11.0), &"climb")
+	k.progress = 0.0
+	k = runner.at(3.4, Vector3(0.0, 0.03, 11.0))
+	k.progress = 0.8
+	k = runner.at(4.0, Vector3(0.0, 0.0, 11.4))
+	k.progress = 1.0
+	var still: CineActor = t.actor(&"still", CineActor.Kind.CYBORG)
+	still.at(0.0, Vector3(2.4, 0.0, 30.0), &"lie")
+	var crouched: CineActor = t.actor(&"crouched", CineActor.Kind.CYBORG)
+	crouched.host = true
+	crouched.at(0.0, Vector3(-2.4, 0.0, 30.0), &"crouch")
+	crouched.at(2.0, Vector3(-2.4, 0.0, 30.0))
+	k = crouched.at(2.5, Vector3(-2.4, 0.0, 30.0))
+	k.look = 90.0
+	k.look_up = 60.0
+	t.shot(0.0, Vector3(3.0, 4.0, 4.0), Vector3(0.0, 0.0, 12.0))
+	check(t.problems(sfx).is_empty(), "the poses that play out over time are poses a key may name (%s)" % [t.problems(sfx)])
+	var seq: CinematicSequencer = _start(t)
+	seq.set_process(false)
+	var r := seq.actors[&"runner"] as CineActorNode
+	var lying_low: bool = true
+	var kept: float = -1.0
+	var held: float = 0.0
+	var up_top: float = 0.0
+	while not seq.done:
+		seq.advance(STEP)
+		var at: float = seq.time
+		if at < 0.9:
+			lying_low = lying_low and _top(r) < 0.6
+		if at > 2.2 and at < 2.45:
+			kept = r.progress
+		if at > 2.65 and at < 3.35:
+			held = maxf(held, r.grip_point().length())
+		if at > 3.95:
+			up_top = _top(r)
+	check(lying_low and is_equal_approx(kept, 1.0), "the runner lies low on its back, then gets up (a key below 0 keeps its progress)")
+	check(held < 0.02 and up_top > 1.0,
+		"climbing, its hands hold the keys' position (off by at most %.3f m) until it stands (%.2f m tall)" % [held, up_top])
+	var lie := seq.actors[&"still"] as CineActorNode
+	var crouch := seq.actors[&"crouched"] as CineActorNode
+	check(lie.body.pose == CyborgBody.Pose.LIE and is_zero_approx(lie.body.screen_power), "a cyborg lies still, its screen dark")
+	check(crouch.body.pose == CyborgBody.Pose.CROUCH and is_equal_approx(crouch.body.head_turn.x, deg_to_rad(90.0))
+		and is_equal_approx(crouch.body.head_turn.y, deg_to_rad(60.0)),
+		"a cyborg crouches, and turns its head by its keys' look and look_up (%s)" % [crouch.body.head_turn])
+	await _free(seq)
+
+
+## How high the top of an actor's runner model is over its node (metres).
+func _top(node: CineActorNode) -> float:
+	var b: AABB = node.avatar.rig.bounds()
+	return node.avatar.position.y + b.end.y
+
+
+## A sound event plays at its own level on top of the library's (CineEvent.volume_db).
+func _test_sound_levels() -> void:
+	var t: CineTimeline = _small_timeline()
+	t.sound(0.5, &"land", -9.0)
+	var seq: CinematicSequencer = _start(t)
+	seq.set_process(false)
+	while not seq.done and seq.time < 0.6:
+		seq.advance(STEP)
+	var p := seq.get_node_or_null(^"Sound_land") as AudioStreamPlayer
+	check(p != null and is_equal_approx(p.volume_db, sfx.volume(&"land") - 9.0),
+		"a sound event plays at its own level on top of the library's (%s dB)" % [p.volume_db if p != null else "-"])
+	await _free(seq)
+
+
 func _test_skip() -> void:
 	var seq: CinematicSequencer = _start(_small_timeline())
 	var ends: Array[int] = [0]
@@ -379,7 +464,7 @@ func _test_flyovers() -> void:
 	for s: CampaignStep in slots:
 		ids.append(s.id)
 	check(ids == PackedStringArray(["city/intro", "city/boss_intro", "gangland/intro", "marketplace/intro", "corporate/intro",
-		"beach/intro", "dead_zone/intro", "golden/intro"]), "every zone's intro plays its arrival flyover, and the City's boss intro (%s)" % [ids])
+		"beach/intro", "golden/intro"]), "every zone's intro but the Dead Zone's (its own, test_dead_zone_intro) plays its arrival flyover, and the City's boss intro (%s)" % [ids])
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
 		for s: CampaignStep in slots:

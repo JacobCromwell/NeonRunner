@@ -170,8 +170,9 @@ func _test_steps(campaign: Campaign) -> void:
 
 
 ## A boss slot per zone from GDD §10's roster, and cinematic slots: every zone's intro and outro, and
-## the City's and Gangland's boss intros (the intros play placeholder flyovers, task F1, and Gangland's boss
-## intro the owner's beats; test_cinematics checks them).
+## the City's and Gangland's boss intros (the intros play placeholder flyovers, task F1, but the Dead Zone's, and
+## Gangland's boss intro and the Dead Zone's intro the owner's beats; test_cinematics, test_sewer_swarm_intro and
+## test_dead_zone_intro check them).
 func _test_slots(campaign: Campaign) -> void:
 	# The Beach's boss is still to be designed (GDD §10; DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 541: its slot's name).
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
@@ -220,6 +221,9 @@ func _test_slots(campaign: Campaign) -> void:
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/sewer_swarm_intro.tscn" and s.cinematic.is_built(),
 				"Gangland's boss intro plays its own scene, the owner's beat (task F2b)")
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "dead_zone/intro":
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/dead_zone_intro.tscn" and s.cinematic.is_built(),
+				"the Dead Zone's intro plays its own scene, the owner's beats (task F2c)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn"
 				and s.cinematic.is_built(), "cinematic slot %s plays the placeholder arrival flyover (task F1)" % s.id)

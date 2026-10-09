@@ -3366,7 +3366,9 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 542. **The cinematics** (GDD §6). Placeholder: `beach_intro.tres` ("The Beach") plays the arrival flyover in the
     Beach's look, its card "ZONE 5 · Beach"; `beach_outro.tres` ("Last light") is a placeholder card (after the
     boss, as the sun goes down, heading for the Dead Zone); Corporate's outro card now heads for the Beach. The
-    beats are still to come; the Dead Zone and the Golden Zone now show as zones 6 and 7 on their cards.
+    beats are still to come; the Dead Zone and the Golden Zone now show as zones 6 and 7 on their cards. The Dead
+    Zone's intro (task F2c, GDD §6) opens on the runner lying in a smoking crater, put there by "a cinematic before
+    this one": with the Beach in between, that is now the Beach's outro, not Corporate's.
 543. **The music** (no new songs for now). Placeholder: the zone's track `beach` (`data/audio/music_library.tres`;
     `MusicLibrary.zone_tracks`) borrows the Marketplace's, the most festive: its generated loop in the cinematics
     (and the boss fight, once built), the owner's Jackpot Plaza in the levels, and its level-complete riff. No other
