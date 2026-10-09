@@ -26,8 +26,12 @@ extends Enemy
 ##   open, and wherever their lane is otherwise blocked (a hole or fence) that one open or the truck's lane
 ##   blocked too (the runner always keeps a lane to dodge into: it never takes the only free one); no enemy in
 ##   its lane or beyond it near the runner (from the camera it would hide it); no bait's turn coming before it's
-##   back behind them (its hold shortened to fit, never under show_min_seconds); no hover truck or Gilded
-##   Sentinel about. A showing takes a turn like a big attack
+##   back behind them (its hold shortened to fit, never under show_min_seconds). Beside a hover truck or a Gilded
+##   Sentinel (the owner, October 9, 2026, GDD §9.13 "Making room where there is none"; task C6e): a hover truck's
+##   lane is a wall to the runner and never the truck's (it shows itself two lanes in from a runner beside one), it
+##   stays on the runner's side away from it, and it keeps off what can't wait for a turn (a hover truck's entrance,
+##   a Sentinel's turn: its stay shortened to be back before one, and it gives way to one). A showing takes a turn
+##   like a big attack
 ##   (GDD §9): it starts only when the director lets it (no other type's big attack on or waiting ahead of it),
 ##   and no other type's starts while it's in view, so a volley's, a bait's or another attack's warning never
 ##   meets it. It never fires while it shows itself. It stays alongside show_seconds, or drops back sooner
@@ -95,6 +99,7 @@ const BLAST_BACK_IN_LANE: float = 0.4
 const BLAST_BACK: float = 0.6
 const BLAST_SHIFT: float = 0.3
 const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
+const HoverScript = preload("res://scripts/enemies/hover_truck.gd")
 
 var tuning: EnforcerTruckTuning
 var state: State = State.WAITING
@@ -170,6 +175,9 @@ var _show_hold: float = 0.0
 var _yielding: bool = false
 var _last_show_end: float = -INF
 var _bumped: bool = false
+## True while the showing on is its planned window's and its bait's claim on its turn may come during it (task C6e:
+## the window's mode "claim" or "calm"): it's out of view before a Buzz Overdrive's rev instead of back before its claim.
+var _show_claim: bool = false
 ## The layout's side of what its showings need (EnforcerTruckRoom), read once.
 var _room: EnforcerTruckRoom
 ## Whether its look fits on screen beside a runner without hiding them (EnforcerTruckRoom.fits_for): by runner
@@ -369,12 +377,19 @@ func _arrive() -> void:
 	visible = true
 	_body.set_enabled(true)
 	_canvas.visible = true
+	if calm_start():
+		# Task C6e: in the level's calm start it arrives right behind the runner (from arrive_gap it couldn't come
+		# alongside before its bait) and shows itself as it arrives.
+		gap = tuning.follow_gap
+		state = State.CHASING
 	# Cyborgs passed further back than where it drives in are behind it: it never reaches them.
 	var front: float = world.player_distance() - gap
 	for i: int in range(_passed.size() - 1, -1, -1):
 		if float(_passed[i]["at"]) < front:
 			_passed.remove_at(i)
 	_note(&"arrive")
+	if state == State.CHASING:
+		_note(&"chase")
 	# It shows itself as it arrives where there's room (its siren swelling as it pulls alongside), else its
 	# siren whoops as it drives in behind the runner.
 	var now: Array = show_lane_now()
@@ -726,17 +741,22 @@ func show_lane_now() -> Array:
 	var r: int = p.lane
 	if absf(p.position.x - world.geo.lane_x(r)) > 0.05:
 		return [-1, "runner changing lanes"]
-	if _attack_on(true):
+	var claim_ok: bool = _claim_window_now()
+	if _attack_on(true) or _seconds_to_fixed() <= 0.0:
 		return [-1, "an attack on"]
 	var chase_left: float = tuning.chase_seconds - _clock
 	var to_bait: float = _seconds_to_bait()
-	var hold: float = EnforcerTruckRoom.hold_for(tuning, gap, to_bait, chase_left)
+	var to_fixed: float = _seconds_to_fixed()
+	var hold: float = EnforcerTruckRoom.hold_claimed(tuning, gap, _seconds_to_rev(), _seconds_to_dog(), chase_left, to_fixed) \
+		if claim_ok else EnforcerTruckRoom.hold_for(tuning, gap, to_bait, chase_left, to_fixed)
 	if hold < tuning.show_min_seconds:
+		if to_fixed - tuning.show_margin_seconds < minf(to_bait - tuning.show_margin_seconds - tuning.close_lead_seconds, chase_left):
+			return [-1, "a hover truck's entrance or a Gilded Sentinel's turn coming"]
 		return [-1, "a bait coming" if to_bait - tuning.show_margin_seconds - tuning.close_lead_seconds < chase_left else "chase ending"]
 	var total: float = tuning.show_total_seconds(gap, hold)
-	if _quiet_near(total):
-		return [-1, "a hover truck or Gilded Sentinel"]
-	var sides: Array[int] = _room.sides(r, int(spawn.get("seed", 0)) + shows)
+	# Task C6e: a hover truck's lane is a wall to the runner and never the truck's.
+	var held: Array[bool] = _held_lanes(total)
+	var sides: Array[int] = _room.sides(r, int(spawn.get("seed", 0)) + shows, held)
 	if sides.is_empty():
 		return [-1, "no lane beside the runner"]
 	for whole: bool in [true, false]:
@@ -746,9 +766,9 @@ func show_lane_now() -> Array:
 				why.append("off screen")
 			elif not _show_lane_clear(l, total, hold if whole else -1.0):
 				why.append("its lane not clear")
-			elif not runner_can_dodge(r, l, total):
+			elif not runner_can_dodge(r, l, total, held):
 				why.append("no lane to dodge into")
-			elif not _shadow_clear(l, total, true):
+			elif not _shadow_clear(l, total, true, held):
 				why.append("an enemy beside it")
 			else:
 				return [l, "", hold]
@@ -760,6 +780,7 @@ func show_lane_now() -> Array:
 ## A showing begins in lane `l`, to stay alongside `hold` seconds: its lane change first (at once while it's still
 ## far behind, arriving), its solid sides on, its siren swelling.
 func _begin_show(l: int, hold: float) -> void:
+	_show_claim = _claim_window_now()
 	show_phase = Show.PULL_UP
 	show_lane = l
 	shows += 1
@@ -797,6 +818,7 @@ func _end_show() -> void:
 	show_phase = Show.NONE
 	show_lane = -1
 	_yielding = false
+	_show_claim = false
 	_last_show_end = _clock
 	_set_blocker(false)
 	_note(&"shown")
@@ -805,8 +827,10 @@ func _end_show() -> void:
 ## True when it must give way and drop back at once: the runner moves toward its lane (a lane change into its
 ## side bumped back, or they're in or heading into it), leaves the floor or falls in a hole, has no other lane
 ## to dodge into, another type's big attack comes on all the same (one that can't wait, or with big attacks not
-## taking turns), a hover truck, a Gilded Sentinel or a bait comes sooner than planned, or an enemy comes
-## beside or beyond it or into its lane.
+## taking turns), an attack that can't wait for a turn (a hover truck's entrance, a Gilded Sentinel's turn) or a
+## bait comes sooner than planned, or an enemy comes beside or beyond it or into its lane. In a showing its bait's
+## claim may come during (_show_claim, task C6e) it doesn't give way to that claim, only to the bait's warning coming
+## sooner than planned.
 func _must_give_way() -> bool:
 	var p: Player = world.player
 	if p.surface != Player.Surface.FLOOR or p.in_pit or _bumped or p.lane == show_lane \
@@ -815,10 +839,16 @@ func _must_give_way() -> bool:
 	var left: float = _show_seconds_left()
 	# A bait sooner than the showing was planned for (half its margin to spare: an Octodog not planned in the
 	# layout, a wait that moved one on).
-	if _attack_on(false) or _quiet_near(left) \
-			or _bait_near(left + tuning.show_margin_seconds * 0.5 + tuning.close_lead_seconds):
+	var bait_near: bool = _bait_near(left + tuning.show_margin_seconds * 0.5 + tuning.close_lead_seconds)
+	if _show_claim:
+		# A Buzz Overdrive's claim may come during it: only its rev, and an Octodog's turn, count (task C6e).
+		bait_near = _seconds_to_rev() <= left + tuning.show_margin_seconds * 0.5 \
+			or _seconds_to_dog() <= left + tuning.show_margin_seconds * 0.5 + tuning.close_lead_seconds
+	if _attack_on(false, _show_claim) or bait_near or _seconds_to_fixed() <= left + tuning.show_margin_seconds * 0.5:
 		return true
-	if absi(p.lane - show_lane) <= 2 and not runner_can_dodge(p.lane, show_lane, left):
+	var held: Array[bool] = _held_lanes(left)
+	if EnforcerTruckRoom.is_held(held, show_lane) \
+			or (absi(p.lane - show_lane) <= 2 and not runner_can_dodge(p.lane, show_lane, left, held)):
 		return true
 	var d: float = world.player_distance()
 	return not _shadow_clear(show_lane, 0.0, false) \
@@ -884,12 +914,14 @@ func _drop_reach() -> float:
 ## while it's beside them, the lane between them two lanes in from a runner by a wall), and the floor enemies in
 ## play, which they must leave their lane for (that lane open around one in theirs) and which block that lane like
 ## the layout's. Two lanes in, the lane between them is held to the same, with their own lane to dodge back into.
-func runner_can_dodge(r: int, l: int, seconds: float) -> bool:
+## The lanes a hover truck holds (`held`, _held_lanes; task C6e) are walls to them, and only what its stay reaches of a
+## blocked stretch counts (EnforcerTruckRoom.can_dodge's `clip`: once it's back behind them every lane is theirs).
+func runner_can_dodge(r: int, l: int, seconds: float, held: Array[bool] = []) -> bool:
 	var v: float = _plan_speed()
 	var d: float = world.player_distance()
-	if not _room.can_dodge(r, l, tuning, d, seconds, v):
+	if not _room.can_dodge(r, l, tuning, d, seconds, v, held, true):
 		return false
-	var o: int = _room.escape_lane(r, l)
+	var o: int = _room.escape_lane(r, l, held)
 	if o < 0:
 		return o == -2
 	var to: float = d + (seconds + tuning.show_margin_seconds) * v
@@ -900,19 +932,17 @@ func runner_can_dodge(r: int, l: int, seconds: float) -> bool:
 
 ## True if the floor enemies in play leave a runner in lane `mine` the lane `escape` to dodge into between `d` and
 ## `to` while the truck holds lane `truck` (runner_can_dodge): none in `escape` around what blocks `mine` (unless the
-## truck's lane is blocked there too, for something to jump or slide), and none in `mine` with `escape` blocked
-## around it.
+## truck's lane is blocked there too, for something to jump or slide; stretch by stretch, what lies between `d` and
+## `to`, a floor cut's lane from its charge, as EnforcerTruckRoom.can_dodge's `clip`; task C6e), and none in `mine` with
+## `escape` blocked around it.
 func _enemies_let_dodge(mine: int, escape: int, truck: int, d: float, to: float, v: float) -> bool:
 	var step: float = EnforcerTruckRoom.DODGE_ROOM_SECONDS * v
-	var spans: PackedVector2Array = _room.hard[mine]
-	var i: int = EnforcerTruckRoom.first(spans, d)
-	while i < spans.size() and spans[i].x <= to:
-		var span: Vector2 = spans[i]
-		if _floor_enemy_in(escape, span.x - step, span.y + step) \
-				and (EnforcerTruckRoom.hit(_room.must_leave[mine], span.x, span.y)
-				or not EnforcerTruckRoom.hit(_room.hard[truck], span.x, span.y)):
+	for c: Vector2 in EnforcerTruckRoom.within(_room.leave_late[mine], d, to):
+		if _floor_enemy_in(escape, c.x - step, c.y + step):
 			return false
-		i += 1
+	for c: Vector2 in EnforcerTruckRoom.within(_room.jump[mine], d, to):
+		if _floor_enemy_in(escape, c.x - step, c.y + step) and not EnforcerTruckRoom.hit(_room.hard[truck], c.x, c.y):
+			return false
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e) or not e.alive or e == self or not LevelGenerator.enemy_uses_floor({"type": String(e.type_id)}):
 			continue
@@ -927,8 +957,9 @@ func _enemies_let_dodge(mine: int, escape: int, truck: int, d: float, to: float,
 
 ## True if no enemy is in lane `l` or beyond it (toward that side's wall) near the runner, from just behind
 ## them to show_shadow_reach ahead, where from the camera the truck would hide it; with `planned`, none of the
-## layout's coming there either over the next `seconds` of running (EnforcerTruckRoom.shadow_clear).
-func _shadow_clear(l: int, seconds: float, planned: bool) -> bool:
+## layout's coming there either over the next `seconds` of running (EnforcerTruckRoom.shadow_clear), nor a lane a
+## hover truck holds there (`held`, _held_lanes; task C6e).
+func _shadow_clear(l: int, seconds: float, planned: bool, held: Array[bool] = []) -> bool:
 	var r: int = world.player.lane
 	var side: float = signf(float(l - r))
 	if side == 0.0:
@@ -941,7 +972,7 @@ func _shadow_clear(l: int, seconds: float, planned: bool) -> bool:
 		var at: float = e.track_distance()
 		if at >= d - 3.0 and at <= d + tuning.show_shadow_reach and (e.global_position.x - edge) * side > 0.0:
 			return false
-	return not planned or _room.shadow_clear(l, r, tuning, d, seconds, _plan_speed())
+	return not planned or _room.shadow_clear(l, r, tuning, d, seconds, _plan_speed(), held)
 
 
 ## True if a floor enemy in play stands in lane `l` between track distances `from` and `to` (EnforcerTruckRoom.ENEMY_ROOM
@@ -960,11 +991,16 @@ func _floor_enemy_in(l: int, from: float, to: float) -> bool:
 
 ## True while another enemy's big attack is on (GDD §9) or its shots are still on their way to the runner, or,
 ## with `waiting`, one is waiting for its turn (but while it claims its turn for its planned showing, when they wait
-## for it: claiming): a showing never meets another attack's warning.
-func _attack_on(waiting: bool) -> bool:
+## for it: claiming): a showing never meets another attack's warning. With `skip_claims` (a showing its bait's claim
+## may come during, task C6e) a Buzz Overdrive that only claims its turn, not yet revving, doesn't count: its rev is
+## the warning the showing is over before.
+func _attack_on(waiting: bool, skip_claims: bool = false) -> bool:
 	var ahead: bool = waiting and not claiming()
 	for e: Enemy in world.director.active:
 		if not is_instance_valid(e) or e == self or not e.alive:
+			continue
+		if skip_claims and e.type_id == &"buzz_overdrive" and bool(e.call(&"claiming")) \
+				and not world.director.shots_on_their_way(e.type_id):
 			continue
 		if e.is_major_attack_active() or world.director.shots_on_their_way(e.type_id) \
 				or (ahead and world.director.is_waiting(e)):
@@ -972,13 +1008,51 @@ func _attack_on(waiting: bool) -> bool:
 	return false
 
 
-## True while an enemy that keeps it from showing itself (EnforcerTruckRoom.NO_SHOW_TYPES) is in play, or one of
-## the layout's comes into play within `seconds` of running.
-func _quiet_near(seconds: float) -> bool:
+## Seconds of running until an attack that can't wait for a turn begins (task C6e; EnforcerTruckRoom.fixed): 0 while
+## a hover truck in play bangs on its wall, bursts through it or emerges into its lane, else the layout's next (a
+## hover truck's entrance, a Gilded Sentinel's turn from its claim; INF: none).
+func _seconds_to_fixed() -> float:
 	for e: Enemy in world.director.active:
-		if is_instance_valid(e) and e.alive and e.type_id in EnforcerTruckRoom.NO_SHOW_TYPES:
-			return true
-	return _room.quiet_near(world.player_distance(), seconds, _plan_speed())
+		if is_instance_valid(e) and e.alive and e.type_id == &"hover_truck":
+			var s: int = int(e.get(&"state"))
+			if s == HoverScript.State.BANGING or s == HoverScript.State.EMERGE:
+				return 0.0
+	return _room.seconds_to_fixed(world.player_distance(), _plan_speed())
+
+
+## The lanes a hover truck holds while a showing taking `seconds` would be on (task C6e): the layout's
+## (EnforcerTruckRoom.held_lanes, over the stretch the showing reads) and every one in play's.
+func _held_lanes(seconds: float) -> Array[bool]:
+	var d: float = world.player_distance()
+	var held: Array[bool] = _room.held_lanes(d - EnforcerTruckRoom.OUT_OF_VIEW - tuning.body_size.z - 1.0,
+		d + (seconds + tuning.show_margin_seconds) * _plan_speed() + tuning.show_shadow_reach)
+	for e: Enemy in world.director.active:
+		if is_instance_valid(e) and e.alive and e.type_id == &"hover_truck":
+			var l: int = int(e.get(&"lane"))
+			if l >= 0 and l < held.size():
+				held[l] = true
+	return held
+
+
+## True if its planned window lets its bait's claim on its turn come during its showing (task C6e: the window's mode
+## "claim" or "calm", ShowPlanner) and a showing beginning now is the window's: it hasn't shown itself yet and the
+## runner is where it's due (from the stretch it keeps to show_window_slack_seconds past where it's due).
+func _claim_window_now() -> bool:
+	var show: Variant = (spawn.get("params", {}) as Dictionary).get("show")
+	if shows > 0 or not (show is Dictionary):
+		return false
+	var mode: String = String((show as Dictionary).get("mode", ""))
+	if mode != "claim" and mode != "calm":
+		return false
+	var d: float = world.player_distance()
+	return d >= show_window().x and d <= show_at() + tuning.show_window_slack_seconds * _plan_speed() + 1.0
+
+
+## True if it arrives in the level's calm start to show itself there (task C6e: its window's mode "calm"): it arrives
+## at its follow gap.
+func calm_start() -> bool:
+	var show: Variant = (spawn.get("params", {}) as Dictionary).get("show")
+	return show is Dictionary and String((show as Dictionary).get("mode", "")) == "calm"
 
 
 ## True if one of its baits takes its turn within `seconds` of running (_seconds_to_bait).
@@ -1016,6 +1090,49 @@ func _seconds_to_bait() -> float:
 			var cut: Dictionary = e.get(&"cut")
 			if (s == BuzzScript.State.PARKED or s == BuzzScript.State.ROLL) and not cut.is_empty():
 				best = minf(best, maxf(float(e.call(&"claim_at")) - pd, 0.0) / v)
+	return best
+
+
+## Seconds of running until a Buzz Overdrive's rev, its warning (task C6e; a showing its claim may come during is out of
+## view before it, EnforcerTruckRoom.hold_claimed): 0 while one revs or charges, or one parked or rolling's, or the
+## layout's next (EnforcerTruckRoom.revs; INF: none).
+func _seconds_to_rev() -> float:
+	var pd: float = world.player_distance()
+	var v: float = _plan_speed()
+	var best: float = EnforcerTruckRoom.seconds_to(_room.revs, pd, v)
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or not e.alive or e.type_id != &"buzz_overdrive":
+			continue
+		var s: int = int(e.get(&"state"))
+		if s == BuzzScript.State.REV or s == BuzzScript.State.CHARGE:
+			return 0.0
+		var cut: Dictionary = e.get(&"cut")
+		if (s == BuzzScript.State.PARKED or s == BuzzScript.State.ROLL) and not cut.is_empty():
+			best = minf(best, maxf(FloorCutPlan.warn_at(cut) - pd, 0.0) / v)
+	return best
+
+
+## Seconds of running until an Octodog's turn (task C6e; _seconds_to_bait's Octodogs): 0 while one winds up or
+## charges, or one with charges left's stop, or the layout's next planned wind-up (EnforcerTruckRoom.dog_turns; INF:
+## none).
+func _seconds_to_dog() -> float:
+	var pd: float = world.player_distance()
+	var v: float = _plan_speed()
+	var best: float = EnforcerTruckRoom.seconds_to(_room.dog_turns, pd, v)
+	var scaling: float = world.config.enemy_scaling if world.config != null else 0.0
+	for e: Enemy in world.director.active:
+		if not is_instance_valid(e) or not e.alive or not (e is Octodog):
+			continue
+		var dog := e as Octodog
+		if dog.in_doghouse:
+			continue
+		match dog.phase:
+			Octodog.Phase.WINDUP, Octodog.Phase.LUNGE, Octodog.Phase.TURN, Octodog.Phase.SPRINT, Octodog.Phase.PACE:
+				return 0.0
+			Octodog.Phase.IDLE:
+				if dog.charges_done < dog.charges:
+					var stop: float = _dog_tuning.stop_distance(maxf(world.player.speed, 1.0), scaling, world.tuning.pace())
+					best = minf(best, maxf(dog.track_distance() - pd - stop, 0.0) / v)
 	return best
 
 
@@ -1113,7 +1230,8 @@ func _update_volley(delta: float) -> void:
 
 
 ## Ready for a volley: chasing at its follow gap (never while it shows itself), its interval over, the runner on
-## the floor, no bait about to attack before the volley would be over (so it never fires into one's attack, big
+## the floor (and past the level's calm start for a truck that arrives in it to show itself there: it stays calm,
+## task C6e), no bait about to attack before the volley would be over (so it never fires into one's attack, big
 ## attacks taking turns or not), and a lane beside the runner's clear to escape into (asked last).
 func _ready_to_fire() -> bool:
 	if state != State.CHASING or close or show_phase != Show.NONE or absf(gap - tuning.follow_gap) > 1.0 \
@@ -1121,6 +1239,8 @@ func _ready_to_fire() -> bool:
 		return false
 	var p: Player = world.player
 	if not p.alive or not p.running or p.surface != Player.Surface.FLOOR:
+		return false
+	if calm_start() and world.config != null and world.player_distance() < world.config.start_clear_distance:
 		return false
 	if _waits_for_first_show() or _holds_for_showing():
 		return false

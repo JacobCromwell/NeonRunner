@@ -166,6 +166,19 @@ extends EnemyTuning
 ## waits for it, and one already on is over by the time it's due.
 ## DESIGN-TBD: 2 s (docs/OPEN_QUESTIONS.md item 386).
 @export_range(0.0, 5.0, 0.25, "suffix:s") var show_claim_seconds: float = 2.0
+## The owner (October 9, 2026; GDD §9.13 "Making room where there is none", answering docs/OPEN_QUESTIONS.md item
+## 400): where a level's first bait comes right after its calm start (its run-up), the truck arrives a few seconds
+## early and shows itself in the last part of the calm start, the bait staying where it is. It arrives no sooner than
+## this many seconds into the run (the player under way), right behind the runner (at its follow gap: from arrive_gap
+## it couldn't come alongside before the bait), and shows itself as it arrives; the calm start stays calm (no volley,
+## nothing taken out). DESIGN-TBD: 0.5 s (docs/questions/c6e.md).
+@export_range(0.0, 3.0, 0.1, "suffix:s") var calm_start_min_seconds: float = 0.5
+## A level's run-up is short (2.4 s at the Golden Zone's speed) and a showing needs about 5 s, so a showing in the calm
+## start runs on into the level's first patterns. Off (the calm start stays calm, nothing taken out): its window fits
+## only where those patterns leave room. On: past the run-up it may take out what's in its way as any other window may
+## (plain holes, fences, cyborgs and Screeches, docs/OPEN_QUESTIONS.md item 383). DESIGN-TBD: off
+## (docs/questions/c6e.md).
+@export var calm_start_takes_out: bool = false
 
 @export_group("Wreck")
 ## The owner (October 8, 2026): however it's destroyed (a charge, a cut, a gap too wide to hop) it blows up where
