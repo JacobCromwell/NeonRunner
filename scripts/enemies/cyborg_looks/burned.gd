@@ -1,7 +1,7 @@
 extends RefCounted
 ## The Dead Zone's cyborg (GDD §9.2, "Zone variants": "the base, burned out"; brief
 ## docs/art/BRIEF_CYBORG_GANGSTER.md): the Neon City's ragged gangster and its TV head
-## (CyborgSuit.base_look()), caught in the fires that blackened the city (GDD §5, Zone 5). Every
+## (CyborgSuit.base_look()), caught in the fires that blackened the city (GDD §5, Zone 6). Every
 ## piece is the base's, darkened by soot and faded; ash has settled on the TV's top, its shoulders,
 ## the backpack and the boots; scorch marks blacken the casing, the vest and the pants; it is torn
 ## further (the hoodie's hem shredded into long strips, the left sleeve ripped open, a burn hole in

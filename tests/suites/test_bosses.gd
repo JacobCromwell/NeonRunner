@@ -96,6 +96,13 @@ func _test_data() -> void:
 	check(d.stars_for(false, 10.0) == 0 and d.stars_for(true, 45.0) == 3 and d.stars_for(true, 60.0) == 2
 		and d.stars_for(true, 200.0) == 1, "one star for a win, two and three for beating the par times")
 	check(d.time_bonus(60.0) == 3000 and d.time_bonus(130.0) == 0, "the time bonus pays for every second under its mark")
+	# A fight's random choices are seeded by its id, or by the id it had before a move (BossDef.seed_id: The
+	# House keeps marketplace_boss's, test_the_house), so a renamed boss plays as it did.
+	var keyed := BossDef.new()
+	keyed.id = &"zone_boss"
+	var plain_key: String = keyed.rng_key()
+	keyed.seed_id = &"old_boss"
+	check(plain_key == "zone_boss" and keyed.rng_key() == "old_boss", "a fight is seeded by its id, or by its seed_id")
 
 	# The test boss: built, outside the campaign, exercising a checkpoint and a faster phase.
 	check(test_def != null and test_def.is_built(), "the test boss is built")
