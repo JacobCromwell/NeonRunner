@@ -199,3 +199,91 @@ Barrage). Every number below is in `data/bosses/golden_boss_tuning.tres` (`Golde
     and the dash the dash has to start within about 0.1 s of the fire landing (so the armor's second follows
     it) or within the last 0.1 s of the armor's second. A runner who dashes at any other moment burns. Is that
     the "a bit toasty" you meant, or should the fire be a little shorter (1.3-1.4 s gives a 0.2-0.3 s window)?
+
+## E5d-d
+
+Built in task E5d-d (stage 2, The Magnate, and the defeat, "the feed dies"). Every number is in
+`data/bosses/golden_boss_tuning.tres` (`GoldenConvergenceTuning`'s "The Magnate" groups, F6 in the fight) unless
+it says otherwise, marked `DESIGN-TBD` in code. Review it with `./play.sh --boss=golden_boss --phase=4` and the
+showcase (`res://tools/showcase/golden_convergence_magnate_showcase.tscn`, its header lists the scenarios).
+
+1. **His look** (GDD §10, Look, owner approved): built as written on all fours, a hunched predator about 3.5 m
+   from snout to rump and 1.95 m at the shoulder, 2.7 times the runner's drawn height (`magnate_scale` 1):
+   blackish-grey skin cracked in a fine cell network, the plates between toned like burnt paper; dull gold
+   splashes on his shoulders and haunches; half the calm golden mask fused to his left side (the runner's
+   right as he faces them), its closed eye and dull red tear, his real right half a heavy brow, a wild pale
+   eye and a roaring jaw; five red ports along his spine (the weak points' red, the only thing on him that
+   glows a hazard colour); burgundy tatters from his shoulders trailing grey smoke; the six broadcast cables
+   (the suit's tentacle pipes, burnt black with dull gold bands) trailing from his back to the ground behind
+   him. Is this him?
+2. **The warm white in his cracks** (optional in the GDD): on, at `crack_glow` 0.55, leaking only from some
+   cracks in patches; it flares as he claws out of the suit and dies with him. Its colour is the feed's warm
+   white (1.0/0.93/0.82), clearly whiter than the runner's copper glow (0.96/0.64/0.46). Keep it, or dark
+   cracks (0)?
+3. **The chase** (proposed: "his shadow and a marker at the screen's bottom edge show his lane"): he keeps
+   10.5 m behind the runner (`chase_gap`, behind the camera) and takes up their lane 0.6 s after they change it
+   (`chase_lane_delay`). His shadow is a soft dark blob in his lane from 2.5 m ahead of the runner to 4.5 m
+   behind them (`GoldenConvergenceChase.SHADOW_*`; the run camera's view ends just behind the runner's feet, so
+   the shadow has to reach past them to show). The marker is a chevron with two claw marks at the bottom edge
+   under his lane, in the feed's warm white while he follows and the enemy attacks' red at a Pounce's warning.
+   His breathing and growls play from where he is. Is the shadow readable without looking like a hole (the
+   Grand Court has none)?
+4. **The overtake** (GDD: "he overtakes along a wall or ceiling, lands ahead, then drops back"): with no walls
+   or ceilings over the causeway, he runs past the runner along the nearer balustrade to 15 m ahead
+   (`overtake_ahead`), leaps across the causeway 6.5 m over every lane (`overtake_height`) onto the other
+   balustrade ahead, and drops back along it (4.4 s, `overtake_seconds`, divided by the pace). He lands on the
+   balustrade, never on the track, so an overtake can't be mistaken for a Pounce; it growls rather than roars
+   (the roar is the Pounce's warning). It opens phase 4 and each of its loops. Should he land on the track
+   ahead instead (harmless)?
+5. **The Pounce** (proposed): the roar and the red marker 0.75 s before he leaps (`pounce_windup`, divided by
+   the pace); the leap 1.7 s (`pounce_flight`), 5.5 m over the runner (`pounce_apex`); he locks onto the
+   runner's lane 1.05 s before he lands (`lock_seconds`, never divided by the pace) and the red square (with an
+   X) shows there, 3.6 m deep (`crash_depth`); he lands 0.15 s (`land_lead`) before the runner would reach it.
+   The crash is an enemy attack over 84% of the lane's width, up to 3.2 m (above a jump: a jump doesn't clear
+   him), live until the runner is past the square (0.3-1.2 s); then he bounds off onto the balustrade away
+   from the runner (no arches over the causeway to bound onto) and drops back. Armor and the shield block the
+   crash; the dash passes through it.
+6. **The bait** (proposed: "a Flying Buttress comes up ahead for every second Pounce"): each phase's script has
+   a plain Pounce, then a Pounce with the bait (`pounce:bait`). Its buttress rises in an inner lane (by the
+   fight's seed) 6.5 s before the runner reaches it (`bait_sight`). A runner in its lane as he locks on makes
+   him aim at the gate: he crashes into it 1.6 s before they reach his back (`stun_lead`, never divided by the
+   pace) and slumps across its lane and the next one away from its lean (toward the middle; on 3 lanes the
+   gate is the middle lane and he slumps toward the side away from the lean), his back to the runner. His
+   weak points are a stomp box over his back in each of his lanes, reaching 3.5 m toward the runner (at
+   18 m/s, longer at the Golden Zone's pace: `stun_reach`) and 0.4 m over his back (`stun_stomp_top`); his
+   sides block a switch into him (a bump, never a hit). A runner who comes down on the floor 0.25 s (at the
+   run speed, `stun_release`) short of his back, or runs past him, makes him shake free and leap away before
+   reaching him; the bait comes round again with the phase's loop (no escalation). Is 0.25 s fair, or should a
+   miss also cost something?
+7. **The Cable Lash** (proposed): he runs up along a balustrade (sides in turn) for 2.3 s (`lash_run_up`,
+   divided by the pace), then rears back on it for the warning, 1.25 s (`lash_warning`, never divided by the
+   pace): his cables rise crackling red, a red line lies across every lane where it will sweep, and thin red
+   aim lines cross the track at its heights. The whip crosses every lane in 0.25 s and lies across them 0.3 s
+   before the runner gets there. A low lash is one cable at 0.35 m (jump it); **a high lash is two cables, at
+   0.85 m and 1.9 m** (slide under both), the shape of a gapped fence and of the Floating Head's twin beams, so
+   that a jump can't clear it too. Should the high lash be a single cable (then a jump would clear it as well
+   as a slide)?
+8. **The phases' scripts** (`phase_beats`): phase 4 an overtake, a Pounce, a Pounce with the bait; phase 5 a
+   Pounce, a low Lash, a Pounce with the bait, a high Lash; phase 6 a Pounce, a high and a low Lash, a Pounce
+   with the bait, a low and a high Lash; each looped until the stomp. A clean stage 2 from the checkpoint takes
+   about 76 s of fight (about 25 s a phase). The GDD asks "do you want a third attack for stage 2's last
+   phase?" (question 12 above): phase 6 is the Lash's mixes at the fastest pace for now.
+9. **The transition** (proposed): phase 4's intro is 5 s (`data/bosses/golden_boss.tres`): the suit's chest
+   bursts open over 0.5 s and its plates fly off from 0.35 s; he claws out of the man's room from 0.55 s and
+   roars at 1.75 s (the screens switch to his roaring face, with a glitch); the empty suit topples off the
+   causeway's side (by the fight's seed) from 2.3 s over 2.2 s and splashes into the pools far below; he leaps
+   off the suit at 2.75 s, high over the runner, landing behind them 1.5 s later. It plays the same on a retry
+   from the checkpoint. Phases 5 and 6's intros (2.5 s) are his hurl clear after a stomp, howling.
+10. **The defeat** (proposed): he lurches 1.5 s (at the run speed) ahead of the runner into the lane furthest
+    from them over 1.2 s, convulsing; his six cables tear out every 0.3 s from 0.6 s; from 0.9 s the screens
+    glitch and go dark outward from him at 90 m/s (`blackout_speed`; beyond 700 m every screen in the world)
+    and the music cuts out over 0.25 s; he collapses once his last cable is out, the light in his cracks dying
+    over 1.4 s; once the runner is past him, the victory riff 0.35 s later. Question 13 above (the riff or
+    silence) is the switch `victory_riff_on` (on).
+11. **His sounds** (`tools/asset_gen/sfx_bank_magnate.gd`): his roar is both a Pounce's warning and the
+    transition's screech; a howl when he hurls himself clear; a convulsive death roar; a heavy collapse in the
+    silence. Is his voice the creature you pictured?
+12. **Weapons in stage 2:** he can't be targeted until he's out of the suit; then weapons chip him like any
+    boss part, within the fight's weapon cap (`weapon_share_cap`, one sixth over the whole fight). As in
+    stage 1, `weapons_can_end_phase` is on, so a runner with enough weapon damage left could end one of his
+    phases without a stomp. Should stage 2 only end on stomps?

@@ -2,8 +2,8 @@
 // towers show the feed: the cult's emblem and the calm golden face in stage 1, The Magnate's roaring face in
 // stage 2"). One material for every tower's screen (GoldenCourtSkin.court_feed_material), its handles the
 // fight's to drive (GoldenCourtSkin.set_feed and set_feed_blackout):
-//   feed_mode    0: stage 1, the calm golden face and the emblem in turn; 1: stage 2 (E5d-d), The Magnate
-//                (DESIGN-TBD: a placeholder here, the face darkened, its mouth open);
+//   feed_mode    0: stage 1, the calm golden face and the emblem in turn; 1: stage 2 (E5d-d), The Magnate's
+//                roaring face (magnate_face: half the mask fused on, his real half burnt and roaring);
 //   feed_power   1 on, 0 a dead dark screen (the defeat: "the feed cuts out on every screen");
 //   feed_glitch  0-1: tearing bands and a roll (only dimming with Reduced flashing);
 //   blackout_center, blackout_radius: every screen within the radius of the centre (world space) is dark,
@@ -92,6 +92,74 @@ vec4 calm_face(vec2 p, float aa, float roar) {
 	return vec4(col, head);
 }
 
+// A cell network at p (the cracks of his burnt half): the distance to the nearest crack and the cell's value.
+vec2 burn_cells(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	float d1 = 8.0;
+	float d2 = 8.0;
+	float id = 0.0;
+	for (int y = -1; y <= 1; y++) {
+		for (int x = -1; x <= 1; x++) {
+			vec2 g = vec2(float(x), float(y));
+			vec2 o = vec2(hash12(i + g), hash12(i + g + 17.3)) * 0.8 + 0.1;
+			vec2 r = g + o - f;
+			float d = dot(r, r);
+			if (d < d1) {
+				d2 = d1;
+				d1 = d;
+				id = hash12(i + g + 3.7);
+			} else if (d < d2) {
+				d2 = d;
+			}
+		}
+	}
+	return vec2(sqrt(d2) - sqrt(d1), id);
+}
+
+// The Magnate's roaring face (stage 2, task E5d-d; GDD §10, the look the owner approved: "half of the calm golden
+// mask fused to one side of his face, dull red tear and all, the other half his real face, roaring"): on the
+// screen's right the calm face's half (its closed eye and its dull red tear: the mask, its lips shut), its edge
+// jagged where it fused down the middle; on the left his real face, burnt blackish grey and cracked like burnt
+// paper, a few cracks leaking the cult's warm white, a wild pale eye under a brow knotted down to the middle, and
+// his mouth torn open in a roar on his side alone (dark inside, never red; pale teeth), breathing with the roar
+// (still with Reduced flashing). rgb, coverage in a.
+vec4 magnate_face(vec2 p, float aa, float t, float still) {
+	vec2 r = vec2(0.27, 0.37);
+	float e = length(p / r);
+	float head = 1.0 - smoothstep(1.0 - aa * 4.0, 1.0 + aa * 4.0, e);
+	// The mask's edge down the middle, jagged where it fused.
+	float edge = p.x - 0.012 * sin(p.y * 70.0) - 0.008 * sin(p.y * 151.0 + 1.0) - 0.006;
+	float mask = smoothstep(-aa, aa, edge);
+	vec4 calm = calm_face(p, aa, 0.0);
+	// His real half: burnt skin, lit a little from above.
+	float lit = clamp(0.95 - 0.7 * e * e + 0.3 * p.y, 0.0, 1.0);
+	vec3 col = mix(vec3(0.05, 0.046, 0.042), vec3(0.25, 0.23, 0.21), lit);
+	vec2 c = burn_cells(p * 24.0);
+	float caa = fwidth(c.x) + 1e-4;
+	float crack = 1.0 - smoothstep(0.05, 0.05 + caa * 1.5, c.x);
+	float core = (1.0 - smoothstep(0.016, 0.016 + caa, c.x)) * smoothstep(0.5, 0.8, value_noise(p * 9.0 + 2.0));
+	col *= mix(0.7, 1.15, c.y);
+	col = mix(col, vec3(0.02, 0.018, 0.016), crack);
+	col += emblem_color * core * 0.85;
+	// The wild eye, pale with a dark pupil, under a heavy brow slanting down to the middle.
+	vec2 ep = p - vec2(-0.105, 0.07);
+	float eye = 1.0 - smoothstep(1.0 - aa * 14.0, 1.0 + aa * 14.0, length(ep / vec2(0.052, 0.032)));
+	col = mix(col, vec3(0.88, 0.84, 0.72), eye);
+	float pupil = 1.0 - smoothstep(0.013, 0.013 + aa, length(ep - vec2(0.01, 0.0)));
+	col = mix(col, vec3(0.03, 0.025, 0.02), pupil * eye);
+	float brow = stroke(ep.y - 0.048 - (ep.x + 0.02) * 0.5, 0.013, aa) * step(abs(ep.x + 0.005), 0.075);
+	col = mix(col, vec3(0.015, 0.013, 0.012), brow);
+	// The roar: his mouth torn open on his side, the mask's lips shut on the other.
+	float open = 0.075 + 0.012 * sin(t * 3.1) * (1.0 - still);
+	vec2 mp = p - vec2(-0.06, -0.175);
+	float mouth = (1.0 - smoothstep(1.0 - aa * 9.0, 1.0 + aa * 9.0, length(mp / vec2(0.105, open)))) * (1.0 - mask);
+	float rim = smoothstep(0.55, 0.8, length(mp / vec2(0.105, open)));
+	float teeth = step(0.45, fract(mp.x * 38.0)) * rim;
+	col = mix(col, mix(vec3(0.05, 0.03, 0.03), vec3(0.85, 0.82, 0.72), teeth), mouth);
+	return vec4(mix(col, calm.rgb, mask), head);
+}
+
 void fragment() {
 	float aspect = max(UV2.y, 0.1);
 	vec2 p = vec2((UV.x - 0.5) * aspect, UV.y - 0.5);
@@ -109,9 +177,9 @@ void fragment() {
 	float roar = clamp(feed_mode, 0.0, 1.0);
 	vec3 col = feed_dark;
 	float glow = 0.0;
-	vec4 face = calm_face(p, aa, roar);
+	vec4 face = roar > 0.5 ? magnate_face(p, aa, t, still) : calm_face(p, aa, 0.0);
 	float fw_face = face.a * mix(face_w, 1.0, roar);
-	col = mix(col, face.rgb * (roar > 0.5 ? 0.6 : 1.0), fw_face);
+	col = mix(col, face.rgb, fw_face);
 	glow = max(glow, fw_face * 0.85);
 	// The emblem: the cult's mark in its warm white (stage 1 only), with a soft glow behind it.
 	float half_size = 0.34;

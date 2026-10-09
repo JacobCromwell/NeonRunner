@@ -23,8 +23,8 @@ extends BossEncounter
 ##    from the depths beside the causeway, its cape unfurling into its cloud, and the cult's three-note
 ##    chime (the Resonator's notes, gc_chime) rings out huge and slow; the calm golden face looks down the
 ##    causeway at the runner. A later stage 1 phase's: it reels back from the blast and recovers (reel). Stage
-##    2 (phases 4-6, The Magnate) is E5d-d's: until then the suit idles there and nothing attacks (a stub, so
-##    --phase=4 plays: the checkpoint is stored as for any checkpoint phase).
+##    2's (phases 4-6, The Magnate, E5d-d: the block at the end): phase 4's the transition (on a retry from the
+##    checkpoint too), phases 5 and 6's his hurl clear after a stomp.
 ## 2. Its pattern: a beat script (GoldenConvergenceTuning.phase_beats), one beat at a time, beat_gap apart
 ##    (divided by the phase's pace): phase 1 the strafe on its own (3 passes), slams, a barrage, the Refill
 ##    Ship with a strafe, then from the slams again (loop_from); phases 2 and 3 slams, a barrage, slams, a
@@ -137,6 +137,7 @@ func _build_boss() -> void:
 	# E5d-c: register_attack(GoldenConvergenceRefill.new(self)); E5d-d: stage 2's.
 	for attack: GoldenConvergenceAttack in attacks.values():
 		attack.prewarm()
+	_build_stage_two()
 	var skin := world.skin as GoldenCourtSkin
 	if skin != null:
 		skin.reset_feed()
@@ -325,10 +326,8 @@ func _on_phase_started(index: int) -> void:
 		sound(&"gc_rise", sound_point(suit.head_point()))
 		log_event(&"entrance")
 	elif index >= STAGE_2:
-		# DESIGN-TBD (E5d-d): stage 2, The Magnate's chase, isn't built yet; the suit idles where it floats.
-		_set_step(Step.IDLE)
-		suit.unfurl = 1.0
-		log_event(&"stage_2_stub")
+		# Stage 2, The Magnate (E5d-d): the transition, or the hurl after a stomp (_start_stage_two).
+		_start_stage_two(index)
 	elif resumed_here:
 		_set_step(Step.FLOAT)
 		suit.unfurl = 1.0
@@ -341,6 +340,9 @@ func _on_phase_started(index: int) -> void:
 
 
 func _intro_tick(delta: float) -> void:
+	if phase_index >= STAGE_2:
+		_stage_two_tick(delta, true)
+		return
 	step_time += delta
 	_t += delta
 	court.tick()
@@ -368,6 +370,9 @@ func _on_pattern_started(_index: int) -> void:
 
 
 func _pattern_tick(delta: float) -> void:
+	if phase_index >= STAGE_2:
+		_stage_two_tick(delta, false)
+		return
 	step_time += delta
 	_t += delta
 	court.tick()
@@ -446,10 +451,13 @@ func _clear_attacks() -> void:
 	beat_attack = null
 
 
-## The fight is won (E5d-d plays the defeat: the feed dies): its attacks stop, the walls stay away.
+## The fight is won: its attacks stop, the walls stay away, and the defeat plays (the feed dies:
+## GoldenConvergenceDefeat).
 func _on_defeated() -> void:
 	_clear_attacks()
 	log_event(&"defeat")
+	if defeat != null:
+		defeat.start()
 
 
 func _defeated_tick(delta: float) -> void:
@@ -457,6 +465,10 @@ func _defeated_tick(delta: float) -> void:
 	court.tick()
 	_tick_buttresses(delta)
 	_place_suit()
+	if defeat != null:
+		transition.tick(delta)
+		defeat.tick(delta)
+		chase.tick(delta)
 
 
 func _set_step(next: Step) -> void:
@@ -483,3 +495,83 @@ func suit_transform() -> Transform3D:
 func _place_suit() -> void:
 	if suit != null and is_instance_valid(suit):
 		suit.set_pose(suit_transform())
+
+
+# --- Stage 2: The Magnate (task E5d-d) -------------------------------------------------------------------
+# GDD §10, Second stage: the suit destroyed, the man inside hunts the runner from behind (the chase), pounces,
+# is baited into a Flying Buttress and stomped on his spine three times, and the feed dies with him. Its parts:
+# GoldenConvergenceMagnate (his body, the fight's body in stage 2), GoldenConvergenceChase (his moves between
+# attacks), GoldenConvergenceTransition (phase 4's intro, the transition, and phases 5-6's hurl), the beats'
+# attacks GoldenConvergenceOvertake, GoldenConvergencePounce and GoldenConvergenceLash, and
+# GoldenConvergenceDefeat (the feed dies). Phases 4-6 run their beat scripts as stage 1's do (_tick_beats).
+
+const MAGNATE_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence/golden_convergence_magnate.gd")
+
+var magnate: GoldenConvergenceMagnate
+var chase: GoldenConvergenceChase
+var transition: GoldenConvergenceTransition
+var defeat: GoldenConvergenceDefeat
+var overtake: GoldenConvergenceOvertake
+var pounce: GoldenConvergencePounce
+var lash: GoldenConvergenceLash
+
+
+func _build_stage_two() -> void:
+	magnate = add_part(MAGNATE_SCRIPT, {"tuning": tuning}) as GoldenConvergenceMagnate
+	chase = GoldenConvergenceChase.new(self, magnate)
+	transition = GoldenConvergenceTransition.new(self, magnate, chase)
+	defeat = GoldenConvergenceDefeat.new(self, magnate, chase)
+	overtake = GoldenConvergenceOvertake.new(self)
+	pounce = GoldenConvergencePounce.new(self)
+	lash = GoldenConvergenceLash.new(self)
+	for attack: GoldenConvergenceAttack in [overtake, pounce, lash]:
+		register_attack(attack)
+		attack.prewarm()
+
+
+## A stage 2 phase begins: phase 4 with the transition (on a retry from the checkpoint too), 5 and 6 with his
+## hurl clear after the stomp.
+func _start_stage_two(index: int) -> void:
+	_set_step(Step.FLOAT)
+	if index == STAGE_2:
+		transition.start()
+	else:
+		transition.start_hurl()
+	log_event(&"stage_2", {"phase": index})
+
+
+## Every physics frame of a stage 2 phase (its intro and its pattern): the court, the buttresses, the intro's
+## moves, the beat script once the intro's done, the chase.
+func _stage_two_tick(delta: float, intro: bool) -> void:
+	step_time += delta
+	_t += delta
+	court.tick()
+	_tick_buttresses(delta)
+	transition.tick(delta)
+	if not intro:
+		for attack: GoldenConvergenceAttack in attacks.values():
+			attack.tick(delta)
+		if not transition.busy():
+			_tick_beats(delta)
+	chase.tick(delta)
+
+
+## A stomp on his spine (GoldenConvergencePounce's stun): the phase ends right after (BossEncounter).
+func _on_weak_point_hit(part: BossPart, _hazard: Hazard) -> void:
+	if part != magnate:
+		return
+	pounce.on_stomp()
+	sound(&"magnate_stomp", sound_point(magnate.back_point()))
+	world.effects.burst(magnate.back_point(), GoldenConvergenceMagnateModel.PORT_RED, 26, 0.9)
+	world.effects.shake(0.35, 0.35)
+
+
+## The defeat plays out on the track (GoldenConvergenceDefeat): the results wait until the runner is past him.
+func victory_over() -> bool:
+	return defeat == null or defeat.step == GoldenConvergenceDefeat.Step.NONE or defeat.over()
+
+
+## Stage 2's defeat plays its own riff once the runner is past him, or ends in silence (its tuning's
+## victory_riff_on): never LevelRun's at the moment of the defeat.
+func victory_riff() -> bool:
+	return phase_index < STAGE_2

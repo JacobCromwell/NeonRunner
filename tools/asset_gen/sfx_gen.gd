@@ -22,6 +22,10 @@ extends SceneTree
 ##                        coupling stomped and the carriages breaking away
 ##   sfx_bank_sewer_swarm.gd  the Sewer Swarm: the Rising, a surge's rising chitter (the warning) and its
 ##                        rush, a cluster shocked by a fence, falling into a hole, scattering
+##   sfx_bank_magnate.gd  The Magnate (the Golden Convergence's second stage): his roar (a Pounce's warning), growls
+##                        and breathing, the leap and crash, the slam into the gate, the stun and the stomp, the
+##                        cable's crackle (a Cable Lash's warning) and whip, the transition's burst and the suit's
+##                        fall, his defeat (the cables tearing, the screens dying, his death and collapse)
 ##   sfx_bank_enforcer.gd  the Enforcer Truck: its siren (its arrival), a volley's rising whine (the warning)
 ##                        and its laser shots, a rider climbing aboard, its crash into a hole
 ##   sfx_bank_golden_convergence.gd  the Golden Convergence: its rise and the cult's chime rung huge and slow,
@@ -54,6 +58,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_sentinel.gd"),
 	preload("res://tools/asset_gen/sfx_bank_hostile_takeover.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sewer_swarm.gd"),
+	preload("res://tools/asset_gen/sfx_bank_magnate.gd"),
 	preload("res://tools/asset_gen/sfx_bank_enforcer.gd"),
 	preload("res://tools/asset_gen/sfx_bank_golden_convergence.gd"),
 ]

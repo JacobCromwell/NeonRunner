@@ -37,7 +37,7 @@ health_share = 1.0
 hits = 1
 pace = 1.0
 checkpoint = true
-intro_seconds = 4.0
+intro_seconds = 5.0
 
 [sub_resource type="Resource" id="phase_5"]
 script = ExtResource("2_phase")

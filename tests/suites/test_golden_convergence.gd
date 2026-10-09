@@ -23,7 +23,8 @@ extends TestSuite
 ##   lane switch into its lane while a runner in its lane runs through the arch unharmed, and once smashed it
 ##   crumbles and blocks nothing;
 ## - Reduced flashing: the squadron's muzzle flashes and tracers steady;
-## - stage 2's stub: from the checkpoint (phase 4) the suit idles and nothing attacks;
+## - stage 2's start: from the checkpoint (phase 4) the transition plays, nothing attacking, and the chase
+##   begins (stage 2 itself: test_golden_convergence_magnate.gd);
 ## - the court's feed screens and their handles.
 ## The strafes played through (fairness at every lane count and speed, the bot, the wall rule, the pad, the
 ## hold, determinism): test_golden_convergence_fight.gd.
@@ -64,7 +65,7 @@ func run() -> void:
 	await _test_buttress()
 	await _test_reduced_flashing()
 	await _test_reel()
-	await _test_stage_two_stub()
+	await _test_stage_two_start()
 	await _test_feed()
 	await _test_hud()
 
@@ -644,14 +645,22 @@ func _test_reel() -> void:
 
 # --- Stage 2 (E5d-d) ---------------------------------------------------------------------------------
 
-func _test_stage_two_stub() -> void:
+## From the checkpoint (phase 4), stage 2 begins with the transition (E5d-d): the suit bursts, The Magnate comes
+## out, the suit is gone and the chase begins; nothing attacks during it (test_golden_convergence_magnate.gd
+## tests stage 2 itself).
+func _test_stage_two_start() -> void:
 	var pair: Array = _fight(5, 18.0, null, 3)
 	var world: RunWorld = pair[0]
 	var boss: GoldenConvergence = pair[1]
-	await _run(world, 12.0)
-	check(world.player.alive and boss.phase_index == 3 and boss.step == GoldenConvergence.Step.IDLE
-		and _events(boss, &"stage_2_stub").size() == 1, "from the checkpoint, stage 2's stub: the suit idles there (E5d-d)")
-	check(_events(boss, &"beat").is_empty() and not boss.strafe.busy() and not boss.fire.live(), "and nothing attacks")
+	world.player.god_mode = true
+	await _run(world, 4.0)
+	check(boss.phase_index == 3 and _events(boss, &"stage_2").size() == 1 and _events(boss, &"transition").size() == 1,
+		"from the checkpoint, stage 2 begins with the transition")
+	check(_events(boss, &"beat").is_empty() and not boss.strafe.busy() and not boss.fire.live()
+		and _events(boss, &"pounce_roar").is_empty(), "and nothing attacks during it")
+	await _run(world, 3.0)
+	check(not boss.suit.visible and boss.transition.suit_down and boss.magnate.shown()
+		and boss.chase.mode != GoldenConvergenceChase.Mode.OFF, "then the suit is gone and The Magnate hunts the runner")
 	await sim.free_world(world)
 
 
