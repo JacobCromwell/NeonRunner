@@ -1217,7 +1217,7 @@ Resonator holds its lane (1)); in two builds a level keeps one truck that shows 
 where it had two that didn't, and in one a pair planned the other way round gets back the second truck C6c's order
 dropped. A wider gap (task G7) comes before a window only where that window comes after its bait (6 of 27).
 DESIGN-TBD: item 386
-(`docs/OPEN_QUESTIONS.md`) and the chases no bait with room is left for (`docs/questions/c6d.md`); items 382–385
+(`docs/OPEN_QUESTIONS.md`) and the chases no bait with room is left for (items 400–403); items 382–385
 are the owner's answers.
 
 **Late starts.** `LevelConfig.feature_starts` (feature → share of the level) holds a feature back

@@ -154,7 +154,7 @@ extends EnemyTuning
 ## 2026, GDD §9.13 "Room to show itself", answering docs/OPEN_QUESTIONS.md items 383–385): its cost (about 2% fewer
 ## enemies and obstacles on its levels) is accepted; a truck shows itself before the player can bait it, arriving
 ## early enough for its window to come before its first bait, and a chase with no room for one gives its truck to
-## another bait's chase that has room (task C6d). DESIGN-TBD (docs/questions/c6d.md): a truck no bait with room is
+## another bait's chase that has room (task C6d). DESIGN-TBD (docs/OPEN_QUESTIONS.md items 400–403): a truck no bait with room is
 ## left for keeps its chase, its window after the bait or none.
 @export var show_window_planned: bool = true
 ## How much later than planned a showing in its window may begin and still find its room (the runner jumping or

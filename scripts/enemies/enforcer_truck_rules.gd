@@ -56,7 +56,7 @@ extends RefCounted
 ## windows (where those move its arrivals, what they take out and what they keep the later passes off), and by
 ## what the danger density pass adds for its higher enemy count. It has no patterns: these rules place every one. A
 ## level with no bait its chase can take gets none (GDD §9.13: it appears where Octodogs or Buzz Overdrives
-## appear). DESIGN-TBD (docs/questions/c6.md): the bait's place in its chase, the spacing; (docs/questions/c6d.md)
+## appear). DESIGN-TBD (docs/questions/c6.md): the bait's place in its chase, the spacing; (docs/OPEN_QUESTIONS.md items 400–403)
 ## a truck that no bait with room is left for (it keeps its chase, its window after the bait or none).
 
 const TYPE: String = "enforcer_truck"
