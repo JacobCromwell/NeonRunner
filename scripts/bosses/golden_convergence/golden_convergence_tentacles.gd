@@ -1,7 +1,7 @@
 class_name GoldenConvergenceTentacles
 extends BossPart
 ## The Screen Storm's screens (GDD §10, the owner's playtest: "TV screens on gold tentacles come crashing down from
-## the sky on either side of the runner"; proposed: "They're the feed's own screens, his glitching face on them,
+## the sky on either side of the runner"; approved: "They're the feed's own screens, his glitching face on them,
 ## hanging from long gold broadcast tentacles out of the dark vault. Each spot is marked by a red square and the
 ## screen's growing shadow ... A crash hurts only in its square (and above a jump), shatters the screen, and its
 ## tentacle yanks it back up: nothing stays on the track"; task E5d-e). A pool of rigs made with the fight

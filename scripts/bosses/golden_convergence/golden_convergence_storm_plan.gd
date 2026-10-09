@@ -1,6 +1,6 @@
 class_name GoldenConvergenceStormPlan
 extends RefCounted
-## The Screen Storm's fairness (GDD §10, the owner's playtest, proposed: "a storm drops 10-16 screens over about
+## The Screen Storm's fairness (GDD §10, the owner's playtest, approved: "a storm drops 10-16 screens over about
 ## 5 s, planned so a runner who moves a reaction time after each warning always has a way through"; task E5d-e):
 ## which lane each screen may crash in, chosen as its warning begins (from the runner's lane then: the screens come
 ## down on either side of the runner and in their lane), so that a runner who reads the warnings always has a way

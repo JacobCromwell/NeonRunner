@@ -1,6 +1,6 @@
 class_name GoldenConvergenceTakeoffMarks
 extends Node3D
-## Where to take off for the stomp while The Magnate lies stunned (GDD §10, the owner's playtest, proposed: "while
+## Where to take off for the stomp while The Magnate lies stunned (GDD §10, the owner's playtest, approved: "while
 ## he's stunned, green chevrons on the floor (the game's "jump here" marks, as before the Hostile Takeover's
 ## couplings) show where to take off"; task E5d-e): a strip of the zone's green ramp chevrons on the floor of each of
 ## his two lanes, over the middle of the stretch a jump can be taken from and still come down on his back

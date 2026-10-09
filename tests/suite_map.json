@@ -23,7 +23,7 @@
     "enforcer_truck_runs", "wide_gaps", "charge_paths"
   ],
   "medium": [
-    "golden_convergence_magnate",
+    "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm",
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
     "gilded_sentinel", "golden_convergence", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
     "golden_convergence_barrage",
@@ -118,7 +118,7 @@
     {"match": "tests/helpers/*", "tier": "full"},
     {"match": "tests/run_tests.gd", "tier": "full"},
     {"match": "tests/suite_map.json", "suites": []},
-    {"match": "tools/asset_gen/sfx_bank_magnate.gd", "suites": ["audio", "golden_convergence_magnate"]},
+    {"match": "tools/asset_gen/sfx_bank_magnate.gd", "suites": ["audio", "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm"]},
     {"match": "tools/asset_gen/sfx_bank_enforcer.gd", "suites": ["audio", "enforcer_truck"]},
     {"match": "tools/asset_gen/sfx_bank_golden_convergence.gd", "suites": ["audio", "golden_convergence"]},
     {"match": "tools/asset_gen/sfx*", "suites": ["audio"]},

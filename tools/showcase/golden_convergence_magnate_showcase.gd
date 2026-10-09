@@ -37,7 +37,8 @@ extends Node3D
 ##               then a Pounce with the bait: the stun and the green chevrons where to take off, the stomp
 ## Options: --lanes=N (5 by default), --speed=N (18 by default; the campaign's 25), --cam=run/side/high,
 ## --reduced-flashing, --events (prints each of the boss's events with its frame, for picking frames), --still,
-## --miss, --kind=low|high (lash) or double (slash), --phase=N (4-6: the phase it starts at).
+## --miss, --kind=low|high (lash) or double (slash), --phase=N (4-6: the phase it starts at), --dark (the close-ups
+## in stage 2's light: the fight's own scenarios fade to it through the transition).
 ## Frames worth a look (at --fixed-fps 10, 18 m/s, 5 lanes; --events prints the rest; E5d-e's scenarios start at
 ## phase 5, the hurl, and their first beat comes at about frame 32): transition: the burst at 0-6,
 ## the plates off from 4, his roar at 18, the suit toppling 23-45, the leap over the runner 28-42; chase: his
@@ -68,6 +69,7 @@ func _ready() -> void:
 	var kind: String = "low"
 	var miss: bool = false
 	var start_phase: int = -1
+	var dark: bool = false
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
@@ -91,6 +93,8 @@ func _ready() -> void:
 			miss = true
 		elif arg.begins_with("--phase="):
 			start_phase = clampi(int(v), 4, 6) - 1
+		elif arg == "--dark":
+			dark = true
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.preview() if slot.preview() != null else slot.duplicate() as BossDef
 	var t: GoldenConvergenceTuning = (def.tuning as GoldenConvergenceTuning).duplicate() as GoldenConvergenceTuning
@@ -163,6 +167,9 @@ func _ready() -> void:
 	if scenario in ["magnate", "face", "feed"]:
 		# The runner stands still: nothing moves but him.
 		world.player.running = false
+	if dark:
+		# Stage 2's light at once (the close-ups never run the fight's clock, so its fade never comes).
+		boss.set_light_level(boss.tuning.stage_two_light, 0.0)
 
 
 func _physics_process(delta: float) -> void:

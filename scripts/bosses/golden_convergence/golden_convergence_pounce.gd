@@ -25,7 +25,7 @@ extends GoldenConvergenceAttack
 ##   lane)" (BossEncounter's stomp: the phase ends, GoldenConvergence._on_weak_point_hit); "while stunned he's solid
 ##   but safe: switching into him bumps the runner" (set_blocker over his lanes from a lane switch's run before his
 ##   back; his body has no hitbox).
-## - E5d-e, the owner's playtest (proposed: "the stomp easier to read: while he's stunned, green chevrons on the floor
+## - E5d-e, the owner's playtest (approved: "the stomp easier to read: while he's stunned, green chevrons on the floor
 ##   show where to take off, and the stun leaves time to line up the jump (at least about 1.5 s from the stun to the
 ##   last takeoff)"): he crashes into the gate stun_lead_seconds() before the runner reaches his back (stun_lead, or
 ##   longer so that stun_takeoff is left from the stun to the last takeoff, last_takeoff_gap(), at any speed), and

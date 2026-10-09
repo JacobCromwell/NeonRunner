@@ -2,7 +2,7 @@ class_name GoldenConvergenceScreens
 extends GoldenConvergenceAttack
 ## The Magnate's Screen Storm (GDD §10, the owner's playtest: "TV screens on gold tentacles come crashing down from
 ## the sky on either side of the runner, smashing lots of spots in lots of lanes, so the player has to dodge and
-## weave. Some of the screens hit The Magnate, chipping his health"; proposed: "Each spot is marked by a red square
+## weave. Some of the screens hit The Magnate, chipping his health"; approved: "Each spot is marked by a red square
 ## and the screen's growing shadow, with a rising glitch-whine, about 0.9 s before it crashes; a storm drops 10-16
 ## screens over about 5 s, planned so a runner who moves a reaction time after each warning always has a way
 ## through. A crash hurts only in its square (and above a jump), shatters the screen, and its tentacle yanks it back

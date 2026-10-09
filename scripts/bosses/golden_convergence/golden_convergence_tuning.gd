@@ -50,7 +50,7 @@ extends Resource
 ## pattern skips (GoldenConvergence: beat_stub). Phase 1: the strafe on its own (3 passes, it teaches the strafe),
 ## then slams, a barrage and the Refill Ship with a 3-pass strafe; phases 2 and 3: slams, a barrage, slams, a
 ## barrage, then the Refill Ship with a 7-pass strafe (the 4th and 7th from behind). Stage 2 (GDD §10, the owner's
-## playtest, proposed: "phase 4 Pounce, Slash, Screens, Pounce with the bait, Slash, Screens; phase 5 adds Cable
+## playtest, approved: "phase 4 Pounce, Slash, Screens, Pounce with the bait, Slash, Screens; phase 5 adds Cable
 ## Lashes; phase 6 makes the Slashes double"): the block "Stage 2, The Magnate" below.
 @export var phase_beats: PackedStringArray = PackedStringArray([
 	"strafe:VVH,slams,barrage,refill:VVH",
@@ -375,7 +375,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 # GoldenConvergencePounce), lash (the Cable Lash, `lash:low` or `lash:high`, GoldenConvergenceLash), slash (the
 # Claw Slash, `slash:double` twice in a row, GoldenConvergenceSlash), screens (the Screen Storm,
 # GoldenConvergenceScreens), and overtake (he shows himself, GoldenConvergenceOvertake; in no script since the
-# owner's playtest: the storm stages him in view). DESIGN-TBD (GDD §10, the owner's playtest, proposed; docs/
+# owner's playtest: the storm stages him in view). DESIGN-TBD (GDD §10, the owner's playtest, approved; docs/
 # questions/e5d.md, E5d-e): phase 4 a Pounce, a Slash, a storm, the bait, a Slash, a storm, looped; phase 5 adds a
 # low and a high Lash; phase 6 the same at its pace with the Slashes double. A missed bait comes around again with
 # the loop (no escalation); four storms end a phase on their own.
@@ -476,7 +476,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## stays under what a jump can stomp, whatever the movement tuning (GoldenConvergencePounce.stomp_top).
 @export_range(0.5, 6.0, 0.1, "suffix:m") var stun_reach: float = 3.5
 @export_range(0.1, 0.6, 0.05, "suffix:m") var stun_stomp_top: float = 0.4
-## DESIGN-TBD (GDD §10, the owner's playtest, proposed: "the stun leaves time to line up the jump (at least about
+## DESIGN-TBD (GDD §10, the owner's playtest, approved: "the stun leaves time to line up the jump (at least about
 ## 1.5 s from the stun to the last takeoff)"): he crashes into the gate at least this long before the runner's
 ## last takeoff for a jump that comes down on his back (GoldenConvergencePounce.stun_lead_seconds: stun_lead, or
 ## longer where it would leave less), at every speed. Green chevrons on the floor of his two lanes mark where to
@@ -515,7 +515,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 
 @export_group("The Magnate: the darkness")
 ## DESIGN-TBD (GDD §10, the owner's playtest: "the arena gets about 30% darker once stage 2 starts, a sign that
-## The Magnate is losing control"; proposed: "It fades down through the transition; hazards and warnings keep
+## The Magnate is losing control"; approved: "It fades down through the transition; hazards and warnings keep
 ## their glow; the light comes back as he falls"): stage 2's light (BossEncounter.set_light_level, 1 the court's
 ## own), fading down over dim_seconds from the transition's start (on a retry from the checkpoint too); from his
 ## defeat's start it comes back over light_return_seconds.
@@ -525,7 +525,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 
 @export_group("The Magnate: the Claw Slash")
 ## DESIGN-TBD (GDD §10, the owner's playtest: "he runs up behind the runner and slashes at them with his claws, and
-## the player has only a split second to dodge"; proposed: "his marker flashes red with a sharp snarl (not the
+## the player has only a split second to dodge"; approved: "his marker flashes red with a sharp snarl (not the
 ## Pounce's roar) and red claw marks flash on the floor of the runner's lane; the swipe comes about half a second
 ## later (never sooner at a faster phase), over the runner's lane only and reaching above a jump"): he closes in
 ## from his place behind the runner over slash_close_seconds (over the phase's pace), still behind the camera; the
@@ -544,14 +544,14 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_range(0.05, 0.4, 0.01, "suffix:s") var slash_hit_seconds: float = 0.12
 @export_range(0.2, 3.0, 0.05, "suffix:m") var slash_behind: float = 1.2
 @export_range(0.2, 3.0, 0.05, "suffix:m") var slash_ahead: float = 0.8
-## `slash:double` (proposed: "in the last phase he slashes twice in a row, the second locking onto the lane the
+## `slash:double` (approved: "in the last phase he slashes twice in a row, the second locking onto the lane the
 ## runner dodged into"): the second warning begins this long after the first swipe lands (never over the pace).
 @export_range(0.0, 1.0, 0.01, "suffix:s") var slash_double_gap: float = 0.12
 
 @export_group("The Magnate: the Screen Storm")
 ## DESIGN-TBD (GDD §10, the owner's playtest: "TV screens on gold tentacles come crashing down from the sky on either
 ## side of the runner, smashing lots of spots in lots of lanes, so the player has to dodge and weave. Some of the
-## screens hit The Magnate, chipping his health"; proposed: "a storm drops 10-16 screens over about 5 s ... During a
+## screens hit The Magnate, chipping his health"; approved: "a storm drops 10-16 screens over about 5 s ... During a
 ## storm he runs close behind the runner where the camera shows him, and about a third of the screens crash on
 ## him"): he runs up onto a balustrade (sides in turn, the first by the fight's seed) over storm_run_up (over the
 ## phase's pace) to storm_ahead in front of the runner (framing: the run camera shows him there at every lane count)
@@ -582,7 +582,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_range(0.2, 0.6, 0.01, "suffix:s") var screen_reaction: float = 0.35
 @export_range(1.0, 2.5, 0.05) var screen_switch_margin: float = 1.5
 @export_range(0.0, 0.3, 0.01, "suffix:s") var screen_margin: float = 0.1
-## A screen on him takes this share of the phase's health (proposed: "about a twelfth of the phase's health (a
+## A screen on him takes this share of the phase's health (approved: "about a twelfth of the phase's health (a
 ## storm about a quarter), so storms alone can end a phase"), cause &"screen"; he staggers for stagger_seconds with
 ## a cry of pain (magnate_pain).
 @export_range(0.0, 0.5, 0.005) var screen_hit_share: float = 0.0833

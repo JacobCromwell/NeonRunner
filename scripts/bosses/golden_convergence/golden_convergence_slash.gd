@@ -1,7 +1,7 @@
 class_name GoldenConvergenceSlash
 extends GoldenConvergenceAttack
 ## The Magnate's Claw Slash (GDD §10, the owner's playtest: "he runs up behind the runner and slashes at them with
-## his claws, and the player has only a split second to dodge"; proposed: "The warning: his marker flashes red with
+## his claws, and the player has only a split second to dodge"; approved: "The warning: his marker flashes red with
 ## a sharp snarl (not the Pounce's roar) and red claw marks flash on the floor of the runner's lane; the swipe comes
 ## about half a second later (never sooner at a faster phase), over the runner's lane only and reaching above a
 ## jump: dodge by switching lanes (or the dash; armor and the shield block it). In the last phase he slashes twice in
