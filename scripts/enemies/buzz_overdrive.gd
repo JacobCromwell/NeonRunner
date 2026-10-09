@@ -27,8 +27,8 @@ extends Enemy
 ## type's big attack that gets ready meanwhile waits), then asks as its rev would start: with another
 ## type's attack begun before its claim still on, it lets the runner pass (no rev, no warning, no cut:
 ## it speeds off ahead, out of view or to a dash wall standing ahead, and its floor stays whole), so it
-## never revs into another big attack. A boss's tank (no roll: Hostile Takeover's drop) and every tank with the switch off
-## (GameRules.big_attacks_take_turns) rev as planned, as before (takes_turns()).
+## never revs into another big attack. A boss's tank (no roll: Hostile Takeover's drop) and every tank
+## with the switch off (GameRules.big_attacks_take_turns) rev as planned, as before (takes_turns()).
 ## Its rev and charge sound from its own voice on the blade, so they come from where it is as it rolls
 ## and charges past (the world's voices stay where a sound started), at full volume from a charge's
 ## distance (sound_full_volume_distance); the spin-up is stretched over its rev by pitch (rev_pitch:

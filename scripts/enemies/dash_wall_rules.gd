@@ -80,10 +80,10 @@ extends RefCounted
 ## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
 ## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
 ## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
-## Overdrive an Enforcer Truck counts among its baits), and one with no
-## fair spot even then gets a warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream
-## (LevelGenerator.rng_for), so the passes before it place exactly what they did; a level without the feature
-## (or with a count of 0) draws nothing and is built byte for byte as before.
+## Overdrive an Enforcer Truck counts among its baits), and one with no fair spot even then gets a warning (the
+## campaign tests fail on any): every feature appears (GDD §5). Its own random stream (LevelGenerator.rng_for),
+## so the passes before it place exactly what they did; a level without the feature (or with a count of 0) draws
+## nothing and is built byte for byte as before.
 ##
 ## What keeps off them: the passes between the two stages keep off an introduction (the fill pass,
 ## LevelGenerator.fill_keep_outs, every footprint in every lane; the danger density pass, the wider gaps, the
@@ -339,7 +339,8 @@ static func after_doodads(gen: LevelGenerator) -> void:
 		if not is_nan(at):
 			_place(gen, plan, at, faces)
 	if faces.is_empty() and _make_room(gen, plan, plan.lo, plan.hi):
-		plan = plan_for(gen, t)
+		# Nothing fit outside the quiet stretches either: the room made may lie in one.
+		plan = plan_for(gen, t, false, false)
 		var at: float = plan.best(plan.lo, plan.hi, (plan.lo + plan.hi) * 0.5, faces)
 		if not is_nan(at):
 			_place(gen, plan, at, faces)
