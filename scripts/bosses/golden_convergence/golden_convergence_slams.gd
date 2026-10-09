@@ -20,7 +20,8 @@ extends GoldenConvergenceAttack
 ##    AHEAD lands slam_ahead_seconds before they reach its row (its hole to be jumped or gone round). The
 ##    footprint's floor cuts open at once (FloorCut.advance_to) as one square hole, its look made as it opens
 ##    (GoldenConvergenceHole.open); the fist's touch (an enemy attack over the footprint from the floor to
-##    above a jump) is live for slam_hit_seconds; rubble, dust, a shake, gc_slam and gc_break. A runner under
+##    above a jump, kept clear of a wall runner's body: touch_x) is live for slam_hit_seconds; rubble, dust, a
+##    shake, gc_slam and gc_break. A runner under
 ##    it who lives through the touch (the armor or the shield blocks it, the dash passes, invulnerable) has
 ##    the floor under them held for GameRules.cut_hold_seconds (FloorCut.hold_under): a moment to jump out or
 ##    switch lanes. A grapple saves a fall, never the hit;
@@ -592,7 +593,8 @@ func _impact(s: Dictionary) -> void:
 	for fc: FloorCut in opened:
 		fc.advance_to(fc.start)
 	var box: Vector2 = s["sq"]
-	fist.set_touch(i, box.x, box.y, row.x, row.y)
+	var touch: Vector2 = touch_x(box)
+	fist.set_touch(i, touch.x, touch.y, row.x, row.y)
 	fist.impact(box.x, box.y, row.x, row.y)
 	boss.world.effects.shake(0.55, 0.45)
 	var at: Vector3 = Vector3(float(s["x"]), 0.5, TrackGeometry.world_z(float(s["mid"])))
@@ -607,6 +609,17 @@ func _impact(s: Dictionary) -> void:
 		_bait(s)
 
 
+## The fist's touch across the track over a footprint spanning world x [box.x, box.y] (its red square's): the same,
+## but kept clear of a wall runner's body lying across the wall's foot, as the barrage's fire is
+## (GoldenConvergenceMissiles.WALL_CLEAR). E5d polish: the toppled tower's wall is the barrage's refuge and the next
+## sequence's first fist can land while it stands; the red square lies on the floor, so a runner on the wall beside
+## it is never touched, at any height, and one on the floor of its outer lane always is.
+func touch_x(box: Vector2) -> Vector2:
+	var geo: TrackGeometry = boss.world.geo
+	var reach: float = boss.world.tuning.hurtbox_size.y + GoldenConvergenceMissiles.WALL_CLEAR
+	return Vector2(maxf(box.x, -geo.wall_x() + reach), minf(box.y, geo.wall_x() - reach))
+
+
 ## A runner under the fist's touch who lives through it (blocked by the armor or the shield, dashing,
 ## invulnerable) has the floor under them held, once (GDD §10: "the floor under the runner holds for about a
 ## second ... A dash through the fist gets the same second").
@@ -616,7 +629,7 @@ func _check_under(s: Dictionary) -> void:
 	var p: Player = boss.world.player
 	if not p.alive or p.surface != Player.Surface.FLOOR or not fist.touch_on(int(s["fist"])):
 		return
-	var box: Vector2 = s["sq"]
+	var box: Vector2 = touch_x(s["sq"])
 	var row: Vector2 = s["row"]
 	var half: float = boss.world.tuning.hurtbox_size.x * 0.5
 	var depth: float = boss.world.tuning.hurtbox_size.z * 0.5

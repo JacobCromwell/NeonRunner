@@ -11,8 +11,9 @@ extends BossPart
 ## - set_shadow(i, x, at, size, k): the fist's shadow on the floor under it, growing and darkening as `k` comes
 ##   to 1 (a soft dark patch, never glowing);
 ## - set_touch(i, x0, x1, from, to) and touch_off(i): the touch, an enemy attack hitbox over the hole's
-##   footprint from the floor to slam_hit_height (above a jump's reach): the armor and the shield block it,
-##   the dash passes through, and each contact is reported (`hit`);
+##   footprint from the floor to slam_hit_height (above a jump's reach; across the track the slams keep it clear
+##   of a wall runner's body, GoldenConvergenceSlams.touch_x): the armor and the shield block it, the dash passes
+##   through, and each contact is reported (`hit`);
 ## - impact(x0, x1, from, to): the floor bursting round the hole, rubble and dust.
 ## A part of the boss that's no target and no kill of its own.
 

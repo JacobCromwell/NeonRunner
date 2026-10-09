@@ -12,7 +12,8 @@ extends TestSuite
 ##   gate; a fist locked onto the gate's lane smashes it, the sequence ends and the barrage begins at once;
 ## - the hit and the hold: a runner under the fist without protection dies; the armor's block, the shield's and
 ##   a dash through it each hold the floor under the runner (GameRules.cut_hold_seconds) and they run on; a
-##   grapple doesn't save the hit, only a fall into a hole;
+##   grapple doesn't save the hit, only a fall into a hole; a runner on an open wall beside a fist landing in the
+##   outer lane is never touched (E5d polish);
 ## - an ahead slam's hole lies ahead of the runner as it lands: jumped, or a fall;
 ## - the toppled tower: it falls on the side the arch leans to, beside the causeway (never over the track), its
 ##   side a wall open for tower_wall_seconds of running from the gate and closed after, run on there and
@@ -50,6 +51,7 @@ func run() -> void:
 		for kind: String in ["o", "a"]:
 			await _test_buttress_rule(lanes, kind)
 	await _test_hits_and_holds()
+	await _test_wall_runner()
 	await _test_ahead_hole()
 	await _test_sequences()
 	await _test_tower()
@@ -563,6 +565,48 @@ func _test_hits_and_holds() -> void:
 				check(bool(dashed["done"]) and world.player.alive and hits.is_empty() and holds.size() == 1 and bool(holds[0]["dashing"]),
 					"a dash through the fist gets the same hold (%s, %s)" % [cause[0], holds])
 		await sim.free_world(world)
+
+
+## E5d polish (the review: the next sequence's first fist can land while the toppled tower's wall still stands, and
+## its touch over a footprint reaching the wall's face hit a runner on the wall although its red square lies on
+## the floor): a fist locked onto the outer lane beside an open wall, the runner gone up onto the wall as it lands,
+## never touches them, at every lane count; staying on the floor of that lane, they're hit.
+func _test_wall_runner() -> void:
+	for lanes: int in LANES:
+		for on_wall: bool in [true, false]:
+			var tag: String = "(%d lanes, %s)" % [lanes, "on the wall" if on_wall else "on the floor"]
+			var pair: Array = _fight(lanes, 18.0, null, 0, "slams,barrage", PackedStringArray(["O", "O", "O"]))
+			var world: RunWorld = pair[0]
+			var boss: GoldenConvergence = pair[1]
+			var cause: Array[String] = _death(world)
+			var outer: int = lanes - 1
+			boss.court.open_wall(1, world.player.distance, world.player.distance + 3000.0)
+			var seen := {"locked": false, "surface": -1, "lanes": []}
+			boss.slams.slam_locked.connect(func(info: Dictionary) -> void:
+				if bool(seen["locked"]):
+					return
+				seen["locked"] = true
+				seen["lanes"] = info["lanes"]
+				if on_wall:
+					world.player.press(&"move_right"))
+			await _run(world, null, 25.0, func() -> bool:
+				return not _events(boss, &"slam_impact").is_empty() and not boss.slams.fist.touch_on(0) \
+					and not boss.slams.fist.touch_on(1),
+				func() -> void:
+					if not bool(seen["locked"]) and world.player.lane < outer and world.player.surface == Player.Surface.FLOOR:
+						world.player.press(&"move_right")
+					if boss.slams.fist.touch_on(0) or boss.slams.fist.touch_on(1):
+						seen["surface"] = world.player.surface)
+			var hits: Array[Dictionary] = boss.slams.fist.hits
+			var footprint: Array = seen["lanes"]
+			if on_wall:
+				check(footprint.has(outer) and int(seen["surface"]) == Player.Surface.WALL and hits.is_empty() and world.player.alive,
+					"a runner on the wall beside a fist landing in the outer lane is never touched (%s, %s, %d hits, %s) %s" % [
+					footprint, seen["surface"], hits.size(), cause[0], tag])
+			else:
+				check(footprint.has(outer) and hits.size() == 1 and not world.player.alive and cause[0] == "the golden fist",
+					"a runner on the floor of that lane under it is hit (%s, %d hits, %s) %s" % [footprint, hits.size(), cause[0], tag])
+			await sim.free_world(world)
 
 
 ## An ahead slam's hole lies ahead of the runner as it lands: a jump clears it; running into it is a fall, which a
