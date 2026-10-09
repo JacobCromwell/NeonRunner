@@ -148,16 +148,19 @@ extends EnemyTuning
 ## Its siren swells as it pulls alongside: it starts this many decibels under its full volume.
 @export_range(0.0, 40.0, 1.0, "suffix:dB") var siren_swell_db: float = 18.0
 ## Task C6c (the owner's request, GDD §9.13 "Showing itself": the player should see what's behind them): the
-## generator plans a showing window in every chase (enforcer_truck_rules.gd, plan_show), a calm stretch the later
-## passes keep off, where it can show itself for show_seconds wherever the runner is; off, its showings come only
-## where the level happens to leave room (as before task C6c). DESIGN-TBD (docs/questions/c6c.md): the window.
+## generator plans a showing window in every chase it can (enforcer_truck_rules.gd, ShowPlanner), a calm stretch
+## the later passes keep off, where it can show itself wherever the runner is; off, its showings come only where
+## the level happens to leave room (as before task C6c), and the level is built as it was then.
+## DESIGN-TBD: the window, what it may take out, the chases without one (docs/questions/c6c.md).
 @export var show_window_planned: bool = true
 ## How much later than planned a showing in its window may begin and still find its room (the runner jumping or
 ## changing lanes as it's due): the window holds that much more.
+## DESIGN-TBD: 1 s (docs/questions/c6c.md).
 @export_range(0.0, 3.0, 0.25, "suffix:s") var show_window_slack_seconds: float = 1.0
 ## It claims its turn among the big attacks this long before its planned showing (as a Buzz Overdrive claims its
 ## turn before its rev): another type's big attack that gets ready meanwhile (a drone's barrage, a Resonator's pulse)
 ## waits for it, and one already on is over by the time it's due.
+## DESIGN-TBD: 2 s (docs/questions/c6c.md).
 @export_range(0.0, 5.0, 0.25, "suffix:s") var show_claim_seconds: float = 2.0
 
 @export_group("Wreck")

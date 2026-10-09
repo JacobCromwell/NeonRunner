@@ -22,26 +22,35 @@ extends RefCounted
 ##   Its entry's `at` is where it arrives, never a spot it takes up ahead of the runner
 ##   (EnemyTuning.behind_runner), so no Octodog's charge keeps clear of it.
 ## - Its showing window (task C6c; GDD §9.13 "Showing itself", the owner, October 8, 2026: now and then it speeds
-##   up until it's on screen, so the player sees what's behind them): each chase gets a calm stretch where it can
-##   pull up beside the runner and stay show_seconds wherever the runner is, at the level's speed (plan_show): no
-##   enemy about and no other attack (their keep-outs), no hover truck or Gilded Sentinel coming, its bait's turn
-##   far enough off, and for a runner in every lane a lane beside them where its look fits on screen and its lane
-##   stays clear for the whole stay, the runner keeps a lane to dodge into and it hides no enemy (EnforcerTruckRoom
-##   .layout_lane, the checks it makes in play), also when it begins show_window_slack_seconds late. As it arrives
-##   (its arrival showing) where any of its arrivals has one, else the earliest mid-chase one; the arrival moves to
-##   where one fits (the preferred arrival first). Its params hold it ("show": {at: where the runner is as it
-##   begins, from and to: the stretch it keeps}), and every later pass keeps off it in every lane, as off a Gilded
-##   Sentinel's strike (doodad_keep_outs: the danger density pass, the cyborgs in charge paths, the wider gaps, the
-##   zone doodads, City 1's extra gaps; LevelGenerator.fill_keep_outs: the fill pass). In play the truck holds its
-##   volleys for it (EnforcerTruck.show_window). gen.show_window_result reports each chase's.
+##   up until it's on screen, so the player sees what's behind them): each chase gets, where the level has room, a
+##   calm stretch where it can pull up beside the runner and stay alongside wherever the runner is, at the level's
+##   speed (ShowPlanner): no other big attack, floor cut or enemy about near the runner until it has stayed
+##   alongside (their keep-outs; a host's possible Bad Dream chase is the player's choice, and doesn't count), no
+##   hover truck or Gilded Sentinel coming, its bait's turn far enough off, and for a runner in every lane a lane
+##   beside them where its look fits on screen and its lane stays clear for the whole stay, the runner keeps a lane
+##   to dodge into and it hides no enemy (EnforcerTruckRoom.layout_lane, the checks it makes in play), also when it
+##   begins show_window_slack_seconds late; first one where no runner is sent off the floor (a pad's ceiling, a
+##   ramp's wall run) before it has stayed alongside, else one where a runner in that lane may miss it. As it
+##   arrives (its arrival showing) where any of its arrivals has one, else the earliest mid-chase one before its
+##   first bait, else one after it; the arrival moves to where one fits (the preferred arrival first), and the
+##   baits that get trucks are the ones whose chases hold the most windows (the introduction kept). Where the level
+##   leaves none, it takes out what's in the way (ShowPlanner's class doc). Its params hold it ("show": {at: where
+##   the runner is as it begins, from and to: the stretch it keeps}), and every later pass keeps off it in every
+##   lane as a calm stretch, WINDOW_EDGE wider (doodad_keep_outs: nothing they add may stand or attack in it, but
+##   nothing keeps a spacing from it: the danger density pass's enemies and rows, the cyborgs in charge paths, the
+##   wider gaps' rows, the zone doodads, City 1's extra gaps; fill_keep_outs: the fill pass). A Buzz Overdrive
+##   given a cyborg in its charge's path later claims its turn earlier: the windows are planned as if every one
+##   would (ShowPlanner.least_claim). In play the truck claims its turn ahead of its window and holds its volleys
+##   for it (EnforcerTruck.claiming, show_window). gen.show_window_result reports each chase's.
 ## It takes little room on the track: it drives behind the runner, never on the floor ahead (its tuning's
 ## uses_floor is false), and its volleys check their escape at run time (EnforcerTruck.escape_clear). So the
 ## passes keep nothing else for it (keep_out), and its entries take seeds of their own rather than
-## LevelGenerator.add_enemy's running count: a level with the feature differs only by its trucks and what their
-## showing windows keep the later passes off (and by what the danger density pass adds for its higher enemy
-## count). It has no patterns: these rules place every one. A level with no bait its chase can take gets none (GDD
-## §9.13: it appears where Octodogs or Buzz Overdrives appear). DESIGN-TBD (docs/questions/c6.md): the bait's
-## place in its chase, the spacing, which baits get one; (docs/questions/c6c.md) the showing window.
+## LevelGenerator.add_enemy's running count: a level with the feature differs only by its trucks and their showing
+## windows (where those move its arrivals, what they take out and what they keep the later passes off), and by
+## what the danger density pass adds for its higher enemy count. It has no patterns: these rules place every one. A
+## level with no bait its chase can take gets none (GDD §9.13: it appears where Octodogs or Buzz Overdrives
+## appear). DESIGN-TBD (docs/questions/c6.md): the bait's place in its chase, the spacing, which baits get one;
+## (docs/questions/c6c.md) the showing window, what it may take out, the chases without one.
 
 const TYPE: String = "enforcer_truck"
 ## Every feature whose rules place, move or drop enemies, plan charges or cuts, or add ceilings: the trucks
@@ -407,22 +416,27 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 ## then it speeds up until it's on screen, so the player sees what's chasing them) on the layout as it stands when
 ## the trucks are placed: the patterns' and every other feature's rules' pieces and enemies (EnforcerTruckRoom reads
 ## them). Every later pass keeps off the window it finds (doodad_keep_outs, fill_keep_outs), so it holds in the
-## finished level as planned. A window: where the runner is as the showing begins (`at`), and the stretch it keeps
-## (`from`, `to`): from the truck's rear as it closes in (its lane's holes count from there) to past where it's back
-## behind the runner, by what its checks look ahead (its lane's wider gaps and cuts, the runner's lane to dodge
-## into, the enemies it could hide: show_shadow_reach). As the truck asks in play (EnforcerTruck.show_lane_now and
-## its giving way), no other enemy's attack (its warning, its shots) comes and no enemy is about near the runner
-## from where the showing begins until it has stayed alongside (busy), no hover truck or Gilded Sentinel comes, and
-## for a runner in every lane there's a lane beside them where it can stay (EnforcerTruckRoom.layout_lane), also when
-## it begins show_window_slack_seconds late (for as long as still fits, show_min_seconds at least).
+## finished level as planned (problem_of checks it there). A window: where the runner is as the showing begins
+## (`at`), and the stretch it keeps (`from`, `to`): from the truck's rear as it closes in (its lane's holes count from
+## there) to past where it's back behind the runner, by what its checks look ahead (its lane's wider gaps and cuts,
+## the runner's lane to dodge into, the enemies it could hide: show_shadow_reach). As the truck asks in play
+## (EnforcerTruck.show_lane_now and its giving way), no other enemy's big attack (its warning, its shots) comes and no
+## enemy is about near the runner from where the showing begins until it has stayed alongside (busy), no floor cut's
+## attack, hover truck or Gilded Sentinel reaches the stretch, and for a runner in every lane there's a lane beside
+## them where it can stay (EnforcerTruckRoom.layout_lane), also when it begins show_window_slack_seconds late (for as
+## long as still fits, show_min_seconds at least).
 ## Where the level leaves no such stretch (the patterns' rows of fences, which it never drives through on screen,
 ## rows of holes leaving a runner no lane to dodge into, and their cyborgs), the planner takes out what's in the
-## way: plain holes and fences (never a pulsing fence or one a fence generator powers), and plain cyborgs and window
-## cyborgs (never a host, nor the level's first of its kind), and only those the showing needs gone (each one kept
-## that isn't). Taking pieces and enemies out never makes a level unfair; it's the window's cost to the danger
-## density (the owner's request, docs/USER_REQUESTS.md), counted in gen.show_window_result. Its order: as the level
-## stands, the arrival showing at the first arrival with room for one, else the earliest mid-chase one before its
-## first bait; then the same taking things out; then both again with a shorter stay (show_min_seconds at least).
+## way: plain holes and fences (never a pulsing fence or one a fence generator powers), and plain cyborgs, window
+## cyborgs and Screeches (never a host, the first of a kind the level introduces or the last of its kind), and only
+## those the showing needs gone (each one kept that isn't). Taking pieces and enemies out never makes a level
+## unfair; it's the window's cost to the danger density (the owner's request, docs/USER_REQUESTS.md), counted in
+## gen.show_window_result. Its order: with no runner in any lane sent off the floor before it has stayed alongside
+## (`every_lane`), as the level stands, its whole stay (show_seconds): the arrival showing at the first arrival with
+## room for one, else the earliest mid-chase one before its first bait; then a shorter stay (show_min_seconds at
+## least); then both taking things out; then all of that again allowing a runner off the floor in a lane; else, at
+## the preferred arrival, the same after its first bait (a runner who didn't destroy it with that bait sees it
+## then). DESIGN-TBD (docs/questions/c6c.md): what it may take out, the order.
 class ShowPlanner:
 	extends RefCounted
 	## Seconds after its arrival a mid-chase showing may begin, past the time it takes to close in to its follow gap.

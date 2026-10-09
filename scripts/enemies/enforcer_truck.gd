@@ -908,7 +908,8 @@ func _enemies_let_dodge(mine: int, escape: int, truck: int, d: float, to: float,
 	var i: int = EnforcerTruckRoom.first(spans, d)
 	while i < spans.size() and spans[i].x <= to:
 		var span: Vector2 = spans[i]
-		if _floor_enemy_in(escape, span.x - step, span.y + step) and (EnforcerTruckRoom.hit(_room.must_leave[mine], span.x, span.y)
+		if _floor_enemy_in(escape, span.x - step, span.y + step) \
+				and (EnforcerTruckRoom.hit(_room.must_leave[mine], span.x, span.y)
 				or not EnforcerTruckRoom.hit(_room.hard[truck], span.x, span.y)):
 			return false
 		i += 1
