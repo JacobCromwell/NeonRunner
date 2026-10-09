@@ -36,20 +36,3 @@ extends Resource
 ## DESIGN-TBD (GDD §8): the loadout the generator may assume players have by this zone. Empty in
 ## every zone for now, and nothing reads it yet.
 @export var expected_loadout: PackedStringArray = PackedStringArray()
-
-
-## Level `number` (1 = the zone's first) ready to generate outside the campaign (task D10b: a zone with no
-## campaign slot yet, such as the Beach, plays through App.start_zone_level, and its tests build it the same
-## way): a copy at `lane_count` lanes, in the zone's look unless the level has its own skin, at the zone's run
-## speed unless it has its own. Its difficulty and enemy scaling are the level's own (there's no campaign curve
-## to place it on), and no recency curve shapes its picks. Null if the zone has no such level.
-func standalone_level(number: int, lane_count: int) -> LevelConfig:
-	if number < 1 or number > levels.size() or levels[number - 1] == null:
-		return null
-	var config: LevelConfig = levels[number - 1].duplicate() as LevelConfig
-	config.lane_count = lane_count
-	if config.skin == null:
-		config.skin = skin
-	if config.run_speed <= 0.0:
-		config.run_speed = run_speed
-	return config

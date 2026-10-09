@@ -22,10 +22,6 @@ extends Node
 ##                           crosses the lanes and robs a runner who touches it (GDD §9.12; StandInThief)
 ##   --level=city/2          a campaign level, with the full flow (also takes --lanes=N, --god,
 ##                           --nofall and --full-loadout, for reviews)
-##   --level=beach/1         a level of a zone that isn't in the campaign yet (data/zones/<zone>.tres; task
-##                           D10b: the Beach, until the owner gives it a slot) as quick play, restarting on
-##                           death, in the zone's look, sky and run speed (also takes --lanes=N, --seed=N,
-##                           --god, --nofall and --full-loadout); a campaign step of that id wins
 ##   --boss=city_boss        a boss fight by its BossDef id: a zone's boss with the full flow (like
 ##                           --level=city/boss; a fight still being built, its preview_scene, as quick
 ##                           play), any other (data/bosses/<id>.tres, e.g. the test boss) as quick
@@ -44,8 +40,6 @@ const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 const QUICK_LEVEL_PATH: String = "res://data/levels/prototype_level.tres"
 ## Where --boss=<id> finds a boss that isn't in the campaign (the test boss).
 const BOSSES_DIR: String = "res://data/bosses"
-## Where --level=<zone>/<n> finds a zone that isn't in the campaign (task D10b: the Beach).
-const ZONES_DIR: String = "res://data/zones"
 ## The look of a quick-play boss fight whose arena has none (--skin= picks another).
 const QUICK_BOSS_SKIN: String = "res://data/skins/city_skin.tres"
 ## DESIGN-TBD: endless mode (OPEN_QUESTIONS §8): one long level whose difficulty keeps rising.
@@ -131,11 +125,6 @@ func boot(p_main: Node) -> void:
 			if s != null:
 				_review_args = args
 				play_step(s)
-				return
-			# Task D10b: a zone not in the campaign yet (the Beach) can still be played, level by level.
-			var zone: ZoneDef = zone_outside_campaign(arg.get_slice("=", 1))
-			if zone != null:
-				start_zone_level(zone, int(arg.get_slice("=", 1).get_slice("/", 1)), args)
 				return
 	for arg: String in args:
 		if arg.begins_with("--boss="):
@@ -474,51 +463,6 @@ func start_quick(args: PackedStringArray = PackedStringArray()) -> void:
 			ctx.review_thief = true
 	ctx.tuning = ctx.config.movement_for(tuning)
 	_start_run(ctx, &"city")
-
-
-## Task D10b: for a level id "<zone>/<n>" (--level=) that no campaign step has, the zone at
-## data/zones/<zone>.tres if it has an n-th level, else null. So a zone the owner hasn't given a campaign slot
-## yet (the Beach) can be played before it has one.
-func zone_outside_campaign(id: String) -> ZoneDef:
-	if campaign.step(id) != null or id.get_slice_count("/") != 2 or not id.get_slice("/", 1).is_valid_int():
-		return null
-	var path: String = ZONES_DIR.path_join(id.get_slice("/", 0) + ".tres")
-	var zone: ZoneDef = load(path) as ZoneDef if ResourceLoader.exists(path) else null
-	if zone == null or zone.standalone_level(int(id.get_slice("/", 1)), 3) == null:
-		return null
-	return zone
-
-
-## Level `number` (1 = the first) of a zone outside the campaign (task D10b: --level=beach/1, debug builds), as
-## quick play (zone_level_context), with the zone's music.
-func start_zone_level(zone: ZoneDef, number: int, args: PackedStringArray = PackedStringArray()) -> void:
-	_start_run(zone_level_context(zone, number, args), zone.music)
-
-
-## The run start_zone_level plays: quick play (no records or wallet, restarting on death and going on to the
-## next seed after a finish, the debug keys) of the level as ZoneDef.standalone_level gives it (the zone's look
-## and run speed, the level's own difficulty, sky and wall gaps), at the device's lane count, with the review
-## overrides --lanes=N, --seed=N, --god, --nofall and --full-loadout from `args`. DESIGN-TBD
-## (docs/questions/d10b.md): quick play rather than the full flow (introduction, results, shop) for the review.
-func zone_level_context(zone: ZoneDef, number: int, args: PackedStringArray = PackedStringArray()) -> RunContext:
-	var ctx := RunContext.new()
-	ctx.mode = RunContext.Mode.QUICK
-	ctx.config = zone.standalone_level(number, lane_count())
-	ctx.loadout = make_loadout()
-	for arg: String in args:
-		var v: String = arg.get_slice("=", 1)
-		if arg.begins_with("--lanes="):
-			ctx.config.lane_count = int(v)
-		elif arg.begins_with("--seed="):
-			ctx.config.level_seed = int(v)
-		elif arg == "--god":
-			ctx.god_mode = true
-		elif arg == "--nofall":
-			ctx.no_fall = true
-		elif arg == "--full-loadout":
-			ctx.loadout = Loadout.full(catalog)
-	ctx.tuning = ctx.config.movement_for(tuning)
-	return ctx
 
 
 ## DESIGN-TBD (OPEN_QUESTIONS §8): endless mode is one long random level in the furthest zone
