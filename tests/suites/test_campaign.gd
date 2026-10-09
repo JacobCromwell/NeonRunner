@@ -116,7 +116,7 @@ func _test_zones(campaign: Campaign) -> void:
 func _test_steps(campaign: Campaign) -> void:
 	var expected := PackedStringArray([
 		"city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",
-		"gangland/intro", "gangland/1", "gangland/2", "gangland/3", "gangland/boss", "gangland/outro",
+		"gangland/intro", "gangland/1", "gangland/2", "gangland/3", "gangland/boss_intro", "gangland/boss", "gangland/outro",
 		"marketplace/intro", "marketplace/1", "marketplace/2", "marketplace/boss", "marketplace/outro",
 		"corporate/intro", "corporate/1", "corporate/2", "corporate/boss", "corporate/outro",
 		"dead_zone/intro", "dead_zone/1", "dead_zone/2", "dead_zone/boss", "dead_zone/outro",
@@ -143,7 +143,8 @@ func _test_steps(campaign: Campaign) -> void:
 
 
 ## A boss slot per zone from GDD §10's roster, and cinematic slots: every zone's intro and outro, and
-## the City's boss intro (the intros play placeholder flyovers, task F1; test_cinematics checks them).
+## the City's and Gangland's boss intros (the intros play placeholder flyovers, task F1, and Gangland's boss
+## intro the owner's beats; test_cinematics checks them).
 func _test_slots(campaign: Campaign) -> void:
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "The House",
 		"corporate": "Hostile Takeover", "dead_zone": "Sleep Taker", "golden": "The final villain"}
@@ -154,7 +155,7 @@ func _test_slots(campaign: Campaign) -> void:
 		check(zone.boss != null and String(zone.boss.id) == id + "_boss" and zone.boss.notes != "",
 			"%s's boss slot has its id and notes" % id)
 		check(zone.intro != null and zone.outro != null, "%s has intro and outro cinematic slots" % id)
-		check((zone.boss_intro != null) == (id == "city"), "only the City has a boss-intro slot")
+		check((zone.boss_intro != null) == (id in ["city", "gangland"]), "only the City and Gangland have boss-intro slots")
 		for def: CinematicDef in [zone.intro, zone.boss_intro, zone.outro]:
 			if def != null:
 				check(String(def.id).begins_with(id + "_") and def.title != "" and def.placeholder_text != "",
@@ -182,6 +183,12 @@ func _test_slots(campaign: Campaign) -> void:
 			check(s.boss != null and s.boss.is_built(), "the Corporate zone's boss step plays Hostile Takeover's fight (task E5b-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "city/outro":
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/city_outro.tscn" and s.cinematic.is_built(),
+				"the City's outro plays its own scene, the owner's beats (task F2a)")
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/sewer_swarm_intro.tscn" and s.cinematic.is_built(),
+				"Gangland's boss intro plays its own scene, the owner's beat (task F2b)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn"
 				and s.cinematic.is_built(), "cinematic slot %s plays the placeholder arrival flyover (task F1)" % s.id)
