@@ -2470,6 +2470,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     truck and a Gilded Sentinel can't wait, so while one is in play or about to arrive the truck doesn't show
     itself. A Resonator's pulse waits for the showing to end, as it waits for a volley (up to the director's
     `turn_wait_max`, 8 s). Placeholder: `EnforcerTruckRoom.NO_SHOW_TYPES`. OK?
+    **Answered (owner, October 9, 2026):** a hover truck or a Gilded Sentinel no longer stops a showing, as long as the runner keeps a free lane (GDD §9.13; task C6e). The Resonator's pulse still waits.
 368. **Where the blast happens** (owner, October 8, 2026: a visible explosion). Behind the camera a blast would be
     unseen. So a wrecked truck first lurches forward into view over `wreck_surge_seconds` (0.3 s), until its front
     is `wreck_gap` (2.8 m) behind the runner, or reaches the far edge of the hole it fell in. Then it blows up and
@@ -2645,11 +2646,13 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     seeds of each level (162 builds) the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no
     window from having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another
     way (the level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
+    **Answered (owner, October 9, 2026):** make room: the hover truck and the Sentinel let it show (with a free lane kept), and where the first bait comes right after the calm start, the truck arrives a few seconds early and shows itself at the end of it (GDD §9.13; task C6e).
 401. **Two trucks, one chase with room** (Corporate 2 at 5 lanes, Dead Zone 1 at 3 lanes, Dead Zone 2 at 5 and 6 lanes, on
     their own seeds). The only bait whose chase has room before it has one truck; the other truck has nowhere with room
     to go. Placeholder: both stay, so in Corporate 2 at 5 lanes the introduction (14 s in, among a Tithe Collector's
     visit and then its own Buzz Overdrive's turn too close) shows itself only at the second truck (59 s). Or should such
     a level keep only the truck that shows itself (one truck instead of two; Corporate 2's introduction at 59 s)?
+    **Answered (owner, October 9, 2026):** keep both trucks (GDD §9.13).
 402. **One truck that shows itself, or two that don't** (other seeds). Where giving a truck to a chase with room leaves
     the level's other truck no chase (they'd overlap), the level keeps the one that shows itself before its bait: 2 of
     144 builds on 8 other seeds lose a truck so (Corporate 2 at 6 lanes, Golden 1 at 5), and 1 gains one back that C6c's

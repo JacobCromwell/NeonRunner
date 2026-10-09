@@ -45,6 +45,9 @@ NOTE: Mark tasks as done as you complete them.
 - [x] Where its showing would come after the bait, the truck arrives earlier so the player sees it before they can bait it. (October 9, 2026; open question 385; task C6d.) DONE (task C6d): a pair of trucks is also planned the other way round so the earlier one arrives earlier; where the bait comes right after the run-up, no earlier arrival fits (open question 400).
 - [x] To a runner in an outer lane it shows itself two lanes in, leaving the lane between free. (October 9, 2026; open question 382.) DONE in task C6c.
 - [x] The showing windows' cost (about 2% fewer enemies and obstacles on the Enforcer's levels) is accepted. (October 9, 2026; open question 383.)
+- [ ] The Enforcer Truck may show itself while a hover truck or a Gilded Sentinel is around, as long as the runner keeps a free lane (more clutter is fine). (October 9, 2026; open questions 367 and 400; task C6e.)
+- [ ] Where a level's first bait comes right after its calm start, the truck arrives a few seconds early and shows itself in the last part of the calm start. (October 9, 2026; open question 400, option A; task C6e.)
+- [x] A level with two Enforcer Trucks but room for only one showing keeps both. (October 9, 2026; open question 401: as built.)
 
 ## Sewer Swarm follow-up (October 4, 2026)
 
