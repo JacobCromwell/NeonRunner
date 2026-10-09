@@ -1,13 +1,16 @@
 # H7a, dash walls (the mechanism): open questions
 
-- **How many a level** (GDD §9.14 gives none; the brief: 2–4, rising). Placeholder: `LevelConfig.dash_walls`,
-  2 in Corporate 1 and 2, Dead Zone 2, Golden 1 and Golden 3, 3 in Dead Zone 1, 4 in Golden 2 (0 to 8 in the F6
-  "Level pacing" section). The generator places up to that many (every campaign level gets its full count on its
-  own seed at 3, 5 and 6 lanes). Golden 1 and Golden 3 ask for fewer than the brief's rising 2 to 4 would give
-  them because their tracks are the most crowded (each has room for two on some lane count: the walls past an
-  introduction take the room the other passes leave, below). Endless mode and quick play keep their base level's
-  count, however long the level. How many should each level have, and should endless mode scale them with its
-  length?
+- **How many a level** (GDD §9.14 gives none; the brief: 2–4, rising). Placeholder: `LevelConfig.dash_walls`:
+  Corporate 1 2, Corporate 2 1, Dead Zone 1 3, Dead Zone 2 (The Hush) 1, Golden 1 2, Golden 2 4, Golden 3 2 (0 to
+  8 in the F6 "Level pacing" section). The generator places up to that many, and every campaign level gets its
+  full count on its own seed at 3, 5 and 6 lanes, so each level asks for no more than its track holds on its
+  most crowded lane count. Several fall short of the brief's 2 to 4:
+  - Corporate 2 holds one on 5 lanes once its Tithe Collectors count as dash baits (below);
+  - The Hush holds one: its walls keep out of its quiet stretches (below), and only one fits in its short bursts;
+  - Golden 1 and Golden 3 hold two (the walls past an introduction take the room the other passes leave, below).
+  Endless mode and quick play keep their base level's count, however long the level. How many should each level
+  have, and should endless mode scale them with its length? Should a level that holds fewer than asked loosen a
+  rule (for example let a wall stand in a quiet stretch) to reach the count?
 - **Where Corporate 1 introduces them** (GDD §9.14, proposed: "Corporate 1, after the Buzz Overdrive's
   introduction"). Placeholder: `feature_starts["dash_wall"] = 0.42` in `data/levels/corporate_1.tres` (the Buzz
   Overdrive's is 0.1, the partial wall fences' 0.5). The introduction stands at the first fair spot from its start;
@@ -19,18 +22,36 @@
 - **The spacing and what counts as "needing the dash"** (GDD §9.14, proposed: "nothing else that needs the dash
   comes just before one"). Placeholder (`data/tuning/dash_walls.tres`): faces at least the dash's longest cooldown
   (8 s at tier 1) plus `cooldown_margin_seconds` (1 s) of run apart, plus the ground a dash covers; and within that
-  same spacing before a face no Buzz Overdrive charge meets the runner (a panic dash smashes it) and no fence
-  generator stands (its hint says to dash through it); `keep_dash_baits` turns that off. A zone doodad isn't
-  treated as one: it never needs the dash (it only pushes the runner aside, and no hint sends the dash at it), and
-  keeping doodads off the whole spacing before every wall left Golden 2 on 5 lanes with none. Should "just before"
-  be the whole cooldown, and is the fence generator a bait?
+  same spacing before a face no Buzz Overdrive charge meets the runner (a panic dash smashes it), no fence
+  generator stands (its hint says to dash through it) and no Tithe Collector's stay ends (its hint says to catch it
+  by stomping, shooting or dashing through it; the end of its stay is the latest a dash can catch it);
+  `keep_dash_baits` turns that off. A zone doodad isn't treated as one: it never needs the dash (it only pushes
+  the runner aside, and no hint sends the dash at it), and keeping doodads off the whole spacing before every wall
+  left Golden 2 on 5 lanes with none. Should "just before" be the whole cooldown, and are the fence generator and
+  the Tithe Collector baits?
+- **Is the dash ready at a wall?** The spacing only guarantees it when the dash was last used at the previous wall.
+  Faces are 9 s of run plus 4.8 m apart against an 8 s cooldown: about 1 s of slack, and every speed boost on the
+  way (a speed pad, another dash) takes about 0.19 s of it. A dash spent in between on something that isn't a
+  bait (a zone doodad smashed, which task H5 encourages; an enemy killed; a panic dash) can leave it recharging at
+  the wall, and the runner can't plan for it: a wall is built only 180 to 220 m ahead (7.2 to 9.4 s), and the
+  Dead Zone's fog ends at 150 m (about 6 s). Placeholder: accepted (GDD §9.14 allows it: on cooldown, the runner
+  crashes, which the armor or the shield absorbs). Options: accept it; count more things as baits (the doodads,
+  any enemy the dash kills); or show a cue when a wall is near while the dash recharges. Which?
 - **The clear stretch around a wall** (GDD §9.14 gives none; the brief: a reaction and a lane switch at dash
   speed). Placeholder: `approach_seconds` and `after_seconds` 0.6 s at the dash's speed before the face and past the
   back, in every lane: no hole, floor cut's window, fence, doodad, speed pad, pad's zone, ramp or its wall run,
   ceiling or landing zone, and no enemy's attack. Plain holes, fences and signs there are taken out to make room
-  (`clear_plain_pieces`).
-- **Where the walls stand in the level's build, and the danger density request** (`docs/USER_REQUESTS.md`: about
-  35% more enemies and obstacles by the final levels, which `test_danger_density` holds at 30% to 40%). Placeholder:
+  (`clear_plain_pieces`). A panic cyborg's run stops short of a wall's approach (it never runs through a standing
+  wall nor cowers right behind it), and an Octodog or a Buzz Overdrive running off ahead of the runner leaves play
+  at a standing wall's face rather than driving through the building.
+- **The Hush's quiet stretches** (GDD §5: "long silent stretches broken by sudden threats"). Placeholder: walls keep
+  out of them, as the fill pass and the danger density pass do, unless that leaves the level with none (then one
+  stands in a quiet stretch). The Hush's bursts hold one wall, so it gets one. Should a wall be allowed in a quiet
+  stretch (it's a building, not an enemy), and should The Hush have more?
+- **Pressing: where the walls stand in the level's build, and the danger density request**
+  (`docs/USER_REQUESTS.md`: about 35% more enemies and obstacles by the final levels, which `test_danger_density`
+  holds at 30% to 40%; its final levels on 3 lanes sit at ×1.303 against the floor of 1.30, before and after the
+  walls, so any later feature that takes room before the danger density pass will push them under). Placeholder:
   only the introduction stands with the enemy rules; the rest stand after the danger density pass and the zone
   doodads, in the room those passes and the fill pass left, taking out plain holes and fences in their way.
   Standing them earlier (before those passes) took the stretches the passes add enemies and rows in: the final
@@ -80,5 +101,5 @@
   and `dash_wall_smash.wav` (a heavy crack and thump over a slab's boom, the crumble's roar closing down, masonry
   thudding down after it). Nothing flashes or glows.
 - **The first-encounter hint** (`data/hints/hints.json`, `dash_wall`): "A building blocks the street: dash through
-  it ({dash})! Without the dash you crash through and take a hit, which armor or a shield absorbs. A run along a
-  side wall passes it too." Is the wording right?
+  it ({dash})! Without the dash you crash into it: that costs your armor or your shield, and kills you if you have
+  neither. A run along a side wall passes it too." Is the wording right?
