@@ -833,6 +833,10 @@ class ShowPlanner:
 		for d: Dictionary in src.doodads:
 			if float(d["end"]) >= lo and float(d["start"]) <= hi:
 				lay.doodads.append(d)
+		# Dash walls (task H7a) come after the windows are planned, but a room reads any there are (EnforcerTruckRoom).
+		for w: Dictionary in src.dash_walls:
+			if float(w["end"]) >= lo and float(w["start"]) <= hi:
+				lay.dash_walls.append(w)
 		for key: String in ["pads", "speed_pads", "ramps"]:
 			for p: Dictionary in src.get(key):
 				if float(p["at"]) >= lo - 20.0 and float(p["at"]) <= hi + 20.0:

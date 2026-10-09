@@ -1335,7 +1335,8 @@ static func _first_from(spans: Array[Vector2], d: Dictionary) -> float:
 ## a fence, a pad, a speed pad, a floor cut's lane window, an enemy standing in its lane), and in any lane
 ## (what the fill pass counts as going on: every piece, each enemy's stretch as its rules keep it, a floor
 ## cut's whole window; a ceiling to the end of its landing zone; what the rules keep doodads off, a Bad
-## Dream's chase). The seconds from its front (where the smash shows what it hid) to there at the dash's
+## Dream's chase, but not their calm stretches: an Enforcer Truck's showing window holds nothing that could catch
+## a runner, task C6c). The seconds from its front (where the smash shows what it hid) to there at the dash's
 ## speed (the run's plus the dash's bonus, the fastest a runner comes through it) must leave a reaction
 ## (REACTION) and a lane switch (MovementTuning.lane_switch_time); and so must the seconds from its end, for
 ## a runner who dashed into its side near its end (_test_dash_sideways), the latest a smash can show it.
@@ -1365,7 +1366,8 @@ func _test_dash_fairness() -> void:
 			for h: Dictionary in layout.hulls:
 				every.append(Vector2(float(h["start"]), gen.zones.landing_zone(h).y))
 			for k: Dictionary in gen.rules_doodad_keep_outs():
-				if not k.has("lane"):
+				# A calm stretch (an Enforcer Truck's showing window, task C6c) holds nothing that could catch a runner.
+				if not k.has("lane") and not bool(k.get("calm", false)):
 					every.append(Vector2(float(k["from"]), float(k["to"])))
 			var half: float = fast.fence_depth * 0.5
 			for d: Dictionary in layout.doodads:
