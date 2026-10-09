@@ -235,8 +235,11 @@ func _fire(e: CineEvent) -> void:
 	match e.kind:
 		CineEvent.Kind.SOUND:
 			var p: AudioStreamPlayer = _sound_player(e.name)
-			if p != null and SfxLibrary.audible():
-				p.play()
+			if p != null:
+				# The event's own level on top of the library's (CineEvent.volume_db).
+				p.volume_db = sfx.volume(e.name) + e.volume_db
+				if SfxLibrary.audible():
+					p.play()
 			log_lines.append("sound %s" % e.name)
 		CineEvent.Kind.MUSIC:
 			var track: StringName = music_track(e.name)

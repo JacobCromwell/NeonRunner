@@ -3,7 +3,10 @@ extends Node3D
 ## An actor of a playing cinematic (CinematicSequencer): the runner's model (PlayerAvatar, Razor Echo) or
 ## a cyborg's (CyborgBody, in its zone's look), moved along its CineActor's keys and posed from them.
 ## The runner's stride keeps pace with the ground it covers and it leans into sideways moves, as in play;
-## a cyborg walks, aims, cowers or falls. Visual only: no collision and no gameplay.
+## in the poses play never needs (CinePoses: lying, getting up, climbing out over an edge) its rig is posed
+## from the keys' progress instead, and while it climbs its hands hold on to the keys' position. A cyborg
+## walks, aims, cowers, falls, lies still or crouches. Either turns its head by the keys' look and
+## look_up. Visual only: no collision and no gameplay.
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 ## Below this speed (m/s) an actor that faces the way it moves keeps its heading.
@@ -22,6 +25,10 @@ const MAX_STEP: float = 5.0
 ## How the runner's look (CineActorKey.look) is shared out up its spine: chest, neck, head.
 const LOOK_SHARE: Array[float] = [0.25, 0.3, 0.45]
 const LOOK_JOINTS: Array[StringName] = [&"chest", &"neck", &"head"]
+## How its tip (CineActorKey.look_up) is shared out over the same joints.
+const TIP_SHARE: Array[float] = [0.0, 0.4, 0.6]
+## Where a hand grips: this far along it from the wrist (the rig's units, before its size fit).
+const GRIP_REACH: float = 0.07
 
 var actor: CineActor
 var stage: CineStage
@@ -37,15 +44,24 @@ var distance_run: float = 0.0
 var pose: StringName = &""
 ## Its heading now, radians (0 faces down the track, + turns left).
 var yaw: float = 0.0
-## The runner's head turn now, radians (+ looks left; CineActorKey.look).
+## Its head turn now, radians (+ looks left; CineActorKey.look), and its tip (+ looks up; look_up).
 var look: float = 0.0
+var look_up: float = 0.0
+## How far through a pose that plays out over time it is now (CineActorKey.progress, 0-1).
+var progress: float = 0.0
 
 var _started: bool = false
 var _airborne: bool = false
 var _died: bool = false
-## Its keys' positions and looks, in order (built on first use).
+## Its keys' positions, looks, tips and progress, in order (built on first use).
 var _points: Array = []
 var _looks := PackedFloat32Array()
+var _tips: Array = []
+var _progress: Array = []
+## The runner's pose in CinePoses' poses, a scratch pose for its steps, and its legs' phase as it steps.
+var _cine_pose := HumanoidPose.new()
+var _step_pose := HumanoidPose.new()
+var _step_phase: float = 0.0
 
 
 ## Builds the model. `variant` dresses a cyborg that names no look of its own (the stage skin's
@@ -59,24 +75,28 @@ func setup(p_actor: CineActor, p_stage: CineStage, tuning: MovementTuning, varia
 			avatar = PlayerAvatar.new()
 			avatar.fit_to(tuning.visual_size)
 			add_child(avatar)
-			_hold_avatar()
+			_hold_models()
 		CineActor.Kind.CYBORG:
 			body = CyborgBody.new()
 			body.name = "Body"
 			add_child(body)
 			body.build(actor.look if actor.look != &"" else variant, actor.host, false, visual_seed)
+			_hold_models()
 
 
 func _ready() -> void:
-	_hold_avatar()
+	_hold_models()
 
 
-## The runner's model is driven by update() on the cinematic's clock, never by itself between frames
+## The models are driven by update() on the cinematic's clock, never by themselves between frames
 ## (PlayerAvatar carries on from its last state when it isn't fed for two physics ticks, which a frame
-## at 30 fps spans). A node's physics processing comes back on when it's ready, so this runs once it is.
-func _hold_avatar() -> void:
+## at 30 fps spans; a cyborg's body moves on by update()'s steps, CyborgBody.advance, so stepping the clock
+## shows the same). A node's processing comes back on when it's ready, so this runs once it is.
+func _hold_models() -> void:
 	if avatar != null and avatar.is_inside_tree():
 		avatar.set_physics_process(false)
+	if body != null and body.is_inside_tree():
+		body.set_process(false)
 
 
 ## Where its path puts it at time `t`, in track space (what a camera key riding with it follows).
@@ -122,12 +142,22 @@ func update(t: float, delta: float, others: Dictionary) -> void:
 		# Track space runs along +z, which is world -z: heading 0.
 		heading = atan2(-velocity.x, velocity.z)
 	yaw = heading if not _started else lerp_angle(yaw, heading, 1.0 - exp(-TURN_RATE * delta))
+	var first: bool = not _started
 	_started = true
+	_sample_look(t)
+	progress = _progress_at(t)
 	if avatar != null:
-		_update_runner(delta, velocity)
-		_turn_head(t)
+		if CinePoses.is_cine_pose(pose):
+			_pose_runner(t, delta)
+		else:
+			avatar.position = Vector3.ZERO
+			_update_runner(delta, velocity)
+			_turn_head()
 	elif body != null:
+		if first:
+			body.snap()
 		_update_cyborg(i, others)
+		body.advance(delta)
 
 
 func _update_runner(delta: float, velocity: Vector3) -> void:
@@ -152,20 +182,70 @@ func _update_runner(delta: float, velocity: Vector3) -> void:
 	}, delta)
 
 
-## The runner's look at time `t`, turned into its chest, neck and head on top of the pose just set (the
-## rig sets every joint afresh each update, so nothing builds up).
-func _turn_head(t: float) -> void:
+## The runner in one of CinePoses' poses: its rig posed from the keys' progress (and put on the ground), its
+## head turned, then, while it climbs, moved so its hands hold on to the keys' position.
+func _pose_runner(t: float, delta: float) -> void:
+	avatar.rotation.y = yaw
+	avatar.position = Vector3.ZERO
+	var rig: HumanoidRig = avatar.rig
+	CinePoses.runner(_cine_pose, pose, progress, t, rig.parts.pelvis_height())
+	var hold: float = CinePoses.hand_hold(pose, progress)
+	# Moved along meanwhile (a stagger forward as it gets up), its legs step.
+	_step_phase = CinePoses.step_phase(_step_phase, speed * delta, speed, avatar.anim_tuning)
+	CinePoses.add_steps(_cine_pose, _step_pose, _step_phase, speed, avatar.anim_tuning,
+		smoothstep(CinePoses.STEP_SPEED.x, CinePoses.STEP_SPEED.y, speed) * (1.0 - hold))
+	rig.apply_pose(_cine_pose)
+	_turn_head()
+	if hold > 0.0:
+		avatar.position = -grip_point() * hold
+	rig.update_panels(delta)
+	_airborne = false
+
+
+## Where the runner's hands grip, in this node's space: between its palms (GRIP_REACH along each hand
+## from its wrist). While it climbs, the keys' position.
+func grip_point() -> Vector3:
+	var sum := Vector3.ZERO
+	for hand: StringName in [&"hand_l", &"hand_r"]:
+		var joint: Node3D = avatar.rig.joint(hand)
+		sum += to_local(joint.global_transform * Vector3(0.0, -GRIP_REACH, 0.0))
+	return sum * 0.5
+
+
+## Its look and its tip at time `t`, from its keys.
+func _sample_look(t: float) -> void:
 	if _looks.size() != actor.keys.size():
 		_looks.clear()
+		_tips.clear()
 		for k: CineActorKey in actor.keys:
 			_looks.append(deg_to_rad(k.look))
+			_tips.append(deg_to_rad(k.look_up))
 	look = CinePath.sample_angle(actor.keys, _looks, t)
-	if is_zero_approx(look) or pose == &"dead":
+	look_up = float(CinePath.sample(actor.keys, _tips, t))
+
+
+## How far through its pose it is at time `t`: its keys' progress, a key below 0 keeping the one before.
+func _progress_at(t: float) -> float:
+	if _progress.size() != actor.keys.size():
+		_progress.clear()
+		var last: float = 0.0
+		for k: CineActorKey in actor.keys:
+			last = k.progress if k.progress >= 0.0 else last
+			_progress.append(last)
+	return clampf(float(CinePath.sample(actor.keys, _progress, t)), 0.0, 1.0)
+
+
+## The runner's look and tip turned into its chest, neck and head on top of the pose just set (the rig
+## sets every joint afresh each update, so nothing builds up).
+func _turn_head() -> void:
+	if pose == &"dead" or (is_zero_approx(look) and is_zero_approx(look_up)):
 		return
 	for j: int in LOOK_JOINTS.size():
 		var joint: Node3D = avatar.rig.joint(LOOK_JOINTS[j])
-		if joint != null:
-			joint.rotate_object_local(Vector3.UP, look * LOOK_SHARE[j])
+		if joint == null:
+			continue
+		joint.rotate_object_local(Vector3.UP, look * LOOK_SHARE[j])
+		joint.rotate_object_local(Vector3.RIGHT, look_up * TIP_SHARE[j])
 
 
 func _update_cyborg(i: int, others: Dictionary) -> void:
@@ -183,9 +263,14 @@ func _update_cyborg(i: int, others: Dictionary) -> void:
 			if not _died:
 				_died = true
 				body.die(&"shot")
+		&"lie":
+			body.set_pose(CyborgBody.Pose.LIE)
+		&"crouch":
+			body.set_pose(CyborgBody.Pose.CROUCH)
 		_:
 			body.set_pose(CyborgBody.Pose.WALK if speed > 0.1 else CyborgBody.Pose.IDLE)
 	body.set_move_speed(speed)
+	body.head_turn = Vector2(look, look_up)
 	var face: StringName = _latest(i, &"expression")
 	if face != &"" and not _died:
 		var index: int = Kit.Face.keys().find(String(face).to_upper())
