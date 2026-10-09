@@ -58,7 +58,11 @@ extends RefCounted
 ## missed, GUARANTEE_MAX_PICKS), until none is missing. Each build runs every pass and rule
 ## unchanged, so the guarantee never bends a fairness rule. Rules that hold the room for their
 ## feature themselves may add one where it fits when none is left (the host and Octodog rules),
-## which saves a build.
+## which saves a build. A feature with no pattern of its own, placed by its rules only around other
+## features' entries (the Enforcer Truck around Octodog and Buzz Overdrive charges: its rules'
+## GUARANTEED_BY), counts too: a build without one forces picks of those features elsewhere, so their
+## entries move until one leaves its rules room (dependent_features; task K4, which met a build whose
+## only baits left a truck nowhere to arrive).
 ##
 ## Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5, owner's review
 ## P2 13): with the campaign's recency curve (LevelConfig.feature_recency and feature_ages), each
@@ -258,14 +262,21 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 		_build(patterns, forced)
 		if attempt == 0:
 			needed = placeable_features(patterns)
+			needed.append_array(dependent_features(needed))
 		var missing: PackedStringArray = missing_features(needed)
 		if missing.is_empty():
 			return layout
 		if attempt == 0 or missing.size() < best_missing.size():
 			best = forced.duplicate()
 			best_missing = missing
+		# One more forced pick of each feature a missed one asks for, once a build however many ask for it
+		# (a truck missed with the bait it rides on).
+		var picks_for: Dictionary = {}
 		for feature: String in missing:
-			forced[feature] = int(forced.get(feature, 0)) + 1
+			for f: String in _guarantee_picks_for(feature, needed):
+				picks_for[f] = true
+		for f: String in picks_for:
+			forced[f] = int(forced.get(f, 0)) + 1
 	_build(patterns, best)
 	warnings.append("guarantee: after %d builds the level still has no %s (every feature should appear, GDD §5)"
 		% [GUARANTEE_ATTEMPTS, ", ".join(best_missing)])
@@ -938,6 +949,49 @@ func placeable_features(patterns: Array) -> PackedStringArray:
 				out.append(feature)
 				break
 	return out
+
+
+## The level's features with no pattern of their own whose rules place them only around other features'
+## entries (their rules script's GUARANTEED_BY), when one of those is in `placeable`: the guarantee covers
+## them too (the Enforcer Truck, around the Octodogs' and Buzz Overdrives' charges), unless their rules place
+## none (guaranteed_by).
+func dependent_features(placeable: PackedStringArray) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for feature: String in config.features:
+		if placeable.has(feature):
+			continue
+		for f: String in guaranteed_by(feature):
+			if placeable.has(f):
+				out.append(feature)
+				break
+	return out
+
+
+## What a build that missed `feature` forces picks of in the next one: the feature itself, or, for one its
+## rules place around other features' entries (guaranteed_by), those of them in `needed`, moved elsewhere.
+func _guarantee_picks_for(feature: String, needed: PackedStringArray) -> PackedStringArray:
+	var by: PackedStringArray = guaranteed_by(feature)
+	if by.is_empty():
+		return PackedStringArray([feature])
+	var out: PackedStringArray = []
+	for f: String in by:
+		if needed.has(f):
+			out.append(f)
+	return out
+
+
+## The features whose entries `feature`'s rules place it around (its rules script's GUARANTEED_BY), or []:
+## a feature with patterns of its own has none, and so has one whose rules place none of it (their `static
+## func places_any() -> bool` false: the Enforcer Truck's tuning at per_level_max 0), which no build
+## could then show.
+static func guaranteed_by(feature: String) -> PackedStringArray:
+	var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+	var script: GDScript = load(path) as GDScript if ResourceLoader.exists(path) else null
+	if script == null:
+		return PackedStringArray()
+	if script.has_method("places_any") and not bool(script.call("places_any")):
+		return PackedStringArray()
+	return PackedStringArray(script.get_script_constant_map().get("GUARANTEED_BY", []))
 
 
 ## The features of `needed` that the current layout has nothing of (feature_positions).
@@ -1670,6 +1724,22 @@ func rules_doodad_keep_outs() -> Array[Dictionary]:
 			continue
 		for k: Dictionary in script.call("doodad_keep_outs", self):
 			out.append(k)
+	return out
+
+
+## The level's features' rules scripts that keep wall enemies off stretches of their wall (`static func
+## on_wall_section(gen: LevelGenerator, type: String, side: int, at: float, params: Dictionary) -> bool` on
+## a feature's rules script: a Gilded Sentinel's wall section), in the order of the features. A pass that
+## adds wall enemies after the rules asks them (DangerDensity._type_rules_ok, task K4).
+func wall_section_rules() -> Array[GDScript]:
+	var out: Array[GDScript] = []
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("on_wall_section"):
+			out.append(script)
 	return out
 
 

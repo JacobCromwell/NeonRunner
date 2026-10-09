@@ -37,9 +37,9 @@ extends TestSuite
 ##   it after it has shown itself; and it plays the same on every attempt.
 ## - Corporate 2's own build at 3, 5 and 6 lanes, played to its end by a scripted runner (god mode,
 ##   grapples; it keeps to the middle lane like AttackWatch's) that baits each charge while a truck chases:
-##   every truck that comes is destroyed by a charge the runner dodged, no other type's big attack is open
-##   during a volley, and it never fires while it shows itself nor comes closer than MIN_GAP in the runner's lane
-##   (the showings it makes there are printed).
+##   every truck that comes is destroyed by a charge the runner dodged (or a wider gap or cut it led the truck
+##   into), no other type's big attack is open during a volley, and it never fires while it shows itself nor
+##   comes closer than MIN_GAP in the runner's lane (the showings it makes there are printed).
 
 const Rules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
@@ -47,6 +47,10 @@ const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const LANES: Array[int] = [3, 5, 6]
+## The lane counts at which Corporate 2's own build fires no volley, its trucks all falling into a wider gap or
+## a cut first (_test_corporate_2), each checked to still show it, and every other one to fire: 5 lanes on task
+## K4's curve.
+const NO_VOLLEY_LANES: Array[int] = [5]
 
 var sim: RunSim
 var t: EnforcerTruckTuning
@@ -1341,8 +1345,13 @@ func _test_same_every_attempt() -> void:
 ## mode and grapples, keeping to the middle lane like AttackWatch's runner, and baiting each charge while a
 ## truck chases (it steps out of an Octodog's lunge aimed at it as the lunge begins; it steps into a Buzz
 ## Overdrive's lane as it rolls in, and out half a second before it meets the runner). Every truck that
-## comes is destroyed by a charge the runner was out of the way of, the player's kill; no other type's big
-## attack is open during its volleys; the runner reaches the end.
+## comes is destroyed by a charge the runner was out of the way of, or by a wider gap or a cut the runner led
+## it into, the player's kill; no other type's big attack is open during its volleys, and its trucks fire,
+## but at NO_VOLLEY_LANES; the runner reaches the end. At 5 lanes on task K4's curve the truck arrives at 641 m
+## and the level's wider gap at 769 m (128 m, 5.5 s on, across 4 of the 5 lanes) wrecks it, as
+## test_wide_gaps.gd plays it, before its first volley: that is due 3 s after it arrives (first_volley_seconds)
+## and waits up to show_wait_seconds (4 s) for a showing, and in these runs the truck shows itself at no lane
+## count (nor did it on K2's curve).
 func _test_corporate_2() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for lanes: int in LANES:
@@ -1402,9 +1411,17 @@ func _test_corporate_2() -> void:
 		for pair: String in watch.overlap_pairs:
 			if pair.contains("enforcer_truck"):
 				pairs.append("%s %.2f s" % [pair, float(watch.overlap_pairs[pair])])
-		check(pairs.is_empty() and int(watch.attacks.get("enforcer_volley", 0)) >= 1,
-			"%s: no other type's big attack is open during its %d volleys (%s)" % [tag, int(watch.attacks.get("enforcer_volley", 0)),
+		var volleys: int = int(watch.attacks.get("enforcer_volley", 0))
+		check(pairs.is_empty(), "%s: no other type's big attack is open during its %d volleys (%s)" % [tag, volleys,
 			", ".join(pairs)])
+		if NO_VOLLEY_LANES.has(lanes):
+			var holed_first: bool = not trucks.is_empty()
+			for id: int in trucks:
+				holed_first = holed_first and String(trucks[id]["down"]) in ["gap", "cut"] and int(trucks[id]["volleys"]) == 0
+			check(volleys == 0 and holed_first, ("%s still fires no volley, each truck falling into a wider gap or a cut "
+				+ "first (%d volleys: %s); else take it off NO_VOLLEY_LANES") % [tag, volleys, ", ".join(downs)])
+		else:
+			check(volleys >= 1, "%s: its trucks fire (%d volleys), so the check above checks something" % [tag, volleys])
 		check(w.player.alive and w.player.distance >= layout.length - 2.0, "%s: the runner reaches the end" % tag)
 		print("  %s: %d trucks: %s" % [tag, trucks.size(), "; ".join(downs)])
 		await sim.free_world(w)

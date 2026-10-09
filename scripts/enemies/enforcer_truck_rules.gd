@@ -37,6 +37,11 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"hover_truck", "octodog", "screech", "screech_vents", "drone", "generator", "wall_fences", "wall_fences_partial",
 	"buzz_overdrive", "barnacle_turret", "tithe_collector", "resonator", "gilded_sentinel"]
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+## The features whose charges are its baits. A build with none of its trucks (no bait its chase could take:
+## the only baits' arrivals all fall during another bait's attack, say) has the generator's guarantee move
+## their picks in the next build (LevelGenerator.dependent_features, task K4), as for any feature missed,
+## unless the data allows no truck (places_any).
+const GUARANTEED_BY: Array[String] = ["octodog", "buzz_overdrive"]
 ## The arrival offsets tried around the preferred one (seconds between them).
 const OFFSET_STEP: float = 0.5
 
@@ -66,6 +71,12 @@ static func apply(gen: LevelGenerator) -> void:
 static func tuning() -> EnforcerTruckTuning:
 	var res: Resource = EnemyDirector.tuning_for(TYPE)
 	return res as EnforcerTruckTuning if res is EnforcerTruckTuning else EnforcerTruckTuning.new()
+
+
+## False when the data allows no truck (per_level_max 0, apply() places none): the generator's guarantee
+## then asks for none (LevelGenerator.guaranteed_by), rather than spending every build looking for one.
+static func places_any() -> bool:
+	return tuning().per_level_max > 0
 
 
 ## Every Enforcer Truck in the layout, along the track.

@@ -113,7 +113,7 @@ func _test_off(campaign: Campaign) -> void:
 			"%s asks for none and plants nothing" % ("quick play" if config == quick else "the prototype level"))
 	# Golden 2 (Buzz Overdrive charges, no Octodogs) at a lane count where it plants one: the same on every
 	# attempt. Which lane counts it plants at moves with its layout (6 lanes before the Casino's levels
-	# re-spaced the campaign's curve, task K2; 5 after).
+	# re-spaced the campaign's curve, task K2; 5 on K2's curve; 3 on task K4's).
 	var planted_at: int = 0
 	for lanes: int in [6, 5, 3]:
 		var g2: LevelConfig = campaign.configure(campaign.step("golden/2"), lanes)

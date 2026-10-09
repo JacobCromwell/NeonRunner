@@ -18,17 +18,17 @@ extends TestSuite
 ## - Every campaign level with Enforcer Trucks at 3, 5 and 6 lanes: a first Enforcer chase without a wider gap has
 ##   no clear stretch for a new row of one (prefer_enforcer_chases: preferred, not guaranteed, open question 357;
 ##   _chase_spot says what that check covers and what it doesn't).
-## - Corporate 2 (the Enforcer's first level): its first Enforcer chase holds a wider gap at 3 and 6 lanes
-##   (CORPORATE_2_CHASE_LANES; at 5 lanes, the one exemption since task K2, it has no clear stretch for one), each
+## - Corporate 2 (the Enforcer's first level): its first Enforcer chase holds a wider gap at 3, 5 and 6 lanes
+##   (CORPORATE_2_CHASE_LANES; a lane count left out of it would have to show no clear stretch for one), each
 ##   played from the level's start by a scripted runner (god mode, grapples) that lines up in one of its hole lanes
 ##   and jumps it: the truck following is wrecked in it.
 
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const LANES: Array[int] = [3, 5, 6]
-## The lane counts at which Corporate 2's first Enforcer chase must hold a wider gap (_test_corporate_2). 5 lanes is
-## the one exemption since task K2 re-spaced the campaign's curve: its chase is full (a drone's barrage, fences,
-## cyborgs and a pad).
-const CORPORATE_2_CHASE_LANES: Array[int] = [3, 6]
+## The lane counts at which Corporate 2's first Enforcer chase must hold a wider gap (_test_corporate_2): all three
+## on task K4's curve, as before the Casino. (On K2's 17-level linear curve its 5 lanes' chase was full, a drone's
+## barrage, fences, cyborgs and a pad, and was left out; a lane count left out must show no clear stretch there.)
+const CORPORATE_2_CHASE_LANES: Array[int] = [3, 5, 6]
 ## The check on a first Enforcer chase without a wider gap (_chase_spot): tag, chase start and end, what it found.
 const NO_CLEAR_STRETCH: String = "%s: its first Enforcer's chase (%.0f-%.0f m) holds no wider gap and has no clear stretch for a new row (%s)"
 
@@ -180,10 +180,11 @@ func _test_off(campaign: Campaign) -> void:
 
 ## Builds where the fill pass put a filler at its spacing from one of the level's own rows that's made longer
 ## after it (WideGapPlacement.widen_deferred): the filler goes, and every filler keeps the fill pass's spacing
-## from every wider row; the level keeps its wider gaps. The seeds are ones where that happens on the 17-level
-## curve (task K2: city/3 3 lanes 7001, gangland/1 3 lanes 9103 and gangland/3 5 lanes 9101 before it).
+## from every wider row; the level keeps its wider gaps. The seeds are ones where that happens on task K4's
+## curve (city/3 3 lanes 7001, gangland/1 3 lanes 9103 and gangland/3 5 lanes 9101 before the Casino; city/3 3
+## lanes 7037, gangland/1 6 lanes 9110 and gangland/3 5 lanes 9103 on K2's 17-level linear curve).
 func _test_fillers(campaign: Campaign) -> void:
-	for c: Array in [["city/3", 3, 7037], ["gangland/1", 6, 9110], ["gangland/3", 5, 9103]]:
+	for c: Array in [["city/3", 3, 7040], ["gangland/1", 6, 9101], ["gangland/3", 5, 9101]]:
 		var config: LevelConfig = campaign.configure(campaign.step(String(c[0])), int(c[1]))
 		config.level_seed = int(c[2])
 		var tag: String = "%s at %d lanes, seed %d" % c
@@ -339,10 +340,9 @@ func _truck(w: RunWorld) -> EnforcerTruck:
 ## Corporate 2's own build, played from its start (god mode, grapples: the runner keeps to the middle lane and
 ## takes whatever comes) until the first Enforcer's chase reaches its wider gap: the runner lines up in a hole
 ## lane of it (the nearest the middle) a few seconds before and jumps it midway through its take-off window; the
-## truck following is wrecked in it. At CORPORATE_2_CHASE_LANES, each of which must hold one; at 5 lanes (the one
-## exemption) a drone's barrage, fences, cyborgs and a pad fill that chase since the Casino's levels re-spaced the
-## campaign's curve (task K2; all three lane counts held one before), and _chase_spot finds no clear stretch there
-## for a new row (its limits: its doc comment).
+## truck following is wrecked in it. At CORPORATE_2_CHASE_LANES, each of which must hold one (all three on task
+## K4's curve); a lane count left out of it must show no clear stretch for a new row there (_chase_spot, whose
+## limits its doc comment gives), as K2's curve left 5 lanes.
 func _test_corporate_2(campaign: Campaign) -> void:
 	for lanes: int in LANES:
 		var config: LevelConfig = campaign.configure(campaign.step("corporate/2"), lanes)
@@ -369,7 +369,7 @@ func _test_corporate_2(campaign: Campaign) -> void:
 			chase.x, chase.y])
 		if row.is_empty():
 			if not required:
-				# The exemption (5 lanes): preferred, not guaranteed (open question 357), and no clear stretch there.
+				# A lane count left out: preferred, not guaranteed (open question 357), and no clear stretch there.
 				var spot: String = _chase_spot(gen, chase)
 				check(spot == "", NO_CLEAR_STRETCH % [tag, chase.x, chase.y, spot])
 				print("  %s: no wider gap in the chase %.0f-%.0f m, and no clear stretch there for a new row" % [tag,

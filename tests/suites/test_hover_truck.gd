@@ -7,8 +7,9 @@ const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const S := TruckScript.State
 
 ## The campaign builds whose hover truck is gone before the level's ramps start, so it has route (b) only
-## (_check_rules): Gangland 1 at 3 lanes since task K2 re-spaced the campaign's curve. Any other wants a look.
-const BEFORE_RAMPS: PackedStringArray = ["gangland/1 lanes=3"]
+## (_check_rules), each checked to still show it: none on task K4's curve (Gangland 1 at 3 lanes on task K2's,
+## its truck out at 363 m and its ramps from 1177 m). Any other wants a look.
+const BEFORE_RAMPS: PackedStringArray = []
 
 var sim: RunSim
 ## The tags of the builds whose trucks _check_rules saw gone before their level's ramps start.
@@ -565,6 +566,8 @@ func _test_rules() -> void:
 		", ".join(PackedStringArray(totals.keys())), str(totals.values()), ", ".join(before_ramps)])
 	for tag: String in before_ramps:
 		check(BEFORE_RAMPS.has(tag), "only the known builds' trucks are gone before the ramps start: %s" % tag)
+	for tag: String in BEFORE_RAMPS:
+		check(before_ramps.has(tag), "%s still has its truck gone before the ramps start; else take it off BEFORE_RAMPS" % tag)
 	check(totals["city/3"] == 3, "city/3 introduces the truck: one per level (%d over 3 lane counts)" % totals["city/3"])
 	# Gangland is early in the campaign (levels 4–6 of 17), where the scaling still allows one
 	# truck per level; more come in later zones (the difficulty sweep above checks the growth).
