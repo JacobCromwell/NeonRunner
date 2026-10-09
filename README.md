@@ -363,7 +363,8 @@ Smooth frames), the music's pause duck and death dip, level pacing, the campaign
 recency curve for pick weights (in a campaign level), the wider gaps and the cyborgs planted in charge paths (in a
 level that asks for them: **Wider gaps**, **Charge paths**) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
-changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
+changes also reshape the level, so press **Restart level** to rebuild it (a restart or retry reuses the level it
+built, so it starts at once, until something the build reads changes, here or anywhere). **Save** writes the values back to
 their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
 tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
@@ -475,6 +476,12 @@ shaders first drawn after the load, and under xvfb it also counts draw calls and
 `godot --headless --fixed-fps 60 -s
 res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
 (the whole campaign takes about fifteen minutes; its header lists the options).
+
+`tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
+level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the
+time from pressing retry to the run starting (a retry of the same level reuses the level it built):
+`godot --headless -s res://tools/measure/level_builds.gd -- [--repeat=3] [--bosses] [--passes=corporate/2:5]
+[--retry=corporate/2,dead_zone/1]` (its header lists the options).
 
 `tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
 available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
