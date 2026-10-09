@@ -37,6 +37,10 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"hover_truck", "octodog", "screech", "screech_vents", "drone", "generator", "wall_fences", "wall_fences_partial",
 	"buzz_overdrive", "barnacle_turret", "tithe_collector", "resonator", "gilded_sentinel"]
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+## The features whose charges are its baits. A build with none of its trucks (no bait its chase could take:
+## the only baits' arrivals all fall during another bait's attack, say) has the generator's guarantee move
+## their picks in the next build (LevelGenerator.dependent_features, task K4), as for any feature missed.
+const GUARANTEED_BY: Array[String] = ["octodog", "buzz_overdrive"]
 ## The arrival offsets tried around the preferred one (seconds between them).
 const OFFSET_STEP: float = 0.5
 

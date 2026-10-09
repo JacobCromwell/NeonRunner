@@ -58,7 +58,11 @@ extends RefCounted
 ## missed, GUARANTEE_MAX_PICKS), until none is missing. Each build runs every pass and rule
 ## unchanged, so the guarantee never bends a fairness rule. Rules that hold the room for their
 ## feature themselves may add one where it fits when none is left (the host and Octodog rules),
-## which saves a build.
+## which saves a build. A feature with no pattern of its own, placed by its rules only around other
+## features' entries (the Enforcer Truck around Octodog and Buzz Overdrive charges: its rules'
+## GUARANTEED_BY), counts too: a build without one forces picks of those features elsewhere, so their
+## entries move until one leaves its rules room (dependent_features; task K4, which met a build whose
+## only baits left a truck nowhere to arrive).
 ##
 ## Beyond that guarantee, a campaign level's newest things get the most picks (GDD §5, owner's review
 ## P2 13): with the campaign's recency curve (LevelConfig.feature_recency and feature_ages), each
@@ -258,6 +262,7 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 		_build(patterns, forced)
 		if attempt == 0:
 			needed = placeable_features(patterns)
+			needed.append_array(dependent_features(needed))
 		var missing: PackedStringArray = missing_features(needed)
 		if missing.is_empty():
 			return layout
@@ -265,7 +270,8 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 			best = forced.duplicate()
 			best_missing = missing
 		for feature: String in missing:
-			forced[feature] = int(forced.get(feature, 0)) + 1
+			for f: String in _guarantee_picks_for(feature, needed):
+				forced[f] = int(forced.get(f, 0)) + 1
 	_build(patterns, best)
 	warnings.append("guarantee: after %d builds the level still has no %s (every feature should appear, GDD §5)"
 		% [GUARANTEE_ATTEMPTS, ", ".join(best_missing)])
@@ -938,6 +944,44 @@ func placeable_features(patterns: Array) -> PackedStringArray:
 				out.append(feature)
 				break
 	return out
+
+
+## The level's features with no pattern of their own whose rules place them only around other features'
+## entries (their rules script's GUARANTEED_BY), when one of those is in `placeable`: the guarantee covers
+## them too (the Enforcer Truck, around the Octodogs' and Buzz Overdrives' charges).
+func dependent_features(placeable: PackedStringArray) -> PackedStringArray:
+	var out: PackedStringArray = []
+	for feature: String in config.features:
+		if placeable.has(feature):
+			continue
+		for f: String in guaranteed_by(feature):
+			if placeable.has(f):
+				out.append(feature)
+				break
+	return out
+
+
+## What a build that missed `feature` forces picks of in the next one: the feature itself, or, for one its
+## rules place around other features' entries (guaranteed_by), those of them in `needed`, moved elsewhere.
+func _guarantee_picks_for(feature: String, needed: PackedStringArray) -> PackedStringArray:
+	var by: PackedStringArray = guaranteed_by(feature)
+	if by.is_empty():
+		return PackedStringArray([feature])
+	var out: PackedStringArray = []
+	for f: String in by:
+		if needed.has(f):
+			out.append(f)
+	return out
+
+
+## The features whose entries `feature`'s rules place it around (its rules script's GUARANTEED_BY), or []:
+## a feature with patterns of its own has none.
+static func guaranteed_by(feature: String) -> PackedStringArray:
+	var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+	var script: GDScript = load(path) as GDScript if ResourceLoader.exists(path) else null
+	if script == null:
+		return PackedStringArray()
+	return PackedStringArray(script.get_script_constant_map().get("GUARANTEED_BY", []))
 
 
 ## The features of `needed` that the current layout has nothing of (feature_positions).

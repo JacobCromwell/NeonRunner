@@ -946,8 +946,10 @@ Small enemy encounters stay within existing feature introductions and warning ru
 also add fair ceiling turrets where that feature exists. Obstacle rows use spare lane width where
 possible, or additional longitudinal opportunities when a row already leaves only one lane open.
 The pass checks the reachable route through successive rows, not just a permanently empty lane.
-Wall fences retain their placement rules, Resonators keep their whole visit clear, and doodads cannot
-occupy the only route the new rows require. Added pieces receive no extra risk-credit pay.
+Wall fences retain their placement rules, Resonators keep their whole visit clear, a window cyborg or a
+vent's screech it adds keeps off a Gilded Sentinel's wall section (`GildedSentinelRules.on_wall_section`,
+task K4, after a build on one of the curves it tried put one there), and doodads cannot occupy the only
+route the new rows require. Added pieces receive no extra risk-credit pay.
 Durations and reward tables are unchanged, including City 1's 55 seconds.
 
 `tools/measure/danger_density.gd` reports counts by level, band and danger category, and compares
@@ -1214,6 +1216,11 @@ each feature a pattern can place there is in the finished level, at any lane cou
   without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
   `guarantee_one_wave` and `guarantee_one`), and a host, an Octodog and a Resonator in a level with
   `guarantee_features`.
+- A feature with no pattern of its own, which its rules place only around other features' entries, is
+  required too when one of those is (`dependent_features()`, from its rules script's `GUARANTEED_BY`): the
+  Enforcer Truck, which waits for an Octodog's or a Buzz Overdrive's charge during its chase. A build
+  without one forces picks of those features instead (`_guarantee_picks_for`), so their entries move until
+  one leaves the truck room to arrive (task K4: a rare seeded build had none, on the earlier curves too).
 
 **Pace** (GDD §3, owner's playtest September 30, 2026: about 21 m/s in the Neon City rising zone by
 zone to about 25 m/s in the Golden Zone). A level's run speed is its own `LevelConfig.run_speed`, which
