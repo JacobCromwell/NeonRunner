@@ -354,7 +354,7 @@ arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`) and the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) and the Dead Zone intro's (`dead_zone_intro_tuning.tres`, `DeadZoneIntroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -2941,9 +2941,10 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
-`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
-intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
-Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), and the other outros are still cards. A boss is
+`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the Dead Zone's and the
+City's boss intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
+Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the Dead Zone's intro its own (`DeadZoneIntro`,
+task F2c), and the other outros are still cards. A boss is
 built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Golden
 Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule delay. A fight
 still being built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card,
@@ -3572,16 +3573,18 @@ never ends, and a level never starts, unattended.
 | File | What |
 |---|---|
 | `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool); a script's hooks: `_on_cue()`, `_on_advance()` (its own props on the clock), `_stage_near()` (the street kept built under props further back), `switch_stage()` (a cut to another stretch, even another zone's) |
-| `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound`, `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
+| `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound` (at its own level over the library's), `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
-| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, the runner's head turn `look`, a cyborg's face, aim and charge) and its node in play |
+| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position); its legs step while it is moved meanwhile |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
 | `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
+| `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -3615,19 +3618,30 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 **Actors.** The runner is the real player model (`PlayerAvatar`), driven with the same movement state as
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
-keys; it is in the air below the floor too (falling past its edge), and a key's `look` turns its head (shared
-by its chest, neck and head, turning smoothly between keys). A cyborg (`CyborgBody`) walks or idles by its
-speed, or takes `aim`, `run_away`, `cower` or `die`;
-its keys set its face, its aim (at another actor) and its charge glow (the red glow is its attack's
-warning in play, so show it only where an attack follows). An actor faces the way it moves, or a heading
-of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no gameplay.
+keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
+(`CinePoses`: `lie`, `get_up`, `climb`) take the keys' `progress` (0-1, sampled like the position; a key below 0
+keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
+hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises); and while it
+climbs, its hands hold the keys' position (the body hangs from them) until a foot takes its weight
+(`CinePoses.LET_GO`). A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
+`die`, `lie` (lying still, its screen dark) or `crouch` (crouched low over something, working at it; it stops as
+it turns its head); its keys set its face, its aim (at another actor) and its charge glow (the red glow is its
+attack's warning in play, so show it only where an attack follows). Either's head turns by its keys' `look`
+(shared by its chest, neck and head) and tips by `look_up` (its neck and head; a cyborg's chest a little too, and
+a cyborg's turn is about its upright, so a bowed head turns without rolling over), smoothly between keys. The
+models move on the cinematic's clock, never by themselves between frames (the runner's rig by its update; a
+cyborg's body by `CyborgBody.advance`), so stepping the clock shows the same (but for a cyborg's `die` fall, a tween,
+and a host's random face glitches). An actor faces the way it moves, or
+a heading of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no
+gameplay.
 
 **Reduced flashing and comfort.** `flash` becomes a slow, faint glow with Reduced flashing
 (`CineOverlay.SOFT_FLASH_ALPHA`, `SOFT_FLASH_MIN_TIME`); nothing in the overlay blinks; the skins honour it
 as in play; `shake` is scaled by Screen shake (0 when it's off).
 
 **Writing a cinematic.** In data: a scene whose root is `CinematicSequencer` with `timeline` set to a
-`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event). Or in
+`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event but the poses that
+play out over time, which `test_cinematics` plays). Or in
 a short script, which can use the stage's geometry:
 
 ```gdscript
@@ -3675,8 +3689,8 @@ Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's v
 id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`), printing each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
-numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot and the City's boss intro play
-it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the Dead Zone's, which has the
+owner's beats) and the City's boss intro play it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
 and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
 the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
 CITY"; before a boss, the boss, as the level select does), the slot's music comes in, and it fades to black
@@ -3733,6 +3747,34 @@ the first time, with cold mesh caches) and costs about 0.6 ms a step, at most ab
 `test_sewer_swarm_intro`); its props add about 25 draw calls. It adds no asset files, and one toolkit hook,
 `_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
 behind the camera and the actors).
+
+**The Dead Zone's intro** (`DeadZoneIntro`, task F2c; the owner's story beats and answers, October 9, 2026, GDD §6
+Cinematics; what they leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in
+`data/cinematics/dead_zone_intro_tuning.tres`): 14.3 s before Dead Zone 1, on a stretch of the zone's street in the
+level's lanes. A smoking crater is a gap in the runner's lane (`CineStageDef.gaps`), so it looks like one; the runner
+lies on their back on its floor 1.42 m down, stirs, shakes their head as they sit up, gets to their feet, staggers to
+the far wall and reaches up. The camera looks down into it from high over its far end, the street beyond and the
+cyborgs down it in view. At 5.75 s it cuts to ground level 1.3 m beyond the far edge: at first only the runner's
+hands come up over the edge and grab it, then they climb out (`CinePoses.climb`, the hands holding the edge) and
+stand on the street as the camera rises and pulls back. Throughout, 16 m down the street behind the crater, two
+cyborgs lie still with their screens dark and a host crouches over them, working at them; as the runner gets up it
+looks over, and at 8.6 s, mid-turn, the cut to a medium shot of it from the runner's side, so it turns to look into
+the camera. At 10 s the cut to an extreme close-up of its screen face: the camera straight in front of the screen as
+it is at the cut (`frame_face`, measured from the head, the head held still: `CyborgBody.twitches`), the whole face
+filling 80% of the picture inside the letterbox (its height, or its width on a screen narrower than the face),
+pushing in to 92%, its corrupted grin glitching harder (the shader's `glitch`, 1.8). At 11.5 s it starts to fade to
+black, and the zone's title card ("ZONE 5", "DEAD ZONE", from the zone's data as the flyovers' are) comes up with
+it and holds on the black; then the level. The actors are the timeline's; the crater's inside is the cinematic's own
+prop, `DeadZoneCrater`, built on the stage so it hides with it: a floor of the zone's own street plates
+(`ZoneSkin.floor_segment`) tipped this way and that, slabs leaning on its walls and rubble (the skin's solid
+material, in greys), three thin columns of the Dead Zone's smoke (`dead_smoke.gdshader`) kept off the camera's line
+to the cyborgs, and a faint cold light. The street stays built back down to the haze behind the cyborgs
+(`_stage_near`). Its sounds are its own, where the game's didn't fit (`tools/asset_gen/sfx_bank_cinematics.gd`, none
+of them a hazard's warning): `crater_smoulder`, `rubble_shift`, `edge_grab`, `cyborg_host_turn` and `cyborg_host_glitch`; the
+zone's track fades in under them. It sets up in about 19 ms (about 240 ms the first time, with cold mesh caches) and
+costs at most about 2 ms a step (headless, `test_dead_zone_intro`); the crater adds 5 draw calls. It added to the
+toolkit the poses that play out over time (`CinePoses`, a cyborg's `lie` and `crouch`), `look_up` and a cyborg's head
+turn, models on the cinematic's clock, and sound events at their own level.
 
 ## Economy and saving
 
@@ -4217,7 +4259,9 @@ run's music hooks through the App. `test_cinematics` checks the cinematic toolki
 eased and cut moves, cameras riding with an actor), a timeline's `problems()`, a cinematic played to its end
 (events in order, `finished` once, actors on their paths, the camera riding along), `skip()` and the pause
 action and the Skip button, Reduced flashing, holding in the background, the sampler (a cinematic described
-in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
+in data), the poses that play out over time (the runner lying, getting up and climbing with its hands holding the
+keys' position; cyborgs lying still and crouching, turning their heads by `look` and `look_up`), sound events at
+their own level, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
 next step follows, skipping, the web demo). `test_city_outro` checks the City outro (F2a): at 3, 5 and 6
@@ -4232,7 +4276,15 @@ speed, the camera at ground level and in the street, cutting once, the owner's b
 and one on the other, five left and six right, each manhole rattling first), the runner never touching a
 screech, more and more pouring out and dropping from out of view, never in the runner's lane, the wall rising
 and closing in, the heart and its glint only in the cut, and ending on black with the fight's music; Reduced
-flashing; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+flashing; `skip()`; and its setup and step costs. `test_dead_zone_intro` checks the Dead Zone's intro (F2c): its slot
+(before Dead Zone 1, which starts when it's skipped); at 3, 5 and 6 lanes the zone's look and lanes, the crater a
+gap in the runner's lane with a floor, smoke and only greys in it, the runner lying in it, shaking their head,
+getting up and reaching for the far wall, two cuts (to ground level beyond the far edge, then to the host's face),
+at first only the hands over the edge, the hands holding the edge as they climb out, the runner up on the street,
+the three cyborgs in view until the medium shot (two lying still with their screens dark, the host crouched), the host
+looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
+zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
+its own sounds; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
