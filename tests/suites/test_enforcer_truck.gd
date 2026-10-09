@@ -793,7 +793,41 @@ func _test_chases_with_room() -> void:
 					check(not w.is_empty() and not bool(w.get("after_bait", false)),
 						"%s: the second truck's window comes before its bait" % tag)
 	t.per_level_max = keep_max
+	_test_bait_under_way()
 	_campaign_chases_with_room()
+
+
+## A truck arriving after a Buzz Overdrive has claimed its turn, before it revs (no rule keeps it from arriving
+## there: arrival_keep_outs start at the rev): the charge comes before any showing, so the planner counts no window
+## there as before the bait, and plans one after the attack (ShowPlanner._under_way); arriving once the attack is
+## over, the showing comes first. On a plain track at 3, 5 and 6 lanes, at quick play's speed.
+func _test_bait_under_way() -> void:
+	for lanes: int in [3, 5, 6]:
+		var layout := RunSim.layout(lanes, 3000.0)
+		var bt: BuzzOverdriveTuning = BuzzRules.tuning()
+		var cut: Dictionary = BuzzRules.plan_for(bt, lanes / 2, 600.0, tuning.run_speed, tuning.pace(), 0.0)
+		layout.cuts.append(cut)
+		layout.enemies.append({"type": "buzz_overdrive", "at": float(cut["end"]), "lane": lanes / 2, "side": 0, "seed": 4,
+			"params": {}})
+		var config := LevelConfig.new()
+		config.lane_count = lanes
+		config.features = PackedStringArray(["buzz_overdrive", "enforcer_truck"])
+		var gen := LevelGenerator.for_layout(config, tuning, layout)
+		var planner: Rules.ShowPlanner = Rules.ShowPlanner.make(gen, t)
+		var v: float = gen.speed
+		var warn: float = FloorCutPlan.warn_at(cut)
+		var claim: float = float(cut.get("claim_seconds", bt.claim_seconds))
+		var attack: Vector2 = FloorCutPlan.attack_window(cut, v)
+		var tag: String = "(%d lanes)" % lanes
+		var during: Dictionary = planner.plan([warn - claim * 0.5 * v], 0)
+		check(not during.is_empty() and bool(during.get("after_bait", false)) and float(during["from"]) >= attack.y - 0.01,
+			"%s arriving between a Buzz Overdrive's claim and its rev, its window comes after the bait's attack (%s)" % [tag,
+			during])
+		check(Rules.arrival_problem(gen, t, warn - claim * 0.5 * v, Rules.arrival_keep_outs(gen), []) == "",
+			"%s a truck may arrive there (the rules keep it off the attack itself)" % tag)
+		var later: Dictionary = planner.plan([attack.y + v], 0)
+		check(not later.is_empty() and not bool(later.get("after_bait", false)) and bool(later["arrival"]),
+			"%s arriving once its attack is over, it shows itself as it arrives (%s)" % [tag, later])
 
 
 ## A plain track of `lanes` lanes, 3 km long, at quick play's speed, with Octodogs standing at `dogs` (their rules plan
@@ -837,10 +871,17 @@ func _campaign_chases_with_room() -> void:
 				for c: Variant in chases:
 					spans.append(Rules.chase_span(gen, t, float((c as Dictionary)["at"])))
 				var faults: PackedStringArray = []
+				var charges: Array[Dictionary] = Rules.bait_points(gen)
 				for i: int in chases.size():
 					var c: Dictionary = chases[i]
 					var w: Dictionary = c["window"]
 					var before: bool = not w.is_empty() and not bool(w.get("after_bait", false))
+					if before:
+						# Before the bait: no bait's charge comes between its arrival and its showing.
+						for b: Dictionary in charges:
+							if float(b["at"]) > float(c["at"]) and float(b["at"]) < float(w["at"]):
+								faults.append("the truck at %.0f m: a %s charges at %.0f m before its showing" % [float(c["at"]),
+									b["kind"], float(b["at"])])
 					counts["chases"] = int(counts["chases"]) + 1
 					var kind: String = "before" if before else ("after" if not w.is_empty() else "none")
 					counts[kind] = int(counts[kind]) + 1
@@ -867,8 +908,8 @@ func _campaign_chases_with_room() -> void:
 						if not bool(bd["chosen"]) and String(bd["window"]) == "before" \
 								and _fits_beside(bd["span"], spans, -1, room):
 							faults.append("a free bait at %.0f m has room beside its %d trucks" % [float(bd["at"]), trucks.size()])
-				check(faults.is_empty(), "%s every truck's chase has a window before its bait wherever a free bait has room (%s)"
-					% [tag, "; ".join(faults)])
+				check(faults.is_empty(), ("%s every truck's chase has a window before its bait wherever a free bait has room,"
+					+ " and none comes after a bait's charge (%s)") % [tag, "; ".join(faults)])
 		lines.append(("%s: %d chases, %d with a window before the bait, %d after it, %d none; %d arriving earlier than"
 			+ " preferred, %d past an earlier free bait") % [id, counts["chases"], counts["before"], counts["after"],
 			counts["none"], counts["earlier"], counts["skipped"]])

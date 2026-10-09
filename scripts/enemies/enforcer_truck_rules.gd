@@ -513,7 +513,8 @@ static func problems(gen: LevelGenerator) -> PackedStringArray:
 ## unfair; it's the window's cost to the danger density (the owner's request, docs/USER_REQUESTS.md), counted in
 ## gen.show_window_result. Its order: with no runner in any lane sent off the floor before it has stayed alongside
 ## (`every_lane`), as the level stands, its whole stay (show_seconds): the arrival showing at the first arrival with
-## room for one, else the earliest mid-chase one before its first bait; then a shorter stay (show_min_seconds at
+## room for one, else the earliest mid-chase one before its first bait (none at an arrival with a bait under way: a
+## Buzz Overdrive that claimed its turn before it, task C6d); then a shorter stay (show_min_seconds at
 ## least); then both taking things out; then all of that again allowing a runner off the floor in a lane; else, at
 ## the preferred arrival, the same after its first bait (a runner who didn't destroy it with that bait sees it
 ## then; the rules give the truck to another bait's chase with a window before its bait wherever the level has one,
@@ -537,6 +538,8 @@ class ShowPlanner:
 	## Why a window doesn't fit where the truck's bait or its chase's end comes before it could stay alongside (why_none
 	## names another reason where one held: this one holds for every late try).
 	const TOO_NEAR: String = "its bait or its chase's end too near"
+	## Why a window doesn't come before the bait at an arrival with a bait under way (_under_way).
+	const UNDER_WAY: String = "a bait under way as it arrives"
 
 	var gen: LevelGenerator
 	var t: EnforcerTruckTuning
@@ -591,12 +594,20 @@ class ShowPlanner:
 		# alongside): one that holds wherever the runner is first, then one that takes nothing out, then its whole stay.
 		var phases: Array[Vector3i] = [Vector3i(0, 1, 1), Vector3i(0, 0, 1), Vector3i(1, 1, 1), Vector3i(1, 0, 1),
 			Vector3i(0, 1, 0), Vector3i(0, 0, 0), Vector3i(1, 1, 0), Vector3i(1, 0, 0)]
+		# An arrival with a bait under way (a Buzz Overdrive that claimed its turn before it, its charge still to come,
+		# task C6d) has its first bait right away: no window there comes before it.
+		var free: Array[float] = []
+		for at: float in spots:
+			if _under_way(at) > at:
+				_none(counts, UNDER_WAY)
+			else:
+				free.append(at)
 		for phase: Vector3i in phases:
-			for at: float in spots:
+			for at: float in free:
 				var w: Dictionary = _window(at, 0.0, t.arrive_gap, seed, phase, counts)
 				if not w.is_empty():
 					return w
-			for at: float in spots:
+			for at: float in free:
 				# Before its first bait's turn: a bait may destroy it.
 				var last: float = minf(t.chase_seconds - t.show_min_seconds, room.seconds_to_bait(at, v))
 				var c: float = settle
@@ -605,9 +616,12 @@ class ShowPlanner:
 					if not w.is_empty():
 						return w
 					c += OFFSET_STEP
-		# Else after its first bait: a runner who didn't destroy it with that bait sees it then (and one who did sees
-		# its wreck blow up in view, EnforcerTruck._explode). At the preferred arrival only.
+		# Else after its first bait (one under way as it arrives, or the first whose turn comes after): a runner who
+		# didn't destroy it with that bait sees it then (and one who did sees its wreck blow up in view,
+		# EnforcerTruck._explode). At the preferred arrival only.
 		var first: float = room.seconds_to_bait(spots[0], v)
+		if _under_way(spots[0]) > spots[0]:
+			first = minf(first, (_under_way(spots[0]) - spots[0]) / v)
 		for phase: Vector3i in phases:
 			var c: float = maxf(first, settle)
 			while c <= t.chase_seconds - t.show_min_seconds:
@@ -747,6 +761,19 @@ class ShowPlanner:
 		if absf(float(w["from"]) - float(show["from"])) > 0.01 or absf(float(w["to"]) - float(show["to"])) > 0.01:
 			return "the stretch it keeps isn't the one planned (%.1f-%.1f)" % [float(w["from"]), float(w["to"])]
 		return ""
+
+
+	## Where the attack of a bait under way for a truck arriving at `at` ends (-INF: none): a bait whose turn began before
+	## it (a Buzz Overdrive claims its turn before its rev, and a truck may arrive before the rev, arrival_keep_outs) and
+	## whose attack ends after it, so its charge comes before any showing in that chase (task C6d: the player could bait
+	## the truck with it first). An Octodog's charges keep every arrival off them.
+	func _under_way(at: float) -> float:
+		var out: float = -INF
+		for b: Dictionary in busy:
+			var turn: float = float(b["turn"])
+			if turn < INF and turn < at - 0.001 and (b["span"] as Vector2).y > at:
+				out = maxf(out, (b["span"] as Vector2).y)
+		return out
 
 
 	## True if window `w` (plan; {}: none) may still take out what it would on the layout as it stands now: the level
