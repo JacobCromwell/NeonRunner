@@ -2335,18 +2335,34 @@ owner's decision. Hooks overridden, builders in `scripts/world/skins/beach/`:
   nothing on the running surface stands up or is round. A pool (`cut()`, the shared `standard_floor_cut()`
   with a tank pattern) is a black steel tank sunk flush: the orange lip, strip and halo sit on the
   collision edge as everywhere, beside a dark steel coping that makes them pop against the bright sand, and
-  inside is far darker than the darkest floor and its joints (`test_beach_skin` computes the budget from the
-  skin's colours: tank steel, rust, tide mark, water). Water is deep unlit teal (`PAT_BEACH_WATER`) at
-  `pool_depth` 6 m, deeper than `fall_death_depth` 4 m, so the player is gone before the water. Blowing sand,
-  drifting leaves and petals and speed streaks (`MeshKit.drift_particles`) are the still floor's motion cue.
+  inside is darker than the darkest large floor area by a real margin (the water, with its ripples and glints, at
+  most 40% of the luminance of the darkest sand, boardwalk or kerb, and under the plates' and joints';
+  `test_beach_skin` computes the budget from the skin's colours: tank steel, rust, tide mark, water). Water is
+  opaque, unlit deep teal (`PAT_BEACH_WATER`: long ripples, slow caustics, soft glints) filled to `pool_depth`
+  0.65 m under the rim, like the reference's near-full tanks: from the game camera (4.2 m up) water six metres
+  down hides behind the near edge beyond a few metres, this shows from ten or more. Above it, the tank's wall
+  is black rust-streaked steel (`PAT_BEACH_TANK`: panels, rivets, a flange under the rim, a tide mark and a wet
+  line). The fall that ends a run (`fall_death_depth` 4 m) goes on into the water: a runner (an Octodog, a
+  wreck) sinks out of sight into the opaque plane, and the chase camera (`camera_height` + `camera_follow_y` x
+  the runner's height) is still 2.4 m above the floor at that depth, so it never goes under the water
+  (pinned by `test_beach_skin`). Blowing sand, drifting leaves and petals and speed streaks
+  (`MeshKit.drift_particles`) are the still floor's motion cue.
 - *The walls* (`BeachShacks`): shacks one to three 12 m lots long, two to four storeys (`lot_run()`), all
   variety hashed from lot indices. Up to `band_top` (7.2 m) a face is flush and calm, drawn by
-  `PAT_BEACH_WALL` from world position in bays of 3 to 4.8 m between bamboo posts (bamboo, palm mat, weathered
-  planks, rusty corrugated sheets, a shut shutter or hatch, bamboo with wordless surf posters, painted
-  boards, a mural), with the wall-run height marks at 2 m and 4 m and sand blown against the foot; nothing
-  opens, glows or juts out more than `LIP` (0.25 m) there. Above `decor_min_height` (8 m): recessed
+  `PAT_BEACH_WALL` from world position in bays of 3 to 4.8 m between bamboo posts, every bay a tone of its own
+  (bamboo culms 0.15 m wide with nodes and bundles, palm mat, weathered planks, rusty corrugated sheets, a painted
+  turquoise, coral or blue door, roller shutter or serving hatch, bamboo with wordless surf posters, painted
+  boards, a mural, painted surfboards mounted flush, culms laid sideways as slats), with big sun-bleached and
+  honey drifts over the bays, so a wall seen edge-on (where fine culms blur) is never one flat tone, and the
+  wall-run height marks at 2 m and 4 m (a 3.6 cm line of a slightly darker shade of the wall: `wall_mark_color`
+  is a multiplier near 0.7) and sand blown against the foot; nothing opens, glows or juts out more than `LIP`
+  (0.25 m) there. Each building has one of seven bamboo tones (honey, sun-grey, pale straw, teak, orange-brown,
+  warm tan, warm honey). Above `decor_min_height` (8 m): recessed
   verandas (bars with a counter, bottles and paper lanterns, lounges, decks; `_alcove()`, set back so nothing
-  hangs over the street), thatch or tin roofs, palms, tiki masks, surfboard racks, flags, bunting and swags,
+  hangs over the street, with an unlit striped awning's valance across the top of a bar's or lounge's
+  opening), clusters of paper lanterns hung on the faces (`lanterns` items: unlit muted shells, warm-white glow
+  inside, within `LIP` of the face), thatch or tin roofs, palms, tiki masks, surfboard racks, flags, bunting
+  and swags,
   black steel tanks, water towers, chimneys and dishes behind the roofline, wordless neon silhouettes and
   roof billboards. Everything over the street stays above `OVER_STREET_MIN` (12 m), clear of the
   ceilings' `TOP_LIMIT` (5.4 m over the 6 m underside), and strings of lights are cached templates hung from
