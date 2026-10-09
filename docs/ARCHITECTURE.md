@@ -1130,14 +1130,16 @@ at least `bait_before_seconds` before it would give up (`in_chase`); where it ca
 the feature's start, never while a bait attacks (`arrival_keep_outs`: an Octodog's planned charges, a Buzz
 Overdrive's attack window), up to `per_level_max` (2) a level, never two at once (each one's chase and drop
 back `spacing_seconds` from the next); in a level paced in bursts it arrives in a burst where it can
-(`pacing_pools`). The earliest baits get them first. Its params list the baits in its chase (`baits`).
+(`pacing_pools`). The earliest baits get them first (with its showing windows planned, the ones whose chases hold
+the most windows: Showing windows, below). Its params list the baits in its chase (`baits`).
 Corporate 2 introduces it at a start of its own, 5% into the level (before the Tithe Collector's 10%; the
 level's only baits at 3 and 6 lanes come within its first 32 s), so its first truck arrives within the
 campaign's introduction reach.
 It takes no room: `keep_out()` is empty and it uses no floor, and its entries take seeds of their own, so a
-level with the feature is the same level plus its trucks, but for the danger density pass, which counts every
-enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six levels on their own seeds). A level with no bait its chase can take gets none (quick
-play without Octodogs or Buzz Overdrives). `problems()` re-checks every truck for the tests.
+level with the feature is the same level plus its trucks and their showing windows (below), but for the danger
+density pass, which counts every enemy entry (its target grew by one other enemy in 1 of the 18 builds of its six
+levels on their own seeds). A level with no bait its chase can take gets none (quick play without Octodogs or Buzz
+Overdrives). `problems()` re-checks every truck for the tests.
 
 **Showing windows** (task C6c; GDD §9.13 "Showing itself", the owner, October 8, 2026: the player should see
 what's chasing them). With `EnforcerTruckTuning.show_window_planned`, the rules plan a showing window in every
@@ -1166,12 +1168,15 @@ cyborgs planted in charge paths keep off one where they stand (`_cyborg_fits`); 
 (`row_only`); the zone doodads, the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
 Buzz Overdrive given a planted cyborg claims its turn earlier (`ChargePathTuning.claim_seconds`), after the trucks
 are planned: the planner assumes that claim for every one (`least_claim`), so each window still holds in the
-finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. Measured with
-`tools/measure/enforcer_shows.gd` (Review tools): on the six levels' own seeds, 17 of 24 chases get a window (9 as
-it arrives); the chases without one have a hover truck or a Gilded Sentinel over their whole chase (4), or no calm
-stretch at all (Corporate 2 at 5 lanes: its introduction among an Octodog's charges, a Tithe Collector and a Buzz
-Overdrive's attack; Dead Zone 1 at 3 lanes: pulsing fences, a ramp's wall run and a Screech; Dead Zone 2 at 6
-lanes: rows of fences with a pad in their gap). The danger density pass's enemy and obstacle counts on its sampled
+finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. On the six
+levels' own seeds, 17 of 24 chases get a window (9 as it arrives, 6 only after the first bait); the chases without
+one have a hover truck or a Gilded Sentinel over their whole chase (4), or no calm stretch at all (Corporate 2 at 5
+lanes: its introduction among an Octodog's charges, a Tithe Collector and a Buzz Overdrive's attack; Dead Zone 1 at 3
+lanes: pulsing fences, a ramp's wall run and a Screech; Dead Zone 2 at 6 lanes: rows of fences with a pad in their
+gap). Played with a runner keeping to each lane in turn (`tools/measure/enforcer_shows.gd`, Review tools), 62 of 111
+chases show it (36 as it arrives), against 15 of 106 before; of the 80 with a window, every one shows it but 18 whose
+truck the runner's bait or a wider gap destroyed before an after-bait window, and one whose runner a pad sent onto a
+ceiling. The danger density pass's enemy and obstacle counts on its sampled
 bands stay as they were; the windows cost the six levels about 2% of their enemies and obstacles (592 to 579 and
 3281 to 3214 on their own seeds: what they took out, and what the fill pass and the pass's rows found no room
 for). Every level without the truck, and every level with it with the switch off, builds exactly as before.
