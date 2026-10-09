@@ -356,14 +356,16 @@ static func window_of(e: Dictionary) -> Vector2:
 	return Vector2(float(show["from"]), float(show["to"]))
 
 
-## What the generator's later passes keep off in every lane (LevelGenerator.rules_doodad_keep_outs, as a Gilded
-## Sentinel's strike): each truck's planned showing window (task C6c), {from, to, type}. The zone doodads, the
-## danger density pass's enemies and rows, the cyborgs in charge paths, the wider gaps and City 1's extra gaps keep
-## off it; the fill pass, fill_keep_outs.
+## What the generator's later passes keep off in every lane (LevelGenerator.rules_doodad_keep_outs): each truck's
+## planned showing window (task C6c), {from, to, type, calm}. A calm stretch: nothing they add may stand or attack in
+## it, but it's no attack itself, so nothing keeps a spacing from it (as from a Gilded Sentinel's strike) and it
+## shapes no pass's search for room. The zone doodads, the danger density pass's enemies and rows (Plan.calm), the
+## cyborgs in charge paths (where they stand), the wider gaps (their rows) and City 1's extra gaps keep off it; the
+## fill pass, fill_keep_outs.
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for w: Vector2 in show_windows(gen.layout):
-		out.append({"from": w.x, "to": w.y, "type": TYPE})
+		out.append({"from": w.x, "to": w.y, "type": TYPE, "calm": true})
 	return out
 
 
@@ -470,8 +472,9 @@ class ShowPlanner:
 
 
 	## The window for a truck that may arrive at any of `spots` (best first; _usable), its seed `seed`: {arrive
-	## (where it arrives), at, from, to, hold (seconds alongside), arrival (true: as it arrives), gaps, fences and
-	## enemies (what to take out)}, or {} (why_none says why). See the class doc for the order it tries them in.
+	## (where it arrives), at, from, to, hold (seconds alongside), arrival (true: as it arrives), every_lane (true:
+	## no runner in any lane off the floor until it has stayed alongside), gaps, fences and enemies (what to take
+	## out)}, or {} (why_none says why). See the class doc for the order it tries them in.
 	func plan(spots: Array[float], seed: int) -> Dictionary:
 		why_none = ""
 		var counts: Dictionary = {}
@@ -616,6 +619,27 @@ class ShowPlanner:
 			return _none(counts, "no lane beside a runner: the last of a kind in the way")
 		w["enemies"] = enemies
 		return w
+
+
+	## Why truck entry `e`'s planned showing window (its params' "show") doesn't hold in the layout as it stands ("" if
+	## it does, or it has none), for the tests: its showing begun where it's due (as it arrives, or at its follow gap)
+	## and show_window_slack_seconds later, staying alongside show_min_seconds at least, taking nothing out, a runner in
+	## any lane (_window's checks), keeping the stretch it was planned with.
+	func problem_of(e: Dictionary) -> String:
+		var show: Dictionary = (e.get("params", {}) as Dictionary).get("show", {})
+		if show.is_empty():
+			return ""
+		var at: float = float(e["at"])
+		var d: float = float(show["at"])
+		var arrival: bool = absf(d - at) < 0.001
+		var counts: Dictionary = {}
+		var w: Dictionary = _window(at, 0.0 if arrival else (d - at) / gen.speed, t.arrive_gap if arrival else t.follow_gap,
+			0, Vector3i(0, 0, 0), counts)
+		if w.is_empty():
+			return String(counts.keys()[0]) if not counts.is_empty() else "no window"
+		if absf(float(w["from"]) - float(show["from"])) > 0.01 or absf(float(w["to"]) - float(show["to"])) > 0.01:
+			return "the stretch it keeps isn't the one planned (%.1f-%.1f)" % [float(w["from"]), float(w["to"])]
+		return ""
 
 
 	## Takes out of the layout what window `w` (plan) needs gone, and reads the layout again. Returns how many

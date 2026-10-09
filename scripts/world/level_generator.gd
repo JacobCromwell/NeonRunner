@@ -1682,7 +1682,9 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Ar
 ## What the level's features' rules keep zone doodads off (`static func doodad_keep_outs(gen:
 ## LevelGenerator) -> Array[Dictionary]` on a feature's rules script), in the order of the features:
 ## the lane-bound attacks while they run, {from, to} in every lane (a Bad Dream's chase) or {lane, from,
-## to} in one (a hover truck's lane for its whole stay). Floor cuts keep off them too (cut_problem).
+## to} in one (a hover truck's lane for its whole stay), and calm stretches, {from, to, calm: true} in
+## every lane (an Enforcer Truck's showing window, task C6c): nothing a later pass adds stands or attacks
+## in one, but nothing keeps a spacing from it. Floor cuts keep off them too (cut_problem).
 func rules_doodad_keep_outs() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for feature: String in config.features:
