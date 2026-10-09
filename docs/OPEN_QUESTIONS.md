@@ -2640,8 +2640,12 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 398. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
     (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
     lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
+    **Answered (owner, October 9, 2026):** the spacing is right as it is (GDD §10).
 399. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
     (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?
+    **Answered (owner, October 9, 2026):** longer, 10–12 s. Built: 10 s, which fits three salvos of four spots, stays
+    shorter than the first run (11.2 s) and leaves a flawless fight's length as it was (113.9, 100.6 and 114.0 s at 3,
+    5 and 6 lanes); 11 s makes it miss a tower and wait for the next (133.9 s at 3 lanes, past GDD §10's 60–120 s).
 
 **Every chase shows its truck** (from C6d; `_choose` and `ShowPlanner` in `scripts/enemies/enforcer_truck_rules.gd`; count chases and showings with `tools/measure/enforcer_shows.gd`)
 400. **Chases no bait with room is left for** (GDD §9.13 "Room to show itself"; follows questions 384 and 385). On the
