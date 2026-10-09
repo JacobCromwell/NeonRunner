@@ -33,7 +33,11 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] Gangland 3's sky becomes a cloudy blood red, to show the player is coming up on a fiery section; Gangland 1 and 2 keep theirs. DONE: `data/skies/gangland_blood_red.tres`.
 - [x] Neon City 3's sky shows the sun just starting to rise: pinks and purples touching the undersides of clouds. DONE: `data/skies/city_dawn.tres`.
-- [x] The Marketplace's third level gets a darkening sky as the sun sets: deep blues, with pinks at the very bottom of the sky. DONE on Marketplace 2, the zone's last level (the Marketplace has two levels; to confirm): `data/skies/marketplace_sunset.tres`.
+- [x] The Marketplace's third level gets a darkening sky as the sun sets: deep blues, with pinks at the very bottom of the sky. DONE on Marketplace 2, the zone's last level (the Marketplace has two levels; the owner confirmed it on October 9, 2026): `data/skies/marketplace_sunset.tres`.
+- [x] Follow-up: the dawn fits City 1 better thematically: move it there, and City 3 goes back to the dark night sky. DONE.
+- [x] Follow-up: the boss fight after a level whose sky changed has that level's sky. DONE (`Campaign.configure_boss`): the Sewer Swarm and The House, and the Sewer Swarm's intro before its fight (`CineStage.sky_for`).
+- [x] Follow-up: the street lighting follows the sky, if it adds little code and no performance cost. DONE: one colour factor per level sky (`scenery_tint`), one multiply per pixel in the scenery shaders that already follow a level's darkness.
+- [x] Follow-up: leave Gangland's smoke columns as they are. Left alone.
 
 ## Enforcer Truck follow-up (October 7, 2026)
 

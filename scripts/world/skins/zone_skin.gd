@@ -27,6 +27,12 @@ const SCENERY_LIGHT: StringName = &"scenery_light"
 ## The scenery light set last (set_scenery_light), for tests and tools: the global uniform itself
 ## can't be read back in a headless run.
 static var scenery_light_now: float = 1.0
+## The global shader uniform the scenery's shaders multiply their lit colour by, channel by channel,
+## after `scenery_light`: the street's light under a level's own sky (LevelSky.scenery_tint; white =
+## the zone's own).
+const SCENERY_TINT: StringName = &"scenery_tint"
+## The scenery tint set last (set_scenery_tint), for tests and tools.
+static var scenery_tint_now: Color = Color.WHITE
 
 ## The default doodad look's base plinth, body and top (doodad()) take this much of its height.
 const DOODAD_BASE_HEIGHT: float = 0.3
@@ -130,12 +136,15 @@ func make_environment() -> Environment:
 
 
 ## The environment for a level of this zone with the level's own `sky` over the zone's, if it has one
-## (LevelConfig.sky, LevelSky.apply), and its `darkness` (LevelConfig.darkness, 0–1): make_environment()
-## with both, then apply_darkness(). The run (LevelRun) builds its environment this way.
+## (LevelConfig.sky, LevelSky.apply), the street's light under it (set_scenery_tint: the sky's
+## scenery_tint, or the zone's own light), and its `darkness` (LevelConfig.darkness, 0–1):
+## make_environment() with all three, the darkness last (apply_darkness()). The run (LevelRun) builds its
+## environment this way.
 func level_environment(darkness: float, sky: LevelSky = null) -> Environment:
 	var env: Environment = make_environment()
 	if sky != null:
 		sky.apply(env)
+	set_scenery_tint(sky.scenery_tint if sky != null else Color.WHITE)
 	apply_darkness(env, darkness)
 	return env
 
@@ -170,6 +179,15 @@ static func energy_factor(light: float) -> float:
 static func set_scenery_light(light: float) -> void:
 	scenery_light_now = light
 	RenderingServer.global_shader_parameter_set(SCENERY_LIGHT, light)
+
+
+## Sets the `scenery_tint` shader uniform (white = the zone's own light): a factor per channel for linear
+## space, passed to the Compatibility renderer as its sRGB equivalent (energy_factor(), here rather than
+## in every scenery pixel). The run sets it for its level and back to white when it ends.
+static func set_scenery_tint(tint: Color) -> void:
+	scenery_tint_now = tint
+	RenderingServer.global_shader_parameter_set(SCENERY_TINT,
+		Vector3(energy_factor(tint.r), energy_factor(tint.g), energy_factor(tint.b)))
 
 
 ## One lane's solid floor. center/size describe the collision box, whose top is at y = 0.

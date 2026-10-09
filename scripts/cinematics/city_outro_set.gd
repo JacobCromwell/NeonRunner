@@ -415,7 +415,7 @@ func build_blast() -> void:
 
 
 ## Sets off the blast at `at` (world space): a shared fireball `radius` metres in radius, its fire burning about
-## `seconds` (FireballPool.play's pace), with its smoke after it. DESIGN-TBD (docs/questions/h-merge-main.md).
+## `seconds` (FireballPool.play's pace), with its smoke after it. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 670).
 func start_blast(at: Vector3, radius: float, seconds: float) -> void:
 	build_blast()
 	fireballs.play(at, radius, true, fireballs.tuning.fireball_seconds / maxf(seconds, 0.05))

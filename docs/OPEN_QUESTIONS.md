@@ -2440,14 +2440,20 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Marketplace's third level, but the zone has two (GDD §5's schedule). Placeholder: the sunset is on
     Marketplace 2, the zone's last level, like City 3 and Gangland 3 (`data/levels/marketplace_2.tres`, `sky`;
     `DESIGN-TBD` on `LevelConfig.sky`). Move it to Marketplace 1, or keep it on the last level?
+    **Answered (owner, October 9, 2026):** keep it on Marketplace 2, the zone's last level (GDD §5).
 362. **The boss after each of these levels** (GDD §10). The Floating Head, the Sewer Swarm and The House, and each
     zone's outro, keep their zone's own sky, so the dawn goes back to night for the fight (and the blood red back
     to Gangland's dust, the sunset back to the Marketplace's warm dusk). Placeholder: the zone's own sky
     (`Campaign.configure_boss` gives the arena no level sky). Should each fight keep its zone's last level's sky?
+    **Answered (owner, October 8, 2026):** yes. The fight keeps the sky of the level before it
+    (`Campaign.configure_boss`); the dawn moved to City 1, so the Floating Head keeps the City's night (GDD §5).
+    The boss's intro in between is item 404; the zones' outros after these fights are item 405.
 363. **The street's light under the new skies** (GDD §5). Only the sky and the distant haze change; the scenery's
     lighting stays the zone's: the Marketplace's low sun still gilds the upper floors of one side under the
     darker sunset sky, and the City's street stays lit as at night under the dawn. Placeholder: unchanged.
     Should the street's light follow (for example a little of The Hush's darkness on Marketplace 2)?
+    **Answered (owner, October 8, 2026):** yes, as it adds little code and no performance cost: each level sky's
+    `scenery_tint` (the global `scenery_tint`, one multiply per scenery pixel; GDD §5).
 
 **The Enforcer Truck shows itself; its explosion** (from C6b; groups "Showing itself" and "Wreck" in `data/enemies/enforcer_truck.tres`, F6; review with `tools/showcase/enforcer_truck_showcase.tscn -- --scenario=show` or `--scenario=cut`)
 364. **How often players will see it** (GDD §9.13 "Showing itself": "every so often"). A showing needs about 7 s
@@ -2665,6 +2671,24 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     into the level: 12 s past its start). Its first-encounter hint and the charge-path cyborg before it hold (the hint
     is on the level intro, the cyborg earlier in the campaign). Placeholder: it moves (it never moves on the level's own seeds). Or keep the introduction
     early, unseen, when the room is that far?
+
+**Level skies, the owner's follow-up** (from G8, October 8–9, 2026; `scripts/cinematics/cine_stage.gd` `sky_for`, `scripts/world/skins/level_sky.gd`, `data/skies/*.tres`)
+404. **The boss's intro under the fight's sky** (GDD §5, "Skies show progression"; §10). The owner asked that the fight
+    after a level whose sky turned keeps that sky; the Sewer Swarm's intro, which plays between Gangland 3 and the
+    fight, landed on main just after. Placeholder: the intro plays under the fight's sky too (Gangland 3's blood
+    red, `CineStage.sky_for`), so the sky holds from the level through the intro to the fight. Keep it?
+405. **The cinematics around City 1's dawn and the turned-sky fights** (GDD §5). The City's intro (the arrival
+    flyover, looking up at the skyline) plays right before City 1 under the zone's own night sky, so the game's
+    first cinematic is at night and its first level at dawn. And the outros after the Sewer Swarm and The House
+    (placeholder cards for now) will be under their zone's own sky. Placeholder: a zone's intro and outro keep the
+    zone's own sky (`CineStage.sky_for` gives only a boss's intro a level sky). Should the City's intro show the
+    dawn, and should an outro keep the fight's sky?
+406. **Bosses under the street's light** (GDD §5). The street's light under a level sky (`scenery_tint`) reaches what
+    is drawn with the street's own shaders, and two fights are built partly that way: The House's cabinet dims to
+    about 70% and turns lavender under Marketplace 2's sunset, and the Swarm Host's body and pipe take Gangland 3's
+    red. Their glowing parts (weak points, reels, 7 buttons, warnings) keep their light, and a level's darkness
+    already reaches these bodies the same way. Placeholder: they are lit like the street. Or should a boss's body
+    keep its own light (a per-material opt-out in `kit_solid`)?
 
 **Two cyborg-type bursts in the air at once** (from H4, owner, October 8, 2026, GDD §9.2; numbers in `data/tuning/game_rules.tres`
 (`max_bursts_in_air` 2) and in `data/enemies/cyborg.tres`, `window_cyborg.tres` and `barnacle_turret.tres`)
@@ -3058,3 +3082,34 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     never drawn lower than 5.8 m across the floor lanes (`test_dash_walls` measures every look's silhouette from its
     mesh): what looks open above it is out of reach of a jump, and only a flyer gets over. Is leaving the top 2.8 m
     of a ruin's hitbox over open air acceptable, or should a ruin's top stay nearer the box's?
+
+**Merging main into the H series** (October 9, 2026: the Enforcer Truck's C6b–C6d and the City outro meet H6's fireball and H7a's dash walls)
+669. **The Enforcer Truck's blast is now the shared fireball** (GDD §9.13 "Its end is a visible explosion", §11
+    "Explosions"). Task C6b gave the truck an explosion of its own (swelling puffs, a white-hot core, dark smoke and an
+    orange glow on the floor), and task H6 made every explosion in the game the one shared yellow-and-red fireball
+    (the owner, October 8, 2026). The merge keeps C6b's wreck exactly (it lurches into view, blows up 2.8 m behind
+    the runner, falls back at 0.5 m/s, gone after 0.9 s) and draws its blast through the shared fireball.
+    Placeholder (`EnforcerTruck._explode`, `FIRE_SPREAD`, `FIRE_SPREAD_IN_LANE`; sizes and times in
+    `data/enemies/enforcer_truck.tres`, group "Wreck"): C6b's sizes (`blast_radius` 1.3 m, `blast_radius_in_lane`
+    0.85 m), its fire burning `blast_seconds`, held in (0.7 of a free fireball's spread, 0.5 in the runner's lane),
+    **no smoke** (everything it draws only adds light, so it can't hide the runner, as C6b required), carried along
+    with the wreck. C6b's floor glow and smoke are gone. Should it keep smoke beside the runner, or be as big as the
+    other trucks' explosions (3.6 to 3.8 m)?
+670. **The City outro's explosions** (GDD §6 Cinematics, §11). Placeholder: the roadblock's blast is now the shared
+    fireball (2.0 m, its fire about 1.3 s, with smoke; softened by Reduced flashing), from a one-slot pool of the
+    outro's own (`CityOutroSet.build_blast`, `start_blast`). The Floating Head's crash in the outro keeps task F2a's
+    dust and smoke with no flash, while the same crash in the fight plays three fireballs (task H6,
+    `FloatingHead._crash`). Should the outro's crash play the fight's fireballs too?
+671. **Dash walls and the Enforcer Truck's showings** (GDD §9.13 "Showing itself", §9.14). When it shows itself the
+    truck pulls up beside the runner with its front ahead of them, before the runner has broken a wall there.
+    Placeholder: the walls keep off its planned showing windows (with the rules' keep-outs, in every lane, the window
+    and 1 m either side: `DashWallRules._counts`), and in play it never begins a showing whose view would reach a
+    standing wall, nor stays alongside up to one (`EnforcerTruckRoom`: a wall is solid in every lane). A showing
+    window so wins over a wall's spot. Right priority?
+672. **Fewer walls in Golden 1 and Golden 2** (GDD §9.14; follows docs/OPEN_QUESTIONS.md item 644, how many a level).
+    Kept off the showing windows, Golden 1 on 5 lanes has room for one wall on its own seed (the only other fair
+    spot, 576 to 627 m, lies in its truck's window, 393 to 625 m) and Golden 2 on 6 lanes for three (its fourth
+    spot, 536 to 539 m, in the window from 518 to 719 m). Following the H7a rule that a level asks for no more than
+    its track holds on its most crowded lane count, placeholder: `dash_walls` 1 in `data/levels/golden_1.tres`
+    (was 2) and 3 in `golden_2.tres` (was 4), so the other lane counts lose one too. Or should a level's count
+    apply per lane count, or a window give way to a wall (a truck with no showing in that chase)?

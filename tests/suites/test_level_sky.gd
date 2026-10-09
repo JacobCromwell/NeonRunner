@@ -1,22 +1,33 @@
 extends TestSuite
-## A level's own sky over its zone's (LevelConfig.sky, LevelSky; owner, October 8, 2026): the Neon City's
-## last level shows the sun about to rise (pinks and purples on the undersides of clouds), Gangland's a
-## cloudy blood-red sky, and the Marketplace's last level (Marketplace 2: the zone has two) a darkening
-## sunset (deep blues, pink low down); every other level keeps its zone's sky. Its uniforms are the sky
-## shader's own, the run's environment takes them and its fog colour (ZoneSkin.level_environment) and
-## nothing else (the light on the runner and the enemies, every glow, the fog's reach), a level's
-## darkness still dims it, it never touches the zone's own environment, and its brightest stays under the
-## glow threshold, so only hazards glow. The sky shader's new looks (clouds, a glow on the horizon) are
-## off by default, so no other zone's sky changes. A run taking the level's sky, and endless mode leaving
-## it out, are checked in test_app_flow.
+## A level's own sky over its zone's (LevelConfig.sky, LevelSky; owner, October 8, 2026): City 1 shows the
+## sun about to rise (pinks and purples on the undersides of clouds), Gangland 3 a cloudy blood-red sky,
+## and the Marketplace's last level (Marketplace 2: the zone has two) a darkening sunset (deep blues, pink
+## low down); every other level keeps its zone's sky, and the boss fight after a level keeps that level's
+## sky (Campaign.configure_boss). Its uniforms are the sky shader's own, the run's environment takes them
+## and its fog colour (ZoneSkin.level_environment) and nothing else (the light on the runner and the
+## enemies, every glow, the fog's reach), a level's darkness still dims it, it never touches the zone's
+## own environment, and its brightest stays under the glow threshold, so only hazards glow. The street's
+## light follows it (the global `scenery_tint`, which every scenery shader that follows a level's darkness
+## multiplies its lit colour by, and no glow does), never brighter than the zone's own, and back to white
+## for a level without one. The sky shader's new looks (clouds, a glow on the horizon) are off by default,
+## so no other zone's sky changes. A run taking the level's sky and tint, and endless mode leaving them
+## out, are checked in test_app_flow.
 
 ## The levels with a sky of their own (campaign step id: the sky in data/skies/).
 const LEVEL_SKIES: Dictionary[String, String] = {
-	"city/3": "city_dawn",
+	"city/1": "city_dawn",
 	"gangland/3": "gangland_blood_red",
 	"marketplace/2": "marketplace_sunset",
 }
 const SKY_SHADER: String = "night_sky.gdshader"
+## Every scenery shader that follows a level's darkness (they declare `scenery_light`) is found under these.
+const SHADER_DIRS: Array[String] = ["res://scripts"]
+## Shaders that never take the street's light: hazards, triggers, glows, the feed, the enemies, the runner,
+## the pickups and the sky.
+const KEEPS: Array[String] = ["res://scripts/world/meshes/shaders/energy_field.gdshader",
+	"res://scripts/world/meshes/shaders/kit_glow.gdshader", "res://scripts/world/meshes/shaders/cult_feed.gdshader",
+	"res://scripts/world/meshes/shaders/night_sky.gdshader", "res://scripts/enemies/cyborg_body.gdshader",
+	"res://scripts/characters/humanoid_body.gdshader", "res://scripts/run/pickup.gdshader"]
 ## Where the sky's brightest shows, just above the far skyline's lowest tops (night_sky.gdshader's
 ## skyline(): 0.02 in sin(elevation)).
 const HORIZON_ELEVATION: float = 0.02
@@ -36,11 +47,14 @@ func run() -> void:
 		var skin: ZoneSkin = s.level.skin if s.level.skin != null else s.zone.skin
 		_applies(id, s.level.sky, skin)
 		_never_glows(id, s.level.sky, skin)
+		_street_light(id, s.level.sky, skin)
+	_bosses(campaign)
+	_tint_shaders()
 	_moods(campaign)
 
 
-## Only each zone's last level named by the owner has its own sky; it's the sky in data/skies/ named for
-## it; every other campaign level keeps its zone's.
+## Only the levels the owner named have their own sky, the sky in data/skies/ named for each; every other
+## campaign level keeps its zone's.
 func _which_levels(campaign: Campaign) -> void:
 	var own: int = 0
 	for s: CampaignStep in campaign.steps():
@@ -51,10 +65,40 @@ func _which_levels(campaign: Campaign) -> void:
 			var path: String = "res://data/skies/%s.tres" % LEVEL_SKIES[s.id]
 			check(s.level.sky != null and s.level.sky.resource_path == path,
 				"%s has its own sky, %s" % [s.id, path.get_file()])
-			check(s == _last_level(campaign, s.zone), "%s is its zone's last level" % s.id)
 		else:
 			check(s.level.sky == null, "%s keeps its zone's sky" % s.id)
 	check(own == LEVEL_SKIES.size(), "every level with its own sky is in the campaign (%d)" % own)
+
+
+## The boss fight after each zone's last level keeps that level's sky (none: the zone's own), its fog and
+## its street light (owner, October 8, 2026).
+func _bosses(campaign: Campaign) -> void:
+	var with_sky: int = 0
+	for s: CampaignStep in campaign.steps():
+		if s.kind != CampaignStep.Kind.BOSS:
+			continue
+		var before: CampaignStep = _last_level(campaign, s.zone)
+		var config: LevelConfig = campaign.configure_boss(s, 5)
+		check(before != null and config.sky == before.level.sky,
+			"%s has %s's sky (%s)" % [s.id, before.id if before != null else "?",
+				config.sky.resource_path.get_file() if config.sky != null else "the zone's own"])
+		if config.sky != null:
+			with_sky += 1
+	check(with_sky >= 2, "the Sewer Swarm and The House fight under their zone's last level's sky (%d fights)" % with_sky)
+	check(campaign.configure_boss(campaign.step("city/boss"), 5).sky == null,
+		"the Floating Head under the City's own night sky (City 3 has it)")
+	# A boss's intro is under the fight's sky, between the level and the fight; a zone's own intro and
+	# outro keep the zone's.
+	for s: CampaignStep in campaign.steps():
+		if s.kind != CampaignStep.Kind.BOSS:
+			continue
+		var fight: LevelSky = campaign.configure_boss(s, 5).sky
+		check(CineStage.sky_for(null, s.zone, &"boss_intro") == fight
+			and CineStage.sky_for(null, s.zone, &"intro") == null and CineStage.sky_for(null, s.zone, &"outro") == null,
+			"%s's intro is under the fight's sky; the zone's intro and outro under its own" % s.id)
+	var gangland: ZoneDef = campaign.step("gangland/boss").zone
+	check(gangland.boss_intro != null and CineStage.sky_for(null, gangland, &"boss_intro") == campaign.step("gangland/3").level.sky,
+		"the Sewer Swarm's intro keeps Gangland 3's blood-red sky")
 
 
 func _last_level(campaign: Campaign, zone: ZoneDef) -> CampaignStep:
@@ -133,6 +177,49 @@ func _applies(id: String, sky: LevelSky, skin: ZoneSkin) -> void:
 	ZoneSkin.set_scenery_light(1.0)
 
 
+## The street's light follows the sky: level_environment() sets the sky's tint (the zone's own light,
+## white, without one), which only ever dims or tints the scenery, never brightens it, so the glows stay
+## the brightest things on screen.
+func _street_light(id: String, sky: LevelSky, skin: ZoneSkin) -> void:
+	skin.level_environment(0.0, sky)
+	check(ZoneSkin.scenery_tint_now == sky.scenery_tint and sky.scenery_tint != Color.WHITE,
+		"%s: the street's light follows its sky (%s)" % [id, sky.scenery_tint])
+	check(sky.scenery_tint.r <= 1.0 and sky.scenery_tint.g <= 1.0 and sky.scenery_tint.b <= 1.0
+		and sky.scenery_tint.get_luminance() >= ZoneSkin.MIN_SCENERY_LIGHT,
+		"%s: and never brightens the street, nor darkens it past a level's darkest" % id)
+	skin.level_environment(0.0)
+	check(ZoneSkin.scenery_tint_now == Color.WHITE, "%s: a level without its own sky has the zone's own light" % id)
+
+
+## Every scenery shader that follows a level's darkness follows the street's light too, multiplying it in
+## with the darkness; the hazards', glows', enemies' and the runner's never read it; the uniform is a
+## project global.
+func _tint_shaders() -> void:
+	var found: Array[String] = []
+	for dir: String in SHADER_DIRS:
+		_shaders_in(dir, found)
+	var scenery: int = 0
+	for path: String in found:
+		var code: String = FileAccess.get_file_as_string(path)
+		if code.contains("global uniform float scenery_light;"):
+			scenery += 1
+			check(code.contains("global uniform vec3 scenery_tint;")
+				and code.count("* scenery_tint") == code.count("light_factor(scenery_light)") + (1 if code.contains("float light = scenery_light;") else 0),
+				"%s takes the street's light wherever it takes the darkness" % path.get_file())
+	check(scenery >= 9, "every scenery shader is checked (%d)" % scenery)
+	for path: String in KEEPS:
+		check(not FileAccess.get_file_as_string(path).contains("scenery_tint"), "%s never takes it" % path.get_file())
+	check(ProjectSettings.has_setting("shader_globals/scenery_tint"), "the street's light is a global shader uniform (project.godot)")
+
+
+func _shaders_in(dir: String, out: Array[String]) -> void:
+	for file: String in DirAccess.get_files_at(dir):
+		if file.ends_with(".gdshader"):
+			out.append(dir.path_join(file))
+	for sub: String in DirAccess.get_directories_at(dir):
+		_shaders_in(dir.path_join(sub), out)
+
+
 ## Its brightest (the horizon's colour with the haze and the glow on it just above the far skyline's
 ## lowest tops, as the sky shader adds them, and the clouds' lit undersides) stays under the
 ## environment's glow threshold, so the sky never blooms: only hazards glow in hazard colours (GDD §5),
@@ -164,14 +251,14 @@ func _float(m: ShaderMaterial, uniform: String) -> float:
 	return float(v if v != null else _default(uniform))
 
 
-## The owner's three moods, broadly: the City's dawn has clouds whose undersides catch pink, and a glow
+## The owner's three moods, broadly: City 1's dawn has clouds whose undersides catch pink, and a glow
 ## where the sun is about to rise; Gangland's is a cloudy, blood-red sky; the Marketplace's sunset is
 ## deep blue overhead with pink at the bottom of the sky.
 func _moods(campaign: Campaign) -> void:
-	var dawn: Dictionary = campaign.step("city/3").level.sky.sky
+	var dawn: Dictionary = campaign.step("city/1").level.sky.sky
 	var lit: Color = dawn.get("cloud_lit_color", Color.BLACK)
 	check(float(dawn.get("cloud_amount", 0.0)) > 0.0 and lit.r > lit.g and lit.b > lit.g and lit.r > lit.b,
-		"City 3's dawn: clouds, their undersides pink")
+		"City 1's dawn: clouds, their undersides pink")
 	check(float(dawn.get("sun_glow_strength", 0.0)) > 0.0, "and a glow where the sun is about to rise")
 	var red: Dictionary = campaign.step("gangland/3").level.sky.sky
 	var reds: bool = float(red.get("cloud_amount", 0.0)) >= 0.5

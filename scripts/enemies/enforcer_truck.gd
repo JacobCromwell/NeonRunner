@@ -100,7 +100,7 @@ const BLAST_SHIFT: float = 0.3
 ## fire_pace), carried along with its wreck (blast_drift). Its fire and embers fly out of its centre only this share
 ## as far as a free fireball's do (less in the runner's lane, so it keeps low, under the camera's line of sight to
 ## them), and it leaves no smoke: everything it draws only adds light, so nothing of it can hide the runner.
-## DESIGN-TBD (docs/questions/h-merge-main.md): the spreads, no smoke, and C6b's sizes.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 669): the spreads, no smoke, and C6b's sizes.
 const FIRE_SPREAD: float = 0.7
 const FIRE_SPREAD_IN_LANE: float = 0.5
 const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
