@@ -2517,3 +2517,13 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
 379. **The web demo.** The demo ends after Zone 1, and the outro belongs to Zone 1, so the demo plays it (Gangland's
     landing included) before the store-link screen, a teaser for Zone 2. Wanted, or should the demo go straight to
     the store links (GDD §10's wording could be read that way)?
+380. **The crash plays twice** (the owner's first beat; GDD §10's defeat). The fight's defeat already plays the
+    dying lurch, the plunge and the crash (`FloatingHead`). After the results and the shop, the outro opens on the
+    same crash again from the run camera, as the beats ask. Placeholder: as described (`fall_start`,
+    `fall_seconds`). Keep it, or open the outro on the wreck already down and smoking?
+381. **The side street's marked edges.** The left opening is built as a level's wall gap, so the zone's wall-gap
+    look marks it as a level marks a drop: an orange lip along the main street's edge across the side street's
+    mouth (although its floor carries on), and orange edge columns framing the roadblock. That goes against "safe
+    things look safe". The right opening is a real drop, so its marks are right. Placeholder: both marked
+    (`CineStageDef.wall_gaps`). Give the toolkit a way to open a wall without the drop's marks, for openings
+    onto floor?

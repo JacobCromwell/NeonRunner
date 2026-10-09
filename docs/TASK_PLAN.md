@@ -405,7 +405,7 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
 trucks and lands in Gangland. It adds four toolkit features any cinematic can use: wall openings on a stage,
 a head turn for the runner, a per-frame hook for a script's props, and cutting to another zone's stretch.
-The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–379.
+The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 369–381.
 
 ---
 

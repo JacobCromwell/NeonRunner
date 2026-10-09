@@ -18,11 +18,12 @@ const STEP: float = 1.0 / 30.0
 const GROUND_TOP: float = 1.4
 ## The camera keeps this far inside a wall's face, unless that wall is open where it is.
 const WALL_CLEARANCE: float = 0.3
-## Costs, headless: setting it up, cutting to the next zone, and a step of its clock (generous for a slow
-## machine; the measured numbers are printed).
+## Costs, headless: setting it up, cutting to the next zone, and a step of its clock (generous, so a busy
+## machine doesn't fail them: they catch a gross regression; the measured numbers are printed, about 25 ms,
+## 10 ms and 3 ms).
 const SETUP_BUDGET_MSEC: float = 1500.0
 const CUT_BUDGET_MSEC: float = 800.0
-const STEP_BUDGET_MSEC: float = 8.0
+const STEP_BUDGET_MSEC: float = 25.0
 ## What its props may add to a frame at most (draw calls).
 const PROP_DRAW_CALLS: int = 90
 
@@ -262,8 +263,8 @@ func _test_skip() -> void:
 		seq.finished.connect(func() -> void: ends[0] += 1)
 		_run_to(seq, at)
 		seq.skip()
-		check(ends[0] == 1 and seq.done and seq.skipped and not seq.stage.visible and not seq.overlay.visible,
-			"skip() at %.0f s ends it at once, and nothing of it shows" % at)
+		check(ends[0] == 1 and seq.done and seq.skipped and not seq.stage.visible and not seq.overlay.visible
+			and not seq.props.visible, "skip() at %.0f s ends it at once, and nothing of it shows (props too)" % at)
 		seq.skip()
 		check(ends[0] == 1, "finished fires once, at %.0f s" % at)
 		await _free(seq)

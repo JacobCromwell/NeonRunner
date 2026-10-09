@@ -1,8 +1,9 @@
 class_name CityOutro
 extends CinematicSequencer
 ## The Neon City's outro (task F2a; the owner's story beats, GDD §6 Cinematics, October 8, 2026): after the
-## Floating Head, on the way to Gangland. The staging, timing and look are DESIGN-TBD placeholders
-## (docs/OPEN_QUESTIONS.md §D, items 369–379) until the owner has watched it.
+## Floating Head, on the way to Gangland. The owner approved the scene as built (October 9, 2026); the
+## staging choices it made stay DESIGN-TBD until the owner decides them (docs/OPEN_QUESTIONS.md §D, items
+## 369–381).
 ## 1. The Floating Head crashes. Seen from the run camera (above and behind the runner, as in play), the
 ##    dying ship plunges into the street ahead and breaks up into the fight's wreck (CityOutroSet).
 ## 2. The camera comes down to the runner's level as they slow to a stop, the wreck smoking ahead.
@@ -353,6 +354,13 @@ func next_skin() -> ZoneSkin:
 		if next.skin != null:
 			return next.skin
 	return load(NEXT_SKIN_PATH) as ZoneSkin
+
+
+## Over (played out or skipped): its props go out of view with the rest of it.
+func _finish() -> void:
+	if props != null and not done:
+		props.visible = false
+	super()
 
 
 ## The wreck's belly height: sunk between the trucks as in the fight (FloatingHead.wreck_belly).

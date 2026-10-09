@@ -2,7 +2,7 @@ class_name CityOutroTuning
 extends Resource
 ## The City outro's numbers (CityOutro; data/cinematics/city_outro_tuning.tres). The story beats are the
 ## owner's (GDD §6, Cinematics, October 8, 2026); the timing, the staging and every distance here are
-## DESIGN-TBD placeholders (docs/OPEN_QUESTIONS.md §D, items 369–379) until the owner has watched it.
+## DESIGN-TBD placeholders (docs/OPEN_QUESTIONS.md §D, items 369–381) until the owner decides them.
 ##
 ## Distances are along the track from where the runner starts (track space, CineStage), at the run speed
 ## (MovementTuning.run_speed); sideways distances are from the walls' faces or the start lane, so the scene

@@ -23,8 +23,8 @@ const FACE_SHADER: String = "res://scripts/bosses/floating_head/floating_head_fa
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const DRONE_TUNING_PATH: String = "res://data/enemies/drone.tres"
 const TRUCK_TUNING_PATH: String = "res://data/enemies/enforcer_truck.tres"
-## Enemy fire's red (the cyborgs' bolts and charge-ups).
-const FIRE := Color(1.0, 0.12, 0.08)
+## The shots look like enemy fire in play (ProjectilePool's enemy bolt: its size, red and glow).
+const BOLT_LOOK: StringName = &"enemy_bolt"
 ## The barricade: concrete blocks, and rails in the Enforcer's police paint (navy and white, never a hazard
 ## colour), with a cold-white floodlight at each end facing the street.
 const CONCRETE := Color(0.4, 0.4, 0.43)
@@ -366,8 +366,9 @@ func update_roadblock(t: float, delta: float, siren: bool, rate: float, target: 
 func add_bolt(from: Vector3, to: Vector3, launch: float, seconds: float) -> void:
 	var bolt := MeshInstance3D.new()
 	bolt.name = "Bolt%d" % bolts.size()
+	var look: Dictionary = ProjectilePool.LOOKS[BOLT_LOOK]
 	bolt.mesh = GreyboxMaterials.unit_box()
-	bolt.material_override = GreyboxMaterials.glow(FIRE, 4.0)
+	bolt.material_override = GreyboxMaterials.glow(look["color"], look["energy"])
 	bolt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bolt.visible = false
 	add_child(bolt)
@@ -389,7 +390,9 @@ func update_bolts(t: float) -> void:
 		var at: Vector3 = from.lerp(to, u)
 		var dir: Vector3 = (to - from).normalized()
 		var up: Vector3 = Vector3.UP if absf(dir.y) < 0.98 else Vector3.BACK
-		bolt.global_transform = Transform3D(Basis.looking_at(dir, up).scaled(Vector3(0.09, 0.09, 0.9)), at)
+		# Stretched along its own way (scaled_local), as a bolt in play.
+		var size: Vector3 = ProjectilePool.LOOKS[BOLT_LOOK]["size"]
+		bolt.global_transform = Transform3D(Basis.looking_at(dir, up).scaled_local(size), at)
 
 
 ## Sets off the blast at `at` (world space).
