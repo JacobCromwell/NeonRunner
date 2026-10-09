@@ -874,7 +874,8 @@ class ShowPlanner:
 			# warning would start lets the runner pass); _hold has it over before the next one. In every mode (the H merge):
 			# CLASSIC's quiet keeps them off the window from its start (and 10 m before), not off its claim, which may
 			# begin during a Sentinel's turn right behind it (task H1's shorter warning lets such a window fit: Golden 2 at
-			# 6 lanes), and the truck's claim then held the Sentinel's warning back for good.
+			# 6 lanes), and the truck's claim then held the Sentinel's warning back for good. DESIGN-TBD
+			# (docs/OPEN_QUESTIONS.md item 673).
 			return _none(counts, FIXED)
 		if (mode == Mode.CLAIM or mode == Mode.CALM) and room.seconds_to_bait(d, v) * v <= d2 - d + 0.01:
 			# It begins before its bait claims its turn, late too: one can't begin during the claim.

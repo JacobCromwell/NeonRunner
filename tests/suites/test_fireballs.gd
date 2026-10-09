@@ -10,7 +10,8 @@ extends TestSuite
 ## once its wreck has lurched into view (carried along with it: a fireball may follow a node), a fence generator, the
 ## missiles, the Hostile Takeover lobby's blast) calls it, at the size its code names. The
 ## bosses' own explosions and the bombs' blasts are checked in their fights' suites (test_floating_head,
-## test_floating_head_defeat, test_the_house_attacks, test_the_house_phases, test_hostile_takeover_fight).
+## test_floating_head_defeat, test_the_house_attacks, test_the_house_phases, test_hostile_takeover_fight, and the
+## Golden Convergence's in test_golden_convergence_refill and test_golden_convergence_barrage).
 
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 const DroneScript := preload("res://scripts/enemies/drone.gd")

@@ -3642,3 +3642,30 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     its track holds on its most crowded lane count, placeholder: `dash_walls` 1 in `data/levels/golden_1.tres`
     (was 2) and 3 in `golden_2.tres` (was 4), so the other lane counts lose one too. Or should a level's count
     apply per lane count, or a window give way to a wall (a truck with no showing in that chase)?
+
+**Merging main into the H series again** (October 9, 2026: C6e, PERF2, G6b, the E1g follow-up and E5d meet the H series)
+673. **No showing in Golden 2's chase at 6 lanes** (GDD §9.13 "Making room where there is none", §9.11). C6e plans a
+    window in its new modes only where the truck's claim on its turn (`show_claim_seconds`, 2 s before the window) meets
+    no attack that can't wait for a turn (a Gilded Sentinel's turn, a hover truck's entrance), but its first mode
+    (C6c/C6d's) kept them off the window alone. With H1's shorter Sentinel warning (0.6 s) such a window now fit right
+    behind a Sentinel's swing, on Golden 2's own seed at 6 lanes: its claim began during the next Sentinel's turn,
+    and the truck's claim counts as a big attack on as the Sentinel's warning would start, so that Sentinel would let
+    the runner pass for good. Placeholder (the merge, `ShowPlanner._window`): every mode keeps the claim off them, so
+    that chase has no showing (its truck still arrives and chases; Golden 2 at 6 lanes keeps its three dash walls,
+    which the window's spot had squeezed to two). Of the other seeds tried (two more per level and lane count), one
+    window moved 38 m later (Golden 2 at 3 lanes, seed 9101). Or should a showing's claim take a Sentinel's turn there
+    (that Sentinel's swing lost, the truck seen)?
+674. **The Golden Convergence's explosions are now the shared fireball** (GDD §11 "Explosions", §10 The Golden
+    Convergence; follows item 487). Task E5d drew its chain reaction's fire itself (`GoldenConvergenceBlast`: blended,
+    saturated orange balls with dark smoke, since added light read a washed-out peach over the court's marble and
+    sky), and task H6 made every explosion the one shared yellow-and-red fireball (the owner, October 8, 2026). The
+    merge keeps the fight's timing, hitboxes, warnings and sounds, and draws each of its explosions through the run's
+    shared pool (8 fireballs at once): the squadron's crashes into the racks (2.4 m, no smoke), one quick 2.2 m
+    fireball for every five rack missiles of the ripple (E5d had one a missile), the ship's five (7 m down to 3.8 m,
+    with smoke), a quick 3.0 m one every 0.2 s up the feed line (E5d: 2.6 m every 0.07 s), 4.5 m with smoke at his
+    shoulder, the barrage's landings (2.0 m, quick, held in, no smoke; E5d had sparks only) and the transition's burst
+    of the suit (6 m with smoke; E5d had sparks and dark dust). Fire on something pacing the runner rides along with
+    it (the ship, the suit), where E5d's stayed behind in the world. Its yellow heart reads lighter over the court's
+    pale sky than E5d's orange did. Placeholder: as above (`RIPPLE_GROUP` and the `*_FIRE_SIZE`, `*_FIRE_PACE`
+    constants in the Golden Convergence's scripts). Keep the shared look here, or give the shared fireball a darker,
+    blended variant for bright backgrounds (every zone would share it)?
