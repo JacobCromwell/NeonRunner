@@ -935,7 +935,7 @@ tests and `tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.
 native layout through enemy and obstacle hooks around the filler pass. The per-level
 `LevelConfig.danger_density_increase` dial is calibrated to actual generated enemy and obstacle
 counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15; Gangland
-0.18/0.20/0.22; Marketplace 0.24/0.26; Corporate 0.28/0.29; Dead Zone 0.37; Golden 0.38.
+0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden 0.38.
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -2414,8 +2414,10 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   `tools/asset_gen/` (`tools/godot.sh sfx` / `music`): a track is composed in `track_<name>.gd` with
   `music_song.gd` (stems on a 16th grid that wrap around the loop, and loop-safe effects) and
   `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. **No new tracks are
-  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in all six zones
-  and the Floating Head fight. `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
+  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in every zone
+  and the Floating Head fight (the Casino, until the owner supplies its song, plays the Marketplace's:
+  its `casino` track is the Marketplace's default file, `zone_tracks` sends it to Jackpot Plaza and
+  `riff_tracks` to the Marketplace's riff; no new song is generated, GDD §11). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
   and `boss_tracks` maps a boss id to its supplied song. `App._start_run` resolves these for campaign,
   quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
   keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
@@ -2442,23 +2444,30 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 
 `Campaign` lists `ZoneDef`s; each built zone contributes steps: optional intro cinematic, its
 levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step ids (`city/1`,
-`city/boss`, ...) key the save file, so they never change. Difficulty comes from a campaign-wide curve
+`city/boss`, ...) key the save file, so they never change (but for a zone's new place in the campaign, which a
+save migration follows: Economy and saving, Saves from before the Casino). Difficulty comes from a campaign-wide curve
 plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
 
-The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`,
-`marketplace`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2 and 3 levels in
+The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
+`marketplace`, `casino`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
-cinematic slots (the City also a boss intro) and a boss slot from GDD §10's roster. A zone's music
+cinematic slots (the City also a boss intro) and a boss slot from GDD §10's roster, but the
+Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
+Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
-over the 15 levels (FB 4, FB 5); which level is the peak (proposed: Golden 2, with Golden 3 a little
+over the 17 levels (FB 4, FB 5), re-spaced when the Casino's two came in (task K2: each existing level's
+difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from 0.56 to 0.60;
+the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every existing
+level keeps its own, `docs/questions/k2.md`); which level is the peak (proposed: Golden 2, with Golden 3 a little
 below it) and the remaining level lengths (DESIGN-TBD, run 120–150 s) stay open.
 Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via
 `data/levels/city_1.tres`'s `duration_seconds`; all other level durations stay unchanged.
 At the City's 21 m/s this moves its finish line from 2310 to 1155 metres. The existing generator
 and distance-based completion use that value without changing speed, difficulty, clear distances,
 or the fractional starts of cyborgs and doodads. These are running times without speed-changing
-power-ups or pauses, excluding cinematics and the completion delay. The levels now total 34.1 minutes.
+power-ups or pauses, excluding cinematics and the completion delay. The levels then totalled 34.1 minutes;
+with the Casino's 145 and 150 seconds they total 39.0 (GDD §5: about 40).
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
@@ -2468,7 +2477,10 @@ Golden 1–3, including the Golden Palace). Octodogs remain enabled from Ganglan
 Dead Zone. Removing only `octodog` from the three Golden resources excludes both dog patterns and
 their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
 to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
-through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). Each
+through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). The Casino
+introduces nothing (GDD §5: it reuses the Marketplace's enemies, owner, October 8, 2026): its two levels
+play Marketplace 2's features with no starts of their own (task K2, DESIGN-TBD until the owner says what
+each adds), and `test_campaign` exempts it from "a new enemy per zone" and "something new per level". Each
 level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
 generator; City 1's cyborgs come late in the level), and its newest features get the most picks
 (the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
@@ -2526,7 +2538,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
 | `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
 | `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss (see below; `./play.sh --boss=dead_zone_boss` or `--level=dead_zone/boss`) |
-| `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/marketplace_boss*.tres` | The House, the Marketplace's boss (see below; `./play.sh --boss=marketplace_boss` or `--level=marketplace/boss`) |
+| `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/casino_boss*.tres` | The House, the Casino's boss (the Marketplace's until task K2; see below; `./play.sh --boss=casino_boss` or `--level=casino/boss`) |
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss (see below; `./play.sh --level=corporate/boss`) |
 | `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a and E4b: the campaign plays it after Gangland 3, `./play.sh --boss=gangland_boss`) |
 
@@ -2634,7 +2646,10 @@ slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks i
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
 `_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `_on_armor_pickup_due`. Every attack needs its visual and audio
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
-time from the physics step. The test boss (`TestBoss`) is a small example.
+time from the physics step. The test boss (`TestBoss`) is a small example. `rng`, the armor pickups' and
+the parts' and brought enemies' seeds hash `BossDef.rng_key()`: the boss's id, or its `seed_id`, the id it
+had before a move, so a renamed boss plays exactly as it did (The House, `casino_boss`, keeps
+`marketplace_boss`'s; task K2).
 
 **The Floating Head** (GDD §10, task E1: E1a, the ship and face, the entrance, the bombing run and
 the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked towers that pin it;
@@ -2731,16 +2746,17 @@ Floating Head's are, so the fight keeps its seconds at any speed. In `scripts/bo
 
 **The House** (GDD §10, task E5a: E5a-a, the machine, its arena, the spin with its three attacks and their
 bigger versions, the 7 buttons on the floor, the jackpot with its credit fountain and the hopper stomped,
-weapons chipping it; E5a-b, phases 2 and 3, the defeat, par times and its slot). The campaign plays it
-after Marketplace 2 at the Marketplace's 22.6 m/s (`--boss=marketplace_boss` or `--level=marketplace/boss`
-in debug builds): its tuning's distances that stand for a time (the buttons' and the stomp box's depth,
+weapons chipping it; E5a-b, phases 2 and 3, the defeat, par times and its slot; K2 moved it, unchanged, to
+the Casino). The campaign plays it after Casino 2 at the Casino's 23 m/s (`--boss=casino_boss` or
+`--level=casino/boss` in debug builds; it was after Marketplace 2 at 22.6 m/s): its tuning's distances that stand for a time (the buttons' and the stomp box's depth,
 the margins) are written at 18 m/s and multiplied by the run's pace (`TheHouse.run_pace()`), and where an
 attack, a button, a ceiling or its jackpot stop lands is a time at the run speed, so the fight keeps its
 seconds. The October 3 difficulty revision uses three opening attack-only spins per phase instead of
 two, attack/spin gaps of 0.85/1.0 s instead of 0.95/1.25 s, cherry coverage of 2/3/4 lanes and lightning
 coverage of 2/3/4 lanes across phases, constrained by the existing fair-route planner.
 Pars are 86 s for three stars and 108 s for two. Clean unprotected wins measure 80.4-82.4 s across
-3, 5 and 6 lanes at 18 and 22.6 m/s, with all 27 strikes from the nine opening spins retained.
+3, 5 and 6 lanes at 18 and 22.6 m/s, with all 27 strikes from the nine opening spins retained (80.4-81.9 s
+at 18 and the Casino's 23 m/s, task K2).
 Every strike, every set of buttons and the jackpot's approach is planned only where a
 route exists (`TheHouseRoute`) for a runner who reads the warnings and moves a reaction time after them,
 through everything else still on the track, at any lane count: that's how every attack has an escape and
@@ -2757,7 +2773,7 @@ taller than a ceiling: it squats on its treads under `duck_top` while a billboar
 
 | File | What |
 |---|---|
-| `the_house.gd` (`TheHouse`) | the encounter: its arena kept plain (`_plan_lap`: no holes, fences, wall fences, signs, ceilings, pads, ramps, doodads, cuts or enemies of its own); where it stands (`front_at`, its face's track distance: `stand_distance()` ahead of the runner, keeping pace, or further at a speed where its longest warning would land near it), squatting under a ceiling (`_duck`, `duck_sag()`); the entrance (it rolls in from `enter_ahead` and brakes, with its jingle); the spin (`_spin_tick`: the lever's pull, the reels spinning and stopping on the phase's next symbols from `spin_patterns`, each with its ding; the phase's first `opening_spins` spins offer no buttons, every later one a button for each reel still unlocked, `_try_pull` waiting for a fair set, a ceiling's set starting its billboard); the result (three 7s start the jackpot, otherwise `TheHouseAttacks.queue_spin`); a stomp is the phase's hit (`_on_weak_point_hit`); a missed jackpot clears the locks and it spins again. The defeat (`_on_defeated`, `_defeated_tick`, `Defeat`): it lurches out and rises as after any stomp, its reels spin wildly (`WILD_SPIN`, `tilt_spin_seconds`) and jam between symbols, TILT shows over its reels (`tilt_seconds`; flashing, steady with Reduced flashing), and it collapses into the street ahead of the runner (`collapse_seconds`), tipping, shaking, its power dying, `collapse_coins` coins bursting out (the fountain's pool, for show), the citizens cheering; `victory_over()` once it's down. Fairness: `route_through()` (from the runner's lane now, through everything of its attacks still ahead, over any buttons), `route_from()` (from where the runner will be), `attacks_held()` and `segment_end()` (the street the runner's again past a wall run or a ceiling). `react_citizens()` calls D3's `react` on the `"market_citizens"` group (cheer at a jackpot, a stomp and its defeat, duck at a big attack); `sound()` plays and logs every warning; first-time hints `enemy:marketplace_boss`, `boss:marketplace_boss/buttons`, `/wall_button`, `/ceiling_button` and `/jackpot` |
+| `the_house.gd` (`TheHouse`) | the encounter: its arena kept plain (`_plan_lap`: no holes, fences, wall fences, signs, ceilings, pads, ramps, doodads, cuts or enemies of its own); where it stands (`front_at`, its face's track distance: `stand_distance()` ahead of the runner, keeping pace, or further at a speed where its longest warning would land near it), squatting under a ceiling (`_duck`, `duck_sag()`); the entrance (it rolls in from `enter_ahead` and brakes, with its jingle); the spin (`_spin_tick`: the lever's pull, the reels spinning and stopping on the phase's next symbols from `spin_patterns`, each with its ding; the phase's first `opening_spins` spins offer no buttons, every later one a button for each reel still unlocked, `_try_pull` waiting for a fair set, a ceiling's set starting its billboard); the result (three 7s start the jackpot, otherwise `TheHouseAttacks.queue_spin`); a stomp is the phase's hit (`_on_weak_point_hit`); a missed jackpot clears the locks and it spins again. The defeat (`_on_defeated`, `_defeated_tick`, `Defeat`): it lurches out and rises as after any stomp, its reels spin wildly (`WILD_SPIN`, `tilt_spin_seconds`) and jam between symbols, TILT shows over its reels (`tilt_seconds`; flashing, steady with Reduced flashing), and it collapses into the street ahead of the runner (`collapse_seconds`), tipping, shaking, its power dying, `collapse_coins` coins bursting out (the fountain's pool, for show), the citizens cheering; `victory_over()` once it's down. Fairness: `route_through()` (from the runner's lane now, through everything of its attacks still ahead, over any buttons), `route_from()` (from where the runner will be), `attacks_held()` and `segment_end()` (the street the runner's again past a wall run or a ceiling). `react_citizens()` calls D3's `react` on the `"market_citizens"` group (cheer at a jackpot, a stomp and its defeat, duck at a big attack); `sound()` plays and logs every warning; first-time hints `enemy:casino_boss`, `boss:casino_boss/buttons`, `/wall_button`, `/ceiling_button` and `/jackpot` |
 | `the_house_route.gd` (`TheHouseRoute`) | the lane routes: the track ahead as SOLID stretches (blocks, blasts, turrets' bodies), FENCE (jumped, settled in its lane, nothing solid where the jump takes off or lands) and GAPPED (slid under) in each lane; a lane switch takes `switch_m` (the real one times `switch_margin`, plus a margin) with the runner in both lanes meanwhile; a body reaching `body` either side; waypoints (buttons) held in their lane as the runner passes, and holds (`{lane, at, to}`: a lane kept over a stretch, a wall run from its outer lane or a pad). `find()` keeps the fewest switches, each as early as it can (no zigzag), and returns the moves; it runs within a frame as attacks are revealed and buttons planned (flat arrays, each switch's span checked at once: about 1 ms for 100 m at 6 lanes). The bot follows the same routes |
 | `the_house_attacks.gd` (`TheHouseAttacks`) | the three attacks (`Kind`: CHERRY, LIGHTNING, BAR), grouped by kind in reel order (`attacks_for`: a kind's count is its size; a 7 brings none), each revealing its strikes in turn (`strikes_in`: cherry volleys and BAR rows by size; three lightnings, two rows across every lane, full then gapped), each strike planned as it shows (`plan_strike`: the first lane set of a seeded order, the runner's lane first, with a route, off the wall fences' drop windows), waiting up to `strike_wait` for a fair moment, else left out (`strike_skipped`); a new attack waits while `TheHouse.attacks_held()`. Cherry: `circle_warning`s, bombs lobbed from the coin chute, the whistle, blasts (pooled enemy-attack boxes) as the runner would arrive. BAR: `lane_warning`s and gold blocks falling from high above, slammed down `bar_slam_lead` before the runner arrives as solid hazards of `props.block`'s kind with a lane blocker (gold with red-hot seams: deadly, never a doodad). Lightning: `props.fence`s flickering with their crackle while a pink-capped spool rolls across, on `fence_on_lead` before the runner arrives. `obstacles()` and `hazards_end()` describe what's still on the track; `strikes` lists them for tests and the bot. Everything an attack shows is pooled and made before the fight (`prewarm()`: bombs, blast boxes, fireballs, blocks with their hazards, spools; `pool_stats()`), as are the buttons' looks, the billboard and the fountain's coins, so a fight makes nothing of its own mid-fight; the warnings, fences and pads are BossProps' (made per strike), the turrets the director's |
 | `the_house_buttons.gd` (`TheHouseButtons`), `the_house_button.gdshader` | the 7 buttons: `plan()` (a lane for each floor button, at most `button_max_shift` from the one before and never the same; a wall button by either outer lane, a ceiling's pad off the edges; the first set of a seeded order with its routes, `MAX_TRIES` a frame), each lighting up `button_lead` before the runner reaches it (a wall button `wall_lead`, reached `wall_extra` later; a ceiling button once its billboard is down) with its chime (`house_button`), `pressed` or `missed` as the runner passes (on the floor, low, their middle within the button's width; on its wall, at any height; on the ceiling in its lane); the look: an ivory disc with chasing bulbs and the reels' blue 7 (flat on the floor, upright on the facade at wall-run height and as tall as the wall-run path, facing down on a ceiling), and the 7 floating near it, shrinking away as the runner nears it; pooled |
@@ -2767,9 +2783,9 @@ taller than a ceiling: it squats on its treads under `duck_top` while a billboar
 | `the_house_body.gd` (`TheHouseBody`) | the body part: its cabinet a solid body hitbox while it stands; the hopper's weak point (across the street wall to wall, `stomp_depth` at the run's pace: `hopper_length`); its top deck a floor while it's sunk (`set_sunk`, the cabinet's hitbox off); `aim_point()` (its reels, its hopper once sunk); what it's doing (`sag`, `lever`, `lights`, `jackpot`, `hopper`, `power`, `track_speed`, and its defeat's `tilt`, `collapse`, `shake`) eased onto the model; its reels (`TheHouseReels`) |
 | `the_house_model.gd` (`TheHouseModel`), `the_house_reels.gdshader`, `the_house_symbols.gdshaderinc`, `the_house_lights.gdshader`, `the_house_hopper.gdshader`, `the_house_treads.gdshader`, `the_house_tilt.gdshader` | the machine, built in code from a `Shape` sized to the street (`shape_for`: the street less `street_margin`, `height` under the cables across the street, as deep as the stomp box needs): the cabinet and its trim (one kit mesh: purple paint, chrome, unlit gold; nothing on it glows), the cult's emblem in brushed bronze at the heart of its marquee's sunburst, the three reels standing out of its face (one draw: drums whose symbols are drawn as distances, each in its attack's colour: a red cherry, a gold BAR plate, a pink bolt, and the buttons' royal blue 7; smeared while spinning, a lock glowing), its bulbs and sirens (one draw: warm and cold whites, chasing and strobing, steady with Reduced flashing), its rolling treads, its lever on the face's edge, the hopper's two lids and its red-hot inside: 9 draws, under 3k vertices; the TILT sign over the reels' window (its defeat: warm-white letters ringed in gold, flashing, steady with Reduced flashing; hidden until then) and the collapse (tipping forward and over, shaking). On the Compatibility renderer its shaders scale an over-bright colour down whole (the 7's blue never clips toward the pads' cyan) |
 | `the_house_reels.gd` (`TheHouseReels`) | the reels' symbols and drums: `spin` (`wild` for the defeat's), `stop` (the symbol known at once; the drum eases onto it with a bounce), `jam` (between two symbols, no bounce), locks on 7 (`unlock`) |
-| `the_house_tuning.gd`, `data/bosses/marketplace_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD: OPEN_QUESTIONS items 299-303, `docs/questions/e5a.md`) |
-| `data/bosses/marketplace_boss.tres` | its slot: `scene`, three phases (one stomp each), weapons capped at 0.34 of its health, the standard armor rule with `armor_when_unprotected`, the Marketplace's music, par times (72 s and 92 s), its arena (two plain laps) |
-| `data/bosses/marketplace_boss_skin.tres` | its arena's look: the Marketplace's, its pennants strung high above the street where it rolls |
+| `the_house_tuning.gd`, `data/bosses/casino_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD: OPEN_QUESTIONS items 299-303, `docs/questions/e5a.md`) |
+| `data/bosses/casino_boss.tres` | its slot: `scene`, three phases (one stomp each), weapons capped at 0.34 of its health, the standard armor rule with `armor_when_unprotected`, the Casino's music (the Marketplace's for now), par times (86 s and 108 s), its arena (two plain laps, seed 1301), its `seed_id` (`marketplace_boss`: every random choice of the fight as before its move) |
+| `data/bosses/casino_boss_skin.tres` | its arena's look: the Casino's (task K1; the Marketplace's, its pennants strung high above the street where it rolls, until then), its warm light the machine's too (`TheHouseModel.sheen_for`) |
 | `tools/asset_gen/sfx_bank_the_house.gd` | its sounds (`house_*`: the entrance, the lever, the reels, the ding and the lock, a button, each attack's warning, the slam, the jackpot, the coins, the sag, the stomp, the billboard coming down, the TILT jam and the collapse); its bombs fall and blow with the Floating Head's `bomb_whistle` and `bomb_blast` |
 | `tools/showcase/the_house_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/spin/buttons/jackpot/wall/ceiling/defeat/fight`, `--symbols=a,b,c` for the spin's symbols, `--lanes`, `--speed`, `--phase`, `--events`) |
 | `tests/helpers/the_house_bot.gd` (`TheHouseBot`) | a runner who plays the fight by what it shows, `reaction` seconds late: a route (TheHouseRoute) through every warning on the track and over the lit buttons (`takes_buttons`, `avoids_buttons`, `skip_reels`), a wall button's wall run (onto the wall `wall_entry_before` it, a wall jump back past it, or off at once before a wall fence that would be on), a ceiling's pad and its route along the ceiling (dodging the turrets' bolts into the free lane beside the pad's, `dodges`), fences jumped or slid under, and a jump timed to come down on the hopper (`stomp_lead()`; `stomps` off lets it pass) |
@@ -3124,10 +3140,18 @@ The subsequent danger-density overlay can move collectibles around new hazards, 
 are historical rather than freshly measured totals. It changes neither duration nor reward tables,
 and its added hazards earn no extra risk-credit pay.
 
-The save has a version (`Profile.VERSION`, now 2). `Profile.from_dict()` brings an older save up to
+The save has a version (`Profile.VERSION`, now 3). `Profile.from_dict()` brings an older save up to
 date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in
 earned credits at the 150 each it cost (`V1_ARMOR_PRICE`, the only price it ever had), the purchases
 leave `lifetime_spent`, and its old equip toggle goes, so an upgrade bought later starts switched on.
+**Saves from before the Casino** (version 2 to 3, task K2): The House moved from the Marketplace to the
+Casino, so every tier's `marketplace/boss` record becomes `casino/boss` and the `hint/marketplace_boss...`
+keys `hint/casino_boss...`; a finished `marketplace/outro` (which then came after The House and led to
+Corporate) also counts as `casino/outro`, so Corporate's intro, whose step before is now the Casino's
+outro, stays open. `App.step_unlocked` keeps a step the player has done open even when the step before it
+isn't (only a save from before steps were added ahead of it can have that: the moved House record, done
+while the Casino's levels aren't), so a save keeps every step it had reached, and Continue leads into
+the Casino (`test_campaign`, `_test_old_saves`).
 A change to the save's format bumps the version and adds its step there, with a test.
 
 ## Platforms and build flavors
@@ -3302,7 +3326,7 @@ street's cables, its squat under a ceiling and its draw budget, a cabinet that d
 their defeat's wild spin and jam, TILT steady with Reduced flashing, how symbols become attacks, the
 phases' special buttons, the route solver's rows, walls, fences, slaloms, buttons and holds, and phase 3's
 ceiling within C1's limits for every pad lane); `test_the_house_attacks` plays every attack at every size with
-`TheHouseBot` at 3, 5 and 6 lanes and 18 and 22.6 m/s (each strike's warning on the track where it then
+`TheHouseBot` at 3, 5 and 6 lanes and 18 and 23 m/s (each strike's warning on the track where it then
 hits and nothing hitting anywhere else, the bigger versions, the 3-lane mix of bombs and blocks always
 leaving a way, the citizens ducking, every phase's spins survived over a few seeds without god mode);
 `test_the_house_fight` plays its buttons and jackpot at every lane count and both speeds (buttons in
@@ -3317,7 +3341,7 @@ attacks waiting, strikes off the drop windows) and phase 3 (the billboard over e
 the machine squatting under it, one or two turrets firing, the ceiling button run over, the bolts
 dodged, the rider dropping back onto clear floor) and the defeat (the wild spin, the jam, TILT, the
 collapse in coins ahead of the runner, the citizens cheering) at 3, 5 and 6 lanes and both speeds, and
-the campaign's flow at 22.6 m/s at every lane count (Marketplace 2, a death in the fight's second phase,
+the campaign's flow at 23 m/s at every lane count (Casino 2, a death in the fight's second phase,
 the retry won with three stars, the shop, the outro). `test_hostile_takeover` builds Hostile Takeover's
 train (E5b) at 3, 5 and 6 lanes and 18 and 23.4 m/s (its slot in the campaign after Corporate 2, par times,
 sounds and hints; the laps holding the train
