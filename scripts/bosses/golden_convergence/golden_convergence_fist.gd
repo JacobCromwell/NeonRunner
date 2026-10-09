@@ -24,7 +24,7 @@ signal hit(fist: int, outcome: int)
 const RIGS: int = 2
 ## The square's frame is this wide, its fill this see-through.
 const FRAME: float = 0.16
-const FILL_ALPHA: float = 0.16
+const FILL_ALPHA: float = 0.85
 ## The shadow's darkest (black's alpha) on the marble, and on the Compatibility renderer, which blends in sRGB
 ## space: the same alpha comes out much darker there (GoldenConvergenceMagnate's shadow's, E5d polish).
 const SHADOW_ALPHA: float = 0.62

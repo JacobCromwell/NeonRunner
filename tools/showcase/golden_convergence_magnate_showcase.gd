@@ -33,7 +33,7 @@ extends Node3D
 ##   screens     a Screen Storm: him up on the balustrade beside the runner, the screens coming down on their gold
 ##               tentacles over red squares, crashing around the runner and onto him, yanked back up (--still: the
 ##               runner stays, god mode)
-##   dark        stage 2 darker: phase 4's transition from the checkpoint (the arena fading to 0.7 of its light),
+##   dark        stage 2 darker: phase 4's transition from the checkpoint (the arena fading to stage_two_light, 0.4 of its light: 29% darker on the floor),
 ##               then a Pounce with the bait: the stun and the green chevrons where to take off, the stomp
 ## Options: --lanes=N (5 by default), --speed=N (18 by default; the campaign's 25), --cam=run/side/high,
 ## --reduced-flashing, --events (prints each of the boss's events with its frame, for picking frames), --still,

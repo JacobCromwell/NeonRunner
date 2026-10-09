@@ -490,12 +490,13 @@ playtest's specifics; these are the choices made while building them. Numbers ar
 6. **How the Slash's warning flashes.** His marker's red beats on and off 7 times a second (down to 30%
    opacity; `GoldenConvergenceChase.ALARM_FLASH_HZ`) and the claw marks pulse their size about 5 times a second;
    both hold steady with Reduced flashing. The marker is small, at the screen's bottom edge; is this rate fine?
-7. **How dark stage 2 is.** The court's light falls to 0.7 (`stage_two_light`) over 3.5 s from the transition's
+7. **How dark stage 2 is.** The court's light falls to 0.4 (`stage_two_light`; the orchestrator lowered it from 0.7 after
+   measuring frames, so it reads as the owner's "about 30% darker": the floor's value goes from about 208 to about 149 on
+   Forward+ and from 201 to 144 on Compatibility, 29% darker on both) over 3.5 s from the transition's
    start (`dim_seconds`; on a retry from the checkpoint too) and comes back over 2 s from the defeat's start
    (`light_return_seconds`). The Magnate's body and cables dim with the court; the warm white in his cracks, his
-   red ports, every hazard and warning, the runner and the pickups keep their glow. On the white marble causeway
-   it reads as less than 30% darker: the floor's value goes from about 205-215 to about 185-190 (sRGB; 20-27%
-   less light, but the eye reads light on a curve), and the towers' screens and the bloom keep their glow.
+   red ports, every hazard and warning, the runner and the pickups keep their glow. At 0.7 it read as less than 30%
+   darker (the floor about 205-215 to 185-190, sRGB: the eye reads light on a curve), so it's 0.4 now.
    Darker (0.55 to 0.6)?
 8. **The stomp's chevrons and the stun's lead.** Green ramp chevrons in both of his lanes over the middle of the
    take-off stretch (12% of it off each end, as the cue before the Hostile Takeover's couplings), streaming toward

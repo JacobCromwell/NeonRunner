@@ -108,7 +108,7 @@ static func marks_mesh(width: float, depth: float) -> ArrayMesh:
 		var length: float = depth * (0.92 if k == 1 else 0.8)
 		var xform := Transform3D(Basis(Vector3.UP, slant) * Basis.from_scale(Vector3(0.3, 0.04, length)), Vector3(x, 0.0, 0.0))
 		bars.box_xform(xform, Color.WHITE)
-	var wash: MeshLayer = batch.layer(GreyboxMaterials.glow(BossProps.WARNING_COLOR, 1.2, 0.16))
+	var wash: MeshLayer = batch.layer(GreyboxMaterials.glow(BossProps.WARNING_COLOR, 1.2, 0.85))
 	wash.box(Vector3(0.0, -0.01, 0.0), Vector3(width, 0.02, depth), Color.WHITE)
 	return batch.to_mesh()
 

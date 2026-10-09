@@ -34,7 +34,7 @@ const TENTACLE_LENGTH: float = 46.0
 const TENTACLE_RADIUS: float = 0.12
 ## The square's frame width and its fill's see-through.
 const FRAME: float = 0.16
-const FILL_ALPHA: float = 0.16
+const FILL_ALPHA: float = 0.85
 ## The glass flying off a shattered screen (pale, the feed's cold white: never a hazard colour), its sparks (the
 ## feed's warm white; none with Reduced flashing).
 const GLASS := Color(0.78, 0.86, 0.95)

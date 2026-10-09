@@ -519,7 +519,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## their glow; the light comes back as he falls"; docs/questions/e5d.md, E5d-e 7): stage 2's light
 ## (BossEncounter.set_light_level, 1 the court's own), fading down over dim_seconds from the transition's start (on a
 ## retry from the checkpoint too); from his defeat's start it comes back over light_return_seconds.
-@export_range(0.3, 1.0, 0.01) var stage_two_light: float = 0.7
+@export_range(0.3, 1.0, 0.01) var stage_two_light: float = 0.4
 @export_range(0.0, 6.0, 0.05, "suffix:s") var dim_seconds: float = 3.5
 @export_range(0.0, 6.0, 0.05, "suffix:s") var light_return_seconds: float = 2.0
 
