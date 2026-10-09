@@ -18,12 +18,19 @@ NOTE: Mark tasks as done as you complete them.
 ## Beach zone (October 9, 2026)
 
 - [ ] A new zone, the Beach, with `docs/art/reference/beach_zone.jpg` as its inspiration: a sandy lane between bamboo tiki bars and surf shops running down to the sea. **The gaps are pools of water.** It gets its own background, floors, walls, ceilings and the rest of a zone's look, but **no new enemy assets**: it reuses the existing enemies. **Its place in the campaign is not decided yet; it won't be the last zone.** Task D10 builds the skin only (`data/skins/beach_skin.tres`, quick play `--skin=beach`). Its levels, boss, music, cinematics and campaign slot follow once the owner picks the slot. SKIN BUILT (task D10): sand and boardwalk lanes; pools filled near the rim with deep, unlit teal water in black steel tanks, with the orange gap edge; bamboo tiki bars and surf shops; footbridges, verandas and a party barge as ceilings; surfboard racks, cabanas and tiki kiosks as doodads; an afternoon sky over the sea and an island. Its open questions, the recommended slot among them (zone 5, between Corporate and the Dead Zone), are in `docs/questions/d10.md`.
-- [ ] The owner's answers on the Beach skin (October 9, 2026):
+- [x] The owner's answers on the Beach skin (October 9, 2026):
   - **Skies:** the first level in daylight. The last level shows the sun starting to set: "not dark, but the sun's starting to have some purples and oranges in the sky". Reuse an existing sky if one works. Neither the Marketplace's sunset nor the City's dawn does (both are night-dark overhead, with stars), so the Beach gets its own (`data/skies/beach_sunset.tres`).
   - **Pools:** a fall makes a splash, if it isn't too difficult. The water may sit a little closer to the rim, but it's pretty good as it is.
   - **Signs:** keep the wordless signs as they are.
   - **Cyborgs:** reuse whichever existing cyborg look fits the zone best. The orchestrator picked the Casino Mob Enforcer (`&"casino"`): a mob running the bars and lounges, and the Barnacle Turret's furry creature look, barnacles at the beach.
   - **Side walls:** "have more gaps on the side walls ... I want this zone to feel more open, so I'll have much longer sections where there aren't sidewalls, and the player can see the surrounding area a little bit better. So don't get rid of the sidewalls completely, but have them appear about 50% of the time that they are now currently appearing for this zone." Task D10b gives a level its own wall-gap tuning, which the Beach's levels use, and provisional Beach levels outside the campaign. Task D10 draws the surroundings in the open stretches.
+  - DONE (tasks D10 and D10b):
+    - **Skies:** `data/skies/beach_sunset.tres` on Beach 2; Beach 1 keeps the daylight.
+    - **Pools:** a splash with a sound when a fall reaches the water (`BeachWaterWatch`, `BeachSplash`), and the water at 0.45 m under the rim.
+    - **Cyborgs:** the Casino Mob Enforcer.
+    - **Side walls:** each wall stands on about 50% of a Beach level, down from about 97%, in open stretches of 2 s or more (median about 117 m). The walls' own keep-outs (ramps' wall runs, wall enemies, signs, ceilings) leave a few walls standing on up to about 65%. The beach, the sea and palms show beyond (`BeachOpen`).
+    - **Levels:** provisional Beach levels outside the campaign, set up for the recommended slot. Play them with `--level=beach/1` and `--level=beach/2`.
+    - **Open questions:** in `docs/questions/d10.md` and `d10b.md`.
 
 ## Zone 1 outro (October 8, 2026)
 
