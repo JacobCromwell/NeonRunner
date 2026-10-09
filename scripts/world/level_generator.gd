@@ -11,9 +11,9 @@ extends RefCounted
 ## 2. Enemy rules: for every feature with a script at res://scripts/enemies/<feature>_rules.gd,
 ##    its static `apply(gen: LevelGenerator)` runs (e.g. drone anti-grav pad schedules). Rules that
 ##    add a feature's enemies or pieces keep them after its start (feature_active, feature_share_at).
-##    Last of them, the dash walls (the `dash_wall` feature, task H7a; dash_wall_rules.gd): buildings
-##    across every floor lane the runner dashes through, where the level's final track leaves room, which
-##    every pass after the rules keeps off (fill_keep_outs, doodad_keep_outs, the rules' keep-outs).
+##    Last of them, a dash wall's introduction (the `dash_wall` feature, task H7a; dash_wall_rules.gd: a
+##    building across every floor lane the runner dashes through) where the level gives the feature a start,
+##    which every pass after the rules keeps off (fill_keep_outs, doodad_keep_outs, the rules' keep-outs).
 ## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
 ##    stretches. Around it, danger density (LevelConfig.danger_density_increase; DangerDensity,
 ##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
@@ -25,6 +25,9 @@ extends RefCounted
 ##    Then, before the fill pass: wider gaps (LevelConfig.wide_gaps; WideGapPlacement, task G7): a couple of
 ##    the level's rows longer along the run (or new rows where too few fit), too wide for an Enforcer Truck
 ##    to hop; the fill pass and the danger density pass then keep their spacing from them.
+##    After the danger density pass's obstacles, the rules' `static func after_obstacles(gen:
+##    LevelGenerator)` (_after_obstacle_rules): the rest of the level's dash walls, in the room the passes
+##    before them left, so those passes measure and fill the level as they would without them.
 ## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
 ##    nothing else goes on (_place_doodads).
 ## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
@@ -113,7 +116,7 @@ extends RefCounted
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 ## The danger density pass (LevelConfig.danger_density_increase); no class_name, so loaded here.
 const DangerDensity := preload("res://scripts/world/danger_density.gd")
-## The dash walls' rules (task H7a), whose footprints and dash baits the fill pass and the doodads keep off.
+## The dash walls' rules (task H7a), whose footprints the fill pass and the doodads keep off.
 const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
 const RULES_DIR: String = "res://scripts/enemies"
 ## The most builds generate() makes to have every feature appear (guarantee_features). Past it the
@@ -351,6 +354,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_fill_empty_stretches(patterns)
 	WideGapPlacement.widen_deferred(self)
 	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)
+	_after_obstacle_rules()
 	_place_doodads(patterns)
 	# Only the doodads ask it, and it holds this generator: let it go.
 	danger_density_plan = null
@@ -1301,6 +1305,21 @@ func _after_fill_rules() -> void:
 			script.call("after_fill", self)
 
 
+## Runs the `static func after_obstacles(gen: LevelGenerator)` of every feature's rules script that has one, in
+## the order of the level's features, after the danger density pass's obstacles and before the zone doodads: a
+## rule that places what the passes before it shouldn't make room for (the dash walls past their
+## introduction, task H7a: the fill pass and the danger density pass fill the level as they would without them,
+## and they stand in the room left, taking out plain pieces where they must).
+func _after_obstacle_rules() -> void:
+	for feature: String in config.features:
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
+		if not ResourceLoader.exists(path):
+			continue
+		var script := load(path) as GDScript
+		if script != null and script.has_method("after_obstacles"):
+			script.call("after_obstacles", self)
+
+
 ## True if the fill pass may place `pattern`: plain obstacles, holes and fences only, that need no
 ## feature (so nothing new ever comes before its introduction) and put nothing on a wall.
 static func is_filler(pattern: Dictionary) -> bool:
@@ -1647,10 +1666,7 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
 ## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
 ## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
-## player in a cut (and its whole window is a fill keep-out, in every lane, already). And no doodad stands
-## just before a dash wall (task H7a; GDD §9.14: nothing else that needs the dash comes just before one):
-## the dash smashes a doodad, so none stands within the dash's longest cooldown before a wall's face
-## (DashWallRules.bait_keep_outs).
+## player in a cut (and its whole window is a fill keep-out, in every lane, already).
 func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for k: Vector4 in fill_keep_outs(patterns)["keep"]:
@@ -1665,7 +1681,6 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = []) -> Ar
 			lane_keeps.append(k)
 		else:
 			out.append(Vector2(float(k["from"]), float(k["to"])))
-	out.append_array(DashWallRules.bait_keep_outs(self))
 	return out
 
 

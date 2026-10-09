@@ -30,7 +30,7 @@ const FIRST_LEVEL: Dictionary = {
 	"generator": "gangland/3", "drone": "gangland/3",
 	"barnacle_turret": "marketplace/1",
 	"wall_fences": "marketplace/2", "screech_vents": "marketplace/2",
-	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1",
+	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1", "dash_wall": "corporate/1",
 	"tithe_collector": "corporate/2", "enforcer_truck": "corporate/2",
 	"host": "dead_zone/1",
 	"resonator": "golden/1",

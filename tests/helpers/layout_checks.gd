@@ -81,7 +81,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 ## - at least one side wall open to run past it (no sign from wall_route_seconds before its face to its back),
 ##   and neither holds a wall gap or a wall fence there;
 ## - nothing that invites a dash comes within the spacing before its face (a Buzz Overdrive's charge meeting
-##   the runner, a fence generator, a zone doodad);
+##   the runner, a fence generator; a zone doodad never needs the dash, so it keeps off the footprint only);
 ## - and the generator's own re-check finds nothing (DashWallRules.problems: the enemies' keep-outs too).
 static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.dash_walls.is_empty():
@@ -123,7 +123,6 @@ static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: Leve
 			suite.check(not (win.x <= fp.y and win.y >= fp.x), "%s isn't in a floor cut's window (%.0f-%.0f m)" % [at, win.x, win.y])
 		for d: Dictionary in layout.doodads:
 			suite.check(not (float(d["start"]) <= fp.y and float(d["end"]) >= fp.x), "%s has no doodad around it" % at)
-			suite.check(not (float(d["start"]) >= face - spacing and float(d["start"]) <= face), "%s has no doodad in the spacing before it (%.1f m)" % [at, float(d["start"])])
 		for sp: Dictionary in layout.speed_pads:
 			suite.check(not (float(sp["at"]) <= fp.y and float(sp["at"]) + tuning.speed_pad_length >= fp.x), "%s has no speed pad around it" % at)
 		for pad: Dictionary in layout.pads:

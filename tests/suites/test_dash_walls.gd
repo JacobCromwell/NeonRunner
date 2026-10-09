@@ -8,7 +8,9 @@ extends TestSuite
 ##   6 lanes, on the levels' own seeds and others: the level's count, every one fair (LayoutChecks
 ##   .check_dash_walls: the spacing, a clear approach and stretch past it, no ceiling, a side wall open, no dash
 ##   bait just before, the enemies' keep-outs), the same every time; Corporate 1 introduces them right after
-##   their start, and a level without the feature (or a count of 0) draws nothing and is built as before.
+##   their start; past an introduction they stand after the danger density pass, which adds what it adds
+##   without them, taking out only what stood in their way; and a level without the feature (or a count of 0)
+##   draws nothing and is built as before.
 ## - The track: a DashBreakable on the dash wall layer across the floor lanes, short of the side walls, taller
 ##   than any jump, with a forgiving solid hitbox (armor absorbs it, it breaks the wall) from the floor up; the
 ##   skin's hook gets its box and seed; a broken one is never built again.
@@ -60,6 +62,7 @@ func run() -> void:
 	_test_layout_data()
 	_test_generator()
 	_test_introduction()
+	_test_after_danger_density()
 	_test_feature_absent()
 	await _test_track()
 	_test_damage_rules()
@@ -242,6 +245,84 @@ func _test_introduction() -> void:
 			var other: float = gen.feature_start(f)
 			check(absf(other - first) > t.intro_window_seconds * gen.speed,
 				"no other introduction (%s at %.0f m) right at the wall's (%.0f m) %s" % [f, other, first, tag])
+
+
+## Past an introduction the walls stand after the danger density pass (DashWallRules.after_obstacles), in the
+## room the passes before them left: in a level that doesn't introduce them, on 3 lanes (the least room) and 5,
+## the danger density pass's report, the fill pass's fillers and the enemies are what the level gets with no
+## walls at all (the share of danger the owner asked for holds), and the only pieces the walls cost are holes and
+## fences in their footprints and signs beside them.
+func _test_after_danger_density() -> void:
+	var t: DashWallTuning = DashWallTuning.load_default()
+	for id: String in ["dead_zone/1", "golden/2"]:
+		for lanes: int in [3, 5]:
+			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
+			var none: LevelConfig = campaign.configure(campaign.step(id), lanes)
+			none.dash_walls = 0
+			var tag: String = "(%s, %d lanes)" % [id, lanes]
+			check(not config.feature_starts.has("dash_wall"), "%s doesn't introduce them %s" % [id, tag])
+			var gen := LevelGenerator.new()
+			gen.generate(config, tuning, LevelGenerator.load_for(config))
+			var plain := LevelGenerator.new()
+			plain.generate(none, tuning, LevelGenerator.load_for(none))
+			check(gen.layout.dash_walls.size() == config.dash_walls, "its %d walls stand %s" % [config.dash_walls, tag])
+			check(_before_wall_fences(gen.danger_density_result) == _before_wall_fences(plain.danger_density_result),
+				"the danger density pass adds what it adds without them %s" % tag)
+			check(JSON.stringify(gen.fills) == JSON.stringify(plain.fills), "and so does the fill pass %s" % tag)
+			check(JSON.stringify(gen.layout.enemies) == JSON.stringify(plain.layout.enemies), "the enemies are the same %s" % tag)
+			var spans: Array[Vector2] = []
+			var routes: Array[Vector2] = []
+			for w: Dictionary in gen.layout.dash_walls:
+				spans.append(DashWallRules.footprint(gen, w, t))
+				routes.append(Vector2(float(w["start"]) - t.wall_route_seconds * gen.speed, float(w["end"])))
+			var kept: Dictionary = {}
+			for g: Dictionary in gen.layout.gaps:
+				kept[["gap", g["start"], g["end"], g["lane"]]] = true
+			for f: Dictionary in gen.layout.fences:
+				kept[["fence", f["at"], f["lane"]]] = true
+			for s: Dictionary in gen.layout.signs:
+				kept[["sign", s["start"], s["side"]]] = true
+			var gone: int = 0
+			for g: Dictionary in plain.layout.gaps:
+				if not kept.has(["gap", g["start"], g["end"], g["lane"]]):
+					gone += 1
+					check(_reaches(spans, Vector2(float(g["start"]), float(g["end"]))),
+						"a hole that went (%.1f m) stood in a wall's footprint %s" % [float(g["start"]), tag])
+			var half: float = tuning.fence_depth * 0.5
+			for f: Dictionary in plain.layout.fences:
+				if not kept.has(["fence", f["at"], f["lane"]]):
+					gone += 1
+					check(_reaches(spans, Vector2(float(f["at"]) - half, float(f["at"]) + half)),
+						"a fence that went (%.1f m) stood in a wall's footprint %s" % [float(f["at"]), tag])
+			for s: Dictionary in plain.layout.signs:
+				if not kept.has(["sign", s["start"], s["side"]]):
+					gone += 1
+					check(_reaches(routes, Vector2(float(s["start"]), float(s["end"]))),
+						"a sign that went (%.1f m) stood beside a wall %s" % [float(s["start"]), tag])
+			print("  dash walls after the danger density pass %s: %d walls, %d pieces taken out" % [tag,
+				gen.layout.dash_walls.size(), gone])
+
+
+## Danger density report `report` (LevelGenerator.danger_density_result) as JSON, without what its wall fence half
+## adds (DangerDensity.apply_wall_fences: the wall fences come after the walls and keep off their wall routes).
+func _before_wall_fences(report: Dictionary) -> String:
+	var out: Dictionary = report.duplicate(true)
+	for key: String in ["baseline_wall_fences", "wall_fence_target", "wall_fences_added", "wall_fences"]:
+		out.erase(key)
+	var constraints: PackedStringArray = []
+	for c: String in out.get("constraints", PackedStringArray()):
+		if not c.begins_with("wall fences"):
+			constraints.append(c)
+	out["constraints"] = constraints
+	return JSON.stringify(out)
+
+
+## True if `span` overlaps one of `spans`.
+func _reaches(spans: Array[Vector2], span: Vector2) -> bool:
+	for s: Vector2 in spans:
+		if s.x <= span.y + 0.001 and s.y >= span.x - 0.001:
+			return true
+	return false
 
 
 ## A level without the feature draws nothing: no walls and no dash_walls key (a level of every zone before the
