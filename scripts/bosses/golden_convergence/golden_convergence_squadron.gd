@@ -206,7 +206,10 @@ func _update_hurl(i: int, delta: float) -> void:
 	pivot.rotation.x = minf(pivot.rotation.x + 3.0 * delta, 0.9)
 	if y - float(rig["start_y"]) >= hurl_rise or float(rig["hurl_t"]) >= HURL_TIME:
 		var at: Vector3 = node.global_position
-		world.play_sfx_at(&"drone_crash", at)
+		if encounter is GoldenConvergence:
+			(encounter as GoldenConvergence).sound(&"drone_crash", (encounter as GoldenConvergence).sound_point(at))
+		else:
+			world.play_sfx_at(&"drone_crash", at)
 		world.effects.burst(at, Color(1.0, 0.5, 0.15), 36, 1.1)
 		world.effects.burst(at, Color(0.7, 0.75, 0.85), 16, 0.7)
 		world.effects.shake(0.2, 0.25)
