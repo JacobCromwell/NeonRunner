@@ -32,6 +32,18 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   gc_launch    the missiles launching one after another with a roar
 ##   gc_whistle   their dive (as long as barrage_dive_seconds): a chorus of rising whistles
 ##   gc_fire      the fire landing: a blast of flame rushing over the floor, burning for fire_seconds
+## E5d-c (the Refill Ship):
+##   gc_ship      the ship flying in (as long as ship_in_seconds): its engines droning in from behind and above,
+##                a deep hum, a turbine whine, the air rushing as it comes over
+##   gc_feed      the feed line shooting out to the shoulder's pipes (feed_reach_seconds): a pneumatic pop, the
+##                hose hissing out, a heavy coupling clank as it docks, the pipes taking pressure
+##   gc_ride      missiles riding up the line: a clatter of rollers on the hose climbing away, a hiss
+##   gc_ripple    the drones crashing into the racks and the missiles going up one after another along them
+##                (ripple_seconds)
+##   gc_crash     the ship exploding beside the causeway: a huge blast, its hull tearing, debris raining down
+##   gc_blast     the blast racing up the feed line (blast_seconds): a roar climbing in pitch, crackling
+##   gc_pipes     a shoulder's pipes blowing out: a boom, metal tearing, steam venting, a clang
+##   gc_leave     a missed pad: the ship's engines spooling up and receding as it flies off (leave_seconds)
 
 const TUNING_PATH: String = "res://data/bosses/golden_boss_tuning.tres"
 ## The Resonator's chime (sfx_bank_resonator.gd): its notes, struck the same way.
@@ -64,6 +76,15 @@ func sounds() -> Dictionary:
 		"gc_launch": _launch,
 		"gc_whistle": _whistle,
 		"gc_fire": _fire,
+		# E5d-c.
+		"gc_ship": _ship,
+		"gc_feed": _feed,
+		"gc_ride": _ride,
+		"gc_ripple": _ripple,
+		"gc_crash": _crash,
+		"gc_blast": _blast,
+		"gc_pipes": _pipes,
+		"gc_leave": _leave,
 	}
 
 
@@ -575,4 +596,188 @@ func _fire() -> PackedFloat32Array:
 	_fade_out(b, 0.3)
 	DSP.drive(b, 1.6)
 	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+# --- E5d-c: the Refill Ship ---------------------------------------------------------------------------------
+
+## The ship's engines: two deep detuned saws (a heavy hum) and a turbine's whine at `whine_hz` (from, to), under
+## a low rush, `level` over the sound (from, to). The ship's arrival and its leaving share it.
+func _engines(seconds: float, hum_from: float, hum_to: float, whine_from: float, whine_to: float, level_from: float,
+		level_to: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds)
+	for detune: float in [1.0, 1.013]:
+		var hum := DSP.osc(seconds, func(u: float) -> float: return DSP.sweep(hum_from, hum_to, u) * detune, &"saw")
+		DSP.filter(hum, &"lowpass", 380.0)
+		DSP.mix(b, hum, 0.0, 0.45)
+	var whine := DSP.osc(seconds, func(u: float) -> float: return DSP.sweep(whine_from, whine_to, u) * (1.0 + 0.006 * sin(u * 90.0)))
+	DSP.mix(b, whine, 0.0, 0.12)
+	var rush := DSP.noise(seconds, rng)
+	DSP.filter(rush, &"bandpass", 520.0, 0.6)
+	DSP.mix(b, rush, 0.0, 0.7)
+	var n: int = b.size()
+	for i: int in n:
+		b[i] *= lerpf(level_from, level_to, float(i) / n)
+	return b
+
+
+## The ship flying in, as long as ship_in_seconds: its engines droning in from behind and above, swelling (a deep
+## hum climbing a little, the pale engines' turbine whine), the air rushing past as it comes over, settling
+## into a steady drone as it takes its station.
+func _ship() -> PackedFloat32Array:
+	var rng := _rng(1720)
+	var d: float = minf(clampf(tuning_value("ship_in_seconds", 2.4), 0.8, 3.0) + 0.2, MAX_SECONDS)
+	var b := _engines(d, 38.0, 46.0, 780.0, 1040.0, 0.25, 1.0, rng)
+	var over := _whoosh(d * 0.7, 300.0, 1600.0, 0.9, rng)
+	DSP.mix(b, over, d * 0.2, 1.1)
+	var rumble := DSP.noise(d, rng)
+	DSP.filter(rumble, &"lowpass", 110.0)
+	DSP.filter(rumble, &"lowpass", 110.0)
+	DSP.shape(rumble, d * 0.6, 0.3)
+	DSP.mix(b, rumble, 0.0, 2.0)
+	DSP.shape(b, 0.4, 0.35)
+	DSP.drive(b, 1.5)
+	DSP.crush(b, 10, 20000.0)
+	return b
+
+
+## The feed line shooting out to the shoulder's pipes (feed_reach_seconds): a pneumatic pop, the hose hissing
+## out (a rising rush and its bands rattling), a heavy coupling clank as it docks, then the pipes taking the
+## pressure (a hiss dying down).
+func _feed() -> PackedFloat32Array:
+	var rng := _rng(1721)
+	var reach: float = clampf(tuning_value("feed_reach_seconds", 0.5), 0.15, 1.2)
+	var d: float = reach + 0.6
+	var b := DSP.buffer(d)
+	DSP.mix(b, DSP.kick(0.12, 260.0, 90.0, rng), 0.0, 0.8)
+	DSP.mix(b, _whoosh(reach + 0.05, 400.0, 2800.0, 1.1, rng), 0.0, 1.0)
+	var at: float = 0.02
+	while at < reach - 0.02:
+		DSP.mix(b, DSP.metal_hit(0.03, 2100.0, 0.006, rng), at, 0.35)
+		at += 1.0 / lerpf(18.0, 34.0, at / reach)
+	DSP.mix(b, DSP.metal_hit(0.4, 560.0, 0.11, rng), reach, 1.1)
+	DSP.mix(b, _boom(0.3, 180.0, 70.0, 0.07, rng), reach, 0.7)
+	var hiss := DSP.noise(d - reach, rng)
+	DSP.filter(hiss, &"highpass", 2400.0)
+	DSP.envelope(hiss, 0.01, 0.18, 0.05)
+	DSP.mix(b, hiss, reach + 0.02, 0.5)
+	DSP.crush(b, 9, 19000.0)
+	return b
+
+
+## Missiles riding up the line: a clatter of rollers on the hose (clicks speeding up) climbing away, a hiss with
+## them.
+func _ride() -> PackedFloat32Array:
+	var rng := _rng(1722)
+	var d: float = 1.1
+	var b := DSP.buffer(d)
+	var at: float = 0.0
+	while at < d - 0.05:
+		var u: float = at / d
+		DSP.mix(b, DSP.metal_hit(0.035, lerpf(1300.0, 2300.0, u), 0.007, rng), at, 0.5 * (1.0 - 0.7 * u))
+		at += 1.0 / lerpf(14.0, 30.0, u)
+	var rush := _whoosh(d, 700.0, 2600.0, 1.3, rng)
+	DSP.mix(b, rush, 0.0, 0.45)
+	DSP.shape(b, 0.03, 0.25)
+	DSP.crush(b, 9, 19000.0)
+	return b
+
+
+## The drones crashing into the racks (metal smashing), then the missiles going up one after another along them
+## over ripple_seconds (each a sharp blast, the string climbing), crackling, a rumble under it all.
+func _ripple() -> PackedFloat32Array:
+	var rng := _rng(1723)
+	var span: float = clampf(tuning_value("ripple_seconds", 0.8), 0.2, 1.5)
+	var d: float = minf(span + 0.75, MAX_SECONDS)
+	var b := DSP.buffer(d)
+	DSP.mix(b, DSP.metal_hit(0.3, 420.0, 0.09, rng), 0.0, 1.0)
+	DSP.mix(b, DSP.metal_hit(0.25, 690.0, 0.07, rng), 0.03, 0.8)
+	var count: int = 9
+	for k: int in count:
+		var at: float = 0.06 + span * float(k) / float(count) + rng.randf_range(0.0, 0.02)
+		var pop := _explosion(0.45, 0.45, rng)
+		DSP.mix(b, pop, at, 0.45 + 0.03 * k)
+	var rumble := DSP.noise(d, rng)
+	DSP.filter(rumble, &"lowpass", 130.0)
+	DSP.shape(rumble, span * 0.5, 0.4)
+	DSP.mix(b, rumble, 0.0, 1.8)
+	_fade_out(b, 0.25)
+	DSP.drive(b, 1.4)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## The ship exploding beside the causeway: a huge blast, a second on its heels, its hull tearing (a groaning metal
+## screech), debris raining down, a rumble rolling away by MAX_SECONDS.
+func _crash() -> PackedFloat32Array:
+	var rng := _rng(1724)
+	var d: float = MAX_SECONDS
+	var b := _explosion(d, 1.5, rng)
+	DSP.mix(b, _explosion(d - 0.18, 1.1, rng), 0.18, 0.7)
+	var tear := DSP.osc(0.9, func(u: float) -> float: return DSP.sweep(240.0, 120.0, u) * (1.0 + 0.06 * sin(u * 53.0)), &"saw")
+	DSP.filter(tear, &"bandpass", 900.0, 2.2)
+	DSP.shape(tear, 0.05, 0.4)
+	DSP.mix(b, tear, 0.12, 0.5)
+	DSP.mix(b, _crackle(d - 0.4, 50, 0.9, 1800.0, rng), 0.35, 0.6)
+	_fade_out(b, 0.4)
+	DSP.drive(b, 1.3)
+	DSP.crush(b, 9, 17000.0)
+	return b
+
+
+## The blast racing up the feed line over blast_seconds: a roar climbing in pitch as it goes (a rising rush,
+## fire crackling), popping as it eats the hose.
+func _blast() -> PackedFloat32Array:
+	var rng := _rng(1725)
+	var span: float = clampf(tuning_value("blast_seconds", 0.9), 0.3, 1.8)
+	var d: float = span + 0.35
+	var b := DSP.buffer(d)
+	var roar := DSP.noise(d, rng)
+	DSP.filter_sweep(roar, &"bandpass", 260.0, 2200.0, 0.8)
+	DSP.shape(roar, 0.05, 0.3)
+	DSP.mix(b, roar, 0.0, 1.8)
+	var low := DSP.noise(d, rng)
+	DSP.filter_sweep(low, &"lowpass", 300.0, 900.0, 0.7)
+	DSP.shape(low, 0.03, 0.3)
+	DSP.mix(b, low, 0.0, 1.0)
+	var at: float = 0.0
+	while at < span:
+		DSP.mix(b, DSP.kick(0.08, 240.0 + 300.0 * at / span, 90.0, rng), at, 0.4)
+		at += 0.09
+	DSP.mix(b, _crackle(d, 50, span, 2600.0, rng), 0.0, 0.7)
+	DSP.drive(b, 1.8)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A shoulder's pipes blowing out: a boom, the metal tearing open (a screech falling), steam venting in a hiss that
+## dies down, a heavy clang as a hatch is torn loose.
+func _pipes() -> PackedFloat32Array:
+	var rng := _rng(1726)
+	var d: float = 1.6
+	var b := _explosion(d, 0.9, rng)
+	var screech := DSP.osc(0.6, func(u: float) -> float: return DSP.sweep(1500.0, 620.0, u) * (1.0 + 0.04 * sin(u * 70.0)), &"saw")
+	DSP.filter(screech, &"bandpass", 1300.0, 3.0)
+	DSP.shape(screech, 0.03, 0.3)
+	DSP.mix(b, screech, 0.04, 0.5)
+	var steam := DSP.noise(d - 0.1, rng)
+	DSP.filter(steam, &"highpass", 2800.0)
+	DSP.envelope(steam, 0.02, 0.5, 0.1)
+	DSP.mix(b, steam, 0.1, 0.8)
+	DSP.mix(b, DSP.metal_hit(0.5, 380.0, 0.15, rng), 0.22, 1.0)
+	_fade_out(b, 0.25)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A missed pad: the ship done refilling, its engines spooling up and receding as it flies off ahead and away
+## (leave_seconds): the whine climbing, the hum falling away, softer to the end.
+func _leave() -> PackedFloat32Array:
+	var rng := _rng(1727)
+	var d: float = minf(clampf(tuning_value("leave_seconds", 2.2), 0.8, 3.0), MAX_SECONDS)
+	var b := _engines(d, 44.0, 36.0, 1000.0, 1500.0, 1.0, 0.0, rng)
+	DSP.mix(b, _whoosh(d * 0.6, 1400.0, 400.0, 0.9, rng), 0.1, 0.9)
+	DSP.shape(b, 0.15, 0.4)
+	DSP.drive(b, 1.4)
+	DSP.crush(b, 10, 20000.0)
 	return b
