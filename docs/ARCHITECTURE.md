@@ -97,10 +97,8 @@ level is always built and played at one speed; a campaign boss fight runs at its
 live, and its Save leaves the base run speed alone when the run's comes from its level (the section's
 `keep` list, `TuningPanel`).
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
-and `--full-loadout` for reviews; a `<zone>/<n>` no campaign step has plays level n of
-`data/zones/<zone>.tres` (task D10b: the Beach, which has no campaign slot yet; `App.zone_outside_campaign`)
-as quick play in its zone's look, sky and run speed (`ZoneDef.standalone_level`, `App.start_zone_level`), and
-also takes `--seed=N`; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
+and `--full-loadout` for reviews (task D10b's fallback for a zone outside the campaign went with D10c, which put
+the Beach in it); `--boss=<boss id>` plays a boss fight (a zone's boss with the full
 flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
 (`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug
 builds only, so a release build can't skip progression or farm credits with them.
@@ -1810,8 +1808,8 @@ bump. Past the gap, the usual move input steps back onto the wall. `HintDirector
 
 **A level's own wall gaps, and the Beach's open walls** (task D10b; the owner, October 9, 2026: the Beach should
 "feel more open ... much longer sections where there aren't sidewalls", its walls appearing "about 50% of the
-time that they are now currently appearing"; GDD §5, A seventh zone). `LevelConfig.wall_gap_tuning` gives a level
-its own `WallGapTuning`; null (every campaign level) is the shared file. `WallGapPlacement.tuning_for(config)` is
+time that they are now currently appearing"; GDD §5, Zone 5: the Beach). `LevelConfig.wall_gap_tuning` gives a level
+its own `WallGapTuning`; null (every campaign level but the Beach's) is the shared file. `WallGapPlacement.tuning_for(config)` is
 what the placement, the F6 panel's "Wall gaps" group and the tests read. The tuning's Open walls group
 (`coverage_target` above 0: `data/tuning/beach_wall_gaps.tres`, the Beach's levels only) turns the rare short gaps
 into long open stretches (`WallGapPlacement._open_walls`, from the same random stream):
@@ -1831,11 +1829,12 @@ margins that time a wall run, before a ramp and past its longest run and either 
 shared ones. Placed last as before, the open walls change nothing else in a level: built with the shared tuning,
 the Beach's levels are the same levels but for their gaps (the same signs, wall fences, ramps, window cyborgs
 and wall vents, and no wall credit fell in a gap, since those lie along ramps' wall runs: all 54 builds below).
-Over both Beach levels at 3, 5 and 6 lanes, on their own seeds and eight others: each wall stands on 48-57% of
-its level on the levels' own seeds, 106 of 108 walls in 40-60% over all (median 51%; 97-100% with the shared
-tuning), the other two on 64% and 66%, where their keep-outs leave them no more free; both walls are open at once
-on 15-30% of a level (median 29%); the open stretches run from 48 m (2 s) to 859 m (median 117 m), with 83% of
-the open length in stretches of 100 m and more (`test_beach_levels` checks its own seeds and two others). With
+Over both Beach levels at 3, 5 and 6 lanes as the campaign configures them (task D10c), on their own seeds and
+eight others: each wall stands on 48-60% of its level on the levels' own seeds, 107 of 108 walls in 40-60% over
+all (median 49%; 97-100% with the shared tuning), the other on 64%, where its keep-outs leave it no more free;
+both walls are open at once on 18-30% of a level (median 29%); the open stretches run from 48 m (2 s) to 957 m
+(median 124 m), with 85% of the open length in stretches of 100 m and more (`test_beach_levels` checks its own
+seeds and two others). With
 the Open walls group off, the shared tuning places exactly what it did before: every
 layout of `tools/measure/level_pace.gd --dump` (every campaign level at 3, 5 and 6 lanes on its own seed and four
 others, and quick play) is byte-identical. DESIGN-TBD (`docs/questions/d10b.md`): the target, the share open on
@@ -2181,10 +2180,9 @@ ranges at 3, 5 and 6 lanes and checks all of this, so every zone's skin is held 
 underside, and check the drop on both renderers (`skin_review --narrow`, Review tools).
 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
-(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
-and `GoldenSkin` (Zone 6, the Golden Zone). `BeachSkin` (task D10, the Beach) is a seventh look that no
-campaign zone uses yet (the owner hasn't placed it in the campaign: `test_campaign` pins six zones); it is
-shown with `--skin=beach` in quick play and in `skin_review`. `GreyboxSkin` is the fallback for a zone without its own
+(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `BeachSkin` (Zone 5, the Beach; task D10, in
+the campaign since D10c), `DeadZoneSkin` (Zone 6, the Dead Zone) and `GoldenSkin` (Zone 7, the Golden Zone).
+`GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
@@ -2205,7 +2203,7 @@ value, the one thing a new zone's skin sets for its enemies:
 | Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
-| Beach (D10, not in the campaign yet) | `&"casino"` | the Casino Mob Enforcer | clean |
+| Beach (D10) | `&"casino"` | the Casino Mob Enforcer | clean |
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
 Marketplace, the Beach) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
@@ -2569,8 +2567,8 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
   `golden_metal()`/`golden_marble()`, which it calls directly rather than inventing new ones):
   `PAT_PALACE_FLOOR` (70), `PAT_PALACE_WELL` (71) and `PAT_PALACE_PANEL` (72).
 
-**The Beach** (task D10, the owner's request of October 9, 2026; `docs/art/reference/beach_zone.jpg`; not in
-the campaign yet, so no campaign zone, level or music: `data/skins/beach_skin.tres` is shown with `--skin=beach` and
+**The Beach** (task D10, the owner's request of October 9, 2026; `docs/art/reference/beach_zone.jpg`; the
+campaign's zone 5 since task D10c, Campaign below; `data/skins/beach_skin.tres` is also shown with `--skin=beach` and
 `tools/showcase/skin_review.tscn -- --skin=beach`): `BeachSkin` (`scripts/world/skins/beach_skin.gd`) is a bright
 tropical afternoon on a shore: a sandy street running down to a turquoise sea and a palm island, between bamboo
 shacks and tiki bars, with black rust-streaked industrial tanks behind them. No new enemy assets: its
@@ -2860,8 +2858,10 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   `tools/asset_gen/` (`tools/godot.sh sfx` / `music`): a track is composed in `track_<name>.gd` with
   `music_song.gd` (stems on a 16th grid that wrap around the loop, and loop-safe effects) and
   `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. **No new tracks are
-  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in all six zones
-  and the Floating Head fight. `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
+  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in all seven zones
+  and the Floating Head fight (the Beach's track `beach` stands in on the Marketplace's until it has its own,
+  task D10c: its generated loop in `files`, Jackpot Plaza in `zone_tracks` and its riff in `riff_tracks`;
+  DESIGN-TBD, `docs/questions/d10c.md`). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
   and `boss_tracks` maps a boss id to its supplied song. `App._start_run` resolves these for campaign,
   quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
   keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
@@ -2891,32 +2891,36 @@ levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step 
 `city/boss`, ...) key the save file, so they never change. A cinematic slot added after a save had passed it
 (Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
 unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
-plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
+plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign. A level off the curve
+(`LevelConfig.off_curve`: the Beach's, below) plays at its own.
 
-The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`,
-`marketplace`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2 and 3 levels in
+The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
+`marketplace`, `corporate`, `beach`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
-cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster. A zone's music
+cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster (the Beach's
+still to be designed, below). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
-over the 15 levels (FB 4, FB 5); which level is the peak (proposed: Golden 2, with Golden 3 a little
-below it) and the remaining level lengths (DESIGN-TBD, run 120–150 s) stay open.
+over the 15 levels on it (FB 4, FB 5; the Beach's two are off it); which level is the peak (proposed: Golden 2,
+with Golden 3 a little below it) and the remaining level lengths (DESIGN-TBD, run 120–150 s) stay open.
 Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via
 `data/levels/city_1.tres`'s `duration_seconds`; all other level durations stay unchanged.
 At the City's 21 m/s this moves its finish line from 2310 to 1155 metres. The existing generator
 and distance-based completion use that value without changing speed, difficulty, clear distances,
 or the fractional starts of cyborgs and doodads. These are running times without speed-changing
-power-ups or pauses, excluding cinematics and the completion delay. The levels now total 34.1 minutes.
+power-ups or pauses, excluding cinematics and the completion delay. The levels now total 39.0 minutes (34.1
+before the Beach's two).
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
 Marketplace 1; the Tithe Collector skips the Dead Zone; Zone & Levels 2 excludes Octodogs from
 Golden 1–3, including the Golden Palace). Octodogs remain enabled from Gangland 2 through the
-Dead Zone. Removing only `octodog` from the three Golden resources excludes both dog patterns and
+Dead Zone, the Beach's remix included. Removing only `octodog` from the three Golden resources excludes both dog patterns and
 their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
 to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
-through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). Each
+through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected), and in the Beach between
+them (its remix; DESIGN-TBD, `docs/questions/d10c.md`: §9.9 names the Dead Zone and the Golden Zone). Each
 level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
 generator; City 1's cyborgs come late in the level), and its newest features get the most picks
 (the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
@@ -2936,29 +2940,44 @@ still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`). Endless 
 furthest zone's last level, leaves the remix out (`App.start_endless`: no quiet stretches, no quiet
 features or their weights, no darkness), so endless in the Dead Zone plays as it did before.
 
-**The Beach, a provisional zone** (task D10b; the owner, October 9, 2026: a seventh zone, its slot not decided,
-not the last; GDD §5). `data/zones/beach.tres` (id `beach`, the Beach skin, two levels, 23.8 m/s) is in no
-campaign: `test_campaign` still pins six zones. Its levels, `data/levels/beach_1.tres` and `beach_2.tres`, are set
-up for the recommended slot after Corporate (`docs/questions/d10.md`): Corporate 2's features (a remix with no new
-enemy, as the owner wants no new enemy assets), no introductions, their own `difficulty` and `enemy_scaling`
-between Corporate 2's and Dead Zone 1's (there's no campaign curve to place them on, and no recency curve shapes
-their picks), 145 and 150 s, seeds 701 and 702, and the open walls (`wall_gap_tuning`, under The generator, Side
-wall gaps). Beach 1 has no sky of its own (the zone's daylight); the sunset belongs to the last level. Its music
-is a placeholder, Corporate's track (no new songs); no boss, cinematics or demo scope. `--level=beach/1` plays a
-level as quick play (A run; `ZoneDef.standalone_level` builds it as the tests do, `test_beach_levels`). When the
-owner picks a slot the zone goes into `data/campaign/campaign.tres`, and the campaign then sets each level's
-difficulty, enemy scaling, recency and ages; everything slot-dependent is DESIGN-TBD (`docs/questions/d10b.md`).
+**The Beach** (task D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone", a boss
+battle to come, "do not worry about any new enemies at this time"; GDD §5). `data/zones/beach.tres` (id `beach`, the
+Beach skin, 23.8 m/s) is zone 5, between Corporate and the Dead Zone: its intro (the arrival flyover), Tiki Tides and
+Sunset Strip (`data/levels/beach_1.tres` and `beach_2.tres`: seeds 701 and 702, 145 and 150 s, the open walls of task
+D10b, `wall_gap_tuning` under The generator, Side wall gaps; Beach 1 in the zone's daylight, Sunset Strip under
+`data/skies/beach_sunset.tres`), its boss slot and its outro. It is a remix of everything before it, Corporate 2's
+features with no introductions, and the one zone that brings no new enemy (GDD §5's exception).
+Its levels are **off the curve** (`LevelConfig.off_curve`), so every level and boss that was in the campaign before
+plays exactly as before:
+- `Campaign.configure` gives a level off the curve its own `difficulty` (plus the tier's bonus; its
+  `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.63 and 0.65, 0.67 and 0.69, strictly between
+  Corporate 2's and Dead Zone 1's;
+- the curve spans the levels on it (`curve_level_count()`: 15 of `level_count()`'s 17, against
+  `planned_level_count()`'s 17), and a level off it takes the place of the level on it before it
+  (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
+- a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
+  on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
+  (`Campaign.feature_ages`); a boss fights at the scaling of the level before it (`Campaign.level_scaling`).
+So the other 15 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
+and every one of their layouts in `tools/measure/level_pace.gd --dump` (at 3, 5 and 6 lanes, on its own seed and four
+others) is byte-identical; `test_campaign` also builds the six-zone campaign from the same data and compares every
+level and boss with it. A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
+as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
+(`docs/questions/d10c.md`): whether the curve is later re-spread over all 17 levels, the Beach's numbers, its
+completion bonus, Continue for old saves, its boss, cinematics and music.
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
 intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
 Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), and the other outros are still cards. A boss is
-built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Golden
-Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule delay. A fight
+built on the boss framework (Bosses, below). Every zone's boss but the Beach's is built (its step plays the fight;
+the Golden Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule
+delay. The Beach's slot (`data/bosses/beach_boss.tres`, task D10c) has no scene, phases or arena until its fight
+is designed (task E5e): the campaign shows its card and passes through it, with no stars (`test_app_flow` and
+`test_screens` check the boss slot's card on it). A fight
 still being built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card,
-and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded
-(`test_app_flow` and `test_screens` check the boss slot's card with an unbuilt stand-in).
+and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.
 
 ## Bosses
 
@@ -4350,16 +4369,18 @@ truck (god mode, grapples): each destroyed by a charge it dodged or in a wider g
 its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
 alongside (the showings it makes are printed).
 
-`test_beach_levels` checks the Beach's provisional levels (task D10b; Campaign, The Beach; The generator, Side wall
-gaps): the zone and level data and its place outside the campaign; both levels at 3, 5 and 6 lanes on their own
-seeds and two others with the campaign's fairness checks (LayoutChecks) and every listed feature present (on
+`test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
+gaps): the zone and level data and its place in the campaign (zone 5, its steps, slots and music stand-in); both
+levels at 3, 5 and 6 lanes as the campaign configures them, on their own seeds and two others, with the campaign's
+fairness checks (LayoutChecks) and every listed feature present (on
 other seeds the Enforcer Truck, which only comes where a bait's chase has room, in nearly every build); the open
 walls: each wall standing on 40-60% of its level (or more only where its keep-outs leave no more free), the
 median wall in 45-55%, every gap at least `open_seconds_min` long and clear of its wall's keep-outs, most of the
 open length in stretches of 100 m and more, both walls open at once within `both_open_max`, the same gaps on a
-second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1` (the zone
-resolved outside the campaign, its quick-play run, and the command line end to end through the smoke tool).
-`test_wall_gaps` holds every campaign level to the shared tuning and checks the open walls on made-up tracks.
+second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1`, the campaign step
+with the full flow, end to end through the smoke tool. How the campaign configures the Beach off its curve, and
+that no other level or boss changed, is `test_campaign`'s (Campaign, The Beach).
+`test_wall_gaps` holds every other campaign level to the shared tuning and checks the open walls on made-up tracks.
 `test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
 lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off
 margin to the landing margin, no zone doodad or its push's lead there, no side wall gap beside) and a floor
