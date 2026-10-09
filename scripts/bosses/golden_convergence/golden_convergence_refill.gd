@@ -39,10 +39,10 @@ extends GoldenConvergenceAttack
 ## while it plays; a chain reaction ends the phase, so it plans the next phase's first slams itself
 ## (GoldenConvergenceSlams.plan_phase_ahead) from where its hit will land and the next phase's intro, and that
 ## phase opens with its first fist on time instead of stalking the runner while its holes are planned.
-## Weapons never target the ship or the cage (proposed; docs/questions/e5d.md): the ship is immune and never
+## Weapons never target the ship or the cage (proposed; docs/OPEN_QUESTIONS.md items 416–503): the ship is immune and never
 ## targetable, the fences are hazards, the generator is the game's (weapons never set one off). They still chip the
 ## suit.
-## Numbers: GoldenConvergenceTuning's "Refill Ship" groups (DESIGN-TBD, docs/questions/e5d.md, E5d-c).
+## Numbers: GoldenConvergenceTuning's "Refill Ship" groups (DESIGN-TBD, docs/OPEN_QUESTIONS.md, items 469–482).
 
 ## The chain reaction began (the pad), and its hit landed; a pad missed.
 signal chained(info: Dictionary)
@@ -64,7 +64,7 @@ const LEAVE_OUT: float = 1.6
 ## Spinning off: out past the walls' line this far, down this far (a little: E5d polish, it used to sink 10 m, below
 ## the deck, and explode out of the cameras' sight), rolling this far over (its belly turning away), surging this
 ## far ahead of where it rode (into the run camera's view): it explodes beside the causeway above its level, where the
-## run camera and the side see it (GoldenConvergenceShip.explode). DESIGN-TBD (docs/questions/e5d.md, E5d polish 5).
+## run camera and the side see it (GoldenConvergenceShip.explode). DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 487).
 const SPIN_OUT: float = 10.0
 const SPIN_DOWN: float = 1.5
 const SPIN_ROLL: float = 2.3
@@ -148,7 +148,7 @@ func cage_up() -> bool:
 
 
 ## The shoulder it feeds (-1 its right, the runner's left; 1 its left): the one whose pipes are whole, his right
-## first; with both blown out, his right's torn stubs. DESIGN-TBD (docs/questions/e5d.md, E5d-c 2).
+## first; with both blown out, his right's torn stubs. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 470).
 func fed_side() -> int:
 	var suit: GoldenConvergenceSuit = boss.suit
 	if suit == null or not suit.pipes_broken[0]:

@@ -44,7 +44,7 @@ const KEEP_BEHIND: float = 30.0
 const RETRACT_SECONDS: float = 0.35
 ## E5d polish (F6's short cage_lead or a generator far out could leave it out of reach): from the cage's coming up
 ## to the generator, a runner always has this long to read it, a lane switch for every lane but one, a jump's rise
-## onto the generator, and this long to spare (lead_seconds). DESIGN-TBD (docs/questions/e5d.md, E5d polish 7).
+## onto the generator, and this long to spare (lead_seconds). DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 489).
 const READ_SECONDS: float = 0.7
 const SPARE_SECONDS: float = 0.3
 
@@ -246,7 +246,7 @@ func ahead() -> bool:
 
 
 ## An EMP at `center` (world space) reaching `radius`: its own generator's pulse switches the whole cage off
-## (GDD §10: "whose pulse switches the fences off"; DESIGN-TBD, docs/questions/e5d.md, E5d-c 6: whatever its
+## (GDD §10: "whose pulse switches the fences off"; DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 474: whatever its
 ## radius); any other switches off the fences it reaches (GDD §9.1's rule, by their nearest point). True if any
 ## went dark.
 func emp(center: Vector3, radius: float) -> bool:

@@ -28,7 +28,7 @@ extends RefCounted
 ##   cape        the cape's cloud (its own shader: golden_convergence_cape.gdshader), two sheets of a grid
 ##               fanned out behind the suit, UV the cloth's (u across, v out from the shoulders)
 
-## DESIGN-TBD (docs/questions/e5d.md, E5d-a 2): the look as built (the face's expression and the tear's
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 432): the look as built (the face's expression and the tear's
 ## place, the diadem, the pipes' row and hatch, the tentacles' sweep, the cape's fan of pleats) is the owner's
 ## to review.
 

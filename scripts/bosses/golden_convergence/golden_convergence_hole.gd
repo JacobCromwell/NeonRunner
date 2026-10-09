@@ -55,7 +55,7 @@ static func footprint(lane: int, lanes: int, side: int = 1) -> Array[int]:
 	return out
 
 
-## DESIGN-TBD (GDD §10, proposed; docs/questions/e5d.md, E5d-b): two lanes on 3 lanes, three on 5 or 6 (two on
+## DESIGN-TBD (GDD §10, proposed; docs/OPEN_QUESTIONS.md, items 444–456): two lanes on 3 lanes, three on 5 or 6 (two on
 ## a 4-lane track, which no device uses); never every lane.
 static func hole_lanes(lanes: int) -> int:
 	return clampi(2 if lanes <= 4 else 3, 1, maxi(lanes - 1, 1))

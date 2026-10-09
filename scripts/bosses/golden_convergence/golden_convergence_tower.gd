@@ -32,7 +32,7 @@ const FLUSH: float = 0.04
 ## The sink: how far down it goes.
 const SINK_DEPTH: float = 40.0
 ## E5d polish: its wall outlasts the barrage that follows the bait by this long at least (wall_seconds). DESIGN-TBD
-## (docs/questions/e5d.md, E5d polish 7).
+## (docs/OPEN_QUESTIONS.md, item 489).
 const WALL_SPARE: float = 1.5
 ## Every tower's mesh by length and section.
 static var _meshes: Dictionary = {}

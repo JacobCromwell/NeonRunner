@@ -31,8 +31,8 @@ enum Stage { IDLE, CLOSE, WARN, SWIPE, GAP, RETURN }
 
 ## Where he waits to lunge: this far behind the camera (the run camera's view ends about 3.5 m behind the runner).
 const CLOSE_BEHIND_CAMERA: float = 1.5
-## How long he may hold for a lane to dodge into before he lets the slash go. DESIGN-TBD (docs/questions/e5d.md,
-## E5d-e 5).
+## How long he may hold for a lane to dodge into before he lets the slash go. DESIGN-TBD (docs/OPEN_QUESTIONS.md,
+## item 495).
 const WAIT_MAX: float = 2.0
 ## How fast he moves across into the locked lane (m/s) while closing in, and while lunging.
 const SIDE_SPEED: float = 14.0

@@ -36,7 +36,7 @@ const HALO_SPIN: float = 0.05
 const CAP_OPEN: float = 1.9
 ## E5d-b: how far an arm's segments telescope at most (1: each slid out of the one before, nested; beyond it
 ## the sleeves stretch with them, so the fist reaches the track from where the suit floats). DESIGN-TBD
-## (docs/questions/e5d.md, E5d-b 6: a stretched arm, or the suit leaning in for its slams).
+## (docs/OPEN_QUESTIONS.md, item 449: a stretched arm, or the suit leaning in for its slams).
 const EXTEND_MAX: float = 2.4
 ## Where the squadron's drones come out of the cape and go back in (its cloud beside and above the shoulders, in
 ## the suit's space; cape_point).

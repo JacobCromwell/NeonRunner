@@ -38,8 +38,8 @@ const COLOR := Color(1.0, 0.16, 0.08)
 const SPARK_EVERY: float = 0.07
 const SPARK_EVERY_REDUCED: float = 0.4
 ## E5d polish (F6's lash_high and lash_radius could bring the high lash's lower cable down onto a slide): its
-## hitbox's bottom stays at least this far over a sliding runner (high_cable). DESIGN-TBD (docs/questions/e5d.md,
-## E5d polish 7).
+## hitbox's bottom stays at least this far over a sliding runner (high_cable). DESIGN-TBD (docs/OPEN_QUESTIONS.md,
+## item 489).
 const SLIDE_CLEAR: float = 0.05
 
 var chase: GoldenConvergenceChase

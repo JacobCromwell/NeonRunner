@@ -9,13 +9,13 @@ extends Resource
 ## how far apart the lines for show are) are written for MovementTuning.REFERENCE_SPEED and multiplied by
 ## the run's pace (GoldenConvergence.run_pace()), so the fight keeps its seconds at the Golden Zone's 25 m/s;
 ## where the suit floats and the squadron flies relative to the runner (framing), sizes and heights stay as
-## they are. Every number here is a placeholder (DESIGN-TBD, docs/questions/e5d.md) until the owner plays it.
+## they are. Every number here is a placeholder (DESIGN-TBD, docs/OPEN_QUESTIONS.md items 416–503) until the owner plays it.
 
 @export_group("The suit")
 ## DESIGN-TBD (GDD §10: "it floats in the distance ahead of the runner"): its waist floats this far ahead of
 ## the runner (framing, kept in metres) and this high over the causeway, swaying and bobbing gently. Close
 ## enough that the best weapons reach its chest (PowerupTuning.weapon_range: 70 m for tiers 2-4, 42 m for
-## tier 1, which doesn't reach it: docs/questions/e5d.md, E5d-a), far enough that it reads whole on screen,
+## tier 1, which doesn't reach it: docs/OPEN_QUESTIONS.md, items 431–443), far enough that it reads whole on screen,
 ## halo to hands, on a phone's 16:9.
 @export_range(30.0, 200.0, 0.5, "suffix:m") var suit_ahead: float = 64.0
 @export_range(0.0, 40.0, 0.5, "suffix:m") var suit_height: float = 12.0
@@ -69,7 +69,7 @@ extends Resource
 @export_range(0.0, 6.0, 0.05, "suffix:s") var first_beat_delay: float = 0.8
 @export_range(0.0, 6.0, 0.05, "suffix:s") var beat_gap: float = 1.6
 ## DESIGN-TBD (GDD §10, the owner's playtest: stage 2 "felt slower, duller and less dangerous than stage 1";
-## approved: "shorter gaps between beats"; docs/questions/e5d.md, E5d-e 9): stage 2's beats come this long apart
+## approved: "shorter gaps between beats"; docs/OPEN_QUESTIONS.md, item 499): stage 2's beats come this long apart
 ## instead (over the phase's pace; GoldenConvergence.beat_gap()). Its beats are over once he's back behind the
 ## runner, so nothing of one attack is ever still out when the next one warns.
 @export_range(0.0, 6.0, 0.05, "suffix:s") var stage_two_beat_gap: float = 0.6
@@ -164,7 +164,7 @@ extends Resource
 ## and 3 in phase 1, 3 and 4 later"): each phase's slam sequence, a letter a slam in order: O comes down on
 ## the runner, A lands ahead of them (its hole to be jumped); lower case (o, a) is a buttress chance, a Flying
 ## Buttress standing where it lands. Phase 1's third slam is both ahead and a chance, as the GDD's two
-## proposals give it (docs/questions/e5d.md, E5d-b). A phase past the list plays the last one.
+## proposals give it (docs/OPEN_QUESTIONS.md, items 444–456). A phase past the list plays the last one.
 @export var slam_scripts: PackedStringArray = PackedStringArray(["Ooa", "OAooA", "OAooA"])
 ## GDD §10 ("about two seconds apart, divided by the phase's pace"): one slam's impact to the next one's.
 @export_range(1.0, 4.0, 0.05, "suffix:s") var slam_gap: float = 2.0
@@ -193,9 +193,9 @@ extends Resource
 @export_range(4.0, 20.0, 0.5, "suffix:m") var fist_hover_height: float = 8.0
 @export_range(4.0, 20.0, 0.5, "suffix:m") var fist_raise_height: float = 11.0
 ## A buttress chance's hole ends this far before its gate's pier: the slam's row is dug just in front of the
-## gate, so a hole sharing the gate's lane never goes through it (docs/questions/e5d.md, E5d-b).
+## gate, so a hole sharing the gate's lane never goes through it (docs/OPEN_QUESTIONS.md, items 444–456).
 @export_range(0.0, 3.0, 0.05, "suffix:m") var slam_gate_gap: float = 0.6
-## DESIGN-TBD (docs/questions/e5d.md, E5d polish 3): one slam's row and the next one's (its gate, for a chance) are
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 485): one slam's row and the next one's (its gate, for a chance) are
 ## always at least a lane switch's run apart at the run speed plus this long (GoldenConvergenceSlams.row_gap): a
 ## runner landing past a hole has room to switch out of the next one's footprint, and two rows never meet. Where
 ## the script's spacing (slam_gap over the pace, an ahead slam's lead) would bring them closer, the later slams
@@ -376,7 +376,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 # Claw Slash, `slash:double` twice in a row, GoldenConvergenceSlash), screens (the Screen Storm,
 # GoldenConvergenceScreens), and overtake (he shows himself, GoldenConvergenceOvertake; in no script since the
 # owner's playtest: the storm stages him in view). DESIGN-TBD (GDD §10, the owner's playtest, approved; docs/
-# questions/e5d.md, E5d-e): phase 4 a Pounce, a Slash, a storm, the bait, a Slash, a storm, looped; phase 5 adds a
+# OPEN_QUESTIONS.md, items 491–503): phase 4 a Pounce, a Slash, a storm, the bait, a Slash, a storm, looped; phase 5 adds a
 # low and a high Lash; phase 6 the same at its pace with the Slashes double. A missed bait comes around again with
 # the loop (no escalation); four storms end a phase on their own.
 
@@ -477,7 +477,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_range(0.5, 6.0, 0.1, "suffix:m") var stun_reach: float = 3.5
 @export_range(0.1, 0.6, 0.05, "suffix:m") var stun_stomp_top: float = 0.4
 ## DESIGN-TBD (GDD §10, the owner's playtest, approved: "the stun leaves time to line up the jump (at least about
-## 1.5 s from the stun to the last takeoff)"; docs/questions/e5d.md, E5d-e 8): he crashes into the gate at least
+## 1.5 s from the stun to the last takeoff)"; docs/OPEN_QUESTIONS.md, item 498): he crashes into the gate at least
 ## this long before the runner's last takeoff for a jump that comes down on his back
 ## (GoldenConvergencePounce.stun_lead_seconds: stun_lead, or longer where it would leave less), at every speed. Green
 ## chevrons on the floor of his two lanes mark where to take off while he's stunned (GoldenConvergenceTakeoffMarks).
@@ -516,7 +516,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_group("The Magnate: the darkness")
 ## DESIGN-TBD (GDD §10, the owner's playtest: "the arena gets about 30% darker once stage 2 starts, a sign that
 ## The Magnate is losing control"; approved: "It fades down through the transition; hazards and warnings keep
-## their glow; the light comes back as he falls"; docs/questions/e5d.md, E5d-e 7): stage 2's light
+## their glow; the light comes back as he falls"; docs/OPEN_QUESTIONS.md, item 497): stage 2's light
 ## (BossEncounter.set_light_level, 1 the court's own), fading down over dim_seconds from the transition's start (on a
 ## retry from the checkpoint too); from his defeat's start it comes back over light_return_seconds.
 @export_range(0.3, 1.0, 0.01) var stage_two_light: float = 0.4
@@ -532,7 +532,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## warning (the marker flashing red, magnate_snarl, the red claw marks where the swipe lands) comes slash_warning
 ## before the swipe (never over the pace), locked onto the runner's lane as it begins, and he lunges in meanwhile to
 ## slash_strike_behind behind the runner (framing: his claws come in at the bottom of the run camera's view as the
-## swipe lands). The numbers: docs/questions/e5d.md, E5d-e 5.
+## swipe lands). The numbers: docs/OPEN_QUESTIONS.md, item 495.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var slash_close_seconds: float = 0.6
 @export_range(0.35, 1.0, 0.01, "suffix:s") var slash_warning: float = 0.5
 @export_range(0.5, 5.0, 0.1, "suffix:m") var slash_strike_behind: float = 3.0
@@ -557,7 +557,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## phase's pace) to storm_ahead in front of the runner (framing: the run camera shows him there at every lane count)
 ## and paces them; the storm's screens crash over storm_seconds from then (never over the pace): storm_screens_min on
 ## 3 lanes up to storm_screens_max on 6 (scaled to the lane count), storm_hits of them on him. Where he runs, how
-## many screens hit him, the storm's size: docs/questions/e5d.md, E5d-e 1-3.
+## many screens hit him, the storm's size: docs/OPEN_QUESTIONS.md, items 491–493.
 @export_range(0.3, 3.0, 0.05, "suffix:s") var storm_run_up: float = 1.1
 @export_range(1.5, 8.0, 0.1, "suffix:m") var storm_ahead: float = 3.0
 @export_range(2.0, 8.0, 0.1, "suffix:s") var storm_seconds: float = 5.0
@@ -608,7 +608,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 @export_range(0.0, 2.0, 0.05, "suffix:s") var music_cut: float = 0.25
 @export_range(0.3, 3.0, 0.05, "suffix:s") var collapse_seconds: float = 1.1
 @export_range(0.3, 4.0, 0.05, "suffix:s") var crack_fade: float = 1.4
-## DESIGN-TBD (docs/questions/e5d.md, 13: "should the riff play at all, or should the fight end in silence like
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 428: "should the riff play at all, or should the fight end in silence like
 ## the Sleep Taker's?"): the victory riff once the runner is past him (riff_after later), or silence.
 @export var victory_riff_on: bool = true
 @export_range(0.0, 2.0, 0.05, "suffix:s") var riff_after: float = 0.35

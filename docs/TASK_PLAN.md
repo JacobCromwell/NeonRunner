@@ -392,13 +392,13 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 
 **E5: the other bosses.** The House, Hostile Takeover and Sleep Taker are designed (GDD §10, September 26, 2026); each is XL, split into steps like E1, and waits for the enemies, mechanics and skin its fight uses.
 
-**E5d: the Golden Convergence steps** (GDD §10; designed with the owner on October 9, 2026, the rest filled in under the owner's mandate the same day, `docs/questions/e5d.md`). Each step merges on its own, one after another:
+**E5d: the Golden Convergence steps** (GDD §10; designed with the owner on October 9, 2026, the rest filled in under the owner's mandate the same day, `docs/OPEN_QUESTIONS.md` items 416–503). Each step merges on its own, one after another:
 1. **E5d-a:** the golden suit (its model: the calm golden face and its tear, the shoulders, hands and shoulder pipes, the tentacle pipes, the cape's cloud), the Grand Court arena (its skin: balustrades for walls, which bump the runner back; the pools below and the towers with their feed screens; plain laps), the entrance, the Helidrone Strafe (the squadron out of the cape, vertical and horizontal passes, the lines for show, the warnings), the Flying Buttress gate, phase 1's opening strafe; the slot's `preview_scene`, its tuning, sounds, showcase, bot and tests.
 2. **E5d-b:** the Fist Slam (the telescoping arm, the lock and the red square, the holes as floor cuts opened at once, the hold after a block or a dash, the slam scripts, the buttress chances, the toppled tower and its wall) and the Missile Barrage (the pipes, the missiles, the marks, the fire, the wall as refuge).
 3. **E5d-c:** the Refill Ship (the ship, its feed line and belly ceiling, the fence cage with its lengthwise sides and its generator, the pad, the strafe holding its fire, the chain reaction and its damage) and stage 1's three phases with their loops and the suit's damage; the bot wins stage 1 at 3, 5 and 6 lanes.
 4. **E5d-d:** stage 2, The Magnate (his model, the transition and the checkpoint, the chase with its marker and overtakes, the Pounce, the buttress bait, the stun and the stomp, the Cable Lash), the defeat (the feed dies), the campaign slot (`scene`), par times and rewards; the bot wins the whole fight.
 
-5. **E5d-e:** the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)", approved the same day): the Claw Slash (`slash`, `slash:double`), the Screen Storm (`screens`: the feed's screens on gold tentacles, a fair plan at every lane count, three screens a storm chipping him), the arena about 30% darker from the transition to his fall, new beat scripts with a shorter beat gap, the stomp easier to read (green chevrons, at least 1.5 s from the stun to the last take-off); six sounds, two hints, showcase scenarios, the bot's readers, tests and new par times. Questions: `docs/questions/e5d.md`, E5d-e.
+5. **E5d-e:** the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)", approved the same day): the Claw Slash (`slash`, `slash:double`), the Screen Storm (`screens`: the feed's screens on gold tentacles, a fair plan at every lane count, three screens a storm chipping him), the arena about 30% darker from the transition to his fall, new beat scripts with a shorter beat gap, the stomp easier to read (green chevrons, at least 1.5 s from the stun to the last take-off); six sounds, two hints, showcase scenarios, the bot's readers, tests and new par times. Questions: `docs/OPEN_QUESTIONS.md`, items 491–503.
 
 **Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`). E5d-e, the owner's playtest of stage 2, is built (`test_golden_convergence_slash`, `test_golden_convergence_storm`; the whole fight won again at every lane count and speed, the par times re-measured).
 
@@ -476,7 +476,7 @@ The staging choices are in `docs/OPEN_QUESTIONS.md` §D, items 387–395.
 
 ## Still to design with the owner
 
-- **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/questions/e5d.md`).
+- **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/OPEN_QUESTIONS.md` items 416–503).
 - **Cinematics:** story beats for each slot but the City's outro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

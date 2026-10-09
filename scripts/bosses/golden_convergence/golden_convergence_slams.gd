@@ -43,7 +43,7 @@ extends GoldenConvergenceAttack
 ## away) and the Missile Barrage warms up at once as the tower falls (gap_after 0).
 ## A fist locked onto another lane digs its hole beside the gate, never through it.
 ## Numbers: GoldenConvergenceTuning's "Fist Slam" and "The toppled tower" groups (DESIGN-TBD,
-## docs/questions/e5d.md, E5d-b).
+## docs/OPEN_QUESTIONS.md, items 444–456).
 
 ## A slam's warning began, it locked, it landed (the bot and tests read them).
 signal slam_warned(info: Dictionary)
@@ -653,7 +653,7 @@ func _impact(s: Dictionary) -> void:
 ## (GoldenConvergenceMissiles.WALL_CLEAR). E5d polish: the toppled tower's wall is the barrage's refuge and the next
 ## sequence's first fist can land while it stands; the red square lies on the floor, so a runner on the wall beside
 ## it is never touched, at any height, and one on the floor of its outer lane always is. DESIGN-TBD (proposed:
-## docs/questions/e5d.md, E5d polish 4).
+## docs/OPEN_QUESTIONS.md, item 486).
 func touch_x(box: Vector2) -> Vector2:
 	var geo: TrackGeometry = boss.world.geo
 	var reach: float = boss.world.tuning.hurtbox_size.y + GoldenConvergenceMissiles.WALL_CLEAR

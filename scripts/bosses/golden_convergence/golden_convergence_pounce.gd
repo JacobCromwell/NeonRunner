@@ -61,7 +61,7 @@ const BOUND_HEIGHT: float = 2.4
 const SQUARE_RIM: float = 0.16
 ## E5d polish (F6's stun_stomp_top could lift his weak points out of a jump's reach): their top stays at least this
 ## far under the highest a jump can stomp from (the jump's top plus the stomp tolerance), a moment of the jump's fall
-## (stomp_top). DESIGN-TBD (docs/questions/e5d.md, E5d polish 7).
+## (stomp_top). DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 489).
 const STOMP_WINDOW: float = 0.25
 
 var chase: GoldenConvergenceChase

@@ -42,7 +42,7 @@ extends BossEncounter
 ## the same inputs plays the same. Distances that stand for a time follow the run's pace (run_pace(): the
 ## Golden Zone's 25 m/s in the campaign). Every warning plays through sound() (logged) and shows on the floor
 ## (BossProps' red lines, or cross_warning's bars across a lane). Numbers: GoldenConvergenceTuning
-## (data/bosses/golden_boss_tuning.tres), all DESIGN-TBD (docs/questions/e5d.md).
+## (data/bosses/golden_boss_tuning.tres), all DESIGN-TBD (docs/OPEN_QUESTIONS.md items 416–503).
 ##
 ## Its handles for each attack: register_attack() (each attack's file), place_buttress() and the buttress pool
 ## (GoldenConvergenceButtress: at, lane, lean, span(), smash()), court.open_wall()/close_wall(), the suit's
@@ -608,7 +608,7 @@ func screen_damage() -> float:
 
 
 ## A big hit's damage. In stage 2 (E5d-e) a stomp on his back ends its phase exactly where it ends: what the screens
-## (and weapons) chipped off it doesn't carry over into the next phase (DESIGN-TBD, docs/questions/e5d.md, E5d-e),
+## (and weapons) chipped off it doesn't carry over into the next phase (DESIGN-TBD, docs/OPEN_QUESTIONS.md, items 491–503),
 ## so every phase is a stomp, or four storms, whatever came before. Stage 1 keeps the framework's rule.
 func hit_damage() -> float:
 	if phase_index >= STAGE_2 and def.weapons_can_end_phase:

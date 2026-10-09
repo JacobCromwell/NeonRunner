@@ -21,7 +21,7 @@ extends RefCounted
 ## - once his last cable is out he collapses where he is (magnate_collapse; the light in his cracks dies over
 ##   crack_fade, and his ports' red with it): anchored on the causeway, in silence;
 ## - the runner runs past him; riff_after later the victory riff (the music's own riff, chosen before it cut), or
-##   silence (victory_riff_on off: docs/questions/e5d.md 13); then it's over (victory_over).
+##   silence (victory_riff_on off: docs/OPEN_QUESTIONS.md item 428); then it's over (victory_over).
 ## The encounter's victory_riff() is false: the riff is this sequence's, not LevelRun's at the defeat.
 
 enum Step { NONE, THROES, DOWN, OVER }

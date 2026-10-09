@@ -664,7 +664,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Defeat:** the gunship spins away and explodes; the locomotive derails and ploughs through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture.
   - **Missed weak points** come around again (no time limit, no escalation). Weapons chip; stomps do the real damage.
   - **Pickups:** the standard armor rule (15–17 seconds).
-- **The Golden Convergence** (Golden Zone; the final villain). The owner's design (October 9, 2026). The owner then asked Claude to fill in the rest and build it (owner's mandate, October 9, 2026): those parts are marked *(proposed)* for the owner's review, with the questions in `docs/questions/e5d.md`.
+- **The Golden Convergence** (Golden Zone; the final villain). The owner's design (October 9, 2026). The owner then asked Claude to fill in the rest and build it (owner's mandate, October 9, 2026): those parts are marked *(proposed)* for the owner's review, with the questions in `docs/OPEN_QUESTIONS.md` §D, items 416–503.
   - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside is **The Magnate**.
   - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
   - **Look (the golden suit):**

@@ -13,7 +13,7 @@ extends Node3D
 ##   soft; nothing in it flickers either way;
 ## - pooled: the oldest puff gives way when every one burns; nothing is made after the fight's load, and its state
 ##   is in packed arrays (no allocation a frame).
-## Visual only: it never touches the runner. Its look is DESIGN-TBD (docs/questions/e5d.md, E5d polish 5).
+## Visual only: it never touches the runner. Its look is DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 487).
 
 ## Puffs at once: fireballs, smoke.
 const FIRE_MAX: int = 32

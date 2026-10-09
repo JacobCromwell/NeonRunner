@@ -17,7 +17,7 @@ extends Node3D
 ## - sink() (E5d-b): it sinks back into the causeway the way it rose (a slam sequence's other gate once a
 ##   buttress hit has ended the sequence) and goes back to the pool;
 ## - span(), opening_x(), spark_point(), lean, lane, at: where it stands, for the attacks that use it.
-## DESIGN-TBD (docs/questions/e5d.md, E5d-a 8): its size and how soon it rises are in the tuning; its sides
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 438): its size and how soon it rises are in the tuning; its sides
 ## block a switch into its lane, not one out of the arch while inside it.
 ## Its look: the palace's white and cream marble with gold trims (never glowing: safe things look safe), the
 ## cult's emblem in gold relief over the arch, a pinnacle with a gold finial on the pier, and the flying arch

@@ -358,7 +358,7 @@ func _test_suit() -> void:
 	check(ahead <= best - 1.0 and world.director.targets_ahead(muzzle, best).has(suit),
 		"its chest is %.0f m ahead: the upgraded weapons (%.0f m) reach it" % [ahead, best])
 	check(ahead > first and not world.director.targets_ahead(muzzle, first).has(suit),
-		"the tier-1 weapon (%.0f m) doesn't (DESIGN-TBD, docs/questions/e5d.md)" % first)
+		"the tier-1 weapon (%.0f m) doesn't (DESIGN-TBD, docs/OPEN_QUESTIONS.md items 416–503)" % first)
 	var hp: float = boss.health
 	suit.take_damage(10.0, &"weapon")
 	check(boss.health < hp, "a weapon hit chips the fight's health")

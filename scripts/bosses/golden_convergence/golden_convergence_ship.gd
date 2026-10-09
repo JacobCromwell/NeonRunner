@@ -20,7 +20,7 @@ extends BossPart
 ##   around it in the world's up, never its roll, so a ship rolled over still explodes above the causeway's level,
 ##   where the run camera and the side see it).
 ## A part of the boss that's no target (GDD §10, proposed: weapons never target the ship; DESIGN-TBD,
-## docs/questions/e5d.md, E5d-c 7) and no kill of its own: immune to weapons, never targetable, is_obstacle; nothing
+## docs/OPEN_QUESTIONS.md, item 475) and no kill of its own: immune to weapons, never targetable, is_obstacle; nothing
 ## on it can hurt the runner.
 
 ## Pieces of the feed line, missiles riding it at once.
@@ -38,7 +38,7 @@ const FIRE := Color(1.0, 0.4, 0.13)
 const FIRE_HOT := Color(1.0, 0.82, 0.55)
 ## Its blast (explode): fireballs this big along its length, around its middle at least BLAST_LIFT above the
 ## causeway (in the world's up: rolled over as it spins off, its own up points down). DESIGN-TBD
-## (docs/questions/e5d.md, E5d polish 5).
+## (docs/OPEN_QUESTIONS.md, item 487).
 const BLAST_LIFT: float = 4.0
 const BLAST_RADIUS: float = 7.0
 

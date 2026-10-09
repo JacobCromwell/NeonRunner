@@ -25,7 +25,7 @@ extends RefCounted
 ## mask, the tatters, the teeth and the eye 0; UV2.x is the kind (0 lit, 1 cloth: UV2.y its sway weight, 2
 ## metal: UV2.y its polish). Every colour is sRGB and, but for the ports, inside the lit surfaces' chroma limit.
 
-## DESIGN-TBD (docs/questions/e5d.md, E5d-d): the look as built (his build on all fours, the mask's side and
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 457–468): the look as built (his build on all fours, the mask's side and
 ## the tear, the ports' number, the cables and tatters) is the owner's to review.
 
 ## The rig's joints (metres at scale 1): the spine's two halves' pivots (his root's space), the neck on the

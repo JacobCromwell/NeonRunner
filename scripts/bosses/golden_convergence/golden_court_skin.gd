@@ -26,7 +26,7 @@ extends GoldenPalaceSkin
 ## built. A plain track has no wall gaps, so wall_gap() draws only what wall_section() would around one.
 
 @export_group("Grand Court")
-## DESIGN-TBD (docs/questions/e5d.md, E5d-a): the balustrade along the causeway's edge.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 431–443): the balustrade along the causeway's edge.
 @export_range(0.6, 2.0, 0.05, "suffix:m") var balustrade_height: float = 1.1
 @export_range(0.3, 1.2, 0.05, "suffix:m") var baluster_spacing: float = 0.6
 @export_range(2.0, 12.0, 0.5, "suffix:m") var post_spacing: float = 5.0

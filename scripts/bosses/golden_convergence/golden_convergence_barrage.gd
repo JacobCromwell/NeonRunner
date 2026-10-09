@@ -25,7 +25,7 @@ extends GoldenConvergenceAttack
 ## F6's numbers would leave less, hang_seconds), and the burn is shorter than a wall run without claws, so a
 ## runner who got onto the wall as the marks filled drops back onto floor no longer burning (or wall hops, GDD §3,
 ## to stay up).
-## Numbers: GoldenConvergenceTuning's "Missile Barrage" group (DESIGN-TBD, docs/questions/e5d.md, E5d-b).
+## Numbers: GoldenConvergenceTuning's "Missile Barrage" group (DESIGN-TBD, docs/OPEN_QUESTIONS.md, items 444–456).
 ## Extension points (E5d-c, the Refill Ship): `barrages` counts the barrages fired (a ship comes after the
 ## phase's); ends_at() says where the one under way will be over.
 
@@ -39,7 +39,7 @@ const MISSILES_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence
 ## pace with the runner; so do they, until they dive): this far ahead of the runner, spread this much along
 ## the track, out to either side of his chest from APEX_SIDE_MIN to APEX_SIDE_MAX (against his dark cape and
 ## the sky, not his gold), this much above and below missile_apex_height (framing). Their climb arcs up out of
-## the top of the view first. DESIGN-TBD (docs/questions/e5d.md, E5d-b 10).
+## the top of the view first. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 453).
 const APEX_AHEAD: float = 46.0
 const APEX_SPREAD: float = 5.0
 const APEX_SIDE_MIN: float = 8.0

@@ -21,7 +21,7 @@ extends RefCounted
 ## - line_missile: a missile riding up the line, smaller still.
 ## Nothing on it glows but its lamps (warm white), its engines (pale blue) and the end band (the ceilings'
 ## orange): never a hazard colour on a safe thing (CLAUDE.md readability rules).
-## DESIGN-TBD (docs/questions/e5d.md, E5d-c 1): its look and size (LENGTH, the racks, the boom).
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 469): its look and size (LENGTH, the racks, the boom).
 
 ## Its belly's length, and where a runner riding it (or running under it) is: RIDER metres behind its middle.
 const LENGTH: float = 34.0
