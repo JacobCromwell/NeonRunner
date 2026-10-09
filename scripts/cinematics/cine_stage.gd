@@ -50,6 +50,9 @@ func build(p_def: CineStageDef, p_skin: ZoneSkin, p_tuning: MovementTuning, lane
 		var lane: int = lane_from_start(p.x)
 		if lane >= 0:
 			layout.pads.append({"lane": lane, "at": p.y})
+	for w: Vector3 in def.wall_gaps:
+		if not is_zero_approx(w.x):
+			layout.wall_gaps.append({"side": int(signf(w.x)), "start": minf(w.y, w.z), "end": maxf(w.y, w.z)})
 	track = TrackBuilder.new()
 	track.name = "Track"
 	add_child(track)
@@ -117,6 +120,11 @@ func ceiling_over(distance: float, margin: float = 0.0) -> Vector2:
 		if distance >= float(h["start"]) - margin and distance <= float(h["end"]) + margin:
 			return Vector2(h["start"], h["end"])
 	return Vector2.ZERO
+
+
+## True if wall `side` (-1 left, 1 right) is open around `distance` (a wall gap, within `margin`).
+func wall_open(side: int, distance: float, margin: float = 0.0) -> bool:
+	return not layout.wall_gap_spans(side, distance - margin, distance + margin).is_empty()
 
 
 ## True if `lane` has a hole around `distance` (within `margin`).

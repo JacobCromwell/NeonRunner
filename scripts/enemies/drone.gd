@@ -593,28 +593,11 @@ func _update_aim_line(aim: Vector3) -> void:
 
 
 func _build_model() -> void:
-	var model: Dictionary = _model(world.skin.enemy_variant if world.skin != null else &"city")
-	_pivot = Node3D.new()
-	_pivot.scale = Vector3.ONE * tune.model_scale
-	add_child(_pivot)
-	var body := MeshInstance3D.new()
-	body.mesh = model["body"]
-	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_pivot.add_child(body)
-	for sx: float in [-1.0, 1.0]:
-		var r := MeshInstance3D.new()
-		r.mesh = model["rotor"]
-		r.position = Vector3(sx * 1.02, 0.32, -0.02)
-		r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_pivot.add_child(r)
-		_rotors.append(r)
-	_gun = Node3D.new()
-	_gun.position = Vector3(0.0, -0.36, 0.18)
-	_pivot.add_child(_gun)
-	_barrels = MeshInstance3D.new()
-	_barrels.mesh = model["barrels"]
-	_barrels.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_gun.add_child(_barrels)
+	var parts: Dictionary = add_model(self, world.skin.enemy_variant if world.skin != null else &"city", tune.model_scale)
+	_pivot = parts["pivot"]
+	_rotors.assign(parts["rotors"])
+	_gun = parts["gun"]
+	_barrels = parts["barrels"]
 	_barrel_hot = GreyboxMaterials.glow(HOT_COLOR, 3.5)
 	_muzzle = Node3D.new()
 	_muzzle.position = Vector3(0.0, 0.0, -0.7)
@@ -629,6 +612,36 @@ func _build_model() -> void:
 	_aim_line.top_level = true
 	_aim_line.visible = false
 	add_child(_aim_line)
+
+
+## Its look alone, visual only, under `parent` (the drone itself, or a cinematic's prop): the body on a
+## pivot scaled by `model_scale` (DroneTuning.model_scale), its two rotors and the gatling's mount and
+## barrels. Returns {pivot, rotors: [left, right], gun, barrels}.
+static func add_model(parent: Node3D, variant: StringName, model_scale: float) -> Dictionary:
+	var model: Dictionary = _model(variant)
+	var pivot := Node3D.new()
+	pivot.scale = Vector3.ONE * model_scale
+	parent.add_child(pivot)
+	var body := MeshInstance3D.new()
+	body.mesh = model["body"]
+	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	pivot.add_child(body)
+	var rotors: Array[MeshInstance3D] = []
+	for sx: float in [-1.0, 1.0]:
+		var r := MeshInstance3D.new()
+		r.mesh = model["rotor"]
+		r.position = Vector3(sx * 1.02, 0.32, -0.02)
+		r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pivot.add_child(r)
+		rotors.append(r)
+	var gun := Node3D.new()
+	gun.position = Vector3(0.0, -0.36, 0.18)
+	pivot.add_child(gun)
+	var barrels := MeshInstance3D.new()
+	barrels.mesh = model["barrels"]
+	barrels.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	gun.add_child(barrels)
+	return {"pivot": pivot, "rotors": rotors, "gun": gun, "barrels": barrels}
 
 
 ## Low-poly model in local space: the drone faces +z (toward the player it hovers ahead of).

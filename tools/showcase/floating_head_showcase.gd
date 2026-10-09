@@ -14,6 +14,7 @@ extends Node3D
 ##   below     its belly from under it: the searchlight, the bomb bay, the lift pads
 ##   entrance  the fight from its start, through the run camera: it roars in overhead, the run begins
 ##   bombing   the run with a runner who dodges every lock (to its free side), through the run camera
+##             (--phase=1 or 2: a later run's salvos, the runner weaving through their spots)
 ##   reveal    a short run, then it drops in front of the runner and its face powers on
 ##   faceoff   straight to the face-off (no bombing run), through the run camera, with a runner who
 ##             answers every attack by its warning (FloatingHeadBot), baits each marked tower and takes
@@ -297,9 +298,16 @@ func _pose_still(pose: Vector3, power: float) -> void:
 	head.body.screen_power = power
 
 
-## The dodging runner: when a lock strikes its lane, it switches to the free lane the rules left it.
+## The dodging runner: when a lock strikes its lane, it switches to the free lane the rules left it; in
+## a salvo it weaves along a way through the spots still ahead (FloatingHeadBombing.dodge_lane).
 func _dodge() -> void:
 	var b: FloatingHeadBombing = head.bombing
+	if b.target.has("spots"):
+		var pl: int = head.player_lane()
+		var to: int = b.dodge_lane(pl, world.player.distance)
+		if to >= 0 and to != pl:
+			world.player.press(&"move_right" if to > pl else &"move_left")
+		return
 	if b.target.is_empty() or _dodged.has(b.target["lock"]):
 		return
 	var lanes: Array = b.target["lanes"]

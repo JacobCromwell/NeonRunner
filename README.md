@@ -62,7 +62,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, and `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
@@ -219,9 +219,14 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     lane changes a moment late. When your lane lights red ahead and its whine rises, change lanes before
     its lasers come up the lane. Weapons, stomps, the claws and the dash can't hurt it: bait an Octodog's
     lunge or a Buzz Overdrive's charge into it by dodging late (it closes right up behind you while an
-    Octodog attacks), or lead it into a stopped cut. Cyborgs you pass alive in its lane climb onto its roof
-    (up to three): each makes it fire faster, and each pays a bonus when it's destroyed. It gives up after
-    about 25 s (in quick play, `--features=octodog,enforcer_truck`)
+    Octodog attacks), or lead it into a stopped cut or a gap too wide for it to hop; it blows up in view.
+    Cyborgs you pass alive in its lane climb onto its roof (up to three): each makes it fire faster, and each
+    pays a bonus when it's destroyed. Now and then (as it arrives, and once more if there's room) it speeds up
+    beside you for a few seconds so you can see it, then drops back: its sides are solid but harmless (a lane
+    change into it bumps you back) and it gives way as you move toward it. Beside a runner by a wall it pulls up
+    two lanes in, leaving the lane between free. The generator keeps a calm stretch for a showing in every chase
+    that has room for one, wherever you run. It gives up after about 25 s (in quick play,
+    `--features=octodog,enforcer_truck`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
@@ -430,7 +435,8 @@ family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone'
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), the Enforcer Truck (its
-chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), a wider gap
+chase and a volley, showing itself beside the runner and bumping a lane change back, each bait, a cut and a
+too-wide gap, each ending in its blast, its model; `--scenario=chase|show|octodog|buzz|cut|gap|model`), a wider gap
 jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), zone doodads pushing the
 runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
 armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`), an
@@ -458,6 +464,14 @@ during an Octodog's charge or a drone's barrage):
 `godot --headless --fixed-fps 60 -s res://tools/measure/host_releases.gd -- [--levels=dead_zone/1] [--lanes=3,5,6]
 [--tiers=0,1,2,3,4] [--old-rule]` (every host level at 3, 5 and 6 lanes with the five loadouts takes about ten
 minutes; `--old-rule` makes hosts immune to weapons again, for comparison).
+
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase over simulated runs of the
+levels with the truck, a god-mode runner keeping to each lane in turn: its showings, its planned showing window,
+whether that comes before the chase's first bait and whether it was used, and why a chase had none; the totals count
+the chases with a window before their bait and the runs with a showing: `godot --headless --fixed-fps 60 -s
+res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N]
+[--out=build/measure/x.json]` (all six levels at every lane count and lane, on their own seeds, take about three
+minutes; its header lists the options).
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
 (obstacle rows, holes, enemies, big attacks, mechanics, zone doodads and the pushes a runner who ignores them

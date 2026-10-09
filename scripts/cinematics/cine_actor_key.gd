@@ -5,7 +5,7 @@ extends CineKey
 ## start lane's centre, y metres up from the floor, z metres along the track); between keys the actor
 ## moves as `move` says (CinePath), and its stride keeps pace with the ground it covers.
 
-## Where it is (track space). y above 0 is in the air (the runner jumps or falls).
+## Where it is (track space). y off 0 is in the air (the runner jumps, or falls past the floor's edge).
 @export var position: Vector3 = Vector3.ZERO
 ## Its pose from this key on (empty: keep the one before). The runner: `run` (it runs, walks or stands
 ## by how fast it moves, and is in the air above the floor), `slide`, `dash`, `stomp`, `dead`. A
@@ -16,6 +16,9 @@ extends CineKey
 ## Its heading when not facing the way it moves, degrees: 0 faces down the track (the way the runner
 ## runs), 180 faces back toward an oncoming runner, + turns left.
 @export_range(-180.0, 180.0, 1.0, "suffix:°") var yaw: float = 0.0
+## The runner's head turned from the way its body faces at this key, degrees (+ looks left): its chest,
+## neck and head share the turn, and between keys it turns smoothly from one key's look to the next.
+@export_range(-100.0, 100.0, 1.0, "suffix:°") var look: float = 0.0
 ## A cyborg's face from this key on (empty: keep it): neutral, aiming, shocked, dead, corrupt_grin,
 ## corrupt_broken (CyborgKit.Face).
 @export var expression: StringName = &""

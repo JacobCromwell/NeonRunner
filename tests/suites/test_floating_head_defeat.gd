@@ -14,7 +14,7 @@ extends TestSuite
 ## - every attempt plays out the same way, the propaganda and the crash too;
 ## - the whole fight through the campaign at 3, 5 and 6 lanes (a runner who reads the fight and runs
 ##   the arena, no god mode): the City's last level, the boss intro (skipped), the fight, a win's results
-##   and stars, the shop, the outro's slot; in the web demo, then its end screen. Along the way the
+##   and stars, the shop, the outro (CityOutro); in the web demo, then its end screen. Along the way the
 ##   propaganda starts with the reveal, shows its slogans, and never masks a warning (the voice ducks
 ##   and the slogan fades while an attack warns or strikes, and no phrase starts then); it crashes where
 ##   the arena's floor is clear;
@@ -512,11 +512,11 @@ func _campaign_flow(lanes: int, demo: bool) -> void:
 		return
 	shop.on_close.call()
 	await tree.process_frame
-	var outro := App.screen as SlotScreen
-	check(outro != null and outro.step.id == "city/outro", "then the zone's outro (its slot) %s" % tag)
+	var outro := App.playing_cinematic() as CityOutro
+	check(outro != null and outro.step.id == "city/outro", "then the zone's outro (task F2a) %s" % tag)
 	if outro == null or not demo:
 		return
-	outro.continue_button.pressed.emit()
+	App.skip_cinematic()
 	await tree.process_frame
 	check(App.screen is DemoEndScreen, "and the web demo ends on its end screen, the store links (GDD §2) %s" % tag)
 

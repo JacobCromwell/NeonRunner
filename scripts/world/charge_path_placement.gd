@@ -79,6 +79,9 @@ const DOG_SPOT_STEP: float = 0.25
 ## TANK_SPOT_STEP seconds further each, while it's still in view (tank_in_view).
 const TANK_SPOTS: int = 5
 const TANK_SPOT_STEP: float = 0.1
+## Metres either side of a planted cyborg that keep off the rules' calm stretches too (an Enforcer Truck's showing
+## window: the room a floor enemy keeps in its lane, EnforcerTruckRoom.ENEMY_ROOM).
+const CALM_ROOM: float = 3.0
 
 
 static func tuning() -> ChargePathTuning:
@@ -323,6 +326,10 @@ static func _cyborg_fits(gen: LevelGenerator, cyborg: Dictionary) -> bool:
 	var at: float = float(cyborg["at"])
 	if CyborgRules.near_any(spans, at, margin) or gen.layout.gapped_between(int(cyborg["lane"]), at - 1.0, at + 1.0):
 		return false
+	for k: Dictionary in gen.rules_doodad_keep_outs():
+		if bool(k.get("calm", false)) and not k.has("lane") and at + CALM_ROOM >= float(k["from"]) \
+				and at - CALM_ROOM <= float(k["to"]):
+			return false
 	return gen.zones.enemy_clear(gen.layout, cyborg)
 
 
@@ -410,8 +417,8 @@ static func attack_near(gen: LevelGenerator, charger: Dictionary, span: Vector2,
 		if s.x <= span.y and s.y >= span.x:
 			return "a Bad Dream's chase"
 	for k: Dictionary in gen.rules_doodad_keep_outs():
-		if k.has("lane") and not lanes.has(int(k["lane"])):
-			continue
+		if (k.has("lane") and not lanes.has(int(k["lane"]))) or bool(k.get("calm", false)):
+			continue  # A calm stretch holds no attack: it keeps off the cyborg itself (_cyborg_fits).
 		if float(k["from"]) <= span.y and float(k["to"]) >= span.x:
 			return String(k.get("type", "a hover truck's lane" if k.has("lane") else "a rule's keep-out"))
 	return ""

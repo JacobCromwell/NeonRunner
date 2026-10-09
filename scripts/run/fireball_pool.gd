@@ -27,6 +27,12 @@ extends Node3D
 ## lane and every warning for a few frames. Each fireball's strength therefore follows the camera's distance
 ## from its centre (`_fade`): none within `FADE_NEAR` of its size, all from `FADE_NEAR + FADE_SPAN`, and an
 ## emitter at none is hidden. The materials also fade each puff out as it nears the camera.
+##
+## A fireball burns where it was set off, in world space, unless a call gives it a `carrier`: a node kept in the
+## runner's frame (the Enforcer Truck's wreck, which blows up where the chase camera sees it and falls back
+## slowly, EnforcerTruck._explode). Its slot's emitters then draw in their own space and follow the carrier
+## (`_carry`), so the fire and everything it has thrown move with it, until the carrier leaves the tree; from then
+## it burns out where it was.
 
 ## One fireball in the pool: its four particle systems and how long it has left.
 class Slot:
@@ -45,6 +51,10 @@ class Slot:
 	var tint: float = 1.0
 	## How much of it the camera's distance lets show now (1 = all); -1 until the first `_fade`.
 	var shown: float = -1.0
+	## What carries it along (play's `carrier`; null: it burns where it was set off), and where its centre is in
+	## that node's space.
+	var carrier: Node3D
+	var offset: Vector3 = Vector3.ZERO
 
 ## How long the core flash lasts (a flash, not a body; the fire and the smoke set their own).
 const CORE_SECONDS: float = 0.45
@@ -143,8 +153,11 @@ static func puff_material(texture: Texture2D, near_min: float, near_max: float) 
 ## A fireball at `pos`, `size` metres in radius. `smoke` leaves dark smoke behind it (off for a quick,
 ## small one that must clear at once, a bomb's); `pace` plays it faster (above 1) or slower than its size
 ## makes it; `spread` (0.25 to 1) is how far its fire and embers fly out of its centre (a bomb's is held in,
-## so what burns is about where it hurts). Takes a free slot, or cuts the oldest short.
-func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0, spread: float = 1.0) -> void:
+## so what burns is about where it hurts). `carrier` (a node in the tree, or null) carries it along: it burns
+## at `pos` in that node's space wherever the node goes, until the node leaves the tree (the header). Takes a
+## free slot, or cuts the oldest short.
+func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0, spread: float = 1.0,
+		carrier: Node3D = null) -> void:
 	if slots.is_empty():
 		return
 	plays += 1
@@ -155,6 +168,13 @@ func play(pos: Vector3, size: float, smoke: bool = true, pace: float = 1.0, spre
 	# Never sunk into the floor: a blast on the street still rises out of it.
 	pos.y = maxf(pos.y, size * 0.45)
 	var slot: Slot = _take()
+	# Carried, its emitters draw in their own space and move with the carrier (_carry); else in world space, as
+	# they were made. Set before they restart, which clears what they threw last.
+	var carried: bool = carrier != null and is_instance_valid(carrier) and carrier.is_inside_tree()
+	slot.carrier = carrier if carried else null
+	slot.offset = carrier.global_transform.affine_inverse() * pos if carried else Vector3.ZERO
+	for p: CPUParticles3D in [slot.fire, slot.core, slot.embers, slot.smoke]:
+		p.local_coords = carried
 	var speed: float = clampf(pace, 0.25, 4.0) * _size_pace(size)
 	var reach: float = clampf(spread, 0.25, 1.0)
 	var tint := Color(1.0, 1.0, 1.0, tuning.fireball_reduced_brightness if reduced else 1.0)
@@ -235,9 +255,25 @@ func _process(delta: float) -> void:
 		if slot.left <= 0.0:
 			continue
 		slot.left = maxf(slot.left - delta, 0.0)
+		if slot.carrier != null:
+			_carry(slot)
 		if camera == null:
 			camera = get_viewport().get_camera_3d()
 		_fade(slot, camera)
+
+
+## Moves a carried fireball (play's `carrier`) with its carrier: its emitters, and with them everything they have
+## thrown (they draw in their own space), to where its centre is in the carrier's space now. Once the carrier has
+## left the tree it is let go, and burns out where it was.
+func _carry(slot: Slot) -> void:
+	if not is_instance_valid(slot.carrier) or not slot.carrier.is_inside_tree():
+		slot.carrier = null
+		return
+	var at: Vector3 = slot.carrier.global_transform * slot.offset
+	var move: Vector3 = at - slot.center
+	for p: CPUParticles3D in [slot.fire, slot.core, slot.embers, slot.smoke]:
+		p.global_position += move
+	slot.center = at
 
 
 ## Fireballs still playing.

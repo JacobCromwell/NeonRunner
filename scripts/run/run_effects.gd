@@ -174,13 +174,16 @@ func burst(pos: Vector3, color: Color, amount: int = 16, size: float = 0.5) -> v
 ## An explosion at `pos`: a big yellow-and-red fireball, `size` metres in radius (a bomb 1.1, a drone's
 ## crash 2.4, a truck 3.8, a boss 7 to 11), with embers and, unless `smoke` is off, dark smoke after it.
 ## `pace` plays it faster (above 1) or slower (a bigger fireball already plays slower); `spread` (0.25 to 1)
-## holds its fire and embers in nearer its centre. Pooled and bounded (FireballPool): it allocates nothing,
-## and one more than the pool holds cuts the oldest short. It fades out as the camera comes near it (it
-## never whites out the view), and Reduced flashing softens its rise and its strength. A look only: no sound
-## (the caller's), no shake (the caller's `shake`), no collision.
-func fireball(pos: Vector3, size: float = 2.0, smoke: bool = true, pace: float = 1.0, spread: float = 1.0) -> void:
+## holds its fire and embers in nearer its centre. `carrier` (a node in the tree) carries it along, burning at
+## `pos` in that node's space wherever it goes until it leaves the tree (the Enforcer Truck's wreck, kept in the
+## runner's frame so its blast stays in view); without one it burns where it was set off. Pooled and bounded
+## (FireballPool): it allocates nothing, and one more than the pool holds cuts the oldest short. It fades out as
+## the camera comes near it (it never whites out the view), and Reduced flashing softens its rise and its
+## strength. A look only: no sound (the caller's), no shake (the caller's `shake`), no collision.
+func fireball(pos: Vector3, size: float = 2.0, smoke: bool = true, pace: float = 1.0, spread: float = 1.0,
+		carrier: Node3D = null) -> void:
 	_ensure_fireballs()
-	_fireballs.play(pos, size, smoke, pace, spread)
+	_fireballs.play(pos, size, smoke, pace, spread, carrier)
 	fireball_played.emit(pos, size)
 
 

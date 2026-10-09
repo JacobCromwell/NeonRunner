@@ -96,7 +96,7 @@ The owner reviewed every placeholder below. **GB** means "From the R1 core-movem
 - FB 14: quitting from the pause menu keeps 20%, like a death (§4).
 - FB 27: big attacks of different enemy types take turns (§9). The owner may revert this after playtesting, since early playtests felt not very challenging.
 - FB 53: the music dips on death, and the level-complete riff plays in each zone's key (§11).
-- FB 71: hosts are immune to all weapon damage (§9.7). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 389–394.)*
+- FB 71: hosts are immune to all weapon damage (§9.7). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 628–633.)*
 - FB 85: no screeches in the Neon City (§9.5).
 - P2 4: Buzz Overdrive also appears in the Golden Zone (§9.9; a recording error, corrected).
 - P2 7: Dead Zone 2 has fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats (§5).
@@ -245,7 +245,7 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 26. **Weapon tiers 2–3:** damage 1.4 and 2.0 (tier 1 = 1, tier 4 = 3); fire intervals 0.32 / 0.3 /
     0.55 / 0.65 s; heavy-missile splash 3.5 m at half damage, ×2 against swarms.
 27. **Attacks of different enemy types don't take turns.** Each type spaces its own attacks (one cyborg
-  burst at a time *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*, one drone barrage at a time, Octodog charges only on clear stretches), and the Bad
+  burst at a time *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 600–603.)*, one drone barrage at a time, Octodog charges only on clear stretches), and the Bad
   Dream will wait for Octodog charges and drone barrages (GDD §9.7). Other types don't coordinate. In
   Gangland 3, attacks from two types overlap for 0.3–2.5 s of a 142 s run (measured at 3/5/6 lanes),
   mostly a drone barrage during a hover truck's rev or cannon charge. Should all major attacks take
@@ -341,9 +341,9 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 70. **Fairness rules added (not in the GDD):** no cyborg bolt arrives within 12 m before or 8 m after a
   fence or gap; only one cyborg bursts at a time; cyborgs hold fire at a player on the ceiling, and
   window cyborgs at a player on their own wall; cyborgs stand at least 10 m from gaps, fences, ramps
-  and pads. *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*
+  and pads. *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 600–603.)*
 71. **Hosts:** never panic; the kill bonus is 1,500. It's paid, and the Bad Dream released, on any
-  kill, even a stray direct weapon hit (auto-fire never aims at hosts). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 389–394.)*
+  kill, even a stray direct weapon hit (auto-fire never aims at hosts). *(Superseded October 8, 2026: weapons hit hosts, GDD §9.7; items 628–633.)*
 72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
   from the wall. They can't be stomped.
 73. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
@@ -801,7 +801,7 @@ rules"; switched off, the game plays exactly as before; measure with `tools/meas
 98. **The enemies still to come** (proposals for their tasks): Buzz Overdrive's rev and charge are big, but the generator
     plans its cut, so like the truck's entrance it can't wait (the others would be held off before its rev); the
     Resonator's pulse is big; the Gilded Sentinel's halberd swing (its wall section and the outer lane): big or small?;
-    the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 361–364.)*); the Tithe Collector isn't an
+    the Barnacle Turret's burst is small (its "one fires at a time" stays its own rule *(Superseded October 8, 2026: up to two cyborg-type bursts may be in the air at once, GDD §9.2; items 600–603.)*); the Tithe Collector isn't an
     attack.
 
 **The ragged screen-head cyborg** (from P2; brief `docs/art/BRIEF_CYBORG_GANGSTER.md`, Variant 1; review with
@@ -1144,7 +1144,7 @@ play with `--features=resonator --skin=golden`)
     (the emblem's three-fold symmetry), opening in the middle into a cage of gold ribs around a red crystal core (the only
     part that always glows); three halos of gold arcs tumble slowly at rest. No bell, chain, cross, candle or steeple
     shape. 5.2 m tall. Right look?
-185. **The warning:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)* 1.3 s. The halos spin up and swing into line facing the runner, one on each of the chime's three
+185. **The warning:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 609–612.)* 1.3 s. The halos spin up and swing into line facing the runner, one on each of the chime's three
     notes, ending as a red target, while the core and trims glow brighter; the wave leaves at the end and reaches the
     runner about 1.1 s later (about 2.4 s from the first note). Steady glow with Reduced flashing. Right length and look?
 186. **Distance and size (please look at this one):** it hovers 34 m ahead, its core 3.1 m up (too high to stomp). On the
@@ -1177,11 +1177,11 @@ play with `--features=resonator --skin=golden`)
 194. **The recency curve leaves it alone** (like item 148): boosted, its one-at-a-time rule dropped a third of its picks and
     left empty stretches (Golden 1 lost 1.9 enemies and 3.4 rows), so it's capped. Should the Golden Zone's newest enemy
     get a boost after all (fewer, longer visits, or visits placed by its rules)?
-195. **The chime and its sounds** (GDD §9.10) *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)*: soft mallets on tuned metal bars with a glassy shimmer, rising G5, C6, E6
+195. **The chime and its sounds** (GDD §9.10) *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 609–612.)*: soft mallets on tuned metal bars with a glassy shimmer, rising G5, C6, E6
     (a bright major triad, far from the Golden music's F♯ minor), the same every time; the pulse a deep thump and a rush
     rolling in along the floor; its death the chime bending out of tune and shattering. Right notes and feel?
 196. **One on screen at a time:** a Resonator arriving sends the last one away after its current pulse. Right?
-197. **The hint:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 370–373.)* "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
+197. **The hint:** *(Superseded October 8, 2026: the chime is replaced by a crackling fire breaking into a wave crash, GDD §9.10; items 609–612.)* "When the Resonator's chime plays, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or
     the ceiling." Right wording?
 
 **The Floating Head: propaganda, defeat, and the finished fight** (from E1d; the fight now plays in the City's boss
@@ -2435,9 +2435,240 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     - Placeholder: `charge_path_cyborgs = 1` in those levels, `skip_introductions` and `attack_margin_seconds`
     2 s in `data/tuning/charge_paths.tres`.
 
+**Level skies** (from G8; each level's `sky` in `data/levels/*.tres`, `scripts/world/skins/level_sky.gd`)
+361. **The Marketplace's "third level"** (GDD §5, "Skies show progression"). The owner asked for the sunset on the
+    Marketplace's third level, but the zone has two (GDD §5's schedule). Placeholder: the sunset is on
+    Marketplace 2, the zone's last level, like City 3 and Gangland 3 (`data/levels/marketplace_2.tres`, `sky`;
+    `DESIGN-TBD` on `LevelConfig.sky`). Move it to Marketplace 1, or keep it on the last level?
+362. **The boss after each of these levels** (GDD §10). The Floating Head, the Sewer Swarm and The House, and each
+    zone's outro, keep their zone's own sky, so the dawn goes back to night for the fight (and the blood red back
+    to Gangland's dust, the sunset back to the Marketplace's warm dusk). Placeholder: the zone's own sky
+    (`Campaign.configure_boss` gives the arena no level sky). Should each fight keep its zone's last level's sky?
+363. **The street's light under the new skies** (GDD §5). Only the sky and the distant haze change; the scenery's
+    lighting stays the zone's: the Marketplace's low sun still gilds the upper floors of one side under the
+    darker sunset sky, and the City's street stays lit as at night under the dawn. Placeholder: unchanged.
+    Should the street's light follow (for example a little of The Hush's darkness on Marketplace 2)?
+
+**The Enforcer Truck shows itself; its explosion** (from C6b; groups "Showing itself" and "Wreck" in `data/enemies/enforcer_truck.tres`, F6; review with `tools/showcase/enforcer_truck_showcase.tscn -- --scenario=show` or `--scenario=cut`)
+364. **How often players will see it** (GDD §9.13 "Showing itself": "every so often"). A showing needs about 7 s
+    between its arrival and its bait's turn (pulling up, about 3 s alongside, dropping back, a margin), with a lane
+    beside the runner kept clear. Many campaign chases put the bait sooner or fill the lanes beside the runner
+    (fences, doodads, holes), so it often can't show. In Corporate 2's own build, a runner keeping to the middle
+    lane sees no showing at 3 lanes, one at 5 and none at 6. Placeholder: at most `show_count` (2) showings, one
+    on arrival and one mid-chase, only where every rule holds (`data/enemies/enforcer_truck.tres`; `DESIGN-TBD` on
+    `EnforcerTruckTuning.show_count`). Should the generator keep room for the arrival showing (a later bait, or a
+    clear stretch beside the runner's lane after it arrives)? That would be a change to the generator and the
+    level data, so it needs a core task. Or is a rare showing fine?
+365. **A runner in an outer lane** (GDD §9.13: "never takes the only free lane"). A runner in an outer lane has only
+    one lane beside them, so the truck never shows itself to them. Placeholder: no showing while the runner is in
+    an outer lane (`EnforcerTruck.show_lane_now`). Is that right, even though it means a player who keeps to the
+    wall never sees it?
+366. **Its first volley waits for its first showing.** So the runner sees what's chasing them before it fires,
+    the first volley waits up to `show_wait_seconds` (4 s) past its time, as long as a showing can still come
+    before the bait. Placeholder: as described (`DESIGN-TBD` on `show_wait_seconds`). Keep this, or fire on time?
+367. **Other attacks during a showing** (GDD §9, big attacks take turns). A showing takes a big attack's turn. A hover
+    truck and a Gilded Sentinel can't wait, so while one is in play or about to arrive the truck doesn't show
+    itself. A Resonator's pulse waits for the showing to end, as it waits for a volley (up to the director's
+    `turn_wait_max`, 8 s). Placeholder: `EnforcerTruckRoom.NO_SHOW_TYPES`. OK?
+368. **Where the blast happens** (owner, October 8, 2026: a visible explosion). Behind the camera a blast would be
+    unseen. So a wrecked truck first lurches forward into view over `wreck_surge_seconds` (0.3 s), until its front
+    is `wreck_gap` (2.8 m) behind the runner, or reaches the far edge of the hole it fell in. Then it blows up and
+    falls back slowly (`blast_drift`). This bends the physics a little so the blast is readable. It's smaller and
+    lower in the runner's lane (`blast_radius_in_lane` 0.85 m, against `blast_radius` 1.3 m beside them) so it
+    never hides them. Placeholder: those values (`DESIGN-TBD` on the "Wreck" group). OK, or should a wreck behind
+    the camera show differently (only fire and debris rising into view)?
+
+**The Neon City's outro** (from F2a; the owner's beats, GDD §6 Cinematics; numbers in `data/cinematics/city_outro_tuning.tres`, code in `scripts/cinematics/city_outro.gd` and `city_outro_set.gd`; review with `tools/showcase/cinematic_review.tscn -- --slot=city/outro`)
+369. **Its length** (GDD §1: 5–15 s). The owner's beats are many. Placeholder: 15.0 s, the top of the range
+    (`duration`): about 2 s for the crash, 3 s for the stop and the look, 3 s on the roadblock, 2 s for the escape
+    and leap, and 4.4 s for the landing in Gangland. Should it run longer, or should Gangland's intro flyover (next,
+    9.5 s) be shortened or dropped after it, since the outro already lands the runner in Gangland?
+370. **Where the roadblock stands** ("He looks to the left, and there we see a barricade"). Placeholder: the left
+    wall opens onto a side street, built from the City's own truck roofs laid across it and lined with its building
+    fronts. The roadblock stands at its mouth, a few metres ahead of where the runner stops (`side_*` values). Is a
+    side street what the owner pictured, or should the roadblock block the main street?
+371. **The barricade's look.** Placeholder: low concrete blocks with navy and white rails, in the Enforcer Truck's
+    police paint and never a hazard colour, with a cold-white floodlight at each end. The Barnacle Turrets stand in
+    the gaps between the blocks like cannons (`CityOutroSet._barricade_mesh`). Should it look like Gangland's crate
+    and container barricades instead?
+372. **Which battle truck.** Placeholder: the Enforcer Truck (police-style, light bar, two cyborg gunners on its
+    roof), because its model was already built to be shown on its own. The hover truck (Neon City 3's mini-boss) is
+    the one the player has actually met by Zone 1's end. Which one?
+373. **Turrets and drone.** Placeholder: 3 turrets (`turrets`) in the mechanical City look, and the heli drone over
+    the truck. The player meets neither in Zone 1 (the drone arrives in Gangland 3, the turret in the Marketplace),
+    so the outro previews both. Intended?
+374. **"Runs in the opposite direction".** Placeholder: away from the roadblock. The runner hops back to the right,
+    startled, then sprints right and slightly ahead to an opening in the right wall, and leaps out over the drop to
+    the road far below. The other reading is a U-turn back the way they came. Which did the owner mean?
+375. **The explosion.** Placeholder: the roadblock fires a red volley (each cyborg and turret), which blows up the
+    truck roof the runner just leapt from (the Enforcer Truck's blast, bigger: `blast_*` values). The camera is out
+    over the drop, so the runner flies toward it with the fireball behind them. Should it be something else, such
+    as the battle truck firing or the Floating Head's wreck going up?
+376. **The cut to Gangland.** Placeholder: the runner falls into the haze toward the road far below. The picture goes
+    to black for about half a second, then the runner drops into a Gangland street from about 7 m, lands, glances
+    left and right, and runs off. The cut happens under black because building Gangland's street takes a few frames.
+    Is a cut to black acceptable, or should the camera follow the fall all the way down? A continuous fall would
+    need the City's road below to become Gangland's street, a bigger job.
+377. **Runner animation.** The rig has no "stop and look" or "startled" animation. Placeholders: a head turn shared by
+    chest, neck and head (the toolkit's new `look` on cinematic keys), and a small hop back (`startle_hop`, 0.35 m)
+    that uses the jump pose. Should it have a proper startled pose?
+378. **Music.** Placeholder: the City's track plays and fades out as the runner leaps, and Gangland's comes in with
+    its intro. No music was made for cinematics (GDD §11). Should the outro have its own sting?
+379. **The web demo.** The demo ends after Zone 1, and the outro belongs to Zone 1, so the demo plays it (Gangland's
+    landing included) before the store-link screen, a teaser for Zone 2. Wanted, or should the demo go straight to
+    the store links (GDD §10's wording could be read that way)?
+380. **The crash plays twice** (the owner's first beat; GDD §10's defeat). The fight's defeat already plays the
+    dying lurch, the plunge and the crash (`FloatingHead`). After the results and the shop, the outro opens on the
+    same crash again from the run camera, as the beats ask. Placeholder: as described (`fall_start`,
+    `fall_seconds`). Keep it, or open the outro on the wreck already down and smoking?
+381. **The side street's marked edges.** The left opening is built as a level's wall gap, so the zone's wall-gap
+    look marks it as a level marks a drop: an orange lip along the main street's edge across the side street's
+    mouth (although its floor carries on), and orange edge columns framing the roadblock. That goes against "safe
+    things look safe". The right opening is a real drop, so its marks are right. Placeholder: both marked
+    (`CineStageDef.wall_gaps`). Give the toolkit a way to open a wall without the drop's marks, for openings
+    onto floor?
+
+**Room for the Enforcer Truck to show itself in every chase** (from C6c; the showing windows in `scripts/enemies/enforcer_truck_rules.gd` (`ShowPlanner`), group "Showing itself" in `data/enemies/enforcer_truck.tres`; count showings per chase with `tools/measure/enforcer_shows.gd`)
+382. **A runner by a wall** (GDD §9.13 "Showing itself": "never takes the only free lane"; follows question 365). A
+    runner in an outer lane used to never see the truck. Beside them on their inner side it would take their only
+    lane to dodge into, and at 5 and 6 lanes it would also hide up to 25 m of their lane from the camera (the camera
+    sits inward of a runner by a wall). Placeholder: it pulls up two lanes in and leaves the lane between free; the
+    "never the only free lane" rule holds both ways (the lane between stays open wherever the runner's lane is
+    blocked, and the runner's lane wherever the lane between is). Its whole look stays on screen and it hides nothing
+    of their lane or the lane between (`EnforcerTruckRoom.sides`, `escape_lane`, `EnforcerTruckView.check`;
+    `DESIGN-TBD`). Is two lanes in right?
+    **Answered (owner, October 9, 2026):** yes: two lanes in, with the lane between left free (GDD §9.13).
+383. **What a showing window may take out** (the owner's request against the danger density request). Where a chase
+    has no calm stretch where it can show itself to a runner in every lane, the generator takes out only what's in the
+    way: plain holes and fences (never a pulsing fence or one a fence generator powers), and plain cyborgs, window
+    cyborgs and Screeches (never a host, the first of a kind the level introduces, or the last of its kind or of one
+    of the level's features). Every
+    later pass keeps its additions off each window, but nothing keeps a spacing from one. On the six levels' own seeds
+    at 3, 5 and 6 lanes the windows cost about 2% of their enemies and of their obstacles (592 to 580 enemies, 3281 to
+    3226 obstacles; from +3 to -14 obstacles a level), and the danger density pass's measured increases stay in their
+    bands. Placeholder: `ShowPlanner.REMOVABLE_TYPES` and the window's stretch (`enforcer_truck_rules.gd`,
+    `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Is that cost acceptable?
+    **Answered (owner, October 9, 2026):** yes: the cost is accepted (GDD §9.13).
+384. **Chases with no window** (7 of the 23 chases on the levels' own seeds). In four, a hover truck or a Gilded
+    Sentinel is about for the whole chase, and the truck never shows itself while one is (question 367). The other
+    three have no calm stretch at all: Corporate 2 at 5 lanes (the truck's introduction, among an Octodog's charges, a
+    Tithe Collector and a Buzz Overdrive's attack), Dead Zone 1 at 3 lanes (pulsing fences, a ramp's wall run and a
+    Screech at the level's start), and Dead Zone 2 at 6 lanes (rows of fences with a pad in their gap). Three more
+    windows hold for most lanes but not all: a runner who takes a pad onto a ceiling, or a ramp onto a wall, in that
+    lane misses that showing. Placeholder: the baits that get trucks are the ones whose chases hold the most windows,
+    and a level that introduces the truck keeps its first bait's chase. Should a chase with no room for a showing get
+    no truck (another bait instead), or should the hover truck and the Gilded Sentinel make room?
+    **Answered (owner, October 9, 2026):** move the truck to a chase with room whenever the level has another bait (GDD §9.13; task C6d).
+385. **Windows after the bait** (6 of the 16). Where the bait comes right after the truck arrives (at some lane counts
+    the Golden levels' first truck arrives at the end of the run-up and their first Buzz Overdrive revs 4 s later), no
+    showing fits before it, so the window comes after the first bait. A player who destroys the truck with that bait sees its wreck blow up instead, and a wider gap later in
+    the chase (task G7) can wreck it first too: in the simulated runs, 18 of the 75 runner runs with a window lost the
+    truck before its window. Placeholder: as described (`ShowPlanner.plan`). Is a showing after the bait worth its
+    calm stretch, or should those chases arrive later?
+    **Answered (owner, October 9, 2026):** yes: those trucks arrive earlier, so the showing comes before the bait (GDD §9.13; task C6d).
+386. **Making the window's showing happen** (GDD §9, big attacks take turns). The truck claims its turn among the big
+    attacks `show_claim_seconds` (2 s) before its window is due, so a drone's barrage or a Resonator's pulse that gets
+    ready meanwhile waits for the showing (up to the director's `turn_wait_max`), and its own volleys hold so none is
+    on as the window comes. The window also holds if the showing begins up to `show_window_slack_seconds` (1 s) late.
+    A host's Bad Dream chase doesn't keep a window off: it only comes if the player kills the host, and the showing
+    then waits for it. Placeholder: those two values (`DESIGN-TBD` in `data/enemies/enforcer_truck.tres`). OK?
+
+**Gangland's boss intro** (from F2b; the owner's beat, GDD §10 Sewer Swarm "Intro cinematic"; numbers in `data/cinematics/sewer_swarm_intro.tres`, code in `scripts/cinematics/sewer_swarm_intro/`; review with `tools/showcase/cinematic_review.tscn -- --slot=gangland/boss_intro`, or play `--level=gangland/boss_intro`)
+387. **How the runner dodges** ("easily avoids it", "dodges those", "runs past them"). Placeholder: the first
+    screech pounces into the runner's lane and lands under them as they jump over it. Of the next three, the lone
+    one leaps over the runner's lane as they slide under it, and the other two land in the lane ahead and swipe as
+    the runner weaves round them (1.4 m to the right). The eleven land either side of the runner's lane and rear up
+    and swipe as the runner runs straight between them. Each then gives chase and falls behind (`jump_at`,
+    `slide_at`, `weave_at`, `third_land`, `chase_share`). In play a screech comes out only when the player is in its
+    lane and dashes straight along it (GDD §9.5); here the first beats' screeches leap sideways out of the next lane
+    into or across the runner's. Is that all right for a cinematic?
+388. **How the wall behind the runner is shown** ("soon we see that there is a wall or wave of screeches behind the
+    character"). Placeholder: the camera stays at ground level (0.47–0.75 m up). It rides low behind the runner
+    until 5 s, then swings round their right side (5.0–6.4 s) to low in front of them, looking back past them at
+    the wall. Should it look back over the runner's shoulder instead (the runner out of view)?
+389. **Where the manholes are** ("manhole covers on either side of him"). Placeholder: rows one lane over on both
+    sides of the runner, one every 6.5 m a side, the sides staggered. The runner runs in the start lane, the fight's,
+    which on 6 lanes is half a lane right of the street's middle.
+390. **What the wall looks like.** Placeholder: one wave across the street (6 m tall, its crest curling 8.5 m
+    forward over the runner, as the fight's strike from behind does), with the rest of the swarm behind it, 26 m long. It
+    rises from 6.3 s, 32 m behind the runner, and closes to 9 m by the cut. As it closes it heats toward
+    enemy-attack red (0.25 to 0.5 on the fight's scale), the fight's colour for an attack. Should a cinematic use
+    that warning colour at all?
+391. **The cut** ("a dark area, and inside that dark area, we can just make out a glint of the host"). Placeholder:
+    at 9.6 s, one cut to low between the runner and the wall, looking up into a dark hollow in the middle of the
+    mass (1.9 × 2.3 m), with screeches heaped and crawling round its rim. The Host is held up inside it, its look
+    darkened to a faint silhouette with a sickly edge. The implant at its temple glints red once, 0.9 s into the
+    cut (with Reduced flashing, a slow, faint glow). Is the glint right, or should it be the Host's eyes, or the
+    implants on its back (the fight's weak points)?
+392. **How it ends.** Placeholder: 2.4 s after the cut it fades to black (12 s in all), and the fight starts on its
+    own view, whose Rising carries on from here. There is no card naming the boss, since the beat has none and GDD
+    §1 asks for little or no words; the City's boss intro shows one ("ZONE 1 · BOSS / FLOATING HEAD"). Should
+    Gangland's show one too, over the cut or the black?
+393. **How many screeches.** Placeholder: 15 in the beats; 2 to 6 out of each manhole in the pour (half as many
+    on a low-end device); 110 dropping from the sky (45); 900 in the wave and 560 behind it (360 and 220); 110 heaped
+    round the hollow in the cut (50). The phone test (risk test R4, task E3) should check these with the fight's.
+394. **Its speed.** Placeholder: the runner runs at Gangland's run speed (21.8 m/s), the fight's, so the fight
+    follows at the same pace.
+395. **Slots.** This answers part of items 11 and 200: Gangland now has a boss intro as
+    well as the City. Should the other zones' bosses get one?
+
+**The Floating Head's salvos** (from E1g; group "Salvos" and `later_run_seconds` in `data/bosses/city_boss_tuning.tres`,
+F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §10; review with
+`tools/showcase/floating_head_showcase.tscn -- --scenario=bombing --phase=1` or `--phase=2`, with `--lanes=3`, `5` or `6`)
+396. **Which runs drop salvos** (GDD §10: "the next bombing run"). The fight has two later runs, at the start of phases 2
+    and 3. Placeholder: both drop salvos (`salvo_spots` = 1, 4, 4; the first run keeps one spot at a time). Should the
+    third phase's run go back to one spot at a time (1, 4, 1)?
+    **Answered (owner, October 9, 2026):** the third phase's run keeps its salvos (GDD §10).
+397. **How much harder on 5 or more lanes** (owner: "increase the difficulty on five or more lanes"). With one or two
+    bombs a spot, a runner on a wide street can step clear of a whole salvo. Placeholder: from 5 lanes
+    (`salvo_wide_lanes`) a spot takes up to three bombs side by side (`salvo_wide_bombs`), placed to leave the runner as
+    few lanes as possible but never none, so after the first spot there is usually one way through
+    (`salvo_wide_choices` = 1; 2 would leave a choice of two lanes). On 3 lanes a spot keeps one or two bombs, two 40%
+    of the time (`salvo_pair_chance`). Is three bombs a spot right (beyond the one or two first asked for), and is one
+    way through too hard?
+    **Answered (owner, October 9, 2026):** three bombs a spot is right on 5 or more lanes, leaving a choice of two lanes
+    (`salvo_wide_choices` = 2). On 3 lanes a spot leaves one lane, a forced path, with one or two bombs (`salvo_choices`
+    = 1, `salvo_bombs` = 2; `salvo_pair_chance` is gone: every street places its spots the same way). GDD §10.
+398. **How tight** (owner: "make it tighter"). Placeholder: 10 m between spots at 18 m/s instead of 12 m
+    (`salvo_spacing`): about 0.56 s from one blast to the next, leaving about 0.4 s after passing a blast to switch one
+    lane before the next (`salvo_max_shift`: one lane from spot to spot). Tighter still?
+399. **The later runs' length** (owner: a little longer, for the longer salvos). Placeholder: 6.5 s instead of 5.6 s
+    (`later_run_seconds`): two salvos of four spots fit, with a little room. Right length?
+
+**Every chase shows its truck** (from C6d; `_choose` and `ShowPlanner` in `scripts/enemies/enforcer_truck_rules.gd`; count chases and showings with `tools/measure/enforcer_shows.gd`)
+400. **Chases no bait with room is left for** (GDD §9.13 "Room to show itself"; follows questions 384 and 385). On the
+    levels' own seeds, 14 of the 23 chases still have no window before their bait, and no move or earlier arrival
+    gives them one. In 8 builds the level has a single usable bait: it comes too soon for any showing before it (Golden
+    1 at 3 and 6 lanes, Golden 2 and 3 at 6: a Buzz Overdrive revs 4 s after the run-up; Corporate 2 at 6 lanes: an
+    Octodog charging at the start keeps its truck from arriving earlier), or a hover truck or a Gilded Sentinel is
+    about for its whole chase (Dead Zone 1 at 6 lanes, Golden 2 at 3, Golden 3 at 5). In the other 6 chases the level's
+    other bait already has its other truck (see the next question), or neither bait has room (Dead Zone 2 at 3 lanes).
+    Placeholder: the truck keeps its chase, its showing after the bait where one fits (7 chases), else none
+    (`_choose` in `enforcer_truck_rules.gd`; `DESIGN-TBD` on `EnforcerTruckTuning.show_window_planned`). Dropping those
+    trucks would leave 9 of the 18 builds with none (Corporate 2 at 6 lanes among them, its introduction). With 8 other
+    seeds of each level (162 builds) the hover truck and the Sentinel weigh most: they keep 93 of the 128 chases with no
+    window from having one (Corporate 2 brings many hover trucks). Keep those trucks as they are, or make room another
+    way (the level's first Buzz Overdrive later; the hover truck and the Sentinel letting it show)?
+401. **Two trucks, one chase with room** (Corporate 2 at 5 lanes, Dead Zone 1 at 3 lanes, Dead Zone 2 at 5 and 6 lanes, on
+    their own seeds). The only bait whose chase has room before it has one truck; the other truck has nowhere with room
+    to go. Placeholder: both stay, so in Corporate 2 at 5 lanes the introduction (14 s in, among a Tithe Collector's
+    visit and then its own Buzz Overdrive's turn too close) shows itself only at the second truck (59 s). Or should such
+    a level keep only the truck that shows itself (one truck instead of two; Corporate 2's introduction at 59 s)?
+402. **One truck that shows itself, or two that don't** (other seeds). Where giving a truck to a chase with room leaves
+    the level's other truck no chase (they'd overlap), the level keeps the one that shows itself before its bait: 2 of
+    144 builds on 8 other seeds lose a truck so (Corporate 2 at 6 lanes, Golden 1 at 5), and 1 gains one back that C6c's
+    order dropped (Golden 2 at 5). Placeholder: the most windows before the bait count before the number of trucks
+    (`_choose`), as C6c counted windows before trucks. Right?
+403. **An introduction that moves late** (other seeds). Where Corporate 2's first bait has no room, its introduction
+    moves to the first chase where it shows itself before its bait: in 3 of its 24 builds on 8 other seeds, from 8 s to
+    71 s or 82 s into the level (and from 70 s to 90 s), past the reach the campaign asks of an introduction (about 19 s
+    into the level: 12 s past its start). Its first-encounter hint and the charge-path cyborg before it hold (the hint
+    is on the level intro, the cyborg earlier in the campaign). Placeholder: it moves (it never moves on the level's own seeds). Or keep the introduction
+    early, unseen, when the room is that far?
+
 **Two cyborg-type bursts in the air at once** (from H4, owner, October 8, 2026, GDD §9.2; numbers in `data/tuning/game_rules.tres`
 (`max_bursts_in_air` 2) and in `data/enemies/cyborg.tres`, `window_cyborg.tres` and `barnacle_turret.tres`)
-361. **The crossfire rule** (GDD §9.2: "Bolts are slow enough to dodge by switching lanes"; "Up to two bursts in the
+600. **The crossfire rule** (GDD §9.2: "Bolts are slow enough to dodge by switching lanes"; "Up to two bursts in the
     air at once"). With two bursts in the air, a runner could dodge the first into a lane the second then aims at
     while the first's bolts still come down the lane they left; from an edge lane of three, a wall run, beside a
     hover truck or on a narrow ceiling, the only way out was then the first burst's lane. What's built: bursts
@@ -2454,84 +2685,84 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     two moves away?
     - Placeholder: `DESIGN-TBD` in `scripts/enemies/cyborg_gun.gd` (`_crossfire_fair`), `crossfire_gap` 0.5 s and
     `reaction_time` 0.25 s in the three enemy files.
-362. **Wild fire next to another burst.** A panic cyborg's bolts land anywhere around the runner, so no lane is sure
+601. **Wild fire next to another burst.** A panic cyborg's bolts land anywhere around the runner, so no lane is sure
     to be free of them. Placeholder: a wild burst's bolts never arrive within `crossfire_gap` of another burst's,
     either way round. Should a panic cyborg's spray be allowed to overlap an aimed burst?
-363. **The last-resort call-off.** When two charge-ups begin within `reaction_time` of each other and the runner
+602. **The last-resort call-off.** When two charge-ups begin within `reaction_time` of each other and the runner
     moves between their locks, the later one can still be called off at the end of its charge-up (glow and sound,
     no bolts); measured once in 34 min at 5 lanes, never at 3. Should it instead hold its charge until it can fire
     (a longer warning)?
-364. **What "in the air" counts.** As before, a burst holds its place from the start of its charge-up until
+603. **What "in the air" counts.** As before, a burst holds its place from the start of its charge-up until
     `burst_gap` (0.5 s) after its last bolt is fired, not until its bolts land, so a third burst's charge-up may
     start while the first two's bolts are still flying (the crossfire rule still keeps arrivals apart). Should the
     limit count bolts until they land?
 
 **The Gilded Sentinels' shorter warning and lit niches** (from H1, owner, October 8, 2026, GDD §9.11; numbers in
 `data/enemies/gilded_sentinel.tres`)
-365. **The live statue moved only about 4 cm; most of the gain is lighting and a wider opening.** It can't stand out
+604. **The live statue moved only about 4 cm; most of the gain is lighting and a wider opening.** It can't stand out
     of the wall: a wall runner's body lies along the face and its solid body is behind it (GDD §3), so a statue
     proud of the wall would block the wall run, a design change for the owner. Its front is now 0.02 m behind the
     face (it was 0.063 m), the niche is shallower (0.78 m, from 0.9) and wider (1.8 m, from 1.4), and its inside
     is lit. On 3 lanes, where the camera is closest to the wall, the statue reads from about 10–15 m. Is that
     enough, or should the opening be wider still (decorative alcoves are 2.0 m)?
     - Placeholder: `niche_width` 1.8, `niche_depth` 0.78, `statue_inset` 0.02 (`DESIGN-TBD`).
-366. **Every statue niche is lit alike; the live one is told by its eyes and its warning.** The owner's earlier
+605. **Every statue niche is lit alike; the live one is told by its eyes and its warning.** The owner's earlier
     request (decorative statues at the bottom of the walls so a live one can surprise the player) rules out a
     niche that sets the live one apart, so decorative alcoves outdoors and in the Palace get the same warm bronze
     inside (non-glowing, no hazard hues). The live statue's red eyes glow a little more at rest (1.6, from 0.9);
     at its warning the eyes flare, the niche tints dark red and stone grinds. Is a lit alcove right for all of
     them, and is the eye glow at rest enough to tell the live one at a glance, or too much?
     - Placeholder: `GoldenStatue.LIT_BACK`, `LIT_SIDES`, `LIT_CEILING`, `GildedSentinel.EYES_IDLE` (`DESIGN-TBD`).
-367. **What 0.6 s does to the wall dodges.** On the floor, a lane change started after a 0.35 s reaction is still in
+606. **What 0.6 s does to the wall dodges.** On the floor, a lane change started after a 0.35 s reaction is still in
     time (tested at 3 and 6 lanes, 18 and 25 m/s). On the wall, passing above or below the swing by timing the
     wall entry must now be planned from the statue at rest: the jump onto the wall that runs above the band takes
     the whole 0.6 s. A runner who stepped onto the wall 0–0.55 s before the warning sees no warning before the
     cut but escapes with two moves (off the wall, then a lane change) started within 0.50 s. Is that the wall dodge
     the owner wants, or should the warning start earlier along the wall approach?
-368. **A decorative alcove that would overlap a live niche is left out** (less than 0.3 m of wall between the
+607. **A decorative alcove that would overlap a live niche is left out** (less than 0.3 m of wall between the
     frames); facade statues no longer straddle a chunk's end (about 6% fewer outdoor decorative statues, a build
     fix). The halberd's draw-back takes the last half of the warning (0.3 s).
     - Placeholder: `GoldenSkin.NICHE_CLEARANCE` 0.3, `GildedSentinelTuning.raise_share` 0.5 (`DESIGN-TBD`).
-369. **GDD §9.11 no longer matches the build in one place** (predates H1): "decorative statues never stand at wall-run
+608. **GDD §9.11 no longer matches the build in one place** (predates H1): "decorative statues never stand at wall-run
     height". Since the owner's earlier request, decorative statues stand in alcoves at the bottom of the walls,
     0.1–3.5 m up, which is wall-run height; they're told from live ones by the red eyes and the warning. Should
     the GDD line change to match?
 
 **The Resonator's new warning sound** (from H2, owner, October 8, 2026, GDD §9.10; `tools/asset_gen/sfx_bank_resonator.gd`,
 `resonator_warning` at -5.0 dB in `data/audio/sfx_library.tres`)
-370. **Should the Resonator's death sound lose its bell tones too?** The request named only the attack sound, so
+609. **Should the Resonator's death sound lose its bell tones too?** The request named only the attack sound, so
     `resonator_death` is unchanged: it still bends the old chime's three tuned tones (G5, C6, E6, `DEATH_TONES_HZ`)
     out of tune under the glass and a small explosion. Should those tones go, leaving the glass, metal and
     explosion?
-371. **A Resonator shot down in its warning cuts the warning's sound.** The warning builds to a wave crash at the
+610. **A Resonator shot down in its warning cuts the warning's sound.** The warning builds to a wave crash at the
     instant the wave leaves, so a Resonator shot mid-warning (no wave) would otherwise crash after its own death
     sound, a warning for an attack that never comes. Placeholder: `Resonator._on_defeated` stops it
     (`PlayerSfx.stop()`, `DESIGN-TBD`). Right, or let the crash play out?
-372. **The first-encounter hint** (`data/hints/hints.json`, `resonator`): "When the Resonator's halos line up and its
+611. **The first-encounter hint** (`data/hints/hints.json`, `resonator`): "When the Resonator's halos line up and its
     fire roars and crashes, a red wave rolls along the floor. Jump it ({jump}), or be on a wall or the ceiling."
     Right wording?
-373. **Warnings under slow time** (PC only). Slow time halves `Engine.time_scale`, but sound effects play at normal
+612. **Warnings under slow time** (PC only). Slow time halves `Engine.time_scale`, but sound effects play at normal
     speed, so the warning's crash can land up to 1.3 s before the wave actually leaves. Every warning sound behaves
     this way (still heard before the attack, never after); the crash-on-release design just makes it audible.
     Should sound effects follow slow time, or is this acceptable?
 
 **Explosions as yellow-and-red fireballs** (from H6, owner, October 8, 2026, GDD §11; `scripts/run/fireball_pool.gd`, tunables in
 `SpeedFxTuning`'s "Explosions" group, F6 "Speed effects")
-374. **An exception to "only hazards glow in hazard colours"?** A yellow-and-red fireball glows red and orange. The
+613. **An exception to "only hazards glow in hazard colours"?** A yellow-and-red fireball glows red and orange. The
     placeholder keeps it a look and keeps it short: no collision, no light, about a second of fire (longer for a
     boss), embers, then dark non-glowing smoke; it fades as the camera nears it, so a runner passing through one
     never loses sight of the lanes. The bombs' fireballs (Floating Head, The House) are sized to their blast and gone
     when it is. Is the fireball the one explicit exception, or should explosions of things that aren't hazards
     themselves (the player's missiles, a destroyed generator) look cooler?
-375. **The player's missiles: fireballs too?** GDD §11 lists "missiles", while the weapon section keeps the player's
+614. **The player's missiles: fireballs too?** GDD §11 lists "missiles", while the weapon section keeps the player's
     fire cool (cyan, white, violet). Placeholder: the heavy missile's blast is a fireball inside the cyan splash ring
     (`WeaponFx.HEAVY_FIRE_SIZE` 2.2) and a plain missile's hit a small quick one (`MISSILE_FIRE_SIZE` 0.9); lasers
     stay cool. Both missiles, or only the heavy one?
-376. **Which other events count as explosions?** Beyond the owner's list, the build also made fireballs of the hover
+615. **Which other events count as explosions?** Beyond the owner's list, the build also made fireballs of the hover
     truck bursting through the wall, the drone's first hit, the Floating Head's tower landing on the ship, and
     Hostile Takeover's five rolling blasts. Not changed: the Sleep Taker's wisps, the Sewer Swarm, plain deaths.
     Keep these?
-377. **How big and how long?** Each explosion's size is a constant in its script (a drone's crash 2.4 m radius, a truck
+616. **How big and how long?** Each explosion's size is a constant in its script (a drone's crash 2.4 m radius, a truck
     3.8, a boss 7–11); counts, lengths and brightness are in the "Explosions" group, and `fireball_scale` moves every
     size at once (`DESIGN-TBD`). With Reduced flashing they rise softly to 45% of the normal brightness. Placeholders
     until the owner has played them.
@@ -2539,61 +2770,61 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
 **The Sleep Taker's October 8 changes** (from H9, owner, October 8, 2026, GDD §10; numbers in `data/bosses/dead_zone_boss_tuning.tres`
 (`SleepTakerTuning`, F6 in the fight) and `data/bosses/dead_zone_boss_wall_gaps.tres`, marked `DESIGN-TBD` in
 `scripts/bosses/sleep_taker/sleep_taker_tuning.gd`)
-378. **How dark lights out goes on the web / low-end renderer.** `dark_level` 0.225 (half the first build's 0.45)
+617. **How dark lights out goes on the web / low-end renderer.** `dark_level` 0.225 (half the first build's 0.45)
     for ambient and sky light, fog light, the sun and the scenery's own light, above floors of its own
     (`light_floor` 0.2, `scenery_floor` 0.15; other bosses keep 0.3). Measured: the street goes from 50 to 32 (of
     255) at the darkest on both renderers; glows hold (generator 218 → 217, pad 182 → 181, mist 106 → 105). On
     Compatibility the walls go nearly black (6, was 15), though the street, bridges, wall gaps' orange edges and
     every glow stay readable. Too dark there?
-379. **The slash's lane marks in lights out.** They blend over the street, so they'd dim with it (62 → 52); the
+618. **The slash's lane marks in lights out.** They blend over the street, so they'd dim with it (62 → 52); the
     merge made them draw stronger as the light falls (`SleepTakerSlash.MARKS_DARK_BOOST` 1.4, toward 1 as the light
     returns), so they stay as visible as before. Right?
-380. **The hands' rounds.** A round has 2 rows, then one more each round up to 4 (`hand_rows_first`, `hand_rows_max`),
+619. **The hands' rounds.** A round has 2 rows, then one more each round up to 4 (`hand_rows_first`, `hand_rows_max`),
     kept across phases, 0.85 s of run apart (`hand_row_seconds`, divided by the phase's pace); each row leaves one
     floor lane open (`hand_row_open`), one lane over from the last, and puts a hand in every other floor lane whose
     floor is clear, so every row is a lane switch. Should wider streets leave two lanes open? Are four rows and
     these gaps right?
-381. **All of a round's mists at once,** with one whisper per round and a burst sound per row as it rises. Far rows'
+620. **All of a round's mists at once,** with one whisper per round and a burst sound per row as it rises. Far rows'
     mists can blend into the nightmare's purple base until the runner is closer (each row still shows at least as
     early as the first row's). Should the rows' mists appear one after another instead?
-382. **Wall hands.** From the first round, one wall hand on every row, alternating walls (`wall_hands_per_row`), never
+621. **Wall hands.** From the first round, one wall hand on every row, alternating walls (`wall_hands_per_row`), never
     beside a door in an outer lane, never at a wall gap, and only over an outer lane that has its own floor hand,
     so no floor runner passes under one. Right?
-383. **When a round can't fit.** A round takes the rows that end before the next refuge's slash or lure, never fewer
+622. **When a round can't fit.** A round takes the rows that end before the next refuge's slash or lure, never fewer
     than 2 (`hand_rows_min`); otherwise it waits and the phase's next attack may go first. A clean win sees 3–4
     rounds (about 78 s, inside the three-star par of 86 s).
-384. **The fairness margins rounds are planned with:** a runner moving 0.4 s after the mists show (`route_reaction`),
+623. **The fairness margins rounds are planned with:** a runner moving 0.4 s after the mists show (`route_reaction`),
     a lane switch taking the real 0.14 s × 1.5 (`route_switch_margin`), the body 0.55 m past a hand either way
     (`route_body_margin`), checked by The House's lane router.
-385. **How many wall gaps.** 1.6 to 1.3 s of run between gaps, 30% on both walls, 0.6–1.1 s long: about 15 a minute (a
+624. **How many wall gaps.** 1.6 to 1.3 s of run between gaps, 30% on both walls, 0.6–1.1 s long: about 15 a minute (a
     level's median is 1.7). Both walls stay whole from each refuge's slash warning to the end of its bridge (±0.5 s).
     Is that frequency right, and should the walls stay whole there?
-386. **"Double the floor gaps."** Once a lap's refuges are in, the generator's additive gap pass doubles the rows of
+625. **"Double the floor gaps."** Once a lap's refuges are in, the generator's additive gap pass doubles the rows of
     holes the fight has (`floor_gap_increase` 1), keeping their average width: over three laps 11 → 22 rows at 3 and
     5 lanes, 8 → 16 at 6 (lane-gaps 15 → 30, 26 → 53, 24 → 50). New rows keep 1.3 s of run from everything else
     (`floor_gap_spacing`; the arena's own 1.9 s fits only 1.6–1.8 times as many).
 
 **The Tithe Collector staying twice as long** (from H10, owner, October 8, 2026, GDD §9.12; `data/enemies/tithe_collector.tres`)
-387. **Should Hostile Takeover's Tithe Collector stay twice as long too?** A level's Collector now closes in at 3.5 m/s
+626. **Should Hostile Takeover's Tithe Collector stay twice as long too?** A level's Collector now closes in at 3.5 m/s
     instead of 7 (about 10.9 s on screen untouched, was 5.4 s, at every run speed; it sucks up about 2.4× the credits
     in a dense lane). On the boss's 130 m flatcar roof that carries it past the roof's end, over the coupling gap the
     runner jumps. Placeholder: the Board spawns its Collectors at `HostileTakeoverTuning.tithe_approach_speed` 7 m/s
     (`DESIGN-TBD`), so the fight is as before. A longer stay there needs a longer roof or a Collector that starts
     further back.
-388. **May two Tithe Collectors be in the level at once?** Nothing reserves a window for one (touching it is never a
+627. **May two Tithe Collectors be in the level at once?** Nothing reserves a window for one (touching it is never a
     hit). With the longer stay, two overlap when their patterns are closer than about 255 m at 23.4 m/s (Corporate 2
     at 6 lanes has gaps of 70, 98 and 160 m between its seven); they overlapped before too, less often. Placeholder:
     allowed. At most one at a time would need a reserved window of `stay_seconds()` after each one.
 
 **Weapons hit hosts** (from H8, owner, October 8, 2026, GDD §9.7)
-389. **The score for a weapon kill of a host.** GDD §9.7 says a stomp, claws or the dash still earn the big host bonus;
+628. **The score for a weapon kill of a host.** GDD §9.7 says a stomp, claws or the dash still earn the big host bonus;
     it doesn't say what a weapon kill earns. Placeholder: a weapon kill (direct hit or heavy-missile splash) pays an
     ordinary cyborg kill (200) and no host bonus (`CyborgTuning.weapon_host_bonus` 0, `DESIGN-TBD`); a stomp, claws or
     the dash still pay 1,500 on top. Should a weapon kill earn a smaller host bonus, or nothing?
-390. **Should an Octodog's lunge or a Buzz Overdrive's charge kill a host?** A charge is no weapon, so hosts stay out of
+629. **Should an Octodog's lunge or a Buzz Overdrive's charge kill a host?** A charge is no weapon, so hosts stay out of
     a charge's reach as before (`Enemy.charge_can_hurt`, `DESIGN-TBD`). A charge killing a host would release a Bad
     Dream nobody chose to release. Wanted?
-391. **Where a chase begins after a weapon kill: the lurk.** Weapons kill hosts 0.6–1.5 s of run before the runner
+630. **Where a chase begins after a weapon kill: the lurk.** Weapons kill hosts 0.6–1.5 s of run before the runner
     reaches them (tiers 2–4; tier 1 never does). Released there, a chase began up to 37 m early: inside a wall fence's
     drop window the generator keeps off chases in 12 of 45 runs, with up to 10.17 s without a pad (the guarantee is
     10 s). Placeholder (`DESIGN-TBD` in `scripts/enemies/bad_dream.gd`): a Bad Dream bursting out further ahead than
@@ -2602,13 +2833,13 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     host. Measured: chases begin at most 14 m before the host's spot (a stomp: up to 9 m), with the same pads as a
     stomp's, nothing kept off chases met, no fizzle or overlap. An EMP dissolves a lurking one where it hangs. Is the
     lurk right, or should the chase start at the kill?
-392. **Laser tier 1 hardly ever kills a host** (7 shots, 42 m range: about 2 s before the runner arrives; in the
+631. **Laser tier 1 hardly ever kills a host** (7 shots, 42 m range: about 2 s before the runner arrives; in the
     measured runs it never did). The cost of carrying the weapon into host levels is real from tier 2 on (missiles
     reach 70 m). As intended, or should tier 1 reach hosts too?
-393. **The first-encounter hint** (`data/hints/hints.json`, `host`). Placeholder: "Glitching cyborgs carry something
+632. **The first-encounter hint** (`data/hints/hints.json`, `host`). Placeholder: "Glitching cyborgs carry something
     worse, and killing one sets it loose. Your weapon fires at them too: switch it off in the shop to leave them be."
     (was "... Think before you stomp one.") Right wording?
-394. **Follow-up for a later core generator task: plan the chase keep-outs from where a chase can begin.** The
+633. **Follow-up for a later core generator task: plan the chase keep-outs from where a chase can begin.** The
     generator keeps things off each chase from its host's spot (`host_rules.gd`, `BadDreamTuning.chase_stretch`), but a
     chase can begin up to about 15.5 m earlier after a weapon release (the host's walk toward the runner plus the
     hover spot), about 9 m after a stomp. On the campaign's own seeds nothing kept off chases lies there
@@ -2618,27 +2849,27 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     aren't the levels' own to the layout check.
 
 **The dash smashes doodads** (from H5, owner, October 8, 2026, GDD §3; numbers in `SpeedFxTuning`'s "Doodad smashes" group, F6 "Speed effects")
-395. **What a smash looks and sounds like.** The doodad vanishes as the runner reaches it and 10–28 solid pieces (by its
+634. **What a smash looks and sounds like.** The doodad vanishes as the runner reaches it and 10–28 solid pieces (by its
     size) fly out in its look's own colours, carry on along the runner's way, tumble and shrink away within 0.9 s, with
     a light shake (0.1) and a crunch (crack, thump, crumbling, clatter; `doodad_smash`, -5 dB). No fireball, flash or
     hit-stop; the pieces never glow. More or bigger pieces, a dust cloud, a zone-specific sound?
-396. **A dashing switch into a doodad's side** isn't blocked: it breaks where the body meets it, no clank or bump. Other
+635. **A dashing switch into a doodad's side** isn't blocked: it breaks where the body meets it, no clank or bump. Other
     solid sides (a hover truck's, a boss prop) still bump a dashing player. Or should only a head-on dash smash?
     (`Player._lane_blocked(target, dash_through)`, `DESIGN-TBD`.)
-397. **A dash that ends just short of a doodad.** It smashes only if the dash lasts until the body gets there (counting a
+636. **A dash that ends just short of a doodad.** It smashes only if the dash lasts until the body gets there (counting a
     fading speed boost); otherwise the doodad pushes as usual, so the body never sinks into it. A reached doodad still
     breaks up to 0.1 s after the dash's last frame (`Player.SMASH_CLAIM_GRACE`, `DESIGN-TBD`). Or should any doodad touched
     within a fixed time after the dash be smashed?
-398. **No score for a smash.** A doodad is scenery and the dash is the reward (`Player._smash`, `DESIGN-TBD`). A small bonus
+637. **No score for a smash.** A doodad is scenery and the dash is the reward (`Player._smash`, `DESIGN-TBD`). A small bonus
     would make smashing something to chase. Wanted?
-399. **Attacks near a smashed doodad.** Enemies that hold an attack while a doodad stands where it would land (a drone's
+638. **Attacks near a smashed doodad.** Enemies that hold an attack while a doodad stands where it would land (a drone's
     barrage, a hover truck's cannon, an Octodog charge, a Resonator pulse, cyborg bolts) read the level's plan, so after
     a smash they still hold off along that stretch; every attempt plays the same, and the attack only waits a moment
     longer. Or let them attack once it's gone? (`DashBreakable`, `DESIGN-TBD`.)
-400. **Telling the player.** Nothing new tells the player the dash smashes doodads (the shop's dash text already says
+639. **Telling the player.** Nothing new tells the player the dash smashes doodads (the shop's dash text already says
     "Barrel through enemies and obstacles"; no first-encounter hint). A hint the first time a runner carrying the dash
     meets a doodad, or a line in the shop?
-401. **A dash started during a doodad's push** doesn't smash that doodad: the push completes and the doodad stands. If the
+640. **A dash started during a doodad's push** doesn't smash that doodad: the push completes and the doodad stands. If the
     player then steers back into it with the dash on, the dash takes it where the body meets it. Or should a dash during
     the push smash it at once? (`Player._check_doodads`, `DESIGN-TBD`.)
     - Measured, not a question: over every campaign level at 3, 5 and 6 lanes (270 doodads), the next thing after a
@@ -2646,7 +2877,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     takes 0.49 s, so the generator is unchanged.
 
 **Buzz Overdrive cuts show the zone below the street** (from H3, owner, October 8, 2026, GDD §9.9; levers in each zone skin's data)
-402. **How bright may the scenery below the street be?** Cuts in every zone now show what that zone's gaps show (the City's
+641. **How bright may the scenery below the street be?** Cuts in every zone now show what that zone's gaps show (the City's
     road and traffic, Gangland's crater strata, the Marketplace's stalls). Where the Buzz Overdrive appears, the planes
     below were drawn almost black, so they are now dimly recognisable through gaps and cuts alike, in steady albedo
     patterns (nothing glows below the street but the orange edges; no hazard hues):
@@ -2662,15 +2893,15 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Zone gains mostly structure, not brightness. Is that the right level, or brighter (a hole risks reading as floor
     from afar) or dimmer? Levers: `gap_inside_color`, `void_floor_color`, `canal_color`, `canal_sky_color`,
     `canal_lamp_color`, `well_floor_color`, `guideway_color`, `trench_color`, `HOLE_SHARE_MAX` (`DESIGN-TBD`).
-403. **A cut's far end in the City** is a plain dark face as tall as a truck (2.6 m) with the road far below; a City gap's
+642. **A cut's far end in the City** is a plain dark face as tall as a truck (2.6 m) with the road far below; a City gap's
     far side is the next truck's cab with lights, which would glow in hazard colours meaning something else at a cut.
     Keep the plain face, or should it read as a truck's rear or front? (`CitySkin.floor_cut`, `DESIGN-TBD`.)
-404. **Gangland's cut end faces** are at half the earth's brightness (`GanglandSkin.CUT_STRATA_SHADE`, `DESIGN-TBD`) so a
+643. **Gangland's cut end faces** are at half the earth's brightness (`GanglandSkin.CUT_STRATA_SHADE`, `DESIGN-TBD`) so a
     cut's inside stays under the floor-cut suite's dark limit; the holes' side walls are at full brightness. Fine?
 
 **Dash walls, the mechanism** (from H7a, owner, October 8, 2026, GDD §9.14; numbers in `data/tuning/dash_walls.tres`, `MovementTuning` and
 `SpeedFxTuning` "Dash walls", `LevelConfig.dash_walls`)
-405. **How many a level** (GDD §9.14 gives none; the brief: 2–4, rising). Placeholder: `LevelConfig.dash_walls`:
+644. **How many a level** (GDD §9.14 gives none; the brief: 2–4, rising). Placeholder: `LevelConfig.dash_walls`:
     Corporate 1 2, Corporate 2 1, Dead Zone 1 3, Dead Zone 2 (The Hush) 1, Golden 1 2, Golden 2 4, Golden 3 2 (0 to
     8 in the F6 "Level pacing" section). The generator places up to that many, and every campaign level gets its
     full count on its own seed at 3, 5 and 6 lanes, so each level asks for no more than its track holds on its
@@ -2681,7 +2912,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Endless mode and quick play keep their base level's count, however long the level. How many should each level
     have, and should endless mode scale them with its length? Should a level that holds fewer than asked loosen a
     rule (for example let a wall stand in a quiet stretch) to reach the count?
-406. **Where Corporate 1 introduces them** (GDD §9.14, proposed: "Corporate 1, after the Buzz Overdrive's
+645. **Where Corporate 1 introduces them** (GDD §9.14, proposed: "Corporate 1, after the Buzz Overdrive's
     introduction"). Placeholder: `feature_starts["dash_wall"] = 0.42` in `data/levels/corporate_1.tres` (the Buzz
     Overdrive's is 0.1, the partial wall fences' 0.5). The introduction stands at the first fair spot from its start;
     where none comes within `DashWallTuning.intro_window_seconds` (10 s) it makes room by taking out a few enemies
@@ -2689,7 +2920,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     last of a feature nor any feature's first; `dash_wall_rules.gd`, `_make_room`). Corporate 1 is crowded (every new
     enemy of the zone is in it), so its own seed only lands every lane count's introduction on time from about 0.35
     on. Is 0.42 the right moment, and is taking an enemy out for the introduction acceptable?
-407. **The spacing and what counts as "needing the dash"** (GDD §9.14, proposed: "nothing else that needs the dash
+646. **The spacing and what counts as "needing the dash"** (GDD §9.14, proposed: "nothing else that needs the dash
     comes just before one"). Placeholder (`data/tuning/dash_walls.tres`): faces at least the dash's longest cooldown
     (8 s at tier 1) plus `cooldown_margin_seconds` (1 s) of run apart, plus the ground a dash covers; and within that
     same spacing before a face no Buzz Overdrive charge meets the runner (a panic dash smashes it), no fence
@@ -2699,7 +2930,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     the runner aside, and no hint sends the dash at it), and keeping doodads off the whole spacing before every wall
     left Golden 2 on 5 lanes with none. Should "just before" be the whole cooldown, and are the fence generator and
     the Tithe Collector baits?
-408. **Is the dash ready at a wall?** The spacing only guarantees it when the dash was last used at the previous wall.
+647. **Is the dash ready at a wall?** The spacing only guarantees it when the dash was last used at the previous wall.
     Faces are 9 s of run plus 4.8 m apart against an 8 s cooldown: about 1 s of slack, and every speed boost on the
     way (a speed pad, another dash) takes about 0.19 s of it. A dash spent in between on something that isn't a
     bait (a zone doodad smashed, which task H5 encourages; an enemy killed; a panic dash) can leave it recharging at
@@ -2707,18 +2938,18 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     Dead Zone's fog ends at 150 m (about 6 s). Placeholder: accepted (GDD §9.14 allows it: on cooldown, the runner
     crashes, which the armor or the shield absorbs). Options: accept it; count more things as baits (the doodads,
     any enemy the dash kills); or show a cue when a wall is near while the dash recharges. Which?
-409. **The clear stretch around a wall** (GDD §9.14 gives none; the brief: a reaction and a lane switch at dash
+648. **The clear stretch around a wall** (GDD §9.14 gives none; the brief: a reaction and a lane switch at dash
     speed). Placeholder: `approach_seconds` and `after_seconds` 0.6 s at the dash's speed before the face and past the
     back, in every lane: no hole, floor cut's window, fence, doodad, speed pad, pad's zone, ramp or its wall run,
     ceiling or landing zone, and no enemy's attack. Plain holes, fences and signs there are taken out to make room
     (`clear_plain_pieces`). A panic cyborg's run stops short of a wall's approach (it never runs through a standing
     wall nor cowers right behind it), and an Octodog or a Buzz Overdrive running off ahead of the runner leaves play
     at a standing wall's face rather than driving through the building.
-410. **The Hush's quiet stretches** (GDD §5: "long silent stretches broken by sudden threats"). Placeholder: walls keep
+649. **The Hush's quiet stretches** (GDD §5: "long silent stretches broken by sudden threats"). Placeholder: walls keep
     out of them, as the fill pass and the danger density pass do, unless that leaves the level with none (then one
     stands in a quiet stretch). The Hush's bursts hold one wall, so it gets one. Should a wall be allowed in a quiet
     stretch (it's a building, not an enemy), and should The Hush have more?
-411. **Pressing: where the walls stand in the level's build, and the danger density request**
+650. **Pressing: where the walls stand in the level's build, and the danger density request**
     (`docs/USER_REQUESTS.md`: about 35% more enemies and obstacles by the final levels, which `test_danger_density`
     holds at 30% to 40%; its final levels on 3 lanes sit at ×1.303 against the floor of 1.30, before and after the
     walls, so any later feature that takes room before the danger density pass will push them under). Placeholder:
@@ -2733,49 +2964,49 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     walls get fewer fair spots (where a level ends up with none, one makes room by taking out an enemy, as the
     introduction may). Is that the right trade, or should the walls count toward the requested danger (each is a
     hit across every lane)?
-412. **The wall's size and the wall runners' strip** (GDD §9.14: "it blocks only the floor; a player running on a side
+651. **The wall's size and the wall runners' strip** (GDD §9.14: "it blocks only the floor; a player running on a side
     wall passes it"). Placeholder (`MovementTuning`, "Dash walls"): 9 m tall (a wall jump's feet reach about 5.3 m),
     2.5 m deep, its sides 1.2 m short of each side wall's face (`dash_wall_wall_room`), its hitbox 0.15 m inside its
     look at its sides and its face (`dash_wall_inset`), from 5 cm above the floor (a slide never passes under it).
     A runner in the outer lane meets it; one on the side wall clears its hitbox by about a quarter metre and passes.
     At least one side wall is kept open beside it for `wall_route_seconds` (0.6 s) before its face: no sign (one on
     each side has those of one side taken out), and no wall gap or wall fence on either.
-413. **A wall runner passing it** (GDD §9.14). Placeholder: the wall crumbles as the wall runner's front reaches its
+652. **A wall runner passing it** (GDD §9.14). Placeholder: the wall crumbles as the wall runner's front reaches its
     face (so it never stands between the chase camera and them), with the same crumble and sound as a smash, costing
     nothing (`Player._check_dash_walls`, broken by `pass`). Should it stay standing behind a wall runner instead?
-414. **No score for breaking one** (GDD §9.14 says nothing). Placeholder: a smash, a crash or a pass scores nothing and
+653. **No score for breaking one** (GDD §9.14 says nothing). Placeholder: a smash, a crash or a pass scores nothing and
     isn't a kill. Should a dash through one pay something?
-415. **The hover truck** (GDD §9.3 with §9.14; the brief asked for the simplest fair rule). Placeholder: it gives way:
+654. **The hover truck** (GDD §9.3 with §9.14; the brief asked for the simplest fair rule). Placeholder: it gives way:
     a standing wall coming within the time it needs to drop behind the runner sends it into its lurch back, and it
     holds back, revving for no forward lurch, until the runner has broken the wall (`HoverTruck._wall_ahead`); its
     cannon holds fire near a wall. Where it can't drop back (the runner in its lane behind it, ridden, leaving ahead),
     it bursts through the wall as it burst out of the building (broken by `hover_truck`). The generator keeps walls off
     its entrance only. Why: the runner always meets the wall themselves (the truck never takes the challenge away),
     and nothing new is asked of the truck but a move it already makes.
-416. **The Enforcer Truck** (GDD §9.13). Placeholder: nothing; it drives behind the runner, so it only meets a wall
+655. **The Enforcer Truck** (GDD §9.13). Placeholder: nothing; it drives behind the runner, so it only meets a wall
     already broken, and its volleys never start with a wall in the escape (as with a doodad).
-417. **Flyers ahead of the runner** (the heli drone, the Resonator, a fleeing Tithe Collector). Placeholder: each rises
+656. **Flyers ahead of the runner** (the heli drone, the Resonator, a fleeing Tithe Collector). Placeholder: each rises
     over a standing wall in its way, 1.2 m over its top at 7 m/s, and comes back down past it (`Enemy.dash_wall_lift`);
     the drone holds its barrage while a wall is within its reach or its climb, and the Resonator's pulses wait for
     floor clear of walls. The generator keeps walls off a drone's wave no more (its barrage holds), off a floor
     cyborg's obstacle margin only and off a planned Resonator's pulses only (as the wider gaps do), and off a Tithe
     Collector's whole stay. Should they rise over it, or should the walls keep off them?
-418. **The look** (GDD §9.14: "the same assets as the side walls, turned to face the player"; task H7b). Placeholder:
+657. **The look** (GDD §9.14: "the same assets as the side walls, turned to face the player"; task H7b). Placeholder:
     every skin's default look is a plain three-storey facade (pilasters, floor slabs, a plinth and a cornice, dark
     windows, a few shuttered ones, cracks across the ground storey) in colours from the zone's own side walls
     (`ZoneSkin.dash_wall`, `dash_wall_colors()` per skin), lit by the zone's kit material. No cue in the dash's
     colour yet. H7b replaces it with each zone's side-wall kit.
-419. **The crumble and the sound** (GDD §9.14: "they will crumble and explode into rubble"). Placeholder
+658. **The crumble and the sound** (GDD §9.14: "they will crumble and explode into rubble"). Placeholder
     (`SpeedFxTuning`, "Dash walls"): up to 64 lit pieces in the wall's colours flung out of the lanes and up, a cloud of
     see-through dust out of its lower face that fades as the camera nears it, a shake heavier than a doodad's (0.26),
     and `dash_wall_smash.wav` (a heavy crack and thump over a slab's boom, the crumble's roar closing down, masonry
     thudding down after it). Nothing flashes or glows.
-420. **The first-encounter hint** (`data/hints/hints.json`, `dash_wall`): "A building blocks the street: dash through
+659. **The first-encounter hint** (`data/hints/hints.json`, `dash_wall`): "A building blocks the street: dash through
     it ({dash})! Without the dash you crash into it: that costs your armor or your shield, and kills you if you have
     neither. A run along a side wall passes it too." Is the wording right?
 
 **Dash walls, the art** (from H7b, owner, October 8, 2026, GDD §9.14; each zone's `*_dash_wall.gd` and `scripts/world/skins/dash_wall_kit.gd`)
-421. **What kind of building, per zone** (the GDD gives none: only "the same building faces"). Placeholder: four layouts
+660. **What kind of building, per zone** (the GDD gives none: only "the same building faces"). Placeholder: four layouts
     per zone, picked by the wall's seed, each a block of the zone's own facades. Corporate: a curtain-wall tower's foot
     on a steel canopy, a lobby with ribbon windows, a military compound's front (blast walls under an armoured block),
     a podium building. Dead Zone: a burnt tower's foot, a skeleton of steel and slabs, a blast with a heap of rubble, a
@@ -2786,37 +3017,37 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     rusty sheets, a collapsed corner. Marketplace: a shop row (two window widths), a market hall under its glass vault,
     an arcade under a tin lean-to. Are these the right buildings, and should any zone's wall be a particular one of
     them (a Corporate wall that is always the military's, say)?
-422. **How big it reads.** The box is the H7a placeholder (9 m tall, 2.5 m deep, 5.4, 10.2 and 12.6 m wide at 3, 5 and 6 lanes): next to the walls'
+661. **How big it reads.** The box is the H7a placeholder (9 m tall, 2.5 m deep, 5.4, 10.2 and 12.6 m wide at 3, 5 and 6 lanes): next to the walls'
     towers (40 to 170 m) it reads as a low block, a podium or a three-storey building, never a tower, however it is
     dressed. The looks are tuned to that box (their storeys, bays and bands are laid out for 9 m; only the roof line and
     the roof plant follow `size.y`), so a different `MovementTuning.dash_wall_height` keeps the box filled but would
     want the proportions looked at again (the Golden zones' frieze and the Golden Palace's panels most). Should it be
     taller (about 12 m would stand clear of the side walls' calm band and read as a building at a distance)?
-423. **No cue in the dash's colour.** The brief welcomes "a breakable or cracked hint"; I used cracks spreading from a
+662. **No cue in the dash's colour.** The brief welcomes "a breakable or cracked hint"; I used cracks spreading from a
     few points, a chipped patch with rebar showing (not in the two Golden zones, whose stone stays clean) and, on the
     ruins, broken tops and rubble at the foot, all in the zone's own unlit colours. A glowing cue (a seam of `PlayerSuit.GLOW_PALE` along a crack, say) would be the one
     thing on the wall that glows, and the hook's contract (and its test) is that nothing does, so I left it out.
     Should the cracks glow faintly in the dash's colour, so the wall reads as "breaks to the dash" before it's close?
-424. **Dark windows even in the lit zones.** Every vertex's lit-window share is 0, so a wall's windows are dark glass
+663. **Dark windows even in the lit zones.** Every vertex's lit-window share is 0, so a wall's windows are dark glass
     and its neon (the City's) is dead paint: in the City and Corporate it is the one dark block among lit towers, and it
     reads as solid for that. Allowed lit windows would make it match the towers more and need the hook's "never
     glowing" rule (`test_dash_walls`, `_test_skins`) loosened to "no glowing hazard colour". Wanted?
-425. **Dark openings at the foot.** Corporate's lobby look has smoked glass in steel frames down to the floor under a
+664. **Dark openings at the foot.** Corporate's lobby look has smoked glass in steel frames down to the floor under a
     canopy, and the Golden Palace's galleries and arched windows are dark (a warm umber with the far floor a shade
     lighter, never black): none is at a runner's height except the lobby's glass, which has a mullion every 3 m and a
     dark brand-paint band above it. Does a dark lobby read as passable? If so it can be cladding like the other
     podium looks.
-426. **No people, signs or screens.** The Marketplace's shop windows show their displays of goods and nothing else (no
+665. **No people, signs or screens.** The Marketplace's shop windows show their displays of goods and nothing else (no
     citizens: they play behind the walls' windows), Corporate has no banner or brand sign, the Golden zones no statue
     (a statue is a Gilded Sentinel's silhouette) or tapestry (red), the Dead Zone no billboard, Gangland no laundry or
     ad, the City no neon sign or screen. Right?
-427. **The look picks.** The seed's remainder by 4 picks the layout and the quotient by 4, remainder by 3, the tone (`DashWallKit.look_of`,
+666. **The look picks.** The seed's remainder by 4 picks the layout and the quotient by 4, remainder by 3, the tone (`DashWallKit.look_of`,
     `tone_of`), so a level's 2 to 4 walls, whose seeds come from the level's seed, can repeat a layout. Should the
     walls of one level be forced to differ?
-428. **Roof plant and finials** (`DashWallKit.ROOF`, 1 m of the box's height): the building's own top is 1 m under the
+667. **Roof plant and finials** (`DashWallKit.ROOF`, 1 m of the box's height): the building's own top is 1 m under the
     box's, and what stands on it (air handlers, urns, a mast) fills the rest, so the silhouette isn't a flat box. The
     hitbox still reaches the box's top, so a flyer's lift (`Enemy.dash_wall_lift`) clears the plant too.
-429. **The ruins' broken tops** (the Dead Zone, Gangland): they stand lower in places, down to 6.3 m (Dead Zone,
+668. **The ruins' broken tops** (the Dead Zone, Gangland): they stand lower in places, down to 6.3 m (Dead Zone,
     `DeadDashWall.TOP_MIN`) and 6.2 m (Gangland, `GanglandDashWall.TOP_MIN`), up to 2.8 m under the box's top, where
     the hitbox reaches higher than the look. A wall jump's feet reach about 5.3 m (`MovementTuning`), so a wall is
     never drawn lower than 5.8 m across the floor lanes (`test_dash_walls` measures every look's silhouette from its
