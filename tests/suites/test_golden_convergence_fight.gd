@@ -2,17 +2,18 @@ extends TestSuite
 ## The Golden Convergence's Helidrone Strafe and Flying Buttress played through (GDD §10; task E5d-a), at 3,
 ## 5 and 6 lanes and at quick play's 18 m/s and the Golden Zone's 25 m/s, with a runner who plays it by what
 ## it shows (GoldenConvergenceBot, reacting REACTION late; no god mode, no armor unless a test says so):
-## - phase 1's strafes (its opening V-V-H, then the Refill Ship's V-V-H, played alone until E5d-c): the
-##   squadron's size, the first vertical pass over lanes 1, 3, 5 (counting from 1), each next one switching;
-##   a drone over each covered lane and the spare one climbed above the formation, never over a safe lane;
+## - phase 1's strafes (its opening V-V-H, then the Refill Ship's V-V-H, played alone until E5d-c; the Fist
+##   Slam's sequence and the Missile Barrage between them, E5d-b, played through untouched): the squadron's
+##   size, the first vertical pass over lanes 1, 3, 5 (counting from 1), each next one switching; a drone
+##   over each covered lane and the spare one climbed above the formation, never over a safe lane;
 ##   each pass's red lines and whine at least WARNING_MIN before its fire could reach the runner; no fire
 ##   anywhere but its warned lanes' stretch or the live line, and only once its warning is over; each
 ##   horizontal pass's buttress in an inner lane, up buttress_sight before its line and within reach from the
 ##   farthest lane, its red line over every lane but the opening, the live line burning whole before the
 ##   runner gets there and on while they're at it; the lines for show harmless; the runner never touched,
 ##   the strafe's hint and the buttress's coming once;
-## - a 7-pass strafe (phases 2 and 3): V-V-H-v-V-H-v, the 4th and 7th from behind, the parity switching
-##   over the vertical passes, the bot untouched;
+## - a 7-pass strafe (phases 2 and 3, after the phase's two slam sequences and barrages): V-V-H-v-V-H-v, the
+##   4th and 7th from behind, the parity switching over the vertical passes, the bot untouched;
 ## - a runner who stays in a raked lane is hit there once its warning is over; one who stays out of the
 ##   arch is hit by the live line, jumping or not; the armor blocks the fire; the dash passes through it;
 ## - the wall rule: a vertical pass's fire in an outer lane hits a runner low on the open wall beside it,
@@ -245,6 +246,9 @@ func _test_phase_one(lanes: int, speed: float) -> void:
 		func() -> void: _watch(boss, rec))
 	check(world.player.alive and boss.fire.hits.is_empty(), "the bot gets through two strafes untouched (%s, %d touches) %s" % [
 		cause[0], boss.fire.hits.size(), tag])
+	check(_events(boss, &"slams_done").size() == 1 and _events(boss, &"barrage_out").size() == 1
+		and boss.slams.fist.hits.is_empty() and boss.barrage.missiles.hits.is_empty(),
+		"and the slams and the barrage between them %s" % tag)
 	var starts: Array[Dictionary] = _events(boss, &"strafe_start")
 	check(starts.size() == 2 and String(starts[0]["script"]) == "VVH" and String(starts[1]["script"]) == "VVH"
 		and bool(starts[1]["refill"]) and int(starts[0]["drones"]) == GoldenConvergenceTuning.squadron_size(lanes),
@@ -271,10 +275,17 @@ func _test_phase_one(lanes: int, speed: float) -> void:
 		vertical = (vertical + 1) % 2
 	check(parity_ok and (warned[0]["lanes"] as Array).has(0), "the first vertical pass covers lanes 1, 3, 5 counting from 1, the next the others %s" % tag)
 	check(buttress_ok and red_ok, "each horizontal pass's buttress is in an inner lane, its red line over every other lane %s" % tag)
-	# Each buttress up in time, within reach from the farthest lane.
+	# Each buttress up in time, within reach from the farthest lane (the strafe's: those at a horizontal pass's
+	# line; the slams' gates are test_golden_convergence_slams's).
+	var lines: Array[float] = []
+	for e: Dictionary in warned:
+		if String(e["kind"]) == "H":
+			lines.append(float(e["line"]))
+	var strafe_gates: Array[Dictionary] = _events(boss, &"buttress_placed").filter(func(e: Dictionary) -> bool:
+		return lines.any(func(line: float) -> bool: return is_equal_approx(line, float(e["at"]))))
 	var reach_ok: bool = true
 	var least_sight: float = INF
-	for e: Dictionary in _events(boss, &"buttress_placed"):
+	for e: Dictionary in strafe_gates:
 		var lane: int = int(e["lane"])
 		var sight: float = (float(e["at"]) - float(e["runner"])) / speed
 		least_sight = minf(least_sight, sight)
@@ -282,11 +293,13 @@ func _test_phase_one(lanes: int, speed: float) -> void:
 		reach_ok = reach_ok and sight >= REACTION + far * tuning.lane_switch_time + 1.0
 	check(least_sight >= t.buttress_sight - 0.1 and reach_ok,
 		"each buttress rises at least %.0f s before its line (%.1f s), in reach from the farthest lane %s" % [t.buttress_sight, least_sight, tag])
-	check(_events(boss, &"buttress_placed").size() == 2 and _events(boss, &"pass_spark").size() == 2,
+	check(strafe_gates.size() == 2 and _events(boss, &"pass_spark").size() == 2,
 		"one buttress for each horizontal pass, the bullets sparking off it %s" % tag)
 	_check_watch(rec, tag)
+	var gates_moved: int = _events(boss, &"buttress_placed").size() + _events(boss, &"buttress_sunk").size()
 	check(_sounds(boss, &"gc_whine") == warned.size() and _sounds(boss, &"gc_emerge") == 2 and _sounds(boss, &"gc_return") == 2
-		and _sounds(boss, &"gc_buttress") == 2, "each pass's whine sounds with its red lines; the squadron out and back with its sounds %s" % tag)
+		and _sounds(boss, &"gc_buttress") == gates_moved,
+		"each pass's whine sounds with its red lines; the squadron out and back with its sounds; each gate rising or sinking with its own %s" % tag)
 	check(hints.count("golden_boss/strafe") == 1 and hints.count("golden_boss/buttress") == 1,
 		"the strafe's hint comes with its first pass, the buttress's with the first gate %s" % tag)
 	check(boss.fire.scorch_marks().size() > 0, "the fire leaves its scorch marks %s" % tag)
@@ -307,7 +320,7 @@ func _test_seven_passes() -> void:
 	var cause: Array[String] = _death(world)
 	var rec: Dictionary = _record()
 	var behind := {"from_behind": 0, "behind_ok": true}
-	await _run(world, bot, 60.0, func() -> bool: return _events(boss, &"strafe_done").size() >= 1, func() -> void:
+	await _run(world, bot, 110.0, func() -> bool: return _events(boss, &"strafe_done").size() >= 1, func() -> void:
 		_watch(boss, rec)
 		var s: GoldenConvergenceStrafe = boss.strafe
 		if s.current >= 0 and String(s.passes[s.current]["kind"]) == "v" \
@@ -319,7 +332,9 @@ func _test_seven_passes() -> void:
 				behind["behind_ok"] = bool(behind["behind_ok"]) and float(p["front"]) < boss.player_distance())
 	var tag: String = "(phase 2, 5 lanes, 25 m/s)"
 	var starts: Array[Dictionary] = _events(boss, &"strafe_start")
-	check(_events(boss, &"beat_stub").size() == 4, "the slams and barrages are skipped until E5d-b %s" % tag)
+	check(_events(boss, &"beat_stub").is_empty() and _events(boss, &"slams_done").size() == 2
+		and _events(boss, &"barrage_out").size() == 2 and boss.slams.fist.hits.is_empty() and boss.barrage.missiles.hits.is_empty(),
+		"two slam sequences and barrages, played through untouched %s" % tag)
 	check(starts.size() == 1 and String(starts[0]["script"]) == "VVHvVHv", "then the Refill Ship's 7-pass strafe %s" % tag)
 	var kinds: String = ""
 	var vertical: int = 0

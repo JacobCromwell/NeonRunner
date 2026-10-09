@@ -16,6 +16,7 @@
     "campaign", "generator", "danger_density", "city_gaps", "wall_fences", "wall_gaps", "pace", "doodads", "frame_times",
     "floating_head_routes", "floating_head_faceoff", "floating_head_stomps", "floating_head_defeat",
     "hostile_takeover_fight", "golden_convergence_fight", "sleep_taker_fight", "sleep_taker_attacks", "sewer_swarm_fight",
+    "golden_convergence_slams", "golden_convergence_bait",
     "sewer_swarm_whole", "sewer_swarm_surrounded", "the_house_attacks", "the_house_phases", "the_house_fight",
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
     "enforcer_truck_runs", "wide_gaps", "charge_paths"
@@ -23,6 +24,7 @@
   "medium": [
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
     "gilded_sentinel", "golden_convergence", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
+    "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo"
   ],
   "rules": [
