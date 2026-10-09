@@ -35,6 +35,14 @@ const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 const LEVELS: Array[String] = ["corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
 ## The zones' run speeds where it appears.
 const SPEEDS: Array[float] = [23.4, 24.2, 25.0]
+## The levels' own builds, as [id, lanes], with two trucks but room for only one showing before its bait: the
+## owner's answer to docs/OPEN_QUESTIONS.md item 401 (October 9, 2026; GDD §9.13) keeps both. Checked both ways:
+## each still has both trucks, one with a window before its bait and one without, and no other own build has that
+## case. With the Casino's levels and K4's curve (merged with task C6e's windows in task K5): Corporate 2 at 6
+## lanes and Dead Zone 2 at 5 and 6. (On the 15-level curve C6e was built on: Corporate 2 at 5, Dead Zone 1 at 3,
+## Dead Zone 2 at 5 and 6. Corporate 2 at 5 lanes and Dead Zone 1 at 3 now have item 402's case instead: one truck,
+## showing itself before its bait, where a second truck's chase would overlap its own.)
+const BOTH_TRUCKS: Array = [["corporate/2", 6], ["dead_zone/2", 5], ["dead_zone/2", 6]]
 const VARIANTS: Array[StringName] = [&"city", &"vr_runner", &"burned", &"scavenger", &"golden", &"casino"]
 
 var sim: RunSim
@@ -759,10 +767,16 @@ func _test_campaign() -> void:
 					if String(s.id) == "corporate/2":
 						check(not trucks.is_empty(), "Corporate 2 introduces it on its own seed %s" % tag)
 					# The owner's answer to docs/OPEN_QUESTIONS.md item 401 (October 9, 2026; GDD §9.13): a level with two
-					# trucks but room for only one showing keeps both.
-					if [["corporate/2", 5], ["dead_zone/1", 3], ["dead_zone/2", 5], ["dead_zone/2", 6]].has([String(s.id), lanes]):
-						check(trucks.size() == 2, "%s keeps both its trucks, though only one has a window before its bait (%d)" % [tag,
-							trucks.size()])
+					# trucks but room for only one showing keeps both (BOTH_TRUCKS, both ways).
+					var before: int = 0
+					for c: Variant in gen.show_window_result.get("chases", []):
+						var w: Dictionary = (c as Dictionary).get("window", {})
+						before += 1 if not w.is_empty() and not bool(w.get("after_bait", false)) else 0
+					var listed_both: bool = BOTH_TRUCKS.has([String(s.id), lanes])
+					if listed_both or (trucks.size() == 2 and before == 1):
+						check(listed_both and trucks.size() == 2 and before == 1, ("%s keeps both its trucks, though only one has a "
+							+ "window before its bait (%d trucks, %d with one; listed in BOTH_TRUCKS: %s)") % [tag, trucks.size(),
+							before, listed_both])
 					var again: LevelLayout = LevelGenerator.new().generate(config, m, patterns)
 					check(JSON.stringify(Rules.trucks_in(again)) == JSON.stringify(trucks), "the same trucks every build " + tag)
 		check(with_baits, "%s: every truck lists the baits planned in its chase" % s.id)
@@ -797,10 +811,6 @@ func _test_guarantee() -> void:
 	t.per_level_max = was
 	check(none and Rules.places_any(), "with no truck allowed (per_level_max 0) the guarantee asks for none")
 
-
-## Its rules only add its trucks: with danger density off (whose enemy count counts them) and the wider gaps off
-## (task G7: they go in a truck's chase first), Corporate 2 and Golden 2 are the same level with or without the
-## feature but for the trucks.
 
 ## Task C6c (GDD §9.13 "Showing itself", the owner, October 8, 2026): each chase's planned showing window, on every
 ## campaign level with the truck at 3, 5 and 6 lanes (its own seed and another). Where one is planned (its params'

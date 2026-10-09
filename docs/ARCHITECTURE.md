@@ -1040,9 +1040,14 @@ counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15
 0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden
 0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
 measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
-little, `docs/OPEN_QUESTIONS.md` §D, item 433). On task K4's curve `test_danger_density`'s sample has
-13-19% more enemies and 17% more obstacles in the first levels, 26-28% and 26-27% in the middle ones,
-and 32-36% and 31-38% in the final ones (x1.327 enemies at 3 lanes).
+little, `docs/OPEN_QUESTIONS.md` §D, item 433). Merged with the Enforcer Truck's showing windows (task C6e,
+whose calm stretches the pass's rows keep off), `test_danger_density`'s sample of the final zones at 3 lanes had
+28.8% more obstacles, under its 30% floor, though over 7 seeds (each level's own and 9001-9006) the same levels
+have 30.2%. The wall fences' share (`wall_fence_increase_scale`) went from 1.25 to 1.9 (task K5, DESIGN-TBD,
+`docs/questions/k5.md`: the owner finds every level too easy): it adds wall fences only, 447 to 505 over the
+campaign's own builds from Marketplace 2 on, and makes no floor room; the sample has 30.6% with it, the 7 seeds
+31.9%, and their enemies about 30% either way. `test_danger_density`'s sample then has 13-19% more enemies and 17%
+more obstacles in the first levels, 26-28% and 27-28% in the middle ones, and 32-36% and 31-39% in the final ones.
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -1283,7 +1288,9 @@ cyborgs planted in charge paths keep off one where they stand (`_cyborg_fits`); 
 (`doodad_keep_outs`' `calm`); the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
 Buzz Overdrive given a planted cyborg claims its turn earlier (`ChargePathTuning.claim_seconds`), after the trucks
 are planned: the planner assumes that claim for every one (`least_claim`), so each window still holds in the
-finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. On the six
+finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. The counts
+here and in C6d and C6e below were measured on the 15-level curve before the Casino; the Casino's levels and K4's
+curve, merged with them in task K5, move them (`test_enforcer_truck` prints each level's windows). On the six
 levels' own seeds, 16 of 23 chases get a window (8 as it arrives, 6 only after the first bait); the chases without
 one have a hover truck or a Gilded Sentinel over their whole chase (4), or no calm stretch at all (Corporate 2 at 5
 lanes: its introduction among an Octodog's charges, a Tithe Collector and a Buzz Overdrive's attack; Dead Zone 1 at 3
@@ -1339,8 +1346,9 @@ carry its `mode`: "around", "claim" or "calm"; CLASSIC's none):
   itself as it arrives (`_calm_spots`, latest first; `arrival_problem`'s `calm`), its bait where it was; it takes
   nothing out (`calm_start_takes_out` off, DESIGN-TBD), and it fires no volley in the run-up. Nothing in the run-up
   shows on screen but the HUD, which no truck can cover (hints come on the level introduction before PLAY).
-- **Both trucks** stay where a level has two but room for one showing (item 401, as built), and wider gaps keep off
-  each chase from its arrival to its window's end (Wider gaps, Which).
+- **Both trucks** stay where a level has two but room for one showing (item 401, as built: since task K5 Corporate 2
+  at 6 lanes and Dead Zone 2 at 5 and 6 lanes, `test_enforcer_truck`'s `BOTH_TRUCKS`), and wider gaps keep off each
+  chase from its arrival to its window's end (Wider gaps, Which).
 
 On the six levels' own seeds 12 of the 23 chases get a window before their bait against 9 (Dead Zone 1 at 6 lanes
 beside its hover truck, 1767-1962 m; Golden 1 at 3 lanes in the calm start, the truck arriving at 12 m with its
@@ -1858,7 +1866,10 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   every lane but one (the lane a hover truck keeps there, else a seeded one), slid along each free stretch
   until one fits (`_add_one`); the level's own rows that only other holes and plain fences keep from fitting,
   with those taken out (`_clearing`: never a pulsing fence or one a fence generator powers; `GeneratorRules.
-  keep_powered` after: taking content out never makes a level unfair).
+  keep_powered` after: taking content out never makes a level unfair). Last, only for a level none of those gave
+  one (one fewer where nothing else fits, never none: GDD §9.13's couple), a new row where only holes and plain
+  fences are in its way, those taken out (`_add_clearing`, task K5: on 306 builds of the Enforcer's levels a Dead
+  Zone 1 seed whose only room was a truck's chase before its showing, and a Golden Palace seed with none at all).
 - **Which.** With `prefer_enforcer_chases`, one first in each Enforcer Truck's chase (from `bait_after_seconds`
   after it arrives, or from its showing window's end where that's later, to `CHASE_END_SECONDS` before it gives
   up), from the first source with one there, so the runner can lead it in; then the rest spread through the level,
@@ -1878,16 +1889,17 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). An Enforcer chase holds one past its showing window in 6
-  of the 18 level and lane builds that have trucks (8 before task C6e kept them off the chase before a showing:
-  Corporate 2 and Golden 2 at 6 lanes, whose windows come after their bait, lost theirs), Corporate 2 at 3 and 5
-  lanes among them, where the truck following the runner over it is wrecked in play; none comes before a window
-  (6 did, in chases whose window comes after their bait), and every build keeps its count. (Counts measured before the Casino's curve (task K4) met C6e; re-measured in the merge.) Rows and holes change a little: the City levels keep theirs (one hole fewer in
-  City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
-  zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
-  at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
-  `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level, quick play and the prototype level build
-  exactly as before (compared build by build with main's).
+  one fewer on a seed not the level's own, never none: the last way above sees to that). With the Casino's levels
+  and K4's curve (merged with task C6e in task K5), the first Enforcer chase holds one past its showing window in 4
+  of the 18 level and lane builds that have trucks (6 on the 15-level curve C6e was measured on, 8 before C6e kept
+  them off the chase before a showing), Corporate 2 at 3 lanes among them, where the truck following the runner
+  over it is wrecked in play (at 5 lanes its chase past its window is full, at 6 its window comes after its bait,
+  at its chase's end); none comes before a window, and every build keeps its count. Rows and holes change a
+  little: the City levels keep theirs (one hole fewer in City 2 at 5 lanes), and elsewhere the fill pass and the
+  danger density pass re-roll around new rows and the zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510
+  holes before, 1,089 and 2,533 after; Corporate 2 at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3
+  lanes 24 and 32, then 21 and 27). With `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level, quick
+  play and the prototype level build exactly as before (compared build by build with main's).
 
 **Cyborgs in charge paths** (task G7; the owner's answer to open question 353, October 7, 2026, GDD §9.13
 "Teaching": "occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, so the
@@ -4041,8 +4053,8 @@ rev); the calm start (C6e: on a plain track at the Golden Zone's pace, its Buzz 
 run-up, the truck arrives inside the run-up from `calm_start_min_seconds`, shows itself as it arrives, out of view
 before the rev, its bait where it was, nothing taken out and nothing else attacking there; none before the data
 minimum; every campaign window in the calm start takes nothing out); both trucks kept where a level has two but room
-for one showing (Corporate 2 at 5 lanes, Dead Zone 1 at 3, Dead Zone 2 at 5 and 6); its blast (seen wherever it goes off, never
-in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
+for one showing (`BOTH_TRUCKS`, checked both ways: Corporate 2 at 6 lanes, Dead Zone 2 at 5 and 6); its blast (seen
+wherever it goes off, never in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
 prints the counts), the same level without it but for its trucks (its windows not planned), quick play without a
@@ -4084,10 +4096,13 @@ jump early, midway and late in the take-off window clears one and running on fal
 following a runner who jumps one wrecked in it (the player's kill) and hopping a 0.5-of-a-jump row, at 3, 5 and
 6 lanes, at 18 and 23.4 m/s; none in an Enforcer Truck's chase before its showing (from its arrival to its window's
 end; task C6e) in any campaign build, nor on another seed of each level with the truck, each keeping its wider gaps
-(one fewer allowed off its own seed; how many sit in a chase past its window is printed); and Corporate 2's own
-build at 3, 5 and 6 lanes played from its start (god mode, grapples) until the runner leads its first truck over
-the wider gap in its chase past its window, where it's wrecked (at 3 and 5 lanes: at 6 its window comes after its
-bait, at its chase's end).
+(one fewer allowed off its own seed; how many sit in a chase past its window is printed); Corporate 2's own build
+at 3, 5 and 6 lanes, whose first chase leaves room past its window at two lane counts at least and holds a wider
+gap there at `CORPORATE_2_CHASE_LANES` only (checked both ways; 3 lanes since task K5: at 5 lanes the chase past
+its window is full, at 6 its window comes after its bait), played from its start (god mode, grapples) until the
+runner leads its first truck over that wider gap, where it's wrecked; and the pass's last way (task K5) on
+`LAST_RESORT_CASES` (the build's one wider gap from it, fair, past every truck's showing, every window holding) and
+on a plain stretch fenced every 15 m (plain fences make way for it, pulsing ones keep it from coming).
 `test_charge_paths` checks the cyborgs in charge paths (task G7; The generator, Cyborgs in charge paths): every
 campaign level's count and LayoutChecks.check_charge_paths at 3, 5 and 6 lanes (a plain floor cyborg, never a
 host; its charger's planned path through it, in view, holding its fire, nothing around it), one before
@@ -4145,9 +4160,9 @@ look; another for each thing the build reads: seed, lane count, difficulty, feat
 run speed, the recency curve, the movement, placement, danger density and enemy tunings edited in place as F6
 does, the patterns, the build flavor), `LevelLayout.copy()` copying every field into lists of its own, generated
 layouts holding plain data only, the warnings coming with a reused level, a seeded scripted attempt (dashes and
-an EMP in its script) at Gangland 3 and Corporate 2 at 5 lanes playing the same with the cache off, on its first
-run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits, the
-enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
+an EMP in its script) at Gangland 3 (5 lanes) and Corporate 2 (3 lanes) playing the same with the cache off, on
+its first run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits,
+the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
 either retry (and the kept build untouched), the debug keys, F6 edits and another level building again, and
 endless mode building on every run and keeping nothing.
 `test_web_demo` checks the web demo's preset, its export filter against

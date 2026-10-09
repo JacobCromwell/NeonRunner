@@ -31,14 +31,14 @@ const FAIRNESS_ONLY: Array[String] = ["dead_zone/2"]
 ## Builds checked for fairness, as {id, lanes, seed}, where a zone doodad placed after the pass would stand
 ## right past a full row in the only lane the pass's rows leave open, so nothing gets past it: built without
 ## DangerDensity.doodad_ok (DoodadsUnchecked) the floor route through the level breaks there, and with it, it
-## holds. Golden 1 at 3 lanes on seed 9005 (in tests/suites/test_campaign.gd's seed sweep: a row of holes
-## the pass touched leaves lane 1 open, a fence row keeps it the only one, a full fence row follows, then the
-## doodad in lane 1) since task K4 reshaped the campaign's curve. The cases before it no longer build that
-## way, so each was re-found rather than dropped: golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad
-## under a ceiling) lost it on the 15-level curve before the Casino, and dead_zone/1 at 6 lanes on seed 9007
-## (task K2's: a fence row the pass touched, a full fence row, the doodad) on K4's; each case checks it still
-## shows its scenario.
-const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/1", "lanes": 3, "seed": 9005}]
+## holds. Golden 2 at 3 lanes on seed 9004 (in tests/suites/test_campaign.gd's seed sweep: a row of holes at
+## 640 m leaves lane 1 open, a full fence row follows at 659 m, then the doodad in lane 1 at 663 m) since task K5
+## merged task C6e's showing windows into K4's curve. The cases before it no longer build that way, so each was
+## re-found rather than dropped: golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling)
+## lost it on the 15-level curve before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row
+## the pass touched, a full fence row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with
+## C6e's windows; each case checks it still shows its scenario.
+const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/2", "lanes": 3, "seed": 9004}]
 ## The request, as the actual increase of a band's summed counts with the dial over those without it,
 ## for enemies and for obstacles alike, at each lane count: about 15% in the first levels, about 35%
 ## in the final ones.
