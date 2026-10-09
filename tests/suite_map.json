@@ -23,7 +23,7 @@
   "medium": [
     "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
     "gilded_sentinel", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
-    "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo"
+    "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache"
   ],
   "rules": [
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
@@ -61,6 +61,7 @@
     {"match": "scripts/player/*", "tier": "full"},
     {"match": "scripts/run/run_world.gd", "tier": "full"},
     {"match": "scripts/run/level_run.gd", "tier": "full"},
+    {"match": "scripts/run/level_cache.gd", "tier": "full"},
     {"match": "scripts/run/*", "tier": "merge", "suites": ["app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "perf", "frame_times", "charge_contacts"]},
     {"match": "scripts/enemies/enemy.gd", "tier": "full", "suites": ["charge_contacts"]},
     {"match": "scripts/enemies/octodog.gd", "suites": ["octodog", "charge_contacts", "enforcer_truck*", "charge_paths"]},
@@ -88,7 +89,7 @@
     {"match": "scripts/audio/*", "suites": ["audio", "web_demo"]},
     {"match": "scripts/platform/*", "suites": ["web_demo", "app_flow", "screens"]},
     {"match": "scripts/input/*", "suites": ["movement", "screens"]},
-    {"match": "scripts/app/*", "suites": ["app_flow", "screens", "main_scene", "web_demo", "hints"]},
+    {"match": "scripts/app/*", "suites": ["app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache"]},
     {"match": "scripts/ui/*", "suites": ["screens", "ui_kit", "app_flow", "hints", "credit_visibility"]},
     {"match": "scenes/*", "suites": ["main_scene", "bosses", "cinematics"]},
     {"match": "data/levels/*", "tier": "full", "suites": ["danger_density"]},
