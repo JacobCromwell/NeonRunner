@@ -17,7 +17,7 @@ extends Resource
 ## on the 15-level linear curve before them; Marketplace 2 binds it (0.500 or more up to about 0.84). 0.79
 ## makes the Marketplace a little harder (0.469 and 0.516), keeps City 1 and Golden 3 as they were, and its
 ## levels' own builds miss the fewest of the design properties their suites check (one, as with 0.81 and
-## 0.82, which leave Marketplace 2 under +0.01; docs/questions/k4.md has the scan).
+## 0.82, which leave Marketplace 2 under +0.01; docs/OPEN_QUESTIONS.md §D, item 393 has the scan).
 @export_range(0.3, 3.0, 0.01) var difficulty_curve_exponent: float = 1.0
 ## Levels each placeholder zone will have once designed (GDD §6: 1–3 per zone). The curve spans the
 ## planned campaign, so the first zones don't jump to end-game difficulty while later zones are missing.

@@ -1642,7 +1642,7 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   across 4 of the 5 lanes), before its first volley, which is due 3 s after it arrives and waits up to
   `show_wait_seconds` (4 s) for a showing that doesn't come in these runs: a runner who leads the truck
   straight there wrecks it before it fires (`test_enforcer_truck_runs`' `NO_VOLLEY_LANES`, 5 lanes;
-  `docs/questions/k4.md`). `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  `docs/OPEN_QUESTIONS.md` §D, item 395). `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
@@ -2591,7 +2591,7 @@ Casino (Marketplace 2 binds that up to about 0.84), the Marketplace a little har
 0.443 and 0.500), City 2 to Gangland 3 0.03-0.04 harder, Corporate 1 to Golden 2 0.02-0.10 harder, City 1
 (0.05) and Golden 3 (0.85) as they were, and each level at least 0.04 harder than the last (Golden 3
 aside). `enemy_scaling` stays linear (K2's thresholds stand), and `test_campaign` checks every level
-against the 15-level curve (`docs/questions/k4.md`: the table and why 0.79). Which level is the peak
+against the 15-level curve (`docs/OPEN_QUESTIONS.md` §D, item 393: the table and why 0.79). Which level is the peak
 (proposed: Golden 2, with Golden 3 a little below it) and the remaining level lengths (DESIGN-TBD, run
 120–150 s) stay open.
 Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via

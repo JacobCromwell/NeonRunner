@@ -85,7 +85,7 @@ const INTRODUCTION_REACH: float = 210.0
 ## own layouts: the generator's introductions are as often late as before, 16.7% and 16.4% of 396 seeded
 ## ones, but the levels' own seeds then had 6 late of 66, 3 of them wall gaps, and now 9). Left out, the
 ## levels' own seeds had 6 late of 63 on K2's curve, the check's limit (3 before; docs/OPEN_QUESTIONS.md §D,
-## item 386 lists them for the owner), and have 5 on task K4's (docs/questions/k4.md).
+## item 386 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 396).
 const SPACED_FROM_START: Array = ["wall_gaps"]
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
 ## Marketplace's boss, and the Marketplace's outro led to Corporate (_test_old_saves).
