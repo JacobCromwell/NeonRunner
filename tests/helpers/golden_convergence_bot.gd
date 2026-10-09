@@ -124,10 +124,9 @@ func _read_strafe() -> Dictionary:
 			next = p
 			break
 	if takes_cover and not next.is_empty() and String(next["kind"]) == "H":
-		var b: Variant = next.get("buttress")
-		if b != null and is_instance_valid(b) and (b as GoldenConvergenceButtress).standing() \
-				and d < float(next["line_at"]) + 2.0:
-			if _seen_long_enough("b%d:%d" % [(b as Node).get_instance_id(), (b as GoldenConvergenceButtress).places], now):
+		var b: GoldenConvergenceButtress = s.gate(next)
+		if b != null and b.standing() and d < float(next["line_at"]) + 2.0:
+			if _seen_long_enough("b%d:%d" % [b.get_instance_id(), b.places], now):
 				return {"lane": int(next["opening"]), "why": "to the buttress"}
 	return {}
 
@@ -231,10 +230,10 @@ func _read_fist_slams() -> Dictionary:
 			for c: Dictionary in sl.slams:
 				if int(c["n"]) < int(s["n"]) or not bool(c["chance"]) or int(c["stage"]) >= GoldenConvergenceSlams.SlamStage.LOCKED:
 					continue
-				var b: Variant = c.get("buttress")
-				if b == null or not is_instance_valid(b) or not (b as GoldenConvergenceButtress).standing():
+				var b: GoldenConvergenceButtress = sl.gate_of(c)
+				if b == null or not b.standing():
 					continue
-				if not _seen_long_enough("b%d:%d" % [(b as Node).get_instance_id(), (b as GoldenConvergenceButtress).places], now):
+				if not _seen_long_enough("b%d:%d" % [b.get_instance_id(), b.places], now):
 					break
 				return {"lane": int(c["buttress_lane"]), "why": "bait the fist into the buttress"}
 		return {}
@@ -475,8 +474,7 @@ func _read_pounce() -> Dictionary:
 			# Keeping out of the square's lane until it's past.
 			return {"lane": me, "why": "beside the pounce's square"}
 		return {"lane": lane, "why": "standing in the pounce's square"}
-	if bait and int(pc.p.get("lane", -1)) < 0 and pc.buttress != null and is_instance_valid(pc.buttress) \
-			and pc.buttress.standing():
+	if bait and int(pc.p.get("lane", -1)) < 0 and pc.gate() != null and pc.gate().standing():
 		var gate: int = int(pc.p["gate_lane"])
 		if not _seen_long_enough("bait%d" % n, now):
 			return {}

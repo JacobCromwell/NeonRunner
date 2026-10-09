@@ -170,6 +170,13 @@ func in_use() -> bool:
 	return state != State.FREE
 
 
+## True while it's still in play as placement number `placement` (its `places` when it rose): an attack holding
+## it since knows it hasn't gone back to the pool and risen again for another (a stale reference never moves
+## someone else's gate).
+func is_placement(placement: int) -> bool:
+	return state != State.FREE and places == placement
+
+
 ## The track span its pier covers.
 func span() -> Vector2:
 	var half: float = boss.tuning.pier_depth * 0.5

@@ -189,6 +189,13 @@ func _cage_after() -> int:
 	return clampi(boss.tuning.cage_after, 0, maxi(passes - 1, 0))
 
 
+## A phase's intro or the defeat (its tick() doesn't run): the hatch over the fed pipes swings shut, a cage
+## sinking away goes on sinking.
+func look_tick(delta: float) -> void:
+	_tick_hatch(delta)
+	cage.tick(delta)
+
+
 func tick(delta: float) -> void:
 	_tick_hatch(delta)
 	cage.tick(delta)

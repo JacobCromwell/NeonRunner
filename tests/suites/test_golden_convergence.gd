@@ -4,8 +4,8 @@ extends TestSuite
 ## time:
 ## - its slot (data/bosses/golden_boss.tres): six phases (stage 1's paces 1, 1.1 and 1.2, stage 2's 1, 1.15
 ##   and 1.3), the checkpoint at stage 2's first, equal shares, weapons chipping at most one ship's worth,
-##   the 22 s armor rule, its payout, score, pars, music, tuning and arena skin; a preview until E5d-d (the
-##   campaign keeps its card); its sounds (the warnings never pitch-varied, the whine as long as the
+##   the 22 s armor rule, its payout, score, pars, music, tuning and arena skin; built (E5d-c: the campaign's
+##   Golden Zone plays it after Golden 3); its sounds (the warnings never pitch-varied, the whine as long as the
 ##   warning) and its hints;
 ## - its tuning's beat scripts, the squadron's size and the lanes each vertical pass covers;
 ## - the Grand Court at 3, 5 and 6 lanes: plain laps (no holes, fences, pads, doodads, enemies or credits);
@@ -50,9 +50,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	slot = load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "the Golden Convergence's preview loads")
+		check(false, "the Golden Convergence's fight is built")
 		return
 	_test_slot()
 	_test_tuning()
@@ -165,8 +165,8 @@ static func _reddish(c: Color) -> bool:
 func _test_slot() -> void:
 	check(slot.id == &"golden_boss" and slot.display_name == "The Golden Convergence",
 		"the Golden Zone's slot is The Golden Convergence (GDD §10)")
-	check(not slot.is_built() and slot.scene == "" and slot.preview_scene == "res://scenes/bosses/golden_convergence.tscn"
-		and def.is_built(), "a preview until E5d-d: the campaign keeps its card, debug builds play --boss=golden_boss")
+	check(slot.is_built() and slot.scene == "res://scenes/bosses/golden_convergence.tscn" and slot.preview_scene == ""
+		and slot.preview() == null, "the campaign plays the fight in the Golden Zone's boss slot (task E5d-c)")
 	check(slot.notes.contains("checkpoint halfway"), "its notes keep the halfway checkpoint")
 	var list: Array[BossPhase] = slot.phase_list()
 	var paces: Array[float] = []
@@ -623,7 +623,8 @@ func _test_reduced_flashing() -> void:
 # --- A later phase -----------------------------------------------------------------------------------
 
 ## A stage 1 phase after the first opens on the suit reeling back from the blast (GDD §10, proposed), then
-## floating on (here weapons end phase 1: BossDef.weapons_can_end_phase until E5d-c's ships).
+## floating on (here weapons end phase 1: BossDef.weapons_can_end_phase, a ship saved), its right shoulder's pipes
+## blown out (the first ship's damage, whatever ended the phase).
 func _test_reel() -> void:
 	var pair: Array = _fight(5, 18.0, null, -1, "none")
 	var world: RunWorld = pair[0]
@@ -631,7 +632,8 @@ func _test_reel() -> void:
 	world.player.god_mode = true
 	await _run(world, 8.0, func() -> bool: return boss.is_vulnerable())
 	boss.suit.take_damage(boss.max_health * boss.def.weapon_share_cap, &"weapon")
-	check(boss.phase_index == 1 and not boss.is_vulnerable(), "weapons can end phase 1 until the ships come (E5d-c)")
+	check(boss.phase_index == 1 and not boss.is_vulnerable(), "weapons can end phase 1 (a ship's worth: the most they may)")
+	check(boss.suit.pipes_broken[0] and not boss.suit.pipes_broken[1], "phase 2 shows the first ship's damage: its right shoulder's pipes")
 	var most := {"reel": 0.0}
 	await _run(world, 6.0, func() -> bool: return boss.is_vulnerable(), func() -> void:
 		most["reel"] = maxf(float(most["reel"]), boss.suit.reel))

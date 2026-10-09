@@ -57,7 +57,8 @@ var stage: Stage = Stage.IDLE
 ## Seconds in the current stage.
 var stage_time: float = 0.0
 ## The strafe's pass script and its passes: {n, kind (V, v or H), stage, warn_at, lanes, parity, from, to, front,
-## t, line_at, opening, lean, buttress, shows, dir, warnings, scorch, warned_at, sparked}.
+## t, line_at, opening, lean, buttress, buttress_places (its placement: gate()), shows, dir, warnings, scorch,
+## warned_at, sparked}.
 var pass_script: String = ""
 var passes: Array[Dictionary] = []
 ## The pass under way (WARN or FIRE), or -1.
@@ -118,6 +119,11 @@ func _plan(first_at: float, from_pass: int = 0) -> void:
 	var rp: float = boss.run_pace()
 	var lanes: int = boss.lane_count()
 	var at: float = first_at
+	# A horizontal pass first (a script that opens with one, or the next pass once a hold lets go): its warning
+	# waits so its gate rises buttress_sight before its line, as every other one does (GDD §10: "it comes into
+	# view well before its line").
+	if from_pass < pass_script.length() and pass_script[from_pass] == "H":
+		at = maxf(at, boss.player_distance() + v * (t.buttress_sight - t.warning_seconds - t.sweep_seconds - t.cross_lead))
 	var vertical: int = 0
 	var horizontal: int = 0
 	for i: int in from_pass:
@@ -432,8 +438,8 @@ static func _sweep_x(s: float, dir: int, half: float) -> float:
 ## The bullets spark off the stone above the buttress's opening.
 func _spark(p: Dictionary) -> void:
 	p["sparked"] = true
-	var b: GoldenConvergenceButtress = p.get("buttress") as GoldenConvergenceButtress
-	var at: Vector3 = b.spark_point() if b != null and is_instance_valid(b) and b.standing() \
+	var b: GoldenConvergenceButtress = gate(p)
+	var at: Vector3 = b.spark_point() if b != null and b.standing() \
 		else boss.world.lane_point(int(p["opening"]), float(p["line_at"]), boss.tuning.arch_height + 0.6)
 	boss.world.effects.burst(at, Color(1.0, 0.82, 0.55), 26, 0.9)
 	boss.sound(&"gc_spark", boss.sound_point(at))
@@ -460,7 +466,19 @@ func _place_buttresses() -> void:
 		if String(p["kind"]) != "H" or p.get("buttress") != null or int(p["stage"]) == PassStage.DONE:
 			continue
 		if d >= float(p["line_at"]) - v * boss.tuning.buttress_sight:
-			p["buttress"] = boss.place_buttress(int(p["opening"]), float(p["line_at"]), int(p["lean"]))
+			var b: GoldenConvergenceButtress = boss.place_buttress(int(p["opening"]), float(p["line_at"]), int(p["lean"]))
+			p["buttress"] = b
+			p["buttress_places"] = b.places
+
+
+## Pass `p`'s buttress while it's still the one raised for it (never a gate gone back to the pool and risen for
+## another attack since), or null.
+func gate(p: Dictionary) -> GoldenConvergenceButtress:
+	var b: Variant = p.get("buttress")
+	if b == null or not is_instance_valid(b):
+		return null
+	var gate_node := b as GoldenConvergenceButtress
+	return gate_node if gate_node.is_placement(int(p.get("buttress_places", -1))) else null
 
 
 func _lane_side(lane: int) -> int:
@@ -610,26 +628,29 @@ func hold(on: bool) -> void:
 			next = i
 			break
 	if next >= 0 and stage == Stage.PASSES:
-		# Buttresses already up for passes still to come stand where their lines no longer are: they go.
+		# Buttresses already up for passes still to come stand where their lines no longer are: they sink away
+		# (the passes left are planned anew, their gates rising buttress_sight before their new lines).
 		for i: int in range(next, passes.size()):
-			var b: Variant = passes[i].get("buttress")
-			if b != null and is_instance_valid(b):
-				(b as GoldenConvergenceButtress).release()
+			var b: GoldenConvergenceButtress = gate(passes[i])
+			if b != null and b.standing():
+				b.sink()
 			passes[i]["buttress"] = null
+			passes[i].erase("buttress_places")
 		_plan(boss.player_distance() + boss.speed_planned() * boss.tuning.pass_gap / _pace, next)
 	boss.log_event(&"strafe_released", {"n": strafes, "next": next})
 
 
 ## Everything at once (a phase's end, the defeat): warnings, fire and tracers gone, the squadron back in the
-## cape, buttresses still ahead of the runner gone.
+## cape, its buttresses still standing ahead of the runner sinking back into the causeway (none pops; a gate gone
+## back to the pool and risen for another attack since is that attack's).
 func clear() -> void:
 	super()
 	for p: Dictionary in passes:
 		for node: Variant in p.get("warnings", []):
 			boss.props.remove(node as Node)
-		var b: Variant = p.get("buttress")
-		if b != null and is_instance_valid(b) and (b as GoldenConvergenceButtress).at > boss.player_distance():
-			(b as GoldenConvergenceButtress).release()
+		var b: GoldenConvergenceButtress = gate(p)
+		if b != null and b.standing() and b.at > boss.player_distance():
+			b.sink()
 	passes.clear()
 	current = -1
 	fire.clear()

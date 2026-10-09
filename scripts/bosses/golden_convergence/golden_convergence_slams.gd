@@ -70,7 +70,8 @@ var stage: Stage = Stage.IDLE
 ## The sequence under way or planned: {n, letter, kind (&"on" / &"ahead"), chance, fist (0 its right, 1 its
 ## left), side (-1, 1), impact_at, row (Vector2: from, to), mid (where the fist lands along the track),
 ## out_at, track_at, lock_at, fall_at, stage, t, lane, x, sq (Vector2: the red square's x edges), lanes,
-## buttress_lane, lean, gate_at, buttress, bait, held, marker, out_from}.
+## buttress_lane, lean, gate_at, buttress, buttress_places (its placement: gate_of()), bait, held, marker,
+## out_from}.
 var slams: Array[Dictionary] = []
 ## Slams of a plan dropped (a new one made, a sequence over) whose fist was still down or going back: they play
 ## on to rest (their touch off on time, the arm eased back) outside the plan.
@@ -228,12 +229,23 @@ func _plan(start_d: float, phase: int = -1) -> void:
 	var cuts := LevelLayout.new()
 	cuts.lane_count = lanes
 	slams.clear()
+	var shift: float = 0.0
 	for k: int in letters.length():
 		var letter: String = letters[k]
 		var kind: StringName = &"ahead" if letter.to_upper() == "A" else &"on"
-		var impact_at: float = first_impact + float(k) * gap
-		var from: float = impact_at + ahead if kind == &"ahead" else impact_at - row_len * 0.5
-		var row := Vector2(from, from + row_len)
+		var impact_at: float = first_impact + float(k) * gap + shift
+		var row: Vector2 = _row_for(kind, impact_at, ahead, row_len)
+		# A row never lies over the cuts already on the track (a dropped plan's, never opened, stay there: a cut
+		# over a cut would draw the wrong lips): this slam and the ones after it move on past them.
+		for guard: int in 6:
+			var over: float = _cuts_end_over(row)
+			if over < 0.0:
+				break
+			var push: float = over + ROW_MARGIN - row.x
+			shift += push
+			impact_at += push
+			row = _row_for(kind, impact_at, ahead, row_len)
+		var from: float = row.x
 		var lock_at: float = impact_at - v * t.slam_lock_seconds
 		var track_at: float = lock_at - v * t.slam_track_seconds
 		var side: int = -1 if k % 2 == 0 else 1
@@ -270,6 +282,24 @@ func _plan(start_d: float, phase: int = -1) -> void:
 		"by": planned_by, "rows": slams.size(), "stream_from": earliest - ROW_MARGIN, "for_phase": index})
 
 
+## The row (its stretch along the track) of a slam of `kind` landing as the runner reaches `impact_at`: around it
+## for one on the runner, `ahead` past it for one ahead.
+static func _row_for(kind: StringName, impact_at: float, ahead: float, row_len: float) -> Vector2:
+	var from: float = impact_at + ahead if kind == &"ahead" else impact_at - row_len * 0.5
+	return Vector2(from, from + row_len)
+
+
+## The furthest end of the floor cuts on the arena's track (any lane) overlapping `row`, or -1 for none.
+func _cuts_end_over(row: Vector2) -> float:
+	if boss.arena == null:
+		return -1.0
+	var end: float = -1.0
+	for c: Dictionary in boss.arena.layout.cuts:
+		if float(c["start"]) < row.y + 0.01 and float(c["end"]) > row.x - 0.01:
+			end = maxf(end, float(c["end"]))
+	return end
+
+
 ## The side a chance gate's arch leans to: the nearer edge, either way from the middle lane by the seed.
 func _lean(lane: int, lanes: int) -> int:
 	var mid: float = (lanes - 1) * 0.5
@@ -281,14 +311,19 @@ func _lean(lane: int, lanes: int) -> int:
 
 
 ## Drops a plan that won't be played (its beat came too late for it, or it's over): its gates still up sink
-## away, a fist still down or going back plays on to rest (finishing). Its cuts stay on the track, whole.
+## away, a fist still down or going back plays on to rest (finishing). Its cuts stay on the track, whole (a cut
+## never opened is floor: a later plan's rows keep off them, _plan), and the rows never slammed no longer keep
+## pickups off (their floor warnings go).
 func _discard() -> void:
 	for s: Dictionary in slams:
 		if int(s["stage"]) in [SlamStage.HIT, SlamStage.BACK]:
 			finishing.append(s)
-		var b: Variant = s.get("buttress")
-		if b != null and is_instance_valid(b) and (b as GoldenConvergenceButtress).standing():
-			(b as GoldenConvergenceButtress).sink()
+		elif int(s["stage"]) < SlamStage.HIT and s.get("marker") != null:
+			boss.props.remove(s["marker"] as Node)
+			s["marker"] = null
+		var b: GoldenConvergenceButtress = gate_of(s)
+		if b != null and b.standing():
+			b.sink()
 	slams.clear()
 	plan_key = ""
 	plan_phase = -1
@@ -398,6 +433,14 @@ func tick(delta: float) -> void:
 		tower.tick(delta)
 
 
+## A phase's intro or the defeat (its tick() doesn't run): its arms ease back to rest and its towers fall, lie and
+## sink on as they would (a phase ending mid-slam never leaves an arm stretched to the track or a tower in the air).
+func look_tick(delta: float) -> void:
+	_pose_arms(delta)
+	for tower: GoldenConvergenceTower in towers:
+		tower.tick(delta)
+
+
 ## Every slam past its touch (or skipped).
 func _over() -> bool:
 	for s: Dictionary in slams:
@@ -496,9 +539,8 @@ func _lock(s: Dictionary) -> void:
 	s["lanes"] = GoldenConvergenceHole.footprint(lane, geo.lane_count, int(s["side"]))
 	s["sq"] = _footprint_x(s["lanes"])
 	s["x"] = geo.lane_x(lane)
-	var b: Variant = s.get("buttress")
-	s["bait"] = bool(s["chance"]) and b != null and is_instance_valid(b) and (b as GoldenConvergenceButtress).standing() \
-		and lane == int(s["buttress_lane"])
+	var b: GoldenConvergenceButtress = gate_of(s)
+	s["bait"] = bool(s["chance"]) and b != null and b.standing() and lane == int(s["buttress_lane"])
 	s["locked_at"] = boss.fight_time()
 	var info: Dictionary = _info(s)
 	boss.log_event(&"slam_locked", info)
@@ -591,9 +633,9 @@ func _bait(s: Dictionary) -> void:
 			continue
 		if int(other["stage"]) < SlamStage.HIT:
 			other["stage"] = SlamStage.SKIPPED
-		var ob: Variant = other.get("buttress")
-		if ob != null and is_instance_valid(ob) and (ob as GoldenConvergenceButtress).standing():
-			(ob as GoldenConvergenceButtress).sink()
+		var ob: GoldenConvergenceButtress = gate_of(other)
+		if ob != null and ob.standing():
+			ob.sink()
 	boss.log_event(&"slam_bait", {"n": int(s["n"]), "lane": int(s["lane"]), "side": b.lean, "gate": b.at,
 		"wall_from": b.span().x, "wall_to": wall_to, "runner": boss.player_distance()})
 
@@ -630,6 +672,16 @@ func towers_down() -> Array[GoldenConvergenceTower]:
 	return out
 
 
+## Slam `s`'s chance gate while it's still the one raised for it (never a gate gone back to the pool and risen for
+## another attack since), or null.
+func gate_of(s: Dictionary) -> GoldenConvergenceButtress:
+	var b: Variant = s.get("buttress")
+	if b == null or not is_instance_valid(b):
+		return null
+	var gate_node := b as GoldenConvergenceButtress
+	return gate_node if gate_node.is_placement(int(s.get("buttress_places", -1))) else null
+
+
 ## Raises each chance's gate once the runner is buttress_sight from it (or will be, `ahead` metres on).
 func _place_buttresses(ahead: float = 0.0) -> void:
 	var d: float = boss.player_distance() + ahead
@@ -638,7 +690,9 @@ func _place_buttresses(ahead: float = 0.0) -> void:
 		if not bool(s["chance"]) or s.get("buttress") != null or int(s["stage"]) == SlamStage.SKIPPED:
 			continue
 		if d >= float(s["gate_at"]) - sight:
-			s["buttress"] = boss.place_buttress(int(s["buttress_lane"]), float(s["gate_at"]), int(s["lean"]))
+			var b: GoldenConvergenceButtress = boss.place_buttress(int(s["buttress_lane"]), float(s["gate_at"]), int(s["lean"]))
+			s["buttress"] = b
+			s["buttress_places"] = b.places
 			if not _hinted_bait:
 				_hinted_bait = true
 				boss.hint("bait")

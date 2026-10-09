@@ -68,6 +68,8 @@ var stomps: int = 0
 ## stun_lanes, taken, roared_at, locked_at, landed_at}.
 var p: Dictionary = {}
 var buttress: GoldenConvergenceButtress = null
+## Its placement number when this Pounce raised it (GoldenConvergenceButtress.is_placement).
+var buttress_places: int = -1
 
 var _rng := RandomNumberGenerator.new()
 var _square: MeshInstance3D = null
@@ -126,6 +128,7 @@ func start(beat: Dictionary) -> void:
 		var gate_lane: int = _rng.randi_range(1, lanes - 2) if lanes > 2 else 0
 		var gate_at: float = d0 + v * maxf(t.bait_sight, t.buttress_sight)
 		buttress = boss.place_buttress(gate_lane, gate_at)
+		buttress_places = buttress.places
 		var stun_back: float = gate_at - t.pier_depth * 0.5 - STUN_GATE_GAP - STUN_DEPTH
 		var second: int = clampi(gate_lane - buttress.lean, 0, lanes - 1)
 		if second == gate_lane:
@@ -349,7 +352,7 @@ func _stun() -> void:
 	p["landed_at"] = boss.fight_time()
 	chase.alarm = 0.0
 	_remove_square()
-	if buttress != null and is_instance_valid(buttress):
+	if gate() != null:
 		buttress.smash()
 	var geo: TrackGeometry = boss.world.geo
 	var tu: GoldenConvergenceTuning = boss.tuning
@@ -518,8 +521,18 @@ func _set_stage(next: Stage) -> void:
 	stage_time = 0.0
 
 
+## The bait's buttress while it's still the one this Pounce raised (never a gate gone back to the pool and risen
+## for another attack since), or null.
+func gate() -> GoldenConvergenceButtress:
+	if buttress != null and is_instance_valid(buttress) and buttress.is_placement(buttress_places):
+		return buttress
+	return null
+
+
 ## Everything at once (a phase's end, the defeat): the square, the crash, the weak points and his sides gone,
-## a buttress still ahead of the runner gone; whoever comes next moves him (the next phase's intro, the defeat).
+## a buttress still standing ahead of the runner sinking back into the causeway (one crumbling crumbles on, and
+## goes back to the pool once passed: nothing pops in front of the runner); whoever comes next moves him (the
+## next phase's intro, the defeat).
 func clear() -> void:
 	super()
 	_remove_square()
@@ -528,9 +541,11 @@ func clear() -> void:
 		_off_stun()
 	if chase != null:
 		chase.alarm = 0.0
-	if buttress != null and is_instance_valid(buttress) and buttress.in_use() and buttress.at > boss.player_distance():
-		buttress.release()
+	var b: GoldenConvergenceButtress = gate()
+	if b != null and b.standing() and b.at > boss.player_distance():
+		b.sink()
 	buttress = null
+	buttress_places = -1
 	_set_stage(Stage.IDLE)
 	p = {}
 	_bound = {}

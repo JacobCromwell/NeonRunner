@@ -225,6 +225,12 @@ func tick(delta: float) -> void:
 		_fly(d)
 
 
+## A phase's intro or the defeat (its tick() doesn't run): the hatches swing shut as they would (a phase ending
+## mid-barrage never leaves them open through the reel or the transition).
+func look_tick(delta: float) -> void:
+	_tick_hatches(delta)
+
+
 ## The hatches open as the barrage begins and close once the missiles are out (and stay shut otherwise).
 func _tick_hatches(delta: float) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning

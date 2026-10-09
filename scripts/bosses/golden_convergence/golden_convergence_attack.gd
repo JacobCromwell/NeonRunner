@@ -7,6 +7,8 @@ extends RefCounted
 ## - prewarm(): makes everything it shows now (pooled), not mid-fight;
 ## - start(beat): the beat begins ({kind, arg}: arg is the beat script's argument, a strafe's passes);
 ## - tick(delta): every physics frame of the pattern while the runner is up;
+## - look_tick(delta): every physics frame its tick() doesn't run (a phase's intro, the defeat): what it shows
+##   keeps easing to rest (an arm stretched to the track, a hatch left open, a tower falling), never frozen;
 ## - busy(): true until the beat is over (the next beat waits for it);
 ## - hold(on): stops it hurting while on (GDD §10, the Refill Ship's cage: "the squadron holds its fire
 ##   while the cage comes up"), then lets it go on;
@@ -37,6 +39,10 @@ func start(_beat: Dictionary) -> void:
 
 
 func tick(_delta: float) -> void:
+	pass
+
+
+func look_tick(_delta: float) -> void:
 	pass
 
 

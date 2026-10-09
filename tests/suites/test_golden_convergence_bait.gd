@@ -23,9 +23,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "the Golden Convergence's preview loads")
+		check(false, "the Golden Convergence's fight is built")
 		return
 	for phase: int in [0, 1]:
 		for lanes: int in LANES:

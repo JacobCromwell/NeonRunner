@@ -2,8 +2,9 @@ extends TestSuite
 ## The Golden Convergence's Helidrone Strafe and Flying Buttress played through (GDD §10; task E5d-a), at 3,
 ## 5 and 6 lanes and at quick play's 18 m/s and the Golden Zone's 25 m/s, with a runner who plays it by what
 ## it shows (GoldenConvergenceBot, reacting REACTION late; no god mode, no armor unless a test says so):
-## - phase 1's strafes (its opening V-V-H, then the Refill Ship's V-V-H, played alone until E5d-c; the Fist
-##   Slam's sequence and the Missile Barrage between them, E5d-b, played through untouched): the squadron's
+## - phase 1's strafes (its opening V-V-H, then the Refill Ship's V-V-H, E5d-c: the bot lets the pad go by, so
+##   the strafe holds while the cage comes up and fires on after it; the Fist Slam's sequence and the Missile
+##   Barrage between them, E5d-b, played through untouched): the squadron's
 ##   size, the first vertical pass over lanes 1, 3, 5 (counting from 1), each next one switching; a drone
 ##   over each covered lane and the spare one climbed above the formation, never over a safe lane;
 ##   each pass's red lines and whine at least WARNING_MIN before its fire could reach the runner; no fire
@@ -12,8 +13,9 @@ extends TestSuite
 ##   farthest lane, its red line over every lane but the opening, the live line burning whole before the
 ##   runner gets there and on while they're at it; the lines for show harmless; the runner never touched,
 ##   the strafe's hint and the buttress's coming once;
-## - a 7-pass strafe (phases 2 and 3, after the phase's two slam sequences and barrages): V-V-H-v-V-H-v, the
-##   4th and 7th from behind, the parity switching over the vertical passes, the bot untouched;
+## - a 7-pass strafe (phases 2 and 3, after the phase's two slam sequences and barrages, the Refill Ship's, its pad
+##   let go by): V-V-H-v-V-H-v, the 4th and 7th from behind, the parity switching over the vertical passes, the bot
+##   untouched;
 ## - a runner who stays in a raked lane is hit there once its warning is over; one who stays out of the
 ##   arch is hit by the live line, jumping or not; the armor blocks the fire; the dash passes through it;
 ## - the wall rule: a vertical pass's fire in an outer lane hits a runner low on the open wall beside it,
@@ -40,9 +42,9 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
-		check(false, "the Golden Convergence's preview loads")
+		check(false, "the Golden Convergence's fight is built")
 		return
 	for lanes: int in LANES:
 		for speed: float in SPEEDS:
@@ -87,9 +89,11 @@ func _fight(lanes: int, speed: float, loadout: Loadout = null, phase: int = -1, 
 	return [world, boss]
 
 
+## The bot; it lets the Refill Ship's pad go by (its strafe then plays out whole: E5d-c's refill suites ride it).
 func _bot(boss: GoldenConvergence) -> GoldenConvergenceBot:
 	var bot := GoldenConvergenceBot.new(boss)
 	bot.reaction = REACTION
+	bot.refill_way = &"miss"
 	return bot
 
 
@@ -252,7 +256,7 @@ func _test_phase_one(lanes: int, speed: float) -> void:
 	var starts: Array[Dictionary] = _events(boss, &"strafe_start")
 	check(starts.size() == 2 and String(starts[0]["script"]) == "VVH" and String(starts[1]["script"]) == "VVH"
 		and bool(starts[1]["refill"]) and int(starts[0]["drones"]) == GoldenConvergenceTuning.squadron_size(lanes),
-		"phase 1: the opening strafe, then the Refill Ship's (alone until E5d-c), V-V-H each, %d drones %s" % [
+		"phase 1: the opening strafe, then the Refill Ship's, V-V-H each, %d drones %s" % [
 			GoldenConvergenceTuning.squadron_size(lanes), tag])
 	var warned: Array[Dictionary] = _events(boss, &"pass_warned")
 	check(warned.size() == 6, "six passes %s (%d)" % [tag, warned.size()])

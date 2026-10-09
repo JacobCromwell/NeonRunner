@@ -367,6 +367,7 @@ func _intro_tick(delta: float) -> void:
 	_t += delta
 	court.tick()
 	_tick_buttresses(delta)
+	_look_tick(delta)
 	match step:
 		Step.ENTER:
 			var t: GoldenConvergenceTuning = tuning
@@ -475,6 +476,13 @@ func _clear_attacks() -> void:
 	beat_attack = null
 
 
+## Every frame its attacks don't tick (a phase's intro, the defeat): what they show eases on to rest
+## (GoldenConvergenceAttack.look_tick: an arm back from the track, the hatches shut, a tower down).
+func _look_tick(delta: float) -> void:
+	for attack: GoldenConvergenceAttack in attacks.values():
+		attack.look_tick(delta)
+
+
 ## The fight is won: its attacks stop, the walls stay away, and the defeat plays (the feed dies:
 ## GoldenConvergenceDefeat).
 func _on_defeated() -> void:
@@ -488,6 +496,7 @@ func _defeated_tick(delta: float) -> void:
 	_t += delta
 	court.tick()
 	_tick_buttresses(delta)
+	_look_tick(delta)
 	_place_suit()
 	if defeat != null:
 		transition.tick(delta)
@@ -577,6 +586,8 @@ func _stage_two_tick(delta: float, intro: bool) -> void:
 			attack.tick(delta)
 		if not transition.busy():
 			_tick_beats(delta)
+	else:
+		_look_tick(delta)
 	chase.tick(delta)
 
 
