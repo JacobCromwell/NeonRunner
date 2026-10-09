@@ -242,8 +242,8 @@ func _test_data() -> void:
 	var t := def.tuning as FloatingHeadTuning
 	check(t != null and t.resource_path == "res://data/bosses/city_boss_tuning.tres", "its numbers are its own tuning resource")
 	check(is_equal_approx(t.first_run_seconds, 16.0 * 0.7), "the first bombing run is 30%% shorter (%.1f s)" % t.first_run_seconds)
-	check(is_equal_approx(t.later_run_seconds, 6.5),
-		"the later runs are a little longer than 5.6 s for their salvos (%.1f s; owner, October 9, 2026)" % t.later_run_seconds)
+	check(t.later_run_seconds >= 10.0 and t.later_run_seconds <= 12.0,
+		"the later runs last 10-12 s for their salvos (%.1f s; owner, October 9, 2026)" % t.later_run_seconds)
 	check(t.later_run_seconds > 0.0 and t.later_run_seconds < t.first_run_seconds and t.later_runs >= 1 and t.later_runs <= 2,
 		"GDD §10: once or twice it rises for a shorter run (%d of %.1f s)" % [t.later_runs, t.later_run_seconds])
 	check(def.phase_count() == 3 and def.phase_list()[0].intro_seconds >= 3.0, "three phases; the first's intro is the entrance")

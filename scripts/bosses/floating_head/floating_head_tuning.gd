@@ -60,9 +60,11 @@ extends Resource
 @export_range(5.0, 30.0, 0.1, "suffix:s") var first_run_seconds: float = 11.2
 ## GDD §10: once or twice during the fight it rises for another, shorter run. DESIGN-TBD
 ## (docs/OPEN_QUESTIONS.md §D, item 89): at the start of the next `later_runs` phases, after it rises
-## back into the sky (0 = never). The owner (October 9, 2026; task E1g): a little longer than the 5.6 s
-## it was, so a run fits two of its salvos at four spots; DESIGN-TBD (item 399): how much.
-@export_range(0.0, 20.0, 0.1, "suffix:s") var later_run_seconds: float = 6.5
+## back into the sky (0 = never). The owner (October 9, 2026; task E1g, item 399): 10-12 s instead of
+## the 5.6 s it was. 10 s fits three of its salvos at four spots and stays shorter than the first run;
+## a flawless fight still pins the same towers (at 11 s it misses one and waits for the next: about
+## 134 s at 3 lanes, past GDD §10's 60-120 s).
+@export_range(0.0, 20.0, 0.1, "suffix:s") var later_run_seconds: float = 10.0
 @export_range(0, 2) var later_runs: int = 2
 ## DESIGN-TBD (item 85): its station during a run: its stern this far ahead of the player and its
 ## belly this high, so it looms over the top of the screen with its searchlight pointing back at the
@@ -100,11 +102,11 @@ extends Resource
 @export_range(2, 6) var salvo_min_spots: int = 2
 ## The distance along the track from one spot of a salvo to the next: the time to run past one blast
 ## and switch lanes before the next. The runner doesn't switch lanes faster in the later phases, so the
-## phase's pace doesn't shorten it. The owner (October 9, 2026): tighter than the 12 m it was;
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 398): how much.
+## phase's pace doesn't shorten it. The owner (October 9, 2026; item 398): 10 m, tighter than the 12 m
+## it was.
 @export_range(6.0, 30.0, 0.5, "suffix:m") var salvo_spacing: float = 10.0
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 398): from one spot to the next, the way through moves
-## at most this many lanes (from the runner to the first spot, max_escape_lanes, like any lock).
+## From one spot to the next, the way through moves at most this many lanes (from the runner to the
+## first spot, max_escape_lanes, like any lock).
 @export_range(1, 2) var salvo_max_shift: int = 1
 ## Each spot is a block of lanes side by side, placed to leave the runner as few lanes to be in past it
 ## as it can, but no fewer than the street's choices and never none: a way through always remains, and
