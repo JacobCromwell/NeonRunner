@@ -39,7 +39,8 @@ extends RefCounted
 ##   gives its truck to another bait's chase that has room): the ones whose chases hold the most windows before
 ##   their first bait, then the most windows, then the most chases (_choose; a pair is also planned with the later
 ##   window first, the earlier truck arriving earlier around it); the level's introduction keeps its first bait's
-##   chase where that has room before its bait. Where the level leaves none, it takes out what's in the way
+##   chase where that has room before its bait, and otherwise moves only to a chase where it shows itself before its
+##   bait. Where the level leaves none, it takes out what's in the way
 ##   (ShowPlanner's class doc). Its params hold it ("show": {at: where
 ##   the runner is as it begins, from and to: the stretch it keeps}), and every later pass keeps off it in every
 ##   lane as a calm stretch, WINDOW_EDGE wider (doodad_keep_outs: nothing they add may stand or attack in it, but
@@ -101,7 +102,8 @@ static func apply(gen: LevelGenerator) -> void:
 	else:
 		# With its showing windows planned (tasks C6c, C6d): of every set of baits whose chases fit together, the one
 		# with the most showing windows before their bait (then the most windows, then the most chases, then the
-		# earliest baits) gets them; a level that introduces it keeps its earliest bait's where that has room.
+		# earliest baits) gets them; a level that introduces it keeps its earliest bait's where that has room, and
+		# otherwise moves its introduction only to a chase where it shows itself before its bait.
 		var chosen: Array[Dictionary] = _choose(gen, t, planner, orders, keep_outs, gen.feature_start(TYPE) > 0.0, baits,
 			by_bait)
 		for k: int in chosen.size():
@@ -130,8 +132,9 @@ static func apply(gen: LevelGenerator) -> void:
 ## itself before the player can bait it, and a chase with no room for a showing gives its truck to another bait's
 ## chase that has room), then the most showing windows, then the most chases, then the earliest baits. With
 ## `intro` (a level's introduction of the truck), its first bait that may have one keeps its truck where that
-## chase has a window before its bait; else the introduction moves too. Each chase's window is planned as the
-## level stands (ShowPlanner.plan tries every arrival the bait allows, the earliest too, for one before the bait).
+## chase has a window before its bait; else the introduction may move, to a chase where it shows itself before its
+## bait. Each chase's window is planned as the level stands (ShowPlanner.plan tries every arrival the bait allows,
+## the earliest too, for one before the bait).
 ## A set fits where its chases do planned along the track, each one again around the chases before it where those
 ## take its arrival away (_plan_set); planned the other way round too, a later chase's window first and the earlier
 ## trucks arriving earlier around it, where that gives more windows. Each: {spots, plan, at, span, why, bait (its
@@ -164,14 +167,22 @@ static func _choose(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPl
 		var key: Array[int] = []
 		key.assign(set_)
 		# Along the track first: a set that doesn't fit so isn't one (the other orders only move its arrivals).
-		var plan: Dictionary = _plan_set(gen, t, planner, orders, keep_outs, alone, key, -1)
-		if plan.is_empty():
+		var plans: Array[Dictionary] = [_plan_set(gen, t, planner, orders, keep_outs, alone, key, -1)]
+		if plans[0].is_empty():
 			continue
 		# A later chase's window planned first, the earlier trucks arriving earlier around it.
 		for k: int in range(1, key.size()):
-			var other: Dictionary = _plan_set(gen, t, planner, orders, keep_outs, alone, key, key[k])
-			if not other.is_empty() and (other["score"] as Vector3i) > (plan["score"] as Vector3i):
-				plan = other
+			plans.append(_plan_set(gen, t, planner, orders, keep_outs, alone, key, key[k]))
+		# An introduction moved off its first bait goes to a chase where it shows itself before its bait.
+		var moved: bool = intro and not key.is_empty() and key[0] != usable[0]
+		var plan: Dictionary = {}
+		for p: Dictionary in plans:
+			if p.is_empty() or (moved and not _before_bait((p["picked"] as Array)[0])):
+				continue
+			if plan.is_empty() or (p["score"] as Vector3i) > (plan["score"] as Vector3i):
+				plan = p
+		if plan.is_empty():
+			continue
 		var score: Vector3i = plan["score"]
 		if score > best_score or (score == best_score and _earlier(key, best_key)):
 			best_score = score
