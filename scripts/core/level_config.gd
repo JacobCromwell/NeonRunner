@@ -174,9 +174,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## stands up to this many buildings across the level's floor lanes for the runner to dash through
 ## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown
 ## is over before the next (data/tuning/dash_walls.tres); fewer where the level leaves no room, never none.
-## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/questions/h7a.md): 2 in the
-## Corporate zone, rising to 4 in the Golden Zone's last levels; quick play's prototype level takes this
-## default.
+## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/questions/h7a.md): 2 to 4 by level
+## (2 in the Corporate zone, up to 4 in Golden 2; the most crowded levels ask for no more than their tracks hold on
+## every lane count); quick play's prototype level takes this default.
 @export_range(0, 8) var dash_walls: int = 3
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many

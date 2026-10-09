@@ -587,8 +587,8 @@ spare (see Tools, above). Covered:
   coming late enough after it, at the dash's speed, to react and move.
 - **Dash walls:** placed only where they're fair in every level that has them (3, 5 and 6 lanes, its own seed and
   others: spaced past the dash's longest cooldown, a clear stretch around each, never under a ceiling, a side
-  wall open beside each, no dash bait just before one), Corporate 1 introducing them right after their start;
-  on real physics in every lane, a dash smashing one untouched, a crash killing a runner with no protection (the
+  wall open beside each, no dash bait just before one), Corporate 1 introducing them right after their start,
+  the rest standing after the danger density pass and the doodads without taking their room; on real physics in every lane, a dash smashing one untouched, a crash killing a runner with no protection (the
   armor or a shield absorbing it in a full world, god mode shrugging it off), jumping or sliding into one
   crashing too, a wall runner passing it; the crumble (pieces in its colours, dust, a heavier shake, its sound);
   it stays broken for the attempt and a retry rebuilds it; every zone's look; a hover truck giving way and a

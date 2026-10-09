@@ -6,15 +6,15 @@ extends RefCounted
 ## - a level that introduces them (a feature start) stands its first with the rules, after every other
 ##   feature's (apply(), RUN_AFTER), on the level's final enemies, ceilings, pads, ramps and floor cuts, so the
 ##   player meets it right after its hint and every pass after the rules keeps off it;
-## - the rest stand after the danger density pass has added its obstacles (after_obstacles(), from
-##   LevelGenerator._after_obstacle_rules), in the room the passes before them left: the fill pass and the
-##   danger density pass measure and fill the level without them, so the share of danger the owner asked for
-##   holds (tests/suites/test_danger_density.gd; a wall standing earlier took the room those passes add
-##   enemies and rows in, most on 3 lanes), and a wall takes out plain pieces where it must rather than the
-##   level losing what it would have had.
-## Numbers: DashWallTuning
-## (data/tuning/dash_walls.tres), seconds at the level's run speed or at the dash's speed (the run's plus
-## PowerupTuning.dash_speed_bonus), so a faster zone keeps them; the wall's size is MovementTuning's.
+## - the rest stand after the danger density pass's obstacles and the zone doodads (after_doodads(), from
+##   LevelGenerator._after_doodad_rules), in the room the passes before them left: the fill pass, the danger
+##   density pass and the doodads fill the level as they would without them, so the share of danger the
+##   owner asked for holds (tests/suites/test_danger_density.gd; a wall standing earlier took the room those
+##   passes add enemies and rows in, most on 3 lanes) and a crowded level keeps its few doodads; a wall takes
+##   out plain pieces where it must rather than the level losing what it would have had.
+## Numbers: DashWallTuning (data/tuning/dash_walls.tres), seconds at the level's run speed or at the dash's speed
+## (the run's plus PowerupTuning.dash_speed_bonus), so a faster zone keeps them; the wall's size is
+## MovementTuning's.
 ##
 ## Where one may stand (Plan; a wall's face, the side toward the runner, at track distance F):
 ## - Its footprint, [F - approach, back + after] (approach_seconds and after_seconds at the dash's speed), in
@@ -57,7 +57,10 @@ extends RefCounted
 ##   wall_keep_outs; a wall fence's drop window keeps off the footprint, doodad_keep_outs).
 ## - The level: the footprint between the run-up and the end-clear stretch, the face past the feature's start.
 ## - A wider gap (task G7) from its take-off margin to its landing margin (WideGapPlacement.keep_outs), as it
-##   keeps off a wall: each stays the only demand at its take-off and landing.
+##   keeps off a wall: each stays the only demand at its take-off and landing. A cyborg planted in a charge's
+##   path (task G7) keeps its encounter (ChargePathPlacement.encounter_span: from its charger's claim to past its
+##   strike) as every big attack does. And a zone doodad keeps its push's lead before it (doodad_span), as it
+##   keeps it from a wall placed before it.
 ## Plain holes and fences (never a pulsing fence or one a fence generator powers; in the second stage the fill
 ## pass's and the danger density pass's as well) in a footprint, and the signs on one side wall where both
 ## block the route, are taken out to make room (clear_plain_pieces: taking content out never makes a level
@@ -68,19 +71,21 @@ extends RefCounted
 ## rules (apply()), at the first fair spot from its start, whatever plain pieces it takes out there, so the
 ## player meets it right after its first-encounter hint; where none comes within
 ## DashWallTuning.intro_window_seconds it makes room there (_make_room: a few enemies of MAKE_ROOM_TYPES go,
-## never the last of a feature nor any feature's first). The rest (after_obstacles()) spread through the level
+## never the last of a feature nor any feature's first). The rest (after_doodads()) spread through the level
 ## past it (the stretch from the first possible face to the last cut into as many parts, a seeded spot aimed
 ## for in each, the best fair spot in that part taken: nothing to take out first, then the nearest), then the
-## best of the rest wherever a part had none. A level with the feature and no fair spot at all gets a warning
-## (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream
+## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
+## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
+## introduction does (_make_room, over the whole level; never a planted cyborg or its charger), and one with no
+## fair spot even then gets a warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream
 ## (LevelGenerator.rng_for), so the passes before it place exactly what they did; a level without the feature
 ## (or with a count of 0) draws nothing and is built byte for byte as before.
 ##
 ## What keeps off them: the passes between the two stages keep off an introduction (the fill pass,
-## LevelGenerator.fill_keep_outs, every footprint in every lane; the danger density pass, the wider gaps and
-## the cyborgs planted in charge paths, the rules' keep-outs in every lane, doodad_keep_outs); after the second
-## stage the zone doodads and the wall fences' drop windows (doodad_keep_outs), the side wall gaps and wall
-## fences beside them (wall_keep_outs), and the credits (none inside a wall: LevelLayout.doodad_between).
+## LevelGenerator.fill_keep_outs, every footprint in every lane; the danger density pass, the wider gaps, the
+## cyborgs planted in charge paths and the zone doodads, the rules' keep-outs in every lane, doodad_keep_outs);
+## after the second stage the wall fences' drop windows (doodad_keep_outs), the side wall gaps and wall fences
+## beside them (wall_keep_outs), and the credits (none inside a wall: LevelLayout.doodad_between).
 ## problems() re-checks every wall for the tests.
 ## DESIGN-TBD (docs/questions/h7a.md): every number, how many a level, the baits, the route.
 
@@ -261,7 +266,7 @@ static func footprint(gen: LevelGenerator, w: Dictionary, t: DashWallTuning = nu
 ## The first stage (with the rules, after every other feature's: RUN_AFTER): a level that gives the feature a
 ## start introduces it there (see the header), at the first fair spot from its start (the player meets it right
 ## after its hint), making room for one near the start where none is (_make_room). Any other level waits for
-## the second stage (after_obstacles).
+## the second stage (after_doodads).
 static func apply(gen: LevelGenerator) -> void:
 	if gen.config.dash_walls <= 0 or not gen.config.feature_starts.has(FEATURE):
 		return
@@ -279,13 +284,14 @@ static func apply(gen: LevelGenerator) -> void:
 		_place(gen, plan, intro, faces)
 
 
-## The second stage (LevelGenerator._after_obstacle_rules: after the danger density pass's obstacles, before the
-## zone doodads): the rest of LevelConfig.dash_walls, past an introduction, in the room the passes before left
-## (see the header), spread through the level: a part each, a seeded spot aimed for in it (every draw is made,
-## so a part without room never reshuffles the next), then the best of the rest; where that leaves the level
-## short of its count (a crowded level, its fair spots few and close), the most that fit, as far apart as they
-## can be (_most_apart).
-static func after_obstacles(gen: LevelGenerator) -> void:
+## The second stage (LevelGenerator._after_doodad_rules: after the danger density pass's obstacles and the zone
+## doodads, before the wall fences): the rest of LevelConfig.dash_walls, past an introduction, in the room the
+## passes before left (see the header), spread through the level: a part each, a seeded spot aimed for in it
+## (every draw is made, so a part without room never reshuffles the next), then the best of the rest; where
+## that leaves the level short of its count (a crowded level, its fair spots few and close), the most that fit,
+## as far apart as they can be (_most_apart); and a level left with none at all makes room for one
+## (_make_room, over the whole level).
+static func after_doodads(gen: LevelGenerator) -> void:
 	var count: int = gen.config.dash_walls
 	if count <= 0:
 		return
@@ -321,6 +327,11 @@ static func after_obstacles(gen: LevelGenerator) -> void:
 			chosen = most
 	for at: float in chosen:
 		_place(gen, plan, at, faces)
+	if faces.is_empty() and _make_room(gen, plan, plan.lo, plan.hi):
+		plan = plan_for(gen, t)
+		var at: float = plan.best(plan.lo, plan.hi, (plan.lo + plan.hi) * 0.5, faces)
+		if not is_nan(at):
+			_place(gen, plan, at, faces)
 	if faces.is_empty():
 		gen.warnings.append("dash walls: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
 	gen.layout.dash_walls.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -418,11 +429,13 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 	for zone: Vector2 in WideGapPlacement.keep_outs(gen):
 		p.mark_span(p.blocked, zone)
 	for d: Dictionary in lay.doodads:
-		p.mark_span(p.blocked, Vector2(float(d["start"]), float(d["end"])))
+		p.mark_span(p.blocked, doodad_span(gen, d) if not checking else Vector2(float(d["start"]), float(d["end"])))
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		for span: Vector2 in enemy_spans(gen, e, hooks):
 			p.mark_span(p.blocked, span)
+	for c: Dictionary in ChargePathPlacement.planted_in(lay):
+		p.mark_span(p.blocked, ChargePathPlacement.encounter_span(gen, c))
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if _counts(k):
 			p.mark_span(p.blocked, Vector2(float(k["from"]), float(k["to"])))
@@ -488,7 +501,14 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> b
 	for h: Dictionary in lay.hulls:
 		mark_fixed.call(Vector2(float(h["start"]), gen.zones.landing_zone(h).y), false)
 	for d: Dictionary in lay.doodads:
-		mark_fixed.call(Vector2(float(d["start"]), float(d["end"])), false)
+		mark_fixed.call(doodad_span(gen, d), false)
+	for zone: Vector2 in WideGapPlacement.keep_outs(gen):
+		mark_fixed.call(zone, false)
+	var planted: Array[Dictionary] = ChargePathPlacement.planted_in(lay)
+	var chargers: Array[Dictionary] = []
+	for c: Dictionary in planted:
+		mark_fixed.call(ChargePathPlacement.encounter_span(gen, c), false)
+		chargers.append(ChargePathPlacement.charger_of(lay, c))
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if _counts(k):
 			mark_fixed.call(Vector2(float(k["from"]), float(k["to"])), false)
@@ -496,7 +516,10 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> b
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		var type: String = String(e.get("type", ""))
-		var mine: bool = MAKE_ROOM_TYPES.has(type) and not bool((e.get("params", {}) as Dictionary).get("host", false))
+		# Never a host (its chase is planned on it), nor a cyborg planted in a charge's path or its charger (task
+		# G7: the encounter goes whole or not at all, and it keeps its own count).
+		var mine: bool = MAKE_ROOM_TYPES.has(type) and not bool((e.get("params", {}) as Dictionary).get("host", false)) \
+			and not planted.has(e) and not chargers.has(e)
 		if mine:
 			removable.append(e)
 		for span: Vector2 in enemy_spans(gen, e, hooks):
@@ -646,6 +669,14 @@ static func enemy_spans(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -
 		var at: float = float(e["at"])
 		out.append(Vector2(at - TITHE_LEAD, at + stay * gen.speed))
 	return out
+
+
+## What zone doodad `d` keeps a wall's footprint off, placed after it (the second stage): itself and its push's lead
+## before it (LevelGenerator.doodad_lead_for), so its push never comes in a wall's clear stretch, as a doodad
+## placed after a wall keeps its lead from the footprint (LevelGenerator._place_doodads). Past it nothing more: it
+## only pushes the runner aside, and a wall stands across every lane, so no lane needs crossing back before one.
+static func doodad_span(gen: LevelGenerator, d: Dictionary) -> Vector2:
+	return Vector2(float(d["start"]) - LevelGenerator.doodad_lead_for(gen.tuning), float(d["end"]))
 
 
 ## A hover truck at `at`: its entrance, the stretch a wall's footprint keeps off (enemy_spans), from the start of

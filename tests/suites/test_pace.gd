@@ -201,7 +201,7 @@ func _test_fill_pass() -> void:
 					check(LevelGenerator.is_filler(by_id.get(String(f["id"]), {})), "a filler is a plain obstacle pattern (%s) %s" % [f["id"], tag])
 				filled += gen.fills.size()
 				# Fillers stay off everything the level had before them, with the pattern pass's spacing. The dash
-				# walls but an introduction come after the fill pass (task H7a, DashWallRules.after_obstacles), in
+				# walls but an introduction come after the fill pass (task H7a, DashWallRules.after_doodads), in
 				# the room it left, and none of these levels introduces them: not what the fillers keep off.
 				check(not config.feature_starts.has("dash_wall"), "%s doesn't introduce dash walls %s" % [id, tag])
 				plain_gen.layout.dash_walls.clear()

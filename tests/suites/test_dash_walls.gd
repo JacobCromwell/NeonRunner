@@ -8,9 +8,9 @@ extends TestSuite
 ##   6 lanes, on the levels' own seeds and others: the level's count, every one fair (LayoutChecks
 ##   .check_dash_walls: the spacing, a clear approach and stretch past it, no ceiling, a side wall open, no dash
 ##   bait just before, the enemies' keep-outs), the same every time; Corporate 1 introduces them right after
-##   their start; past an introduction they stand after the danger density pass, which adds what it adds
-##   without them, taking out only what stood in their way; and a level without the feature (or a count of 0)
-##   draws nothing and is built as before.
+##   their start; past an introduction they stand after the danger density pass and the doodads, which add
+##   what they add without them, taking out only what stood in their way; and a level without the feature (or
+##   a count of 0) draws nothing and is built as before.
 ## - The track: a DashBreakable on the dash wall layer across the floor lanes, short of the side walls, taller
 ##   than any jump, with a forgiving solid hitbox (armor absorbs it, it breaks the wall) from the floor up; the
 ##   skin's hook gets its box and seed; a broken one is never built again.
@@ -247,11 +247,11 @@ func _test_introduction() -> void:
 				"no other introduction (%s at %.0f m) right at the wall's (%.0f m) %s" % [f, other, first, tag])
 
 
-## Past an introduction the walls stand after the danger density pass (DashWallRules.after_obstacles), in the
-## room the passes before them left: in a level that doesn't introduce them, on 3 lanes (the least room) and 5,
-## the danger density pass's report, the fill pass's fillers and the enemies are what the level gets with no
-## walls at all (the share of danger the owner asked for holds), and the only pieces the walls cost are holes and
-## fences in their footprints and signs beside them.
+## Past an introduction the walls stand after the danger density pass and the zone doodads
+## (DashWallRules.after_doodads), in the room the passes before them left: in a level that doesn't introduce
+## them, on 3 lanes (the least room) and 5, the danger density pass's report, the fill pass's fillers, the
+## enemies and the doodads are what the level gets with no walls at all (the share of danger the owner asked
+## for holds), and the only pieces the walls cost are holes and fences in their footprints and signs beside them.
 func _test_after_danger_density() -> void:
 	var t: DashWallTuning = DashWallTuning.load_default()
 	for id: String in ["dead_zone/1", "golden/2"]:
@@ -270,6 +270,7 @@ func _test_after_danger_density() -> void:
 				"the danger density pass adds what it adds without them %s" % tag)
 			check(JSON.stringify(gen.fills) == JSON.stringify(plain.fills), "and so does the fill pass %s" % tag)
 			check(JSON.stringify(gen.layout.enemies) == JSON.stringify(plain.layout.enemies), "the enemies are the same %s" % tag)
+			check(JSON.stringify(gen.layout.doodads) == JSON.stringify(plain.layout.doodads), "and the doodads %s" % tag)
 			var spans: Array[Vector2] = []
 			var routes: Array[Vector2] = []
 			for w: Dictionary in gen.layout.dash_walls:

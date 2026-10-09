@@ -37,7 +37,8 @@ const PATH: String = "res://data/tuning/dash_walls.tres"
 @export_range(0.0, 5.0, 0.1, "suffix:s") var cooldown_margin_seconds: float = 1.0
 ## The same spacing keeps whatever else invites a dash from coming just before a wall (GDD §9.14): a Buzz
 ## Overdrive's charge (a panic dash smashes it, GDD §9.9) never meets the runner within it before a wall's
-## face, and no zone doodad stands there (the dash smashes one, GDD §3). Off: only the walls keep it.
+## face, and no fence generator stands there (its hint says to dash through it). A zone doodad isn't one: it
+## never needs the dash (it only pushes the runner aside). Off: only the walls keep it.
 @export var keep_dash_baits: bool = true
 
 @export_group("Placement")

@@ -572,7 +572,7 @@ An enemy type needs only files of its own; nothing shared is edited:
 | `scripts/enemies/<type>_tuning.gd` | its tuning class, extending `EnemyTuning` |
 | `data/enemies/<type>.tres` | its tuning values (spawn lead, score, health early/late, floor use, and its own numbers) |
 | `data/patterns/<type>.json` | patterns that place it, each with `"requires": ["<type>"]` |
-| `scripts/enemies/<type>_rules.gd` | optional generator rules: `static func apply(gen: LevelGenerator)` |
+| `scripts/enemies/<type>_rules.gd` | optional generator rules: `static func apply(gen: LevelGenerator)` (and hooks such as `after_fill`, `after_doodads`, `keep_out`, `doodad_keep_outs`) |
 | `tests/suites/test_<type>.gd` | its tests |
 
 `Enemy` (`scripts/enemies/enemy.gd`) declares properties (`immune_to_weapons`, `is_host`,
@@ -1188,7 +1188,10 @@ their margin from the ramp a truck adds; the Octodog rules after the drone's, th
 hover truck's, so each dog is planned around the level's final ceilings, chases and truck lanes and
 nothing clears it afterwards; the Resonator rules after every feature that puts things on the floor or
 plans a big attack, so each pulse is planned on the level's final floor and off every Octodog's run,
-floor cut and Gilded Sentinel's turn).
+floor cut and Gilded Sentinel's turn). A rules script may also declare `static func after_doodads(gen)`,
+which runs after the danger density pass's obstacles and the zone doodads, before the wall fences, in the order
+of the features (`LevelGenerator._after_doodad_rules`): what stands in the room the passes before it left, which
+they shouldn't make room for (the dash walls past their introduction, task H7a: Dash walls, below).
 When a rule needs room for one of its guarantees, it removes what's
 in the way rather than moving it (taking content out never makes a level unfair). Guaranteed pads
 come from `scripts/enemies/pad_placement.gd`, shared by the drone and host rules: the drone's pad
@@ -1910,10 +1913,23 @@ the runner dashes through; introduced in Corporate 1 after the Buzz Overdrive, a
 broken in an attempt), left out of `to_dict()` while empty, so a level without them is the same data as before.
 `dash_wall_rules.gd` (`scripts/enemies/`) places them, numbers in `DashWallTuning` (`data/tuning/dash_walls.tres`,
 F6 "Dash walls"), how many in `LevelConfig.dash_walls` (2 to 4 by level, DESIGN-TBD), the wall's size in
-`MovementTuning` ("Dash walls"). The feature has no patterns: its `apply()` runs after the rules of every other
-feature (its `RUN_AFTER` lists them all), from `rng_for("dash_wall")`, so it plans on the level's final enemies,
-ceilings, pads, ramps and cuts, the rules before it place exactly what they did, and a level with a count of 0
-(or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
+`MovementTuning` ("Dash walls"). The feature has no patterns, and its walls stand in two stages:
+- **The introduction** (a level that gives the feature a start: Corporate 1) with the rules: `apply()` runs after
+  every other feature's (its `RUN_AFTER` lists them all), so it plans on the level's final enemies, ceilings, pads,
+  ramps and cuts, and every pass after the rules keeps off it.
+- **The rest** after the danger density pass's obstacles and the zone doodads, before the wall fences:
+  `after_doodads()`, through the generator's rules hook for that moment (`LevelGenerator._after_doodad_rules`,
+  the rules scripts' `static func after_doodads(gen)`), in the room the passes before left. The fill pass, the
+  danger density pass and the doodads then fill the level as they would without them: a wall standing earlier
+  took the stretches those passes add enemies and rows in, and the late levels on 3 lanes fell below the share of
+  danger the owner asked for (`test_danger_density`), and a crowded level's few doodad stretches. A wall there
+  takes out the plain pieces in its way (the fill pass's and the danger density pass's too), and keeps off every
+  wider gap's zone (`WideGapPlacement.keep_outs`), every planted cyborg's encounter
+  (`ChargePathPlacement.encounter_span`) and every doodad with its push's lead before it (`doodad_span`), as each
+  keeps off a wall placed before it. A level left with no wall at all makes room for one
+  as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger).
+Both draw from `rng_for("dash_wall")`, so the passes before them place exactly what they did, and a level with a
+count of 0 (or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
 - **A footprint in every lane**, from `approach_seconds` before the face to `after_seconds` past the back, at the
   dash's speed (the run's plus `PowerupTuning.dash_speed_bonus`): no hole or floor cut's window, fence, doodad,
   speed pad, pad's zone, ramp or the wall run it launches, no ceiling from its start to the end of its landing
@@ -1927,25 +1943,27 @@ ceilings, pads, ramps and cuts, the rules before it place exactly what they did,
 - **Spacing**: faces at least `spacing_for()` apart (the dash's longest cooldown, 8 s at tier 1, and
   `cooldown_margin_seconds` of run, plus the ground a dash adds), and with `keep_dash_baits` nothing else that
   invites a dash within that spacing before a face (a Buzz Overdrive's charge meeting the runner, a fence
-  generator, and, as they come after, a zone doodad: `bait_keep_outs`).
+  generator; a zone doodad never needs the dash, so it keeps off the footprint only).
 - **The wall route**: from `wall_route_seconds` before the face to the back, at least one side wall holds no sign
   (where both do, those of the side with fewer go), and the side wall gaps and wall fences keep off both walls
   there (`wall_keep_outs`, `WallGapPlacement.keep_outs`; the wall fences' drop windows keep off the footprint).
-- **How many, and where**: up to the level's count, spread through the level (a part each, a seeded spot aimed
-  for, the best fair spot in the part), then the best of the rest. Corporate 1 (`feature_starts`, 0.42) introduces
-  them first, at the first fair spot from the start; where none comes within `intro_window_seconds` the
+- **How many, and where**: up to the level's count, spread through the level past an introduction (a part each, a
+  seeded spot aimed for, the best fair spot in the part), then the best of the rest; where that leaves a crowded
+  level short, the most that fit, as far apart as they can be (`_most_apart`). Corporate 1 (`feature_starts`, 0.42)
+  introduces them first, at the first fair spot from the start; where none comes within `intro_window_seconds` the
   introduction makes room (`_make_room`): the face there the fewest enemies of `MAKE_ROOM_TYPES` block (a Buzz
   Overdrive with its cut, a fence generator, a cyborg, a window cyborg, a screech; anything else blocking rules a
   face out) loses them, unless that leaves a feature with nothing or moves any feature's first (each feature's
   introduction stays where it was). A level with the feature and no fair spot at all gets a warning (every
   feature appears).
-After the rules everything keeps off them: the fill pass (`fill_keep_outs`, every footprint in every lane), the
-danger density pass, the wider gaps, the planted cyborgs, the wall fences' drop windows and the zone doodads
-(`doodad_keep_outs()`, through `rules_doodad_keep_outs`), the doodads over the baits' spacing too, the side wall
-gaps (`wall_keep_outs`), and the credits (none inside a wall: `LevelLayout.doodad_between` counts a wall in every
-lane, so a dropped credit or a floor cut's lane never lands in one either). `problems(gen)` re-checks a finished
-layout (the tests, `LayoutChecks.check_dash_walls`). Every campaign level gets its full count on its own seed at 3,
-5 and 6 lanes, and the walls keep every introduction on time (test_campaign's late ones stay 6 of 69).
+What comes after a wall keeps off it: after the introduction the fill pass (`fill_keep_outs`, every footprint in
+every lane), the danger density pass, the wider gaps, the planted cyborgs and the zone doodads
+(`doodad_keep_outs()`, through `rules_doodad_keep_outs`); after the rest the wall fences' drop windows (the same),
+the side wall gaps and wall fences beside them (`wall_keep_outs`), and the credits (none inside a wall:
+`LevelLayout.doodad_between` counts a wall in every lane, so a dropped credit or a floor cut's lane never lands in
+one either). `problems(gen)` re-checks a finished layout (the tests, `LayoutChecks.check_dash_walls`). Every
+campaign level gets its full count on its own seed at 3, 5 and 6 lanes (Golden 1 asks for 2 and Golden 3 for 3:
+their crowded tracks have room for no more on 5 and 6 lanes).
 
 **Dash walls on the track.** `TrackBuilder._build_dash_wall` builds each in the chunk where it stands (Damage and
 interactions: the box on `LAYER_DASH_WALL`, the forgiving hitbox), sized by `TrackBuilder.dash_wall_size()` (as
@@ -3835,8 +3853,9 @@ back after a doodad's push (`AttackWatch.keep_lane`).
 append, a wall a doodad in every lane, broken or not); the generator over every level with the feature at 3, 5
 and 6 lanes on its own seed and two others (the level's count on its own seed, at least one on any, no warning,
 every wall fair by `LayoutChecks.check_dash_walls`, the same every build); Corporate 1's introduction right
-after its start at every lane count, alone, and no other level introducing them; a level without the feature
-or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
+after its start at every lane count, alone, and no other level introducing them; past an introduction the walls
+standing after the danger density pass and the doodads (its report, the fillers, the enemies and the doodads as
+with no walls, only the pieces in their way taken out); a level without the feature or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
 armor absorbs and that breaks it, across the floor lanes and short of the side walls, taller than any jump, the
 skin's hook and colours, a broken one never built); the damage rules (the dash, armor, the shield, a kill, god
 mode, the invulnerability window; a sign still a hit armor never blocks); on real physics at 3, 5 and 6 lanes in

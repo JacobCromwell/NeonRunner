@@ -1,10 +1,13 @@
 # H7a, dash walls (the mechanism): open questions
 
 - **How many a level** (GDD §9.14 gives none; the brief: 2–4, rising). Placeholder: `LevelConfig.dash_walls`,
-  2 in Corporate 1 and 2 and Dead Zone 2, 3 in Dead Zone 1 and Golden 1, 4 in Golden 2 and 3 (0 to 8 in the F6
-  "Level pacing" section). The generator places up to that many (every campaign level gets its full count on its
-  own seed at 3, 5 and 6 lanes). Endless mode and quick play keep their base level's count, however long the
-  level. How many should each level have, and should endless mode scale them with its length?
+  2 in Corporate 1 and 2, Dead Zone 2 and Golden 1, 3 in Dead Zone 1 and Golden 3, 4 in Golden 2 (0 to 8 in the
+  F6 "Level pacing" section). The generator places up to that many (every campaign level gets its full count on
+  its own seed at 3, 5 and 6 lanes). Golden 1 and Golden 3 ask for fewer than the brief's rising 2 to 4 would
+  give them because their tracks are the most crowded (Golden 1 on 5 lanes has room for two walls, Golden 3 on 6
+  lanes for three: the walls past an introduction take the room the other passes leave, below). Endless mode and
+  quick play keep their base level's count, however long the level. How many should each level have, and should
+  endless mode scale them with its length?
 - **Where Corporate 1 introduces them** (GDD §9.14, proposed: "Corporate 1, after the Buzz Overdrive's
   introduction"). Placeholder: `feature_starts["dash_wall"] = 0.42` in `data/levels/corporate_1.tres` (the Buzz
   Overdrive's is 0.1, the partial wall fences' 0.5). The introduction stands at the first fair spot from its start;
@@ -16,14 +19,28 @@
 - **The spacing and what counts as "needing the dash"** (GDD §9.14, proposed: "nothing else that needs the dash
   comes just before one"). Placeholder (`data/tuning/dash_walls.tres`): faces at least the dash's longest cooldown
   (8 s at tier 1) plus `cooldown_margin_seconds` (1 s) of run apart, plus the ground a dash covers; and within that
-  same spacing before a face no Buzz Overdrive charge meets the runner (a panic dash smashes it), no fence generator
-  stands (its hint says to dash through it) and no zone doodad (the dash smashes one); `keep_dash_baits` turns that
-  off. Should "just before" be the whole cooldown, and are the fence generator and the doodads baits too?
+  same spacing before a face no Buzz Overdrive charge meets the runner (a panic dash smashes it) and no fence
+  generator stands (its hint says to dash through it); `keep_dash_baits` turns that off. A zone doodad isn't
+  treated as one: it never needs the dash (it only pushes the runner aside, and no hint sends the dash at it), and
+  keeping doodads off the whole spacing before every wall left Golden 2 on 5 lanes with none. Should "just before"
+  be the whole cooldown, and is the fence generator a bait?
 - **The clear stretch around a wall** (GDD §9.14 gives none; the brief: a reaction and a lane switch at dash
   speed). Placeholder: `approach_seconds` and `after_seconds` 0.6 s at the dash's speed before the face and past the
   back, in every lane: no hole, floor cut's window, fence, doodad, speed pad, pad's zone, ramp or its wall run,
   ceiling or landing zone, and no enemy's attack. Plain holes, fences and signs there are taken out to make room
   (`clear_plain_pieces`).
+- **Where the walls stand in the level's build, and the danger density request** (`docs/USER_REQUESTS.md`: about
+  35% more enemies and obstacles by the final levels, which `test_danger_density` holds at 30% to 40%). Placeholder:
+  only the introduction stands with the enemy rules; the rest stand after the danger density pass and the zone
+  doodads, in the room those passes and the fill pass left, taking out plain holes and fences in their way.
+  Standing them earlier (before those passes) took the stretches the passes add enemies and rows in: the final
+  levels on 3 lanes then came out about 28% denser instead of 30% (the sample was at 30.3% before the walls), and
+  any wall at all, even one a level, pushed them under; and it took a crowded level's few doodad stretches (Golden 1
+  lost all its doodads on 5 and 6 lanes). So each wall now costs a few plain pieces where it stands (0 to 7 a level
+  in the suite's sample) rather than the level losing the danger the owner asked for, and in a crowded level the
+  walls get fewer fair spots (where a level ends up with none, one makes room by taking out an enemy, as the
+  introduction may). Is that the right trade, or should the walls count toward the requested danger (each is a
+  hit across every lane)?
 - **The wall's size and the wall runners' strip** (GDD §9.14: "it blocks only the floor; a player running on a side
   wall passes it"). Placeholder (`MovementTuning`, "Dash walls"): 9 m tall (a wall jump's feet reach about 5.3 m),
   2.5 m deep, its sides 1.2 m short of each side wall's face (`dash_wall_wall_room`), its hitbox 0.15 m inside its

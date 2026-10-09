@@ -25,11 +25,10 @@ extends RefCounted
 ##    Then, before the fill pass: wider gaps (LevelConfig.wide_gaps; WideGapPlacement, task G7): a couple of
 ##    the level's rows longer along the run (or new rows where too few fit), too wide for an Enforcer Truck
 ##    to hop; the fill pass and the danger density pass then keep their spacing from them.
-##    After the danger density pass's obstacles, the rules' `static func after_obstacles(gen:
-##    LevelGenerator)` (_after_obstacle_rules): the rest of the level's dash walls, in the room the passes
-##    before them left, so those passes measure and fill the level as they would without them.
 ## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
-##    nothing else goes on (_place_doodads).
+##    nothing else goes on (_place_doodads). After them, the rules' `static func after_doodads(gen:
+##    LevelGenerator)` (_after_doodad_rules): the rest of the level's dash walls, in the room the passes
+##    before them left, so those passes measure and fill the level as they would without them.
 ## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
 ##    fences across the wall-run path, only where they're fair (_place_wall_fences).
 ## 6. Side wall gaps (the `wall_gaps` feature, Zone 2 on; WallGapPlacement): stretches of a side wall
@@ -354,10 +353,10 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_fill_empty_stretches(patterns)
 	WideGapPlacement.widen_deferred(self)
 	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)
-	_after_obstacle_rules()
 	_place_doodads(patterns)
 	# Only the doodads ask it, and it holds this generator: let it go.
 	danger_density_plan = null
+	_after_doodad_rules()
 	_place_wall_fences()
 	WallGapPlacement.place(self)
 	gap_density_result = GapDensity.apply(self)
@@ -1305,19 +1304,19 @@ func _after_fill_rules() -> void:
 			script.call("after_fill", self)
 
 
-## Runs the `static func after_obstacles(gen: LevelGenerator)` of every feature's rules script that has one, in
-## the order of the level's features, after the danger density pass's obstacles and before the zone doodads: a
-## rule that places what the passes before it shouldn't make room for (the dash walls past their
-## introduction, task H7a: the fill pass and the danger density pass fill the level as they would without them,
-## and they stand in the room left, taking out plain pieces where they must).
-func _after_obstacle_rules() -> void:
+## Runs the `static func after_doodads(gen: LevelGenerator)` of every feature's rules script that has one, in the
+## order of the level's features, after the danger density pass's obstacles and the zone doodads, before the wall
+## fences: a rule that places what the passes before it shouldn't make room for (the dash walls past their
+## introduction, task H7a: the fill pass, the danger density pass and the doodads fill the level as they would
+## without them, and they stand in the room left, taking out plain pieces where they must).
+func _after_doodad_rules() -> void:
 	for feature: String in config.features:
 		var path: String = RULES_DIR.path_join("%s_rules.gd" % feature)
 		if not ResourceLoader.exists(path):
 			continue
 		var script := load(path) as GDScript
-		if script != null and script.has_method("after_obstacles"):
-			script.call("after_obstacles", self)
+		if script != null and script.has_method("after_doodads"):
+			script.call("after_doodads", self)
 
 
 ## True if the fill pass may place `pattern`: plain obstacles, holes and fences only, that need no
