@@ -193,8 +193,9 @@ func _test_slot() -> void:
 	check(slot.armor_rule and is_equal_approx(slot.armor_delay_min, 22.0) and is_equal_approx(slot.armor_delay_max, 22.0)
 		and slot.armor_when_unprotected, "the armor rule with the longest delay of any fight, 22 s, once the armor's all gone (GDD §10)")
 	check(slot.payout_credits == 1000 and slot.defeat_score == 10000, "1,000 credits and 10,000 points for the win")
-	check(slot.three_star_seconds > 0.0 and slot.three_star_seconds < slot.two_star_seconds,
-		"provisional pars: %.0f s for three stars, %.0f s for two" % [slot.three_star_seconds, slot.two_star_seconds])
+	check(slot.three_star_seconds > 0.0 and slot.three_star_seconds < slot.two_star_seconds and slot.two_star_seconds < slot.time_bonus_seconds,
+		"pars: %.0f s for three stars, %.0f s for two, a time bonus to %.0f s (from a clean fight: test_golden_convergence_whole)" % [
+			slot.three_star_seconds, slot.two_star_seconds, slot.time_bonus_seconds])
 	check(slot.music == &"golden", "it plays the Golden Zone's track")
 	check(slot.tuning is GoldenConvergenceTuning and slot.tuning.resource_path == "res://data/bosses/golden_boss_tuning.tres",
 		"its numbers are a tuning of its own (F6)")
