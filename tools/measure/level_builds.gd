@@ -266,6 +266,9 @@ func _arena_plans(campaign: Campaign, tuning: MovementTuning) -> void:
 		if s.kind != CampaignStep.Kind.BOSS or s.boss == null:
 			continue
 		var line: String = "%-22s" % s.id
+		if not s.boss.is_built():
+			print(line + " | not built yet")
+			continue
 		for lanes: int in _lanes:
 			var best: float = INF
 			for k: int in _repeat:

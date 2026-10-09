@@ -17,7 +17,7 @@ extends RefCounted
 ## - the build flavor.
 ## A different seed, lane count, level or setting builds again, and only the last level is kept. Endless
 ## mode always builds (each of its runs has a random seed) and keeps nothing; a boss fight's arena plans its
-## own laps (BossEncounter.plan_arena, a few milliseconds) and never comes here.
+## own laps (BossEncounter.plan_arena, 6 to 25 ms here) and never comes here.
 ##
 ## The kept build is never handed out: every run plays its own LevelLayout.copy(), the first run too,
 ## since a run changes its layout as it goes (an EMP switches fences off in it, the track numbers its fences,
