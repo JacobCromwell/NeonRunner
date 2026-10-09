@@ -4,8 +4,8 @@ extends Control
 ## edge show his lane, as with the Enforcer Truck"; the Pounce: "with a roar, his marker turns red"): a small
 ## chevron at the bottom edge of the screen, under the floor of his lane near the runner (EnforcerTruckMarker's
 ## way), in the cult's warm white while he only follows, turning the enemy attacks' red as a Pounce's warning
-## begins (`alarm`, 0-1; steady), flashing red for a Claw Slash's (E5d-e: GoldenConvergenceChase.marker_alarm beats
-## `alarm`; steady red with Reduced flashing). Two claw marks over it tell it from
+## begins (`alarm`, 0-1; steady), flashing red for a Claw Slash's (E5d-e: GoldenConvergenceChase.marker_blink beats
+## its opacity, `blink`; steady red with Reduced flashing). Two claw marks over it tell it from
 ## the Enforcer's. GoldenConvergenceMagnate moves it (lane_x, his world x) and fades it in while he's behind the
 ## runner; it draws itself from the camera each frame, under the HUD (its own CanvasLayer).
 
@@ -26,6 +26,8 @@ var runner_z: float = 0.0
 var alarm: float = 0.0
 ## 0 (hidden) to 1 (shown).
 var shown: float = 0.0
+## Its opacity on top of `shown` (E5d-e: a Claw Slash's warning beats it on and off; GoldenConvergenceChase).
+var blink: float = 1.0
 ## Where it was drawn last (screen pixels; tests and the showcase read it).
 var screen_point := Vector2.ZERO
 ## Whether its last draw showed it (hidden, it's drawn once more to clear it, then left alone), and its backing's
@@ -77,7 +79,7 @@ func _draw() -> void:
 	var s: float = UiTheme.px(1.0)
 	var w: float = WIDTH * s * 0.5
 	var h: float = HEIGHT * s
-	var a: float = clampf(shown, 0.0, 1.0)
+	var a: float = clampf(shown, 0.0, 1.0) * clampf(blink, 0.0, 1.0)
 	var c: Color = color()
 	var dark := Color(0.02, 0.02, 0.03, 0.75 * a)
 	# A dark backing, then the chevron pointing up, and two claw marks over it.

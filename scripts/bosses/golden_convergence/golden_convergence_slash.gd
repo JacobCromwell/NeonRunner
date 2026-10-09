@@ -38,8 +38,10 @@ const SIDE_SPEED: float = 14.0
 const LUNGE_SIDE_SPEED: float = 26.0
 ## The swipe's pose starts this long before it lands (the claws raised, then swept down as it lands).
 const SWIPE_LEAD: float = 0.22
-## The claw streaks: how long they show, and their glow.
-const STREAK_SECONDS: float = 0.22
+## The claw streaks: how long they show, and how far ahead of the runner they cross the lane (ahead of his head, so
+## his body never hides them from the camera behind him).
+const STREAK_SECONDS: float = 0.25
+const STREAK_AHEAD: float = 0.6
 ## The enemy attacks' red (the Lash's).
 const COLOR := Color(1.0, 0.16, 0.08)
 ## The second warning of a double: he recoils this far back while it begins, then lunges again.
@@ -94,42 +96,42 @@ func stretch() -> float:
 	return t.slash_behind + boss.speed_planned() * t.slash_hit_seconds + t.slash_ahead
 
 
-## Three claw marks across a lane, `width` wide and `depth` long (its middle at the origin): slanted red bars on the
-## floor in the warnings' red, a faint wash round them. One mesh, two surfaces.
+## Three claw marks across a lane, `width` wide and `depth` long (its middle at the origin): broad slanted red bars
+## raked down the lane in the warnings' red, a faint wash round them. One mesh, two surfaces.
 static func marks_mesh(width: float, depth: float) -> ArrayMesh:
 	var batch := MeshBatch.new()
-	var bars: MeshLayer = batch.layer(GreyboxMaterials.glow(BossProps.WARNING_COLOR, 2.8, 0.9))
-	var slant: float = 0.42
-	var length: float = sqrt(depth * depth * 0.72 + width * width * 0.25)
+	var bars: MeshLayer = batch.layer(GreyboxMaterials.glow(BossProps.WARNING_COLOR, 3.0, 0.92))
+	var slant: float = 0.3
 	for k: int in 3:
 		var x: float = (float(k) - 1.0) * width * 0.3
-		var xform := Transform3D(Basis(Vector3.UP, slant) * Basis.from_scale(Vector3(0.2, 0.04, length * (0.86 if k == 1 else 0.74))),
-			Vector3(x, 0.0, 0.0))
+		var length: float = depth * (0.92 if k == 1 else 0.8)
+		var xform := Transform3D(Basis(Vector3.UP, slant) * Basis.from_scale(Vector3(0.3, 0.04, length)), Vector3(x, 0.0, 0.0))
 		bars.box_xform(xform, Color.WHITE)
-	var wash: MeshLayer = batch.layer(GreyboxMaterials.glow(BossProps.WARNING_COLOR, 1.1, 0.12))
+	var wash: MeshLayer = batch.layer(GreyboxMaterials.glow(BossProps.WARNING_COLOR, 1.2, 0.16))
 	wash.box(Vector3(0.0, -0.01, 0.0), Vector3(width, 0.02, depth), Color.WHITE)
 	return batch.to_mesh()
 
 
-## His claws coming in: three red streaks curving down and across a lane `width` wide at the runner's height (its
-## foot at the origin, facing the camera).
+## His claws coming in: three broad red streaks sweeping down and across a lane `width` wide, wider than it and from
+## above his head, so they show round him from the camera behind (its foot at the origin, facing the camera).
 static func streaks_mesh(width: float) -> ArrayMesh:
 	var batch := MeshBatch.new()
-	var s: MeshLayer = batch.layer(GreyboxMaterials.glow(COLOR, 3.6, 1.0))
-	var steps: int = 9
+	var s: MeshLayer = batch.layer(GreyboxMaterials.glow(COLOR, 4.4, 1.0))
+	var steps: int = 12
+	var span: float = width * 0.85
 	for k: int in 3:
-		var dz: float = (float(k) - 1.0) * 0.42
-		var lift: float = (float(k) - 1.0) * 0.12
+		var dz: float = (float(k) - 1.0) * 0.5
+		var lift: float = (float(k) - 1.0) * 0.28
 		var prev := Vector3.ZERO
 		for i: int in steps + 1:
 			var u: float = float(i) / float(steps)
 			# From high on one side, sweeping down and across to low on the other.
-			var p := Vector3(lerpf(-width * 0.55, width * 0.55, u), 2.1 - 1.6 * u + 0.45 * sin(PI * u) + lift, dz - 0.3 * sin(PI * u))
+			var p := Vector3(lerpf(-span, span, u), 3.0 - 2.6 * u + 0.5 * sin(PI * u) + lift, dz - 0.5 * sin(PI * u))
 			if i > 0:
 				var along: Vector3 = p - prev
-				var thick: float = 0.07 * (0.4 + sin(PI * u))
+				var thick: float = 0.12 * (0.35 + sin(PI * u))
 				var basis := Basis.looking_at(along.normalized(), Vector3.UP if absf(along.normalized().y) < 0.98 else Vector3.BACK)
-				s.box_xform(Transform3D(basis * Basis.from_scale(Vector3(thick, thick, along.length() + 0.02)), (prev + p) * 0.5),
+				s.box_xform(Transform3D(basis * Basis.from_scale(Vector3(thick, thick * 0.6, along.length() + 0.03)), (prev + p) * 0.5),
 					Color.WHITE)
 			prev = p
 	return batch.to_mesh()
@@ -406,7 +408,7 @@ func _show_streaks(lane: int) -> void:
 	if _streaks == null:
 		return
 	var at: float = boss.player_distance()
-	_streak_base = Transform3D(Basis.IDENTITY, Vector3(boss.world.geo.lane_x(lane), 0.0, TrackGeometry.world_z(at - 0.4)))
+	_streak_base = Transform3D(Basis.IDENTITY, Vector3(boss.world.geo.lane_x(lane), 0.0, TrackGeometry.world_z(at + STREAK_AHEAD)))
 	_streaks.transform = _streak_base
 	_streaks.visible = true
 	_streak_t = 0.0
@@ -426,7 +428,7 @@ func _tick_looks(delta: float) -> void:
 		var s: float = (1.0 - k * 0.6)
 		var base: Transform3D = _streak_base
 		_streaks.transform = Transform3D(Basis.from_scale(Vector3(1.0, s, 1.0)), Vector3(base.origin.x, 0.0,
-			TrackGeometry.world_z(boss.player_distance() - 0.4)))
+			TrackGeometry.world_z(boss.player_distance() + STREAK_AHEAD)))
 		if k >= 1.0:
 			_streaks.visible = false
 			_streak_t = -1.0

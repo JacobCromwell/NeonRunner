@@ -796,8 +796,8 @@ func _target_pose() -> void:
 			# as it lands (GoldenConvergenceSlash.SWIPE_LEAD before the hit), his jaw wide.
 			var k: float = clampf((anim_time - 0.15) / 0.14, 0.0, 1.0)
 			k = k * k * (3.0 - 2.0 * k)
-			p.body_y = 0.12 - 0.1 * k
-			p.body_rot = Vector3(0.6 - 0.45 * k, 0.12 * k, -0.08 + 0.3 * k)
+			p.body_y = 0.1 - 0.12 * k
+			p.body_rot = Vector3(0.38 - 0.4 * k, 0.12 * k, -0.08 + 0.3 * k)
 			p.chest = 0.14
 			p.neck = 0.4 - 0.55 * k
 			p.jaw = 0.95

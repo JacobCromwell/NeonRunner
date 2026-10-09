@@ -568,6 +568,10 @@ var lash: GoldenConvergenceLash
 var slash: GoldenConvergenceSlash
 var screens: GoldenConvergenceScreens
 var tentacles: GoldenConvergenceTentacles
+## E5d-e: stage 2's darkness, due on its next physics frame (seconds to fade over; -1 none due). Not at once: a fight
+## resumed at the checkpoint begins in setup(), before the run has made its environment (LevelRun), and the light
+## must find it (BossEncounter.set_light_level captures the environment once).
+var _dim_due: float = -1.0
 
 
 func _build_stage_two() -> void:
@@ -619,11 +623,11 @@ func _start_stage_two(index: int) -> void:
 	_set_step(Step.FLOAT)
 	if index == STAGE_2:
 		transition.start()
-		set_light_level(tuning.stage_two_light, tuning.dim_seconds)
+		_dim_due = tuning.dim_seconds
 	else:
 		transition.start_hurl()
 		if light_level() > tuning.stage_two_light + 0.001:
-			set_light_level(tuning.stage_two_light, 0.0)
+			_dim_due = 0.0
 	log_event(&"stage_2", {"phase": index, "light": tuning.stage_two_light})
 
 
@@ -631,6 +635,9 @@ func _start_stage_two(index: int) -> void:
 ## moves, the beat script once the intro's done, the chase. An attack's tick may end the phase (E5d-e: a screen on
 ## him): the next phase's intro has begun, and the frame's attacks stop there.
 func _stage_two_tick(delta: float, intro: bool) -> void:
+	if _dim_due >= 0.0:
+		set_light_level(tuning.stage_two_light, _dim_due)
+		_dim_due = -1.0
 	step_time += delta
 	_t += delta
 	court.tick()

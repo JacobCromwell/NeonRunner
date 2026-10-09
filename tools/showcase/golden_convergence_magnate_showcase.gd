@@ -26,10 +26,20 @@ extends Node3D
 ##   defeat      phase 6's bait and stomp, then the defeat: the cables tearing out, the screens dying outward, the
 ##               collapse ahead, the runner running past
 ##   fight       stage 2 as it comes, with the bot
+## The owner's playtest (task E5d-e), from phase 5's hurl unless --phase says otherwise:
+##   slash       a Claw Slash (--kind=double: two in a row): him closing in, the marker flashing red, the red claw
+##               marks in the runner's lane, the lunge into view and the swipe, the runner switching out (--still:
+##               the runner stays, god mode)
+##   screens     a Screen Storm: him up on the balustrade beside the runner, the screens coming down on their gold
+##               tentacles over red squares, crashing around the runner and onto him, yanked back up (--still: the
+##               runner stays, god mode)
+##   dark        stage 2 darker: phase 4's transition from the checkpoint (the arena fading to 0.7 of its light),
+##               then a Pounce with the bait: the stun and the green chevrons where to take off, the stomp
 ## Options: --lanes=N (5 by default), --speed=N (18 by default; the campaign's 25), --cam=run/side/high,
 ## --reduced-flashing, --events (prints each of the boss's events with its frame, for picking frames), --still,
-## --miss, --kind=low|high.
-## Frames worth a look (at --fixed-fps 10, 18 m/s, 5 lanes; --events prints the rest): transition: the burst at 0-6,
+## --miss, --kind=low|high (lash) or double (slash), --phase=N (4-6: the phase it starts at).
+## Frames worth a look (at --fixed-fps 10, 18 m/s, 5 lanes; --events prints the rest; E5d-e's scenarios start at
+## phase 5, the hurl, and their first beat comes at about frame 32): transition: the burst at 0-6,
 ## the plates off from 4, his roar at 18, the suit toppling 23-45, the leap over the runner 28-42; chase: his
 ## shadow and marker 45-57; pounce: the roar (the marker red) at 58, the leap 65, the square 72, the crash 83;
 ## bait: the buttress at 58, the roar 80, the lock 94, the stun 105, the stomp 120, the hurl 121-127; lash: the
@@ -57,6 +67,7 @@ func _ready() -> void:
 	var speed: float = 18.0
 	var kind: String = "low"
 	var miss: bool = false
+	var start_phase: int = -1
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
@@ -78,6 +89,8 @@ func _ready() -> void:
 			_still = true
 		elif arg == "--miss":
 			miss = true
+		elif arg.begins_with("--phase="):
+			start_phase = clampi(int(v), 4, 6) - 1
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.preview() if slot.preview() != null else slot.duplicate() as BossDef
 	var t: GoldenConvergenceTuning = (def.tuning as GoldenConvergenceTuning).duplicate() as GoldenConvergenceTuning
@@ -87,10 +100,14 @@ func _ready() -> void:
 			beat = "overtake"
 		"pounce":
 			beat = "pounce"
-		"bait", "defeat":
+		"bait", "defeat", "dark":
 			beat = "pounce:bait"
 		"lash":
 			beat = "lash:%s" % kind
+		"slash":
+			beat = "slash:double" if kind == "double" else "slash"
+		"screens":
+			beat = "screens"
 		"magnate", "face", "feed", "transition":
 			beat = "none"
 	if beat != "":
@@ -107,8 +124,10 @@ func _ready() -> void:
 	ctx.config = BossArena.base_config(def)
 	ctx.config.lane_count = lanes
 	ctx.tuning = tuning
-	# From the checkpoint (phase 4, the transition), or phase 6 for the defeat.
-	ctx.boss_resume = {"phase": 5 if scenario == "defeat" else 3}
+	# From the checkpoint (phase 4, the transition), or phase 6 for the defeat; E5d-e's attacks from phase 5 (its
+	# intro is his hurl), unless --phase says otherwise.
+	var phase: int = 5 if scenario == "defeat" else (4 if scenario in ["slash", "screens"] else 3)
+	ctx.boss_resume = {"phase": start_phase if start_phase >= 0 else phase}
 	boss = BossEncounter.create(def) as GoldenConvergence
 	var arena: BossArena = boss.plan_arena(ctx)
 	world = RunWorld.new()
@@ -117,7 +136,7 @@ func _ready() -> void:
 	world.build(ctx.config, arena.layout, tuning, load("res://data/tuning/game_rules.tres") as GameRules,
 		load("res://data/tuning/powerups.tres") as PowerupTuning, null, load("res://data/audio/sfx_library.tres") as SfxLibrary)
 	boss.setup(world, ctx, arena)
-	if scenario in ["pounce", "bait", "lash", "defeat", "fight", "chase"] and not _still:
+	if scenario in ["pounce", "bait", "lash", "defeat", "fight", "chase", "slash", "screens", "dark"] and not _still:
 		bot = GoldenConvergenceBot.new(boss)
 		bot.stomps = not miss
 	else:

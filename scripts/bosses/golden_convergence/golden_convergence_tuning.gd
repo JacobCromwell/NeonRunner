@@ -535,7 +535,7 @@ static func covered_lanes(lanes: int, parity: int) -> Array[int]:
 ## swipe lands).
 @export_range(0.2, 2.0, 0.05, "suffix:s") var slash_close_seconds: float = 0.6
 @export_range(0.35, 1.0, 0.01, "suffix:s") var slash_warning: float = 0.5
-@export_range(0.5, 5.0, 0.1, "suffix:m") var slash_strike_behind: float = 2.4
+@export_range(0.5, 5.0, 0.1, "suffix:m") var slash_strike_behind: float = 3.0
 ## The swipe: an enemy attack over slash_width_share of the locked lane, from slash_behind behind where the runner
 ## is (at the run speed) as it lands to slash_ahead past where they are when it's over, up to slash_height (above a
 ## jump), live for slash_hit_seconds. Armor and the shield block it; the dash passes through.

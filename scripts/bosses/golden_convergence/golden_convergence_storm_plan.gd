@@ -21,14 +21,21 @@ extends RefCounted
 ##   long, whatever F6 says).
 ## Every screen notes its `escapes` (its lane's neighbours free as it was warned) and `escape` (the one a runner is
 ## sent to: the bot's, GoldenConvergenceBot; toward the side with more free lanes, then the middle). Screens on The
-## Magnate (lane -1) touch no lane. The storm's slots (when each screen crashes, which are his) come from slots().
+## Magnate (lane -1) touch no lane. The storm's slots (when each screen crashes; which are his, which come down on
+## the runner, which beside them) come from slots(); pick() places a slot's screen: one meant for the runner in their
+## lane once the rule allows it there (it may wait a moment for that), one beside them in a lane around theirs, two
+## lanes off rather than one (a screen next to their lane keeps theirs reserved, and then none can come down on them).
 
 ## A warning's spare over the time a runner needs to get out of its lane (warning_for: F6's ranges never leave
 ## less).
 const WARN_SPARE: float = 0.1
-## How far the targeting leans to the runner's lane and its neighbours (by lanes from the runner's), and how much
-## less it likes the lane it just struck.
-const NEAR_WEIGHTS: Array[float] = [3.0, 1.7, 1.0, 0.6, 0.4, 0.3, 0.25]
+## A slot meant for the runner waits at most ON_WAIT for the rule to let it come down in their lane (then it comes
+## down beside them); a slot no lane may take yet waits at most SLOT_SLACK, then it's let go.
+const ON_WAIT: float = 0.4
+const SLOT_SLACK: float = 0.5
+## How a screen beside the runner picks its lane (by lanes from the runner's: never theirs, two off rather than one,
+## further ones less), and how much less it likes the lane it just struck.
+const BESIDE_WEIGHTS: Array[float] = [0.0, 1.0, 1.6, 0.6, 0.4, 0.3, 0.25]
 const REPEAT_WEIGHT: float = 0.35
 
 var lanes: int = 3
@@ -43,6 +50,12 @@ var margin: float = 0.1
 var screens: Array[Dictionary] = []
 ## Per lane, the time until which no new warning may show in it.
 var reserved := PackedFloat32Array()
+## The storm's slots (slots(): {crash, him, on}, crash times from `first_warn`), the next to warn, and the slots let
+## go (place_due).
+var storm_slots: Array[Dictionary] = []
+var next_slot: int = 0
+var first_warn: float = 0.0
+var dropped: int = 0
 
 var _last_lane: int = -1
 
@@ -75,14 +88,15 @@ static func count_for(t: GoldenConvergenceTuning, p_lanes: int) -> int:
 
 
 ## The storm's slots: `count` crashes over `seconds` from 0 (evenly, each moved a little by `rng`), `hits` of them
-## on him spread through it (never the first: the storm opens on the track). [{crash, him}], by time.
+## on him spread through it (never the first: the storm opens on the track), the track's taking turns to come down
+## on the runner (`on`, the first of them) and beside them. [{crash, him, on}], by time.
 static func slots(count: int, hits: int, seconds: float, rng: RandomNumberGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var n: int = maxi(count, 1)
 	var step: float = seconds / maxf(float(n - 1), 1.0)
 	for i: int in n:
 		var jitter: float = rng.randf_range(-0.18, 0.18) * step if i > 0 and i < n - 1 else 0.0
-		out.append({"crash": float(i) * step + jitter, "him": false})
+		out.append({"crash": float(i) * step + jitter, "him": false, "on": false})
 	var k: int = clampi(hits, 0, n - 1)
 	if k > 0:
 		var shift: float = rng.randf_range(-0.2, 0.2)
@@ -95,6 +109,62 @@ static func slots(count: int, hits: int, seconds: float, rng: RandomNumberGenera
 				at -= 1
 			taken[at] = true
 			out[at]["him"] = true
+	var track: int = 0
+	for slot: Dictionary in out:
+		if not bool(slot["him"]):
+			slot["on"] = track % 2 == 0
+			track += 1
+	return out
+
+
+## Takes the storm's slots (slots()), its first warning at `p_first_warn` (seconds from the storm's start).
+func set_slots(p_slots: Array[Dictionary], p_first_warn: float) -> void:
+	storm_slots = p_slots
+	first_warn = p_first_warn
+	next_slot = 0
+	dropped = 0
+
+
+## True once every slot is warned or let go.
+func all_placed() -> bool:
+	return next_slot >= storm_slots.size()
+
+
+## Warns the slots whose time has come at `t` (seconds from the storm's start), the runner in `runner_lane`: his,
+## and the track's, each meant for the runner in their lane once the rule allows it (waiting up to ON_WAIT, then
+## beside them), or beside them around their lane (else in it); a slot no lane may take yet waits up to SLOT_SLACK,
+## then it's let go (`dropped`). Returns the screens warned now (warn(), warn_on_him()), with "slot" (its index) and
+## "meant" (&"him", &"on", &"beside").
+func place_due(t: float, runner_lane: int, rng: RandomNumberGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	while next_slot < storm_slots.size():
+		var slot: Dictionary = storm_slots[next_slot]
+		var due: float = first_warn + float(slot["crash"])
+		if t < due:
+			break
+		if bool(slot["him"]):
+			var s: Dictionary = warn_on_him(t)
+			s["slot"] = next_slot
+			s["meant"] = &"him"
+			out.append(s)
+			next_slot += 1
+			continue
+		var on: bool = bool(slot.get("on", false))
+		var lane: int = pick(t, runner_lane, rng, on)
+		if lane < 0 and (not on or t > due + ON_WAIT):
+			lane = pick(t, runner_lane, rng, not on)
+		if lane >= 0:
+			var s: Dictionary = warn(lane, t)
+			s["slot"] = next_slot
+			s["meant"] = &"on" if on else &"beside"
+			out.append(s)
+			next_slot += 1
+			continue
+		if t > due + SLOT_SLACK:
+			dropped += 1
+			next_slot += 1
+			continue
+		break
 	return out
 
 
@@ -124,16 +194,19 @@ func can_warn(lane: int, t: float) -> bool:
 	return not free_neighbours(lane, t).is_empty()
 
 
-## The lane for the next screen warned at `t` with the runner in `runner_lane`: one the rule allows, picked by `rng`,
-## leaning to the runner's lane and either side of it (the storm comes down around them), less to the lane struck
-## last. -1 if none may be warned now.
-func pick(t: float, runner_lane: int, rng: RandomNumberGenerator) -> int:
+## The lane for a screen warned at `t` with the runner in `runner_lane`: `on` (meant for the runner) their lane if the
+## rule allows it now, else -1 (the caller may wait a moment, or ask for one beside them instead); beside them, a lane
+## the rule allows around theirs, picked by `rng` (BESIDE_WEIGHTS; less the lane struck last), or -1 if none may be
+## warned now.
+func pick(t: float, runner_lane: int, rng: RandomNumberGenerator, on: bool = false) -> int:
+	if on:
+		return runner_lane if can_warn(runner_lane, t) else -1
 	var total: float = 0.0
 	var weights: Array[float] = []
 	for lane: int in lanes:
 		var w: float = 0.0
 		if can_warn(lane, t):
-			w = NEAR_WEIGHTS[mini(absi(lane - runner_lane), NEAR_WEIGHTS.size() - 1)]
+			w = BESIDE_WEIGHTS[mini(absi(lane - runner_lane), BESIDE_WEIGHTS.size() - 1)]
 			if lane == _last_lane:
 				w *= REPEAT_WEIGHT
 		weights.append(w)

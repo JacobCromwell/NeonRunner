@@ -15,9 +15,11 @@ extends GoldenConvergenceAttack
 ##   in turn, the first by the fight's seed) and along it to storm_ahead in front of the runner, where the run
 ##   camera shows him at every lane count; he paces them there through the storm;
 ## - the storm (storm_seconds, never over the pace): its slots (GoldenConvergenceStormPlan.slots: count_for(lanes)
-##   screens, storm_hits of them on him), each warned as its time comes: a screen on the track goes into a lane the
-##   plan allows (GoldenConvergenceStormPlan.pick: from the runner's lane then, so the storm comes down around
-##   them), and a slot no lane may take yet waits a moment (SLOT_SLACK) or is let go;
+##   screens, storm_hits of them on him, the track's taking turns to come down on the runner and beside them), each
+##   warned as its time comes in a lane the plan allows (GoldenConvergenceStormPlan.place_due and pick, from the
+##   runner's lane then): one meant for the runner in their lane (waiting up to ON_WAIT for the rule to allow it,
+##   then beside them), one beside them around their lane; a slot no lane may take yet waits a moment (SLOT_SLACK)
+##   or is let go;
 ## - each screen (a rig of GoldenConvergenceTentacles): its warning (warning_for(): the red square over its lane
 ##   where it crashes, a floor warning; its shadow growing; the screen coming down on its tentacle; magnate_glitch)
 ##   then the crash (magnate_smash; the screen shatters; on the track its touch is live for screen_hit_seconds over
@@ -30,8 +32,6 @@ extends GoldenConvergenceAttack
 enum Stage { IDLE, RUN_UP, STORM, RETURN }
 enum ScreenStage { WARN, CRASH, YANK }
 
-## A lane slot no lane may take yet waits at most this long, then it's let go.
-const SLOT_SLACK: float = 0.35
 ## His back's height over the balustrade's top (where a screen comes down on him).
 const BACK_HEIGHT: float = 1.25
 ## A screen sways this much as it comes down, and lurches this much as it's yanked away.
@@ -100,12 +100,12 @@ func start(_beat: Dictionary) -> void:
 	plan = GoldenConvergenceStormPlan.make(lanes, t, boss.world.tuning)
 	var count: int = GoldenConvergenceStormPlan.count_for(t, lanes)
 	var slots: Array[Dictionary] = GoldenConvergenceStormPlan.slots(count, t.storm_hits, t.storm_seconds, _rng)
+	plan.set_slots(slots, t.storm_run_up / boss.pace())
 	var from: Vector3 = magnate.global_position
 	var d0: float = boss.player_distance()
 	var side: int = _first_side if storms % 2 == 1 else -_first_side
 	p = {"n": storms, "t": 0.0, "d0": d0, "v": boss.speed_planned(), "side": side,
-		"first_warn": t.storm_run_up / boss.pace(), "slots": slots, "next": 0, "rel0": -from.z - d0, "from_x": from.x,
-		"from_y": from.y, "count": count}
+		"first_warn": plan.first_warn, "rel0": -from.z - d0, "from_x": from.x, "from_y": from.y, "count": count}
 	chase.drive(self)
 	_set_stage(Stage.RUN_UP)
 	boss.log_event(&"storm_start", {"n": storms, "side": side, "count": count, "hits": t.storm_hits, "runner": d0})
@@ -136,7 +136,7 @@ func tick(delta: float) -> void:
 				# A screen on him ended the phase (clear() ran): the next phase's intro has him now.
 				_tick_yanks(delta)
 				return
-			if int(p["next"]) >= (p["slots"] as Array).size() and not warning_on():
+			if plan.all_placed() and not warning_on():
 				_set_stage(Stage.RETURN)
 				magnate.play(&"run")
 				chase.drop_back(self, int(p["side"]))
@@ -180,29 +180,15 @@ func _pace_him(delta: float) -> void:
 
 # --- The screens ----------------------------------------------------------------------------------------------
 
-## Warns the slots whose time has come: his, and the track's in a lane the plan allows now.
+## Warns the slots whose time has come (GoldenConvergenceStormPlan.place_due: his, and the track's in a lane the plan
+## allows now), each on a rig of its own.
 func _place_due(t: float) -> void:
-	var slots: Array = p["slots"]
-	while int(p["next"]) < slots.size():
-		var slot: Dictionary = slots[int(p["next"])]
-		var due: float = float(p["first_warn"]) + float(slot["crash"])
-		if t < due:
-			return
-		if bool(slot["him"]):
-			_warn(-1, plan.warn_on_him(t))
-			p["next"] = int(p["next"]) + 1
-			continue
-		var lane: int = plan.pick(t, boss.player_lane(), _rng)
-		if lane >= 0:
-			_warn(lane, plan.warn(lane, t))
-			p["next"] = int(p["next"]) + 1
-			continue
-		if t > due + SLOT_SLACK:
-			dropped += 1
-			boss.log_event(&"screen_dropped", {"n": int(p["n"]), "slot": int(p["next"])})
-			p["next"] = int(p["next"]) + 1
-			continue
-		return
+	var before: int = plan.dropped
+	for entry: Dictionary in plan.place_due(t, boss.player_lane(), _rng):
+		_warn(int(entry["lane"]), entry)
+	for k: int in plan.dropped - before:
+		dropped += 1
+		boss.log_event(&"screen_dropped", {"storm": int(p["n"])})
 
 
 ## A screen's warning: a rig comes down over `lane` (or onto him, -1) for `entry` (the plan's).
