@@ -11,13 +11,14 @@ extends BossPart
 ## - its racks of missiles along its flanks (a MultiMesh, each missile blowing up on its own: explode_rack, the
 ##   chain reaction's ripple), and where the squadron holds beside them, under the racks (hold_point: a hurled
 ##   drone hits a rack's underside);
-## - the feed line from its boom's nozzle to the suit's shoulder pipes (set_line: a dark bronze hose shooting out
-##   over `reach`, a gentle sag; ride(): missiles riding up it to the shoulder), and its burning away as the
-##   chain's blast races up it (burn_line);
+## - the feed line from its boom's nozzle to the suit's shoulder pipes (set_line: a gilded hose shooting out over
+##   `reach`, a gentle sag; ride(): missiles riding up it to the shoulder), and its burning away as the chain's
+##   blast races up it (burn_line);
 ## - the chain reaction's fire (fireball: a swelling, reddening, fading ball, softer with Reduced flashing; spark
 ##   bursts only without it; dark smoke either way) and the ship's own end (explode: it's gone in a blast).
-## A part of the boss that's no target (GDD §10, proposed: weapons never target the ship) and no kill of its own:
-## immune to weapons, never targetable, is_obstacle; nothing on it can hurt the runner.
+## A part of the boss that's no target (GDD §10, proposed: weapons never target the ship; DESIGN-TBD,
+## docs/questions/e5d.md, E5d-c 7) and no kill of its own: immune to weapons, never targetable, is_obstacle; nothing
+## on it can hurt the runner.
 
 ## Fireballs at once (pooled), pieces of the feed line, missiles riding it at once.
 const FIREBALLS: int = 12

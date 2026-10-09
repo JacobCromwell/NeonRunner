@@ -103,6 +103,7 @@ func setup(p_boss: GoldenConvergence) -> void:
 	_core_material.shader = Kit.shader("cable")
 	_core_material.set_shader_parameter(&"color", _fence_color())
 	_conduit_core = _box("ConduitCore", _core_material)
+	world.player.movement_event.connect(_on_player_event)
 	put_away()
 
 
@@ -231,8 +232,9 @@ func ahead() -> bool:
 
 
 ## An EMP at `center` (world space) reaching `radius`: its own generator's pulse switches the whole cage off
-## (GDD §10: "whose pulse switches the fences off"); any other switches off the fences it reaches (GDD §9.1's
-## rule, by their nearest point). True if any went dark.
+## (GDD §10: "whose pulse switches the fences off"; DESIGN-TBD, docs/questions/e5d.md, E5d-c 6: whatever its
+## radius); any other switches off the fences it reaches (GDD §9.1's rule, by their nearest point). True if any
+## went dark.
 func emp(center: Vector3, radius: float) -> bool:
 	if not up:
 		return false
@@ -289,6 +291,19 @@ func put_away() -> void:
 		if generator.alive and generator.track_distance() > boss.player_distance() - 1.0:
 			generator.retire()
 	generator = null
+
+
+## The runner's pad fired: if it's this cage's (its lane, its stretch), the cage has done its work and sinks away at
+## once (the Refill Ship's chain reaction asks the same), so a runner flipping up off the pad never meets a side
+## fence (the flip swings the body out sideways: GoldenConvergenceRefill's ways in are all covered).
+func _on_player_event(kind: StringName) -> void:
+	if kind != &"pad" or not up or _retract >= 0.0 or plan.is_empty():
+		return
+	var p: Player = boss.world.player
+	if p.lane != int(plan["lane"]) or p.distance < float(plan["pad_from"]) - 1.5 or p.distance > float(plan["pad_to"]) + 1.5:
+		return
+	padded = true
+	retract()
 
 
 func _on_generator_defeated(_enemy: Enemy, cause: StringName) -> void:

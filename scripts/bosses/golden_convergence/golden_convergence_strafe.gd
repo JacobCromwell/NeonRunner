@@ -499,7 +499,7 @@ func _fly(delta: float) -> void:
 	for i: int in n:
 		var pose: Dictionary = _pose(i, p)
 		var at: Vector3 = pose["pos"]
-		var now: Vector3 = squadron.drone_position(i) if squadron.flying(i) else boss.cape_point(i)
+		var now: Vector3 = squadron.drone_base(i) if squadron.flying(i) else boss.cape_point(i)
 		var exact: bool = bool(pose.get("exact", false))
 		var pos: Vector3 = at if exact else now.lerp(at, k)
 		var facing: Vector3 = pose.get("facing", at - now)
@@ -522,8 +522,10 @@ func _pose(i: int, p: Dictionary) -> Dictionary:
 	if stage == Stage.RETURN:
 		return {"pos": boss.cape_point(i), "facing": Vector3.FORWARD, "pitch": -0.1}
 	if held:
+		# Led by the run's motion (the hold station paces the runner), so they hold at their places rather than
+		# trailing them by a follower's lag (speed / FOLLOW_RATE).
 		var held_at: Vector3 = hold_station.call(i) if hold_station.is_valid() else _station(i, d)
-		return {"pos": held_at, "facing": Vector3.BACK}
+		return {"pos": held_at + Vector3(0.0, 0.0, -boss.speed() / FOLLOW_RATE), "facing": Vector3.BACK}
 	if stage == Stage.EMERGE or p.is_empty():
 		return {"pos": _station(i, d), "facing": Vector3.BACK}
 	var warn: bool = int(p["stage"]) == PassStage.WARN

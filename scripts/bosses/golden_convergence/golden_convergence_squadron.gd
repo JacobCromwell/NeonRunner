@@ -89,6 +89,7 @@ func set_drone(i: int, pos: Vector3, facing: Vector3, aim: Vector3, firing: bool
 		rig["mode"] = Mode.FLYING
 		node.visible = true
 	var bob: float = 0.0 if firing else sin(_t * 2.1 + float(rig["phase"])) * 0.12
+	rig["base"] = pos
 	node.global_position = pos + Vector3(0.0, bob, 0.0)
 	var flat := Vector3(facing.x, 0.0, facing.z)
 	if flat.length_squared() > 0.0001:
@@ -122,6 +123,12 @@ func muzzle_point(i: int) -> Vector3:
 
 func drone_position(i: int) -> Vector3:
 	return (rigs[i]["node"] as Node3D).global_position
+
+
+## Where drone `i` was last put (set_drone), without its hover bob: where it flies on from (a follower fed its own
+## bob would drift up to bob / follow rate off its place).
+func drone_base(i: int) -> Vector3:
+	return rigs[i].get("base", drone_position(i))
 
 
 ## True if drone `i` is out (flying, not hidden and not down).
