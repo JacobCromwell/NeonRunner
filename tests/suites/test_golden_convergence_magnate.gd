@@ -2,9 +2,10 @@ extends TestSuite
 ## The Golden Convergence's second stage, The Magnate, and its defeat (GDD §10; task E5d-d), its parts one at a
 ## time (the stage played through by the bot at every lane count and speed, the release everywhere and
 ## determinism: test_golden_convergence_magnate_fight.gd):
-## - its data: phases 4-6's beat scripts (a Pounce and the bait in every phase, the Cable Lash from phase 5, more
-##   of it in phase 6), its sounds (each under 2.5 s, the warnings never pitch-varied, the crackle as long as the
-##   Lash's warning) and its hints;
+## - its data: phases 4-6's beat scripts (E5d-e, the owner's playtest: a Pounce, a Claw Slash, a Screen Storm and the
+##   bait in every phase, the Cable Lash from phase 5, the Slashes double in phase 6; stage 2's own shorter beat gap),
+##   its sounds (each under 2.5 s, the warnings never pitch-varied, the crackle as long as the Lash's warning, the
+##   glitch-whine as long as a screen's) and its hints;
 ## - his look: two to three times the runner's size, everything on him inside the lit surfaces' chroma limit but
 ##   the ports (the weak points' red, the only thing on him that glows a hazard colour), the dull red tear, the
 ##   cracks' warm white (no hazard hue, whiter than the runner's copper), grey smoke, unshaded shaders without
@@ -43,9 +44,11 @@ const REACTION: float = 0.35
 const NEW_SOUNDS: Array[StringName] = [&"magnate_roar", &"magnate_growl", &"magnate_breath", &"magnate_leap",
 	&"magnate_crash", &"magnate_slam", &"magnate_stun", &"magnate_stomp", &"magnate_howl", &"magnate_crackle",
 	&"magnate_whip", &"magnate_tear", &"magnate_screens", &"magnate_screen", &"magnate_burst", &"magnate_suit_fall",
-	&"magnate_suit_down", &"magnate_death", &"magnate_collapse"]
-## His warnings: the Pounce's roar and the Lash's crackle, each the same every time (no pitch variation).
-const WARNINGS: Array[StringName] = [&"magnate_roar", &"magnate_crackle"]
+	&"magnate_suit_down", &"magnate_death", &"magnate_collapse",
+	&"magnate_snarl", &"magnate_swipe", &"magnate_glitch", &"magnate_smash", &"magnate_yank", &"magnate_pain"]
+## His warnings: the Pounce's roar, the Lash's crackle, the Slash's snarl and a screen's glitch-whine, each the same
+## every time (no pitch variation).
+const WARNINGS: Array[StringName] = [&"magnate_roar", &"magnate_crackle", &"magnate_snarl", &"magnate_glitch"]
 ## Lit (non-glowing) surfaces stay below this chroma (as test_golden_convergence checks the suit's).
 const MAX_SURFACE_CHROMA: float = 0.45
 ## His draw budget (measured 21 instances and about 9,300 vertices).
@@ -163,9 +166,9 @@ func _death(world: RunWorld) -> Array[String]:
 	return cause
 
 
-## Anything of his that could touch the runner live now (his crash, a cable, a weak point, his sides).
+## Anything of his that could touch the runner live now (his crash, his claws, a cable, a weak point, his sides).
 static func _hot(m: GoldenConvergenceMagnate) -> bool:
-	if m.crash_box().is_active() or m.blocking():
+	if m.crash_box().is_active() or m.slash_box().is_active() or m.blocking():
 		return true
 	for box: Hazard in m.lash_boxes() + m.weak_boxes():
 		if box.is_active():
@@ -204,12 +207,19 @@ func _test_data() -> void:
 	var known: bool = true
 	var each_pounce: bool = true
 	var each_bait: bool = true
+	var each_slash: bool = true
+	var each_storm: bool = true
 	var lashes: Array[int] = []
+	var doubles: Array[int] = []
 	var kinds: Dictionary = {}
 	for index: int in range(STAGE_2, def.phase_count()):
 		var n: int = 0
 		var pounce: bool = false
 		var bait: bool = false
+		var slash: bool = false
+		var storm: bool = false
+		var double: int = 0
+		var singles: int = 0
 		for beat: Dictionary in t.beats_for(index):
 			var arg: String = String(beat["arg"])
 			match StringName(beat["kind"]):
@@ -221,17 +231,39 @@ func _test_data() -> void:
 					n += 1
 					kinds[arg] = true
 					known = known and arg in ["low", "high"]
+				&"slash":
+					slash = true
+					known = known and arg in ["", "double"]
+					if arg == "double":
+						double += 1
+					else:
+						singles += 1
+				&"screens":
+					storm = true
 				&"overtake":
 					pass
 				_:
 					known = false
 		each_pounce = each_pounce and pounce
 		each_bait = each_bait and bait
+		each_slash = each_slash and slash
+		each_storm = each_storm and storm
 		lashes.append(n)
-	check(def.phase_count() == 6 and known, "stage 2's beat scripts use only its own beats: overtake, pounce, pounce:bait, lash:low, lash:high")
+		doubles.append(double if singles == 0 else -1)
+	check(def.phase_count() == 6 and known, "stage 2's beat scripts use only its own beats: pounce, pounce:bait, lash:low, lash:high, slash, slash:double, screens, overtake")
 	check(each_pounce and each_bait, "the Pounce is his main attack in every phase of stage 2, and every phase has the bait")
-	check(lashes.size() == 3 and lashes[0] == 0 and lashes[1] > 0 and lashes[2] > lashes[1] and kinds.has("low")
-		and kinds.has("high"), "the Cable Lash from the second phase of stage 2 (low and high), more of it in the third %s" % [lashes])
+	check(each_slash and each_storm, "every phase of stage 2 has the Claw Slash and the Screen Storm (the owner's playtest)")
+	check(lashes.size() == 3 and lashes[0] == 0 and lashes[1] > 0 and lashes[2] > 0 and kinds.has("low") and kinds.has("high"),
+		"the Cable Lash from the second phase of stage 2, low and high %s" % [lashes])
+	check(doubles.size() == 3 and doubles[0] == 0 and doubles[1] == 0 and doubles[2] > 0, "the Slashes double in the last phase %s" % [doubles])
+	var p4: Array[Dictionary] = t.beats_for(STAGE_2)
+	var p4_kinds: PackedStringArray = []
+	for beat: Dictionary in p4:
+		p4_kinds.append(String(beat["kind"]) + (":" + String(beat["arg"]) if String(beat["arg"]) != "" else ""))
+	check(",".join(p4_kinds) == "pounce,slash,screens,pounce:bait,slash,screens",
+		"phase 4: Pounce, Slash, Screens, Pounce with the bait, Slash, Screens (%s)" % ",".join(p4_kinds))
+	check(t.stage_two_beat_gap < t.beat_gap, "stage 2's beats come closer together than stage 1's (%.2f s, %.2f s)" % [
+		t.stage_two_beat_gap, t.beat_gap])
 	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
 	var bad: Array[String] = []
 	for sound: StringName in NEW_SOUNDS:
@@ -251,12 +283,17 @@ func _test_data() -> void:
 	var crackle_length: float = crackle.get_length() if crackle != null else 0.0
 	check(absf(crackle_length - t.lash_warning) < 0.06, "the crackle lasts as long as the Lash's warning (%.2f s, %.2f s)" % [
 		crackle_length, t.lash_warning])
+	var glitch: AudioStream = library.stream(&"magnate_glitch")
+	var glitch_length: float = glitch.get_length() if glitch != null else 0.0
+	check(absf(glitch_length - t.screen_warning) < 0.06, "a screen's glitch-whine lasts as long as its warning (%.2f s, %.2f s)" % [
+		glitch_length, t.screen_warning])
 	var hints: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/hints/hints.json"))
 	var triggers: Dictionary = {}
 	for h: Dictionary in (hints as Dictionary).get("hints", []):
 		triggers[String(h.get("trigger", ""))] = true
-	check(triggers.has("boss:golden_boss/pounce") and triggers.has("boss:golden_boss/stun") and triggers.has("boss:golden_boss/lash"),
-		"the Pounce, the stun and the Cable Lash have hints")
+	check(triggers.has("boss:golden_boss/pounce") and triggers.has("boss:golden_boss/stun") and triggers.has("boss:golden_boss/lash")
+		and triggers.has("boss:golden_boss/slash") and triggers.has("boss:golden_boss/screens"),
+		"the Pounce, the stun, the Cable Lash, the Claw Slash and the Screen Storm have hints")
 
 
 # --- His look ----------------------------------------------------------------------------------------------
