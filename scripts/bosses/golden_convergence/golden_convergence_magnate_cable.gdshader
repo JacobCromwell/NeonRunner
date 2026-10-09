@@ -12,6 +12,8 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 #include "res://scripts/world/meshes/shaders/kit_common.gdshaderinc"
 
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 
 uniform float cable_length = 5.6;
 uniform float ground = 1.6;
@@ -44,5 +46,5 @@ void fragment() {
 	vec3 col = base * (0.35 + 0.8 * key);
 	float rim = pow(1.0 - clamp(dot(nv, normalize(-VERTEX)), 0.0, 1.0), 3.0);
 	col += base * rim * (0.3 + 0.4 * step(1.5, v_kind));
-	ALBEDO = col * light_factor(scenery_light);
+	ALBEDO = col * light_factor(scenery_light) * scenery_tint;
 }

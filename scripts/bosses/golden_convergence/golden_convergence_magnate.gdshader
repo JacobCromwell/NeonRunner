@@ -21,6 +21,8 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 #include "res://scripts/world/meshes/shaders/kit_flash.gdshaderinc"
 
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 
 // The warm white in his cracks (0: none), the cracks' cells per metre, their colours (sRGB).
 uniform float crack_glow = 0.55;
@@ -117,7 +119,7 @@ void fragment() {
 	col *= mix(1.0, mix(0.72, 1.18, c.y), v_crack);
 	col = mix(col, to_linear(crack_dark), crack);
 	// The court's light on him (stage 2's darkness dims him with it; his cracks keep their glow).
-	col *= light_factor(scenery_light);
+	col *= light_factor(scenery_light) * scenery_tint;
 	// The cult's warm white leaking from those cracks' cores.
 	col += to_linear(crack_color) * core * leak * crack_glow * 1.5;
 	ALBEDO = col;
