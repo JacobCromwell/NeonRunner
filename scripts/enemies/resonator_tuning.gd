@@ -22,9 +22,10 @@ extends EnemyTuning
 ## scaling_from and its _late ones at scaling_to, so "later in the zone it pulses faster or sends
 ## double waves" (GDD §9.10) spans the zone's own levels rather than the whole campaign. 0.86875 (0.85
 ## before the Casino's levels re-spaced the campaign's enemy scaling, task K2) keeps each Golden level
-## where it was in the zone (zone_t: Golden 1 at 0.048, Golden 2 at 0.524, Golden 3 at 1).
-@export_range(0.0, 1.0, 0.01) var scaling_from: float = 0.86875
-@export_range(0.0, 1.0, 0.01) var scaling_to: float = 1.0
+## where it was in the zone (zone_t: Golden 1 at 0.048, Golden 2 at 0.524, Golden 3 at 1). The hint's step
+## (0.00125, every 0.01 and 0.86875 among its values) keeps it as it is when it's edited in the F6 panel.
+@export_range(0.0, 1.0, 0.00125) var scaling_from: float = 0.86875
+@export_range(0.0, 1.0, 0.00125) var scaling_to: float = 1.0
 
 @export_group("Hovering")
 ## DESIGN-TBD: how far ahead of the player it hovers while it pulses ("far ahead", GDD §9.10). Kept
