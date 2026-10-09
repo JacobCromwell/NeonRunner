@@ -16,15 +16,15 @@ looks"). What the GDD doesn't say, and what I chose (each is marked `DESIGN-TBD`
   rusty sheets, a collapsed corner. Marketplace: a shop row (two window widths), a market hall under its glass vault,
   an arcade under a tin lean-to. Are these the right buildings, and should any zone's wall be a particular one of
   them (a Corporate wall that is always the military's, say)?
-- **How big it reads.** The box is the H7a placeholder (9 m tall, 2.5 m deep, 9.6 to 12 m wide): next to the walls'
+- **How big it reads.** The box is the H7a placeholder (9 m tall, 2.5 m deep, 5.4, 10.2 and 12.6 m wide at 3, 5 and 6 lanes): next to the walls'
   towers (40 to 170 m) it reads as a low block, a podium or a three-storey building, never a tower, however it is
   dressed. The looks are tuned to that box (their storeys, bays and bands are laid out for 9 m; only the roof line and
   the roof plant follow `size.y`), so a different `MovementTuning.dash_wall_height` keeps the box filled but would
   want the proportions looked at again (the Golden zones' frieze and the Golden Palace's panels most). Should it be
   taller (about 12 m would stand clear of the side walls' calm band and read as a building at a distance)?
 - **No cue in the dash's colour.** The brief welcomes "a breakable or cracked hint"; I used cracks spreading from a
-  few points, a chipped patch with rebar showing and, on the ruins, broken tops and rubble at the foot, all in the
-  zone's own unlit colours. A glowing cue (a seam of `PlayerSuit.GLOW_PALE` along a crack, say) would be the one
+  few points, a chipped patch with rebar showing (not in the two Golden zones, whose stone stays clean) and, on the
+  ruins, broken tops and rubble at the foot, all in the zone's own unlit colours. A glowing cue (a seam of `PlayerSuit.GLOW_PALE` along a crack, say) would be the one
   thing on the wall that glows, and the hook's contract (and its test) is that nothing does, so I left it out.
   Should the cracks glow faintly in the dash's colour, so the wall reads as "breaks to the dash" before it's close?
 - **Dark windows even in the lit zones.** Every vertex's lit-window share is 0, so a wall's windows are dark glass
@@ -40,11 +40,15 @@ looks"). What the GDD doesn't say, and what I chose (each is marked `DESIGN-TBD`
   citizens: they play behind the walls' windows), Corporate has no banner or brand sign, the Golden zones no statue
   (a statue is a Gilded Sentinel's silhouette) or tapestry (red), the Dead Zone no billboard, Gangland no laundry or
   ad, the City no neon sign or screen. Right?
-- **The look picks.** The seed's remainder by 4 picks the layout and by 12 the tone (`DashWallKit.look_of`,
+- **The look picks.** The seed's remainder by 4 picks the layout and the quotient by 4, remainder by 3, the tone (`DashWallKit.look_of`,
   `tone_of`), so a level's 2 to 4 walls, whose seeds come from the level's seed, can repeat a layout. Should the
   walls of one level be forced to differ?
 - **Roof plant and finials** (`DashWallKit.ROOF`, 1 m of the box's height): the building's own top is 1 m under the
   box's, and what stands on it (air handlers, urns, a mast) fills the rest, so the silhouette isn't a flat box. The
-  hitbox still reaches the box's top, so a flyer's lift (`Enemy.dash_wall_lift`) clears the plant too. The ruins' broken
-  tops (the Dead Zone, Gangland) stand lower in places, up to 2.8 m under the box's top, where the hitbox reaches
-  higher than the look; nothing but a flyer comes within reach of that.
+  hitbox still reaches the box's top, so a flyer's lift (`Enemy.dash_wall_lift`) clears the plant too.
+- **The ruins' broken tops** (the Dead Zone, Gangland): they stand lower in places, down to 6.3 m (Dead Zone,
+  `DeadDashWall.TOP_MIN`) and 6.2 m (Gangland, `GanglandDashWall.TOP_MIN`), up to 2.8 m under the box's top, where
+  the hitbox reaches higher than the look. A wall jump's feet reach about 5.3 m (`MovementTuning`), so a wall is
+  never drawn lower than 5.8 m across the floor lanes (`test_dash_walls` measures every look's silhouette from its
+  mesh): what looks open above it is out of reach of a jump, and only a flyer gets over. Is leaving the top 2.8 m
+  of a ruin's hitbox over open air acceptable, or should a ruin's top stay nearer the box's?

@@ -2130,7 +2130,7 @@ looking like a building in the middle of the street"). What a look gets and keep
   box its look fills, `size` (width across the track, height, depth along it; `TrackBuilder.dash_wall_size`):
   the floor is at -size.y / 2, its face toward the oncoming runner at +size.z / 2, and its sides stop short of
   the side walls by the strip a wall runner passes it in (`MovementTuning.dash_wall_wall_room`, 1.2 m). By
-  default about 9.6 to 12 m wide (3 to 6 lanes), 9 m tall, 2.5 m deep (DESIGN-TBD). `look_seed` varies the look
+  default 5.4, 10.2 and 12.6 m wide at 3, 5 and 6 lanes, 9 m tall, 2.5 m deep (DESIGN-TBD). `look_seed` varies the look
   (the same seed, the same look; `MeshKit.hash_i`, never a random number generator). Add everything as
   children of `body`, never top-level: the break hides `body` whole (`DashBreakable.smash`).
 - *Inside the box, filling its face*: its hitbox is the box 0.15 m smaller at its sides and its face
@@ -2157,7 +2157,8 @@ looking like a building in the middle of the street"). What a look gets and keep
   doodads, `mesh_for(size, look_seed)` caching one mesh per size, layout and tone): four layouts by `look_seed % 4`
   and three tones by `look_seed / 4 % 3`, each a block with depth (the facade set back from the box's face, its
   piers, cornice and canopies standing out to it, its sides in the zone's material, a little roof plant on its top
-  where it is a roofed building), cracks and a chipped patch with rebar as the "this breaks" cue, in the zone's own
+  where it is a roofed building), cracks and a chipped patch with rebar as the "this breaks" cue (the two Golden
+  zones' walls have cracks only: no fallen patch in the elite's marble), in the zone's own
   facade styles and solid patterns, colours and motifs (nothing that is a sign or an enemy: no banner, screen,
   statue, billboard, laundry or bulb):
   Corporate (`CorporateDashWall`: a curtain-wall tower's foot, a lobby, a military compound's front, a podium
