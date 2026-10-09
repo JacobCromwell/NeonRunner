@@ -14,7 +14,8 @@ extends TestSuite
 ##   charges a wait moved on still winds up past its entry.
 ## - Placement: every campaign level that lists it at 3, 5 and 6 lanes (its own seed and others): at most 2,
 ##   never two at once, each with a bait in its chase, arriving off every bait's attack; Corporate 2 always
-##   has one; the same every build; a level differs from the same level without it only by its trucks
+##   has one; the same every build; the generator's guarantee covers it through its baits' features, and asks
+##   for none when the data allows none; a level differs from the same level without it only by its trucks
 ##   (danger density off); quick play without a bait has none.
 ## - Showing itself (GDD §9.13, the owner, October 8, 2026): its numbers; beside the runner its whole look on
 ##   screen in the chase camera's view, hiding nothing of the runner or the side they dodge to, at 3, 5 and 6
@@ -55,6 +56,7 @@ func run() -> void:
 	await _test_old_behaviour()
 	await _test_dog_past_its_entry()
 	_test_campaign()
+	_test_guarantee()
 	_test_only_its_trucks()
 	_test_quick_play()
 	await _test_marker_and_lights()
@@ -596,6 +598,29 @@ func _generate(config: LevelConfig, m: MovementTuning, patterns: Array) -> Level
 	var gen := LevelGenerator.new()
 	gen.generate(config, m, patterns)
 	return gen
+
+
+## The generator's every-feature guarantee covers the truck (task K4): it has no patterns, so where its baits
+## can be placed (Octodogs, Buzz Overdrives: its rules' GUARANTEED_BY) it is needed too
+## (LevelGenerator.dependent_features), and a build without one forces new picks of those, never of the
+## truck itself; with the data allowing no truck (per_level_max 0) the guarantee asks for none.
+func _test_guarantee() -> void:
+	var config := LevelConfig.new()
+	config.lane_count = 5
+	config.features = PackedStringArray(["octodog", "enforcer_truck"])
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, RunSim.layout(5, 600.0))
+	check(LevelGenerator.guaranteed_by("enforcer_truck") == PackedStringArray(Rules.GUARANTEED_BY)
+		and LevelGenerator.guaranteed_by("octodog").is_empty(), "the truck rides on its baits' features, an Octodog on none")
+	check(gen.dependent_features(PackedStringArray(["octodog"])) == PackedStringArray(["enforcer_truck"])
+		and gen.dependent_features(PackedStringArray()).is_empty(), "the guarantee needs the truck where its baits can be placed, only there")
+	check(gen._guarantee_picks_for("enforcer_truck", PackedStringArray(["octodog", "enforcer_truck"])) == PackedStringArray(["octodog"]),
+		"a build without one forces Octodog picks, not truck ones")
+	var was: int = t.per_level_max
+	t.per_level_max = 0
+	var none: bool = not Rules.places_any() and LevelGenerator.guaranteed_by("enforcer_truck").is_empty() \
+		and gen.dependent_features(PackedStringArray(["octodog"])).is_empty()
+	t.per_level_max = was
+	check(none and Rules.places_any(), "with no truck allowed (per_level_max 0) the guarantee asks for none")
 
 
 ## Its rules only add its trucks: with danger density off (whose enemy count counts them) and the wider gaps off

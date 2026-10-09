@@ -949,9 +949,10 @@ also add fair ceiling turrets where that feature exists. Obstacle rows use spare
 possible, or additional longitudinal opportunities when a row already leaves only one lane open.
 The pass checks the reachable route through successive rows, not just a permanently empty lane.
 Wall fences retain their placement rules, Resonators keep their whole visit clear, a window cyborg or a
-vent's screech it adds keeps off a Gilded Sentinel's wall section (`GildedSentinelRules.on_wall_section`,
-task K4, after a build on one of the curves it tried put one there), and doodads cannot occupy the only
-route the new rows require. Added pieces receive no extra risk-credit pay.
+vent's screech it adds keeps off what the rules keep wall enemies off (`LevelGenerator.wall_section_rules`:
+the rules scripts that declare `on_wall_section`, a Gilded Sentinel's wall section; task K4, after a build
+on one of the curves it tried put one there; `test_gilded_sentinel` pins a build that shows it), and
+doodads cannot occupy the only route the new rows require. Added pieces receive no extra risk-credit pay.
 Durations and reward tables are unchanged, including City 1's 55 seconds.
 
 `tools/measure/danger_density.gd` reports counts by level, band and danger category, and compares
@@ -1221,8 +1222,10 @@ each feature a pattern can place there is in the finished level, at any lane cou
 - A feature with no pattern of its own, which its rules place only around other features' entries, is
   required too when one of those is (`dependent_features()`, from its rules script's `GUARANTEED_BY`): the
   Enforcer Truck, which waits for an Octodog's or a Buzz Overdrive's charge during its chase. A build
-  without one forces picks of those features instead (`_guarantee_picks_for`), so their entries move until
-  one leaves the truck room to arrive (task K4: a rare seeded build had none, on the earlier curves too).
+  without one forces picks of those features instead (`_guarantee_picks_for`; one more each a build, however
+  many missed features ask for it), so their entries move until one leaves the truck room to arrive (task
+  K4: a rare seeded build had none, on the earlier curves too). Rules whose data allows none (a static
+  `places_any()` false: the truck's `per_level_max` 0) ask for none.
 
 **Pace** (GDD §3, owner's playtest September 30, 2026: about 21 m/s in the Neon City rising zone by
 zone to about 25 m/s in the Golden Zone). A level's run speed is its own `LevelConfig.run_speed`, which
@@ -1635,9 +1638,11 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   one fewer on a seed not the level's own, never none). On task K4's curve the first Enforcer chase holds one
   in 9 of the 18 level and lane builds that have trucks (as on K2's 17-level linear curve, not the same ones),
   Corporate 2 at 3, 5 and 6 lanes, where the truck following the runner over it is wrecked in play (K2's left
-  5 lanes' chase full); at 5 lanes it comes 35 m into the chase, so a runner who leads the truck straight
-  there wrecks it before its first volley (`test_enforcer_truck_runs` allows a build with no volley only
-  that way). `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
+  5 lanes' chase full). At 3 and 5 lanes it comes about 5 s after the truck arrives (at 5 lanes 128 m on,
+  across 4 of the 5 lanes), before its first volley, which is due 3 s after it arrives and waits up to
+  `show_wait_seconds` (4 s) for a showing that doesn't come in these runs: a runner who leads the truck
+  straight there wrecks it before it fires (`test_enforcer_truck_runs`' `NO_VOLLEY_LANES`, 5 lanes;
+  `docs/questions/k4.md`). `test_wide_gaps` checks that nothing fits wherever a first chase holds none. Rows and holes change a little: the City levels keep theirs (one hole fewer in
   City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
   zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
   at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With

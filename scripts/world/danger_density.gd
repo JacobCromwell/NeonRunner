@@ -90,7 +90,8 @@ extends RefCounted
 ## - over that whole window a floor enemy leaves min_free_lanes lanes free of floor enemies, holes,
 ##   fences and kept lanes (a hover truck's), all the time: the open lane never has to be switched to;
 ##   its type's own rules hold (a cyborg's obstacle margin and panic roll, a window cyborg's signs), and a
-##   wall enemy keeps off a Gilded Sentinel's wall section (GildedSentinelRules.on_wall_section, task K4);
+##   wall enemy keeps off what the rules keep wall enemies off (LevelGenerator.wall_section_rules: a Gilded
+##   Sentinel's wall section, task K4);
 ## - an added piece keeps the clearance from every fixed stretch and sign, from every enemy's attack
 ##   window but those of row_tolerated_types (whose floor lane stays kept and never counts as open), from
 ##   a quiet stretch, a cyborg's obstacle margin and a pad's lane (a row beside a pad may still lead the
@@ -127,8 +128,6 @@ const TuningScript := preload("res://scripts/world/danger_density_tuning.gd")
 const TUNING_PATH: String = "res://data/tuning/danger_density.tres"
 const CYBORG_RULES: String = "res://scripts/enemies/cyborg_rules.gd"
 const WINDOW_CYBORG_RULES: String = "res://scripts/enemies/window_cyborg_rules.gd"
-const SENTINEL: String = "gilded_sentinel"
-const SENTINEL_RULES: String = "res://scripts/enemies/gilded_sentinel_rules.gd"
 const RESONATOR_RULES: String = "res://scripts/enemies/resonator_rules.gd"
 const TURRET: String = "barnacle_turret"
 const TURRET_RULES: String = "res://scripts/enemies/barnacle_turret_rules.gd"
@@ -244,9 +243,9 @@ class Plan:
 	var cyborg_spans: Array[Vector2] = []
 	var window_rules: GDScript
 	var window_half: float = 0.0
-	## The Gilded Sentinels' rules in a level with them (their wall sections, which the wall enemies the pass
-	## adds keep off: _type_rules_ok).
-	var sentinel_rules: GDScript
+	## The rules that keep wall enemies off stretches of their wall (LevelGenerator.wall_section_rules: the
+	## Gilded Sentinels' wall sections), which the wall enemies the pass adds keep off (_type_rules_ok).
+	var wall_rules: Array[GDScript] = []
 	var added: Array[Dictionary] = []
 	## After the fill pass: the stretches where rows may widen (rooms: clear of fixed stretches, signs,
 	## quiet stretches and the attack windows not of row_tolerated_types, with the clearance), every row
@@ -716,8 +715,7 @@ static func _index_enemies(plan: Plan) -> void:
 		var t: Resource = load(path) if ResourceLoader.exists(path) else null
 		if t != null:
 			plan.window_half = float(t.get("window_length")) * 0.5 + float(consts.get("SIGN_CLEARANCE", 0.0))
-	if gen.config.has_feature(SENTINEL) and ResourceLoader.exists(SENTINEL_RULES):
-		plan.sentinel_rules = load(SENTINEL_RULES) as GDScript
+	plan.wall_rules = gen.wall_section_rules()
 
 
 ## Indexes a hole's or fence's `span` in `lane` (the enemy half's plan.lane_pieces).
@@ -889,8 +887,9 @@ static func _overlap_ok(plan: Plan, window: Vector2, group: Array[int]) -> bool:
 
 
 ## True if `probe`'s type's own rules would keep it: a cyborg's obstacle margin (CyborgRules), a window
-## cyborg's signs (WindowCyborgRules), and the Gilded Sentinels' wall sections, which a window cyborg or a
-## wall vent's Screech keeps off (GildedSentinelRules.on_wall_section; their rules ran before the pass).
+## cyborg's signs (WindowCyborgRules), and for a wall enemy, the stretches the rules keep wall enemies off
+## (plan.wall_rules: a Gilded Sentinel's wall section, which a window cyborg or a wall vent's Screech keeps
+## off, GildedSentinelRules.on_wall_section; their rules ran before the pass).
 static func _type_rules_ok(plan: Plan, probe: Dictionary) -> bool:
 	var type: String = String(probe["type"])
 	var at: float = float(probe["at"])
@@ -901,9 +900,11 @@ static func _type_rules_ok(plan: Plan, probe: Dictionary) -> bool:
 	if type == "window_cyborg" and plan.window_rules != null \
 			and plan.window_rules.call("_sign_near", plan.gen.layout, int(probe["side"]), at, plan.window_half):
 		return false
-	if plan.sentinel_rules != null and int(probe.get("side", 0)) != 0 and plan.sentinel_rules.call("on_wall_section",
-			plan.gen, type, int(probe["side"]), at, probe.get("params", {})):
-		return false
+	var side: int = int(probe.get("side", 0))
+	if side != 0:
+		for rules: GDScript in plan.wall_rules:
+			if rules.call("on_wall_section", plan.gen, type, side, at, probe.get("params", {})):
+				return false
 	return true
 
 

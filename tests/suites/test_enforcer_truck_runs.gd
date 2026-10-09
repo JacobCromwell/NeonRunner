@@ -47,6 +47,10 @@ const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const LANES: Array[int] = [3, 5, 6]
+## The lane counts at which Corporate 2's own build fires no volley, its trucks all falling into a wider gap or
+## a cut first (_test_corporate_2), each checked to still show it, and every other one to fire: 5 lanes on task
+## K4's curve.
+const NO_VOLLEY_LANES: Array[int] = [5]
 
 var sim: RunSim
 var t: EnforcerTruckTuning
@@ -1342,14 +1346,14 @@ func _test_same_every_attempt() -> void:
 ## truck chases (it steps out of an Octodog's lunge aimed at it as the lunge begins; it steps into a Buzz
 ## Overdrive's lane as it rolls in, and out half a second before it meets the runner). Every truck that
 ## comes is destroyed by a charge the runner was out of the way of, or by a wider gap or a cut the runner led
-## it into, the player's kill; no other type's big attack is open during its volleys; the runner reaches the
-## end. A lane count whose trucks all fell into a wider gap or a cut before their first volley has no volley
-## to check (5 lanes on task K4's curve: the level's wider gap at 769 m, 35 m into the truck's chase, wrecks it
-## first, as test_wide_gaps.gd plays it); a build with neither a volley nor such a wreck fails, and the three
-## builds fail together if none of them has a volley.
+## it into, the player's kill; no other type's big attack is open during its volleys, and its trucks fire,
+## but at NO_VOLLEY_LANES; the runner reaches the end. At 5 lanes on task K4's curve the truck arrives at 641 m
+## and the level's wider gap at 769 m (128 m, 5.5 s on, across 4 of the 5 lanes) wrecks it, as
+## test_wide_gaps.gd plays it, before its first volley: that is due 3 s after it arrives (first_volley_seconds)
+## and waits up to show_wait_seconds (4 s) for a showing, and in these runs the truck shows itself at no lane
+## count (nor did it on K2's curve).
 func _test_corporate_2() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
-	var all_volleys: int = 0
 	for lanes: int in LANES:
 		var config: LevelConfig = campaign.configure(campaign.step("corporate/2"), lanes)
 		config.skin = null  # the grey box: skins never change gameplay
@@ -1408,18 +1412,19 @@ func _test_corporate_2() -> void:
 			if pair.contains("enforcer_truck"):
 				pairs.append("%s %.2f s" % [pair, float(watch.overlap_pairs[pair])])
 		var volleys: int = int(watch.attacks.get("enforcer_volley", 0))
-		var holed_first: bool = not trucks.is_empty()
-		for id: int in trucks:
-			holed_first = holed_first and String(trucks[id]["down"]) in ["gap", "cut"] and int(trucks[id]["volleys"]) == 0
-		all_volleys += volleys
-		check(pairs.is_empty() and (volleys >= 1 or holed_first),
-			"%s: no other type's big attack is open during its %d volleys (%s)%s" % [tag, volleys, ", ".join(pairs),
-			" (every truck fell into a wider gap or a cut before its first)" if volleys == 0 and holed_first else ""])
+		check(pairs.is_empty(), "%s: no other type's big attack is open during its %d volleys (%s)" % [tag, volleys,
+			", ".join(pairs)])
+		if NO_VOLLEY_LANES.has(lanes):
+			var holed_first: bool = not trucks.is_empty()
+			for id: int in trucks:
+				holed_first = holed_first and String(trucks[id]["down"]) in ["gap", "cut"] and int(trucks[id]["volleys"]) == 0
+			check(volleys == 0 and holed_first, ("%s still fires no volley, each truck falling into a wider gap or a cut "
+				+ "first (%d volleys: %s); else take it off NO_VOLLEY_LANES") % [tag, volleys, ", ".join(downs)])
+		else:
+			check(volleys >= 1, "%s: its trucks fire (%d volleys), so the check above checks something" % [tag, volleys])
 		check(w.player.alive and w.player.distance >= layout.length - 2.0, "%s: the runner reaches the end" % tag)
 		print("  %s: %d trucks: %s" % [tag, trucks.size(), "; ".join(downs)])
 		await sim.free_world(w)
-	check(all_volleys >= 1, "Corporate 2: its trucks fire, so the volleys' check above checks something (%d volleys at 3, 5 and 6 lanes)"
-		% all_volleys)
 
 
 ## The scripted runner's baits in a campaign level, steering AttackWatch's runner (keep_lane) while a truck

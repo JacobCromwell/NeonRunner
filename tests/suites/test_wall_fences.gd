@@ -28,7 +28,8 @@ const WITHOUT: Array = ["city/1", "city/2", "city/3", "gangland/1", "gangland/2"
 ## placement takes the first fair one past it, as it must. Marketplace 2 at 3 lanes on task K4's curve: its
 ## signs, window cyborgs and a ramp on the walls, the outer lanes' pieces and its big attacks and floor cuts
 ## take both walls through those 10 s, and its first full-height one comes at 15.4 s. Each case checks that
-## its walls are still taken there, and that it still comes late (else it leaves this list).
+## both walls are still taken from its start right up to its first one, so it stands at the first fair spot,
+## and that it still comes late (else it leaves this list).
 const LATE_INTRODUCTIONS: Array = [["marketplace/2", 3]]
 
 var sim: RunSim
@@ -458,10 +459,11 @@ func _test_introductions() -> void:
 				on_time += 1 if within else 0
 				var late_s: float = (float(first["at"]) - start) / gen.speed
 				if k == 0 and LATE_INTRODUCTIONS.has([id, lanes]):
-					var why: String = _walls_taken(gen, layout, start, start + t.intro_seconds * gen.speed, t)
-					check(not within and why != "", ("%s meets its first `%s` late (%.1f s) only because neither wall has a fair spot "
-						+ "within %.0f s of the start (%s); else take it off LATE_INTRODUCTIONS %s") % [id, feature, late_s,
-						t.intro_seconds, why if why != "" else "one has", tag])
+					# Up to just short of it (first_free puts it EPSILON past the end of what it clears).
+					var why: String = _walls_taken(gen, layout, start, float(first["at"]) - 0.02, t)
+					check(not within and why != "", ("%s meets its first `%s` late (%.1f s, %.0f s wanted) only because neither "
+						+ "wall has a fair spot between the start and it (%s); else take it off LATE_INTRODUCTIONS %s") % [id, feature,
+						late_s, t.intro_seconds, why if why != "" else "one has", tag])
 					print("  %s: its first `%s` at %.1f s, both walls taken before (%s)" % [tag, feature, late_s, why])
 				elif k == 0:
 					check(within, "%s meets its first `%s` within %.0f s of the start (%.1f s) %s" % [id, feature, t.intro_seconds,
