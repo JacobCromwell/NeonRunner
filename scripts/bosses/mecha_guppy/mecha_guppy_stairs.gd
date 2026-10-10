@@ -275,6 +275,15 @@ func save_spot(player: Player) -> Dictionary:
 	return {}
 
 
+## Where the roof whose top is at `height` starts in `lane` (its front a runner falling at `d` reaches next), or `d`
+## when no roof planned has that top.
+func roof_front(lane: int, height: float, d: float) -> float:
+	for r: MechaGuppyClimb.Roof in climb.roofs:
+		if absf(r.top - height) < 0.01:
+			return r.start_in(lane)
+	return d
+
+
 ## A fair spot for an armor pickup (GDD §10's standard rule) at least `lead` metres ahead of the runner, on the roof
 ## they'll run along next: past where a rider lands on it (PICKUP_AFTER_LAND) and short of the hut over its pads
 ## (PICKUP_BEFORE_HUT), in the runner's lane if they're on that roof already, else the nearest lane that leads up

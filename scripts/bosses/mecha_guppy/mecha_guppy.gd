@@ -35,6 +35,9 @@ const CLIMB_SEED: String = "climb"
 ## The street is eaten from this far behind the start of every lap (metres): the street under the start is a
 ## roof of the climb's own (roof 0), so nothing of it is the track's.
 const EATEN_BEHIND: float = 60.0
+## The grapple's rope as it saves a runner (a warm white: no hazard colour), and how long it shows.
+const ROPE_COLOR := Color(1.0, 0.92, 0.78)
+const ROPE_SECONDS: float = 0.3
 
 var tuning: MechaGuppyTuning
 var climb: MechaGuppyClimb
@@ -136,9 +139,10 @@ func _on_defeated() -> void:
 
 ## A hit on Mecha Guppy (GDD §10: a bomb that falls through a gap, off a roof's edge or onto the exposed shark):
 ## one of the phase's BossPhase.hits (4 in phase 1, 6 in phase 2). E5e-b2's bombs call this; the tests too. Only
-## counts while the phase's pattern runs (not in an intro, not once it's beaten). True if it counted.
+## counts while the climb's pattern runs (not in an intro, not in phase 3, which a minute of dodging ends, not once
+## it's beaten). True if it counted.
 func register_hit(cause: StringName = &"bomb") -> bool:
-	if not is_vulnerable():
+	if not is_vulnerable() or top_due():
 		return false
 	hits_landed += 1
 	log_event(&"hit", {"cause": cause, "of": phase().hits, "landed": phase_hits + 1})
@@ -182,4 +186,11 @@ func _grapple_save(player: Player, cause: StringName) -> Dictionary:
 		return {}
 	var spot: Dictionary = stairs.save_spot(player)
 	log_event(&"save", {"cause": cause, "lane": spot.get("lane", player.lane), "height": spot.get("height", NAN)})
+	# DESIGN-TBD (docs/questions/e5e.md): the grapple's save shows its rope for a moment, from the runner to the roof's
+	# edge it catches (E5e-a's proposal), as the instant lift happens.
+	if cause == &"grapple" and not spot.is_empty():
+		var lane: int = int(spot["lane"])
+		var roof_at: float = maxf(stairs.roof_front(lane, float(spot["height"]), player.distance), player.distance + 2.0)
+		world.effects.line(player.global_position + Vector3(0.0, 0.9, 0.0),
+			world.lane_point(lane, roof_at, float(spot["height"])), ROPE_COLOR, ROPE_SECONDS, 0.06)
 	return spot
