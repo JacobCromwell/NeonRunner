@@ -456,7 +456,7 @@ func light_level() -> float:
 
 
 ## The lowest light set_light_level goes to: MIN_LIGHT_LEVEL, unless the boss's own data sets a lower
-## floor (the Sleep Taker's lights out, owner, October 8, 2026: half as bright as first built). Every
+## floor (the Sleep Taker's lights out, owner, October 10, 2026: a completely dark tunnel). Every
 ## other boss keeps MIN_LIGHT_LEVEL.
 func light_floor() -> float:
 	return MIN_LIGHT_LEVEL

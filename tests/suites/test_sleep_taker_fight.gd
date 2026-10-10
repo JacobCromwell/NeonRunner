@@ -2,13 +2,14 @@ extends TestSuite
 ## The Sleep Taker's fight (GDD §10; task E5c-b; its build and attacks: test_sleep_taker.gd,
 ## test_sleep_taker_attacks.gd), at 3, 5 and 6 lanes, at the reference 18 m/s and the Dead Zone's
 ## 24.2 m/s:
-## - its data: the slot plays it, three phases each faster, one EMP each, the standard armor rule (with a
+## - its data: the slot plays it, five phases each faster (owner, October 10, 2026: two more, the hands
+##   about 10% and 20% more often than in the third, nothing new), one EMP each, the standard armor rule (with a
 ##   phase begun unprotected counting as a break), par times, its new sounds and its generator hint, no
 ##   victory riff (its defeat ends in silence);
 ## - the whole fight on its real arena (twice the holes it was first built with, its wall gaps, rounds of
 ##   hands spread along the street and lights out half as bright: owner, October 8, 2026), for a runner
 ##   who reads it and stomps each generator (no god mode,
-##   no armor): three EMPs win it in 60-120 s; each generator shows from afar in a lane clear around it,
+##   no armor): five EMPs win it in FIGHT_MIN-FIGHT_MAX; each generator shows from afar in a lane clear around it,
 ##   the nightmare lunges in lure_seconds before the runner reaches it and attacks nothing while lured,
 ##   the arcs show it's in reach well before the runner must jump (the window), and every stomp's EMP
 ##   reaches it; each hit tears a chunk away and the next phase is faster; the same every attempt;
@@ -27,9 +28,14 @@ const SPEEDS: Array[float] = [18.0, 24.2]
 const REACTION: float = 0.35
 const NEW_SOUNDS: Array[StringName] = [&"sleep_taker_lure", &"sleep_taker_crackle", &"sleep_taker_torn",
 	&"sleep_taker_wisps"]
-## GDD §10: a boss fight lasts about as long as a level, 60-120 s.
+## GDD §10: a boss fight lasts about as long as a level, 60-120 s; owner, October 10, 2026: the Sleep
+## Taker "ends almost too fast", so two more phases make it longer (about 130 s for a runner who never
+## misses).
 const FIGHT_MIN: float = 60.0
-const FIGHT_MAX: float = 120.0
+const FIGHT_MAX: float = 160.0
+## Owner, October 10, 2026: the fourth and fifth phases' hands about 10% and 20% more often than the
+## third's.
+const LATE_PHASE_MORE: Array[float] = [0.1, 0.2]
 ## The arcs must show this long, at least, before the runner reaches the generator.
 const WINDOW_MIN: float = 1.2
 
@@ -123,12 +129,25 @@ func _run(world: RunWorld, seconds: float, done: Callable, each: Callable = Call
 
 func _test_data() -> void:
 	var list: Array[BossPhase] = def.phase_list()
-	check(list.size() == 3 and list[0].hits == 1 and list[1].hits == 1 and list[2].hits == 1,
-		"GDD §10: three phases, three EMP hits")
-	check(list[1].pace > list[0].pace and list[2].pace > list[1].pace, "hungrier each phase: each one faster (%.2f, %.2f, %.2f)" % [
-		list[0].pace, list[1].pace, list[2].pace])
+	var one_hit: bool = true
+	var faster: bool = true
+	var paces: PackedStringArray = []
+	for i: int in list.size():
+		one_hit = one_hit and list[i].hits == 1
+		faster = faster and (i == 0 or list[i].pace > list[i - 1].pace)
+		paces.append("%.2f" % list[i].pace)
+	check(list.size() == 5 and one_hit, "five phases, five EMP hits (GDD §10: three; owner, October 10, 2026: two more)")
+	check(faster, "hungrier each phase: each one faster (%s)" % ", ".join(paces))
 	var t := def.tuning as SleepTakerTuning
-	check(t.pattern_for(2).count("lights_out") > t.pattern_for(0).count("lights_out"), "and more lights out in the last phase's list")
+	check(t.pattern_for(2).count("lights_out") > t.pattern_for(0).count("lights_out"), "and more lights out in the third phase's list")
+	if list.size() == 5:
+		var near: bool = true
+		for k: int in LATE_PHASE_MORE.size():
+			near = near and absf(list[3 + k].pace / list[2].pace - (1.0 + LATE_PHASE_MORE[k])) <= 0.03
+		check(near and t.pattern_for(3) == t.pattern_for(2) and t.pattern_for(4) == t.pattern_for(2),
+			"the last two phases bring nothing new: the third's list, its hands %.0f%% and %.0f%% more often (paces %.2f, %.2f over %.2f)" % [
+			(list[3].pace / list[2].pace - 1.0) * 100.0, (list[4].pace / list[2].pace - 1.0) * 100.0, list[3].pace, list[4].pace,
+			list[2].pace])
 	check(def.armor_rule and def.armor_delay_min == 15.0 and def.armor_delay_max == 17.0 and def.armor_when_unprotected,
 		"the standard armor rule (15-17 s), a phase begun unprotected counting as a break (as the Floating Head's)")
 	check(def.three_star_seconds < def.two_star_seconds and def.three_star_seconds >= FIGHT_MIN,
@@ -167,12 +186,12 @@ func _whole_fight(lanes: int, speed: float) -> void:
 	var boss: SleepTaker = pair[1]
 	var t: SleepTakerTuning = boss.tuning
 	var k: float = boss.run_pace()
-	var bot := SleepTakerBot.new(boss, &"pad")
+	var bot := SleepTakerBot.new(boss, &"wall")
 	bot.reaction = REACTION
 	var cause: Array = [""]
 	world.player.died.connect(func(c: String) -> void: cause[0] = c)
 	# Every frame: where the nightmare is while lured, and whether anything attacked meanwhile.
-	var seen := {"lured_ahead": [], "attack_while_lured": 0, "torn": PackedFloat32Array([0.0, 0.0])}
+	var seen := {"lured_ahead": [], "attack_while_lured": 0}
 	await _run(world, 200.0, func() -> bool: return boss.is_defeated(), func() -> void:
 		bot.step()
 		if boss.lure.stage == SleepTakerLure.Stage.HOLD:
@@ -186,13 +205,16 @@ func _whole_fight(lanes: int, speed: float) -> void:
 		await sim.free_world(world)
 		return
 	var fight: float = boss.fight_time()
-	check(fight >= FIGHT_MIN and fight <= FIGHT_MAX, "GDD §10: the fight lasts 60-120 s (%.1f s) %s" % [fight, tag])
+	check(fight >= FIGHT_MIN and fight <= FIGHT_MAX, "the fight lasts %.0f-%.0f s (%.1f s) %s" % [FIGHT_MIN, FIGHT_MAX, fight, tag])
 	_clean = maxf(_clean, fight)
 	var hits: Array[Dictionary] = _events(boss, &"emp_hit")
-	check(hits.size() == 3 and _events(boss, &"emp_missed").is_empty() and _events(boss, &"lure_missed").is_empty(),
-		"three EMPs, one a phase, each reaching it %s" % tag)
-	check(boss.body.torn(0) >= 1.0 and boss.body.torn(1) >= 1.0 and _sounds(boss, &"sleep_taker_torn").size() == 2,
-		"the first two each tear a chunk away (with its howl); the third bursts it %s" % tag)
+	check(hits.size() == 5 and _events(boss, &"emp_missed").is_empty() and _events(boss, &"lure_missed").is_empty(),
+		"five EMPs, one a phase, each reaching it %s" % tag)
+	var all_torn: bool = true
+	for chunk: int in SleepTakerModel.CHUNK_HEADS.size():
+		all_torn = all_torn and boss.body.torn(chunk) >= 1.0
+	check(SleepTakerModel.CHUNK_HEADS.size() == 4 and all_torn and _sounds(boss, &"sleep_taker_torn").size() == 4,
+		"the first four each tear a chunk away (with its howl); the fifth bursts it %s" % tag)
 	# Each generator: in sight from afar, in a lane clear around it.
 	var gens: Array[Dictionary] = _events(boss, &"generator")
 	var sighted: bool = true
@@ -202,13 +224,16 @@ func _whole_fight(lanes: int, speed: float) -> void:
 		var lane: int = int(g["lane"])
 		var at: float = float(g["at"])
 		clear = clear and boss.arena.floor_clear(at - t.generator_clear_before * k, at + t.generator_clear_after * k, lane)
-	check(gens.size() == 3 and sighted and clear, "each generator comes into sight from afar (%.0f m), its lane clear around it %s" % [
+		# Where the stomp's bounce comes down (the bot's stomps land in it, without a fall).
+		var landing: Vector2 = SleepTakerLure.landing_span(at, world.player.speed, world.tuning, world.rules)
+		clear = clear and boss.arena.floor_clear(landing.x, landing.y, lane)
+	check(gens.size() == 5 and sighted and clear, "each generator comes into sight from afar (%.0f m), its lane clear around it and where a stomp's bounce comes down %s" % [
 		t.generator_sight * k, tag])
 	# Each lure: on time, held close, nothing attacking; the arcs well before the runner must jump.
 	var lures: Array[Dictionary] = _events(boss, &"lure")
 	var reach: Array[Dictionary] = _events(boss, &"in_reach")
 	var smashes: Array[Dictionary] = _events(boss, &"generator_smashed")
-	var on_time: bool = lures.size() == 3
+	var on_time: bool = lures.size() == 5
 	var window: float = INF
 	for i: int in mini(lures.size(), mini(reach.size(), smashes.size())):
 		var v: float = world.player.speed
@@ -231,7 +256,7 @@ func _whole_fight(lanes: int, speed: float) -> void:
 	check(int(seen["attack_while_lured"]) == 0, "it attacks nothing while lured %s" % tag)
 	# The phases: each faster, each begun with its recoil (nothing attacking), the last ended by the defeat.
 	var reforms: Array[Dictionary] = _events(boss, &"reform")
-	check(reforms.size() == 2, "after each of the first two hits it recoils and re-forms %s" % tag)
+	check(reforms.size() == 4, "after each of the first four hits it recoils and re-forms %s" % tag)
 	# Owner, October 8, 2026: rounds of hands spread along the street (and on its walls), each with its way
 	# through, in every phase.
 	var round_phases: Dictionary = {}
@@ -256,7 +281,7 @@ func _test_same_every_attempt() -> void:
 	var pair: Array = _fight(def, 5)
 	var world: RunWorld = pair[0]
 	var boss: SleepTaker = pair[1]
-	var bot := SleepTakerBot.new(boss, &"pad")
+	var bot := SleepTakerBot.new(boss, &"wall")
 	bot.reaction = REACTION
 	await _run(world, 200.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
 	var again: String = _fight_log(boss)
@@ -312,7 +337,7 @@ func _test_missed_generator() -> void:
 	pair = _fight(def, 5)
 	world = pair[0]
 	boss = pair[1]
-	bot = SleepTakerBot.new(boss, &"pad")
+	bot = SleepTakerBot.new(boss, &"wall")
 	bot.reaction = REACTION
 	bot.skips = 1
 	await _run(world, 200.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
@@ -359,19 +384,22 @@ func _test_out_of_reach() -> void:
 
 # --- The defeat ------------------------------------------------------------------------------------
 
-## The last EMP (its third phase, the runner stomping the generator): hundreds of wisps, the music fading
+## The last EMP (its fifth phase, the runner stomping the generator): hundreds of wisps, the music fading
 ## out, the grey dawn, then the results; the lights come back as they were once the fight ends.
 func _test_defeat() -> void:
 	var scenery_before: float = ZoneSkin.scenery_light_now
 	var music: MusicDirector = MusicDirector.instance()
 	if music != null:
 		music.play(&"dead_zone", 0.0)
-	var pair: Array = _fight(_generators_only(), 5, 0.0, {"phase": 2})
+	var pair: Array = _fight(_generators_only(), 5, 0.0, {"phase": 4})
 	var world: RunWorld = pair[0]
 	var boss: SleepTaker = pair[1]
 	var t: SleepTakerTuning = boss.tuning
 	var bot := SleepTakerBot.new(boss)
-	check(boss.body.torn(0) >= 1.0 and boss.body.torn(1) >= 1.0, "resumed at its last phase, its two chunks are already gone")
+	var gone: bool = true
+	for chunk: int in SleepTakerModel.CHUNK_HEADS.size():
+		gone = gone and boss.body.torn(chunk) >= 1.0
+	check(gone, "resumed at its last phase, its four chunks are already gone")
 	await _run(world, 60.0, func() -> bool: return boss.is_defeated(), func() -> void: bot.step())
 	check(boss.is_defeated() and _events(boss, &"emp_hit").size() == 1, "the last EMP beats it")
 	var defeat: SleepTakerDefeat = boss.defeat
@@ -400,7 +428,7 @@ func _test_defeat() -> void:
 
 ## The fight in the campaign's flow at every lane count, played by the bot (no god mode): the Dead Zone's
 ## last level, then the fight: a death in its second phase, the retry starting it over, and a win through
-## all three phases; its results and stars, the shop and the outro's slot.
+## all five phases; its results and stars, the shop and the outro's slot.
 func _test_campaign() -> void:
 	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	tree.root.add_child(main)
@@ -446,7 +474,7 @@ func _campaign_flow(lanes: int) -> void:
 		return
 	# The first attempt: the first phase won, then a death in the second.
 	var boss := run.encounter as SleepTaker
-	var bot := SleepTakerBot.new(boss, &"pad")
+	var bot := SleepTakerBot.new(boss, &"wall")
 	bot.reaction = REACTION
 	for i: int in 120 * 60:
 		if boss.phase_index >= 1 and boss.state == BossEncounter.State.FIGHT or not run.world.player.alive:
@@ -477,7 +505,7 @@ func _campaign_flow(lanes: int) -> void:
 	if boss == null:
 		return
 	# The retry, won.
-	bot = SleepTakerBot.new(boss, &"pad")
+	bot = SleepTakerBot.new(boss, &"wall")
 	bot.reaction = REACTION
 	var events: Array[Dictionary] = boss.events
 	var phases: Dictionary = {}
@@ -492,7 +520,7 @@ func _campaign_flow(lanes: int) -> void:
 	var hits: int = 0
 	for e: Dictionary in events:
 		hits += 1 if e["event"] == &"emp_hit" else 0
-	check(phases.size() == 3 and hits == 3, "the retry plays all three phases to the win %s" % tag)
+	check(phases.size() == 5 and hits == 5, "the retry plays all five phases to the win %s" % tag)
 	var result: RunResult = (App.screen as ResultsScreen).result if App.screen is ResultsScreen else null
 	check(result != null and result.completed and result.context.is_boss(), "a win's results follow the dawn %s" % tag)
 	if result == null:

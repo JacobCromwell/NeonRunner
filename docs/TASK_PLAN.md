@@ -493,13 +493,14 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2a | **The Neon City's outro** (the owner's beats, October 8, 2026) | F1 | M | T2 |
 | F2b | **Gangland boss intro** (the owner's beat, October 9, 2026) | F1 | M | T2 |
 | F2c | **The Dead Zone's intro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
+| F2d | **Gangland outro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b and F2c have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b, F2c and F2d have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -525,6 +526,19 @@ climbing out; a cyborg lying still and crouching), a head tip (`look_up`) and a 
 on the cinematic's clock, and sound events at their own level; and five sounds of its own
 (`tools/asset_gen/sfx_bank_cinematics.gd`). The staging choices still open are in `docs/questions/f2c.md`.
 
+**F2d: Gangland's outro** (owner, October 9, 2026; GDD §6, Cinematics). **Done:** `GanglandOutro`
+(`scripts/cinematics/gangland_outro/`) in Gangland's outro slot. Screeches sniff at the freed Host lying in the
+rubble and scuttle away as the runner walks over; the trembling Host hands the runner a golden key; cut to a sleek,
+angular sports car built by code (`SportsCarModel`: a faceted wedge, a scissor door, shiny paint on every renderer);
+the runner unlocks it, gets in, and it drives off down the street, the camera at road level. It adds one toolkit
+feature, `CineStageDef.after_fight` (a stage straight after a fight keeps its look and sky), a `--from=S` option to
+the cinematic review tool, and six sounds (`tools/asset_gen/sfx_bank_gangland_outro.gd`). The owner's follow-up (October
+10, 2026) is built too: the runner walks with a walk of its own (`CinePoses.walk`, planted feet), turns unhurriedly
+(`CineActor.turn_rate`) and gets in with a pose of its own (`CinePoses.get_in`), seen from inside the car beside a
+screech sitting on the passenger seat (`CarPassenger`: one of the screeches from before, posed sitting), the two nodding
+to each other (a seventh sound, `screech_chirp`), and the car drives off faster. The
+staging choices are in `docs/questions/f2d.md`.
+
 ### H. The owner's requests (October 8, 2026)
 
 From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in the GDD where they change design. Run by a second orchestrator session alongside the main one, so core-file tasks here wait for the main session's core task in flight (G7, the generator) and then take their turn.
@@ -542,6 +556,8 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 | H8 | **Weapons hit hosts:** auto-fire targets them and a weapon kill releases the Bad Dream (GDD §9.7). Raised to T1: an earlier release moves the Bad Dream chases the generator plans around. | – | M | T1 |
 | H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10). **Core** (small opt-in hooks in the boss framework and level config). | – | M–L | T1 |
 | H10 | **The Tithe Collector stays twice as long** (GDD §9.12) | – | S | T3 |
+| H11 | **Sleep Taker, again** (owner, October 10, 2026; `docs/USER_REQUESTS.md`): lights out a completely dark tunnel (75–100% darker than H9's) with the runner glowing by its own light, more hands and more often, more wall gaps (the slash's approach no longer kept whole), three times H9's floor gaps (GDD §10). **Core** (player: the runner's dark glow). | H9 | M | T1 |
+| H12 | **Sleep Taker: no ceilings, five phases** (owner, October 10, 2026; `docs/USER_REQUESTS.md`): the slash's refuges lose their bridges and pads (a side wall the way out, kept standing), and two more phases with more hands a little more often (GDD §10). | H11 | M | T1 |
 
 ---
 
@@ -584,7 +600,7 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro and F2c's Dead Zone intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) can start with its core step, E5e-a. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro and F2d's Gangland outro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is being built (E5e-a done; E5e-b under way). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -593,6 +609,6 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 ## Still to design with the owner
 
 - **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/OPEN_QUESTIONS.md` items 416–503).
-- **Cinematics:** story beats for each slot but the City's outro, the Dead Zone's intro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
+- **Cinematics:** story beats for each slot but the City's outro, Gangland's outro, the Dead Zone's intro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

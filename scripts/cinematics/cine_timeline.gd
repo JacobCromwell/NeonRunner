@@ -8,7 +8,8 @@ extends Resource
 ## metres along the track). Keys and events are sorted by time when it plays.
 
 ## Runner poses a key may name (CineActorKey.pose), and a cyborg's.
-const RUNNER_POSES: Array[StringName] = [&"run", &"slide", &"dash", &"stomp", &"dead", &"lie", &"get_up", &"climb"]
+const RUNNER_POSES: Array[StringName] = [&"run", &"slide", &"dash", &"stomp", &"dead", &"lie", &"get_up", &"climb",
+	&"walk", &"get_in"]
 const CYBORG_POSES: Array[StringName] = [&"idle", &"walk", &"aim", &"run_away", &"cower", &"die", &"lie", &"crouch"]
 const EXPRESSIONS: Array[StringName] = [&"neutral", &"aiming", &"shocked", &"dead", &"corrupt_grin", &"corrupt_broken"]
 

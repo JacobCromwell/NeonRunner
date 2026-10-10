@@ -443,7 +443,7 @@ arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) and the Dead Zone intro's (`dead_zone_intro_tuning.tres`, `DeadZoneIntroTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`), the Gangland outro's (`gangland_outro_tuning.tres`, `GanglandOutroTuning`) and the Dead Zone intro's (`dead_zone_intro_tuning.tres`, `DeadZoneIntroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -2178,7 +2178,8 @@ players to read gaps coming. A level with the feature always gets at least one g
 unless an arena opts in: its config lists the feature and carries numbers of its own,
 `LevelConfig.wall_gap_tuning` (`WallGapPlacement.tuning_for(config)` reads them; null for every level, which
 uses `data/tuning/wall_gaps.tres`). Only the Sleep Taker's arena does (task H9, owner, October 8, 2026: "the
-walls aren't safe"; `data/bosses/dead_zone_boss_wall_gaps.tres`, about 15 gaps a minute), and
+walls aren't safe"; task H11, October 10, 2026: more again; `data/bosses/dead_zone_boss_wall_gaps.tres`, about
+33 gaps a minute), and
 `BossArena.shifted` carries a lap's gaps as the fight joins it to the track again and again.
 
 On the track, `TrackBuilder._build_chunk` asks the skin for `wall_section` over the solid pieces only and
@@ -4049,7 +4050,9 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
 attacks, weapons having no effect; E5c-b, hurting it by the generators' EMP, the three phases, the
 defeat and its campaign slot; task H9, the owner's October 8, 2026 changes: lights out half as bright
 again, the hands' rounds spread along the street, many wall gaps with hands on the walls, twice the
-floor gaps). The Dead Zone's boss step plays it (`scene` in its slot), at the Dead
+floor gaps; task H11, the owner's October 10, 2026 changes: lights out a completely dark tunnel where only
+the glows show, with the runner glowing by its own light, more hands more often, more wall gaps, the
+slash's approach no longer kept whole, and three times the floor gaps). The Dead Zone's boss step plays it (`scene` in its slot), at the Dead
 Zone's speed (24.2 m/s, Bosses: Pace); debug builds also play it with `--boss=dead_zone_boss` (18 m/s
 unless given `--speed`). Its tuning's distances that stand for a time (`refuge_first`, `refuge_spacing`,
 the hands' and the generators' clear stretches, `escape_clear_after`, `generator_sight`, `emp_reach`,
@@ -4058,19 +4061,19 @@ Floating Head's are, so the fight keeps its seconds at any speed. In `scripts/bo
 
 | File | What |
 |---|---|
-| `sleep_taker.gd` (`SleepTaker`) | the encounter: its arena's refuges (`_plan_lap`: every `refuge_spacing` metres a ceiling across every lane, the Dead Zone's charred bridge, with pads in `pad_lanes()`, the middle lane or lanes, the track clear of holes and fences over `refuge_clear_span()` and the riders' landing, and both walls kept whole, no wall gap, over `refuge_wall_span()`: from where the slash warns to past where it strikes and along the bridge, with the wall gaps' own clearance), then twice the floor gaps the lap was first built with (`_more_floor_gaps`: GapDensity, the generator's additive gap pass, run over the lap through `LevelGenerator.for_layout` once its refuges are in, `floor_gap_increase` more rows of the lap's own mean width, each `floor_gap_spacing` seconds from everything else and off the refuges' stretches, which stand-in ceilings cover while it runs), the entrance (it rises out of the street `enter_ahead` ahead, materializing, and drifts in to `hover_ahead`), its place (`pose`, kept relative to the runner; the slash's and the lure's `pull()` bring it in), and the pattern (`_schedule`): one attack at a time, `attack_gap` apart; a refuge's slash when the runner reaches its warning point (`next_refuge`, `refuge_warn_at`: it strikes `strike_after_pad` after the pads; a moment missed is logged `refuge_missed`), otherwise the phase's list in order (`attack_patterns`: hands, lights_out), the first that can start fairly and be over before the next refuge's slash or the next lure going next (each kind tried once a frame; a round of hands that can't be planned is looked for again `HANDS_RETRY` later, the planner being the fight's costliest check); a generator `generator_delay` into each phase's pattern, or `generator_again` after a miss (`_update_generator`), nothing attacking while it's lured. `_on_part_emp`: an EMP while it's lured and within reach (`SleepTakerLure.reaches`) is the phase's hit (`damage(hit_damage(), &"emp")`): it tears a chunk away (`body.tear`, with its howl) and recoils into the next phase, hungrier (each phase's `pace` and list); any other EMP does nothing to it. The last one beats it (`_on_defeated`: `SleepTakerDefeat`; `victory_over` once the dawn has broken; `victory_riff` false: silence). Lights out's own floors (`light_floor()`, `scenery_floor()`, from its tuning: below every other boss's). Fairness helpers: `floor_clear_lane`, `ceiling_between`, `pickup_near`; `sound()` plays and logs each warning; first-time hints `boss:dead_zone_boss/refuge`, `/hands`, `/lights_out`, `/generator` (`hint_due`) |
-| `sleep_taker_lure.gd` (`SleepTakerLure`), `sleep_taker_beacon.gdshader` | the way to hurt it: a generator (`FenceGenerator`, through `spawn_enemy`) placed in sight (`find_spot`: `generator_sight` ahead, in the runner's lane or the nearest whose floor is clear around it, no pad or ramp there, the lure's stretch clear of ceilings and of every refuge's slash; `place_at`), glowing: a tall beacon of its pink drawn over everything (it shows through the nightmare, which looms between the runner and it) and a halo on the street; the lure (`lure_seconds` before the runner reaches it the nightmare lunges in with its roar and holds its claws `lure_gap` in front of them, `pull()`, until they're `lure_release` past it), the arcs while it's in reach (`in_reach()`: lured and within `emp_reach`, at the run's pace; pink, crackling, still with Reduced flashing), and the miss (it pulls back over `lure_back_seconds`) |
+| `sleep_taker.gd` (`SleepTaker`) | the encounter: its arena's refuges, the slash's spots (`_plan_lap`: no ceilings and no pads anywhere since task H12, the owner's October 10, 2026 change, where each refuge was a charred bridge with anti-grav pads; every `refuge_spacing` metres the track clear of holes and fences over `refuge_clear_span()`, and one side wall, from the lap's seed, kept whole over `refuge_wall_span()`, from where the slash warns to past where it strikes, with the wall gaps' own clearance, the other keeping its gaps), then more floor gaps (`_more_floor_gaps`, six times the lap's own rows since task H11: GapDensity, the generator's additive gap pass, run over the lap through `LevelGenerator.for_layout` once its refuges are in, `floor_gap_increase` more rows of the lap's own mean width, each `floor_gap_spacing` seconds from everything else and off the refuges' stretches, which stand-in ceilings cover while it runs), then that wall's outer lane cleared until the longest wall run against the slash is over (`refuge_wall_run_end`, claws included, with `WALL_DROP_SECONDS`), and a generator's site after each refuge (`_site_plan`, `sites_between`: `SleepTakerLure.site_after`, the middle of the stretch where a lure clears both slashes; its lane, from the lap's seed, cleared from `generator_clear_before` it to where a stomp's bounce lands), the entrance (it rises out of the street `enter_ahead` ahead, materializing, and drifts in to `hover_ahead`), its place (`pose`, kept relative to the runner; the slash's and the lure's `pull()` bring it in), and the pattern (`_schedule`): one attack at a time, `attack_gap` apart; a refuge's slash when the runner reaches its warning point (`next_refuge`, `refuge_warn_at`: it strikes `strike_after_pad` after the pads; a moment missed is logged `refuge_missed`), otherwise the phase's list in order (`attack_patterns`: hands, lights_out), the first that can start fairly and be over before the next refuge's slash or the next lure going next (each kind tried once a frame; a round of hands that can't be planned is looked for again `HANDS_RETRY` later, the planner being the fight's costliest check); a generator `generator_delay` into each phase's pattern, or `generator_again` after a miss (`_update_generator`), nothing attacking while it's lured. `_on_part_emp`: an EMP while it's lured and within reach (`SleepTakerLure.reaches`) is the phase's hit (`damage(hit_damage(), &"emp")`): it tears a chunk away (`body.tear`, with its howl) and recoils into the next phase, hungrier (each phase's `pace` and list); any other EMP does nothing to it. The last one beats it (`_on_defeated`: `SleepTakerDefeat`; `victory_over` once the dawn has broken; `victory_riff` false: silence). Lights out's own floors (`light_floor()`, `scenery_floor()`, from its tuning: below every other boss's), and the runner's own glow as the light sinks (`runner_glow_now()`, set on the runner every frame through `Player.set_dark_glow`, cleared as the fight leaves the tree). Fairness helpers: `floor_clear_lane`, `ceiling_between`, `pickup_near`; `sound()` plays and logs each warning; first-time hints `boss:dead_zone_boss/refuge`, `/hands`, `/lights_out`, `/generator` (`hint_due`) |
+| `sleep_taker_lure.gd` (`SleepTakerLure`), `sleep_taker_beacon.gdshader` | the way to hurt it: a generator (`FenceGenerator`, through `spawn_enemy`) placed in sight (`find_spot`: the arena's next generator site at least `generator_sight` ahead (else, on an arena without sites, the first fair spot up to `SPOT_SEARCH` past it), in the runner's lane or the nearest whose floor is clear around it and where a stomp's bounce comes down (`landing_span`), no pad or ramp there, the lure's stretch clear of ceilings and of every refuge's slash; `place_at`), glowing: a tall beacon of its pink drawn over everything (it shows through the nightmare, which looms between the runner and it) and a halo on the street; the lure (`lure_seconds` before the runner reaches it the nightmare lunges in with its roar and holds its claws `lure_gap` in front of them, `pull()`, until they're `lure_release` past it), the arcs while it's in reach (`in_reach()`: lured and within `emp_reach`, at the run's pace; pink, crackling, still with Reduced flashing), and the miss (it pulls back over `lure_back_seconds`) |
 | `sleep_taker_defeat.gd` (`SleepTakerDefeat`) | the defeat: `wisp_count` wisps burst out of it as it dissolves, each a faint face or figure from an atlas drawn in code (`atlas()`), rising and fading over `wisp_seconds`; the music fades out (`silence_fade`); `dawn_delay` later, over `dawn_seconds`, the sky turns to a grey dawn (its zenith, horizon and haze colours, the moon and the smoke fading, the fog lighter) and the light rises to `dawn_light` times the zone's own (the ambient light, the sun, the sky, and the scenery through `set_scenery_light`); the run's environment is its own, and the framework puts the lights back when the fight ends |
 | `sleep_taker_body.gd` (`SleepTakerBody`) | the body part: `immune_to_weapons` (no targeting, no shot or splash hurts it; the BossDef's `weapon_share_cap` is 0 besides), no weak points, its touch an enemy attack inside its body and out of reach; the model scaled uniformly to the street (`scale_for`), what it's doing (`shriek`, `raise`, `slash`, `attack`, `lunge`, `inhale`, `swallowed`, eased), its torn chunks (`tear`, `torn`) and `draw_stats()` |
-| `sleep_taker_model.gd` (`SleepTakerModel`), `sleep_taker_liquid.gdshader`, `sleep_taker_vapor.gdshader` | the nightmare, built once in code at its reference size: one liquid mesh (its fused heads, chest and waist, 28 maws facing the runner with the great one in its belly, two long arms and four tendrils of clawed fingers, drips) and one translucent vapour mesh (shroud, skirt, pool), each animated by its shader (maws breathing, gaping as it inhales, the great one opening with its teeth pulling back on a red throat, arms raising and sweeping, the lunge, the dissolve, and its chunks, `CHUNK_HEADS`, ripping away cell by cell with a burst of wisps), plus its drips and the inhale's streaming light: four draws and about 11k vertices. Black with the Bad Dream's purple; only an attack heats to enemy-attack red; no flicker with Reduced flashing. On the Compatibility renderer (no tonemapping) its shaders, the hand's and the mist's scale an over-bright colour down whole rather than let it clip channel by channel, which would turn its purple toward the fences' pink and its red toward salmon |
+| `sleep_taker_model.gd` (`SleepTakerModel`), `sleep_taker_liquid.gdshader`, `sleep_taker_vapor.gdshader` | the nightmare, built once in code at its reference size: one liquid mesh (its fused heads, chest and waist, 28 maws facing the runner with the great one in its belly, two long arms and four tendrils of clawed fingers, drips) and one translucent vapour mesh (shroud, skirt, pool), each animated by its shader (maws breathing, gaping as it inhales, the great one opening with its teeth pulling back on a red throat, arms raising and sweeping, the lunge, the dissolve, and its chunks, `CHUNK_HEADS`, ripping away cell by cell with a burst of wisps: four since task H12, its left side's heads, its right's, its crown and lower left front, its lower right front, one for each EMP before the last), plus its drips and the inhale's streaming light: four draws and about 11k vertices. Black with the Bad Dream's purple; only an attack heats to enemy-attack red; no flicker with Reduced flashing. On the Compatibility renderer (no tonemapping) its shaders, the hand's and the mist's scale an over-bright colour down whole rather than let it clip channel by channel, which would turn its purple toward the fences' pink and its red toward salmon |
 | `sleep_taker_slash.gd` (`SleepTakerSlash`) | the giant slash: the warning (`slash_telegraph` then the lunge: the great maw's shriek, its three lanes `band_for()` locked and lit red with the Bad Dream's lane marks, counted as floor warnings), the strike (`box_for()`: the lanes less margins, clear of the walls, below `slash_height`: above a jump, far below a ceiling rider) and the recovery; its timings don't follow the phase's pace |
-| `sleep_taker_hands.gd` (`SleepTakerHands`), `sleep_taker_hand.gdshader`, `sleep_taker_mist.gdshader` | the grasping hands, in rounds spread along the street (owner, October 8, 2026): `plan(budget)` lays out a round of `rows_for(round)` rows (two, then a row more each round up to four, kept across phases; fewer if the next refuge's slash or lure comes sooner, never fewer than `hand_rows_min`), `hand_row_seconds` apart at run speed over the phase's pace, the first where the runner will be once its mist has shown; each row leaves its door open (`hand_row_open` lanes), the first one lane over from the runner's lane, each next one lane over from the last (`doors()`, a seeded order from the fight's seed and the round's number), so every row stands in the lane the runner kept free at the row before; a floor hand in every other lane whose floor is clear around it (`hand_fits`; a hole stands in for one that isn't, but the hand the runner must switch away from always stands), and `wall_hands_per_row` wall hands, alternating (never beside a door in an outer lane, never at a wall gap, only over an outer lane with its own hand, so no floor runner ever passes under one). A round comes only with a way through it: `route_from()`, The House's lane router (`TheHouseRoute`) with the Sleep Taker's margins (`router()`: the real lane switch time times `route_switch_margin`, `route_body_margin` past a hand, holes jumped and fences jumped or slid under with no switch during one), for a runner moving `route_reaction` after its mists show; at most `MAX_ROUTE_TRIES` ways a call, the next call taking the doors in another seeded order. As a round starts, every hand's mist pools at once (purple, unshaded; a floor mist is a floor warning) with one whisper; each hand bursts up as the runner comes within `hand_rise_lead` of it (one sound a row) and grasps, then sinks; `round_plan`, `rounds`; pooled rigs, a whole round's (`SleepTakerTuning.max_hands`) |
-| `sleep_taker_lights_out.gd` (`SleepTakerLightsOut`) | lights out: the inhale (its warning), `set_light_level(dark_level)` for `dark_seconds` while the other attacks go on, the exhale and the light back; `clear()` brings the light back at once (a phase change, the defeat). Owner, October 8, 2026: half as bright as first built (`dark_level` 0.225, was 0.45: the ambient and sky light, the fog's, the sun and the scenery's own light all at half the first build's), above its own floors (`light_floor`, `scenery_floor`); the glows keep their brightness on screen and stand out from the darker street more than before (`--scenario=measure`, `--first-dark` to compare) |
-| `sleep_taker_tuning.gd`, `data/bosses/dead_zone_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5c.md`, and the H9 ones `docs/OPEN_QUESTIONS.md` items 617–625) |
-| `data/bosses/dead_zone_boss.tres` | its slot: three phases (paces 1, 1.15, 1.3; one EMP each), weapons capped at nothing, the standard armor rule with `armor_when_unprotected`, the Dead Zone's music, par times; its arena lists `wall_gaps` with numbers of its own (the only boss arena that opts in) |
-| `data/bosses/dead_zone_boss_wall_gaps.tres` | its arena's wall gaps (`WallGapTuning`; DESIGN-TBD): 1.6-1.3 s of run from one gap's end to the next, on one wall or the other (a level: 32-24 s), 30% on both walls, 0.6-1.1 s long: about 15 a minute once the refuges' stretches are kept whole (a level's median: 1.7) |
+| `sleep_taker_hands.gd` (`SleepTakerHands`), `sleep_taker_hand.gdshader`, `sleep_taker_mist.gdshader` | the grasping hands, in rounds spread along the street (owner, October 8, 2026): `plan(budget)` lays out a round of `rows_for(round)` rows (three, then a row more each round up to six since task H11, kept across phases; fewer if the next refuge's slash or lure comes sooner, never fewer than `hand_rows_min`, now one), `hand_row_seconds` apart at run speed over the phase's pace, the first where the runner will be once its mist has shown, or a moment further on where that spot has no room (`FIRST_SHIFTS`); one round at a time (`plan()` is empty while one is on); each row leaves its door open (`hand_row_open` lanes), the first one lane over from the runner's lane, each next one lane over from the last (`doors()`, a seeded order from the fight's seed and the round's number), so every row stands in the lane the runner kept free at the row before; a floor hand in every other lane whose floor is clear around it (`hand_fits`; a hole stands in for one that isn't, but the hand the runner must switch away from always stands), and `wall_hands_per_row` wall hands, alternating (never beside a door in an outer lane, never at a wall gap, only over an outer lane with its own hand, so no floor runner ever passes under one). A round comes only with a way through it: `route_from()`, The House's lane router (`TheHouseRoute`) with the Sleep Taker's margins (`router()`: the real lane switch time times `route_switch_margin`, `route_body_margin` past a hand, holes jumped and fences jumped or slid under with no switch during one), for a runner moving `route_reaction` after its mists show; at most `MAX_ROUTE_TRIES` ways a call, the next call taking the doors in another seeded order. As a round starts, every hand's mist pools at once (purple, unshaded; a floor mist is a floor warning) with one whisper; each hand bursts up as the runner comes within `hand_rise_lead` of it (one sound a row) and grasps, then sinks; `round_plan`, `rounds`; pooled rigs, a whole round's and a row more, for the round before's last row still sinking as the next one's mists show (`SleepTakerTuning.pool_hands`) |
+| `sleep_taker_lights_out.gd` (`SleepTakerLightsOut`) | lights out: the inhale (its warning), `set_light_level(dark_level)` for `dark_seconds` while the other attacks go on, the exhale and the light back; `clear()` brings the light back at once (a phase change, the defeat). Owner, October 8, 2026: half as bright as first built (`dark_level` 0.225, was 0.45); October 10, 2026 (task H11): a completely dark tunnel, 90% darker again (`dark_level` 0.0225: the ambient and sky light, the fog's, the sun and the scenery's own light; the street, walls and ruins read black on screen), above its own floors (`light_floor`, `scenery_floor`); the glows keep their brightness on screen and are all that shows (`--scenario=measure`), and the runner glows by its own light as the light sinks (`runner_glow`: `PlayerAvatar.set_dark_glow`, its pale rim light over the whole silhouette) |
+| `sleep_taker_tuning.gd`, `data/bosses/dead_zone_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5c.md`, the H9 ones `docs/OPEN_QUESTIONS.md` items 617–625, and the H11 ones `docs/questions/h11.md`) |
+| `data/bosses/dead_zone_boss.tres` | its slot: five phases (paces 1, 1.15, 1.3, 1.45, 1.55; one EMP each; the last two since task H12, the owner's October 10, 2026 change: no new mechanics, the hands about 10% and 20% more often than in the third), weapons capped at nothing, the standard armor rule with `armor_when_unprotected`, the Dead Zone's music, par times; its arena lists `wall_gaps` with numbers of its own (the only boss arena that opts in) |
+| `data/bosses/dead_zone_boss_wall_gaps.tres` | its arena's wall gaps (`WallGapTuning`; DESIGN-TBD): 0.6-0.5 s of run from one gap's end to the next, on one wall or the other (a level: 32-24 s), half on both walls, 0.6-1.1 s long: about 33 a minute once the refuges' bridges are kept whole (task H9's: about 15; a level's median: 1.7) |
 | `data/bosses/dead_zone_boss_skin.tres` | its arena's look: the Dead Zone's, with nothing hung over the street (no skybridges, no hung screens), where it looms |
-| `tools/showcase/sleep_taker_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/slash/hands/lights_out/lure/fight/measure`, `--phase=2` with `lure` for the defeat, `--dark` for a lure in the dark of lights out, `--first-dark` for lights out as first built, `--events` for the frames; `measure` prints the warnings', hazards', the generator's, the runner's and the street's colours on screen in the arena's light and at the darkest point) |
+| `tools/showcase/sleep_taker_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/slash/hands/lights_out/lure/fight/measure`, `--phase=4` with `lure` for the defeat, `--dark` for a lure in the dark of lights out, `--first-dark` for lights out as first built, `--events` for the frames; `measure` prints the warnings', hazards', the generator's, the runner's and the street's colours on screen in the arena's light and at the darkest point) |
 | `tools/measure/sleep_taker_arena.gd` | its arena over its laps at 3, 5 and 6 lanes and both speeds: rows of holes, lane-gaps, fences, refuges and wall gaps (`--first`: as first built, for the before and after) |
 | `tests/helpers/sleep_taker_bot.gd` (`SleepTakerBot`) | a runner who plays the fight by its warnings, `reaction` seconds late: to a refuge's pad or out of the slash's lanes (`slash_escape`), through each round of hands by its way (`SleepTakerHands.route_from` from where it is, each switch where the way has it; `routes_found`, `routes_missing`), to each generator's lane and onto its top (`stomp_lead()`; or the dash, `dashes`; or out of its way, `smashes` off), and through the arena's holes and fences |
 
@@ -4552,13 +4555,14 @@ never ends, and a level never starts, unattended.
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
-| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position); its legs step while it is moved meanwhile |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
-| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
+| `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`, `CarPassenger`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props, the sports car and the screech on its passenger seat; its sounds in `tools/asset_gen/sfx_bank_gangland_outro.gd` |
 | `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
@@ -4571,7 +4575,8 @@ counted from the start lane too (a lane past the street's edge is left out).
 the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
 (`BossDef.arena.skin`) if it has one. Before a boss it is under the fight's sky too (`CineStage.sky_for`: the
 arena's own level sky, else the zone's last level's, as `Campaign.configure_boss` gives the fight; G8), and the
-street's light under it; a zone's intro and outro keep the zone's own sky. Its lanes default to the device's (`App.lane_count()`), so the street
+street's light under it; a zone's intro and outro keep the zone's own sky (unless a stage is `after_fight`, as
+Gangland's outro's are: then it's under the fight's sky and in the arena's look). Its lanes default to the device's (`App.lane_count()`), so the street
 matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
 boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
 playing carries on, so a song the owner adds later under that name just plays (no music is generated for
@@ -4594,11 +4599,23 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
 keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
-(`CinePoses`: `lie`, `get_up`, `climb`) take the keys' `progress` (0-1, sampled like the position; a key below 0
+(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`) take the keys' `progress` (0-1, sampled like the position; a key below 0
 keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
-hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises); and while it
+hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises; not while it
+gets in, whose legs are its key poses); and while it
 climbs, its hands hold the keys' position (the body hangs from them) until a foot takes its weight
-(`CinePoses.LET_GO`). A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
+(`CinePoses.LET_GO`). Its `walk` follows its movement instead (the run cycle at a walk's speed shuffles): heel
+strike, a bent knee through the swing, the foot rolling off its toe, the hips and shoulders turning against each
+other, the arms swinging; while a foot is down it goes back under the hip at exactly the body's pace (the thigh
+worked out from where the foot must be and the knee's bend, turned back against the pelvis's turn and drop), and it
+swings forward to land moving at that pace, so the feet don't skate. The stride follows the ground covered (shorter
+when slow); turning on the spot it steps in place; stopping, it settles into standing at ease, breathing, its
+weight shifting. Its pace and stride follow its movement over a moment (`CineActorNode.GAIT_SMOOTH`), so a sudden
+change in speed or turning never jumps its pose in a frame (`test_gangland_outro` checks no knee moves further in
+a frame than a full stride's swing does). An actor with a `turn_rate` of its own eases into and out of its turns
+(critically damped; the toolkit's default turn starts at full speed). On its first frame, and after a jump cut
+(`CineActorNode.MAX_STEP`), an actor moves as its path goes on from there: it faces that way at once and starts in
+its stride. A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
 `die`, `lie` (lying still, its screen dark) or `crouch` (crouched low over something, working at it; it stops as
 it turns its head); its keys set its face, its aim (at another actor) and its charge glow (the red glow is its
 attack's warning in play, so show it only where an attack follows). Either's head turns by its keys' `look`
@@ -4661,7 +4678,8 @@ black, since building one takes a few frames).
 Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
 (`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
 `tools/showcase/cinematic_review.tscn` plays any slot's cinematic on its own for renders (`--slot=<step
-id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`), printing each event with its frame.
+id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to start S seconds in), printing
+each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
 numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the Dead Zone's, which has the
@@ -4724,6 +4742,57 @@ the first time, with cold mesh caches) and costs about 0.6 ms a step, at most ab
 `test_sewer_swarm_intro`); its props add about 25 draw calls. It adds no asset files, and one toolkit hook,
 `_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
 behind the camera and the actors).
+
+**Gangland's outro** (`GanglandOutro`, task F2d; the owner's beats, October 9, 2026, GDD §6 Cinematics; what they
+leave open is DESIGN-TBD, `docs/questions/f2d.md`; numbers in `data/cinematics/gangland_outro_tuning.tres`; the
+owner's follow-up, October 10, 2026: the runner's movement more fluid, a shot of them getting in beside a cute
+screech, the car faster; and then: the screech one of those from before, the two nodding to each other): 22.4 s
+after the Sewer Swarm, both stretches picking up where the fight ended (`CineStageDef.after_fight`: the
+arena's look under Gangland 3's blood-red sky), on the level's lanes. The fight's music fades out as it opens. Low
+beside the Host, who lies freed against a heap of rubble, implants dark, looking back up the street: four screeches
+sniff at them, look up as the runner comes walking down the street, spines up (never the full bristle of their attack), and
+scuttle off into the gutters. Over
+the runner's shoulder as they walk up (`CinePoses.walk`, at about 1 m/s) and stop beside the Host, turning to them
+unhurriedly. Low in front of the Host: trembling (harder as they
+strain), they look up, sit up a little and hold a golden key out to the runner; it glints (a bell chime and a slow
+halo); the runner leans in and takes it (both arms reach for the same point, so the hands meet and the key passes
+from one to the other), the Host sinks back, the runner looks at the key. Black, and the cut (`switch_stage`) to
+another stretch where the car is parked: low off its front corner as the runner walks up holding out the key, the
+car unlocking with a chirp and two blinks of its lights (one slow glow with Reduced flashing), its scissor door
+swinging up and its courtesy lights coming on. Cut inside: from behind the dashboard, looking back at both seats and
+out of the open door (the car's panels are one-sided, so the camera sees through the windscreen's back), the runner
+steps in over the sill, ducks in and sits down (`CinePoses.get_in`) beside a screech sitting up on the passenger seat
+(`CarPassenger`), which looks round at them with a tilt of its head; once they're sat they look round at it, it
+nods to them with a chirp and they nod back; the door comes down behind them and the engine starts. Cut to the road
+behind it (the runner out of sight from here), at road level (0.16 m up, the owner's ask), as it
+launches, wheels spinning up, and tears off down the street (24 m/s², about 115 m in its 3.1 s) into the distance;
+black, and the Marketplace's intro.
+
+`GanglandOutroSet` holds the first scene's props, built on its stage: the rubble (slabs, chunks and rebar in the
+street's kit material, one draw call), the Host (`SwarmHostPerson` on the humanoid rig, its glow dimmed; posed by
+script: reclined, breathing, trembling, the offering arm turned toward the hand-off point) and the screeches
+(`ScreechModel`, as in play). `SportsCarModel` is the car, built by code: a faceted wedge lofted through eleven
+cross-sections (a blade of a nose, a raked windshield, flared fenders over angular wheel wells, a dark intake
+behind the door, a wing), a scissor door hinged at its front edge over a cabin with two raked seats (their piping
+glowing with the courtesy lights, which also cast a warm `OmniLight3D` on whoever is in it), four wheels that
+turn with the distance driven, head and tail lights, running lights, glow underneath and headlight pools (MeshKit's
+glow material, scaled by its lights). Its paint (`sports_car.gdshader`) is unshaded, like the kit: a fake key light
+and a fake street mirrored in it (a sharp horizon, shopfront neon streaming back as it drives) under a clear coat,
+so it shines the same on the Compatibility renderer; it follows a level's light and the street's tint under a
+level's sky. Its look (size, paint, accent) is data. The key is the cinematic's own node (it goes from the first
+scene into the second), held in a hand joint. The runner's reach, lean, look at the key and raised key are
+layered on their pose in `_on_advance`, each easing in and out (`aim_arm` turns an arm toward a point; the rig sets
+every joint afresh each update, so nothing builds up). `CarPassenger` is the screech on the passenger seat, a child
+of the car: the screeches' own body (`ScreechModel.mesh()`, its material and shader, calm), posed sitting
+(`sitting_meshes`: each part's triangles turned about its joint, the head level, the paws held up, the front legs
+tucked, the hind feet forward on the seat, the tail curled round on it, then the body tipped up about its hips), its
+head a mesh of its own so it can turn and nod; its look round, head tilt and nod are worked out from the time. Shots looking back up the street keep it built behind them
+(`_stage_near`). Its sounds are seven new ones (`tools/asset_gen/sfx_bank_gangland_outro.gd`: `screech_sniff`,
+`key_glint`, `car_unlock`, `car_door`, `screech_chirp` as the passenger nods to the runner, `car_start` as its lights
+come on and `car_drive` at the launch) and the
+fight's `host_short` and `swarm_scatter`. Cost (headless, `test_gangland_outro`): about 25 ms to set up (about 350 ms the first time, with
+cold mesh caches), about 20 ms for the cut to the car (under black), about 10 ms on the two hard cuts (the street
+building ahead) and about 0.4 ms a step otherwise; its props add about 22 draw calls (the Host on the rig is 16).
 
 **The Dead Zone's intro** (`DeadZoneIntro`, task F2c; the owner's story beats and answers, October 9, 2026, GDD §6
 Cinematics; what they leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in
@@ -5044,18 +5113,20 @@ campaign at 3, 5 and 6 lanes with the bot and no god mode (City 3, the boss intr
 its results and stars, the shop, the outro's slot, and the web demo's end screen), checking along the
 way that its propaganda never masks a warning, then that a death restarts the fight. `test_sleep_taker`
 builds the Sleep Taker at 3, 5 and 6 lanes (its slot, immune to weapons, its hitboxes, its draw budget
-and colours, its arena's refuges, twice the floor gaps it was first built with and its many wall gaps,
-whole over every refuge's stretch and kept as laps join, the entrance, shots and missiles passing through
-it, lights out at half the first build's light and scenery light above its own floors, every other boss
-keeping the framework's, and the light always coming back); `test_sleep_taker_attacks` plays its slash and
+and colours, its arena with no ceilings, its refuges (the floor clear, one wall standing from the warning
+past the strike, its lane clear for the landing), its generator sites, six times the floor gaps it was first
+built with and its many wall gaps, the other wall open at some refuges, and kept as laps join, the
+entrance, shots and missiles passing through it, lights out at least 75% darker than October 8's with the
+runner glowing by its own light, every other boss keeping the framework's floors, and the light always
+coming back); `test_sleep_taker_attacks` plays its slash and
 hands with `SleepTakerBot` at 18 and 24.2 m/s (struck only after the warning and only in the warned
-lanes, every escape from every lane without god mode, the ceiling safe, the same every attempt; the
-hands' rounds growing from two rows to four, each row its own distance along the street, its door one
+lanes, every escape from every lane without god mode, up a wall or out of the lanes, a wall runner never
+touched, the same every attempt; the hands' rounds growing from three rows to six, each row its own distance along the street, its door one
 lane over from the last and a hand in the lane the runner kept free, wall hands on every row; the
 planner's numbers and budget; every round's way through proved on real physics in each phase and at
 both speeds, a lane switch at every row) and its whole pattern on the real arena at 3, 5 and 6 lanes for
 a runner who lets every generator go by; `test_sleep_taker_fight` plays the whole fight with the bot at
-3, 5 and 6 lanes and both speeds (three EMPs in 60-120 s, every round of hands with its way through,
+3, 5 and 6 lanes and both speeds (five EMPs in 60-160 s, every round of hands with its way through,
 every lure on time with the arcs showing it's in reach well before the stomp, nothing
 attacking while lured, the chunks torn, the same every attempt), a missed generator followed by another
 with nothing escalating, EMPs out of reach, the defeat (the wisps, the silence, the dawn, the lights back
@@ -5382,7 +5453,20 @@ at first only the hands over the edge, the hands holding the edge as they climb 
 the three cyborgs in view until the medium shot (two lying still with their screens dark, the host crouched), the host
 looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
 zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
-its own sounds; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+its own sounds; `skip()`; and its setup and step costs. `test_gangland_outro` checks Gangland's outro (F2d): its slot;
+`after_fight` (the fight's look and sky after it, the zone's own without it, so the City outro's look is unchanged);
+the car's shape (a long, low wedge, a scissor door, lights and turning wheels, its cabin lit only while its
+courtesy lights are on); the passenger (the fight's screech, every triangle and colour of it, sitting up); at 3, 5 and 6 lanes its beats in
+order (the screeches sniffing, then gone before the runner arrives, never near the camera; a walk, not a run; the
+Host trembling harder as they hold the key up; the hands meeting; the key in one hand, then the other; the glint;
+the cut to the car, the runner facing the way they walk at once; the unlock's blinks; the door up as the runner gets
+in; the screech on the passenger seat, and one shot from inside the car with it and the runner sitting down beside
+it in view; its look round, then, once the runner's sat, the two nodding to each other before the car takes off; the
+door down; the lights on; the runner out of sight once the camera's outside; the camera at road level as it drives straight off, fast, into the distance), the walk (`CinePoses.walk`,
+its planted feet moving under 10% of the ground walked, its turns unhurried), the camera in the street and
+above it, the street built 150 m wherever it looks, only the fight's music fading, its costs and draw calls; Reduced
+flashing (one slow glow for the unlock); `skip()`; and the App's flow (the Marketplace's intro follows).
+`test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
@@ -5752,7 +5836,7 @@ of each from the game camera, from beside the opening and from above (a skin's `
 open beach); `--from=D` starts the run further on, `--reduced-flashing`
 turns Reduced flashing on), the Beach's splash (`splash_review`: a real `RunWorld` with a skin, a pool in the
 runner's lane and the game camera, for a real fall; `--skin`, `--sky`, `--lanes`, `--grapple`, `--side`), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
-the App plays it, or the toolkit's sampler), and comparison
+the App plays it, or the toolkit's sampler; `--from=S` starts S seconds in), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

@@ -1,8 +1,9 @@
 class_name SleepTakerSlash
 extends Node3D
 ## The Sleep Taker's giant slash (GDD §10: "giant slash across three lanes: the maw opens with a shriek
-## (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling"). The Bad Dream's
-## slash (BadDream), grown, in its language:
+## (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling"; owner, October 10,
+## 2026: no ceilings in this fight, and "there should be a sidewall that the player could run to"). The
+## Bad Dream's slash (BadDream), grown, in its language:
 ## - the warning (slash_telegraph, then the lunge's slash_lunge: slash_warning() in all): its great maw
 ##   opens with its shriek (sleep_taker_shriek), its arms rise over the lanes and its claws and throat
 ##   heat up to enemy-attack red; the lanes it will slash are locked as the warning starts and light up
@@ -11,12 +12,13 @@ extends Node3D
 ## - the strike: its claws are live for slash_active over the locked lanes at the runner's spot (an
 ##   enemy attack: armor or a shield blocks one, the dash passes through), drawn as claw streaks; the
 ##   box keeps a margin at the lanes' edges and clear of the walls, and stops at slash_height, above a
-##   jump's reach but far below a ceiling rider: leaving the lanes, a wall or the ceiling dodge it;
-## - its timings don't follow the phase's pace: its warning is what gets a runner to a pad in time;
+##   jump's reach: leaving the lanes or a wall dodges it;
+## - its timings don't follow the phase's pace: its warning is what gets a runner out of its way;
 ## - three lanes: the runner's and the ones on either side, kept within the street (at an edge the three
-##   outermost; at 3 lanes the whole street). The encounter times every slash to a refuge
-##   (SleepTaker: a bridge with its pads), so a runner reacting as the warning starts can always reach
-##   a pad's lane, or at 5 and 6 lanes a lane outside the slash;
+##   outermost; at 3 lanes the whole street). The encounter times every slash to a refuge (SleepTaker:
+##   its spot, the track clear of holes and fences and one wall kept whole, `wall` in the attack), so a
+##   runner reacting as the warning starts can always reach that wall, or at 5 and 6 lanes a lane
+##   outside the slash;
 ## - the locked lanes count as floor warnings (BossProps.floor_warning) from the warning to the strike,
 ##   so pickups keep off them.
 
@@ -37,7 +39,7 @@ var step: Step = Step.IDLE
 var step_time: float = 0.0
 ## The current (or last) slash: {n, first, last (its lanes), at (the runner's distance as its warning
 ## started), strike_at (where the runner will be when it strikes, at their speed then), refuge (the
-## refuge's pads' distance, or -1)}.
+## refuge's spot, or -1), wall (the side of the refuge's wall kept whole, or 0)}.
 var attack: Dictionary = {}
 ## Slashes started so far.
 var count: int = 0
@@ -108,16 +110,16 @@ func box_for(band: Vector2i) -> AABB:
 	return AABB(Vector3(x0, 0.0, -t.slash_depth * 0.5), Vector3(x1 - x0, t.slash_height, t.slash_depth))
 
 
-## Starts a slash at the runner's lane now: the warning (see the header). `refuge` is the pads'
-## distance of the refuge it's timed for (-1: none).
-func start(refuge: float = -1.0) -> void:
+## Starts a slash at the runner's lane now: the warning (see the header). `refuge` is the spot of the
+## refuge it's timed for (-1: none), `wall` the side of its wall kept whole (0: none).
+func start(refuge: float = -1.0, wall: int = 0) -> void:
 	var t: SleepTakerTuning = boss.tuning
 	var p: Player = boss.world.player
 	var band: Vector2i = band_for(boss.player_lane())
 	count += 1
 	var v: float = maxf(p.speed, 1.0)
 	attack = {"n": count, "first": band.x, "last": band.y, "at": p.distance,
-		"strike_at": p.distance + v * t.slash_warning(), "refuge": refuge}
+		"strike_at": p.distance + v * t.slash_warning(), "refuge": refuge, "wall": wall}
 	_box = box_for(band)
 	_hitbox.size = _box.size
 	((_hitbox.get_child(0) as CollisionShape3D).shape as BoxShape3D).size = _box.size

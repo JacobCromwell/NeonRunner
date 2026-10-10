@@ -281,13 +281,16 @@ func _test_slots(campaign: Campaign) -> void:
 				"Gangland's boss intro plays its own scene, the owner's beat (task F2b)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "dead_zone/intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/dead_zone_intro.tscn" and s.cinematic.is_built(),
-				"the Dead Zone's intro plays its own scene, the owner's beats (task F2c)")
+				"the Dead Zone's intro plays its own scene, the owner's beats (task F2d)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn"
 				and s.cinematic.is_built(), "cinematic slot %s plays the placeholder arrival flyover (task F1)" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.zone == campaign.zones[0] and s.id.ends_with("outro"):
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/city_outro.tscn"
 				and s.cinematic.is_built(), "the City's outro slot plays its cinematic (task F2a)")
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/outro":
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/gangland_outro.tscn"
+				and s.cinematic.is_built(), "Gangland's outro slot plays its cinematic, the owner's beats (task F2d)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC:
 			check(s.cinematic != null and not s.cinematic.is_built(), "cinematic slot %s is still a placeholder" % s.id)
 

@@ -349,7 +349,8 @@ numbers live in `data/` (mostly `data/tuning/*.tres`, `data/shop/catalog.json`, 
 72. **Window cyborgs:** a 0.8 m body band centred on the 2.2 m wall-entry height, reaching 0.55 m out
   from the wall. They can't be stomped.
 73. **Fence generators:** claws and running into one don't destroy it, and its body is solid (running
-  into it kills; armor doesn't help). EMP radius 16 m; placed 9 m before its fence row. (Weapons no longer
+  into it kills, but armor absorbs the hit, like any other damage it works against: owner, October 10,
+  2026). EMP radius 16 m; placed 9 m before its fence row. (Weapons no longer
   destroy one: item 31.)
 74. **Scores and look:** cyborg and window cyborg 200, generator 150. LED faces are amber *(changed September 26, 2026: cold white, GDD §9.2)* so they read
   apart from the player's cyan visor.

@@ -187,12 +187,19 @@ func _test_dash_claws_contact() -> void:
 	check(not r["alive"] and r["cause"] == "generator" and g.alive, "claws don't destroy it (%s)" % r["cause"])
 	await sim.free_world(w)
 
-	# Plain contact: a solid collision that armor doesn't stop.
+	# Plain contact: armor absorbs it (the generator survives); with nothing up, it kills.
 	w = sim.build_world(_layout(), _loadout({"armor": 1}))
 	g = _spawn(w, 1)
 	r = await sim.step_world(w, 3.0)
-	check(not r["alive"] and r["cause"] == "generator" and w.player.armor == 1 and g.alive,
-		"running into it kills, armor or not (%s)" % r["cause"])
+	check(r["alive"] and g.alive and not w.player.armor_state.is_up(),
+		"armor absorbs running into it (%s)" % r["cause"])
+	await sim.free_world(w)
+
+	w = sim.build_world(_layout(), _loadout({}))
+	g = _spawn(w, 1)
+	r = await sim.step_world(w, 3.0)
+	check(not r["alive"] and r["cause"] == "generator" and g.alive,
+		"running into it with no armor kills (%s)" % r["cause"])
 	await sim.free_world(w)
 
 
