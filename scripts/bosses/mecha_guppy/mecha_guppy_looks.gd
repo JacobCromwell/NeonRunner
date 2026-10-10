@@ -8,14 +8,17 @@ extends RefCounted
 ##   bamboo kerb out to the edge on the outer lanes), the orange edge language of every zone where it ends (the
 ##   front a rider drops onto faces them with a halo; the edge Mecha Guppy has eaten it from), and below it the
 ##   stacked shacks it stands on: bamboo, mat and plank faces (the Beach's wall pattern) running down to the water
-##   on the outside and down to the basin before it at its front, where a tiki bar's facade faces the runner.
+##   on the outside and down to the basin before it at its front, where a tiki bar's facade faces the runner; dark
+##   thatch eaves under its outer edges and warm lantern posts on its kerbs, outside the lanes.
 ## - A basin (the floor Mecha Guppy has eaten, E5e-b1's placeholder for its bite; E5e-b2 brings the shark): the roof
 ##   under the hut drops away past its pads into dark water a pool's depth down, in the black steel of the Beach's
 ##   pools; a fall sinks into it (BeachWaterWatch's splash) and ends out of sight, as in the street's pools.
-## - A hut: a tiki hut hovering on four violet-blue lift pods outside the lanes, its plank underside one surface
-##   across its lanes with a dark seam and a warm lamp row along each lane seam, the orange band of every zone at
-##   each lane's end (where a rider drops), bamboo walls and a thatched hip roof over the full-width part, and over
-##   the lanes that run further (the cue RUN_ON) an annex of its own: a lower bamboo walkway under a thatch canopy.
+## - A hut: a plank platform hovering on four violet-blue lift pods outside the lanes, its underside one surface
+##   across its lanes with flush joists, a dark seam and a warm lamp row along each lane seam, the orange band of
+##   every zone at each lane's end (where a rider drops); on its full-width part a row of tiki huts (bamboo walls
+##   with a lamp-lit bar opening at each end, corner posts, a steep thatched hip roof) between bamboo rails, and
+##   over the lanes that run further (the cue RUN_ON) an annex of its own: a lower bamboo walkway under a thatch
+##   canopy.
 ## - The pads: each lane's strip a row of anti-grav pad tiles end to end in the zone's pad cyan, as long as its
 ##   trigger, with short light columns (a full one would stand like a wall along the lane).
 ## - A few neon signs (wordless silhouettes in the Beach's violet, blue and warm white: GDD §5's colour rule) on
