@@ -110,9 +110,10 @@ func _test_data() -> void:
 			library.path(zone.music).get_file(), library.path(library.run_track(zone.music)).get_file()])
 	check(zone.intro != null and zone.intro.is_built() and zone.outro != null and not zone.outro.is_built() and zone.boss_intro == null,
 		"its intro plays the arrival flyover, its outro is a placeholder card, and it has no boss intro")
-	# The owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created".
-	check(zone.boss != null and zone.boss.id == &"beach_boss" and not zone.boss.is_built() and zone.boss.preview() == null,
-		"its boss slot is a placeholder: the campaign passes through it")
+	# Its boss, Mecha Guppy and Captain Cogs (GDD §10, task E5e), is being built: the campaign passes through its card
+	# while debug builds play the fight as its preview (--boss=beach_boss).
+	check(zone.boss != null and zone.boss.id == &"beach_boss" and not zone.boss.is_built() and zone.boss.preview() != null,
+		"its boss slot is a placeholder the campaign passes through, its fight a preview while it's built")
 	check(not zone.in_demo, "outside the web demo")
 	var before: CampaignStep = campaign.step(BEFORE)
 	var after: CampaignStep = campaign.step(AFTER)
