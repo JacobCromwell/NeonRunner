@@ -45,6 +45,9 @@ const HUT_GAP: float = 2.0
 ## A roof's lanes that lead up never reach back over the roof before it: they start at least this far past its
 ## eaten edge (metres).
 const MIN_BITE: float = 2.0
+## ...and they start at least this far past the latest settle on the hut over them (metres): even the latest flip up
+## (a jump right before the pads, dashing) is on the hut before it meets their front, however far reach_back asks.
+const TONGUE_CLEAR: float = 2.0
 ## Far: a roof that runs on (phase 3's top), a lane with no roof.
 const FAR: float = 1.0e9
 ## The most lanes that lead up on a REACH_BACK step (GDD §10, the owner: "one or two of the roof's lanes reach further
@@ -151,6 +154,7 @@ var steps: Array[Step] = []
 var dt: float = 1.0 / 60.0
 
 var _rng := RandomNumberGenerator.new()
+var _seed: int = 0
 
 
 ## The climb at `p_lanes` lanes for a run on `p_movement` (its speed and pace), with `p_tuning`'s numbers, the
@@ -165,7 +169,7 @@ static func make(p_movement: MovementTuning, p_tuning: MechaGuppyTuning, p_lanes
 	out.pace = p_movement.pace()
 	out.dash_reach = maxf(p_dash_reach, 0.0)
 	out.dt = 1.0 / float(maxi(Engine.physics_ticks_per_second, 1))
-	out._rng.seed = seed
+	out._seed = seed
 	var street := Roof.new()
 	street.index = 0
 	street.top = 0.0
@@ -182,10 +186,12 @@ static func dash_reach_of(powerups: PowerupTuning) -> float:
 # --- Planning --------------------------------------------------------------------------------------
 
 ## Plans the next step in phase `phase` (its roof run), and the roof it leads to; with `top` (phase 3), the top
-## instead: the roof the runner is on runs on, and nothing comes after it. Returns the step (the last one again
-## once the top is planned).
-func plan_next(phase: int, top: bool = false) -> Step:
-	if not steps.is_empty() and steps[-1].top:
+## instead: the roof the runner is on runs on, and nothing comes after it. `not_before`: its hut starts no nearer
+## than this track distance (MechaGuppyStairs plans each step as late as it can, as its hut comes to the edge of
+## sight, and never puts anything where the runner can already see: after a phase change brings the next step
+## closer, it starts there). Returns the step (the last one again once the top is planned).
+func plan_next(phase: int, top: bool = false, not_before: float = -FAR) -> Step:
+	if top_planned():
 		return steps[-1]
 	var k: int = steps.size()
 	var from: Roof = roofs[k]
@@ -210,15 +216,10 @@ func plan_next(phase: int, top: bool = false) -> Step:
 		return step
 	step.top_y = from.top + tuning.rise
 	step.hut_y = from.top + maxf(tuning.hut_height, tuning.rise + tuning.hut_clearance)
-	# The pads: the run on the roof after landing, past its full width, and room for the hut after the last.
+	# The pads: the run on the roof after landing, past its full width, room for the hut after the last, and never
+	# where the runner can already see (not_before).
 	var t: MovementTuning = movement
-	if k == 0:
-		step.pad = tuning.start_seconds * speed
-	else:
-		var before: Step = steps[k - 1]
-		step.pad = before.land + tuning.roof_seconds_at(phase) * speed
-		step.pad = maxf(step.pad, before.hut_end() + HUT_GAP + tuning.hut_lead * pace)
-	step.pad = maxf(step.pad, from.full_from() + PAD_CLEAR)
+	step.pad = maxf(_pad_for(k, phase), not_before + tuning.hut_lead * pace)
 	var jump: float = jump_seconds()
 	step.pad_end = step.pad + jump * speed + dash_reach + tuning.strip_margin
 	step.hut_start = step.pad - tuning.hut_lead * pace
@@ -244,7 +245,10 @@ func plan_next(phase: int, top: bool = false) -> Step:
 			next.starts = _filled(front)
 			step.land = run_on + movement.foot_half_depth + drop
 		_:
-			var back: float = maxf(step.deadline - tuning.reach_back * pace, from.end + MIN_BITE)
+			# They reach back under the hut's end, but never over the roof before it, and never into a flip up: the
+			# latest rider is on the hut before their front (TONGUE_CLEAR past the latest settle).
+			var back: float = maxf(maxf(step.deadline - tuning.reach_back * pace, from.end + MIN_BITE),
+				step.settle + TONGUE_CLEAR)
 			next.starts = PackedFloat32Array()
 			for lane: int in lanes:
 				step.ends.append(step.deadline)
@@ -264,11 +268,50 @@ func wrong_reach(step: Step) -> float:
 	return movement.foot_half_depth + fall * speed + dash_reach + movement.hurtbox_size.z * 0.5 + tuning.fall_margin
 
 
+## Where the pads of step `k` (the next one: k == steps.size()) go in phase `phase`, nearest: the first `start_seconds`
+## into the fight, the others the phase's run on the roof after landing (roof_seconds), room for the hut after the
+## last one, and past the roof's full width.
+func _pad_for(k: int, phase: int) -> float:
+	var from: Roof = roofs[k]
+	var pad: float = tuning.start_seconds * speed
+	if k > 0:
+		var before: Step = steps[k - 1]
+		pad = before.land + tuning.roof_seconds_at(phase) * speed
+		pad = maxf(pad, before.hut_end() + HUT_GAP + tuning.hut_lead * pace)
+	return maxf(pad, from.full_from() + PAD_CLEAR)
+
+
+## Where the next step's hut would start if it were planned now in phase `phase` (FAR once the top is planned;
+## -FAR for the top itself: it's due at once).
+func next_hut_start(phase: int, top: bool = false) -> float:
+	if top_planned():
+		return FAR
+	if top:
+		return -FAR
+	return _pad_for(steps.size(), phase) - tuning.hut_lead * pace
+
+
+## True once phase 3's top is planned: nothing comes after it.
+func top_planned() -> bool:
+	return not steps.is_empty() and steps[-1].top
+
+
+## Forgets every step from `index` on and the roofs they led to; roof `index` runs on again until a step is planned
+## from it (MechaGuppyStairs re-plans what the runner can't see yet when the phase changes). The steps planned again
+## pick the same lanes (each step's choice is seeded by its index).
+func truncate(index: int) -> void:
+	if index < 0 or index >= steps.size():
+		return
+	steps.resize(index)
+	roofs.resize(index + 1)
+	roofs[index].end = FAR
+
+
 ## Plans steps while the climb's furthest planned piece is short of track distance `until` (phase `phase`; the top
 ## with `top`). Returns how many it planned.
 func plan_until(until: float, phase: int, top: bool = false) -> int:
 	var count: int = 0
-	while planned_until() < until and not (not steps.is_empty() and steps[-1].top):
+	while planned_until() < until and not top_planned():
 		plan_next(phase, top)
 		count += 1
 		if count > 64:
@@ -278,7 +321,7 @@ func plan_until(until: float, phase: int, top: bool = false) -> int:
 
 ## How far the plan reaches: the last roof's front (where the next step's pads will be decided).
 func planned_until() -> float:
-	if not steps.is_empty() and steps[-1].top:
+	if top_planned():
 		return FAR
 	return roofs[-1].first_start() if roofs.size() > 1 else 0.0
 
@@ -288,21 +331,48 @@ func planned_until() -> float:
 ## The step the runner at track distance `d` is in: the last whose pads begin at or before `d` (the first step
 ## before its pads). Null with none planned.
 func step_at(d: float) -> Step:
-	var out: Step = null
-	for s: Step in steps:
-		if out == null or s.pad <= d:
-			out = s
+	var i: int = step_index_at(d)
+	return steps[i] if i >= 0 else null
+
+
+## The index of step_at(`d`) (a binary search: the fight's plan grows for as long as it lasts), or -1 with none.
+func step_index_at(d: float) -> int:
+	if steps.is_empty():
+		return -1
+	var lo: int = 0
+	var hi: int = steps.size() - 1
+	if steps[0].pad > d:
+		return 0
+	while lo < hi:
+		var mid: int = (lo + hi + 1) >> 1
+		if steps[mid].pad <= d:
+			lo = mid
 		else:
-			break
-	return out
+			hi = mid - 1
+	return lo
 
 
-## The roofs under `lane` at track distance `d`, highest first.
+## The index of the last roof whose first start is at or before track distance `d` (a binary search), or 0.
+func roof_index_at(d: float) -> int:
+	var lo: int = 0
+	var hi: int = roofs.size() - 1
+	while lo < hi:
+		var mid: int = (lo + hi + 1) >> 1
+		if roofs[mid].first_start() <= d:
+			lo = mid
+		else:
+			hi = mid - 1
+	return lo
+
+
+## The roofs under `lane` at track distance `d`, highest first (at most one: each roof starts past where the one
+## before was eaten).
 func roofs_at(lane: int, d: float) -> Array[Roof]:
 	var out: Array[Roof] = []
-	for r: Roof in roofs:
-		if r.covers(lane, d):
-			out.append(r)
+	var j: int = roof_index_at(d)
+	for i: int in range(maxi(j - 1, 0), mini(j + 2, roofs.size())):
+		if roofs[i].covers(lane, d):
+			out.append(roofs[i])
 	out.sort_custom(func(a: Roof, b: Roof) -> bool: return a.top > b.top)
 	return out
 
@@ -387,7 +457,7 @@ func _surface_seconds(start: float, vh: float, stop: float, rising_first: bool) 
 ## The lanes that lead up for step `k` (its cue `cue`): as many as up_counts gives this step (one on 3 lanes, up to
 ## two on 4, three on 5 or more; always at least one lane that doesn't lead up; a REACH_BACK step no more than
 ## REACH_BACK_MOST: the owner's "one or two of the roof's lanes reach further back"), at a seeded place, never the
-## same block as the step before when there's another.
+## same block as the step before, nor a third time running for the same cue, when there's another.
 func _pick_up(k: int, cue: int) -> Vector2i:
 	var cap: int = 1 if lanes <= 3 else (2 if lanes == 4 else 3)
 	cap = mini(cap, lanes - 1)
@@ -401,11 +471,21 @@ func _pick_up(k: int, cue: int) -> Vector2i:
 	if cue == Cue.REACH_BACK:
 		count = mini(count, REACH_BACK_MOST)
 	var places: int = lanes - count + 1
-	var first: int = _rng.randi_range(0, places - 1)
-	if k > 0 and places > 1:
-		var before: Vector2i = steps[k - 1].up
-		if first == before.x and first + count - 1 == before.y:
-			first = (first + 1 + _rng.randi_range(0, places - 2)) % places
+	_rng.seed = hash([_seed, k])
+	# Never the block the step before had; nor, for this cue, the block its last two steps both had (3 lanes: the
+	# same lane never leads up on more than two REACH_BACK, or RUN_ON, steps in a row).
+	var banned: Array[int] = []
+	if k > 0 and steps[k - 1].up.y - steps[k - 1].up.x + 1 == count:
+		banned.append(steps[k - 1].up.x)
+	if k > 3 and steps[k - 2].up == steps[k - 4].up and steps[k - 2].up.y - steps[k - 2].up.x + 1 == count:
+		banned.append(steps[k - 2].up.x)
+	var open: Array[int] = []
+	for place: int in places:
+		if not banned.has(place):
+			open.append(place)
+	if open.is_empty():
+		open.append(_rng.randi_range(0, places - 1))
+	var first: int = open[_rng.randi_range(0, open.size() - 1)]
 	return Vector2i(first, first + count - 1)
 
 

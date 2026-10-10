@@ -24,8 +24,10 @@ extends Resource
 ## roof up to RunCamera.FLOOR_REACH above it, and the hut over a step keeps hut_clearance over the higher roof.
 @export_range(1.5, 6.0, 0.1, "suffix:m") var rise: float = 3.0
 ## DESIGN-TBD: a tiki hut's underside over the floor its step starts from (metres; a level's ceilings are 6 m
-## over the street). It keeps at least hut_clearance over the higher roof under its end.
-@export_range(5.0, 10.0, 0.1, "suffix:m") var hut_height: float = 7.0
+## over the street). It keeps at least hut_clearance over the higher roof under its end. 8.5 m puts the riding view
+## (RunCamera: 3.6 m under a ceiling) about 1.9 m over the higher roof, so its deck and the lanes that reach back
+## read as a place to land.
+@export_range(5.0, 10.0, 0.1, "suffix:m") var hut_height: float = 8.5
 ## The least room between a hut's underside and the higher roof under its end (metres): a rider hanging from
 ## the hut and jumping (MovementTuning.jump_height plus their body, visual_size.y, about 2.9 m) keeps clear of
 ## the roof under them. MechaGuppyClimb raises the hut where hut_height would leave less.
@@ -34,21 +36,22 @@ extends Resource
 ## all the lane switches needed at the lane-switch time plus a margin, from wherever they could be on the
 ## hut): the margin, in seconds, beyond the switches, counted from the latest a rider can settle on the hut (one
 ## who jumped right before the pads, dashing, then the flip up). Every rider gets at least this, a rider who
-## didn't jump about a second more.
-@export_range(0.2, 2.0, 0.05, "suffix:s") var read_seconds: float = 0.6
+## didn't jump about a second more. 0.9 s: a humane default for the owner to tune in playtest.
+@export_range(0.2, 2.0, 0.05, "suffix:s") var read_seconds: float = 0.9
 ## DESIGN-TBD (GDD §10: phase 2's climb 15-25% faster; proposed: about 20%, by bringing the steps closer
 ## together): each phase's run on a roof, from landing to the next pads (seconds at run speed), the one stretch
-## of a step no fairness margin holds. 1.6 s in phase 1 and 0.75 s in phase 2 make phase 2's climb 19-21%
+## of a step no fairness margin holds. 1.6 s in phase 1 and 0.6 s in phase 2 make phase 2's climb 19-22%
 ## faster at 3, 5 and 6 lanes (MechaGuppyClimb.climb_rate). The last entry serves later phases.
-@export var roof_seconds: PackedFloat32Array = PackedFloat32Array([1.6, 0.75, 0.75])
+@export var roof_seconds: PackedFloat32Array = PackedFloat32Array([1.6, 0.6, 0.6])
 ## DESIGN-TBD: the cue "the roof's lanes that lead up reach further back": how far under the hut's end they
 ## reach (metres at 18 m/s). The other lanes start where a wrong drop is already past them.
 @export_range(2.0, 30.0, 0.5, "suffix:m") var reach_back: float = 10.0
 ## DESIGN-TBD: the cue "the hut's lanes that lead up run further": how far past the higher roof's front they run
 ## on (metres at 18 m/s). The other lanes end where a wrong drop misses the roof.
 @export_range(1.0, 20.0, 0.5, "suffix:m") var run_on: float = 3.0
-## The pad strip across every lane at the end of each roof is longer than the longest jump at the run speed
-## (with the dash's reach) by this much (metres), so no runner can jump over it: every runner flips up.
+## DESIGN-TBD (docs/questions/e5e.md: an unmissable strip): the pad strip across every lane at the end of each roof
+## is longer than the longest jump at the run speed (with the dash's reach) by this much (metres), so no runner can
+## jump over it: every runner flips up.
 @export_range(0.5, 6.0, 0.25, "suffix:m") var strip_margin: float = 2.0
 ## The hut starts this far before its pads (metres at 18 m/s): a pad sits under its hut.
 @export_range(1.0, 10.0, 0.25, "suffix:m") var hut_lead: float = 3.0
@@ -67,13 +70,9 @@ extends Resource
 @export_range(1.0, 10.0, 0.25, "suffix:s") var start_seconds: float = 3.5
 
 @export_group("Phase 3")
-## DESIGN-TBD (E5e-c builds phase 3): the stub's flat run at the top ends after this many seconds of its
-## pattern (GDD §10: "after the player has dodged for one minute").
+## DESIGN-TBD (E5e-c builds phase 3): the stub's flat run at the top ends this many seconds after the runner
+## reaches the top (MechaGuppy.top_reached; GDD §10: "after the player has dodged for one minute").
 @export_range(5.0, 120.0, 1.0, "suffix:s") var top_seconds: float = 60.0
-
-@export_group("Building")
-## The climb is built this far ahead of the runner (metres): past the fog's end, so nothing pops in.
-@export_range(150.0, 500.0, 10.0, "suffix:m") var build_ahead: float = 270.0
 
 
 ## The run on a roof in phase `index` (roof_seconds; its last entry for later phases).
