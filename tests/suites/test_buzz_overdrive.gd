@@ -33,7 +33,7 @@ const TruckScript = preload("res://scripts/enemies/hover_truck.gd")
 const ZONES: Array = [["corporate", 23.4, 10.0 / 16.0], ["beach", 23.8, 0.71], ["dead_zone", 24.2, 12.0 / 16.0],
 	["golden", 25.0, 14.0 / 16.0]]
 ## Its levels and how the campaign introduces it (the Beach's remix too, task D10c).
-const LEVELS: Array[String] = ["corporate/1", "corporate/2", "beach/1", "beach/2", "dead_zone/1", "dead_zone/2", "golden/1",
+const LEVELS: Array[String] = ["corporate/1", "corporate/2", "beach/1", "beach/3", "dead_zone/1", "dead_zone/2", "golden/1",
 	"golden/2", "golden/3"]
 
 var sim: RunSim

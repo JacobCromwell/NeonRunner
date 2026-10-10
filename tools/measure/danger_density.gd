@@ -51,7 +51,7 @@ func _run() -> void:
 	var tuning := load(TUNING_PATH) as MovementTuning
 	if _levels.is_empty():
 		for s: CampaignStep in campaign.steps():
-			if s.is_level():
+			if s.is_level() and not s.is_minigame():
 				_levels.append(s.id)
 	var old: Dictionary = {}
 	if _compare != "":
@@ -67,7 +67,7 @@ func _run() -> void:
 		"obstacles off->on (x)", "floor off->on (x)", "free lanes/row", "credits x, rows off->on, builds, shortfalls"])
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		for lanes: int in _lanes:

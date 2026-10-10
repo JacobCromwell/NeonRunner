@@ -59,7 +59,7 @@ func _run() -> void:
 		+ "  pad gap s (max, from claws)  kept met  dream+dog/drone s  began during dog/drone  dogs idle")
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		for lanes: int in _lanes:

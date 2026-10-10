@@ -100,7 +100,8 @@ func _test_campaign_relevance() -> void:
 	}
 	var profile := Profile.new()
 	for step: CampaignStep in campaign.steps():
-		if not step.is_level():
+		# A mini-game level's own hint (the Beach's volleyball match) is test_volleyball's: its track isn't generated.
+		if not step.is_level() or step.is_minigame():
 			continue
 		var config: LevelConfig = campaign.configure(step, 3)
 		var world := RunWorld.new()

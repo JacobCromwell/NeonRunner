@@ -300,7 +300,7 @@ func _test_placement() -> void:
 	var pairs: int = 0
 	var added: int = 0
 	for s: CampaignStep in campaign.steps():
-		if not s.is_level():
+		if not s.is_level() or s.is_minigame():
 			continue
 		var has: bool = s.level.has_feature(TYPE)
 		for lanes: int in [3, 5, 6]:
