@@ -649,13 +649,13 @@ func _test_hints() -> void:
 		check(shown.size() == intro_count, "a spawning pickup never interrupts play")
 		if pass_index == 0:
 			var ids: Array = shown.map(func(s: Array) -> String: return s[0])
-			check(ids.has("pickup_shield"), "a shield pickup's first appearance brings its hint (%s)" % [ids])
+			check(ids.has("pickup_armor"), "a boss's armor pickup is explained on the intro (%s)" % [ids])
 			for s: Array in shown:
-				if s[0] == "pickup_shield":
-					check(String(s[1]).contains("shield") and String(s[1]).contains("run through"), "saying what it does and how to take it")
-			check(profile.has_seen("hint/pickup_shield") and profile.has_seen("hint/pickup_armor"), "boss pickup hints are remembered from the intro")
+				if s[0] == "pickup_armor":
+					check(String(s[1]).contains("armor") and String(s[1]).contains("run through"), "saying what it does and how to take it")
+			check(profile.has_seen("hint/pickup_armor"), "boss pickup hints are remembered from the intro")
 		else:
-			check(not shown.map(func(s: Array) -> String: return s[0]).has("pickup_shield"), "never twice")
+			check(not shown.map(func(s: Array) -> String: return s[0]).has("pickup_armor"), "never twice")
 		await sim.free_world(world)
 
 

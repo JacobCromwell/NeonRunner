@@ -36,7 +36,7 @@ PLAY calls `App.begin_run()` / `LevelRun.begin()` on that same world; Back
 discards it without a run result or consuming hints. Quick play still starts immediately without hints.
 `HintDirector.setup()` collects unseen catalog hints as `intro_hints` (`Array[Dictionary]`, each
 `{id: String, text: String}`), using actual layout triggers, boss-id routes and actual boss pickups
-(standard armor; the test boss also has its configured bonus). No unrelated shield/grapple hints
+(standard armor). No unrelated shield/grapple hints
 are added to campaign bosses. Campaign `feature_ages` puts this level's introduced mechanics/enemies
 first (bosses lead with their own boss/route hints), preserving catalog order within each group.
 Older unseen encounters in this layout follow:
