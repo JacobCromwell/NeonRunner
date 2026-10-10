@@ -25,7 +25,7 @@ extends Resource
 @export_range(1.5, 6.0, 0.1, "suffix:m") var rise: float = 3.0
 ## DESIGN-TBD: a tiki hut's underside over the floor its step starts from (metres; a level's ceilings are 6 m
 ## over the street). It keeps at least hut_clearance over the higher roof under its end.
-@export_range(5.0, 10.0, 0.1, "suffix:m") var hut_height: float = 6.5
+@export_range(5.0, 10.0, 0.1, "suffix:m") var hut_height: float = 7.0
 ## The least room between a hut's underside and the higher roof under its end (metres): a rider hanging from
 ## the hut and jumping (MovementTuning.jump_height plus their body, visual_size.y, about 2.9 m) keeps clear of
 ## the roof under them. MechaGuppyClimb raises the hut where hut_height would leave less.
@@ -71,8 +71,6 @@ extends Resource
 @export_group("Building")
 ## The climb is built this far ahead of the runner (metres): past the fog's end, so nothing pops in.
 @export_range(150.0, 500.0, 10.0, "suffix:m") var build_ahead: float = 270.0
-## Visual only: how deep the floor Mecha Guppy has eaten drops away under its orange edge, dark (metres).
-@export_range(4.5, 20.0, 0.5, "suffix:m") var bite_depth: float = 9.0
 
 
 ## The run on a roof in phase `index` (roof_seconds; its last entry for later phases).

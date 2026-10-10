@@ -33,7 +33,10 @@ const EDGE_HALO: float = 0.35
 ## its body reaches past the lanes on each side, its lift pods.
 const HUT_FLOOR: float = 0.8
 const HUT_WALL: float = 2.3
-const HUT_ROOF: float = 1.7
+const HUT_ROOF: float = 2.8
+## Each tiki hut on the platform is about this long, this far from the next.
+const HUT_LENGTH: float = 8.0
+const HUT_GAP: float = 3.5
 const HUT_OVERHANG: float = 0.7
 const ANNEX_WALL: float = 1.2
 const ANNEX_ROOF: float = 0.8
@@ -43,6 +46,12 @@ const LAMP_SPACING: float = 6.0
 ## The pad tiles: about this long each, with light columns this tall.
 const PAD_TILE: float = 2.6
 const PAD_BEAM: float = 2.2
+## A roof's thatch eave reaches this far out past its edge, this far down.
+const EAVE_REACH: float = 1.7
+const EAVE_DROP: float = 1.3
+## Lantern posts along a roof's outer edges: this far apart, this tall.
+const LANTERN_SPACING: float = 7.0
+const LANTERN_HEIGHT: float = 1.5
 ## A neon board's size.
 const SIGN_W: float = 2.6
 const SIGN_H: float = 1.8
@@ -116,7 +125,7 @@ func roof(r: MechaGuppyClimb.Roof, end: float, next_starts: PackedFloat32Array, 
 		var wl: Vector2i = widest["lanes"]
 		_sign(s, g, (geo.lane_x(wl.x) + geo.lane_x(wl.y)) * 0.5, float(widest["start"]), r.top - 1.5, r.index)
 	# The outside of the shacks it stands on, down to the water, from its front to the next roof's (its body runs
-	# on under the basin).
+	# on under the basin), and the roof's thatch eaves along its outer edges, below the deck.
 	if not street:
 		for side: int in [-1, 1]:
 			var lane: int = 0 if side < 0 else geo.lane_count - 1
@@ -124,6 +133,9 @@ func roof(r: MechaGuppyClimb.Roof, end: float, next_starts: PackedFloat32Array, 
 			var to: float = next_starts[lane] if not next_starts.is_empty() else end
 			if to > from:
 				_face_x(s, side * geo.wall_x(), side, from, to, -skin.pool_depth, r.top, bamboo, seed, true)
+				_eave(s, side, from, to, r.top)
+			if end > from:
+				_lanterns(s, g, side, from, end, r.top, seed)
 	batch.commit(node)
 	return node
 
@@ -144,6 +156,8 @@ func top_segment(r: MechaGuppyClimb.Roof, from: float, to: float) -> Node3D:
 		_deck(s, g, lane, from, to, r.top, false, false, starts)
 	for side: int in [-1, 1]:
 		_face_x(s, side * geo.wall_x(), side, from, to, -skin.pool_depth, r.top, bamboo, seed, true)
+		_eave(s, side, from, to, r.top)
+		_lanterns(s, g, side, from, to, r.top, seed)
 	batch.commit(node)
 	return node
 
@@ -195,6 +209,33 @@ func _deck(s: MeshLayer, g: MeshLayer, lane: int, start: float, end: float, top:
 		s.rect(Vector3(span.x, top, -end + lip_f + cope_f), Vector3(w, 0, 0), Vector3(0, 0, -cope_f), skin.coping_color)
 		s.rect(Vector3(span.y, top - 0.02 - STRIP_HEIGHT, -end - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge,
 			STRIP_GLOW)
+
+
+## A tiki bar roof's thatch eave along its outer edge on `side`, from track distance `from` to `to`: sloping out and
+## down from just under the deck's edge, outside the lanes (nothing on the deck, nothing a runner meets).
+func _eave(s: MeshLayer, side: int, from: float, to: float, top: float) -> void:
+	var x0: float = side * (geo.wall_x() + 0.02)
+	var x1: float = side * (geo.wall_x() + EAVE_REACH)
+	var a := Vector3(x0, top - 0.06, -from)
+	var b := Vector3(x0, top - 0.06, -to)
+	var c := Vector3(x1, top - EAVE_DROP, -to)
+	var d := Vector3(x1, top - EAVE_DROP, -from)
+	_quad(s, a, b, c, d, Vector3(side, 1.0, 0.0), skin.thatch_dark_color * 1.7)
+	_quad(s, a, b, c, d, Vector3(-side, -1.0, 0.0), skin.thatch_dark_color)
+
+
+## Bamboo posts with warm-white lanterns along a roof deck's outer edge on `side` (on its kerb, outside the lanes:
+## never in a runner's way), every LANTERN_SPACING from `from` to `to`.
+func _lanterns(s: MeshLayer, g: MeshLayer, side: int, from: float, to: float, top: float, seed: int) -> void:
+	var x: float = side * (geo.half_width() + (geo.wall_x() - geo.half_width()) * 0.5)
+	var d: float = ceilf(from / LANTERN_SPACING) * LANTERN_SPACING + 1.5
+	while d < to - 1.0:
+		s.box(Vector3(x, top + LANTERN_HEIGHT * 0.5, -d), Vector3(0.08, LANTERN_HEIGHT, 0.08), skin.post_color, 0.0,
+			MeshKit.PAT_BEACH_TIMBER, MeshKit.NO_BOTTOM, MeshKit.beach_timber_param(0, 0, seed))
+		s.box(Vector3(x, top + LANTERN_HEIGHT + 0.12, -d), Vector3(0.22, 0.3, 0.22), skin.lamp_color, skin.lamp_glow)
+		g.rect(Vector3(x - 0.6, top + LANTERN_HEIGHT - 0.48, -d + 0.02), Vector3(1.2, 0, 0), Vector3(0, 1.2, 0), skin.lamp_color, 0.2,
+			MeshKit.SHAPE_RADIAL)
+		d += LANTERN_SPACING
 
 
 ## A facade across the track (facing the runner, +z) over [x0, x1] at track distance `d`, from `y0` up to `y1`: the
@@ -297,24 +338,29 @@ func hut(step: MechaGuppyClimb.Step) -> Node3D:
 			x1 += HUT_OVERHANG
 		var zf: float = -float(run["start"])
 		_underside(s, g, x0, x1, zn, zf, lanes, y)
-	# The body over the full-width part: a plank floor's edge, bamboo walls, a thatched hip roof.
+	# The platform over the full-width part (its plank deck's edge), and on it a row of tiki huts: bamboo walls with a
+	# dark bar opening facing each way, corner posts and a steep thatched hip roof, a bamboo railing between them.
 	var zs: float = -short
 	var floor_top: float = y + HUT_FLOOR
 	s.box(Vector3(0.0, y + HUT_FLOOR * 0.5, (zn + zs) * 0.5), Vector3(half * 2.0, HUT_FLOOR, zn - zs), plank * 0.8, 0.0,
 		MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES & ~MeshKit.FACE_NY, MeshKit.beach_timber_param(1, 1, variant))
-	var bamboo: Color = skin.bamboo_colors[variant % skin.bamboo_colors.size()]
-	var wall_in: float = 0.4
+	var length: float = zn - zs
+	var count: int = maxi(floori((length - 2.0 + HUT_GAP) / (HUT_LENGTH + HUT_GAP)), 1)
+	var hut_len: float = minf(HUT_LENGTH, length - 2.0)
+	var pitch: float = (length - 2.0 - hut_len) / maxf(float(count - 1), 1.0) if count > 1 else 0.0
+	for i: int in count:
+		var cz: float = zn - 1.0 - hut_len * 0.5 - pitch * float(i)
+		if count == 1:
+			cz = (zn + zs) * 0.5
+		_tiki_hut(s, g, 0.0, cz, half - 0.9, hut_len * 0.5, floor_top, MeshKit.hash_i(step.index, i, 31))
 	for side: int in [-1, 1]:
-		var x: float = side * (half - wall_in)
-		s.box(Vector3(x, floor_top + HUT_WALL * 0.5, (zn + zs) * 0.5), Vector3(0.12, HUT_WALL, zn - zs - wall_in * 2.0),
-			bamboo, 0.0, MeshKit.PAT_BEACH_WALL, MeshKit.ALL_FACES, float((variant % 1000) * 8))
-	for z: float in [zn - wall_in, zs + wall_in]:
-		s.box(Vector3(0.0, floor_top + HUT_WALL * 0.5, z), Vector3((half - wall_in) * 2.0, HUT_WALL, 0.12), bamboo, 0.0,
-			MeshKit.PAT_BEACH_WALL, MeshKit.ALL_FACES, float((variant % 1000) * 8))
-	_hip_roof(s, 0.0, (zn + zs) * 0.5, half + 0.3, (zn - zs) * 0.5 + 0.3, floor_top + HUT_WALL, HUT_ROOF)
-	# A neon sign on the front wall, facing the runner, on some.
+		_rail(s, Vector3(side * (half - 0.12), floor_top, zn - 0.2), Vector3(side * (half - 0.12), floor_top, zs + 0.2), variant)
+	# A neon sign on the first hut's front beside its bar opening, facing the runner, on some.
 	if MeshKit.hash01(step.index, 23) < 0.5:
-		_sign(s, g, 0.0, step.hut_start - wall_in - 0.1, floor_top + HUT_WALL * 0.45, step.index + 101)
+		var hx: float = half - 0.9
+		var wing: float = hx - minf(hx * 1.2, 4.0) * 0.5
+		var side: float = -1.0 if MeshKit.hash01(step.index, 29) < 0.5 else 1.0
+		_sign(s, g, side * (hx - wing * 0.5), step.hut_start + 1.0, floor_top + HUT_WALL * 0.5, step.index + 101)
 	# The annex over the lanes that run further (RUN_ON): a walkway with a low thatch canopy.
 	if step.cue == MechaGuppyClimb.Cue.RUN_ON and step.hut_end() > short + 0.5:
 		var ax0: float = geo.lane_x(step.up.x) - geo.lane_width * 0.5
@@ -344,12 +390,65 @@ func hut(step: MechaGuppyClimb.Step) -> Node3D:
 	return node
 
 
+## One tiki hut on a platform, centred (cx, cz), half sizes (hx, hz), its floor at `y0`: bamboo walls (the Beach's wall
+## pattern) with a dark bar opening and a warm lamp facing each way along the track, corner posts, and a steep
+## thatched hip roof overhanging them.
+func _tiki_hut(s: MeshLayer, g: MeshLayer, cx: float, cz: float, hx: float, hz: float, y0: float, seed: int) -> void:
+	var bamboo: Color = skin.bamboo_colors[seed % skin.bamboo_colors.size()]
+	var param: float = float((seed % 1000) * 8)
+	var top: float = y0 + HUT_WALL
+	for side: int in [-1, 1]:
+		s.box(Vector3(cx + side * hx, y0 + HUT_WALL * 0.5, cz), Vector3(0.14, HUT_WALL, hz * 2.0), bamboo, 0.0,
+			MeshKit.PAT_BEACH_WALL, MeshKit.ALL_FACES, param)
+	var opening: float = minf(hx * 1.2, 4.0)
+	for end: int in [-1, 1]:
+		var z: float = cz + end * hz
+		# The wall either side of the bar opening, the counter under it and the lintel over it.
+		var wing: float = hx - opening * 0.5
+		for side: int in [-1, 1]:
+			s.box(Vector3(cx + side * (hx - wing * 0.5), y0 + HUT_WALL * 0.5, z), Vector3(wing, HUT_WALL, 0.14), bamboo, 0.0,
+				MeshKit.PAT_BEACH_WALL, MeshKit.ALL_FACES, param)
+		s.box(Vector3(cx, y0 + 0.5, z), Vector3(opening, 1.0, 0.18), skin.timber_color, 0.0, MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES,
+			MeshKit.beach_timber_param(1, 1, seed))
+		s.box(Vector3(cx, top - 0.3, z), Vector3(opening, 0.6, 0.14), bamboo, 0.0, MeshKit.PAT_BEACH_WALL, MeshKit.ALL_FACES, param)
+		# The dark inside seen through the opening, and a warm lamp hanging in it.
+		s.rect(Vector3(cx - opening * 0.5, y0 + 1.0, z - end * 0.3), Vector3(opening, 0, 0), Vector3(0, HUT_WALL - 1.6, 0),
+			skin.thatch_dark_color * 0.5, 0.0)
+		s.box(Vector3(cx, top - 0.75, z - end * 0.25), Vector3(0.22, 0.28, 0.22), skin.lamp_color, skin.lamp_glow)
+		g.rect(Vector3(cx - 0.7, top - 1.45, z + end * 0.02), Vector3(1.4, 0, 0), Vector3(0, 1.4, 0), skin.lamp_color, 0.18,
+			MeshKit.SHAPE_RADIAL)
+	for sx: int in [-1, 1]:
+		for sz: int in [-1, 1]:
+			s.box(Vector3(cx + sx * hx, y0 + HUT_WALL * 0.5, cz + sz * hz), Vector3(0.22, HUT_WALL + 0.1, 0.22), skin.post_color, 0.0,
+				MeshKit.PAT_BEACH_TIMBER, MeshKit.NO_BOTTOM, MeshKit.beach_timber_param(0, 0, seed + sx + sz))
+	_hip_roof(s, cx, cz, hx + 0.7, hz + 0.7, top, HUT_ROOF)
+
+
+## A bamboo railing from `a` to `b` along a platform's edge: posts every ~1.6 m and two rails.
+func _rail(s: MeshLayer, a: Vector3, b: Vector3, seed: int) -> void:
+	var length: float = a.distance_to(b)
+	var posts: int = maxi(roundi(length / 1.6), 1)
+	for i: int in posts + 1:
+		var p: Vector3 = a.lerp(b, float(i) / float(posts))
+		s.box(p + Vector3(0, 0.5, 0), Vector3(0.07, 1.0, 0.07), skin.post_color, 0.0, MeshKit.PAT_BEACH_TIMBER, MeshKit.NO_BOTTOM,
+			MeshKit.beach_timber_param(0, 0, seed + i))
+	for f: float in [0.95, 0.5]:
+		s.box((a + b) * 0.5 + Vector3(0, f, 0), Vector3(maxf(absf(b.x - a.x), 0.06), 0.06, maxf(absf(b.z - a.z), 0.06)), skin.post_color,
+			0.0, MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES, MeshKit.beach_timber_param(2, 0, seed + 7))
+
+
 ## The underside of a run of lanes `lanes` over [x0, x1] from zn (its near end) to zf (its far end) at height `y`: one
 ## plank surface, a dark seam and warm lamps along each lane seam, and the orange band at its far end.
 func _underside(s: MeshLayer, g: MeshLayer, x0: float, x1: float, zn: float, zf: float, lanes: Vector2i, y: float) -> void:
 	var z0: float = zf + END_BAND
 	s.rect(Vector3(x0, y, z0), Vector3(x1 - x0, 0, 0), Vector3(0, 0, zn - z0), skin.plank_color, 0.0, MeshKit.PAT_BEACH_TIMBER,
 		Vector2.ZERO, Vector2.ONE, MeshKit.beach_timber_param(1, 1, lanes.x))
+	# Flush joists across the planks: they stream past a rider.
+	var jz: float = zn - 1.5
+	while jz > z0 + 0.5:
+		s.box(Vector3((x0 + x1) * 0.5, y - 0.004, jz), Vector3(x1 - x0, 0.008, 0.16), skin.timber_color * 0.55, 0.0, MeshKit.PAT_PLAIN,
+			MeshKit.FACE_NY)
+		jz -= 2.4
 	var seam := Color(skin.seam_color, 1.0)
 	var lamp: Color = skin.ceiling_lamp_color
 	for lane: int in range(lanes.x + 1, lanes.y + 1):
