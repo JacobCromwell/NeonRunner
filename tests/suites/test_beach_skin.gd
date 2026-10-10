@@ -783,7 +783,7 @@ func _drift_in_every_chunk(skin: BeachSkin) -> void:
 		for g: Array in [[-1, 70.0, 150.0], [-1, 205.0, 215.0], [-1, 290.0, 333.0], [1, 100.0, 130.0]]:
 			layout.wall_gaps.append({"side": int(g[0]), "start": float(g[1]), "end": float(g[2])})
 		cases.append(["hand-built, %d lanes" % lanes, layout])
-	for path: String in ["res://data/levels/beach_1.tres", "res://data/levels/beach_2.tres"]:
+	for path: String in ["res://data/levels/beach_1.tres", "res://data/levels/beach_3.tres"]:
 		cases.append(["%s, 5 lanes" % path.get_file().get_basename(), level(path, 5, 0.6)])
 	for entry: Array in cases:
 		var layout: LevelLayout = entry[1]

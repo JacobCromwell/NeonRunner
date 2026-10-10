@@ -285,6 +285,11 @@ Each skin covers:
 - The boss slot (`data/bosses/beach_boss.tres`) is a placeholder the campaign passes through (E5e builds the fight once it's designed); placeholder cinematics (`beach_intro.tres`, `beach_outro.tres`); the zone's music track `beach` stands in on the Marketplace's (no new songs). No new enemy: a remix of everything before it.
 - `--level=beach/1` is now the campaign step, with the full flow; D10b's fallback for a zone outside the campaign is gone. Questions: `docs/OPEN_QUESTIONS.md` items 535–545.
 
+**D10e: the Beach's volleyball match** (core: `LevelRun`, `Player`, `LevelConfig`, the campaign, zone and level data; the owner, October 10, 2026: a new Beach level between the two, a mini-game: a couple of seconds of normal run, then a beach volleyball match against "a new person who is wearing swim trunks"; first to four points, a point for "three or four" returns, 100 credits a point won; then the runner runs across the finish line).
+- A mini-game framework (`scripts/minigames/`, `MiniGame`, `MiniGameDef`): a level with `LevelConfig.minigame` asks its game for its track instead of the generator, and the game joins the run world and holds the runner (`Player.speed_override`). `RunResult` pays its payout as the completion bonus and takes its stars; the results screen and the level introduction's hints know it.
+- The match (`VolleyballMatch` and its court, ball, rival, scoreboard; `data/minigames/volleyball*.tres`), the rival's look (`VolleyballRivalSuit`), three sounds (`sfx_bank_minigames.gd`), a review tool (`tools/showcase/volleyball_review.gd`) and `test_volleyball` (a bot at 3, 5 and 6 lanes).
+- Beach 2 is the match (*Net Gains*, proposed), off the curve and counting for no feature ages; Sunset Strip moves to Beach 3 and configures exactly as before (`test_campaign`); save version 4 moves its records. Questions: `docs/questions/d10e.md`.
+
 **D8: Music for the four new zones.** Also, from the owner's review (GDD §11): **the music dips when the player dies**, and **the level-complete riff plays in each zone's key**. Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
 - Corporate: oppressive
@@ -550,6 +555,7 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 | D10 Beach skin (not in the campaign yet) | D2 |
 | D10b Beach levels: open side walls, a provisional zone (core) | D10 |
 | D10c the Beach joins the campaign (core) | D10b |
+| D10e the Beach's volleyball match, Beach 2 (core) | D10c |
 | P2 cyborg base, then P3 variants | P1, then P2 |
 | R2 small rule changes, R3 big attacks take turns | anytime |
 | E5c Sleep Taker | B7, B8, B9 and D5 |

@@ -114,6 +114,9 @@ func _test_tuning() -> void:
 func _test_dials(campaign: Campaign) -> void:
 	var levels: Array[CampaignStep] = []
 	for s: CampaignStep in campaign.steps():
+		# A mini-game level (the Beach's volleyball match) isn't generated: no dial.
+		if s.is_minigame():
+			continue
 		if s.is_level():
 			levels.append(s)
 		elif s.boss != null:

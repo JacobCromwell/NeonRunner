@@ -5,7 +5,8 @@ extends TestSuite
 ## sidewalls", its side walls appearing "about 50% of the time that they are now"). How the campaign configures
 ## them off its difficulty curve, and leaves every other level as it was, is test_campaign's. Checked here:
 ## - the data: data/zones/beach.tres, the campaign's zone 6 between Corporate and the Dead Zone (id beach, the Beach
-##   skin, Tiki Tides and Sunset Strip, its music track `beach`, a stand-in on tracks the game has, its intro and
+##   skin, Tiki Tides, the volleyball match (Net Gains, beach/2: the owner, October 10, 2026; a mini-game, played by
+##   test_volleyball) and Sunset Strip, now beach/3, its music track `beach`, a stand-in on tracks the game has, its intro and
 ##   outro cinematic slots and its boss slot, a placeholder, outside the web demo); its levels: Corporate 2's
 ##   features (a remix, no new enemy assets), nothing introduced, off the campaign's difficulty curve, a
 ##   difficulty, enemy scaling, danger density and run speed between Corporate 2's and Dead Zone 1's, durations of
@@ -38,15 +39,19 @@ const OPEN_WALLS_PATH: String = "res://data/tuning/beach_wall_gaps.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const MUSIC_PATH: String = "res://data/audio/music_library.tres"
 const SMOKE_TOOL: String = "res://tools/smoke/smoke_play.gd"
-## The levels' lengths (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 567: like their neighbours, Corporate 2 and Dead Zone 1).
+## The generated levels (the volleyball match between them is a mini-game, MATCH): their steps, lengths (DESIGN-TBD,
+## docs/OPEN_QUESTIONS.md, item 567: like their neighbours, Corporate 2 and Dead Zone 1) and names (GDD §5, October 9,
+## 2026).
+const NUMBERS: Array[int] = [1, 3]
 const DURATIONS: Array[float] = [145.0, 150.0]
-## The levels' names (GDD §5, October 9, 2026).
 const NAMES: Array[String] = ["Tiki Tides", "Sunset Strip"]
+## The volleyball match (the owner, October 10, 2026), the zone's second level.
+const MATCH: int = 2
 ## The Beach's neighbours in the campaign (the owner, October 9, 2026: between Corporate and the Dead Zone).
 const BEFORE: String = "corporate/2"
 const AFTER: String = "dead_zone/1"
 ## The Beach's steps, in order, after Corporate's outro and before the Dead Zone's intro.
-const STEPS: Array[String] = ["beach/intro", "beach/1", "beach/2", "beach/boss", "beach/outro"]
+const STEPS: Array[String] = ["beach/intro", "beach/1", "beach/2", "beach/3", "beach/boss", "beach/outro"]
 ## Seeds besides each level's own that every check also runs on.
 const OTHER_SEEDS: Array[int] = [8801, 8802]
 ## The share of the level each side wall stands on (the owner: about half as often as the 96-97% elsewhere):
@@ -115,18 +120,24 @@ func _test_data() -> void:
 		"its run speed (%.1f m/s) lies between Corporate's and the Dead Zone's" % zone.run_speed)
 	var before_config: LevelConfig = campaign.configure(before, 5)
 	var after_config: LevelConfig = campaign.configure(after, 5)
-	check(zone.levels.size() == DURATIONS.size(), "two levels (%d)" % zone.levels.size())
+	check(zone.levels.size() == 3 and zone.levels[MATCH - 1].plays_minigame()
+		and campaign.step("beach/%d" % MATCH).level == zone.levels[MATCH - 1],
+		"three levels, the volleyball match second (%d)" % zone.levels.size())
 	var seeds: Array[int] = []
 	for s: CampaignStep in campaign.steps():
 		if s.is_level() and s.zone != zone:
 			seeds.append(s.level.level_seed)
 	var previous := -1.0
-	for i: int in mini(zone.levels.size(), DURATIONS.size()):
-		var level: LevelConfig = zone.levels[i]
-		var tag: String = "(beach/%d)" % (i + 1)
-		check(String(level.id) == "beach_%d" % (i + 1) and level.resource_path == "res://data/levels/beach_%d.tres" % (i + 1)
+	for i: int in mini(NUMBERS.size(), DURATIONS.size()):
+		var number: int = NUMBERS[i]
+		var level: LevelConfig = zone.levels[number - 1] if number <= zone.levels.size() else null
+		if level == null:
+			continue
+		var tag: String = "(beach/%d)" % number
+		check(String(level.id) == "beach_%d" % number and level.resource_path == "res://data/levels/beach_%d.tres" % number
 			and level.display_name == NAMES[i], "its id, file and name, %s %s" % [NAMES[i], tag])
-		check(campaign.step("beach/%d" % (i + 1)).level == level, "the campaign plays it as beach/%d" % (i + 1))
+		check(campaign.step("beach/%d" % number).level == level and not level.plays_minigame(),
+			"the campaign plays it as beach/%d, a generated level" % number)
 		# Corporate 2's but its dash walls (the H series' merge: none in the Beach for now, its open side walls;
 		# docs/OPEN_QUESTIONS.md item 680).
 		var remix: PackedStringArray = PackedStringArray(before.level.features)
@@ -174,7 +185,7 @@ func _test_data() -> void:
 func _test_levels() -> void:
 	var stats := {"stands": [] as Array[float], "open": 0.0, "long": 0.0, "stretches": 0, "both": [] as Array[float],
 		"trucks": 0, "truck_builds": 0, "between": [] as Array[float], "pieces": {}}
-	for number: int in [1, 2]:
+	for number: int in NUMBERS:
 		for lanes: int in [3, 5, 6]:
 			for level_seed: int in [0] + OTHER_SEEDS:
 				var config: LevelConfig = campaign.configure(campaign.step("beach/%d" % number), lanes)

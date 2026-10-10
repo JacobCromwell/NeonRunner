@@ -25,7 +25,8 @@ Screens only call `App` methods; they never change state themselves.
 `App` builds a `RunContext` (level config ready to generate, tuning, loadout, attempt) and starts a
 `LevelRun` (`scripts/run/level_run.gd`), which generates the layout and builds a `RunWorld`. A boss
 fight is a run too: its context carries the boss, and LevelRun builds the world on the boss's arena
-and hosts its `BossEncounter` (see Bosses).
+and hosts its `BossEncounter` (see Bosses). A level that plays a mini-game (the Beach's volleyball match) builds
+the world on the track its `MiniGame` plans, and the game joins it (see Mini-games).
 
 Campaign, retries/replays, endless and campaign debug starts (`--level`/`--boss`) first prepare
 the world in `LevelRun.State.READY`, with processing/HUD/touch input held, then show
@@ -105,8 +106,8 @@ flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's 
 builds only, so a release build can't skip progression or farm credits with them.
 
 Physics order each frame: RunWorld (builds chunks, spawns enemies) → Player (moves, checks hazards
-and triggers) → the boss's pattern (a boss fight) → enemies → projectiles → credits → pickups →
-power-ups.
+and triggers) → the boss's pattern (a boss fight) or the mini-game (a mini-game level) → enemies → projectiles →
+credits → pickups → power-ups.
 
 ### Speed effects and spectacle (G2, the owner's playtest, September 30, 2026)
 
@@ -3622,7 +3623,7 @@ plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the cam
 (`LevelConfig.off_curve`: the Beach's, below) plays at its own.
 
 The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
-`marketplace`, `casino`, `corporate`, `beach`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 2, 2 and 3 levels in
+`marketplace`, `casino`, `corporate`, `beach`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 3, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
 cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster, but the
 Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
@@ -3630,7 +3631,7 @@ Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); 
 designed (below). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
-over the 17 levels on it (FB 4, FB 5; the Beach's two, task D10c, are off it, so the Beach moved no other
+over the 17 levels on it (FB 4, FB 5; the Beach's three, task D10c and its volleyball match, D10e, are off it, so the Beach moved no other
 level). When the Casino's two came in, task K2 re-spaced it linearly (each
 existing level's difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from
 0.56 to 0.60; the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every
@@ -3650,8 +3651,8 @@ At the City's 21 m/s this moves its finish line from 2310 to 1155 metres. The ex
 and distance-based completion use that value without changing speed, difficulty, clear distances,
 or the fractional starts of cyborgs and doodads. These are running times without speed-changing
 power-ups or pauses, excluding cinematics and the completion delay. The levels then totalled 34.1 minutes;
-with the Casino's 145 and 150 seconds they total 39.0, and with the Beach's 145 and 150 seconds 43.9 (GDD §5:
-about 44).
+with the Casino's 145 and 150 seconds they total 39.0, with the Beach's 145 and 150 seconds 43.9, and with its
+volleyball match's 55 (a flawless match, task D10e) 44.8 (GDD §5: about 45).
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
@@ -3688,28 +3689,33 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 
 **The Beach** (task D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone", a boss
 battle to come, "do not worry about any new enemies at this time"; GDD §5). `data/zones/beach.tres` (id `beach`, the
-Beach skin, 23.8 m/s) is zone 6, between Corporate and the Dead Zone: its intro (the arrival flyover), Tiki Tides and
-Sunset Strip (`data/levels/beach_1.tres` and `beach_2.tres`: seeds 801 and 802, 145 and 150 s, the open walls of task
-D10b, `wall_gap_tuning` under The generator, Side wall gaps; Beach 1 in the zone's daylight, Sunset Strip under
-`data/skies/beach_sunset.tres`), its boss slot and its outro. It is a remix of everything before it, Corporate 2's
+Beach skin, 23.8 m/s) is zone 6, between Corporate and the Dead Zone: its intro (the arrival flyover), Tiki Tides,
+the volleyball match (*Net Gains*, `data/levels/beach_2.tres`, task D10e: a mini-game, Mini-games below; the owner,
+October 10, 2026) and Sunset Strip (`data/levels/beach_1.tres` and `beach_3.tres`: seeds 801 and 802, 145 and 150 s,
+the open walls of task D10b, `wall_gap_tuning` under The generator, Side wall gaps; Beach 1 in the zone's daylight,
+Sunset Strip under `data/skies/beach_sunset.tres`), its boss slot and its outro. Sunset Strip was `beach/2` until
+the match came in (its records follow it: Economy and saving, Saves from before the volleyball match). It is a remix of everything before it, Corporate 2's
 features with no introductions, and the one zone that brings no new enemy (GDD §5's exception).
 Its levels are **off the curve** (`LevelConfig.off_curve`), so every level and boss that was in the campaign before
 plays exactly as before:
 - `Campaign.configure` gives a level off the curve its own `difficulty` (plus the tier's bonus; its
   `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.71 and 0.72, 0.71 and 0.73, strictly between
   Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on the curve as task K4 bent it for the Casino;
-- the curve spans the levels on it (`curve_level_count()`: 17 of `level_count()`'s 19, against
-  `planned_level_count()`'s 19), and a level off it takes the place of the level on it before it
+- the curve spans the levels on it (`curve_level_count()`: 17 of `level_count()`'s 20, against
+  `planned_level_count()`'s 20), and a level off it takes the place of the level on it before it
   (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
 - a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
   on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
-  (`Campaign.feature_ages`); a boss fights at the scaling of the level before it (`Campaign.level_scaling`).
+  (`Campaign.feature_ages`); a mini-game level (the volleyball match, off the curve with no features) counts for no
+  level's ages, so Sunset Strip kept its own when the match came in before it; a boss fights at the scaling of the
+  level before it (`Campaign.level_scaling`: the Beach's boss slot at Sunset Strip's).
 So the other 17 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
 and every one of their layouts in `tools/measure/level_pace.gd --dump` (at 3, 5 and 6 lanes, on its own seed and four
 others) is byte-identical; `test_campaign` also builds the campaign without the Beach from the same data and compares
-every level and boss with it (task D10d: with the Casino in, every non-Beach step configures exactly as on main). A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
+every level and boss with it (task D10d: with the Casino in, every non-Beach step configures exactly as on main), and the
+campaign without the volleyball match (task D10e: every level and boss, Sunset Strip included, configures as before it). A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
 as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
-(`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all 19 levels, the Beach's numbers, its
+(`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all its levels (19, the volleyball match aside), the Beach's numbers, its
 completion bonus, Continue for old saves, its boss, cinematics and music.
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
@@ -4561,6 +4567,79 @@ costs at most about 2 ms a step (headless, `test_dead_zone_intro`); the crater a
 toolkit the poses that play out over time (`CinePoses`, a cyborg's `lie` and `crouch`), `look_up` and a cyborg's head
 turn, models on the cinematic's clock, and sound events at their own level.
 
+## Mini-games
+
+A level may play a mini-game instead of a generated layout (`LevelConfig.minigame`, a `MiniGameDef`; task D10e, the
+owner, October 10, 2026: the Beach's second level is a beach volleyball match). It is a run like any level's: the
+same `LevelRun`, world, controls, camera, HUD, pause, death flow, results and shop, and it ends as every level does,
+when the runner crosses the finish line at the end of the track.
+
+```
+MiniGame.create(def)              the game's scene (MiniGameDef.scene; its root extends MiniGame)
+  .plan_layout(context) → LevelLayout   the level's track (instead of LevelCache / the generator)
+RunWorld.build(layout)
+game.setup(world, context)        joins the world right after the player (it acts on the player's moves the frame
+                                  they happen), seeds its rng from the def's id and the level's seed, _start()
+```
+
+| File | What |
+|---|---|
+| `scripts/minigames/minigame_def.gd`, `minigame.gd` | the slot (id, scene, tuning) and the base: `create`, `of(world)` (the world's meta), `plan_layout`, `setup`, `payout()`, `stars()`, `stats()`, `hint_trigger()` (`minigame:<id>`) |
+| `scripts/minigames/volleyball/volleyball_match.gd` (`VolleyballMatch`), `scenes/minigames/volleyball.tscn` | the volleyball match (below) |
+| `volleyball_tuning.gd`, `data/minigames/volleyball_tuning.tres` | its numbers (F6 in the level: "Mini-game: Beach Volleyball") |
+| `volleyball_court.gd` and its shaders | the court: raked sand over the street with the boundary tapes, the net and its padded posts, which sink into the sand (`sink`) |
+| `volleyball_ball.gd`, `volleyball_ball.gdshader` | the ball: exact arcs (`throw_to(from, to, seconds)`: where and when it arrives is known when it's hit), a shadow, bounces when out of play |
+| `volleyball_rival.gd`, `volleyball_rival_suit.gd` | the rival on the shared `HumanoidRig`: his look (a new `HumanoidParts`), the rig's activities for his stance, run and jump, his arms posed over them (serve, hit, dive, cheer, hands on his head, wave) |
+| `volleyball_hud.gd`, `volleyball_marker.gdshader` | the scoreboard (points, "FIRST TO 4", a pip per return the rally needs, the calls and the payout) and the landing ring with its closing ring |
+| `data/levels/beach_2.tres`, `data/minigames/volleyball.tres` | the level (*Net Gains*, off the curve, no features) and the slot |
+| `tests/helpers/volleyball_bot.gd`, `tests/suites/test_volleyball.gd`, `tools/showcase/volleyball_review.gd` | the bot that plays it through the runner's actions, its suite, and a review tool (screenshots on events, a close-up of the rival, a view beside the court) |
+
+What the framework touches outside its folder:
+- `LevelRun._build` asks a mini-game level's game for its track and sets the game up after the world is built
+  (`LevelRun.minigame`); its tuning joins the F6 panel.
+- `Player.speed_override`: while 0 or more, the runner moves along the track at that speed instead of the run's
+  (boosts and the dash's bonus included), and lanes, jumps and slides work as usual; below 0 (every run's start), the
+  run's own. The game walks the runner up and stands them still with it, and hands the run back with -1.
+- `RunResult.from_world` merges the game's `stats()`, pays its `payout()` as the completion bonus (instead of the
+  level's, DESIGN-TBD) and takes its `stars()`; the results screen calls it "Match payout" and shows the game's stats.
+- `HintDirector`: a hint whose trigger is `minigame:<id>` pages first on the game's level introduction; anything else
+  unseen on its track follows as a reminder.
+- `Campaign.feature_ages` leaves mini-game levels out (they have no features), and `CampaignStep.is_minigame()` lets
+  the suites and the measuring tools that generate every level skip them.
+
+**The volleyball match** (`VolleyballMatch`; the owner's design and the placeholders, GDD §5, the Beach, and
+`docs/questions/d10e.md`):
+- **The track** (`plan_layout`, `_plan_track`): `run_in_seconds` of the level's run speed (2.5 s, about 60 m at
+  the Beach's 23.8 m/s) with two short trails of credits, slowing evenly to `walk_speed` over `brake_seconds`,
+  walking for `walk_seconds`, then easing to a stop over `stop_distance` on the runner's line (`approach_speed(d)`,
+  set as the runner's `speed_override` each frame, so the stop lands within millimetres at every speed); the net
+  `court_depth` on, the rival's line `rival_depth` past it, and the finish `exit_seconds` of run past the line (and
+  well past the rival's end line). Both side walls open `open_walls_before` the line to past the finish
+  (`LevelLayout.wall_gaps`: the Beach's open beach shows round the court). Nothing on it hurts and it has no gaps.
+- **A rally**: the rival serves (the toss, `serve_toss_seconds`, then the hit at the top of his jump). Each ball to
+  the runner comes down in a lane on their line (`_aim`: at least one lane from them, at most `lanes_away(ball)`, now
+  and then their own) at `strike_height`, flying `flight_for(ball, lanes)`: the serve's `serve_flight`, each later
+  ball `flight_step` quicker down to `min_flight`, never under `fair_flight` (react, cross the lanes at
+  `lane_margin` switches' time each, jump). The ring marks its lane from the hit; the closing ring meets it
+  `jump_lead_seconds` before the ball reaches the line. Every physics frame after the player moves, `_runner_contact`
+  decides: an airborne runner whose hit box (`hit_center_height`, `hit_half_size` around the head and hands)
+  reaches the ball returns it (`_runner_hit`); a grounded one in its way takes it on the head (`bonk_half_size`: the
+  ball bounces off, his point); a ball that lands is his point. A return flies `return_flight` back to where the
+  rival can reach it; the rally's `returns_to_win_point`-th lands on the side of his court away from him (`WINNER`:
+  he dives, and misses) for the runner's point.
+- **The match**: first to `points_to_win`; then `payout_per_point` × points won, shown (the jackpot sound when
+  there is one), the rival's goodbye, and after `payout_seconds` the net sinks (`net_sink_seconds`), the rival steps
+  aside to the kerb and waves, and the runner speeds back up to the run speed over `exit_accel_seconds` and runs on
+  to the finish. Scoring: `return_score` a return and `point_score` a point won (score bonuses), stars by the points
+  won (`two_star_points`, `three_star_points`).
+- **What it records** (`events`, `lowest_over_net`): every serve, ball (its lane, the runner's lane and its flight),
+  hit, bonk, drop, winner, point, the match and the exit, for the suite and the review tool.
+- **Looks**: the court's sand, the net, the posts, the ball and the ring are unshaded in the street's light
+  (`scenery_light`, `scenery_tint`) but the ball (lit like the characters); nothing glows but the rival's thin violet
+  sunglasses rim (the Beach's decorative neon) and nothing uses a hazard colour, so nothing reads as a hazard. The
+  runner's arms reach up over the jump's pose as the ball nears (posed on the avatar's rig after its own animation).
+- **Sounds**: `volley_hit`, `volley_bounce` and `volley_whistle` (`tools/asset_gen/sfx_bank_minigames.gd`).
+
 ## Economy and saving
 
 `Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned,
@@ -4606,6 +4685,10 @@ outro, stays open. `App.step_unlocked` keeps a step the player has done open eve
 isn't (only a save from before steps were added ahead of it can have that: the moved House record, done
 while the Casino's levels aren't), so a save keeps every step it had reached, and Continue leads into
 the Casino (`test_campaign`, `_test_old_saves`).
+**Saves from before the volleyball match** (version 3 to 4, task D10e): the Beach's volleyball match came in as Beach
+2, so Sunset Strip moved from `beach/2` to `beach/3`, and every tier's `beach/2` record becomes `beach/3`'s. The new
+Beach 2 is open (Beach 1 is done) and is the first step not done, so Continue leads to it (`test_volleyball`,
+`_test_saves`; `test_campaign` checks the version).
 A change to the save's format bumps the version and adds its step there, with a test.
 
 ## Platforms and build flavors
@@ -5253,8 +5336,9 @@ its volleys, never firing while it shows itself, each truck whose window comes b
 alongside (the showings it makes are printed).
 
 `test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
-gaps): the zone and level data and its place in the campaign (zone 5, its steps, slots and music stand-in); both
-levels at 3, 5 and 6 lanes as the campaign configures them, on their own seeds and two others, with the campaign's
+gaps): the zone and level data and its place in the campaign (zone 6, its steps, slots and music stand-in, its
+volleyball match second); both generated levels (Tiki Tides and Sunset Strip, beach/1 and beach/3) at 3, 5 and 6 lanes
+as the campaign configures them, on their own seeds and two others, with the campaign's
 fairness checks (LayoutChecks) and every listed feature present (on
 other seeds the Enforcer Truck, which only comes where a bait's chase has room, in nearly every build); the open
 walls: each wall standing on 40-60% of its level (or more only where its keep-outs leave no more free), the
@@ -5262,7 +5346,17 @@ median wall in 45-55%, every gap at least `open_seconds_min` long and clear of i
 open length in stretches of 100 m and more, both walls open at once within `both_open_max`, the same gaps on a
 second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1`, the campaign step
 with the full flow, end to end through the smoke tool. How the campaign configures the Beach off its curve, and
-that no other level or boss changed, is `test_campaign`'s (Campaign, The Beach).
+that no other level or boss changed (nor with the volleyball match added), is `test_campaign`'s (Campaign, The Beach).
+`test_volleyball` plays the Beach's volleyball match (task D10e; Mini-games) through the App on the real main scene,
+by `VolleyballBot` (`tests/helpers/volleyball_bot.gd`) through the runner's own actions: its data and its place
+between Tiki Tides and Sunset Strip; its track (nothing that hurts, no gaps, its credits in the run-in, the walls
+open around the court); at 3, 5 and 6 lanes a runner returning every ball (the run-in, the stop on the line, standing
+there through the match, 4-0 after three returns a point, paid 400, three stars, the results' match payout and stats,
+the level's duration a flawless match's length, every ball at least the fairness floor, every arc over the net, the net
+sunk before the runner runs on, the level complete); one never moving (0-4, paid nothing, one star), one standing
+under the ball (it bounces off their head), one in the wrong lane; one winning 1 and 3 points (paid 100 and 300); the
+jump's timing window around the ring's cue (at least 0.3 s, and a jump far too early misses); the same match on every
+attempt; and a version 3 save's Sunset Strip record moving to beach/3, with Continue leading to the match.
 `test_wall_gaps` holds every other campaign level to the shared tuning and checks the open walls on made-up tracks.
 `test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
 lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off

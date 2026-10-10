@@ -65,7 +65,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, `--level=casino/1` the Casino's first level, and `--level=beach/1` and `beach/2` the Beach's levels (`tools/godot.sh smoke --level=beach/1` smoke-runs one) |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, `--level=casino/1` the Casino's first level, and `--level=beach/1`, `beach/2` (the volleyball match) and `beach/3` the Beach's levels (`tools/godot.sh smoke --level=beach/1` smoke-runs one) |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
@@ -117,9 +117,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** 19 levels in eight zones, about 44 minutes of flawless running: the Neon City (the web demo's
-  zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate, the Beach and the Dead Zone
-  with two, and the Golden Zone with three.
+- **Campaign:** 20 levels in eight zones, about 45 minutes of flawless running: the Neon City (the web demo's
+  zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate and the Dead Zone with two, the
+  Beach with three (its second a volleyball mini-game), and the Golden Zone with three.
   Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is still to
   be designed) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
   (skippable), but the Dead Zone's, which plays the owner's beats. Each level introduces about one new thing (GDD §5), where
@@ -139,14 +139,18 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       presence (more drones, hover trucks and Buzz Overdrives).
   13. Beach 1 *Tiki Tides*: nothing new, a remix of everything so far in daylight, with the side walls standing
       about half as often, so the beach and the sea show beyond them.
-  14. Beach 2 *Sunset Strip*: the same remix as the sun starts to set. The Beach's two levels sit between
+  14. Beach 2 *Net Gains*: a mini-game. A couple of seconds of run, then the runner walks up to a volleyball
+      court on the open beach and plays a man in swim trunks: get under the ball (a ring marks where it comes
+      down, a closing ring when to jump) and jump to hit it back. Three returns win a point, a miss loses one,
+      first to four; each point won pays 100 credits. Then the net sinks and the runner runs to the finish line.
+  15. Beach 3 *Sunset Strip*: Tiki Tides' remix as the sun starts to set. The Beach's levels sit between
       Corporate 2 and Dead Zone 1 in difficulty, off the campaign's curve, so no other level changed.
-  15. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
-  16. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
+  16. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
+  17. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
       bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
-  17. Golden 1 *Gilded Canals*: the Resonator.
-  18. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
-  19. Golden 3 *The Golden Palace*, then the final boss.
+  18. Golden 1 *Gilded Canals*: the Resonator.
+  19. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  20. Golden 3 *The Golden Palace*, then the final boss.
 
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
@@ -515,7 +519,10 @@ Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
 explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,
 `--scenario=sizes|drone|truck|buzz|enforcer|generator|missile|bomb`, `--reduced` for Reduced flashing),
-any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+any campaign slot's cinematic and the cinematic toolkit's sampler, and the Beach's volleyball match played by a bot,
+with screenshots on its events and a close-up of the rival or a view beside the court: `xvfb-run -a godot --path .
+--rendering-method gl_compatibility --resolution 960x540 --fixed-fps 30 -s res://tools/showcase/volleyball_review.gd --
+--level=beach/2 --bot=perfect --shot-events=hit,point --camera=rival`); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.

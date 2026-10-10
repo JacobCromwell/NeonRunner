@@ -19,7 +19,7 @@ const LEVEL_SKIES: Dictionary[String, String] = {
 	"city/1": "city_dawn",
 	"gangland/3": "gangland_blood_red",
 	"marketplace/2": "marketplace_sunset",
-	"beach/2": "beach_sunset",
+	"beach/3": "beach_sunset",
 }
 const SKY_SHADER: String = "night_sky.gdshader"
 ## Every scenery shader that follows a level's darkness (they declare `scenery_light`) is found under these.
