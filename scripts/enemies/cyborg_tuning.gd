@@ -3,9 +3,12 @@ extends CyborgGunTuning
 ## Floor cyborg numbers (GDD §9.2), on top of the arm cannon's (CyborgGunTuning). Edit
 ## data/enemies/cyborg.tres. DESIGN-TBD: prototype values until playtested. That includes its raw
 ## health (health_early/health_late, in laser tier 1 shots): GDD §8 leaves the cyborg's shots to kill
-## open, so it is 3 early and 5 late for now. Laser tier 1's actual shots to kill are two more (5
+## open, so it is 3 early and 4.9 late for now. Laser tier 1's actual shots to kill are two more (5
 ## early, 7 late, PowerupTuning.tier1_extra_shots, GDD §8's September 30, 2026 playtest), the same as
-## every other non-screech enemy; other tiers divide the raw health plainly.
+## every other non-screech enemy; other tiers divide the raw health plainly. The late 4.9 (5 before the
+## Casino's levels re-spaced the campaign's enemy scaling, task K2) keeps each level's shots to kill at
+## every tier where they were: the enhanced laser's fourth shot from Corporate 2, the heavy missile's
+## splash's fourth from Dead Zone 2.
 
 @export_group("Movement")
 ## Walks slowly toward the player once they are this close.

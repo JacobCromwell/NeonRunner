@@ -5,6 +5,7 @@
 [ext_resource type="Resource" path="res://data/zones/city.tres" id="z_city"]
 [ext_resource type="Resource" path="res://data/zones/gangland.tres" id="z_gangland"]
 [ext_resource type="Resource" path="res://data/zones/marketplace.tres" id="z_marketplace"]
+[ext_resource type="Resource" path="res://data/zones/casino.tres" id="z_casino"]
 [ext_resource type="Resource" path="res://data/zones/corporate.tres" id="z_corporate"]
 [ext_resource type="Resource" path="res://data/zones/beach.tres" id="z_beach"]
 [ext_resource type="Resource" path="res://data/zones/dead_zone.tres" id="z_dead_zone"]
@@ -13,9 +14,9 @@
 
 [resource]
 script = ExtResource("1_script")
-zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_marketplace"), ExtResource("z_corporate"), ExtResource("z_beach"), ExtResource("z_dead_zone"), ExtResource("z_golden")])
+zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_marketplace"), ExtResource("z_casino"), ExtResource("z_corporate"), ExtResource("z_beach"), ExtResource("z_dead_zone"), ExtResource("z_golden")])
 difficulty_start = 0.1
 difficulty_end = 0.9
-difficulty_curve_exponent = 1.0
+difficulty_curve_exponent = 0.79
 planned_levels_per_placeholder_zone = 3
 feature_recency = ExtResource("recency")

@@ -15,16 +15,43 @@ extends TestSuite
 ##   one; one who runs on falls in.
 ## - An Enforcer Truck following a runner who jumps one is wrecked in it (the player's kill), at 3, 5 and 6
 ##   lanes, at quick play's speed and at Corporate 2's; it hops a level's ordinary row.
-## - Corporate 2 (the Enforcer's first level) at 3, 5 and 6 lanes: the first Enforcer's chase holds a wider gap past
-##   its showing window (prefer_enforcer_chases; task C6e: none before it) where the chase leaves room (at 2 of the 3
-##   lane counts at least: at 6 lanes its window comes after its bait, at its chase's end), and played from the level's
-##   start by a scripted runner (god mode, grapples) that lines up in one of its hole lanes and jumps it, the truck
-##   following is wrecked in it.
+## - Every campaign level with Enforcer Trucks at 3, 5 and 6 lanes: a first Enforcer chase without a wider gap has
+##   no clear stretch for a new row of one (prefer_enforcer_chases: preferred, not guaranteed, open question 357;
+##   _chase_spot says what that check covers and what it doesn't).
+## - Corporate 2 (the Enforcer's first level) at 3, 5 and 6 lanes: the first Enforcer's chase leaves room past its
+##   showing window (task C6e: no wider gap before it) at two lane counts at least, and holds a wider gap there at
+##   CORPORATE_2_CHASE_LANES (prefer_enforcer_chases), checked both ways: a lane count with room left out of it holds
+##   none and has no clear stretch for a new row there. Each one that holds one is played from the level's start by
+##   a scripted runner (god mode, grapples) that lines up in one of its hole lanes and jumps it: the truck following
+##   is wrecked in it.
 ## - Task C6e: no wider gap comes in an Enforcer Truck's chase before its showing (from its arrival to its window's
 ##   end: it would wreck the truck before it has shown itself), and every level keeps its wider gaps.
+## - The pass's last way (task K5: WideGapPlacement._add_clearing, for a level the other ways give none): on
+##   LAST_RESORT_CASES it places the level's one wider gap, a fair one (as every other), and the Enforcer Trucks'
+##   showing windows still hold; on a plain stretch, plain fences in its way go for it, and a pulsing one keeps it
+##   from coming.
 
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const LANES: Array[int] = [3, 5, 6]
+## The lane counts at which Corporate 2's first Enforcer chase holds a wider gap past its showing window
+## (_test_corporate_2), checked both ways: each listed one holds one and plays it, and every other lane count whose
+## chase leaves room past its window holds none and has no clear stretch for a new row there (_chase_spot). 3 lanes
+## since task K5 merged task C6e's windows into K4's curve: at 5 lanes the chase past its window is full, and at 6
+## its window comes after its bait, at its chase's end, leaving no room. (All three on K4's curve before C6e; 3 and
+## 5 on the 15-level curve C6e was built on; K2's 17-level linear curve left 5 lanes out.)
+const CORPORATE_2_CHASE_LANES: Array[int] = [3]
+## Builds, as {id, lanes, seed}, where the pass's first three ways give the level no wider gap and its last way
+## (WideGapPlacement._add_clearing, task K5) places its one: a new row, the holes and plain fences in its way taken
+## out. Dead Zone 1 at 5 lanes on seed 9004 (in tests/suites/test_campaign.gd's seed sweep: its only room was an
+## Enforcer Truck's chase before its showing, which task C6e keeps every wider gap off) and the Golden Palace at 3
+## lanes on seed 9010 (no room anywhere, before C6e too). Each must still need the last way, else re-pin the case.
+const LAST_RESORT_CASES: Array[Dictionary] = [{"id": "dead_zone/1", "lanes": 5, "seed": 9004},
+	{"id": "golden/3", "lanes": 3, "seed": 9010}]
+## Metres between the fences of the plain stretch _test_last_resort_fences lays: less than a wider gap's zone, so
+## every spot has one in its way.
+const FENCE_STEP: float = 15.0
+## The check on a first Enforcer chase without a wider gap (_chase_spot): tag, chase start and end, what it found.
+const NO_CLEAR_STRETCH: String = "%s: its first Enforcer's chase (%.0f-%.0f m) holds no wider gap and has no clear stretch for a new row (%s)"
 
 var sim: RunSim
 var et: EnforcerTruckTuning
@@ -41,6 +68,8 @@ func run() -> void:
 	_test_tuning()
 	_test_campaign(campaign)
 	_test_before_showings(campaign)
+	_test_last_resort(campaign)
+	_test_last_resort_fences()
 	_test_off(campaign)
 	_test_fillers(campaign)
 	await _test_jumps(campaign)
@@ -58,6 +87,8 @@ func _test_tuning() -> void:
 # --- Campaign --------------------------------------------------------------------------------------
 
 func _test_campaign(campaign: Campaign) -> void:
+	var truck_builds: int = 0
+	var chases_held: int = 0
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level():
 			continue
@@ -77,6 +108,19 @@ func _test_campaign(campaign: Campaign) -> void:
 				"%s: the pass placed them all, as it reports (%s)" % [tag, result.get("constraints", "no report")])
 			LayoutChecks.check_wide_gaps(self, layout, config, tag)
 			_check_fillers(gen, rows, tag)
+			# A first Enforcer chase without one has no clear stretch for a new row of one (prefer_enforcer_chases; open
+			# question 357; _chase_spot's limits: its doc comment).
+			var chases: Array[Vector2] = WideGapPlacement._chases(gen)
+			if not chases.is_empty():
+				truck_builds += 1
+				var held: bool = false
+				for row: Dictionary in rows:
+					held = held or (float(row["start"]) >= chases[0].x - 0.01 and float(row["end"]) <= chases[0].y + 0.01)
+				if held:
+					chases_held += 1
+				else:
+					var spot: String = _chase_spot(gen, chases[0])
+					check(spot == "", NO_CLEAR_STRETCH % [tag, chases[0].x, chases[0].y, spot])
 			# Task C6e: none comes in an Enforcer Truck's chase before its showing (from its arrival to its window's end).
 			var before: PackedStringArray = []
 			for keep: Vector2 in EnforcerRules.wide_gap_keep_outs(layout):
@@ -98,6 +142,39 @@ func _test_campaign(campaign: Campaign) -> void:
 				GapDensity.rows(layout).size(), layout.gaps.size(), ", ".join(lanes_txt), int(result.get("widened", 0)),
 				int(result.get("added", 0)), int(result.get("cleared", 0)), int(result.get("taken_out", 0))])
 		print("  %s: %s" % [s.id, "; ".join(line)])
+	print("  the first Enforcer chase holds a wider gap in %d of the %d level and lane builds with trucks" % [chases_held,
+		truck_builds])
+	check(chases_held > 0, "some Enforcer chases hold a wider gap (%d of %d builds)" % [chases_held, truck_builds])
+
+
+## Where a new wider row would fit inside `chase` (an Enforcer chase, Vector2(from, to)) in `gen`'s finished layout,
+## as WideGapPlacement._add_one looks for one; "" if nowhere found. The passes after it only add to what it saw (the
+## fill pass, the danger density pass's rows, doodads), so a spot that fits now fitted then, and the pass, preferring a
+## chase (its first, before any other wider gap), would have put one there. A check that the pass missed no clear
+## stretch, not proof that the chase has no room: it tries only that one of the pass's three ways (not making one of
+## the level's own rows longer, nor clearing pieces out of a row's way), on the finished layout rather than the one
+## the pass saw, and it counts a spot only in a run of fitting starts 2 m long (3 starts 1 m apart, as _add_one
+## steps 1 m from starting points of its own), so a fitting stretch of one or two starts goes unseen.
+func _chase_spot(gen: LevelGenerator, chase: Vector2) -> String:
+	var length: float = WideGapPlacement.length_for(gen, wt)
+	var keeps: Array[Dictionary] = WideGapPlacement.keeps_of(gen)
+	var to: float = minf(chase.y, gen.layout.length - gen.config.end_clear_distance)
+	var run: int = 0
+	var start: float = maxf(chase.x, gen.config.start_clear_distance)
+	while start <= to - length:
+		var span := Vector2(start, start + length)
+		var kept: Array[int] = WideGapPlacement._kept_lanes(gen, wt, span, keeps)
+		var lanes: Array[int] = []
+		for lane: int in gen.layout.lane_count:
+			if kept.is_empty() or lane != kept[0]:
+				lanes.append(lane)
+		var ok: bool = kept.size() <= 1 and WideGapPlacement.fits(gen, wt, span, {"start": span.x, "end": span.y,
+			"lanes": lanes}, keeps)
+		run = run + 1 if ok else 0
+		if run >= 3:
+			return "a new row fits at %.0f m" % (start - 2.0)
+		start += 1.0
+	return ""
 
 
 ## Task C6e (approved with C6d's follow-up): on every level with the Enforcer Truck at 3, 5 and 6 lanes, on another
@@ -140,6 +217,108 @@ func _test_before_showings(campaign: Campaign) -> void:
 		", ".join(fewer) if not fewer.is_empty() else "none"])
 
 
+## The pass's last way at LAST_RESORT_CASES: each build's one wider gap is the row it placed (its report's
+## added_clearing: the only row, pieces taken out of its way), keeping every rule a wider gap keeps
+## (LayoutChecks.check_wide_gaps), with a floor route across it from the clear floor before it, not in an Enforcer
+## Truck's chase before its showing; every truck's showing window still holds in the finished level
+## (ShowPlanner.problem_of).
+func _test_last_resort(campaign: Campaign) -> void:
+	for c: Dictionary in LAST_RESORT_CASES:
+		var config: LevelConfig = campaign.configure(campaign.step(String(c["id"])), int(c["lanes"]))
+		config.level_seed = int(c["seed"])
+		var tag: String = "%s at %d lanes, seed %d" % [c["id"], c["lanes"], c["seed"]]
+		var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))
+		var layout: LevelLayout = gen.layout
+		var result: Dictionary = gen.wide_gap_result
+		var movement: MovementTuning = config.movement_for(tuning)
+		var rows: Array[Dictionary] = WideGapPlacement.wide_rows(layout, movement.jump_distance(movement.run_speed),
+			et.max_hop_jump_fraction)
+		var placed: Array = result.get("rows", [])
+		var same: bool = placed.size() == 1 and rows.size() == 1 \
+			and absf(float(rows[0]["start"]) - (placed[0] as Vector2).x) < 0.01
+		check(same and int(result.get("added_clearing", 0)) == 1 and int(result.get("taken_out", 0)) > 0,
+			("%s still gets its one wider gap from the last way, pieces taken out of its way (%d rows placed, %d wider rows, "
+			+ "%d by the last way, %d pieces out), else re-pin LAST_RESORT_CASES") % [tag, placed.size(), rows.size(),
+			int(result.get("added_clearing", 0)), int(result.get("taken_out", 0))])
+		LayoutChecks.check_wide_gaps(self, layout, config, tag)
+		var grid := FloorRoute.new(layout, movement)
+		var keeps: Array[Vector2] = EnforcerRules.wide_gap_keep_outs(layout)
+		for row: Dictionary in rows:
+			var span := Vector2(float(row["start"]), float(row["end"]))
+			var zone: Vector2 = WideGapPlacement.zone_of(gen, wt, span)
+			var from: float = grid.clear_start(zone.x)
+			var route: Dictionary = grid.find(from, zone.y)
+			check(bool(route["ok"]), "%s: a floor route crosses the wider gap at %.1f (from %.1f: %s)" % [tag, span.x, from,
+				route["reason"]])
+			for keep: Vector2 in keeps:
+				check(span.x >= keep.y or span.y <= keep.x,
+					"%s: the wider gap at %.0f m isn't in an Enforcer Truck's chase before its showing (%.0f-%.0f m)" % [tag,
+					span.x, keep.x, keep.y])
+		var planner: EnforcerRules.ShowPlanner = EnforcerRules.ShowPlanner.make(gen, et)
+		var trucks: Array[Dictionary] = EnforcerRules.trucks_in(layout)
+		var windows: int = 0
+		for e: Dictionary in trucks:
+			var w: Vector2 = EnforcerRules.window_of(e)
+			windows += 1 if w.y > w.x else 0
+			var why: String = planner.problem_of(e)
+			check(why == "", "%s: the truck at %.0f m: its showing window holds in the finished level (%s)" % [tag,
+				float(e["at"]), why])
+		var at: PackedStringArray = []
+		for row: Dictionary in rows:
+			at.append("%.0f m (%d of %d lanes)" % [float(row["start"]), (row["lanes"] as Array).size(), int(c["lanes"])])
+		print("  %s: the last way's wider gap at %s, %d pieces taken out of its way; %d trucks, %d with a window" % [tag,
+			", ".join(at), int(result.get("taken_out", 0)), trucks.size(), windows])
+
+
+## The last way on a plain stretch (quick play's level at 5 lanes with no features, its own pieces cleared, then a
+## fence in lane 0 every FENCE_STEP metres, so no spot is clear): with plain fences, the pass's one wider gap comes
+## from it, those in its zone taken out, and the row then fits (nothing left in its way); with pulsing ones (the
+## `pulsing` feature's, never taken out) none comes, and every fence stays.
+func _test_last_resort_fences() -> void:
+	for pulsing: bool in [false, true]:
+		var config := LevelConfig.new()
+		config.lane_count = 5
+		config.duration_seconds = 60.0
+		config.features = PackedStringArray()
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		for list: Array in [layout.gaps, layout.fences, layout.signs, layout.hulls, layout.pads, layout.ramps,
+				layout.speed_pads, layout.enemies, layout.doodads, layout.cuts]:
+			list.clear()
+		var d: float = config.start_clear_distance
+		while d < layout.length - config.end_clear_distance:
+			layout.fences.append({"lane": 0, "at": d, "variant": "full", "pulsing": pulsing, "pulse_on": 1.2,
+				"pulse_off": 1.0, "phase": 0.0})
+			d += FENCE_STEP
+		var fences: int = layout.fences.size()
+		config.wide_gaps = 1
+		var result: Dictionary = WideGapPlacement.place(gen)
+		var placed: Array = result.get("rows", [])
+		var tag: String = "a plain stretch with a %s fence every %.0f m" % ["pulsing" if pulsing else "plain", FENCE_STEP]
+		if pulsing:
+			check(placed.is_empty() and int(result.get("added_clearing", -1)) == 0 and int(result.get("taken_out", -1)) == 0
+				and layout.gaps.is_empty() and layout.fences.size() == fences and not (result.get("constraints", []) as Array).is_empty(),
+				"%s gets no wider gap, and keeps its %d fences (%d rows, %d holes, %d fences)" % [tag, fences, placed.size(),
+				layout.gaps.size(), layout.fences.size()])
+			print("  %s: %d wider gaps, %d of its %d fences kept" % [tag, placed.size(), layout.fences.size(), fences])
+			continue
+		check(placed.size() == 1 and int(result.get("added_clearing", 0)) == 1 and int(result.get("taken_out", 0)) > 0
+			and layout.fences.size() == fences - int(result.get("taken_out", 0)) and layout.gaps.size() == config.lane_count - 1,
+			"%s gets its wider gap from the last way, the fences in its way taken out (%d rows, %d by the last way, %d of %d fences out, %d holes)"
+			% [tag, placed.size(), int(result.get("added_clearing", 0)), int(result.get("taken_out", 0)), fences, layout.gaps.size()])
+		if placed.size() != 1:
+			continue
+		var span: Vector2 = placed[0]
+		var lanes: Array[int] = []
+		for g: Dictionary in layout.gaps:
+			lanes.append(int(g["lane"]))
+		var what: String = WideGapPlacement.blocker(gen, wt, span, {"start": span.x, "end": span.y, "lanes": lanes},
+			WideGapPlacement.keeps_of(gen))
+		check(what == "", "%s: the new row at %.0f m then fits, nothing in its way (%s)" % [tag, span.x, what])
+		print("  %s: the last way's wider gap at %.0f m, %d of its %d fences taken out" % [tag, span.x,
+			int(result.get("taken_out", 0)), fences])
+
+
 ## A boss arena never gets them, even asked; quick play and the prototype level ask for none and draw nothing;
 ## a level builds the same on every attempt.
 func _test_off(campaign: Campaign) -> void:
@@ -174,9 +353,11 @@ func _test_off(campaign: Campaign) -> void:
 
 ## Builds where the fill pass put a filler at its spacing from one of the level's own rows that's made longer
 ## after it (WideGapPlacement.widen_deferred): the filler goes, and every filler keeps the fill pass's spacing
-## from every wider row; the level keeps its wider gaps.
+## from every wider row; the level keeps its wider gaps. The seeds are ones where that happens on task K4's
+## curve (city/3 3 lanes 7001, gangland/1 3 lanes 9103 and gangland/3 5 lanes 9101 before the Casino; city/3 3
+## lanes 7037, gangland/1 6 lanes 9110 and gangland/3 5 lanes 9103 on K2's 17-level linear curve).
 func _test_fillers(campaign: Campaign) -> void:
-	for c: Array in [["city/3", 3, 7001], ["gangland/1", 3, 9103], ["gangland/3", 5, 9101]]:
+	for c: Array in [["city/3", 3, 7040], ["gangland/1", 6, 9101], ["gangland/3", 5, 9101]]:
 		var config: LevelConfig = campaign.configure(campaign.step(String(c[0])), int(c[1]))
 		config.level_seed = int(c[2])
 		var tag: String = "%s at %d lanes, seed %d" % c
@@ -332,9 +513,13 @@ func _truck(w: RunWorld) -> EnforcerTruck:
 ## Corporate 2's own build, played from its start (god mode, grapples: the runner keeps to the middle lane and
 ## takes whatever comes) until the first Enforcer's chase reaches its wider gap: the runner lines up in a hole
 ## lane of it (the nearest the middle) a few seconds before and jumps it midway through its take-off window; the
-## truck following is wrecked in it.
+## truck following is wrecked in it. The chase leaves room past the truck's showing window (task C6e: no wider gap
+## before it) at two lane counts at least, and holds a wider gap there at CORPORATE_2_CHASE_LANES only: a lane count
+## with room left out of it shows no clear stretch for a new row there (_chase_spot, whose limits its doc comment
+## gives: preferred, not guaranteed, open question 357), and one lane count at least plays it.
 func _test_corporate_2(campaign: Campaign) -> void:
 	var ran: int = 0
+	var played: int = 0
 	for lanes: int in LANES:
 		var config: LevelConfig = campaign.configure(campaign.step("corporate/2"), lanes)
 		config.skin = null  # the grey box: skins never change gameplay
@@ -359,15 +544,25 @@ func _test_corporate_2(campaign: Campaign) -> void:
 			if float(r["start"]) >= chase.x and float(r["end"]) <= chase.y:
 				row = r
 				break
+		var listed: bool = CORPORATE_2_CHASE_LANES.has(lanes)
 		if chase.y - chase.x < 3.0 * v:
 			# Its window ends with its chase (after its bait): no room for one past it there.
+			check(not listed, "%s: listed in CORPORATE_2_CHASE_LANES, but its first Enforcer's chase leaves no room past its window (%.0f-%.0f m)"
+				% [tag, window.x, window.y])
 			print("  %s: its first Enforcer's chase leaves no room past its window (%.0f-%.0f m)" % [tag, window.x, window.y])
 			continue
-		check(not row.is_empty(), "%s: its first Enforcer's chase past its showing window (%.0f-%.0f m) holds a wider gap" % [tag,
-			chase.x, chase.y])
 		ran += 1
+		var holds: bool = not row.is_empty()
+		check(holds == listed, ("%s: its first Enforcer's chase past its showing window (%.0f-%.0f m) holds a wider gap if "
+			+ "and only if CORPORATE_2_CHASE_LANES lists it (holds one: %s; listed: %s), else re-pin it") % [tag, chase.x,
+			chase.y, holds, listed])
 		if row.is_empty():
+			var spot: String = _chase_spot(gen, chase)
+			check(spot == "", NO_CLEAR_STRETCH % [tag, chase.x, chase.y, spot])
+			print("  %s: no wider gap in its first Enforcer's chase past its showing window (%.0f-%.0f m), and no clear stretch there"
+				% [tag, chase.x, chase.y])
 			continue
+		played += 1
 		var middle: int = lanes / 2
 		var hole: int = -1
 		for lane: int in row["lanes"]:
@@ -409,4 +604,5 @@ func _test_corporate_2(campaign: Campaign) -> void:
 		print("  %s: wider gap at %.0f m in the chase %.0f-%.0f m: the truck %s" % [tag, start, chase.x, chase.y,
 			("wrecked: " + down) if down != "" else "not wrecked"])
 		await sim.free_world(w)
-	check(ran >= 2, "Corporate 2 leads its first truck into a wider gap at %d of the 3 lane counts" % ran)
+	check(ran >= 2, "Corporate 2's first Enforcer chase leaves room past its showing window at %d of the 3 lane counts" % ran)
+	check(played >= 1, "Corporate 2 leads its first truck into a wider gap at %d of the 3 lane counts" % played)

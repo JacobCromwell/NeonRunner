@@ -376,6 +376,40 @@ The owner played every zone and the Floating Head. The feedback is in GDD §3 ("
 - **G8, level skies** (owner, October 8, 2026): a few levels show their sky turning (City 1 a dawn, Gangland 3 a cloudy blood-red sky, Marketplace 2 a sunset; GDD §5, "Skies show progression"), the boss fight after one keeps its sky, and the street's light follows. A level's own sky over its zone's (`LevelConfig.sky`, `data/skies/`), clouds and a glow on the horizon in the sky shader, and a global scenery tint; a boss's intro keeps the fight's sky. **Core** (level data), with the boss config, the cinematic stage and the scenery shaders. T2.
 - **G6b, doodad pictures** (owner, October 9, 2026): each zone doodad stays a simple box but shows a picture of the object it stands for, the open air cut out (a stall's open middle, a van's windows), painted by code into one atlas per zone (`tools/godot.sh doodads`). Art only: the owner's second ask, doodads preferring the lane beside the side wall when it's open, waits for the dash-smash branch (H5). T2. **Done:** `DoodadCards` and `tools/asset_gen/doodad_art/`; the owner approved the looks (GDD §3; open questions 412–415, answered).
 
+### K. The Casino zone (owner, October 8, 2026)
+
+The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5, Zone 4): the Marketplace keeps its two levels and no longer has a boss; the Casino has two levels, then **The House**, moved here unchanged. The Casino **reuses the Marketplace's enemies and characters**: only its walls, floor, ceilings and background are new, from the owner's reference image (`docs/art/reference/casino_zone.webp`). Adding it costs well under 1 MB of the phone download (its skin is code, and it reuses the Marketplace's music under the "no more generated songs" rule, GDD §11); the phone risk to watch is frame rate, so the skin keeps to the build budget and fakes its glass roof.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| K1 | **Casino skin**: walls, floor and gaps, ceilings (wide and narrow), sky and environment, and The House's arena, from the reference image | – | L | T2 |
+| K2 | **The Casino in the campaign**: zone and level data, the campaign order, The House moved to the Casino, cinematic slots, music and jingles, quick play and tests. **Core** (campaign, zone and level data). | – (K1 to swap in the skin) | M | T1 |
+| K3 | **Casino roof and named signs** (owner, October 9, 2026): the glass roof whole; real lettering on the two named casinos' signs, "Gasket's House of Chance" and "The Brass Lotus" | K1 | S–M | T2 |
+| K4 | **No level gets easier** (owner, October 9, 2026): reshape the 17-level difficulty curve so no existing level is easier than before the Casino; the Marketplace as hard or a little harder; Corporate onward may be harder. **Core** (campaign data). | K2 | M | T1 |
+
+**K1: Casino skin.** Everything in the D workstream's skin list, plus:
+- **Walls:** casino facades with stacked balconies, brass pipes and ducts, casino signs ("Gasket's House of Chance", "The Brass Lotus" in the reference), and lit shop windows low on the wall where the Marketplace citizens play (reused, not new characters; The House's cheering crowds need them).
+- **Ceilings:** pieces of the covered street at the ceiling's height (bridges between balconies, pipe gantries, sign gantries, banners). The **vaulted glass-and-iron roof** stays high overhead as background and must never read as a ceiling the player can use.
+- **Floor and gaps:** the art agent's choice from the reference *(to confirm with the owner)*.
+- **Colour rule:** the reference glows pink, cyan, green and orange; here those may only be dim background elements. Lit signs near the track keep to the non-hazard glows (warm white, violet, blue; brass is metal, not neon), and no sign says "HAZARD".
+- **Phones:** no see-through glass or real-time lights per sign; the roof's panes are opaque and faked. Within the chunk build budget, with Compatibility-renderer frames.
+- Reuse the Marketplace's pieces where they fit (citizens, casino-machine and plant doodads, the cult's feed, the emblem) instead of copying them.
+
+**K3: Casino roof and named signs** (owner, October 9, 2026, answering open questions 371, 372 and 374).
+- The vault's glass is whole: no broken or missing panes.
+- The two named casinos' big signs spell **"Gasket's House of Chance"** and **"The Brass Lotus"** in real letters, legible at running speed, in the non-hazard glows, cheap on phones and on the Compatibility renderer. Other signs keep their glyphs. No pedestrians.
+
+**K4: no level gets easier** (owner, October 9, 2026, answering open question 384: "all the levels are too easy, at least on PC").
+- Reshape the campaign's difficulty curve (prefer one number in `data/campaign/campaign.tres`, such as the curve's exponent, over per-level biases) so every existing level's difficulty is at least what it was on the 15-level curve; the Marketplace's levels a little harder if anything; City 1 unchanged; Corporate onward may be harder; Golden 2 stays the peak and each level stays harder than the last.
+- `enemy_scaling` is not part of it (K2's thresholds stay).
+
+**K2: the Casino in the campaign.**
+- Zone `casino` after `marketplace`: two levels (`casino_1`, `casino_2`), The House as its boss (its arena on the Casino skin), an intro cinematic slot (the arrival flyover placeholder), the Marketplace's outro reworded for a zone without a boss.
+- Music: the Marketplace's track until the owner supplies one (no generated songs, GDD §11); the level-complete jingle likewise.
+- Level data: the Marketplace 2 feature set *(DESIGN-TBD until the owner says what each Casino level adds)*; run speed between the Marketplace's and Corporate's.
+- The difficulty curve now spans 17 levels: report how every level's difficulty moves.
+- Quick play `--skin=casino` and `--level=casino/1`, the test suites, `tests/suite_map.json`, and `docs/ARCHITECTURE.md`.
+
 ### E. Bosses and the web demo
 
 | ID | Task | Needs | Size | Tier |

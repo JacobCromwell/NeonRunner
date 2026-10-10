@@ -6,6 +6,7 @@
 script = ExtResource("1_music")
 files = {
 "beach": "res://assets/music/marketplace.wav",
+"casino": "res://assets/music/marketplace.wav",
 "city": "res://assets/music/city.wav",
 "corporate": "res://assets/music/corporate.wav",
 "dead_zone": "res://assets/music/dead_zone.wav",
@@ -23,6 +24,7 @@ files = {
 }
 volume_db = {
 "beach": -11.0,
+"casino": -11.0,
 "city": -10.5,
 "corporate": -10.5,
 "dead_zone": -10.5,
@@ -40,6 +42,7 @@ volume_db = {
 }
 bpm = {
 "beach": 144.0,
+"casino": 144.0,
 "city": 160.0,
 "corporate": 112.0,
 "dead_zone": 84.0,
@@ -52,6 +55,7 @@ zone_tracks = {
 "city": "zone_1",
 "gangland": "zone_2",
 "marketplace": "zone_3",
+"casino": "zone_3",
 "corporate": "zone_4",
 "beach": "zone_3",
 "dead_zone": "zone_5",
@@ -68,7 +72,8 @@ riff_tracks = {
 "zone_4": "corporate",
 "zone_5": "dead_zone",
 "zone_6": "golden",
-"boss_1": "city"
+"boss_1": "city",
+"casino": "marketplace"
 }
 duck_db = -8.0
 duck_time = 0.3

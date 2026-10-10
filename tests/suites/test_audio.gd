@@ -23,15 +23,12 @@ const SONGS: Dictionary = {
 	&"zone_6": "Zone_6_View_from_the_Zenith.mp3",
 	&"boss_1": "Boss_1_Apex_Combat_Maneuver.mp3",
 }
-## Each campaign zone's supplied song in its levels (zone track -> song).
-const ZONE_SONGS: Dictionary = {
-	&"city": &"zone_1", &"gangland": &"zone_2", &"marketplace": &"zone_3", &"corporate": &"zone_4", &"beach": &"zone_3",
-	&"dead_zone": &"zone_5", &"golden": &"zone_6",
-}
-## Zone tracks with no music of their own yet, standing in on another track's file, level, tempo, song and riff
-## (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 543; the owner, October 9, 2026: no new songs for now): the Beach's, the
-## Marketplace's (task D10c).
-const STAND_INS: Dictionary = {&"beach": &"marketplace"}
+## Zones whose music reuses another zone's while their own is DESIGN-TBD (GDD §11: no more generated songs;
+## the owner supplies the game's songs): the zone's track -> the zone track it plays. The Casino (task K2)
+## and the Beach (task D10c; the owner, October 9, 2026: no new songs for now) play the Marketplace's, its
+## supplied song and generated default alike, at its level and tempo, and end on its riff. A zone listed here
+## takes no song number of its own: the songs zone_<n> count the other zones in order.
+const REUSED: Dictionary = {&"casino": &"marketplace", &"beach": &"marketplace"}
 const SONG_BUDGET_BYTES: int = 30 * 1024 * 1024
 ## Generated defaults must stay under this in the repo (about 3 MB per 40–60 s loop of 32 kHz PCM).
 const MUSIC_BUDGET_BYTES: int = 21 * 1024 * 1024
@@ -91,27 +88,29 @@ func _test_supplied_songs() -> void:
 			"'%s' keeps playing across the end of the song" % track)
 		playback.stop()
 	check(total_bytes <= SONG_BUDGET_BYTES, "supplied MP3s fit in 30 MB (%.2f MB)" % (total_bytes / 1048576.0))
-	check(library.zone_tracks.size() == App.campaign.zones.size() and ZONE_SONGS.size() == App.campaign.zones.size(),
-		"one supplied song per campaign zone")
+	check(library.zone_tracks.size() == App.campaign.zones.size(), "a supplied song for every campaign zone")
+	var song: int = 0
 	for index: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[index]
-		var expected: StringName = ZONE_SONGS.get(zone.id, &"")
-		var original: StringName = STAND_INS.get(zone.music, zone.music)
-		check(library.run_track(zone.music) == expected, "zone %d (%s) uses its matching song (%s)" % [index + 1, zone.id, expected])
-		check(library.riff_track(expected) == original and library.riff_track(zone.music) == original,
-			"zone %d retains its original completion sound (%s's)" % [index + 1, original])
+		if REUSED.has(zone.music):
+			# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 522 and 577): its own song is to come; until then it plays the
+			# other zone's.
+			var other: StringName = REUSED[zone.music]
+			check(library.run_track(zone.music) == library.run_track(other) and library.path(zone.music) == library.path(other)
+				and library.riff_track(zone.music) == other and library.volume(zone.music) == library.volume(other),
+				"zone %d (%s) plays %s's song and default, and ends on its riff" % [index + 1, zone.id, other])
+		else:
+			song += 1
+			var expected := StringName("zone_%d" % song)
+			check(library.run_track(zone.music) == expected, "zone %d (%s) uses its matching song (%s)" % [index + 1, zone.id, expected])
+			check(library.riff_track(expected) == zone.music, "zone %d retains its original completion sound" % (index + 1))
 		check(library.stream(zone.music) is AudioStreamWAV, "%s cinematics keep the generated default" % zone.id)
 		if zone.boss != null:
 			var default_track: StringName = zone.boss.music if zone.boss.music != &"" else zone.music
 			var boss_track: StringName = library.run_track(default_track, zone.boss.id)
 			check(boss_track == (&"boss_1" if index == 0 else default_track),
 				"%s gets a supplied song only when one matches" % zone.boss.id)
-	for track: StringName in STAND_INS:
-		var original: StringName = STAND_INS[track]
-		check(library.path(track) == library.path(original) and library.volume(track) == library.volume(original)
-			and library.bpm.get(String(track)) == library.bpm.get(String(original))
-			and library.run_track(track) == library.run_track(original) and library.riff_track(track) == original,
-			"'%s' stands in on '%s': its file, level, tempo, song and riff (no new songs)" % [track, original])
+	check(song == App.campaign.zones.size() - REUSED.size(), "every zone but those reusing one has its own song (%d)" % song)
 	check(library.boss_tracks.size() == 1 and library.riff_track(&"boss_1") == &"city",
 		"only Boss 1 is replaced, retaining its original completion sound")
 	check(library.run_track(&"city", &"test_boss") == &"city", "the test boss keeps its default song")
@@ -154,8 +153,13 @@ func _test_music_files() -> void:
 		return
 	var total_bytes: int = 0
 	var export_bytes: int = 0
-	check(library.names().size() == TRACKS.size() + SONGS.size() + STAND_INS.size(),
-		"the library lists seven defaults, seven supplied songs and the Beach's stand-in (%s)" % ", ".join(library.names()))
+	check(library.names().size() == TRACKS.size() + SONGS.size() + REUSED.size(),
+		"the library lists seven defaults, seven supplied songs and the zones reusing another's (%s)" % ", ".join(library.names()))
+	for track: StringName in REUSED:
+		var other: StringName = REUSED[track]
+		check(library.has(track) and library.path(track) == library.path(other)
+			and is_equal_approx(float(library.bpm.get(String(track), 0.0)), TRACKS[other]),
+			"'%s' plays %s's default, at its tempo (no new song, GDD §11)" % [track, other])
 	for track: StringName in TRACKS:
 		check(library.has(track), "music library has '%s'" % track)
 		check(is_equal_approx(float(library.bpm.get(String(track), 0.0)), TRACKS[track]),
@@ -376,12 +380,11 @@ func _test_level_complete_riffs() -> void:
 	var sfx := load(SFX_LIBRARY_PATH) as SfxLibrary
 	var library := load(MUSIC_LIBRARY_PATH) as MusicLibrary
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
-	# A zone track standing in on another's (STAND_INS) ends on that track's riff.
-	var originals: Dictionary = {}
 	for zone: ZoneDef in campaign.zones:
-		var own: StringName = library.riff_track(zone.music)
-		originals[own] = true
-		var riff: StringName = MusicDirector.level_complete_sound(own, sfx)
+		# A zone reusing another's music (REUSED) ends on that zone's riff: LevelRun asks for the riff of the
+		# track playing through MusicLibrary.riff_track.
+		var riff: StringName = MusicDirector.level_complete_sound(library.riff_track(zone.music), sfx)
+		var own: StringName = REUSED.get(zone.music, zone.music)
 		var expected: StringName = MusicDirector.LEVEL_COMPLETE if own == &"city" \
 			else StringName("%s_%s" % [MusicDirector.LEVEL_COMPLETE, own])
 		check(riff == expected, "%s's levels and boss end on %s (%s)" % [zone.id, expected, riff])
@@ -403,7 +406,8 @@ func _test_level_complete_riffs() -> void:
 			"'%s' is over before the results replace the run and its sounds (%.2f s)" % [sound, seconds])
 		check(float(sfx.pitch_variation.get(sound, 0.0)) == 0.0, "'%s' always plays in its key (no pitch variation)" % sound)
 		check(sound == prefix or library.has(StringName(sound.trim_prefix(prefix + "_"))), "'%s' belongs to a music track" % sound)
-	check(riffs == originals.size(), "one riff per zone's own music: the E riff and five more (%d)" % riffs)
+	check(riffs == campaign.zones.size() - REUSED.size(),
+		"one riff per zone but those reusing another's music: the E riff and five more (%d)" % riffs)
 
 
 ## Through the App on the real main scene: a death dips the zone's music at once, a pause before the

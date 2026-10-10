@@ -92,6 +92,8 @@ vec4 cult_mark(vec2 p, float fw) {
 #include "res://scripts/world/meshes/shaders/kit_golden_palace.gdshaderinc"
 // Dead Zone patterns (ids 40-49), after cult_mark(): its scorched emblems use it.
 #include "res://scripts/world/meshes/shaders/kit_dead_zone.gdshaderinc"
+// Casino patterns (ids 80-89, task K1).
+#include "res://scripts/world/meshes/shaders/kit_casino.gdshaderinc"
 
 // Two coordinates in the plane of the face, picked by its dominant axis.
 vec2 face_coords(vec3 n) {
@@ -108,7 +110,7 @@ vec3 paint_graffiti(vec3 col, vec2 p, float seed, float density, float aa) {
 	return mix(col, fill, g.x * 0.85);
 }
 
-// Beach patterns (ids 80-89, task D10), after face_coords(): it draws steel and timber by face.
+// Beach patterns (ids 90-99, task D10), after face_coords(): it draws steel and timber by face.
 #include "res://scripts/world/meshes/shaders/kit_beach.gdshaderinc"
 
 void vertex() {
@@ -410,6 +412,10 @@ void fragment() {
 		base = golden_palace_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV);
 	}
 	if (pattern >= 80 && pattern < 90) {
+		// The Casino (kit_casino.gdshaderinc, task K1); the eye vector in world space, for its metal.
+		base = casino_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV, TIME, glow);
+	}
+	if (pattern >= 90 && pattern < 100) {
 		// The Beach (kit_beach.gdshaderinc, task D10); only its neon signs glow.
 		base = beach_surface(pattern, UV2.y, base, v_world, n, UV, TIME, glow);
 	}

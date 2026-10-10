@@ -207,33 +207,60 @@ const PAT_PALACE_PANEL: int = 72
 const PALACE_JOINT_LEFT: int = 1
 const PALACE_JOINT_RIGHT: int = 2
 
-## The Beach's surface patterns of the solid kit shader (kit_beach.gdshaderinc), ids 80-89 (task D10). Only
+## The Casino's surface patterns of the solid kit shader (kit_casino.gdshaderinc), ids 80-89 (task K1): a
+## covered casino street at night (GDD §5, Zone 4). Dark iron and aged brass are lit metal, never neon;
+## only the signs' lettering and borders glow, in warm white, violet or blue.
+## The street's paving along one lane (world position; UV.x 0-1 across the lane): flagstones, brass
+## inlaid along both edges and across every 6 m, soft lamplight pools, a wet sheen. param = the lane's
+## key (a seed for the tones).
+const PAT_CASINO_STREET: int = 80
+## Everything under the street, seen only through gaps: deep shade darkening with depth (darkens
+## COLOR): param 0 a face across the lane, 1 a face along it, 2 the trench's floor.
+const PAT_CASINO_UNDER: int = 81
+## Dark iron (world position): param 0 a plate with seams and rivets, 1 the underside of a ceiling
+## (beams every 3 m along the track), 2 a girder.
+const PAT_CASINO_IRON: int = 82
+## Aged brass lit as polished metal: COLOR is the brass, param how polished it is (0-1).
+const PAT_CASINO_BRASS: int = 83
+## One pane of the glass roof (UV 0-1 over the pane): param = the pane's width in centimetres + 1000 *
+## its index across the arch. Opaque and faked: no transparency.
+const PAT_CASINO_VAULT: int = 84
+## A lit casino sign (UV in metres, x to the viewer's right, y up), glowing: COLOR is the light
+## (warm white, violet or blue); param = seed (0-99) + 100 * the panel's height in decimetres, plus
+## 100000 for a named casino's board (dark panel and tube only: its real letters, CasinoLettering,
+## are geometry over it).
+const PAT_CASINO_SIGN: int = 85
+## A hanging banner (UV.x 0-1 across it, UV.y metres down from its top): COLOR is the cloth; param = its
+## length in decimetres + 1000 * a seed. Never glowing.
+const PAT_CASINO_BANNER: int = 86
+
+## The Beach's surface patterns of the solid kit shader (kit_beach.gdshaderinc), ids 90-99 (task D10). Only
 ## PAT_BEACH_NEON glows (a neon silhouette sign, in violet, blue or warm white); give every other pattern's
 ## vertices COLOR.a = 0, and the water never glows (a glowing turquoise would pass for an anti-grav pad's cyan).
 ## The beach: wind ripples, drifts, damp patches, footprints, flat shells and pebbles, the wet rim round a
 ## pool (UV.x -1 to 1 across the lane, UV.y metres from the piece's near end); param = sand_param().
-const PAT_BEACH_SAND: int = 80
+const PAT_BEACH_SAND: int = 90
 ## A boardwalk run: weathered planks laid across the lane with rusty steel plates bolted on; as the sand.
-const PAT_BEACH_BOARDWALK: int = 81
+const PAT_BEACH_BOARDWALK: int = 91
 ## Everything below the floor, seen only through the pools: black steel tank walls, in deep shade that only
 ## darkens with depth (darkens COLOR): param 0 a face across the lane, 1 a face along it, 2 the building faces.
-const PAT_BEACH_TANK: int = 82
+const PAT_BEACH_TANK: int = 92
 ## The pool's water far below the floor: deep unlit teal with slow caustic ridges, never lighter than 1.12 of COLOR.
-const PAT_BEACH_WATER: int = 83
+const PAT_BEACH_WATER: int = 93
 ## A shack's flush face (world position): bamboo, mats, planks, rusty sheets, shutters, posters; param = the
 ## building's seed * 8. Calm and closed up to the wall-run band's top, with the wall-run marks.
-const PAT_BEACH_WALL: int = 84
+const PAT_BEACH_WALL: int = 94
 ## Thatch (world position), on roofs, eaves and canopies.
-const PAT_BEACH_THATCH: int = 85
+const PAT_BEACH_THATCH: int = 95
 ## Black rust-streaked industrial steel (world position): param 0 a tank, 1 a chimney, 2 a hull.
-const PAT_BEACH_STEEL: int = 86
+const PAT_BEACH_STEEL: int = 96
 ## A painted board with a wordless poster, unlit (UV in metres): param = beach_art_param().
-const PAT_BEACH_PAINT: int = 87
+const PAT_BEACH_PAINT: int = 97
 ## A neon silhouette sign, glowing: a glyph outline and a frame on a dark board (UV in metres): param =
 ## beach_neon_param().
-const PAT_BEACH_NEON: int = 88
+const PAT_BEACH_NEON: int = 98
 ## Bamboo poles, rails, planks and palm trunks (world position): param = beach_timber_param().
-const PAT_BEACH_TIMBER: int = 89
+const PAT_BEACH_TIMBER: int = 99
 ## PAT_BEACH_SAND's and PAT_BEACH_BOARDWALK's flags.
 const BEACH_SEAM_LEFT: int = 1
 const BEACH_SEAM_RIGHT: int = 2

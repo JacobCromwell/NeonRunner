@@ -14,7 +14,8 @@ extends TestSuite
 ##   charges a wait moved on still winds up past its entry.
 ## - Placement: every campaign level that lists it at 3, 5 and 6 lanes (its own seed and others): at most 2,
 ##   never two at once, each with a bait in its chase, arriving off every bait's attack; Corporate 2 always
-##   has one; the same every build; a level differs from the same level without it only by its trucks
+##   has one; the same every build; the generator's guarantee covers it through its baits' features, and asks
+##   for none when the data allows none; a level differs from the same level without it only by its trucks
 ##   (danger density off); quick play without a bait has none.
 ## - Showing itself (GDD §9.13, the owner, October 8, 2026): its numbers; beside the runner its whole look on
 ##   screen in the chase camera's view, hiding nothing of the runner or the side they dodge to, at 3, 5 and 6
@@ -35,6 +36,14 @@ const LEVELS: Array[String] = ["corporate/2", "beach/1", "beach/2", "dead_zone/1
 	"golden/3"]
 ## The zones' run speeds where it appears.
 const SPEEDS: Array[float] = [23.4, 23.8, 24.2, 25.0]
+## The levels' own builds, as [id, lanes], with two trucks but room for only one showing before its bait: the
+## owner's answer to docs/OPEN_QUESTIONS.md item 401 (October 9, 2026; GDD §9.13) keeps both. Checked both ways:
+## each still has both trucks, one with a window before its bait and one without, and no other own build has that
+## case. With the Casino's levels and K4's curve (merged with task C6e's windows in task K5): Corporate 2 at 6
+## lanes and Dead Zone 2 at 5 and 6. (On the 15-level curve C6e was built on: Corporate 2 at 5, Dead Zone 1 at 3,
+## Dead Zone 2 at 5 and 6. Corporate 2 at 5 lanes and Dead Zone 1 at 3 now have item 402's case instead: one truck,
+## showing itself before its bait, where a second truck's chase would overlap its own.)
+const BOTH_TRUCKS: Array = [["corporate/2", 6], ["dead_zone/2", 5], ["dead_zone/2", 6]]
 const VARIANTS: Array[StringName] = [&"city", &"vr_runner", &"burned", &"scavenger", &"golden", &"casino"]
 
 var sim: RunSim
@@ -59,6 +68,7 @@ func run() -> void:
 	await _test_old_behaviour()
 	await _test_dog_past_its_entry()
 	_test_campaign()
+	_test_guarantee()
 	_test_show_windows()
 	_test_chases_with_room()
 	_test_only_its_trucks()
@@ -758,10 +768,16 @@ func _test_campaign() -> void:
 					if String(s.id) == "corporate/2":
 						check(not trucks.is_empty(), "Corporate 2 introduces it on its own seed %s" % tag)
 					# The owner's answer to docs/OPEN_QUESTIONS.md item 401 (October 9, 2026; GDD §9.13): a level with two
-					# trucks but room for only one showing keeps both.
-					if [["corporate/2", 5], ["dead_zone/1", 3], ["dead_zone/2", 5], ["dead_zone/2", 6]].has([String(s.id), lanes]):
-						check(trucks.size() == 2, "%s keeps both its trucks, though only one has a window before its bait (%d)" % [tag,
-							trucks.size()])
+					# trucks but room for only one showing keeps both (BOTH_TRUCKS, both ways).
+					var before: int = 0
+					for c: Variant in gen.show_window_result.get("chases", []):
+						var w: Dictionary = (c as Dictionary).get("window", {})
+						before += 1 if not w.is_empty() and not bool(w.get("after_bait", false)) else 0
+					var listed_both: bool = BOTH_TRUCKS.has([String(s.id), lanes])
+					if listed_both or (trucks.size() == 2 and before == 1):
+						check(listed_both and trucks.size() == 2 and before == 1, ("%s keeps both its trucks, though only one has a "
+							+ "window before its bait (%d trucks, %d with one; listed in BOTH_TRUCKS: %s)") % [tag, trucks.size(),
+							before, listed_both])
 					var again: LevelLayout = LevelGenerator.new().generate(config, m, patterns)
 					check(JSON.stringify(Rules.trucks_in(again)) == JSON.stringify(trucks), "the same trucks every build " + tag)
 		check(with_baits, "%s: every truck lists the baits planned in its chase" % s.id)
@@ -772,6 +788,29 @@ func _generate(config: LevelConfig, m: MovementTuning, patterns: Array) -> Level
 	var gen := LevelGenerator.new()
 	gen.generate(config, m, patterns)
 	return gen
+
+
+## The generator's every-feature guarantee covers the truck (task K4): it has no patterns, so where its baits
+## can be placed (Octodogs, Buzz Overdrives: its rules' GUARANTEED_BY) it is needed too
+## (LevelGenerator.dependent_features), and a build without one forces new picks of those, never of the
+## truck itself; with the data allowing no truck (per_level_max 0) the guarantee asks for none.
+func _test_guarantee() -> void:
+	var config := LevelConfig.new()
+	config.lane_count = 5
+	config.features = PackedStringArray(["octodog", "enforcer_truck"])
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, RunSim.layout(5, 600.0))
+	check(LevelGenerator.guaranteed_by("enforcer_truck") == PackedStringArray(Rules.GUARANTEED_BY)
+		and LevelGenerator.guaranteed_by("octodog").is_empty(), "the truck rides on its baits' features, an Octodog on none")
+	check(gen.dependent_features(PackedStringArray(["octodog"])) == PackedStringArray(["enforcer_truck"])
+		and gen.dependent_features(PackedStringArray()).is_empty(), "the guarantee needs the truck where its baits can be placed, only there")
+	check(gen._guarantee_picks_for("enforcer_truck", PackedStringArray(["octodog", "enforcer_truck"])) == PackedStringArray(["octodog"]),
+		"a build without one forces Octodog picks, not truck ones")
+	var was: int = t.per_level_max
+	t.per_level_max = 0
+	var none: bool = not Rules.places_any() and LevelGenerator.guaranteed_by("enforcer_truck").is_empty() \
+		and gen.dependent_features(PackedStringArray(["octodog"])).is_empty()
+	t.per_level_max = was
+	check(none and Rules.places_any(), "with no truck allowed (per_level_max 0) the guarantee asks for none")
 
 
 ## Task C6c (GDD §9.13 "Showing itself", the owner, October 8, 2026): each chase's planned showing window, on every

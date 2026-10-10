@@ -86,7 +86,13 @@ func _bosses(campaign: Campaign) -> void:
 				config.sky.resource_path.get_file() if config.sky != null else "the zone's own"])
 		if config.sky != null:
 			with_sky += 1
-	check(with_sky >= 2, "the Sewer Swarm and The House fight under their zone's last level's sky (%d fights)" % with_sky)
+	# GDD §5: the Sewer Swarm under Gangland 3's blood-red sky; The House, which follows Casino 2 since the Casino
+	# was added (task K2), under the Casino's own sky (Casino 2 keeps its zone's).
+	check(campaign.configure_boss(campaign.step("gangland/boss"), 5).sky == campaign.step("gangland/3").level.sky
+		and campaign.step("gangland/3").level.sky != null and campaign.step("casino/2").level.sky == null
+		and campaign.configure_boss(campaign.step("casino/boss"), 5).sky == null,
+		"the Sewer Swarm fights under Gangland 3's sky and The House under the Casino's own (%d fights under a level's sky)"
+		% with_sky)
 	check(campaign.configure_boss(campaign.step("city/boss"), 5).sky == null,
 		"the Floating Head under the City's own night sky (City 3 has it)")
 	# A boss's intro is under the fight's sky, between the level and the fight; a zone's own intro and

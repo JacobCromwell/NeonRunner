@@ -138,6 +138,8 @@ func _build() -> void:
 	# compiles its shaders during the load rather than in the frame it first appears.
 	if ShaderWarmup.needed():
 		ShaderWarmup.new().setup(world, camera)
+	else:
+		ShaderWarmup.load_doodads(world)
 	if speed_lines == null:
 		speed_lines = SpeedLines.new()
 		add_child(speed_lines)

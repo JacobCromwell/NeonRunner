@@ -1,4 +1,4 @@
-// Beach surfaces for the solid kit shader (kit_solid.gdshader): pattern ids 80-89 (MeshKit.PAT_BEACH_*),
+// Beach surfaces for the solid kit shader (kit_solid.gdshader): pattern ids 90-99 (MeshKit.PAT_BEACH_*),
 // in their own file so other zones' patterns never collide with them. The Beach (BeachSkin, task D10):
 // a cyberpunk party strip on the shore, in a bright tropical afternoon: sand and weathered boardwalk
 // under bamboo shacks and thatch, black rust-streaked steel tanks, painted boards and neon silhouettes.
@@ -216,7 +216,7 @@ vec3 bc_bamboo(vec3 base, float across, float along, float fa, float fl, float s
 // bits 6-13 the piece's length in quarter metres (UV.y runs in metres from its near end), bits 14-17
 // the lane's hash. UV.x runs -1 to 1 across the lane.
 
-// PAT_BEACH_SAND (80): the beach. Wind ripples running down the street, broad light and dark drifts,
+// PAT_BEACH_SAND (90): the beach. Wind ripples running down the street, broad light and dark drifts,
 // damp patches and a wet rim round every pool, footprints along a few paths, flat shells and pebbles
 // (drawn, never built: nothing on the running surface stands up, and nothing on it is round), a soft
 // seam where a neighbouring lane's sand runs beside it. Its brightness stays between bc_sand_dark's and
@@ -298,7 +298,7 @@ vec3 bc_sand(vec3 base, vec3 w, vec2 uv, float param) {
 	return mix(col, col * 0.72, seam);
 }
 
-// PAT_BEACH_BOARDWALK (81): a boardwalk run: weathered planks laid across the lane (so their joints
+// PAT_BEACH_BOARDWALK (91): a boardwalk run: weathered planks laid across the lane (so their joints
 // stream past a runner), each its own tone with a staggered butt joint, nail heads near the lane's
 // edges, and rusty steel plates bolted down here and there (flush: drawn, never built). Same parameter
 // as the sand. Its darkest is the joints between boards, bc_plank_gap.
@@ -355,7 +355,7 @@ vec3 bc_boardwalk(vec3 base, vec3 w, vec2 uv, float param) {
 	return mix(col, col * 0.7, seam);
 }
 
-// PAT_BEACH_TANK (82): everything below the floor, seen only through the pools: the black steel walls of a
+// PAT_BEACH_TANK (92): everything below the floor, seen only through the pools: the black steel walls of a
 // pool tank above the water (bc_pool_depth deep, a metre or less): panels with rivet rows, rust streaking down
 // from the rim, a lighter flange just under it, a pale stained tide mark and a wet dark line at the water. It
 // stays dark: COLOR is the steel, the panels and rivets at most 1.25 of it, the rust never lighter than
@@ -392,7 +392,7 @@ vec3 bc_tank(vec3 base, vec3 w, vec3 n, float param) {
 	return col;
 }
 
-// PAT_BEACH_WATER (83): the pool's water, filled nearly to the rim: opaque, unlit deep teal (COLOR) with
+// PAT_BEACH_WATER (93): the pool's water, filled nearly to the rim: opaque, unlit deep teal (COLOR) with
 // long ripples running across the street, slow caustic ridges and soft glints, streaks of sky stretched
 // along the street (bc_water_glint, never lighter than that), all of it drifting slowly (the time slowed to a
 // tenth by Reduced flashing). Seen from the game camera at a grazing angle: the ripples and the glints
@@ -420,7 +420,7 @@ vec3 bc_water(vec3 base, vec3 w, float t) {
 
 // --- Walls ------------------------------------------------------------------------------------------
 
-// PAT_BEACH_WALL (84): a shack's face, flush with the wall's plane, laid out in bays 3-4.8 m along the track
+// PAT_BEACH_WALL (94): a shack's face, flush with the wall's plane, laid out in bays 3-4.8 m along the track
 // by world position (so shacks and chunk cuts join), each bay with a tone of its own, between bamboo
 // posts: bamboo culms, a woven palm mat, weathered planks, rusty corrugated sheets, a painted door, roller
 // shutter or serving hatch (shut, flush), bamboo with surf posters pasted on, painted vertical boards, a
@@ -670,7 +670,7 @@ vec3 bc_wall(vec3 base, vec3 w, vec3 n, float param) {
 	return col;
 }
 
-// PAT_BEACH_THATCH (85): thatch, on roofs and eaves and the bars' canopies: courses of straw down the
+// PAT_BEACH_THATCH (95): thatch, on roofs and eaves and the bars' canopies: courses of straw down the
 // slope, each a tone of its own with a ragged lower fringe and a shadow under it. COLOR is the straw.
 vec3 bc_thatch(vec3 base, vec3 w, vec3 n) {
 	float lat = abs(n.z) > 0.5 ? w.x : w.z;
@@ -694,7 +694,7 @@ vec3 bc_thatch(vec3 base, vec3 w, vec3 n) {
 	return mix(col, base * 0.8, 1.0 - detail);
 }
 
-// PAT_BEACH_STEEL (86): black industrial steel with rust streaks, on tanks, water towers, chimneys and the
+// PAT_BEACH_STEEL (96): black industrial steel with rust streaks, on tanks, water towers, chimneys and the
 // party barges' hulls: panels with rivet rows, weld seams, rust running down from each panel's top edge and
 // pooling in blooms. param 0 a tank or tower, 1 a chimney (bands of lighter steel every 2.4 m), 2 a hull
 // (bigger panels, little rust). COLOR is the steel.
@@ -724,7 +724,7 @@ vec3 bc_steel_pat(vec3 base, vec3 w, vec3 n, float param) {
 	return col;
 }
 
-// PAT_BEACH_PAINT (87): a painted board with a wordless poster: a hazard sign's content, a billboard's back.
+// PAT_BEACH_PAINT (97): a painted board with a wordless poster: a hazard sign's content, a billboard's back.
 // UV in metres on the panel (x across, y up); param = seed (0-31) + 32 * glyph (0-6) + 256 * the panel's
 // height in decimetres + 16384 * its width in decimetres (MeshKit.beach_art_param). Muted unlit paints and a cream border: never a
 // glowing hazard colour.
@@ -743,7 +743,7 @@ vec3 bc_board(vec2 uv, float param) {
 	return poster;
 }
 
-// PAT_BEACH_NEON (88): a neon silhouette sign: a dark board with a glyph's outline (a palm, a wave, a
+// PAT_BEACH_NEON (98): a neon silhouette sign: a dark board with a glyph's outline (a palm, a wave, a
 // flamingo, a cocktail, a surfboard, the sun or a tiki totem; never words) and a thin frame glowing in
 // COLOR (violet, blue or warm white only: pink, yellow, orange, green and cyan belong to hazards). UV in
 // metres (x across, y up); param = glyph (0-6) + 8 * the board's height in decimetres + 512 * its width in
@@ -774,7 +774,7 @@ vec3 bc_neon(vec3 base, vec2 uv, float param, vec3 dark, inout float glow) {
 	return mix(dark, tube, lit);
 }
 
-// PAT_BEACH_TIMBER (89): bamboo poles, rails, planks and palm trunks: bamboo culms with nodes, weathered
+// PAT_BEACH_TIMBER (99): bamboo poles, rails, planks and palm trunks: bamboo culms with nodes, weathered
 // boards or a ringed trunk, running along `axis`. param = axis (0 along y, 1 along x, 2 along z) + 4 * style
 // (0 bamboo, 1 plank, 2 palm trunk) + 16 * seed (0-99). Any face of a box or prism takes it.
 vec3 bc_timber_pat(vec3 base, vec3 w, vec3 n, float param) {
@@ -806,28 +806,28 @@ vec3 bc_timber_pat(vec3 base, vec3 w, vec3 n, float param) {
 	return base * (0.8 + 0.25 * fibre) * (1.0 - 0.3 * rg);
 }
 
-// Dispatches the Beach's patterns (ids 80-89) for kit_solid.gdshader. `eye` isn't needed: nothing here is
+// Dispatches the Beach's patterns (ids 90-99) for kit_solid.gdshader. `eye` isn't needed: nothing here is
 // reflective. Everything but the neon (PAT_BEACH_NEON) leaves `glow` alone (zero).
 vec3 beach_surface(int pattern, float param, vec3 base, vec3 w, vec3 n, vec2 uv, float t, inout float glow) {
-	if (pattern == 80) {
+	if (pattern == 90) {
 		return bc_sand(base, w, uv, param);
-	} else if (pattern == 81) {
+	} else if (pattern == 91) {
 		return bc_boardwalk(base, w, uv, param);
-	} else if (pattern == 82) {
+	} else if (pattern == 92) {
 		return bc_tank(base, w, n, param);
-	} else if (pattern == 83) {
+	} else if (pattern == 93) {
 		return bc_water(base, w, t);
-	} else if (pattern == 84) {
+	} else if (pattern == 94) {
 		return bc_wall(base, w, n, param) * bc_daylight;
-	} else if (pattern == 85) {
+	} else if (pattern == 95) {
 		return bc_thatch(base, w, n) * bc_daylight;
-	} else if (pattern == 86) {
+	} else if (pattern == 96) {
 		return bc_steel_pat(base, w, n, param);
-	} else if (pattern == 87) {
+	} else if (pattern == 97) {
 		return bc_board(uv, param);
-	} else if (pattern == 88) {
+	} else if (pattern == 98) {
 		return bc_neon(base, uv, param, vec3(0.03, 0.03, 0.05), glow);
-	} else if (pattern == 89) {
+	} else if (pattern == 99) {
 		return bc_timber_pat(base, w, n, param) * (abs(n.y) > 0.5 ? 1.0 : bc_daylight);
 	}
 	return base;

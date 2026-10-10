@@ -26,8 +26,8 @@ extends SkinSuite
 
 ## The levels with the shared numbers' few, rare gaps (the Beach's open their walls by their own numbers: task D10b,
 ## test_beach_levels).
-const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "corporate/1",
-	"corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "casino/1", "casino/2",
+	"corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
 ## The Beach's open walls (task D10b), the one campaign zone with numbers of its own.
 const BEACH_WALL_GAPS: String = "res://data/tuning/beach_wall_gaps.tres"
 const WITHOUT: Array = ["city/1", "city/2", "city/3"]

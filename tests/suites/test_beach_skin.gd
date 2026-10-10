@@ -1282,8 +1282,9 @@ func _doodads(skin: BeachSkin) -> void:
 		body.free()
 
 
-## The shader and the kit: pattern ids 80-89 are the Beach's, unique among every kit pattern, dispatched in
-## kit_solid; the water honours Reduced flashing and nothing else in the Beach's patterns reads the time.
+## The shader and the kit: pattern ids 90-99 are the Beach's (80-89 the Casino's, task D10d), unique among every
+## kit pattern, dispatched in kit_solid; the water honours Reduced flashing and nothing else in the Beach's
+## patterns reads the time.
 func _shader(skin: BeachSkin) -> void:
 	var ids: Dictionary = {}
 	var clash: PackedStringArray = []
@@ -1298,11 +1299,12 @@ func _shader(skin: BeachSkin) -> void:
 		ids[id] = key
 		if key.begins_with("PAT_BEACH_"):
 			beach += 1
-			check(id >= 80 and id <= 89, "%s is in the Beach's block of ids (%d)" % [key, id])
+			check(id >= 90 and id <= 99, "%s is in the Beach's block of ids (%d)" % [key, id])
 	check(clash.is_empty() and beach == 10, "every pattern id is unique, and the Beach has its ten: %s" % ", ".join(clash))
 	var solid: String = FileAccess.get_file_as_string("res://scripts/world/meshes/shaders/kit_solid.gdshader")
 	var include: String = FileAccess.get_file_as_string("res://scripts/world/meshes/shaders/kit_beach.gdshaderinc")
-	check(solid.contains("kit_beach.gdshaderinc") and solid.contains("pattern >= 80 && pattern < 90"), "kit_solid includes and dispatches the Beach's patterns")
+	check(solid.contains("kit_beach.gdshaderinc") and solid.contains("pattern >= 90 && pattern < 100")
+		and solid.contains("beach_surface(pattern"), "kit_solid includes and dispatches the Beach's patterns")
 	var uniforms: Array[String] = []
 	for u: Dictionary in skin.solid_material().shader.get_shader_uniform_list():
 		uniforms.append(String(u["name"]))

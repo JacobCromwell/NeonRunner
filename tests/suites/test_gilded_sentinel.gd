@@ -14,6 +14,7 @@ extends TestSuite
 
 const Rules = preload("res://scripts/enemies/gilded_sentinel_rules.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
+const DangerDensity := preload("res://scripts/world/danger_density.gd")
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const GOLDEN_SKIN: String = "res://data/skins/golden_skin.tres"
 const PALACE_SKIN: String = "res://data/skins/golden_palace_skin.tres"
@@ -21,9 +22,23 @@ const CUT_NAME: String = "Gilded Sentinel's halberd"
 ## The scripted runs' Sentinel stands here (inside a track chunk), and they run at these speeds.
 const AT: float = 60.0
 const SPEEDS: Array[float] = [18.0, 25.0]
+## Campaign builds, as {id, lanes, seed}, where the danger density pass would add a wall enemy on a
+## Sentinel's wall section if it didn't ask the Sentinels' rules (SentinelWallsUnchecked; task K4): the Golden
+## Palace at 3 lanes on seed 9039, whose pass would put a window cyborg on the wall section of the Sentinel at
+## 1995 m (the only such build of Golden 2's and the Palace's 240 on seeds 9001-9040 once task K5 merged task
+## C6e's windows; Golden 2 at 5 lanes on seed 9034, K4's case, no longer builds that way). Built as shipped every
+## Sentinel keeps its rules; built without the check, the problem shows (else re-pin the case).
+const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9039}]
 
 var sim: RunSim
 var t: GildedSentinelTuning
+
+
+## A generator whose later passes don't ask the rules where wall enemies may stand (no wall_section_rules):
+## its danger density pass adds window cyborgs and vent Screeches as it did before task K4 (SENTINEL_WALL_CASES).
+class SentinelWallsUnchecked extends LevelGenerator:
+	func wall_section_rules() -> Array[GDScript]:
+		return []
 
 
 func run() -> void:
@@ -51,6 +66,7 @@ func run() -> void:
 	await _test_reduced_flashing()
 	await _test_same_every_attempt()
 	_test_placement()
+	_test_wall_section()
 	_test_campaign()
 
 
@@ -811,6 +827,71 @@ func _check_introduction(lanes: int, side: int, tag: String) -> void:
 		"the introduction swings once, alone, its floor planned " + tag)
 
 
+## The wall enemies a pass adds after the Sentinels' rules ran (the danger density pass's window cyborgs and
+## vent Screeches) ask GildedSentinelRules.on_wall_section where they may stand (task K4). Along both walls
+## around a Sentinel, at 3, 5 and 6 lanes, it puts a window cyborg or a wall vent's Screech on the Sentinel's
+## wall section exactly where problem() finds one there, to the centimetre at the section's ends, and a
+## manhole's Screech (not on the wall) never. The generator hands the pass these rules (wall_section_rules),
+## and the pass's own check (DangerDensity._type_rules_ok) turns such a probe down on the section, and takes it
+## past the section or on the other wall.
+func _test_wall_section() -> void:
+	var at: float = 220.0
+	var kinds: Array = [["window_cyborg", {}], ["screech", {}], ["screech", {"source": "vent"}], ["screech", {"source": "manhole"}]]
+	for lanes: int in [3, 5, 6]:
+		for side: int in [-1, 1]:
+			var tag: String = "(%d lanes, side %d)" % [lanes, side]
+			var sentinel := {"type": "gilded_sentinel", "at": at, "lane": _outer(lanes, side), "side": side, "seed": 1,
+				"params": {"swings": 1}}
+			var gen: LevelGenerator = _gen(lanes, {"enemies": [sentinel]})
+			var guard: Vector2 = t.guarded_stretch(at, 1)
+			var section := Vector2(guard.x - t.approach_seconds * gen.speed, guard.y + t.wall_clear_seconds * gen.speed)
+			var mismatches: PackedStringArray = []
+			var on: int = 0
+			for kind: Array in kinds:
+				var type: String = kind[0]
+				var params: Dictionary = kind[1]
+				var reach: float = Rules._window_cyborg_half_length() if type == "window_cyborg" else 0.0
+				var spots: Array[float] = []
+				var spot: float = section.x - reach - 20.0
+				while spot <= section.y + reach + 20.0:
+					spots.append(spot)
+					spot += 0.5
+				for edge: float in [section.x - reach, section.y + reach]:
+					spots.append_array([edge - 0.01, edge + 0.01])
+				for wall: int in [side, -side]:
+					# The same wall enemy, moved along its wall, in a layout without the Sentinel: problem() asks
+					# where a Sentinel at `at` would stand beside it.
+					var e := {"type": type, "at": 0.0, "lane": _outer(lanes, wall), "side": wall, "seed": 2, "params": params}
+					var beside: LevelGenerator = _gen(lanes, {"enemies": [e]})
+					for s: float in spots:
+						e["at"] = s
+						var said: bool = Rules.on_wall_section(gen, type, wall, s, params)
+						var why: String = Rules.problem(beside, side, at, 1, beside.layout)
+						var found: bool = why == "a window cyborg is on its wall section" or why == "a wall vent's screech is on its wall section"
+						if said != found:
+							mismatches.append("%s %s on wall %d at %.2f: %s, problem() \"%s\"" % [type, params, wall, s, said, why])
+						on += 1 if said else 0
+			check(mismatches.is_empty() and on > 0,
+				"on_wall_section puts a wall enemy on its wall section exactly where problem() finds it %s (%d spots on it): %s"
+				% [tag, on, "; ".join(mismatches.slice(0, 4))])
+			var rules: Array[GDScript] = gen.wall_section_rules()
+			check(rules.size() == 1 and rules[0] == Rules, "the generator hands a later pass the Sentinels' rules " + tag)
+			var plan: DangerDensity.Plan = DangerDensity._plan(gen, [], RandomNumberGenerator.new())
+			DangerDensity._index_enemies(plan)
+			for kind: Array in [["window_cyborg", {}], ["screech", {"source": "vent"}]]:
+				var probe := {"type": kind[0], "at": (section.x + section.y) * 0.5, "lane": _outer(lanes, side), "side": side,
+					"params": kind[1]}
+				check(not DangerDensity._type_rules_ok(plan, probe), "the danger density pass turns down a %s on its wall section %s"
+					% [kind[0], tag])
+				var past: Dictionary = probe.duplicate()
+				past["at"] = section.y + 30.0
+				var across: Dictionary = probe.duplicate()
+				across["side"] = -side
+				across["lane"] = _outer(lanes, -side)
+				check(DangerDensity._type_rules_ok(plan, past) and DangerDensity._type_rules_ok(plan, across),
+					"and takes one past it, or on the other wall %s" % tag)
+
+
 # --- The campaign -----------------------------------------------------------------------------------------
 
 ## Golden 2 (Sentinel Row, which brings them in) and the Golden Palace at 3, 5 and 6 lanes, on their own
@@ -847,3 +928,20 @@ func _test_campaign() -> void:
 					check(JSON.stringify(again.generate(config, tuning, LevelGenerator.load_for(config)).to_dict())
 						== JSON.stringify(layout.to_dict()), "%s builds the same twice" % tag)
 	check(total >= 24, "the Sentinels appear often in Golden 2 and the Palace (%d over 12 levels)" % total)
+	for case: Dictionary in SENTINEL_WALL_CASES:
+		var config: LevelConfig = campaign.configure(campaign.step(String(case["id"])), int(case["lanes"]))
+		config.level_seed = int(case["seed"])
+		var tag: String = "%s lanes=%d seed=%d" % [case["id"], case["lanes"], case["seed"]]
+		var patterns: Array = LevelGenerator.load_for(config)
+		var gen := LevelGenerator.new()
+		var shipped: LevelLayout = gen.generate(config, tuning, patterns)
+		var problems: PackedStringArray = Rules.problems(shipped, config, tuning)
+		check(gen.warnings.is_empty() and problems.is_empty(),
+			"%s: every Sentinel keeps its rules, the danger density pass's wall enemies off their wall sections %s" % [tag,
+			problems])
+		var shown: PackedStringArray = []
+		for p: String in Rules.problems(SentinelWallsUnchecked.new().generate(config, tuning, patterns), config, tuning):
+			if p.ends_with("a window cyborg is on its wall section") or p.ends_with("a wall vent's screech is on its wall section"):
+				shown.append(p)
+		check(not shown.is_empty(), ("%s still shows its case: without the check the pass puts a wall enemy on a Sentinel's wall "
+			+ "section (%s); else re-pin SENTINEL_WALL_CASES") % [tag, ", ".join(shown)])

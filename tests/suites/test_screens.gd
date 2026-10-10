@@ -422,7 +422,7 @@ func _test_level_select() -> void:
 		check(App.screen is DemoEndScreen, "and leads to the demo's end screen")
 	BuildFlavor.set_override(-1)
 
-	# Deep into the seven-zone campaign, the list opens on the next step, scrolled into view, at desktop
+	# Deep into the eight-zone campaign, the list opens on the next step, scrolled into view, at desktop
 	# and touch sizes.
 	for touch: int in [0, 1]:
 		UiTheme.touch_override = touch
@@ -437,7 +437,7 @@ func _test_level_select() -> void:
 		check(tile != null and _focus() == tile, "late in the campaign the next step has the focus (%s, %s)" % [_focus(), tag])
 		check(tile != null and scroll.get_global_rect().encloses(tile.get_global_rect()),
 			"and the list scrolls it into view (%s)" % tag)
-		check(levels.tiles.size() == App.campaign.steps().size(), "every step of the seven zones has a tile (%s)" % tag)
+		check(levels.tiles.size() == App.campaign.steps().size(), "every step of every zone has a tile (%s)" % tag)
 	UiTheme.touch_override = 0
 	App.profile = SampleProfiles.rich()
 

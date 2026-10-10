@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"casino_intro"
+title = "The Casino"
+scene = "res://scenes/cinematics/arrival_flyover.tscn"
+placeholder_text = "DESIGN-TBD: a short scene arriving in the casino district's covered street, under its vaulted glass roof."

@@ -17,7 +17,7 @@ NOTE: Mark tasks as done as you complete them.
 
 ## Beach zone (October 9, 2026)
 
-- [x] A new zone, the Beach, with `docs/art/reference/beach_zone.jpg` as its inspiration: a sandy lane between bamboo tiki bars and surf shops running down to the sea. **The gaps are pools of water.** It gets its own background, floors, walls, ceilings and the rest of a zone's look, but **no new enemy assets**: it reuses the existing enemies. **Its place in the campaign is not decided yet; it won't be the last zone.** Task D10 builds the skin only (`data/skins/beach_skin.tres`, quick play `--skin=beach`). Its levels, boss, music, cinematics and campaign slot follow once the owner picks the slot. SKIN BUILT (task D10): sand and boardwalk lanes; pools filled near the rim with deep, unlit teal water in black steel tanks, with the orange gap edge; bamboo tiki bars and surf shops; footbridges, verandas and a party barge as ceilings; surfboard racks, cabanas and tiki kiosks as doodads; an afternoon sky over the sea and an island. Its open questions, the recommended slot among them (zone 5, between Corporate and the Dead Zone), are items 504–525 in `docs/OPEN_QUESTIONS.md` §D. The owner then placed it as zone 5 (task D10c, below).
+- [x] A new zone, the Beach, with `docs/art/reference/beach_zone.jpg` as its inspiration: a sandy lane between bamboo tiki bars and surf shops running down to the sea. **The gaps are pools of water.** It gets its own background, floors, walls, ceilings and the rest of a zone's look, but **no new enemy assets**: it reuses the existing enemies. **Its place in the campaign is not decided yet; it won't be the last zone.** Task D10 builds the skin only (`data/skins/beach_skin.tres`, quick play `--skin=beach`). Its levels, boss, music, cinematics and campaign slot follow once the owner picks the slot. SKIN BUILT (task D10): sand and boardwalk lanes; pools filled near the rim with deep, unlit teal water in black steel tanks, with the orange gap edge; bamboo tiki bars and surf shops; footbridges, verandas and a party barge as ceilings; surfboard racks, cabanas and tiki kiosks as doodads; an afternoon sky over the sea and an island. Its open questions, the recommended slot among them (zone 5, between Corporate and the Dead Zone), are items 538–559 in `docs/OPEN_QUESTIONS.md` §D. The owner then placed it as zone 5 (task D10c, below).
 - [x] The owner's answers on the Beach skin (October 9, 2026):
   - **Skies:** the first level in daylight. The last level shows the sun starting to set: "not dark, but the sun's starting to have some purples and oranges in the sky". Reuse an existing sky if one works. Neither the Marketplace's sunset nor the City's dawn does (both are night-dark overhead, with stars), so the Beach gets its own (`data/skies/beach_sunset.tres`).
   - **Pools:** a fall makes a splash, if it isn't too difficult. The water may sit a little closer to the rim, but it's pretty good as it is.
@@ -30,7 +30,7 @@ NOTE: Mark tasks as done as you complete them.
     - **Cyborgs:** the Casino Mob Enforcer.
     - **Side walls:** each wall stands on about 50% of a Beach level, down from about 97%, in open stretches of 2 s or more (median about 117 m). The walls' own keep-outs (ramps' wall runs, wall enemies, signs, ceilings) leave a few walls standing on up to about 65%. The beach, the sea and palms show beyond (`BeachOpen`).
     - **Levels:** provisional Beach levels outside the campaign, set up for the recommended slot. Play them with `--level=beach/1` and `--level=beach/2`.
-    - **Open questions:** items 504–534 in `docs/OPEN_QUESTIONS.md` §D.
+    - **Open questions:** items 538–568 in `docs/OPEN_QUESTIONS.md` §D.
 - [x] The Beach joins the campaign (October 9, 2026):
   - "Put the beach between the corporate and dead zone."
   - "Keep in mind that there will be a boss battle for the beach, but it has not yet been created."
@@ -39,14 +39,25 @@ NOTE: Mark tasks as done as you complete them.
 
   Then a PR, merged to main. Task D10c.
   - DONE (task D10c):
-    - **Campaign:** the Beach is zone 5 (intro, Tiki Tides, Sunset Strip, boss slot, outro). It sits off the difficulty curve between Corporate 2 and Dead Zone 1, so the other 15 levels and 6 bosses play exactly as before.
+    - **Campaign:** the Beach is zone 5 (intro, Tiki Tides, Sunset Strip, boss slot, outro), zone 6 since the Casino (zone 4) joined main. It sits off the difficulty curve between Corporate 2 and Dead Zone 1, so every other level and boss plays exactly as before.
     - **Boss:** an unbuilt placeholder that the campaign passes through (task E5e, blocked on design).
     - **Cinematics and music:** placeholder cinematics; the Marketplace's songs as a stand-in.
     - **Fixes from the review before merge:**
       - the hover truck no longer lurches at a player beside an open wall;
       - a wall between two open stretches stands at least 2 s;
       - every Beach chunk keeps its motion cues.
-    - **Open questions:** items 535–549 in `docs/OPEN_QUESTIONS.md` §D.
+    - **Open questions:** items 569–583 in `docs/OPEN_QUESTIONS.md` §D.
+
+## Casino zone (October 8, 2026)
+
+- [x] Add a Casino zone right after the Marketplace: two Marketplace levels on the way to the Casino, then two Casino levels, then The House, which moves from the Marketplace to the Casino. Don't create new character or enemy skins (no new cyborg, truck, heli drone and so on): use the Marketplace's. Only the walls, floors, ceilings and background change, following the owner's reference image (`docs/art/reference/casino_zone.webp`). Tasks K1 (the skin) and K2 (the campaign). DONE: the Casino is Zone 4 with two levels (*Brass Arcade* and *House Edge*, proposed names) and The House; the Marketplace has its two levels and no boss. Open points for the owner: `docs/OPEN_QUESTIONS.md` §D, items 504–524 (the skin's look, the 17-level difficulty curve, music, level names).
+
+## Casino follow-up (October 9, 2026)
+
+- [x] No level gets easier with the Casino added: every level is too easy, at least on PC. Corporate and beyond being harder is fine; the Marketplace levels should stay as difficult as they were, or be a little harder. (Task K4.) DONE: the campaign curve's exponent is 0.79 (`data/campaign/campaign.tres`): City 1 and Golden 3 unchanged, every other level harder than before the Casino (the Marketplace +0.026 and +0.016, Corporate 1 +0.095). Open points: `docs/OPEN_QUESTIONS.md` §D, items 528–532.
+- [x] The Casino's level names, *Brass Arcade* and *House Edge*, are approved.
+- [x] The owner adds the Casino's song in a separate change (nothing to do here).
+- [x] The Casino's glass ceiling is whole, and its signs use real lettering: "Gasket's House of Chance" and "The Brass Lotus". No pedestrians. (Task K3.) DONE: the vault has every pane; the two names are landmark casinos about every 100 m along the street, alternating, on their boards and on tall blade signs readable from a distance (`CasinoSkin.name_spacing`; 0 names every casino). Open points: `docs/OPEN_QUESTIONS.md` §D, items 525–527.
 
 ## Floating Head follow-up (October 9, 2026)
 

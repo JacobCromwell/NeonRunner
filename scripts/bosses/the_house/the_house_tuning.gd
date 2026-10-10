@@ -1,10 +1,10 @@
 class_name TheHouseTuning
 extends Resource
-## The House's numbers (GDD §10; data/bosses/marketplace_boss_tuning.tres, F6 in its fight). Timings are
+## The House's numbers (GDD §10; data/bosses/casino_boss_tuning.tres, F6 in its fight). Timings are
 ## at pace 1: each phase divides them by its BossPhase.pace. Distances that stand for a time (marked "at
 ## 18 m/s": the buttons' depth, the stomp box's depth, the fairness margins, the fountain's spread) are
 ## written for the reference run speed (MovementTuning.REFERENCE_SPEED) and multiplied by the run's pace
-## (TheHouse.run_pace()), so the fight keeps its seconds at the Marketplace's 22.6 m/s; where an attack or
+## (TheHouse.run_pace()), so the fight keeps its seconds at the Casino's 23 m/s; where an attack or
 ## a button lands is a time (its warning) times the run speed. Sizes, heights and where the machine stands
 ## (framing) stay as they are.
 ## The GDD fixes what it is (a slot machine the size of a building, rolling down the market street on
@@ -15,7 +15,7 @@ extends Resource
 ## open on top as a red weak point while it sags low, stomped), three phases and the standard armor rule.
 ## Every number here is a placeholder (DESIGN-TBD: docs/OPEN_QUESTIONS.md items 299-303,
 ## docs/questions/e5a.md).
-## Campaign difficulty overrides live in marketplace_boss_tuning.tres: three attack-only spins per phase,
+## Campaign difficulty overrides live in casino_boss_tuning.tres: three attack-only spins per phase,
 ## less space between attacks/spins and wider single cherry/lightning attacks. Warning times, the
 ## route check's reaction/margins, persistent 7 locks, wall/ceiling holds and the hopper window stay intact.
 ## The slot's par times include the additional attack-only spin in each phase.
