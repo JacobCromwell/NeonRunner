@@ -10,9 +10,9 @@ extends CinematicSequencer
 ##    Lambo (SportsCarModel), parked there. The runner walks up holding out the key; the car unlocks with a chirp
 ##    of its lights, its scissor door swings up and its courtesy lights come on.
 ## 5. One shot from inside the car (the owner, October 10, 2026): the runner gets in, and in the seat next to
-##    them a screech sits, nice and cute (CarPassenger); it looks round at them and, as they sit down, wriggles
-##    and lifts a paw to them, and they look round at it. Then the door comes down, the car's lights come on and
-##    its engine starts.
+##    them a screech sits up, nice and cute (CarPassenger, one of the screeches from before); it looks round at
+##    them as they get in, and once they're sat they look round at it and the two nod to each other. The door
+##    comes down behind them and the engine starts.
 ## 6. At road level behind it, it launches hard and tears off down the street into the distance. Fade to black;
 ##    the Marketplace's intro follows.
 ## The runner walks with a walk of its own (CinePoses.walk; the owner, October 10, 2026: the movement more fluid,
@@ -53,10 +53,13 @@ const LOOK_BACK: float = 140.0
 ## floor (metres up, in a car 1 m tall; SportsCarModel's cabin floor).
 const STEP_OVER: float = 0.5
 const CABIN_FLOOR: float = 0.16
-## Sat back in the seat (metres behind its cushion's middle), and, once sat, looking round at the screech beside
-## them (degrees, + left) as it greets them.
+## Sat back in the seat (metres behind its cushion's middle); once sat, they look round at the screech beside them
+## (degrees, + left) and nod to it (their head dipping this far, degrees) this long after it nods to them, then
+## look ahead again.
 const SIT_BACK: float = 0.14
 const LOOK_AT_PET: float = -40.0
+const RUNNER_NOD: float = 26.0
+const NOD_AFTER: float = 0.15
 ## The engine idling before the launch: a fine shudder (metres); the squat as it launches (degrees) and the
 ## camera's shake at the road (the Screen shake setting scales it).
 const IDLE_SHAKE: float = 0.004
@@ -139,13 +142,10 @@ func _plan() -> void:
 	if t_get_in > n.get_in_at:
 		push_warning("GanglandOutro: the runner reaches the car's door at %.2f s; get_in_at (%.2f s) waits for them" % [
 			t_at_door, n.get_in_at])
-	# Out of sight once the door is down.
-	t_inside = n.door_down_at + n.door_seconds
-
-
-## When the passenger wriggles and chirps: as the runner sits down.
-func passenger_wriggle_at() -> float:
-	return t_get_in + n.get_in_seconds - 0.1
+	# Out of sight from the cut to the road (the camera is in the car with them until then).
+	t_inside = n.road_at
+	if n.door_down_at + n.door_seconds > n.road_at:
+		push_warning("GanglandOutro: the car's door is still coming down at the cut to the road (%.2f s)" % n.road_at)
 
 
 ## How far the runner slows over, coming to the car's door (metres).
@@ -228,11 +228,19 @@ func _runner(t: CineTimeline) -> void:
 	var step_in: CineActorKey = _turned(_eased(r.at(t_get_in + n.get_in_seconds * STEP_OVER, over)), 0.0, 0.0)
 	step_in.progress = STEP_OVER
 	var sat: Vector3 = seat_point + Vector3(0.0, floor_y, -SIT_BACK)
-	var seated: CineActorKey = _turned(_eased(r.at(t_get_in + n.get_in_seconds, sat)), 0.0, 0.0)
+	var at_rest: float = t_get_in + n.get_in_seconds
+	var seated: CineActorKey = _turned(_eased(r.at(at_rest, sat)), 0.0, 0.0)
 	seated.progress = 1.0
-	# Sat, they look round at the screech as it greets them.
-	var look: CineActorKey = _turned(r.at(t_get_in + n.get_in_seconds + 0.55, sat), 0.0, LOOK_AT_PET)
-	look.progress = 1.0
+	# Sat, they look round at the screech, nod to it as it nods to them, and look ahead again.
+	var nod: float = maxf(n.nod_at + NOD_AFTER, at_rest + 0.5)
+	var looks: Array = [[at_rest + 0.45, LOOK_AT_PET, 0.0], [nod, LOOK_AT_PET, 0.0], [nod + 0.3, LOOK_AT_PET, -RUNNER_NOD],
+		[nod + 0.7, LOOK_AT_PET, 0.0], [nod + 1.0, LOOK_AT_PET, 0.0], [nod + 1.5, 0.0, 0.0]]
+	var last: float = at_rest
+	for look: Array in looks:
+		last = maxf(float(look[0]), last + 0.05)
+		var k: CineActorKey = _turned(r.at(last, sat), 0.0, float(look[1]))
+		k.look_up = float(look[2])
+		k.progress = 1.0
 	r.leave = t_inside
 
 
@@ -276,14 +284,10 @@ func _camera(t: CineTimeline) -> void:
 	var c: Vector3 = car_point
 	t.shot(t_cut, c + n.reveal_cam, c + n.reveal_look, CinePath.Move.CUT, n.reveal_fov)
 	t.shot(n.passenger_at - 0.004, c + n.reveal_cam_end, c + n.reveal_look_end, CinePath.Move.SMOOTH, n.reveal_fov)
-	# Cut: from behind the dashboard, looking back at the runner getting in beside the screech on the other seat.
+	# Cut: from behind the dashboard, looking back at the runner getting in beside the screech on the other seat,
+	# the two nodding to each other, the door coming down behind them and the engine starting.
 	t.shot(n.passenger_at, c + n.passenger_cam, c + n.passenger_look, CinePath.Move.CUT, n.passenger_fov)
-	t.shot(n.door_shot_at - 0.004, c + n.passenger_cam_end, c + n.passenger_look, CinePath.Move.SMOOTH,
-		n.passenger_fov)
-	# Cut: beside the car as its door comes down and its lights and engine come on.
-	t.shot(n.door_shot_at, c + n.door_cam, c + n.door_look, CinePath.Move.CUT, n.reveal_fov)
-	t.shot(n.road_at - 0.004, c + n.door_cam + Vector3(0.15, 0.0, 0.25), c + n.door_look, CinePath.Move.SMOOTH,
-		n.reveal_fov)
+	t.shot(n.road_at - 0.004, c + n.passenger_cam_end, c + n.passenger_look, CinePath.Move.SMOOTH, n.passenger_fov)
 	# Cut: on the road behind it, at road level, as it drives off into the distance.
 	t.shot(n.road_at, c + n.road_cam, c + n.road_look, CinePath.Move.CUT, n.road_fov)
 	t.shot(n.duration, c + n.road_cam, c + n.road_look + Vector3(0.0, -0.1, 40.0), CinePath.Move.SMOOTH,
@@ -321,7 +325,7 @@ func _events(t: CineTimeline) -> void:
 	t.cue(n.unlock_at, &"unlock")
 	t.sound(n.door_up_at, &"car_door")
 	t.cue(n.passenger_at, &"passenger")
-	t.sound(passenger_wriggle_at(), &"screech_chirp")
+	t.sound(n.nod_at, &"screech_chirp")
 	t.sound(n.door_down_at, &"car_door")
 	t.sound(n.lights_at, &"car_start")
 	t.cue(n.lights_at, &"lights")
@@ -518,10 +522,10 @@ func _drive_car() -> void:
 	var up: float = smoothstep(n.door_up_at, n.door_up_at + n.door_seconds, time)
 	var down: float = smoothstep(n.door_down_at, n.door_down_at + n.door_seconds, time)
 	car.set_door(up * (1.0 - down))
-	# Its courtesy lights come on as the door goes up, and go out a moment after it's down.
-	car.set_interior(smoothstep(n.door_up_at, n.door_up_at + 0.4, time)
-		* (1.0 - smoothstep(n.door_down_at + n.door_seconds, n.door_down_at + n.door_seconds + 0.6, time)))
-	passenger.update(time, n.passenger_looks_at, passenger_wriggle_at())
+	# Its courtesy lights come on as the door goes up, and stay on while the camera's in the car with them.
+	car.set_interior(smoothstep(n.door_up_at, n.door_up_at + 0.4, time) * (1.0 - smoothstep(n.road_at - 0.05,
+		n.road_at, time)))
+	passenger.update(time, n.passenger_looks_at, n.nod_at)
 	driven = car_distance(time)
 	car.set_travelled(driven, WHEELSPIN * smoothstep(n.launch_at, n.launch_at + WHEELSPIN_SECONDS, time))
 	var pos: Vector3 = car_point + Vector3(0.0, 0.0, driven)

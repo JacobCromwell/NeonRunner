@@ -510,8 +510,9 @@ the runner unlocks it, gets in, and it drives off down the street, the camera at
 feature, `CineStageDef.after_fight` (a stage straight after a fight keeps its look and sky), a `--from=S` option to
 the cinematic review tool, and six sounds (`tools/asset_gen/sfx_bank_gangland_outro.gd`). The owner's follow-up (October
 10, 2026) is built too: the runner walks with a walk of its own (`CinePoses.walk`, planted feet), turns unhurriedly
-(`CineActor.turn_rate`) and gets in with a pose of its own (`CinePoses.get_in`), seen from inside the car beside a cute
-screech on the passenger seat (`CarPassenger`, a seventh sound, `screech_chirp`), and the car drives off faster. The
+(`CineActor.turn_rate`) and gets in with a pose of its own (`CinePoses.get_in`), seen from inside the car beside a
+screech sitting on the passenger seat (`CarPassenger`: one of the screeches from before, posed sitting), the two nodding
+to each other (a seventh sound, `screech_chirp`), and the car drives off faster. The
 staging choices are in `docs/questions/f2d.md`.
 
 ---

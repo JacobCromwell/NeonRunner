@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_tuning")
-duration = 22.6
+duration = 22.4
 fade_in = 0.8
 fade_out = 0.8
 music_fade = 2.5
@@ -58,10 +58,11 @@ door_seconds = 0.9
 get_in_at = 15.05
 get_in_seconds = 1.5
 passenger_looks_at = 15.3
-door_down_at = 17.4
-lights_at = 18.5
-road_at = 19.0
-launch_at = 19.5
+nod_at = 17.1
+door_down_at = 17.7
+lights_at = 18.4
+road_at = 18.9
+launch_at = 19.3
 acceleration = 24.0
 top_speed = 80.0
 rubble_cam = Vector3(3.3, 0.55, 0.6)
@@ -86,9 +87,6 @@ passenger_cam = Vector3(0.05, 0.62, 1.0)
 passenger_cam_end = Vector3(0.05, 0.6, 0.9)
 passenger_look = Vector3(-0.25, 0.42, -0.3)
 passenger_fov = 68.0
-door_shot_at = 17.3
-door_cam = Vector3(-3.3, 0.7, 2.6)
-door_look = Vector3(-0.8, 0.6, -0.3)
 road_cam = Vector3(0.35, 0.16, -6.0)
 road_look = Vector3(0.0, 0.5, 20.0)
 road_fov = 58.0

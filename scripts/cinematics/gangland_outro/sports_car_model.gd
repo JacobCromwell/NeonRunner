@@ -153,7 +153,8 @@ func build(p_size: Vector3 = DEFAULT_SIZE, p_paint: Color = Color(0.3, 0.12, 0.9
 	glow_cards.material_override = _glow_material
 	cabin_light = OmniLight3D.new()
 	cabin_light.name = "CabinLight"
-	cabin_light.position = Vector3(0.0, 0.82 * s.y, SEAT.z * s.z)
+	# Over the front of the seats (a map light), so it lights the faces of whoever sits in them.
+	cabin_light.position = Vector3(0.0, 0.82 * s.y, (SEAT.z - 0.5) * s.z)
 	cabin_light.light_color = COURTESY
 	cabin_light.omni_range = CABIN_LIGHT_RANGE
 	cabin_light.shadow_enabled = false

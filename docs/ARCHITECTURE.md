@@ -3975,7 +3975,8 @@ behind the camera and the actors).
 **Gangland's outro** (`GanglandOutro`, task F2d; the owner's beats, October 9, 2026, GDD §6 Cinematics; what they
 leave open is DESIGN-TBD, `docs/questions/f2d.md`; numbers in `data/cinematics/gangland_outro_tuning.tres`; the
 owner's follow-up, October 10, 2026: the runner's movement more fluid, a shot of them getting in beside a cute
-screech, the car faster): 22.6 s after the Sewer Swarm, both stretches picking up where the fight ended (`CineStageDef.after_fight`: the
+screech, the car faster; and then: the screech one of those from before, the two nodding to each other): 22.4 s
+after the Sewer Swarm, both stretches picking up where the fight ended (`CineStageDef.after_fight`: the
 arena's look under Gangland 3's blood-red sky), on the level's lanes. The fight's music fades out as it opens. Low
 beside the Host, who lies freed against a heap of rubble, implants dark, looking back up the street: four screeches
 sniff at them, look up as the runner comes walking down the street, spines up (never the full bristle of their attack), and
@@ -3990,9 +3991,9 @@ car unlocking with a chirp and two blinks of its lights (one slow glow with Redu
 swinging up and its courtesy lights coming on. Cut inside: from behind the dashboard, looking back at both seats and
 out of the open door (the car's panels are one-sided, so the camera sees through the windscreen's back), the runner
 steps in over the sill, ducks in and sits down (`CinePoses.get_in`) beside a screech sitting up on the passenger seat
-like a pet (`CarPassenger`), which looks round at them with a tilt of its head and, as they sit, wriggles, lifts a
-paw and chirps; they look round at it. Cut outside as the door comes down (the runner out of sight once it's down);
-its lights and engine come on. Cut to the road behind it, at road level (0.16 m up, the owner's ask), as it
+(`CarPassenger`), which looks round at them with a tilt of its head; once they're sat they look round at it, it
+nods to them with a chirp and they nod back; the door comes down behind them and the engine starts. Cut to the road
+behind it (the runner out of sight from here), at road level (0.16 m up, the owner's ask), as it
 launches, wheels spinning up, and tears off down the street (24 m/s², about 115 m in its 3.1 s) into the distance;
 black, and the Marketplace's intro.
 
@@ -4011,12 +4012,12 @@ level's sky. Its look (size, paint, accent) is data. The key is the cinematic's 
 scene into the second), held in a hand joint. The runner's reach, lean, look at the key and raised key are
 layered on their pose in `_on_advance`, each easing in and out (`aim_arm` turns an arm toward a point; the rig sets
 every joint afresh each update, so nothing builds up). `CarPassenger` is the screech on the passenger seat, a child
-of the car: a screech as a pet (`pet_mesh`, built with `ScreechModel`'s mesh helpers, skin, parts and shader, so it
-moves like one): sitting up on its haunches, a big round head with big round eyes, a short snout and big ears, short
-soft spines laid back, its paws held up in front of its chest, its tail curled round on the seat, no fangs or talons,
-nothing glowing like a hazard; its look round, head tilt, hop and raised paw are worked out from the time. Shots looking back up the street keep it built behind them
+of the car: the screeches' own body (`ScreechModel.mesh()`, its material and shader, calm), posed sitting
+(`sitting_meshes`: each part's triangles turned about its joint, the head level, the paws held up, the front legs
+tucked, the hind feet forward on the seat, the tail curled round on it, then the body tipped up about its hips), its
+head a mesh of its own so it can turn and nod; its look round, head tilt and nod are worked out from the time. Shots looking back up the street keep it built behind them
 (`_stage_near`). Its sounds are seven new ones (`tools/asset_gen/sfx_bank_gangland_outro.gd`: `screech_sniff`,
-`key_glint`, `car_unlock`, `car_door`, `screech_chirp` as the passenger greets the runner, `car_start` as its lights
+`key_glint`, `car_unlock`, `car_door`, `screech_chirp` as the passenger nods to the runner, `car_start` as its lights
 come on and `car_drive` at the launch) and the
 fight's `host_short` and `swarm_scatter`. Cost (headless, `test_gangland_outro`): about 25 ms to set up (about 350 ms the first time, with
 cold mesh caches), about 20 ms for the cut to the car (under black), about 10 ms on the two hard cuts (the street
@@ -4561,13 +4562,13 @@ zone's music, the medium shot as the host turns, the whole face filling the clos
 its own sounds; `skip()`; and its setup and step costs. `test_gangland_outro` checks Gangland's outro (F2d): its slot;
 `after_fight` (the fight's look and sky after it, the zone's own without it, so the City outro's look is unchanged);
 the car's shape (a long, low wedge, a scissor door, lights and turning wheels, its cabin lit only while its
-courtesy lights are on); the passenger's look (no hazard's glowing tips, no talons or fangs); at 3, 5 and 6 lanes its beats in
+courtesy lights are on); the passenger (the fight's screech, every triangle and colour of it, sitting up); at 3, 5 and 6 lanes its beats in
 order (the screeches sniffing, then gone before the runner arrives, never near the camera; a walk, not a run; the
 Host trembling harder as they hold the key up; the hands meeting; the key in one hand, then the other; the glint;
 the cut to the car, the runner facing the way they walk at once; the unlock's blinks; the door up as the runner gets
 in; the screech on the passenger seat, and one shot from inside the car with it and the runner sitting down beside
-it in view; its look round and wriggle, and the runner's look back; the runner out of sight, the door down; the
-lights on; the camera at road level as it drives straight off, fast, into the distance), the walk (`CinePoses.walk`,
+it in view; its look round, then, once the runner's sat, the two nodding to each other before the car takes off; the
+door down; the lights on; the runner out of sight once the camera's outside; the camera at road level as it drives straight off, fast, into the distance), the walk (`CinePoses.walk`,
 its planted feet moving under 10% of the ground walked, its turns unhurried), the camera in the street and
 above it, the street built 150 m wherever it looks, only the fight's music fading, its costs and draw calls; Reduced
 flashing (one slow glow for the unlock); `skip()`; and the App's flow (the Marketplace's intro follows).

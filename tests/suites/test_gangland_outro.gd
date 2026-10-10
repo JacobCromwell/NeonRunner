@@ -8,13 +8,14 @@ extends TestSuite
 ## Host's hand to the runner's); the cut, under black, to another stretch where the car is parked (the runner
 ## facing the way they walk at once); the key raised and the car unlocking (its lights blinking); its scissor
 ## door up; the passenger shot (the owner, October 10, 2026), from inside the car, the runner getting in and
-## sitting down beside the screech on the other seat (both in view), which looks round at them and wriggles, and
-## they look round at it; the runner out of sight, the door down; its lights on; the camera at road level as it
-## launches, fast, and drives off down the street into the distance. And: the camera stays in the street and
-## above it, never close to a fight's screech; the street built far enough wherever the camera looks; its sounds
-## in the library; the passenger looking safe (no hazard's glow, no talons or fangs); Reduced flashing (the unlock
-## a single slow glow); skipping; what it costs; the toolkit's after_fight look (an outro without it keeps the
-## zone's own); and the App's flow (it plays after the fight, and the Marketplace's intro follows).
+## sitting down beside the screech on the other seat (both in view), which looks round at them, and the two
+## nodding to each other once they're sat, then the door down; its lights on; the runner out of sight at the cut
+## to the road; the camera at road level as it launches, fast, and drives off down the street into the distance.
+## And: the camera stays in the street and above it, never close to a fight's screech; the street built far enough
+## wherever the camera looks; its sounds in the library; the passenger one of the screeches from before (the
+## fight's body, sitting); Reduced flashing (the unlock a single slow glow); skipping; what it costs; the toolkit's
+## after_fight look (an outro without it keeps the zone's own); and the App's flow (it plays after the fight, and
+## the Marketplace's intro follows).
 
 const LANES: Array[int] = [3, 5, 6]
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
@@ -172,18 +173,27 @@ func _test_car_model() -> void:
 		"its courtesy lights light its cabin while they're on, and only its cabin")
 	car.queue_free()
 	await tree.process_frame
-	# The screech on its passenger seat looks safe: nothing glows like a hazard's spines or claws, and it has no
-	# talons or fangs.
-	var colors: PackedColorArray = CarPassenger.pet_mesh().surface_get_arrays(0)[Mesh.ARRAY_COLOR]
-	var deadly: int = 0
-	var talons: int = 0
+	# The screech on its passenger seat is one of the screeches from before (the owner): the fight's body, every
+	# triangle and colour of it, sitting up.
+	var lying: ArrayMesh = ScreechModel.mesh()
+	var sitting: Array[ArrayMesh] = CarPassenger.sitting_meshes()
+	var same: bool = true
+	var colors: PackedColorArray = lying.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var sat_colors := PackedColorArray()
+	for m: ArrayMesh in sitting:
+		sat_colors.append_array(m.surface_get_arrays(0)[Mesh.ARRAY_COLOR])
+	same = sat_colors.size() == colors.size()
+	var count: Dictionary = {}
 	for c: Color in colors:
-		if Color(c, 1.0).is_equal_approx(Color(ScreechModel.SPINE_TIP, 1.0)):
-			deadly += 1
-		if c.is_equal_approx(ScreechModel.TALON):
-			talons += 1
-	check(colors.size() > 0 and deadly == 0 and talons == 0,
-		"the passenger looks safe: no hazard's glowing tips (%d), no talons or fangs (%d)" % [deadly, talons])
+		count[c] = int(count.get(c, 0)) + 1
+	for c: Color in sat_colors:
+		count[c] = int(count.get(c, 0)) - 1
+	for c: Color in count:
+		same = same and int(count[c]) == 0
+	var head_up: float = sitting[1].get_aabb().get_center().y
+	check(same and head_up > CarPassenger.NECK.y * 1.4,
+		"the passenger is one of the screeches: the fight's body, all of it, sitting up (its head %.2f up, from %.2f)" % [
+		head_up, CarPassenger.NECK.y])
 
 
 # --- The beats ----------------------------------------------------------------------------------------
@@ -244,8 +254,9 @@ func _test_beats(lanes: int) -> void:
 	var pet_in_view: bool = true
 	var both_in_view: bool = false
 	var pet_looked: bool = false
-	var pet_wriggled: float = 0.0
+	var pet_nodded: float = 0.0
 	var runner_looked: bool = false
+	var runner_nodded: float = 0.0
 	var door_shut: bool = false
 	var lit: bool = false
 	var wheels_back: bool = false
@@ -343,20 +354,24 @@ func _test_beats(lanes: int) -> void:
 				pet_on_seat = pet.get_parent() == car and is_equal_approx(pet.seat.x, -seat.x) \
 					and absf(pet.seat.y - seat.y) < 0.01
 			# The passenger shot: from inside the car, the screech in view throughout, the runner sat beside it.
-			if t > n.passenger_at + 0.02 and t < n.door_shot_at - 0.02:
+			if t > n.passenger_at + 0.02 and t < n.road_at - 0.02:
 				shot_frames += 1
 				var cam_car: Vector3 = car.global_transform.affine_inverse() * cam.global_position
 				shot_inside = shot_inside and absf(cam_car.x) < n.car_size.x * 0.5 and absf(cam_car.z) < n.car_size.z * 0.5 \
 					and cam_car.y < n.car_size.y
-				var pet_head: Vector3 = pet.screech.global_transform * Vector3(0.0, 0.3, -0.3)
+				var pet_head: Vector3 = pet.neck_point()
 				pet_in_view = pet_in_view and cam.is_position_in_frustum(pet_head)
 				if t > seq.t_get_in + n.get_in_seconds:
 					var head: Vector3 = runner.avatar.rig.joint(&"head").global_position
 					both_in_view = cam.is_position_in_frustum(pet_head) and cam.is_position_in_frustum(head) \
 						and runner.visible
 				pet_looked = pet_looked or (t > n.passenger_looks_at + 0.8 and pet.looking > 0.99)
-				pet_wriggled = maxf(pet_wriggled, pet.wriggle)
-				runner_looked = runner_looked or runner.look < deg_to_rad(GanglandOutro.LOOK_AT_PET * 0.8)
+				# Once the runner's sat, they nod to each other.
+				if t > seq.t_get_in + n.get_in_seconds:
+					pet_nodded = maxf(pet_nodded, pet.nodding)
+					runner_looked = runner_looked or runner.look < deg_to_rad(GanglandOutro.LOOK_AT_PET * 0.8)
+					if runner.look < deg_to_rad(GanglandOutro.LOOK_AT_PET * 0.8):
+						runner_nodded = maxf(runner_nodded, -rad_to_deg(runner.look_up))
 			if t < n.launch_at:
 				parked = parked and seq.stage.to_track(car.global_position).distance_to(seq.car_point) < 0.02
 			if t > n.unlock_at and t < n.unlock_at + GanglandOutro.UNLOCK_SECONDS:
@@ -366,7 +381,7 @@ func _test_beats(lanes: int) -> void:
 			if absf(t - seq.t_get_in) < STEP * 0.5:
 				door_up = car.door_open > 0.99
 				at_door = runner.track_position.distance_to(seq.door_point) < 0.05 and runner.visible
-			if t > seq.t_inside + 0.05 and t < n.road_at:
+			if t > seq.t_inside + 0.05:
 				gone_in = not runner.visible and not seq.key.visible
 			if t > n.door_down_at + n.door_seconds + 0.05:
 				door_shut = car.door_open < 0.001
@@ -410,9 +425,11 @@ func _test_beats(lanes: int) -> void:
 	check(pet_on_seat, "%s: a screech sits on the passenger seat, riding in the car" % tag)
 	check(shot_frames > 10 and shot_inside and pet_in_view and both_in_view,
 		"%s: one shot from inside the car sees the runner get in and sit down beside it" % tag)
-	check(pet_looked and pet_wriggled > 0.9 and runner_looked,
-		"%s: it looks round at them and wriggles, and they look round at it" % tag)
-	check(gone_in and door_shut, "%s: the runner gets in, out of sight, and the door comes down" % tag)
+	check(pet_looked and pet_nodded > 0.9 and runner_looked and runner_nodded > GanglandOutro.RUNNER_NOD * 0.8,
+		"%s: it looks round at them; once they're sat they look round at it, and the two nod to each other" % tag)
+	check(n.launch_at > n.nod_at + GanglandOutro.NOD_AFTER + CarPassenger.NOD_SECONDS,
+		"%s: then the car takes off" % tag)
+	check(gone_in and door_shut, "%s: the door comes down, and the runner is out of sight once the camera's outside" % tag)
 	check(lit, "%s: its lights come on" % tag)
 	check(not wheels_back and last_turn > seq.driven, "%s: its wheels only turn forward, spinning up at the launch" % tag)
 	check(road_cam > 0.0 and road_cam <= ROAD_LEVEL,
