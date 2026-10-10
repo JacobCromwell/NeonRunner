@@ -723,7 +723,7 @@ func _test_extending_track() -> void:
 
 # --- Every skin's look ---------------------------------------------------------------------------
 
-## ZoneSkin.floor_cut for every skin (the default, and the Corporate trains and plaza, the Dead Zone, the
+## ZoneSkin.floor_cut for every skin (the default, and the Corporate trains and plaza, the Beach, the Dead Zone, the
 ## Golden Zone and the Golden Palace their own): it reads as a hole like any gap (CLAUDE.md readability rules): a dark
 ## inside, nothing glowing but the orange edges, those right on the collision edges, no collision, the
 ## same every build, and cheap.
@@ -734,8 +734,8 @@ func _test_skins() -> void:
 			skins[file.trim_suffix("_skin.tres")] = load(SKINS_DIR.path_join(file)) as ZoneSkin
 	# Hostile Takeover's train (GDD §10: the gunship drops a Buzz Overdrive onto it).
 	skins["hostile takeover"] = load(HOSTILE_TAKEOVER_SKIN) as ZoneSkin
-	check(skins.has("corporate") and skins.has("corporate_plaza") and skins.has("dead_zone") and skins.has("golden")
-		and skins.has("golden_palace"), "the zones where the Buzz Overdrive appears are among the skins")
+	check(skins.has("corporate") and skins.has("corporate_plaza") and skins.has("beach") and skins.has("dead_zone")
+		and skins.has("golden") and skins.has("golden_palace"), "the zones where the Buzz Overdrive appears are among the skins")
 	for skin_name: String in skins:
 		var skin: ZoneSkin = skins[skin_name]
 		for lanes: int in [3, 5]:

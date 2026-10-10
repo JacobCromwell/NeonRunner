@@ -25,9 +25,10 @@ const SONGS: Dictionary = {
 }
 ## Zones whose music reuses another zone's while their own is DESIGN-TBD (GDD §11: no more generated songs;
 ## the owner supplies the game's songs): the zone's track -> the zone track it plays. The Casino (task K2)
-## plays the Marketplace's, its supplied song and generated default alike, and ends on its riff. A zone
-## listed here takes no song number of its own: the songs zone_<n> count the other zones in order.
-const REUSED: Dictionary = {&"casino": &"marketplace"}
+## and the Beach (task D10c; the owner, October 9, 2026: no new songs for now) play the Marketplace's, its
+## supplied song and generated default alike, at its level and tempo, and end on its riff. A zone listed here
+## takes no song number of its own: the songs zone_<n> count the other zones in order.
+const REUSED: Dictionary = {&"casino": &"marketplace", &"beach": &"marketplace"}
 const SONG_BUDGET_BYTES: int = 30 * 1024 * 1024
 ## Generated defaults must stay under this in the repo (about 3 MB per 40–60 s loop of 32 kHz PCM).
 const MUSIC_BUDGET_BYTES: int = 21 * 1024 * 1024
@@ -92,7 +93,8 @@ func _test_supplied_songs() -> void:
 	for index: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[index]
 		if REUSED.has(zone.music):
-			# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, item 522): its own song is to come; until then it plays the other zone's.
+			# DESIGN-TBD (docs/OPEN_QUESTIONS.md §D, items 522 and 577): its own song is to come; until then it plays the
+			# other zone's.
 			var other: StringName = REUSED[zone.music]
 			check(library.run_track(zone.music) == library.run_track(other) and library.path(zone.music) == library.path(other)
 				and library.riff_track(zone.music) == other and library.volume(zone.music) == library.volume(other),

@@ -20,8 +20,8 @@ extends SkinSuite
 ##   without them but for its wall fences; problem() names each rule; quick play with the features too;
 ## - the first-encounter hints, every zone skin's look, and a boss arena carrying them.
 
-const LEVELS: Array = ["marketplace/2", "casino/1", "casino/2", "corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2",
-	"golden/1", "golden/2", "golden/3"]
+const LEVELS: Array = ["marketplace/2", "casino/1", "casino/2", "corporate/1", "corporate/2", "beach/1", "beach/2", "dead_zone/1",
+	"dead_zone/2", "golden/1", "golden/2", "golden/3"]
 const WITHOUT: Array = ["city/1", "city/2", "city/3", "gangland/1", "gangland/2", "gangland/3", "marketplace/1"]
 ## Builds on their level's own seed, as [id, lanes], whose introduction may come later than intro_seconds
 ## after its start: neither wall has a fair spot that close to it (WallFencePlacement.keep_outs), so the

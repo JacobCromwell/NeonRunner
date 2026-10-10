@@ -122,26 +122,28 @@ func _test_pause() -> void:
 
 
 func _test_slots_and_demo() -> void:
-	# Every zone's boss is built (the Golden Convergence last, task E5d-c; test_golden_convergence_whole.gd plays
-	# its campaign step): a boss not yet built still shows its placeholder card, here an unbuilt stand-in in the
-	# Golden Zone's boss step, put back after.
-	var step: CampaignStep = App.campaign.step("golden/boss")
-	var built: BossDef = step.boss
-	var stand_in := built.duplicate() as BossDef
-	stand_in.scene = ""
-	stand_in.preview_scene = ""
-	step.boss = stand_in
+	# A boss not yet built shows its placeholder card: the Beach's (task D10c; the owner, October 9, 2026: its boss
+	# battle "has not yet been created"). Continuing passes through it to the Beach's outro, and on to the Dead Zone.
+	var step: CampaignStep = App.campaign.step("beach/boss")
+	check(step != null and step.boss != null and not step.boss.is_built() and step.boss.preview() == null,
+		"the Beach's boss slot is not built yet")
 	App.play_step(step)
 	check(App.screen is SlotScreen and App.run == null, "an unbuilt boss shows its placeholder card")
 	var card := App.screen as SlotScreen
 	if card == null:
-		step.boss = built
 		return
 	App.complete_step(card.step)
 	App.advance_from(card.step)
-	step.boss = built
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "golden/outro",
+	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "beach/outro",
 		"continuing moves on to the next step (the outro cinematic slot)")
+	var outro := App.screen as SlotScreen
+	if outro != null:
+		App.complete_step(outro.step)
+		App.advance_from(outro.step)
+		# The Dead Zone's intro is its own scene (task F2c: the runner climbing out of a crater), not a flyover.
+		var intro := App.playing_cinematic() as DeadZoneIntro
+		check(intro != null and intro.step.id == "dead_zone/intro", "and the Beach's outro on to the Dead Zone's intro")
+		App.show_level_select()
 	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
 	App.advance_from(App.campaign.step("city/outro"))
 	check(App.screen is DemoEndScreen, "the web demo ends after Zone 1 with the store-link screen (GDD §2)")

@@ -1,7 +1,7 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
 ## Player movement and level sounds: jump, land, slide, wall runs, ramps, pads, the hull, death, the
-## pulsing fence's warning, a zone doodad's push and the dash smashing one, and a dash wall crumbling. The
-## level-complete riffs are in sfx_bank_riffs.gd.
+## pulsing fence's warning, a zone doodad's push and the dash smashing one, a dash wall crumbling, and a splash (a
+## fall into the Beach's pool water). The level-complete riffs are in sfx_bank_riffs.gd.
 
 const E2: float = 82.41
 const A2: float = 110.0
@@ -23,6 +23,7 @@ func sounds() -> Dictionary:
 		"doodad_push": _doodad_push,
 		"doodad_smash": _doodad_smash,
 		"dash_wall_smash": _dash_wall_smash,
+		"splash": _splash,
 	}
 
 
@@ -268,4 +269,26 @@ func _dash_wall_smash() -> PackedFloat32Array:
 	DSP.filter(b, &"lowpass", 7000.0)
 	DSP.envelope(b, 0.001, 1e9, 0.12)
 	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## Splash (a fall into a Beach pool, D10): a burst of water noise whose band falls from bright to dull, a low
+## "bloop" as the water closes over, and a few bubbles after. Soft-edged, no hazard-style crunch.
+func _splash() -> PackedFloat32Array:
+	var rng := _rng(40)
+	var b := DSP.noise(0.8, rng)
+	DSP.filter_sweep(b, &"bandpass", 4200.0, 600.0, 1.2)
+	var n: int = b.size()
+	for i: int in n:
+		var u: float = float(i) / n
+		b[i] *= minf(u / 0.02, 1.0) * exp(-u * 5.5)
+	var bloop := DSP.osc(0.3, func(u: float) -> float: return DSP.sweep(240.0, 70.0, sqrt(u)))
+	DSP.envelope(bloop, 0.004, 0.09)
+	DSP.mix(b, bloop, 0.02, 0.8)
+	for k: int in 5:
+		var hz: float = rng.randf_range(500.0, 1200.0)
+		var bubble := DSP.osc(0.07, func(u: float) -> float: return hz * (1.0 + 1.2 * u))
+		DSP.envelope(bubble, 0.003, 0.02)
+		DSP.mix(b, bubble, 0.12 + 0.11 * float(k) + rng.randf() * 0.05, 0.25)
+	DSP.filter(b, &"highpass", 80.0)
 	return b

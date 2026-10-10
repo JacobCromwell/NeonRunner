@@ -1,8 +1,8 @@
 class_name LevelConfig
 extends Resource
 ## One level: generator settings plus what the campaign shows. Campaign levels use fixed seeds.
-## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position;
-## standalone use (quick play, tests) takes the values stored here.
+## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position, unless the
+## level is off its curve (off_curve); standalone use (quick play, tests) takes the values stored here.
 
 ## Features the campaign schedule (GDD §5) already lists for enemies and mechanics that aren't built
 ## yet. Each does nothing until its code and patterns exist: its patterns `require` the name, its
@@ -46,6 +46,15 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0.0, 1.0, 0.05) var difficulty_ramp: float = 0.25
 ## 0 = first campaign level, 1 = last: enemies scale fire rate, speed and health with it (GDD §6).
 @export_range(0.0, 1.0, 0.05) var enemy_scaling: float = 0.0
+## Off the campaign's difficulty curve (task D10c; the owner, October 9, 2026: the Beach goes between Corporate and
+## the Dead Zone, after the playtests every other level was tuned in): the campaign plays this level at its own
+## difficulty (plus the difficulty tier's bonus; difficulty_bias doesn't apply) and enemy_scaling instead of at a
+## place on its curve, and leaves it out of the curve's count and of the other levels' feature ages, so every
+## level on the curve keeps exactly the difficulty, enemy scaling, ages and recency it had (Campaign.configure).
+## Its own feature ages count every level before it. Off: the level is on the curve, as every level was before.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 569–572): the Beach's two levels; whether the curve is later re-spread over every
+## level, the Beach's included.
+@export var off_curve: bool = false
 ## Mechanics and enemies this level may use. A pattern is only picked when every entry of its
 ## `requires` list is here (GDD §6: introduce one new mechanic at a time). Core movement pieces
 ## (gaps, fences, signs, walls) need no feature. Known features:
@@ -61,7 +70,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
 ##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena unless the
 ##   arena opts in with wall_gap_tuning (no patterns: the generator places them, WallGapPlacement;
-##   tuning in data/tuning/wall_gaps.tres)
+##   tuning in data/tuning/wall_gaps.tres, or the level's own, wall_gap_tuning)
 ## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
 ##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
 ##   so a level needs octodog or buzz_overdrive for it to appear)
@@ -73,9 +82,12 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## which the schedule introduces features.
 @export var features: PackedStringArray = PackedStringArray(["ramps", "ceilings", "pulsing"])
 ## The `wall_gaps` feature's numbers for this config (WallGapPlacement.tuning_for): null for every
-## level's, data/tuning/wall_gaps.tres. A boss arena gets wall gaps only with numbers of its own here
-## (and the feature listed): the opt-in (BossArena.base_config keeps the feature only then). The Sleep
-## Taker's arena opts in (owner, October 8, 2026: "the walls aren't safe": many gaps).
+## level's, data/tuning/wall_gaps.tres, and the level is built exactly as before. A boss arena gets wall gaps
+## only with numbers of its own here (and the feature listed): the opt-in (BossArena.base_config keeps the
+## feature only then). The Sleep Taker's arena opts in (owner, October 8, 2026: "the walls aren't safe": many
+## gaps). A level may take its own too (task D10b; the owner, October 9, 2026, on the Beach: "I want this zone to
+## feel more open ... have them appear about 50% of the time that they are now currently appearing"): the Beach's
+## levels take data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length.
 @export var wall_gap_tuning: WallGapTuning
 ## Features that start partway into the level (GDD §5: City 1 meets its cyborgs late in the level):
 ## feature name → share of the level (0–1). Nothing of that feature is placed before its start,

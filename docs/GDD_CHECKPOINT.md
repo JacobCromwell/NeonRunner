@@ -147,7 +147,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### Zone roster (decided September 26, 2026)
 **Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
 
-**Seven zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section. The **Casino** was added as Zone 4 by the owner on October 8, 2026, between the Marketplace and Corporate; the zones after it moved down one place.
+**Eight zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section. The **Casino** was added as Zone 4 by the owner on October 8, 2026, between the Marketplace and Corporate; the zones after it moved down one place. The **Beach** was added by the owner on October 9, 2026, between Corporate and the Dead Zone (zone 6 since the Casino joined).
 
 | # | Zone | Mood (reference) | Palette |
 |---|---|---|---|
@@ -156,8 +156,9 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 3 | **Marketplace** | A bustling, happy market | Tan, with livelier colours: whites, blue awnings, splashes of colour in shop signs and visible products |
 | 4 | **Casino** (owner, October 8, 2026) | A covered casino street at night: gaudy, warm and a little seedy (reference: `docs/art/reference/casino_zone.webp`) | Dark iron and aged brass, warm lamplight and haze, a vaulted glass roof; its neon kept to the colour rule below |
 | 5 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | Steel and gunmetal grey, military olive, cold and sterile white light, and one harsh brand colour (chosen by the art agent, away from the hazard colours) |
-| 6 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
-| 7 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
+| 6 | **Beach** (owner, October 9, 2026) | A festive cyberpunk party beach: bamboo tiki bars, surf shops and lounges by the sea *(proposed, from the owner's reference image)* | Warm sand, honey bamboo and timber, straw thatch, a turquoise sea, black rust-streaked steel; decorative neon in violet, blue and warm white *(proposed)* |
+| 7 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
+| 8 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
 
 **Zone 1: Neon City.** Floor: roofs of trucks driving toward the player; gaps between trucks. Walls: building facades with signs. Ceilings: undersides of low-flying ships.
 
@@ -177,9 +178,19 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 **Zone 5: Corporate.** Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. Floor: roofs of maglev trains or plazas *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and similar, and occasionally a military ship.
 
-**Zone 6: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
+**Zone 6: the Beach** (owner, October 9, 2026; reference image `docs/art/reference/beach_zone.jpg`).
+- **Look:** a sandy lane between bamboo tiki bars, surf shops and lounges, running down to the sea.
+- **Floor and gaps:** the floor is sand and boardwalk *(proposed)*, and **the gaps are pools of water.** A fall makes a splash.
+- **Side walls:** they stand **about half as often as in other zones**, in long open stretches, so the player sees the surroundings.
+- **Enemies:** **no new enemy assets**; the zone reuses existing enemies, and its cyborgs wear an existing zone look.
+- **Signs:** wordless, like every zone's.
+- **Place in the campaign:** between Corporate and the Dead Zone (owner, October 9, 2026): zone 6, after the Casino joined as zone 4.
+- **New enemies:** none for now. "Do not worry about any new enemies at this time" (owner, October 9, 2026), so for now it is the one zone that introduces none, a remix of everything before it.
+- **Boss:** it will have a boss battle, not yet designed (§10).
 
-**Zone 7: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
+**Zone 7: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
+
+**Zone 8: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
 - **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
 - **Final level: the Golden Palace.** The player runs **inside** the palace, which is so huge and grand that its interior is basically the size of a city. It plays like any other level; only the skin is an interior (floors, walls and ceilings are the palace's own halls, galleries and arches). The final boss follows it.
 
@@ -193,7 +204,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Cyborg Viewing Devices** (decided September 26, 2026): the cult's philosophy reaches people **through their screens**. The more devoted someone is, the more of their face the device replaces, until the screen *is* the face: that's what the cyborg gangsters are. The order to attack the runner reaches them the same way, through the feed. Told purely through the environment and the cyborgs' look (no words): screen heads on the enemies, the same feed playing on billboards and in shop windows, and glitching screens on hosts, whose feed the Bad Dream has corrupted.
 
 ### Level schedule and enemy introductions (decided September 26, 2026)
-**Every zone introduces at least one new enemy,** except the Casino, which reuses the Marketplace's (owner, October 8, 2026). New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
+**Every zone introduces at least one new enemy,** except the Casino, which reuses the Marketplace's (owner, October 8, 2026), and for now the Beach, a remix of everything before it (owner, October 9, 2026). New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
 
 | Zone | Level (name) | New in this level |
 |---|---|---|
@@ -209,22 +220,25 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 2 · House Edge | Then **The House** (§10) |
 | 5. Corporate | 1 · Maglev Line | **Buzz Overdrive** (§9.9) |
 | | 2 · Checkpoint Plaza | The **Tithe Collector** (§9.12) and the **Enforcer Truck** (§9.13, owner, October 4, 2026), with a heavier military presence *(proposed)* |
-| 6. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
+| 6. Beach | 1 · Tiki Tides | Nothing new for now: a remix of everything so far, in daylight, with the side walls standing about half as often (owner, October 9, 2026) |
+| | 2 · Sunset Strip | The same remix as the sun starts to set |
+| 7. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
 | | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
-| 7. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
+| 8. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
 
-Level names approved by the owner (September 26, 2026; the Casino's on October 9, 2026).
+Level names approved by the owner (September 26, 2026; the Casino's on October 9, 2026). The Beach's names were proposed on October 9, 2026, at the owner's request ("create level names that fit the theme").
 
 **Skies show progression** (owner, October 8, 2026). Most levels keep their zone's sky; a few change it, so the player sees time passing and what lies ahead:
 - **Neon City 1:** the sun just starting to rise, with pinks and purples touching the undersides of clouds. *(Moved from City 3, which fits it less well thematically; City 2 and 3 keep the dark night sky.)*
 - **Gangland 3:** a cloudy, blood-red sky, warning that a fiery stretch lies ahead.
 - **Marketplace:** a darkening sky as the sun sets, with deep blues and pinks at the very bottom of the sky. The owner asked for it on the zone's third level; the Marketplace has two (the owner kept it at two when adding the Casino, October 8, 2026), so it is on **Marketplace 2**, its last (confirmed by the owner, October 9, 2026).
+- **The Beach** (owner, October 9, 2026): daylight on its first level; on its last, the sun starting to set, not dark, with some purples and oranges in the sky.
 - **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's; The House, which follows Casino 2 since the Casino was added, under the Casino's own sky). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
 - **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
 
-**17 levels plus 6 bosses** (the Marketplace has no boss since the Casino was added; owner, October 8, 2026). A flawless run through every level takes about 40 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
+**19 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Beach's is still to be designed, owner, October 9, 2026). A flawless run through every level takes about 44 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -235,7 +249,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 
 ## 6. Structure, Progression & Replay
 
-- **Zones:** 7 at launch, each with a distinct look (see §5).
+- **Zones:** 8 at launch, each with a distinct look (see §5).
 - **Levels:** 1–3 per zone, each 90–150 seconds.
 - **Bosses:** one at the end of each zone, except the Marketplace, which leads straight into the Casino (owner, October 8, 2026). Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
@@ -513,7 +527,7 @@ Shared interaction rules apply unless stated otherwise:
   - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
   - **No stomp** (the player would land on the blade).
 - **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
-- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **two zones after it (the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026). Its health stays at 22 shots.
+- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **zones after it (the Beach, the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026; the Beach, between Corporate and the Dead Zone since October 9, 2026, remixes everything before it). Its health stays at 22 shots.
 - **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 
 ### 9.10 Resonator (the owner's "Hymn Censer" reworked in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)
@@ -605,8 +619,9 @@ Shared interaction rules apply unless stated otherwise:
   | 3. Marketplace | None: it leads into the Casino (owner, October 8, 2026) |
   | 4. Casino | The House (moved from the Marketplace; owner, October 8, 2026) |
   | 5. Corporate | Hostile Takeover |
-  | 6. Dead Zone | Sleep Taker |
-  | 7. Golden Zone | The Golden Convergence (the final villain) |
+  | 6. Beach | To be designed (owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created") |
+  | 7. Dead Zone | Sleep Taker |
+  | 8. Golden Zone | The Golden Convergence (the final villain) |
 
 - **Floating Head** (Neon City). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
   - **What it is:** a **giant ship**. Its back is a **giant cybernetic propaganda face** that watches over the city and **shouts its propaganda**.

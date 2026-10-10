@@ -443,7 +443,8 @@ func _build_debug_tools() -> void:
 		var wall_fences: WallFenceTuning = WallFencePlacement.tuning()
 		if wall_fences.resource_path != "":
 			sections.append({"title": "Wall fences", "resource": wall_fences, "path": wall_fences.resource_path})
-	# How often and how long side walls break (WallGapPlacement), in a level that has them; Restart level rebuilds.
+	# How often and how long side walls break (WallGapPlacement), in a level that has them: the level's own numbers
+	# if it has them (task D10b, the Beach's open walls), else the shared ones; Restart level rebuilds.
 	if context.config.has_feature(WallGapPlacement.FEATURE):
 		var wall_gaps: WallGapTuning = WallGapPlacement.tuning_for(context.config)
 		if wall_gaps.resource_path != "":

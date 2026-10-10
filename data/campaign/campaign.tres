@@ -7,13 +7,14 @@
 [ext_resource type="Resource" path="res://data/zones/marketplace.tres" id="z_marketplace"]
 [ext_resource type="Resource" path="res://data/zones/casino.tres" id="z_casino"]
 [ext_resource type="Resource" path="res://data/zones/corporate.tres" id="z_corporate"]
+[ext_resource type="Resource" path="res://data/zones/beach.tres" id="z_beach"]
 [ext_resource type="Resource" path="res://data/zones/dead_zone.tres" id="z_dead_zone"]
 [ext_resource type="Resource" path="res://data/zones/golden.tres" id="z_golden"]
 [ext_resource type="Resource" path="res://data/tuning/feature_recency.tres" id="recency"]
 
 [resource]
 script = ExtResource("1_script")
-zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_marketplace"), ExtResource("z_casino"), ExtResource("z_corporate"), ExtResource("z_dead_zone"), ExtResource("z_golden")])
+zones = Array[ExtResource("2_zonescript")]([ExtResource("z_city"), ExtResource("z_gangland"), ExtResource("z_marketplace"), ExtResource("z_casino"), ExtResource("z_corporate"), ExtResource("z_beach"), ExtResource("z_dead_zone"), ExtResource("z_golden")])
 difficulty_start = 0.1
 difficulty_end = 0.9
 difficulty_curve_exponent = 0.79

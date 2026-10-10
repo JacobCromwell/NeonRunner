@@ -98,7 +98,8 @@ level is always built and played at one speed; a campaign boss fight runs at its
 live, and its Save leaves the base run speed alone when the run's comes from its level (the section's
 `keep` list, `TuningPanel`).
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
-and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
+and `--full-loadout` for reviews (task D10b's fallback for a zone outside the campaign went with D10c, which put
+the Beach in it); `--boss=<boss id>` plays a boss fight (a zone's boss with the full
 flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
 (`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug
 builds only, so a release build can't skip progression or farm credits with them.
@@ -435,6 +436,7 @@ arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
 | `data/tuning/dash_walls.tres` (`DashWallTuning`) | dash walls (H7a): the clear stretch around one, the wall route, the spacing's margin and the dash baits, the introduction's window, clearing plain pieces (how many a level is `LevelConfig.dash_walls`; the wall's size is the movement tuning's "Dash walls", its crumble the speed effects' "Dash walls") |
 | `data/tuning/wall_gaps.tres` (`WallGapTuning`) | side wall gaps (Zone 2 on): spacing (easy/hard), jitter, length, the share on both walls, and the keep-out margins, all in seconds at the level's run speed (a boss arena that opts in has its own: `LevelConfig.wall_gap_tuning`) |
+| `data/tuning/beach_wall_gaps.tres` (`WallGapTuning`) | the Beach's own wall gaps (`LevelConfig.wall_gap_tuning`, task D10b): its open walls (the Open walls group: the share of each wall to open, the shortest open and standing stretches, the most open on both walls at once) and a narrower clearance around what the walls hold |
 | `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
@@ -2151,6 +2153,45 @@ ScoreKeeper ends the wall run). A wall entry (move or ramp) inside a gap is refu
 bump. Past the gap, the usual move input steps back onto the wall. `HintDirector` introduces them through the
 `wall_gap` hint. `test_wall_gaps` covers all of this.
 
+**A level's own wall gaps, and the Beach's open walls** (task D10b; the owner, October 9, 2026: the Beach should
+"feel more open ... much longer sections where there aren't sidewalls", its walls appearing "about 50% of the
+time that they are now currently appearing"; GDD §5, Zone 6: the Beach). `LevelConfig.wall_gap_tuning` gives a level
+its own `WallGapTuning`; null (every campaign level but the Beach's) is the shared file. `WallGapPlacement.tuning_for(config)` is
+what the placement, the F6 panel's "Wall gaps" group and the tests read. The tuning's Open walls group
+(`coverage_target` above 0: `data/tuning/beach_wall_gaps.tres`, the Beach's levels only) turns the rare short gaps
+into long open stretches (`WallGapPlacement._open_walls`, from the same random stream):
+- each wall opens every stretch its keep-outs leave free (`open_stretches`, 1 cm clear of them), at least
+  `open_seconds_min` (2 s) long, so the walls never flicker;
+- a wall with more open than `coverage_target` (0.52) of the level's length stands again down to it, the wall with
+  more to close first: first where the other wall is open too (the shortest such stretches first), then its own
+  shortest stretches; each closing takes a whole stretch, or what it needs (at least `solid_seconds_min`, 2 s)
+  from an end that meets standing wall already (`_close_down`). So the second wall keeps more of what both had
+  open;
+- while both walls are open at once over more than `both_open_max` (0.3) of the level, the wall with more open
+  stands again over the shortest such stretch;
+- a wall standing between two open stretches stands at least `solid_seconds_min` (2 s), so the walls never
+  flicker: one held up only by a lone keep-out (a wall fence's or a sign's, about 17 m) stands longer around it,
+  into the open stretches either side as evenly as they allow while each keeps `open_seconds_min`, or the shorter
+  of the two stands whole (`_no_short_stands`, from the start and again after the closings; task D10c review).
+Every keep-out above holds, so a wall whose keep-outs (mostly ceilings reaching it, ramps' wall runs and wall
+enemies) leave it less free stands more. The Beach's clearance around signs, wall fences, wall enemies and
+ceilings is narrower (`clear_seconds` 0.35 s against 0.5, about 8 m of wall either side at its 23.8 m/s); the
+margins that time a wall run, before a ramp and past its longest run and either side of a wall enemy, never narrow
+with it: `keep_outs` widens those by the shared file's `clear_seconds` (or the level's own, where wider), so they
+are the shared ones (task D10c review). Placed last as before, the open walls change nothing else in a level: built with the shared tuning,
+the Beach's levels are the same levels but for their gaps (the same signs, wall fences, ramps, window cyborgs
+and wall vents, and no wall credit fell in a gap, since those lie along ramps' wall runs: all 54 builds below).
+Over both Beach levels at 3, 5 and 6 lanes as the campaign configures them (task D10c), on their own seeds and
+eight others: each wall stands on 48-60% of its level on the levels' own seeds, 107 of 108 walls in 40-60% over
+all (median 49%; 97-100% with the shared tuning), the other on 64%, where its keep-outs leave it no more free;
+both walls are open at once on 18-30% of a level (median 29%); the open stretches run from 48 m (2 s) to 957 m
+(median 124 m), with 85% of the open length in stretches of 100 m and more (`test_beach_levels` checks its own
+seeds and two others). With
+the Open walls group off, the shared tuning places exactly what it did before: every
+layout of `tools/measure/level_pace.gd --dump` (every campaign level at 3, 5 and 6 lanes on its own seed and four
+others, and quick play) is byte-identical. DESIGN-TBD (`docs/OPEN_QUESTIONS.md` items 560–564): the target, the share open on
+both walls, the shortest stretches and the narrower clearance.
+
 **Wider gaps** (task G7; the owner's answer to open question 352, October 7, 2026, GDD §9.13 "Holes": "every
 level has a couple of wider gaps. They're uncommon, still jumpable by the player, and wide enough that an
 Enforcer following the player into one is wrecked"). `WideGapPlacement` (`scripts/world/wide_gap_placement.gd`;
@@ -2716,7 +2757,8 @@ underside, and check the drop on both renderers (`skin_review --narrow`, Review 
 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
-Corporate), `DeadZoneSkin` (Zone 6, the Dead Zone) and `GoldenSkin` (Zone 7, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+Corporate), `BeachSkin` (Zone 6, the Beach; task D10, in the campaign since D10c), `DeadZoneSkin` (Zone 7, the
+Dead Zone) and `GoldenSkin` (Zone 8, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
@@ -2738,9 +2780,10 @@ value, the one thing a new zone's skin sets for its enemies:
 | Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
+| Beach (D10) | `&"casino"` | the Casino Mob Enforcer | clean |
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
-Marketplace and the Casino) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
+Marketplace, the Casino and the Beach) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
 colours from the zone variant (`BarnacleTurretModel.PALETTES`; a new zone's variant gets the default
 gunmetal until it has its own).
 
@@ -2849,7 +2892,15 @@ and `golden_marble()`, which it calls directly. Ids 80-89 are the Casino's (task
 `kit_casino.gdshaderinc`: the street's paving (`PAT_CASINO_STREET`), everything under it
 (`PAT_CASINO_UNDER`), dark iron and aged brass (`PAT_CASINO_IRON`, `PAT_CASINO_BRASS`, lit through
 `cas_metal()`, a fake reflection of the lamplit street), a pane of the glass roof (`PAT_CASINO_VAULT`), a lit
-sign (`PAT_CASINO_SIGN`) and a hanging banner (`PAT_CASINO_BANNER`).
+sign (`PAT_CASINO_SIGN`) and a hanging banner (`PAT_CASINO_BANNER`). Ids 90-99 are the Beach's (task D10, all in use), in
+`kit_beach.gdshaderinc` (`MeshKit.PAT_BEACH_*`: sand, boardwalk, tank, water, wall, thatch, steel, painted
+board, neon silhouette, timber), after `kit_marks.gdshaderinc`'s `band()` and `sd_*()`. A pattern's parameter
+(`UV2.y`) is interpolated across a face, and a rasterizer's interpolation of a constant can be a few units in
+the last place off (Mesa's llvmpipe and lavapipe are): a decoder that takes `floor(param / 8.0)` of an exact
+multiple of 8 flips between two neighbouring values pixel by pixel (the Beach's first walls were a lattice of
+dots), and a parameter above about 2^20 has units in the last place of 0.06 or more. So decode by rounding
+to the nearest whole number (`floor(x + 0.5)`, or a half step added before a `floor`) and keep every
+parameter under 2^20 (`MeshKit.sand_param()`, `beach_art_param()` and the others do; `test_beach_skin` pins it).
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -3221,6 +3272,134 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
   `golden_metal()`/`golden_marble()`, which it calls directly rather than inventing new ones):
   `PAT_PALACE_FLOOR` (70), `PAT_PALACE_WELL` (71) and `PAT_PALACE_PANEL` (72).
 
+**The Beach** (task D10, the owner's request of October 9, 2026; `docs/art/reference/beach_zone.jpg`; the
+campaign's zone 6 since task D10c (zone 5 until the Casino joined as zone 4), Campaign below; `data/skins/beach_skin.tres` is also shown with `--skin=beach` and
+`tools/showcase/skin_review.tscn -- --skin=beach`): `BeachSkin` (`scripts/world/skins/beach_skin.gd`) is a bright
+tropical afternoon on a shore: a sandy street running down to a turquoise sea and a palm island, between bamboo
+shacks and tiki bars, with black rust-streaked industrial tanks behind them. No new enemy assets: its
+`enemy_variant` is `&"casino"`, the Marketplace's Casino Mob Enforcer (the owner: "reuse one of the existing
+cyborg looks, whatever fits the theme of this zone the best"; the pick is a placeholder,
+`docs/OPEN_QUESTIONS.md` items 538–559). The gaps are pools, the owner's decision, and the walls open on the beach (the
+owner's answer on side walls: "much longer sections where there aren't sidewalls"). Hooks overridden,
+builders in `scripts/world/skins/beach/`:
+- *The floor* (`BeachSand`): sand (`PAT_BEACH_SAND`: wind ripples, drifts, footprints, flat shells, a damp rim
+  round a pool) with boardwalk runs (`PAT_BEACH_BOARDWALK`: planks across the lane, rusty steel plates
+  bolted on), runs of one to three `boardwalk_slot`-metre slots hashed by lane and slot (`boardwalk_runs()`, so the runs of
+  neighbouring pieces and chunks line up across cuts), a flush bamboo kerb along the building faces, and
+  nothing on the running surface stands up or is round. A pool (`cut()`, the shared `standard_floor_cut()`
+  with a tank pattern) is a black steel tank sunk flush: the orange lip, strip and halo sit on the
+  collision edge as everywhere, beside a dark steel coping that makes them pop against the bright sand, and
+  inside is darker than the darkest large floor area by a real margin (the water, with its ripples and glints, at
+  most 40% of the luminance of the darkest sand, boardwalk or kerb, and under the plates' and joints';
+  `test_beach_skin` computes the budget from the skin's colours: tank steel, rust, tide mark, water). Water is
+  opaque, unlit deep teal (`PAT_BEACH_WATER`: long ripples, slow caustics, soft glints) filled to `pool_depth`
+  0.45 m under the rim (the owner: "it's pretty good as it is", closer to the rim; deeper than the grapple's
+  `pit_depth`, 0.35 m, which `test_beach_skin` pins), like the reference's near-full tanks: from the game camera
+  (4.2 m up) water six metres down hides behind the near edge beyond a few metres, this shows from ten or more.
+  Above it, the tank's wall
+  is black rust-streaked steel (`PAT_BEACH_TANK`: panels, rivets, a flange under the rim, a tide mark and a wet
+  line). The fall that ends a run (`fall_death_depth` 4 m) goes on into the water: a runner (an Octodog, a
+  wreck) sinks out of sight into the opaque plane, and the chase camera (`camera_height` + `camera_follow_y` x
+  the runner's height) is still 2.4 m above the floor at that depth, so it never goes under the water
+  (pinned by `test_beach_skin`). Blowing sand, drifting leaves and petals and speed streaks
+  (`MeshKit.drift_particles`) are the still floor's motion cue: `BeachSand.drift` gives every 40 m slice to the
+  left-wall piece that holds its start, so each chunk has exactly one copy even where the wall switches
+  between standing and open inside it (the shared call alone places only slices that fit whole inside a
+  piece's range, which left 18-27% of the Beach's chunks without; `test_beach_skin` checks every chunk).
+- *The splash* (`BeachWaterWatch`, `BeachSplash`; the owner: "a fall makes a splash"): `wall_section` and
+  `wall_gap` add a `BeachWaterWatch` beside the left wall's water plane, which finds the `RunWorld` up the
+  tree as `MarketCitizen` does and reads the runner's position and track distance (a read-only visual
+  watcher: no collision, no gameplay state written). When the runner's height crosses the water going down
+  inside its stretch of street (a floor or a cut's hole never lets that happen anywhere else), it adds a
+  `BeachSplash` on the water, a one-shot that frees itself after 1.2 s (a crown of foam, droplets, two
+  spreading rings; unlit off-white, no glow, no flash, so nothing for Reduced flashing to turn off; it is the
+  water's foam, so it takes the street's light as the water does, `scenery_light_now` and `scenery_tint_now`
+  once when it is made, `BeachSplash.in_street_light`) and plays
+  the `splash` sound (`tools/asset_gen/sfx_bank_player.gd`, `RunWorld.play_sfx_at`). A grappled runner never
+  splashes: the hook fires at `pit_depth`, above the water. The fall's death comes about 0.3 s after the
+  splash, and the death screen's pause about a second after that, so the splash plays out under the
+  overlay's lead-in. Only the runner splashes (what falls after it, such as an Octodog baited into a gap,
+  doesn't). Review a real fall on both renderers with `tools/showcase/splash_review.tscn` (`--skin`,
+  `--sky`, `--lanes`, `--grapple`, `--side`), a `RunWorld` with a pool in the runner's lane and no jump.
+- *The walls* (`BeachShacks`): shacks one to three 12 m lots long, two to four storeys (`lot_run()`), all
+  variety hashed from lot indices. Up to `band_top` (7.2 m) a face is flush and calm, drawn by
+  `PAT_BEACH_WALL` from world position in bays of 3 to 4.8 m between bamboo posts, every bay a tone of its own
+  (bamboo culms 0.15 m wide with nodes and bundles, palm mat, weathered planks, rusty corrugated sheets, a painted
+  turquoise, coral or blue door, roller shutter or serving hatch, bamboo with wordless surf posters, painted
+  boards, a mural, painted surfboards mounted flush, culms laid sideways as slats), with big sun-bleached and
+  honey drifts over the bays, so a wall seen edge-on (where fine culms blur) is never one flat tone, and the
+  wall-run height marks at 2 m and 4 m (a 3.6 cm line of a slightly darker shade of the wall: `wall_mark_color`
+  is a multiplier near 0.7) and sand blown against the foot; nothing opens, glows or juts out more than `LIP`
+  (0.25 m) there. Each building has one of seven bamboo tones (honey, sun-grey, pale straw, teak, orange-brown,
+  warm tan, warm honey). Above `decor_min_height` (8 m): recessed
+  verandas (bars with a counter, bottles and paper lanterns, lounges, decks; `_alcove()`, set back so nothing
+  hangs over the street, with an unlit striped awning's valance across the top of a bar's or lounge's
+  opening), clusters of paper lanterns hung on the faces (`lanterns` items: unlit muted shells, warm-white glow
+  inside, within `LIP` of the face), thatch or tin roofs, palms, tiki masks, surfboard racks, flags, bunting
+  and swags,
+  black steel tanks, water towers, chimneys and dishes behind the roofline, wordless neon silhouettes and
+  roof billboards. Everything over the street stays above `OVER_STREET_MIN` (12 m), clear of the
+  ceilings' `TOP_LIMIT` (5.4 m over the 6 m underside), and strings of lights are cached templates hung from
+  hashed spots. Wall decorations are cached `MeshLayer` templates in left-wall space with the right wall's
+  mirrored copies cached once, so building a chunk is plain translations (a 5-lane chunk builds in about
+  3 ms, under 25 surfaces). `note_wall_gaps()` is forwarded for the shared hooks.
+- *Open stretches* (`BeachSkin.wall_gap`, `BeachOpen` in `beach_open.gd`; the owner: "much longer sections where
+  there aren't sidewalls, and the player can see the surrounding area a little bit better"): where a level
+  opens the side wall (`TrackBuilder` passes each chunk's slice of the gap, any length, to `wall_gap`), the
+  skin draws the standard gap marks (`ZoneSkin.standard_wall_gap`: the orange lip, the 6 m dark end slabs, the
+  orange stripes) and, chunk by chunk with every position hashed from the track distance (so a stretch is
+  the same however chunks cut it): the beach, from the wall line outward and 1.4 m below the street
+  (`beach_drop`: sand, a wet band, a foam line, shallows, the mid sea and the deep, the shoreline swinging
+  16-64 m past the wall line, 8 m quads), and on it palms, umbrellas with loungers, surfboards stuck in the sand
+  and now and then a bamboo and thatch hut, kept dry, `open_margin` (9 m) from the gap's ends and `open_near`
+  (9 m) from the wall line so nothing stands near the runner or the lip, with no collision. The shack at
+  each end of a gap is closed with a timber gable (`BeachShacks.gap_end_cap`), and the walls' own pieces
+  carry the beach on behind them (`BeachOpen.ground`), so the view past a shack's end isn't the void. Every
+  chunk stays inside the build budget (`SkinSuite`: under 32 surfaces for a five-lane chunk) with a stretch
+  open on either or both sides (`test_beach_skin`, hand-built layouts through `RunSim.layout`). Review: `skin_review --skin=beach --open`
+  (four shots per stretch: the game camera at the start and 50 m in, from the lane beside the opening, from
+  above), and `--view=run --from=<distance>` with the same flag.
+- *The ceilings* (`BeachCeilings`; `kind_of()` by the ceiling's width and the walls it reaches, weights
+  `footbridge_weight`, `veranda_weight`, `barge_weight`): a boardwalk footbridge across every lane, a veranda
+  deck cantilevered from one building (narrow, reaching one wall) and a hovering party barge (any width, or
+  reaching neither wall). Every underside is flat with lamps on the lane seams and the orange far-end band
+  from `MeshKit.ceiling_end`; nothing hangs below it, and glows past the far end stay above it
+  (`MeshKit.stern_halo` for a barge's engines).
+- *Hazards and props* (`BeachProps`, the kit's shared builders): the fence is the shared pink field between
+  bamboo-wrapped steel posts in sand-filled drums; the wall sign is the yellow/black hazard frame
+  (`MeshKit.hazard_sign`) around a painted surf or bar sign (`PAT_BEACH_PAINT`: unlit, wordless). Pads,
+  ramps, speed pads and the finish line are the kit's.
+- *Doodads* (`BeachDoodads`): a surfboard rack (small), a cabana or a palm in a planter by `look_seed`
+  (medium) and a tiki bar kiosk (large), cached, on `MeshKit.solid()`, no faces, muted.
+- *Cult.* The emblem hides on some neon signs and roof billboards and the barge's bronze bow, never smaller
+  than `emblem_min_size` and never a hazard colour; the feed plays on TVs behind some upper-deck bars and
+  on roof billboards, never in the wall-run band. `feed_boards()` (kinds `deck_tv`, `roof_board`) and
+  `cult_emblems()` (kinds `sign`, `billboard`) list them for `skin_review`.
+- *The sky and sea*: `night_sky.gdshader` by day, through its existing uniforms (a blue zenith, white
+  cumulus, a warm sun glow toward the far end; nothing blooms), and, for a level that wants the owner's
+  sunset ("the sun starting to set. Not dark, but the sun's starting to have some purples and oranges in the
+  sky"), `data/skies/beach_sunset.tres`, a `LevelSky` to name in `LevelConfig.sky` (a periwinkle zenith, a
+  peach horizon, a violet-pink haze, an orange sun glow, orange and pink clouds over lavender shadows, no
+  stars, a sea re-coloured to a deep blue; at least three times as bright overhead as the Marketplace's
+  sunset and under the glow threshold; `test_beach_skin` pins it; review it with
+  `skin_review --skin=beach --sky=beach_sunset`), plus three default-off uniforms: `skyline_hills`
+  and `skyline_scale` turn the skyline into smooth low hills (an island, no lit windows) standing on the
+  sea, and `abyss_depth` (0.3 by default) is how far below the horizon the sky becomes the abyss colour (the
+  Beach: 0.05, a turquoise sea starting at the horizon).
+- *Colour rule* (departures from the reference, `docs/OPEN_QUESTIONS.md` items 539–543): the water never glows
+  (the reference's glowing turquoise is the pads' cyan); decorative glows are warm white, violet and blue only
+  (the reference's pink, yellow, cyan, green and orange neon are hazard hues); string lights and lanterns the
+  same; pool frames are flush (the reference's tanks stand proud, which would read as an obstacle); no words on
+  signs. `test_beach_skin` holds the skin to it (a glowing colour is a hazard hue when its saturation is at
+  least 0.35 and its hue is outside the blue-violet range; no paint is near a hazard's colour).
+- *Shader patterns* (ids 80-89, `kit_beach.gdshaderinc`, with `kit_solid.gdshader` including it after
+  `face_coords()` and dispatching on the id): colours arrive as sRGB `Vector3` uniforms (`BeachSkin.srgb()`)
+  so both renderers agree, `bc_daylight` lifts the lit upright surfaces for the afternoon sun (the kit's
+  `shade` is a night city's), and the water's drift (its ripples, caustics and glints) slows to a tenth of its speed under Reduced
+  flashing (`reduced_flashing`; nothing else in the zone moves with `TIME`, which `test_beach_skin` checks). Review it
+  on both renderers: `skin_review` (`--view=shot`, `--view=run`, `--narrow`), `doodad_review`,
+  `floor_cut_review` and `wall_fence_review` with `--skin=beach`.
+
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
 ad, lit for paint or the Golden Zone's gold) or a rasterised texture, at any size. The owner chose
@@ -3392,7 +3571,8 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in every zone
   and the Floating Head fight (the Casino, until the owner supplies its song, plays the Marketplace's:
   its `casino` track is the Marketplace's default file, `zone_tracks` sends it to Jackpot Plaza and
-  `riff_tracks` to the Marketplace's riff; no new song is generated, GDD §11). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
+  `riff_tracks` to the Marketplace's riff; no new song is generated, GDD §11; the Beach's `beach` track stands in
+  on the Marketplace's the same way, task D10c, DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 577). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
   and `boss_tracks` maps a boss id to its supplied song. `App._start_run` resolves these for campaign,
   quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
   keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
@@ -3437,17 +3617,20 @@ levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step 
 save migration follows: Economy and saving, Saves from before the Casino). A cinematic slot added after a save had passed it
 (Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
 unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
-plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
+plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign. A level off the curve
+(`LevelConfig.off_curve`: the Beach's, below) plays at its own.
 
 The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
-`marketplace`, `casino`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 2 and 3 levels in
+`marketplace`, `casino`, `corporate`, `beach`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 2, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
 cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster, but the
 Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
-Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`). A zone's music
+Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); the Beach's boss is still to be
+designed (below). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
-over the 17 levels (FB 4, FB 5). When the Casino's two came in, task K2 re-spaced it linearly (each
+over the 17 levels on it (FB 4, FB 5; the Beach's two, task D10c, are off it, so the Beach moved no other
+level). When the Casino's two came in, task K2 re-spaced it linearly (each
 existing level's difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from
 0.56 to 0.60; the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every
 existing level keeps its own, `docs/OPEN_QUESTIONS.md` §D, items 519-521). The owner then ruled that no
@@ -3466,20 +3649,23 @@ At the City's 21 m/s this moves its finish line from 2310 to 1155 metres. The ex
 and distance-based completion use that value without changing speed, difficulty, clear distances,
 or the fractional starts of cyborgs and doodads. These are running times without speed-changing
 power-ups or pauses, excluding cinematics and the completion delay. The levels then totalled 34.1 minutes;
-with the Casino's 145 and 150 seconds they total 39.0 (GDD §5: about 40).
+with the Casino's 145 and 150 seconds they total 39.0, and with the Beach's 145 and 150 seconds 43.9 (GDD §5:
+about 44).
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
 Marketplace 1; the Tithe Collector skips the Dead Zone; Zone & Levels 2 excludes Octodogs from
 Golden 1–3, including the Golden Palace). Octodogs remain enabled from Gangland 2 through the
-Dead Zone. Removing only `octodog` from the three Golden resources excludes both dog patterns and
+Dead Zone, the Beach's remix included. Removing only `octodog` from the three Golden resources excludes both dog patterns and
 their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
 to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
-through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). The Casino
+through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected), and in the Beach between
+Corporate and the Dead Zone (its remix; GDD §9.9 names it, `docs/OPEN_QUESTIONS.md` item 579). The Casino
 introduces nothing (GDD §5: it reuses the Marketplace's enemies, owner, October 8, 2026): its two levels
 play Marketplace 2's features with no starts of their own (task K2, DESIGN-TBD until the owner says what
-each adds), and `test_campaign` exempts it from "a new enemy per zone" and "something new per level". Each
+each adds), and `test_campaign` exempts it from "a new enemy per zone" and "something new per level", as it does the
+Beach (owner, October 9, 2026: "do not worry about any new enemies at this time"; item 565). Each
 level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
 generator; City 1's cyborgs come late in the level), and its newest features get the most picks
 (the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
@@ -3499,17 +3685,45 @@ still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`). Endless 
 furthest zone's last level, leaves the remix out (`App.start_endless`: no quiet stretches, no quiet
 features or their weights, no darkness), so endless in the Dead Zone plays as it did before.
 
+**The Beach** (task D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone", a boss
+battle to come, "do not worry about any new enemies at this time"; GDD §5). `data/zones/beach.tres` (id `beach`, the
+Beach skin, 23.8 m/s) is zone 6, between Corporate and the Dead Zone: its intro (the arrival flyover), Tiki Tides and
+Sunset Strip (`data/levels/beach_1.tres` and `beach_2.tres`: seeds 801 and 802, 145 and 150 s, the open walls of task
+D10b, `wall_gap_tuning` under The generator, Side wall gaps; Beach 1 in the zone's daylight, Sunset Strip under
+`data/skies/beach_sunset.tres`), its boss slot and its outro. It is a remix of everything before it, Corporate 2's
+features with no introductions, and the one zone that brings no new enemy (GDD §5's exception).
+Its levels are **off the curve** (`LevelConfig.off_curve`), so every level and boss that was in the campaign before
+plays exactly as before:
+- `Campaign.configure` gives a level off the curve its own `difficulty` (plus the tier's bonus; its
+  `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.71 and 0.72, 0.71 and 0.73, strictly between
+  Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on the curve as task K4 bent it for the Casino;
+- the curve spans the levels on it (`curve_level_count()`: 17 of `level_count()`'s 19, against
+  `planned_level_count()`'s 19), and a level off it takes the place of the level on it before it
+  (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
+- a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
+  on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
+  (`Campaign.feature_ages`); a boss fights at the scaling of the level before it (`Campaign.level_scaling`).
+So the other 17 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
+and every one of their layouts in `tools/measure/level_pace.gd --dump` (at 3, 5 and 6 lanes, on its own seed and four
+others) is byte-identical; `test_campaign` also builds the campaign without the Beach from the same data and compares
+every level and boss with it (task D10d: with the Casino in, every non-Beach step configures exactly as on main). A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
+as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
+(`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all 19 levels, the Beach's numbers, its
+completion bonus, Continue for old saves, its boss, cinematics and music.
+
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the Dead Zone's and the
 City's boss intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
 Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the Dead Zone's intro its own (`DeadZoneIntro`,
 task F2c), and the other outros are still cards. A boss is
-built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Golden
-Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule delay. A fight
+built on the boss framework (Bosses, below). Every zone's boss but the Beach's is built (its step plays the fight;
+the Golden Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule
+delay. The Beach's slot (`data/bosses/beach_boss.tres`, task D10c) has no scene, phases or arena until its fight
+is designed (task E5e): the campaign shows its card and passes through it, with no stars (`test_app_flow` and
+`test_screens` check the boss slot's card on it). A fight
 still being built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card,
-and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded
-(`test_app_flow` and `test_screens` check the boss slot's card with an unbuilt stand-in).
+and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.
 
 ## Bosses
 
@@ -4331,7 +4545,7 @@ the camera. At 10 s the cut to an extreme close-up of its screen face: the camer
 it is at the cut (`frame_face`, measured from the head, the head held still: `CyborgBody.twitches`), the whole face
 filling 80% of the picture inside the letterbox (its height, or its width on a screen narrower than the face),
 pushing in to 92%, its corrupted grin glitching harder (the shader's `glitch`, 1.8). At 11.5 s it starts to fade to
-black, and the zone's title card ("ZONE 5", "DEAD ZONE", from the zone's data as the flyovers' are) comes up with
+black, and the zone's title card ("ZONE 7", "DEAD ZONE", from the zone's data as the flyovers' are) comes up with
 it and holds on the black; then the level. The actors are the timeline's; the crater's inside is the cinematic's own
 prop, `DeadZoneCrater`, built on the stage so it hides with it: a floor of the zone's own street plates
 (`ZoneSkin.floor_segment`) tipped this way and that, slabs leaning on its walls and rubble (the skin's solid
@@ -5034,6 +5248,18 @@ truck (god mode, grapples): each destroyed by a charge it dodged or in a wider g
 its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
 alongside (the showings it makes are printed).
 
+`test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
+gaps): the zone and level data and its place in the campaign (zone 5, its steps, slots and music stand-in); both
+levels at 3, 5 and 6 lanes as the campaign configures them, on their own seeds and two others, with the campaign's
+fairness checks (LayoutChecks) and every listed feature present (on
+other seeds the Enforcer Truck, which only comes where a bait's chase has room, in nearly every build); the open
+walls: each wall standing on 40-60% of its level (or more only where its keep-outs leave no more free), the
+median wall in 45-55%, every gap at least `open_seconds_min` long and clear of its wall's keep-outs, most of the
+open length in stretches of 100 m and more, both walls open at once within `both_open_max`, the same gaps on a
+second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1`, the campaign step
+with the full flow, end to end through the smoke tool. How the campaign configures the Beach off its curve, and
+that no other level or boss changed, is `test_campaign`'s (Campaign, The Beach).
+`test_wall_gaps` holds every other campaign level to the shared tuning and checks the open walls on made-up tracks.
 `test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
 lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off
 margin to the landing margin, no zone doodad or its push's lead there, no side wall gap beside) and a floor
@@ -5159,7 +5385,7 @@ introduction until PLAY is pressed (`App.begin_run`), and the script presses it 
 (a run that never started, never left the introduction, or whose runner never moved; plus Godot's own
 script errors) and exits 1 on any. `--smoke-report` also prints what the run did, `--smoke-frames=N` shortens
 it, `--smoke-hold` withholds PLAY (the check's own test, `test_smoke_play`). Quick play (`smoke` with no
-arguments) is unchanged. The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
+arguments) is unchanged; `--level=beach/1` is the Beach's campaign step like any other (task D10c). The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
 so it finds the run's `State.READY` through the script's constant map.
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
@@ -5216,8 +5442,11 @@ filling, back), a zone skin
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
 lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
-a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
-turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
+a run that tries moves past their edges; `--open` opens the side walls over four stretches, with shots
+of each from the game camera, from beside the opening and from above (a skin's `wall_gap` hook, the Beach's
+open beach); `--from=D` starts the run further on, `--reduced-flashing`
+turns Reduced flashing on), the Beach's splash (`splash_review`: a real `RunWorld` with a skin, a pool in the
+runner's lane and the game camera, for a real fall; `--skin`, `--sky`, `--lanes`, `--grapple`, `--side`), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
 the App plays it, or the toolkit's sampler), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
