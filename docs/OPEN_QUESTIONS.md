@@ -4495,3 +4495,21 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
         starting lane before its first wall on K4's curve).
     - **Corporate 2 at 3 lanes on seed 7101** gets its wall from the last resort (item 677), and Corporate 1's
       introduction at 5 lanes is late (item 676).
+
+**Merging main's Beach into the H series** (October 10, 2026: D10, the Beach as zone 6, meets the H series)
+680. **No dash walls in the Beach, for now** (GDD §9.14: introduced in the Corporate zone "and in the zones after it";
+    GDD §5, the Beach as zone 6 between Corporate and the Dead Zone, task D10). The Beach's levels (Tiki Tides and
+    Sunset Strip) don't have the `dash_wall` feature: its side walls stand open on about half of a level (task D10b),
+    where a dash wall's route ("a player running on a side wall passes it", with at least one side wall standing
+    beside it) would rarely be there, and it has no wall look of its own (task H7b: each zone's building face turned
+    to the player; the Beach's skin keeps the default box). Placeholder (the coordinator's call, October 10, 2026):
+    none there; `test_campaign`'s `LEFT_OUT` lists the Beach for `dash_wall`, `test_beach_levels` takes Corporate 2's
+    features but its dash walls, and `test_dash_walls`' skin contract keeps the Beach on the default look
+    (`DEFAULT_LOOK_SKINS`). Should the Beach get dash walls, and how do they meet its open side walls (standing only
+    where a side wall stands beside them, or with no wall route at all), and in what look (a beach bar's front)?
+681. **A floor cut in the Beach shows its pools' water** (GDD §9.9 with task H3: a cut shows what the zone's gaps
+    show; task D10: the Beach's gaps are pools, their water `pool_depth` down, 0.45 m). The Beach's cut (`BeachSand.cut`)
+    has no bottom and, since the merge, no side walls of its own (the neighbouring lanes' floors carry their sides in
+    the tank's steel, as at any pool), so it shows the chunk's water 0.45 m down, where H3 has every other zone's cut
+    show its scenery 3 m or more below. Placeholder: as its pools; `test_floor_cuts`' `SHALLOW_BELOW` takes the Beach's
+    `pool_depth` as its plane below. Should a Beach cut read as a pool (as now), or open onto something deeper?

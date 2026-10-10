@@ -2312,7 +2312,8 @@ turned down, constraints). `plant()` writes one encounter, and the tests plant t
   (`docs/questions/g7.md`): the line, the parked tank, the numbers and the counts.
 
 **Dash walls** (task H7a; GDD §9.14, owner, October 8, 2026: a building standing across every floor lane, which
-the runner dashes through; introduced in Corporate 1 after the Buzz Overdrive, and in every level after it).
+the runner dashes through; introduced in Corporate 1 after the Buzz Overdrive, and in every level after it but the
+Beach's, whose side walls stand open on about half of a level: none there for now, `docs/OPEN_QUESTIONS.md` item 680).
 `LevelLayout.dash_walls` holds `{start (its face), end (its back), seed}` (marked `smashed` and `broken_by` once
 broken in an attempt), left out of `to_dict()` while empty, so a level without them is the same data as before.
 `dash_wall_rules.gd` (`scripts/enemies/`) places them, numbers in `DashWallTuning` (`data/tuning/dash_walls.tres`,
@@ -2598,7 +2599,7 @@ looking like a building in the middle of the street"). What a look gets and keep
   the City (`CityDashWall`: its four window grids), Gangland (`GanglandDashWall`: a ruined block, a balcony block, a
   patched shop, a collapsed corner) and the Marketplace (`MarketDashWall`: two shop rows, a market hall, an arcade;
   the Casino's skin inherits it in its iron tones, its tone picks wrapped to the Casino's shorter palette: walls
-  never stand in the Casino, item 678).
+  never stand in the Casino, item 678). The Beach keeps the default look (no walls there for now: item 680).
   What they share is `DashWallKit` (`scripts/world/skins/dash_wall_kit.gd`): the helpers that lay things in the box
   by height above the floor (`box`, `face`, `bay_faces` for whole windows and arches, `face_profile` and
   `broken_profile` for broken tops, `column`, `frame_rect`, `arch_head`, `finials`, `roof_plant`), `cracks` and

@@ -41,6 +41,10 @@ const NO_BELOW: Array[String] = ["grey box", "greybox", "base"]
 ## An open cut's lane meets the zone's plane at least this far below the street (the shallowest: Gangland's
 ## crater, 4.5 m), and the cut draws nothing of its own in between.
 const BELOW_MIN_DEPTH: float = 3.0
+## The skins whose plane below the street is shallow by design, with the property naming its depth: the Beach's
+## gaps are pools (task D10, the owner), their water pool_depth down (well under a metre), and an open cut shows that
+## water as its pools do (the H series' merge with D10; DESIGN-TBD, docs/OPEN_QUESTIONS.md item 681).
+const SHALLOW_BELOW: Dictionary = {"beach": "pool_depth"}
 ## The skins whose planes below the street were drawn almost black until task H3's second part (GDD §9.9, the
 ## coordinator's decision: "recognisable from the runner's camera"), with the dimmest colour the first face
 ## below an open cut may be drawn in (linear luminance), so they never fall back to black.
@@ -869,11 +873,14 @@ func _check_below(skin: ZoneSkin, skin_name: String, lanes: int, lane: int) -> v
 			meshes.append(m)
 	var places: Array[float] = [81.0, 100.0, 119.0, 121.0, 140.0, 159.0]
 	var faults: PackedStringArray = []
+	var min_depth: float = BELOW_MIN_DEPTH
+	if SHALLOW_BELOW.has(skin_name):
+		min_depth = float(skin.get(String(SHALLOW_BELOW[skin_name]))) - 0.01
 	for d: float in places:
 		var hit: Dictionary = _ray_down(meshes, x, d)
 		if hit.is_empty():
 			faults.append("nothing under %.0f m" % d)
-		elif float(hit["y"]) > -BELOW_MIN_DEPTH:
+		elif float(hit["y"]) > -min_depth:
 			faults.append("%.1f m deep at %.0f m (%s)" % [-float(hit["y"]), d, (hit["node"] as Node).name])
 		elif fc.is_ancestor_of(hit["node"] as Node):
 			faults.append("the cut's own %s at %.0f m" % [(hit["node"] as Node).name, d])
