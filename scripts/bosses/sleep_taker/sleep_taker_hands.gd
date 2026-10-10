@@ -6,7 +6,8 @@ extends Node3D
 ## get through it, and "the walls aren't safe": the hands attack the walls much more often). Task H9.
 ## - a round (plan()): rows of hands hand_row_seconds apart along the street (SleepTakerTuning, at run
 ##   speed and divided by the phase's pace), its first row where the runner will be once its mist has
-##   shown mist_seconds and its hand has been up hand_rise_lead. Each row leaves its door open
+##   shown mist_seconds and its hand has been up hand_rise_lead, or a moment further on where the street
+##   has no room there (FIRST_SHIFTS: its mists warn longer). Each row leaves its door open
 ##   (hand_row_open floor lanes): the first door one lane over from the runner's lane, each next one
 ##   lane over from the last, so every row stands in the lane the runner kept free at the row before:
 ##   it makes them switch lanes, row after row. A hand stands in every other floor lane whose floor is
@@ -32,8 +33,9 @@ extends Node3D
 ##   real lane switch time and margins, holes and fences jumped or slid under with no switch during one).
 ##   Its doors are picked from a seeded order (the fight's seed and the round's number), so every attempt
 ##   plays the same way.
-## Hands are pooled (the most a round can have at the lane count, SleepTakerTuning.max_hands: rigs of the
-## hand, its mist and its rising wisps), drawn by sleep_taker_hand.gdshader and sleep_taker_mist.gdshader.
+## Hands are pooled (the most a round can have at the lane count and a row more, for the round before's last
+## row still sinking, SleepTakerTuning.pool_hands: rigs of the hand, its mist and its rising wisps), drawn
+## by sleep_taker_hand.gdshader and sleep_taker_mist.gdshader.
 
 enum Stage { MIST, RISE, UP, SINK }
 
@@ -51,6 +53,12 @@ const PASSED: float = 1.0
 ## Ways through a round checked with the router at most, each time plan() runs (its costliest part: the
 ## next try takes the doors in another seeded order).
 const MAX_ROUTE_TRIES: int = 3
+## Where a round's first row may stand: where the runner will be once its mist has shown mist_seconds and
+## its hand has been up hand_rise_lead, or this much later (seconds at run speed), its mists warning that
+## much longer, the first of these where the street ahead has room for a fair round (owner, October 10,
+## 2026: more hands, more often, on an arena with three times the holes, where the nearest spot is often
+## a hole's).
+const FIRST_SHIFTS: Array[float] = [0.0, 0.35, 0.7]
 
 var boss: SleepTaker
 ## Hands at work: {n, round, row, lane, side, door, at (track distance), stage, t, rig, marker}.
@@ -75,7 +83,7 @@ func setup(p_boss: SleepTaker) -> void:
 	boss = p_boss
 	name = "Hands"
 	top_level = true
-	for i: int in maxi(boss.tuning.max_hands(boss.lane_count()), 1):
+	for i: int in maxi(boss.tuning.pool_hands(boss.lane_count()), 1):
 		_free.append(_make_rig(i))
 	_rigs = _free.size()
 
@@ -89,12 +97,12 @@ func pool_size() -> int:
 
 ## A fair round for the runner now: {lane, d, at (its first row), path (the doors, from the runner's
 ## lane), rows: [{at, door, open, spots: [{lane, side}]}], count, route}, or {} while no fair round can
-## start. `budget`: seconds the round may last, until the runner is past its last row (it takes the rows
-## that fit).
+## start (or while a round is still on: one at a time). `budget`: seconds the round may last, until the
+## runner is past its last row (it takes the rows that fit).
 func plan(budget: float = INF) -> Dictionary:
 	var world: RunWorld = boss.world
 	var p: Player = world.player
-	if not p.alive or p.surface != Player.Surface.FLOOR or p.in_pit:
+	if not p.alive or p.surface != Player.Surface.FLOOR or p.in_pit or busy():
 		return {}
 	var t: SleepTakerTuning = boss.tuning
 	var n: int = boss.lane_count()
@@ -104,43 +112,47 @@ func plan(budget: float = INF) -> Dictionary:
 	var v: float = maxf(p.speed, 1.0)
 	var d: float = p.distance
 	var lane: int = clampi(p.lane, 0, n - 1)
-	var first: float = d + v * warning_seconds()
 	var spacing: float = row_spacing(v)
-	var rows: int = t.rows_for(rounds + 1)
-	var fewest: int = clampi(t.hand_rows_min, 1, rows)
-	while rows >= fewest and (first + (rows - 1) * spacing + over_distance() - d) / v > budget:
-		rows -= 1
-	if rows < fewest:
-		return {}
-	# The street ahead, read once: its pieces in reach of the round as the router's obstacles, and
-	# where each row's hands fit.
-	var reach: float = first + (rows - 1) * spacing + over_distance() + v * 0.25
+	var most: int = t.rows_for(rounds + 1)
+	var fewest: int = clampi(t.hand_rows_min, 1, most)
+	# The street ahead, read once: its pieces in reach of the latest round it may plan as the router's
+	# obstacles.
+	var latest: float = d + v * (warning_seconds() + FIRST_SHIFTS[-1])
+	var reach: float = latest + (most - 1) * spacing + over_distance() + v * 0.25
 	var track: Array = []
 	_track_obstacles(track, d - 20.0, reach + 20.0)
-	var fits: Dictionary = _fit_table(track, first, spacing, rows)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([boss.rng.seed, "hands", rounds, _attempts])
 	var side: int = -1 if rounds % 2 == 0 else 1
 	var tries: int = 0
-	for m: int in range(rows, fewest - 1, -1):
-		var last: float = first + (m - 1) * spacing
-		if boss.ceiling_between(d, last + t.hand_clear_after * k):
-			continue
-		for path: Array in doors(lane, m, n, rng):
-			var round: Dictionary = _round_for(path, first, spacing, side, fits)
-			if round.is_empty() or int(round["count"]) > _free.size():
+	for shift: float in FIRST_SHIFTS:
+		var first: float = d + v * (warning_seconds() + shift)
+		var rows: int = most
+		while rows >= fewest and (first + (rows - 1) * spacing + over_distance() - d) / v > budget:
+			rows -= 1
+		if rows < fewest:
+			return {}
+		# Where each row's hands fit.
+		var fits: Dictionary = _fit_table(track, first, spacing, rows)
+		for m: int in range(rows, fewest - 1, -1):
+			var last: float = first + (m - 1) * spacing
+			if boss.ceiling_between(d, last + t.hand_clear_after * k):
 				continue
-			var route: Dictionary = route_from(lane, d, d + v * t.route_reaction, round["rows"], track)
-			if bool(route["ok"]):
-				round["lane"] = lane
-				round["d"] = d
-				round["at"] = first
-				round["route"] = route
-				return round
-			tries += 1
-			if tries >= MAX_ROUTE_TRIES:
-				_attempts += 1
-				return {}
+			for path: Array in doors(lane, m, n, rng):
+				var round: Dictionary = _round_for(path, first, spacing, side, fits)
+				if round.is_empty() or int(round["count"]) > _free.size():
+					continue
+				var route: Dictionary = route_from(lane, d, d + v * t.route_reaction, round["rows"], track)
+				if bool(route["ok"]):
+					round["lane"] = lane
+					round["d"] = d
+					round["at"] = first
+					round["route"] = route
+					return round
+				tries += 1
+				if tries >= MAX_ROUTE_TRIES:
+					_attempts += 1
+					return {}
 	return {}
 
 

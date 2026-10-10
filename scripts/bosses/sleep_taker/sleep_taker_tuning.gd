@@ -14,7 +14,9 @@ extends Resource
 ## than normal but never pitch black. Every number here is a placeholder (DESIGN-TBD,
 ## docs/questions/e5c.md; the owner's October 8, 2026 changes, task H9: docs/OPEN_QUESTIONS.md items 617–625): lights out
 ## half as bright as first built, the hands' rounds spread along the street, many wall gaps and wall
-## hands, twice the floor gaps.
+## hands, twice the floor gaps. The owner's October 10, 2026 changes (task H11, docs/questions/h11.md):
+## lights out a dark tunnel (90% darker again, only the glows and the runner's own glow showing), more
+## and more frequent hands, more wall gaps (the refuges' approach included), three times the floor gaps.
 
 @export_group("Nightmare")
 ## DESIGN-TBD: its body fills the street between the walls, less this on each side, and its size
@@ -49,9 +51,10 @@ extends Resource
 	"hands,lights_out,hands,lights_out,hands,hands",
 ])
 ## Seconds between one attack's end (its hazard has passed the runner) and the next one's warning.
-@export_range(0.0, 5.0, 0.05, "suffix:s") var attack_gap: float = 1.3
-## The first attack comes this long after the pattern begins.
-@export_range(0.0, 10.0, 0.1, "suffix:s") var first_attack_delay: float = 1.5
+## Owner, October 10, 2026: the hands come more often (1.3 s before).
+@export_range(0.0, 5.0, 0.05, "suffix:s") var attack_gap: float = 0.8
+## The first attack comes this long after the pattern begins (owner, October 10, 2026: 1.5 s before).
+@export_range(0.0, 10.0, 0.1, "suffix:s") var first_attack_delay: float = 1.0
 
 @export_group("Refuges")
 ## DESIGN-TBD (GDD §10: "it can't reach the ceiling, so anti-grav pads are the refuge from the big
@@ -70,14 +73,17 @@ extends Resource
 @export var refuge_pads_every_lane: bool = false
 
 @export_group("Arena")
-## DESIGN-TBD (owner, October 8, 2026: "double the amount of floor gaps"): once a lap's refuges are in,
-## the generator's additive gap pass (GapDensity: new rows of holes as wide as the lap's own on average,
-## each leaving an open lane, never moving anything) adds this share more rows of holes than the lap
-## has (1: twice as many as first built), keeping floor_gap_spacing seconds at run speed from every
-## other hole, fence, ceiling and pad (the arena's own spacing, 1.9 s, leaves no room for them all) and
-## off every refuge's stretch (where its slash warns and its riders land).
-@export_range(0.0, 2.0, 0.05) var floor_gap_increase: float = 1.0
-@export_range(0.5, 3.0, 0.05, "suffix:s") var floor_gap_spacing: float = 1.3
+## DESIGN-TBD (owner, October 8, 2026: "double the amount of floor gaps"; October 10, 2026: "about
+## three times more gaps on the ground to make the dark sections more of a challenge"): once a lap's
+## refuges are in, the generator's additive gap pass (GapDensity: new rows of holes as wide as the lap's
+## own on average, each leaving an open lane, never moving anything) adds this share more rows of holes
+## than the lap has (1: twice as many as first built, 5: six times, three times the October 8 arena's),
+## keeping floor_gap_spacing seconds at run speed from every other hole, fence, ceiling and pad (the
+## arena's own spacing, 1.9 s, leaves no room for them all; at 0.7 s about 2.7 times October 8's holes
+## fit, tools/measure/sleep_taker_arena.gd) and off every refuge's stretch (where its slash warns and
+## its riders land).
+@export_range(0.0, 6.0, 0.05) var floor_gap_increase: float = 5.0
+@export_range(0.3, 3.0, 0.05, "suffix:s") var floor_gap_spacing: float = 0.7
 
 @export_group("Giant slash")
 ## DESIGN-TBD: the warning: its great maw opens with its shriek, the lanes it will slash light up in
@@ -120,13 +126,18 @@ extends Resource
 ## lane, and only over an outer lane that has a hand of its own). The first round has hand_rows_first
 ## rows, each next one a row more, up to hand_rows_max (kept across phases). A round takes the rows that
 ## are over before the next refuge's slash or lure, never fewer than hand_rows_min (it waits instead,
-## and the next attack in the phase's list may go first).
-@export_range(1, 6) var hand_rows_first: int = 2
-@export_range(1, 6) var hand_rows_max: int = 4
-@export_range(1, 6) var hand_rows_min: int = 2
-@export_range(0.4, 2.0, 0.05, "suffix:s") var hand_row_seconds: float = 0.85
+## and the next attack in the phase's list may go first). Owner, October 10, 2026: "greater in number
+## and more frequent": three rows to start (two before), up to six (four), rows 0.7 s apart (0.85 s),
+## both walls' hands on every row (one, alternating), a round of a single row where only that fits
+## before the next slash or lure (two before), and the attacks attack_gap closer: about 1.5 times the
+## rounds and 1.2 to 1.6 times the hands over a fight (test_sleep_taker_fight's runner, 78 s; the arena's
+## extra holes leave fewer spots where a round fits).
+@export_range(1, 6) var hand_rows_first: int = 3
+@export_range(1, 6) var hand_rows_max: int = 6
+@export_range(1, 6) var hand_rows_min: int = 1
+@export_range(0.4, 2.0, 0.05, "suffix:s") var hand_row_seconds: float = 0.7
 @export_range(1, 4) var hand_row_open: int = 1
-@export_range(0, 2) var wall_hands_per_row: int = 1
+@export_range(0, 2) var wall_hands_per_row: int = 2
 ## Wall hands reach inward at this height, leaving grounded floor runners clear.
 @export_range(2.5, 4.0, 0.05, "suffix:m") var hand_wall_height: float = 3.0
 ## DESIGN-TBD: the warning: as a round starts, purple mist pools where each of its hands will rise (on
@@ -212,17 +223,25 @@ extends Resource
 ## set_light_level, never below light_floor) over dim_seconds and stays dark for dark_seconds while
 ## hands and slashes keep coming; then it breathes out and the light comes back over return_seconds.
 ## Glowing things (hazards, warnings, pads, the generators) keep their colours. Owner, October 8, 2026:
-## "50% darker than they do already": dark_level 0.225, half the first build's 0.45 (the ambient and sky
-## light, the fog's light, the sun and the scenery's light, which was 0.324 of the zone's own and is now
-## 0.162), so its floors are its own: the light never below light_floor and the scenery never below
-## scenery_floor (every other boss keeps BossEncounter.MIN_LIGHT_LEVEL and ZoneSkin.MIN_SCENERY_LIGHT,
-## 0.3), darker still but never pitch black.
+## "50% darker than they do already": dark_level 0.225, half the first build's 0.45. Owner, October 10,
+## 2026: "about 75 to 100% darker than it does currently ... a completely dark tunnel, and the only
+## thing that they will be able to see is the glow of the hazards and the glow of the attacks":
+## dark_level 0.0225, 90% darker again (the ambient and sky light, the fog's light, the sun and the
+## scenery's light, which was 0.162 of the zone's own and is now 0.016), so its floors are its own: the
+## light never below light_floor and the scenery never below scenery_floor (every other boss keeps
+## BossEncounter.MIN_LIGHT_LEVEL and ZoneSkin.MIN_SCENERY_LIGHT, 0.3). This reverses the GDD's "never
+## pitch black" for lights out alone; the arena's own light (LevelConfig.darkness) is unchanged.
 @export_range(0.5, 4.0, 0.05, "suffix:s") var inhale_seconds: float = 2.0
 @export_range(0.1, 3.0, 0.05, "suffix:s") var dim_seconds: float = 0.8
-@export_range(0.1, 1.0, 0.005) var dark_level: float = 0.225
-@export_range(0.1, 0.3, 0.005) var light_floor: float = 0.2
-@export_range(0.05, 0.3, 0.005) var scenery_floor: float = 0.15
+@export_range(0.0, 1.0, 0.0025) var dark_level: float = 0.0225
+@export_range(0.0, 0.3, 0.0025) var light_floor: float = 0.02
+@export_range(0.0, 0.3, 0.0025) var scenery_floor: float = 0.015
 @export_range(1.0, 30.0, 0.5, "suffix:s") var dark_seconds: float = 8.0
+## DESIGN-TBD (owner, October 10, 2026: "the player will need to have some glow on the player character
+## in order for them to have a sense of where they are"): as the light sinks, the runner's own glow
+## (PlayerAvatar.set_dark_glow: its pale rim light around the whole silhouette) rises with it, to this
+## share of the avatar's full dark glow at dark_level, and fades out as the light comes back.
+@export_range(0.0, 1.0, 0.05) var runner_glow: float = 1.0
 @export_range(0.2, 5.0, 0.1, "suffix:s") var return_seconds: float = 1.6
 
 
@@ -240,7 +259,21 @@ func rows_for(n: int) -> int:
 ## The most hands a round can have at `lanes` lanes: its most rows, each with a hand in every floor lane
 ## but its door and wall_hands_per_row on the walls.
 func max_hands(lanes: int) -> int:
-	return maxi(hand_rows_max, 1) * (maxi(lanes - clampi(hand_row_open, 1, lanes), 0) + clampi(wall_hands_per_row, 0, 2))
+	return maxi(hand_rows_max, 1) * row_hands(lanes)
+
+
+## The most hands one row can have at `lanes` lanes: one in every floor lane but its door, and
+## wall_hands_per_row on the walls.
+func row_hands(lanes: int) -> int:
+	return maxi(lanes - clampi(hand_row_open, 1, lanes), 0) + clampi(wall_hands_per_row, 0, 2)
+
+
+## The hands' pool at `lanes` lanes (SleepTakerHands): a round's most (max_hands) and a row more, for the
+## round before's last row, still grasping and sinking (SleepTakerHands.SINK_SECONDS after hand_linger)
+## when the next round's mists show attack_gap later (owner, October 10, 2026: the hands come more often,
+## so a round no longer waits for the last one's to be gone).
+func pool_hands(lanes: int) -> int:
+	return max_hands(lanes) + row_hands(lanes)
 
 
 ## The phase's attack list (the last phase's for any later one; the first's if a phase has none).

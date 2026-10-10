@@ -4,11 +4,11 @@
 
 [resource]
 script = ExtResource("1_tuning")
-spacing_seconds_easy = 1.6
-spacing_seconds_hard = 1.3
+spacing_seconds_easy = 0.6
+spacing_seconds_hard = 0.5
 spacing_jitter = 0.35
 search_seconds = 3.0
-bilateral_share = 0.3
+bilateral_share = 0.5
 length_seconds_min = 0.6
 length_seconds_max = 1.1
 clear_seconds = 0.5

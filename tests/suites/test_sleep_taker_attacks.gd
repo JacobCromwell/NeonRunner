@@ -4,15 +4,16 @@ extends TestSuite
 ##   the lanes it warned; a runner who reacts as the warning starts always escapes, to the refuge's pad
 ##   or (at 5 and 6 lanes) out of its lanes, from every lane; the ceiling is always safe; every attempt
 ##   plays the same;
-## - the grasping hands (owner, October 8, 2026: spread along the street, and on the walls): rounds of
-##   rows growing from two to four, each row leaving its door one lane over from the last and standing
-##   in the lane the runner kept free before, wall hands on every row; every hand's mist warns its spot,
+## - the grasping hands (owner, October 8, 2026: spread along the street, and on the walls; October 10:
+##   more of them, more often): rounds of rows growing from three to six, each row leaving its door one
+##   lane over from the last and standing in the lane the runner kept free before, wall hands on both
+##   walls of every row; every hand's mist warns its spot,
 ##   each round whispers; a round comes only with a way through it, proved on real physics: a runner who
 ##   moves a reaction time after its mists show gets through every round from every lane, at every lane
 ##   count, in every phase (its pace) and at both speeds, switching lanes at every row, without god mode;
 ##   every attempt plays the same;
-## - the whole pattern on its real arena (its holes and fences, doubled; its wall gaps, refuges, hands and
-##   lights out): a runner who reads the warnings (SleepTakerBot) gets through at every lane count, without
+## - the whole pattern on its real arena (its holes and fences, six times the first build's holes; its wall
+##   gaps, refuges, hands and lights out): a runner who reads the warnings (SleepTakerBot) gets through at every lane count, without
 ##   god mode.
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
@@ -351,10 +352,10 @@ func _test_hands_warning() -> void:
 ## put sees rounds of hand_rows_first, then a row more each round up to hand_rows_max rows; each row
 ## hand_row_seconds after the one before along the street (at run speed), leaving only its door, one lane
 ## over from the last door (the first from the runner's lane), with a hand in the lane the runner kept free
-## at the row before (so every row makes them switch lanes) and in every other floor lane, and a wall hand
-## on every row (alternating, never beside a door in an outer lane, only over an outer lane with its own
-## hand), both walls over the rounds. The progression carries over a phase change; the pooled rigs serve
-## floor and wall hands in turn.
+## at the row before (so every row makes them switch lanes) and in every other floor lane, and
+## wall_hands_per_row wall hands on every row (alternating; never beside a door in an outer lane, only over
+## an outer lane with its own hand, so a row whose door is an outer lane has one fewer), both walls over the
+## rounds. The progression carries over a phase change; the pooled rigs serve floor and wall hands in turn.
 func _test_hands_rounds() -> void:
 	var t := def.tuning as SleepTakerTuning
 	for lanes: int in LANES:
@@ -396,7 +397,11 @@ func _test_hands_rounds() -> void:
 						row_walls.append(int(m["side"]))
 				forced = forced and floors.has(leave) and not floors.has(door)
 				full = full and floors.size() == lanes - 1
-				wall_ok = wall_ok and row_walls.size() == t.wall_hands_per_row
+				var can: int = 0
+				for wall: int in [-1, 1]:
+					var outer_lane: int = 0 if wall < 0 else lanes - 1
+					can += 1 if outer_lane != door and floors.has(outer_lane) else 0
+				wall_ok = wall_ok and row_walls.size() == mini(t.wall_hands_per_row, can)
 				for s: int in row_walls:
 					var outer: int = 0 if s < 0 else lanes - 1
 					wall_ok = wall_ok and outer != door and floors.has(outer)
@@ -407,7 +412,8 @@ func _test_hands_rounds() -> void:
 			check(doors_ok, "each row's door is one lane over from the last %s" % tag)
 			check(forced, "every row stands in the lane the runner kept free at the row before, never in its own door: a lane switch at every row %s" % tag)
 			check(full, "every floor lane but the door has a hand %s" % tag)
-			check(wall_ok, "every row has its wall hand, never beside a door in an outer lane, only over an outer lane with its own hand %s" % tag)
+			check(wall_ok, "every row has its %d wall hand(s), never beside a door in an outer lane, only over an outer lane with its own hand %s" % [
+				t.wall_hands_per_row, tag])
 		check(walls.has(-1) and walls.has(1), "the rounds attack both side walls %s" % tag)
 		boss.hands.clear()
 		check(boss.hands.rounds == 4 and boss.hands.active.is_empty(),
@@ -488,14 +494,19 @@ func _test_hands_planning() -> void:
 					clean = clean and (int(spot["side"]) != 0 or not (row["open"] as Array).has(int(spot["lane"])))
 			check(clean, "no hand stands in a row's door %s" % tag)
 			boss.hands.start(plan)
-			check(boss.hands.plan().is_empty() and int(plan["count"]) == boss.hands.pool_size(),
-				"its biggest round fills the pool (%d hands): no other comes meanwhile %s" % [int(plan["count"]), tag])
+			check(boss.hands.plan().is_empty() and int(plan["count"]) <= t.max_hands(lanes)
+				and boss.hands.pool_size() == t.pool_hands(lanes),
+				"its biggest round fits the pool (%d hands of %d, a round's most and a row more): no other comes meanwhile %s" % [
+				int(plan["count"]), boss.hands.pool_size(), tag])
 			boss.hands.clear()
 		world.player.lane = lanes / 2
 		boss.hands.rounds = 10
+		var rows_max: int = t.hand_rows_max
+		var walls_per_row: int = t.wall_hands_per_row
+		var rows_min: int = t.hand_rows_min
 		t.hand_rows_max = 2
 		check((boss.hands.plan()["rows"] as Array).size() == 2, "hand_rows_max is respected %s" % tag)
-		t.hand_rows_max = 4
+		t.hand_rows_max = rows_max
 		t.hand_row_open = 2
 		var open: Dictionary = boss.hands.plan()
 		var two: bool = not open.is_empty()
@@ -518,13 +529,20 @@ func _test_hands_planning() -> void:
 				var most: int = 2 if door != 0 and door != lanes - 1 else 1
 				ok = ok and count == mini(walls, most)
 			check(ok, "wall_hands_per_row %d is respected %s" % [walls, tag])
-		t.wall_hands_per_row = 1
+		t.wall_hands_per_row = walls_per_row
 		# A budget: the rows that are over in time, never fewer than hand_rows_min.
 		var v: float = world.player.speed
 		var two_rows: float = boss.hands.warning_seconds() + (boss.hands.row_spacing(v) + boss.hands.over_distance()) / v + 0.05
 		var fit: Dictionary = boss.hands.plan(two_rows)
 		check(not fit.is_empty() and (fit["rows"] as Array).size() == 2, "a round takes the rows that are over in time %s" % tag)
+		t.hand_rows_min = 2
 		check(boss.hands.plan(two_rows - 0.5).is_empty(), "and waits rather than come with fewer than hand_rows_min %s" % tag)
+		t.hand_rows_min = 1
+		var one: Dictionary = boss.hands.plan(two_rows - 0.5)
+		check(not one.is_empty() and (one["rows"] as Array).size() == 1,
+			"with hand_rows_min 1 (owner, October 10, 2026: more often), a single row comes where only it fits %s" % tag)
+		check(boss.hands.plan(boss.hands.warning_seconds()).is_empty(), "and none where not even one row is over in time %s" % tag)
+		t.hand_rows_min = rows_min
 		world.player.surface = Player.Surface.CEILING
 		check(boss.hands.plan().is_empty(), "hands never come at a ceiling rider %s" % tag)
 		await sim.free_world(world)

@@ -22,8 +22,10 @@ extends BossEncounter
 ## every lane's: SleepTakerTuning.refuge_pads_every_lane), the track kept clear of holes and fences
 ## where the slash's warning and escape happen and where its riders land. Owner, October 8, 2026 (task
 ## H9): its side walls have many gaps (the arena opts in, LevelConfig.wall_gap_tuning:
-## data/bosses/dead_zone_boss_wall_gaps.tres), kept whole over each refuge's stretch, and once the
-## refuges are in, each lap gets twice the floor gaps it was first built with (_more_floor_gaps).
+## data/bosses/dead_zone_boss_wall_gaps.tres), kept whole along each refuge's bridge, and once the
+## refuges are in, each lap gets more floor gaps than it was first built with (_more_floor_gaps). Owner,
+## October 10, 2026 (task H11): more wall gaps, the slash's approach no longer kept whole, and three times
+## the floor gaps.
 ##
 ## Each phase (GDD §10: three phases, three EMP hits, hungrier each time):
 ## 1. Its intro. The first phase's is its entrance: it rises out of the street far ahead, materializing
@@ -39,7 +41,8 @@ extends BossEncounter
 ##    the first attack that can start fairly going next: grasping hands (SleepTakerHands) and lights out
 ##    (SleepTakerLightsOut), one at a time, attack_gap apart, never one that would still be on when the
 ##    next refuge's slash or the next lure is due (a round of hands takes the rows that fit). Lights
-##    out's darkness lasts while the next attacks come (half as bright as first built: its light and
+##    out's darkness lasts while the next attacks come (owner, October 10, 2026: a completely dark
+##    tunnel, only the glows showing, and the runner's own glow, runner_glow_now(): its light and
 ##    scenery floors are its own, light_floor and scenery_floor). generator_delay into the pattern a
 ##    generator comes into sight (_update_generator, SleepTakerLure.place), and as the runner nears it
 ##    the nightmare lunges in after them (the lure, attacking nothing); smashed while it's in reach, the
@@ -147,8 +150,8 @@ func _tuning() -> SleepTakerTuning:
 ## Zone's look) from the arena's hull_lead_in before its pads to refuge_seconds past them, with pads in
 ## refuge_pad_lanes(), and the track kept clear of holes and fences in every lane from where the slash's
 ## warning finds the runner (and a jump before it) to past where it strikes, and where its riders land;
-## its walls kept whole (no wall gap: refuge_wall_span()) over that whole stretch. Then the lap's extra
-## floor gaps (_more_floor_gaps).
+## its walls kept whole (no wall gap: refuge_wall_span()) along its bridge, where the slash strikes.
+## Then the lap's extra floor gaps (_more_floor_gaps).
 ## The generators its lures bring (SleepTakerLure), readied during the fight's load (task PERF1).
 func warm_enemies() -> Array[Dictionary]:
 	return [{"type": "generator", "at": 0.0, "lane": 0, "side": 0, "seed": 1, "params": {}}]
@@ -187,18 +190,21 @@ func _plan_lap(lap: LevelLayout, index: int, p_arena: BossArena) -> void:
 
 
 ## The stretch around a refuge whose pads are at `pad` (track distances) where both walls stay whole:
-## from where the slash's warning finds the runner (refuge_warn_at) to its bridge's end, past where it
-## strikes and recovers, widened either way by the arena's wall gaps' own clearance
-## (WallGapTuning.clear_seconds, the room a level's wall gaps keep from a ceiling). A runner who takes to
-## a wall as the slash warns (its claws never reach a wall runner) is never dropped into it by a gap, and
-## the bridge never hangs over a missing wall.
+## its bridge, from its lead-in before the pads to its end, past where the slash strikes and recovers,
+## widened either way by the arena's wall gaps' own clearance (WallGapTuning.clear_seconds, the room a
+## level's wall gaps keep from a ceiling). The bridge never hangs over a missing wall, and a runner on a
+## wall as the claws strike (they never reach a wall runner) is never dropped into them by a gap. Owner,
+## October 10, 2026 ("more gaps on the walls to make it harder to dodge the main attack"): the approach,
+## where the slash's warning finds the runner (refuge_warn_at), is no longer kept whole, so the wall
+## isn't always there to take as it warns. A gap there ends clear_seconds before the bridge, so a runner
+## dropped off the wall by one still has that, the lead-in and strike_after_pad to take the wall again
+## or reach a pad's lane (DESIGN-TBD, docs/questions/h11.md).
 static func refuge_wall_span(t: SleepTakerTuning, p_arena: BossArena, pad: float) -> Vector2:
 	var v: float = p_arena.tuning.run_speed
-	var warn: float = pad + v * t.strike_after_pad - v * t.slash_warning()
 	var strike_over: float = pad + v * (t.strike_after_pad + t.slash_active + t.slash_recover) + t.slash_depth
 	var end: float = pad + t.refuge_seconds * v
 	var clear: float = WallGapPlacement.tuning_for(p_arena.config).clear_seconds * v
-	return Vector2(minf(warn, pad - p_arena.config.hull_lead_in) - clear, maxf(end, strike_over) + clear)
+	return Vector2(pad - p_arena.config.hull_lead_in - clear, maxf(end, strike_over) + clear)
 
 
 ## Owner, October 8, 2026: "double the amount of floor gaps". Once a lap's refuges are in, the
@@ -483,15 +489,40 @@ func victory_riff() -> bool:
 	return false
 
 
-## Lights out's own floors (owner, October 8, 2026: half as bright as first built; still never pitch
-## black): its tuning's, below every other boss's (BossEncounter.MIN_LIGHT_LEVEL and
-## ZoneSkin.MIN_SCENERY_LIGHT).
+## Lights out's own floors (owner, October 8, 2026: half as bright as first built; October 10, 2026: a
+## completely dark tunnel, only the glows showing): its tuning's, below every other boss's
+## (BossEncounter.MIN_LIGHT_LEVEL and ZoneSkin.MIN_SCENERY_LIGHT).
 func light_floor() -> float:
 	return (tuning if tuning != null else _tuning()).light_floor
 
 
 func scenery_floor() -> float:
 	return (tuning if tuning != null else _tuning()).scenery_floor
+
+
+## How far the runner glows by its own light now (Player.set_dark_glow; owner, October 10, 2026: "the
+## player will need to have some glow on the player character in order for them to have a sense of
+## where they are"): none in the arena's own light, rising as lights out's light sinks to runner_glow at
+## its darkest, and fading as it comes back (with the light, never a flash).
+func runner_glow_now() -> float:
+	var t: SleepTakerTuning = tuning if tuning != null else _tuning()
+	var darkest: float = maxf(t.dark_level, light_floor())
+	if darkest >= 1.0:
+		return 0.0
+	return t.runner_glow * clampf(inverse_lerp(1.0, darkest, light_level()), 0.0, 1.0)
+
+
+func _physics_process(delta: float) -> void:
+	super._physics_process(delta)
+	if world != null and world.player != null:
+		world.player.set_dark_glow(runner_glow_now())
+
+
+func _exit_tree() -> void:
+	super._exit_tree()
+	# The glow is the fight's: the runner leaves it without it.
+	if is_instance_valid(world) and is_instance_valid(world.player):
+		world.player.set_dark_glow(0.0)
 
 
 # --- The pattern -----------------------------------------------------------------------------------
