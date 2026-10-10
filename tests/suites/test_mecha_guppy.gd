@@ -209,9 +209,18 @@ func _test_plan() -> void:
 				check(counts.count(1) == counts.size(), "GDD §10: one lane leads up on 3 lanes, every step %s" % tag)
 			else:
 				var cycle: bool = true
+				var changes: bool = true
 				for i: int in counts.size():
-					cycle = cycle and counts[i] == [1, 2, 3][i % 3]
-				check(cycle, "GDD §10: one, two or three lanes lead up in turn on %d lanes (%s...) %s" % [lanes, counts.slice(0, 6), tag])
+					cycle = cycle and counts[i] == [1, 2, 3, 1, 3, 2][i % 6]
+					changes = changes and (i == 0 or counts[i] != counts[i - 1])
+				check(cycle and changes, "GDD §10: one, two or three lanes lead up, alternating, on %d lanes (%s...) %s"
+					% [lanes, counts.slice(0, 6), tag])
+			var reach_most: int = 0
+			for s: MechaGuppyClimb.Step in c.steps:
+				if s.cue == MechaGuppyClimb.Cue.REACH_BACK:
+					reach_most = maxi(reach_most, s.up_count())
+			check(reach_most >= 1 and reach_most <= 2,
+				"GDD §10: one or two of the roof's lanes reach further back (at most %d on a step) %s" % [reach_most, tag])
 			check(neighbours, "the lanes that lead up are neighbours on the track, never every lane %s" % tag)
 			check(repeats == 0, "never the same lanes twice running (%d repeats in %d steps) %s" % [repeats, c.steps.size(), tag])
 			check(cues_alternate, "the two cues alternate step by step %s" % tag)

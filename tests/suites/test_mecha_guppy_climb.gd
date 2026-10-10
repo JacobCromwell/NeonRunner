@@ -12,8 +12,9 @@ extends TestSuite
 ##   revive after the fall goes there too;
 ## - no escalation: through a long phase 1 with no hits the climb keeps the same rhythm; a retry plays the same;
 ## - the climbing camera over the climb: the runner on screen, the camera never inside a roof (each step's rise well
-##   within RunCamera.FLOOR_REACH) and never snapping (its ease after a drop off a hut moves it 0.40 m on the first
-##   frame at most); the runner's shadow on the roof under them.
+##   within RunCamera.FLOOR_REACH) and never snapping (its ease after a drop off a hut moves it under 0.45 m on the
+##   first frame); the runner's shadow on the roof under them.
+## Each test prints its figures (the phases' ends, the time to spare, phase 2's rate) for the report.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -123,9 +124,12 @@ func _test_climb_through() -> void:
 				% [tag, "" if p.alive else ": %s at %.0f m, %.1f s" % [cause[0], p.distance, boss.fight_time()]])
 			check(bot.min_slack >= REACTION, "with time to spare on every hut (at least %.2f s) %s" % [bot.min_slack, tag])
 			var ends: Array[Dictionary] = _events(boss, &"phase_end")
+			var times: Array = ends.map(func(e: Dictionary) -> String: return "%.1f" % float(e["t"]))
 			check(ends.size() == 2 and _events(boss, &"hit").size() == 10 and not _events(boss, &"top_over").is_empty(),
 				"4 hits end phase 1, 6 more phase 2, and phase 3's top runs out (%d phase ends, %d hits; phases end at %s s) %s"
-				% [ends.size(), _events(boss, &"hit").size(), ends.map(func(e: Dictionary) -> String: return "%.1f" % float(e["t"])), tag])
+				% [ends.size(), _events(boss, &"hit").size(), times, tag])
+			print("  Mecha Guppy's climb %s, a hit on each landing: phases 1 and 2 end at %s s, %d roofs, %.0f m up; least time to spare on a hut %.2f s"
+				% [tag, " and ".join(PackedStringArray(times)), bot.steps_climbed, p.floor_y, bot.min_slack])
 			await sim.free_world(world)
 			check(await _phase_rates(lanes, speed), "phase 2's climb is faster as planned %s" % tag)
 
@@ -163,6 +167,7 @@ func _phase_rates(lanes: int, speed: float) -> bool:
 			rate[ph] = (float(b[1]) - float(a[1])) / maxf(float(b[0]) - float(a[0]), 0.001)
 	var faster: float = rate[1] / maxf(rate[0], 0.001) - 1.0
 	var ok: bool = p.alive and faster >= 0.15 and faster <= 0.25
+	print("  Mecha Guppy's climb %s: phase 1 %.3f m/s, phase 2 %.3f m/s (%.1f%% faster)" % [tag, rate[0], rate[1], faster * 100.0])
 	check(ok, "GDD §10: phase 2 climbs %.1f%% faster on physics (%.3f against %.3f m/s over eight steps each) %s"
 		% [faster * 100.0, rate[1], rate[0], tag])
 	await sim.free_world(world)
@@ -196,6 +201,8 @@ func _test_worst_case() -> void:
 					most = maxi(most, maxi(int(up[0]), lanes - 1 - int(up[-1])))
 			check(bot.min_slack >= 0.0, "with time to spare at the last moment (%.3f s; up to %d switches on one hut) %s"
 				% [bot.min_slack, most, tag])
+			print("  Mecha Guppy's climb, the worst case %s: %d steps, %.3f s to spare at the last moment, up to %d switches"
+				% [tag, bot.steps_climbed, bot.min_slack, most])
 			await sim.free_world(world)
 
 
@@ -290,7 +297,7 @@ func _test_rhythm_and_retry() -> void:
 
 ## The run camera over the climb (RunWorld.camera_climbs, on for the fight): the runner on screen all the way up, the
 ## camera never inside a roof (each step's rise is well within RunCamera.FLOOR_REACH, so it sees every roof it must
-## clear) and never more than 0.4 m from where it was a frame before; the runner's shadow on the roof under them.
+## clear) and never 0.45 m or more from where it was a frame before; the runner's shadow on the roof under them.
 func _test_camera() -> void:
 	for lanes: int in [3, 6]:
 		var tag: String = "(%d lanes)" % lanes
@@ -333,8 +340,11 @@ func _test_camera() -> void:
 		check(int(out["off"]) == 0, "the climbing camera keeps the runner on screen all the way up (%d frames off) %s" % [out["off"], tag])
 		check(int(out["in_roof"]) == 0, "the camera is never inside a roof (%d frames) %s" % [out["in_roof"], tag])
 		# The largest step is the camera's own ease (RunCamera, camera_smoothing) from the view under a hut to the usual
-		# framing as the rider drops off its end: about 3.1 m of change in its aim, 0.40 m on the first frame.
+		# framing as the rider drops off its end: about 0.43 m on its first frame with huts 7 m up (the hut's height sets
+		# how far the aim moves).
 		check(float(out["step"]) < 0.45, "and never snaps (at most %.3f m a frame) %s" % [out["step"], tag])
+		print("  Mecha Guppy's climb, the camera %s: up to %.0f m, at most %.3f m a frame, %d frames off screen, %d inside a roof"
+			% [tag, out["top"], out["step"], out["off"], out["in_roof"]])
 		check(int(out["shadow_bad"]) == 0 and int(out["shadow_ok"]) > 60,
 			"the runner's shadow lies on the roof under them (%d frames right, %d wrong) %s" % [out["shadow_ok"], out["shadow_bad"], tag])
 		camera.queue_free()

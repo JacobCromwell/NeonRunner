@@ -16,8 +16,9 @@ extends RefCounted
 ##   RUN_ON, the hut's lanes that lead up run on past the higher roof's front while the others end short of it;
 ##   REACH_BACK, every lane of the hut ends together and the higher roof's lanes that lead up reach back under
 ##   its end while the others start past where a wrong drop falls.
-## The lanes that lead up: one on 3 lanes; on 5-6 lanes one, two or three in turn (MechaGuppyTuning.up_counts),
-## at a seeded place, never the same block twice running. One safe place to drop to is enough (GDD §10).
+## The lanes that lead up: one on 3 lanes; on 5-6 lanes one, two or three in turn (MechaGuppyTuning.up_counts:
+## 1, 2, 3, 1, 3, 2, so a REACH_BACK step has one or two, as the owner put that cue, and the count changes every
+## step), at a seeded place, never the same block twice running. One safe place to drop to is enough (GDD §10).
 ##
 ## Fairness: every distance comes from the movement (a jump's airtime, the flip up to the hut, the drop off its
 ## end, the fall into the eaten floor; the run's speed; the dash's reach), so it holds at any speed:
@@ -46,6 +47,9 @@ const HUT_GAP: float = 2.0
 const MIN_BITE: float = 2.0
 ## Far: a roof that runs on (phase 3's top), a lane with no roof.
 const FAR: float = 1.0e9
+## The most lanes that lead up on a REACH_BACK step (GDD §10, the owner: "one or two of the roof's lanes reach further
+## back toward the runner than the others").
+const REACH_BACK_MOST: int = 2
 
 
 ## A tiki bar roof the runner lands on and runs along (roof 0: the street the fight starts on).
@@ -223,7 +227,7 @@ func plan_next(phase: int, top: bool = false) -> Step:
 	step.settle = step.pad + jump * speed + dash_reach + flip_seconds(step.hut_y - step.floor_y) * speed
 	step.deadline = step.settle + (tuning.read_seconds + (lanes - 1) * t.lane_switch_time) * speed
 	step.cue = Cue.RUN_ON if k % 2 == 0 else Cue.REACH_BACK
-	step.up = _pick_up(k)
+	step.up = _pick_up(k, step.cue)
 	var drop: float = drop_seconds(step.hut_y - step.top_y) * speed
 	var next := Roof.new()
 	next.index = k + 1
@@ -380,10 +384,11 @@ func _surface_seconds(start: float, vh: float, stop: float, rising_first: bool) 
 
 # --- Internals -------------------------------------------------------------------------------------
 
-## The lanes that lead up for step `k`: as many as up_counts gives this step (one on 3 lanes, up to two on 4,
-## three on 5 or more; always at least one lane that doesn't lead up), at a seeded place, never the same block as
-## the step before when there's another.
-func _pick_up(k: int) -> Vector2i:
+## The lanes that lead up for step `k` (its cue `cue`): as many as up_counts gives this step (one on 3 lanes, up to
+## two on 4, three on 5 or more; always at least one lane that doesn't lead up; a REACH_BACK step no more than
+## REACH_BACK_MOST: the owner's "one or two of the roof's lanes reach further back"), at a seeded place, never the
+## same block as the step before when there's another.
+func _pick_up(k: int, cue: int) -> Vector2i:
 	var cap: int = 1 if lanes <= 3 else (2 if lanes == 4 else 3)
 	cap = mini(cap, lanes - 1)
 	var counts: Array[int] = []
@@ -393,6 +398,8 @@ func _pick_up(k: int) -> Vector2i:
 	if counts.is_empty():
 		counts.append(1)
 	var count: int = counts[k % counts.size()]
+	if cue == Cue.REACH_BACK:
+		count = mini(count, REACH_BACK_MOST)
 	var places: int = lanes - count + 1
 	var first: int = _rng.randi_range(0, places - 1)
 	if k > 0 and places > 1:

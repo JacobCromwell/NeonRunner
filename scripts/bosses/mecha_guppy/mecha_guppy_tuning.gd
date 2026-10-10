@@ -58,8 +58,11 @@ extends Resource
 ## touches it (the front is solid, MechaGuppyStairs).
 @export_range(0.0, 3.0, 0.1, "suffix:m") var fall_margin: float = 0.5
 ## DESIGN-TBD (GDD §10: "one, two or three, alternating"): how many lanes lead up, step after step, on 5 lanes
-## or more (3 lanes: one; 4 lanes: no more than two). Every lane count keeps at least one lane that doesn't.
-@export var up_counts: PackedInt32Array = PackedInt32Array([1, 2, 3])
+## or more, cycling (3 lanes: one; 4 lanes: the entries up to two). The steps' cues alternate, RUN_ON first, and a
+## REACH_BACK step has no more than two (the owner: "one or two of the roof's lanes reach further back";
+## MechaGuppyClimb.REACH_BACK_MOST), so the threes sit on RUN_ON steps: 1, 2, 3, 1, 3, 2 changes the count every
+## step and gives each count as often. Every lane count keeps at least one lane that doesn't lead up.
+@export var up_counts: PackedInt32Array = PackedInt32Array([1, 2, 3, 1, 3, 2])
 ## The run on the street before the first pads (seconds at run speed): the fight's entrance.
 @export_range(1.0, 10.0, 0.25, "suffix:s") var start_seconds: float = 3.5
 
