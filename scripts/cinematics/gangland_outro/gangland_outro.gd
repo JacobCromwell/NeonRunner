@@ -27,7 +27,8 @@ extends CinematicSequencer
 ## shows the same. DESIGN-TBD (docs/questions/f2d.md): the staging the beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/gangland_outro_tuning.tres"
-## The runner slows to a stop at the car's door over this long (an eased stop).
+## The runner slows to a stop beside the Host, and at the car's door, over this long (an eased stop).
+const ARRIVE_SETTLE: float = 0.5
 const DOOR_SETTLE: float = 0.4
 ## They square up beside the door (facing along the car) this long after reaching it, and get in no sooner than that.
 const DOOR_TURN: float = 0.35
@@ -182,9 +183,9 @@ func _build_key() -> void:
 # --- The runner ------------------------------------------------------------------------------------
 
 ## Where the runner is on the first stretch at `t` (track space): walking down the street toward the Host at
-## an even pace, slowing over the last half second, then standing beside them.
+## an even pace, slowing over the last ARRIVE_SETTLE, then standing beside them.
 func runner_track(t: float) -> Vector3:
-	var settle: float = 0.5
+	var settle: float = ARRIVE_SETTLE
 	var v: float = n.walk_speed
 	var behind: float = 0.0
 	if t < t_arrive - settle:
@@ -198,17 +199,19 @@ func runner_track(t: float) -> Vector3:
 func _runner(t: CineTimeline) -> void:
 	var r: CineActor = t.actor(&"runner")
 	r.turn_rate = n.turn_rate
-	# The walk up to the Host: a key every half second (straight moves at the pace), every tenth of a second as
-	# they slow to a stop; then they turn toward the Host, and stand facing them.
+	# The walk up to the Host: a key every half second (straight moves at the pace), then an eased stop (the
+	# pace falling away evenly); then they turn toward the Host, and stand facing them.
+	var slow: float = maxf(t_arrive - ARRIVE_SETTLE, 0.0)
 	var at: float = 0.0
 	var first: bool = true
-	while at < t_arrive - 0.001:
+	while at < slow + 0.001:
 		r.at(at, runner_track(at), &"walk" if first else &"")
 		first = false
-		at = minf(at + (0.1 if at > t_arrive - 0.6 else 0.5), t_arrive)
+		at = slow if at < slow and at + 0.5 > slow else at + 0.5
 	var to_host: Vector3 = host_point - stop_point
 	var facing: float = -rad_to_deg(atan2(to_host.x, to_host.z))
-	_turned(r.at(t_arrive, stop_point), facing, 0.0)
+	_eased(r.at(t_arrive, stop_point), Tween.TRANS_QUAD, Tween.EASE_OUT)
+	_turned(r.at(t_arrive + 0.02, stop_point), facing, 0.0)
 	_turned(r.at(t_cut - 0.02, stop_point), facing, 0.0)
 	# Cut to the car's street: walking up to its door (the car on their right, facing along it).
 	var approach: Vector3 = car_point + n.approach_from

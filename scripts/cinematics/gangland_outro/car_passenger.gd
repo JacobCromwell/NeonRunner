@@ -104,7 +104,8 @@ func update(t: float, look_at: float, nod_at: float) -> void:
 		* Transform3D(Basis.IDENTITY, -hips)
 	screech.transform = body
 	# Its head turns further, tilting curiously (still while it nods), and dips in its nod.
-	var tilt: float = deg_to_rad(TILT_DEGREES) * looking * (1.0 - nodding) * sin(TAU * TILT_RATE * (t - look_at))
+	var since: float = t - look_at if looking > 0.0 else 0.0
+	var tilt: float = deg_to_rad(TILT_DEGREES) * looking * (1.0 - nodding) * sin(TAU * TILT_RATE * since)
 	var turn := Basis(Vector3.UP, deg_to_rad(HEAD_TURN) * looking) * Basis(Vector3.FORWARD, tilt) \
 		* Basis(Vector3.RIGHT, -deg_to_rad(NOD_DEGREES) * nodding)
 	head.transform = body * Transform3D(turn, _neck_sat - turn * _neck_sat)

@@ -39,7 +39,8 @@ extends SceneTree
 ##                        intro: the smoking crater, rubble shifting, a hand grabbing an edge, a host turning to
 ##                        look and its corrupted screen up close)
 ##   sfx_bank_gangland_outro.gd  the Gangland outro's: the screeches sniffing, the golden key's glint, the
-##                        sports car's unlock, scissor door, engine starting and drive-off
+##                        sports car's unlock, scissor door, engine starting and drive-off, and the passenger
+##                        screech's chirp as it nods to the runner
 ##   sfx_bank_minigames.gd  the mini-games' own sounds (the Beach's volleyball match: the ball's hit, its bounce in the
 ##                        sand, the referee's whistle)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes

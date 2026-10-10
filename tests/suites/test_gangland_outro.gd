@@ -32,6 +32,9 @@ const ROAD_LEVEL: float = 0.3
 const WALK_SPEED_MAX: float = 2.5
 const FOOT_SLIP: float = 0.1
 const TURN_SPEED_MAX: float = 5.0
+## Its pose never jumps: a knee bends or straightens at most this far in a frame at 30 fps (degrees; in full
+## stride a swinging knee moves about 14° a frame).
+const KNEE_STEP_MAX: float = 18.0
 ## Where the camera looks, the street is built at least this far (Gangland's fog is full by about 165 m).
 const STREET_SEEN: float = 150.0
 ## The hands meet to pass the key (metres apart at most), and it sits in the hand holding it.
@@ -231,6 +234,8 @@ func _test_beats(lanes: int) -> void:
 	var covered: float = 0.0
 	var last_feet: Array[Vector3] = []
 	var turn_max: float = 0.0
+	var knee_jump: float = 0.0
+	var last_knees := Vector2(INF, INF)
 	var faces_on: bool = false
 	var arrived: bool = false
 	var tremble_rest: float = 0.0
@@ -252,7 +257,8 @@ func _test_beats(lanes: int) -> void:
 	var shot_inside: bool = true
 	var shot_frames: int = 0
 	var pet_in_view: bool = true
-	var both_in_view: bool = false
+	var both_in_view: bool = true
+	var sat_frames: int = 0
 	var pet_looked: bool = false
 	var pet_nodded: float = 0.0
 	var runner_looked: bool = false
@@ -294,6 +300,15 @@ func _test_beats(lanes: int) -> void:
 		for index: int in seq.stage.track._chunks:
 			built_from = minf(built_from, float(index) * TrackBuilder.CHUNK_LENGTH)
 		street_seen = minf(street_seen, built_to - track_cam.z if ahead else track_cam.z - maxf(built_from, -40.0))
+		# Walking, stopping, turning and getting in, no frame jumps the runner's legs (the cut aside).
+		if runner.visible and absf(t - seq.t_cut) > STEP * 1.5:
+			var knees := Vector2(runner.avatar.rig.joint(&"shin_r").rotation.x,
+				runner.avatar.rig.joint(&"shin_l").rotation.x)
+			if last_knees.x < INF:
+				knee_jump = maxf(knee_jump, rad_to_deg(maxf(absf(knees.x - last_knees.x), absf(knees.y - last_knees.y))))
+			last_knees = knees
+		else:
+			last_knees = Vector2(INF, INF)
 		if not seq.at_car:
 			# The screeches: sniffing round the Host until they look up, then off and out of sight before the runner
 			# reaches them; never close to the camera.
@@ -311,7 +326,7 @@ func _test_beats(lanes: int) -> void:
 			# Walking at its pace, a planted foot stays put: the lower foot moves little against the ground covered.
 			var feet: Array[Vector3] = [runner.avatar.rig.joint(&"foot_r").global_position,
 				runner.avatar.rig.joint(&"foot_l").global_position]
-			if t > n.walk_from + 0.5 and t < seq.t_arrive - 0.8 and last_feet.size() == 2:
+			if t > n.walk_from + 0.5 and t < seq.t_arrive and last_feet.size() == 2:
 				var low: int = 0 if feet[0].y < feet[1].y else 1
 				slipped += Vector2(feet[low].x - last_feet[low].x, feet[low].z - last_feet[low].z).length()
 				covered += runner.speed * STEP
@@ -363,8 +378,9 @@ func _test_beats(lanes: int) -> void:
 				pet_in_view = pet_in_view and cam.is_position_in_frustum(pet_head)
 				if t > seq.t_get_in + n.get_in_seconds:
 					var head: Vector3 = runner.avatar.rig.joint(&"head").global_position
-					both_in_view = cam.is_position_in_frustum(pet_head) and cam.is_position_in_frustum(head) \
-						and runner.visible
+					both_in_view = both_in_view and cam.is_position_in_frustum(pet_head) \
+						and cam.is_position_in_frustum(head) and runner.visible
+					sat_frames += 1
 				pet_looked = pet_looked or (t > n.passenger_looks_at + 0.8 and pet.looking > 0.99)
 				# Once the runner's sat, they nod to each other.
 				if t > seq.t_get_in + n.get_in_seconds:
@@ -407,6 +423,8 @@ func _test_beats(lanes: int) -> void:
 		"%s: their planted feet don't skate (they move %.2f m over the %.2f m walked)" % [tag, slipped, covered])
 	check(turn_max > 0.5 and turn_max < TURN_SPEED_MAX, "%s: they turn unhurriedly (at most %.1f rad/s)" % [
 		tag, turn_max])
+	check(knee_jump > 1.0 and knee_jump < KNEE_STEP_MAX,
+		"%s: their pose never jumps (a knee moves at most %.1f° a frame)" % [tag, knee_jump])
 	check(arrived, "%s: and stops beside the Host" % tag)
 	check(tremble_offer > tremble_rest * 2.0 and tremble_rest > 0.0,
 		"%s: the Host trembles, harder as they hold the key up (%.1f°, %.1f°)" % [
@@ -423,12 +441,12 @@ func _test_beats(lanes: int) -> void:
 	check(faces_on, "%s: at the cut, the runner faces the way they walk to the car" % tag)
 	check(door_up and at_door, "%s: its scissor door is up as the runner, at it, gets in" % tag)
 	check(pet_on_seat, "%s: a screech sits on the passenger seat, riding in the car" % tag)
-	check(shot_frames > 10 and shot_inside and pet_in_view and both_in_view,
+	check(shot_frames > 10 and shot_inside and pet_in_view and both_in_view and sat_frames > 10,
 		"%s: one shot from inside the car sees the runner get in and sit down beside it" % tag)
 	check(pet_looked and pet_nodded > 0.9 and runner_looked and runner_nodded > GanglandOutro.RUNNER_NOD * 0.8,
 		"%s: it looks round at them; once they're sat they look round at it, and the two nod to each other" % tag)
-	check(n.launch_at > n.nod_at + GanglandOutro.NOD_AFTER + CarPassenger.NOD_SECONDS,
-		"%s: then the car takes off" % tag)
+	check(n.launch_at > n.road_at,
+		"%s: then (the nods seen in the shot, before the cut to the road) the car takes off" % tag)
 	check(gone_in and door_shut, "%s: the door comes down, and the runner is out of sight once the camera's outside" % tag)
 	check(lit, "%s: its lights come on" % tag)
 	check(not wheels_back and last_turn > seq.driven, "%s: its wheels only turn forward, spinning up at the launch" % tag)
@@ -466,7 +484,8 @@ func _test_beats(lanes: int) -> void:
 	check(max_calls <= PROP_DRAW_CALLS, "%s: its props add at most %d draw calls (%d)" % [tag, PROP_DRAW_CALLS, max_calls])
 	print("  gangland outro, %s: setup %.1f ms, cut %.1f ms, worst step %.2f ms, props %d draw calls; " % [
 		tag, setup_msec, cut_msec, worst_step, max_calls]
-		+ "feet slip %.2f m in %.2f m, turns at most %.2f rad/s" % [slipped, covered, turn_max])
+		+ "feet slip %.2f m in %.2f m, turns at most %.2f rad/s, knees at most %.1f° a frame" % [slipped, covered,
+		turn_max, knee_jump])
 	await _free(seq)
 
 

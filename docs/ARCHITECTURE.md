@@ -4363,7 +4363,7 @@ never ends, and a level never starts, unattended.
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
-| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`); its legs step while it is moved meanwhile; and a walk at walking pace (`walk`), its planted feet staying put |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
 | `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
@@ -4409,7 +4409,8 @@ poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`,
 keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
 (`CinePoses`: `lie`, `get_up`, `climb`, `get_in`) take the keys' `progress` (0-1, sampled like the position; a key below 0
 keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
-hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises); and while it
+hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises; not while it
+gets in, whose legs are its key poses); and while it
 climbs, its hands hold the keys' position (the body hangs from them) until a foot takes its weight
 (`CinePoses.LET_GO`). Its `walk` follows its movement instead (the run cycle at a walk's speed shuffles): heel
 strike, a bent knee through the swing, the foot rolling off its toe, the hips and shoulders turning against each
@@ -4417,8 +4418,12 @@ other, the arms swinging; while a foot is down it goes back under the hip at exa
 worked out from where the foot must be and the knee's bend, turned back against the pelvis's turn and drop), and it
 swings forward to land moving at that pace, so the feet don't skate. The stride follows the ground covered (shorter
 when slow); turning on the spot it steps in place; stopping, it settles into standing at ease, breathing, its
-weight shifting. An actor turns toward its heading at its own `turn_rate` (a slow turn reads as unhurried), and
-faces its new heading at once after a jump cut (`CineActorNode.MAX_STEP`). A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
+weight shifting. Its pace and stride follow its movement over a moment (`CineActorNode.GAIT_SMOOTH`), so a sudden
+change in speed or turning never jumps its pose in a frame (`test_gangland_outro` checks no knee moves further in
+a frame than a full stride's swing does). An actor with a `turn_rate` of its own eases into and out of its turns
+(critically damped; the toolkit's default turn starts at full speed). On its first frame, and after a jump cut
+(`CineActorNode.MAX_STEP`), an actor moves as its path goes on from there: it faces that way at once and starts in
+its stride. A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
 `die`, `lie` (lying still, its screen dark) or `crouch` (crouched low over something, working at it; it stops as
 it turns its head); its keys set its face, its aim (at another actor) and its charge glow (the red glow is its
 attack's warning in play, so show it only where an attack follows). Either's head turns by its keys' `look`

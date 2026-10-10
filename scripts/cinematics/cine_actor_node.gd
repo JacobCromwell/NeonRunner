@@ -20,10 +20,13 @@ const LEAN_SPEED: float = 1.5
 const AIR_HEIGHT: float = 0.03
 ## Where a cyborg aims on another actor: this high above its feet (m).
 const AIM_HEIGHT: float = 0.9
-## A frame's move longer than this (m) is a jump cut, not ground covered: it faces its new heading at once (the
-## way it goes on from there, JUMP_LOOK ahead, when it faces the way it moves).
+## A frame's move longer than this (m) is a jump cut, not ground covered. On its first frame, and after a jump cut,
+## it moves as its path goes on from there (JUMP_LOOK ahead), so it faces that way at once and starts in its stride.
 const MAX_STEP: float = 5.0
 const JUMP_LOOK: float = 0.1
+## A walk's pace and stride follow its movement over about this long (s), so a sudden change in its speed or its
+## turning never jumps its pose in one frame.
+const GAIT_SMOOTH: float = 0.15
 ## How the runner's look (CineActorKey.look) is shared out up its spine: chest, neck, head.
 const LOOK_SHARE: Array[float] = [0.25, 0.3, 0.45]
 const LOOK_JOINTS: Array[StringName] = [&"chest", &"neck", &"head"]
@@ -65,8 +68,13 @@ var _progress: Array = []
 var _cine_pose := HumanoidPose.new()
 var _step_pose := HumanoidPose.new()
 var _step_phase: float = 0.0
-## The walk's phase through its gait cycle (CinePoses.walk).
+## The walk's phase through its gait cycle (CinePoses.walk), its pace (m/s, smoothed; below 0 until it walks) and
+## the share of it that's ground covered (the rest is stepping round as it turns; smoothed); how fast an eased turn
+## is turning now (rad/s).
 var _walk_phase: float = 0.0
+var _gait: float = -1.0
+var _covering: float = 0.0
+var _yaw_speed: float = 0.0
 
 
 ## Builds the model. `variant` dresses a cyborg that names no look of its own (the stage skin's
@@ -133,6 +141,12 @@ func update(t: float, delta: float, others: Dictionary) -> void:
 	if jumped:
 		step = Vector3.ZERO
 	var velocity: Vector3 = step / delta if delta > 0.0 else Vector3.ZERO
+	if not _started or jumped:
+		# Its first frame here: moving as its path goes on from here, so it starts in its stride.
+		var ahead: Vector3 = track_point_at(t + JUMP_LOOK) - p
+		if ahead.length() < MAX_STEP:
+			velocity = ahead / JUMP_LOOK
+		_gait = -1.0
 	speed = Vector2(velocity.x, velocity.z).length()
 	vertical_speed = velocity.y
 	distance_run += Vector2(step.x, step.z).length()
@@ -144,16 +158,23 @@ func update(t: float, delta: float, others: Dictionary) -> void:
 	var heading: float = yaw
 	if not key.face_path:
 		heading = deg_to_rad(key.yaw)
-	elif speed > TURN_MIN_SPEED:
+	elif speed > TURN_MIN_SPEED or ((not _started or jumped) and speed > 0.001):
 		# Track space runs along +z, which is world -z: heading 0.
 		heading = atan2(-velocity.x, velocity.z)
-	elif jumped:
-		var ahead: Vector3 = track_point_at(t + JUMP_LOOK) - p
-		if Vector2(ahead.x, ahead.z).length() > 0.001:
-			heading = atan2(-ahead.x, ahead.z)
 	var rate: float = actor.turn_rate if actor.turn_rate > 0.0 else TURN_RATE
 	var turned_from: float = yaw
-	yaw = heading if not _started or jumped else lerp_angle(yaw, heading, 1.0 - exp(-rate * delta))
+	if not _started or jumped:
+		yaw = heading
+		_yaw_speed = 0.0
+	elif actor.turn_rate > 0.0:
+		# Eased into the turn and out of it: a critically damped turn, worked out exactly over the step.
+		var off: float = angle_difference(heading, yaw)
+		var fade: float = exp(-rate * delta)
+		var carry: float = _yaw_speed + rate * off
+		yaw = wrapf(heading + (off + carry * delta) * fade, -PI, PI)
+		_yaw_speed = (_yaw_speed - rate * carry * delta) * fade
+	else:
+		yaw = lerp_angle(yaw, heading, 1.0 - exp(-rate * delta))
 	turn_speed = absf(angle_difference(turned_from, yaw)) / delta if _started and not jumped and delta > 0.0 else 0.0
 	var first: bool = not _started
 	_started = true
@@ -203,14 +224,19 @@ func _pose_runner(t: float, delta: float) -> void:
 	var rig: HumanoidRig = avatar.rig
 	if pose == &"walk":
 		# Its stride follows the ground covered, and it steps as it turns on the spot; its planted foot goes back
-		# under it at its pace (none, stepping in place), in the rig's own units.
+		# under it at its pace (none, stepping in place), in the rig's own units. Its pace and the share of it
+		# covering ground are smoothed (GAIT_SMOOTH); its steps keep time with the ground covered.
 		var gait: float = speed + turn_speed * CinePoses.TURN_STEP
-		var stride: float = CinePoses.walk_stride(gait)
+		var covering: float = speed / gait if gait > 0.001 else 0.0
+		var follow: float = 1.0 - exp(-delta / GAIT_SMOOTH) if _gait >= 0.0 else 1.0
+		_gait = lerpf(maxf(_gait, 0.0), gait, follow)
+		_covering = lerpf(_covering, covering, follow)
+		var stride: float = CinePoses.walk_stride(_gait)
 		_walk_phase = CinePoses.walk_phase(_walk_phase, gait * delta, stride)
-		var sweep: float = stride * speed / gait if gait > 0.001 else 0.0
-		CinePoses.walk(_cine_pose, _walk_phase, CinePoses.walk_amount(gait), t, sweep,
+		CinePoses.walk(_cine_pose, _walk_phase, CinePoses.walk_amount(_gait), t, stride * _covering,
 			CinePoses.WALK_CYCLE / maxf(rig.scale.z, 0.01), rig.parts.thigh_length, rig.parts.shin_length)
 	else:
+		_gait = -1.0
 		CinePoses.runner(_cine_pose, pose, progress, t, rig.parts.pelvis_height())
 	var hold: float = CinePoses.hand_hold(pose, progress)
 	# Moved along meanwhile (a stagger forward as it gets up), its legs step.

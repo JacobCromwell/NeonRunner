@@ -82,8 +82,8 @@ These are the choices made to fill them in. Each is a placeholder in data
   (`admire_at`). Is the key's look right, and should anything be said or shown (a card)?
 - **The unlock and getting in.** Placeholder: the runner points the key at the car as they walk up; it chirps and
   blinks its lights twice (`unlock_at`, `car_unlock`; one slow glow with Reduced flashing); the scissor door swings
-  up (`door_up_at`, `car_door`); the runner steps in and sits (`get_in_at`), out of sight once the door is
-  down (`door_down_at`; the courtesy lights go out a moment after it's shut). Should the runner (and the screech) be
+  up (`door_up_at`, `car_door`); the runner steps in and sits (`get_in_at`); the door comes down (`door_down_at`)
+  behind them, and they're out of sight from the cut to the road (`road_at`). Should the runner (and the screech) be
   seen sitting in the car as it drives off (see-through glass, a costlier material)?
 - **The drive-off** (the owner, October 10, 2026: "faster"). Placeholder: lights and engine on (`lights_at`,
   `car_start`: the starter, a blip, idling), a fine idle shudder, then it launches (`launch_at`, `car_drive`: the
