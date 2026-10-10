@@ -164,8 +164,9 @@ func setup(p_world: RunWorld, p_context: RunContext, p_arena: BossArena) -> void
 	def = context.boss
 	arena = p_arena
 	name = "Boss"
-	rng.seed = hash([String(def.id), context.config.level_seed if context.config != null else 0])
-	_armor_rng.seed = hash([String(def.id), "armor"])
+	# Seeded by its BossDef.rng_key() (its id, or the one it had before a move), so every attempt matches.
+	rng.seed = hash([def.rng_key(), context.config.level_seed if context.config != null else 0])
+	_armor_rng.seed = hash([def.rng_key(), "armor"])
 	max_health = maxf(def.health, 1.0)
 	health = max_health
 	_ends = def.phase_ends()
@@ -380,7 +381,7 @@ func add_part(script: Script, params: Dictionary = {}) -> BossPart:
 	p["encounter"] = self
 	var entry := {"type": String(def.id), "script": script.resource_path,
 		"at": player_distance() + 40.0, "lane": lane_count() / 2, "side": 0,
-		"seed": hash([String(def.id), parts.size(), rng.seed]), "params": p}
+		"seed": hash([def.rng_key(), parts.size(), rng.seed]), "params": p}
 	var part := world.director.spawn(entry) as BossPart
 	if part == null:
 		push_error("BossEncounter: %s isn't a BossPart" % script.resource_path)
@@ -404,7 +405,7 @@ func warm_enemies() -> Array[Dictionary]:
 func spawn_enemy(type: String, at: float, lane: int, side: int = 0, params: Dictionary = {}) -> Enemy:
 	_spawned += 1
 	return world.director.spawn({"type": type, "at": at, "lane": lane, "side": side,
-		"seed": hash([String(def.id), type, _spawned, rng.seed]), "params": params.duplicate(true)})
+		"seed": hash([def.rng_key(), type, _spawned, rng.seed]), "params": params.duplicate(true)})
 
 
 ## Offers the player a pickup (GDD §10: "a section of floor that spawns an armor, shield or grapple

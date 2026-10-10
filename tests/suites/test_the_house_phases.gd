@@ -1,7 +1,7 @@
 extends TestSuite
 ## The House's phases 2 and 3, its defeat and its slot in the campaign (GDD §10; task E5a-b), at 3, 5 and 6
-## lanes, at the reference 18 m/s and the Marketplace's 22.6 m/s, with a runner who plays it by what it
-## shows (TheHouseBot, reacting REACTION late; no god mode, no armor):
+## lanes, at the reference 18 m/s and the Casino's 23 m/s (its zone's since task K2), with a runner who
+## plays it by what it shows (TheHouseBot, reacting REACTION late; no god mode, no armor):
 ## - phase 2: wall fences stand along both walls, pulsing; the special reel's 7 button stands on a wall,
 ##   lit in plain view before the runner gets there, and a runner who reads it runs along the wall over it
 ##   and back to the street (every wall fence it passes off as it goes by: it lives); the machine's
@@ -14,13 +14,13 @@ extends TestSuite
 ## - the defeat: the last stomp, then it lurches out and rises, its reels spin wildly and jam, TILT shows,
 ##   it collapses into the street in an explosion of coins, ahead of the runner, the citizens cheering;
 ##   then it's over;
-## - the campaign at 22.6 m/s and every lane count: Marketplace 2, then the fight (a death in its second
+## - the campaign at 23 m/s and every lane count: Casino 2, then the fight (a death in its second
 ##   phase, the retry from the start, all three phases won), its results and stars, the shop and the
-##   Marketplace's outro.
+##   Casino's outro.
 
-const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
+const BOSS_PATH: String = "res://data/bosses/casino_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
-const SPEEDS: Array[float] = [18.0, 22.6]
+const SPEEDS: Array[float] = [18.0, 23.0]
 const REACTION: float = 0.35
 ## A button shows at least this long before the runner reaches it.
 const BUTTON_SIGHT: float = 1.0
@@ -263,10 +263,10 @@ func _test_campaign() -> void:
 
 func _campaign_flow(lanes: int) -> void:
 	var tag: String = "(%d lanes)" % lanes
-	App.play_step(App.campaign.step("marketplace/2"))
+	App.play_step(App.campaign.step("casino/2"))
 	App.begin_run()
 	await physics_frames(10)
-	check(App.run != null and App.run.world.geo.lane_count == lanes, "Marketplace 2 starts %s" % tag)
+	check(App.run != null and App.run.world.geo.lane_count == lanes, "Casino 2 starts %s" % tag)
 	if App.run == null:
 		return
 	App.run.world.player.distance = App.run.world.layout.length - 3.0
@@ -281,9 +281,9 @@ func _campaign_flow(lanes: int) -> void:
 	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
-	check(run != null and run.encounter is TheHouse and run.context.step.id == "marketplace/boss"
-		and run.world.geo.lane_count == lanes and is_equal_approx(run.world.tuning.run_speed, 22.6)
-		and not run.world.player.god_mode, "then The House's fight, at the Marketplace's 22.6 m/s, no god mode %s" % tag)
+	check(run != null and run.encounter is TheHouse and run.context.step.id == "casino/boss"
+		and run.world.geo.lane_count == lanes and is_equal_approx(run.world.tuning.run_speed, SPEEDS[1])
+		and not run.world.player.god_mode, "then The House's fight, at the Casino's 23 m/s, no god mode %s" % tag)
 	if run == null or not run.encounter is TheHouse:
 		return
 	# The first attempt: the first phase won, then a death in the second.
@@ -339,7 +339,7 @@ func _campaign_flow(lanes: int) -> void:
 		return
 	check(result.stars == def.stars_for(true, result.time) and result.stars == 3,
 		"three stars for a fight without a miss (%.1f s) %s" % [result.time, tag])
-	check(App.profile.is_completed("marketplace/boss"), "the boss step counts as done %s" % tag)
+	check(App.profile.is_completed("casino/boss"), "the boss step counts as done %s" % tag)
 	App.continue_after_result(result)
 	shop = App.screen as ShopScreen
 	check(shop != null and shop.play_label == "Next", "then the shop %s" % tag)
@@ -349,6 +349,6 @@ func _campaign_flow(lanes: int) -> void:
 	await tree.process_frame
 	var outro := App.screen as SlotScreen
 	var cine: Cinematic = App.playing_cinematic()
-	check((outro != null and outro.step.id == "marketplace/outro") or (cine != null and cine.step.id == "marketplace/outro"),
-		"then the Marketplace's outro %s" % tag)
+	check((outro != null and outro.step.id == "casino/outro") or (cine != null and cine.step.id == "casino/outro"),
+		"then the Casino's outro %s" % tag)
 	await tree.process_frame

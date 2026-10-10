@@ -222,10 +222,22 @@ func _hull_starts() -> Array[float]:
 		out.append(HULLS[i].x)
 	var wanted: Array[int] = []
 	var kind_of := Callable()
-	var market := skin as MarketplaceSkin
+	# The Casino is a Marketplace skin underneath (it reuses its citizens, doodads and feed), but its ceilings
+	# are its own kinds, so it is asked first.
+	var casino := skin as CasinoSkin
+	var market := skin as MarketplaceSkin if casino == null else null
 	var corporate := skin as CorporateSkin
 	var dead := skin as DeadZoneSkin
-	if market != null:
+	if casino != null:
+		# Across every lane the Casino has footbridges, gantries and sign gantries (a footbridge needs the
+		# whole street: narrower ceilings are gantries and sign gantries, whatever the spot).
+		wanted = [CasinoCeilings.Kind.FOOTBRIDGE, CasinoCeilings.Kind.GANTRY, CasinoCeilings.Kind.SIGN,
+			CasinoCeilings.Kind.GANTRY]
+		if _narrow:
+			wanted = [CasinoCeilings.Kind.FOOTBRIDGE, CasinoCeilings.Kind.SIGN, CasinoCeilings.Kind.GANTRY,
+				CasinoCeilings.Kind.SIGN]
+		kind_of = casino.casino_ceilings().kind_of
+	elif market != null:
 		wanted = [MarketCeilings.Kind.BRIDGE, MarketCeilings.Kind.OVERPASS, MarketCeilings.Kind.SHIP, MarketCeilings.Kind.AD]
 		kind_of = market.ceilings().kind_of
 	elif corporate != null:

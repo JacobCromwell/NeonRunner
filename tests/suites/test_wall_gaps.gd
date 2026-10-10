@@ -16,8 +16,8 @@ extends SkinSuite
 ##   October 8, 2026), which gets many, by its numbers, clear of the same keep-outs, every lap keeping
 ##   them as it joins the track.
 
-const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "corporate/1",
-	"corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "casino/1", "casino/2",
+	"corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
 const WITHOUT: Array = ["city/1", "city/2", "city/3"]
 
 

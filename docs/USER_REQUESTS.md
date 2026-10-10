@@ -15,6 +15,17 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] The Octodog and Buzz Overdrive's charge attacks should hurt other enemies if they charge into them. If having enemies being able to hurt each other drastically increases the complexity of the code, then write that out to the user requests and do not implement that feature for now. However, if it does not greatly increase the complexity of the code, then please implement it.
 
+## Casino zone (October 8, 2026)
+
+- [x] Add a Casino zone right after the Marketplace: two Marketplace levels on the way to the Casino, then two Casino levels, then The House, which moves from the Marketplace to the Casino. Don't create new character or enemy skins (no new cyborg, truck, heli drone and so on): use the Marketplace's. Only the walls, floors, ceilings and background change, following the owner's reference image (`docs/art/reference/casino_zone.webp`). Tasks K1 (the skin) and K2 (the campaign). DONE: the Casino is Zone 4 with two levels (*Brass Arcade* and *House Edge*, proposed names) and The House; the Marketplace has its two levels and no boss. Open points for the owner: `docs/OPEN_QUESTIONS.md` §D, items 504–524 (the skin's look, the 17-level difficulty curve, music, level names).
+
+## Casino follow-up (October 9, 2026)
+
+- [x] No level gets easier with the Casino added: every level is too easy, at least on PC. Corporate and beyond being harder is fine; the Marketplace levels should stay as difficult as they were, or be a little harder. (Task K4.) DONE: the campaign curve's exponent is 0.79 (`data/campaign/campaign.tres`): City 1 and Golden 3 unchanged, every other level harder than before the Casino (the Marketplace +0.026 and +0.016, Corporate 1 +0.095). Open points: `docs/OPEN_QUESTIONS.md` §D, items 528–532.
+- [x] The Casino's level names, *Brass Arcade* and *House Edge*, are approved.
+- [x] The owner adds the Casino's song in a separate change (nothing to do here).
+- [x] The Casino's glass ceiling is whole, and its signs use real lettering: "Gasket's House of Chance" and "The Brass Lotus". No pedestrians. (Task K3.) DONE: the vault has every pane; the two names are landmark casinos about every 100 m along the street, alternating, on their boards and on tall blade signs readable from a distance (`CasinoSkin.name_spacing`; 0 names every casino). Open points: `docs/OPEN_QUESTIONS.md` §D, items 525–527.
+
 ## Floating Head follow-up (October 9, 2026)
 
 - [x] Keep the first bombing run as it is. In the next bombing run, instead of one target at a time, drop bombs on two to four spots at once, with one or two bombs on each. To keep it fair, the first spot in a salvo is closest to the player and each later one a little further away, so the player can see the path they'll have to take before the bombs are released. DONE (task E1g): both later runs (phases 2 and 3) drop salvos of 2–4 spots (`salvo_spots` in `data/bosses/city_boss_tuning.tres`: set the last number to 1 to keep the third phase's run as it was). Every salvo leaves a way through, checked at 3, 5 and 6 lanes. The open choices are in `docs/OPEN_QUESTIONS.md` §D, items 396–399.

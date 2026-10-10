@@ -234,7 +234,8 @@ func _test_looks() -> void:
 	for v: StringName in expect:
 		check(BarnacleTurretModel.is_creature(v) == bool(expect[v]), "%s wears the %s look" % [v,
 			"creature" if expect[v] else "mechanical"])
-	for skin_path: String in ["res://data/skins/marketplace_skin.tres", "res://data/skins/gangland_skin.tres"]:
+	for skin_path: String in ["res://data/skins/marketplace_skin.tres", "res://data/skins/casino_skin.tres",
+			"res://data/skins/gangland_skin.tres"]:
 		var skin := load(skin_path) as ZoneSkin
 		check(skin != null and BarnacleTurretModel.is_creature(skin.enemy_variant), "%s's turrets are creatures" % skin_path)
 	for skin_path: String in ["res://data/skins/city_skin.tres", "res://data/skins/corporate_skin.tres",
@@ -333,8 +334,10 @@ func _test_placement() -> void:
 					if float(e["at"]) < float(first["at"]):
 						first = e
 				var reach: float = start + bt.intro_seconds * gen.speed
-				check(float(first["at"]) >= start and float(first["at"]) <= reach,
-					"Marketplace 1 meets its first turret soon after the start (%.0f m, start %.0f) %s" % [first["at"], start, tag])
+				# At the start itself counts (the rules may place it right there: the same 0.01 m the other
+				# "nothing before its start" checks allow for rounding).
+				check(float(first["at"]) >= start - 0.01 and float(first["at"]) <= reach + 0.01,
+					"Marketplace 1 meets its first turret soon after the start (%.2f m, start %.2f) %s" % [first["at"], start, tag])
 				check(int(per[float(first["params"]["hull_start"])]) == 1, "alone on its ceiling " + tag)
 				for key: Variant in per:
 					check(int(per[key]) == 1, "no pairs in Marketplace 1 " + tag)

@@ -1,23 +1,31 @@
 extends TestSuite
-## The House, the Marketplace's boss (GDD §10; tasks E5a-a and E5a-b): its slot and data (built, par times,
-## the phases' special buttons), its arena, the machine's model and budget (the squat under a ceiling, the
-## TILT sign), its reels (the defeat's wild spin and jam), how a spin's symbols become attacks, the lane
-## routes every attack and button is held to (TheHouseRoute, with holds), and phase 3's ceiling plan
-## (C1's limits on its turrets). Its attacks: test_the_house_attacks.gd; its buttons, jackpot and
-## fight: test_the_house_fight.gd.
+## The House, the Casino's boss (GDD §10; tasks E5a-a and E5a-b, moved from the Marketplace by K2): its slot
+## and data (built, par times, the phases' special buttons), its arena, the machine's model and budget (the
+## squat under a ceiling, the TILT sign), its reels (the defeat's wild spin and jam), how a spin's symbols
+## become attacks, the lane routes every attack and button is held to (TheHouseRoute, with holds), and phase
+## 3's ceiling plan (C1's limits on its turrets). Its attacks: test_the_house_attacks.gd; its buttons, jackpot
+## and fight: test_the_house_fight.gd.
 
-const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
+const BOSS_PATH: String = "res://data/bosses/casino_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
 const NEW_SOUNDS: Array[StringName] = [&"house_roll", &"house_lever", &"house_spin", &"house_ding", &"house_lock",
 	&"house_button", &"house_cherry", &"house_lightning", &"house_bar", &"house_slam", &"house_jackpot", &"house_coins",
 	&"house_sag", &"house_hit", &"house_billboard", &"house_tilt", &"house_collapse"]
 ## The Marketplace's cables slung across the street hang no lower than this (MarketFacades.overhead:
-## 15.5 m less their sag), and the machine stands under them.
+## 15.5 m less their sag), and the machine stands under them: the street's overhead the arena's look keeps
+## clear (the Marketplace's look stands in for the Casino's arena until task K1's comes).
 const CABLES_LOWEST: float = 14.4
+## The fight's speed in the campaign: its zone's, the Casino's (GDD §3: a boss runs at its zone's speed).
+const CAMPAIGN_SPEED: float = 23.0
 
 var sim: RunSim
 var slot: BossDef
 var def: BossDef
+
+
+## A skin with a warm light of its own (_test_sheen), as the zone skins export one.
+class SheenSkin extends ZoneSkin:
+	var sheen_color: Color = Color(0.2, 0.6, 0.9)
 
 
 func run() -> void:
@@ -33,6 +41,7 @@ func run() -> void:
 	_test_attacks_for()
 	_test_route()
 	_test_phases()
+	_test_sheen()
 	await _test_arena_and_model()
 	await _test_ceiling_plan()
 	await _test_placed_credits()
@@ -60,9 +69,11 @@ func _fight(p_def: BossDef, lanes: int, speed: float = 0.0) -> Array:
 # --- The slot ------------------------------------------------------------------------------------
 
 func _test_slot() -> void:
-	check(slot.display_name == "The House" and slot.id == &"marketplace_boss", "the Marketplace's slot is The House (GDD §10)")
+	check(slot.display_name == "The House" and slot.id == &"casino_boss", "the Casino's slot is The House (GDD §10)")
+	check(slot.rng_key() == "marketplace_boss" and slot.arena != null and slot.arena.level_seed == 1301,
+		"its fight is seeded as it was in the Marketplace (its seed id, its arena's seed): every spin and lane as before")
 	check(slot.is_built() and slot.scene == "res://scenes/bosses/the_house.tscn" and slot.preview_scene == ""
-		and slot.preview() == null, "the campaign plays the fight in the Marketplace's boss slot (task E5a-b)")
+		and slot.preview() == null, "the campaign plays the fight in the Casino's boss slot (tasks E5a-b, K2)")
 	check(slot.three_star_seconds < slot.two_star_seconds and slot.three_star_seconds >= 60.0 and slot.two_star_seconds <= 120.0,
 		"par times: %.0f s for three stars, %.0f s for two (GDD §10: 60-120 s)" % [slot.three_star_seconds, slot.two_star_seconds])
 	var list: Array[BossPhase] = def.phase_list()
@@ -72,12 +83,17 @@ func _test_slot() -> void:
 		"weapons chip at it, but can save at most one stomp (%.2f of its health)" % def.weapon_share_cap)
 	check(def.armor_rule and def.armor_delay_min == 15.0 and def.armor_delay_max == 17.0 and def.armor_pickups_per_phase == 1,
 		"the standard armor rule, 15-17 s (GDD §10)")
-	check(def.music == &"marketplace", "it plays the Marketplace's own track (no new music)")
+	check(def.music == &"casino", "it plays the Casino's own track, the Marketplace's until the owner's song (no new music)")
 	check(def.tuning is TheHouseTuning, "its numbers are a tuning of its own (F6)")
-	check(def.arena != null and def.arena.skin is MarketplaceSkin and def.arena.skin.resource_path == "res://data/bosses/marketplace_boss_skin.tres",
-		"its arena is in the Marketplace's look, its own skin")
+	# Its arena is in its zone's look (the Casino's, task K1; the Marketplace's stands in until it comes).
+	var casino: ZoneDef = App.campaign.step("casino/boss").zone if App.campaign.step("casino/boss") != null else null
+	check(casino != null and casino.boss == slot and def.arena != null and def.arena.skin != null
+		and def.arena.skin.resource_path == "res://data/bosses/casino_boss_skin.tres"
+		and def.arena.skin.get_script() == casino.skin.get_script() and def.arena.skin.enemy_variant == casino.skin.enemy_variant,
+		"its arena is in the Casino's look, its own skin")
 	var skin := def.arena.skin as MarketplaceSkin
-	check(skin != null and skin.bunting_height >= 25.0, "with no pennants strung low over the street where it rolls")
+	if skin != null:
+		check(skin.bunting_height >= 25.0, "with no pennants strung low over the street where it rolls")
 	var sfx := load("res://data/audio/sfx_library.tres") as SfxLibrary
 	for sound: StringName in NEW_SOUNDS:
 		check(sfx.names().has(String(sound)) and sfx.stream(sound) != null, "its sound %s exists" % sound)
@@ -89,8 +105,8 @@ func _test_slot() -> void:
 	var triggers: Array = []
 	for h: Dictionary in (hints as Dictionary)["hints"]:
 		triggers.append(h["trigger"])
-	for trigger: String in ["enemy:marketplace_boss", "boss:marketplace_boss/buttons", "boss:marketplace_boss/jackpot",
-			"boss:marketplace_boss/wall_button", "boss:marketplace_boss/ceiling_button"]:
+	for trigger: String in ["enemy:casino_boss", "boss:casino_boss/buttons", "boss:casino_boss/jackpot",
+			"boss:casino_boss/wall_button", "boss:casino_boss/ceiling_button"]:
 		check(triggers.has(trigger), "a first-time hint for %s" % trigger)
 	# Its tuning's lists.
 	for phase: int in 3:
@@ -234,7 +250,7 @@ func _test_route() -> void:
 	check(route["ok"] and TheHouseRoute.lane_at(route, 1, 41.0) == 2 and TheHouseRoute.lane_at(route, 1, 56.0) == 0,
 		"around a row and on to a button behind it")
 	# The margins grow with the speed (a switch takes more track).
-	var fast: TheHouseRoute = TheHouseRoute.for_run(3, 22.6, tuning, t)
+	var fast: TheHouseRoute = TheHouseRoute.for_run(3, CAMPAIGN_SPEED, tuning, t)
 	check(fast.switch_m > r.switch_m and fast.jump_before > r.jump_before, "the margins follow the run speed")
 
 
@@ -271,6 +287,23 @@ func _test_phases() -> void:
 
 
 # --- Arena and model -----------------------------------------------------------------------------
+
+## The machine's warm light (TheHouseModel.sheen_for, task K2): its arena skin's sheen_color when the skin has
+## one, else DEFAULT_SHEEN (the Marketplace's, the light it had), and its solid material carries it.
+func _test_sheen() -> void:
+	check(TheHouseModel.sheen_for(null) == TheHouseModel.DEFAULT_SHEEN, "no skin: the machine's default warm light")
+	check(TheHouseModel.sheen_for(GreyboxSkin.new()) == TheHouseModel.DEFAULT_SHEEN,
+		"a skin without a warm light of its own: the default")
+	var lit := SheenSkin.new()
+	check(TheHouseModel.sheen_for(lit) == lit.sheen_color, "a skin's own warm light when it has one")
+	check(TheHouseModel.solid_material(lit).get_shader_parameter(&"sheen_color") == lit.sheen_color
+		and TheHouseModel.solid_material().get_shader_parameter(&"sheen_color") == TheHouseModel.DEFAULT_SHEEN,
+		"the machine's material takes the light it's given")
+	var arena_skin: ZoneSkin = def.arena.skin if def.arena != null else null
+	var own: Variant = arena_skin.get(&"sheen_color") if arena_skin != null else null
+	check(TheHouseModel.sheen_for(arena_skin) == (own as Color if own is Color else TheHouseModel.DEFAULT_SHEEN),
+		"in its arena it takes the arena skin's light")
+
 
 func _test_arena_and_model() -> void:
 	var t := def.tuning as TheHouseTuning
@@ -367,7 +400,7 @@ func _credit_row(n: int, from: float) -> Array[Dictionary]:
 func _test_ceiling_plan() -> void:
 	var bt: BarnacleTurretTuning = TheHouseCeiling.turret_tuning()
 	for lanes: int in LANES:
-		for speed: float in [18.0, 22.6]:
+		for speed: float in [18.0, CAMPAIGN_SPEED]:
 			var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
 			var pair: Array = _fight(def, lanes, speed)
 			var world: RunWorld = pair[0]

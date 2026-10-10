@@ -65,7 +65,7 @@ func _ready() -> void:
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var config := LevelConfig.new()
 	config.lane_count = _lanes
-	config.enemy_scaling = 1.0 if double else 0.86
+	config.enemy_scaling = 1.0 if double else 14.0 / 16.0  # the Golden Palace's, or Golden 1's
 	var skin_path: String = "res://data/skins/%s_skin.tres" % skin_name
 	config.skin = load(skin_path) as ZoneSkin if skin_name != "" and ResourceLoader.exists(skin_path) else null
 	var layout := LevelLayout.new()

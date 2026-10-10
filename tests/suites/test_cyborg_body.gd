@@ -29,7 +29,7 @@ const UPPER_BODY_TRIANGLES: int = 2000
 ## and the look each dresses the cyborgs in.
 const SKIN_VARIANTS: Dictionary = {&"city": &"base", &"scavenger": &"brute"}
 ## Each zone's look (GDD §9.2, "Zone variants"), by the zone's id: the skin that exists must pick it.
-const ZONE_LOOKS: Dictionary = {&"city": &"base", &"gangland": &"brute", &"marketplace": &"casino",
+const ZONE_LOOKS: Dictionary = {&"city": &"base", &"gangland": &"brute", &"marketplace": &"casino", &"casino": &"casino",
 	&"corporate": &"vr_runner", &"dead_zone": &"burned", &"golden": &"golden"}
 ## The hitboxes as they were before the new look (task P2 changes looks only): the solid body, the
 ## stompable head and shoulders, and the window cyborg's body band.

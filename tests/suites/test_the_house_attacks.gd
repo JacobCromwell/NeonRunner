@@ -1,8 +1,8 @@
 extends TestSuite
 ## The House's attacks (GDD §10; task E5a-a: "each attack strikes only where and when its warning said,
 ## and has an escape"; "two and three of a kind"; "a 3-lane mix of cherry bombs plus BAR blocks must
-## still leave a way through"), at 3, 5 and 6 lanes, at the reference 18 m/s and the Marketplace's
-## 22.6 m/s, on its real arena, with spins that show every symbol and every size (no buttons):
+## still leave a way through"), at 3, 5 and 6 lanes, at the reference 18 m/s and the Casino's
+## 23 m/s (its zone's since task K2), on its real arena, with spins that show every symbol and every size (no buttons):
 ## - every strike's warning shows from its reveal where it will hit (the cherry bombs' target circles and
 ##   the BAR rows' red lanes as floor warnings, the fence flickering harmlessly in its lanes), with its
 ##   sound; what hits then is exactly that: blasts in those lanes at that spot when the bombs land, blocks
@@ -19,9 +19,9 @@ extends TestSuite
 ## - a volley's bombs and a row's blocks are each their own, and what attacks show is pooled: bombs,
 ##   blocks, spools and blasts are reused from strike to strike, nothing made anew once the pools fit a spin.
 
-const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
+const BOSS_PATH: String = "res://data/bosses/casino_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
-const SPEEDS: Array[float] = [18.0, 22.6]
+const SPEEDS: Array[float] = [18.0, 23.0]
 const REACTION: float = 0.35
 ## Spins showing every attack at every size: three singles, three pairs, three triples.
 const EVERY_SIZE: String = "cherry,bar,lightning|cherry,cherry,bar|bar,bar,lightning|lightning,lightning,cherry|cherry,cherry,cherry|bar,bar,bar|lightning,lightning,lightning"

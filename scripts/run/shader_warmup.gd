@@ -218,6 +218,20 @@ func _show_all() -> void:
 			_sample_geometry(node as CPUParticles3D)
 
 
+## A headless run has no warm-up (needed()), yet a zone's doodads still read their pictures from disk the first
+## time one is dressed (DoodadCards.for_zone: an atlas file, a few milliseconds). LevelRun dresses one here
+## during the load instead, so that read never lands in a frame of the run, as it doesn't when the game renders
+## (the warm-up's own doodads load it). Nothing is kept: the doodad goes at once.
+static func load_doodads(world: RunWorld) -> void:
+	if world.skin == null:
+		return
+	var size_class: StringName = LevelLayout.DOODAD_SIZES[0]
+	var box_size: Vector3 = world.tuning.doodad_size(size_class)
+	var body := Node3D.new()
+	world.skin.doodad(body, Vector3(box_size.x, box_size.y, 4.0), size_class, 1, 0)
+	body.free()
+
+
 ## One of each track piece the zone skin dresses, at the track's start, on parents that collide with
 ## nothing (TrackBuilder sizes them the same way).
 func _sample_track(world: RunWorld) -> void:

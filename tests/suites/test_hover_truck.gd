@@ -6,7 +6,14 @@ const DroneScript := preload("res://scripts/enemies/drone.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const S := TruckScript.State
 
+## The campaign builds whose hover truck is gone before the level's ramps start, so it has route (b) only
+## (_check_rules), each checked to still show it: none on task K4's curve (Gangland 1 at 3 lanes on task K2's,
+## its truck out at 363 m and its ramps from 1177 m). Any other wants a look.
+const BEFORE_RAMPS: PackedStringArray = []
+
 var sim: RunSim
+## The tags of the builds whose trucks _check_rules saw gone before their level's ramps start.
+var before_ramps: PackedStringArray = []
 
 
 func run() -> void:
@@ -545,7 +552,8 @@ func _test_rules() -> void:
 
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var totals: Dictionary = {}
-	for id: String in ["city/3", "gangland/1", "gangland/2", "gangland/3"]:
+	before_ramps.clear()
+	for id: String in ["city/3", "gangland/1", "gangland/2", "gangland/3", "casino/1", "casino/2"]:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
@@ -554,8 +562,14 @@ func _test_rules() -> void:
 			var n: int = _check_rules(layout, config, t, "%s lanes=%d" % [id, lanes])
 			check(gen.warnings.is_empty() and n >= 1, "%s has trucks and follows the rules (%d, %d lanes)" % [id, n, lanes])
 			totals[id] = int(totals.get(id, 0)) + n
+	print("  hover trucks in %s: %s; gone before their level's ramps start (route (b) only): %s" % [
+		", ".join(PackedStringArray(totals.keys())), str(totals.values()), ", ".join(before_ramps)])
+	for tag: String in before_ramps:
+		check(BEFORE_RAMPS.has(tag), "only the known builds' trucks are gone before the ramps start: %s" % tag)
+	for tag: String in BEFORE_RAMPS:
+		check(before_ramps.has(tag), "%s still has its truck gone before the ramps start; else take it off BEFORE_RAMPS" % tag)
 	check(totals["city/3"] == 3, "city/3 introduces the truck: one per level (%d over 3 lane counts)" % totals["city/3"])
-	# Gangland is early in the planned campaign (levels 4–6 of 18), where the scaling still allows one
+	# Gangland is early in the campaign (levels 4–6 of 17), where the scaling still allows one
 	# truck per level; more come in later zones (the difficulty sweep above checks the growth).
 	check(totals["gangland/3"] >= totals["city/3"], "later levels bring at least as many (%d vs %d)" % [totals["gangland/3"], totals["city/3"]])
 
@@ -563,6 +577,9 @@ func _test_rules() -> void:
 ## Checks one layout against the truck rules. Returns the number of trucks.
 func _check_rules(layout: LevelLayout, config: LevelConfig, t: HoverTruckTuning, tag: String) -> int:
 	var speed: float = tuning.run_speed
+	# The level's own run speed (its zone's), as the generator built it with.
+	var level_speed: float = config.movement_for(tuning).run_speed
+	var ramps_from: float = config.feature_start("ramps") * layout.length
 	var rules := load("res://scripts/enemies/hover_truck_rules.gd")
 	var trucks: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
@@ -593,17 +610,25 @@ func _check_rules(layout: LevelLayout, config: LevelConfig, t: HoverTruckTuning,
 		for s: Dictionary in layout.signs:
 			check(not (int(s["side"]) == side and float(s["start"]) <= section.y and float(s["end"]) >= section.x),
 				"no sign where it bursts through the wall %s" % tag)
-		if config.has_feature("ramps"):
+		# Route (a)'s ramp, at the level's own speed as HoverTruckRules._ensure_ramp places it: from
+		# ramp_after_seconds after the burst, no earlier than the ramps' start (LevelConfig.feature_starts:
+		# Gangland 1 brings them in 40% of the way through), and no later than 3 s before the truck's shortest
+		# stay ends. A truck gone before the ramps start has route (b) only, as every truck in City 3 (no ramps)
+		# has; BEFORE_RAMPS bounds those.
+		if config.has_feature("ramps") and ramps_from <= at + (t.stay_min_seconds - 3.0) * level_speed:
 			var ramp: bool = false
 			for r: Dictionary in layout.ramps:
-				if int(r["side"]) == side and float(r["at"]) >= at + t.ramp_after_seconds * speed - 0.01 \
-						and float(r["at"]) <= at + t.stay_min_seconds * speed:
+				if int(r["side"]) == side and float(r["at"]) >= at + t.ramp_after_seconds * level_speed - 0.01 \
+						and float(r["at"]) <= at + t.stay_min_seconds * level_speed:
 					ramp = true
 			check(ramp, "route (a) has a ramp on its side while it's around (at %.0f) %s" % [at, tag])
+		elif config.has_feature("ramps"):
+			before_ramps.append(tag)
 		else:
 			check(layout.ramps.is_empty(), "no ramps in a level without the ramps feature " + tag)
-	# The ramps it adds follow the usual ramp fairness.
+	# The ramps it adds follow the usual ramp fairness, and none comes before the ramps' start.
 	for r: Dictionary in layout.ramps:
+		check(float(r["at"]) >= ramps_from - 0.01, "no ramp before the ramps' start (%.0f < %.0f) %s" % [r["at"], ramps_from, tag])
 		var rl: int = layout.outer_lane(int(r["side"]))
 		check(not layout.gapped_between(rl, float(r["at"]), float(r["at"]) + tuning.ramp_length), "ramp on solid floor " + tag)
 		for s: Dictionary in layout.signs:

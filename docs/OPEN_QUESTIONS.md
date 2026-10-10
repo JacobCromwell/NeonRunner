@@ -3218,6 +3218,596 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     228.2 to 229.3 s at 18 m/s (it was 198.3 to 200.1 s and 208.9 to 209.1 s); stage 2 from the checkpoint takes
     about 96 s (it was 76 s). Three stars at 238 s, two at 308 s (Hostile Takeover's margins over a clean fight)
     and the time bonus runs out at 378 s (they were 214, 277 and 340 s; `data/bosses/golden_boss.tres`).
+**The Casino skin** (from K1; the owner's reference `docs/art/reference/casino_zone.webp`; exports on `CasinoSkin`, `data/skins/casino_skin.tres` and the arena's `data/bosses/casino_boss_skin.tres`, F6; review with `./play.sh --quick --skin=casino`)
+504. **Floor and gaps: to confirm with the owner (GDD §5: "Floor, gaps and ceiling pieces: chosen by the art
+    agent from the reference *(to confirm)*").** The reference shows a dark, wet paved street with a few
+    pedestrians far off, and no gaps. Placeholder: the floor is the street's **dark flagstones laid in running
+    bond with brass inlaid along both edges of every lane**, a brass bar across the lane every 6 m (the still
+    floor's own motion cue: the bars stream past underfoot, with pools of lamplight every 12 m and the wet
+    sheen of the street toward the horizon), and **gaps are open service trenches under the street**, dark and
+    deep (everything in them in deep shade, an iron wall dropping into the dark), edged in the orange every
+    zone uses right on the collision edge. Not built, and offered if the owner would rather: a red carpet runner
+    down some lanes (kept off: red is a hazard colour and the Golden Zone's walkways already read as one runner
+    per lane), a gap as a broken stretch of paving with brass pipes and a dim lower level showing, and a
+    different floor under each kind of building. `CasinoSkin.street_color`, `inlay_color`, `street_wet`,
+    `trench_depth`; `CasinoStreet`, PAT_CASINO_STREET and PAT_CASINO_UNDER (kit_casino.gdshaderinc).
+505. **The glow palette's departure from the reference's neon (GDD §5, the colour rule).** The reference glows
+    pink, cyan, green and orange, which are the hazards' colours. Placeholder: lit signs, marquees and the
+    lamps near the track glow **warm white, violet or blue**; brass and gold are lit metal (never neon:
+    `cas_metal()` fakes a reflection of the lamplit street, nothing brass or iron carries glow); the
+    reference's coloured boards appear only as **dim painted signs in muted rose, teal, moss and ochre** (lit
+    like any wall, never glowing) high on the facades, never near the track's colours. The warm-white share of
+    lit signs is half, so the street stays amber and gold rather than cold. Hazards stay the brightest, most
+    saturated things on screen (the suite checks chroma and hue). Is that the right balance of warmth and cold?
+    `CasinoSkin.neon_colors`, `dim_sign_colors`, `lamp_color`, `bulb_color`.
+506. **Sign names (the reference's "Gasket's House of Chance", "The Brass Lotus", "Casino Entrance").** The
+    game's signs and screens carry no real words (the cult's feed is wordless; every skin's lettering is rows of
+    chunky glyphs), so the names can't be spelled. Placeholder: lit signs show a brand mark (a diamond, a lotus,
+    a crown, a chip or a die) and rows of glyphs, and vertical blade signs run lettering down their board like
+    "The Brass Lotus". Should the Casino's two named signs be drawn as real lettering once the project has a
+    way to draw words on a sign (a texture of each sign)? Until then no sign says "HAZARD" or anything else.
+    **Answered (owner, October 9, 2026):** real lettering, with the names "Gasket's House of Chance" and "The Brass Lotus" (GDD §5, Zone 4; task K3).
+507. **Pedestrians far down the street.** The reference has a few small figures far down the street. The owner
+    said no new characters, and the Marketplace's citizens only play in shop windows (they react to the runner
+    and The House's crowds cheer and duck through them). Placeholder: **none**: the street is empty, as the
+    Marketplace's is. Should a few of the Marketplace's citizens also stand far down the street as tiny,
+    fogged silhouettes (scenery only, never in the lanes), or are the shop windows enough?
+    **Answered (owner, October 9, 2026):** no pedestrians; the shop windows are enough (GDD §5, Zone 4).
+508. **How much each kind of piece appears (placeholder shares).** The balconies, pipes, air-conditioning units,
+    planters, banners, lanterns, fans and girders across the street, and how often each ceiling kind turns up
+    (footbridge 3, pipe-bundle gantry 3, sign gantry 2): all exports on `CasinoSkin` (groups "Facades", "Vault",
+    "Casino ceilings"), tuned by eye against the reference; the owner may want the street busier or calmer.
+509. **The glass roof (GDD §5: the vault stays high overhead as background).** Placeholder: the roof springs from
+    the facades' top at 22 m and rises to about 26-29 m (higher over a wider street); it is **opaque and faked**
+    (dark night-blue panes with a few stars, warmer where they catch the lamplit haze, 10% of the panes missing
+    so the night sky shows through), with iron ribs every 8 m, girders across the street every 32 m or so
+    carrying heavy banners, lanterns on chains and the occasional still ceiling fan. Nothing hangs below 16 m
+    over the lanes (the arrival flyover's and The House's limits). The ceiling fans don't turn (a static mesh).
+    Is the broken glass right for a "gaudy, warm and a little seedy" casino, or should the roof be whole?
+    **Answered (owner, October 9, 2026):** the roof is whole, with no broken or missing panes (GDD §5, Zone 4; task K3).
+510. **Doodads.** The Marketplace's potted plants, casino machines and hedge rows are reused unchanged in the
+    Casino's palette (dark brass-trimmed cabinets, deep-green plants). Does the Casino want doodads of its own
+    (a roulette table, a velvet-rope queue, a fruit machine)? GDD §3 only names the Marketplace's.
+511. **The House's arena** (`data/bosses/casino_boss_skin.tres`): the facades are flush below 14.5 m (no balcony,
+    pipe or blade sign stands out of a wall where the 13.5 m machine passes), the roof is raised to spring from
+    34 m (so phase 3's billboard, which drops from about 35 m, never passes through the glass) and nothing is
+    hung from it. The arena is therefore plainer than the street the player ran through to reach it; should
+    the machine's arena keep the full dressing at the cost of the machine clipping through balconies, and
+    should the billboard come down through a roof with a gap in it instead of under a tall one?
+512. **The fences' and signs' looks** (`CasinoProps`; the same placeholder question every zone's props raise). The
+    GDD fixes only the pink crackle of an electric fence and the yellow-and-black stripes of a sign. Placeholder:
+    the fence's field is strung between brass stanchion posts on iron plinths (the casino's velvet-rope posts,
+    the pink field in place of the rope), its edge bars and its OFF look are proposals, and a sign's striped
+    frame goes round a lit casino sign's face. Is the stanchion the right post for a casino fence?
+513. **Follow-up for the Marketplace (not changed here; `shopfront.gdshader` is the Marketplace's).** Its casino
+    fronts (style 1) test `cy + storey > decor_top` on the cell's top, so a storey that straddles `decor_top` (6.2 to 9.4 m
+    against 8 m) draws its glass and its rows of bulbs from 6.34 m, under the 8 m a decorative light may start at
+    (the Casino's own shader starts the grid at `decor_top`, so it does not have this). A one-line fix there is to start
+    the grid at `decor_top`, as `casino_facade.gdshader` does, or to mask the bulbs and the tinted glass below it.
+    The violet tint of its glass panels under 8 m comes from the same test.
+
+**The Casino in the campaign** (from K2; the owner added the Casino as Zone 4 on October 8, 2026, GDD §5, §6, §10; data in `data/zones/casino.tres`, `data/levels/casino_1.tres`, `casino_2.tres`, `data/bosses/casino_boss.tres`; review with `./play.sh --level=casino/1` or `--level=casino/boss`)
+514. **The Casino's tagline** (GDD §5, Zone 4). Placeholder: "A covered casino street under a vaulted glass
+    roof." (`data/zones/casino.tres`). The Marketplace's tagline drops its casinos: "Stall roofs, awnings and
+    a bustling open-air market." (`data/zones/marketplace.tres`).
+515. **The Casino's run speed** (GDD §3: about 21 m/s in the Neon City rising to about 25 in the Golden Zone).
+    Placeholder: 23.0 m/s, between the Marketplace's 22.6 and Corporate's 23.4, no other zone's changed
+    (`data/zones/casino.tres`, `run_speed`). The House runs at it now (GDD §3: a boss runs at its zone's
+    speed), 23.0 instead of the Marketplace's 22.6.
+516. **The Casino's level names** (GDD §5: "(name to come)"). Proposed: Casino 1 *Brass Arcade* (the covered
+    street, its brass pipes), Casino 2 *House Edge* (The House follows it) (`display_name` in
+    `data/levels/casino_1.tres`, `casino_2.tres`).
+    **Answered (owner, October 9, 2026):** *Brass Arcade* and *House Edge* are approved (GDD §5).
+517. **What each Casino level adds** (GDD §5: "still to design"). Placeholder: both play Marketplace 2's
+    features (everything up to the wall fences and the shopfronts' vent screeches) with no introductions
+    (`feature_starts` empty) and no extra pick weights (Marketplace 2's extra weight on vent screeches was for
+    their introduction), so nothing new comes until Corporate 1. `test_campaign` exempts them from "each
+    level brings something new" and the Casino from "every zone introduces a new enemy", keyed to the GDD's
+    owner decision.
+518. **The Casino levels' numbers.** Placeholders: 145 s and 150 s long (the campaign's levels now total 39.0
+    minutes, GDD §5's "about 40"); seeds 701 and 702 (no existing seed renumbered); danger density 0.27 for
+    both (between Marketplace 2's 0.26 and Corporate 1's 0.28; the dial never falls); doodads 0.8 like the
+    Marketplace's; Marketplace 2's spacing, fill, wide gaps, charge-path cyborgs, narrow ceilings and credit
+    settings; no level sky of their own (the Casino skin's sky).
+519. **The difficulty curve over 17 levels: the owner's choice** (GDD §6: an automatic curve making each level
+    slightly harder than the last). The curve still runs 0.1 to 0.9 and `enemy_scaling` 0 to 1, now over 17
+    levels, so every level between City 1 and Golden 3 moved (the curve's step from 0.057 to 0.05 a level):
+    the City, Gangland and the Marketplace got a little easier, Corporate, the Dead Zone and Golden 1 and 2 a
+    little harder.
+    Placeholder: this re-spaced curve. The alternative keeps the existing levels' difficulty (each level's
+    `difficulty_bias` holding its old value, the Casino's two levels between Marketplace 2's 0.500 and
+    Corporate 1's 0.557), which keeps their difficulty-gated patterns and spacing as they were (not their
+    recency ages or completion bonuses, which follow a level's place in the campaign either way). What the
+    re-spaced curve changes is listed below ("What the re-spaced curve changes"). Which does the owner want?
+    **Answered (owner, October 9, 2026):** no level gets easier: every level is too easy, at least on PC. The Marketplace keeps at least its old difficulty (a little harder is welcome), and Corporate and beyond may get harder (GDD §6; task K4). Built in K4: the curve's exponent 0.79 (item 528 has the table).
+
+    | Level | Difficulty before | after | Enemy scaling before | after |
+    |---|---|---|---|---|
+    | City 1 | 0.050 | 0.050 | 0.000 | 0.000 |
+    | City 2 | 0.157 | 0.150 | 0.071 | 0.063 |
+    | City 3 | 0.214 | 0.200 | 0.143 | 0.125 |
+    | Gangland 1 | 0.271 | 0.250 | 0.214 | 0.188 |
+    | Gangland 2 | 0.329 | 0.300 | 0.286 | 0.250 |
+    | Gangland 3 | 0.386 | 0.350 | 0.357 | 0.313 |
+    | Marketplace 1 | 0.443 | 0.400 | 0.429 | 0.375 |
+    | Marketplace 2 | 0.500 | 0.450 | 0.500 | 0.438 |
+    | Casino 1 | – | 0.500 | – | 0.500 |
+    | Casino 2 | – | 0.550 | – | 0.563 |
+    | Corporate 1 | 0.557 | 0.600 | 0.571 | 0.625 |
+    | Corporate 2 | 0.614 | 0.650 | 0.643 | 0.688 |
+    | Dead Zone 1 | 0.671 | 0.700 | 0.714 | 0.750 |
+    | Dead Zone 2 | 0.729 | 0.750 | 0.786 | 0.813 |
+    | Golden 1 | 0.786 | 0.800 | 0.857 | 0.875 |
+    | Golden 2 (peak) | 0.893 | 0.900 | 0.929 | 0.938 |
+    | Golden 3 | 0.850 | 0.850 | 1.000 | 1.000 |
+
+    Boss fights keep their own difficulty; the enemies they bring take their zone's last level's scaling:
+    the Floating Head 0.143 to 0.125, the Sewer Swarm 0.357 to 0.313, The House 0.500 (Marketplace 2's) to
+    0.563 (Casino 2's: its Barnacle Turrets reload in 2.06 s instead of 2.10 and fire bolts at 17.1 m/s
+    instead of 17.0, still 5 shots to kill), Hostile Takeover 0.643 to 0.688, the Sleep Taker 0.786 to 0.813.
+520. **Enemy numbers that step at an `enemy_scaling` threshold** were moved in data so that every existing
+    level keeps exactly what it had (the in-between numbers, such as reload times and bolt speeds, follow the
+    re-spaced scaling). Should these steps move with the curve instead (for example the Casino, not
+    Marketplace 2, as the first level with turret and drone pairs)?
+    - Barnacle Turret pairs from Marketplace 2 on: `pair_min_scaling` 0.45 to 0.4; its 6 shots to kill from
+      the Dead Zone on (Corporate 2 keeps 5): `health_late` 6.0 to 5.9 (`data/enemies/barnacle_turret.tres`).
+    - Drone pairs from Marketplace 2 on: `pair_min_scaling` 0.5 to 0.4 (`data/enemies/drone.tres`). (A
+      barrage stays at 6 bullets everywhere but the Golden Palace; its rounded bullet count only matters there.)
+    - Hover trucks: two a level from Marketplace 2 on and three at the Golden Palace, one window shooter from
+      Marketplace 2 and two at the Golden Palace: `max_per_level` 1.0/3.0 to 1.2/3.1, `shooters` 0.0/2.0 to
+      0.2/2.1 (`data/enemies/hover_truck.tres`; both rounded down).
+    - Octodog charges, 3 to 4 from Marketplace 2 on (2 to 3 before): `charges_min/max_late` 3/4 to 3.25/4.25,
+      rounded (`data/enemies/octodog.tres`; the counts became decimals in `octodog_tuning.gd` so the step can
+      fall between two levels).
+    - Shots to kill a cyborg or window cyborg at every weapon tier, level by level: `health_late` 5.0 to 4.9
+      (`data/enemies/cyborg.tres`, `window_cyborg.tres`), and a Tithe Collector: 4.5 to 4.4
+      (`data/enemies/tithe_collector.tres`). The shot table at the campaign's ends (`test_powerups`) is
+      unchanged.
+    - The Resonator's place in the Golden Zone (`zone_t`: Golden 1 at 0.048, Golden 2 at 0.524, Golden 3 at
+      1): `scaling_from` 0.85 to 0.86875 (`data/enemies/resonator.tres`).
+521. **What the re-spaced curve changes** (for the owner's choice of curve above; measured on the 15-level
+    curve before the Casino, commit 74c0b5e, and on this branch):
+    - **Patterns gated by difficulty** (`min_difficulty` / `max_difficulty` in `data/patterns/*.json`; a
+      level's difficulty rises 0.25 across it). In the levels that got easier they come later or never: City
+      2 loses `fence_mixed`; City 3 loses `cyborg_pair`, `window_cyborg_pair` and `fence_stagger` (in its
+      last 6% before); Gangland 1 never reaches the main `hover_truck` pattern (only `hover_truck_rare`),
+      `gap_with_fence_lane` or `ceiling_over_gauntlet` (its last 9% before); Gangland 2 loses
+      `cyborg_stagger` and `screech_manhole_row`; Gangland 3 loses `fence_pulsing_all`; Marketplace 1 loses
+      `drone_pair` (its last 17% before); Marketplace 2's `hover_truck`, `generator_pulsing_all`,
+      `gap_with_fence_lane` and `ceiling_over_gauntlet` start 20% in (from its start before); the other gated
+      patterns of these levels start 3% to 20% of the level later, and the easy ones that stop at a difficulty
+      (`fence_full_single`, `fence_pulsing_single`, `hover_truck_rare`) last longer, Marketplace 2's
+      `hover_truck_rare` back for its first 20%. In the levels that got harder they come
+      earlier: `drone_pair` from 20% into Corporate 1 (37% before) and from Corporate 2's start (14%);
+      Corporate 1 loses `fence_full_single` and `fence_pulsing_single` (its first 17% before) and has
+      `fence_pulsing_all` from its start (17% in before); Golden 2's two Gilded Sentinel patterns from 20% in
+      (23%).
+    - **The recency curve** (a newly introduced feature's patterns weigh more in the levels right after its
+      introduction): those boosts move from Corporate and the Dead Zone to the Casino. Corporate 1: Barnacle
+      Turrets age 2 to 4 (weight 1.75 to 1.0), wall fences 1 to 3 (2.5 to 1.25), fence generators 3 to 5 (1.25
+      to 1.0); Corporate 2: turrets 1.25 to 1.0, wall fences 1.75 to 1.0; Dead Zone 1: wall fences 1.25 to
+      1.0. Casino 1 gets wall fences 2.5, turrets 1.75 and generators 1.25; Casino 2 wall fences 1.75 and
+      turrets 1.25.
+    - **The economy** (`tools/measure/economy.gd --lanes=5 --seeds=0 --share=0.7`): a level's completion
+      bonus is 100 + 25 × its index, so every level after the Marketplace pays 50 more, and the Casino's two
+      levels add theirs: a clean 5-lane playthrough's wallet (boss payouts in) goes from 14,446 to 16,874. The
+      Heavy missile comes into reach after Dead Zone 1 instead of Golden 1 (the 13th level either way, now of
+      17; this bears on open question 294), and Armor IV after Casino 1 instead of Corporate 1 (the 9th).
+    - **Late introductions** (`test_campaign` on the levels' own seeds: a level's first piece of a feature
+      that starts partway in, more than 210 m at the reference pace after that start): 3 of 63 before, 6 now.
+      - Corporate 2's Enforcer Truck at 5 lanes (the Enforcer's first level): start 176 m, first at 713 m,
+        about 23 s late.
+      - Marketplace 2's vent screeches at 3 and 6 lanes: start 1311 m, first at 2022 and 1960 m, about 30 s
+        late (at 5 lanes, late before, on time now).
+      - Corporate 1's Buzz Overdrive at 6 lanes: start 339 m, first at 783 m (585 before), and only one Buzz
+        Overdrive there (three before); at 5 lanes first at 1214 m (976 before, already late then).
+      - Dead Zone 1's host at 3 lanes, late before and after (start 351 m, first at about 2010 m).
+
+      Gangland 1's wall gaps, first at about three quarters of the level on every build before and after
+      (WallGapPlacement's schedule), no longer count (`SPACED_FROM_START` in `tests/suites/test_campaign.gd`).
+      That's principled (they're never an introduction pick), but it landed exactly as the re-spaced curve
+      broke the check's 10% budget (9 of 66 with them), and the result sits at the limit: 6 of 63, and a
+      seventh fails. Are these late introductions acceptable?
+    - **The levels' own builds** (same seeds, new layouts). Where a level lost something it had:
+      - Golden 1 at 3 lanes has room for a doodad in one stretch only, and its share (0.8) left it out.
+        Placeholder: `doodad_share` 0.8 to 1.0, every stretch with room, like Dead Zone 2's
+        (`data/levels/golden_1.tres`): 1/4/3 doodads at 3/5/6 lanes (1/1/2 before).
+      - The final zones' danger density at 3 lanes: `test_danger_density`'s sample (Dead Zone 1, Golden 2 and
+        3, each on its own seed and two others) had 30.4% more enemies with the pass before and 29.7% after,
+        under the 30% floor of "about 35%". Placeholder, the owner's to set: Golden 2's and 3's dials 0.38 to
+        0.39 (`data/levels/golden_2.tres`, `golden_3.tres`), 30.1%: 246 to 320 enemies, the fewest the floor
+        allows (0.38's 319 is one short). The pass runs short of fair room there, not of dial: over six other
+        seeds the same levels land at 29.4% before and 29.2% after. Is about 29% enough at 3 lanes in the final
+        zones, or should the pass find more room there (`data/tuning/danger_density.tres`)?
+      - Wider gaps in Enforcer chases (open question 357, whose "11 of 18" is older): the first chase holds one
+        in 9 of the 18 level and lane builds with trucks, before the curve moved and after, but not the same
+        ones. Corporate 2 at 5 lanes lost its one (a drone's barrage, fences, cyborgs and a pad fill its chase
+        now), and so did Golden 2 at 3 and 6 lanes; Dead Zone 1 at 3 and Golden 1 and 2 at 5 gained one.
+        `test_wide_gaps` holds Corporate 2 to one at 3 and 6 lanes (its wreck played there), 5 lanes the one
+        exemption, and wherever a first chase has none it checks for a clear stretch there for a new row. That
+        check (`_chase_spot`) tries only the pass's way of adding a new row, on the finished layout, and counts
+        a spot only in a run of fitting starts 2 m long (a fitting stretch of one or two starts goes unseen): it
+        shows that the pass missed no clear stretch, not that the chase has no room. Should every chase be
+        guaranteed one, or at least the Enforcer's first level's?
+      - Gangland 1 at 3 lanes has its hover truck out at 363 m and gone long before its ramps start (40% of
+        the way in, 1177 m), so it has no ramp for route (a) (`HoverTruckRules`: "not before the ramps'
+        start"), only route (b), as every truck in City 3 (no ramps) has; its truck was out at 1205 m before.
+        `test_hover_truck` allows that for this build only. Should a level's trucks wait for its ramps?
+      - `test_danger_density`'s route case (a zone doodad right past a full row in the only lane the pass's
+        rows leave open, which `DangerDensity.doodad_ok` keeps doodads off): golden/1 at 6 lanes on seed 9003
+        had already stopped building that way before the Casino, and no Golden 1 build at 6 lanes on seeds
+        9001-9060 does now. It's re-pinned to Dead Zone 1 at 6 lanes on seed 9007 (found by building without
+        `doodad_ok`), and the test now checks that its case still shows the scenario.
+522. **The Casino's music** (GDD §11: no more generated songs; the owner supplies them). Placeholder: the
+    Casino's track (`casino`) plays the Marketplace's: Jackpot Plaza in its levels, the Marketplace's
+    generated default in its cinematics and The House's fight, and the Marketplace's level-complete riff
+    (`data/audio/music_library.tres`: `files`, `zone_tracks`, `riff_tracks`). Will the owner supply a Casino
+    song, and should The House get a boss song of its own?
+    **Answered (owner, October 9, 2026):** the owner adds the Casino's song in a separate change; The House keeps the Casino's music until then.
+523. **The Casino's cinematics** (GDD §6). Placeholders: its intro plays the arrival flyover over the Casino
+    (title "The Casino"; its card names the zone: ZONE 4, CASINO), its outro is a placeholder card "Beyond
+    the Casino: a short scene after The House, heading for the corporate district"
+    (`data/cinematics/casino_intro.tres`, `casino_outro.tres`). The Marketplace's outro now reads "a short
+    scene leaving the market for the casino district" (`marketplace_outro.tres`).
+524. **The House's leaderboard** is now `boss/casino_boss/<tier>` (it was `boss/marketplace_boss/<tier>`). No
+    platform leaderboards are registered yet (the stub serves every build); any made from the old id must use
+    the new one.
+
+**The Casino's roof and named signs** (from K3; the owner's answers of October 9, 2026 to items 506, 507 and 509; exports on `CasinoSkin`, F6; lettering in `scripts/world/skins/casino/casino_lettering.gd`)
+525. **Two famous casinos, or a chain?** The owner asked for the big signs to spell "Gasket's House of Chance" and
+     "The Brass Lotus" and said they love the two. Two readings:
+     - *Landmarks* (built): the street is cut into periods of `CasinoSkin.name_spacing` metres, 100 by default, both
+       walls together. Each period has at most one named casino (a casino with a big sign, hash-picked, from the middle
+       half of the period if there is one), and the names alternate from period to period, so a name is never nearer
+       than 100 m to itself and at most one of each is in view at a time. That is about ten named casinos a kilometre
+       out of about 27 casinos with a big sign a kilometre (30 of 81 over 3 km, 46 to 150 m apart); the others keep their mark and rows of glyphs. A runner meets
+       a famous casino every 50 to 150 m and learns the two names by seeing them again and again.
+     - *A chain*: every casino with a big sign is named, one of the two by hash (`name_spacing` 0). The street then
+       reads as two brands with branches everywhere (a stretch of five "The Brass Lotus" in a row is possible).
+     Which does the owner want? The spacing is one export on the skin; 0 gives the chain, 200 or more a rarer landmark.
+526. **Casinos whose big sign plays the cult's feed (35% of them).** The feed's screen stays a screen with no words on
+     it (the cult's feed is wordless). Placeholder: a Gasket's casino puts its name on a one-line strip over the screen
+     in its own brass frame, and a Brass Lotus casino carries its name on its tall blade sign only. Every named casino
+     also has a blade sign at the far end of its building (GASKET'S, or THE BRASS LOTUS, stacked down it): a board on
+     a wall is seen along its face from the street, so only the blades can be read from a distance while running.
+     Is that right, or should a feed casino go without a name, or without a blade? (The House's arena has no blades:
+     its faces are kept flat because the billboard slides past them; the names are on flat boards there.)
+527. **Where else the names might appear.** Only the named casinos' big signs and their blades carry words. Every other
+     sign (the lounges' blade signs, the arcade halls' name boards, the sign gantries over the street, the other
+     casinos' boards) keeps its rows of glyphs, as the owner asked. Should the sign gantries (a ceiling piece, seen
+     face-on from far down the street) carry one of the names too?
+
+**The curve after the Casino: no level gets easier** (from K4; the owner's answer to item 519, October 9, 2026; `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres`, F6; GDD §6)
+528. **Is this the curve the owner wants?** (GDD §6.) One exponent lifts the early and middle levels the most.
+     City 2 to Gangland 3 come out 0.03 to 0.04 harder than before the Casino, more than the Marketplace's
+     +0.016 and +0.026, and City 1 to City 2 is now the campaign's biggest step (+0.140; +0.107 before).
+     Per-level biases could set any level by hand instead. The early curve can't get any steeper without an
+     economy change: City 2's own build leaves the wallet at 898 credits against the laser's 900, and with the
+     exponents from 0.70 to 0.78 City 2's layout pays enough to buy the laser after City 2, against the
+     approved "laser I waits for City 3" (`test_economy`).
+     - Placeholder: `difficulty_curve_exponent` 0.79 (`data/campaign/campaign.tres`).
+
+    *Background (task K4's report):*
+
+    The owner's answer to item 519 (October 9, 2026, GDD §6): no level gets easier when levels are
+    added; the Marketplace keeps at least its old difficulty (a little harder is welcome); Corporate and the
+    zones after it may get harder. Task K4 bends the 17-level curve with one number in data,
+    `difficulty_curve_exponent` 0.79 in `data/campaign/campaign.tres` (it was 1, linear; `DESIGN-TBD` on
+    `Campaign.difficulty_curve_exponent`, whose F6 step is now 0.01). `difficulty_start` 0.1, `difficulty_end`
+    0.9 and the levels' biases (City 1 −0.05, Golden 2 +0.05, Golden 3 −0.05) are unchanged.
+
+    `enemy_scaling` doesn't use the exponent (`Campaign.configure`: the level's place in the campaign, 0 → 1), so
+    it is exactly K2's, and so are its moved thresholds (item 520), the scaling of the enemies the bosses bring
+    and the recency curve's ages. `test_campaign` checks it, and checks every level against the 15-level curve.
+
+    | Level | 15-level curve (before the Casino) | K2: 17-level linear | K4: exponent 0.79 | K4 against the 15-level curve |
+    |---|---|---|---|---|
+    | City 1 | 0.050 | 0.050 | 0.050 | +0.000 |
+    | City 2 | 0.157 | 0.150 | 0.190 | +0.033 |
+    | City 3 | 0.214 | 0.200 | 0.255 | +0.041 |
+    | Gangland 1 | 0.271 | 0.250 | 0.313 | +0.042 |
+    | Gangland 2 | 0.329 | 0.300 | 0.368 | +0.039 |
+    | Gangland 3 | 0.386 | 0.350 | 0.419 | +0.033 |
+    | Marketplace 1 | 0.443 | 0.400 | 0.469 | +0.026 |
+    | Marketplace 2 | 0.500 | 0.450 | 0.516 | +0.016 |
+    | Casino 1 | – | 0.500 | 0.563 | – |
+    | Casino 2 | – | 0.550 | 0.608 | – |
+    | Corporate 1 | 0.557 | 0.600 | 0.652 | +0.095 |
+    | Corporate 2 | 0.614 | 0.650 | 0.695 | +0.081 |
+    | Dead Zone 1 | 0.671 | 0.700 | 0.737 | +0.066 |
+    | Dead Zone 2 | 0.729 | 0.750 | 0.779 | +0.050 |
+    | Golden 1 | 0.786 | 0.800 | 0.820 | +0.034 |
+    | Golden 2 (peak) | 0.893 | 0.900 | 0.910 | +0.017 |
+    | Golden 3 | 0.850 | 0.850 | 0.850 | +0.000 |
+
+    Each level is at least 0.041 harder than the one before it (Golden 1 after Dead Zone 2 is the smallest step),
+    Golden 2 is the peak and Golden 3 sits between Golden 1 and Golden 2, as before.
+
+    **Why 0.79.**
+
+    - **Every level at least as hard as before the Casino:** Marketplace 2 binds it. Its 0.500 holds up to an
+      exponent of 0.838; Corporate 1 onward were already harder on K2's linear curve.
+    - **The Marketplace a little harder** (the task's example: +0.01 to +0.03 each): exponents from 0.778 to
+      0.808.
+    - **City 1 and Golden 3 unchanged, Golden 2 the peak, every step above 0.02:** true at any exponent in that
+      range (the curve's ends don't move).
+    - **The levels' own builds decided the rest.** Every layout changes with the exponent, so a scan built 0.70
+      to 0.83 in steps of 0.01 against the design properties the suites check on the levels' own seeds (two wider
+      gaps per build, Corporate 2's first chase holding one, Corporate 1's Buzz Overdrive in its first quarter at
+      two lane counts of three, the wall fence introductions within 10 s, Marketplace 1's first turret on time,
+      doodads at every lane count, the early economy, a truck in every level with the Enforcer, the Sentinels'
+      rules, and at most 6 late introductions of 63). No value keeps them all:
+      - 0.70 to 0.78 and 0.83: City 2's own build pays enough for the laser by City 2 (wallet 902 to 958; the
+        laser costs 900, and `test_economy` keeps it for City 3). Some of them miss more: a wall fence
+        introduction, Corporate 1's Buzz Overdrive, a wider gap (0.78: Casino 1 at 3 lanes), or 7 late
+        introductions (0.77).
+      - **0.79: one miss.** Marketplace 2 at 3 lanes meets its first full-height wall fence 15.4 s after the
+        feature's start (10 s wanted). Neither wall has a fair spot in those 10 s, so the placement does what
+        it must (item 529). Its layouts also cost Corporate 2's first truck its volley at 5 lanes, which the
+        scan didn't count (item 530).
+      - 0.80: three misses: that one (16.7 s), Gangland 3 at 5 lanes with one wider gap of two, and Corporate
+        1's Buzz Overdrive.
+      - 0.81 and 0.82: one miss, Corporate 1's Buzz Overdrive (in its first quarter at one lane count of three;
+        the Buzz Overdrive is that level's new enemy). They also leave Marketplace 2 under +0.01.
+
+    **What the reshape changed.**
+
+    - **Patterns gated by difficulty** (`min_difficulty` / `max_difficulty`; a level's difficulty rises 0.25
+      across it), against the 15-level curve:
+      - Gained:
+        - City 3 reaches `gap_with_fence_lane`, `ceiling_over_gauntlet` and the main `hover_truck` in its
+          last 2% (never before), and `cyborg_pair`, `window_cyborg_pair` and `fence_stagger` from 78% in (94%).
+        - Gangland 1 gets `cyborg_stagger` and `screech_manhole_row` in its last 5% (never), and the main
+          `hover_truck` from 75% (92%).
+        - Gangland 2 gets `fence_pulsing_all` in its last 7% (never); Gangland 3 gets `drone_pair` in its last
+          8% (never).
+        - Marketplace 1 gets `drone_pair` from 73% (83%). Marketplace 2 gets `drone_pair` from 54% (60%),
+          `fence_pulsing_all` from 34% (40%) and `cyborg_stagger` from 14% (20%).
+        - Corporate 1 has `drone_pair` and `fence_pulsing_all` from its start (37% and 17% in before), and
+          Corporate 2 has `drone_pair` from its start (14%).
+        - Golden 2's two Gilded Sentinel patterns start 16% in (23%).
+        - Every other gated pattern from City 2 to Marketplace 2 comes 3% to 17% of the level earlier (City 2's
+          `fence_mixed` from 84%, 97% before).
+      - Lost: only the easy patterns that stop at a difficulty, which now end sooner.
+        - `hover_truck_rare`: City 3 to 98% of the level (all of it before), Gangland 1 to 75% (91%), Gangland
+          2 to 53% (69%), Gangland 3 to 32% (46%), Marketplace 1 to 13% (23%).
+        - `fence_full_single` and `fence_pulsing_single`: Gangland 2 to 93% (all of it), Gangland 3 to 72%
+          (86%), Marketplace 1 to 52% (63%), Marketplace 2 to 33% (40%), and Corporate 1 none (its first 17%).
+      - Against K2's curve, everything K2 took from City 2 to Marketplace 2 is back, and comes earlier than on
+        the 15-level curve. The Casino's harder patterns come earlier too:
+        - Casino 1: `drone_pair` from 35% (60% on K2's), `fence_pulsing_all` from 15% (40%).
+        - Casino 2: `drone_pair` from 17% (40%), `fence_pulsing_all` from its start (20%), and no
+          `fence_full_single` or `fence_pulsing_single` (its first 20%).
+      - Dead Zone 1 and 2 and Golden 1 and 3 are past every gate either way.
+    - **The economy** (`tools/measure/economy.gd --lanes=5 --seeds=0 --share=0.7`, as `test_economy` reads
+      it): the completion bonuses follow the level index, as on K2's curve, so only the layouts' own credits
+      move.
+      - A clean 5-lane playthrough's wallet with boss payouts is 16,624 (K2's 16,874; 14,446 before the
+        Casino).
+      - Every item comes into reach after the same level as on K2's curve but the Missile: after Marketplace 2
+        instead of Marketplace 1. Gangland 3's own build carries 787 credits (1,088 on K2's), and the wallet
+        after Marketplace 1 is 4,711 of the 4,800. Over each level's seed and six others, the wallet stays
+        within about 2% of K2's at every level (14,065 against 14,172 after Golden 3), and every item, the
+        Missile included, comes after the same level.
+      - City 2's own build leaves the wallet at 898, 2 credits under the laser's 900 (`test_economy`: the
+        laser waits for City 3), against 881 on K2's curve. Over seven seeds City 2 averages 919 (K2's: 910),
+        so that delay holds on the levels' own seeds only, on either curve.
+    - **Late introductions** (`test_campaign`, the levels' own seeds): 5 of 63 (K2's: 6; the limit is 6).
+      - Marketplace 2's wall fences at 3 lanes: start 328 m, first at 675 m (item 529).
+      - Corporate 1's Buzz Overdrive at 5 lanes: start 339 m, first at 1212 m (1214 on K2's curve, 976 before
+        the Casino).
+      - Corporate 1's Buzz Overdrive at 6 lanes: first at 970 m (783 on K2's, 585 before), two there (one on
+        K2's, three before).
+      - Corporate 2's Enforcer at 5 lanes: start 176 m, first at 641 m (713 on K2's).
+      - Dead Zone 1's host at 3 lanes: start 351 m, first at 2004 m (about 2010 before and on K2's).
+
+      Marketplace 2's vent screeches at 3 and 6 lanes, late on K2's curve, are on time again.
+    - **The levels' own builds**:
+      - Corporate 2's first Enforcer chase holds a wider gap at 3, 5 and 6 lanes again (`test_wide_gaps`'
+        `CORPORATE_2_CHASE_LANES`). K2's curve left 5 lanes without one. The first chase holds one in 9 of
+        the 18 level and lane builds with trucks.
+      - No hover truck leaves before its level's ramps start. On K2's curve Gangland 1's did at 3 lanes
+        (`test_hover_truck`'s `BEFORE_RAMPS` is now empty and checked both ways).
+      - The danger density bands hold: 13-19% more enemies in the first levels, 26-28% in the middle ones,
+        32-36% in the final ones, and 32.7% at 3 lanes in the final ones (item 521's 29.7% question: Golden 2's
+        and 3's dials stay 0.39).
+      - The cases the tests pin to a scenario on a seed were re-found where the scenario moved:
+        - `test_danger_density`'s route case moves to Golden 1 at 3 lanes on seed 9005 (Dead Zone 1 at 6 lanes
+          on 9007 no longer builds that way). It was found by building 189 seeded builds without
+          `DangerDensity.doodad_ok`.
+        - `test_wide_gaps`' filler cases are now City 3 at 3 lanes on 7040, Gangland 1 at 6 on 9101 and
+          Gangland 3 at 5 on 9101.
+        - `test_enemy_director`'s control case with the attack-turn switch off moves to Gangland 3 at 3 lanes
+          (2.0 s of overlaps; its 6 lanes now have none).
+        - `test_charge_paths`' Golden 2 plants at 3 lanes.
+        - `test_enforcer_truck_runs`' `NO_VOLLEY_LANES`: Corporate 2 at 5 lanes fires no volley (item 530),
+          checked both ways.
+      - Marketplace 1's first turret now stands exactly at its feature's start (316.4 m). `test_barnacle_turret`
+        takes the 0.01 m rounding margin the other "nothing before its start" checks take.
+    - **Two generator fixes**, found while scanning (each possible on the earlier curves too). The levels' own
+      builds are byte for byte the same with them and without.
+      - The danger density pass could add a window cyborg on a Gilded Sentinel's wall section. Its wall
+        enemies now keep off it: the pass asks the rules the generator hands it (`LevelGenerator.
+        wall_section_rules`, here `GildedSentinelRules.on_wall_section`). `test_gilded_sentinel` pins Golden 2
+        at 5 lanes on seed 9034, where the pass would put a window cyborg there without the check, and checks
+        `on_wall_section` against `problem()` along both walls.
+      - A build could end without its Enforcer Truck when its only baits' arrivals all fell during other
+        attacks: about one or two seeded builds in a thousand, on every curve. The feature guarantee now covers
+        it by moving the Octodog and Buzz Overdrive picks (`LevelGenerator.dependent_features`,
+        `EnforcerTruckRules.GUARANTEED_BY`), one more each a build however many missed features ask, and none
+        when the data allows no truck (`places_any`). None of 738 seeded builds misses one now.
+529. **Marketplace 2's wall fence introduction at 3 lanes comes 15.4 s after the feature's start** (GDD §9.1;
+     open question B5's 10 s). Its signs, window cyborgs and a ramp, the outer lanes' pieces, and its big
+     attacks and floor cuts leave neither wall a fair spot before then. Is that acceptable, or should the
+     generator hold room for introductions (a generator task)?
+     - Placeholder: `LATE_INTRODUCTIONS` in `tests/suites/test_wall_fences.gd`, which checks that both walls
+       are taken from the start right up to the introduction, and that the build is still late.
+530. **On the Enforcer's first level, a truck can be destroyed before it ever fires** (GDD §9.13; open
+     questions 357, 364, 366 and 400–403, 409).
+     - Since C6e, no wider gap comes in a chase before the truck's showing window, so a wider gap no longer
+       wrecks Corporate 2's first truck before it fires. Measured on the level's own seed with the Casino's
+       levels and K4's curve, as `test_enforcer_truck_runs`' runner plays it (it keeps out of each bait's way,
+       so the bait's charge destroys the truck):
+     - At 3 lanes the truck arrives at 305 m and shows itself as it arrives (window 287–505 m). It fires one
+       volley, and its bait's charge (745 m) destroys it. The chase's wider gap, at 543 m, is past the window.
+     - At 5 lanes the level has one truck (item 402's case, and item 403's: see below). It arrives at 1219 m,
+       about 10 s before its bait, a Buzz Overdrive charging at 1460 m, and shows itself in a window whose bait
+       may claim its turn (1201–1410 m, item 409). Its first volley waits for the showing (question 366), and
+       from `hold_seconds()` before the bait's rev it holds fire, so it has no time for a volley: the bait's
+       charge destroys it first. The player sees it but never sees it fire.
+     - At 6 lanes the first truck (296 m) has its window after its bait. It fires one volley without showing
+       itself (its wait for a showing runs out), and its bait's charge destroys it. The second truck (1445 m)
+       shows itself and is destroyed by its bait's charge before its first volley, as at 5 lanes.
+
+     Should a truck that shows itself get time for a volley before its bait (a later bait, an earlier arrival,
+     or a volley allowed after its showing even in the hold before the bait)? Or is a debut where it only shows
+     itself acceptable?
+     - Placeholder: none changes it. `test_enforcer_truck_runs` allows a build with no volley only at 5 lanes
+       (`NO_VOLLEY_LANES`, checked both ways), and only when each truck there showed itself and was destroyed
+       before its first volley.
+531. **Are these 5 late introductions acceptable?** This is item 521's question with the list above.
+     - Placeholder: none; `test_campaign`'s limit is 6 of 63.
+532. **A build whose first Sentinels are a pair** (GDD §9.11 and §6: one new thing at a time; outside K4, found
+     in its review). The Golden Palace at 5 lanes on seed 602 starts with a Sentinel pair. That is not a
+     campaign seed: the levels' own seeds and the seed sweep's build right. `GildedSentinelRules.problems()`
+     reports "the level's first Sentinel isn't alone, swinging once (its introduction)". The build is the same
+     at exponent 1.0 and without K4's generator fixes, so the case is older than K4. Should the generator
+     always keep a level's first Sentinel alone, or does the rule only matter in Golden 2, which introduces
+     them?
+     - Placeholder: none. `GildedSentinelRules.apply` leaves the build as it is.
+
+**Merging main into the Casino branch** (from K5; main's C6e showing windows, PERF2, G6b and G8 met the Casino's levels and K4's curve)
+533. **Corporate 2's introduction now moves late on its own seed** (GDD §9.13, §6; items 402, 403 and 530; the
+    owner's call). Item 403's placeholder says the introduction "never moves on the level's own seeds". With the
+    Casino's levels and K4's curve it does at 5 lanes.
+    - The final 5-lane build is the generator's third attempt. Every campaign level guarantees each of its
+      features, and the first two attempts lacked the screech vents, so each retry forced one more screech vent
+      pick. Both of those had their first truck at 261 m, with a window before its bait (243–433 m, CLASSIC
+      mode; the bait at 608 m), and a second truck at about 1134 m with none (a Buzz Overdrive's attack there).
+    - In the third, the level's one truck arrives at 1219 m, about 52 s into the level (the reach for an
+      introduction is 448 m), in a CLAIM window (1201–1410 m) before its bait at 1460 m. A second truck would
+      have overlapped its chase, so item 402's rule kept only the one that shows itself. K4's curve without C6e
+      had the introduction at 641 m, already late; `test_campaign` still counts 5 late introductions of 63.
+    - A CLAIM window never fires before its bait: this truck and 6 lanes' second truck (1445 m) each show
+      themselves and are destroyed by their bait's charge before a volley (item 530).
+    - The options: item 403's alternative (keep the introduction early, and unseen); CLASSIC windows that may
+      leave out one runner lane, as item 411 allows the other modes; one volley allowed between a CLAIM showing
+      and its bait's hold; or the screech-vent retry (the guarantee's forced picks for the missing vents are what
+      moved the truck from 261 m).
+    - Placeholder: C6e's `_choose` in `enforcer_truck_rules.gd`, unchanged.
+
+534. **The final zones at 3 lanes: about 30% more danger, not 35%** (item 521's question, "is about 29% enough at
+    3 lanes in the final zones?", now for the obstacles too; the owner's request in `docs/USER_REQUESTS.md`).
+    - C6e's showing windows are calm stretches that the danger density pass's rows keep off. With them,
+      `test_danger_density`'s sample of the final zones (Dead Zone 1, Golden 2 and 3, each on its own seed and
+      9001–9002) had 28.8% more obstacles at 3 lanes, under the band's 30% floor. Over 7 seeds (each level's own
+      and 9001–9006) the same band had 30.2%: the 3-seed sample fell under its line, while over more seeds the
+      levels stayed just above it. Higher dials buy almost nothing there, and more rounds (`obstacle_rounds` 3 to
+      6) nothing.
+    - The enemies sit at about 30% whatever the wall fences' share: 30.2% over the 7 seeds as
+      `test_danger_density` counts them (the cyborgs planted in charge paths left out), 29.4% counting those too
+      (the test's sample: 32.6%).
+    - The placeholder raises the wall fences' share of the dial (`wall_fence_increase_scale`) from 1.25 to 1.9.
+      The sample then has 30.6%, and the 7 seeds 31.9%. It adds wall fences only: 447 to 505 on the levels' own
+      seeds (+13%), from Marketplace 2 on (the levels before have none). Nothing else in those layouts changes
+      but the side wall gaps of two builds (Dead Zone 2 and Golden 2 at 3 lanes), which keep off the wall
+      fences. It is kept because the owner finds every level too easy, not because the floor needs it.
+    - The alternative: a finer grid for the pass's new rows (`row_step_seconds` 0.25 instead of 0.5, the share
+      at 1.25) adds floor pieces instead: 31.9% over the 7 seeds (the floor 31.3%), 30.4% in the sample. It
+      changes the build of every level the pass adds rows to, and tries twice the spots.
+    - The final zones over the 7 seeds (more with the pass than without it):
+
+      | | 3 lanes | 5 lanes | 6 lanes |
+      |---|---|---|---|
+      | Enemies (either share) | 30.2% | 32.4% | 30.1% |
+      | Obstacles, share 1.25 | 30.2% (floor 29.5%; wall fences 216 to 293) | 36.3% | 37.7% |
+      | Obstacles, share 1.9 | 31.9% (floor 29.5%; wall fences 216 to 328) | 37.3% | 38.3% |
+      | Obstacles, finer grid, share 1.25 | 31.9% (floor 31.3%; wall fences 216 to 295) | 36.2% | 37.8% |
+      | Obstacles, the test's sample, share 1.9 | 30.6% | 35.5% | 38.8% (its cap: 40%) |
+
+    - Wall fences on the levels' own seeds, share 1.25 to 1.9 (the middle zones' band goes from 26–27% to
+      27–28% more obstacles in the test's sample):
+
+      | Level | 3 lanes | 5 lanes | 6 lanes | All |
+      |---|---|---|---|---|
+      | Marketplace 2 | 18 → 20 | 15 → 17 | 16 → 18 | 49 → 55 |
+      | Casino 1 | 19 → 21 | 12 → 14 | 13 → 15 | 44 → 50 |
+      | Casino 2 | 20 → 23 | 18 → 20 | 16 → 19 | 54 → 62 |
+      | Corporate 1 | 12 → 13 | 14 → 16 | 20 → 23 | 46 → 52 |
+      | Corporate 2 | 13 → 14 | 20 → 22 | 10 → 11 | 43 → 47 |
+      | Dead Zone 1 | 17 → 20 | 17 → 20 | 13 → 15 | 47 → 55 |
+      | Dead Zone 2 | 12 → 14 | 11 → 11 | 15 → 17 | 38 → 42 |
+      | Golden 1 | 15 → 18 | 12 → 14 | 14 → 16 | 41 → 48 |
+      | Golden 2 | 16 → 19 | 10 → 11 | 15 → 17 | 41 → 47 |
+      | Golden 3 | 17 → 17 | 14 → 17 | 13 → 13 | 44 → 47 |
+      | All | | | | 447 → 505 |
+
+    Is about 30% enough at 3 lanes in the final zones? If more is wanted there, the ways are more wall fences
+    (the placeholder), the finer grid, or shorter calm stretches around a showing.
+    - Placeholder: `wall_fence_increase_scale = 1.9` in `data/tuning/danger_density.tres` (`DESIGN-TBD` on the
+      field in `scripts/world/danger_density_tuning.gd`).
+
+535. **A new row for a wider gap may take holes and fences out of its way** (GDD §9.13: a couple per level; item
+    357). C6e keeps every wider gap off a chase before its showing window. On 306 builds of the Enforcer's levels,
+    one Dead Zone 1 seed (5 lanes, 9004, in `test_campaign`'s sweep) then had no room for any: its only room was
+    that chase. A Golden Palace seed (3 lanes, 9010) already had none before the merge. When the other three ways
+    give a level no wider gap at all, the pass now adds a new row where only the level's own holes and plain fences
+    are in the way, and takes those out. This is how it already widens a row of the level's own. Only builds
+    with no wider gap change; every level's own seed builds as before. Should this last way also apply when a
+    level gets one of its two, or is one fewer acceptable there, as now?
+    - Placeholder: `WideGapPlacement._add_clearing`, only when the pass found none (`add_rows` must be on). Its
+      report's `added_clearing` counts its row. `test_wide_gaps` pins both seeds (`LAST_RESORT_CASES`: 8 and 4
+      pieces taken out) and checks it on a fenced plain stretch: plain fences make way, pulsing ones don't.
+536. **What the merge moved** (notes for items 401, 528 and 530; not a question)
+    - **Item 401's builds** (two trucks, room for one showing; the owner: keep both): now Corporate 2 at 6 lanes
+      and Dead Zone 2 at 5 and 6 lanes. Corporate 2 at 5 lanes and Dead Zone 1 at 3 lanes have one truck that
+      shows itself (item 402's case). `test_enforcer_truck`'s `BOTH_TRUCKS` lists them and checks both ways.
+    - **Item 440's notes:**
+      - Corporate 2's first Enforcer chase now holds a wider gap only at 3 lanes (`test_wide_gaps`'
+        `CORPORATE_2_CHASE_LANES`, now 3 lanes, checked both ways). Its chase leaves room past the window at 3
+        and 5 lanes: at 5 lanes that stretch has no clear spot, and at 6 lanes the window comes after the bait.
+        The first chase holds one in 4 of the 18 level and lane builds with trucks.
+      - Corporate 2's late Enforcer introduction at 5 lanes is at 1219 m now (641 m before the merge).
+      - The final zones' obstacles at 3 lanes: 30.6% in `test_danger_density`'s sample with the wall fences' share
+        at 1.9 (28.8% at 1.25); over 7 seeds 31.9% (30.2%). See above.
+    - **Re-pinned scenario cases** (each still shows its scenario):
+      - `test_danger_density`'s route case: Golden 2 at 3 lanes on seed 9004.
+      - `test_gilded_sentinel`'s case of a window cyborg on a Sentinel's wall section, without the check: Golden 3
+        at 3 lanes on 9039, the only one of 240 builds on seeds 9001–9040.
+      - `test_level_cache`'s Corporate 2 attempt plays at 3 lanes. At 5 lanes the attempt's weapons shoot its
+        Buzz Overdrive before its charge, so no floor cut begins. The EMP now goes off at 9 s, and an attempt is
+        spoiled to 1600 m.
+      - `test_level_sky`: The House follows Casino 2, which has no level sky, so the fight is under the Casino's
+        own.
+537. **How busy the Casino's street is, after the build-budget trim** (from K5, skin side; extends item 508, "How much each kind of piece appears")
+    The placeholder densities in item 508 (and the roof's in item 509) were trimmed to buy back build time:
+
+    | export                | was  | now  |
+    |-----------------------|------|------|
+    | `balcony_share`       | 0.55 | 0.42 |
+    | `pipe_share`          | 0.55 | 0.42 |
+    | `unit_share`          | 0.50 | 0.25 |
+    | `lantern_share`       | 0.50 | 0.35 |
+    | `fan_share`           | 0.28 | 0.20 |
+    | `banner_share`        | 0.70 | 0.60 |
+    | `crossbeam_spacing`   | 32 m | 40 m |
+    | `bay_scale` (new)     | 1.0  | 1.5  |
+
+    `bay_scale` widens the shop windows' bays to 1.5 times the Marketplace's (the same piers, a third fewer, broader
+    windows), which also thins the citizens by a third. Measured on this machine (6 lanes, mean chunk build): the
+    street was 4.4-4.5 ms, it is now 3.8-3.9 (the Marketplace 3.7-3.9). Every one of these is an export on
+    `CasinoSkin`, so a busier street is a `.tres` edit away; the price is about 0.1-0.15 ms a chunk for each of the
+    three biggest (balconies and units together, the roof's hangings together, the window bays).
+
+    Question for the owner: is the thinner street fine, or should it be as busy as the reference and the build
+    budget (or the machine it is measured on) be revisited instead?
+
+    *For the record (not a design question):*
+    - The skin budget's load factor (`REFERENCE_IDLE_MS` = 2.7, a 40-lane greybox build) reads 1.00 on the machines
+      this was measured on, yet every skin's build there ran about 1.3 times slower than in earlier sessions
+      (the Marketplace 2.4-2.8 ms then, 3.2-3.9 now; the pre-merge tree runs equally slowly today, so main did not
+      cause it). A greybox build is mostly node creation, a GDScript-heavy skin build is not, so the load factor
+      cannot see this. A reference that builds a skin-sized mesh in GDScript would.
 
 **Two cyborg-type bursts in the air at once** (from H4, owner, October 8, 2026, GDD §9.2; numbers in `data/tuning/game_rules.tres`
 (`max_bursts_in_air` 2) and in `data/enemies/cyborg.tres`, `window_cyborg.tres` and `barnacle_turret.tres`)

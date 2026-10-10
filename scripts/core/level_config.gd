@@ -27,7 +27,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## run starts (GameRules.lanes_pc / lanes_mobile); tests and the F1 debug key set it directly.
 @export_range(3, 8) var lane_count: int = 3
 ## GDD §4: levels last 90–150 seconds. DESIGN-TBD: each campaign level's length (together they make
-## GDD §5's "a flawless run through every level takes about 35 minutes").
+## GDD §5's "a flawless run through every level takes about 40 minutes").
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
 ## The run speed this level is built and played at (GDD §3, owner's playtest September 30, 2026: it
 ## rises zone by zone). 0: its zone's (ZoneDef.run_speed) in the campaign, else the movement tuning's

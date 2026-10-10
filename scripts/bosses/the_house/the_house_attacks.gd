@@ -657,7 +657,7 @@ func _new_bomb() -> MeshInstance3D:
 	var bomb := MeshInstance3D.new()
 	bomb.name = "CherryBomb"
 	bomb.mesh = bomb_mesh()
-	bomb.material_override = TheHouseModel.solid_material()
+	bomb.material_override = TheHouseModel.solid_material(world.skin)
 	bomb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bomb.visible = false
 	add_child(bomb)
@@ -768,6 +768,8 @@ func _new_block() -> Dictionary:
 	look.name = "GoldBlockLook"
 	look.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	look.mesh = _block_mesh(Vector3(world.geo.lane_width * tuning.block_width_share, tuning.block_height, tuning.block_depth))
+	# Lit like the machine, with its arena's warm light (the cached mesh keeps the default).
+	look.material_override = TheHouseModel.solid_material(world.skin)
 	look.visible = false
 	add_child(look)
 	var block := {"hazard": hazard, "blocker": blocker, "look": look, "used": false}
@@ -852,6 +854,8 @@ func _new_spool() -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = "Spool"
 	node.mesh = _spool_mesh
+	# Lit like the machine, with its arena's warm light (the cached mesh keeps the default).
+	node.material_override = TheHouseModel.solid_material(world.skin)
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.visible = false
 	add_child(node)

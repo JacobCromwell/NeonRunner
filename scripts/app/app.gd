@@ -223,10 +223,13 @@ func quit() -> void:
 
 # --- Campaign ------------------------------------------------------------------------
 
-## True if the player may start this step: the first step, or the one before it is done (step_done).
-## The web demo stops after its zone (GDD §2).
+## True if the player may start this step: the first step, one the player has done, or the one before it is
+## done (step_done). The web demo stops after its zone (GDD §2). A step done stays open even when the step
+## before it isn't: that only happens to a save from before steps were added ahead of it (the Casino's, between
+## the Marketplace and Corporate: Profile._migrate moves The House's records to the Casino's boss step, done
+## while the Casino's levels before it aren't), and the player keeps every step they had reached.
 func step_unlocked(s: CampaignStep, difficulty_tier: int = 0) -> bool:
-	if s.index == 0:
+	if s.index == 0 or profile.is_completed(s.id, difficulty_tier):
 		return true
 	var previous: CampaignStep = campaign.steps()[s.index - 1]
 	return step_done(previous, difficulty_tier)
