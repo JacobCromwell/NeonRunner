@@ -25,7 +25,7 @@ extends Node3D
 ##
 ## Vertex data: COLOR.rgb albedo, COLOR.a glow (liquid) or opacity (vapour); UV.x the part (Part) plus a
 ## small id (a maw's or a tendril's, its fraction * 64); UV.y the weight along a part (0 at its root, 1 at
-## its tip; 2 marks a maw's throat) plus 10 times its chunk (CHUNK_HEADS: 1 or 2 for a head that an EMP
+## its tip; 2 marks a maw's throat) plus 10 times its chunk (CHUNK_HEADS: 1 to 4 for a head that an EMP
 ## tears away, and its maws; 0 for the rest); UV2 a maw vertex's offset from its maw's centre.
 
 const PURPLE := BadDreamModel.PURPLE
@@ -41,8 +41,8 @@ const MIST_SHADER: String = "res://scripts/bosses/sleep_taker/sleep_taker_mist.g
 
 enum Part { HEAD, BIG_MAW, MAW, TORSO, ARM_L, ARM_R, TENDRIL, DRIP, SHROUD, SKIRT, POOL }
 
-## The great maw (the giant slash's warning) gapes in its belly, low enough to show under a refuge's
-## bridge as the runner nears it: its centre and radius, facing the runner.
+## The great maw (the giant slash's warning) gapes in its belly, low over the street ahead of the
+## runner: its centre and radius, facing the runner.
 const BIG_MAW_CENTER := Vector3(0.0, 5.0, 2.16)
 const BIG_MAW_RADIUS: float = 1.3
 ## The main head, hunched over its chest and waist, and the smaller fused heads around it, each with
@@ -82,10 +82,11 @@ const TENDRILS: Array = [[Vector3(-2.4, 9.2, 2.6), Vector3(-2.8, 5.2, 3.6)], [Ve
 	[Vector3(-4.2, 7.3, 1.2), Vector3(-4.6, 3.8, 2.4)], [Vector3(4.4, 7.0, 1.1), Vector3(4.8, 3.6, 2.3)]]
 ## How far in front of its centre its claws reach at rest (the lunge brings them to the runner).
 const CLAW_REACH: float = 6.8
-## DESIGN-TBD (GDD §10: "the EMP rips a chunk of the nightmare away"; three phases, three EMP hits): the
-## small heads (HEADS indexes) the first and the second EMP tear away with their maws, its left side's
-## then its right side's; the third bursts the whole nightmare into wisps.
-const CHUNK_HEADS: Array = [[0, 3, 7], [1, 4, 8]]
+## DESIGN-TBD (GDD §10: "the EMP rips a chunk of the nightmare away"; owner, October 10, 2026: five
+## phases, five EMP hits): the small heads (HEADS indexes) the first four EMPs tear away with their maws,
+## its left side's, then its right side's, then the crown and the lower left front, then the lower right
+## front; the fifth bursts the whole nightmare into wisps.
+const CHUNK_HEADS: Array = [[0, 3, 7], [1, 4, 8], [2, 5, 10], [6, 9, 11]]
 
 const BLACK := Color(0.012, 0.007, 0.02, 0.0)
 const SHEEN := Color(0.06, 0.018, 0.1, 0.06)
@@ -123,7 +124,7 @@ var attack: float = 0.0
 var lunge: float = 0.0
 var fade: float = 0.0
 ## How far each chunk (CHUNK_HEADS) has been torn away (0 = there, 1 = gone).
-var torn := Vector2.ZERO
+var torn := Vector4.ZERO
 
 var _liquid: MeshInstance3D
 var _vapor: MeshInstance3D

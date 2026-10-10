@@ -1,9 +1,9 @@
 extends TestSuite
 ## The Sleep Taker's attacks (GDD §10; task E5c-a), at 3, 5 and 6 lanes:
 ## - the giant slash: it strikes only after its warning (the shriek and its lanes lit red), only within
-##   the lanes it warned; a runner who reacts as the warning starts always escapes, to the refuge's pad
-##   or (at 5 and 6 lanes) out of its lanes, from every lane; the ceiling is always safe; every attempt
-##   plays the same;
+##   the lanes it warned; a runner who reacts as the warning starts always escapes, up the refuge's
+##   standing side wall (owner, October 10, 2026: no ceilings in this fight) or (at 5 and 6 lanes) out of
+##   its lanes, from every lane; a wall runner is never touched; every attempt plays the same;
 ## - the grasping hands (owner, October 8, 2026: spread along the street, and on the walls; October 10:
 ##   more of them, more often): rounds of rows growing from three to six, each row leaving its door one
 ##   lane over from the last and standing in the lane the runner kept free before, wall hands on both
@@ -121,13 +121,10 @@ func _run(world: RunWorld, seconds: float, done: Callable, each: Callable = Call
 
 ## A runner who stays in its lane (god mode, so it runs on): the slash touches it only after its whole
 ## warning (the shriek, its lanes lit from the warning's start), only inside the lanes it warned (and
-## those count as floor warnings: pickups keep off them), and never a runner on the ceiling.
+## those count as floor warnings: pickups keep off them), and never a runner on a wall.
 func _test_slash_warning() -> void:
 	var t := def.tuning as SleepTakerTuning
-	check(t.slash_height < tuning.ceiling_height - tuning.hurtbox_size.y - 0.5,
-		"the slash's reach (%.2f m) stops well below a ceiling rider (from %.2f m)" % [t.slash_height,
-		tuning.ceiling_height - tuning.hurtbox_size.y])
-	check(t.slash_height > tuning.jump_height + 0.3, "and above a jump's top: only leaving its lanes or the ceiling dodges it")
+	check(t.slash_height > tuning.jump_height + 0.3, "the slash reaches above a jump's top: only leaving its lanes or a wall dodges it")
 	for lanes: int in LANES:
 		var tag: String = "(%d lanes)" % lanes
 		var pair: Array = _fight(_plain_def("hands", true, true), lanes)
@@ -135,7 +132,7 @@ func _test_slash_warning() -> void:
 		var boss: SleepTaker = pair[1]
 		world.player.god_mode = true
 		var bot := SleepTakerBot.new(boss, &"none")
-		# An outer lane: never a refuge's pad lane, always in the slash.
+		# An outer lane: always in the slash.
 		bot.home_lane = 0
 		var seen: Dictionary = {"warned_at": -1.0, "marks": true, "touch": -1.0, "warned_lanes": true, "others_clear": true}
 		await _run(world, 40.0, func() -> bool: return not _events(boss, &"slash_over").is_empty(), func() -> void:
@@ -183,13 +180,27 @@ func _test_slash_warning() -> void:
 		check(box.position.x >= geo.lane_x(first) - half - 0.001 and box.end.x <= geo.lane_x(last) + half + 0.001
 			and box.position.x > -geo.wall_x() + 0.5 and box.end.x < geo.wall_x() - 0.5,
 			"its damage box stays inside the lanes it lit, clear of the walls %s" % tag)
-		check(box.size.y < tuning.ceiling_height - tuning.hurtbox_size.y, "and below a ceiling rider %s" % tag)
+		# A wall runner's body lies across the wall, its feet on it, reaching hurtbox_size.y in toward the
+		# street (Player._check_hazards rolls it), anywhere from a wall run's top to its lowest: clear of it.
+		# A runner in the outer lane (at its middle) is inside it.
+		var hw: float = tuning.hurtbox_size.x * 0.5
+		var rider := AABB(Vector3(geo.wall_x() - tuning.hurtbox_size.y, tuning.wall_exit_height - hw, -0.5),
+			Vector3(tuning.hurtbox_size.y, tuning.wall_max_height - tuning.wall_exit_height + 2.0 * hw, 1.0))
+		var mirrored := AABB(Vector3(-rider.end.x, rider.position.y, rider.position.z), rider.size)
+		var reach_right: bool = last == lanes - 1
+		var reach_left: bool = first == 0
+		check((not reach_right or not box.intersects(rider)) and (not reach_left or not box.intersects(mirrored)),
+			"and never reaches a runner on a wall beside it %s" % tag)
+		var outer: int = last if reach_right else first
+		var lane_runner := AABB(Vector3(geo.lane_x(outer) - hw, 0.0, -0.1), Vector3(2.0 * hw, tuning.hurtbox_size.y, 0.2))
+		check(box.encloses(lane_runner), "while a runner in its outer lane is inside it %s" % tag)
 		await sim.free_world(world)
 
 
 ## A runner who reacts as the warning starts always gets away, from every lane, at every lane count:
-## to the refuge's nearest pad and up onto the ceiling, or (at 5 and 6 lanes) to a lane outside the slash.
-## No god mode and no armor: a hit ends the run. On the ceiling as it strikes, it's always safe.
+## up the refuge's standing side wall (the arena has no ceilings since the owner's October 10, 2026
+## change), or (at 5 and 6 lanes) to a lane outside the slash. No god mode and no armor: a hit ends the
+## run. On a wall as it strikes, it's always safe.
 func _test_slash_escapes() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
@@ -197,11 +208,11 @@ func _test_slash_escapes() -> void:
 				await _slash_escapes(lanes, escape, speed)
 
 
-## The slash's escapes to play at `lanes` and `speed`: the pad at every lane count, leaving the lanes
-## at 5 and 6; at the Dead Zone's speed only the tightest case, the pad at 3 lanes (the whole fight at
+## The slash's escapes to play at `lanes` and `speed`: the wall at every lane count, leaving the lanes
+## at 5 and 6; at the Dead Zone's speed only the tightest case, the wall at 3 lanes (the whole fight at
 ## both speeds, test_sleep_taker_fight, plays the rest), to keep the suite's time down.
 static func _escapes(lanes: int, speed: float) -> Array[StringName]:
-	var out: Array[StringName] = [&"pad"]
+	var out: Array[StringName] = [&"wall"]
 	if speed > MovementTuning.REFERENCE_SPEED + 0.5:
 		if lanes > 3:
 			out.clear()
@@ -214,7 +225,7 @@ static func _escapes(lanes: int, speed: float) -> Array[StringName]:
 func _slash_escapes(lanes: int, escape: StringName, speed: float) -> void:
 	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
 	var survived: int = 0
-	var ceiling_ok: bool = true
+	var wall_ok: bool = true
 	var strikes: int = 0
 	for start: int in lanes:
 		var pair: Array = _fight(_plain_def("hands", true, true), lanes, speed)
@@ -234,15 +245,15 @@ func _slash_escapes(lanes: int, escape: StringName, speed: float) -> void:
 		strikes += boss.slash.strikes
 		if world.player.alive and boss.slash.strikes >= 2:
 			survived += 1
-		if escape == &"pad":
+		if escape == &"wall":
 			for s: Variant in surfaces:
-				ceiling_ok = ceiling_ok and int(s) == Player.Surface.CEILING
+				wall_ok = wall_ok and int(s) == Player.Surface.WALL
 		await sim.free_world(world)
 	check(survived == lanes, "a runner reacting %.2f s into the warning escapes by %s from every lane (%d of %d) %s" % [
 		REACTION, escape, survived, lanes, tag])
 	check(strikes >= 2 * lanes, "two slashes struck in every run (%d) (%s) %s" % [strikes, escape, tag])
-	if escape == &"pad":
-		check(ceiling_ok, "taking the pad, it rides the ceiling as every slash strikes: the ceiling is safe %s" % tag)
+	if escape == &"wall":
+		check(wall_ok, "taking the wall, it rides it as every slash strikes: the wall is safe %s" % tag)
 
 
 ## The same runner on the same fight sees the same slashes, every attempt.
@@ -470,7 +481,7 @@ func _test_hands_rounds() -> void:
 ## Planning a round on a plain street: from every floor lane a round of the most rows comes with its way
 ## through (the router's), never a hand in a door; a whole round's hands fill the pool; its numbers are
 ## respected (hand_rows_max, hand_row_open, wall_hands_per_row); a round takes the rows that are over in
-## time, never fewer than hand_rows_min; never a round at a ceiling rider.
+## time, never fewer than hand_rows_min; never a round at a wall runner.
 func _test_hands_planning() -> void:
 	for lanes: int in LANES:
 		var tag: String = "(%d lanes)" % lanes
@@ -543,8 +554,8 @@ func _test_hands_planning() -> void:
 			"with hand_rows_min 1 (owner, October 10, 2026: more often), a single row comes where only it fits %s" % tag)
 		check(boss.hands.plan(boss.hands.warning_seconds()).is_empty(), "and none where not even one row is over in time %s" % tag)
 		t.hand_rows_min = rows_min
-		world.player.surface = Player.Surface.CEILING
-		check(boss.hands.plan().is_empty(), "hands never come at a ceiling rider %s" % tag)
+		world.player.surface = Player.Surface.WALL
+		check(boss.hands.plan().is_empty(), "hands never come at a wall runner %s" % tag)
 		await sim.free_world(world)
 
 
@@ -659,15 +670,18 @@ func _real_arena(lanes: int, escape: StringName, speed: float) -> void:
 		wall_hands += 1 if int(e["side"]) != 0 else 0
 	for e: Dictionary in _events(boss, &"round"):
 		rows += int(e["rows"])
-	check(wall_hands >= rows / 2 and bot.routes_found == boss.hands.rounds and bot.routes_missing == 0,
-		"the hands reach in from the walls on most rows (%d of %d rows), and every round had its way through %s" % [wall_hands,
+	# A wall hand rises only where its wall stands; with its many wall gaps (and no bridges keeping stretches
+	# of wall whole since the owner's October 10, 2026 change) about one row in two or three has one.
+	check(wall_hands >= rows / 3, "the hands reach in from the walls on many rows (%d wall hands, %d rows) %s" % [wall_hands,
 		rows, tag])
+	check(bot.routes_found == boss.hands.rounds and bot.routes_missing == 0, "every round had its way through (%d) %s" % [
+		boss.hands.rounds, tag])
 	check(not boss.arena.layout.wall_gaps.is_empty(), "its walls have their gaps %s" % tag)
 	check(_events(boss, &"refuge_missed").is_empty(), "no refuge went by without its slash %s" % tag)
 	check(boss.lure.count >= 2 and boss.lure.missed == boss.lure.lures and boss.phase_index == 0,
 		"generators keep coming while it lets them go by (%d, %d lures), and the fight stays where it is %s" % [
 		boss.lure.count, boss.lure.lures, tag])
-	if lanes == 5 and escape == &"pad":
+	if lanes == 5 and escape == &"wall":
 		print("  Sleep Taker on its arena (5 lanes, %.1f m/s, generators let go by): %.0f s of pattern, %d slashes, %d hands, %d lights out, %d generators" % [
 			speed, boss.fight_time() - boss.phase().intro_seconds, boss.slash.count, boss.hands.count, boss.dark.count, boss.lure.count])
 	await sim.free_world(world)

@@ -31,10 +31,17 @@ const ARC_COUNT: int = 3
 const ARC_SEGMENTS: int = 12
 ## The arcs' jags change this often (none with Reduced flashing: they hold their shape).
 const ARC_FLICKER: float = 0.07
+## Where a stomp's bounce comes down (landing_span): metres either way of the bounce's flight (a stomp lands
+## anywhere on the generator's top), and seconds of clear street after it.
+const LANDING_SLACK: float = 2.0
+const LANDING_SECONDS: float = 0.5
 ## Seconds kept clear between a lure's stretch and a refuge's slash, either way round.
 const LURE_MARGIN: float = 0.5
-## A generator's spot is looked for this far past generator_sight (metres at 18 m/s).
+## A generator's spot is looked for this far past generator_sight (metres at 18 m/s), where the arena has
+## no site kept for one (SleepTaker.sites_between).
 const SPOT_SEARCH: float = 30.0
+## The game's rules (App.RULES_PATH), for the stomp's bounce when the arena is planned, before a run has them.
+const RULES_PATH: String = "res://data/tuning/game_rules.tres"
 ## Where the arcs reach into the nightmare (model space: its belly and waist, below its great maw).
 const ARC_TARGETS: Array[Vector3] = [Vector3(-1.6, 4.4, 1.8), Vector3(0.0, 3.4, 2.0), Vector3(1.6, 4.4, 1.8)]
 const PINK := Color(1.0, 0.3, 0.75)
@@ -185,12 +192,15 @@ func place_at(at: float, lane: int) -> bool:
 	return true
 
 
-## The first fair spot for a generator from generator_sight ahead to SPOT_SEARCH past it: {at, lane}, or
-## {} for none (the encounter tries again a moment later, so a generator never shows up much further
-## off than the others). Its lane (the runner's, else the nearest) has its floor clear of holes and fences
-## generator_clear_before it to generator_clear_after past it, no pad or ramp there and no pickup on
-## it; the lure's stretch is clear of ceilings (the runner on the street the whole way) and of every
-## refuge's slash, with LURE_MARGIN's room on either side.
+## The first fair spot for a generator generator_sight ahead or further: {at, lane}, or {} for none (the
+## encounter tries again a moment later). Its lane (the runner's, else the nearest) has its floor clear of
+## holes and fences generator_clear_before it to generator_clear_after past it and where a stomp's bounce
+## comes down (landing_span), no pad or ramp there and no pickup on it; the lure's stretch is clear of
+## ceilings (the runner on the street the whole way) and of every refuge's slash, with LURE_MARGIN's room
+## on either side. The arena keeps a site for one between each two refuges (SleepTaker.sites_between, its
+## lane clear): the first of those within a refuge's spacing past generator_sight, else (an arena without
+## them) the first fair spot up to SPOT_SEARCH past it. Owner, October 10, 2026: with three times the
+## holes, a lane clear that long had become rare, and the generators came late.
 func find_spot() -> Dictionary:
 	var t: SleepTakerTuning = boss.tuning
 	var k: float = boss.run_pace()
@@ -205,6 +215,13 @@ func find_spot() -> Dictionary:
 			if l >= 0 and l < n:
 				lanes.append(l)
 	var from: float = d + t.generator_sight * k
+	for site: Dictionary in boss.sites_between(from, from + t.refuge_spacing * k):
+		var site_at: float = float(site["at"])
+		if not _stretch_fair(site_at, v, k):
+			continue
+		for lane: int in lanes:
+			if _lane_fair(lane, site_at, k):
+				return {"at": site_at, "lane": lane}
 	var step: float = 3.0 * k
 	var at: float = from
 	while at <= from + SPOT_SEARCH * k:
@@ -239,6 +256,9 @@ func _lane_fair(lane: int, at: float, k: float) -> bool:
 	var to: float = at + t.generator_clear_after * k
 	if not boss.floor_clear_lane(lane, from, to) or boss.pickup_near(lane, at, 4.0):
 		return false
+	var landing: Vector2 = landing_span(at, boss.speed(), boss.world.tuning, boss.world.rules)
+	if not boss.floor_clear_lane(lane, landing.x, landing.y):
+		return false
 	var layout: LevelLayout = boss.arena.layout if boss.arena != null else null
 	if layout == null:
 		return true
@@ -248,6 +268,34 @@ func _lane_fair(lane: int, at: float, k: float) -> bool:
 			if int(p.get("lane", -1)) == lane and p_at >= from and p_at <= to:
 				return false
 	return true
+
+
+## Where a generator's site goes between a refuge's spot and the next one `spacing` metres on (relative to
+## the first), at `v` m/s and the run's pace `k`: the middle of the stretch where its lure, from
+## lure_seconds before it to lure_back_seconds after its release, keeps LURE_MARGIN off both refuges'
+## slashes (as _stretch_fair checks).
+static func site_after(t: SleepTakerTuning, v: float, k: float, spacing: float) -> float:
+	var lo: float = v * (t.strike_after_pad + t.slash_active + t.slash_recover + LURE_MARGIN) + v * (t.lure_seconds + LURE_MARGIN)
+	var hi: float = spacing + v * (t.strike_after_pad - t.slash_warning() - LURE_MARGIN) - t.lure_release * k \
+		- v * (t.lure_back_seconds + LURE_MARGIN)
+	return (lo + hi) * 0.5
+
+
+## Where a runner who stomps a generator at `at` comes back down, at `v` m/s: the stomp's bounce
+## (GameRules.stomp_bounce_velocity) off its top flies them LANDING_SLACK either side of `at` plus the
+## bounce's time in the air at `v` (about 0.66 s), and they need LANDING_SECONDS on the street after it to
+## see and jump the next hole. The floor in its lane is kept clear there (_lane_fair); holes between the
+## generator and the landing are flown over. Owner, October 10, 2026: with three times the floor gaps a
+## hole where the bounce lands had become likely.
+static func landing_span(at: float, v: float, movement: MovementTuning, rules: GameRules = null) -> Vector2:
+	if rules == null:
+		rules = load(RULES_PATH) as GameRules
+	var g_up: float = movement.gravity()
+	var bounce: float = rules.stomp_bounce_velocity if rules != null else 0.0
+	var peak: float = FenceGenerator.TOP_Y + bounce * bounce / (2.0 * g_up)
+	var air: float = bounce / g_up + sqrt(2.0 * peak / (g_up * movement.fall_gravity_multiplier))
+	var down: float = at + v * air
+	return Vector2(down - LANDING_SLACK, down + LANDING_SLACK + v * LANDING_SECONDS)
 
 
 # --- Each frame ---------------------------------------------------------------------------------

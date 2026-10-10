@@ -43,7 +43,7 @@ var reach: float = 1.0
 ## Materializing (1 = not there yet) and dissolving: set directly, not eased.
 var fade: float = 0.0
 ## Seconds since each chunk (SleepTakerModel.CHUNK_HEADS) was torn away; -1 while it's still there.
-var tear_time := PackedFloat32Array([-1.0, -1.0])
+var tear_time := PackedFloat32Array([-1.0, -1.0, -1.0, -1.0])
 
 var _core: Hazard
 
@@ -183,5 +183,5 @@ func _animate(delta: float) -> void:
 	for i: int in tear_time.size():
 		if tear_time[i] >= 0.0:
 			tear_time[i] += delta
-	model.torn = Vector2(torn(0), torn(1))
+	model.torn = Vector4(torn(0), torn(1), torn(2), torn(3))
 	model.animate()

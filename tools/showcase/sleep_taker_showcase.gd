@@ -13,8 +13,8 @@ extends Node3D
 ##   front       the nightmare from the runner's eye height, still, its pose cycling (rest, the
 ##               shriek with its arms raised, the inhale)
 ##   entrance    the fight from its start through the run camera: it rises out of the street ahead
-##   slash       through the run camera, a runner who answers the slash by its warning (--escape=pad
-##               the refuge's pad, lanes another lane, none stays put); the first refuge comes about
+##   slash       through the run camera, a runner who answers the slash by its warning (--escape=wall
+##               up the refuge's standing wall, lanes another lane, none stays put); the first refuge comes about
 ##               5 s after the entrance; nothing else attacks
 ##   hands       through the run camera, hands only (no refuges) on its real arena (its wall gaps and
 ##               holes), the runner weaving through each round's rows by its way through
@@ -22,16 +22,16 @@ extends Node3D
 ##   lights_out  through the run camera: the inhale, the dark with hands coming, the light back
 ##   lure        through the run camera: a generator in sight, the nightmare lunging in after the runner,
 ##               the arcs as it's in reach, the stomp, the EMP tearing a chunk away and the recoil;
-##               nothing else attacks (--phase=2: the last EMP, its wisps, the silence and the dawn)
-##   fight       the fight as it comes, with a runner who reads it (pad escapes) and stomps each generator
+##               nothing else attacks (--phase=4: the last EMP, its wisps, the silence and the dawn)
+##   fight       the fight as it comes, with a runner who reads it (wall escapes) and stomps each generator
 ##   measure     readability in numbers (GDD §10: hazards keep glowing; lights out a dark tunnel where only
 ##               the glows show, owner, October 10, 2026):
-##               a fence, a slash's lane marks, a hand's mist, a refuge's pad, its bridge's end band,
+##               a fence, a slash's lane marks, a hand's mist,
 ##               a gap's edge, the fight's generator (with its beacon) and the street in view, through the run camera in
 ##               the arena's light and at the darkest point of lights out; prints each one's brightness
 ##               on screen (the mean of its brightest pixels, 0-255) in both lights
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --phase=N (start at phase N, as a checkpoint would),
-## --pose=..., --escape=pad|lanes|none, --reduced-flashing, --events (prints each of the boss's events
+## --pose=..., --escape=wall|lanes|none, --reduced-flashing, --events (prints each of the boss's events
 ## with its frame, for picking frames), --dark (lure: lights out as each generator comes into sight),
 ## --first-dark (lights out as first built, for comparing: dark_level 0.45 with every boss's floors, 0.3;
 ## the owner's October 8, 2026 lights out is half as bright, and October 10's 90% darker again).
@@ -40,7 +40,7 @@ extends Node3D
 ## about 72 and 80, the next round (three rows) about 100-128, the next about 146; lights_out, the inhale
 ## about 60-80, the dark 80-168 (a round's rows rising in it about 113 and 121), the light back by about
 ## 185; lure, the generator in sight about frame 50, the lunge about 64, the arcs from about 79, the
-## stomp and the chunk torn about 94, the recoil to about 119 (with --phase=2: the stomp about 74, the
+## stomp and the chunk torn about 94, the recoil to about 119 (with --phase=4: the stomp about 74, the
 ## wisps 76-120, the dawn 92-124); measure, the arena's light about frame 55 and the darkest point about
 ## frame 85.
 
@@ -69,7 +69,7 @@ var _events_seen: int = 0
 func _ready() -> void:
 	var lanes: int = 5
 	var phase: int = 0
-	var escape: StringName = &"pad"
+	var escape: StringName = &"wall"
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
@@ -111,15 +111,15 @@ func _ready() -> void:
 			t.attack_patterns = PackedStringArray(["lights_out,hands,hands,hands,hands"])
 		"lure":
 			# A generator soon after the entrance, nothing else coming: the lure, the stomp, the chunk
-			# torn away and the recoil (with --phase=2: the last EMP and the defeat).
+			# torn away and the recoil (with --phase=4: the last EMP and the defeat).
 			t.refuge_first = 100000.0
 			t.attack_gap = 1000.0
 			t.generator_delay = 0.5
 			t.generator_sight = 80.0
 		"measure":
-			# A short refuge just ahead of the spot, the nightmare further off so it hides nothing.
+			# A refuge just ahead of the spot (its clearing empties the stretch), the nightmare further off so
+			# it hides nothing.
 			t.refuge_first = 116.0
-			t.refuge_seconds = 1.0
 			t.refuge_spacing = 1000.0
 			t.attack_gap = 1000.0
 			t.hover_ahead = 60.0
@@ -245,8 +245,7 @@ var _sampling: bool = false
 
 
 ## The measure scenario's track: in the left outer lane a hand's mist (held) and a gap, in the right
-## one a fence and plain street, the refuge's pads in the middle; the refuge's clearing has already left
-## the stretch empty. The fight's own generator (its beacon and halo) stands in the right outer lane too,
+## one a fence and plain street; the refuge's clearing has already left the stretch empty. The fight's own generator (its beacon and halo) stands in the right outer lane too,
 ## placed once the runner stops (_measure_tick).
 func _stage_measure(arena: BossArena, _tuning: MovementTuning) -> void:
 	var lap: LevelLayout = arena.layout
@@ -307,8 +306,6 @@ func _sample() -> Dictionary:
 	var geo: TrackGeometry = world.geo
 	var n: int = geo.lane_count
 	var d: float = world.player.distance
-	var pad: float = boss.tuning.refuge_first
-	var end: float = pad + boss.tuning.refuge_seconds * world.tuning.run_speed
 	var mark_lane: int = int(boss.slash.attack.get("first", 0))
 	var spots: Dictionary = {
 		"slash's lanes (red)": Vector3(geo.lane_x(mark_lane), 0.04, TrackGeometry.world_z(d + 4.0)),
@@ -317,9 +314,6 @@ func _sample() -> Dictionary:
 		"generator (pink)": Vector3(geo.lane_x(n - 1), 0.5, TrackGeometry.world_z(MEASURE_GENERATOR)),
 		"generator's beacon": Vector3(geo.lane_x(n - 1), 3.0, TrackGeometry.world_z(MEASURE_GENERATOR)),
 		"gap's edge (orange)": Vector3(geo.lane_x(0), 0.02, TrackGeometry.world_z(MEASURE_GAP)),
-		"refuge's pad (cyan)": Vector3(geo.lane_x(n / 2), 0.05, TrackGeometry.world_z(pad + 1.0)),
-		"bridge's end (orange)": Vector3(geo.lane_x(n / 2), world.tuning.ceiling_height - 0.1, TrackGeometry.world_z(end)),
-		"bridge's underside": Vector3(geo.lane_x(n - 1), world.tuning.ceiling_height, TrackGeometry.world_z(pad + 4.0)),
 		"street": Vector3(geo.lane_x(n - 1), 0.0, TrackGeometry.world_z(MEASURE_STREET)),
 		"wall": Vector3(geo.wall_x() - 0.02, 3.0, TrackGeometry.world_z(d + 10.0)),
 		"nightmare (its maws)": boss.body.mouth_world(),
