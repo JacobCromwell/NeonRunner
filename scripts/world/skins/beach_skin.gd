@@ -1,6 +1,6 @@
 class_name BeachSkin
 extends ZoneSkin
-## The Beach (task D10, the owner's request of October 9, 2026; the campaign's zone 5, between Corporate and the
+## The Beach (task D10, the owner's request of October 9, 2026; the campaign's zone 6, between Corporate and the
 ## Dead Zone, since task D10c): a cyberpunk party strip on the shore, in the same future as every zone (GDD §5), inspired
 ## by docs/art/reference/beach_zone.jpg: a sandy street with footprints running down to a turquoise sea
 ## and a palm-covered island on the horizon, between low bamboo-walled tiki bars, surf shops and lounges
@@ -20,7 +20,7 @@ extends ZoneSkin
 ## party barge. Signs are the yellow/black hazard frame around a painted surf or bar sign; fences the
 ## same pink field between bamboo-wrapped steel posts in sand-filled drums.
 ## Colour rule (GDD §5; the reference's glowing turquoise water and its pink, yellow, cyan, green and
-## orange neon are overruled, docs/OPEN_QUESTIONS.md, items 505–509): the water never glows, decorative glows are warm
+## orange neon are overruled, docs/OPEN_QUESTIONS.md, items 539–543): the water never glows, decorative glows are warm
 ## white, violet and blue only, and every paint is muted and unlit, so only hazards glow in hazard
 ## colours. The cult hides its emblem on neon signs, billboards and the barge's hull, and its feed plays
 ## on TVs behind some upper-deck bars and on some roof billboards, never in the wall-run band.
@@ -28,7 +28,7 @@ extends ZoneSkin
 ## hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
 
 @export_group("Environment")
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 510 and 524): the GDD gives no time of day for the Beach. The reference's bright
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 544 and 558): the GDD gives no time of day for the Beach. The reference's bright
 ## tropical afternoon: a blue sky with white cumulus, a turquoise sea and a low palm island on the horizon
 ## down the street, warm sunlight. Daylight is a risk for the game's look: the sky stays under the glow
 ## threshold and the sand mid-bright, so neon and hazards still bloom and stay the brightest things.
@@ -70,7 +70,7 @@ extends ZoneSkin
 @export var sand_dark_color: Color = Color(0.58, 0.47, 0.32)
 @export var shell_color: Color = Color(0.84, 0.78, 0.68)
 @export var pebble_color: Color = Color(0.42, 0.40, 0.37)
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 515): how much boardwalk there is is a guess (the reference has a
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 549): how much boardwalk there is is a guess (the reference has a
 ## boardwalk only along the buildings). Boardwalk runs: weathered planks laid across a lane with rusty steel plates
 ## bolted on, over stretches of some lanes (a slot of boardwalk_slot metres starts a run in boardwalk_share of the
 ## slots, one to three slots long, hashed by lane and slot so they line up across chunk cuts).
@@ -84,7 +84,7 @@ extends ZoneSkin
 @export var kerb_color: Color = Color(0.62, 0.49, 0.30)
 
 @export_group("Pools")
-## The owner's decision that gaps are pools of water (docs/OPEN_QUESTIONS.md, item 512). The pool tank is
+## The owner's decision that gaps are pools of water (docs/OPEN_QUESTIONS.md, item 546). The pool tank is
 ## black and gunmetal steel with rust streaks, flush in the sand (the reference's tanks stand proud of it:
 ## a raised rim would read as an obstacle that isn't there), filled to pool_depth below the floor like the
 ## reference's near-full tanks: seen from the game camera (4.2 m up) the water shows from about ten metres,
@@ -100,12 +100,12 @@ extends ZoneSkin
 @export var gap_inside_color: Color = Color(0.06, 0.065, 0.075)
 @export var tank_rust_color: Color = Color(0.26, 0.12, 0.06)
 @export var tide_color: Color = Color(0.07, 0.12, 0.13)
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 505): the water doesn't glow (the reference's pools glow turquoise, too
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 539): the water doesn't glow (the reference's pools glow turquoise, too
 ## close to the anti-grav pads' cyan). The water's deep teal and its brightest glint (sky streaks on the ripples),
 ## both unlit.
 @export var water_color: Color = Color(0.02, 0.15, 0.17)
 @export var water_glint_color: Color = Color(0.03, 0.175, 0.20)
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 508): the pool's frame is flush (the reference's tanks stand proud, which
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 542): the pool's frame is flush (the reference's tanks stand proud, which
 ## would read as an obstacle that isn't there). The steel coping beside a pool's orange lip, so the orange pops
 ## against the bright sand.
 @export var coping_color: Color = Color(0.09, 0.095, 0.105)
@@ -118,7 +118,7 @@ extends ZoneSkin
 ## surrounding area a little bit better". Where a side wall has a gap (BeachOpen) the street is a promenade
 ## beach_drop above an open beach: sand, a shoreline (damp sand, foam, turquoise shallows, deeper water) and
 ## scenery (palms, umbrellas and loungers, surfboards stuck in the sand, a low hut), unlit muted colours.
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 521–522): the drop, the shore and the scenery's amounts are placeholders.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 555–556): the drop, the shore and the scenery's amounts are placeholders.
 @export_range(0.8, 3.0, 0.05, "suffix:m") var beach_drop: float = 1.4
 @export var wet_sand_color: Color = Color(0.50, 0.40, 0.28)
 @export var foam_color: Color = Color(0.93, 0.95, 0.93)
@@ -150,7 +150,7 @@ extends ZoneSkin
 ## The kit lights a wall with its night-city factor; the Beach is in bright afternoon sun, so its upright lit
 ## surfaces (walls, thatch, timber) take this much more (a factor on their albedo).
 @export_range(1.0, 1.6, 0.01) var daylight: float = 1.2
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 518): the wall-run band's look. Buildings are 1-3 lots long, a lot is
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 552): the wall-run band's look. Buildings are 1-3 lots long, a lot is
 ## this long; two to four storeys of storey_height. The wall-run band (the floor to band_top, with a margin over
 ## the wall run's highest point) is flush: bamboo, mats, planks, rusty sheets, shut shutters and hatches, flush
 ## posters, and the wall-run height marks. Decoration (thatch, verandas, masks, boards, lanterns, flags, lights)
@@ -178,7 +178,7 @@ extends ZoneSkin
 @export var thatch_color: Color = Color(0.68, 0.53, 0.26)
 @export var thatch_dark_color: Color = Color(0.30, 0.23, 0.13)
 @export var timber_color: Color = Color(0.45, 0.35, 0.25)
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 517): how much colour the street gets (the reference has far more
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 551): how much colour the street gets (the reference has far more
 ## saturated paint). Muted painted boards, doors, surfboards and awnings (turquoise, coral, mustard, sage, sea
 ## blue), unlit.
 @export var paint_colors: PackedColorArray = PackedColorArray([
@@ -193,12 +193,12 @@ extends ZoneSkin
 	Color(0.22, 0.34, 0.24), Color(0.27, 0.38, 0.25), Color(0.20, 0.31, 0.26)])
 ## The wall-run height marks (GDD §3: how high a wall run is): unlit paint at 2 m and 4 m.
 @export var wall_height_marks: PackedFloat32Array = PackedFloat32Array([2.0, 4.0])
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 516): a thin painted line a slightly darker shade of the wall (a multiplier on its colour, so it
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 550): a thin painted line a slightly darker shade of the wall (a multiplier on its colour, so it
 ## shows on bamboo, planks and paint alike without reading as a cable): the kind you find when you look for it.
 @export var wall_mark_color: Color = Color(0.70, 0.68, 0.66)
 
 @export_group("Lights and signs")
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 506): the decorative neon is violet, blue or warm white only. Decorative
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 540): the decorative neon is violet, blue or warm white only. Decorative
 ## glows are warm white, violet and blue only (the reference's pink, yellow, cyan, green and orange neon are hazard
 ## hues): neon silhouette signs (a palm, a wave, a flamingo, a cocktail, a surfboard, the sun, a tiki totem; never
 ## words), the bulbs on strings of lights, and a paper lantern's warm-white glow inside its muted unlit shell.
@@ -206,7 +206,7 @@ extends ZoneSkin
 @export var neon_blue: Color = Color(0.32, 0.45, 1.0)
 @export var neon_white: Color = Color(1.0, 0.92, 0.78)
 @export_range(0.0, 1.0, 0.01) var neon_glow: float = 0.5
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 507): string lights glow warm white, blue or violet (the reference's
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 541): string lights glow warm white, blue or violet (the reference's
 ## are red, yellow, green and blue), paper lanterns are unlit muted shells (lantern_shell_colors) with a warm-white
 ## glow inside, and bunting and flags are unlit and muted.
 @export var lamp_color: Color = Color(1.0, 0.9, 0.74)
@@ -226,7 +226,7 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.01) var sign_share: float = 0.55
 
 @export_group("Cult emblem")
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 520): GDD §5 proposes the emblem hidden in logos and ads in every zone. A
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 554): GDD §5 proposes the emblem hidden in logos and ads in every zone. A
 ## small warm-white neon badge on some neon signs and billboards, unlit bronze on the party barge's hull,
 ## never smaller than emblem_min_size (tiny, its three-fold silhouette could read like the radiation
 ## trefoil; the kit also fades it out below about 24 pixels).
@@ -235,7 +235,7 @@ extends ZoneSkin
 @export_range(0.0, 1.5, 0.05) var emblem_glow: float = 0.55
 
 @export_group("Cult feed")
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 520): the cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays on
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 554): the cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays on
 ## a TV behind some upper-deck bars and on some roof billboards, never in the wall-run band.
 @export_range(0.0, 1.0, 0.01) var feed_tv_share: float = 0.35
 @export_range(0.0, 1.0, 0.01) var feed_board_share: float = 0.3
@@ -243,7 +243,7 @@ extends ZoneSkin
 @export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 0.85
 
 @export_group("Ceilings")
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 513): the three kinds of ceiling. A boardwalk footbridge between the upper
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 547): the three kinds of ceiling. A boardwalk footbridge between the upper
 ## verandas (only across every lane), a veranda deck cantilevered from the building it reaches (narrow,
 ## reaching one wall), a hovering party barge (a cyberpunk tiki boat: any width, or reaching neither
 ## wall). Relative weights of a footbridge (across every lane) and a barge; and of a veranda deck and a

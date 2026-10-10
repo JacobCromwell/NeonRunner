@@ -12,7 +12,7 @@ extends Node3D
 ## light, the Beach's sunset warms it), once when it is made (a splash lives 1.2 s). It is not a kit shader, so it
 ## can't read the global uniforms; the two values are the ones `ZoneSkin.set_scenery_light` and `set_scenery_tint`
 ## keep beside them. Its glow stays none and it still ignores the sun: foam is white paint on the water.
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 525): the splash's look (a crown, droplets and two rings, 1.2 s) and its
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 559): the splash's look (a crown, droplets and two rings, 1.2 s) and its
 ## `splash` sound are placeholders.
 
 ## How long it lives, seconds.

@@ -3928,21 +3928,23 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     outside the campaign) are answered or replaced by the owner's decision of October 9, 2026: items 569–579.
 
 **The Beach joins the campaign** (from D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone. Keep in mind that there will be a boss battle for the beach, but it has not yet been created. Do not worry about any new enemies at this time. Create level names that fit the theme."; GDD §5, §6 and §10; `data/campaign/campaign.tres`, `data/zones/beach.tres`, `data/levels/beach_1.tres` (Tiki Tides) and `beach_2.tres` (Sunset Strip); play `--level=beach/1`)
-569. **Off the curve, or the curve re-spread over 17 levels?** (GDD §6: each level slightly harder than the last.)
-    Placeholder: both Beach levels are off the campaign's difficulty curve (`LevelConfig.off_curve`,
-    `Campaign.configure`): the curve still runs 0.1 → 0.9 over the other 15 levels, which keep exactly the
-    difficulty, enemy scaling, run speed, feature ages and recency the owner playtested (every layout byte-identical
-    at 3, 5 and 6 lanes), and the Beach plays at its own numbers. Re-spreading would move every level between City 1
-    and Golden 3 (Corporate 2 from 0.61 to 0.55, Dead Zone 1 from 0.67 to 0.70). Should the curve be re-spread later?
-570. **The Beach's own difficulty and enemy scaling.** Placeholder: difficulty 0.63 and 0.65, enemy scaling 0.67 and
-    0.69, strictly between Corporate 2's (0.61, 0.64) and Dead Zone 1's (0.67, 0.71), rising; a harder tier adds its
-    bonus as for any level. The right feel for a remix between the two?
+569. **Off the curve, or the curve re-spread over 19 levels?** (GDD §6: each level slightly harder than the last; the
+    owner, October 9, 2026: no level gets easier when levels are added.) Placeholder: both Beach levels are off the
+    campaign's difficulty curve (`LevelConfig.off_curve`, `Campaign.configure`): the curve (task K4's, exponent 0.79,
+    re-spread when the Casino joined) runs over the other 17 levels, which keep exactly the difficulty, enemy
+    scaling, run speed, feature ages and recency they have on main (every layout byte-identical at 3, 5 and 6 lanes),
+    and the Beach plays at its own numbers, so no level gets easier. Should the curve be re-spread over all 19 later,
+    as it was for the Casino (every level from City 2 on would move, the later ones harder)?
+570. **The Beach's own difficulty and enemy scaling.** Placeholder: difficulty 0.71 and 0.72, enemy scaling 0.71 and
+    0.73, strictly between Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on main's curve, rising
+    (they were 0.63-0.69 against the 15-level curve before the Casino); a harder tier adds its bonus as for any
+    level. The right feel for a remix between the two?
 571. **Feature ages and recency** (the recency curve). Placeholder: the Beach's levels count every level before
     them, so their newest things (the Tithe Collector and the Enforcer Truck) get the most picks; the levels after
     the Beach count only the levels on the curve, so the Dead Zone's and the Golden Zone's picks are unchanged.
 572. **The completion bonus.** Placeholder: the Beach's levels share Corporate 2's place on the curve
     (`CampaignStep.level_index`), so they pay Corporate 2's bonus (325), and the later zones' bonuses are unchanged.
-    `level_index` is now a place on the curve, not a play order. Should the Beach pay more, as levels 11 and 12?
+    `level_index` is now a place on the curve, not a play order. Should the Beach pay more, as levels 13 and 14 in play order?
 573. **The economy with two more levels.** A clean run now banks about 1,650 more credits before the Dead Zone, so
     the Heavy missile becomes affordable at Dead Zone 1 instead of Golden 1. Rebalance in R7?
 574. **Continue for a save from before the Beach.** Placeholder (the existing rule, unchanged): a save that had
@@ -3987,3 +3989,9 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     way out even where a side wall gap leaves no wall, and a move onto the wall there is refused. It can't happen in
     the Beach (no hosts), and on main's levels only where a rare short gap meets a Bad Dream's chase. Placeholder:
     unchanged. Fix it in a follow-up task?
+
+584. **The Beach's cyborgs and the Casino's** (task D10d, after main's Casino zone joined). The Beach wears the Casino
+    Mob Enforcer (`&"casino"`, item 545, chosen under the owner's "whatever fits the theme of this zone the best"),
+    and the Casino zone (4) now wears it too, reusing the Marketplace's. So three zones show it. Keep it on the
+    Beach (a mob running the bars and lounges; the Barnacle Turret's creature look), or switch the Beach to another
+    existing look (the base Static TV Head, `&"city"`, say) so it stands apart?

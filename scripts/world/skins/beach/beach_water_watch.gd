@@ -9,7 +9,7 @@ extends Node3D
 ## under the street there (a floor or a floor cut's hole, never a floor), so a crossing is always a fall into a
 ## pool. The grapple hook fires at MovementTuning.pit_depth, above the water (BeachSkin.pool_depth is deeper by
 ## test), so a grappled runner never reaches it and never splashes.
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 525): what falls after the runner (an Octodog baited into a gap, the
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 559): what falls after the runner (an Octodog baited into a gap, the
 ## Enforcer's wreck) doesn't splash: visual only for the runner.
 
 const SPLASH_SOUND: StringName = &"splash"

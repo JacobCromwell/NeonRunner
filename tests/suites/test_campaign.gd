@@ -1044,7 +1044,7 @@ func _test_darker_lighting(campaign: Campaign) -> void:
 ## Unlocking follows the campaign order (with a fresh profile); the web demo covers Zone 1 only. The Beach
 ## (task D10c) opens after Corporate's outro, its placeholder boss slot passes on to its outro, and its outro
 ## opens the Dead Zone; a save from before the Beach keeps the Dead Zone it had open, and Continue offers it
-## the Beach (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 540).
+## the Beach (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 574).
 func _test_unlocking() -> void:
 	var app: Node = tree.root.get_node_or_null(^"App")
 	if app == null:

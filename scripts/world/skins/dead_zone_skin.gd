@@ -1,6 +1,6 @@
 class_name DeadZoneSkin
 extends ZoneSkin
-## Zone 6, the Dead Zone (GDD §5, §11): a blackened, bombed-out husk of the city, eerie, quiet and
+## Zone 7, the Dead Zone (GDD §5, §11): a blackened, bombed-out husk of the city, eerie, quiet and
 ## haunting: rubble, embers, smoke and silence, with not much life. Dark black, dark grey and ash grey.
 ## The same future as every zone, in its dominant shapes: these are the ruins of the Neon City's own
 ## towers (their window grids, podiums, dead neon banners and billboards, broken skybridges), gutted by

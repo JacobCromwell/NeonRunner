@@ -1,6 +1,6 @@
 class_name GoldenPalaceSkin
 extends GoldenSkin
-## Golden 3, "the Golden Palace" (GDD §5, Zone 7 the Golden Zone: "Final level: the Golden Palace"):
+## Golden 3, "the Golden Palace" (GDD §5, Zone 8 the Golden Zone: "Final level: the Golden Palace"):
 ## the player runs inside the palace, so huge and grand that its interior is basically the size of a
 ## city. It plays like any other level; only the skin is an interior: floors, walls and ceilings are
 ## the palace's own halls, galleries and arches. The final boss follows it.

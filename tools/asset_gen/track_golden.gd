@@ -1,5 +1,5 @@
 extends RefCounted
-## "Golden", Zone 7 (the elite's city of gold and the Golden Palace, the final level: decadent
+## "Golden", Zone 8 (the elite's city of gold and the Golden Palace, the final level: decadent
 ## opulence, the cult felt everywhere). Neoclassical metal at 132 BPM in F# harmonic minor: harpsichord
 ## arpeggios, a string section, timpani and double kick under a regal, dotted theme and flashy guitar
 ## sweeps. No bells or chimes: the Golden Zone's Resonator warns with a chime (GDD §9.10).

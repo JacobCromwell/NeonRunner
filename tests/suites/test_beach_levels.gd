@@ -1,10 +1,10 @@
 extends TestSuite
-## The Beach's levels: the campaign's zone 5 (task D10c; the owner, October 9, 2026: "put the beach between the
+## The Beach's levels: the campaign's zone 6 (task D10c; the owner, October 9, 2026: "put the beach between the
 ## corporate and dead zone", a boss battle to come, no new enemies for now), with the open side walls of task D10b
 ## (the owner, October 9, 2026: the Beach should "feel more open ... much longer sections where there aren't
 ## sidewalls", its side walls appearing "about 50% of the time that they are now"). How the campaign configures
 ## them off its difficulty curve, and leaves every other level as it was, is test_campaign's. Checked here:
-## - the data: data/zones/beach.tres, the campaign's zone 5 between Corporate and the Dead Zone (id beach, the Beach
+## - the data: data/zones/beach.tres, the campaign's zone 6 between Corporate and the Dead Zone (id beach, the Beach
 ##   skin, Tiki Tides and Sunset Strip, its music track `beach`, a stand-in on tracks the game has, its intro and
 ##   outro cinematic slots and its boss slot, a placeholder, outside the web demo); its levels: Corporate 2's
 ##   features (a remix, no new enemy assets), nothing introduced, off the campaign's difficulty curve, a
@@ -38,7 +38,7 @@ const OPEN_WALLS_PATH: String = "res://data/tuning/beach_wall_gaps.tres"
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const MUSIC_PATH: String = "res://data/audio/music_library.tres"
 const SMOKE_TOOL: String = "res://tools/smoke/smoke_play.gd"
-## The levels' lengths (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 533: like their neighbours, Corporate 2 and Dead Zone 1).
+## The levels' lengths (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 567: like their neighbours, Corporate 2 and Dead Zone 1).
 const DURATIONS: Array[float] = [145.0, 150.0]
 ## The levels' names (GDD §5, October 9, 2026).
 const NAMES: Array[String] = ["Tiki Tides", "Sunset Strip"]
@@ -85,9 +85,10 @@ func run() -> void:
 func _test_data() -> void:
 	check(zone.id == &"beach" and zone.display_name == "Beach" and zone.tagline != "", "the zone is the Beach, named, with a tagline")
 	check(zone.skin != null and zone.skin.resource_path == SKIN_PATH, "in the Beach skin")
-	# Its place: zone 5, between Corporate and the Dead Zone (the owner, October 9, 2026).
-	check(campaign.zones.size() > 5 and campaign.zones[4] == zone and campaign.zones[3].id == &"corporate"
-		and campaign.zones[5].id == &"dead_zone", "the campaign's zone 5, between Corporate and the Dead Zone")
+	# Its place: between Corporate and the Dead Zone (the owner, October 9, 2026): zone 6, after the Casino (zone 4).
+	var at: int = campaign.zones.find(zone)
+	check(at > 0 and at + 1 < campaign.zones.size() and campaign.zones[at - 1].id == &"corporate"
+		and campaign.zones[at + 1].id == &"dead_zone", "the campaign's zone %d, between Corporate and the Dead Zone" % (at + 1))
 	var ids := PackedStringArray()
 	for s: CampaignStep in campaign.steps():
 		if s.zone == zone:
@@ -96,7 +97,7 @@ func _test_data() -> void:
 	check(ids == PackedStringArray(STEPS) and first != null and campaign.steps()[first.index - 1].id == "corporate/outro"
 		and campaign.next_step(campaign.step(STEPS[-1])).id == "dead_zone/intro",
 		"its steps run %s, after Corporate's outro and before the Dead Zone's intro (%s)" % [", ".join(STEPS), ", ".join(ids)])
-	# No new songs (GDD §11): its track borrows ones the game has (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 543).
+	# No new songs (GDD §11): its track borrows ones the game has (DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 577).
 	var library := load(MUSIC_PATH) as MusicLibrary
 	check(zone.music == &"beach" and library.has(zone.music) and library.path(zone.music) == library.path(&"marketplace")
 		and library.has(library.run_track(zone.music)) and library.run_track(zone.music) != zone.music,

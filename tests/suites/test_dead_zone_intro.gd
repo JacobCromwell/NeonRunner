@@ -104,7 +104,7 @@ func _test_slot() -> void:
 	for step: CampaignStep in App.campaign.steps():
 		ids.append(step.id)
 	var at: int = ids.find("dead_zone/intro")
-	# The Beach (zone 5, task D10c) comes between the Corporate zone and the Dead Zone, so its outro, the cinematic
+	# The Beach (zone 6, task D10c) comes between the Corporate zone and the Dead Zone, so its outro, the cinematic
 	# that will show what put the runner in the crater, comes right before this one.
 	check(at > 0 and ids[at - 1] == "beach/outro" and ids[at + 1] == "dead_zone/1",
 		"it comes after the Beach's outro and before Dead Zone 1")

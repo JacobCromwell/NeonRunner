@@ -1,5 +1,5 @@
 extends SkinSuite
-## The Beach skin (BeachSkin, task D10; the owner's request of October 9, 2026), the look of the campaign's zone 5
+## The Beach skin (BeachSkin, task D10; the owner's request of October 9, 2026), the look of the campaign's zone 6
 ## (task D10c: between Corporate and the Dead Zone). The shared skin checks (SkinSuite) over Corporate 2, the level
 ## before the Beach's, with the same features as its remix, for 3, 5 and 6 lanes, then the Beach's own:
 ## - the look: an existing enemy look (no new enemy assets), a bright daytime sky that stays under the glow
@@ -55,12 +55,16 @@ func run() -> void:
 	# pick of "whatever fits the theme": the Casino Mob Enforcer.
 	check(CyborgSuit.LOOKS.has(CyborgSuit.look_for(skin.enemy_variant)) and BeachSkin.new().enemy_variant == skin.enemy_variant
 		and skin.enemy_variant == &"casino", "the beach's enemies wear the Casino Mob Enforcer's existing look (%s)" % skin.enemy_variant)
-	# Task D10c (the owner, October 9, 2026: "put the beach between the corporate and dead zone"): the campaign's
-	# zone 5 wears this skin.
+	# Task D10c (the owner, October 9, 2026: "put the beach between the corporate and dead zone"): the Beach zone,
+	# zone 6 since the Casino joined as zone 4, wears this skin.
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
-	var zone_5: ZoneDef = campaign.zones[4] if campaign != null and campaign.zones.size() > 4 else null
-	check(zone_5 != null and zone_5.id == &"beach" and zone_5.skin != null and zone_5.skin.resource_path == BEACH_SKIN_PATH,
-		"the Beach is the campaign's zone 5, in this skin")
+	var beach_zone: ZoneDef = null
+	if campaign != null:
+		for z: ZoneDef in campaign.zones:
+			if z.id == &"beach":
+				beach_zone = z
+	check(beach_zone != null and beach_zone.skin != null and beach_zone.skin.resource_path == BEACH_SKIN_PATH,
+		"the Beach is a campaign zone, in this skin")
 	start_error_count()
 	var env: Environment = skin.make_environment()
 	check(env != null and env.sky != null and env.glow_enabled and env.fog_enabled, "the beach environment has a sky, glow and fog")

@@ -53,17 +53,17 @@ extends Resource
 ## opens every stretch free of what it keeps (the Clearance group's keep-outs, which still all hold) at least
 ## open_seconds_min long, then stands again where it has more open than this share: first where the other wall
 ## is open too. A wall whose keep-outs leave less free stands more. 0 (the shared file): off, and every level is
-## built exactly as before. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 526): the Beach's 0.52, its walls standing about
+## built exactly as before. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 560): the Beach's 0.52, its walls standing about
 ## half as often as the 96-97% elsewhere, and its narrower clear_seconds (0.35 s), so more of each wall can open.
 @export_range(0.0, 0.9, 0.01) var coverage_target: float = 0.0
 ## Seconds of run: the shortest open stretch (a free stretch of wall shorter than this keeps its wall, so the
 ## walls never flicker), and the least a wall stands again where it closes part of an open stretch.
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 528): the Beach's 2 s each.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 562): the Beach's 2 s each.
 @export_range(0.5, 10.0, 0.1, "suffix:s") var open_seconds_min: float = 2.0
 @export_range(0.5, 10.0, 0.1, "suffix:s") var solid_seconds_min: float = 2.0
 ## The most of the level's length that may be open on both walls at once (no wall on either side: the widest
 ## view of the surroundings, and nothing to run along). Where there's more, the wall with more open stands
-## again there. 1: no limit. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 527): the Beach's 0.3.
+## again there. 1: no limit. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 561): the Beach's 0.3.
 @export_range(0.0, 1.0, 0.01) var both_open_max: float = 1.0
 
 

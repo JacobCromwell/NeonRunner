@@ -52,7 +52,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## place on its curve, and leaves it out of the curve's count and of the other levels' feature ages, so every
 ## level on the curve keeps exactly the difficulty, enemy scaling, ages and recency it had (Campaign.configure).
 ## Its own feature ages count every level before it. Off: the level is on the curve, as every level was before.
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 535–538): the Beach's two levels; whether the curve is later re-spread over every
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 569–572): the Beach's two levels; whether the curve is later re-spread over every
 ## level, the Beach's included.
 @export var off_curve: bool = false
 ## Mechanics and enemies this level may use. A pattern is only picked when every entry of its

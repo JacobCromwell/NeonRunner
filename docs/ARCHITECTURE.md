@@ -3135,20 +3135,20 @@ features with no introductions, and the one zone that brings no new enemy (GDD �
 Its levels are **off the curve** (`LevelConfig.off_curve`), so every level and boss that was in the campaign before
 plays exactly as before:
 - `Campaign.configure` gives a level off the curve its own `difficulty` (plus the tier's bonus; its
-  `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.63 and 0.65, 0.67 and 0.69, strictly between
-  Corporate 2's and Dead Zone 1's;
-- the curve spans the levels on it (`curve_level_count()`: 15 of `level_count()`'s 17, against
-  `planned_level_count()`'s 17), and a level off it takes the place of the level on it before it
+  `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.71 and 0.72, 0.71 and 0.73, strictly between
+  Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on the curve as task K4 bent it for the Casino;
+- the curve spans the levels on it (`curve_level_count()`: 17 of `level_count()`'s 19, against
+  `planned_level_count()`'s 19), and a level off it takes the place of the level on it before it
   (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
 - a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
   on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
   (`Campaign.feature_ages`); a boss fights at the scaling of the level before it (`Campaign.level_scaling`).
-So the other 15 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
+So the other 17 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
 and every one of their layouts in `tools/measure/level_pace.gd --dump` (at 3, 5 and 6 lanes, on its own seed and four
-others) is byte-identical; `test_campaign` also builds the six-zone campaign from the same data and compares every
-level and boss with it. A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
+others) is byte-identical; `test_campaign` also builds the campaign without the Beach from the same data and compares
+every level and boss with it (task D10d: with the Casino in, every non-Beach step configures exactly as on main). A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
 as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
-(`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all 17 levels, the Beach's numbers, its
+(`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all 19 levels, the Beach's numbers, its
 completion bonus, Continue for old saves, its boss, cinematics and music.
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
