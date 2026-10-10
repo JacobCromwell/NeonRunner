@@ -140,8 +140,9 @@ func _test_slots_and_demo() -> void:
 	if outro != null:
 		App.complete_step(outro.step)
 		App.advance_from(outro.step)
-		var flyover := App.playing_cinematic() as ArrivalFlyover
-		check(flyover != null and flyover.step.id == "dead_zone/intro", "and the Beach's outro on to the Dead Zone's arrival")
+		# The Dead Zone's intro is its own scene (task F2c: the runner climbing out of a crater), not a flyover.
+		var intro := App.playing_cinematic() as DeadZoneIntro
+		check(intro != null and intro.step.id == "dead_zone/intro", "and the Beach's outro on to the Dead Zone's intro")
 		App.show_level_select()
 	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
 	App.advance_from(App.campaign.step("city/outro"))
