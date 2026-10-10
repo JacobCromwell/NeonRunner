@@ -62,3 +62,4 @@ armor_rule = true
 armor_delay_min = 15.0
 armor_delay_max = 17.0
 armor_pickups_per_phase = 1
+armor_when_unprotected = true

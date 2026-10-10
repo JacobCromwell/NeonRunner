@@ -2481,6 +2481,10 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
   it clear of every hazard colour; its size and icon keep it apart from credits. Sounds `pickup_appear`
   and `pickup`; a first-encounter hint per item (`pickup:<item>` in `data/hints/hints.json`). Pickups
   are pooled.
+- **Placed by a boss:** `place(item, lane, at, height)` puts a pickup down at once, `height` up (0, the street, by
+  default: `world.lane_point(lane, at, height)`), at a spot the caller vouches is fair, for a boss whose floors
+  are its own (task E5e-b1: Mecha Guppy and Captain Cogs' armor pickup on the roof ahead, Bosses). It's taken and
+  missed like any other; `offer()` and its rules are unchanged.
 - **Review:** quick play's `--pickups[=armor,shield,grapple]` offers them in turn (debug builds).
 
 ## Zone skins
@@ -3425,7 +3429,10 @@ builders in `scripts/world/skins/beach/`:
   chunk stays inside the build budget (`SkinSuite`: under 32 surfaces for a five-lane chunk) with a stretch
   open on either or both sides (`test_beach_skin`, hand-built layouts through `RunSim.layout`). Review: `skin_review --skin=beach --open`
   (four shots per stretch: the game camera at the start and 50 m in, from the lane beside the opening, from
-  above), and `--view=run --from=<distance>` with the same flag.
+  above), and `--view=run --from=<distance>` with the same flag. `BeachOpen.shore_side` is the shore alone (the
+  street's edge, the beach, the sea and its scenery, without the gap marks or the shacks' end caps), which
+  `build` draws after the gap marks; the Beach's boss arena, which has no walls at all (`MechaGuppySkin`, Bosses),
+  draws its sides with it.
 - *The ceilings* (`BeachCeilings`; `kind_of()` by the ceiling's width and the walls it reaches, weights
   `footbridge_weight`, `veranda_weight`, `barge_weight`): a boardwalk footbridge across every lane, a veranda
   deck cantilevered from one building (narrow, reaching one wall) and a hovering party barge (any width, or
@@ -3790,9 +3797,10 @@ Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the Dead Zone
 task F2c), and the other outros are still cards. A boss is
 built on the boss framework (Bosses, below). Every zone's boss but the Beach's is built (its step plays the fight;
 the Golden Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule
-delay. The Beach's slot (`data/bosses/beach_boss.tres`, task D10c) has no scene, phases or arena until its fight
-is designed (task E5e): the campaign shows its card and passes through it, with no stars (`test_app_flow` and
-`test_screens` check the boss slot's card on it). A fight
+delay. The Beach's fight, Mecha Guppy and Captain Cogs (task E5e, Bosses below), is being built: its slot
+(`data/bosses/beach_boss.tres`) holds its phases, arena and tuning and names its scene in `preview_scene`, so the
+campaign still shows its card and passes through it, with no stars (`test_app_flow` and `test_screens` check the
+boss slot's card on it), until E5e-c moves it to `scene`. A fight
 still being built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card,
 and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.
 
@@ -3828,6 +3836,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss (see below; `./play.sh --level=corporate/boss`) |
 | `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a and E4b: the campaign plays it after Gangland 3, `./play.sh --boss=gangland_boss`) |
 | `scripts/bosses/golden_convergence/`, `scenes/bosses/golden_convergence.tscn`, `data/bosses/golden_boss*.tres` | The Golden Convergence, the Golden Zone's boss and the final villain (see below; `./play.sh --level=golden/boss` or `--boss=golden_boss`) |
+| `scripts/bosses/mecha_guppy/`, `scenes/bosses/mecha_guppy.tscn`, `data/bosses/beach_boss*.tres` | Mecha Guppy and Captain Cogs, the Beach's boss, being built (see below; E5e-b1, the climb: a preview, `./play.sh --boss=beach_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -4028,6 +4037,13 @@ plays it; E1e, the owner's playtest fixes; E1f, the fight at the City's speed), 
   Barrage; E5d-c the Refill Ship, its caged pad hurling the squadron into the ship, the hit that damages the
   suit; E5d-d The Magnate's chase and the defeat; E5d-e the owner's playtest of stage 2: the Claw Slash, the
   Screen Storm, the arena darker, the stomp's chevrons).
+- **Mecha Guppy and Captain Cogs (E5e, being built, see below):** the arena is the boss's own climb: `_plan_lap`
+  eats the street in every lane and opens both walls over every lap, and the climb's roofs, pads and huts are
+  props built within sight (`BossProps.roof`, `ceiling_lanes`, at a height) on E5e-a's core: the floor base
+  (`Player.floor_base`), ceilings at any height, the grapple hook (`_grapple_save`) and the climbing camera
+  (`RunWorld.camera_climbs`). Its hits are counted (`weapons_can_end_phase` off, `weapon_share_cap` 0:
+  weapons do nothing), each `register_hit()`; the armor rule's pickup goes on the roof ahead at its height
+  (`_on_armor_pickup_due`, `PickupField.place`).
 
 **The Sleep Taker** (GDD §10, task E5c: E5c-a, the nightmare, its arena, its entrance and its three
 attacks, weapons having no effect; E5c-b, hurting it by the generators' EMP, the three phases, the
@@ -4417,6 +4433,100 @@ jump onto his back `stomp_lead()` before it (`stomps`), a low Lash jumped and a 
 (`_read_slash`, `dodges_slash`), out of each screen's lane into the escape the storm's plan keeps for it
 (`_read_storm`, `weaves`), and the stomp's take-off from the green chevrons (`chevron_point`). Hints:
 `boss:golden_boss/pounce`, `/stun`, `/lash`, `/slash`, `/screens`.
+
+**Mecha Guppy and Captain Cogs** (GDD §10, task E5e, in steps: E5e-a, the climb's core in the framework and the
+player, above; E5e-b1, the climb, its look and the fight's frame; E5e-b2, Mecha Guppy's model and bites, Captain
+Cogs and his bombs, what counts as a hit; E5e-c, phase 3 and the defeat; E5e-d, walls, likely none). The Beach's
+fight is being built: its slot names its scene in `preview_scene`, so the campaign keeps the card until E5e-c, and
+debug builds play it with `--boss=beach_boss` as quick play (at 18 m/s, under the Beach's own daylight sky: the
+campaign will give it the Beach's 23.8 m/s and Sunset Strip's sunset through `Campaign.configure_boss`, its arena
+naming no sky). The runner climbs through phases 1 and 2, the camera following them up past a waterfall:
+
+- **A step** (`MechaGuppyClimb`, the plan; pure numbers, so the suites check it over many steps without the
+  engine). Step k takes the runner from roof k up to roof k + 1; roof 0 is the street the fight starts on. A
+  strip of anti-grav pads crosses every lane at the end of roof k, longer than the longest jump at the run
+  speed with the dash's reach, so every runner flips up. A tiki hut hangs over it (`hut_height` over roof k, at
+  least `hut_clearance` over the roof under its end), full width until the lanes that don't lead up end. Roof
+  k + 1 stands `rise` higher under the hut's end. Mecha Guppy has eaten roof k from just past its pads
+  (`edge_margin`): a drop off the hut in a lane that leads up lands on roof k + 1, and a drop in any other lane
+  falls into the basin below, a death unless the grapple saves it. Then the next pads come on roof k + 1.
+- **The lanes that lead up**: a block of neighbours, one on 3 lanes, and on 5-6 lanes the counts in
+  `up_counts` (1, 2, 3, 1, 3, 2), never every lane. Where the block sits is seeded (the fight's rng key, "climb"
+  and the lane count): the same on every attempt, never the same block twice running.
+- **The two cues** alternate step by step, starting with RUN_ON:
+  - RUN_ON: the hut's lanes that lead up run on `run_on` past the higher roof's front, and the others end short
+    of it.
+  - REACH_BACK: the hut ends across every lane together, and the roof's lanes that lead up reach `reach_back`
+    back under it. A REACH_BACK step has at most two such lanes (`REACH_BACK_MOST`, the owner's "one or two of
+    the roof's lanes").
+- **Fairness** comes from the movement itself: a jump's airtime, the flip up to the hut, the drop off its end
+  and the fall into the eaten floor, each integrated frame by frame as `Player` moves (`_surface_seconds`), at
+  the run's speed and with the dash's reach. So the climb holds at any speed and movement tuning.
+  - The `settle` point is the latest a rider can settle on the hut: a jump right before the pads, the dash,
+    then the flip up.
+  - From `settle` to the `deadline` (where the other lanes end, or the hut ends) there is `read_seconds` plus
+    every lane switch the farthest lane needs. A rider anywhere on the hut reaches a lane that leads up in
+    time (`margin()`), and a rider who didn't jump gets about a second more.
+  - The hut is full width until the deadline, so the narrow-ceiling rule never holds a rider in a lane that
+    doesn't lead up while there's time.
+  - A wrong drop is dead, or saved, before it reaches the higher roof's front, even dashing (`wrong_reach()`).
+  - Each roof's pads come where it's full width, and huts never overlap.
+- **Its distances follow the pace**: those that stand for a time (`reach_back`, `run_on`, `hut_lead`) are
+  metres at 18 m/s multiplied by the pace, the margins are seconds, and heights don't change.
+- **Phase 2's faster climb** (GDD §10, 15-25%, proposed about 20%): only the run on a roof from landing to the
+  next pads shortens (`roof_seconds`: 1.6 s, then 0.75 s), so every margin stays. It measures 18-20% faster at
+  3, 5 and 6 lanes and both speeds. Steps are planned `build_ahead` ahead, so the first steps planned in phase
+  2 come about two steps after it begins.
+- **Phase 3** is a stub (E5e-c): its step is the top, the roof the runner is on running on flat with no pads or
+  hut, and the fight is won `top_seconds` (60 s) into its pattern. The waterfall fades out as it begins.
+- **Building it** (`MechaGuppyStairs`): everything within `build_ahead` (270 m, past the fog) is built through
+  the boss's props and freed once passed.
+  - Each roof is a `BossProps.roof` over each run of lanes starting together, with a lane blocker on its sides
+    below the top: a lane switch into a side bumps, as into a truck's.
+  - Each roof's front, below where a runner could still step up onto it, is a solid hazard ("tiki bar") that
+    the dash doesn't pass: what looks like a hit is a hit. The plan keeps fronts out of every living runner's
+    path; only stepping sideways off a reaching tongue into the gap beside it meets one.
+  - Each step gets its pad strip (one pad per lane, the strip's length) and its hut (`BossProps.ceiling_lanes`
+    at the hut's height, one section per run of lanes ending together).
+  - Every frame it sets `Player.floor_base` to the roof of the step the runner is in.
+- **The grapple and a revive** (`MechaGuppy._grapple_save`, DESIGN-TBD): both go up onto the higher roof, into
+  its nearest lane that leads up. `save_spot` picks the lowest higher roof that covers that lane where the
+  save brings them down (`MechaGuppyClimb.save_seconds`). The lift starts above every solid front, so the
+  path is clear. A grapple's save shows a warm-white rope for 0.3 s.
+- **Hits**: each phase's hits are counted (`weapons_can_end_phase` off, `weapon_share_cap` 0: weapons do
+  nothing). `register_hit(cause)` lands one while the climb's pattern runs (4 end phase 1, 6 phase 2), but
+  not in an intro or in phase 3. E5e-b2's bombs will call it; the tests call it now.
+- **The armor rule's pickup** (the standard 15-17 s, `armor_when_unprotected` like every boss) goes on the roof
+  the runner will run along, at its height (`_on_armor_pickup_due`, `MechaGuppyStairs.pickup_spot`,
+  `PickupField.place`): past where a rider lands, short of the next hut, in their lane or the lane they'll
+  land in, off any boss warning.
+
+In `scripts/bosses/mecha_guppy/`:
+
+| File | What |
+|---|---|
+| `mecha_guppy.gd` (`MechaGuppy`) | the encounter: the arena (`_plan_lap`: nothing of the generator's, a gap in every lane from `EATEN_BEHIND` behind each lap, a wall gap on both sides over every lap), the climb, the stairs, the waterfall and the climbing view (`_build_boss`), phase 3's stub (`top_due`, `_pattern_tick`), `register_hit`, the armor pickups (`_place_armor`, `armor_pickups_waiting`), the grapple's save and its rope (`_grapple_save`); `run_pace` |
+| `mecha_guppy_climb.gd` (`MechaGuppyClimb`) | the plan: `Roof` (top, lane starts, eaten end; `covers`, `full_from`) and `Step` (pads, hut, lane ends, the lanes that lead up, cue, settle, deadline, landing; `nearest_up`, `switches_from`); `make`, `plan_next`, `plan_until`, `step_at`, `roofs_at`, `floor_at`, `margin`, `wrong_reach`, `climb_rate`; the motions frame by frame (`jump_seconds`, `flip_seconds`, `drop_seconds`, `save_seconds`) |
+| `mecha_guppy_stairs.gd` (`MechaGuppyStairs`) | builds the plan within sight: roofs (top, side blocker, solid front), the top's segments, pad strips, huts; the floor base every frame; questions: `runs`, `span`, `save_spot`, `roof_front`, `pickup_spot` |
+| `mecha_guppy_looks.gd` (`MechaGuppyLooks`) | the look on the Beach's skin, one merged mesh per piece: each roof a boardwalk deck (its lanes' plank strips, orange lips and coping on every edge over a drop, the gap-edge language) on shack facades down to the water, thatch eaves and lantern posts outside the lanes, a neon sign on some fronts; the street's own sand; each hut a hovering plank platform (its underside lit on the lane seams with joists, the orange end band where each run of lanes ends, lift pods in the skin's engine colour) carrying a row of tiki huts and rails, a walkway annex over RUN_ON's running-on lanes, a sign on some; each basin (the floor Mecha Guppy has eaten, E5e-b1's placeholder) dark water in a tank with its splash watch; the pad strips' tiles. Its signs glow only the Beach's violet, blue or warm white |
+| `mecha_guppy_skin.gd` (`MechaGuppySkin`), `data/bosses/beach_boss_skin.tres` | the arena's skin, a `BeachSkin`: the open shore on both sides (`BeachOpen.shore_side`, no shacks or gap marks: there are no walls), the water under the eaten street, no ceiling or hull looks (the huts are the looks') |
+| `mecha_guppy_waterfall.gd` (`MechaGuppyWaterfall`), `mecha_guppy_waterfall.gdshader` | the backdrop in phases 1 and 2: one card `DISTANCE` (230 m) ahead of the camera and `DROP` below it, so it frames any height; its water drawn from world height and time (cliffs, streaks, foam, spray, haze toward the fog colour; unshaded, no fog, nothing flickering); `set_shown` fades it |
+| `mecha_guppy_tuning.gd`, `data/bosses/beach_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5e.md`) |
+| `data/bosses/beach_boss.tres` | its slot: `preview_scene`, the owner's title, three phases (4 hits, 6 hits, phase 3's stub), weapons capped at nothing and unable to end a phase, one lap of arena (the Beach's skin, no features, a clear start), the standard armor rule with `armor_when_unprotected`, the Beach's music, placeholder par times (E5e-c's) |
+
+Also: `scenes/bosses/mecha_guppy.tscn`; `tools/showcase/mecha_guppy_showcase.tscn` (scripted runs for reviews:
+`--scenario=climb/wrong/grapple/side/hut/top`, `--lanes`, `--speed` (23.8 by default), `--phase`, `--daylight`,
+`--reduced-flashing`, `--events`); `tests/helpers/mecha_guppy_bot.gd` (`MechaGuppyBot`: presses only the named
+actions and reads the lanes that lead up off the hut and the roofs by physics rays, never the plan
+(`read_up_lanes`); `reaction` seconds after settling it switches a lane at a time to the nearest one, or, with
+`wrong`, to one that doesn't; `worst_case` first takes the lane farthest from them and jumps right before the
+pads; `min_slack`, `steps_climbed`, `reads`). Hints: `enemy:beach_boss` (the climb in short, weapons doing
+nothing) and `boss:beach_boss/climb` (how to read the lanes that lead up).
+Hand-offs to E5e-b2:
+- Captain Cogs' ship stays off the hull layer (or out of `Player.CEILING_SEARCH` over a pad).
+- The bombs land at a roof's height (`BossProps` warnings take a `height`) and call `register_hit()` for
+  what counts.
+- No bomb may make a runner on a reaching tongue dodge sideways off it, into the gap beside it.
 
 ## Cinematics
 
@@ -5227,7 +5337,20 @@ floor base (as soon and as deep as from the street, in the pit as deep; a floor 
 dropping them), fast falls landing where they cross a floor (onto the street and back onto a ceiling), the
 shadow on the roof only while the climb is on, the grapple's save and a revive after a fall
 going where the hook says (and the framework's hook leaving them as they were), the climbing camera up a
-five-step climb to 30 m, and boss props at a height. `test_audio` checks
+five-step climb to 30 m, and boss props at a height. `test_mecha_guppy` (task E5e-b1) checks the Beach boss's data
+(the slot's preview, title, phases, weapons doing nothing, the armor rule, the look without walls, the campaign under
+Sunset Strip's sky, its hints), the climb's plan over 60 steps at 3, 5 and 6 lanes and both speeds (the lanes that
+lead up and their counts, the cues alternating and shaped as the owner put them, the reading margin from the latest
+settle in every lane, the hut full width until the deadline, a wrong drop dead before the next front even dashing,
+an unjumpable pad strip, phase 2 15-25% faster with every margin kept, no escalation, a retry the same), the built
+climb against its plan on real physics (roof tops, hut ends, pads, fronts and blocked sides, the lanes that lead up
+read off the collision), the roof faces' rules, the hits and phases, and the armor pickups on the roof ahead.
+`test_mecha_guppy_climb` plays it on physics without god mode with `MechaGuppyBot`: through phases 1 and 2 (a
+stand-in hit on each landing) into phase 3's top at 3, 5 and 6 lanes and 18 and 23.8 m/s, phase 2's rate measured,
+the worst case (the farthest lane, the latest flip, reading `read_seconds` late) making every step with time to
+spare, a wrong drop falling (and saved by the grapple or a revive onto the higher roof, in a lane that leads up), the
+same rhythm through a long phase 1 and on a retry, and the climbing camera (the runner on screen, never inside a
+roof, under 0.45 m a frame, the shadow on the roof); it prints its figures. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. `test_cinematics` checks the cinematic toolkit: its paths (smooth,

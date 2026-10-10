@@ -2,9 +2,9 @@ class_name MechaGuppyWaterfall
 extends Node3D
 ## The waterfall backdrop of Mecha Guppy and Captain Cogs' climb (GDD §10: "a waterfall in phases 1 and 2, while the
 ## runner climbs; the Beach's normal backdrop in phase 3"; task E5e-b1). A giant cascade far down the track, falling
-## between dark cliffs, under Sunset Strip's sky: one wide card that keeps `distance` metres ahead of the camera and
-## at its height, so it never comes closer and copes with any height the climb reaches (the fight has no time limit:
-## GDD §10). Its water is drawn from world height (mecha_guppy_waterfall.gdshader), so as the runner climbs the
+## between dark cliffs, under Sunset Strip's sky: one wide card that keeps DISTANCE metres ahead of the camera, its
+## middle DROP below the camera's height, so it never comes closer and copes with any height the climb reaches (the
+## fight has no time limit: GDD §10). Its water is drawn from world height (mecha_guppy_waterfall.gdshader), so as the runner climbs the
 ## falls stream past at the climb's pace as well as their own, like a cascade that is really there; the card itself
 ## only follows the camera. It is unshaded and ignores the fog, blending into the run's fog colour by itself (the
 ## haze of distance), so it reads the same on every renderer. Nothing flickers: the water's streaks scroll

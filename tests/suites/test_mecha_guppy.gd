@@ -5,8 +5,9 @@ extends TestSuite
 ##   its card, the owner's title, three phases (4 hits, 6 hits, phase 3 a stub), weapons doing nothing, the standard
 ##   armor rule, the Beach's look without walls, the campaign under Sunset Strip's sky, its hints;
 ## - the climb's plan (MechaGuppyClimb), over many steps: the lanes that lead up (one on 3 lanes; one, two or three
-##   in turn on 5 and 6; neighbours; never every lane; never the same block twice running), the two cues
-##   alternating and each shaped as the owner put it, the reading margin for a rider in any lane (at least
+##   on 5 and 6, the count changing every step, one or two on a roof that reaches back; neighbours; never every lane;
+##   never the same block twice running), the two cues alternating and each shaped as the owner put it, the
+##   reading margin for a rider in any lane (at least
 ##   read_seconds beyond every switch, from the latest anyone settles on the hut), the hut full width until then,
 ##   a wrong drop dead before the higher roof's front even dashing, a pad strip no jump clears, huts that never
 ##   overlap, phase 2's climb 15-25% faster with every margin kept, no escalation, and a retry planning the same;
@@ -128,8 +129,8 @@ func _test_data(slot: BossDef) -> void:
 		"GDD §10: three phases; 4 hits end phase 1, 6 phase 2; phase 3 a stub (E5e-c)")
 	check(def.weapon_share_cap == 0.0 and not def.weapons_can_end_phase,
 		"GDD §10: weapons do nothing (no chip damage); each phase's hits are counted")
-	check(def.armor_rule and def.armor_delay_min == 15.0 and def.armor_delay_max == 17.0 and def.armor_pickups_per_phase == 1,
-		"the standard armor rule (15-17 s, once a phase)")
+	check(def.armor_rule and def.armor_delay_min == 15.0 and def.armor_delay_max == 17.0 and def.armor_pickups_per_phase == 1
+		and def.armor_when_unprotected, "the standard armor rule (15-17 s, once a phase, a phase begun unprotected counting as a break)")
 	check(def.arena != null and def.arena.skin is MechaGuppySkin and def.arena.skin is BeachSkin and def.arena.sky == null
 		and def.arena.features.is_empty() and def.tuning is MechaGuppyTuning,
 		"its arena: the Beach's look (MechaGuppySkin), nothing of the generator's, the sky left to the campaign")
