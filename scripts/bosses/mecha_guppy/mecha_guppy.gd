@@ -19,8 +19,9 @@ extends BossEncounter
 ## floor Mecha Guppy has eaten: a fall, death unless the grapple saves it (_grapple_save: up onto the higher roof,
 ## into its nearest lane that leads up; a revive after a fall goes there too). Phase 2's climb is about 20%
 ## faster: its steps come closer together (MechaGuppyTuning.roof_seconds), the run speed never rises.
-## Phase 3 is a stub (DESIGN-TBD, E5e-c): its step is the top, a roof that runs on flat, and the phase ends
-## top_seconds into its pattern; the waterfall backdrop (MechaGuppyWaterfall) gives way to the Beach's own sky.
+## Phase 3 is a stub (DESIGN-TBD, E5e-c): its step is the top, a roof that runs on flat; when the runner reaches it
+## (top_reached, logged), the waterfall backdrop (MechaGuppyWaterfall) gives way to the Beach's own sky and the stub's
+## minute (top_seconds) starts, after which the fight is won. E5e-c builds phase 3's attacks on that moment.
 ##
 ## Hits (GDD §10: phase 1 ends after 4, phase 2 after 6; BossPhase.hits): register_hit(), which E5e-b2's bombs call
 ## when one falls through a gap, off a roof's edge or onto the exposed shark (and the tests call now). Weapons do
@@ -35,9 +36,13 @@ const CLIMB_SEED: String = "climb"
 ## The street is eaten from this far behind the start of every lap (metres): the street under the start is a
 ## roof of the climb's own (roof 0), so nothing of it is the track's.
 const EATEN_BEHIND: float = 60.0
-## The grapple's rope as it saves a runner (a warm white: no hazard colour), and how long it shows.
+## The grapple's rope as it saves a runner (a warm white: no hazard colour), how long it shows and how thick it is.
 const ROPE_COLOR := Color(1.0, 0.92, 0.78)
-const ROPE_SECONDS: float = 0.3
+const ROPE_SECONDS: float = 0.35
+const ROPE_THICKNESS: float = 0.06
+
+## The runner stands on phase 3's top (E5e-c starts phase 3's attacks here).
+signal top_reached
 
 var tuning: MechaGuppyTuning
 var climb: MechaGuppyClimb
@@ -45,6 +50,8 @@ var stairs: MechaGuppyStairs
 var waterfall: MechaGuppyWaterfall
 ## Hits landed over the fight (register_hit).
 var hits_landed: int = 0
+## The fight time the runner reached the top (phase 3), or -1 before.
+var top_reached_at: float = -1.0
 
 ## Armor pickups due but not yet placed (a roof run far enough ahead comes soon).
 var _armor_waiting: int = 0
@@ -59,6 +66,8 @@ func _tuning() -> MechaGuppyTuning:
 
 ## Every lap: nothing of the generator's (no holes, fences, ceilings, pads, enemies, credits), the street eaten in
 ## every lane (the climb's own roofs carry the runner from the start), and no side walls on either side.
+## DESIGN-TBD (docs/questions/e5e.md): the street eaten from the start (roof 0, the climb's own floor, eaten just past
+## the first pads like every roof), and no walls at all (E5e-d's occasional walls: likely none).
 func _plan_lap(lap: LevelLayout, _index: int, p_arena: BossArena) -> void:
 	lap.gaps.clear()
 	lap.fences.clear()
@@ -94,8 +103,6 @@ func _build_boss() -> void:
 	waterfall.name = "Waterfall"
 	add_child(waterfall)
 	waterfall.setup(world)
-	if is_final_phase():
-		waterfall.set_shown(false, 0.0)
 
 
 ## The run's pace (MovementTuning.pace(): 1 at 18 m/s): the climb's distances that stand for a time follow it.
@@ -116,21 +123,42 @@ func top_due() -> bool:
 
 func _on_phase_started(index: int) -> void:
 	log_event(&"climb_phase", {"index": index, "step": climb.steps.size()})
-	if top_due() and waterfall != null:
-		# GDD §10: the waterfall in phases 1 and 2, the Beach's normal backdrop in phase 3.
-		waterfall.set_shown(false, 2.0)
 
 
 func _intro_tick(_delta: float) -> void:
 	_place_armor()
+	_watch_top()
 
 
 func _pattern_tick(_delta: float) -> void:
 	_place_armor()
+	_watch_top()
 	# DESIGN-TBD (E5e-c builds phase 3): the stub's minute on the top runs out and the fight is won.
-	if top_due() and state_time >= tuning.top_seconds:
+	if top_due() and top_reached_at >= 0.0 and fight_time() - top_reached_at >= tuning.top_seconds:
 		log_event(&"top_over")
 		damage(hit_damage(), &"time")
+
+
+## True while the runner stands on phase 3's top (the last roof, which runs on).
+func on_top() -> bool:
+	if climb == null or not climb.top_planned() or world == null:
+		return false
+	var p: Player = world.player
+	var top: MechaGuppyClimb.Roof = climb.roofs[-1]
+	return p.surface == Player.Surface.FLOOR and p.grounded and absf(p.floor_y - top.top) < 0.05 \
+		and p.distance >= top.first_start()
+
+
+## The moment the runner reaches the top: logged, signalled (E5e-c), the waterfall gives way to the Beach's own
+## backdrop (GDD §10: the waterfall in phases 1 and 2), and the stub's minute starts.
+func _watch_top() -> void:
+	if top_reached_at >= 0.0 or not top_due() or not on_top():
+		return
+	top_reached_at = fight_time()
+	log_event(&"top_reached", {"height": world.player.floor_y, "step": climb.steps.size()})
+	if waterfall != null:
+		waterfall.set_shown(false, 2.0)
+	top_reached.emit()
 
 
 func _on_defeated() -> void:
@@ -186,11 +214,13 @@ func _grapple_save(player: Player, cause: StringName) -> Dictionary:
 		return {}
 	var spot: Dictionary = stairs.save_spot(player)
 	log_event(&"save", {"cause": cause, "lane": spot.get("lane", player.lane), "height": spot.get("height", NAN)})
-	# DESIGN-TBD (docs/questions/e5e.md): the grapple's save shows its rope for a moment, from the runner to the roof's
-	# edge it catches (E5e-a's proposal), as the instant lift happens.
+	# DESIGN-TBD (docs/questions/e5e.md): the grapple's save shows its rope for a moment, from the runner, as the lift
+	# brings them up (followed frame by frame), to the roof's edge it catches (E5e-a's proposal).
 	if cause == &"grapple" and not spot.is_empty():
 		var lane: int = int(spot["lane"])
 		var roof_at: float = maxf(stairs.roof_front(lane, float(spot["height"]), player.distance), player.distance + 2.0)
-		world.effects.line(player.global_position + Vector3(0.0, 0.9, 0.0),
-			world.lane_point(lane, roof_at, float(spot["height"])), ROPE_COLOR, ROPE_SECONDS, 0.06)
+		var rope := MechaGuppyRope.new()
+		rope.name = "Rope"
+		add_child(rope)
+		rope.setup(player, world.lane_point(lane, roof_at, float(spot["height"])), ROPE_COLOR, ROPE_SECONDS, ROPE_THICKNESS)
 	return spot
