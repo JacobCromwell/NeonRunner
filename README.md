@@ -278,12 +278,14 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Its hands
   come in rounds spread along the street: with a whisper, purple mist pools where each hand will burst
   up, row after row, each row leaving one lane open one lane over from the last, so the runner weaves
-  through a round with a lane switch at every row. Rounds grow from two rows to four across the fight,
-  and every row also reaches in from a side wall, with mist on the wall warning the spot. Its street's
-  side walls break into many gaps, and it has twice the holes it first had; a round only comes where a
-  way through it exists (the planner proves it with the real lane-switch time). After a deep inhale it
-  swallows the light, and the street goes very dark (half as bright as it first did, never pitch
-  black) while every hazard keeps glowing. Only a fence generator's EMP hurts it: a generator comes into
+  through a round with a lane switch at every row. Rounds grow from three rows to six across the fight
+  and come often (a single row where only that fits before a slash or a lure), and every row also
+  reaches in from both side walls, with mist on the wall warning the spot. Its street's side walls break
+  into many gaps, even where a slash warns, and it has six times the holes it first had; a round only
+  comes where a way through it exists (the planner proves it with the real lane-switch time). After a
+  deep inhale it swallows the light, and the street becomes a completely dark tunnel: only the glowing
+  hazards, warnings and attacks show, and the runner glows by its own light so the player sees where
+  they are. Only a fence generator's EMP hurts it: a generator comes into
   sight far ahead, its pink beacon showing through the nightmare; as the runner nears it the nightmare
   lunges in after them, and
   once arcs leap from the generator into it, a stomp on the generator (or the dash) tears a chunk of
@@ -595,8 +597,8 @@ minute for every setup).
 
 `tools/measure/sleep_taker_arena.gd` counts the Sleep Taker's arena over its three laps as the fight plans them
 (refuges and all), at every lane count and speed: its rows of holes and lane-gaps, fences, refuges and side wall
-gaps (and their rate a minute); `--first` counts it as first built, before the owner's October 8, 2026 changes
-(twice the floor gaps, many wall gaps): `godot --headless -s res://tools/measure/sleep_taker_arena.gd --
+gaps (and their rate a minute); `--first` counts it as first built, before the owner's October 8 and 10, 2026
+changes (six times the floor gaps, many wall gaps): `godot --headless -s res://tools/measure/sleep_taker_arena.gd --
 [--lanes=3,5,6] [--speeds=18,24.2] [--first]` (a few seconds).
 
 ## The web demo

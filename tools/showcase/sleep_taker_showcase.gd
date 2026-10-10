@@ -24,7 +24,8 @@ extends Node3D
 ##               the arcs as it's in reach, the stomp, the EMP tearing a chunk away and the recoil;
 ##               nothing else attacks (--phase=2: the last EMP, its wisps, the silence and the dawn)
 ##   fight       the fight as it comes, with a runner who reads it (pad escapes) and stomps each generator
-##   measure     readability in numbers (GDD §10: hazards keep glowing; the arena never pitch black):
+##   measure     readability in numbers (GDD §10: hazards keep glowing; lights out a dark tunnel where only
+##               the glows show, owner, October 10, 2026):
 ##               a fence, a slash's lane marks, a hand's mist, a refuge's pad, its bridge's end band,
 ##               a gap's edge, the fight's generator (with its beacon) and the street in view, through the run camera in
 ##               the arena's light and at the darkest point of lights out; prints each one's brightness
@@ -33,7 +34,7 @@ extends Node3D
 ## --pose=..., --escape=pad|lanes|none, --reduced-flashing, --events (prints each of the boss's events
 ## with its frame, for picking frames), --dark (lure: lights out as each generator comes into sight),
 ## --first-dark (lights out as first built, for comparing: dark_level 0.45 with every boss's floors, 0.3;
-## the owner's October 8, 2026 lights out is half as bright).
+## the owner's October 8, 2026 lights out is half as bright, and October 10's 90% darker again).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-45; slash, the warning from about frame 80 and
 ## the strike about 100; hands, a round's mists about 60 (its rows' mists all at once), its rows rising
 ## about 72 and 80, the next round (three rows) about 100-128, the next about 146; lights_out, the inhale
