@@ -14,7 +14,7 @@ numbered items stay in place even when answered, because code comments and the o
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - The House (Marketplace boss): revisit after playtesting (GDD §10).
-- The Beach's boss: designed with the owner on October 10, 2026 (GDD §10, Mecha Guppy and Captain Cogs; task E5e). The owner's answers are items 683–695 in §D; the small details left, each with a placeholder the build can use, are items 696–699.
+- The Beach's boss: designed with the owner on October 10, 2026 (GDD §10, Mecha Guppy and Captain Cogs; task E5e). The owner's answers are items 683–699 in §D. Being built (task E5e).
 - The Golden Convergence (the final villain): designed with the owner and built on October 9, 2026 (GDD §10, task E5d). The owner's review of the parts Claude filled in under the owner's mandate, and the build's placeholders, are items 416–503 in §D below.
 
 ### 3. Player character
@@ -4588,6 +4588,8 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     sunset (the fight follows Sunset Strip, whose sun is setting, and comes before the outro, "Last light")?
     **Answered (owner, October 10, 2026):** the ceilings are tiki huts; the neon signs are scenery only, with no
     effect on play; daylight. The backdrop is a waterfall in phases 1 and 2 and the Beach's normal one in phase 3.
+    **Changed (owner, October 10, 2026):** (later the same day) the sky is Sunset Strip's setting sun after all, as
+    the rule for the boss after a level gives (GDD §5); and the fight may run longer than the usual 60–120 seconds.
 694. **3 lanes against 5–6** (lane count is a parameter). How many of a ceiling's lanes lead up on each?
     **Answered (owner, October 10, 2026):** one ceiling lane leads up on 3 lanes; on 5–6 lanes, one, two or three,
     alternating. One safe place to drop to is enough.
@@ -4598,15 +4600,19 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 696. **The fight's title** (GDD §10). The owner named the shark Mecha Guppy and the pirate Captain Cogs. Placeholder:
     the boss slot, its card and the boss bar read "Mecha Guppy and Captain Cogs". Should the fight have a title of its
     own?
+    **Answered (owner, October 10, 2026):** yes, the title is "Mecha Guppy and Captain Cogs".
 697. **Mecha Guppy's eyes** (GDD §10). First pictured as red eyes ("or whatever eyes make sense"); the owner then said
     the shark is mechanical and doesn't glow red. Placeholder: dark red lenses that don't glow. Do you want another
     colour, or lit eyes in a colour that isn't red?
+    **Answered (owner, October 10, 2026):** yes, dark red lenses that don't glow.
 698. **Phase 3's warnings** (GDD §10, Phase 3; every attack has a visual and an audio warning). Placeholder: Captain
     Cogs' rounds warned by red lines down the lanes they'll hit (the boss's lane warning) with a cannon's charging
     sound; a wave warned by a rising swell and a roar, jumped like the Resonator's ring (GDD §9.10). Are these right?
+    **Answered (owner, October 10, 2026):** yes, as the placeholders describe.
 699. **A checkpoint before phase 3?** Death restarts a boss fight (GDD §10; only the final boss has a checkpoint), and
     phase 3's minute comes last, so a death late in it replays the whole fight, about two minutes. Placeholder: no
     checkpoint, as at every other boss.
+    **Answered (owner, October 10, 2026):** agreed: no checkpoint.
 700. **Ceilings in the levels are too safe** (GDD §3, Safe landing zone; owner, October 10, 2026: "often the ceiling is
     way too safe", to be revisited for the game itself). In the Beach's boss fight one safe place to drop to is enough.
     Should the levels follow: at least one safe lane where a ceiling ends, and the rest free to hold gaps, hazards or
