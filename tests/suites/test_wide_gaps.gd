@@ -512,14 +512,14 @@ func _truck(w: RunWorld) -> EnforcerTruck:
 	return null
 
 
-## Corporate 2's own build, played from its start (god mode, grapples: the runner keeps to the middle lane and
-## takes whatever comes; the Octodogs charging in the chase before the gap left out of the played copy, as the
-## runner would bait them into the truck first) until the first Enforcer's chase reaches its wider gap: the runner
-## lines up in a hole lane of it (the nearest the middle) a few seconds before and jumps it midway through its
-## take-off window; the truck following is wrecked in it. The chase leaves room past the truck's showing window (task C6e: no wider gap
-## before it) at two lane counts at least, and holds a wider gap there at CORPORATE_2_CHASE_LANES only: a lane count
-## with room left out of it shows no clear stretch for a new row there (_chase_spot, whose limits its doc comment
-## gives: preferred, not guaranteed, open question 357), and one lane count at least plays it.
+## Corporate 2's own build, played from its start (god mode, grapples: the runner keeps to the middle lane and takes
+## whatever comes; the Octodogs charging in the chase before the gap left out of the played copy, as the runner
+## would bait them into the truck first) until the first Enforcer's chase reaches its wider gap: the runner lines up
+## in a hole lane of it (the nearest the middle) a few seconds before and jumps it midway through its take-off
+## window; the truck following is wrecked in it. The chase leaves room past the truck's showing window (task C6e: no
+## wider gap before it) at two lane counts at least, and holds a wider gap there at CORPORATE_2_CHASE_LANES only: a
+## lane count with room left out of it shows no clear stretch for a new row there (_chase_spot, whose limits its doc
+## comment gives: preferred, not guaranteed, open question 357), and one lane count at least plays it.
 func _test_corporate_2(campaign: Campaign) -> void:
 	var ran: int = 0
 	var played: int = 0

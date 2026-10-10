@@ -102,15 +102,14 @@ extends RefCounted
 ## planned in advance as data (LevelLayout.cuts; FloorCutPlan: lane, start, end, and when it runs,
 ## keyed to the player's distance), so a level stays fair and the same on every attempt. A rules
 ## script plans them (add_cut; CutPlacement clears the way), only where GDD §9.9's limits allow
-## (cut_problem): one at a time, never through a ramp, a pad or the safe landing zone after a ceiling,
-## its lane free of everything else from its warning to past its cause, the other lanes whole enough
-## (on 3 lanes two stay whole; LevelConfig.cut_holes_beside on more), no other big attack meanwhile
-## (lower-tier enemies may share the track with it off its lane: owner, October 10, 2026), and room to
-## leave its lane after the warning (cut_escape_clear). Everything planned after a cut keeps its limits:
-## the fill pass and zone doodads share the track with it but keep off its lane and its way out
-## (_fit_filler_to_cuts, doodad_keep_outs, _cuts_keep_escapes), the passes that add danger keep off its
-## whole window, and so do floor_clear, ceilings added later (CeilingZones) and floor credits in its lane. A level without cuts is built
-## exactly as before.
+## (cut_problem): one at a time, never through a ramp, a pad or the safe landing zone after a ceiling, its lane free
+## of everything else from its warning to past its cause, the other lanes whole enough (on 3 lanes two stay whole;
+## LevelConfig.cut_holes_beside on more), no other big attack meanwhile (lower-tier enemies may share the track with
+## it off its lane: owner, October 10, 2026), and room to leave its lane after the warning (cut_escape_clear).
+## Everything planned after a cut keeps its limits: the fill pass and zone doodads share the track with it but keep
+## off its lane and its way out (_fit_filler_to_cuts, doodad_keep_outs, _cuts_keep_escapes), the passes that add
+## danger keep off its whole window, and so do floor_clear, ceilings added later (CeilingZones) and floor credits in
+## its lane. A level without cuts is built exactly as before.
 ##
 ## Wall fences (task B5; GDD §9.1: electric fences that span a side wall and switch off and on, to make
 ## the walls less safe; full-height ones from Marketplace 2, partial ones over the low or the high part

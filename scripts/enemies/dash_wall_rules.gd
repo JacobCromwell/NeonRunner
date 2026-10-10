@@ -83,13 +83,13 @@ extends RefCounted
 ## for in each, the best fair spot in that part taken: nothing to take out first, then the nearest), then the
 ## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
 ## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
-## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
-## Overdrive an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way
-## going too (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677; since task I1 a wall takes the doodads out of its
-## footprint like plain pieces anyway, so this matters only with the enemies), and one with no fair spot even then gets a
-## warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream (LevelGenerator.rng_for),
-## so the passes before it place exactly what they did; a level without the feature (or with a count of 0) draws
-## nothing and is built byte for byte as before.
+## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz Overdrive
+## an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way going too
+## (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677; since task I1 a wall takes the doodads out of its
+## footprint like plain pieces anyway, so this matters only with the enemies), and one with no fair spot even then
+## gets a warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream
+## (LevelGenerator.rng_for), so the passes before it place exactly what they did; a level without the feature (or
+## with a count of 0) draws nothing and is built byte for byte as before.
 ##
 ## What keeps off them: the passes between the two stages keep off an introduction (the fill pass,
 ## LevelGenerator.fill_keep_outs, every footprint in every lane; the danger density pass, the wider gaps, the
