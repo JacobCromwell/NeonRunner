@@ -24,7 +24,7 @@
   ],
   "medium": [
     "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm",
-    "audio", "ceilings", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
+    "audio", "ceilings", "climb", "corporate_skin", "cyborg", "drone", "enemy_director", "floating_head",
     "gilded_sentinel", "golden_convergence", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
     "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache", "volleyball"
@@ -70,9 +70,10 @@
     {"match": "scripts/run/run_world.gd", "tier": "full"},
     {"match": "scripts/run/level_run.gd", "tier": "full"},
     {"match": "scripts/run/rubble_burst.gd", "tier": "merge", "suites": ["doodads", "speed_fx", "perf", "dash_walls"]},
-    {"match": "scripts/run/run_effects.gd", "tier": "merge", "suites": ["dash_walls", "doodads", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts"]},
+    {"match": "scripts/run/run_effects.gd", "tier": "merge", "suites": ["climb", "dash_walls", "doodads", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts"]},
     {"match": "scripts/run/shader_warmup.gd", "tier": "merge", "suites": ["dash_walls", "doodads", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts"]},
     {"match": "scripts/run/level_cache.gd", "tier": "full"},
+    {"match": "scripts/run/run_camera.gd", "tier": "merge", "suites": ["climb", "ceilings", "speed_fx", "app_flow", "cinematics", "perf", "frame_times"]},
     {"match": "scripts/run/*", "tier": "merge", "suites": ["app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
     {"match": "scripts/enemies/enemy.gd", "tier": "full", "suites": ["charge_contacts"]},
     {"match": "scripts/enemies/octodog.gd", "suites": ["octodog", "charge_contacts", "enforcer_truck*", "charge_paths"]},

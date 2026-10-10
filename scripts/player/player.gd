@@ -63,6 +63,19 @@ const DOODAD_FEET_CLEARANCE: float = 0.05
 ## ramp's or speed pad's boost fading, _dash_reach). A dash that ends short of a doodad it never claimed
 ## pushes as usual. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 636).
 const SMASH_CLAIM_GRACE: float = 0.1
+## An anti-grav pad flips the player to the first ceiling within this far above the pad (metres): a level's
+## ceilings are MovementTuning.ceiling_height up, a boss's may stand at a height of their own (GDD §10, the
+## Beach's climb). With none there, the standard height stands in (ceiling_y).
+const CEILING_SEARCH: float = 30.0
+## Heights within this of each other count as the same (metres): a ceiling within it of the standard height
+## (fall_base() plus ceiling_height) is taken at exactly that height, a ceiling a rider stands on that has
+## moved further than this from ceiling_y takes ceiling_y with it, and a floor base no further than this above
+## the floor stood on is that floor (_ceiling_reference, _follow_ceiling, fall_base).
+const HEIGHT_SNAP: float = 0.001
+## A fall faster than pit_depth a frame (a fast fall, a long drop, the pull up to a high ceiling) lands on a
+## surface whose top the feet passed during the frame (_crossed_top), up to this far above where the feet
+## were as the frame began (metres).
+const CROSS_MARGIN: float = 0.01
 
 var tuning: MovementTuning
 var geo: TrackGeometry
@@ -108,13 +121,40 @@ var distance: float = 0.0
 var speed: float = 0.0
 var lane: int = 0
 var surface: Surface = Surface.FLOOR
-## Distance from the current surface: height above the floor, depth below the hull, or height on a wall.
+## Distance from the current surface: height above the street on the floor (world y), depth below the
+## ceiling (ceiling_y), or height on a wall.
 var h: float = 0.0
 ## Velocity away from the current surface.
 var vh: float = 0.0
 var grounded: bool = true
 var in_pit: bool = false
 var alive: bool = true
+## World height of the underside of the ceiling the player rides, or rode last (GDD §3: reached by an
+## anti-grav pad): the first ceiling over the pad that flipped them up (its collision box on the hull layer
+## says where it is, so a boss's may stand at any height: GDD §10, the Beach's climb), or the standard height
+## (MovementTuning.ceiling_height above fall_base()) when none is there. A ceiling within HEIGHT_SNAP of the
+## standard height is taken at exactly that height, so every level's ceilings play as they always have; one
+## that moves while they ride it (a gunship's belly coming down, a ceiling lowering in) takes it along.
+var ceiling_y: float = 6.0
+## World height of the floor the player stands on, or stood on last while they're in the air, on a ceiling
+## or on a wall: the street (0) or a raised one (a hover truck's roof, a boss's roof). The climbing camera
+## frames the runner from it (RunCamera, RunWorld.camera_climbs).
+var floor_y: float = 0.0
+## World height falls are counted from (GDD §10, the Beach's climb: a fall from a roof high above the street
+## ends as far below the floor fallen from as one from the street), set by a boss that raises the floor: a
+## player with nothing under them more than pit_depth below it is falling into a pit (no more lane switches,
+## jumps or wall entries; the grapple saves them there), and fall_death_depth below it the fall kills them.
+## It never counts above the floor they last stood on (fall_base()), so a boss may raise it ahead of the
+## climb. 0, the street, in every level and every other boss fight.
+var floor_base: float = 0.0
+## Where the grapple hook's save (GDD §8: it saves one fall) and a revive after a fall take the player: a
+## boss's own (BossEncounter._grapple_save; GDD §10, the Beach's climb: up onto the higher roof, into its
+## nearest lane that leads up). Called as the save happens with this player and the cause (&"grapple" or
+## &"revive"), it returns {"lane": int, "height": float}: the lane to pull them into (moved across like a lane
+## switch) and the world height of the floor to pull them up onto (at or above fall_base()), either of which
+## may be left out (their own lane; fall_base()). Unset, or an empty Dictionary back: straight up out of the
+## pit, as the save always has been (_pull_up).
+var grapple_save: Callable
 ## The level clock: seconds since the run started.
 var elapsed: float = 0.0
 var wall_side: int = 0
@@ -237,6 +277,10 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	grounded = true
 	in_pit = false
 	alive = true
+	floor_base = 0.0
+	floor_y = 0.0
+	ceiling_y = tuning.ceiling_height
+	grapple_save = Callable()
 	wall_side = 0
 	_boost = 0.0
 	_jump_buffer = 0.0
@@ -386,7 +430,8 @@ func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 
 
 ## Brings the player back where they died (GDD §4: revive item or rewarded ad), invulnerable for
-## a moment. A player who fell is pulled back up like the grapple hook.
+## a moment. A player who fell is pulled back up like the grapple hook (_pull_up: where a boss's
+## grapple_save says, if it has one).
 func revive() -> void:
 	if alive:
 		return
@@ -398,9 +443,7 @@ func revive() -> void:
 		_armor_changed()
 	if _death_cause == "fell" or in_pit:
 		in_pit = false
-		h = maxf(h, -tuning.pit_depth)
-		vh = rules.grapple_pull_velocity
-		grounded = false
+		_pull_up(&"revive")
 	_event(&"revive")
 	revived.emit()
 
@@ -666,7 +709,10 @@ func _update_vertical(delta: float) -> void:
 			grounded = false
 			_coyote = tuning.coyote_time
 		else:
-			h = ground  # Follows moving platforms (a hover truck's roof).
+			# Follows moving platforms (a hover truck's roof; a gunship's belly, _follow_ceiling).
+			h = _follow_ceiling(ground)
+			if surface == Surface.FLOOR:
+				floor_y = h
 
 	if _jump_buffer > 0.0 and (grounded or _coyote > 0.0) and not in_pit:
 		vh = tuning.jump_velocity()
@@ -680,6 +726,7 @@ func _update_vertical(delta: float) -> void:
 		vh = 0.0
 		return
 
+	var from_h: float = h
 	var gravity: float = tuning.gravity() * (tuning.fall_gravity_multiplier if vh < 0.0 else 1.0)
 	vh -= gravity * delta
 	h += vh * delta
@@ -691,33 +738,81 @@ func _update_vertical(delta: float) -> void:
 	if not in_pit and not is_nan(top) and h <= top and h > top - tuning.pit_depth:
 		_land(top)
 		return
-	if h > 0.0:
-		return
+	# A fall faster than pit_depth a frame lands on a surface whose top the feet passed this frame.
+	if not in_pit and from_h - h > tuning.pit_depth:
+		var crossed: float = _crossed_top(from_h)
+		if not is_nan(crossed):
+			_land(crossed)
+			return
 	if surface == Surface.CEILING:
+		if h > 0.0:
+			return
 		_flip(Surface.FLOOR, 0.0)
 		_event(&"hull_end")
-	else:
-		if h < -tuning.pit_depth and not in_pit:
-			if grapples > 0:
-				_use_grapple()
-				return
-			in_pit = true
-		if h < -tuning.fall_death_depth:
-			_die("fell")
+		return
+	# Falls count from the street, or from the floor base a boss sets (GDD §10, the Beach's climb).
+	var base: float = fall_base()
+	if h > base:
+		return
+	if h < base - tuning.pit_depth and not in_pit:
+		if grapples > 0:
+			_use_grapple()
+			return
+		in_pit = true
+	if h < base - tuning.fall_death_depth:
+		_die("fell")
 
 
 ## GDD §8: the grapple hook saves the player from one fall, then breaks.
 func _use_grapple() -> void:
 	grapples -= 1
-	h = -tuning.pit_depth
-	vh = rules.grapple_pull_velocity
-	grounded = false
+	_pull_up(&"grapple")
 	item_used.emit(&"grapple")
 	_event(&"grapple")
 
 
+## The height falls are counted from now: the floor base a boss sets (floor_base), or the floor the player
+## last stood on (floor_y) when the floor base is above it (a floor base raised ahead of the climb never
+## drops a player who isn't up there yet into a pit). The street (0) in every level.
+func fall_base() -> float:
+	return floor_y if floor_base > floor_y + HEIGHT_SNAP else floor_base
+
+
+## The pull up out of a pit (`cause`: &"grapple", the grapple hook's save, or &"revive", a revive after a
+## fall): straight up to just under the floor falls count from with the grapple's pull, as it always was, or
+## where a boss's grapple_save says (a lane to pull them into, a floor to pull them up onto). It never pulls
+## them down.
+func _pull_up(cause: StringName) -> void:
+	var to: Dictionary = {}
+	if grapple_save.is_valid():
+		var answer: Variant = grapple_save.call(self, cause)
+		if answer is Dictionary:
+			to = answer
+	if to.has("lane"):
+		_pull_into_lane(int(to["lane"]))
+	h = maxf(h, float(to.get("height", fall_base())) - tuning.pit_depth)
+	vh = rules.grapple_pull_velocity
+	grounded = false
+
+
+## Moves the player into lane `target` as the grapple pulls them up (grapple_save): across like a lane
+## switch, over lane_switch_time however many lanes away.
+func _pull_into_lane(target: int) -> void:
+	target = clampi(target, 0, geo.lane_count - 1)
+	if target == lane:
+		return
+	_bumping = false
+	_pushing = false
+	lane = target
+	_switch_from = _x
+	_switch_to = geo.lane_x(target)
+	_switch_t = 0.0
+
+
 func _land(top: float = 0.0) -> void:
-	h = top
+	h = _follow_ceiling(top)
+	if surface == Surface.FLOOR:
+		floor_y = top
 	vh = 0.0
 	grounded = true
 	_event(&"land")
@@ -726,9 +821,10 @@ func _land(top: float = 0.0) -> void:
 		_slide_left = tuning.slide_duration
 
 
-## Swaps between floor and ceiling while keeping the player's world height and velocity.
+## Swaps between floor and ceiling while keeping the player's world height and velocity. The ceiling is
+## the one at ceiling_y (a pad sets it as it flips them up, _check_triggers).
 func _flip(to: Surface, extra_velocity: float) -> void:
-	h = tuning.ceiling_height - h
+	h = ceiling_y - h
 	vh = -vh - extra_velocity
 	surface = to
 	grounded = false
@@ -740,6 +836,13 @@ func _flip(to: Surface, extra_velocity: float) -> void:
 ## player's footprint, from 0.6 m above the feet to 0.3 m below; NAN if there is none. On the floor
 ## that's the track (0) or a raised surface such as a hover truck's roof; on the ceiling, the hull.
 func _support_top() -> float:
+	return _support_between(h + 0.6, h - 0.3)
+
+
+## The height (away from the current surface, like `h`) of the highest supporting surface under the
+## player's footprint whose top lies between `from_h` and `to_h` (rays from the one to the other: the first
+## surface each meets); NAN if there is none. On the ceiling, measured from ceiling_y.
+func _support_between(from_h: float, to_h: float) -> float:
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var on_floor: bool = surface == Surface.FLOOR
 	_ray.collision_mask = TrackBuilder.LAYER_FLOOR if on_floor else TrackBuilder.LAYER_HULL
@@ -747,18 +850,62 @@ func _support_top() -> float:
 	var best: float = NAN
 	for ox: float in [-tuning.foot_half_width, tuning.foot_half_width]:
 		for oz: float in [-tuning.foot_half_depth, tuning.foot_half_depth]:
-			_ray.from = Vector3(_x + ox, _surface_y(h + 0.6), z + oz)
-			_ray.to = Vector3(_x + ox, _surface_y(h - 0.3), z + oz)
+			_ray.from = Vector3(_x + ox, _surface_y(from_h), z + oz)
+			_ray.to = Vector3(_x + ox, _surface_y(to_h), z + oz)
 			var hit: Dictionary = space.intersect_ray(_ray)
 			if not hit.is_empty():
-				var top: float = (hit["position"] as Vector3).y if on_floor else tuning.ceiling_height - (hit["position"] as Vector3).y
+				var top: float = (hit["position"] as Vector3).y if on_floor else ceiling_y - (hit["position"] as Vector3).y
 				best = top if is_nan(best) else maxf(best, top)
 	return best
 
 
+## A fall faster than pit_depth a frame (a fast fall, a long drop off a high ceiling, the pull up to a high
+## ceiling) can pass a surface's top between two frames, beyond _support_top's reach below the feet, and
+## would drop through it: the highest top the feet passed this frame, from where they were as it began
+## (`from_h`, CROSS_MARGIN above) down to where they are; NAN if none. A fall slower than that never needs
+## it: _support_top's reach covers every top it passes.
+func _crossed_top(from_h: float) -> float:
+	var top: float = _support_between(from_h + CROSS_MARGIN, h - 0.3)
+	return top if not is_nan(top) and top >= h else NAN
+
+
+## The ceiling height a rider takes for a ceiling whose underside is at world height `underside`: exactly
+## the standard one (fall_base() plus ceiling_height) when it's within HEIGHT_SNAP of it, else its own.
+func _ceiling_reference(underside: float) -> float:
+	var standard: float = fall_base() + tuning.ceiling_height
+	return standard if absf(underside - standard) <= HEIGHT_SNAP else underside
+
+
+## On the ceiling, the rider's depth below the underside they stand on or land on, given as `top`
+## (measured from ceiling_y, as _support_top gives it): a ceiling further than HEIGHT_SNAP from ceiling_y
+## (one moving as they ride it, a gunship's belly coming down, or one found by its pad while it was still
+## moving) takes ceiling_y along to where it is, so its end, its lanes (_ceiling_over) and the climbing
+## camera go by where it really is. On the floor, `top` as it is.
+func _follow_ceiling(top: float) -> float:
+	if surface != Surface.CEILING or absf(top) <= HEIGHT_SNAP:
+		return top
+	var underside: float = ceiling_y - top
+	ceiling_y = _ceiling_reference(underside)
+	return ceiling_y - underside
+
+
+## The height of the ceiling `pad` flips the player to (ceiling_y): the underside of the first ceiling
+## (anything on the hull layer: the track's, a boss's, a gunship's belly) over the pad's lane within
+## CEILING_SEARCH above the feet (_ceiling_reference), or the standard height (fall_base() plus
+## ceiling_height) with none there: the player flips up into nothing and drops straight back.
+func _ceiling_over_pad(pad: Area3D) -> float:
+	_ray.collision_mask = TrackBuilder.LAYER_HULL
+	_ray.from = Vector3(pad.global_position.x, position.y + 0.1, TrackGeometry.world_z(distance))
+	_ray.to = _ray.from + Vector3(0.0, CEILING_SEARCH, 0.0)
+	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(_ray)
+	if hit.is_empty():
+		return fall_base() + tuning.ceiling_height
+	return _ceiling_reference((hit["position"] as Vector3).y)
+
+
 ## World y of a point `height` away from the current surface (floor or ceiling).
 func _surface_y(height: float) -> float:
-	return height if surface != Surface.CEILING else tuning.ceiling_height - height
+	return height if surface != Surface.CEILING else ceiling_y - height
 
 
 ## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
@@ -770,14 +917,16 @@ func _ceiling_ends_before(target: int) -> bool:
 
 
 ## True if a ceiling section (anything on the hull layer: the track's ceilings, a boss's) is over the
-## middle of lane `lane_index` at the player's distance, at the ceiling's height. The ceiling's own
-## collision box says where it is, so this follows its lanes exactly.
+## middle of lane `lane_index` at the player's distance, at the height of the ceiling they ride
+## (ceiling_y). The ceiling's own collision box says where it is, so this follows its lanes exactly, and a
+## ceiling whose lanes end at different distances (one section per run of lanes, BossProps.ceiling_lanes)
+## holds the player within the lanes it still covers.
 func _ceiling_over(lane_index: int) -> bool:
 	var x: float = geo.lane_x(lane_index)
 	var z: float = TrackGeometry.world_z(distance)
 	_ray.collision_mask = TrackBuilder.LAYER_HULL
-	_ray.from = Vector3(x, tuning.ceiling_height - 0.6, z)
-	_ray.to = Vector3(x, tuning.ceiling_height + 0.3, z)
+	_ray.from = Vector3(x, ceiling_y - 0.6, z)
+	_ray.to = Vector3(x, ceiling_y + 0.3, z)
 	return not get_world_3d().direct_space_state.intersect_ray(_ray).is_empty()
 
 
@@ -1191,6 +1340,8 @@ func _check_triggers(motion: float) -> void:
 		var area := hit["collider"] as Area3D
 		match area.get_meta(&"kind", &""):
 			&"pad":
+				# Up to the ceiling over the pad, at whatever height it is.
+				ceiling_y = _ceiling_over_pad(area)
 				_flip(Surface.CEILING, tuning.antigrav_launch_velocity)
 				_event(&"pad")
 				_hold_to_pad_lane(area)
@@ -1286,7 +1437,7 @@ func _apply_transform(delta: float) -> void:
 	var roll_target: float = 0.0
 	match surface:
 		Surface.CEILING:
-			y = tuning.ceiling_height - h
+			y = ceiling_y - h
 			roll_target = PI
 		Surface.WALL:
 			roll_target = wall_side * PI * 0.5
@@ -1337,14 +1488,16 @@ func _switch_dir() -> int:
 	return _bump_dir
 
 
-## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps.
-## Over a gap there's no surface, so no shadow, which is itself a cue.
+## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps: on the
+## surface the ray finds, the street, a raised floor under the player (a roof high above the street) or
+## the ceiling's underside, wherever it is. Over a gap there's no surface, so no shadow, which is itself a
+## cue.
 func _update_shadow() -> void:
 	if surface == Surface.WALL or not is_inside_tree():
 		_shadow.visible = false
 		return
 	var on_floor: bool = surface == Surface.FLOOR
-	var plane_y: float = 0.0 if on_floor else tuning.ceiling_height
+	var plane_y: float = 0.0 if on_floor else ceiling_y
 	_ray.collision_mask = TrackBuilder.LAYER_FLOOR if on_floor else TrackBuilder.LAYER_HULL
 	var away: float = 1.0 if on_floor else -1.0
 	_ray.from = position + Vector3(0.0, away * 0.1, 0.0)
@@ -1353,9 +1506,10 @@ func _update_shadow() -> void:
 	_shadow.visible = not hit.is_empty()
 	if hit.is_empty():
 		return
-	var gap: float = absf(position.y - plane_y)
+	var surface_y: float = (hit["position"] as Vector3).y
+	var gap: float = absf(position.y - surface_y)
 	var s: float = clampf(1.0 - gap / 6.0, 0.35, 1.0)
-	_shadow.global_position = Vector3(position.x, plane_y + (0.02 if on_floor else -0.02), position.z)
+	_shadow.global_position = Vector3(position.x, surface_y + (0.02 if on_floor else -0.02), position.z)
 	_shadow.scale = Vector3(s, 1.0, s)
 
 

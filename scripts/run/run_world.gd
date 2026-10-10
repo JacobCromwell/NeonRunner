@@ -37,6 +37,11 @@ var score: ScoreKeeper
 ## The power-up controller (null until the power-ups exist).
 var powerups: Node
 var sounds: PlayerSfx
+## The run camera climbs with the runner (RunCamera's climbing view; GDD §10, the Beach's boss, whose runner
+## climbs ceilings and roofs 20-30 m above the street): it frames them from the floor they're on or came
+## from instead of the street, sees a ceiling from below at that ceiling's own height, and never sits inside
+## a roof. A boss turns it on; off (every level and every other boss fight), the camera is as it always was.
+var camera_climbs: bool = false
 
 var _voices: Array[AudioStreamPlayer3D] = []
 var _next_voice: int = 0

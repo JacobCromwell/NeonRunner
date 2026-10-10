@@ -41,8 +41,14 @@ extends Node3D
 ## _on_weak_point_hit(part, hazard), _on_part_defeated(part, cause), _on_part_emp(part, center, radius),
 ## _on_phase_ended(i), _on_defeated(), _defeated_tick(delta), victory_over() (when a defeat that plays
 ## out on the track is over), victory_riff() (false for a defeat that ends in silence),
-## _on_armor_pickup_due(reason) (where the armor rule's pickup goes), and light_floor() and
-## scenery_floor() (a boss's own floors for set_light_level, from its data).
+## _on_armor_pickup_due(reason) (where the armor rule's pickup goes), light_floor() and
+## scenery_floor() (a boss's own floors for set_light_level, from its data), and _grapple_save(player,
+## cause) (where the grapple hook's save, and a revive after a fall, take the runner: GDD §10, the Beach's
+## climb pulls them up onto the higher roof).
+## A boss that raises the floor (the Beach's climb, GDD §10) also sets, as the runner climbs, the floor
+## their falls count from (Player.floor_base), and turns on the climbing camera (RunWorld.camera_climbs);
+## its props take a height (BossProps: fences, blocks, pads, ceilings at their own height and lane by lane,
+## roofs, floor warnings), and the runner rides any ceiling at its own height (Player.ceiling_y).
 ## Helpers: add_part(), spawn_enemy() (normal enemies: a cyborg drop, a
 ## Buzz Overdrive onto the roof), offer_pickup() (an armor, shield or grapple pickup on the floor),
 ## damage() (a boss's own causes: a cluster shocked by a fence, an EMP), hit_damage(),
@@ -181,6 +187,7 @@ func setup(p_world: RunWorld, p_context: RunContext, p_arena: BossArena) -> void
 	props.setup(world)
 	world.director.warm_up_entries(warm_enemies())
 	world.player.item_used.connect(_on_item_used)
+	world.player.grapple_save = _grapple_save
 	var start: int = 0
 	var resume: Dictionary = context.boss_resume
 	if not resume.is_empty():
@@ -560,6 +567,16 @@ func victory_riff() -> bool:
 ## own (a spot on its arena) with offer_pickup's `at` and `lane`.
 func _on_armor_pickup_due(_reason: StringName) -> void:
 	offer_pickup(&"armor")
+
+
+## Where the grapple hook's save (GDD §8: it saves one fall) and a revive after a fall (`cause` &"grapple"
+## or &"revive") take the runner (Player.grapple_save, set to this as the fight begins): {"lane": int,
+## "height": float}, the lane to pull them into and the world height of the floor to pull them up onto
+## (either may be left out: their own lane; the floor their falls count from, Player.fall_base()), or an
+## empty Dictionary for the save as it always is, straight up out of the pit (the default). The Beach's
+## climb pulls them up onto the higher roof, into its nearest lane that leads up (GDD §10).
+func _grapple_save(_player: Player, _cause: StringName) -> Dictionary:
+	return {}
 
 
 # --- Internals -------------------------------------------------------------------------
