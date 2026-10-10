@@ -10,7 +10,7 @@ extends Node3D
 ## 3. LOCK, the warning: it lingers on that spot of the track, turning red, with the framework's red
 ##    target circle (BossProps.circle_warning, so pickups keep off it), the lock sound, and a bomb
 ##    falling from the bay with its whistle, timed to end with the blast;
-## 4. the blast: a fireball where the circle was, for BossProps-style blast_seconds, as the runner
+## 4. the blast: a hitbox and a fireball where the circle was, for BossProps-style blast_seconds, as the runner
 ##    would get there. Leaving the lane dodges it; it's too tall to jump.
 ## Every few locks (straddle_every) the light spreads over two lanes side by side: two bombs, and the
 ## free side is the way out. A player who keeps moving can always escape (the fairness rules below).
@@ -34,8 +34,8 @@ extends Node3D
 ## it and every lane on the way free of holes and fences from the player to past the blast (the dodge is
 ## a plain lane switch), with no ceiling over it and no pickup waiting in it (the margins along the track
 ## at the run's pace, FloatingHead.metres: as long to run at any speed, GDD §3); the warning always lasts
-## lock_seconds / pace. Otherwise the light keeps hunting. The blast's hitbox is a little smaller than
-## the fireball and, in an outer lane, keeps clear of a wall runner beside it.
+## lock_seconds / pace. Otherwise the light keeps hunting. The blast's hitbox is about as big as
+## its fireball and, in an outer lane, keeps clear of a wall runner beside it.
 ## Nothing depends on how long the fight has lasted: random picks come from the fight's seeded rng and
 ## time from the physics step, so every attempt plays out the same way for the same inputs.
 ## The run ends run_seconds after the light switches on; the last blast lands before it ends (a salvo
@@ -46,17 +46,24 @@ enum Step { IDLE, SWEEP_OUT, SWEEP_IN, LOCK }
 const BOMB_NAME: String = "Floating Head's bomb"
 const LIGHT_WHITE := Color(0.85, 0.92, 1.0)
 const LIGHT_RED := Color(1.0, 0.16, 0.1)
-const FIRE := Color(1.0, 0.36, 0.12)
-const FIRE_HOT := Color(1.0, 0.8, 0.5)
-## Bombs, blasts and fireballs kept ready (a whole salvo's: four spots of up to three bombs).
+## Bombs and blasts kept ready (a whole salvo's: four spots of up to three bombs). Each blast's look is one of the
+## shared fireballs (RunEffects.fireball, pooled there).
 const POOL: int = 12
 ## How fast the spot catches up along the track after a blast, beyond the runner's own speed (at
 ## 18 m/s; at the run's pace, so it takes as long at any speed).
 const CATCH_UP: float = 60.0
 ## The spot counts as on the runner's lane within this of its centre.
 const ON_LANE: float = 0.2
-## A fireball lasts this long (its hitbox only blast_seconds).
+## A blast's book is kept this long (its hitbox only blast_seconds; its fireball, RunEffects.fireball, is a quick one
+## of about the same length: a look only).
 const FIRE_SECONDS: float = 0.6
+## The blast's look is one of the shared fireballs (GDD §11), held in so what burns is about what hurts (task H6's
+## review: what looks like a hit must be a hit): as big as the blast's radius, flying out of its centre only this
+## share as far as a free fireball's fire does, played this much faster than a fireball of its size would, with no
+## smoke (it must not hide the lane the runner escapes into).
+const FIRE_SIZE_PER_RADIUS: float = 1.0
+const FIRE_SPREAD: float = 0.45
+const FIRE_PACE: float = 2.0
 ## A straddle's second bomb leaves the bay this much later (it lands at the same time).
 const SECOND_BOMB_DELAY: float = 0.07
 ## The falling whistle's length, if the sound library doesn't say.
@@ -94,7 +101,7 @@ var target: Dictionary = {}
 ## Bombs on their way: {lane, at, x, release, impact, whistle, released, whistled, circle, bomb, from}
 ## (a salvo's also spot_x, the middle of its spot).
 var _drops: Array[Dictionary] = []
-## Blasts burning: {hazard, fire, material, x, at, start}.
+## Blasts burning: {hazard, x, at, start}.
 var _blasts: Array[Dictionary] = []
 var _out_lane: int = 0
 ## The spots the next salvo may have (a seeded pick each round; 0 outside salvo runs).
@@ -113,7 +120,6 @@ var _spot_material: ShaderMaterial
 var _circle_material: BaseMaterial3D
 var _bombs: Array[MeshInstance3D] = []
 var _hazards: Array[Hazard] = []
-var _fires: Array[MeshInstance3D] = []
 
 static var _cone: ArrayMesh
 static var _quad: ArrayMesh
@@ -143,24 +149,6 @@ func setup(p_head: FloatingHead) -> void:
 		bomb.visible = false
 		_bombs.append(bomb)
 		_hazards.append(_make_hazard())
-		var fire := MeshInstance3D.new()
-		fire.name = "Fireball"
-		var sphere := SphereMesh.new()
-		sphere.radius = 1.0
-		sphere.height = 2.0
-		sphere.radial_segments = 12
-		sphere.rings = 6
-		fire.mesh = sphere
-		var m := StandardMaterial3D.new()
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		m.albedo_color = Color.BLACK
-		m.disable_receive_shadows = true
-		fire.material_override = m
-		fire.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		fire.visible = false
-		add_child(fire)
-		_fires.append(fire)
 
 
 ## Starts a run of `seconds`: the light switches on and starts sweeping, the bay opens.
@@ -206,7 +194,6 @@ func clear() -> void:
 	stop()
 	for b: Dictionary in _blasts:
 		(b["hazard"] as Hazard).set_enabled(false)
-		(b["fire"] as Node3D).visible = false
 	_blasts.clear()
 
 
@@ -742,7 +729,7 @@ func _place_bomb(bomb: MeshInstance3D, d: Dictionary) -> void:
 		bomb.look_at(pos + vel, up)
 
 
-## The blast: its hitbox burns for blast_seconds; the fireball, the sparks, the boom and a shake.
+## The blast: its hitbox burns for blast_seconds; the fireball (RunEffects.fireball: a look only), the boom and a shake.
 func _blast(lane: int, at: float) -> void:
 	var geo: TrackGeometry = world.geo
 	var half: float = geo.lane_width * tuning.blast_width_share * 0.5
@@ -757,13 +744,9 @@ func _blast(lane: int, at: float) -> void:
 	((hazard.get_child(0) as CollisionShape3D).shape as BoxShape3D).size = size
 	hazard.global_position = Vector3((x0 + x1) * 0.5, size.y * 0.5, TrackGeometry.world_z(at))
 	hazard.set_enabled(true)
-	var fire: MeshInstance3D = _free_fire()
-	fire.global_position = Vector3(x, 0.6, TrackGeometry.world_z(at))
-	fire.visible = true
-	_blasts.append({"hazard": hazard, "fire": fire, "x": x, "at": at, "start": clock})
+	_blasts.append({"hazard": hazard, "x": x, "at": at, "start": clock})
 	var center := Vector3(x, 0.8, TrackGeometry.world_z(at))
-	world.effects.burst(center, FIRE, 40, 1.1)
-	world.effects.burst(center + Vector3(0.0, 0.4, 0.0), FIRE_HOT, 16, 0.6)
+	world.effects.fireball(center + Vector3(0.0, 0.3, 0.0), tuning.blast_radius * FIRE_SIZE_PER_RADIUS, false, FIRE_PACE, FIRE_SPREAD)
 	var near: float = clampf(1.0 - (at - world.player.distance) / 40.0, 0.2, 1.0)
 	world.effects.shake(0.3 * near, 0.3)
 	head.sound(&"bomb_blast", center)
@@ -777,19 +760,8 @@ func _update_blasts() -> void:
 		var hazard: Hazard = b["hazard"]
 		if hazard.is_active() and age >= tuning.blast_seconds - 0.0001:
 			hazard.set_enabled(false)
-		var fire: MeshInstance3D = b["fire"]
-		if age >= FIRE_SECONDS:
-			fire.visible = false
-			if not hazard.is_active():
-				_blasts.remove_at(i)
-			continue
-		# A fireball that swells fast, reddens and fades (a softer flash with Reduced flashing).
-		var k: float = age / FIRE_SECONDS
-		var r: float = tuning.blast_radius * (0.4 + 0.6 * (1.0 - pow(1.0 - minf(age / 0.12, 1.0), 3.0)))
-		fire.scale = Vector3(r, r * 1.2, r)
-		var hot: float = clampf(1.0 - age / 0.08, 0.0, 1.0) * (0.4 if Settings.flashing_reduced else 0.8)
-		var color: Color = FIRE.lerp(FIRE_HOT, hot) * (1.0 - k * k) * 0.95
-		(fire.material_override as StandardMaterial3D).albedo_color = Color(color.r, color.g, color.b, 1.0)
+		if age >= FIRE_SECONDS and not hazard.is_active():
+			_blasts.remove_at(i)
 
 
 # --- Visuals ------------------------------------------------------------------------------------
@@ -869,13 +841,6 @@ func _burning(h: Hazard) -> bool:
 		if b["hazard"] == h:
 			return true
 	return false
-
-
-func _free_fire() -> MeshInstance3D:
-	for f: MeshInstance3D in _fires:
-		if not f.visible:
-			return f
-	return _fires[0]
 
 
 func _make_hazard() -> Hazard:

@@ -15,18 +15,39 @@ extends Node3D
 ## A theft (GDD §9.12, ScoreKeeper.stolen) sends a stream of coins from the runner to the thief, and a
 ## caught thief's payout (ScoreKeeper.recovered) bursts out of it into the runner (coin_stream): no
 ## shake, no hit-stop and no flashing, so it never reads as a hit.
+## The dash smashing a zone doodad (GDD §3, owner, October 8, 2026; Player.smashed, task H5) flings its
+## pieces in its look's own colours (rubble: lit chunks, never glowing, nothing flickering) with a light
+## shake and no hit-stop: something solid breaking, never an explosion or a hit. A dash wall breaking (GDD
+## §9.14; task H7a: the dash, a crash or a pass on a side wall; Player.smashed with a wall, or a hover truck
+## bursting through one) crumbles bigger (crumble: more and bigger pieces flung out of the lanes, dust out of its
+## lower face, a heavier shake), still with nothing that flashes or glows.
+## Every explosion is the same pooled `fireball` (FireballPool; GDD §11, the owner, October 8, 2026): a
+## big yellow-and-red ball of fire with embers and smoke, one call that every enemy, boss and weapon makes,
+## softened by Reduced flashing.
 ## All the numbers are SpeedFxTuning's (data/tuning/speed_fx.tres, F6 "Speed effects").
 
 signal shake_requested(strength: float, duration: float)
+## An explosion was asked for (`fireball`): where, and how big (metres in radius). Tests and tools listen.
+signal fireball_played(pos: Vector3, size: float)
+## A dash wall crumbled (crumble, task H7a). Tests and tools listen.
+signal crumbled(breakable: DashBreakable)
 
 const BURST_POOL: int = 12
 const DEBRIS_POOL: int = 8
+## Rubble bursts playing at once (rubble): doodads stand at least 2.5 s apart, so two is plenty.
+const RUBBLE_POOL: int = 2
 const LINE_POOL: int = 4
 ## Coin streams in flight at once (a theft's and a payout's may overlap), and the most coins in one.
 const STREAM_POOL: int = 3
 const STREAM_COINS: int = 16
 ## The runner's chest, where a theft's coins leave and a payout's arrive (above the feet).
 const CHEST := Vector3(0.0, 0.8, 0.0)
+## A dash wall's dust (crumble): the grey it leans to, the share of the wall's height it billows out of (from
+## its foot up), and within what distance of the camera its puffs vanish and from what distance they're fully
+## drawn (closer than the fireball's smoke: the chase camera comes through it a moment after the runner).
+const DUST_GREY := Color(0.6, 0.58, 0.55)
+const DUST_HEIGHT_SHARE: float = 0.6
+const DUST_FADE := Vector2(1.2, 4.5)
 ## Fallback if RunWorld.build is given no SpeedFxTuning (tests that build a bare RunEffects).
 const DEFAULT_TUNING_PATH: String = "res://data/tuning/speed_fx.tres"
 
@@ -46,9 +67,18 @@ var _next_burst: int = 0
 var _debris: Array[CPUParticles3D] = []
 var _next_debris: int = 0
 var _debris_mesh: BoxMesh
+## Broken pieces (rubble), made with their material on so ShaderWarmup draws them at the load.
+var _rubble: Array[RubbleBurst] = []
+var _next_rubble: int = 0
+## A dash wall's crumble (crumble, task H7a): its bigger burst of pieces and its dust, made once with their
+## materials on (in setup for a level with dash walls, so ShaderWarmup draws them at the load). One of each:
+## walls stand far apart (the dash's longest cooldown), so only one crumbles at a time.
+var _wall_rubble: RubbleBurst
+var _wall_dust: CPUParticles3D
 var _lines: Array[MeshInstance3D] = []
 var _line_life: Array[float] = []
 var _mesh: SphereMesh
+var _fireballs: FireballPool
 ## The highest the player has been above the floor since the last landing (Landings, land_shake).
 var _air_peak_h: float = 0.0
 ## Coin streams (coin_stream), made on first use: {inst: MultiMeshInstance3D, active, t, count, flight,
@@ -75,6 +105,10 @@ func _ready() -> void:
 		p.angular_velocity_min = -540.0
 		p.angular_velocity_max = 540.0
 		_debris.append(p)
+	for i: int in RUBBLE_POOL:
+		var r := RubbleBurst.new()
+		add_child(r)
+		_rubble.append(r)
 	for i: int in LINE_POOL:
 		var line := MeshInstance3D.new()
 		line.mesh = GreyboxMaterials.unit_box()
@@ -111,7 +145,11 @@ func setup(p_world: RunWorld, p_tuning: SpeedFxTuning = null) -> void:
 	tuning = p_tuning
 	if tuning == null:
 		tuning = load(DEFAULT_TUNING_PATH) as SpeedFxTuning if ResourceLoader.exists(DEFAULT_TUNING_PATH) else SpeedFxTuning.new()
+	_ensure_fireballs()
+	if world.layout != null and not world.layout.dash_walls.is_empty():
+		_ensure_crumble()
 	world.player.movement_event.connect(_on_player_event)
+	world.player.smashed.connect(_on_smashed)
 	world.director.enemy_defeated.connect(_on_enemy_defeated)
 	# The score keeper is built after the effects (RunWorld.build): its thefts are wired a moment later,
 	# long before the run starts.
@@ -133,6 +171,41 @@ func burst(pos: Vector3, color: Color, amount: int = 16, size: float = 0.5) -> v
 	p.emitting = true
 
 
+## An explosion at `pos`: a big yellow-and-red fireball, `size` metres in radius (a bomb 1.1, a drone's
+## crash 2.4, a truck 3.8, a boss 7 to 11), with embers and, unless `smoke` is off, dark smoke after it.
+## `pace` plays it faster (above 1) or slower (a bigger fireball already plays slower); `spread` (0.25 to 1)
+## holds its fire and embers in nearer its centre. `carrier` (a node in the tree) carries it along, burning at
+## `pos` in that node's space wherever it goes until it leaves the tree (the Enforcer Truck's wreck, kept in the
+## runner's frame so its blast stays in view); without one it burns where it was set off. Pooled and bounded
+## (FireballPool): it allocates nothing, and one more than the pool holds cuts the oldest short. It fades out as
+## the camera comes near it (it never whites out the view), and Reduced flashing softens its rise and its
+## strength. A look only: no sound (the caller's), no shake (the caller's `shake`), no collision.
+func fireball(pos: Vector3, size: float = 2.0, smoke: bool = true, pace: float = 1.0, spread: float = 1.0,
+		carrier: Node3D = null) -> void:
+	_ensure_fireballs()
+	_fireballs.play(pos, size, smoke, pace, spread, carrier)
+	fireball_played.emit(pos, size)
+
+
+## The fireball pool (tests and the shader warm-up).
+func fireballs() -> FireballPool:
+	_ensure_fireballs()
+	return _fireballs
+
+
+## Builds the pool the first time it's needed: RunWorld.build does it in `setup`, so nothing is built
+## mid-run; a bare RunEffects (a tool, a test) builds it on its first fireball.
+func _ensure_fireballs() -> void:
+	if _fireballs != null:
+		return
+	if tuning == null:
+		tuning = load(DEFAULT_TUNING_PATH) as SpeedFxTuning if ResourceLoader.exists(DEFAULT_TUNING_PATH) else SpeedFxTuning.new()
+	_fireballs = FireballPool.new()
+	_fireballs.name = "Fireballs"
+	add_child(_fireballs)
+	_fireballs.setup(tuning)
+
+
 ## A burst of tumbling glowing chunks at `pos` (alongside `burst`'s sparks, on kills and blocked
 ## hits): fewer, slower and heavier than sparks, so it reads as debris rather than more sparks.
 func debris(pos: Vector3, color: Color, amount: int = 6, size: float = 0.6) -> void:
@@ -147,6 +220,127 @@ func debris(pos: Vector3, color: Color, amount: int = 6, size: float = 0.6) -> v
 	p.material_override = GreyboxMaterials.glow(color, 1.8)
 	p.restart()
 	p.emitting = true
+
+
+## Broken pieces flung out of `box` (world space) in `colors` (sRGB, lit; a plain grey if empty),
+## carried along `push` (the runner's velocity, so they fly on the way it was going) and out to the
+## sides, tumbling, falling and shrinking away (RubbleBurst; its numbers SpeedFxTuning's "Doodad smashes"):
+## a zone doodad the dash smashes (task H5; task H7a's dash walls may use it too). Never glowing, never
+## flickering. `look_seed` varies it.
+func rubble(box: AABB, colors: PackedColorArray, push: Vector3 = Vector3.ZERO, look_seed: int = 0) -> void:
+	if _rubble.is_empty():
+		return
+	var r: RubbleBurst = _rubble[_next_rubble]
+	_next_rubble = (_next_rubble + 1) % _rubble.size()
+	var t: SpeedFxTuning = tuning if tuning != null else SpeedFxTuning.new()
+	r.play(box, colors, push, t.rubble_carry, t.rubble_spread, t.rubble_lift, t.rubble_piece_size, t.rubble_life, look_seed)
+
+
+## The rubble bursts still flying (tests and tools).
+func rubble_active() -> Array[RubbleBurst]:
+	var out: Array[RubbleBurst] = []
+	for r: RubbleBurst in _rubble:
+		if r.active:
+			out.append(r)
+	return out
+
+
+## Dash wall `b` crumbles (GDD §9.14, owner, October 8, 2026: "they will crumble and explode into rubble";
+## task H7a): its pieces fly out of its box in its look's own colours (b.debris_colors), carrying a share of
+## `push` (the runner's velocity: on along its way) and flung out to the sides, out of the lanes, and up
+## (a RubbleBurst bigger than a doodad's); dust billows out of its lower face and fades as the camera nears it;
+## and the camera shakes (Screen shake scales it). Nothing in it glows or flickers, so Reduced flashing leaves it
+## as it is. Numbers: SpeedFxTuning's "Dash walls". Pooled: it allocates nothing.
+func crumble(b: DashBreakable, push: Vector3 = Vector3.ZERO) -> void:
+	if b == null or not is_instance_valid(b):
+		return
+	_ensure_crumble()
+	var t: SpeedFxTuning = tuning
+	var box: AABB = b.world_box()
+	_wall_rubble.play(box, b.debris_colors, push, t.wall_rubble_carry, t.wall_rubble_spread, t.wall_rubble_lift,
+		t.wall_rubble_piece_size, t.wall_rubble_life, int(b.entry.get("seed", 0)))
+	if _wall_dust != null and _wall_dust.amount > 0 and t.wall_dust_puffs > 0:
+		var c: Color = b.debris_colors[0] if not b.debris_colors.is_empty() else RubbleBurst.PLAIN_COLOR
+		# A dust grey with a little of the wall's own colour, see-through.
+		_wall_dust.color = Color(c.lerp(DUST_GREY, 0.55), t.wall_dust_opacity)
+		_wall_dust.lifetime = t.wall_dust_seconds
+		_wall_dust.scale_amount_min = t.wall_dust_size * 0.55
+		_wall_dust.scale_amount_max = t.wall_dust_size
+		# Out of the lower part of its face and its depth (the face toward the runner is the box's far end in z,
+		# the track running to -z).
+		var high: float = box.size.y * DUST_HEIGHT_SHARE
+		_wall_dust.global_position = Vector3(box.get_center().x, box.position.y + high * 0.5, box.end.z - box.size.z * 0.5)
+		_wall_dust.emission_box_extents = Vector3(box.size.x * 0.5, high * 0.5, box.size.z * 0.5)
+		_wall_dust.visible = true
+		_wall_dust.restart()
+		_wall_dust.emitting = true
+	shake(t.wall_shake_strength, t.wall_shake_time)
+	crumbled.emit(b)
+
+
+## The dash wall's pieces still flying (tests and tools).
+func crumble_active() -> bool:
+	return _wall_rubble != null and _wall_rubble.active
+
+
+## The dash wall crumble's burst and dust (tests and the shader warm-up); null until made.
+func crumble_parts() -> Array[GeometryInstance3D]:
+	var out: Array[GeometryInstance3D] = []
+	if _wall_rubble != null:
+		out.append(_wall_rubble)
+	if _wall_dust != null:
+		out.append(_wall_dust)
+	return out
+
+
+## Makes the dash wall crumble's pool (crumble) the first time it's needed: setup does it for a level with dash
+## walls, so nothing is built mid-run and ShaderWarmup draws its materials at the load.
+func _ensure_crumble() -> void:
+	if _wall_rubble != null:
+		return
+	if tuning == null:
+		tuning = load(DEFAULT_TUNING_PATH) as SpeedFxTuning if ResourceLoader.exists(DEFAULT_TUNING_PATH) else SpeedFxTuning.new()
+	_wall_rubble = RubbleBurst.new(tuning.wall_rubble_pieces)
+	_wall_rubble.name = "WallRubble"
+	add_child(_wall_rubble)
+	var dust := CPUParticles3D.new()
+	dust.name = "WallDust"
+	# Hidden until a wall first crumbles (crumble shows it), so ShaderWarmup draws its material at the load.
+	dust.visible = false
+	dust.emitting = false
+	dust.one_shot = true
+	dust.explosiveness = 0.85
+	dust.amount = maxi(tuning.wall_dust_puffs, 1)
+	dust.lifetime = tuning.wall_dust_seconds
+	dust.lifetime_randomness = 0.3
+	dust.local_coords = false
+	dust.mesh = FireballPool.quad()
+	dust.material_override = FireballPool.puff_material(FireballPool.puff_texture(), DUST_FADE.x, DUST_FADE.y)
+	dust.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	dust.emission_box_extents = Vector3(3.0, 1.0, 0.5)
+	dust.direction = Vector3.UP
+	dust.spread = 75.0
+	dust.initial_velocity_min = 1.5
+	dust.initial_velocity_max = 5.0
+	dust.damping_min = 2.0
+	dust.damping_max = 3.5
+	dust.gravity = Vector3(0.0, 0.6, 0.0)
+	dust.angle_min = 0.0
+	dust.angle_max = 360.0
+	dust.angular_velocity_min = -40.0
+	dust.angular_velocity_max = 40.0
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.12, 0.5, 1.0])
+	ramp.colors = PackedColorArray([Color(1.0, 1.0, 1.0, 0.0), Color(1.0, 1.0, 1.0, 1.0), Color(1.0, 1.0, 1.0, 0.65),
+		Color(1.0, 1.0, 1.0, 0.0)])
+	dust.color_ramp = ramp
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.55))
+	grow.add_point(Vector2(1.0, 1.0))
+	dust.scale_amount_curve = grow
+	add_child(dust)
+	_wall_dust = dust
 
 
 ## A glowing straight line from `a` to `b` that fades after `duration` (the grapple rope).
@@ -369,6 +563,21 @@ func _on_player_event(kind: StringName) -> void:
 			_block_fx(PlayerSuit.SHIELD, tuning.block_break_shake_strength)
 		&"doodad_push":
 			shake(tuning.push_shake_strength, tuning.push_shake_time)
+
+
+## The dash smashed something (Player.smashed; a zone doodad, GDD §3, owner, October 8, 2026): its pieces
+## fly in its look's own colours (DashBreakable.debris_colors) on along the runner's way (the track runs
+## toward -z), and the camera shakes lightly. No sparks and no hit-stop: it's no kill and no hit. A dash wall
+## (task H7a; smashed, crashed through or passed) crumbles instead (crumble).
+func _on_smashed(breakable: DashBreakable) -> void:
+	if world == null or not is_instance_valid(breakable):
+		return
+	var push := Vector3(0.0, 0.0, -maxf(world.player.speed, 0.0))
+	if breakable.kind == &"dash_wall":
+		crumble(breakable, push)
+		return
+	rubble(breakable.world_box(), breakable.debris_colors, push, int(breakable.entry.get("seed", 0)))
+	shake(tuning.smash_shake_strength, tuning.smash_shake_time)
 
 
 func _block_fx(color: Color, shake_strength: float) -> void:

@@ -9,7 +9,9 @@ extends Node3D
 ## and outlasts the chase until it dissolves.
 ## Views: play (default, the real run camera) or close (a camera beside the player, looking at it).
 ## Options: --lanes=N, --skin=<name> (data/skins/<name>_skin.tres), --chase=seconds (default 16),
-## --wall (dodge onto a wall rather than to a lane), --reduced (Reduced flashing on).
+## --wall (dodge onto a wall rather than to a lane), --reduced (Reduced flashing on), --weapon=N (task H8:
+## the player carries the weapon at tier N and doesn't dash; auto-fire shoots the host down ahead, and the
+## Bad Dream lurks over that spot until the player comes within its hover distance).
 
 const HOST_AT: float = 70.0
 const PAD_AT: float = 250.0
@@ -27,6 +29,7 @@ var _telegraphs_seen: int = 0
 var _dodge_at: float = -1.0
 var _dodge_dir: int = 0
 var _dodge_moves: int = 0
+var _weapon: int = 0
 
 
 func _ready() -> void:
@@ -36,6 +39,8 @@ func _ready() -> void:
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--lanes="):
 			lanes = int(v)
+		elif arg.begins_with("--weapon="):
+			_weapon = clampi(int(v), 0, 4)
 		elif arg.begins_with("--skin="):
 			skin_name = v
 		elif arg.begins_with("--chase="):
@@ -68,8 +73,11 @@ func _ready() -> void:
 	layout.hulls.append({"start": PAD_AT - config.hull_lead_in, "end": PAD_AT + HULL_SECONDS * tuning.run_speed})
 	_world = RunWorld.new()
 	add_child(_world)
+	var loadout := Loadout.new()
+	if _weapon > 0:
+		loadout.tiers[&"weapon"] = _weapon
 	_world.build(config, layout, tuning, load("res://data/tuning/game_rules.tres") as GameRules,
-		load("res://data/tuning/powerups.tres") as PowerupTuning)
+		load("res://data/tuning/powerups.tres") as PowerupTuning, loadout)
 	_world.player.setup(tuning, _world.geo, _lane)
 	_world.player.god_mode = true
 	_world.director.enemy_spawned.connect(_on_spawned)
@@ -105,7 +113,8 @@ func _on_spawned(enemy: Enemy) -> void:
 ## The scripted player: dash into the host, sit out the first slash, dodge the next, take the pad.
 func _physics_process(_delta: float) -> void:
 	var p: Player = _world.player
-	if is_instance_valid(_host) and _host.alive and _host.track_distance() - p.distance < 7.0 and not p.dashing:
+	if _weapon == 0 and is_instance_valid(_host) and _host.alive and _host.track_distance() - p.distance < 7.0 \
+			and not p.dashing:
 		p.start_dash(0.6, 8.0)
 	if is_instance_valid(_dream) and _dream.alive:
 		var told: int = 0

@@ -115,7 +115,8 @@ func tick(active: bool = true) -> void:
 			boss.log_event(&"tithe_skipped", {"carriage": int(due["k"])})
 			continue
 		visits[boss.phase_index] = count + 1
-		boss.spawn_enemy("tithe_collector", float(due["at"]), boss.world.player.lane)
+		boss.spawn_enemy("tithe_collector", float(due["at"]), boss.world.player.lane, 0,
+			{"approach_speed": tuning.tithe_approach_speed})
 
 
 ## Stops planning carriages (a phase that doesn't play The Board): those planned stay planned, the

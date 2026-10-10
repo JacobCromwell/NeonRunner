@@ -215,11 +215,14 @@ func is_boardwalk(lane: int, k: int) -> bool:
 ## track hides the floor as the cut runs, FloorCutSection). The floor beside it and beyond it ends in the
 ## pool's edge (the steel coping, the orange lip right on the collision edge, a strip along the top of the
 ## cut and the soft halo on its far side), and below everything is the black steel of the pool tank running
-## down to the water, like any gap: nothing in it is lit, glowing or floor-like.
+## down to the water, like any gap: nothing in it is lit, glowing or floor-like. As in every zone (task H3, GDD
+## §9.9: a cut shows what the zone's gaps show), the cut has no bottom (the water is the chunk's, drawn with the
+## left wall) and no side walls of its own: the neighbouring lanes' floors carry their sides in the same steel,
+## which show through it as through any pool (the H series' merge with D10; item 681).
 func cut(parent: Node3D, section: FloorCutSection) -> void:
 	ZoneSkin.standard_floor_cut(parent, section, skin.solid_material(), skin.glow_material(), {
 		"edge": skin.gap_edge_color, "inside": skin.gap_inside_color, "pattern": MeshKit.PAT_BEACH_TANK,
-		"params": [0.0, 1.0, 0.0], "depth": skin.pool_depth, "bottom": false,
+		"params": [0.0, 1.0, 0.0], "depth": skin.pool_depth, "bottom": false, "walls": false,
 		"lip": EDGE_LIP, "lip_glow": LIP_GLOW, "strip_glow": STRIP_GLOW, "halo": EDGE_HALO,
 		"dark_line": skin.coping_color, "dark": COPING,
 	})

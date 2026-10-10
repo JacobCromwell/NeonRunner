@@ -152,6 +152,27 @@ const REFERENCE_SPEED: float = 18.0
 ## switch takes lane_switch_time). DESIGN-TBD.
 @export_range(0.05, 0.4, 0.01, "suffix:s") var doodad_push_time: float = 0.13
 
+@export_group("Dash walls")
+## Dash walls (task H7a; GDD §9.14, owner, October 8, 2026): a building standing across every floor lane,
+## which the runner dashes through. Its look's box (TrackBuilder.dash_wall_size): this tall, this deep along
+## the track, and as wide as the floor less dash_wall_wall_room beside each side wall. Its hitbox is that box
+## less dash_wall_inset at its sides and its face (forgiving, CLAUDE.md principle 4), from just above the
+## floor (so a slide never passes under it) to its top.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 651): taller than any jump: a jump's feet reach jump_height (1.6 m), a wall
+## jump from the top of a wall run (wall_max_height) about 5.3 m; a building of two or three storeys.
+@export_range(6.0, 16.0, 0.1, "suffix:m") var dash_wall_height: float = 9.0
+## DESIGN-TBD: how deep the building is along the track (the runner bursts through it in a tenth of a second).
+@export_range(0.5, 6.0, 0.1, "suffix:m") var dash_wall_depth: float = 2.5
+## DESIGN-TBD: the strip beside each side wall the building leaves open, from the side wall's face in (GDD
+## §9.14: "it blocks only the floor"; a player running on a side wall passes it). The hitbox's edge, this plus
+## dash_wall_inset in from the wall's face, lies between the two runners' bodies: a wall runner's reaches a
+## hurtbox's height (1.09 m) out from the wall's face, so it stays about 0.26 m clear of it; a floor runner's
+## in the middle of the outer lane comes to wall_margin plus half a lane less half its body (1.28 m) from the
+## wall's face, so most of it (0.38 m of its 0.45 m) is inside it.
+@export_range(0.9, 1.6, 0.01, "suffix:m") var dash_wall_wall_room: float = 1.2
+## DESIGN-TBD: how much smaller the hitbox is than the look, at its sides and its face.
+@export_range(0.0, 0.5, 0.01, "suffix:m") var dash_wall_inset: float = 0.15
+
 @export_group("Camera")
 @export_range(3.0, 15.0, 0.1, "suffix:m") var camera_distance: float = 7.5
 @export_range(1.0, 8.0, 0.1, "suffix:m") var camera_height: float = 4.2

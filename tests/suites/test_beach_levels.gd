@@ -127,7 +127,12 @@ func _test_data() -> void:
 		check(String(level.id) == "beach_%d" % (i + 1) and level.resource_path == "res://data/levels/beach_%d.tres" % (i + 1)
 			and level.display_name == NAMES[i], "its id, file and name, %s %s" % [NAMES[i], tag])
 		check(campaign.step("beach/%d" % (i + 1)).level == level, "the campaign plays it as beach/%d" % (i + 1))
-		check(level.features == before.level.features, "Corporate 2's features, a remix with no new enemy %s" % tag)
+		# Corporate 2's but its dash walls (the H series' merge: none in the Beach for now, its open side walls;
+		# docs/OPEN_QUESTIONS.md item 680).
+		var remix: PackedStringArray = PackedStringArray(before.level.features)
+		remix.erase("dash_wall")
+		check(level.features == remix and before.level.features.has("dash_wall"),
+			"Corporate 2's features but its dash walls, a remix with no new enemy %s" % tag)
 		check(level.feature_starts.is_empty() and level.guarantee_features, "introduces nothing, guarantees every feature %s" % tag)
 		check(level.off_curve, "off the campaign's difficulty curve: its own difficulty and enemy scaling %s" % tag)
 		check(level.difficulty > before_config.difficulty and level.difficulty < after_config.difficulty and level.difficulty >= previous,

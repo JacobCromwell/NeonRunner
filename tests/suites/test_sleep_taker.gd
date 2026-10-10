@@ -7,14 +7,22 @@ extends TestSuite
 ##   points and its touch out of reach, its attacks' hitboxes off until they strike, dozens of maws, the
 ##   colour rule, it fits the street at 3, 5 and 6 lanes, and a draw budget;
 ## - its arena: the Dead Zone's look with nothing hung over the street, darker than normal but never
-##   pitch black, no signs, its refuges (a bridge with pads) fair and the same on every attempt;
+##   pitch black, no signs, its refuges (a bridge with pads) fair and the same on every attempt; owner,
+##   October 8, 2026 (task H9): twice the floor gaps it was first built with, and many side wall gaps,
+##   both walls kept whole over every refuge's stretch;
 ## - the entrance: it rises far ahead and drifts in, heard, attacking nothing;
 ## - weapons: no damage, no auto-fire at it, nothing from splash, the boss bar never moves;
-## - lights out: the inhale before the dark, the light never below its floor, the warnings, hazards,
-##   pads and ceilings' glows drawn without the scene's light, and the light always comes back.
+## - lights out: the inhale before the dark, half as bright as first built (owner, October 8, 2026) and
+##   never below its own floors (every other boss keeps the framework's), the warnings, hazards, pads
+##   and ceilings' glows drawn without the scene's light, and the light always comes back.
 
 const BOSS_PATH: String = "res://data/bosses/dead_zone_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
+## Lights out as first built (task E5c-a): the arena's light sank to this share. The owner's October 8,
+## 2026 lights out is half as bright.
+const FIRST_DARK_LEVEL: float = 0.45
+## Wall gaps a minute in a level, at the median (test_wall_gaps measures 1.0-3.5): the arena has far more.
+const LEVEL_WALL_GAPS_A_MINUTE: float = 1.7
 const SOUNDS: Array[StringName] = [&"sleep_taker_rise", &"sleep_taker_shriek", &"sleep_taker_slash",
 	&"sleep_taker_whisper", &"sleep_taker_hand", &"sleep_taker_inhale", &"sleep_taker_exhale"]
 ## The warnings among them: each must sound the same every time.
@@ -182,8 +190,9 @@ func _test_build() -> void:
 		var hands_off: bool = true
 		for h: Hazard in boss.hands.hazards():
 			hands_off = hands_off and h.is_enemy_attack and not h.is_active()
-		check(hands_off and boss.hands.hazards().size() == SleepTakerHands.POOL,
-			"its hands' hitboxes are enemy attacks, off until one rises %s" % tag)
+		var pool: int = boss.tuning.max_hands(lanes)
+		check(hands_off and boss.hands.hazards().size() == pool and boss.hands.pool_size() == pool,
+			"its hands' hitboxes are enemy attacks, off until one rises: a pool of %d, a whole round's %s" % [pool, tag])
 		# It fits the street it looms over.
 		var widest: float = 0.0
 		var tallest: float = 0.0
@@ -239,14 +248,38 @@ func _test_arena() -> void:
 		"GDD §10: its arena is darker than normal (darkness %.2f), never pitch black" % def.arena.darkness)
 	check(not def.arena.features.has("ceilings") and not def.arena.features.has("cyborg"),
 		"its arena: the Dead Zone's street with its holes and fences, its own refuges, no enemies")
+	# Owner, October 8, 2026: its side walls have many gaps (the arena opts in with numbers of its own).
+	check(def.arena.features.has(WallGapPlacement.FEATURE) and def.arena.wall_gap_tuning != null
+		and BossArena.base_config(def).has_feature(WallGapPlacement.FEATURE)
+		and def.arena.wall_gap_tuning.spacing_seconds_easy < WallGapPlacement.tuning().spacing_seconds_hard * 0.25,
+		"its arena opts into side wall gaps, with numbers of its own: far more often than a level's")
+	# As first built: no extra floor gaps and no wall gaps.
+	var first: BossDef = def.duplicate() as BossDef
+	var first_tuning: SleepTakerTuning = t.duplicate() as SleepTakerTuning
+	first_tuning.floor_gap_increase = 0.0
+	first.tuning = first_tuning
+	var first_arena: LevelConfig = def.arena.duplicate() as LevelConfig
+	first_arena.wall_gap_tuning = null
+	first.arena = first_arena
 	for lanes: int in LANES:
 		var config: LevelConfig = BossArena.base_config(def)
 		config.lane_count = lanes
 		var boss := BossEncounter.create(def) as SleepTaker
 		var again := BossEncounter.create(def) as SleepTaker
+		# As plan_arena() does: the encounter shapes each lap with its own def's numbers.
+		boss.def = def
+		again.def = def
 		var a: BossArena = BossArena.plan(def, config, tuning, boss)
 		var b: BossArena = BossArena.plan(def, config, tuning, again)
 		again.free()
+		var was: SleepTaker = BossEncounter.create(first) as SleepTaker
+		was.def = first
+		var first_config: LevelConfig = BossArena.base_config(first)
+		first_config.lane_count = lanes
+		var before: BossArena = BossArena.plan(first, first_config, tuning, was)
+		was.free()
+		_check_floor_gaps(before, a, lanes)
+		_check_wall_gaps(boss, a, lanes)
 		var tag: String = "(%d lanes)" % lanes
 		check(var_to_str(a.layout.to_dict()) == var_to_str(b.layout.to_dict()), "its arena is the same on every attempt %s" % tag)
 		var v: float = tuning.run_speed
@@ -285,6 +318,65 @@ func _test_arena() -> void:
 		check(signs == 0 and pieces > 0, "its walls carry no signs; its laps keep the street's holes and fences %s" % tag)
 		check(a.layout.enemies.is_empty() and a.layout.credits.is_empty(), "no enemies and no credits on its track %s" % tag)
 		boss.free()
+
+
+## Owner, October 8, 2026: twice the floor gaps the arena was first built with (`before`), over its laps
+## (rows: holes sharing a stretch; lane-gaps: one lane's hole), each new row leaving an open lane.
+func _check_floor_gaps(before: BossArena, after: BossArena, lanes: int) -> void:
+	var tag: String = "(%d lanes)" % lanes
+	var rows := Vector2i.ZERO
+	var lane_gaps := Vector2i.ZERO
+	var open: bool = true
+	for i: int in after.laps.size():
+		rows += Vector2i(GapDensity.rows(before.laps[i]).size(), GapDensity.rows(after.laps[i]).size())
+		lane_gaps += Vector2i(before.laps[i].gaps.size(), after.laps[i].gaps.size())
+		for row: Dictionary in GapDensity.rows(after.laps[i]):
+			open = open and (row["lanes"] as Array).size() < lanes
+	check(rows.x > 0 and rows.y >= 2 * rows.x and lane_gaps.y >= roundi(1.9 * lane_gaps.x),
+		"twice the floor gaps it was first built with: %d rows of holes (%d first), %d lane-gaps (%d first) %s" % [
+		rows.y, rows.x, lane_gaps.y, lane_gaps.x, tag])
+	check(open, "every row of holes leaves an open lane %s" % tag)
+	if lanes == 5:
+		print("  Sleep Taker's arena (5 lanes, 3 laps): %d rows of holes, %d lane-gaps (first built: %d, %d)" % [rows.y,
+			lane_gaps.y, rows.x, lane_gaps.x])
+
+
+## Owner, October 8, 2026: many side wall gaps on its arena (far more than a level's), each as long as its
+## numbers say, none where a refuge's slash warns and strikes or along its bridge (SleepTaker.
+## refuge_wall_span), and its laps keep them as they join the track.
+func _check_wall_gaps(boss: SleepTaker, a: BossArena, lanes: int) -> void:
+	var tag: String = "(%d lanes)" % lanes
+	var t := def.tuning as SleepTakerTuning
+	var gaps: WallGapTuning = def.arena.wall_gap_tuning
+	var count: int = 0
+	var sides := {-1: 0, 1: 0}
+	var sized: bool = true
+	var whole: bool = true
+	for i: int in a.laps.size():
+		var lap: LevelLayout = a.laps[i]
+		for g: Dictionary in lap.wall_gaps:
+			count += 1
+			sides[int(g["side"])] = int(sides[int(g["side"])]) + 1
+			var secs: float = (float(g["end"]) - float(g["start"])) / tuning.run_speed
+			sized = sized and secs >= gaps.length_seconds_min - 0.01 and secs <= gaps.length_seconds_max + 0.01
+		for r: Dictionary in boss._refuge_plan[i]:
+			var span: Vector2 = SleepTaker.refuge_wall_span(t, a, float(r["pad"]))
+			whole = whole and not lap.wall_gap_between(span.x, span.y)
+	var minutes: float = a.laps.size() * a.lap_length / tuning.run_speed / 60.0
+	var a_minute: float = count / minutes
+	check(a_minute >= LEVEL_WALL_GAPS_A_MINUTE * 4.0 and int(sides[-1]) > 0 and int(sides[1]) > 0,
+		"many side wall gaps, on both walls: %.1f a minute (a level's median: %.1f) %s" % [a_minute, LEVEL_WALL_GAPS_A_MINUTE, tag])
+	check(sized, "each wall gap lasts %.1f-%.1f s %s" % [gaps.length_seconds_min, gaps.length_seconds_max, tag])
+	check(whole, "both walls stay whole where each refuge's slash warns and strikes, and along its bridge %s" % tag)
+	var later: LevelLayout = a.lap(a.laps.size() + 1)
+	var source: LevelLayout = a.laps[1 % a.laps.size()]
+	var moved: bool = later.wall_gaps.size() == source.wall_gaps.size() and not later.wall_gaps.is_empty()
+	for k: int in mini(later.wall_gaps.size(), source.wall_gaps.size()):
+		moved = moved and is_equal_approx(float(later.wall_gaps[k]["start"]),
+			float(source.wall_gaps[k]["start"]) + a.lap_length * (a.laps.size() + 1))
+	check(moved, "a lap that joins the track later keeps its wall gaps %s" % tag)
+	if lanes == 5:
+		print("  Sleep Taker's arena (5 lanes, 3 laps): %d wall gaps, %.1f a minute" % [count, a_minute])
 
 
 # --- The entrance ---------------------------------------------------------------------------
@@ -362,9 +454,21 @@ func _test_weapons() -> void:
 
 func _test_lights_out() -> void:
 	var t := def.tuning as SleepTakerTuning
-	check(t.dark_level >= BossEncounter.MIN_LIGHT_LEVEL, "GDD §10: lights out is darker still, never pitch black (%.2f)" % t.dark_level)
-	# The zone's own light, as a run sets it (a bare test world has no level to set it).
-	ZoneSkin.set_scenery_light(1.0)
+	# Owner, October 8, 2026: everything lit gets 50% darker than the first build's lights out.
+	check(is_equal_approx(t.dark_level, FIRST_DARK_LEVEL * 0.5),
+		"lights out sinks to half the first build's light (%.3f of the arena's, first %.2f)" % [t.dark_level, FIRST_DARK_LEVEL])
+	check(t.light_floor > 0.0 and t.light_floor <= t.dark_level and t.scenery_floor > 0.0
+		and t.scenery_floor < ZoneSkin.MIN_SCENERY_LIGHT,
+		"GDD §10: darker still but never pitch black: its own floors (light %.2f, scenery %.2f)" % [t.light_floor, t.scenery_floor])
+	var plain := BossEncounter.new()
+	check(is_equal_approx(plain.light_floor(), BossEncounter.MIN_LIGHT_LEVEL)
+		and is_equal_approx(plain.scenery_floor(), ZoneSkin.MIN_SCENERY_LIGHT),
+		"every other boss keeps the framework's floors (%.1f): only the Sleep Taker's data lowers its own" % BossEncounter.MIN_LIGHT_LEVEL)
+	plain.free()
+	# The arena's own light, as its run sets it (LevelConfig.darkness; a bare test world has no level to
+	# set it).
+	var base: float = ZoneSkin.scenery_light_for(def.arena.darkness)
+	ZoneSkin.set_scenery_light(base)
 	var pair: Array = _fight(_def_with("lights_out", true, false), 5)
 	var world: RunWorld = pair[0]
 	var boss: SleepTaker = pair[1]
@@ -381,14 +485,19 @@ func _test_lights_out() -> void:
 	await _until(world, func() -> bool: return boss.dark.stage == SleepTakerLightsOut.Stage.DARK, 3.0)
 	await _until(world, func() -> bool: return boss.light_level() <= t.dark_level + 0.001, 2.0)
 	var lowest: float = boss.light_level()
-	check(is_equal_approx(lowest, maxf(t.dark_level, BossEncounter.MIN_LIGHT_LEVEL)), "at its darkest the light is %.2f of the arena's" % lowest)
-	check(ZoneSkin.scenery_light_now < 0.999 and ZoneSkin.scenery_light_now >= ZoneSkin.MIN_SCENERY_LIGHT - 0.001,
-		"the street and the ruins darken with it, never below the scenery's floor (%.2f)" % ZoneSkin.scenery_light_now)
+	check(is_equal_approx(lowest, maxf(t.dark_level, t.light_floor)),
+		"at its darkest the light (ambient, sky, fog, sun) is %.3f of the arena's, half the first build's %.2f" % [lowest, FIRST_DARK_LEVEL])
+	# The scenery: the first build's lights out left it at max(base × 0.45, the framework's floor).
+	var first_scenery: float = maxf(base * FIRST_DARK_LEVEL, minf(base, ZoneSkin.MIN_SCENERY_LIGHT))
+	check(is_equal_approx(ZoneSkin.scenery_light_now, base * t.dark_level) and ZoneSkin.scenery_light_now >= t.scenery_floor - 0.001
+		and absf(ZoneSkin.scenery_light_now - first_scenery * 0.5) < 0.002,
+		"the street and the ruins darken with it to %.3f of the zone's light, half the first build's %.3f, above its floor %.2f" % [
+		ZoneSkin.scenery_light_now, first_scenery, t.scenery_floor])
 	check(boss.body.swallowed > 0.5, "the swallowed light glows in its throats")
 	# The light always comes back.
 	await _until(world, func() -> bool: return boss.dark.idle(), t.dark_seconds + t.return_seconds + 2.0)
 	check(is_equal_approx(boss.light_level(), 1.0) and _sounds(boss, &"sleep_taker_exhale").size() == 1
-		and is_equal_approx(ZoneSkin.scenery_light_now, 1.0), "after the dark it breathes out and the light comes back whole")
+		and is_equal_approx(ZoneSkin.scenery_light_now, base), "after the dark it breathes out and the light comes back whole")
 	# ... at once on a phase change, and with the defeat.
 	await _until(world, func() -> bool: return boss.dark.stage == SleepTakerLightsOut.Stage.DARK, 14.0)
 	boss.damage(boss.hit_damage(), &"emp")
@@ -403,6 +512,8 @@ func _test_lights_out() -> void:
 	await _until(world, func() -> bool: return is_equal_approx(boss.light_level(), 1.0), t.return_seconds + 0.5)
 	check(is_equal_approx(boss.light_level(), 1.0), "and the light comes back with the win")
 	await sim.free_world(world)
+	# As a run ends: the zone's own light again, for the suites after this one.
+	ZoneSkin.set_scenery_light(1.0)
 	_check_readable_in_the_dark()
 
 

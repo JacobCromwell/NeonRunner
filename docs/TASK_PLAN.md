@@ -501,6 +501,24 @@ climbing out; a cyborg lying still and crouching), a head tip (`look_up`) and a 
 on the cinematic's clock, and sound events at their own level; and five sounds of its own
 (`tools/asset_gen/sfx_bank_cinematics.gd`). The staging choices still open are in `docs/questions/f2c.md`.
 
+### H. The owner's requests (October 8, 2026)
+
+From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in the GDD where they change design. Run by a second orchestrator session alongside the main one, so core-file tasks here wait for the main session's core task in flight (G7, the generator) and then take their turn.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| H1 | **Gilded Sentinels:** warning halved (1.2 s to 0.6 s), and the live statue and its niche brought forward so they read (GDD §9.11) | – | S–M | T2 |
+| H2 | **The Resonator's warning sound:** a crackling build-up of fire breaking into a crashing wave, replacing the doorbell-like chime (GDD §9.10) | – | S | T2 |
+| H3 | **Buzz Overdrive cuts show the zone below the street,** like an ordinary gap (GDD §9.9) | – | M | T2 |
+| H4 | **Two cyborg-type bursts in the air at once** (cyborgs, window cyborgs, Barnacle Turrets; GDD §9.2). Big attacks still take turns. | – | S–M | T1 |
+| H5 | **The dash smashes doodads** (GDD §3). **Core** (player). | G7 | S–M | T1 |
+| H6 | **Explosions:** one shared yellow-and-red fireball for every explosion, pooled, Compatibility-safe, softened by Reduced flashing (GDD §11) | – | M | T2 |
+| H7a | **Dash walls, the mechanism:** generator placement from the Corporate zone, the wall, the crash rule (armor or shield absorbs; otherwise it kills), crumbling into rubble, sounds and a first-encounter hint (GDD §9.14). **Core** (generator, track builder, damage rules). | G7, H5 | L | T1 |
+| H7b | **Dash walls, the art:** each zone's building face turned toward the player, from its side-wall kit | H7a | M | T2 |
+| H8 | **Weapons hit hosts:** auto-fire targets them and a weapon kill releases the Bad Dream (GDD §9.7). Raised to T1: an earlier release moves the Bad Dream chases the generator plans around. | – | M | T1 |
+| H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10). **Core** (small opt-in hooks in the boss framework and level config). | – | M–L | T1 |
+| H10 | **The Tithe Collector stays twice as long** (GDD §9.12) | – | S | T3 |
+
 ---
 
 ## Order at a glance

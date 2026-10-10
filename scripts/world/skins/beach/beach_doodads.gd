@@ -47,7 +47,9 @@ func _mesh_for(size: Vector3, size_class: StringName, side: int, look_seed: int)
 				_palm(s, size, look_seed)
 		_:
 			_kiosk(s, size, look_seed)
-	var mesh: ArrayMesh = batch.to_mesh()
+	# Tagged with its main lit colours, which the dash's smash throws its pieces in (task H5,
+	# ZoneSkin.doodad_debris_colors; the H series' merge with task D10).
+	var mesh: ArrayMesh = ZoneSkin.tag_debris_colors(batch.to_mesh(), batch)
 	_meshes[id] = mesh
 	return mesh
 

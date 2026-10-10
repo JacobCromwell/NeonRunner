@@ -87,11 +87,17 @@ extends ZoneSkin
 @export var lane_marking_color: Color = Color(0.52, 0.52, 0.5)
 ## The rubble scattered over the street (drawn flat).
 @export var rubble_color: Color = Color(0.36, 0.355, 0.35)
-## DESIGN-TBD (docs/questions/d5.md): everything below the street, seen only through holes (the
-## broken road's cut, the building faces below it, the void): deep shade that only darkens with depth,
-## so a hole reads as a hole at a glance. Kept far darker than the street
-## (tests/suites/test_dead_zone_skin.gd).
-@export var gap_inside_color: Color = Color(0.042, 0.042, 0.044)
+## DESIGN-TBD (docs/questions/d5.md, h3.md): everything below the street, seen only through holes and
+## cuts (the broken road's cut, the ruined basements below it, the void's rubble far down): dim, and
+## darkening with depth, but showing what is there (PAT_DZ_UNDER; task H3, GDD §9.9), so a hole reads
+## as a hole at a glance and still shows the ruins. The brightest it is drawn: kept far darker than the
+## street (tests/suites/test_dead_zone_skin.gd).
+@export var gap_inside_color: Color = Color(0.13, 0.13, 0.135)
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): the void's floor far below (the rubble field the holes end in; the
+## brightest it is drawn: PAT_DZ_UNDER only darkens it). Its own colour because the floor is a top face,
+## seen straight on, which the kit lights more than a wall (0.92 against 0.70): darker, so that it stays
+## as far under the street as the walls do.
+@export var void_floor_color: Color = Color(0.105, 0.105, 0.11)
 ## How far the void under the street goes down (deeper than a fall that ends the run, so a fall never
 ## visibly lands).
 @export_range(4.5, 20.0, 0.1, "suffix:m") var void_depth: float = 7.0
@@ -232,6 +238,7 @@ var _towers: DeadTowers
 var _ceilings: DeadCeilings
 var _props: DeadProps
 var _doodads: DeadDoodads
+var _dash_walls: DeadDashWall
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a ceiling across every
 ## lane reaches from wall to wall, and a narrow one knows which of its sides reach a wall.
 var _wall_x: float = 0.0
@@ -329,6 +336,19 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, trigger_metal_color)
 	batch.commit(parent)
+
+
+## A dash wall (task H7b): the stump of a burnt-out tower across the street, built from the dead towers' own kit
+## (DeadDashWall): scorched cladding, gutted windows, charred concrete, steel, a broken top.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in the Dead Zone's own charred facades: ash grey
+## walls, darker trim, black glass and cracks. Kept as the palette the debris falls back on.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([facade_colors[facade_colors.size() - 1], facade_colors[2 % facade_colors.size()],
+		Color(0.05, 0.05, 0.052), Color(0.02, 0.02, 0.02)])
 
 
 ## A crushed wreck (small), a rubble heap (medium) or fallen masonry (large): DeadDoodads.
@@ -439,6 +459,12 @@ func street() -> DeadStreet:
 	if _street == null:
 		_street = DeadStreet.new(self)
 	return _street
+
+
+func dash_walls() -> DeadDashWall:
+	if _dash_walls == null:
+		_dash_walls = DeadDashWall.new(self)
+	return _dash_walls
 
 
 func towers() -> DeadTowers:

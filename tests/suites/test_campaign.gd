@@ -40,7 +40,7 @@ const FIRST_LEVEL: Dictionary = {
 	"generator": "gangland/3", "drone": "gangland/3",
 	"barnacle_turret": "marketplace/1",
 	"wall_fences": "marketplace/2", "screech_vents": "marketplace/2",
-	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1",
+	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1", "dash_wall": "corporate/1",
 	"tithe_collector": "corporate/2", "enforcer_truck": "corporate/2",
 	"host": "dead_zone/1",
 	"resonator": "golden/1",
@@ -61,6 +61,9 @@ const LEFT_OUT: Dictionary = {
 	"screech_vents": ["dead_zone/1", "dead_zone/2"],
 	# GDD §9.12 (proposed): the Tithe Collector skips the Dead Zone and returns in the Golden Zone.
 	"tithe_collector": ["dead_zone/1", "dead_zone/2"],
+	# No dash walls in the Beach for now (GDD §9.14 has them in every zone after Corporate, but the Beach's side walls
+	# stand open on about half of a level and it has no wall look): docs/OPEN_QUESTIONS.md item 680.
+	"dash_wall": ["beach/1", "beach/2"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the

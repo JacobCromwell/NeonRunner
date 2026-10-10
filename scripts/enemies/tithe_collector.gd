@@ -30,15 +30,16 @@ extends Enemy
 ##   TitheCollectorTuning); any defeat (a stomp, a shot, the dash, the claws) is a catch, and
 ##   ScoreKeeper.pay_out (wired generically to every thief, task B6) bursts out everything it holds
 ##   plus its jackpot. Robbed, it flees ahead and up with what it took, exactly like the stand-in
-##   thief, until it's gone for good (should_retire) or caught on its way out.
-## Spawn params: none (every lane crossing is decided live, from the layout around it). Numbers:
+##   thief, until it's gone for good (should_retire) or caught on its way out. Fleeing, it rises over a
+##   standing dash wall in its way (task H7a; Enemy.dash_wall_lift); the generator keeps the walls off its
+##   whole stay, so it never meets one before.
+## Spawn params: `approach_speed` (m/s at REFERENCE_SPEED, default the tuning's) for a place that can't
+## hold its stay (Hostile Takeover's Board: a flatcar's roof is too short to meet it before the roof ends,
+## task H10); every lane crossing is decided live, from the layout around it. Numbers:
 ## data/enemies/tithe_collector.tres (TitheCollectorTuning).
 
 const MeshBatch = preload("res://scripts/enemies/mesh_batch.gd")
 const O = DamageRules.Outcome
-## Once the runner is this far past it, never touched, it's gone (metres at REFERENCE_SPEED,
-## stretched by the pace): a clean dodge, like the stand-in thief's.
-const PASSED_BEHIND: float = 8.0
 ## Gold, plain metal (GDD §9.12): never glows, so it never reads as a hazard.
 const GOLD := Color(1.0, 0.76, 0.3)
 const GOLD_TRIM := Color(1.0, 0.9, 0.62)
@@ -61,6 +62,8 @@ var height_now: float = 0.0
 ## Ahead of the player right now (APPROACH: shrinking from tune.start_ahead_at(pace); FLEE: growing).
 var rel_ahead: float = 0.0
 var target_lane: int = 0
+## How fast the runner closes in on it (m/s at REFERENCE_SPEED): the tuning's, or the spawn's param.
+var approach_speed: float = 0.0
 var _weave_t: float = 0.0
 var _vacuum_t: float = 0.0
 var _lat_v: float = 0.0
@@ -99,6 +102,7 @@ func _build() -> void:
 	if not (tuning_res is EnemyTuning):
 		max_health = tune.health_early
 		score_value = tune.score_value
+	approach_speed = float((spawn.get("params", {}) as Dictionary).get("approach_speed", tune.approach_speed))
 	var lanes: int = world.geo.lane_count
 	target_lane = clampi(int(spawn.get("lane", world.player.lane)), 0, lanes - 1)
 	var pace: float = world.tuning.pace()
@@ -114,7 +118,7 @@ func _build() -> void:
 	box.contacted.connect(_on_contacted)
 	_place()
 	# An approach cue (GDD §9.12), not a hazard warning: it isn't an attack, but it must be
-	# noticeable, so it plays for everyone to hear, like the Resonator's chime. Anti-grav pads
+	# noticeable, so it plays for everyone to hear, like the Resonator's warning. Anti-grav pads
 	# don't affect it (GDD §9.12, proposed): it never connects to world.player.movement_event,
 	# unlike the heli drone.
 	world.play_sfx(&"tithe_collector_cue")
@@ -125,7 +129,7 @@ func _tick(delta: float) -> void:
 	var pace: float = world.tuning.pace()
 	match state:
 		State.APPROACH:
-			rel_ahead -= tune.approach_speed_at(pace) * delta
+			rel_ahead -= approach_speed * pace * delta
 			track_d = p.distance + rel_ahead
 			_reweave(pace, delta)
 			var target_x: float = world.geo.lane_x(target_lane)
@@ -136,19 +140,27 @@ func _tick(delta: float) -> void:
 		State.FLEE:
 			rel_ahead += tune.flee_speed_at(pace) * delta
 			track_d = p.distance + rel_ahead
-			height_now = minf(height_now + tune.flee_rise_at(pace) * delta, tune.flee_height)
+			# Up to its flee height, or over a standing dash wall in its way (task H7a), and back down past it.
+			var over: float = dash_wall_lift(track_d, tune.body_size.z * 0.5, height_now,
+				p.speed + tune.flee_speed_at(pace))
+			if over > 0.0:
+				height_now = move_toward(height_now, over, maxf(tune.flee_rise_at(pace), DASH_WALL_CLIMB_SPEED) * delta)
+			elif height_now > tune.flee_height:
+				height_now = move_toward(height_now, tune.flee_height, DASH_WALL_CLIMB_SPEED * delta)
+			else:
+				height_now = minf(height_now + tune.flee_rise_at(pace) * delta, tune.flee_height)
 			_lat_v = 0.0
 	_bob_t += delta
 	_place()
 
 
 ## Gone once it fled with what it took (far ahead for good), or, never touched, has run well behind
-## the player (the stand-in thief's PASSED_BEHIND: a clean dodge).
+## the player (tune.passed_behind, like the stand-in thief's: a clean dodge).
 func should_retire() -> bool:
 	var pace: float = world.tuning.pace() if world != null else 1.0
 	if state == State.FLEE:
 		return rel_ahead > tune.gone_ahead_at(pace)
-	return rel_ahead < -PASSED_BEHIND * pace
+	return rel_ahead < -tune.passed_behind_at(pace)
 
 
 func aim_point() -> Vector3:

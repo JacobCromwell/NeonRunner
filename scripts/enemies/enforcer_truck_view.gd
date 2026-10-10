@@ -7,7 +7,8 @@ extends RefCounted
 ## screen and hides neither the runner nor the floor of their lane and the lanes past it (fits(); every lane
 ## and lane count is checked by tests/suites/test_enforcer_truck.gd). The base field of view is the narrowest
 ## the camera has (it widens with speed), and a wider screen (a phone) shows more at the sides; 4:3 shows less,
-## and only 6 lanes (PC only) come near its edges. The blast (EnforcerTruckBlast) is checked in it too.
+## and only 6 lanes (PC only) come near its edges. Its blast (a shared fireball carried along with its wreck,
+## EnforcerTruck._explode) is checked in it too.
 ## Plain arithmetic, no camera node: the same on every machine and in a headless run, so a seeded run decides
 ## the same way on every screen.
 

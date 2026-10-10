@@ -113,6 +113,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
   - A doodad doesn't show which way it will push (owner, October 9, 2026: no hint needed).
   - Its outline may dip below the full height at its edges (the rubble heap) as long as its middle stays high, so it still reads as too tall to jump. Doodads are lit like the street around them, with no coloured edge glow.
   - *(Proposed:)* a push never lands the player on a gap or a hazard, and it costs nothing else.
+  - **The dash smashes a doodad** (owner, October 8, 2026): dashing into one breaks it apart, and the player keeps their lane with no push and no damage.
 
 ---
 
@@ -362,7 +363,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Passing through:** the shield, armor, and juggernaut get you through. Claws don't.
 - **Weapons:** cannot destroy fences, and auto-fire ignores them.
 - **Generators:** occasional; **most fences have none**.
-  - Destroyed by a **stomp** or the **dash**. **Weapons never set one off** (decided September 26, 2026): auto-fire never targets generators and missile splash never damages them, the same rule as for hosts, so an EMP is always the player's choice.
+  - Destroyed by a **stomp** or the **dash**. **Weapons never set one off** (decided September 26, 2026): auto-fire never targets generators and missile splash never damages them, so an EMP is always the player's choice. (Hosts had the same rule until October 8, 2026; weapons now hit them, §9.7.)
   - Sends out an **EMP** that disables fences within a short radius for the rest of the level *(assumed duration)*.
   - The EMP also dissolves the Cyborg's Bad Dream.
 - **Wall fences** (owner, September 26, 2026; first appear in Marketplace 2 *(proposed)*): electric fences that **span a side wall** and **turn off and on** from time to time, to make the walls less safe.
@@ -392,6 +393,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
   - Bolts are slow enough to dodge by switching lanes.
+  - **Up to two bursts in the air at once** (owner, October 8, 2026): cyborgs, window cyborgs and Barnacle Turrets share the limit. The build had allowed only one, which looked unnatural. Big attacks still take turns (§9).
 - **Panic variant (~1 in 3):** runs away in a panic, firing wildly over its shoulder, with a shocked "O" face on its visor.
 - **Window cyborgs:** upper body in building windows.
   - They don't move; they shoot at the player.
@@ -476,7 +478,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Origin:**
   - Bursts out of a **host cyborg** when the host is killed.
   - Hosts are **visibly marked**: their LED visor glitches with purple static and corrupted expressions.
-  - **Auto-fire never targets hosts**, and missile splash never damages them. **Hosts are immune to all weapon damage** (decided September 26, 2026), so a stray shot can never release a Bad Dream by accident. Killing a host is always a deliberate choice (stomp, claws, or dash) and earns a big score bonus.
+  - **Weapons hit hosts** (owner, October 8, 2026, replacing the September 26 rule that hosts were immune to all weapon damage): **auto-fire targets hosts** like any other cyborg, and a weapon kill releases the host's Bad Dream. The player who doesn't want that **switches the weapon off** in the shop (the equip toggle), so carrying a weapon into host levels becomes a choice with a cost. Killing a host with a stomp, claws or the dash still earns a big score bonus.
 - **Movement:**
   - **Passes through fences and physical barriers.**
   - Drifts toward the player's lane at a limited sideways speed.
@@ -507,7 +509,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Body:** treated like the cyborg's body. Running into it is deadly unless the player has the shield or claws (or is dashing); armor doesn't help.
 - **Armor and shield:** both block its shots.
 - **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
-- **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Only one fires at a time *(proposed)*.
+- **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Up to two cyborg-type bursts are in the air at once (§9.2; owner, October 8, 2026), so both turrets on a ceiling may fire together.
 
 ### 9.9 Buzz Overdrive (owner, September 26, 2026; the Corporate zone's new enemy, first appears in Corporate 1)
 - **Look:** a **truck-sized buzzsaw tank** with a giant, **vertical** buzzsaw blade. Militaristic. If it can be seen at gameplay size, a **red, angry eye on each side**.
@@ -515,7 +517,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Sequence:**
   1. The player sees it **in the distance**, in its lane.
   2. It **revs in view for a few seconds**, with a spin-up noise as its blade spins up. During the wind-up, **the lane it is about to cut lights up with a red warning line** on the floor (like the Octodog's lunge line).
-  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**, from where it started charging all the way back past the player. The cut edges glow the usual gap-edge orange.
+  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**, from where it started charging all the way back past the player. The cut edges glow the usual gap-edge orange. **Inside the cut, the player sees the zone's own scenery below the street**, the same as through an ordinary gap (owner, October 8, 2026): the canal in the Golden Zone, the trench under the maglev line, and so on, never a dark box.
   4. It goes off the screen behind the player, and that's the end of it.
 - **Dodge:** leave its lane before it arrives. It only threatens **its own floor lane**: wall runners and ceiling runners are safe, even beside it.
 - **Contact:** touching the buzzsaw hurts. The **shield and armor block it**. After a block, the floor under the player **holds for about a second**, just enough to switch lanes (a jump would land back in the cut lane). Escaping after a block should be of **medium difficulty**.
@@ -533,7 +535,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Look** *(proposed)*: a floating, slender golden spire ringed by 2–3 slowly turning halos around a red glowing core. Elegant luxury tech rather than religious.
 - **Sequence** *(proposed)*:
   1. It hovers far ahead.
-  2. Before each pulse, its halos spin up and line up, and it plays the cult's signature **three-note chime**, pleasant like a public-address jingle. That's the audio warning, and its pleasantness is the creepy part.
+  2. Before each pulse, its halos spin up and line up, with an audio warning. **The warning sounds like a crackling build-up of fire breaking into a crashing wave** (owner, October 8, 2026, replacing the three-note chime, which sounded like a doorbell).
   3. It sends a **red shockwave ring rolling along the floor toward the player, across every lane**.
   4. It leaves after a few pulses. Later in the zone it pulses faster or sends double waves.
 - **Dodge:** jump the wave, or be on a wall or the ceiling (waves only travel along the floor).
@@ -542,13 +544,14 @@ Shared interaction rules apply unless stated otherwise:
 
 ### 9.11 Gilded Sentinels (owner, September 26, 2026; first appear in Golden 2 *(proposed)*)
 - **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**; decorative statues never stand at wall-run height (safe things look safe). They fit the Golden Palace as its guards.
-- **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**.
+- **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**. **The warning is half as long as first built** (owner, October 8, 2026: 0.6 s instead of 1.2 s).
+- **Seeing it** (owner, October 8, 2026): the live statue and the back of its niche stand **further forward**, out of the arch's shadow, so the player can make out what it is.
 - **Dodge:** on the wall, pass above or below the swing by timing the wall entry; on the floor, stay out of the outer lane. Later ones swing twice or come in pairs.
 - **Kill:** a stomp from a wall jump *(proposed)*, or weapons: **17 shots** at laser tier 1, with no special weapon rule (decided September 26, 2026). Armor blocks the halberd; the statue's body is solid *(proposed)*.
 
 ### 9.12 Tithe Collector (owner, September 26, 2026; first appears in Corporate 2 *(proposed)*)
 - **Look:** a small, fast gold drone with a collection plate; smug and gaudy.
-- **Behaviour:** darts along the lanes ahead of the player and **sucks up the credits in its path** (a visible stream of credits flowing into it). It weaves through the most dangerous lanes, so chasing it is the risk.
+- **Behaviour:** darts along the lanes ahead of the player and **sucks up the credits in its path** (a visible stream of credits flowing into it). It weaves through the most dangerous lanes, so chasing it is the risk. It **stays in the level twice as long as first built** (owner, October 8, 2026).
 - **Catch it** (stomp, shoot or dash through it) and it bursts into **everything it took plus a jackpot**.
 - **Touching it isn't deadly:** it grabs **25% of the credits collected this run** (decided September 26, 2026) and flies off. This is the game's first non-lethal hit.
 - *(Proposed)* It is **not a heli drone**: anti-grav pads don't affect it, and it has no rotors, so it doesn't look like one.
@@ -580,6 +583,14 @@ Shared interaction rules apply unless stated otherwise:
   - It appears where Octodogs or Buzz Overdrives appear, **introduced in Corporate 2** with a first-encounter hint.
 - **Teaching** (owner, October 7, 2026): **occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge**, so the player sees a charge flatten another enemy. At least one comes before the Enforcer's first appearance in Corporate 2.
 - **Name:** "Enforcer" is also used in two cyborg variants' art names (§9.2: Gangland's "Broadcast Brute" Enforcer and the Marketplace's "Casino Mob Enforcer"). The truck keeps the name.
+
+### 9.14 Dash walls (owner, October 8, 2026; first appear in the Corporate zone)
+- **What:** a wall standing **across every floor lane**, like a building in the middle of the street. It uses the zone's side-wall look (the same building faces), turned to face the player.
+- **Getting through:** the player **dashes through it**. It crumbles and explodes into rubble.
+- **Without the dash** (not owned, switched off, or on cooldown): the player crashes through it and takes **one hit**. **Armor or the shield absorbs it** (an exception to the rule that armor doesn't block solid collisions); with neither, the hit kills. The wall breaks either way.
+- **Walls stay open:** it blocks only the floor. A player running on a side wall passes it. **No ceiling overlaps a dash wall.**
+- **Introduced in the Corporate zone** *(proposed: Corporate 1, after the Buzz Overdrive's introduction)*, and in the zones after it.
+- *(Proposed)* Fairness: walls are spaced so the dash's longest cooldown (8 s) is always over before the next wall, and nothing else that needs the dash comes just before one.
 
 ---
 
@@ -676,7 +687,10 @@ Shared interaction rules apply unless stated otherwise:
   - **Attacks** (each with a visual and audio warning):
     - **Giant slash** across three lanes: the maw opens with a shriek (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling.
     - **Grasping hands** rising from the floor: purple mist pools in the lane, with whispering. Switch lanes.
-    - **Lights out:** after a deep inhale, it swallows much of the light. It gets **darker still, but not pitch black**, and the glowing hazards stay visible while hands and slashes keep coming.
+    - **Lights out:** after a deep inhale, it swallows much of the light. It gets **darker still, but not pitch black**, and the glowing hazards stay visible while hands and slashes keep coming. **Half as bright again as first built** (owner, October 8, 2026): everything that is lit gets 50% darker than the first build's lights-out, while glowing things (gap edges, lasers, warnings) stay as visible as before.
+    - **The hands spread out** (owner, October 8, 2026): one round of hands rises at **several distances along the street**, not all at the same spot, so the player has to make several lane switches in a row to get through one round.
+    - **The walls aren't safe** (owner, October 8, 2026): the arena's side walls have **many gaps**, and the hands attack the walls much more often.
+    - **Twice as many floor gaps** as first built (owner, October 8, 2026).
   - **It can't reach the ceiling** (the Bad Dream rule), so anti-grav pads are the refuge from the big slashes.
   - **Hurting it:** glowing fence generators stand along the route. The player **lures it close** (it lunges toward them), then **destroys the generator with a stomp or the dash**; the EMP rips a chunk of the nightmare away.
   - **Weapons never set off a generator** (the rule everywhere, §9.1), so the weapon can't trigger an EMP before the player wants it. Weapons have no effect in this fight at all.
@@ -805,6 +819,7 @@ Shared interaction rules apply unless stated otherwise:
   The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. Customization is still open.
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
 - **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key. **No more generated songs** (decided September 28, 2026): the owner will provide the game's songs later; until then the game keeps the generated tracks it already has, and no new music is generated (a place that needs a song it doesn't have reuses an existing track or plays none). This applies to songs only (owner, October 9, 2026): there is no reason not to make **new sound effects where the existing ones don't cover a moment properly** (a cinematic's included), in the same style.
+- **Explosions** (owner, October 8, 2026): every explosion in the game (the heli drone's crash, the trucks, the Buzz Overdrive, generators, missiles and bosses) is a big, visually impressive **yellow and red fireball**. Reduced flashing softens it.
 - **Readability rules:**
   - Hazards keep a consistent color and shape language across zones.
   - Safe things look safe; deadly parts look deadly.

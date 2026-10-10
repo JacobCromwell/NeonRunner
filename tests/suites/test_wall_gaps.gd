@@ -11,7 +11,10 @@ extends SkinSuite
 ##   that wall only, both walls at once;
 ## - the generator: Zone 2 on places a few, deterministically, rarely on both walls, clear of every
 ##   keep-out (WallGapPlacement.keep_outs) and with no wall credit inside one; City levels and every
-##   boss arena have none, and a level is otherwise the same without the feature.
+##   boss arena have none, and a level is otherwise the same without the feature; the one exception is
+##   an arena that opts in with numbers of its own (LevelConfig.wall_gap_tuning: the Sleep Taker's, owner,
+##   October 8, 2026), which gets many, by its numbers, clear of the same keep-outs, every lap keeping
+##   them as it joins the track.
 ## - a level's own numbers (LevelConfig.wall_gap_tuning, task D10b): null in every campaign level but the Beach's,
 ##   which places its gaps by the shared file (a copy of its numbers builds the same level); the Beach's open their
 ##   walls by the Beach's file (task D10c: in the campaign); a level's own numbers are the ones it's built by, and
@@ -306,13 +309,19 @@ func _test_without() -> void:
 			id, kept, with_gaps.credits.size(), without.credits.size()])
 
 
-## Every boss arena: no gaps, even if its config were to list the feature.
+## Every boss arena: no gaps, even if its config were to list the feature, unless it opts in with numbers
+## of its own (the Sleep Taker's: _test_opted_in).
 func _test_bosses() -> void:
+	var opted: int = 0
 	for file: String in DirAccess.get_files_at("res://data/bosses"):
 		if not file.ends_with(".tres"):
 			continue
 		var def := load("res://data/bosses".path_join(file)) as BossDef
 		if def == null:
+			continue
+		if def.arena != null and def.arena.wall_gap_tuning != null:
+			opted += 1
+			_test_opted_in(def)
 			continue
 		var config: LevelConfig = BossArena.base_config(def)
 		check(not config.has_feature(WallGapPlacement.FEATURE), "%s's arena lists no wall gaps" % def.id)
@@ -328,6 +337,61 @@ func _test_bosses() -> void:
 				continue
 			var boss_config: LevelConfig = campaign.configure_boss(step, 5)
 			check(not boss_config.has_feature(WallGapPlacement.FEATURE), "%s's campaign fight lists no wall gaps" % def.id)
+	check(opted == 1, "only the Sleep Taker's arena opts into wall gaps (%d)" % opted)
+
+
+## The Sleep Taker's arena (owner, October 8, 2026: "the walls aren't safe"): it keeps the feature with
+## numbers of its own, in quick play and in the campaign; at 3, 5 and 6 lanes its laps (as the fight plans
+## them, refuges and all) have many gaps, far more than a level, each as long as its numbers say and clear
+## of every keep-out a level's keeps (by its numbers), the same on every attempt, and a lap joining the
+## track later keeps them.
+func _test_opted_in(def: BossDef) -> void:
+	var t: WallGapTuning = def.arena.wall_gap_tuning
+	check(def.arena.has_feature(WallGapPlacement.FEATURE) and BossArena.base_config(def).has_feature(WallGapPlacement.FEATURE)
+		and WallGapPlacement.tuning_for(BossArena.base_config(def)) == t, "%s's arena opts in with numbers of its own" % def.id)
+	for step: CampaignStep in campaign.steps():
+		if not step.is_level() and step.boss == def:
+			var boss_config: LevelConfig = campaign.configure_boss(step, 5)
+			check(boss_config.has_feature(WallGapPlacement.FEATURE) and boss_config.wall_gap_tuning == t,
+				"%s's campaign fight keeps them" % def.id)
+	for lanes: int in [3, 5, 6]:
+		var tag: String = "(%s, %d lanes)" % [def.id, lanes]
+		var config: LevelConfig = BossArena.base_config(def)
+		config.lane_count = lanes
+		var plans: Array[String] = []
+		var arena: BossArena = null
+		for attempt: int in 2:
+			var encounter: BossEncounter = BossEncounter.create(def)
+			encounter.def = def
+			arena = BossArena.plan(def, config, tuning, encounter)
+			encounter.free()
+			var all: Array = []
+			for lap: LevelLayout in arena.laps:
+				all.append(lap.wall_gaps)
+			plans.append(JSON.stringify(all))
+		check(plans[0] == plans[1], "the same gaps every attempt %s" % tag)
+		var count: int = 0
+		var sized: bool = true
+		var clear: bool = true
+		for lap: LevelLayout in arena.laps:
+			var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, lap)
+			for g: Dictionary in lap.wall_gaps:
+				count += 1
+				var secs: float = (float(g["end"]) - float(g["start"])) / tuning.run_speed
+				sized = sized and secs >= t.length_seconds_min - 0.01 and secs <= t.length_seconds_max + 0.01
+			for side: int in [-1, 1]:
+				for kp: Vector2 in WallGapPlacement.keep_outs(gen, lap, side, t):
+					for g: Dictionary in lap.wall_gaps:
+						if int(g["side"]) == side and float(g["start"]) < kp.y - 0.01 and float(g["end"]) > kp.x + 0.01:
+							clear = false
+		var a_minute: float = count / (arena.laps.size() * arena.lap_length / tuning.run_speed / 60.0)
+		check(a_minute >= 8.0, "many wall gaps: %.1f a minute (a level's median is under 3.5) %s" % [a_minute, tag])
+		check(sized, "each lasts %.1f-%.1f s %s" % [t.length_seconds_min, t.length_seconds_max, tag])
+		check(clear, "each clear of every keep-out (the refuges' bridges, the run-up, the end) %s" % tag)
+		var joined: LevelLayout = arena.lap(arena.laps.size())
+		check(joined.wall_gaps.size() == arena.laps[0].wall_gaps.size() and not joined.wall_gaps.is_empty()
+			and is_equal_approx(float(joined.wall_gaps[0]["start"]), float(arena.laps[0].wall_gaps[0]["start"]) + arena.lap_length * arena.laps.size()),
+			"a lap joining the track later keeps its gaps, moved along %s" % tag)
 
 
 ## Task D10b: a level's own numbers (LevelConfig.wall_gap_tuning). Every campaign level has none and places its

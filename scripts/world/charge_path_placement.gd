@@ -354,6 +354,36 @@ static func path_clear(gen: LevelGenerator, ot: OctodogTuning, lane: int, throug
 	return true
 
 
+## The stretch planted cyborg `cyborg`'s encounter keeps every other big attack off (attack_near's `span`, as the
+## placement measures it: from its charger's claim to past its strike, attack_margin_seconds of run either side),
+## for what's placed after it and must keep its distance too (task H7a's dash walls, DashWallRules); an empty span
+## (x > y) if it has no charger.
+static func encounter_span(gen: LevelGenerator, cyborg: Dictionary) -> Vector2:
+	var charger: Dictionary = charger_of(gen.layout, cyborg)
+	if charger.is_empty():
+		return Vector2(INF, -INF)
+	var t: ChargePathTuning = tuning()
+	var v: float = gen.speed
+	var margin: float = t.attack_margin_seconds * v
+	if String(charger.get("type", "")) == DOG:
+		var cp: Dictionary = charger.get("params", {})
+		var anchors: Array = cp.get("charge_at", [])
+		if anchors.is_empty():
+			return Vector2(INF, -INF)
+		var ot: OctodogTuning = OctodogRules.tuning()
+		var scaling: float = gen.config.enemy_scaling
+		var a0: float = float(anchors[0])
+		var strike_end: float = a0 + (ot.windup_time(scaling) + ot.lunge_duration(v, scaling, gen.pace)
+			+ t.hold_after_seconds) * v
+		var claim: float = minf(float(cp.get("claim_at", a0)), a0 - t.claim_seconds * v)
+		return Vector2(claim - margin, strike_end + margin)
+	var cut: Dictionary = BuzzRules.cut_of(gen.layout, charger)
+	if cut.is_empty():
+		return Vector2(INF, -INF)
+	var claim_s: float = maxf(t.claim_seconds, BuzzRules.tuning().claim_seconds)
+	return Vector2(FloorCutPlan.warn_at(cut) - claim_s * v - margin, FloorCutPlan.window(cut, v).y + margin)
+
+
 ## What other big attack planned in the level (other than `charger`'s own) could hold its charge back in `span`
 ## (track distances: from before its claim to past its strike), or "" if none. A drone's barrage and a hover
 ## truck's lurch or cannon shot ask for their turn before their warnings, so they wait for the encounter's claim

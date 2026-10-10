@@ -119,12 +119,20 @@ func cut(parent: Node3D, section: FloorCutSection) -> void:
 	})
 
 
-## The bottom of a break in the floor far below, and the dust motes and speed streaks drifting over
-## the hall's floor (the still floor's motion cue, the owner's review: GDD §5), for one chunk. Neither
-## belongs to a lane, so the skin adds them to the left wall's mesh.
+## The bottom of a break in the floor far below, the well's stone down the walls on both sides (so a hole
+## in an outer lane shows the stairwell's wall, not the hall's outside: task H3), and the dust motes and
+## speed streaks drifting over the hall's floor (the still floor's motion cue, the owner's review: GDD
+## §5), for one chunk. None of it belongs to a lane, so the skin adds them to the left wall's mesh.
 func below(batch: MeshBatch, half_width: float, start: float, end: float) -> void:
+	var well: MeshLayer = batch.layer(skin.solid_material())
+	var depth: float = skin.canal_depth
+	# Faces toward the street (the kit culls back faces): the left wall's looks along +x, the right's along -x.
+	well.rect(Vector3(-half_width, -depth, -start), Vector3(0, 0, -(end - start)), Vector3(0, depth, 0), skin.gap_inside_color, 0.0,
+		MeshKit.PAT_PALACE_WELL)
+	well.rect(Vector3(half_width, -depth, -end), Vector3(0, 0, end - start), Vector3(0, depth, 0), skin.gap_inside_color, 0.0,
+		MeshKit.PAT_PALACE_WELL)
 	batch.layer(skin.solid_material()).rect(Vector3(-half_width, -skin.canal_depth, -start), Vector3(half_width * 2.0, 0, 0),
-		Vector3(0, 0, -(end - start)), skin.gap_inside_color, 0.0, MeshKit.PAT_PALACE_WELL)
+		Vector3(0, 0, -(end - start)), skin.well_floor_color, 0.0, MeshKit.PAT_PALACE_WELL, Vector2.ZERO, Vector2.ONE, 1.0)
 	MeshKit.drift_particles(batch.layer(skin.drift_material()), start, end, TrackBuilder.CHUNK_LENGTH, half_width - 0.7,
 		7.0, skin.mist_count, skin.leaf_count, skin.streak_count,
 		PackedColorArray([skin.mist_color, skin.leaf_color, skin.streak_color]))

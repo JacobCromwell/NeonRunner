@@ -8,7 +8,8 @@ extends SceneTree
 ##   sfx_bank_power.gd    power-ups, weapons and protective items
 ##   sfx_bank_enemies.gd  enemies: every attack's warning, the attacks, hits and deaths
 ##   sfx_bank_bosses.gd   bosses: their entrances, warnings and attacks
-##   sfx_bank_resonator.gd  the Resonator: its chime (the warning), its pulse and its death
+##   sfx_bank_resonator.gd  the Resonator: its warning (a crackling fire breaking into a wave crash), its
+##                        pulse and its death
 ##   sfx_bank_barnacle.gd   the Barnacle Turret: popping out, its charge-up (the warning), its bolts, its death
 ##   sfx_bank_sleep_taker.gd  the Sleep Taker: its rise, its attacks' warnings (the shriek, the
 ##                        whispering, the inhale) and the attacks
