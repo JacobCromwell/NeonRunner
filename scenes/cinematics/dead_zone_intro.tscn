@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/cinematics/dead_zone_intro/dead_zone_intro.gd" id="1_intro"]
+[ext_resource type="Resource" path="res://data/cinematics/dead_zone_intro_tuning.tres" id="2_numbers"]
+
+[node name="DeadZoneIntro" type="Node"]
+script = ExtResource("1_intro")
+numbers = ExtResource("2_numbers")

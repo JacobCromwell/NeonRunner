@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CasinoSkin" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/skins/casino_skin.gd" id="1_skin"]
+
+[resource]
+script = ExtResource("1_skin")
+enemy_variant = &"casino"
+bunting_height = 28.0
+overhang_min_height = 14.5
+eave_height = 34.0
+hangings = false
+flush_faces = true

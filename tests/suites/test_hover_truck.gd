@@ -6,7 +6,14 @@ const DroneScript := preload("res://scripts/enemies/drone.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const S := TruckScript.State
 
+## The campaign builds whose hover truck is gone before the level's ramps start, so it has route (b) only
+## (_check_rules), each checked to still show it: none on task K4's curve (Gangland 1 at 3 lanes on task K2's,
+## its truck out at 363 m and its ramps from 1177 m). Any other wants a look.
+const BEFORE_RAMPS: PackedStringArray = []
+
 var sim: RunSim
+## The tags of the builds whose trucks _check_rules saw gone before their level's ramps start.
+var before_ramps: PackedStringArray = []
 
 
 func run() -> void:
@@ -240,6 +247,54 @@ func _test_escape_rule() -> void:
 		"no forward lurch while the player in front of it has no way out")
 	var revved: bool = await _run_until(w, 4.0, func() -> bool: return t.state == S.REV)
 	check(revved, "it revs once the way out is open again")
+	await sim.free_world(w)
+
+	# The same with the wall beside its lane open instead of signed (a side wall gap, task D10b: the Beach's walls
+	# stand on about half of a level): a move onto the wall inside a gap is refused (wall_missing), so the wall is no
+	# way out either. A player who tries it at the rev would be caught.
+	layout = RunSim.layout(3, 600.0)
+	layout.wall_gaps.append({"side": 1, "start": 0.0, "end": 130.0})
+	layout.gaps.append({"lane": 1, "start": 20.0, "end": 100.0})
+	w = sim.build_world(layout)
+	w.player.setup(tuning, w.geo, 2)
+	t = _truck(w, 0.0, {"skip_entrance": true, "phase": "hold_back", "offset": t_back(), "guns": false})
+	var tried: Array = [false]
+	await _run_until(w, 5.0, func() -> bool:
+		if t.state == S.REV and not tried[0]:
+			tried[0] = true
+			w.player.press(&"move_right")
+		return w.player.distance > 90.0 or not w.player.alive)
+	check(not tried[0] and w.player.alive and t.state == S.HOLD_BACK,
+		"no forward lurch while the wall beside its lane is open (a move onto it is refused) and the next lane has a hole")
+	revved = await _run_until(w, 4.0, func() -> bool: return t.state == S.REV)
+	check(revved, "it revs once the next lane is open again")
+	await sim.free_world(w)
+
+	# A player on the wall beside it, out of its way, but whose wall opens before its lurch is over: they'd drop off
+	# into its lane in front of the spikes, so it waits; once they're down in its lane it revs, and the next lane is
+	# their way out.
+	var tt := load("res://data/enemies/hover_truck.tres") as HoverTruckTuning
+	layout = RunSim.layout(3, 600.0)
+	var drop_at: float = tuning.run_speed * (tt.hold_back_seconds + tt.rev_seconds * 0.7)
+	layout.wall_gaps.append({"side": 1, "start": drop_at, "end": drop_at + 40.0})
+	w = sim.build_world(layout)
+	w.player.setup(tuning, w.geo, 2)
+	t = _truck(w, 0.0, {"skip_entrance": true, "phase": "hold_back", "offset": t_back(), "guns": false})
+	await _run_until(w, 1.0, func() -> bool: return w.player.distance >= tuning.run_speed * (tt.hold_back_seconds - 0.3))
+	w.player.press(&"move_right")
+	var on_wall: bool = await _run_until(w, 0.5, func() -> bool: return w.player.surface == Player.Surface.WALL)
+	var revved_on_wall: Array = [false]
+	var dodged: Array = [false]
+	await _run_until(w, 5.0, func() -> bool:
+		if t.state == S.REV and w.player.surface == Player.Surface.WALL:
+			revved_on_wall[0] = true
+		if t.state == S.REV and w.player.surface == Player.Surface.FLOOR and not dodged[0]:
+			dodged[0] = true
+			w.player.press(&"move_left")
+		return t.state == S.ALONGSIDE or not w.player.alive)
+	check(on_wall and not revved_on_wall[0], "no rev while the player on the wall beside it would drop into its lane during the lurch")
+	check(dodged[0] and w.player.alive and w.player.lane == 1 and t.forward_lurches == 1,
+		"once they're down in its lane it revs, and the next lane takes them out of the way (%d lurches)" % t.forward_lurches)
 	await sim.free_world(w)
 
 
@@ -545,7 +600,8 @@ func _test_rules() -> void:
 
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var totals: Dictionary = {}
-	for id: String in ["city/3", "gangland/1", "gangland/2", "gangland/3"]:
+	before_ramps.clear()
+	for id: String in ["city/3", "gangland/1", "gangland/2", "gangland/3", "casino/1", "casino/2"]:
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
@@ -554,8 +610,14 @@ func _test_rules() -> void:
 			var n: int = _check_rules(layout, config, t, "%s lanes=%d" % [id, lanes])
 			check(gen.warnings.is_empty() and n >= 1, "%s has trucks and follows the rules (%d, %d lanes)" % [id, n, lanes])
 			totals[id] = int(totals.get(id, 0)) + n
+	print("  hover trucks in %s: %s; gone before their level's ramps start (route (b) only): %s" % [
+		", ".join(PackedStringArray(totals.keys())), str(totals.values()), ", ".join(before_ramps)])
+	for tag: String in before_ramps:
+		check(BEFORE_RAMPS.has(tag), "only the known builds' trucks are gone before the ramps start: %s" % tag)
+	for tag: String in BEFORE_RAMPS:
+		check(before_ramps.has(tag), "%s still has its truck gone before the ramps start; else take it off BEFORE_RAMPS" % tag)
 	check(totals["city/3"] == 3, "city/3 introduces the truck: one per level (%d over 3 lane counts)" % totals["city/3"])
-	# Gangland is early in the planned campaign (levels 4–6 of 18), where the scaling still allows one
+	# Gangland is early in the campaign (levels 4–6 of 17), where the scaling still allows one
 	# truck per level; more come in later zones (the difficulty sweep above checks the growth).
 	check(totals["gangland/3"] >= totals["city/3"], "later levels bring at least as many (%d vs %d)" % [totals["gangland/3"], totals["city/3"]])
 
@@ -563,6 +625,9 @@ func _test_rules() -> void:
 ## Checks one layout against the truck rules. Returns the number of trucks.
 func _check_rules(layout: LevelLayout, config: LevelConfig, t: HoverTruckTuning, tag: String) -> int:
 	var speed: float = tuning.run_speed
+	# The level's own run speed (its zone's), as the generator built it with.
+	var level_speed: float = config.movement_for(tuning).run_speed
+	var ramps_from: float = config.feature_start("ramps") * layout.length
 	var rules := load("res://scripts/enemies/hover_truck_rules.gd")
 	var trucks: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
@@ -593,17 +658,25 @@ func _check_rules(layout: LevelLayout, config: LevelConfig, t: HoverTruckTuning,
 		for s: Dictionary in layout.signs:
 			check(not (int(s["side"]) == side and float(s["start"]) <= section.y and float(s["end"]) >= section.x),
 				"no sign where it bursts through the wall %s" % tag)
-		if config.has_feature("ramps"):
+		# Route (a)'s ramp, at the level's own speed as HoverTruckRules._ensure_ramp places it: from
+		# ramp_after_seconds after the burst, no earlier than the ramps' start (LevelConfig.feature_starts:
+		# Gangland 1 brings them in 40% of the way through), and no later than 3 s before the truck's shortest
+		# stay ends. A truck gone before the ramps start has route (b) only, as every truck in City 3 (no ramps)
+		# has; BEFORE_RAMPS bounds those.
+		if config.has_feature("ramps") and ramps_from <= at + (t.stay_min_seconds - 3.0) * level_speed:
 			var ramp: bool = false
 			for r: Dictionary in layout.ramps:
-				if int(r["side"]) == side and float(r["at"]) >= at + t.ramp_after_seconds * speed - 0.01 \
-						and float(r["at"]) <= at + t.stay_min_seconds * speed:
+				if int(r["side"]) == side and float(r["at"]) >= at + t.ramp_after_seconds * level_speed - 0.01 \
+						and float(r["at"]) <= at + t.stay_min_seconds * level_speed:
 					ramp = true
 			check(ramp, "route (a) has a ramp on its side while it's around (at %.0f) %s" % [at, tag])
+		elif config.has_feature("ramps"):
+			before_ramps.append(tag)
 		else:
 			check(layout.ramps.is_empty(), "no ramps in a level without the ramps feature " + tag)
-	# The ramps it adds follow the usual ramp fairness.
+	# The ramps it adds follow the usual ramp fairness, and none comes before the ramps' start.
 	for r: Dictionary in layout.ramps:
+		check(float(r["at"]) >= ramps_from - 0.01, "no ramp before the ramps' start (%.0f < %.0f) %s" % [r["at"], ramps_from, tag])
 		var rl: int = layout.outer_lane(int(r["side"]))
 		check(not layout.gapped_between(rl, float(r["at"]), float(r["at"]) + tuning.ramp_length), "ramp on solid floor " + tag)
 		for s: Dictionary in layout.signs:

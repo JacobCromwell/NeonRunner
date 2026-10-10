@@ -97,7 +97,8 @@ level is always built and played at one speed; a campaign boss fight runs at its
 live, and its Save leaves the base run speed alone when the run's comes from its level (the section's
 `keep` list, `TuningPanel`).
 `--level=<step id>` plays a campaign step with the full flow and takes `--lanes`, `--god`, `--nofall`
-and `--full-loadout` for reviews; `--boss=<boss id>` plays a boss fight (a zone's boss with the full
+and `--full-loadout` for reviews (task D10b's fallback for a zone outside the campaign went with D10c, which put
+the Beach in it); `--boss=<boss id>` plays a boss fight (a zone's boss with the full
 flow, such as `--boss=city_boss`; any other, such as the test boss, or a zone's boss still being built
 (`BossDef.preview_scene`), as quick play) and also takes `--phase=N`. Command-line starts work in debug
 builds only, so a release build can't skip progression or farm credits with them.
@@ -349,12 +350,13 @@ arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
 | `data/tuning/feature_recency.tres` (`FeatureRecency`) | the campaign's recency curve: how a level's pick weights follow how recently the campaign introduced each feature |
 | `data/tuning/wall_fences.tres` (`WallFenceTuning`) | wall fences (B5): how often, how they pulse, their introduction, and the fairness margins (their sizes are the movement tuning's) |
 | `data/tuning/wall_gaps.tres` (`WallGapTuning`) | side wall gaps (Zone 2 on): spacing (easy/hard), jitter, length, the share on both walls, and the keep-out margins, all in seconds at the level's run speed |
+| `data/tuning/beach_wall_gaps.tres` (`WallGapTuning`) | the Beach's own wall gaps (`LevelConfig.wall_gap_tuning`, task D10b): its open walls (the Open walls group: the share of each wall to open, the shortest open and standing stretches, the most open on both walls at once) and a narrower clearance around what the walls hold |
 | `data/tuning/performance.tres` (`PerformanceTuning`) | smooth frames (PERF1): how long a frame may spend dressing built chunks, and `test_frame_times`' frame-time budgets |
 | `data/enemies/<type>.tres` (`EnemyTuning` subclasses) | per-enemy numbers, early/late pairs for campaign scaling |
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) and the Gangland outro's (`gangland_outro_tuning.tres`, `GanglandOutroTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`), the Gangland outro's (`gangland_outro_tuning.tres`, `GanglandOutroTuning`) and the Dead Zone intro's (`dead_zone_intro_tuning.tres`, `DeadZoneIntroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -1037,7 +1039,17 @@ tests and `tools/measure/level_shape.gd`. Pattern format: `data/patterns/README.
 native layout through enemy and obstacle hooks around the filler pass. The per-level
 `LevelConfig.danger_density_increase` dial is calibrated to actual generated enemy and obstacle
 counts, not merely interpreted as a spawn-probability multiplier. City uses 0.15; Gangland
-0.18/0.20/0.22; Marketplace 0.24/0.26; Corporate 0.28/0.29; Dead Zone 0.37; Golden 0.38.
+0.18/0.20/0.22; Marketplace 0.24/0.26; Casino 0.27/0.27; Corporate 0.28/0.29; Dead Zone 0.37; Golden
+0.38/0.39/0.39 (Golden 2 and 3 were 0.38 until the Casino re-spaced the curve, task K2: the final band's
+measured increase at 3 lanes had slipped to x1.297; the pass is short of fair room there, so the dial buys
+little, `docs/OPEN_QUESTIONS.md` §D, item 521). Merged with the Enforcer Truck's showing windows (task C6e,
+whose calm stretches the pass's rows keep off), `test_danger_density`'s sample of the final zones at 3 lanes had
+28.8% more obstacles, under its 30% floor, though over 7 seeds (each level's own and 9001-9006) the same levels
+have 30.2%. The wall fences' share (`wall_fence_increase_scale`) went from 1.25 to 1.9 (task K5, DESIGN-TBD,
+`docs/OPEN_QUESTIONS.md` §D, item 534: the owner finds every level too easy): it adds wall fences only, 447 to 505 over the
+campaign's own builds from Marketplace 2 on, and makes no floor room; the sample has 30.6% with it, the 7 seeds
+31.9%, and their enemies about 30% either way. `test_danger_density`'s sample then has 13-19% more enemies and 17%
+more obstacles in the first levels, 26-28% and 27-28% in the middle ones, and 32-36% and 31-39% in the final ones.
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
@@ -1045,8 +1057,11 @@ Small enemy encounters stay within existing feature introductions and warning ru
 also add fair ceiling turrets where that feature exists. Obstacle rows use spare lane width where
 possible, or additional longitudinal opportunities when a row already leaves only one lane open.
 The pass checks the reachable route through successive rows, not just a permanently empty lane.
-Wall fences retain their placement rules, Resonators keep their whole visit clear, and doodads cannot
-occupy the only route the new rows require. Added pieces receive no extra risk-credit pay.
+Wall fences retain their placement rules, Resonators keep their whole visit clear, a window cyborg or a
+vent's screech it adds keeps off what the rules keep wall enemies off (`LevelGenerator.wall_section_rules`:
+the rules scripts that declare `on_wall_section`, a Gilded Sentinel's wall section; task K4, after a build
+on one of the curves it tried put one there; `test_gilded_sentinel` pins a build that shows it), and
+doodads cannot occupy the only route the new rows require. Added pieces receive no extra risk-credit pay.
 Durations and reward tables are unchanged, including City 1's 55 seconds.
 
 `tools/measure/danger_density.gd` reports counts by level, band and danger category, and compares
@@ -1275,7 +1290,9 @@ cyborgs planted in charge paths keep off one where they stand (`_cyborg_fits`); 
 (`doodad_keep_outs`' `calm`); the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
 Buzz Overdrive given a planted cyborg claims its turn earlier (`ChargePathTuning.claim_seconds`), after the trucks
 are planned: the planner assumes that claim for every one (`least_claim`), so each window still holds in the
-finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. On the six
+finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. The counts
+here and in C6d and C6e below were measured on the 15-level curve before the Casino; the Casino's levels and K4's
+curve, merged with them in task K5, move them (`test_enforcer_truck` prints each level's windows). On the six
 levels' own seeds, 16 of 23 chases get a window (8 as it arrives, 6 only after the first bait); the chases without
 one have a hover truck or a Gilded Sentinel over their whole chase (4), or no calm stretch at all (Corporate 2 at 5
 lanes: its introduction among an Octodog's charges, a Tithe Collector and a Buzz Overdrive's attack; Dead Zone 1 at 3
@@ -1331,8 +1348,9 @@ carry its `mode`: "around", "claim" or "calm"; CLASSIC's none):
   itself as it arrives (`_calm_spots`, latest first; `arrival_problem`'s `calm`), its bait where it was; it takes
   nothing out (`calm_start_takes_out` off, DESIGN-TBD), and it fires no volley in the run-up. Nothing in the run-up
   shows on screen but the HUD, which no truck can cover (hints come on the level introduction before PLAY).
-- **Both trucks** stay where a level has two but room for one showing (item 401, as built), and wider gaps keep off
-  each chase from its arrival to its window's end (Wider gaps, Which).
+- **Both trucks** stay where a level has two but room for one showing (item 401, as built: since task K5 Corporate 2
+  at 6 lanes and Dead Zone 2 at 5 and 6 lanes, `test_enforcer_truck`'s `BOTH_TRUCKS`), and wider gaps keep off each
+  chase from its arrival to its window's end (Wider gaps, Which).
 
 On the six levels' own seeds 12 of the 23 chases get a window before their bait against 9 (Dead Zone 1 at 6 lanes
 beside its hover truck, 1767-1962 m; Golden 1 at 3 lanes in the calm start, the truck arriving at 12 m with its
@@ -1447,6 +1465,13 @@ each feature a pattern can place there is in the finished level, at any lane cou
   without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
   `guarantee_one_wave` and `guarantee_one`), and a host, an Octodog and a Resonator in a level with
   `guarantee_features`.
+- A feature with no pattern of its own, which its rules place only around other features' entries, is
+  required too when one of those is (`dependent_features()`, from its rules script's `GUARANTEED_BY`): the
+  Enforcer Truck, which waits for an Octodog's or a Buzz Overdrive's charge during its chase. A build
+  without one forces picks of those features instead (`_guarantee_picks_for`; one more each a build, however
+  many missed features ask for it), so their entries move until one leaves the truck room to arrive (task
+  K4: a rare seeded build had none, on the earlier curves too). Rules whose data allows none (a static
+  `places_any()` false: the truck's `per_level_max` 0) ask for none.
 
 **Pace** (GDD §3, owner's playtest September 30, 2026: about 21 m/s in the Neon City rising zone by
 zone to about 25 m/s in the Golden Zone). A level's run speed is its own `LevelConfig.run_speed`, which
@@ -1804,6 +1829,45 @@ ScoreKeeper ends the wall run). A wall entry (move or ramp) inside a gap is refu
 bump. Past the gap, the usual move input steps back onto the wall. `HintDirector` introduces them through the
 `wall_gap` hint. `test_wall_gaps` covers all of this.
 
+**A level's own wall gaps, and the Beach's open walls** (task D10b; the owner, October 9, 2026: the Beach should
+"feel more open ... much longer sections where there aren't sidewalls", its walls appearing "about 50% of the
+time that they are now currently appearing"; GDD §5, Zone 6: the Beach). `LevelConfig.wall_gap_tuning` gives a level
+its own `WallGapTuning`; null (every campaign level but the Beach's) is the shared file. `WallGapPlacement.tuning_for(config)` is
+what the placement, the F6 panel's "Wall gaps" group and the tests read. The tuning's Open walls group
+(`coverage_target` above 0: `data/tuning/beach_wall_gaps.tres`, the Beach's levels only) turns the rare short gaps
+into long open stretches (`WallGapPlacement._open_walls`, from the same random stream):
+- each wall opens every stretch its keep-outs leave free (`open_stretches`, 1 cm clear of them), at least
+  `open_seconds_min` (2 s) long, so the walls never flicker;
+- a wall with more open than `coverage_target` (0.52) of the level's length stands again down to it, the wall with
+  more to close first: first where the other wall is open too (the shortest such stretches first), then its own
+  shortest stretches; each closing takes a whole stretch, or what it needs (at least `solid_seconds_min`, 2 s)
+  from an end that meets standing wall already (`_close_down`). So the second wall keeps more of what both had
+  open;
+- while both walls are open at once over more than `both_open_max` (0.3) of the level, the wall with more open
+  stands again over the shortest such stretch;
+- a wall standing between two open stretches stands at least `solid_seconds_min` (2 s), so the walls never
+  flicker: one held up only by a lone keep-out (a wall fence's or a sign's, about 17 m) stands longer around it,
+  into the open stretches either side as evenly as they allow while each keeps `open_seconds_min`, or the shorter
+  of the two stands whole (`_no_short_stands`, from the start and again after the closings; task D10c review).
+Every keep-out above holds, so a wall whose keep-outs (mostly ceilings reaching it, ramps' wall runs and wall
+enemies) leave it less free stands more. The Beach's clearance around signs, wall fences, wall enemies and
+ceilings is narrower (`clear_seconds` 0.35 s against 0.5, about 8 m of wall either side at its 23.8 m/s); the
+margins that time a wall run, before a ramp and past its longest run and either side of a wall enemy, never narrow
+with it: `keep_outs` widens those by the shared file's `clear_seconds` (or the level's own, where wider), so they
+are the shared ones (task D10c review). Placed last as before, the open walls change nothing else in a level: built with the shared tuning,
+the Beach's levels are the same levels but for their gaps (the same signs, wall fences, ramps, window cyborgs
+and wall vents, and no wall credit fell in a gap, since those lie along ramps' wall runs: all 54 builds below).
+Over both Beach levels at 3, 5 and 6 lanes as the campaign configures them (task D10c), on their own seeds and
+eight others: each wall stands on 48-60% of its level on the levels' own seeds, 107 of 108 walls in 40-60% over
+all (median 49%; 97-100% with the shared tuning), the other on 64%, where its keep-outs leave it no more free;
+both walls are open at once on 18-30% of a level (median 29%); the open stretches run from 48 m (2 s) to 957 m
+(median 124 m), with 85% of the open length in stretches of 100 m and more (`test_beach_levels` checks its own
+seeds and two others). With
+the Open walls group off, the shared tuning places exactly what it did before: every
+layout of `tools/measure/level_pace.gd --dump` (every campaign level at 3, 5 and 6 lanes on its own seed and four
+others, and quick play) is byte-identical. DESIGN-TBD (`docs/OPEN_QUESTIONS.md` items 560–564): the target, the share open on
+both walls, the shortest stretches and the narrower clearance.
+
 **Wider gaps** (task G7; the owner's answer to open question 352, October 7, 2026, GDD §9.13 "Holes": "every
 level has a couple of wider gaps. They're uncommon, still jumpable by the player, and wide enough that an
 Enforcer following the player into one is wrecked"). `WideGapPlacement` (`scripts/world/wide_gap_placement.gd`;
@@ -1843,7 +1907,10 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   every lane but one (the lane a hover truck keeps there, else a seeded one), slid along each free stretch
   until one fits (`_add_one`); the level's own rows that only other holes and plain fences keep from fitting,
   with those taken out (`_clearing`: never a pulsing fence or one a fence generator powers; `GeneratorRules.
-  keep_powered` after: taking content out never makes a level unfair).
+  keep_powered` after: taking content out never makes a level unfair). Last, only for a level none of those gave
+  one (one fewer where nothing else fits, never none: GDD §9.13's couple), a new row where only holes and plain
+  fences are in its way, those taken out (`_add_clearing`, task K5: on 306 builds of the Enforcer's levels a Dead
+  Zone 1 seed whose only room was a truck's chase before its showing, and a Golden Palace seed with none at all).
 - **Which.** With `prefer_enforcer_chases`, one first in each Enforcer Truck's chase (from `bait_after_seconds`
   after it arrives, or from its showing window's end where that's later, to `CHASE_END_SECONDS` before it gives
   up), from the first source with one there, so the runner can lead it in; then the rest spread through the level,
@@ -1863,16 +1930,17 @@ holes (a row: the holes sharing a start and an end, `GapDensity.rows`) longer al
   `test_doodads` holds City 1 to its own gaps unchanged and as many extra ones there.
 - **What it gives.** Every campaign level at 3, 5 and 6 lanes gets its 2 on its own seed (`test_wide_gaps`);
   over `test_campaign`'s seed sweep 2 of 189 builds of the busiest levels fit only one (the layout check allows
-  one fewer on a seed not the level's own, never none). An Enforcer chase holds one past its showing window in 6
-  of the 18 level and lane builds that have trucks (8 before task C6e kept them off the chase before a showing:
-  Corporate 2 and Golden 2 at 6 lanes, whose windows come after their bait, lost theirs), Corporate 2 at 3 and 5
-  lanes among them, where the truck following the runner over it is wrecked in play; none comes before a window
-  (6 did, in chases whose window comes after their bait), and every build keeps its count. Rows and holes change a little: the City levels keep theirs (one hole fewer in
-  City 2 at 5 lanes), and elsewhere the fill pass and the danger density pass re-roll around new rows and the
-  zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510 holes before, 1,089 and 2,533 after; Corporate 2
-  at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3 lanes 24 and 32, then 21 and 27). With
-  `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level, quick play and the prototype level build
-  exactly as before (compared build by build with main's).
+  one fewer on a seed not the level's own, never none: the last way above sees to that). With the Casino's levels
+  and K4's curve (merged with task C6e in task K5), the first Enforcer chase holds one past its showing window in 4
+  of the 18 level and lane builds that have trucks (6 on the 15-level curve C6e was measured on, 8 before C6e kept
+  them off the chase before a showing), Corporate 2 at 3 lanes among them, where the truck following the runner
+  over it is wrecked in play (at 5 lanes its chase past its window is full, at 6 its window comes after its bait,
+  at its chase's end); none comes before a window, and every build keeps its count. Rows and holes change a
+  little: the City levels keep theirs (one hole fewer in City 2 at 5 lanes), and elsewhere the fill pass and the
+  danger density pass re-roll around new rows and the zones (every level at 3, 5 and 6 lanes: 1,093 rows and 2,510
+  holes before, 1,089 and 2,533 after; Corporate 2 at 5 lanes 33 and 49 before, 35 and 54 after; Dead Zone 1 at 3
+  lanes 24 and 32, then 21 and 27). With `wide_gaps` and `charge_path_cyborgs` at 0 every campaign level, quick
+  play and the prototype level build exactly as before (compared build by build with main's).
 
 **Cyborgs in charge paths** (task G7; the owner's answer to open question 353, October 7, 2026, GDD §9.13
 "Teaching": "occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, so the
@@ -2144,8 +2212,9 @@ ranges at 3, 5 and 6 lanes and checks all of this, so every zone's skin is held 
 underside, and check the drop on both renderers (`skin_review --narrow`, Review tools).
 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
-(Zone 3, the Marketplace), `CorporateSkin` (Zone 4, Corporate), `DeadZoneSkin` (Zone 5, the Dead Zone)
-and `GoldenSkin` (Zone 6, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
+(Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
+Corporate), `BeachSkin` (Zone 6, the Beach; task D10, in the campaign since D10c), `DeadZoneSkin` (Zone 7, the
+Dead Zone) and `GoldenSkin` (Zone 8, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
 zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
 `data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
@@ -2163,12 +2232,14 @@ value, the one thing a new zone's skin sets for its enemies:
 | Neon City | `&"city"` | the base (Static TV Head) | clean |
 | Gangland | `&"scavenger"` | the Broadcast Brute | weathered |
 | Marketplace | `&"casino"` | the Casino Mob Enforcer | clean |
+| Casino (K1) | `&"casino"` | the Casino Mob Enforcer (the owner: no new character looks) | clean |
 | Corporate (D4) | `&"vr_runner"` | the Wide-Aspect VR Runner | clean |
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
+| Beach (D10) | `&"casino"` | the Casino Mob Enforcer | clean |
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
-Marketplace) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
+Marketplace, the Casino and the Beach) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
 colours from the zone variant (`BarnacleTurretModel.PALETTES`; a new zone's variant gets the default
 gunmetal until it has its own).
 
@@ -2183,8 +2254,8 @@ free: the run takes its environment from `ZoneSkin.level_environment(darkness)`,
 `apply_darkness()` dims only the scenery. The sky and the distance fog lose energy, and the global
 shader uniform `scenery_light` (project.godot; 1 = the zone's own light, never below
 `MIN_SCENERY_LIGHT`, 0.3) dims what the scenery's shaders draw: `kit_solid`'s lit surfaces (never its
-glowing ones), `facade`, `shopfront`, `road`, `drift`, the Corporate skin's `corp_facade`, the Golden
-Zone's `golden_facade`, the Dead Zone's `dead_smoke`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
+glowing ones), `facade`, `shopfront`, `road`, `drift`, the Casino's `casino_facade`, the Corporate skin's
+`corp_facade`, the Golden Zone's `golden_facade`, the Dead Zone's `dead_smoke`, and the grey box's floor, walls and ceilings (`GreyboxMaterials.scenery()`). Glows, the ambient light and the
 sun stay, so hazards, triggers, credits, enemies and the runner (lit or glowing by their own
 materials) read as well as anywhere. The
 factor is given for linear space; `light_factor()` in `kit_common.gdshaderinc` (and
@@ -2273,7 +2344,19 @@ collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
 texture as a mark on a dark panel. Ids 70-79 are the Golden Palace's (task D6b, a level's own skin,
 not a zone's), in `kit_golden_palace.gdshaderinc`, after `kit_golden.gdshaderinc`'s `golden_metal()`
-and `golden_marble()`, which it calls directly.
+and `golden_marble()`, which it calls directly. Ids 80-89 are the Casino's (task K1; 80-86 in use), in
+`kit_casino.gdshaderinc`: the street's paving (`PAT_CASINO_STREET`), everything under it
+(`PAT_CASINO_UNDER`), dark iron and aged brass (`PAT_CASINO_IRON`, `PAT_CASINO_BRASS`, lit through
+`cas_metal()`, a fake reflection of the lamplit street), a pane of the glass roof (`PAT_CASINO_VAULT`), a lit
+sign (`PAT_CASINO_SIGN`) and a hanging banner (`PAT_CASINO_BANNER`). Ids 90-99 are the Beach's (task D10, all in use), in
+`kit_beach.gdshaderinc` (`MeshKit.PAT_BEACH_*`: sand, boardwalk, tank, water, wall, thatch, steel, painted
+board, neon silhouette, timber), after `kit_marks.gdshaderinc`'s `band()` and `sd_*()`. A pattern's parameter
+(`UV2.y`) is interpolated across a face, and a rasterizer's interpolation of a constant can be a few units in
+the last place off (Mesa's llvmpipe and lavapipe are): a decoder that takes `floor(param / 8.0)` of an exact
+multiple of 8 flips between two neighbouring values pixel by pixel (the Beach's first walls were a lattice of
+dots), and a parameter above about 2^20 has units in the last place of 0.06 or more. So decode by rounding
+to the nearest whole number (`floor(x + 0.5)`, or a half step added before a `floor`) and keep every
+parameter under 2^20 (`MeshKit.sand_param()`, `beach_art_param()` and the others do; `test_beach_skin` pins it).
 
 **Gangland's ceilings** (`GanglandCeiling`) take their width from the lanes they cover (the collision
 box), never from the track, and draw each side as anchored (running into the building face) or free
@@ -2415,6 +2498,128 @@ lightest surface.
   charred concrete with a steel strip and a pale line on each lane seam, and the orange far-end band.
   `mesh_for(kind, ...)` builds a given kind directly.
 
+**The Casino** (`scripts/world/skins/casino/`; task K1, GDD §5 Zone 4, the owner's reference image
+`docs/art/reference/casino_zone.webp`): `CasinoStreet` (the floor), `CasinoFacades` (the walls),
+`CasinoVault` (the glass roof and what hangs from it), `CasinoCeilings` and `CasinoProps` (fences and signs);
+its building faces use their own shader, `casino_facade.gdshader`, and it adds the patterns above. A long
+covered casino street at night under a vault of glass and iron: dark riveted iron and aged brass, a wet
+paved street, warm lamplight and haze.
+- *Scenery only, on the Marketplace's skin.* The owner asked for new walls, floor, ceilings and background
+  and no new characters, so `CasinoSkin` extends `MarketplaceSkin` and keeps its `enemy_variant = &"casino"`
+  (the Casino Mob Enforcer and the Marketplace's other enemies, as they are), its citizens (`MarketCitizens`,
+  the same class, in the same `market_citizens` group The House's crowds cheer and duck through), its plant
+  and casino-machine doodads (`MarketDoodads`, in the Casino's palette), the cult's feed and emblem, and its
+  `shop_windows()`, `reserved_near()` and `note_wall_enemies()` contract. `CasinoFacades` extends
+  `MarketFacades` and `CasinoProps` extends `MarketProps`: the same lots and windows and the same fence and
+  sign hooks, only their looks differ; `CasinoSkin.facades()` returns the Casino's. The Marketplace's own
+  export groups for what it draws itself (stalls, stucco, ships) stay unused here, and `_casino_palette()`
+  gives the ones the shared pieces read (neon, lamps, signs, doodads) the Casino's colours. Chunk meshes use
+  the same materials as ever: the one solid and one glow material of the batch, the facade shader's own, the
+  feed's, and the drift material, so the roof adds no surface of its own.
+- *The street is a floor and gaps are open service trenches* (DESIGN-TBD, docs/OPEN_QUESTIONS.md §D, item 504): dark
+  flagstones in running bond with brass inlaid along both edges of every lane and across it every 6 m (the
+  still floor's own motion cue), pools of lamplight and a wet sheen (all in the shader, from world position,
+  so chunk cuts are seamless), and the dust, scraps and speed streaks of the other skins. Under a gap
+  everything is `PAT_CASINO_UNDER` in `gap_inside_color`, a deep shade that only darkens with depth and is
+  far darker than any paving, with the orange lip and strip on the collision edge (`CasinoStreet`, built
+  as `MarketStalls` is). The suite pins it over whole levels at 3, 5 and 6 lanes.
+- *The calm band.* Every wall is flush from the street up past `band_top` (7 m): the facade shader paints
+  a brass stripe there along the top of a storey, flat (no shading, so it can't read as standing out), its
+  risers and round shaded pipes start above the band (`painted_pipe()`), the casino fronts' glass and bulbs
+  start at `decor_min_height` (the grid begins there, a whole storey at a time), and nothing opens, glows or
+  sticks out (no vent-like shape: the screeches' lairs). Balconies, brass pipes and risers, air-conditioning units and
+  blade signs start at `overhang_min_height` (10 m: nothing hangs over the lanes below it but ceilings, the
+  arrival flyover's rule) and stand out of the face by under a metre (the flyover's camera keeps a metre
+  inside the walls); flat decoration (decorative signs, banners, wall lamps, marquee bulbs) never sits lower
+  than `decor_min_height` (8 m) and is never framed in a hazard's stripes.
+- *The glass vault is background* (never a ceiling the player can use). `CasinoVault` springs it from the
+  facades' top (`eave_height`, 22 m) and arches it over the street (higher over a wider one: `arch_of()`),
+  in bays (`bay_length`) built from one cached template per street width: iron ribs and purlins, and the
+  panes (`PAT_CASINO_VAULT`: dark night-blue glass in iron frames, warmer low on the arch, a few faint
+  painted stars), **opaque and faked** (no transparency, the phone rule). **The roof is whole** (owner,
+  October 9, 2026: no broken or missing panes; the suite counts every pane of every bay, the arena's too), so
+  the night reads only as the glass's tint. It is built with the left wall (`wall_section` and `wall_gap`, so a wall gap's
+  parts keep their roof): a bay belongs to the call whose range holds its start. Hung from it, by hash:
+  girders across the street carrying banners of heavy cloth, lanterns on chains (an emissive box and a
+  soft halo: no real light) and still ceiling fans. **Nothing hangs below `bunting_height` over the lanes**
+  (16 m; the arrival flyover's camera flies under 9.5 m and The House is 13.5 m tall:
+  `TheHouseTuning.height`, `scripts/bosses/the_house/the_house_tuning.gd`). A girder under the eave runs wall
+  to wall (`girder_of()`; only one hung in the roof itself ends where the glass does) and a fan's blades stay
+  inside the glass (`fan_of()`: it moves to the middle of a narrow street, or is dropped).
+- *Real lettering on the two named casinos* (task K3; owner, October 9, 2026: "Gasket's House of Chance"
+  and "The Brass Lotus", the names in the reference). `CasinoLettering` turns the project's own Exo 2 (OFL,
+  `assets/fonts/exo2`) into flat clockwise triangles once per process through `TextMesh` (curve step 6, weight
+  800, about 9 ms; built when `CasinoSkin.facades()` is first made, so while a level loads, never in a chunk
+  built during a run) and keeps them as plain vertex arrays in five layouts (Gasket's two lines on its board,
+  its one line on a strip, GASKET'S stacked down a blade; the Brass Lotus's board and its stacked blade). A
+  sign is one `MeshLayer.append` of a cached, coloured layout into the chunk's solid layer (about 15 us): no
+  `Label3D`, no `SubViewport`, no node, no surface or draw call of its own. **Only a few casinos are named**
+  (two famous ones, not a chain; DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, item 525): `CasinoFacades._name_of()` cuts the
+  street into periods of `name_spacing` metres (100, both walls together), picks at most one casino with a big
+  sign in each by hash (from the period's middle half if it has one) and alternates the names from period to
+  period, a pure function of the street's layout so every chunk agrees; a `name_spacing` of 0 names every
+  casino with a big sign by hash instead. The other casinos keep the mark and glyph rows. A named casino
+  carries its name on its board (the sign's shader panel is dark with a tube of light and no glyph rows:
+  `NAMED_PANEL`, set only when the letters exist; a casino whose big sign plays the cult's feed gets Gasket's
+  name as a strip over the screen, and the Brass Lotus's only on its blade), keeps the cult's emblem in the
+  board's lower corner (the letters take the rest: `_emblem_room()`) and has **no brass pipe or riser** (a pipe
+  in front of its letters crosses them from afar) and, on the street, a blade sign at the building's far end
+  (the runner comes from the near end, so it never hides the board), 0.8 m out of the wall, above
+  `overhang_min_height` and under the entablature, where a runner sees its face-on column of letters from afar
+  (a board is seen along its face). `CasinoFacades.named_signs()` lists the pieces for reviews and tests; the
+  suite checks that nothing else on the facade reaches the volume in front of any letter, which way each board
+  and blade faces, the dark panel's flag, the emblem's corner and that without the font the signs keep their
+  glyph rows. The letters are the warm white `lettering_color`, glowing just over the bloom threshold
+  (`lettering_glow`), never a hazard hue, never below `decor_min_height`, static (nothing to flash). They add
+  under 1k vertices to a chunk of about 10-11k and nothing to its surfaces or its build time.
+- *Ceilings from their lanes* (task B3). `CasinoCeilings` builds a footbridge between the balconies (only
+  across every lane, as the Marketplace's bridging building), a gantry carrying a bundle of brass pipes and a
+  sign gantry (a big lit sign or the cult's feed on an iron frame), from the collision box and lane
+  seams: a flat iron underside over exactly its lanes (beams every 3 m stream past a rider), flush lamps,
+  the orange far-end band, and nothing rising more than `TOP_LIMIT` (6.2 m) above the underside.
+  `mesh_for(kind, ...)` builds a given kind directly.
+- *The House's arena* (`data/bosses/casino_boss_skin.tres`): the machine is 13.5 m tall
+  (`TheHouseTuning.height`) and fills the street to 35 cm off the walls, so the arena skin raises
+  `overhang_min_height` to 14.5 m: the facades are flush below it (the casino signs' halos lie flat on the
+  wall, and the suite checks every vertex, glow and feed included, within 30 cm of the face). Phase 3's
+  billboard drops from 26 m above the 6 m ceiling (`TheHouseCeiling.DROP_FROM`, slab 0.9 m, its sign 2.5 m
+  more) in 0.7 s, its slab 12 cm from each wall, so the arena also raises the roof (`eave_height` 34 m,
+  whatever the street's width: the suite checks the roof's underside clears the billboard's top across the
+  whole street at 3, 5 and 6 lanes), hangs nothing from it (`hangings` off; `bunting_height` stays at 28 m)
+  and **keeps every face flush at every height** (`flush_faces`: no balcony, pipe, unit or blade sign, flat
+  lamps and entablature, the names on flat boards only; the suite holds every vertex between the ceiling and
+  the slab's start to the slab's gap from the walls at 3, 5 and 6 lanes).
+- *The colour rule* (GDD §5): the reference glows pink, cyan, green and orange; here those never glow near
+  the track. Lit signs, marquees and lamps are warm white, violet or blue; brass is lit metal (nothing of
+  brass or iron carries glow); the reference's coloured boards are dim painted signs in muted rose, teal,
+  moss and ochre. The marquee bulbs and the signs' breathing honour Reduced flashing (the `reduced_flashing`
+  uniform; the suite reads both shaders for it).
+- *Build cost* (task K5; the budget is `SkinSuite.BUILD_BUDGET_MEAN_MS`, 4 ms a chunk at 6 lanes). A chunk's
+  build time follows its vertices and its calls, and the Casino is the Marketplace's walls plus a roof and
+  dressing, so it was the first skin over the line. What it costs now (6 lanes, one 40 m chunk, ms): the walls
+  2.2 (windows and piers 0.4, lounge balconies, units and blade signs 0.3, wall lamps 0.2, the casino signs
+  and names 0.2, pipes 0.1), the roof 0.35, citizens 0.3, the commit 0.25, on top of the floors, fences and
+  the track's own 1.5; vertices about 10.5k a chunk (the Marketplace's 9.8k). Kept down by: cached templates
+  for everything that repeats (a wall lamp, a lantern per chain length, a fan per quarter turn in six
+  turns, a blade sign's frame per tenth of a metre of height, balconies, units: each a bulk append of one
+  or two layers), no faces nobody can see (`CasinoFacades.SEEN_FACES`: a piece standing out of a wall keeps
+  neither the face toward the wall nor the one facing away down the street, because the camera only looks
+  ahead; `test_casino_skin` pins it), `CasinoCitizens` (the Marketplace's citizens picked from the windows'
+  positions without listing every window, the same citizens: the suite compares the two builders), and the
+  dressing's densities, which are exports (`balcony_share`, `pipe_share`, `unit_share`, `lantern_share`,
+  `fan_share`, `banner_share`, `crossbeam_spacing`, and `bay_scale`: the shop windows' bays 1.5 times the
+  Marketplace's, the same piers, a third fewer windows). Measure with `tools/godot.sh test --suite=casino_skin
+  --jobs=1` on a quiet machine, next to `--suite=marketplace_skin`: the Casino should read about what the
+  Marketplace does. The suite's load factor comes from a greybox build that mostly measures node creation, so
+  it does not notice a machine that runs GDScript slowly, which is when this skin reads closest to its budget.
+- *The street's light follows the level's sky* like every scenery shader: `casino_facade.gdshader` takes
+  `scenery_tint` where it takes `scenery_light` (its glowing parts stay untinted, as in every zone), and the
+  solid kit shader already did (`test_level_sky`).
+- *Tested*: `test_casino_skin` (the Marketplace's checks adapted, plus the vault, the arena, the lettering, the
+  citizens and the wall pieces' faces). Review it with `skin_review --skin=casino` (it asks the Casino for its
+  ceiling kinds before the Marketplace, which it builds on) and a boss quick play with the arena skin on both
+  renderers.
+
 **The Golden Zone** (`scripts/world/skins/golden/`): `GoldenWalkways` (the floor: golden walkways over
 the canal), `GoldenFacades` (the walls, and the sky bridges over the street), `GoldenCeilings`,
 `GoldenProps` (fences and signs) and `GoldenStatue` (the statue kit); its building faces use their own
@@ -2520,6 +2725,134 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
 - *Shader patterns* (ids 70-79, `kit_golden_palace.gdshaderinc`, after `kit_golden.gdshaderinc`'s
   `golden_metal()`/`golden_marble()`, which it calls directly rather than inventing new ones):
   `PAT_PALACE_FLOOR` (70), `PAT_PALACE_WELL` (71) and `PAT_PALACE_PANEL` (72).
+
+**The Beach** (task D10, the owner's request of October 9, 2026; `docs/art/reference/beach_zone.jpg`; the
+campaign's zone 6 since task D10c (zone 5 until the Casino joined as zone 4), Campaign below; `data/skins/beach_skin.tres` is also shown with `--skin=beach` and
+`tools/showcase/skin_review.tscn -- --skin=beach`): `BeachSkin` (`scripts/world/skins/beach_skin.gd`) is a bright
+tropical afternoon on a shore: a sandy street running down to a turquoise sea and a palm island, between bamboo
+shacks and tiki bars, with black rust-streaked industrial tanks behind them. No new enemy assets: its
+`enemy_variant` is `&"casino"`, the Marketplace's Casino Mob Enforcer (the owner: "reuse one of the existing
+cyborg looks, whatever fits the theme of this zone the best"; the pick is a placeholder,
+`docs/OPEN_QUESTIONS.md` items 538–559). The gaps are pools, the owner's decision, and the walls open on the beach (the
+owner's answer on side walls: "much longer sections where there aren't sidewalls"). Hooks overridden,
+builders in `scripts/world/skins/beach/`:
+- *The floor* (`BeachSand`): sand (`PAT_BEACH_SAND`: wind ripples, drifts, footprints, flat shells, a damp rim
+  round a pool) with boardwalk runs (`PAT_BEACH_BOARDWALK`: planks across the lane, rusty steel plates
+  bolted on), runs of one to three `boardwalk_slot`-metre slots hashed by lane and slot (`boardwalk_runs()`, so the runs of
+  neighbouring pieces and chunks line up across cuts), a flush bamboo kerb along the building faces, and
+  nothing on the running surface stands up or is round. A pool (`cut()`, the shared `standard_floor_cut()`
+  with a tank pattern) is a black steel tank sunk flush: the orange lip, strip and halo sit on the
+  collision edge as everywhere, beside a dark steel coping that makes them pop against the bright sand, and
+  inside is darker than the darkest large floor area by a real margin (the water, with its ripples and glints, at
+  most 40% of the luminance of the darkest sand, boardwalk or kerb, and under the plates' and joints';
+  `test_beach_skin` computes the budget from the skin's colours: tank steel, rust, tide mark, water). Water is
+  opaque, unlit deep teal (`PAT_BEACH_WATER`: long ripples, slow caustics, soft glints) filled to `pool_depth`
+  0.45 m under the rim (the owner: "it's pretty good as it is", closer to the rim; deeper than the grapple's
+  `pit_depth`, 0.35 m, which `test_beach_skin` pins), like the reference's near-full tanks: from the game camera
+  (4.2 m up) water six metres down hides behind the near edge beyond a few metres, this shows from ten or more.
+  Above it, the tank's wall
+  is black rust-streaked steel (`PAT_BEACH_TANK`: panels, rivets, a flange under the rim, a tide mark and a wet
+  line). The fall that ends a run (`fall_death_depth` 4 m) goes on into the water: a runner (an Octodog, a
+  wreck) sinks out of sight into the opaque plane, and the chase camera (`camera_height` + `camera_follow_y` x
+  the runner's height) is still 2.4 m above the floor at that depth, so it never goes under the water
+  (pinned by `test_beach_skin`). Blowing sand, drifting leaves and petals and speed streaks
+  (`MeshKit.drift_particles`) are the still floor's motion cue: `BeachSand.drift` gives every 40 m slice to the
+  left-wall piece that holds its start, so each chunk has exactly one copy even where the wall switches
+  between standing and open inside it (the shared call alone places only slices that fit whole inside a
+  piece's range, which left 18-27% of the Beach's chunks without; `test_beach_skin` checks every chunk).
+- *The splash* (`BeachWaterWatch`, `BeachSplash`; the owner: "a fall makes a splash"): `wall_section` and
+  `wall_gap` add a `BeachWaterWatch` beside the left wall's water plane, which finds the `RunWorld` up the
+  tree as `MarketCitizen` does and reads the runner's position and track distance (a read-only visual
+  watcher: no collision, no gameplay state written). When the runner's height crosses the water going down
+  inside its stretch of street (a floor or a cut's hole never lets that happen anywhere else), it adds a
+  `BeachSplash` on the water, a one-shot that frees itself after 1.2 s (a crown of foam, droplets, two
+  spreading rings; unlit off-white, no glow, no flash, so nothing for Reduced flashing to turn off; it is the
+  water's foam, so it takes the street's light as the water does, `scenery_light_now` and `scenery_tint_now`
+  once when it is made, `BeachSplash.in_street_light`) and plays
+  the `splash` sound (`tools/asset_gen/sfx_bank_player.gd`, `RunWorld.play_sfx_at`). A grappled runner never
+  splashes: the hook fires at `pit_depth`, above the water. The fall's death comes about 0.3 s after the
+  splash, and the death screen's pause about a second after that, so the splash plays out under the
+  overlay's lead-in. Only the runner splashes (what falls after it, such as an Octodog baited into a gap,
+  doesn't). Review a real fall on both renderers with `tools/showcase/splash_review.tscn` (`--skin`,
+  `--sky`, `--lanes`, `--grapple`, `--side`), a `RunWorld` with a pool in the runner's lane and no jump.
+- *The walls* (`BeachShacks`): shacks one to three 12 m lots long, two to four storeys (`lot_run()`), all
+  variety hashed from lot indices. Up to `band_top` (7.2 m) a face is flush and calm, drawn by
+  `PAT_BEACH_WALL` from world position in bays of 3 to 4.8 m between bamboo posts, every bay a tone of its own
+  (bamboo culms 0.15 m wide with nodes and bundles, palm mat, weathered planks, rusty corrugated sheets, a painted
+  turquoise, coral or blue door, roller shutter or serving hatch, bamboo with wordless surf posters, painted
+  boards, a mural, painted surfboards mounted flush, culms laid sideways as slats), with big sun-bleached and
+  honey drifts over the bays, so a wall seen edge-on (where fine culms blur) is never one flat tone, and the
+  wall-run height marks at 2 m and 4 m (a 3.6 cm line of a slightly darker shade of the wall: `wall_mark_color`
+  is a multiplier near 0.7) and sand blown against the foot; nothing opens, glows or juts out more than `LIP`
+  (0.25 m) there. Each building has one of seven bamboo tones (honey, sun-grey, pale straw, teak, orange-brown,
+  warm tan, warm honey). Above `decor_min_height` (8 m): recessed
+  verandas (bars with a counter, bottles and paper lanterns, lounges, decks; `_alcove()`, set back so nothing
+  hangs over the street, with an unlit striped awning's valance across the top of a bar's or lounge's
+  opening), clusters of paper lanterns hung on the faces (`lanterns` items: unlit muted shells, warm-white glow
+  inside, within `LIP` of the face), thatch or tin roofs, palms, tiki masks, surfboard racks, flags, bunting
+  and swags,
+  black steel tanks, water towers, chimneys and dishes behind the roofline, wordless neon silhouettes and
+  roof billboards. Everything over the street stays above `OVER_STREET_MIN` (12 m), clear of the
+  ceilings' `TOP_LIMIT` (5.4 m over the 6 m underside), and strings of lights are cached templates hung from
+  hashed spots. Wall decorations are cached `MeshLayer` templates in left-wall space with the right wall's
+  mirrored copies cached once, so building a chunk is plain translations (a 5-lane chunk builds in about
+  3 ms, under 25 surfaces). `note_wall_gaps()` is forwarded for the shared hooks.
+- *Open stretches* (`BeachSkin.wall_gap`, `BeachOpen` in `beach_open.gd`; the owner: "much longer sections where
+  there aren't sidewalls, and the player can see the surrounding area a little bit better"): where a level
+  opens the side wall (`TrackBuilder` passes each chunk's slice of the gap, any length, to `wall_gap`), the
+  skin draws the standard gap marks (`ZoneSkin.standard_wall_gap`: the orange lip, the 6 m dark end slabs, the
+  orange stripes) and, chunk by chunk with every position hashed from the track distance (so a stretch is
+  the same however chunks cut it): the beach, from the wall line outward and 1.4 m below the street
+  (`beach_drop`: sand, a wet band, a foam line, shallows, the mid sea and the deep, the shoreline swinging
+  16-64 m past the wall line, 8 m quads), and on it palms, umbrellas with loungers, surfboards stuck in the sand
+  and now and then a bamboo and thatch hut, kept dry, `open_margin` (9 m) from the gap's ends and `open_near`
+  (9 m) from the wall line so nothing stands near the runner or the lip, with no collision. The shack at
+  each end of a gap is closed with a timber gable (`BeachShacks.gap_end_cap`), and the walls' own pieces
+  carry the beach on behind them (`BeachOpen.ground`), so the view past a shack's end isn't the void. Every
+  chunk stays inside the build budget (`SkinSuite`: under 32 surfaces for a five-lane chunk) with a stretch
+  open on either or both sides (`test_beach_skin`, hand-built layouts through `RunSim.layout`). Review: `skin_review --skin=beach --open`
+  (four shots per stretch: the game camera at the start and 50 m in, from the lane beside the opening, from
+  above), and `--view=run --from=<distance>` with the same flag.
+- *The ceilings* (`BeachCeilings`; `kind_of()` by the ceiling's width and the walls it reaches, weights
+  `footbridge_weight`, `veranda_weight`, `barge_weight`): a boardwalk footbridge across every lane, a veranda
+  deck cantilevered from one building (narrow, reaching one wall) and a hovering party barge (any width, or
+  reaching neither wall). Every underside is flat with lamps on the lane seams and the orange far-end band
+  from `MeshKit.ceiling_end`; nothing hangs below it, and glows past the far end stay above it
+  (`MeshKit.stern_halo` for a barge's engines).
+- *Hazards and props* (`BeachProps`, the kit's shared builders): the fence is the shared pink field between
+  bamboo-wrapped steel posts in sand-filled drums; the wall sign is the yellow/black hazard frame
+  (`MeshKit.hazard_sign`) around a painted surf or bar sign (`PAT_BEACH_PAINT`: unlit, wordless). Pads,
+  ramps, speed pads and the finish line are the kit's.
+- *Doodads* (`BeachDoodads`): a surfboard rack (small), a cabana or a palm in a planter by `look_seed`
+  (medium) and a tiki bar kiosk (large), cached, on `MeshKit.solid()`, no faces, muted.
+- *Cult.* The emblem hides on some neon signs and roof billboards and the barge's bronze bow, never smaller
+  than `emblem_min_size` and never a hazard colour; the feed plays on TVs behind some upper-deck bars and
+  on roof billboards, never in the wall-run band. `feed_boards()` (kinds `deck_tv`, `roof_board`) and
+  `cult_emblems()` (kinds `sign`, `billboard`) list them for `skin_review`.
+- *The sky and sea*: `night_sky.gdshader` by day, through its existing uniforms (a blue zenith, white
+  cumulus, a warm sun glow toward the far end; nothing blooms), and, for a level that wants the owner's
+  sunset ("the sun starting to set. Not dark, but the sun's starting to have some purples and oranges in the
+  sky"), `data/skies/beach_sunset.tres`, a `LevelSky` to name in `LevelConfig.sky` (a periwinkle zenith, a
+  peach horizon, a violet-pink haze, an orange sun glow, orange and pink clouds over lavender shadows, no
+  stars, a sea re-coloured to a deep blue; at least three times as bright overhead as the Marketplace's
+  sunset and under the glow threshold; `test_beach_skin` pins it; review it with
+  `skin_review --skin=beach --sky=beach_sunset`), plus three default-off uniforms: `skyline_hills`
+  and `skyline_scale` turn the skyline into smooth low hills (an island, no lit windows) standing on the
+  sea, and `abyss_depth` (0.3 by default) is how far below the horizon the sky becomes the abyss colour (the
+  Beach: 0.05, a turquoise sea starting at the horizon).
+- *Colour rule* (departures from the reference, `docs/OPEN_QUESTIONS.md` items 539–543): the water never glows
+  (the reference's glowing turquoise is the pads' cyan); decorative glows are warm white, violet and blue only
+  (the reference's pink, yellow, cyan, green and orange neon are hazard hues); string lights and lanterns the
+  same; pool frames are flush (the reference's tanks stand proud, which would read as an obstacle); no words on
+  signs. `test_beach_skin` holds the skin to it (a glowing colour is a hazard hue when its saturation is at
+  least 0.35 and its hue is outside the blue-violet range; no paint is near a hazard's colour).
+- *Shader patterns* (ids 80-89, `kit_beach.gdshaderinc`, with `kit_solid.gdshader` including it after
+  `face_coords()` and dispatching on the id): colours arrive as sRGB `Vector3` uniforms (`BeachSkin.srgb()`)
+  so both renderers agree, `bc_daylight` lifts the lit upright surfaces for the afternoon sun (the kit's
+  `shade` is a night city's), and the water's drift (its ripples, caustics and glints) slows to a tenth of its speed under Reduced
+  flashing (`reduced_flashing`; nothing else in the zone moves with `TIME`, which `test_beach_skin` checks). Review it
+  on both renderers: `skin_review` (`--view=shot`, `--view=run`, `--narrow`), `doodad_review`,
+  `floor_cut_review` and `wall_fence_review` with `--skin=beach`.
 
 **The cult emblem** (D7, GDD §5 "The cult"): `CultEmblem` (`scripts/world/meshes/cult_emblem.gd`)
 builds each option's 2D vector geometry as a flat mesh (mesh kit conventions: emissive for a neon
@@ -2689,8 +3022,11 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   `tools/asset_gen/` (`tools/godot.sh sfx` / `music`): a track is composed in `track_<name>.gd` with
   `music_song.gd` (stems on a 16th grid that wrap around the loop, and loop-safe effects) and
   `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. **No new tracks are
-  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in all six zones
-  and the Floating Head fight. `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
+  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in every zone
+  and the Floating Head fight (the Casino, until the owner supplies its song, plays the Marketplace's:
+  its `casino` track is the Marketplace's default file, `zone_tracks` sends it to Jackpot Plaza and
+  `riff_tracks` to the Marketplace's riff; no new song is generated, GDD §11; the Beach's `beach` track stands in
+  on the Marketplace's the same way, task D10c, DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 577). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
   and `boss_tracks` maps a boss id to its supplied song. `App._start_run` resolves these for campaign,
   quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
   keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
@@ -2717,35 +3053,59 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
 
 `Campaign` lists `ZoneDef`s; each built zone contributes steps: optional intro cinematic, its
 levels, optional boss-intro cinematic, the boss, optional outro cinematic. Step ids (`city/1`,
-`city/boss`, ...) key the save file, so they never change. A cinematic slot added after a save had passed it
+`city/boss`, ...) key the save file, so they never change (but for a zone's new place in the campaign, which a
+save migration follows: Economy and saving, Saves from before the Casino). A cinematic slot added after a save had passed it
 (Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
 unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
-plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign.
+plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign. A level off the curve
+(`LevelConfig.off_curve`: the Beach's, below) plays at its own.
 
-The campaign (GDD §5) has six zones, with ids other tasks rely on: `city`, `gangland`,
-`marketplace`, `corporate`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2 and 3 levels in
+The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
+`marketplace`, `casino`, `corporate`, `beach`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 2, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
-cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster. A zone's music
+cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster, but the
+Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
+Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); the Beach's boss is still to be
+designed (below). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
-over the 15 levels (FB 4, FB 5); which level is the peak (proposed: Golden 2, with Golden 3 a little
-below it) and the remaining level lengths (DESIGN-TBD, run 120–150 s) stay open.
+over the 17 levels on it (FB 4, FB 5; the Beach's two, task D10c, are off it, so the Beach moved no other
+level). When the Casino's two came in, task K2 re-spaced it linearly (each
+existing level's difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from
+0.56 to 0.60; the enemy numbers that step at a threshold of `enemy_scaling` were moved in data so every
+existing level keeps its own, `docs/OPEN_QUESTIONS.md` §D, items 519-521). The owner then ruled that no
+level gets easier when levels are added (GDD §6, October 9, 2026), so `difficulty_curve_exponent` bends it
+(0.79, task K4, DESIGN-TBD): every level is at least as hard as on the 15-level linear curve before the
+Casino (Marketplace 2 binds that up to about 0.84), the Marketplace a little harder (0.469 and 0.516, from
+0.443 and 0.500), City 2 to Gangland 3 0.03-0.04 harder, Corporate 1 to Golden 2 0.02-0.10 harder, City 1
+(0.05) and Golden 3 (0.85) as they were, and each level at least 0.04 harder than the last (Golden 3
+aside). `enemy_scaling` stays linear (K2's thresholds stand), and `test_campaign` checks every level
+against the 15-level curve (`docs/OPEN_QUESTIONS.md` §D, item 528: the table and why 0.79). Which level is the peak
+(proposed: Golden 2, with Golden 3 a little below it) and the remaining level lengths (DESIGN-TBD, run
+120–150 s) stay open.
 Zone & Levels 1 shortens only City 1 (Rooftop Rush) from 110 to 55 seconds via
 `data/levels/city_1.tres`'s `duration_seconds`; all other level durations stay unchanged.
 At the City's 21 m/s this moves its finish line from 2310 to 1155 metres. The existing generator
 and distance-based completion use that value without changing speed, difficulty, clear distances,
 or the fractional starts of cyborgs and doodads. These are running times without speed-changing
-power-ups or pauses, excluding cinematics and the completion delay. The levels now total 34.1 minutes.
+power-ups or pauses, excluding cinematics and the completion delay. The levels then totalled 34.1 minutes;
+with the Casino's 145 and 150 seconds they total 39.0, and with the Beach's 145 and 150 seconds 43.9 (GDD §5:
+about 44).
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
 come from manholes only in street zones and from wall vents, `screech_vents`, elsewhere, with none in
 Marketplace 1; the Tithe Collector skips the Dead Zone; Zone & Levels 2 excludes Octodogs from
 Golden 1–3, including the Golden Palace). Octodogs remain enabled from Gangland 2 through the
-Dead Zone. Removing only `octodog` from the three Golden resources excludes both dog patterns and
+Dead Zone, the Beach's remix included. Removing only `octodog` from the three Golden resources excludes both dog patterns and
 their generator rules, including the guaranteed-dog fallback; the director therefore has no dogs
 to warm or spawn there. Speed pads and all other Golden features remain enabled. The Buzz Overdrive appears from Corporate 1
-through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected). Each
+through the Dead Zone and the Golden Zone, the Golden Palace included (GDD §9.9, corrected), and in the Beach between
+Corporate and the Dead Zone (its remix; GDD §9.9 names it, `docs/OPEN_QUESTIONS.md` item 579). The Casino
+introduces nothing (GDD §5: it reuses the Marketplace's enemies, owner, October 8, 2026): its two levels
+play Marketplace 2's features with no starts of their own (task K2, DESIGN-TBD until the owner says what
+each adds), and `test_campaign` exempts it from "a new enemy per zone" and "something new per level", as it does the
+Beach (owner, October 9, 2026: "do not worry about any new enemies at this time"; item 565). Each
 level introduces its new features at starts of their own (`feature_starts`, see Late starts under The
 generator; City 1's cyborgs come late in the level), and its newest features get the most picks
 (the campaign's recency curve, under The generator). `test_campaign` holds the schedule table and its
@@ -2765,16 +3125,45 @@ still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`). Endless 
 furthest zone's last level, leaves the remix out (`App.start_endless`: no quiet stretches, no quiet
 features or their weights, no darkness), so endless in the Dead Zone plays as it did before.
 
+**The Beach** (task D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone", a boss
+battle to come, "do not worry about any new enemies at this time"; GDD §5). `data/zones/beach.tres` (id `beach`, the
+Beach skin, 23.8 m/s) is zone 6, between Corporate and the Dead Zone: its intro (the arrival flyover), Tiki Tides and
+Sunset Strip (`data/levels/beach_1.tres` and `beach_2.tres`: seeds 801 and 802, 145 and 150 s, the open walls of task
+D10b, `wall_gap_tuning` under The generator, Side wall gaps; Beach 1 in the zone's daylight, Sunset Strip under
+`data/skies/beach_sunset.tres`), its boss slot and its outro. It is a remix of everything before it, Corporate 2's
+features with no introductions, and the one zone that brings no new enemy (GDD §5's exception).
+Its levels are **off the curve** (`LevelConfig.off_curve`), so every level and boss that was in the campaign before
+plays exactly as before:
+- `Campaign.configure` gives a level off the curve its own `difficulty` (plus the tier's bonus; its
+  `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.71 and 0.72, 0.71 and 0.73, strictly between
+  Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on the curve as task K4 bent it for the Casino;
+- the curve spans the levels on it (`curve_level_count()`: 17 of `level_count()`'s 19, against
+  `planned_level_count()`'s 19), and a level off it takes the place of the level on it before it
+  (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
+- a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
+  on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
+  (`Campaign.feature_ages`); a boss fights at the scaling of the level before it (`Campaign.level_scaling`).
+So the other 17 levels keep their difficulty, enemy scaling, run speed, feature ages, recency and completion bonus,
+and every one of their layouts in `tools/measure/level_pace.gd --dump` (at 3, 5 and 6 lanes, on its own seed and four
+others) is byte-identical; `test_campaign` also builds the campaign without the Beach from the same data and compares
+every level and boss with it (task D10d: with the Casino in, every non-Beach step configures exactly as on main). A save from before the Beach keeps what it had open (`App.step_done`: the Beach's outro counts
+as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
+(`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all 19 levels, the Beach's numbers, its
+completion bonus, Continue for old saves, its boss, cinematics and music.
+
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
-`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro and the City's boss
-intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
-Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), and the other outros are still cards. A boss is
-built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Golden
-Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule delay. A fight
+`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the Dead Zone's and the
+City's boss intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
+Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the Dead Zone's intro its own (`DeadZoneIntro`,
+task F2c), and the other outros are still cards. A boss is
+built on the boss framework (Bosses, below). Every zone's boss but the Beach's is built (its step plays the fight;
+the Golden Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule
+delay. The Beach's slot (`data/bosses/beach_boss.tres`, task D10c) has no scene, phases or arena until its fight
+is designed (task E5e): the campaign shows its card and passes through it, with no stars (`test_app_flow` and
+`test_screens` check the boss slot's card on it). A fight
 still being built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card,
-and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded
-(`test_app_flow` and `test_screens` check the boss slot's card with an unbuilt stand-in).
+and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.
 
 ## Bosses
 
@@ -2804,7 +3193,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
 | `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
 | `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss (see below; `./play.sh --boss=dead_zone_boss` or `--level=dead_zone/boss`) |
-| `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/marketplace_boss*.tres` | The House, the Marketplace's boss (see below; `./play.sh --boss=marketplace_boss` or `--level=marketplace/boss`) |
+| `scripts/bosses/the_house/`, `scenes/bosses/the_house.tscn`, `data/bosses/casino_boss*.tres` | The House, the Casino's boss (the Marketplace's until task K2; see below; `./play.sh --boss=casino_boss` or `--level=casino/boss`) |
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss (see below; `./play.sh --level=corporate/boss`) |
 | `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a and E4b: the campaign plays it after Gangland 3, `./play.sh --boss=gangland_boss`) |
 | `scripts/bosses/golden_convergence/`, `scenes/bosses/golden_convergence.tscn`, `data/bosses/golden_boss*.tres` | The Golden Convergence, the Golden Zone's boss and the final villain (see below; `./play.sh --level=golden/boss` or `--boss=golden_boss`) |
@@ -2913,7 +3302,10 @@ slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks i
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
 `_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `_on_armor_pickup_due`. Every attack needs its visual and audio
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
-time from the physics step. The test boss (`TestBoss`) is a small example.
+time from the physics step. The test boss (`TestBoss`) is a small example. `rng`, the armor pickups' and
+the parts' and brought enemies' seeds hash `BossDef.rng_key()`: the boss's id, or its `seed_id`, the id it
+had before a move, so a renamed boss makes the same random choices (The House, `casino_boss`, keeps
+`marketplace_boss`'s; task K2: it now runs at 23 m/s with enemy scaling 0.5625).
 
 **The Floating Head** (GDD §10, task E1: E1a, the ship and face, the entrance, the bombing run and
 the reveal; E1b, the face-off with its eye lasers and cyborg drop, and the marked towers that pin it;
@@ -3016,16 +3408,17 @@ Floating Head's are, so the fight keeps its seconds at any speed. In `scripts/bo
 
 **The House** (GDD §10, task E5a: E5a-a, the machine, its arena, the spin with its three attacks and their
 bigger versions, the 7 buttons on the floor, the jackpot with its credit fountain and the hopper stomped,
-weapons chipping it; E5a-b, phases 2 and 3, the defeat, par times and its slot). The campaign plays it
-after Marketplace 2 at the Marketplace's 22.6 m/s (`--boss=marketplace_boss` or `--level=marketplace/boss`
-in debug builds): its tuning's distances that stand for a time (the buttons' and the stomp box's depth,
+weapons chipping it; E5a-b, phases 2 and 3, the defeat, par times and its slot; K2 moved it, unchanged, to
+the Casino). The campaign plays it after Casino 2 at the Casino's 23 m/s (`--boss=casino_boss` or
+`--level=casino/boss` in debug builds; it was after Marketplace 2 at 22.6 m/s): its tuning's distances that stand for a time (the buttons' and the stomp box's depth,
 the margins) are written at 18 m/s and multiplied by the run's pace (`TheHouse.run_pace()`), and where an
 attack, a button, a ceiling or its jackpot stop lands is a time at the run speed, so the fight keeps its
 seconds. The October 3 difficulty revision uses three opening attack-only spins per phase instead of
 two, attack/spin gaps of 0.85/1.0 s instead of 0.95/1.25 s, cherry coverage of 2/3/4 lanes and lightning
 coverage of 2/3/4 lanes across phases, constrained by the existing fair-route planner.
 Pars are 86 s for three stars and 108 s for two. Clean unprotected wins measure 80.4-82.4 s across
-3, 5 and 6 lanes at 18 and 22.6 m/s, with all 27 strikes from the nine opening spins retained.
+3, 5 and 6 lanes at 18 and 22.6 m/s, with all 27 strikes from the nine opening spins retained (80.4-81.9 s
+at 18 and the Casino's 23 m/s, task K2).
 Every strike, every set of buttons and the jackpot's approach is planned only where a
 route exists (`TheHouseRoute`) for a runner who reads the warnings and moves a reaction time after them,
 through everything else still on the track, at any lane count: that's how every attack has an escape and
@@ -3042,7 +3435,7 @@ taller than a ceiling: it squats on its treads under `duck_top` while a billboar
 
 | File | What |
 |---|---|
-| `the_house.gd` (`TheHouse`) | the encounter: its arena kept plain (`_plan_lap`: no holes, fences, wall fences, signs, ceilings, pads, ramps, doodads, cuts or enemies of its own); where it stands (`front_at`, its face's track distance: `stand_distance()` ahead of the runner, keeping pace, or further at a speed where its longest warning would land near it), squatting under a ceiling (`_duck`, `duck_sag()`); the entrance (it rolls in from `enter_ahead` and brakes, with its jingle); the spin (`_spin_tick`: the lever's pull, the reels spinning and stopping on the phase's next symbols from `spin_patterns`, each with its ding; the phase's first `opening_spins` spins offer no buttons, every later one a button for each reel still unlocked, `_try_pull` waiting for a fair set, a ceiling's set starting its billboard); the result (three 7s start the jackpot, otherwise `TheHouseAttacks.queue_spin`); a stomp is the phase's hit (`_on_weak_point_hit`); a missed jackpot clears the locks and it spins again. The defeat (`_on_defeated`, `_defeated_tick`, `Defeat`): it lurches out and rises as after any stomp, its reels spin wildly (`WILD_SPIN`, `tilt_spin_seconds`) and jam between symbols, TILT shows over its reels (`tilt_seconds`; flashing, steady with Reduced flashing), and it collapses into the street ahead of the runner (`collapse_seconds`), tipping, shaking, its power dying, `collapse_coins` coins bursting out (the fountain's pool, for show), the citizens cheering; `victory_over()` once it's down. Fairness: `route_through()` (from the runner's lane now, through everything of its attacks still ahead, over any buttons), `route_from()` (from where the runner will be), `attacks_held()` and `segment_end()` (the street the runner's again past a wall run or a ceiling). `react_citizens()` calls D3's `react` on the `"market_citizens"` group (cheer at a jackpot, a stomp and its defeat, duck at a big attack); `sound()` plays and logs every warning; first-time hints `enemy:marketplace_boss`, `boss:marketplace_boss/buttons`, `/wall_button`, `/ceiling_button` and `/jackpot` |
+| `the_house.gd` (`TheHouse`) | the encounter: its arena kept plain (`_plan_lap`: no holes, fences, wall fences, signs, ceilings, pads, ramps, doodads, cuts or enemies of its own); where it stands (`front_at`, its face's track distance: `stand_distance()` ahead of the runner, keeping pace, or further at a speed where its longest warning would land near it), squatting under a ceiling (`_duck`, `duck_sag()`); the entrance (it rolls in from `enter_ahead` and brakes, with its jingle); the spin (`_spin_tick`: the lever's pull, the reels spinning and stopping on the phase's next symbols from `spin_patterns`, each with its ding; the phase's first `opening_spins` spins offer no buttons, every later one a button for each reel still unlocked, `_try_pull` waiting for a fair set, a ceiling's set starting its billboard); the result (three 7s start the jackpot, otherwise `TheHouseAttacks.queue_spin`); a stomp is the phase's hit (`_on_weak_point_hit`); a missed jackpot clears the locks and it spins again. The defeat (`_on_defeated`, `_defeated_tick`, `Defeat`): it lurches out and rises as after any stomp, its reels spin wildly (`WILD_SPIN`, `tilt_spin_seconds`) and jam between symbols, TILT shows over its reels (`tilt_seconds`; flashing, steady with Reduced flashing), and it collapses into the street ahead of the runner (`collapse_seconds`), tipping, shaking, its power dying, `collapse_coins` coins bursting out (the fountain's pool, for show), the citizens cheering; `victory_over()` once it's down. Fairness: `route_through()` (from the runner's lane now, through everything of its attacks still ahead, over any buttons), `route_from()` (from where the runner will be), `attacks_held()` and `segment_end()` (the street the runner's again past a wall run or a ceiling). `react_citizens()` calls D3's `react` on the `"market_citizens"` group (cheer at a jackpot, a stomp and its defeat, duck at a big attack); `sound()` plays and logs every warning; first-time hints `enemy:casino_boss`, `boss:casino_boss/buttons`, `/wall_button`, `/ceiling_button` and `/jackpot` |
 | `the_house_route.gd` (`TheHouseRoute`) | the lane routes: the track ahead as SOLID stretches (blocks, blasts, turrets' bodies), FENCE (jumped, settled in its lane, nothing solid where the jump takes off or lands) and GAPPED (slid under) in each lane; a lane switch takes `switch_m` (the real one times `switch_margin`, plus a margin) with the runner in both lanes meanwhile; a body reaching `body` either side; waypoints (buttons) held in their lane as the runner passes, and holds (`{lane, at, to}`: a lane kept over a stretch, a wall run from its outer lane or a pad). `find()` keeps the fewest switches, each as early as it can (no zigzag), and returns the moves; it runs within a frame as attacks are revealed and buttons planned (flat arrays, each switch's span checked at once: about 1 ms for 100 m at 6 lanes). The bot follows the same routes |
 | `the_house_attacks.gd` (`TheHouseAttacks`) | the three attacks (`Kind`: CHERRY, LIGHTNING, BAR), grouped by kind in reel order (`attacks_for`: a kind's count is its size; a 7 brings none), each revealing its strikes in turn (`strikes_in`: cherry volleys and BAR rows by size; three lightnings, two rows across every lane, full then gapped), each strike planned as it shows (`plan_strike`: the first lane set of a seeded order, the runner's lane first, with a route, off the wall fences' drop windows), waiting up to `strike_wait` for a fair moment, else left out (`strike_skipped`); a new attack waits while `TheHouse.attacks_held()`. Cherry: `circle_warning`s, bombs lobbed from the coin chute, the whistle, blasts (pooled enemy-attack boxes) as the runner would arrive. BAR: `lane_warning`s and gold blocks falling from high above, slammed down `bar_slam_lead` before the runner arrives as solid hazards of `props.block`'s kind with a lane blocker (gold with red-hot seams: deadly, never a doodad). Lightning: `props.fence`s flickering with their crackle while a pink-capped spool rolls across, on `fence_on_lead` before the runner arrives. `obstacles()` and `hazards_end()` describe what's still on the track; `strikes` lists them for tests and the bot. Everything an attack shows is pooled and made before the fight (`prewarm()`: bombs, blast boxes, fireballs, blocks with their hazards, spools; `pool_stats()`), as are the buttons' looks, the billboard and the fountain's coins, so a fight makes nothing of its own mid-fight; the warnings, fences and pads are BossProps' (made per strike), the turrets the director's |
 | `the_house_buttons.gd` (`TheHouseButtons`), `the_house_button.gdshader` | the 7 buttons: `plan()` (a lane for each floor button, at most `button_max_shift` from the one before and never the same; a wall button by either outer lane, a ceiling's pad off the edges; the first set of a seeded order with its routes, `MAX_TRIES` a frame), each lighting up `button_lead` before the runner reaches it (a wall button `wall_lead`, reached `wall_extra` later; a ceiling button once its billboard is down) with its chime (`house_button`), `pressed` or `missed` as the runner passes (on the floor, low, their middle within the button's width; on its wall, at any height; on the ceiling in its lane); the look: an ivory disc with chasing bulbs and the reels' blue 7 (flat on the floor, upright on the facade at wall-run height and as tall as the wall-run path, facing down on a ceiling), and the 7 floating near it, shrinking away as the runner nears it; pooled |
@@ -3052,9 +3445,9 @@ taller than a ceiling: it squats on its treads under `duck_top` while a billboar
 | `the_house_body.gd` (`TheHouseBody`) | the body part: its cabinet a solid body hitbox while it stands; the hopper's weak point (across the street wall to wall, `stomp_depth` at the run's pace: `hopper_length`); its top deck a floor while it's sunk (`set_sunk`, the cabinet's hitbox off); `aim_point()` (its reels, its hopper once sunk); what it's doing (`sag`, `lever`, `lights`, `jackpot`, `hopper`, `power`, `track_speed`, and its defeat's `tilt`, `collapse`, `shake`) eased onto the model; its reels (`TheHouseReels`) |
 | `the_house_model.gd` (`TheHouseModel`), `the_house_reels.gdshader`, `the_house_symbols.gdshaderinc`, `the_house_lights.gdshader`, `the_house_hopper.gdshader`, `the_house_treads.gdshader`, `the_house_tilt.gdshader` | the machine, built in code from a `Shape` sized to the street (`shape_for`: the street less `street_margin`, `height` under the cables across the street, as deep as the stomp box needs): the cabinet and its trim (one kit mesh: purple paint, chrome, unlit gold; nothing on it glows), the cult's emblem in brushed bronze at the heart of its marquee's sunburst, the three reels standing out of its face (one draw: drums whose symbols are drawn as distances, each in its attack's colour: a red cherry, a gold BAR plate, a pink bolt, and the buttons' royal blue 7; smeared while spinning, a lock glowing), its bulbs and sirens (one draw: warm and cold whites, chasing and strobing, steady with Reduced flashing), its rolling treads, its lever on the face's edge, the hopper's two lids and its red-hot inside: 9 draws, under 3k vertices; the TILT sign over the reels' window (its defeat: warm-white letters ringed in gold, flashing, steady with Reduced flashing; hidden until then) and the collapse (tipping forward and over, shaking). On the Compatibility renderer its shaders scale an over-bright colour down whole (the 7's blue never clips toward the pads' cyan) |
 | `the_house_reels.gd` (`TheHouseReels`) | the reels' symbols and drums: `spin` (`wild` for the defeat's), `stop` (the symbol known at once; the drum eases onto it with a bounce), `jam` (between two symbols, no bounce), locks on 7 (`unlock`) |
-| `the_house_tuning.gd`, `data/bosses/marketplace_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD: OPEN_QUESTIONS items 299-303, `docs/questions/e5a.md`) |
-| `data/bosses/marketplace_boss.tres` | its slot: `scene`, three phases (one stomp each), weapons capped at 0.34 of its health, the standard armor rule with `armor_when_unprotected`, the Marketplace's music, par times (72 s and 92 s), its arena (two plain laps) |
-| `data/bosses/marketplace_boss_skin.tres` | its arena's look: the Marketplace's, its pennants strung high above the street where it rolls |
+| `the_house_tuning.gd`, `data/bosses/casino_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD: OPEN_QUESTIONS items 299-303, `docs/questions/e5a.md`) |
+| `data/bosses/casino_boss.tres` | its slot: `scene`, three phases (one stomp each), weapons capped at 0.34 of its health, the standard armor rule with `armor_when_unprotected`, the Casino's music (the Marketplace's for now), par times (86 s and 108 s), its arena (two plain laps, seed 1301), its `seed_id` (`marketplace_boss`: every random choice of the fight as before its move) |
+| `data/bosses/casino_boss_skin.tres` | its arena's look: the Casino's (task K1; the Marketplace's, its pennants strung high above the street where it rolls, until then), its warm light the machine's too (`TheHouseModel.sheen_for`) |
 | `tools/asset_gen/sfx_bank_the_house.gd` | its sounds (`house_*`: the entrance, the lever, the reels, the ding and the lock, a button, each attack's warning, the slam, the jackpot, the coins, the sag, the stomp, the billboard coming down, the TILT jam and the collapse); its bombs fall and blow with the Floating Head's `bomb_whistle` and `bomb_blast` |
 | `tools/showcase/the_house_showcase.tscn` | close-ups and scripted runs for reviews (`--scenario=model/front/entrance/spin/buttons/jackpot/wall/ceiling/defeat/fight`, `--symbols=a,b,c` for the spin's symbols, `--lanes`, `--speed`, `--phase`, `--events`) |
 | `tests/helpers/the_house_bot.gd` (`TheHouseBot`) | a runner who plays the fight by what it shows, `reaction` seconds late: a route (TheHouseRoute) through every warning on the track and over the lit buttons (`takes_buttons`, `avoids_buttons`, `skip_reels`), a wall button's wall run (onto the wall `wall_entry_before` it, a wall jump back past it, or off at once before a wall fence that would be on), a ceiling's pad and its route along the ceiling (dodging the turrets' bolts into the free lane beside the pad's, `dodges`), fences jumped or slid under, and a jump timed to come down on the hopper (`stomp_lead()`; `stomps` off lets it pass) |
@@ -3394,17 +3787,19 @@ never ends, and a level never starts, unattended.
 | File | What |
 |---|---|
 | `cinematic_sequencer.gd` (`CinematicSequencer`) | the player: builds the stage, actors, camera and overlay, runs the clock (`advance`), fires the events, emits `finished`; `skip()`; `log_lines` lists every event fired (tests, the review tool); a script's hooks: `_on_cue()`, `_on_advance()` (its own props on the clock), `_stage_near()` (the street kept built under props further back), `switch_stage()` (a cut to another stretch, even another zone's) |
-| `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound`, `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
+| `cine_timeline.gd` (`CineTimeline`) | one cinematic: `duration`, `letterbox`, `stage`, `camera` keys, `actors`, `events`; helpers to build one in a script (`shot`, `actor`, `sound` (at its own level over the library's), `music`, `card`, `effect`, `cue`); `problems()` checks it; `sort()` |
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
-| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, heading, the runner's head turn `look`, a cyborg's face, aim and charge) and its node in play |
+| `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position); its legs step while it is moved meanwhile |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
 | `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
-| `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props and the sports car |
+| `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props and the sports car; its sounds in `tools/asset_gen/sfx_bank_gangland_outro.gd` |
+| `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -3439,19 +3834,30 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 **Actors.** The runner is the real player model (`PlayerAvatar`), driven with the same movement state as
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
-keys; it is in the air below the floor too (falling past its edge), and a key's `look` turns its head (shared
-by its chest, neck and head, turning smoothly between keys). A cyborg (`CyborgBody`) walks or idles by its
-speed, or takes `aim`, `run_away`, `cower` or `die`;
-its keys set its face, its aim (at another actor) and its charge glow (the red glow is its attack's
-warning in play, so show it only where an attack follows). An actor faces the way it moves, or a heading
-of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no gameplay.
+keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
+(`CinePoses`: `lie`, `get_up`, `climb`) take the keys' `progress` (0-1, sampled like the position; a key below 0
+keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
+hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises); and while it
+climbs, its hands hold the keys' position (the body hangs from them) until a foot takes its weight
+(`CinePoses.LET_GO`). A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
+`die`, `lie` (lying still, its screen dark) or `crouch` (crouched low over something, working at it; it stops as
+it turns its head); its keys set its face, its aim (at another actor) and its charge glow (the red glow is its
+attack's warning in play, so show it only where an attack follows). Either's head turns by its keys' `look`
+(shared by its chest, neck and head) and tips by `look_up` (its neck and head; a cyborg's chest a little too, and
+a cyborg's turn is about its upright, so a bowed head turns without rolling over), smoothly between keys. The
+models move on the cinematic's clock, never by themselves between frames (the runner's rig by its update; a
+cyborg's body by `CyborgBody.advance`), so stepping the clock shows the same (but for a cyborg's `die` fall, a tween,
+and a host's random face glitches). An actor faces the way it moves, or
+a heading of its keys; it's in the scene from `enter` to `leave`. Actors are visual only: no collision, no
+gameplay.
 
 **Reduced flashing and comfort.** `flash` becomes a slow, faint glow with Reduced flashing
 (`CineOverlay.SOFT_FLASH_ALPHA`, `SOFT_FLASH_MIN_TIME`); nothing in the overlay blinks; the skins honour it
 as in play; `shake` is scaled by Screen shake (0 when it's off).
 
 **Writing a cinematic.** In data: a scene whose root is `CinematicSequencer` with `timeline` set to a
-`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event). Or in
+`CineTimeline` resource (`tools/showcase/cinematic_sampler.tres` shows every kind of key and event but the poses that
+play out over time, which `test_cinematics` plays). Or in
 a short script, which can use the stage's geometry:
 
 ```gdscript
@@ -3500,8 +3906,8 @@ id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to st
 each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
-numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot and the City's boss intro play
-it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the Dead Zone's, which has the
+owner's beats) and the City's boss intro play it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
 and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
 the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
 CITY"; before a boss, the boss, as the level select does), the slot's music comes in, and it fades to black
@@ -3559,8 +3965,8 @@ the first time, with cold mesh caches) and costs about 0.6 ms a step, at most ab
 `_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
 behind the camera and the actors).
 
-**Gangland's outro** (`GanglandOutro`, task F2c; the owner's beats, October 9, 2026, GDD §6 Cinematics; what they
-leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in `data/cinematics/gangland_outro_tuning.tres`):
+**Gangland's outro** (`GanglandOutro`, task F2d; the owner's beats, October 9, 2026, GDD §6 Cinematics; what they
+leave open is DESIGN-TBD, `docs/questions/f2d.md`; numbers in `data/cinematics/gangland_outro_tuning.tres`):
 21.2 s after the Sewer Swarm, both stretches picking up where the fight ended (`CineStageDef.after_fight`: the
 arena's look under Gangland 3's blood-red sky), on the level's lanes. The fight's music fades out as it opens. Low
 beside the Host, who lies freed against a heap of rubble, implants dark, looking back up the street: four screeches
@@ -3590,11 +3996,39 @@ level's sky. Its look (size, paint, accent) is data. The key is the cinematic's 
 scene into the second), held in a hand joint. The runner's reach, lean, look at the key, raised key and sitting
 down are layered on their pose in `_on_advance` (`aim_arm` turns an arm toward a point; the rig sets every joint
 afresh each update, so nothing builds up). Shots looking back up the street keep it built behind them
-(`_stage_near`). Its sounds are six new ones (`tools/asset_gen/sfx_bank_cinematics.gd`: `screech_sniff`,
+(`_stage_near`). Its sounds are six new ones (`tools/asset_gen/sfx_bank_gangland_outro.gd`: `screech_sniff`,
 `key_glint`, `car_unlock`, `car_door`, `car_start` as its lights come on and `car_drive` at the launch) and the
 fight's `host_short` and `swarm_scatter`. Cost (headless, `test_gangland_outro`): about 25 ms to set up (about 350 ms the first time, with
 cold mesh caches), about 20 ms for the cut to the car (under black), about 10 ms on the two hard cuts (the street
 building ahead) and about 0.4 ms a step otherwise; its props add about 22 draw calls (the Host on the rig is 16).
+
+**The Dead Zone's intro** (`DeadZoneIntro`, task F2c; the owner's story beats and answers, October 9, 2026, GDD §6
+Cinematics; what they leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in
+`data/cinematics/dead_zone_intro_tuning.tres`): 14.3 s before Dead Zone 1, on a stretch of the zone's street in the
+level's lanes. A smoking crater is a gap in the runner's lane (`CineStageDef.gaps`), so it looks like one; the runner
+lies on their back on its floor 1.42 m down, stirs, shakes their head as they sit up, gets to their feet, staggers to
+the far wall and reaches up. The camera looks down into it from high over its far end, the street beyond and the
+cyborgs down it in view. At 5.75 s it cuts to ground level 1.3 m beyond the far edge: at first only the runner's
+hands come up over the edge and grab it, then they climb out (`CinePoses.climb`, the hands holding the edge) and
+stand on the street as the camera rises and pulls back. Throughout, 16 m down the street behind the crater, two
+cyborgs lie still with their screens dark and a host crouches over them, working at them; as the runner gets up it
+looks over, and at 8.6 s, mid-turn, the cut to a medium shot of it from the runner's side, so it turns to look into
+the camera. At 10 s the cut to an extreme close-up of its screen face: the camera straight in front of the screen as
+it is at the cut (`frame_face`, measured from the head, the head held still: `CyborgBody.twitches`), the whole face
+filling 80% of the picture inside the letterbox (its height, or its width on a screen narrower than the face),
+pushing in to 92%, its corrupted grin glitching harder (the shader's `glitch`, 1.8). At 11.5 s it starts to fade to
+black, and the zone's title card ("ZONE 7", "DEAD ZONE", from the zone's data as the flyovers' are) comes up with
+it and holds on the black; then the level. The actors are the timeline's; the crater's inside is the cinematic's own
+prop, `DeadZoneCrater`, built on the stage so it hides with it: a floor of the zone's own street plates
+(`ZoneSkin.floor_segment`) tipped this way and that, slabs leaning on its walls and rubble (the skin's solid
+material, in greys), three thin columns of the Dead Zone's smoke (`dead_smoke.gdshader`) kept off the camera's line
+to the cyborgs, and a faint cold light. The street stays built back down to the haze behind the cyborgs
+(`_stage_near`). Its sounds are its own, where the game's didn't fit (`tools/asset_gen/sfx_bank_cinematics.gd`, none
+of them a hazard's warning): `crater_smoulder`, `rubble_shift`, `edge_grab`, `cyborg_host_turn` and `cyborg_host_glitch`; the
+zone's track fades in under them. It sets up in about 19 ms (about 240 ms the first time, with cold mesh caches) and
+costs at most about 2 ms a step (headless, `test_dead_zone_intro`); the crater adds 5 draw calls. It added to the
+toolkit the poses that play out over time (`CinePoses`, a cyborg's `lie` and `crouch`), `look_up` and a cyborg's head
+turn, models on the cinematic's clock, and sound events at their own level.
 
 ## Economy and saving
 
@@ -3629,10 +4063,18 @@ The subsequent danger-density overlay can move collectibles around new hazards, 
 are historical rather than freshly measured totals. It changes neither duration nor reward tables,
 and its added hazards earn no extra risk-credit pay.
 
-The save has a version (`Profile.VERSION`, now 2). `Profile.from_dict()` brings an older save up to
+The save has a version (`Profile.VERSION`, now 3). `Profile.from_dict()` brings an older save up to
 date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in
 earned credits at the 150 each it cost (`V1_ARMOR_PRICE`, the only price it ever had), the purchases
 leave `lifetime_spent`, and its old equip toggle goes, so an upgrade bought later starts switched on.
+**Saves from before the Casino** (version 2 to 3, task K2): The House moved from the Marketplace to the
+Casino, so every tier's `marketplace/boss` record becomes `casino/boss` and the `hint/marketplace_boss...`
+keys `hint/casino_boss...`; a finished `marketplace/outro` (which then came after The House and led to
+Corporate) also counts as `casino/outro`, so Corporate's intro, whose step before is now the Casino's
+outro, stays open. `App.step_unlocked` keeps a step the player has done open even when the step before it
+isn't (only a save from before steps were added ahead of it can have that: the moved House record, done
+while the Casino's levels aren't), so a save keeps every step it had reached, and Continue leads into
+the Casino (`test_campaign`, `_test_old_saves`).
 A change to the save's format bumps the version and adds its step there, with a test.
 
 ## Platforms and build flavors
@@ -3808,7 +4250,7 @@ street's cables, its squat under a ceiling and its draw budget, a cabinet that d
 their defeat's wild spin and jam, TILT steady with Reduced flashing, how symbols become attacks, the
 phases' special buttons, the route solver's rows, walls, fences, slaloms, buttons and holds, and phase 3's
 ceiling within C1's limits for every pad lane); `test_the_house_attacks` plays every attack at every size with
-`TheHouseBot` at 3, 5 and 6 lanes and 18 and 22.6 m/s (each strike's warning on the track where it then
+`TheHouseBot` at 3, 5 and 6 lanes and 18 and 23 m/s (each strike's warning on the track where it then
 hits and nothing hitting anywhere else, the bigger versions, the 3-lane mix of bombs and blocks always
 leaving a way, the citizens ducking, every phase's spins survived over a few seeds without god mode);
 `test_the_house_fight` plays its buttons and jackpot at every lane count and both speeds (buttons in
@@ -3823,7 +4265,7 @@ attacks waiting, strikes off the drop windows) and phase 3 (the billboard over e
 the machine squatting under it, one or two turrets firing, the ceiling button run over, the bolts
 dodged, the rider dropping back onto clear floor) and the defeat (the wild spin, the jam, TILT, the
 collapse in coins ahead of the runner, the citizens cheering) at 3, 5 and 6 lanes and both speeds, and
-the campaign's flow at 22.6 m/s at every lane count (Marketplace 2, a death in the fight's second phase,
+the campaign's flow at 23 m/s at every lane count (Casino 2, a death in the fight's second phase,
 the retry won with three stars, the shop, the outro). `test_hostile_takeover` builds Hostile Takeover's
 train (E5b) at 3, 5 and 6 lanes and 18 and 23.4 m/s (its slot in the campaign after Corporate 2, par times,
 sounds and hints; the laps holding the train
@@ -4071,7 +4513,9 @@ run's music hooks through the App. `test_cinematics` checks the cinematic toolki
 eased and cut moves, cameras riding with an actor), a timeline's `problems()`, a cinematic played to its end
 (events in order, `finished` once, actors on their paths, the camera riding along), `skip()` and the pause
 action and the Skip button, Reduced flashing, holding in the background, the sampler (a cinematic described
-in data), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
+in data), the poses that play out over time (the runner lying, getting up and climbing with its hands holding the
+keys' position; cyborgs lying still and crouching, turning their heads by `look` and `look_up`), sound events at
+their own level, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
 next step follows, skipping, the web demo). `test_city_outro` checks the City outro (F2a): at 3, 5 and 6
@@ -4086,7 +4530,15 @@ speed, the camera at ground level and in the street, cutting once, the owner's b
 and one on the other, five left and six right, each manhole rattling first), the runner never touching a
 screech, more and more pouring out and dropping from out of view, never in the runner's lane, the wall rising
 and closing in, the heart and its glint only in the cut, and ending on black with the fight's music; Reduced
-flashing; `skip()`; and its setup and step costs. `test_gangland_outro` checks Gangland's outro (F2c): its slot;
+flashing; `skip()`; and its setup and step costs. `test_dead_zone_intro` checks the Dead Zone's intro (F2c): its slot
+(before Dead Zone 1, which starts when it's skipped); at 3, 5 and 6 lanes the zone's look and lanes, the crater a
+gap in the runner's lane with a floor, smoke and only greys in it, the runner lying in it, shaking their head,
+getting up and reaching for the far wall, two cuts (to ground level beyond the far edge, then to the host's face),
+at first only the hands over the edge, the hands holding the edge as they climb out, the runner up on the street,
+the three cyborgs in view until the medium shot (two lying still with their screens dark, the host crouched), the host
+looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
+zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
+its own sounds; `skip()`; and its setup and step costs. `test_gangland_outro` checks Gangland's outro (F2d): its slot;
 `after_fight` (the fight's look and sky after it, the zone's own without it, so the City outro's look is unchanged);
 the car's shape (a long, low wedge, a scissor door, lights and turning wheels); at 3, 5 and 6 lanes its beats in
 order (the screeches sniffing, then gone before the runner arrives, never near the camera; a walk, not a run; the
@@ -4183,8 +4635,8 @@ rev); the calm start (C6e: on a plain track at the Golden Zone's pace, its Buzz 
 run-up, the truck arrives inside the run-up from `calm_start_min_seconds`, shows itself as it arrives, out of view
 before the rev, its bait where it was, nothing taken out and nothing else attacking there; none before the data
 minimum; every campaign window in the calm start takes nothing out); both trucks kept where a level has two but room
-for one showing (Corporate 2 at 5 lanes, Dead Zone 1 at 3, Dead Zone 2 at 5 and 6); its blast (seen wherever it goes off, never
-in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
+for one showing (`BOTH_TRUCKS`, checked both ways: Corporate 2 at 6 lanes, Dead Zone 2 at 5 and 6); its blast (seen
+wherever it goes off, never in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
 prints the counts), the same level without it but for its trucks (its windows not planned), quick play without a
@@ -4215,6 +4667,18 @@ truck (god mode, grapples): each destroyed by a charge it dodged or in a wider g
 its volleys, never firing while it shows itself, each truck whose window comes before its first bait coming
 alongside (the showings it makes are printed).
 
+`test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
+gaps): the zone and level data and its place in the campaign (zone 5, its steps, slots and music stand-in); both
+levels at 3, 5 and 6 lanes as the campaign configures them, on their own seeds and two others, with the campaign's
+fairness checks (LayoutChecks) and every listed feature present (on
+other seeds the Enforcer Truck, which only comes where a bait's chase has room, in nearly every build); the open
+walls: each wall standing on 40-60% of its level (or more only where its keep-outs leave no more free), the
+median wall in 45-55%, every gap at least `open_seconds_min` long and clear of its wall's keep-outs, most of the
+open length in stretches of 100 m and more, both walls open at once within `both_open_max`, the same gaps on a
+second build, and the level otherwise the same as with the shared tuning; and `--level=beach/1`, the campaign step
+with the full flow, end to end through the smoke tool. How the campaign configures the Beach off its curve, and
+that no other level or boss changed, is `test_campaign`'s (Campaign, The Beach).
+`test_wall_gaps` holds every other campaign level to the shared tuning and checks the open walls on made-up tracks.
 `test_wide_gaps` checks the wider gaps (task G7; The generator, Wider gaps): every campaign level at 3, 5 and 6
 lanes with its 2 (LayoutChecks.check_wide_gaps: the length, the spacing, nothing in any lane from the take-off
 margin to the landing margin, no zone doodad or its push's lead there, no side wall gap beside) and a floor
@@ -4226,10 +4690,13 @@ jump early, midway and late in the take-off window clears one and running on fal
 following a runner who jumps one wrecked in it (the player's kill) and hopping a 0.5-of-a-jump row, at 3, 5 and
 6 lanes, at 18 and 23.4 m/s; none in an Enforcer Truck's chase before its showing (from its arrival to its window's
 end; task C6e) in any campaign build, nor on another seed of each level with the truck, each keeping its wider gaps
-(one fewer allowed off its own seed; how many sit in a chase past its window is printed); and Corporate 2's own
-build at 3, 5 and 6 lanes played from its start (god mode, grapples) until the runner leads its first truck over
-the wider gap in its chase past its window, where it's wrecked (at 3 and 5 lanes: at 6 its window comes after its
-bait, at its chase's end).
+(one fewer allowed off its own seed; how many sit in a chase past its window is printed); Corporate 2's own build
+at 3, 5 and 6 lanes, whose first chase leaves room past its window at two lane counts at least and holds a wider
+gap there at `CORPORATE_2_CHASE_LANES` only (checked both ways; 3 lanes since task K5: at 5 lanes the chase past
+its window is full, at 6 its window comes after its bait), played from its start (god mode, grapples) until the
+runner leads its first truck over that wider gap, where it's wrecked; and the pass's last way (task K5) on
+`LAST_RESORT_CASES` (the build's one wider gap from it, fair, past every truck's showing, every window holding) and
+on a plain stretch fenced every 15 m (plain fences make way for it, pulsing ones keep it from coming).
 `test_charge_paths` checks the cyborgs in charge paths (task G7; The generator, Cyborgs in charge paths): every
 campaign level's count and LayoutChecks.check_charge_paths at 3, 5 and 6 lanes (a plain floor cyborg, never a
 host; its charger's planned path through it, in view, holding its fire, nothing around it), one before
@@ -4287,9 +4754,9 @@ look; another for each thing the build reads: seed, lane count, difficulty, feat
 run speed, the recency curve, the movement, placement, danger density and enemy tunings edited in place as F6
 does, the patterns, the build flavor), `LevelLayout.copy()` copying every field into lists of its own, generated
 layouts holding plain data only, the warnings coming with a reused level, a seeded scripted attempt (dashes and
-an EMP in its script) at Gangland 3 and Corporate 2 at 5 lanes playing the same with the cache off, on its first
-run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits, the
-enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
+an EMP in its script) at Gangland 3 (5 lanes) and Corporate 2 (3 lanes) playing the same with the cache off, on
+its first run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits,
+the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
 either retry (and the kept build untouched), the debug keys, F6 edits and another level building again, and
 endless mode building on every run and keeping nothing.
 `test_web_demo` checks the web demo's preset, its export filter against
@@ -4307,7 +4774,7 @@ introduction until PLAY is pressed (`App.begin_run`), and the script presses it 
 (a run that never started, never left the introduction, or whose runner never moved; plus Godot's own
 script errors) and exits 1 on any. `--smoke-report` also prints what the run did, `--smoke-frames=N` shortens
 it, `--smoke-hold` withholds PLAY (the check's own test, `test_smoke_play`). Quick play (`smoke` with no
-arguments) is unchanged. The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
+arguments) is unchanged; `--level=beach/1` is the Beach's campaign step like any other (task D10c). The script cannot name `LevelRun` (compiling it before the autoloads exist fails),
 so it finds the run's `State.READY` through the script's constant map.
 
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
@@ -4356,8 +4823,11 @@ filling, back), a zone skin
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost
 lanes and the rightmost lane, with shots riding each, of its far end from below and from beside it, and
-a run that tries moves past their edges; `--from=D` starts the run further on, `--reduced-flashing`
-turns Reduced flashing on), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
+a run that tries moves past their edges; `--open` opens the side walls over four stretches, with shots
+of each from the game camera, from beside the opening and from above (a skin's `wall_gap` hook, the Beach's
+open beach); `--from=D` starts the run further on, `--reduced-flashing`
+turns Reduced flashing on), the Beach's splash (`splash_review`: a real `RunWorld` with a skin, a pool in the
+runner's lane and the game camera, for a real fall; `--skin`, `--sky`, `--lanes`, `--grapple`, `--side`), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
 the App plays it, or the toolkit's sampler; `--from=S` starts S seconds in), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in

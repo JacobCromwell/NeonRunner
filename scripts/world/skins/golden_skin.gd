@@ -1,6 +1,6 @@
 class_name GoldenSkin
 extends ZoneSkin
-## Zone 6, the Golden Zone (GDD §5, §11): the city strictly for the elites and corporate bosses and
+## Zone 8, the Golden Zone (GDD §5, §11): the city strictly for the elites and corporate bosses and
 ## home of the final boss, in decadent opulence: a white and slightly creamy base with red and gold
 ## accents, the gold reflective metal (never glowing neon), the red deep and unlit. The same future as
 ## every zone, in its dominant shapes: towers of champagne mirror glass on gold mullions under glazed

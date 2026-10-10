@@ -13,7 +13,7 @@ extends Node3D
 ## The paint (sports_car.gdshader) is unshaded with a fake key light and a fake street mirrored in it, so it
 ## shines alike on every renderer. Draw calls: the body, the door, four wheels and the glow cards (7).
 ## Faces -z (like the game's other models), its wheels on y = 0, centred on its wheelbase's middle.
-## DESIGN-TBD (docs/questions/f2c.md): its look, colours and size.
+## DESIGN-TBD (docs/questions/f2d.md): its look, colours and size.
 
 ## Its size (metres): width, height, length. The runner is about 1.3 m tall in play, so it's a little larger
 ## for them than a real one would be (they can sit in it).

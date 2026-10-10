@@ -4,24 +4,27 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- the whole campaign structure: six zones and 15 levels
+- the whole campaign structure: seven zones and 17 levels
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
-- all six zone looks (the Neon City, Gangland, the Marketplace, Corporate, the Dead Zone and the Golden Zone),
+- all seven zone looks (the Neon City, Gangland, the Marketplace, Corporate, the Beach, the Dead Zone and the
+  Golden Zone),
   owner-supplied zone music, generated default music and sound effects
 - all three build flavors
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
-Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketplace's House after
-Marketplace 2 (`--boss=marketplace_boss`), the Corporate zone's Hostile Takeover after Corporate 2
+Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Casino's House after
+Casino 2 (`--boss=casino_boss`), the Corporate zone's Hostile Takeover after Corporate 2
 (`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), and the
-Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The short cinematics are built with a code-driven cinematic toolkit
-(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
-describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
-over the zone, and the outros are placeholder cards.
+Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The Beach's boss is
+still to be designed: its slot is a placeholder card the campaign passes through. The short cinematics are built with a code-driven cinematic toolkit
+(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable). The owner's story beats are
+built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
+crater as a host cyborg looks on); until the owner describes the rest, each other zone's intro (and the City's boss
+intro) plays a placeholder arrival flyover over the zone, and the other outros are placeholder cards.
 Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
 
 Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
@@ -57,13 +60,13 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden` or `golden_palace` (Golden 3's interior) |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `casino`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden`, `golden_palace` (Golden 3's interior) or `beach` (the Beach) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, and `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, `--level=casino/1` the Casino's first level, and `--level=beach/1` and `beach/2` the Beach's levels (`tools/godot.sh smoke --level=beach/1` smoke-runs one) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -80,9 +83,11 @@ The owner-supplied MP3s are copied unmodified into `assets/music/`:
 | Zone 1 - Neon City | Under the Iron Sky |
 | Zone 2 - Gangland | Alleyway Ambush |
 | Zone 3 - Marketplace | Jackpot Plaza |
-| Zone 4 - Corporate | Concrete Fever |
-| Zone 5 - Dead Zone | Beneath the Cracks |
-| Zone 6 - Golden Zone | View from the Zenith |
+| Zone 4 - Casino | Jackpot Plaza, the Marketplace's, until the owner supplies its own |
+| Zone 5 - Corporate | Concrete Fever |
+| Zone 6 - Beach | Jackpot Plaza (the Marketplace's, a stand-in: no new songs for now) |
+| Zone 7 - Dead Zone | Beneath the Cracks |
+| Zone 8 - Golden Zone | View from the Zenith |
 | Boss 1 - Floating Head | Apex Combat Maneuver |
 
 Menus, cutscenes (including the Boss 1 intro), and unmatched bosses keep their generated default
@@ -111,11 +116,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
-  zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
-  Golden Zone with three.
-  Each zone has a boss slot and cinematic slots; its intro plays a placeholder arrival flyover over the zone
-  in its own look (skippable). Each level introduces about one new thing (GDD §5), where
+- **Campaign:** 19 levels in eight zones, about 44 minutes of flawless running: the Neon City (the web demo's
+  zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate, the Beach and the Dead Zone
+  with two, and the Golden Zone with three.
+  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is still to
+  be designed) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
+  (skippable), but the Dead Zone's, which plays the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
@@ -125,22 +131,29 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   6. Gangland 3 *Rotor Wash*: fence generators and heli drones.
   7. Marketplace 1 *Awning Alley*: the Barnacle Turret.
   8. Marketplace 2 *Shopfront Sparks*: wall fences, and sewer screeches from the shopfronts' wall vents.
-  9. Corporate 1 *Maglev Line*: the Buzz Overdrive, then partial wall fences.
-  10. Corporate 2 *Checkpoint Plaza*: the Tithe Collector and the Enforcer Truck, and a heavier military
+  9. Casino 1 *Brass Arcade*: nothing new, the Marketplace's enemies and mechanics on the casino street.
+  10. Casino 2 *House Edge*: nothing new either, then The House.
+  11. Corporate 1 *Maglev Line*: the Buzz Overdrive, then partial wall fences.
+  12. Corporate 2 *Checkpoint Plaza*: the Tithe Collector and the Enforcer Truck, and a heavier military
       presence (more drones, hover trucks and Buzz Overdrives).
-  11. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
-  12. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
+  13. Beach 1 *Tiki Tides*: nothing new, a remix of everything so far in daylight, with the side walls standing
+      about half as often, so the beach and the sea show beyond them.
+  14. Beach 2 *Sunset Strip*: the same remix as the sun starts to set. The Beach's two levels sit between
+      Corporate 2 and Dead Zone 1 in difficulty, off the campaign's curve, so no other level changed.
+  15. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
+  16. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
       bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
-  13. Golden 1 *Gilded Canals*: the Resonator.
-  14. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
-  15. Golden 3 *The Golden Palace*, then the final boss.
+  17. Golden 1 *Gilded Canals*: the Resonator.
+  18. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  19. Golden 3 *The Golden Palace*, then the final boss.
 
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
   curve, `data/tuning/feature_recency.tres`).
-  Level names are placeholders, except the Golden Palace.
+  Level names are placeholders, except the Golden Palace; the Casino's are proposals, and what each Casino
+  level adds is still to design (it plays Marketplace 2's set for now).
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
   a speed pad's), speed pads. From the second half of City 2 on, about half the ceilings cover only some of
@@ -259,10 +272,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
   faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
   Zone. About 80 s for a runner who never misses (`--boss=dead_zone_boss`, or the campaign's
-  `--level=dead_zone/boss`). The House, the Marketplace's boss, plays after Marketplace 2, at the
-  Marketplace's 22.6 m/s (its distances follow the pace too): a towering slot machine on treads rolling
-  down the market street ahead of the runner. It pulls its lever and spins its three reels, and each
-  symbol they stop on is an attack: cherries lob cherry bombs whose landing circles light up first, a
+  `--level=dead_zone/boss`). The House, the Casino's boss (the Marketplace's until the Casino was added;
+  its fight makes the same random choices, now with enemy scaling 0.5625), plays after Casino 2, at the
+  Casino's 23 m/s (its distances follow the pace too): a
+  towering slot machine on treads rolling down the street ahead of the runner. It pulls its lever and
+  spins its three reels, and each symbol they stop on is an attack: cherries lob cherry bombs whose landing circles light up first, a
   lightning bolt rolls a pink fence across lanes (jump or slide it like any fence), a BAR slams heavy
   gold blocks into lanes; two or three of a kind make it bigger. Big glowing 7 buttons light up along the
   street: running over one locks a reel on 7, and with all three locked it hits the JACKPOT (sirens, a
@@ -274,8 +288,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the pad's lane, Barnacle Turrets further along. Beaten, its reels spin wildly and jam, TILT flashes
   over them, and it collapses into   the street in an explosion of coins while the citizens cheer. The revised fight opens with
   three attack-only spins per phase before its buttons appear, with shorter gaps and wider cherry
-  and lightning coverage. Its three-/two-star pars are 86/108 s (`--boss=marketplace_boss`, or the campaign's
-  `--level=marketplace/boss`). Hostile Takeover, the Corporate zone's boss, comes after Corporate 2
+  and lightning coverage. Its three-/two-star pars are 86/108 s (`--boss=casino_boss`, or the campaign's
+  `--level=casino/boss`). Hostile Takeover, the Corporate zone's boss, comes after Corporate 2
   (`--boss=corporate_boss` or `--level=corporate/boss`): the runner lands on the rear roof of the Chairman's armored
   maglev train and runs forward along it, jumping the gaps between its carriages, the track's sound
   barriers on either side and the city streaming past beyond them and far below; a military gunship
@@ -391,7 +405,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - supplied music for all six zones and Boss 1, generated defaults for menus/cutscenes/unmatched bosses
+  - supplied music for six zones and Boss 1 (the Casino and the Beach play the Marketplace's until their own
+    come), generated defaults for menus/cutscenes/unmatched bosses
     (music dips when the runner dies), and 76 sound
     effects, among them the level-complete riff in each zone's key
   - first-encounter hints
@@ -686,9 +701,11 @@ spare (see Tools, above). Covered:
 - **Cinematics:** the toolkit's camera and actor paths (smooth, eased and cut moves, cameras riding with an
   actor), a timeline's checks, a cinematic played to its end with every event in order, skipping (the pause
   action and the Skip button), Reduced flashing, holding while the game is in the background, a cinematic
-  described in data, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
+  described in data, the poses that play out over time (lying, getting up, climbing out; cyborgs lying still
+  and crouching), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
   skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
-  camera's view), and the App's flow through a built slot, the web demo's too.
+  camera's view), and the App's flow through a built slot, the web demo's too; each owner-beat cinematic has
+  its own suite (`test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`).
 - **Screens:** every screen at desktop and touch sizes.
 - **The web demo:** its export preset, and a filter that leaves out only what the demo never loads, worked out
   from the data (and following a replaced track); everything the demo's scenes, scripts and data reference kept
@@ -715,7 +732,7 @@ spare (see Tools, above). Covered:
   has a suite of its own). Every skin builds its ceilings from the lanes they cover, with the orange end
   band across them and nothing below the underside past the far end, where the camera passes as you drop.
 - **Sounds and music:** every sound and track loads, generated defaults loop seamlessly, supplied songs
-  loop in full and match all 15 levels and Boss 1, unmatched scenes retain defaults, the death dip
+  loop in full and match all 17 levels and Boss 1, unmatched scenes retain defaults, the death dip
   combines with the pause duck, and the original zone completion riffs remain available.
 - **Frame times:** City 3, Marketplace 2 and Golden 2 played as the game plays them, each pass in a fresh
   process, their 99th percentile and worst frame held to budgets in `data/tuning/performance.tres` (scaled by
@@ -734,7 +751,7 @@ tools/                  godot.sh (play/edit/test/smoke/sfx/music/web), asset gen
                         the web demo's export tools and browser check (web/)
 scenes/main.tscn        the main scene: world, screens and overlays
 scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
-scenes/cinematics/      cinematic scenes (the placeholder arrival flyover so far)
+scenes/cinematics/      cinematic scenes (the placeholder arrival flyover and the owner-beat cinematics)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -743,7 +760,8 @@ scripts/enemies/        one script (plus tuning and generator rules) per enemy t
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
-scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
+scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...), the flyover and
+                        the owner-beat cinematics (the City outro, sewer_swarm_intro/, dead_zone_intro/)
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
                         and one folder per boss (floating_head/, sleep_taker/, the_house/, hostile_takeover/,
                         sewer_swarm/)

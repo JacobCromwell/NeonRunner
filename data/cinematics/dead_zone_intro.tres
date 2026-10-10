@@ -5,6 +5,6 @@
 [resource]
 script = ExtResource("1_script")
 id = &"dead_zone_intro"
-title = "The Dead Zone"
-scene = "res://scenes/cinematics/arrival_flyover.tscn"
-placeholder_text = "DESIGN-TBD: a short scene arriving in the blackened, silent husk of the city."
+title = "Out of the crater"
+scene = "res://scenes/cinematics/dead_zone_intro.tscn"
+placeholder_text = "The runner comes to in a smoking crater and climbs out; down the street, a cyborg crouched over two still bodies looks over: a host."

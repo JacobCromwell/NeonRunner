@@ -18,7 +18,7 @@ extends CinematicSequencer
 ## and the sky the fight was under), on the level's lanes. The rubble, the Host and the screeches are the first
 ## scene's props (GanglandOutroSet), the car the second's; the key is the cinematic's own, since it goes from the
 ## first scene into the second. Everything is worked out from the time (_on_advance), so stepping or skipping
-## shows the same. DESIGN-TBD (docs/questions/f2c.md): the staging the beats leave open.
+## shows the same. DESIGN-TBD (docs/questions/f2d.md): the staging the beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/gangland_outro_tuning.tres"
 ## The runner slows to a stop at the car's door over this long (an eased stop).
@@ -268,7 +268,7 @@ func _stage_near(near: float) -> float:
 
 func _events(t: CineTimeline) -> void:
 	t.effect(0.0, CineEvent.FADE_IN, n.fade_in)
-	# The fight's music fades out: a quiet aftermath. DESIGN-TBD (docs/questions/f2c.md): no music of its own.
+	# The fight's music fades out: a quiet aftermath. DESIGN-TBD (docs/questions/f2d.md): no music of its own.
 	t.music(0.0, &"", n.music_fade)
 	t.sound(n.sniff_sound_at, &"screech_sniff")
 	t.sound(n.spark_at, &"host_short")

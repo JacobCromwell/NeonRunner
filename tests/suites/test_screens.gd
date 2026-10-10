@@ -9,8 +9,6 @@ extends TestSuite
 
 var main: Node
 var heard: Array[StringName] = []
-## The Golden Zone's real boss while an unbuilt stand-in takes its step (_unbuilt_golden_boss).
-var _golden_boss: BossDef = null
 
 
 func run() -> void:
@@ -305,17 +303,15 @@ func _test_every_screen(tag: String) -> void:
 		["run summary", func() -> void: _show_result(false), ResultsScreen],
 		["boss results", func() -> void: _show_boss_result(true), ResultsScreen],
 		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
-		# Every zone's boss is built (the Golden Convergence last, task E5d-c): the placeholder card a boss not yet
-		# built shows, with an unbuilt stand-in in the Golden Zone's boss step.
-		["boss slot", func() -> void: App.play_step(_unbuilt_golden_boss()), SlotScreen],
+		# The placeholder card a boss not yet built shows: the Beach's (task D10c; its fight is still to be designed).
+		["boss slot", func() -> void: App.play_step(App.campaign.step("beach/boss")), SlotScreen],
 		# The zones' intros play their arrival flyovers (task F1) and the City's and Gangland's outros are built
-		# (F2a, F2c); the other outros are still placeholder cards.
+		# (F2a, F2d); the other outros are still placeholder cards.
 		["cinematic slot", func() -> void: App.play_step(App.campaign.step("marketplace/outro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
 	]
 	for entry: Array in screens:
 		await _open_and_check("%s (%s)" % [entry[0], tag], entry[1], entry[2])
-	_rebuild_golden_boss()
 
 	# The overlays over a running level.
 	await _start_level("city/1")
@@ -345,25 +341,6 @@ func _test_every_screen(tag: String) -> void:
 
 
 # --- Title -----------------------------------------------------------------------
-
-## The Golden Zone's boss step with an unbuilt stand-in for its boss (a copy with no scene): every zone's boss is
-## built now, and a boss slot's placeholder card still shows for one that isn't. _rebuild_golden_boss() puts the
-## real one back (the campaign's steps are shared by every suite).
-func _unbuilt_golden_boss() -> CampaignStep:
-	var step: CampaignStep = App.campaign.step("golden/boss")
-	if _golden_boss == null:
-		_golden_boss = step.boss
-	var stand_in := _golden_boss.duplicate() as BossDef
-	stand_in.scene = ""
-	stand_in.preview_scene = ""
-	step.boss = stand_in
-	return step
-
-
-func _rebuild_golden_boss() -> void:
-	if _golden_boss != null:
-		App.campaign.step("golden/boss").boss = _golden_boss
-
 
 func _test_title() -> void:
 	App.show_title()
@@ -445,7 +422,7 @@ func _test_level_select() -> void:
 		check(App.screen is DemoEndScreen, "and leads to the demo's end screen")
 	BuildFlavor.set_override(-1)
 
-	# Deep into the six-zone campaign, the list opens on the next step, scrolled into view, at desktop
+	# Deep into the eight-zone campaign, the list opens on the next step, scrolled into view, at desktop
 	# and touch sizes.
 	for touch: int in [0, 1]:
 		UiTheme.touch_override = touch
@@ -460,7 +437,7 @@ func _test_level_select() -> void:
 		check(tile != null and _focus() == tile, "late in the campaign the next step has the focus (%s, %s)" % [_focus(), tag])
 		check(tile != null and scroll.get_global_rect().encloses(tile.get_global_rect()),
 			"and the list scrolls it into view (%s)" % tag)
-		check(levels.tiles.size() == App.campaign.steps().size(), "every step of the six zones has a tile (%s)" % tag)
+		check(levels.tiles.size() == App.campaign.steps().size(), "every step of every zone has a tile (%s)" % tag)
 	UiTheme.touch_override = 0
 	App.profile = SampleProfiles.rich()
 
@@ -806,19 +783,17 @@ func _test_results() -> void:
 
 func _test_slots_and_demo_end() -> void:
 	App.profile = SampleProfiles.fresh()
-	# Every zone's boss is built (task E5d-c): a boss not yet built's placeholder card, with an unbuilt stand-in.
-	App.play_step(_unbuilt_golden_boss())
+	# A boss not yet built's placeholder card: the Beach's (task D10c).
+	App.play_step(App.campaign.step("beach/boss"))
 	await _frames(2)
 	var slot := App.screen as SlotScreen
 	check(slot != null and _focus() == slot.continue_button, "the boss slot focuses Continue")
 	if slot == null:
-		_rebuild_golden_boss()
 		return
 	slot.continue_button.pressed.emit()
 	await _frames(2)
-	_rebuild_golden_boss()
-	check(App.profile.is_completed("golden/boss") and App.screen is SlotScreen
-		and (App.screen as SlotScreen).step.id == "golden/outro", "Continue counts the boss as done and moves on")
+	check(App.profile.is_completed("beach/boss") and App.screen is SlotScreen
+		and (App.screen as SlotScreen).step.id == "beach/outro", "Continue counts the boss as done and moves on")
 	(App.screen as ScreenBase).go_back()
 	await _frames(1)
 	check(App.screen is LevelSelectScreen, "back returns to the level select")

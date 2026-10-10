@@ -1,8 +1,8 @@
 class_name LevelConfig
 extends Resource
 ## One level: generator settings plus what the campaign shows. Campaign levels use fixed seeds.
-## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position;
-## standalone use (quick play, tests) takes the values stored here.
+## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position, unless the
+## level is off its curve (off_curve); standalone use (quick play, tests) takes the values stored here.
 
 ## Features the campaign schedule (GDD §5) already lists for enemies and mechanics that aren't built
 ## yet. Each does nothing until its code and patterns exist: its patterns `require` the name, its
@@ -27,7 +27,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## run starts (GameRules.lanes_pc / lanes_mobile); tests and the F1 debug key set it directly.
 @export_range(3, 8) var lane_count: int = 3
 ## GDD §4: levels last 90–150 seconds. DESIGN-TBD: each campaign level's length (together they make
-## GDD §5's "a flawless run through every level takes about 35 minutes").
+## GDD §5's "a flawless run through every level takes about 40 minutes").
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
 ## The run speed this level is built and played at (GDD §3, owner's playtest September 30, 2026: it
 ## rises zone by zone). 0: its zone's (ZoneDef.run_speed) in the campaign, else the movement tuning's
@@ -46,6 +46,15 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0.0, 1.0, 0.05) var difficulty_ramp: float = 0.25
 ## 0 = first campaign level, 1 = last: enemies scale fire rate, speed and health with it (GDD §6).
 @export_range(0.0, 1.0, 0.05) var enemy_scaling: float = 0.0
+## Off the campaign's difficulty curve (task D10c; the owner, October 9, 2026: the Beach goes between Corporate and
+## the Dead Zone, after the playtests every other level was tuned in): the campaign plays this level at its own
+## difficulty (plus the difficulty tier's bonus; difficulty_bias doesn't apply) and enemy_scaling instead of at a
+## place on its curve, and leaves it out of the curve's count and of the other levels' feature ages, so every
+## level on the curve keeps exactly the difficulty, enemy scaling, ages and recency it had (Campaign.configure).
+## Its own feature ages count every level before it. Off: the level is on the curve, as every level was before.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 569–572): the Beach's two levels; whether the curve is later re-spread over every
+## level, the Beach's included.
+@export var off_curve: bool = false
 ## Mechanics and enemies this level may use. A pattern is only picked when every entry of its
 ## `requires` list is here (GDD §6: introduce one new mechanic at a time). Core movement pieces
 ## (gaps, fences, signs, walls) need no feature. Known features:
@@ -60,7 +69,8 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   generator places them, WallFencePlacement)
 ## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
 ##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena (no patterns:
-##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres)
+##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres, or the level's
+##   own, wall_gap_tuning)
 ## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
 ##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
 ##   so a level needs octodog or buzz_overdrive for it to appear)
@@ -162,6 +172,12 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## 0 turns it off: the level is built exactly as before. DESIGN-TBD: 1 in every campaign level with Octodogs
 ## or Buzz Overdrives (Gangland 2 on), so the player meets it several times before the Enforcer Truck.
 @export_range(0, 4) var charge_path_cyborgs: int = 0
+## The level's own side wall gaps (task D10b; the owner, October 9, 2026, on the Beach: "I want this zone to feel
+## more open ... have them appear about 50% of the time that they are now currently appearing"): the numbers
+## WallGapPlacement places the `wall_gaps` feature's gaps by (WallGapTuning). The Beach's levels take
+## data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length. Null: the shared
+## data/tuning/wall_gaps.tres (every campaign level), and the level is built exactly as before.
+@export var wall_gap_tuning: WallGapTuning
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are

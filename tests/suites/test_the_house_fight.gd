@@ -1,7 +1,7 @@
 extends TestSuite
 ## The House's fight (GDD §10; tasks E5a-a and E5a-b), its 7 buttons, its jackpot and its phases, at 3, 5 and 6
-## lanes, at the reference 18 m/s and the Marketplace's 22.6 m/s, with a runner who plays it by what it
-## shows (TheHouseBot, reacting REACTION late; no god mode, no armor):
+## lanes, at the reference 18 m/s and the Casino's 23 m/s (its zone's since task K2), with a runner who
+## plays it by what it shows (TheHouseBot, reacting REACTION late; no god mode, no armor):
 ## - the buttons: each lights up in plain view before the runner reaches it, in its own lane (never the
 ##   last one's, at most button_max_shift away), safe to run over; running over one stops its reel on 7,
 ##   locked; three locked is the JACKPOT;
@@ -18,9 +18,9 @@ extends TestSuite
 ##   the whole fight in the retry that starts it over (all three phases: test_the_house_phases.gd plays
 ##   phases 2 and 3 and the campaign on their own).
 
-const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
+const BOSS_PATH: String = "res://data/bosses/casino_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
-const SPEEDS: Array[float] = [18.0, 22.6]
+const SPEEDS: Array[float] = [18.0, 23.0]
 const REACTION: float = 0.35
 ## A button shows at least this long before the runner reaches it; the hopper opens at least this long
 ## before the runner reaches its stomp box.
@@ -155,7 +155,7 @@ func _test_buttons_and_jackpot(lanes: int, speed: float) -> void:
 	check(sevens == 3, "each button run over stops its reel on 7, locked %s" % tag)
 	var results: Array[Dictionary] = _events(boss, &"result")
 	check(not results.is_empty() and results[0]["jackpot"], "three 7s: JACKPOT %s" % tag)
-	check(hints.has("marketplace_boss/buttons") and hints.has("marketplace_boss/jackpot"), "the buttons' and the jackpot's hints come %s" % tag)
+	check(hints.has("casino_boss/buttons") and hints.has("casino_boss/jackpot"), "the buttons' and the jackpot's hints come %s" % tag)
 	check(_events(boss, &"jackpot").size() == 1 and boss.events.any(func(e: Dictionary) -> bool:
 		return e["event"] == &"sound" and e["name"] == &"house_jackpot"), "the sirens sound %s" % tag)
 	check(int(boss.reactions.get(&"cheer", 0)) >= 2, "the citizens cheer at the jackpot and the stomp %s" % tag)
@@ -221,7 +221,7 @@ func _test_missed_button() -> void:
 ## A runner who lets a whole set go by: every reel shows its symbol and all three attacks follow; the next
 ## spin offers the set again, at the same rhythm.
 func _test_missed_set() -> void:
-	var pair: Array = _fight(_rigged(0, "cherry,bar,lightning"), 3, 22.6)
+	var pair: Array = _fight(_rigged(0, "cherry,bar,lightning"), 3, SPEEDS[1])
 	var world: RunWorld = pair[0]
 	var boss: TheHouse = pair[1]
 	var bot := TheHouseBot.new(boss)
@@ -310,7 +310,7 @@ func _test_weapons() -> void:
 func _test_same_every_attempt() -> void:
 	var logs: Array[String] = []
 	for attempt: int in 2:
-		var pair: Array = _fight(def, 5, 22.6)
+		var pair: Array = _fight(def, 5, SPEEDS[1])
 		var world: RunWorld = pair[0]
 		var boss: TheHouse = pair[1]
 		var bot := TheHouseBot.new(boss)

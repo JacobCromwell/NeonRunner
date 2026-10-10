@@ -9,11 +9,19 @@ extends RefCounted
 
 ## The save format. Older saves are brought up to date as they load (_migrate).
 ## 2 (September 30, 2026): armor became a permanent upgrade to the free armor (GDD §4, §8).
-const VERSION: int = 2
+## 3 (October 8, 2026): The House moved from the Marketplace to the new Casino zone (GDD §5, §10).
+const VERSION: int = 3
 ## What one unit of armor cost while it was a breakable item (save version 1; the shop never priced it
 ## otherwise): a version 1 save's armor stock is paid back at this price. A record of the past, not a
 ## tunable.
 const V1_ARMOR_PRICE: int = 150
+## The step and hint ids save version 3 moved (The House's, to the Casino; _migrate): records of the past.
+const V2_HOUSE_STEP: String = "marketplace/boss"
+const V3_HOUSE_STEP: String = "casino/boss"
+const V2_HOUSE_OUTRO: String = "marketplace/outro"
+const V3_HOUSE_OUTRO: String = "casino/outro"
+const V2_HOUSE_HINTS: String = "hint/marketplace_boss"
+const V3_HOUSE_HINTS: String = "hint/casino_boss"
 
 ## Credits earned in play and not spent: the net worth (GDD §7).
 var earned: int = 0
@@ -216,6 +224,13 @@ static func from_dict(d: Dictionary) -> Profile:
 ##   The armor stock a player bought is paid back in credits at the price it cost (V1_ARMOR_PRICE),
 ##   into the earned credits, and the purchase leaves lifetime_spent. Its old equip toggle goes too,
 ##   so an upgrade bought later starts switched on.
+## - 2 → 3: The House moved to the Casino zone, which now sits between the Marketplace and Corporate
+##   (owner, October 8, 2026). Its records (every tier's "marketplace/boss": stars, best score and time)
+##   become the Casino's boss step's, and its first-time hints (`hint/marketplace_boss...`) the
+##   casino_boss ones, so a player who beat it keeps both. The Marketplace's old outro came after The House
+##   and led to the Corporate zone, the Casino's outro's place now: a finished one also counts as the
+##   Casino's outro finished (the Marketplace's own stays finished too), so Corporate's intro, whose step
+##   before is now the Casino's outro, stays open to a player who had reached it (App.step_unlocked).
 func _migrate(from: int) -> void:
 	if from < 2:
 		var refund: int = stock(&"armor") * V1_ARMOR_PRICE
@@ -223,6 +238,26 @@ func _migrate(from: int) -> void:
 		equip_off.erase("armor")
 		earned += refund
 		lifetime_spent = maxi(lifetime_spent - refund, 0)
+	if from < 3:
+		for key: String in records.keys():
+			var tier_prefix: String = key.get_slice("/", 0) + "/"
+			var step_id: String = key.trim_prefix(tier_prefix)
+			if step_id == V2_HOUSE_STEP:
+				_move_record(key, tier_prefix + V3_HOUSE_STEP)
+			elif step_id == V2_HOUSE_OUTRO and bool((records[key] as Dictionary).get("completed", false)) \
+					and not records.has(tier_prefix + V3_HOUSE_OUTRO):
+				records[tier_prefix + V3_HOUSE_OUTRO] = (records[key] as Dictionary).duplicate()
+		for key: String in seen.keys():
+			if key.begins_with(V2_HOUSE_HINTS):
+				seen[V3_HOUSE_HINTS + key.trim_prefix(V2_HOUSE_HINTS)] = seen[key]
+				seen.erase(key)
+
+
+## Moves the record at `from_key` to `to_key` (save version 3), unless `to_key` already has one.
+func _move_record(from_key: String, to_key: String) -> void:
+	if not records.has(to_key):
+		records[to_key] = records[from_key]
+	records.erase(from_key)
 
 
 static func _dict(d: Dictionary, key: String) -> Dictionary:

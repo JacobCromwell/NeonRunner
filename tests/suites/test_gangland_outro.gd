@@ -1,5 +1,5 @@
 extends TestSuite
-## Gangland's outro (GanglandOutro, task F2c; the owner's beats, October 9, 2026, GDD §6 Cinematics): its slot plays
+## Gangland's outro (GanglandOutro, task F2d; the owner's beats, October 9, 2026, GDD §6 Cinematics): its slot plays
 ## it; at 3, 5 and 6 lanes, in the fight's look and under its sky (CineStageDef.after_fight), it plays its beats in
 ## order: the freed Host lying in the rubble, implants dark; screeches sniffing at them for a moment, then
 ## scuttling away (out of sight before the runner reaches the Host); the runner walking over (a walk, not a run)
@@ -32,7 +32,7 @@ const HANDS_MEET: float = 0.35
 const IN_HAND: float = 0.05
 ## The car drives at least this far off into the distance.
 const DRIVES_OFF: float = 50.0
-## Its length: longer than the GDD's 5-15 s, for the owner's many beats (docs/questions/f2c.md); at most this.
+## Its length: longer than the GDD's 5-15 s, for the owner's many beats (docs/questions/f2d.md); at most this.
 const LONGEST: float = 25.0
 ## Costs, headless: setting it up, the cut to the car, a step of its clock (generous: they catch a gross
 ## regression; the measured numbers are printed), and what its props may add to a frame (draw calls).

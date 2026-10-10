@@ -3,7 +3,7 @@ extends Resource
 ## The Gangland outro's numbers (GanglandOutro; the owner's beats, October 9, 2026, GDD §6 Cinematics):
 ## data/cinematics/gangland_outro_tuning.tres. Times are seconds from its start; places are in track space
 ## (CineStage: x metres right of the start lane's centre, y up, z along the track), most of them from the Host
-## (the first scene) or the car (the second). DESIGN-TBD (docs/questions/f2c.md): the staging these fill in.
+## (the first scene) or the car (the second). DESIGN-TBD (docs/questions/f2d.md): the staging these fill in.
 
 @export_group("Length")
 @export_range(8.0, 40.0, 0.1, "suffix:s") var duration: float = 21.2

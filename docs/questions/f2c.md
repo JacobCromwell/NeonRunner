@@ -1,67 +1,65 @@
-# F2c, Gangland's outro: open questions
+# F2c, the Dead Zone's intro: open questions
 
-The owner's beats (October 9, 2026; GDD §6, Cinematics) are built as given. These are the choices made to fill
-them in. Each is a placeholder in data (`data/cinematics/gangland_outro_tuning.tres`, `GanglandOutroTuning`) or in
-code marked `DESIGN-TBD` (`scripts/cinematics/gangland_outro/`).
+The owner's story beat (October 9, 2026) is built as `DeadZoneIntro` (`scripts/cinematics/dead_zone_intro/`) in the
+Dead Zone's intro slot. What the beat leaves open is a placeholder, with its numbers in
+`data/cinematics/dead_zone_intro_tuning.tres` (`DeadZoneIntroTuning`, marked `DESIGN-TBD`).
 
-- **Its length** (GDD §1 and §6: "5–15 second cinematics"). Placeholder: 21.2 s (about 12 s for the rubble and
-  the key, 9 s for the car), to give each beat time: the screeches' moment, the walk over, the trembling hand-off,
-  the unlock and getting in, the drive into the distance. Every time is data, so it can be tightened; at 15 s the
-  hand-off and the getting in feel rushed. Is 21 s acceptable here?
-- **The sky and look.** Placeholder: both scenes pick up where the fight ended, in the arena's look under Gangland
-  3's blood-red sky (`CineStageDef.after_fight`), where the zones' other outros keep the zone's own sky. Or should
-  the outro (or only the car scene) have Gangland's own night sky?
-- **Where the car scene is** ("cut to a new scene"). Placeholder: another stretch of Gangland's street, the car
-  parked in it, driving off down the street toward the Marketplace. Alternatives: a side street or garage, or the
-  edge of the Marketplace.
-- **The car's look** ("sleek, flashy ... angular, almost triangular ... shiny, like a Lambo"). Placeholder
-  (`SportsCarModel`; size, paint and accent in data): a faceted wedge 4.3 m long, 1.95 m wide and 1.0 m tall (a
-  little big for the runner, who is about 1.3 m tall, so they fit in it), a blade of a nose, a raked windshield,
-  flared fenders, a dark side intake, a rear wing, a scissor door on the driver's (left) side; ultraviolet-purple
-  paint with cyan running lights, wheel hubs and glow underneath, white headlights and red taillights. Purple and
-  cyan stand clear of Gangland's browns and reds; cyan is also the anti-grav pads' colour, though nothing in a
-  cinematic is a hazard or a pad. Another colour (a classic yellow or orange, or gold to match the key)?
-- **Who the car belongs to, and what the key opens** (narrative, GDD §1). Placeholder: the Host's key opens the
-  car; nothing says whose it was. Should anything (a card, a later beat) say?
-- **The Host** ("the swarm host cyborg"). Placeholder: the fight's person (`SwarmHostPerson`), freed, lying back
-  against a heap of rubble with their implants dimmed (shorted out at the defeat), 1.45 m tall (the fight holds
-  them up at 1.75 m inside the swarm's bulk). They stay in the rubble; the outro shows nothing of what becomes
-  of them.
-- **The screeches.** Placeholder: four of them (`sniffers`), the sewer screech's own body, sniffing round the Host;
-  they look up as the runner comes walking down the street, raise their spines (to the level a screech has in play
-  when it isn't attacking, never the full blazing bristle of its attack: `GanglandOutroSet.ALARMED`), and scuttle off
-  into the gutters at the walls before the runner arrives (`look_up_at`, `scuttle_at`), so the runner's coming
-  scares them away. How many, and is that the reason they leave?
-- **The runner's walk.** Placeholder: the run cycle at a walking pace (`walk_speed` 1.8 m/s to the Host,
-  `car_walk_speed` 2.1 m/s to the car; the humanoid rig has no walk cycle of its own), which reads as a brisk walk.
-  Should the rig get a proper walk (a shared change, its own task)?
-- **The key and the hand-off.** Placeholder: an ornate golden key (`key_length` 0.21 m: a faceted bow round a
-  jewel, a shaft, two teeth), glowing faintly so it reads as gold in the street's dim red light. The Host trembles
-  (`tremble`, `tremble_offering`), sits up a little and holds it out (`offer_at`); it glints (`glint_at`: a soft
-  halo and a bell chime, `key_glint`); the runner leans in and takes it (`reach_at`), then looks at it
-  (`admire_at`). Is the key's look right, and should anything be said or shown (a card)?
-- **The unlock and getting in.** Placeholder: the runner points the key at the car as they walk up; it chirps and
-  blinks its lights twice (`unlock_at`, `car_unlock`; one slow glow with Reduced flashing); the scissor door swings
-  up (`door_up_at`, `car_door`); the runner steps in and sits (`get_in_at`), out of sight once the door is mostly
-  down (`door_down_at`; the cabin behind it is dark). Should the runner be seen sitting in the car as it drives off
-  (see-through glass, a costlier material)?
-- **The drive-off.** Placeholder: lights and engine on (`lights_at`, `car_start`: the starter, a blip, idling), a fine
-  idle shudder, then it launches (`launch_at`, `car_drive`: the tyres biting, two gears, fading into the distance)
-  with a squat on its rear wheels and a moment of wheelspin, accelerating at 13 m/s² (`acceleration`) straight down
-  the street, seen from the road behind it, 0.16 m up (`road_cam`; the owner: "the camera should be at road
-  level"). In the 3.1 s before it ends it reaches about 40 m/s and about 60 m away (its `top_speed` of 46 m/s is a
-  cap it doesn't reach), a pair of taillights far down the street as it fades to black. No tyre smoke or exhaust
-  flames. Faster or longer, so it's gone into the haze?
-- **The car's own glow.** Placeholder: red taillights and red halos round them, cyan running lights and glow under
-  it, and the gold key's glow. GDD §5 keeps glowing hazard colours for hazards; nothing in a cinematic is one, but
-  red is the enemy-attack and weak-point colour. Keep red taillights (as any car has), or another colour?
-- **Sounds.** Six new ones (`tools/asset_gen/sfx_bank_cinematics.gd`): `screech_sniff`, `key_glint`, `car_unlock`,
-  `car_door`, `car_start`, `car_drive`; and from the fight, `swarm_scatter` as the screeches flee and `host_short`
-  at 1.1 s (`spark_at`), a last crackle from the Host's dead implants (heard, not shown). Keep them?
-- **Music.** Placeholder: the fight's music fades out as it opens (`music_fade`; a quiet aftermath) and no music
-  plays; the Marketplace's intro brings its own. No cinematic music is generated (GDD §11). Should a track play
-  over the drive-off?
-- **The shots.** Placeholder (`rubble_cam`, `follow_cam`, `handoff_cam`, `reveal_cam`, `road_cam` and their looks
-  and fields of view): low beside the Host, looking back up the street at the runner coming; over the runner's
-  shoulder as they walk up; low in front of the Host for the hand-off; the car's reveal low off its front corner,
-  gliding round to its side; then the road-level shot behind it. Should any beat get a different angle?
+This partly answers `docs/OPEN_QUESTIONS.md` items 238 (the arrival flyovers' story beats: the Dead Zone's intro has
+its own now) and 239 (a title card naming the zone: this one has one, as the owner asked).
+
+**Answered by the owner the same day** (recorded in GDD §6, Cinematics, and §11, Music):
+- The zone's title card appears in the close-up as it starts to fade to black. Built: it holds on the black.
+- The runner's fall into the crater will be shown in a cinematic before this one. Its beats are still to come.
+- The crater has a floor, and the host's crouched work over the bodies stays as it is.
+- Instead of the zoom, there is a medium shot of the host, then the extreme close-up with its whole face filling the
+  screen.
+- New sound effects are fine where the existing ones don't fit; only new music is off. The owner left the call to
+  the build. It now has five sounds of its own (below).
+
+**Still open:**
+- **How the runner gets out** ("shakes themselves and starts to pull themselves out"). Placeholder: they lie on their
+  back, their hips 2.5 m from the crater's far wall. At 1.9 s they stir and lift their head, and from 2.35 to 3.0 s
+  they shake their head (30° each way, 4.5 times a second, dying away) as they sit up. They kneel at 3.45 s and
+  stand at 3.9 s, then stagger 2 m to the far wall, looking up at its edge, and reach up at 5.65 s. The cut is at
+  5.75 s. They climb out toward the way the level runs, so the host is behind them.
+- **The crater's size.** Placeholder: a 5.4 m gap in the runner's lane, its floor 1.42 m down (just deep enough that
+  the runner, hanging from the edge, touches it), with three thin columns of the Dead Zone's own smoke and a faint
+  cold light.
+- **Where the cyborgs are.** Placeholder: 16 m down the street behind the crater, in the lane left of the runner's.
+  The bodies lie face down with their screens dark. Should they show damage?
+- **The cameras.** Placeholder:
+  - The first shot is high over the crater's far end (4.8 m up, easing down to 4.0 m), looking down into it and
+    down the street, with the cyborgs at the top of the view.
+  - The cut to ground level puts the camera 1.3 m beyond the far edge, 0.16 m up, so at first only the hands show.
+  - From 6.9 s the camera rises and pulls back (to 2.7 m back and 0.42 m up) as the runner gets to their feet.
+  - The host starts to look over at 8.25 s, as the runner gets to their feet. The cut to the medium shot comes
+    mid-turn at 8.6 s: 2.6 m in front of where its face turns, at its height, easing in to 2.15 m.
+  - The extreme close-up comes at 10 s. The camera is straight in front of the screen, a little below its middle.
+    The whole face fills 80% of the picture, pushing in to 92% by the time it's black, and the host's head holds
+    still for it.
+- **The host's face.** Placeholder: as it looks over, its usual face, with a host's random corrupted glitches. In the
+  close-up, its corrupted grin, with its screen's glitch (row jumps and purple static) boosted from 1 to 1.8. With
+  Reduced flashing it changes at the slower rate every host uses.
+- **How it ends.** Placeholder: the close-up starts to fade to black at 11.5 s, over 1.2 s, and the title card comes
+  up with it and holds on the black until 14.2 s (14.3 s in all). Then Dead Zone 1 opens on its own view.
+- **Its sounds** (`tools/asset_gen/sfx_bank_cinematics.gd`). None of them is a hazard's warning.
+  - `crater_smoulder` opens it: a low rumble, embers ticking, a hiss of smoke, pebbles trickling.
+  - `rubble_shift` as they sit up, and quieter as a knee comes onto the edge.
+  - `edge_grab` as the hands slap onto the edge, with grit trickling off it.
+  - `cyborg_host_turn` as the host lifts its head: its neck servo grinding under its screen's static.
+  - `cyborg_host_glitch` under the close-up: stuttering static, a sinking hum, row-jump clicks and a faint garbled voice.
+  - The zone's music fades in over 5 s from the start. Should the runner have a voice (a groan, a cough)?
+- **The slot's title**, "Out of the crater" (`data/cinematics/dead_zone_intro.tres`), shows on the title screen's
+  "Next:" line. Placeholder; is that the name the owner wants?
+- **The close-up's flicker.** With Reduced flashing off, the host's screen fills most of the picture and glitches as
+  every host's does (its own corrupted faces, rows jumping 12 times a second, boosted for the close-up): the picture's
+  brightness jumps about three times a second. With Reduced flashing on it holds steady. Should the close-up always
+  use the slower glitch?
+- **Raised for a core task: a gap ending on a chunk boundary loses its orange edge.** The track builder only gives a
+  hole its edge where the hole ends inside a 40 m chunk (`TrackBuilder._floor_pieces`, `CHUNK_LENGTH`). A hole that
+  starts or ends exactly on a multiple of 40 m is built without that end's lip, strip and halo. Here the crater ends
+  at 201 m to avoid it. None of the generator's campaign gaps hit it at 3, 5 and 6 lanes; the boss arenas' hand-placed
+  gaps were not checked. `track_builder.gd` is a core file, so the fix belongs to its own task.
+- **The new poses' look.** Placeholder: the runner lying, getting up and climbing out (`CinePoses`), and a cyborg
+  lying still and crouched over something (`CyborgPoses.LIE`, `CROUCH`) are hand-set key poses. They are the
+  toolkit's from now on, so any cinematic can reuse them.
