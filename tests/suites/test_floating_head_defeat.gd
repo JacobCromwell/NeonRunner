@@ -217,6 +217,8 @@ func _test_defeat_after_stomp() -> void:
 		var bot := FloatingHeadBot.new(head, true)
 		var cause: Array[String] = [""]
 		world.player.died.connect(func(c: String) -> void: cause[0] = c)
+		var fires: Array[float] = []
+		world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void: fires.append(size))
 		world.player.running = true
 		for i: int in 90 * 60:
 			if head.is_defeated() or not world.player.alive:
@@ -240,6 +242,9 @@ func _test_defeat_after_stomp() -> void:
 			"the last stomp's cry is the propaganda cutting out mid-shout, not the shriek %s" % tag)
 		check(_sounds_in(head.events, &"head_power_down") == 1 and _sounds_in(head.events, &"head_crash") == 1,
 			"it's heard losing power and crashing %s" % tag)
+		var crash_size: float = FloatingHead.CRASH_FIRE_SIZE
+		check(fires.count(crash_size) == 1 and fires.count(crash_size * 0.75) == 1 and fires.count(crash_size * 0.6) == 1,
+			"its crash is three fireballs: over the wreck and at each end of it (%s) %s" % [fires, tag])
 		check(float(w["glitch"]) >= 0.5 and float(w["face_on"]) >= 0.99, "its face glitches, still on, as it dies in the air %s" % tag)
 		check(not bool(w["warns"]), "with no warning of an attack on it (its eyes dark, its mouth shut) %s" % tag)
 		check(bool(w["ahead"]), "in the air it stays ahead of the runner, its face toward them %s" % tag)

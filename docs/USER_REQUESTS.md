@@ -15,6 +15,16 @@ NOTE: Mark tasks as done as you complete them.
 
 - [x] The Octodog and Buzz Overdrive's charge attacks should hurt other enemies if they charge into them. If having enemies being able to hurt each other drastically increases the complexity of the code, then write that out to the user requests and do not implement that feature for now. However, if it does not greatly increase the complexity of the code, then please implement it.
 
+## Beach volleyball (October 10, 2026)
+
+- [x] "We need to create another beach level. This new beach level should come between the two beach levels that currently exist. So the beach level that's currently beach level two should become beach level three. This new beach level should be a mini game. So it starts off like a normal level for the first couple seconds. And then very quickly, our character walks up to a volleyball court. There is a net and there is another person there. You should render a new person who is wearing swim trunks and he will hit a volleyball over to our character and our character has to get underneath the volleyball and jump up in order to hit it back. This will go back and forth a few times. If our player misses, then the opponent gets a point. Whereas if we hit it back over the net enough times, say three or four times, then we get a point. This happens until one person has scored four points. Then our player gets a cash payout based upon how many rounds they won or how many points they won. So if they only won one round, they'll get a hundred. Whereas if they got all four points, they get 400 credits. After that, our character leaves and runs across the finish line of the level." Task D10e.
+  - DONE (task D10e):
+    - **Levels:** Beach 2 is the volleyball match, *Net Gains* (a proposed name; `data/levels/beach_2.tres`), and Sunset Strip is Beach 3 (`data/levels/beach_3.tres`), playing exactly as it did. The match is off the difficulty curve and counts for no other level's feature ages, so no other level changes. Play it with `--level=beach/2`.
+    - **The match:** 2.5 s of normal run with a trail of credits, then the runner slows to a walk and stops on the line of a court laid across the street, on the open beach. A man in swim trunks (a new character on the shared rig) serves. A ring on the sand marks where the ball comes down, and a closing ring shows when to jump. Three returns in a rally win the point (the last one lands out of his reach and he dives for it). A ball that drops, or bounces off a runner who didn't jump, is his point. First to 4. Each point won pays 100 credits (the level's completion bonus, "Match payout" on the results). Then the net sinks into the sand, he steps aside and waves, and the runner runs on across the finish line.
+    - **Fairness:** every ball leaves time to reach its lane and jump, each ball of a rally comes a little quicker and further away, and the runner can't die. Every attempt plays the same match against the same moves.
+    - **Saves:** a save that finished Sunset Strip keeps it as Beach 3, and Continue leads to the new Beach 2.
+    - **Open questions** (the name, three returns or four, the payout instead of the completion bonus, stars, the court, the rival's look and play): `docs/questions/d10e.md`.
+
 ## Beach zone (October 9, 2026)
 
 - [x] A new zone, the Beach, with `docs/art/reference/beach_zone.jpg` as its inspiration: a sandy lane between bamboo tiki bars and surf shops running down to the sea. **The gaps are pools of water.** It gets its own background, floors, walls, ceilings and the rest of a zone's look, but **no new enemy assets**: it reuses the existing enemies. **Its place in the campaign is not decided yet; it won't be the last zone.** Task D10 builds the skin only (`data/skins/beach_skin.tres`, quick play `--skin=beach`). Its levels, boss, music, cinematics and campaign slot follow once the owner picks the slot. SKIN BUILT (task D10): sand and boardwalk lanes; pools filled near the rim with deep, unlit teal water in black steel tanks, with the orange gap edge; bamboo tiki bars and surf shops; footbridges, verandas and a party barge as ceilings; surfboard racks, cabanas and tiki kiosks as doodads; an afternoon sky over the sea and an island. Its open questions, the recommended slot among them (zone 5, between Corporate and the Dead Zone), are items 538–559 in `docs/OPEN_QUESTIONS.md` §D. The owner then placed it as zone 5 (task D10c, below).
@@ -135,3 +145,22 @@ including six ramp/wall-run/wall-jump stomps, concurrent damage windows and loca
 Native phase-3 renders and the campaign-speed smoke run are clean. The full 81-suite gate reports
 only the eight unrelated failures reproduced on unchanged HEAD (frame times, Hostile Takeover fight,
 Resonator and doodads). Clean wins take about 104.5 seconds; boss star pars are now 115/150 seconds.
+
+## Owner's requests (October 8, 2026)
+
+Task IDs refer to `docs/TASK_PLAN.md`, section H. The owner's answers to the orchestrator's questions are in brackets.
+
+- [x] Sentinel wind-up time should be decreased by half. (H1: the warning goes from 1.2 s to 0.6 s.)
+- [x] Sentinels and their background are too hard to see inside the arched recess: bring them a bit further forward so the player can see and make out what they are. (H1)
+- [x] The attack sound of the Golden Zone's Resonator shouldn't sound like a doorbell: it should sound more like a crackling build of fire and a crashing wave. (H2)
+- [x] The bottoms of Buzz Overdrive cuts in the floor should show a zone-specific background. (H3)
+- [x] Only one enemy may fire at a time, which looks and feels unnatural: let two enemies fire at a time. (H4) [Owner: this is the cyborg-type guns' limit (cyborgs, window cyborgs, Barnacle Turrets): two bursts may be in the air at once. Big attacks of different types still take turns.]
+- [x] Make doodads destructible by a dash. (H5)
+- [x] The heli drone's explosion and all explosions in the game need to be more visually impressive: a yellow and red fireball. (H6)
+- [x] Walls the player can dash through: not the side walls, but walls blocking the path forward, using the side walls' assets turned to face the player, like a building in the middle of the street. The player must dash through them; they crumble and explode into rubble when hit. Without the dash, the player takes one hit (armor, then shield; with neither, it kills). (H7a, H7b) [Owner: they block every floor lane but not the side walls, no ceiling shares their stretch, and they're introduced in the Corporate zone.]
+- [x] Lasers auto-target host cyborgs, so players have to switch the laser off to avoid releasing Bad Dreams. (H8) [Owner: in normal levels; this reverses the September 26 rule that hosts are immune to weapons.]
+- [x] Sleep Taker: when it makes the screen darker, things should get 50% darker than they already do (glowing things like gaps and lasers stay visible). (H9)
+- [x] Sleep Taker: more hands, spread out along the street rather than all at the same spot, so the player has to make several quick lane switches to get through one round of the hand attack. (H9)
+- [x] Sleep Taker: the side walls are too safe: many more gaps in the side walls, and hand attacks there too. (H9)
+- [x] Sleep Taker: double the floor gaps. (H9)
+- [x] The Tithe Collector should stay in the level twice as long. (H10)

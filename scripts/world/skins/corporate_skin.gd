@@ -97,10 +97,16 @@ enum FloorStyle { MAGLEV, PLAZA }
 @export var joint_color: Color = Color(0.27, 0.28, 0.3)
 ## The walkway along the building faces beside the outer lanes (and the plaza's paving colour).
 @export var ledge_color: Color = Color(0.38, 0.4, 0.43)
-## DESIGN-TBD: everything below the running surface (the carriages' sides and ends, the guideways,
-## the trench), seen only through gaps: deep shade that only darkens with depth, so a gap reads as a
-## hole at a glance. Kept far darker than any roof (tests/suites/test_corporate_skin.gd).
-@export var gap_inside_color: Color = Color(0.07, 0.075, 0.085)
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): everything below the running surface (the carriages' sides and
+## ends, the plaza deck's edges, the guideways, the trench or the plaza's lower level), seen only through
+## gaps and cuts: dim, and darkening with depth, but showing what is there (PAT_CORP_UNDER; task H3, GDD
+## §9.9: "the trench under the maglev line"), so a gap reads as a hole at a glance and still shows the
+## trench. These are the brightest each is drawn (the patterns only darken them): kept far darker than
+## any roof (tests/suites/test_corporate_skin.gd). The faces, the guideways' steel and the trench's wet
+## concrete (or the plaza's lower level).
+@export var gap_inside_color: Color = Color(0.15, 0.16, 0.18)
+@export var guideway_color: Color = Color(0.125, 0.135, 0.155)
+@export var trench_color: Color = Color(0.105, 0.115, 0.13)
 ## The guideway beams' tops and the trench's floor, below the depth at which a fall ends the run, so
 ## a fall never visibly lands.
 @export_range(4.5, 20.0, 0.1, "suffix:m") var guideway_depth: float = 5.6
@@ -260,6 +266,7 @@ var _towers: CorporateTowers
 var _ceilings: CorporateCeilings
 var _props: CorporateProps
 var _doodads: CorporateDoodads
+var _dash_walls: CorporateDashWall
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a tower bridging the
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
@@ -376,6 +383,24 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	batch.commit(parent)
 
 
+## A dash wall (task H7b): the end of a tower standing across the street, built from the towers' own kit
+## (CorporateDashWall): cladding, steel, curtain glass or the military's blast walls and armour.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a dash wall draws with: the towers' facade shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## The default dash wall look's colours (ZoneSkin.dash_wall, task H7a) in the towers' own calm band (CorporateTowers): the
+## sterile cladding between brushed steel pilasters, dark glass. Kept as the palette the debris falls back on.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([podium_colors[2 % podium_colors.size()], pilaster_color, Color(0.08, 0.1, 0.13),
+		Color(0.035, 0.04, 0.05)])
+
+
 ## A planter (small), a security barrier or a glass kiosk (medium) or a sculpture plinth (large): CorporateDoodads.
 func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look_seed: int) -> void:
 	doodads().build(body, size, size_class, side, look_seed)
@@ -490,6 +515,12 @@ func plaza() -> CorporatePlaza:
 	if _plaza == null:
 		_plaza = CorporatePlaza.new(self)
 	return _plaza
+
+
+func dash_walls() -> CorporateDashWall:
+	if _dash_walls == null:
+		_dash_walls = CorporateDashWall.new(self)
+	return _dash_walls
 
 
 func towers() -> CorporateTowers:

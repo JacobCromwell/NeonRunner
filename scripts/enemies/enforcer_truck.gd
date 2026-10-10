@@ -40,9 +40,10 @@ extends Enemy
 ##   attack, a bait or an enemy beside it comes. Its marker fades while it's on screen.
 ## - Destroyed, it blows up where the player sees it (the owner, October 8, 2026): its wreck lurches on into
 ##   view (wreck_gap behind the runner, spinning out or nose-diving into its hole, at the hole's far edge if it
-##   gets there first) and explodes there (EnforcerTruckBlast: a fireball, smoke and a floor glow carried along
-##   with the runner, smaller in the runner's lane; RunEffects' sparks and debris, its riders going up with it,
-##   a shake and truck_explode). Reduced flashing softens the blast's flash.
+##   gets there first) and explodes there: one of the shared yellow-and-red fireballs (RunEffects.fireball; GDD
+##   §11, the owner, October 8, 2026), as big as its blast (smaller in the runner's lane) and carried along with
+##   its wreck in the runner's frame so it stays in view while it burns; RunEffects' sparks and debris, its riders
+##   going up with it, a shake and truck_explode. Reduced flashing softens the fireball.
 ## - Its attack: lasers down the runner's lane. Each volley is warned by a red line on the floor ahead in that
 ##   lane and a rising whine (warning_seconds), then its shots come up the lane from behind: columns of bolts
 ##   reaching over a slide and a whole jump, so only leaving the lane dodges it (which moves the truck too). A
@@ -98,6 +99,14 @@ const BLAST_HEIGHT: float = 0.8
 const BLAST_BACK_IN_LANE: float = 0.4
 const BLAST_BACK: float = 0.6
 const BLAST_SHIFT: float = 0.3
+## Its blast's look is one of the shared fireballs (RunEffects.fireball; GDD §11, the owner, October 8, 2026): as big
+## as the blast (EnforcerTruckTuning.blast_radius, blast_radius_in_lane), its fire burning as long (blast_seconds,
+## fire_pace), carried along with its wreck (blast_drift). Its fire and embers fly out of its centre only this share
+## as far as a free fireball's do (less in the runner's lane, so it keeps low, under the camera's line of sight to
+## them), and it leaves no smoke: everything it draws only adds light, so nothing of it can hide the runner.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 669): the spreads, no smoke, and C6b's sizes.
+const FIRE_SPREAD: float = 0.7
+const FIRE_SPREAD_IN_LANE: float = 0.5
 const BuzzScript = preload("res://scripts/enemies/buzz_overdrive.gd")
 const HoverScript = preload("res://scripts/enemies/hover_truck.gd")
 
@@ -152,7 +161,7 @@ var _hop_from: float = 0.0
 var _hop_until: float = 0.0
 ## Its wreck (it lurches on into view, then blows up): the cause, seconds into it, its gap behind the runner as
 ## it was wrecked and where it blows up, the far edge of the hole it fell in (INF: none), whether it's in the
-## runner's lane, its fall and spin, its trail of sparks, and whether it has blown up yet (and when).
+## runner's lane, its fall and spin, its trail of sparks, whether it has blown up yet (and when), and seconds since.
 var _wreck_cause: StringName = &""
 var _wreck_t: float = 0.0
 var _wreck_gap0: float = 0.0
@@ -165,7 +174,7 @@ var _sink: float = 0.0
 var _spin: float = 0.0
 var _trail_left: float = 0.0
 var _blast_at: float = -1.0
-var _blast: EnforcerTruckBlast
+var _blast_t: float = 0.0
 ## Its showing: seconds alongside, true while it drops back to give way (faster), the chase time its last
 ## showing ended (-INF before its first: that one comes as soon as it may, on arrival where there's room), and a
 ## lane change into its side bumped back since the last frame.
@@ -205,9 +214,9 @@ var _canvas: CanvasLayer
 
 
 ## An Enforcer Truck's whole look for EnemyDirector.warm_up (which frees it) and ShaderWarmup (task PERF1):
-## its model with every rider aboard and its light bar in every state, its floor lights bright and dim, its
-## warning line, and its blast (every kind of puff and the floor glow). The first one builds the meshes and
-## materials every later truck shares. No physics object.
+## its model with every rider aboard and its light bar in every state, its floor lights bright and dim, and its
+## warning line (its blast is a shared fireball, whose materials ShaderWarmup draws with RunEffects'). The first
+## one builds the meshes and materials every later truck shares. No physics object.
 static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	var t: EnforcerTruckTuning = EnemyDirector.tuning_for("enforcer_truck") as EnforcerTruckTuning
 	if t == null:
@@ -232,7 +241,6 @@ static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	line.mesh = GreyboxMaterials.unit_box()
 	line.material_override = GreyboxMaterials.glow(WARNING_COLOR, 3.0, 0.5)
 	look.add_child(line)
-	look.add_child(EnforcerTruckBlast.warm_look())
 	return look
 
 
@@ -273,10 +281,6 @@ func _build() -> void:
 	_blocker = add_lane_blocker(Vector3(world.geo.lane_width * 0.9, BLOCKER_HEIGHT, reach),
 		Vector3(0.0, BLOCKER_HEIGHT * 0.5, tuning.body_size.z - reach * 0.5))
 	_set_blocker(false)
-	_blast = EnforcerTruckBlast.new()
-	_blast.name = "Blast"
-	_blast.visible = false
-	add_child(_blast)
 	_line = MeshInstance3D.new()
 	_line.name = "WarningLine"
 	_line.mesh = GreyboxMaterials.unit_box()
@@ -1466,8 +1470,9 @@ func _holed() -> bool:
 ## it was to wreck_gap behind the runner over wreck_surge_seconds, already closer staying put), spinning out
 ## (a charge) or nose-diving into its hole on its rear (nothing of it rises: it passes under the chase camera),
 ## trailing sparks, then blows up where the camera sees it (_explode):
-## at the end of its lurch, or as its nose meets the far edge of the gap it fell in. The blast burns on,
-## falling back slowly (blast_drift), and it's gone when the blast is over.
+## at the end of its lurch, or as its nose meets the far edge of the gap it fell in. The blast (its fireball,
+## carried along with it) burns on, falling back slowly (blast_drift), and it's gone when the blast is over
+## (blast_seconds).
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	if state != State.WRECKED or world == null:
@@ -1504,30 +1509,29 @@ func _physics_process(delta: float) -> void:
 		return
 	gap += tuning.blast_drift * delta
 	position = Vector3(_x, 0.0, TrackGeometry.world_z(pd - gap))
-	_blast.advance(delta)
+	_blast_t += delta
 	_trail_left -= delta
-	if _trail_left <= 0.0 and _blast.t < tuning.blast_seconds * 0.5:
+	if _trail_left <= 0.0 and _blast_t < tuning.blast_seconds * 0.5:
 		_trail_left = 0.2
-		world.effects.burst(_blast.global_position + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.5, 0.15), 8, 0.4)
-	if _blast.done():
+		world.effects.burst(to_global(_blast_local()) + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.5, 0.15), 8, 0.4)
+	if _blast_t >= tuning.blast_seconds:
 		queue_free()
 
 
-## It blows up where the camera sees it: its model, riders and all, gone in a fireball (EnforcerTruckBlast, smaller
-## in the runner's lane), the shared effects' fire, smoke and debris, a chunk flung up for each rider, a shake
-## and truck_explode.
+## It blows up where the camera sees it: its model, riders and all, gone in a shared yellow-and-red fireball
+## (RunEffects.fireball, GDD §11: blast_size, smaller in the runner's lane, carried along with the wreck so it falls
+## back with it at blast_drift, its fire burning blast_seconds), the shared effects' smoke and debris, a chunk flung
+## up for each rider, a shake and truck_explode.
 func _explode() -> void:
 	_blast_at = _wreck_t
+	_blast_t = 0.0
 	_note(&"blast")
 	var local: Vector3 = _blast_local()
 	model.visible = false
-	_blast.position = local
-	_blast.start(tuning.blast_radius_in_lane if _wreck_in_lane else tuning.blast_radius, tuning.blast_seconds,
-		Settings.flashing_reduced, _wreck_in_lane)
 	var at: Vector3 = to_global(local)
 	_sound(&"truck_explode")
-	world.effects.burst(at, Color(1.0, 0.5, 0.1), 50, 1.4)
-	world.effects.burst(at + Vector3(0.0, 0.6, 0.0), Color(1.0, 0.85, 0.35), 26, 1.0)
+	world.effects.fireball(at, blast_size(_wreck_in_lane), false, fire_pace(),
+		FIRE_SPREAD_IN_LANE if _wreck_in_lane else FIRE_SPREAD, self)
 	world.effects.burst(at + Vector3(0.0, 1.0, 0.0), Color(0.35, 0.33, 0.32), 22, 0.9)
 	world.effects.debris(at, Color(0.3, 0.3, 0.34), 12, 0.9)
 	for i: int in mini(riders, EnforcerTruckModel.RIDER_SLOTS.size()):
@@ -1548,6 +1552,20 @@ static func blast_spot(in_lane: bool, away: float) -> Vector3:
 	if in_lane:
 		return Vector3(0.0, BLAST_HEIGHT, BLAST_BACK_IN_LANE)
 	return Vector3(away * BLAST_SHIFT, BLAST_HEIGHT + 0.15, BLAST_BACK)
+
+
+## Its blast's fireball (RunEffects.fireball, metres in radius): the blast's radius, smaller in the runner's lane
+## (`in_lane`).
+func blast_size(in_lane: bool) -> float:
+	return tuning.blast_radius_in_lane if in_lane else tuning.blast_radius
+
+
+## How much faster than a free fireball of its size its blast's plays (RunEffects.fireball's `pace`): its fire burns
+## blast_seconds, as long as its wreck stays after it blows up.
+func fire_pace() -> float:
+	var fx: SpeedFxTuning = world.effects.tuning if world != null and world.effects != null else null
+	var fire: float = fx.fireball_seconds if fx != null else 1.0
+	return fire / maxf(tuning.blast_seconds, 0.05)
 
 
 ## Weapons never target it (immune_to_weapons). Where effects appear: just behind its front, chest high.

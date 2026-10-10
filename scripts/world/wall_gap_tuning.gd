@@ -2,7 +2,9 @@ class_name WallGapTuning
 extends Resource
 ## Where side wall gaps go (the `wall_gaps` feature, Zone 2 on; WallGapPlacement; owner's answers in
 ## docs/USER_REQUESTS.md: low frequency, both walls at once only rarely, never in boss levels). Edit
-## data/tuning/wall_gaps.tres (F6: "Wall gaps", in a level that has them; Restart level rebuilds). Times
+## data/tuning/wall_gaps.tres (F6: "Wall gaps", in a level that has them; Restart level rebuilds). A
+## boss arena that opts in has a resource of its own (LevelConfig.wall_gap_tuning: the Sleep Taker's,
+## data/bosses/dead_zone_boss_wall_gaps.tres, with many gaps; owner, October 8, 2026). Times
 ## are seconds at the level's run speed, so a faster zone keeps every length and margin in seconds (GDD
 ## §3, Pace). Numbers that go from easy to hard follow the difficulty where the gap starts
 ## (LevelGenerator.difficulty_at). Every number here is a first value for playtesting (DESIGN-TBD).

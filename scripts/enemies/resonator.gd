@@ -6,14 +6,19 @@ extends Enemy
 ## the look and the numbers in data/enemies/resonator.tres).
 ## 1. It hovers far ahead, still, where the generator put it; as the player nears it eases into pacing
 ##    them hover_ahead in front (it keeps pace from then on, so the player never reaches it).
-## 2. Before each pulse, the warning: its halos spin up and swing into line facing the player, one on
-##    each note of the cult's three-note chime (resonator_chime, pleasant like a public-address jingle,
-##    the same every time: CHIME_NOTES), while its core, the halos' inner rings and its emitter glow red.
-## 3. At the warning's end it sends a red shockwave (resonator_pulse) rolling along the floor toward
-##    the player across every lane: a low band (ResonatorTuning.wave_height) that a jump clears. Later
+## 2. Before each pulse, the warning: its halos spin up and swing into line facing the player, one at
+##    each of LINE_UP_AT, while its core, the halos' inner rings and its emitter glow red. Its sound
+##    (resonator_warning, the owner's October 8, 2026 wording: "a crackling build of fire and a crashing
+##    wave") is a fire roaring and crackling up, flaring as each halo lines up, and breaking into a wave
+##    crash when the red wave leaves; the same every time.
+## 3. At the warning's end (the crash) it sends a red shockwave (resonator_pulse) rolling along the floor
+##    toward the player across every lane: a low band (ResonatorTuning.wave_height) that a jump clears. Later
 ##    in the zone it rests less between pulses, its waves roll faster, and some pulses send a second
 ##    wave double_gap behind the first.
 ## 4. After its pulses it pulls away ahead, powering down, and is gone.
+## Dash walls (task H7a; GDD §9.14): it rises over a standing one in its way and back down past it
+## (Enemy.dash_wall_lift, `lift`): pulling away, or resting at its spot beyond one. Its waves never meet one
+## (pulse_clear counts the walls as it counts doodads, and the generator keeps the walls off its visits).
 ## Dodge: jump the wave, or be on a wall or the ceiling: the wave travels along the floor only, and its
 ## hitbox stops short of a wall runner's body (ResonatorTuning.band_half_width).
 ## Kill: weapons (auto-fire targets its core: 17 laser tier 1 shots), or wait it out. It hovers too high
@@ -42,10 +47,11 @@ extends Enemy
 enum State { APPROACH, PACE, WARNING, PULSE, LEAVE, DOWN }
 
 const STATE_NAMES: PackedStringArray = ["approach", "pace", "warning", "pulse", "leave", "down"]
-## The chime's three notes, in seconds from the warning's start (resonator_chime is made with them,
-## tools/asset_gen/sfx_bank_resonator.gd): each swings one halo into line, inner to outer.
-const CHIME_NOTES: Array[float] = [0.0, 0.42, 0.84]
-## A halo swings into line from this long before its note to this long after it.
+## When each halo swings into line, in seconds from the warning's start, inner to outer. The warning's
+## sound flares on each (resonator_warning is made with them, and with warning_seconds, where its crash
+## lands: tools/asset_gen/sfx_bank_resonator.gd).
+const LINE_UP_AT: Array[float] = [0.0, 0.42, 0.84]
+## A halo swings into line from this long before its line-up moment to this long after it.
 const LINE_UP_BEFORE: float = 0.1
 const LINE_UP_AFTER: float = 0.2
 ## pulse_clear(): metres kept between a wave's meeting stretch and an anti-grav pad (the player may be
@@ -133,6 +139,10 @@ var _run_pace: float = 1.0
 ## Track distance of the Resonator (its core), and where the generator put it.
 var _d: float = 0.0
 var _at: float = 0.0
+## Metres it has risen over hover_height to clear a dash wall in its way (task H7a), back to 0 past it; and
+## its track distance a frame ago (how fast it comes at a wall).
+var lift: float = 0.0
+var _prev_d: float = NAN
 var _rel: float = 0.0
 var _state_time: float = 0.0
 var _anchors: Array[float] = []
@@ -273,7 +283,17 @@ func _tick(delta: float) -> void:
 			_d = p + _rel
 	_roll_waves(delta, p)
 	_last_p = p
+	_update_lift(delta)
 	_place()
+
+
+## Rises over a standing dash wall in its way, and back down past it (task H7a; Enemy.dash_wall_lift), at the
+## speed it comes at the wall (the runner's while it paces them, more as it pulls away, none at rest).
+func _update_lift(delta: float) -> void:
+	var closing: float = (_d - _prev_d) / maxf(delta, 0.0001) if not is_nan(_prev_d) else world.player.speed
+	_prev_d = _d
+	var need: float = dash_wall_lift(_d, 0.85 * tune.model_scale, tune.hover_height, maxf(closing, 1.0))
+	lift = move_toward(lift, maxf(need - tune.hover_height, 0.0), DASH_WALL_CLIMB_SPEED * delta)
 
 
 func _set_state(next: State) -> void:
@@ -406,7 +426,7 @@ func _start_warning() -> void:
 	_set_state(State.WARNING)
 	charge = 0.0
 	_log("warning")
-	_sound(&"resonator_chime")
+	_sound(&"resonator_warning")
 
 
 func _warning(p: float) -> void:
@@ -555,6 +575,10 @@ func hit_radius() -> float:
 
 
 func _on_defeated(_cause: StringName) -> void:
+	if state == State.WARNING and world.sounds != null:
+		# Its warning ends in a crash that releases the wave: with no wave coming, cut it off before it
+		# crashes (the death's own sound covers the cut). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 610): cut it, or let it play out?
+		world.sounds.stop(&"resonator_warning")
 	_set_state(State.DOWN)
 	charge = 0.0
 	_log("down")
@@ -568,7 +592,7 @@ func _on_defeated(_cause: StringName) -> void:
 func _place() -> void:
 	if state == State.DOWN:
 		return
-	position = Vector3(tune.sway * sin(_sway_t), tune.hover_height + 0.12 * sin(_bob_t * 1.9),
+	position = Vector3(tune.sway * sin(_sway_t), tune.hover_height + lift + 0.12 * sin(_bob_t * 1.9),
 		TrackGeometry.world_z(_d))
 
 
@@ -576,8 +600,8 @@ func _log(event: String) -> void:
 	history.append([event, world.level_time(), world.player.distance])
 
 
-## Plays one of its sounds for everyone to hear (the chime is a public-address jingle, heard wherever
-## the player is) and notes it.
+## Plays one of its sounds for everyone to hear (its warning and wave are heard wherever the player
+## is) and notes it.
 func _sound(sound: StringName) -> void:
 	world.play_sfx(sound)
 	sounds.append([sound, world.level_time()])
@@ -593,13 +617,13 @@ func events(names: PackedStringArray) -> Array:
 
 
 ## How far halo `k` (0 the inner, 2 the outer) has swung into line for the warning: 0 at rest, rising
-## to 1 on its note of the chime (CHIME_NOTES), held while a double pulse's second wave leaves. The
+## to 1 at its moment in LINE_UP_AT (the sound flares), held while a double pulse's second wave leaves. The
 ## model follows it (and relaxes back after the pulse).
 func line_up(k: int) -> float:
 	if not alive:
 		return 0.0
 	if state == State.WARNING:
-		return smoothstep(CHIME_NOTES[k] - LINE_UP_BEFORE, CHIME_NOTES[k] + LINE_UP_AFTER, _state_time)
+		return smoothstep(LINE_UP_AT[k] - LINE_UP_BEFORE, LINE_UP_AT[k] + LINE_UP_AFTER, _state_time)
 	return 1.0 if state == State.PULSE else 0.0
 
 
@@ -626,7 +650,7 @@ func _process(delta: float) -> void:
 	_since_wave += delta
 	var warning: bool = state == State.WARNING and alive
 	var holding: bool = state == State.PULSE and alive
-	# The halos swing into line one per note, hold while a double's second wave leaves, then relax.
+	# The halos swing into line one per line-up moment, hold while a double's second wave leaves, then relax.
 	var throb: float = 1.0
 	if warning and not reduced:
 		# Throbbing faster as the wave nears (a steady ramp with Reduced flashing).

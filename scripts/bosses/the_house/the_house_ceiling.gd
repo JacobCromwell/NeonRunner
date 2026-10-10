@@ -7,8 +7,9 @@ extends Node3D
 ## and Barnacle Turrets hanging from it past the button (task C1's enemy, through
 ## BossEncounter.spawn_enemy, with C1's limits: at most two on a ceiling, never one lane wide, never over
 ## the pad's lane, at least after_pad_seconds past the pad (tight_after_pad_seconds in the only lane beside
-## it) and spacing_seconds apart, before_end_seconds before its end; one fires at a time, at a rider on
-## its own ceiling only).
+## it) and spacing_seconds apart, before_end_seconds before its end; firing only at a rider on its own
+## ceiling, and both may fire together: up to two bursts of the cyborg-type guns are in the air at once,
+## CyborgAirspace, GDD §9.2).
 ## The plan (plan()): the pad where the runner reaches it, in a lane off the edges (so its lane always
 ## has a free lane beside it to dodge into: the turrets all hang in the lane on one side of the pad's, the
 ## other side's stays clear); the button ceiling_button_after past the pad in the pad's lane

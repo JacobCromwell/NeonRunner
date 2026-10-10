@@ -4,7 +4,8 @@ extends ScreenBase
 ## plus the completion bonus makes what's earned, then the stats and NEW BEST) or the run summary
 ## after a death (what hit the player, the credits kept). A boss fight (GDD §10) shows BOSS DEFEATED,
 ## its stars against the par times (listed under them), the boss's payout, and the fight's own stats
-## (time, weak points, the phase reached, the time bonus). Then on to the shop and the next step or
+## (time, weak points, the phase reached, the time bonus); a mini-game level its payout and its own stats (the
+## volleyball match: the points won and lost, the returns). Then on to the shop and the next step or
 ## a retry (GDD §4, §8), a retry now, or the menu.
 ## The level-complete screen's stats (FB 60): the ScoreKeeper's, and a boss fight's own
 ## (DESIGN-TBD, docs/questions/b8.md).
@@ -180,8 +181,9 @@ func _credit_table() -> Control:
 		_table_row(grid, "Stolen", "−" + UiTheme.format_int(result.credits_stolen))
 	if result.completed:
 		if result.completion_bonus > 0:
-			_table_row(grid, "Boss payout" if result.context.is_boss() else "Completion bonus",
-				"+" + UiTheme.format_int(result.completion_bonus), UiTheme.ACCENT_TEXT)
+			var bonus_label: String = "Boss payout" if result.context.is_boss() \
+				else ("Match payout" if String(result.stats.get("minigame", "")) != "" else "Completion bonus")
+			_table_row(grid, bonus_label, "+" + UiTheme.format_int(result.completion_bonus), UiTheme.ACCENT_TEXT)
 		_table_label(grid, "Credits earned")
 	else:
 		var share: float = App.rules.death_credit_keep_fraction if App.rules != null else 0.0
@@ -231,6 +233,13 @@ func _stats_table() -> Control:
 			["Kills", UiTheme.format_int(int(st.get("kills", 0)))],
 			["Hits blocked", UiTheme.format_int(int(st.get("blocked", 0)))],
 			["Time bonus", UiTheme.format_int(int(st.get("time_bonus", 0)))],
+		]
+	if String(st.get("minigame", "")) != "":
+		# A mini-game level's own numbers (the volleyball match: the points, the returns, its payout).
+		rows = [
+			["Time", ResultsScreen.format_time(result.time)],
+			["Points won", "%d – %d" % [int(st.get("points_won", 0)), int(st.get("points_lost", 0))]],
+			["Returns", UiTheme.format_int(int(st.get("returns", 0)))],
 		]
 	for r: Array in rows:
 		_table_label(grid, r[0])

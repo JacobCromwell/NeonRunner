@@ -109,14 +109,25 @@ extends ZoneSkin
 ## How far below the walkways the canal lies (deeper than the fall that ends a run, so a fall never
 ## visibly lands).
 @export_range(4.5, 15.0, 0.1, "suffix:m") var canal_depth: float = 5.5
-## The canal: dark water, never lighter than a gap's inside may be.
-@export var canal_color: Color = Color(0.035, 0.055, 0.07)
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): the canal and the quay below the walkways, dim but recognisable through
+## a gap or a cut (task H3, GDD §9.9), never lit like a walkway. These four colours are the PEAKS of what is
+## drawn there (the patterns only ever darken `canal_color` and `gap_inside_color`, and add at most
+## `canal_sky_color` and `canal_lamp_color`: PAT_UNDERDECK and PAT_CANAL cap their result at those sums), and
+## tests/suites/test_golden_skin.gd counts exactly those sums (SkinSuite.hole_share): a hole's brightest spot
+## stays well under the darkest walkway, rendered. `canal_color`: the water; the sky it reflects (a sheen
+## toward the horizon and sparse glints that slide with the current) and the walkways' lamps on it, added in
+## sRGB, faint and never glowing; and the quay's stone under the deck (below).
+@export var canal_color: Color = Color(0.04, 0.085, 0.115)
+@export var canal_sky_color: Color = Color(0.06, 0.07, 0.1)
+@export var canal_lamp_color: Color = Color(0.04, 0.03, 0.02)
 ## How fast the canal flows toward the player (a motion cue in the gaps).
 @export_range(0.0, 6.0, 0.1, "suffix:m/s") var canal_flow: float = 1.4
-## Everything under the walkways (their sides and piers, the building faces down to the water), seen
-## only through gaps: deep shade that only darkens with depth, so a gap reads as a hole at a glance.
-## Kept far darker than any walkway material (tests/suites/test_golden_skin.gd).
-@export var gap_inside_color: Color = Color(0.075, 0.068, 0.06)
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): everything under the walkways (their sides and piers, the building faces
+## down to the water), seen only through gaps and cuts: the quay's stone in deep shade, dim but with its
+## arches and the canal's light on it (PAT_UNDERDECK; task H3, GDD §9.9), so a gap reads as a hole at a
+## glance and still shows the canal. The stone's peak colour, kept far darker than any walkway material
+## (tests/suites/test_golden_skin.gd).
+@export var gap_inside_color: Color = Color(0.15, 0.13, 0.115)
 ## Gap edges: the orange edge language of every zone. Redder than it looks: the glow and the
 ## tonemapper lift the green, and it must stay orange, not sign yellow.
 @export var gap_edge_color: Color = Color(1.0, 0.25, 0.04)
@@ -283,6 +294,7 @@ var _facades: GoldenFacades
 var _ceilings: GoldenCeilings
 var _props: GoldenProps
 var _doodads: GoldenDoodads
+var _dash_walls: GoldenDashWall
 var _statues: GoldenStatue
 var _decorative_inset: float = -1.0
 var _decorative_projection: Vector2 = Vector2(-1.0, -1.0)
@@ -293,6 +305,11 @@ var _wall_x: float = 0.0
 ## The Gilded Sentinels' niches in the wall about to be built, by side (note_wall_enemies, task C4):
 ## Rect2 over (track distance, height).
 var _niches: Dictionary = {}
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 607): the wall kept clear between a live Sentinel's niche and a decorative
+## alcove beside it (crowds_niche()): the two gold frames (2 x 0.12 m) and a little more, so they never touch or
+## overlap. No more than that: a live niche is not to stand apart from the decorative ones (USER_REQUESTS.md:
+## the decorative statues are there so a live one can surprise the player).
+const NICHE_CLEARANCE: float = 0.3
 
 
 func _init() -> void:
@@ -365,6 +382,19 @@ func niches(side: int) -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	out.assign(_niches.get(side, []))
 	return out
+
+
+## True if a decorative wall-base alcove `half_width` wide (the opening, not its frame) centred at track
+## distance `at` on wall `side` would overlap or touch a live Sentinel's niche in the wall being built
+## (niches(): the chunk's own, as TrackBuilder notes them): less than NICHE_CLEARANCE of wall between the two
+## frames. The facades leave such an alcove out (its hole and its statue), so a live niche is never overlapped
+## by a decorative one (task H1, GDD §9.11). A facade statue never straddles a chunk (GoldenFacades.
+## _place_statues), so the alcove is in the one chunk that knows the niche, or in a chunk with no niche near it.
+func crowds_niche(side: int, at: float, half_width: float) -> bool:
+	for r: Rect2 in niches(side):
+		if absf(at - r.get_center().x) < r.size.x * 0.5 + half_width + NICHE_CLEARANCE:
+			return true
+	return false
 
 
 ## Appends each niche's recess and frame (GoldenStatue.recess) for the wall on `side` at `face_x`.
@@ -449,6 +479,25 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, trigger_metal_color)
 	batch.commit(parent)
+
+
+## A dash wall (task H7b): the front of a palace across the walkways, built from the facades' own kit
+## (GoldenDashWall): granite, rusticated stone, blind arcades, tall gold-framed windows, mirror glass, marble
+## and gold. The Golden Palace's halls have their own (GoldenPalaceSkin).
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a Golden Zone dash wall draws with: the facades' shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in the Golden Zone's own facades: white stone,
+## gold trim (unlit), its glass and cracks a darker shade of the marble's veins. Kept as the palette the debris
+## falls back on.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([stone_colors[0], gold_color, glass_color, vein_color.darkened(0.45)])
 
 
 ## A gilded planter (small), a fountain (medium) or a robed statue on a plinth (large): GoldenDoodads.
@@ -685,6 +734,7 @@ func _solid_params() -> Dictionary:
 		"golden_shine": srgb(gold_shine_color), "golden_sun": sun, "golden_rail": srgb(gold_color),
 		"golden_joint": srgb(joint_color), "golden_plate": plate_length, "golden_polish": walkway_polish,
 		"golden_inlay": srgb(kerb_color), "golden_vein": srgb(vein_color), "golden_flow": canal_flow,
+		"golden_canal_y": -canal_depth, "golden_canal_sky": srgb(canal_sky_color), "golden_canal_lamp": srgb(canal_lamp_color),
 		"golden_trim": srgb(gold_color), "golden_rib": srgb(rib_color), "golden_light_street": walkway_light,
 		"golden_light_flood": ledge_light}
 
@@ -693,6 +743,12 @@ func walkways() -> GoldenWalkways:
 	if _walkways == null:
 		_walkways = GoldenWalkways.new(self)
 	return _walkways
+
+
+func dash_walls() -> GoldenDashWall:
+	if _dash_walls == null:
+		_dash_walls = GoldenDashWall.new(self)
+	return _dash_walls
 
 
 func facades() -> GoldenFacades:

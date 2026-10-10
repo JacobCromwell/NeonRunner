@@ -5,9 +5,12 @@ extends RefCounted
 ## onto the wall there and one already on it drops off into the outer lane (Player.wall_supported); the
 ## track builder leaves the wall out and marks the gap's edges (ZoneSkin.wall_gap).
 ##
-## Rules, at the generator's run speed, with the numbers in WallGapTuning (data/tuning/wall_gaps.tres):
+## Rules, at the generator's run speed, with the numbers in WallGapTuning (data/tuning/wall_gaps.tres, or
+## the config's own: tuning_for):
 ## - Only in a level with the feature (Zone 2 on), never in a boss arena (BossArena.base_config strips
-##   the feature, and is_boss_arena() refuses one anyway), and not before the feature's start.
+##   the feature, and is_boss_arena() refuses one anyway) unless the arena opts in with numbers of its
+##   own (LevelConfig.wall_gap_tuning: the Sleep Taker's, owner, October 8, 2026), and not before the
+##   feature's start.
 ## - Low frequency: about a spacing (spacing_seconds_easy to _hard) from the end of one to the next.
 ## - A bilateral_share of them open both walls over the same stretch; the rest open one wall.
 ## - Never where the missing wall would leave something hanging or a launch with nowhere to go: a
@@ -15,7 +18,8 @@ extends RefCounted
 ##   enemy on its wall (a Gilded Sentinel's whole wall section and niche, sentinel_wall_section), every
 ##   ceiling reaching its wall, and a ramp on its wall from before its launch to past its longest
 ##   wall run (keep_outs); and both walls keep clear of every wider floor gap (task G7,
-##   WideGapPlacement.wall_keep_outs), so a wall runner is never dropped into one.
+##   WideGapPlacement.wall_keep_outs), so a wall runner is never dropped into one; and both walls stay whole
+##   beside every dash wall (task H7a, DashWallRules.wall_keep_outs: a runner on a side wall passes it).
 ## - Deliberately NOT kept: the outer lane's floor beside a gap. The owner decided players should see
 ##   gaps coming, so a drop may land the runner in front of whatever the outer lane holds.
 ##
@@ -33,6 +37,8 @@ extends RefCounted
 
 const FEATURE: String = "wall_gaps"
 const TUNING_PATH: String = "res://data/tuning/wall_gaps.tres"
+## The dash walls' rules (task H7a): both walls stay whole beside a dash wall (wall_keep_outs).
+const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
 ## Metres within which two stretch ends count as the same point (coverage mode).
 const EPSILON: float = 0.001
 ## Metres an open stretch keeps from the keep-outs either side of it (coverage mode), as the rare gaps start
@@ -48,8 +54,9 @@ static func tuning() -> WallGapTuning:
 	return res as WallGapTuning if res is WallGapTuning else WallGapTuning.new()
 
 
-## The numbers `config`'s level places its wall gaps by (task D10b): its own (LevelConfig.wall_gap_tuning, the
-## Beach's), else the shared ones (tuning()). The F6 panel's "Wall gaps" group edits the same resource.
+## The numbers `config`'s wall gaps follow: its own (LevelConfig.wall_gap_tuning: a boss arena's opt-in, the
+## Sleep Taker's; a level's, the Beach's, task D10b), else the shared ones (tuning()). The F6 panel's "Wall
+## gaps" group edits the same resource.
 static func tuning_for(config: LevelConfig) -> WallGapTuning:
 	if config != null and config.wall_gap_tuning != null:
 		return config.wall_gap_tuning
@@ -65,7 +72,7 @@ static func is_boss_arena(config: LevelConfig) -> bool:
 static func place(gen: LevelGenerator) -> void:
 	var lay: LevelLayout = gen.layout
 	lay.wall_gaps.clear()
-	if not gen.config.has_feature(FEATURE) or is_boss_arena(gen.config):
+	if not gen.config.has_feature(FEATURE) or (is_boss_arena(gen.config) and gen.config.wall_gap_tuning == null):
 		return
 	var t: WallGapTuning = tuning_for(gen.config)
 	var rng: RandomNumberGenerator = gen.rng_for(FEATURE)
@@ -372,4 +379,8 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	# Task G7: every wider gap, on both walls, with its own margin (WideGapTuning.wall_gap_clear_seconds), so a
 	# runner on a wall over one is never dropped into it.
 	out.append_array(WideGapPlacement.wall_keep_outs(gen))
+	# Task H7a: beside every dash wall both walls stay whole (GDD §9.14: a runner on a side wall passes it), from
+	# its wall route's start to its back (DashWallRules.wall_keep_outs), with the usual margin.
+	for k: Vector2 in DashWallRules.wall_keep_outs(gen):
+		out.append(Vector2(k.x - clear, k.y + clear))
 	return WallFencePlacement.merged(out)

@@ -167,7 +167,7 @@ func _broken_plate(s: MeshLayer, x: float, inward: float, d0: float, d1: float, 
 ## adds them to the left wall's mesh.
 func below(batch: MeshBatch, half_width: float, start: float, end: float) -> void:
 	batch.layer(skin.solid_material()).rect(Vector3(-half_width, -skin.void_depth, -start), Vector3(half_width * 2.0, 0, 0),
-		Vector3(0, 0, -(end - start)), skin.gap_inside_color, 0.0, MeshKit.PAT_DZ_UNDER, Vector2.ZERO, Vector2.ONE, 2.0)
+		Vector3(0, 0, -(end - start)), skin.void_floor_color, 0.0, MeshKit.PAT_DZ_UNDER, Vector2.ZERO, Vector2.ONE, 2.0)
 	MeshKit.drift_particles(batch.layer(skin.drift_material()), start, end, TrackBuilder.CHUNK_LENGTH, half_width - 0.7,
 		8.0, skin.ash_count, 0, skin.streak_count,
 		PackedColorArray([skin.ash_flake_color, Color.TRANSPARENT, skin.streak_color, skin.smoke_puff_color]), skin.smoke_count)

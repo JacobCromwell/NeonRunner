@@ -8,7 +8,8 @@ extends SceneTree
 ##   sfx_bank_power.gd    power-ups, weapons and protective items
 ##   sfx_bank_enemies.gd  enemies: every attack's warning, the attacks, hits and deaths
 ##   sfx_bank_bosses.gd   bosses: their entrances, warnings and attacks
-##   sfx_bank_resonator.gd  the Resonator: its chime (the warning), its pulse and its death
+##   sfx_bank_resonator.gd  the Resonator: its warning (a crackling fire breaking into a wave crash), its
+##                        pulse and its death
 ##   sfx_bank_barnacle.gd   the Barnacle Turret: popping out, its charge-up (the warning), its bolts, its death
 ##   sfx_bank_sleep_taker.gd  the Sleep Taker: its rise, its attacks' warnings (the shriek, the
 ##                        whispering, the inhale) and the attacks
@@ -39,6 +40,8 @@ extends SceneTree
 ##                        look and its corrupted screen up close)
 ##   sfx_bank_gangland_outro.gd  the Gangland outro's: the screeches sniffing, the golden key's glint, the
 ##                        sports car's unlock, scissor door, engine starting and drive-off
+##   sfx_bank_minigames.gd  the mini-games' own sounds (the Beach's volleyball match: the ball's hit, its bounce in the
+##                        sand, the referee's whistle)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -68,6 +71,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_golden_convergence.gd"),
 	preload("res://tools/asset_gen/sfx_bank_cinematics.gd"),
 	preload("res://tools/asset_gen/sfx_bank_gangland_outro.gd"),
+	preload("res://tools/asset_gen/sfx_bank_minigames.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

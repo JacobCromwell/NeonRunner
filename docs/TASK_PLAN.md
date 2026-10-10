@@ -285,6 +285,11 @@ Each skin covers:
 - The boss slot (`data/bosses/beach_boss.tres`) is a placeholder the campaign passes through (E5e builds the fight once it's designed); placeholder cinematics (`beach_intro.tres`, `beach_outro.tres`); the zone's music track `beach` stands in on the Marketplace's (no new songs). No new enemy: a remix of everything before it.
 - `--level=beach/1` is now the campaign step, with the full flow; D10b's fallback for a zone outside the campaign is gone. Questions: `docs/OPEN_QUESTIONS.md` items 535–545.
 
+**D10e: the Beach's volleyball match** (core: `LevelRun`, `Player`, `LevelConfig`, the campaign, zone and level data; the owner, October 10, 2026: a new Beach level between the two, a mini-game: a couple of seconds of normal run, then a beach volleyball match against "a new person who is wearing swim trunks"; first to four points, a point for "three or four" returns, 100 credits a point won; then the runner runs across the finish line).
+- A mini-game framework (`scripts/minigames/`, `MiniGame`, `MiniGameDef`): a level with `LevelConfig.minigame` asks its game for its track instead of the generator, and the game joins the run world and holds the runner (`Player.speed_override`). `RunResult` pays its payout as the completion bonus and takes its stars; the results screen and the level introduction's hints know it.
+- The match (`VolleyballMatch` and its court, ball, rival, scoreboard; `data/minigames/volleyball*.tres`), the rival's look (`VolleyballRivalSuit`), three sounds (`sfx_bank_minigames.gd`), a review tool (`tools/showcase/volleyball_review.gd`) and `test_volleyball` (a bot at 3, 5 and 6 lanes).
+- Beach 2 is the match (*Net Gains*, proposed), off the curve and counting for no feature ages; Sunset Strip moves to Beach 3 and configures exactly as before (`test_campaign`); save version 4 moves its records. Questions: `docs/questions/d10e.md`.
+
 **D8: Music for the four new zones.** Also, from the owner's review (GDD §11): **the music dips when the player dies**, and **the level-complete riff plays in each zone's key**. Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
 - Corporate: oppressive
@@ -515,6 +520,24 @@ screech sitting on the passenger seat (`CarPassenger`: one of the screeches from
 to each other (a seventh sound, `screech_chirp`), and the car drives off faster. The
 staging choices are in `docs/questions/f2d.md`.
 
+### H. The owner's requests (October 8, 2026)
+
+From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in the GDD where they change design. Run by a second orchestrator session alongside the main one, so core-file tasks here wait for the main session's core task in flight (G7, the generator) and then take their turn.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| H1 | **Gilded Sentinels:** warning halved (1.2 s to 0.6 s), and the live statue and its niche brought forward so they read (GDD §9.11) | – | S–M | T2 |
+| H2 | **The Resonator's warning sound:** a crackling build-up of fire breaking into a crashing wave, replacing the doorbell-like chime (GDD §9.10) | – | S | T2 |
+| H3 | **Buzz Overdrive cuts show the zone below the street,** like an ordinary gap (GDD §9.9) | – | M | T2 |
+| H4 | **Two cyborg-type bursts in the air at once** (cyborgs, window cyborgs, Barnacle Turrets; GDD §9.2). Big attacks still take turns. | – | S–M | T1 |
+| H5 | **The dash smashes doodads** (GDD §3). **Core** (player). | G7 | S–M | T1 |
+| H6 | **Explosions:** one shared yellow-and-red fireball for every explosion, pooled, Compatibility-safe, softened by Reduced flashing (GDD §11) | – | M | T2 |
+| H7a | **Dash walls, the mechanism:** generator placement from the Corporate zone, the wall, the crash rule (armor or shield absorbs; otherwise it kills), crumbling into rubble, sounds and a first-encounter hint (GDD §9.14). **Core** (generator, track builder, damage rules). | G7, H5 | L | T1 |
+| H7b | **Dash walls, the art:** each zone's building face turned toward the player, from its side-wall kit | H7a | M | T2 |
+| H8 | **Weapons hit hosts:** auto-fire targets them and a weapon kill releases the Bad Dream (GDD §9.7). Raised to T1: an earlier release moves the Bad Dream chases the generator plans around. | – | M | T1 |
+| H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10). **Core** (small opt-in hooks in the boss framework and level config). | – | M–L | T1 |
+| H10 | **The Tithe Collector stays twice as long** (GDD §9.12) | – | S | T3 |
+
 ---
 
 ## Order at a glance
@@ -545,6 +568,7 @@ staging choices are in `docs/questions/f2d.md`.
 | D10 Beach skin (not in the campaign yet) | D2 |
 | D10b Beach levels: open side walls, a provisional zone (core) | D10 |
 | D10c the Beach joins the campaign (core) | D10b |
+| D10e the Beach's volleyball match, Beach 2 (core) | D10c |
 | P2 cyborg base, then P3 variants | P1, then P2 |
 | R2 small rule changes, R3 big attacks take turns | anytime |
 | E5c Sleep Taker | B7, B8, B9 and D5 |

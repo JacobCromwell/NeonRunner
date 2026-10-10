@@ -221,28 +221,35 @@ func _test_panic() -> void:
 	await sim.free_world(w)
 
 
+## GDD §9.7: a host is marked and never panics. Weapons hit hosts (owner, October 8, 2026, replacing the
+## September 26 rule that made them immune): auto-fire targets one like any other cyborg, a direct hit and
+## missile splash hurt it, and laser tier 1 takes a cyborg's shots to kill it. Killing a host by any means
+## releases its Bad Dream; a stomp, the claws or the dash also pay the host bonus, a weapon kill only the kill
+## (CyborgTuning.weapon_host_bonus, DESIGN-TBD: 0).
 func _test_hosts() -> void:
-	var w: RunWorld = sim.build_world(RunSim.layout(3, 400.0))
+	var w: RunWorld = sim.build_world(RunSim.layout(3, 400.0), _loadout({"weapon": 1}))
 	var normal: Cyborg = _spawn(w, 40.0, 1, {"panic": false, "fires": false}, 1)
 	var host: Cyborg = _spawn(w, 41.0, 2, {"host": true, "fires": false}, 2)
 	check(host.is_host and not host.is_panic and host.body.host, "a host is marked (its visor glitches) and doesn't panic")
+	check(not host.immune_to_weapons and host.targetable(), "a host isn't immune to weapons (GDD §9.7, October 8, 2026)")
 	var ahead: Array[Enemy] = w.director.targets_ahead(Vector3(0.0, 0.8, 0.0), 80.0)
-	check(ahead.has(normal) and not ahead.has(host), "auto-fire never targets a host")
+	check(ahead.has(normal) and ahead.has(host), "auto-fire targets a host like any other cyborg")
+	var weapon: WeaponPowerup = (w.powerups as PowerupController).weapon
+	check(is_equal_approx(weapon.damage(host), weapon.damage(normal)) and is_equal_approx(host.max_health, normal.max_health),
+		"laser tier 1 takes a cyborg's shots to kill a host (%.3f a shot, %.1f health)" % [weapon.damage(host), host.max_health])
 	var before: float = host.health
 	w.projectiles.fire_player(normal.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -80.0), 1.0,
 		&"heavy_missile", null, 0.0, 5.0, 1.0)
 	await physics_frames(10)
 	check(normal.health < normal.max_health, "a missile hits the cyborg next to it")
-	check(is_equal_approx(host.health, before), "missile splash never hurts a host")
-	# FB 71 (decided September 26, 2026): a host is immune_to_weapons like a generator, so a stray
-	# shot aimed straight at it can't clip it either (only a stomp, claws or the dash can).
+	check(host.health < before, "and its splash hurts the host beside it (%.2f of %.2f)" % [host.health, before])
 	var direct_before: float = host.health
 	w.projectiles.fire_player(host.aim_point() + Vector3(0.0, 0.0, 6.0), Vector3(0.0, 0.0, -80.0), 1.0, &"laser")
 	await physics_frames(10)
-	check(is_equal_approx(host.health, direct_before) and host.alive, "a stray direct hit doesn't hurt a host either")
+	check(host.health < direct_before - 0.5, "a direct hit hurts a host (%.2f of %.2f)" % [host.health, direct_before])
 	await sim.free_world(w)
 
-	# Killing a host (here a stomp) pays the host bonus; no Bad Dream script yet, so nothing spawns.
+	# Killing a host with a stomp pays the host bonus, and its Bad Dream bursts out.
 	w = sim.build_world(RunSim.layout(3, 400.0))
 	host = _spawn(w, 45.0, 1, {"host": true, "fires": false})
 	await _step_until(w, func() -> bool: return host.track_distance() - w.player.distance <= STOMP_LEAD, 4.0)
@@ -251,10 +258,22 @@ func _test_hosts() -> void:
 	check(r["alive"] and r["events"].has(&"stomp"), "a host can be stomped (%s)" % r["cause"])
 	check(int(w.score.bonuses.get(&"host", 0)) == ct.host_bonus, "killing a host pays the host bonus (%s)" % str(w.score.bonuses))
 	await physics_frames(2)
-	if ResourceLoader.exists(Cyborg.BAD_DREAM_SCRIPT):
-		check(w.director.count_alive(&"bad_dream") == 1, "the Bad Dream bursts out of the killed host")
-	else:
-		check(w.director.count_alive() == 0, "no Bad Dream appears until its script exists")
+	check(w.director.count_alive(&"bad_dream") == 1, "the Bad Dream bursts out of the killed host")
+	await sim.free_world(w)
+
+	# A weapon kill releases it too, with the kill's score but not the host bonus (placeholder).
+	w = sim.build_world(RunSim.layout(3, 400.0))
+	host = _spawn(w, 45.0, 1, {"host": true, "fires": false})
+	await tree.physics_frame
+	host.take_damage(host.health, &"weapon")
+	await physics_frames(2)
+	check(not host.alive and w.director.count_alive(&"bad_dream") == 1, "a weapon kill releases the host's Bad Dream")
+	check(int(w.score.bonuses.get(&"host", 0)) == ct.weapon_host_bonus and ct.weapon_host_bonus == 0
+		and int(w.score.bonuses.get(&"kill", 0)) == ct.score_value and w.score.kills == 1,
+		"and pays an ordinary cyborg kill's score, no host bonus (%s)" % str(w.score.bonuses))
+	check(host.host_bonus_for(&"stomp") == ct.host_bonus and host.host_bonus_for(&"claws") == ct.host_bonus
+		and host.host_bonus_for(&"dash") == ct.host_bonus and host.host_bonus_for(&"weapon") == ct.weapon_host_bonus,
+		"the host bonus for a stomp, the claws and the dash; the weapon's own for a shot or splash")
 	await sim.free_world(w)
 
 
@@ -379,11 +398,13 @@ func _test_generation() -> void:
 
 ## Full levels in god mode (the player runs straight through everything; grapples pull them out of
 ## gaps) over lane counts and seeds: every bolt follows a charge-up, comes from ahead with enough
-## warning, never arrives near a fence or gap, only one burst is in the air at a time, and no cyborg
+## warning, never arrives near a fence or gap, at most GameRules.max_bursts_in_air bursts are in the air
+## at a time (GDD §9.2, owner, October 8, 2026: two; and two do fly together somewhere), and no cyborg
 ## ever stands near an obstacle.
 func _test_fair_play() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	var total_shots: int = 0
+	var together: int = 0
 	for lanes: int in [3, 5, 6]:
 		for level_seed: int in [2, 5]:
 			var config: LevelConfig = base.duplicate() as LevelConfig
@@ -426,6 +447,7 @@ func _test_fair_play() -> void:
 							bursts.append([float(ev["t"]), float(ev["t"])])
 						&"cancel":
 							charge_t = -1.0
+							bursts[-1][1] = float(ev["t"])
 						&"shot":
 							shots += 1
 							var t: float = ev["t"]
@@ -439,10 +461,26 @@ func _test_fair_play() -> void:
 							check(_clear(layout, impact - ct.clear_before_impact + 1.5, impact + ct.clear_after_impact - 1.5),
 								"no bolt arrives near a fence or gap (%.1f) %s" % [impact, tag])
 							bursts[-1][1] = t
-			bursts.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-			for k: int in range(1, bursts.size()):
-				check(float(bursts[k][0]) >= float(bursts[k - 1][1]) - 0.001, "one burst in the air at a time " + tag)
+			var most: int = _most_at_once(bursts)
+			check(most <= w.rules.max_bursts_in_air,
+				"at most %d bursts in the air at a time (%d) %s" % [w.rules.max_bursts_in_air, most, tag])
+			if most >= 2:
+				together += 1
 			check(w.player.distance > 700.0, "the run covers most of a level (%.0f m) %s" % [w.player.distance, tag])
 			total_shots += shots
 			await sim.free_world(w)
 	check(total_shots > 40, "cyborgs fire throughout full levels (%d bolts)" % total_shots)
+	check(together > 0, "two cyborgs' bursts fly together in some of the levels (%d of 6)" % together)
+
+
+## The most bursts in the air at once, from each burst's [start of its charge-up, its last bolt or its
+## cancel] (level times; one that ends as another starts doesn't overlap it).
+static func _most_at_once(bursts: Array) -> int:
+	var most: int = 0
+	for b: Array in bursts:
+		var on: int = 0
+		for o: Array in bursts:
+			if float(o[0]) <= float(b[0]) and (is_same(o, b) or float(o[1]) > float(b[0]) + 0.001):
+				on += 1
+		most = maxi(most, on)
+	return most

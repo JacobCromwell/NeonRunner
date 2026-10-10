@@ -1,6 +1,7 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
 ## Player movement and level sounds: jump, land, slide, wall runs, ramps, pads, the hull, death, the
-## pulsing fence's warning, a zone doodad's push and a splash (a fall into the Beach's pool water). The level-complete riffs are in sfx_bank_riffs.gd.
+## pulsing fence's warning, a zone doodad's push and the dash smashing one, a dash wall crumbling, and a splash (a
+## fall into the Beach's pool water). The level-complete riffs are in sfx_bank_riffs.gd.
 
 const E2: float = 82.41
 const A2: float = 110.0
@@ -20,6 +21,8 @@ func sounds() -> Dictionary:
 		"died": _died,
 		"fence_warning": _fence_warning,
 		"doodad_push": _doodad_push,
+		"doodad_smash": _doodad_smash,
+		"dash_wall_smash": _dash_wall_smash,
 		"splash": _splash,
 	}
 
@@ -197,6 +200,75 @@ func _doodad_push() -> PackedFloat32Array:
 	DSP.filter(b, &"lowpass", 3200.0)
 	DSP.envelope(b, 0.001, 0.1)
 	DSP.crush(b, 10, 18000.0)
+	return b
+
+
+## The dash smashes a zone doodad (GDD §3, owner, October 8, 2026; task H5): a crunch, the runner
+## bursting through something solid that breaks apart. A sharp crack and a short, heavy thump (the push's
+## thud, harder), crumbling grit closing down, and a few small pieces clattering down after it. Heavier
+## than the push, well short of an explosion's boom, and with no warning's ring: nothing hurts.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 634): the smash's sound.
+func _doodad_smash() -> PackedFloat32Array:
+	var rng := _rng(40)
+	var length: float = 0.62
+	var b := DSP.buffer(length)
+	DSP.mix(b, DSP.kick(0.24, 210.0, 62.0, rng), 0.0, 0.9)
+	DSP.mix(b, DSP.tom(0.2, 120.0, rng), 0.0, 0.5)
+	# The crack carries it on a phone's speaker, which can't play the thump.
+	var crack := DSP.noise(0.1, rng)
+	DSP.filter(crack, &"bandpass", 1700.0, 0.8)
+	DSP.envelope(crack, 0.0005, 0.022)
+	DSP.mix(b, crack, 0.0, 2.0)
+	var crumble := DSP.noise(length, rng)
+	DSP.filter_sweep(crumble, &"lowpass", 5200.0, 450.0, 0.8)
+	DSP.envelope(crumble, 0.002, 0.13, 0.04)
+	DSP.mix(b, crumble, 0.0, 1.0)
+	DSP.mix(b, _crackle(length, 46, 0.2, 2600.0, rng), 0.015, 1.1)
+	for k: int in 4:
+		var at: float = 0.11 + 0.09 * k + rng.randf_range(0.0, 0.035)
+		DSP.mix(b, DSP.metal_hit(0.14, rng.randf_range(1100.0, 1900.0), 0.045, rng), at, 0.18 * exp(-0.45 * k))
+	DSP.drive(b, 2.4)
+	DSP.filter(b, &"lowpass", 7500.0)
+	DSP.envelope(b, 0.001, 1e9, 0.08)
+	DSP.crush(b, 9, 18000.0)
+	return b
+
+
+## A dash wall breaks (GDD §9.14, owner, October 8, 2026: "they will crumble and explode into rubble"; task
+## H7a): a building front coming down as the runner bursts through it, whether the dash smashed it, they
+## crashed through it or a wall runner passed it. The doodad smash's crunch, bigger and lower: a heavy crack and
+## a deep thump with a slab's boom under it, then the crumble's roar closing down over a second, and chunks of
+## masonry clattering and thudding down after it, the last ones sparse. Heavier than a doodad's, well short of
+## an explosion (no blast, no fire's roar) and with no warning's ring: what hurts is the crash's own hit, whose
+## sound is the armor's or the shield's (or the death's). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 658): the sound.
+func _dash_wall_smash() -> PackedFloat32Array:
+	var rng := _rng(41)
+	var length: float = 1.45
+	var b := DSP.buffer(length)
+	DSP.mix(b, DSP.kick(0.34, 150.0, 44.0, rng), 0.0, 1.0)
+	DSP.mix(b, _boom(0.9, 90.0, 38.0, 0.22, rng), 0.0, 0.55)
+	DSP.mix(b, DSP.tom(0.3, 95.0, rng), 0.012, 0.55)
+	# The crack carries it on a phone's speaker, which can't play the thump; a second one as the face gives.
+	for k: int in 2:
+		var crack := DSP.noise(0.14, rng)
+		DSP.filter(crack, &"bandpass", 1250.0 + 450.0 * k, 0.75)
+		DSP.envelope(crack, 0.0005, 0.03)
+		DSP.mix(b, crack, 0.06 * k, 2.1 - 0.8 * k)
+	var crumble := DSP.noise(length, rng)
+	DSP.filter_sweep(crumble, &"lowpass", 4200.0, 260.0, 0.75)
+	DSP.envelope(crumble, 0.004, 0.36, 0.08)
+	DSP.mix(b, crumble, 0.0, 1.25)
+	DSP.mix(b, _crackle(length, 90, 0.5, 2100.0, rng), 0.02, 1.0)
+	# Masonry chunks landing: low thuds with a dull knock, fewer and quieter as it settles.
+	for k: int in 9:
+		var at: float = 0.16 + 0.11 * k + rng.randf_range(0.0, 0.06)
+		var level: float = 0.5 * exp(-0.3 * k)
+		DSP.mix(b, DSP.tom(0.16, rng.randf_range(150.0, 260.0), rng), at, level)
+		DSP.mix(b, DSP.metal_hit(0.1, rng.randf_range(700.0, 1200.0), 0.03, rng), at + 0.004, level * 0.35)
+	DSP.drive(b, 2.2)
+	DSP.filter(b, &"lowpass", 7000.0)
+	DSP.envelope(b, 0.001, 1e9, 0.12)
+	DSP.crush(b, 9, 18000.0)
 	return b
 
 

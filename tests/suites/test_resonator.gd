@@ -1,9 +1,10 @@
 extends TestSuite
 ## The Resonator (GDD §9.10) in full RunWorlds on real physics: the warning (the halos lining up and the
-## chime) always before the wave, for the whole warning time; a runner who jumps each wave survives at
-## 3, 5 and 6 lanes and one who stands still (or slides) is hit, with the jump's margin measured; walls
-## and the ceiling are safe; armor and the shield block a wave (one armor covers a double) and the dash
-## passes through it; weapons kill it and it can't be stomped; it takes turns with the other big attacks
+## roar and crackle that crash as the wave leaves) always before the wave, for the whole warning time; a
+## runner who jumps each wave survives at 3, 5 and 6 lanes and one who stands still (or slides) is hit,
+## with the jump's margin measured; walls and the ceiling are safe; armor and the shield block a wave
+## (one armor covers a double) and the dash passes through it; weapons kill it (and cut a warning short
+## before its crash) and it can't be stomped; it takes turns with the other big attacks
 ## and still pulses; its model, sounds and Reduced flashing; its generator rules, and on the real
 ## campaign layouts of Golden 1-3 at 3, 5 and 6 lanes no wave meets the runner on a gap or a fence, big
 ## attacks never overlap, and every attempt plays out the same way.
@@ -31,6 +32,7 @@ func run() -> void:
 	await _test_walls_and_ceiling()
 	await _test_protection()
 	await _test_weapons_and_stomp()
+	await _test_warning_cut_short()
 	await _test_takes_turns()
 	await _test_first_pulse_not_starved()
 	await _test_reduced_flashing()
@@ -215,47 +217,183 @@ func _test_model() -> void:
 	m.queue_free()
 
 
-## Its sounds are in the library (the chime, a warning, always at the same pitch), and the chime's three
-## notes start on CHIME_NOTES, where the halos line up; a first-encounter hint names the dodge.
+## Its sounds are in the library (the warning, always at the same pitch), and the warning is what the owner
+## asked for (October 8, 2026): a crackling build-up of fire that breaks into a crashing wave, not a
+## doorbell. It is noise, so it has no partials to ring like a bell; it is audible from the instant the
+## warning starts, builds, flares as each halo lines up (Resonator.LINE_UP_AT) and crashes exactly when the
+## wave leaves (ResonatorTuning.warning_seconds), its loudest moment. A first-encounter hint names the dodge.
 func _test_sounds_and_hint() -> void:
 	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
-	for sound: StringName in [&"resonator_chime", &"resonator_pulse", &"resonator_death"]:
+	for sound: StringName in [&"resonator_warning", &"resonator_pulse", &"resonator_death"]:
 		check(library.names().has(String(sound)) and library.stream(sound) != null, "the sound library has %s" % sound)
-	check(float(library.pitch_variation.get("resonator_chime", 0.0)) == 0.0, "the chime always plays at its pitch (a warning)")
-	var raw := AudioStreamWAV.load_from_file("res://assets/sfx/resonator_chime.wav", {"compress/mode": 0})
-	check(raw != null and raw.mix_rate == 32000 and not raw.stereo, "the chime is 32 kHz mono")
+	check(not library.names().has("resonator_chime"), "the doorbell chime is gone from the library")
+	check(float(library.pitch_variation.get("resonator_warning", 0.0)) == 0.0, "the warning always plays at its pitch")
+	var raw := AudioStreamWAV.load_from_file("res://assets/sfx/resonator_warning.wav", {"compress/mode": 0})
+	check(raw != null and raw.mix_rate == 32000 and not raw.stereo, "the warning is 32 kHz mono")
 	if raw != null:
-		var pcm: PackedByteArray = raw.data
-		var n: int = pcm.size() / 2
-		var energy := func(from_s: float, to_s: float) -> float:
-			var a: int = clampi(int(from_s * 32000.0), 1, n - 1)
-			var b: int = clampi(int(to_s * 32000.0), a + 1, n)
-			var sum: float = 0.0
-			for i: int in range(a, b):
-				var d: float = (pcm.decode_s16(i * 2) - pcm.decode_s16((i - 1) * 2)) / 32768.0
-				sum += d * d
-			return sum / float(b - a)
-		var onsets: bool = true
-		for note: float in Resonator.CHIME_NOTES:
-			if note <= 0.0:
-				continue
-			var before: float = energy.call(note - 0.04, note - 0.005)
-			var after: float = energy.call(note + 0.002, note + 0.03)
-			onsets = onsets and after > before * 2.0
-		check(onsets, "the chime's notes start on Resonator.CHIME_NOTES (%s)" % [Resonator.CHIME_NOTES])
-		check(raw.get_length() > Resonator.CHIME_NOTES[-1] + 0.4 and raw.get_length() < 2.5,
-			"and the last rings on after it (%.2f s)" % raw.get_length())
+		_check_warning_sound(raw)
 	var hints: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/hints/hints.json"))
 	var has_hint: bool = false
 	for h: Variant in (hints as Dictionary).get("hints", []):
 		if String((h as Dictionary).get("trigger", "")) == "enemy:resonator":
-			has_hint = String((h as Dictionary).get("text", "")).contains("{jump}")
-	check(has_hint, "a first-encounter hint for the Resonator names the jump")
+			var text: String = String((h as Dictionary).get("text", ""))
+			has_hint = text.contains("{jump}") and not text.to_lower().contains("chime")
+	check(has_hint, "a first-encounter hint for the Resonator names the jump (and no chime)")
+
+
+## The warning's waveform: its character, and where its key moments fall (see _test_sounds_and_hint).
+func _check_warning_sound(raw: AudioStreamWAV) -> void:
+	var pcm: PackedByteArray = raw.data
+	var n: int = pcm.size() / 2
+	var x := PackedFloat32Array()
+	x.resize(n)
+	for i: int in n:
+		x[i] = pcm.decode_s16(i * 2) / 32768.0
+	var rate: float = float(raw.mix_rate)
+	var crest: float = t.warning_seconds
+	var rms := func(from_s: float, to_s: float) -> float:
+		var a: int = clampi(int(from_s * rate), 0, n - 1)
+		var b: int = clampi(int(to_s * rate), a + 1, n)
+		var sum: float = 0.0
+		for i: int in range(a, b):
+			sum += x[i] * x[i]
+		return sqrt(sum / float(b - a))
+	# The energy of the sample-to-sample change: the treble, where a crash or a click shows.
+	var treble := func(from_s: float, to_s: float) -> float:
+		var a: int = clampi(int(from_s * rate), 1, n - 1)
+		var b: int = clampi(int(to_s * rate), a + 1, n)
+		var sum: float = 0.0
+		for i: int in range(a, b):
+			sum += (x[i] - x[i - 1]) * (x[i] - x[i - 1])
+		return sum / float(b - a)
+	check(raw.get_length() > crest + 0.4 and raw.get_length() < 2.8,
+		"the wave's crash rolls out after the wave leaves (%.2f s long, warning %.2f s)" % [raw.get_length(), crest])
+	var first: float = rms.call(0.0, 0.06)
+	check(first > 0.03, "it starts at once, as the visual warning does (rms %.3f)" % first)
+	var third: float = (crest - 0.1) / 3.0
+	var thirds: Array[float] = [rms.call(0.0, third), rms.call(third, 2.0 * third), rms.call(2.0 * third, crest - 0.1)]
+	check(thirds[0] < thirds[1] and thirds[1] < thirds[2], "the fire builds through the warning (rms %s)" % [thirds])
+	var flared: bool = true
+	for at: float in Resonator.LINE_UP_AT:
+		if at > 0.0:
+			flared = flared and float(rms.call(at + 0.005, at + 0.06)) > float(rms.call(at - 0.06, at - 0.005)) * 1.5
+	check(flared, "it flares as each halo lines up (Resonator.LINE_UP_AT %s)" % [Resonator.LINE_UP_AT])
+	var before: float = treble.call(crest - 0.04, crest - 0.005)
+	var after: float = treble.call(crest + 0.002, crest + 0.03)
+	check(after > before * 4.0,
+		"the crash breaks exactly as the wave leaves, at warning_seconds %.2f s (treble %.5f over %.5f)" % [crest, after, before])
+	var loudest_at: float = 0.0
+	var loudest: float = 0.0
+	for k: int in int((float(n) / rate - 0.1) / 0.01):
+		var level: float = rms.call(k * 0.01, k * 0.01 + 0.1)
+		if level > loudest:
+			loudest = level
+			loudest_at = k * 0.01
+	check(loudest_at >= crest - 0.03 and loudest_at <= crest + 0.15, "the crash is its loudest moment (at %.2f s)" % loudest_at)
+	var spiky: float = _crackle_kurtosis(x, int(0.1 * rate), int((crest - 0.1) * rate))
+	check(spiky > 8.0, "the build-up crackles: sparse pops, not a steady hiss (kurtosis %.1f)" % spiky)
+	var build_peak: float = _strongest_partial_db(x, 0, int((crest - 0.05) * rate), rate)
+	var crash_peak: float = _strongest_partial_db(x, int((crest + 0.05) * rate), n, rate)
+	check(build_peak < 12.0 and crash_peak < 12.0,
+		"nothing bell-like: no stable partial stands out of its noise (%.1f dB in the build-up, %.1f dB in the crash; the old chime's were over 40)"
+		% [build_peak, crash_peak])
+
+
+## How spiky the sample-to-sample change is between samples `from` and `to` (excess kurtosis: about 0 for a
+## steady hiss or roar, large for sparse clicks and pops, which is what crackling is).
+func _crackle_kurtosis(x: PackedFloat32Array, from: int, to: int) -> float:
+	var s2: float = 0.0
+	var s4: float = 0.0
+	for i: int in range(from, to):
+		var d: float = x[i] - x[i - 1]
+		s2 += d * d
+		s4 += d * d * d * d
+	var count: float = float(to - from)
+	return (s4 / count) / pow(s2 / count, 2.0) - 3.0
+
+
+## The strongest narrow peak (dB over the local median) in the average spectrum of x[from, to) between
+## 300 Hz and 6 kHz: a bell or a held note stands 40 dB out of its surroundings, noise a few dB.
+func _strongest_partial_db(x: PackedFloat32Array, from: int, to: int, rate: float) -> float:
+	var size: int = 4096
+	var power := PackedFloat64Array()
+	power.resize(size / 2 + 1)
+	var frames: int = 0
+	var start: int = from
+	while start + size <= to:
+		var spectrum: PackedFloat64Array = _power_spectrum(x.slice(start, start + size))
+		for k: int in power.size():
+			power[k] += spectrum[k]
+		frames += 1
+		start += size / 2
+	if frames == 0:
+		return 0.0
+	var db := PackedFloat64Array()
+	db.resize(power.size())
+	for k: int in power.size():
+		db[k] = 10.0 * log(power[k] / frames + 1e-12) / log(10.0)
+	var hz_per_bin: float = rate / float(size)
+	var best: float = -100.0
+	for k: int in range(int(300.0 / hz_per_bin), int(6000.0 / hz_per_bin)):
+		var around: Array[float] = []
+		for j: int in range(k - 40, k + 41):
+			around.append(db[j])
+		around.sort()
+		best = maxf(best, db[k] - around[40])
+	return best
+
+
+## The power spectrum (bins 0 to size / 2) of a Hann-windowed frame, by an in-place radix-2 FFT.
+func _power_spectrum(frame: PackedFloat32Array) -> PackedFloat64Array:
+	var size: int = frame.size()
+	var re := PackedFloat64Array()
+	var im := PackedFloat64Array()
+	re.resize(size)
+	im.resize(size)
+	for i: int in size:
+		re[i] = frame[i] * (0.5 - 0.5 * cos(TAU * i / float(size - 1)))
+	var j: int = 0
+	for i: int in range(1, size):
+		var bit: int = size >> 1
+		while j & bit:
+			j ^= bit
+			bit >>= 1
+		j ^= bit
+		if i < j:
+			var swap: float = re[i]
+			re[i] = re[j]
+			re[j] = swap
+	var cos_table := PackedFloat64Array()
+	var sin_table := PackedFloat64Array()
+	for k: int in size / 2:
+		cos_table.append(cos(TAU * k / float(size)))
+		sin_table.append(-sin(TAU * k / float(size)))
+	var span: int = 2
+	while span <= size:
+		var half: int = span / 2
+		var step: int = size / span
+		for start: int in range(0, size, span):
+			for k: int in half:
+				var wr: float = cos_table[k * step]
+				var wi: float = sin_table[k * step]
+				var a: int = start + k
+				var b: int = a + half
+				var tr: float = re[b] * wr - im[b] * wi
+				var ti: float = re[b] * wi + im[b] * wr
+				re[b] = re[a] - tr
+				im[b] = im[a] - ti
+				re[a] += tr
+				im[a] += ti
+		span *= 2
+	var power := PackedFloat64Array()
+	for k: int in size / 2 + 1:
+		power.append(re[k] * re[k] + im[k] * im[k])
+	return power
 
 
 # --- The warning and the wave ---------------------------------------------------------------------
 
-## GDD §9.10: before each pulse, the halos line up and the chime plays, for the whole warning, and only
+## GDD §9.10: before each pulse, the halos line up and the warning sounds, for the whole warning, and only
 ## then does a wave leave; a double pulse's second wave follows double_gap later. The pulse is a big
 ## attack until its last wave has passed the player. The same every attempt.
 func _test_warning_then_wave() -> void:
@@ -314,14 +452,14 @@ func _test_warning_then_wave() -> void:
 			timed = timed and absf(float(waves[2][1]) - float(waves[1][1]) - t.double_gap) <= dt * 1.5
 		check(timed, "each wave leaves after the full warning (%.2f s), a double's second %.2f s after its first %s"
 			% [t.warning_seconds, t.double_gap, tag])
-		var chimes: Array = []
+		var warning_sounds: Array = []
 		for s: Array in r2.sounds:
-			if s[0] == &"resonator_chime":
-				chimes.append(float(s[1]))
-		var chimed: bool = chimes.size() == warnings.size()
-		for k: int in mini(chimes.size(), warnings.size()):
-			chimed = chimed and absf(chimes[k] - float(warnings[k][1])) < 0.001
-		check(chimed, "the chime plays as each warning starts (%d chimes) %s" % [chimes.size(), tag])
+			if s[0] == &"resonator_warning":
+				warning_sounds.append(float(s[1]))
+		var sounded: bool = warning_sounds.size() == warnings.size()
+		for k: int in mini(warning_sounds.size(), warnings.size()):
+			sounded = sounded and absf(warning_sounds[k] - float(warnings[k][1])) < 0.001
+		check(sounded, "the warning sound plays as each warning starts (%d sounds) %s" % [warning_sounds.size(), tag])
 		check(lined_before_wave and charge_ok, "the halos have all lined up, and the warning built up, before each wave " + tag)
 		check(not early_hit, "no wave can hurt before it leaves, or after it has passed " + tag)
 		check(major_ok, "it reports a big attack from each warning until its waves have passed the player " + tag)
@@ -542,6 +680,36 @@ func _test_weapons_and_stomp() -> void:
 	await _until(func() -> bool: return _res(id) == null or not _res(id).alive, 16.0)
 	check(cause[0] == &"weapon", "auto-fire brings it down (%s)" % cause[0])
 	await sim.free_world(w)
+
+
+## A warning ends in a crash that releases the wave, so one shot down before it ends is cut off: with no wave
+## coming, its crash must not land. Shot down after its wave has left, the warning is over and nothing is cut.
+func _test_warning_cut_short() -> void:
+	for during_warning: bool in [true, false]:
+		var made: Array = await _world(3, 1, {"pulses": 2})
+		var w: RunWorld = made[0]
+		var r: Resonator = made[1]
+		var id: int = r.get_instance_id()
+		w.player.god_mode = true
+		var cut: Array[StringName] = []
+		w.sounds.stopped.connect(func(sound: StringName) -> void: cut.append(sound))
+		var reached: bool = await _until(func() -> bool:
+			var res: Resonator = _res(id)
+			return res != null and (res.state == Resonator.State.WARNING if during_warning else res.waves_on_their_way()), 12.0)
+		var tag: String = "shot down %s" % ("during its warning" if during_warning else "after its wave left")
+		check(reached, "it reaches the moment to shoot it (%s)" % tag)
+		var res: Resonator = _res(id)
+		if res == null:
+			await sim.free_world(w)
+			continue
+		var laser: float = PowerupTuning.at_tier(w.powerup_tuning.weapon_damage, 1)
+		for i: int in 20:
+			if res.alive:
+				res.take_damage(laser, &"weapon")
+		check(not res.alive, "it's down (%s)" % tag)
+		check(cut == ([&"resonator_warning"] if during_warning else []),
+			"its warning sound is cut off exactly when its warning never reaches its crash (%s: cut %s)" % [tag, cut])
+		await sim.free_world(w)
 
 
 # --- Big attacks take turns ------------------------------------------------------------------------------

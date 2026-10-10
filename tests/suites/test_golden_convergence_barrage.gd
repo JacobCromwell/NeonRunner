@@ -16,7 +16,8 @@ extends TestSuite
 ## - the layers of protection, the real player standing in it: the free armor alone dies, one armor hit and the
 ##   dash get through, two armor hits do, the armor and the shield do, no protection dies at once;
 ## - no wall: the barrage comes anyway and hits; it follows its slams in the beat script;
-## - Reduced flashing: the marks steady, no blasts;
+## - the landing missiles' blasts: the game's shared fireballs (GDD §11; the H merge), one where each of the blasts
+##   lands, quick and smokeless; Reduced flashing: the marks steady, the blasts softened (no spark bursts);
 ## - E5d polish: the marks' fill and the burning floor read red on the court's white marble on both renderers'
 ##   blending, never toward the fences' pink;
 ## - E5d polish: F6's ranges never break it: at every end of the warning's steps, the reaction and the margin the
@@ -562,6 +563,15 @@ func _test_reduced_flashing() -> void:
 		var boss: GoldenConvergence = pair[1]
 		world.player.god_mode = true
 		var scales: Array[float] = []
+		var blasts := {"n": 0, "soft": 0, "other": 0}
+		var blast_size: float = snappedf(GoldenConvergenceMissiles.BLAST_FIRE_SIZE * world.effects.tuning.fireball_scale, 0.01)
+		world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void:
+			if not is_equal_approx(snappedf(size, 0.01), blast_size):
+				blasts["other"] = int(blasts["other"]) + 1
+				return
+			blasts["n"] = int(blasts["n"]) + 1
+			if world.effects.fireballs().last_reduced:
+				blasts["soft"] = int(blasts["soft"]) + 1)
 		await _run(world, null, 20.0, func() -> bool: return boss.barrage.stage == GoldenConvergenceBarrage.Stage.FIRE, func() -> void:
 			var br: GoldenConvergenceBarrage = boss.barrage
 			if br.stage == GoldenConvergenceBarrage.Stage.DIVE:
@@ -574,5 +584,10 @@ func _test_reduced_flashing() -> void:
 			check(scales.size() > 10 and dips == 0, "with Reduced flashing the marks hold steady (%d dips)" % dips)
 		else:
 			check(dips > 0, "they pulse otherwise (%d dips in %s)" % [dips, scales.slice(0, 12)])
+		var marks: int = (boss.barrage.plan.get("marks", []) as Array).size()
+		check(int(blasts["n"]) == mini(GoldenConvergenceBarrage.BURSTS, marks) and int(blasts["other"]) == 0
+			and int(blasts["soft"]) == (int(blasts["n"]) if reduced else 0),
+			"the missiles land in shared fireballs, one at each blast (%d of %d), %s (%d softened)" % [blasts["n"],
+			mini(GoldenConvergenceBarrage.BURSTS, marks), "every one softened" if reduced else "none softened", blasts["soft"]])
 		await sim.free_world(world)
 	Settings.flashing_reduced = was
