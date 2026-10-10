@@ -45,3 +45,4 @@ pad_slack_seconds = 2.0
 pad_ceiling_seconds = 3.0
 chase_margin_seconds = 1.0
 host_gap_seconds = 7.0
+big_attack = true

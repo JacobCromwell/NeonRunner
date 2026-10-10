@@ -51,11 +51,11 @@ const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const LANES: Array[int] = [3, 5, 6]
 ## The lane counts at which Corporate 2's own build fires no volley (_test_corporate_2), each checked to still
-## show it, and every other one to fire. 5 lanes, with task C6e's windows on K4's curve (task K5): its one truck
-## arrives 10 s before its bait to show itself first (its window before the bait), and from its showing to the
-## hold before its bait (it never fires while it shows itself, and holds fire for its bait) it has no time for a
-## volley; the bait's charge destroys it. (Before C6e: a wider gap 35 m into its chase wrecked it first.)
-const NO_VOLLEY_LANES: Array[int] = [5]
+## show it, and every other one to fire. None since the owner's October 10, 2026 call (a Buzz Overdrive's 10 m
+## pattern, the curve capping it): every lane count's trucks fire. (Before: 5 lanes, with task C6e's windows on K4's
+## curve, task K5: its one truck arrived 10 s before its bait to show itself first, and from its showing to the hold
+## before its bait it had no time for a volley; before C6e a wider gap 35 m into its chase wrecked it first.)
+const NO_VOLLEY_LANES: Array[int] = []
 
 var sim: RunSim
 var t: EnforcerTruckTuning

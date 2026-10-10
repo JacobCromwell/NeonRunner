@@ -36,7 +36,8 @@ extends Resource
 ## never scaled back with the rest (keep_feature_share). The data caps those whose rules keep only
 ## so many of their enemies (the host: one Bad Dream chase at a time; the hover truck: one at a time
 ## and one a level early on; the drone: its waves apart; the Octodog: one at a time, on a clear
-## stretch) and the vent screech (rare, GDD §9.5).
+## stretch; the Buzz Overdrive: one cut at a time, owner, October 10, 2026) and the vent screech (rare,
+## GDD §9.5).
 @export var max_factor: Dictionary[String, float] = {}
 ## Keep how often the level picks its features' patterns over plain obstacles (see the header).
 @export var keep_feature_share: bool = true

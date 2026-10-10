@@ -670,9 +670,9 @@ An enemy type needs only files of its own; nothing shared is edited:
 |---|---|
 | `scripts/enemies/<type>.gd` | the `Enemy` subclass (found by name) |
 | `scripts/enemies/<type>_tuning.gd` | its tuning class, extending `EnemyTuning` |
-| `data/enemies/<type>.tres` | its tuning values (spawn lead, score, health early/late, floor use, and its own numbers) |
+| `data/enemies/<type>.tres` | its tuning values (spawn lead, score, health early/late, floor use, whether it makes one of GDD §9's big attacks (`big_attack`), and its own numbers) |
 | `data/patterns/<type>.json` | patterns that place it, each with `"requires": ["<type>"]` |
-| `scripts/enemies/<type>_rules.gd` | optional generator rules: `static func apply(gen: LevelGenerator)` (and hooks such as `after_fill`, `after_doodads`, `keep_out`, `doodad_keep_outs`) |
+| `scripts/enemies/<type>_rules.gd` | optional generator rules: `static func apply(gen: LevelGenerator)` (and hooks such as `after_fill`, `after_doodads`, `keep_out`, `doodad_keep_out`, `doodad_keep_outs`, `doodad_guard`) |
 | `tests/suites/test_<type>.gd` | its tests |
 
 `Enemy` (`scripts/enemies/enemy.gd`) declares properties (`immune_to_weapons`, `is_host`,
@@ -1004,6 +1004,14 @@ the player's distance like the cut, so it does the same on every attempt and at 
   to meet them, at `charge_speed` stretched by the pace), cutting the floor behind it (`advance_to`), and
   runs on `run_past` metres past them, off the screen, gone (retired only then: its cut runs to its
   start). Its distances follow the pace (the charge's from `charge_distance()`), its seconds don't.
+- **Not the only thing going on** (owner, October 10, 2026: it isn't hard to dodge, so holes, electric fences and
+  lower-tier enemies may be on the field with it). Its pattern is 10 m long: it marks where the encounter begins,
+  and the pattern pass goes on placing the level's patterns through its roll, rev and charge, as the fill pass and
+  the zone doodads may (The generator, Floor cuts). Its cut keeps GDD §9.9's limits and the big attacks' turns
+  only: its own lane clear, two lanes whole on 3 lanes, a way out of its lane, no other big attack meanwhile. Until
+  then its 200 m pattern held about 11 s of track for it alone, and the recency curve picked it four times as often
+  in Corporate 1, where it took about a third of the level's track; the curve no longer boosts it (`max_factor` 1,
+  as for the other big enemies).
 - **Its warning.** The rev: the spin-up (`buzz_rev`), its eyes flaring and a red line over the lane it's
   about to cut, from just behind the player to its blade (then, as it charges, the stretch it still has
   to cut; the Octodog's lunge-line red, widening over the rev and pulsing, only widening with Reduced
@@ -1585,8 +1593,10 @@ nothing it adds may stand or attack there, but it's no attack, so nothing keeps 
 pass's search for room. The danger density pass rejects an enemy (where it stands, `CALM_ROOM` either side, and its
 attack window) or a row in one (`Plan.calm`) without changing its rooms, so its draws are as before elsewhere; the
 cyborgs planted in charge paths keep off one where they stand (`_cyborg_fits`); a wider gap keeps its row off one
-(`row_only`); a zone doodad keeps itself and its push's lead off one, which shapes none of the doodads' stretches
-(`doodad_keep_outs`' `calm`); the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
+(`row_only`); a zone doodad may stand in one (owner, October 10, 2026: doodads may stand while a bigger enemy is
+around) where the truck can still show itself: the rules' `doodad_guard` checks each window that held before the
+doodads again with the doodad in place (`ShowPlanner.problem_of`, within `LOCAL_MARGIN` of it), and a doodad that
+breaks one goes; the fill pass (`fill_keep_outs`, no margin) and City 1's extra gaps keep off it. A
 Buzz Overdrive given a planted cyborg claims its turn earlier (`ChargePathTuning.claim_seconds`), after the trucks
 are planned: the planner assumes that claim for every one (`least_claim`), so each window still holds in the
 finished level (`ShowPlanner.problem_of`). With the switch off the level is built exactly as before. The counts
@@ -1711,8 +1721,8 @@ features' age, the levels since the campaign introduced it (`LevelConfig.feature
 that introduces it). A pattern's pick weight is then multiplied by the curve's factor for its newest
 feature (DESIGN-TBD: 4 where it's introduced, 2.5, 1.75 and 1.25 over the next three levels, 1 from
 then on), but no more than a capped feature's cap (`max_factor`; DESIGN-TBD: 1, never boosted, for the
-host, the hover truck, the drone, the Octodog and the Resonator, whose rules keep only so many of their
-enemies, and for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
+host, the hover truck, the drone, the Octodog, the Resonator and the Buzz Overdrive (owner, October 10, 2026),
+whose rules keep only so many of their enemies, and for the rare vent screech), so the curve never spends picks on enemies the rules would drop and leave
 their stretch empty. With `keep_feature_share` the features' patterns, capped ones apart, are then
 scaled back to weigh together what they did without the curve, and with `keep_share_by_kind` kind by
 kind (`LevelGenerator.pattern_kind`): patterns with enemies keep the number of enemies they place
@@ -1815,6 +1825,12 @@ the end of the floor it uses, and the quiet stretches. A rules script may say wh
 (`static func keep_out(gen, entry) -> Vector2`: the cyborg's lead and margin, a hover truck while it's
 surely there, a Resonator's planned visit, a drone wave until its first pad) and keep fillers out of
 what it keeps only partly (`static func after_fill(gen)`: a hover truck's lane until it has left).
+A floor cut is the one thing the fill pass shares the track with (owner, October 10, 2026: a Buzz Overdrive isn't
+the only thing going on): `fill_pass_keep_outs()` leaves each cut's window and its cause's keep-out out, and each
+filler is held to the cuts as their own patterns are (`_fit_filler_to_cuts`, `CutPlacement.clear`'s rules on the
+filler's pieces only): its holes and fences in a cut's lane over its lane window go, its holes beside the cut along
+its stretch where more lanes would hold holes than GDD §9.9 lets go, and a filler that would leave a cut without its
+way out (`cut_escape_clear`), or with nothing left, goes whole (`FILL_CUT_RETRY_SECONDS` on, the next is tried).
 Fillers are picked like the pattern pass's picks, from a stream of their own (`rng_for("fill")`), and
 recorded in `fills`; the pattern pass, the rules and the guarantee are untouched. Credits: fillers take the clear stretches they
 stand in from the credit trails, and a stretch too short for a full trail gets a shorter one
@@ -1903,10 +1919,18 @@ generated layout to this, at 3, 5 and 6 lanes):
   lower than a doodad's top), and what the rules keep: a rules script may declare `static func
   doodad_keep_outs(gen) -> Array[Dictionary]` with entries {from, to} (every lane: the host rules' Bad
   Dream chases), {lane, from, to} (that lane, which no doodad stands in or pushes into: a hover
-  truck's, until it has left; its `keep_out` already keeps every lane for its shortest stay) or {from, to,
-  calm: true} (a calm stretch in every lane: an Enforcer Truck's showing window, task C6c: no doodad nor
-  its push's lead stands in it, but it shapes no stretch, so the doodads draw as without it elsewhere; the
-  other later passes keep their additions off it without spacing from it);
+  truck's, until it has left) or {from, to, calm: true} (a calm stretch: an Enforcer Truck's showing window,
+  task C6c, which the other later passes keep their additions off without spacing from it);
+- while a bigger enemy is around too (owner, October 10, 2026: doodads may stand at the same time as a Buzz
+  Overdrive, an Enforcer Truck or a hover truck), off the lanes those keep: a rules script may say what an
+  enemy keeps doodads off in every lane (`static func doodad_keep_out(gen, entry) -> Vector2`, else its
+  `keep_out`: a hover truck keeps only its lane, its lane keep above), a floor cut keeps only its lane over its
+  lane window (a lane keep: no doodad stands in it or pushes into it) and its way out (a doodad that would leave a
+  cut without one, `cut_escape_clear`, goes), and a rules script may check each doodad as it's placed (`static
+  func doodad_guard(gen) -> Callable`, made before the doodads: an Enforcer Truck's showing windows, where a doodad
+  goes if the truck could no longer show itself, `ShowPlanner.problem_of`). The planned attacks that can't wait for
+  a doodad keep theirs as before: an Octodog's run, a Resonator's visit, a Gilded Sentinel's strike, a drone wave
+  until its first pad, a Bad Dream's chase;
 - one at a time, `doodad_gap_seconds` from one's end to the next one's front, so a few in a row never
   make a slalom.
 Each stretch with room gets one with the level's `doodad_share` (a seeded spot in it; the next spot in a
@@ -1929,7 +1953,13 @@ and big attack as before (a credit inside a doodad goes, one or none a level), 3
 minute (doodads a minute: City 1 2.8, the rest of the City 4.5 to 5.3, Gangland 2.7 to 4.4, the
 Marketplace about 4, Corporate about 3, Dead Zone 1 2.3, The Hush 1, the Golden Zone 2.5 to 3), the mean
 empty stretch down from 1.2–1.45 s to 1.0–1.3 s. The longest empty stretches stay about as they were:
-they lie under ceilings or around enemies, where doodads never stand. A runner who keeps to the middle
+they lie under ceilings or around enemies, where doodads never stand. Since the owner's October 10, 2026 call
+(doodads beside a Buzz Overdrive, an Enforcer Truck's showing and a hover truck's stay; the Buzz Overdrive's 10 m
+pattern), each campaign level's own seed and three others at 3, 5 and 6 lanes hold 20 to 120% more doodads a
+level from Gangland on (Corporate 1 5.4 to 7.7, Beach 1 3.3 to 5.8, Golden 3 3.3 to 6.1), and the track left with
+nothing on it for 3 s or more falls by half or more in the levels with the Buzz Overdrive (Corporate 1 from 20.7 s
+a level to 5.1 s, Beach 1 18.8 to 5.0, Golden 3 17.2 to 9.2); what's left lies around the Octodogs', Resonators'
+and drones' planned attacks and in The Hush's quiet stretches. A runner who keeps to the middle
 lane at 3 lanes meets every doodad (they all stand there); at 5 and 6 lanes about a third of them.
 
 **A runner who dashes through a doodad** (task H5; the dash smashes one: Damage and interactions, "The
@@ -1940,9 +1970,10 @@ The placement already keeps the level's spacing after every doodad clear in ever
 at least `spacing_seconds_hard`, 0.9 s at run speed), so it needed no rule of its own. Measured over every
 campaign level at 3, 5 and 6 lanes (`test_doodads`' `_test_dash_fairness`, each level's own build, 270
 doodads), the first thing after a doodad, in its lane (a hole, a wider gap, a fence, a pad, a speed pad, a
-floor cut's lane window, an enemy standing in it) or in any lane (everything the fill pass counts as going
-on: every piece, each enemy's stretch as its rules keep it, a cut's window; a ceiling to the end of its
-landing zone; a Bad Dream's chase), comes at least 0.75, 0.73 and 0.72 s after its front at 3, 5 and 6 lanes
+floor cut's lane window, an enemy standing in it) or in any lane (everything the doodads count as going on:
+every piece, each enemy's stretch as its rules keep it from doodads; a ceiling to the end of its landing zone; a
+Bad Dream's chase; not a hover truck's stay or a cut's window beyond the lanes they keep, which only threaten
+those lanes, since the owner's October 10, 2026 call), comes at least 0.75, 0.73 and 0.72 s after its front at 3, 5 and 6 lanes
 at the dash's speed (medians about 0.8 s), and 0.70, 0.68 and 0.68 s after its end (a runner who dashed into
 its side near its end sees it there at the latest), against the 0.49 s a reaction (0.35 s, the suites' bots)
 and a lane switch take. The suite holds every campaign doodad to both.
@@ -1974,22 +2005,31 @@ against it:
 - the other lanes whole along its stretch: on 3 lanes no hole in either (GDD §9.9: two lanes always stay
   whole); on 5 and 6 lanes holes in at most `LevelConfig.cut_holes_beside` of them (1: 3 of 5 and 4 of 6
   lanes stay whole, `whole_lanes_for_cut()`);
-- nothing else going on meanwhile: no enemy's keep-out (`_enemy_keep_out`, the fill pass's) and nothing
-  the rules keep doodads off (`rules_doodad_keep_outs()`: a Bad Dream's chase, a hover truck's stay in
-  its lane) reaches its window, bar its own cause;
+- no other big attack meanwhile (GDD §9: big attacks take turns): no big-attack enemy's keep-out
+  (`EnemyTuning.big_attack`, `is_big_attack()`; `_enemy_keep_out`, the fill pass's) and nothing the rules keep
+  doodads off (`rules_doodad_keep_outs()`: a Bad Dream's chase, a hover truck's stay in its lane, an Enforcer
+  Truck's showing window) reaches its attack window (from its warning), bar its own cause;
+- a lower-tier enemy (a cyborg, a window cyborg, a screech, a fence generator, a Tithe Collector) may share the
+  track with it (owner, October 10, 2026: the cut isn't the only thing going on), never in its lane: no such
+  enemy's floor stretch in its lane over its lane window (`planted_in_path()`: bar the cyborg planted in a parked
+  cut's path, task G7);
 - a way out: from `LevelConfig.cut_reaction_seconds` (0.5 s) after its warning starts until the cut is
   `CUT_CONTACT_METRES` from a player still in its lane, a neighbouring lane has room to switch into
-  (`cut_escape_clear()`).
+  (`cut_escape_clear()`; holes, fences, pads, speed pads, ramps, doodads, other cuts and floor enemies' stretches
+  in that lane count).
 Wall runners and ceiling riders need no rule: a cut only takes floor away, in its own lane, and its
-cause's hitbox stays in its lane. What comes after the rules keeps off cuts too: the fill pass keeps off
-a cut's whole window in every lane (`fill_keep_outs`), doodads off its lane window, never pushing into
-it (`doodad_keep_outs`' lane keeps), floor credits skip it, and `floor_clear()` counts it as a hole.
+cause's hitbox stays in its lane. What comes after the rules keeps a cut's limits too: the fill pass may put
+fillers beside it, held to them (`_fit_filler_to_cuts`), doodads keep off its lane window, never pushing into it
+(`doodad_keep_outs`' lane keeps), and off its way out (`_cuts_keep_escapes`), the other later passes (the danger
+density pass, the wider gaps, the wall fences, the dash walls) keep off its whole window in every lane, floor
+credits skip it, and `floor_clear()` counts it as a hole.
 `LayoutChecks.check_cuts` holds every generated layout to all of it at 3, 5 and 6 lanes, with a
 `FloorRoute` out of the cut's lane from the reaction time on (`FloorRoute` keeps out of a cut's lane
 from where it would reach a player in it). The stand-in cause (`floor_cutter`, a debug-only quick-play
 feature, never in the campaign; `floor_cutter_rules.gd`, after every other feature's rules) plans cuts
-through a level in seeded lanes. DESIGN-TBD (`docs/questions/b4.md`): the limit at 5 and 6 lanes,
-keeping everything else off a cut's window, and cuts in the outer lanes.
+through a level in seeded lanes. DESIGN-TBD (`docs/questions/b4.md`): the limit at 5 and 6 lanes and cuts in
+the outer lanes. (Keeping everything else off a cut's window was B4's placeholder until the owner's October 10,
+2026 call, `docs/OPEN_QUESTIONS.md` item 287.)
 
 **Floor cuts on the track.** `TrackBuilder` builds each cut as a piece of its own (`FloorCut`,
 `scripts/world/floor_cut.gd`) in the chunk where its stretch starts, and leaves the lane's floor out of
@@ -2058,7 +2098,7 @@ pace):
   no hole, fence, floor cut, anti-grav pad or floor enemy over its drop window (`drop_before_seconds` before it
   to `drop_after_seconds` after: where a drop-off from as late as its warning lands), and no hover truck keeps
   that lane meanwhile;
-- what runs meanwhile: no floor cut's window (B4: nothing else goes on during a cut) and no big attack (the
+- what runs meanwhile: no floor cut's window (B4; a wall fence keeps off a cut's whole window) and no big attack (the
   keep-out of a drone wave, a hover truck, an Octodog or a floor cut's cause, `LevelGenerator.enemy_keep_out`;
   each of a Resonator's pulses, from its warning until its wave has passed the player, `resonator_pulses`,
   since between its pulses nothing asks for the wall; and every Bad Dream chase) reaches its drop window (the

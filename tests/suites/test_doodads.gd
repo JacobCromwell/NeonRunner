@@ -1389,10 +1389,11 @@ static func _first_from(spans: Array[Vector2], d: Dictionary) -> float:
 ## goes on at the dash's speed. For every doodad of every campaign level at 3, 5 and 6 lanes (its own
 ## build), the first thing that could catch a runner after it: in its lane (a hole, a wider gap among them,
 ## a fence, a pad, a speed pad, a floor cut's lane window, an enemy standing in its lane), and in any lane
-## (what the fill pass counts as going on: every piece, each enemy's stretch as its rules keep it, a floor
-## cut's whole window; a ceiling to the end of its landing zone; what the rules keep doodads off, a Bad
-## Dream's chase, but not their calm stretches: an Enforcer Truck's showing window holds nothing that could catch
-## a runner, task C6c). The seconds from its front (where the smash shows what it hid) to there at the dash's
+## (what the doodads count as going on: every piece, each enemy's stretch as its rules keep it from doodads;
+## a ceiling to the end of its landing zone; what the rules keep doodads off, a Bad Dream's chase, but not
+## their calm stretches: an Enforcer Truck's showing window holds nothing that could catch a runner, task
+## C6c; nor, since the owner's October 10, 2026 call, a hover truck's stay or a floor cut's window beyond the
+## lanes they keep, which only threaten those lanes). The seconds from its front (where the smash shows what it hid) to there at the dash's
 ## speed (the run's plus the dash's bonus, the fastest a runner comes through it) must leave a reaction
 ## (REACTION) and a lane switch (MovementTuning.lane_switch_time); and so must the seconds from its end, for
 ## a runner who dashed into its side near its end (_test_dash_sideways), the latest a smash can show it.
@@ -1417,7 +1418,7 @@ func _test_dash_fairness() -> void:
 			need = REACTION + fast.lane_switch_time
 			var dash_speed: float = fast.run_speed + powerups.dash_speed_bonus
 			var every: Array[Vector2] = []
-			for k: Vector2 in gen.fill_keep_outs(patterns)["activity"]:
+			for k: Vector2 in gen.fill_keep_outs(patterns, true, false, true)["activity"]:
 				every.append(k)
 			for h: Dictionary in layout.hulls:
 				every.append(Vector2(float(h["start"]), gen.zones.landing_zone(h).y))

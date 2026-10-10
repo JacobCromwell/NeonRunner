@@ -113,6 +113,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
   - A doodad doesn't show which way it will push (owner, October 9, 2026: no hint needed).
   - Its outline may dip below the full height at its edges (the rubble heap) as long as its middle stays high, so it still reads as too tall to jump. Doodads are lit like the street around them, with no coloured edge glow.
   - *(Proposed:)* a push never lands the player on a gap or a hazard, and it costs nothing else.
+  - **Beside bigger enemies** (owner, October 10, 2026): doodads may be on the field at the same time as the bigger enemies, such as a Buzz Overdrive, an Enforcer Truck or a hover truck, never in a lane one of them keeps (a Buzz Overdrive's lane, a hover truck's) and never where one would keep the Enforcer from showing itself.
   - **The dash smashes a doodad** (owner, October 8, 2026): dashing into one breaks it apart, and the player keeps their lane with no push and no damage.
 
 ---
@@ -531,6 +532,7 @@ Shared interaction rules apply unless stated otherwise:
   - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
   - **No stomp** (the player would land on the blade).
 - **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
+- **Not the only thing on the field** (owner, October 10, 2026): it isn't very difficult to dodge, so it doesn't get a long stretch to itself. **Obstacles (gaps, electric fences) and lower-tier enemies (cyborgs and the like) may be on the field at the same time**, while it rolls in, revs and charges; only its own lane stays clear, the limits above hold, and big attacks still take turns (§9). The newest-feature boost never makes it more common than the other big enemies are when new.
 - **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **zones after it (the Beach, the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026; the Beach, between Corporate and the Dead Zone since October 9, 2026, remixes everything before it). Its health stays at 22 shots.
 - **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 

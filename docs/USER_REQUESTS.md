@@ -164,3 +164,20 @@ Task IDs refer to `docs/TASK_PLAN.md`, section H. The owner's answers to the orc
 - [x] Sleep Taker: the side walls are too safe: many more gaps in the side walls, and hand attacks there too. (H9)
 - [x] Sleep Taker: double the floor gaps. (H9)
 - [x] The Tithe Collector should stay in the level twice as long. (H10)
+
+## Owner's requests (October 10, 2026)
+
+Task IDs refer to `docs/TASK_PLAN.md`, section I. After an investigation of the levels' empty stretches (from
+Gangland 2 on, 5 to 27% of each level had 3 s or more with nothing on the track: mostly the Buzz Overdrive's,
+Octodogs' and Resonators' long patterns, which held their stretch for one enemy, and the fill pass and zone doodads
+kept off the bigger enemies' windows).
+
+- [x] Make the recommended updates to the Buzz Overdrive: cap its recency boost like the other big enemies', and stop
+  reserving its whole encounter. (I1)
+- [x] "I don't think that the Buzzsaw Overdrive needs to have such a long period where it is the only enemy on the
+  screen. It is not very difficult for the player to dodge. So other enemies and obstacles could be present at that
+  time. For example, lower tier enemies like cyborgs, obstacles like gaps in electric fences should all be able to be
+  on the play field at the same time as the buzzsaw overdrive." (I1)
+- [x] "Doodads should certainly be allowed to enter the play field at the same time as any of these bigger enemies
+  like a buzzsaw overdrive or the enforcer or the truck, etc." (I1: the Buzz Overdrive, the Enforcer Truck and the
+  hover truck; the others' planned attacks, in `docs/questions/i1.md`.)

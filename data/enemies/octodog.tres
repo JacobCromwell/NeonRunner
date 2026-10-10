@@ -32,3 +32,4 @@ appear_distance = 55.0
 gap_bait_bonus = 300
 bait_distance = 3.0
 doghouse_appearances = 3
+big_attack = true

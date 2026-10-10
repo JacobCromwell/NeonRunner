@@ -34,6 +34,14 @@ extends Resource
 ## takes up, so checks that keep other enemies off a stretch ahead of the runner leave it out
 ## (Octodog.charge_clear).
 @export var behind_runner: bool = false
+## True for an enemy whose attack is one of GDD §9's big attacks, which take turns (an Octodog's charges, a
+## drone's barrage, a hover truck's lurch and cannon, a Bad Dream's chase, a Resonator's pulse, a Gilded
+## Sentinel's strike, a Buzz Overdrive's charge, an Enforcer Truck's volley). The generator keeps every other
+## type's big attack off a floor cut's warning and charge; a lower-tier enemy (a cyborg, a window cyborg, a
+## screech, a fence generator, a Tithe Collector) may share the track with it, off its lane (owner, October
+## 10, 2026; LevelGenerator.cut_problem). At run time the enemies themselves say when their big attack is on
+## (Enemy.is_major_attack_active).
+@export var big_attack: bool = false
 
 
 ## The value between `early` and `late` for a level's enemy_scaling `t` (0–1).

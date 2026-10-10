@@ -46,3 +46,4 @@ min_wave_gap_seconds = 20.0
 guarantee_one_wave = true
 guaranteed_wave_from = 0.2
 guaranteed_wave_to = 0.45
+big_attack = true

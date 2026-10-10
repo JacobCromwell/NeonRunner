@@ -543,7 +543,7 @@ static func _rounded(value: float, rng: RandomNumberGenerator) -> int:
 
 ## The level's enemies and floor pieces (Vector2i(enemy_count, floor_count)) as they'd be after the fill
 ## pass without this pass (_trial_fill). Adds to `filled` each stretch with nothing going on
-## (fill_keep_outs' activity) in which a fill pass waiting the tuning's spare_fill_seconds placed a
+## (fill_pass_keep_outs' activity) in which a fill pass waiting the tuning's spare_fill_seconds placed a
 ## filler: the level's own fill pass when it waits as long, else a second trial, so the enemies never
 ## depend on the level's fill_empty_seconds.
 static func _trial_counts(gen: LevelGenerator, patterns: Array, filled: Array[Vector2]) -> Vector2i:
@@ -551,7 +551,7 @@ static func _trial_counts(gen: LevelGenerator, patterns: Array, filled: Array[Ve
 	var own: float = gen.config.fill_empty_seconds
 	var empties: Array[Vector2] = []
 	if spare > 0.0:
-		empties = LevelGenerator.free_stretches(gen.fill_keep_outs(patterns)["activity"],
+		empties = LevelGenerator.free_stretches(gen.fill_pass_keep_outs(patterns)["activity"],
 			gen.config.start_clear_distance, gen.layout.length - gen.config.end_clear_distance)
 	var trial: Dictionary = _trial_fill(gen, patterns, own)
 	if spare > 0.0:

@@ -75,3 +75,4 @@ body_size = Vector3(2.2, 2.4, 6.4)
 hitbox_size = Vector3(2.0, 2.1, 6.0)
 hitbox_floor = 0.25
 flash_hz = 2.0
+big_attack = true

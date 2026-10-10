@@ -66,12 +66,15 @@ pass puts more of the level's plain obstacle patterns into its long empty stretc
 and `fence` elements (`LevelGenerator.is_filler`); it's picked by its difficulty range and `weight` like
 any pick, and spaced from everything around it as the pattern pass spaces patterns. So a new plain
 obstacle pattern can also come as a filler; one that needs a feature, a sign, a ceiling or an enemy
-never does.
+never does. A filler may come during a Buzz Overdrive's encounter (owner, October 10, 2026): its pieces in
+the cut's lane go, as a pattern's do, and one that would leave the cut without its way out isn't placed.
 
 **Zone doodads** aren't patterns: after the fill pass the generator stands them (scenery that pushes the
 player into the next lane, never hurts; GDD §3) in whatever stretches nothing else uses, with the
 level's spacing after them (`LevelConfig.doodad_share`, `docs/ARCHITECTURE.md`, The generator). A pattern
-needs nothing for them, and a doodad never comes near a pattern's pieces or enemies.
+needs nothing for them, and a doodad never comes near a pattern's pieces or floor enemies; it may stand
+while a bigger enemy is around (owner, October 10, 2026: a Buzz Overdrive, an Enforcer Truck, a hover
+truck), off the lanes they keep.
 
 A level may be paced in quiet stretches and bursts (`LevelConfig.quiet_seconds`; The Hush): a quiet
 stretch picks only patterns without enemies (sparse obstacles, and safe mechanics such as a plain
@@ -240,13 +243,16 @@ pad, a ramp or a ceiling's landing zone is in its lane, and that a pattern's hol
 may make way for one. See `docs/ARCHITECTURE.md`, The generator, Floor cuts.
 
 The Buzz Overdrive's pattern (`buzz_overdrive.json`, `requires` `buzz_overdrive`) only marks where an
-encounter begins: its enemy's `at` is where the player is when the tank sets off, rolling ahead of them,
-and the pattern's 200 m (about 11 s at any speed: pattern metres stretch with the pace) hold the whole
-encounter (its roll, rev and charge, about 9 s). Its rules plan the cut from there, in the entry's lane or
-another, a second or two earlier or later if it doesn't fit, and move the entry to the cut's end; one that
-fits nowhere is dropped and its stretch left to the fill pass. Other patterns needn't leave room for it:
-the rules clear the holes, fences and speed pads in its cut's lane themselves, and move or drop it where a
-pad, a ramp or a ceiling's landing zone is in the way.
+encounter begins: its enemy's `at` is where the player is when the tank sets off, rolling ahead of them.
+Its `length` is short (10 m, like a drone's or a hover truck's): the encounter (its roll, rev and charge,
+about 9 s) isn't the only thing going on (owner, October 10, 2026), so the pattern pass goes on placing the
+level's patterns through it. (Until then its 200 m held about 11 s of track for the tank alone.) Its rules
+plan the cut from there, in the entry's lane or another, a second or two earlier or later if it doesn't
+fit, and move the entry to the cut's end; one that fits nowhere is dropped. Other patterns needn't leave
+room for it: the rules clear the holes, fences and speed pads in its cut's lane themselves, try another
+lane where a floor enemy stands in it, and move or drop it where a pad, a ramp, a ceiling's landing zone
+or another big attack is in the way (`LevelGenerator.cut_problem`: lower-tier enemies may share its
+encounter off its lane and its way out; big attacks take turns).
 
 The Gilded Sentinels' patterns (`gilded_sentinel.json`, `requires` `gilded_sentinel`; GDD §9.11, task C4)
 stand one on a wall (`side`; its `at` is its niche): one that swings once, and from difficulty 0.95 one

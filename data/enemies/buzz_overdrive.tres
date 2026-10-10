@@ -26,3 +26,4 @@ blade_radius = 1.5
 hitbox_size = Vector3(0.7, 2.4, 2.4)
 sparks_per_second = 90.0
 sound_full_volume_distance = 60.0
+big_attack = true

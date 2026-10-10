@@ -1731,6 +1731,12 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     stand. The alternative: keep doodads out of every drone's and hover truck's whole stay.
     *Placeholder:* `drone.gd` and `hover_truck.gd` (`_doodad_in_reach`), `Octodog.window_clear`,
     `Resonator.pulse_clear`, `CyborgGun.path_clear`.
+    **Partly answered (owner, October 10, 2026):** doodads may be on the field at the same time as the bigger
+    enemies, such as a Buzz Overdrive, an Enforcer Truck or a hover truck (GDD §3; task I1): they now stand through a
+    hover truck's stay off its lane, beside a Buzz Overdrive's cut off its lane and its way out, and in an Enforcer
+    Truck's showing window where it can still show itself. The others' planned attacks keep doodads off as before
+    (an Octodog's run, a Resonator's visit, a Gilded Sentinel's strike, a drone wave until its first pad, a Bad
+    Dream's chase): see `docs/questions/i1.md`.
 
 **The Golden Palace** (from D6b; numbers and colours are exports on `GoldenPalaceSkin`, F6; play `--level=golden/3` or `--quick --skin=golden_palace`)
 275. **The floor's gold inlay runner** (GDD §5: "a palace floor (marble, inlay, gold runners)"): how
@@ -1819,6 +1825,10 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     thing going on, like a big attack taking its turn. The alternative is to let the other lanes keep
     their fillers and doodads during a cut (busier, but less room to dodge sideways).
     *Placeholder:* `LevelGenerator.cut_problem`, `fill_keep_outs`, `doodad_keep_outs` (DESIGN-TBD).
+    **Answered (owner, October 10, 2026):** the alternative, and more: the Buzz Overdrive isn't very difficult to
+    dodge, so holes, electric fences and lower-tier enemies (cyborgs and the like) may be on the field with it, and
+    zone doodads too; only its lane stays clear, GDD §9.9's limits hold and big attacks still take turns (GDD §9.9;
+    task I1).
 288. **May a cut run through an outer lane beside a wall runner?** GDD §9.9 says wall runners are safe
     "even beside it", and they are: the cut never reaches the wall. But a wall run ends by dropping back
     into the outer lane, which is a hole there once the cut has passed, as it would be for any hole in
@@ -1958,11 +1968,16 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     comes within 15 s of Corporate 1's 10% start in about two thirds of the layouts, later in the rest. The
     alternative is capping its pick boost at 1 like the other big enemies (fewer wasted picks, fewer tanks).
     *Placeholder:* no cap in `data/tuning/feature_recency.tres`; `intro_seconds = 15` (DESIGN-TBD).
+    **Answered (owner, October 10, 2026):** capped at 1 like the other big enemies (GDD §9.9; task I1). With its
+    10 m pattern, Corporate 1 averages 1.75 tanks over its own seed and three others at 3, 5 and 6 lanes (2.4
+    before), Corporate 2 1.3 (1.75), the Beach, the Dead Zone and the Golden Zone about 1 to 1.4 each.
 307. **What else may happen while it rolls in?** Only its rev and charge are kept clear of every other attack
     (B4's "nothing else goes on"); while it rolls ahead before its warning, other enemies may still act, and
     only its lane is kept clear. One Buzz Overdrive at a time counts its roll too. The alternative is to keep
     everything off its roll as well (calmer, but it fits in fewer places).
     *Placeholder:* `FloorCutPlan.attack_window` (DESIGN-TBD).
+    **Answered (owner, October 10, 2026):** obstacles and lower-tier enemies may be on the field through its roll,
+    rev and charge alike (item 287); other big attacks still keep off its rev and charge (GDD §9; task I1).
 308. **Its look.** A tracked tank in military gunmetal and olive (scorched and rusted in the Dead Zone), a
     giant vertical saw whose teeth glow hot orange-red (the deadly part), and a red slit eye under a dark brow
     on each side. Its blade runs along its lane like a real saw's, so head-on (the runner's view) it shows as

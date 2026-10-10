@@ -37,3 +37,4 @@ approach_seconds = 2.2
 wall_clear_seconds = 0.6
 escape_lead_seconds = 0.7
 gap_seconds = 1.5
+big_attack = true

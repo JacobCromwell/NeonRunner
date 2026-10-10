@@ -45,7 +45,9 @@ const SPEEDS: Array[float] = [23.4, 23.8, 24.2, 25.0]
 ## Dead Zone 2 at 5 and 6. Corporate 2 at 5 lanes and Dead Zone 1 at 3 now have item 402's case instead: one truck,
 ## showing itself before its bait, where a second truck's chase would overlap its own.) The Beach (zone 6, task D10d,
 ## seeds 801 and 802): Tiki Tides at 5 lanes, and with the H series (merged with D10) Sunset Strip at 5 lanes too.
-const BOTH_TRUCKS: Array = [["corporate/2", 6], ["beach/1", 5], ["beach/3", 5], ["dead_zone/2", 5], ["dead_zone/2", 6]]
+## Since the owner's October 10, 2026 call (a Buzz Overdrive's 10 m pattern, the curve capping it, the track shared
+## with its encounter): Corporate 2 at 5 lanes only.
+const BOTH_TRUCKS: Array = [["corporate/2", 5]]
 const VARIANTS: Array[StringName] = [&"city", &"vr_runner", &"burned", &"scavenger", &"golden", &"casino"]
 
 var sim: RunSim
@@ -801,10 +803,12 @@ func _test_guarantee() -> void:
 ## (ShowPlanner.problem_of): for a runner in every lane, as its showing begins and show_window_slack_seconds later,
 ## a lane beside them where its look fits on screen, its lane stays clear, they keep a lane to dodge into and it
 ## hides no enemy (EnforcerTruckRoom.layout_lane), and no other big attack, floor cut, hover truck or Gilded Sentinel
-## comes meanwhile. Every pass after the trucks kept off it: no zone doodad, filler, wider gap or row the danger
-## density pass made or widened stands in it, nor any enemy that pass added or cyborg planted in a charge path
-## (where it stands or attacks). Corporate 2 at 3 lanes has its first truck's arrival showing. Each level's windows
-## are printed (gen.show_window_result: why a chase has none).
+## comes meanwhile. Every pass after the trucks kept off it: no filler, wider gap or row the danger density pass
+## made or widened stands in it, nor any enemy that pass added or cyborg planted in a charge path (where it stands
+## or attacks). Zone doodads may stand in it where it still holds (owner, October 10, 2026; doodad_guard). Corporate
+## 2 at 5 lanes has its first truck's arrival showing (at 3 lanes until the owner's October 10, 2026 call, where a
+## Tithe Collector now comes in before its only bait). Each level's windows are printed (gen.show_window_result: why
+## a chase has none).
 func _test_show_windows() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var room_m: float = LevelGenerator.DangerDensity.CALM_ROOM
@@ -838,9 +842,7 @@ func _test_show_windows() -> void:
 					var why: String = planner.problem_of(e)
 					if why != "":
 						faults.append("%s: %s" % [where, why])
-					for d: Dictionary in gen.layout.doodads:
-						if float(d["start"]) <= w.y and float(d["end"]) >= w.x:
-							faults.append("%s: a zone doodad at %.0f m" % [where, float(d["start"])])
+					# Zone doodads may stand in it (owner, October 10, 2026) where it still holds (problem_of, above).
 					for f: Dictionary in gen.fills:
 						if float(f["at"]) <= w.y and float(f["at"]) + float(f["used"]) >= w.x:
 							faults.append("%s: a filler at %.0f m" % [where, float(f["at"])])
@@ -882,11 +884,11 @@ func _test_show_windows() -> void:
 							modes.append(String(lw["mode"]))
 					counts.append("%d lanes: %d of %d (%d as it arrives%s)%s" % [lanes, windows, trucks.size(), arrivals,
 						"" if modes.is_empty() else ", " + ", ".join(modes), "" if none.is_empty() else " - none: " + ", ".join(none)])
-					if id == "corporate/2" and lanes == 3:
+					if id == "corporate/2" and lanes == 5:
 						var first: Dictionary = trucks[0] if not trucks.is_empty() else {}
 						var show: Dictionary = (first.get("params", {}) as Dictionary).get("show", {})
 						check(not show.is_empty() and absf(float(show["at"]) - float(first["at"])) < 0.001,
-							"Corporate 2 at 3 lanes: its first truck's showing is planned as it arrives (%s)" % [show])
+							"Corporate 2 at 5 lanes: its first truck's showing is planned as it arrives (%s)" % [show])
 		print("  %s showing windows: %s" % [id, "; ".join(counts)])
 
 

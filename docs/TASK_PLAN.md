@@ -538,6 +538,15 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 | H9 | **Sleep Taker:** lights out 50% darker, hands spread along the street, wall gaps and more wall hands, twice the floor gaps (GDD §10). **Core** (small opt-in hooks in the boss framework and level config). | – | M–L | T1 |
 | H10 | **The Tithe Collector stays twice as long** (GDD §9.12) | – | S | T3 |
 
+### I. The owner's requests (October 10, 2026)
+
+From the owner's investigation of empty stretches in the levels (`docs/USER_REQUESTS.md`, October 10, 2026), recorded in
+the GDD (§3 and §9.9).
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| I1 | **The Buzz Overdrive shares the field:** its pattern no longer holds 11 s of track to itself, the recency curve no longer boosts it, obstacles and lower-tier enemies may be on the field with it (its lane, GDD §9.9's limits and the big attacks' turns kept), and zone doodads may stand beside the bigger enemies (a Buzz Overdrive, an Enforcer Truck, a hover truck). **Core** (generator, pattern and tuning data). | – | M | T1 |
+
 ---
 
 ## Order at a glance

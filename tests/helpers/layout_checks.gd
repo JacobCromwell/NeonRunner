@@ -451,7 +451,8 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 			if int(g["lane"]) != lane and float(g["start"]) <= end and float(g["end"]) >= start:
 				holed[int(g["lane"])] = true
 		suite.check(holed.size() <= n - 1 - whole, "%d lanes beside a cut stay whole (holes in %s) %s" % [whole, holed.keys(), t])
-		# Nothing else going on meanwhile.
+		# No other big attack meanwhile (GDD §9); a lower-tier enemy may share the track, off its lane (owner,
+		# October 10, 2026).
 		for e: Dictionary in layout.enemies:
 			var at: float = float(e["at"])
 			if int(e.get("lane", -1)) == lane and absf(at - end) < 0.01:
@@ -459,11 +460,20 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 			if bool(c.get("park", false)) and int(e.get("lane", -1)) == lane and at > FloorCutPlan.charge_at(c) and at < end \
 					and String((e.get("params", {}) as Dictionary).get(ChargePathPlacement.PARAM, "")) == ChargePathPlacement.TANK:
 				continue  # Task G7: the cyborg planted in its path (check_charge_paths), the one exception.
-			var busy: Array[Vector2] = [LevelGenerator.enemy_floor_span(e, pace)]
+			var floor_span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
+			var tuning_res := EnemyDirector.tuning_for(String(e["type"])) as EnemyTuning
+			if tuning_res != null and not tuning_res.big_attack:
+				suite.check(int(e.get("lane", -1)) != lane or floor_span.y < floor_span.x or floor_span.x > lane_span.y
+					or floor_span.y < lane_span.x,
+					"no enemy in a cut's lane (%s at %.0f: %.1f-%.1f) %s" % [e["type"], at, floor_span.x, floor_span.y, t])
+				# A host's Bad Dream chase is a big attack.
+				if bool((e.get("params", {}) as Dictionary).get("host", false)):
+					var chase: Vector2 = bt.chase_stretch(at, speed)
+					suite.check(chase.x > attack.y or chase.y < attack.x,
+						"no Bad Dream chase during a cut (host at %.0f: %.1f-%.1f) %s" % [at, chase.x, chase.y, t])
+				continue
+			var busy: Array[Vector2] = [floor_span]
 			match String(e["type"]):
-				"cyborg":
-					if bool((e.get("params", {}) as Dictionary).get("host", false)):
-						busy.append(bt.chase_stretch(at, speed))
 				"drone":
 					busy.append(Vector2(at, at + dt.first_pad_seconds * speed))
 				"hover_truck":
@@ -472,7 +482,7 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 						busy.append(Vector2(HoverTruckRules.window_start(tt, at, pace), HoverTruckRules.window_end(tt, at, speed)))
 			for b: Vector2 in busy:
 				suite.check(b.y < b.x or b.x > attack.y or b.y < attack.x,
-					"nothing else goes on during a cut (%s at %.0f: %.1f-%.1f) %s" % [e["type"], at, b.x, b.y, t])
+					"no other big attack during a cut (%s at %.0f: %.1f-%.1f) %s" % [e["type"], at, b.x, b.y, t])
 		# A player in its lane when it warns can leave it.
 		var from: float = FloorCutPlan.warn_at(c) + config.cut_reaction_seconds * speed
 		var route: Dictionary = grid.find(from, span.y + 2.0, lane)
@@ -492,8 +502,10 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 ##   every lane but its own to run in, and the player can cross its lane again before what comes
 ##   next, as between two patterns;
 ## - off every lane-bound attack while it can run: every Octodog's run (its floor stretch), every Bad
-##   Dream chase and drone wave until its first pad, any lane while a hover truck is surely there, and
-##   never in or pushing into a truck's lane until it has left;
+##   Dream chase and drone wave until its first pad, and never in or pushing into a hover truck's lane
+##   until it has left (owner, October 10, 2026: doodads may stand while a bigger enemy is around, a
+##   hover truck, an Enforcer Truck or a Buzz Overdrive, off the lanes they keep; check_cuts keeps them
+##   out of a cut's lane and its way out);
 ## - one at a time: LevelConfig.doodad_gap_seconds from one's end to the next one's front.
 static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.doodads.is_empty():
@@ -543,8 +555,6 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 				busy.append(["a drone wave until its first pad", Vector2(at, minf(first, at + dt.first_pad_seconds * speed))])
 			"hover_truck":
 				trucks.append(e)
-				busy.append(["a hover truck's shortest stay", Vector2(HoverTruckRules.window_start(tt, at, pace),
-					at + tt.stay_min_seconds * speed)])
 	var sorted: Array[Dictionary] = layout.doodads.duplicate()
 	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	var prev_end: float = -INF

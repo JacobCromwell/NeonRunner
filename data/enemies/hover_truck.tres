@@ -68,3 +68,4 @@ ramp_after_seconds = 7.0
 guarantee_one = true
 guaranteed_from = 0.2
 guaranteed_to = 0.5
+big_attack = true

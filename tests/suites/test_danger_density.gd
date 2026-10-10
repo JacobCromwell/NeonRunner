@@ -38,9 +38,11 @@ const FAIRNESS_ONLY: Array[String] = ["dead_zone/2"]
 ## at 3 lanes on seed 9004 (task K5's: a row of holes, a full fence row, the doodad) lost it with the H series'
 ## changes, golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling) on the 15-level curve
 ## before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row the pass touched, a full fence
-## row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case checks it
-## still shows its scenario.
-const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9019}]
+## row, the doodad) on K4's, golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows, and golden/3 at 3 lanes on
+## seed 9019 with the owner's October 10, 2026 call (a Buzz Overdrive's encounter shared with the rest of the track),
+## re-found on golden/3 at 3 lanes on seed 9002 (no way on past 1840 m without doodad_ok); each case checks it still
+## shows its scenario.
+const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9002}]
 ## The request, as the actual increase of a band's summed counts with the dial over those without it,
 ## for enemies and for obstacles alike, at each lane count: about 15% in the first levels, about 35%
 ## in the final ones.
@@ -164,7 +166,8 @@ func _test_density(campaign: Campaign) -> void:
 					floors[li] += Vector2i(DangerDensity.floor_count(off), DangerDensity.floor_count(on))
 					walls[li] += Vector2i(off.wall_fences.size(), on.wall_fences.size())
 					credits[li] += Vector2i(off.total_credit_value(), on.total_credit_value())
-					_check_fair(config, built["gen"], off, "%s lanes=%d seed=%d" % [id, LANES[li], config.level_seed])
+					_check_fair(config, built["gen"], off, "%s lanes=%d seed=%d" % [id, LANES[li], config.level_seed],
+						(built["off_gen"] as LevelGenerator).after_doodads_taken_out)
 		var band_ratios: Array[Vector2] = []
 		for li: int in LANES.size():
 			var obstacles: Vector2i = floors[li] + walls[li]
@@ -198,13 +201,14 @@ func _test_density(campaign: Campaign) -> void:
 		for lanes: int in LANES:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			var built: Dictionary = _build_pair(config)
-			_check_fair(config, built["gen"], built["off"], "%s lanes=%d seed=%d" % [id, lanes, config.level_seed])
+			_check_fair(config, built["gen"], built["off"], "%s lanes=%d seed=%d" % [id, lanes, config.level_seed],
+				(built["off_gen"] as LevelGenerator).after_doodads_taken_out)
 	for case: Dictionary in ROUTE_CASES:
 		var config: LevelConfig = campaign.configure(campaign.step(String(case["id"])), int(case["lanes"]))
 		config.level_seed = int(case["seed"])
 		var tag: String = "%s lanes=%d seed=%d" % [case["id"], case["lanes"], case["seed"]]
 		var built: Dictionary = _build_pair(config)
-		_check_fair(config, built["gen"], built["off"], tag)
+		_check_fair(config, built["gen"], built["off"], tag, (built["off_gen"] as LevelGenerator).after_doodads_taken_out)
 		var unchecked: LevelLayout = DoodadsUnchecked.new().generate(config, tuning, LevelGenerator.load_for(config))
 		var route: Dictionary = FloorRoute.new(unchecked, config.movement_for(tuning)).find(0.0, unchecked.length)
 		check(not bool(route["ok"]), "%s still shows its case: without doodad_ok a doodad leaves no way on (%s); else re-pin ROUTE_CASES"
@@ -219,23 +223,25 @@ func _build_pair(config: LevelConfig) -> Dictionary:
 	var zero: LevelConfig = config.duplicate() as LevelConfig
 	zero.danger_density_increase = 0.0
 	var t0: int = Time.get_ticks_msec()
-	var off: LevelLayout = LevelGenerator.new().generate(zero, tuning, patterns)
+	var off_gen := LevelGenerator.new()
+	var off: LevelLayout = off_gen.generate(zero, tuning, patterns)
 	var t1: int = Time.get_ticks_msec()
 	var gen := LevelGenerator.new()
 	var on: LevelLayout = gen.generate(config, tuning, patterns)
 	var t2: int = Time.get_ticks_msec()
-	return {"gen": gen, "on": on, "off": off, "off_ms": t1 - t0, "on_ms": t2 - t1}
+	return {"gen": gen, "on": on, "off": off, "off_gen": off_gen, "off_ms": t1 - t0, "on_ms": t2 - t1}
 
 
-## The pass's fairness on `gen`'s build (with the dial) of `config`; `off` is the build without it.
-func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag: String) -> void:
+## The pass's fairness on `gen`'s build (with the dial) of `config`; `off` is the build without it, whose rules
+## took `off_taken` enemies out after the zone doodads (LevelGenerator.after_doodads_taken_out).
+func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag: String, off_taken: int = 0) -> void:
 	var layout: LevelLayout = gen.layout
 	var result: Dictionary = gen.danger_density_result
 	check(not result.is_empty(), "the pass ran " + tag)
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 	# A cyborg planted in a charge's path (task G7, ChargePathPlacement) comes after the pass's count, with or
-	# without it.
-	check(int(result.get("baseline_enemies", -1)) == off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
+	# without it, and so does an enemy a dash wall takes out to make room (task H7a, after the zone doodads).
+	check(int(result.get("baseline_enemies", -1)) == off.enemies.size() + off_taken - ChargePathPlacement.planted_in(off).size(),
 		"the pass counts the enemies the level holds without it %s" % tag)
 	var pieces: int = 0
 	for key: String in ["widened", "new_row_pieces", "full_rows", "staggered_pieces", "routed", "routed_row_pieces"]:

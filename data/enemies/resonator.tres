@@ -40,3 +40,4 @@ pulse_slack = 240.0
 min_pulses = 2
 visit_gap_seconds = 6.0
 guarantee_one = true
+big_attack = true

@@ -534,14 +534,46 @@ static func wide_gap_keep_outs(layout: LevelLayout) -> Array[Vector2]:
 ## What the generator's later passes keep off in every lane (LevelGenerator.rules_doodad_keep_outs): each truck's
 ## planned showing window (task C6c), {from, to, type, calm}. A calm stretch: nothing they add may stand or attack in
 ## it, but it's no attack itself, so nothing keeps a spacing from it (as from a Gilded Sentinel's strike) and it
-## shapes no pass's search for room. The zone doodads, the danger density pass's enemies and rows (Plan.calm), the
-## cyborgs in charge paths (where they stand), the wider gaps (their rows) and City 1's extra gaps keep off it; the
-## fill pass, fill_keep_outs.
+## shapes no pass's search for room. The danger density pass's enemies and rows (Plan.calm), the cyborgs in charge
+## paths (where they stand), the wider gaps (their rows) and City 1's extra gaps keep off it; the fill pass,
+## fill_keep_outs. The zone doodads may stand in it (owner, October 10, 2026) where the truck can still show itself
+## (doodad_guard).
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for w: Vector2 in show_windows(gen.layout):
 		out.append({"from": w.x - WINDOW_EDGE, "to": w.y + WINDOW_EDGE, "type": TYPE, "calm": true})
 	return out
+
+
+## The zone doodads' check (LevelGenerator.doodad_guards): doodads may stand while an Enforcer Truck is around, its
+## showing window included (owner, October 10, 2026), but never where one would keep it from showing itself. The
+## Callable says whether a doodad just placed (a LevelLayout.doodads entry) leaves every planned window that held
+## before the doodads still holding (ShowPlanner.problem_of: a lane beside a runner in every lane where the truck
+## fits and stays clear, the runner's way to dodge, the checks it makes in play). Only windows within the planner's
+## local margin of the doodad are checked again.
+static func doodad_guard(gen: LevelGenerator) -> Callable:
+	var t: EnforcerTruckTuning = tuning()
+	var holding: Array[Dictionary] = []
+	var trucks: Array[Dictionary] = trucks_in(gen.layout)
+	if not trucks.is_empty():
+		var planner: ShowPlanner = ShowPlanner.make(gen, t)
+		for e: Dictionary in trucks:
+			var w: Vector2 = window_of(e)
+			if w.y > w.x and planner.problem_of(e) == "":
+				holding.append(e)
+	return func(d: Dictionary) -> bool:
+		var near: Array[Dictionary] = []
+		for e: Dictionary in holding:
+			var w: Vector2 = window_of(e)
+			if float(d["start"]) <= w.y + ShowPlanner.LOCAL_MARGIN and float(d["end"]) >= w.x - ShowPlanner.LOCAL_MARGIN:
+				near.append(e)
+		if near.is_empty():
+			return true
+		var planner: ShowPlanner = ShowPlanner.make(gen, t)
+		for e: Dictionary in near:
+			if planner.problem_of(e) != "":
+				return false
+		return true
 
 
 ## What the generator's fill pass keeps off in every lane besides the enemies' stretches (LevelGenerator

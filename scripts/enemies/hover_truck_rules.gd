@@ -105,10 +105,17 @@ static func after_fill(gen: LevelGenerator) -> void:
 			_clear_lane(gen.layout, int(e.get("lane", -1)), window_start(t, at, gen.pace), window_end(t, at, gen.speed))
 
 
+## What the generator's zone doodads keep off around truck entry `e` in every lane (LevelGenerator.fill_keep_outs
+## for doodads): nothing. Doodads may stand while a truck is around (owner, October 10, 2026), off its lane only
+## (doodad_keep_outs); its cannon holds fire while one is in reach and it lurches only at a runner who can leave
+## its lane (HoverTruck).
+static func doodad_keep_out(_gen: LevelGenerator, _e: Dictionary) -> Vector2:
+	return Vector2(INF, -INF)
+
+
 ## What the generator's zone doodads keep off (LevelGenerator.doodad_keep_outs): every truck's lane for
 ## its whole stay (window_start to window_end), where none stands and none pushes the player into it
-## (its sides are solid, and its forward lurch is deadly in its lane). keep_out() already keeps them
-## off every lane while it's surely there.
+## (its sides are solid, and its forward lurch is deadly in its lane).
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var t: HoverTruckTuning = tuning()
 	var out: Array[Dictionary] = []
