@@ -3923,7 +3923,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     every build on the levels' own seeds has one. OK?
 567. **Lengths, density and seeds.** Placeholder, like their neighbours: 145 and 150 s, `danger_density_increase` 0.31
     and 0.33 (Corporate 2 0.29, Dead Zone 1 0.37), two wider gaps, one cyborg in a charge's path, doodads 0.7, half
-    the ceilings narrow, Corporate's credit settings; seeds 701 and 702.
+    the ceilings narrow, Corporate's credit settings; seeds 801 and 802 (701 and 702 until the Casino took them).
 568. **D10b's other placeholders** (its place, difficulty, names, music, boss and cinematics, and a way to play it
     outside the campaign) are answered or replaced by the owner's decision of October 9, 2026: items 569–579.
 

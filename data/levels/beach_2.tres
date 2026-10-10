@@ -8,7 +8,7 @@
 script = ExtResource("1_level")
 id = &"beach_2"
 display_name = "Sunset Strip"
-level_seed = 702
+level_seed = 802
 duration_seconds = 150.0
 difficulty = 0.72
 difficulty_bias = 0.0

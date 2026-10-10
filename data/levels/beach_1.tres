@@ -7,7 +7,7 @@
 script = ExtResource("1_level")
 id = &"beach_1"
 display_name = "Tiki Tides"
-level_seed = 701
+level_seed = 801
 duration_seconds = 145.0
 difficulty = 0.71
 difficulty_bias = 0.0

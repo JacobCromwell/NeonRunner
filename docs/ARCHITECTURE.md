@@ -3128,7 +3128,7 @@ features or their weights, no darkness), so endless in the Dead Zone plays as it
 **The Beach** (task D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone", a boss
 battle to come, "do not worry about any new enemies at this time"; GDD §5). `data/zones/beach.tres` (id `beach`, the
 Beach skin, 23.8 m/s) is zone 6, between Corporate and the Dead Zone: its intro (the arrival flyover), Tiki Tides and
-Sunset Strip (`data/levels/beach_1.tres` and `beach_2.tres`: seeds 701 and 702, 145 and 150 s, the open walls of task
+Sunset Strip (`data/levels/beach_1.tres` and `beach_2.tres`: seeds 801 and 802, 145 and 150 s, the open walls of task
 D10b, `wall_gap_tuning` under The generator, Side wall gaps; Beach 1 in the zone's daylight, Sunset Strip under
 `data/skies/beach_sunset.tres`), its boss slot and its outro. It is a remix of everything before it, Corporate 2's
 features with no introductions, and the one zone that brings no new enemy (GDD §5's exception).
