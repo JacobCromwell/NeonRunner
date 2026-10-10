@@ -1,9 +1,9 @@
 class_name LevelRun
 extends Node3D
 ## One level or boss fight being played. Generates the layout for a RunContext (a boss fight's arena
-## comes from its BossEncounter, GDD §10; a mini-game level's track from its MiniGame, which then joins the world),
-## builds the RunWorld, and runs the camera, HUD, music and debug tools. The App owns the flow around a run (death screen, revive, results, shop, retry);
-## LevelRun only plays and reports:
+## comes from its BossEncounter, GDD §10; a mini-game level's track from its MiniGame, which then joins the
+## world), builds the RunWorld, and runs the camera, HUD, music and debug tools. The App owns the flow around a
+## run (death screen, revive, results, shop, retry); LevelRun only plays and reports:
 ## - `died` when the player dies (after a short pause so the death reads). The App answers with
 ##   revive() or give_up().
 ## - `finished` with the RunResult when the level is completed (a boss fight: the boss is beaten) or
