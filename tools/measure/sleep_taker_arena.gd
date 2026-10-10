@@ -1,6 +1,7 @@
 extends SceneTree
 ## Measures the Sleep Taker's arena (GDD §10; task H9, owner, October 8, 2026: "twice as many floor gaps as
-## first built", "the arena's side walls have many gaps"): over its laps as the fight plans them
+## first built", "the arena's side walls have many gaps"; task H11, October 10, 2026: three times that many
+## floor gaps, more wall gaps): over its laps as the fight plans them
 ## (BossArena.plan with the boss's _plan_lap: its refuges cleared of holes, fences and wall gaps, then its
 ## extra floor gaps), at each lane count and speed, the floor gaps (lane-gaps: one lane's hole; rows: holes
 ## sharing a stretch, GapDensity.rows), the fences, the wall gaps on each wall (and a minute's worth), and

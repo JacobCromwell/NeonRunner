@@ -1262,6 +1262,16 @@ func _update_flash() -> void:
 	_avatar.set_flash(on)
 
 
+## How far the player model glows by its own light in the dark, 0–1 (PlayerAvatar.set_dark_glow): a
+## boss's lights out sets it (the Sleep Taker's), so the runner still sees where they are.
+func set_dark_glow(amount: float) -> void:
+	_avatar.set_dark_glow(amount)
+
+
+func dark_glow() -> float:
+	return _avatar.get_dark_glow()
+
+
 ## What the player model shows the player carrying (PlayerAvatar.set_equipment): claws, armor,
 ## shield, weapon_tier, magnet. RunWorld sets it from the loadout; broken items update it.
 func set_equipment_look(eq: Dictionary) -> void:
