@@ -565,10 +565,12 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     the feet to 0.3 m below, and allowed up to `pit_depth` below the top; a fall faster than `pit_depth` a
     frame could end a frame that far below a top it passed and drop through it. Such a frame now looks from
     where the feet were as it began (`_crossed_top`) and lands on the highest top they passed. Slower falls
-    never need it, so they land exactly as before; it catches the air slide's fast fall (22 m/s and more:
-    it dropped through the street in 11 of 40 slide timings tried on the unchanged code), long drops off
-    high ceilings, and the anti-grav pull up to a ceiling higher than `ceiling_height` (which could pass
-    through it and fall back).
+    never need it, so they land exactly as before. It catches the air slide's fast fall (22 m/s and more):
+    on the unchanged code (437d46e), a slide pressed 1 to 40 frames into a jump dropped through the street
+    at 4 of those 40 timings (3, 11, 30 and 34 frames), and at the same 4 threw a rider who had jumped off
+    a ceiling off it mid-ceiling as they slid back up (an early `hull_end`). It also catches long drops
+    off high ceilings, and the anti-grav pull up to a ceiling higher than `ceiling_height` (which could
+    pass through it and fall back).
 - **The armor** (GDD §4 and §8, owner's playtest, September 30, 2026) is a state with rules of its own,
   `DamageRules.Armor`: up with its hits left, or broken and coming back. Every run the profile starts
   (levels, boss fights, retries, quick play, endless, the web demo) carries it free (`Loadout.armor`),
@@ -606,8 +608,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   collision box on the hull layer. A pad flips the player to the first ceiling over the pad's lane within
   `Player.CEILING_SEARCH` (30 m) of the feet (`_ceiling_over_pad`), and `Player.ceiling_y` holds the
   height of the ceiling they ride (or rode last), which the flip (`_flip`), the ride (`_support_top`,
-  `_surface_y`), the drop at its end, the lanes on it (`_ceiling_over`), the shadow and the climbing camera
-  all use. With no ceiling over the pad the standard height stands in (`ceiling_height` above
+  `_surface_y`), the drop at its end, the lanes on it (`_ceiling_over`), the shadow on its underside, the
+  magnet's field and the climbing camera all use. With no ceiling over the pad the standard height stands in (`ceiling_height` above
   `fall_base()`): the player flips up into nothing and drops back, as ever. A ceiling within
   `HEIGHT_SNAP` (1 mm) of the standard height is taken at exactly that height, so every level's ceilings
   (all at `ceiling_height`) play exactly as before; one that moves while it's ridden (a gunship's belly
@@ -2809,11 +2811,16 @@ top within `CEILING_SIDE` to either side, from `CEILING_BEHIND` behind to some w
 underside). The camera eases toward a height that clears a roof `camera_climb_lead` seconds of running
 ahead, so it rises over the higher roof a ceiling rider will drop onto before it gets there, and is held
 above any roof right at it. `ceiling_limit` holds as always and wins where both can't be kept. Every target
-is eased as before, so a ride up to a ceiling and a landing on a higher roof never snap the view; while it
-climbs, a landing's shake measures the fall down to the floor landed on, not from the street
-(`RunEffects`). `test_climb` climbs five steps to a roof 30 m up at 3, 5 and 6 lanes and checks the runner
-stays on screen, the camera is never in a roof and keeps under every ceiling, and never moves more than
-0.6 m in a frame; without the climbing view the runner leaves the screen up there.
+is eased as before, so a ride up to a ceiling and a landing on a higher roof never snap the view. The roof
+check is one pass over its samples a frame with the camera's own ray queries (`floor_limits`; the static
+`floor_limit` is the same for tools and tests), so it allocates no query objects. The same switch turns
+on two other climb looks: the runner's blob shadow lies on the floor under them (`Player.shadow_on_floor`,
+set by `camera_climbs`' setter) instead of at the street's level, where it stays in every level, under a
+hover truck's roof or a boss's deck as it always was; and a landing's shake measures the fall down to the
+floor landed on, not from the street (`RunEffects`). `test_climb` climbs five steps to a roof 30 m up at
+3, 5 and 6 lanes and checks the runner stays on screen, the camera is never in a roof and keeps under every
+ceiling, and never moves more than 0.4 m in a frame (0.30 m at most measured); without the climbing view
+the runner leaves the screen up there.
 
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
@@ -5217,7 +5224,8 @@ and from a roof 9 m up to a ceiling at 15 m), a ceiling moving while ridden, a c
 holding a switch within the lanes it still covers, the drop onto a raised roof in a lane it covers and past
 it (onto the street, or to a death where the street is eaten) in one it doesn't, falls counted from the
 floor base (as soon and as deep as from the street, in the pit as deep; a floor base above the runner never
-dropping them), fast falls landing where they cross a floor, the grapple's save and a revive after a fall
+dropping them), fast falls landing where they cross a floor (onto the street and back onto a ceiling), the
+shadow on the roof only while the climb is on, the grapple's save and a revive after a fall
 going where the hook says (and the framework's hook leaving them as they were), the climbing camera up a
 five-step climb to 30 m, and boss props at a height. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and

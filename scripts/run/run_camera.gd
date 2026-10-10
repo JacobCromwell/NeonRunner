@@ -43,6 +43,10 @@ const CEILING_SEARCH: float = 14.0
 const FLOOR_REACH: float = 6.0
 ## floor_limit looks for a roof ahead this far apart along the track (metres).
 const FLOOR_STEP: float = 2.5
+## floor_limit's samples along the track that it always takes (behind, level with and just ahead of the
+## camera: the limit right at it), and across (to either side and level with it).
+const FLOOR_NEAR: Array[float] = [-CEILING_BEHIND, 0.0, CEILING_AHEAD]
+const FLOOR_SIDES: Array[float] = [-CEILING_SIDE, 0.0, CEILING_SIDE]
 
 var world: RunWorld
 ## SpeedFxTuning for the fov kick and the lane lean: world.effects.tuning, set by RunEffects.setup
@@ -56,6 +60,9 @@ var _shake: float = 0.0
 var _shake_time: float = 0.0
 var _shake_left: float = 0.0
 var _noise_t: float = 0.0
+## The climbing view's ray queries for floor_limits, kept so a frame allocates none.
+var _floor_down := PhysicsRayQueryParameters3D.new()
+var _floor_up := PhysicsRayQueryParameters3D.new()
 
 
 func follow(p_world: RunWorld) -> void:
@@ -109,8 +116,10 @@ func _update(delta: float, instant: bool) -> void:
 	# Climbing: above any roof under or around the camera, risen to in good time for one ahead.
 	var floor_now: float = -INF
 	if climbing:
-		cam_y = maxf(cam_y, floor_limit(space, here, t, maxf(world.player.speed, 0.0) * t.camera_climb_lead))
-		floor_now = floor_limit(space, here, t)
+		var floors: Vector2 = floor_limits(space, here, t, maxf(world.player.speed, 0.0) * t.camera_climb_lead,
+			_floor_down, _floor_up)
+		cam_y = maxf(cam_y, floors.y)
+		floor_now = floors.x
 	var k: float = 1.0 if instant else 1.0 - exp(-t.camera_smoothing * delta)
 	_focus.x = lerpf(_focus.x, p.x * t.camera_follow_x, k)
 	_focus.y = minf(lerpf(_focus.y, minf(cam_y, limit), k), limit)
@@ -199,36 +208,53 @@ static func ceiling_limit(space: PhysicsDirectSpaceState3D, pos: Vector3, t: Mov
 ## it climbs (RunWorld.camera_climbs).
 static func floor_limit(space: PhysicsDirectSpaceState3D, pos: Vector3, t: MovementTuning,
 		ahead: float = CEILING_AHEAD) -> float:
-	var down := PhysicsRayQueryParameters3D.new()
+	return floor_limits(space, pos, t, ahead, PhysicsRayQueryParameters3D.new(), PhysicsRayQueryParameters3D.new()).y
+
+
+## floor_limit's two answers from one pass over its samples, as the climbing camera takes them every frame:
+## Vector2(the limit right at the camera, floor_limit(space, pos, t); the limit with the roofs up to `ahead`
+## ahead as well, floor_limit(space, pos, t, ahead)). It casts its rays with `down` and `up` (the camera keeps
+## its own, so a frame allocates none).
+static func floor_limits(space: PhysicsDirectSpaceState3D, pos: Vector3, t: MovementTuning, ahead: float,
+		down: PhysicsRayQueryParameters3D, up: PhysicsRayQueryParameters3D) -> Vector2:
 	down.collision_mask = TrackBuilder.LAYER_FLOOR
-	var up := PhysicsRayQueryParameters3D.new()
 	up.collision_mask = TrackBuilder.LAYER_FLOOR
-	var alongs: Array[float] = [-CEILING_BEHIND, 0.0, CEILING_AHEAD]
-	var next: float = CEILING_AHEAD + FLOOR_STEP
-	while next < ahead:
-		alongs.append(next)
-		next += FLOOR_STEP
+	var near: float = -INF
+	for along: float in FLOOR_NEAR:
+		near = maxf(near, _floor_sample(space, pos, t, along, down, up))
+	var far: float = near
+	var along_far: float = CEILING_AHEAD + FLOOR_STEP
+	while along_far < ahead:
+		far = maxf(far, _floor_sample(space, pos, t, along_far, down, up))
+		along_far += FLOOR_STEP
 	if ahead > CEILING_AHEAD:
-		alongs.append(ahead)
+		far = maxf(far, _floor_sample(space, pos, t, ahead, down, up))
+	return Vector2(near, far)
+
+
+## The limit one of floor_limit's samples sets, `along` the track from the camera at `pos` (the most of its
+## samples across, FLOOR_SIDES): camera_floor_clearance above the top of a roof there, no more than
+## FLOOR_REACH above the camera and not one it's beneath; -INF with none.
+static func _floor_sample(space: PhysicsDirectSpaceState3D, pos: Vector3, t: MovementTuning, along: float,
+		down: PhysicsRayQueryParameters3D, up: PhysicsRayQueryParameters3D) -> float:
 	var limit: float = -INF
-	for along: float in alongs:
-		for side: float in [-CEILING_SIDE, 0.0, CEILING_SIDE]:
-			var x: float = pos.x + side
-			var z: float = pos.z - along
-			down.from = Vector3(x, pos.y + FLOOR_REACH, z)
-			down.to = Vector3(x, pos.y - t.camera_floor_clearance, z)
-			var hit: Dictionary = space.intersect_ray(down)
-			if hit.is_empty():
+	var z: float = pos.z - along
+	for side: float in FLOOR_SIDES:
+		var x: float = pos.x + side
+		down.from = Vector3(x, pos.y + FLOOR_REACH, z)
+		down.to = Vector3(x, pos.y - t.camera_floor_clearance, z)
+		var hit: Dictionary = space.intersect_ray(down)
+		if hit.is_empty():
+			continue
+		var top: float = (hit["position"] as Vector3).y
+		if top > pos.y:
+			# A slab overhead: from below it, a ray up meets its underside (from inside it, none).
+			up.from = Vector3(x, pos.y, z)
+			up.to = Vector3(x, top, z)
+			var over: Dictionary = space.intersect_ray(up)
+			if not over.is_empty() and over["collider"] == hit["collider"]:
 				continue
-			var top: float = (hit["position"] as Vector3).y
-			if top > pos.y:
-				# A slab overhead: from below it, a ray up meets its underside (from inside it, none).
-				up.from = Vector3(x, pos.y, z)
-				up.to = Vector3(x, top, z)
-				var over: Dictionary = space.intersect_ray(up)
-				if not over.is_empty() and over["collider"] == hit["collider"]:
-					continue
-			limit = maxf(limit, top + t.camera_floor_clearance)
+		limit = maxf(limit, top + t.camera_floor_clearance)
 	return limit
 
 

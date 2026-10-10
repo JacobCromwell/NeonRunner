@@ -18,6 +18,13 @@ these as they go.
   save goes (`Player.grapple_save` is asked with the cause, `&"revive"`), so in this fight it would put the
   runner on the higher roof, in its lane that leads up; the boss may answer the revive differently. Is that
   right, or should a revive put them back on the roof they fell from?
+- **The blob shadow on a raised floor in levels too?** (GDD §3: the shadow reads height and gaps). In
+  every level the runner's shadow is drawn at the street's level, even when they stand on something raised
+  (a hover truck's roof, the Floating Head's deck, The House's deck, the Swarm host's top): below whatever
+  they stand on. In the Beach's climb it lies on the floor under the runner instead (`Player.shadow_on_floor`,
+  on while `RunWorld.camera_climbs` is). Placeholder: levels and the other bosses keep the street-level
+  shadow, unchanged. Offered as a possible improvement: draw it on the surface under the runner everywhere
+  (one condition in `Player._update_shadow`).
 - **Landing back on the floor they came from** (GDD §10: "the rest drop them back onto the floor they came
   from, where Mecha Guppy is eating: falling into it is instant death"). Is landing on a part of the lower
   floor the shark hasn't eaten yet survivable (the runner carries on down there, where the next pad up may

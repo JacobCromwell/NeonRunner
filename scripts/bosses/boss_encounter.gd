@@ -46,7 +46,8 @@ extends Node3D
 ## cause) (where the grapple hook's save, and a revive after a fall, take the runner: GDD §10, the Beach's
 ## climb pulls them up onto the higher roof).
 ## A boss that raises the floor (the Beach's climb, GDD §10) also sets, as the runner climbs, the floor
-## their falls count from (Player.floor_base), and turns on the climbing camera (RunWorld.camera_climbs);
+## their falls count from (Player.floor_base), and turns on the climb's view (RunWorld.camera_climbs: the
+## climbing camera, and the runner's shadow on the floor under them);
 ## its props take a height (BossProps: fences, blocks, pads, ceilings at their own height and lane by lane,
 ## roofs, floor warnings), and the runner rides any ceiling at its own height (Player.ceiling_y).
 ## Helpers: add_part(), spawn_enemy() (normal enemies: a cyborg drop, a

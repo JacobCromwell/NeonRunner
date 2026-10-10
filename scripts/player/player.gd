@@ -116,6 +116,10 @@ var theft_immune_left: float = 0.0
 var dashing: bool = false
 ## Accessibility (reduced flashing): the invulnerability tint holds steady instead of flickering.
 var steady_flash: bool = false
+## The blob shadow lies on the floor found under the player (a roof high above the street) instead of at
+## the street's level: on while the climb is on (RunWorld.camera_climbs sets it: the Beach's boss), off in
+## every level and every other boss fight, where it's drawn at the street's level as it always was.
+var shadow_on_floor: bool = false
 
 var distance: float = 0.0
 var speed: float = 0.0
@@ -1492,10 +1496,10 @@ func _switch_dir() -> int:
 	return _bump_dir
 
 
-## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps: on the
-## surface the ray finds, the street, a raised floor under the player (a roof high above the street) or
-## the ceiling's underside, wherever it is. Over a gap there's no surface, so no shadow, which is itself a
-## cue.
+## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps: at the street's
+## level on the floor, or on the floor found under the player while the climb is on (shadow_on_floor: a
+## roof high above the street); on the ceiling's underside, wherever it is (ceiling_y). Over a gap there's
+## no surface, so no shadow, which is itself a cue.
 func _update_shadow() -> void:
 	if surface == Surface.WALL or not is_inside_tree():
 		_shadow.visible = false
@@ -1510,10 +1514,11 @@ func _update_shadow() -> void:
 	_shadow.visible = not hit.is_empty()
 	if hit.is_empty():
 		return
-	var surface_y: float = (hit["position"] as Vector3).y
-	var gap: float = absf(position.y - surface_y)
+	if on_floor and shadow_on_floor:
+		plane_y = (hit["position"] as Vector3).y
+	var gap: float = absf(position.y - plane_y)
 	var s: float = clampf(1.0 - gap / 6.0, 0.35, 1.0)
-	_shadow.global_position = Vector3(position.x, surface_y + (0.02 if on_floor else -0.02), position.z)
+	_shadow.global_position = Vector3(position.x, plane_y + (0.02 if on_floor else -0.02), position.z)
 	_shadow.scale = Vector3(s, 1.0, s)
 
 

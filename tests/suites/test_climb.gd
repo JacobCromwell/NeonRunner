@@ -13,8 +13,10 @@ extends TestSuite
 ## - the floor base: a fall off a roof 20 m up dies as far below it, and as soon, as a fall into the street's
 ##   pits, and is in the pit (no lane switches) as far below it; without a floor base the same fall lands on
 ##   the street; a floor base above the runner never drops them;
-## - falls faster than pit_depth a frame land where they cross a floor (an air slide's fast fall, a long
-##   drop), where they used to drop through it now and then;
+## - falls faster than pit_depth a frame land where they cross a floor (an air slide's fast fall onto the
+##   street or back onto a ceiling, a long drop), where they used to drop through it now and then;
+## - the blob shadow lies on the roof under the runner only while the climb is on (RunWorld.camera_climbs);
+##   otherwise at the street's level, as it always was;
 ## - the grapple hook's save, and a revive after a fall, go where the boss says (Player.grapple_save, wired
 ##   to BossEncounter._grapple_save): onto the higher roof, into its lane; unset, as they always were;
 ## - the climbing camera (RunWorld.camera_climbs) keeps the runner on screen all the way up a climb to 30 m,
@@ -36,6 +38,7 @@ func run() -> void:
 	await _test_roof_drop()
 	await _test_floor_base()
 	await _test_fast_falls()
+	await _test_shadow()
 	await _test_grapple()
 	await _test_boss_hook()
 	await _test_camera()
@@ -395,8 +398,10 @@ func _test_floor_base() -> void:
 # --- Fast falls land ------------------------------------------------------------------------
 
 ## A fall faster than pit_depth a frame lands where it crosses a floor (Player._crossed_top): an air slide's
-## fast fall onto the street, sliding at every moment of a jump (it used to drop through the street now and
-## then, about one landing in four), and drops of 15 m onto the street at many frame phases.
+## fast fall, pressed 1 to 40 frames into a jump, onto the street and back onto a ceiling by a rider who
+## jumped off it (on the unchanged code, 437d46e, the slide dropped through the street at 4 of those 40
+## timings, 3, 11, 30 and 34 frames, and at the same 4 threw the ceiling rider off it mid-ceiling with an
+## early hull_end); and drops of 15 m onto the street at many frame phases.
 func _test_fast_falls() -> void:
 	for lanes: int in LANES:
 		var tag: String = "lanes=%d" % lanes
@@ -406,7 +411,7 @@ func _test_fast_falls() -> void:
 		await physics_frames(10)
 		var landed: int = 0
 		var trials: int = 0
-		for wait: int in range(4, 34):
+		for wait: int in range(1, 41):
 			p.press(&"jump")
 			await physics_frames(wait)
 			p.press(&"slide")
@@ -416,9 +421,34 @@ func _test_fast_falls() -> void:
 				landed += 1
 			if not p.alive:
 				break
-			await physics_frames(50)
-		check(landed == trials and trials == 30, "an air slide's fast fall lands on the street at any moment of a jump (%d of %d) %s"
+			await physics_frames(10)
+		check(landed == trials and trials == 40, "an air slide's fast fall lands on the street at any moment of a jump (%d of %d) %s"
 			% [landed, trials, tag])
+		# On a ceiling: a rider jumps off it and slides back up onto it, never through it.
+		var high: RunWorld = _world(lanes, [], 1500.0)
+		var rider: Player = high.player
+		_props(high).pad(lanes / 2, 40.0)
+		_props(high).ceiling(37.0, 1400.0)
+		await tree.physics_frame
+		var ends: Array[StringName] = _events(high)
+		await _until(high, func() -> bool: return _on_ceiling(rider), 4.0)
+		var back: int = 0
+		var tries: int = 0
+		for wait: int in range(1, 41):
+			rider.press(&"jump")
+			await physics_frames(wait)
+			rider.press(&"slide")
+			await _until(high, func() -> bool: return _on_ceiling(rider) or rider.surface == Player.Surface.FLOOR, 2.0)
+			tries += 1
+			if _on_ceiling(rider) and not ends.has(&"hull_end"):
+				back += 1
+			else:
+				break
+			await physics_frames(10)
+		check(back == tries and tries == 40 and rider.alive,
+			"a ceiling rider's slide back up lands on the ceiling at any moment of a jump, never thrown off it (%d of %d, %s) %s"
+			% [back, tries, ends.count(&"hull_end"), tag])
+		await sim.free_world(high)
 		landed = 0
 		trials = 0
 		if p.alive:
@@ -435,6 +465,29 @@ func _test_fast_falls() -> void:
 				await physics_frames(5)
 		check(landed == trials and trials == 16, "a 15 m drop lands on the street at every frame phase (%d of %d) %s"
 			% [landed, trials, tag])
+		await sim.free_world(world)
+
+
+# --- The blob shadow -----------------------------------------------------------------------
+
+## The blob shadow (Player._update_shadow) lies on the roof under the runner only while the climb is on
+## (RunWorld.camera_climbs, through Player.shadow_on_floor); otherwise it's drawn at the street's level under
+## them, as it always was (on a hover truck's roof or a boss's deck in every level).
+func _test_shadow() -> void:
+	for lanes: int in LANES:
+		var tag: String = "lanes=%d" % lanes
+		var world: RunWorld = _world(lanes)
+		var p: Player = world.player
+		_props(world).roof(BossProps.ALL_LANES, -20.0, 300.0, 9.0)
+		await _place(world, lanes / 2, 9.0)
+		var shadow := p.get(&"_shadow") as MeshInstance3D
+		await _until(world, func() -> bool: return p.distance > 20.0, 2.0)
+		check(not p.shadow_on_floor and shadow.visible and absf(shadow.global_position.y - 0.02) < 0.001,
+			"off the climb, the shadow is drawn at the street's level, as ever (%.3f m) %s" % [shadow.global_position.y, tag])
+		world.camera_climbs = true
+		await physics_frames(2)
+		check(p.shadow_on_floor and shadow.visible and absf(shadow.global_position.y - 9.02) < 0.001,
+			"with the climb on, on the roof under the runner (%.3f m) %s" % [shadow.global_position.y, tag])
 		await sim.free_world(world)
 
 
@@ -649,7 +702,7 @@ func _test_camera() -> void:
 			"it never sits inside a roof and keeps its clearance over one (%d frames in; %.3f m short; %s) %s"
 			% [r["in_roof"], r["near_roof"], r["worst_note"], tag])
 		check(float(r["under"]) <= 0.001, "it keeps camera_ceiling_clearance under every ceiling (%.3f m over) %s" % [r["under"], tag])
-		check(float(r["step"]) < 0.6, "and never snaps: at most %.3f m up or down in a frame %s" % [r["step"], tag])
+		check(float(r["step"]) < 0.4, "and never snaps: at most %.3f m up or down in a frame %s" % [r["step"], tag])
 	var plain: Dictionary = await _climb_camera(5, false)
 	check(int(plain["off_high"]) > 0, "without the climbing view, the runner leaves the screen 25-30 m up (%d frames)" % plain["off_high"])
 
