@@ -546,6 +546,29 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   the feet within `GameRules.stomp_tolerance` of the hazard's `bottom_y()`). Only such hitboxes can be
   stomped from the ceiling; on the floor nothing changed.
 - Falls aren't hazards: the Player handles them (the grapple hook saves one fall).
+  - **Counted from the floor fallen from** (task E5e-a, for GDD §10's climb, the Beach's boss): the pit
+    (`pit_depth`: no more lane switches, jumps or wall entries; the grapple fires here) and the fall's death
+    (`fall_death_depth`) are measured down from `Player.fall_base()`: the floor base a boss that raises the
+    floor sets (`Player.floor_base`, 0 in every level and every other boss fight), or the floor the runner
+    last stood on (`Player.floor_y`) if that's lower, so a floor base raised ahead of the climb never drops a
+    runner who isn't up there yet. A fall off a roof 20 m up then ends as soon, and as far below it, as a fall
+    into the street's pit (about 0.5 s), where it took about 1.2 s counted from the street.
+  - **The save goes where the boss says**: the grapple's save, and a revive after a fall, pull the runner up
+    with the grapple's pull from just under a floor (`Player._pull_up`): by default straight up out of the pit
+    (just under `fall_base()`, as it always was), or where `Player.grapple_save` says, a Callable a boss fight
+    sets to its own hook as it begins (`BossEncounter._grapple_save(player, cause)`, `cause` &"grapple" or
+    &"revive"; the framework's returns `{}`, the default). It returns `{lane, height}`: the lane to pull them
+    into (moved across like a lane switch) and the world height of the floor to pull them up onto (GDD §10:
+    the Beach's climb pulls them up onto the higher roof, into its nearest lane that leads up). Either may be
+    left out; the save never pulls them down.
+  - **A fast fall lands where it crosses a floor.** A landing is found by `_support_top`'s rays, 0.6 m above
+    the feet to 0.3 m below, and allowed up to `pit_depth` below the top; a fall faster than `pit_depth` a
+    frame could end a frame that far below a top it passed and drop through it. Such a frame now looks from
+    where the feet were as it began (`_crossed_top`) and lands on the highest top they passed. Slower falls
+    never need it, so they land exactly as before; it catches the air slide's fast fall (22 m/s and more:
+    it dropped through the street in 11 of 40 slide timings tried on the unchanged code), long drops off
+    high ceilings, and the anti-grav pull up to a ceiling higher than `ceiling_height` (which could pass
+    through it and fall back).
 - **The armor** (GDD §4 and §8, owner's playtest, September 30, 2026) is a state with rules of its own,
   `DamageRules.Armor`: up with its hits left, or broken and coming back. Every run the profile starts
   (levels, boss fights, retries, quick play, endless, the web demo) carries it free (`Loadout.armor`),
@@ -576,7 +599,23 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   `Player._bump_ceiling_edge`, a bump that stops short of the ceiling's edge). The player asks the
   ceilings themselves: a ray on the hull layer over the middle of each lane (`_ceiling_over`), so the
   track's ceilings and a boss's (`BossProps.ceiling`) hold the player in alike, and a pad lands the
-  player in its own lane even if a switch was under way (`_hold_to_pad_lane`).
+  player in its own lane even if a switch was under way (`_hold_to_pad_lane`). A ceiling whose lanes end
+  at different distances (`BossProps.ceiling_lanes`: one section per run of lanes ending together) holds
+  the player within the lanes still covered where they are, and each lane drops at its own end.
+- **Ceilings at any height** (task E5e-a, for GDD §10's climb). Each ceiling carries its own height: its
+  collision box on the hull layer. A pad flips the player to the first ceiling over the pad's lane within
+  `Player.CEILING_SEARCH` (30 m) of the feet (`_ceiling_over_pad`), and `Player.ceiling_y` holds the
+  height of the ceiling they ride (or rode last), which the flip (`_flip`), the ride (`_support_top`,
+  `_surface_y`), the drop at its end, the lanes on it (`_ceiling_over`), the shadow and the climbing camera
+  all use. With no ceiling over the pad the standard height stands in (`ceiling_height` above
+  `fall_base()`): the player flips up into nothing and drops back, as ever. A ceiling within
+  `HEIGHT_SNAP` (1 mm) of the standard height is taken at exactly that height, so every level's ceilings
+  (all at `ceiling_height`) play exactly as before; one that moves while it's ridden (a gunship's belly
+  coming down, the Floating Head's third-window ceiling lowering in) takes `ceiling_y` along while the
+  player stands on it (`_follow_ceiling`), so the drop at its end comes from where it really is. At its
+  end the player drops onto whatever is below on the floor layer: a raised roof (landed on at any height
+  through `_support_top`, and `_crossed_top` for a long drop), the floor far below, or nothing (a fall).
+  `Player.floor_y` is the floor they stand on or last stood on (the street or a raised one).
 - **Wall fences are fences** (task B5; GDD §9.1: "the same rules as floor fences"). A wall fence's field is
   an electrical Hazard like a floor fence's (TrackBuilder._build_wall_fence), so DamageRules lets armor, the
   shield and the dash through and never claws, and weapons never see it (it's no enemy). It's on the
@@ -2757,6 +2796,25 @@ ranges at 3, 5 and 6 lanes and checks all of this, so every zone's skin is held 
 `ceiling_section` (or `hull`) from the section, keep the band and every glow past the far end above the
 underside, and check the drop on both renderers (`skin_review --narrow`, Review tools).
 
+**The climbing view** (task E5e-a, for GDD §10's climb: the camera follows the runner up). The run camera
+follows only `camera_follow_y` (0.45) of the runner's height and sees a ceiling from below at a fixed
+`camera_ceiling_height`, so 25-30 m up the runner would leave the top of the screen and, under a high
+ceiling, the camera would sit inside the roof below it. A boss turns on `RunWorld.camera_climbs` (off in
+every level and every other boss fight, where the camera is exactly as it was): the usual framing is kept
+to the floor the runner is on or came from (`Player.floor_y`) instead of the street, and on a ceiling the
+usual view from below is kept to that ceiling's own height (`Player.ceiling_y`; `RunCamera._climb_aim`).
+It never sits inside a roof: `RunCamera.floor_limit` keeps it `camera_floor_clearance` above any floor-layer
+top within `CEILING_SIDE` to either side, from `CEILING_BEHIND` behind to some way ahead, whose top is up to
+`FLOOR_REACH` above it, but not one it's beneath (a raised slab it passes under: a ray up meets its
+underside). The camera eases toward a height that clears a roof `camera_climb_lead` seconds of running
+ahead, so it rises over the higher roof a ceiling rider will drop onto before it gets there, and is held
+above any roof right at it. `ceiling_limit` holds as always and wins where both can't be kept. Every target
+is eased as before, so a ride up to a ceiling and a landing on a higher roof never snap the view; while it
+climbs, a landing's shake measures the fall down to the floor landed on, not from the street
+(`RunEffects`). `test_climb` climbs five steps to a roof 30 m up at 3, 5 and 6 lanes and checks the runner
+stays on screen, the camera is never in a roof and keeps under every ceiling, and never moves more than
+0.6 m in a frame; without the climbing view the runner leaves the screen up there.
+
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
 Corporate), `BeachSkin` (Zone 6, the Beach; task D10, in the campaign since D10c), `DeadZoneSkin` (Zone 7, the
@@ -3754,7 +3812,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/boss_encounter.gd` | the fight: health and phases, damage, the checkpoint, the armor rule, the light; helpers and hooks for boss scripts |
 | `scripts/bosses/boss_part.gd` | a piece of the boss in the world: an Enemy the director runs (claw-immune, the dash passes, weak points, surfaces) |
 | `scripts/bosses/boss_arena.gd` | the fight's track: generator laps joined ahead for as long as the fight lasts; `add_pieces()`; track queries |
-| `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings, a wall taken away, floor warnings |
+| `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings (over a lane range, or lane by lane), roofs, a wall taken away, floor warnings; all but the wall at a height (a raised floor) |
 | `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
 | `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
@@ -3800,6 +3858,19 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   (steady with Reduced flashing; `warned(lane, from, to)` says where they are, and pickups keep off
   them); `floor_warning(node, lane, from, to)` counts a boss's own warning drawn its own way (the
   Sleep Taker's mist, its slash's lanes) in `warned()` the same way.
+  **At a height** (task E5e-a, for GDD §10's climb): fences, blocks, pads, ceilings and the floor warnings
+  take an optional `height`, the floor they stand on (0, the street, as always; a roof's top), and are
+  placed as on the street that much higher; a ceiling hangs `ceiling_height` over its floor. `ceiling` takes
+  an optional lane range (`Vector2i(first, last)`, every lane by default: `ALL_LANES`), and
+  `ceiling_lanes(start, ends, height)` builds a ceiling whose lanes end at their own distances (the lanes
+  that lead up run further), one section per run of lanes ending together, each with its far end's band.
+  `roof(lanes, start, end, height)` is a raised floor's top over a lane range (a box on the floor layer,
+  reaching down to the street unless given a `depth`; no hazard, no lane blocker, no look but an optional
+  grey box: the boss adds its look and whatever its sides and front must do). `warned(lane, from, to,
+  height)` asked at a height counts only the warnings on that floor (within `WARNED_HEIGHT`). The runner
+  rides a ceiling at its own height and lands on a roof at any height (Damage and interactions: Ceilings
+  at any height, and Falls); a boss that raises the floor also sets `Player.floor_base` as the runner climbs,
+  its grapple hook (`_grapple_save`) and the climbing camera (`RunWorld.camera_climbs`).
 - **Parts** (`BossPart`, made with `add_part()` through the director): a boss's body shares the fight's
   health (weapon hits go to `BossEncounter.damage`, nothing else defeats it) and has weak points
   (`add_weak_point`: a stomp from above is a big hit; `set_weak_points_enabled` for weak points that
@@ -3869,7 +3940,8 @@ parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tu
 slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks it needs:
 `_plan_lap`, `_build_boss`, `_on_phase_started` / `_intro_tick`, `_on_pattern_started` /
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
-`_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `_on_armor_pickup_due`. Every attack needs its visual and audio
+`_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `_on_armor_pickup_due`, `_grapple_save` (where
+the grapple's save and a revive after a fall take the runner; the default leaves them as they are). Every attack needs its visual and audio
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
 time from the physics step. The test boss (`TestBoss`) is a small example. `rng`, the armor pickups' and
 the parts' and brought enemies' seeds hash `BossDef.rng_key()`: the boss's id, or its `seed_id`, the id it
@@ -5139,7 +5211,15 @@ ceilings (B3) from the layout to the screen: the
 sections and collision boxes the track builds for each range at 3, 5 and 6 lanes, moves on a ceiling
 (within it, and blocked at its edges with the bump and the clank's event, on real physics), a pad
 holding the player to its lane, a one-lane ceiling ridden and dropped from, the camera kept under a
-ceiling and past its end, and every skin's ceilings (see Zone skins). `test_audio` checks
+ceiling and past its end, and every skin's ceilings (see Zone skins). `test_climb` (task E5e-a) covers the
+climb's core for GDD §10's Beach boss at 3, 5 and 6 lanes: ceilings at their own heights (from the street,
+and from a roof 9 m up to a ceiling at 15 m), a ceiling moving while ridden, a ceiling ending lane by lane
+holding a switch within the lanes it still covers, the drop onto a raised roof in a lane it covers and past
+it (onto the street, or to a death where the street is eaten) in one it doesn't, falls counted from the
+floor base (as soon and as deep as from the street, in the pit as deep; a floor base above the runner never
+dropping them), fast falls landing where they cross a floor, the grapple's save and a revive after a fall
+going where the hook says (and the framework's hook leaving them as they were), the climbing camera up a
+five-step climb to 30 m, and boss props at a height. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. `test_cinematics` checks the cinematic toolkit: its paths (smooth,

@@ -443,6 +443,8 @@ func revive() -> void:
 		_armor_changed()
 	if _death_cause == "fell" or in_pit:
 		in_pit = false
+		# DESIGN-TBD (docs/questions/e5e.md): a revive after a fall asks a boss's grapple_save too, so in the
+		# Beach's climb it puts the runner where the grapple would (the boss sees the cause, &"revive").
 		_pull_up(&"revive")
 	_event(&"revive")
 	revived.emit()
@@ -790,6 +792,8 @@ func _pull_up(cause: StringName) -> void:
 			to = answer
 	if to.has("lane"):
 		_pull_into_lane(int(to["lane"]))
+	# DESIGN-TBD (docs/questions/e5e.md): a save onto a higher floor (the Beach's climb) lifts the runner to
+	# just under it at once, with no rope shown, then pulls them up as any save does.
 	h = maxf(h, float(to.get("height", fall_base())) - tuning.pit_depth)
 	vh = rules.grapple_pull_velocity
 	grounded = false
