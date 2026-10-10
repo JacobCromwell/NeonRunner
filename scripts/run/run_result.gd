@@ -67,7 +67,7 @@ static func from_world(world: RunWorld, context: RunContext, completed_run: bool
 	r.distance = world.player.distance
 	r.stats = world.score.stats()
 	# A level that plays a mini-game (the Beach's volleyball match) pays the game's payout instead of the level's
-	# completion bonus, and takes its stars from the game.
+	# completion bonus, and takes its stars from the game. DESIGN-TBD (docs/questions/d10e.md): instead of, not on top.
 	var game: MiniGame = MiniGame.of(world)
 	if game != null:
 		r.stats.merge(game.stats(), true)

@@ -19,6 +19,8 @@ extends MiniGame
 ##   aside and waves, and the runner runs on across the finish line, where the level ends like any other.
 ## The runner can't die here: nothing on the track hurts and it has no gaps. Every random choice (where each ball
 ## goes) comes from `rng`, seeded by the level, so every attempt plays the same match against the same moves.
+## DESIGN-TBD (docs/questions/d10e.md): everything the owner's request leaves open: the run-in, the court and how the
+## runner leaves it (the net sinks), the hit's box and timing, the rival's aim and pace, the stars and the score.
 
 enum Phase { APPROACH, INTRO, PLAY, POINT, PAYOUT, EXIT, DONE }
 enum BallState { TOSS, TO_RUNNER, TO_RIVAL, WINNER, DEAD }
@@ -189,7 +191,9 @@ func _start() -> void:
 	marker.material_override = _marker_mat
 	marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	marker.rotation.x = -PI * 0.5
-	marker.visible = false
+	# Drawn under the street until the first ball, so its shader compiles during the load (as ShaderWarmup does for
+	# the level's other looks), not in the frame of the first serve.
+	marker.position = Vector3(0.0, -3.0, TrackGeometry.world_z(stand))
 	add_child(marker)
 	hud = VolleyballHud.new()
 	add_child(hud)
@@ -207,8 +211,9 @@ func _physics_process(delta: float) -> void:
 	phase_time += delta
 	match phase:
 		Phase.APPROACH:
-			p.speed_override = approach_speed(p.distance)
-			if p.speed_override <= 0.0:
+			# The run-in is the run's own (a dash still works); from its end the match walks the runner up.
+			p.speed_override = -1.0 if p.distance < run_in_end else approach_speed(p.distance)
+			if p.distance >= run_in_end and p.speed_override <= 0.0:
 				_set_phase(Phase.INTRO)
 				hud.visible = true
 				_show_score()
@@ -234,6 +239,7 @@ func _physics_process(delta: float) -> void:
 			if phase_time >= tuning.payout_seconds:
 				_set_phase(Phase.EXIT)
 				events.append("exit")
+				# DESIGN-TBD (docs/questions/d10e.md): the net sinks into the sand so the runner runs on over it.
 				court.sink(tuning.net_sink_seconds)
 				hud.visible = false
 				ball.visible = false
@@ -449,6 +455,7 @@ func _point(by_runner: bool, call: String) -> void:
 
 
 ## First to points_to_win: the payout (points won × payout_per_point), shown, and the rival's goodbye.
+## DESIGN-TBD (docs/questions/d10e.md): the payout is the level's completion bonus (payout()), instead of the usual one.
 func _end_match() -> void:
 	_set_phase(Phase.PAYOUT)
 	_payout = points_won * tuning.payout_per_point

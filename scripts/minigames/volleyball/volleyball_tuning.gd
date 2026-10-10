@@ -5,7 +5,7 @@ extends Resource
 ## to a volleyball court where a man in swim trunks hits the ball over; the runner gets under it and jumps to hit it
 ## back; a miss gives him a point, returning it "three or four times" wins the runner a point; first to four points;
 ## the runner is paid by the points won (one point 100 credits, four 400), then leaves and crosses the finish line.
-## Everything else here is DESIGN-TBD (docs/questions/volleyball.md). Metres are plain metres (the match stands still,
+## Everything else here is DESIGN-TBD (docs/questions/d10e.md). Metres are plain metres (the match stands still,
 ## so nothing here follows the run's pace), seconds plain seconds.
 
 @export_group("Arrival")
