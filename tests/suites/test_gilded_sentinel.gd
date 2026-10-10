@@ -27,11 +27,12 @@ const AT: float = 60.0
 const SPEEDS: Array[float] = [18.0, 25.0]
 ## Campaign builds, as {id, lanes, seed}, where the danger density pass would add a wall enemy on a
 ## Sentinel's wall section if it didn't ask the Sentinels' rules (SentinelWallsUnchecked; task K4): the Golden
-## Palace at 3 lanes on seed 9039, whose pass would put a window cyborg on the wall section of the Sentinel at
-## 1995 m (the only such build of Golden 2's and the Palace's 240 on seeds 9001-9040 once task K5 merged task
-## C6e's windows; Golden 2 at 5 lanes on seed 9034, K4's case, no longer builds that way). Built as shipped every
-## Sentinel keeps its rules; built without the check, the problem shows (else re-pin the case).
-const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9039}]
+## Palace at 3 lanes on seed 9024, whose pass would put a window cyborg on the wall section of the Sentinel at
+## 2285 m (one of 54 such builds of Golden 2's and the Palace's 720 on seeds 9001-9120 since the H series merged
+## main's Casino; the Palace at 3 lanes on seed 9039, task K5's case, the only one of 240 then, and Golden 2 at 5
+## lanes on seed 9034, K4's, no longer build that way). Built as shipped every Sentinel keeps its rules; built
+## without the check, the problem shows (else re-pin the case).
+const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9024}]
 
 var sim: RunSim
 var t: GildedSentinelTuning

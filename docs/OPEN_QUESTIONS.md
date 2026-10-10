@@ -4296,3 +4296,15 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     seen in play: the Casino's levels have no dash walls or Buzz Overdrives (they come from Corporate 1), nor has its
     endless mode (Casino 2's features). Placeholder: as inherited. Should the Casino have its own (a casino front
     across the street, its flagstones cut)?
+679. **What the Casino merge moved** (notes; not a question)
+    - **Re-pinned scenario cases** (each still shows its scenario, checked both ways):
+      - `test_danger_density`'s route case: Golden 3 at 3 lanes on seed 9019 (main's Golden 2 at 3 lanes on 9004 no
+        longer builds that way with the H series), found among 396 seeded builds.
+      - `test_gilded_sentinel`'s case of a window cyborg on a Sentinel's wall section without the check: Golden 3 at 3
+        lanes on seed 9024 (main's 9039 no longer builds that way). Without the check, 54 of Golden 2's and the
+        Palace's 720 builds on seeds 9001-9120 now show the problem (main: 1 of 240 on 9001-9040); with it, none
+        of them does.
+      - `test_level_cache`'s smash-and-retry attempt plays Golden 1 at 3 lanes (Dead Zone 1 has no doodad in its
+        starting lane before its first wall on K4's curve).
+    - **Corporate 2 at 3 lanes on seed 7101** gets its wall from the last resort (item 677), and Corporate 1's
+      introduction at 5 lanes is late (item 676).
