@@ -31,14 +31,16 @@ const FAIRNESS_ONLY: Array[String] = ["dead_zone/2"]
 ## Builds checked for fairness, as {id, lanes, seed}, where a zone doodad placed after the pass would stand
 ## right past a full row in the only lane the pass's rows leave open, so nothing gets past it: built without
 ## DangerDensity.doodad_ok (DoodadsUnchecked) the floor route through the level breaks there, and with it, it
-## holds. Golden 2 at 3 lanes on seed 9004 (in tests/suites/test_campaign.gd's seed sweep: a row of holes at
-## 640 m leaves lane 1 open, a full fence row follows at 659 m, then the doodad in lane 1 at 663 m) since task K5
-## merged task C6e's showing windows into K4's curve. The cases before it no longer build that way, so each was
-## re-found rather than dropped: golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling)
-## lost it on the 15-level curve before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row
-## the pass touched, a full fence row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with
-## C6e's windows; each case checks it still shows its scenario.
-const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/2", "lanes": 3, "seed": 9004}]
+## holds. Golden 3 at 3 lanes on seed 9019 (rows of holes at 887 and 906 m leave lane 1 open, a fence in each of
+## lanes 0 and 2 follows at 923 m, then the doodad in lane 1 at 927 m) since the H series merged main's Casino
+## (found among 396 seeded builds without DangerDensity.doodad_ok, with Dead Zone 1 at 3 lanes on 9021 and Golden 2
+## at 6 on 9022). The cases before it no longer build that way, so each was re-found rather than dropped: golden/2
+## at 3 lanes on seed 9004 (task K5's: a row of holes, a full fence row, the doodad) lost it with the H series'
+## changes, golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling) on the 15-level curve
+## before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row the pass touched, a full fence
+## row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case checks it
+## still shows its scenario.
+const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9019}]
 ## The request, as the actual increase of a band's summed counts with the dial over those without it,
 ## for enemies and for obstacles alike, at each lane count: about 15% in the first levels, about 35%
 ## in the final ones.

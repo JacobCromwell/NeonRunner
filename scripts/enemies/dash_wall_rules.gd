@@ -83,8 +83,9 @@ extends RefCounted
 ## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
 ## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
 ## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
-## Overdrive an Enforcer Truck counts among its baits), and one with no fair spot even then gets a warning (the
-## campaign tests fail on any): every feature appears (GDD §5). Its own random stream (LevelGenerator.rng_for),
+## Overdrive an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way
+## going too (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677), and one with no fair spot even then gets a
+## warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream (LevelGenerator.rng_for),
 ## so the passes before it place exactly what they did; a level without the feature (or with a count of 0) draws
 ## nothing and is built byte for byte as before.
 ##
@@ -348,6 +349,14 @@ static func after_doodads(gen: LevelGenerator) -> void:
 		var at: float = plan.best(plan.lo, plan.hi, (plan.lo + plan.hi) * 0.5, faces)
 		if not is_nan(at):
 			_place(gen, plan, at, faces)
+	# The last resort, where even that leaves the level no wall: the zone doodads in the way may go too (the H merge,
+	# with task K4's denser curve: Corporate 2 at 3 lanes on seed 7101 had none). DESIGN-TBD (docs/OPEN_QUESTIONS.md
+	# item 677).
+	if faces.is_empty() and _make_room(gen, plan, plan.lo, plan.hi, true):
+		plan = plan_for(gen, t, false, false)
+		var at: float = plan.best(plan.lo, plan.hi, (plan.lo + plan.hi) * 0.5, faces)
+		if not is_nan(at):
+			_place(gen, plan, at, faces)
 	if faces.is_empty():
 		gen.warnings.append("dash walls: no fair spot for one in the level (GDD §5: a feature a level has appears in it)")
 	gen.layout.dash_walls.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -482,8 +491,10 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 ## Overdrive with its floor cut. Never the last of a feature, nor any feature's introduction in the level (the
 ## first of it from its start): what each feature has first stays where it was. Taking content out never makes a
 ## level unfair (as PadPlacement and WideGapPlacement do for their guarantees), and the introduction gets the
-## calm stretch it should have (GDD §6: one new thing at a time). True if anything went.
-static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> bool:
+## calm stretch it should have (GDD §6: one new thing at a time). With `doodads_go` (after_doodads' last resort,
+## where a level would otherwise have no wall at all) the zone doodads in the way may go too: scenery, never a
+## feature, so taking one out moves nothing a feature has. True if anything went.
+static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float, doodads_go: bool = false) -> bool:
 	var lay: LevelLayout = gen.layout
 	var n: int = plan.size()
 	var first_i: int = maxi(ceili((a - plan.lo) / plan.step - 0.0001), 0)
@@ -521,7 +532,10 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float) -> b
 	for h: Dictionary in lay.hulls:
 		mark_fixed.call(Vector2(float(h["start"]), gen.zones.landing_zone(h).y), false)
 	for d: Dictionary in lay.doodads:
-		mark_fixed.call(doodad_span(gen, d), false)
+		if doodads_go:
+			mark_enemy.call(d, doodad_span(gen, d), false)
+		else:
+			mark_fixed.call(doodad_span(gen, d), false)
 	for zone: Vector2 in WideGapPlacement.keep_outs(gen):
 		mark_fixed.call(zone, false)
 	var planted: Array[Dictionary] = ChargePathPlacement.planted_in(lay)
@@ -611,14 +625,18 @@ static func _feature_firsts(gen: LevelGenerator) -> Dictionary:
 	return out
 
 
-## Takes enemies `going` out of the layout (a Buzz Overdrive with its floor cut), unless that leaves a feature
-## with nothing or moves its first (`before`: _feature_firsts), which keeps every feature and introduction where
-## it was; then nothing goes. True if they went.
+## Takes enemies `going` out of the layout (a Buzz Overdrive with its floor cut; zone doodads among them go from
+## the doodads, _make_room's `doodads_go`), unless that leaves a feature with nothing or moves its first (`before`:
+## _feature_firsts), which keeps every feature and introduction where it was; then nothing goes. True if they went.
 static func _take_out(gen: LevelGenerator, going: Array, before: Dictionary) -> bool:
 	var lay: LevelLayout = gen.layout
 	var enemies: Array[Dictionary] = lay.enemies.duplicate()
 	var cuts: Array[Dictionary] = lay.cuts.duplicate()
+	var doodads: Array[Dictionary] = lay.doodads.duplicate()
 	for e: Dictionary in going:
+		if lay.doodads.has(e):
+			lay.doodads.erase(e)
+			continue
 		if String(e.get("type", "")) == BUZZ:
 			var cut: Dictionary = BuzzRules.cut_of(lay, e)
 			if not cut.is_empty():
@@ -631,6 +649,7 @@ static func _take_out(gen: LevelGenerator, going: Array, before: Dictionary) -> 
 		if not is_equal_approx(now, was) and not (is_inf(was) and is_inf(now)):
 			lay.enemies.assign(enemies)
 			lay.cuts.assign(cuts)
+			lay.doodads.assign(doodads)
 			return false
 	return true
 

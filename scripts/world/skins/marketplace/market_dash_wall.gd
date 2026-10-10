@@ -179,10 +179,13 @@ func _cornice(solid: MeshLayer, size: Vector3, wall_z: float, stucco: Color) -> 
 
 
 ## An arcade's lean-to: a slab of corrugated tin on posts, standing out to the box's face over the shop windows.
+## Its tin takes the palette's pale blue-grey (its fifth tone), wrapped as every tone pick is: the Casino's skin
+## inherits this look with a palette of four (its iron).
 func _lean_to(solid: MeshLayer, size: Vector3, wall_z: float, h: float) -> void:
 	var hx: float = size.x * 0.5
 	var hz: float = size.z * 0.5
-	DashWallKit.box(solid, size, -hx + 0.3, hx - 0.3, h + 0.15, h + 0.35, wall_z - 0.05, hz, skin.stucco_colors[4].darkened(0.1),
+	var tin: Color = skin.stucco_colors[4 % skin.stucco_colors.size()]
+	DashWallKit.box(solid, size, -hx + 0.3, hx - 0.3, h + 0.15, h + 0.35, wall_z - 0.05, hz, tin.darkened(0.1),
 		MeshKit.PAT_TIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NZ, 1.0)
 	var posts: int = maxi(2, roundi(size.x / 4.0))
 	for k: int in posts + 1:

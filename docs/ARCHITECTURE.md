@@ -369,7 +369,7 @@ death, R, F6's Restart level) alike. A boss fight's arena never comes here: its 
   `DashBreakable`), a boss arena's next lap or endless mode's next stretch joins it, and an enemy's entry is
   its own one level deep only). So a retry's world, built anew (`RunWorld.build`) from a fresh copy, has every
   doodad and wall standing whole: an attempt that smashed or broke them marked only its own copy (the H merge;
-  `test_level_cache`'s `_test_smashed_stand_again` dashes through a doodad and a wall at Dead Zone 1, dies, and
+  `test_level_cache`'s `_test_smashed_stand_again` dashes through a doodad and a wall at Golden 1, dies, and
   checks both retries: the build's layout exactly, both built whole with the same node, place, layers, shapes and
   look, and an attempt without the dash playing exactly as on a fresh build; `_test_nothing_leaks` smashes and
   marks every one). A generated layout holds plain data only, no Object and no
@@ -1651,8 +1651,8 @@ carry its `mode`: "around", "claim" or "calm"; CLASSIC's none):
   trucks and Sentinels off the window alone (from its start and 10 m before it), and H1's shorter Sentinel turn let a
   CLASSIC window fit right behind a Sentinel's swing with the truck's claim beginning during the next Sentinel's turn;
   the claim (a big attack on, `EnforcerTruck.is_major_attack_active`) would then have that Sentinel let the runner pass.
-  `ShowPlanner._window` keeps the claim off `fixed` in every mode now: on the levels' own seeds only Golden 2 at 6
-  lanes changed (no window; item 673), and of the other seeds tried, one window moved (Golden 2 at 3 lanes, seed 9101).
+  `ShowPlanner._window` keeps the claim off `fixed` in every mode now (`test_enforcer_truck`'s Sentinel case needs it at
+  3, 5 and 6 lanes); on the campaign's builds on K4's curve it changes no window (item 673).
 
 On the six levels' own seeds 12 of the 23 chases get a window before their bait against 9 (Dead Zone 1 at 6 lanes
 beside its hover truck, 1767-1962 m; Golden 1 at 3 lanes in the calm start, the truck arriving at 12 m with its
@@ -2294,7 +2294,9 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 3 by level, DESIGN-
   that leaves the level with none (then one stands in a quiet stretch). A level left with no wall at all makes
   room for one as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger,
   nor a Buzz Overdrive an Enforcer Truck counts among its baits; the spacing of every bait it can't take out
-  stays).
+  stays), and where even that leaves none, the last resort takes the zone doodads in the way out too (`doodads_go`:
+  scenery, never a feature; Corporate 2 at 3 lanes on seed 7101 on K4's curve, `test_dash_walls`' `LAST_RESORT_CASE`;
+  DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 677).
 Both draw from `rng_for("dash_wall")`, so the passes before them place exactly what they did, and a level with a
 count of 0 (or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
 - **A footprint in every lane**, from `approach_seconds` before the face to `after_seconds` past the back, at the
@@ -2318,16 +2320,17 @@ count of 0 (or without the feature) is built byte for byte as before. Its header
   there (`wall_keep_outs`, `WallGapPlacement.keep_outs`; the wall fences' drop windows keep off the footprint).
 - **How many, and where**: up to the level's count, spread through the level past an introduction (a part each, a
   seeded spot aimed for, the best fair spot in the part), then the best of the rest; where that leaves a crowded
-  level short, the most that fit, as far apart as they can be (`_most_apart`). A level asks for no more than its
-  track holds on its most crowded lane count, nor more than leave the danger density pass its share: Dead Zone 1
-  asks two, since its third cost the pass ten pieces on 3 lanes and the final levels fell below their share
-  (`docs/OPEN_QUESTIONS.md` items 672 and 675). Corporate 1 (`feature_starts`, 0.42)
+  level short, the most that fit, as far apart as they can be (`_most_apart`). Corporate 1 (`feature_starts`, 0.42)
   introduces them first, at the first fair spot from the start; where none comes within `intro_window_seconds` the
   introduction makes room (`_make_room`): the face there the fewest enemies of `MAKE_ROOM_TYPES` block (a Buzz
   Overdrive with its cut, a fence generator, a cyborg, a window cyborg, a screech; anything else blocking rules a
   face out) loses them, unless that leaves a feature with nothing or moves any feature's first (each feature's
-  introduction stays where it was). A level with the feature and no fair spot at all gets a warning (every
-  feature appears).
+  introduction stays where it was). Where even that leaves the window no fair spot, the introduction stands at the
+  first spot past it where one fits: Corporate 1 at 5 lanes on K4's curve, where the feature guarantee's forced picks
+  (a fence generator, a vent screech, each the only one of its feature) fill the window (1897 m, from its start at
+  1425 m; `test_dash_walls`' `LATE_INTRODUCTION_LANES`, item 676). A level with the feature and no fair spot at all
+  gets a warning (every feature appears). On K4's denser curve Corporate 1 asks one wall and Golden 2 two (item 675:
+  a level asks no more than its track holds on its most crowded lane count).
 What comes after a wall keeps off it: after the introduction the fill pass (`fill_keep_outs`, every footprint in
 every lane), the danger density pass, the wider gaps, the planted cyborgs and the zone doodads
 (`doodad_keep_outs()`, through `rules_doodad_keep_outs`); after the rest the wall fences' drop windows (the same),
@@ -2552,7 +2555,9 @@ looking like a building in the middle of the street"). What a look gets and keep
   the Golden Zone (`GoldenDashWall`: a rusticated palace, windows, a mirror-glass tower's foot, a gatehouse), the
   Golden Palace (`GoldenPalaceDashWall`: a pilastered marble block, galleries, arched windows, a hall block),
   the City (`CityDashWall`: its four window grids), Gangland (`GanglandDashWall`: a ruined block, a balcony block, a
-  patched shop, a collapsed corner) and the Marketplace (`MarketDashWall`: two shop rows, a market hall, an arcade).
+  patched shop, a collapsed corner) and the Marketplace (`MarketDashWall`: two shop rows, a market hall, an arcade;
+  the Casino's skin inherits it in its iron tones, its tone picks wrapped to the Casino's shorter palette: walls
+  never stand in the Casino, item 678).
   What they share is `DashWallKit` (`scripts/world/skins/dash_wall_kit.gd`): the helpers that lay things in the box
   by height above the floor (`box`, `face`, `bay_faces` for whole windows and arches, `face_profile` and
   `broken_profile` for broken tops, `column`, `frame_rect`, `arch_head`, `finials`, `roof_plant`), `cracks` and
@@ -5134,7 +5139,7 @@ an EMP in its script) at Gangland 3 (5 lanes) and Corporate 2 (3 lanes) playing 
 its first run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits,
 the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
 either retry (and the kept build untouched; every zone doodad and dash wall smashed or marked, then all of them
-standing as the retry's track is built), an attempt at Dead Zone 1 at 3 lanes dashing through a doodad and a dash
+standing as the retry's track is built), an attempt at Golden 1 at 3 lanes dashing through a doodad and a dash
 wall, then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
 and look; the restart's standing in the physics world) and the restart, not dashing, playing as on a fresh build
 (tasks H5 and H7a, the H merge), the debug keys, F6 edits and another level building again, and endless mode

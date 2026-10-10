@@ -4234,17 +4234,18 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     apply per lane count, or a window give way to a wall (a truck with no showing in that chase)?
 
 **Merging main into the H series again** (October 9, 2026: C6e, PERF2, G6b, the E1g follow-up and E5d meet the H series)
-673. **No showing in Golden 2's chase at 6 lanes** (GDD §9.13 "Making room where there is none", §9.11). C6e plans a
-    window in its new modes only where the truck's claim on its turn (`show_claim_seconds`, 2 s before the window) meets
-    no attack that can't wait for a turn (a Gilded Sentinel's turn, a hover truck's entrance), but its first mode
-    (C6c/C6d's) kept them off the window alone. With H1's shorter Sentinel warning (0.6 s) such a window now fit right
-    behind a Sentinel's swing, on Golden 2's own seed at 6 lanes: its claim began during the next Sentinel's turn,
-    and the truck's claim counts as a big attack on as the Sentinel's warning would start, so that Sentinel would let
-    the runner pass for good. Placeholder (the merge, `ShowPlanner._window`): every mode keeps the claim off them, so
-    that chase has no showing (its truck still arrives and chases; Golden 2 at 6 lanes keeps its three dash walls,
-    which the window's spot had squeezed to two). Of the other seeds tried (two more per level and lane count), one
-    window moved 38 m later (Golden 2 at 3 lanes, seed 9101). Or should a showing's claim take a Sentinel's turn there
-    (that Sentinel's swing lost, the truck seen)?
+673. **A showing's claim keeps off a Sentinel's turn in every mode** (GDD §9.13 "Making room where there is none",
+    §9.11). C6e plans a window in its new modes only where the truck's claim on its turn (`show_claim_seconds`, 2 s
+    before the window) meets no attack that can't wait for a turn (a Gilded Sentinel's turn, a hover truck's
+    entrance), but its first mode (C6c/C6d's) kept them off the window alone. With H1's shorter Sentinel warning
+    (0.6 s) such a window can fit right behind a Sentinel's swing with its claim beginning during the next Sentinel's
+    turn; the truck's claim counts as a big attack on as the Sentinel's warning would start, so that Sentinel would
+    let the runner pass for good (`test_enforcer_truck`'s Sentinel case, at 3, 5 and 6 lanes). Placeholder (the
+    merge, `ShowPlanner._window`): every mode keeps the claim off them. Before main's Casino it took Golden 2's
+    showing at 6 lanes on its own seed; on the campaign's builds since (K4's curve) it changes no window (the
+    Enforcer levels' own seeds and two others at 3, 5 and 6 lanes: 47 windows), and Golden 2's chase at 6 lanes has
+    no showing with it or without it (CLASSIC's quiet keeps its window off the Sentinels). Or should a showing's
+    claim take a Sentinel's turn (that Sentinel's swing lost, the truck seen)?
 674. **The Golden Convergence's explosions are now the shared fireball** (GDD §11 "Explosions", §10 The Golden
     Convergence; follows item 487). Task E5d drew its chain reaction's fire itself (`GoldenConvergenceBlast`: blended,
     saturated orange balls with dark smoke, since added light read a washed-out peach over the court's marble and
@@ -4259,14 +4260,39 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     pale sky than E5d's orange did. Placeholder: as above (`RIPPLE_GROUP` and the `*_FIRE_SIZE`, `*_FIRE_PACE`
     constants in the Golden Convergence's scripts). Keep the shared look here, or give the shared fireball a darker,
     blended variant for bright backgrounds (every zone would share it)?
-675. **Two dash walls in Dead Zone 1** (GDD §9.14; the danger density request in `docs/USER_REQUESTS.md`; follows
-    items 644 and 672). Past an introduction the walls stand after the danger density pass and take out the plain
-    pieces in their way, so that the share of danger the owner asked for holds. With main's C6e and the H series
-    together, the final levels' sample (`test_danger_density`: Dead Zone 1, Golden 2 and Golden 3 on their own seeds
-    and two others) measured 29.7% more obstacles on 3 lanes, below the 30 to 40% the request was accepted at (main
-    alone 30.1%, the H series alone 30.7%). Dead Zone 1's walls account for it: with three, its builds with the pass
-    hold ten obstacles fewer on 3 lanes than with no walls (319 against 329), while with two they hold as many as with
-    none, and its builds without the pass lose nothing either way. Placeholder: `dash_walls` 2 in
-    `data/levels/dead_zone_1.tres` (was 3), at every lane count, and the sample measures 31.0% (34.2% on 5 lanes,
-    36.5% on 6). Or should Dead Zone 1 keep three, with the final levels' dials raised instead (Golden 3 at the 0.40
-    cap measures 30.4%), or should the measure count a wall in place of the pieces it took out?
+**Merging main's Casino into the H series** (October 10, 2026: K1-K5, the Casino zone and K4's curve, meet the H series)
+675. **Fewer dash walls in Corporate 1 and Golden 2 on the Casino's curve** (GDD §9.14; follows items 644 and 672).
+    With main's Casino and K4's curve ("no level gets easier") the levels are denser: on their own seeds Corporate 1
+    at 3 lanes has room for one wall (its introduction) and Golden 2 at 5 lanes for two. Following item 672's rule (a
+    level asks for no more than its track holds on its most crowded lane count), placeholder: `dash_walls` 1 in
+    `data/levels/corporate_1.tres` (was 2) and 2 in `golden_2.tres` (was 3), so their other lane counts lose one
+    too. On the levels' own seeds at 3, 5 and 6 lanes: Corporate 1 1/1/1, Corporate 2 1/1/1, Dead Zone 1 3/3/3,
+    Dead Zone 2 1/1/1, Golden 1 1/1/1, Golden 2 2/2/2, Golden 3 2/2/2 (and no wall in any of the 47 showing windows
+    of their own seeds and two others). Dead Zone 1 keeps its three (before the Casino the merge had it ask two, as
+    its third cost the danger density pass ten pieces on 3 lanes; with K5's wall fence share the final levels keep
+    32.0% more obstacles there in `test_danger_density`'s sample either way). Or should a level's count apply per
+    lane count (item 672's other way)?
+676. **Corporate 1's dash wall introduction comes late at 5 lanes** (GDD §9.14, §6 "one new thing at a time"; like
+    item 529's wall fences). On its own seed at 5 lanes the feature guarantee rebuilds the level (task K4: a cyborg, a
+    fence generator and a vent screech missing from the first build), and its forced picks, the generator at 1371 m
+    (a dash bait: nothing that invites a dash comes within the dash's cooldown before a wall) and the vent screech at
+    1515 m, each the only one of its feature, with ceilings and a pad, leave the introduction's window (from 1425 m,
+    10 s) no fair spot and no room to make. The introduction then stands at the first spot one fits, 1897 m, 201 m
+    past the partial wall fences' introduction (1696 m); moving the feature's start (0.34 to 0.46 of the level)
+    doesn't help. Placeholder: as built; `test_dash_walls`' `LATE_INTRODUCTION_LANES` (5) checks it both ways (still
+    late, and no wall fits from the start up to it). Should the generator hold room for an introduction against the
+    guarantee's forced picks (item 529's generator task)?
+677. **The zone doodads make way for a dash wall as the last resort** (GDD §5: a feature a level has appears in it;
+    §9.14). On Corporate 2 at 3 lanes on seed 7101 (one of `test_dash_walls`' sweep seeds) K4's denser curve left no
+    fair spot for a wall even after making room by taking out enemies, so the level had none (a warning).
+    Placeholder: as a last resort `DashWallRules.after_doodads` makes room with the zone doodads in the way going too
+    (scenery, never a feature: `_make_room`'s `doodads_go`); there one doodad (2928 m, lane 1) goes and the wall
+    stands at 2928 m. Only a build that would otherwise have no wall changes; `test_dash_walls`' `LAST_RESORT_CASE`
+    checks it both ways. Is taking out scenery for a wall acceptable, or should such a build go without one?
+678. **The Casino's dash wall and floor cut looks** (GDD §9.14, §9.9; tasks H7b and H3 with K1). The Casino's skin
+    inherits the Marketplace's (`CasinoSkin` extends `MarketplaceSkin`): a shopfront dash wall in the Casino's iron
+    tones (the arcade look's tin lean-to takes the palette's fifth tone wrapped, `MarketDashWall._lean_to`, as the
+    Casino's palette has four to the Marketplace's six: it crashed before), and the stall roofs' floor cut. Neither is
+    seen in play: the Casino's levels have no dash walls or Buzz Overdrives (they come from Corporate 1), nor has its
+    endless mode (Casino 2's features). Placeholder: as inherited. Should the Casino have its own (a casino front
+    across the street, its flagstones cut)?

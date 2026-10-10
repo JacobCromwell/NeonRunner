@@ -19,7 +19,7 @@ extends TestSuite
 ##   (and more), each retry starts from the build's layout, with every enemy still to come, every credit,
 ##   every fence on, no floor cut begun, every zone doodad and dash wall standing, the build's length and no score;
 ##   the kept build is untouched.
-## - Smashed doodads and dash walls stand again (tasks H5 and H7a, the H merge): an attempt at Dead Zone 1 (3 lanes)
+## - Smashed doodads and dash walls stand again (tasks H5 and H7a, the H merge): an attempt at Golden 1 (3 lanes)
 ##   that dashes through a doodad and a dash wall, then dies, marks them in its own layout only; both retries reuse the
 ##   build, start from its layout exactly and build both whole (the same node, place, layers, shapes and look, standing
 ##   in the physics world), and the restart, not dashing, plays exactly as an attempt on a fresh build (the cache off).
@@ -70,7 +70,7 @@ func run() -> void:
 	await _test_retries_play_the_same("corporate/2", CORPORATE_2_LANES, 44.0, ["credits", "kills", "cuts"])
 	App._review_args = _review_args(5)
 	await _test_nothing_leaks("corporate/2")
-	await _test_smashed_stand_again("dead_zone/1")
+	await _test_smashed_stand_again("golden/1")
 	await _test_builds_again()
 	await _test_endless()
 	App._review_args = saved_args
@@ -488,7 +488,7 @@ func _spoil(world: RunWorld) -> Dictionary:
 ## Tasks H5 and H7a meet PERF2 (the H merge): the dash smashes a zone doodad, and a dash wall breaks as the runner
 ## reaches it, each marked in the attempt's own copy of the layout ("smashed", a wall's "broken_by") and never built
 ## again in that attempt's world (TrackBuilder). A retry plays a fresh copy of the kept build in a world built anew, so
-## both stand again. At campaign level `id` (3 lanes: its first doodad stands in the runner's starting lane, well
+## both stand again. At campaign level `id` (SMASH_LANES: a doodad stands in the runner's starting lane, well
 ## before its first wall; god mode and no falls, every item, the dash at its top tier), each from PLAY:
 ## - an attempt that never dashes, the cache off (a fresh build, as before PERF2), past the wall: pushed by the doodad,
 ##   crashing through the wall (god mode);
@@ -511,7 +511,7 @@ func _test_smashed_stand_again(id: String) -> void:
 	App.start_level(step)
 	await tree.process_frame
 	var pick: Dictionary = _smash_targets(App.run.world)
-	check(not pick.is_empty(), "%s at 3 lanes has a doodad in the runner's lane well before its first dash wall" % id)
+	check(not pick.is_empty(), "%s at %d lanes has a doodad in the runner's lane well before its first dash wall" % [id, SMASH_LANES])
 	if pick.is_empty():
 		LevelCache.enabled = true
 		App._review_args = saved_args
@@ -531,7 +531,8 @@ func _test_smashed_stand_again(id: String) -> void:
 	var w: RunWorld = App.run.world
 	var doodad: Dictionary = w.layout.doodads[int(pick["doodad"])]
 	var wall: Dictionary = w.layout.dash_walls[int(pick["wall"])]
-	var tag: String = "%s (3 lanes; the doodad at %.0f m, the wall at %.0f m)" % [id, float(doodad["start"]), float(wall["start"])]
+	var tag: String = "%s (%d lanes; the doodad at %.0f m, the wall at %.0f m)" % [id, SMASH_LANES, float(doodad["start"]),
+		float(wall["start"])]
 	check(bool(first["doodad_broke"]) and bool(doodad.get("smashed", false)) and String(first["doodad_sig"]) != "",
 		"%s: the dash smashes the doodad, marked in the run's layout, its look hidden and its collision off (%s)" % [tag, first["events"]])
 	check(bool(first["wall_broke"]) and bool(wall.get("smashed", false)) and String(wall.get("broken_by", "")) == "dash"
