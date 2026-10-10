@@ -1,7 +1,8 @@
 class_name HintDirector
 extends Node
 ## First-encounter hints collected before play for LevelIntroScreen. The catalog's existing
-## triggers select unseen hints from the generated layout, plus a boss's hints and actual pickups.
+## triggers select unseen hints from the generated layout, plus a boss's hints and actual pickups, and a mini-game
+## level's own (MiniGame.hint_trigger: "minigame:<id>", first among its pages).
 ## No runtime events present hints. Only acknowledge() marks displayed entries seen.
 
 signal hint_shown(id: String, text: String)
@@ -36,6 +37,9 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool, p_context: RunC
 			enemies.append("bad_dream")
 	var encounter: BossEncounter = BossEncounter.of(world)
 	var boss_id: String = String(encounter.def.id) if encounter != null else ""
+	# A mini-game level's own hints (the Beach's volleyball match): "minigame:<id>".
+	var game: MiniGame = MiniGame.of(world)
+	var game_trigger: String = game.hint_trigger() if game != null else ""
 	for enemy: Enemy in world.director.active:
 		enemies.append("host" if enemy.is_host else String(enemy.type_id))
 	var pickups: PackedStringArray = []
@@ -65,6 +69,8 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool, p_context: RunC
 				include = not _has_boss_hint(parsed.get("hints", []), boss_id)
 		elif trigger.begins_with("boss:"):
 			include = boss_id != "" and trigger.begins_with("boss:" + boss_id + "/")
+		elif trigger.begins_with("minigame:"):
+			include = game_trigger != "" and trigger == game_trigger
 		elif trigger == "pickup" or trigger.begins_with("pickup:"):
 			include = not pickups.is_empty() if trigger == "pickup" \
 				else pickups.has(trigger.trim_prefix("pickup:"))
@@ -83,6 +89,11 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool, p_context: RunC
 ## Campaign recency is already derived from the actual ordered level configs. Older unseen
 ## encounters remain eligible (skipped pages or hints disabled), but new concepts come first.
 func _is_introduced(trigger: String, boss_id: String) -> bool:
+	# A mini-game level introduces its game; anything else unseen on its track is a reminder after it.
+	if trigger.begins_with("minigame:"):
+		return true
+	if MiniGame.of(world) != null:
+		return false
 	if boss_id != "":
 		return trigger == "enemy:" + boss_id or trigger == "enemy:boss" \
 			or trigger.begins_with("boss:" + boss_id + "/")

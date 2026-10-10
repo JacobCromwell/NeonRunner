@@ -90,7 +90,8 @@ func _test_campaign(campaign: Campaign) -> void:
 	var truck_builds: int = 0
 	var chases_held: int = 0
 	for s: CampaignStep in campaign.steps():
-		if not s.is_level():
+		# A mini-game level (the Beach's volleyball match) has no gaps at all (test_volleyball).
+		if not s.is_level() or s.is_minigame():
 			continue
 		var line: PackedStringArray = []
 		for lanes: int in LANES:

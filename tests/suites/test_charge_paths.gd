@@ -56,7 +56,8 @@ func _test_campaign(campaign: Campaign) -> void:
 		var before_enforcer: int = 0
 		var line: PackedStringArray = []
 		for s: CampaignStep in campaign.steps():
-			if not s.is_level():
+			# A mini-game level (the Beach's volleyball match) isn't generated.
+			if not s.is_level() or s.is_minigame():
 				continue
 			var config: LevelConfig = campaign.configure(s, lanes)
 			var tag: String = "%s at %d lanes" % [s.id, lanes]
@@ -313,7 +314,7 @@ func _test_campaign_plays(campaign: Campaign) -> void:
 	for lanes: int in LANES:
 		var picks: Dictionary = {}  # kind -> [config, cyborg entry, level seconds]
 		for s: CampaignStep in campaign.steps():
-			if not s.is_level():
+			if not s.is_level() or s.is_minigame():
 				continue
 			var config: LevelConfig = campaign.configure(s, lanes)
 			var gen: LevelGenerator = LayoutCache.generator(config, tuning, LevelGenerator.load_for(config))

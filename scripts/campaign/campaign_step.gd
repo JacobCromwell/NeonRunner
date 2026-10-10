@@ -34,3 +34,9 @@ func title() -> String:
 
 func is_level() -> bool:
 	return kind == Kind.LEVEL
+
+
+## A level step that plays a mini-game (LevelConfig.minigame: the Beach's volleyball match) rather than a generated
+## layout. Still a level (records, stars, its tile, the results and the shop), but nothing about it is generated.
+func is_minigame() -> bool:
+	return kind == Kind.LEVEL and level != null and level.plays_minigame()

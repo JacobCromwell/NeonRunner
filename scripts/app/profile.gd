@@ -10,7 +10,8 @@ extends RefCounted
 ## The save format. Older saves are brought up to date as they load (_migrate).
 ## 2 (September 30, 2026): armor became a permanent upgrade to the free armor (GDD §4, §8).
 ## 3 (October 8, 2026): The House moved from the Marketplace to the new Casino zone (GDD §5, §10).
-const VERSION: int = 3
+## 4 (October 10, 2026): a new Beach 2, the volleyball match, came in before Sunset Strip, now Beach 3 (GDD §5).
+const VERSION: int = 4
 ## What one unit of armor cost while it was a breakable item (save version 1; the shop never priced it
 ## otherwise): a version 1 save's armor stock is paid back at this price. A record of the past, not a
 ## tunable.
@@ -22,6 +23,9 @@ const V2_HOUSE_OUTRO: String = "marketplace/outro"
 const V3_HOUSE_OUTRO: String = "casino/outro"
 const V2_HOUSE_HINTS: String = "hint/marketplace_boss"
 const V3_HOUSE_HINTS: String = "hint/casino_boss"
+## The step id save version 4 moved (Sunset Strip's, from Beach 2 to Beach 3; _migrate): records of the past.
+const V3_SUNSET_STEP: String = "beach/2"
+const V4_SUNSET_STEP: String = "beach/3"
 
 ## Credits earned in play and not spent: the net worth (GDD §7).
 var earned: int = 0
@@ -231,6 +235,10 @@ static func from_dict(d: Dictionary) -> Profile:
 ##   and led to the Corporate zone, the Casino's outro's place now: a finished one also counts as the
 ##   Casino's outro finished (the Marketplace's own stays finished too), so Corporate's intro, whose step
 ##   before is now the Casino's outro, stays open to a player who had reached it (App.step_unlocked).
+## - 3 → 4: the volleyball match came in as Beach 2 (owner, October 10, 2026), before Sunset Strip, which moved from
+##   Beach 2 to Beach 3. Its records (every tier's "beach/2": stars, best score and time) become "beach/3"'s, so a
+##   player who finished it keeps it, and the new Beach 2 stays to play: open, since Beach 1 is done
+##   (App.step_unlocked), and the first step not done, so Continue leads to it.
 func _migrate(from: int) -> void:
 	if from < 2:
 		var refund: int = stock(&"armor") * V1_ARMOR_PRICE
@@ -251,9 +259,14 @@ func _migrate(from: int) -> void:
 			if key.begins_with(V2_HOUSE_HINTS):
 				seen[V3_HOUSE_HINTS + key.trim_prefix(V2_HOUSE_HINTS)] = seen[key]
 				seen.erase(key)
+	if from < 4:
+		for key: String in records.keys():
+			var prefix: String = key.get_slice("/", 0) + "/"
+			if key.trim_prefix(prefix) == V3_SUNSET_STEP:
+				_move_record(key, prefix + V4_SUNSET_STEP)
 
 
-## Moves the record at `from_key` to `to_key` (save version 3), unless `to_key` already has one.
+## Moves the record at `from_key` to `to_key` (save versions 3 and 4), unless `to_key` already has one.
 func _move_record(from_key: String, to_key: String) -> void:
 	if not records.has(to_key):
 		records[to_key] = records[from_key]

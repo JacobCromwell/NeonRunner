@@ -15,14 +15,16 @@ var credits_stolen: int = 0
 ## Credits paid into the wallet: everything collected (less what thieves kept) plus the completion
 ## bonus on completion, a share of that on death (GDD §4).
 var credits_earned: int = 0
-## What completing paid on top of the credits collected: a level's completion bonus, a boss's payout.
+## What completing paid on top of the credits collected: a level's completion bonus, a boss's payout, a mini-game's
+## payout (MiniGame.payout: the volleyball match's credits for the points won).
 var completion_bonus: int = 0
 var stars: int = 0
 ## Seconds of play: a level's run time, a boss fight's time (with what a checkpoint carried).
 var time: float = 0.0
 var distance: float = 0.0
 ## ScoreKeeper.stats(): kills, stomps, blocked, ramps, longest_wall_run, bonuses, ...; a boss fight
-## adds BossEncounter.stats(): weak_points, phase, phases, time_bonus.
+## adds BossEncounter.stats(): weak_points, phase, phases, time_bonus; a mini-game level MiniGame.stats(): minigame
+## (its id) and the game's own (the volleyball match's points_won, points_lost, returns).
 var stats: Dictionary = {}
 ## From Profile.record_run: new_best, stars_gained, first_clear.
 var record: Dictionary = {}
@@ -64,11 +66,17 @@ static func from_world(world: RunWorld, context: RunContext, completed_run: bool
 	r.time = world.player.elapsed
 	r.distance = world.player.distance
 	r.stats = world.score.stats()
-	if completed_run:
-		r.completion_bonus = rules.completion_bonus(maxi(context.level_index, 0)) if context.mode != RunContext.Mode.QUICK else 0
+	# A level that plays a mini-game (the Beach's volleyball match) pays the game's payout instead of the level's
+	# completion bonus, and takes its stars from the game. DESIGN-TBD (docs/questions/d10e.md): instead of, not on top.
+	var game: MiniGame = MiniGame.of(world)
+	if game != null:
+		r.stats.merge(game.stats(), true)
+	if completed_run and context.mode != RunContext.Mode.QUICK:
+		r.completion_bonus = game.payout() if game != null else rules.completion_bonus(maxi(context.level_index, 0))
 	r._pay(completed_run, rules)
 	# Stars measure the score, which a theft never lowers (ScoreKeeper): a theft costs no star.
-	r.stars = rules.stars_for(completed_run, r.score, world.score.max_credit_score)
+	r.stars = game.stars(completed_run) if game != null \
+		else rules.stars_for(completed_run, r.score, world.score.max_credit_score)
 	return r
 
 

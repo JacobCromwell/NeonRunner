@@ -186,6 +186,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Signs:** wordless, like every zone's.
 - **Place in the campaign:** between Corporate and the Dead Zone (owner, October 9, 2026): zone 6, after the Casino joined as zone 4.
 - **New enemies:** none for now. "Do not worry about any new enemies at this time" (owner, October 9, 2026), so for now it is the one zone that introduces none, a remix of everything before it. Its boss fight brings its own: Mecha Guppy, a giant mechanical shark, and Captain Cogs, a flying pirate (owner, October 10, 2026; §10).
+- **Three levels** (owner, October 10, 2026): Tiki Tides, then a **beach volleyball mini-game**, then Sunset Strip (which was the second level until then).
+- **The volleyball match** (owner, October 10, 2026): the level **starts like a normal level for the first couple of seconds**, then the runner **walks up to a volleyball court** with a net and **another person**: a new character **wearing swim trunks**. He **hits the ball over**; the runner has to **get underneath it and jump to hit it back**, and it goes back and forth. **If the runner misses, he gets a point; if the runner hits it back over the net enough times ("say three or four"), the runner gets a point. First to four points.** The runner then gets a **cash payout by the points won: 100 credits for one point, 400 for all four**, and **leaves and runs across the finish line**. *(Proposed, docs/questions/d10e.md:)* the level's name, *Net Gains*; three returns win a point; a ring on the sand shows where the ball comes down and a closing ring when to jump; a ball that drops, or bounces off a runner who didn't jump, is his point; each ball of a rally comes a little quicker and further away, never quicker than the runner can reach and jump; the payout replaces the level's completion bonus; stars by the points won; the net sinks into the sand after the match so the runner runs on over it; he is a tanned beach player in ocean-blue board shorts and dark sunglasses; the runner can't die in it.
 - **Boss:** Mecha Guppy and Captain Cogs: a giant mechanical shark eating the level from below and a flying pirate throwing bombs, in a climb over tiki bar roofs, under Sunset Strip's setting sun (owner, October 10, 2026; §10).
 
 **Zone 7: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
@@ -221,14 +223,15 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 5. Corporate | 1 · Maglev Line | **Buzz Overdrive** (§9.9) |
 | | 2 · Checkpoint Plaza | The **Tithe Collector** (§9.12) and the **Enforcer Truck** (§9.13, owner, October 4, 2026), with a heavier military presence *(proposed)* |
 | 6. Beach | 1 · Tiki Tides | Nothing new for now: a remix of everything so far, in daylight, with the side walls standing about half as often (owner, October 9, 2026) |
-| | 2 · Sunset Strip | The same remix as the sun starts to set |
+| | 2 · Net Gains *(proposed name)* | A mini-game: a beach volleyball match against a man in swim trunks, paid by the points won (owner, October 10, 2026) |
+| | 3 · Sunset Strip | The same remix as Tiki Tides as the sun starts to set |
 | 7. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
 | | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
 | 8. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
 
-Level names approved by the owner (September 26, 2026; the Casino's on October 9, 2026). The Beach's names were proposed on October 9, 2026, at the owner's request ("create level names that fit the theme").
+Level names approved by the owner (September 26, 2026; the Casino's on October 9, 2026). The Beach's names were proposed on October 9, 2026, at the owner's request ("create level names that fit the theme"), and its volleyball match's on October 10, 2026.
 
 **Skies show progression** (owner, October 8, 2026). Most levels keep their zone's sky; a few change it, so the player sees time passing and what lies ahead:
 - **Neon City 1:** the sun just starting to rise, with pinks and purples touching the undersides of clouds. *(Moved from City 3, which fits it less well thematically; City 2 and 3 keep the dark night sky.)*
@@ -238,7 +241,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 - **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's; The House, which follows Casino 2 since the Casino was added, under the Casino's own sky). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
 - **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
 
-**19 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Beach's, Mecha Guppy and Captain Cogs, designed on October 10, 2026, §10). A flawless run through every level takes about 44 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
+**20 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Beach's, Mecha Guppy and Captain Cogs, designed on October 10, 2026, §10; the Beach's volleyball match is its second level since October 10, 2026). A flawless run through every level takes about 45 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -250,7 +253,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 ## 6. Structure, Progression & Replay
 
 - **Zones:** 8 at launch, each with a distinct look (see §5).
-- **Levels:** 1–3 per zone, each 90–150 seconds.
+- **Levels:** 1–3 per zone, each 90–150 seconds (City 1 is shorter; so is the Beach's volleyball match, about a minute for a flawless match).
 - **Bosses:** one at the end of each zone, except the Marketplace, which leads straight into the Casino (owner, October 8, 2026). Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
   - **Zone 1 outro** (owner, October 8, 2026): the Floating Head crashes to the ground. The camera comes down from its usual place, a little above and behind the runner, to the runner's level. The runner is running, stops, and looks to the left: a **barricade guarded by many enemies**, all reusing the game's own assets. **Barnacle Turrets stand on the floor** instead of the ceiling, so they look like cannons, with a **row of five cyborgs**, **one of the battle trucks** behind them, and a **heli drone** above it. The camera pans back to the runner, who is startled by so many enemies and runs the other way. The runner **jumps off a truck**, an **explosion** goes off behind them, and they **land in Gangland**. Built in task F2a; the staging choices made to fill in these beats are open questions (`docs/OPEN_QUESTIONS.md` §D, items 369–381).
