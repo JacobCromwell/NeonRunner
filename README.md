@@ -83,9 +83,9 @@ The owner-supplied MP3s are copied unmodified into `assets/music/`:
 | Zone 1 - Neon City | Under the Iron Sky |
 | Zone 2 - Gangland | Alleyway Ambush |
 | Zone 3 - Marketplace | Jackpot Plaza |
-| Zone 4 - Casino | Jackpot Plaza, the Marketplace's, until the owner supplies its own |
+| Zone 4 - Casino | Midnight at the Atrium |
 | Zone 5 - Corporate | Concrete Fever |
-| Zone 6 - Beach | Jackpot Plaza (the Marketplace's, a stand-in: no new songs for now) |
+| Zone 6 - Beach | Palms at Terminal Speed |
 | Zone 7 - Dead Zone | Beneath the Cracks |
 | Zone 8 - Golden Zone | View from the Zenith |
 | Boss 1 - Floating Head | Apex Combat Maneuver |
@@ -94,7 +94,8 @@ Menus, cutscenes (including the Boss 1 intro), and unmatched bosses keep their g
 music. `Horizon_Of_Glass.mp3` is intentionally unused. Gameplay replacements are selected through
 `zone_tracks` and `boss_tracks` in `data/audio/music_library.tres`; the original track entries remain
 available for cinematics. Songs loop in full and retain the existing pause duck, death dip and
-zone completion sounds (`riff_tracks`), whose keys have not been retuned to the supplied songs.
+zone completion sounds (`riff_tracks`); the Casino and Beach songs use the fallback City riff until
+matching completion sounds are added.
 `tools/godot.sh music` regenerates only the default WAVs, not the supplied MP3s.
 
 ## Controls
@@ -422,8 +423,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - supplied music for six zones and Boss 1 (the Casino and the Beach play the Marketplace's until their own
-    come), generated defaults for menus/cutscenes/unmatched bosses
+  - supplied music for all eight zones and Boss 1 (The House shares the Casino song), generated defaults
+    for menus/cutscenes/unmatched bosses
     (music dips when the runner dies), and 76 sound
     effects, among them the level-complete riff in each zone's key
   - first-encounter hints

@@ -3444,7 +3444,9 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     generated default in its cinematics and The House's fight, and the Marketplace's level-complete riff
     (`data/audio/music_library.tres`: `files`, `zone_tracks`, `riff_tracks`). Will the owner supply a Casino
     song, and should The House get a boss song of its own?
-    **Answered (owner, October 9, 2026):** the owner adds the Casino's song in a separate change; The House keeps the Casino's music until then.
+    **Answered (owner, October 9, 2026):** `Zone_3_2_Casino_Midnight_at_the_atrium.mp3` is the Casino's
+    gameplay song and The House shares it; the generated default remains for cinematics. No separate
+    boss song was requested.
 523. **The Casino's cinematics** (GDD §6). Placeholders: its intro plays the arrival flyover over the Casino
     (title "The Casino"; its card names the zone: ZONE 4, CASINO), its outro is a placeholder card "Beyond
     the Casino: a short scene after The House, heading for the corporate district"
@@ -3961,11 +3963,10 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     beats are still to come; the Dead Zone and the Golden Zone now show as zones 7 and 8 on their cards. The Dead
     Zone's intro (task F2c, GDD §6) opens on the runner lying in a smoking crater, put there by "a cinematic before
     this one": with the Beach in between, that is now the Beach's outro, not Corporate's.
-577. **The music** (no new songs for now). Placeholder: the zone's track `beach` (`data/audio/music_library.tres`;
-    `MusicLibrary.zone_tracks`) borrows the Marketplace's, the most festive: its generated loop in the cinematics
-    (and the boss fight, once built), the owner's Jackpot Plaza in the levels, and its level-complete riff. No other
-    zone's mapping changed (the owner's song files still say `Zone_5_` and `Zone_6_` for the Dead Zone's and the
-    Golden Zone's; nothing reads the number). Which song should the Beach play?
+577. **The music.** The zone's track `beach` (`data/audio/music_library.tres`; `MusicLibrary.zone_tracks`)
+    previously borrowed the Marketplace's generated loop in cinematics and Jackpot Plaza in levels.
+    **Answered (owner, October 9, 2026):** `Zone_Beach_Palms_at_Terminal_Speed.mp3` is the Beach's
+    gameplay song; the generated default remains for cinematics. No zone-specific completion riff was requested.
 578. **The zone's line and speed.** Placeholder: the tagline "Bamboo tiki bars and surf shops on a sandy lane down to
     the sea." and 23.8 m/s, between Corporate's 23.4 and the Dead Zone's 24.2.
 579. **The Buzz Overdrive's zones** (GDD §9.9 named the Corporate zone and the two after it). The Beach's remix has it

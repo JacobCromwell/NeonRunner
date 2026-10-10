@@ -3569,12 +3569,11 @@ instead of a strobe. Anything new that flickers or flashes must honour it too.
   `tools/asset_gen/` (`tools/godot.sh sfx` / `music`): a track is composed in `track_<name>.gd` with
   `music_song.gd` (stems on a 16th grid that wrap around the loop, and loop-safe effects) and
   `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. **No new tracks are
-  generated** (owner, September 28, 2026). Owner-supplied MP3s now replace gameplay in every zone
-  and the Floating Head fight (the Casino, until the owner supplies its song, plays the Marketplace's:
-  its `casino` track is the Marketplace's default file, `zone_tracks` sends it to Jackpot Plaza and
-  `riff_tracks` to the Marketplace's riff; no new song is generated, GDD §11; the Beach's `beach` track stands in
-  on the Marketplace's the same way, task D10c, DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 577). `MusicLibrary.zone_tracks` maps a zone's default to its supplied song,
-  and `boss_tracks` maps a boss id to its supplied song. `App._start_run` resolves these for campaign,
+  generated** (owner, September 28, 2026). Owner-supplied MP3s replace gameplay in every zone and
+  the Floating Head and The House fights. `MusicLibrary.zone_tracks` maps a zone's generated default
+  to its supplied song, while `boss_tracks` maps a boss id to its supplied song; The House shares the
+  Casino song. The Beach and Casino retain generated defaults for cinematics. Their songs have no
+  dedicated completion riffs yet and use the fallback City riff. `App._start_run` resolves these for campaign,
   quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
   keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
   leaves them untouched. The web demo keeps the Zone 1 and Boss 1 MP3s plus menu/cinematic defaults.

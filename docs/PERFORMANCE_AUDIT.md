@@ -319,7 +319,7 @@ Weaknesses / costs of the approach:
 
 | Path | Size | Contents |
 |------|------|----------|
-| `assets/music/` | 46 MB | 7 owner-supplied MP3s (29 MB) + 7 generated WAVs (17 MB) |
+| `assets/music/` | 54 MB | 9 owner-supplied MP3s (36 MB) + 7 generated WAVs (18 MB) |
 | `assets/sfx/` | 12 MB | 152 generated WAVs (all listed in `data/audio/sfx_library.tres`) |
 | `assets/fonts/` | 376 KB | Exo2, Orbitron (OFL) |
 | `assets/icon/`, `assets/sprites/` | 260 KB | icon + Marketplace citizen flipbooks |
