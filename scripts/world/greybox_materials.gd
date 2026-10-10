@@ -51,7 +51,7 @@ static func glow(color: Color, energy: float = 2.0, alpha: float = 1.0) -> Stand
 	return _cache[key]
 
 
-## Unshaded, see-through colour, drawn on top when `on_top` (debug overlays).
+## Unshaded, see-through colour, drawn on top when `on_top` (debug overlays: is_debug_overlay).
 static func overlay(color: Color, on_top: bool) -> StandardMaterial3D:
 	var key: String = "overlay_%s_%s" % [color.to_html(), on_top]
 	if not _cache.has(key):
@@ -60,8 +60,15 @@ static func overlay(color: Color, on_top: bool) -> StandardMaterial3D:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		m.no_depth_test = on_top
+		if on_top:
+			m.set_meta(&"debug_overlay", true)
 		_cache[key] = m
 	return _cache[key]
+
+
+## True for a debug overlay drawn on top (the hitbox view's boxes), which only a debug build shows.
+static func is_debug_overlay(material: Material) -> bool:
+	return material != null and material.has_meta(&"debug_overlay")
 
 
 static func debug_hitbox() -> StandardMaterial3D:

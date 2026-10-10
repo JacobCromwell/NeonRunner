@@ -254,7 +254,8 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   window cyborg took 0.3 to 3 s). `ShaderWarmup` (`scripts/run/shader_warmup.gd`; LevelRun adds it whenever the
   game renders) draws one copy of each look the level may show later, too small to see in front of the camera,
   for the level's first two drawn frames: every material on the run's hidden nodes (pools, the weapon's
-  effects), the effects' glow and the fireball's three looks (`FireballPool.materials`), one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
+  effects; not the hitbox view's debug boxes, `GreyboxMaterials.is_debug_overlay`, which only a debug build
+  shows), the effects' glow and the fireball's three looks (`FireballPool.materials`), one look of each enemy kind (`EnemyDirector.warm_looks()`, every part shown) and
   each track piece the zone skin dresses (fences in each state, wall fences, a sign, pads, ramps, speed pads,
   ceilings, doodads, a dash wall in a level that has them, gap edges, the finish line). It keeps the samples' materials until the next level's
   stage, so their shaders stay built for a look first met later. After it no shader on Gangland 3 is first
@@ -263,7 +264,12 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   never frees a physics object**, since the next one made takes its place in the physics server's tables,
   which can change the order of contacts in a frame (two throwaway hazards made and freed at a boss fight's
   load moved one kill in Hostile Takeover's seeded event log by a frame; made and kept, they changed
-  nothing).
+  nothing). On the web each program compiles while the game waits (seconds each on Windows, where browsers
+  translate WebGL to Direct3D; `node tools/web/shader_programs.js` counts them), and the renderer compiles a
+  shader once per Shader, not once per code: **one Shader per shader code** (the credits' denominations share
+  theirs, `CreditField.material_for`; a test checks every look the warm-up draws). Two standard materials
+  that differ only in draw state (blend mode, depth draw or depth test) also get a shader each with the same
+  code; the fireball's additive fire and see-through smoke still do (5 programs of City 1's load).
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
   to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.
