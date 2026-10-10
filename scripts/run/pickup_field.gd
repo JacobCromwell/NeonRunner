@@ -97,6 +97,17 @@ func offer(item: StringName, at: float = -1.0, lane: int = -1) -> bool:
 	return true
 
 
+## Puts a pickup of `item` in `lane` at track distance `at` at once, on the floor `height` up (0: the street), at a
+## spot the caller vouches is fair (the rules above are offer()'s, on the street): for a boss whose floors are its
+## own (the Beach's climb, GDD §10: the armor rule's pickup on the roof the runner will run along,
+## MechaGuppy._on_armor_pickup_due). It's taken and missed like any other. Returns it, or null for an unknown item.
+func place(item: StringName, lane: int, at: float, height: float = 0.0) -> Pickup:
+	if not ITEMS.has(item):
+		push_warning("PickupField: no pickup for '%s' (only %s)" % [item, ITEMS])
+		return null
+	return _spawn(item, clampi(lane, 0, world.geo.lane_count - 1), at, height)
+
+
 ## Removes every pickup on the track and every offer still waiting (a boss beaten: no pickup after
 ## the fight).
 func clear() -> void:
@@ -286,14 +297,14 @@ func _place_pending() -> void:
 		_spawn(StringName(offer_entry["item"]), int(spot["lane"]), float(spot["at"]))
 
 
-func _spawn(item: StringName, lane: int, at: float) -> Pickup:
+func _spawn(item: StringName, lane: int, at: float, height: float = 0.0) -> Pickup:
 	var p: Pickup = _pool.pop_back() if not _pool.is_empty() else null
 	if p == null:
 		p = Pickup.new()
 		add_child(p)
 		p.vanished.connect(_on_vanished)
 	made += 1
-	p.show_item(item, lane, at, world.lane_point(lane, at), tuning)
+	p.show_item(item, lane, at, world.lane_point(lane, at, height), tuning)
 	active.append(p)
 	world.effects.burst(p.position + Vector3(0.0, tuning.float_height, 0.0), Pickup.RING_COLOR, 16, 0.45)
 	world.play_sfx(&"pickup_appear")
