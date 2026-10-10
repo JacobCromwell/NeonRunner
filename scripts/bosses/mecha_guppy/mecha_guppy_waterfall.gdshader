@@ -7,7 +7,7 @@
 // haze toward the run's fog colour), the same on every renderer; nothing glows (every colour stays under the glow
 // threshold: GDD §5's colour rule) and nothing flickers (smooth scrolling only: Reduced flashing has nothing to calm).
 // With `plateau` on, the same massif's top: a flat card at the lip's height behind it, the river running to the lip.
-// DESIGN-TBD (docs/questions/e5e.md): the backdrop's look.
+// DESIGN-TBD: the backdrop's look (docs/questions/e5e.md).
 shader_type spatial;
 render_mode unshaded, fog_disabled, cull_disabled, depth_draw_never, shadows_disabled, blend_mix;
 

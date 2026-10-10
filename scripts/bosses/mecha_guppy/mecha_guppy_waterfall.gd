@@ -1,7 +1,8 @@
 class_name MechaGuppyWaterfall
 extends Node3D
 ## The backdrop of Mecha Guppy and Captain Cogs' climb (GDD §10: "a waterfall in phases 1 and 2, while the runner
-## climbs; the Beach's normal backdrop in phase 3"; task E5e-b1). DESIGN-TBD (docs/questions/e5e.md): its look.
+## climbs; the Beach's normal backdrop in phase 3"; task E5e-b1).
+## DESIGN-TBD: its look (docs/questions/e5e.md).
 ## - The waterfall: a flat-topped massif far down the track with a great cascade in its middle, falling from its lip
 ##   LIP_Y metres up into the sea, mist billowing where it lands, its outer flanks sloping down to the sea so the
 ##   horizon stays in view beside it. It keeps DISTANCE ahead of the camera along the track, but its heights are the

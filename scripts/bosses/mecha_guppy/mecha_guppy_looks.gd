@@ -12,7 +12,9 @@ extends RefCounted
 ##   (the front a rider drops onto faces them with a halo; the edge Mecha Guppy has eaten it from), thatch eaves and
 ##   warm lantern posts on its kerbs, outside the lanes; below the deck, storey after storey of tiki bar down to the
 ##   water: bamboo and plank faces (the Beach's wall pattern), a ledge and a row of lit windows on each storey, the
-##   storeys darkening the deeper they are (DEEP_COLOR over DEEP_FADE metres), so the drop reads at any height.
+##   storeys darkening the deeper they are (DEEP_COLOR over DEEP_FADE metres), so the drop reads at any height;
+##   drawn no deeper than TOWER_DEPTH under the deck (the haze hides anything deeper), so a long climb's meshes stop
+##   growing.
 ## - A pier (REACH_BACK: the roof's lanes that lead up reach back under the hut's end): those lanes' deck out in front
 ##   of the tower, its front a lantern-lit landing stage with the orange lip and the open framework of a pier below,
 ##   posts and braces on tall stilts down to the water, so it reads as a place to land, not a wall; its sides over
@@ -30,7 +32,7 @@ extends RefCounted
 ##   trigger, with short light columns (a full one would stand like a wall along the lane).
 ## - A few neon signs (wordless silhouettes in the Beach's violet, blue and warm white: GDD §5's colour rule) on
 ##   some fronts and huts, facing the runner, never in a lane above a floor.
-## DESIGN-TBD (docs/questions/e5e.md): the towers, the pier, the chasm and the huts' look.
+## DESIGN-TBD: the towers, the pier, the chasm and the huts' look (docs/questions/e5e.md).
 ## Variety comes from hashing the step's index, so a step looks the same on every attempt.
 
 ## The edge language (BeachSand's): an orange lip on the floor's last metres, a steel coping, a strip on the wall.
@@ -53,6 +55,12 @@ const WINDOW_GLOW: float = 0.12
 const DEEP_COLOR := Color(0.045, 0.05, 0.075)
 const DEEP_FADE: float = 42.0
 const DEEP_MOST: float = 0.88
+## A tower (its walls, an eaten face, a pier's stilts) is drawn at most this far below its deck (metres): deeper,
+## the arena's haze hides it from every view the climb has (MechaGuppySkin: fully fogged 200 m from the camera; the
+## run camera rides at most about 5 m over a deck and sees at most half its widest fov, 42°, off its axis, so a
+## point 270 m under it is past that), and the climb's meshes stop growing once it is this high (below, the towers
+## reach the water).
+const TOWER_DEPTH: float = 300.0
 ## The pier: its deck's front fascia this deep, stilts about this far apart, braces every PIER_BRACE metres down.
 const PIER_FASCIA: float = 0.7
 const PIER_STILT: float = 2.4
@@ -105,9 +113,12 @@ func _init(p_skin: BeachSkin, p_geo: TrackGeometry, p_movement: MovementTuning) 
 	movement = p_movement
 
 
-## Where the towers stand: the water under the street (the chasms' floor, MechaGuppySkin).
-func bottom() -> float:
-	return -skin.pool_depth
+## Where a tower whose deck is at `top` ends below: the water under the street (the chasms' floor, MechaGuppySkin),
+## or TOWER_DEPTH under its deck, where the haze has long hidden it.
+## DESIGN-TBD: the chasm, open down to the street's own water, stands in for the floor Mecha Guppy has eaten until
+## E5e-b2 builds its bites (docs/questions/e5e.md).
+func bottom(top: float) -> float:
+	return maxf(-skin.pool_depth, top - TOWER_DEPTH)
 
 
 # --- Roofs -----------------------------------------------------------------------------------------
@@ -239,7 +250,7 @@ static func deep(base: Color, depth: float) -> Color:
 ## plank or bamboo face, a row of warm windows), darker the deeper.
 func _tower_face(s: MeshLayer, g: MeshLayer, x0: float, x1: float, d: float, top: float, bamboo: Color, seed: int) -> void:
 	var z: float = -d
-	var y_low: float = bottom()
+	var y_low: float = bottom(top)
 	var y: float = top
 	var n: int = 0
 	while y > y_low + 0.01:
@@ -283,7 +294,7 @@ func _windows(s: MeshLayer, g: MeshLayer, x0: float, x1: float, z: float, y: flo
 ## `to`, from its deck at `top` down to the water: storey after storey, darker the deeper (seen from beside the
 ## climb; from the runner's lanes the deck hides it).
 func _tower_side(s: MeshLayer, x: float, side: int, from: float, to: float, top: float, bamboo: Color, seed: int) -> void:
-	var y_low: float = bottom()
+	var y_low: float = bottom(top)
 	var y: float = top
 	var n: int = 0
 	while y > y_low + 0.01 and to > from:
@@ -305,7 +316,7 @@ func _tower_side(s: MeshLayer, x: float, side: int, from: float, to: float, top:
 func _broken_face(s: MeshLayer, d: float, top: float) -> void:
 	var x0: float = -geo.wall_x()
 	var x1: float = geo.wall_x()
-	var y_low: float = bottom()
+	var y_low: float = bottom(top)
 	var y: float = top
 	while y > y_low + 0.01:
 		var y0: float = maxf(y - STOREY * 2.0, y_low)
@@ -346,7 +357,7 @@ func _pier(s: MeshLayer, g: MeshLayer, r: MechaGuppyClimb.Roof, lanes: Vector2i,
 ## water, darker the deeper.
 func _pier_frame_z(s: MeshLayer, g: MeshLayer, x0: float, x1: float, d: float, top: float, seed: int) -> void:
 	var z: float = -d
-	var y_low: float = bottom()
+	var y_low: float = bottom(top)
 	var fascia: Color = skin.timber_color * 0.85
 	s.rect(Vector3(x0, top - 0.02 - STRIP_HEIGHT - PIER_FASCIA, z + 0.002), Vector3(x1 - x0, 0, 0), Vector3(0, PIER_FASCIA, 0),
 		fascia, 0.0, MeshKit.PAT_BEACH_TIMBER, Vector2.ZERO, Vector2.ONE, MeshKit.beach_timber_param(1, 0, seed))
@@ -379,7 +390,7 @@ func _pier_frame_z(s: MeshLayer, g: MeshLayer, x0: float, x1: float, d: float, t
 ## A pier's open side at world x `x` (its outer face looks toward `side`), from track distance `from` to `to`, under
 ## its deck at `top`: the dark under the pier, and its stilts and braces along the side, down to the water.
 func _pier_frame_x(s: MeshLayer, g: MeshLayer, x: float, side: int, from: float, to: float, top: float, seed: int) -> void:
-	var y_low: float = bottom()
+	var y_low: float = bottom(top)
 	var under: float = top - 0.02 - STRIP_HEIGHT - PIER_FASCIA
 	var fascia: Color = skin.timber_color * 0.8
 	if side < 0:

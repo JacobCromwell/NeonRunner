@@ -49,9 +49,9 @@ extends Resource
 ## DESIGN-TBD: the cue "the hut's lanes that lead up run further": how far past the higher roof's front they run
 ## on (metres at 18 m/s). The other lanes end where a wrong drop misses the roof.
 @export_range(1.0, 20.0, 0.5, "suffix:m") var run_on: float = 3.0
-## DESIGN-TBD (docs/questions/e5e.md: an unmissable strip): the pad strip across every lane at the end of each roof
-## is longer than the longest jump at the run speed (with the dash's reach) by this much (metres), so no runner can
-## jump over it: every runner flips up.
+## DESIGN-TBD: the pad strip across every lane at the end of each roof is longer than the longest jump at the run
+## speed (with the dash's reach) by this much (metres), so no runner can jump over it: every runner flips up
+## (docs/questions/e5e.md: an unmissable strip).
 @export_range(0.5, 6.0, 0.25, "suffix:m") var strip_margin: float = 2.0
 ## The hut starts this far before its pads (metres at 18 m/s): a pad sits under its hut.
 @export_range(1.0, 10.0, 0.25, "suffix:m") var hut_lead: float = 3.0

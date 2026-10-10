@@ -11,7 +11,7 @@ extends Node3D
 ## Scenarios:
 ##   climb      (default) the fight through the run camera: the runner climbs step after step, reading the lanes
 ##              that lead up
-##   wrong      the runner drops off the first hut in a lane that doesn't lead up: the fall into the basin
+##   wrong      the runner drops off the first hut in a lane that doesn't lead up: the fall into the chasm
 ##   grapple    the same with a grapple: the save onto the higher roof, into a lane that leads up
 ##   side       a camera alongside the climb, looking across at the stairs of roofs and huts and the waterfall
 ##   hut        the runner standing under the first hut (the run camera's view from under it): reading the cue

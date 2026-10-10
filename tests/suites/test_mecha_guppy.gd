@@ -11,6 +11,9 @@ extends TestSuite
 ##   read_seconds beyond every switch, from the latest anyone settles on the hut), the hut full width until then,
 ##   a wrong drop dead before the higher roof's front even dashing, a pad strip no jump clears, huts that never
 ##   overlap, phase 2's climb 15-25% faster with every margin kept, no escalation, and a retry planning the same;
+##   every tunable at both ends of its range keeping those promises;
+## - the towers drawn down to the water, but no deeper than TOWER_DEPTH under their decks: a long climb's meshes stop
+##   growing;
 ## - the built climb against the plan, on real physics: roof tops, each hut lane's end, the pads in every lane, the
 ##   roofs' solid fronts and blocked sides, and the lanes that lead up read off the hut and the roofs themselves
 ##   (MechaGuppyBot.read_up_lanes) the same as planned;
@@ -43,6 +46,7 @@ func run() -> void:
 	_test_data(slot)
 	_test_plan()
 	_test_tunables()
+	await _test_tower_depth()
 	await _test_geometry()
 	await _test_roof_faces()
 	await _test_hits_and_phases()
@@ -354,6 +358,49 @@ func _plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning, dash: float) -> Stri
 		elif roof.start_in(s.up.x) >= s.deadline - 0.5:
 			return "step %d: the roof's lanes that lead up don't reach back" % s.index
 	return ""
+
+
+# --- The towers' depth ----------------------------------------------------------------------------
+
+## A tower stands down to the water, drawn no deeper than MechaGuppyLooks.TOWER_DEPTH under its deck (the haze hides
+## anything deeper): a roof piece's mesh grows with the drop below it only that far, so the builder's meshes stop
+## growing however long the climb goes on (GDD §10: no time limit).
+func _test_tower_depth() -> void:
+	var pair: Array = _fight(6, 23.8)
+	var world: RunWorld = pair[0]
+	var boss: MechaGuppy = pair[1]
+	var looks: MechaGuppyLooks = boss.stairs.looks
+	var water: float = -(world.skin as BeachSkin).pool_depth
+	var cap: float = MechaGuppyLooks.TOWER_DEPTH
+	check(is_equal_approx(looks.bottom(30.0), water) and is_equal_approx(looks.bottom(cap + 100.0), 100.0),
+		"a tower reaches the water (%.2f m) under a deck 30 m up, and stops TOWER_DEPTH under a higher one (%.1f m under one %.0f m up)"
+		% [looks.bottom(30.0), looks.bottom(cap + 100.0), cap + 100.0])
+	var tops: Array[float] = [60.0, cap + 100.0, cap * 2.0 + 300.0]
+	var counts: Array[int] = []
+	for top: float in tops:
+		var r := MechaGuppyClimb.Roof.new()
+		r.index = 7
+		r.top = top
+		r.starts.resize(world.geo.lane_count)
+		r.starts.fill(900.0)
+		var piece: Node3D = looks.roof_segment(r, 1000.0, 1024.0, true)
+		counts.append(_vertices(piece))
+		piece.free()
+	check(counts[0] > 0 and counts[0] < counts[1] and counts[1] == counts[2],
+		"a roof piece's mesh grows with the drop below it only down to TOWER_DEPTH (%s vertices %s m up)" % [counts, tops])
+	await sim.free_world(world)
+
+
+## The vertices of every mesh under `node`.
+func _vertices(node: Node) -> int:
+	var n: int = 0
+	var instance := node as MeshInstance3D
+	if instance != null and instance.mesh != null:
+		for i: int in instance.mesh.get_surface_count():
+			n += instance.mesh.surface_get_array_len(i)
+	for child: Node in node.get_children():
+		n += _vertices(child)
+	return n
 
 
 # --- The built climb ----------------------------------------------------------------------------

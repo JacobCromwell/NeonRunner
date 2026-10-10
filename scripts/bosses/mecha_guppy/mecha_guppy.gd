@@ -8,7 +8,7 @@ extends BossEncounter
 ## hurts the shark; E5e-c phase 3 and the defeat (the slot then switches from preview_scene to scene).
 ##
 ## The arena (BossDef.arena, data/bosses/beach_boss.tres): the Beach's look (MechaGuppySkin, a BeachSkin with the
-## climb's tiki huts, tiki bar roofs and basins, data/bosses/beach_boss_skin.tres), the street eaten from the start
+## climb's tiki huts, tiki bar towers and chasms, data/bosses/beach_boss_skin.tres), the street eaten from the start
 ## (_plan_lap: a gap in every lane over every lap: the water below the climb) and no side walls anywhere (a wall
 ## gap over every lap on both sides, so a runner on a high roof never meets a wall measured from the street; the
 ## open beach and the sea beyond).
@@ -66,8 +66,8 @@ func _tuning() -> MechaGuppyTuning:
 
 ## Every lap: nothing of the generator's (no holes, fences, ceilings, pads, enemies, credits), the street eaten in
 ## every lane (the climb's own roofs carry the runner from the start), and no side walls on either side.
-## DESIGN-TBD (docs/questions/e5e.md): the street eaten from the start (roof 0, the climb's own floor, eaten just past
-## the first pads like every roof), and no walls at all (E5e-d's occasional walls: likely none).
+## DESIGN-TBD: the street eaten from the start (roof 0, the climb's own floor, eaten just past the first pads like
+## every roof), and no walls at all (E5e-d's occasional walls: likely none); docs/questions/e5e.md.
 func _plan_lap(lap: LevelLayout, _index: int, p_arena: BossArena) -> void:
 	lap.gaps.clear()
 	lap.fences.clear()

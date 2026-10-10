@@ -91,7 +91,7 @@ these as they go.
 - **The climb's look** (GDD §10: tiki huts as the ceilings, tiki bar roofs as the floors, a few neon
   signs; the climb must read as climbing high). Placeholder (`MechaGuppyLooks`):
   - The huts: each hut is a hovering plank platform on glowing lift pods (the Beach's engine colour,
-    never a hazard colour), with a lamp-lit underside, a 2.6 m orange band where each lane ends, a lamp
+    never a hazard colour), with a lamp-lit underside, a 4 m orange band where each lane ends, a lamp
     row along each run of lanes' shared edge (so the lanes that lead up visibly run on, lit), and a row
     of tiki huts on top. RUN_ON steps add a walkway annex over the lanes that run on.
   - The roofs: each roof is a boardwalk deck with orange lips at its edges and fronts, thatch eaves and
