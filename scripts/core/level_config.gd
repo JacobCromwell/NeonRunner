@@ -74,16 +74,27 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   fences over the low or the high part of the wall only, from Corporate 1 (task B5; no patterns: the
 ##   generator places them, WallFencePlacement)
 ## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
-##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena (no patterns:
-##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres, or the level's
-##   own, wall_gap_tuning)
+##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena unless the
+##   arena opts in with wall_gap_tuning (no patterns: the generator places them, WallGapPlacement;
+##   tuning in data/tuning/wall_gaps.tres, or the level's own, wall_gap_tuning)
 ## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
 ##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
 ##   so a level needs octodog or buzz_overdrive for it to appear)
+## - dash_wall: dash walls, buildings across every floor lane the runner dashes through (GDD §9.14; task
+##   H7a), from Corporate 1 (no patterns: their rules, dash_wall_rules.gd, stand up to dash_walls of them
+##   where they're fair)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
 @export var features: PackedStringArray = PackedStringArray(["ramps", "ceilings", "pulsing"])
+## The `wall_gaps` feature's numbers for this config (WallGapPlacement.tuning_for): null for every
+## level's, data/tuning/wall_gaps.tres, and the level is built exactly as before. A boss arena gets wall gaps
+## only with numbers of its own here (and the feature listed): the opt-in (BossArena.base_config keeps the
+## feature only then). The Sleep Taker's arena opts in (owner, October 8, 2026: "the walls aren't safe": many
+## gaps). A level may take its own too (task D10b; the owner, October 9, 2026, on the Beach: "I want this zone to
+## feel more open ... have them appear about 50% of the time that they are now currently appearing"): the Beach's
+## levels take data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length.
+@export var wall_gap_tuning: WallGapTuning
 ## Features that start partway into the level (GDD §5: City 1 meets its cyborgs late in the level):
 ## feature name → share of the level (0–1). Nothing of that feature is placed before its start,
 ## by patterns or by rules scripts, and the first pattern picked from there uses it (as soon as one
@@ -178,12 +189,15 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## 0 turns it off: the level is built exactly as before. DESIGN-TBD: 1 in every campaign level with Octodogs
 ## or Buzz Overdrives (Gangland 2 on), so the player meets it several times before the Enforcer Truck.
 @export_range(0, 4) var charge_path_cyborgs: int = 0
-## The level's own side wall gaps (task D10b; the owner, October 9, 2026, on the Beach: "I want this zone to feel
-## more open ... have them appear about 50% of the time that they are now currently appearing"): the numbers
-## WallGapPlacement places the `wall_gaps` feature's gaps by (WallGapTuning). The Beach's levels take
-## data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length. Null: the shared
-## data/tuning/wall_gaps.tres (every campaign level), and the level is built exactly as before.
-@export var wall_gap_tuning: WallGapTuning
+## Dash walls (owner, October 8, 2026, GDD §9.14; task H7a): with the `dash_wall` feature, the generator
+## stands up to this many buildings across the level's floor lanes for the runner to dash through
+## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown
+## is over before the next (data/tuning/dash_walls.tres); fewer where the level leaves no room, never none.
+## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 644): 1 to 4 by level
+## (2 in Corporate 1, up to 3 in Dead Zone 1 and Golden 2; a level asks for no more than its track holds on every
+## lane count: Corporate 2, The Hush and Golden 1 hold one, Golden 1 since the walls keep off an Enforcer Truck's
+## showing windows, task C6c); quick play's prototype level takes this default.
+@export_range(0, 8) var dash_walls: int = 3
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are

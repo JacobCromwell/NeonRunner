@@ -183,6 +183,12 @@ func _test_fill_pass() -> void:
 				config.level_seed = 7000 + k
 				var patterns: Array = LevelGenerator.load_for(config)
 				var tag: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
+				# The dash walls but an introduction come after the fill pass (task H7a, DashWallRules.after_doodads):
+				# they stand in the room it left, and where none fits, one makes room by taking an enemy out. None of
+				# these levels introduces them, so both builds leave them out: what's compared is the fill pass's own
+				# doing.
+				check(not config.feature_starts.has("dash_wall"), "%s doesn't introduce dash walls %s" % [id, tag])
+				config.dash_walls = 0
 				var off: LevelConfig = config.duplicate() as LevelConfig
 				off.fill_empty_seconds = 0.0
 				var gen := LevelGenerator.new()

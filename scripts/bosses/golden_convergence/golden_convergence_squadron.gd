@@ -14,8 +14,11 @@ extends BossPart
 ## is_obstacle.
 ## The pad rule (GDD §9.6: "stepping on any anti-grav pad hurls every drone on screen up into the ship's
 ## hull"; §10: "anti-grav pads destroy the whole squadron"): hurl() sends every drone out up, spinning, keeping
-## pace with the runner, and each crashes (drone_crash, a burst) hurl_rise metres up or HURL_TIME later;
-## `hurled_out` says when the last is down (E5d-c: the Refill Ship's chain reaction starts from here).
+## pace with the runner, and each crashes (drone_crash; one of the game's shared yellow-and-red fireballs, as the
+## heli drone's crash is, GDD §11 and the H merge: CRASH_FIRE_SIZE, smokeless, since the Refill Ship's blast that
+## follows brings the smoke and the run's pool of fireballs is shared with it; and a burst of its metal) hurl_rise
+## metres up or HURL_TIME later; `hurled_out` says when the last is down (E5d-c: the Refill Ship's chain reaction
+## starts from here).
 
 ## Every drone is down: the squadron is gone.
 signal hurled_out
@@ -30,6 +33,9 @@ const HURL_TIME: float = 0.8
 ## The muzzle flash's warm white, and how fast it flickers while firing (steady with Reduced flashing).
 const FLASH_COLOR := Color(1.0, 0.86, 0.6)
 const FLASH_HZ: float = 22.0
+## A hurled drone's crash: a shared fireball this big (metres in radius; the heli drone's own crash is 2.4 with its
+## smoke, Drone.FIRE_CRASH_SIZE). DESIGN-TBD (the H merge; docs/OPEN_QUESTIONS.md item 674).
+const CRASH_FIRE_SIZE: float = 2.4
 
 enum Mode { HIDDEN, FLYING, DOWN }
 
@@ -39,6 +45,10 @@ var tuning: GoldenConvergenceTuning
 var rigs: Array[Dictionary] = []
 ## Metres a pad hurls a drone up before it crashes (E5d-c sets it for the Refill Ship's belly).
 var hurl_rise: float = 6.0
+## What a crash's fireball rides along with (RunEffects.fireball's `carrier`): the Refill Ship while its racks are
+## what the drones crash into (GoldenConvergenceRefill sets it with hurl_rise; it paces the runner), else none (the
+## fireball burns where the drone crashed).
+var crash_carrier: Node3D = null
 ## Drones crashed by a pad so far (tests).
 var crashed: int = 0
 var _t: float = 0.0
@@ -219,7 +229,9 @@ func _update_hurl(i: int, delta: float) -> void:
 			(encounter as GoldenConvergence).sound(&"drone_crash", (encounter as GoldenConvergence).sound_point(at))
 		else:
 			world.play_sfx_at(&"drone_crash", at)
-		world.effects.burst(at, Color(1.0, 0.5, 0.15), 36, 1.1)
+		var carrier: Node3D = crash_carrier if crash_carrier != null and is_instance_valid(crash_carrier) \
+			and crash_carrier.is_inside_tree() else null
+		world.effects.fireball(at, CRASH_FIRE_SIZE, false, 1.0, 1.0, carrier)
 		world.effects.burst(at, Color(0.7, 0.75, 0.85), 16, 0.7)
 		world.effects.shake(0.2, 0.25)
 		_hide(i)

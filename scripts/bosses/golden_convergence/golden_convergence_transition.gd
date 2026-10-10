@@ -33,6 +33,11 @@ const HURL_LEAP: float = 0.32
 const HURL_HEIGHT: float = 3.4
 ## Where he comes out of the suit: the cavity's front (the suit's space, at its scale 1).
 const CAVITY := Vector3(0.0, 10.4, 1.4)
+## The burst's blast at the chest (the third ship's blast bursting the suit open): one of the game's shared
+## yellow-and-red fireballs (RunEffects.fireball; GDD §11, the owner, October 8, 2026: every explosion, bosses' too, is
+## one; the H merge), this big (metres in radius), with its dark smoke, riding along with the suit (it paces the
+## runner, then topples). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 674).
+const BURST_FIRE_SIZE: float = 6.0
 
 var boss: GoldenConvergence
 var magnate: GoldenConvergenceMagnate
@@ -142,12 +147,12 @@ func tick(delta: float) -> void:
 func _tick_transition(delta: float) -> void:
 	var t: GoldenConvergenceTuning = boss.tuning
 	var suit: GoldenConvergenceSuit = boss.suit
-	# The burst: the chest's plates swing open, a blast of smoke and sparks.
+	# The burst: the chest's plates swing open, a blast (a shared fireball with its smoke) and sparks.
 	suit.burst = maxf(suit.burst, clampf(time / maxf(t.burst_seconds, 0.05), 0.0, 1.0))
 	if _once(&"blast", 0.0):
 		var chest: Vector3 = suit.global_transform * Vector3(0.0, GoldenConvergenceModel.CHEST.y, 4.0)
+		boss.world.effects.fireball(chest, BURST_FIRE_SIZE, true, 1.0, 1.0, suit)
 		boss.world.effects.burst(chest, Color(0.95, 0.88, 0.7), 60, 3.0)
-		boss.world.effects.burst(chest, Color(0.22, 0.2, 0.19), 40, 4.0)
 		boss.world.effects.shake(0.45, 0.6)
 	if _once(&"plates", t.plates_off_at):
 		_throw_plates()

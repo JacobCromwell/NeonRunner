@@ -15,10 +15,16 @@ extends TestSuite
 ##   on the shared contract, which this declares identically;
 ## - it's spawned through the director, with no big-attack turn (it isn't an attack);
 ## - it plays out identically on every attempt;
+## - how long it stays (GDD §9.12, owner, October 8, 2026: twice as long as first built, task H10):
+##   untouched, about 11 s at every run speed (it was about 5.4 s), the credits it sucks up in that
+##   time, and a caught or robbing collector behaving as before;
 ## - the campaign: corporate/2 introduces it, it's left out of the Dead Zone, and it's out of
 ##   LevelConfig.PLANNED_FEATURES.
 
 const TYPE: String = "tithe_collector"
+## How long an untouched collector stayed when it was first built (task C5): start_ahead 30 m and
+## PASSED_BEHIND 8 m at a closing speed of 7 m/s (the pace cancels out: all three stretch with it).
+const STAY_FIRST_BUILT: float = (30.0 + 8.0) / 7.0
 
 var sim: RunSim
 var _nodes: Array[Node] = []
@@ -36,6 +42,9 @@ func run() -> void:
 	await _test_catch_pays_jackpot()
 	await _test_no_big_attack_turn()
 	await _test_determinism()
+	await _test_stay_untouched()
+	await _test_stay_when_robbing()
+	await _test_catch_unchanged()
 	_test_campaign_data()
 	for n: Node in _nodes:
 		if is_instance_valid(n):
@@ -215,6 +224,114 @@ func _weave_run(layout: LevelLayout, seed_value: int) -> Dictionary:
 	var out := {"trace": trace, "held": world.score.held_by(c)}
 	await sim.free_world(world)
 	return out
+
+
+# --- How long it stays (GDD §9.12: twice as long as first built, task H10) ---------------------------
+
+## A world where a collector is never touched: the runner stays in lane 0, fences stand in lane 4 all the
+## way, so the collector weaves there (the lane with the most hazards ahead of it) and finds a floor credit
+## every 2 m to suck up. Returns how long it lived, the credits it held when it left and its state.
+func _stay_run(run_speed: float, params: Dictionary = {}) -> Dictionary:
+	var layout: LevelLayout = RunSim.layout(5, 1200.0)
+	var at: float = 20.0
+	while at < 1100.0:
+		layout.fences.append(RunSim.fence(4, at, "gapped"))
+		layout.credits.append({"at": at + 5.0, "surface": "floor", "lane": 4, "side": 0, "height": 0.7, "value": 5})
+		layout.credits.append({"at": at + 10.0, "surface": "floor", "lane": 4, "side": 0, "height": 0.7, "value": 5})
+		at += 15.0
+	var t: MovementTuning = tuning.duplicate() as MovementTuning
+	t.run_speed = run_speed
+	var world: RunWorld = sim.build_world(layout, null, t)
+	var p: Player = world.player
+	await _run(world, func() -> bool: return p.elapsed > 0.05, 1.0)
+	await _to_lane(world, 0)
+	var c: TitheCollector = world.director.spawn({"type": TYPE, "at": p.distance, "lane": 4, "seed": 1, "params": params}) as TitheCollector
+	var ref: WeakRef = weakref(c)
+	var frames: int = 0
+	var states: Array[int] = []
+	var held: int = 0
+	var limit: int = int(30.0 * Engine.physics_ticks_per_second)
+	while frames < limit and is_instance_valid(c) and c.alive:
+		held = world.score.held_by(c)
+		await tree.physics_frame
+		frames += 1
+		if is_instance_valid(c) and not states.has(c.state):
+			states.append(c.state)
+	var out := {"seconds": frames / float(Engine.physics_ticks_per_second), "held": held, "states": states,
+		"thefts": world.score.thefts, "gone": ref.get_ref() == null or not (ref.get_ref() as Enemy).alive}
+	await sim.free_world(world)
+	return out
+
+
+func _test_stay_untouched() -> void:
+	var expected: float = STAY_FIRST_BUILT * 2.0
+	var seen: Array = []
+	for run_speed: float in [18.0, 23.4]:
+		var r: Dictionary = await _stay_run(run_speed)
+		seen.append(r)
+		var seconds: float = float(r["seconds"])
+		print("TITHE stay @%.1f m/s: %.2f s, held %d credits, thefts %d" % [run_speed, seconds, int(r["held"]), int(r["thefts"])])
+		check(bool(r["gone"]) and (r["states"] as Array) == [TitheCollector.State.APPROACH] and int(r["thefts"]) == 0,
+			"untouched at %.1f m/s it leaves by itself, never robbing anyone" % run_speed)
+		check(absf(seconds - expected) <= 0.4,
+			"untouched at %.1f m/s it stays about twice as long as first built (%.2f s, expected %.2f s = 2 x %.2f s)" % [
+			run_speed, seconds, expected, STAY_FIRST_BUILT])
+	var a: Dictionary = seen[0]
+	var b: Dictionary = seen[1]
+	check(absf(float(a["seconds"]) - float(b["seconds"])) <= 0.1,
+		"its stay is the same in seconds at every run speed (the pace stretches distances and speeds alike)")
+	check(int(a["held"]) > 0 and int(b["held"]) > 0, "it sucked up credits on its way (%d, %d)" % [int(a["held"]), int(b["held"])])
+	# Hostile Takeover's Board asks for the first-built approach (a flatcar's roof is too short for the
+	# longer stay): the spawn param wins.
+	var board: Dictionary = await _stay_run(18.0, {"approach_speed": 7.0})
+	check(absf(float(board["seconds"]) - STAY_FIRST_BUILT) <= 0.4 and int(board["thefts"]) == 0,
+		"spawned with approach_speed 7 (the Board's) it stays as long as first built (%.2f s)" % float(board["seconds"]))
+
+
+## Robbed or caught, it is what it always was: it makes off at flee_speed and is gone at gone_ahead,
+## and a catch pays what it holds plus the jackpot.
+func _test_stay_when_robbing() -> void:
+	var world: RunWorld = sim.build_world(RunSim.layout(5, 2000.0))
+	var p: Player = world.player
+	await _run(world, func() -> bool: return p.elapsed > 0.05, 1.0)
+	world.score.add_credit(400)
+	var c: TitheCollector = _spawn(world, p.lane)
+	var ref: WeakRef = weakref(c)
+	var expect: float = c.tune.gone_ahead / c.tune.flee_speed
+	await _run(world, func() -> bool: return world.score.thefts > 0, 20.0)
+	var first: float = p.elapsed
+	check(world.score.thefts == 1 and c.state == TitheCollector.State.FLEE and world.score.held_by(c) == 100,
+		"in the runner's lane it robs a quarter of the 400 credits and flees")
+	var fled: int = 0
+	var limit: int = int(10.0 * Engine.physics_ticks_per_second)
+	while fled < limit and ref.get_ref() != null and (ref.get_ref() as Enemy).alive:
+		await tree.physics_frame
+		fled += 1
+	var flee_seconds: float = fled / float(Engine.physics_ticks_per_second)
+	check(absf(flee_seconds - expect) <= 0.4, "after the theft it is gone in gone_ahead / flee_speed (%.2f s, expected %.2f s)" % [flee_seconds, expect])
+	print("TITHE robbing at %.2f s after spawn; flees for %.2f s" % [first, flee_seconds])
+	await sim.free_world(world)
+
+
+func _test_catch_unchanged() -> void:
+	var world: RunWorld = sim.build_world(RunSim.layout(5, 2000.0))
+	var p: Player = world.player
+	await _run(world, func() -> bool: return p.elapsed > 0.05, 1.0)
+	world.score.add_credit(400)
+	var c: TitheCollector = _spawn(world, p.lane)
+	var ref: WeakRef = weakref(c)
+	var causes: Array[StringName] = []
+	world.director.enemy_defeated.connect(func(_e: Enemy, cause: StringName) -> void: causes.append(cause))
+	var dashed: Array[bool] = [false]
+	await _run(world, func() -> bool:
+		var t := ref.get_ref() as TitheCollector
+		if not dashed[0] and t != null and t.rel_ahead <= 2.0:
+			p.start_dash(1.0, 0.0)
+			dashed[0] = true
+		return t == null, 20.0)
+	check(causes == [&"dash"] and world.score.thefts == 0 and world.score.credits == 400 + world.score.jackpots,
+		"the dash catches it on its way in: its jackpot, no theft (%s, %d credits)" % [causes, world.score.credits])
+	await sim.free_world(world)
 
 
 # --- The campaign (GDD §5, §9.12) -----------------------------------------------------------------

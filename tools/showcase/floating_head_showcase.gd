@@ -103,6 +103,9 @@ func _ready() -> void:
 			pattern = v
 		elif arg == "--towers=off":
 			towers = false
+		elif arg == "--reduced-flashing":
+			RenderingServer.global_shader_parameter_set(&"reduced_flashing", 1.0)
+			Settings.flashing_reduced = true
 		elif arg.begins_with("--towers-after="):
 			towers_after = int(v)
 		elif arg.begins_with("--phase="):

@@ -73,8 +73,15 @@ const SPIN_AHEAD: float = 30.0
 const HATCH_SECONDS: float = 0.5
 ## While it feeds, the riding missiles' clatter repeats this often.
 const RIDE_SOUND_EVERY: float = 1.3
-## The blast up the line drops a burst of fire this often.
-const BLAST_STEP: float = 0.07
+## The blast up the line drops a shared fireball (GoldenConvergenceShip.fireball) this often, LINE_FIRE_SIZE in radius
+## and LINE_FIRE_PACE times as quick as a free one, smokeless: a few at once beside the ship's own blast, within the
+## run's pool of fireballs (the H merge; E5d dropped a fire of its own every 0.07 s). DESIGN-TBD (docs/OPEN_QUESTIONS.md
+## item 674). His shoulder's blast (_blast_lands) is MOUTH_FIRE_SIZE, with its smoke. Both ride along with the suit,
+## which paces the runner (the line runs from where the ship went off, kept in the runner's frame, to his shoulder).
+const BLAST_STEP: float = 0.2
+const LINE_FIRE_SIZE: float = 3.0
+const LINE_FIRE_PACE: float = 2.2
+const MOUTH_FIRE_SIZE: float = 4.5
 ## The squadron's pad hurl's rise outside this fight's refill (GoldenConvergenceSquadron's default).
 const HURL_RISE_DEFAULT: float = 6.0
 
@@ -183,6 +190,7 @@ func start(beat: Dictionary) -> void:
 	_from_turn = _arrive_turn()
 	_place_ship(d)
 	boss.squadron.hurl_rise = HURL_RISE_DEFAULT
+	boss.squadron.crash_carrier = null
 	boss.strafe.start({"kind": &"refill", "arg": script})
 	p["cage_after"] = _cage_after()
 	boss.sound(&"gc_ship", boss.sound_point(ship.global_position))
@@ -298,6 +306,7 @@ func _raise_cage(d: float) -> void:
 	s.hold_station = func(i: int) -> Vector3: return ship.hold_point(i, boss.squadron.size())
 	s.hold(true)
 	boss.squadron.hurl_rise = ship.hurl_rise()
+	boss.squadron.crash_carrier = ship
 	boss.sound(&"fence_warning", boss.sound_point(boss.world.lane_point(lane, front_at, 1.0)))
 	boss.hint("cage")
 	boss.log_event(&"cage_up", {"n": int(p["n"]), "lane": lane, "gen_lane": gen_lane, "front_at": front_at,
@@ -320,6 +329,7 @@ func _miss(d: float) -> void:
 	s.hold(false)
 	s.hold_station = Callable()
 	boss.squadron.hurl_rise = HURL_RISE_DEFAULT
+	boss.squadron.crash_carrier = null
 	var info := {"n": int(p["n"]), "runner": d, "lane": boss.player_lane(), "pad_to": cage.plan.get("pad_to", 0.0)}
 	boss.log_event(&"refill_missed", info)
 	pad_missed.emit(info)
@@ -442,7 +452,7 @@ func _tick_chain(delta: float, d: float) -> void:
 		if float(chain["blast_step"]) <= 0.0 and u < 1.0:
 			chain["blast_step"] = BLAST_STEP
 			var at: Vector3 = ship.line_point(u)
-			ship.fireball(at, 2.6, 0.45)
+			ship.fireball(at, LINE_FIRE_SIZE, false, LINE_FIRE_PACE, boss.suit)
 			if not Settings.flashing_reduced:
 				boss.world.effects.burst(at, GoldenConvergenceShip.FIRE, 8, 0.6)
 		if u >= 1.0:
@@ -463,8 +473,7 @@ func _blast_lands() -> void:
 	var burst_suit: bool = phase >= GoldenConvergence.STAGE_2 - 1
 	if not burst_suit:
 		suit.set_pipes_broken(side, true)
-		ship.fireball(mouth, 4.5, 0.9)
-		ship.smoke(mouth + Vector3(0.0, 2.0, 0.0), 4.0, 2.4)
+		ship.fireball(mouth, MOUTH_FIRE_SIZE, true, 1.0, suit)
 		if not Settings.flashing_reduced:
 			boss.world.effects.burst(mouth, GoldenConvergenceShip.FIRE_HOT, 30, 1.8)
 		boss.world.effects.shake(0.45, 0.5)
@@ -706,6 +715,7 @@ func clear() -> void:
 		s.hold_station = Callable()
 	if boss.squadron != null and is_instance_valid(boss.squadron):
 		boss.squadron.hurl_rise = HURL_RISE_DEFAULT
+		boss.squadron.crash_carrier = null
 	if _hatch > 0.0 and boss.suit != null and is_instance_valid(boss.suit) and (boss.barrage == null
 			or boss.barrage.stage == GoldenConvergenceBarrage.Stage.IDLE):
 		boss.suit.pipes_open[0 if _hatch_side < 0 else 1] = 0.0

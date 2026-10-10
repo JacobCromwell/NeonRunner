@@ -16,6 +16,8 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the lit surfaces dim, glowing ones don't.
 global uniform float scenery_light;
+// The Compatibility renderer's lift of what lies below the street (see the end of fragment()).
+const float UNDER_COMPAT_GAMMA = 0.85;
 // The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
 global uniform vec3 scenery_tint;
 uniform float glow_scale = 4.0;
@@ -431,8 +433,20 @@ void fragment() {
 		// Fake city light: tops catch the sky glow, sides the street, undersides the traffic below.
 		float shade = 0.62 + 0.3 * max(n.y, 0.0) + 0.08 * abs(n.x) + 0.06 * n.z - 0.04 * max(-n.y, 0.0);
 		float f = 1.0 - clamp(dot(nv, VIEW), 0.0, 1.0);
-		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength + glass * 0.15);
+		// What lies below the street (the Corporate, Dead Zone and Golden Zone's holes, task H3) takes only
+		// a little of the zone's sheen, which at a hole's grazing walls would drown the scenery in it.
+		float sheen_k = (pattern == 31 || pattern == 41 || pattern == 53 || pattern == 54 || pattern == 71) ? 0.25 : 1.0;
+		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength * sheen_k + glass * 0.15);
 		col = (to_linear(base) * shade + sheen) * light_factor(scenery_light) * scenery_tint;
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+		// What lies below the street is authored dim (it is far darker than the street, so a hole reads as a
+		// hole), and the Compatibility renderer shows such dark values darker than Forward+ does (the same
+		// colours drew as near-black there, where its frame at the street's brightness matched): lift them
+		// toward Forward+'s look so the scenery (task H3) shows on both renderers, never past it.
+		if (sheen_k < 1.0) {
+			col = pow(col, vec3(UNDER_COMPAT_GAMMA));
+		}
+#endif
 	}
 	ALBEDO = col;
 }

@@ -252,6 +252,7 @@ var _ceilings: MarketCeilings
 var _props: MarketProps
 var _citizens: MarketCitizens
 var _doodads: MarketDoodads
+var _dash_walls: MarketDashWall
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): a building bridging the
 ## street reaches from wall to wall.
 var _wall_x: float = 0.0
@@ -282,6 +283,18 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	var batch := MeshBatch.new()
 	stalls().build(batch, center, size, lane_x, edge_start, edge_end)
 	batch.commit(parent)
+
+
+## A floor cut (ZoneSkin.floor_cut; task B4, H3): the stall roofs sliced open down the lane, and through
+## it what any gap shows (GDD §9.9): the stalls' sides in their deep shade down the neighbouring lanes
+## (their own, drawn with their roofs) and the market floor `market_depth` down, lost in the shade (the
+## chunk draws it with the left wall). The cut draws only its two end faces, in the gap's own shade and
+## pattern (MarketStalls, PAT_UNDER), and no walls and no bottom.
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	standard_floor_cut(parent, cut, solid_material(), glow_material(), {
+		"edge": gap_edge_color, "inside": gap_inside_color, "pattern": MeshKit.PAT_UNDER, "params": [0.0, 1.0, 2.0],
+		"depth": market_depth, "bottom": false, "walls": false,
+	})
 
 
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
@@ -377,6 +390,23 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, market_metal_color)
 	batch.commit(parent)
+
+
+## A dash wall (task H7b): a shopfront across the market, built from the walls' own kit (MarketDashWall): the
+## plinth, shop windows with their displays, piers, shuttered stucco storeys, a cornice.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a Marketplace dash wall draws with: the shopfront shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in the Marketplace's own facades: sun-bleached
+## stucco, its pale trim, dark glass and earthy cracks. Kept as the palette the debris falls back on.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([stucco_colors[0], trim_color, Color(0.12, 0.13, 0.15), Color(0.22, 0.17, 0.13)])
 
 
 ## A potted plant (small), a bank of casino machines (medium) or a planted hedge row (large): MarketDoodads.
@@ -523,6 +553,12 @@ func _solid_params() -> Dictionary:
 		"stall_slot": stall_slot, "stall_awning_share": awning_share, "stall_tin_share": tin_share,
 		"stall_canvas": canvas, "stall_awning": awnings, "stall_tin": Vector3(tin_color.r, tin_color.g, tin_color.b),
 		"market_dust": dust_tint, "market_dust_amount": wear}
+
+
+func dash_walls() -> MarketDashWall:
+	if _dash_walls == null:
+		_dash_walls = MarketDashWall.new(self)
+	return _dash_walls
 
 
 func stalls() -> MarketStalls:

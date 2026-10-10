@@ -86,6 +86,13 @@ extends Resource
 @export_range(0, 20) var tithe_credits: int = 6
 @export_range(1, 100) var tithe_value: int = 5
 @export_range(1.0, 8.0, 0.25, "suffix:m") var tithe_spacing: float = 3.0
+## DESIGN-TBD (task H10; GDD §9.12: the Tithe Collector "stays in the level twice as long", owner,
+## October 8, 2026): how fast the runner closes in on The Board's Collector (m/s at 18 m/s). A level's
+## Collector closes at 3.5 m/s now (about 11 s on screen), which on a 130 m flatcar roof would carry it
+## past the roof's end, over the coupling, before the runner reaches it, and where the runner jumps the
+## gap it could be stomped mid-jump. So the Board's keeps the 7 m/s the Collector was first built with
+## (about 5.4 s). DESIGN-TBD: docs/OPEN_QUESTIONS.md item 626.
+@export_range(0.5, 20.0, 0.5, "suffix:m/s") var tithe_approach_speed: float = 7.0
 ## DESIGN-TBD (GDD §10: "partial wall fences run along the track's sound barriers"): a partial wall fence
 ## (the low or the high band, in turn) on wall_fence_share of the corporate carriages from wall_fences_from
 ## on, on a seeded side, where the level's rules allow one (BossArena.wall_fence_problem); its pulse is the

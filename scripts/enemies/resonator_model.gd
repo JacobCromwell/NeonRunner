@@ -12,8 +12,8 @@ extends Node3D
 ## - The core: a red crystal, the one part that always glows (red is enemy fire, GDD §5).
 ## - Three broken halos (three arcs each, with ivory nodes at the breaks), gold with a red inner ring
 ##   that glows while it warns. At rest they tumble slowly; in the warning each spins up and swings into
-##   line facing the runner (+Z) on a note of the chime, so the runner sees three red rings lock into a
-##   target, one per note.
+##   line facing the runner (+Z) at a line-up moment of its warning, so the runner sees three red rings lock
+##   into a target, one per moment (each with a flare of the warning's fire).
 ## Four draw calls (the spire with its core, one per halo) and about 1,600 triangles, in one shader
 ## (resonator.gdshader) that works on every renderer; the meshes are built once and shared. Its origin
 ## is the core. The Resonator sets the animation inputs every frame; wave_mesh() builds its waves.

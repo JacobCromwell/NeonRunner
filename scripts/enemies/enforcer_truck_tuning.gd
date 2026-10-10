@@ -188,9 +188,10 @@ extends EnemyTuning
 ## DESIGN-TBD (docs/questions/c6b.md).
 @export_range(1.6, 6.0, 0.1, "suffix:m") var wreck_gap: float = 2.8
 @export_range(0.1, 1.0, 0.05, "suffix:s") var wreck_surge_seconds: float = 0.3
-## The blast: how long its fire and smoke last, how big its fireball grows (metres; smaller in the runner's lane,
-## where it must stay under the camera's line of sight to them), and how fast it falls back behind the runner
-## (it keeps most of the truck's speed, so it stays in view).
+## The blast, one of the shared fireballs (RunEffects.fireball, GDD §11; carried along with the wreck): how long its
+## fire burns, how big it is (its radius, metres; smaller in the runner's lane, where it must stay under the camera's
+## line of sight to them), and how fast it falls back behind the runner (it keeps most of the truck's speed, so it
+## stays in view).
 @export_range(0.3, 2.0, 0.05, "suffix:s") var blast_seconds: float = 0.9
 @export_range(0.5, 4.0, 0.05, "suffix:m") var blast_radius: float = 1.3
 @export_range(0.3, 4.0, 0.05, "suffix:m") var blast_radius_in_lane: float = 0.85

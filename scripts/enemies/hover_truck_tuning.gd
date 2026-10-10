@@ -152,3 +152,20 @@ func max_per_level_at(t: float) -> int:
 ## Window shooters at scaling `t`: 0 early, up to 2 by the last levels.
 func shooters_at(t: float) -> int:
 	return int(floor(scaled(shooters_early, shooters_late, t) + 0.001))
+
+
+## Seconds a truck whose centre is `from_offset` metres ahead of the runner takes to drop to back_offset
+## (behind them) at its lurch back (lurch_back_speed, reached at lurch_accel): how long before a dash wall it
+## must start giving way (task H7a; HoverTruck._wall_ahead, and the generator's keep-out for its entrance,
+## dash_wall_rules.gd). 0 if it's there already.
+func give_way_seconds(from_offset: float) -> float:
+	var way: float = maxf(from_offset - back_offset, 0.0)
+	if way <= 0.0:
+		return 0.0
+	var speed: float = maxf(lurch_back_speed, 0.1)
+	var accel: float = maxf(lurch_accel, 0.1)
+	# Speeding up to lurch_back_speed costs half the time it takes, then it cruises.
+	var ramp: float = speed / accel
+	if way <= 0.5 * speed * ramp:
+		return sqrt(2.0 * way / accel)
+	return ramp + (way - 0.5 * speed * ramp) / speed

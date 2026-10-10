@@ -6,7 +6,7 @@ extends BossPart
 ## draws it, easing each toward its target.
 ## Declared, never special-cased (CLAUDE.md principle 8), so the shared rules apply as to any enemy:
 ## - immune_to_weapons (GDD §10: like every Bad Dream, weapons have no effect at all): auto-fire never
-##   targets it, and no shot or splash hurts it (R2's rule for hosts); its BossDef's weapon cap is 0
+##   targets it, and no shot or splash hurts it (a fence generator's rule); its BossDef's weapon cap is 0
 ##   besides. Only a generator's EMP hurts it (SleepTaker._on_part_emp), each tearing a chunk away
 ##   (tear(): SleepTakerModel.CHUNK_HEADS);
 ## - a boss's body (BossPart): claws never defeat it, the dash passes through it, it takes no stomps

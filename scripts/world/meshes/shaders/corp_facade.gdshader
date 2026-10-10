@@ -143,6 +143,8 @@ void fragment() {
 		float joint = filtered_pulse(q.y, fq.y, 0.0, 0.02);
 		col = albedo * (0.9 + 0.12 * hash12(floor(q) + seed)) * (1.0 - 0.4 * joint);
 		col *= 0.92 + 0.1 * value_noise(vec2(uv.x * 0.6, uv.y * 0.9) + seed);
+		// CorporateDashWall hard-codes the seeds it wants a lobby (or none) for by this test, and DashWallKit.hash11
+		// replicates the hash in GDScript: change this threshold, or the hash, with them (test_dash_walls checks).
 		if (hash11(seed * 1.7 + 0.3) < 0.45) {
 			// A lobby of dark smoked glass in slim steel frames, a faint cold light deep inside.
 			float g = band(uv.y, 0.6, calm_top - 1.2, fw_m.y);

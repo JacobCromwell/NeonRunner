@@ -1,28 +1,42 @@
 class_name SleepTakerHands
 extends Node3D
 ## The Sleep Taker's grasping hands (GDD §10: "grasping hands rising from the floor: purple mist pools in
-## the lane, with whispering. Switch lanes"):
-## - the warning: purple mist pools in the runner's lane ahead, where they'll be once it has shown
-##   mist_seconds and the hand has been up hand_rise_lead (SleepTakerTuning), with whispering
-##   (sleep_taker_whisper) from the pool. The mist is the nightmare's own purple (never a hazard colour)
-##   and drawn unshaded, so it reads as well in the dark of lights out. It counts as a floor warning
-##   (BossProps.floor_warning): pickups keep off it;
-## - the hand bursts up out of the mist (sleep_taker_hand) as the runner comes within hand_rise_lead of
-##   it, its claws heating to enemy-attack red, and grasps: an enemy attack (armor or a shield blocks
-##   it, the dash passes through) a little smaller than the hand, from the floor to hand_height, above
-##   a jump's reach: one lane switch dodges it. Once the runner is past it, it lingers a moment, then
-##   sinks back as the mist fades. Successive volleys have one, two, then up to three hands, including
-##   hands reaching inward from either wall. Every volley keeps an adjacent floor lane safe;
-## - fairness (plan()): a hand comes only at a runner on the floor, where its lane's floor is clear of
-##   holes and fences around the hand (no dodge needed during a jump), under no ceiling, with no pickup
-##   in the way, and while a lane max_escape_lanes away is clear from the runner to past the hand.
-## Hands are pooled (POOL rigs: the hand, its mist and its rising wisps), drawn by
-## sleep_taker_hand.gdshader and sleep_taker_mist.gdshader.
+## the lane, with whispering. Switch lanes"; owner, October 8, 2026: "the hands spread out": one round
+## rises at several distances along the street, so the runner makes several lane switches in a row to
+## get through it, and "the walls aren't safe": the hands attack the walls much more often). Task H9.
+## - a round (plan()): rows of hands hand_row_seconds apart along the street (SleepTakerTuning, at run
+##   speed and divided by the phase's pace), its first row where the runner will be once its mist has
+##   shown mist_seconds and its hand has been up hand_rise_lead. Each row leaves its door open
+##   (hand_row_open floor lanes): the first door one lane over from the runner's lane, each next one
+##   lane over from the last, so every row stands in the lane the runner kept free at the row before:
+##   it makes them switch lanes, row after row. A hand stands in every other floor lane whose floor is
+##   clear around it (a hole is there instead where it isn't), and wall_hands_per_row reach in from the
+##   walls, alternating (never beside a door in an outer lane, never at a wall gap, and only over an
+##   outer lane that has a hand of its own, so no runner on the floor ever passes under one). The first
+##   round has hand_rows_first rows, each next one a row more, up to hand_rows_max, kept across phases;
+##   a round takes only the rows that are over before the next refuge's slash or lure, and waits
+##   rather than come with fewer than hand_rows_min;
+## - the warning: as a round starts, purple mist pools where each of its hands will rise (on the floor,
+##   or on its wall), with whispering (sleep_taker_whisper, once a round). The mist is the nightmare's
+##   own purple (never a hazard colour) and drawn unshaded, so it reads as well in the dark of lights
+##   out. A floor mist counts as a floor warning (BossProps.floor_warning): pickups keep off it;
+## - each hand bursts up out of its mist (sleep_taker_hand, once a row) as the runner comes within
+##   hand_rise_lead of it, its claws heating to enemy-attack red, and grasps: an enemy attack (armor or a
+##   shield blocks it, the dash passes through) a little smaller than the hand, from the floor to
+##   hand_height (above a jump's reach), or on a wall from hand_wall_height's reach inward (a wall
+##   runner's height, above a grounded floor runner). Once the runner is past it, it lingers a moment,
+##   then sinks back as the mist fades;
+## - fairness: a round comes only at a runner on the floor, under no ceiling, with no pickup in the way,
+##   and only where a runner who moves route_reaction seconds after its mists show has a way through
+##   every row and the street around it (route_from: The House's lane router, TheHouseRoute, with the
+##   real lane switch time and margins, holes and fences jumped or slid under with no switch during one).
+##   Its doors are picked from a seeded order (the fight's seed and the round's number), so every attempt
+##   plays the same way.
+## Hands are pooled (the most a round can have at the lane count, SleepTakerTuning.max_hands: rigs of the
+## hand, its mist and its rising wisps), drawn by sleep_taker_hand.gdshader and sleep_taker_mist.gdshader.
 
 enum Stage { MIST, RISE, UP, SINK }
 
-## Rigs kept ready, enough for the largest volley.
-const POOL: int = 3
 ## How long the mist takes to pool, and a sinking hand to go.
 const POOL_SECONDS: float = 0.4
 const SINK_SECONDS: float = 0.45
@@ -34,68 +48,303 @@ const MIST_LEFT: float = 0.6
 ## A hand's attack is over once the runner is this far past it (then the next may come; metres at
 ## 18 m/s, times the run's pace).
 const PASSED: float = 1.0
+## Ways through a round checked with the router at most, each time plan() runs (its costliest part: the
+## next try takes the doors in another seeded order).
+const MAX_ROUTE_TRIES: int = 3
 
 var boss: SleepTaker
-## Hands at work: {n, lane, at (track distance), stage, t, rig (Dictionary), marker}.
+## Hands at work: {n, round, row, lane, side, door, at (track distance), stage, t, rig, marker}.
 var active: Array[Dictionary] = []
+## The round in play (plan()'s, with its rows), or {} before the first.
+var round_plan: Dictionary = {}
 ## Hands started so far.
 var count: int = 0
-## Volleys started so far, preserved across phase changes.
-var volleys: int = 0
+## Rounds started so far, kept across phase changes (each next round has a row more).
+var rounds: int = 0
 
 var _free: Array[Dictionary] = []
+var _rigs: int = 0
+## plan() calls since the last round started that stopped at MAX_ROUTE_TRIES (each next one takes the
+## doors in another seeded order).
+var _attempts: int = 0
+## The rows whose hands' burst has sounded (round * 100 + row).
+var _sounded: Dictionary = {}
 
 
 func setup(p_boss: SleepTaker) -> void:
 	boss = p_boss
 	name = "Hands"
 	top_level = true
-	for i: int in POOL:
+	for i: int in maxi(boss.tuning.max_hands(boss.lane_count()), 1):
 		_free.append(_make_rig(i))
+	_rigs = _free.size()
 
 
-## A fair volley: {lane, at, escape, spots}, or {} while no safe volley can start.
-func plan() -> Dictionary:
+## How many hands the pool holds.
+func pool_size() -> int:
+	return _rigs
+
+
+# --- Planning a round ------------------------------------------------------------------------------
+
+## A fair round for the runner now: {lane, d, at (its first row), path (the doors, from the runner's
+## lane), rows: [{at, door, open, spots: [{lane, side}]}], count, route}, or {} while no fair round can
+## start. `budget`: seconds the round may last, until the runner is past its last row (it takes the rows
+## that fit).
+func plan(budget: float = INF) -> Dictionary:
 	var world: RunWorld = boss.world
 	var p: Player = world.player
 	if not p.alive or p.surface != Player.Surface.FLOOR or p.in_pit:
 		return {}
 	var t: SleepTakerTuning = boss.tuning
+	var n: int = boss.lane_count()
+	if n < 2:
+		return {}
 	var k: float = boss.run_pace()
-	var lane: int = clampi(p.lane, 0, boss.lane_count() - 1)
+	var v: float = maxf(p.speed, 1.0)
 	var d: float = p.distance
-	var at: float = d + maxf(p.speed, 1.0) * warning_seconds()
-	if not boss.floor_clear_lane(lane, at - t.hand_clear_before * k, at + t.hand_clear_after * k):
+	var lane: int = clampi(p.lane, 0, n - 1)
+	var first: float = d + v * warning_seconds()
+	var spacing: float = row_spacing(v)
+	var rows: int = t.rows_for(rounds + 1)
+	var fewest: int = clampi(t.hand_rows_min, 1, rows)
+	while rows >= fewest and (first + (rows - 1) * spacing + over_distance() - d) / v > budget:
+		rows -= 1
+	if rows < fewest:
 		return {}
-	if boss.ceiling_between(d, at + t.hand_clear_after * k) or boss.pickup_near(lane, at, t.mist_length):
-		return {}
-	var escape: int = boss.escape_lane([lane], lane, d, at + t.escape_clear_after * k)
-	if escape < 0:
-		return {}
-	var amount: int = mini(volleys + 1, clampi(t.hand_max_count, 1, POOL))
-	if _free.size() < amount:
-		return {}
-	var spots: Array[Dictionary] = [{"lane": lane, "side": 0}]
-	var floors: Array[Dictionary] = []
-	for offset: int in boss.lane_count():
-		var other: int = (offset + volleys) % boss.lane_count()
-		if other == lane or other == escape:
+	# The street ahead, read once: its pieces in reach of the round as the router's obstacles, and
+	# where each row's hands fit.
+	var reach: float = first + (rows - 1) * spacing + over_distance() + v * 0.25
+	var track: Array = []
+	_track_obstacles(track, d - 20.0, reach + 20.0)
+	var fits: Dictionary = _fit_table(track, first, spacing, rows)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([boss.rng.seed, "hands", rounds, _attempts])
+	var side: int = -1 if rounds % 2 == 0 else 1
+	var tries: int = 0
+	for m: int in range(rows, fewest - 1, -1):
+		var last: float = first + (m - 1) * spacing
+		if boss.ceiling_between(d, last + t.hand_clear_after * k):
 			continue
-		if boss.floor_clear_lane(other, at - t.hand_clear_before * k, at + t.hand_clear_after * k) \
-				and not boss.pickup_near(other, at, t.mist_length):
-			floors.append({"lane": other, "side": 0})
-	# The second volley introduces another floor hand; later volleys add a wall hand too.
-	if amount == 2 and floors.is_empty():
-		return {}
-	if amount >= 2 and not floors.is_empty():
-		spots.append(floors.pop_front())
-	var side: int = -1 if volleys % 2 == 0 else 1
-	for wall: int in [side, -side]:
-		if spots.size() >= amount:
-			break
-		spots.append({"lane": 0 if wall < 0 else boss.lane_count() - 1, "side": wall})
-	return {"lane": lane, "at": at, "escape": escape, "spots": spots}
+		for path: Array in doors(lane, m, n, rng):
+			var round: Dictionary = _round_for(path, first, spacing, side, fits)
+			if round.is_empty() or int(round["count"]) > _free.size():
+				continue
+			var route: Dictionary = route_from(lane, d, d + v * t.route_reaction, round["rows"], track)
+			if bool(route["ok"]):
+				round["lane"] = lane
+				round["d"] = d
+				round["at"] = first
+				round["route"] = route
+				return round
+			tries += 1
+			if tries >= MAX_ROUTE_TRIES:
+				_attempts += 1
+				return {}
+	return {}
 
+
+## Where a round's hands fit (hand_fits, wall_fits) for its rows from `first`, `spacing` apart, given the
+## street's pieces around them (`track`: _track_obstacles'): {floor: [row → PackedByteArray by lane],
+## wall: [row → {-1: bool, 1: bool}]}.
+func _fit_table(track: Array, first: float, spacing: float, rows: int) -> Dictionary:
+	var n: int = boss.lane_count()
+	var floor_rows: Array = []
+	var wall_rows: Array = []
+	for i: int in rows:
+		var at: float = first + i * spacing
+		var lanes := PackedByteArray()
+		lanes.resize(n)
+		for lane: int in n:
+			lanes[lane] = 1 if hand_fits(lane, at, track) else 0
+		floor_rows.append(lanes)
+		wall_rows.append({-1: wall_fits(-1, at), 1: wall_fits(1, at)})
+	return {"floor": floor_rows, "wall": wall_rows}
+
+
+## Every way of `rows` doors from `lane` at `n` lanes, each one lane over from the one before (the lane
+## the runner is in first), in a seeded order: [[lane, door 1, door 2, ...], ...].
+static func doors(lane: int, rows: int, n: int, rng: RandomNumberGenerator) -> Array:
+	var out: Array = [[lane]]
+	for i: int in rows:
+		var next: Array = []
+		for path: Array in out:
+			for s: int in [-1, 1]:
+				var l: int = int(path[-1]) + s
+				if l >= 0 and l < n:
+					next.append(path + [l])
+		out = next
+	for i: int in range(out.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var swap: Array = out[i]
+		out[i] = out[j]
+		out[j] = swap
+	return out
+
+
+## The round along `path` (doors(): the runner's lane, then each row's door): {path, rows, count}, or {}
+## if a row's hand in the lane the runner must leave can't stand (its floor isn't clear, or a pickup
+## lies there). `side` is the wall its first row's wall hand reaches from (they alternate); `fits` is
+## _fit_table's for its rows.
+func _round_for(path: Array, first: float, spacing: float, side: int, fits: Dictionary) -> Dictionary:
+	var t: SleepTakerTuning = boss.tuning
+	var n: int = boss.lane_count()
+	var rows: Array[Dictionary] = []
+	var total: int = 0
+	for i: int in range(1, path.size()):
+		var at: float = first + (i - 1) * spacing
+		var door: int = int(path[i])
+		var leave: int = int(path[i - 1])
+		var open: Array[int] = open_lanes(door, leave, n, t.hand_row_open)
+		var fit: PackedByteArray = (fits["floor"] as Array)[i - 1]
+		var spots: Array[Dictionary] = []
+		var floors: Array[int] = []
+		for lane: int in n:
+			if open.has(lane):
+				continue
+			if fit[lane] == 0:
+				if lane == leave:
+					return {}
+				continue
+			spots.append({"lane": lane, "side": 0})
+			floors.append(lane)
+		var row_side: int = side if i % 2 == 1 else -side
+		var walls: int = 0
+		for s: int in [row_side, -row_side]:
+			if walls >= clampi(t.wall_hands_per_row, 0, 2):
+				break
+			var outer: int = 0 if s < 0 else n - 1
+			if open.has(outer) or not floors.has(outer) or not bool(((fits["wall"] as Array)[i - 1] as Dictionary)[s]):
+				continue
+			spots.append({"lane": outer, "side": s})
+			walls += 1
+		rows.append({"at": at, "door": door, "open": open, "spots": spots})
+		total += spots.size()
+	return {"path": path, "rows": rows, "count": total}
+
+
+## A row's open lanes: its door, and as many more as `open` asks (the nearest to the door, on the side
+## away from `leave` first), never `leave` (the lane the row makes the runner leave).
+static func open_lanes(door: int, leave: int, n: int, open: int) -> Array[int]:
+	var out: Array[int] = [door]
+	var away: int = 1 if door >= leave else -1
+	for dist: int in range(1, n):
+		for s: int in [away, -away]:
+			if out.size() >= clampi(open, 1, n - 1):
+				return out
+			var l: int = door + s * dist
+			if l >= 0 and l < n and l != leave:
+				out.append(l)
+	return out
+
+
+## True if a floor hand can rise in `lane` at track distance `at`: its floor clear of holes, fences and
+## doodads hand_clear_before it to hand_clear_after past it (at the run's pace), and no pickup there.
+## `track`: the street's pieces as _track_obstacles gives them (read from the arena when empty).
+func hand_fits(lane: int, at: float, track: Array = []) -> bool:
+	var t: SleepTakerTuning = boss.tuning
+	var k: float = boss.run_pace()
+	var from: float = at - t.hand_clear_before * k
+	var to: float = at + t.hand_clear_after * k
+	if boss.pickup_near(lane, at, t.mist_length):
+		return false
+	var pieces: Array = track
+	if pieces.is_empty():
+		pieces = []
+		_track_obstacles(pieces, from - 1.0, to + 1.0)
+	for o: Dictionary in pieces:
+		if int(o["lane"]) == lane and float(o["from"]) <= to and float(o["to"]) >= from:
+			return false
+	return true
+
+
+## True if a wall hand can reach in from wall `side` at track distance `at`: the wall is there (no wall
+## gap) along its mist and a little either side.
+func wall_fits(side: int, at: float) -> bool:
+	var layout: LevelLayout = _layout()
+	var half: float = boss.tuning.mist_length * 0.5 + 1.0
+	return layout == null or not layout.wall_gap_between(at - half, at + half, side)
+
+
+func _layout() -> LevelLayout:
+	if boss.arena != null and boss.arena.layout != null:
+		return boss.arena.layout
+	return boss.world.layout if boss.world != null else null
+
+
+# --- The way through ---------------------------------------------------------------------------------
+
+## A way through `rows` (a round's rows; the round in play when empty) and the street around them for a
+## runner in `lane` at track distance `d0` who first moves at `act_at`: TheHouseRoute.find's result,
+## {ok, moves: [{at, from, to}], end_lane}. Its floor hands are solid in their lanes (hand_depth, the
+## body's margin either side); the arena's holes are jumped and its fences jumped or slid under, with no
+## lane switch during one; doodads are solid. `track`: the street's pieces as _track_obstacles gives them
+## (read from the arena when empty).
+func route_from(lane: int, d0: float, act_at: float, rows: Array = [], track: Array = []) -> Dictionary:
+	var t: SleepTakerTuning = boss.tuning
+	var v: float = boss.speed()
+	if rows.is_empty():
+		rows = round_plan.get("rows", [])
+	var obstacles: Array = []
+	var last: float = d0
+	for row: Dictionary in rows:
+		var at: float = float(row["at"])
+		last = maxf(last, at)
+		for spot: Dictionary in row["spots"]:
+			if int(spot["side"]) == 0:
+				obstacles.append(TheHouseRoute.obstacle(int(spot["lane"]), at - t.hand_depth * 0.5, at + t.hand_depth * 0.5))
+	var d_end: float = last + over_distance() + v * 0.25
+	if track.is_empty():
+		_track_obstacles(obstacles, d0 - 20.0, d_end + 20.0)
+	else:
+		obstacles.append_array(track)
+	return router(boss.lane_count(), v, boss.world.tuning, t).find(clampi(lane, 0, boss.lane_count() - 1), d0,
+		maxf(act_at, d0), d_end, obstacles)
+
+
+## The lane router the rounds are planned and proved by (The House's, TheHouseRoute: the same model of a
+## runner's lane switches, jumps and slides) at `v` m/s on `lanes` lanes, with the Sleep Taker's margins:
+## a lane switch takes the real one (MovementTuning.lane_switch_time) times route_switch_margin, and the
+## body reaches route_body_margin past a hand either way; a jump and a slide as TheHouseRoute.for_run
+## counts them.
+static func router(lanes: int, v: float, movement: MovementTuning, t: SleepTakerTuning) -> TheHouseRoute:
+	var r := TheHouseRoute.new()
+	r.lanes = maxi(lanes, 1)
+	r.switch_m = v * movement.lane_switch_time * t.route_switch_margin + 0.3
+	r.body = movement.hurtbox_size.z * 0.5 + t.route_body_margin
+	var jump: float = movement.jump_distance(v)
+	r.jump_before = jump * 0.62
+	r.jump_after = jump * 0.5
+	r.slide_before = v * movement.slide_duration * 0.85
+	r.slide_after = 1.5
+	return r
+
+
+## The arena's holes (and floor cuts), working fences and doodads reaching into [from, to], as the
+## router's obstacles.
+func _track_obstacles(out: Array, from: float, to: float) -> void:
+	var layout: LevelLayout = _layout()
+	if layout == null:
+		return
+	for g: Dictionary in layout.gaps:
+		if float(g["start"]) <= to and float(g["end"]) >= from:
+			out.append(TheHouseRoute.obstacle(int(g["lane"]), float(g["start"]), float(g["end"]), TheHouseRoute.Kind.FENCE))
+	for c: Dictionary in layout.cuts:
+		if float(c["start"]) <= to and float(c["end"]) >= from:
+			out.append(TheHouseRoute.obstacle(int(c["lane"]), float(c["start"]), float(c["end"]), TheHouseRoute.Kind.FENCE))
+	var half: float = boss.world.tuning.fence_depth * 0.5
+	for f: Dictionary in layout.fences:
+		var at: float = float(f["at"])
+		if f.get("disabled", false) or at < from or at > to:
+			continue
+		var kind: int = TheHouseRoute.Kind.GAPPED if f["variant"] == "gapped" else TheHouseRoute.Kind.FENCE
+		out.append(TheHouseRoute.obstacle(int(f["lane"]), at - half, at + half, kind))
+	for dd: Dictionary in layout.doodads:
+		if float(dd["start"]) <= to and float(dd["end"]) >= from:
+			out.append(TheHouseRoute.obstacle(int(dd["lane"]), float(dd["start"]), float(dd["end"])))
+
+
+# --- Timings --------------------------------------------------------------------------------------
 
 ## How far past a hand the runner is when its attack is over (its depth's far half and PASSED, at the
 ## run's pace).
@@ -103,28 +352,58 @@ func over_distance() -> float:
 	return boss.tuning.hand_depth * 0.5 + PASSED * boss.run_pace()
 
 
-## Seconds from the mist appearing to the runner reaching the hand (at the phase's pace): the warning.
+## Seconds from a round's mists appearing to the runner reaching its first row (at the phase's pace): its
+## nearest hand's warning (the later rows' mists show longer).
 func warning_seconds() -> float:
 	var t: SleepTakerTuning = boss.tuning
 	return (t.mist_seconds + t.hand_rise_lead) / boss.pace()
 
 
-## Starts a volley at `plan` (or a single staged hand for a review).
+## Metres between a round's rows at `v` m/s (hand_row_seconds, divided by the phase's pace).
+func row_spacing(v: float) -> float:
+	return v * boss.tuning.hand_row_seconds / boss.pace()
+
+
+# --- A round in play ---------------------------------------------------------------------------------
+
+## Starts a round from plan() (or, for reviews and tests, a single row {at, spots: [{lane, side}]} or a
+## single staged hand {lane, at}).
 func start(plan: Dictionary) -> void:
-	var spots: Array[Dictionary] = []
-	if plan.has("spots"):
-		spots.assign(plan["spots"])
-	else:
-		spots.append(plan)
-	if spots.is_empty() or spots.size() > _free.size() or spots.size() > POOL:
-		push_error("SleepTakerHands: cannot start a volley without enough pooled hands")
+	var rows: Array[Dictionary] = _rows_of(plan)
+	var total: int = 0
+	for row: Dictionary in rows:
+		total += (row["spots"] as Array).size()
+	if total == 0 or total > _free.size():
+		push_error("SleepTakerHands: cannot start a round without enough pooled hands")
 		return
-	volleys += 1
-	for spot: Dictionary in spots:
-		_start_hand(spot, float(plan["at"]), int(plan.get("escape", -1)))
+	rounds += 1
+	_attempts = 0
+	round_plan = plan.duplicate()
+	round_plan["rows"] = rows
+	var near: float = float(rows[0]["at"])
+	boss.log_event(&"round", {"n": rounds, "rows": rows.size(), "hands": total, "lane": int(plan.get("lane", -1)),
+		"at": near, "d": boss.player_distance(), "path": plan.get("path", [])})
+	for r: int in rows.size():
+		var row: Dictionary = rows[r]
+		for spot: Dictionary in row["spots"]:
+			_start_hand(spot, float(row["at"]), r, int(row.get("door", -1)))
+	boss.sound(&"sleep_taker_whisper", boss.world.lane_point(boss.lane_count() / 2, near) + Vector3(0.0, 0.5, 0.0))
 
 
-func _start_hand(spot: Dictionary, at: float, escape: int) -> void:
+## A plan's rows, whatever its shape (start()).
+static func _rows_of(plan: Dictionary) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if plan.has("rows"):
+		out.assign(plan["rows"])
+	elif plan.has("spots"):
+		out.append({"at": float(plan["at"]), "door": int(plan.get("door", -1)), "open": [], "spots": plan["spots"]})
+	else:
+		out.append({"at": float(plan["at"]), "door": -1, "open": [],
+			"spots": [{"lane": int(plan["lane"]), "side": int(plan.get("side", 0))}]})
+	return out
+
+
+func _start_hand(spot: Dictionary, at: float, row: int, door: int) -> void:
 	var t: SleepTakerTuning = boss.tuning
 	var rig: Dictionary = _free.pop_back()
 	var lane: int = int(spot["lane"])
@@ -155,12 +434,11 @@ func _start_hand(spot: Dictionary, at: float, escape: int) -> void:
 		boss.props.floor_warning(marker, lane, at - t.mist_length * 0.5, at + t.mist_length * 0.5)
 	else:
 		boss.props.keep(marker, at + t.mist_length * 0.5)
-	var hand := {"n": count, "volley": volleys, "lane": lane, "side": side, "escape": escape,
+	var hand := {"n": count, "round": rounds, "row": row, "lane": lane, "side": side, "door": door,
 		"at": at, "stage": Stage.MIST, "t": 0.0, "rig": rig, "marker": marker}
 	active.append(hand)
-	boss.sound(&"sleep_taker_whisper", root.global_position + Vector3(0.0, 0.5, 0.0))
-	boss.log_event(&"mist", {"n": count, "volley": volleys, "lane": lane, "side": side, "at": at,
-		"d": boss.player_distance(), "escape": escape})
+	boss.log_event(&"mist", {"n": count, "round": rounds, "row": row, "lane": lane, "side": side, "at": at,
+		"d": boss.player_distance(), "door": door})
 
 
 ## True while a hand's warning shows or it can still reach the runner (until they're past it).
@@ -208,6 +486,7 @@ func tick(delta: float) -> void:
 	var t: SleepTakerTuning = boss.tuning
 	var p: float = boss.pace()
 	var d: float = boss.player_distance()
+	var rise_at: float = boss.speed() * t.hand_rise_lead / p
 	for i: int in range(active.size() - 1, -1, -1):
 		var h: Dictionary = active[i]
 		var rig: Dictionary = h["rig"]
@@ -219,11 +498,15 @@ func tick(delta: float) -> void:
 		match int(h["stage"]):
 			Stage.MIST:
 				mist_mat.set_shader_parameter(&"amount", clampf(st / POOL_SECONDS, 0.0, 1.0))
-				if st * p >= t.mist_seconds:
+				# It bursts up as the runner comes within hand_rise_lead of it (its row's turn).
+				if float(h["at"]) - d <= rise_at:
 					h["stage"] = Stage.RISE
 					h["t"] = 0.0
-					boss.sound(&"sleep_taker_hand", (rig["root"] as Node3D).global_position + Vector3(0.0, 1.0, 0.0))
-					boss.log_event(&"hand", {"n": h["n"], "volley": h["volley"], "lane": h["lane"],
+					var key: int = int(h["round"]) * 100 + int(h["row"])
+					if not _sounded.has(key):
+						_sounded[key] = true
+						boss.sound(&"sleep_taker_hand", (rig["root"] as Node3D).global_position + Vector3(0.0, 1.0, 0.0))
+					boss.log_event(&"hand", {"n": h["n"], "round": h["round"], "row": h["row"], "lane": h["lane"],
 						"side": h["side"], "at": h["at"], "d": d})
 			Stage.RISE:
 				var k: float = clampf(st * p / maxf(t.hand_rise_seconds, 0.01), 0.0, 1.0)

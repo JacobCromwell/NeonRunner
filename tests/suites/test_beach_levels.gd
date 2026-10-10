@@ -138,7 +138,12 @@ func _test_data() -> void:
 			and level.display_name == NAMES[i], "its id, file and name, %s %s" % [NAMES[i], tag])
 		check(campaign.step("beach/%d" % number).level == level and not level.plays_minigame(),
 			"the campaign plays it as beach/%d, a generated level" % number)
-		check(level.features == before.level.features, "Corporate 2's features, a remix with no new enemy %s" % tag)
+		# Corporate 2's but its dash walls (the H series' merge: none in the Beach for now, its open side walls;
+		# docs/OPEN_QUESTIONS.md item 680).
+		var remix: PackedStringArray = PackedStringArray(before.level.features)
+		remix.erase("dash_wall")
+		check(level.features == remix and before.level.features.has("dash_wall"),
+			"Corporate 2's features but its dash walls, a remix with no new enemy %s" % tag)
 		check(level.feature_starts.is_empty() and level.guarantee_features, "introduces nothing, guarantees every feature %s" % tag)
 		check(level.off_curve, "off the campaign's difficulty curve: its own difficulty and enemy scaling %s" % tag)
 		check(level.difficulty > before_config.difficulty and level.difficulty < after_config.difficulty and level.difficulty >= previous,

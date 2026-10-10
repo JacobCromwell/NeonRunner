@@ -9,7 +9,7 @@ display_name = "The Hush"
 level_seed = 502
 duration_seconds = 150.0
 difficulty_bias = 0.0
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "buzz_overdrive", "wall_fences_partial", "enforcer_truck", "host")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "screech", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "buzz_overdrive", "wall_fences_partial", "dash_wall", "enforcer_truck", "host")
 guarantee_features = true
 feature_weights = Dictionary[String, float]({
 "host": 12.5
@@ -25,6 +25,7 @@ fill_empty_seconds = 2.0
 danger_density_increase = 0.37
 wide_gaps = 2
 charge_path_cyborgs = 1
+dash_walls = 1
 credit_trail_chance = 0.6
 credit_trail_min = 5
 doodad_share = 1.0

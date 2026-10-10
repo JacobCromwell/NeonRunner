@@ -471,6 +471,12 @@ func _build_debug_tools() -> void:
 		var charge_paths: ChargePathTuning = ChargePathPlacement.tuning()
 		if charge_paths.resource_path != "":
 			sections.append({"title": "Charge paths", "resource": charge_paths, "path": charge_paths.resource_path})
+	# Task H7a: where dash walls stand and what keeps clear around them, in a level that has them (how many is
+	# the level's LevelConfig.dash_walls, in "Level pacing"; the wall's size is in "Movement"); Restart rebuilds.
+	if context.config.has_feature("dash_wall"):
+		var dash_walls: DashWallTuning = DashWallTuning.load_default()
+		if dash_walls.resource_path != "":
+			sections.append({"title": "Dash walls", "resource": dash_walls, "path": dash_walls.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss

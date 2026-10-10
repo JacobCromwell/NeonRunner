@@ -167,8 +167,8 @@ func _on_contacted(_outcome: int, p: Projectile) -> void:
 
 func _hit_enemies(p: Projectile, from: Vector3, to: Vector3) -> void:
 	for e: Enemy in world.director.active:
-		# A host is immune_to_weapons (GDD §9.7, decided September 26, 2026: no targeting, no direct
-		# or splash damage), so a stray shot passes through it like a generator's (GDD §9.1).
+		# A weapon-immune enemy (a fence generator, GDD §9.1; the Bad Dream) lets a shot pass through.
+		# A host doesn't: weapons hit hosts (GDD §9.7, owner, October 8, 2026).
 		if not is_instance_valid(e) or not e.alive or e.immune_to_weapons:
 			continue
 		var r: float = e.hit_radius() + p.radius
@@ -188,8 +188,8 @@ func _hit_enemies(p: Projectile, from: Vector3, to: Vector3) -> void:
 
 func _splash(p: Projectile, direct: Enemy) -> void:
 	for e: Enemy in world.director.active:
-		# A host is immune_to_weapons (GDD §9.7), so splash never hurts one either, and it doesn't
-		# report the hit.
+		# Splash never hurts a weapon-immune enemy either (a fence generator, GDD §9.1), and it doesn't
+		# report the hit; it hurts a host like any other enemy (GDD §9.7).
 		if e == direct or not is_instance_valid(e) or not e.alive or e.immune_to_weapons:
 			continue
 		if e.aim_point().distance_to(p.position) <= p.splash_radius:

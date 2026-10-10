@@ -25,6 +25,10 @@ extends ZoneSkin
 ## Visuals only: TrackBuilder owns every collision shape and gameplay node, and all variety comes
 ## from hashing track positions (MeshKit.hash_i), so a chunk looks the same whenever it is built.
 
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 643): how bright a floor cut's end faces are against the earth
+## in the holes' walls, so that a cut's inside stays darker than any floor (tests/suites/test_floor_cuts.gd).
+const CUT_STRATA_SHADE: float = 0.5
+
 @export_group("Environment")
 ## A dusty dusk: brown overhead, tan dust over the horizon.
 ## DESIGN-TBD: the GDD gives Gangland's palette (browns and tans), not its time of day or weather;
@@ -244,6 +248,7 @@ var _ruins: GanglandRuins
 var _ceiling: GanglandCeiling
 var _props: GanglandProps
 var _doodads: GanglandDoodads
+var _dash_walls: GanglandDashWall
 
 
 func _init() -> void:
@@ -265,6 +270,18 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	var batch := MeshBatch.new()
 	street().build(batch, center, size, lane_x, edge_start, edge_end)
 	batch.commit(parent)
+
+
+## A floor cut (ZoneSkin.floor_cut; task B4, H3): the street split open down the lane, and through it
+## what any hole here shows (GDD §9.9): the road's strata falling away down the neighbouring lanes' sides
+## (their own, drawn with their floor) into the crater floor `crater_depth` down, which the chunk draws
+## with the left wall. The cut draws only its two end faces, in the same strata at half the earth's
+## brightness (a cut's inside stays darker than any floor), and no walls and no bottom.
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	standard_floor_cut(parent, cut, solid_material(), glow_material(), {
+		"edge": gap_edge_color, "inside": earth_color * CUT_STRATA_SHADE, "pattern": MeshKit.PAT_STRATA,
+		"depth": crater_depth, "bottom": false, "walls": false,
+	})
 
 
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
@@ -326,6 +343,24 @@ func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	var batch := MeshBatch.new()
 	MeshKit.finish_gate(batch, solid_material(), glow_material(), width, distance, finish_color, scrap_metal_color)
 	batch.commit(parent)
+
+
+## A dash wall (task H7b): a bombed-out building across the street, built from the ruins' own kit
+## (GanglandDashWall): the ruin facade shader's graffiti-tagged shopfronts and gutted windows, concrete, scrap
+## metal, a broken top.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a Gangland dash wall draws with: the ruin facade shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in Gangland's own facades: sandstone walls, umber
+## trim, sooty glass and soot in its cracks. Kept as the palette the debris falls back on.
+func dash_wall_colors() -> PackedColorArray:
+	return PackedColorArray([facade_colors[0], facade_colors[facade_colors.size() - 1], Color(0.09, 0.08, 0.07), soot_color])
 
 
 ## Burned-out car wrecks (small and medium) and a broken-down shop (large): GanglandDoodads.
@@ -439,6 +474,12 @@ func street() -> GanglandStreet:
 	if _street == null:
 		_street = GanglandStreet.new(self)
 	return _street
+
+
+func dash_walls() -> GanglandDashWall:
+	if _dash_walls == null:
+		_dash_walls = GanglandDashWall.new(self)
+	return _dash_walls
 
 
 func ruins() -> GanglandRuins:

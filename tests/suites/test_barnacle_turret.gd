@@ -119,6 +119,19 @@ func _contact_outcomes(turret: BarnacleTurret) -> Array[int]:
 	return outcomes
 
 
+## The most bursts in the air at once, from each burst's [start of its charge-up, its last bolt or its
+## cancel] (level times; one that ends as another starts doesn't overlap it). As test_cyborg's.
+static func _most_at_once(bursts: Array) -> int:
+	var most: int = 0
+	for b: Array in bursts:
+		var on: int = 0
+		for o: Array in bursts:
+			if float(o[0]) <= float(b[0]) and (is_same(o, b) or float(o[1]) > float(b[0]) + 0.001):
+				on += 1
+		most = maxi(most, on)
+	return most
+
+
 ## The level's turret entries.
 static func _turrets(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -754,8 +767,9 @@ func _test_determinism() -> void:
 
 ## Generated levels played through by a rider who takes every pad (god mode, grapples for the gaps):
 ## every burst comes from a turret ahead of a rider on its own ceiling, after its charge-up, with
-## enough warning, its bolts arriving while the rider is still on the ceiling; one burst in the air at
-## a time; never at a player off its ceiling.
+## enough warning, its bolts arriving while the rider is still on the ceiling; at most
+## GameRules.max_bursts_in_air bursts in the air at a time (GDD §9.2 and §9.8: two); never at a player
+## off its ceiling.
 func _test_fair_play() -> void:
 	var bursts_total: int = 0
 	for c: Array in [["corporate/2", 3], ["corporate/2", 5], ["marketplace/2", 6]]:
@@ -814,6 +828,7 @@ func _test_fair_play() -> void:
 							"a charge-up only at a rider on its ceiling %s" % tag)
 					&"cancel":
 						charge_t = -1.0
+						bursts[-1][1] = float(ev["t"])
 					&"shot":
 						var at: float = ev["t"]
 						check(charge_t >= 0.0 and at - charge_t >= bt.charge_time - 0.02, "every bolt follows a charge-up " + tag)
@@ -825,9 +840,9 @@ func _test_fair_play() -> void:
 						check(float(ev["impact"]) + bt.clear_after_impact <= float(m["end"]) - bt.end_margin + 0.5,
 							"every bolt arrives while the rider is still on the ceiling %s" % tag)
 						bursts[-1][1] = at
-		bursts.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-		for k: int in range(1, bursts.size()):
-			check(float(bursts[k][0]) >= float(bursts[k - 1][1]) - 0.001, "one burst in the air at a time " + tag)
+		var most: int = _most_at_once(bursts)
+		check(most <= w.rules.max_bursts_in_air,
+			"at most %d bursts in the air at a time (%d) %s" % [w.rules.max_bursts_in_air, most, tag])
 		bursts_total += bursts.size()
 		check(not met.is_empty(), "the run met turrets %s" % tag)
 		await sim.free_world(w)

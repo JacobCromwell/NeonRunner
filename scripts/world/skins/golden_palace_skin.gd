@@ -36,6 +36,11 @@ extends GoldenSkin
 ## (GDD §5: "a palace floor (marble, inlay, gold runners)"); half its width.
 @export_range(0.05, 0.6, 0.01, "suffix:m") var runner_half_width: float = 0.2
 
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 641): the lower hall's marble far below a break in the floor (a stairwell
+## going down to a light well), dim and pale, never lit like the floor above (task H3, GDD §9.9). The well's
+## stone steps use gap_inside_color (the data file sets a cool cream-grey).
+@export var well_floor_color: Color = Color(0.2, 0.2, 0.19)
+
 @export_group("Colonnade")
 ## DESIGN-TBD (docs/questions/d6b.md): how high the colonnade's pilasters and bays rise above
 ## frieze_top, comfortably clear of every bay's content (a tapestry, the data file's banner_length
@@ -51,6 +56,7 @@ extends GoldenSkin
 var _floor: GoldenPalaceFloor
 var _walls: GoldenPalaceWalls
 var _palace_ceilings: GoldenPalaceCeilings
+var _palace_dash_walls: GoldenPalaceDashWall
 ## Decorative low wall pieces must not straddle a wall gap at a chunk edge.
 var _wall_gaps: Dictionary = {}
 
@@ -144,6 +150,19 @@ func feed_boards(side: int, face_x: float, start: float, end: float) -> Array[Di
 
 func cult_emblems(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	return walls().cult_emblems(side, face_x, start, end)
+
+
+## A dash wall (task H7b): a marble pavilion across the hall, built from the colonnade's own kit
+## (GoldenPalaceDashWall): the flush marble panel, gilded pilasters, gold-framed galleries.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	if _palace_dash_walls == null:
+		_palace_dash_walls = GoldenPalaceDashWall.new(self)
+	DashWallKit.dress(body, _palace_dash_walls.mesh_for(size, look_seed))
+
+
+## The palace's wall is on the solid kit alone (the panel pattern is the solid shader's).
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material()]
 
 
 func palace_floor() -> GoldenPalaceFloor:

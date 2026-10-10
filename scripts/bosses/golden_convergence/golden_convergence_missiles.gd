@@ -16,8 +16,9 @@ extends BossPart
 ##   flicker steady with Reduced flashing, lifted on the Compatibility renderer) on a burning floor laid red-hot
 ##   over each lane (golden_convergence_floor.gdshader, blended like the marks);
 ##   `hit` reports each touch;
-## - burst(at): a missile's blast where it lands (a spark burst; none with Reduced flashing, the fire's glow
-##   is enough).
+## - burst(at): a missile's blast where it lands: one of the game's shared yellow-and-red fireballs (RunEffects.fireball;
+##   GDD §11, the owner, October 8, 2026: every explosion is one; the H merge), quick, smokeless and held in, softened
+##   by Reduced flashing as every one is, and a red-orange spark burst (none with Reduced flashing).
 ## A part of the boss that's no target and no kill of its own.
 
 ## The fire touched the runner (`outcome`: a DamageRules.Outcome other than IGNORE).
@@ -42,6 +43,12 @@ const MISSILE_LENGTH: float = 3.4
 const MISSILE_RADIUS: float = 0.42
 ## A trail's length behind its missile.
 const TRAIL: float = 9.0
+## A landing missile's blast (burst): a shared fireball this big (metres in radius), this many times as quick as a free
+## one and held in to this share of its spread, as the Floating Head's and The House's bombs are, gone soon after the
+## fire floor lights. DESIGN-TBD (the H merge; docs/OPEN_QUESTIONS.md item 674).
+const BLAST_FIRE_SIZE: float = 2.0
+const BLAST_FIRE_PACE: float = 1.6
+const BLAST_FIRE_SPREAD: float = 0.6
 
 var tuning: GoldenConvergenceTuning
 ## The fire per lane: {hazard, floor: MeshInstance3D, on, lane, from, to}.
@@ -203,11 +210,14 @@ func set_missile(i: int, pos: Vector3, dir: Vector3, trail: float = 1.0) -> void
 		_trails.multimesh.set_instance_transform(i, Transform3D(along * Basis.from_scale(Vector3(1.1, length, 1.1)), tail))
 
 
-## A missile's blast where it lands: a red-orange spark burst (none with Reduced flashing).
+## A missile's blast where it lands: a shared fireball (quick, smokeless, held in) and a red-orange spark burst (none
+## with Reduced flashing, which softens the fireball).
 func burst(at: Vector3) -> void:
-	if Settings.flashing_reduced or world == null or world.effects == null:
+	if world == null or world.effects == null:
 		return
-	world.effects.burst(at + Vector3(0.0, 0.5, 0.0), Color(1.0, 0.42, 0.12), 14, 0.9)
+	world.effects.fireball(at + Vector3(0.0, 0.5, 0.0), BLAST_FIRE_SIZE, false, BLAST_FIRE_PACE, BLAST_FIRE_SPREAD)
+	if not Settings.flashing_reduced:
+		world.effects.burst(at + Vector3(0.0, 0.5, 0.0), Color(1.0, 0.42, 0.12), 14, 0.9)
 
 
 # --- Marks ---------------------------------------------------------------------------------------------------

@@ -139,3 +139,22 @@ including six ramp/wall-run/wall-jump stomps, concurrent damage windows and loca
 Native phase-3 renders and the campaign-speed smoke run are clean. The full 81-suite gate reports
 only the eight unrelated failures reproduced on unchanged HEAD (frame times, Hostile Takeover fight,
 Resonator and doodads). Clean wins take about 104.5 seconds; boss star pars are now 115/150 seconds.
+
+## Owner's requests (October 8, 2026)
+
+Task IDs refer to `docs/TASK_PLAN.md`, section H. The owner's answers to the orchestrator's questions are in brackets.
+
+- [x] Sentinel wind-up time should be decreased by half. (H1: the warning goes from 1.2 s to 0.6 s.)
+- [x] Sentinels and their background are too hard to see inside the arched recess: bring them a bit further forward so the player can see and make out what they are. (H1)
+- [x] The attack sound of the Golden Zone's Resonator shouldn't sound like a doorbell: it should sound more like a crackling build of fire and a crashing wave. (H2)
+- [x] The bottoms of Buzz Overdrive cuts in the floor should show a zone-specific background. (H3)
+- [x] Only one enemy may fire at a time, which looks and feels unnatural: let two enemies fire at a time. (H4) [Owner: this is the cyborg-type guns' limit (cyborgs, window cyborgs, Barnacle Turrets): two bursts may be in the air at once. Big attacks of different types still take turns.]
+- [x] Make doodads destructible by a dash. (H5)
+- [x] The heli drone's explosion and all explosions in the game need to be more visually impressive: a yellow and red fireball. (H6)
+- [x] Walls the player can dash through: not the side walls, but walls blocking the path forward, using the side walls' assets turned to face the player, like a building in the middle of the street. The player must dash through them; they crumble and explode into rubble when hit. Without the dash, the player takes one hit (armor, then shield; with neither, it kills). (H7a, H7b) [Owner: they block every floor lane but not the side walls, no ceiling shares their stretch, and they're introduced in the Corporate zone.]
+- [x] Lasers auto-target host cyborgs, so players have to switch the laser off to avoid releasing Bad Dreams. (H8) [Owner: in normal levels; this reverses the September 26 rule that hosts are immune to weapons.]
+- [x] Sleep Taker: when it makes the screen darker, things should get 50% darker than they already do (glowing things like gaps and lasers stay visible). (H9)
+- [x] Sleep Taker: more hands, spread out along the street rather than all at the same spot, so the player has to make several quick lane switches to get through one round of the hand attack. (H9)
+- [x] Sleep Taker: the side walls are too safe: many more gaps in the side walls, and hand attacks there too. (H9)
+- [x] Sleep Taker: double the floor gaps. (H9)
+- [x] The Tithe Collector should stay in the level twice as long. (H10)

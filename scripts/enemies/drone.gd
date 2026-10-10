@@ -11,7 +11,10 @@ extends Enemy
 ##   is safe; bullets are spaced so they can zigzag back through the stream, and the whole barrage
 ##   lands within the hit invulnerability window, so armor or a shield protects through all of it.
 ##   At a player on a wall it keeps firing (it leads the wall-run descent); while the player is on
-##   the ceiling it waits. The barrage is a big attack (GDD §9): while another type's is on, the
+##   the ceiling it waits.
+## - Dash walls (task H7a; GDD §9.14): it rises over a standing one in its way and comes back down past it
+##   (Enemy.dash_wall_lift, `lift`), and no wind-up starts while a wall is near enough that it would climb
+##   before its barrage and cooldown are over (_doodad_in_reach), so it never fires on the climb. The barrage is a big attack (GDD §9): while another type's is on, the
 ##   drone keeps following and winds up once its turn comes (EnemyDirector.major_attack_blocked).
 ## - Kill: stepping on any anti-grav pad hurls every drone on screen up into the ship's hull
 ##   (drone_crash), over the lanes that ceiling covers (a narrow ceiling, GDD §3: it veers into the
@@ -34,6 +37,10 @@ const HURL_ACCEL: float = 45.0
 const HURL_MAX_TIME: float = 0.8
 const EYE_COLOR := Color(1.0, 0.12, 0.08)
 const HOT_COLOR := Color(1.0, 0.38, 0.1)
+## Its fireballs (RunEffects.fireball, radius in metres): a small one when it's hit and starts to spin down,
+## a big one where it crashes (GDD §11: every explosion is a yellow-and-red fireball).
+const FIRE_HIT_SIZE: float = 1.0
+const FIRE_CRASH_SIZE: float = 2.4
 
 ## Models per zone variant, built once: {body, rotor, barrels} ArrayMeshes.
 static var _models: Dictionary = {}
@@ -78,6 +85,9 @@ var _hurl_x: float = 0.0
 var _hurl_from: float = 0.0
 var _hurl_time: float = 0.0
 var _flash_left: float = 0.0
+## Metres it has risen over its hover height to clear a dash wall in its way (task H7a; Enemy.dash_wall_lift),
+## and back to 0 past it. Its hurl or its fall starts from where it is, lift and all.
+var lift: float = 0.0
 
 var _pivot: Node3D
 var _rotors: Array[MeshInstance3D] = []
@@ -140,6 +150,7 @@ func _tick(delta: float) -> void:
 			_lat_v = move_toward(_lat_v, 0.0, 30.0 * delta)
 			if _state_time >= tune.cooldown:
 				_enter_follow(tune.follow_time_at(_scaling) + rng.randf_range(-0.25, 0.25))
+	_update_lift(p, delta)
 	_place(p, delta)
 	while _pending_shots > 0:
 		_pending_shots -= 1
@@ -190,6 +201,20 @@ func _track_player(p: Player, delta: float) -> void:
 
 func _hover_ahead() -> float:
 	return tune.hover_ahead + slot * tune.wave_spacing
+
+
+## Its body's half length along the track (metres), for the dash walls it rises over.
+func _half_length() -> float:
+	return 1.0 * tune.model_scale
+
+
+## Rises over a standing dash wall in its way, and back down past it (task H7a; Enemy.dash_wall_lift), in
+## every state: the wind-up never starts where it would climb (_doodad_in_reach).
+func _update_lift(p: Player, delta: float) -> void:
+	if state == State.WAITING:
+		return
+	var need: float = dash_wall_lift(p.distance + rel_ahead, _half_length(), rel_y, maxf(p.speed, 1.0))
+	lift = move_toward(lift, maxf(need - rel_y, 0.0), DASH_WALL_CLIMB_SPEED * delta)
 
 
 func _hover_height() -> float:
@@ -273,14 +298,26 @@ func _can_attack(p: Player) -> bool:
 ## stretch the player runs from now until a barrage started now would have passed them: its wind-up,
 ## its bullets and their flight. The generator keeps doodads off a wave until its first pad, so this
 ## holds back only a drone that outlived its pads. DESIGN-TBD (docs/questions/g5.md 5).
+## A dash wall counts as a doodad does (LevelLayout.doodad_between, in every lane), and further for the drone's
+## own way (task H7a): none whose face it would start climbing to (Enemy.dash_wall_lift) before its wind-up,
+## barrage and cooldown are over, so it never fires on the climb. Broken walls count too, as doodads do, so
+## it holds the same on every attempt.
 func _doodad_in_reach(p: Player) -> bool:
-	if world.layout.doodads.is_empty():
+	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty():
 		return false
 	var window: float = world.rules.hit_invulnerability if world.rules != null else 1.0
 	var flight: float = _hover_ahead() / maxf(tune.bullet_speed_at(_scaling), 1.0) + tune.bullet_overshoot
 	var seconds: float = tune.windup_at(_scaling) + tune.barrage_count(_scaling, window) * tune.bullet_interval_at(_scaling) \
 		+ flight
-	return world.layout.doodad_between(p.distance - 1.0, p.distance + maxf(p.speed, 1.0) * seconds)
+	var run: float = maxf(p.speed, 1.0)
+	if world.layout.doodad_between(p.distance - 1.0, p.distance + run * seconds):
+		return true
+	if world.layout.dash_walls.is_empty():
+		return false
+	var top: float = world.tuning.dash_wall_height + DASH_WALL_CLEARANCE
+	var climb: float = maxf(top - _hover_height(), 0.0) / DASH_WALL_CLIMB_SPEED * run + _half_length()
+	return world.layout.dash_wall_between(p.distance - 1.0,
+		p.distance + _hover_ahead() + run * (seconds + tune.cooldown) + climb)
 
 
 ## A wind-up and its barrage are a big attack (GDD §9, §9.7): the Cyborg's Bad Dream never slashes
@@ -432,6 +469,8 @@ func _on_defeated(cause: StringName) -> void:
 	_state_time = 0.0
 	_down_cause = cause
 	_down_v = tune.hurl_speed if cause == &"pad" else 1.5
+	rel_y += lift
+	lift = 0.0
 	if cause == &"pad":
 		_hurl_from = rel_x
 		_hurl_x = hurl_x(world, world.player, rel_x)
@@ -440,7 +479,8 @@ func _on_defeated(cause: StringName) -> void:
 	_aim_line.visible = false
 	_flash.visible = false
 	_pending_shots = 0
-	world.effects.burst(global_position, Color(1.0, 0.55, 0.2), 14, 0.5)
+	# Hit: it bursts into flames and spins down (the crash is the big one).
+	world.effects.fireball(global_position, FIRE_HIT_SIZE, false)
 
 
 func _update_down(delta: float) -> void:
@@ -491,7 +531,7 @@ static func hurl_x(p_world: RunWorld, player: Player, x: float) -> float:
 func _crash() -> void:
 	var at: Vector3 = global_position
 	world.play_sfx_at(&"drone_crash", at)
-	world.effects.burst(at, Color(1.0, 0.5, 0.15), 36, 1.1)
+	world.effects.fireball(at, FIRE_CRASH_SIZE)
 	world.effects.burst(at, Color(0.7, 0.75, 0.85), 16, 0.7)
 	world.effects.shake(0.2, 0.25)
 	queue_free()
@@ -505,7 +545,7 @@ func _world_point(p: Player, x: float, y: float, ahead: float) -> Vector3:
 
 func _place(p: Player, delta: float) -> void:
 	var bob: float = sin(_bob_t * 2.3) * 0.07
-	global_position = _world_point(p, rel_x, rel_y + bob, rel_ahead)
+	global_position = _world_point(p, rel_x, rel_y + lift + bob, rel_ahead)
 	_pivot.rotation = Vector3(0.0, 0.0, clampf(-_lat_v * 0.05, -0.45, 0.45))
 	_rotors[0].rotate_y(30.0 * delta)
 	_rotors[1].rotate_y(-30.0 * delta)

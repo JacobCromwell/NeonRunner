@@ -14,10 +14,10 @@ extends TestSuite
 ##   the racks ripple, it spins off and explodes, the blast races up the line and the hit lands (a third of the
 ##   suit's health: the phase ends; the first ship blows out his right shoulder's pipes); the runner falls back to
 ##   clear floor unharmed; weapons never target the ship or the generator; its sounds and hints;
-## - Reduced flashing (no sparks; the fireballs still show, no hot flash in them) and screen shake off (none);
-## - E5d polish, the chain reaction's fire: saturated orange-red fireballs and dark smoke (never a pale peach), all of
-##   it above the causeway's level, the ship's blast beside the causeway and in the run camera's view; two draws,
-##   nothing made mid-fight;
+## - Reduced flashing (no sparks; the fireballs still show, every one softened) and screen shake off (none);
+## - the chain reaction's fire: the game's shared fireballs (GDD §11; the H merge drew E5d's own blast through them) at
+##   the sizes the code names, all of it above the causeway's level, the ship's blast beside the causeway and in the
+##   run camera's view, none of its blast cut short, nothing made mid-fight;
 ## - a missed pad: the ship finishes refilling and flies off while the strafe fires on; the beat ends where ends_at()
 ##   said; the loop goes on from the slams (planned ahead of their beat), and the next ship is the same;
 ## - the chain reaction plans the next phase's first slams, which open that phase on time;
@@ -623,8 +623,9 @@ func _test_switch_over_pad() -> void:
 		"a switch at the pad fired it from another lane (the review's case): %d of %d pads fired" % [mismatched, fired])
 
 
-## Reduced flashing and the screen shake off (Settings): the chain reaction shows no sparks (its fireballs and smoke
-## still) and never shakes the screen.
+## Reduced flashing and the screen shake off (Settings): the chain reaction shows no sparks and never shakes the screen;
+## its fireballs (the game's shared ones, RunEffects.fireball: the H merge) still show, every one softened (FireballPool:
+## no white-hot start, never brighter than a normal one).
 func _test_reduced() -> void:
 	var was: bool = Settings.flashing_reduced
 	Settings.flashing_reduced = true
@@ -635,24 +636,30 @@ func _test_reduced() -> void:
 	var shakes := {"n": 0}
 	world.effects.shake_requested.connect(func(_s: float, _d: float) -> void: shakes["n"] = int(shakes["n"]) + 1)
 	var ship: GoldenConvergenceShip = boss.refill.ship
-	var heat := {"max": 0.0}
-	await _run(world, _bot(boss), 60.0, func() -> bool: return boss.phase_index >= 1, func() -> void:
-		for f: Dictionary in ship.blast().shown(true):
-			heat["max"] = maxf(float(heat["max"]), float(f["heat"])))
+	var fire := {"played": 0, "soft": 0}
+	world.effects.fireball_played.connect(func(_at: Vector3, _size: float) -> void:
+		fire["played"] = int(fire["played"]) + 1
+		if world.effects.fireballs().last_reduced:
+			fire["soft"] = int(fire["soft"]) + 1)
+	await _run(world, _bot(boss), 60.0, func() -> bool: return boss.phase_index >= 1)
 	Settings.flashing_reduced = was
 	check(boss.refill.hits == 1 and ship.sparks_shown == 0 and ship.fireballs_shown > 10 and int(shakes["n"]) == 0,
 		"with Reduced flashing and the screen shake off, the chain reaction shows no sparks (%d fireballs) and never shakes the screen" % ship.fireballs_shown)
-	check(float(heat["max"]) <= GoldenConvergenceBlast.SOFT_HEAT + 0.001,
-		"and its fireballs never flash hot (their hearts at most %.2f, %.2f seen)" % [GoldenConvergenceBlast.SOFT_HEAT, heat["max"]])
+	check(int(fire["played"]) >= ship.fireballs_shown and int(fire["soft"]) == int(fire["played"]),
+		"and its fireballs, the game's shared ones, are every one softened (%d of %d)" % [fire["soft"], fire["played"]])
 	await sim.free_world(world)
 
 
-## E5d polish (the review: the chain reaction's explosions read a washed-out peach against the bright court, and the
-## ship exploded below the deck, out of the side camera's sight; the owner: "the ship goes spinning off to the side and
-## exploding, and the missiles should all explode"): from the pad to the hit, every fireball is a saturated orange to
-## red and every puff of smoke dark, all of it above the causeway's level; the ship's own blast goes off beside the
-## causeway, past the balustrade, where the run camera's resting view sees it; its fire hot at heart (no Reduced
-## flashing); drawn by the blast's two MultiMeshes, with no node made during it.
+## The chain reaction's explosions (GDD §11, the owner, October 8, 2026: every explosion is the shared yellow-and-red
+## fireball; the H merge drew E5d's own blast through it; E5d polish: the ship explodes beside the causeway where the
+## run camera sees it, not below the deck; the owner: "the ship goes spinning off to the side and exploding, and the
+## missiles should all explode"): from the pad to the hit, every one is one of the run's shared fireballs
+## (RunEffects.fireball, its FireballPool) at the sizes its code names: the squadron's crashes, the ripple's (one for
+## every RIPPLE_GROUP rack missiles, every missile blown up), the ship's five, the line's and his shoulder's, each riding
+## along with what it burns on while that paces the runner (the ship, the suit) and the ship's own blast where it went
+## off; all of it above the causeway's level; the ship's blast goes off beside the causeway, past the balustrade, where the run
+## camera's resting view sees it; none softened without Reduced flashing; the pool never cuts a fireball short while
+## the ship's blast burns, and no node is made during it.
 func _test_blast(lanes: int) -> void:
 	var tag: String = "(%d lanes, 25 m/s)" % lanes
 	var pair: Array = _fight(lanes, 25.0, null, -1, "refill:VVH")
@@ -660,54 +667,83 @@ func _test_blast(lanes: int) -> void:
 	var boss: GoldenConvergence = pair[1]
 	var r: GoldenConvergenceRefill = boss.refill
 	var ship: GoldenConvergenceShip = r.ship
-	var blast: GoldenConvergenceBlast = ship.blast()
-	var nodes_before: int = ship.find_children("*", "", true, false).size()
-	var w := {"low": INF, "pale": [], "light_smoke": [], "heat": 0.0, "big": 0, "beside": true, "seen": 0, "frames": 0,
-		"exploded": -1.0, "fires": 0}
+	var pool: FireballPool = world.effects.fireballs()
+	var nodes_before: int = ship.find_children("*", "", true, false).size() + world.effects.find_children("*", "", true, false).size()
+	var w := {"low": INF, "sizes": [], "soft": 0, "big": 0, "beside": true, "seen": 0, "frames": 0, "recycled": -1,
+		"recycled_end": -1, "carriers": []}
+	# What each kind rides along with (the fireball's carrier): what paces the runner, or nothing (the ship's own blast).
+	var scale: float = world.effects.tuning.fireball_scale
+	var rides: Dictionary = {
+		snappedf(GoldenConvergenceSquadron.CRASH_FIRE_SIZE * scale, 0.01): ship,
+		snappedf(GoldenConvergenceShip.RACK_FIRE_SIZE * scale, 0.01): ship,
+		snappedf(GoldenConvergenceRefill.LINE_FIRE_SIZE * scale, 0.01): boss.suit,
+		snappedf(GoldenConvergenceRefill.MOUTH_FIRE_SIZE * scale, 0.01): boss.suit,
+	}
+	world.effects.fireball_played.connect(func(at: Vector3, size: float) -> void:
+		if r.stage != GoldenConvergenceRefill.Stage.CHAIN:
+			return
+		var carrier: Node3D = pool.latest.carrier
+		if carrier != rides.get(snappedf(size, 0.01), null):
+			(w["carriers"] as Array).append("%.2f m on %s" % [size, carrier.name if carrier != null else "nothing"])
+		(w["sizes"] as Array).append(snappedf(size, 0.01))
+		w["low"] = minf(float(w["low"]), at.y)
+		if pool.last_reduced:
+			w["soft"] = int(w["soft"]) + 1)
 	await _run(world, _bot(boss), 60.0, func() -> bool: return boss.phase_index >= 1, func() -> void:
 		if r.stage != GoldenConvergenceRefill.Stage.CHAIN:
 			return
-		var fires: Array[Dictionary] = blast.shown(true)
-		w["fires"] = maxi(int(w["fires"]), fires.size())
-		for f: Dictionary in fires:
-			var c: Color = f["color"]
-			w["low"] = minf(float(w["low"]), (f["at"] as Vector3).y)
-			w["heat"] = maxf(float(w["heat"]), float(f["heat"]))
-			if c.a > 0.2 and not ((c.h <= 0.1 or c.h >= 0.97) and c.s >= 0.8):
-				(w["pale"] as Array).append(c)
-		for puff: Dictionary in blast.shown(false):
-			var c: Color = puff["color"]
-			w["low"] = minf(float(w["low"]), (puff["at"] as Vector3).y)
-			if c.v > 0.3:
-				(w["light_smoke"] as Array).append(c)
 		var exploded: Dictionary = _first(boss, &"ship_exploded")
 		if exploded.is_empty() or boss.fight_time() > float(exploded["t"]) + 1.0:
 			return
-		# The ship's own blast (its big fireballs) in its first second.
+		if int(w["recycled"]) < 0:
+			w["recycled"] = pool.recycled
+		w["recycled_end"] = pool.recycled
+		# The ship's own blast (its big fireballs, and his shoulder's) in its first second.
 		var view := EnforcerTruckView.of_runner(world.tuning, world.geo, world.player.lane, world.player.distance)
 		var on: bool = false
-		for f: Dictionary in fires:
-			if float(f["radius"]) < 3.0:
+		for slot: FireballPool.Slot in pool.slots:
+			if slot.left <= 0.0 or slot.size < 3.5:
 				continue
 			w["big"] = int(w["big"]) + 1
-			var at: Vector3 = f["at"]
-			w["beside"] = bool(w["beside"]) and absf(at.x) > world.geo.wall_x()
-			on = on or view.on_screen(at + Vector3(0.0, float(f["radius"]) * 0.5, 0.0), 0.0)
+			w["beside"] = bool(w["beside"]) and absf(slot.center.x) > world.geo.wall_x()
+			on = on or view.on_screen(slot.center + Vector3(0.0, slot.size * 0.5, 0.0), 0.0)
 		w["frames"] = int(w["frames"]) + 1
 		if on:
 			w["seen"] = int(w["seen"]) + 1)
 	check(r.hits == 1, "the pad ridden, the chain reaction plays to its hit %s" % tag)
-	check((w["pale"] as Array).is_empty() and (w["light_smoke"] as Array).is_empty() and int(w["fires"]) > 0,
-		"every fireball a saturated orange to red, every puff of smoke dark, never a pale peach (%s; %s) %s" % [
-		(w["pale"] as Array).slice(0, 2), (w["light_smoke"] as Array).slice(0, 2), tag])
-	check(float(w["low"]) > 1.0, "all of its fire and smoke above the causeway's level (the lowest at %.1f m) %s" % [w["low"], tag])
+	var sizes: Array = w["sizes"]
+	var racks: int = ship.rack_count()
+	var want: Dictionary = {
+		"the squadron's crashes": [GoldenConvergenceSquadron.CRASH_FIRE_SIZE, boss.squadron.size()],
+		"the ripple's": [GoldenConvergenceShip.RACK_FIRE_SIZE, ceili(float(racks) / float(GoldenConvergenceShip.RIPPLE_GROUP))],
+		"the line's": [GoldenConvergenceRefill.LINE_FIRE_SIZE, ceili(boss.tuning.blast_seconds / GoldenConvergenceRefill.BLAST_STEP)],
+		"his shoulder's": [GoldenConvergenceRefill.MOUTH_FIRE_SIZE, 1],
+	}
+	for k: int in 5:
+		want["the ship's %d" % (k + 1)] = [GoldenConvergenceShip.BLAST_RADIUS - 0.8 * float(k), 1]
+	var wrong: PackedStringArray = []
+	var counted: int = 0
+	for what: String in want:
+		var size: float = snappedf(float(want[what][0]) * world.effects.tuning.fireball_scale, 0.01)
+		var n: int = sizes.count(size)
+		counted += n
+		if n < int(want[what][1]):
+			wrong.append("%s: %d of %d at %.2f m" % [what, n, int(want[what][1]), size])
+	check(wrong.is_empty() and counted == sizes.size() and ship.racks_blown == racks,
+		"every explosion of the chain is a shared fireball at the size its code names, every rack missile blown up (%d fireballs, %d missiles; %s) %s" % [
+		sizes.size(), ship.racks_blown, "; ".join(wrong), tag])
+	check((w["carriers"] as Array).is_empty(),
+		"each rides along with what it burns on (the ripple's and the crashes' on the ship, the line's and his shoulder's on the suit, the ship's own blast on nothing): %s %s" % [
+		w["carriers"], tag])
+	check(float(w["low"]) > 1.0, "all of its fire above the causeway's level (the lowest at %.1f m) %s" % [w["low"], tag])
 	check(int(w["big"]) > 0 and bool(w["beside"]) and int(w["seen"]) >= int(w["frames"]) * 3 / 4,
 		"the ship's blast goes off beside the causeway, past the balustrade, in the run camera's view (%d of %d frames) %s" % [
 		w["seen"], w["frames"], tag])
-	check(float(w["heat"]) > 0.8, "its fireballs are hot at heart without Reduced flashing (%.2f) %s" % [w["heat"], tag])
-	check(ship.find_children("*", "", true, false).size() == nodes_before and blast.drawers().size() == 2,
-		"pooled: its fire and smoke are two MultiMeshes, no node made during the chain (%d nodes, %d before) %s" % [
-		ship.find_children("*", "", true, false).size(), nodes_before, tag])
+	check(int(w["soft"]) == 0 and int(w["recycled"]) >= 0 and int(w["recycled_end"]) == int(w["recycled"]),
+		"none softened without Reduced flashing, and none cut short while the ship's blast burns (%d cut short before it) %s" % [
+		maxi(int(w["recycled"]), 0), tag])
+	check(ship.find_children("*", "", true, false).size() + world.effects.find_children("*", "", true, false).size() == nodes_before,
+		"pooled: the run's own fireballs, no node made during the chain %s" % tag)
 	await sim.free_world(world)
 
 
@@ -806,6 +842,16 @@ func _test_phase_three() -> void:
 	var bot := _bot(boss)
 	var pipes := {"before": []}
 	boss.refill.chained.connect(func(_info: Dictionary) -> void: pipes["before"] = [boss.suit.pipes_broken[0], boss.suit.pipes_broken[1]])
+	# The transition's blast is one of the game's shared fireballs, riding along with the suit (the H merge).
+	var scale: float = world.effects.tuning.fireball_scale
+	var fire := {"burst": 0, "carried": 0, "mouth": 0}
+	world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void:
+		if is_equal_approx(snappedf(size, 0.01), snappedf(GoldenConvergenceTransition.BURST_FIRE_SIZE * scale, 0.01)):
+			fire["burst"] = int(fire["burst"]) + 1
+			if world.effects.fireballs().latest.carrier == boss.suit:
+				fire["carried"] = int(fire["carried"]) + 1
+		elif is_equal_approx(snappedf(size, 0.01), snappedf(GoldenConvergenceRefill.MOUTH_FIRE_SIZE * scale, 0.01)):
+			fire["mouth"] = int(fire["mouth"]) + 1)
 	await _run(world, bot, 60.0, func() -> bool: return not _events(boss, &"transition_done").is_empty())
 	var hit: Dictionary = _first(boss, &"refill_hit")
 	var transition: Dictionary = _first(boss, &"transition")
@@ -813,6 +859,8 @@ func _test_phase_three() -> void:
 		and not _events(boss, &"checkpoint").is_empty(), "phase 3's ship bursts the suit open: phase 4 begins at once, at the checkpoint")
 	check(_sounds(boss, &"gc_pipes") == 0 and _sounds(boss, &"magnate_burst") == 1 and pipes["before"] == [boss.suit.pipes_broken[0], boss.suit.pipes_broken[1]],
 		"with one blast, the transition's (no pipes blown: %d, bursts %d)" % [_sounds(boss, &"gc_pipes"), _sounds(boss, &"magnate_burst")])
+	check(int(fire["burst"]) == 1 and int(fire["carried"]) == 1 and int(fire["mouth"]) == 0,
+		"the transition's blast a shared fireball riding along with the suit, none at his shoulder (%s)" % fire)
 	check(_events(boss, &"slams_planned").filter(func(e: Dictionary) -> bool: return int(e.get("for_phase", -1)) >= STAGE_2).is_empty(),
 		"and plans nothing for stage 2")
 	check(world.player.alive, "the runner unharmed")

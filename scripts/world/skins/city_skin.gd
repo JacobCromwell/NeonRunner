@@ -158,6 +158,7 @@ var _towers: CityTowers
 var _ship: CityShip
 var _props: CityProps
 var _doodads: CityDoodads
+var _dash_walls: CityDashWall
 
 
 func make_environment() -> Environment:
@@ -177,6 +178,22 @@ func floor_segment(parent: Node3D, center: Vector3, size: Vector3, lane_x: float
 	var batch := MeshBatch.new()
 	trucks().build(batch, lane_x, (half_lane - truck_inset) * 2.0, near_d, far_d, edge_start, edge_end)
 	batch.commit(parent)
+
+
+## A floor cut (ZoneSkin.floor_cut; task B4, H3): the lane's hover truck sliced open, and through it what
+## any gap shows (GDD §9.9): the road far below, with its traffic (the chunk's own road, drawn with the
+## left wall), between the neighbouring trucks' own sides. The inside draws no walls (the trucks beside
+## it carry theirs, and no wall stands at the facade at a gap here) and no bottom: only the far end,
+## where the lane's truck went on, a dark face as tall as a truck (the road is `road_depth` down, not
+## 8 m of box). The orange edges and the halo are the standard ones.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 642): a gap's far side is the next truck's cab, with lights; a
+## cut's far end has no cab, so it is a plain dark face (never lit: lights there would be glows that
+## mean something else beside the cut's orange).
+func floor_cut(parent: Node3D, cut: FloorCutSection) -> void:
+	standard_floor_cut(parent, cut, solid_material(), glow_material(), {
+		"edge": gap_edge_color, "inside": CUT_INSIDE_COLOR, "depth": road_depth, "end_depth": truck_height,
+		"bottom": false, "walls": false, "outer_walls": false,
+	})
 
 
 func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
@@ -229,6 +246,25 @@ func speed_pad(trigger: Area3D, size: Vector3) -> void:
 
 func finish_line(parent: Node3D, width: float, distance: float) -> void:
 	props().finish_line(parent, width, distance)
+
+
+## A dash wall (task H7b): a dark block across the street, built from the towers' own kit (CityDashWall): the
+## facade shader's four window grids, concrete slab bands, piers and a cornice with a dead neon trim.
+func dash_wall(body: Node3D, size: Vector3, look_seed: int) -> void:
+	DashWallKit.dress(body, dash_walls().mesh_for(size, look_seed))
+
+
+## The surfaces a City dash wall draws with: the facade shader and the solid kit.
+func dash_wall_materials() -> Array[Material]:
+	return [solid_material(), facade_material()]
+
+
+## A dash wall's default look colours (ZoneSkin.dash_wall, task H7a) in the City's own facades: a lighter shade of
+## them, so the building reads as solid against the night street, trimmed in their darker one; dark glass. Kept as
+## the palette the debris falls back on.
+func dash_wall_colors() -> PackedColorArray:
+	var body: Color = facade_colors[facade_colors.size() - 1].lightened(0.16)
+	return PackedColorArray([body, facade_colors[0].lightened(0.08), Color(0.05, 0.06, 0.09), Color(0.02, 0.02, 0.03)])
 
 
 ## A pillar (small), a tiny market stall (medium) or a small storefront (large): CityDoodads.
@@ -328,6 +364,12 @@ func trucks() -> CityTrucks:
 	if _trucks == null:
 		_trucks = CityTrucks.new(self)
 	return _trucks
+
+
+func dash_walls() -> CityDashWall:
+	if _dash_walls == null:
+		_dash_walls = CityDashWall.new(self)
+	return _dash_walls
 
 
 func towers() -> CityTowers:

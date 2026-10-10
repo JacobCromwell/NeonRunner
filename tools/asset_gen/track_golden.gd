@@ -2,7 +2,7 @@ extends RefCounted
 ## "Golden", Zone 8 (the elite's city of gold and the Golden Palace, the final level: decadent
 ## opulence, the cult felt everywhere). Neoclassical metal at 132 BPM in F# harmonic minor: harpsichord
 ## arpeggios, a string section, timpani and double kick under a regal, dotted theme and flashy guitar
-## sweeps. No bells or chimes: the Golden Zone's Resonator warns with a chime (GDD §9.10).
+## sweeps. No bells or chimes: the Golden Zone's decadence is in the harmony, and its warnings stay clear of the music.
 ## 24 bars = 43.6 s:
 ##   A  bars 1–8    gilded: harpsichord sixteenths (F#m Bm C# F#m D Bm C# C#) over ringing chords and
 ##                  eighth chugs, a continuo bass; the strings join in bar 5

@@ -92,6 +92,53 @@ extends Resource
 @export_range(0.0, 1.0, 0.01) var push_shake_strength: float = 0.05
 @export_range(0.05, 1.0, 0.01, "suffix:s") var push_shake_time: float = 0.14
 
+@export_group("Doodad smashes")
+## The dash smashes a zone doodad (GDD §3, owner, October 8, 2026; Player.smashed, task H5): a light shake
+## (more than a push's bump, well under a dash kill's 0.32) and its pieces flung in its own colours
+## (RunEffects.rubble, RubbleBurst), with the crunch (doodad_smash.wav). No sparks and no hit-stop.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 634): the look and the numbers.
+@export_range(0.0, 1.0, 0.01) var smash_shake_strength: float = 0.1
+@export_range(0.05, 1.0, 0.01, "suffix:s") var smash_shake_time: float = 0.16
+## The share of the runner's speed the pieces carry on along its way (each piece 0.55–1.35 times this):
+## about the runner's own, so they burst out ahead of it as it breaks through, and most fall behind.
+@export_range(0.0, 1.5, 0.05) var rubble_carry: float = 0.9
+## How fast the pieces fly out to the sides and up (m/s; each piece a share of it).
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_spread: float = 7.0
+@export_range(0.0, 20.0, 0.5, "suffix:m/s") var rubble_lift: float = 7.5
+## A large piece's size (m): the big chunks are about this, the small ones a third to a half of it.
+@export_range(0.1, 1.0, 0.02, "suffix:m") var rubble_piece_size: float = 0.6
+## How long a burst lasts (s): every piece has shrunk away by then.
+@export_range(0.2, 2.0, 0.05, "suffix:s") var rubble_life: float = 0.9
+
+@export_group("Dash walls")
+## A dash wall crumbles (GDD §9.14, owner, October 8, 2026: "they will crumble and explode into rubble";
+## task H7a; Player.smashed with a wall, whatever broke it: the dash, a crash or a pass on a side wall): its
+## pieces fly in its look's own colours (RunEffects.crumble: a bigger RubbleBurst than a doodad's), a cloud of
+## dust billows out of its lower face, and the camera shakes harder than a doodad's smash (with its crash,
+## dash_wall_smash.wav). Nothing flashes or glows (Reduced flashing leaves it as it is), Screen shake scales it,
+## and the pieces and the dust clear the lanes fast (they fly out and fall behind the runner, and the dust
+## fades as the camera nears it), so the runner coming through keeps sight of the street. The counts are fixed
+## when a level loads. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 658): the look and the numbers.
+@export_range(0.0, 1.0, 0.01) var wall_shake_strength: float = 0.26
+@export_range(0.05, 1.0, 0.01, "suffix:s") var wall_shake_time: float = 0.34
+## The most pieces one wall flings (by its size, at most this many: a wall at 3 lanes is about half of one at 6).
+@export_range(16, 96, 1) var wall_rubble_pieces: int = 64
+## The share of the runner's speed the pieces carry on along its way: well under the runner's own, so the
+## runner and the camera overtake them within moments and they fall behind.
+@export_range(0.0, 1.5, 0.05) var wall_rubble_carry: float = 0.45
+## How fast the pieces fly out to the sides and up (m/s; each piece a share of it): out of the lanes.
+@export_range(0.0, 30.0, 0.5, "suffix:m/s") var wall_rubble_spread: float = 10.0
+@export_range(0.0, 30.0, 0.5, "suffix:m/s") var wall_rubble_lift: float = 6.5
+## A large piece's size (m) and how long a burst lasts (s).
+@export_range(0.1, 2.0, 0.02, "suffix:m") var wall_rubble_piece_size: float = 0.85
+@export_range(0.2, 3.0, 0.05, "suffix:s") var wall_rubble_life: float = 1.1
+## The dust billowing out of the wall's lower face: how many puffs (fixed when a level loads), how long they last
+## and how big they get (m), and how opaque at most (0-1). They fade out near the camera.
+@export_range(0, 40, 1) var wall_dust_puffs: int = 14
+@export_range(0.2, 3.0, 0.05, "suffix:s") var wall_dust_seconds: float = 0.9
+@export_range(0.5, 6.0, 0.1, "suffix:m") var wall_dust_size: float = 2.4
+@export_range(0.0, 1.0, 0.05) var wall_dust_opacity: float = 0.5
+
 @export_group("Thefts")
 ## A thief's theft and payout (GDD §9.12; ScoreKeeper.stolen / recovered): a stream of coins in the
 ## credit look flies from the runner to the thief, or bursts out of a caught thief into the runner
@@ -105,3 +152,40 @@ extends Resource
 ## How high a coin arcs over the straight line, at its middle.
 @export_range(0.0, 4.0, 0.1, "suffix:m") var coin_stream_arc: float = 1.2
 @export_range(2, 40, 1) var theft_spark_amount: int = 10
+
+@export_group("Explosions")
+## Every explosion in the game is one pooled fireball (RunEffects.fireball, FireballPool; GDD §11, the
+## owner, October 8, 2026: "a yellow and red fireball"): a bright yellow core blooming into orange and
+## red, rolling outward and up, embers flying and darker smoke after. The caller picks how big (its size
+## is the fireball's radius in metres). The counts below are fixed when a level loads (a particle system
+## never reallocates mid-run); the rest apply to the next explosion. Fireballs are looks only: they
+## collide with nothing and last about a second (a few for a boss), so none ever reads as a hazard.
+## DESIGN-TBD: how big each explosion is (a constant in its own script), how long it lasts and its exact
+## colours are placeholders until the owner has seen them (docs/OPEN_QUESTIONS.md items 613–616); fireball_scale moves them all.
+## Fireballs that can be on screen at once; one more cuts the oldest short.
+@export_range(1, 12, 1) var fireball_pool: int = 8
+## Scales every fireball's size (1 = as each explosion asks): the quickest way to make all of them bigger or smaller.
+@export_range(0.5, 2.0, 0.05) var fireball_scale: float = 1.0
+## Fire puffs in one fireball (the glowing, additive body).
+@export_range(6, 40, 1) var fireball_puffs: int = 22
+## Smoke puffs that follow the fire (dark, see-through; none on a quick fireball, such as a bomb's).
+@export_range(0, 20, 1) var fireball_smoke_puffs: int = 8
+## Embers thrown out of it (small, glowing, falling).
+@export_range(0, 40, 1) var fireball_embers: int = 20
+## On a low-end device (DeviceProfile.is_low_end: a phone on the Compatibility renderer) the puffs, smoke and
+## embers above are cut to this share, and the pool to half (a particle count is fixed when the level loads).
+@export_range(0.2, 1.0, 0.05) var fireball_low_end_share: float = 0.6
+## How long the fire burns (a small fireball; a bigger one is slower, see fireball_big_size).
+@export_range(0.3, 2.0, 0.05, "suffix:s") var fireball_seconds: float = 1.0
+## How long the smoke takes to clear.
+@export_range(0.5, 4.0, 0.1, "suffix:s") var fireball_smoke_seconds: float = 2.0
+## How hot the fire draws (the colours are multiplied by this; above about 1.2 it blooms on Forward+).
+@export_range(0.5, 3.0, 0.05) var fireball_glow: float = 1.2
+## From this size (metres) up, a fireball plays slower, down to fireball_big_pace at three times it: a
+## bigger blast reads as bigger by taking its time.
+@export_range(1.0, 10.0, 0.5, "suffix:m") var fireball_big_size: float = 3.0
+@export_range(0.3, 1.0, 0.05) var fireball_big_pace: float = 0.6
+## Reduced flashing (Settings): the fireball lasts as long, swells from nothing instead of popping, has no
+## white-hot flash (orange and yellow only), and is never brighter than the normal one: at most this share of its
+## strength at every moment.
+@export_range(0.1, 1.0, 0.05) var fireball_reduced_brightness: float = 0.45

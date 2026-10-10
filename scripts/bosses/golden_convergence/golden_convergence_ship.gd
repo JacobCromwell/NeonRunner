@@ -14,11 +14,17 @@ extends BossPart
 ## - the feed line from its boom's nozzle to the suit's shoulder pipes (set_line: a gilded hose shooting out over
 ##   `reach`, a gentle sag; ride(): missiles riding up it to the shoulder), and its burning away as the chain's
 ##   blast races up it (burn_line);
-## - the chain reaction's fire (GoldenConvergenceBlast, E5d polish: fireball() a saturated orange fireball laid over
-##   what's behind it, reddening and fading, dark smoke rolling up out of it, softer with Reduced flashing; smoke()
-##   on its own; spark bursts only without Reduced flashing) and the ship's own end (explode: it's gone in a blast
-##   around it in the world's up, never its roll, so a ship rolled over still explodes above the causeway's level,
-##   where the run camera and the side see it).
+## - the chain reaction's fire: the game's shared yellow-and-red fireballs (fireball(): RunEffects.fireball, the run's
+##   FireballPool; GDD §11, the owner, October 8, 2026: every explosion is one; the H merge replaced E5d's own blast,
+##   GoldenConvergenceBlast), softened by Reduced flashing as every one is, with spark bursts only without it; and the
+##   ship's own end (explode: it's gone in a blast around it in the world's up, never its roll, so a ship rolled over
+##   still explodes above the causeway's level, where the run camera and the side see it). The pool burns at most
+##   SpeedFxTuning.fireball_pool at once (8; one more cuts the oldest short), so the chain's fire is planned within
+##   it: a quick, smokeless fireball for every RIPPLE_GROUP rack missiles of the ripple, five big smoking ones for the
+##   ship's end, a few quick ones racing up the line (GoldenConvergenceRefill) and one at his shoulder. What burns on
+##   something that paces the runner rides along with it (the fireball's `carrier`): the ripple's on this ship, the
+##   squadron's crashes into its racks on it too, the line's and his shoulder's on the suit; the ship's own blast
+##   burns where it went off (the ship stops there).
 ## A part of the boss that's no target (GDD §10, proposed: weapons never target the ship; DESIGN-TBD,
 ## docs/OPEN_QUESTIONS.md, item 475) and no kill of its own: immune to weapons, never targetable, is_obstacle; nothing
 ## on it can hurt the runner.
@@ -41,6 +47,13 @@ const FIRE_HOT := Color(1.0, 0.82, 0.55)
 ## (docs/OPEN_QUESTIONS.md, item 487).
 const BLAST_LIFT: float = 4.0
 const BLAST_RADIUS: float = 7.0
+## The ripple's fire (explode_rack): a shared fireball where every RIPPLE_GROUP-th rack missile blows up (the first
+## and every one after), RACK_FIRE_SIZE in radius, RACK_FIRE_PACE times as quick as a free one and smokeless, so the
+## ripple's 40 missiles over ripple_seconds burn in about five of the pool's slots at once (E5d drew a fireball for
+## each in a pool of its own). DESIGN-TBD (the H merge; docs/OPEN_QUESTIONS.md item 674).
+const RIPPLE_GROUP: int = 5
+const RACK_FIRE_SIZE: float = 2.2
+const RACK_FIRE_PACE: float = 2.0
 
 var tuning: GoldenConvergenceTuning
 ## Its belly's half width (the walls' line plus the model's overhang).
@@ -52,7 +65,7 @@ var slots: Array[Vector3] = []
 var rack_live: Array[bool] = []
 ## Shown (flying) or gone.
 var shown: bool = false
-## Rack missiles blown up, fireballs shown (tests).
+## Rack missiles blown up, fireballs set off (shared fireballs: fireball()) and spark bursts (tests).
 var racks_blown: int = 0
 var fireballs_shown: int = 0
 var sparks_shown: int = 0
@@ -61,13 +74,10 @@ var _root: Node3D
 var _racks: MultiMeshInstance3D
 var _segments: MultiMeshInstance3D
 var _riders: MultiMeshInstance3D
-var _blast: GoldenConvergenceBlast
-## Fireballs still to come (an explosion's later blasts), in order: when (seconds from now), where, how big, how
-## long.
+## Fireballs still to come (its blast's later ones, explode), in order: when (seconds from now), where, how big.
 var _pending_delay := PackedFloat32Array()
 var _pending_at := PackedVector3Array()
 var _pending_radius := PackedFloat32Array()
-var _pending_life := PackedFloat32Array()
 ## The line: its ends (world), how far it has shot out (0-1), how much of it from the ship's end has burnt away
 ## (0-1), whether it shows; the riding missiles' places along it (0-1), and the clock for the next.
 var _line_on: bool = false
@@ -113,8 +123,6 @@ func _build() -> void:
 	set_belly(false)
 	_segments = _multimesh("FeedLine", m["line_segment"], SEGMENTS, true)
 	_riders = _multimesh("Riding", m["line_missile"], RIDERS, true)
-	_blast = GoldenConvergenceBlast.new()
-	add_child(_blast)
 	set_shown(false)
 
 
@@ -223,7 +231,9 @@ func _place_racks() -> void:
 
 # --- The chain reaction's fire -----------------------------------------------------------------------------
 
-## Rack missile `i` blows up: gone from its rack, a fireball where it was, sparks (none with Reduced flashing).
+## Rack missile `i` blows up: gone from its rack, sparks (none with Reduced flashing), and for the first and every
+## RIPPLE_GROUP-th one blown up a quick shared fireball where it was (the ripple's fire, within the pool: see the
+## header).
 func explode_rack(i: int) -> void:
 	if i < 0 or i >= rack_live.size() or not rack_live[i]:
 		return
@@ -231,15 +241,16 @@ func explode_rack(i: int) -> void:
 	racks_blown += 1
 	_place_racks()
 	var at: Vector3 = rack_point(i)
-	fireball(at, 1.5, 0.55)
+	if (racks_blown - 1) % RIPPLE_GROUP == 0:
+		fireball(at, RACK_FIRE_SIZE, false, RACK_FIRE_PACE, self)
 	if not Settings.flashing_reduced:
 		world.effects.burst(at, FIRE, 12, 0.8)
 		sparks_shown += 1
 
 
-## It blows up where it is: a string of fireballs along its length over half a second around its middle, lifted
-## in the world's up to at least BLAST_LIFT over the causeway (its own roll never sends the blast below the deck),
-## dark smoke rolling up and lingering, debris, sparks (none with Reduced flashing); it's gone.
+## It blows up where it is: a string of shared fireballs along its length over half a second around its middle,
+## lifted in the world's up to at least BLAST_LIFT over the causeway (its own roll never sends the blast below the
+## deck), each with its dark smoke rolling up after it, debris, sparks (none with Reduced flashing); it's gone.
 func explode() -> void:
 	var length: float = GoldenConvergenceShipModel.LENGTH
 	var c: Vector3 = blast_center()
@@ -249,13 +260,11 @@ func explode() -> void:
 		var at: Vector3 = c + spots[k]
 		var radius: float = BLAST_RADIUS - 0.8 * float(k)
 		if k == 0:
-			fireball(at, radius, 1.2, Vector3(0.0, 1.8, 0.0))
+			fireball(at, radius, true)
 		else:
 			_pending_delay.append(0.08 + 0.09 * float(k))
 			_pending_at.append(at)
 			_pending_radius.append(radius)
-			_pending_life.append(0.9)
-		_blast.smoke(at + Vector3(0.0, radius * 0.5, 0.0), radius * 1.4, 2.6, Vector3(0.0, 2.2, 0.0), 0.25 + 0.08 * float(k))
 	world.effects.debris(c + Vector3(0.0, 1.5, 0.0), GoldenConvergenceShipModel.GOLD, 24, 2.2)
 	if not Settings.flashing_reduced:
 		world.effects.burst(c + Vector3(0.0, 1.5, 0.0), FIRE_HOT, 48, 3.2)
@@ -271,27 +280,19 @@ func blast_center() -> Vector3:
 	return c
 
 
-## A fireball at `at` (world space), `radius` across at its fullest, gone after `life` seconds: it swells fast, a
-## saturated orange that reddens and darkens as it fades, drifting by `drift` m/s, its smoke rolling up out of it
-## (no flash with Reduced flashing). Pooled (GoldenConvergenceBlast): the oldest gives way.
-func fireball(at: Vector3, radius: float, life: float, drift: Vector3 = Vector3.ZERO) -> void:
-	_blast.fire(at, radius, life, drift)
+## One of the chain reaction's fireballs: the game's shared yellow-and-red fireball (RunEffects.fireball; GDD §11)
+## at `at` (world space), `radius` metres in radius, with its dark smoke after it (`smoke`), `pace` times as quick as
+## a free one of its size (a bigger one already plays slower), carried along with `carrier` (something pacing the
+## runner: this ship while it rides with them, the suit) or burning where it went off. Pooled in the run's
+## FireballPool: one more than its slots cuts the oldest short. Reduced flashing softens it there.
+func fireball(at: Vector3, radius: float, smoke: bool = false, pace: float = 1.0, carrier: Node3D = null) -> void:
+	world.effects.fireball(at, radius, smoke, pace, 1.0, carrier)
 	fireballs_shown += 1
 
 
-## A puff of the blast's dark smoke at `at` (world space), `radius` across at its fullest, rising for `life` seconds.
-func smoke(at: Vector3, radius: float, life: float) -> void:
-	_blast.smoke(at, radius, life)
-
-
-## Fireballs burning now (tests).
+## The run's fireballs burning now (tests; the shared pool's, whoever set them off).
 func fires_on() -> int:
-	return _blast.fires_on()
-
-
-## Its fire and smoke (tests).
-func blast() -> GoldenConvergenceBlast:
-	return _blast
+	return world.effects.fireballs().active()
 
 
 # --- The feed line -------------------------------------------------------------------------------------
@@ -406,23 +407,19 @@ func _tick(delta: float) -> void:
 	for i: int in range(_pending_delay.size() - 1, -1, -1):
 		_pending_delay[i] = _pending_delay[i] - delta
 		if _pending_delay[i] <= 0.0:
-			fireball(_pending_at[i], _pending_radius[i], _pending_life[i], Vector3(0.0, 1.5, 0.0))
+			fireball(_pending_at[i], _pending_radius[i], true)
 			_pending_delay.remove_at(i)
 			_pending_at.remove_at(i)
 			_pending_radius.remove_at(i)
-			_pending_life.remove_at(i)
-	_blast.tick(delta)
 	if _line_on:
 		_draw_line()
 
 
-## Every fireball and puff of smoke out at once (a test, a fresh fight).
+## No more of its blast's fireballs to come (a test, a fresh fight; those burning burn out in the run's pool).
 func fires_out() -> void:
 	_pending_delay.clear()
 	_pending_at.clear()
 	_pending_radius.clear()
-	_pending_life.clear()
-	_blast.clear()
 
 
 # --- For tests ---------------------------------------------------------------------------------------------

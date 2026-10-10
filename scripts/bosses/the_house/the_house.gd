@@ -56,6 +56,9 @@ enum Defeat { RECOVER, WILD, JAM, COLLAPSE, DONE }
 const BODY_SCRIPT: Script = preload("res://scripts/bosses/the_house/the_house_body.gd")
 ## Its reels' speed in the defeat's wild spin, over a normal spin's.
 const WILD_SPIN: float = 2.6
+## The collapse's fireball (RunEffects.fireball, radius in metres; GDD §11): over the hopper, and a smaller one at
+## the reels. The machine is as wide as the street.
+const COLLAPSE_FIRE_SIZE: float = 7.0
 ## Squatting under a billboard, it stays down until its face is this far past the billboard's end.
 const DUCK_CLEAR: float = 2.0
 ## The "market_citizens" group (MarketCitizen.GROUP, task D3).
@@ -462,8 +465,9 @@ func _defeat_collapse() -> void:
 	_shake_t = 0.0
 	body.jackpot = 0.0
 	var top: Vector3 = body.hopper_world()
+	world.effects.fireball(top, COLLAPSE_FIRE_SIZE)
+	world.effects.fireball(body.reels_world(), COLLAPSE_FIRE_SIZE * 0.7)
 	world.effects.burst(top, Color(0.86, 0.66, 0.24), 70, 1.8)
-	world.effects.burst(body.reels_world(), Color(1.0, 0.85, 0.5), 40, 1.4)
 	world.effects.shake(0.5, 0.6)
 	jackpot.burst_coins(tuning.collapse_coins, top, 9.0)
 	sound(&"house_collapse", body.reels_world())

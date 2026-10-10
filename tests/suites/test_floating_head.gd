@@ -432,6 +432,9 @@ func _test_bombing_run() -> void:
 		var drift: Array[float] = [0.0]
 		var unwarned: Array[int] = [0]
 		var white_lock: Array[int] = [0]
+		# Every blast's look is one of the shared fireballs (task H6), sized to the blast and gone about when it is.
+		var fires: Array[float] = []
+		world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void: fires.append(size))
 		var done: bool = await _until(world, func() -> bool:
 			_dodge(head, dodged)
 			if _inside_blast(head):
@@ -476,6 +479,12 @@ func _test_bombing_run() -> void:
 			bombs += (l["lanes"] as Array).size()
 		check(matched and blasts.size() == bombs, "bombs fall only where the light lingered, after its warning (%d of %d) %s" % [
 			blasts.size(), bombs, tag])
+		var fire_size: float = t.blast_radius * FloatingHeadBombing.FIRE_SIZE_PER_RADIUS
+		var fires_ok: bool = fires.size() == blasts.size()
+		for size: float in fires:
+			fires_ok = fires_ok and is_equal_approx(size, fire_size)
+		check(fires_ok, "each blast is one pooled fireball, sized to it (%d fireballs for %d blasts, %.2f m) %s" % [
+			fires.size(), blasts.size(), fire_size, tag])
 		check(drift[0] < 0.01, "the light stays on the spot while it lingers (%.3f m) %s" % [drift[0], tag])
 		check(unwarned[0] == 0, "the red target circle marks every spot while the bomb falls %s" % tag)
 		check(white_lock[0] == 0, "the light turns red while it lingers %s" % tag)
@@ -714,6 +723,9 @@ func _test_salvos() -> void:
 			var inside: Array[int] = [0]
 			var unwarned: Array[int] = [0]
 			var seen: Dictionary = {}
+			# Every blast, a salvo's too, is one of the shared fireballs (task H6, GDD §11), sized to the blast.
+			var fires: Array[float] = []
+			world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void: fires.append(size))
 			var done: bool = await _until(world, func() -> bool:
 				var b: FloatingHeadBombing = head.bombing
 				if b.target.has("spots") and not seen.has(b.target["lock"]):
@@ -809,6 +821,14 @@ func _test_salvos() -> void:
 				matched = matched and found
 			check(matched and blasts.size() == bombs, "bombs fall only on the spots, each after its warning (%d of %d) %s" % [
 				blasts.size(), bombs, tag])
+			var fire_size: float = t.blast_radius * FloatingHeadBombing.FIRE_SIZE_PER_RADIUS
+			var fires_ok: bool = fires.size() == blasts.size()
+			for size: float in fires:
+				fires_ok = fires_ok and is_equal_approx(size, fire_size)
+			var cut_short: int = world.effects.fireballs().recycled
+			check(fires_ok and cut_short == 0,
+				"each of a salvo's blasts is one pooled fireball, sized to it, none cut short (%d fireballs for %d blasts, %.2f m, %d cut short) %s"
+				% [fires.size(), blasts.size(), fire_size, cut_short, tag])
 			check(_sounds(head, &"searchlight_lock") == locks.size() and _sounds(head, &"bomb_whistle") == bombs,
 				"every lock is heard, and every bomb whistles as it falls %s" % tag)
 			var end: Array[Dictionary] = _events(head, &"run_end")

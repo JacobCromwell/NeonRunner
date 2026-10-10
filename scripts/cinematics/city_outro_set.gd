@@ -14,8 +14,10 @@ extends Node3D
 ##   standing in it on the floor like cannons (BarnacleTurretModel, turned over), a battle truck behind
 ##   (EnforcerTruckModel, its light bar alternating red and blue, steady with Reduced flashing) and a heli
 ##   drone over it (the drone's own model). The five cyborgs are the cinematic's actors (CineActor), not props.
-## - The roadblock's shots (enemy-fire red bolts) and the blast they make behind the runner as they leap
-##   (EnforcerTruckBlast: no white-hot core and a softer fire with Reduced flashing).
+## - The roadblock's shots (enemy-fire red bolts) and the blast they make behind the runner as they leap: one of
+##   the game's shared yellow-and-red fireballs (FireballPool; GDD §11, the owner, October 8, 2026: every explosion
+##   is one), from a pool of the props' own built with them (a cinematic has no RunEffects), softened by Reduced
+##   flashing (no white-hot core, a fire that swells up instead of popping).
 ## Every colour keeps the game's language: red only on the enemies' charge-ups, their fire and the light
 ## bar; the rest matte; nothing flickers with Reduced flashing.
 
@@ -23,6 +25,8 @@ const FACE_SHADER: String = "res://scripts/bosses/floating_head/floating_head_fa
 const DroneScript := preload("res://scripts/enemies/drone.gd")
 const DRONE_TUNING_PATH: String = "res://data/enemies/drone.tres"
 const TRUCK_TUNING_PATH: String = "res://data/enemies/enforcer_truck.tres"
+## The run's effect numbers, for its blast's fireball (build_blast).
+const SPEED_FX_PATH: String = "res://data/tuning/speed_fx.tres"
 ## The shots look like enemy fire in play (ProjectilePool's enemy bolt: its size, red and glow).
 const BOLT_LOOK: StringName = &"enemy_bolt"
 ## The barricade: concrete blocks, and rails in the Enforcer's police paint (navy and white, never a hazard
@@ -54,7 +58,8 @@ var truck: EnforcerTruckModel
 var drone: Node3D
 var drone_rotors: Array[MeshInstance3D] = []
 var bolts: Array[MeshInstance3D] = []
-var blast: EnforcerTruckBlast
+## The pool its blast is drawn from (build_blast).
+var fireballs: FireballPool
 
 var _meshes: Dictionary = {}
 var _belly_parts: Array[Node3D] = []
@@ -395,20 +400,25 @@ func update_bolts(t: float) -> void:
 		bolt.global_transform = Transform3D(Basis.looking_at(dir, up).scaled_local(size), at)
 
 
-## Sets off the blast at `at` (world space).
+## Builds the pool its blast is drawn from (FireballPool, with the run's numbers, SPEED_FX_PATH, and one slot: the
+## outro's only explosion), with the props, so nothing is built mid-scene.
+func build_blast() -> void:
+	if fireballs != null:
+		return
+	var fx: SpeedFxTuning = load(SPEED_FX_PATH) as SpeedFxTuning if ResourceLoader.exists(SPEED_FX_PATH) else null
+	var own: SpeedFxTuning = fx.duplicate() as SpeedFxTuning if fx != null else SpeedFxTuning.new()
+	own.fireball_pool = 1
+	fireballs = FireballPool.new()
+	fireballs.name = "Fireballs"
+	add_child(fireballs)
+	fireballs.setup(own)
+
+
+## Sets off the blast at `at` (world space): a shared fireball `radius` metres in radius, its fire burning about
+## `seconds` (FireballPool.play's pace), with its smoke after it. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 670).
 func start_blast(at: Vector3, radius: float, seconds: float) -> void:
-	blast = EnforcerTruckBlast.new()
-	blast.name = "Blast"
-	add_child(blast)
-	blast.global_position = at
-	blast.start(radius, seconds, Settings.flashing_reduced)
-
-
-func update_blast(delta: float) -> void:
-	if blast != null and blast.visible:
-		blast.advance(delta)
-		if blast.done():
-			blast.visible = false
+	build_blast()
+	fireballs.play(at, radius, true, fireballs.tuning.fireball_seconds / maxf(seconds, 0.05))
 
 
 ## Takes the City's props out of view (the scene has cut to another place).

@@ -442,6 +442,8 @@ func _defeat_plays_out(world: RunWorld, boss: HostileTakeover, bot: HostileTakeo
 			lobby_at - world.player.distance, tag])
 	var y0: float = boss.gunship.global_position.y
 	var w := {"exploded": -1.0, "crashed": -1.0, "dark": -1.0, "climb": 0.0, "spin": 0.0, "ahead": -INF, "over": -1.0}
+	var fires: Array[float] = []
+	world.effects.fireball_played.connect(func(_at: Vector3, size: float) -> void: fires.append(size))
 	await _run(world, bot, t.defeat_seconds + 1.0, func() -> bool: return boss.victory_over(), func() -> void:
 		var st: float = boss.step_time
 		if boss.gunship.visible:
@@ -464,6 +466,11 @@ func _defeat_plays_out(world: RunWorld, boss: HostileTakeover, bot: HostileTakeo
 		"the locomotive leaves the guideway and ploughs into the lobby ahead of the runner %.1f s on, with its sound %s" % [float(w["crashed"]), tag])
 	check(absf(boss.lobby.sculpture.rotation.x) > 1.4 and float(w["dark"]) >= 0.0 and float(w["dark"]) <= HostileTakeover.SCREENS_DARK_AT + step,
 		"the sculpture comes down, the screens go dark %s" % tag)
+	# The explosion and the crash are rolling fireballs (task H6, RunEffects.fireball): the biggest first in each.
+	var want: Array[float] = []
+	for size: float in HostileTakeover.BLAST_SIZES + HostileTakeover.CRASH_BLAST_SIZES:
+		want.append(size * HostileTakeoverLobby.BLAST_RADIUS_SHARE)
+	check(fires == want, "the explosion and the crash are five fireballs, rolling on (%s) %s" % [fires, tag])
 	check(boss.victory_over() and absf(boss.step_time - t.defeat_seconds) <= step and world.player.alive,
 		"and %.1f s after the last stomp it's over, the runner running on %s" % [t.defeat_seconds, tag])
 
@@ -583,6 +590,8 @@ func _test_tithe() -> void:
 		"a Tithe Collector comes in the runner's lane, a trail of %d credits laid ahead of it" % int(first.get("count", 0)))
 	check(int(held["most"]) >= t.tithe_value * (t.tithe_credits / 2), "and skims them (it holds %d of %d)" % [
 		held["most"], t.tithe_value * t.tithe_credits])
+	check(not collectors.is_empty() and is_equal_approx((collectors[0] as TitheCollector).approach_speed, t.tithe_approach_speed),
+		"it closes in at the Board's own speed (%.1f m/s), not the levels' longer stay (task H10)" % t.tithe_approach_speed)
 	print("  Hostile Takeover's Tithe Collector skims %d of its trail's %d credits" % [int(held["most"]) / t.tithe_value, t.tithe_credits])
 	await sim.free_world(world)
 
