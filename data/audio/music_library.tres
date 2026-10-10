@@ -20,6 +20,8 @@ files = {
 "zone_4": "res://assets/music/Zone_4_Concrete_Fever.mp3",
 "zone_5": "res://assets/music/Zone_5_Beneath_the_Cracks.mp3",
 "zone_6": "res://assets/music/Zone_6_View_from_the_Zenith.mp3",
+"casino_song": "res://assets/music/Zone_3_2_Casino_Midnight_at_the_atrium.mp3",
+"beach_song": "res://assets/music/Zone_Beach_Palms_at_Terminal_Speed.mp3",
 "boss_1": "res://assets/music/Boss_1_Apex_Combat_Maneuver.mp3"
 }
 volume_db = {
@@ -38,6 +40,8 @@ volume_db = {
 "zone_4": -10.5,
 "zone_5": -10.5,
 "zone_6": -10.5,
+"casino_song": -11.0,
+"beach_song": -11.0,
 "boss_1": -10.5
 }
 bpm = {
@@ -55,25 +59,24 @@ zone_tracks = {
 "city": "zone_1",
 "gangland": "zone_2",
 "marketplace": "zone_3",
-"casino": "zone_3",
+"casino": "casino_song",
 "corporate": "zone_4",
-"beach": "zone_3",
+"beach": "beach_song",
 "dead_zone": "zone_5",
 "golden": "zone_6"
 }
 boss_tracks = {
-"city_boss": "boss_1"
+"city_boss": "boss_1",
+"casino_boss": "casino_song"
 }
 riff_tracks = {
-"beach": "marketplace",
 "zone_1": "city",
 "zone_2": "gangland",
 "zone_3": "marketplace",
 "zone_4": "corporate",
 "zone_5": "dead_zone",
 "zone_6": "golden",
-"boss_1": "city",
-"casino": "marketplace"
+"boss_1": "city"
 }
 duck_db = -8.0
 duck_time = 0.3
