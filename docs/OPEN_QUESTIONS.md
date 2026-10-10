@@ -14,7 +14,7 @@ numbered items stay in place even when answered, because code comments and the o
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - The House (Marketplace boss): revisit after playtesting (GDD §10).
-- The Beach's boss: to be designed (owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created"; GDD §10, task E5e; item 575 in §D).
+- The Beach's boss: designed in part with the owner on October 10, 2026 (GDD §10, The Beach's boss: a giant mechanical shark and a pirate bomber, in a climb; task E5e). What's still open is items 683–695 in §D.
 - The Golden Convergence (the final villain): designed with the owner and built on October 9, 2026 (GDD §10, task E5d). The owner's review of the parts Claude filled in under the owner's mandate, and the build's placeholders, are items 416–503 in §D below.
 
 ### 3. Player character
@@ -3957,6 +3957,8 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     its placeholder card and passes through it to the Beach's outro and the Dead Zone, with no stars. Its fight,
     name and payout are to be designed. When it's built, `test_app_flow` and `test_screens` need another unbuilt
     stand-in for their placeholder-card checks.
+    **Answered in part (owner, October 10, 2026):** a giant mechanical shark and a pirate bomber, in a climb (GDD §10,
+    The Beach's boss). Its name, payout and the rest are items 683–695.
 576. **The cinematics** (GDD §6). Placeholder: `beach_intro.tres` ("The Beach") plays the arrival flyover in the
     Beach's look, its card "ZONE 6 · Beach"; `beach_outro.tres` ("Last light") is a placeholder card (after the
     boss, as the sun goes down, heading for the Dead Zone); Corporate's outro card now heads for the Beach. The
@@ -4517,3 +4519,46 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
 682. **What the Beach merge moved** (notes; not a question): `test_enforcer_truck`'s `BOTH_TRUCKS` (item 401's case,
     two trucks with room for one showing, both kept) adds Sunset Strip at 5 lanes, with the H series; Tiki Tides at 5
     lanes stays. The Beach's doodads tag their main colours for the dash's smash (task H5), as every zone's do.
+
+**The Beach's boss: still to design** (from the owner's design session with Claude, October 10, 2026; GDD §10, The Beach's boss; task E5e)
+683. **The way up: ceilings, to confirm** (GDD §10, The Beach's boss, The climb). The owner proposed two ways up:
+    anti-grav pads to ceilings that drop the runner onto higher floors, or side walls standing in the lanes, climbed by
+    wall hops from wall to wall. The owner's answers on October 10, 2026 (the wrong ceiling lane, ceiling riders and
+    the bombs) follow the ceilings, so the GDD records them, marked *(to confirm)*. Claude's feasibility notes (task
+    E5e in `docs/TASK_PLAN.md`): the ceilings reuse pads, partial ceilings and landing on raised floors; the side-wall
+    climb needs the wall system rewritten (walls stand only at the track's two edges, a wall run slides down, and the
+    wall hop holds a runner at about 4.5 m but never climbs). A cheap mix: a run up an edge wall, then a wall jump onto
+    a higher roof, as onto the Floating Head in its phase 2. Ceilings only, or ceilings with edge-wall steps?
+684. **The name** of the fight, the shark and the pirate.
+685. **Phases and length** (GDD §10: 60–120 seconds; death restarts the fight). How many phases, and what changes in
+    each? Claude's suggestion, not decided: phase 1 ceilings, phase 2 edge-wall steps, phase 3 both, each phase a
+    little faster, as at the other bosses.
+686. **The bombs' warning** (GDD §3 and CLAUDE.md: every attack has a visual and an audio warning). Reuse the Floating
+    Head's (a red target circle where a bomb will land and a falling whistle), with a pirate look on the bombs? How
+    many bombs at once, and how often?
+687. **Bombs on a ceiling rider** (owner: ceiling riders aren't safe from them). How does a bomb reach a runner hanging
+    under a ceiling, and where is its warning drawn (on the ceiling's underside, above the rider's head)? For example,
+    the ship flies ahead below the ceiling's line and lobs them in, or the bombs burst through the ceiling.
+688. **The shark's bites** (GDD §10: its maw comes up through the floor and eats a huge chunk of the level). Where and
+    when does it bite: ahead of the runner, behind them, under floor they've left, under the floor they're on? If a
+    bite can catch the runner, it's an attack and needs its warning and a way to dodge (a rumble, churning water,
+    cracks spreading). If it only eats floor the runner has left, it kills only a runner who drops back down.
+689. **How many hits** ("many") end the fight, and does anything else hurt the shark? Weapons chip every other boss,
+    and every other boss also has a big hit (a stomp on a glowing red weak point). Is it bombs only?
+690. **The pirate bomber's fate.** Can it be hurt or beaten, or is it out of reach for the whole fight? Does it
+    appear in later levels (GDD §5: "Anything introduced earlier keeps appearing later"), or only in this fight?
+691. **The last-ditch saves** (owner: a wall to cling to, or the grapple). The grapple today pulls a runner back up out
+    of a pit to the street's level; in the climb it would have to pull them back onto the roof they fell from. A wall:
+    GDD §3's entry grace says a runner already falling into a gap can't get onto a wall, but this fight lets a falling
+    runner catch one. How late may they catch it, and where do walls stand in the climb? The wall hop (GDD §3) lets a
+    runner stay on a wall as long as they like: do the bombs reach wall runners, so a wall isn't a place to wait out
+    the fight (item 417's concern)?
+692. **Reading the lanes.** On a ceiling, the camera sits under it looking up. How does the player see which lanes
+    lead to the higher roof before the ceiling ends: the roof in plain view ahead, a marking on the ceiling, or
+    something else?
+693. **The arena's looks.** What forms the ceilings (the Beach's skin uses footbridges, verandas and a party barge)?
+    Do the neon signs on the roofs stay out of the lanes as scenery, or stand in lanes as obstacles? Daylight or
+    sunset (the fight follows Sunset Strip, whose sun is setting, and comes before the outro, "Last light")?
+694. **3 lanes against 5–6** (lane count is a parameter). How many of a ceiling's lanes lead up on each?
+695. **Pickups, granted items, rewards and the defeat.** The standard armor rule (15–17 seconds)? What happens to
+    the shark and the pirate when the fight is won?

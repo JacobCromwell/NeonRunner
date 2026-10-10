@@ -75,7 +75,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Lanes:** the ceiling has lanes, but the hull must look like a ship: no large gaps between lanes.
 - **Duration:** the player stays on the ceiling until the ship's hull ends, then drops back down.
 - **The floor beneath may be dangerous** (changed September 26, 2026, replacing the September 25 rule that kept it clear). The ceiling is a way to **escape the danger on the floor**, so the floor under a ceiling may hold gaps, hazards and enemies.
-- **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on.
+- **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on. **Exception:** the Beach's boss fight, where a ceiling may end over floor the shark has eaten (owner, October 10, 2026; §10).
 - **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
 - **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
 - **The ceiling is never required:** the floor route under a ceiling is always survivable without taking the pad. The ceiling is the easier route (decided September 26, 2026).
@@ -185,8 +185,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Enemies:** **no new enemy assets**; the zone reuses existing enemies, and its cyborgs wear an existing zone look.
 - **Signs:** wordless, like every zone's.
 - **Place in the campaign:** between Corporate and the Dead Zone (owner, October 9, 2026): zone 6, after the Casino joined as zone 4.
-- **New enemies:** none for now. "Do not worry about any new enemies at this time" (owner, October 9, 2026), so for now it is the one zone that introduces none, a remix of everything before it.
-- **Boss:** it will have a boss battle, not yet designed (§10).
+- **New enemies:** none for now. "Do not worry about any new enemies at this time" (owner, October 9, 2026), so for now it is the one zone that introduces none, a remix of everything before it. Its boss fight brings its own: the giant mechanical shark and the pirate bomber (owner, October 10, 2026; §10).
+- **Boss:** a giant mechanical shark eating the level from below and a pirate bomber overhead, in a climb over tiki bar roofs (owner, October 10, 2026; designed in part, §10).
 
 **Zone 7: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
 
@@ -238,7 +238,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 - **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's; The House, which follows Casino 2 since the Casino was added, under the Casino's own sky). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
 - **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
 
-**19 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Beach's is still to be designed, owner, October 9, 2026). A flawless run through every level takes about 44 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
+**19 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Beach's was designed in part on October 10, 2026, §10). A flawless run through every level takes about 44 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -599,7 +599,7 @@ Shared interaction rules apply unless stated otherwise:
 - **General:**
   - One per zone.
   - Each boss is its own scripted encounter with its own scene and rules, not a variant of a normal level (decided September 26, 2026).
-  - **Gameplay stays as close to the main runner as possible** (refined September 26, 2026): the same controls, camera and movement. A boss may get its own gimmick that makes it play differently, but none has been chosen yet.
+  - **Gameplay stays as close to the main runner as possible** (refined September 26, 2026): the same controls, camera and movement. A boss may get its own gimmick that makes it play differently. The first is the Beach's boss: a climb, with the camera following the runner up (owner, October 10, 2026).
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
   - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
   - **Death restarts the fight** (no checkpoints), like a level. **Exception: the final fight** has a checkpoint halfway, where the villain may change into a **second stage**.
@@ -619,7 +619,7 @@ Shared interaction rules apply unless stated otherwise:
   | 3. Marketplace | None: it leads into the Casino (owner, October 8, 2026) |
   | 4. Casino | The House (moved from the Marketplace; owner, October 8, 2026) |
   | 5. Corporate | Hostile Takeover |
-  | 6. Beach | To be designed (owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created") |
+  | 6. Beach | A giant mechanical shark, with a pirate bomber overhead: a climb (owner, October 10, 2026; name to come) |
   | 7. Dead Zone | Sleep Taker |
   | 8. Golden Zone | The Golden Convergence (the final villain) |
 
@@ -707,6 +707,16 @@ Shared interaction rules apply unless stated otherwise:
   - **Defeat:** the gunship spins away and explodes; the locomotive derails and ploughs through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture.
   - **Missed weak points** come around again (no time limit, no escalation). Weapons chip; stomps do the real damage.
   - **Pickups:** the standard armor rule (15–17 seconds).
+- **The Beach's boss** (Beach; name to come). The owner's design (October 10, 2026), worked out with Claude's feasibility notes the same day. What's still open is in `docs/OPEN_QUESTIONS.md` §D, items 683–695.
+  - **What it is:** a **giant mechanical shark** eats the level from below, while a **pirate bomber** flying overhead throws bombs down at the runner. The fight is a **climb**: the runner keeps running forward as always, and climbs higher and higher over the fight.
+  - **The shark:** **gigantic, the size of a building**. Its **maw comes up through the floor** and eats a **huge chunk of the level**. It can be seen **ahead of the runner and behind them**. It's so large that the player will mostly only ever see its **giant jaws and its red eyes**.
+  - **The bomber:** a **new enemy**: a **pirate** in a **floating ship flying above** the track, a pirate mixed with a futuristic look. It throws bombs down at the runner. **Ceiling riders aren't safe from its bombs.**
+  - **The climb** (this boss's gimmick; *(to confirm)*, item 683): the runner climbs by **anti-grav pads**. Ahead, new floor lanes stand **higher** than the ones the runner just left, and the player **judges which ceiling lane to stay in**: when the ceiling ends, some of its lanes drop the runner onto the higher floor, and others drop them back onto the floor they came from, which the shark may be eating. The **camera follows the runner up**. (The owner also weighed side walls standing in the lanes, climbed by wall hops from wall to wall; the owner's answers that day follow the ceilings.)
+  - **The higher floors are tiki bar roofs**, with **a few neon signs**. The colour rule (§5) holds for the signs.
+  - **Hurting the shark:** dodging the bombs. **Not every miss hurts it**: only a bomb that **falls through a gap**, **off a roof's edge**, or into a stretch the shark has **eaten through**, where it is **clearly exposed and in the line of fire**. It takes **many hits** before the fight is over.
+  - **The wrong lane:** dropping onto the old floor **where the shark has already eaten it is instant death** (a fall). **A last-ditch way up:** a **wall** the runner can cling to, or the **grapple** (§8).
+  - **Exceptions to the general rules:** the safe landing zone (§3) doesn't hold in this fight: a ceiling may end over floor the shark has eaten. The ceiling is the way up, so it is required (as in Hostile Takeover's phase 2 and the Floating Head's phase 3).
+  - **Still to design:** its name, phases and length, the warnings for the bombs and the bites, how the bombs reach a ceiling rider, the walls' place in the climb, how many hits, the bomber's own fate, 3 lanes against 5–6, pickups and the defeat (items 683–695).
 - **The Golden Convergence** (Golden Zone; the final villain). The owner's design (October 9, 2026). The owner then asked Claude to fill in the rest and build it (owner's mandate, October 9, 2026): those parts are marked *(proposed)* for the owner's review, with the questions in `docs/OPEN_QUESTIONS.md` §D, items 416–503.
   - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside is **The Magnate**.
   - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
