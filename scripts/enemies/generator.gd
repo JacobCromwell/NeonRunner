@@ -9,7 +9,7 @@ extends Enemy
 ##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash), so an
 ##   EMP is always the player's choice (hosts had the same rule until October 8, 2026; weapons now hit
 ##   them, GDD §9.7). Claws and plain contact don't destroy it (FB 73); its body is solid, so
-##   running into it hurts like any solid obstacle (armor doesn't help).
+##   running into it kills, unless armor (which absorbs the hit, armor_blocks_solid) or the shield is up.
 ## - Destroying it sets off an EMP (RunWorld.emp): every fence within emp_radius (DESIGN-TBD, in
 ##   data/enemies/generator.tres) switches off for the rest of the level, and every enemy hears it
 ##   (the Cyborg's Bad Dream dissolves, GDD §9.7).
@@ -81,8 +81,11 @@ func _build() -> void:
 	lane = clampi(int(spawn.get("lane", 0)), 0, world.geo.lane_count - 1)
 	var at: float = float(spawn.get("at", 0.0))
 	position = world.lane_point(lane, at)
-	add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5, 0.0))
-	add_hitbox(&"top", TOP_SIZE, Vector3(0.0, TOP_Y, 0.0))
+	# Armor absorbs a collision with the body like any other damage it works against (owner, October 10, 2026).
+	add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5, 0.0)).armor_blocks_solid = true
+	# The top overlaps the body when the runner meets the machine head-on, so it must absorb too: any
+	# unflagged hitbox touched in the same frame would still kill.
+	add_hitbox(&"top", TOP_SIZE, Vector3(0.0, TOP_Y, 0.0)).armor_blocks_solid = true
 	powered = fences_in_reach(world.layout, world.geo, at, lane, tuning.emp_radius)
 	_build_visuals()
 
