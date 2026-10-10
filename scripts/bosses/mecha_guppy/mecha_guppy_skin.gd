@@ -12,6 +12,9 @@ extends BeachSkin
 ##   BossProps.ceiling_lanes gives them (one section per run of lanes ending together: the skin would dress each
 ##   section on its own, with seams).
 ## Under Sunset Strip's sky in the campaign (Campaign.configure_boss: the fight after a level keeps that level's sky).
+## DESIGN-TBD (docs/questions/e5e.md): its data (data/bosses/beach_boss_skin.tres) makes the arena hazier than the
+## Beach's levels, fully fogged past fog_end (200 m; fog_max 1): the long drop below the towers hazes over with depth,
+## and MechaGuppyStairs plans the climb no nearer than that edge of sight, so nothing ever changes where it's seen.
 
 ## How far apart the open shore's scenery repeats when nothing bounds it (a wall gap's ends would): far past any
 ## lap's length.
