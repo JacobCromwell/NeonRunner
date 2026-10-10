@@ -14,7 +14,7 @@ extends TestSuite
 ##   seeded scripted attempt (lane switches, jumps, slides and dashes, and an EMP over the fences ahead) plays
 ##   exactly as with the cache off (every run building its level, as before): the same layout, the runner's
 ##   trace and events, kills and credits, the enemies' event log, the floor cuts begun, the score and the fences
-##   switched off, at Gangland 3 (5 lanes) and Corporate 2 (3 lanes: a floor cut, a thief, an Enforcer Truck).
+##   switched off, at Gangland 3 (5 lanes) and CUT_LEVEL (a floor cut begun, an Enforcer Truck).
 ## - Nothing leaks into the next attempt: after an attempt that changed its world and layout every way play can
 ##   (and more), each retry starts from the build's layout, with every enemy still to come, every credit,
 ##   every fence on, no floor cut begun, every zone doodad and dash wall standing, the build's length and no score;
@@ -35,14 +35,19 @@ const REVIEW_ARGS: PackedStringArray = ["--god", "--nofall"]
 ## When a scripted attempt sets off its EMP (_play), over the fences 10-170 m ahead: Gangland 3's first ones at 5
 ## lanes (from 338 m with the Casino's levels and K4's curve, task K5) are in its reach then, and Corporate 2's.
 const EMP_SECONDS: float = 9.0
-## Corporate 2's scripted attempt plays at 3 lanes, where its floor cut begins 32 s in and its Enforcer Truck is
-## wrecked in a wider gap before: at 5 lanes (with the Casino's levels and K4's curve, task K5) the attempt's weapons
-## shoot its one Buzz Overdrive down before its charge, so no cut would begin.
-const CORPORATE_2_LANES: int = 3
-## How far an attempt is spoiled (_spoil) and its retry's track looked at (_test_nothing_leaks, Corporate 2 at 5
-## lanes): past its floor cut (1301-1460 m with the Casino's levels and K4's curve), so it's among what the attempt
-## ran and the retry builds.
+## The level and lane count whose scripted attempt meets a floor cut (_test_retries_play_the_same: the cuts begun are
+## compared): Dead Zone 1 at 3 lanes, whose first Buzz Overdrive charges 9 s in, since the owner's October 10, 2026 call
+## (task I1). At Corporate 2 (3 and 6 lanes) and Beach 1 (3 lanes) the attempt, with every item at its top tier,
+## now destroys the tank before its charge (as at Corporate 2's 5 lanes before), so no cut would begin there.
+const CUT_LEVEL: String = "dead_zone/1"
+const CUT_LANES: int = 3
+## How far an attempt is spoiled (_spoil) and its retry's track looked at (_test_nothing_leaks, Corporate 2 at
+## LEAK_LANES lanes): past its floor cut (555-612 m since the owner's October 10, 2026 call, task I1; 1301-1460 m at 5
+## lanes with the Casino's levels and K4's curve before), so it's among what the attempt ran and the retry builds.
 const SPOIL_TO: float = 1600.0
+## The lane count of _test_nothing_leaks' Corporate 2: 6 since task I1, whose 5-lane build has its one floor cut past
+## 2900 m (5 before).
+const LEAK_LANES: int = 6
 ## How far before a doodad or a dash wall _drive starts the dash (test_doodads' retry dashes from as far).
 const DASH_LEAD: float = 8.0
 ## The smashed-and-retried attempts' lane count (_test_smashed_stand_again; with REVIEW_ARGS' no deaths and no
@@ -67,8 +72,8 @@ func run() -> void:
 	var saved_args: PackedStringArray = App._review_args
 	App.profile = _full_profile()
 	await _test_retries_play_the_same("gangland/3", 5, 24.0, ["credits", "fences_off"])
-	await _test_retries_play_the_same("corporate/2", CORPORATE_2_LANES, 44.0, ["credits", "kills", "cuts"])
-	App._review_args = _review_args(5)
+	await _test_retries_play_the_same(CUT_LEVEL, CUT_LANES, 44.0, ["credits", "kills", "cuts"])
+	App._review_args = _review_args(LEAK_LANES)
 	await _test_nothing_leaks("corporate/2")
 	await _test_smashed_stand_again("golden/1")
 	await _test_builds_again()
@@ -579,9 +584,10 @@ func _test_smashed_stand_again(id: String) -> void:
 	App._review_args = saved_args
 
 
-## The targets for _test_smashed_stand_again in `world`'s layout: the level's first dash wall, and the last zone doodad
+## The targets for _test_smashed_stand_again in `world`'s layout: the level's first dash wall, and the first zone doodad
 ## in the runner's starting lane from 20 m past the run-up's end to 120 m before the wall's face (the dash is back by
-## then), by their indices ({doodad, wall}); {} if there's none.
+## then; the first, so no earlier doodad in that lane pushes the runner out of it), by their indices ({doodad, wall});
+## {} if there's none.
 func _smash_targets(world: RunWorld) -> Dictionary:
 	var lay: LevelLayout = world.layout
 	if lay.dash_walls.is_empty():
@@ -591,7 +597,7 @@ func _smash_targets(world: RunWorld) -> Dictionary:
 	for i: int in lay.doodads.size():
 		var d: Dictionary = lay.doodads[i]
 		if int(d["lane"]) == world.player.lane and float(d["start"]) > world.config.start_clear_distance + 20.0 \
-				and float(d["end"]) < face - 120.0:
+				and float(d["end"]) < face - 120.0 and (best < 0 or float(d["start"]) < float(lay.doodads[best]["start"])):
 			best = i
 	return {} if best < 0 else {"doodad": best, "wall": 0}
 

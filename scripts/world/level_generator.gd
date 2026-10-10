@@ -94,7 +94,9 @@ extends RefCounted
 ## stretches where nothing else goes on (doodad_keep_outs) get one, in an inner lane, with room to push
 ## into and the level's spacing after it: they add to what the patterns, the rules and the fill pass
 ## put there (nothing moves or goes for them, and nothing comes after them to undo or crowd them), so
-## a level looks busier without needing a reaction or narrowing one.
+## a level looks busier without needing a reaction or narrowing one. They may stand while a bigger
+## enemy is around (owner, October 10, 2026): a Buzz Overdrive, a hover truck and an Enforcer Truck's
+## showing keep only the lanes they need (doodad_keep_outs, doodad_guards).
 ##
 ## Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's): floors that turn into gaps during play are
 ## planned in advance as data (LevelLayout.cuts; FloorCutPlan: lane, start, end, and when it runs,
@@ -102,10 +104,12 @@ extends RefCounted
 ## script plans them (add_cut; CutPlacement clears the way), only where GDD §9.9's limits allow
 ## (cut_problem): one at a time, never through a ramp, a pad or the safe landing zone after a ceiling,
 ## its lane free of everything else from its warning to past its cause, the other lanes whole enough
-## (on 3 lanes two stay whole; LevelConfig.cut_holes_beside on more), nothing else going on meanwhile,
-## and room to leave its lane after the warning (cut_escape_clear). Everything planned after a cut
-## keeps off it: the fill pass and zone doodads (fill_keep_outs, doodad_keep_outs), floor_clear,
-## ceilings added later (CeilingZones) and floor credits in its lane. A level without cuts is built
+## (on 3 lanes two stay whole; LevelConfig.cut_holes_beside on more), no other big attack meanwhile
+## (lower-tier enemies may share the track with it off its lane: owner, October 10, 2026), and room to
+## leave its lane after the warning (cut_escape_clear). Everything planned after a cut keeps its limits:
+## the fill pass and zone doodads share the track with it but keep off its lane and its way out
+## (_fit_filler_to_cuts, doodad_keep_outs, _cuts_keep_escapes), the passes that add danger keep off its
+## whole window, and so do floor_clear, ceilings added later (CeilingZones) and floor credits in its lane. A level without cuts is built
 ## exactly as before.
 ##
 ## Wall fences (task B5; GDD §9.1: electric fences that span a side wall and switch off and on, to make
@@ -1318,7 +1322,8 @@ func _sorted(values: Array[int]) -> Array[int]:
 ## too near the end, an Octodog whose charges didn't fit) doesn't stay bare, and it never touches what
 ## a rule keeps. More of the same patterns, never harder ones (GDD §3: busier levels, "so there is
 ## always something going on"). Its own random stream: with fill_empty_seconds 0 (quick play, tests,
-## boss arenas) a level is built exactly as it was before.
+## boss arenas) a level is built exactly as it was before. It shares the track with the floor cuts (owner,
+## October 10, 2026: fill_pass_keep_outs), holding each filler to them (_fit_filler_to_cuts).
 func _fill_empty_stretches(patterns: Array) -> void:
 	if config.fill_empty_seconds <= 0.0:
 		return
@@ -1488,7 +1493,8 @@ static func is_filler(pattern: Dictionary) -> bool:
 ## (LevelGenerator.enemy_floor_span), or what its rules script keeps for it (`static func keep_out(gen:
 ## LevelGenerator, entry: Dictionary) -> Vector2`: a cyborg's margin, a hover truck's lane window, a
 ## Resonator's visit, a drone wave until its first pad); a level's quiet stretches; every floor cut, in
-## every lane, from its warning to its end (FloorCutPlan.window); every dash wall's footprint, in every lane
+## every lane, from its warning to its end (FloorCutPlan.window; not without `with_cuts`); every dash wall's
+## footprint, in every lane
 ## (task H7a, DashWallRules.footprint: its clear approach, the wall and the clear stretch past it); and with
 ## `with_rules`, the calm stretches the rules keep (rules_fill_keep_outs: an Enforcer Truck's showing window, task
 ## C6c). (Zone doodads come after the fill pass, into what it leaves: _place_doodads.)

@@ -93,8 +93,9 @@ static func window(cut: Dictionary, run_speed: float) -> Vector2:
 
 
 ## The track the player runs from the cut's warning to its end (or past its cause's spot): its big
-## attack, when nothing else may go on (GDD §9). The same as window() for a cut without a lead.
-## DESIGN-TBD (docs/questions/c2.md): a cause on its way before its warning keeps only its lane clear.
+## attack, when no other big attack may go on (GDD §9; lower-tier enemies and obstacles may, off its lane:
+## owner, October 10, 2026). The same as window() for a cut without a lead. A cause on its way before its
+## warning keeps only its lane clear (docs/OPEN_QUESTIONS.md item 307).
 static func attack_window(cut: Dictionary, run_speed: float) -> Vector2:
 	return Vector2(warn_at(cut), window(cut, run_speed).y)
 

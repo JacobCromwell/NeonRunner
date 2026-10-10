@@ -3,7 +3,8 @@ extends RefCounted
 ## start and end), so levels stay fair and identical on every attempt; the saw is just the visible
 ## cause"). Its patterns (data/patterns/buzz_overdrive.json) stand one where its encounter begins: an
 ## entry's `at` from the pattern is where the player is when it sets off, rolling ahead of them
-## (FloorCutPlan.lead_at), and the pattern's length holds the whole encounter. LevelGenerator runs
+## (FloorCutPlan.lead_at). Its pattern is short (owner, October 10, 2026: the encounter isn't the only
+## thing going on), so the pattern pass places the level's patterns through it. LevelGenerator runs
 ## apply() for levels with the feature after the rules of every feature that puts things on the floor
 ## or plans a big attack (RUN_AFTER; the Resonator's and the Barnacle Turret's rules run after these),
 ## so each cut is planned around the level's final layout:
@@ -11,12 +12,11 @@ extends RefCounted
 ##   BuzzOverdriveTuning, at the level's run speed and pace) in its own lane, else in another (seeded
 ##   order), wherever B4's limits allow (CutPlacement: GDD §9.9's limits, LevelGenerator.cut_problem:
 ##   one at a time, never a lane with a ramp, a pad or a ceiling's landing zone, the other lanes whole,
-##   nothing else going on, room to leave its lane). The entry then moves to the cut's end, in the cut's
+##   no other big attack meanwhile, room to leave its lane). The entry then moves to the cut's end, in the cut's
 ##   lane: where its cause is when the charge starts (FloorCutPlan, cut_of).
 ## - One that fits in no lane where its pattern put it tries a little earlier or later (MOVE_SECONDS:
 ##   around a ceiling's landing zone, say: from a level's first drone on, a pad and its ceiling come
-##   every 8–10 s), never before the feature's start; one that fits nowhere is dropped, and the stretch
-##   its pattern held is left to the fill pass.
+##   every 8–10 s), never before the feature's start; one that fits nowhere is dropped.
 ## - Its introduction (a level that gives the feature a start, LevelConfig.feature_starts: Corporate 1):
 ##   if no Buzz Overdrive sets off within intro_seconds of the start (the pattern picked there didn't fit:
 ##   a hover truck's stay, a drone wave, a ceiling's landing zone), one is added at the first spot there
@@ -117,9 +117,11 @@ static func tanks_in(layout: LevelLayout) -> Array[Dictionary]:
 	return out
 
 
-## What the generator's fill pass keeps off around a Buzz Overdrive's entry `e` (LevelGenerator.
-## fill_keep_outs): its cut's window, from where it sets off to the cut's end (the generator keeps every
-## cut's anyway; this is the same). Just its spot if the cut is missing.
+## What the other rules and passes keep off around a Buzz Overdrive's entry `e` (LevelGenerator.
+## fill_keep_outs, enemy_keep_out): its cut's window, from where it sets off to the cut's end, so no other
+## big attack comes meanwhile and its claim on its turn holds. Just its spot if the cut is missing. The fill
+## pass and the zone doodads leave it out (owner, October 10, 2026: they share the track with it, off its
+## lane and its way out).
 static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 	var cut: Dictionary = cut_of(gen.layout, e)
 	if cut.is_empty():

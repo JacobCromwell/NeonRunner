@@ -56,10 +56,15 @@ const STEPS: Array[String] = ["beach/intro", "beach/1", "beach/2", "beach/3", "b
 const OTHER_SEEDS: Array[int] = [8801, 8802]
 ## The share of the level each side wall stands on (the owner: about half as often as the 96-97% elsewhere):
 ## the median over every build aims for AIM, and every wall stands within ACCEPT unless its keep-outs leave it
-## no more than FORCED_SLACK of the level more free (in stretches long enough to open) than it opened.
+## no more than FORCED_SLACK of the level more free (in stretches long enough to open) than it opened. The placement
+## leaves 4-6% of a wall's free stretches standing (no stand shorter than solid_seconds_min, the closings to the
+## target and both_open_max: 6.2% on Beach 1's own build at 5 lanes before task I1), which only counts where a wall
+## stands on more than ACCEPT's 60%: since task I1 (the owner's October 10, 2026 call, a busier track and more on its
+## walls) Beach 1 at 5 lanes leaves its left wall 44% free and opens 40% (on seed 8801, 45.6% and 39.9%), so the
+## slack covers that leftover: 0.07 (0.03 before).
 const AIM := Vector2(0.45, 0.55)
 const ACCEPT := Vector2(0.40, 0.60)
-const FORCED_SLACK: float = 0.03
+const FORCED_SLACK: float = 0.07
 ## The open stretches are long: at least this share of all the open length (over every build) lies in stretches
 ## of LONG_METRES and more.
 const LONG_METRES: float = 100.0

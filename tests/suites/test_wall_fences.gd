@@ -27,10 +27,13 @@ const WITHOUT: Array = ["city/1", "city/2", "city/3", "gangland/1", "gangland/2"
 ## after its start: neither wall has a fair spot that close to it (WallFencePlacement.keep_outs), so the
 ## placement takes the first fair one past it, as it must. Marketplace 2 at 3 lanes on task K4's curve: its
 ## signs, window cyborgs and a ramp on the walls, the outer lanes' pieces and its big attacks and floor cuts
-## take both walls through those 10 s, and its first full-height one comes at 15.4 s. Each case checks that
+## take both walls through those 10 s, and its first full-height one comes at 15.4 s. Corporate 1 at 6 lanes since
+## the owner's October 10, 2026 call (task I1: a Buzz Overdrive's encounter shared with the rest of the track): signs,
+## window cyborgs, a ramp, the outer lanes' pieces and a big attack take both walls, and its first partial one comes
+## at 21.2 s. Each case checks that
 ## both walls are still taken from its start right up to its first one, so it stands at the first fair spot,
 ## and that it still comes late (else it leaves this list).
-const LATE_INTRODUCTIONS: Array = [["marketplace/2", 3]]
+const LATE_INTRODUCTIONS: Array = [["marketplace/2", 3], ["corporate/1", 6]]
 
 var sim: RunSim
 var campaign: Campaign

@@ -19,8 +19,10 @@ const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const HostWatch = preload("res://tools/measure/host_watch.gd")
 const HostRules = preload("res://scripts/enemies/host_rules.gd")
 const HOST_LEVELS: Array[String] = ["dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
-## Each host level played once, at a lane count of its own (all three lane counts are covered).
-const PLAYED: Array = [["dead_zone/1", 5], ["dead_zone/2", 3], ["golden/1", 6], ["golden/2", 3], ["golden/3", 5]]
+## Each host level played once, at a lane count of its own (all three lane counts are covered). Golden 2 at 5 lanes
+## since the owner's October 10, 2026 call (task I1): in its 3-lane build the tier-2 weapon no longer shoots a host
+## down ahead of its spot.
+const PLAYED: Array = [["dead_zone/1", 5], ["dead_zone/2", 3], ["golden/1", 6], ["golden/2", 5], ["golden/3", 5]]
 ## The weapon tier played: tier 2 kills hosts furthest ahead of their spots (a median of 1.48 s of run measured,
 ## against tier 3's 1.06 s and tier 4's 1.23 s; tier 1's 42 m never reached a host before the runner did).
 const TIER: int = 2

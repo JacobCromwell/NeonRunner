@@ -30,9 +30,11 @@ const SPEEDS: Array[float] = [18.0, 25.0]
 ## Palace at 3 lanes on seed 9024, whose pass would put a window cyborg on the wall section of the Sentinel at
 ## 2285 m (one of 54 such builds of Golden 2's and the Palace's 720 on seeds 9001-9120 since the H series merged
 ## main's Casino; the Palace at 3 lanes on seed 9039, task K5's case, the only one of 240 then, and Golden 2 at 5
-## lanes on seed 9034, K4's, no longer build that way). Built as shipped every Sentinel keeps its rules; built
-## without the check, the problem shows (else re-pin the case).
-const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9024}]
+## lanes on seed 9034, K4's, no longer build that way). Since the owner's October 10, 2026 call (task I1: a Buzz
+## Overdrive's encounter shared with the rest of the track), Golden 2 at 5 lanes on seed 9001 (a window cyborg on the
+## wall section of the Sentinel at 772 m), re-found where the Palace's case no longer builds that way. Built as
+## shipped every Sentinel keeps its rules; built without the check, the problem shows (else re-pin the case).
+const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/2", "lanes": 5, "seed": 9001}]
 
 var sim: RunSim
 var t: GildedSentinelTuning

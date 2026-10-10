@@ -92,8 +92,10 @@ func _test_campaign_relevance() -> void:
 		"gangland/3": ["generator", "drone"],
 		"marketplace/1": ["barnacle_turret"],
 		"marketplace/2": ["wall_fence"],
-		"corporate/1": ["buzz_overdrive", "wall_fence_low", "wall_fence_high", "dash_wall"],
-		"corporate/2": ["tithe_collector"],
+		# Corporate 1's partial wall fences at 3 lanes are all high ones since the owner's October 10, 2026 call (task
+		# I1): the low one's first comes in Corporate 2.
+		"corporate/1": ["buzz_overdrive", "wall_fence_high", "dash_wall"],
+		"corporate/2": ["tithe_collector", "wall_fence_low"],
 		"dead_zone/1": ["host", "bad_dream"],
 		"golden/1": ["resonator"],
 		"golden/2": ["gilded_sentinel"],

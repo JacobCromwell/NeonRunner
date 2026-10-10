@@ -27,8 +27,9 @@ extends RefCounted
 ## - what runs meanwhile: no floor cut's window (B4: nothing else goes on during a cut), no big attack
 ##   (an enemy keep-out of the drone's, the hover truck's, the Octodog's or a floor cut's cause; each of
 ##   a Resonator's pulses, from its warning until its wave has passed the player) and no Bad Dream chase
-##   or Gilded Sentinel's attack (both the rules' keep-outs in every lane) reaches its drop window (the
-##   wall is one of their escapes; one big thing at a time);
+##   (from where it may begin, HostRules.early_chase_stretches) or Gilded Sentinel's attack (both the
+##   rules' keep-outs in every lane) reaches its drop window (the wall is one of their escapes; one big
+##   thing at a time);
 ## - the level: its drop window between the run-up and the end-clear stretch;
 ## - other wall fences: same_side_gap_seconds apart on one wall (a wall run meets one at a time), and
 ##   gap_seconds apart on either.
@@ -63,6 +64,7 @@ const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 ## a wall fence's drop window keeps off them. (A floor cut's own window is kept too, whatever its cause:
 ## the floor cutter stand-in, task C2's Buzz Overdrive.)
 const BIG_ATTACKS: PackedStringArray = ["drone", "hover_truck", "octodog", "resonator", "floor_cutter", "buzz_overdrive"]
+const HostRules = preload("res://scripts/enemies/host_rules.gd")
 ## Metres past the end of a stretch it may not stand in where a wall fence may stand again.
 const EPSILON: float = 0.01
 
@@ -249,6 +251,9 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 	for k: Dictionary in attacks:
 		if not k.has("lane"):
 			busy.append(Vector2(float(k["from"]), float(k["to"])))
+	# A Bad Dream's chase may begin a little before its planned stretch (a host walking up, or shot down ahead).
+	if gen.config.has_feature("host"):
+		busy.append_array(HostRules.early_chase_stretches(gen))
 	for s: Vector2 in busy:
 		if s.y >= s.x:
 			out.append({"from": s.x - after, "to": s.y + before, "why": "a floor cut or a big attack runs meanwhile"})

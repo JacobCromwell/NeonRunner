@@ -11,6 +11,9 @@ extends TestSuite
 
 const DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
+## The campaign build, [level, lanes], where a Buzz Overdrive's rev meets another type's big attack with big attacks
+## taking turns switched off (task FIX2's case; _test_campaign): Corporate 2 at 5 lanes since task I1.
+const FIX2_CASE: Array = ["corporate/2", 5]
 
 var sim: RunSim
 
@@ -601,11 +604,13 @@ static func _all_overlaps(dummies: Array[Enemy]) -> Vector2i:
 ## 6 lanes', none); Dead Zone 1 adds hosts and the Bad Dream, and at 5 lanes a Buzz Overdrive whose rev meets
 ## other types' big attacks with the switch off (a hover truck's lurch, 0.62 s, when FIX1 found it; a hover
 ## truck's and a drone's, 2.5 s, on the 17-level curve and on K4's) until it claims its turn (task FIX2):
-## checked both ways.
+## checked both ways. Since the owner's October 10, 2026 call (task I1: a Buzz Overdrive's encounter shared with the
+## rest of the track) the tank whose rev meets another type's attack with the switch off is Corporate 2's at 5 lanes
+## (FIX2_CASE; Dead Zone 1's at 5 lanes no longer does), checked both ways too.
 func _test_campaign() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var cases: Array = [["gangland/3", 3, true], ["gangland/3", 6, true], ["gangland/3", 3, false], ["dead_zone/1", 5, true],
-		["dead_zone/1", 5, false]]
+		["dead_zone/1", 5, false], [FIX2_CASE[0], FIX2_CASE[1], true], [FIX2_CASE[0], FIX2_CASE[1], false]]
 	for case: Array in cases:
 		var tag: String = "%s lanes=%d turns %s" % [case[0], case[1], "on" if case[2] else "off"]
 		var config: LevelConfig = campaign.configure(campaign.step(case[0]), case[1])
@@ -626,11 +631,11 @@ func _test_campaign() -> void:
 			watch.observe()
 		var a: Dictionary = watch.attacks
 		if case[2]:
-			# Dead Zone 1 at 5 lanes is where a Buzz Overdrive's rev meets other types' big attacks with the
-			# switch off (below); its claim before its rev (task FIX2) keeps them apart.
+			# FIX2_CASE is where a Buzz Overdrive's rev meets other types' big attacks with the switch off
+			# (below); its claim before its rev (task FIX2) keeps them apart.
 			check(is_zero_approx(watch.overlap),
 				"%s: no two types' big attacks overlap (%.2f s: %s)" % [tag, watch.overlap, watch.overlap_pairs])
-			if case[0] == "dead_zone/1":
+			if [case[0], case[1]] == FIX2_CASE:
 				check(watch.tanks_that("rev") > 0 and watch.tanks_that("met") == 0,
 					"%s: its Buzz Overdrives rev, never into another type's attack (%d revved, %d let the runner pass)"
 					% [tag, watch.tanks_that("rev"), watch.tanks_that("pass")])
@@ -642,7 +647,7 @@ func _test_campaign() -> void:
 			check(watch.dogs_without_a_charge() == 0, "%s: every Octodog charges" % tag)
 		else:
 			check(watch.overlap > 0.5, "%s: the old overlaps are back (%.2f s: %s)" % [tag, watch.overlap, watch.overlap_pairs])
-			if case[0] == "dead_zone/1":
+			if [case[0], case[1]] == FIX2_CASE:
 				check(watch.tanks_that("met") > 0, "%s: a Buzz Overdrive revs into another type's attack, as FIX2 found (%d of %d)"
 					% [tag, watch.tanks_that("met"), watch.tanks_that("rev")])
 		await sim.free_world(w)

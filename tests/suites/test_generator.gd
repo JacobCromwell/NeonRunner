@@ -1405,9 +1405,17 @@ func _test_cut_limits(base: LevelConfig) -> void:
 	other["end"] = float(other["end"]) + 30.0
 	(c[0] as LevelLayout).cuts.append(other)
 	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "only one cut at a time")
+	# Owner, October 10, 2026: a lower-tier enemy may share the track with a cut, off its lane; big attacks
+	# still take turns (GDD §9).
 	c = _cut_case(base, 3, 1)
 	(c[0] as LevelLayout).enemies.append({"type": "cyborg", "at": float(c[1]["end"]) - 5.0, "lane": 0, "side": 0, "seed": 1, "params": {}})
-	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "nothing else goes on meanwhile: an enemy about keeps it out")
+	check((c[2] as LevelGenerator).cut_problem(c[1]) == "", "a cyborg beside it may share the track with it")
+	c = _cut_case(base, 3, 1)
+	(c[0] as LevelLayout).enemies.append({"type": "cyborg", "at": FloorCutPlan.warn_at(c[1]) + 5.0, "lane": 1, "side": 0, "seed": 1, "params": {}})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "an enemy in its lane keeps it out")
+	c = _cut_case(base, 3, 1)
+	(c[0] as LevelLayout).enemies.append({"type": "drone", "at": FloorCutPlan.warn_at(c[1]) - 5.0, "lane": 1, "side": 0, "seed": 1, "params": {}})
+	check((c[2] as LevelGenerator).cut_problem(c[1]) != "", "no other big attack meanwhile: a drone wave about keeps it out")
 	c = _cut_case(base, 3, 1)
 	(c[0] as LevelLayout).enemies.append({"type": "floor_cutter", "at": float(c[1]["end"]), "lane": 1, "side": 0, "seed": 1, "params": {}})
 	check((c[2] as LevelGenerator).cut_problem(c[1]) == "", "its own cause waiting at its end is no other enemy")

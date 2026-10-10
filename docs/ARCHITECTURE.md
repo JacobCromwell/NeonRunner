@@ -2101,8 +2101,9 @@ pace):
 - what runs meanwhile: no floor cut's window (B4; a wall fence keeps off a cut's whole window) and no big attack (the
   keep-out of a drone wave, a hover truck, an Octodog or a floor cut's cause, `LevelGenerator.enemy_keep_out`;
   each of a Resonator's pulses, from its warning until its wave has passed the player, `resonator_pulses`,
-  since between its pulses nothing asks for the wall; and every Bad Dream chase) reaches its drop window (the
-  wall is one of their escapes; the fill pass keeps its extra obstacles off them the same way);
+  since between its pulses nothing asks for the wall; and every Bad Dream chase, from where it may begin: a host
+  walking up and a Bad Dream lurking ahead of its spot, `HostRules.early_chase_stretches`, task I1) reaches its drop
+  window (the wall is one of their escapes; the fill pass keeps its extra obstacles off them the same way);
 - the level: its drop window between the run-up and the end-clear stretch; other wall fences
   `same_side_gap_seconds` apart on one wall (a wall run meets one at a time) and `gap_seconds` on either.
 Zone doodads need no rule: they stand in inner lanes and push only into neighbouring lanes, never onto a wall,
@@ -2369,17 +2370,20 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 3 by level, DESIGN-
   danger density pass and the doodads then fill the level as they would without them: a wall standing earlier
   took the stretches those passes add enemies and rows in, and the late levels on 3 lanes fell below the share of
   danger the owner asked for (`test_danger_density`), and a crowded level's few doodad stretches. A wall there
-  takes out the plain pieces in its way (the fill pass's and the danger density pass's too), and keeps off every
-  wider gap's zone (`WideGapPlacement.keep_outs`), every planted cyborg's encounter
-  (`ChargePathPlacement.encounter_span`) and every doodad with its push's lead before it and the level's spacing
-  past it (`doodad_span`), as each keeps off a wall placed before it; and a level's quiet stretches (The Hush's,
+  takes out the plain pieces in its way (the fill pass's and the danger density pass's too) and the zone doodads
+  with their push's lead before them and the level's spacing past them (`doodad_span`; task I1: since the owner's
+  October 10, 2026 call the doodads stand beside the bigger enemies, in room the walls had, and Golden 2 at 5 lanes
+  held one wall without this), and keeps off every wider gap's zone (`WideGapPlacement.keep_outs`) and every planted
+  cyborg's encounter (`ChargePathPlacement.encounter_span`), as each keeps off a wall placed before it; and a level's
+  quiet stretches (The Hush's,
   `LevelGenerator.quiet_stretches`; `plan_for`'s `quiet`), as the fill and danger density passes keep them, unless
   that leaves the level with none (then one stands in a quiet stretch). A level left with no wall at all makes
   room for one as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger,
   nor a Buzz Overdrive an Enforcer Truck counts among its baits; the spacing of every bait it can't take out
   stays), and where even that leaves none, the last resort takes the zone doodads in the way out too (`doodads_go`:
-  scenery, never a feature; Corporate 2 at 3 lanes on seed 7101 on K4's curve, `test_dash_walls`' `LAST_RESORT_CASE`;
-  DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 677).
+  scenery, never a feature; Corporate 2 at 3 lanes on seed 7101 on K4's curve; DESIGN-TBD, `docs/OPEN_QUESTIONS.md`
+  item 677; since task I1 every wall takes them out of its footprint anyway, so it adds only the enemies' room, and
+  `test_dash_walls`' `DOODADS_GO_CASE` checks that a wall takes out only the doodads in its footprint).
 Both draw from `rng_for("dash_wall")`, so the passes before them place exactly what they did, and a level with a
 count of 0 (or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
 - **A footprint in every lane**, from `approach_seconds` before the face to `after_seconds` past the back, at the
@@ -2411,9 +2415,10 @@ count of 0 (or without the feature) is built byte for byte as before. Its header
   introduction stays where it was). Where even that leaves the window no fair spot, the introduction stands at the
   first spot past it where one fits: Corporate 1 at 5 lanes on K4's curve, where the feature guarantee's forced picks
   (a fence generator, a vent screech, each the only one of its feature) fill the window (1897 m, from its start at
-  1425 m; `test_dash_walls`' `LATE_INTRODUCTION_LANES`, item 676). A level with the feature and no fair spot at all
-  gets a warning (every feature appears). On K4's denser curve Corporate 1 asks one wall and Golden 2 two (item 675:
-  a level asks no more than its track holds on its most crowded lane count).
+  1425 m; `test_dash_walls`' `LATE_INTRODUCTION_LANES`, item 676; none since task I1). A level with the feature and
+  no fair spot at all gets a warning (every feature appears). On K4's denser curve Corporate 1 asks one wall and
+  Golden 2 two (item 675: a level asks no more than its track holds on its most crowded lane count), Golden 2 one
+  since task I1 (its busier build at 5 lanes holds one; `docs/questions/i1.md`).
 What comes after a wall keeps off it: after the introduction the fill pass (`fill_keep_outs`, every footprint in
 every lane), the danger density pass, the wider gaps, the planted cyborgs and the zone doodads
 (`doodad_keep_outs()`, through `rules_doodad_keep_outs`); after the rest the wall fences' drop windows (the same),

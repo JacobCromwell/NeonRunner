@@ -45,10 +45,13 @@ const OTHER_SEEDS: int = 2
 ## 5 lanes the feature guarantee's forced picks, a fence generator and a vent screech, each the only one of its
 ## feature, and ceilings and a pad leave the introduction's window no fair spot, nor room to make): checked both
 ## ways, still late, and no wall fits from the feature's start up to it. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 676).
-const LATE_INTRODUCTION_LANES: Array[int] = [5]
-## The build where only the last resort gives a level its wall (DashWallRules.after_doodads: the zone doodads in the
-## way go too; the H merge, with task K4's curve): checked both ways. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 677).
-const LAST_RESORT_CASE: Dictionary = {"id": "corporate/2", "lanes": 3, "seed": 7101}
+## None since the owner's October 10, 2026 call (task I1): 5 lanes introduces them on time again.
+const LATE_INTRODUCTION_LANES: Array[int] = []
+## A build whose walls take zone doodads out of their footprints (DashWallRules.after_doodads, task I1: doodads go like
+## plain pieces since the owner's October 10, 2026 call let them stand beside the bigger enemies, in the room the
+## walls had; before, they went only as the last resort, item 677, Corporate 2 at 3 lanes on seed 7101): Dead Zone 1
+## at 3 lanes on its own seed, which holds its three walls only so. Checked both ways.
+const DOODADS_GO_CASE: Dictionary = {"id": "dead_zone/1", "lanes": 3, "seed": 501}
 ## A wall's look is one small mesh: at most this many surfaces and vertices, built (the first time, in a skin whose
 ## materials already exist) in under these milliseconds on average and at most (DESIGN-TBD: measured about 1 ms and
 ## 4000 vertices; the room is for a loaded machine).
@@ -293,15 +296,15 @@ func _test_introduction() -> void:
 				"no other introduction (%s at %.0f m) right at the wall's (%.0f m) %s" % [f, other, first, tag])
 
 
-## The last resort (DashWallRules.after_doodads; item 677): a level that would have no wall at all, even after making
-## room by taking out enemies, gets one by taking out the zone doodads in its way too. LAST_RESORT_CASE, both ways:
-## it has its wall and no warning, every doodad that went stood in the wall's footprint (its push's lead and the
+## Zone doodads in a wall's way (DashWallRules.after_doodads, task I1): a wall takes them out of its footprint as it
+## takes out plain pieces, preferring a spot that needs nothing taken out. DOODADS_GO_CASE, both ways: it has every wall
+## its level asks for and no warning, doodads went and every one stood in a wall's footprint (its push's lead and the
 ## spacing past it, DashWallRules.doodad_span), and the rest of the level is as built with no walls (the same enemies,
-## every other doodad); and the other way, on that level with its doodads kept no wall fits anywhere (and no enemy
-## went, so making room with enemies alone found none).
+## every other doodad); and the other way, on that level with its doodads kept where they stand (hard keep-outs,
+## DashWallRules.plan_for's clear_doodads off), it would get fewer walls.
 func _test_last_resort() -> void:
 	var t: DashWallTuning = DashWallTuning.load_default()
-	var c: Dictionary = LAST_RESORT_CASE
+	var c: Dictionary = DOODADS_GO_CASE
 	var config: LevelConfig = campaign.configure(campaign.step(String(c["id"])), int(c["lanes"]))
 	config.level_seed = int(c["seed"])
 	var none: LevelConfig = campaign.configure(campaign.step(String(c["id"])), int(c["lanes"]))
@@ -312,11 +315,8 @@ func _test_last_resort() -> void:
 	gen.generate(config, tuning, LevelGenerator.load_for(config))
 	var plain := LevelGenerator.new()
 	plain.generate(none, tuning, LevelGenerator.load_for(none))
-	check(gen.layout.dash_walls.size() == 1 and gen.warnings.is_empty(), "the last resort gives it its wall, no warning %s %s" % [
-		tag, gen.warnings])
-	if gen.layout.dash_walls.is_empty():
-		return
-	var span: Vector2 = DashWallRules.footprint(gen, gen.layout.dash_walls[0], t)
+	check(gen.layout.dash_walls.size() == config.dash_walls and gen.warnings.is_empty(),
+		"it gets its %d walls, no warning %s %s" % [config.dash_walls, tag, gen.warnings])
 	var gone: Array[Dictionary] = []
 	for d: Dictionary in plain.layout.doodads:
 		if not gen.layout.doodads.has(d):
@@ -324,16 +324,26 @@ func _test_last_resort() -> void:
 	var near: bool = not gone.is_empty()
 	for d: Dictionary in gone:
 		var ds: Vector2 = DashWallRules.doodad_span(gen, d)
-		near = near and ds.x <= span.y and ds.y >= span.x
+		var in_one: bool = false
+		for w: Dictionary in gen.layout.dash_walls:
+			var span: Vector2 = DashWallRules.footprint(gen, w, t)
+			in_one = in_one or (ds.x <= span.y and ds.y >= span.x)
+		near = near and in_one
 	check(near and gen.layout.doodads.size() + gone.size() == plain.layout.doodads.size(),
-		"doodads went (%d) and only from the wall's footprint (%.0f-%.0f m) %s" % [gone.size(), span.x, span.y, tag])
+		"doodads went (%d) and only from the walls' footprints %s" % [gone.size(), tag])
 	check(JSON.stringify(gen.layout.enemies) == JSON.stringify(plain.layout.enemies), "the enemies are as built without walls %s" % tag)
 	# The other way: on the level as built without walls (the walls draw last, from a stream of their own, so it is
-	# the level the walls met), with its doodads kept no face fits anywhere; and since no enemy went, taking out
-	# enemies alone made no room either: without the last resort the level would have had none.
-	var plan: DashWallRules.Plan = DashWallRules.plan_for(plain, t, false, false)
-	check(is_nan(plan.best(plan.lo, plan.hi, plan.lo, [])),
-		"with its doodads kept no wall fits anywhere %s; else drop LAST_RESORT_CASE" % tag)
+	# the level the walls met), with its doodads kept as hard keep-outs (clear_doodads off) fewer faces fit than it asks
+	# for.
+	var plan: DashWallRules.Plan = DashWallRules.plan_for(plain, t, false, true, false)
+	var faces: Array[float] = []
+	while faces.size() < config.dash_walls:
+		var at: float = plan.best(plan.lo, plan.hi, plan.lo, faces)
+		if is_nan(at):
+			break
+		faces.append(at)
+	check(faces.size() < config.dash_walls,
+		"with its doodads kept, %d of its %d walls fit %s; else re-pin DOODADS_GO_CASE" % [faces.size(), config.dash_walls, tag])
 	LayoutChecks.check_dash_walls(self, gen.layout, config, tag)
 
 
@@ -341,7 +351,8 @@ func _test_last_resort() -> void:
 ## (DashWallRules.after_doodads), in the room the passes before them left: in a level that doesn't introduce
 ## them, on 3 lanes (the least room) and 5, the danger density pass's report, the fill pass's fillers, the
 ## enemies and the doodads are what the level gets with no walls at all (the share of danger the owner asked
-## for holds), and the only pieces the walls cost are holes and fences in their footprints and signs beside them.
+## for holds), and the only pieces the walls cost are holes and fences in their footprints and signs beside them,
+## and the zone doodads in their footprints (task I1).
 func _test_after_danger_density() -> void:
 	var t: DashWallTuning = DashWallTuning.load_default()
 	for id: String in ["dead_zone/1", "golden/2"]:
@@ -360,7 +371,17 @@ func _test_after_danger_density() -> void:
 				"the danger density pass adds what it adds without them %s" % tag)
 			check(JSON.stringify(gen.fills) == JSON.stringify(plain.fills), "and so does the fill pass %s" % tag)
 			check(JSON.stringify(gen.layout.enemies) == JSON.stringify(plain.layout.enemies), "the enemies are the same %s" % tag)
-			check(JSON.stringify(gen.layout.doodads) == JSON.stringify(plain.layout.doodads), "and the doodads %s" % tag)
+			var stay: Array[Dictionary] = []
+			for d: Dictionary in plain.layout.doodads:
+				var ds: Vector2 = DashWallRules.doodad_span(gen, d)
+				var in_one: bool = false
+				for w: Dictionary in gen.layout.dash_walls:
+					var span: Vector2 = DashWallRules.footprint(gen, w, t)
+					in_one = in_one or (ds.x <= span.y and ds.y >= span.x)
+				if not in_one:
+					stay.append(d)
+			check(JSON.stringify(gen.layout.doodads) == JSON.stringify(stay),
+				"and the doodads, but those that stood in a wall's footprint %s" % tag)
 			var spans: Array[Vector2] = []
 			var routes: Array[Vector2] = []
 			for w: Dictionary in gen.layout.dash_walls:

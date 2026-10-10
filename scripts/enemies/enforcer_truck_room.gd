@@ -45,6 +45,9 @@ const TYPE: String = "enforcer_truck"
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 
+## fits_for's results by the numbers each was worked out from.
+static var _fits_cache: Dictionary = {}
+
 var geo: TrackGeometry
 var hard: Array[PackedVector2Array] = []
 var must_leave: Array[PackedVector2Array] = []
@@ -504,7 +507,13 @@ func sides(r: int, seed: int, held_by_lane: Array[bool] = []) -> Array[int]:
 ## pair of a runner lane and a lane it may show itself in (sides(): next to a runner with a lane on each side, two
 ## lanes in from one by a wall, and two lanes in from one beside an outer lane a hover truck holds, task C6e) at `lanes`
 ## lanes: runner lane * 64 + truck lane. (A hover truck holds the outer lane on its side, HoverTruckRules.)
+## Worked out once for each set of the numbers it reads (about 30 ms; the truck asked for it as it came in, a frame
+## over budget, and the generator's planners ask for it again and again, task I1): the result is shared, not copied.
 static func fits_for(mt: MovementTuning, t: EnforcerTruckTuning, lanes: int) -> Dictionary:
+	var key: String = str([lanes, t.body_size, t.show_ahead, mt.lane_width, mt.wall_margin, mt.visual_size,
+			mt.camera_distance, mt.camera_follow_x, mt.camera_fov, mt.camera_height, mt.camera_look_ahead])
+	if _fits_cache.has(key):
+		return _fits_cache[key]
 	var out: Dictionary = {}
 	var profiles: Array = []
 	for look: StringName in EnforcerTruckModel.LOOKS:
@@ -527,6 +536,7 @@ static func fits_for(mt: MovementTuning, t: EnforcerTruckTuning, lanes: int) -> 
 				var c: Dictionary = EnforcerTruckView.check(mt, lanes, r, l, t.show_ahead, profile)
 				ok = ok and bool(c["fits"]) and not bool(c["hides_runner"]) and not bool(c["hides_floor"])
 			out[r * 64 + l] = ok
+	_fits_cache[key] = out
 	return out
 
 

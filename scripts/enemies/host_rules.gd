@@ -114,6 +114,20 @@ static func chase_stretches(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
+## Where each host's Bad Dream chase may begin before its planned stretch (chase_stretches; task H8: a host walks
+## up to the cyborg's walk_max toward the runner, and a Bad Dream shot down ahead of its spot lurks until the runner
+## is within hover_ahead of it): Vector2(at - walk_max - hover_ahead, at) for each host, along the track. A pass
+## after the host rules that keeps its additions off chases keeps them off this too (WallFencePlacement's drop
+## windows; HostWatch, tools/measure/host_watch.gd, checks every one).
+static func early_chase_stretches(gen: LevelGenerator) -> Array[Vector2]:
+	var ct := load(CyborgRules.TUNING_PATH) as CyborgTuning
+	var early: float = (ct.walk_max if ct != null else 0.0) + tuning().hover_ahead
+	var out: Array[Vector2] = []
+	for e: Dictionary in hosts_in(gen.layout):
+		out.append(Vector2(float(e["at"]) - early, float(e["at"])))
+	return out
+
+
 ## What the generator's zone doodads keep off (LevelGenerator.doodad_keep_outs), in every lane: each
 ## host's chase (chase_stretches). The Bad Dream's slash covers three lanes and the way out is two lane
 ## switches away, which a doodad's side could block, or its push undo.

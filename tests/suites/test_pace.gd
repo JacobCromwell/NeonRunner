@@ -207,8 +207,10 @@ func _test_fill_pass() -> void:
 				for f: Dictionary in gen.fills:
 					check(LevelGenerator.is_filler(by_id.get(String(f["id"]), {})), "a filler is a plain obstacle pattern (%s) %s" % [f["id"], tag])
 				filled += gen.fills.size()
-				# Fillers stay off everything the level had before them, with the pattern pass's spacing.
-				var outs: Dictionary = plain_gen.fill_keep_outs(patterns)
+				# Fillers stay off everything the level had before them, with the pattern pass's spacing, but the
+				# floor cuts, which they share the track with (owner, October 10, 2026), held to their limits
+				# (LevelGenerator._fit_filler_to_cuts; LayoutChecks.check_cuts).
+				var outs: Dictionary = plain_gen.fill_pass_keep_outs(patterns)
 				for f: Dictionary in gen.fills:
 					var span := Vector2(float(f["at"]), float(f["at"]) + float(f["used"]))
 					for keep: Vector4 in outs["keep"]:

@@ -23,7 +23,7 @@ extends TestSuite
 ##   CORPORATE_2_CHASE_LANES (prefer_enforcer_chases), checked both ways: a lane count with room left out of it holds
 ##   none and has no clear stretch for a new row there. Each one that holds one is played from the level's start by
 ##   a scripted runner (god mode, grapples) that lines up in one of its hole lanes and jumps it: the truck following
-##   is wrecked in it.
+##   is wrecked in it (the Octodogs charging in the chase before it left out, or they'd wreck it first).
 ## - Task C6e: no wider gap comes in an Enforcer Truck's chase before its showing (from its arrival to its window's
 ##   end: it would wreck the truck before it has shown itself), and every level keeps its wider gaps.
 ## - The pass's last way (task K5: WideGapPlacement._add_clearing, for a level the other ways give none): on
@@ -39,14 +39,15 @@ const LANES: Array[int] = [3, 5, 6]
 ## since task K5 merged task C6e's windows into K4's curve: at 5 lanes the chase past its window is full, and at 6
 ## its window comes after its bait, at its chase's end, leaving no room. (All three on K4's curve before C6e; 3 and
 ## 5 on the 15-level curve C6e was built on; K2's 17-level linear curve left 5 lanes out.)
-const CORPORATE_2_CHASE_LANES: Array[int] = [3]
+const CORPORATE_2_CHASE_LANES: Array[int] = [5]
 ## Builds, as {id, lanes, seed}, where the pass's first three ways give the level no wider gap and its last way
 ## (WideGapPlacement._add_clearing, task K5) places its one: a new row, the holes and plain fences in its way taken
 ## out. Dead Zone 1 at 5 lanes on seed 9004 (in tests/suites/test_campaign.gd's seed sweep: its only room was an
 ## Enforcer Truck's chase before its showing, which task C6e keeps every wider gap off) and the Golden Palace at 3
-## lanes on seed 9010 (no room anywhere, before C6e too). Each must still need the last way, else re-pin the case.
-const LAST_RESORT_CASES: Array[Dictionary] = [{"id": "dead_zone/1", "lanes": 5, "seed": 9004},
-	{"id": "golden/3", "lanes": 3, "seed": 9010}]
+## lanes on seed 9010 (no room anywhere, before C6e too); since the owner's October 10, 2026 call (task I1) neither
+## needs it, and the Palace at 5 lanes on seed 9043 does (the only one among 360 builds of the final levels on seeds
+## 9001-9060). Each must still need the last way, else re-pin the case.
+const LAST_RESORT_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 5, "seed": 9043}]
 ## Metres between the fences of the plain stretch _test_last_resort_fences lays: less than a wider gap's zone, so
 ## every spot has one in its way.
 const FENCE_STEP: float = 15.0
@@ -512,9 +513,10 @@ func _truck(w: RunWorld) -> EnforcerTruck:
 
 
 ## Corporate 2's own build, played from its start (god mode, grapples: the runner keeps to the middle lane and
-## takes whatever comes) until the first Enforcer's chase reaches its wider gap: the runner lines up in a hole
-## lane of it (the nearest the middle) a few seconds before and jumps it midway through its take-off window; the
-## truck following is wrecked in it. The chase leaves room past the truck's showing window (task C6e: no wider gap
+## takes whatever comes; the Octodogs charging in the chase before the gap left out of the played copy, as the
+## runner would bait them into the truck first) until the first Enforcer's chase reaches its wider gap: the runner
+## lines up in a hole lane of it (the nearest the middle) a few seconds before and jumps it midway through its
+## take-off window; the truck following is wrecked in it. The chase leaves room past the truck's showing window (task C6e: no wider gap
 ## before it) at two lane counts at least, and holds a wider gap there at CORPORATE_2_CHASE_LANES only: a lane count
 ## with room left out of it shows no clear stretch for a new row there (_chase_spot, whose limits its doc comment
 ## gives: preferred, not guaranteed, open question 357), and one lane count at least plays it.
@@ -572,7 +574,19 @@ func _test_corporate_2(campaign: Campaign) -> void:
 		var start: float = float(row["start"])
 		var end: float = float(row["end"])
 		var take_off: float = start - (jump - (end - start)) * 0.5
-		var w: RunWorld = sim.build_world(layout, null, null, config)
+		# The Octodogs charging in the chase before the gap stay out of the played copy: a runner who takes whatever
+		# comes baits their lunges into the truck first (since task I1 the first truck's bait comes before its gap).
+		var played_layout: LevelLayout = layout.copy()
+		var left_out: int = played_layout.enemies.size()
+		played_layout.enemies.assign(played_layout.enemies.filter(func(e: Dictionary) -> bool:
+			if String(e["type"]) != "octodog" or float(e["at"]) < at:
+				return true
+			for c: Variant in (e.get("params", {}) as Dictionary).get("charge_at", [float(e["at"])]):
+				if float(c) < end:
+					return false
+			return true))
+		left_out -= played_layout.enemies.size()
+		var w: RunWorld = sim.build_world(played_layout, null, null, config)
 		w.player.god_mode = true
 		w.player.grapples = 1_000_000
 		await tree.physics_frame
@@ -602,8 +616,8 @@ func _test_corporate_2(campaign: Campaign) -> void:
 		check(jumped and down == "gap",
 			"%s: following the runner over the wider gap at %.0f m (lane %d, %.2f of a jump), the truck is wrecked in it (%s)"
 			% [tag, start, hole, (end - start) / jump, down if down != "" else ("still chasing" if truck != null else "never came")])
-		print("  %s: wider gap at %.0f m in the chase %.0f-%.0f m: the truck %s" % [tag, start, chase.x, chase.y,
-			("wrecked: " + down) if down != "" else "not wrecked"])
+		print("  %s: wider gap at %.0f m in the chase %.0f-%.0f m (%d Octodogs before it left out): the truck %s" % [tag,
+			start, chase.x, chase.y, left_out, ("wrecked: " + down) if down != "" else "not wrecked"])
 		await sim.free_world(w)
 	check(ran >= 2, "Corporate 2's first Enforcer chase leaves room past its showing window at %d of the 3 lane counts" % ran)
 	check(played >= 1, "Corporate 2 leads its first truck into a wider gap at %d of the 3 lane counts" % played)

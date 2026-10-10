@@ -68,9 +68,10 @@ extends RefCounted
 ## - A level's quiet stretches (The Hush, GDD §5: "long silent stretches"; LevelGenerator.quiet_stretches), as the
 ##   fill and danger density passes keep them, unless that leaves the level with no wall: then one stands in one.
 ## Plain holes and fences (never a pulsing fence or one a fence generator powers; in the second stage the fill
-## pass's and the danger density pass's as well) in a footprint, and the signs on one side wall where both
-## block the route, are taken out to make room (clear_plain_pieces: taking content out never makes a level
-## unfair); a spot that needs nothing taken out is preferred.
+## pass's and the danger density pass's as well, and the zone doodads, since the owner's October 10, 2026 call let
+## them stand beside the bigger enemies, in the room the walls had) in a footprint, and the signs on one side wall
+## where both block the route, are taken out to make room (clear_plain_pieces: taking content out never makes a
+## level unfair); a spot that needs nothing taken out is preferred.
 ##
 ## How many, and where: up to LevelConfig.dash_walls. A level that gives the feature a start
 ## (LevelConfig.feature_starts: Corporate 1, after the Buzz Overdrive's introduction) introduces it with the
@@ -84,7 +85,8 @@ extends RefCounted
 ## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
 ## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
 ## Overdrive an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way
-## going too (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677), and one with no fair spot even then gets a
+## going too (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677; since task I1 a wall takes the doodads out of its
+## footprint like plain pieces anyway, so this matters only with the enemies), and one with no fair spot even then gets a
 ## warning (the campaign tests fail on any): every feature appears (GDD §5). Its own random stream (LevelGenerator.rng_for),
 ## so the passes before it place exactly what they did; a level without the feature (or with a count of 0) draws
 ## nothing and is built byte for byte as before.
@@ -401,9 +403,11 @@ static func _first_apart(spots: Array[float], gap: float, want: int) -> Array[fl
 ## What a level's walls keep, and where on its track a face may stand (see the header): with `checking`,
 ## for a finished layout (problems()), everything already there counts against a footprint, the zone doodads
 ## and every hole and fence too, and the wall gaps and wall fences against the route; while placing, plain
-## pieces only cost what taking them out costs, and with `quiet` a level's quiet stretches stay clear too (The
-## Hush's long silent stretches, LevelGenerator.quiet_stretches, as the fill and danger density passes keep them).
-static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bool = false, quiet: bool = true) -> Plan:
+## pieces only cost what taking them out costs (the zone doodads too, unless `clear_doodads` is off: task I1), and
+## with `quiet` a level's quiet stretches stay clear too (The Hush's long silent stretches,
+## LevelGenerator.quiet_stretches, as the fill and danger density passes keep them).
+static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bool = false, quiet: bool = true,
+		clear_doodads: bool = true) -> Plan:
 	var p := Plan.new()
 	p.gen = gen
 	p.t = t if t != null else tuning()
@@ -457,8 +461,13 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 	if quiet and not checking:
 		for q: Vector2 in gen.quiet_stretches():
 			p.mark_span(p.blocked, q)
+	# A zone doodad (scenery) in a footprint is taken out like a plain piece (owner, October 10, 2026: doodads may stand
+	# beside the bigger enemies, so they take room the walls had).
 	for d: Dictionary in lay.doodads:
-		p.mark_span(p.blocked, doodad_span(gen, d) if not checking else Vector2(float(d["start"]), float(d["end"])))
+		if checking:
+			p.mark_span(p.blocked, Vector2(float(d["start"]), float(d["end"])))
+		else:
+			p.mark_span(soft if clear_doodads else p.blocked, doodad_span(gen, d))
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		for span: Vector2 in enemy_spans(gen, e, hooks):
@@ -817,6 +826,10 @@ static func _place(gen: LevelGenerator, plan: Plan, face: float, faces: Array[fl
 	_keep(lay.gaps, func(g: Dictionary) -> bool: return not (float(g["start"]) <= fp.y and float(g["end"]) >= fp.x))
 	_keep(lay.fences, func(f: Dictionary) -> bool:
 		return not (float(f["at"]) - half <= fp.y and float(f["at"]) + half >= fp.x))
+	if plan.clearing:
+		_keep(lay.doodads, func(d: Dictionary) -> bool:
+			var ds: Vector2 = doodad_span(gen, d)
+			return not (ds.x <= fp.y and ds.y >= fp.x))
 	var window := Vector2(face - plan.route, face + plan.depth)
 	var closed: Array[int] = []
 	for side: int in [-1, 1]:

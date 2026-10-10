@@ -216,7 +216,7 @@ var _canvas: CanvasLayer
 ## An Enforcer Truck's whole look for EnemyDirector.warm_up (which frees it) and ShaderWarmup (task PERF1):
 ## its model with every rider aboard and its light bar in every state, its floor lights bright and dim, and its
 ## warning line (its blast is a shared fireball, whose materials ShaderWarmup draws with RunEffects'). The first
-## one builds the meshes and materials every later truck shares. No physics object.
+## one builds the meshes and materials every later truck shares. Also where its look fits on screen at the run's lane count. No physics object.
 static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	var t: EnforcerTruckTuning = EnemyDirector.tuning_for("enforcer_truck") as EnforcerTruckTuning
 	if t == null:
@@ -241,6 +241,9 @@ static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	line.mesh = GreyboxMaterials.unit_box()
 	line.material_override = GreyboxMaterials.glow(WARNING_COLOR, 3.0, 0.5)
 	look.add_child(line)
+	if world.geo != null:
+		# Where its look fits on screen (EnforcerTruckRoom.fits_for, kept), so the frame it comes in doesn't work it out.
+		EnforcerTruckRoom.fits_for(world.tuning, t, world.geo.lane_count)
 	return look
 
 
