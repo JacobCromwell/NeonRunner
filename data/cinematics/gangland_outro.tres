@@ -6,4 +6,5 @@
 script = ExtResource("1_script")
 id = &"gangland_outro"
 title = "Beyond Gangland"
-placeholder_text = "DESIGN-TBD: a short scene after the Sewer Swarm, heading for the Marketplace."
+scene = "res://scenes/cinematics/gangland_outro.tscn"
+placeholder_text = "The freed Host, lying in the rubble, hands the runner a golden key; the runner drives off in a sports car."

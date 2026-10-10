@@ -443,7 +443,7 @@ arena's plan takes 6 to 14 ms (the fastest of three; 6 to 25 ms in single runs).
 | `data/shop/catalog.json` | shop items, tiers and prices (the armor's texts take `{hits}` and `{seconds}`, filled from `GameRules` by `ShopScreen.item_text()`) |
 | `data/campaign/campaign.tres` → `data/zones/*.tres` → `data/levels/*.tres` | the campaign; each zone's run speed (`ZoneDef.run_speed`, a level may set its own), each level's pacing, fill pass, zone doodads and credits |
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
-| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`) and the Dead Zone intro's (`dead_zone_intro_tuning.tres`, `DeadZoneIntroTuning`) |
+| `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`), the Gangland outro's (`gangland_outro_tuning.tres`, `GanglandOutroTuning`) and the Dead Zone intro's (`dead_zone_intro_tuning.tres`, `DeadZoneIntroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
 | `data/skins/*.tres` | zone looks |
 | `data/audio/*.tres` | sound and music libraries |
@@ -4363,13 +4363,14 @@ never ends, and a level never starts, unattended.
 | `cine_key.gd`, `cine_path.gd` (`CineKey`, `CinePath`) | a key's time and how the path comes into it: `SMOOTH` (a flight through the keys, velocity carrying on through each), `LINEAR` (a straight move eased by Tween's transition and ease types) or `CUT`; `sample_riding` for keys that ride with an actor |
 | `cine_camera_key.gd` (`CineCameraKey`) | where the camera is (`position`), what it looks at (`target`), `fov`, `roll`; `follow` / `watch` an actor: the point is then an offset from it |
 | `cine_actor.gd`, `cine_actor_key.gd`, `cine_actor_node.gd` | an actor (`RUNNER`: Razor Echo's `PlayerAvatar`; `CYBORG`: a `CyborgBody` in the zone's look or a look of its own, a host or not), its keys (position, pose, a pose's `progress`, heading, the head's turn `look` and tip `look_up`, a cyborg's face, aim and charge) and its node in play |
-| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position); its legs step while it is moved meanwhile |
+| `cine_poses.gd` (`CinePoses`) | the runner's poses that play out over a key's `progress` rather than following movement: lying on its back (`lie`), getting up to reach up (`get_up`), climbing out over an edge (`climb`, its hands holding the keys' position), getting into a low car from beside its open door (`get_in`); its legs step while it is moved meanwhile (not while getting in: its legs are its key poses); and a walk at walking pace (`walk`), its planted feet staying put |
 | `cine_event.gd` (`CineEvent`) | `SOUND` (a sound effect), `MUSIC` (a track, `@zone`, or none), `TEXT` (a card), `EFFECT` (`fade_in`, `fade_out`, `flash`, `shake`, `letterbox_in`, `letterbox_out`), `CUE` (a script's own moment) |
-| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); streamed in chunks like a run |
+| `cine_stage_def.gd`, `cine_stage.gd` (`CineStageDef`, `CineStage`) | the set: a stretch of track built by the `TrackBuilder` in the zone's skin, with its sky and fog (`ZoneSkin.level_environment(0, sky)`: before a boss the fight's level sky, `sky_for`, otherwise the zone's own) and the run's sun; ceilings, gaps, pads and openings in the side walls (`wall_gaps`, dressed by the skin as in a level); `after_fight`: a stage straight after the zone's fight (an outro picking up where it ended) takes the fight's look and sky, as a boss intro does; streamed in chunks like a run |
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
+| `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`, `CarPassenger`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props, the sports car and the screech on its passenger seat; its sounds in `tools/asset_gen/sfx_bank_gangland_outro.gd` |
 | `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
@@ -4382,7 +4383,8 @@ counted from the start lane too (a lane past the street's edge is left out).
 the slot's (`CineStage.skin_for`): the zone's skin (`ZoneDef.skin`), and before a boss the fight's arena's
 (`BossDef.arena.skin`) if it has one. Before a boss it is under the fight's sky too (`CineStage.sky_for`: the
 arena's own level sky, else the zone's last level's, as `Campaign.configure_boss` gives the fight; G8), and the
-street's light under it; a zone's intro and outro keep the zone's own sky. Its lanes default to the device's (`App.lane_count()`), so the street
+street's light under it; a zone's intro and outro keep the zone's own sky (unless a stage is `after_fight`, as
+Gangland's outro's are: then it's under the fight's sky and in the arena's look). Its lanes default to the device's (`App.lane_count()`), so the street
 matches the level that follows. A `@zone` music cue plays the slot's track (`ZoneDef.music`, or before a
 boss `BossDef.music` if set); a track the music library doesn't list yet is skipped quietly and the music
 playing carries on, so a song the owner adds later under that name just plays (no music is generated for
@@ -4405,11 +4407,23 @@ as the run camera does (closer, the ceiling's end glow fills the screen); the te
 in play: its stride keeps pace with the ground it covers, it is in the air above the floor (with its jump
 poses), leans into sideways moves like a lane switch, and takes `slide`, `dash`, `stomp` and `dead` from its
 keys; it is in the air below the floor too (falling past its edge). Its poses that play out over time
-(`CinePoses`: `lie`, `get_up`, `climb`) take the keys' `progress` (0-1, sampled like the position; a key below 0
+(`CinePoses`: `lie`, `get_up`, `climb`, `get_in`) take the keys' `progress` (0-1, sampled like the position; a key below 0
 keeps the one before) instead of its movement: blended key poses, put on the ground, the body tipping about its
-hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises); and while it
+hips; moved along meanwhile, its legs step (a walk's stride, so it can stagger forward as it rises; not while it
+gets in, whose legs are its key poses); and while it
 climbs, its hands hold the keys' position (the body hangs from them) until a foot takes its weight
-(`CinePoses.LET_GO`). A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
+(`CinePoses.LET_GO`). Its `walk` follows its movement instead (the run cycle at a walk's speed shuffles): heel
+strike, a bent knee through the swing, the foot rolling off its toe, the hips and shoulders turning against each
+other, the arms swinging; while a foot is down it goes back under the hip at exactly the body's pace (the thigh
+worked out from where the foot must be and the knee's bend, turned back against the pelvis's turn and drop), and it
+swings forward to land moving at that pace, so the feet don't skate. The stride follows the ground covered (shorter
+when slow); turning on the spot it steps in place; stopping, it settles into standing at ease, breathing, its
+weight shifting. Its pace and stride follow its movement over a moment (`CineActorNode.GAIT_SMOOTH`), so a sudden
+change in speed or turning never jumps its pose in a frame (`test_gangland_outro` checks no knee moves further in
+a frame than a full stride's swing does). An actor with a `turn_rate` of its own eases into and out of its turns
+(critically damped; the toolkit's default turn starts at full speed). On its first frame, and after a jump cut
+(`CineActorNode.MAX_STEP`), an actor moves as its path goes on from there: it faces that way at once and starts in
+its stride. A cyborg (`CyborgBody`) walks or idles by its speed, or takes `aim`, `run_away`, `cower`,
 `die`, `lie` (lying still, its screen dark) or `crouch` (crouched low over something, working at it; it stops as
 it turns its head); its keys set its face, its aim (at another actor) and its charge glow (the red glow is its
 attack's warning in play, so show it only where an attack follows). Either's head turns by its keys' `look`
@@ -4472,7 +4486,8 @@ black, since building one takes a few frames).
 Then set the slot's `CinematicDef.scene` to the scene. End on the run camera's view of the runner
 (`MovementTuning`'s camera numbers) or on black, since the next step opens on its own view at once.
 `tools/showcase/cinematic_review.tscn` plays any slot's cinematic on its own for renders (`--slot=<step
-id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`), printing each event with its frame.
+id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to start S seconds in), printing
+each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
 numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the Dead Zone's, which has the
@@ -4535,6 +4550,57 @@ the first time, with cold mesh caches) and costs about 0.6 ms a step, at most ab
 `test_sewer_swarm_intro`); its props add about 25 draw calls. It adds no asset files, and one toolkit hook,
 `_stage_near()`: the street stays built under the swarm behind the runner (the track builder keeps only 30 m
 behind the camera and the actors).
+
+**Gangland's outro** (`GanglandOutro`, task F2d; the owner's beats, October 9, 2026, GDD §6 Cinematics; what they
+leave open is DESIGN-TBD, `docs/questions/f2d.md`; numbers in `data/cinematics/gangland_outro_tuning.tres`; the
+owner's follow-up, October 10, 2026: the runner's movement more fluid, a shot of them getting in beside a cute
+screech, the car faster; and then: the screech one of those from before, the two nodding to each other): 22.4 s
+after the Sewer Swarm, both stretches picking up where the fight ended (`CineStageDef.after_fight`: the
+arena's look under Gangland 3's blood-red sky), on the level's lanes. The fight's music fades out as it opens. Low
+beside the Host, who lies freed against a heap of rubble, implants dark, looking back up the street: four screeches
+sniff at them, look up as the runner comes walking down the street, spines up (never the full bristle of their attack), and
+scuttle off into the gutters. Over
+the runner's shoulder as they walk up (`CinePoses.walk`, at about 1 m/s) and stop beside the Host, turning to them
+unhurriedly. Low in front of the Host: trembling (harder as they
+strain), they look up, sit up a little and hold a golden key out to the runner; it glints (a bell chime and a slow
+halo); the runner leans in and takes it (both arms reach for the same point, so the hands meet and the key passes
+from one to the other), the Host sinks back, the runner looks at the key. Black, and the cut (`switch_stage`) to
+another stretch where the car is parked: low off its front corner as the runner walks up holding out the key, the
+car unlocking with a chirp and two blinks of its lights (one slow glow with Reduced flashing), its scissor door
+swinging up and its courtesy lights coming on. Cut inside: from behind the dashboard, looking back at both seats and
+out of the open door (the car's panels are one-sided, so the camera sees through the windscreen's back), the runner
+steps in over the sill, ducks in and sits down (`CinePoses.get_in`) beside a screech sitting up on the passenger seat
+(`CarPassenger`), which looks round at them with a tilt of its head; once they're sat they look round at it, it
+nods to them with a chirp and they nod back; the door comes down behind them and the engine starts. Cut to the road
+behind it (the runner out of sight from here), at road level (0.16 m up, the owner's ask), as it
+launches, wheels spinning up, and tears off down the street (24 m/s², about 115 m in its 3.1 s) into the distance;
+black, and the Marketplace's intro.
+
+`GanglandOutroSet` holds the first scene's props, built on its stage: the rubble (slabs, chunks and rebar in the
+street's kit material, one draw call), the Host (`SwarmHostPerson` on the humanoid rig, its glow dimmed; posed by
+script: reclined, breathing, trembling, the offering arm turned toward the hand-off point) and the screeches
+(`ScreechModel`, as in play). `SportsCarModel` is the car, built by code: a faceted wedge lofted through eleven
+cross-sections (a blade of a nose, a raked windshield, flared fenders over angular wheel wells, a dark intake
+behind the door, a wing), a scissor door hinged at its front edge over a cabin with two raked seats (their piping
+glowing with the courtesy lights, which also cast a warm `OmniLight3D` on whoever is in it), four wheels that
+turn with the distance driven, head and tail lights, running lights, glow underneath and headlight pools (MeshKit's
+glow material, scaled by its lights). Its paint (`sports_car.gdshader`) is unshaded, like the kit: a fake key light
+and a fake street mirrored in it (a sharp horizon, shopfront neon streaming back as it drives) under a clear coat,
+so it shines the same on the Compatibility renderer; it follows a level's light and the street's tint under a
+level's sky. Its look (size, paint, accent) is data. The key is the cinematic's own node (it goes from the first
+scene into the second), held in a hand joint. The runner's reach, lean, look at the key and raised key are
+layered on their pose in `_on_advance`, each easing in and out (`aim_arm` turns an arm toward a point; the rig sets
+every joint afresh each update, so nothing builds up). `CarPassenger` is the screech on the passenger seat, a child
+of the car: the screeches' own body (`ScreechModel.mesh()`, its material and shader, calm), posed sitting
+(`sitting_meshes`: each part's triangles turned about its joint, the head level, the paws held up, the front legs
+tucked, the hind feet forward on the seat, the tail curled round on it, then the body tipped up about its hips), its
+head a mesh of its own so it can turn and nod; its look round, head tilt and nod are worked out from the time. Shots looking back up the street keep it built behind them
+(`_stage_near`). Its sounds are seven new ones (`tools/asset_gen/sfx_bank_gangland_outro.gd`: `screech_sniff`,
+`key_glint`, `car_unlock`, `car_door`, `screech_chirp` as the passenger nods to the runner, `car_start` as its lights
+come on and `car_drive` at the launch) and the
+fight's `host_short` and `swarm_scatter`. Cost (headless, `test_gangland_outro`): about 25 ms to set up (about 350 ms the first time, with
+cold mesh caches), about 20 ms for the cut to the car (under black), about 10 ms on the two hard cuts (the street
+building ahead) and about 0.4 ms a step otherwise; its props add about 22 draw calls (the Host on the rig is 16).
 
 **The Dead Zone's intro** (`DeadZoneIntro`, task F2c; the owner's story beats and answers, October 9, 2026, GDD §6
 Cinematics; what they leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in
@@ -5171,7 +5237,20 @@ at first only the hands over the edge, the hands holding the edge as they climb 
 the three cyborgs in view until the medium shot (two lying still with their screens dark, the host crouched), the host
 looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
 zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
-its own sounds; `skip()`; and its setup and step costs. `test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
+its own sounds; `skip()`; and its setup and step costs. `test_gangland_outro` checks Gangland's outro (F2d): its slot;
+`after_fight` (the fight's look and sky after it, the zone's own without it, so the City outro's look is unchanged);
+the car's shape (a long, low wedge, a scissor door, lights and turning wheels, its cabin lit only while its
+courtesy lights are on); the passenger (the fight's screech, every triangle and colour of it, sitting up); at 3, 5 and 6 lanes its beats in
+order (the screeches sniffing, then gone before the runner arrives, never near the camera; a walk, not a run; the
+Host trembling harder as they hold the key up; the hands meeting; the key in one hand, then the other; the glint;
+the cut to the car, the runner facing the way they walk at once; the unlock's blinks; the door up as the runner gets
+in; the screech on the passenger seat, and one shot from inside the car with it and the runner sitting down beside
+it in view; its look round, then, once the runner's sat, the two nodding to each other before the car takes off; the
+door down; the lights on; the runner out of sight once the camera's outside; the camera at road level as it drives straight off, fast, into the distance), the walk (`CinePoses.walk`,
+its planted feet moving under 10% of the ground walked, its turns unhurried), the camera in the street and
+above it, the street built 150 m wherever it looks, only the fight's music fading, its costs and draw calls; Reduced
+flashing (one slow glow for the unlock); `skip()`; and the App's flow (the Marketplace's intro follows).
+`test_pace` checks the pace and busier levels (G1): the zones' speeds in data and each campaign level at
 its zone's speed (and each boss fight, E1f; quick play's at the base), `movement_for`, a pattern's timing in seconds at 18 and 25
 m/s, the generator's fairness at 21, 23.4 and 25 m/s at 3, 5 and 6 lanes with every built feature and
 the fill pass (`LayoutChecks` checks each level at its own speed: `level_tuning()`), the fill pass's
@@ -5541,7 +5620,7 @@ of each from the game camera, from beside the opening and from above (a skin's `
 open beach); `--from=D` starts the run further on, `--reduced-flashing`
 turns Reduced flashing on), the Beach's splash (`splash_review`: a real `RunWorld` with a skin, a pool in the
 runner's lane and the game camera, for a real fall; `--skin`, `--sky`, `--lanes`, `--grapple`, `--side`), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
-the App plays it, or the toolkit's sampler), and comparison
+the App plays it, or the toolkit's sampler; `--from=S` starts S seconds in), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

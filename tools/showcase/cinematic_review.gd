@@ -8,11 +8,13 @@ extends Node3D
 ## (add --rendering-method gl_compatibility before the scene path for the web / low-end renderer).
 ## Options:
 ##   --slot=<step id>     the campaign step whose cinematic plays (default city/intro): a zone's intro
-##                        (<zone>/intro), the City's or Gangland's boss intro (city/boss_intro, gangland/boss_intro)
+##                        (<zone>/intro), the City's or Gangland's boss intro (city/boss_intro, gangland/boss_intro),
+##                        the City's or Gangland's outro (city/outro, gangland/outro)
 ##   --sampler            the toolkit sampler instead, in the zone --zone= names (default city)
 ##   --lanes=N            lanes (default: as many as a level on this device)
 ##   --reduced-flashing   with Settings > Reduced flashing on
 ##   --once               quits when it ends instead of playing it again
+##   --from=S             starts S seconds in (steps its clock there first), for renders of a later moment
 ## Each event is printed with its time and frame as it fires, to find the matching frames.
 
 const SAMPLER_PATH: String = "res://tools/showcase/cinematic_sampler.tres"
@@ -75,6 +77,14 @@ func _start() -> void:
 	_logged = 0
 	print("playing %s (%s) at frame %d" % [def.id, step.id if step != null else "-", _frame])
 	cinematic.play(def, step)
+	var from: float = float(_opt("from", "0"))
+	var seq := cinematic as CinematicSequencer
+	if seq != null and from > 0.0:
+		while not seq.done and seq.time < from - 0.0001:
+			seq.advance(minf(1.0 / 30.0, from - seq.time))
+		# The sounds of the moments skipped over would all play at once: silence them.
+		for p: Node in seq.find_children("*", "AudioStreamPlayer", true, false):
+			(p as AudioStreamPlayer).stop()
 
 
 func _on_finished() -> void:

@@ -305,9 +305,9 @@ func _test_every_screen(tag: String) -> void:
 		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
 		# The placeholder card a boss not yet built shows: the Beach's (task D10c; its fight is still to be designed).
 		["boss slot", func() -> void: App.play_step(App.campaign.step("beach/boss")), SlotScreen],
-		# The zones' intros play their arrival flyovers (task F1) and the City's outro is built (F2a); the
-		# other outros are still placeholder cards.
-		["cinematic slot", func() -> void: App.play_step(App.campaign.step("gangland/outro")), SlotScreen],
+		# The zones' intros play their arrival flyovers (task F1) and the City's and Gangland's outros are built
+		# (F2a, F2d); the other outros are still placeholder cards.
+		["cinematic slot", func() -> void: App.play_step(App.campaign.step("marketplace/outro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
 	]
 	for entry: Array in screens:

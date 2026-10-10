@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/cinematics/gangland_outro/gangland_outro.gd" id="1_outro"]
+[ext_resource type="Resource" path="res://data/cinematics/gangland_outro_tuning.tres" id="2_numbers"]
+
+[node name="GanglandOutro" type="Node"]
+script = ExtResource("1_outro")
+numbers = ExtResource("2_numbers")

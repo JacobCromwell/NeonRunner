@@ -474,13 +474,14 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 | F2a | **The Neon City's outro** (the owner's beats, October 8, 2026) | F1 | M | T2 |
 | F2b | **Gangland boss intro** (the owner's beat, October 9, 2026) | F1 | M | T2 |
 | F2c | **The Dead Zone's intro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
+| F2d | **Gangland outro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b and F2c have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b, F2c and F2d have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -505,6 +506,19 @@ answers, the same day). It adds to the toolkit the poses that play out over time
 climbing out; a cyborg lying still and crouching), a head tip (`look_up`) and a cyborg's head turn, models moving
 on the cinematic's clock, and sound events at their own level; and five sounds of its own
 (`tools/asset_gen/sfx_bank_cinematics.gd`). The staging choices still open are in `docs/questions/f2c.md`.
+
+**F2d: Gangland's outro** (owner, October 9, 2026; GDD §6, Cinematics). **Done:** `GanglandOutro`
+(`scripts/cinematics/gangland_outro/`) in Gangland's outro slot. Screeches sniff at the freed Host lying in the
+rubble and scuttle away as the runner walks over; the trembling Host hands the runner a golden key; cut to a sleek,
+angular sports car built by code (`SportsCarModel`: a faceted wedge, a scissor door, shiny paint on every renderer);
+the runner unlocks it, gets in, and it drives off down the street, the camera at road level. It adds one toolkit
+feature, `CineStageDef.after_fight` (a stage straight after a fight keeps its look and sky), a `--from=S` option to
+the cinematic review tool, and six sounds (`tools/asset_gen/sfx_bank_gangland_outro.gd`). The owner's follow-up (October
+10, 2026) is built too: the runner walks with a walk of its own (`CinePoses.walk`, planted feet), turns unhurriedly
+(`CineActor.turn_rate`) and gets in with a pose of its own (`CinePoses.get_in`), seen from inside the car beside a
+screech sitting on the passenger seat (`CarPassenger`: one of the screeches from before, posed sitting), the two nodding
+to each other (a seventh sound, `screech_chirp`), and the car drives off faster. The
+staging choices are in `docs/questions/f2d.md`.
 
 ### H. The owner's requests (October 8, 2026)
 
@@ -565,7 +579,7 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro and F2c's Dead Zone intro) and E5e (the Beach's boss). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro and F2d's Gangland outro) and E5e (the Beach's boss). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -574,6 +588,6 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 ## Still to design with the owner
 
 - **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/OPEN_QUESTIONS.md` items 416–503).
-- **Cinematics:** story beats for each slot but the City's outro, the Dead Zone's intro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
+- **Cinematics:** story beats for each slot but the City's outro, Gangland's outro, the Dead Zone's intro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.

@@ -148,26 +148,32 @@ static func lanes_for(p_def: CineStageDef) -> int:
 	return DEFAULT_LANES
 
 
-## The look a cinematic's stage takes from its slot's data (`p_def` has none of its own): before a boss
-## the fight arena's skin if it has one (a boss arena may have its own, BossDef.arena), otherwise the
-## zone's skin (ZoneDef.skin). Null without a zone.
+## The look a cinematic's stage takes from its slot's data (`p_def` has none of its own): before a boss (or
+## straight after its fight, `p_def.after_fight`) the fight arena's skin if it has one (a boss arena may have
+## its own, BossDef.arena), otherwise the zone's skin (ZoneDef.skin). Null without a zone.
 static func skin_for(p_def: CineStageDef, zone: ZoneDef, slot: StringName) -> ZoneSkin:
 	if p_def != null and p_def.skin != null:
 		return p_def.skin
 	if zone == null:
 		return null
-	if slot == &"boss_intro" and zone.boss != null and zone.boss.arena != null and zone.boss.arena.skin != null:
+	if _fights_look(p_def, slot) and zone.boss != null and zone.boss.arena != null and zone.boss.arena.skin != null:
 		return zone.boss.arena.skin
 	return zone.skin
 
 
-## The level sky a cinematic's stage is under (LevelSky; owner, October 8, 2026): before a boss the
-## fight's (Campaign.configure_boss: the arena's own if it has one, else the zone's last level's), so the
-## intro between a level whose sky has turned and its fight keeps that sky; otherwise none, the zone's own
-## (a zone's intro and outro). None for a stage with a look of its own (`p_def.skin`).
+## The level sky a cinematic's stage is under (LevelSky; owner, October 8, 2026): before a boss (or straight
+## after its fight, `p_def.after_fight`) the fight's (Campaign.configure_boss: the arena's own if it has one,
+## else the zone's last level's), so the intro between a level whose sky has turned and its fight keeps that
+## sky; otherwise none, the zone's own (a zone's intro and outro). None for a stage with a look of its own
+## (`p_def.skin`).
 static func sky_for(p_def: CineStageDef, zone: ZoneDef, slot: StringName) -> LevelSky:
-	if (p_def != null and p_def.skin != null) or zone == null or slot != &"boss_intro":
+	if (p_def != null and p_def.skin != null) or zone == null or not _fights_look(p_def, slot):
 		return null
 	if zone.boss != null and zone.boss.arena != null and zone.boss.arena.sky != null:
 		return zone.boss.arena.sky
 	return zone.levels.back().sky if not zone.levels.is_empty() else null
+
+
+## True if a stage takes its zone's fight's look and sky: a boss intro's, or one straight after the fight.
+static func _fights_look(p_def: CineStageDef, slot: StringName) -> bool:
+	return slot == &"boss_intro" or (p_def != null and p_def.after_fight)
