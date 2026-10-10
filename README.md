@@ -409,15 +409,17 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   (`tools/showcase/golden_convergence_magnate_showcase.tscn` shows him and each part).
   Mecha Guppy and Captain Cogs, the Beach's boss (task E5e), is being built; debug builds play it with
   `--boss=beach_boss`. Its climb (E5e-b1) is in: Mecha Guppy, a building-sized mechanical shark, has eaten
-  the street, and the runner climbs out of its reach. A strip of anti-grav pads flips them up onto a hovering
-  tiki hut. Ahead, a tiki bar roof stands 3 m higher, and only some of the hut's lanes drop them onto it: one
-  on 3 lanes, and one, two or three on 5-6 lanes. Either those lanes of the hut run on further, or the roof's
-  lanes reach back under the hut, the two cues taking turns. The other lanes drop the runner into the water,
-  a fall unless the grapple saves them, and the grapple pulls them up onto the higher roof. A rider anywhere on
-  a hut has time to read the lanes and switch, with 0.6 s to spare, from the farthest lane after the latest
-  flip. The camera follows them up past a giant waterfall, under Sunset Strip's sunset in the campaign.
-  Phase 2 climbs about 20% faster. Hits (4 in phase 1, 6 in phase 2) come with the shark and Captain Cogs'
-  bombs, next (E5e-b2). Phase 3 is a minute's stub on the flat top for now (E5e-c)
+  the street, and the runner climbs out of its reach over tiki bar towers that stand all the way down to the
+  water, with chasms eaten between them. A strip of anti-grav pads flips them up onto a hovering tiki hut.
+  Ahead, the next tower's roof stands 3 m higher, and only some of the hut's lanes drop them onto it: one on
+  3 lanes, and one, two or three on 5-6 lanes. Either those lanes of the hut run on further, lit, or the
+  roof's lanes reach back under the hut on a pier, the two cues taking turns. The other lanes drop the
+  runner into the chasm, a fall unless the grapple saves them (it pulls them up onto the higher roof). A
+  rider anywhere on a hut has time to read the lanes and switch, with 0.9 s to spare, from the farthest lane
+  after the latest flip. The camera follows them up past a giant waterfall whose foot sinks below as they
+  climb, over a hazy sea and clouds, under Sunset Strip's sunset in the campaign. Phase 2 climbs about 20%
+  faster. Hits (4 in phase 1, 6 in phase 2) come with the shark and Captain Cogs' bombs, next (E5e-b2).
+  Phase 3 is a minute's stub on the flat top for now (E5e-c)
   (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits

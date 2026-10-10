@@ -19,9 +19,11 @@ extends Node3D
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=M (the run's speed, m/s; the Beach's 23.8 by default),
 ## --phase=N, --daylight (the Beach's own sky instead of Sunset Strip's), --reduced-flashing, --events (prints the
 ## boss's events with their frames, for picking frames).
-## Frames worth a look (at --fixed-fps 10, 23.8 m/s): climb, the first pads about frame 35, on the first hut 40-60,
-## its end and the drop about 60, the first roof 62-80, the second hut 85-105; wrong, the drop and the fall about
-## 58-68; grapple, the save about 66-75; side, any frame.
+## Frames worth a look (at --fixed-fps 10, 23.8 m/s): climb, the first pads about frame 35, on the first hut 40-63,
+## its end and the drop about 63, the first roof 66-90, the second hut 95-125; wrong, the drop and the fall about
+## 60-72; grapple, the save about 68-78; side, any frame. To look from higher up, move the runner onto a later
+## step's roof before the frames are written (as a review script can: plan the steps, set Player.distance, floor_y
+## and h, then RunCamera.snap()).
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const SKY_PATH: String = "res://data/skies/beach_sunset.tres"

@@ -70,9 +70,11 @@ const HUT_OVERHANG: float = 0.7
 const ANNEX_WALL: float = 1.2
 const ANNEX_ROOF: float = 0.8
 const POD_RADIUS: float = 0.35
-## The orange band at each lane's end on a hut's underside: long, so it reads from the hut's start (task E5e-b1's
-## review: at 1.2 m it was a sliver until about 0.8 s before the end).
-const END_BAND: float = 2.6
+## The orange band at each lane's end on a hut's underside (the end band every ceiling has, MeshKit.ceiling_end's
+## look): long and bright, so it reads from the hut's start (task E5e-b1's review: at 1.2 m it was a sliver until
+## about 0.8 s before the end; seen from below at a grazing angle, its length is what shows).
+const END_BAND: float = 4.0
+const END_BAND_GLOW: float = 0.4
 const LAMP_SPACING: float = 6.0
 ## The pad tiles: about this long each, with light columns this tall.
 const PAD_TILE: float = 2.6
@@ -608,12 +610,19 @@ func _underside(s: MeshLayer, g: MeshLayer, x0: float, x1: float, zn: float, zf:
 			s.box(Vector3(x, y - 0.02, z), Vector3(0.24, 0.04, 0.24), lamp, 0.75, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
 			g.rect(Vector3(x - 0.8, y - 0.06, z + 0.8), Vector3(1.6, 0, 0), Vector3(0, 0, -1.6), lamp, 0.28, MeshKit.SHAPE_RADIAL)
 			z += LAMP_SPACING
-	# The orange band where the run ends: a rider drops here (MeshKit.ceiling_end's glow stays above the underside).
-	var band_s := MeshLayer.new()
-	var band_g := MeshLayer.new()
-	MeshKit.ceiling_end(band_s, band_g, (x1 - x0) * 0.5, zf, END_BAND, skin.gap_edge_color, (x0 + x1) * 0.5)
-	s.append(band_s, Transform3D(Basis.IDENTITY, Vector3(0, y, 0)))
-	g.append(band_g, Transform3D(Basis.IDENTITY, Vector3(0, y, 0)))
+	# The orange band where the run ends: a rider drops here (MeshKit.ceiling_end's look, longer and brighter; its
+	# glow stays above the underside, where the chase camera passes as the rider drops).
+	var edge: Color = skin.gap_edge_color
+	s.rect(Vector3(x0, y - 0.002, zf), Vector3(x1 - x0, 0, 0), Vector3(0, 0, END_BAND), edge, END_BAND_GLOW)
+	var lx: float = x0 + 0.6
+	while lx < x1 - 0.3:
+		for along: float in [0.25, END_BAND * 0.5]:
+			s.box(Vector3(lx, y - 0.025, zf + along), Vector3(0.35, 0.05, 0.2), edge, 0.7, MeshKit.PAT_PLAIN,
+				MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
+		lx += 1.2
+	g.rect(Vector3(x0, y - 0.05, zf + END_BAND + MeshKit.CEILING_END_GLOW), Vector3(x1 - x0, 0, 0),
+		Vector3(0, 0, -(END_BAND + MeshKit.CEILING_END_GLOW)), edge, 0.4, MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE,
+		MeshKit.near_fade(MeshKit.CEILING_END_NEAR))
 
 
 ## A thatched hip roof over the rectangle centred (cx, cz), half sizes (hx, hz), eaves at height y0, rising `rise`.

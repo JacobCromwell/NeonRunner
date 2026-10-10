@@ -10,8 +10,8 @@ these as they go.
   higher roof"). The save has no reel-in: the runner is lifted in one frame to just under the higher
   roof's top and moved into its lane like a lane switch (`Player._pull_up`), and the climbing camera
   eases after it. Placeholder (E5e-b1): that instant lift, plus a warm-white rope (no hazard colour)
-  from the runner to the roof's edge in the lane it pulls them into, shown for 0.3 s as it fires
-  (`MechaGuppy._grapple_save`, `ROPE_COLOR`, `ROPE_SECONDS`, `RunEffects.line`; DESIGN-TBD). The save
+  from the runner (followed as the save lifts them) to the roof's edge in the lane it pulls them into,
+  shown for 0.35 s as it fires (`MechaGuppy._grapple_save`, `MechaGuppyRope`; DESIGN-TBD). The save
   picks a roof and lane whose path is clear (`MechaGuppyStairs.save_spot`: the lowest higher roof
   under a lane that leads up where the save brings them down, and the lift starts above every solid
   front). Should the save instead reel the runner up visibly over a fraction of a second?
@@ -30,9 +30,8 @@ these as they go.
   the lower floor the shark hasn't eaten yet survivable, or is every drop past the higher roof a
   death? Placeholder (E5e-b1): every wrong drop is a fall. The roof a step starts from is already
   eaten from 1 m past its pad strip (`MechaGuppyTuning.edge_margin`), so a drop in a lane that doesn't
-  lead up falls into the basin under the hut (dark water in a tank, `MechaGuppyLooks.basin`; a look
-  placeholder until E5e-b2's shark and bites) and dies unless the grapple saves it. Nobody lands on
-  uneaten lower floor.
+  lead up falls into the chasm under the hut, down to the water far below (a look placeholder until
+  E5e-b2's shark and bites), and dies unless the grapple saves it. Nobody lands on uneaten lower floor.
 
 ## Raised by E5e-b1 (the climb)
 
@@ -40,21 +39,22 @@ these as they go.
   `data/bosses/beach_boss_tuning.tres` (`MechaGuppyTuning`, all DESIGN-TBD, tunable with F6 in the
   fight):
   - Each roof stands 3 m above the last (`rise`).
-  - A hut's underside is 7 m over the floor its step starts from (`hut_height`; a level's ceilings
-    are 6 m). At 7 m the view from under a hut sits just above the next roof, so its deck shows and
-    so do the lanes that reach back. It also keeps at least 3.2 m over the roof under its end
-    (`hut_clearance`).
-  - The run on a roof, from landing to the next pads, is 1.6 s in phase 1 and 0.75 s in phase 2
-    (`roof_seconds`).
+  - A hut's underside is 8.5 m over the floor its step starts from (`hut_height`; a level's ceilings
+    are 6 m). At 8.5 m the view from under a hut (the run camera sits 3.6 m under a ceiling) is 1.9 m
+    above the next roof, so its deck shows and the lanes that reach back read as a place to land. It
+    also keeps at least 3.2 m over the roof under its end (`hut_clearance`).
+  - The run on a roof, from landing to the next pads, is 1.6 s in phase 1 and 0.6 s in phase 2
+    (`roof_seconds`): phase 2 climbs 19-22% faster.
   - The reaching lanes reach 10 m under the hut's end (`reach_back`, at 18 m/s), and the running-on
     lanes run 3 m past the higher roof's front (`run_on`, at 18 m/s).
   - The street is 3.5 s long before the first pads (`start_seconds`).
 
-  A step takes about 5.5 s in phase 1, which is 10 or 11 roofs (about 33 m up) a minute.
+  A step takes about 5.5-6 s in phase 1, which is 10 or 11 roofs (about 30-33 m up) a minute.
 - **The reading margin** (GDD §10: the runner must see which lanes lead up and have time to switch
-  into one). Placeholder: 0.6 s beyond every lane switch the farthest lane needs (`read_seconds`).
-  It counts from the latest a rider can settle on the hut: a jump right before the pads, with the
-  dash, then the flip up. A rider who doesn't jump gets about a second more. Is 0.6 s right?
+  into one). Placeholder: 0.9 s beyond every lane switch the farthest lane needs (`read_seconds`; 0.6 s
+  before E5e-b1's review, raised as a more humane default for the owner to tune in playtest). It counts
+  from the latest a rider can settle on the hut: a jump right before the pads, with the dash, then the
+  flip up. A rider who doesn't jump gets about a second more. Is 0.9 s right?
 - **Every runner flips up.** GDD §10 makes the ceiling the way up. Placeholder: each roof ends in a
   strip of pads across every lane, longer than the longest jump at the run speed (dash included) by
   2 m (`strip_margin`), so nobody can jump over it. Is an unmissable strip right?
@@ -67,7 +67,8 @@ these as they go.
     (`MechaGuppyClimb.REACH_BACK_MOST`), so the threes always come with RUN_ON, and the count changes
     every step.
   - Where the block of lanes sits is seeded: the same on every attempt, never the same block twice
-    running.
+    running, nor three times running for the same cue (3 lanes: the same lane never leads up on more
+    than two REACH_BACK, or RUN_ON, steps in a row).
 
   Is this the owner's "alternating"?
 - **The roof faces' rules** (GDD §10 doesn't say). Placeholder (`MechaGuppyStairs`, DESIGN-TBD):
@@ -88,21 +89,43 @@ these as they go.
   Placeholder: none. A wall gap runs over the whole arena on both sides, and the open beach and sea
   lie beyond (`MechaGuppySkin`).
 - **The climb's look** (GDD §10: tiki huts as the ceilings, tiki bar roofs as the floors, a few neon
-  signs). Placeholder (`MechaGuppyLooks`):
+  signs; the climb must read as climbing high). Placeholder (`MechaGuppyLooks`):
   - The huts: each hut is a hovering plank platform on glowing lift pods (the Beach's engine colour,
-    never a hazard colour), with a lamp-lit underside, an orange band where each lane ends, and a row
+    never a hazard colour), with a lamp-lit underside, a 2.6 m orange band where each lane ends, a lamp
+    row along each run of lanes' shared edge (so the lanes that lead up visibly run on, lit), and a row
     of tiki huts on top. RUN_ON steps add a walkway annex over the lanes that run on.
-  - The roofs: each roof is a boardwalk deck with orange lips at its edges and fronts, on shack
-    facades, with thatch eaves and lantern posts outside the lanes.
+  - The roofs: each roof is a boardwalk deck with orange lips at its edges and fronts, thatch eaves and
+    lantern posts outside the lanes, on top of a tower that stands down to the water: storey after
+    storey of tiki bar, each with a ledge and a row of warmly lit windows, darker the deeper.
+  - The lanes that reach back (REACH_BACK) stand on a pier in front of the tower: a lantern-lit fascia,
+    the orange lip at its front and along the gap beside it, and the dark framework of a pier on tall
+    stilts below, so they read as a landing, not a wall. No marker beyond the owner's two cues was
+    added; if playtests show riders still steering away from it, a floor marking on the pier's deck
+    could be proposed then.
   - The signs: some fronts and huts carry a neon sign in the Beach's violet, blue or warm white.
-  - The eaten floor: a basin of dark water.
-- **The waterfall** (GDD §10: the backdrop in phases 1 and 2). Placeholder (`MechaGuppyWaterfall`): a
-  wide cliff with falling water, kept 230 m ahead of the camera and below its height so it frames any
-  height, its flow scrolling. It fades out over 2 s as phase 3 starts.
+  - The eaten floor: the chasm between towers, open to the water far below (the street's own water),
+    where E5e-b2's shark will rise.
+- **The backdrop** (GDD §10: a waterfall in phases 1 and 2, the Beach's normal backdrop in phase 3).
+  Placeholder (`MechaGuppyWaterfall`): a flat-topped massif 420 m ahead of the camera, its falls' lip
+  150 m up, its rock, lip and mist at world heights, so as the runner climbs the cliffs slide down and
+  the falls' foot sinks below; past the lip a plateau shows its top. Its flanks slope to the sea, so
+  the horizon stays in view beside it. A sea plane fills everything below out to the far plane, and the
+  sky below the horizon takes the fog's colour. Layers of low cloud at fixed heights (12 m, then every
+  36 m) lie beside the climb once the runner is above them. The waterfall fades out over 2 s when the
+  runner reaches phase 3's top.
+- **The arena's haze** (`data/bosses/beach_boss_skin.tres`): fog from 24 m to 200 m, fully fogged past
+  it (the Beach's levels: 34-250 m, 90% at most). The long drop below the towers hazes over with depth,
+  and the climb is planned no nearer than that edge of sight, so nothing ever changes where it's seen.
+- **How soon a phase change reaches the climb** (GDD §10: phase 2's climb 15-25% faster). Placeholder:
+  the steps in sight when the phase changes stay as they are, and the first one past the edge of sight
+  (200 m) is the new phase's. Measured right after a landing, phase 2's first closer step comes
+  11.6-12.7 s after the phase begins (one or two steps), and phase 3's top 9-16 s after it begins. A
+  hazier arena would bring it sooner, at the cost of the view ahead. Is that soon enough?
 - **Phase 3 and the fight's frame** (E5e-c builds phase 3). Placeholders in
   `data/bosses/beach_boss.tres`:
   - The phases are named "The Climb", "Higher" and "Level with Captain Cogs", each a third of the
     boss bar (equal health shares).
-  - Phase 3 is a flat run on the last roof, with no attacks and no hits, that the fight wins after
-    60 s of its pattern (`top_seconds`).
+  - Phase 3 is a flat run on the last roof, with no attacks and no hits, that the fight wins 60 s
+    after the runner reaches it (`top_seconds`; `MechaGuppy.top_reached`, logged and signalled for
+    E5e-c).
   - Par times of 240 s and 180 s stand in until E5e-c measures the whole fight.

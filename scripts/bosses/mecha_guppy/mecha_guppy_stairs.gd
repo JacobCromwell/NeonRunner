@@ -401,14 +401,6 @@ func span(lanes: Vector2i) -> Vector2:
 	return Vector2(world.geo.lane_floor_span(lanes.x).x, world.geo.lane_floor_span(lanes.y).y)
 
 
-## True once everything the climb has planned up to track distance `d` is built (tests).
-func built_to(d: float) -> bool:
-	for roof: MechaGuppyClimb.Roof in climb.roofs:
-		if roof.first_start() < d and not bool((_roofs.get(roof.index, {}) as Dictionary).get("front", false)):
-			return false
-	return true
-
-
 ## Where the grapple's save (and a revive after a fall) takes a runner falling at `player`'s place (GDD §10,
 ## proposed: up onto the higher roof, into its nearest lane that leads up): the lowest roof above their feet whose
 ## lanes that lead up are under them where the save brings them down (the pull lifts them to just under its top,

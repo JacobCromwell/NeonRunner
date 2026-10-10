@@ -4443,33 +4443,42 @@ Cogs and his bombs, what counts as a hit; E5e-c, phase 3 and the defeat; E5e-d, 
 fight is being built: its slot names its scene in `preview_scene`, so the campaign keeps the card until E5e-c, and
 debug builds play it with `--boss=beach_boss` as quick play (at 18 m/s, under the Beach's own daylight sky: the
 campaign will give it the Beach's 23.8 m/s and Sunset Strip's sunset through `Campaign.configure_boss`, its arena
-naming no sky). The runner climbs through phases 1 and 2, the camera following them up past a waterfall:
+naming no sky). The runner climbs through phases 1 and 2, the camera following them up past a waterfall, and the
+climb has to read as climbing high (the owner's idea; task E5e-b1's review): every roof tops a tower that stands down
+to the water, Mecha Guppy eats chasms between them, and the backdrop is anchored at world heights:
 
 - **A step** (`MechaGuppyClimb`, the plan; pure numbers, so the suites check it over many steps without the
   engine). Step k takes the runner from roof k up to roof k + 1; roof 0 is the street the fight starts on. A
   strip of anti-grav pads crosses every lane at the end of roof k, longer than the longest jump at the run
-  speed with the dash's reach, so every runner flips up. A tiki hut hangs over it (`hut_height` over roof k, at
-  least `hut_clearance` over the roof under its end), full width until the lanes that don't lead up end. Roof
-  k + 1 stands `rise` higher under the hut's end. Mecha Guppy has eaten roof k from just past its pads
-  (`edge_margin`): a drop off the hut in a lane that leads up lands on roof k + 1, and a drop in any other lane
-  falls into the basin below, a death unless the grapple saves it. Then the next pads come on roof k + 1.
+  speed with the dash's reach, so every runner flips up. A tiki hut hangs over it (`hut_height`, 8.5 m over roof
+  k, at least `hut_clearance` over the roof under its end: the riding view, 3.6 m under a ceiling, is then 1.9 m
+  over the higher roof, so its deck shows), full width until the lanes that don't lead up end. Roof k + 1 stands
+  `rise` higher under the hut's end. Mecha Guppy has eaten roof k from just past its pads (`edge_margin`): a
+  drop off the hut in a lane that leads up lands on roof k + 1, and a drop in any other lane falls into the
+  chasm down to the water, a death unless the grapple saves it. Then the next pads come on roof k + 1.
 - **The lanes that lead up**: a block of neighbours, one on 3 lanes, and on 5-6 lanes the counts in
   `up_counts` (1, 2, 3, 1, 3, 2), never every lane. Where the block sits is seeded (the fight's rng key, "climb"
-  and the lane count): the same on every attempt, never the same block twice running.
+  and the lane count, then each step's index): the same on every attempt, never the same block twice running,
+  nor three times running for the same cue.
 - **The two cues** alternate step by step, starting with RUN_ON:
   - RUN_ON: the hut's lanes that lead up run on `run_on` past the higher roof's front, and the others end short
     of it.
   - REACH_BACK: the hut ends across every lane together, and the roof's lanes that lead up reach `reach_back`
-    back under it. A REACH_BACK step has at most two such lanes (`REACH_BACK_MOST`, the owner's "one or two of
-    the roof's lanes").
+    back under it, on a pier in front of the tower (it reads as a landing, not a wall). A REACH_BACK step has
+    at most two such lanes (`REACH_BACK_MOST`, the owner's "one or two of the roof's lanes"); they start no
+    nearer than `TONGUE_CLEAR` past the latest settle, however far `reach_back` asks, so no flip meets their
+    front.
 - **Fairness** comes from the movement itself: a jump's airtime, the flip up to the hut, the drop off its end
   and the fall into the eaten floor, each integrated frame by frame as `Player` moves (`_surface_seconds`), at
   the run's speed and with the dash's reach. So the climb holds at any speed and movement tuning.
   - The `settle` point is the latest a rider can settle on the hut: a jump right before the pads, the dash,
     then the flip up.
-  - From `settle` to the `deadline` (where the other lanes end, or the hut ends) there is `read_seconds` plus
-    every lane switch the farthest lane needs. A rider anywhere on the hut reaches a lane that leads up in
-    time (`margin()`), and a rider who didn't jump gets about a second more.
+  - From `settle` to the `deadline` (where the other lanes end, or the hut ends) there is `read_seconds` (0.9 s)
+    plus every lane switch the farthest lane needs. A rider anywhere on the hut reaches a lane that leads up
+    in time (`margin()`), and a rider who didn't jump gets about a second more. On physics the worst case (the
+    farthest lane, a jump and the dash right before the pads, reading `read_seconds` late, a slow switcher)
+    presses its last switch with 0.04-0.12 s to spare (the lane is committed at the press:
+    `Player._start_switch`).
   - The hut is full width until the deadline, so the narrow-ceiling rule never holds a rider in a lane that
     doesn't lead up while there's time.
   - A wrong drop is dead, or saved, before it reaches the higher roof's front, even dashing (`wrong_reach()`).
@@ -4477,13 +4486,20 @@ naming no sky). The runner climbs through phases 1 and 2, the camera following t
 - **Its distances follow the pace**: those that stand for a time (`reach_back`, `run_on`, `hut_lead`) are
   metres at 18 m/s multiplied by the pace, the margins are seconds, and heights don't change.
 - **Phase 2's faster climb** (GDD §10, 15-25%, proposed about 20%): only the run on a roof from landing to the
-  next pads shortens (`roof_seconds`: 1.6 s, then 0.75 s), so every margin stays. It measures 18-20% faster at
-  3, 5 and 6 lanes and both speeds. Steps are planned `build_ahead` ahead, so the first steps planned in phase
-  2 come about two steps after it begins.
+  next pads shortens (`roof_seconds`: 1.6 s, then 0.6 s), so every margin stays. It measures 19-22% faster at
+  3, 5 and 6 lanes and both speeds. The steps in sight when the phase changes stay as they are; the first one
+  past the edge of sight is phase 2's: measured, its pads come 11.6-12.7 s after the phase begins right after a
+  landing (one or two steps; 15-23 s before the review).
 - **Phase 3** is a stub (E5e-c): its step is the top, the roof the runner is on running on flat with no pads or
-  hut, and the fight is won `top_seconds` (60 s) into its pattern. The waterfall fades out as it begins.
-- **Building it** (`MechaGuppyStairs`): everything within `build_ahead` (270 m, past the fog) is built through
-  the boss's props and freed once passed.
+  hut, planned right after the steps in sight. When the runner stands on it, `top_reached` is logged and
+  signalled (E5e-c builds on it), the waterfall fades out, and the fight is won `top_seconds` (60 s) later.
+- **Building it** (`MechaGuppyStairs`): everything up to the build horizon, `BUILD_MARGIN` past the edge of sight
+  (`sight`: the arena skin's fog end, 200 m, fully fogged), is built through the boss's props and freed once
+  passed; roofs in 24 m pieces, never past where they could still be eaten. Each step is planned only as its hut
+  comes to the horizon, in the phase of that moment, and never nearer than the edge of sight
+  (`MechaGuppyClimb.plan_next`'s `not_before`); when the phase changes, every step whose hut is still past the
+  edge of sight is taken back and planned again (`_replan`, `MechaGuppyClimb.truncate`). Cursors skip finished
+  roofs and steps, so the work a frame doesn't grow with the fight (`visited`).
   - Each roof is a `BossProps.roof` over each run of lanes starting together, with a lane blocker on its sides
     below the top: a lane switch into a side bumps, as into a truck's.
   - Each roof's front, below where a runner could still step up onto it, is a solid hazard ("tiki bar") that
@@ -4495,7 +4511,8 @@ naming no sky). The runner climbs through phases 1 and 2, the camera following t
 - **The grapple and a revive** (`MechaGuppy._grapple_save`, DESIGN-TBD): both go up onto the higher roof, into
   its nearest lane that leads up. `save_spot` picks the lowest higher roof that covers that lane where the
   save brings them down (`MechaGuppyClimb.save_seconds`). The lift starts above every solid front, so the
-  path is clear. A grapple's save shows a warm-white rope for 0.3 s.
+  path is clear. A grapple's save shows a warm-white rope for 0.35 s (`MechaGuppyRope`), from the runner,
+  followed as the save lifts them, to the roof's edge it caught.
 - **Hits**: each phase's hits are counted (`weapons_can_end_phase` off, `weapon_share_cap` 0: weapons do
   nothing). `register_hit(cause)` lands one while the climb's pattern runs (4 end phase 1, 6 phase 2), but
   not in an intro or in phase 3. E5e-b2's bombs will call it; the tests call it now.
@@ -4508,12 +4525,13 @@ In `scripts/bosses/mecha_guppy/`:
 
 | File | What |
 |---|---|
-| `mecha_guppy.gd` (`MechaGuppy`) | the encounter: the arena (`_plan_lap`: nothing of the generator's, a gap in every lane from `EATEN_BEHIND` behind each lap, a wall gap on both sides over every lap), the climb, the stairs, the waterfall and the climbing view (`_build_boss`), phase 3's stub (`top_due`, `_pattern_tick`), `register_hit`, the armor pickups (`_place_armor`, `armor_pickups_waiting`), the grapple's save and its rope (`_grapple_save`); `run_pace` |
-| `mecha_guppy_climb.gd` (`MechaGuppyClimb`) | the plan: `Roof` (top, lane starts, eaten end; `covers`, `full_from`) and `Step` (pads, hut, lane ends, the lanes that lead up, cue, settle, deadline, landing; `nearest_up`, `switches_from`); `make`, `plan_next`, `plan_until`, `step_at`, `roofs_at`, `floor_at`, `margin`, `wrong_reach`, `climb_rate`; the motions frame by frame (`jump_seconds`, `flip_seconds`, `drop_seconds`, `save_seconds`) |
-| `mecha_guppy_stairs.gd` (`MechaGuppyStairs`) | builds the plan within sight: roofs (top, side blocker, solid front), the top's segments, pad strips, huts; the floor base every frame; questions: `runs`, `span`, `save_spot`, `roof_front`, `pickup_spot` |
-| `mecha_guppy_looks.gd` (`MechaGuppyLooks`) | the look on the Beach's skin, one merged mesh per piece: each roof a boardwalk deck (its lanes' plank strips, orange lips and coping on every edge over a drop, the gap-edge language) on shack facades down to the water, thatch eaves and lantern posts outside the lanes, a neon sign on some fronts; the street's own sand; each hut a hovering plank platform (its underside lit on the lane seams with joists, the orange end band where each run of lanes ends, lift pods in the skin's engine colour) carrying a row of tiki huts and rails, a walkway annex over RUN_ON's running-on lanes, a sign on some; each basin (the floor Mecha Guppy has eaten, E5e-b1's placeholder) dark water in a tank with its splash watch; the pad strips' tiles. Its signs glow only the Beach's violet, blue or warm white |
-| `mecha_guppy_skin.gd` (`MechaGuppySkin`), `data/bosses/beach_boss_skin.tres` | the arena's skin, a `BeachSkin`: the open shore on both sides (`BeachOpen.shore_side`, no shacks or gap marks: there are no walls), the water under the eaten street, no ceiling or hull looks (the huts are the looks') |
-| `mecha_guppy_waterfall.gd` (`MechaGuppyWaterfall`), `mecha_guppy_waterfall.gdshader` | the backdrop in phases 1 and 2: one card `DISTANCE` (230 m) ahead of the camera and `DROP` below it, so it frames any height; its water drawn from world height and time (cliffs, streaks, foam, spray, haze toward the fog colour; unshaded, no fog, nothing flickering); `set_shown` fades it |
+| `mecha_guppy.gd` (`MechaGuppy`) | the encounter: the arena (`_plan_lap`: nothing of the generator's, a gap in every lane from `EATEN_BEHIND` behind each lap, a wall gap on both sides over every lap), the climb, the stairs, the backdrop and the climbing view (`_build_boss`), phase 3's stub (`top_due`, `on_top`, `top_reached`, `top_reached_at`, `_pattern_tick`), `register_hit`, the armor pickups (`_place_armor`, `armor_pickups_waiting`), the grapple's save and its rope (`_grapple_save`); `run_pace` |
+| `mecha_guppy_climb.gd` (`MechaGuppyClimb`) | the plan: `Roof` (top, lane starts, eaten end; `covers`, `full_from`) and `Step` (pads, hut, lane ends, the lanes that lead up, cue, settle, deadline, landing; `nearest_up`, `switches_from`); `make`, `plan_next` (with `not_before`), `next_hut_start`, `plan_until`, `truncate`, `top_planned`, `step_at` / `step_index_at` / `roof_index_at` (binary searches), `roofs_at`, `floor_at`, `margin`, `wrong_reach`, `climb_rate`; the motions frame by frame (`jump_seconds`, `flip_seconds`, `drop_seconds`, `save_seconds`) |
+| `mecha_guppy_stairs.gd` (`MechaGuppyStairs`) | builds the plan up to the edge of sight and a margin: each roof's front pieces (the reaching lanes' box, side blocker and solid fronts), its full-width part in pieces, pad strips, huts; plans each step as late as it can, never in sight, and re-plans the unseen ones when the phase changes (`_replan`); the floor base every frame; questions: `runs`, `span`, `horizon`, `save_spot`, `roof_front`, `pickup_spot` |
+| `mecha_guppy_looks.gd` (`MechaGuppyLooks`) | the look on the Beach's skin, one merged mesh per piece: each roof a boardwalk deck (its lanes' plank strips, orange lips and coping on every edge over a drop, the gap-edge language) with thatch eaves and lantern posts outside the lanes, on a tower down to the water (`roof_front`, `roof_segment`): storey after storey with a ledge and framed, warmly lit windows, darker the deeper (`deep`); the reaching lanes on a pier (a lantern-lit fascia, the orange lip at its front and open sides, posts and braces on stilts down to the water); a neon sign on some fronts; the street's own sand; each hut a hovering plank platform (its underside lit on the lane seams and along each run's shared edges with joists, the 2.6 m orange end band where each run of lanes ends, lift pods in the skin's engine colour) carrying a row of tiki huts and rails, a walkway annex over RUN_ON's running-on lanes, a sign on some; the pad strips' tiles. Its signs glow only the Beach's violet, blue or warm white |
+| `mecha_guppy_skin.gd` (`MechaGuppySkin`), `data/bosses/beach_boss_skin.tres` | the arena's skin, a `BeachSkin`: the open shore on both sides (`BeachOpen.shore_side`, no shacks or gap marks: there are no walls), the water under the eaten street (the chasms' floor), no ceiling or hull looks (the huts are the looks'); its data makes the arena hazier, fully fogged past 200 m (fog 24-200 m, `fog_max` 1) |
+| `mecha_guppy_waterfall.gd` (`MechaGuppyWaterfall`), `mecha_guppy_waterfall.gdshader`, `mecha_guppy_sea.gdshader`, `mecha_guppy_clouds.gdshader` | the backdrop: the waterfall, a flat-topped massif `DISTANCE` (420 m) ahead of the camera whose rock, lip (`LIP_Y`, 150 m) and mist are drawn at world heights (the cliffs slide down past a climber, its foot sinks below; past the lip a plateau card shows its top), its flanks sloping to the sea so the horizon shows beside it (fades out with `set_shown`); a sea plane at sea level around the camera out to the far plane, the sky below the horizon set to the fog's colour (`abyss_color`) so the far sea meets the horizon at any height; layers of low cloud at fixed world heights beside the climb, shown once the runner is above them. Unshaded, nothing flickering |
+| `mecha_guppy_rope.gd` (`MechaGuppyRope`) | the grapple's rope: from the runner (followed frame by frame as the save lifts them) to the roof's edge, for a moment; `ends()` for tests |
 | `mecha_guppy_tuning.gd`, `data/bosses/beach_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5e.md`) |
 | `data/bosses/beach_boss.tres` | its slot: `preview_scene`, the owner's title, three phases (4 hits, 6 hits, phase 3's stub), weapons capped at nothing and unable to end a phase, one lap of arena (the Beach's skin, no features, a clear start), the standard armor rule with `armor_when_unprotected`, the Beach's music, placeholder par times (E5e-c's) |
 
@@ -4523,7 +4541,8 @@ Also: `scenes/bosses/mecha_guppy.tscn`; `tools/showcase/mecha_guppy_showcase.tsc
 actions and reads the lanes that lead up off the hut and the roofs by physics rays, never the plan
 (`read_up_lanes`); `reaction` seconds after settling it switches a lane at a time to the nearest one, or, with
 `wrong`, to one that doesn't; `worst_case` first takes the lane farthest from them and jumps right before the
-pads; `min_slack`, `steps_climbed`, `reads`). Hints: `enemy:beach_boss` (the climb in short, weapons doing
+pads, `dash_flip` dashing as it jumps; `wrong_at`, `wrong_far`, `dash_drop` for the wrong drops; `min_slack`,
+measured at its last switch's press, `steps_climbed`, `reads`, `dashes`). Hints: `enemy:beach_boss` (the climb in short, weapons doing
 nothing) and `boss:beach_boss/climb` (how to read the lanes that lead up).
 Hand-offs to E5e-b2:
 - Captain Cogs' ship stays off the hull layer (or out of `Player.CEILING_SEARCH` over a pad).
@@ -5413,15 +5432,21 @@ five-step climb to 30 m, and boss props at a height. `test_mecha_guppy` (task E5
 Sunset Strip's sky, its hints), the climb's plan over 60 steps at 3, 5 and 6 lanes and both speeds (the lanes that
 lead up and their counts, the cues alternating and shaped as the owner put them, the reading margin from the latest
 settle in every lane, the hut full width until the deadline, a wrong drop dead before the next front even dashing,
-an unjumpable pad strip, phase 2 15-25% faster with every margin kept, no escalation, a retry the same), the built
-climb against its plan on real physics (roof tops, hut ends, pads, fronts and blocked sides, the lanes that lead up
-read off the collision), the roof faces' rules, the hits and phases, and the armor pickups on the roof ahead.
-`test_mecha_guppy_climb` plays it on physics without god mode with `MechaGuppyBot`: through phases 1 and 2 (a
-stand-in hit on each landing) into phase 3's top at 3, 5 and 6 lanes and 18 and 23.8 m/s, phase 2's rate measured,
-the worst case (the farthest lane, the latest flip, reading `read_seconds` late) making every step with time to
-spare, a wrong drop falling (and saved by the grapple or a revive onto the higher roof, in a lane that leads up), the
-same rhythm through a long phase 1 and on a retry, and the climbing camera (the runner on screen, never inside a
-roof, under 0.45 m a frame, the shadow on the roof); it prints its figures. `test_audio` checks
+an unjumpable pad strip, the reaching lanes past the latest settle, never the same lanes three times running for a
+cue, phase 2 15-25% faster with every margin kept, no escalation, a retry the same), every tunable at both ends of
+its F6 range keeping those promises, the built climb against its plan on real physics (roof tops, hut ends, pads,
+fronts and blocked sides, the lanes that lead up read off the collision, the edge of sight at the fog's end), the
+roof faces' rules, the hits and phases (phase 3's minute from the runner's arrival on the top), and the armor
+pickups on the roof ahead. `test_mecha_guppy_climb` plays it on physics without god mode with `MechaGuppyBot`:
+through phases 1 and 2 (a stand-in hit on each landing) into phase 3's top at 3, 5 and 6 lanes and 18 and 23.8 m/s,
+phase 2's rate measured; the worst case (the farthest lane, the latest flip, also dashing, reading `read_seconds`
+late, and with `reach_back` at 30 m) making every step with time to spare; wrong drops at both cues from the
+farthest wrong lane, dashing, dying by a fall before the higher roof's front (and saved by the grapple or a revive
+onto the higher roof, in its nearest lane that leads up, the rope from the lifted runner); phase changes (nothing in
+sight changes, the next step is the new phase's, nothing ever planned in sight, `top_reached` starting the stub's
+minute and the waterfall's fade); the same rhythm through a long phase 1 and on a retry, with the builder's work a
+frame staying small; and the climbing camera (the runner on screen, never inside a roof, under 0.40 m a frame, the
+shadow on the roof); it prints its figures. `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. `test_cinematics` checks the cinematic toolkit: its paths (smooth,
