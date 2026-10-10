@@ -55,6 +55,12 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 569–572): the Beach's two levels; whether the curve is later re-spread over every
 ## level, the Beach's included.
 @export var off_curve: bool = false
+## A mini-game this level plays instead of a generated layout (MiniGame; the owner, October 10, 2026: the Beach's
+## second level, a beach volleyball match, data/minigames/volleyball.tres): LevelRun asks the game for the level's
+## track and the game runs on it, so the generator, the features and the pacing below don't apply. Such a level
+## sits off the curve (off_curve) and counts for no other level's feature ages (Campaign.feature_ages). Null: a
+## generated level, as every other level is.
+@export var minigame: MiniGameDef
 ## Mechanics and enemies this level may use. A pattern is only picked when every entry of its
 ## `requires` list is here (GDD §6: introduce one new mechanic at a time). Core movement pieces
 ## (gaps, fences, signs, walls) need no feature. Known features:
@@ -285,6 +291,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 
 func has_feature(feature: String) -> bool:
 	return features.has(feature)
+
+
+## True if the level plays a mini-game (minigame) rather than a generated layout.
+func plays_minigame() -> bool:
+	return minigame != null
 
 
 ## The movement tuning this level runs on: `base` itself unless the level has a run speed of its own

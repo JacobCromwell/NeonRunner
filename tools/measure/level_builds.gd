@@ -51,7 +51,7 @@ func _run() -> void:
 	var tuning := load(TUNING_PATH) as MovementTuning
 	if _levels.is_empty():
 		for s: CampaignStep in campaign.steps():
-			if s.is_level():
+			if s.is_level() and not s.is_minigame():
 				_levels.append(s.id)
 	if _table:
 		_first_builds(campaign, tuning)
@@ -59,7 +59,7 @@ func _run() -> void:
 		_arena_plans(campaign, tuning)
 	for spec: String in _passes:
 		var step: CampaignStep = campaign.step(spec.get_slice(":", 0))
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % spec)
 			continue
 		_pass_times(spec, campaign.configure(step, int(spec.get_slice(":", 1))), tuning)
@@ -106,7 +106,7 @@ func _first_builds(campaign: Campaign, tuning: MovementTuning) -> void:
 	var total: float = 0.0
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		var line: String = "%-14s" % id
@@ -304,7 +304,7 @@ func _retry_times(campaign: Campaign) -> void:
 		", and whether the built level was reused" if cache != null else ""])
 	for id: String in _retry_levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		var started: int = Time.get_ticks_usec()

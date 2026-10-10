@@ -53,7 +53,7 @@ func _run() -> void:
 	var catalog: ShopCatalog = ShopCatalog.load_from()
 	if _levels.is_empty():
 		for s: CampaignStep in campaign.steps():
-			if s.is_level():
+			if s.is_level() and not s.is_minigame():
 				_levels.append(s.id)
 	var rows: Array[Dictionary] = []
 	print("%-16s %5s %5s %6s | %8s %6s %8s %8s | %6s %8s" % [
@@ -63,7 +63,7 @@ func _run() -> void:
 	var zone_order: Array[String] = []
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		var r: Dictionary = _measure_level(campaign, tuning, step)

@@ -276,7 +276,10 @@ func _test_balance_curve() -> void:
 	var wallet: int = 0
 	var max_wallet: int = 0
 	for step: CampaignStep in campaign.steps():
-		if not step.is_level():
+		# A mini-game level (the Beach's volleyball match) isn't generated: it pays its run-in's few credits and the
+		# match's payout (test_volleyball), left out here, so the wallets below are a little under what a playthrough
+		# earns.
+		if not step.is_level() or step.is_minigame():
 			continue
 		var config: LevelConfig = campaign.configure(step, 5)
 		# T-SPEED: this level's own default build (LayoutCache), shared with other suites.

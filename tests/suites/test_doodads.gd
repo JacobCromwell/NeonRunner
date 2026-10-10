@@ -292,7 +292,8 @@ func _test_campaign() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var total: int = 0
 	for s: CampaignStep in campaign.steps():
-		if not s.is_level():
+		# A mini-game level (the Beach's volleyball match) isn't generated: no doodads.
+		if not s.is_level() or s.is_minigame():
 			continue
 		var level_total: int = 0
 		for lanes: int in [3, 5, 6]:
@@ -706,7 +707,7 @@ func _test_safe_floor_every_time() -> void:
 	var runs: int = 0
 	sim.trace = true
 	for s: CampaignStep in campaign.steps():
-		if not s.is_level():
+		if not s.is_level() or s.is_minigame():
 			continue
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(s, lanes)

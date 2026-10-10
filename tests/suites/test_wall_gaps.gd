@@ -340,7 +340,8 @@ func _test_level_tuning() -> void:
 		"the shared numbers are %s, with open walls off" % WallGapPlacement.TUNING_PATH)
 	check(WallGapPlacement.tuning_for(null) == shared, "no level: the shared numbers")
 	for s: CampaignStep in campaign.steps():
-		if not s.is_level():
+		# A mini-game level (the Beach's volleyball match) plans its own open walls (test_volleyball).
+		if not s.is_level() or s.is_minigame():
 			continue
 		if s.zone.id == &"beach":
 			check(s.level.wall_gap_tuning != null and s.level.wall_gap_tuning.resource_path == BEACH_WALL_GAPS

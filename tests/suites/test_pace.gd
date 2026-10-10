@@ -62,7 +62,8 @@ func _test_speed_data() -> void:
 	var quick := load(LEVEL_PATH) as LevelConfig
 	check(quick.run_speed == 0.0 and quick.fill_empty_seconds == 0.0, "quick play's level keeps the base speed and no fill pass")
 	for s: CampaignStep in campaign.steps():
-		if s.is_level():
+		# A mini-game level (the Beach's volleyball match) plans its own track, not the generator's.
+		if s.is_level() and not s.is_minigame():
 			var config: LevelConfig = campaign.configure(s, 3)
 			check(is_equal_approx(config.run_speed, s.zone.run_speed), "%s runs at its zone's speed (%.1f)" % [s.id, config.run_speed])
 			check(is_equal_approx(campaign.configure(s, 3, 1).run_speed, s.zone.run_speed * campaign.speed_multiplier(1)),

@@ -68,6 +68,7 @@
 		{ "id": "golden_boss_screens", "trigger": "boss:golden_boss/screens", "text": "Screens crash down from the vault! Each red square marks where one lands: weave out of any square in your lane into a clear one. The screens that crash on The Magnate hurt him." },
 		{ "id": "pickup_armor", "trigger": "pickup:armor", "text": "Armor pickup ahead: run through it to get your armor back at once. Armor blocks enemy attacks and electric shocks." },
 		{ "id": "pickup_shield", "trigger": "pickup:shield", "text": "Shield pickup ahead: run through it. A shield blocks one hit of anything." },
-		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." }
+		{ "id": "pickup_grapple", "trigger": "pickup:grapple", "text": "Grapple pickup ahead: run through it. The grapple hook saves you from one fall." },
+		{ "id": "volleyball", "trigger": "minigame:volleyball", "text": "Beach volleyball! A ring on the sand shows where the ball comes down: switch lanes to get under it ({move_left} / {move_right}) and jump ({jump}) as the closing ring meets it to hit it back. Keep the rally going to win the point. Every point you win pays credits." }
 	]
 }

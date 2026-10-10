@@ -136,7 +136,8 @@ func configure(s: CampaignStep, lane_count: int, difficulty_tier: int = 0) -> Le
 ## A feature left out of some levels in between (manhole screeches outside street zones) still
 ## counts from its first level. A level on the curve counts the levels on it (their places, level_index) and
 ## leaves out the levels off it (LevelConfig.off_curve, task D10c), so the levels after the Beach keep their
-## ages; a level off the curve counts every level before it, in the order they're played.
+## ages; a level off the curve counts every level before it, in the order they're played, but a mini-game level
+## (LevelConfig.minigame: the Beach's volleyball match, which is off the curve and has no features).
 func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 	var out: Dictionary[String, int] = {}
 	if s == null or s.level == null:
@@ -144,9 +145,11 @@ func feature_ages(s: CampaignStep) -> Dictionary[String, int]:
 	for f: String in s.level.features:
 		out[f] = 0
 	if s.level.off_curve:
+		# A mini-game level (the Beach's volleyball match) places no features, so it counts as no level ago: Sunset
+		# Strip, after it, keeps the ages and recency it had before it was added.
 		var before: Array[CampaignStep] = []
 		for other: CampaignStep in steps():
-			if other.is_level() and other.index < s.index:
+			if other.is_level() and other.index < s.index and not other.is_minigame():
 				before.append(other)
 		for i: int in before.size():
 			for f: String in before[i].level.features:

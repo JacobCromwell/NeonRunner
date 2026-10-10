@@ -59,6 +59,10 @@ var wall_gaps: Array[Dictionary] = []
 var rules: GameRules
 var god_mode: bool = false
 var running: bool = false
+## A mini-game's hold on the run (MiniGame; the Beach's volleyball match, whose runner walks up to the court and
+## plays on the spot): the runner moves along the track at this speed (m/s) instead of the run's own, boosts and
+## the dash's bonus included, while lanes, jumps and slides work as usual. Below 0: the run's own speed.
+var speed_override: float = -1.0
 
 # Protection, set from the run's loadout (GDD §8). Breakable items are single charges.
 ## The armor (GDD §4, §8): up or coming back; its rules are DamageRules.Armor's.
@@ -188,6 +192,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	distance = 0.0
 	elapsed = 0.0
 	speed = tuning.run_speed
+	speed_override = -1.0
 	lane = start_lane
 	_x = geo.lane_x(lane)
 	_switch_t = 1.0
@@ -426,6 +431,8 @@ func _physics_process(delta: float) -> void:
 	# A ramp's boost and a speed pad's fade away the same way (GDD §3).
 	_boost = tuning.boost_left(_boost, delta)
 	speed = tuning.run_speed + tuning.speed_gain_per_minute * elapsed / 60.0 + _boost + _dash_bonus
+	if speed_override >= 0.0:
+		speed = speed_override
 	var motion: float = speed * delta
 	distance += motion
 
