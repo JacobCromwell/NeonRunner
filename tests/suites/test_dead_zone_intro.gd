@@ -104,8 +104,10 @@ func _test_slot() -> void:
 	for step: CampaignStep in App.campaign.steps():
 		ids.append(step.id)
 	var at: int = ids.find("dead_zone/intro")
-	check(at > 0 and ids[at - 1].begins_with("corporate/") and ids[at + 1] == "dead_zone/1",
-		"it comes after the Corporate zone and before Dead Zone 1")
+	# The Beach (zone 6, task D10c) comes between the Corporate zone and the Dead Zone, so its outro, the cinematic
+	# that will show what put the runner in the crater, comes right before this one.
+	check(at > 0 and ids[at - 1] == "beach/outro" and ids[at + 1] == "dead_zone/1",
+		"it comes after the Beach's outro and before Dead Zone 1")
 	var seq := (load(SCENE) as PackedScene).instantiate()
 	check(seq is DeadZoneIntro and (seq as DeadZoneIntro).numbers != null, "its scene is a DeadZoneIntro with its numbers")
 	seq.free()

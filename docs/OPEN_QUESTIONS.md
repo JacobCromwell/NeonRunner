@@ -14,6 +14,7 @@ numbered items stay in place even when answered, because code comments and the o
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - The House (Marketplace boss): revisit after playtesting (GDD §10).
+- The Beach's boss: to be designed (owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created"; GDD §10, task E5e; item 575 in §D).
 - The Golden Convergence (the final villain): designed with the owner and built on October 9, 2026 (GDD §10, task E5d). The owner's review of the parts Claude filled in under the owner's mandate, and the build's placeholders, are items 416–503 in §D below.
 
 ### 3. Player character
@@ -3808,3 +3809,189 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
       (the Marketplace 2.4-2.8 ms then, 3.2-3.9 now; the pre-merge tree runs equally slowly today, so main did not
       cause it). A greybox build is mostly node creation, a GDScript-heavy skin build is not, so the load factor
       cannot see this. A reference that builds a skin-sized mesh in GDScript would.
+
+**The Beach: its skin** (from D10; GDD §5, Zone 6 (zone 5 when it was added, before the Casino's zone 4 joined main); the owner's reference `docs/art/reference/beach_zone.jpg`; numbers in `data/skins/beach_skin.tres`, `BeachSkin`; review with `tools/showcase/skin_review.tscn -- --skin=beach`, with `--open` for the open walls and `--sky=beach_sunset`, and `splash_review.tscn`)
+538. **Its place in the campaign.** The recommendation was between Corporate and the Dead Zone (zone 5 then): it breaks up the
+    two night zones that ran back to back, has 11 enemy types to remix by then, keeps the sandy zones apart, and
+    keeps the Dead Zone's ruins straight into the Golden Zone's opulence and its pools away from the Golden Zone's
+    canals. **Answered (owner, October 9, 2026):** between Corporate and the Dead Zone, zone 6 now that the Casino is zone 4 (GDD §5; items 569–579).
+539. **The pool water doesn't glow.** The reference's pools glow turquoise, too close to the anti-grav pads' glowing
+    cyan. Placeholder: deep, unlit teal (`water_color`, `PAT_BEACH_WATER`) with unlit glints, everything inside a
+    pool at most 40% of the darkest floor's luminance, so a pool reads as a hole like every gap; the turquoise stays
+    in the sea on the horizon. Should the water carry a faint glow after all (a violet or blue rim, say), at the cost
+    of reading less like a gap?
+540. **Decorative neon in violet, blue or warm white only.** The reference's neon is pink, yellow, cyan, green and
+    orange, all hazard hues. Placeholder: `neon_violet`, `neon_blue` and `neon_white` (`PAT_BEACH_NEON`), the only
+    decorative glows besides lamps and the cult's emblem and feed.
+541. **String lights and lanterns.** The reference's string lights and lanterns glow in many colours. Placeholder:
+    string lights glow warm white, blue or violet; paper lanterns are unlit shells in muted colours
+    (`lantern_shell_colors`) with a warm-white glow inside; bunting and flags are unlit and muted.
+542. **Pool frames are flush.** The reference's tanks stand proud of the sand; a raised rim would read as an obstacle
+    that isn't there (GDD §3). Placeholder: the tank is sunk flush, with a dark steel coping beside the usual orange
+    edge so it pops against the sand. Should a pool have a low frame that stands a little proud?
+543. **No words on signs.** Placeholder: wordless silhouettes (a sun, waves, a palm, a surfboard, a flamingo, a
+    cocktail glass, a tiki totem). **Answered (owner, October 9, 2026):** "keep the wordless signs as they are."
+544. **Time of day.** Placeholder: a bright tropical afternoon (`night_sky.gdshader`'s uniforms: a blue zenith, white
+    cumulus, a turquoise sea and a low palm island; the lit walls lifted by `bc_daylight`). **Answered (owner,
+    October 9, 2026):** the first level in daylight; the last with "the sun starting to set. Not dark, but the sun's
+    starting to have some purples and oranges in the sky." No existing sky fitted (the Marketplace's sunset and the
+    City's dawn are night-dark overhead, with stars), so `data/skies/beach_sunset.tres` is the Beach's own, on
+    Sunset Strip (item 558).
+545. **The cyborgs' look** (`enemy_variant`; no new enemy assets). **Answered (owner, October 9, 2026):** "reuse one
+    of the existing cyborg looks, whatever fits the theme of this zone the best." The orchestrator picked
+    `&"casino"`, the Casino Mob Enforcer: a mob running the bars and lounges, and the Barnacle Turret's furry
+    creature look (barnacles at the beach). The base (`&"city"`) or the ceremonial enforcer (`&"golden"`) would fit
+    too, if the owner prefers.
+546. **The pools' depth.** Six metres down, the water hid behind the near edge from the game camera, and every pool
+    read as a black pit. **Answered (owner, October 9, 2026):** "it's pretty good as it is", the water may sit a
+    little closer to the rim, and a fall makes a splash (item 559). `pool_depth` is 0.45 m (range 0.4–1.2, above the
+    grapple's `pit_depth` of 0.35 m, so a grappled runner never reaches the water). A fall sinks out of sight into
+    the opaque water; the chase camera stays 2.4 m above the floor even at the 4 m fall death. A shallower pool
+    still (0.4 m) stays an option.
+547. **The ceilings.** Placeholder: three kinds, by relative weight (`footbridge_weight` 3, `veranda_weight` 3,
+    `barge_weight` 2): a boardwalk footbridge across every lane, a veranda deck reaching one wall, and a hovering party
+    barge (any width; engines in a pale violet-blue). The reference shows only decks and verandas. OK?
+548. **The doodads.** Placeholder: a surfboard rack (small), a beach cabana or a palm in a planter (medium, by
+    `look_seed`) and a tiki bar kiosk (large); none has a face, so none reads as a cyborg. OK?
+549. **Boardwalk against sand.** Placeholder: sand with boardwalk runs over some lanes (`boardwalk_share` 0.2, runs of
+    one to three 12 m slots), flat throughout; the reference has a boardwalk deck only along the buildings. More or
+    less boardwalk?
+550. **The wall-run marks** (GDD §3). Placeholder: 3.6 cm lines at 2 m and 4 m in a slightly darker shade of the wall
+    (`wall_mark_color`, a multiplier of about 0.7), like the Marketplace's. Readable enough in play?
+551. **Colour at street level.** Placeholder: seven bamboo tones; in the wall-run band, painted doors and shutters in
+    muted turquoise, coral and mustard (never a glassy blue, which reads as a window), surfboards painted flush on the
+    wall, painted boards and murals; above 8 m, paper lanterns and unlit striped awnings across the verandas'
+    openings. All muted (chroma at most 0.5), flush or recessed in the band; the reference's sloping awnings over
+    the street are left out (nothing hangs out more than 0.25 m below 12 m). More colour, or less?
+552. **The wall-run band.** Placeholder: below 7.2 m (`band_top`) the shacks' faces are flush (bamboo, mats, planks,
+    rusty sheets, shut shutters, wordless posters, painted boards), and the decoration (verandas, thatch, tiki masks,
+    lanterns, signs, tanks) starts at 8 m (`decor_min_height`). The reference's decoration is all at street level,
+    where it would break the band's calm (GDD §3).
+553. **The hazard sign and fence.** Placeholder: the usual yellow/black frame around a painted surf or bar sign, and
+    the usual pink field between bamboo-wrapped steel posts in sand-filled drums: the Beach's reading of the
+    cross-zone hazard language, no new shapes.
+554. **The cult** (GDD §5). Placeholder: the emblem on some neon signs, roof billboards and the barge's hull (never
+    under 0.9 m, never a hazard colour); the feed on TVs behind some upper-deck bars and on roof billboards, never in
+    the wall-run band. Shares: `emblem_share` 0.4, `feed_tv_share` 0.35, `feed_board_share` 0.3.
+555. **What is past an open wall** (the owner, October 9, 2026: "the player can see the surrounding area a little bit
+    better"). Placeholder (`BeachSkin.wall_gap`, `BeachOpen`): the standard gap marks (the orange lip, the dark end
+    slabs, the orange stripes), then a shore 1.4 m below the street (`beach_drop`): sand, a wet band, a foam line,
+    shallows and the sea in three blues, the waterline swinging 16–64 m out, the island on the horizon. Nothing there
+    is solid. The colours (`wet_sand_color`, `foam_color`, `sea_*_color`) are guesses. OK?
+556. **What stands on that beach.** Placeholder: palms, beach umbrellas with loungers, surfboards stuck in the sand
+    and now and then a thatched hut (`open_palm_share` 0.5, `open_umbrella_share` 0.4, `open_board_share` 0.3,
+    `open_hut_share` 0.45 of 12 m cells), all dry, at least 9 m from a gap's ends and from the wall line
+    (`open_margin`, `open_near`). Left out: people, boats, nets, ropes, volleyball courts, fires (anything that could
+    read as a hazard or a citizen). Add any?
+557. **The shacks at a gap's ends** are closed with a timber gable (`BeachShacks.gap_end_cap`) over the standard dark
+    slab; alcoves and items that would straddle a gap's end are left out. Known limit: `feed_boards()` and
+    `cult_emblems()` don't know about gaps, so they may list an item a shack dropped there (only `skin_review`'s
+    close-ups read them).
+558. **The sunset's colours** (`data/skies/beach_sunset.tres`, on Sunset Strip). Placeholder: a periwinkle zenith, a
+    peach horizon, a violet-pink haze, an orange sun glow, orange and pink clouds over lavender shadows, no stars,
+    a warm fog, at least three times as bright overhead as the Marketplace's sunset and under the glow threshold;
+    the street's light warmed by `scenery_tint` (1, 0.88, 0.8), G8's rule. Warmer, pinker, darker?
+559. **The splash** (the owner, October 9, 2026: a fall makes a splash, "if that isn't too difficult"). Built
+    (`BeachWaterWatch`, `BeachSplash`): a foam crown, 30 droplets and two spreading rings, off-white and unlit, for
+    1.2 s, with a `splash` sound (`-4.5 dB`, generated). It plays out before and through the death screen's
+    lead-in. Only the runner splashes. Should enemies falling into a pool (an Octodog baited into a gap, an Enforcer
+    wreck) splash too? A bigger or louder splash?
+
+**The Beach: open side walls** (from D10b; the owner, October 9, 2026: the side walls should "appear about 50% of the time that they are now ... much longer sections where there aren't sidewalls"; numbers in `data/tuning/beach_wall_gaps.tres`, F6 "Wall gaps" in a Beach level; `LevelConfig.wall_gap_tuning` and the coverage mode in `WallGapPlacement`)
+560. **How much of each wall opens.** Placeholder: `coverage_target` 0.52, so each wall stands on about 48% of its
+    level, against 96–100% elsewhere. A wall never opens through what it must keep (a ramp's launch and longest wall
+    run, signs, wall fences, wall enemies, ceilings reaching it, wider floor gaps, the run-up and the end), so a busy
+    wall stands more: measured with the campaign's settings, 107 of 108 walls stand on 40–60% (median 49%) over the
+    levels' own seeds and others, and a few busy ones up to about 65%. Is about half right in play, and should a
+    busy wall in the Beach carry fewer wall pieces instead?
+561. **Both walls open at once** (the widest view, nothing to run along). Placeholder: `both_open_max` 0.3, at most
+    30% of a level (measured 15–30%). OK?
+562. **The shortest open stretch, and the shortest stretch of wall standing again.** Placeholder: 2 s each
+    (`open_seconds_min`, `solid_seconds_min`; 48 m at 23.8 m/s), so the walls never flicker. Open stretches run 48 m
+    to about 860 m (median about 117 m), most of the open length in stretches of 100 m and more.
+563. **The longest open stretch.** Placeholder: no limit; up to about 860 m (36 s) on other seeds, and both walls open
+    for the first 23 s of Tiki Tides at 5 lanes. Should a long one be broken up by a stretch of wall?
+564. **A narrower clearance around what a wall holds.** Placeholder: `clear_seconds` 0.35 s (about 8 m) around signs,
+    wall fences, wall enemies and ceilings, against the shared 0.5 s, so more of each wall can open; the margins
+    that time a wall run (around a ramp and a wall enemy) stay the shared ones. Is 8 m of wall enough?
+565. **The Beach's features** (GDD §5). Placeholder: Corporate 2's list on both levels, a remix of everything before
+    the Beach, introducing nothing; it keeps the Tithe Collector and the wall-vent screeches (no manholes in sand).
+    **Answered (owner, October 9, 2026):** "Do not worry about any new enemies at this time": the Beach is GDD §5's
+    one exception for now.
+566. **Its mix.** Placeholder: no `feature_weights` (Corporate 2's heavier military presence stays Corporate 2's).
+    Without it, one build in 54 on other seeds had no Enforcer Truck (it only comes where a bait's chase has room);
+    every build on the levels' own seeds has one. OK?
+567. **Lengths, density and seeds.** Placeholder, like their neighbours: 145 and 150 s, `danger_density_increase` 0.31
+    and 0.33 (Corporate 2 0.29, Dead Zone 1 0.37), two wider gaps, one cyborg in a charge's path, doodads 0.7, half
+    the ceilings narrow, Corporate's credit settings; seeds 801 and 802 (701 and 702 until the Casino took them).
+568. **D10b's other placeholders** (its place, difficulty, names, music, boss and cinematics, and a way to play it
+    outside the campaign) are answered or replaced by the owner's decision of October 9, 2026: items 569–579.
+
+**The Beach joins the campaign** (from D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone. Keep in mind that there will be a boss battle for the beach, but it has not yet been created. Do not worry about any new enemies at this time. Create level names that fit the theme."; GDD §5, §6 and §10; `data/campaign/campaign.tres`, `data/zones/beach.tres`, `data/levels/beach_1.tres` (Tiki Tides) and `beach_2.tres` (Sunset Strip); play `--level=beach/1`)
+569. **Off the curve, or the curve re-spread over 19 levels?** (GDD §6: each level slightly harder than the last; the
+    owner, October 9, 2026: no level gets easier when levels are added.) Placeholder: both Beach levels are off the
+    campaign's difficulty curve (`LevelConfig.off_curve`, `Campaign.configure`): the curve (task K4's, exponent 0.79,
+    re-spread when the Casino joined) runs over the other 17 levels, which keep exactly the difficulty, enemy
+    scaling, run speed, feature ages and recency they have on main (every layout byte-identical at 3, 5 and 6 lanes),
+    and the Beach plays at its own numbers, so no level gets easier. Should the curve be re-spread over all 19 later,
+    as it was for the Casino (every level from City 2 on would move, the later ones harder)?
+570. **The Beach's own difficulty and enemy scaling.** Placeholder: difficulty 0.71 and 0.72, enemy scaling 0.71 and
+    0.73, strictly between Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on main's curve, rising
+    (they were 0.63-0.69 against the 15-level curve before the Casino); a harder tier adds its bonus as for any
+    level. The right feel for a remix between the two?
+571. **Feature ages and recency** (the recency curve). Placeholder: the Beach's levels count every level before
+    them, so their newest things (the Tithe Collector and the Enforcer Truck) get the most picks; the levels after
+    the Beach count only the levels on the curve, so the Dead Zone's and the Golden Zone's picks are unchanged.
+572. **The completion bonus.** Placeholder: the Beach's levels share Corporate 2's place on the curve
+    (`CampaignStep.level_index`), so they pay Corporate 2's bonus (325), and the later zones' bonuses are unchanged.
+    `level_index` is now a place on the curve, not a play order. Should the Beach pay more, as levels 13 and 14 in play order?
+573. **The economy with two more levels.** A clean run now banks about 1,650 more credits before the Dead Zone, so
+    the Heavy missile becomes affordable at Dead Zone 1 instead of Golden 1. Rebalance in R7?
+574. **Continue for a save from before the Beach.** Placeholder (the existing rule, unchanged): a save that had
+    reached the Dead Zone keeps everything it had open, and its Continue offers the Beach's intro, the first step
+    it hasn't done. Should it carry on where it was instead?
+575. **The boss** (GDD §10: "there will be a boss battle for the beach, but it has not yet been created"; task E5e,
+    blocked on design). Placeholder: `data/bosses/beach_boss.tres`, "The Beach's boss", unbuilt: the campaign shows
+    its placeholder card and passes through it to the Beach's outro and the Dead Zone, with no stars. Its fight,
+    name and payout are to be designed. When it's built, `test_app_flow` and `test_screens` need another unbuilt
+    stand-in for their placeholder-card checks.
+576. **The cinematics** (GDD §6). Placeholder: `beach_intro.tres` ("The Beach") plays the arrival flyover in the
+    Beach's look, its card "ZONE 6 · Beach"; `beach_outro.tres` ("Last light") is a placeholder card (after the
+    boss, as the sun goes down, heading for the Dead Zone); Corporate's outro card now heads for the Beach. The
+    beats are still to come; the Dead Zone and the Golden Zone now show as zones 7 and 8 on their cards. The Dead
+    Zone's intro (task F2c, GDD §6) opens on the runner lying in a smoking crater, put there by "a cinematic before
+    this one": with the Beach in between, that is now the Beach's outro, not Corporate's.
+577. **The music** (no new songs for now). Placeholder: the zone's track `beach` (`data/audio/music_library.tres`;
+    `MusicLibrary.zone_tracks`) borrows the Marketplace's, the most festive: its generated loop in the cinematics
+    (and the boss fight, once built), the owner's Jackpot Plaza in the levels, and its level-complete riff. No other
+    zone's mapping changed (the owner's song files still say `Zone_5_` and `Zone_6_` for the Dead Zone's and the
+    Golden Zone's; nothing reads the number). Which song should the Beach play?
+578. **The zone's line and speed.** Placeholder: the tagline "Bamboo tiki bars and surf shops on a sandy lane down to
+    the sea." and 23.8 m/s, between Corporate's 23.4 and the Dead Zone's 24.2.
+579. **The Buzz Overdrive's zones** (GDD §9.9 named the Corporate zone and the two after it). The Beach's remix has it
+    too, its rev a little shorter than Corporate 2's (it follows the level's enemy scaling). **Updated:** GDD §9.9
+    now names the Beach, which follows from the owner's placement and the remix.
+
+**The Beach: from the review before merge** (task D10c's review, October 9, 2026)
+580. **The hover truck's roof route on an open wall** (GDD §9.3). Its route (b) onto the roof runs along the wall, so
+    it isn't there wherever that wall is open; route (a), the ramp, is kept (a ramp's wall run always stands). With
+    the Beach's walls standing on about half of a level, route (b) is missing more often there. Fine, or should a
+    hover truck's stretch keep its wall?
+581. **Wall ends near a pool.** With the Beach's open walls, a wall run ends often: 0–4 of the 16–24 wall ends in a
+    build have a pool in the outer lane within 15 m of them, so a runner dropping off there must jump at once. That
+    follows the existing rule (the outer lane beside a wall gap is deliberately not kept clear: players read gaps
+    coming). Keep it, or keep a landing clear after a wall end in the Beach?
+582. **Turquoise doors at the pads' hue.** Some painted doors and shutters in the Beach's wall-run band are a muted
+    turquoise at the anti-grav pads' hue (180°). They're unlit and far less saturated, so within the colour rule.
+    Fine, or shift them toward teal-green or sea blue?
+583. **The Bad Dream's escape rule ignores wall gaps** (`BadDream._escape_open`, `scripts/enemies/bad_dream.gd`). It
+    has the same blind spot the hover truck's had (fixed in D10c's review): it counts the wall beside a player as a
+    way out even where a side wall gap leaves no wall, and a move onto the wall there is refused. It can't happen in
+    the Beach (no hosts), and on main's levels only where a rare short gap meets a Bad Dream's chase. Placeholder:
+    unchanged. Fix it in a follow-up task?
+
+584. **The Beach's cyborgs and the Casino's** (task D10d, after main's Casino zone joined). The Beach wears the Casino
+    Mob Enforcer (`&"casino"`, item 545, chosen under the owner's "whatever fits the theme of this zone the best"),
+    and the Casino zone (4) now wears it too, reusing the Marketplace's. So three zones show it. Keep it on the
+    Beach (a mob running the bars and lounges; the Barnacle Turret's creature look), or switch the Beach to another
+    existing look (the base Static TV Head, `&"city"`, say) so it stands apart?

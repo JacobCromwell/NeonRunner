@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BossDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/boss_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"beach_boss"
+display_name = "The Beach's boss"
+notes = "DESIGN-TBD: the fight is still to be designed (GDD §10; the owner, October 9, 2026: the Beach will have a boss battle, not yet created). It closes the Beach after Sunset Strip, before the Dead Zone."
+armor_rule = true
+armor_delay_min = 15.0
+armor_delay_max = 17.0
+armor_pickups_per_phase = 1

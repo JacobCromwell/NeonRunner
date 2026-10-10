@@ -19,6 +19,9 @@ const BUS: StringName = &"Music"
 ## Tempo of generated loops in beats per minute (4/4). Owner-supplied songs need not list a tempo.
 @export var bpm: Dictionary = {}
 ## Default zone track -> replacement for levels, quick play and endless; cinematics keep the default.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 577): the Beach has no music of its own yet (the owner, October 9, 2026: no new
+## songs for now), so its track "beach" borrows the Marketplace's: its generated loop in `files` (cinematics), Jackpot
+## Plaza here (levels), and the Marketplace's riff in `riff_tracks`.
 @export var zone_tracks: Dictionary = {}
 ## Boss id -> replacement for that fight only. Unmatched bosses keep their default track.
 @export var boss_tracks: Dictionary = {}

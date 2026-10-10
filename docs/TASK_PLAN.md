@@ -216,6 +216,9 @@ Each skin covers:
 | D7 | **Cult symbol options** | – | S | T3 |
 | D8 | **Music for the four new zones** | – | M | T2 |
 | D9 | **The cult's feed and emblem in the City and Gangland skins** | D2 | S–M | T2 |
+| D10 | **Beach zone skin** (not in the campaign yet) | D2 | L | T2 |
+| D10b | **The Beach's levels: open side walls and a provisional zone** (core; not in the campaign yet) | D10 | M | T1 |
+| D10c | **The Beach joins the campaign** (core; zone 5, between Corporate and the Dead Zone) | D10b | M | T1 |
 
 **D1: Gangland update.** The owner's direction is browns and tans, lived in, graffiti and plenty of signs of life, with hints that corporate and military interests fund the gangs. Ceilings are the undersides of decaying or bombed-out buildings and overpasses, instead of today's scavenger barge.
 
@@ -264,6 +267,24 @@ Each skin covers:
 - The Marketplace skin (D2) builds the feed as a shared piece: the same wordless broadcast on billboards, ads and shop-window screens in every zone. Skins built after it include the feed and the emblem from the start.
 - D9 adds the feed to the City and Gangland, and the hidden emblem to the City (Gangland already has it).
 
+**D10: Beach zone skin** (the owner's request of October 9, 2026; the reference image is `docs/art/reference/beach_zone.jpg`).
+- A skin only (`BeachSkin`, `data/skins/beach_skin.tres`, shown with `--skin=beach`): the owner hasn't placed the Beach in the campaign yet (it won't be the last zone), so there is no zone definition, level, campaign entry, music or cinematic, and `test_campaign` still pins six zones.
+- The gaps are pools of water. No new enemy assets: the skin reuses an existing look (`enemy_variant`: the Marketplace's `&"casino"`, the owner leaving the pick to us). New background, floors, walls, ceilings, signs, fences and doodads in the reference's style (a sandy street running to a turquoise sea and a palm island, bamboo shacks and tiki bars under thatch, black rust-streaked steel tanks).
+- It keeps the colour rule where the reference breaks it (no glowing water, decorative neon in violet, blue and warm white only, flush pool frames, no words on signs): the departures are `docs/OPEN_QUESTIONS.md` items 505–509.
+- Shader patterns 80-89 (`kit_beach.gdshaderinc`), the same hooks and budget test as every skin (`test_beach_skin`), the cult's emblem and feed.
+- The owner's answers of October 9, 2026 are built (`docs/OPEN_QUESTIONS.md` items 509–525): the enemy look is `&"casino"`, the water sits 0.45 m under the rim and a fall makes a splash (`BeachWaterWatch`, `BeachSplash`, the `splash` sound), `data/skies/beach_sunset.tres` is the sunset sky for the zone's last level, and an open stretch of side wall shows a beach and sea (`BeachSkin.wall_gap`, `BeachOpen`). How often the walls open is D10b's tuning, not the skin's.
+
+**D10b: the Beach's levels: open side walls and a provisional zone** (core: the wall-gap placement and level and zone data; the owner, October 9, 2026: "have them appear about 50% of the time that they are now currently appearing for this zone", in "much longer sections where there aren't sidewalls").
+- A level's own wall-gap tuning (`LevelConfig.wall_gap_tuning`, `WallGapPlacement.tuning_for`; null is the shared file, so every existing level builds byte for byte as before), read by the placement and the F6 panel's "Wall gaps" group.
+- Open walls (`WallGapTuning`'s Open walls group, `data/tuning/beach_wall_gaps.tres`): each wall opens what its keep-outs leave free in stretches of 2 s and more, then stands again down to 52% open, both walls open at once on at most 30% of the level. Every keep-out still holds.
+- A provisional zone outside the campaign (`data/zones/beach.tres`, `data/levels/beach_1.tres` and `beach_2.tres`, set up for the recommended slot after Corporate), played with `--level=beach/1` as quick play (`ZoneDef.standalone_level`, `App.start_zone_level`). `test_beach_levels` holds both levels to the campaign's fairness checks and the open walls' targets; its placeholders are `docs/OPEN_QUESTIONS.md` items 526–534.
+
+**D10c: the Beach joins the campaign** (core: the campaign, zone and level data and `Campaign`; the owner, October 9, 2026: "put the beach between the corporate and dead zone. Keep in mind that there will be a boss battle for the beach, but it has not yet been created. Do not worry about any new enemies at this time. Create level names that fit the theme").
+- The campaign runs City, Gangland, Marketplace, Corporate, **Beach**, Dead Zone, Golden Zone (`data/campaign/campaign.tres`); the Beach's steps are its intro (the arrival flyover), Tiki Tides, Sunset Strip, its boss slot and its outro (a placeholder card). 17 levels, 7 boss slots.
+- Every other level and boss stays exactly as it was: the Beach's two levels are off the difficulty curve (`LevelConfig.off_curve`), at their own difficulty and enemy scaling between Corporate 2's and Dead Zone 1's, and the curve, the completion bonuses, the feature ages and the recency of the other 15 levels are unchanged (every layout byte-identical at 3, 5 and 6 lanes).
+- The boss slot (`data/bosses/beach_boss.tres`) is a placeholder the campaign passes through (E5e builds the fight once it's designed); placeholder cinematics (`beach_intro.tres`, `beach_outro.tres`); the zone's music track `beach` stands in on the Marketplace's (no new songs). No new enemy: a remix of everything before it.
+- `--level=beach/1` is now the campaign step, with the full flow; D10b's fallback for a zone outside the campaign is gone. Questions: `docs/OPEN_QUESTIONS.md` items 535–545.
+
 **D8: Music for the four new zones.** Also, from the owner's review (GDD §11): **the music dips when the player dies**, and **the level-complete riff plays in each zone's key**. Code-generated placeholder loops in the existing style, fitting each zone's mood:
 - Marketplace: happy and bustling
 - Corporate: oppressive
@@ -300,7 +321,7 @@ Added September 26, 2026. The owner reviewed every build placeholder (`docs/OPEN
 | R4 | **Endless mode** (§6). **Core** (track builder, run world). **Deferred** by the owner (September 30, 2026) until the campaign is done. | B5 | M–L | T1 |
 | R5 | **Dead Zone 2's remix** (§5), **the newest features get the most picks**, and **Buzz Overdrive in the Golden Zone** (§9.9). **Core** (generator, level data). | R1 | M | T1 |
 | R6 | **Take the `DESIGN-TBD` markers off approved placeholders** (GDD §12) | a quiet moment | M | T3 |
-| R7 | **Balancing pass** over the 15 levels and the economy | the owner's playtest | M | T2 |
+| R7 | **Balancing pass** over the 17 levels and the economy | the owner's playtest | M | T2 |
 
 **R1: ramps and the blocked wall.**
 - A ramp's speed boost fades away the same way a speed pad's does; the build's placeholder had none (`ramp_speed_boost` is 0). Every generator rule that predicts a ramp's wall run (the credits along it, B5's rule about wall fences after ramps) must include the boost.
@@ -401,6 +422,7 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 | E5b | **Hostile Takeover** (Corporate boss) | B4, B5, B7, B8, C2, C5, D4 | XL | T1 |
 | E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
 | E5d | **The Golden Convergence** (the final villain; designed October 9, 2026) | B4, B7, B8, B9, D6b, heli drone | XL | T1 |
+| E5e | **The Beach's boss** (blocked on design: the owner, October 9, 2026, "there will be a boss battle for the beach, but it has not yet been created") | B7, B8, D10c | XL | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -435,6 +457,8 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 5. **E5d-e:** the owner's playtest of stage 2 (GDD §10, "Owner's playtest (October 9, 2026)", approved the same day): the Claw Slash (`slash`, `slash:double`), the Screen Storm (`screens`: the feed's screens on gold tentacles, a fair plan at every lane count, three screens a storm chipping him), the arena about 30% darker from the transition to his fall, new beat scripts with a shorter beat gap, the stomp easier to read (green chevrons, at least 1.5 s from the stun to the last take-off); six sounds, two hints, showcase scenarios, the bot's readers, tests and new par times. Questions: `docs/OPEN_QUESTIONS.md`, items 491–503.
 
 **Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`). E5d-e, the owner's playtest of stage 2, is built (`test_golden_convergence_slash`, `test_golden_convergence_storm`; the whole fight won again at every lane count and speed, the par times re-measured).
+
+**E5e: the Beach's boss** (blocked on design; GDD §10's roster: "to be designed"). Its slot is `data/bosses/beach_boss.tres`, a placeholder card the campaign passes through after Sunset Strip (task D10c). Once the owner designs the fight, it is built on the boss framework like E5a–E5d, in the Beach's look, with its sounds, warnings, hints, bot and tests, and the slot switches to its `scene`.
 
 ### F. Cinematics
 
@@ -504,6 +528,9 @@ on the cinematic's clock, and sound events at their own level; and five sounds o
 | D8 music | anytime |
 | B9 generators and weapons | anytime |
 | D9 the cult's feed in the City and Gangland | D2 |
+| D10 Beach skin (not in the campaign yet) | D2 |
+| D10b Beach levels: open side walls, a provisional zone (core) | D10 |
+| D10c the Beach joins the campaign (core) | D10b |
 | P2 cyborg base, then P3 variants | P1, then P2 |
 | R2 small rule changes, R3 big attacks take turns | anytime |
 | E5c Sleep Taker | B7, B8, B9 and D5 |
@@ -514,7 +541,7 @@ on the cinematic's clock, and sound events at their own level; and five sounds o
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro and F2c's Dead Zone intro). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro and F2c's Dead Zone intro) and E5e (the Beach's boss). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 

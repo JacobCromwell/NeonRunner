@@ -26,12 +26,15 @@ const AttackWatch = preload("res://tools/measure/attack_watch.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const TruckScript = preload("res://scripts/enemies/hover_truck.gd")
-## The zones' run speeds where it appears (data/zones: Corporate, the Dead Zone, the Golden Zone) and
-## the enemy scaling of each zone's first level there (17 levels since the Casino's two, task K2: level i of
-## the campaign at i/16; _test_numbers checks them against the campaign).
-const ZONES: Array = [["corporate", 23.4, 10.0 / 16.0], ["dead_zone", 24.2, 12.0 / 16.0], ["golden", 25.0, 14.0 / 16.0]]
-## Its levels and how the campaign introduces it.
-const LEVELS: Array[String] = ["corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
+## The zones' run speeds where it appears (data/zones: Corporate, the Beach, the Dead Zone, the Golden Zone) and
+## the enemy scaling of each zone's first level there (17 levels on the campaign's curve since the Casino's two,
+## task K2: level i on it at i/16; the Beach's off the curve, its own, task D10c; _test_numbers checks them against
+## the campaign).
+const ZONES: Array = [["corporate", 23.4, 10.0 / 16.0], ["beach", 23.8, 0.71], ["dead_zone", 24.2, 12.0 / 16.0],
+	["golden", 25.0, 14.0 / 16.0]]
+## Its levels and how the campaign introduces it (the Beach's remix too, task D10c).
+const LEVELS: Array[String] = ["corporate/1", "corporate/2", "beach/1", "beach/2", "dead_zone/1", "dead_zone/2", "golden/1",
+	"golden/2", "golden/3"]
 
 var sim: RunSim
 var rules: GameRules
@@ -169,14 +172,16 @@ func _test_numbers() -> void:
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level() or not s.level.has_feature("buzz_overdrive"):
 			continue
-		var rev: float = t.rev_at(campaign.level_progress(s.level_index))
+		# The enemy scaling the level plays at (Campaign.level_scaling: its place on the curve's, or its own off it).
+		var rev: float = t.rev_at(campaign.level_scaling(s))
 		shorter = shorter and rev < prev
 		prev = rev
 		revs.append("%s %.2f s" % [s.id, rev])
 	check(shorter and revs.size() == LEVELS.size(), "its rev gets a little shorter level by level (%s)" % ", ".join(revs))
 	for z: Array in ZONES:
 		var first: CampaignStep = campaign.step("%s/1" % z[0])
-		check(first != null and is_equal_approx(float(z[2]), campaign.level_progress(first.level_index)),
+		# Campaign.level_scaling: its place on the curve's, or its own off it (the Beach's).
+		check(first != null and is_equal_approx(float(z[2]), campaign.level_scaling(first)),
 			"%s 1's enemy scaling is %.3f" % [z[0], z[2]])
 	var first_scaling: float = float(ZONES[0][2])
 	check(t.rev_at(first_scaling) >= 2.5 and t.rev_at(1.0) >= 2.0 and t.rev_at(first_scaling) - t.rev_at(1.0) <= 0.8,
@@ -960,7 +965,11 @@ func _test_data() -> void:
 	var length: float = rev.get_length() if rev != null else 0.0
 	var spans: bool = length > 2.0 and length < 2.5
 	var pitches: PackedStringArray = []
-	for scaling: float in [float(ZONES[0][2]), float(ZONES[1][2]), float(ZONES[2][2]), 1.0]:
+	var scalings: Array[float] = []
+	for z: Array in ZONES:
+		scalings.append(float(z[2]))
+	scalings.append(1.0)
+	for scaling: float in scalings:
 		var pitch: float = TankScript.rev_pitch(length, t.rev_at(scaling))
 		spans = spans and absf(length / pitch - t.rev_at(scaling)) < 0.01 and pitch >= 0.8 and pitch <= 1.0
 		pitches.append("%.2f" % pitch)
