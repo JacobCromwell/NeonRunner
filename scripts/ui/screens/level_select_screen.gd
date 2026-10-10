@@ -94,7 +94,7 @@ func _build_zones() -> void:
 
 
 ## Scrolls the list to `target` once the tiles have their layout, `frames` frames from now:
-## follow_focus can't scroll to controls laid out in the same frame, and six zones make a list
+## follow_focus can't scroll to controls laid out in the same frame, and seven zones make a list
 ## several screens long, so a player deep in the campaign would otherwise open it at the top with the
 ## focused step out of sight. (A one-shot connection rather than an await: it simply drops if the
 ## screen is freed first.)

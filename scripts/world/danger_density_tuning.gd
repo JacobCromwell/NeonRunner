@@ -53,10 +53,16 @@ extends Resource
 ## and aren't counted toward it.
 @export_range(0.0, 2.0, 0.05) var obstacle_increase_scale: float = 1.0
 ## The same for wall fences (the wall half, DangerDensity.apply_wall_fences: more of them where the wall
-## fences' own rules let one stand, after the level's own are placed); 0 adds none. The data asks a
-## quarter more (1.25): the wall fences' own spacing leaves fewer fair spots than the dial asks for,
-## so with 1.0 the final zones' wall fences rose only about 26% at 3 lanes, with 1.25 about 20% to 36%
-## by lane count (tools/measure/danger_density.gd). Their own rules still decide every spot.
+## fences' own rules let one stand, after the level's own are placed); 0 adds none. The data asks more than
+## the dial: the wall fences' own spacing leaves fewer fair spots than the dial asks for, so with 1.0 the final
+## zones' wall fences rose only about 26% at 3 lanes, with 1.25 about 20% to 36% by lane count
+## (tools/measure/danger_density.gd). DESIGN-TBD, 1.9 (task K5; docs/OPEN_QUESTIONS.md §D, item 534, with open question 521):
+## it adds wall fences only, 447 to 505 over the campaign levels' own builds (from Marketplace 2 on), as the owner
+## finds every level too easy (docs/USER_REQUESTS.md); it makes no room the floor lacks. With the Enforcer Truck's
+## showing windows (task C6e), which the pass's rows keep off, test_danger_density's 3-seed sample of the final
+## zones at 3 lanes has 28.8% more obstacles at 1.25 and 30.6% at 1.9, over the band's 30% floor only with it;
+## over 7 seeds (each level's own and 9001-9006) they have 30.2% and 31.9%, and their enemies 30.2% either way.
+## Their own rules still decide every spot.
 @export_range(0.0, 2.0, 0.05) var wall_fence_increase_scale: float = 1.0
 ## Whether a planned Resonator's attack is its pulses one by one (DangerDensity.resonator_pulse_windows:
 ## each from its warning until its last wave has passed the player, as the wall fences keep off them),

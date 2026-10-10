@@ -1,15 +1,17 @@
 class_name TheHouse
 extends BossEncounter
-## The House, the Marketplace's boss (GDD §10): "a slot machine the size of a building, rolling down the
+## The House, the Casino's boss (GDD §10; the Marketplace's until the owner added the Casino zone, October
+## 8, 2026, task K2: its fight makes the same random choices, BossDef.seed_id, at the Casino's 23 m/s and
+## enemy scaling 0.5625): "a slot machine the size of a building, rolling down the
 ## market street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous", secretly the
 ## cult's casino (its emblem is worked into the machine's marquee). Task E5a: E5a-a built the machine, its
 ## arena, the spin with its three attacks and their bigger versions, the 7 buttons on the floor, the jackpot
 ## (the credit fountain and the hopper stomped) and weapons chipping it; E5a-b phases 2 and 3 (a button on
 ## a wall with wall fences in play, then one on a ceiling reached by a pad and guarded by Barnacle
-## Turrets), the defeat, the par times and its slot in the campaign (after Marketplace 2, at its 22.6 m/s).
+## Turrets), the defeat, the par times and its slot in the campaign (now after Casino 2, at the Casino's 23 m/s).
 ##
-## The arena (BossDef.arena, data/bosses/marketplace_boss.tres): the Marketplace's stall roofs in its look
-## with nothing hung low over the street where the machine rolls (data/bosses/marketplace_boss_skin.tres),
+## The arena (BossDef.arena, data/bosses/casino_boss.tres): the street in its own look, with nothing hung
+## low over it where the machine rolls (data/bosses/casino_boss_skin.tres: the Casino's look, task K1),
 ## kept plain (_plan_lap: no holes, fences, signs, ceilings, pads, ramps or doodads; DESIGN-TBD), so the
 ## danger is the machine's own: its attacks, phase 2's wall fences (TheHouseWalls) and phase 3's ceiling
 ## with its turrets (TheHouseCeiling).
@@ -43,8 +45,8 @@ extends BossEncounter
 ## still on the track. Nothing depends on how long the fight has lasted; random choices come from `rng`.
 ## The citizens in the shop windows cheer at a jackpot and a stomp and duck at a big attack (D3's
 ## react() on the "market_citizens" group). Distances that stand for a time follow the run's pace
-## (run_pace(): the Marketplace's 22.6 m/s in the campaign). Numbers: TheHouseTuning
-## (data/bosses/marketplace_boss_tuning.tres), all DESIGN-TBD (docs/questions/e5a.md).
+## (run_pace(): the Casino's 23 m/s in the campaign). Numbers: TheHouseTuning
+## (data/bosses/casino_boss_tuning.tres), all DESIGN-TBD (docs/questions/e5a.md).
 
 enum Step { ENTER, PACE, JACKPOT, DEFEAT }
 enum Spin { IDLE, LEVER, SPINNING }
@@ -137,7 +139,7 @@ func _tuning() -> TheHouseTuning:
 
 # --- The arena -----------------------------------------------------------------------------------
 
-## GDD §10's arena, kept plain (DESIGN-TBD, docs/questions/e5a.md): the Marketplace's stall roofs with no
+## GDD §10's arena, kept plain (DESIGN-TBD, docs/questions/e5a.md): its zone's street with no
 ## holes, fences, wall fences, signs, ceilings, pads, ramps, speed pads, doodads, floor cuts or enemies:
 ## the machine's attacks are the danger (phases 2 and 3 add a wall's fences and a guarded ceiling, task
 ## E5a-b).
@@ -201,7 +203,7 @@ func react_citizens(kind: StringName) -> void:
 		get_tree().call_group(CITIZENS, &"react", kind)
 
 
-## Asks for a first-time hint of its own (boss:marketplace_boss/<key>), once a fight.
+## Asks for a first-time hint of its own (boss:casino_boss/<key>), once a fight.
 func hint(key: String) -> void:
 	if _hinted.has(key):
 		return

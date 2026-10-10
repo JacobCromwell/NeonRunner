@@ -375,6 +375,31 @@ static func _ramp_problem(gen: LevelGenerator, t: GildedSentinelTuning, side: in
 	return ""
 
 
+## True if a wall enemy of `type` at track distance `at` on wall `side` (a window cyborg, or a wall vent's
+## Screech: `params` "source" "vent", the default) would stand on one of `gen`'s Sentinels' wall sections,
+## as problem() measures them ("a window cyborg is on its wall section", "a wall vent's screech is on its
+## wall section"). For the passes that add wall enemies after these rules (the danger density pass,
+## DangerDensity._type_rules_ok): they keep off it, as the wall fences do (WallFencePlacement).
+static func on_wall_section(gen: LevelGenerator, type: String, side: int, at: float, params: Dictionary = {}) -> bool:
+	if side != -1 and side != 1:
+		return false
+	var reach: float = 0.0
+	if type == "window_cyborg":
+		reach = _window_cyborg_half_length()
+	elif type != "screech" or String(params.get("source", "vent")) != "vent":
+		return false
+	var t: GildedSentinelTuning = tuning()
+	var v: float = gen.speed
+	for e: Dictionary in sentinels_in(gen.layout):
+		if int(e["side"]) != side:
+			continue
+		var guard: Vector2 = t.guarded_stretch(float(e["at"]), int((e.get("params", {}) as Dictionary).get("swings", 1)))
+		var wall := Vector2(guard.x - t.approach_seconds * v, guard.y + t.wall_clear_seconds * v)
+		if at + reach >= wall.x and at - reach <= wall.y:
+			return true
+	return false
+
+
 ## Half a window cyborg's window along the track (WindowCyborgTuning.window_length).
 static func _window_cyborg_half_length() -> float:
 	var wt := EnemyDirector.tuning_for("window_cyborg") as WindowCyborgTuning

@@ -256,7 +256,7 @@ func _new_board() -> Dictionary:
 	add_child(body)
 	var look := MeshInstance3D.new()
 	look.name = "Look"
-	look.material_override = TheHouseModel.solid_material()
+	look.material_override = TheHouseModel.solid_material(world.skin)
 	look.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(look)
 	var b := {"root": root, "body": body, "shape": box, "look": look, "used": false}

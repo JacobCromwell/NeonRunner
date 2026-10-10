@@ -2,7 +2,7 @@ extends RefCounted
 ## The Golden Zone's cyborg (GDD §9.2, "Zone variants": "derived from the Casino Mob Enforcer by the
 ## art agent"; brief docs/art/BRIEF_CYBORG_GANGSTER.md): the elites' ceremonial enforcer. It is the
 ## Casino Mob Enforcer (casino.gd's build(), the same body, head and drum-fed gun) in the zone's
-## white, cream, red and gold (GDD §5, Zone 6), more opulent and ceremonial:
+## white, cream, red and gold (GDD §5, Zone 7), more opulent and ceremonial:
 ## - a cream suit with pale gold pinstripes over a red shirt, red lapels, the gold breastplate, and a
 ##   red sash from the right shoulder to the left hip in place of the bandolier;
 ## - the cult's Convergent Triad worn openly (GDD §5: shown openly only in the Golden Zone) on a
