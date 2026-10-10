@@ -3669,3 +3669,14 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     pale sky than E5d's orange did. Placeholder: as above (`RIPPLE_GROUP` and the `*_FIRE_SIZE`, `*_FIRE_PACE`
     constants in the Golden Convergence's scripts). Keep the shared look here, or give the shared fireball a darker,
     blended variant for bright backgrounds (every zone would share it)?
+675. **Two dash walls in Dead Zone 1** (GDD §9.14; the danger density request in `docs/USER_REQUESTS.md`; follows
+    items 644 and 672). Past an introduction the walls stand after the danger density pass and take out the plain
+    pieces in their way, so that the share of danger the owner asked for holds. With main's C6e and the H series
+    together, the final levels' sample (`test_danger_density`: Dead Zone 1, Golden 2 and Golden 3 on their own seeds
+    and two others) measured 29.7% more obstacles on 3 lanes, below the 30 to 40% the request was accepted at (main
+    alone 30.1%, the H series alone 30.7%). Dead Zone 1's walls account for it: with three, its builds with the pass
+    hold ten obstacles fewer on 3 lanes than with no walls (319 against 329), while with two they hold as many as with
+    none, and its builds without the pass lose nothing either way. Placeholder: `dash_walls` 2 in
+    `data/levels/dead_zone_1.tres` (was 3), at every lane count, and the sample measures 31.0% (34.2% on 5 lanes,
+    36.5% on 6). Or should Dead Zone 1 keep three, with the final levels' dials raised instead (Golden 3 at the 0.40
+    cap measures 30.4%), or should the measure count a wall in place of the pieces it took out?

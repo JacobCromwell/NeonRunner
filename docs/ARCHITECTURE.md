@@ -2291,7 +2291,10 @@ count of 0 (or without the feature) is built byte for byte as before. Its header
   there (`wall_keep_outs`, `WallGapPlacement.keep_outs`; the wall fences' drop windows keep off the footprint).
 - **How many, and where**: up to the level's count, spread through the level past an introduction (a part each, a
   seeded spot aimed for, the best fair spot in the part), then the best of the rest; where that leaves a crowded
-  level short, the most that fit, as far apart as they can be (`_most_apart`). Corporate 1 (`feature_starts`, 0.42)
+  level short, the most that fit, as far apart as they can be (`_most_apart`). A level asks for no more than its
+  track holds on its most crowded lane count, nor more than leave the danger density pass its share: Dead Zone 1
+  asks two, since its third cost the pass ten pieces on 3 lanes and the final levels fell below their share
+  (`docs/OPEN_QUESTIONS.md` items 672 and 675). Corporate 1 (`feature_starts`, 0.42)
   introduces them first, at the first fair spot from the start; where none comes within `intro_window_seconds` the
   introduction makes room (`_make_room`): the face there the fewest enemies of `MAKE_ROOM_TYPES` block (a Buzz
   Overdrive with its cut, a fence generator, a cyborg, a window cyborg, a screech; anything else blocking rules a
