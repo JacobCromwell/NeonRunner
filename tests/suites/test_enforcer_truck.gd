@@ -44,8 +44,8 @@ const SPEEDS: Array[float] = [23.4, 23.8, 24.2, 25.0]
 ## lanes and Dead Zone 2 at 5 and 6. (On the 15-level curve C6e was built on: Corporate 2 at 5, Dead Zone 1 at 3,
 ## Dead Zone 2 at 5 and 6. Corporate 2 at 5 lanes and Dead Zone 1 at 3 now have item 402's case instead: one truck,
 ## showing itself before its bait, where a second truck's chase would overlap its own.) The Beach (zone 6, task D10d,
-## seeds 801 and 802): Tiki Tides at 5 lanes.
-const BOTH_TRUCKS: Array = [["corporate/2", 6], ["beach/1", 5], ["dead_zone/2", 5], ["dead_zone/2", 6]]
+## seeds 801 and 802): Tiki Tides at 5 lanes, and with the H series (merged with D10) Sunset Strip at 5 lanes too.
+const BOTH_TRUCKS: Array = [["corporate/2", 6], ["beach/1", 5], ["beach/2", 5], ["dead_zone/2", 5], ["dead_zone/2", 6]]
 const VARIANTS: Array[StringName] = [&"city", &"vr_runner", &"burned", &"scavenger", &"golden", &"casino"]
 
 var sim: RunSim

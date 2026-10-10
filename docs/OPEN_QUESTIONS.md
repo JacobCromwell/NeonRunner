@@ -4513,3 +4513,6 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     the tank's steel, as at any pool), so it shows the chunk's water 0.45 m down, where H3 has every other zone's cut
     show its scenery 3 m or more below. Placeholder: as its pools; `test_floor_cuts`' `SHALLOW_BELOW` takes the Beach's
     `pool_depth` as its plane below. Should a Beach cut read as a pool (as now), or open onto something deeper?
+682. **What the Beach merge moved** (notes; not a question): `test_enforcer_truck`'s `BOTH_TRUCKS` (item 401's case,
+    two trucks with room for one showing, both kept) adds Sunset Strip at 5 lanes, with the H series; Tiki Tides at 5
+    lanes stays. The Beach's doodads tag their main colours for the dash's smash (task H5), as every zone's do.
