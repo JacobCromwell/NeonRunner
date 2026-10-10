@@ -14,7 +14,7 @@ numbered items stay in place even when answered, because code comments and the o
 ### 2. Bosses
 For each boss: arena, phases, attacks, weak points, what power-ups are granted before the fight, how it scales on 3 vs 5–6 lanes, and its length.
 - The House (Marketplace boss): revisit after playtesting (GDD §10).
-- The Beach's boss: designed in part with the owner on October 10, 2026 (GDD §10, The Beach's boss: a giant mechanical shark and a pirate bomber, in a climb; task E5e). What's still open is items 683–695 in §D.
+- The Beach's boss: designed with the owner on October 10, 2026 (GDD §10, Mecha Guppy and Captain Cogs; task E5e). The owner's answers are items 683–695 in §D; the small details left, each with a placeholder the build can use, are items 696–699.
 - The Golden Convergence (the final villain): designed with the owner and built on October 9, 2026 (GDD §10, task E5d). The owner's review of the parts Claude filled in under the owner's mandate, and the build's placeholders, are items 416–503 in §D below.
 
 ### 3. Player character
@@ -60,6 +60,7 @@ For each boss: arena, phases, attacks, weak points, what power-ups are granted b
 - **Difficulty tiers:** what changes in the harder tiers (speed, enemy density, lanes, no revives)?
 - **Endless mode rules:** which zones' skins, how difficulty ramps, and whether credits are earned there.
 - **Web demo:** portal-specific end screens if portals restrict store links.
+- **Ceilings too safe in levels** (owner, October 10, 2026): revisit the safe landing rule (GDD §3), item 700 in §D.
 
 ### 9. Narrative
 - The individual story beats and cinematics (the owner will describe them), and the cult's name (the story's outline is GDD §1; the cult's symbol and colour GDD §5).
@@ -3957,8 +3958,8 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     its placeholder card and passes through it to the Beach's outro and the Dead Zone, with no stars. Its fight,
     name and payout are to be designed. When it's built, `test_app_flow` and `test_screens` need another unbuilt
     stand-in for their placeholder-card checks.
-    **Answered in part (owner, October 10, 2026):** a giant mechanical shark and a pirate bomber, in a climb (GDD §10,
-    The Beach's boss). Its name, payout and the rest are items 683–695.
+    **Answered (owner, October 10, 2026):** Mecha Guppy and Captain Cogs, a giant mechanical shark and a flying pirate,
+    in a climb (GDD §10). The owner's answers are items 683–695; its payout is still to be set.
 576. **The cinematics** (GDD §6). Placeholder: `beach_intro.tres` ("The Beach") plays the arrival flyover in the
     Beach's look, its card "ZONE 6 · Beach"; `beach_outro.tres` ("Last light") is a placeholder card (after the
     boss, as the sun goes down, heading for the Dead Zone); Corporate's outro card now heads for the Beach. The
@@ -4520,7 +4521,7 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     two trucks with room for one showing, both kept) adds Sunset Strip at 5 lanes, with the H series; Tiki Tides at 5
     lanes stays. The Beach's doodads tag their main colours for the dash's smash (task H5), as every zone's do.
 
-**The Beach's boss: still to design** (from the owner's design session with Claude, October 10, 2026; GDD §10, The Beach's boss; task E5e)
+**The Beach's boss: the design session** (the owner with Claude, October 10, 2026; GDD §10, Mecha Guppy and Captain Cogs; task E5e)
 683. **The way up: ceilings, to confirm** (GDD §10, The Beach's boss, The climb). The owner proposed two ways up:
     anti-grav pads to ceilings that drop the runner onto higher floors, or side walls standing in the lanes, climbed by
     wall hops from wall to wall. The owner's answers on October 10, 2026 (the wrong ceiling lane, ceiling riders and
@@ -4529,36 +4530,84 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     climb needs the wall system rewritten (walls stand only at the track's two edges, a wall run slides down, and the
     wall hop holds a runner at about 4.5 m but never climbs). A cheap mix: a run up an edge wall, then a wall jump onto
     a higher roof, as onto the Floating Head in its phase 2. Ceilings only, or ceilings with edge-wall steps?
+    **Answered (owner, October 10, 2026):** ceilings only. Nothing for walls in the lanes was built, and the owner
+    doesn't want their cost in time, code complexity and maintenance (GDD §10, Mecha Guppy and Captain Cogs, The
+    climb).
 684. **The name** of the fight, the shark and the pirate.
+    **Answered (owner, October 10, 2026):** the shark is **Mecha Guppy** and the pirate **Captain Cogs**. The fight's
+    own title is item 696.
 685. **Phases and length** (GDD §10: 60–120 seconds; death restarts the fight). How many phases, and what changes in
     each? Claude's suggestion, not decided: phase 1 ceilings, phase 2 edge-wall steps, phase 3 both, each phase a
     little faster, as at the other bosses.
+    **Answered (owner, October 10, 2026):** three phases. Phase 1: the climb, dodging bombs, 4 hits. Phase 2: the same
+    with more bombs and a climb 15–25% faster, 6 hits. Phase 3: the runner reaches the top, level with Captain Cogs,
+    whose ship fires rounds dodged by switching lanes while waves crash over lanes to jump; after a minute of dodging,
+    Mecha Guppy leaps over and eats the captain. Placeholder *(proposed)*: about 20% faster, by bringing the steps closer
+    together (the run speed stays the zone's).
 686. **The bombs' warning** (GDD §3 and CLAUDE.md: every attack has a visual and an audio warning). Reuse the Floating
     Head's (a red target circle where a bomb will land and a falling whistle), with a pirate look on the bombs? How
     many bombs at once, and how often?
+    **Answered (owner, October 10, 2026):** reuse the Floating Head's warning (the red target circle and the falling
+    whistle) in a pirate look.
 687. **Bombs on a ceiling rider** (owner: ceiling riders aren't safe from them). How does a bomb reach a runner hanging
     under a ceiling, and where is its warning drawn (on the ceiling's underside, above the rider's head)? For example,
     the ship flies ahead below the ceiling's line and lobs them in, or the bombs burst through the ceiling.
+    **Answered (owner, October 10, 2026):** for now, a ceiling rider with the ceiling between them and a bomb isn't
+    hurt by it. The owner doesn't want ceilings to be too safe (item 700).
 688. **The shark's bites** (GDD §10: its maw comes up through the floor and eats a huge chunk of the level). Where and
     when does it bite: ahead of the runner, behind them, under floor they've left, under the floor they're on? If a
     bite can catch the runner, it's an attack and needs its warning and a way to dodge (a rumble, churning water,
     cracks spreading). If it only eats floor the runner has left, it kills only a runner who drops back down.
+    **Answered (owner, October 10, 2026):** it eats the floor the runner should have left. A runner who drops off the
+    ceiling in the wrong place falls back down to where it is eating, which kills them. It is mechanical and doesn't
+    glow red (its eyes are item 697).
 689. **How many hits** ("many") end the fight, and does anything else hurt the shark? Weapons chip every other boss,
     and every other boss also has a big hit (a stomp on a glowing red weak point). Is it bombs only?
+    **Answered (owner, October 10, 2026):** phase 1 ends after 4 bomb hits, phase 2 after 6; phase 3 after the player
+    has dodged attacks for one minute. Weapons do no chip damage in this fight.
 690. **The pirate bomber's fate.** Can it be hurt or beaten, or is it out of reach for the whole fight? Does it
     appear in later levels (GDD §5: "Anything introduced earlier keeps appearing later"), or only in this fight?
+    **Answered (owner, October 10, 2026):** Captain Cogs is only in this fight: Mecha Guppy eats the captain at the end
+    of phase 3. The player never hurts the captain.
 691. **The last-ditch saves** (owner: a wall to cling to, or the grapple). The grapple today pulls a runner back up out
     of a pit to the street's level; in the climb it would have to pull them back onto the roof they fell from. A wall:
     GDD §3's entry grace says a runner already falling into a gap can't get onto a wall, but this fight lets a falling
     runner catch one. How late may they catch it, and where do walls stand in the climb? The wall hop (GDD §3) lets a
     runner stay on a wall as long as they like: do the bombs reach wall runners, so a wall isn't a place to wait out
     the fight (item 417's concern)?
+    **Answered (owner, October 10, 2026):** only occasional side walls, here and there, never the climb's full length,
+    as a last-ditch save that should rescue a player about 20% of the time; Mecha Guppy eats them too, like the
+    floors. If that's too complex to build, the fight has no walls.
 692. **Reading the lanes.** On a ceiling, the camera sits under it looking up. How does the player see which lanes
     lead to the higher roof before the ceiling ends: the roof in plain view ahead, a marking on the ceiling, or
     something else?
+    **Answered (owner, October 10, 2026):** either the ceiling lanes that lead up run further than the others, or one
+    or two of the roof's lanes reach further back toward the runner than the others; the two cues alternate.
 693. **The arena's looks.** What forms the ceilings (the Beach's skin uses footbridges, verandas and a party barge)?
     Do the neon signs on the roofs stay out of the lanes as scenery, or stand in lanes as obstacles? Daylight or
     sunset (the fight follows Sunset Strip, whose sun is setting, and comes before the outro, "Last light")?
+    **Answered (owner, October 10, 2026):** the ceilings are tiki huts; the neon signs are scenery only, with no
+    effect on play; daylight. The backdrop is a waterfall in phases 1 and 2 and the Beach's normal one in phase 3.
 694. **3 lanes against 5–6** (lane count is a parameter). How many of a ceiling's lanes lead up on each?
+    **Answered (owner, October 10, 2026):** one ceiling lane leads up on 3 lanes; on 5–6 lanes, one, two or three,
+    alternating. One safe place to drop to is enough.
 695. **Pickups, granted items, rewards and the defeat.** The standard armor rule (15–17 seconds)? What happens to
     the shark and the pirate when the fight is won?
+    **Answered (owner, October 10, 2026):** the standard armor rule. The defeat: Mecha Guppy has eaten Captain Cogs
+    and swims away.
+696. **The fight's title** (GDD §10). The owner named the shark Mecha Guppy and the pirate Captain Cogs. Placeholder:
+    the boss slot, its card and the boss bar read "Mecha Guppy and Captain Cogs". Should the fight have a title of its
+    own?
+697. **Mecha Guppy's eyes** (GDD §10). First pictured as red eyes ("or whatever eyes make sense"); the owner then said
+    the shark is mechanical and doesn't glow red. Placeholder: dark red lenses that don't glow. Do you want another
+    colour, or lit eyes in a colour that isn't red?
+698. **Phase 3's warnings** (GDD §10, Phase 3; every attack has a visual and an audio warning). Placeholder: Captain
+    Cogs' rounds warned by red lines down the lanes they'll hit (the boss's lane warning) with a cannon's charging
+    sound; a wave warned by a rising swell and a roar, jumped like the Resonator's ring (GDD §9.10). Are these right?
+699. **A checkpoint before phase 3?** Death restarts a boss fight (GDD §10; only the final boss has a checkpoint), and
+    phase 3's minute comes last, so a death late in it replays the whole fight, about two minutes. Placeholder: no
+    checkpoint, as at every other boss.
+700. **Ceilings in the levels are too safe** (GDD §3, Safe landing zone; owner, October 10, 2026: "often the ceiling is
+    way too safe", to be revisited for the game itself). In the Beach's boss fight one safe place to drop to is enough.
+    Should the levels follow: at least one safe lane where a ceiling ends, and the rest free to hold gaps, hazards or
+    enemies? It is a change to the level generator's rules (a core task), so it waits for the owner's word.
