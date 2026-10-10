@@ -640,6 +640,10 @@ browser.
    the first key, the canvas at other window sizes, City 1's glow, saves that survive a reload, the shop, a phone
    (taps, a swipe, held upright), and the end screen's store links. Frames and the console go to
    `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
+5. **Its shader programs:** `node tools/web/shader_programs.js` plays the release export from the title into
+   City 1 and counts the shader programs WebGL compiles on the way, and any compiled more than once. The
+   browser compiles each while the game waits, and on Windows (where Firefox and Edge translate WebGL to
+   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes.
 
 On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
 `"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.

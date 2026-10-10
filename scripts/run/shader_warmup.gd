@@ -8,7 +8,9 @@ extends Node3D
 ##
 ## What it draws, each once (by shader and mesh kind):
 ## - every material on the run's hidden nodes: what waits in pools (shots, the weapon's effects) and
-##   the runner's protections and power-ups not shown yet;
+##   the runner's protections and power-ups not shown yet; but not the hitbox view's boxes
+##   (GreyboxMaterials.is_debug_overlay): only a debug build shows them, and a release build would compile
+##   their shader for nothing (on the web, a few of the load's programs);
 ## - the shared effects' glow (sparks and debris, lines and warnings, opaque and see-through) and the
 ##   fireball's three looks (additive fire and embers, see-through smoke; FireballPool, task H6);
 ## - one look of every enemy kind the level brings (EnemyDirector.warm_looks), every part of it shown
@@ -128,7 +130,7 @@ func _sample_geometry(geometry: GeometryInstance3D) -> void:
 				materials.append(m)
 	for m: Material in materials:
 		var key: String = "%s|%s|%s" % [kind, mesh.get_class(), shader_key(m)]
-		if keys.has(key):
+		if keys.has(key) or GreyboxMaterials.is_debug_overlay(m):
 			continue
 		keys[key] = true
 		if particles != null:

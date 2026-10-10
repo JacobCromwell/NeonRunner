@@ -45,11 +45,6 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool, p_context: RunC
 	var pickups: PackedStringArray = []
 	if encounter != null:
 		pickups.append("armor")
-		if encounter is TestBoss:
-			var test_tuning: TestBossTuning = (encounter as TestBoss).tuning
-			if test_tuning != null and test_tuning.bonus_pickup_phase > 0 \
-					and not test_tuning.bonus_pickup.is_empty():
-				pickups.append(test_tuning.bonus_pickup)
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(PATH))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
