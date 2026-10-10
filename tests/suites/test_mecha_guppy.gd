@@ -42,6 +42,7 @@ func run() -> void:
 		return
 	_test_data(slot)
 	_test_plan()
+	_test_tunables()
 	await _test_geometry()
 	await _test_roof_faces()
 	await _test_hits_and_phases()
@@ -217,11 +218,19 @@ func _test_plan() -> void:
 				check(cycle and changes, "GDD §10: one, two or three lanes lead up, alternating, on %d lanes (%s...) %s"
 					% [lanes, counts.slice(0, 6), tag])
 			var reach_most: int = 0
+			var thrice: int = 0
+			var clamp_ok: bool = true
 			for s: MechaGuppyClimb.Step in c.steps:
 				if s.cue == MechaGuppyClimb.Cue.REACH_BACK:
 					reach_most = maxi(reach_most, s.up_count())
+					var r: MechaGuppyClimb.Roof = c.roofs[s.index + 1]
+					clamp_ok = clamp_ok and r.start_in(s.up.x) >= s.settle + MechaGuppyClimb.TONGUE_CLEAR - 0.001
+				if s.index >= 4 and s.up == c.steps[s.index - 2].up and s.up == c.steps[s.index - 4].up:
+					thrice += 1
 			check(reach_most >= 1 and reach_most <= 2,
 				"GDD §10: one or two of the roof's lanes reach further back (at most %d on a step) %s" % [reach_most, tag])
+			check(thrice == 0, "the same lanes never lead up on three steps of a cue running (%d times) %s" % [thrice, tag])
+			check(clamp_ok, "a roof's lanes that reach back start past the latest settle on the hut (no flip meets their front) %s" % tag)
 			check(neighbours, "the lanes that lead up are neighbours on the track, never every lane %s" % tag)
 			check(repeats == 0, "never the same lanes twice running (%d repeats in %d steps) %s" % [repeats, c.steps.size(), tag])
 			check(cues_alternate, "the two cues alternate step by step %s" % tag)
@@ -265,6 +274,88 @@ func _test_plan() -> void:
 				% [faster * 100.0, r2, r1, margin2, tag])
 
 
+# --- Every tunable across its range ------------------------------------------------------------------
+
+## The plan's promises hold for every tunable at both ends of its F6 range (`@export_range`), one at a time, and for a
+## few extreme roof runs and lane counts: at 3, 5 and 6 lanes and both speeds, in phases 1 and 2, over many steps.
+## (task E5e-b1's review: reach_back at 20 m once put a roof's solid front in a late flip's path.)
+func _test_tunables() -> void:
+	var base := def.tuning as MechaGuppyTuning
+	var variants: Array[Dictionary] = []
+	for prop: Dictionary in base.get_property_list():
+		if int(prop["hint"]) != PROPERTY_HINT_RANGE or not (int(prop["usage"]) & PROPERTY_USAGE_EDITOR):
+			continue
+		var parts: PackedStringArray = String(prop["hint_string"]).split(",")
+		if parts.size() < 2:
+			continue
+		for v: float in [float(parts[0]), float(parts[1])]:
+			variants.append({"name": String(prop["name"]), "value": v})
+	for runs: PackedFloat32Array in [PackedFloat32Array([0.1, 0.1]), PackedFloat32Array([3.0, 3.0])]:
+		variants.append({"name": "roof_seconds", "value": runs})
+	for counts: PackedInt32Array in [PackedInt32Array([1]), PackedInt32Array([3, 3])]:
+		variants.append({"name": "up_counts", "value": counts})
+	var powerups := load("res://data/tuning/powerups.tres") as PowerupTuning
+	var dash: float = MechaGuppyClimb.dash_reach_of(powerups)
+	var bad: Array[String] = []
+	for variant: Dictionary in variants:
+		var t: MechaGuppyTuning = base.duplicate() as MechaGuppyTuning
+		t.set(variant["name"], variant["value"])
+		for speed: float in SPEEDS:
+			var mt: MovementTuning = _movement(speed)
+			for lanes: int in LANES:
+				for phase: int in 2:
+					var c: MechaGuppyClimb = MechaGuppyClimb.make(mt, t, lanes, dash, 11)
+					for i: int in 24:
+						c.plan_next(phase)
+					var why: String = _plan_problem(c, t, dash)
+					if why != "":
+						bad.append("%s=%s (%d lanes, %.1f m/s, phase %d): %s" % [variant["name"], variant["value"], lanes, speed, phase + 1, why])
+	check(bad.is_empty(), "every tunable at both ends of its range keeps the plan's promises (%d variants)%s"
+		% [variants.size(), "" if bad.is_empty() else ": " + "; ".join(bad.slice(0, 4))])
+
+
+## The first broken promise of plan `c` (tuning `t`, the dash's reach `dash`), or "".
+func _plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning, dash: float) -> String:
+	var lanes: int = c.lanes
+	for s: MechaGuppyClimb.Step in c.steps:
+		if s.index + 1 >= c.steps.size():
+			break
+		var from: MechaGuppyClimb.Roof = c.roofs[s.index]
+		var roof: MechaGuppyClimb.Roof = c.roofs[s.index + 1]
+		for value: float in [s.pad, s.pad_end, s.hut_start, s.settle, s.deadline, s.land, s.hut_y, s.top_y]:
+			if not is_finite(value):
+				return "step %d: a number isn't finite" % s.index
+		if s.up.x < 0 or s.up.y >= lanes or s.up.x > s.up.y or s.up_count() >= lanes:
+			return "step %d: lanes that lead up %s" % [s.index, s.up]
+		if s.hut_y - s.top_y < t.hut_clearance - 0.001 or not is_equal_approx(s.top_y - s.floor_y, t.rise):
+			return "step %d: heights" % s.index
+		if s.pad_end - s.pad < c.jump_seconds() * c.speed + dash + t.strip_margin - 0.001 or from.end <= s.pad_end:
+			return "step %d: the pad strip" % s.index
+		if s.pad < from.full_from() + MechaGuppyClimb.PAD_CLEAR - 0.001:
+			return "step %d: pads before the roof's full width" % s.index
+		if s.index > 0 and s.hut_start < c.steps[s.index - 1].hut_end() + MechaGuppyClimb.HUT_GAP - 0.001:
+			return "step %d: huts overlap" % s.index
+		for lane: int in lanes:
+			if c.margin(s, lane) < t.read_seconds - 0.001:
+				return "step %d: the reading margin in lane %d" % [s.index, lane]
+			if s.ends[lane] < s.deadline - 0.001:
+				return "step %d: the hut narrows before its deadline" % s.index
+			if s.leads_up(lane):
+				if not roof.covers(lane, s.land):
+					return "step %d: a drop in lane %d misses the higher roof" % [s.index, lane]
+				if roof.start_in(lane) < s.settle + MechaGuppyClimb.TONGUE_CLEAR - 0.001 \
+						or roof.start_in(lane) < from.end + MechaGuppyClimb.MIN_BITE - 0.001:
+					return "step %d: the higher roof's front in a flip's path (lane %d)" % [s.index, lane]
+			elif roof.start_in(lane) < s.deadline + c.wrong_reach(s) - 0.001:
+				return "step %d: a wrong drop reaches the front (lane %d)" % [s.index, lane]
+		if s.cue == MechaGuppyClimb.Cue.RUN_ON:
+			if s.ends[s.up.x] <= roof.start_in(s.up.x) + 0.5:
+				return "step %d: the hut's lanes that lead up don't run on" % s.index
+		elif roof.start_in(s.up.x) >= s.deadline - 0.5:
+			return "step %d: the roof's lanes that lead up don't reach back" % s.index
+	return ""
+
+
 # --- The built climb ----------------------------------------------------------------------------
 
 ## The climb as built, on real physics, against its plan: for the first steps, the roof tops under each lane, where
@@ -282,9 +373,9 @@ func _test_geometry() -> void:
 		check(BossArena.base_config(def).features.is_empty() and world.layout.wall_gaps.size() >= 2
 			and not p.wall_supported(-1, 50.0) and not p.wall_supported(1, 50.0),
 			"no side walls anywhere in the climb (a wall entry from a high roof can't snap to the street's heights) %s" % tag)
-		# Built far enough ahead for the first three steps and the roofs they lead to.
-		boss.stairs.update(200.0)
-		await tree.physics_frame
+		var beach := world.skin as BeachSkin
+		check(beach != null and is_equal_approx(boss.stairs.sight, beach.fog_end) and beach.fog_max >= 1.0,
+			"the climb is built past the arena's fog's end, where the fog hides everything (%.0f m) %s" % [boss.stairs.sight, tag])
 		var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
 		var ray := PhysicsRayQueryParameters3D.new()
 		var tops_ok: bool = true
@@ -293,9 +384,20 @@ func _test_geometry() -> void:
 		var reads_ok: bool = true
 		var fronts_ok: bool = true
 		var checked: int = 0
-		for s: MechaGuppyClimb.Step in c.steps:
-			if s.index > 2:
-				break
+		for i: int in 3:
+			# The runner on step i's roof short of its pads (moving on, step by step): everything of the step is built.
+			if c.steps.size() <= i:
+				p.distance = c.steps[i - 1].pad
+				boss.stairs.update(p.distance)
+			var s: MechaGuppyClimb.Step = c.steps[i]
+			p.distance = s.pad - 25.0
+			p.surface = Player.Surface.FLOOR
+			p.floor_y = s.floor_y
+			p.h = s.floor_y
+			p.vh = 0.0
+			p.grounded = true
+			boss.stairs.update(p.distance)
+			await tree.physics_frame
 			checked += 1
 			var roof: MechaGuppyClimb.Roof = c.roofs[s.index + 1]
 			for lane: int in lanes:
@@ -342,14 +444,7 @@ func _test_geometry() -> void:
 					var hz := h["collider"] as Hazard
 					solid = solid or (hz != null and hz.is_solid and not hz.dash_passes and hz.top_y() <= roof.top - tuning.pit_depth - 0.05)
 				fronts_ok = fronts_ok and solid
-		check(checked >= 2, "the first steps are built within sight (%d) %s" % [checked, tag])
-		check(tops_ok, "each higher roof's top is where the plan has it, lane by lane, and nothing under a drop before it %s" % tag)
-		check(ends_ok, "each lane of a hut ends where the plan has it %s" % tag)
-		check(pads_ok, "a pad in every lane along each strip %s" % tag)
-		check(fronts_ok, "each roof's front is solid (the dash doesn't pass it) below where a runner could step up onto it %s" % tag)
-		# A rider on each hut reads the lanes that lead up off the hut and the roofs, as planned.
-		for i: int in 3:
-			var s: MechaGuppyClimb.Step = c.steps[i]
+			# A rider on the hut reads the lanes that lead up off the hut and the roofs, as planned.
 			await _ride(world, s)
 			var read: Array[int] = MechaGuppyBot.read_up_lanes(world, c, p)
 			var want: Array[int] = []
@@ -358,6 +453,11 @@ func _test_geometry() -> void:
 			reads_ok = reads_ok and read == want
 			if read != want:
 				check(false, "step %d: read %s, planned %s %s" % [s.index, read, want, tag])
+		check(checked >= 2, "the first steps are built within sight (%d) %s" % [checked, tag])
+		check(tops_ok, "each higher roof's top is where the plan has it, lane by lane, and nothing under a drop before it %s" % tag)
+		check(ends_ok, "each lane of a hut ends where the plan has it %s" % tag)
+		check(pads_ok, "a pad in every lane along each strip %s" % tag)
+		check(fronts_ok, "each roof's front is solid (the dash doesn't pass it) below where a runner could step up onto it %s" % tag)
 		check(reads_ok, "a rider reads the lanes that lead up off the hut and the roofs as planned (both cues) %s" % tag)
 		await sim.free_world(world)
 
@@ -478,11 +578,17 @@ func _test_hits_and_phases() -> void:
 	boss.register_hit()
 	check(boss.phase_index == 2 and boss.top_due(), "the sixth hit ends phase 2 (GDD §10: 6 hits): phase 3, the top")
 	await _run(world, 4.0, func() -> bool: return boss.is_vulnerable(), climber.step)
-	check(boss.waterfall.shown < 0.01, "phase 3: the Beach's own backdrop (the waterfall gone)")
 	check(not boss.register_hit() and boss.phase_index == 2, "phase 3 isn't ended by hits (GDD §10: by a minute of dodging)")
+	check(boss.waterfall.shown > 0.99 and boss.top_reached_at < 0.0, "the waterfall stays while the runner climbs on to the top")
+	await _run(world, 40.0, func() -> bool: return boss.top_reached_at >= 0.0, climber.step)
+	check(boss.top_reached_at >= 0.0 and boss.on_top() and _events(boss, &"top_reached").size() == 1,
+		"phase 3: the runner reaches the top, which runs on flat (logged: top_reached)")
+	await _run(world, 2.3, func() -> bool: return false, climber.step)
+	check(boss.waterfall.shown < 0.01 and not boss.is_defeated(), "then the Beach's own backdrop (the waterfall gone)")
 	await _run(world, 6.0, func() -> bool: return boss.is_defeated(), climber.step)
-	check(boss.is_defeated() and not _events(boss, &"top_over").is_empty(),
-		"phase 3's stub ends top_seconds into its pattern (DESIGN-TBD, E5e-c) (defeated %s)" % boss.is_defeated())
+	var over: Array[Dictionary] = _events(boss, &"top_over")
+	check(boss.is_defeated() and over.size() == 1 and absf(float(over[0]["t"]) - boss.top_reached_at - 3.0) < 0.1,
+		"phase 3's stub ends top_seconds after the runner reaches the top (DESIGN-TBD, E5e-c) (defeated %s)" % boss.is_defeated())
 	check(_events(boss, &"hit").size() == 10 and world.player.alive, "every hit logged (%d)" % _events(boss, &"hit").size())
 	await sim.free_world(world)
 	# The floor base follows the climb: the roof of the step the runner is in.

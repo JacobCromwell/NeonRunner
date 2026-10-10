@@ -6,11 +6,14 @@ extends RefCounted
 ## the plan): `reaction` seconds after settling on a hut, it follows each lane of the hut to its end and looks
 ## where a drop from there comes down; a lane leads up if the higher roof is under it there. Then it switches,
 ## one lane at a time at the lane-switch time, to the nearest lane that leads up (or, with `wrong`, to the nearest
-## that doesn't, to show a wrong drop falls), and records how much time it had to spare (`min_slack`, against the
-## lane's end: the plan's deadline).
+## that doesn't, to show a wrong drop falls), and records how much time it had to spare (`min_slack`: from its last
+## switch's press, when the lane is committed (Player._start_switch), to the lane's end, the plan's deadline). It's a
+## slow player: it waits a frame past each switch's end before the next.
 ## With `worst_case` (the fairness suites), before each step's pads it first moves to the lane farthest from that
 ## step's lanes that lead up (the one place it uses the plan: to pick the worst case on purpose) and jumps right
-## before the pads, so it flips up as late as any runner can and reads as late as the plan allows.
+## before the pads (with `dash_flip`, dashing as it jumps: the run's dash power-up), so it flips up as late as any
+## runner can and reads as late as the plan allows. `wrong_at` limits `wrong` to one step; `wrong_far` drops in the
+## lane farthest from the lanes that lead up; `dash_drop` dashes as its lane ends, so the dash carries the whole fall.
 ## Phase 3's top (E5e-c) has no huts: it just runs. Bombs are E5e-b2's (this bot doesn't dodge them yet).
 
 var boss: MechaGuppy
@@ -24,11 +27,21 @@ var worst_case: bool = false
 var log: Array[Dictionary] = []
 ## Roofs it landed on higher than the one before.
 var steps_climbed: int = 0
-## The least time it had to spare, over every step it read: seconds between completing its last switch (or
-## settling, with none to make) and its lane's end on the hut (its step's deadline). INF before it reads one.
+## The least time it had to spare, over every step it read: seconds between pressing its last switch (or reading,
+## with none to make) and its lane's end on the hut (its step's deadline). INF before it reads one.
 var min_slack: float = INF
 ## Lanes it read as leading up, step by step: {step, lanes: Array[int]}.
 var reads: Array[Dictionary] = []
+## Dashes with the late jump before the pads (worst_case).
+var dash_flip: bool = false
+## `wrong` only at this step (-1: every step).
+var wrong_at: int = -1
+## A wrong drop in the lane farthest from the lanes that lead up (else the nearest that doesn't).
+var wrong_far: bool = false
+## Dashes as a wrong lane ends.
+var dash_drop: bool = false
+## Dashes it started.
+var dashes: int = 0
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -38,6 +51,7 @@ var _prepared: int = -1
 var _jumped: int = -1
 var _measured: int = -1
 var _floor: float = 0.0
+var _drop_dashed: int = -1
 
 
 func _init(p_boss: MechaGuppy) -> void:
@@ -67,7 +81,23 @@ func step() -> void:
 			_settled_at = now
 		if _settled_at >= 0.0 and _read_step != next.index and now - _settled_at >= reaction:
 			_read(p, next, now)
+		if dash_drop and _goes_wrong(next) and _drop_dashed != next.index and p.lane >= 0 and p.lane < next.ends.size() \
+				and p.distance >= next.ends[p.lane] - p.speed * 0.05:
+			_drop_dashed = next.index
+			_dash("as its lane ends: the dash carries the whole fall")
 	_walk(p, next, now)
+
+
+## True if it drops wrong at step `next`.
+func _goes_wrong(next: MechaGuppyClimb.Step) -> bool:
+	return wrong and (wrong_at < 0 or wrong_at == next.index)
+
+
+func _dash(why: String) -> void:
+	var controller := boss.world.powerups as PowerupController
+	if controller != null and controller.try_dash():
+		dashes += 1
+		log.append({"t": boss.fight_time(), "action": &"dash", "why": why})
 
 
 ## The step whose pads are ahead of a runner on the floor, or whose hut a rider is on.
@@ -75,7 +105,8 @@ func _next_step(p: Player) -> MechaGuppyClimb.Step:
 	var climb: MechaGuppyClimb = boss.climb
 	if p.surface == Player.Surface.CEILING:
 		return climb.step_at(p.distance)
-	for s: MechaGuppyClimb.Step in climb.steps:
+	for k: int in range(maxi(climb.step_index_at(p.distance), 0), climb.steps.size()):
+		var s: MechaGuppyClimb.Step = climb.steps[k]
 		if s.top or s.pad_end > p.distance:
 			return s
 	return null
@@ -96,6 +127,8 @@ func _prepare(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 		_jumped = next.index
 		p.press(&"jump")
 		log.append({"t": boss.fight_time(), "action": &"jump", "why": "right before the pads (the latest flip)"})
+		if dash_flip:
+			_dash("with the jump: the longest jump before the flip")
 
 
 ## Reads the lanes that lead up from the hut and the roofs (read_up_lanes) and heads for the nearest (or, `wrong`,
@@ -104,22 +137,35 @@ func _read(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 	_read_step = next.index
 	var up: Array[int] = read_up_lanes(boss.world, boss.climb, p)
 	reads.append({"step": next.index, "lanes": up})
+	var go_wrong: bool = _goes_wrong(next)
 	var pick: int = -1
 	for lane: int in boss.lane_count():
 		var leads: bool = up.has(lane)
-		if leads == wrong:
+		if leads == go_wrong:
 			continue
-		if pick < 0 or absi(lane - p.lane) < absi(pick - p.lane):
+		var better: bool = pick < 0 or absi(lane - p.lane) < absi(pick - p.lane)
+		if go_wrong and wrong_far and not up.is_empty():
+			# The farthest from the lanes that lead up.
+			better = pick < 0 or _gap(lane, up) > _gap(pick, up)
+		if better:
 			pick = lane
 	if pick < 0:
 		pick = p.lane
-	_set_target(pick, "reads lanes %s leading up; %s" % [up, "drops in another" if wrong else "heads for the nearest"], now)
+	_set_target(pick, "reads lanes %s leading up; %s" % [up, "drops in another" if go_wrong else "heads for the nearest"], now)
 	_measured = -1
 
 
-## A switch a lane at a time toward the target, each once the last has finished. On a hut, the time it had to
-## spare is measured at its last switch (or at its reading, with none to make): from when it's in its lane to the
-## lane's end (its step's deadline).
+## How many lanes `lane` is from the nearest of `up`.
+static func _gap(lane: int, up: Array[int]) -> int:
+	var out: int = 1 << 20
+	for u: int in up:
+		out = mini(out, absi(lane - u))
+	return out
+
+
+## A switch a lane at a time toward the target, each a frame after the last has finished. On a hut, the time it had
+## to spare is measured at its last switch's press (or at its reading, with none to make), when its lane is
+## committed, to the lane's end (its step's deadline).
 func _walk(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 	if _target < 0:
 		return
@@ -133,7 +179,7 @@ func _walk(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 		return
 	var dir: int = signi(_target - p.lane)
 	if on_hut and absi(_target - p.lane) == 1:
-		_slack(p, next, boss.world.tuning.lane_switch_time + 1.0 / Engine.physics_ticks_per_second)
+		_slack(p, next, 0.0)
 	p.press(&"move_right" if dir > 0 else &"move_left")
 	_next_press = now + boss.world.tuning.lane_switch_time + 1.0 / Engine.physics_ticks_per_second
 
