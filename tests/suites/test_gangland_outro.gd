@@ -2,16 +2,19 @@ extends TestSuite
 ## Gangland's outro (GanglandOutro, task F2d; the owner's beats, October 9, 2026, GDD §6 Cinematics): its slot plays
 ## it; at 3, 5 and 6 lanes, in the fight's look and under its sky (CineStageDef.after_fight), it plays its beats in
 ## order: the freed Host lying in the rubble, implants dark; screeches sniffing at them for a moment, then
-## scuttling away (out of sight before the runner reaches the Host); the runner walking over (a walk, not a run)
-## and stopping beside them; the Host trembling, harder as they hold the golden key up; the runner taking it
-## (the hands meet, the key goes from the Host's hand to the runner's); the cut, under black, to another stretch
-## where the car is parked; the key raised and the car unlocking (its lights blinking); its scissor door up, the
-## runner getting in and out of sight, the door down; its lights on; the camera at road level as it launches and
-## drives off down the street into the distance. And: the camera stays in the street and above it, never close
-## to a screech; the street built far enough wherever the camera looks; its sounds in the library; Reduced
-## flashing (the unlock a single slow glow); skipping; what it costs; the toolkit's after_fight look (an outro
-## without it keeps the zone's own); and the App's flow (it plays after the fight, and the Marketplace's intro
-## follows).
+## scuttling away (out of sight before the runner reaches the Host); the runner walking over (a walk, not a run:
+## CinePoses' walk, its planted feet not skating, turning unhurriedly) and stopping beside them; the Host
+## trembling, harder as they hold the golden key up; the runner taking it (the hands meet, the key goes from the
+## Host's hand to the runner's); the cut, under black, to another stretch where the car is parked (the runner
+## facing the way they walk at once); the key raised and the car unlocking (its lights blinking); its scissor
+## door up; the passenger shot (the owner, October 10, 2026), from inside the car, the runner getting in and
+## sitting down beside the screech on the other seat (both in view), which looks round at them and wriggles, and
+## they look round at it; the runner out of sight, the door down; its lights on; the camera at road level as it
+## launches, fast, and drives off down the street into the distance. And: the camera stays in the street and
+## above it, never close to a fight's screech; the street built far enough wherever the camera looks; its sounds
+## in the library; the passenger looking safe (no hazard's glow, no talons or fangs); Reduced flashing (the unlock
+## a single slow glow); skipping; what it costs; the toolkit's after_fight look (an outro without it keeps the
+## zone's own); and the App's flow (it plays after the fight, and the Marketplace's intro follows).
 
 const LANES: Array[int] = [3, 5, 6]
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
@@ -23,15 +26,21 @@ const FLOOR_CLEARANCE: float = 0.1
 const SCREECH_CLEARANCE: float = 0.9
 ## Once the car drives off, the camera is at road level (owner): no higher than this.
 const ROAD_LEVEL: float = 0.3
-## A walk, not a run (m/s at most).
+## A walk, not a run (m/s at most); its planted feet move at most this share of the ground it covers (they don't
+## skate); it turns at most this fast (rad/s: unhurried, never snapping round).
 const WALK_SPEED_MAX: float = 2.5
+const FOOT_SLIP: float = 0.1
+const TURN_SPEED_MAX: float = 5.0
 ## Where the camera looks, the street is built at least this far (Gangland's fog is full by about 165 m).
 const STREET_SEEN: float = 150.0
 ## The hands meet to pass the key (metres apart at most), and it sits in the hand holding it.
 const HANDS_MEET: float = 0.35
 const IN_HAND: float = 0.05
-## The car drives at least this far off into the distance.
-const DRIVES_OFF: float = 50.0
+## The car drives at least this far off into the distance, fast (the owner, October 10, 2026: faster): over this
+## speed (m/s) FAST_WITHIN seconds after it launches.
+const DRIVES_OFF: float = 90.0
+const FAST_SPEED: float = 30.0
+const FAST_WITHIN: float = 1.5
 ## Its length: longer than the GDD's 5-15 s, for the owner's many beats (docs/questions/f2d.md); at most this.
 const LONGEST: float = 25.0
 ## Costs, headless: setting it up, the cut to the car, a step of its clock (generous: they catch a gross
@@ -155,8 +164,26 @@ func _test_car_model() -> void:
 	check(car.glow_cards.visible and not is_equal_approx(car.wheels[0].rotation.x, spin),
 		"its lights come on, its wheels turn")
 	check(car.draw_call_count() <= 8, "it costs %d draw calls (at most 8)" % car.draw_call_count())
+	car.set_interior(0.0)
+	var dark: bool = not car.cabin_light.visible
+	car.set_interior(1.0)
+	check(dark and car.cabin_light.visible and car.cabin_light.light_energy > 0.5
+		and car.cabin_light.omni_range < SportsCarModel.DEFAULT_SIZE.x,
+		"its courtesy lights light its cabin while they're on, and only its cabin")
 	car.queue_free()
 	await tree.process_frame
+	# The screech on its passenger seat looks safe: nothing glows like a hazard's spines or claws, and it has no
+	# talons or fangs.
+	var colors: PackedColorArray = CarPassenger.pet_mesh().surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var deadly: int = 0
+	var talons: int = 0
+	for c: Color in colors:
+		if Color(c, 1.0).is_equal_approx(Color(ScreechModel.SPINE_TIP, 1.0)):
+			deadly += 1
+		if c.is_equal_approx(ScreechModel.TALON):
+			talons += 1
+	check(colors.size() > 0 and deadly == 0 and talons == 0,
+		"the passenger looks safe: no hazard's glowing tips (%d), no talons or fangs (%d)" % [deadly, talons])
 
 
 # --- The beats ----------------------------------------------------------------------------------------
@@ -189,6 +216,12 @@ func _test_beats(lanes: int) -> void:
 	var screeches_gone: bool = false
 	var screech_near_cam: float = INF
 	var walk_max: float = 0.0
+	var walking: bool = true
+	var slipped: float = 0.0
+	var covered: float = 0.0
+	var last_feet: Array[Vector3] = []
+	var turn_max: float = 0.0
+	var faces_on: bool = false
 	var arrived: bool = false
 	var tremble_rest: float = 0.0
 	var tremble_offer: float = 0.0
@@ -204,6 +237,15 @@ func _test_beats(lanes: int) -> void:
 	var door_up: bool = false
 	var at_door: bool = false
 	var gone_in: bool = false
+	var pet: CarPassenger = null
+	var pet_on_seat: bool = false
+	var shot_inside: bool = true
+	var shot_frames: int = 0
+	var pet_in_view: bool = true
+	var both_in_view: bool = false
+	var pet_looked: bool = false
+	var pet_wriggled: float = 0.0
+	var runner_looked: bool = false
 	var door_shut: bool = false
 	var lit: bool = false
 	var wheels_back: bool = false
@@ -254,6 +296,16 @@ func _test_beats(lanes: int) -> void:
 				screeches_gone = not p.screech_shown.has(1)
 			if t < seq.t_arrive - 0.6 and t > 0.2:
 				walk_max = maxf(walk_max, runner.speed)
+				walking = walking and runner.pose == &"walk"
+			# Walking at its pace, a planted foot stays put: the lower foot moves little against the ground covered.
+			var feet: Array[Vector3] = [runner.avatar.rig.joint(&"foot_r").global_position,
+				runner.avatar.rig.joint(&"foot_l").global_position]
+			if t > n.walk_from + 0.5 and t < seq.t_arrive - 0.8 and last_feet.size() == 2:
+				var low: int = 0 if feet[0].y < feet[1].y else 1
+				slipped += Vector2(feet[low].x - last_feet[low].x, feet[low].z - last_feet[low].z).length()
+				covered += runner.speed * STEP
+			last_feet = feet
+			turn_max = maxf(turn_max, runner.turn_speed)
 			if absf(t - (seq.t_arrive + 0.3)) < STEP * 0.5:
 				arrived = runner.track_position.distance_to(seq.stop_point) < 0.05
 			if t > 1.0 and t < n.offer_at - 0.2:
@@ -278,7 +330,33 @@ func _test_beats(lanes: int) -> void:
 				cut_clean = seq.log_lines.has("stage gangland_boss_skin") and seq.props == null and seq.car != null \
 					and seq.stage.skin == zone.boss.arena.skin and seq.stage.sky == fight_sky and seq.key.visible \
 					and seq.key_holder == &"runner"
+				# Facing the way they walk to the car at once, not turning from where they faced the Host.
+				var way: Vector3 = seq.door_point - (seq.car_point + n.approach_from)
+				faces_on = absf(angle_difference(runner.yaw, atan2(-way.x, way.z))) < deg_to_rad(15.0)
+			if t < n.launch_at:
+				turn_max = maxf(turn_max, runner.turn_speed)
 			var car: SportsCarModel = seq.car
+			# The screech on the passenger seat (the driver's mirrored), riding in the car.
+			pet = seq.passenger
+			if pet != null and not pet_on_seat:
+				var seat: Vector3 = SportsCarModel.seat_of(n.car_size)
+				pet_on_seat = pet.get_parent() == car and is_equal_approx(pet.seat.x, -seat.x) \
+					and absf(pet.seat.y - seat.y) < 0.01
+			# The passenger shot: from inside the car, the screech in view throughout, the runner sat beside it.
+			if t > n.passenger_at + 0.02 and t < n.door_shot_at - 0.02:
+				shot_frames += 1
+				var cam_car: Vector3 = car.global_transform.affine_inverse() * cam.global_position
+				shot_inside = shot_inside and absf(cam_car.x) < n.car_size.x * 0.5 and absf(cam_car.z) < n.car_size.z * 0.5 \
+					and cam_car.y < n.car_size.y
+				var pet_head: Vector3 = pet.screech.global_transform * Vector3(0.0, 0.3, -0.3)
+				pet_in_view = pet_in_view and cam.is_position_in_frustum(pet_head)
+				if t > seq.t_get_in + n.get_in_seconds:
+					var head: Vector3 = runner.avatar.rig.joint(&"head").global_position
+					both_in_view = cam.is_position_in_frustum(pet_head) and cam.is_position_in_frustum(head) \
+						and runner.visible
+				pet_looked = pet_looked or (t > n.passenger_looks_at + 0.8 and pet.looking > 0.99)
+				pet_wriggled = maxf(pet_wriggled, pet.wriggle)
+				runner_looked = runner_looked or runner.look < deg_to_rad(GanglandOutro.LOOK_AT_PET * 0.8)
 			if t < n.launch_at:
 				parked = parked and seq.stage.to_track(car.global_position).distance_to(seq.car_point) < 0.02
 			if t > n.unlock_at and t < n.unlock_at + GanglandOutro.UNLOCK_SECONDS:
@@ -288,7 +366,7 @@ func _test_beats(lanes: int) -> void:
 			if absf(t - seq.t_get_in) < STEP * 0.5:
 				door_up = car.door_open > 0.99
 				at_door = runner.track_position.distance_to(seq.door_point) < 0.05 and runner.visible
-			if t > seq.t_inside + 0.05 and t < n.door_down_at + n.door_seconds:
+			if t > seq.t_inside + 0.05 and t < n.road_at:
 				gone_in = not runner.visible and not seq.key.visible
 			if t > n.door_down_at + n.door_seconds + 0.05:
 				door_shut = car.door_open < 0.001
@@ -308,7 +386,12 @@ func _test_beats(lanes: int) -> void:
 	check(screeches_gone, "%s: then scuttle away, out of sight before the runner reaches the Host" % tag)
 	check(screech_near_cam > SCREECH_CLEARANCE, "%s: no screech comes within %.1f m of the camera (%.2f m)" % [
 		tag, SCREECH_CLEARANCE, screech_near_cam])
-	check(walk_max > 0.5 and walk_max < WALK_SPEED_MAX, "%s: the runner walks over (at most %.2f m/s)" % [tag, walk_max])
+	check(walk_max > 0.5 and walk_max < WALK_SPEED_MAX and walking,
+		"%s: the runner walks over (CinePoses' walk, at most %.2f m/s)" % [tag, walk_max])
+	check(covered > 2.0 and slipped < covered * FOOT_SLIP,
+		"%s: their planted feet don't skate (they move %.2f m over the %.2f m walked)" % [tag, slipped, covered])
+	check(turn_max > 0.5 and turn_max < TURN_SPEED_MAX, "%s: they turn unhurriedly (at most %.1f rad/s)" % [
+		tag, turn_max])
 	check(arrived, "%s: and stops beside the Host" % tag)
 	check(tremble_offer > tremble_rest * 2.0 and tremble_rest > 0.0,
 		"%s: the Host trembles, harder as they hold the key up (%.1f°, %.1f°)" % [
@@ -322,7 +405,13 @@ func _test_beats(lanes: int) -> void:
 	check(parked, "%s: the car stays parked until it launches" % tag)
 	check(blink_peak > 0.9 and dark_between, "%s: the key unlocks it: its lights blink, then go out (peak %.2f)" % [
 		tag, blink_peak])
+	check(faces_on, "%s: at the cut, the runner faces the way they walk to the car" % tag)
 	check(door_up and at_door, "%s: its scissor door is up as the runner, at it, gets in" % tag)
+	check(pet_on_seat, "%s: a screech sits on the passenger seat, riding in the car" % tag)
+	check(shot_frames > 10 and shot_inside and pet_in_view and both_in_view,
+		"%s: one shot from inside the car sees the runner get in and sit down beside it" % tag)
+	check(pet_looked and pet_wriggled > 0.9 and runner_looked,
+		"%s: it looks round at them and wriggles, and they look round at it" % tag)
 	check(gone_in and door_shut, "%s: the runner gets in, out of sight, and the door comes down" % tag)
 	check(lit, "%s: its lights come on" % tag)
 	check(not wheels_back and last_turn > seq.driven, "%s: its wheels only turn forward, spinning up at the launch" % tag)
@@ -331,12 +420,15 @@ func _test_beats(lanes: int) -> void:
 		tag, road_cam])
 	check(straight and seq.driven > DRIVES_OFF, "%s: it drives straight off down the street into the distance (%.0f m)" % [
 		tag, seq.driven])
+	var fast_at: float = n.launch_at + FAST_WITHIN
+	var speed: float = (seq.car_distance(fast_at + 0.1) - seq.car_distance(fast_at - 0.1)) / 0.2
+	check(speed > FAST_SPEED, "%s: fast: %.0f m/s %.1f s after it launches" % [tag, speed, FAST_WITHIN])
 	check(problems.is_empty(), "%s: the camera stays in the street, above it: %s" % [tag, problems.slice(0, 3)])
 	check(street_seen >= STREET_SEEN, "%s: wherever it looks, the street is built at least %.0f m (%.0f m)" % [
 		tag, STREET_SEEN, street_seen])
 	var wanted: PackedStringArray = ["sound screech_sniff", "cue scuttle", "sound key_glint", "cue glint", "cue take",
-		"effect fade_out", "cue car", "stage gangland_boss_skin", "sound car_unlock", "sound car_door", "sound car_start",
-		"cue lights", "sound car_drive", "cue launch"]
+		"effect fade_out", "cue car", "stage gangland_boss_skin", "sound car_unlock", "sound car_door", "cue passenger",
+		"sound screech_chirp", "sound car_door", "sound car_start", "cue lights", "sound car_drive", "cue launch"]
 	var at: int = -1
 	var in_order: bool = true
 	for w: String in wanted:
@@ -355,8 +447,9 @@ func _test_beats(lanes: int) -> void:
 		"%s: cheap enough: %.1f ms to set up, %.1f ms to cut to the car (under black), at most %.2f ms a step" % [
 		tag, setup_msec, cut_msec, worst_step])
 	check(max_calls <= PROP_DRAW_CALLS, "%s: its props add at most %d draw calls (%d)" % [tag, PROP_DRAW_CALLS, max_calls])
-	print("  gangland outro, %s: setup %.1f ms, cut %.1f ms, worst step %.2f ms, props %d draw calls" % [
-		tag, setup_msec, cut_msec, worst_step, max_calls])
+	print("  gangland outro, %s: setup %.1f ms, cut %.1f ms, worst step %.2f ms, props %d draw calls; " % [
+		tag, setup_msec, cut_msec, worst_step, max_calls]
+		+ "feet slip %.2f m in %.2f m, turns at most %.2f rad/s" % [slipped, covered, turn_max])
 	await _free(seq)
 
 

@@ -20,8 +20,10 @@ const LEAN_SPEED: float = 1.5
 const AIR_HEIGHT: float = 0.03
 ## Where a cyborg aims on another actor: this high above its feet (m).
 const AIM_HEIGHT: float = 0.9
-## A frame's move longer than this (m) is a jump cut, not ground covered.
+## A frame's move longer than this (m) is a jump cut, not ground covered: it faces its new heading at once (the
+## way it goes on from there, JUMP_LOOK ahead, when it faces the way it moves).
 const MAX_STEP: float = 5.0
+const JUMP_LOOK: float = 0.1
 ## How the runner's look (CineActorKey.look) is shared out up its spine: chest, neck, head.
 const LOOK_SHARE: Array[float] = [0.25, 0.3, 0.45]
 const LOOK_JOINTS: Array[StringName] = [&"chest", &"neck", &"head"]
@@ -42,8 +44,9 @@ var vertical_speed: float = 0.0
 var distance_run: float = 0.0
 ## Its pose now (the last one its keys named).
 var pose: StringName = &""
-## Its heading now, radians (0 faces down the track, + turns left).
+## Its heading now, radians (0 faces down the track, + turns left), and how fast it's turning (rad/s).
 var yaw: float = 0.0
+var turn_speed: float = 0.0
 ## Its head turn now, radians (+ looks left; CineActorKey.look), and its tip (+ looks up; look_up).
 var look: float = 0.0
 var look_up: float = 0.0
@@ -62,6 +65,8 @@ var _progress: Array = []
 var _cine_pose := HumanoidPose.new()
 var _step_pose := HumanoidPose.new()
 var _step_phase: float = 0.0
+## The walk's phase through its gait cycle (CinePoses.walk).
+var _walk_phase: float = 0.0
 
 
 ## Builds the model. `variant` dresses a cyborg that names no look of its own (the stage skin's
@@ -124,7 +129,8 @@ func update(t: float, delta: float, others: Dictionary) -> void:
 		return
 	var p: Vector3 = track_point_at(t)
 	var step: Vector3 = p - track_position if _started else Vector3.ZERO
-	if step.length() > MAX_STEP:
+	var jumped: bool = step.length() > MAX_STEP
+	if jumped:
 		step = Vector3.ZERO
 	var velocity: Vector3 = step / delta if delta > 0.0 else Vector3.ZERO
 	speed = Vector2(velocity.x, velocity.z).length()
@@ -141,7 +147,14 @@ func update(t: float, delta: float, others: Dictionary) -> void:
 	elif speed > TURN_MIN_SPEED:
 		# Track space runs along +z, which is world -z: heading 0.
 		heading = atan2(-velocity.x, velocity.z)
-	yaw = heading if not _started else lerp_angle(yaw, heading, 1.0 - exp(-TURN_RATE * delta))
+	elif jumped:
+		var ahead: Vector3 = track_point_at(t + JUMP_LOOK) - p
+		if Vector2(ahead.x, ahead.z).length() > 0.001:
+			heading = atan2(-ahead.x, ahead.z)
+	var rate: float = actor.turn_rate if actor.turn_rate > 0.0 else TURN_RATE
+	var turned_from: float = yaw
+	yaw = heading if not _started or jumped else lerp_angle(yaw, heading, 1.0 - exp(-rate * delta))
+	turn_speed = absf(angle_difference(turned_from, yaw)) / delta if _started and not jumped and delta > 0.0 else 0.0
 	var first: bool = not _started
 	_started = true
 	_sample_look(t)
@@ -188,12 +201,23 @@ func _pose_runner(t: float, delta: float) -> void:
 	avatar.rotation.y = yaw
 	avatar.position = Vector3.ZERO
 	var rig: HumanoidRig = avatar.rig
-	CinePoses.runner(_cine_pose, pose, progress, t, rig.parts.pelvis_height())
+	if pose == &"walk":
+		# Its stride follows the ground covered, and it steps as it turns on the spot; its planted foot goes back
+		# under it at its pace (none, stepping in place), in the rig's own units.
+		var gait: float = speed + turn_speed * CinePoses.TURN_STEP
+		var stride: float = CinePoses.walk_stride(gait)
+		_walk_phase = CinePoses.walk_phase(_walk_phase, gait * delta, stride)
+		var sweep: float = stride * speed / gait if gait > 0.001 else 0.0
+		CinePoses.walk(_cine_pose, _walk_phase, CinePoses.walk_amount(gait), t, sweep,
+			CinePoses.WALK_CYCLE / maxf(rig.scale.z, 0.01), rig.parts.thigh_length, rig.parts.shin_length)
+	else:
+		CinePoses.runner(_cine_pose, pose, progress, t, rig.parts.pelvis_height())
 	var hold: float = CinePoses.hand_hold(pose, progress)
 	# Moved along meanwhile (a stagger forward as it gets up), its legs step.
 	_step_phase = CinePoses.step_phase(_step_phase, speed * delta, speed, avatar.anim_tuning)
 	CinePoses.add_steps(_cine_pose, _step_pose, _step_phase, speed, avatar.anim_tuning,
-		smoothstep(CinePoses.STEP_SPEED.x, CinePoses.STEP_SPEED.y, speed) * (1.0 - hold))
+		smoothstep(CinePoses.STEP_SPEED.x, CinePoses.STEP_SPEED.y, speed) * (1.0 - hold)
+		* CinePoses.steps_while_moving(pose))
 	rig.apply_pose(_cine_pose)
 	_turn_head()
 	if hold > 0.0:

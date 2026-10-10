@@ -6,7 +6,7 @@ extends Resource
 ## (the first scene) or the car (the second). DESIGN-TBD (docs/questions/f2d.md): the staging these fill in.
 
 @export_group("Length")
-@export_range(8.0, 40.0, 0.1, "suffix:s") var duration: float = 21.2
+@export_range(8.0, 40.0, 0.1, "suffix:s") var duration: float = 22.6
 @export_range(0.0, 2.0, 0.05, "suffix:s") var fade_in: float = 0.8
 @export_range(0.0, 2.0, 0.05, "suffix:s") var fade_out: float = 0.8
 ## The fight's music fades out over this long as it opens: a quiet aftermath.
@@ -42,10 +42,13 @@ extends Resource
 
 @export_group("The runner walks over")
 ## They walk down the street from the start, at an even pace: at walk_from they're walk_back metres short of where
-## they stop, beside the Host (so they arrive at walk_from + walk_back / walk_speed).
+## they stop, beside the Host (so they arrive at walk_from + walk_back / walk_speed). A walk (CinePoses.walk) takes
+## a step every half metre, so a slower pace is a slower step.
 @export_range(0.0, 10.0, 0.05, "suffix:s") var walk_from: float = 1.6
-@export_range(4.0, 30.0, 0.5, "suffix:m") var walk_back: float = 11.0
-@export_range(0.5, 4.0, 0.05, "suffix:m/s") var walk_speed: float = 1.8
+@export_range(2.0, 30.0, 0.1, "suffix:m") var walk_back: float = 5.8
+@export_range(0.5, 4.0, 0.05, "suffix:m/s") var walk_speed: float = 1.05
+## How fast they turn to a new heading (CineActor.turn_rate; their feet step round as they turn).
+@export_range(0.5, 20.0, 0.1, "suffix:1/s") var turn_rate: float = 3.0
 ## Where they stop, from the Host's middle: beside them, on the Host's right.
 @export var stop_offset: Vector3 = Vector3(-0.78, 0.0, -0.15)
 
@@ -57,7 +60,7 @@ extends Resource
 @export_range(0.2, 3.0, 0.05, "suffix:s") var offer_seconds: float = 1.2
 @export_range(0.0, 20.0, 0.05, "suffix:s") var glint_at: float = 9.0
 @export_range(0.0, 20.0, 0.05, "suffix:s") var reach_at: float = 9.2
-@export_range(0.1, 2.0, 0.05, "suffix:s") var reach_seconds: float = 0.55
+@export_range(0.1, 2.0, 0.05, "suffix:s") var reach_seconds: float = 0.75
 @export_range(0.2, 3.0, 0.05, "suffix:s") var sink_seconds: float = 1.3
 @export_range(0.0, 20.0, 0.05, "suffix:s") var admire_at: float = 10.3
 ## How hard the Host trembles (degrees): always a little, harder as they hold the key up.
@@ -79,30 +82,32 @@ extends Resource
 ## (width, height, length), paint and accent.
 @export_range(170.0, 300.0, 1.0, "suffix:m") var car_at: float = 220.0
 @export_range(-3.0, 3.0, 0.05, "suffix:m") var car_x: float = 0.0
-@export var car_size: Vector3 = Vector3(1.95, 1.0, 4.3)
+@export var car_size: Vector3 = Vector3(2.0, 1.1, 4.4)
 @export var car_paint: Color = Color(0.3, 0.12, 0.9)
 @export var car_accent: Color = Color(0.35, 0.85, 1.0)
 ## The runner walks up to its door from here (from the car's middle), this fast, arriving at the door's side.
-@export var approach_from: Vector3 = Vector3(-2.4, 0.0, -5.5)
-@export_range(0.5, 4.0, 0.05, "suffix:m/s") var car_walk_speed: float = 2.1
+@export var approach_from: Vector3 = Vector3(-1.9, 0.0, -2.6)
+@export_range(0.5, 4.0, 0.05, "suffix:m/s") var car_walk_speed: float = 1.1
 @export_range(0.0, 2.0, 0.05, "suffix:m") var door_gap: float = 0.5
-## They raise the key and the car unlocks (its lights blink twice); the door swings up; they get in; the door
-## comes down; its lights come on. They get in no sooner than DOOR_TURN after reaching the door
+## They raise the key and the car unlocks (its lights blink twice); the door swings up; they get in (CinePoses'
+## get_in: a foot over the sill, ducking in, down onto the seat) as the screech on the passenger seat looks round
+## at them; the door comes down; its lights come on. They get in no sooner than DOOR_TURN after reaching the door
 ## (GanglandOutro.t_get_in).
-@export_range(0.0, 30.0, 0.05, "suffix:s") var unlock_at: float = 13.9
-@export_range(0.0, 30.0, 0.05, "suffix:s") var door_up_at: float = 14.3
+@export_range(0.0, 30.0, 0.05, "suffix:s") var unlock_at: float = 13.4
+@export_range(0.0, 30.0, 0.05, "suffix:s") var door_up_at: float = 13.8
 @export_range(0.2, 3.0, 0.05, "suffix:s") var door_seconds: float = 0.9
-@export_range(0.0, 30.0, 0.05, "suffix:s") var get_in_at: float = 15.3
-@export_range(0.2, 3.0, 0.05, "suffix:s") var get_in_seconds: float = 0.85
-@export_range(0.0, 30.0, 0.05, "suffix:s") var door_down_at: float = 15.9
-@export_range(0.0, 30.0, 0.05, "suffix:s") var lights_at: float = 17.0
+@export_range(0.0, 30.0, 0.05, "suffix:s") var get_in_at: float = 15.05
+@export_range(0.2, 3.0, 0.05, "suffix:s") var get_in_seconds: float = 1.5
+@export_range(0.0, 30.0, 0.05, "suffix:s") var passenger_looks_at: float = 15.3
+@export_range(0.0, 30.0, 0.05, "suffix:s") var door_down_at: float = 17.4
+@export_range(0.0, 30.0, 0.05, "suffix:s") var lights_at: float = 18.5
 
 @export_group("It drives off")
 ## The cut to the road, the revving and the launch, then its acceleration and top speed.
-@export_range(0.0, 30.0, 0.05, "suffix:s") var road_at: float = 17.5
-@export_range(0.0, 30.0, 0.05, "suffix:s") var launch_at: float = 18.1
-@export_range(2.0, 30.0, 0.5, "suffix:m/s²") var acceleration: float = 13.0
-@export_range(10.0, 90.0, 1.0, "suffix:m/s") var top_speed: float = 46.0
+@export_range(0.0, 30.0, 0.05, "suffix:s") var road_at: float = 19.0
+@export_range(0.0, 30.0, 0.05, "suffix:s") var launch_at: float = 19.5
+@export_range(2.0, 40.0, 0.5, "suffix:m/s²") var acceleration: float = 24.0
+@export_range(10.0, 120.0, 1.0, "suffix:m/s") var top_speed: float = 80.0
 
 @export_group("Cameras")
 ## The first shot: low beside the Host, looking back up the street as the runner comes; it pushes in slowly.
@@ -128,6 +133,19 @@ extends Resource
 @export var reveal_look: Vector3 = Vector3(0.0, 0.42, 0.6)
 @export var reveal_look_end: Vector3 = Vector3(-0.8, 0.6, -0.3)
 @export_range(20.0, 100.0, 1.0, "suffix:°") var reveal_fov: float = 50.0
+## The passenger shot (the owner, October 10, 2026: "one shot where we see our character getting in and we see
+## in the seat next to them, a screech"): from behind the dashboard (the car's panels are one-sided, so it sees
+## through the windscreen's back) looking back at both seats and out of the open door, as the runner gets in
+## beside the screech; it drifts in (from the car's middle). Wide, as the cabin is small.
+@export_range(0.0, 30.0, 0.05, "suffix:s") var passenger_at: float = 14.8
+@export var passenger_cam: Vector3 = Vector3(0.05, 0.62, 1.0)
+@export var passenger_cam_end: Vector3 = Vector3(0.05, 0.6, 0.9)
+@export var passenger_look: Vector3 = Vector3(-0.25, 0.42, -0.3)
+@export_range(20.0, 100.0, 1.0, "suffix:°") var passenger_fov: float = 68.0
+## Beside the car as its door comes down and its lights and engine come on, drifting back a little.
+@export_range(0.0, 30.0, 0.05, "suffix:s") var door_shot_at: float = 17.3
+@export var door_cam: Vector3 = Vector3(-3.3, 0.7, 2.6)
+@export var door_look: Vector3 = Vector3(-0.8, 0.6, -0.3)
 ## On the road behind it, at road level, as it drives off down the street.
 @export var road_cam: Vector3 = Vector3(0.35, 0.16, -6.0)
 @export var road_look: Vector3 = Vector3(0.0, 0.5, 20.0)

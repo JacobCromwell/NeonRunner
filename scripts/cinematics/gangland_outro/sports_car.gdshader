@@ -4,7 +4,8 @@
 // and on Forward+. The street's neon streams back over the body as it drives (`travelled`).
 //   COLOR.rgb  albedo (sRGB)            COLOR.a  glow: 0 = a lit surface, above 0 = emissive (x glow_scale)
 //   UV2.x      finish: 0 paint, 1 glass, 2 matte trim, 3 chrome
-//   UV2.y      light group: 0 always as it is, 1 its lights (head, tail, running lights: x `lights`)
+//   UV2.y      light group: 0 always as it is, 1 its lights (head, tail, running lights: x `lights`), 2 its
+//              cabin's courtesy lights (x `interior`)
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
 
@@ -15,8 +16,9 @@ global uniform float scenery_light;
 global uniform vec3 scenery_tint;
 
 uniform float glow_scale = 3.0;
-// Its lights, 0 (off) to 1 (on).
+// Its lights, and its cabin's courtesy lights, 0 (off) to 1 (on).
 instance uniform float lights = 0.0;
+instance uniform float interior = 0.0;
 // Metres it has driven: the street's reflections stream back over it.
 instance uniform float travelled = 0.0;
 // The street mirrored in it: the sky overhead and at the horizon, the neon of the shopfronts along the
@@ -64,7 +66,7 @@ void fragment() {
 	int finish = int(UV2.x + 0.5);
 	vec3 col;
 	if (glow > 0.002) {
-		float g = glow * glow_scale * (UV2.y > 0.5 ? lights : 1.0);
+		float g = glow * glow_scale * (UV2.y > 1.5 ? interior : (UV2.y > 0.5 ? lights : 1.0));
 		col = to_linear(base) * g;
 	} else {
 		vec3 l = normalize(light_dir);

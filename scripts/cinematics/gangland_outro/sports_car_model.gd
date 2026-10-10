@@ -5,10 +5,12 @@ extends Node3D
 ## lofted through cross-sections from a blade of a nose, up a long raked hood and windshield to a short roof,
 ## down over the engine cover to a cut-off tail with a wing; flared fenders over the wheels, a dark intake
 ## behind the door. One scissor door on the driver's side (the left) swings up from its front edge
-## (set_door), showing the cabin and the driver's seat. Its lights (head, tail, running lights along the sills,
-## the glow under it and the headlights' pools on the road) come on together (set_lights), and its wheels turn
-## with the distance it has driven (set_travelled), which also streams the street's reflections over it.
-## Visual only: no collision.
+## (set_door), showing the cabin and its two seats, the courtesy lights in it coming on (set_interior: glowing
+## strips and the piping on the seats, and a warm light on whoever is in it). Its lights (head, tail, running
+## lights along the sills, the glow under it and the headlights' pools on the road) come on together
+## (set_lights), and its wheels turn with the distance it has driven (set_travelled), which also streams the
+## street's reflections over it. Visual only: no collision. Its panels are one-sided, so a camera can sit in the
+## cabin and look about it.
 ##
 ## The paint (sports_car.gdshader) is unshaded with a fake key light and a fake street mirrored in it, so it
 ## shines alike on every renderer. Draw calls: the body, the door, four wheels and the glow cards (7).
@@ -58,13 +60,23 @@ const GLASS: int = 1
 const TRIM: int = 2
 const CHROME: int = 3
 const LIT: float = 1.0
+## The cabin's courtesy lights, on while its door is up (set_interior: UV2.y 2).
+const INTERIOR: float = 2.0
 ## Fixed colours: glass, trim, chrome, the cabin, the headlights and taillights.
 const GLASS_COLOR := Color(0.05, 0.06, 0.08)
 const TRIM_COLOR := Color(0.07, 0.07, 0.08)
 const TIRE_COLOR := Color(0.05, 0.05, 0.05)
 const CHROME_COLOR := Color(0.78, 0.8, 0.88)
-const CABIN_COLOR := Color(0.06, 0.055, 0.06)
-const SEAT_COLOR := Color(0.12, 0.1, 0.1)
+const CABIN_COLOR := Color(0.1, 0.09, 0.1)
+## Its seats: tan leather, piped in the accent colour (glowing with the courtesy lights).
+const SEAT_COLOR := Color(0.5, 0.36, 0.25)
+## The seats' piping (the accent's cyan, softer).
+const PIPING := Color(0.4, 0.8, 0.95)
+## The courtesy lights' warm white, and the light they cast in the cabin (energy, reach in metres): it lights
+## whoever is in it.
+const COURTESY := Color(1.0, 0.86, 0.66)
+const CABIN_LIGHT: float = 1.6
+const CABIN_LIGHT_RANGE: float = 1.6
 const HEADLIGHT := Color(0.85, 0.92, 1.0)
 const TAILLIGHT := Color(1.0, 0.12, 0.1)
 ## The driver's seat (on the left) in the 1.95 x 1.0 x 4.3 m car: its cushion's middle.
@@ -82,10 +94,13 @@ var door_hinge: Node3D
 var door: MeshInstance3D
 var wheels: Array[MeshInstance3D] = []
 var glow_cards: MeshInstance3D
+## The courtesy lights' light in the cabin.
+var cabin_light: OmniLight3D
 ## Now: the door (0 shut, 1 open), the lights (0-1), metres driven, and how far the wheels have turned (metres
 ## at their rims).
 var door_open: float = 0.0
 var lights: float = 0.0
+var interior: float = 0.0
 var travelled: float = 0.0
 var wheel_turn: float = 0.0
 
@@ -136,8 +151,16 @@ func build(p_size: Vector3 = DEFAULT_SIZE, p_paint: Color = Color(0.3, 0.12, 0.9
 	_glow_material = glow.duplicate() as ShaderMaterial
 	glow_cards = MeshBatch.add_instance(self, meshes["glow"], "Glow")
 	glow_cards.material_override = _glow_material
+	cabin_light = OmniLight3D.new()
+	cabin_light.name = "CabinLight"
+	cabin_light.position = Vector3(0.0, 0.82 * s.y, SEAT.z * s.z)
+	cabin_light.light_color = COURTESY
+	cabin_light.omni_range = CABIN_LIGHT_RANGE
+	cabin_light.shadow_enabled = false
+	add_child(cabin_light)
 	set_door(door_open)
 	set_lights(lights)
+	set_interior(interior)
 	set_travelled(travelled, wheel_turn - travelled)
 
 
@@ -150,6 +173,16 @@ func set_door(open: float) -> void:
 	# Out a little (its back toward -x), then up about its front edge (its back rising).
 	door_hinge.basis = Basis(Vector3.RIGHT, -deg_to_rad(DOOR_LIFT_DEGREES) * k) \
 		* Basis(Vector3.UP, -deg_to_rad(DOOR_OUT_DEGREES) * k)
+
+
+## Its courtesy lights in the cabin: 0 off, 1 on (they come on as its door goes up).
+func set_interior(on: float) -> void:
+	interior = clampf(on, 0.0, 1.0)
+	for g: GeometryInstance3D in _car_meshes():
+		g.set_instance_shader_parameter(&"interior", interior)
+	if cabin_light != null:
+		cabin_light.light_energy = CABIN_LIGHT * interior
+		cabin_light.visible = interior > 0.001
 
 
 ## Its lights: 0 off, 1 on.
@@ -375,13 +408,25 @@ static func _cabin(m: MeshLayer, s: Vector3) -> void:
 	_face(m, Vector3(x0 + 0.1, y1 * 0.66, z0 + 0.005), Vector3(-0.05 * s.x, y1 * 0.66, z0 + 0.005),
 		Vector3(-0.05 * s.x, y1 * 0.7, z0 + 0.005), Vector3(x0 + 0.1, y1 * 0.7, z0 + 0.005), Vector3.BACK,
 		Color(0.45, 0.85, 1.0), 0.9, PAINT, LIT)
-	# The driver's seat (left): a cushion and a raked back.
-	var sx: float = SEAT.x * s.x
-	m.box(Vector3(sx, (SEAT.y - 0.06) * s.y, (SEAT.z - 0.06) * s.z), Vector3(0.46 * s.x, 0.12 * s.y, 0.5 * s.z),
-		SEAT_COLOR, 0.0, TRIM)
-	var back := Transform3D(Basis(Vector3.RIGHT, deg_to_rad(-22.0)) * Basis.from_scale(Vector3(0.46 * s.x, 0.6 * s.y, 0.1)),
-		Vector3(sx, 0.52 * s.y, 0.44 * s.z))
-	m.box_xform(back, SEAT_COLOR, 0.0, TRIM)
+	# The courtesy lights: a warm strip along the headlining over each seat, on while the door is up.
+	for side: float in [-1.0, 1.0]:
+		var lx: float = side * SEAT.x * s.x
+		_face(m, Vector3(lx - 0.12, y1 - 0.004, z0 + 0.2), Vector3(lx + 0.12, y1 - 0.004, z0 + 0.2),
+			Vector3(lx + 0.12, y1 - 0.004, z0 + 0.32), Vector3(lx - 0.12, y1 - 0.004, z0 + 0.32), Vector3.DOWN,
+			COURTESY, 1.4, PAINT, INTERIOR)
+	# The seats, the driver's (left) and the passenger's: a cushion and a raked back, piped along their edges.
+	for side: float in [-1.0, 1.0]:
+		var sx: float = side * -SEAT.x * s.x
+		m.box(Vector3(sx, (SEAT.y - 0.06) * s.y, (SEAT.z - 0.06) * s.z), Vector3(0.46 * s.x, 0.12 * s.y, 0.5 * s.z),
+			SEAT_COLOR, 0.0, TRIM)
+		var back_basis := Basis(Vector3.RIGHT, deg_to_rad(22.0))
+		var back := Transform3D(back_basis * Basis.from_scale(Vector3(0.46 * s.x, 0.6 * s.y, 0.1)),
+			Vector3(sx, 0.52 * s.y, 0.44 * s.z))
+		m.box_xform(back, SEAT_COLOR, 0.0, TRIM)
+		for edge: float in [-1.0, 1.0]:
+			var piping := Transform3D(back_basis * Basis.from_scale(Vector3(0.02, 0.6 * s.y, 0.104)),
+				Vector3(sx + edge * 0.22 * s.x, 0.52 * s.y, 0.44 * s.z))
+			m.box_xform(piping, PIPING, 0.8, PAINT, MeshKit.ALL_FACES, INTERIOR)
 
 
 ## The lights, the running lights, the wing and the exhausts.

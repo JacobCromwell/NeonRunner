@@ -8,10 +8,16 @@ extends CinematicSequencer
 ##    takes it, and the Host sinks back. The runner looks at the key. Fade to black.
 ## 4. Cut to another stretch of the street: a sleek, flashy sports car, angular and almost triangular, like a
 ##    Lambo (SportsCarModel), parked there. The runner walks up holding out the key; the car unlocks with a chirp
-##    of its lights, its scissor door swings up, they get in, and the door comes down. Its lights come on and
+##    of its lights, its scissor door swings up and its courtesy lights come on.
+## 5. One shot from inside the car (the owner, October 10, 2026): the runner gets in, and in the seat next to
+##    them a screech sits, nice and cute (CarPassenger); it looks round at them and, as they sit down, wriggles
+##    and lifts a paw to them, and they look round at it. Then the door comes down, the car's lights come on and
 ##    its engine starts.
-## 5. At road level behind it, it launches and drives off down the street into the distance. Fade to black;
+## 6. At road level behind it, it launches hard and tears off down the street into the distance. Fade to black;
 ##    the Marketplace's intro follows.
+## The runner walks with a walk of its own (CinePoses.walk; the owner, October 10, 2026: the movement more fluid,
+## less choppy), turns unhurriedly, stepping as they turn (CineActor.turn_rate), and gets in with CinePoses' get_in;
+## their reach for the key, holding it up and holding it out to the car are eased onto that.
 ##
 ## A script on the toolkit, its numbers data (`numbers`, by default data/cinematics/gangland_outro_tuning.tres,
 ## GanglandOutroTuning). Both stretches pick up where the fight ended (CineStageDef.after_fight: the arena's look
@@ -23,10 +29,10 @@ extends CinematicSequencer
 const NUMBERS_PATH: String = "res://data/cinematics/gangland_outro_tuning.tres"
 ## The runner slows to a stop at the car's door over this long (an eased stop).
 const DOOR_SETTLE: float = 0.4
-## They turn to face the car this long after reaching it, and get in no sooner than that.
+## They square up beside the door (facing along the car) this long after reaching it, and get in no sooner than that.
 const DOOR_TURN: float = 0.35
-## The runner's arms and head, overridden on top of their pose: how quickly each move blends in and out.
-const ARM_BLEND: float = 0.3
+## The runner's arms and head, overridden on top of their pose: how long each move takes to blend in and out.
+const ARM_BLEND: float = 0.7
 ## Leaning in to take the key (radians, forward from the hips).
 const REACH_LEAN: float = 0.5
 ## The key in a hand: where it sits in the hand joint's space (metres) and how it's turned there.
@@ -43,17 +49,23 @@ const UNLOCK_SOFT: float = 0.5
 ## The shots looking back up the street see this far (metres; Gangland's fog is full by about 165 m): the street
 ## stays built from LOOK_BACK + 30 m behind (TrackBuilder.KEEP_BEHIND).
 const LOOK_BACK: float = 140.0
-## Where the runner's hips sit in the car (metres up, in a car 1 m tall): high enough that their coat stays inside it.
-const SEAT_HEIGHT: float = 0.36
-## The engine idling before the launch: a fine shudder (metres) and the squat as it launches (degrees).
+## Getting in: the share of it by which the near foot is in over the sill, and the runner's feet on the cabin's
+## floor (metres up, in a car 1 m tall; SportsCarModel's cabin floor).
+const STEP_OVER: float = 0.5
+const CABIN_FLOOR: float = 0.16
+## Sat back in the seat (metres behind its cushion's middle), and, once sat, looking round at the screech beside
+## them (degrees, + left) as it greets them.
+const SIT_BACK: float = 0.14
+const LOOK_AT_PET: float = -40.0
+## The engine idling before the launch: a fine shudder (metres); the squat as it launches (degrees) and the
+## camera's shake at the road (the Screen shake setting scales it).
 const IDLE_SHAKE: float = 0.004
-const LAUNCH_SQUAT: float = 1.2
+const LAUNCH_SQUAT: float = 2.2
+const LAUNCH_SHAKE: float = 0.08
 ## The wheels spin this much further than the car goes as it launches (metres at the rim, building up over
 ## WHEELSPIN_SECONDS and kept, so they never turn back).
-const WHEELSPIN: float = 2.5
-const WHEELSPIN_SECONDS: float = 0.6
-## Out of sight in the car once its door is this far down (the cabin behind it is dark).
-const INSIDE_AT_DOOR: float = 0.7
+const WHEELSPIN: float = 4.5
+const WHEELSPIN_SECONDS: float = 0.7
 
 ## Its numbers (null: NUMBERS_PATH's).
 @export var numbers: GanglandOutroTuning
@@ -64,6 +76,8 @@ var props: GanglandOutroSet
 var car: SportsCarModel
 var key: Node3D
 var key_glint: MeshInstance3D
+## The screech on the car's passenger seat.
+var passenger: CarPassenger
 ## True once it has cut to the car's street.
 var at_car: bool = false
 ## Where things are (track space): the Host's middle, where the runner stops by them, the car's middle (parked),
@@ -87,7 +101,6 @@ var key_holder: StringName = &"host"
 var driven: float = 0.0
 
 var _glint_material: ShaderMaterial
-var _sink_height: float = -1.0
 
 
 func _numbers() -> GanglandOutroTuning:
@@ -126,9 +139,13 @@ func _plan() -> void:
 	if t_get_in > n.get_in_at:
 		push_warning("GanglandOutro: the runner reaches the car's door at %.2f s; get_in_at (%.2f s) waits for them" % [
 			t_at_door, n.get_in_at])
-	# Out of sight once the door is mostly down (smoothstep's inverse at INSIDE_AT_DOOR).
-	var u: float = 0.5 - sin(asin(1.0 - 2.0 * INSIDE_AT_DOOR) / 3.0)
-	t_inside = n.door_down_at + n.door_seconds * u
+	# Out of sight once the door is down.
+	t_inside = n.door_down_at + n.door_seconds
+
+
+## When the passenger wriggles and chirps: as the runner sits down.
+func passenger_wriggle_at() -> float:
+	return t_get_in + n.get_in_seconds - 0.1
 
 
 ## How far the runner slows over, coming to the car's door (metres).
@@ -180,30 +197,42 @@ func runner_track(t: float) -> Vector3:
 
 func _runner(t: CineTimeline) -> void:
 	var r: CineActor = t.actor(&"runner")
-	# The walk up to the Host: a key every half second (straight moves at the pace), then facing them.
+	r.turn_rate = n.turn_rate
+	# The walk up to the Host: a key every half second (straight moves at the pace), every tenth of a second as
+	# they slow to a stop; then they turn toward the Host, and stand facing them.
 	var at: float = 0.0
 	var first: bool = true
 	while at < t_arrive - 0.001:
-		r.at(at, runner_track(at), &"run" if first else &"")
+		r.at(at, runner_track(at), &"walk" if first else &"")
 		first = false
-		at = minf(at + 0.5, t_arrive)
-	r.at(t_arrive, stop_point)
+		at = minf(at + (0.1 if at > t_arrive - 0.6 else 0.5), t_arrive)
 	var to_host: Vector3 = host_point - stop_point
 	var facing: float = -rad_to_deg(atan2(to_host.x, to_host.z))
-	_turned(_eased(r.at(t_arrive + 0.45, stop_point)), facing, 0.0)
+	_turned(r.at(t_arrive, stop_point), facing, 0.0)
 	_turned(r.at(t_cut - 0.02, stop_point), facing, 0.0)
-	# Cut to the car's street: walking up to its door, then facing it.
+	# Cut to the car's street: walking up to its door (the car on their right, facing along it).
 	var approach: Vector3 = car_point + n.approach_from
 	var come: CineActorKey = r.at(t_cut, approach)
 	come.move = CinePath.Move.CUT
 	come.face_path = true
 	r.at(t_at_door - DOOR_SETTLE, door_point + (approach - door_point).normalized() * door_slowing())
 	_eased(r.at(t_at_door, door_point), Tween.TRANS_QUAD, Tween.EASE_OUT)
-	_turned(_eased(r.at(t_at_door + DOOR_TURN, door_point)), -90.0, 0.0)
-	if t_get_in > t_at_door + DOOR_TURN + 0.01:
-		_turned(r.at(t_get_in, door_point), -90.0, 0.0)
-	# In: across the sill to the seat, turning to face down the street (_on_advance sits them down).
-	_turned(_eased(r.at(t_get_in + n.get_in_seconds, seat_point)), 0.0, 0.0)
+	_turned(r.at(t_at_door + 0.05, door_point), 0.0, 0.0)
+	_turned(r.at(t_get_in, door_point), 0.0, 0.0)
+	# In (CinePoses.get_in): the right foot over the sill and onto the cabin's floor, ducking in, down onto the
+	# seat; feet on the cabin's floor.
+	var floor_y: float = CABIN_FLOOR * SportsCarModel.scale_of(n.car_size).y
+	var over: Vector3 = door_point.lerp(seat_point, 0.45)
+	var start: CineActorKey = _turned(r.at(t_get_in, door_point, &"get_in"), 0.0, 0.0)
+	start.progress = 0.0
+	var step_in: CineActorKey = _turned(_eased(r.at(t_get_in + n.get_in_seconds * STEP_OVER, over)), 0.0, 0.0)
+	step_in.progress = STEP_OVER
+	var sat: Vector3 = seat_point + Vector3(0.0, floor_y, -SIT_BACK)
+	var seated: CineActorKey = _turned(_eased(r.at(t_get_in + n.get_in_seconds, sat)), 0.0, 0.0)
+	seated.progress = 1.0
+	# Sat, they look round at the screech as it greets them.
+	var look: CineActorKey = _turned(r.at(t_get_in + n.get_in_seconds + 0.55, sat), 0.0, LOOK_AT_PET)
+	look.progress = 1.0
 	r.leave = t_inside
 
 
@@ -246,7 +275,15 @@ func _camera(t: CineTimeline) -> void:
 	# Cut (under black): low off the car's front corner, gliding round to its side as the runner comes to it.
 	var c: Vector3 = car_point
 	t.shot(t_cut, c + n.reveal_cam, c + n.reveal_look, CinePath.Move.CUT, n.reveal_fov)
-	t.shot(n.road_at - 0.004, c + n.reveal_cam_end, c + n.reveal_look_end, CinePath.Move.SMOOTH, n.reveal_fov)
+	t.shot(n.passenger_at - 0.004, c + n.reveal_cam_end, c + n.reveal_look_end, CinePath.Move.SMOOTH, n.reveal_fov)
+	# Cut: from behind the dashboard, looking back at the runner getting in beside the screech on the other seat.
+	t.shot(n.passenger_at, c + n.passenger_cam, c + n.passenger_look, CinePath.Move.CUT, n.passenger_fov)
+	t.shot(n.door_shot_at - 0.004, c + n.passenger_cam_end, c + n.passenger_look, CinePath.Move.SMOOTH,
+		n.passenger_fov)
+	# Cut: beside the car as its door comes down and its lights and engine come on.
+	t.shot(n.door_shot_at, c + n.door_cam, c + n.door_look, CinePath.Move.CUT, n.reveal_fov)
+	t.shot(n.road_at - 0.004, c + n.door_cam + Vector3(0.15, 0.0, 0.25), c + n.door_look, CinePath.Move.SMOOTH,
+		n.reveal_fov)
 	# Cut: on the road behind it, at road level, as it drives off into the distance.
 	t.shot(n.road_at, c + n.road_cam, c + n.road_look, CinePath.Move.CUT, n.road_fov)
 	t.shot(n.duration, c + n.road_cam, c + n.road_look + Vector3(0.0, -0.1, 40.0), CinePath.Move.SMOOTH,
@@ -283,12 +320,14 @@ func _events(t: CineTimeline) -> void:
 	t.sound(n.unlock_at, &"car_unlock")
 	t.cue(n.unlock_at, &"unlock")
 	t.sound(n.door_up_at, &"car_door")
+	t.cue(n.passenger_at, &"passenger")
+	t.sound(passenger_wriggle_at(), &"screech_chirp")
 	t.sound(n.door_down_at, &"car_door")
 	t.sound(n.lights_at, &"car_start")
 	t.cue(n.lights_at, &"lights")
 	t.sound(n.launch_at, &"car_drive")
 	t.cue(n.launch_at, &"launch")
-	t.effect(n.launch_at, CineEvent.SHAKE, 0.5, 0.05)
+	t.effect(n.launch_at, CineEvent.SHAKE, 0.6, LAUNCH_SHAKE)
 	t.effect(n.duration - n.fade_out, CineEvent.FADE_OUT, n.fade_out)
 
 
@@ -310,6 +349,9 @@ func _to_car() -> void:
 	stage.add_child(car)
 	car.build(n.car_size, n.car_paint, n.car_accent)
 	car.global_position = stage.point(car_point)
+	passenger = CarPassenger.new()
+	car.add_child(passenger)
+	passenger.setup(n.car_size, stage.skin.enemy_variant)
 
 
 ## Over (played out or skipped): the key goes with the rest of it.
@@ -334,40 +376,38 @@ func _on_advance(_delta: float) -> void:
 	_place_key(runner)
 
 
-## The runner's arms and head on top of their pose: reaching for the key and looking at it; holding it out to
-## the car; sitting down in it.
+## The runner's arms and head on top of their pose (a walk, or standing at ease): reaching for the key, leaning
+## in, and looking at it; holding it out to the car. Each move eases in and out over about ARM_BLEND.
 func _pose_runner(runner: CineActorNode) -> void:
 	var rig: HumanoidRig = runner.avatar.rig
 	if not at_car:
 		var reach: float = _window(time, n.reach_at, t_take, n.admire_at, n.admire_at + ARM_BLEND)
 		if reach > 0.0 and props != null:
-			# Leaning in and down to the Host's hand, then reaching for it.
+			# Leaning in and down to the Host's hand, looking at it, reaching for it.
 			_lean(rig, reach)
+			_nod(rig, reach * 0.35)
 			aim_arm(rig, &"r", props.host_hand().global_position, reach)
-		var admire: float = smoothstep(n.admire_at, n.admire_at + 0.5, time)
+		var admire: float = _ease(clampf((time - n.admire_at) / ARM_BLEND, 0.0, 1.0))
 		if admire > 0.0:
 			_hold_up(rig, admire, 100.0)
 			_nod(rig, admire * 0.45)
 		return
-	# Holding the key out to the car as it unlocks.
-	var raise: float = _window(time, n.unlock_at - 0.35, n.unlock_at, n.unlock_at + 0.45, n.unlock_at + 0.8)
+	# Holding the key out to the car as it unlocks, then lowering it.
+	var raise: float = _window(time, n.unlock_at - 0.5, n.unlock_at, n.unlock_at + 0.4, n.unlock_at + 0.4 + ARM_BLEND)
 	if raise > 0.0:
 		aim_arm(rig, &"r", stage.point(car_point + Vector3(0.0, 0.6, 0.0)), raise)
-	# Sitting down into the seat, lowered as their legs fold.
-	var sit: float = smoothstep(t_get_in, t_get_in + n.get_in_seconds, time)
-	if sit > 0.0:
-		if _sink_height < 0.0:
-			_sink_height = rig.joint(&"pelvis").global_position.y - runner.global_position.y
-		_sit(rig, sit)
-		var seat_y: float = SEAT_HEIGHT * SportsCarModel.scale_of(n.car_size).y
-		runner.position.y -= (_sink_height - seat_y) * sit
-		# Over the sill on the way in.
-		runner.position.y += 0.25 * sin(PI * sit)
 
 
-## 0 before `a`, rising to 1 by `b`, 1 until `c`, falling to 0 by `d` (eased).
+## 0 before `a`, rising to 1 by `b`, 1 until `c`, falling to 0 by `d` (eased in and out, with no jolt at either end).
 static func _window(t: float, a: float, b: float, c: float, d: float) -> float:
-	return smoothstep(a, maxf(b, a + 0.001), t) * (1.0 - smoothstep(c, maxf(d, c + 0.001), t))
+	var rise: float = clampf((t - a) / maxf(b - a, 0.001), 0.0, 1.0)
+	var fall: float = clampf((t - c) / maxf(d - c, 0.001), 0.0, 1.0)
+	return _ease(rise) * (1.0 - _ease(fall))
+
+
+## An ease in and out whose speed and acceleration both start and end at rest (smootherstep).
+static func _ease(x: float) -> float:
+	return x * x * x * (x * (x * 6.0 - 15.0) + 10.0)
 
 
 ## Turns a rig's arm (`side` &"l" or &"r") toward `target` (world space) by `k` (0-1), the forearm straightening:
@@ -408,18 +448,6 @@ static func _nod(rig: HumanoidRig, k: float) -> void:
 	var head: Node3D = rig.joint(&"head")
 	if head != null:
 		head.rotate_object_local(Vector3.RIGHT, -0.5 * k)
-
-
-## Seated low (driving): thighs forward, legs stretched out ahead, leaning back a little, hands forward on the
-## wheel, by `k`.
-static func _sit(rig: HumanoidRig, k: float) -> void:
-	for side: String in ["l", "r"]:
-		var s: float = 1.0 if side == "r" else -1.0
-		_blend_joint(rig, StringName("thigh_%s" % side), Vector3(84.0, 0.0, 6.0 * s), k)
-		_blend_joint(rig, StringName("shin_%s" % side), Vector3(-28.0, 0.0, 0.0), k)
-		_blend_joint(rig, StringName("upper_arm_%s" % side), Vector3(38.0, 0.0, 8.0 * s), k)
-		_blend_joint(rig, StringName("forearm_%s" % side), Vector3(42.0, 0.0, 0.0), k)
-	_blend_joint(rig, &"chest", Vector3(20.0, 0.0, 0.0), k)
 
 
 ## A joint blended toward a rotation (degrees, Euler as Node3D.rotation; the left side's y and z mirrored by
@@ -490,6 +518,10 @@ func _drive_car() -> void:
 	var up: float = smoothstep(n.door_up_at, n.door_up_at + n.door_seconds, time)
 	var down: float = smoothstep(n.door_down_at, n.door_down_at + n.door_seconds, time)
 	car.set_door(up * (1.0 - down))
+	# Its courtesy lights come on as the door goes up, and go out a moment after it's down.
+	car.set_interior(smoothstep(n.door_up_at, n.door_up_at + 0.4, time)
+		* (1.0 - smoothstep(n.door_down_at + n.door_seconds, n.door_down_at + n.door_seconds + 0.6, time)))
+	passenger.update(time, n.passenger_looks_at, passenger_wriggle_at())
 	driven = car_distance(time)
 	car.set_travelled(driven, WHEELSPIN * smoothstep(n.launch_at, n.launch_at + WHEELSPIN_SECONDS, time))
 	var pos: Vector3 = car_point + Vector3(0.0, 0.0, driven)

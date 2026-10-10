@@ -7,8 +7,10 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   car_unlock     the sports car unlocking: two quick chirps and the locks clunking open
 ##   car_door       its scissor door swinging up (or down): a hydraulic hiss and servo whine, a soft latch
 ##   car_start      its engine starting: the starter, the catch, a blip of the throttle, idling
-##   car_drive      it launches: the tyres biting, the engine roaring up through two gears as it drives away down
-##                  the street, fading into the distance
+##   car_drive      it launches: the tyres spinning and biting, the engine screaming up through three quick
+##                  gears as it tears away down the street, fading fast into the distance
+##   screech_chirp  the screech on the car's passenger seat greeting the runner: a happy little trill, a
+##                  questioning chirp and a purr
 
 ## How long the drive-off lasts, the roar fading to nothing (every sound stays under 2.5 s).
 const DRIVE_SECONDS: float = 2.45
@@ -22,6 +24,7 @@ func sounds() -> Dictionary:
 		"car_door": _door,
 		"car_start": _start,
 		"car_drive": _drive,
+		"screech_chirp": _chirp,
 	}
 
 
@@ -137,15 +140,15 @@ func _start() -> PackedFloat32Array:
 	return b
 
 
-## The launch: the tyres biting, the engine roaring up through first gear, a shift, second, a shift, third, and
-## away down the street, duller and quieter as it goes.
+## The launch: the tyres spinning and biting, the engine screaming up through first gear, quick shifts through
+## second and third into fourth, and away down the street, duller and quieter as it goes.
 func _drive() -> PackedFloat32Array:
 	var rng := _rng(1705)
 	var b := _engine(DRIVE_SECONDS, _drive_rpm, _drive_away, rng)
-	var squeal := DSP.osc(0.5, func(u: float) -> float: return DSP.sweep(1400.0, 1100.0, u), &"saw")
+	var squeal := DSP.osc(0.75, func(u: float) -> float: return DSP.sweep(1500.0, 1100.0, u), &"saw")
 	DSP.filter(squeal, &"bandpass", 1300.0, 3.0)
-	DSP.adsr(squeal, 0.02, 0.15, 0.5, 0.2)
-	DSP.mix(b, squeal, 0.0, 0.15)
+	DSP.adsr(squeal, 0.02, 0.2, 0.55, 0.3)
+	DSP.mix(b, squeal, 0.0, 0.18)
 	DSP.shape(b, 0.005, 0.25)
 	DSP.crush(b, 10, 22000.0)
 	return b
@@ -190,19 +193,48 @@ static func _start_rpm(t: float) -> float:
 	return idle + 0.5 * sin(PI * clampf((t - 0.62) / 0.3, 0.0, 1.0))
 
 
-## The engine's speed (0-1) driving off, `t` seconds after the launch: up through first gear, a shift, second, a
-## shift, third.
+## The engine's speed (0-1) driving off, `t` seconds after the launch: up through first gear, quick shifts
+## through second and third, into fourth.
 static func _drive_rpm(t: float) -> float:
-	var shifts: Array[float] = [0.0, 0.75, 1.65]
+	var shifts: Array[float] = [0.0, 0.5, 1.05, 1.7]
 	var g: int = 0
 	for k: int in shifts.size():
 		if t >= shifts[k]:
 			g = k
 	var e: float = t - shifts[g]
-	var from: float = 0.35 if g == 0 else 0.62
-	return lerpf(from, 1.0, 1.0 - exp(-e / (0.35 + 0.25 * g)))
+	var from: float = 0.4 if g == 0 else 0.66
+	return lerpf(from, 1.0, 1.0 - exp(-e / (0.22 + 0.14 * g)))
 
 
-## How far away it has gone (0 here, 1 far down the street), `t` seconds after the launch.
+## How far away it has gone (0 here, 1 far down the street), `t` seconds after the launch: it's far faster than
+## it was, so it's going sooner.
 static func _drive_away(t: float) -> float:
-	return smoothstep(0.3, DRIVE_SECONDS - 0.1, t)
+	return smoothstep(0.2, DRIVE_SECONDS - 0.25, t)
+
+
+## A happy little trill (a squeak warbling up), a short questioning chirp rising at its end, and a soft purr under
+## them: small and sweet, nothing like the swarm's chitter.
+func _chirp() -> PackedFloat32Array:
+	var rng := _rng(1706)
+	var d: float = 0.8
+	var b := DSP.buffer(d)
+	# The trill: a squeak sliding up, warbling quickly.
+	var trill := DSP.fm(0.3, func(u: float) -> float: return DSP.sweep(1900.0, 2800.0, u) * (1.0 + 0.06 * sin(TAU * 7.0 * u)),
+		2.0, func(u: float) -> float: return 0.6 + 0.4 * sin(PI * u))
+	DSP.adsr(trill, 0.01, 0.08, 0.7, 0.08)
+	DSP.mix(b, trill, 0.0, 0.5)
+	# The chirp: short, its pitch tipping up at the end, like a question.
+	var chirp := DSP.fm(0.13, func(u: float) -> float: return 2300.0 + 1400.0 * u * u, 2.0,
+		func(u: float) -> float: return 0.8)
+	DSP.adsr(chirp, 0.005, 0.03, 0.75, 0.04)
+	DSP.mix(b, chirp, 0.38, 0.42)
+	# The purr: a soft, fast rattle low down, fading out under them.
+	var purr := DSP.noise(0.7, rng)
+	DSP.filter(purr, &"bandpass", 380.0, 1.4)
+	var n: int = purr.size()
+	for i: int in n:
+		var t: float = float(i) / RATE
+		purr[i] *= (0.55 + 0.45 * sin(TAU * 24.0 * t)) * sin(PI * float(i) / n)
+	DSP.mix(b, purr, 0.05, 0.35)
+	DSP.crush(b, 11, 22000.0)
+	return b

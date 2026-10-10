@@ -14,6 +14,9 @@ enum Kind { RUNNER, CYBORG }
 @export var look: StringName = &""
 ## A cyborg carrying a Bad Dream (GDD §9.7): the host's purple glitch and veins.
 @export var host: bool = false
+## How quickly it turns toward its heading (1/s; 0: the toolkit's, CineActorNode.TURN_RATE, a quick turn).
+## Lower for an unhurried turn, as someone walking turns: a third of it takes about a second.
+@export_range(0.0, 20.0, 0.1, "suffix:1/s") var turn_rate: float = 0.0
 ## Seconds when it appears and leaves (leave below 0: stays to the end).
 @export_range(0.0, 120.0, 0.05, "or_greater", "suffix:s") var enter: float = 0.0
 @export_range(-1.0, 120.0, 0.05, "or_greater", "suffix:s") var leave: float = -1.0

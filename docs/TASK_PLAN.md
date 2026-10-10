@@ -508,7 +508,11 @@ rubble and scuttle away as the runner walks over; the trembling Host hands the r
 angular sports car built by code (`SportsCarModel`: a faceted wedge, a scissor door, shiny paint on every renderer);
 the runner unlocks it, gets in, and it drives off down the street, the camera at road level. It adds one toolkit
 feature, `CineStageDef.after_fight` (a stage straight after a fight keeps its look and sky), a `--from=S` option to
-the cinematic review tool, and six sounds (`tools/asset_gen/sfx_bank_gangland_outro.gd`). The staging choices are in `docs/questions/f2d.md`.
+the cinematic review tool, and six sounds (`tools/asset_gen/sfx_bank_gangland_outro.gd`). The owner's follow-up (October
+10, 2026) is built too: the runner walks with a walk of its own (`CinePoses.walk`, planted feet), turns unhurriedly
+(`CineActor.turn_rate`) and gets in with a pose of its own (`CinePoses.get_in`), seen from inside the car beside a cute
+screech on the passenger seat (`CarPassenger`, a seventh sound, `screech_chirp`), and the car drives off faster. The
+staging choices are in `docs/questions/f2d.md`.
 
 ---
 
