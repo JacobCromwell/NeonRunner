@@ -147,7 +147,7 @@ answer these as it goes.
   **Answered (owner, October 11, 2026): bait the bombs.** Captain Cogs' bombs lock onto the runner's lane; a
   runner who dodges one at a roof's end or a pier's open side sends it past the edge into Mecha Guppy's jaws,
   a hit, the way the Floating Head's laser is baited into a tower. A player who doesn't manage it still
-  progresses, more slowly: Captain Cogs sometimes misses into the chasm on his own (GDD §10).
+  progresses, more slowly: Captain Cogs sometimes misses into the chasm anyway (GDD §10).
 - **Where the shark is eaten "under the lanes that don't lead up"** (GDD §10: "the rest drop them back onto
   the floor they came from, where Mecha Guppy is eating"). Placeholder: the floor there is already gone
   (E5e-b1's chasm); the shark shows itself eating there by breaching in that chasm for the hit, only after
