@@ -34,6 +34,9 @@ extends Node3D
 ##   outward breach_early before the bomb comes down into them (held breach_hold): a bomb that falls into its open jaws
 ##   hits it (mouth_contains; MechaGuppyBombs calls hit()): a clang, a fireball, sparks and smoke where it went in, a
 ##   shudder, and it recoils, snapping shut and sinking at once.
+## - the leap (task E5e-c, the defeat; MechaGuppyLeap drives it): hold() takes it out of its stages, and pose_free() sets
+##   its head's transform and jaws directly, frame by frame (it bursts up under Captain Cogs' ship, gulps, falls back and
+##   swims away). Nothing of it has a hitbox then either.
 ## Its pose (hinge, pitch, yaw, roll, jaw) is always eased from the one before, so it never pops while it can be seen.
 ## advance() is driven by the boss's ticks (time from the physics step; it waits while the runner is down). Nothing
 ## flickers (Reduced flashing has nothing to calm; the hit's fireball and sparks are RunEffects', which honour it).
@@ -127,6 +130,8 @@ var hinge := Vector3(0.0, -DEEP, 0.0)
 var pitch: float = 0.0
 var roll: float = 0.0
 var yaw: float = 0.0
+## Held out of its stages (the leap, MechaGuppyLeap: pose_free sets its pose).
+var held: bool = false
 
 var _from: Dictionary = {}
 var _to: Dictionary = {}
@@ -283,10 +288,43 @@ func hit(p: Vector3) -> void:
 		_go(Stage.SHUTTING, catch_pose(0.0, true), tuning.bite_snap)
 
 
+## Takes it out of its stages (on: the leap drives it with pose_free, whatever it was doing; off: idle, out of sight).
+func hold(on: bool) -> void:
+	held = on
+	stage = Stage.IDLE
+	action = {}
+	if not on:
+		_head.visible = false
+
+
+## The leap's pose (held): its hinge at world point `p_hinge`, its head turned by `basis` (unscaled: SCALE is applied),
+## its jaws `open` (0 shut, 1 wide), shown or not.
+func pose_free(p_hinge: Vector3, basis: Basis, open: float, shown_now: bool = true) -> void:
+	hinge = p_hinge
+	jaw = open
+	_head.visible = shown_now
+	var wobble: float = 0.0
+	if _shudder > 0.0:
+		wobble = deg_to_rad(SHUDDER_DEGREES) * (_shudder / SHUDDER_SECONDS) * sin((SHUDDER_SECONDS - _shudder) * 38.0)
+	_head.global_transform = Transform3D((Basis(Vector3.BACK, wobble) * basis).scaled_local(Vector3.ONE * SCALE), hinge)
+	_upper.transform = Transform3D(Basis(Vector3.RIGHT, -deg_to_rad(MechaGuppySharkModel.UPPER_OPEN) * jaw), Vector3.ZERO)
+	_lower.transform = Transform3D(Basis(Vector3.RIGHT, deg_to_rad(MechaGuppySharkModel.LOWER_OPEN) * jaw), Vector3.ZERO)
+
+
+## Its head's transform in the world (its model's space, scaled: the leap's foam finds its fin by it).
+func head_transform() -> Transform3D:
+	return _head.global_transform
+
+
+## A shudder (the gulp's: the leap).
+func shudder() -> void:
+	_shudder = SHUDDER_SECONDS
+
+
 ## One physics step (the boss's ticks drive it).
 func advance(delta: float) -> void:
 	_shudder = maxf(_shudder - delta, 0.0)
-	if stage == Stage.IDLE:
+	if held or stage == Stage.IDLE:
 		return
 	stage_time += delta
 	var kind: int = int(action.get("kind", Kind.BITE))

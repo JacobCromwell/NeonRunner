@@ -9,6 +9,8 @@ extends TestSuite
 
 var main: Node
 var heard: Array[StringName] = []
+## Boss slots swapped for an unbuilt stand-in (_stand_in): step id → the real BossDef.
+var _real_bosses: Dictionary = {}
 
 
 func run() -> void:
@@ -52,6 +54,26 @@ func run() -> void:
 
 
 # --- Helpers ---------------------------------------------------------------------
+
+## Boss step `id` with an unbuilt stand-in in its slot (a copy of its BossDef with no scene), for the placeholder card a
+## boss not yet built shows: every boss is built now (docs/OPEN_QUESTIONS.md item 575). _restore_stand_ins() puts the
+## real ones back.
+func _stand_in(id: String) -> CampaignStep:
+	var step: CampaignStep = App.campaign.step(id)
+	if not _real_bosses.has(id):
+		_real_bosses[id] = step.boss
+	var copy: BossDef = (_real_bosses[id] as BossDef).duplicate() as BossDef
+	copy.scene = ""
+	copy.preview_scene = ""
+	step.boss = copy
+	return step
+
+
+func _restore_stand_ins() -> void:
+	for id: String in _real_bosses:
+		App.campaign.step(id).boss = _real_bosses[id]
+	_real_bosses.clear()
+
 
 func _frames(count: int) -> void:
 	for i: int in count:
@@ -303,8 +325,9 @@ func _test_every_screen(tag: String) -> void:
 		["run summary", func() -> void: _show_result(false), ResultsScreen],
 		["boss results", func() -> void: _show_boss_result(true), ResultsScreen],
 		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
-		# The placeholder card a boss not yet built shows: the Beach's (task D10c; its fight is still to be designed).
-		["boss slot", func() -> void: App.play_step(App.campaign.step("beach/boss")), SlotScreen],
+		# The placeholder card a boss not yet built shows: every boss is built now, so an unbuilt stand-in in the Beach's
+		# slot (docs/OPEN_QUESTIONS.md item 575; _stand_in).
+		["boss slot", func() -> void: App.play_step(_stand_in("beach/boss")), SlotScreen],
 		# The zones' intros play their arrival flyovers (task F1) and the City's and Gangland's outros are built
 		# (F2a, F2d); the other outros are still placeholder cards.
 		["cinematic slot", func() -> void: App.play_step(App.campaign.step("marketplace/outro")), SlotScreen],
@@ -312,6 +335,7 @@ func _test_every_screen(tag: String) -> void:
 	]
 	for entry: Array in screens:
 		await _open_and_check("%s (%s)" % [entry[0], tag], entry[1], entry[2])
+	_restore_stand_ins()
 
 	# The overlays over a running level.
 	await _start_level("city/1")
@@ -783,15 +807,17 @@ func _test_results() -> void:
 
 func _test_slots_and_demo_end() -> void:
 	App.profile = SampleProfiles.fresh()
-	# A boss not yet built's placeholder card: the Beach's (task D10c).
-	App.play_step(App.campaign.step("beach/boss"))
+	# A boss not yet built's placeholder card: an unbuilt stand-in in the Beach's slot (every boss is built now).
+	App.play_step(_stand_in("beach/boss"))
 	await _frames(2)
 	var slot := App.screen as SlotScreen
 	check(slot != null and _focus() == slot.continue_button, "the boss slot focuses Continue")
 	if slot == null:
+		_restore_stand_ins()
 		return
 	slot.continue_button.pressed.emit()
 	await _frames(2)
+	_restore_stand_ins()
 	check(App.profile.is_completed("beach/boss") and App.screen is SlotScreen
 		and (App.screen as SlotScreen).step.id == "beach/outro", "Continue counts the boss as done and moves on")
 	(App.screen as ScreenBase).go_back()

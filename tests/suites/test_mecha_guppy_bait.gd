@@ -36,7 +36,7 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
 		check(false, "Mecha Guppy and Captain Cogs' fight loads")
 		return
@@ -61,7 +61,7 @@ func _movement(speed: float) -> MovementTuning:
 	return t
 
 
-## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's preview by default), attacks on: [world, boss].
+## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's by default), attacks on: [world, boss].
 func _fight(lanes: int, speed: float, p_def: BossDef = null) -> Array:
 	var d: BossDef = p_def if p_def != null else def
 	var t: MovementTuning = _movement(speed)

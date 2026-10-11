@@ -17,7 +17,7 @@ extends TestSuite
 ##   its nearest lane that leads up (its rope from the lifted runner to the roof's edge), and a revive after the fall
 ##   goes there too;
 ## - phase changes: the first steps planned in phase 2 (higher) and phase 3's top come right after the steps already
-##   in sight, and nothing in sight changes; the top's arrival is logged (top_reached), the stub's minute and the
+##   in sight, and nothing in sight changes; the top's arrival is logged (top_reached), phase 3's minute and the
 ##   waterfall's fade start there;
 ## - no escalation: through a long phase 1 with no hits the climb keeps the same rhythm; a retry plays the same; the
 ##   builder's work a frame doesn't grow with the fight;
@@ -45,7 +45,7 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
 		check(false, "Mecha Guppy and Captain Cogs' fight loads")
 		return
@@ -67,7 +67,7 @@ func _movement(speed: float) -> MovementTuning:
 	return t
 
 
-## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's preview by default; with the dash power-up at its
+## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's by default; with the dash power-up at its
 ## best tier, a 3 s cooldown, with `dash`; with Captain Cogs' bombs and Mecha Guppy's bites only with `attacks`; from
 ## phase `start_phase` + 1, as a checkpoint would): [world, boss].
 func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false, attacks: bool = false,
@@ -380,7 +380,7 @@ func _wrong_drop(c: Dictionary) -> void:
 ## as it was (its roofs' notches too), the next one is phase 2's (higher) or phase 3's top, and no step is ever planned
 ## within sight (its hut past
 ## the edge of sight when it's planned). The runner's arrival on the top is logged (top_reached); the waterfall starts
-## fading then, and the stub's minute is counted from then.
+## fading then, and phase 3's minute is counted from then.
 func _test_phase_changes() -> void:
 	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.top_seconds = 5.0)
 	for lanes: int in [3, 6]:
@@ -451,7 +451,7 @@ func _test_phase_changes() -> void:
 			var over: Array[Dictionary] = _events(boss, &"top_over")
 			check(reached.size() == 1 and over.size() == 1
 				and absf(float(over[0]["t"]) - float(reached[0]["t"]) - 5.0) < 0.1,
-				"the runner's arrival on the top is logged, and the stub's minute is counted from it (%s) %s"
+				"the runner's arrival on the top is logged, and phase 3's minute is counted from it (%s) %s"
 				% [[reached.size(), over.size()], tag])
 			check(float(st["top_shown"]) > 0.95 and float(st["after_top"]) >= 0.0 and float(st["after_top"]) < 0.01,
 				"the waterfall stays until the top is reached, then fades (%.2f then %.2f) %s" % [st["top_shown"], st["after_top"], tag])

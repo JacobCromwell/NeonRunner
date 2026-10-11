@@ -2,7 +2,8 @@ extends TestSuite
 ## Mecha Guppy's bait and fallback at both ends of every tunable's range, on real physics (task E5e-b3's review:
 ## tunables inside their own F6 ranges broke the bait's and the fallback's promises, and test_mecha_guppy's sweep only
 ## checks the climb's plan). For every MechaGuppyTuning tunable with a range (all but Captain Cogs' ship's, which only
-## place the ship, and top_seconds, phase 3's stub's), at each end of its range, at 3 lanes and 23.8 m/s (the narrowest
+## place the ship, and phase 3's and the defeat's, MechaGuppyTuning.TOP_TUNABLES, which test_mecha_guppy_top sweeps), at
+## each end of its range, at 3 lanes and 23.8 m/s (the narrowest
 ## piers, the fastest run) and at 6 lanes and 18 m/s (the widest roofs, the most lanes to cross), a runner who never baits
 ## (MechaGuppyBot, baits off, the planner's reaction) climbs until the fallback has hit twice:
 ## - it lives, never hurt;
@@ -18,8 +19,9 @@ const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 ## The fights: [lanes, speed].
 const RUNS: Array[Vector2] = [Vector2(3, 23.8), Vector2(6, 18.0)]
 const REACTION: float = 0.35
-## The tunables that can't touch phases 1 and 2's bait or fallback.
-const SKIPPED: Array[String] = ["ship_ahead", "ship_height", "ship_sway", "top_seconds"]
+## The tunables that can't touch phases 1 and 2's bait or fallback (and MechaGuppyTuning.TOP_TUNABLES: phase 3's and the
+## defeat's).
+const SKIPPED: Array[String] = ["ship_ahead", "ship_height", "ship_sway"]
 ## The longest a variant's fight may take to land its two hits (seconds of fight).
 const MOST_SECONDS: float = 240.0
 
@@ -30,7 +32,7 @@ var def: BossDef
 func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	var slot := load(BOSS_PATH) as BossDef
-	def = slot.preview() if slot != null else null
+	def = slot if slot != null and slot.is_built() else null
 	if def == null:
 		check(false, "Mecha Guppy and Captain Cogs' fight loads")
 		return
@@ -76,7 +78,7 @@ func _variants() -> Array[Dictionary]:
 	for prop: Dictionary in base.get_property_list():
 		if int(prop["hint"]) != PROPERTY_HINT_RANGE or not (int(prop["usage"]) & PROPERTY_USAGE_EDITOR):
 			continue
-		if SKIPPED.has(String(prop["name"])):
+		if SKIPPED.has(String(prop["name"])) or MechaGuppyTuning.TOP_TUNABLES.has(String(prop["name"])):
 			continue
 		var parts: PackedStringArray = String(prop["hint_string"]).split(",")
 		if parts.size() < 2:

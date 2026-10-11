@@ -5,7 +5,8 @@ extends BossEncounter
 ## runner; through the first two phases the runner climbs, by anti-grav pads and tiki-hut ceilings, onto higher
 ## and higher tiki bar roofs, the camera following them up past a waterfall, under Sunset Strip's setting sun.
 ## Task E5e-b1 builds the climb, its look and the fight's frame; E5e-b2 the shark, the pirate, the bombs and what
-## hurts the shark; E5e-c phase 3 and the defeat (the slot then switches from preview_scene to scene).
+## hurts the shark; E5e-b3 the hits by baiting; E5e-c phase 3 and the defeat, and the campaign plays it (the slot's
+## scene, after Sunset Strip).
 ##
 ## The arena (BossDef.arena, data/bosses/beach_boss.tres): the Beach's look (MechaGuppySkin, a BeachSkin with the
 ## climb's tiki huts, tiki bar towers and chasms, data/bosses/beach_boss_skin.tres), the street eaten from the start
@@ -19,9 +20,15 @@ extends BossEncounter
 ## floor Mecha Guppy has eaten: a fall, death unless the grapple saves it (_grapple_save: up onto the higher roof,
 ## into its nearest lane that leads up; a revive after a fall goes there too). Phase 2's climb is about 20%
 ## faster: its steps are higher (MechaGuppyTuning.phase2_rise) and as long, the run speed never rises.
-## Phase 3 is a stub (DESIGN-TBD, E5e-c): its step is the top, a roof that runs on flat; when the runner reaches it
-## (top_reached, logged), the waterfall backdrop (MechaGuppyWaterfall) gives way to the Beach's own sky and the stub's
-## minute (top_seconds) starts, after which the fight is won. E5e-c builds phase 3's attacks on that moment.
+## Phase 3, "Level with Captain Cogs" (GDD §10; task E5e-c, MechaGuppyTop): its step is the top, the climb's last roof
+## running on flat (a long tiki bar roof deck: no more pads, huts, bites or bombs). When the runner reaches it
+## (top_reached, logged), the waterfall backdrop (MechaGuppyWaterfall) and its low cloud give way to the Beach's own,
+## Captain Cogs' ship comes level alongside the top, and the minute (top_seconds) starts: the boss bar runs down over it
+## while the captain's rounds (lanes struck by cannonballs: a switch) and the waves (crashing over every lane: a jump)
+## come on a fixed, looped script timed from that moment. When it's up, the fight is won (a counted hit, &"time").
+## The defeat (MechaGuppyLeap): Mecha Guppy bursts up under the ship, gulps the captain with the ship's stern half, falls
+## back and swims away; the results wait until it's gone (victory_over), and the victory riff comes after the gulp
+## (MechaGuppyTuning.victory_riff_on), not at the defeat (victory_riff).
 ##
 ## The shark, the pirate and the bombs (E5e-b2, E5e-b3): Mecha Guppy (MechaGuppyShark) waits with its jaws open beside
 ## each roof's notch, then bites the end of the roof the runner has just left; Captain Cogs (CaptainCogsShip) flies
@@ -49,7 +56,7 @@ const ROPE_COLOR := Color(1.0, 0.92, 0.78)
 const ROPE_SECONDS: float = 0.35
 const ROPE_THICKNESS: float = 0.06
 
-## The runner stands on phase 3's top (E5e-c starts phase 3's attacks here).
+## The runner stands on phase 3's top (its minute and its attacks start here: MechaGuppyTop).
 signal top_reached
 
 var tuning: MechaGuppyTuning
@@ -61,6 +68,9 @@ var shark: MechaGuppyShark
 var ship: CaptainCogsShip
 var bombs: MechaGuppyBombs
 var pattern: MechaGuppyPattern
+## Phase 3 (its minute, the captain's rounds and the waves) and the defeat (the leap; null until the win).
+var top: MechaGuppyTop
+var leap: MechaGuppyLeap
 ## Off: no bombs and no bites (the climb's own tests turn them off to check the climb alone; on in the game).
 var attacks_enabled: bool = true
 ## Hits landed over the fight (register_hit).
@@ -132,6 +142,10 @@ func _build_boss() -> void:
 	ship.setup(self)
 	pattern = MechaGuppyPattern.new(self)
 	shark.on_snap = pattern.on_snap
+	top = MechaGuppyTop.new()
+	top.name = "Top"
+	add_child(top)
+	top.setup(self)
 
 
 ## The run's pace (MovementTuning.pace(): 1 at 18 m/s): the climb's distances that stand for a time follow it.
@@ -143,7 +157,7 @@ func run_pace() -> float:
 	return 1.0
 
 
-## True once the climb gives way to the top (phase 3's flat run, E5e-c: the last phase).
+## True once the climb gives way to the top (phase 3, the last phase).
 func top_due() -> bool:
 	return phase_index >= phase_count() - 1 and phase_count() > 2
 
@@ -167,8 +181,8 @@ func _pattern_tick(delta: float) -> void:
 	_advance(delta)
 	_place_armor()
 	_watch_top()
-	# DESIGN-TBD (E5e-c builds phase 3): the stub's minute on the top runs out and the fight is won.
-	if top_due() and top_reached_at >= 0.0 and fight_time() - top_reached_at >= tuning.top_seconds:
+	# GDD §10: the minute on the top is up (the runner dodged for it): Mecha Guppy leaps, the fight is won.
+	if top_due() and top != null and top.over():
 		log_event(&"top_over")
 		damage(hit_damage(), &"time")
 
@@ -178,13 +192,14 @@ func on_top() -> bool:
 	if climb == null or not climb.top_planned() or world == null:
 		return false
 	var p: Player = world.player
-	var top: MechaGuppyClimb.Roof = climb.roofs[-1]
-	return p.surface == Player.Surface.FLOOR and p.grounded and absf(p.floor_y - top.top) < 0.05 \
-		and p.distance >= top.first_start()
+	var roof: MechaGuppyClimb.Roof = climb.roofs[-1]
+	return p.surface == Player.Surface.FLOOR and p.grounded and absf(p.floor_y - roof.top) < 0.05 \
+		and p.distance >= roof.first_start()
 
 
-## The moment the runner reaches the top: logged, signalled (E5e-c), the waterfall gives way to the Beach's own
-## backdrop (GDD §10: the waterfall in phases 1 and 2), and the stub's minute starts.
+## The moment the runner reaches the top: logged and signalled, the waterfall and its low cloud give way to the Beach's
+## own backdrop (GDD §10: the waterfall in phases 1 and 2), and phase 3's minute begins (MechaGuppyTop.begin: the ship
+## comes level, the script starts).
 func _watch_top() -> void:
 	if top_reached_at >= 0.0 or not top_due() or not on_top():
 		return
@@ -192,13 +207,21 @@ func _watch_top() -> void:
 	log_event(&"top_reached", {"height": world.player.floor_y, "step": climb.steps.size()})
 	if waterfall != null:
 		waterfall.set_shown(false, 2.0)
+	if top != null:
+		top.begin(top_reached_at)
 	top_reached.emit()
 
 
+## The win (phase 3's minute is up): every attack gone, and Mecha Guppy leaps (MechaGuppyLeap).
 func _on_defeated() -> void:
 	_armor_waiting = 0
 	if bombs != null:
 		bombs.clear()
+	if top != null:
+		top.clear()
+	if shark != null and ship != null:
+		leap = MechaGuppyLeap.new(self)
+		leap.start()
 
 
 func _defeated_tick(delta: float) -> void:
@@ -206,6 +229,20 @@ func _defeated_tick(delta: float) -> void:
 		ship.advance(delta)
 	if shark != null:
 		shark.advance(delta)
+	if top != null:
+		top.tick(delta)
+	if leap != null:
+		leap.tick(delta)
+
+
+## The results wait until Mecha Guppy has swum away (at most LevelRun.BOSS_VICTORY_MAX).
+func victory_over() -> bool:
+	return leap == null or leap.over()
+
+
+## No riff at the defeat: the leap plays it after the gulp, or not (MechaGuppyTuning.victory_riff_on).
+func victory_riff() -> bool:
+	return false
 
 
 ## The captain, the shark, the bombs and the pattern, one physics step (the fight's ticks: they wait while the runner is
@@ -219,17 +256,20 @@ func _advance(delta: float) -> void:
 		shark.advance(delta)
 	if pattern != null:
 		pattern.tick()
+	if top != null:
+		top.tick(delta)
 
 
 ## True while Captain Cogs throws and Mecha Guppy rises to eat the bombs: the climb's pattern runs (not in an intro, not
-## in phase 3's stub, which E5e-c builds, not once it's won).
+## in phase 3, whose attacks are MechaGuppyTop's, not once it's won).
 func attacks_live() -> bool:
 	return attacks_enabled and is_vulnerable() and not top_due()
 
 
-## True while Mecha Guppy eats the roofs the runner leaves (an intro too: the level being eaten isn't an attack).
+## True while Mecha Guppy eats the roofs the runner leaves (an intro too: the level being eaten isn't an attack), until
+## the runner stands on the top.
 func bites_live() -> bool:
-	return attacks_enabled and not is_defeated() and not top_due()
+	return attacks_enabled and not is_defeated() and top_reached_at < 0.0
 
 
 ## Plays a sound at `pos` and notes it (every warning is heard: the tests read the notes).

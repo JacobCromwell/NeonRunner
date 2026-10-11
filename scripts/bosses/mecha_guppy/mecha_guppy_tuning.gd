@@ -81,9 +81,65 @@ extends Resource
 @export_range(1.0, 10.0, 0.25, "suffix:s") var start_seconds: float = 3.5
 
 @export_group("Phase 3")
-## DESIGN-TBD (E5e-c builds phase 3): the stub's flat run at the top ends this many seconds after the runner
-## reaches the top (MechaGuppy.top_reached; GDD §10: "after the player has dodged for one minute").
+## GDD §10 ("after the player has dodged for one minute, Mecha Guppy leaps over and eats Captain Cogs"): phase 3 lasts this
+## long from the moment the runner reaches the top (MechaGuppy.top_reached); the boss bar runs down over it (GDD §10,
+## proposed: so the player sees how long is left), and at its end Mecha Guppy leaps (the defeat).
 @export_range(5.0, 120.0, 1.0, "suffix:s") var top_seconds: float = 60.0
+## DESIGN-TBD (GDD §10: "the captain's ship comes level"; docs/questions/e5e.md): Captain Cogs' ship comes alongside the
+## top on the left, level with the runner (its keel level_keel over the runner's deck: below it when negative, so its
+## gun deck is at their height), its middle level_ahead ahead of them (it keeps pace), its near side level_out past the
+## roof's eaves, easing down from its station high above over level_seconds once the runner reaches the top.
+@export_range(1.0, 6.0, 0.1, "suffix:s") var level_seconds: float = 3.0
+@export_range(18.0, 60.0, 0.5, "suffix:m") var level_ahead: float = 30.0
+@export_range(0.5, 6.0, 0.25, "suffix:m") var level_out: float = 2.5
+@export_range(-3.0, 3.0, 0.1, "suffix:m") var level_keel: float = -1.0
+## DESIGN-TBD (GDD §10: rounds and waves "follow a fixed, learnable script", like the Golden Convergence's strafes; no
+## escalation): phase 3's pattern, one letter a beat, played in a loop from the moment the runner reaches the top: R a
+## round (Captain Cogs' cannons strike every other lane, the struck lanes alternating round by round, so each round after
+## the first moves the runner one lane), W a wave (crashing over every lane: jump it), . a rest. The first beat comes
+## top_first after the top is reached (the ship level by then), each next one top_beat after the last began, and none
+## starts unless its attack is over top_clear before the minute ends (before the leap).
+@export var top_script: String = "RRW.RWRRW."
+@export_range(0.0, 10.0, 0.1, "suffix:s") var top_first: float = 4.0
+@export_range(2.0, 5.0, 0.05, "suffix:s") var top_beat: float = 2.4
+@export_range(0.0, 5.0, 0.1, "suffix:s") var top_clear: float = 1.0
+## DESIGN-TBD (GDD §10, the owner: the rounds are warned by "red lines down the lanes they'll hit and a cannon's charging
+## sound"): the charge (the red lines show and the cannons charge for round_warning, then fire), each cannonball's lob
+## from its cannon onto the far end of its lane's line (round_flight), where it lands round_ahead ahead of the runner
+## (metres; it keeps pace), then rolls down the lane at them, closing in at round_close (the same at every run speed, as
+## the Resonator's waves do: its time to reach them never changes). A cannonball is round_radius in radius, too tall to
+## jump (a switch dodges it); its hitbox is a little smaller.
+@export_range(0.5, 2.0, 0.05, "suffix:s") var round_warning: float = 0.8
+@export_range(0.15, 0.8, 0.05, "suffix:s") var round_flight: float = 0.3
+@export_range(14.0, 40.0, 0.5, "suffix:m") var round_ahead: float = 24.0
+@export_range(30.0, 80.0, 1.0, "suffix:m/s") var round_close: float = 50.0
+@export_range(1.0, 1.2, 0.01, "suffix:m") var round_radius: float = 1.15
+## DESIGN-TBD (GDD §10, the owner: a wave is warned by "a rising swell and a roar", and jumped like the Resonator's ring,
+## §9.10): the swell rises out of the sea beside the top, on the side away from the ship, for wave_warning, then crashes
+## over every lane wave_ahead ahead of the runner (metres; it keeps pace), and its surge rushes along the deck at them,
+## closing in at wave_close (the same at every run speed): a low band wave_height tall and wave_depth deep (the
+## Resonator's: a normal jump clears it; armor and the shield block it, the dash passes through).
+@export_range(0.8, 2.5, 0.05, "suffix:s") var wave_warning: float = 1.2
+@export_range(14.0, 40.0, 0.5, "suffix:m") var wave_ahead: float = 24.0
+@export_range(20.0, 45.0, 0.5, "suffix:m/s") var wave_close: float = 30.0
+@export_range(0.25, 0.65, 0.01, "suffix:m") var wave_height: float = 0.45
+@export_range(0.3, 1.0, 0.05, "suffix:m") var wave_depth: float = 0.5
+
+@export_group("The defeat")
+## DESIGN-TBD (GDD §10: "Mecha Guppy leaps over and eats Captain Cogs"; "the pirate has been eaten by the shark, but the
+## shark swims away"; docs/questions/e5e.md): when the minute is up, Mecha Guppy bursts up out of the sea under the ship
+## (leap_rise), its jaws wide; they snap shut on the ship's stern half with the captain on it (the gulp: the bow half
+## breaks away and falls); it hangs a moment (leap_hang), topples away from the top and falls back into the sea
+## (leap_fall), then swims away, its dorsal fin cutting through the sea ahead and out to sea (swim_seconds); the results
+## wait until it's gone (MechaGuppy.victory_over).
+@export_range(0.5, 3.0, 0.05, "suffix:s") var leap_rise: float = 1.2
+@export_range(0.1, 1.5, 0.05, "suffix:s") var leap_hang: float = 0.45
+@export_range(0.5, 3.0, 0.05, "suffix:s") var leap_fall: float = 1.3
+@export_range(1.0, 8.0, 0.1, "suffix:s") var swim_seconds: float = 4.0
+## DESIGN-TBD (the brief: "choose whether the victory riff plays"): the victory riff plays riff_after the gulp (as the
+## shark falls away), or the fight ends without it.
+@export var victory_riff_on: bool = true
+@export_range(0.0, 3.0, 0.05, "suffix:s") var riff_after: float = 1.0
 
 @export_group("Captain Cogs' bombs")
 ## GDD §10: "The bombs are warned like the Floating Head's (a red target circle where each will land, and a falling
@@ -196,6 +252,14 @@ extends Resource
 @export_range(15.0, 80.0, 0.5, "suffix:m") var ship_ahead: float = 40.0
 @export_range(10.0, 30.0, 0.5, "suffix:m") var ship_height: float = 16.5
 @export_range(0.0, 6.0, 0.1, "suffix:m") var ship_sway: float = 1.6
+
+
+## The tunables of phase 3 and the defeat (the groups "Phase 3" and "The defeat"): nothing in phases 1 and 2 reads them
+## (test_mecha_guppy_tunables leaves them to test_mecha_guppy_top's own sweep).
+const TOP_TUNABLES: PackedStringArray = ["top_seconds", "level_seconds", "level_ahead", "level_out", "level_keel",
+	"top_first", "top_beat", "top_clear", "round_warning", "round_flight", "round_ahead", "round_close", "round_radius",
+	"wave_warning", "wave_ahead", "wave_close", "wave_height", "wave_depth", "leap_rise", "leap_hang", "leap_fall",
+	"swim_seconds", "riff_after"]
 
 
 ## How far a roof planned in phase `index` stands above the one before (rise in phase 1, phase2_rise after).

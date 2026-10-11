@@ -122,19 +122,27 @@ func _test_pause() -> void:
 
 
 func _test_slots_and_demo() -> void:
-	# A boss not yet built shows its placeholder card: the Beach's (task D10c; its fight, Mecha Guppy and Captain Cogs,
-	# is being built, task E5e: debug builds play it with --boss=beach_boss, its preview, while the campaign keeps the
-	# card until E5e-c switches the slot to its scene). Continuing passes through it to the Beach's outro, and on to
-	# the Dead Zone.
+	# A boss not yet built shows its placeholder card. Every zone's boss is built now (the Beach's last: Mecha Guppy and
+	# Captain Cogs, task E5e-c), so an unbuilt stand-in takes the Beach's slot for the check (docs/OPEN_QUESTIONS.md item
+	# 575): a copy of its BossDef with no scene. Continuing passes through it to the Beach's outro, and on to the Dead
+	# Zone.
 	var step: CampaignStep = App.campaign.step("beach/boss")
-	check(step != null and step.boss != null and not step.boss.is_built() and step.boss.preview() != null,
-		"the Beach's boss slot is not built yet (its fight plays only as a preview)")
+	var real: BossDef = step.boss if step != null else null
+	check(real != null and real.is_built() and real.preview() == null, "the Beach's boss slot plays its fight (task E5e-c)")
+	if real == null:
+		return
+	var stand_in: BossDef = real.duplicate() as BossDef
+	stand_in.scene = ""
+	stand_in.preview_scene = ""
+	step.boss = stand_in
 	App.play_step(step)
-	check(App.screen is SlotScreen and App.run == null, "an unbuilt boss shows its placeholder card")
 	var card := App.screen as SlotScreen
+	check(card != null and App.run == null, "an unbuilt boss shows its placeholder card")
+	if card != null:
+		App.complete_step(card.step)
+	step.boss = real
 	if card == null:
 		return
-	App.complete_step(card.step)
 	App.advance_from(card.step)
 	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "beach/outro",
 		"continuing moves on to the next step (the outro cinematic slot)")

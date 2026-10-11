@@ -16,7 +16,9 @@ extends Node3D
 ## - Low cloud far below: layers of soft cloud at fixed world heights (CLOUD_BASE, then every CLOUD_STEP metres up),
 ##   beside the climb but never over it; a layer shows only once the runner is above it, and sinks away below as they
 ##   climb on (mecha_guppy_clouds.gdshader): a world-anchored sign of height at any height.
-## set_shown() fades the waterfall (not the sea or the clouds) out for phase 3, where the Beach's own sky remains.
+## set_shown() fades the waterfall (not the sea) out for phase 3, where the Beach's own sky remains, and the low cloud
+## with it (task E5e-c: GDD §10, "the Beach's normal backdrop in phase 3": the clouds were the climb's sign of height, and
+## without them the top looks out over the beach and the sea far below, where Mecha Guppy swims away at the end).
 ## Unshaded, so it reads the same on every renderer; nothing flickers (the water's streaks scroll smoothly: Reduced
 ## flashing has nothing to calm).
 
@@ -46,7 +48,7 @@ const CLOUD_GONE: float = 170.0
 const CLOUD_SIZE: float = 900.0
 
 var world: RunWorld
-## 1 shown, 0 gone (set_shown fades it).
+## 1 shown, 0 gone (set_shown fades it, and the low cloud with it).
 var shown: float = 1.0
 var _target: float = 1.0
 var _speed: float = 0.0

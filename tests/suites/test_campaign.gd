@@ -270,10 +270,10 @@ func _test_slots(campaign: Campaign) -> void:
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"golden":
 			check(s.boss != null and s.boss.is_built(), "the Golden Zone's boss step plays The Golden Convergence's fight (task E5d-c)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"beach":
-			# GDD §10: Mecha Guppy and Captain Cogs, being built (task E5e): its fight is the slot's preview (debug builds,
-			# --boss=beach_boss) while the campaign keeps the placeholder card until E5e-c switches it to its scene.
-			check(s.boss != null and not s.boss.is_built() and s.boss.preview() != null and s.boss.phase_count() == 3
-				and s.boss.notes != "", "the Beach's boss slot keeps its card while its fight is built (task E5e: a preview)")
+			# GDD §10: Mecha Guppy and Captain Cogs (task E5e): the slot names its scene since E5e-c.
+			check(s.boss != null and s.boss.is_built() and s.boss.preview() == null and s.boss.phase_count() == 3
+				and s.boss.scene == "res://scenes/bosses/mecha_guppy.tscn",
+				"the Beach's boss step plays Mecha Guppy and Captain Cogs' fight (task E5e-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
@@ -1144,7 +1144,7 @@ func _test_unlocking() -> void:
 	check(App.step_unlocked(boss) and not App.step_unlocked(campaign.step("beach/outro")), "Sunset Strip opens the Beach's boss slot")
 	App.complete_step(boss)
 	check(App.step_unlocked(campaign.step("beach/outro")) and App.profile.stars(boss.id) == 0,
-		"passing its placeholder opens the outro, with no stars that would show once the fight is built")
+		"the boss step done opens the outro (complete_step gives a boss no stars: its fight records them through its results)")
 	App.complete_step(campaign.step("beach/outro"))
 	check(App.step_unlocked(campaign.step("dead_zone/intro")) and App.next_unfinished_step() == campaign.step("dead_zone/intro"),
 		"the Beach's outro opens the Dead Zone")

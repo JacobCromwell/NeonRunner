@@ -25,7 +25,11 @@ extends RefCounted
 ## the notch's edge: the bomb falls past the edge into the jaws. Without `baits` it dodges the bait like any spot (the
 ## fallback brings its hits). Either way it never runs off the end of a lane that ends ahead (it switches to a lane with
 ## floor in time, as a player would).
-## Phase 3's top (E5e-c) has no huts: it just runs.
+## Phase 3 (task E5e-c, MechaGuppyTop), on the top: it reads Captain Cogs' rounds by their red lines and the waves by
+## their swells, `dodge_reaction` late (the planner's own reaction): once a round's lines show, it switches to the nearest
+## lane they leave clear (the one toward the middle on a tie), and once a wave's swell is rising, it jumps as the surge
+## rushes in, JUMP_LEAD before it reaches it (mid-way through the time a jump clears its band); `top_jumps` and
+## `top_switches` count them. With `top_dodges` off it does neither (the tests' runner who stays put).
 
 var boss: MechaGuppy
 ## Seconds after settling on a hut before it reads the lanes that lead up.
@@ -66,6 +70,12 @@ var baits: bool = true
 var baited: int = 0
 ## Tests: at this step it lures the bait, then stays in the notch's lane and runs off its edge (a fall) (-1: never).
 var stay_in_notch_at: int = -1
+## Phase 3: dodges the rounds and jumps the waves; the switches and jumps it made for them.
+var top_dodges: bool = true
+var top_switches: int = 0
+var top_jumps: int = 0
+## Phase 3: the jump comes this long before a surge reaches the runner (seconds).
+const JUMP_LEAD: float = 0.3
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -82,6 +92,10 @@ var _lure_from: float = INF
 var _lured: int = -1
 ## When the volley's spots were last ahead of it (bomb clock).
 var _spots_seen: float = -INF
+## Phase 3: when each round's lines and each wave's swell were first seen (their clocks), and the waves jumped.
+var _rounds_seen: Dictionary = {}
+var _waves_seen: Dictionary = {}
+var _waves_jumped: Dictionary = {}
 
 
 func _init(p_boss: MechaGuppy) -> void:
@@ -105,6 +119,8 @@ func step() -> void:
 		_bait(p, now)
 	if p.surface == Player.Surface.FLOOR:
 		_lane_end(p, now)
+		if top_dodges:
+			_top(p, now)
 	var next: MechaGuppyClimb.Step = _next_step(p)
 	if next == null or next.top:
 		_walk(p, next, now)
@@ -330,6 +346,56 @@ func _lane_end(p: Player, now: float) -> void:
 	var need: float = (dodge_reaction + boss.world.tuning.lane_switch_time + 0.2) * maxf(p.speed, 1.0)
 	if not holding and roof.notch_from - p.distance <= need and _target != _inner(roof.notch_lane):
 		_set_target(_inner(roof.notch_lane), "its lane ends ahead (the notch): out in time", now)
+
+
+## Phase 3 (see the header): out of a round's struck lanes, over a wave's surge, each a reaction after its warning shows.
+func _top(p: Player, now: float) -> void:
+	var top: MechaGuppyTop = boss.top
+	if top == null or not top.started():
+		return
+	var rounds: MechaGuppyRounds = top.rounds
+	var struck: Dictionary = {}
+	for r: Dictionary in rounds.rounds:
+		if int(r["state"]) == MechaGuppyRounds.State.DONE or r.has("passed"):
+			continue
+		var k: int = int(r["k"])
+		if not _rounds_seen.has(k):
+			_rounds_seen[k] = rounds.clock
+		if rounds.clock - float(_rounds_seen[k]) < dodge_reaction - 0.0001:
+			continue
+		for lane: int in r["lanes"]:
+			struck[lane] = true
+	var aim: int = _target if _target >= 0 else p.lane
+	if struck.has(aim):
+		var best: int = -1
+		var middle: float = (boss.lane_count() - 1) * 0.5
+		for lane: int in boss.lane_count():
+			if struck.has(lane):
+				continue
+			if best < 0 or absi(lane - p.lane) < absi(best - p.lane) \
+					or (absi(lane - p.lane) == absi(best - p.lane) and absf(lane - middle) < absf(best - middle)):
+				best = lane
+		if best >= 0:
+			top_switches += absi(best - p.lane)
+			_set_target(best, "Captain Cogs' round: out of the lanes its red lines strike", now)
+	var waves: MechaGuppyWaves = top.waves
+	for w: Dictionary in waves.waves:
+		var k: int = int(w["k"])
+		if not _waves_seen.has(k):
+			_waves_seen[k] = waves.clock
+	for w: Dictionary in waves.waves:
+		var k: int = int(w["k"])
+		if _waves_jumped.has(k) or int(w["state"]) != MechaGuppyWaves.State.ROLL or w.has("passed") \
+				or waves.clock - float(_waves_seen[k]) < dodge_reaction - 0.0001:
+			continue
+		var front: float = MechaGuppyWaves.surge_d(w, waves.clock) - boss.tuning.wave_depth * 0.5
+		var gap: float = front - p.distance - boss.world.tuning.hurtbox_size.z * 0.5
+		var time_to: float = gap / maxf(float(w["speed"]) + p.speed, 1.0)
+		if time_to <= JUMP_LEAD and p.grounded:
+			_waves_jumped[k] = true
+			top_jumps += 1
+			p.press(&"jump")
+			log.append({"t": boss.fight_time(), "action": &"jump", "why": "a wave's surge rushing in (%.2f s away)" % time_to})
 
 
 ## True while a spot of Captain Cogs' lies ahead of it (it keeps to the way through rather than the worst case's lane).

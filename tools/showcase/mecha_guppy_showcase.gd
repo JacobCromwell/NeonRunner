@@ -16,7 +16,14 @@ extends Node3D
 ##   side       a camera alongside the climb, looking across at the stairs of roofs and huts and the waterfall
 ##   hut        the runner standing under the first hut, or step S's with --start=S (the run camera's view from under
 ##              it): reading the cue
-##   top        phase 3's stub (--phase=3 implied): the climb's last steps, then the flat top, the waterfall gone
+##   top        phase 3 (--phase=3 implied): the climb's last steps, then the top, the waterfall gone, the ship coming
+##              level, the rounds and the waves (E5e-c)
+##   level      (E5e-c) the same from a realistic height (--start=10 by default: the runner moved on to step 10's roof
+##              before phase 3's top is planned, a step or two on): the top, the ship coming level alongside it, the
+##              captain's rounds (red lines, the charge, the cannonballs rolling down the struck lanes, the runner
+##              switching out) and the waves (the swell rising beside the top, the crash, the surge, the jump)
+##   leap       the same with a short minute (--minute=8 by default): the leap, the gulp and the swim away
+##   leapcam    the leap seen from beside the top, behind the ship (a camera of its own)
 ##   shark      (E5e-b2) a camera beside Mecha Guppy whenever it's up: its catch beside a roof's notch, its bite, its
 ##              breaches beside the lanes that lead up (with --no-bait), a bomb falling into its jaws (the climb goes on
 ##              as in climb)
@@ -31,7 +38,9 @@ extends Node3D
 ## --phase=N, --daylight (the Beach's own sky instead of Sunset Strip's), --reduced-flashing, --events (prints the
 ## boss's events with their frames, for picking frames), --no-attacks (the climb alone: no bombs, no bites),
 ## --no-bait (the runner doesn't bait: Captain Cogs' fallback misses into the chasm bring the hits), --start=S (move
-## the runner on to step S's roof first: a view from higher up; with --phase=2 the steps it plans are phase 2's).
+## the runner on to step S's roof first: a view from higher up; with --phase=2 the steps it plans are phase 2's),
+## --minute=S (phase 3's minute, top_seconds, cut to S seconds: a review aid), --stand (phase 3: the runner neither dodges
+## nor jumps; with --god, to see every attack reach the runner's lane).
 ## Frames worth a look (at --fixed-fps 10, 23.8 m/s, 5 lanes): climb, the first pads about frame 36, on the first hut
 ## 41-78, its lane's end and the drop about 78, the first roof 84-117, the second hut 122-146; wrong, the drop and the
 ## fall about 65-75; grapple, the save about 71-79; side, any frame. bait: the shark rising beside roof 2's notch (its
@@ -63,10 +72,19 @@ func _ready() -> void:
 	var daylight: bool = false
 	var attacks: bool = true
 	var baits: bool = true
+	var minute: float = -1.0
+	var stand: bool = false
+	var god: bool = false
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
 			scenario = v
+		elif arg.begins_with("--minute="):
+			minute = float(v)
+		elif arg == "--stand":
+			stand = true
+		elif arg == "--god":
+			god = true
 		elif arg == "--no-attacks":
 			attacks = false
 		elif arg == "--no-bait":
@@ -86,10 +104,18 @@ func _ready() -> void:
 			Settings.flashing_reduced = true
 		elif arg == "--events":
 			_print_events = true
-	if scenario == "top" and phase == 0:
+	if scenario in ["top", "level", "leap", "leapcam"] and phase == 0:
 		phase = 3
+	if scenario in ["level", "leap", "leapcam"] and _start_step == 0:
+		_start_step = 10
+	if scenario in ["leap", "leapcam"] and minute < 0.0:
+		minute = 8.0
 	var slot: BossDef = load(BOSS_PATH) as BossDef
-	var def: BossDef = slot.preview() if slot.preview() != null else slot
+	var def: BossDef = slot.preview() if slot.preview() != null else slot.duplicate() as BossDef
+	if minute > 0.0:
+		var mt: MechaGuppyTuning = (def.tuning as MechaGuppyTuning).duplicate() as MechaGuppyTuning
+		mt.top_seconds = minute
+		def.tuning = mt
 	var base := load("res://data/tuning/movement.tres") as MovementTuning
 	var tuning: MovementTuning = base.duplicate() as MovementTuning
 	tuning.run_speed = speed
@@ -114,6 +140,8 @@ func _ready() -> void:
 	boss.attacks_enabled = attacks
 	bot = MechaGuppyBot.new(boss)
 	bot.baits = baits
+	bot.top_dodges = not stand
+	world.player.god_mode = god
 	match scenario:
 		"wrong":
 			bot.wrong = true
@@ -135,7 +163,7 @@ func _ready() -> void:
 	add_child(_run_cam)
 	_run_cam.follow(world)
 	_run_cam.make_current()
-	if scenario in ["side", "shark", "ship"]:
+	if scenario in ["side", "shark", "ship", "leapcam"]:
 		_cam = Camera3D.new()
 		_cam.fov = 60.0
 		_cam.far = 900.0
@@ -167,6 +195,13 @@ func _physics_process(delta: float) -> void:
 				var at: Vector3 = ship.global_position
 				_cam.global_position = at + Vector3(9.0, 9.0, -14.0)
 				_cam.look_at(at + Vector3(0.0, 3.0, 30.0), Vector3.UP)
+			"leapcam":
+				# Beside the top on the ship's side, behind it and above the deck, looking across it at the ship.
+				var side: float = float(CaptainCogsShip.LEVEL_SIDE)
+				var deck: float = world.player.floor_base
+				var ahead: float = TrackGeometry.world_z(world.player.distance + boss.tuning.level_ahead)
+				_cam.global_position = Vector3(side * (world.geo.wall_x() + 34.0), deck + 10.0, ahead + 30.0)
+				_cam.look_at(Vector3(side * (world.geo.wall_x() + 6.0), deck + 1.0, ahead - 4.0), Vector3.UP)
 			_:
 				_cam.global_position = Vector3(p.x + 34.0, p.y + 14.0, p.z + 10.0)
 				_cam.look_at(Vector3(p.x - 4.0, p.y + 2.0, p.z - 40.0), Vector3.UP)
