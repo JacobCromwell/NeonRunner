@@ -434,7 +434,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   cannonballs land at the far end and roll down those lanes (switch out: they're too tall to jump); a wave rises
   out of the sea beside the deck with a roar, then crashes over it and surges along every lane (jump it, like
   the Resonator's ring). When the minute is up, Mecha Guppy bursts up beside the deck, gulps the captain with
-  the ship's stern, falls back and swims away. Three stars under 177 s, two under 230 s
+  the ship's stern and falls back, then leaps out of the sea further out in one long arc and dives away. Three
+  stars under 177 s, two under 210 s
   (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs, the bait, phase 3
   and the leap).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an

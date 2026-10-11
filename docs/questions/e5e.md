@@ -137,7 +137,7 @@ placeholder, the entry says so.
     E5e-c). **Changed by E5e-c:** phase 3 is built (see "Raised by E5e-c").
   - Par times of 240 s and 180 s stand in until E5e-c measures the whole fight. (E5e-b3: a runner who baits
     every step clears phases 1 and 2 in 85-96 s, one who never does in 156-176 s, before phase 3's minute.)
-    **Changed by E5e-c:** 177 s and 230 s, measured (see "Raised by E5e-c").
+    **Changed by E5e-c:** 177 s and 210 s (see "Raised by E5e-c").
 
 ## Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)
 
@@ -365,10 +365,12 @@ placeholder, the entry says so.
   item 698). Placeholder (`MechaGuppyTop.plan`, `top_script` "RRW.RWRRW.", `top_first`, `top_beat`, `top_clear`;
   DESIGN-TBD): the script loops from `top_first` (4 s after the top is reached), a beat every `top_beat` (2.4 s): R a
   round, W a wave, a dot a rest. No beat's warning starts before the last beat's attack has passed the runner
-  (`BEAT_SPARE`, 0.3 s), so a jump and a switch are never asked for at once, and none whose attack would end later
+  (`beat_spare`, 0.3 s), so a jump and a switch are never asked for at once, and none whose attack would end later
   than `top_clear` (1 s) before the minute's end: 18 beats a minute, 12 rounds and 6 waves, the last over 56.3 s in.
-  Everything is timed from the top by the fight's clock, so a retry plays the same and nothing escalates. Is that
-  mix and rhythm right, and should rests come more often?
+  Everything is timed from the top by the fight's clock, so a retry plays the same and nothing escalates. A beat held
+  back (the pattern not running yet, as in phase 3's intro) starts late, at most one a physics step, and every later
+  beat keeps its gap after it (`MechaGuppyTop.late`; E5e-c's review: they used to start together, two rounds striking
+  every lane between them). Is that mix and rhythm right, and should rests come more often?
 - **The rounds' look and rule** (GDD §10; the owner's warning: "red lines down the lanes they'll hit and a cannon's
   charging sound"). Placeholder (`MechaGuppyRounds`, `round_warning`, `round_flight`, `round_ahead`, `round_close`,
   `round_radius`; DESIGN-TBD):
@@ -390,20 +392,24 @@ placeholder, the entry says so.
 - **The waves' look** (GDD §10; the owner's warning: "a rising swell and a roar", jumped like the Resonator's ring).
   Placeholder (`MechaGuppyWaves`, `mecha_guppy_wave.gdshader`, `wave_warning`, `wave_ahead`, `wave_close`,
   `wave_height`, `wave_depth`; DESIGN-TBD): a swell rises out of the sea beside the top on the right, away from the
-  ship, for `wave_warning` (1.2 s) with its roar (wave_swell, as long), its crest coming up past the deck's edge; then
-  it crashes over every lane `wave_ahead` (24 m) ahead (wave_crash, foam) and its surge rushes along the deck at the
-  runner at `wave_close` (30 m/s), 2.0 s after its warning: a low band across every lane, `wave_height` (0.45 m) tall
-  and `wave_depth` (0.5 m) deep, so a normal jump clears it, as the Resonator's ring's does; armor and the shield
-  block it, the dash passes through it. The water is dark sea blue-green with white foam (it never glows); the surge
-  carries one red line low on its face, the Resonator's ring red, as the sign of a low band to jump (the water's
-  colour alone would not warn). Its streaks stand still with Reduced flashing. Is the red line on the water right,
-  or should the surge read by its foam alone?
+  ship, for `wave_warning` (1.2 s) with its roar (wave_swell, as long), its crest breaking the deck's line within the
+  first 0.25 s (`CREST_BY`; it rises from 11 m down, eased out hard: E5e-c's review found it hidden for half the
+  warning from 30 m down) and standing 7.6 m over the deck by the crash; then it crashes over every lane `wave_ahead`
+  (24 m) ahead (wave_crash, foam) and its surge rushes along the deck at the runner at `wave_close` (30 m/s), 2.0 s
+  after its warning: a low band across every lane, `wave_height` (0.45 m) tall and `wave_depth` (0.5 m) deep, so a
+  normal jump clears it, as the Resonator's ring's does; armor and the shield block it, the dash passes through it.
+  The swell is a medium-bright turquoise wall of sea water with white foam along its crest, and the surge a paler teal
+  sheet with a white foaming crest (the water never glows); the surge carries one red line low on its face, the
+  Resonator's ring red, as the sign of a low band to jump (the water's colour alone would not warn). Its streaks
+  stand still with Reduced flashing. Is the red line on the water right, or should the surge read by its foam alone?
 - **The minute and the boss bar** (GDD §10, proposed: the boss bar runs down over the minute). Placeholder
   (`MechaGuppyTop.run_down`, `top_seconds` 60 s): the minute counts from `top_reached` by the fight's clock; the bar
   runs from phase 3's share down toward nothing, and the fight is won as it ends (the phase's one counted hit, logged
   `top_over`), never by a hit: bombs and weapons do nothing in phase 3. The top comes 4.0-13.9 s after phase 3 begins
   (the steps already in sight first); were it reached within phase 3's intro (2.5 s), the bar would start down, and
-  the beats come, once the intro ends. Right?
+  the beats come, once the intro ends. While it runs down, the HUD's bar follows it without the white segment's hold
+  after each drop (`BossEncounter.health_runs_down`, false for every other boss; E5e-c's review found the white segment
+  never draining below about 55 fps). Right?
 - **The bites stop at the top** (GDD §10). Captain Cogs' bombs (the volleys, the bait, the fallback) stop as phase 3
   begins, but Mecha Guppy's bites go on through the climb's last steps to the top (the roof just left is still
   eaten: the level being eaten isn't an attack) and stop the moment the runner stands on the top. Right?
@@ -411,23 +417,38 @@ placeholder, the entry says so.
   (the Beach's normal backdrop in phase 3, GDD §10), so the top's sea far below shows hazy and clear. Right?
 - **The leap's staging** (GDD §10: Mecha Guppy "jumps over to the boss, Captain Cogs, and eats the boss"; "Mecha
   Guppy has eaten Captain Cogs, and it swims away"). Placeholder (`MechaGuppyLeap`, `leap_rise`, `leap_hang`,
-  `leap_fall`, `swim_seconds`; DESIGN-TBD): as the minute ends, Mecha Guppy bursts up out of the sea under the ship,
+  `leap_fall`, `breach_seconds`, `dive_after`; DESIGN-TBD): as the minute ends, Mecha Guppy bursts up out of the sea under the ship,
   upright and side-on (an eye toward the runner, its chin toward the top, as it always shows itself), its jaws opening
   wide round the ship's stern half (`leap_rise`, 1.2 s, guppy_leap); its jaws snap shut on the stern with the captain
   on it (guppy_gulp, a shudder, a shake): the captain and the stern are gone, and the bow half breaks away, tumbling
-  down into the sea with the sail. It hangs a moment (`leap_hang`, 0.45 s), leaning out, falls back out of sight
-  (`leap_fall`, 1.3 s), and swims away (`swim_seconds`, 4 s, guppy_swim): its back and dorsal fin out at sea at least
-  62 m out (nearer, the top's own edge hides the sea far below), a trail of foam, until the haze takes it. The results
-  wait for it (`victory_over`, 7.0 s after the win). Nothing of its jaws comes over the lanes or the top's eaves at any
-  moment, nothing in it has a hitbox, and the runner is in the framework's win god mode. Is eating the stern half
-  with the captain (the bow falling away) the owner's picture, or should it swallow the whole ship?
+  down into the sea with the sail. It hangs a moment (`leap_hang`, 0.45 s), leaning out, and falls back out of sight
+  beside the top (`leap_fall`, 0.9 s). Then it swims away where the run camera sees it (E5e-c's review: from the top
+  the deck's edge hides the sea for tens of metres out and the haze the rest, so the first placeholder's fin and wake
+  at the waterline were never seen, and the results waited about 6.5 s on an empty view): out at sea ahead, it bursts
+  out of the water in one long leap heading away, on ahead and out to sea (the leap's roar again; a plume of spray,
+  sea-blue turning to white), its whole body clear of the sea at the top of its arc (it has a tail now), and dives back
+  in head first with a bigger plume (guppy_swim), over `breach_seconds` (2.8 s) from the sea back to it
+  (`MechaGuppyLeap._plan_breach`, its numbers `BREACH_*`): its arc's top 10 m under the deck (at least 24 m over the
+  sea), where the camera's line past the deck's edge passes 9 m under it, at least 40 m out (clear of the tower and the
+  falling bow), past the shoreline wherever the camera sees the sea's surface it breaks, the top of its arc within 38°
+  of the camera's forward axis, at least 55 m ahead; it pulls away at 14 m/s and out at 3 m/s; a higher leap (from a
+  higher top: a runner who never baits climbs to about 73 m) takes longer so it moves the same, and from a high top it
+  begins already under way, just out of the camera's sight, since nothing of its rise out of the sea far below could be
+  seen. The results may follow `dive_after` (0.6 s) after its snout is back in the water (`victory_over`, 5.9-7.0 s
+  after the win); it's gone once its tail is under. From the breach to the results some of the shark is in view
+  90-100% of the time at 3, 5 and 6 lanes (the whole-fight suite); from a very high top on 5-6 lanes its dive's plume
+  stays under the deck's edge (its body is seen diving). Nothing of its jaws or its body comes over the lanes or the top's eaves at any moment, nothing in
+  it has a hitbox, and the runner is in the framework's win god mode. Is eating the stern half with the captain (the
+  bow falling away) the owner's picture, or should it swallow the whole ship? Is a breach and dive the owner's "swims
+  away"?
 - **The victory riff after the gulp**: LevelRun's riff at the defeat is off for this fight (`victory_riff`); the
   zone's level-complete riff plays `riff_after` (1 s) after the gulp instead (`victory_riff_on`), so the captain is
   eaten first. Right, or no riff at all?
 - **The rewards** (DESIGN-TBD): `payout_credits` 500 and `defeat_score` 5000, the same as its neighbours' (Hostile
   Takeover's and the Sleep Taker's, the framework's defaults). Should a later boss pay more?
-- **The par times** (GDD §10, proposed: one star for a win, two and three for par times). Placeholder: set from the
-  whole fight played clean by a runner who baits every step, the way Hostile Takeover's are (three stars 74/68.6 of
-  the slowest clean fight at the campaign's speed, two 96/68.6): clean fights take 157.4-164.4 s at the Beach's
-  23.8 m/s and 159.2-169.7 s at 18 m/s (3, 5 and 6 lanes), so three stars at 177 s and two at 230 s; the time bonus
-  runs out at 280 s. A runner who never baits wins in 223.1-244.3 s: two stars on 3 lanes, one on 5-6. Right?
+- **The par times** (GDD §10, proposed: one star for a win, two and three for par times). Placeholder: three stars at
+  177 s, Hostile Takeover's margin (74/68.6) over the slowest whole fight played clean by a runner who baits every step
+  at the campaign's speed: clean fights take 157.4-164.4 s at the Beach's 23.8 m/s and 159.2-169.7 s at 18 m/s (3, 5
+  and 6 lanes), all three stars. Two stars at 210 s and the time bonus to 260 s (E5e-c's review; the owner's call):
+  a runner who never baits wins in 223.1-244.3 s, so one star at every lane count and speed (230 s gave two stars on 3
+  lanes and one on 5-6), and two stars need some baiting. Right?

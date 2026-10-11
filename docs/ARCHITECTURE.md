@@ -3834,7 +3834,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/boss_part.gd` | a piece of the boss in the world: an Enemy the director runs (claw-immune, the dash passes, weak points, surfaces) |
 | `scripts/bosses/boss_arena.gd` | the fight's track: generator laps joined ahead for as long as the fight lasts; `add_pieces()`; track queries |
 | `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings (over a lane range, or lane by lane), roofs, a wall taken away, floor warnings; all but the wall at a height (a raised floor) |
-| `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
+| `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end and a white segment draining after each hit (held a moment, but not while the health runs down steadily: `BossEncounter.health_runs_down`) |
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
 | `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
 | `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss (see below; `./play.sh --boss=dead_zone_boss` or `--level=dead_zone/boss`) |
@@ -3962,7 +3962,8 @@ parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tu
 slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks it needs:
 `_plan_lap`, `_build_boss`, `_on_phase_started` / `_intro_tick`, `_on_pattern_started` /
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
-`_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `_on_armor_pickup_due`, `_grapple_save` (where
+`_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `health_runs_down` (a timed phase's steady
+run-down: the boss bar follows it without the white segment's hold), `_on_armor_pickup_due`, `_grapple_save` (where
 the grapple's save and a revive after a fall take the runner; the default leaves them as they are). Every attack needs its visual and audio
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
 time from the physics step. The test boss (`TestBoss`) is a small example. `rng`, the armor pickups' and
@@ -4520,7 +4521,9 @@ world heights:
   - **The minute** (`top_seconds`, 60 s, from `top_reached` by the fight's clock): the boss bar runs down over it
     (`run_down`, GDD §10's proposal: from phase 3's share toward nothing, never to nothing itself), and as it ends the
     fight is won (`top_over`: the phase's one counted hit, `damage(hit_damage(), &"time")`). `register_hit` counts
-    nothing in phase 3: bombs and weapons do nothing there.
+    nothing in phase 3: bombs and weapons do nothing there. While the minute runs, `health_runs_down()` tells the HUD's
+    bar to follow the run-down without the white segment's hold after each drop (BossBar; task E5e-c's review: below
+    about 55 fps each rendered frame's drop re-armed the hold and the white segment never drained).
   - **The ship comes level** (`CaptainCogsShip.come_level`, `level_seconds` 3 s): eased from its station over the
     climb to one alongside the top on the left (`LEVEL_SIDE`), its hull `level_out` (2.5 m) outside the top's eaves,
     its keel `level_keel` (1 m) under the deck so the captain stands at the runner's height, `level_ahead` (30 m)
@@ -4528,10 +4531,13 @@ world heights:
     `cannon_world`).
   - **The script** (`plan()`, a pure function the suites check; GDD §10: fixed and learnable, no escalation):
     `top_script` ("RRW.RWRRW.") looped from `top_first` (4 s) a beat every `top_beat` (2.4 s): R a round, W a wave, a
-    dot a rest. No beat's warning starts before the last beat's attack has passed the runner (`BEAT_SPARE`: never a
-    jump and a switch at once; a tuning whose attacks outlast `top_beat` moves the next beat on), and none whose attack
-    would end later than `top_clear` (1 s) before the minute's end: 18 beats, 12 rounds and 6 waves, the last over
-    56.3 s in. The beats start only while the pattern runs (never in phase 3's intro). A retry plays the same.
+    dot a rest. No beat's warning starts before the last beat's attack has passed the runner by `beat_spare` (0.3 s):
+    never a jump and a switch at once; a tuning whose attacks outlast `top_beat` moves the next beat on), and none whose
+    attack would end later than `top_clear` (1 s) before the minute's end: 18 beats, 12 rounds and 6 waves, the last
+    over 56.3 s in. The beats start only while the pattern runs (never in phase 3's intro); one held back starts late,
+    at most one a physics step, every later beat keeping its gap after it (`late`), and one that would then end past
+    `top_clear` doesn't start (task E5e-c's review: overdue beats used to start together, two rounds striking every
+    lane between them). A retry plays the same.
   - **The rounds** (`MechaGuppyRounds`; the owner's warning, item 698: red lines and a cannon's charge): a round strikes
     every other lane (`MechaGuppyTop.struck`: the lanes 0, 2, 4... or the others, alternating round by round), so a
     clear lane is always one switch away, leaving out a struck lane with a pickup in its stretch (`PICKUP_CLEAR`).
@@ -4546,13 +4552,16 @@ world heights:
     shield block it, the dash passes). Past the runner it rolls on behind them and is gone, its line with it.
   - **The waves** (`MechaGuppyWaves`, `mecha_guppy_wave.gdshader`; the owner's warning: a rising swell and a roar, jumped
     like the Resonator's ring): `start()` raises a swell out of the sea beside the top on the right, away from the ship
-    (`WAVE_SIDE`), its crest coming up past the deck's edge over `wave_warning` (1.2 s) with its roar (wave_swell, as
-    long); then it crashes over every lane `wave_ahead` (24 m) ahead (wave_crash, foam bursts, a shake: the swell moves
+    (`WAVE_SIDE`) over `wave_warning` (1.2 s) with its roar (wave_swell, as long): from `SWELL_RISE` (11 m) down,
+    eased out hard, so its crest breaks the deck's line within `CREST_BY` (0.25 s; task E5e-c's review found it hidden
+    for half the warning from 30 m down) and stands `CREST_Y` (7.6 m) over the deck by the crash (`crest_above`, for the
+    tests); then it crashes over every lane `wave_ahead` (24 m) ahead (wave_crash, foam bursts, a shake: the swell moves
     in, drops and flattens, `CRASH_*`) and its surge rushes along the deck at the runner at `wave_close` (30 m/s), 2.0 s
     after its warning: a low band across every lane `wave_height` (0.45 m) tall and `wave_depth` (0.5 m) deep, the
-    Resonator's rule (a normal jump clears it), an enemy attack. The water is dark sea green-blue with white foam, never
-    glowing; the surge's face carries one red line low down (the Resonator's ring red, the hazard's own sign), and its
-    look is a little bigger than its hitbox. Its streaks stand still with Reduced flashing.
+    Resonator's rule (a normal jump clears it), an enemy attack. The swell is a medium-bright turquoise wall of sea
+    water with white foam along its crest, the surge a paler teal sheet with a white foaming crest, never glowing; the
+    surge's face carries one red line low down (the Resonator's ring red, the hazard's own sign), and its look is a
+    little bigger than its hitbox. Its streaks stand still with Reduced flashing.
   - **Fairness** (`plan()`, at any run speed): a round's balls reach the runner at least `dodge_reaction`, a lane switch
     and `dodge_margin` after its warning, a wave's surge at least `dodge_reaction` and a jump's rise above its band;
     `test_mecha_guppy_top` checks it at both ends of every phase 3 tunable's range (`MechaGuppyTuning.TOP_TUNABLES`;
@@ -4564,22 +4573,37 @@ world heights:
   toward the runner, its chin toward the top), its hinge `HINGE_OUT` (4 m) outside the ship's middle and its jaws
   opening `JAW_OPEN` wide round the ship's stern half (`leap_rise` 1.2 s; guppy_leap); they snap shut
   (`GULP_SECONDS`; guppy_gulp, a shudder, a shake): the captain and the stern are gone and the bow half breaks away,
-  tumbling down into the sea (`CaptainCogsShip.swallow`, `wreck()`). It hangs (`leap_hang` 0.45 s), leaning out, falls
-  back out of sight (`leap_fall` 1.3 s), and with a splash (guppy_swim) swims away (`swim_seconds` 4 s): its back and
-  dorsal fin out
-  at sea past the shoreline and at least `SWIM_CLEAR` (62 m) out (nearer, the top's own edge hides the sea far below),
-  ahead of the runner, a puff of foam at the fin every `FOAM_EVERY`, until the haze takes it. Everything keeps pace with
-  the runner. No point of its jaws comes over the lanes or the top's eaves at any moment (the suite checks every
+  tumbling down into the sea (`CaptainCogsShip.swallow`, `wreck()`). It hangs (`leap_hang` 0.45 s), leaning out, and
+  falls back out of sight beside the top (`leap_fall` 0.9 s, `FALL_DROP`). Then it swims away where the run camera
+  sees it (task E5e-c's review: from the top, the deck's edge hides the sea for tens of metres out and the haze the
+  rest, so a fin at the waterline was never seen): `_plan_breach` places a breach out at sea ahead, and Mecha Guppy
+  bursts out of the water in one long leap heading away, on ahead and out to sea (guppy_leap again; a plume of spray,
+  `MechaGuppySplash`), its whole body clear of the sea at the top of its arc (`MechaGuppySharkModel` gave it a tail),
+  and dives back in head first with a bigger plume (guppy_swim), `breach_seconds` (2.8 s) from the sea back to it. The
+  plan: the arc's top `BREACH_UNDER` (10 m) under the deck but at least `BREACH_LOWEST` (24 m) over the sea, and
+  `BREACH_SHOW` (9 m) over the camera's line past the deck's coping (`KERB`; the camera's place from MovementTuning's
+  camera numbers and the runner's lane, a lane further away to spare); at least `BREACH_CLEAR` (40 m) out (clear of
+  the tower and the falling bow); past the shoreline (`BREACH_SEA`, 14 m) wherever the camera sees the sea's surface
+  it breaks (a low top shows it near, a high one only far out); the top of its arc within `BREACH_VIEW` (38°) of the
+  camera's forward axis and at least `BREACH_NEAR` (55 m) ahead; pulling away at `BREACH_AHEAD` (14 m/s) and out at
+  `BREACH_OUT` (3 m/s), its head along the way it moves as the runner sees it; `breach_seconds` for a leap up to
+  `BREACH_REF` (30 m) high, longer for a higher one so it moves the same (up to `BREACH_LONGEST`, 1.6 times: a runner
+  who never baits climbs to a top about 73 m up); and from a high top, whose camera sees nothing of the rise out of
+  the sea far below, it begins already under way, its snout `BREACH_HIDDEN` (2 m) under the camera's line (reckoned
+  for the camera over the outer lane on that side, where it sees lowest), so no time goes by on an empty view.
+  Everything keeps pace with the runner.
+  No point of its jaws or its body comes over the lanes or the top's eaves at any moment (the suites check every
   frame), nothing in it has a hitbox, and the runner is in the framework's win god mode. `victory_over()` holds the
-  results until it has swum away (7.0 s after the win; `LevelRun.BOSS_VICTORY_MAX` 20 s); LevelRun's riff at the defeat
-  is off (`victory_riff()`), and the zone's level-complete riff plays `riff_after` (1 s) after the gulp
-  (`victory_riff_on`).
+  results until `dive_after` (0.6 s) after its snout is back in the sea (5.9-6.2 s after the win, 6.6-7.0 s from a
+  73 m top; `over_by`; `LevelRun.BOSS_VICTORY_MAX` 20 s); the dive goes on until its tail is under, then it's gone
+  (`hold(false)`). LevelRun's riff at the defeat is off (`victory_riff()`), and the zone's level-complete riff plays
+  `riff_after` (1 s) after the gulp (`victory_riff_on`).
 - **The whole fight** (`test_mecha_guppy_whole`): a runner who baits every step wins in 157.4-164.4 s at the Beach's
   23.8 m/s and 159.2-169.7 s at 18 m/s (3, 5 and 6 lanes: phase 1 over at 40.4-45.3 s, phase 2 at 85.1-95.8 s, the
-  top at 97.3-109.7 s, the minute), one who never baits in 223.1-244.3 s. Its par times are Hostile Takeover's
-  margins over the slowest clean fight at 23.8 m/s: three stars at 177 s, two at 230 s, the time bonus to 280 s; a
-  runner who never baits earns two stars on 3 lanes and one on 5-6. Its rewards are its neighbours' (500 credits,
-  5000 points; DESIGN-TBD).
+  top at 97.3-109.7 s, the minute), one who never baits in 223.1-244.3 s. Three stars at 177 s (Hostile Takeover's
+  margin over the slowest clean fight at 23.8 m/s), two at 210 s (task E5e-c's review: below the quickest win without
+  baiting, so two stars need some baiting and a runner who never baits earns one at every lane count and speed), the
+  time bonus to 260 s. Its rewards are its neighbours' (500 credits, 5000 points; DESIGN-TBD).
 - **Building it** (`MechaGuppyStairs`): everything up to the build horizon, `BUILD_MARGIN` past the edge of sight
   (`sight`: the arena skin's fog end, 200 m, fully fogged), is built through the boss's props and freed once
   passed; roofs in 24 m pieces, never past where they could still be eaten or notched: a roof whose end isn't planned
@@ -4728,21 +4752,22 @@ In `scripts/bosses/mecha_guppy/`:
 | `mecha_guppy.gd` (`MechaGuppy`) | the encounter: the arena (`_plan_lap`: nothing of the generator's, a gap in every lane from `EATEN_BEHIND` behind each lap, a wall gap on both sides over every lap), the climb, the stairs, the backdrop, the climbing view, the shark, the ship, the bombs, the pattern and phase 3 (`_build_boss`; `_advance` drives the last five every physics step), phase 3 (`top_due`, `on_top`, `top_reached`, `top_reached_at`, `top`; the minute's end in `_pattern_tick`), the defeat (`leap`, `_on_defeated`, `_defeated_tick`, `victory_over`, `victory_riff`), `register_hit` (it tells the pattern), `attacks_live` / `bites_live` (`attacks_enabled` for tests), `sound` (played and logged), the armor pickups (`_place_armor`, `armor_pickups_waiting`), the grapple's save and its rope (`_grapple_save`, which tells the pattern of the fall); a phase change calls off a bait still following; `run_pace` |
 | `mecha_guppy_climb.gd` (`MechaGuppyClimb`) | the plan: `Roof` (top, lane starts, eaten end, notch; `covers`, `end_in`, `full_from`, `notched`, `notch_side`) and `Step` (pads, hut, lane ends, the lanes that lead up, cue, settle, deadline, landing, `free_at`; `nearest_up`, `switches_from`); `make`, `plan_next` (with `not_before`), `next_hut_start`, `roof_run_seconds`, `notch_after` (and `FIRST_NOTCH`), `plan_until`, `truncate`, `top_planned`, `step_at` / `step_index_at` / `roof_index_at` (binary searches), `roofs_at`, `floor_at`, `hut_at`, `margin`, `wrong_reach`, `climb_rate`; the motions frame by frame (`jump_seconds`, `flip_seconds`, `drop_seconds`, `save_seconds`) |
 | `mecha_guppy_stairs.gd` (`MechaGuppyStairs`) | builds the plan up to the edge of sight and a margin: each roof's front pieces (the reaching lanes' box, side blocker and solid fronts), its full-width part in pieces (split at its notch: `_roof_piece`, the notch's blocker), pad strips (none in a notch), huts; a roof whose end isn't planned yet only as far as its notch could start (`_unknown_limit`); plans each step as late as it can, never in sight, and re-plans the unseen ones when the phase changes (`_replan`); the floor base every frame; `eat_roof` (a bite: the roof cut back, collision and look together, its pads too; `eaten`); questions: `runs`, `span`, `horizon`, `save_spot`, `roof_front`, `pickup_spot`, `roof_reach` |
-| `mecha_guppy_shark.gd` (`MechaGuppyShark`) | Mecha Guppy: `hold` / `pose_free` / `head_transform` / `shudder` (the leap poses it, its stages held), `bite` (with a catch first: `catch_pose`, `catch_until`; giving way to a fallback due: `may_bite`, `bite_seconds`), `lurk`, `breach` (`can_breach`) (its stages: `LURKING`, `RISING`, `CATCHING`, `SHUTTING`, `WAITING`, `DIVING`, `BREAKING`, `OPEN`, `SNAPPING`, `SINKING`, the pose eased between), `mouth_contains`, `hit` (the clang, fireball, sparks, smoke, shudder; a breach recoils, a catch snaps shut), `jaws_points` / `jaws_over` (tests: where its jaws reach), `on_snap` (the pattern eats the roof); counts for tests (`bites`, `catches`, `breaches`, `hits`, `skipped`, `yielded`) |
-| `mecha_guppy_shark_model.gd` (`MechaGuppySharkModel`) | its meshes, built once per skin: `upper_jaw` (the snout, back of the head, eyes, palate and teeth), `lower_jaw` (the chin, belly plating, the mouth's floor and teeth), `body` (the throat, gills, the body down into the chasm, fins); `jaw_size`, `TIP_CAP` |
+| `mecha_guppy_shark.gd` (`MechaGuppyShark`) | Mecha Guppy: `hold` / `pose_free` / `head_transform` / `shudder` (the leap poses it, its stages held), `body_points` (tests), `bite` (with a catch first: `catch_pose`, `catch_until`; giving way to a fallback due: `may_bite`, `bite_seconds`), `lurk`, `breach` (`can_breach`) (its stages: `LURKING`, `RISING`, `CATCHING`, `SHUTTING`, `WAITING`, `DIVING`, `BREAKING`, `OPEN`, `SNAPPING`, `SINKING`, the pose eased between), `mouth_contains`, `hit` (the clang, fireball, sparks, smoke, shudder; a breach recoils, a catch snaps shut), `jaws_points` / `jaws_over` (tests: where its jaws reach), `on_snap` (the pattern eats the roof); counts for tests (`bites`, `catches`, `breaches`, `hits`, `skipped`, `yielded`) |
+| `mecha_guppy_shark_model.gd` (`MechaGuppySharkModel`) | its meshes, built once per skin: `upper_jaw` (the snout, back of the head, eyes, palate and teeth), `lower_jaw` (the chin, belly plating, the mouth's floor and teeth), `body` (the throat, gills, the body down into the chasm, fins, and its tail: the stalk and the crescent fin, seen in the defeat's breach); `jaw_size`, `TIP_CAP`, `TAIL_STALK`, `TAIL_FIN` |
 | `captain_cogs_ship.gd` (`CaptainCogsShip`), `captain_cogs_model.gd` (`CaptainCogsModel`), `captain_cogs_suit.gd` (`CaptainCogsSuit`) | the ship's station and motion (`advance`; phase 3's station alongside the top: `come_level`, `is_level`, `level_x`; the broadside: `cannon_world`, `fire`, its flash, smoke and recoil; the gulp: `swallow`, the bow half breaking away as a wreck, `wreck`), the captain's stance and throw (`throw`, `hand_world`, `throws`); the ship's meshes (`meshes`: its bow and stern halves, split at `SPLIT_Z`, and the wheel; `cannon_at`, `half_beam`); the captain's parts on the humanoid rig (`parts(lens)`: the lens in the skin's `neon_blue`) |
 | `mecha_guppy_bombs.gd` (`MechaGuppyBombs`) | the bombs: `throw_spots` (a volley), `throw_at` (one bomb: the fallback's, a test's), the bait (`start_bait`, `lock_bait`, `drop_bait`, `seeking`, `seek_ring`, `bait`; its aim, `_aim_node`), their circles, flight, whistle and landing (`surface_at`: a roof's top, a hut's top or the chasm; into the shark's jaws all along a fall: `_into_jaws`), the blasts (pooled hazards, `blast_hazards`), `plan_spots` / `way_through` / `dodge_lane` / `spots_ahead` (the Floating Head's salvo rules on the climb's roofs), `spot_floor`, `open_lanes`; `drops`, `stats` (tests); `bomb_mesh` |
-| `mecha_guppy_top.gd` (`MechaGuppyTop`) | phase 3: `begin` (the minute, the ship coming level, the script planned), `tick` (the beats on time while the pattern runs; the bar run down: `run_down`), `started`, `elapsed`, `left`, `over`, `clear`; `plan` (the beats: k, kind, at, parity, n, lead, ends; pure, for the suites) and `struck` (a round's lanes); a round leaves out a struck lane with a pickup in its stretch |
+| `mecha_guppy_top.gd` (`MechaGuppyTop`) | phase 3: `begin` (the minute, the ship coming level, the script planned), `tick` (the next beat on time while the pattern runs, one held back late with the later ones keeping their gaps: `late`; the bar run down: `run_down`), `started`, `elapsed`, `left`, `over`, `clear`; `plan` (the beats: k, kind, at, parity, n, lead, ends; pure, for the suites) and `struck` (a round's lanes); a round leaves out a struck lane with a pickup in its stretch |
 | `mecha_guppy_rounds.gd` (`MechaGuppyRounds`) | Captain Cogs' rounds: `fire` (the red lines and the charge; then the broadside, the lob, the landing and the roll: `State` `WARN`, `FLY`, `ROLL`, `DONE`), `timing`, `warned_lanes`, `ball_hazards` (pooled hitboxes), `ball_d`, `clear`; `ball_mesh` |
-| `mecha_guppy_waves.gd` (`MechaGuppyWaves`), `mecha_guppy_wave.gdshader` | the waves: `start` (the swell and the roar; then the crash and the surge: `State` `SWELL`, `ROLL`, `DONE`), `timing`, `band_hazards`, `surges`, `swelling`, `surge_d`, `clear`; `swell_mesh`; the water's shader (unshaded: deep to shallow, the foam, the red line low on the surge's face, the streaks standing still with Reduced flashing) |
-| `mecha_guppy_leap.gd` (`MechaGuppyLeap`) | the defeat: `start`, `tick` (`Step` `RISE`, `HANG`, `FALL`, `SWIM`, `OVER`), `over`, `marks` (tests), the riff after the gulp |
+| `mecha_guppy_waves.gd` (`MechaGuppyWaves`), `mecha_guppy_wave.gdshader` | the waves: `start` (the swell and the roar; then the crash and the surge: `State` `SWELL`, `ROLL`, `DONE`), `timing`, `band_hazards`, `surges`, `swelling`, `surge_d`, `crest_above`, `clear`; `swell_mesh`; the water's shader (unshaded: deep to shallow, the foam, the red line low on the surge's face, the streaks standing still with Reduced flashing) |
+| `mecha_guppy_leap.gd` (`MechaGuppyLeap`) | the defeat: `start`, `tick` (`Step` `RISE`, `HANG`, `FALL`, `BREACH`, `GONE`), `_plan_breach` (`breach`), `over`, `seconds_to_over` / `over_by`, `snout` / `tail`, `marks` (tests), the plumes, the riff after the gulp |
+| `mecha_guppy_splash.gd` (`MechaGuppySplash`) | a plume of spray where Mecha Guppy breaks the sea in the defeat: jets of sea water turning to white spray over a ring of foam, up, held, falling back and spreading (`play`, `advance`, `standing`; `plume_mesh`, lit so it shows against the haze) |
 | `mecha_guppy_pattern.gd` (`MechaGuppyPattern`) | each step's bite (with its catch), volley, bait, lurk and fallback, timed by where the runner is (`tick`); `volley` (a step's spots as they'd be thrown from a lane: the pattern and the tests), `volley_lock`, `bait_plan`, `bait_after`, `lock_to_edge`, `hit_spot`, `fallback_due`, `fallback_last`, `fallback_flight`, `on_snap`; the hits and falls (`note_hit`, `note_fall`, `catch_ok`, `fell_on`, `hit_on`, `dry`); `hits_enabled` (tests) |
 | `mecha_guppy_looks.gd` (`MechaGuppyLooks`) | the look on the Beach's skin, one merged mesh per piece: each roof a boardwalk deck (its lanes' plank strips, orange lips and coping on every edge over a drop, the gap-edge language) with thatch eaves and lantern posts outside the lanes, on a tower down to the water (`roof_front`, `roof_segment`; drawn no deeper than `TOWER_DEPTH`, 300 m, under its deck, past the haze, so a long climb's meshes stop growing): storey after storey with a ledge and framed, warmly lit windows, darker the deeper (`deep`); the notch (its lane's deck ending with the eaten edge's orange, the eaten face along its inner side and across its start, the orange lip along the deck's edge over it, no eave or lantern posts past it: `notch_inner`); the reaching lanes on a pier (a lantern-lit fascia, the orange lip at its front and open sides, posts and braces on stilts down to the water); a neon sign on some fronts; the street's own sand; each hut a hovering plank platform (its underside lit on the lane seams and along each run's shared edges with joists, the 4 m orange end band where each run of lanes ends, hung `SHADOW_UNDER` below the underside so a rider's blob shadow never darkens it, lift pods in the skin's engine colour) carrying a row of tiki huts and rails, a walkway annex over RUN_ON's running-on lanes, a sign on some; the pad strips' tiles. Its signs glow only the Beach's violet, blue or warm white |
 | `mecha_guppy_skin.gd` (`MechaGuppySkin`), `data/bosses/beach_boss_skin.tres` | the arena's skin, a `BeachSkin`: the open shore on both sides (`BeachOpen.shore_side`, no shacks or gap marks: there are no walls), the water under the eaten street (the chasms' floor), no ceiling or hull looks (the huts are the looks'); its data makes the arena hazier, fully fogged past 200 m (fog 24-200 m, `fog_max` 1) |
 | `mecha_guppy_waterfall.gd` (`MechaGuppyWaterfall`), `mecha_guppy_waterfall.gdshader`, `mecha_guppy_sea.gdshader`, `mecha_guppy_clouds.gdshader` | the backdrop: the waterfall, a flat-topped massif `DISTANCE` (420 m) ahead of the camera whose rock, lip (`LIP_Y`, 150 m) and mist are drawn at world heights (the cliffs slide down past a climber, its foot sinks below; past the lip a plateau card shows its top), its flanks sloping to the sea so the horizon shows beside it (fades out with `set_shown` at the top, its clouds with it); a sea plane at sea level around the camera out to the far plane, the sky below the horizon set to the fog's colour (`abyss_color`) so the far sea meets the horizon at any height; layers of low cloud at fixed world heights beside the climb, shown once the runner is above them. Unshaded, nothing flickering |
 | `mecha_guppy_rope.gd` (`MechaGuppyRope`) | the grapple's rope: from the runner (followed frame by frame as the save lifts them) to the roof's edge, for a moment; `ends()` for tests |
-| `mecha_guppy_tuning.gd`, `data/bosses/beach_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5e.md`): the climb's (`rise`, `phase2_rise`, `roof_seconds`, ...), "Captain Cogs' bombs" (with the fairness numbers `floor_clear`, `hut_clear`, `escape_after`), "The hits" (`bait_seek`, `notch_back`, `catch_in`, `fallback_after`, `hit_back`, `hit_seconds`, `lane_clear`, `breach_early`, `lurk_seconds`), "Mecha Guppy's bites" (with `bite_spare`), "Captain Cogs' ship", "Phase 3" (`top_seconds`, `top_script`, `top_first`, `top_beat`, `top_clear`, `level_*`, `round_*`, `wave_*`), "The defeat" (`leap_rise`, `leap_hang`, `leap_fall`, `swim_seconds`, `victory_riff_on`, `riff_after`); `per_phase`, `rise_at`, `TOP_TUNABLES` |
-| `data/bosses/beach_boss.tres` | its slot: `scene`, the owner's title, three phases (4 hits, 6 hits, and phase 3's minute, one), weapons capped at nothing and unable to end a phase, one lap of arena (the Beach's skin, no features, a clear start), the standard armor rule with `armor_when_unprotected`, the Beach's music, par times measured on the whole fight (177 s, 230 s; the time bonus to 280 s), its neighbours' rewards (500 credits, 5000 points) |
+| `mecha_guppy_tuning.gd`, `data/bosses/beach_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/questions/e5e.md`): the climb's (`rise`, `phase2_rise`, `roof_seconds`, ...), "Captain Cogs' bombs" (with the fairness numbers `floor_clear`, `hut_clear`, `escape_after`), "The hits" (`bait_seek`, `notch_back`, `catch_in`, `fallback_after`, `hit_back`, `hit_seconds`, `lane_clear`, `breach_early`, `lurk_seconds`), "Mecha Guppy's bites" (with `bite_spare`), "Captain Cogs' ship", "Phase 3" (`top_seconds`, `top_script`, `top_first`, `top_beat`, `top_clear`, `beat_spare`, `level_*`, `round_*`, `wave_*`), "The defeat" (`leap_rise`, `leap_hang`, `leap_fall`, `breach_seconds`, `dive_after`, `victory_riff_on`, `riff_after`); `per_phase`, `rise_at`, `TOP_TUNABLES` |
+| `data/bosses/beach_boss.tres` | its slot: `scene`, the owner's title, three phases (4 hits, 6 hits, and phase 3's minute, one), weapons capped at nothing and unable to end a phase, one lap of arena (the Beach's skin, no features, a clear start), the standard armor rule with `armor_when_unprotected`, the Beach's music, par times measured on the whole fight (177 s, 210 s; the time bonus to 260 s), its neighbours' rewards (500 credits, 5000 points) |
 
 Also: `scenes/bosses/mecha_guppy.tscn`; `tools/showcase/mecha_guppy_showcase.tscn` (scripted runs for reviews:
 `--scenario=climb/wrong/grapple/side/hut/top/level/leap/leapcam/shark/ship/bombs/bait/hits`, `--lanes`, `--speed` (23.8
@@ -4767,8 +4792,8 @@ wave's swell `dodge_reaction` late, switching to the nearest lane the lines leav
 them) and `census` (phase 1's and phase 2's bombs to dodge, a step that threw any and a second) for the suites). Sounds
 (`tools/asset_gen/sfx_bank_mecha_guppy.gd`): cogs_throw, cogs_aim (the bait's aim, as long as `bait_seek`),
 guppy_rumble (a bite's, a catch's and a breach's warning), guppy_bite, guppy_clang; phase 3's cogs_charge (as long as
-`round_warning`), cogs_cannon, wave_swell (as long as `wave_warning`) and wave_crash, and the defeat's guppy_leap,
-guppy_gulp and guppy_swim; the bombs keep the Floating Head's bomb_whistle and bomb_blast. Hints: `enemy:beach_boss` (the climb in short, weapons doing nothing),
+`round_warning`), cogs_cannon, wave_swell (as long as `wave_warning`) and wave_crash, and the defeat's guppy_leap (the
+rise, and again the breach), guppy_gulp and guppy_swim (the dive); the bombs keep the Floating Head's bomb_whistle and bomb_blast. Hints: `enemy:beach_boss` (the climb in short, weapons doing nothing),
 `boss:beach_boss/climb` (how to read the lanes that lead up), `/bombs` (the circles, the whistle) and `/hits` (the
 bait: lead Captain Cogs' red target into the notch's lane, switch out before the edge; Captain Cogs only sometimes
 misses for you; 4 and 6 hits), `/rounds` (the red lines and the charge: switch out, a jump won't clear a cannonball;
@@ -4783,13 +4808,16 @@ its range, at 3 lanes and 23.8 m/s and at 6 lanes and 18 m/s: a runner who never
 with no floor to switch to, every bait keeps its timings, every fallback is eaten, and the hits keep coming; phase 3's
 and the defeat's tunables are left to `test_mecha_guppy_top`), `test_mecha_guppy_top` (phase 3: the script's promises at
 the defaults and at both ends of every phase 3 tunable's range, the minute and the bar, the ship level beside the top,
-every round and wave warned (its lines exactly its lanes, its swell beside the top, heard) and dodged at 3, 5 and 6
-lanes and 18 and 23.8 m/s, real contact (stay, jump, switch, a lane away, armor, the shield, the dash), a retry the same;
-the defeat: the gulp, the swim, nothing of the jaws over the lanes or the eaves, no live hazard, the sounds and the
-riff, `victory_over`), `test_mecha_guppy_whole` (the whole fight, baiting and not, at every lane count and speed, each
-phase's end time printed; the par times; the campaign: the step after Beach 3 at 23.8 m/s under the sunset, a death and
-the retry playing the same, the win's results after the swim and `COMPLETE_PAUSE`, its stars on the level select's
-tile).
+every round and wave warned (its lines exactly its lanes, its swell beside the top with its crest over the deck by
+`CREST_BY`, heard) and dodged at 3, 5 and 6 lanes and 18 and 23.8 m/s, real contact (stay, jump, switch, a lane away,
+armor, the shield, the dash), a retry the same, beats held back starting late one at a time; the boss bar's white
+segment draining with the red at 30, 50 and 60 fps while a hit's still holds; the defeat: the gulp, the breach and the
+dive seen by the run camera over the deck's edge and past the shoreline, nothing of the jaws or the body over the lanes
+or the eaves, no live hazard, the sounds and the riff, `victory_over`), `test_mecha_guppy_whole` (the whole fight,
+baiting and not, at every lane count and speed, each phase's end time printed, the swim away seen from the top's real
+height; the par times (two stars needing some baiting, one star for never baiting at every lane count and speed); the
+campaign: the step after Beach 3 at 23.8 m/s under the sunset, a death and the retry playing the same, the win's
+results after the swim and `COMPLETE_PAUSE`, its stars on the level select's tile).
 
 ## Cinematics
 
