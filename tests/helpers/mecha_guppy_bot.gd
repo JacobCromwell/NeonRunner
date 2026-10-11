@@ -16,8 +16,15 @@ extends RefCounted
 ## lane farthest from the lanes that lead up; `dash_drop` dashes as its lane ends, so the dash carries the whole fall.
 ## Captain Cogs' bombs (task E5e-b2): on a roof, or in the air over one after a drop off a hut, it follows a way through
 ## the circles of every spot still ahead (MechaGuppyBombs.dodge_lane: the circles it can see, read off the volley as the
-## Floating Head's bot reads its salvos), switching only where the roof is under every lane it crosses (never off a
-## pier's side into the chasm; never on a hut, where the narrow ceiling holds it); `dodges` off, it ignores them.
+## Floating Head's bot reads its salvos), `dodge_reaction` after a volley's circles show (the planner's own reaction:
+## MechaGuppyTuning.dodge_reaction), switching only where the roof is under every lane it crosses (never off a pier's
+## side into the chasm; never on a hut, where the narrow ceiling holds it); `dodges` off, it ignores them.
+## The bait (task E5e-b3, MechaGuppyPattern): with `baits`, once the volley's spots are behind it on a roof with the
+## bait's notch ahead, it heads for the notch's lane (`dodge_reaction` after the last spot, or after landing) and stays
+## there while the bait's circle follows it, then `dodge_reaction` after the lock (the throw) it switches out, before
+## the notch's edge: the bomb falls past the edge into the jaws. Without `baits` it dodges the bait like any spot (the
+## fallback brings its hits). Either way it never runs off the end of a lane that ends ahead (it switches to a lane with
+## floor in time, as a player would).
 ## Phase 3's top (E5e-c) has no huts: it just runs.
 
 var boss: MechaGuppy
@@ -50,6 +57,13 @@ var dashes: int = 0
 var dodges: bool = true
 ## Switches it made to dodge a spot.
 var dodge_moves: int = 0
+## Seconds after a volley's circles show (or the bait locks) before it moves to dodge; the tuning's dodge_reaction by
+## default (MechaGuppyTuning).
+var dodge_reaction: float = -1.0
+## Baits Captain Cogs' bombs into the notch's jaws (off: it only dodges them).
+var baits: bool = true
+## Baits it lured into a notch (in its lane as the bait locked).
+var baited: int = 0
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -60,10 +74,17 @@ var _jumped: int = -1
 var _measured: int = -1
 var _floor: float = 0.0
 var _drop_dashed: int = -1
+## The bait: the step it's luring, the bomb clock it may head for the notch from (after its reaction), the bait locked.
+var _lure_step: int = -1
+var _lure_from: float = INF
+var _lured: int = -1
+## When the volley's spots were last ahead of it (bomb clock).
+var _spots_seen: float = -INF
 
 
 func _init(p_boss: MechaGuppy) -> void:
 	boss = p_boss
+	dodge_reaction = boss.tuning.dodge_reaction if boss.tuning != null else 0.35
 
 
 func step() -> void:
@@ -79,6 +100,9 @@ func step() -> void:
 		_floor = p.floor_y
 	if dodges and p.surface == Player.Surface.FLOOR:
 		_dodge(p, now)
+		_bait(p, now)
+	if p.surface == Player.Surface.FLOOR:
+		_lane_end(p, now)
 	var next: MechaGuppyClimb.Step = _next_step(p)
 	if next == null or next.top:
 		_walk(p, next, now)
@@ -130,7 +154,11 @@ func _prepare(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 	# Only where the roof is full width: beside its lanes that reach back there's the gap (a fall).
 	var roof: MechaGuppyClimb.Roof = boss.climb.roofs[next.index]
 	if _prepared != next.index and p.distance > roof.full_from() + 1.0 and next.pad - p.distance > p.speed * 0.9:
-		var far: int = 0 if next.switches_from(0) >= next.switches_from(lanes - 1) else lanes - 1
+		# The farthest lane with pads (the bait's notch has eaten an outer lane's).
+		var far: int = -1
+		for lane: int in lanes:
+			if roof.covers(lane, next.pad) and (far < 0 or next.switches_from(lane) > next.switches_from(far)):
+				far = lane
 		_prepared = next.index
 		_set_target(far, "the worst case: the lane farthest from the lanes that lead up", now)
 	if _jumped != next.index and p.grounded and next.pad - p.distance > 0.0 \
@@ -213,16 +241,86 @@ func _set_target(lane: int, why: String, now: float) -> void:
 	log.append({"t": boss.fight_time(), "action": &"target", "why": "lane %d: %s" % [lane, why]})
 
 
-## Captain Cogs' spots: the lane a way through the circles still ahead wants it in (MechaGuppyBombs.dodge_lane), as soon
-## as the circles show.
+## Captain Cogs' spots: the lane a way through the circles still ahead wants it in (MechaGuppyBombs.dodge_lane),
+## dodge_reaction after the newest volley's circles showed.
 func _dodge(p: Player, now: float) -> void:
-	if boss.bombs == null:
+	var bombs: MechaGuppyBombs = boss.bombs
+	if bombs == null:
 		return
-	var lane: int = boss.bombs.dodge_lane(p.lane, p.distance)
+	if not bombs.spots_ahead(p.distance).is_empty():
+		_spots_seen = bombs.clock
+	for v: Dictionary in bombs.volleys:
+		if bombs.clock - float(v["lock"]) < dodge_reaction - 0.0001:
+			return
+	var lane: int = bombs.dodge_lane(p.lane, p.distance)
 	if lane < 0 or lane == _target or (_target < 0 and lane == p.lane):
 		return
 	dodge_moves += absi(lane - p.lane)
 	_set_target(lane, "Captain Cogs' bombs: a way through their circles", now)
+
+
+## The bait (see the header): into the notch's lane while the bait's circle follows it, out again dodge_reaction after it
+## locks; without `baits`, out of the notch's lane (if it's there) before the bait can lock in it.
+func _bait(p: Player, now: float) -> void:
+	var bombs: MechaGuppyBombs = boss.bombs
+	if bombs == null:
+		return
+	var bait: Dictionary = bombs.bait
+	var k: int = boss.climb.step_index_at(p.distance)
+	if k < 0 or k + 1 >= boss.climb.roofs.size():
+		return
+	var roof: MechaGuppyClimb.Roof = boss.climb.roofs[k + 1]
+	if not roof.notched() or p.distance >= roof.notch_from or absf(p.floor_y - roof.top) > 0.05:
+		return
+	var notch: int = roof.notch_lane
+	var plan: Dictionary = boss.pattern.bait_plan(boss.climb.steps[k], p.speed) if boss.pattern != null else {}
+	if plan.is_empty():
+		return
+	if not baits:
+		if p.lane == notch and p.distance < float(plan["lock_at"]) and bombs.spots_ahead(p.distance).is_empty() \
+				and _target != _inner(notch):
+			_set_target(_inner(notch), "not baiting: out of the notch's lane before the bait can lock there", now)
+		return
+	if not bait.is_empty() and int(bait["step"]) == k and bool(bait["locked"]):
+		# Locked: out of the notch's lane once it has reacted to the throw.
+		if _lured != k:
+			_lured = k
+			if int(bait["lane"]) == notch:
+				baited += 1
+				log.append({"t": boss.fight_time(), "action": &"baited", "why": "the bait locked in the notch's lane %d" % notch})
+		if p.lane == notch and bombs.clock - float((bait["drop"] as Dictionary).get("release", bombs.clock)) >= dodge_reaction - 0.0001:
+			_set_target(_inner(notch), "the bait is thrown: out of the notch's lane before its edge", now)
+		return
+	# Not yet locked: once the volley's spots are behind it (and it has reacted), into the notch's lane, while the bait
+	# can still lock there.
+	if not bombs.spots_ahead(p.distance).is_empty() or p.distance >= float(plan["lock_at"]) or _lured == k:
+		return
+	if _lure_step != k:
+		_lure_step = k
+		_lure_from = maxf(_spots_seen, bombs.clock) + dodge_reaction
+	if bombs.clock >= _lure_from - 0.0001 and p.lane != notch and _target != notch:
+		_set_target(notch, "the bait: into the notch's lane %d to lure the bomb past its edge" % notch, now)
+
+
+## The lane beside the notch's lane `notch`, toward the track's middle.
+func _inner(notch: int) -> int:
+	return notch + 1 if notch == 0 else notch - 1
+
+
+## A lane that ends ahead on the roof under it (the bait's notch): it switches out in time (a reaction, a switch and a
+## margin before the edge), unless it's holding there for the bait until the lock.
+func _lane_end(p: Player, now: float) -> void:
+	var k: int = boss.climb.step_index_at(p.distance)
+	if k < 0 or k + 1 >= boss.climb.roofs.size():
+		return
+	var roof: MechaGuppyClimb.Roof = boss.climb.roofs[k + 1]
+	if not roof.notched() or p.lane != roof.notch_lane or p.distance >= roof.notch_from or absf(p.floor_y - roof.top) > 0.05:
+		return
+	var bait: Dictionary = boss.bombs.bait if boss.bombs != null else {}
+	var holding: bool = baits and not bait.is_empty() and int(bait["step"]) == k and not bool(bait["locked"])
+	var need: float = (dodge_reaction + boss.world.tuning.lane_switch_time + 0.2) * maxf(p.speed, 1.0)
+	if not holding and roof.notch_from - p.distance <= need and _target != _inner(roof.notch_lane):
+		_set_target(_inner(roof.notch_lane), "its lane ends ahead (the notch): out in time", now)
 
 
 ## True while a spot of Captain Cogs' lies ahead of it (it keeps to the way through rather than the worst case's lane).

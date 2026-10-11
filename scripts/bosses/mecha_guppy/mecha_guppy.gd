@@ -152,6 +152,9 @@ func top_due() -> bool:
 
 func _on_phase_started(index: int) -> void:
 	log_event(&"climb_phase", {"index": index, "step": climb.steps.size()})
+	# A bait still following the runner is called off (the next phase's intro: no attacks).
+	if bombs != null:
+		bombs.drop_bait()
 
 
 func _intro_tick(delta: float) -> void:

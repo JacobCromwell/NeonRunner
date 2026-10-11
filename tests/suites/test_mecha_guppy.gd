@@ -10,13 +10,16 @@ extends TestSuite
 ##   reading margin for a rider in any lane (at least
 ##   read_seconds beyond every switch, from the latest anyone settles on the hut), the hut full width until then,
 ##   a wrong drop dead before the higher roof's front even dashing, a pad strip no jump clears, huts that never
-##   overlap, phase 2's climb 15-25% faster with every margin kept, no escalation, and a retry planning the same;
-##   every tunable at both ends of its range keeping those promises;
+##   overlap, phase 2's climb 15-25% faster (its roofs higher, its steps as long) with every margin kept, no escalation,
+##   and a retry planning the same; the bait's notch on every roof but the street (task E5e-b3: an outer lane eaten from
+##   notch_back before the next hut to the roof's end, past where the roof's run begins, on a side that has nothing to
+##   do with the lanes that lead up); every tunable at both ends of its range keeping those promises;
 ## - the towers drawn down to the water, but no deeper than TOWER_DEPTH under their decks: a long climb's meshes stop
 ##   growing;
 ## - the built climb against the plan, on real physics: roof tops, each hut lane's end, the pads in every lane, the
-##   roofs' solid fronts and blocked sides, and the lanes that lead up read off the hut and the roofs themselves
-##   (MechaGuppyBot.read_up_lanes) the same as planned;
+##   roofs' solid fronts and blocked sides, the notch (no floor in its lane past its start, the other lanes' floor
+##   on), and the lanes that lead up read off the hut and the roofs themselves (MechaGuppyBot.read_up_lanes) the same as
+##   planned;
 ## - the roofs' faces: a lane switch into a roof's side from below its top bumps; stepping off a roof's lanes that
 ##   reach back into the gap is a fall, into the front of the lanes beyond it a crash (what looks like a hit is a
 ##   hit), and the grapple saves either before it gets there;
@@ -155,8 +158,9 @@ func _test_data(slot: BossDef) -> void:
 		and triggers.has("boss:beach_boss/hits"),
 		"its hints: the fight, how to read the lanes that lead up, Captain Cogs' bombs and how they hurt Mecha Guppy")
 	var t := def.tuning as MechaGuppyTuning
-	check(t.rise <= RunCamera.FLOOR_REACH - 1.0, "each step's rise (%.1f m) stays well within the climbing camera's roof reach (%.1f m)"
-		% [t.rise, RunCamera.FLOOR_REACH])
+	check(maxf(t.rise, t.phase2_rise) <= RunCamera.FLOOR_REACH - 1.0,
+		"each step's rise (%.1f m, %.1f m in phase 2) stays well within the climbing camera's roof reach (%.1f m)"
+		% [t.rise, t.phase2_rise, RunCamera.FLOOR_REACH])
 
 
 # --- The plan ------------------------------------------------------------------------------------
@@ -194,7 +198,7 @@ func _test_plan() -> void:
 					huts_apart = huts_apart and s.hut_start >= before.hut_end() + MechaGuppyClimb.HUT_GAP - 0.001
 				var roof: MechaGuppyClimb.Roof = c.roofs[s.index + 1]
 				var from: MechaGuppyClimb.Roof = c.roofs[s.index]
-				rise_ok = rise_ok and is_equal_approx(roof.top - from.top, t.rise)
+				rise_ok = rise_ok and is_equal_approx(roof.top - from.top, t.rise_at(s.phase))
 				clearance = minf(clearance, s.hut_y - s.top_y)
 				# The cue: the hut's lanes that lead up run further (RUN_ON), or the roof's reach further back.
 				for lane: int in lanes:
@@ -253,6 +257,20 @@ func _test_plan() -> void:
 			check(pads_on_roof, "each roof's pads come where it's full width %s" % tag)
 			check(huts_apart and rise_ok and clearance >= t.hut_clearance - 0.001,
 				"huts never overlap, each roof is %.1f m higher, a hut keeps %.1f m over the roof under its end %s" % [t.rise, clearance, tag])
+			# The bait's notch on every roof but the street (and the top's, which has no next hut).
+			var notched: int = 0
+			var why_not: String = ""
+			for s: MechaGuppyClimb.Step in c.steps:
+				if s.index == 0 or s.top:
+					continue
+				var why: String = _notch_problem(c, t, s)
+				if why == "":
+					notched += 1
+				elif why_not == "":
+					why_not = why
+			check(why_not == "" and notched >= c.steps.size() - 2,
+				"every roof but the street has its notch: an outer lane eaten from %.1f m before the next hut to the roof's end, past where its run begins (%d roofs) %s%s"
+				% [t.notch_back, notched, tag, "" if why_not == "" else ": " + why_not])
 			# No escalation (GDD §10): steps of the same cue and count, early and late, are the same length.
 			var same: bool = true
 			for i: int in range(7, c.steps.size() - 1):
@@ -278,9 +296,26 @@ func _test_plan() -> void:
 			for s: MechaGuppyClimb.Step in c2.steps:
 				for lane: int in lanes:
 					margin2 = minf(margin2, c2.margin(s, lane))
-			check(faster >= 0.15 and faster <= 0.25 and margin2 >= t.read_seconds - 0.001,
-				"GDD §10: phase 2 climbs %.0f%% faster (%.2f against %.2f m/s), the steps closer, every margin kept (%.2f s) %s"
-				% [faster * 100.0, r2, r1, margin2, tag])
+			var period: float = (c2.steps[8].pad - c2.steps[2].pad) - (c.steps[8].pad - c.steps[2].pad)
+			check(faster >= 0.15 and faster <= 0.25 and margin2 >= t.read_seconds - 0.001 and absf(period) < 0.01,
+				"GDD §10: phase 2 climbs %.0f%% faster (%.2f against %.2f m/s), each roof %.1f m higher, its steps as long, every margin kept (%.2f s) %s"
+				% [faster * 100.0, r2, r1, t.phase2_rise, margin2, tag])
+			# The notch's side has nothing to do with the lanes that lead up: other lanes lead up (other up_counts), the
+			# same sides.
+			var other: MechaGuppyTuning = t.duplicate() as MechaGuppyTuning
+			other.up_counts = PackedInt32Array([1])
+			var c3: MechaGuppyClimb = MechaGuppyClimb.make(mt, other, lanes, dash, 7)
+			var sides_same: bool = true
+			var sides: Array[int] = [0, 0]
+			for i: int in PLAN_STEPS:
+				c3.plan_next(0)
+			for i: int in range(1, mini(c.roofs.size(), c3.roofs.size()) - 1):
+				if c.roofs[i].notched() and c3.roofs[i].notched():
+					sides_same = sides_same and c.roofs[i].notch_side() == c3.roofs[i].notch_side()
+					sides[0 if c.roofs[i].notch_side() < 0 else 1] += 1
+			check(sides_same and sides[0] > 0 and sides[1] > 0,
+				"the notch's side has nothing to do with the lanes that lead up (the same sides with other lanes leading up; %d left, %d right) %s"
+				% [sides[0], sides[1], tag])
 
 
 # --- Every tunable across its range ------------------------------------------------------------------
@@ -299,8 +334,6 @@ func _test_tunables() -> void:
 			continue
 		for v: float in [float(parts[0]), float(parts[1])]:
 			variants.append({"name": String(prop["name"]), "value": v})
-	for runs: PackedFloat32Array in [PackedFloat32Array([0.1, 0.1]), PackedFloat32Array([3.0, 3.0])]:
-		variants.append({"name": "roof_seconds", "value": runs})
 	for counts: PackedInt32Array in [PackedInt32Array([1]), PackedInt32Array([3, 3])]:
 		variants.append({"name": "up_counts", "value": counts})
 	var powerups := load("res://data/tuning/powerups.tres") as PowerupTuning
@@ -336,8 +369,12 @@ func _plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning, dash: float) -> Stri
 				return "step %d: a number isn't finite" % s.index
 		if s.up.x < 0 or s.up.y >= lanes or s.up.x > s.up.y or s.up_count() >= lanes:
 			return "step %d: lanes that lead up %s" % [s.index, s.up]
-		if s.hut_y - s.top_y < t.hut_clearance - 0.001 or not is_equal_approx(s.top_y - s.floor_y, t.rise):
+		if s.hut_y - s.top_y < t.hut_clearance - 0.001 or not is_equal_approx(s.top_y - s.floor_y, t.rise_at(s.phase)):
 			return "step %d: heights" % s.index
+		if s.index > 0 and c.roofs[s.index].notched():
+			var notch_why: String = _notch_problem(c, t, s)
+			if notch_why != "":
+				return notch_why
 		if s.pad_end - s.pad < c.jump_seconds() * c.speed + dash + t.strip_margin - 0.001 or from.end <= s.pad_end:
 			return "step %d: the pad strip" % s.index
 		if s.pad < from.full_from() + MechaGuppyClimb.PAD_CLEAR - 0.001:
@@ -362,6 +399,29 @@ func _plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning, dash: float) -> Stri
 				return "step %d: the hut's lanes that lead up don't run on" % s.index
 		elif roof.start_in(s.up.x) >= s.deadline - 0.5:
 			return "step %d: the roof's lanes that lead up don't reach back" % s.index
+	return ""
+
+
+## Why step `s`'s roof (roof s.index) breaks the notch's promises, or "": it has a notch (on a roof long enough for one),
+## on an outer lane, from notch_back before the step's hut to the roof's end (its pads gone there), past where the roof's
+## run begins (NOTCH_AFTER past the landing, the riders' first switch and the full width), short of its pads.
+func _notch_problem(c: MechaGuppyClimb, t: MechaGuppyTuning, s: MechaGuppyClimb.Step) -> String:
+	var roof: MechaGuppyClimb.Roof = c.roofs[s.index]
+	var into: MechaGuppyClimb.Step = c.steps[s.index - 1]
+	var begins: float = maxf(maxf(into.free_at, into.land), roof.full_from())
+	var at: float = s.hut_start - t.notch_back
+	if not roof.notched():
+		return "" if at < begins + MechaGuppyClimb.NOTCH_AFTER else "roof %d has no notch" % roof.index
+	if roof.notch_lane != 0 and roof.notch_lane != c.lanes - 1:
+		return "roof %d's notch isn't an outer lane" % roof.index
+	if not is_equal_approx(roof.notch_from, at) or roof.notch_from < begins + MechaGuppyClimb.NOTCH_AFTER - 0.001 \
+			or roof.notch_from >= s.pad:
+		return "roof %d's notch starts at %.1f m (its run begins %.1f m, its pads %.1f m)" % [roof.index, roof.notch_from, begins, s.pad]
+	if roof.covers(roof.notch_lane, roof.notch_from + 0.1) or not roof.covers(roof.notch_lane, roof.notch_from - 0.1):
+		return "roof %d's notch's lane isn't eaten from its start" % roof.index
+	for lane: int in c.lanes:
+		if lane != roof.notch_lane and not roof.covers(lane, roof.end - 0.1):
+			return "roof %d's lane %d is eaten before its end" % [roof.index, lane]
 	return ""
 
 
@@ -435,6 +495,8 @@ func _test_geometry() -> void:
 		var pads_ok: bool = true
 		var reads_ok: bool = true
 		var fronts_ok: bool = true
+		var notch_ok: bool = true
+		var notches: int = 0
 		var checked: int = 0
 		for i: int in 3:
 			# The runner on step i's roof short of its pads (moving on, step by step): everything of the step is built.
@@ -470,7 +532,8 @@ func _test_geometry() -> void:
 					ray.from = Vector3(x, s.hut_y - 0.6, -at)
 					ray.to = Vector3(x, s.hut_y + 0.3, -at)
 					ends_ok = ends_ok and (space.intersect_ray(ray).is_empty() == (at > s.ends[lane]))
-				# A pad under the hut in this lane, along the whole strip.
+				# A pad under the hut in this lane, along the whole strip (none in the bait's notch's lane).
+				var padded: bool = c.roofs[s.index].covers(lane, s.pad)
 				var q := PhysicsShapeQueryParameters3D.new()
 				var box := BoxShape3D.new()
 				box.size = Vector3(0.3, 0.3, 0.3)
@@ -483,7 +546,17 @@ func _test_geometry() -> void:
 					var found: bool = false
 					for h: Dictionary in space.intersect_shape(q, 4):
 						found = found or (h["collider"] as Node).get_meta(&"kind", &"") == &"pad"
-					pads_ok = pads_ok and found
+					pads_ok = pads_ok and found == padded
+				# The bait's notch on this step's roof: no floor in its lane past its start, the floor there before it.
+				var on: MechaGuppyClimb.Roof = c.roofs[s.index]
+				if on.notched():
+					ray.collision_mask = TrackBuilder.LAYER_FLOOR
+					for at: float in [on.notch_from - 1.0, on.notch_from + 1.0, (on.notch_from + on.end) * 0.5]:
+						ray.from = Vector3(x, on.top + 1.0, -at)
+						ray.to = Vector3(x, on.top - 1.0, -at)
+						var floor_there: bool = not space.intersect_ray(ray).is_empty()
+						notch_ok = notch_ok and floor_there == on.covers(lane, at)
+					notches += 1 if lane == on.notch_lane else 0
 				# The higher roof's front: solid below where a runner could still step up onto it.
 				var hq := PhysicsShapeQueryParameters3D.new()
 				hq.shape = box
@@ -508,7 +581,9 @@ func _test_geometry() -> void:
 		check(checked >= 2, "the first steps are built within sight (%d) %s" % [checked, tag])
 		check(tops_ok, "each higher roof's top is where the plan has it, lane by lane, and nothing under a drop before it %s" % tag)
 		check(ends_ok, "each lane of a hut ends where the plan has it %s" % tag)
-		check(pads_ok, "a pad in every lane along each strip %s" % tag)
+		check(pads_ok, "a pad in every lane along each strip but the bait's notch's %s" % tag)
+		check(notch_ok and notches >= 1, "the bait's notch: no floor in its lane past its start, the floor there before it, the other lanes' floor on to the roof's end (%d notches) %s"
+			% [notches, tag])
 		check(fronts_ok, "each roof's front is solid (the dash doesn't pass it) below where a runner could step up onto it %s" % tag)
 		check(reads_ok, "a rider reads the lanes that lead up off the hut and the roofs as planned (both cues) %s" % tag)
 		await sim.free_world(world)

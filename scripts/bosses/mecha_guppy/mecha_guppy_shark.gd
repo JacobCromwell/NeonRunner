@@ -13,7 +13,8 @@ extends Node3D
 ##   be on that roof any more (may_break: the runner up on the hut). Then it dives under the roof's top, leaning in
 ##   with its jaws open (bite_dive), and lunges up beside the roof's end with its chin low across the roof (bite_rise:
 ##   its chin never higher than BITE_CLEAR under a rider on the hut), stays open (bite_hold), and snaps shut, dropping
-##   away with the roof's end in its jaws (bite_snap, guppy_bite; SNAP_DROP keeps its closing chin as low): at the
+##   away with the roof's end in its jaws (bite_snap, guppy_bite; it drops SNAP_DROP first and closes late, so its
+##   closing chin stays as low): at the
 ##   snap the roof's end is gone (on_snap: MechaGuppyStairs.eat_roof, collision and look together, rubble flying).
 ##   Then it sinks (bite_sink). A bite starts only once it has sunk out of sight from the last (MechaGuppyPattern waits
 ##   for it), from deep under its own spot.
@@ -77,6 +78,9 @@ const CATCH_LEAN: float = 90.0 - MechaGuppySharkModel.LOWER_OPEN
 const CATCH_CLEAR: float = 0.4
 const CATCH_ABOVE: float = 1.0
 const CATCH_AFTER: float = 0.15
+## Its jaws shut, it settles this far lower to wait for its bite (metres: its closed head, still leaning in, keeps well
+## under the hut ahead).
+const CATCH_SETTLE: float = 4.0
 ## A bomb comes down this far over the floor's top (MechaGuppyBombs' lob ends there).
 const LAND_ABOVE: float = 0.35
 ## Where a bomb counts as in its mouth: up to this share of its jaws' length from the hinge (mouth_contains).
@@ -257,7 +261,7 @@ func hit(p: Vector3) -> void:
 	if not action.is_empty() and int(action["kind"]) == Kind.BREACH and (stage == Stage.BREAKING or stage == Stage.OPEN):
 		_go(Stage.SNAPPING, _snap_pose(), tuning.bite_snap)
 	elif stage == Stage.CATCHING:
-		_go(Stage.SHUTTING, catch_pose(0.0), tuning.bite_snap)
+		_go(Stage.SHUTTING, catch_pose(0.0, true), tuning.bite_snap)
 
 
 ## One physics step (the boss's ticks drive it).
@@ -285,11 +289,11 @@ func advance(delta: float) -> void:
 			var c: Dictionary = action["catch"]
 			var fell: bool = boss.pattern != null and not boss.pattern.catch_ok()
 			if boss.bombs.clock >= float(c["until"]) or _may_break() or fell:
-				_go(Stage.SHUTTING, catch_pose(0.0), tuning.bite_snap * (1.0 if fell else 2.0))
+				_go(Stage.SHUTTING, catch_pose(0.0, true), tuning.bite_snap * (1.0 if fell else 2.0))
 		Stage.SHUTTING:
 			_ease(stage_time / _stage_seconds)
 			if stage_time >= _stage_seconds:
-				_go(Stage.WAITING, catch_pose(0.0), 1.0)
+				_go(Stage.WAITING, catch_pose(0.0, true), 1.0)
 		Stage.WAITING:
 			_ease(1.0)
 			if _may_break():
@@ -313,7 +317,8 @@ func advance(delta: float) -> void:
 				_go(Stage.SNAPPING, _snap_pose(), tuning.bite_snap)
 				boss.sound(&"guppy_bite", _mouth_point())
 		Stage.SNAPPING:
-			_ease(stage_time / _stage_seconds)
+			# A bite's snap drops away first and closes late, so its closing chin never comes up toward a rider on the hut.
+			_ease(stage_time / _stage_seconds, kind == Kind.BITE)
 			if stage_time >= _stage_seconds:
 				if kind == Kind.BITE and on_snap.is_valid():
 					on_snap.call(action)
@@ -438,7 +443,8 @@ func _has_catch() -> bool:
 ## leaning in CATCH_LEAN so its lower jaw, wide open, lies flat toward the track with its tip CATCH_CLEAR short of the
 ## lane beside the notch's; the top of its open mouth over the notch's lane CATCH_ABOVE over where the bomb comes down
 ## (its hinge a few metres under the roof's top: nothing of its jaws over the roof), its snout raised outside the track.
-func catch_pose(open: float) -> Dictionary:
+## `settled`: CATCH_SETTLE lower (shut, waiting for its bite).
+func catch_pose(open: float, settled: bool = false) -> Dictionary:
 	var c: Dictionary = action["catch"]
 	var side: float = float(action.get("side", -1))
 	var reach: float = (MechaGuppySharkModel.JAW_LENGTH + MechaGuppySharkModel.TIP_CAP) * SCALE
@@ -448,7 +454,7 @@ func catch_pose(open: float) -> Dictionary:
 	# Where the bomb's column meets the top of its mouth (mouth_contains: up to MOUTH_REACH of its jaws' length).
 	var h: float = absf(float(c["lane_x"]) - hinge_x)
 	var v_top: float = (MOUTH_REACH * MechaGuppySharkModel.JAW_LENGTH * SCALE - h * sin(lean)) / cos(lean)
-	var hinge_y: float = float(c["top"]) + LAND_ABOVE + CATCH_ABOVE - v_top
+	var hinge_y: float = float(c["top"]) + LAND_ABOVE + CATCH_ABOVE - v_top - (CATCH_SETTLE if settled else 0.0)
 	return {"hinge": Vector3(hinge_x, hinge_y, TrackGeometry.world_z(float(c["at"]))), "pitch": 0.0, "yaw": -side * PI * 0.5,
 		"roll": side * lean, "jaw": open}
 
@@ -534,8 +540,18 @@ func _apply() -> void:
 ## while no part of them is over that span, or it's out of sight.
 func jaws_over(x0: float, x1: float) -> float:
 	var best: float = -INF
+	for p: Vector3 in jaws_points():
+		if p.x >= x0 and p.x <= x1:
+			best = maxf(best, p.y)
+	return best
+
+
+## Points round its jaws' outline in its pose now (world space; each jaw's shell, widened by its teeth, from the hinge to
+## the tip's cap): none while it's out of sight (tests: where its jaws reach).
+func jaws_points() -> PackedVector3Array:
+	var out := PackedVector3Array()
 	if not _head.visible:
-		return best
+		return out
 	var teeth: float = MechaGuppySharkModel.TOOTH_HEIGHT
 	for part: MeshInstance3D in [_upper, _lower]:
 		var xf: Transform3D = _head.global_transform * part.transform
@@ -545,7 +561,6 @@ func jaws_over(x0: float, x1: float) -> float:
 			var size: Vector2 = MechaGuppySharkModel.jaw_size(u) + Vector2(teeth, teeth)
 			for j: int in 9:
 				var a: float = PI * float(j) / 8.0
-				var p: Vector3 = xf * Vector3(size.x * cos(a), u * MechaGuppySharkModel.JAW_LENGTH, sign_z * size.y * sin(a))
-				if p.x >= x0 and p.x <= x1:
-					best = maxf(best, p.y)
-	return best
+				out.append(xf * Vector3(size.x * cos(a), u * MechaGuppySharkModel.JAW_LENGTH, sign_z * size.y * sin(a)))
+		out.append(xf * Vector3(0.0, MechaGuppySharkModel.JAW_LENGTH + MechaGuppySharkModel.TIP_CAP, 0.0))
+	return out

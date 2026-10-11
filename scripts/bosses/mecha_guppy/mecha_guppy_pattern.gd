@@ -9,13 +9,14 @@ extends RefCounted
 ##   together (MechaGuppyStairs.eat_roof), with rubble flying; never the floor the runner is on (it waits for them to be on
 ##   the hut) nor the higher roof (the safe drop). Its warning: the rumble and the shark rising beside the roof's end as
 ##   the runner nears the pads, or, on a roof with the bait's notch, its catch there (below), which it bites from.
-## - The volley (roof_spots, landing_spots): phase 1, a spot on roof k + 1's run; phase 2, a spot where riders come down
-##   onto it (dodged by a switch in the air as they drop off the hut's end; on a pier only where it has another lane),
-##   then a spot on its run, as one volley; nearest first, planned as the runner nears them by the Floating Head's salvo
-##   rules (MechaGuppyBombs.plan_spots), each spot passed in time for the bait. Their circles never show before the hut's
-##   deadline (so they never tell a rider which lanes lead up: only the owner's two cues do), and never on a roof before
-##   the runner can switch lanes there (task E5e-b2's review: a circle in the lane of a runner on a narrow pier, with
-##   nowhere to switch to but the chasm, was a trap): a roof's spot is thrown no sooner than Step.free_at.
+## - The volley (roof_spots, landing_spots): phase 1, a spot on roof k + 1's run; phase 2, after a RUN_ON step, a spot
+##   where riders come down onto it (dodged by a switch in the air as they drop off the hut's end), then a spot on its
+##   run, as one volley, and its spots take more bombs side by side; nearest first, planned as the runner nears them by
+##   the Floating Head's salvo rules (MechaGuppyBombs.plan_spots), each spot passed in time for the bait. Their circles
+##   never show before the hut's deadline (so they never tell a rider which lanes lead up: only the owner's two cues
+##   do), and never on a roof before the runner can switch lanes there (task E5e-b2's review: a circle in the lane of a
+##   runner on a narrow pier, with nowhere to switch to but the chasm, was a trap): a roof's spot is thrown no sooner
+##   than Step.free_at.
 ## - The bait (GDD §10, the owner, October 11, 2026: Captain Cogs' bombs lock onto the runner's lane, and a runner who
 ##   dodges one at a roof's end sends it past the edge into Mecha Guppy's jaws; bait_plan): near roof k + 1's end its
 ##   notch (MechaGuppyClimb.Roof.notch_lane), with Mecha Guppy waiting in its catch beside it, jaws open (the shark comes
@@ -280,8 +281,9 @@ func _volley(step: MechaGuppyClimb.Step, p: Player) -> void:
 	_done[key] = true
 	if p.distance > ats[0] or p.distance > lock_at + STALE:
 		return
-	# A landing spot is thrown at a rider still up on the hut (dropping off its end they dodge it in the air).
-	if bool(places["landing"]) and p.surface != Player.Surface.CEILING and p.distance < _drop(step):
+	# A landing spot is thrown at a rider up on the hut (dropping off its end they dodge it in the air); none for a
+	# runner who isn't there.
+	if bool(places["landing"]) and p.surface != Player.Surface.CEILING and p.distance < step.deadline - 1.0:
 		return
 	var plan: Dictionary = volley(step, p.lane, p.distance, speed)
 	boss.bombs.throw_spots(MechaGuppyBombs.Kind.SPOT, step.index, plan["spots"], float(plan["s_open"]))
@@ -290,17 +292,20 @@ func _volley(step: MechaGuppyClimb.Step, p: Player) -> void:
 ## Step `step`'s volley on roof k + 1 as it would be thrown at a runner in `lane` at `d0` running at `speed` (the pattern
 ## throws it so; the tests plan it from every lane): {spots (MechaGuppyBombs.plan_spots'), s_open (where the runner can
 ## first switch to dodge it: off the hut's end in the air with a landing spot, else their landing or where the roof is
-## full width beside a pier)}; no spots in a phase without them, or with no room for one.
+## full width beside a pier), landing (its first spot is the landing spot), lock_at (where the runner is as it's
+## thrown)}; no spots in a phase without them, or with no room for one.
 func volley(step: MechaGuppyClimb.Step, lane: int, d0: float, speed: float) -> Dictionary:
 	speed = maxf(speed, 1.0)
 	var places: Dictionary = _volley_places(step, speed)
 	var ats: Array[float] = places["ats"]
 	var spots: Array[Dictionary] = []
+	var lock_at: float = MechaGuppyClimb.FAR
 	if not ats.is_empty():
 		var seed: int = hash([boss.def.rng_key(), "volley", step.index, boss.lane_count()])
 		spots = boss.bombs.plan_spots(lane, d0, float(places["s_open"]), ats, climb.roofs[step.index + 1].top,
 			boss.phase_index, seed, speed)
-	return {"spots": spots, "s_open": float(places["s_open"])}
+		lock_at = maxf(ats[0] - (tuning.lock_seconds + tuning.arrival_seconds) * speed, step.deadline)
+	return {"spots": spots, "s_open": float(places["s_open"]), "landing": bool(places["landing"]), "lock_at": lock_at}
 
 
 ## Where step `step`'s volley lands: {ats (nearest first), s_open, landing (true if its first spot is the landing spot)}.
@@ -332,10 +337,12 @@ func _drop(step: MechaGuppyClimb.Step) -> float:
 
 
 ## Where the landing spots lie (landing_spots of them, the first no nearer than the landing): room to dodge from the
-## drop, short of `limit`; none on a pier of one lane (no lane to switch to there).
+## drop, short of `limit`. Only on a RUN_ON step: its riders drop off the hut's lanes that run on, well past the
+## deadline, over the higher roof's full width; a REACH_BACK step's riders drop at the deadline itself, before which no
+## circle may show, so a spot thrown then would come down past where they land (its riders get the roof's spot).
 func _landing_places(step: MechaGuppyClimb.Step, speed: float, limit: float) -> Array[float]:
 	var count: int = MechaGuppyTuning.per_phase(tuning.landing_spots, boss.phase_index)
-	if count <= 0 or (step.cue == MechaGuppyClimb.Cue.REACH_BACK and step.up_count() < 2):
+	if count <= 0 or step.cue != MechaGuppyClimb.Cue.RUN_ON:
 		return []
 	var ats: Array[float] = _spot_places(_drop(step), count, limit, speed)
 	if not ats.is_empty():
@@ -370,7 +377,8 @@ func bait_plan(step: MechaGuppyClimb.Step, speed: float) -> Dictionary:
 ## The bait on roof k + 1: its circle follows the runner from seek_at (on that roof's floor), then it locks.
 func _bait(step: MechaGuppyClimb.Step, p: Player) -> void:
 	var key: String = "bait:%d" % step.index
-	if _done.has(key):
+	# Roof k + 1's notch is known once the step after it is planned.
+	if _done.has(key) or step.index + 1 >= climb.steps.size():
 		return
 	var speed: float = maxf(p.speed, 1.0)
 	var plan: Dictionary = bait_plan(step, speed)

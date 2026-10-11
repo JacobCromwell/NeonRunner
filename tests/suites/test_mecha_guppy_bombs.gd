@@ -1,28 +1,30 @@
 extends TestSuite
-## Captain Cogs' bombs and the hits on Mecha Guppy (GDD §10; task E5e-b2; the climb: test_mecha_guppy_climb.gd, the
-## shark's bites and breaches: test_mecha_guppy_bites.gd), on real physics:
-## - the sounds are in the library: the throw, the shark coming up, its bite, the clang of a hit; the bombs keep the
-##   Floating Head's whistle and blast; warnings play in their key;
+## Captain Cogs' bombs and the hits on Mecha Guppy (GDD §10; tasks E5e-b2 and E5e-b3; the climb: test_mecha_guppy_climb.gd,
+## the shark's bites and breaches: test_mecha_guppy_bites.gd, the bait: test_mecha_guppy_bait.gd), on real physics:
+## - the sounds are in the library: the throw, the aim (the bait's warning), the shark coming up, its bite, the clang of
+##   a hit; the bombs keep the Floating Head's whistle and blast; warnings play in their key;
 ## - Captain Cogs' ship has no collision (no pad flips a runner up to it) and flies ahead of the runner, high over the
 ##   huts; a pier's collision is a full-height box;
 ## - fair spots, planned from every lane that leads up (where a rider is at the hut's deadline) at 3, 5 and 6 lanes and
-##   both speeds, in both phases (phase 1's volleys on the higher roof, phase 2's volley and landing spot): a way
-##   through each volley, its every lane on floor at each spot and every lane crossed to get there too (never off a
-##   pier's side into the chasm), every bomb on a roof's top with no hut over or near it, each spot leaving a lane free;
+##   both speeds, in both phases (phase 1's spot on the higher roof, phase 2's landing spot and roof spot): a way through
+##   each volley, its every lane on floor at each spot and every lane crossed to get there too (never off a pier's side
+##   into the chasm), every bomb on a roof's top with no hut over or near it, each spot leaving a lane free, and a roof's
+##   spot never thrown before the runner can switch lanes there (Step.free_at: task E5e-b2's review, the pier trap);
 ## - a bomb's fuse sparks as it flies, steady with Reduced flashing;
 ## - real contact only: a blast kills a runner in its lane and spares one in the next; it's an enemy attack (armor and
 ##   the shield block it, the dash passes through, claws don't help) too tall to jump, its hitbox smaller than its
 ##   fireball; a rider under a hut with a bomb on its top is never touched (the blast is all above the hut), and that
-##   bomb shows no circle;
+##   bomb shows no circle (the pattern throws none there: no bomb with nothing to dodge);
 ## - what counts as a hit: a bomb onto a roof bursts (no hit); one into the chasm with the shark down falls away (no
-##   hit); one thrown at the chasm as the shark rises there goes into its open jaws, high in its mouth: a hit;
-## - the fight (3 lanes at 23.8 m/s, 6 at 18 m/s, MechaGuppyBot): every bomb that can land where a runner can be shows
-##   its red circle where it lands, at that floor's height, out of the fog, from the throw until it lands
-##   (lock_seconds at least, a volley's later spots longer), each throw heard, each bomb whistling before it lands, a
-##   bomb on a hut without a circle; every hit is a bomb into the shark's jaws over the chasm, 4 end phase 1 and 6
-##   phase 2, phase 2 throws more bombs a step than phase 1, and the clean runner is never hurt;
+##   hit); the fallback's, thrown at the chasm as the shark rises there, goes into its open jaws, high in its mouth: a
+##   hit; it has nothing to dodge, so its throw isn't heard and it doesn't whistle;
+## - the fight (3 lanes at 23.8 m/s, 6 at 18 m/s, MechaGuppyBot baiting): every bomb shows its red circle where it
+##   lands, at that floor's height, out of the fog, from the throw until it lands (lock_seconds at least, a volley's
+##   later spots longer), each throw heard, each bomb whistling before it lands; every hit is the bait's bomb into the
+##   shark's jaws over its notch, 4 end phase 1 and 6 phase 2; phase 2 has more bombs to dodge than phase 1 (the bombs
+##   that can reach the runner, the bait's included), a step and a second; the clean runner is never hurt;
 ## - no escalation: with no hit ever landing (MechaGuppyPattern.hits_enabled off), phase 1 goes on step after step
-##   with the same bombs a step, the same spots from the same places; a retry plays the same bombs.
+##   with the same bombs a step, the same spots and the same bait from the same places; a retry plays the same bombs.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -123,10 +125,16 @@ func _until_pattern(world: RunWorld, boss: MechaGuppy) -> void:
 
 func _test_sounds() -> void:
 	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
-	for sound: StringName in [&"cogs_throw", &"guppy_rumble", &"guppy_bite", &"guppy_clang", &"bomb_whistle", &"bomb_blast"]:
+	for sound: StringName in [&"cogs_throw", &"cogs_aim", &"guppy_rumble", &"guppy_bite", &"guppy_clang", &"bomb_whistle",
+			&"bomb_blast"]:
 		check(library.names().has(String(sound)) and library.stream(sound) != null, "the sound library has '%s'" % sound)
-	for warning: StringName in [&"guppy_rumble", &"bomb_whistle", &"cogs_throw"]:
+	for warning: StringName in [&"guppy_rumble", &"bomb_whistle", &"cogs_throw", &"cogs_aim"]:
 		check(float(library.pitch_variation.get(String(warning), 0.0)) == 0.0, "'%s' (a warning) plays in its key" % warning)
+	var aim: AudioStream = library.stream(&"cogs_aim")
+	var mt := def.tuning as MechaGuppyTuning
+	check(aim != null and absf(aim.get_length() - mt.bait_seek) < 0.02,
+		"the bait's aim lasts as long as its circle follows the runner (%.2f s, bait_seek %.2f s)"
+		% [aim.get_length() if aim != null else 0.0, mt.bait_seek])
 
 
 # --- The ship, the piers ----------------------------------------------------------------------------
@@ -144,7 +152,7 @@ func _test_ship_and_piers() -> void:
 	var climb: MechaGuppyClimb = boss.climb
 	# On to the second step's pads: its REACH_BACK pier (the third roof's lanes that reach back) is built by then.
 	var low: Array[float] = [INF]
-	await _run(world, 20.0, func() -> bool: return p.distance > climb.steps[1].pad, func() -> void:
+	await _run(world, 20.0, func() -> bool: return climb.steps.size() > 1 and p.distance > climb.steps[1].pad, func() -> void:
 		bot.step()
 		var ship_y: float = boss.ship.global_position.y
 		var hut: MechaGuppyClimb.Step = climb.step_at(p.distance + boss.tuning.ship_ahead)
@@ -173,8 +181,8 @@ func _test_ship_and_piers() -> void:
 
 # --- Fair spots -----------------------------------------------------------------------------------
 
-## Every volley and landing spot the pattern would throw, planned from every lane that leads up, leaves a fair way
-## through (see the header).
+## Every volley the pattern would throw, planned from every lane that leads up, leaves a fair way through (see the
+## header); a roof's spot is never thrown before the runner can switch lanes there.
 func _test_fair_spots() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
@@ -184,34 +192,34 @@ func _test_fair_spots() -> void:
 				var world: RunWorld = pair[0]
 				var boss: MechaGuppy = pair[1]
 				var climb: MechaGuppyClimb = boss.climb
-				var mt: MechaGuppyTuning = boss.tuning
 				climb.plan_until(climb.planned_until() + 900.0, phase)
 				var volleys: int = 0
+				var landings: int = 0
 				var bad: Array[String] = []
 				for step: MechaGuppyClimb.Step in climb.steps:
-					if step.top or step.index + 1 >= climb.steps.size() or step.phase != phase:
+					if step.top or step.index + 2 >= climb.steps.size() or step.phase != phase:
 						continue
-					for kind: int in 2:
-						for pl: int in range(step.up.x, step.up.y + 1):
-							var plan: Dictionary = _volley(boss, kind, step, pl, step.deadline, speed)
-							var spots: Array[Dictionary] = plan["spots"]
-							if spots.is_empty():
-								continue
-							# Planned from where the runner is as it's thrown (the pattern's lock point).
-							var d0: float = maxf(float(spots[0]["at"]) - (mt.lock_seconds + mt.arrival_seconds) * speed, step.deadline)
-							plan = _volley(boss, kind, step, pl, d0, speed)
-							spots = plan["spots"]
-							volleys += 1
-							var why: String = _unfair(boss, spots, pl, d0, float(plan["s_open"]), speed)
-							if why != "":
-								bad.append("step %d %s from lane %d: %s" % [step.index, "volley" if kind == 0 else "landing spot", pl, why])
-				check(volleys >= 4 and bad.is_empty(), "every volley leaves a fair way through from every lane that leads up (%d planned) %s%s"
-					% [volleys, tag, "" if bad.is_empty() else ": " + "; ".join(bad.slice(0, 3))])
+					for pl: int in range(step.up.x, step.up.y + 1):
+						# Planned from where the runner is as it's thrown (the pattern's lock point).
+						var d0: float = float(boss.pattern.volley(step, pl, step.deadline, speed)["lock_at"])
+						if d0 >= MechaGuppyClimb.FAR * 0.5:
+							continue
+						var plan: Dictionary = boss.pattern.volley(step, pl, d0, speed)
+						var spots: Array[Dictionary] = plan["spots"]
+						if spots.is_empty():
+							bad.append("step %d from lane %d: no volley" % [step.index, pl])
+							continue
+						volleys += 1
+						landings += 1 if bool(plan["landing"]) else 0
+						var why: String = _unfair(boss, spots, pl, d0, float(plan["s_open"]), speed)
+						if why == "" and not bool(plan["landing"]) and d0 < step.free_at - 0.01:
+							why = "a roof's spot thrown %.1f m before the runner can switch there" % (step.free_at - d0)
+						if why != "":
+							bad.append("step %d from lane %d: %s" % [step.index, pl, why])
+				check(volleys >= 4 and bad.is_empty() and (phase == 0) == (landings == 0),
+					"every step's volley leaves a fair way through from every lane that leads up, a roof's spot thrown only once the runner can switch there (%d planned, %d with a landing spot) %s%s"
+					% [volleys, landings, tag, "" if bad.is_empty() else ": " + "; ".join(bad.slice(0, 3))])
 				await sim.free_world(world)
-
-
-func _volley(boss: MechaGuppy, kind: int, step: MechaGuppyClimb.Step, lane: int, d0: float, speed: float) -> Dictionary:
-	return boss.pattern.roof_volley(step, lane, d0, speed) if kind == 0 else boss.pattern.landing_volley(step, lane, d0, speed)
 
 
 ## Why a volley isn't fair from lane `pl` at `d0` (switching from `s_open`) for a runner at `speed`, or "" if it is.
@@ -224,7 +232,7 @@ func _unfair(boss: MechaGuppy, spots: Array[Dictionary], pl: int, d0: float, s_o
 	var way: Array[int] = bombs.way_through(spots, pl, d0, s_open)
 	if way.size() != spots.size():
 		return "no way through"
-	var clear: float = mt.blast_depth * 0.5 + MechaGuppyBombs.HUT_CLEAR
+	var clear: float = mt.blast_depth * 0.5 + mt.hut_clear
 	# In time: from when they can act (its circle seen and the reaction, and able to switch) every switch to the first
 	# spot's free lane at the lane-switch time, with the margin to spare, before they get to it; from one spot to the
 	# next, every switch between them after the last blast's far edge and before the next one's near edge.
@@ -348,7 +356,8 @@ func _test_contact() -> void:
 		await sim.free_world(world)
 
 
-## A rider under a hut with a bomb bursting on its top is never touched; that bomb shows no circle.
+## A rider under a hut with a bomb bursting on its top is never touched; that bomb shows no circle (where it lands
+## decides: nobody can stand there).
 func _test_ceiling() -> void:
 	var pair: Array = _fight(3, 23.8, 0, false)
 	var world: RunWorld = pair[0]
@@ -364,7 +373,7 @@ func _test_ceiling() -> void:
 	var y: float = step.hut_y + TrackBuilder.HULL_THICKNESS
 	var lane: int = p.lane
 	check(boss.bombs.surface_at(lane, at, y) == MechaGuppyBombs.Lands.HUT, "a bomb over the rider meets the hut's top")
-	var d: Dictionary = boss.bombs.throw_at(MechaGuppyBombs.Kind.HUT, lane, at, y)
+	var d: Dictionary = boss.bombs.throw_at(MechaGuppyBombs.Kind.TEST, lane, at, y)
 	check(d["circle"] == null, "a bomb on a hut shows no circle (nobody can stand there)")
 	var bottom: Array[float] = [INF]
 	var under: Array[bool] = [false]
@@ -405,12 +414,15 @@ func _test_what_counts() -> void:
 	check(int(bombs.stats["roof"]) == 1 and int(bombs.stats["chasm"]) == 1 and boss.hits_landed == 0
 		and _events(boss, &"hit").is_empty(),
 		"a bomb onto a roof bursts and one into the chasm with the shark down falls away: neither is a hit")
-	# Thrown at the chasm as the shark rises there to eat (MechaGuppyPattern's hit): into its open jaws, a hit.
+	# Thrown at the chasm as the shark rises there to eat (MechaGuppyPattern's fallback): into its open jaws, a hit.
+	var throws: int = _sounds(boss, &"cogs_throw")
+	var whistles: int = _sounds(boss, &"bomb_whistle")
 	var spot: Dictionary = boss.pattern.hit_spot(step)
 	var d: Dictionary = bombs.throw_at(MechaGuppyBombs.Kind.HIT, int(spot["lane"]), float(spot["at"]), float(spot["y"]),
 		float(spot["x_off"]), boss.tuning.hit_seconds)
+	var circled: bool = d["circle"] != null
 	boss.shark.breach({"x": float(d["x"]), "at": float(spot["at"]), "top": float(spot["y"]), "side": int(spot["side"]),
-		"open_at": float(d["impact"]) - MechaGuppyShark.BREACH_EARLY, "step": step.index})
+		"open_at": float(d["impact"]) - boss.tuning.breach_early, "step": step.index})
 	await _run(world, 2.0, func() -> bool: return bombs.in_air() == 0, bot.step)
 	var hits: Array[Dictionary] = _events(boss, &"shark_hit")
 	check(hits.size() == 1 and bool(hits[0]["counted"]) and boss.hits_landed == 1 and int(bombs.stats["chasm"]) == 1,
@@ -421,12 +433,14 @@ func _test_what_counts() -> void:
 		check(bombs.surface_at(int(spot["lane"]), float(spot["at"]), float(spot["y"])) == MechaGuppyBombs.Lands.CHASM,
 			"where it fell there's no floor (the stretch the shark has eaten)")
 	check(_sounds(boss, &"guppy_clang") == 1 and _sounds(boss, &"guppy_rumble") >= 1, "the hit clangs; the shark rumbled up first")
+	check(_sounds(boss, &"cogs_throw") == throws and _sounds(boss, &"bomb_whistle") == whistles and circled,
+		"the fallback's bomb has nothing to dodge: its circle shows, but its throw isn't heard and it doesn't whistle")
 	await sim.free_world(world)
 
 
 # --- The fight ------------------------------------------------------------------------------------
 
-## The real fight through phases 1 and 2 with the bot (see the header).
+## The real fight through phases 1 and 2 with the bot, baiting (see the header).
 func _test_fight(lanes: int, speed: float) -> void:
 	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
 	var pair: Array = _fight(lanes, speed)
@@ -454,10 +468,6 @@ func _test_fight(lanes: int, speed: float) -> void:
 			if bool(d["landed"]):
 				continue
 			var circle: MeshInstance3D = d["circle"]
-			if int(d["kind"]) == MechaGuppyBombs.Kind.HUT:
-				if circle != null:
-					problems.append("a bomb on a hut shows a circle")
-				continue
 			if circle == null or not is_instance_valid(circle) or not circle.visible:
 				problems.append("a bomb at %.0f m has no circle before it lands" % float(d["at"]))
 				continue
@@ -474,34 +484,38 @@ func _test_fight(lanes: int, speed: float) -> void:
 	check(p.alive and boss.phase_index >= 2, "the runner makes it through phases 1 and 2 %s%s" % [tag,
 		"" if p.alive else ": %s at %.0f m" % [cause[0], p.distance]])
 	check(hurt[0] == 0, "the clean runner is never hurt %s" % tag)
-	var spot_bombs: int = 0
 	var short_warning: Array[float] = []
+	var dodged: int = 0
 	for d: Dictionary in seen:
 		if not bool(d["landed"]) and bool(d.get("released", false)) == false:
 			continue
 		if not bool(d["whistled"]) or not bool(d["released"]):
 			problems.append("a bomb at %.0f m landed without its whistle" % float(d["at"]))
-		if int(d["kind"]) == MechaGuppyBombs.Kind.SPOT:
-			spot_bombs += 1
+		if int(d["kind"]) == MechaGuppyBombs.Kind.SPOT or int(d["kind"]) == MechaGuppyBombs.Kind.BAIT:
+			dodged += 1
 			var warned: float = float(d["impact"]) - float(d["_seen"])
 			if warned < mt.lock_seconds - 0.02:
 				short_warning.append(warned)
-	check(problems.is_empty() and shown[1] > 0, "every bomb that can land where a runner can be shows its red circle where it lands, at that floor's height, out of the fog, until it lands, and whistles before it lands; a bomb on a hut has none (%d bombs) %s%s"
+	check(problems.is_empty() and shown[1] > 0, "every bomb shows its red circle where it lands, at that floor's height, out of the fog, until it lands, and whistles before it lands (%d bombs) %s%s"
 		% [seen.size(), tag, "" if problems.is_empty() else ": " + "; ".join(problems.slice(0, 3))])
-	check(spot_bombs > 0 and short_warning.is_empty(), "every spot's circle shows at least lock_seconds (%.2f s) before it lands (%d bombs) %s%s"
-		% [mt.lock_seconds, spot_bombs, tag, "" if short_warning.is_empty() else ": %s" % str(short_warning)])
-	var throws: int = _events(boss, &"volley").size() + _events(boss, &"throw").size()
-	check(_sounds(boss, &"cogs_throw") == throws and throws > 0, "every throw is heard (%d) %s" % [throws, tag])
-	# The hits: each a bomb into the shark's jaws over the chasm.
+	check(dodged > 0 and short_warning.is_empty(), "every spot's and bait's circle shows at least lock_seconds (%.2f s) before it lands (%d bombs) %s%s"
+		% [mt.lock_seconds, dodged, tag, "" if short_warning.is_empty() else ": %s" % str(short_warning)])
+	var throws: int = _events(boss, &"volley").size() + _events(boss, &"bait_lock").size()
+	for e: Dictionary in _events(boss, &"throw"):
+		throws += 0 if int(e["kind"]) == MechaGuppyBombs.Kind.HIT else 1
+	check(_sounds(boss, &"cogs_throw") == throws and throws > 0 and _sounds(boss, &"cogs_aim") == _events(boss, &"bait_seek").size(),
+		"every throw is heard (%d), and every bait's aim (%d) %s" % [throws, _events(boss, &"bait_seek").size(), tag])
+	# The hits: each the bait's bomb into the shark's jaws over its notch.
 	var hits: Array[Dictionary] = _events(boss, &"hit")
 	var into: Array[Dictionary] = _events(boss, &"shark_hit")
 	var ok: bool = hits.size() == 10 and into.size() == 10
 	for h: Dictionary in hits:
 		ok = ok and h["cause"] == &"bomb"
 	for e: Dictionary in into:
-		ok = ok and int(e["kind"]) == MechaGuppyBombs.Kind.HIT and bool(e["counted"]) \
+		ok = ok and int(e["kind"]) == MechaGuppyBombs.Kind.BAIT and bool(e["counted"]) \
 			and bombs.surface_at(int(e["lane"]), float(e["at"]), float(e["floor"])) == MechaGuppyBombs.Lands.CHASM
-	check(ok and int(bombs.stats["chasm"]) == 0, "every hit is a bomb into the shark's jaws over the chasm, none missing it (%d hits, %d into the jaws) %s"
+	check(ok and int(bombs.stats["chasm"]) == 0 and _events(boss, &"fallback").is_empty(),
+		"every hit is the bait's bomb into the shark's jaws over its notch, none missing it, no fallback needed (%d hits, %d into the jaws) %s"
 		% [hits.size(), into.size(), tag])
 	var ends: Array[Dictionary] = _events(boss, &"phase_end")
 	var per_phase: Array[int] = [0, 0]
@@ -509,24 +523,47 @@ func _test_fight(lanes: int, speed: float) -> void:
 		if int(e["phase"]) < 2:
 			per_phase[int(e["phase"])] += 1
 	check(ends.size() >= 2 and per_phase[0] == 4 and per_phase[1] == 6, "4 hits end phase 1, 6 phase 2 (%s) %s" % [str(per_phase), tag])
-	# More bombs a step in phase 2: every bomb thrown, by phase, over the steps (one hit a step).
-	var thrown: Array[int] = [0, 0]
+	# Phase 2's more bombs (GDD §10): the bombs that can reach the runner (the volleys' and the baits'), a step and a second.
+	var census: Dictionary = census_of(boss)
+	check(float(census["step"][1]) > float(census["step"][0]) and float(census["second"][1]) > float(census["second"][0]),
+		"phase 2 has more bombs to dodge than phase 1: %.2f a step against %.2f, %.3f a second against %.3f %s"
+		% [census["step"][1], census["step"][0], census["second"][1], census["second"][0], tag])
+	print("  Captain Cogs' bombs %s: phase 1 ends at %s s, phase 2 at %s s; %d bombs, to dodge %.2f a step (%.3f a second) in phase 1, %.2f (%.3f) in phase 2, %d into the shark"
+		% [tag, "%.1f" % float(ends[0]["t"]) if ends.size() > 0 else "-", "%.1f" % float(ends[1]["t"]) if ends.size() > 1 else "-",
+			int(bombs.stats["thrown"]), census["step"][0], census["second"][0], census["step"][1], census["second"][1],
+			int(bombs.stats["hit"])])
+	await sim.free_world(world)
+
+
+## Phase 1's and phase 2's bombs that can reach the runner (every volley's bombs and every bait's: the fallback's into the
+## chasm never can), from boss `boss`'s events through phase 2's end: {count: [p1, p2], steps: [p1, p2] (the baits, one
+## a step), step: [per step], second: [per second of the phase]}.
+static func census_of(boss: MechaGuppy) -> Dictionary:
+	var count: Array[int] = [0, 0]
+	var steps: Array[int] = [0, 0]
+	var ends: Array[float] = [0.0, 0.0]
+	var begins: Array[float] = [0.0, 0.0]
 	for e: Dictionary in boss.events:
 		var ph: int = int(e.get("phase", 0))
 		if ph > 1:
 			continue
-		if e["event"] == &"throw":
-			thrown[ph] += 1
-		elif e["event"] == &"volley":
-			for s: Dictionary in e["spots"]:
-				thrown[ph] += (s["lanes"] as Array).size()
-	var a: float = float(thrown[0]) / 4.0
-	var b: float = float(thrown[1]) / 6.0
-	check(b > a, "phase 2 throws more bombs a step than phase 1 (%.2f against %.2f) %s" % [b, a, tag])
-	print("  Captain Cogs' bombs %s: phase 1 ends at %s s, phase 2 at %s s; %d bombs (%.2f a step in phase 1, %.2f in phase 2), %d on huts, %d into the shark"
-		% [tag, "%.1f" % float(ends[0]["t"]) if ends.size() > 0 else "-", "%.1f" % float(ends[1]["t"]) if ends.size() > 1 else "-",
-			int(bombs.stats["thrown"]), a, b, int(bombs.stats["hut"]), int(bombs.stats["hit"])])
-	await sim.free_world(world)
+		match e["event"]:
+			&"volley":
+				for spot: Dictionary in e["spots"]:
+					count[ph] += (spot["lanes"] as Array).size()
+			&"bait_lock":
+				count[ph] += 1
+				steps[ph] += 1
+			&"phase_end":
+				ends[ph] = float(e["t"])
+				if ph == 0:
+					begins[1] = float(e["t"])
+	var step: Array[float] = []
+	var second: Array[float] = []
+	for ph: int in 2:
+		step.append(float(count[ph]) / maxf(float(steps[ph]), 1.0))
+		second.append(float(count[ph]) / maxf(ends[ph] - begins[ph], 0.001))
+	return {"count": count, "steps": steps, "step": step, "second": second}
 
 
 # --- No escalation, a retry -----------------------------------------------------------------------
@@ -564,8 +601,19 @@ func _test_no_escalation() -> void:
 		same = same and first["shape"] == shape
 	check(same and volleys >= 7, "every step's volley is the same as the last with its cue: the same spots at the same places past where they can first be dodged, the same bombs (%d volleys: %s)"
 		% [volleys, str(shapes)])
-	check(_events(boss, &"breach_warning").is_empty() and _events(boss, &"hit").is_empty(),
-		"and no hit: the shark doesn't rise for one")
+	# Each step's bait: catch_in into its roof's notch, following the runner bait_seek, locking lock_seconds before it lands.
+	var mt: MechaGuppyTuning = boss.tuning
+	var baits: int = 0
+	var baits_same: bool = true
+	for e: Dictionary in _events(boss, &"bait_lock"):
+		var roof: MechaGuppyClimb.Roof = boss.climb.roofs[int(e["step"]) + 1]
+		baits += 1
+		baits_same = baits_same and is_equal_approx(float(e["at"]) - roof.notch_from, mt.catch_in) \
+			and absf(float(e["seek"]) - mt.bait_seek) < 0.02 and absf(float(e["warning"]) - mt.lock_seconds) < 0.02
+	check(baits_same and baits >= 8, "every step's bait is the same: %.1f m into its notch, following the runner %.2f s, locking %.2f s before it lands (%d baits)"
+		% [mt.catch_in, mt.bait_seek, mt.lock_seconds, baits])
+	check(_events(boss, &"breach_warning").is_empty() and _events(boss, &"hit").is_empty() and _events(boss, &"catch_open").is_empty()
+		and _events(boss, &"shark_hit").is_empty(), "and no hit: the shark doesn't come up to catch one, nor breach for one")
 	await sim.free_world(world)
 
 
@@ -581,7 +629,8 @@ func _test_retry() -> void:
 		await _run(world, 40.0, func() -> bool: return boss.hits_landed >= 3, bot.step)
 		var log: PackedStringArray = []
 		for e: Dictionary in boss.events:
-			if e["event"] in [&"volley", &"throw", &"blast", &"shark_hit", &"hit", &"bite", &"roof_eaten"]:
+			if e["event"] in [&"volley", &"throw", &"blast", &"shark_hit", &"hit", &"bite", &"roof_eaten", &"bait_seek", &"bait_lock",
+					&"catch_open"]:
 				log.append("%.3f %s" % [float(e["t"]), str(e)])
 		runs.append("\n".join(log))
 		await sim.free_world(world)

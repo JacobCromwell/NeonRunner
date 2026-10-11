@@ -2,7 +2,8 @@ extends TestSuite
 ## Mecha Guppy's bites and breaches (GDD §10: "Its maw comes up through the floor and eats a huge chunk of the level";
 ## "it eats the floors the runner should have left and the floor under the lanes that don't lead up, never the floor
 ## the runner is on or the safe place to drop to"; task E5e-b2; the bombs and the hits: test_mecha_guppy_bombs.gd), on
-## real physics, at 3 lanes at 23.8 m/s and 6 lanes at 18 m/s, in phases 1 and 2 (MechaGuppyBot climbing):
+## real physics, at 3 lanes at 23.8 m/s and 6 lanes at 18 m/s, in phases 1 and 2 (MechaGuppyBot climbing, baiting the
+## bombs or not):
 ## - each step's bite eats the end of the roof the runner has just left: warned first (the rumble and the shark rising
 ##   beside it, at least bite_warning before its jaws come up), it bites only once the runner is up on that roof's hut
 ##   (never the floor they're on) and only that roof (never the higher one, the safe drop); the roof's collision and
@@ -10,10 +11,13 @@ extends TestSuite
 ##   no further), its pads too; every step's roof is bitten (the shark waits for itself in phase 2's closer steps);
 ## - a bite's jaws never come within MechaGuppyShark.BITE_CLEAR of a rider hanging from the hut, even mid-jump, anywhere
 ##   over the track;
-## - a breach comes only once the hut's deadline is past (every rider committed: it never tells which lanes lead up),
-##   with the rider in a lane that leads up; its jaws are never over a lane that leads up above the floor's level; it
-##   lurks deep under the chasm's middle, facing the runner, whichever side it will come up on; each is warned by the
-##   rumble;
+## - its catch beside a roof's notch (the bait, task E5e-b3: a runner who baits): warned by the rumble, it comes up as
+##   the bait begins, and while it waits there (open, shutting, shut) no part of its jaws is ever over a lane a runner
+##   may use (any lane but the notch's) nor over the notch's lane before the notch starts, at any height;
+## - a breach (the fallback, a runner who doesn't bait: once fallback_after steps in a row went by without a hit) comes
+##   only once the hut's deadline is past (every rider committed: it never tells which lanes lead up), with the rider in
+##   a lane that leads up; its jaws are never over a lane that leads up above the floor's level; while it lurks before
+##   one nothing of it shows; each is warned by the rumble;
 ## - a retry bites the same.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
@@ -32,12 +36,14 @@ func run() -> void:
 		check(false, "Mecha Guppy and Captain Cogs' fight loads")
 		return
 	for phase: int in 2:
-		await _test_shark(3, 23.8, phase)
-		await _test_shark(6, 18.0, phase)
+		await _test_shark(3, 23.8, phase, true)
+		await _test_shark(6, 18.0, phase, true)
+		await _test_shark(3, 23.8, phase, false)
+		await _test_shark(6, 18.0, phase, false)
 	# The latest anyone flips up: a jump and the dash right before the pads, from the lane farthest from those that
 	# lead up (MechaGuppyBot.worst_case): the bite still waits for them to be on the hut.
-	await _test_shark(3, 23.8, 0, true)
-	await _test_shark(5, 18.0, 1, true)
+	await _test_shark(3, 23.8, 0, false, true)
+	await _test_shark(5, 18.0, 1, false, true)
 	await _test_retry()
 
 
@@ -123,8 +129,9 @@ func _floor_hit(world: RunWorld, x: float, z: float, top: float) -> float:
 
 # --- The shark ------------------------------------------------------------------------------------
 
-func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> void:
-	var tag: String = "(%d lanes, %.1f m/s, phase %d%s)" % [lanes, speed, phase + 1, ", the latest flips" if late else ""]
+func _test_shark(lanes: int, speed: float, phase: int, baits: bool, late: bool = false) -> void:
+	var tag: String = "(%d lanes, %.1f m/s, phase %d, %s%s)" % [lanes, speed, phase + 1, "baiting" if baits else "not baiting",
+		", the latest flips" if late else ""]
 	var pair: Array = _fight(lanes, speed, phase, late)
 	var world: RunWorld = pair[0]
 	var boss: MechaGuppy = pair[1]
@@ -134,6 +141,7 @@ func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> vo
 	var mt: MechaGuppyTuning = boss.tuning
 	var bot := MechaGuppyBot.new(boss)
 	bot.reaction = REACTION
+	bot.baits = baits
 	if late:
 		bot.worst_case = true
 		bot.dash_flip = true
@@ -144,9 +152,10 @@ func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> vo
 	var problems: Array[String] = []
 	# The closest a bite's jaws came to a rider's lowest point under the hut, the highest a breach's came over a lane
 	# that leads up (from the floor's level), the lurk's widest x and turn.
-	var state: Dictionary = {"clear": INF, "over": -INF, "lurk_x": 0.0, "lurk_yaw": 0.0, "lurked": 0, "seen": 0,
-		"warned": {}, "cuts": [], "stage": MechaGuppyShark.Stage.IDLE, "dives": 0}
-	var to_climb: int = 4
+	var state: Dictionary = {"clear": INF, "over": -INF, "lurk_shown": 0, "lurked": 0, "seen": 0, "warned": {}, "cuts": [],
+		"stage": MechaGuppyShark.Stage.IDLE, "dives": 0, "catch_frames": 0, "intrusions": []}
+	# A runner who doesn't bait lands a hit only by the fallback, every fallback_after + 1 steps: enough steps for two.
+	var to_climb: int = 4 if baits else 2 * (mt.fallback_after + 1) + 1
 	await _run(world, 70.0, func() -> bool: return bot.steps_climbed >= to_climb, func() -> void:
 		bot.step()
 		var a: Dictionary = shark.action
@@ -157,6 +166,20 @@ func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> vo
 			if p.alive and (p.surface != Player.Surface.CEILING or r < 0 or p.distance < climb.steps[r].pad - 0.5):
 				problems.append("roof %d's bite came up with the runner %s at %.0f m" % [r, p.surface_name(), p.distance])
 		state["stage"] = shark.stage
+		if shark.stage == MechaGuppyShark.Stage.LURKING:
+			state["lurked"] = int(state["lurked"]) + 1
+			if shark.shown():
+				state["lurk_shown"] = int(state["lurk_shown"]) + 1
+		# Its catch beside a notch: no part of its jaws over a lane a runner may use, nor over the notch's lane before
+		# the notch starts.
+		var catching: bool = shark.stage in [MechaGuppyShark.Stage.CATCHING, MechaGuppyShark.Stage.SHUTTING] \
+			or (shark.stage == MechaGuppyShark.Stage.WAITING and not (a.get("catch", {}) as Dictionary).is_empty()) \
+			or (shark.stage == MechaGuppyShark.Stage.RISING and not (a.get("catch", {}) as Dictionary).is_empty())
+		if catching and shark.shown():
+			state["catch_frames"] = int(state["catch_frames"]) + 1
+			var why: String = _catch_intrusion(world, climb.roofs[int(a.get("roof", 0))], shark)
+			if why != "" and (state["intrusions"] as Array).size() < 3:
+				(state["intrusions"] as Array).append(why)
 		if not a.is_empty() and shark.shown():
 			if int(a["kind"]) == MechaGuppyShark.Kind.BITE:
 				var roof_index: int = int(a.get("roof", -1))
@@ -173,10 +196,6 @@ func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> vo
 					var x0: float = world.geo.lane_x(st.up.x) - world.geo.lane_width * 0.5
 					var x1: float = world.geo.lane_x(st.up.y) + world.geo.lane_width * 0.5
 					state["over"] = maxf(float(state["over"]), shark.jaws_over(x0, x1) - float(a["top"]))
-			if shark.stage == MechaGuppyShark.Stage.LURKING:
-				state["lurked"] = int(state["lurked"]) + 1
-				state["lurk_x"] = maxf(float(state["lurk_x"]), absf(shark.hinge.x))
-				state["lurk_yaw"] = maxf(float(state["lurk_yaw"]), absf(wrapf(shark.yaw, -PI, PI)))
 		# The events as they come.
 		while int(state["seen"]) < boss.events.size():
 			var e: Dictionary = boss.events[int(state["seen"])]
@@ -215,8 +234,9 @@ func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> vo
 				if not is_nan(_floor_hit(world, x, TrackGeometry.world_z(cut + 0.6), top)) \
 						or not is_nan(_floor_hit(world, x, TrackGeometry.world_z((cut + float(c["end"])) * 0.5), top)):
 					problems.append("roof %d still has floor past its cut in lane %d" % [r, lane])
-				# Before the cut it's still there (while the props keep what the runner has passed: BossProps.KEEP_BEHIND).
-				if p.distance > cut + BossProps.KEEP_BEHIND - 2.0:
+				# Before the cut it's still there (while the props keep what the runner has passed: BossProps.KEEP_BEHIND),
+				# in every lane but the bait's notch's (eaten before).
+				if p.distance > cut + BossProps.KEEP_BEHIND - 2.0 or not climb.roofs[r].covers(lane, cut - 0.6):
 					continue
 				var before: float = _floor_hit(world, x, TrackGeometry.world_z(cut - 0.6), top)
 				if is_nan(before) or absf(before - top) > 0.05:
@@ -236,19 +256,45 @@ func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> vo
 		"a bite's jaws keep at least %.1f m under a rider hanging from the hut, even mid-jump (%.2f m at the closest) %s"
 		% [MechaGuppyShark.BITE_CLEAR, float(state["clear"]), tag])
 	var breaches: int = _events(boss, &"breach_warning").size()
-	check(breaches >= to_climb - 1 and float(state["over"]) <= 0.01,
-		"a breach's jaws are never over a lane that leads up above the floor's level (%d breaches, highest %.2f m) %s"
-		% [breaches, float(state["over"]), tag])
-	check(int(state["lurked"]) > 0 and float(state["lurk_x"]) < 0.01 and float(state["lurk_yaw"]) < 0.01,
-		"it lurks under the chasm's middle facing the runner, giving nothing away (x %.2f m, turned %.2f rad) %s"
-		% [float(state["lurk_x"]), float(state["lurk_yaw"]), tag])
+	var catches: int = _events(boss, &"catch_open").size()
+	if baits:
+		check(catches >= to_climb - 1 and breaches == 0 and int(state["catch_frames"]) > 0 and (state["intrusions"] as Array).is_empty(),
+			"its catch beside each notch: no part of its jaws over a lane a runner may use, nor over the notch's lane before the notch (%d catches, %d breaches) %s%s"
+			% [catches, breaches, tag, "" if (state["intrusions"] as Array).is_empty() else ": " + "; ".join(state["intrusions"])])
+	else:
+		check(breaches >= 2 and float(state["over"]) <= 0.01,
+			"a breach's jaws are never over a lane that leads up above the floor's level (%d breaches, highest %.2f m) %s"
+			% [breaches, float(state["over"]), tag])
+		check(int(state["lurk_shown"]) == 0,
+			"while it lurks before a breach nothing of it shows (%d frames lurking) %s" % [int(state["lurked"]), tag])
 	var warnings: int = _events(boss, &"bite_warning").size() + breaches
 	check(_sounds(boss, &"guppy_rumble") == warnings and _sounds(boss, &"guppy_bite") >= bites.size(),
 		"each bite and breach is warned by its rumble, each bite heard (%d rumbles for %d) %s"
 		% [_sounds(boss, &"guppy_rumble"), warnings, tag])
-	print("  Mecha Guppy %s: %d bites, %d breaches; its jaws %.2f m under a rider at the closest"
-		% [tag, bites.size(), breaches, float(state["clear"])])
+	print("  Mecha Guppy %s: %d bites, %d catches, %d breaches; its jaws %.2f m under a rider at the closest"
+		% [tag, bites.size(), catches, breaches, float(state["clear"])])
 	await sim.free_world(world)
+
+
+## Why the shark's jaws in its catch beside roof `roof`'s notch reach where a runner may be, or "": a point of them over a
+## lane but the notch's (its floor's span, at any height: the tower stands under it), or over the notch's lane before
+## the notch starts.
+func _catch_intrusion(world: RunWorld, roof: MechaGuppyClimb.Roof, shark: MechaGuppyShark) -> String:
+	if not roof.notched():
+		return "a catch beside roof %d, which has no notch" % roof.index
+	var geo: TrackGeometry = world.geo
+	var notch: Vector2 = geo.lane_floor_span(roof.notch_lane)
+	var margin: float = 0.02
+	for pt: Vector3 in shark.jaws_points():
+		var d: float = -pt.z
+		var in_notch_x: bool = pt.x > notch.x + margin and pt.x < notch.y - margin
+		var over_track: bool = absf(pt.x) < geo.wall_x() - margin
+		if over_track and not in_notch_x:
+			return "a point at x %.2f m (the notch's lane spans %.2f to %.2f m), %.1f m over the roof's top" % [pt.x, notch.x, notch.y,
+				pt.y - roof.top]
+		if in_notch_x and d < roof.notch_from - margin:
+			return "a point over the notch's lane %.2f m before the notch" % (roof.notch_from - d)
+	return ""
 
 
 ## Two attempts with the same inputs bite the same.
