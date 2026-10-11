@@ -48,6 +48,13 @@ var tuning: MechaGuppyTuning
 var climb: MechaGuppyClimb
 var stairs: MechaGuppyStairs
 var waterfall: MechaGuppyWaterfall
+## Mecha Guppy itself (its bites), Captain Cogs' ship, his bombs, and the pattern that times them on each step.
+var shark: MechaGuppyShark
+var ship: CaptainCogsShip
+var bombs: MechaGuppyBombs
+var pattern: MechaGuppyPattern
+## Off: no bombs and no bites (the climb's own tests turn them off to check the climb alone; on in the game).
+var attacks_enabled: bool = true
 ## Hits landed over the fight (register_hit).
 var hits_landed: int = 0
 ## The fight time the runner reached the top (phase 3), or -1 before.
@@ -103,6 +110,20 @@ func _build_boss() -> void:
 	waterfall.name = "Waterfall"
 	add_child(waterfall)
 	waterfall.setup(world)
+	shark = MechaGuppyShark.new()
+	shark.name = "Shark"
+	add_child(shark)
+	shark.setup(self)
+	bombs = MechaGuppyBombs.new()
+	bombs.name = "Bombs"
+	add_child(bombs)
+	bombs.setup(self)
+	ship = CaptainCogsShip.new()
+	ship.name = "Ship"
+	add_child(ship)
+	ship.setup(self)
+	pattern = MechaGuppyPattern.new(self)
+	shark.on_snap = pattern.on_snap
 
 
 ## The run's pace (MovementTuning.pace(): 1 at 18 m/s): the climb's distances that stand for a time follow it.
@@ -125,12 +146,14 @@ func _on_phase_started(index: int) -> void:
 	log_event(&"climb_phase", {"index": index, "step": climb.steps.size()})
 
 
-func _intro_tick(_delta: float) -> void:
+func _intro_tick(delta: float) -> void:
+	_advance(delta)
 	_place_armor()
 	_watch_top()
 
 
-func _pattern_tick(_delta: float) -> void:
+func _pattern_tick(delta: float) -> void:
+	_advance(delta)
 	_place_armor()
 	_watch_top()
 	# DESIGN-TBD (E5e-c builds phase 3): the stub's minute on the top runs out and the fight is won.
@@ -163,6 +186,45 @@ func _watch_top() -> void:
 
 func _on_defeated() -> void:
 	_armor_waiting = 0
+	if bombs != null:
+		bombs.clear()
+
+
+func _defeated_tick(delta: float) -> void:
+	if ship != null:
+		ship.advance(delta)
+	if shark != null:
+		shark.advance(delta)
+
+
+## The captain, the shark, the bombs and the pattern, one physics step (the fight's ticks: they wait while the runner is
+## down).
+func _advance(delta: float) -> void:
+	if ship != null:
+		ship.advance(delta)
+	if bombs != null:
+		bombs.tick(delta)
+	if shark != null:
+		shark.advance(delta)
+	if pattern != null:
+		pattern.tick()
+
+
+## True while Captain Cogs throws and Mecha Guppy rises to eat his bombs: the climb's pattern runs (not in an intro, not in
+## phase 3's stub, which E5e-c builds, not once it's won).
+func attacks_live() -> bool:
+	return attacks_enabled and is_vulnerable() and not top_due()
+
+
+## True while Mecha Guppy eats the roofs the runner leaves (an intro too: the level being eaten isn't an attack).
+func bites_live() -> bool:
+	return attacks_enabled and not is_defeated() and not top_due()
+
+
+## Plays a sound at `pos` and notes it (every warning is heard: the tests read the notes).
+func sound(sound_name: StringName, pos: Vector3) -> void:
+	world.play_sfx_at(sound_name, pos)
+	log_event(&"sound", {"name": sound_name})
 
 
 ## A hit on Mecha Guppy (GDD §10: a bomb that falls through a gap, off a roof's edge or onto the exposed shark):
