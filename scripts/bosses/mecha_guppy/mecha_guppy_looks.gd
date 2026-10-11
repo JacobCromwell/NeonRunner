@@ -65,6 +65,10 @@ const WINDOW_GLOW: float = 0.12
 const DEEP_COLOR := Color(0.045, 0.05, 0.075)
 const DEEP_FADE: float = 42.0
 const DEEP_MOST: float = 0.88
+## A floor bite's broken face fades the other way, into the sea haze, BITE_HAZE_MOST of the way by BITE_HAZE metres down
+## (_bite_deep): a trench seen from over it reads as a drop, not a slab.
+const BITE_HAZE: float = 18.0
+const BITE_HAZE_MOST: float = 0.8
 ## A tower (its walls, an eaten face, a pier's stilts) is drawn at most this far below its deck (metres): deeper,
 ## the arena's haze hides it from every view the climb has (MechaGuppySkin: fully fogged 200 m from the camera; the
 ## run camera rides at most about 5 m over a deck and sees at most half its widest fov, 42°, off its axis, so a
@@ -90,9 +94,14 @@ const ANNEX_ROOF: float = 0.8
 const POD_RADIUS: float = 0.35
 ## The orange band at each lane's end on a hut's underside (the end band every ceiling has, MeshKit.ceiling_end's
 ## look): long and bright, so it reads from the hut's start (task E5e-b1's review: at 1.2 m it was a sliver until
-## about 0.8 s before the end; seen from below at a grazing angle, its length is what shows).
+## about 0.8 s before the end; seen from below at a grazing angle, its length is what shows). Its brightness is a glow
+## card over it (END_BAND_CARD) that fades out as the camera comes within END_BAND_NEAR (MeshKit.near_fade), the band
+## itself barely glowing (END_BAND_GLOW): the chase camera passes just under it as a rider drops, and the band glowing
+## solid filled up to a quarter of the screen with bright orange (task E5e-f's review).
 const END_BAND: float = 4.0
-const END_BAND_GLOW: float = 0.4
+const END_BAND_GLOW: float = 0.06
+const END_BAND_CARD: float = 0.55
+const END_BAND_NEAR: float = 10.0
 ## The band hangs this far under the hut's underside: below a rider's blob shadow there (Player._update_shadow lays it
 ## 0.02 m under a ceiling), so it hides the shadow rather than being darkened by it.
 const SHADOW_UNDER: float = 0.03
@@ -442,8 +451,9 @@ func _floor_poly(s: MeshLayer, pts: PackedVector2Array, top: float, color: Color
 
 ## Floor bite `bite`'s eaten edge over track distances [from, to], on a deck at `top`: the orange lip and the steel coping
 ## on the deck along its scalloped edge (into the floor from it), the glowing strip on its face just under the deck, and
-## the dark broken face of the eaten tower down to the water, darker the deeper (the edge language every eaten edge has).
-## None along the far wall where a full-width bite cuts the whole floor.
+## the broken face of the eaten tower down to the water, its dark timber fading into the sea haze the deeper it goes
+## (_bite_deep: task E5e-f's review, seen from over a full-width trench a face darkening with depth read as a dark slab;
+## the haze reads as the drop). None along the far wall where a full-width bite cuts the whole floor.
 func _bite_edge(s: MeshLayer, bite: MechaGuppyCrescent, from: float, to: float, top: float) -> void:
 	var pts: PackedVector2Array = bite.edge(maxf(from, bite.from), minf(to, bite.to))
 	var n: int = pts.size()
@@ -464,7 +474,8 @@ func _bite_edge(s: MeshLayer, bite: MechaGuppyCrescent, from: float, to: float, 
 		normals[i] = acc.normalized() if acc.length() > 0.0001 else Vector2(-float(bite.side), 0.0)
 	var y_low: float = bottom(top)
 	var y_strip: float = top - 0.02 - STRIP_HEIGHT
-	var layers: Array[float] = [y_strip, top - 6.0, top - 18.0, top - 48.0, y_low]
+	var layers: Array[float] = [y_strip, top - 1.5, top - 3.5, top - 6.0, top - 9.0, top - 13.0, top - 18.0, top - 30.0,
+		top - 48.0, y_low]
 	var param: float = MeshKit.beach_timber_param(2, 1, 3)
 	for i: int in n - 1:
 		var p: Vector2 = pts[i]
@@ -482,7 +493,7 @@ func _bite_edge(s: MeshLayer, bite: MechaGuppyCrescent, from: float, to: float, 
 			var y0: float = maxf(layers[k + 1], y_low)
 			if y1 <= y0 + 0.01:
 				continue
-			_wall_quad(s, p, q, y0, y1, gap, deep(skin.timber_color * 0.45, top - (y0 + y1) * 0.5), 0.0, MeshKit.PAT_BEACH_TIMBER,
+			_wall_quad(s, p, q, y0, y1, gap, _bite_deep(top - (y0 + y1) * 0.5), 0.0, MeshKit.PAT_BEACH_TIMBER,
 				param)
 
 
@@ -511,6 +522,12 @@ static func _quad_out(layer: MeshLayer, a: Vector3, b: Vector3, c: Vector3, d: V
 		layer.quad(a, d, c, b, color, glow, pattern, param)
 	else:
 		layer.quad(a, b, c, d, color, glow, pattern, param)
+
+
+## A floor bite's broken face `depth` metres under the deck (see _bite_edge): the tower's dark timber, fading toward the sea
+## haze, BITE_HAZE_MOST of the way BITE_HAZE metres down.
+func _bite_deep(depth: float) -> Color:
+	return (skin.timber_color * 0.45).lerp(skin.fog_color, clampf(depth / BITE_HAZE, 0.0, 1.0) * BITE_HAZE_MOST)
 
 
 ## The colour `base` takes `depth` metres under a deck: darker the deeper it is, as light fails down a chasm.
@@ -934,9 +951,12 @@ func _underside(s: MeshLayer, g: MeshLayer, x0: float, x1: float, zn: float, zf:
 			s.box(Vector3(lx, y - 0.025, zf + along), Vector3(0.35, 0.05, 0.2), edge, 0.7, MeshKit.PAT_PLAIN,
 				MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
 		lx += 1.2
+	# Its brightness from afar, gone as the camera comes near (see END_BAND).
+	g.rect(Vector3(x0, y - SHADOW_UNDER - 0.01, zf + END_BAND), Vector3(x1 - x0, 0, 0), Vector3(0, 0, -END_BAND), edge,
+		END_BAND_CARD, MeshKit.SHAPE_FLAT, Vector2.ZERO, Vector2.ONE, MeshKit.near_fade(END_BAND_NEAR))
 	g.rect(Vector3(x0, y - 0.05, zf + END_BAND + MeshKit.CEILING_END_GLOW), Vector3(x1 - x0, 0, 0),
 		Vector3(0, 0, -(END_BAND + MeshKit.CEILING_END_GLOW)), edge, 0.4, MeshKit.SHAPE_RADIAL, Vector2.ZERO, Vector2.ONE,
-		MeshKit.near_fade(MeshKit.CEILING_END_NEAR))
+		MeshKit.near_fade(END_BAND_NEAR))
 
 
 ## A thatched hip roof over the rectangle centred (cx, cz), half sizes (hx, hz), eaves at height y0, rising `rise`.
