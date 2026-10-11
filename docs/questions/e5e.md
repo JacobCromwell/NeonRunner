@@ -381,7 +381,7 @@ placeholder, the entry says so.
     starboard cannon for each struck lane, lobbed over the eaves (`round_flight`, 0.3 s) onto the far end of its line,
     `round_ahead` (24 m) ahead, then rolling down the lane at the runner, closing in at `round_close` (50 m/s): it
     reaches them 1.58 s after its warning at any run speed (the plan needs a reaction, a lane switch and
-    `dodge_margin`: 0.8 s).
+    `dodge_margin`: 0.74 s).
   - The cannonball: an iron ball `round_radius` (1.15 m) with a brass band, rolling; its hitbox 65% of its width, 85%
     of its height (1.96 m: too tall to jump, so the dodge is a switch) and 70% of its depth, an enemy attack (armor
     and the shield block it, the dash passes through it).
