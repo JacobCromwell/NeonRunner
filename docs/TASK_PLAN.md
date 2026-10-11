@@ -484,6 +484,8 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 3. **E5e-c, phase 3 and the defeat:** level with Captain Cogs, the captain's rounds and the waves, the minute, Mecha Guppy's leap and the eating, the shark swimming away, the Beach's normal backdrop; the slot's `scene`, par times and rewards; the bot wins the whole fight at 3, 5 and 6 lanes.
 4. **E5e-d, the walls** (core: `player.gd`; last, so they can be dropped: the owner wants to hear how they go, and keeps them only if they add a lot to the play, about 7 out of 10 or more, and drops them at about 1–2): occasional side walls in the climb, never its full length, eaten like the floors, that a falling runner may catch, set so they save about one wrong drop in five; wall heights from the floor beside them.
 
+**Done:** E5e-a, E5e-b (in three parts: the climb; Mecha Guppy, Captain Cogs and the bombs; hits by baiting, as the owner chose on October 11, 2026) and E5e-c are built and each reviewed; E5e-d (the walls) is dropped under the owner's rule. The campaign plays the fight after Sunset Strip (`beach/boss`); the whole-fight bots, baiting and not, win at 3, 5 and 6 lanes and at 18 and 23.8 m/s. Its placeholders are in `docs/questions/e5e.md`, to fold into `docs/OPEN_QUESTIONS.md` when it merges.
+
 ### F. Cinematics
 
 | ID | Task | Needs | Size | Tier |
