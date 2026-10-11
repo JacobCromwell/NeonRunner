@@ -15,7 +15,8 @@ extends TestSuite
 ## - The shader warm-up stage (ShaderWarmup): samples of the hidden materials, the effects' glow, every
 ##   enemy kind's look and each track piece, nothing in it colliding, lit or out of its tiny space, and no
 ##   physics object made or freed by a warm-up (the stage's track holders are made once and reused; the
-##   enemy looks have none).
+##   enemy looks have none); no program compiled twice over (one Shader per shader code, the credits'
+##   too) and none for the hitbox view's debug boxes.
 ## - The frame monitor's tags, holds and summaries, and the frame graph's spikes and holds.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
@@ -388,6 +389,27 @@ func _test_shader_warmup() -> void:
 	check(credit_shaders == CreditField.LOOKS.size(),
 		"it draws every credit denomination's look, even a boss's whose track carries none of its own (%d of %d)" %
 		[credit_shaders, CreditField.LOOKS.size()])
+	# The renderer compiles each Shader on its own, so one code in two Shaders is the same program twice.
+	var shaders_of_code: Dictionary = {}
+	for m: Material in drawn:
+		var sm := m as ShaderMaterial
+		if sm != null and sm.shader != null:
+			if not shaders_of_code.has(sm.shader.code):
+				shaders_of_code[sm.shader.code] = {}
+			shaders_of_code[sm.shader.code][sm.shader] = true
+	var twice: PackedStringArray = []
+	for code: String in shaders_of_code:
+		if shaders_of_code[code].size() > 1:
+			twice.append("%d Shaders of code %s" % [shaders_of_code[code].size(), code.md5_text().left(8)])
+	var spin: Shader = (CreditField.material_for(1) as ShaderMaterial).shader
+	check(twice.is_empty() and spin == (CreditField.material_for(25) as ShaderMaterial).shader,
+		"no shader code is drawn from two Shaders, the credits' spin too: %s" % ", ".join(twice))
+	var overlays: int = 0
+	for g: Node in world.find_children("*", "GeometryInstance3D", true, false):
+		if GreyboxMaterials.is_debug_overlay((g as GeometryInstance3D).material_override):
+			overlays += 1
+	check(overlays > 0 and not drawn.any(func(m: Material) -> bool: return GreyboxMaterials.is_debug_overlay(m)),
+		"it leaves out the hitbox view's boxes, which only a debug build shows (%d in the run)" % overlays)
 	stage.queue_free()
 	await tree.process_frame
 	var again := ShaderWarmup.new()
