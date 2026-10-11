@@ -14,7 +14,10 @@ extends Node3D
 ##   strip), and its hut (BossProps.ceiling_lanes: each lane ends at its own distance, one section per run of lanes
 ##   ending together); between one roof's eaten edge and the next roof's front, nothing: the chasm Mecha Guppy has
 ##   eaten through the towers, down to the water (a fall);
-## - the top (phase 3's stub): the last roof runs on, in segments for as long as the fight lasts.
+## - the top (phase 3's stub): the last roof runs on, in segments for as long as the fight lasts;
+## - the bait's notch (task E5e-b3; MechaGuppyClimb.Roof.notch_lane): past notch_from a roof's pieces leave out its
+##   notch's lane (their collision and their look), with a lane blocker along the notch's inner side below the top (a
+##   runner who fell into it can't switch into the tower's side), and the step's pads there go too.
 ## When things are built: everything up to the build horizon, BUILD_MARGIN past the edge of sight (`sight`: the
 ## arena skin's fog end, where the fog hides everything), so nothing appears in view. Each step is planned as late
 ## as it can be, as its hut comes to the horizon, in the phase of that moment, and never nearer than the edge of
@@ -191,7 +194,8 @@ func _replan(d: float) -> void:
 	# The roof the first step started from: its pieces reaching past the edge go (it's no longer eaten there).
 	var state: Dictionary = _roofs.get(first, {})
 	if not state.is_empty():
-		var kept: float = _free_roof(first, edge)
+		# (Back to notch_back short of the edge: the notch it may now get starts no nearer than that.)
+		var kept: float = _free_roof(first, edge - tuning.notch_back)
 		state["to"] = minf(float(state["to"]), kept)
 		state["ended"] = false
 	climb.truncate(first)
@@ -310,8 +314,10 @@ func _eat_pads(index: int, cut: float) -> void:
 	var end: float = cut - PAD_EATEN
 	if end - step.pad < 0.5:
 		return
+	var roof: MechaGuppyClimb.Roof = climb.roofs[index]
 	for lane: int in world.geo.lane_count:
-		_note_step(index, _strip(lane, step.pad, end, step.floor_y))
+		if roof.covers(lane, step.pad):
+			_note_step(index, _strip(lane, step.pad, end, step.floor_y))
 
 
 func _note_step(index: int, node: Node) -> void:
@@ -341,9 +347,9 @@ func _build_roof(roof: MechaGuppyClimb.Roof, d: float, far: float) -> bool:
 		state["front"] = true
 	var known: bool = roof.end < MechaGuppyClimb.FAR * 0.5 or climb.top_planned() and roof.index == climb.roofs.size() - 1
 	var end: float = roof.end if known else MechaGuppyClimb.FAR
-	# Unknown end: built no further than the nearest it could be (the next step's hut no nearer than the edge of
-	# sight, then its pad strip and the eaten margin).
-	var limit: float = minf(far, end) if known else minf(far, d + sight + _strip_reach())
+	# Unknown end: built no further than the nearest its end or its notch could be (the next step's hut no nearer than
+	# the edge of sight: its notch starts notch_back before that hut, its end past the pad strip and the eaten margin).
+	var limit: float = minf(far, end) if known else minf(far, d + sight + _unknown_reach(roof))
 	var to: float = float(state["to"])
 	while to < limit - 0.01:
 		var next: float = minf(to + SEGMENT, end)
@@ -361,6 +367,15 @@ func _build_roof(roof: MechaGuppyClimb.Roof, d: float, far: float) -> bool:
 func _strip_reach() -> float:
 	return tuning.hut_lead * climb.pace + climb.jump_seconds() * climb.speed + climb.dash_reach + tuning.strip_margin \
 		+ tuning.edge_margin
+
+
+## How far past the edge of sight roof `roof` is built while its end isn't known (the next step not yet planned): to the
+## nearest its end could be, but on a roof that may have a notch (every one but the street) no nearer than its notch
+## could start (notch_back before the next hut, which comes no nearer than the edge of sight).
+func _unknown_reach(roof: MechaGuppyClimb.Roof) -> float:
+	if roof.index <= 0:
+		return _strip_reach()
+	return minf(_strip_reach(), -tuning.notch_back)
 
 
 ## Roof `roof`'s front pieces: each run of lanes starting before the roof is full width (the lanes that reach back:
@@ -383,11 +398,27 @@ func _roof_front(roof: MechaGuppyClimb.Roof) -> void:
 		_note_roof(roof.index, props.keep(looks.roof_front(roof, _step_into(roof)), full), full, false)
 
 
-## A full-width piece of roof `roof` from `from` to `to` (`ended`: it ends where Mecha Guppy has eaten it).
+## A full-width piece of roof `roof` from `from` to `to` (`ended`: it ends where Mecha Guppy has eaten it), split where
+## its notch begins: past there, its notch's lane is left out (the collision and the look) and a lane blocker stands
+## along the notch's inner side.
 func _roof_segment(roof: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) -> void:
-	var all := Vector2i(0, world.geo.lane_count - 1)
+	if roof.notched() and from < roof.notch_from - 0.01 and to > roof.notch_from + 0.01:
+		_roof_piece(roof, from, roof.notch_from, false)
+		_roof_piece(roof, roof.notch_from, to, ended)
+		return
+	_roof_piece(roof, from, to, ended)
+
+
+## One piece of roof `roof` from `from` to `to`, wholly before its notch or wholly past it (_roof_segment).
+func _roof_piece(roof: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) -> void:
+	var lanes := Vector2i(0, world.geo.lane_count - 1)
+	var notched: bool = roof.notched() and from >= roof.notch_from - 0.01
+	if notched:
+		lanes = Vector2i(1, lanes.y) if roof.notch_lane == 0 else Vector2i(0, lanes.y - 1)
 	var street: bool = roof.index == 0
-	_note_roof(roof.index, props.roof(all, from, to, roof.top, STREET_DEPTH if street else -1.0, looks == null), to, true, from)
+	_note_roof(roof.index, props.roof(lanes, from, to, roof.top, STREET_DEPTH if street else -1.0, looks == null), to, true, from)
+	if notched:
+		_note_roof(roof.index, _blocker(lanes, from, to, roof.top), to, true, from)
 	if looks != null:
 		_note_roof(roof.index, props.keep(looks.roof_segment(roof, from, to, ended), to), to, true, from)
 
@@ -440,11 +471,13 @@ func _front(lanes: Vector2i, at: float, top: float) -> Hazard:
 
 # --- Steps -----------------------------------------------------------------------------------------
 
-## Step `step`'s pad strip across every lane at the end of its roof, and its hut.
+## Step `step`'s pad strip across every lane at the end of its roof (but its notch's), and its hut.
 func _build_step(step: MechaGuppyClimb.Step) -> void:
 	_steps_built[step.index] = true
+	var roof: MechaGuppyClimb.Roof = climb.roofs[step.index]
 	for lane: int in world.geo.lane_count:
-		_note_step(step.index, _strip(lane, step.pad, step.pad_end, step.floor_y))
+		if roof.covers(lane, step.pad):
+			_note_step(step.index, _strip(lane, step.pad, step.pad_end, step.floor_y))
 	var sections: Array[Node3D] = props.ceiling_lanes(step.hut_start, step.ends,
 		step.hut_y - world.tuning.ceiling_height)
 	for s: Node3D in sections:
@@ -499,7 +532,8 @@ func span(lanes: Vector2i) -> Vector2:
 ## proposed: up onto the higher roof, into its nearest lane that leads up): the lowest roof above their feet whose
 ## lanes that lead up are under them where the save brings them down (the pull lifts them to just under its top,
 ## Player._pull_up, clear of every solid front, whose tops are lower still: FRONT_DROP), the lane of those
-## nearest theirs. {} with none (the save as it always is: straight up).
+## nearest theirs; a runner who fell off the side of a roof they were on (into the bait's notch) goes back up onto it,
+## into its lane nearest theirs there. {} with none (the save as it always is: straight up).
 func save_spot(player: Player) -> Dictionary:
 	var feet: float = player.position.y
 	var land: float = player.distance + climb.save_seconds(world.rules.grapple_pull_velocity) * climb.speed
@@ -512,9 +546,21 @@ func save_spot(player: Player) -> Dictionary:
 		if roof.top <= feet + 0.05:
 			continue
 		var lane: int = step.nearest_up(player.lane)
-		if roof.covers(lane, land - SAVE_MARGIN) and roof.covers(lane, land + SAVE_MARGIN):
+		# Beside a roof that's full width here (a fall off its side, into its notch): its covered lane nearest theirs.
+		if player.distance >= roof.full_from() and not roof.covers(player.lane, player.distance):
+			lane = _nearest_covered(roof, player.lane, land)
+		if lane >= 0 and roof.covers(lane, land - SAVE_MARGIN) and roof.covers(lane, land + SAVE_MARGIN):
 			return {"lane": lane, "height": roof.top}
 	return {}
+
+
+## The lane of roof `roof` nearest `lane` that it covers at track distance `d` (both ways out to SAVE_MARGIN), or -1.
+func _nearest_covered(roof: MechaGuppyClimb.Roof, lane: int, d: float) -> int:
+	var best: int = -1
+	for l: int in world.geo.lane_count:
+		if roof.covers(l, d - SAVE_MARGIN) and roof.covers(l, d + SAVE_MARGIN) and (best < 0 or absi(l - lane) < absi(best - lane)):
+			best = l
+	return best
 
 
 ## Where the roof whose top is at `height` starts in `lane` (its front a runner falling at `d` reaches next), or `d`
@@ -547,6 +593,9 @@ func pickup_spot(lead: float) -> Dictionary:
 			from = maxf(from, into.land + PICKUP_AFTER_LAND * k)
 		var to: float = step.hut_start - PICKUP_BEFORE_HUT * k if not step.top else d + lead + SEGMENT
 		to = minf(minf(to, roof.end - PICKUP_BEFORE_HUT * k), float((_roofs.get(roof.index, {}) as Dictionary).get("to", -1.0)))
+		# Clear of the bait (its circle follows the runner's lane to where its bomb lands, past the notch's start).
+		if roof.notched():
+			to = minf(to, roof.notch_from - tuning.pickup_margin - tuning.blast_depth)
 		if from > to:
 			continue
 		var lane: int = player.lane

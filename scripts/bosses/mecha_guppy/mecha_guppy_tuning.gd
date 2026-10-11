@@ -19,11 +19,19 @@ extends Resource
 ## metres at the run's speed; heights and sizes don't change. The rest of the climb's distances come from the
 ## movement itself (MechaGuppyClimb: a jump's length, the flip up to a hut, a drop off its end, the fall into
 ## the floor below, the dash's reach), so they hold at any speed and with any movement tuning.
+## Task E5e-b3 adds the bait (GDD §10, the owner, October 11, 2026: Captain Cogs' bombs lock onto the runner's lane, and
+## one dodged where the lane runs out falls past the edge into Mecha Guppy's jaws; the group "The hits") and moves the
+## fights' fairness numbers here from code.
 
 @export_group("The climb")
-## DESIGN-TBD: how far each tiki bar roof stands above the one before (metres). The climbing camera sees a
-## roof up to RunCamera.FLOOR_REACH above it, and the hut over a step keeps hut_clearance over the higher roof.
+## DESIGN-TBD: how far each tiki bar roof stands above the one before in phase 1 (metres). The climbing camera
+## sees a roof up to RunCamera.FLOOR_REACH above it, and the hut over a step keeps hut_clearance over the higher roof.
 @export_range(1.5, 6.0, 0.1, "suffix:m") var rise: float = 3.0
+## DESIGN-TBD (GDD §10: phase 2's climb 15-25% faster; docs/questions/e5e.md): each roof's rise in phase 2 (and
+## later). Phase 2's steps are as long as phase 1's (every step's roof holds a volley spot and the bait: roof_seconds),
+## so its climb is faster by being higher: 3.6 m climbs 20% faster in metres per second at 3, 5 and 6 lanes
+## (MechaGuppyClimb.climb_rate).
+@export_range(1.5, 6.0, 0.1, "suffix:m") var phase2_rise: float = 3.6
 ## DESIGN-TBD: a tiki hut's underside over the floor its step starts from (metres; a level's ceilings are 6 m
 ## over the street). It keeps at least hut_clearance over the higher roof under its end. 8.5 m puts the riding view
 ## (RunCamera: 3.6 m under a ceiling) about 1.9 m over the higher roof, so its deck and the lanes that reach back
@@ -39,11 +47,12 @@ extends Resource
 ## who jumped right before the pads, dashing, then the flip up). Every rider gets at least this, a rider who
 ## didn't jump about a second more. 0.9 s: a humane default for the owner to tune in playtest.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var read_seconds: float = 0.9
-## DESIGN-TBD (GDD §10: phase 2's climb 15-25% faster; proposed: about 20%, by bringing the steps closer
-## together): each phase's run on a roof, from landing to the next pads (seconds at run speed), the one stretch
-## of a step no fairness margin holds. 1.6 s in phase 1 and 0.6 s in phase 2 make phase 2's climb 19-22%
-## faster at 3, 5 and 6 lanes (MechaGuppyClimb.climb_rate). The last entry serves later phases.
-@export var roof_seconds: PackedFloat32Array = PackedFloat32Array([1.6, 0.6, 0.6])
+## DESIGN-TBD: the run on each roof (seconds at run speed, both phases), the one stretch of a step no fairness
+## margin holds: from where a rider can first switch lanes on it (dropping off the hut over a full-width roof, or where
+## a pier widens to the whole roof: MechaGuppyClimb.Step.free_at) to the next pads, on 3 lanes, and a lane switch
+## longer for each lane past three. It holds a volley spot, then the bait at the roof's end (MechaGuppyPattern), with
+## time between for a runner to cross to the notch from the far side.
+@export_range(1.0, 6.0, 0.05, "suffix:s") var roof_seconds: float = 3.6
 ## DESIGN-TBD: the cue "the roof's lanes that lead up reach further back": how far under the hut's end they
 ## reach (metres at 18 m/s). The other lanes start where a wrong drop is already past them.
 @export_range(2.0, 30.0, 0.5, "suffix:m") var reach_back: float = 10.0
@@ -89,16 +98,16 @@ extends Resource
 @export_range(0.3, 1.0, 0.05) var blast_width_share: float = 0.7
 @export_range(0.5, 3.0, 0.05, "suffix:m") var blast_depth: float = 1.9
 @export_range(1.0, 4.0, 0.1, "suffix:m") var blast_height: float = 2.4
-## DESIGN-TBD: the volleys a runner dodges, each phase (the last entry serves later phases; phase 3 has none, E5e-c):
-## - roof_spots: up to this many spots on a roof's run from the landing to the next hut, nearest first, spot_spacing
-##   apart (at 18 m/s): the Floating Head's salvo, landing as the runner gets to each (fewer where a run is short);
+## DESIGN-TBD: the volleys a runner dodges, each phase (the last entry serves later phases; phase 3 has none, E5e-c),
+## besides each step's bait (the group "The hits"):
+## - roof_spots: up to this many spots on a roof's run before its bait, nearest first, spot_spacing apart (at 18 m/s):
+##   the Floating Head's salvo, landing as the runner gets to each (fewer where a run is short);
 ## - landing_spots: a spot where riders come down onto the higher roof, dodged by a switch in the air as they drop
-##   off the hut's end (on a pier only where it has another lane to switch to; GDD §10: phase 2, more bombs);
-## - hut_bombs: bombs on the hut a rider hangs from, which burst on its top (GDD §10, the owner: a rider with the
-##   ceiling between them and a bomb isn't hurt by it).
-@export var roof_spots: PackedInt32Array = PackedInt32Array([2, 1])
+##   off the hut's end (on a pier only where it has another lane to switch to; GDD §10: phase 2, more bombs).
+## Phase 2's spots take more bombs side by side (spot_bombs), and it adds the landing spot: more bombs to dodge a step,
+## and a second, at the same step length.
+@export var roof_spots: PackedInt32Array = PackedInt32Array([1, 1])
 @export var landing_spots: PackedInt32Array = PackedInt32Array([0, 1])
-@export var hut_bombs: PackedInt32Array = PackedInt32Array([0, 2])
 @export_range(6.0, 30.0, 0.5, "suffix:m") var spot_spacing: float = 10.0
 ## How many bombs side by side a spot takes, each phase, on a narrow street (under wide_lanes lanes) and on a wide
 ## one, and the fewest lanes a spot leaves the runner to be in where it can (the Floating Head's salvo rule: one on a
@@ -119,14 +128,42 @@ extends Resource
 @export_range(0.0, 1.0, 0.05, "suffix:s") var dodge_margin: float = 0.25
 ## No spot within this of a pickup waiting in its lane (metres).
 @export_range(0.0, 10.0, 0.5, "suffix:m") var pickup_margin: float = 3.0
-## DESIGN-TBD (GDD §10: a bomb hurts Mecha Guppy when it falls into a stretch it has eaten through, where it is
-## clearly exposed and in the line of fire): each step, once a rider is committed (at the hut's deadline), Captain
-## Cogs throws at the chasm in front of the higher roof, beside the lanes that lead up on the side with more lanes that
-## don't, where Mecha Guppy rises to eat; the bomb comes down this far before that roof's front there (metres; the
-## shark's head clear of the roof's face), into its open jaws: a hit. It threatens nobody, so it flies only
-## hit_seconds (its circle and whistle as every bomb's): it goes in ahead of the runner, in view, not behind them.
+## A spot's blast lands on floor this far beyond its depth either way, and no hut reaches within hut_clear of it (the
+## hut would take the bomb) (metres).
+@export_range(0.0, 2.0, 0.05, "suffix:m") var floor_clear: float = 0.5
+@export_range(0.5, 4.0, 0.05, "suffix:m") var hut_clear: float = 2.0
+## A spot's escape lanes stay open this far past it (metres at 18 m/s, at the run's pace).
+@export_range(0.0, 8.0, 0.25, "suffix:m") var escape_after: float = 3.0
+
+@export_group("The hits")
+## GDD §10 (the owner, October 11, 2026): hurting Mecha Guppy is baiting Captain Cogs' bombs. DESIGN-TBD, the bait's
+## shape (MechaGuppyPattern, docs/questions/e5e.md): near the end of each roof Mecha Guppy has bitten a notch out of an
+## outer lane (a seeded side, nothing to do with the lanes that lead up), its open jaws waiting below. As the runner
+## comes near, one bomb's red circle follows their lane (Captain Cogs taking aim: cogs_aim) for bait_seek, then locks
+## with the throw, lock_seconds before it lands as they get there: a runner in the notch's lane when it locks, who
+## then switches out before the edge, sends it past the edge into the jaws, a hit; anywhere else it's a blast to dodge.
+## The notch starts notch_back before the next hut (metres), the bomb lands catch_in into it (metres: clear of the
+## floor behind, the shark's chin wholly over the notch), and the circle follows the runner bait_seek (seconds).
+@export_range(0.2, 2.0, 0.05, "suffix:s") var bait_seek: float = 0.6
+@export_range(6.0, 16.0, 0.25, "suffix:m") var notch_back: float = 7.5
+@export_range(3.0, 8.0, 0.25, "suffix:m") var catch_in: float = 4.0
+## DESIGN-TBD (GDD §10: "a player who doesn't manage it still progresses, more slowly: Captain Cogs sometimes misses into
+## the chasm anyway"): once this many steps in a row have gone by without a hit, at the next step's hut deadline (every
+## rider committed) Captain Cogs misses into the chasm in front of the higher roof, beside the lanes that lead up on the
+## side with more lanes that don't, where Mecha Guppy rises to eat; the bomb comes down hit_back before that roof's
+## front there (metres; the shark's head clear of the roof's face), into its open jaws: a hit, at most one a step and
+## never on a step the runner fell. It threatens nobody, so it flies only hit_seconds, with its circle but no throw or
+## whistle (nothing to dodge): it goes in ahead of the runner, in view. With 2, a runner who never baits lands a hit
+## every third step.
+@export_range(0, 6) var fallback_after: int = 2
 @export_range(6.5, 12.0, 0.25, "suffix:m") var hit_back: float = 6.8
 @export_range(0.5, 1.5, 0.05, "suffix:s") var hit_seconds: float = 0.65
+## The fallback's breach: Mecha Guppy's head keeps this far clear of the lanes that lead up (metres; hit_spot places the
+## bomb so), its jaws are wide open this long before the bomb comes down (seconds), and it glides out of sight under the
+## chasm for this long before it surges up (seconds).
+@export_range(0.5, 4.0, 0.1, "suffix:m") var lane_clear: float = 1.5
+@export_range(0.05, 0.6, 0.05, "suffix:s") var breach_early: float = 0.25
+@export_range(0.2, 3.0, 0.1, "suffix:s") var lurk_seconds: float = 1.0
 
 @export_group("Mecha Guppy's bites")
 ## DESIGN-TBD (GDD §10: its maw comes up through the floor and eats a huge chunk of the level; it eats the floors the
@@ -144,10 +181,13 @@ extends Resource
 ## Once a rider has left a roof for its hut, Mecha Guppy bites the roof's end off behind them: this much of it
 ## (metres; never past the hut's start).
 @export_range(4.0, 30.0, 0.5, "suffix:m") var bite_length: float = 14.0
-## When it rises to eat beside the lanes that don't lead up: its surge up through the floor's level, opening (seconds;
-## quicker than a bite's: its bomb flies only hit_seconds), and how long its jaws stay open around the bomb's landing.
+## When it rises to eat beside the lanes that don't lead up (the fallback's breach): its surge up through the floor's
+## level, opening (seconds; quicker than a bite's: its bomb flies only hit_seconds), and how long its jaws stay open
+## around the bomb's landing.
 @export_range(0.15, 1.0, 0.05, "suffix:s") var breach_rise: float = 0.3
 @export_range(0.1, 1.5, 0.05, "suffix:s") var breach_hold: float = 0.35
+## A bite put off while the shark was busy must still have this long to spare before the step's fallback (seconds).
+@export_range(0.0, 1.0, 0.05, "suffix:s") var bite_spare: float = 0.3
 
 @export_group("Captain Cogs' ship")
 ## DESIGN-TBD (GDD §10: a floating ship flying above the track): its station ahead of the runner and above the roof
@@ -157,11 +197,9 @@ extends Resource
 @export_range(0.0, 6.0, 0.1, "suffix:m") var ship_sway: float = 1.6
 
 
-## The run on a roof in phase `index` (roof_seconds; its last entry for later phases).
-func roof_seconds_at(index: int) -> float:
-	if roof_seconds.is_empty():
-		return 1.0
-	return roof_seconds[clampi(index, 0, roof_seconds.size() - 1)]
+## How far a roof planned in phase `index` stands above the one before (rise in phase 1, phase2_rise after).
+func rise_at(index: int) -> float:
+	return rise if index <= 0 else phase2_rise
 
 
 ## Phase `index`'s entry of a per-phase list (its last entry for later phases; 0 when empty).

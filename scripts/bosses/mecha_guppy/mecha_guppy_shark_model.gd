@@ -24,6 +24,8 @@ const HALF_WIDTH: float = 4.2
 const HALF_DEPTH: float = 3.2
 const TIP_WIDTH: float = 0.85
 const TIP_DEPTH: float = 0.7
+## The tip's cap reaches this far past the jaws' length.
+const TIP_CAP: float = 0.35
 ## How far each jaw opens (degrees): the snout tips back a little, the chin drops wide toward the runner, so the open
 ## maw faces them and up.
 const UPPER_OPEN: float = 14.0
@@ -135,7 +137,7 @@ static func _jaw(s: MeshLayer, side: float) -> void:
 					SEAM)
 	# The tip's cap.
 	var wt: Vector2 = jaw_size(1.0)
-	var tip := Vector3(0.0, JAW_LENGTH + 0.35, side * wt.y * 0.35)
+	var tip := Vector3(0.0, JAW_LENGTH + TIP_CAP, side * wt.y * 0.35)
 	for j: int in JAW_SIDES:
 		var a: float = a0 + PI * float(j) / float(JAW_SIDES)
 		var b: float = a0 + PI * float(j + 1) / float(JAW_SIDES)

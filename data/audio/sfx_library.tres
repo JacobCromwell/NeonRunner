@@ -27,6 +27,7 @@ volume_db = {
 "car_start": -4.0,
 "car_unlock": -6.0,
 "ceiling_lower": -3.5,
+"cogs_aim": -5.0,
 "cogs_throw": -5.0,
 "countdown": -3.0,
 "credit_1": -11.5,

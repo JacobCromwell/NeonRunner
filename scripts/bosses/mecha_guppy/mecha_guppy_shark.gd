@@ -17,27 +17,34 @@ extends Node3D
 ##   snap the roof's end is gone (on_snap: MechaGuppyStairs.eat_roof, collision and look together, rubble flying).
 ##   Then it sinks (bite_sink). A bite starts only once it has sunk out of sight from the last (MechaGuppyPattern waits
 ##   for it), from deep under its own spot.
-## - lurk() then breach(): it waits deep under the middle of the chasm in front of the higher roof, facing the runner
-##   (lurk: far below, turned no way that would tell a rider which lanes lead up); when Captain Cogs throws there, it
-##   surges up beside the lanes that don't lead up (its head kept LANE_CLEAR from the lanes that do), side-on, its
-##   snout and an eye toward the runner, and opens its jaws outward BREACH_EARLY before the bomb comes down into them
-##   (held breach_hold): a bomb that falls into its open jaws hits it (mouth_contains; MechaGuppyBombs calls hit()): a
-##   clang, a fireball, sparks and smoke where it went in, a shudder, and it recoils, snapping shut and sinking at once.
+## - a bite with a catch (task E5e-b3, the bait; GDD §10: a bomb dodged where the runner's lane runs out falls past the
+##   edge into Mecha Guppy's jaws): instead of its upright watch, it surges up (the rumble) into its catch beside the
+##   roof's notch (MechaGuppyClimb.Roof.notch_lane) as the bait begins, and waits there with its jaws wide: its head out
+##   beside the track, leaning in CATCH_LEAN so its lower jaw lies flat under the notch's lane, a little under the roof's
+##   top, its tip CATCH_CLEAR short of the next lane (never under or over a lane a runner may use, nor where the notch's
+##   lane still has floor), its snout raised outside the track, an eye toward the runner: the bait's bomb, coming down
+##   in the notch's lane, falls into its open mouth as it passes the roof's top (a hit: hit(), which snaps its jaws shut
+##   on it with a shudder). Once the bomb is down (catch_until) or the runner falls, it shuts its jaws and waits, then
+##   bites the roof's end as above once the runner is up on the hut.
+## - lurk() then breach() (the fallback, MechaGuppyPattern: Captain Cogs missing into the chasm): it glides deep under
+##   the middle of the chasm in front of the higher roof, out of sight (lurk: nothing of it shows, so nothing tells a
+##   rider which lanes lead up); when Captain Cogs throws there, it surges up beside the lanes that don't lead up (its
+##   head kept lane_clear from the lanes that do), side-on, its snout and an eye toward the runner, and opens its jaws
+##   outward breach_early before the bomb comes down into them (held breach_hold): a bomb that falls into its open jaws
+##   hits it (mouth_contains; MechaGuppyBombs calls hit()): a clang, a fireball, sparks and smoke where it went in, a
+##   shudder, and it recoils, snapping shut and sinking at once.
 ## Its pose (hinge, pitch, yaw, roll, jaw) is always eased from the one before, so it never pops while it can be seen.
 ## advance() is driven by the boss's ticks (time from the physics step; it waits while the runner is down). Nothing
 ## flickers (Reduced flashing has nothing to calm; the hit's fireball and sparks are RunEffects', which honour it).
 ## DESIGN-TBD (docs/questions/e5e.md): its size, poses and timings (MechaGuppyTuning, "Mecha Guppy's bites").
 
 enum Kind { BITE, BREACH }
-enum Stage { IDLE, LURKING, RISING, WAITING, DIVING, BREAKING, OPEN, SNAPPING, SINKING }
+enum Stage { IDLE, LURKING, RISING, CATCHING, SHUTTING, WAITING, DIVING, BREAKING, OPEN, SNAPPING, SINKING }
 
 ## How big it is (MechaGuppySharkModel's metres times this): its jaws 12 m long, its head 12.6 m across.
 const SCALE: float = 1.5
-## How far below the floor it sinks between bites, out of sight (metres, its hinge), and how far under the floor it lurks
-## before a breach (under the middle of the chasm: it gives nothing away), gliding there for LURK_SECONDS.
+## How far below the floor it sinks between bites and lurks before a breach, out of sight (metres, its hinge).
 const DEEP: float = 55.0
-const LURK_DEPTH: float = 26.0
-const LURK_SECONDS: float = 1.0
 ## A breach's surge from the lurk is never quicker than this (seconds).
 const MIN_RISE: float = 0.12
 ## A breach rising toward the floor: its jaws' tips this far under the floor's level (metres).
@@ -56,14 +63,26 @@ const BITE_LEAN: float = 12.0
 const SNAP_DROP: float = 7.0
 const BITE_CLEAR: float = 2.5
 ## A breach: its hinge this far under the floor's level (its eyes just over it); the bomb falls in this far out from its
-## hinge's line (metres: between its palate and its dropped chin); its jaws are wide open this long before the bomb
-## lands (seconds); hit, it recoils down this far as it snaps shut (metres).
+## hinge's line (metres: between its palate and its dropped chin); hit, it recoils down this far as it snaps shut
+## (metres). (Its head's clearance from the lanes that lead up and how early its jaws open: MechaGuppyTuning.lane_clear,
+## breach_early.)
 const BREACH_SINK: float = 2.0
 const MOUTH_OUT: float = 1.0
-const BREACH_EARLY: float = 0.25
 const RECOIL: float = 2.5
-## Its head stays this far clear of the lanes that lead up (metres; MechaGuppyPattern.hit_spot places the bomb so).
-const LANE_CLEAR: float = 1.5
+## A catch (the bait): its lean in toward the track (degrees: its lower jaw, opened LOWER_OPEN, lies flat), its lower
+## jaw's tip this far short of the lane beside the notch's (metres), the top of its open mouth over the notch's lane this
+## far above where the bomb comes down (metres: the bomb goes in as it passes the roof's top), and how long its jaws stay
+## open after the bomb is down (seconds).
+const CATCH_LEAN: float = 90.0 - MechaGuppySharkModel.LOWER_OPEN
+const CATCH_CLEAR: float = 0.4
+const CATCH_ABOVE: float = 1.0
+const CATCH_AFTER: float = 0.15
+## A bomb comes down this far over the floor's top (MechaGuppyBombs' lob ends there).
+const LAND_ABOVE: float = 0.35
+## Where a bomb counts as in its mouth: up to this share of its jaws' length from the hinge (mouth_contains).
+const MOUTH_REACH: float = 1.05
+## A bite after a catch dives from its catch to its bite no faster than this along the track (m/s).
+const DIVE_SPEED: float = 40.0
 ## The hit: its shudder (degrees, seconds), the fireball's radius where the bomb went in, the sparks' and smoke's colours.
 const SHUDDER_DEGREES: float = 7.0
 const SHUDDER_SECONDS: float = 0.6
@@ -79,14 +98,16 @@ var tuning: MechaGuppyTuning
 var world: RunWorld
 var boss: MechaGuppy
 ## The action under way: {kind, side (-1 it comes up on the left, +1 the right), top (the floor's level it comes up to),
-## a bite's edge, roof, cut and may_break, a breach's x (the bomb's world x), at (its track distance), open_at (bomb
-## clock) and step (the climb's step it's for)}; empty while idle.
+## a bite's edge, roof, cut, may_break and catch ({inner, lane_x, at, top, until, step}: catch_pose; or empty), a
+## breach's x (the bomb's world x), at (its track distance), open_at (bomb clock) and step (the climb's step it's for)};
+## empty while idle.
 var action: Dictionary = {}
 var stage: Stage = Stage.IDLE
 var stage_time: float = 0.0
-## Bites and breaches made, hits taken, bites asked for while it was busy (tests).
+## Bites and breaches made, catches waited in, hits taken, bites asked for while it was busy (tests).
 var bites: int = 0
 var breaches: int = 0
+var catches: int = 0
 var hits: int = 0
 var skipped: int = 0
 ## How open its jaws are (0 shut, 1 wide), and its pose: the hinge's world position, then (applied in this order) pitch
@@ -148,7 +169,10 @@ func shown() -> bool:
 
 ## A bite (see the header): `spot` {side (-1 it comes up left of the track, +1 right), edge (the roof's eaten edge: track
 ## distance), top (the roof's top), roof (its index), cut (where it eats the roof back to), may_break (Callable: true once
-## nobody can be on that roof)}. Its warning starts now. False (nothing done, logged as skipped) while it's busy.
+## nobody can be on that roof), catch (optional: the bait's catch first, {inner (world x of the notch's inner edge),
+## lane_x (the notch's lane's middle), at (where the bait's bomb comes down: track distance), top (that roof's top), until
+## (bomb clock: its jaws open until then; INF until the bomb is thrown), step}; `side` is then the notch's)}. Its warning
+## starts now. False (nothing done, logged as skipped) while it's busy.
 func bite(spot: Dictionary) -> bool:
 	if busy():
 		skipped += 1
@@ -160,7 +184,15 @@ func bite(spot: Dictionary) -> bool:
 	return true
 
 
-## Swims deep under where a breach will come (`spot` as breach()'s), out of sight; only while it's free.
+## The bait's bomb is thrown (MechaGuppyPattern): a catch keeps its jaws open until bomb clock `until` (the bomb's
+## landing and CATCH_AFTER).
+func catch_until(until: float) -> void:
+	if _has_catch():
+		(action["catch"] as Dictionary)["until"] = until
+
+
+## Glides deep under where a breach will come (`spot` as breach()'s), out of sight (nothing of it shows: it gives nothing
+## away); only while it's free.
 func lurk(spot: Dictionary) -> void:
 	if busy():
 		return
@@ -168,7 +200,8 @@ func lurk(spot: Dictionary) -> void:
 	action["kind"] = Kind.BREACH
 	if stage == Stage.IDLE:
 		_appear(_lurk_pose())
-	_go(Stage.LURKING, _lurk_pose(), LURK_SECONDS)
+	_head.visible = false
+	_go(Stage.LURKING, _lurk_pose(), tuning.lurk_seconds)
 
 
 ## A breach (see the header): `spot` {x (where the bomb falls in: world x), at (track distance), top (the floor's level
@@ -195,11 +228,12 @@ func _sunk_under(top: float) -> bool:
 ## True while a bomb at world point `p` is inside its open jaws: they're at least OPEN_ENOUGH open, and `p` (in its head's
 ## own space) between them: up its jaws, inside their width there, in front of the snout's palate and over the chin's.
 func mouth_contains(p: Vector3) -> bool:
-	if action.is_empty() or jaw < OPEN_ENOUGH or (stage != Stage.BREAKING and stage != Stage.OPEN and stage != Stage.SNAPPING):
+	if action.is_empty() or jaw < OPEN_ENOUGH or (stage != Stage.BREAKING and stage != Stage.OPEN and stage != Stage.SNAPPING
+			and stage != Stage.CATCHING):
 		return false
 	var local: Vector3 = _head.global_transform.affine_inverse() * p
 	var u: float = local.y / MechaGuppySharkModel.JAW_LENGTH
-	if u < 0.12 or u > 1.05:
+	if u < 0.12 or u > MOUTH_REACH:
 		return false
 	var half: float = MechaGuppySharkModel.jaw_size(u).x * 0.95 + 0.15
 	if absf(local.x) > half:
@@ -210,7 +244,7 @@ func mouth_contains(p: Vector3) -> bool:
 
 
 ## A bomb went into its jaws at world point `p` (MechaGuppyBombs): the clang, a fireball, sparks and smoke there, a
-## shudder, a shake; a breach recoils, snapping shut and sinking at once.
+## shudder, a shake; a breach recoils, snapping shut and sinking at once; a catch snaps its jaws shut on it.
 func hit(p: Vector3) -> void:
 	hits += 1
 	_shudder = SHUDDER_SECONDS
@@ -222,6 +256,8 @@ func hit(p: Vector3) -> void:
 	boss.sound(&"guppy_clang", p)
 	if not action.is_empty() and int(action["kind"]) == Kind.BREACH and (stage == Stage.BREAKING or stage == Stage.OPEN):
 		_go(Stage.SNAPPING, _snap_pose(), tuning.bite_snap)
+	elif stage == Stage.CATCHING:
+		_go(Stage.SHUTTING, catch_pose(0.0), tuning.bite_snap)
 
 
 ## One physics step (the boss's ticks drive it).
@@ -237,12 +273,28 @@ func advance(delta: float) -> void:
 		Stage.RISING:
 			_ease(stage_time / _stage_seconds)
 			if stage_time >= _stage_seconds:
-				_go(Stage.WAITING, _rise_pose(), 1.0)
+				if _has_catch():
+					catches += 1
+					boss.log_event(&"catch_open", {"roof": int(action.get("roof", -1)),
+						"at": float((action["catch"] as Dictionary)["at"])})
+					_go(Stage.CATCHING, catch_pose(1.0), 1.0)
+				else:
+					_go(Stage.WAITING, _rise_pose(), 1.0)
+		Stage.CATCHING:
+			_ease(1.0)
+			var c: Dictionary = action["catch"]
+			var fell: bool = boss.pattern != null and not boss.pattern.catch_ok()
+			if boss.bombs.clock >= float(c["until"]) or _may_break() or fell:
+				_go(Stage.SHUTTING, catch_pose(0.0), tuning.bite_snap * (1.0 if fell else 2.0))
+		Stage.SHUTTING:
+			_ease(stage_time / _stage_seconds)
+			if stage_time >= _stage_seconds:
+				_go(Stage.WAITING, catch_pose(0.0), 1.0)
 		Stage.WAITING:
 			_ease(1.0)
 			if _may_break():
 				if kind == Kind.BITE:
-					_go(Stage.DIVING, _dive_pose(), tuning.bite_dive)
+					_go(Stage.DIVING, _dive_pose(), _dive_seconds())
 				else:
 					_go(Stage.BREAKING, _open_pose(), tuning.breach_rise)
 		Stage.DIVING:
@@ -255,7 +307,9 @@ func advance(delta: float) -> void:
 				_go(Stage.OPEN, _open_pose(), 1.0)
 		Stage.OPEN:
 			_ease(1.0)
-			if stage_time >= (tuning.bite_hold if kind == Kind.BITE else tuning.breach_hold):
+			# A breach shuts at once on a step the runner fell (no hit then: MechaGuppyPattern.catch_ok).
+			var no_catch: bool = kind == Kind.BREACH and boss.pattern != null and not boss.pattern.catch_ok()
+			if stage_time >= (tuning.bite_hold if kind == Kind.BITE else tuning.breach_hold) or no_catch:
 				_go(Stage.SNAPPING, _snap_pose(), tuning.bite_snap)
 				boss.sound(&"guppy_bite", _mouth_point())
 		Stage.SNAPPING:
@@ -286,6 +340,7 @@ func _begin(spot: Dictionary) -> void:
 		var b: Vector3 = rise_to["hinge"]
 		start["hinge"] = Vector3(b.x, float(action["top"]) - DEEP, b.z)
 		_appear(start)
+	_head.visible = true
 	var rise: float = tuning.bite_warning
 	if kind == Kind.BREACH:
 		rise = maxf(float(action["open_at"]) - boss.bombs.clock - tuning.breach_rise - 0.02, MIN_RISE)
@@ -329,9 +384,12 @@ func _bite_x() -> float:
 
 
 ## The pose it comes up to first: a bite's watch (upright beside the roof's end, its chin toward the track, jaws shut, an
-## eye just over the roof's top); a breach's (under the floor's level, jaws all but shut, where it will break through).
+## eye just over the roof's top), or with a catch its catch (catch_pose, its jaws opening as it comes); a breach's
+## (under the floor's level, jaws all but shut, where it will break through).
 func _rise_pose() -> Dictionary:
 	var top: float = float(action["top"])
+	if _has_catch():
+		return catch_pose(1.0)
 	if int(action["kind"]) == Kind.BITE:
 		var side: float = float(action.get("side", -1))
 		return {"hinge": Vector3(_bite_x(), top - WATCH_SINK, _z()), "pitch": 0.0, "yaw": -side * PI * 0.5, "roll": 0.0,
@@ -366,10 +424,41 @@ func _open_pose() -> Dictionary:
 		"yaw": side * PI * 0.5, "roll": 0.0, "jaw": 1.0}
 
 
-## Deep under the middle of the chasm where a breach will come, facing the runner (turned no way that gives away its side).
+## Deep under the middle of the chasm where a breach will come, facing the runner (out of sight: lurk() hides it).
 func _lurk_pose() -> Dictionary:
-	return {"hinge": Vector3(0.0, float(action["top"]) - LURK_DEPTH, _z()), "pitch": 0.0, "yaw": 0.0, "roll": 0.0,
-		"jaw": 0.0}
+	return {"hinge": Vector3(0.0, float(action["top"]) - DEEP, _z()), "pitch": 0.0, "yaw": 0.0, "roll": 0.0, "jaw": 0.0}
+
+
+## True while the action is a bite with a catch first (the bait).
+func _has_catch() -> bool:
+	return not action.is_empty() and int(action["kind"]) == Kind.BITE and not (action.get("catch", {}) as Dictionary).is_empty()
+
+
+## Its catch beside the bait's notch, its jaws `open` (0 shut, 1 wide): its head out beside the track on the notch's side,
+## leaning in CATCH_LEAN so its lower jaw, wide open, lies flat toward the track with its tip CATCH_CLEAR short of the
+## lane beside the notch's; the top of its open mouth over the notch's lane CATCH_ABOVE over where the bomb comes down
+## (its hinge a few metres under the roof's top: nothing of its jaws over the roof), its snout raised outside the track.
+func catch_pose(open: float) -> Dictionary:
+	var c: Dictionary = action["catch"]
+	var side: float = float(action.get("side", -1))
+	var reach: float = (MechaGuppySharkModel.JAW_LENGTH + MechaGuppySharkModel.TIP_CAP) * SCALE
+	var tip_x: float = float(c["inner"]) + side * CATCH_CLEAR
+	var hinge_x: float = tip_x + side * reach
+	var lean: float = deg_to_rad(CATCH_LEAN)
+	# Where the bomb's column meets the top of its mouth (mouth_contains: up to MOUTH_REACH of its jaws' length).
+	var h: float = absf(float(c["lane_x"]) - hinge_x)
+	var v_top: float = (MOUTH_REACH * MechaGuppySharkModel.JAW_LENGTH * SCALE - h * sin(lean)) / cos(lean)
+	var hinge_y: float = float(c["top"]) + LAND_ABOVE + CATCH_ABOVE - v_top
+	return {"hinge": Vector3(hinge_x, hinge_y, TrackGeometry.world_z(float(c["at"]))), "pitch": 0.0, "yaw": -side * PI * 0.5,
+		"roll": side * lean, "jaw": open}
+
+
+## A bite's dive after a catch: no faster along the track than DIVE_SPEED (from the catch to the bite).
+func _dive_seconds() -> float:
+	if not _has_catch():
+		return tuning.bite_dive
+	var dz: float = absf(hinge.z - _z())
+	return maxf(tuning.bite_dive, dz / DIVE_SPEED)
 
 
 ## Its jaws shut: a bite drops away upright with the roof's end (its closing chin kept low), a breach recoils down.

@@ -1,9 +1,12 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
-## Mecha Guppy and Captain Cogs' sounds (GDD §10; task E5e-b2), in the game's 16-bit style. They play where they
-## happen (RunWorld.play_sfx_at). The bombs' own warning is the Floating Head's (bomb_whistle, then bomb_blast, GDD
+## Mecha Guppy and Captain Cogs' sounds (GDD §10; tasks E5e-b2 and E5e-b3), in the game's 16-bit style. They play where
+## they happen (RunWorld.play_sfx_at). The bombs' own warning is the Floating Head's (bomb_whistle, then bomb_blast, GDD
 ## §10: "warned like the Floating Head's"); these are the fight's own:
-##   cogs_throw    Captain Cogs throws (each volley, each bomb at a hut or into the chasm): his arm's whoosh, a
-##                 clockwork ratchet in his arm, and a gruff pirate's "harr!"
+##   cogs_throw    Captain Cogs throws (each volley, the bait as it locks): the arm's whoosh, a clockwork ratchet in
+##                 the mechanical arm, and a gruff pirate's "harr!"
+##   cogs_aim      Captain Cogs takes aim (the bait's warning while its circle follows the runner, as long as
+##                 MechaGuppyTuning.bait_seek: regenerate it when that changes): the clockwork arm's ratchet winding
+##                 up, its clicks quickening, a brass servo whirring up, a catch as the circle locks (the throw follows)
 ##   guppy_rumble  the shark coming up (a bite's and a breach's warning): deep machinery grinding up from below, a
 ##                 rising mechanical whine and the water churning
 ##   guppy_bite    its jaws snapping shut: a huge steel clank, hydraulics hissing, timber and thatch crunching
@@ -11,16 +14,20 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                 crackling, the shark's machinery groaning
 
 
+const TUNING_PATH: String = "res://data/bosses/beach_boss_tuning.tres"
+
+
 func sounds() -> Dictionary:
 	return {
 		"cogs_throw": _throw,
+		"cogs_aim": _aim,
 		"guppy_rumble": _rumble,
 		"guppy_bite": _bite,
 		"guppy_clang": _clang,
 	}
 
 
-## A throw: a quick whoosh of his arm, a clockwork ratchet (his mechanical arm), and a short gruff "harr!".
+## A throw: a quick whoosh of the arm, a clockwork ratchet (the mechanical arm), and a short gruff "harr!".
 func _throw() -> PackedFloat32Array:
 	var rng := _rng(2101)
 	var d: float = 0.62
@@ -36,6 +43,34 @@ func _throw() -> PackedFloat32Array:
 	DSP.mix(b, harr, 0.2, 0.9)
 	DSP.crush(b, 10, 20000.0)
 	return b
+
+
+## Taking aim, as long as the bait's circle follows the runner (bait_seek): ratchet clicks quickening from 9 to 26 a
+## second over a square servo whirring up from 380 to 1150 Hz (it carries on a phone's speaker), ending on a catch as the
+## circle locks.
+func _aim() -> PackedFloat32Array:
+	var rng := _rng(2105)
+	var d: float = _bait_seek()
+	var b := DSP.buffer(d)
+	var t: float = 0.0
+	var k: int = 0
+	while t < d - 0.05:
+		DSP.mix(b, DSP.metal_hit(0.04, 2200.0 + 140.0 * float(k % 3), 0.01, rng), t, 0.34)
+		t += 1.0 / lerpf(9.0, 26.0, t / d)
+		k += 1
+	var whir := DSP.osc(d, func(u: float) -> float: return DSP.sweep(380.0, 1150.0, u), &"square")
+	DSP.filter(whir, &"bandpass", 900.0, 1.2)
+	DSP.adsr(whir, 0.08, 0.1, 0.8, 0.04)
+	DSP.mix(b, whir, 0.0, 0.3)
+	DSP.mix(b, DSP.metal_hit(0.06, 1500.0, 0.015, rng), maxf(d - 0.06, 0.0), 0.6)
+	DSP.crush(b, 10, 20000.0)
+	return b
+
+
+## The bait's aim (seconds: MechaGuppyTuning.bait_seek).
+func _bait_seek() -> float:
+	var t := load(TUNING_PATH) as MechaGuppyTuning
+	return t.bait_seek if t != null else 0.6
 
 
 ## Coming up from below: a deep saw grinding up in pitch, a churning band of noise sweeping up (the water), a

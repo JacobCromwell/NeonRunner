@@ -4,14 +4,23 @@ extends Node3D
 ## land, and a falling whistle), in a pirate look"; "a runner on a ceiling with the ceiling between them and a bomb
 ## isn't hurt by it"; "Hurting Mecha Guppy: dodging the bombs. Not every miss hurts it: only a bomb that falls through a
 ## gap, off a roof's edge, or into a stretch it has eaten through, where it is clearly exposed and in the line of fire";
-## task E5e-b2). The captain throws them from his ship (CaptainCogsShip) on a lob to where they land; each bomb's red
-## target circle shows from the throw (BossProps.circle_warning at the height it lands at, the same red at any
-## distance, out of the fog: the Floating Head's), the throw is heard (cogs_throw) and the bomb whistles as it falls
-## (bomb_whistle, timed to end as it lands), lock_seconds from the throw to the landing. Where a bomb comes down:
+## "By baiting: Captain Cogs' bombs lock onto the runner's lane, and a runner who dodges one at a roof's end ... sends it
+## past the edge into Mecha Guppy's jaws"; tasks E5e-b2 and E5e-b3). The captain throws them from the ship
+## (CaptainCogsShip) on a lob to where they land; each bomb's red target circle shows from the throw
+## (BossProps.circle_warning at the height it lands at, the same red at any distance, out of the fog: the Floating
+## Head's), the throw is heard (cogs_throw) and the bomb whistles as it falls (bomb_whistle, timed to end as it lands),
+## lock_seconds from the throw to the landing. A bomb with nothing to dodge (the fallback's, thrown into the chasm:
+## Kind.HIT) has its circle but no throw or whistle.
+## The bait (start_bait, lock_bait; MechaGuppyPattern times it): before its throw, Captain Cogs takes aim (cogs_aim) and
+## the bomb's red circle, a little smaller and steady, follows the runner's lane where it will land; at the lock it
+## stops following and grows into the bomb's circle as the bomb is thrown at that lane (Kind.BAIT). In the bait's notch
+## (the runner in its lane when it locked) it falls past the edge into Mecha Guppy's jaws; anywhere else it's a spot
+## of one bomb to dodge (a volley, so the way through sees it). Where a bomb comes down:
 ## - on a roof: it bursts there, a blast too tall to jump for blast_seconds (an enemy attack's hitbox a little smaller
 ##   than its fireball, on that roof's top: real contact only; armor, the shield and the dash as for any boss bomb). A
 ##   miss that doesn't hurt the shark;
 ## - on a hut: it bursts on the hut's top; the rider hanging under it is never touched (the blast is all above the hut);
+##   no circle shows there (nobody can stand on it). The pattern throws none there (no bomb with nothing to dodge);
 ## - where there's no floor (past a roof's edge, through a gap beside a pier, into the chasm the shark has eaten): if
 ##   Mecha Guppy's open jaws are in its way down (MechaGuppyShark.mouth_contains, checked all along its fall), it goes
 ##   into them: a hit (MechaGuppy.register_hit; the clang, a fireball, sparks and smoke where it went in, high in the
@@ -27,11 +36,11 @@ extends Node3D
 ## DESIGN-TBD (docs/questions/e5e.md): the bombs' look (a round black iron bomb with a brass cog band and a lit fuse),
 ## the volleys and what counts as a hit (MechaGuppyTuning, "Captain Cogs' bombs").
 
-enum Kind { SPOT, HUT, HIT, TEST }
+enum Kind { SPOT, HIT, TEST, BAIT }
 enum Lands { ROOF, HUT, CHASM }
 
 const BOMB_NAME: String = "Captain Cogs' bomb"
-## Bombs kept ready (a volley's: two spots of up to three bombs, plus a hut's and a hit's). Each blast's look is one of
+## Bombs kept ready (a volley's: two spots of up to three bombs, plus a bait's and a hit's). Each blast's look is one of
 ## the shared fireballs (RunEffects.fireball, pooled there).
 const POOL: int = 10
 ## A blast's book is kept this long (its hitbox only blast_seconds).
@@ -48,12 +57,10 @@ const LOB: float = 3.5
 ## A bomb that finds no floor falls on this long, ever faster, before it's gone (seconds), at this pull.
 const FALL_ON: float = 1.4
 const FALL_PULL: float = 30.0
-## A spot's blast lands on floor this far beyond its depth either way, and no hut reaches within HUT_CLEAR of it
-## (metres).
-const FLOOR_CLEAR: float = 0.5
-const HUT_CLEAR: float = 2.0
-## A spot's escape lanes stay open this far past it (metres at 18 m/s, at the run's pace).
-const ESCAPE_AFTER: float = 3.0
+## The bait's circle while it follows the runner: this much of a bomb's circle's size, sliding to their lane at this
+## speed (m/s: a lane in about a lane switch).
+const SEEK_SCALE: float = 0.8
+const SEEK_SLIDE: float = 18.0
 ## A runner is past a spot once its hurtbox is this far beyond the blast's far edge.
 const PAST_MARGIN: float = 0.3
 ## The fuse's spark: its colour (warm, never a hazard colour), its flicker (steady with Reduced flashing).
@@ -68,12 +75,19 @@ var clock: float = 0.0
 ## Volleys thrown whose spots may still lie ahead: {kind, step, spots: [{lanes, at, y, impact}], s_open, lock}.
 var volleys: Array[Dictionary] = []
 ## What happened to the bombs (tests): thrown, roof (burst on a roof), hut (on a hut's top), chasm (fell away), hit
-## (into the shark), and the volleys' spots.
-var stats: Dictionary = {"thrown": 0, "roof": 0, "hut": 0, "chasm": 0, "hit": 0, "spots": 0, "volleys": 0}
+## (into the shark), the volleys' spots, the baits locked and those locked in the notch's lane.
+var stats: Dictionary = {"thrown": 0, "roof": 0, "hut": 0, "chasm": 0, "hit": 0, "spots": 0, "volleys": 0, "baits": 0,
+	"baited": 0}
+## The bait under way (start_bait until its bomb is down): {step, at, y, notch (its notch's lane), seek (bomb clock it
+## began), x (its circle's world x), lane (where the circle is), locked, drop (the bomb's record once thrown)}; empty
+## with none.
+var bait: Dictionary = {}
 
 ## Bombs on their way: {kind, lane, x, at, y, release, impact, whistle, released, whistled, landed, circle, bomb,
-## from, to, fall (seconds falling on past the floor's level)}.
+## from, to, fall (seconds falling on past the floor's level), quiet (no whistle)}.
 var _drops: Array[Dictionary] = []
+## The bait's circle while it follows the runner.
+var _seek_ring: MeshInstance3D
 ## Blasts burning: {hazard, start}.
 var _blasts: Array[Dictionary] = []
 var _whistle: float = WHISTLE_SECONDS
@@ -99,8 +113,10 @@ func setup(p_boss: MechaGuppy) -> void:
 		_hazards.append(_make_hazard())
 
 
-## Everything off: bombs in the air and their circles gone, blasts out (the fight is won).
+## Everything off: bombs in the air and their circles gone, blasts out, the bait called off (the fight is won).
 func clear() -> void:
+	_end_seek()
+	bait = {}
 	for d: Dictionary in _drops:
 		boss.props.remove(d.get("circle"))
 		if d["bomb"] != null:
@@ -134,6 +150,7 @@ func drops() -> Array[Dictionary]:
 ## One physics step (MechaGuppy's pattern drives it, so it waits while the runner is down).
 func tick(delta: float) -> void:
 	clock += delta
+	_update_seek(delta)
 	_update_drops(delta)
 	_update_blasts()
 	_prune_volleys()
@@ -172,29 +189,143 @@ func throw_spots(kind: int, step: int, spots: Array[Dictionary], s_open: float) 
 
 
 ## Throws one bomb to land at track distance `at` over `lane` (x offset `x` from its middle), coming down to world
-## height `y`, `flight` seconds from now (lock_seconds by default; a hit's, which threatens nobody, hit_seconds) (a hut's,
-## a hit's, a review's or a test's: `kind`). It shows its circle there (none for a bomb on a hut's top: nobody can stand
-## there, and a rider under it can't see it). Returns its record.
+## height `y`, `flight` seconds from now (lock_seconds by default; a hit's, which threatens nobody, hit_seconds) (a
+## hit's, a review's or a test's: `kind`). It shows its circle there (none on a hut's top: nobody can stand there, and a
+## rider under it can't see it). A hit's bomb has nothing to dodge: no throw is heard and it doesn't whistle. Returns its
+## record.
 func throw_at(kind: int, lane: int, at: float, y: float, x: float = 0.0, flight: float = -1.0) -> Dictionary:
 	var seconds: float = flight if flight > 0.0 else lock_time()
-	var d: Dictionary = _add(kind, lane, at, y, clock + seconds, x, seconds)
-	boss.sound(&"cogs_throw", _hand())
+	var quiet: bool = kind == Kind.HIT
+	var d: Dictionary = _add(kind, lane, at, y, clock + seconds, x, seconds, quiet)
+	if not quiet:
+		boss.sound(&"cogs_throw", _hand())
 	boss.log_event(&"throw", {"kind": kind, "lane": lane, "at": at, "y": y, "x": x})
 	return d
 
 
-func _add(kind: int, lane: int, at: float, y: float, impact: float, x: float = 0.0, flight: float = -1.0) -> Dictionary:
+func _add(kind: int, lane: int, at: float, y: float, impact: float, x: float = 0.0, flight: float = -1.0,
+		quiet: bool = false) -> Dictionary:
 	var circle: MeshInstance3D = null
-	if kind != Kind.HUT:
+	if surface_at(lane, at, y) != Lands.HUT:
 		circle = _circle(at, lane, x, y)
 	var seconds: float = flight if flight > 0.0 else lock_time()
 	var d := {"kind": kind, "lane": lane, "x": world.geo.lane_x(lane) + x, "at": at, "y": y,
 		"release": impact - seconds, "impact": impact, "whistle": maxf(clock, impact - _whistle), "released": false,
-		"whistled": false, "landed": false, "circle": circle, "bomb": null, "from": Vector3.ZERO, "fall": 0.0,
-		"lands": -1}
+		"whistled": quiet, "landed": false, "circle": circle, "bomb": null, "from": Vector3.ZERO, "fall": 0.0,
+		"lands": -1, "quiet": quiet}
 	_drops.append(d)
 	stats["thrown"] = int(stats["thrown"]) + 1
 	return d
+
+
+# --- The bait --------------------------------------------------------------------------------------
+
+## The bait begins (MechaGuppyPattern): Captain Cogs takes aim at the runner (cogs_aim), and the bomb's circle shows at
+## track distance `at` on the roof whose top is `y`, following the runner's lane until lock_bait(); `notch` is the lane
+## of that roof's notch (where it falls past the edge), for step `step`.
+func start_bait(step: int, at: float, y: float, notch: int) -> void:
+	_end_seek()
+	var p: Player = world.player
+	var lane: int = clampi(p.lane, 0, world.geo.lane_count - 1)
+	bait = {"step": step, "at": at, "y": y, "notch": notch, "seek": clock, "x": world.geo.lane_x(lane), "lane": lane,
+		"locked": false, "drop": {}}
+	_seek_ring = MeshInstance3D.new()
+	_seek_ring.name = "BaitAim"
+	_seek_ring.mesh = BossProps._ring(tuning.blast_radius)
+	_seek_ring.material_override = _seek_material()
+	_seek_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_seek_ring)
+	_place_seek()
+	boss.sound(&"cogs_aim", _hand())
+	boss.log_event(&"bait_seek", {"step": step, "at": at, "lane": lane, "notch": notch, "d0": p.distance})
+
+
+## The bait locks (MechaGuppyPattern, lock_seconds and arrival_seconds before the runner gets there): the lane the runner
+## is in now; the circle stops following and the bomb is thrown at that lane. A spot of one bomb to dodge on a roof's top
+## (a volley); in the notch's lane it falls past the edge into the chasm (Mecha Guppy's jaws, if it's there). Returns the
+## bomb's record ({} with no bait following).
+func lock_bait() -> Dictionary:
+	if not seeking():
+		return {}
+	_end_seek()
+	var p: Player = world.player
+	var speed: float = maxf(p.speed, 1.0)
+	var lane: int = clampi(p.lane, 0, world.geo.lane_count - 1)
+	var at: float = float(bait["at"])
+	var y: float = float(bait["y"])
+	var impact: float = clock + maxf((at - p.distance) / speed - tuning.arrival_seconds, lock_time())
+	var d: Dictionary = _add(Kind.BAIT, lane, at, y, impact)
+	bait["locked"] = true
+	bait["lane"] = lane
+	bait["drop"] = d
+	var baited: bool = lane == int(bait["notch"])
+	stats["baits"] = int(stats["baits"]) + 1
+	if baited:
+		stats["baited"] = int(stats["baited"]) + 1
+	if surface_at(lane, at, y) == Lands.ROOF:
+		var lanes: Array[int] = [lane]
+		var spots: Array[Dictionary] = [{"lanes": lanes, "at": at, "y": y, "impact": impact}]
+		volleys.append({"kind": Kind.BAIT, "step": int(bait["step"]), "spots": spots, "s_open": p.distance, "lock": clock})
+	boss.sound(&"cogs_throw", _hand())
+	boss.log_event(&"bait_lock", {"step": int(bait["step"]), "lane": lane, "at": at, "y": y, "notch": int(bait["notch"]),
+		"baited": baited, "warning": impact - clock, "d0": p.distance, "seek": clock - float(bait["seek"])})
+	return d
+
+
+## Calls the bait off before it locks (the runner fell, or the fight moved on): its circle goes, nothing is thrown.
+func drop_bait() -> void:
+	if seeking():
+		_end_seek()
+		boss.log_event(&"bait_dropped", {"step": int(bait["step"])})
+		bait = {}
+
+
+## True while the bait's circle follows the runner (begun, not yet locked).
+func seeking() -> bool:
+	return not bait.is_empty() and not bool(bait["locked"])
+
+
+## The bait's circle while it follows (tests: where it shows), or null.
+func seek_ring() -> MeshInstance3D:
+	return _seek_ring if _seek_ring != null and is_instance_valid(_seek_ring) else null
+
+
+func _update_seek(delta: float) -> void:
+	if not seeking():
+		if not bait.is_empty() and not _drops.has(bait["drop"]):
+			bait = {}
+		return
+	var p: Player = world.player
+	var lane: int = clampi(p.lane, 0, world.geo.lane_count - 1)
+	bait["lane"] = lane
+	bait["x"] = move_toward(float(bait["x"]), world.geo.lane_x(lane), SEEK_SLIDE * delta)
+	_place_seek()
+
+
+## The following circle: over the floor where the bomb will land, at the runner's lane (sliding there), steady (it grows
+## into the bomb's own pulsing circle at the lock).
+func _place_seek() -> void:
+	if seek_ring() == null:
+		return
+	_seek_ring.transform = Transform3D(Basis.from_scale(Vector3(SEEK_SCALE, 0.25, SEEK_SCALE)),
+		Vector3(float(bait["x"]), float(bait["y"]) + 0.05, TrackGeometry.world_z(float(bait["at"]))))
+
+
+## The circles' fog-free red (made from BossProps' warning look the first time a circle shows).
+func _seek_material() -> Material:
+	if _circle_material == null:
+		var probe: MeshInstance3D = boss.props.circle_warning(0.0, 0, tuning.blast_radius)
+		if probe.material_override is BaseMaterial3D:
+			_circle_material = probe.material_override.duplicate() as BaseMaterial3D
+			_circle_material.disable_fog = true
+		boss.props.remove(probe)
+	return _circle_material
+
+
+func _end_seek() -> void:
+	if _seek_ring != null and is_instance_valid(_seek_ring):
+		_seek_ring.queue_free()
+	_seek_ring = null
 
 
 ## Where the captain's hand is (the throw's start), or a point high ahead of the runner without the ship.
@@ -230,13 +361,13 @@ func spot_choices() -> int:
 
 
 ## True if a spot's bomb may land over `lane` at `at` on the roof whose top is `y`: the roof is under the whole blast
-## (FLOOR_CLEAR beyond its depth either way), no hut reaches within HUT_CLEAR of it (the hut would take the bomb), and
+## (floor_clear beyond its depth either way), no hut reaches within hut_clear of it (the hut would take the bomb), and
 ## no pickup waits there (pickup_margin).
 func spot_floor(lane: int, at: float, y: float) -> bool:
 	var half: float = tuning.blast_depth * 0.5
-	if not _covered(lane, at - half - FLOOR_CLEAR, at + half + FLOOR_CLEAR, y):
+	if not _covered(lane, at - half - tuning.floor_clear, at + half + tuning.floor_clear, y):
 		return false
-	if _hut_near(lane, at - half - HUT_CLEAR, at + half + HUT_CLEAR, y):
+	if _hut_near(lane, at - half - tuning.hut_clear, at + half + tuning.hut_clear, y):
 		return false
 	return not _pickup_near(lane, at)
 
@@ -289,7 +420,7 @@ func open_lanes(from: float, to: float, y: float) -> Array[bool]:
 ## spot_choices() where it can and never none: the first spot's block holds the runner's lane and leaves a lane at most
 ## max_escape_lanes away (fewer if time is short: dodge_reaction, then each switch at the lane-switch time plus
 ## dodge_margin from where they can first switch), each later one strikes a lane they could be in and leaves one at
-## most max_shift from it, through lanes open from where they set off to ESCAPE_AFTER past the spot. Ties: a lane they
+## most max_shift from it, through lanes open from where they set off to escape_after past the spot. Ties: a lane they
 ## could have stayed in since the first spot, then more of their lanes, then lanes left together, then fewer bombs,
 ## then a seeded pick (`seed`). A volley whose next spot can't be fair ends there. `speed`: the runner's (theirs now by
 ## default).
@@ -305,7 +436,7 @@ func plan_spots(pl: int, d0: float, s_open: float, ats: Array[float], y: float, 
 	speed = maxf(speed, 1.0)
 	var t: MovementTuning = world.tuning
 	var choices: int = spot_choices()
-	var after: float = ESCAPE_AFTER * t.pace()
+	var after: float = tuning.escape_after * t.pace()
 	var could: Array[int] = [pl]
 	var stay: Array[int] = []
 	var from: float = maxf(d0, s_open)
@@ -405,11 +536,11 @@ static func _crossing_open(r: int, e: int, open: Array[bool]) -> bool:
 ## A way through `spots` ({lanes, at, y} each, nearest first) for a runner in `pl` at `d0` who can first switch at
 ## `s_open`: the lane to be in at each spot, with as few switches as can be, or empty if there is none. It keeps the
 ## volley's rules: to the first spot at most max_escape_lanes, from one to the next at most max_shift, through lanes open
-## from where it sets off to ESCAPE_AFTER past the spot.
+## from where it sets off to escape_after past the spot.
 func way_through(spots: Array, pl: int, d0: float, s_open: float) -> Array[int]:
 	var way: Array[int] = []
 	var n: int = world.geo.lane_count
-	var after: float = ESCAPE_AFTER * world.tuning.pace()
+	var after: float = tuning.escape_after * world.tuning.pace()
 	var cost: Dictionary = {pl: 0}
 	var back: Array[Dictionary] = []
 	var from: float = maxf(d0, s_open)
@@ -544,7 +675,7 @@ func _land(d: Dictionary) -> bool:
 			stats["hut"] = int(stats["hut"]) + 1
 			_blast(x, at, y, true)
 			return true
-	if boss.shark != null and boss.shark.mouth_contains(p):
+	if boss.shark != null and boss.shark.mouth_contains(p) and (boss.pattern == null or boss.pattern.catch_ok()):
 		_hit_shark(d, p)
 		return true
 	stats["chasm"] = int(stats["chasm"]) + 1
@@ -553,10 +684,13 @@ func _land(d: Dictionary) -> bool:
 
 
 ## True (and the hit made) once bomb `d`, on its way down to no floor (past an edge, through a gap, into the eaten
-## chasm), is at `p` inside Mecha Guppy's open jaws: it goes in there, high in its mouth, where the runner sees it.
+## chasm), is at `p` inside Mecha Guppy's open jaws: it goes in there, where the runner sees it. Never on a step the
+## runner fell (MechaGuppyPattern.catch_ok).
 func _into_jaws(d: Dictionary, p: Vector3) -> bool:
 	var shark: MechaGuppyShark = boss.shark
 	if shark == null or not shark.busy():
+		return false
+	if boss.pattern != null and not boss.pattern.catch_ok():
 		return false
 	if surface_at(int(d["lane"]), float(d["at"]), float(d["y"])) != Lands.CHASM or not shark.mouth_contains(p):
 		return false

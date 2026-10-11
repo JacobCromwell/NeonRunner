@@ -59,7 +59,8 @@ func setup(p_boss: MechaGuppy) -> void:
 	rig.name = "Captain"
 	add_child(rig)
 	var anim := load(PlayerAvatar.ANIM_TUNING_PATH) as HumanoidAnimTuning
-	rig.build(CaptainCogsSuit.parts(), CaptainCogsSuit.material(), anim if anim != null else HumanoidAnimTuning.new())
+	rig.build(CaptainCogsSuit.parts(beach.neon_blue if beach != null else BeachSkin.new().neon_blue), CaptainCogsSuit.material(),
+		anim if anim != null else HumanoidAnimTuning.new())
 	_scale = CAPTAIN_HEIGHT / CaptainCogsSuit.DESIGN_HEIGHT
 	rig.scale = Vector3.ONE * _scale
 	rig.position = CaptainCogsModel.CAPTAIN_SPOT

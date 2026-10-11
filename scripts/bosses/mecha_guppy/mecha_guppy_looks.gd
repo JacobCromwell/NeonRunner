@@ -22,6 +22,10 @@ extends RefCounted
 ## - The chasm between towers (the floor Mecha Guppy has eaten; the shark, MechaGuppyShark, rises in it and bites the
 ##   roofs' ends into it): nothing but the drop to the water far below, the street's own (MechaGuppySkin), where a
 ##   fall ends.
+## - The bait's notch (task E5e-b3: an outer lane Mecha Guppy has eaten near a roof's end, MechaGuppyClimb.Roof.
+##   notch_lane): that lane's deck ends with the orange edge language of an eaten edge; past it the tower's corner is
+##   gone down to the water, its eaten face dark broken timber along the notch's inner side and across its start, the
+##   orange lip along the deck's edge over the drop (as a pier's open sides), no eave or lantern posts on that side.
 ## - A hut: a plank platform hovering on four violet-blue lift pods outside the lanes, its underside one surface
 ##   across its lanes with flush joists, a dark seam and a warm lamp row along each lane seam (and along each run of
 ##   lanes' edge, so the lanes that lead up visibly run on, lit, past the others: RUN_ON), the orange band of every
@@ -84,6 +88,9 @@ const POD_RADIUS: float = 0.35
 ## about 0.8 s before the end; seen from below at a grazing angle, its length is what shows).
 const END_BAND: float = 4.0
 const END_BAND_GLOW: float = 0.4
+## The band hangs this far under the hut's underside: below a rider's blob shadow there (Player._update_shadow lays it
+## 0.02 m under a ceiling), so it hides the shadow rather than being darkened by it.
+const SHADOW_UNDER: float = 0.03
 const LAMP_SPACING: float = 6.0
 ## The pad tiles: about this long each, with light columns this tall.
 const PAD_TILE: float = 2.6
@@ -176,20 +183,51 @@ func roof_segment(r: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) 
 	var seed: int = MeshKit.hash_i(r.index, 41)
 	var bamboo: Color = skin.bamboo_colors[seed % skin.bamboo_colors.size()]
 	var full: float = r.full_from()
+	# Past its notch's start (MechaGuppyStairs builds a piece wholly before it or wholly past it), the notch's lane is gone.
+	var notched: bool = r.notched() and from >= r.notch_from - 0.01
+	var notch_side: int = r.notch_side()
 	var starts := PackedFloat32Array()
 	starts.resize(geo.lane_count)
 	starts.fill(minf(from, full) - 1.0)
+	if notched:
+		starts[r.notch_lane] = MechaGuppyClimb.FAR
 	for lane: int in geo.lane_count:
+		if notched and lane == r.notch_lane:
+			continue
 		var front: bool = from <= full + 0.01 and r.start_in(lane) >= full - 0.01
-		_deck(s, g, lane, from, to, r.top, front, ended, starts)
+		# The notch's lane ends where it was eaten, with the eaten edge's orange.
+		var back: bool = ended or (lane == r.notch_lane and absf(to - r.notch_from) < 0.01)
+		_deck(s, g, lane, from, to, r.top, front, back, starts)
+	var x0: float = -geo.wall_x()
+	var x1: float = geo.wall_x()
 	for side: int in [-1, 1]:
+		if notched and side == notch_side:
+			var inner: float = notch_inner(r)
+			_broken_side(s, inner, side, from, to, r.top)
+			_side_lip(s, inner, side, from, to, r.top)
+			if side < 0:
+				x0 = inner
+			else:
+				x1 = inner
+			continue
 		_tower_side(s, side * geo.wall_x(), side, from, to, r.top, bamboo, seed)
 		_eave(s, side, from, to, r.top)
 		_lanterns(s, g, side, from, to, r.top, seed)
+	# Across the notch's start: the eaten face, facing on into the notch.
+	if notched and absf(from - r.notch_from) < 0.01:
+		var inner_x: float = notch_inner(r)
+		_broken_face(s, from, r.top, minf(inner_x, notch_side * geo.wall_x()), maxf(inner_x, notch_side * geo.wall_x()))
 	if ended:
-		_broken_face(s, to, r.top)
+		_broken_face(s, to, r.top, x0, x1)
 	batch.commit(node)
 	return node
+
+
+## World x of the inner edge of roof `r`'s notch (its lane's side toward the track's middle), or 0 with none.
+func notch_inner(r: MechaGuppyClimb.Roof) -> float:
+	if not r.notched():
+		return 0.0
+	return geo.lane_x(r.notch_lane) - float(r.notch_side()) * geo.lane_width * 0.5
 
 
 ## One lane's deck from `start` to `end` at height `top`: boardwalk planks, a seam where a neighbouring lane's deck
@@ -312,11 +350,13 @@ func _tower_side(s: MeshLayer, x: float, side: int, from: float, to: float, top:
 		n += 1
 
 
-## Where Mecha Guppy has eaten a tower (track distance `d`, facing on into the chasm, -z): its broken face down to
-## the water, dark.
-func _broken_face(s: MeshLayer, d: float, top: float) -> void:
-	var x0: float = -geo.wall_x()
-	var x1: float = geo.wall_x()
+## Where Mecha Guppy has eaten a tower (track distance `d`, facing on into the chasm, -z), over world x [x0, x1] (its
+## whole width by default): its broken face down to the water, dark.
+func _broken_face(s: MeshLayer, d: float, top: float, x0: float = NAN, x1: float = NAN) -> void:
+	if is_nan(x0):
+		x0 = -geo.wall_x()
+	if is_nan(x1):
+		x1 = geo.wall_x()
 	var y_low: float = bottom(top)
 	var y: float = top
 	while y > y_low + 0.01:
@@ -324,6 +364,32 @@ func _broken_face(s: MeshLayer, d: float, top: float) -> void:
 		s.rect(Vector3(x1, y0, -d), Vector3(x0 - x1, 0, 0), Vector3(0, y - y0, 0), deep(skin.timber_color * 0.45, top - y0), 0.0,
 			MeshKit.PAT_BEACH_TIMBER, Vector2.ZERO, Vector2.ONE, MeshKit.beach_timber_param(2, 1, 3))
 		y = y0
+
+
+## Where Mecha Guppy has eaten a tower's corner (the bait's notch) along the track at world x `x`, facing `side` (-1
+## left, +1 right: into the notch), from track distance `from` to `to`: its broken face down to the water, dark.
+func _broken_side(s: MeshLayer, x: float, side: int, from: float, to: float, top: float) -> void:
+	var y_low: float = bottom(top)
+	var y: float = top
+	while y > y_low + 0.01 and to > from:
+		var y0: float = maxf(y - STOREY * 2.0, y_low)
+		var tone: Color = deep(skin.timber_color * 0.45, top - y0)
+		var param: float = MeshKit.beach_timber_param(2, 1, 3)
+		if side < 0:
+			s.rect(Vector3(x, y0, -to), Vector3(0, 0, to - from), Vector3(0, y - y0, 0), tone, 0.0, MeshKit.PAT_BEACH_TIMBER,
+				Vector2.ZERO, Vector2.ONE, param)
+		else:
+			s.rect(Vector3(x, y0, -from), Vector3(0, 0, -(to - from)), Vector3(0, y - y0, 0), tone, 0.0, MeshKit.PAT_BEACH_TIMBER,
+				Vector2.ZERO, Vector2.ONE, param)
+		y = y0
+
+
+## The orange lip along a deck's edge at world x `x` over a drop on its `side` (the bait's notch), from track distance
+## `from` to `to` (the edge language a pier's open sides carry).
+func _side_lip(s: MeshLayer, x: float, side: int, from: float, to: float, top: float) -> void:
+	var inner: float = x - side * EDGE_LIP
+	s.rect(Vector3(minf(x, inner), top + 0.005, -from), Vector3(EDGE_LIP, 0, 0), Vector3(0, 0, -(to - from)), skin.gap_edge_color,
+		LIP_GLOW)
 
 
 ## Roof `r`'s pier: its lanes `lanes` that reach back from `start` to `full` (where the tower starts): their deck
@@ -623,9 +689,11 @@ func _underside(s: MeshLayer, g: MeshLayer, x0: float, x1: float, zn: float, zf:
 			g.rect(Vector3(x - 0.8, y - 0.06, z + 0.8), Vector3(1.6, 0, 0), Vector3(0, 0, -1.6), lamp, 0.28, MeshKit.SHAPE_RADIAL)
 			z += LAMP_SPACING
 	# The orange band where the run ends: a rider drops here (MeshKit.ceiling_end's look, longer and brighter; its
-	# glow stays above the underside, where the chase camera passes as the rider drops).
+	# glow stays above the underside, where the chase camera passes as the rider drops). It hangs SHADOW_UNDER under the
+	# underside, below a rider's blob shadow (Player._update_shadow), so a glowing band takes no shadow (task E5e-b2's
+	# review: over the band the shadow read as a red-orange disc, a hazard's colour).
 	var edge: Color = skin.gap_edge_color
-	s.rect(Vector3(x0, y - 0.002, zf), Vector3(x1 - x0, 0, 0), Vector3(0, 0, END_BAND), edge, END_BAND_GLOW)
+	s.rect(Vector3(x0, y - SHADOW_UNDER, zf), Vector3(x1 - x0, 0, 0), Vector3(0, 0, END_BAND), edge, END_BAND_GLOW)
 	var lx: float = x0 + 0.6
 	while lx < x1 - 0.3:
 		for along: float in [0.25, END_BAND * 0.5]:

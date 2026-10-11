@@ -31,8 +31,13 @@ extends RefCounted
 ## - a wrong drop is dead (or saved by the grapple) before it reaches the higher roof's front, even dashing
 ##   (wrong_reach), so it never meets a face below a roof's top; a drop in a lane that leads up lands on the roof;
 ## - each roof's pads come after its full width starts, and each hut starts after the one before has ended.
-## Phase 2's faster climb (GDD §10: 15-25% faster; proposed: about 20%, the steps closer together): only the run
-## on a roof from landing to the next pads shortens (MechaGuppyTuning.roof_seconds); every margin stays.
+## Phase 2's faster climb (GDD §10: 15-25% faster): its roofs stand higher (MechaGuppyTuning.phase2_rise), the steps
+## as long as phase 1's (each roof's run, MechaGuppyTuning.roof_seconds, holds a volley spot and the bait); every margin
+## stays.
+## The bait's notch (task E5e-b3; GDD §10, the owner: a bomb dodged where the runner's lane runs out falls past the edge
+## into Mecha Guppy's jaws): each roof but the street, near its end, has an outer lane eaten from notch_back before the
+## next hut (Roof.notch_lane, notch_from) to its end, on a seeded side that has nothing to do with the lanes that lead
+## up (so it's no cue to them); MechaGuppyPattern baits Captain Cogs' bombs into it. A roof too short for one has none.
 ## Phase 3 (E5e-c's) is a stub here: its step is the `top`: the last roof runs on, no pads, no hut.
 ## Distances are track distances (metres along the track); heights world heights.
 
@@ -53,6 +58,9 @@ const FAR: float = 1.0e9
 ## The most lanes that lead up on a REACH_BACK step (GDD §10, the owner: "one or two of the roof's lanes reach further
 ## back toward the runner than the others").
 const REACH_BACK_MOST: int = 2
+## A roof's notch starts at least this far past where its run begins (where the riders who climbed onto it can first
+## switch lanes, and past its landing and its full width), or the roof has none (metres).
+const NOTCH_AFTER: float = 6.0
 
 
 ## A tiki bar roof the runner lands on and runs along (roof 0: the street the fight starts on).
@@ -64,9 +72,26 @@ class Roof:
 	var starts: PackedFloat32Array = PackedFloat32Array()
 	## Where Mecha Guppy has eaten it from (track distance): just past its pads; FAR while it runs on.
 	var end: float = FAR
+	## The bait's notch (task E5e-b3): its outer lane eaten from notch_from to its end (-1: no notch).
+	var notch_lane: int = -1
+	var notch_from: float = FAR
 
 	func start_in(lane: int) -> float:
 		return starts[clampi(lane, 0, starts.size() - 1)]
+
+	## True if it has a notch.
+	func notched() -> bool:
+		return notch_lane >= 0
+
+	## Where it ends in `lane`: its end, or its notch's start in the notch's lane.
+	func end_in(lane: int) -> float:
+		return minf(end, notch_from) if lane == notch_lane else end
+
+	## The notch's side: -1 the left (lane 0), +1 the right; 0 with none.
+	func notch_side() -> int:
+		if notch_lane < 0:
+			return 0
+		return -1 if notch_lane == 0 else 1
 
 	## Its earliest start (the front of its lanes that reach back furthest).
 	func first_start() -> float:
@@ -82,9 +107,9 @@ class Roof:
 			out = maxf(out, s)
 		return out
 
-	## True if it's under `lane` at track distance `d`.
+	## True if it's under `lane` at track distance `d` (never in its notch).
 	func covers(lane: int, d: float) -> bool:
-		return lane >= 0 and lane < starts.size() and d >= starts[lane] and d < end
+		return lane >= 0 and lane < starts.size() and d >= starts[lane] and d < end_in(lane)
 
 
 ## One step up: roof `index` to roof index + 1.
@@ -114,6 +139,10 @@ class Step:
 	var deadline: float = 0.0
 	## Where a rider dropping in a lane that leads up lands on the higher roof (about).
 	var land: float = 0.0
+	## Where a rider who climbs this step can first switch lanes on (or over) the higher roof: dropping off the hut's
+	## end over its full width (RUN_ON), or where it's full width beside a pier (REACH_BACK). Its run to the next pads
+	## (MechaGuppyTuning.roof_seconds) counts from here.
+	var free_at: float = 0.0
 
 	func leads_up(lane: int) -> bool:
 		return lane >= up.x and lane <= up.y
@@ -209,21 +238,24 @@ func plan_next(phase: int, top: bool = false, not_before: float = -FAR) -> Step:
 		step.deadline = FAR
 		step.settle = FAR
 		step.land = FAR
+		step.free_at = FAR
 		step.ends = _filled(FAR)
 		step.up = Vector2i(0, lanes - 1)
 		from.end = FAR
 		steps.append(step)
 		return step
-	step.top_y = from.top + tuning.rise
-	step.hut_y = from.top + maxf(tuning.hut_height, tuning.rise + tuning.hut_clearance)
+	var rise: float = tuning.rise_at(phase)
+	step.top_y = from.top + rise
+	step.hut_y = from.top + maxf(tuning.hut_height, rise + tuning.hut_clearance)
 	# The pads: the run on the roof after landing, past its full width, room for the hut after the last, and never
 	# where the runner can already see (not_before).
 	var t: MovementTuning = movement
-	step.pad = maxf(_pad_for(k, phase), not_before + tuning.hut_lead * pace)
+	step.pad = maxf(_pad_for(k), not_before + tuning.hut_lead * pace)
 	var jump: float = jump_seconds()
 	step.pad_end = step.pad + jump * speed + dash_reach + tuning.strip_margin
 	step.hut_start = step.pad - tuning.hut_lead * pace
 	from.end = step.pad_end + tuning.edge_margin
+	_notch(from, step)
 	# The latest settle on the hut, and the deadline: the reading margin and every switch the farthest lane needs.
 	step.settle = step.pad + jump * speed + dash_reach + flip_seconds(step.hut_y - step.floor_y) * speed
 	step.deadline = step.settle + (tuning.read_seconds + (lanes - 1) * t.lane_switch_time) * speed
@@ -244,6 +276,7 @@ func plan_next(phase: int, top: bool = false, not_before: float = -FAR) -> Step:
 				step.ends.append(run_on if step.leads_up(lane) else step.deadline)
 			next.starts = _filled(front)
 			step.land = run_on + movement.foot_half_depth + drop
+			step.free_at = run_on + movement.foot_half_depth
 		_:
 			# They reach back under the hut's end, but never over the roof before it, and never into a flip up: the
 			# latest rider is on the hut before their front (TONGUE_CLEAR past the latest settle).
@@ -254,6 +287,7 @@ func plan_next(phase: int, top: bool = false, not_before: float = -FAR) -> Step:
 				step.ends.append(step.deadline)
 				next.starts.append(back if step.leads_up(lane) else step.deadline + wrong)
 			step.land = step.deadline + movement.foot_half_depth + drop
+			step.free_at = next.full_from()
 	steps.append(step)
 	roofs.append(next)
 	return step
@@ -268,27 +302,51 @@ func wrong_reach(step: Step) -> float:
 	return movement.foot_half_depth + fall * speed + dash_reach + movement.hurtbox_size.z * 0.5 + tuning.fall_margin
 
 
-## Where the pads of step `k` (the next one: k == steps.size()) go in phase `phase`, nearest: the first `start_seconds`
-## into the fight, the others the phase's run on the roof after landing (roof_seconds), room for the hut after the
-## last one, and past the roof's full width.
-func _pad_for(k: int, phase: int) -> float:
+## Where the pads of step `k` (the next one: k == steps.size()) go, nearest: the first `start_seconds` into the
+## fight, the others the run on the roof (roof_run_seconds) from where the riders who climbed onto it can first switch
+## lanes there, room for the hut after the last one, and past the roof's full width.
+func _pad_for(k: int) -> float:
 	var from: Roof = roofs[k]
 	var pad: float = tuning.start_seconds * speed
 	if k > 0:
 		var before: Step = steps[k - 1]
-		pad = before.land + tuning.roof_seconds_at(phase) * speed
+		pad = before.free_at + roof_run_seconds() * speed
 		pad = maxf(pad, before.hut_end() + HUT_GAP + tuning.hut_lead * pace)
 	return maxf(pad, from.full_from() + PAD_CLEAR)
 
 
-## Where the next step's hut would start if it were planned now in phase `phase` (FAR once the top is planned;
-## -FAR for the top itself: it's due at once).
-func next_hut_start(phase: int, top: bool = false) -> float:
+## A roof's run (seconds): MechaGuppyTuning.roof_seconds, a lane switch longer for each lane past three (a runner
+## crossing to the bait's notch from the far side: MechaGuppyPattern).
+func roof_run_seconds() -> float:
+	return tuning.roof_seconds + maxf(float(lanes - 3), 0.0) * movement.lane_switch_time
+
+
+## Roof `roof`'s notch for the bait (see the header), once step `step`, from it, is planned: its outer lane on a seeded
+## side, eaten from notch_back before the step's hut to its end; none on the street, nor where it would start less than
+## NOTCH_AFTER past where the roof's run begins.
+func _notch(roof: Roof, step: Step) -> void:
+	roof.notch_lane = -1
+	roof.notch_from = FAR
+	if roof.index <= 0 or step.top:
+		return
+	var into: Step = steps[roof.index - 1]
+	var at: float = step.hut_start - tuning.notch_back
+	var begins: float = maxf(maxf(into.free_at, into.land), roof.full_from())
+	if at < begins + NOTCH_AFTER:
+		return
+	_rng.seed = hash([_seed, "notch", roof.index])
+	roof.notch_lane = 0 if _rng.randi() % 2 == 0 else lanes - 1
+	roof.notch_from = at
+
+
+## Where the next step's hut would start if it were planned now (in any phase: the steps are as long in each; FAR once
+## the top is planned; -FAR for the top itself: it's due at once).
+func next_hut_start(_phase: int, top: bool = false) -> float:
 	if top_planned():
 		return FAR
 	if top:
 		return -FAR
-	return _pad_for(steps.size(), phase) - tuning.hut_lead * pace
+	return _pad_for(steps.size()) - tuning.hut_lead * pace
 
 
 ## True once phase 3's top is planned: nothing comes after it.
@@ -305,6 +363,8 @@ func truncate(index: int) -> void:
 	steps.resize(index)
 	roofs.resize(index + 1)
 	roofs[index].end = FAR
+	roofs[index].notch_lane = -1
+	roofs[index].notch_from = FAR
 
 
 ## Plans steps while the climb's furthest planned piece is short of track distance `until` (phase `phase`; the top
