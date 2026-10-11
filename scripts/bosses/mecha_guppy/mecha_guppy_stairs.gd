@@ -59,6 +59,8 @@ const PASSED: float = 40.0
 ## over its next pads.
 const PICKUP_AFTER_LAND: float = 6.0
 const PICKUP_BEFORE_HUT: float = 6.0
+## A pickup is taken this far either side of its spot (metres; the stretch pickup_spot keeps clear of warnings).
+const PICKUP_REACH: float = 2.0
 ## A grapple's save looks for the higher roof under a lane that leads up this far either side of where the runner
 ## comes down (metres).
 const SAVE_MARGIN: float = 2.0
@@ -646,7 +648,8 @@ func save_spot(player: Player) -> Dictionary:
 		if player.distance >= roof.full_from() and not roof.covers(player.lane, player.distance):
 			lane = _nearest_covered(roof, player.lane, land)
 		# A floor bite that leaves one lane, not yet snapped, ahead of where the save brings them down, too near for its
-		# crossing (task E5e-f): into that lane, as the save's pull moves them anyway.
+		# crossing (task E5e-f): into that lane, as the save's pull moves them anyway. DESIGN-TBD (docs/questions/e5e.md): the
+		# save near a bite.
 		var bite: MechaGuppyCrescent = roof.bite
 		if lane >= 0 and bite != null and not bite.skipped and not bite.eaten and not bite.full \
 				and land > bite.from - climb.bite_crossing() * 1.5 and land < bite.to:
@@ -679,8 +682,9 @@ func roof_front(lane: int, height: float, d: float) -> float:
 ## A fair spot for an armor pickup (GDD §10's standard rule) at least `lead` metres ahead of the runner, on the roof
 ## they'll run along next: past where a rider lands on it (PICKUP_AFTER_LAND) and short of the hut over its pads
 ## (PICKUP_BEFORE_HUT), in the runner's lane if they're on that roof already, else the nearest lane that leads up
-## onto it (where they'll land), never where a boss warning lies (BossProps.warned at that height), and only where
-## it's built: {lane, at, height}, or {} until one is far enough ahead.
+## onto it (where they'll land), never where a boss warning lies (BossProps.warned at that height) nor where a floor bite
+## will take the lane, nowhere a runner who takes it couldn't then get out of a floor bite's way (clear_of_bite), and only
+## where it's built: {lane, at, height}, or {} until one is far enough ahead.
 func pickup_spot(lead: float) -> Dictionary:
 	var player: Player = world.player
 	var d: float = player.distance
@@ -708,11 +712,33 @@ func pickup_spot(lead: float) -> Dictionary:
 			continue
 		var at: float = from
 		while at <= to:
-			# Off any boss warning, and off where a floor bite will take the lane (task E5e-f).
-			if not props.warned(lane, at - 2.0, at + 2.0, roof.top) and roof.keeps(lane, at - 2.0) and roof.keeps(lane, at + 2.0):
+			# Off any boss warning, off where a floor bite will take the lane, and with time after it to get out of a floor
+			# bite's way (task E5e-f and its review).
+			if not props.warned(lane, at - PICKUP_REACH, at + PICKUP_REACH, roof.top) and roof.keeps(lane, at - PICKUP_REACH) \
+					and roof.keeps(lane, at + PICKUP_REACH) and clear_of_bite(roof, lane, at):
 				return {"lane": lane, "at": at, "height": roof.top}
 			at += 2.0
 	return {}
+
+
+## True if a pickup at track distance `at` in `lane` of roof `roof` leaves a runner who takes it the time to get out of its
+## floor bite's way (task E5e-f's review: one taken just short of the gap left no time for the switches still needed): in a
+## lane the bite takes, taken (PICKUP_REACH past `at`) at least every switch from there to the lane the bite leaves (none
+## over a full-width one: its jump) and dodge_margin, with half a hurtbox, short of where its gap reaches that lane; or
+## past the bite.
+func clear_of_bite(roof: MechaGuppyClimb.Roof, lane: int, at: float) -> bool:
+	var bite: MechaGuppyCrescent = roof.bite
+	if bite == null or bite.skipped:
+		return true
+	var gap: Vector2 = bite.stretch(bite.near_w(lane))
+	if gap.x > gap.y:
+		return true
+	var h: float = world.tuning.hurtbox_size.z * 0.5
+	if at - PICKUP_REACH >= bite.to + h:
+		return true
+	var switches: int = 0 if bite.full else absi(bite.keep - lane)
+	var need: float = (float(switches) * world.tuning.lane_switch_time + tuning.dodge_margin) * climb.speed + h
+	return at + PICKUP_REACH + need <= gap.x
 
 
 static func _add_box(owner_node: CollisionObject3D, size: Vector3) -> void:

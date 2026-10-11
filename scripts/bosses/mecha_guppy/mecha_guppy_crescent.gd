@@ -26,6 +26,10 @@ const TEETH: int = 12
 const TOOTH_BULGE: float = 0.3
 ## Points along its edge from its front to its back (the collision and the look both follow them).
 const POINTS: int = 65
+## The gap counts as reaching a point only past this (metres): its edge points are single precision, and the lane a bite
+## leaves has its edge exactly at its deepest point (task E5e-f's review: at 4 and 6 lanes the rounding gave that lane a
+## stretch of no length, and a warning token).
+const EDGE_EPS: float = 0.001
 
 ## The roof it's on (MechaGuppyClimb.Roof.index).
 var roof: int = 0
@@ -138,7 +142,7 @@ func far_w(lane: int) -> float:
 
 ## True if the gap reaches into a runner's footprint in `lane` at track distance `d`: the lane isn't wholly floor there.
 func takes(lane: int, d: float) -> bool:
-	return depth_at(d) > near_w(lane)
+	return depth_at(d) > near_w(lane) + EDGE_EPS
 
 
 ## The lanes it takes at track distance `d` (some of a runner's footprint over the gap).
@@ -157,7 +161,7 @@ func left() -> Array[int]:
 		most = maxf(most, w)
 	var out: Array[int] = []
 	for lane: int in lanes:
-		if most <= near_w(lane) + 0.0001:
+		if most <= near_w(lane) + EDGE_EPS:
 			out.append(lane)
 	return out
 
@@ -188,8 +192,8 @@ func stretch(w: float) -> Vector2:
 	var first: float = INF
 	var last: float = -INF
 	for i: int in ds.size() - 1:
-		var a: float = ws[i] - w
-		var b: float = ws[i + 1] - w
+		var a: float = ws[i] - w - EDGE_EPS
+		var b: float = ws[i + 1] - w - EDGE_EPS
 		if a <= 0.0 and b <= 0.0:
 			continue
 		var d0: float = ds[i]
