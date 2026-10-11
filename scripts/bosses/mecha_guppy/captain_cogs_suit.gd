@@ -94,7 +94,7 @@ static func _build_parts(lens: Color) -> HumanoidParts:
 
 
 ## The long frock coat over a pale shirt: its body on the chest, its skirt to the knees on the pelvis, gold trim down
-## its front edges, brass buttons, the ochre sash at the waist with a brass cog buckle, and a cutlass hilt at his hip.
+## its front edges, brass buttons, the ochre sash at the waist with a brass cog buckle, and a cutlass hilt at the hip.
 static func _coat(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"chest", BOX, Vector3(0.3, 0.2, 0.2), Vector3(0.0, 0.05, 0.0), COAT, 0.0,
 		{"chamfer": 0.35, "top_scale": Vector2(1.18, 1.05)})
@@ -107,7 +107,7 @@ static func _coat(list: Array[HumanoidPiece]) -> void:
 		for k: int in 3:
 			_add(list, &"chest", BOX, Vector3(0.022, 0.022, 0.012), Vector3(x * 1.35, 0.02 + 0.08 * float(k), -0.115), BRASS, 0.0,
 				{"shine": 0.7})
-	# Epaulettes: brass cogs on his shoulders.
+	# Epaulettes: brass cogs on the shoulders.
 	_add(list, &"chest", LATHE, Vector3(0.1, 0.0, 0.1), Vector3(0.19, 0.29, 0.0), BRASS, 0.0, {"side": MIRRORED, "sides": 8,
 		"profile": PackedVector4Array([Vector4(-0.015, 1.0, 1.0, 0.0), Vector4(0.015, 1.0, 1.0, 0.0)]), "shine": 0.6})
 	# The sash and its cog buckle.
@@ -120,8 +120,8 @@ static func _coat(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"pelvis", BOX, Vector3(0.32, 0.36, 0.24), Vector3(0.0, -0.15, 0.015), COAT_SHADE, 0.0,
 		{"top_scale": Vector2(0.92, 0.95), "chamfer": 0.2})
 	_add(list, &"pelvis", BOX, Vector3(0.33, 0.025, 0.245), Vector3(0.0, -0.33, 0.015), TRIM)
-	# The cutlass's hilt and scabbard at his left hip.
-	# (A centre segment's LEFT piece is the mirrored copy: authored on his right, +x.)
+	# The cutlass's hilt and scabbard at the left hip.
+	# (A centre segment's LEFT piece is the mirrored copy: authored on the right, +x.)
 	_add(list, &"pelvis", BOX, Vector3(0.025, 0.36, 0.05), Vector3(0.17, -0.12, 0.06), BRASS_DARK, 0.0,
 		{"side": LEFT, "rotation_degrees": Vector3(-18.0, 0.0, -6.0)})
 	_add(list, &"pelvis", BOX, Vector3(0.06, 0.03, 0.03), Vector3(0.17, 0.08, 0.0), BRASS, 0.0, {"side": LEFT, "shine": 0.6})
@@ -134,7 +134,7 @@ static func _head(list: Array[HumanoidPiece], lens: Color) -> void:
 	_add(list, &"head", LATHE, Vector3(0.17, 0.0, 0.18), Vector3.ZERO, SKIN, 0.0, {"sides": 8,
 		"profile": PackedVector4Array([Vector4(-0.03, 0.66, 0.62, -0.012), Vector4(0.02, 0.92, 0.9, -0.004),
 			Vector4(0.1, 1.0, 1.0, 0.0), Vector4(0.15, 0.82, 0.86, 0.006)])})
-	# The beard: a full jaw and two braids hanging from his chin.
+	# The beard: a full jaw and two braids hanging from the chin.
 	_add(list, &"head", BOX, Vector3(0.17, 0.09, 0.07), Vector3(0.0, 0.02, -0.07), BEARD, 0.0,
 		{"chamfer": 0.35, "top_scale": Vector2(1.05, 0.9)})
 	for x: float in [-0.035, 0.035]:
@@ -145,10 +145,10 @@ static func _head(list: Array[HumanoidPiece], lens: Color) -> void:
 	# The nose.
 	_add(list, &"head", BOX, Vector3(0.028, 0.045, 0.03), Vector3(0.0, 0.07, -0.095), SKIN_SHADE, 0.0,
 		{"top_scale": Vector2(0.65, 0.45)})
-	# The eyepatch (his right) and its strap.
+	# The eyepatch (the right eye's) and its strap.
 	_add(list, &"head", BOX, Vector3(0.045, 0.04, 0.012), Vector3(0.042, 0.1, -0.088), PATCH, 0.0, {"side": RIGHT})
 	_add(list, &"head", BOX, Vector3(0.19, 0.008, 0.19), Vector3(0.0, 0.118, 0.0), PATCH, 0.0, {"rotation_degrees": Vector3(0.0, 0.0, -14.0)})
-	# The clockwork eye (his left): a brass ring and the glowing lens.
+	# The clockwork eye (the left): a brass ring and the glowing lens.
 	_add(list, &"head", LATHE, Vector3(0.05, 0.0, 0.05), Vector3(0.042, 0.1, -0.09), BRASS, 0.0, {"side": LEFT, "sides": 8,
 		"rotation_degrees": Vector3(90.0, 0.0, 0.0), "profile": PackedVector4Array([Vector4(-0.012, 1.0, 1.0, 0.0),
 			Vector4(0.012, 1.0, 1.0, 0.0)]), "shine": 0.7})
@@ -165,7 +165,7 @@ static func _head(list: Array[HumanoidPiece], lens: Color) -> void:
 			Vector4(0.008, 1.0, 1.0, 0.0)]), "shine": 0.7})
 
 
-## His arms: the coat's sleeves with their wide cuffs and his right hand; on his left the clockwork arm, brass and steel
+## The arms: the coat's sleeves with their wide cuffs and the right hand; on the left the clockwork arm, brass and steel
 ## with cog joints at the shoulder, elbow and wrist, and its pincer hand.
 static func _arms(list: Array[HumanoidPiece]) -> void:
 	_add(list, &"upper_arm", PRISM, Vector3(0.11, 0.21, 0.11), Vector3(0.0, -0.1, 0.0), COAT, 0.0,

@@ -1,11 +1,11 @@
 class_name CaptainCogsShip
 extends Node3D
-## Captain Cogs in his floating ship (GDD §10: "a new enemy, only in this fight ... a pirate mixed with a futuristic
+## Captain Cogs in the floating ship (GDD §10: "a new enemy, only in this fight ... a pirate mixed with a futuristic
 ## look, in a floating ship flying above the track, throwing bombs down at the runner"; task E5e-b2): the ship
 ## (CaptainCogsModel) keeps its station ahead of the runner and above the roof they climb to (MechaGuppyTuning, "Captain
 ## Cogs' ship": ship_ahead, ship_height over Player.floor_base, eased as the runner climbs, swaying a little across the
 ## lanes and bobbing), its stern toward them, its cog wheels turning; the captain (CaptainCogsSuit on the HumanoidRig)
-## stands on its stern castle facing the runner and throws each bomb (throw(): his arm whips over; MechaGuppyBombs
+## stands on its stern castle facing the runner and throws each bomb (throw(): the arm whips over; MechaGuppyBombs
 ## starts the bomb at hand_world()). It has no collision at all (never on the hull layer, so a pad never flips a runner
 ## up to it: Player._ceiling_over_pad), and it stays high above every hut ahead (its keel ship_height over the roof the
 ## runner climbs to, over the next hut's tiki huts). Phase 3 (E5e-c) brings it level with the runner.
@@ -18,11 +18,11 @@ const SWAY_PERIOD: float = 9.0
 const BOB_PERIOD: float = 2.6
 const BOB: float = 0.35
 const ROLL_DEGREES: float = 3.0
-## The captain's height (metres; he's big, so he reads from far below), and where his throwing hand lets go of a bomb,
-## from where he stands (the ship's space: over his right shoulder, toward the runner).
+## The captain's height (metres: big, to read from far below), and where the throwing hand lets go of a bomb, from where
+## the captain stands (the ship's space: over the right shoulder, toward the runner).
 const CAPTAIN_HEIGHT: float = 2.4
 const HAND := Vector3(-0.6, 2.7, 0.5)
-## A throw: how long his arm takes to whip over and come back (seconds).
+## A throw: how long the arm takes to whip over and come back (seconds).
 const THROW_SECONDS: float = 0.45
 ## The cog wheels turn this fast (radians a second).
 const WHEEL_SPIN: float = 1.4
@@ -64,7 +64,7 @@ func setup(p_boss: MechaGuppy) -> void:
 	_scale = CAPTAIN_HEIGHT / CaptainCogsSuit.DESIGN_HEIGHT
 	rig.scale = Vector3.ONE * _scale
 	rig.position = CaptainCogsModel.CAPTAIN_SPOT
-	# The rig faces -z; he faces the runner (+z).
+	# The rig faces -z; the captain faces the runner (+z).
 	rig.rotation.y = PI
 	rig.animate({}, 0.0)
 	advance(0.0)
@@ -88,19 +88,19 @@ func advance(delta: float) -> void:
 	_pose(delta)
 
 
-## The captain throws a bomb now (MechaGuppyBombs, as it leaves his hand).
+## The captain throws a bomb now (MechaGuppyBombs, as it leaves the hand).
 func throw() -> void:
 	throws += 1
 	_throw_t = 0.0
 
 
-## Where his throwing hand is as it lets go (world space): where a bomb starts.
+## Where the captain's throwing hand is as it lets go (world space): where a bomb starts.
 func hand_world() -> Vector3:
 	return global_transform * (CaptainCogsModel.CAPTAIN_SPOT + HAND)
 
 
-## His stance, and a throw's whip over and back: his right arm cocked high behind his head, swung over and down toward the
-## runner; his clockwork arm at his side; a lean into the throw.
+## The captain's stance, and a throw's whip over and back: the right arm cocked high behind the head, swung over and down
+## toward the runner; the clockwork arm at the side; a lean into the throw.
 func _pose(delta: float) -> void:
 	if rig == null:
 		return
