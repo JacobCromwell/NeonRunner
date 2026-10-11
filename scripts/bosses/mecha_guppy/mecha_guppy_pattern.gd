@@ -193,7 +193,7 @@ func roof_volley(step: MechaGuppyClimb.Step, lane: int, d0: float, speed: float)
 	var spots: Array[Dictionary] = []
 	if not ats.is_empty():
 		var seed: int = hash([boss.def.rng_key(), "roof", step.index, boss.lane_count()])
-		spots = boss.bombs.plan_spots(lane, d0, s_open, ats, roof.top, boss.phase_index, seed)
+		spots = boss.bombs.plan_spots(lane, d0, s_open, ats, roof.top, boss.phase_index, seed, speed)
 	return {"spots": spots, "s_open": s_open}
 
 
@@ -228,7 +228,7 @@ func landing_volley(step: MechaGuppyClimb.Step, lane: int, d0: float, speed: flo
 	var spots: Array[Dictionary] = []
 	if not ats.is_empty():
 		var seed: int = hash([boss.def.rng_key(), "land", step.index, boss.lane_count()])
-		spots = boss.bombs.plan_spots(lane, d0, drop, ats, climb.roofs[step.index + 1].top, boss.phase_index, seed)
+		spots = boss.bombs.plan_spots(lane, d0, drop, ats, climb.roofs[step.index + 1].top, boss.phase_index, seed, speed)
 	return {"spots": spots, "s_open": drop}
 
 

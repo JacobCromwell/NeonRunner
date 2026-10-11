@@ -291,14 +291,18 @@ func open_lanes(from: float, to: float, y: float) -> Array[bool]:
 ## dodge_margin from where they can first switch), each later one strikes a lane they could be in and leaves one at
 ## most max_shift from it, through lanes open from where they set off to ESCAPE_AFTER past the spot. Ties: a lane they
 ## could have stayed in since the first spot, then more of their lanes, then lanes left together, then fewer bombs,
-## then a seeded pick (`seed`). A volley whose next spot can't be fair ends there.
-func plan_spots(pl: int, d0: float, s_open: float, ats: Array[float], y: float, phase: int, seed: int) -> Array[Dictionary]:
+## then a seeded pick (`seed`). A volley whose next spot can't be fair ends there. `speed`: the runner's (theirs now by
+## default).
+func plan_spots(pl: int, d0: float, s_open: float, ats: Array[float], y: float, phase: int, seed: int,
+		speed: float = -1.0) -> Array[Dictionary]:
 	var spots: Array[Dictionary] = []
 	if ats.is_empty():
 		return spots
 	_rng.seed = seed
 	var n: int = world.geo.lane_count
-	var speed: float = maxf(world.player.speed, 1.0)
+	if speed <= 0.0:
+		speed = world.player.speed
+	speed = maxf(speed, 1.0)
 	var t: MovementTuning = world.tuning
 	var choices: int = spot_choices()
 	var after: float = ESCAPE_AFTER * t.pace()

@@ -202,7 +202,7 @@ func _test_fair_spots() -> void:
 							plan = _volley(boss, kind, step, pl, d0, speed)
 							spots = plan["spots"]
 							volleys += 1
-							var why: String = _unfair(boss, spots, pl, d0, float(plan["s_open"]))
+							var why: String = _unfair(boss, spots, pl, d0, float(plan["s_open"]), speed)
 							if why != "":
 								bad.append("step %d %s from lane %d: %s" % [step.index, "volley" if kind == 0 else "landing spot", pl, why])
 				check(volleys >= 4 and bad.is_empty(), "every volley leaves a fair way through from every lane that leads up (%d planned) %s%s"
@@ -214,16 +214,28 @@ func _volley(boss: MechaGuppy, kind: int, step: MechaGuppyClimb.Step, lane: int,
 	return boss.pattern.roof_volley(step, lane, d0, speed) if kind == 0 else boss.pattern.landing_volley(step, lane, d0, speed)
 
 
-## Why a volley isn't fair from lane `pl` at `d0` (switching from `s_open`), or "" if it is.
-func _unfair(boss: MechaGuppy, spots: Array[Dictionary], pl: int, d0: float, s_open: float) -> String:
+## Why a volley isn't fair from lane `pl` at `d0` (switching from `s_open`) for a runner at `speed`, or "" if it is.
+func _unfair(boss: MechaGuppy, spots: Array[Dictionary], pl: int, d0: float, s_open: float, speed: float) -> String:
 	var bombs: MechaGuppyBombs = boss.bombs
 	var climb: MechaGuppyClimb = boss.climb
 	var mt: MechaGuppyTuning = boss.tuning
+	var t: MovementTuning = _movement(speed)
 	var n: int = boss.lane_count()
 	var way: Array[int] = bombs.way_through(spots, pl, d0, s_open)
 	if way.size() != spots.size():
 		return "no way through"
 	var clear: float = mt.blast_depth * 0.5 + MechaGuppyBombs.HUT_CLEAR
+	# In time: from when they can act (its circle seen and the reaction, and able to switch) every switch to the first
+	# spot's free lane at the lane-switch time, with the margin to spare, before they get to it; from one spot to the
+	# next, every switch between them after the last blast's far edge and before the next one's near edge.
+	var act: float = maxf(mt.dodge_reaction, (s_open - d0) / speed)
+	var first: float = (float(spots[0]["at"]) - d0) / speed
+	if act + absi(way[0] - pl) * t.lane_switch_time + mt.dodge_margin > first + 0.01:
+		return "the first spot's %d switches don't fit in %.2f s from %.2f s" % [absi(way[0] - pl), first, act]
+	for i: int in range(1, spots.size()):
+		var between: float = (float(spots[i]["at"]) - float(spots[i - 1]["at"]) - mt.blast_depth) / speed
+		if absi(way[i] - way[i - 1]) * t.lane_switch_time > between + 0.01:
+			return "spot %d's switches don't fit in the %.2f s after the last" % [i, between]
 	var from: int = pl
 	for i: int in spots.size():
 		var spot: Dictionary = spots[i]
