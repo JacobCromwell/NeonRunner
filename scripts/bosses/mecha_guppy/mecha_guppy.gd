@@ -245,6 +245,12 @@ func victory_riff() -> bool:
 	return false
 
 
+## Phase 3's minute runs the boss bar down steadily (MechaGuppyTop.run_down): the bar follows it without the white
+## segment's hold after each drop (BossBar).
+func health_runs_down() -> bool:
+	return top != null and top.started() and not top.finished
+
+
 ## The captain, the shark, the bombs and the pattern, one physics step (the fight's ticks: they wait while the runner is
 ## down).
 func _advance(delta: float) -> void:
