@@ -21,9 +21,10 @@ extends TestSuite
 ##   waterfall's fade start there;
 ## - no escalation: through a long phase 1 with no hits the climb keeps the same rhythm; a retry plays the same; the
 ##   builder's work a frame doesn't grow with the fight;
-## - the climbing camera over the climb: the runner on screen, the camera never inside a roof (each step's rise well
-##   within RunCamera.FLOOR_REACH) and never snapping (its ease after a drop off a hut moves it under 0.40 m on the
-##   first frame, E5e-a's bound); the runner's shadow on the roof under them.
+## - the climbing camera over phase 1's steps and phase 2's higher ones (task E5e-b3's review), at 3 and 6 lanes: the
+##   runner on screen, the camera never inside a roof (each step's rise well within RunCamera.FLOOR_REACH), never
+##   snapping (its ease after a drop off a hut moves it under 0.40 m on the first frame, E5e-a's bound) and, riding a hut,
+##   CAM_OVER over the higher roof ahead; the runner's shadow on the roof under them.
 ## Except where they say, the checks are of the climb on its own: Captain Cogs' bombs and Mecha Guppy's bites are off
 ## (MechaGuppy.attacks_enabled; test_mecha_guppy_bombs and _bites check them).
 ## Each test prints its figures (the phases' ends, the time to spare, phase 2's rate) for the report.
@@ -33,6 +34,9 @@ const LANES: Array[int] = [3, 5, 6]
 const SPEEDS: Array[float] = [18.0, 23.8]
 ## A player's reaction (the suites' bots' usual 0.35 s).
 const REACTION: float = 0.35
+## Riding a hut, the camera stays at least this far over the higher roof ahead, so its deck shows (metres; phase 2's
+## higher steps bring it lowest).
+const CAM_OVER: float = 0.6
 
 var sim: RunSim
 var def: BossDef
@@ -64,9 +68,10 @@ func _movement(speed: float) -> MovementTuning:
 
 
 ## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's preview by default; with the dash power-up at its
-## best tier, a 3 s cooldown, with `dash`; with Captain Cogs' bombs and Mecha Guppy's bites only with `attacks`):
-## [world, boss].
-func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false, attacks: bool = false) -> Array:
+## best tier, a 3 s cooldown, with `dash`; with Captain Cogs' bombs and Mecha Guppy's bites only with `attacks`; from
+## phase `start_phase` + 1, as a checkpoint would): [world, boss].
+func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false, attacks: bool = false,
+		start_phase: int = 0) -> Array:
 	var d: BossDef = p_def if p_def != null else def
 	var t: MovementTuning = _movement(speed)
 	var boss := BossEncounter.create(d) as MechaGuppy
@@ -76,6 +81,8 @@ func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false,
 	ctx.config = BossArena.base_config(d)
 	ctx.config.lane_count = lanes
 	ctx.tuning = t
+	if start_phase > 0:
+		ctx.boss_resume = {"phase": start_phase}
 	var arena: BossArena = boss.plan_arena(ctx)
 	var loadout: Loadout = null
 	if dash:
@@ -546,9 +553,10 @@ func _test_rhythm_and_retry() -> void:
 ## runner on screen all the way up, the camera never inside a roof (each step's rise is well within RunCamera.FLOOR_REACH, so it sees every roof it must
 ## clear) and never 0.40 m or more from where it was a frame before; the runner's shadow on the roof under them.
 func _test_camera() -> void:
-	for lanes: int in [3, 6]:
-		var tag: String = "(%d lanes)" % lanes
-		var pair: Array = _fight(lanes, 23.8, null, false, true)
+	for job: Vector2i in [Vector2i(3, 0), Vector2i(6, 0), Vector2i(3, 1), Vector2i(6, 1)]:
+		var lanes: int = job.x
+		var tag: String = "(%d lanes, phase %d's steps)" % [lanes, job.y + 1]
+		var pair: Array = _fight(lanes, 23.8, null, false, true, job.y)
 		var world: RunWorld = pair[0]
 		var boss: MechaGuppy = pair[1]
 		var p: Player = world.player
@@ -558,7 +566,8 @@ func _test_camera() -> void:
 		camera.follow(world)
 		var bot := MechaGuppyBot.new(boss)
 		var shadow := p.get(&"_shadow") as MeshInstance3D
-		var out: Dictionary = {"off": 0, "in_roof": 0, "step": 0.0, "shadow_bad": 0, "shadow_ok": 0, "last": NAN, "top": 0.0}
+		var out: Dictionary = {"off": 0, "in_roof": 0, "step": 0.0, "shadow_bad": 0, "shadow_ok": 0, "last": NAN, "top": 0.0,
+			"over": INF}
 		var rect := Rect2(Vector2.ZERO, camera.get_viewport().get_visible_rect().size)
 		world.start()
 		for i: int in int(45.0 * Engine.physics_ticks_per_second):
@@ -578,20 +587,27 @@ func _test_camera() -> void:
 				out["step"] = maxf(float(out["step"]), absf(cam.y - float(out["last"])))
 			out["last"] = cam.y
 			out["top"] = maxf(float(out["top"]), p.floor_y)
+			# Riding a hut: how far over the higher roof ahead the camera stays (its deck in view).
+			if p.surface == Player.Surface.CEILING:
+				var s: MechaGuppyClimb.Step = boss.climb.step_at(p.distance)
+				if s != null and not s.top:
+					out["over"] = minf(float(out["over"]), cam.y - s.top_y)
 			if p.surface == Player.Surface.FLOOR and p.grounded and p.floor_y > 0.5:
 				if shadow.visible and absf(shadow.global_position.y - (p.floor_y + 0.02)) < 0.01:
 					out["shadow_ok"] = int(out["shadow_ok"]) + 1
 				else:
 					out["shadow_bad"] = int(out["shadow_bad"]) + 1
-		check(p.alive and float(out["top"]) >= 15.0, "the runner climbs to %.0f m %s" % [out["top"], tag])
+		check(p.alive and float(out["top"]) >= 15.0 + float(job.y) * 3.0, "the runner climbs to %.0f m %s" % [out["top"], tag])
 		check(int(out["off"]) == 0, "the climbing camera keeps the runner on screen all the way up (%d frames off) %s" % [out["off"], tag])
 		check(int(out["in_roof"]) == 0, "the camera is never inside a roof (%d frames) %s" % [out["in_roof"], tag])
 		# The largest step is the camera's own ease (RunCamera, camera_smoothing) from the view under a hut to the usual
 		# framing as the rider drops off its end: about 0.33 m on its first frame with huts 8.5 m up (the view under a hut
 		# is then 1.9 m over the higher roof, so the aim moves less than it did with lower huts).
 		check(float(out["step"]) < 0.40, "and never snaps (at most %.3f m a frame) %s" % [out["step"], tag])
-		print("  Mecha Guppy's climb, the camera %s: up to %.0f m, at most %.3f m a frame, %d frames off screen, %d inside a roof"
-			% [tag, out["top"], out["step"], out["off"], out["in_roof"]])
+		check(float(out["over"]) >= CAM_OVER, "riding a hut, the camera stays at least %.2f m over the higher roof ahead, its deck in view (%.2f m at the lowest) %s"
+			% [CAM_OVER, float(out["over"]), tag])
+		print("  Mecha Guppy's climb, the camera %s: up to %.0f m, at most %.3f m a frame, %d frames off screen, %d inside a roof, at least %.2f m over the higher roof riding a hut"
+			% [tag, out["top"], out["step"], out["off"], out["in_roof"], out["over"]])
 		check(int(out["shadow_bad"]) == 0 and int(out["shadow_ok"]) > 60,
 			"the runner's shadow lies on the roof under them (%d frames right, %d wrong) %s" % [out["shadow_ok"], out["shadow_bad"], tag])
 		camera.queue_free()
