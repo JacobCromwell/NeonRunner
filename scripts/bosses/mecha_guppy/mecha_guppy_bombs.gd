@@ -57,9 +57,16 @@ const LOB: float = 3.5
 ## A bomb that finds no floor falls on this long, ever faster, before it's gone (seconds), at this pull.
 const FALL_ON: float = 1.4
 const FALL_PULL: float = 30.0
-## The bait's circle while it follows the runner: this much of a bomb's circle's size, sliding to their lane at this
-## speed (m/s: a lane in about a lane switch).
-const SEEK_SCALE: float = 0.8
+## The bait's aim while it follows the runner (task E5e-b3's review: a flat ring 40 m out showed as a red sliver a few
+## pixels high): a reticle, a ring AIM_SCALE of a bomb's circle's size with four ticks across it (reaching from AIM_TICK_IN
+## to AIM_TICK_OUT of its radius), standing on the floor where the bomb will land and leaning back AIM_LIFT degrees up
+## from the floor, its face toward the runner, so it reads from far off; steady (no pulse: unlike the locked circle, and
+## nothing flickers with Reduced flashing). It slides to the runner's lane at SEEK_SLIDE (m/s: a lane in about a lane
+## switch), and at the lock the bomb's own circle lies flat in its place.
+const AIM_SCALE: float = 1.25
+const AIM_TICK_IN: float = 0.5
+const AIM_TICK_OUT: float = 1.3
+const AIM_LIFT: float = 45.0
 const SEEK_SLIDE: float = 18.0
 ## A runner is past a spot once its hurtbox is this far beyond the blast's far edge.
 const PAST_MARGIN: float = 0.3
@@ -86,12 +93,14 @@ var bait: Dictionary = {}
 ## Bombs on their way: {kind, lane, x, at, y, release, impact, whistle, released, whistled, landed, circle, bomb,
 ## from, to, fall (seconds falling on past the floor's level), quiet (no whistle)}.
 var _drops: Array[Dictionary] = []
-## The bait's circle while it follows the runner.
-var _seek_ring: MeshInstance3D
+## The bait's aim while it follows the runner (_aim_node).
+var _seek_ring: Node3D
 ## Blasts burning: {hazard, start}.
 var _blasts: Array[Dictionary] = []
 var _whistle: float = WHISTLE_SECONDS
 var _circle_material: BaseMaterial3D
+## The aim's meshes, made once: {r, ring, tick}.
+var _aim_meshes: Dictionary = {}
 var _bombs: Array[Node3D] = []
 var _hazards: Array[Hazard] = []
 var _rng := RandomNumberGenerator.new()
@@ -189,7 +198,7 @@ func throw_spots(kind: int, step: int, spots: Array[Dictionary], s_open: float) 
 
 
 ## Throws one bomb to land at track distance `at` over `lane` (x offset `x` from its middle), coming down to world
-## height `y`, `flight` seconds from now (lock_seconds by default; a hit's, which threatens nobody, hit_seconds) (a
+## height `y`, `flight` seconds from now (lock_seconds by default; the fallback's, which threatens nobody, MechaGuppyPattern.fallback_flight()) (a
 ## hit's, a review's or a test's: `kind`). It shows its circle there (none on a hut's top: nobody can stand there, and a
 ## rider under it can't see it). A hit's bomb has nothing to dodge: no throw is heard and it doesn't whistle. Returns its
 ## record.
@@ -229,11 +238,7 @@ func start_bait(step: int, at: float, y: float, notch: int) -> void:
 	var lane: int = clampi(p.lane, 0, world.geo.lane_count - 1)
 	bait = {"step": step, "at": at, "y": y, "notch": notch, "seek": clock, "x": world.geo.lane_x(lane), "lane": lane,
 		"locked": false, "drop": {}}
-	_seek_ring = MeshInstance3D.new()
-	_seek_ring.name = "BaitAim"
-	_seek_ring.mesh = BossProps._ring(tuning.blast_radius)
-	_seek_ring.material_override = _seek_material()
-	_seek_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_seek_ring = _aim_node()
 	add_child(_seek_ring)
 	_place_seek()
 	boss.sound(&"cogs_aim", _hand())
@@ -285,8 +290,8 @@ func seeking() -> bool:
 	return not bait.is_empty() and not bool(bait["locked"])
 
 
-## The bait's circle while it follows (tests: where it shows), or null.
-func seek_ring() -> MeshInstance3D:
+## The bait's aim while it follows (tests: where it shows: its node sits on the floor where the bomb will land), or null.
+func seek_ring() -> Node3D:
 	return _seek_ring if _seek_ring != null and is_instance_valid(_seek_ring) else null
 
 
@@ -302,13 +307,51 @@ func _update_seek(delta: float) -> void:
 	_place_seek()
 
 
-## The following circle: over the floor where the bomb will land, at the runner's lane (sliding there), steady (it grows
-## into the bomb's own pulsing circle at the lock).
+## The bait's aim: on the floor where the bomb will land, at the runner's lane (sliding there).
 func _place_seek() -> void:
 	if seek_ring() == null:
 		return
-	_seek_ring.transform = Transform3D(Basis.from_scale(Vector3(SEEK_SCALE, 0.25, SEEK_SCALE)),
-		Vector3(float(bait["x"]), float(bait["y"]) + 0.05, TrackGeometry.world_z(float(bait["at"]))))
+	_seek_ring.position = Vector3(float(bait["x"]), float(bait["y"]) + 0.05, TrackGeometry.world_z(float(bait["at"])))
+
+
+## The bait's aim (see AIM_SCALE): a node on the floor where the bomb will land, holding the reticle (a ring and four
+## ticks in the circles' red) stood up AIM_LIFT from the floor, leaning back from the runner (its face toward +z, where
+## they come from), its lowest point on the floor.
+func _aim_node() -> Node3D:
+	var root := Node3D.new()
+	root.name = "BaitAim"
+	var r: float = tuning.blast_radius * AIM_SCALE
+	var lift: float = deg_to_rad(AIM_LIFT)
+	var face := Node3D.new()
+	face.rotation = Vector3(lift, 0.0, 0.0)
+	face.position = Vector3(0.0, r * AIM_TICK_OUT * sin(lift) + 0.03, 0.0)
+	root.add_child(face)
+	if _aim_meshes.is_empty() or not is_equal_approx(float(_aim_meshes["r"]), r):
+		var ring := TorusMesh.new()
+		ring.inner_radius = r * 0.72
+		ring.outer_radius = r
+		ring.rings = 32
+		ring.ring_segments = 6
+		var tick := BoxMesh.new()
+		tick.size = Vector3(r * 0.1, r * 0.08, r * (AIM_TICK_OUT - AIM_TICK_IN))
+		_aim_meshes = {"r": r, "ring": ring, "tick": tick}
+	var material: Material = _seek_material()
+	var parts: Array[MeshInstance3D] = []
+	var ring_mesh := MeshInstance3D.new()
+	ring_mesh.mesh = _aim_meshes["ring"]
+	parts.append(ring_mesh)
+	for k: int in 4:
+		var a: float = float(k) * PI * 0.5
+		var tick_mesh := MeshInstance3D.new()
+		tick_mesh.mesh = _aim_meshes["tick"]
+		tick_mesh.transform = Transform3D(Basis(Vector3.UP, a),
+			Vector3(sin(a), 0.0, cos(a)) * r * (AIM_TICK_IN + AIM_TICK_OUT) * 0.5)
+		parts.append(tick_mesh)
+	for part: MeshInstance3D in parts:
+		part.material_override = material
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		face.add_child(part)
+	return root
 
 
 ## The circles' fog-free red (made from BossProps' warning look the first time a circle shows).
