@@ -1864,7 +1864,7 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     earnings are intentional; update tests, not rewards or prices. The historical affordability
     rationale is not a promise to compensate. After additive floor gaps, the 5-lane native-seed
     70%-share wallet is 372, so Armor I still fits City 1 at 350; Laser I at 900 now first fits
-    City 3 (City 2 wallet 833, City 3 wallet 1,495). The old ~5-deaths estimate is historical.
+    City 3 (City 2 wallet 833, City 3 wallet 1,495); the laser later rose to 1,800, so it first fits City 4. The old ~5-deaths estimate is historical.
 294. **Weapon IV only comes into reach in the Golden Zone (level 13 of 15)** under a single clean
     playthrough. Nothing needs it (every boss is beatable with what it grants), so it reads as an
     end-game capstone purchase. **Is that the intended feel, or should Heavy missile be reachable
