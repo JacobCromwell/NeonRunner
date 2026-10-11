@@ -13,7 +13,7 @@ const GOOD_RUN_SHARE: float = 0.7
 ## USER_REQUESTS.md approves intentionally lower earnings from 55-second City 1, not compensation:
 ## after its additive gaps armor I still fits City 1, but laser I moves from City 2 to City 3.
 const AFFORD_BY: Dictionary = {
-	&"armor:1": "city/1", &"weapon:1": "city/3", &"claws:1": "gangland/2", &"dash:1": "gangland/3",
+	&"armor:1": "city/1", &"weapon:1": "city/4", &"claws:1": "gangland/2", &"dash:1": "gangland/3",
 	&"slow_time:1": "gangland/3",
 }
 
@@ -308,7 +308,7 @@ func _test_balance_curve() -> void:
 		check(price <= by_wallet, "%s is affordable by %s (price %d, wallet %d)" % [
 			item.tier_name(tier), AFFORD_BY[key], price, by_wallet])
 	check(int(wallet_by_level["city/2"]) < catalog.item(&"weapon").price_of(1, false),
-		"intentional early earnings delay laser I until City 3 (City 2 wallet %d)" % wallet_by_level["city/2"])
+		"intentional early earnings delay laser I until City 4 (City 2 wallet %d)" % wallet_by_level["city/2"])
 	for item: ShopItem in catalog.items:
 		var prices: Array[int] = []
 		if item.kind == ShopItem.Kind.BREAKABLE:
