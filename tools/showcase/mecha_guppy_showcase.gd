@@ -189,7 +189,8 @@ func _shark_cam(p: Vector3) -> void:
 ## Moves the runner on to step `k`'s roof, past its landing, before the frames are written (a view from higher up).
 func _move_on(k: int) -> void:
 	var climb: MechaGuppyClimb = boss.climb
-	climb.plan_until(boss.climb.roofs[mini(k, climb.roofs.size() - 1)].first_start() + 400.0, 0)
+	while climb.steps.size() <= k and not climb.top_planned():
+		climb.plan_next(0)
 	if k >= climb.steps.size():
 		return
 	var into: MechaGuppyClimb.Step = climb.steps[k - 1]

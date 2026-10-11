@@ -12,9 +12,10 @@ extends Node3D
 ##   than its fireball, on that roof's top: real contact only; armor, the shield and the dash as for any boss bomb). A
 ##   miss that doesn't hurt the shark;
 ## - on a hut: it bursts on the hut's top; the rider hanging under it is never touched (the blast is all above the hut);
-## - where there's no floor (past a roof's edge, through a gap beside a pier, into the chasm the shark has eaten): it
-##   falls on, and if Mecha Guppy's open jaws are there (MechaGuppyShark.mouth_contains), into them: a hit
-##   (MechaGuppy.register_hit; the clang, a fireball, sparks and smoke). Otherwise it falls away into the haze.
+## - where there's no floor (past a roof's edge, through a gap beside a pier, into the chasm the shark has eaten): if
+##   Mecha Guppy's open jaws are in its way down (MechaGuppyShark.mouth_contains, checked all along its fall), it goes
+##   into them: a hit (MechaGuppy.register_hit; the clang, a fireball, sparks and smoke where it went in, high in the
+##   shark's mouth where the runner sees it). Otherwise it falls on, away into the haze.
 ## What it throws, and when, is MechaGuppyPattern's. The spots a runner must dodge (a volley: throw_spots) are planned
 ## here by the Floating Head's salvo rules on the climb's roofs (plan_spots): every spot leaves the runner a lane to be
 ## in, reached from where they first can switch (on the floor over every lane crossed, never off a pier's side into the
@@ -494,6 +495,11 @@ func _update_drops(delta: float) -> void:
 		if not bool(d["landed"]):
 			if bomb != null:
 				_place_bomb(bomb, d)
+			if bool(d["released"]) and _into_jaws(d, _path_point(d)):
+				if bomb != null:
+					bomb.visible = false
+				_drops.remove_at(i)
+				continue
 			if clock >= float(d["impact"]) - 0.0001:
 				d["landed"] = true
 				boss.props.remove(d.get("circle"))
@@ -535,14 +541,36 @@ func _land(d: Dictionary) -> bool:
 			_blast(x, at, y, true)
 			return true
 	if boss.shark != null and boss.shark.mouth_contains(p):
-		stats["hit"] = int(stats["hit"]) + 1
-		boss.shark.hit(p)
-		var counted: bool = boss.register_hit(&"bomb")
-		boss.log_event(&"shark_hit", {"lane": lane, "at": at, "kind": int(d["kind"]), "counted": counted})
+		_hit_shark(d, p)
 		return true
 	stats["chasm"] = int(stats["chasm"]) + 1
 	boss.log_event(&"chasm", {"lane": lane, "at": at, "y": y, "kind": int(d["kind"])})
 	return false
+
+
+## True (and the hit made) once bomb `d`, on its way down to no floor (past an edge, through a gap, into the eaten
+## chasm), is at `p` inside Mecha Guppy's open jaws: it goes in there, high in its mouth, where the runner sees it.
+func _into_jaws(d: Dictionary, p: Vector3) -> bool:
+	var shark: MechaGuppyShark = boss.shark
+	if shark == null or not shark.busy():
+		return false
+	if surface_at(int(d["lane"]), float(d["at"]), float(d["y"])) != Lands.CHASM or not shark.mouth_contains(p):
+		return false
+	d["landed"] = true
+	d["lands"] = Lands.CHASM
+	boss.props.remove(d.get("circle"))
+	d["circle"] = null
+	_hit_shark(d, p)
+	return true
+
+
+## Bomb `d` went into the shark's jaws at `p`: a hit (MechaGuppy.register_hit) and its show (MechaGuppyShark.hit).
+func _hit_shark(d: Dictionary, p: Vector3) -> void:
+	stats["hit"] = int(stats["hit"]) + 1
+	boss.shark.hit(p)
+	var counted: bool = boss.register_hit(&"bomb")
+	boss.log_event(&"shark_hit", {"lane": int(d["lane"]), "at": float(d["at"]), "kind": int(d["kind"]), "counted": counted,
+		"y": p.y})
 
 
 ## What a bomb coming down over `lane` at `at` to height `y` meets there: a roof's top (ROOF), a hut's top (HUT), or
@@ -561,17 +589,27 @@ func surface_at(lane: int, at: float, y: float) -> int:
 ## A bomb on its way: from the captain's hand to where it lands, on a lob, nose first, its fuse sparking (steady with
 ## Reduced flashing).
 func _place_bomb(bomb: Node3D, d: Dictionary) -> void:
-	var t0: float = float(d["release"])
-	var s: float = clampf((clock - t0) / maxf(float(d["impact"]) - t0, 0.01), 0.0, 1.0)
-	var from: Vector3 = d["from"]
-	var to := Vector3(float(d["x"]), float(d["y"]) + 0.35, TrackGeometry.world_z(float(d["at"])))
-	var line: Vector3 = from.lerp(to, s)
+	var s: float = _flight_share(d)
 	bomb.visible = true
-	bomb.global_position = line + Vector3(0.0, LOB * 4.0 * s * (1.0 - s), 0.0)
+	bomb.global_position = _path_point(d)
 	bomb.rotation = Vector3(s * 7.0, s * 3.0, 0.0)
 	var spark: Node3D = bomb.get_child(0) as Node3D
 	if spark != null:
 		spark.visible = Settings.flashing_reduced or int(clock * FUSE_HZ * 2.0) % 2 == 0
+
+
+## How far along its flight bomb `d` is (0 at the throw, 1 as it lands).
+func _flight_share(d: Dictionary) -> float:
+	var t0: float = float(d["release"])
+	return clampf((clock - t0) / maxf(float(d["impact"]) - t0, 0.01), 0.0, 1.0)
+
+
+## Where bomb `d` is now on its lob from the captain's hand to where it lands (world space).
+func _path_point(d: Dictionary) -> Vector3:
+	var s: float = _flight_share(d)
+	var from: Vector3 = d["from"]
+	var to := Vector3(float(d["x"]), float(d["y"]) + 0.35, TrackGeometry.world_z(float(d["at"])))
+	return from.lerp(to, s) + Vector3(0.0, LOB * 4.0 * s * (1.0 - s), 0.0)
 
 
 ## A burst: on a roof's top a blast that burns blast_seconds (an enemy attack: real contact only), on a hut's top the

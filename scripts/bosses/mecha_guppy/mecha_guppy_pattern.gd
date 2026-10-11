@@ -85,7 +85,8 @@ func _bite(step: MechaGuppyClimb.Step, p: Player) -> void:
 		return
 	# Still busy with the step before's hit (phase 2's closer steps): it bites as soon as it's free, while the bite can
 	# still be over before this step's hit (MechaGuppyShark.bite logs one it's too late for as skipped).
-	var bite_seconds: float = tuning.bite_warning + tuning.bite_rise + tuning.bite_hold + tuning.bite_snap + BITE_SPARE
+	var bite_seconds: float = tuning.bite_warning + tuning.bite_dive + tuning.bite_rise + tuning.bite_hold + tuning.bite_snap \
+		+ tuning.bite_sink + BITE_SPARE
 	if boss.shark.busy() and p.distance < step.deadline - bite_seconds * speed:
 		return
 	_done[key] = true
@@ -239,7 +240,7 @@ func _lurk(step: MechaGuppyClimb.Step, p: Player) -> void:
 	if spot.is_empty():
 		return
 	boss.shark.lurk({"x": world.geo.lane_x(int(spot["lane"])) + float(spot["x_off"]), "at": float(spot["at"]),
-		"top": float(spot["y"]), "side": int(spot["side"]), "open_at": INF})
+		"top": float(spot["y"]), "side": int(spot["side"]), "open_at": INF, "step": step.index})
 
 
 ## The hit (see the header): at the hut's deadline, the bomb thrown at the chasm in front of roof k + 1 under the lanes
@@ -257,7 +258,7 @@ func _hit(step: MechaGuppyClimb.Step, p: Player) -> void:
 	var d: Dictionary = boss.bombs.throw_at(MechaGuppyBombs.Kind.HIT, int(spot["lane"]), float(spot["at"]), float(spot["y"]),
 		float(spot["x_off"]), tuning.hit_seconds)
 	boss.shark.breach({"x": float(d["x"]), "at": float(spot["at"]), "top": float(spot["y"]), "side": int(spot["side"]),
-		"open_at": float(d["impact"])})
+		"open_at": float(d["impact"]) - MechaGuppyShark.BREACH_EARLY, "step": step.index})
 
 
 ## Where step `step`'s hit lands: {lane (the lane that doesn't lead up beside the nearest that does, on the side with

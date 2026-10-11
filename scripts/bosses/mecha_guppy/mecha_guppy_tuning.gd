@@ -133,11 +133,13 @@ extends Resource
 ## runner should have left and the floor under the lanes that don't lead up, never the floor they're on). Its warning:
 ## the rumble, and the shark rising into view out of the chasm, this long before its jaws break through.
 @export_range(0.2, 2.0, 0.05, "suffix:s") var bite_warning: float = 0.6
-## Its jaws rise through the floor's level opening, stay open, snap shut and it sinks back (seconds).
-@export_range(0.15, 1.5, 0.05, "suffix:s") var bite_rise: float = 0.45
-@export_range(0.05, 1.0, 0.05, "suffix:s") var bite_hold: float = 0.2
+## Once nobody can be on the roof: it dives under the roof's top leaning in, its jaws opening, lunges up with its chin
+## low across the roof's end, stays open, snaps shut dropping away with it, and sinks back (seconds).
+@export_range(0.1, 1.0, 0.05, "suffix:s") var bite_dive: float = 0.25
+@export_range(0.15, 1.5, 0.05, "suffix:s") var bite_rise: float = 0.35
+@export_range(0.05, 1.0, 0.05, "suffix:s") var bite_hold: float = 0.15
 @export_range(0.05, 0.5, 0.01, "suffix:s") var bite_snap: float = 0.14
-@export_range(0.3, 3.0, 0.05, "suffix:s") var bite_sink: float = 1.0
+@export_range(0.3, 3.0, 0.05, "suffix:s") var bite_sink: float = 0.6
 ## Once a rider has left a roof for its hut, Mecha Guppy bites the roof's end off behind them: this much of it
 ## (metres; never past the hut's start).
 @export_range(4.0, 30.0, 0.5, "suffix:m") var bite_length: float = 14.0

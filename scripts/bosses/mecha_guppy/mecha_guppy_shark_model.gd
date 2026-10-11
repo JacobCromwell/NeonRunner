@@ -41,6 +41,7 @@ const EYE_ROUND: float = 0.55
 const EYE_BEZEL: float = 0.8
 const EYE_LENS: float = 0.58
 const EYE_BULGE: float = 0.16
+const EYE_IRIS: float = 0.2
 ## Segments round half a jaw, and round the body.
 const JAW_SIDES: int = 6
 const BODY_SIDES: int = 12
@@ -228,12 +229,18 @@ static func _eye(s: MeshLayer, sx: float) -> void:
 		var tri := MeshLayer.new()
 		tri.quad(rim0, rim1, lens_c, lens_c, LENS, 0.0, MeshKit.PAT_GLASS)
 		_append_facing(s, tri, normal)
-	# The pupil, a darker slit, and the glint high on the lens.
-	var pupil := MeshLayer.new()
-	pupil.rect(lens_c + normal * 0.005 - right * 0.08 - up * 0.3, right * 0.16, up * 0.6, PUPIL)
-	_append_facing(s, pupil, normal)
+	# The iris, a darker disc in the lens's middle (a camera's aperture), and a small glint high on one side, apart
+	# from it (a slit and a glint touching read as a digit).
+	var iris_c: Vector3 = lens_c + normal * 0.005
+	for i: int in sides:
+		var t0: float = TAU * float(i) / float(sides)
+		var t1: float = TAU * float(i + 1) / float(sides)
+		var iris := MeshLayer.new()
+		iris.quad(iris_c + (right * cos(t0) + up * sin(t0)) * EYE_IRIS, iris_c + (right * cos(t1) + up * sin(t1)) * EYE_IRIS,
+			iris_c, iris_c, PUPIL)
+		_append_facing(s, iris, normal)
 	var glint := MeshLayer.new()
-	glint.rect(lens_c + normal * 0.01 + up * 0.18 - right * 0.22, right * 0.14, up * 0.1, GLINT)
+	glint.rect(lens_c + normal * 0.01 + up * 0.3 - right * 0.36, right * 0.09, up * 0.09, GLINT)
 	_append_facing(s, glint, normal)
 
 
