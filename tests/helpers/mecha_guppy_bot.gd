@@ -14,7 +14,11 @@ extends RefCounted
 ## before the pads (with `dash_flip`, dashing as it jumps: the run's dash power-up), so it flips up as late as any
 ## runner can and reads as late as the plan allows. `wrong_at` limits `wrong` to one step; `wrong_far` drops in the
 ## lane farthest from the lanes that lead up; `dash_drop` dashes as its lane ends, so the dash carries the whole fall.
-## Phase 3's top (E5e-c) has no huts: it just runs. Bombs are E5e-b2's (this bot doesn't dodge them yet).
+## Captain Cogs' bombs (task E5e-b2): on a roof, or in the air over one after a drop off a hut, it follows a way through
+## the circles of every spot still ahead (MechaGuppyBombs.dodge_lane: the circles it can see, read off the volley as the
+## Floating Head's bot reads its salvos), switching only where the roof is under every lane it crosses (never off a
+## pier's side into the chasm; never on a hut, where the narrow ceiling holds it); `dodges` off, it ignores them.
+## Phase 3's top (E5e-c) has no huts: it just runs.
 
 var boss: MechaGuppy
 ## Seconds after settling on a hut before it reads the lanes that lead up.
@@ -42,6 +46,10 @@ var wrong_far: bool = false
 var dash_drop: bool = false
 ## Dashes it started.
 var dashes: int = 0
+## Dodges Captain Cogs' spots (a way through their circles).
+var dodges: bool = true
+## Switches it made to dodge a spot.
+var dodge_moves: int = 0
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -69,12 +77,15 @@ func step() -> void:
 			steps_climbed += 1
 			log.append({"t": boss.fight_time(), "action": &"landed", "why": "on the roof %.1f m up, lane %d" % [p.floor_y, p.lane]})
 		_floor = p.floor_y
+	if dodges and p.surface == Player.Surface.FLOOR:
+		_dodge(p, now)
 	var next: MechaGuppyClimb.Step = _next_step(p)
 	if next == null or next.top:
+		_walk(p, next, now)
 		return
 	if p.surface == Player.Surface.FLOOR:
 		_settled_at = -1.0
-		if worst_case:
+		if worst_case and not _dodging(p):
 			_prepare(p, next, now)
 	elif p.surface == Player.Surface.CEILING:
 		if p.grounded and _settled_at < 0.0:
@@ -169,7 +180,8 @@ static func _gap(lane: int, up: Array[int]) -> int:
 func _walk(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 	if _target < 0:
 		return
-	var on_hut: bool = p.surface == Player.Surface.CEILING and _read_step == next.index and _measured != next.index
+	var on_hut: bool = next != null and p.surface == Player.Surface.CEILING and _read_step == next.index \
+		and _measured != next.index
 	if p.lane == _target:
 		if on_hut:
 			_slack(p, next, 0.0)
@@ -178,6 +190,9 @@ func _walk(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 	if now < _next_press:
 		return
 	var dir: int = signi(_target - p.lane)
+	# On a roof (or over one in the air), only where the roof is under the lane it moves into: never off a pier's side.
+	if p.surface == Player.Surface.FLOOR and not _floor_beside(p, p.lane + dir):
+		return
 	if on_hut and absi(_target - p.lane) == 1:
 		_slack(p, next, 0.0)
 	p.press(&"move_right" if dir > 0 else &"move_left")
@@ -196,6 +211,35 @@ func _set_target(lane: int, why: String, now: float) -> void:
 	_target = lane
 	_next_press = minf(_next_press, now)
 	log.append({"t": boss.fight_time(), "action": &"target", "why": "lane %d: %s" % [lane, why]})
+
+
+## Captain Cogs' spots: the lane a way through the circles still ahead wants it in (MechaGuppyBombs.dodge_lane), as soon
+## as the circles show.
+func _dodge(p: Player, now: float) -> void:
+	if boss.bombs == null:
+		return
+	var lane: int = boss.bombs.dodge_lane(p.lane, p.distance)
+	if lane < 0 or lane == _target or (_target < 0 and lane == p.lane):
+		return
+	dodge_moves += absi(lane - p.lane)
+	_set_target(lane, "Captain Cogs' bombs: a way through their circles", now)
+
+
+## True while a spot of Captain Cogs' lies ahead of it (it keeps to the way through rather than the worst case's lane).
+func _dodging(p: Player) -> bool:
+	return boss.bombs != null and not boss.bombs.spots_ahead(p.distance).is_empty()
+
+
+## True if the roof under the runner (or under them in the air) reaches into `lane` where they are.
+func _floor_beside(p: Player, lane: int) -> bool:
+	if lane < 0 or lane >= boss.lane_count():
+		return false
+	var climb: MechaGuppyClimb = boss.climb
+	var top: float = climb.floor_at(p.lane, p.distance, p.position.y + 0.3)
+	if is_nan(top):
+		return false
+	var there: float = climb.floor_at(lane, p.distance, p.position.y + 0.3)
+	return not is_nan(there) and absf(there - top) < 0.05
 
 
 ## The lanes that lead up from the hut a rider `p` is on, as the hut and the roofs show them (physics rays on their

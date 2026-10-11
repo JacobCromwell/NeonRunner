@@ -16,9 +16,15 @@ extends Node3D
 ##   side       a camera alongside the climb, looking across at the stairs of roofs and huts and the waterfall
 ##   hut        the runner standing under the first hut (the run camera's view from under it): reading the cue
 ##   top        phase 3's stub (--phase=3 implied): the climb's last steps, then the flat top, the waterfall gone
+##   shark      (E5e-b2) a camera beside Mecha Guppy whenever it's up: its bites of the roofs left behind, its breaches
+##              under the lanes that don't lead up, a bomb falling into its jaws (the climb goes on as in climb)
+##   ship       a camera behind and above Captain Cogs' ship, looking past the captain down at the climb as he throws
+##   bombs      the run camera, from the second step (phase 1's volleys: the circles, the bombs coming down, the blasts)
+##   hits       the run camera, as climb: each step's bomb falling into the shark's jaws beside the runner
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=M (the run's speed, m/s; the Beach's 23.8 by default),
 ## --phase=N, --daylight (the Beach's own sky instead of Sunset Strip's), --reduced-flashing, --events (prints the
-## boss's events with their frames, for picking frames).
+## boss's events with their frames, for picking frames), --no-attacks (the climb alone: no bombs, no bites),
+## --start=S (move the runner on to step S's roof first: a view from higher up).
 ## Frames worth a look (at --fixed-fps 10, 23.8 m/s): climb, the first pads about frame 35, on the first hut 40-63,
 ## its end and the drop about 63, the first roof 66-90, the second hut 95-125; wrong, the drop and the fall about
 ## 60-72; grapple, the save about 68-78; side, any frame. To look from higher up, move the runner onto a later
@@ -37,6 +43,8 @@ var _run_cam: RunCamera
 var _t: float = 0.0
 var _print_events: bool = false
 var _events_seen: int = 0
+var _start_step: int = 0
+var _cam_set: bool = false
 
 
 func _ready() -> void:
@@ -44,10 +52,15 @@ func _ready() -> void:
 	var phase: int = 0
 	var speed: float = 23.8
 	var daylight: bool = false
+	var attacks: bool = true
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
 			scenario = v
+		elif arg == "--no-attacks":
+			attacks = false
+		elif arg.begins_with("--start="):
+			_start_step = int(v)
 		elif arg.begins_with("--lanes="):
 			lanes = int(v)
 		elif arg.begins_with("--phase="):
@@ -86,6 +99,7 @@ func _ready() -> void:
 	world.build(ctx.config, arena.layout, tuning, load("res://data/tuning/game_rules.tres") as GameRules,
 		load("res://data/tuning/powerups.tres") as PowerupTuning, null, load("res://data/audio/sfx_library.tres") as SfxLibrary)
 	boss.setup(world, ctx, arena)
+	boss.attacks_enabled = attacks
 	bot = MechaGuppyBot.new(boss)
 	match scenario:
 		"wrong":
@@ -108,12 +122,14 @@ func _ready() -> void:
 	add_child(_run_cam)
 	_run_cam.follow(world)
 	_run_cam.make_current()
-	if scenario == "side":
+	if scenario in ["side", "shark", "ship"]:
 		_cam = Camera3D.new()
 		_cam.fov = 60.0
 		_cam.far = 900.0
 		add_child(_cam)
 		_cam.make_current()
+	if _start_step > 0:
+		_move_on(_start_step)
 	world.start()
 	if scenario == "hut":
 		world.player.running = false
@@ -130,8 +146,17 @@ func _physics_process(delta: float) -> void:
 		bot.wrong = false
 	if _cam != null:
 		var p: Vector3 = world.player.position
-		_cam.global_position = Vector3(p.x + 34.0, p.y + 14.0, p.z + 10.0)
-		_cam.look_at(Vector3(p.x - 4.0, p.y + 2.0, p.z - 40.0), Vector3.UP)
+		match scenario:
+			"shark":
+				_shark_cam(p)
+			"ship":
+				var ship: CaptainCogsShip = boss.ship
+				var at: Vector3 = ship.global_position
+				_cam.global_position = at + Vector3(9.0, 9.0, -14.0)
+				_cam.look_at(at + Vector3(0.0, 3.0, 30.0), Vector3.UP)
+			_:
+				_cam.global_position = Vector3(p.x + 34.0, p.y + 14.0, p.z + 10.0)
+				_cam.look_at(Vector3(p.x - 4.0, p.y + 2.0, p.z - 40.0), Vector3.UP)
 
 
 func _process(_delta: float) -> void:
@@ -141,6 +166,42 @@ func _process(_delta: float) -> void:
 		var e: Dictionary = boss.events[_events_seen]
 		_events_seen += 1
 		print("frame %d: %s" % [Engine.get_process_frames(), e])
+
+
+## Beside Mecha Guppy while it's up (looking across at its jaws from outside the climb), else alongside the runner.
+func _shark_cam(p: Vector3) -> void:
+	var shark: MechaGuppyShark = boss.shark
+	if shark.shown() and shark.hinge.y > p.y - 40.0:
+		var h: Vector3 = shark.hinge
+		var side: float = -1.0 if h.x > 0.0 else 1.0
+		var target := Vector3(h.x, maxf(h.y + 8.0, p.y - 2.0), h.z)
+		var want := Vector3(h.x + side * 26.0, target.y + 9.0, h.z + 22.0)
+		_cam.global_position = _cam.global_position.lerp(want, 0.15) if _cam_set else want
+		_cam_set = true
+		_cam.look_at(target, Vector3.UP)
+		return
+	var w := Vector3(p.x - 26.0, p.y + 10.0, p.z + 14.0)
+	_cam.global_position = _cam.global_position.lerp(w, 0.1) if _cam_set else w
+	_cam_set = true
+	_cam.look_at(Vector3(p.x, p.y - 2.0, p.z - 30.0), Vector3.UP)
+
+
+## Moves the runner on to step `k`'s roof, past its landing, before the frames are written (a view from higher up).
+func _move_on(k: int) -> void:
+	var climb: MechaGuppyClimb = boss.climb
+	climb.plan_until(boss.climb.roofs[mini(k, climb.roofs.size() - 1)].first_start() + 400.0, 0)
+	if k >= climb.steps.size():
+		return
+	var into: MechaGuppyClimb.Step = climb.steps[k - 1]
+	var p: Player = world.player
+	p.distance = into.land + 2.0
+	p.floor_y = into.top_y
+	p.h = into.top_y
+	p.lane = into.up.x
+	p.set(&"_x", world.geo.lane_x(into.up.x))
+	p.floor_base = into.top_y
+	boss.stairs.update(p.distance)
+	_run_cam.snap()
 
 
 ## The runner on the first hut, standing still under it halfway along (the pads already behind them): what a rider

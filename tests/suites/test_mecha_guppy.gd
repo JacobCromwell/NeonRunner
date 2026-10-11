@@ -20,7 +20,8 @@ extends TestSuite
 ## - the roofs' faces: a lane switch into a roof's side from below its top bumps; stepping off a roof's lanes that
 ##   reach back into the gap is a fall, into the front of the lanes beyond it a crash (what looks like a hit is a
 ##   hit), and the grapple saves either before it gets there;
-## - hits (register_hit, which E5e-b2's bombs call): none in an intro, 4 end phase 1, 6 phase 2; weapons do nothing;
+## - hits (register_hit, which Captain Cogs' bombs call: test_mecha_guppy_bombs): none in an intro, 4 end phase 1, 6
+##   phase 2; weapons do nothing;
 ##   phase 3's stub ends top_seconds into its pattern; the waterfall in phases 1 and 2 only; the floor base follows
 ##   the climb and the climbing view is on;
 ## - the armor rule's pickups on the roof the runner will run along, at its height, not under a hut.
@@ -64,7 +65,9 @@ func _movement(speed: float) -> MovementTuning:
 	return t
 
 
-## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's preview by default): [world, boss].
+## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's preview by default): [world, boss]. These checks are of
+## the climb and the fight's frame on their own: Captain Cogs' bombs and Mecha Guppy's bites are off (MechaGuppy.
+## attacks_enabled; test_mecha_guppy_bombs and _bites check them).
 func _fight(lanes: int, speed: float, resume: Dictionary = {}, p_def: BossDef = null) -> Array:
 	var d: BossDef = p_def if p_def != null else def
 	var t: MovementTuning = _movement(speed)
@@ -79,6 +82,7 @@ func _fight(lanes: int, speed: float, resume: Dictionary = {}, p_def: BossDef = 
 	var arena: BossArena = boss.plan_arena(ctx)
 	var world: RunWorld = sim.build_world(arena.layout, null, t, ctx.config)
 	boss.setup(world, ctx, arena)
+	boss.attacks_enabled = false
 	return [world, boss]
 
 

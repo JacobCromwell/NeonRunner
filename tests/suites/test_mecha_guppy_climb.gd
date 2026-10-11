@@ -2,9 +2,10 @@ extends TestSuite
 ## Mecha Guppy and Captain Cogs' climb on real physics (GDD §10; task E5e-b1; its data, plan and pieces:
 ## test_mecha_guppy.gd), at 3, 5 and 6 lanes, at the reference 18 m/s and the Beach's 23.8 m/s, without god mode:
 ## - a runner who reads the climb (MechaGuppyBot: the lanes that lead up read off the hut and the roofs, a lane switch
-##   at a time) climbs through phases 1 and 2 without a fall, with hits landed as it climbs (a stand-in for E5e-b2's
-##   bombs: one each time it lands on a higher roof), into phase 3's top, which ends the fight; phase 2's climb is
-##   15-25% faster, measured;
+##   at a time) and dodges Captain Cogs' bombs (a way through their circles) climbs through phases 1 and 2 without a fall
+##   or a hit taken, landing the hits as it climbs (each step's bomb falling into Mecha Guppy's jaws: task E5e-b2), into
+##   phase 3's top, which ends the fight; the phases' times are printed (the clean bot's); phase 2's climb is 15-25%
+##   faster, measured (the climb alone: the captain and the shark off, a stand-in hit on each landing);
 ## - the worst case, on physics: before every step's pads the runner goes to the lane farthest from the lanes that
 ##   lead up and jumps right before the pads (the latest anyone flips up), dashing as it jumps too, then reads only
 ##   read_seconds after settling on the hut: it still makes every step, with time to spare (the margin, measured);
@@ -20,6 +21,8 @@ extends TestSuite
 ## - the climbing camera over the climb: the runner on screen, the camera never inside a roof (each step's rise well
 ##   within RunCamera.FLOOR_REACH) and never snapping (its ease after a drop off a hut moves it under 0.40 m on the
 ##   first frame, E5e-a's bound); the runner's shadow on the roof under them.
+## Except where they say, the checks are of the climb on its own: Captain Cogs' bombs and Mecha Guppy's bites are off
+## (MechaGuppy.attacks_enabled; test_mecha_guppy_bombs and _bites check them).
 ## Each test prints its figures (the phases' ends, the time to spare, phase 2's rate) for the report.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
@@ -58,8 +61,9 @@ func _movement(speed: float) -> MovementTuning:
 
 
 ## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's preview by default; with the dash power-up at its
-## best tier, a 3 s cooldown, with `dash`): [world, boss].
-func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false) -> Array:
+## best tier, a 3 s cooldown, with `dash`; with Captain Cogs' bombs and Mecha Guppy's bites only with `attacks`):
+## [world, boss].
+func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false, attacks: bool = false) -> Array:
 	var d: BossDef = p_def if p_def != null else def
 	var t: MovementTuning = _movement(speed)
 	var boss := BossEncounter.create(d) as MechaGuppy
@@ -76,6 +80,7 @@ func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false)
 		loadout.tiers[&"dash"] = 4
 	var world: RunWorld = sim.build_world(arena.layout, loadout, t, ctx.config)
 	boss.setup(world, ctx, arena)
+	boss.attacks_enabled = attacks
 	return [world, boss]
 
 
@@ -110,15 +115,16 @@ func _run(world: RunWorld, seconds: float, done: Callable, each: Callable = Call
 
 # --- Through phases 1 and 2 -------------------------------------------------------------------
 
-## A runner who reads the climb climbs through phases 1 and 2, a hit landing each time it reaches a higher roof
-## (E5e-b2's bombs stand-in), into phase 3's top, which ends the fight, without a fall, at every lane count and both
-## speeds. Then phase 2's faster climb, measured: eight steps planned in each phase, landing to landing.
+## A runner who reads the climb and dodges Captain Cogs' bombs climbs through phases 1 and 2 (each step's bomb falling into
+## Mecha Guppy's jaws: a hit) into phase 3's top, which ends the fight, without a fall or a hit taken, at every lane count
+## and both speeds; the phases' times are printed (the clean bot's: GDD §10, the fight may run long but shouldn't drag).
+## Then phase 2's faster climb, measured: eight steps planned in each phase, landing to landing.
 func _test_climb_through() -> void:
 	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.top_seconds = 8.0)
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
 			var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
-			var pair: Array = _fight(lanes, speed, quick)
+			var pair: Array = _fight(lanes, speed, quick, false, true)
 			var world: RunWorld = pair[0]
 			var boss: MechaGuppy = pair[1]
 			var p: Player = world.player
@@ -126,22 +132,28 @@ func _test_climb_through() -> void:
 			bot.reaction = REACTION
 			var cause: Array[String] = [""]
 			p.died.connect(func(c: String) -> void: cause[0] = c)
-			var state: Dictionary = {"climbed": 0}
-			await _run(world, 240.0, func() -> bool: return boss.is_defeated(), func() -> void:
-				bot.step()
-				if bot.steps_climbed > int(state["climbed"]):
-					state["climbed"] = bot.steps_climbed
-					boss.register_hit(&"stand_in"))
-			check(boss.is_defeated() and p.alive, "a runner who reads the climb makes it through phases 1 and 2 and phase 3's top %s%s"
+			var hurt: Array[int] = [0]
+			p.item_used.connect(func(_item: StringName) -> void: hurt[0] += 1)
+			await _run(world, 240.0, func() -> bool: return boss.is_defeated(), bot.step)
+			check(boss.is_defeated() and p.alive, "a runner who reads the climb and dodges the bombs makes it through phases 1 and 2 and phase 3's top %s%s"
 				% [tag, "" if p.alive else ": %s at %.0f m, %.1f s" % [cause[0], p.distance, boss.fight_time()]])
 			check(bot.min_slack >= REACTION, "with time to spare on every hut (at least %.2f s) %s" % [bot.min_slack, tag])
 			var ends: Array[Dictionary] = _events(boss, &"phase_end")
 			var times: Array = ends.map(func(e: Dictionary) -> String: return "%.1f" % float(e["t"]))
-			check(ends.size() == 2 and _events(boss, &"hit").size() == 10 and not _events(boss, &"top_over").is_empty(),
-				"4 hits end phase 1, 6 more phase 2, and phase 3's top runs out (%d phase ends, %d hits; phases end at %s s) %s"
-				% [ends.size(), _events(boss, &"hit").size(), times, tag])
-			print("  Mecha Guppy's climb %s, a hit on each landing: phases 1 and 2 end at %s s, %d roofs, %.0f m up; least time to spare on a hut %.2f s"
-				% [tag, " and ".join(PackedStringArray(times)), bot.steps_climbed, p.floor_y, bot.min_slack])
+			var hits: Array[Dictionary] = _events(boss, &"hit")
+			var bombed: bool = true
+			for h: Dictionary in hits:
+				bombed = bombed and h["cause"] == &"bomb"
+			check(ends.size() == 2 and hits.size() == 10 and bombed and not _events(boss, &"top_over").is_empty(),
+				"4 bomb hits end phase 1, 6 more phase 2 (each a bomb into the shark's jaws), and phase 3's top runs out (%d phase ends, %d hits; phases end at %s s) %s"
+				% [ends.size(), hits.size(), times, tag])
+			check(hurt[0] == 0, "the clean runner is never hit (no item used) %s" % tag)
+			var stats: Dictionary = boss.bombs.stats
+			print("  Mecha Guppy and Captain Cogs %s, the clean bot: phase 1 ends at %s s, phase 2 at %s s (%.1f s in phase 2), %d roofs, %.0f m up; %d bombs (%d volleys of %d spots, %d on huts, %d into the shark), %d dodging switches, %d bites; least time to spare on a hut %.2f s"
+				% [tag, times[0] if times.size() > 0 else "-", times[1] if times.size() > 1 else "-",
+					float(ends[1]["t"]) - float(ends[0]["t"]) if ends.size() > 1 else NAN, bot.steps_climbed, p.floor_y,
+					int(stats["thrown"]), int(stats["volleys"]), int(stats["spots"]), int(stats["hut"]), int(stats["hit"]),
+					bot.dodge_moves, boss.shark.bites, bot.min_slack])
 			await sim.free_world(world)
 			check(await _phase_rates(lanes, speed), "phase 2's climb is faster as planned %s" % tag)
 
@@ -500,13 +512,13 @@ func _test_rhythm_and_retry() -> void:
 
 # --- The climbing camera ------------------------------------------------------------------------
 
-## The run camera over the climb (RunWorld.camera_climbs, on for the fight): the runner on screen all the way up, the
-## camera never inside a roof (each step's rise is well within RunCamera.FLOOR_REACH, so it sees every roof it must
+## The run camera over the climb (RunWorld.camera_climbs, on for the fight; the captain and the shark at work): the
+## runner on screen all the way up, the camera never inside a roof (each step's rise is well within RunCamera.FLOOR_REACH, so it sees every roof it must
 ## clear) and never 0.40 m or more from where it was a frame before; the runner's shadow on the roof under them.
 func _test_camera() -> void:
 	for lanes: int in [3, 6]:
 		var tag: String = "(%d lanes)" % lanes
-		var pair: Array = _fight(lanes, 23.8)
+		var pair: Array = _fight(lanes, 23.8, null, false, true)
 		var world: RunWorld = pair[0]
 		var boss: MechaGuppy = pair[1]
 		var p: Player = world.player
