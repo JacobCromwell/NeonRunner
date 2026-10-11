@@ -32,6 +32,7 @@ extends RefCounted
 ## wait until it's past the bite. `bite_slack` is the least time it had to spare before a bite that leaves a lane: from its
 ## last switch's press (or its reading, with none to make) to its hurtbox's front reaching the bite, less the switch;
 ## `jump_margin` the least its jumps cleared a full-width bite's stretch by, either end (seconds); `bites` what it met.
+## With `floor_bites` off it ignores them, running on in its lane into the gap (the tests' fall).
 ## Phase 3 (task E5e-c, MechaGuppyTop), on the top: it reads Captain Cogs' rounds by their red lines and the waves by
 ## their swells, `dodge_reaction` late (the planner's own reaction): once a round's lines show, it switches to the nearest
 ## lane they leave clear (the one toward the middle on a tie), and once a wave's swell is rising, it jumps as the surge

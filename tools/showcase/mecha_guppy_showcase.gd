@@ -49,7 +49,10 @@ extends Node3D
 ## rumble) about frame 168, its jaws open and the bait's aim following the runner 174-180, the lock and the throw about
 ## 180, the switch out about 184, the bomb into the jaws about 190 (3 lanes: 156, 162-168, 168, 172, 179; 6 lanes: 173,
 ## 179-185, 185, 189, 196); with --start=1, 83, 89-95, 95, 99, 106 (--events prints the exact frames: bait_seek,
-## bait_lock, shark_hit).
+## bait_lock, shark_hit). The floor bite (E5e-f; climb, 6 lanes): its red crescent and Mecha Guppy rising beside the roof
+## about frame 68, its jaws through the deck about 80, the snap 84, the runner passing in the lane it leaves 86-93; a
+## full-width one (--lanes=3 --phase=2 --start=3): its warning 55, the snap 71, the jump over the gap about 76-79
+## (floor_bite_warning, floor_bite_snap).
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const SKY_PATH: String = "res://data/skies/beach_sunset.tres"
