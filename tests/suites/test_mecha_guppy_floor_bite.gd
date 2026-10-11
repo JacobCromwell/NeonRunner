@@ -29,6 +29,8 @@ extends TestSuite
 ## - the snap, on real contact: a runner in the bite's area as it snaps without protection dies of Mecha Guppy's bite; the
 ##   armor's block, the shield's and a dash through it each hold the floor under them (GameRules.cut_hold_seconds) and they
 ##   run on past the hole; one beside it, in the lane it leaves, is untouched;
+## - a phase change (the next phase's intro: no attacks): with Mecha Guppy's jaws open over a bite it's called off, nothing
+##   bitten; with them already snapping shut the snap completes, the chunk going as warned (task E5e-f's review);
 ## - a fall into the gap: the grapple's save and a revive pull the runner up onto the roof (past the gap, or into a lane it
 ##   leaves) and they run on; no hit for that step;
 ## - pickups: no armor pickup on a bitten roof asks for a grab and an escape that can't both happen (task E5e-f's review);
@@ -69,6 +71,7 @@ func run() -> void:
 	await _test_reduced_flashing()
 	await _test_margins()
 	await _test_snap()
+	await _test_phase_change()
 	await _test_falls()
 	await _test_pickups()
 	await _test_retry()
@@ -805,6 +808,51 @@ func _test_snap() -> void:
 		await sim.free_world(world)
 
 
+# --- A phase change ---------------------------------------------------------------------------------------------
+
+## A phase change (the next phase's intro: no attacks) while Mecha Guppy's jaws are open over a floor bite calls it off:
+## its warning gone, nothing bitten; one while they're already snapping shut lets the snap complete, the chunk going as
+## warned (task E5e-f's review: called off then, its jaws shut on intact floor). Roof 1's bite, 3 lanes, 23.8 m/s.
+func _test_phase_change() -> void:
+	for at: int in [MechaGuppyShark.Stage.OPEN, MechaGuppyShark.Stage.SNAPPING]:
+		var pair: Array = _fight(3, 23.8)
+		var world: RunWorld = pair[0]
+		var boss: MechaGuppy = pair[1]
+		var p: Player = world.player
+		var bot := MechaGuppyBot.new(boss)
+		bot.reaction = REACTION
+		var st: Dictionary = {"bite": null}
+		await _run(world, 40.0, func() -> bool:
+			var b: MechaGuppyCrescent = st["bite"]
+			return b != null and p.distance > b.to + 4.0, func() -> void:
+			bot.step()
+			var shark: MechaGuppyShark = boss.shark
+			if st["bite"] != null or shark.action.is_empty() or int(shark.action["kind"]) != MechaGuppyShark.Kind.FLOOR \
+					or shark.stage != at:
+				return
+			st["bite"] = shark.action["bite"]
+			boss._end_phase(&"test"))
+		var bite: MechaGuppyCrescent = st["bite"]
+		var fb: MechaGuppyFloorBite = boss.floor_bite
+		var state: String = "phase %d, %d snaps, %d called off, eaten %s, skipped %s, %d crescents eaten, alive %s" % [
+			boss.phase_index + 1, fb.snaps, fb.called_off, bite.eaten if bite != null else false,
+			bite.skipped if bite != null else false, boss.stairs.crescents, p.alive]
+		if bite == null:
+			check(false, "a phase change with Mecha Guppy's jaws %s over a floor bite (never got there)"
+				% ("open" if at == MechaGuppyShark.Stage.OPEN else "snapping shut"))
+		elif at == MechaGuppyShark.Stage.SNAPPING:
+			check(boss.phase_index == 1 and fb.snaps == 1 and fb.called_off == 0 and bite.eaten and not bite.skipped
+				and boss.stairs.crescents == 1 and p.alive,
+				"a phase change with Mecha Guppy's jaws already snapping shut lets the snap complete, the chunk going as warned (%s)"
+				% state)
+		else:
+			check(boss.phase_index == 1 and fb.snaps == 0 and fb.called_off == 1 and bite.skipped and not bite.eaten
+				and boss.stairs.crescents == 0 and not fb.warning() and p.alive,
+				"a phase change with Mecha Guppy's jaws open over a floor bite calls it off: its warning gone, nothing bitten (%s)"
+				% state)
+		await sim.free_world(world)
+
+
 # --- A fall into the gap ------------------------------------------------------------------------------------------
 
 ## A runner who runs into a bite's gap (moved into its bitten side's outer lane where they can first switch, then running
@@ -891,6 +939,7 @@ func _test_pickups() -> void:
 	var bad: Array[String] = []
 	var spots: int = 0
 	var beside: int = 0
+	var least: float = INF
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
 			for phase: int in 2:
@@ -937,6 +986,7 @@ func _test_pickups() -> void:
 								beside += 1
 								var switches: int = 0 if bite.full else absi(bite.keep - sl)
 								var need: float = (float(switches) * world.tuning.lane_switch_time + boss.tuning.dodge_margin) * speed + h
+								least = minf(least, (gap.x - at - MechaGuppyStairs.PICKUP_REACH - need) / speed)
 								if at + MechaGuppyStairs.PICKUP_REACH + need > gap.x + 0.01 and bad.size() < 4:
 									bad.append("(%d lanes, %.1f m/s, phase %d) roof %d%s: a pickup in lane %d at %.1f m, %.1f m short of the gap, %d switches to make (%.1f m)"
 										% [lanes, speed, phase + 1, k, ", warned" if warned else "", sl, at, gap.x - at, switches, need])
@@ -944,6 +994,8 @@ func _test_pickups() -> void:
 						if warned:
 							boss.floor_bite.call_off()
 				await sim.free_world(world)
+	print("  Mecha Guppy's floor bites, pickups: %d spots on a bitten roof, %d of them before its bite in a lane it takes, the least %.3f s to spare after the grab, the switches and dodge_margin"
+		% [spots, beside, least])
 	check(bad.is_empty() and spots > 100,
 		"no pickup asks for a grab and an escape that can't both happen: on a roof with a floor bite, in a lane it takes, a pickup leaves every switch to the lane it leaves (or the jump) and dodge_margin before the gap, or comes past the bite (%d spots, %d before a bite in a lane it takes)%s"
 		% [spots, beside, "" if bad.is_empty() else ": " + "; ".join(bad)])

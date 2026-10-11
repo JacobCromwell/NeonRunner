@@ -126,10 +126,10 @@ func _until_pattern(world: RunWorld, boss: MechaGuppy) -> void:
 
 func _test_sounds() -> void:
 	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
-	for sound: StringName in [&"cogs_throw", &"cogs_aim", &"guppy_rumble", &"guppy_bite", &"guppy_clang", &"bomb_whistle",
-			&"bomb_blast"]:
+	for sound: StringName in [&"cogs_throw", &"cogs_aim", &"guppy_rumble", &"guppy_floor_warn", &"guppy_bite", &"guppy_clang",
+			&"bomb_whistle", &"bomb_blast"]:
 		check(library.names().has(String(sound)) and library.stream(sound) != null, "the sound library has '%s'" % sound)
-	for warning: StringName in [&"guppy_rumble", &"bomb_whistle", &"cogs_throw", &"cogs_aim"]:
+	for warning: StringName in [&"guppy_rumble", &"guppy_floor_warn", &"bomb_whistle", &"cogs_throw", &"cogs_aim"]:
 		check(float(library.pitch_variation.get(String(warning), 0.0)) == 0.0, "'%s' (a warning) plays in its key" % warning)
 	var aim: AudioStream = library.stream(&"cogs_aim")
 	var mt := def.tuning as MechaGuppyTuning
