@@ -46,8 +46,9 @@ const SPEEDS: Array[float] = [23.4, 23.8, 24.2, 25.0]
 ## showing itself before its bait, where a second truck's chase would overlap its own.) The Beach (zone 6, task D10d,
 ## seeds 801 and 802): Tiki Tides at 5 lanes, and with the H series (merged with D10) Sunset Strip at 5 lanes too.
 ## Since the owner's October 10, 2026 call (a Buzz Overdrive's 10 m pattern, the curve capping it, the track shared
-## with its encounter): Corporate 2 at 5 lanes only.
-const BOTH_TRUCKS: Array = [["corporate/2", 5]]
+## with its encounter): Corporate 2 at 5 lanes only; and since the owner's October 11, 2026 answer (a showing window
+## takes out a Tithe Collector in its way) none: Corporate 2's second truck at 5 lanes shows itself before its bait too.
+const BOTH_TRUCKS: Array = []
 const VARIANTS: Array[StringName] = [&"city", &"vr_runner", &"burned", &"scavenger", &"golden", &"casino"]
 
 var sim: RunSim

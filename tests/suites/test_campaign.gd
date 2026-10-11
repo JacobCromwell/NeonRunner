@@ -111,6 +111,12 @@ const INTRODUCTION_REACH: float = 210.0
 ## levels' own seeds had 6 late of 63 on K2's curve, the check's limit (3 before; docs/OPEN_QUESTIONS.md §D,
 ## item 521 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 531).
 const SPACED_FROM_START: Array = ["wall_gaps"]
+## Introductions that come late on purpose, as "<level> lanes=<n> <feature>", left out of the late count (still
+## printed): Corporate 2's Tithe Collector at 3 and 6 lanes, whose first one stood in the Enforcer Truck's first chase
+## before its bait (both introduced there) and goes for the truck's showing (the owner, October 11, 2026: "the tithe
+## collector should be removed if we get the bait chance instead"; GDD §9.13), so the next one, at about 0.37 of the
+## level, introduces it, one new thing at a time.
+const LATE_BY_DESIGN: Array[String] = ["corporate/2 lanes=3 tithe_collector", "corporate/2 lanes=6 tithe_collector"]
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
 ## Marketplace's boss, and the Marketplace's outro led to Corporate (_test_old_saves).
 const V2_STEPS: PackedStringArray = ["city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",
@@ -754,6 +760,9 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 		var start: float = gen.feature_start(f)
 		check(at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
 		if SPACED_FROM_START.has(f):
+			continue
+		if LATE_BY_DESIGN.has("%s %s" % [tag, f]):
+			print("  late by design: %s %s (%.2f)" % [tag, f, at[0] / layout.length])
 			continue
 		stats["introductions"] = int(stats["introductions"]) + 1
 		if at[0] > start + INTRODUCTION_REACH * gen.pace:
