@@ -46,12 +46,12 @@ extends Node3D
 ## Frames worth a look (at --fixed-fps 10, 23.8 m/s, 5 lanes): climb, the first pads about frame 36, on the first hut
 ## 41-78, its lane's end and the drop about 78, the first roof 84-117, the second hut 122-146; wrong, the drop and the
 ## fall about 65-75; grapple, the save about 71-79; side, any frame. bait: the shark rising beside roof 2's notch (its
-## rumble) about frame 168, its jaws open and the bait's aim following the runner 174-180, the lock and the throw about
-## 180, the switch out about 184, the bomb into the jaws about 190 (3 lanes: 156, 162-168, 168, 172, 179; 6 lanes: 173,
-## 179-185, 185, 189, 196); with --start=1, 83, 89-95, 95, 99, 106 (--events prints the exact frames: bait_seek,
+## rumble) about frame 173, its jaws open and the bait's aim following the runner 179-185, the lock and the throw about
+## 185, the switch out about 189, the bomb into the jaws about 196 (3 lanes: 162, 165-171, 171, 175, 182; 6 lanes: 180,
+## 186-192, 192, 196, 203); with --start=1, 89, 95-101, 101, 105, 112 (--events prints the exact frames: bait_seek,
 ## bait_lock, shark_hit). The floor bite (E5e-f; climb, 6 lanes): its red crescent and Mecha Guppy rising beside the roof
-## about frame 68, its jaws through the deck about 80, the snap 84, the runner passing in the lane it leaves 86-93; a
-## full-width one (--lanes=3 --phase=2 --start=3): its warning 55, the snap 71, the jump over the gap about 76-79
+## about frame 75, its jaws through the deck about 88, the snap 91, the runner passing in the lane it leaves 95-100; a
+## full-width one (--lanes=3 --phase=2 --start=3): its warning 60, the snap 75, the jump over the gap about 78-84
 ## (floor_bite_warning, floor_bite_snap).
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"

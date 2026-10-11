@@ -735,7 +735,7 @@ func pickup_spot(lead: float) -> Dictionary:
 ## floor bite's way (task E5e-f's review: one taken just short of the gap left no time for the switches still needed): in a
 ## lane the bite takes, taken (PICKUP_REACH past `at`) at least every switch from there to the lane the bite leaves (none
 ## over a full-width one: its jump) and dodge_margin, with half a hurtbox, short of where its gap reaches that lane; or
-## past the bite.
+## past the bite. DESIGN-TBD (docs/questions/e5e.md): pickups near a bite.
 func clear_of_bite(roof: MechaGuppyClimb.Roof, lane: int, at: float) -> bool:
 	var bite: MechaGuppyCrescent = roof.bite
 	if bite == null or bite.skipped:

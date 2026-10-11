@@ -421,7 +421,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   faster (its roofs stand 3.6 m apart). Mecha Guppy rises beside the end of each roof the runner leaves (a
   rumble warns of it) and bites it off once they're up on the hut. Captain Cogs, a clockwork-armed pirate in a
   flying galleon ahead, throws bombs warned like the Floating Head's (a red circle where each lands, a
-  whistle): a volley on each roof to dodge, and in phase 2 more of them, with a bomb where riders land.
+  whistle): a volley on the roofs to dodge, and in phase 2 more of them, with a bomb where riders land. On
+  the first tower, and from the second on every other roof (those carry no volley), Mecha Guppy bites a
+  crescent out of the floor ahead of the runner (E5e-f): a red crescent on the deck and knocking under it
+  warn of it, and it leaves one lane to switch into (in phase 2 some bites cross every lane: jump the gap).
   Weapons do nothing; the bombs are the way to hurt the shark. From the second tower on, near each roof's
   end it has bitten away an outer lane and waits below, jaws open. As the runner nears, Captain Cogs' red
   target follows their lane, then locks onto it with the throw: a runner who leads it into the bitten lane

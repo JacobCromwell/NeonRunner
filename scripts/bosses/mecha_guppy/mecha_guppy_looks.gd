@@ -66,7 +66,7 @@ const DEEP_COLOR := Color(0.045, 0.05, 0.075)
 const DEEP_FADE: float = 42.0
 const DEEP_MOST: float = 0.88
 ## A floor bite's broken face fades the other way, into the sea haze, BITE_HAZE_MOST of the way by BITE_HAZE metres down
-## (_bite_deep): a trench seen from over it reads as a drop, not a slab.
+## (_bite_deep): a trench seen from over it reads as a drop, not a slab. DESIGN-TBD (docs/questions/e5e.md).
 const BITE_HAZE: float = 18.0
 const BITE_HAZE_MOST: float = 0.8
 ## A tower (its walls, an eaten face, a pier's stilts) is drawn at most this far below its deck (metres): deeper,
@@ -99,7 +99,7 @@ const POD_RADIUS: float = 0.35
 ## it replaces) that fades out as the camera comes within END_BAND_NEAR (MeshKit.near_fade): the chase camera passes
 ## just under it as a rider drops, and a 4 m band glowing solid filled up to a quarter of the screen with bright orange
 ## (task E5e-f's review; dimmed instead, the edge colour, redder than it looks, read as a red slab overhead, and every
-## ceiling's 1.2 m band still filled a seventh of it at 6 lanes).
+## ceiling's 1.2 m band still filled a seventh of it at 6 lanes). DESIGN-TBD (docs/questions/e5e.md): its look up close.
 const END_BAND: float = 4.0
 const END_BAND_LIP: float = 0.3
 const END_BAND_GLOW: float = 0.42

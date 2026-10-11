@@ -236,7 +236,9 @@ Where a later step changed an earlier placeholder, the entry says so.
   Placeholder (`MechaGuppyPattern._bait`, `MechaGuppyBombs.start_bait` and `lock_bait`, the tuning's "The hits";
   DESIGN-TBD):
   - From the second tower on (roof 2: not the street, not the first tower, whose run brings the climb's first volley,
-    so the bait comes once that has been learned; not the top), each roof has a **notch** near its end: Mecha Guppy
+    so the bait comes once that has been learned; not the top; E5e-f's review changed this: the first tower now brings
+    the first floor bite alone and the first volley comes on roof 3, after the first bait, see "Raised by E5e-f"), each
+    roof has a **notch** near its end: Mecha Guppy
     has eaten its outer lane for the last `notch_back` (7.5 m) before the next hut starts, on a seeded side. It has the
     eaten floor's look (the orange lip, the eaten face, the chasm below), it's built with the roof, so it's in sight
     from the landing, and that lane has no pads; no pickup and no volley spot comes near it.
@@ -458,24 +460,35 @@ Where a later step changed an earlier placeholder, the entry says so.
 The owner's request (October 11, 2026; GDD §10, "The floor bite"): Mecha Guppy bites a shark-bite crescent out of the
 floor the runner is still running on, before the pads, leaving one lane; in phase 2 the bite is sometimes so big the
 runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `MechaGuppyCrescent`, `MechaGuppyClimb`,
-`MechaGuppyFloorBite`, `MechaGuppyShark.floor_bite` and the tuning's "Mecha Guppy's floor bite").
+`MechaGuppyFloorBite`, `MechaGuppyShark.floor_bite`, `MechaGuppyStairs` (the saves and pickups near a bite),
+`MechaGuppyLooks` (the hut's end band, the trench) and the tuning's "Mecha Guppy's floor bite").
 
 - **Which roofs carry one** (the brief: one new mechanic at a time; if a roof can't fit the bite, the volley and the bait,
   lengthen roofs modestly or alternate what each carries). Placeholder (`MechaGuppyClimb.bitten`, `FIRST_BITE`): the
-  roofs alternate what they carry. Roof 1, the first tower, has the bite on its own, and its volley only once the
-  runner is past the bite (no bait there yet). From roof 2 on, every other roof (the even ones, which REACH_BACK steps
-  lead onto) has the bite and then the bait, with no volley: the bite takes the volley's place. The odd roofs from 3 on
-  keep their volley and bait, so phase 2's landing spots, which come after RUN_ON steps, stay. A bitten roof's run is
-  as long as its bite and then its bait need (`_bite_room`), the same in both phases: at 3 lanes 3.64 s against 3.60 s
-  (18 m/s) and unchanged at 23.8 m/s; at 5 lanes 3.97 s against 3.88 s (18 m/s), unchanged at 23.8 m/s; at 6 lanes
-  4.25 s against 4.02 s (18 m/s), 4.03 s against 4.02 s (23.8 m/s).
-  The effect on the fight: a runner who baits every step finishes phase 1 at 40.4-45.7 s and phase 2 at 85.1-97.0 s
-  (it was 40.4-45.3 s and 85.1-95.8 s before), and wins in 157.4-164.4 s at 23.8 m/s (unchanged) and 159.5-171.1 s
-  at 18 m/s (it was 159.2-169.7 s). A runner who never baits wins in 223.1-246.6 s (it was 223.1-244.3 s).
-  With fewer volleys there are fewer bombs to dodge. Counting only bombs that can reach the runner, phase 2 now has
-  2.50-3.17 a step and 0.33-0.38 a second, against phase 1's 1.40-1.80 and 0.17-0.21 (it was 3.5-4.3 and 0.46-0.54
-  against 1.8-2.6 and 0.22-0.30). Phase 2 still has more than phase 1. Should every roof have a bite instead, with
-  longer roofs, or is alternating right?
+  roofs alternate what they carry.
+  - Roof 1, the first tower, has the bite on its own: no volley and no bait. Task E5e-f's review moved its volley off
+    (one new mechanic at a time), so the climb now teaches one thing a roof: the floor bite on roof 1, the bait on roof
+    2 (with a bite, already learned), the volley on roof 3. This reverses E5e-b3's order, which brought the first volley
+    on roof 1 so it was learned before the bait. The alternative is `FIRST_NOTCH` = 3: the first volley on roof 2 and
+    the first bait on roof 3, keeping E5e-b3's order, with the bait (and so the hits) starting a step later.
+  - From roof 2 on, every other roof (the even ones, which REACH_BACK steps lead onto) has the bite and then the bait,
+    with no volley: the bite takes the volley's place. The odd roofs from 3 on keep their volley and bait, so phase 2's
+    landing spots, which come after RUN_ON steps, stay.
+  - A bitten roof's run is as long as its bite and then its bait need (`_bite_room`), the same in both phases. Counting
+    the bite's reaction from where its warning can be read and the dash's reach (task E5e-f's review, below) made these
+    roofs longer: at 3 lanes 4.18 s at 18 m/s and 3.90 s at 23.8 m/s, against 3.60 s; at 5 lanes 4.74 s and 4.46 s,
+    against 3.88 s; at 6 lanes 5.02 s and 4.74 s, against 4.02 s. Roof 1, with no bait to make room for, has the usual
+    run.
+  - The effect on the fight: a runner who baits every step finishes phase 1 at 41.0-47.2 s and phase 2 at 86.5-100.8 s
+    (before the floor bite: 40.4-45.3 s and 85.1-95.8 s), and wins in 158.0-161.9 s at 23.8 m/s and 162.7-175.7 s at
+    18 m/s (before: 157.4-164.4 s and 159.2-169.7 s). A runner who never baits wins in 226.1-254.3 s (before:
+    223.1-244.3 s).
+  - With fewer volleys there are fewer bombs to dodge. Counting only bombs that can reach the runner, over the steps
+    that threw any, phase 2 has 2.50-3.17 a step and 0.317-0.366 a second, against phase 1's 1.50-2.00 and 0.142-0.180
+    (before the floor bite: 3.5-4.3 and 0.46-0.54 against 1.8-2.6 and 0.22-0.30). Phase 2 still has more than phase 1.
+
+  Should every roof have a bite instead, with longer roofs, or is alternating right? And should the first volley come
+  before the first bait (`FIRST_NOTCH` = 3)?
 - **The shape** (the owner's sketch: a crescent bitten in from one side, deepest in the middle). Placeholder
   (`MechaGuppyCrescent`):
   - A half-ellipse `floor_bite_length` (12 m) long along the bitten side, its edge scalloped by 12 teeth (`TEETH`),
@@ -500,19 +513,30 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
 - **Its warning** (every attack has a visual and an audio warning). Placeholder (`MechaGuppyFloorBite`, `floor_warning`
   1.8 s, `floor_rise` 0.5 s):
   - The visual: the crescent's outline on the floor in the enemy attacks' red, in the Golden Convergence's Fist Slam
-    look. A glowing frame surrounds a faint fill and deepens as the snap comes. The frame beats a little, but holds
+    look: a glowing frame round a solid red fill. The frame deepens as the snap comes and beats a little, but holds
     steady with Reduced flashing. It counts as a floor warning on every lane it takes, so pickups keep off it.
-  - The sound and the shark: Mecha Guppy's rumble as it rises (guppy_rumble) into its watch beside the roof's side on
-    the bitten side, upright, its snout towering over the deck.
+  - The sound and the shark: its own warning sound (guppy_floor_warn, 1.4 s: three heavy knocks from under the deck,
+    nearer each time, timbers groaning and splintering, steel teeth screeching up through the wood) as Mecha Guppy
+    rises into its watch beside the roof's side on the bitten side, upright, its snout towering over the deck. Task
+    E5e-f's review gave it its own sound: it used to share the rumble with the harmless bite of the roof behind and
+    the fallback's breach.
   - The timing: it shows `floor_warning` before the runner reaches the bite. In practice that is 1.99 s, because it
     can't be shorter than Mecha Guppy's rise and lunge plus `floor_snap_lead` (1.54 s plus 0.45 s). It never shows
     before the deadline of the hut that led onto the roof, so it gives no cue to the lanes that lead up.
-  - The margins: from where the runner can first switch, it gives a reaction (0.35 s), every switch from the farthest
-    lane to the one the bite leaves (0.14 s each) and `dodge_margin` (0.25 s). On real movement the worst case, the
-    farthest lane at the first moment the runner can switch, has exactly 0.25 s to spare at 3, 5 and 6 lanes and both
-    speeds.
-  - A full-width bite warns the same way. The earliest take-off over it comes 1.36-1.37 s after a reaction to the
-    warning.
+  - The margins, counted from where its warning can be read (task E5e-f's review): from a hut, and dropping off its
+    end, the crescent on the roof ahead is a sliver a few pixels high, so the reaction starts where the runner can
+    first switch on that roof (`Step.free_at`; never before the hut's deadline). From there the bite gives a reaction
+    (0.35 s) and `WARN_SLACK` (0.15 s), every switch from the farthest lane to the one the bite leaves (0.14 s each),
+    `dodge_margin` (0.25 s), half a hurtbox and the dash's reach (4.8 m: the climb's other margins hold a runner who
+    dashes, and so does this one now). Its front now comes 1.24-1.73 s after the riders can first switch (it was
+    0.69-0.96 s), and its end 1.62-2.24 s before the notch.
+  - On real movement, in the worst case (moved into the farthest lane where the runner can first switch, reading the
+    warning a reaction late from there), it has 0.40 s to spare at 3, 5 and 6 lanes and both speeds (`dodge_margin`
+    and the slack): the bot's last switch is done 0.48-0.64 s before its hurtbox's front reaches the bite, or
+    0.23-0.32 s before when it dashes as it starts across. Reading it as soon as it's on the roof's floor gives the
+    same margins, within a frame.
+  - A full-width bite warns the same way. The earliest take-off over it comes 0.64-1.11 s after a reaction counted
+    from when the warning can be read, and the bot's jump clears its stretch by 0.085-0.100 s at either end.
 
   Is a red crescent the right warning, and are 2 s enough to read it?
 - **The snap and a runner in the bite** (the brief's placeholder; FloorCut's and the Fist Slam's rule). Placeholder
@@ -543,18 +567,42 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
   rise for its bite. At the default `fallback_after` (1) the fallbacks never fall on those steps, so nothing changes.
   At other values a fallback sometimes comes a step later. This changes E5e-b3's "one every fallback_after + 1
   steps". A bitten roof also keeps its notch under the extreme tuning that leaves no other roof room for one. Right?
-- **A save near a bite**. Placeholder (`MechaGuppyStairs.save_spot`):
-  - A grapple save or a revive that would bring the runner down just before a bite that leaves a lane (too near for
-    its crossing) puts them in the lane the bite leaves.
+- **A save near a bite**. Placeholder (`MechaGuppyStairs.save_spot`, `save_crossing`):
+  - A grapple save or a revive that would bring the runner down just before a bite that leaves a lane puts them in the
+    lane the bite leaves when, from the lane it would bring them down in, they couldn't read the bite and cross: a
+    reaction, every switch from there to the lane the bite leaves, `dodge_margin`, half a hurtbox and the dash's reach.
+    (Task E5e-f's review: it used to count 1.5 times the crossing from the farthest lane, which, with the dash's reach
+    counted and the bite further along, sent a save 25 m short of a bite into its lane instead of the nearest lane that
+    leads up, one switch away from it.)
   - A runner who fell into an eaten bite is pulled up into the nearest lane with floor where they come down. In
     practice that is past the gap, in their own lane.
-- **Its sounds**: the rise reuses Mecha Guppy's rumble and the snap reuses guppy_bite, its jaws' crunch. There is no
-  new sound. Right?
+- **Pickups near a bite** (GDD §10's standard armor rule; task E5e-f's review). Placeholder
+  (`MechaGuppyStairs.pickup_spot`, `clear_of_bite`): an armor pickup on a bitten roof never lies where the bite will
+  take its lane, and in a lane the bite takes it lies far enough short of the gap that a runner who grabs it (2 m
+  either side of it) still has every switch to the lane the bite leaves (none over a full-width bite: its jump) and
+  `dodge_margin` before the gap reaches that lane; otherwise it comes past the bite. Before, one could land just
+  short of the gap with switches still needed: a grab and an escape that couldn't both happen. Right?
+- **The hut's end band** (E5e-b1's placeholder: the 4 m orange band where each run of lanes ends on a hut's
+  underside, long and bright so it reads from the hut's start). Task E5e-f's review found it filling up to a quarter
+  of the screen with bright orange as the chase camera passes just under it when the rider drops. Placeholder
+  (`MechaGuppyLooks`, `END_BAND_*`): up close it is an orange lip at the very end (0.3 m, the decks' edge language)
+  with a row of lamps; its 4 m length is a glow card, as bright as the old band, that fades out as the camera comes
+  within 16 m. From afar it reads as before; at the drop only the lip shows. Is that the right look?
+- **The trench's depth** (task E5e-f's review). Placeholder (`MechaGuppyLooks._bite_deep`): a floor bite's broken face
+  fades from the tower's dark timber into the sea haze the deeper it goes (most of the way 18 m down), so a full-width
+  trench seen from over it reads as a drop, not a dark slab.
+- **Its sounds**: the rise has its own warning sound, guppy_floor_warn (above; task E5e-f's review: one that means
+  "this one can kill you", not the rumble of the harmless bite behind and the breach), and the snap reuses guppy_bite,
+  its jaws' crunch. Is the knocking and the screech of teeth through the deck the right warning?
 - **Bites skipped**: a bite that can't be warned fairly any more is skipped, as if it had never been planned. That
   happens in an intro (the attacks off), in phase 3 (`attacks_live`) or under an extreme tuning that keeps Mecha Guppy
-  too busy. A phase change calls off a bite that is already warned but hasn't snapped: its warning goes and nothing is
-  bitten.
+  too busy. A phase change calls off a bite that is already warned but hasn't started its snap: its warning goes and
+  nothing is bitten. One whose jaws are already snapping shut when the phase changes completes, the chunk going as
+  warned (task E5e-f's review: called off then, its jaws shut on intact floor).
 - **The par times' rule** (task E5e-f's brief): the brief describes three stars as about 1.2 times the slowest clean
   baiting fight. The suite's rule, kept here, is Hostile Takeover's margin (74/68.6, about 1.08 times) for three stars,
-  with 1.2 times the room two stars must leave. The fight's length barely changed, so the par times stay at 177 s,
-  210 s and the time bonus to 260 s, and they still meet the suite's rules. Which rule is meant for three stars?
+  with 1.2 times the room two stars must leave. The fight is a little longer (up to 4.6 s baiting at 18 m/s, up to 7.7 s
+  not baiting), but the par times stay at 177 s, 210 s and the time bonus to 260 s, and they still meet the suite's
+  rules: the slowest clean fight at 23.8 m/s is 161.9 s (three stars at 174.6 s by Hostile Takeover's margin, within
+  3 s of 177 s), the slowest at 18 m/s 175.7 s (still three stars, by 1.3 s), and the quickest win without baiting
+  226.1 s. Which rule is meant for three stars?
