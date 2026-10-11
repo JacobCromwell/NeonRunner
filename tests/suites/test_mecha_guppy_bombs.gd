@@ -9,6 +9,7 @@ extends TestSuite
 ##   both speeds, in both phases (phase 1's volleys on the higher roof, phase 2's volley and landing spot): a way
 ##   through each volley, its every lane on floor at each spot and every lane crossed to get there too (never off a
 ##   pier's side into the chasm), every bomb on a roof's top with no hut over or near it, each spot leaving a lane free;
+## - a bomb's fuse sparks as it flies, steady with Reduced flashing;
 ## - real contact only: a blast kills a runner in its lane and spares one in the next; it's an enemy attack (armor and
 ##   the shield block it, the dash passes through, claws don't help) too tall to jump, its hitbox smaller than its
 ##   fireball; a rider under a hut with a bomb on its top is never touched (the blast is all above the hut), and that
@@ -44,6 +45,7 @@ func run() -> void:
 	await _test_ship_and_piers()
 	await _test_fair_spots()
 	await _test_blast_rules()
+	await _test_reduced_flashing()
 	await _test_contact()
 	await _test_ceiling()
 	await _test_what_counts()
@@ -283,6 +285,32 @@ func _test_blast_rules() -> void:
 			"its hitbox is smaller than its fireball and its lane (%.2f x %.2f m, fireball %.2f m)" % [h.size.x, h.size.z, fire])
 		check(absf(h.global_position.y - h.size.y * 0.5) < 0.05, "it stands on the roof's top")
 	await sim.free_world(world)
+
+
+## A bomb's fuse sparks as it flies, and holds steady with Settings > Reduced flashing.
+func _test_reduced_flashing() -> void:
+	var was: bool = Settings.flashing_reduced
+	var flickers: Array[bool] = []
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		var pair: Array = _fight(3, 18.0, 0, false)
+		var world: RunWorld = pair[0]
+		var boss: MechaGuppy = pair[1]
+		var p: Player = world.player
+		p.god_mode = true
+		await _run(world, 0.2, func() -> bool: return false)
+		var d: Dictionary = boss.bombs.throw_at(MechaGuppyBombs.Kind.TEST, 0, p.distance + 40.0, 0.0)
+		var seen: Array[int] = [0, 0]
+		await _run(world, 2.0, func() -> bool: return bool(d["landed"]), func() -> void:
+			var bomb: Node3D = d["bomb"]
+			if bomb != null and bomb.visible and bomb.get_child_count() > 0:
+				seen[1 if (bomb.get_child(0) as Node3D).visible else 0] += 1)
+		flickers.append(seen[0] > 0 and seen[1] > 0)
+		if reduced:
+			check(seen[0] == 0 and seen[1] > 0, "with Reduced flashing the fuse's spark holds steady (%d frames dark)" % seen[0])
+		await sim.free_world(world)
+	check(flickers[0], "without it, the fuse sparks on and off")
+	Settings.flashing_reduced = was
 
 
 ## A blast timed to a runner's arrival kills them in its lane and spares them in the next (real contact only).
