@@ -92,16 +92,19 @@ const HUT_OVERHANG: float = 0.7
 const ANNEX_WALL: float = 1.2
 const ANNEX_ROOF: float = 0.8
 const POD_RADIUS: float = 0.35
-## The orange band at each lane's end on a hut's underside (the end band every ceiling has, MeshKit.ceiling_end's
-## look): long and bright, so it reads from the hut's start (task E5e-b1's review: at 1.2 m it was a sliver until
-## about 0.8 s before the end; seen from below at a grazing angle, its length is what shows). Its brightness is a glow
-## card over it (END_BAND_CARD) that fades out as the camera comes within END_BAND_NEAR (MeshKit.near_fade), the band
-## itself barely glowing (END_BAND_GLOW): the chase camera passes just under it as a rider drops, and the band glowing
-## solid filled up to a quarter of the screen with bright orange (task E5e-f's review).
+## The orange band at each lane's end on a hut's underside: from afar END_BAND long and bright, so it reads from the
+## hut's start (task E5e-b1's review: at 1.2 m it was a sliver until about 0.8 s before the end; seen from below at a
+## grazing angle, its length is what shows), up close an orange lip at the very end (END_BAND_LIP at END_BAND_GLOW, the
+## decks' edge language: LIP_GLOW) with its lamps. Its length is a glow card (END_BAND_CARD, as bright as the solid band
+## it replaces) that fades out as the camera comes within END_BAND_NEAR (MeshKit.near_fade): the chase camera passes
+## just under it as a rider drops, and a 4 m band glowing solid filled up to a quarter of the screen with bright orange
+## (task E5e-f's review; dimmed instead, the edge colour, redder than it looks, read as a red slab overhead, and every
+## ceiling's 1.2 m band still filled a seventh of it at 6 lanes).
 const END_BAND: float = 4.0
-const END_BAND_GLOW: float = 0.06
-const END_BAND_CARD: float = 0.55
-const END_BAND_NEAR: float = 10.0
+const END_BAND_LIP: float = 0.3
+const END_BAND_GLOW: float = 0.42
+const END_BAND_CARD: float = 0.8
+const END_BAND_NEAR: float = 16.0
 ## The band hangs this far under the hut's underside: below a rider's blob shadow there (Player._update_shadow lays it
 ## 0.02 m under a ceiling), so it hides the shadow rather than being darkened by it.
 const SHADOW_UNDER: float = 0.03
@@ -912,7 +915,7 @@ func _rail(s: MeshLayer, a: Vector3, b: Vector3, seed: int) -> void:
 ## another run (so where the other lanes end, the lamps of the lanes that lead up run on: RUN_ON's cue, lit), and the
 ## orange band at its far end.
 func _underside(s: MeshLayer, g: MeshLayer, x0: float, x1: float, zn: float, zf: float, lanes: Vector2i, y: float) -> void:
-	var z0: float = zf + END_BAND
+	var z0: float = zf + END_BAND_LIP
 	s.rect(Vector3(x0, y, z0), Vector3(x1 - x0, 0, 0), Vector3(0, 0, zn - z0), skin.plank_color, 0.0, MeshKit.PAT_BEACH_TIMBER,
 		Vector2.ZERO, Vector2.ONE, MeshKit.beach_timber_param(1, 1, lanes.x))
 	# Flush joists across the planks: they stream past a rider.
@@ -939,19 +942,18 @@ func _underside(s: MeshLayer, g: MeshLayer, x0: float, x1: float, zn: float, zf:
 			s.box(Vector3(x, y - 0.02, z), Vector3(0.24, 0.04, 0.24), lamp, 0.75, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
 			g.rect(Vector3(x - 0.8, y - 0.06, z + 0.8), Vector3(1.6, 0, 0), Vector3(0, 0, -1.6), lamp, 0.28, MeshKit.SHAPE_RADIAL)
 			z += LAMP_SPACING
-	# The orange band where the run ends: a rider drops here (MeshKit.ceiling_end's look, longer and brighter; its
-	# glow stays above the underside, where the chase camera passes as the rider drops). It hangs SHADOW_UNDER under the
-	# underside, below a rider's blob shadow (Player._update_shadow), so a glowing band takes no shadow (task E5e-b2's
-	# review: over the band the shadow read as a red-orange disc, a hazard's colour).
+	# The orange band where the run ends: a rider drops here (see END_BAND), its lip and a row of lamps just behind it.
+	# The lip hangs SHADOW_UNDER under the underside, below a rider's blob shadow (Player._update_shadow), so it takes no
+	# shadow (task E5e-b2's review: over the band the shadow read as a red-orange disc, a hazard's colour).
 	var edge: Color = skin.gap_edge_color
-	s.rect(Vector3(x0, y - SHADOW_UNDER, zf), Vector3(x1 - x0, 0, 0), Vector3(0, 0, END_BAND), edge, END_BAND_GLOW)
+	s.rect(Vector3(x0, y - SHADOW_UNDER, zf), Vector3(x1 - x0, 0, 0), Vector3(0, 0, END_BAND_LIP), edge, END_BAND_GLOW)
 	var lx: float = x0 + 0.6
 	while lx < x1 - 0.3:
-		for along: float in [0.25, END_BAND * 0.5]:
-			s.box(Vector3(lx, y - 0.025, zf + along), Vector3(0.35, 0.05, 0.2), edge, 0.7, MeshKit.PAT_PLAIN,
-				MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
+		s.box(Vector3(lx, y - 0.025, zf + END_BAND_LIP + 0.2), Vector3(0.35, 0.05, 0.2), edge, 0.7, MeshKit.PAT_PLAIN,
+			MeshKit.ALL_FACES & ~MeshKit.FACE_PY)
 		lx += 1.2
-	# Its brightness from afar, gone as the camera comes near (see END_BAND).
+	# Its length from afar, gone as the camera comes near (see END_BAND), and its halo reaching back under the hut (never
+	# past its end, where the chase camera passes as the rider drops).
 	g.rect(Vector3(x0, y - SHADOW_UNDER - 0.01, zf + END_BAND), Vector3(x1 - x0, 0, 0), Vector3(0, 0, -END_BAND), edge,
 		END_BAND_CARD, MeshKit.SHAPE_FLAT, Vector2.ZERO, Vector2.ONE, MeshKit.near_fade(END_BAND_NEAR))
 	g.rect(Vector3(x0, y - 0.05, zf + END_BAND + MeshKit.CEILING_END_GLOW), Vector3(x1 - x0, 0, 0),
