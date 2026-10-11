@@ -23,9 +23,9 @@ extends Node3D
 ##   ship       a camera ahead of and above Captain Cogs' ship, looking back past the captain at the climb as it throws
 ##   bombs      the run camera, as climb (the volleys' circles, the bombs coming down, the blasts; with --phase=2 the
 ##              landing spots and the spots with more bombs)
-##   bait       (E5e-b3) the run camera, as climb: the notch at each roof's end with the shark waiting in it, the bait's
-##              circle following the runner into the notch's lane, the lock and the throw, the switch out before the
-##              edge, the bomb falling into the jaws
+##   bait       (E5e-b3) the run camera, as climb: the notch at each roof's end (from roof 2) with the shark waiting
+##              beside it, the bait's aim following the runner into the notch's lane, the lock and the throw, the switch
+##              out before the edge, the bomb falling into the jaws
 ##   hits       the same as bait
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=M (the run's speed, m/s; the Beach's 23.8 by default),
 ## --phase=N, --daylight (the Beach's own sky instead of Sunset Strip's), --reduced-flashing, --events (prints the
@@ -34,10 +34,11 @@ extends Node3D
 ## the runner on to step S's roof first: a view from higher up; with --phase=2 the steps it plans are phase 2's).
 ## Frames worth a look (at --fixed-fps 10, 23.8 m/s, 5 lanes): climb, the first pads about frame 36, on the first hut
 ## 41-78, its lane's end and the drop about 78, the first roof 84-117, the second hut 122-146; wrong, the drop and the
-## fall about 65-75; grapple, the save about 71-79; side, any frame. bait: the shark rising beside roof 1's notch (its
-## rumble) about frame 88, its jaws open and the bait's circle following the runner 94-100, the lock and the throw about
-## 100, the switch out about 104, the bomb into the jaws about 111 (3 lanes: 83, 89-95, 95, 99, 106; 6 lanes: 91,
-## 97-103, 103, 107, 114; --events prints the exact frames: bait_seek, bait_lock, shark_hit).
+## fall about 65-75; grapple, the save about 71-79; side, any frame. bait: the shark rising beside roof 2's notch (its
+## rumble) about frame 168, its jaws open and the bait's aim following the runner 174-180, the lock and the throw about
+## 180, the switch out about 184, the bomb into the jaws about 190 (3 lanes: 156, 162-168, 168, 172, 179; 6 lanes: 173,
+## 179-185, 185, 189, 196); with --start=1, 83, 89-95, 95, 99, 106 (--events prints the exact frames: bait_seek,
+## bait_lock, shark_hit).
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const SKY_PATH: String = "res://data/skies/beach_sunset.tres"

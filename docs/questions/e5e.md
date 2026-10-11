@@ -136,7 +136,7 @@ step changed an earlier placeholder, the entry says so.
     after the runner reaches it (`top_seconds`; `MechaGuppy.top_reached`, logged and signalled for
     E5e-c).
   - Par times of 240 s and 180 s stand in until E5e-c measures the whole fight. (E5e-b3: a runner who baits
-    every step clears phases 1 and 2 in 78-87 s, one who never does in 223-252 s, before phase 3's minute.)
+    every step clears phases 1 and 2 in 85-96 s, one who never does in 156-176 s, before phase 3's minute.)
 
 ## Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)
 
@@ -234,20 +234,21 @@ step changed an earlier placeholder, the entry says so.
   a runner who dodges one at a roof's end or a pier's open side sends it past the edge into Mecha Guppy's jaws).
   Placeholder (`MechaGuppyPattern._bait`, `MechaGuppyBombs.start_bait` and `lock_bait`, the tuning's "The hits";
   DESIGN-TBD):
-  - From the first tower on (not the street, not the top), each roof has a **notch** near its end: Mecha Guppy has
-    eaten its outer lane for the last `notch_back` (7.5 m) before the next hut starts, on a seeded side. It has the
+  - From the second tower on (roof 2: not the street, not the first tower, whose run brings the climb's first volley,
+    so the bait comes once that has been learned; not the top), each roof has a **notch** near its end: Mecha Guppy
+    has eaten its outer lane for the last `notch_back` (7.5 m) before the next hut starts, on a seeded side. It has the
     eaten floor's look (the orange lip, the eaten face, the chasm below), it's built with the roof, so it's in sight
     from the landing, and that lane has no pads; no pickup and no volley spot comes near it.
   - As the runner comes near, Mecha Guppy rises into its **catch** beside the notch, with its rumble: its jaws wide,
     the lower jaw flat under the notch's lane, the upper jaw raised beside the track. Captain Cogs takes aim
-    (cogs_aim) and one bomb's circle, a little smaller and steady, follows the runner's lane for `bait_seek`
-    (0.6 s), where the bomb will land: `catch_in` (4 m) into the notch (on the roof's top in every other lane). Then
-    it **locks** onto the lane the runner is in, with the throw and the whistle, 1.1 s before it lands as they get
-    there (`lock_seconds`, the Floating Head's warning).
+    (cogs_aim) and the bomb's **aim**, a red target, follows the runner's lane for `bait_seek` (0.6 s), where the bomb
+    will land: `catch_in` (4 m) into the notch (on the roof's top in every other lane). Then it **locks** onto the lane
+    the runner is in, with the throw and the whistle, 1.1 s before it lands as they get there (`lock_seconds`, the
+    Floating Head's warning), and the bomb's own flat circle takes its place.
   - Locked in the notch's lane, the runner has to switch out before the notch's edge anyway (their lane ends there,
     about a second after the lock at either speed), and the bomb goes on past the edge into the jaws as it passes
     the roof's top: **a hit**. Locked in any other lane, it's a spot of one bomb on the roof, dodged like any other.
-    So the bait asks the runner to be in the notch's lane as the circle locks, then to dodge out, which is what the
+    So the bait asks the runner to be in the notch's lane as the aim locks, then to dodge out, which is what the
     lane's end asks of them too: the dodge and the escape are the same move.
   - **Why the notch, not the hut's ends or the piers' open sides** (E5e-b2's review named those as today's places
     where a lane runs out):
@@ -274,20 +275,30 @@ step changed an earlier placeholder, the entry says so.
 
   Is a notch near each roof's end the owner's "roof's end"? Is one bait a step (a hit a step for a runner who baits
   well, 4 and 6 steps for phases 1 and 2) right? Should the pier's side be a bait place too, on 5-6 lanes where a
-  pier is two lanes wide?
-- **The bait's circle in the notch's lane** (the circles show where a bomb lands, at that floor's height). In the
-  notch's lane there is no floor: the circle hangs over the gap at the roof's top, where the bomb passes on its way
-  into the jaws. Is that readable, or should a circle there look different?
+  pier is two lanes wide? Is the first bait on the second tower right (E5e-b3's review: the first step already
+  brings the climb and the first volley)?
+- **The bait's aim** (E5e-b3's review: the following circle, a flat ring a little smaller than a bomb's circle, showed
+  40 m out as a red sliver a few pixels high). Placeholder (`MechaGuppyBombs._aim_node`, `AIM_SCALE`, `AIM_LIFT`;
+  DESIGN-TBD): a red target, a ring 1.25 times a bomb circle's size with four ticks across it, standing on the floor
+  where the bomb will land and leaning back 45 degrees from it, its face toward the runner, so it reads from 40 m
+  out; steady (no pulse, unlike the locked circle, so nothing flickers with Reduced flashing). At the lock the bomb's
+  own flat, pulsing circle takes its place. In the notch's lane there is no floor: the aim, and then the circle, hang
+  over the gap at the roof's top, where the bomb passes on its way into the jaws. Is a standing target the right look
+  for the aim, and is the circle over the gap readable?
 - **The fallback's cadence** (GDD §10: "Captain Cogs sometimes misses into the chasm anyway"). Placeholder
-  (`fallback_after` 2, DESIGN-TBD): once 2 steps in a row have gone by without a hit, at the next step's hut deadline
-  (every rider committed), with the rider in a lane that leads up, Captain Cogs misses into the chasm beside the lanes
-  that lead up and Mecha Guppy rises to eat it (E5e-b2's hit, unchanged; its bomb is neither heard thrown nor whistles,
-  since it threatens nobody, and the shark glides deep out of sight until it surges up). A runner who never baits
-  lands a hit every third step: phase 1 ends at 88.6-99.9 s and phase 2 at 222.6-251.7 s, against 32.8-36.7 s and
-  77.5-87.3 s for a runner who baits every step (3, 5 and 6 lanes, 18 and 23.8 m/s). Nothing escalates. A step with
-  no bait to offer (under an extreme tuning a roof may have no room for a notch) counts as one without a hit, so the
-  hits never stall. Which N does the owner want? (1 would give a hit every other step; 0 a hit every step, leaving no
-  reason to bait.)
+  (`fallback_after` 1, DESIGN-TBD; 2 until E5e-b3's review, which found a fight with no checkpoint dragging out to
+  about 5 minutes): once a step has gone by without a hit, from the next step's hut deadline (every rider committed),
+  with the rider in a lane that leads up, Captain Cogs misses into the chasm beside the lanes that lead up and Mecha
+  Guppy rises to eat it (E5e-b2's hit; its bomb is neither heard thrown nor whistles, since it threatens nobody, and
+  the shark glides deep out of sight until it surges up). A runner who never baits lands a hit every other step:
+  phase 1 ends at 66.2-74.6 s and phase 2 at 155.5-175.7 s, against 40.4-45.3 s and 85.1-95.8 s for a runner who baits
+  every step (3, 5 and 6 lanes, 18 and 23.8 m/s): 1.6 and 1.8 times as long. Nothing escalates. A step with no bait to
+  offer (under an extreme tuning a roof may have no room for a fair one) counts as one without a hit, so the hits never
+  stall. Which N does the owner want? (2 gave a hit every third step: 223-252 s for phases 1 and 2 before the first
+  notch moved to roof 2; 0 would give a hit every step, leaving no reason to bait.)
+- **At most one hit a step** (E5e-b3's review): a step its fallback already hit offers no bait (no aim follows the
+  runner, no catch), so a runner never lands both on one step, and an aim that follows them is always a chance at a
+  hit. Right?
 - **No hit on a step the runner fell** (a rule from E5e-b3's brief): on a step where the runner fell, even if
   the grapple (or a revive) saved them, no bomb hits: a bait locked then falls past into the chasm as the shark shuts
   its jaws, and a fallback due then waits for the next step. Right?
@@ -309,14 +320,30 @@ step changed an earlier placeholder, the entry says so.
     but the fallback's (silent). Phase 1 throws a spot on each roof's run (one bomb on 3 lanes, two side by side
     on 5-6) and the bait; phase 2 adds, after each RUN_ON step, a spot where riders come down (dodged by a switch
     in the air as they drop off the hut's end), and its spots take a bomb more (two on 3 lanes, three on 5-6). Counting
-    only the bombs that can reach the runner, the bait's included: phase 1 has 2.0-2.75 a step and 0.24-0.31 a
-    second, phase 2 3.5-4.3 a step and 0.46-0.54 a second (3, 5 and 6 lanes, 18 and 23.8 m/s): 52-85% more a step
-    and 65-102% more a second. Is that the owner's "more bombs", or too many? (The owner's 15-25% is read as the
-    climb's figure; fewer spot bombs in phase 2 would bring it nearer that if it is meant for the bombs too.)
+    only the bombs that can reach the runner, the bait's included, over the steps that threw any: phase 1 has
+    1.8-2.6 a step and 0.22-0.30 a second, phase 2 3.5-4.3 a step and 0.46-0.54 a second (3, 5 and 6 lanes, 18 and
+    23.8 m/s): 60-94% more a step and 72-111% more a second (phase 1's first step has no bait now). Is that the
+    owner's "more bombs", or too many? (The owner's 15-25% is read as the climb's figure; fewer spot bombs in phase 2
+    would bring it nearer that if it is meant for the bombs too.)
   - No circle ever shows in the runner's lane while every lane they could switch to has no floor (task E5e-b2's
     review: on a REACH_BACK pier the roof's first spot came down in the runner's lane as they landed). A roof's spots
     are thrown no sooner than the runner can switch lanes there (`Step.free_at`), and the suites check every frame of
     every fight.
+- **Extreme tunings** (E5e-b3's review found tunables inside their own F6 ranges breaking the bait's and the
+  fallback's promises; `test_mecha_guppy_tunables` now checks every tunable at both ends of its range on physics, at
+  3 lanes and 23.8 m/s and at 6 lanes and 18 m/s). Placeholders (`MechaGuppyPattern`, DESIGN-TBD):
+  - A step whose bait can't be fair gets none and counts toward the fallback: the aim shows only once the runner can
+    switch lanes on that roof and has had a reaction (`dodge_reaction` past `Step.free_at` and the hut's deadline),
+    and a runner in the notch's lane as it locks has a reaction, a lane switch and `dodge_margin` to leave it before
+    its edge. A notch starts that far past where its roof's run begins, too, or the roof has none. At the far ends
+    of `bait_seek`, `lock_seconds` or `roof_seconds` this leaves no baits at all: the fallback brings every hit.
+  - The fallback is thrown only once Mecha Guppy can rise for it, waiting while its bomb can still come down before
+    the runner draws level with it; a bite of the roof just left that would keep the shark busy past that gives way:
+    the shark sinks off and that roof's end stays uneaten that step (only under extreme bite timings). Where Mecha
+    Guppy needs longer to surge up and open its jaws (`breach_rise`), the fallback's bomb flies longer than
+    `hit_seconds` and can come down behind the runner.
+
+  Are these the right ways to give at the extremes, or should those tunables' ranges be narrowed instead?
 - **The reaction the fight is planned for**: the planner gives every dodge `dodge_reaction` (0.35 s, the suites'
   usual reaction), then each lane switch the escape needs, plus `dodge_margin` (0.25 s). The suites' bot now waits
   exactly `dodge_reaction` after every circle shows and after the bait locks before it moves, and wins at every lane

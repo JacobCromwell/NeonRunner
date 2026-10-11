@@ -4467,11 +4467,13 @@ world heights:
   k + 1 (`roof_seconds`, 3.6 s at 3 lanes and a lane switch more for each lane past three, from `Step.free_at`: where
   a rider can first switch lanes there, dropping off the hut over its full width on RUN_ON, where it widens past a
   pier on REACH_BACK) to the next pads holds a volley spot and the bait at its end.
-- **The bait's notch** (task E5e-b3; `Roof.notch_lane`, `notch_from`): every roof but the street has an outer lane
-  eaten from `notch_back` (7.5 m) before the next hut to its end (`Roof.covers` and `end_in` know it), on a side
-  seeded by the roof's index alone, so it has nothing to do with the lanes that lead up (no third cue: the suite plans
-  the climb with other lanes leading up and finds the same sides). A roof whose run is too short for it
-  (`NOTCH_AFTER` past where its run begins) has none.
+- **The bait's notch** (task E5e-b3; `Roof.notch_lane`, `notch_from`): every roof from `FIRST_NOTCH` (roof 2) on has
+  an outer lane eaten from `notch_back` (7.5 m) before the next hut to its end (`Roof.covers` and `end_in` know it),
+  on a side seeded by the roof's index alone, so it has nothing to do with the lanes that lead up (no third cue: the
+  suite plans the climb with other lanes leading up and finds the same sides). Roof 1 has none: its run brings the
+  climb's first volley, so the bait comes once that has been learned (the review's O5). A roof whose run is too short
+  for it (`notch_after()`, a reaction, a lane switch and `dodge_margin` past where its run begins, so a runner who
+  lands in the notch's lane can leave it) has none.
 - **The lanes that lead up**: a block of neighbours, one on 3 lanes, and on 5-6 lanes the counts in
   `up_counts` (1, 2, 3, 1, 3, 2), never every lane. Where the block sits is seeded (the fight's rng key, "climb"
   and the lane count, then each step's index): the same on every attempt, never the same block twice running,
@@ -4512,7 +4514,10 @@ world heights:
   and signalled (E5e-c builds on it), the waterfall fades out, and the fight is won `top_seconds` (60 s) later.
 - **Building it** (`MechaGuppyStairs`): everything up to the build horizon, `BUILD_MARGIN` past the edge of sight
   (`sight`: the arena skin's fog end, 200 m, fully fogged), is built through the boss's props and freed once
-  passed; roofs in 24 m pieces, never past where they could still be eaten or notched (`_unknown_reach`). Each step
+  passed; roofs in 24 m pieces, never past where they could still be eaten or notched: a roof whose end isn't planned
+  yet is built to `notch_back` short of where the plan's next hut could start at the nearest (`_unknown_limit`: no
+  nearer than the edge of sight, nor than `MechaGuppyClimb.next_hut_start`), so new pieces appear past the edge of
+  sight (205 m out, measured; task E5e-b3's review found them 168-192 m out, in the haze). Each step
   is planned only as its hut comes to the horizon, in the phase of that moment, and never nearer than the edge of
   sight (`MechaGuppyClimb.plan_next`'s `not_before`); when the phase changes, every step whose hut is still past the
   edge of sight is taken back and planned again (`_replan`, `MechaGuppyClimb.truncate`). Cursors skip finished
@@ -4556,7 +4561,10 @@ world heights:
     freed, the one across rebuilt to end there with the eaten edge's look, its pads cut, the plan's `Roof.end` moved),
     and rubble flies. It never eats the floor the runner is on (it waits for the hut) nor the higher roof (only roof
     k). Its jaws keep `BITE_CLEAR` (2.5 m) under a rider hanging from the hut even mid-jump: measured 3.36 m (counting
-    the jaws' tip caps, which task E5e-b2's measure missed: its snap's closing chin came to 2.43 m then).
+    the jaws' tip caps, which task E5e-b2's measure missed: its snap's closing chin came to 2.43 m then). On a step
+    whose fallback is due, a bite that would keep it busy (`bite_seconds()`, until a breach may come up) past the
+    fallback's last moment gives way (`may_bite`, `MechaGuppyPattern._bite_fits`): it sinks off and that roof's end
+    stays (only under extreme tunings; never at the defaults).
   - **The catch** (task E5e-b3, the bait): as the bait begins, with its rumble, it comes up beside the roof's notch
     with its jaws wide: its head out beside the track, leaning in `CATCH_LEAN` so its lower jaw lies flat under the
     notch's lane, its tip `CATCH_CLEAR` short of the next lane, the top of its open mouth `CATCH_ABOVE` over where the
@@ -4570,7 +4578,7 @@ world heights:
     beside the lanes that don't lead up, its head `lane_clear` (1.5 m) clear of the lanes that do, its jaws opening
     outward `breach_early` (0.25 s) before the bomb lands, held `breach_hold`. Hit, it shudders and recoils, snapping
     shut and sinking at once (gone below the floor before the camera passes); on a step the runner fell it shuts at
-    once.
+    once. It may start only while it's free (`can_breach`: idle, lurking, or sinking already all under the floor).
 - **Captain Cogs** (`CaptainCogsShip`, `CaptainCogsModel`, `CaptainCogsSuit`; DESIGN-TBD; no pronoun: the owner hasn't
   given one): a burly pirate on the humanoid rig, 2.4 m tall (a teal frock coat, a tricorn with a brass cog badge, a
   braided beard, an eyepatch, a clockwork brass arm and a monocle-eye glowing the skin's `neon_blue`; nothing red), on
@@ -4595,11 +4603,14 @@ world heights:
   the chasm, never on a hut), with `dodge_reaction` and every switch plus `dodge_margin` to spare; never under or near
   a hut (`floor_clear`, `hut_clear`); never on a pickup.
   - **The bait** (`start_bait`, `lock_bait`, `bait`, `seek_ring`): Captain Cogs takes aim (cogs_aim, as long as
-    `bait_seek`, 0.6 s) and the bomb's circle, a little smaller and steady, follows the runner's lane where it will
-    land (sliding a lane in about a lane switch); at the lock it stops, grows into the bomb's own pulsing circle and
-    the bomb is thrown at that lane (`Kind.BAIT`, the throw heard, lock_seconds before it lands as they get there). On
-    a roof's top it's a spot of one bomb (a volley: the way through sees it); in the notch's lane it falls past the
-    edge.
+    `bait_seek`, 0.6 s) and the bomb's aim follows the runner's lane where it will land (sliding a lane in about a lane
+    switch): a reticle (`_aim_node`), a ring `AIM_SCALE` (1.25) of a bomb circle's size with four ticks across it in
+    the circles' red, standing on the floor and leaning back `AIM_LIFT` (45°) from it with its face toward the runner,
+    so it reads 40 m out (task E5e-b3's review: the flat ring it was showed there as a sliver a few pixels high);
+    steady, unlike the locked circle's pulse (nothing flickers with Reduced flashing either). At the lock it gives way
+    to the bomb's own flat, pulsing circle and the bomb is thrown at that lane (`Kind.BAIT`, the throw heard,
+    lock_seconds before it lands as they get there). On a roof's top it's a spot of one bomb (a volley: the way through
+    sees it); in the notch's lane it falls past the edge.
 - **Each step's pattern** (`MechaGuppyPattern`; DESIGN-TBD), the same on every step (no escalation):
   - the bite of roof k, as above (an intro too: the level being eaten isn't an attack);
   - the volley on roof k + 1 (`volley`): phase 1 a spot on its run (`roof_spots`); phase 2, after a RUN_ON step, the
@@ -4609,22 +4620,34 @@ world heights:
     never before the hut's deadline (no circle ever tells a rider which lanes lead up: only the owner's two cues do),
     and a roof's spot never before the runner can switch lanes there (`Step.free_at`; task E5e-b2's review: a circle
     in the lane of a runner on a narrow pier, nowhere to switch but the chasm, was a trap); its last spot passed
-    `bait_after` (a reaction and a switch for every lane but one) before the bait locks;
-  - **the bait** (`bait_plan`, `_bait`): at roof k + 1's end, with the shark in its catch beside the notch, the circle
+    `bait_after` (a reaction and a switch for every lane but one) before the bait locks, and before the notch with
+    `lock_to_edge()` to leave its lane (a dodge may have taken the runner there);
+  - **the bait** (`bait_plan`, `_bait`): at roof k + 1's end, with the shark in its catch beside the notch, the aim
     follows the runner from `seek_at` and locks at `lock_at`; it lands `catch_in` (4 m) into the notch (on floor in
-    every other lane, clear of the next hut);
+    every other lane, clear of the next hut). An extreme tuning that breaks its promises gets no bait that step
+    (counted toward the fallback; task E5e-b3's review): its aim shows only once the runner can switch lanes on that
+    roof and has had a reaction (`seek_at` past `Step.free_at` and the hut's deadline plus `dodge_reaction`), and a
+    runner in the notch's lane as it locks has `lock_to_edge()` (a reaction, a lane switch and `dodge_margin`) to
+    leave it before its edge. Once it follows, it goes stale only `STALE` past where it should have locked (a long
+    `bait_seek` used to cancel it mid-follow). A step already hit (its fallback came first) gets none: a hit at most
+    one a step, and an aim that follows the runner is always a chance at one;
   - **the fallback** (`_fallback`, `hit_spot`; GDD §10: "Captain Cogs sometimes misses into the chasm anyway"): once
-    `fallback_after` (2) steps in a row have gone by without a hit (`dry`, counted as each step closes after its bait
-    was offered, or with none to offer: under an extreme tuning a roof may have no room for a notch, and the hits
-    never stall), at the next hut's deadline, with the rider in a lane that leads up and not fallen that step, Captain
-    Cogs throws at the chasm in front of roof k + 1, beside the lanes that lead up on the side with more lanes that
-    don't (`hit_back`, 6.8 m, before that roof's front, `hit_seconds`, 0.65 s, of flight), and Mecha Guppy breaches
-    there: a hit. Never a hit on a step the runner fell, even if the grapple saved them (`note_fall`, `catch_ok`).
-  A runner who baits every step lands one hit a step: phase 1 ends at 32.8-36.7 s and phase 2 at 77.5-87.3 s (3, 5, 6
-  lanes at 18 and 23.8 m/s); one who never baits lands one every third step: 88.6-99.9 s and 222.6-251.7 s. Phase 2
-  has more bombs to dodge (the ones that can reach the runner, the bait's included): 3.5-4.3 a step and 0.46-0.54 a
-  second against phase 1's 2.0-2.75 and 0.24-0.31. `attacks_enabled` (tests) turns the bombs and the bites off;
-  `hits_enabled` (tests) keeps the hits from landing (no catch, no fallback).
+    `fallback_after` (1; task E5e-b3's review: 2 dragged a fight with no checkpoint out to about 5 minutes) steps in a
+    row have gone by without a hit (`dry`, counted as each step closes after its bait was offered, or with none to
+    offer: under an extreme tuning a roof from `FIRST_NOTCH` on may have no room for one, and the hits never stall),
+    from the next hut's deadline, with the rider in a lane that leads up and not fallen that step, Captain Cogs throws
+    at the chasm in front of roof k + 1, beside the lanes that lead up on the side with more lanes that don't
+    (`hit_back`, 6.8 m, before that roof's front; `fallback_flight()`: `hit_seconds`, 0.65 s, or longer where Mecha
+    Guppy needs longer to surge up and open, `breach_rise`), and Mecha Guppy breaches there: a hit. It's thrown only
+    once the shark can rise for it (`MechaGuppyShark.can_breach`), waiting while its bomb can still come down before
+    the runner draws level with it (`fallback_last`); past that it waits for the next step. Never a hit on a step the
+    runner fell, even if the grapple saved them (`note_fall`, `catch_ok`).
+  A runner who baits every step lands one hit a step from the first notch on: phase 1 ends at 40.4-45.3 s and phase 2
+  at 85.1-95.8 s (3, 5, 6 lanes at 18 and 23.8 m/s); one who never baits lands one every other step: 66.2-74.6 s and
+  155.5-175.7 s (1.6 and 1.8 times as long). Phase 2 has more bombs to dodge (the ones that can reach the runner, the
+  bait's included, counted over the steps that threw any): 3.5-4.3 a step and 0.46-0.54 a second against phase 1's
+  1.8-2.6 and 0.22-0.30. `attacks_enabled` (tests) turns the bombs and the bites off; `hits_enabled` (tests) keeps the
+  hits from landing (no catch, no fallback).
 - **The armor rule's pickup** (the standard 15-17 s, `armor_when_unprotected` like every boss) goes on the roof
   the runner will run along, at its height (`_on_armor_pickup_due`, `MechaGuppyStairs.pickup_spot`,
   `PickupField.place`): past where a rider lands, short of the next hut and clear of the bait (before the notch), in
@@ -4635,13 +4658,13 @@ In `scripts/bosses/mecha_guppy/`:
 | File | What |
 |---|---|
 | `mecha_guppy.gd` (`MechaGuppy`) | the encounter: the arena (`_plan_lap`: nothing of the generator's, a gap in every lane from `EATEN_BEHIND` behind each lap, a wall gap on both sides over every lap), the climb, the stairs, the backdrop, the climbing view, the shark, the ship, the bombs and the pattern (`_build_boss`; `_advance` drives the last four every physics step), phase 3's stub (`top_due`, `on_top`, `top_reached`, `top_reached_at`, `_pattern_tick`), `register_hit` (it tells the pattern), `attacks_live` / `bites_live` (`attacks_enabled` for tests), `sound` (played and logged), the armor pickups (`_place_armor`, `armor_pickups_waiting`), the grapple's save and its rope (`_grapple_save`, which tells the pattern of the fall); a phase change calls off a bait still following; `run_pace` |
-| `mecha_guppy_climb.gd` (`MechaGuppyClimb`) | the plan: `Roof` (top, lane starts, eaten end, notch; `covers`, `end_in`, `full_from`, `notched`, `notch_side`) and `Step` (pads, hut, lane ends, the lanes that lead up, cue, settle, deadline, landing, `free_at`; `nearest_up`, `switches_from`); `make`, `plan_next` (with `not_before`), `next_hut_start`, `roof_run_seconds`, `plan_until`, `truncate`, `top_planned`, `step_at` / `step_index_at` / `roof_index_at` (binary searches), `roofs_at`, `floor_at`, `hut_at`, `margin`, `wrong_reach`, `climb_rate`; the motions frame by frame (`jump_seconds`, `flip_seconds`, `drop_seconds`, `save_seconds`) |
-| `mecha_guppy_stairs.gd` (`MechaGuppyStairs`) | builds the plan up to the edge of sight and a margin: each roof's front pieces (the reaching lanes' box, side blocker and solid fronts), its full-width part in pieces (split at its notch: `_roof_piece`, the notch's blocker), pad strips (none in a notch), huts; plans each step as late as it can, never in sight, and re-plans the unseen ones when the phase changes (`_replan`); the floor base every frame; `eat_roof` (a bite: the roof cut back, collision and look together, its pads too; `eaten`); questions: `runs`, `span`, `horizon`, `save_spot`, `roof_front`, `pickup_spot`, `roof_reach` |
-| `mecha_guppy_shark.gd` (`MechaGuppyShark`) | Mecha Guppy: `bite` (with a catch first: `catch_pose`, `catch_until`), `lurk`, `breach` (its stages: `LURKING`, `RISING`, `CATCHING`, `SHUTTING`, `WAITING`, `DIVING`, `BREAKING`, `OPEN`, `SNAPPING`, `SINKING`, the pose eased between), `mouth_contains`, `hit` (the clang, fireball, sparks, smoke, shudder; a breach recoils, a catch snaps shut), `jaws_points` / `jaws_over` (tests: where its jaws reach), `on_snap` (the pattern eats the roof); counts for tests (`bites`, `catches`, `breaches`, `hits`, `skipped`) |
+| `mecha_guppy_climb.gd` (`MechaGuppyClimb`) | the plan: `Roof` (top, lane starts, eaten end, notch; `covers`, `end_in`, `full_from`, `notched`, `notch_side`) and `Step` (pads, hut, lane ends, the lanes that lead up, cue, settle, deadline, landing, `free_at`; `nearest_up`, `switches_from`); `make`, `plan_next` (with `not_before`), `next_hut_start`, `roof_run_seconds`, `notch_after` (and `FIRST_NOTCH`), `plan_until`, `truncate`, `top_planned`, `step_at` / `step_index_at` / `roof_index_at` (binary searches), `roofs_at`, `floor_at`, `hut_at`, `margin`, `wrong_reach`, `climb_rate`; the motions frame by frame (`jump_seconds`, `flip_seconds`, `drop_seconds`, `save_seconds`) |
+| `mecha_guppy_stairs.gd` (`MechaGuppyStairs`) | builds the plan up to the edge of sight and a margin: each roof's front pieces (the reaching lanes' box, side blocker and solid fronts), its full-width part in pieces (split at its notch: `_roof_piece`, the notch's blocker), pad strips (none in a notch), huts; a roof whose end isn't planned yet only as far as its notch could start (`_unknown_limit`); plans each step as late as it can, never in sight, and re-plans the unseen ones when the phase changes (`_replan`); the floor base every frame; `eat_roof` (a bite: the roof cut back, collision and look together, its pads too; `eaten`); questions: `runs`, `span`, `horizon`, `save_spot`, `roof_front`, `pickup_spot`, `roof_reach` |
+| `mecha_guppy_shark.gd` (`MechaGuppyShark`) | Mecha Guppy: `bite` (with a catch first: `catch_pose`, `catch_until`; giving way to a fallback due: `may_bite`, `bite_seconds`), `lurk`, `breach` (`can_breach`) (its stages: `LURKING`, `RISING`, `CATCHING`, `SHUTTING`, `WAITING`, `DIVING`, `BREAKING`, `OPEN`, `SNAPPING`, `SINKING`, the pose eased between), `mouth_contains`, `hit` (the clang, fireball, sparks, smoke, shudder; a breach recoils, a catch snaps shut), `jaws_points` / `jaws_over` (tests: where its jaws reach), `on_snap` (the pattern eats the roof); counts for tests (`bites`, `catches`, `breaches`, `hits`, `skipped`, `yielded`) |
 | `mecha_guppy_shark_model.gd` (`MechaGuppySharkModel`) | its meshes, built once per skin: `upper_jaw` (the snout, back of the head, eyes, palate and teeth), `lower_jaw` (the chin, belly plating, the mouth's floor and teeth), `body` (the throat, gills, the body down into the chasm, fins); `jaw_size`, `TIP_CAP` |
 | `captain_cogs_ship.gd` (`CaptainCogsShip`), `captain_cogs_model.gd` (`CaptainCogsModel`), `captain_cogs_suit.gd` (`CaptainCogsSuit`) | the ship's station and motion, the captain's stance and throw (`advance`, `throw`, `hand_world`, `throws`); the ship's meshes (`hull`, `wheel`); the captain's parts on the humanoid rig (`parts(lens)`: the lens in the skin's `neon_blue`) |
-| `mecha_guppy_bombs.gd` (`MechaGuppyBombs`) | the bombs: `throw_spots` (a volley), `throw_at` (one bomb: the fallback's, a test's), the bait (`start_bait`, `lock_bait`, `drop_bait`, `seeking`, `seek_ring`, `bait`), their circles, flight, whistle and landing (`surface_at`: a roof's top, a hut's top or the chasm; into the shark's jaws all along a fall: `_into_jaws`), the blasts (pooled hazards, `blast_hazards`), `plan_spots` / `way_through` / `dodge_lane` / `spots_ahead` (the Floating Head's salvo rules on the climb's roofs), `spot_floor`, `open_lanes`; `drops`, `stats` (tests); `bomb_mesh` |
-| `mecha_guppy_pattern.gd` (`MechaGuppyPattern`) | each step's bite (with its catch), volley, bait, lurk and fallback, timed by where the runner is (`tick`); `volley` (a step's spots as they'd be thrown from a lane: the pattern and the tests), `volley_lock`, `bait_plan`, `bait_after`, `hit_spot`, `on_snap`; the hits and falls (`note_hit`, `note_fall`, `catch_ok`, `fell_on`, `dry`); `hits_enabled` (tests) |
+| `mecha_guppy_bombs.gd` (`MechaGuppyBombs`) | the bombs: `throw_spots` (a volley), `throw_at` (one bomb: the fallback's, a test's), the bait (`start_bait`, `lock_bait`, `drop_bait`, `seeking`, `seek_ring`, `bait`; its aim, `_aim_node`), their circles, flight, whistle and landing (`surface_at`: a roof's top, a hut's top or the chasm; into the shark's jaws all along a fall: `_into_jaws`), the blasts (pooled hazards, `blast_hazards`), `plan_spots` / `way_through` / `dodge_lane` / `spots_ahead` (the Floating Head's salvo rules on the climb's roofs), `spot_floor`, `open_lanes`; `drops`, `stats` (tests); `bomb_mesh` |
+| `mecha_guppy_pattern.gd` (`MechaGuppyPattern`) | each step's bite (with its catch), volley, bait, lurk and fallback, timed by where the runner is (`tick`); `volley` (a step's spots as they'd be thrown from a lane: the pattern and the tests), `volley_lock`, `bait_plan`, `bait_after`, `lock_to_edge`, `hit_spot`, `fallback_due`, `fallback_last`, `fallback_flight`, `on_snap`; the hits and falls (`note_hit`, `note_fall`, `catch_ok`, `fell_on`, `hit_on`, `dry`); `hits_enabled` (tests) |
 | `mecha_guppy_looks.gd` (`MechaGuppyLooks`) | the look on the Beach's skin, one merged mesh per piece: each roof a boardwalk deck (its lanes' plank strips, orange lips and coping on every edge over a drop, the gap-edge language) with thatch eaves and lantern posts outside the lanes, on a tower down to the water (`roof_front`, `roof_segment`; drawn no deeper than `TOWER_DEPTH`, 300 m, under its deck, past the haze, so a long climb's meshes stop growing): storey after storey with a ledge and framed, warmly lit windows, darker the deeper (`deep`); the notch (its lane's deck ending with the eaten edge's orange, the eaten face along its inner side and across its start, the orange lip along the deck's edge over it, no eave or lantern posts past it: `notch_inner`); the reaching lanes on a pier (a lantern-lit fascia, the orange lip at its front and open sides, posts and braces on stilts down to the water); a neon sign on some fronts; the street's own sand; each hut a hovering plank platform (its underside lit on the lane seams and along each run's shared edges with joists, the 4 m orange end band where each run of lanes ends, hung `SHADOW_UNDER` below the underside so a rider's blob shadow never darkens it, lift pods in the skin's engine colour) carrying a row of tiki huts and rails, a walkway annex over RUN_ON's running-on lanes, a sign on some; the pad strips' tiles. Its signs glow only the Beach's violet, blue or warm white |
 | `mecha_guppy_skin.gd` (`MechaGuppySkin`), `data/bosses/beach_boss_skin.tres` | the arena's skin, a `BeachSkin`: the open shore on both sides (`BeachOpen.shore_side`, no shacks or gap marks: there are no walls), the water under the eaten street (the chasms' floor), no ceiling or hull looks (the huts are the looks'); its data makes the arena hazier, fully fogged past 200 m (fog 24-200 m, `fog_max` 1) |
 | `mecha_guppy_waterfall.gd` (`MechaGuppyWaterfall`), `mecha_guppy_waterfall.gdshader`, `mecha_guppy_sea.gdshader`, `mecha_guppy_clouds.gdshader` | the backdrop: the waterfall, a flat-topped massif `DISTANCE` (420 m) ahead of the camera whose rock, lip (`LIP_Y`, 150 m) and mist are drawn at world heights (the cliffs slide down past a climber, its foot sinks below; past the lip a plateau card shows its top), its flanks sloping to the sea so the horizon shows beside it (fades out with `set_shown`); a sea plane at sea level around the camera out to the far plane, the sky below the horizon set to the fog's colour (`abyss_color`) so the far sea meets the horizon at any height; layers of low cloud at fixed world heights beside the climb, shown once the runner is above them. Unshaded, nothing flickering |
@@ -4652,7 +4675,8 @@ In `scripts/bosses/mecha_guppy/`:
 Also: `scenes/bosses/mecha_guppy.tscn`; `tools/showcase/mecha_guppy_showcase.tscn` (scripted runs for reviews:
 `--scenario=climb/wrong/grapple/side/hut/top/shark/ship/bombs/bait/hits`, `--lanes`, `--speed` (23.8 by default),
 `--phase`, `--daylight`, `--reduced-flashing`, `--events`, `--no-attacks`, `--no-bait`, `--start=S` (the runner moved
-on to step S's roof first: a view from higher up)); `tests/helpers/mecha_guppy_bot.gd` (`MechaGuppyBot`: presses only
+on to step S's roof first: a view from higher up; with `hut`, under step S's hut)); `tests/helpers/mecha_guppy_bot.gd`
+(`MechaGuppyBot`: presses only
 the named actions and reads the lanes that lead up off the hut and the roofs by physics rays, never the plan
 (`read_up_lanes`); `reaction` seconds after settling it switches a lane at a time to the nearest one, or, with
 `wrong`, to one that doesn't; `worst_case` first takes the lane farthest from them that has pads and jumps on the
@@ -4661,21 +4685,25 @@ last frame before the pads (its hurtbox's front short of them), `dash_flip` dash
 of Captain Cogs' spots still ahead (`MechaGuppyBombs.dodge_lane`), `dodge_reaction` (the planner's own) after they
 show, switching only where the roof is under every lane it crosses (`dodges`, `dodge_moves`); with `baits` it lures
 the bait into the notch's lane once its roof's volley is behind it and switches out `dodge_reaction` after the lock
-(`baited`), without it keeps out of the notch's lane while a bait can lock there; it never runs off a lane that ends
+(`baited`; never on a step already hit, `MechaGuppyPattern.hit_on`), without it keeps out of the notch's lane while a
+bait can lock there; it never runs off a lane that ends
 ahead (`stay_in_notch_at` for the fall test); `min_slack`, measured at its last switch's press, `steps_climbed`,
-`reads`, `dashes`; `circle_trap` (the pier trap: a circle in the runner's lane with no floor beside them) and `census`
-(phase 1's and phase 2's bombs to dodge, a step and a second) for the suites). Sounds
+`reads`, `dashes`; `circle_trap` (the pier trap: a circle, or the bait's aim, in the runner's lane with no floor beside
+them) and `census` (phase 1's and phase 2's bombs to dodge, a step that threw any and a second) for the suites). Sounds
 (`tools/asset_gen/sfx_bank_mecha_guppy.gd`): cogs_throw, cogs_aim (the bait's aim, as long as `bait_seek`),
 guppy_rumble (a bite's, a catch's and a breach's warning), guppy_bite, guppy_clang; the bombs keep the Floating Head's
 bomb_whistle and bomb_blast. Hints: `enemy:beach_boss` (the climb in short, weapons doing nothing),
 `boss:beach_boss/climb` (how to read the lanes that lead up), `/bombs` (the circles, the whistle) and `/hits` (the
-bait: lead the following circle into the notch's lane, switch out before the edge; Captain Cogs only sometimes misses
-for you; 4 and 6 hits). Suites: `test_mecha_guppy` (the data, the plan and its notches, the built climb, the hits'
-counting), `test_mecha_guppy_climb` (the climb on physics, the full fight with the baiting bot at every lane count and
-speed with phase 2's census and the pier-trap check, the worst case, wrong drops, the camera), `test_mecha_guppy_bombs`
-(the bombs, what counts as a hit, the census), `test_mecha_guppy_bites` (the bites, the catch's reach, the breaches),
-`test_mecha_guppy_bait` (the bait's circle and catch, a runner who never baits winning by the fallback at every lane
-count and speed against one who baits, no hit from a fall, the notch's side).
+bait: lead Captain Cogs' red target into the notch's lane, switch out before the edge; Captain Cogs only sometimes
+misses for you; 4 and 6 hits). Suites: `test_mecha_guppy` (the data, the plan and its notches, the built climb, the
+hits' counting), `test_mecha_guppy_climb` (the climb on physics, the full fight with the baiting bot at every lane count
+and speed with phase 2's census and the pier-trap check, the worst case, wrong drops, the camera over phase 1's steps
+and phase 2's), `test_mecha_guppy_bombs` (the bombs, what counts as a hit, the census), `test_mecha_guppy_bites` (the
+bites, the catch's reach, the breaches), `test_mecha_guppy_bait` (the bait's aim and catch, a runner who never baits
+winning by the fallback at every lane count and speed against one who baits, a hit at most one a step, no hit from a
+fall, the notch's side, no stall with no room for a notch), `test_mecha_guppy_tunables` (every tunable at both ends of
+its range, at 3 lanes and 23.8 m/s and at 6 lanes and 18 m/s: a runner who never baits lives, never meets a circle
+with no floor to switch to, every bait keeps its timings, every fallback is eaten, and the hits keep coming).
 Hand-offs to E5e-c:
 - Phase 3's attacks (the rounds and the waves) and its minute replace the stub; `CaptainCogsShip` comes level with the
   runner there (its station is `ship_ahead` and `ship_height` today), and Mecha Guppy leaping over to eat the captain
@@ -4683,8 +4711,8 @@ Hand-offs to E5e-c:
   `MechaGuppySharkModel`'s).
 - `MechaGuppy.attacks_live()` is false in phase 3 today, so the pattern (the volleys, the bait, the fallback) stops at
   the top; the bites stop too (`bites_live`). The top has no notch.
-- The par times (240 s, 180 s) predate the bait: a runner who baits every step clears phases 1 and 2 in 78-87 s, one who
-  never does in 223-252 s (with `fallback_after` 2), before phase 3's minute.
+- The par times (240 s, 180 s) predate the bait: a runner who baits every step clears phases 1 and 2 in 85-96 s, one who
+  never does in 156-176 s (with `fallback_after` 1), before phase 3's minute.
 
 ## Cinematics
 
@@ -5584,9 +5612,10 @@ onto the higher roof, in its nearest lane that leads up, the rope from the lifte
 sight changes, the next step is the new phase's, nothing ever planned in sight, `top_reached` starting the stub's
 minute and the waterfall's fade); the same rhythm through a long phase 1 and on a retry, with the builder's work a
 frame staying small; and the climbing camera (the runner on screen, never inside a roof, under 0.40 m a frame, the
-shadow on the roof); it prints its figures. `test_mecha_guppy_bombs`, `test_mecha_guppy_bites` and
-`test_mecha_guppy_bait` (tasks E5e-b2 and E5e-b3) check Captain Cogs' bombs, Mecha Guppy's bites and catches, and the
-bait with both bots' phase times (see Mecha Guppy and Captain Cogs). `test_audio` checks
+shadow on the roof, over phase 1's steps and phase 2's higher ones); it prints its figures. `test_mecha_guppy_bombs`,
+`test_mecha_guppy_bites`, `test_mecha_guppy_bait` and `test_mecha_guppy_tunables` (tasks E5e-b2 and E5e-b3) check
+Captain Cogs' bombs, Mecha Guppy's bites and catches, the bait with both bots' phase times, and the bait's and the
+fallback's promises at both ends of every tunable's range (see Mecha Guppy and Captain Cogs). `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. `test_cinematics` checks the cinematic toolkit: its paths (smooth,
