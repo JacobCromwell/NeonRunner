@@ -178,13 +178,15 @@ func top_due() -> bool:
 func _on_phase_started(index: int) -> void:
 	log_event(&"climb_phase", {"index": index, "step": climb.steps.size()})
 	# A bait still following the runner is called off (the next phase's intro: no attacks), and a floor bite not yet
-	# snapped (task E5e-f).
+	# snapped (task E5e-f), unless its jaws are already snapping shut: that snap completes, the chunk going as warned (task
+	# E5e-f's review: called off then, its jaws snapped on intact floor).
 	if bombs != null:
 		bombs.drop_bait()
-	if floor_bite != null:
-		floor_bite.call_off()
-	if shark != null:
-		shark.abort_floor()
+	if shark == null or not shark.floor_snapping():
+		if floor_bite != null:
+			floor_bite.call_off()
+		if shark != null:
+			shark.abort_floor()
 
 
 func _intro_tick(delta: float) -> void:

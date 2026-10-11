@@ -4,11 +4,12 @@ extends Node3D
 ## its snap and what a runner caught in it meets. The plan (MechaGuppyClimb, MechaGuppyCrescent) says where and when;
 ## MechaGuppyPattern starts it as the runner reaches the bite's warn_at, and Mecha Guppy's snap (MechaGuppyShark.on_snap,
 ## MechaGuppyPattern.on_snap) bites the chunk out:
-## - start(bite): the warning (every attack has a visual and an audio warning): the crescent's outline in the enemy
-##   attacks' red on the roof's floor, the Golden Convergence's Fist Slam's look (a glowing frame round a faint fill,
-##   deepening as the snap comes, the frame's beat steady with Reduced flashing), counted as a floor warning on every lane
-##   it takes (BossProps.floor_warning: pickups keep off it). The rumble and the snout rising beside the roof's side are
-##   the shark's (MechaGuppyShark.floor_bite). The jaws' hitboxes are placed now, off.
+## - start(bite): the warning (every attack has a visual and an audio warning): the crescent in the enemy attacks' red on
+##   the roof's floor, the Golden Convergence's Fist Slam's look (a solid red fill, FILL_ALPHA, inside a brighter frame
+##   that deepens as the snap comes, its beat steady with Reduced flashing; the frame's mesh built once and its width set
+##   by a uniform, mecha_guppy_floor_warning.gdshader), counted as a floor warning on every lane it takes
+##   (BossProps.floor_warning: pickups keep off it). Its sound (guppy_floor_warn, nothing else's) and the snout rising
+##   beside the roof's side are the shark's (MechaGuppyShark.floor_bite). The jaws' hitboxes are placed now, off.
 ## - snap(): the chunk is gone (MechaGuppyStairs.eat_crescent: the collision and the look together), rubble flies, a
 ##   shake; the jaws' hitboxes are live for SNAP_SECONDS. Real contact only: an enemy attack over the crescent a little
 ##   smaller than it (SNAP_INSET), from under the floor to over a jump's reach, so a runner caught in it (in the bite's
@@ -31,7 +32,7 @@ const SNAP_SECONDS: float = 0.15
 ## The jaws' hitboxes' name (a death by them is "Mecha Guppy's bite").
 const BITE_NAME: String = "Mecha Guppy's bite"
 ## The outline: its frame this wide (deepening to 1.4 times as the snap comes), beating this much (none with Reduced
-## flashing), its fill this see-through; both just over the deck.
+## flashing), its fill this opaque (a solid red: it reads); both just over the deck.
 const FRAME: float = 0.18
 const BEAT: float = 0.2
 const FILL_ALPHA: float = 0.85
@@ -60,14 +61,15 @@ var caught: int = 0
 ## The outline's frame's width now (metres; tests: steady with Reduced flashing, only deepening).
 var frame_width: float = 0.0
 
+const FRAME_SHADER: Shader = preload("res://scripts/bosses/mecha_guppy/mecha_guppy_floor_warning.gdshader")
+
 var _frame: MeshInstance3D
 var _fill: MeshInstance3D
-var _frame_mesh: ArrayMesh
 var _tokens: Array[Node3D] = []
 var _hazards: Array[Hazard] = []
 ## The floor held under a runner who lived through a snap: {body, look, until (clock)}, or empty.
 var _hold: Dictionary = {}
-var _frame_material: BaseMaterial3D
+var _frame_material: ShaderMaterial
 var _fill_material: BaseMaterial3D
 
 
@@ -76,14 +78,14 @@ func setup(p_boss: MechaGuppy) -> void:
 	world = boss.world
 	top_level = true
 	transform = Transform3D.IDENTITY
-	_frame_material = (GreyboxMaterials.glow(BossProps.WARNING_COLOR, 2.6, 0.8).duplicate() as BaseMaterial3D)
-	_frame_material.disable_fog = true
+	_frame_material = ShaderMaterial.new()
+	_frame_material.shader = FRAME_SHADER
+	_frame_material.set_shader_parameter(&"color", Color(BossProps.WARNING_COLOR, 0.8))
+	_frame_material.set_shader_parameter(&"width", FRAME)
 	_fill_material = (GreyboxMaterials.glow(BossProps.WARNING_COLOR, 1.2, FILL_ALPHA).duplicate() as BaseMaterial3D)
 	_fill_material.disable_fog = true
-	_frame_mesh = ArrayMesh.new()
 	_frame = MeshInstance3D.new()
 	_frame.name = "Outline"
-	_frame.mesh = _frame_mesh
 	_frame.material_override = _frame_material
 	_frame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_frame.visible = false
@@ -131,6 +133,7 @@ func start(p_bite: MechaGuppyCrescent) -> void:
 	var top: float = _top()
 	_fill.mesh = _fill_mesh(top + FILL_Y)
 	_fill.visible = true
+	_frame.mesh = _frame_mesh(top + FRAME_Y)
 	_frame.visible = true
 	_update_frame()
 	for lane: int in world.geo.lane_count:
@@ -257,18 +260,21 @@ func _fill_mesh(y: float) -> ArrayMesh:
 	return _mesh(verts)
 
 
-## The frame: a band round the outline, into the crescent, as wide as the warning has come (and its beat).
+## The frame's width as far as the warning has come (and its beat): the shader's uniform; its mesh stays as built.
 func _update_frame() -> void:
 	var p: Player = world.player
 	var k: float = clampf((p.distance - warned_from) / maxf(bite.snap_at - warned_from, 0.5), 0.0, 1.0)
 	var beat: float = 1.0 if Settings.flashing_reduced else 1.0 + BEAT * sin((clock - warned_at) * 24.0)
-	var w: float = FRAME * (0.8 + 0.6 * k) * beat
-	frame_width = w
-	var y: float = _top() + FRAME_Y
+	frame_width = FRAME * (0.8 + 0.6 * k) * beat
+	_frame_material.set_shader_parameter(&"width", frame_width)
+
+
+## The frame's mesh at height `y`, built once a bite: a band round the outline, each quad's outer vertices on it and its
+## inner ones there too with their inward direction (into the crescent) in UV, so the shader moves them in by its width.
+func _frame_mesh(y: float) -> ArrayMesh:
 	var pts: PackedVector2Array = _outline()
 	var n: int = pts.size()
 	# Each point's normal into the crescent (the outline runs round it clockwise or not: the side decides).
-	var verts := PackedVector3Array()
 	var inward := PackedVector2Array()
 	inward.resize(n)
 	for i: int in n:
@@ -280,22 +286,31 @@ func _update_frame() -> void:
 			if t.length() > 0.0001:
 				acc += Vector2(float(bite.side) * t.y, -float(bite.side) * t.x).normalized()
 		inward[i] = acc.normalized() if acc.length() > 0.0001 else Vector2.ZERO
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
 	for i: int in n:
 		var a: Vector2 = pts[i]
 		var b: Vector2 = pts[(i + 1) % n]
 		if a.distance_to(b) < 0.0005:
 			continue
-		var ai: Vector2 = a + inward[i] * w
-		var bi: Vector2 = b + inward[(i + 1) % n] * w
-		_tri_up(verts, Vector3(a.x, y, -a.y), Vector3(b.x, y, -b.y), Vector3(bi.x, y, -bi.y))
-		_tri_up(verts, Vector3(a.x, y, -a.y), Vector3(bi.x, y, -bi.y), Vector3(ai.x, y, -ai.y))
-	_frame_mesh.clear_surfaces()
+		var va := Vector3(a.x, y, -a.y)
+		var vb := Vector3(b.x, y, -b.y)
+		# Track distance d runs along -z: an inward step (x, d) moves a vertex by (x, -d) in x and z.
+		var ia := Vector2(inward[i].x, -inward[i].y)
+		var ib := Vector2(inward[(i + 1) % n].x, -inward[(i + 1) % n].y)
+		verts.append_array(PackedVector3Array([va, vb, vb, va, vb, va]))
+		uvs.append_array(PackedVector2Array([Vector2.ZERO, Vector2.ZERO, ib, Vector2.ZERO, ib, ia]))
+	var mesh := ArrayMesh.new()
 	if verts.is_empty():
-		return
+		return mesh
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = verts
-	_frame_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	# Its bounds reach in by the widest frame (the shader moves the inner vertices after culling decides).
+	mesh.custom_aabb = mesh.get_aabb().grow(FRAME * 2.0)
+	return mesh
 
 
 ## Appends triangle (a, b, c) wound to face up.
