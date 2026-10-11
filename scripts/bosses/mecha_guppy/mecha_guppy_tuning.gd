@@ -1,8 +1,9 @@
 class_name MechaGuppyTuning
 extends Resource
 ## Mecha Guppy and Captain Cogs' numbers (GDD §10, the Beach's boss; data/bosses/beach_boss_tuning.tres, F6 in
-## its fight). Task E5e-b1 builds the climb (phases 1 and 2's gimmick) and its look; the shark, the pirate and
-## the bombs are E5e-b2's, phase 3 and the defeat E5e-c's.
+## its fight). Task E5e-b1 builds the climb (phases 1 and 2's gimmick) and its look; E5e-b2 the shark, the pirate,
+## the bombs and the hits (the groups "Captain Cogs' bombs", "Mecha Guppy's bites", "Captain Cogs' ship"); phase 3 and
+## the defeat are E5e-c's.
 ##
 ## The GDD fixes the climb's shape (MechaGuppyClimb): anti-grav pads up to tiki huts (the ceilings), tiki bar
 ## roofs ahead at a higher level (the floors), the lanes that lead up (one on 3 lanes; one, two or three,
@@ -90,10 +91,9 @@ extends Resource
 @export_range(1.0, 4.0, 0.1, "suffix:m") var blast_height: float = 2.4
 ## DESIGN-TBD: the volleys a runner dodges, each phase (the last entry serves later phases; phase 3 has none, E5e-c):
 ## - roof_spots: up to this many spots on a roof's run from the landing to the next hut, nearest first, spot_spacing
-##   apart (at 18 m/s): the Floating Head's salvo, landing as the runner gets to each (phase 2's short roof runs fit
-##   none);
-## - landing_spots: a spot where the runner comes down onto a roof whose lanes run on full width (after a RUN_ON
-##   step), dodged by a switch in the air as they drop (GDD §10: phase 2, more bombs);
+##   apart (at 18 m/s): the Floating Head's salvo, landing as the runner gets to each (fewer where a run is short);
+## - landing_spots: a spot where riders come down onto the higher roof, dodged by a switch in the air as they drop
+##   off the hut's end (on a pier only where it has another lane to switch to; GDD §10: phase 2, more bombs);
 ## - hut_bombs: bombs on the hut a rider hangs from, which burst on its top (GDD §10, the owner: a rider with the
 ##   ceiling between them and a bomb isn't hurt by it).
 @export var roof_spots: PackedInt32Array = PackedInt32Array([2, 1])
@@ -121,17 +121,18 @@ extends Resource
 @export_range(0.0, 10.0, 0.5, "suffix:m") var pickup_margin: float = 3.0
 ## DESIGN-TBD (GDD §10: a bomb hurts Mecha Guppy when it falls into a stretch it has eaten through, where it is
 ## clearly exposed and in the line of fire): each step, once a rider is committed (at the hut's deadline), Captain
-## Cogs throws at the chasm in front of the higher roof under the lanes that don't lead up, where Mecha Guppy rises to
-## eat; the bomb lands this far before that roof's front there (metres; the shark's head clear of the roof's face), in
-## its open jaws: a hit. It threatens nobody, so it flies only hit_seconds (its circle and whistle as every bomb's): it
-## lands beside the runner, in view, not behind them.
+## Cogs throws at the chasm in front of the higher roof, beside the lanes that lead up on the side with more lanes that
+## don't, where Mecha Guppy rises to eat; the bomb comes down this far before that roof's front there (metres; the
+## shark's head clear of the roof's face), into its open jaws: a hit. It threatens nobody, so it flies only
+## hit_seconds (its circle and whistle as every bomb's): it goes in ahead of the runner, in view, not behind them.
 @export_range(6.5, 12.0, 0.25, "suffix:m") var hit_back: float = 6.8
 @export_range(0.5, 1.5, 0.05, "suffix:s") var hit_seconds: float = 0.65
 
 @export_group("Mecha Guppy's bites")
 ## DESIGN-TBD (GDD §10: its maw comes up through the floor and eats a huge chunk of the level; it eats the floors the
 ## runner should have left and the floor under the lanes that don't lead up, never the floor they're on). Its warning:
-## the rumble, and the shark rising into view out of the chasm, this long before its jaws break through.
+## the rumble, and the shark rising into view beside the roof's end, this long before the runner reaches its pads (its
+## jaws come up only once the runner is up on the hut).
 @export_range(0.2, 2.0, 0.05, "suffix:s") var bite_warning: float = 0.6
 ## Once nobody can be on the roof: it dives under the roof's top leaning in, its jaws opening, lunges up with its chin
 ## low across the roof's end, stays open, snaps shut dropping away with it, and sinks back (seconds).

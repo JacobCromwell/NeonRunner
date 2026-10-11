@@ -16,20 +16,21 @@ extends Node3D
 ##   side       a camera alongside the climb, looking across at the stairs of roofs and huts and the waterfall
 ##   hut        the runner standing under the first hut (the run camera's view from under it): reading the cue
 ##   top        phase 3's stub (--phase=3 implied): the climb's last steps, then the flat top, the waterfall gone
-##   shark      (E5e-b2) a camera beside Mecha Guppy whenever it's up: its bites of the roofs left behind, its breaches
-##              under the lanes that don't lead up, a bomb falling into its jaws (the climb goes on as in climb)
-##   ship       a camera behind and above Captain Cogs' ship, looking past the captain down at the climb as he throws
-##   bombs      the run camera, from the second step (phase 1's volleys: the circles, the bombs coming down, the blasts)
-##   hits       the run camera, as climb: each step's bomb falling into the shark's jaws beside the runner
+##   shark      (E5e-b2) a camera beside Mecha Guppy whenever it's up: its watch beside a roof's end and its bite, its
+##              breaches beside the lanes that lead up, a bomb falling into its jaws (the climb goes on as in climb)
+##   ship       a camera ahead of and above Captain Cogs' ship, looking back past the captain at the climb as he throws
+##   bombs      the run camera, as climb (the volleys' circles, the bombs coming down, the blasts; with --phase=2 the
+##              landing spots and the bombs on the huts)
+##   hits       the run camera, as climb: each step's bomb falling into the shark's jaws ahead of the runner
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=M (the run's speed, m/s; the Beach's 23.8 by default),
 ## --phase=N, --daylight (the Beach's own sky instead of Sunset Strip's), --reduced-flashing, --events (prints the
 ## boss's events with their frames, for picking frames), --no-attacks (the climb alone: no bombs, no bites),
 ## --start=S (move the runner on to step S's roof first: a view from higher up).
 ## Frames worth a look (at --fixed-fps 10, 23.8 m/s): climb, the first pads about frame 35, on the first hut 40-63,
 ## its end and the drop about 63, the first roof 66-90, the second hut 95-125; wrong, the drop and the fall about
-## 60-72; grapple, the save about 68-78; side, any frame. To look from higher up, move the runner onto a later
-## step's roof before the frames are written (as a review script can: plan the steps, set Player.distance, floor_y
-## and h, then RunCamera.snap()).
+## 60-72; grapple, the save about 68-78; side, any frame. With --start=S (any scenario but hut and top): the shark's
+## watch beside roof S's end about frames 10-20, its bite about 20-24, Captain Cogs' hit bomb thrown about 41-45 and
+## going into the shark's jaws about 46-50, the next roof's volley 47-63 (--events prints the exact frames).
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const SKY_PATH: String = "res://data/skies/beach_sunset.tres"

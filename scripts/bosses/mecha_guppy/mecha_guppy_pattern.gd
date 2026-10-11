@@ -4,24 +4,26 @@ extends RefCounted
 ## do on each step of the climb (MechaGuppyClimb.Step k: roof k, its pads and hut, the higher roof k + 1), timed by
 ## where the runner is, the same on every step alike (nothing changes with time but the phase: GDD §10, no escalation).
 ## DESIGN-TBD (docs/questions/e5e.md): the whole pattern. Each step:
-## - Mecha Guppy's bite (MechaGuppyShark.bite): as the runner nears roof k's pads, the rumble and the shark rising out of
-##   the chasm past the roof's eaten edge (its warning); once the runner is up on the hut it bites the roof's end off
-##   behind and below them (bite_length, never past the hut's start: the floor they should have left), the collision
+## - Mecha Guppy's bite (MechaGuppyShark.bite): as the runner nears roof k's pads, the rumble and the shark rising
+##   beside the roof's end (its warning, seen ahead); once the runner is up on the hut it bites the roof's end off
+##   below and behind them (bite_length, never past the hut's start: the floor they should have left), the collision
 ##   and the look together (MechaGuppyStairs.eat_roof), with rubble flying. It never eats the floor the runner is on
-##   (it waits for them to be on the hut) nor the higher roof (the safe drop).
-## - The volley on roof k + 1 (phase 1: roof_spots): spots on its run from where the runner lands (or where it's full
-##   width beside a pier) to short of the next hut, nearest first, planned as the runner nears them by the Floating
-##   Head's salvo rules (MechaGuppyBombs.plan_spots); their circles never show before the hut's deadline (so they never
-##   tell a rider which lanes lead up: only the owner's two cues do).
+##   (it waits for them to be on the hut) nor the higher roof (the safe drop). Still busy with the step before's hit
+##   (phase 2's closer steps), it bites once free, while there's time before this step's hit.
+## - The volley on roof k + 1's run (roof_spots: two spots in phase 1, one in phase 2): spots from where the runner
+##   lands (or where the roof is full width beside a pier) to short of the next hut, nearest first, planned as the
+##   runner nears them by the Floating Head's salvo rules (MechaGuppyBombs.plan_spots); their circles never show before
+##   the hut's deadline (so they never tell a rider which lanes lead up: only the owner's two cues do).
 ## - The landing spot (phase 2: landing_spots): where a rider comes down onto roof k + 1, dodged by a switch in the
 ##   air as they drop (on a pier, only where it has another lane to switch to).
 ## - The hut's bombs (phase 2: hut_bombs): on the hut over a rider, bursting on its top (the owner: the ceiling between
 ##   them blocks it).
 ## - The hit: at the hut's deadline (every rider is committed), Captain Cogs throws at the chasm in front of roof k + 1
-##   under the lanes that don't lead up, beside the lane that does nearest them (hit_back before the roof's front there),
-##   and Mecha Guppy rises there to eat (MechaGuppyShark.breach), its jaws open as the bomb lands: the bomb falls into
-##   the stretch it has eaten through, where it's exposed and in the line of fire (GDD §10): a hit
-##   (MechaGuppy.register_hit). A runner who dodges well lands one a step: 4 end phase 1, 6 phase 2.
+##   beside the lanes that lead up, on the side with more lanes that don't (hit_back before the roof's front there),
+##   and Mecha Guppy rises there to eat (MechaGuppyShark.breach; until then it lurks deep, giving nothing away), its
+##   jaws open as the bomb comes down: the bomb falls into the stretch it has eaten through, where it's exposed and in
+##   the line of fire (GDD §10): a hit (MechaGuppy.register_hit). A runner who keeps climbing lands one a step: 4 end
+##   phase 1, 6 phase 2.
 ## Attacks only while the pattern runs (MechaGuppy.attacks_live: not in an intro, not in phase 3's stub, not once won);
 ## the shark's bite of the floor left behind is the level being eaten, not an attack, so it goes on in an intro too.
 

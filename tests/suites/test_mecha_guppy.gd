@@ -151,8 +151,9 @@ func _test_data(slot: BossDef) -> void:
 	var triggers: Array = []
 	for h: Dictionary in (hints as Dictionary).get("hints", []):
 		triggers.append(h.get("trigger", ""))
-	check(triggers.has("enemy:beach_boss") and triggers.has("boss:beach_boss/climb"),
-		"its hints: the fight, and how to read the lanes that lead up")
+	check(triggers.has("enemy:beach_boss") and triggers.has("boss:beach_boss/climb") and triggers.has("boss:beach_boss/bombs")
+		and triggers.has("boss:beach_boss/hits"),
+		"its hints: the fight, how to read the lanes that lead up, Captain Cogs' bombs and how they hurt Mecha Guppy")
 	var t := def.tuning as MechaGuppyTuning
 	check(t.rise <= RunCamera.FLOOR_REACH - 1.0, "each step's rise (%.1f m) stays well within the climbing camera's roof reach (%.1f m)"
 		% [t.rise, RunCamera.FLOOR_REACH])

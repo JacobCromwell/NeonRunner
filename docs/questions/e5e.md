@@ -1,8 +1,8 @@
 # E5e: Mecha Guppy and Captain Cogs, open questions
 
-Raised by step E5e-a (the climb's core) and step E5e-b1 (the climb itself). The rest of the fight is
-built in E5e-b2 (the shark, the pirate, the bombs) and E5e-c (phase 3, the defeat), which can answer
-these as they go.
+Raised by step E5e-a (the climb's core), step E5e-b1 (the climb itself) and step E5e-b2 (the shark, the
+pirate, the bombs and the hits). The rest of the fight is built in E5e-c (phase 3, the defeat), which can
+answer these as it goes.
 
 ## Raised by E5e-a, with E5e-b1's placeholders
 
@@ -30,8 +30,9 @@ these as they go.
   the lower floor the shark hasn't eaten yet survivable, or is every drop past the higher roof a
   death? Placeholder (E5e-b1): every wrong drop is a fall. The roof a step starts from is already
   eaten from 1 m past its pad strip (`MechaGuppyTuning.edge_margin`), so a drop in a lane that doesn't
-  lead up falls into the chasm under the hut, down to the water far below (a look placeholder until
-  E5e-b2's shark and bites), and dies unless the grapple saves it. Nobody lands on uneaten lower floor.
+  lead up falls into the chasm under the hut, down to the water far below (where E5e-b2's shark rises
+  after the hut's deadline, and it bites the end of the roof just left), and dies unless the grapple saves
+  it. Nobody lands on uneaten lower floor.
 
 ## Raised by E5e-b1 (the climb)
 
@@ -104,7 +105,7 @@ these as they go.
     could be proposed then.
   - The signs: some fronts and huts carry a neon sign in the Beach's violet, blue or warm white.
   - The eaten floor: the chasm between towers, open to the water far below (the street's own water),
-    where E5e-b2's shark will rise.
+    where the shark rises (E5e-b2).
 - **The backdrop** (GDD §10: a waterfall in phases 1 and 2, the Beach's normal backdrop in phase 3).
   Placeholder (`MechaGuppyWaterfall`): a flat-topped massif 420 m ahead of the camera, its falls' lip
   150 m up, its rock, lip and mist at world heights, so as the runner climbs the cliffs slide down and
@@ -129,3 +130,78 @@ these as they go.
     after the runner reaches it (`top_seconds`; `MechaGuppy.top_reached`, logged and signalled for
     E5e-c).
   - Par times of 240 s and 180 s stand in until E5e-c measures the whole fight.
+
+## Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)
+
+- **How the hits come** (GDD §10: only a bomb that falls through a gap, off a roof's edge or into a
+  stretch the shark has eaten through, where it's clearly exposed and in the line of fire; "aim the bombs
+  so a runner who dodges well lands hits steadily"). Placeholder (`MechaGuppyPattern._hit`, `hit_spot`,
+  DESIGN-TBD): on every step, at the hut's deadline (when every rider is committed), Captain Cogs throws a
+  bomb at the chasm in front of the higher roof, beside the lanes that lead up on the side with more
+  lanes that don't (`hit_back` 6.8 m before that roof's front; `hit_seconds` 0.65 s of flight, its circle
+  and whistle as every bomb's), and Mecha Guppy rises there to eat, its jaws open as the bomb comes down
+  into them: a hit. So a runner who keeps climbing (who dodges well enough to survive the step) lands one
+  hit a step: 4 steps end phase 1 and 6 phase 2. The clean bot's phase 1 ends at about 24-26 s and phase 2
+  about 29-32 s later. Is "one hit a step" the owner's steady hits? The alternative (hits only when bombs
+  aimed at the runner happen to miss past an edge) would make hits depend on luck and on dodging badly.
+- **Where the shark is eaten "under the lanes that don't lead up"** (GDD §10: "the rest drop them back onto
+  the floor they came from, where Mecha Guppy is eating"). Placeholder: the floor there is already gone
+  (E5e-b1's chasm); the shark shows itself eating there by breaching in that chasm for the hit, only after
+  the hut's deadline, so it never becomes a third cue to which lanes lead up (only the owner's two cues
+  tell). Before the deadline it lurks deep under the middle of the chasm, facing the runner, giving nothing
+  away. Should it show itself there earlier, as a help to readers?
+- **The bites** (GDD §10: its maw comes up through the floor and eats a huge chunk of the level; it eats
+  the floors the runner should have left, never the floor they're on or the safe drop; every bite that
+  could catch the runner warned). Placeholder (`MechaGuppyShark.bite`, `MechaGuppyPattern._bite`, the
+  tuning's "Mecha Guppy's bites"; DESIGN-TBD):
+  - Each step it bites the end of the roof the runner has just left (`bite_length` 14 m, never past the
+    hut's start), only once the runner is up on that roof's hut: no bite can catch a runner.
+  - Its warning all the same: the rumble (guppy_rumble) and the shark surging up beside the roof's end,
+    upright, an eye just over the roof's top, 0.6 s before the runner reaches the pads (`bite_warning`),
+    seen ahead.
+  - The bite: it dives under the roof's top leaning in, lunges with its chin low across the roof, holds and
+    snaps shut, dropping 7 m away with the roof's end (0.25 + 0.35 + 0.15 + 0.14 s); the roof's collision and
+    look are cut together at the snap, rubble flying. Its jaws stay at least 2.5 m under a rider hanging
+    from the hut, even mid-jump (2.8 m measured), so nothing looks like it reaches them. It comes from a
+    seeded side.
+  - In phase 2's closer steps the shark can still be busy with the last step's hit when a bite is due:
+    the bite waits for it, while it can still be over before the step's hit.
+
+  Is the end of the roof just left the right floor to eat, and is a bite under the rider (seen mostly as
+  it rises ahead and lunges below) readable enough?
+- **Mecha Guppy's look and size** (GDD §10: building-sized, mechanical, mostly its giant jaws and its eyes,
+  dark red lenses that don't glow, nothing glowing red). Placeholder (`MechaGuppySharkModel`,
+  `MechaGuppyShark.SCALE`): jaws 12 m long and 12.6 m across at the hinge, riveted grey steel plates with
+  dark seams, rows of steel teeth, a dark ribbed mouth, round dark red glass lenses with a darker iris in
+  steel bezels; the body below the hinge stays down in the chasm. It is always shown side-on, in profile
+  (the eye toward the runner), and has no hitbox.
+- **Captain Cogs' look and his ship's station** (GDD §10: a pirate mixed with a futuristic look, in a
+  floating ship flying above the track). Placeholder (`CaptainCogsSuit`, `CaptainCogsModel`,
+  `CaptainCogsShip`): a burly pirate, 2.4 m tall, in a teal frock coat, a tricorn with a brass cog badge, a
+  braided beard, an eyepatch, a clockwork brass arm and a monocle-eye glowing the Beach's blue, on the
+  stern castle of a flying galleon (brass bands, cannons, a patched sail with a cog-toothed skull, a neon
+  violet trim, hover pods, brass cog wheels turning on its flanks). It keeps 40 m ahead of the runner
+  (`ship_ahead`) and 16.5 m over the floor base (`ship_height`), stern toward them, and has no collision.
+- **The bombs a step, and phase 2's "more bombs"** (GDD §10: the bombs warned like the Floating Head's;
+  phase 2 the same with more bombs). Placeholders (`MechaGuppyTuning`, "Captain Cogs' bombs"):
+  - The Floating Head's warning: a red circle at the floor's height from the throw, a whistle, 1.1 s from
+    the throw to the landing (`lock_seconds`); its salvo rules for the spots (a lane to dodge into always
+    reached in time, never off a pier's side, never under a hut, never on a pickup). The circles never show
+    before the hut's deadline (so they never hint at the lanes that lead up).
+  - Phase 1: a volley of two spots on the higher roof's run each step (one or two bombs a spot on 3 lanes,
+    two or three on 5-6), 2.3-3.5 bombs a step.
+  - Phase 2: one spot on the roof's run, a landing spot where riders come down (dodged in the air off the
+    hut's end), and two bombs on the hut over a rider, which burst on its top (the owner's rule: the
+    ceiling between them shields a rider), 4.3-4.5 bombs a step. The hut's bombs show no circle (nobody can
+    stand there) and a rider under the hut only hears and feels them. Are harmless hut bombs part of the
+    owner's "more bombs", or should phase 2 put more on the roofs instead?
+- **The hit's show** (GDD §10: the bomb falling, a clang, sparks or smoke). Placeholder: the bomb counts
+  the moment it falls inside the open jaws (high in the mouth, where the runner sees it): a fireball,
+  sparks and smoke there (RunEffects', calmed by Reduced flashing), the clang (guppy_clang), a shudder and a
+  camera shake, and the shark recoils, snapping shut and sinking out of sight before the camera passes.
+- **The fight's sounds** (`tools/asset_gen/sfx_bank_mecha_guppy.gd`): the captain's throw (a whoosh, a
+  clockwork ratchet and a gruff "harr!"), the shark coming up (grinding machinery, a rising whine, plates
+  clanking: the bites' and breaches' warning), its bite (a steel clank, hydraulics, crunching timber), a
+  hit's clang (the blast, a ringing steel clang, sparks, a groan). The bombs keep the Floating Head's
+  whistle and blast.
+

@@ -20,7 +20,8 @@ Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Casino's
 Casino 2 (`--boss=casino_boss`), the Corporate zone's Hostile Takeover after Corporate 2
 (`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), and the
 Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The Beach's boss,
-Mecha Guppy and Captain Cogs, is being built: debug builds play its climb as a preview (`--boss=beach_boss`), and
+Mecha Guppy and Captain Cogs, is being built: debug builds play its first two phases (the climb, the shark's bites,
+Captain Cogs' bombs and the hits) as a preview (`--boss=beach_boss`), and
 the campaign still passes through its placeholder card. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable). The owner's story beats are
 built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
@@ -418,9 +419,14 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   rider anywhere on a hut has time to read the lanes and switch, with 0.9 s to spare, from the farthest lane
   after the latest flip. The camera follows them up past a giant waterfall whose foot sinks below as they
   climb, over a hazy sea and clouds, under Sunset Strip's sunset in the campaign. Phase 2 climbs about 20%
-  faster. Hits (4 in phase 1, 6 in phase 2) come with the shark and Captain Cogs' bombs, next (E5e-b2).
+  faster. Mecha Guppy rises beside the end of each roof the runner leaves (a rumble warns of it) and bites
+  it off once they're up on the hut. Captain Cogs, a clockwork-armed pirate in a flying galleon ahead, throws
+  bombs warned like the Floating Head's (a red circle where each lands, a whistle): volleys on the roofs to
+  dodge, and in phase 2 a bomb where riders land and bombs bursting harmlessly on the hut over them. Weapons
+  do nothing: after each hut's last moment to switch, a bomb thrown at the chasm beside the lanes that lead up
+  goes into the shark's jaws as it rises to eat, a hit (4 end phase 1, 6 phase 2).
   Phase 3 is a minute's stub on the flat top for now (E5e-c)
-  (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb).
+  (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs and the hits).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.

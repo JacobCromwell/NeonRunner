@@ -19,8 +19,9 @@ extends RefCounted
 ##   of the tower, its front a lantern-lit landing stage with the orange lip and the open framework of a pier below,
 ##   posts and braces on tall stilts down to the water, so it reads as a place to land, not a wall; its sides over
 ##   the gap beside it carry the orange lip too.
-## - The chasm between towers (the floor Mecha Guppy has eaten, E5e-b1's placeholder for its bites; E5e-b2 brings the
-##   shark): nothing but the drop to the water far below, the street's own (MechaGuppySkin), where a fall ends.
+## - The chasm between towers (the floor Mecha Guppy has eaten; the shark, MechaGuppyShark, rises in it and bites the
+##   roofs' ends into it): nothing but the drop to the water far below, the street's own (MechaGuppySkin), where a
+##   fall ends.
 ## - A hut: a plank platform hovering on four violet-blue lift pods outside the lanes, its underside one surface
 ##   across its lanes with flush joists, a dark seam and a warm lamp row along each lane seam (and along each run of
 ##   lanes' edge, so the lanes that lead up visibly run on, lit, past the others: RUN_ON), the orange band of every
@@ -115,8 +116,8 @@ func _init(p_skin: BeachSkin, p_geo: TrackGeometry, p_movement: MovementTuning) 
 
 ## Where a tower whose deck is at `top` ends below: the water under the street (the chasms' floor, MechaGuppySkin),
 ## or TOWER_DEPTH under its deck, where the haze has long hidden it.
-## DESIGN-TBD: the chasm, open down to the street's own water, stands in for the floor Mecha Guppy has eaten until
-## E5e-b2 builds its bites (docs/questions/e5e.md).
+## DESIGN-TBD: the chasm, open down to the street's own water, is the floor Mecha Guppy has eaten; its bites
+## (MechaGuppyShark) eat each roof's end into it (docs/questions/e5e.md).
 func bottom(top: float) -> float:
 	return maxf(-skin.pool_depth, top - TOWER_DEPTH)
 

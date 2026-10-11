@@ -34,6 +34,10 @@ func run() -> void:
 	for phase: int in 2:
 		await _test_shark(3, 23.8, phase)
 		await _test_shark(6, 18.0, phase)
+	# The latest anyone flips up: a jump and the dash right before the pads, from the lane farthest from those that
+	# lead up (MechaGuppyBot.worst_case): the bite still waits for them to be on the hut.
+	await _test_shark(3, 23.8, 0, true)
+	await _test_shark(5, 18.0, 1, true)
 	await _test_retry()
 
 
@@ -47,8 +51,9 @@ func _movement(speed: float) -> MovementTuning:
 	return t
 
 
-## The fight at `lanes` and `speed` m/s from phase index `phase` (a resume), its attacks on: [world, boss].
-func _fight(lanes: int, speed: float, phase: int = 0) -> Array:
+## The fight at `lanes` and `speed` m/s from phase index `phase` (a resume), its attacks on (with the dash power-up at
+## its best tier with `dash`): [world, boss].
+func _fight(lanes: int, speed: float, phase: int = 0, dash: bool = false) -> Array:
 	var t: MovementTuning = _movement(speed)
 	var boss := BossEncounter.create(def) as MechaGuppy
 	var ctx := RunContext.new()
@@ -60,7 +65,11 @@ func _fight(lanes: int, speed: float, phase: int = 0) -> Array:
 	if phase > 0:
 		ctx.boss_resume = {"phase": phase}
 	var arena: BossArena = boss.plan_arena(ctx)
-	var world: RunWorld = sim.build_world(arena.layout, null, t, ctx.config)
+	var loadout: Loadout = null
+	if dash:
+		loadout = Loadout.new()
+		loadout.tiers[&"dash"] = 4
+	var world: RunWorld = sim.build_world(arena.layout, loadout, t, ctx.config)
 	boss.setup(world, ctx, arena)
 	return [world, boss]
 
@@ -114,9 +123,9 @@ func _floor_hit(world: RunWorld, x: float, z: float, top: float) -> float:
 
 # --- The shark ------------------------------------------------------------------------------------
 
-func _test_shark(lanes: int, speed: float, phase: int) -> void:
-	var tag: String = "(%d lanes, %.1f m/s, phase %d)" % [lanes, speed, phase + 1]
-	var pair: Array = _fight(lanes, speed, phase)
+func _test_shark(lanes: int, speed: float, phase: int, late: bool = false) -> void:
+	var tag: String = "(%d lanes, %.1f m/s, phase %d%s)" % [lanes, speed, phase + 1, ", the latest flips" if late else ""]
+	var pair: Array = _fight(lanes, speed, phase, late)
 	var world: RunWorld = pair[0]
 	var boss: MechaGuppy = pair[1]
 	var p: Player = world.player
@@ -125,6 +134,10 @@ func _test_shark(lanes: int, speed: float, phase: int) -> void:
 	var mt: MechaGuppyTuning = boss.tuning
 	var bot := MechaGuppyBot.new(boss)
 	bot.reaction = REACTION
+	if late:
+		bot.worst_case = true
+		bot.dash_flip = true
+		bot.reaction = mt.read_seconds
 	var cause: Array[String] = [""]
 	p.died.connect(func(c: String) -> void: cause[0] = c)
 	var wall: float = world.geo.wall_x()
@@ -132,11 +145,18 @@ func _test_shark(lanes: int, speed: float, phase: int) -> void:
 	# The closest a bite's jaws came to a rider's lowest point under the hut, the highest a breach's came over a lane
 	# that leads up (from the floor's level), the lurk's widest x and turn.
 	var state: Dictionary = {"clear": INF, "over": -INF, "lurk_x": 0.0, "lurk_yaw": 0.0, "lurked": 0, "seen": 0,
-		"warned": {}, "cuts": []}
+		"warned": {}, "cuts": [], "stage": MechaGuppyShark.Stage.IDLE, "dives": 0}
 	var to_climb: int = 4
 	await _run(world, 70.0, func() -> bool: return bot.steps_climbed >= to_climb, func() -> void:
 		bot.step()
 		var a: Dictionary = shark.action
+		# A bite's jaws come up only once the runner is up on that roof's hut (they leave its watch: the dive).
+		if shark.stage == MechaGuppyShark.Stage.DIVING and int(state["stage"]) != MechaGuppyShark.Stage.DIVING:
+			state["dives"] = int(state["dives"]) + 1
+			var r: int = int(a.get("roof", -1))
+			if p.alive and (p.surface != Player.Surface.CEILING or r < 0 or p.distance < climb.steps[r].pad - 0.5):
+				problems.append("roof %d's bite came up with the runner %s at %.0f m" % [r, p.surface_name(), p.distance])
+		state["stage"] = shark.stage
 		if not a.is_empty() and shark.shown():
 			if int(a["kind"]) == MechaGuppyShark.Kind.BITE:
 				var roof_index: int = int(a.get("roof", -1))
@@ -195,6 +215,9 @@ func _test_shark(lanes: int, speed: float, phase: int) -> void:
 				if not is_nan(_floor_hit(world, x, TrackGeometry.world_z(cut + 0.6), top)) \
 						or not is_nan(_floor_hit(world, x, TrackGeometry.world_z((cut + float(c["end"])) * 0.5), top)):
 					problems.append("roof %d still has floor past its cut in lane %d" % [r, lane])
+				# Before the cut it's still there (while the props keep what the runner has passed: BossProps.KEEP_BEHIND).
+				if p.distance > cut + BossProps.KEEP_BEHIND - 2.0:
+					continue
 				var before: float = _floor_hit(world, x, TrackGeometry.world_z(cut - 0.6), top)
 				if is_nan(before) or absf(before - top) > 0.05:
 					problems.append("roof %d lost its floor before its cut in lane %d" % [r, lane])
@@ -204,7 +227,8 @@ func _test_shark(lanes: int, speed: float, phase: int) -> void:
 		"" if p.alive else ": %s at %.0f m" % [cause[0], p.distance]])
 	var bites: Array[Dictionary] = _events(boss, &"bite")
 	var eaten: Array[Dictionary] = _events(boss, &"roof_eaten")
-	check(bites.size() >= to_climb and eaten.size() == bites.size() and _events(boss, &"bite_skipped").is_empty(),
+	check(bites.size() >= to_climb and eaten.size() == bites.size() and int(state["dives"]) == bites.size()
+		and _events(boss, &"bite_skipped").is_empty(),
 		"every step's roof is bitten once the runner has left it (%d bites, %d roofs eaten) %s" % [bites.size(), eaten.size(), tag])
 	check(problems.is_empty(), "never the floor the runner is on nor the safe drop, warned first, collision and look ending at the cut; breaches only past the deadline (%d bites) %s%s"
 		% [bites.size(), tag, "" if problems.is_empty() else ": " + "; ".join(problems.slice(0, 3))])

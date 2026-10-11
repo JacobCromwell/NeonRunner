@@ -23,9 +23,15 @@ extends BossEncounter
 ## (top_reached, logged), the waterfall backdrop (MechaGuppyWaterfall) gives way to the Beach's own sky and the stub's
 ## minute (top_seconds) starts, after which the fight is won. E5e-c builds phase 3's attacks on that moment.
 ##
-## Hits (GDD §10: phase 1 ends after 4, phase 2 after 6; BossPhase.hits): register_hit(), which E5e-b2's bombs call
-## when one falls through a gap, off a roof's edge or onto the exposed shark (and the tests call now). Weapons do
-## nothing (BossDef.weapon_share_cap 0; weapons_can_end_phase off: each phase's hits are counted).
+## The shark, the pirate and the bombs (E5e-b2): Mecha Guppy (MechaGuppyShark) bites the end of each roof the runner
+## has just left and breaches in the chasm beside the lanes that don't lead up; Captain Cogs (CaptainCogsShip) flies
+## ahead and above, throwing the bombs (MechaGuppyBombs: the Floating Head's warning, a circle at the floor's height
+## and a whistle); MechaGuppyPattern times them step by step, the same every step. The bombs, the bites and the hits
+## run only while attacks_enabled (tests turn them off to check the climb alone).
+## Hits (GDD §10: phase 1 ends after 4, phase 2 after 6; BossPhase.hits): register_hit(), which the bombs call when
+## one falls into Mecha Guppy's open jaws over the chasm (the stretch it has eaten through, where it's exposed and in
+## the line of fire): each step's hit bomb, thrown at the hut's deadline. Weapons do nothing
+## (BossDef.weapon_share_cap 0; weapons_can_end_phase off: each phase's hits are counted).
 ## The armor rule's pickups (GDD §10, the standard 15-17 s) appear on the roof the runner will run along
 ## (_on_armor_pickup_due, PickupField.place at the roof's height), never under a hut or near an edge.
 ## Random choices (the lanes that lead up) come from a seed of the fight and the lane count, time from the physics
@@ -228,7 +234,7 @@ func sound(sound_name: StringName, pos: Vector3) -> void:
 
 
 ## A hit on Mecha Guppy (GDD §10: a bomb that falls through a gap, off a roof's edge or onto the exposed shark):
-## one of the phase's BossPhase.hits (4 in phase 1, 6 in phase 2). E5e-b2's bombs call this; the tests too. Only
+## one of the phase's BossPhase.hits (4 in phase 1, 6 in phase 2). The bombs call this (MechaGuppyBombs); the tests too. Only
 ## counts while the climb's pattern runs (not in an intro, not in phase 3, which a minute of dodging ends, not once
 ## it's beaten). True if it counted.
 func register_hit(cause: StringName = &"bomb") -> bool:
