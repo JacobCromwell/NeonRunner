@@ -587,7 +587,9 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
   of the screen with bright orange as the chase camera passes just under it when the rider drops. Placeholder
   (`MechaGuppyLooks`, `END_BAND_*`): up close it is an orange lip at the very end (0.3 m, the decks' edge language)
   with a row of lamps; its 4 m length is a glow card, as bright as the old band, that fades out as the camera comes
-  within 16 m. From afar it reads as before; at the drop only the lip shows. Is that the right look?
+  within 16 m. From afar it reads as before; at the drop only the lip shows (bright orange at most 3.8-5.0% of the
+  screen there, against 17.4-26.5%). Dimming the band instead turned it red (the edge colour is redder than it looks
+  and only reads orange when bright), a red slab overhead. Is that the right look?
 - **The trench's depth** (task E5e-f's review). Placeholder (`MechaGuppyLooks._bite_deep`): a floor bite's broken face
   fades from the tower's dark timber into the sea haze the deeper it goes (most of the way 18 m down), so a full-width
   trench seen from over it reads as a drop, not a dark slab.

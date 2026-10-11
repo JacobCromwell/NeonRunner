@@ -77,7 +77,8 @@ const REACH_BACK_MOST: int = 2
 ## on roof 3, after the first bait.
 const FIRST_NOTCH: int = 2
 ## The first roof with a floor bite (task E5e-f): roof 1, the first tower, where it comes on its own (no volley, no bait:
-## one new mechanic at a time); from FIRST_NOTCH on, every other roof (bitten()).
+## one new mechanic at a time); from FIRST_NOTCH on, every other roof (bitten()). DESIGN-TBD (docs/questions/e5e.md):
+## which roofs are bitten, and the volley's place after it.
 const FIRST_BITE: int = 1
 ## A floor bite starts at least this far past where its riders land (metres).
 const LAND_CLEAR: float = 2.0
