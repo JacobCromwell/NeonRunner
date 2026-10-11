@@ -96,6 +96,7 @@ volume_db = {
 "grapple": -3.5,
 "guppy_bite": -4.0,
 "guppy_clang": -2.5,
+"guppy_floor_warn": -3.0,
 "guppy_gulp": -2.5,
 "guppy_leap": -3.0,
 "guppy_rumble": -3.0,

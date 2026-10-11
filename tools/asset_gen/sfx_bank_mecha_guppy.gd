@@ -9,7 +9,11 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                 up, its clicks quickening, a brass servo whirring up, a catch as the circle locks (the throw follows)
 ##   guppy_rumble  the shark coming up (a bite's and a breach's warning): deep machinery grinding up from below, a
 ##                 rising mechanical whine and the water churning
-##   guppy_bite    its jaws snapping shut: a huge steel clank, hydraulics hissing, timber and thatch crunching
+##   guppy_floor_warn  the floor bite's warning (task E5e-f's review: its own, so it means "this one can kill you"):
+##                 three heavy knocks from under the deck, closer each time, timbers groaning and splintering, and steel
+##                 teeth screeching up through the wood
+##   guppy_bite    its jaws snapping shut: a huge steel clank, hydraulics hissing, timber and thatch crunching (a bite's
+##                 snap and a floor bite's)
 ##   guppy_clang   a bomb in its jaws (a hit): the bomb's crack and boom, a great steel clang ringing out, sparks
 ##                 crackling, the shark's machinery groaning
 ## Phase 3 and the defeat (task E5e-c):
@@ -34,6 +38,7 @@ func sounds() -> Dictionary:
 		"cogs_throw": _throw,
 		"cogs_aim": _aim,
 		"guppy_rumble": _rumble,
+		"guppy_floor_warn": _floor_warn,
 		"guppy_bite": _bite,
 		"guppy_clang": _clang,
 		"cogs_charge": _charge,
@@ -115,6 +120,31 @@ func _rumble() -> PackedFloat32Array:
 	DSP.mix(b, whine, 0.0, 0.6)
 	for k: int in 4:
 		DSP.mix(b, DSP.metal_hit(0.22, 320.0 + 90.0 * k, 0.07, rng), 0.35 + 0.2 * k, 0.75)
+	DSP.crush(b, 10, 18000.0)
+	return b
+
+
+## The floor bite's warning (see the header), about as long as its lead over the snap: three heavy knocks from under the
+## deck, each nearer and louder (a low boom with a dull steel knock), a timber creak groaning up, steel teeth screeching up
+## through the wood (a rising metallic FM grind that carries on a phone's speaker), and splinters crackling more and more.
+func _floor_warn() -> PackedFloat32Array:
+	var rng := _rng(2106)
+	var d: float = 1.4
+	var b := DSP.buffer(d)
+	for k: int in 3:
+		var at: float = 0.04 + 0.33 * float(k)
+		DSP.mix(b, _boom(0.45, 85.0, 42.0, 0.1, rng), at, 0.5 + 0.2 * float(k))
+		DSP.mix(b, DSP.metal_hit(0.25, 140.0 + 30.0 * float(k), 0.08, rng), at, 0.35)
+	var creak := DSP.osc(d, func(u: float) -> float: return 160.0 + 45.0 * sin(u * 23.0) + 60.0 * u, &"saw")
+	DSP.filter(creak, &"bandpass", 650.0, 2.0)
+	DSP.adsr(creak, 0.3, 0.2, 0.8, 0.15)
+	DSP.mix(b, creak, 0.0, 0.45)
+	var screech := DSP.fm(d, func(u: float) -> float: return DSP.sweep(700.0, 1700.0, u * u), 1.41,
+		func(u: float) -> float: return 2.0 + 4.0 * u)
+	DSP.filter(screech, &"bandpass", 1400.0, 1.2)
+	DSP.adsr(screech, 0.7, 0.1, 0.9, 0.1)
+	DSP.mix(b, screech, 0.0, 0.5)
+	DSP.mix(b, _crackle(d - 0.25, 40, 1.0, 1800.0, rng), 0.25, 0.8)
 	DSP.crush(b, 10, 18000.0)
 	return b
 

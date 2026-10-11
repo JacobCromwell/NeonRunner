@@ -18,8 +18,9 @@ extends TestSuite
 ##   only once the hut's deadline is past (every rider committed: it never tells which lanes lead up), with the rider in
 ##   a lane that leads up; its jaws are never over a lane that leads up above the floor's level; while it lurks before
 ##   one nothing of it shows; each is warned by the rumble;
-## - (Mecha Guppy's floor bite, task E5e-f, rumbles as it rises and crunches as it snaps too, and is counted so; its jaws
-##   come up through the roof the runner runs on, so the checks above leave it to test_mecha_guppy_floor_bite;)
+## - (Mecha Guppy's floor bite, task E5e-f, has its own warning sound as it rises, never the rumble, and crunches as it
+##   snaps, and is counted so; its jaws come up through the roof the runner runs on, so the checks above leave it to
+##   test_mecha_guppy_floor_bite;)
 ## - a retry bites the same.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
@@ -271,13 +272,13 @@ func _test_shark(lanes: int, speed: float, phase: int, baits: bool, late: bool =
 			% [breaches, float(state["over"]), tag])
 		check(int(state["lurk_shown"]) == 0,
 			"while it lurks before a breach nothing of it shows (%d frames lurking) %s" % [int(state["lurked"]), tag])
-	# (A floor bite's rise rumbles too: task E5e-f.)
+	# (A floor bite's rise has its own warning sound, never the rumble: task E5e-f's review.)
 	var floors: int = _events(boss, &"floor_bite_rise").size()
-	var warnings: int = _events(boss, &"bite_warning").size() + breaches + floors
-	check(_sounds(boss, &"guppy_rumble") == warnings
+	var warnings: int = _events(boss, &"bite_warning").size() + breaches
+	check(_sounds(boss, &"guppy_rumble") == warnings and _sounds(boss, &"guppy_floor_warn") == floors
 		and _sounds(boss, &"guppy_bite") >= bites.size() + _events(boss, &"floor_bite_snap").size(),
-		"each bite, floor bite and breach is warned by its rumble, each bite heard (%d rumbles for %d) %s"
-		% [_sounds(boss, &"guppy_rumble"), warnings, tag])
+		"each bite and breach is warned by its rumble, each floor bite by its own warning sound, each bite heard (%d rumbles for %d, %d floor bite warnings for %d) %s"
+		% [_sounds(boss, &"guppy_rumble"), warnings, _sounds(boss, &"guppy_floor_warn"), floors, tag])
 	print("  Mecha Guppy %s: %d bites, %d catches, %d breaches; its jaws %.2f m under a rider at the closest"
 		% [tag, bites.size(), catches, breaches, float(state["clear"])])
 	await sim.free_world(world)

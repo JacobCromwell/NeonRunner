@@ -39,15 +39,16 @@ extends Node3D
 ##   swims away). Nothing of it has a hitbox then either.
 ## - floor_bite() (task E5e-f; GDD §10, the owner, October 11, 2026: "The floor bite"; MechaGuppyPattern times it,
 ##   MechaGuppyFloorBite shows its warning and makes its snap): it bites a crescent out of the roof the runner is still
-##   running on. Its warning: the rumble, and the shark surging up into its watch beside the roof's side at the bite
-##   (floor_rise), upright, its snout towering over the deck and an eye just over it (its snout and teeth at the roof's
-##   side). Once the runner reaches the bite's lunge point it dives under the deck leaning in with its jaws opening
-##   (bite_dive) and bursts up through the floor over the crescent (bite_rise), its lower jaw flat across it with its teeth
-##   through the deck, its tip FLOOR_CLEAR short of the lane the bite leaves (no part of its jaws ever over that lane),
-##   its snout raised over the bitten lanes; it holds (at least bite_hold, until the runner reaches the bite's snap point)
-##   and snaps shut (bite_snap, guppy_bite), dropping FLOOR_DROP with the chunk (on_snap: the floor goes), its jaws under
-##   the deck from then on, then sinks. It has no hitbox of its own (the snap's is MechaGuppyFloorBite's) and no bomb
-##   counts in its jaws then (mouth_contains). It may start from a sink already all under the floor, as a breach may.
+##   running on. Its warning: its own sound (guppy_floor_warn, never the rumble: task E5e-f's review), and the shark
+##   surging up into its watch beside the roof's side at the bite (floor_rise), upright, its snout towering over the
+##   deck and an eye just over it (its snout and teeth at the roof's side). Once the runner reaches the bite's lunge
+##   point it dives under the deck leaning in with its jaws opening (bite_dive) and bursts up through the floor over the
+##   crescent (bite_rise), its lower jaw flat across it with its teeth through the deck, its tip FLOOR_CLEAR short of
+##   the lane the bite leaves (no part of its jaws ever over that lane), its snout raised over the bitten lanes; it
+##   holds (at least bite_hold, until the runner reaches the bite's snap point) and snaps shut (bite_snap, guppy_bite),
+##   dropping FLOOR_DROP with the chunk (on_snap: the floor goes), its jaws under the deck from then on, then sinks. It
+##   has no hitbox of its own (the snap's is MechaGuppyFloorBite's) and no bomb counts in its jaws then
+##   (mouth_contains). It may start from a sink already all under the floor, as a breach may.
 ## Its pose (hinge, pitch, yaw, roll, jaw) is always eased from the one before, so it never pops while it can be seen.
 ## advance() is driven by the boss's ticks (time from the physics step; it waits while the runner is down). Nothing
 ## flickers (Reduced flashing has nothing to calm; the hit's fireball and sparks are RunEffects', which honour it).
@@ -262,7 +263,7 @@ func can_breach(top: float) -> bool:
 
 ## A floor bite (see the header): `spot` {side (the side it bites from), top (the roof's top), roof (its index), at (the
 ## bite's middle: track distance), bite (MechaGuppyCrescent), lunge_at (where the runner is as it lunges), snap_at (where
-## they are as its jaws have shut)}. Its warning (the rumble, the rise into its watch) starts now. False (nothing done)
+## they are as its jaws have shut)}. Its warning (its sound, the rise into its watch) starts now. False (nothing done)
 ## unless it may start (can_breach's rule: free, or sinking already all under the floor).
 func floor_bite(spot: Dictionary) -> bool:
 	if not can_breach(float(spot["top"])):
@@ -277,6 +278,12 @@ func floor_bite(spot: Dictionary) -> bool:
 func floor_pending() -> bool:
 	return not action.is_empty() and int(action["kind"]) == Kind.FLOOR \
 		and stage in [Stage.RISING, Stage.WAITING, Stage.DIVING, Stage.BREAKING, Stage.OPEN]
+
+
+## True while a floor bite's jaws are snapping shut: committed (its snap, the chunk gone, comes at the stage's end; a phase
+## change lets it complete rather than snap them on intact floor: task E5e-f's review).
+func floor_snapping() -> bool:
+	return not action.is_empty() and int(action["kind"]) == Kind.FLOOR and stage == Stage.SNAPPING
 
 
 ## A floor bite called off before its snap (the attacks stopped): it sinks away, nothing bitten.
@@ -488,7 +495,9 @@ func _begin(spot: Dictionary) -> void:
 	else:
 		bites += 1
 		boss.log_event(&"bite_warning", {"roof": int(action.get("roof", -1)), "edge": float(action.get("edge", 0.0))})
-	boss.sound(&"guppy_rumble", rise_to["hinge"] as Vector3 + Vector3(0.0, jaw_length() * 0.5, 0.0))
+	# A floor bite's warning has its own sound (task E5e-f's review: the rumble is the harmless bite's and the breach's too).
+	var warn: StringName = &"guppy_floor_warn" if kind == Kind.FLOOR else &"guppy_rumble"
+	boss.sound(warn, rise_to["hinge"] as Vector3 + Vector3(0.0, jaw_length() * 0.5, 0.0))
 	_go(Stage.RISING, rise_to, rise)
 
 
