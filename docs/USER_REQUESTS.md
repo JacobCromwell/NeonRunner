@@ -181,3 +181,20 @@ kept off the bigger enemies' windows).
 - [x] "Doodads should certainly be allowed to enter the play field at the same time as any of these bigger enemies
   like a buzzsaw overdrive or the enforcer or the truck, etc." (I1: the Buzz Overdrive, the Enforcer Truck and the
   hover truck; the others' planned attacks, in `docs/questions/i1.md`.)
+
+## Owner's answers to task I1's questions (October 11, 2026)
+
+Answers to `docs/questions/i1.md`, in its order (task I1).
+
+- [x] The danger density pass's 27.5% more enemies in the final levels at 3 lanes (265 before it): "fine".
+  (`test_danger_density`'s `ENEMY_FLOORS`.)
+- [x] Fewer Buzz Overdrives in Corporate 1 and 2 with its recency boost capped: "fine for now".
+- [x] "In this case, I think that the tithe collector should be removed if we get the bait chance instead": an
+  Enforcer Truck's showing window takes out a Tithe Collector in its way, the level's first too where another
+  stays. (I1)
+- [x] Dash walls taking the zone doodads out of their footprints, and Golden 2's one wall: "acceptable for now".
+- [x] "I would like the doodads to still show up occasionally by bigger enemies if that does not add too much
+  complexity to the code and if it does not decrease the performance too heavily." (I1: a Resonator, between its
+  pulses; the others, and why not, in `docs/questions/i1.md`.)
+- [x] "I still don't like too many walls on the beach. Are you able to reduce that to about 50% instead of 60% for
+  the beach levels?" (I1: a busy wall takes out plain wall pieces to open; the median wall stands on 50.9%.)

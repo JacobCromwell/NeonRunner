@@ -207,6 +207,9 @@ var charge_path_result: Dictionary = {}
 ## chase its arrival, its preferred one, its bait, its window or why none, and for each bait its own chase's window,
 ## task C6d); empty in a level without the truck.
 var show_window_result: Dictionary = {}
+## The side wall gaps of the last build (WallGapPlacement.place): {taken_out: the signs, wall fences and wall enemies
+## a busy wall took out to open (WallGapTuning.clear_pieces_below, the Beach's)}.
+var wall_gap_result: Dictionary = {}
 ## The danger density pass's report for the last build (DangerDensity.apply_enemies, apply_obstacles,
 ## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's
 ## danger_density_increase is 0.
@@ -1917,7 +1920,8 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
 ## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it.
 ## Doodads may stand while a bigger enemy is around (owner, October 10, 2026): a Buzz Overdrive's cut, a
-## hover truck's stay and an Enforcer Truck's showing window keep no lane but their own. A floor cut's lane
+## hover truck's stay and an Enforcer Truck's showing window keep no lane but their own, and a Resonator keeps
+## only its pulses (owner, October 11, 2026: ResonatorRules.doodad_keep_outs). A floor cut's lane
 ## is kept as a lane keep over its lane window (FloorCutPlan.lane_window), so a push never lands the player
 ## in a cut, and a doodad that would leave a cut without its way out goes (_place_doodads). The rules' calm
 ## stretches ({from, to, calm: true}: an Enforcer Truck's showing window, task C6c) go into `calm` for a

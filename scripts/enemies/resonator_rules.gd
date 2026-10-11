@@ -109,6 +109,42 @@ static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 	return Vector2(float(anchors[0]), last.y + PLAN_MARGIN)
 
 
+## What zone doodads keep off around Resonator entry `e` in every lane besides its pulses (LevelGenerator.fill_keep_outs
+## with for_doodads): nothing, for one with a plan (owner, October 11, 2026: doodads may stand beside the bigger enemies
+## now and then; a Resonator hovers above them, and between its pulses they stand where its waves don't come:
+## doodad_keep_outs); its keep-out, for one without.
+static func doodad_keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	if ((e.get("params", {}) as Dictionary).get("pulse_at", []) as Array).is_empty():
+		return keep_out(gen, e)
+	return Vector2(INF, -INF)
+
+
+## What zone doodads keep off in every lane (LevelGenerator.rules_doodad_keep_outs): each planned pulse of every
+## Resonator (pulse_stretches), as Resonator.pulse_clear asks before each one: its push can't move the runner into a
+## wave, and no pulse is held for one. A pulse a wait for its turn moved on may still meet one (pulse_clear holds it).
+static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var t: ResonatorTuning = tuning()
+	for e: Dictionary in resonators_in(gen.layout):
+		for s: Vector2 in pulse_stretches(gen, t, e):
+			out.append({"from": s.x, "to": s.y, "type": TYPE})
+	return out
+
+
+## Each planned pulse of Resonator entry `e`, from a metre before its warning starts to the end of the stretch where its
+## wave (or a double's second) meets the runner, with PLAN_MARGIN: what Resonator.pulse_clear keeps clear.
+static func pulse_stretches(gen: LevelGenerator, t: ResonatorTuning, e: Dictionary) -> Array[Vector2]:
+	var params: Dictionary = e.get("params", {})
+	var anchors: Array = params.get("pulse_at", [])
+	var doubles: Array = params.get("double", [])
+	var out: Array[Vector2] = []
+	for i: int in anchors.size():
+		var double: bool = doubles.size() == anchors.size() and bool(doubles[i])
+		var stretch: Vector2 = t.meeting_stretch(float(anchors[i]), double, gen.speed, gen.config.enemy_scaling, gen.pace)
+		out.append(Vector2(float(anchors[i]) - 1.0, stretch.y + PLAN_MARGIN))
+	return out
+
+
 ## Every Resonator in the layout, along the track.
 static func resonators_in(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

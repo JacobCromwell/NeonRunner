@@ -30,7 +30,9 @@ extends RefCounted
 ## then stands again where it has more open than its target share of the level, first where the other wall is
 ## open too, and where both walls are still open at once over more than both_open_max of the level
 ## (_open_walls). Every keep-out above holds there as anywhere, so a wall whose keep-outs leave less free stands
-## more. The shared tuning has it off, so every other level is built exactly as before.
+## more; with clear_pieces_below above 0 (the Beach's; the owner, October 11, 2026: "about 50% instead of 60%") a
+## busy wall first takes out the plain pieces holding it up (_clear_busy_walls). The shared tuning has both off, so
+## every other level is built exactly as before.
 ##
 ## Its own random stream (LevelGenerator.rng_for), so every other pass places exactly what it did
 ## before; a level without the feature is unchanged.
@@ -46,6 +48,8 @@ const EPSILON: float = 0.001
 const KEEP_MARGIN: float = 0.01
 ## Metres of open wall over a target that are only rounding (coverage mode): less than this is nothing to close.
 const CLOSE_TOLERANCE: float = 0.05
+## The wall enemies a busy wall may take out (_clear_busy_walls): a window cyborg, a wall vent's screech.
+const CLEARABLE_ENEMIES: PackedStringArray = ["window_cyborg", "screech"]
 
 
 ## The shared numbers (data/tuning/wall_gaps.tres), which every level without its own uses.
@@ -72,6 +76,7 @@ static func is_boss_arena(config: LevelConfig) -> bool:
 static func place(gen: LevelGenerator) -> void:
 	var lay: LevelLayout = gen.layout
 	lay.wall_gaps.clear()
+	gen.wall_gap_result = {}
 	if not gen.config.has_feature(FEATURE) or (is_boss_arena(gen.config) and gen.config.wall_gap_tuning == null):
 		return
 	var t: WallGapTuning = tuning_for(gen.config)
@@ -79,9 +84,11 @@ static func place(gen: LevelGenerator) -> void:
 	var v: float = gen.speed
 	var lo_len: float = minf(t.length_seconds_min, t.length_seconds_max)
 	var hi_len: float = maxf(t.length_seconds_min, t.length_seconds_max)
-	var keeps: Array = [keep_outs(gen, lay, -1, t), keep_outs(gen, lay, 1, t)]
 	var from: float = maxf(gen.feature_start(FEATURE), gen.config.start_clear_distance)
 	var last: float = lay.length - gen.config.end_clear_distance
+	if t.opens_walls() and t.clear_pieces_below > 0.0:
+		gen.wall_gap_result["taken_out"] = _clear_busy_walls(gen, t, from, last)
+	var keeps: Array = [keep_outs(gen, lay, -1, t), keep_outs(gen, lay, 1, t)]
 	if t.opens_walls():
 		_open_walls(gen, t, keeps, from, last, rng)
 	var search: float = t.search_seconds * v
@@ -172,6 +179,90 @@ static func _open_walls(gen: LevelGenerator, t: WallGapTuning, keeps: Array, fro
 		mine.assign(open[i])
 		for g: Vector2 in _no_short_stands(mine, min_solid, min_open):
 			lay.wall_gaps.append({"side": -1 if i == 0 else 1, "start": g.x, "end": g.y})
+
+
+## Coverage mode with clear_pieces_below above 0 (the Beach's; the owner, October 11, 2026: its walls standing about
+## half the time, not 60%): each wall whose keep-outs leave less than clear_pieces_below of the level free in [from,
+## last] (open_stretches, at least open_seconds_min long) takes out the plain pieces holding it up, one at a time, the
+## one that frees the most wall first, until it has that much free or no piece frees clear_gain_seconds_min more: its
+## signs, wall fences and
+## wall enemies (CLEARABLE_ENEMIES), never the level's last sign, its last of an enemy type or of one of its features,
+## nor the first of a kind it introduces (_clearable). Ramps, ceilings, hover trucks and Gilded Sentinels stay, as
+## the wider gaps and dash walls do. Taking content out never makes a level unfair. Returns what it took out.
+static func _clear_busy_walls(gen: LevelGenerator, t: WallGapTuning, from: float, last: float) -> Array[Dictionary]:
+	var lay: LevelLayout = gen.layout
+	var min_open: float = t.open_seconds_min * gen.speed
+	var want: float = t.clear_pieces_below * lay.length
+	var gain: float = maxf(t.clear_gain_seconds_min * gen.speed, CLOSE_TOLERANCE)
+	var out: Array[Dictionary] = []
+	for side: int in [-1, 1]:
+		var fixed: Array[Vector2] = _fixed_keep_outs(gen, lay, side, t)
+		var pieces: Array[Dictionary] = _piece_keep_outs(gen, lay, side, t)
+		var free: float = _free_with(fixed, pieces, from, last, min_open)
+		while free < want - CLOSE_TOLERANCE:
+			var best: int = -1
+			var best_free: float = free
+			for i: int in pieces.size():
+				if not _clearable(gen, pieces[i]["piece"]):
+					continue
+				var trial: Array[Dictionary] = pieces.duplicate()
+				trial.remove_at(i)
+				var f: float = _free_with(fixed, trial, from, last, min_open)
+				if f > best_free and f >= free + gain:
+					best = i
+					best_free = f
+			if best < 0:
+				break
+			var piece: Dictionary = pieces[best]["piece"]
+			_take_out(lay, piece)
+			out.append(piece)
+			pieces.remove_at(best)
+			free = best_free
+	return out
+
+
+## How much of [from, last] a wall keeping `fixed` and `pieces`' spans (_piece_keep_outs) leaves free to open.
+static func _free_with(fixed: Array[Vector2], pieces: Array[Dictionary], from: float, last: float, min_open: float) -> float:
+	var keeps: Array[Vector2] = fixed.duplicate()
+	for k: Dictionary in pieces:
+		keeps.append_array(k["spans"])
+	return span_total(open_stretches(WallFencePlacement.merged(keeps), from, last, min_open))
+
+
+## True if a busy wall may take out `piece` (a sign, a wall fence or a wall enemy; _clear_busy_walls): a plain one,
+## with another of its kind left in the level (another sign; another wall fence of its feature; another enemy of its
+## type and of its feature, a window cyborg's or a vent screech's), and not the first of a kind the level introduces.
+static func _clearable(gen: LevelGenerator, piece: Dictionary) -> bool:
+	var lay: LevelLayout = gen.layout
+	var feature: String = ""
+	if piece.has("type"):
+		var type: String = String(piece["type"])
+		if not CLEARABLE_ENEMIES.has(type):
+			return false
+		feature = "screech_vents" if type == "screech" else type
+		var same: int = 0
+		for e: Dictionary in lay.enemies:
+			if String(e.get("type", "")) == type:
+				same += 1
+		if same < 2:
+			return false
+	elif piece.has("band"):
+		feature = "wall_fences_partial" if WallFencePlan.is_partial(piece) else "wall_fences"
+	else:
+		return lay.signs.size() > 1
+	var at: PackedFloat64Array = PackedFloat64Array(LevelGenerator.feature_positions(lay, feature))
+	if gen.config.has_feature(feature) and at.size() < 2:
+		return false
+	return not (gen.feature_start(feature) > 0.0 and not at.is_empty() and is_equal_approx(at[0], float(piece["at"])))
+
+
+## Takes `piece` (the very entry: a sign, a wall fence or an enemy) out of `lay`.
+static func _take_out(lay: LevelLayout, piece: Dictionary) -> void:
+	for list: Array[Dictionary] in [lay.signs, lay.wall_fences, lay.enemies]:
+		for i: int in list.size():
+			if is_same(list[i], piece):
+				list.remove_at(i)
+				return
 
 
 ## One wall's open stretches `open` (sorted) with every stretch of wall standing between two of them at least
@@ -341,28 +432,53 @@ static func _starts_blocked(keeps: Array, length: float) -> Array[Vector2]:
 ## level's own where that's wider (task D10c review: the Beach's 0.35 s clearance had them 0.15 s under the shared
 ## ones). With the shared numbers it's the same clearance throughout, so every other level keeps its gaps.
 static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallGapTuning) -> Array[Vector2]:
+	var out: Array[Vector2] = _fixed_keep_outs(gen, lay, side, t)
+	for k: Dictionary in _piece_keep_outs(gen, lay, side, t):
+		out.append_array(k["spans"])
+	return WallFencePlacement.merged(out)
+
+
+## What each sign, wall fence and wall enemy on the `side` wall keeps (keep_outs), with its margin: [{piece (its
+## layout entry), spans (Array[Vector2])}], in the layout's order (signs, wall fences, then enemies).
+static func _piece_keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallGapTuning) -> Array[Dictionary]:
+	var v: float = gen.speed
+	var clear: float = t.clear_seconds * v
+	var timing: float = maxf(t.clear_seconds, tuning().clear_seconds) * v
+	var out: Array[Dictionary] = []
+	# Each span is a Vector2 before its margin is added, as it always was, so the margins round as they did.
+	for s: Dictionary in lay.signs:
+		if int(s["side"]) == side:
+			var k := Vector2(float(s["start"]), float(s["end"]))
+			out.append({"piece": s, "spans": [Vector2(k.x - clear, k.y + clear)] as Array[Vector2]})
+	var fence_half: float = gen.tuning.fence_depth * 0.5
+	for w: Dictionary in lay.wall_fences:
+		if int(w["side"]) == side:
+			var k := Vector2(float(w["at"]) - fence_half, float(w["at"]) + fence_half)
+			out.append({"piece": w, "spans": [Vector2(k.x - clear, k.y + clear)] as Array[Vector2]})
+	var enemy: float = t.wall_enemy_seconds * v
+	for e: Dictionary in lay.enemies:
+		if int(e.get("side", 0)) != side:
+			continue
+		var at: float = float(e["at"])
+		var k := Vector2(at - enemy, at + enemy)
+		var spans: Array[Vector2] = [Vector2(k.x - timing, k.y + timing)]
+		if String(e.get("type", "")) == "gilded_sentinel":
+			var section: Vector2 = WallFencePlacement.sentinel_wall_section(gen, e)
+			spans.append(Vector2(section.x - timing, section.y + timing))
+		out.append({"piece": e, "spans": spans})
+	return out
+
+
+## What the `side` wall keeps besides its signs, wall fences and wall enemies (keep_outs, _piece_keep_outs): the run-up
+## and the end, its ramps, the ceilings reaching it, the wider gaps and the dash walls, each with its margin.
+static func _fixed_keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallGapTuning) -> Array[Vector2]:
 	var v: float = gen.speed
 	var clear: float = t.clear_seconds * v
 	var timing: float = maxf(t.clear_seconds, tuning().clear_seconds) * v
 	var raw: Array[Vector2] = []
 	raw.append(Vector2(-INF, gen.config.start_clear_distance))
 	raw.append(Vector2(lay.length - gen.config.end_clear_distance, INF))
-	for s: Dictionary in lay.signs:
-		if int(s["side"]) == side:
-			raw.append(Vector2(float(s["start"]), float(s["end"])))
-	var fence_half: float = gen.tuning.fence_depth * 0.5
-	for w: Dictionary in lay.wall_fences:
-		if int(w["side"]) == side:
-			raw.append(Vector2(float(w["at"]) - fence_half, float(w["at"]) + fence_half))
 	var timed: Array[Vector2] = []
-	var enemy: float = t.wall_enemy_seconds * v
-	for e: Dictionary in lay.enemies:
-		if int(e.get("side", 0)) != side:
-			continue
-		var at: float = float(e["at"])
-		timed.append(Vector2(at - enemy, at + enemy))
-		if String(e.get("type", "")) == "gilded_sentinel":
-			timed.append(WallFencePlacement.sentinel_wall_section(gen, e))
 	for r: Dictionary in lay.ramps:
 		if int(r["side"]) == side:
 			timed.append(Vector2(float(r["at"]) - t.ramp_before_seconds * v,
@@ -383,4 +499,4 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	# its wall route's start to its back (DashWallRules.wall_keep_outs), with the usual margin.
 	for k: Vector2 in DashWallRules.wall_keep_outs(gen):
 		out.append(Vector2(k.x - clear, k.y + clear))
-	return WallFencePlacement.merged(out)
+	return out

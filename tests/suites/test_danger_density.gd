@@ -52,6 +52,11 @@ const TARGET_RATIO: Dictionary = {"early": 1.15, "late": 1.35}
 ## Gilded Sentinel stretches leave the least room), so a tighter tolerance would test which levels
 ## and seeds were sampled rather than the pass.
 const TOLERANCE: float = 0.05
+## Lower floors for a band's enemies at a lane count, by band and lane count. The final levels at 3 lanes: since the
+## owner's October 10, 2026 call (task I1: a Buzz Overdrive's encounter shared with the rest of the track) they hold
+## more enemies before the pass (265 in this sample, 243 when the band was set), which leaves it less room, and the
+## owner judged its x1.275 there fine (October 11, 2026; docs/questions/i1.md).
+const ENEMY_FLOORS: Dictionary = {"late": {3: 1.25}}
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
 ## final ones' and above the first band and below the last, at every lane count, for both counts.
 const MIDDLE_RANGE := Vector2(1.15, 1.35)
@@ -186,7 +191,9 @@ func _test_density(campaign: Campaign) -> void:
 			if TARGET_RATIO.has(band):
 				lo = float(TARGET_RATIO[band]) - TOLERANCE
 				hi = float(TARGET_RATIO[band]) + TOLERANCE
-			check(e >= lo - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, lo, hi])
+			var enemy_lo: float = minf(lo, float((ENEMY_FLOORS.get(band, {}) as Dictionary).get(LANES[li], lo)))
+			check(e >= enemy_lo - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, enemy_lo,
+				hi])
 			check(o >= lo - 0.0005 and o <= hi + 0.0005, "%s: obstacles x%.3f, within x%.2f..x%.2f" % [tag, o, lo, hi])
 		ratios[band] = band_ratios
 	for li: int in LANES.size():

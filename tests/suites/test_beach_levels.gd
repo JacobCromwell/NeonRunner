@@ -28,8 +28,9 @@ extends TestSuite
 ##   every sign, wall fence, wall enemy, ceiling reaching a wall, ramp launch with its longest wall run, wall
 ##   credit and wider gap's walls on solid wall;
 ## - the wall features still there: on the levels' own seeds, the same level with the shared tuning is the same
-##   level but for its wall gaps (the signs, wall fences, ramps, window cyborgs and wall vents all stay where
-##   they are, and only wall credits go);
+##   level but for its wall gaps and the plain wall pieces a busy wall took out to open (the owner, October 11,
+##   2026: WallGapTuning.clear_pieces_below; only signs, wall fences, window cyborgs and wall vents, the level keeping
+##   one of each kind and feature): its ramps, ceilings and the rest stay where they are, and only wall credits go;
 ## - the command line: --level=beach/1 plays its campaign step with the full flow, past its level introduction,
 ##   the runner running (tools/smoke/smoke_play.gd in a child process, as test_smoke_play does).
 
@@ -54,17 +55,16 @@ const AFTER: String = "dead_zone/1"
 const STEPS: Array[String] = ["beach/intro", "beach/1", "beach/2", "beach/3", "beach/boss", "beach/outro"]
 ## Seeds besides each level's own that every check also runs on.
 const OTHER_SEEDS: Array[int] = [8801, 8802]
-## The share of the level each side wall stands on (the owner: about half as often as the 96-97% elsewhere):
-## the median over every build aims for AIM, and every wall stands within ACCEPT unless its keep-outs leave it
-## no more than FORCED_SLACK of the level more free (in stretches long enough to open) than it opened. The placement
-## leaves 4-6% of a wall's free stretches standing (no stand shorter than solid_seconds_min, the closings to the
-## target and both_open_max: 6.2% on Beach 1's own build at 5 lanes before task I1), which only counts where a wall
-## stands on more than ACCEPT's 60%: since task I1 (the owner's October 10, 2026 call, a busier track and more on its
-## walls) Beach 1 at 5 lanes leaves its left wall 44% free and opens 40% (on seed 8801, 45.6% and 39.9%), so the
-## slack covers that leftover: 0.07 (0.03 before).
-const AIM := Vector2(0.45, 0.55)
+## The share of the level each side wall stands on (the owner: about half as often as the 96-97% elsewhere, and on
+## October 11, 2026 "about 50% instead of 60%"): the median over every build aims for AIM, and every wall stands
+## within ACCEPT unless its keep-outs leave it no more than FORCED_SLACK of the level more free (in stretches long
+## enough to open) than it opened. Since task I1 a busy wall takes out plain pieces to open (clear_pieces_below):
+## measured on this suite's builds, the median wall stands on 50.9% (55.7% without), the busiest on 59.5% (67.9%).
+const AIM := Vector2(0.47, 0.53)
 const ACCEPT := Vector2(0.40, 0.60)
-const FORCED_SLACK: float = 0.07
+const FORCED_SLACK: float = 0.03
+## The wall enemies a busy wall may take out (WallGapPlacement.CLEARABLE_ENEMIES).
+const CLEARABLE_ENEMIES: Array[String] = ["window_cyborg", "screech"]
 ## The open stretches are long: at least this share of all the open length (over every build) lies in stretches
 ## of LONG_METRES and more.
 const LONG_METRES: float = 100.0
@@ -217,7 +217,8 @@ func _test_levels() -> void:
 		stands[0] * 100.0, stands[-1] * 100.0, median * 100.0, aimed, stands.size(), AIM.x * 100.0, AIM.y * 100.0,
 		int(stats["stretches"]), long_share * 100.0, LONG_METRES, both[0] * 100.0, both[-1] * 100.0, between.size(),
 		between[0] if not between.is_empty() else 0.0])
-	print("  on solid wall in every build: %s" % [stats["pieces"]])
+	print("  on solid wall in every build: %s; busy walls took out %d plain wall pieces on the levels' own builds" % [
+		stats["pieces"], int(stats.get("taken_out", 0))])
 
 
 ## One build of a Beach level (`own`: on its own seed): fairness, features, open walls (_check_open_walls), and on
@@ -255,17 +256,40 @@ func _check_level(config: LevelConfig, tag: String, own: bool, stats: Dictionary
 		return
 	var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 	check(JSON.stringify(again.wall_gaps) == JSON.stringify(layout.wall_gaps), "the same gaps every attempt " + tag)
-	# The wall features stay: with the shared tuning, the level is the same level but for its gaps.
+	# The wall features stay: with the shared tuning, the level is the same level but for its gaps and the plain wall
+	# pieces a busy wall took out.
 	var shared_config: LevelConfig = config.duplicate() as LevelConfig
 	shared_config.wall_gap_tuning = null
-	var shared: LevelLayout = LayoutCache.generate(shared_config, tuning, patterns)
+	var shared: LevelLayout = LayoutCache.generate(shared_config, tuning, patterns).copy()
+	var taken: Array = gen.wall_gap_result.get("taken_out", [])
+	for piece: Dictionary in taken:
+		var plain: bool = piece.has("band") or (piece.has("type") and CLEARABLE_ENEMIES.has(String(piece["type"]))) \
+			or (piece.has("start") and piece.has("top"))
+		check(plain, "a busy wall takes out only signs, wall fences, window cyborgs and wall vents (%s) %s" % [piece, tag])
+		for list: Array[Dictionary] in [shared.signs, shared.wall_fences, shared.enemies]:
+			var i: int = list.find(piece)
+			if i >= 0:
+				list.remove_at(i)
+				break
+	for kind: String in ["wall_fences", "wall_fences_partial", "window_cyborg", "screech_vents"]:
+		if config.has_feature(kind):
+			check(not LayoutChecks.feature_positions(layout, kind).is_empty(), "keeps its `%s` %s" % [kind, tag])
+	check(not layout.signs.is_empty(), "keeps a sign " + tag)
+	stats["taken_out"] = int(stats.get("taken_out", 0)) + taken.size()
 	var a: Dictionary = layout.to_dict()
 	var b: Dictionary = shared.to_dict()
 	for key: String in ["wall_gaps", "credits"]:
 		a.erase(key)
 		b.erase(key)
+	# The enemies as a set: the generator sorts them by their spot, and an enemy taken out can reorder two at one spot.
+	for d: Dictionary in [a, b]:
+		var enemies: Array = []
+		for e: Variant in d.get("enemies", []):
+			enemies.append(JSON.stringify(e))
+		enemies.sort()
+		d["enemies"] = enemies
 	check(JSON.stringify(a) == JSON.stringify(b),
-		"the open walls change nothing but the gaps: the signs, wall fences, ramps and wall enemies stay %s" % tag)
+		"the open walls change nothing but the gaps and the plain wall pieces they take out: the rest stays %s" % tag)
 	var kept: bool = true
 	for c: Dictionary in layout.credits:
 		kept = kept and shared.credits.has(c)

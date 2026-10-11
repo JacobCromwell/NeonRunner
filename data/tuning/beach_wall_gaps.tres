@@ -19,3 +19,6 @@ coverage_target = 0.52
 open_seconds_min = 2.0
 solid_seconds_min = 2.0
 both_open_max = 0.3
+clear_pieces_below = 0.54
+clear_gain_seconds_min = 1.0
+

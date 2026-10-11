@@ -3920,7 +3920,9 @@ F6 in the fight; the owner's request and answers, October 9, 2026, are in GDD §
     run, signs, wall fences, wall enemies, ceilings reaching it, wider floor gaps, the run-up and the end), so a busy
     wall stands more: measured with the campaign's settings, 107 of 108 walls stand on 40–60% (median 49%) over the
     levels' own seeds and others, and a few busy ones up to about 65%. Is about half right in play, and should a
-    busy wall in the Beach carry fewer wall pieces instead?
+    busy wall in the Beach carry fewer wall pieces instead? **Answered (owner, October 11, 2026):** "I still don't
+    like too many walls on the beach ... about 50% instead of 60%": a busy wall now takes out plain wall pieces to
+    open (task I1, `docs/questions/i1.md`).
 561. **Both walls open at once** (the widest view, nothing to run along). Placeholder: `both_open_max` 0.3, at most
     30% of a level (measured 15–30%). OK?
 562. **The shortest open stretch, and the shortest stretch of wall standing again.** Placeholder: 2 s each

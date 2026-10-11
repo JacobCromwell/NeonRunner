@@ -67,6 +67,16 @@ extends Resource
 ## view of the surroundings, and nothing to run along). Where there's more, the wall with more open stands
 ## again there. 1: no limit. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 561): the Beach's 0.3.
 @export_range(0.0, 1.0, 0.01) var both_open_max: float = 1.0
+## Above 0 (the Beach's; the owner, October 11, 2026: "I still don't like too many walls on the beach ... about 50%
+## instead of 60%"): a wall whose keep-outs leave less than this share of the level free takes out the plain pieces
+## holding it up, the one that frees the most wall first, until it has this much free or none frees more: signs,
+## wall fences and wall enemies (a window cyborg, a wall vent's screech), never the level's last of a kind or of one
+## of its features, nor the first of a kind it introduces (WallGapPlacement._clear_busy_walls; open question 560's
+## "a busy wall in the Beach carries fewer wall pieces"). Ramps, ceilings and hover trucks stay. 0: off.
+@export_range(0.0, 0.9, 0.01) var clear_pieces_below: float = 0.0
+## Seconds of run: the least wall a piece must free (to open) for a busy wall to take it out (clear_pieces_below), so
+## it never takes out a piece for a sliver.
+@export_range(0.0, 10.0, 0.1, "suffix:s") var clear_gain_seconds_min: float = 1.0
 
 
 ## `easy` at difficulty 0 to `hard` at 1.

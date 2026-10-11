@@ -1928,9 +1928,12 @@ generated layout to this, at 3, 5 and 6 lanes):
   lane window (a lane keep: no doodad stands in it or pushes into it) and its way out (a doodad that would leave a
   cut without one, `cut_escape_clear`, goes), and a rules script may check each doodad as it's placed (`static
   func doodad_guard(gen) -> Callable`, made before the doodads: an Enforcer Truck's showing windows, where a doodad
-  goes if the truck could no longer show itself, `ShowPlanner.problem_of`). The planned attacks that can't wait for
-  a doodad keep theirs as before: an Octodog's run, a Resonator's visit, a Gilded Sentinel's strike, a drone wave
-  until its first pad, a Bad Dream's chase;
+  goes if the truck could no longer show itself, `ShowPlanner.problem_of`). A Resonator keeps only its pulses (owner,
+  October 11, 2026: doodads by the other bigger enemies now and then; `ResonatorRules.doodad_keep_outs`, from each
+  warning to where its wave meets the runner, which `Resonator.pulse_clear` holds a pulse for anyway), so doodads stand
+  between them. The planned attacks that can't wait for a doodad keep theirs as before: an Octodog's run (it paces
+  ahead on the floor between charges, in the lane its next one is aimed from), a Gilded Sentinel's strike, a drone
+  wave until its first pad (each barrage held for one), a Bad Dream's chase;
 - one at a time, `doodad_gap_seconds` from one's end to the next one's front, so a few in a row never
   make a slalom.
 Each stretch with room gets one with the level's `doodad_share` (a seeded spot in it; the next spot in a
@@ -2214,16 +2217,25 @@ into long open stretches (`WallGapPlacement._open_walls`, from the same random s
 - a wall standing between two open stretches stands at least `solid_seconds_min` (2 s), so the walls never
   flicker: one held up only by a lone keep-out (a wall fence's or a sign's, about 17 m) stands longer around it,
   into the open stretches either side as evenly as they allow while each keeps `open_seconds_min`, or the shorter
-  of the two stands whole (`_no_short_stands`, from the start and again after the closings; task D10c review).
+  of the two stands whole (`_no_short_stands`, from the start and again after the closings; task D10c review);
+- before all that, a busy wall takes out plain pieces to open (`clear_pieces_below` 0.54, the owner, October 11,
+  2026: "about 50% instead of 60%"; `_clear_busy_walls`): a wall whose keep-outs leave less than that share of the
+  level free takes out, one at a time, the sign, wall fence or wall enemy (a window cyborg, a wall vent's screech)
+  that frees the most wall, at least `clear_gain_seconds_min` (1 s) of it, until it has that much free; never the
+  level's last sign, its last of an enemy type or of a feature, nor the first of a kind it introduces. Ramps,
+  ceilings, hover trucks and Gilded Sentinels keep their wall. `gen.wall_gap_result["taken_out"]` lists them.
 Every keep-out above holds, so a wall whose keep-outs (mostly ceilings reaching it, ramps' wall runs and wall
 enemies) leave it less free stands more. The Beach's clearance around signs, wall fences, wall enemies and
 ceilings is narrower (`clear_seconds` 0.35 s against 0.5, about 8 m of wall either side at its 23.8 m/s); the
 margins that time a wall run, before a ramp and past its longest run and either side of a wall enemy, never narrow
 with it: `keep_outs` widens those by the shared file's `clear_seconds` (or the level's own, where wider), so they
 are the shared ones (task D10c review). Placed last as before, the open walls change nothing else in a level: built with the shared tuning,
-the Beach's levels are the same levels but for their gaps (the same signs, wall fences, ramps, window cyborgs
-and wall vents, and no wall credit fell in a gap, since those lie along ramps' wall runs: all 54 builds below).
-Over both Beach levels at 3, 5 and 6 lanes as the campaign configures them (task D10c), on their own seeds and
+the Beach's levels are the same levels but for their gaps and the plain wall pieces a busy wall took out (the same
+ramps, ceilings and everything else, and no wall credit fell in a gap, since those lie along ramps' wall runs: all
+54 builds below). Since task I1's busier track the Beach's walls stood more (median 55.7%, the busiest 67.9%, on
+`test_beach_levels`' builds); with the busy walls taking out plain pieces the median wall stands on 50.9% and the
+busiest on 59.5%, 6.4 pieces a build taken out on average (of about 40 on its walls). Before task I1, over both
+Beach levels at 3, 5 and 6 lanes as the campaign configures them (task D10c), on their own seeds and
 eight others: each wall stands on 48-60% of its level on the levels' own seeds, 107 of 108 walls in 40-60% over
 all (median 49%; 97-100% with the shared tuning), the other on 64%, where its keep-outs leave it no more free;
 both walls are open at once on 18-30% of a level (median 29%); the open stretches run from 48 m (2 s) to 957 m

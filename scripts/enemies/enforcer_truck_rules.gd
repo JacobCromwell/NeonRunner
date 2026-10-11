@@ -668,6 +668,11 @@ class ShowPlanner:
 	## Of those, the ones a window may take out where they're in its way: plain ones (never a host, nor the first
 	## of a kind the level introduces, and never the level's last of its kind or of one of its features).
 	const REMOVABLE_TYPES: PackedStringArray = ["cyborg", "window_cyborg", "screech"]
+	## Of the enemies about near the runner (busy), the ones a window may take out where they're in its way, the level's
+	## first of its kind too, as long as it keeps one (owner, October 11, 2026: a Tithe Collector goes so the truck
+	## shows itself before its bait; task I1 filled the stretches before the baits, and Corporate 2 at 3 lanes, where
+	## both are introduced, had no window: its next Tithe Collector introduces it there).
+	const BUSY_REMOVABLE_TYPES: PackedStringArray = ["tithe_collector"]
 	## Metres of track around a window a local room holds (_local_room): what its checks reach and more.
 	const LOCAL_MARGIN: float = 60.0
 	## Metres behind the runner as a showing begins from which an enemy about counts (the truck's in-play checks).
@@ -928,9 +933,12 @@ class ShowPlanner:
 		var stay: float = hold if whole else t.show_min_seconds
 		var calm_to: float = maxf(d + (t.show_close_seconds(gap) + stay) * v,
 			d2 + (t.show_close_seconds(gap2) + minf(stay, hold2)) * v)
-		var other: String = _busy_in(d, Vector2(d - BEHIND, calm_to), Vector2(from, to))
+		var blockers: Array[Dictionary] = []
+		var other: String = _busy_in(d, Vector2(d - BEHIND, calm_to), Vector2(from, to), blockers)
 		if other != "":
 			return _none(counts, other)
+		if not blockers.is_empty() and not clearing:
+			return _none(counts, String(blockers[0]["kind"]))
 		# A runner sent onto a ceiling or a wall before it has stayed alongside has it give way.
 		var off: String = _off_the_floor(d - BEHIND, calm_to) if strict else ""
 		if off != "":
@@ -942,6 +950,11 @@ class ShowPlanner:
 			# The runner lane it leaves out, if any (task C6e; _lanes_fail).
 			w["excused"] = _excused(room, starts, seed)
 		var gone: Array[Dictionary] = []
+		for b: Dictionary in blockers:
+			if not _in(gone, b["entry"]):
+				gone.append(b["entry"])
+		if not _leaves_one_each(gone):
+			return _none(counts, String(blockers[0]["kind"]))
 		if not clearing:
 			var lane: int = _lanes_fail(room, starts, seed)
 			return w if lane < 0 else _none(counts, "no lane beside a runner in lane %d" % lane)
@@ -1209,12 +1222,13 @@ class ShowPlanner:
 		return {}
 
 
-	## What keeps a showing beginning at `d` from its window ("" if nothing): another enemy's big attack or stay
-	## near the runner reaching `calm` (Vector2), or a floor cut's attack or a hover truck's or Gilded Sentinel's
-	## stay reaching `kept` (the whole window); but for a bait's whose turn comes after the showing begins. Outside
-	## CLASSIC mode (task C6e) a hover truck's or a Sentinel's stay doesn't count (what of them can't wait for a turn is
-	## EnforcerTruckRoom.fixed, and a hover truck's lane EnforcerTruckRoom.held).
-	func _busy_in(d: float, calm: Vector2, kept: Vector2) -> String:
+	## What keeps a showing beginning at `d` from its window ("" if nothing), with the ones it could take out
+	## (BUSY_REMOVABLE_TYPES) added to `removable` instead: another enemy's big attack or stay near the runner reaching
+	## `calm` (Vector2), or a floor cut's attack or a hover truck's or Gilded Sentinel's stay reaching `kept` (the whole
+	## window); but for a bait's whose turn comes after the showing begins. Outside CLASSIC mode (task C6e) a hover
+	## truck's or a Sentinel's stay doesn't count (what of them can't wait for a turn is EnforcerTruckRoom.fixed, and a
+	## hover truck's lane EnforcerTruckRoom.held).
+	func _busy_in(d: float, calm: Vector2, kept: Vector2, removable: Array[Dictionary]) -> String:
 		var lo: float = minf(calm.x, kept.x)
 		var hi: float = maxf(calm.y, kept.y)
 		var i: int = busy_starts.bsearch(lo - longest - 0.001)
@@ -1230,7 +1244,10 @@ class ShowPlanner:
 			var turn: float = float(b["turn"])
 			if turn < INF and turn >= d - 0.001:
 				continue
-			return String(b["kind"])
+			if not bool(b["removable"]):
+				return String(b["kind"])
+			if not _in(removable, b):
+				removable.append(b)
 		return ""
 
 
@@ -1293,7 +1310,8 @@ class ShowPlanner:
 				# weaves in the lanes ahead of them until it meets them.
 				var from: float = at - et.spawn_lead
 				var meet: float = float(et.get(&"start_ahead")) / maxf(float(et.get(&"approach_speed")), 0.01)
-				out.append(_busy(Vector2(from, from + (meet + 1.0) * v), INF, whole, kind, e, whole))
+				out.append(_busy(Vector2(from, from + (meet + 1.0) * v), INF, whole, kind, e, whole,
+					BUSY_REMOVABLE_TYPES.has(type)))
 				continue
 			var k: Vector2 = LevelGenerator.DangerDensity.attack_window(gen, e, hooks)
 			if k.y >= k.x:
@@ -1313,6 +1331,9 @@ class ShowPlanner:
 			longest = maxf(longest, (b["span"] as Vector2).y - (b["span"] as Vector2).x)
 
 
-	## A busy entry (_index_busy); `quiet`: a hover truck's or a Gilded Sentinel's stay (only CLASSIC mode counts it).
-	static func _busy(span: Vector2, turn: float, whole: bool, kind: String, entry: Dictionary, quiet: bool = false) -> Dictionary:
-		return {"span": span, "turn": turn, "whole": whole, "kind": kind, "entry": entry, "quiet": quiet}
+	## A busy entry (_index_busy); `quiet`: a hover truck's or a Gilded Sentinel's stay (only CLASSIC mode counts it);
+	## `removable`: a window may take it out (BUSY_REMOVABLE_TYPES).
+	static func _busy(span: Vector2, turn: float, whole: bool, kind: String, entry: Dictionary, quiet: bool = false,
+			removable: bool = false) -> Dictionary:
+		return {"span": span, "turn": turn, "whole": whole, "kind": kind, "entry": entry, "quiet": quiet,
+			"removable": removable}

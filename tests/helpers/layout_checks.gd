@@ -502,10 +502,11 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 ##   every lane but its own to run in, and the player can cross its lane again before what comes
 ##   next, as between two patterns;
 ## - off every lane-bound attack while it can run: every Octodog's run (its floor stretch), every Bad
-##   Dream chase and drone wave until its first pad, and never in or pushing into a hover truck's lane
-##   until it has left (owner, October 10, 2026: doodads may stand while a bigger enemy is around, a
-##   hover truck, an Enforcer Truck or a Buzz Overdrive, off the lanes they keep; check_cuts keeps them
-##   out of a cut's lane and its way out);
+##   Dream chase and drone wave until its first pad, every Resonator's pulse (from its warning to where
+##   its wave meets the runner; owner, October 11, 2026: between its pulses they may stand), and never in
+##   or pushing into a hover truck's lane until it has left (owner, October 10, 2026: doodads may stand
+##   while a bigger enemy is around, a hover truck, an Enforcer Truck or a Buzz Overdrive, off the lanes
+##   they keep; check_cuts keeps them out of a cut's lane and its way out);
 ## - one at a time: LevelConfig.doodad_gap_seconds from one's end to the next one's front.
 static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.doodads.is_empty():
@@ -537,6 +538,7 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 	var bt := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
 	var tt := EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
 	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
+	var rt := EnemyDirector.tuning_for("resonator") as ResonatorTuning
 	var trucks: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
 		var at: float = float(e["at"])
@@ -555,6 +557,16 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 				busy.append(["a drone wave until its first pad", Vector2(at, minf(first, at + dt.first_pad_seconds * speed))])
 			"hover_truck":
 				trucks.append(e)
+			"resonator":
+				# Each planned pulse, from its warning to where its wave meets the runner (owner, October 11, 2026:
+				# doodads may stand between them, never in one: Resonator.pulse_clear).
+				var params: Dictionary = e.get("params", {})
+				var anchors: Array = params.get("pulse_at", [])
+				var doubles: Array = params.get("double", [])
+				for i: int in anchors.size():
+					var double: bool = doubles.size() == anchors.size() and bool(doubles[i])
+					var stretch: Vector2 = rt.meeting_stretch(float(anchors[i]), double, speed, config.enemy_scaling, pace)
+					busy.append(["a Resonator's pulse", Vector2(float(anchors[i]) - 1.0, stretch.y)])
 	var sorted: Array[Dictionary] = layout.doodads.duplicate()
 	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	var prev_end: float = -INF
