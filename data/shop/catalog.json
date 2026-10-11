@@ -7,7 +7,7 @@
 			"name": "Weapon",
 			"description": "Fires automatically at the nearest enemy.",
 			"tiers": [
-				{ "name": "Laser", "price": 900, "description": "Fires automatically at the nearest valid target. Enemies show health bars." },
+				{ "name": "Laser", "price": 1800, "description": "Fires automatically at the nearest valid target. Enemies show health bars." },
 				{ "name": "Enhanced laser", "price": 2200, "description": "A thicker beam in a new colour. More damage." },
 				{ "name": "Missile", "price": 4800, "description": "Slower shots, much more damage." },
 				{ "name": "Heavy missile", "price": 9500, "description": "Huge damage with splash, and bonus damage against swarms." }
