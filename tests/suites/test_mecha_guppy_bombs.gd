@@ -3,6 +3,8 @@ extends TestSuite
 ## shark's bites and breaches: test_mecha_guppy_bites.gd), on real physics:
 ## - the sounds are in the library: the throw, the shark coming up, its bite, the clang of a hit; the bombs keep the
 ##   Floating Head's whistle and blast; warnings play in their key;
+## - Captain Cogs' ship has no collision (no pad flips a runner up to it) and flies ahead of the runner, high over the
+##   huts; a pier's collision is a full-height box;
 ## - fair spots, planned from every lane that leads up (where a rider is at the hut's deadline) at 3, 5 and 6 lanes and
 ##   both speeds, in both phases (phase 1's volleys on the higher roof, phase 2's volley and landing spot): a way
 ##   through each volley, its every lane on floor at each spot and every lane crossed to get there too (never off a
@@ -39,6 +41,7 @@ func run() -> void:
 		check(false, "Mecha Guppy and Captain Cogs' fight loads")
 		return
 	_test_sounds()
+	await _test_ship_and_piers()
 	await _test_fair_spots()
 	await _test_blast_rules()
 	await _test_contact()
@@ -122,6 +125,48 @@ func _test_sounds() -> void:
 		check(library.names().has(String(sound)) and library.stream(sound) != null, "the sound library has '%s'" % sound)
 	for warning: StringName in [&"guppy_rumble", &"bomb_whistle", &"cogs_throw"]:
 		check(float(library.pitch_variation.get(String(warning), 0.0)) == 0.0, "'%s' (a warning) plays in its key" % warning)
+
+
+# --- The ship, the piers ----------------------------------------------------------------------------
+
+## Captain Cogs' ship has no collision at all (never on the hull layer: no pad flips a runner up to it), keeps its
+## station ahead of and high above the runner, over every hut; a pier's collision (the lanes that reach back) is a
+## full-height box, its stilts only its look, so nothing about it invites a dodge off its side.
+func _test_ship_and_piers() -> void:
+	var pair: Array = _fight(3, 23.8, 0, false)
+	var world: RunWorld = pair[0]
+	var boss: MechaGuppy = pair[1]
+	var p: Player = world.player
+	var bot := MechaGuppyBot.new(boss)
+	bot.reaction = REACTION
+	var climb: MechaGuppyClimb = boss.climb
+	# On to the second step's pads: its REACH_BACK pier (the third roof's lanes that reach back) is built by then.
+	var low: Array[float] = [INF]
+	await _run(world, 20.0, func() -> bool: return p.distance > climb.steps[1].pad, func() -> void:
+		bot.step()
+		var ship_y: float = boss.ship.global_position.y
+		var hut: MechaGuppyClimb.Step = climb.step_at(p.distance + boss.tuning.ship_ahead)
+		if hut != null and not hut.top:
+			low[0] = minf(low[0], ship_y - hut.hut_y))
+	var solid: Array[Node] = boss.ship.find_children("*", "CollisionObject3D", true, false)
+	check(solid.is_empty(), "Captain Cogs' ship has no collision at all (%d bodies)" % solid.size())
+	check(boss.ship.global_position.z < -p.distance - 20.0 and low[0] > 3.0,
+		"it flies ahead of the runner, high over the huts ahead (at least %.1f m over them)" % low[0])
+	var step: MechaGuppyClimb.Step = climb.steps[1]
+	var roof: MechaGuppyClimb.Roof = climb.roofs[2]
+	check(step.cue == MechaGuppyClimb.Cue.REACH_BACK, "the second step's cue is the roof's lanes reaching back")
+	var pier: int = step.up.x
+	var beside: int = pier - 1 if pier > 0 else pier + 1
+	var z: float = TrackGeometry.world_z((roof.start_in(pier) + roof.full_from()) * 0.5)
+	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
+	var full: bool = true
+	for share: float in [0.15, 0.5, 0.9]:
+		var y: float = roof.top * share
+		var q := PhysicsRayQueryParameters3D.create(Vector3(world.geo.lane_x(beside), y, z), Vector3(world.geo.lane_x(pier), y, z),
+			TrackBuilder.LAYER_FLOOR)
+		full = full and not space.intersect_ray(q).is_empty()
+	check(full and roof.start_in(pier) < roof.full_from() - 1.0, "a pier's collision is a full-height box under its deck (lane %d)" % pier)
+	await sim.free_world(world)
 
 
 # --- Fair spots -----------------------------------------------------------------------------------
