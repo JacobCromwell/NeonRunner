@@ -221,6 +221,16 @@ func _free_roof(index: int, edge: float) -> float:
 	return kept_to
 
 
+## How far roof `index`'s full-width pieces (its collision and its look) reach now (track distance; tests: never past
+## where Mecha Guppy has eaten it); -FAR with none.
+func roof_reach(index: int) -> float:
+	var out: float = -MechaGuppyClimb.FAR
+	for entry: Dictionary in _roof_nodes.get(index, []):
+		if is_instance_valid(entry["node"]) and bool(entry["segment"]):
+			out = maxf(out, float(entry["to"]))
+	return out
+
+
 func _free_all(nodes: Array) -> void:
 	for node: Variant in nodes:
 		if is_instance_valid(node):

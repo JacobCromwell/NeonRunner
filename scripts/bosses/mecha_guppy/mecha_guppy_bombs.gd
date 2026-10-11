@@ -570,7 +570,7 @@ func _hit_shark(d: Dictionary, p: Vector3) -> void:
 	boss.shark.hit(p)
 	var counted: bool = boss.register_hit(&"bomb")
 	boss.log_event(&"shark_hit", {"lane": int(d["lane"]), "at": float(d["at"]), "kind": int(d["kind"]), "counted": counted,
-		"y": p.y})
+		"y": p.y, "floor": float(d["y"])})
 
 
 ## What a bomb coming down over `lane` at `at` to height `y` meets there: a roof's top (ROOF), a hut's top (HUT), or

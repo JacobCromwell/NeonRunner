@@ -45,12 +45,13 @@ const BELOW_TIPS: float = 2.5
 ## A bite: its head's inner side this far out past the track's edge (clear of the roofs' eaves and the huts'), its hinge
 ## this far under the roof's top as it watches (its eye just over it), dives (out of sight of the track) and bites, and
 ## its lean in over the roof as it dives and bites (degrees); at the snap it drops this far, dragging the roof's end
-## down (metres). Its chin never comes higher than BITE_CLEAR under a rider hanging from the hut (MechaGuppyTuning's
-## climb puts the hut hut_height over the roof).
+## down (metres). Its jaws never come within BITE_CLEAR under a rider hanging from the hut, even mid-jump (their head
+## down to the hut's underside less MovementTuning.jump_height and visual_size.y; the climb puts the hut hut_height
+## over the roof).
 const BITE_GAP: float = 2.2
 const WATCH_SINK: float = 2.0
 const DIVE_SINK: float = 12.0
-const BITE_SINK: float = 3.5
+const BITE_SINK: float = 4.0
 const BITE_LEAN: float = 12.0
 const SNAP_DROP: float = 7.0
 const BITE_CLEAR: float = 2.5

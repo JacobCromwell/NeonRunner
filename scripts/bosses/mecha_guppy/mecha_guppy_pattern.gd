@@ -36,7 +36,10 @@ var boss: MechaGuppy
 var tuning: MechaGuppyTuning
 var world: RunWorld
 var climb: MechaGuppyClimb
-## What's been done (each once a step): "bite:k", "roof:k", "land:k", "hut:k:i", "hit:k".
+## Tests: false throws no hit bombs and keeps the shark down (a fight in which no hit ever lands, to show nothing
+## escalates).
+var hits_enabled: bool = true
+## What's been done (each once a step): "bite:k", "roof:k", "land:k", "hut:k:i", "lurk:k", "hit:k".
 var _done: Dictionary = {}
 ## When the rider settled on each step's hut (fight time).
 var _settled: Dictionary = {}
@@ -172,9 +175,24 @@ func _roof_volley(step: MechaGuppyClimb.Step, p: Player) -> void:
 	_done[key] = true
 	if p.distance > ats[0] or p.distance > lock_at + STALE:
 		return
-	var seed: int = hash([boss.def.rng_key(), "roof", step.index, boss.lane_count()])
-	var spots: Array[Dictionary] = boss.bombs.plan_spots(p.lane, p.distance, s_open, ats, roof.top, boss.phase_index, seed)
-	boss.bombs.throw_spots(MechaGuppyBombs.Kind.SPOT, step.index, spots, s_open)
+	var plan: Dictionary = roof_volley(step, p.lane, p.distance, speed)
+	boss.bombs.throw_spots(MechaGuppyBombs.Kind.SPOT, step.index, plan["spots"], float(plan["s_open"]))
+
+
+## Phase 1's volley on roof k + 1 as it would be thrown at a runner in `lane` at `d0` running at `speed` (the pattern
+## throws it so; the tests plan it from every lane): {spots (MechaGuppyBombs.plan_spots'), s_open (where the runner can
+## first switch to dodge: their landing, or where the roof is full width beside a pier)}; no spots in a phase without
+## them, or with no room for one.
+func roof_volley(step: MechaGuppyClimb.Step, lane: int, d0: float, speed: float) -> Dictionary:
+	var roof: MechaGuppyClimb.Roof = climb.roofs[step.index + 1]
+	var s_open: float = maxf(step.land, roof.full_from())
+	var count: int = MechaGuppyTuning.per_phase(tuning.roof_spots, boss.phase_index)
+	var ats: Array[float] = _spot_places(s_open, count, _limit(step), maxf(speed, 1.0)) if count > 0 else []
+	var spots: Array[Dictionary] = []
+	if not ats.is_empty():
+		var seed: int = hash([boss.def.rng_key(), "roof", step.index, boss.lane_count()])
+		spots = boss.bombs.plan_spots(lane, d0, s_open, ats, roof.top, boss.phase_index, seed)
+	return {"spots": spots, "s_open": s_open}
 
 
 ## Phase 2's landing spot on roof k + 1 (landing_spots): where a rider comes down, dodged in the air as they drop.
@@ -182,29 +200,52 @@ func _landing_spot(step: MechaGuppyClimb.Step, p: Player) -> void:
 	var key: String = "land:%d" % step.index
 	if _done.has(key) or step.index + 1 >= climb.steps.size():
 		return
-	var count: int = MechaGuppyTuning.per_phase(tuning.landing_spots, boss.phase_index)
-	if count <= 0:
+	if MechaGuppyTuning.per_phase(tuning.landing_spots, boss.phase_index) <= 0:
 		return
 	var speed: float = maxf(p.speed, 1.0)
-	var roof: MechaGuppyClimb.Roof = climb.roofs[step.index + 1]
-	# The drop off the hut's end: where the lanes that lead up end (RUN_ON runs them on, REACH_BACK ends them all).
-	var drop: float = (step.hut_end() if step.cue == MechaGuppyClimb.Cue.RUN_ON else step.deadline) \
-		+ world.tuning.foot_half_depth
-	var ats: Array[float] = _spot_places(drop, count, _limit(step), speed)
+	var ats: Array[float] = _landing_places(step, speed)
 	if ats.is_empty():
 		_done[key] = true
 		return
-	ats[0] = maxf(ats[0], step.land + tuning.blast_depth * 0.5 + 0.3)
 	var lock_at: float = maxf(ats[0] - (tuning.lock_seconds + tuning.arrival_seconds) * speed, step.deadline)
 	if p.distance < lock_at:
 		return
 	_done[key] = true
-	if p.distance > ats[0] or p.distance > lock_at + STALE or p.surface != Player.Surface.CEILING and p.distance < drop:
+	if p.distance > ats[0] or p.distance > lock_at + STALE or p.surface != Player.Surface.CEILING and p.distance < _drop(step):
 		return
-	var seed: int = hash([boss.def.rng_key(), "land", step.index, boss.lane_count()])
-	var spots: Array[Dictionary] = boss.bombs.plan_spots(p.lane, p.distance, drop, ats.slice(0, 1), roof.top,
-		boss.phase_index, seed)
-	boss.bombs.throw_spots(MechaGuppyBombs.Kind.SPOT, step.index, spots, drop)
+	var plan: Dictionary = landing_volley(step, p.lane, p.distance, speed)
+	boss.bombs.throw_spots(MechaGuppyBombs.Kind.SPOT, step.index, plan["spots"], float(plan["s_open"]))
+
+
+## Phase 2's landing spot on roof k + 1 as it would be thrown at a rider in `lane` at `d0` running at `speed` (the
+## pattern throws it so; the tests plan it from every lane): {spots, s_open (where a rider can first switch to dodge it:
+## off the hut's end, in the air)}; no spots in a phase without one, or with no room for it.
+func landing_volley(step: MechaGuppyClimb.Step, lane: int, d0: float, speed: float) -> Dictionary:
+	var drop: float = _drop(step)
+	var ats: Array[float] = _landing_places(step, maxf(speed, 1.0))
+	var spots: Array[Dictionary] = []
+	if not ats.is_empty():
+		var seed: int = hash([boss.def.rng_key(), "land", step.index, boss.lane_count()])
+		spots = boss.bombs.plan_spots(lane, d0, drop, ats, climb.roofs[step.index + 1].top, boss.phase_index, seed)
+	return {"spots": spots, "s_open": drop}
+
+
+## Where a rider drops off step `step`'s hut: where the lanes that lead up end (RUN_ON runs them on, REACH_BACK ends
+## them all), past the foot's reach.
+func _drop(step: MechaGuppyClimb.Step) -> float:
+	return (step.hut_end() if step.cue == MechaGuppyClimb.Cue.RUN_ON else step.deadline) + world.tuning.foot_half_depth
+
+
+## Where the landing spots lie (landing_spots of them, the first no nearer than the landing): room to dodge from the
+## drop, short of the next hut.
+func _landing_places(step: MechaGuppyClimb.Step, speed: float) -> Array[float]:
+	var count: int = MechaGuppyTuning.per_phase(tuning.landing_spots, boss.phase_index)
+	if count <= 0:
+		return []
+	var ats: Array[float] = _spot_places(_drop(step), count, _limit(step), speed)
+	if not ats.is_empty():
+		ats[0] = maxf(ats[0], step.land + tuning.blast_depth * 0.5 + 0.3)
+	return ats
 
 
 ## Phase 2's bombs on the hut a rider hangs from (hut_bombs): over their lane where they'd be, on the hut's top.
@@ -232,7 +273,7 @@ func _hut_bombs(step: MechaGuppyClimb.Step, p: Player) -> void:
 ## sight (MechaGuppyShark.lurk), so it can surge up in time.
 func _lurk(step: MechaGuppyClimb.Step, p: Player) -> void:
 	var key: String = "lurk:%d" % step.index
-	if _done.has(key) or p.surface != Player.Surface.CEILING or p.distance < step.pad or p.distance >= step.deadline \
+	if not hits_enabled or _done.has(key) or p.surface != Player.Surface.CEILING or p.distance < step.pad or p.distance >= step.deadline \
 			or step.index + 1 >= climb.roofs.size() or boss.shark.busy():
 		return
 	_done[key] = true
@@ -250,7 +291,7 @@ func _hit(step: MechaGuppyClimb.Step, p: Player) -> void:
 	if _done.has(key) or p.distance < step.deadline or step.index + 1 >= climb.roofs.size():
 		return
 	_done[key] = true
-	if p.distance > step.deadline + STALE:
+	if p.distance > step.deadline + STALE or not hits_enabled:
 		return
 	var spot: Dictionary = hit_spot(step)
 	if spot.is_empty():
