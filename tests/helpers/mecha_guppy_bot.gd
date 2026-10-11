@@ -64,6 +64,8 @@ var dodge_reaction: float = -1.0
 var baits: bool = true
 ## Baits it lured into a notch (in its lane as the bait locked).
 var baited: int = 0
+## Tests: at this step it lures the bait, then stays in the notch's lane and runs off its edge (a fall) (-1: never).
+var stay_in_notch_at: int = -1
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -290,7 +292,8 @@ func _bait(p: Player, now: float) -> void:
 			if int(bait["lane"]) == notch:
 				baited += 1
 				log.append({"t": boss.fight_time(), "action": &"baited", "why": "the bait locked in the notch's lane %d" % notch})
-		if p.lane == notch and bombs.clock - float((bait["drop"] as Dictionary).get("release", bombs.clock)) >= dodge_reaction - 0.0001:
+		if p.lane == notch and k != stay_in_notch_at \
+				and bombs.clock - float((bait["drop"] as Dictionary).get("release", bombs.clock)) >= dodge_reaction - 0.0001:
 			_set_target(_inner(notch), "the bait is thrown: out of the notch's lane before its edge", now)
 		return
 	# Not yet locked: once this roof's volley is thrown and its spots are behind it (and it has reacted), into the notch's
@@ -322,7 +325,7 @@ func _lane_end(p: Player, now: float) -> void:
 	if not roof.notched() or p.lane != roof.notch_lane or p.distance >= roof.notch_from or absf(p.floor_y - roof.top) > 0.05:
 		return
 	var bait: Dictionary = boss.bombs.bait if boss.bombs != null else {}
-	var holding: bool = baits and not bait.is_empty() and int(bait["step"]) == k and not bool(bait["locked"])
+	var holding: bool = (baits and not bait.is_empty() and int(bait["step"]) == k and not bool(bait["locked"])) or k == stay_in_notch_at
 	var need: float = (dodge_reaction + boss.world.tuning.lane_switch_time + 0.2) * maxf(p.speed, 1.0)
 	if not holding and roof.notch_from - p.distance <= need and _target != _inner(roof.notch_lane):
 		_set_target(_inner(roof.notch_lane), "its lane ends ahead (the notch): out in time", now)
