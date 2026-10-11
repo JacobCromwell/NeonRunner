@@ -42,12 +42,12 @@ extends RefCounted
 ## Phase 3's step is the `top` (MechaGuppyTop plays phase 3 on it): the last roof runs on, no pads, no hut.
 ## The floor bite (task E5e-f; GDD §10, the owner, October 11, 2026: Mecha Guppy bites a shark-bite crescent out of the
 ## floor while the runner is still running on it, before the pads; MechaGuppyCrescent, Roof.bite): roof FIRST_BITE (the
-## first tower: its bite comes alone, before any bait) and every other roof from FIRST_NOTCH on (bitten(): the ones a
+## first tower: its bite comes alone, no volley, no bait) and every other roof from FIRST_NOTCH on (bitten(): the ones a
 ## REACH_BACK step leads onto, so phase 2's landing spots stay on the others) carry one, planned with the step from that
-## roof. It comes where its riders' run begins: a reaction (where they could switch sooner than its warning), every lane
-## switch from the farthest lane to the one it leaves and dodge_margin past where they can first switch (Step.free_at),
-## past their landing, and late enough that Mecha Guppy rises and lunges after the hut's deadline, before which its
-## warning never shows (no cue to which lanes lead up). Its side is seeded, never three bites running on the same side,
+## roof. It comes where its riders' run begins: a reaction (counted from where they can first switch, Step.free_at: where
+## its warning can be read from where they are), every lane switch from the farthest lane to the one it leaves,
+## dodge_margin and the dash's reach past there, past their landing, and late enough that Mecha Guppy rises and lunges
+## after the hut's deadline, before which its warning never shows (no cue to which lanes lead up). Its side is seeded, never three bites running on the same side,
 ## and a bitten roof's notch is on that side, so the lane it leaves is never the notch's. A bitten roof is as long as its
 ## run (roof_run_seconds) or as its bite and then its bait need (_bite_room: the crossing back to the notch's lane before
 ## the bait locks), so its pads may come later on 5-6 lanes; the same in each phase (a full-width bite's room counted too).
@@ -71,11 +71,12 @@ const FAR: float = 1.0e9
 ## The most lanes that lead up on a REACH_BACK step (GDD §10, the owner: "one or two of the roof's lanes reach further
 ## back toward the runner than the others").
 const REACH_BACK_MOST: int = 2
-## The first roof with a notch (task E5e-b3's review): roof 1's run brings the climb's first volley, so the bait comes
-## from roof 2 on, once the first volley has been learned (the street, roof 0, never has one).
+## The first roof with a notch (task E5e-b3's review): the bait comes from roof 2 on (the street, roof 0, never has one).
+## Roof 1 has the first floor bite alone (task E5e-f's review: one new thing at a time), so the climb's first volley comes
+## on roof 3, after the first bait.
 const FIRST_NOTCH: int = 2
-## The first roof with a floor bite (task E5e-f): roof 1, the first tower, where it comes on its own (no bait there yet:
-## one new mechanic at a time), then its volley; from FIRST_NOTCH on, every other roof (bitten()).
+## The first roof with a floor bite (task E5e-f): roof 1, the first tower, where it comes on its own (no volley, no bait:
+## one new mechanic at a time); from FIRST_NOTCH on, every other roof (bitten()).
 const FIRST_BITE: int = 1
 ## A floor bite starts at least this far past where its riders land (metres).
 const LAND_CLEAR: float = 2.0
@@ -377,7 +378,8 @@ func _notch(roof: Roof, step: Step) -> void:
 		return
 	_rng.seed = hash([_seed, "notch", roof.index])
 	roof.notch_lane = 0 if _rng.randi() % 2 == 0 else lanes - 1
-	# A bitten roof's notch is on its bite's side: the lane the bite leaves is never the notch's (task E5e-f).
+	# A bitten roof's notch is on its bite's side: the lane the bite leaves is never the notch's (task E5e-f). DESIGN-TBD
+	# (docs/questions/e5e.md): the notch moved to the bite's side.
 	if roof.bite != null:
 		roof.notch_lane = 0 if roof.bite.side < 0 else lanes - 1
 	roof.notch_from = at
@@ -393,15 +395,19 @@ func notch_after() -> float:
 # --- The floor bite (task E5e-f) -------------------------------------------------------------------
 
 ## True if roof `index` carries a floor bite (see the header): roof FIRST_BITE, and every other roof from FIRST_NOTCH on
-## (the even ones, which REACH_BACK steps lead onto). Never the street.
+## (the even ones, which REACH_BACK steps lead onto). Never the street. DESIGN-TBD (docs/questions/e5e.md): which roofs are
+## bitten (the roofs alternate what they carry).
 static func bitten(index: int) -> bool:
 	return index == FIRST_BITE or (index >= FIRST_NOTCH and index % 2 == 0)
 
 
 ## A floor bite's crossing (metres): from where a runner can first switch, every lane switch from the farthest lane to the
-## one it leaves (lanes - 1, at the lane-switch time) and dodge_margin, their hurtbox's front still short of the bite.
+## one it leaves (lanes - 1, at the lane-switch time) and dodge_margin, their hurtbox's front still short of the bite, even
+## dashing on the way (the dash's reach: it brings them there that much sooner; task E5e-f's review, as the climb's other
+## margins hold dashing).
 func bite_crossing() -> float:
-	return (float(lanes - 1) * movement.lane_switch_time + tuning.dodge_margin) * speed + movement.hurtbox_size.z * 0.5
+	return (float(lanes - 1) * movement.lane_switch_time + tuning.dodge_margin) * speed + movement.hurtbox_size.z * 0.5 \
+		+ dash_reach
 
 
 ## Seconds Mecha Guppy needs from a floor bite's warning to its snap: its rise into its watch beside the roof, its lunge
@@ -435,12 +441,15 @@ func bite_warning_seconds(full: bool, length: float) -> float:
 
 
 ## Where a floor bite on roof `roof` starts (track distance), full width or not, from the step that led onto it (`into`):
-## the crossing past where its riders can first switch (Step.free_at), or past a reaction after the hut's deadline (its
-## warning shows no sooner) where that's later; past their landing; and late enough that Mecha Guppy rises and lunges
-## after the deadline before its snap.
+## a reaction and the crossing past where its riders can first switch (Step.free_at), the reaction counted from there,
+## where its warning can be read from where they are (task E5e-f's review: from a hut, and dropping off its end, the
+## crescent on the roof ahead is a sliver a few pixels high; it reads once they're on that roof's floor where they can
+## switch: after a RUN_ON step, as they drop off the hut's lanes that run on; after a REACH_BACK step, where the roof
+## widens past its pier), never before the hut's deadline (its warning shows no sooner); past their landing; and late
+## enough that Mecha Guppy rises and lunges after the deadline before its snap.
 func _bite_front(into: Step, roof: Roof, full: bool) -> float:
 	var crossing: float = bite_crossing()
-	var front: float = maxf(into.free_at, into.deadline + (tuning.dodge_reaction + WARN_SLACK) * speed) + crossing
+	var front: float = maxf(into.free_at, into.deadline) + (tuning.dodge_reaction + WARN_SLACK) * speed + crossing
 	front = maxf(front, maxf(into.land, roof.full_from()) + LAND_CLEAR)
 	return maxf(front, into.deadline + (bite_chain() + WARN_SLACK) * speed + snap_lead(full, bite_length(full)))
 
@@ -489,8 +498,7 @@ func bite_latest(bite: MechaGuppyCrescent) -> float:
 ## not: the steps are as long in each phase) and after it, from FIRST_NOTCH on, the bait locking only once the runner is
 ## past it with a reaction and a switch for every lane but one to reach the notch's lane (MechaGuppyPattern.bait_after; its
 ## aim never shows beside the bite), lock_seconds and arrival_seconds before it lands catch_in into the notch, notch_back
-## short of the hut; on roof FIRST_BITE, its volley thrown once the runner is past it, landing short of the hut (as
-## MechaGuppyPattern._spot_places and _limit place it).
+## short of the hut; on roof FIRST_BITE (its bite alone: no volley, no bait), the bite past by PAD_CLEAR before the hut.
 func _bite_room(k: int) -> float:
 	var roof: Roof = roofs[k]
 	var into: Step = steps[k - 1]
@@ -503,11 +511,7 @@ func _bite_room(k: int) -> float:
 		var reach: float = maxf(t.dodge_reaction + float(lanes - 1) * movement.lane_switch_time, t.bait_seek) * speed
 		var lock: float = past + reach
 		return lock + (t.lock_seconds + t.arrival_seconds) * speed - t.catch_in + t.notch_back + t.hut_lead * pace
-	var first: float = maxf(past + (t.max_escape_lanes * movement.lane_switch_time + t.dodge_margin + 0.05) * speed
-		+ t.blast_depth * 0.5 + movement.hurtbox_size.z * 0.5, past + (t.lock_seconds + t.arrival_seconds) * speed)
-	var spots: int = maxi(MechaGuppyTuning.per_phase(t.roof_spots, 0), 1)
-	var last: float = first + t.spot_spacing * movement.pace() * float(spots - 1)
-	return last + t.blast_depth * 0.5 + t.floor_clear + t.hut_clear + t.hut_lead * pace
+	return past + PAD_CLEAR + t.hut_lead * pace
 
 
 ## Where the next step's hut would start if it were planned now (in any phase: the steps are as long in each; FAR once

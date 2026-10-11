@@ -26,7 +26,8 @@ extends RefCounted
 ## fallback brings its hits). Either way it never runs off the end of a lane that ends ahead (it switches to a lane with
 ## floor in time, as a player would).
 ## Mecha Guppy's floor bite (task E5e-f, MechaGuppyFloorBite): it reads the bite off its warning (the crescent's outline:
-## the bite it shows), `dodge_reaction` after it shows, once it's on the floor (or in the air over it): into the lane the
+## the bite it shows), `dodge_reaction` after it first sees it from the floor (or in the air over it: off the hut, where the
+## crescent reads; `bite_seen_from_free`, only from where it can first switch lanes there): into the lane the
 ## bite leaves, a lane at a time where the floor is under the lane it moves into, or over a full-width bite a jump timed so
 ## it's in the air over the whole stretch where the gap reaches into its lane (centred on it); its bait and its worst case
 ## wait until it's past the bite. `bite_slack` is the least time it had to spare before a bite that leaves a lane: from its
@@ -91,6 +92,9 @@ var jump_margin: float = INF
 var bites: Array[Dictionary] = []
 ## Reads Mecha Guppy's floor bites (off: it runs on in its lane, into a bite's gap: the tests' fall).
 var floor_bites: bool = true
+## Sees a floor bite's warning only once it's where it can first switch lanes on that roof (Step.free_at: the plan's own
+## reckoning of when the warning can be read; tests), not as soon as it's on the roof's floor.
+var bite_seen_from_free: bool = false
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -114,6 +118,9 @@ var _waves_jumped: Dictionary = {}
 ## The floor bite being read (its record in `bites`), and when the runner last got past one (bomb clock).
 var _bite: Dictionary = {}
 var _bite_passed: float = -INF
+## The floor bite whose warning it has seen, and when it first saw it (the floor bite's clock).
+var _seen_roof: int = -1
+var _seen_at: float = 0.0
 
 
 func _init(p_boss: MechaGuppy) -> void:
@@ -354,8 +361,9 @@ func _bait(p: Player, now: float) -> void:
 		_set_target(notch, "the bait: into the notch's lane %d to lure the bomb past its edge" % notch, now)
 
 
-## Mecha Guppy's floor bite (see the header): once its warning has shown dodge_reaction, into the lane it leaves, or a jump
-## over a full-width one in the air over the whole stretch where its gap reaches into the runner's lane, centred on it.
+## Mecha Guppy's floor bite (see the header): dodge_reaction after it first sees its warning from the roof's floor, into the
+## lane it leaves, or a jump over a full-width one in the air over the whole stretch where its gap reaches into the
+## runner's lane, centred on it.
 func _floor_bite(p: Player, now: float) -> void:
 	var fb: MechaGuppyFloorBite = boss.floor_bite
 	if fb == null:
@@ -369,7 +377,15 @@ func _floor_bite(p: Player, now: float) -> void:
 	var bite: MechaGuppyCrescent = fb.bite
 	if bite == null or fb.warned_at < 0.0 or p.distance > bite.to + h:
 		return
-	if fb.clock - fb.warned_at < dodge_reaction - 0.0001:
+	# It sees the warning once it's on (or over) the roof's floor (from a hut the crescent ahead is a sliver: task E5e-f's
+	# review), or with bite_seen_from_free only once it's where it can first switch lanes there; it reacts dodge_reaction
+	# after.
+	if bite_seen_from_free and bite.roof >= 1 and p.distance < boss.climb.steps[bite.roof - 1].free_at:
+		return
+	if _seen_roof != bite.roof:
+		_seen_roof = bite.roof
+		_seen_at = fb.clock
+	if fb.clock - _seen_at < dodge_reaction - 0.0001:
 		return
 	if _bite.is_empty() or int(_bite["roof"]) != bite.roof:
 		_bite = {"roof": bite.roof, "full": bite.full, "from": p.lane, "keep": bite.keep, "slack": INF, "margin": INF,

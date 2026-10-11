@@ -9,12 +9,14 @@ extends RefCounted
 ##   that lane; a full-width one (phase 2 only, never before the first notch) takes every lane at its deepest, and its
 ##   longest stretch along the track in every lane is at most full_jump_share of a full jump (shorter than a normal jump
 ##   covers), the bitten side's the longest and the far side's the shortest;
-## - where: past where its riders can first switch by the crossing (every switch from the farthest lane and dodge_margin),
-##   and past a reaction after the hut's deadline by it too; past their landing; short of the roof's pads; on a notched
-##   roof short of the notch, with time to cross back to the notch's lane before the bait locks (and its aim only past the
-##   bite), the notch on its side (the lane it leaves is never the notch's);
-## - when: its warning never before the hut's deadline, giving a reaction and the crossing from where the riders can first
-##   switch, and Mecha Guppy its rise and lunge before the snap, with WARN_SLACK to spare before the latest it may begin
+## - where: a reaction (and WARN_SLACK) and the crossing (every switch from the farthest lane, dodge_margin and the dash's
+##   reach) past where its riders can first switch, where its warning can be read from where they are (task E5e-f's
+##   review), never before the hut's deadline; past their landing; short of the roof's pads; on a notched roof short of
+##   the notch, with time to cross back to the notch's lane before the bait locks (and its aim only past the bite), the
+##   notch on its side (the lane it leaves is never the notch's);
+## - when: its warning never before the hut's deadline, giving a reaction from when it can be read (its start, or where
+##   the riders can first switch if that's later) and the crossing, and Mecha Guppy its rise and lunge before the snap,
+##   with WARN_SLACK to spare before the latest it may begin
 ##   (MechaGuppyClimb.bite_latest: a warning begun a frame late is still fair); over a full-width one, a reaction before
 ##   the earliest take-off that clears it in every lane; the snap before the runner reaches it, and before that take-off;
 ## - its sides seeded, never three running on the same side.
@@ -49,12 +51,11 @@ static func plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning) -> String:
 		sides.append(bite.side)
 		if sides.size() >= 3 and sides[-1] == sides[-2] and sides[-2] == sides[-3]:
 			return "roof %d: a third bite running from the same side" % k
-		# Where.
-		if bite.from < into.free_at + crossing - EPS:
-			return "roof %d: its bite %.2f s short of a crossing from where its riders can first switch" \
-				% [k, (into.free_at + crossing - bite.from) / v]
-		if bite.from < into.deadline + (t.dodge_reaction + MechaGuppyClimb.WARN_SLACK) * v + crossing - EPS:
-			return "roof %d: its bite short of a reaction and a crossing after the hut's deadline" % k
+		# Where: a reaction and the crossing past where its riders can first switch (and read it), never before the deadline.
+		var readable: float = maxf(into.free_at, into.deadline)
+		if bite.from < readable + (t.dodge_reaction + MechaGuppyClimb.WARN_SLACK) * v + crossing - EPS:
+			return "roof %d: its bite %.2f s short of a reaction and a crossing from where its riders can first switch and read it" \
+				% [k, (readable + (t.dodge_reaction + MechaGuppyClimb.WARN_SLACK) * v + crossing - bite.from) / v]
 		if bite.from < maxf(into.land, roof.full_from()) + MechaGuppyClimb.LAND_CLEAR - EPS:
 			return "roof %d: its bite eats its riders' landing" % k
 		if bite.to >= step.pad - EPS:
@@ -72,8 +73,8 @@ static func plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning) -> String:
 		# When.
 		if bite.warn_at < into.deadline - EPS:
 			return "roof %d: its warning before the hut's deadline" % k
-		if maxf(bite.warn_at + t.dodge_reaction * v, into.free_at) + crossing > bite.from + EPS:
-			return "roof %d: its warning too late for a reaction and the crossing" % k
+		if maxf(bite.warn_at, into.free_at) + t.dodge_reaction * v + crossing > bite.from + EPS:
+			return "roof %d: its warning too late for a reaction from when it can be read and the crossing" % k
 		if bite.snap_at - bite.warn_at < c.bite_chain() * v - EPS:
 			return "roof %d: its warning too late for Mecha Guppy to rise and lunge" % k
 		if c.bite_latest(bite) - bite.warn_at < MechaGuppyClimb.WARN_SLACK * v - EPS:
@@ -86,8 +87,9 @@ static func plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning) -> String:
 		if bite.full:
 			for lane: int in c.lanes:
 				var gap: Vector2 = bite.stretch(bite.near_w(lane))
-				if gap.x <= gap.y and bite.warn_at + t.dodge_reaction * v > gap.y - jump + EPS:
-					return "roof %d: its warning leaves no reaction before the earliest take-off over it in lane %d" % [k, lane]
+				if gap.x <= gap.y and maxf(bite.warn_at, into.free_at) + t.dodge_reaction * v > gap.y - jump + EPS:
+					return "roof %d: its warning leaves no reaction from when it can be read before the earliest take-off over it in lane %d" \
+						% [k, lane]
 	return ""
 
 

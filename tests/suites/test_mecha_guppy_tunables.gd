@@ -16,10 +16,10 @@ extends TestSuite
 ## - it still progresses: two hits, the second fallback_after + 1 steps after the first (or at the next step that doesn't
 ##   lead onto a floor bite: task E5e-f, MechaGuppyPattern.bitten_next);
 ## - Mecha Guppy's floor bites (task E5e-f) it meets: each warned and snapped (none given up), never before the hut's
-##   deadline, with a reaction and every switch from the farthest lane to the one it leaves and dodge_margin before the
-##   runner reaches it (measured from where the runner was as it showed), and Mecha Guppy's rise and lunge before its snap;
-##   each one leaving exactly the far side's outer lane at its deepest, the runner passing in it; no volley's circle and no
-##   bait's aim beside it (the first tower's volley thrown once the runner is past it, the bait's aim only past it).
+##   deadline, with a reaction (from where the runner was as it showed, or where they could first switch if that's later:
+##   when it can be read), every switch from the farthest lane to the one it leaves, the dash's reach and dodge_margin
+##   before the runner reaches it, and Mecha Guppy's rise and lunge before its snap; each one leaving exactly the far
+##   side's outer lane at its deepest, the runner passing in it; no volley on a roof with one, no bait's aim beside it.
 ## And on the plan alone (MechaGuppyBiteChecks), for every ranged tunable at both ends at 3, 5 and 6 lanes, both speeds,
 ## in phases 1 and 2: every floor bite's shape (one lane left in phase 1; phase 2's full-width ones jumpable in every lane),
 ## its place (past the landing, short of the pads and the notch, never leaving the notch's lane), its warning's margins.
@@ -201,9 +201,9 @@ func _test_every_tunable_at(lanes: int, speed: float) -> void:
 	check(stalled.is_empty(), "every tunable at both ends: a runner who never baits still lands its hits, one every fallback_after + 1 steps (or the next that doesn't lead onto a floor bite) %s%s"
 		% [where, "" if stalled.is_empty() else ": " + "; ".join(stalled.slice(0, 4))])
 	check(bitten.is_empty() and bites > 0,
-		"every tunable at both ends: each floor bite met is warned and snapped, never before the hut's deadline, a reaction, every switch from the farthest lane and dodge_margin before the runner reaches it (least %.2f s to spare after the switches, from where the runner was as it showed), Mecha Guppy's rise and lunge before its snap, one lane left and the runner passing in it (%d bites) %s%s"
+		"every tunable at both ends: each floor bite met is warned and snapped, never before the hut's deadline, a reaction from when it can be read, every switch from the farthest lane, the dash's reach and dodge_margin before the runner reaches it (least %.2f s to spare), Mecha Guppy's rise and lunge before its snap, one lane left and the runner passing in it (%d bites) %s%s"
 		% [least, bites, where, "" if bitten.is_empty() else ": " + "; ".join(bitten.slice(0, 4))])
-	check(overlaps.is_empty(), "every tunable at both ends: no volley's circle or bait's aim beside a floor bite, the lane it leaves never the notch's %s%s"
+	check(overlaps.is_empty(), "every tunable at both ends: no volley on a roof with a floor bite, no bait's aim beside one, the lane it leaves never the notch's %s%s"
 		% [where, "" if overlaps.is_empty() else ": " + "; ".join(overlaps.slice(0, 4))])
 	print("  Mecha Guppy's tunables %s: %d baits, %d fallbacks, %d floor bites (least %.2f s to spare after a floor bite's switches)"
 		% [where, baits, fallbacks, bites, least])
@@ -296,7 +296,10 @@ func _check_bites(boss: MechaGuppy, mt: MechaGuppyTuning, bot: MechaGuppyBot, ou
 		var d0: float = float(e["d0"])
 		warned[k] = true
 		out["bites"] = int(out["bites"]) + 1
-		var spare: float = (bite.from - maxf(d0 + mt.dodge_reaction * v, into.free_at) - h) / v - float(n - 1) * switch
+		# A reaction from when its warning can be read (its start, or where the runner can first switch if that's later),
+		# then every switch from the farthest lane, even dashing on the way (the dash's reach).
+		var spare: float = (bite.from - maxf(d0, into.free_at) - mt.dodge_reaction * v - h - climb.dash_reach) / v \
+			- float(n - 1) * switch
 		out["least"] = minf(float(out["least"]), spare)
 		var shape: String = MechaGuppyBiteChecks.shape_problem(climb, mt, bite, climb.steps[k].phase)
 		if why == "" and shape != "":
@@ -324,16 +327,8 @@ func _check_bites(boss: MechaGuppy, mt: MechaGuppyTuning, bot: MechaGuppyBot, ou
 	var overlap: String = ""
 	for e: Dictionary in _events(boss, &"volley"):
 		var roof: MechaGuppyClimb.Roof = climb.roofs[int(e["step"]) + 1]
-		if roof.bite == null or overlap != "":
-			continue
-		if roof.index >= MechaGuppyClimb.FIRST_NOTCH:
-			overlap = "a volley on roof %d, with a floor bite and a bait" % roof.index
-		elif float(e["d0"]) < roof.bite.to + h - frame - 0.01:
-			overlap = "roof %d's volley thrown %.1f m short of the end of its bite" % [roof.index, roof.bite.to + h - float(e["d0"])]
-		else:
-			for spot: Dictionary in e["spots"]:
-				if float(spot["at"]) < roof.bite.to + h:
-					overlap = "roof %d's volley lands beside its bite" % roof.index
+		if roof.bite != null and overlap == "":
+			overlap = "a volley on roof %d, which has a floor bite" % roof.index
 	for e: Dictionary in _events(boss, &"bait_seek"):
 		var roof: MechaGuppyClimb.Roof = climb.roofs[int(e["step"]) + 1]
 		if roof.bite == null or overlap != "":

@@ -11,14 +11,14 @@ extends RefCounted
 ##   the runner nears the pads, or, on a roof with the bait's notch, its catch there (below), which it bites from. On a
 ##   step whose fallback is due, a bite that would keep the shark busy past the fallback's last moment gives way to it
 ##   (_bite_fits): the shark sinks off and the roof's end stays.
-## - The volley (roof_spots, landing_spots): phase 1, a spot on roof k + 1's run; phase 2, after a RUN_ON step, a spot
-##   where riders come down onto it (dodged by a switch in the air as they drop off the hut's end), then a spot on its
-##   run, as one volley, and its spots take more bombs side by side; nearest first, planned as the runner nears them by
-##   the Floating Head's salvo rules (MechaGuppyBombs.plan_spots), each spot passed in time for the bait. Their circles
-##   never show before the hut's deadline (so they never tell a rider which lanes lead up: only the owner's two cues
-##   do), and never on a roof before the runner can switch lanes there (task E5e-b2's review: a circle in the lane of a
-##   runner on a narrow pier, with nowhere to switch to but the chasm, was a trap): a roof's spot is thrown no sooner
-##   than Step.free_at.
+## - The volley (roof_spots, landing_spots; none on a roof with a floor bite): phase 1, a spot on roof k + 1's run;
+##   phase 2, after a RUN_ON step, a spot where riders come down onto it (dodged by a switch in the air as they drop off
+##   the hut's end), then a spot on its run, as one volley, and its spots take more bombs side by side; nearest first,
+##   planned as the runner nears them by the Floating Head's salvo rules (MechaGuppyBombs.plan_spots), each spot passed
+##   in time for the bait. Their circles never show before the hut's deadline (so they never tell a rider which lanes
+##   lead up: only the owner's two cues do), and never on a roof before the runner can switch lanes there (task E5e-b2's
+##   review: a circle in the lane of a runner on a narrow pier, with nowhere to switch to but the chasm, was a trap): a
+##   roof's spot is thrown no sooner than Step.free_at.
 ## - The bait (GDD §10, the owner, October 11, 2026: Captain Cogs' bombs lock onto the runner's lane, and a runner who
 ##   dodges one at a roof's end sends it past the edge into Mecha Guppy's jaws; bait_plan): near roof k + 1's end its
 ##   notch (MechaGuppyClimb.Roof.notch_lane, from roof MechaGuppyClimb.FIRST_NOTCH on), with Mecha Guppy waiting in its
@@ -44,9 +44,10 @@ extends RefCounted
 ##   outline on the floor) and Mecha Guppy's rise beside the roof's side with its rumble (MechaGuppyShark.floor_bite); its
 ##   lunge and snap timed by where the runner is (its lunge_at and snap_at), the chunk gone at the snap (on_snap). Never
 ##   once it can't be warned fairly any more (the shark too busy, the attacks stopped: skipped, as if never planned). The
-##   roof's catch (its bait's) comes only after it. A bitten roof from FIRST_NOTCH on carries its bite and its bait, no
-##   volley (the bite in the volley's place); the first tower's volley comes once the runner is past its bite; the bait's
-##   aim shows only past the bite, with a reaction and a switch for every lane but one before it locks (bait_plan). A
+##   roof's catch (its bait's) comes only after it. A bitten roof carries no volley (the bite in the volley's place): the
+##   first tower its bite alone (one new thing at a time: the climb's first volley comes on roof 3), the others their bite
+##   and their bait; the bait's aim shows only past the bite, with a reaction and a switch for every lane but one before it
+##   locks (bait_plan). A
 ##   fallback due on a step that leads onto a bitten roof waits for the next step (Mecha Guppy can't breach in front of
 ##   that roof and rise for its bite too); at the default fallback_after the fallbacks never fall on those steps anyway.
 ## 4 hits end phase 1, 6 phase 2: a runner who baits every step lands one a step (from the first notch on); one who
@@ -399,22 +400,15 @@ func volley(step: MechaGuppyClimb.Step, lane: int, d0: float, speed: float) -> D
 
 
 ## Where step `step`'s volley lands: {ats (nearest first), s_open, landing (true if its first spot is the landing spot)}.
-## None on a roof with a floor bite and a bait (task E5e-f: the bite in its place); on the first tower, with its bite and no
-## bait, its spots come past the bite, thrown once the runner is past it (its circles never beside the bite).
+## None on a roof with a floor bite (task E5e-f: the bite in its place; the first tower's bite comes alone, one new thing at
+## a time: task E5e-f's review).
 func _volley_places(step: MechaGuppyClimb.Step, speed: float) -> Dictionary:
 	var roof: MechaGuppyClimb.Roof = climb.roofs[step.index + 1]
-	var bite: MechaGuppyCrescent = roof.bite
-	if bite != null and roof.index >= MechaGuppyClimb.FIRST_NOTCH:
+	if roof.bite != null:
 		var none: Array[float] = []
 		return {"ats": none, "s_open": maxf(step.land, roof.full_from()), "landing": false}
 	var limit: float = _limit(step, speed)
 	var on_roof: int = MechaGuppyTuning.per_phase(tuning.roof_spots, boss.phase_index)
-	if bite != null:
-		var past: float = bite.to + world.tuning.hurtbox_size.z * 0.5
-		var spots: Array[float] = []
-		if on_roof > 0:
-			spots = _spot_places(past, on_roof, limit, speed, past)
-		return {"ats": spots, "s_open": past, "landing": false}
 	var landing: Array[float] = _landing_places(step, speed, limit)
 	if not landing.is_empty():
 		var ats: Array[float] = landing.duplicate()
