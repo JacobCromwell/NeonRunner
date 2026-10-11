@@ -14,23 +14,30 @@ extends Node3D
 ##   wrong      the runner drops off the first hut in a lane that doesn't lead up: the fall into the chasm
 ##   grapple    the same with a grapple: the save onto the higher roof, into a lane that leads up
 ##   side       a camera alongside the climb, looking across at the stairs of roofs and huts and the waterfall
-##   hut        the runner standing under the first hut (the run camera's view from under it): reading the cue
+##   hut        the runner standing under the first hut, or step S's with --start=S (the run camera's view from under
+##              it): reading the cue
 ##   top        phase 3's stub (--phase=3 implied): the climb's last steps, then the flat top, the waterfall gone
-##   shark      (E5e-b2) a camera beside Mecha Guppy whenever it's up: its watch beside a roof's end and its bite, its
-##              breaches beside the lanes that lead up, a bomb falling into its jaws (the climb goes on as in climb)
-##   ship       a camera ahead of and above Captain Cogs' ship, looking back past the captain at the climb as he throws
+##   shark      (E5e-b2) a camera beside Mecha Guppy whenever it's up: its catch beside a roof's notch, its bite, its
+##              breaches beside the lanes that lead up (with --no-bait), a bomb falling into its jaws (the climb goes on
+##              as in climb)
+##   ship       a camera ahead of and above Captain Cogs' ship, looking back past the captain at the climb as it throws
 ##   bombs      the run camera, as climb (the volleys' circles, the bombs coming down, the blasts; with --phase=2 the
-##              landing spots and the bombs on the huts)
-##   hits       the run camera, as climb: each step's bomb falling into the shark's jaws ahead of the runner
+##              landing spots and the spots with more bombs)
+##   bait       (E5e-b3) the run camera, as climb: the notch at each roof's end with the shark waiting in it, the bait's
+##              circle following the runner into the notch's lane, the lock and the throw, the switch out before the
+##              edge, the bomb falling into the jaws
+##   hits       the same as bait
 ## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=M (the run's speed, m/s; the Beach's 23.8 by default),
 ## --phase=N, --daylight (the Beach's own sky instead of Sunset Strip's), --reduced-flashing, --events (prints the
 ## boss's events with their frames, for picking frames), --no-attacks (the climb alone: no bombs, no bites),
-## --start=S (move the runner on to step S's roof first: a view from higher up).
-## Frames worth a look (at --fixed-fps 10, 23.8 m/s): climb, the first pads about frame 35, on the first hut 40-63,
-## its end and the drop about 63, the first roof 66-90, the second hut 95-125; wrong, the drop and the fall about
-## 60-72; grapple, the save about 68-78; side, any frame. With --start=S (any scenario but hut and top): the shark's
-## watch beside roof S's end about frames 10-20, its bite about 20-24, Captain Cogs' hit bomb thrown about 41-45 and
-## going into the shark's jaws about 46-50, the next roof's volley 47-63 (--events prints the exact frames).
+## --no-bait (the runner doesn't bait: Captain Cogs' fallback misses into the chasm bring the hits), --start=S (move
+## the runner on to step S's roof first: a view from higher up; with --phase=2 the steps it plans are phase 2's).
+## Frames worth a look (at --fixed-fps 10, 23.8 m/s, 5 lanes): climb, the first pads about frame 36, on the first hut
+## 41-78, its lane's end and the drop about 78, the first roof 84-117, the second hut 122-146; wrong, the drop and the
+## fall about 65-75; grapple, the save about 71-79; side, any frame. bait: the shark rising beside roof 1's notch (its
+## rumble) about frame 88, its jaws open and the bait's circle following the runner 94-100, the lock and the throw about
+## 100, the switch out about 104, the bomb into the jaws about 111 (3 lanes: 83, 89-95, 95, 99, 106; 6 lanes: 91,
+## 97-103, 103, 107, 114; --events prints the exact frames: bait_seek, bait_lock, shark_hit).
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const SKY_PATH: String = "res://data/skies/beach_sunset.tres"
@@ -54,12 +61,15 @@ func _ready() -> void:
 	var speed: float = 23.8
 	var daylight: bool = false
 	var attacks: bool = true
+	var baits: bool = true
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
 			scenario = v
 		elif arg == "--no-attacks":
 			attacks = false
+		elif arg == "--no-bait":
+			baits = false
 		elif arg.begins_with("--start="):
 			_start_step = int(v)
 		elif arg.begins_with("--lanes="):
@@ -102,6 +112,7 @@ func _ready() -> void:
 	boss.setup(world, ctx, arena)
 	boss.attacks_enabled = attacks
 	bot = MechaGuppyBot.new(boss)
+	bot.baits = baits
 	match scenario:
 		"wrong":
 			bot.wrong = true
@@ -191,7 +202,7 @@ func _shark_cam(p: Vector3) -> void:
 func _move_on(k: int) -> void:
 	var climb: MechaGuppyClimb = boss.climb
 	while climb.steps.size() <= k and not climb.top_planned():
-		climb.plan_next(0)
+		climb.plan_next(boss.phase_index)
 	if k >= climb.steps.size():
 		return
 	var into: MechaGuppyClimb.Step = climb.steps[k - 1]
@@ -206,11 +217,12 @@ func _move_on(k: int) -> void:
 	_run_cam.snap()
 
 
-## The runner on the first hut, standing still under it halfway along (the pads already behind them): what a rider
-## sees of the hut's lanes and the roof ahead.
+## The runner on the first hut (step --start=S's with it), standing still under it halfway along (the pads already
+## behind them): what a rider sees of the hut's lanes and the roof ahead. A runner who isn't running doesn't move, so
+## the runner and the camera are put there by hand.
 func _stand_under_hut() -> void:
 	var p: Player = world.player
-	var step: MechaGuppyClimb.Step = boss.climb.steps[0]
+	var step: MechaGuppyClimb.Step = boss.climb.steps[mini(_start_step, boss.climb.steps.size() - 1)]
 	if p.surface != Player.Surface.CEILING:
 		p.distance = step.pad_end + 6.0
 		p.ceiling_y = step.hut_y
@@ -218,4 +230,7 @@ func _stand_under_hut() -> void:
 		p.h = 0.0
 		p.grounded = true
 		p.floor_y = step.floor_y
+		p.floor_base = step.floor_y
+		p.call(&"_apply_transform", 1.0)
+		_run_cam.snap()
 	p.running = false
