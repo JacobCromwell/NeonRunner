@@ -294,7 +294,8 @@ func _gulp() -> PackedFloat32Array:
 ## in its wake and its machinery humming, fading out as it goes.
 func _swim() -> PackedFloat32Array:
 	var rng := _rng(2117)
-	var d: float = 3.2
+	# Under 2.5 s, as every sound in the library (test_units): the swim away goes on quietly past it.
+	var d: float = 2.3
 	var b := DSP.buffer(d)
 	var splash := DSP.noise(1.0, rng)
 	DSP.filter_sweep(splash, &"lowpass", 6000.0, 400.0, 0.7)
