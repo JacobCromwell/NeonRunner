@@ -428,6 +428,7 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 | E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
 | E5d | **The Golden Convergence** (the final villain; designed October 9, 2026) | B4, B7, B8, B9, D6b, heli drone | XL | T1 |
 | E5e | **Mecha Guppy and Captain Cogs** (the Beach's boss; designed October 10, 2026; steps E5e-a to E5e-d) | B7, B8, D10c | XL | T1 |
+| E5e-f | **Mecha Guppy's floor bite** (the owner's new attack, October 11, 2026) | E5e | L | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -485,6 +486,8 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 4. **E5e-d, the walls** (core: `player.gd`; last, so they can be dropped: the owner wants to hear how they go, and keeps them only if they add a lot to the play, about 7 out of 10 or more, and drops them at about 1–2): occasional side walls in the climb, never its full length, eaten like the floors, that a falling runner may catch, set so they save about one wrong drop in five; wall heights from the floor beside them.
 
 **Done:** E5e-a, E5e-b (in three parts: the climb; Mecha Guppy, Captain Cogs and the bombs; hits by baiting, as the owner chose on October 11, 2026) and E5e-c are built and each reviewed; E5e-d (the walls) is dropped under the owner's rule. The campaign plays the fight after Sunset Strip (`beach/boss`); the whole-fight bots, baiting and not, win at 3, 5 and 6 lanes and at 18 and 23.8 m/s. Its placeholders are in `docs/questions/e5e.md`, to fold into `docs/OPEN_QUESTIONS.md` when it merges.
+
+**E5e-f: Mecha Guppy's floor bite** (the owner, October 11, 2026; GDD §10, "The floor bite"). While the runner is still on a roof, before the pads, Mecha Guppy bites a shark-bite crescent out of it from one side: one lane left in phase 1, and in phase 2 sometimes the whole width, jumped. **Done:** built and reviewed; roofs take turns carrying the bite or a volley, with the bait on both; the full tier passes. Its placeholders are in `docs/questions/e5e.md` ("Raised by E5e-f").
 
 ### F. Cinematics
 
