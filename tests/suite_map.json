@@ -21,7 +21,7 @@
     "sewer_swarm_whole", "sewer_swarm_surrounded", "the_house_attacks", "the_house_phases", "the_house_fight",
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
     "enforcer_truck_runs", "wide_gaps", "charge_paths", "host_releases", "dash_walls", "beach_levels",
-    "mecha_guppy_climb", "mecha_guppy_bait"
+    "mecha_guppy_climb", "mecha_guppy_bait", "mecha_guppy_tunables"
   ],
   "medium": [
     "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm",
