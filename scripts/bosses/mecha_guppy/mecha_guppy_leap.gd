@@ -22,13 +22,15 @@ enum Step { NONE, RISE, HANG, FALL, SWIM, OVER }
 
 ## The rise starts this far under the deck (metres: out of sight), and ends with the hinge this far under the ship's keel
 ## (its open jaws round the stern half and the captain); the hinge stands this far out from the ship's middle (its chin,
-## dropped toward the top, under the hull).
+## dropped toward the top, under the hull, its tip clear of the lanes and the top's eaves: never over them).
 const RISE_FROM: float = 45.0
-const GULP_UNDER: float = 4.0
-const HINGE_OUT: float = 1.5
-## The jaws open over this share of the rise (from, to), and snap shut over GULP_SECONDS at the gulp.
+const GULP_UNDER: float = 6.0
+const HINGE_OUT: float = 4.0
+## The jaws open over this share of the rise (from, to), this wide (0 to 1: MechaGuppySharkModel's opening), and snap shut
+## over GULP_SECONDS at the gulp.
 const OPEN_FROM: float = 0.15
 const OPEN_TO: float = 0.75
+const JAW_OPEN: float = 0.85
 const GULP_SECONDS: float = 0.15
 ## The hang: how far it rises on (metres), how far it leans out from the top by its end (degrees).
 const HANG_RISE: float = 3.0
@@ -37,15 +39,18 @@ const HANG_LEAN: float = 12.0
 const FALL_DROP: float = 70.0
 const FALL_LEAN: float = 22.0
 const FALL_OUT: float = 8.0
-## The swim: the hinge this far under the sea (its back under the water, its dorsal fin standing out of it), out at sea
-## past the shoreline by SWIM_OUT, from SWIM_FROM to SWIM_TO ahead of the runner and out by SWIM_AWAY more (metres), a puff
-## of foam at the fin every FOAM_EVERY seconds.
-const SWIM_DEPTH: float = 6.0
-const SWIM_OUT: float = 16.0
+## The swim: the hinge this far under the sea (the top of its head and its back just breaking the water, its dorsal fin
+## standing out of it), past the shoreline (SWIM_OUT) and at least SWIM_CLEAR out from the track's middle (nearer, the
+## top's own edge hides the sea far below from the run camera), from SWIM_FROM to SWIM_TO ahead of the runner and out by
+## SWIM_AWAY more (metres; the haze takes it as it goes), a puff of foam at the fin every FOAM_EVERY seconds (its wake:
+## white reads through the haze).
+const SWIM_DEPTH: float = 3.8
+const SWIM_OUT: float = 7.0
+const SWIM_CLEAR: float = 62.0
 const SWIM_FROM: float = 45.0
-const SWIM_TO: float = 150.0
-const SWIM_AWAY: float = 40.0
-const FOAM_EVERY: float = 0.12
+const SWIM_TO: float = 120.0
+const SWIM_AWAY: float = 25.0
+const FOAM_EVERY: float = 0.07
 const FOAM_COLOR := Color(0.93, 0.95, 0.93)
 ## Where its dorsal fin stands, in its head's space (MechaGuppySharkModel's body: the fin's root along the back), for the
 ## foam at the waterline.
@@ -127,7 +132,7 @@ func tick(delta: float) -> void:
 		Step.HANG:
 			var k: float = clampf((time - gulped_at) / maxf(tuning.leap_hang, 0.05), 0.0, 1.0)
 			var e: float = 1.0 - (1.0 - k) * (1.0 - k)
-			var shut: float = 1.0 - clampf((time - gulped_at) / GULP_SECONDS, 0.0, 1.0)
+			var shut: float = (1.0 - clampf((time - gulped_at) / GULP_SECONDS, 0.0, 1.0)) * JAW_OPEN
 			shark.pose_free(Vector3(_x, _gulp_y() + HANG_RISE * e, _z()), _upright(HANG_LEAN * e), shut)
 			if k >= 1.0:
 				step = Step.FALL
@@ -146,7 +151,7 @@ func tick(delta: float) -> void:
 			if _foam_t <= 0.0 and k < 0.92:
 				_foam_t = FOAM_EVERY
 				var fin: Vector3 = _fin_point()
-				boss.world.effects.burst(Vector3(fin.x, _sea_y() + 0.4, fin.z), FOAM_COLOR, 8, 0.8)
+				boss.world.effects.burst(Vector3(fin.x, _sea_y() + 0.4, fin.z), FOAM_COLOR, 14, 1.3)
 			if k >= 1.0:
 				shark.hold(false)
 				step = Step.OVER
@@ -173,7 +178,7 @@ func _upright(lean: float) -> Basis:
 func _pose_rise(k: float) -> void:
 	var e: float = 1.0 - (1.0 - k) * (1.0 - k)
 	var y: float = lerpf(_deck - RISE_FROM, _gulp_y(), e)
-	var open: float = smoothstep(OPEN_FROM, OPEN_TO, k)
+	var open: float = smoothstep(OPEN_FROM, OPEN_TO, k) * JAW_OPEN
 	shark.pose_free(Vector3(_x, y, _z()), _upright(0.0), open)
 
 
@@ -199,8 +204,8 @@ func _begin_swim() -> void:
 	marks["swim"] = time
 	_foam_t = 0.0
 	boss.sound(&"guppy_swim", Vector3(_x, _deck - 8.0, _z()))
-	boss.log_event(&"swim")
 	_pose_swim(0.0)
+	boss.log_event(&"swim", {"fin": _fin_point()})
 
 
 ## The sea's surface (the open beach's water: BeachSkin.beach_drop under the street).
@@ -216,7 +221,7 @@ func _pose_swim(k: float) -> void:
 	var p: Player = world.player
 	var ahead: float = lerpf(SWIM_FROM, SWIM_TO, k)
 	var d: float = p.distance + ahead
-	var shore: float = world.geo.wall_x() + BeachOpen.shore(int(_side), d) + SWIM_OUT
+	var shore: float = maxf(world.geo.wall_x() + BeachOpen.shore(int(_side), d) + SWIM_OUT, SWIM_CLEAR)
 	var out: float = shore + SWIM_AWAY * k
 	var pos := Vector3(_side * out, _sea_y() - SWIM_DEPTH, TrackGeometry.world_z(d))
 	# Heading ahead and out: its snout along the way it swims, its back up.

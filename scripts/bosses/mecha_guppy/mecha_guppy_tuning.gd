@@ -113,7 +113,7 @@ extends Resource
 @export_range(0.15, 0.8, 0.05, "suffix:s") var round_flight: float = 0.3
 @export_range(14.0, 40.0, 0.5, "suffix:m") var round_ahead: float = 24.0
 @export_range(30.0, 80.0, 1.0, "suffix:m/s") var round_close: float = 50.0
-@export_range(1.0, 1.2, 0.01, "suffix:m") var round_radius: float = 1.15
+@export_range(1.05, 1.2, 0.01, "suffix:m") var round_radius: float = 1.15
 ## DESIGN-TBD (GDD §10, the owner: a wave is warned by "a rising swell and a roar", and jumped like the Resonator's ring,
 ## §9.10): the swell rises out of the sea beside the top, on the side away from the ship, for wave_warning, then crashes
 ## over every lane wave_ahead ahead of the runner (metres; it keeps pace), and its surge rushes along the deck at them,

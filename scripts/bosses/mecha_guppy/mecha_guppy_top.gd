@@ -130,8 +130,9 @@ func clear() -> void:
 ## Phase 3's beats for `t` (MechaGuppyTuning; tests check them): [{k (its place in the minute), kind (&"round", &"wave"),
 ## at (seconds after the top is reached), parity (a round: 0 strikes the lanes 0, 2, 4..., 1 the others; -1 for a wave),
 ## n (its number among its kind), lead (seconds from its warning to its attack reaching the runner), ends (seconds after
-## the top: its attack past the runner)}]. The script loops from top_first, a beat every top_beat; none whose attack
-## would end later than top_clear before the minute's end.
+## the top: its attack past the runner, and BEAT_SPARE)}]. The script loops from top_first, a beat every top_beat, but
+## never before the last beat's attack has ended (only a tuning whose attacks outlast top_beat moves a beat on); none
+## whose attack would end later than top_clear before the minute's end.
 static func plan(t: MechaGuppyTuning) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var script: String = t.top_script.strip_edges()
@@ -142,8 +143,9 @@ static func plan(t: MechaGuppyTuning) -> Array[Dictionary]:
 	var rounds_n: int = 0
 	var waves_n: int = 0
 	var k: int = 0
+	var free_at: float = 0.0
 	while k < 400:
-		var at: float = t.top_first + t.top_beat * float(k)
+		var at: float = maxf(t.top_first + t.top_beat * float(k), free_at)
 		var letter: String = script[k % script.length()].to_upper()
 		k += 1
 		if letter != "R" and letter != "W":
@@ -154,6 +156,7 @@ static func plan(t: MechaGuppyTuning) -> Array[Dictionary]:
 		var ends: float = at + lead + BEAT_SPARE
 		if ends > t.top_seconds - t.top_clear:
 			break
+		free_at = ends
 		if letter == "R":
 			out.append({"k": k - 1, "kind": &"round", "at": at, "parity": rounds_n % 2, "n": rounds_n, "lead": lead,
 				"ends": ends})
