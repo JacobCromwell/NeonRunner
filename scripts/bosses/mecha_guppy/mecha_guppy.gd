@@ -18,7 +18,7 @@ extends BossEncounter
 ## climb to; the climbing view is on for the whole fight (RunWorld.camera_climbs). A wrong drop falls into the
 ## floor Mecha Guppy has eaten: a fall, death unless the grapple saves it (_grapple_save: up onto the higher roof,
 ## into its nearest lane that leads up; a revive after a fall goes there too). Phase 2's climb is about 20%
-## faster: its steps come closer together (MechaGuppyTuning.roof_seconds), the run speed never rises.
+## faster: its steps are higher (MechaGuppyTuning.phase2_rise) and as long, the run speed never rises.
 ## Phase 3 is a stub (DESIGN-TBD, E5e-c): its step is the top, a roof that runs on flat; when the runner reaches it
 ## (top_reached, logged), the waterfall backdrop (MechaGuppyWaterfall) gives way to the Beach's own sky and the stub's
 ## minute (top_seconds) starts, after which the fight is won. E5e-c builds phase 3's attacks on that moment.

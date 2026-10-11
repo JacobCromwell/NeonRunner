@@ -8,7 +8,7 @@ extends TestSuite
 ##   beside it, at least bite_warning before its jaws come up), it bites only once the runner is up on that roof's hut
 ##   (never the floor they're on) and only that roof (never the higher one, the safe drop); the roof's collision and
 ##   its look end at the cut (rays down find no floor past it and the roof's top before it; the builder's pieces reach
-##   no further), its pads too; every step's roof is bitten (the shark waits for itself in phase 2's closer steps);
+##   no further), its pads too; every step's roof is bitten (the shark waits for itself when it's still busy);
 ## - a bite's jaws never come within MechaGuppyShark.BITE_CLEAR of a rider hanging from the hut, even mid-jump, anywhere
 ##   over the track;
 ## - its catch beside a roof's notch (the bait, task E5e-b3: a runner who baits): warned by the rumble, it comes up as

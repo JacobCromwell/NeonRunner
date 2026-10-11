@@ -22,7 +22,7 @@ extends Node3D
 ## arena skin's fog end, where the fog hides everything), so nothing appears in view. Each step is planned as late
 ## as it can be, as its hut comes to the horizon, in the phase of that moment, and never nearer than the edge of
 ## sight (MechaGuppyClimb.plan_next's not_before). When the phase changes, every step whose hut is still past the edge
-## of sight is taken back and planned again in the new phase (_replan): phase 2's closer steps, or phase 3's top,
+## of sight is taken back and planned again in the new phase (_replan): phase 2's higher steps, or phase 3's top,
 ## begin with the first step the runner hasn't seen, and nothing they can see ever changes. A roof is never built
 ## past where it could still be eaten (its end isn't known until the next step is planned).
 ## The look comes from the arena's skin when it's the Beach's (MechaGuppyLooks: tiki bar towers of stacked storeys,

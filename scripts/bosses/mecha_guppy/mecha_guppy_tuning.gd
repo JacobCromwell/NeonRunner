@@ -11,7 +11,8 @@ extends Resource
 ## lanes that lead up reach further back), alternating, one safe place to drop to being enough, a wrong drop
 ## falling into the floor Mecha Guppy is eating, the camera following the runner up, and phase 2's climb
 ## 15-25% faster (proposed: about 20%, by bringing the steps closer together; the run speed never rises in a
-## fight). Every number here is a placeholder (DESIGN-TBD, docs/questions/e5e.md).
+## fight; since E5e-b3 phase 2's steps are higher instead, phase2_rise). Every number here is a placeholder
+## (DESIGN-TBD, docs/questions/e5e.md).
 ##
 ## Pace (docs/ARCHITECTURE.md, Bosses: a boss's own numbers in metres must follow the pace): the distances
 ## marked "at 18 m/s" stand for a time and are multiplied by the run's pace (MovementTuning.pace()), so the
