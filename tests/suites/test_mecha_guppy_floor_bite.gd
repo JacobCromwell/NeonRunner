@@ -689,6 +689,9 @@ func _margins(lanes: int, speed: float, phase: int) -> void:
 	if phase == 1:
 		check(run_up >= 0.0 and jump_margin < INF,
 			"a full-width bite's warning gives a reaction before its earliest take-off in every lane (%.3f s after it) %s" % [run_up, tag])
+	print("  Mecha Guppy's floor bites, the worst case %s: %d bites; least %.3f s to spare from the warning after a reaction and every switch from the farthest lane, %.3f s after the bot's last switch's press%s"
+		% [tag, met, least_spare, least_slack,
+			"" if jump_margin == INF else "; the full-width jump clearing it by %.3f s at either end, its earliest take-off %.3f s after a reaction" % [jump_margin, run_up]])
 	await sim.free_world(world)
 
 

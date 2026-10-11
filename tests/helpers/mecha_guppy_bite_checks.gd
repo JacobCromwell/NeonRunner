@@ -14,8 +14,9 @@ extends RefCounted
 ##   roof short of the notch, with time to cross back to the notch's lane before the bait locks (and its aim only past the
 ##   bite), the notch on its side (the lane it leaves is never the notch's);
 ## - when: its warning never before the hut's deadline, giving a reaction and the crossing from where the riders can first
-##   switch, and Mecha Guppy its rise and lunge before the snap; the snap before the runner reaches it, and before the
-##   earliest take-off over a full-width one;
+##   switch, and Mecha Guppy its rise and lunge before the snap, with WARN_SLACK to spare before the latest it may begin
+##   (MechaGuppyClimb.bite_latest: a warning begun a frame late is still fair); over a full-width one, a reaction before
+##   the earliest take-off that clears it in every lane; the snap before the runner reaches it, and before that take-off;
 ## - its sides seeded, never three running on the same side.
 
 ## Distances' slack in the comparisons (metres).
@@ -75,10 +76,18 @@ static func plan_problem(c: MechaGuppyClimb, t: MechaGuppyTuning) -> String:
 			return "roof %d: its warning too late for a reaction and the crossing" % k
 		if bite.snap_at - bite.warn_at < c.bite_chain() * v - EPS:
 			return "roof %d: its warning too late for Mecha Guppy to rise and lunge" % k
+		if c.bite_latest(bite) - bite.warn_at < MechaGuppyClimb.WARN_SLACK * v - EPS:
+			return "roof %d: its warning %.3f s short of the latest it may begin, under WARN_SLACK (a frame late would skip it)" \
+				% [k, (c.bite_latest(bite) - bite.warn_at) / v]
 		if bite.snap_at >= bite.from - EPS:
 			return "roof %d: its snap not before the runner reaches it" % k
 		if bite.full and bite.snap_at > bite.from + (bite.to - bite.from) - jump - MechaGuppyClimb.SNAP_CLEAR + EPS:
 			return "roof %d: its snap after the earliest take-off over it" % k
+		if bite.full:
+			for lane: int in c.lanes:
+				var gap: Vector2 = bite.stretch(bite.near_w(lane))
+				if gap.x <= gap.y and bite.warn_at + t.dodge_reaction * v > gap.y - jump + EPS:
+					return "roof %d: its warning leaves no reaction before the earliest take-off over it in lane %d" % [k, lane]
 	return ""
 
 

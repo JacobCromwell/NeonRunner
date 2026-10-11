@@ -427,9 +427,10 @@ func snap_lead(full: bool, length: float) -> float:
 
 
 ## How long before the runner reaches a floor bite its warning shows (seconds), where the hut's deadline doesn't come later:
-## floor_warning, but never less than a reaction and the crossing, nor than Mecha Guppy's rise and lunge before its snap.
+## floor_warning, but never less than a reaction and the crossing, nor than Mecha Guppy's rise and lunge before its snap,
+## each with WARN_SLACK to spare (so its warning may begin a frame late and still be fair: bite_latest).
 func bite_warning_seconds(full: bool, length: float) -> float:
-	return maxf(maxf(tuning.floor_warning, tuning.dodge_reaction + bite_crossing() / speed),
+	return maxf(maxf(tuning.floor_warning, tuning.dodge_reaction + WARN_SLACK + bite_crossing() / speed),
 		bite_chain() + WARN_SLACK + snap_lead(full, length) / speed)
 
 
