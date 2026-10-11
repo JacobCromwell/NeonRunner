@@ -40,7 +40,7 @@ const FRAME: float = 1.0 / 60.0 + 0.001
 const VIEW: float = 48.0
 ## The events compared between a first attempt and its retry.
 const LOGGED: Array[StringName] = [&"phase", &"phase_end", &"climb_phase", &"volley", &"bait_seek", &"bait_lock",
-	&"throw", &"hit", &"shark_hit", &"fallback", &"top_reached"]
+	&"throw", &"hit", &"shark_hit", &"fallback", &"top_reached", &"floor_bite_warning", &"floor_bite_snap"]
 
 var sim: RunSim
 var def: BossDef

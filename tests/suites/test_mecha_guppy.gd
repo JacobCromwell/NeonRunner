@@ -4,7 +4,7 @@ extends TestSuite
 ## - its data: the slot (beach_boss) names its scene (task E5e-c: the campaign plays it after Sunset Strip), the owner's
 ##   title, three phases (4 hits, 6 hits, phase 3 the minute on the top), weapons doing nothing, the standard armor rule,
 ##   the Beach's look without walls, the campaign under Sunset Strip's sky at the Beach's speed, its rewards in line with
-##   its neighbours', its hints (the climb, the bombs, the hits, phase 3's rounds and waves);
+##   its neighbours', its hints (the climb, the floor bite, the bombs, the hits, phase 3's rounds and waves);
 ## - the climb's plan (MechaGuppyClimb), over many steps: the lanes that lead up (one on 3 lanes; one, two or three
 ##   on 5 and 6, the count changing every step, one or two on a roof that reaches back; neighbours; never every lane;
 ##   never the same block twice running), the two cues alternating and each shaped as the owner put it, the
@@ -166,8 +166,9 @@ func _test_data(slot: BossDef) -> void:
 	for h: Dictionary in (hints as Dictionary).get("hints", []):
 		triggers.append(h.get("trigger", ""))
 	check(triggers.has("enemy:beach_boss") and triggers.has("boss:beach_boss/climb") and triggers.has("boss:beach_boss/bombs")
-		and triggers.has("boss:beach_boss/hits") and triggers.has("boss:beach_boss/rounds") and triggers.has("boss:beach_boss/waves"),
-		"its hints: the fight, how to read the lanes that lead up, Captain Cogs' bombs and how they hurt Mecha Guppy, phase 3's rounds and waves")
+		and triggers.has("boss:beach_boss/hits") and triggers.has("boss:beach_boss/rounds") and triggers.has("boss:beach_boss/waves")
+		and triggers.has("boss:beach_boss/floor_bite"),
+		"its hints: the fight, how to read the lanes that lead up, Mecha Guppy's floor bite, Captain Cogs' bombs and how they hurt Mecha Guppy, phase 3's rounds and waves")
 	var t := def.tuning as MechaGuppyTuning
 	check(maxf(t.rise, t.phase2_rise) <= RunCamera.FLOOR_REACH - 1.0,
 		"each step's rise (%.1f m, %.1f m in phase 2) stays well within the climbing camera's roof reach (%.1f m)"

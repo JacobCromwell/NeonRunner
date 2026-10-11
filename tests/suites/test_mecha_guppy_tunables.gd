@@ -13,7 +13,16 @@ extends TestSuite
 ##   hut's deadline), and every bait that locks leaves a runner in the notch's lane MechaGuppyPattern.lock_to_edge() to
 ##   leave it before its edge;
 ## - every fallback thrown goes into Mecha Guppy's jaws (no breach refused, none spent while the shark was busy);
-## - it still progresses: two hits, the second fallback_after + 1 steps after the first.
+## - it still progresses: two hits, the second fallback_after + 1 steps after the first (or at the next step that doesn't
+##   lead onto a floor bite: task E5e-f, MechaGuppyPattern.bitten_next);
+## - Mecha Guppy's floor bites (task E5e-f) it meets: each warned and snapped (none given up), never before the hut's
+##   deadline, with a reaction and every switch from the farthest lane to the one it leaves and dodge_margin before the
+##   runner reaches it (measured from where the runner was as it showed), and Mecha Guppy's rise and lunge before its snap;
+##   each one leaving exactly the far side's outer lane at its deepest, the runner passing in it; no volley's circle and no
+##   bait's aim beside it (the first tower's volley thrown once the runner is past it, the bait's aim only past it).
+## And on the plan alone (MechaGuppyBiteChecks), for every ranged tunable at both ends at 3, 5 and 6 lanes, both speeds,
+## in phases 1 and 2: every floor bite's shape (one lane left in phase 1; phase 2's full-width ones jumpable in every lane),
+## its place (past the landing, short of the pads and the notch, never leaving the notch's lane), its warning's margins.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 ## The fights: [lanes, speed].
@@ -24,6 +33,10 @@ const REACTION: float = 0.35
 const SKIPPED: Array[String] = ["ship_ahead", "ship_height", "ship_sway"]
 ## The longest a variant's fight may take to land its two hits (seconds of fight).
 const MOST_SECONDS: float = 240.0
+## The plan sweep: lane counts, speeds, and steps planned in each phase.
+const PLAN_LANES: Array[int] = [3, 5, 6]
+const PLAN_SPEEDS: Array[float] = [18.0, 23.8]
+const PLAN_STEPS: int = 24
 
 var sim: RunSim
 var def: BossDef
@@ -36,6 +49,7 @@ func run() -> void:
 	if def == null:
 		check(false, "Mecha Guppy and Captain Cogs' fight loads")
 		return
+	_test_bite_plans()
 	await _test_every_tunable()
 
 
@@ -93,6 +107,47 @@ func _test_every_tunable() -> void:
 		await _test_every_tunable_at(int(run_at.x), run_at.y)
 
 
+## The floor bite's promises on the plan (MechaGuppyBiteChecks) for every ranged tunable at both ends (the ship's and phase
+## 3's too: they never touch it), at 3, 5 and 6 lanes and both speeds, in phases 1 and 2.
+func _test_bite_plans() -> void:
+	var base := def.tuning as MechaGuppyTuning
+	var dash: float = MechaGuppyClimb.dash_reach_of(load("res://data/tuning/powerups.tres") as PowerupTuning)
+	var variants: Array[Dictionary] = []
+	for prop: Dictionary in base.get_property_list():
+		if int(prop["hint"]) != PROPERTY_HINT_RANGE or not (int(prop["usage"]) & PROPERTY_USAGE_EDITOR):
+			continue
+		var parts: PackedStringArray = String(prop["hint_string"]).split(",")
+		if parts.size() >= 2:
+			for v: float in [float(parts[0]), float(parts[1])]:
+				variants.append({"name": String(prop["name"]), "value": v})
+	var bad: Array[String] = []
+	var bites: int = 0
+	var full: int = 0
+	for variant: Dictionary in variants:
+		var t: MechaGuppyTuning = base.duplicate() as MechaGuppyTuning
+		var value: Variant = variant["value"]
+		if typeof(t.get(variant["name"])) == TYPE_INT:
+			value = int(value)
+		t.set(variant["name"], value)
+		for speed: float in PLAN_SPEEDS:
+			var mt: MovementTuning = _movement(speed)
+			for lanes: int in PLAN_LANES:
+				for phase: int in 2:
+					var c: MechaGuppyClimb = MechaGuppyClimb.make(mt, t, lanes, dash, 11)
+					for i: int in PLAN_STEPS:
+						c.plan_next(phase)
+					var why: String = MechaGuppyBiteChecks.plan_problem(c, t)
+					if why != "":
+						bad.append("%s=%s (%d lanes, %.1f m/s, phase %d): %s" % [variant["name"], value, lanes, speed, phase + 1, why])
+					for r: MechaGuppyClimb.Roof in c.roofs:
+						if r.bite != null:
+							bites += 1
+							full += 1 if r.bite.full else 0
+	check(bad.is_empty() and full > 0,
+		"every tunable at both ends of its range keeps the floor bite's promises on the plan: one lane left in phase 1, phase 2's full-width bites jumpable in every lane, never the landing, the pads or the notch's lane, the warning's margins (%d variants, %d bites, %d full width)%s"
+		% [variants.size(), bites, full, "" if bad.is_empty() else ": " + "; ".join(bad.slice(0, 4))])
+
+
 func _test_every_tunable_at(lanes: int, speed: float) -> void:
 	var variants: Array[Dictionary] = _variants()
 	var died: Array[String] = []
@@ -100,8 +155,12 @@ func _test_every_tunable_at(lanes: int, speed: float) -> void:
 	var unfair: Array[String] = []
 	var uneaten: Array[String] = []
 	var stalled: Array[String] = []
+	var bitten: Array[String] = []
+	var overlaps: Array[String] = []
 	var baits: int = 0
 	var fallbacks: int = 0
+	var bites: int = 0
+	var least: float = INF
 	for variant: Dictionary in variants:
 		var d: BossDef = def.duplicate() as BossDef
 		var mt: MechaGuppyTuning = (def.tuning as MechaGuppyTuning).duplicate() as MechaGuppyTuning
@@ -124,6 +183,12 @@ func _test_every_tunable_at(lanes: int, speed: float) -> void:
 			uneaten.append("%s: %s" % [tag, r["uneaten"]])
 		if r["stalled"] != "":
 			stalled.append("%s: %s" % [tag, r["stalled"]])
+		if r["bitten"] != "":
+			bitten.append("%s: %s" % [tag, r["bitten"]])
+		if r["overlap"] != "":
+			overlaps.append("%s: %s" % [tag, r["overlap"]])
+		bites += int(r["bites"])
+		least = minf(least, float(r["least"]))
 	var where: String = "(%d variants, %d lanes, %.1f m/s)" % [variants.size(), lanes, speed]
 	check(died.is_empty(), "every tunable at both ends: a runner who never baits lives, never hurt %s%s"
 		% [where, "" if died.is_empty() else ": " + "; ".join(died.slice(0, 4))])
@@ -133,12 +198,20 @@ func _test_every_tunable_at(lanes: int, speed: float) -> void:
 		% [baits, where, "" if unfair.is_empty() else ": " + "; ".join(unfair.slice(0, 4))])
 	check(uneaten.is_empty(), "every tunable at both ends: every fallback goes into Mecha Guppy's jaws (%d fallbacks) %s%s"
 		% [fallbacks, where, "" if uneaten.is_empty() else ": " + "; ".join(uneaten.slice(0, 4))])
-	check(stalled.is_empty(), "every tunable at both ends: a runner who never baits still lands its hits, one every fallback_after + 1 steps %s%s"
+	check(stalled.is_empty(), "every tunable at both ends: a runner who never baits still lands its hits, one every fallback_after + 1 steps (or the next that doesn't lead onto a floor bite) %s%s"
 		% [where, "" if stalled.is_empty() else ": " + "; ".join(stalled.slice(0, 4))])
+	check(bitten.is_empty() and bites > 0,
+		"every tunable at both ends: each floor bite met is warned and snapped, never before the hut's deadline, a reaction, every switch from the farthest lane and dodge_margin before the runner reaches it (least %.2f s to spare after the switches, from where the runner was as it showed), Mecha Guppy's rise and lunge before its snap, one lane left and the runner passing in it (%d bites) %s%s"
+		% [least, bites, where, "" if bitten.is_empty() else ": " + "; ".join(bitten.slice(0, 4))])
+	check(overlaps.is_empty(), "every tunable at both ends: no volley's circle or bait's aim beside a floor bite, the lane it leaves never the notch's %s%s"
+		% [where, "" if overlaps.is_empty() else ": " + "; ".join(overlaps.slice(0, 4))])
+	print("  Mecha Guppy's tunables %s: %d baits, %d fallbacks, %d floor bites (least %.2f s to spare after a floor bite's switches)"
+		% [where, baits, fallbacks, bites, least])
 
 
 ## One variant's climb at `lanes` and `speed` m/s with a runner who never baits, until its second hit: what broke ({died,
-## trap, unfair, uneaten, stalled}: "" where nothing did) and the baits and fallbacks seen.
+## trap, unfair, uneaten, stalled, bitten, overlap}: "" where nothing did), the baits, fallbacks and floor bites seen, and
+## the least time to spare after a floor bite's switches from the farthest lane (`least`).
 func _climb(d: BossDef, mt: MechaGuppyTuning, lanes: int, speed: float) -> Dictionary:
 	var pair: Array = _fight(lanes, speed, d)
 	var world: RunWorld = pair[0]
@@ -161,7 +234,8 @@ func _climb(d: BossDef, mt: MechaGuppyTuning, lanes: int, speed: float) -> Dicti
 		if not p.alive or boss.hits_landed >= 2:
 			break
 		await tree.physics_frame
-	var out: Dictionary = {"died": "", "trap": trap, "unfair": "", "uneaten": "", "stalled": "", "baits": 0, "fallbacks": 0}
+	var out: Dictionary = {"died": "", "trap": trap, "unfair": "", "uneaten": "", "stalled": "", "bitten": "", "overlap": "",
+		"baits": 0, "fallbacks": 0, "bites": 0, "least": INF}
 	if not p.alive or hurt[0] > 0:
 		out["died"] = "%s at %.0f m (%.1f s)" % [cause[0] if not p.alive else "hurt", p.distance, boss.fight_time()]
 	# The bait's promises, from where the runner was as its aim began and as it locked.
@@ -194,10 +268,87 @@ func _climb(d: BossDef, mt: MechaGuppyTuning, lanes: int, speed: float) -> Dicti
 	if eaten != thrown.size() or refused > 0 or busy > 0:
 		out["uneaten"] = "%d fallbacks, %d eaten, %d breaches refused, %d given up while the shark was busy" \
 			% [thrown.size(), eaten, refused, busy]
-	# Progress: two hits, fallback_after + 1 steps apart.
+	# Progress: two hits, fallback_after + 1 steps apart (or the next step that doesn't lead onto a floor bite).
 	if p.alive and boss.hits_landed < 2:
 		out["stalled"] = "%d hits in %.0f s" % [boss.hits_landed, boss.fight_time()]
-	elif thrown.size() >= 2 and int(thrown[1]["step"]) - int(thrown[0]["step"]) != mt.fallback_after + 1:
+	elif thrown.size() >= 2 and int(thrown[1]["step"]) != _fallback_step(int(thrown[0]["step"]) + mt.fallback_after + 1):
 		out["stalled"] = "fallbacks on steps %d and %d" % [int(thrown[0]["step"]), int(thrown[1]["step"])]
+	_check_bites(boss, mt, bot, out)
 	await sim.free_world(world)
 	return out
+
+
+## The floor bites the climb met (see the header), into `out` ({bitten, overlap, bites, least}).
+func _check_bites(boss: MechaGuppy, mt: MechaGuppyTuning, bot: MechaGuppyBot, out: Dictionary) -> void:
+	var climb: MechaGuppyClimb = boss.climb
+	var p: Player = boss.world.player
+	var v: float = maxf(p.speed, 1.0)
+	var frame: float = v / Engine.physics_ticks_per_second
+	var h: float = boss.world.tuning.hurtbox_size.z * 0.5
+	var switch: float = boss.world.tuning.lane_switch_time
+	var n: int = boss.lane_count()
+	var why: String = ""
+	var warned: Dictionary = {}
+	for e: Dictionary in _events(boss, &"floor_bite_warning"):
+		var k: int = int(e["roof"])
+		var bite: MechaGuppyCrescent = climb.roofs[k].bite
+		var into: MechaGuppyClimb.Step = climb.steps[k - 1]
+		var d0: float = float(e["d0"])
+		warned[k] = true
+		out["bites"] = int(out["bites"]) + 1
+		var spare: float = (bite.from - maxf(d0 + mt.dodge_reaction * v, into.free_at) - h) / v - float(n - 1) * switch
+		out["least"] = minf(float(out["least"]), spare)
+		var shape: String = MechaGuppyBiteChecks.shape_problem(climb, mt, bite, climb.steps[k].phase)
+		if why == "" and shape != "":
+			why = "roof %d: %s" % [k, shape]
+		if why == "" and d0 < into.deadline - frame - 0.01:
+			why = "roof %d's warning %.2f s before the hut's deadline" % [k, (into.deadline - d0) / v]
+		if why == "" and spare < mt.dodge_margin - 1.0 / Engine.physics_ticks_per_second - 0.01:
+			why = "roof %d's warning leaves %.2f s after a reaction and the switches (dodge_margin %.2f s)" % [k, spare, mt.dodge_margin]
+		if why == "" and (bite.snap_at - d0) / v < climb.bite_chain() - 1.0 / Engine.physics_ticks_per_second - 0.01:
+			why = "roof %d's warning %.2f s before its snap, short of Mecha Guppy's rise and lunge" % [k, (bite.snap_at - d0) / v]
+	# Every bite on a roof the runner got past was warned and snapped, and passed in the lane it leaves.
+	var snapped: Dictionary = {}
+	for e: Dictionary in _events(boss, &"floor_bite_snap"):
+		snapped[int(e["roof"])] = true
+	for r: MechaGuppyClimb.Roof in climb.roofs:
+		if r.bite == null or p.distance < r.bite.to + 2.0:
+			continue
+		if why == "" and (not warned.has(r.index) or not snapped.has(r.index)):
+			why = "roof %d's bite %s" % [r.index, "skipped" if r.bite.skipped else "not snapped"]
+	for b: Dictionary in bot.bites:
+		if why == "" and not bool(b["full"]) and int(b["lane"]) >= 0 and int(b["lane"]) != int(b["keep"]):
+			why = "the runner passed roof %d's bite in lane %d, not the one it leaves (%d)" % [int(b["roof"]), int(b["lane"]), int(b["keep"])]
+	out["bitten"] = why
+	# No volley's circle and no bait's aim beside a bite.
+	var overlap: String = ""
+	for e: Dictionary in _events(boss, &"volley"):
+		var roof: MechaGuppyClimb.Roof = climb.roofs[int(e["step"]) + 1]
+		if roof.bite == null or overlap != "":
+			continue
+		if roof.index >= MechaGuppyClimb.FIRST_NOTCH:
+			overlap = "a volley on roof %d, with a floor bite and a bait" % roof.index
+		elif float(e["d0"]) < roof.bite.to + h - frame - 0.01:
+			overlap = "roof %d's volley thrown %.1f m short of the end of its bite" % [roof.index, roof.bite.to + h - float(e["d0"])]
+		else:
+			for spot: Dictionary in e["spots"]:
+				if float(spot["at"]) < roof.bite.to + h:
+					overlap = "roof %d's volley lands beside its bite" % roof.index
+	for e: Dictionary in _events(boss, &"bait_seek"):
+		var roof: MechaGuppyClimb.Roof = climb.roofs[int(e["step"]) + 1]
+		if roof.bite == null or overlap != "":
+			continue
+		if float(e["d0"]) < roof.bite.to + h - frame - 0.01:
+			overlap = "roof %d's bait aims %.1f m short of the end of its bite" % [roof.index, roof.bite.to + h - float(e["d0"])]
+		elif int(e["notch"]) == roof.bite.keep:
+			overlap = "roof %d's bite leaves the notch's lane" % roof.index
+	out["overlap"] = overlap
+
+
+## The first step from `index` on whose fallback isn't deferred: one that doesn't lead onto a roof with a floor bite (task
+## E5e-f, MechaGuppyPattern.bitten_next).
+func _fallback_step(index: int) -> int:
+	var k: int = index
+	while MechaGuppyClimb.bitten(k + 1):
+		k += 1
+	return k

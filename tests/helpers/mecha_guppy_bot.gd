@@ -88,6 +88,8 @@ const JUMP_LEAD: float = 0.3
 var bite_slack: float = INF
 var jump_margin: float = INF
 var bites: Array[Dictionary] = []
+## Reads Mecha Guppy's floor bites (off: it runs on in its lane, into a bite's gap: the tests' fall).
+var floor_bites: bool = true
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -130,7 +132,8 @@ func step() -> void:
 			log.append({"t": boss.fight_time(), "action": &"landed", "why": "on the roof %.1f m up, lane %d" % [p.floor_y, p.lane]})
 		_floor = p.floor_y
 	if dodges and p.surface == Player.Surface.FLOOR:
-		_floor_bite(p, now)
+		if floor_bites:
+			_floor_bite(p, now)
 		_dodge(p, now)
 		_bait(p, now)
 	if p.surface == Player.Surface.FLOOR:

@@ -57,6 +57,8 @@ var warnings: int = 0
 var snaps: int = 0
 var called_off: int = 0
 var caught: int = 0
+## The outline's frame's width now (metres; tests: steady with Reduced flashing, only deepening).
+var frame_width: float = 0.0
 
 var _frame: MeshInstance3D
 var _fill: MeshInstance3D
@@ -261,6 +263,7 @@ func _update_frame() -> void:
 	var k: float = clampf((p.distance - warned_from) / maxf(bite.snap_at - warned_from, 0.5), 0.0, 1.0)
 	var beat: float = 1.0 if Settings.flashing_reduced else 1.0 + BEAT * sin((clock - warned_at) * 24.0)
 	var w: float = FRAME * (0.8 + 0.6 * k) * beat
+	frame_width = w
 	var y: float = _top() + FRAME_Y
 	var pts: PackedVector2Array = _outline()
 	var n: int = pts.size()
