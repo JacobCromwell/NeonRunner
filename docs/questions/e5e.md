@@ -279,7 +279,8 @@ Where a later step changed an earlier placeholder, the entry says so.
   Is a notch near each roof's end the owner's "roof's end"? Is one bait a step (a hit a step for a runner who baits
   well, 4 and 6 steps for phases 1 and 2) right? Should the pier's side be a bait place too, on 5-6 lanes where a
   pier is two lanes wide? Is the first bait on the second tower right (E5e-b3's review: the first step already
-  brings the climb and the first volley)?
+  brings the climb and the first volley; since E5e-f's review, the climb and the first floor bite, the first volley
+  coming on roof 3)?
 - **The bait's aim** (E5e-b3's review: the following circle, a flat ring a little smaller than a bomb's circle, showed
   40 m out as a red sliver a few pixels high). Placeholder (`MechaGuppyBombs._aim_node`, `AIM_SCALE`, `AIM_LIFT`;
   DESIGN-TBD): a red target, a ring 1.25 times a bomb circle's size with four ticks across it, standing on the floor
@@ -495,8 +496,9 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
     each bulging back toward the floor by up to 0.3 m (`TOOTH_BULGE`). The scallops fade toward the bite's ends.
   - A bite that leaves one lane reaches, at its deepest, exactly the inner edge of the far side's outer lane: it takes
     2 of 3 lanes, 4 of 5 or 5 of 6 there (5.1 m, 9.9 m and 12.3 m deep), and fewer toward its front and back.
-  - Its edge has the eaten-edge look: the orange lip and coping along the scalloped edge, the glowing strip and the dark
-    broken face of the tower down to the water. The tower's side, eave and lanterns are gone along it.
+  - Its edge has the eaten-edge look: the orange lip and coping along the scalloped edge, the glowing strip and the
+    broken face of the tower down to the water (fading into the sea haze with depth: "The trench's depth", below). The
+    tower's side, eave and lanterns are gone along it.
 
   Collision follows the same polyline, so what looks like a hole is a hole. Is a 12 m bite the owner's size, and do
   the scallops read as teeth marks?
