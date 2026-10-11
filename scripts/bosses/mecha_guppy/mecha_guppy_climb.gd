@@ -40,6 +40,18 @@ extends RefCounted
 ## lead up (so it's no cue to them); MechaGuppyPattern baits Captain Cogs' bombs into it. A roof too short for one (an
 ## extreme tuning: notch_after) has none.
 ## Phase 3's step is the `top` (MechaGuppyTop plays phase 3 on it): the last roof runs on, no pads, no hut.
+## The floor bite (task E5e-f; GDD §10, the owner, October 11, 2026: Mecha Guppy bites a shark-bite crescent out of the
+## floor while the runner is still running on it, before the pads; MechaGuppyCrescent, Roof.bite): roof FIRST_BITE (the
+## first tower: its bite comes alone, before any bait) and every other roof from FIRST_NOTCH on (bitten(): the ones a
+## REACH_BACK step leads onto, so phase 2's landing spots stay on the others) carry one, planned with the step from that
+## roof. It comes where its riders' run begins: a reaction (where they could switch sooner than its warning), every lane
+## switch from the farthest lane to the one it leaves and dodge_margin past where they can first switch (Step.free_at),
+## past their landing, and late enough that Mecha Guppy rises and lunges after the hut's deadline, before which its
+## warning never shows (no cue to which lanes lead up). Its side is seeded, never three bites running on the same side,
+## and a bitten roof's notch is on that side, so the lane it leaves is never the notch's. A bitten roof is as long as its
+## run (roof_run_seconds) or as its bite and then its bait need (_bite_room: the crossing back to the notch's lane before
+## the bait locks), so its pads may come later on 5-6 lanes; the same in each phase (a full-width bite's room counted too).
+## In phase 2 every full_every-th one crosses every lane (_bite_full; MechaGuppyTuning.full_jump_share keeps it jumpable).
 ## Distances are track distances (metres along the track); heights world heights.
 
 enum Cue { RUN_ON, REACH_BACK }
@@ -62,6 +74,16 @@ const REACH_BACK_MOST: int = 2
 ## The first roof with a notch (task E5e-b3's review): roof 1's run brings the climb's first volley, so the bait comes
 ## from roof 2 on, once the first volley has been learned (the street, roof 0, never has one).
 const FIRST_NOTCH: int = 2
+## The first roof with a floor bite (task E5e-f): roof 1, the first tower, where it comes on its own (no bait there yet:
+## one new mechanic at a time), then its volley; from FIRST_NOTCH on, every other roof (bitten()).
+const FIRST_BITE: int = 1
+## A floor bite starts at least this far past where its riders land (metres).
+const LAND_CLEAR: float = 2.0
+## A full-width bite's jaws have snapped at least this far before the earliest take-off that clears it (metres).
+const SNAP_CLEAR: float = 1.0
+## A floor bite's warning may begin up to this late (seconds: Mecha Guppy finishing what it was doing, a frame) and still
+## leave it time to rise and lunge before its snap.
+const WARN_SLACK: float = 0.15
 
 
 ## A tiki bar roof the runner lands on and runs along (roof 0: the street the fight starts on).
@@ -76,6 +98,8 @@ class Roof:
 	## The bait's notch (task E5e-b3): its outer lane eaten from notch_from to its end (-1: no notch).
 	var notch_lane: int = -1
 	var notch_from: float = FAR
+	## Mecha Guppy's floor bite on it (task E5e-f), or null.
+	var bite: MechaGuppyCrescent = null
 
 	func start_in(lane: int) -> float:
 		return starts[clampi(lane, 0, starts.size() - 1)]
@@ -108,9 +132,17 @@ class Roof:
 			out = maxf(out, s)
 		return out
 
-	## True if it's under `lane` at track distance `d` (never in its notch).
+	## True if it's under `lane` at track distance `d` (never in its notch, nor where its floor bite takes the lane once
+	## that's warned or eaten: a runner's footprint there not wholly on floor).
 	func covers(lane: int, d: float) -> bool:
-		return lane >= 0 and lane < starts.size() and d >= starts[lane] and d < end_in(lane)
+		if lane < 0 or lane >= starts.size() or d < starts[lane] or d >= end_in(lane):
+			return false
+		return bite == null or bite.skipped or not (bite.warned or bite.eaten) or not bite.takes(lane, d)
+
+	## True if it's under `lane` at `d` whatever its floor bite does, warned or not yet (the pickups and the grapple's save
+	## keep off where it will be).
+	func keeps(lane: int, d: float) -> bool:
+		return covers(lane, d) and (bite == null or bite.skipped or not bite.takes(lane, d))
 
 
 ## One step up: roof `index` to roof index + 1.
@@ -185,6 +217,9 @@ var dt: float = 1.0 / 60.0
 
 var _rng := RandomNumberGenerator.new()
 var _seed: int = 0
+## The floor's lanes (the floor bites' shapes) and a full jump's airtime, worked out once.
+var _geo: TrackGeometry
+var _jump: float = -1.0
 
 
 ## The climb at `p_lanes` lanes for a run on `p_movement` (its speed and pace), with `p_tuning`'s numbers, the
@@ -200,6 +235,7 @@ static func make(p_movement: MovementTuning, p_tuning: MechaGuppyTuning, p_lanes
 	out.dash_reach = maxf(p_dash_reach, 0.0)
 	out.dt = 1.0 / float(maxi(Engine.physics_ticks_per_second, 1))
 	out._seed = seed
+	out._geo = TrackGeometry.new(out.lanes, p_movement)
 	var street := Roof.new()
 	street.index = 0
 	street.top = 0.0
@@ -256,6 +292,8 @@ func plan_next(phase: int, top: bool = false, not_before: float = -FAR) -> Step:
 	step.pad_end = step.pad + jump * speed + dash_reach + tuning.strip_margin
 	step.hut_start = step.pad - tuning.hut_lead * pace
 	from.end = step.pad_end + tuning.edge_margin
+	# The floor bite on the roof this step starts from (its side first: a bitten roof's notch is on it).
+	from.bite = _plan_bite(from, steps[k - 1], phase) if k > 0 and bitten(k) else null
 	_notch(from, step)
 	# The latest settle on the hut, and the deadline: the reading margin and every switch the farthest lane needs.
 	step.settle = step.pad + jump * speed + dash_reach + flip_seconds(step.hut_y - step.floor_y) * speed
@@ -313,6 +351,8 @@ func _pad_for(k: int) -> float:
 		var before: Step = steps[k - 1]
 		pad = before.free_at + roof_run_seconds() * speed
 		pad = maxf(pad, before.hut_end() + HUT_GAP + tuning.hut_lead * pace)
+		if bitten(k):
+			pad = maxf(pad, _bite_room(k))
 	return maxf(pad, from.full_from() + PAD_CLEAR)
 
 
@@ -337,6 +377,9 @@ func _notch(roof: Roof, step: Step) -> void:
 		return
 	_rng.seed = hash([_seed, "notch", roof.index])
 	roof.notch_lane = 0 if _rng.randi() % 2 == 0 else lanes - 1
+	# A bitten roof's notch is on its bite's side: the lane the bite leaves is never the notch's (task E5e-f).
+	if roof.bite != null:
+		roof.notch_lane = 0 if roof.bite.side < 0 else lanes - 1
 	roof.notch_from = at
 
 
@@ -345,6 +388,125 @@ func _notch(roof: Roof, step: Step) -> void:
 ## switch and dodge_margin to leave it before its edge. A roof with no room for that has no notch.
 func notch_after() -> float:
 	return (tuning.dodge_reaction + movement.lane_switch_time + tuning.dodge_margin) * speed
+
+
+# --- The floor bite (task E5e-f) -------------------------------------------------------------------
+
+## True if roof `index` carries a floor bite (see the header): roof FIRST_BITE, and every other roof from FIRST_NOTCH on
+## (the even ones, which REACH_BACK steps lead onto). Never the street.
+static func bitten(index: int) -> bool:
+	return index == FIRST_BITE or (index >= FIRST_NOTCH and index % 2 == 0)
+
+
+## A floor bite's crossing (metres): from where a runner can first switch, every lane switch from the farthest lane to the
+## one it leaves (lanes - 1, at the lane-switch time) and dodge_margin, their hurtbox's front still short of the bite.
+func bite_crossing() -> float:
+	return (float(lanes - 1) * movement.lane_switch_time + tuning.dodge_margin) * speed + movement.hurtbox_size.z * 0.5
+
+
+## Seconds Mecha Guppy needs from a floor bite's warning to its snap: its rise into its watch beside the roof, its lunge
+## (the bites' dive and rise), the hold and the snap.
+func bite_chain() -> float:
+	return tuning.floor_rise + tuning.bite_dive + tuning.bite_rise + tuning.bite_hold + tuning.bite_snap
+
+
+## A floor bite's length along the track at the bitten side (metres): floor_bite_length, or a full-width one's
+## full_jump_share of a full jump at the run's speed (a normal jump clears it in every lane).
+func bite_length(full: bool) -> float:
+	return jump_seconds() * speed * tuning.full_jump_share if full else tuning.floor_bite_length
+
+
+## How far before the runner reaches a floor bite its jaws have snapped (metres): floor_snap_lead at the run's speed, or,
+## over a full-width one `length` long, at least SNAP_CLEAR before the earliest take-off that clears it (a jump's length
+## short of its end), so nobody is in the air over it as it snaps.
+func snap_lead(full: bool, length: float) -> float:
+	var lead: float = tuning.floor_snap_lead * speed
+	if full:
+		lead = maxf(lead, jump_seconds() * speed - length + SNAP_CLEAR)
+	return lead
+
+
+## How long before the runner reaches a floor bite its warning shows (seconds), where the hut's deadline doesn't come later:
+## floor_warning, but never less than a reaction and the crossing, nor than Mecha Guppy's rise and lunge before its snap.
+func bite_warning_seconds(full: bool, length: float) -> float:
+	return maxf(maxf(tuning.floor_warning, tuning.dodge_reaction + bite_crossing() / speed),
+		bite_chain() + WARN_SLACK + snap_lead(full, length) / speed)
+
+
+## Where a floor bite on roof `roof` starts (track distance), full width or not, from the step that led onto it (`into`):
+## the crossing past where its riders can first switch (Step.free_at), or past a reaction after the hut's deadline (its
+## warning shows no sooner) where that's later; past their landing; and late enough that Mecha Guppy rises and lunges
+## after the deadline before its snap.
+func _bite_front(into: Step, roof: Roof, full: bool) -> float:
+	var crossing: float = bite_crossing()
+	var front: float = maxf(into.free_at, into.deadline + (tuning.dodge_reaction + WARN_SLACK) * speed) + crossing
+	front = maxf(front, maxf(into.land, roof.full_from()) + LAND_CLEAR)
+	return maxf(front, into.deadline + (bite_chain() + WARN_SLACK) * speed + snap_lead(full, bite_length(full)))
+
+
+## True if roof `index`'s floor bite, planned in phase `phase`, crosses every lane (GDD §10, phase 2: "so big that
+## sometimes the runner has to jump over the gap"): every full_every-th bitten roof from FIRST_NOTCH on, in phase 2.
+func _bite_full(index: int, phase: int) -> bool:
+	return phase >= 1 and tuning.full_every > 0 and index >= FIRST_NOTCH and (index >> 1) % tuning.full_every == 0
+
+
+## The side roof `index`'s floor bite comes from: seeded by its index, but never a third time running on the same side as
+## the last two bites (DESIGN-TBD). Nothing to do with the lanes that lead up.
+func _bite_side(index: int) -> int:
+	_rng.seed = hash([_seed, "bite", index])
+	var side: int = -1 if _rng.randi() % 2 == 0 else 1
+	var last: Array[int] = []
+	for i: int in range(index - 1, 0, -1):
+		if roofs[i].bite != null:
+			last.append(roofs[i].bite.side)
+			if last.size() == 2:
+				break
+	if last.size() == 2 and last[0] == side and last[1] == side:
+		side = -side
+	return side
+
+
+## Roof `roof`'s floor bite (planned with the step from it, in phase `phase`), from the step that led onto it (`into`).
+func _plan_bite(roof: Roof, into: Step, phase: int) -> MechaGuppyCrescent:
+	var full: bool = _bite_full(roof.index, phase)
+	var length: float = bite_length(full)
+	var front: float = _bite_front(into, roof, full)
+	var bite := MechaGuppyCrescent.make(roof.index, _bite_side(roof.index), front, length, full, tuning.full_through, _geo,
+		Vector2(movement.foot_half_width, movement.foot_half_depth))
+	bite.snap_at = front - snap_lead(full, length)
+	bite.warn_at = maxf(into.deadline, front - bite_warning_seconds(full, length) * speed)
+	return bite
+
+
+## The latest a floor bite's warning may begin (track distance) and still be fair: Mecha Guppy's rise and lunge before its
+## snap, and a reaction and the crossing before the bite from where the runner can switch.
+func bite_latest(bite: MechaGuppyCrescent) -> float:
+	return minf(bite.snap_at - bite_chain() * speed, bite.from - bite_crossing() - tuning.dodge_reaction * speed)
+
+
+## The nearest step k's pads may be when its roof carries a floor bite (track distance): room for the bite (full width or
+## not: the steps are as long in each phase) and after it, from FIRST_NOTCH on, the bait locking only once the runner is
+## past it with a reaction and a switch for every lane but one to reach the notch's lane (MechaGuppyPattern.bait_after; its
+## aim never shows beside the bite), lock_seconds and arrival_seconds before it lands catch_in into the notch, notch_back
+## short of the hut; on roof FIRST_BITE, its volley thrown once the runner is past it, landing short of the hut (as
+## MechaGuppyPattern._spot_places and _limit place it).
+func _bite_room(k: int) -> float:
+	var roof: Roof = roofs[k]
+	var into: Step = steps[k - 1]
+	var end: float = -FAR
+	for full: bool in [false, true]:
+		end = maxf(end, _bite_front(into, roof, full) + bite_length(full))
+	var past: float = end + movement.hurtbox_size.z * 0.5
+	var t: MechaGuppyTuning = tuning
+	if k >= FIRST_NOTCH:
+		var reach: float = maxf(t.dodge_reaction + float(lanes - 1) * movement.lane_switch_time, t.bait_seek) * speed
+		var lock: float = past + reach
+		return lock + (t.lock_seconds + t.arrival_seconds) * speed - t.catch_in + t.notch_back + t.hut_lead * pace
+	var first: float = maxf(past + (t.max_escape_lanes * movement.lane_switch_time + t.dodge_margin + 0.05) * speed
+		+ t.blast_depth * 0.5 + movement.hurtbox_size.z * 0.5, past + (t.lock_seconds + t.arrival_seconds) * speed)
+	var spots: int = maxi(MechaGuppyTuning.per_phase(t.roof_spots, 0), 1)
+	var last: float = first + t.spot_spacing * movement.pace() * float(spots - 1)
+	return last + t.blast_depth * 0.5 + t.floor_clear + t.hut_clear + t.hut_lead * pace
 
 
 ## Where the next step's hut would start if it were planned now (in any phase: the steps are as long in each; FAR once
@@ -373,6 +535,7 @@ func truncate(index: int) -> void:
 	roofs[index].end = FAR
 	roofs[index].notch_lane = -1
 	roofs[index].notch_from = FAR
+	roofs[index].bite = null
 
 
 ## Plans steps while the climb's furthest planned piece is short of track distance `until` (phase `phase`; the top
@@ -487,7 +650,9 @@ static func climb_rate(p_movement: MovementTuning, p_tuning: MechaGuppyTuning, p
 
 ## A full jump's airtime from a floor (seconds): the jump's velocity up, gravity, the faster fall.
 func jump_seconds() -> float:
-	return _surface_seconds(0.0, movement.jump_velocity(), 0.0, true)
+	if _jump < 0.0:
+		_jump = _surface_seconds(0.0, movement.jump_velocity(), 0.0, true)
+	return _jump
 
 
 ## The flip up to a hut `height` over the floor (seconds): the pad's launch toward it, the gravity that pulls a

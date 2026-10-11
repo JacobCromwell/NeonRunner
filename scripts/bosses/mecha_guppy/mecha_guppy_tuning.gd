@@ -251,6 +251,33 @@ extends Resource
 ## A bite put off while the shark was busy must still have this long to spare before the step's fallback (seconds).
 @export_range(0.0, 1.0, 0.05, "suffix:s") var bite_spare: float = 0.3
 
+@export_group("Mecha Guppy's floor bite")
+## DESIGN-TBD (GDD §10, the owner, October 11, 2026: "The floor bite"; task E5e-f; docs/questions/e5e.md): while the runner
+## is still running on a roof, before its pads, Mecha Guppy bites a crescent out of it from one side (MechaGuppyCrescent,
+## planned by MechaGuppyClimb on the roofs it names). Its warning (its outline in red on the floor, the rumble, the shark's
+## snout rising beside the roof's side) shows floor_warning before the runner reaches the bite, never before the hut's
+## deadline (no cue to which lanes lead up), and never shorter than a reaction, every lane switch to the lane it leaves
+## and dodge_margin from where the runner can first switch (or the shark's rise and lunge): seconds.
+@export_range(1.0, 3.0, 0.05, "suffix:s") var floor_warning: float = 1.8
+## DESIGN-TBD: the shark surging up out of the chasm into its watch beside the roof's side as the warning shows (seconds);
+## its lunge, hold and snap are the bites' (bite_dive, bite_rise, bite_hold, bite_snap).
+@export_range(0.2, 1.5, 0.05, "suffix:s") var floor_rise: float = 0.5
+## DESIGN-TBD: a bite that leaves one lane (phase 1's, and every other one of phase 2's) is this long along the track at
+## the bitten side (metres: the jaws' own size, so it doesn't follow the pace), deepest in the middle, where it leaves
+## exactly one lane.
+@export_range(6.0, 18.0, 0.5, "suffix:m") var floor_bite_length: float = 12.0
+## DESIGN-TBD (GDD §10: in phase 2 "the bite out of the floor is so big that sometimes the runner has to jump over the
+## gap"): every full_every-th bite of phase 2 crosses every lane (0: none; 2: every other one), and its longest stretch along
+## the track (at the bitten side) is this share of a full jump at the run's speed (the levels' wider gaps: 0.7; at most
+## the 0.8 a level may ask), so a normal jump clears it in every lane; it crosses the whole floor over full_through of its
+## length.
+@export_range(0, 4) var full_every: int = 2
+@export_range(0.5, 0.8, 0.01) var full_jump_share: float = 0.7
+@export_range(0.3, 0.85, 0.01) var full_through: float = 0.6
+## DESIGN-TBD: the jaws snap shut this long before the runner reaches the bite (seconds), so the hole is there before they
+## get to it (before the earliest take-off over a full-width one, whatever this says).
+@export_range(0.2, 1.0, 0.05, "suffix:s") var floor_snap_lead: float = 0.45
+
 @export_group("Captain Cogs' ship")
 ## DESIGN-TBD (GDD §10: a floating ship flying above the track): its station ahead of the runner and above the roof
 ## they're climbing to (metres; it keeps pace with them), and its sway across the lanes.

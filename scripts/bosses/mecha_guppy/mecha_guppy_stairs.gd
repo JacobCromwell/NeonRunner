@@ -17,7 +17,11 @@ extends Node3D
 ## - the top (phase 3's): the last roof runs on, in segments for as long as the fight lasts;
 ## - the bait's notch (task E5e-b3; MechaGuppyClimb.Roof.notch_lane): past notch_from a roof's pieces leave out its
 ##   notch's lane (their collision and their look), with a lane blocker along the notch's inner side below the top (a
-##   runner who fell into it can't switch into the tower's side), and the step's pads there go too.
+##   runner who fell into it can't switch into the tower's side), and the step's pads there go too;
+## - Mecha Guppy's floor bite (task E5e-f; MechaGuppyClimb.Roof.bite, MechaGuppyCrescent): at its snap (eat_crescent) the
+##   pieces it crosses are built again with the crescent gone: over the bite, the floor its edge leaves in convex pieces,
+##   one per stretch of its edge (exactly the edge's polyline, as its look is: what looks like a hole is a hole), a lane
+##   blocker under them below the top (a runner falling in the gap bumps off the tower's side, as beside the notch).
 ## When things are built: everything up to the build horizon, BUILD_MARGIN past the edge of sight (`sight`: the
 ## arena skin's fog end, where the fog hides everything), so nothing appears in view. Each step is planned as late
 ## as it can be, as its hut comes to the horizon, in the phase of that moment, and never nearer than the edge of
@@ -88,8 +92,9 @@ var _phase_seen: int = -1
 var _top_seen: bool = false
 ## Steps taken back and planned again over the fight (tests).
 var replanned: int = 0
-## Roofs Mecha Guppy has bitten (eat_roof) over the fight (tests).
+## Roofs Mecha Guppy has bitten (eat_roof) over the fight, and floor bites eaten (eat_crescent) (tests).
 var eaten: int = 0
+var crescents: int = 0
 ## Work counters for the tests (roofs and steps looked at by the last update()).
 var visited: int = 0
 
@@ -293,6 +298,40 @@ func eat_roof(index: int, cut: float) -> AABB:
 	return AABB(Vector3(-x, top - 1.5, TrackGeometry.world_z(far)), Vector3(x * 2.0, 1.5, maxf(far - cut, 0.0)))
 
 
+## Mecha Guppy's floor bite on roof `index` snaps (MechaGuppyFloorBite): the chunk is gone. Its pieces that the bite
+## crosses are built again with the crescent bitten out (_roof_piece; their look too), so the floor holds where its look
+## shows deck and nowhere in the gap. Returns the box bitten (world space) for its rubble, or an empty AABB.
+func eat_crescent(index: int) -> AABB:
+	if index <= 0 or index >= climb.roofs.size():
+		return AABB()
+	var roof: MechaGuppyClimb.Roof = climb.roofs[index]
+	var bite: MechaGuppyCrescent = roof.bite
+	if bite == null or bite.skipped:
+		return AABB()
+	bite.eaten = true
+	var rebuild: Array[Vector2] = []
+	var kept: Array = []
+	for entry: Dictionary in _roof_nodes.get(index, []):
+		if not is_instance_valid(entry["node"]):
+			continue
+		var from: float = float(entry["from"])
+		var to: float = float(entry["to"])
+		if bool(entry["segment"]) and from < bite.to - 0.01 and to > bite.from + 0.01:
+			props.remove(entry["node"])
+			if not rebuild.has(Vector2(from, to)):
+				rebuild.append(Vector2(from, to))
+		else:
+			kept.append(entry)
+	_roof_nodes[index] = kept
+	for span: Vector2 in rebuild:
+		var ended: bool = roof.end < MechaGuppyClimb.FAR * 0.5 and absf(span.y - roof.end) < 0.01
+		_roof_piece(roof, span.x, span.y, ended)
+	crescents += 1
+	var w: float = minf(bite.deepest(), bite.width())
+	var x0: float = minf(bite.x_of(0.0), bite.x_of(w))
+	return AABB(Vector3(x0, roof.top - 1.5, TrackGeometry.world_z(bite.to)), Vector3(w, 1.5, bite.to - bite.from))
+
+
 ## The pads of step `index` (the strip at the end of its roof) where Mecha Guppy has eaten that roof from `cut`:
 ## each lane's pad goes where it lies past `cut`, and one that crosses it is built again to end PAD_EATEN short of it.
 func _eat_pads(index: int, cut: float) -> void:
@@ -412,18 +451,71 @@ func _roof_segment(roof: MechaGuppyClimb.Roof, from: float, to: float, ended: bo
 	_roof_piece(roof, from, to, ended)
 
 
-## One piece of roof `roof` from `from` to `to`, wholly before its notch or wholly past it (_roof_segment).
+## One piece of roof `roof` from `from` to `to`, wholly before its notch or wholly past it (_roof_segment); with its floor
+## bite eaten where it crosses it (eat_crescent): its floor before and after the bite, and over the bite the floor its
+## edge leaves (_bitten_floor) with a lane blocker under it.
 func _roof_piece(roof: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) -> void:
 	var lanes := Vector2i(0, world.geo.lane_count - 1)
 	var notched: bool = roof.notched() and from >= roof.notch_from - 0.01
 	if notched:
 		lanes = Vector2i(1, lanes.y) if roof.notch_lane == 0 else Vector2i(0, lanes.y - 1)
 	var street: bool = roof.index == 0
-	_note_roof(roof.index, props.roof(lanes, from, to, roof.top, STREET_DEPTH if street else -1.0, looks == null), to, true, from)
-	if notched:
-		_note_roof(roof.index, _blocker(lanes, from, to, roof.top), to, true, from)
+	var bite: MechaGuppyCrescent = roof.bite
+	if bite != null and bite.eaten and not bite.skipped and not notched and from < bite.to - 0.01 and to > bite.from + 0.01:
+		var a: float = maxf(from, bite.from)
+		var b: float = minf(to, bite.to)
+		if a > from + 0.01:
+			_note_roof(roof.index, props.roof(lanes, from, a, roof.top, -1.0, looks == null), to, true, from)
+		if b < to - 0.01:
+			_note_roof(roof.index, props.roof(lanes, b, to, roof.top, -1.0, looks == null), to, true, from)
+		_note_roof(roof.index, _bitten_floor(roof, bite, a, b, false), to, true, from)
+		_note_roof(roof.index, _bitten_floor(roof, bite, a, b, true), to, true, from)
+	else:
+		_note_roof(roof.index, props.roof(lanes, from, to, roof.top, STREET_DEPTH if street else -1.0, looks == null), to, true, from)
+		if notched:
+			_note_roof(roof.index, _blocker(lanes, from, to, roof.top), to, true, from)
 	if looks != null:
 		_note_roof(roof.index, props.keep(looks.roof_segment(roof, from, to, ended), to), to, true, from)
+
+
+## Over track distances [a, b] of roof `roof`'s eaten floor bite `bite`: the floor its edge leaves, one convex piece per
+## stretch of the edge (from the edge to the far wall, its top at the roof's, down to the street as a roof's box is), on the
+## floor layer; or with `blocker`, the same shapes from BLOCKER_GAP under the top down, a lane blocker (a runner falling in
+## the gap bumps off its side). Nothing over a stretch where the bite crosses the whole floor.
+func _bitten_floor(roof: MechaGuppyClimb.Roof, bite: MechaGuppyCrescent, a: float, b: float, blocker: bool) -> CollisionObject3D:
+	var body: CollisionObject3D
+	if blocker:
+		var area := Area3D.new()
+		area.name = "RoofBittenSide"
+		area.collision_layer = TrackBuilder.LAYER_LANE_BLOCKER
+		area.monitoring = false
+		body = area
+	else:
+		body = StaticBody3D.new()
+		body.name = "RoofBitten"
+		body.collision_layer = TrackBuilder.LAYER_FLOOR
+	body.collision_mask = 0
+	add_child(body)
+	var top: float = roof.top - (BLOCKER_GAP if blocker else 0.0)
+	var low: float = roof.top - maxf(roof.top, 0.1)
+	var far: float = -float(bite.side) * bite.wall
+	var pts: PackedVector2Array = bite.edge(a, b)
+	for i: int in pts.size() - 1:
+		var p: Vector2 = pts[i]
+		var q: Vector2 = pts[i + 1]
+		if q.y - p.y < 0.0005 or (absf(p.x - far) < 0.001 and absf(q.x - far) < 0.001):
+			continue
+		var points := PackedVector3Array()
+		for y: float in [top, low]:
+			points.append_array(PackedVector3Array([Vector3(p.x, y, -p.y), Vector3(far, y, -p.y), Vector3(q.x, y, -q.y),
+				Vector3(far, y, -q.y)]))
+		var shape := CollisionShape3D.new()
+		var convex := ConvexPolygonShape3D.new()
+		convex.points = points
+		shape.shape = convex
+		body.add_child(shape)
+	props.keep(body, b)
+	return body
 
 
 ## The step that led onto roof `roof` (its lanes that lead up, its cue), or null for the street.
@@ -549,9 +641,16 @@ func save_spot(player: Player) -> Dictionary:
 		if roof.top <= feet + 0.05:
 			continue
 		var lane: int = step.nearest_up(player.lane)
-		# Beside a roof that's full width here (a fall off its side, into its notch): its covered lane nearest theirs.
+		# Beside a roof that's full width here (a fall off its side, into its notch or a floor bite's gap): its covered
+		# lane nearest theirs.
 		if player.distance >= roof.full_from() and not roof.covers(player.lane, player.distance):
 			lane = _nearest_covered(roof, player.lane, land)
+		# A floor bite that leaves one lane, not yet snapped, ahead of where the save brings them down, too near for its
+		# crossing (task E5e-f): into that lane, as the save's pull moves them anyway.
+		var bite: MechaGuppyCrescent = roof.bite
+		if lane >= 0 and bite != null and not bite.skipped and not bite.eaten and not bite.full \
+				and land > bite.from - climb.bite_crossing() * 1.5 and land < bite.to:
+			lane = bite.keep
 		if lane >= 0 and roof.covers(lane, land - SAVE_MARGIN) and roof.covers(lane, land + SAVE_MARGIN):
 			return {"lane": lane, "height": roof.top}
 	return {}
@@ -609,7 +708,8 @@ func pickup_spot(lead: float) -> Dictionary:
 			continue
 		var at: float = from
 		while at <= to:
-			if not props.warned(lane, at - 2.0, at + 2.0, roof.top):
+			# Off any boss warning, and off where a floor bite will take the lane (task E5e-f).
+			if not props.warned(lane, at - 2.0, at + 2.0, roof.top) and roof.keeps(lane, at - 2.0) and roof.keeps(lane, at + 2.0):
 				return {"lane": lane, "at": at, "height": roof.top}
 			at += 2.0
 	return {}

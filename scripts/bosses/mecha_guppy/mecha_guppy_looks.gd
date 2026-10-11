@@ -26,6 +26,11 @@ extends RefCounted
 ##   notch_lane): that lane's deck ends with the orange edge language of an eaten edge; past it the tower's corner is
 ##   gone down to the water, its eaten face dark broken timber along the notch's inner side and across its start, the
 ##   orange lip along the deck's edge over the drop (as a pier's open sides), no eave or lantern posts on that side.
+## - Mecha Guppy's floor bite, once eaten (task E5e-f; MechaGuppyCrescent): the deck clipped along the bite's edge, exactly
+##   its polyline (the collision's: MechaGuppyStairs), the planks running on unbroken past it; the eaten edge's orange
+##   lip and steel coping along the scalloped edge on the deck, the glowing strip on its face and the dark broken face
+##   down to the water; no tower wall, eave or lantern posts along the bitten side over it (nor the far side where a
+##   full-width bite cuts through).
 ## - A hut: a plank platform hovering on four violet-blue lift pods outside the lanes, its underside one surface
 ##   across its lanes with flush joists, a dark seam and a warm lamp row along each lane seam (and along each run of
 ##   lanes' edge, so the lanes that lead up visibly run on, lit, past the others: RUN_ON), the orange band of every
@@ -191,13 +196,20 @@ func roof_segment(r: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) 
 	starts.fill(minf(from, full) - 1.0)
 	if notched:
 		starts[r.notch_lane] = MechaGuppyClimb.FAR
+	# Its floor bite, once eaten, where it crosses this piece (never past the notch's start: it comes before it).
+	var bite: MechaGuppyCrescent = r.bite
+	if bite == null or not bite.eaten or bite.skipped or notched or bite.to <= from + 0.01 or bite.from >= to - 0.01:
+		bite = null
 	for lane: int in geo.lane_count:
 		if notched and lane == r.notch_lane:
 			continue
 		var front: bool = from <= full + 0.01 and r.start_in(lane) >= full - 0.01
 		# The notch's lane ends where it was eaten, with the eaten edge's orange.
 		var back: bool = ended or (lane == r.notch_lane and absf(to - r.notch_from) < 0.01)
-		_deck(s, g, lane, from, to, r.top, front, back, starts)
+		if bite != null:
+			_deck_bitten(s, g, lane, from, to, r.top, front, back, starts, bite)
+		else:
+			_deck(s, g, lane, from, to, r.top, front, back, starts)
 	var x0: float = -geo.wall_x()
 	var x1: float = geo.wall_x()
 	for side: int in [-1, 1]:
@@ -210,17 +222,58 @@ func roof_segment(r: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) 
 			else:
 				x1 = inner
 			continue
-		_tower_side(s, side * geo.wall_x(), side, from, to, r.top, bamboo, seed)
-		_eave(s, side, from, to, r.top)
-		_lanterns(s, g, side, from, to, r.top, seed)
+		# The tower's side, its eave and its lanterns, but where the floor bite took them.
+		var spans: Array[Vector2] = [Vector2(from, to)]
+		if bite != null and side == bite.side:
+			spans = _without(from, to, bite.from, bite.to)
+		elif bite != null and bite.cut_from < bite.cut_to:
+			spans = _without(from, to, bite.cut_from, bite.cut_to)
+		for span: Vector2 in spans:
+			_tower_side(s, side * geo.wall_x(), side, span.x, span.y, r.top, bamboo, seed)
+			_eave(s, side, span.x, span.y, r.top)
+			_lanterns(s, g, side, span.x, span.y, r.top, seed)
 	# Across the notch's start: the eaten face, facing on into the notch.
 	if notched and absf(from - r.notch_from) < 0.01:
 		var inner_x: float = notch_inner(r)
 		_broken_face(s, from, r.top, minf(inner_x, notch_side * geo.wall_x()), maxf(inner_x, notch_side * geo.wall_x()))
+	if bite != null:
+		_bite_edge(s, bite, from, to, r.top)
 	if ended:
 		_broken_face(s, to, r.top, x0, x1)
 	batch.commit(node)
 	return node
+
+
+## The floor held over a floor bite's gap under a runner who blocked its snap (task E5e-f, MechaGuppyFloorBite; FloorCut's
+## held floor's rule), over world x [x0, x1] from track distance `from` to `to`, its top at `top`: the deck's planks with the
+## eaten edge's orange lip round it and a dark slab under it, until it goes all at once. DESIGN-TBD (docs/questions/e5e.md).
+func held_floor(x0: float, x1: float, from: float, to: float, top: float) -> Node3D:
+	var node := Node3D.new()
+	node.name = "HeldFloor"
+	var batch := MeshBatch.new()
+	var s: MeshLayer = batch.layer(skin.solid_material())
+	var length: float = to - from
+	s.rect(Vector3(x0, top, -from), Vector3(x1 - x0, 0, 0), Vector3(0, 0, -length), skin.boardwalk_color, 0.0,
+		MeshKit.PAT_BEACH_BOARDWALK, Vector2(-1.0, 0.0), Vector2(1.0, length), MeshKit.sand_param(0, length, 3))
+	var edge: Color = skin.gap_edge_color
+	for x: float in [x0, x1 - EDGE_LIP]:
+		s.rect(Vector3(x, top + 0.004, -from), Vector3(EDGE_LIP, 0, 0), Vector3(0, 0, -length), edge, LIP_GLOW)
+	for d: float in [from, to - EDGE_LIP]:
+		s.rect(Vector3(x0, top + 0.004, -d), Vector3(x1 - x0, 0, 0), Vector3(0, 0, -EDGE_LIP), edge, LIP_GLOW)
+	s.box(Vector3((x0 + x1) * 0.5, top - 0.26, -(from + to) * 0.5), Vector3(x1 - x0, 0.5, length), skin.timber_color * 0.5, 0.0,
+		MeshKit.PAT_BEACH_TIMBER, MeshKit.ALL_FACES & ~MeshKit.FACE_PY, MeshKit.beach_timber_param(2, 1, 3))
+	batch.commit(node)
+	return node
+
+
+## [from, to] less [cut0, cut1]: the spans left (none, one or two).
+static func _without(from: float, to: float, cut0: float, cut1: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	if cut0 > from + 0.01:
+		out.append(Vector2(from, minf(cut0, to)))
+	if cut1 < to - 0.01:
+		out.append(Vector2(maxf(cut1, from), to))
+	return out
 
 
 ## World x of the inner edge of roof `r`'s notch (its lane's side toward the track's middle), or 0 with none.
@@ -277,6 +330,187 @@ func _deck(s: MeshLayer, g: MeshLayer, lane: int, start: float, end: float, top:
 		s.rect(Vector3(span.x, top, -end + lip_f + cope_f), Vector3(w, 0, 0), Vector3(0, 0, -cope_f), skin.coping_color)
 		s.rect(Vector3(span.y, top - 0.02 - STRIP_HEIGHT, -end - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge,
 			STRIP_GLOW)
+
+
+## One lane's deck from `start` to `end` as _deck draws it, with floor bite `bite` (eaten) bitten out of it: the planks and
+## the kerb run on with the same pattern either side of the bite, and over it each stretch of the bite's edge clips them
+## (the floor on the edge's far side from the bitten wall: exactly the collision's pieces, MechaGuppyStairs._bitten_floor).
+func _deck_bitten(s: MeshLayer, g: MeshLayer, lane: int, start: float, end: float, top: float, front: bool, back: bool,
+		starts: PackedFloat32Array, bite: MechaGuppyCrescent) -> void:
+	var span: Vector2 = geo.lane_floor_span(lane)
+	var l0: float = geo.lane_x(lane) - geo.lane_width * 0.5
+	var l1: float = geo.lane_x(lane) + geo.lane_width * 0.5
+	var a: float = start + ((EDGE_LIP + COPING) if front else 0.0)
+	var b: float = end - ((EDGE_LIP + COPING) if back else 0.0)
+	if b <= a:
+		return
+	var key: int = MeshKit.key(geo.lane_x(lane))
+	var lane_hash: int = MeshKit.hash_i(key, 9)
+	var flags: int = 0
+	if lane > 0 and starts[lane - 1] <= start + 0.01:
+		flags |= MeshKit.BEACH_SEAM_LEFT
+	if lane < geo.lane_count - 1 and starts[lane + 1] <= start + 0.01:
+		flags |= MeshKit.BEACH_SEAM_RIGHT
+	if lane_hash & 64:
+		flags |= MeshKit.BEACH_ALT_TONE
+	var plank_param: float = MeshKit.sand_param(flags, b - a, lane_hash)
+	var kerb_param: float = MeshKit.beach_timber_param(2, 0, 7)
+	# The strips: the planks over the lane, the kerb out to the edge on an outer lane: [x0, x1, kerb?].
+	var strips: Array[Vector3] = [Vector3(l0, l1, 0.0)]
+	if span.x < l0 - 0.01:
+		strips.append(Vector3(span.x, l0, 1.0))
+	if span.y > l1 + 0.01:
+		strips.append(Vector3(l1, span.y, 1.0))
+	var pts: PackedVector2Array = bite.edge(a, b)
+	for strip: Vector3 in strips:
+		var kerb: bool = strip.z > 0.5
+		var color: Color = skin.kerb_color if kerb else skin.boardwalk_color
+		var pattern: int = MeshKit.PAT_BEACH_TIMBER if kerb else MeshKit.PAT_BEACH_BOARDWALK
+		var param: float = kerb_param if kerb else plank_param
+		var uv: Callable = func(p: Vector2) -> Vector2:
+			if kerb:
+				return Vector2((p.x - strip.x) / maxf(strip.y - strip.x, 0.001), (p.y - a) / (b - a))
+			return Vector2(lerpf(-1.0, 1.0, (p.x - strip.x) / maxf(strip.y - strip.x, 0.001)), p.y - a)
+		# Before the bite and past it, whole; over it, clipped stretch by stretch of its edge.
+		for part: Vector2 in [Vector2(a, minf(b, bite.from)), Vector2(maxf(a, bite.to), b)]:
+			if part.y - part.x > 0.001:
+				_floor_poly(s, PackedVector2Array([Vector2(strip.x, part.x), Vector2(strip.x, part.y), Vector2(strip.y, part.y),
+					Vector2(strip.y, part.x)]), top, color, pattern, param, uv)
+		for i: int in pts.size() - 1:
+			if pts[i + 1].y - pts[i].y < 0.0005:
+				continue
+			_floor_poly(s, _clip_floor(strip.x, strip.y, pts[i].y, pts[i + 1].y, pts[i], pts[i + 1], bite.side), top, color,
+				pattern, param, uv)
+	# The orange edge language at its front and its eaten end, as _deck draws it.
+	var w: float = span.y - span.x
+	var edge: Color = skin.gap_edge_color
+	if front:
+		s.rect(Vector3(span.x, top, -start), Vector3(w, 0, 0), Vector3(0, 0, -EDGE_LIP), edge, LIP_GLOW)
+		s.rect(Vector3(span.x, top, -start - EDGE_LIP), Vector3(w, 0, 0), Vector3(0, 0, -COPING), skin.coping_color)
+		s.rect(Vector3(span.x, top - 0.02 - STRIP_HEIGHT, -start + 0.004), Vector3(w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge,
+			STRIP_GLOW)
+		g.rect(Vector3(span.x - 0.15, top - 0.37, -start + 0.05), Vector3(w + 0.3, 0, 0), Vector3(0, 0.6, 0), edge, EDGE_HALO,
+			MeshKit.SHAPE_STREAK)
+	if back:
+		s.rect(Vector3(span.x, top, -end + EDGE_LIP), Vector3(w, 0, 0), Vector3(0, 0, -EDGE_LIP), edge, LIP_GLOW)
+		s.rect(Vector3(span.x, top, -end + EDGE_LIP + COPING), Vector3(w, 0, 0), Vector3(0, 0, -COPING), skin.coping_color)
+		s.rect(Vector3(span.y, top - 0.02 - STRIP_HEIGHT, -end - 0.004), Vector3(-w, 0, 0), Vector3(0, STRIP_HEIGHT, 0), edge,
+			STRIP_GLOW)
+
+
+## The part of the rectangle [x0, x1] × [d0, d1] (world x, track distance) on the floor's side of a floor bite's edge from
+## `p` to `q` (Vector2(x, d), d rising) for a bite from `side`: a convex polygon wound as rect() winds a floor, or fewer
+## than three points where it's all in the gap.
+static func _clip_floor(x0: float, x1: float, d0: float, d1: float, p: Vector2, q: Vector2, side: int) -> PackedVector2Array:
+	var poly := PackedVector2Array([Vector2(x0, d0), Vector2(x0, d1), Vector2(x1, d1), Vector2(x1, d0)])
+	var out := PackedVector2Array()
+	for i: int in poly.size():
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % poly.size()]
+		var fa: float = _floor_side(a, p, q, side)
+		var fb: float = _floor_side(b, p, q, side)
+		if fa >= 0.0:
+			out.append(a)
+		if (fa >= 0.0) != (fb >= 0.0):
+			out.append(a.lerp(b, fa / (fa - fb)))
+	return out
+
+
+## How far point `v` (Vector2(x, d)) is past a floor bite's edge from `p` to `q` on the floor's side (the far side from
+## the bitten wall `side`), across the track: negative in the gap.
+static func _floor_side(v: Vector2, p: Vector2, q: Vector2, side: int) -> float:
+	var k: float = (v.y - p.y) / (q.y - p.y) if q.y - p.y > 0.0001 else 0.0
+	return -float(side) * (v.x - lerpf(p.x, q.x, k))
+
+
+## A convex polygon of floor at height `top` (Vector2(x, d) corners, wound as rect() winds a floor), UV from `uv`.
+func _floor_poly(s: MeshLayer, pts: PackedVector2Array, top: float, color: Color, pattern: int, param: float,
+		uv: Callable) -> void:
+	if pts.size() < 3:
+		return
+	var v: Array[Vector3] = []
+	var t: Array[Vector2] = []
+	for p: Vector2 in pts:
+		v.append(Vector3(p.x, top, -p.y))
+		t.append(uv.call(p))
+	var i: int = 1
+	while i < pts.size() - 1:
+		var last: int = mini(i + 2, pts.size() - 1)
+		s.quad_uv(v[0], v[i], v[i + 1], v[last], t[0], t[i], t[i + 1], t[last], color, 0.0, pattern, param)
+		i += 2
+
+
+## Floor bite `bite`'s eaten edge over track distances [from, to], on a deck at `top`: the orange lip and the steel coping
+## on the deck along its scalloped edge (into the floor from it), the glowing strip on its face just under the deck, and
+## the dark broken face of the eaten tower down to the water, darker the deeper (the edge language every eaten edge has).
+## None along the far wall where a full-width bite cuts the whole floor.
+func _bite_edge(s: MeshLayer, bite: MechaGuppyCrescent, from: float, to: float, top: float) -> void:
+	var pts: PackedVector2Array = bite.edge(maxf(from, bite.from), minf(to, bite.to))
+	var n: int = pts.size()
+	if n < 2:
+		return
+	var far: float = -float(bite.side) * bite.wall
+	# Each point's normal into the floor (across the track and along it), averaged between its two stretches.
+	var normals := PackedVector2Array()
+	normals.resize(n)
+	for i: int in n:
+		var acc := Vector2.ZERO
+		for j: int in [i - 1, i]:
+			if j < 0 or j >= n - 1:
+				continue
+			var t: Vector2 = pts[j + 1] - pts[j]
+			if t.length() > 0.0001:
+				acc += Vector2(-float(bite.side) * t.y, float(bite.side) * t.x).normalized()
+		normals[i] = acc.normalized() if acc.length() > 0.0001 else Vector2(-float(bite.side), 0.0)
+	var y_low: float = bottom(top)
+	var y_strip: float = top - 0.02 - STRIP_HEIGHT
+	var layers: Array[float] = [y_strip, top - 6.0, top - 18.0, top - 48.0, y_low]
+	var param: float = MeshKit.beach_timber_param(2, 1, 3)
+	for i: int in n - 1:
+		var p: Vector2 = pts[i]
+		var q: Vector2 = pts[i + 1]
+		if q.y - p.y < 0.0005 or (absf(p.x - far) < 0.001 and absf(q.x - far) < 0.001):
+			continue
+		var np: Vector2 = normals[i]
+		var nq: Vector2 = normals[i + 1]
+		var gap := Vector3(-(np.x + nq.x), 0.0, np.y + nq.y)
+		_band(s, p, q, np, nq, 0.0, EDGE_LIP, top + 0.004, skin.gap_edge_color, LIP_GLOW)
+		_band(s, p, q, np, nq, EDGE_LIP, EDGE_LIP + COPING, top + 0.004, skin.coping_color, 0.0)
+		_wall_quad(s, p, q, y_strip, top - 0.02, gap, skin.gap_edge_color, STRIP_GLOW, MeshKit.PAT_PLAIN, 0.0)
+		for k: int in layers.size() - 1:
+			var y1: float = layers[k]
+			var y0: float = maxf(layers[k + 1], y_low)
+			if y1 <= y0 + 0.01:
+				continue
+			_wall_quad(s, p, q, y0, y1, gap, deep(skin.timber_color * 0.45, top - (y0 + y1) * 0.5), 0.0, MeshKit.PAT_BEACH_TIMBER,
+				param)
+
+
+## A band on the deck at height `y` along the edge from `p` to `q` (Vector2(x, d)), from `w0` to `w1` in along their
+## normals `np`, `nq` (into the floor), facing up.
+func _band(s: MeshLayer, p: Vector2, q: Vector2, np: Vector2, nq: Vector2, w0: float, w1: float, y: float, color: Color,
+		glow: float) -> void:
+	var a := Vector3(p.x + np.x * w0, y, -(p.y + np.y * w0))
+	var b := Vector3(q.x + nq.x * w0, y, -(q.y + nq.y * w0))
+	var c := Vector3(q.x + nq.x * w1, y, -(q.y + nq.y * w1))
+	var d := Vector3(p.x + np.x * w1, y, -(p.y + np.y * w1))
+	_quad_out(s, a, b, c, d, Vector3.UP, color, glow, MeshKit.PAT_PLAIN, 0.0)
+
+
+## An upright face along the edge from `p` to `q` (Vector2(x, d)) from height `y0` to `y1`, facing `outward`.
+func _wall_quad(s: MeshLayer, p: Vector2, q: Vector2, y0: float, y1: float, outward: Vector3, color: Color, glow: float,
+		pattern: int, param: float) -> void:
+	_quad_out(s, Vector3(p.x, y1, -p.y), Vector3(q.x, y1, -q.y), Vector3(q.x, y0, -q.y), Vector3(p.x, y0, -p.y), outward, color,
+		glow, pattern, param)
+
+
+## A four-cornered patch (corners in order round it) wound to face `outward`.
+static func _quad_out(layer: MeshLayer, a: Vector3, b: Vector3, c: Vector3, d: Vector3, outward: Vector3, color: Color,
+		glow: float, pattern: int, param: float) -> void:
+	if (b - a).cross(c - a).dot(outward) > 0.0:
+		layer.quad(a, d, c, b, color, glow, pattern, param)
+	else:
+		layer.quad(a, b, c, d, color, glow, pattern, param)
 
 
 ## The colour `base` takes `depth` metres under a deck: darker the deeper it is, as light fails down a chasm.

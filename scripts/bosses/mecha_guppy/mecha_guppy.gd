@@ -30,6 +30,11 @@ extends BossEncounter
 ## back and swims away; the results wait until it's gone (victory_over), and the victory riff comes after the gulp
 ## (MechaGuppyTuning.victory_riff_on), not at the defeat (victory_riff).
 ##
+## The floor bite (E5e-f; GDD §10, the owner, October 11, 2026): on the roofs the climb names (MechaGuppyClimb.bitten),
+## while the runner is still running on the roof, Mecha Guppy bites a shark-bite crescent out of it from one side
+## (MechaGuppyCrescent), warned by its red outline on the floor, the rumble and its snout rising beside the roof
+## (MechaGuppyFloorBite, MechaGuppyShark.floor_bite): in phase 1 it leaves one lane; in phase 2 every other one crosses
+## every lane, jumped.
 ## The shark, the pirate and the bombs (E5e-b2, E5e-b3): Mecha Guppy (MechaGuppyShark) waits with its jaws open beside
 ## each roof's notch, then bites the end of the roof the runner has just left; Captain Cogs (CaptainCogsShip) flies
 ## ahead and above, throwing the bombs (MechaGuppyBombs: the Floating Head's warning, a circle at the floor's height
@@ -68,6 +73,8 @@ var shark: MechaGuppyShark
 var ship: CaptainCogsShip
 var bombs: MechaGuppyBombs
 var pattern: MechaGuppyPattern
+## Mecha Guppy's floor bite: its warning, its snap and the floor held after a block (task E5e-f).
+var floor_bite: MechaGuppyFloorBite
 ## Phase 3 (its minute, the captain's rounds and the waves) and the defeat (the leap; null until the win).
 var top: MechaGuppyTop
 var leap: MechaGuppyLeap
@@ -140,6 +147,10 @@ func _build_boss() -> void:
 	ship.name = "Ship"
 	add_child(ship)
 	ship.setup(self)
+	floor_bite = MechaGuppyFloorBite.new()
+	floor_bite.name = "FloorBite"
+	add_child(floor_bite)
+	floor_bite.setup(self)
 	pattern = MechaGuppyPattern.new(self)
 	shark.on_snap = pattern.on_snap
 	top = MechaGuppyTop.new()
@@ -166,9 +177,14 @@ func top_due() -> bool:
 
 func _on_phase_started(index: int) -> void:
 	log_event(&"climb_phase", {"index": index, "step": climb.steps.size()})
-	# A bait still following the runner is called off (the next phase's intro: no attacks).
+	# A bait still following the runner is called off (the next phase's intro: no attacks), and a floor bite not yet
+	# snapped (task E5e-f).
 	if bombs != null:
 		bombs.drop_bait()
+	if floor_bite != null:
+		floor_bite.call_off()
+	if shark != null:
+		shark.abort_floor()
 
 
 func _intro_tick(delta: float) -> void:
@@ -217,6 +233,8 @@ func _on_defeated() -> void:
 	_armor_waiting = 0
 	if bombs != null:
 		bombs.clear()
+	if floor_bite != null:
+		floor_bite.call_off()
 	if top != null:
 		top.clear()
 	if shark != null and ship != null:
@@ -229,6 +247,8 @@ func _defeated_tick(delta: float) -> void:
 		ship.advance(delta)
 	if shark != null:
 		shark.advance(delta)
+	if floor_bite != null:
+		floor_bite.tick(delta)
 	if top != null:
 		top.tick(delta)
 	if leap != null:
@@ -260,6 +280,8 @@ func _advance(delta: float) -> void:
 		bombs.tick(delta)
 	if shark != null:
 		shark.advance(delta)
+	if floor_bite != null:
+		floor_bite.tick(delta)
 	if pattern != null:
 		pattern.tick()
 	if top != null:

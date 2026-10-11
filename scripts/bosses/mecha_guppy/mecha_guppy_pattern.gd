@@ -38,8 +38,19 @@ extends RefCounted
 ##   jaws open as the bomb comes down: the bomb falls into the stretch it has eaten through, where it's exposed and in the
 ##   line of fire (GDD §10): a hit. Its bomb has nothing to dodge: its circle shows, but no throw or whistle is heard.
 ##   It's thrown only once the shark can rise for it, waiting while its bomb can still come down ahead of the runner.
+## - The floor bite (task E5e-f; GDD §10, the owner, October 11, 2026: "The floor bite"; MechaGuppyCrescent, planned by
+##   MechaGuppyClimb on roof FIRST_BITE and every other roof from FIRST_NOTCH on): as the runner reaches its warn_at (never
+##   before the hut's deadline that led them onto that roof), its warning (MechaGuppyFloorBite.start: the crescent's red
+##   outline on the floor) and Mecha Guppy's rise beside the roof's side with its rumble (MechaGuppyShark.floor_bite); its
+##   lunge and snap timed by where the runner is (its lunge_at and snap_at), the chunk gone at the snap (on_snap). Never
+##   once it can't be warned fairly any more (the shark too busy, the attacks stopped: skipped, as if never planned). The
+##   roof's catch (its bait's) comes only after it. A bitten roof from FIRST_NOTCH on carries its bite and its bait, no
+##   volley (the bite in the volley's place); the first tower's volley comes once the runner is past its bite; the bait's
+##   aim shows only past the bite, with a reaction and a switch for every lane but one before it locks (bait_plan). A
+##   fallback due on a step that leads onto a bitten roof waits for the next step (Mecha Guppy can't breach in front of
+##   that roof and rise for its bite too); at the default fallback_after the fallbacks never fall on those steps anyway.
 ## 4 hits end phase 1, 6 phase 2: a runner who baits every step lands one a step (from the first notch on); one who
-## never does, one every fallback_after + 1 steps.
+## never does, one every fallback_after + 1 steps (or the next step that doesn't lead onto a floor bite).
 ## Attacks only while the pattern runs (MechaGuppy.attacks_live: not in an intro, not in phase 3, not once won);
 ## the shark's bite of the floor left behind is the level being eaten, not an attack, so it goes on in an intro too.
 
@@ -94,6 +105,8 @@ func tick() -> void:
 		var step: MechaGuppyClimb.Step = climb.steps[k]
 		if step.top:
 			break
+		# (Also while the attacks are off: a floor bite they keep from coming is skipped.)
+		_floor_bite(step, p)
 		if boss.bites_live():
 			_bite(step, p)
 		if boss.attacks_live():
@@ -167,6 +180,9 @@ func _bite(step: MechaGuppyClimb.Step, p: Player) -> void:
 		return
 	var speed: float = maxf(p.speed, 1.0)
 	var roof: MechaGuppyClimb.Roof = climb.roofs[step.index]
+	# Its floor bite first (task E5e-f): nothing of this roof's catch or bite while that's still to come or under way.
+	if roof.bite != null and not roof.bite.skipped and not roof.bite.eaten:
+		return
 	var catch: Dictionary = _catch_plan(step.index, speed)
 	var start_at: float = step.pad - tuning.bite_warning * speed
 	if not catch.is_empty():
@@ -200,6 +216,28 @@ func _bite(step: MechaGuppyClimb.Step, p: Player) -> void:
 	if not catch.is_empty():
 		spot["catch"] = catch["catch"]
 	boss.shark.bite(spot)
+
+
+## Roof k + 1's floor bite (see the header): once the runner reaches its warn_at, its warning and Mecha Guppy's rise; skipped
+## if the attacks aren't live then or it can't be warned fairly any more (MechaGuppyClimb.bite_latest: Mecha Guppy still
+## busy, a review moving the runner on).
+func _floor_bite(step: MechaGuppyClimb.Step, p: Player) -> void:
+	if step.index + 1 >= climb.roofs.size():
+		return
+	var bite: MechaGuppyCrescent = climb.roofs[step.index + 1].bite
+	if bite == null or bite.warned or bite.skipped or p.distance < bite.warn_at:
+		return
+	if not boss.attacks_live() or p.distance > climb.bite_latest(bite) or boss.floor_bite == null:
+		bite.skipped = true
+		boss.log_event(&"floor_bite_skipped", {"roof": bite.roof, "live": boss.attacks_live(), "busy": boss.shark.busy()})
+		return
+	var speed: float = maxf(p.speed, 1.0)
+	var lunge: float = (tuning.bite_dive + tuning.bite_rise + tuning.bite_hold + tuning.bite_snap) * speed
+	var spot: Dictionary = {"side": bite.side, "top": climb.roofs[bite.roof].top, "roof": bite.roof,
+		"at": (bite.from + bite.to) * 0.5, "bite": bite, "snap_at": bite.snap_at, "lunge_at": bite.snap_at - lunge}
+	# Still busy (only under extreme tunings): it waits while the bite can still be warned fairly.
+	if boss.shark.floor_bite(spot):
+		boss.floor_bite.start(bite)
 
 
 ## Roof `index`'s catch for the bait thrown at it (the bait of the step before: bait_plan), if it gets one: {rise_at
@@ -238,8 +276,13 @@ func _bite_fits(index: int, seconds: float) -> bool:
 	return p.distance + seconds * maxf(p.speed, 1.0) <= fallback_last(climb.steps[index], maxf(p.speed, 1.0))
 
 
-## The bite's snap (MechaGuppyShark.on_snap): the roof's end goes, collision and look, and its rubble flies.
+## A snap (MechaGuppyShark.on_snap): a bite's, the roof's end goes, collision and look, and its rubble flies; a floor bite's,
+## its chunk goes (MechaGuppyFloorBite.snap).
 func on_snap(action: Dictionary) -> void:
+	if int(action.get("kind", -1)) == MechaGuppyShark.Kind.FLOOR:
+		if boss.floor_bite != null:
+			boss.floor_bite.snap()
+		return
 	var index: int = int(action.get("roof", -1))
 	var box: AABB = boss.stairs.eat_roof(index, float(action.get("cut", 0.0)))
 	if box.size.z <= 0.01:
@@ -356,10 +399,22 @@ func volley(step: MechaGuppyClimb.Step, lane: int, d0: float, speed: float) -> D
 
 
 ## Where step `step`'s volley lands: {ats (nearest first), s_open, landing (true if its first spot is the landing spot)}.
+## None on a roof with a floor bite and a bait (task E5e-f: the bite in its place); on the first tower, with its bite and no
+## bait, its spots come past the bite, thrown once the runner is past it (its circles never beside the bite).
 func _volley_places(step: MechaGuppyClimb.Step, speed: float) -> Dictionary:
 	var roof: MechaGuppyClimb.Roof = climb.roofs[step.index + 1]
+	var bite: MechaGuppyCrescent = roof.bite
+	if bite != null and roof.index >= MechaGuppyClimb.FIRST_NOTCH:
+		var none: Array[float] = []
+		return {"ats": none, "s_open": maxf(step.land, roof.full_from()), "landing": false}
 	var limit: float = _limit(step, speed)
 	var on_roof: int = MechaGuppyTuning.per_phase(tuning.roof_spots, boss.phase_index)
+	if bite != null:
+		var past: float = bite.to + world.tuning.hurtbox_size.z * 0.5
+		var spots: Array[float] = []
+		if on_roof > 0:
+			spots = _spot_places(past, on_roof, limit, speed, past)
+		return {"ats": spots, "s_open": past, "landing": false}
 	var landing: Array[float] = _landing_places(step, speed, limit)
 	if not landing.is_empty():
 		var ats: Array[float] = landing.duplicate()
@@ -426,6 +481,12 @@ func bait_plan(step: MechaGuppyClimb.Step, speed: float) -> Dictionary:
 		return {}
 	if (roof.notch_from - lock_at) / speed < lock_to_edge():
 		return {}
+	# Past the roof's floor bite (task E5e-f): its aim shows only once the runner is past it, and it locks a reaction and a
+	# switch for every lane but one later (from the lane the bite left to the notch's).
+	if roof.bite != null:
+		var past: float = roof.bite.to + world.tuning.hurtbox_size.z * 0.5
+		if seek_at < past or lock_at < past + bait_after() * speed:
+			return {}
 	return {"at": at, "y": roof.top, "notch": roof.notch_lane, "lock_at": lock_at, "seek_at": seek_at}
 
 
@@ -486,7 +547,15 @@ func _bait(step: MechaGuppyClimb.Step, p: Player) -> void:
 ## gone by without a hit, and this step neither hit, nor fallen on, nor its fallback done.
 func fallback_due(index: int) -> bool:
 	return hits_enabled and boss.attacks_live() and dry >= tuning.fallback_after and not _hit_steps.has(index) \
-		and not _fell.has(index) and not _done.has("hit:%d" % index)
+		and not _fell.has(index) and not _done.has("hit:%d" % index) and not bitten_next(index)
+
+
+## True if step `index` leads onto a roof with a floor bite to come (task E5e-f): its fallback waits for the next step.
+func bitten_next(index: int) -> bool:
+	if not MechaGuppyClimb.bitten(index + 1):
+		return false
+	var bite: MechaGuppyCrescent = climb.roofs[index + 1].bite if index + 1 < climb.roofs.size() else null
+	return bite == null or not bite.skipped
 
 
 ## The furthest the runner may be for step `step`'s fallback to be thrown at `speed`: its bomb still comes down
@@ -533,6 +602,11 @@ func _fallback(step: MechaGuppyClimb.Step, p: Player) -> void:
 		return
 	if p.distance > step.deadline + STALE or not hits_enabled or dry < tuning.fallback_after:
 		_done[key] = true
+		return
+	# Onto a roof with a floor bite to come: the fallback waits for the next step (task E5e-f).
+	if bitten_next(step.index):
+		_done[key] = true
+		boss.log_event(&"fallback_deferred", {"step": step.index})
 		return
 	if _fell.has(step.index) or not step.leads_up(p.lane) or not catch_ok():
 		_done[key] = true

@@ -25,6 +25,13 @@ extends RefCounted
 ## the notch's edge: the bomb falls past the edge into the jaws. Without `baits` it dodges the bait like any spot (the
 ## fallback brings its hits). Either way it never runs off the end of a lane that ends ahead (it switches to a lane with
 ## floor in time, as a player would).
+## Mecha Guppy's floor bite (task E5e-f, MechaGuppyFloorBite): it reads the bite off its warning (the crescent's outline:
+## the bite it shows), `dodge_reaction` after it shows, once it's on the floor (or in the air over it): into the lane the
+## bite leaves, a lane at a time where the floor is under the lane it moves into, or over a full-width bite a jump timed so
+## it's in the air over the whole stretch where the gap reaches into its lane (centred on it); its bait and its worst case
+## wait until it's past the bite. `bite_slack` is the least time it had to spare before a bite that leaves a lane: from its
+## last switch's press (or its reading, with none to make) to its hurtbox's front reaching the bite, less the switch;
+## `jump_margin` the least its jumps cleared a full-width bite's stretch by, either end (seconds); `bites` what it met.
 ## Phase 3 (task E5e-c, MechaGuppyTop), on the top: it reads Captain Cogs' rounds by their red lines and the waves by
 ## their swells, `dodge_reaction` late (the planner's own reaction): once a round's lines show, it switches to the nearest
 ## lane they leave clear (the one toward the middle on a tie), and once a wave's swell is rising, it jumps as the surge
@@ -76,6 +83,11 @@ var top_switches: int = 0
 var top_jumps: int = 0
 ## Phase 3: the jump comes this long before a surge reaches the runner (seconds).
 const JUMP_LEAD: float = 0.3
+## The floor bites: the least time to spare before one that leaves a lane, the least a jump cleared a full-width one by
+## (seconds), and each one met: {roof, full, from (its lane as it read it), keep, slack, margin, lane (as it passed)}.
+var bite_slack: float = INF
+var jump_margin: float = INF
+var bites: Array[Dictionary] = []
 
 var _read_step: int = -1
 var _settled_at: float = -1.0
@@ -96,6 +108,9 @@ var _spots_seen: float = -INF
 var _rounds_seen: Dictionary = {}
 var _waves_seen: Dictionary = {}
 var _waves_jumped: Dictionary = {}
+## The floor bite being read (its record in `bites`), and when the runner last got past one (bomb clock).
+var _bite: Dictionary = {}
+var _bite_passed: float = -INF
 
 
 func _init(p_boss: MechaGuppy) -> void:
@@ -115,6 +130,7 @@ func step() -> void:
 			log.append({"t": boss.fight_time(), "action": &"landed", "why": "on the roof %.1f m up, lane %d" % [p.floor_y, p.lane]})
 		_floor = p.floor_y
 	if dodges and p.surface == Player.Surface.FLOOR:
+		_floor_bite(p, now)
 		_dodge(p, now)
 		_bait(p, now)
 	if p.surface == Player.Surface.FLOOR:
@@ -127,7 +143,7 @@ func step() -> void:
 		return
 	if p.surface == Player.Surface.FLOOR:
 		_settled_at = -1.0
-		if worst_case and not _dodging(p):
+		if worst_case and not _dodging(p) and not _bite_ahead(p):
 			_prepare(p, next, now)
 	elif p.surface == Player.Surface.CEILING:
 		if p.grounded and _settled_at < 0.0:
@@ -243,6 +259,10 @@ func _walk(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 		return
 	if on_hut and absi(_target - p.lane) == 1:
 		_slack(p, next, 0.0)
+	# A floor bite's last switch into the lane it leaves: the time to spare after it, measured at its press.
+	if not _bite.is_empty() and not bool(_bite["full"]) and _target == int(_bite["keep"]) and absi(_target - p.lane) == 1 \
+			and boss.floor_bite != null and boss.floor_bite.bite != null:
+		_bite_slack(p, boss.floor_bite.bite, boss.world.tuning.lane_switch_time)
 	p.press(&"move_right" if dir > 0 else &"move_left")
 	_next_press = now + boss.world.tuning.lane_switch_time + 1.0 / Engine.physics_ticks_per_second
 
@@ -292,6 +312,9 @@ func _bait(p: Player, now: float) -> void:
 	var roof: MechaGuppyClimb.Roof = boss.climb.roofs[k + 1]
 	if not roof.notched() or p.distance >= roof.notch_from or absf(p.floor_y - roof.top) > 0.05:
 		return
+	# Its floor bite first (task E5e-f): nothing for the bait until it's past it.
+	if _bite_ahead(p):
+		return
 	var notch: int = roof.notch_lane
 	var plan: Dictionary = boss.pattern.bait_plan(boss.climb.steps[k], p.speed) if boss.pattern != null else {}
 	# No bait to lure (none planned, or the step already hit: its fallback came first).
@@ -322,9 +345,70 @@ func _bait(p: Player, now: float) -> void:
 		return
 	if _lure_step != k:
 		_lure_step = k
-		_lure_from = maxf(_spots_seen, bombs.clock) + dodge_reaction
+		_lure_from = maxf(maxf(_spots_seen, _bite_passed), bombs.clock) + dodge_reaction
 	if bombs.clock >= _lure_from - 0.0001 and p.lane != notch and _target != notch:
 		_set_target(notch, "the bait: into the notch's lane %d to lure the bomb past its edge" % notch, now)
+
+
+## Mecha Guppy's floor bite (see the header): once its warning has shown dodge_reaction, into the lane it leaves, or a jump
+## over a full-width one in the air over the whole stretch where its gap reaches into the runner's lane, centred on it.
+func _floor_bite(p: Player, now: float) -> void:
+	var fb: MechaGuppyFloorBite = boss.floor_bite
+	if fb == null:
+		return
+	var h: float = boss.world.tuning.hurtbox_size.z * 0.5
+	# Past the one it was reading: noted.
+	if not _bite.is_empty() and p.distance > float(_bite["to"]) + h:
+		_bite["lane"] = p.lane
+		_bite = {}
+		_bite_passed = boss.bombs.clock if boss.bombs != null else 0.0
+	var bite: MechaGuppyCrescent = fb.bite
+	if bite == null or fb.warned_at < 0.0 or p.distance > bite.to + h:
+		return
+	if fb.clock - fb.warned_at < dodge_reaction - 0.0001:
+		return
+	if _bite.is_empty() or int(_bite["roof"]) != bite.roof:
+		_bite = {"roof": bite.roof, "full": bite.full, "from": p.lane, "keep": bite.keep, "slack": INF, "margin": INF,
+			"to": bite.to, "jumped": false, "lane": -1}
+		bites.append(_bite)
+		if not bite.full and p.lane == bite.keep:
+			_bite_slack(p, bite, 0.0)
+	if not bite.full:
+		if p.lane != bite.keep and _target != bite.keep:
+			_set_target(bite.keep, "Mecha Guppy's floor bite: into the lane it leaves (%d)" % bite.keep, now)
+		return
+	if bool(_bite["jumped"]):
+		return
+	var gap: Vector2 = bite.stretch(bite.near_w(p.lane))
+	if gap.x > gap.y:
+		return
+	var speed: float = maxf(p.speed, 1.0)
+	var air: float = boss.climb.jump_seconds() * speed
+	if p.distance >= (gap.x + gap.y - air) * 0.5 and p.grounded:
+		_bite["jumped"] = true
+		p.press(&"jump")
+		var margin: float = minf(gap.x - p.distance, p.distance + air - gap.y) / speed
+		_bite["margin"] = margin
+		jump_margin = minf(jump_margin, margin)
+		log.append({"t": boss.fight_time(), "action": &"jump",
+			"why": "over Mecha Guppy's full-width floor bite (%.2f s to spare either end)" % margin})
+
+
+## Records the time to spare before floor bite `bite` for a runner in its lane `switching` seconds from now: until their
+## hurtbox's front reaches the bite, less the switch.
+func _bite_slack(p: Player, bite: MechaGuppyCrescent, switching: float) -> void:
+	var slack: float = (bite.from - p.distance - boss.world.tuning.hurtbox_size.z * 0.5) / maxf(p.speed, 0.001) - switching
+	_bite["slack"] = minf(float(_bite["slack"]), slack)
+	bite_slack = minf(bite_slack, slack)
+
+
+## True while the roof the runner is on (or dropping onto) has a floor bite still ahead of them (task E5e-f).
+func _bite_ahead(p: Player) -> bool:
+	var k: int = boss.climb.step_index_at(p.distance)
+	if k < 0 or k + 1 >= boss.climb.roofs.size():
+		return false
+	var bite: MechaGuppyCrescent = boss.climb.roofs[k + 1].bite
+	return bite != null and not bite.skipped and p.distance < bite.to + boss.world.tuning.hurtbox_size.z * 0.5
 
 
 ## The lane beside the notch's lane `notch`, toward the track's middle.
