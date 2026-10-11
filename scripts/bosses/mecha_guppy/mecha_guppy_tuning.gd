@@ -254,10 +254,10 @@ extends Resource
 @export_group("Mecha Guppy's floor bite")
 ## DESIGN-TBD (GDD §10, the owner, October 11, 2026: "The floor bite"; task E5e-f; docs/questions/e5e.md): while the runner
 ## is still running on a roof, before its pads, Mecha Guppy bites a crescent out of it from one side (MechaGuppyCrescent,
-## planned by MechaGuppyClimb on the roofs it names). Its warning (its outline in red on the floor, the rumble, the shark's
-## snout rising beside the roof's side) shows floor_warning before the runner reaches the bite, never before the hut's
-## deadline (no cue to which lanes lead up), and never shorter than a reaction, every lane switch to the lane it leaves
-## and dodge_margin from where the runner can first switch (or the shark's rise and lunge): seconds.
+## planned by MechaGuppyClimb on the roofs it names). Its warning (its outline in red on the floor, its own sound, the
+## shark's snout rising beside the roof's side) shows floor_warning before the runner reaches the bite, never before the
+## hut's deadline (no cue to which lanes lead up), and never shorter than a reaction, every lane switch to the lane it
+## leaves, dodge_margin and the dash's reach (or the shark's rise and lunge): seconds.
 @export_range(1.0, 3.0, 0.05, "suffix:s") var floor_warning: float = 1.8
 ## DESIGN-TBD: the shark surging up out of the chasm into its watch beside the roof's side as the warning shows (seconds);
 ## its lunge, hold and snap are the bites' (bite_dive, bite_rise, bite_hold, bite_snap).

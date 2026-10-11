@@ -47,10 +47,11 @@ extends RefCounted
 ## roof. It comes where its riders' run begins: a reaction (counted from where they can first switch, Step.free_at: where
 ## its warning can be read from where they are), every lane switch from the farthest lane to the one it leaves,
 ## dodge_margin and the dash's reach past there, past their landing, and late enough that Mecha Guppy rises and lunges
-## after the hut's deadline, before which its warning never shows (no cue to which lanes lead up). Its side is seeded, never three bites running on the same side,
-## and a bitten roof's notch is on that side, so the lane it leaves is never the notch's. A bitten roof is as long as its
-## run (roof_run_seconds) or as its bite and then its bait need (_bite_room: the crossing back to the notch's lane before
-## the bait locks), so its pads may come later on 5-6 lanes; the same in each phase (a full-width bite's room counted too).
+## after the hut's deadline, before which its warning never shows (no cue to which lanes lead up). Its side is seeded,
+## never three bites running on the same side, and a bitten roof's notch is on that side, so the lane it leaves is never
+## the notch's. A bitten roof is as long as its run (roof_run_seconds) or as its bite and then its bait need (_bite_room:
+## the crossing back to the notch's lane before the bait locks), so its pads may come later; the same in each phase (a
+## full-width bite's room counted too).
 ## In phase 2 every full_every-th one crosses every lane (_bite_full; MechaGuppyTuning.full_jump_share keeps it jumpable).
 ## Distances are track distances (metres along the track); heights world heights.
 

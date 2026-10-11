@@ -41,15 +41,15 @@ extends RefCounted
 ## - The floor bite (task E5e-f; GDD §10, the owner, October 11, 2026: "The floor bite"; MechaGuppyCrescent, planned by
 ##   MechaGuppyClimb on roof FIRST_BITE and every other roof from FIRST_NOTCH on): as the runner reaches its warn_at (never
 ##   before the hut's deadline that led them onto that roof), its warning (MechaGuppyFloorBite.start: the crescent's red
-##   outline on the floor) and Mecha Guppy's rise beside the roof's side with its rumble (MechaGuppyShark.floor_bite); its
-##   lunge and snap timed by where the runner is (its lunge_at and snap_at), the chunk gone at the snap (on_snap). Never
-##   once it can't be warned fairly any more (the shark too busy, the attacks stopped: skipped, as if never planned). The
-##   roof's catch (its bait's) comes only after it. A bitten roof carries no volley (the bite in the volley's place): the
-##   first tower its bite alone (one new thing at a time: the climb's first volley comes on roof 3), the others their bite
-##   and their bait; the bait's aim shows only past the bite, with a reaction and a switch for every lane but one before it
-##   locks (bait_plan). A
-##   fallback due on a step that leads onto a bitten roof waits for the next step (Mecha Guppy can't breach in front of
-##   that roof and rise for its bite too); at the default fallback_after the fallbacks never fall on those steps anyway.
+##   outline on the floor) and Mecha Guppy's rise beside the roof's side with its own sound (MechaGuppyShark.floor_bite);
+##   its lunge and snap timed by where the runner is (its lunge_at and snap_at), the chunk gone at the snap (on_snap).
+##   Never once it can't be warned fairly any more (the shark too busy, the attacks stopped: skipped, as if never
+##   planned). The roof's catch (its bait's) comes only after it. A bitten roof carries no volley (the bite in the
+##   volley's place): the first tower its bite alone (one new thing at a time: the climb's first volley comes on roof 3),
+##   the others their bite and their bait; the bait's aim shows only past the bite, with a reaction and a switch for every
+##   lane but one before it locks (bait_plan). A fallback due on a step that leads onto a bitten roof waits for the next
+##   step (Mecha Guppy can't breach in front of that roof and rise for its bite too); at the default fallback_after the
+##   fallbacks never fall on those steps anyway.
 ## 4 hits end phase 1, 6 phase 2: a runner who baits every step lands one a step (from the first notch on); one who
 ## never does, one every fallback_after + 1 steps (or the next step that doesn't lead onto a floor bite).
 ## Attacks only while the pattern runs (MechaGuppy.attacks_live: not in an intro, not in phase 3, not once won);

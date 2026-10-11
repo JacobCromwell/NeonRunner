@@ -32,7 +32,7 @@ extends BossEncounter
 ##
 ## The floor bite (E5e-f; GDD §10, the owner, October 11, 2026): on the roofs the climb names (MechaGuppyClimb.bitten),
 ## while the runner is still running on the roof, Mecha Guppy bites a shark-bite crescent out of it from one side
-## (MechaGuppyCrescent), warned by its red outline on the floor, the rumble and its snout rising beside the roof
+## (MechaGuppyCrescent), warned by its red outline on the floor, its own sound and its snout rising beside the roof
 ## (MechaGuppyFloorBite, MechaGuppyShark.floor_bite): in phase 1 it leaves one lane; in phase 2 every other one crosses
 ## every lane, jumped.
 ## The shark, the pirate and the bombs (E5e-b2, E5e-b3): Mecha Guppy (MechaGuppyShark) waits with its jaws open beside
