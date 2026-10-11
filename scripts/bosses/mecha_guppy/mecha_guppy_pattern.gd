@@ -31,10 +31,10 @@ extends RefCounted
 ##   An extreme tuning that leaves no room for a fair bait leaves the step without one, and it counts toward the
 ##   fallback.
 ## - The fallback (GDD §10: "a player who doesn't manage it still progresses, more slowly: Captain Cogs sometimes misses
-##   into the chasm anyway"): once fallback_after steps in a row have gone by without a hit (dry), at the next step's hut
-##   deadline (every rider committed), with the rider in a lane that leads up, Captain Cogs throws at the chasm in front of
-##   roof k + 1 beside the lanes that lead up, on the side with more lanes that don't (hit_back before the roof's front
-##   there), and Mecha Guppy rises there to eat (MechaGuppyShark.breach; until then it glides deep out of sight), its
+##   into the chasm anyway"): once fallback_after steps in a row have gone by without a hit (dry), from the next step's
+##   hut deadline (every rider committed), with the rider in a lane that leads up, Captain Cogs throws at the chasm in
+##   front of roof k + 1 beside the lanes that lead up, on the side with more lanes that don't (hit_back before the
+##   roof's front there), and Mecha Guppy rises there to eat (MechaGuppyShark.breach; until then it glides deep out of sight), its
 ##   jaws open as the bomb comes down: the bomb falls into the stretch it has eaten through, where it's exposed and in the
 ##   line of fire (GDD §10): a hit. Its bomb has nothing to dodge: its circle shows, but no throw or whistle is heard.
 ##   It's thrown only once the shark can rise for it, waiting while its bomb can still come down ahead of the runner.
@@ -405,7 +405,7 @@ func _landing_places(step: MechaGuppyClimb.Step, speed: float, limit: float) -> 
 ## notch), y (that roof's top), notch (the notch's lane), lock_at (where the runner is as it locks: lock_seconds and
 ## arrival_seconds before they get there), seek_at (bait_seek before that)}; {} where roof k + 1 has no notch, where the
 ## bomb couldn't land fairly beside the notch (on the roof's top, no hut near: MechaGuppyBombs.spot_floor), or where an
-## extreme tuning breaks its promises (task E5e-b3's review): its circle shows only once the runner can switch lanes on
+## extreme tuning breaks its promises (task E5e-b3's review): its aim shows only once the runner can switch lanes on
 ## that roof and has had a reaction (past Step.free_at, after the hut's deadline: never a circle in the lane of a runner
 ## who can't leave it, never a hint at the lanes that lead up), and a runner in the notch's lane as it locks has
 ## lock_to_edge() to leave it before its edge.
@@ -435,7 +435,7 @@ func lock_to_edge() -> float:
 	return tuning.dodge_reaction + world.tuning.lane_switch_time + tuning.dodge_margin
 
 
-## The bait on roof k + 1: its circle follows the runner from seek_at (on that roof's floor), then it locks.
+## The bait on roof k + 1: its aim follows the runner from seek_at (on that roof's floor), then it locks.
 func _bait(step: MechaGuppyClimb.Step, p: Player) -> void:
 	var key: String = "bait:%d" % step.index
 	# Roof k + 1's notch is known once the step after it is planned.
@@ -451,8 +451,8 @@ func _bait(step: MechaGuppyClimb.Step, p: Player) -> void:
 		return
 	if p.distance < float(plan["seek_at"]):
 		return
-	# A step already hit (its fallback came first) gets no bait: a hit at most one a step (task E5e-b3's review), and a
-	# circle that follows the runner is always a chance at one.
+	# A step already hit (its fallback came first) gets no bait: a hit at most one a step (task E5e-b3's review), and an
+	# aim that follows the runner is always a chance at one.
 	if _hit_steps.has(step.index):
 		_done[key] = true
 		boss.bombs.drop_bait()
