@@ -159,8 +159,10 @@ func _test_shark(lanes: int, speed: float, phase: int, baits: bool, late: bool =
 	await _run(world, 70.0, func() -> bool: return bot.steps_climbed >= to_climb, func() -> void:
 		bot.step()
 		var a: Dictionary = shark.action
-		# A bite's jaws come up only once the runner is up on that roof's hut (they leave its watch: the dive).
-		if shark.stage == MechaGuppyShark.Stage.DIVING and int(state["stage"]) != MechaGuppyShark.Stage.DIVING:
+		# A bite's jaws come up only once the runner is up on that roof's hut (they leave its watch: the dive). (A floor
+		# bite's come up while the runner runs on that roof: test_mecha_guppy_floor_bite.)
+		if shark.stage == MechaGuppyShark.Stage.DIVING and int(state["stage"]) != MechaGuppyShark.Stage.DIVING \
+				and int(a.get("kind", -1)) == MechaGuppyShark.Kind.BITE:
 			state["dives"] = int(state["dives"]) + 1
 			var r: int = int(a.get("roof", -1))
 			if p.alive and (p.surface != Player.Surface.CEILING or r < 0 or p.distance < climb.steps[r].pad - 0.5):
@@ -180,7 +182,7 @@ func _test_shark(lanes: int, speed: float, phase: int, baits: bool, late: bool =
 			var why: String = _catch_intrusion(world, climb.roofs[int(a.get("roof", 0))], shark)
 			if why != "" and (state["intrusions"] as Array).size() < 3:
 				(state["intrusions"] as Array).append(why)
-		if not a.is_empty() and shark.shown():
+		if not a.is_empty() and shark.shown() and int(a["kind"]) != MechaGuppyShark.Kind.FLOOR:
 			if int(a["kind"]) == MechaGuppyShark.Kind.BITE:
 				var roof_index: int = int(a.get("roof", -1))
 				if roof_index >= 0 and roof_index < climb.steps.size():
@@ -267,9 +269,12 @@ func _test_shark(lanes: int, speed: float, phase: int, baits: bool, late: bool =
 			% [breaches, float(state["over"]), tag])
 		check(int(state["lurk_shown"]) == 0,
 			"while it lurks before a breach nothing of it shows (%d frames lurking) %s" % [int(state["lurked"]), tag])
-	var warnings: int = _events(boss, &"bite_warning").size() + breaches
-	check(_sounds(boss, &"guppy_rumble") == warnings and _sounds(boss, &"guppy_bite") >= bites.size(),
-		"each bite and breach is warned by its rumble, each bite heard (%d rumbles for %d) %s"
+	# (A floor bite's rise rumbles too: task E5e-f.)
+	var floors: int = _events(boss, &"floor_bite_rise").size()
+	var warnings: int = _events(boss, &"bite_warning").size() + breaches + floors
+	check(_sounds(boss, &"guppy_rumble") == warnings
+		and _sounds(boss, &"guppy_bite") >= bites.size() + _events(boss, &"floor_bite_snap").size(),
+		"each bite, floor bite and breach is warned by its rumble, each bite heard (%d rumbles for %d) %s"
 		% [_sounds(boss, &"guppy_rumble"), warnings, tag])
 	print("  Mecha Guppy %s: %d bites, %d catches, %d breaches; its jaws %.2f m under a rider at the closest"
 		% [tag, bites.size(), catches, breaches, float(state["clear"])])

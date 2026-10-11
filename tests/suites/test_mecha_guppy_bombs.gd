@@ -195,15 +195,27 @@ func _test_fair_spots() -> void:
 				climb.plan_until(climb.planned_until() + 900.0, phase)
 				var volleys: int = 0
 				var landings: int = 0
+				var bitten: int = 0
 				var bad: Array[String] = []
 				for step: MechaGuppyClimb.Step in climb.steps:
 					if step.top or step.index + 2 >= climb.steps.size() or step.phase != phase:
+						continue
+					# A roof with a floor bite and a bait has no volley (task E5e-f: the bite in its place).
+					var onto: MechaGuppyClimb.Roof = climb.roofs[step.index + 1]
+					if onto.bite != null and onto.index >= MechaGuppyClimb.FIRST_NOTCH:
+						bitten += 1
+						if float(boss.pattern.volley(step, step.up.x, step.deadline, speed)["lock_at"]) < MechaGuppyClimb.FAR * 0.5:
+							bad.append("step %d: a volley on roof %d, which has a floor bite" % [step.index, onto.index])
 						continue
 					for pl: int in range(step.up.x, step.up.y + 1):
 						# Planned from where the runner is as it's thrown (the pattern's lock point).
 						var d0: float = float(boss.pattern.volley(step, pl, step.deadline, speed)["lock_at"])
 						if d0 >= MechaGuppyClimb.FAR * 0.5:
 							continue
+						# The first tower's volley, after its floor bite: thrown once the runner is past the bite.
+						if onto.bite != null and d0 < onto.bite.to + tuning.hurtbox_size.z * 0.5 - 0.01:
+							bad.append("step %d: its volley thrown %.1f m before the runner is past roof %d's floor bite"
+								% [step.index, onto.bite.to - d0, onto.index])
 						var plan: Dictionary = boss.pattern.volley(step, pl, d0, speed)
 						var spots: Array[Dictionary] = plan["spots"]
 						if spots.is_empty():
@@ -216,9 +228,9 @@ func _test_fair_spots() -> void:
 							why = "a roof's spot thrown %.1f m before the runner can switch there" % (step.free_at - d0)
 						if why != "":
 							bad.append("step %d from lane %d: %s" % [step.index, pl, why])
-				check(volleys >= 4 and bad.is_empty() and (phase == 0) == (landings == 0),
-					"every step's volley leaves a fair way through from every lane that leads up, a roof's spot thrown only once the runner can switch there (%d planned, %d with a landing spot) %s%s"
-					% [volleys, landings, tag, "" if bad.is_empty() else ": " + "; ".join(bad.slice(0, 3))])
+				check(volleys >= 2 and bitten >= 1 and bad.is_empty() and (phase == 0) == (landings == 0),
+					"every step's volley leaves a fair way through from every lane that leads up, a roof's spot thrown only once the runner can switch there; none on a roof with a floor bite and a bait (%d planned, %d with a landing spot, %d roofs with a floor bite) %s%s"
+					% [volleys, landings, bitten, tag, "" if bad.is_empty() else ": " + "; ".join(bad.slice(0, 3))])
 				await sim.free_world(world)
 
 
@@ -552,12 +564,13 @@ func _test_no_escalation() -> void:
 	check(p.alive and bot.steps_climbed >= 9 and boss.phase_index == 0 and boss.hits_landed == 0,
 		"with no hit landing, phase 1 goes on (%d steps climbed, phase %d)" % [bot.steps_climbed, boss.phase_index + 1])
 	# Each step's volley: its spots' places past where they can first be dodged, and its bombs, by the step's cue (the
-	# two cues' roofs alternate, each with room for its own number of spots).
-	var shapes: Array[Dictionary] = [{}, {}]
+	# two cues' roofs alternate, each with room for its own number of spots; task E5e-f: the roofs a REACH_BACK step
+	# leads onto carry a floor bite instead, and the first tower's volley comes after its floor bite, a shape of its own).
+	var shapes: Array[Dictionary] = [{}, {}, {}]
 	var volleys: int = 0
 	var same: bool = true
 	for e: Dictionary in _events(boss, &"volley"):
-		var cue: int = boss.climb.steps[int(e["step"])].cue
+		var cue: int = boss.climb.steps[int(e["step"])].cue if int(e["step"]) + 1 != MechaGuppyClimb.FIRST_BITE else 2
 		var s_open: float = float(e["s_open"])
 		var parts: PackedStringArray = []
 		for s: Dictionary in e["spots"]:
@@ -568,7 +581,7 @@ func _test_no_escalation() -> void:
 		if first.is_empty():
 			first["shape"] = shape
 		same = same and first["shape"] == shape
-	check(same and volleys >= 7, "every step's volley is the same as the last with its cue: the same spots at the same places past where they can first be dodged, the same bombs (%d volleys: %s)"
+	check(same and volleys >= 4, "every step's volley is the same as the last with its cue: the same spots at the same places past where they can first be dodged, the same bombs (%d volleys: %s)"
 		% [volleys, str(shapes)])
 	# Each step's bait: catch_in into its roof's notch, following the runner bait_seek, locking lock_seconds before it lands.
 	var mt: MechaGuppyTuning = boss.tuning

@@ -14,11 +14,12 @@ extends TestSuite
 ##   with a circle in its lane and no floor to switch to;
 ## - no hit on a step the runner fell, even if the grapple saved them: a runner who lures the bait and then runs off
 ##   the notch's edge (saved) gets no hit from the bomb that falls past it, and a wrong drop (saved) on a step whose
-##   fallback was due gets none either;
+##   fallback was due gets none either (it comes at the next step that doesn't lead onto a floor bite: task E5e-f);
 ## - a runner falling in the notch can't switch into the roof's side below its top (just under it, the switch bumps;
 ##   deeper, in the pit, a move does nothing), and the grapple's save takes them back up onto the roof, into its lane
 ##   beside the notch;
-## - with no room for a notch on any roof (an extreme tuning), no bait is offered and the fallback still brings the hits.
+## - with no room for a notch on any roof but the bitten ones (an extreme tuning; a roof with a floor bite is as long as
+##   its bite and its bait need, task E5e-f), no bait is offered on the others and the fallback still brings the hits.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -259,7 +260,8 @@ func _test_fall_in_notch() -> void:
 	await sim.free_world(world)
 
 
-## A wrong drop (the grapple saving it) on a step whose fallback was due: no fallback that step; it comes at the next.
+## A wrong drop (the grapple saving it) on a step whose fallback was due: no fallback that step; it comes at the next
+## step that doesn't lead onto a floor bite (task E5e-f: one that does defers it, MechaGuppyPattern.bitten_next).
 func _test_wrong_drop_on_fallback() -> void:
 	var pair: Array = _fight(3, 23.8)
 	var world: RunWorld = pair[0]
@@ -275,13 +277,14 @@ func _test_wrong_drop_on_fallback() -> void:
 	bot.baits = false
 	bot.wrong = true
 	bot.wrong_at = due
-	await _run(world, 60.0, func() -> bool: return bot.steps_climbed >= due + 3, bot.step)
+	var next: int = _fallback_step(due + 1)
+	await _run(world, 60.0, func() -> bool: return bot.steps_climbed >= next + 2, bot.step)
 	var skipped: Array[Dictionary] = _events(boss, &"fallback_skipped")
 	var fallbacks: Array[Dictionary] = _events(boss, &"fallback")
 	check(p.alive and not skipped.is_empty() and int(skipped[0]["step"]) == due and not fallbacks.is_empty()
-		and int(fallbacks[0]["step"]) == due + 1 and boss.hits_landed == 1,
-		"a wrong drop saved by the grapple on step %d, whose fallback was due, gets no hit; the fallback comes at the next step (%s, %d hits)"
-		% [due, fallbacks.map(func(e: Dictionary) -> int: return int(e["step"])), boss.hits_landed])
+		and int(fallbacks[0]["step"]) == next and boss.hits_landed == 1,
+		"a wrong drop saved by the grapple on step %d, whose fallback was due, gets no hit; the fallback comes at the next step that doesn't lead onto a floor bite, %d (%s, %d hits)"
+		% [due, next, fallbacks.map(func(e: Dictionary) -> int: return int(e["step"])), boss.hits_landed])
 	await sim.free_world(world)
 
 
@@ -336,8 +339,10 @@ func _test_notch_side() -> void:
 
 # --- No room for a notch ---------------------------------------------------------------------------
 
-## With no room for a notch on any roof (an extreme tuning: the shortest run on a roof, the longest notch), no bait is
-## ever offered, and the fallback still brings the hits, one every fallback_after + 1 steps: the fight never stalls.
+## With no room for a notch on any roof without a floor bite (an extreme tuning: the shortest run on a roof, the longest
+## notch; a bitten roof from FIRST_NOTCH on is as long as its bite and its bait need, so it keeps its notch: task E5e-f),
+## no bait is offered on the others, and the fallback still brings a runner who never baits the hits, one every
+## fallback_after + 1 steps (or the next step that doesn't lead onto a floor bite): the fight never stalls.
 func _test_no_notch() -> void:
 	var d: BossDef = def.duplicate() as BossDef
 	var t: MechaGuppyTuning = (def.tuning as MechaGuppyTuning).duplicate() as MechaGuppyTuning
@@ -349,16 +354,33 @@ func _test_no_notch() -> void:
 	var boss: MechaGuppy = pair[1]
 	var bot := MechaGuppyBot.new(boss)
 	bot.reaction = REACTION
+	bot.baits = false
 	# The first roof that could have had the bait is roof FIRST_NOTCH: from its step on, each step without one counts.
-	var due: int = MechaGuppyClimb.FIRST_NOTCH - 1 + t.fallback_after
+	var first: int = _fallback_step(MechaGuppyClimb.FIRST_NOTCH - 1 + t.fallback_after)
+	var second: int = _fallback_step(first + t.fallback_after + 1)
 	await _run(world, 90.0, func() -> bool: return boss.hits_landed >= 2, bot.step)
-	var notched: int = 0
+	# Only the bitten roofs (MechaGuppyClimb.bitten, from FIRST_NOTCH on) have a notch; the bait only on the steps onto them.
+	var odd_notches: Array[int] = []
 	for r: MechaGuppyClimb.Roof in boss.climb.roofs:
-		notched += 1 if r.notched() else 0
+		if r.notched() != (r.index >= MechaGuppyClimb.FIRST_NOTCH and MechaGuppyClimb.bitten(r.index) and r.bite != null):
+			odd_notches.append(r.index)
+	var odd_baits: Array[int] = []
+	for e: Dictionary in _events(boss, &"bait"):
+		if not MechaGuppyClimb.bitten(int(e["step"]) + 1):
+			odd_baits.append(int(e["step"]))
 	var fallbacks: Array[Dictionary] = _events(boss, &"fallback")
-	check(world.player.alive and notched == 0 and _events(boss, &"bait_seek").is_empty() and boss.hits_landed >= 2
-		and fallbacks.size() >= 2 and int(fallbacks[0]["step"]) == due and int(fallbacks[1]["step"]) == due + t.fallback_after + 1,
-		"with no room for a notch on any roof (roof_seconds %.1f s, notch_back %.0f m), no bait is offered and the fallback still brings the hits, every %d steps (%d roofs notched, fallbacks on steps %s, %d hits)"
-		% [t.roof_seconds, t.notch_back, t.fallback_after + 1, notched, fallbacks.map(func(e: Dictionary) -> int: return int(e["step"])),
-			boss.hits_landed])
+	check(world.player.alive and odd_notches.is_empty() and odd_baits.is_empty() and boss.hits_landed >= 2
+		and fallbacks.size() >= 2 and int(fallbacks[0]["step"]) == first and int(fallbacks[1]["step"]) == second,
+		"with no room for a notch on any roof without a floor bite (roof_seconds %.1f s, notch_back %.0f m), no bait is offered there and the fallback still brings the hits, on steps %d and %d (roofs notched against the bites %s, baits on steps %s, fallbacks on steps %s, %d hits)"
+		% [t.roof_seconds, t.notch_back, first, second, odd_notches, odd_baits,
+			fallbacks.map(func(e: Dictionary) -> int: return int(e["step"])), boss.hits_landed])
 	await sim.free_world(world)
+
+
+## The first step from `index` on whose fallback isn't deferred: one that doesn't lead onto a roof with a floor bite (task
+## E5e-f, MechaGuppyPattern.bitten_next).
+func _fallback_step(index: int) -> int:
+	var k: int = index
+	while MechaGuppyClimb.bitten(k + 1):
+		k += 1
+	return k
