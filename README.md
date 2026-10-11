@@ -419,14 +419,18 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   rider anywhere on a hut has time to read the lanes and switch, with 0.9 s to spare, from the farthest lane
   after the latest flip. The camera follows them up past a giant waterfall whose foot sinks below as they
   climb, over a hazy sea and clouds, under Sunset Strip's sunset in the campaign. Phase 2 climbs about 20%
-  faster. Mecha Guppy rises beside the end of each roof the runner leaves (a rumble warns of it) and bites
-  it off once they're up on the hut. Captain Cogs, a clockwork-armed pirate in a flying galleon ahead, throws
-  bombs warned like the Floating Head's (a red circle where each lands, a whistle): volleys on the roofs to
-  dodge, and in phase 2 a bomb where riders land and bombs bursting harmlessly on the hut over them. Weapons
-  do nothing: after each hut's last moment to switch, a bomb thrown at the chasm beside the lanes that lead up
-  goes into the shark's jaws as it rises to eat, a hit (4 end phase 1, 6 phase 2).
-  Phase 3 is a minute's stub on the flat top for now (E5e-c)
-  (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs and the hits).
+  faster (its roofs stand 3.6 m apart). Mecha Guppy rises beside the end of each roof the runner leaves (a
+  rumble warns of it) and bites it off once they're up on the hut. Captain Cogs, a clockwork-armed pirate in a
+  flying galleon ahead, throws bombs warned like the Floating Head's (a red circle where each lands, a
+  whistle): a volley on each roof to dodge, and in phase 2 more of them, with a bomb where riders land.
+  Weapons do nothing; the bombs are the way to hurt the shark. Near each roof's end it has bitten away an
+  outer lane and waits below, jaws open. As the runner nears, one bomb's circle follows their lane, then
+  locks onto it with the throw: a runner who leads it into the bitten lane and switches out before the edge
+  sends the bomb past the edge into the jaws, a hit (4 end phase 1, 6 phase 2). A runner who doesn't manage
+  it still gets there, more slowly: after two steps without a hit, Captain Cogs misses into the chasm beside
+  the lanes that lead up and the shark rises to eat the bomb. Phase 3 is a minute's stub on the flat top for
+  now (E5e-c) (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs and
+  the bait).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
