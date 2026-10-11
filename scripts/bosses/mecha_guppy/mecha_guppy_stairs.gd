@@ -55,6 +55,8 @@ const PICKUP_BEFORE_HUT: float = 6.0
 ## A grapple's save looks for the higher roof under a lane that leads up this far either side of where the runner
 ## comes down (metres).
 const SAVE_MARGIN: float = 2.0
+## Where Mecha Guppy bites a roof across its pads, what's left of them ends this far short of the bite (metres).
+const PAD_EATEN: float = 0.6
 
 var boss: MechaGuppy
 var world: RunWorld
@@ -83,6 +85,8 @@ var _phase_seen: int = -1
 var _top_seen: bool = false
 ## Steps taken back and planned again over the fight (tests).
 var replanned: int = 0
+## Roofs Mecha Guppy has bitten (eat_roof) over the fight (tests).
+var eaten: int = 0
 ## Work counters for the tests (roofs and steps looked at by the last update()).
 var visited: int = 0
 
@@ -203,6 +207,8 @@ func _free_roof(index: int, edge: float) -> float:
 	var kept_to: float = -MechaGuppyClimb.FAR
 	var kept: Array = []
 	for entry: Dictionary in _roof_nodes.get(index, []):
+		if not is_instance_valid(entry["node"]):
+			continue
 		if whole or (bool(entry["segment"]) and float(entry["to"]) > edge + 0.01):
 			props.remove(entry["node"])
 		else:
@@ -216,8 +222,86 @@ func _free_roof(index: int, edge: float) -> float:
 
 
 func _free_all(nodes: Array) -> void:
-	for node: Node in nodes:
-		props.remove(node)
+	for node: Variant in nodes:
+		if is_instance_valid(node):
+			props.remove(node as Node)
+
+
+## Mecha Guppy eats roof `index` from track distance `cut` to its end (a bite: MechaGuppyShark; GDD §10, it eats the
+## floors the runner should have left): its full-width pieces past `cut` go, the one across `cut` is built again to
+## end there (its collision and its look together, the eaten edge's look at `cut`: the look follows the collision
+## exactly), the pads of the step leaving it go where they lie past `cut` (and end short of it where they cross it),
+## and the plan's roof ends at `cut` (MechaGuppyClimb.Roof.end), so every question about the climb agrees. Never
+## its front pieces (a bite comes no nearer than its pads). Returns the box eaten (world space) for its rubble, or an
+## empty AABB when nothing was.
+func eat_roof(index: int, cut: float) -> AABB:
+	if index < 0 or index >= climb.roofs.size():
+		return AABB()
+	var roof: MechaGuppyClimb.Roof = climb.roofs[index]
+	cut = maxf(cut, roof.full_from())
+	if cut >= roof.end - 0.01:
+		return AABB()
+	var end: float = roof.end
+	var state: Dictionary = _roofs.get(index, {})
+	var built_to: float = float(state.get("to", cut))
+	var rebuild: Array[Vector2] = []
+	var kept: Array = []
+	for entry: Dictionary in _roof_nodes.get(index, []):
+		# A piece the props have freed already (passed) is gone from the book too.
+		if not is_instance_valid(entry["node"]):
+			continue
+		if not bool(entry["segment"]):
+			kept.append(entry)
+			continue
+		var from: float = float(entry["from"])
+		var to: float = float(entry["to"])
+		if to <= cut + 0.01:
+			kept.append(entry)
+		elif from >= cut - 0.01:
+			props.remove(entry["node"])
+		else:
+			props.remove(entry["node"])
+			var span := Vector2(from, cut)
+			if not rebuild.has(span):
+				rebuild.append(span)
+	_roof_nodes[index] = kept
+	roof.end = cut
+	for span: Vector2 in rebuild:
+		_roof_segment(roof, span.x, span.y, true)
+	if not state.is_empty():
+		state["to"] = minf(built_to, cut)
+		state["ended"] = true
+	_eat_pads(index, cut)
+	eaten += 1
+	var x: float = world.geo.wall_x()
+	var top: float = roof.top
+	var far: float = minf(end, maxf(built_to, cut))
+	return AABB(Vector3(-x, top - 1.5, TrackGeometry.world_z(far)), Vector3(x * 2.0, 1.5, maxf(far - cut, 0.0)))
+
+
+## The pads of step `index` (the strip at the end of its roof) where Mecha Guppy has eaten that roof from `cut`:
+## each lane's pad goes where it lies past `cut`, and one that crosses it is built again to end PAD_EATEN short of it.
+func _eat_pads(index: int, cut: float) -> void:
+	if not _step_nodes.has(index) or index >= climb.steps.size():
+		return
+	var step: MechaGuppyClimb.Step = climb.steps[index]
+	if step.top or cut >= step.pad_end:
+		return
+	var nodes: Array = _step_nodes[index]
+	var kept: Array = []
+	for node: Variant in nodes:
+		if not is_instance_valid(node):
+			continue
+		if (node as Node).get_meta(&"kind", &"") == &"pad":
+			props.remove(node as Node)
+		else:
+			kept.append(node)
+	_step_nodes[index] = kept
+	var end: float = cut - PAD_EATEN
+	if end - step.pad < 0.5:
+		return
+	for lane: int in world.geo.lane_count:
+		_note_step(index, _strip(lane, step.pad, end, step.floor_y))
 
 
 func _note_step(index: int, node: Node) -> void:
@@ -226,10 +310,10 @@ func _note_step(index: int, node: Node) -> void:
 	(_step_nodes[index] as Array).append(node)
 
 
-func _note_roof(index: int, node: Node, to: float, segment: bool) -> void:
+func _note_roof(index: int, node: Node, to: float, segment: bool, from: float = -MechaGuppyClimb.FAR) -> void:
 	if not _roof_nodes.has(index):
 		_roof_nodes[index] = []
-	(_roof_nodes[index] as Array).append({"node": node, "to": to, "segment": segment})
+	(_roof_nodes[index] as Array).append({"node": node, "to": to, "segment": segment, "from": from})
 
 
 # --- Roofs -----------------------------------------------------------------------------------------
@@ -293,9 +377,9 @@ func _roof_front(roof: MechaGuppyClimb.Roof) -> void:
 func _roof_segment(roof: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) -> void:
 	var all := Vector2i(0, world.geo.lane_count - 1)
 	var street: bool = roof.index == 0
-	_note_roof(roof.index, props.roof(all, from, to, roof.top, STREET_DEPTH if street else -1.0, looks == null), to, true)
+	_note_roof(roof.index, props.roof(all, from, to, roof.top, STREET_DEPTH if street else -1.0, looks == null), to, true, from)
 	if looks != null:
-		_note_roof(roof.index, props.keep(looks.roof_segment(roof, from, to, ended), to), to, true)
+		_note_roof(roof.index, props.keep(looks.roof_segment(roof, from, to, ended), to), to, true, from)
 
 
 ## The step that led onto roof `roof` (its lanes that lead up, its cue), or null for the street.

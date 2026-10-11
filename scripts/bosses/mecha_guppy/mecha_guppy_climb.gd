@@ -385,6 +385,17 @@ func floor_at(lane: int, d: float, below: float = INF) -> float:
 	return NAN
 
 
+## The underside's height of the hut over `lane` at track distance `d`, or NAN with none (MechaGuppyBombs: a bomb on a
+## hut bursts on its top).
+func hut_at(lane: int, d: float) -> float:
+	var k: int = step_index_at(d)
+	for i: int in range(maxi(k - 1, 0), mini(k + 2, steps.size())):
+		var s: Step = steps[i]
+		if not s.top and lane >= 0 and lane < s.ends.size() and d >= s.hut_start and d < s.ends[lane]:
+			return s.hut_y
+	return NAN
+
+
 ## Seconds of margin a rider settling at the step's latest settle in `lane` has to reach a lane that leads up:
 ## the time to the deadline less every switch they need at the lane-switch time. At least read_seconds for
 ## every lane (the plan's promise).
