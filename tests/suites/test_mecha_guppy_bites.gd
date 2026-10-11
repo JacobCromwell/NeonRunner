@@ -258,7 +258,7 @@ func _test_shark(lanes: int, speed: float, phase: int, baits: bool, late: bool =
 	var breaches: int = _events(boss, &"breach_warning").size()
 	var catches: int = _events(boss, &"catch_open").size()
 	if baits:
-		check(catches >= to_climb - 1 and breaches == 0 and int(state["catch_frames"]) > 0 and (state["intrusions"] as Array).is_empty(),
+		check(catches >= to_climb - MechaGuppyClimb.FIRST_NOTCH and breaches == 0 and int(state["catch_frames"]) > 0 and (state["intrusions"] as Array).is_empty(),
 			"its catch beside each notch: no part of its jaws over a lane a runner may use, nor over the notch's lane before the notch (%d catches, %d breaches) %s%s"
 			% [catches, breaches, tag, "" if (state["intrusions"] as Array).is_empty() else ": " + "; ".join(state["intrusions"])])
 	else:

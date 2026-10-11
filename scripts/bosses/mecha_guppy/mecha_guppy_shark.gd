@@ -50,6 +50,9 @@ const DEEP: float = 55.0
 const MIN_RISE: float = 0.12
 ## A breach rising toward the floor: its jaws' tips this far under the floor's level (metres).
 const BELOW_TIPS: float = 2.5
+## A bite's sink has taken its jaws BELOW_TIPS under the floor (a breach may come up) by about a fifth of its way down;
+## this share of it, with room to spare, counts toward how long a bite keeps it busy (bite_seconds).
+const SINK_CLEAR: float = 0.35
 ## A bite: its head's inner side this far out past the track's edge (clear of the roofs' eaves and the huts'), its hinge
 ## this far under the roof's top as it watches (its eye just over it), dives (out of sight of the track) and bites, and
 ## its lean in over the roof as it dives and bites (degrees); at the snap it drops this far, dragging the roof's end
@@ -102,18 +105,20 @@ var tuning: MechaGuppyTuning
 var world: RunWorld
 var boss: MechaGuppy
 ## The action under way: {kind, side (-1 it comes up on the left, +1 the right), top (the floor's level it comes up to),
-## a bite's edge, roof, cut, may_break and catch ({inner, lane_x, at, top, until, step}: catch_pose; or empty), a
+## a bite's edge, roof, cut, may_break, may_bite and catch ({inner, lane_x, at, top, until, step}: catch_pose; or empty), a
 ## breach's x (the bomb's world x), at (its track distance), open_at (bomb clock) and step (the climb's step it's for)};
 ## empty while idle.
 var action: Dictionary = {}
 var stage: Stage = Stage.IDLE
 var stage_time: float = 0.0
-## Bites and breaches made, catches waited in, hits taken, bites asked for while it was busy (tests).
+## Bites and breaches made, catches waited in, hits taken, bites asked for while it was busy, bites that gave way to a
+## fallback (tests).
 var bites: int = 0
 var breaches: int = 0
 var catches: int = 0
 var hits: int = 0
 var skipped: int = 0
+var yielded: int = 0
 ## How open its jaws are (0 shut, 1 wide), and its pose: the hinge's world position, then (applied in this order) pitch
 ## (radians about its own x: +PI/2 lays its jaws flat toward +z, its snout up), yaw (about the vertical: which way its
 ## jaws or chin face) and roll (about the track: its jaws toward -x when positive).
@@ -173,7 +178,8 @@ func shown() -> bool:
 
 ## A bite (see the header): `spot` {side (-1 it comes up left of the track, +1 right), edge (the roof's eaten edge: track
 ## distance), top (the roof's top), roof (its index), cut (where it eats the roof back to), may_break (Callable: true once
-## nobody can be on that roof), catch (optional: the bait's catch first, {inner (world x of the notch's inner edge),
+## nobody can be on that roof), may_bite (optional Callable(seconds: float) -> bool: false makes the bite give way, the
+## shark sinking off uneaten), catch (optional: the bait's catch first, {inner (world x of the notch's inner edge),
 ## lane_x (the notch's lane's middle), at (where the bait's bomb comes down: track distance), top (that roof's top), until
 ## (bomb clock: its jaws open until then; INF until the bomb is thrown), step}; `side` is then the notch's)}. Its warning
 ## starts now. False (nothing done, logged as skipped) while it's busy.
@@ -213,13 +219,26 @@ func lurk(spot: Dictionary) -> void:
 ## From its lurk it surges up just in time; from anywhere else, as fast as it must. False while it's busy.
 ## hinge_x() gives where its hinge must be for the bomb to fall into its jaws at `x`.
 func breach(spot: Dictionary) -> bool:
-	if busy() and not (stage == Stage.SINKING and _sunk_under(float(spot["top"]))):
+	if not can_breach(float(spot["top"])):
 		boss.log_event(&"breach_skipped", {"at": float(spot.get("at", 0.0))})
 		return false
 	var next: Dictionary = spot.duplicate()
 	next["kind"] = Kind.BREACH
 	_begin(next)
 	return true
+
+
+## True if a breach beside a floor at `top` may start now: it's free (idle or lurking), or sinking and already all under
+## that floor (_sunk_under).
+func can_breach(top: float) -> bool:
+	return not busy() or (stage == Stage.SINKING and _sunk_under(top))
+
+
+## How long a bite takes from now, once its runner is up on the hut, until a breach may come up again (can_breach):
+## the dive (from a catch no faster than DIVE_SPEED along the track), the lunge, the hold, the snap and SINK_CLEAR of
+## the sink.
+func bite_seconds() -> float:
+	return _dive_seconds() + tuning.bite_rise + tuning.bite_hold + tuning.bite_snap + tuning.bite_sink * SINK_CLEAR
 
 
 ## True while all of it is far enough under the floor at `top` and under the one it sank from (BELOW_TIPS): a breach may
@@ -297,7 +316,13 @@ func advance(delta: float) -> void:
 		Stage.WAITING:
 			_ease(1.0)
 			if _may_break():
-				if kind == Kind.BITE:
+				if kind == Kind.BITE and _yields():
+					# A fallback is due that its bite would leave no time for (MechaGuppyPattern._bite_fits): it sinks away
+					# uneaten, so it's free to rise for the fallback.
+					yielded += 1
+					boss.log_event(&"bite_yielded", {"roof": int(action.get("roof", -1))})
+					_go(Stage.SINKING, _deep_pose(), tuning.bite_sink)
+				elif kind == Kind.BITE:
 					_go(Stage.DIVING, _dive_pose(), _dive_seconds())
 				else:
 					_go(Stage.BREAKING, _open_pose(), tuning.breach_rise)
@@ -496,6 +521,13 @@ func _go(next: Stage, to: Dictionary, seconds: float) -> void:
 	_stage_seconds = maxf(seconds, 0.02)
 	_from = {"hinge": hinge, "pitch": pitch, "roll": roll, "yaw": yaw, "jaw": jaw}
 	_to = to
+
+
+## True if its bite gives way to a fallback due (its pattern's may_bite, asked how long the bite would take: see
+## MechaGuppyPattern._bite_fits).
+func _yields() -> bool:
+	var may: Callable = action.get("may_bite", Callable())
+	return may.is_valid() and not bool(may.call(bite_seconds()))
 
 
 ## True once the jaws may come up: a bite waits for nobody to be on its roof (may_break); a breach comes up just in time

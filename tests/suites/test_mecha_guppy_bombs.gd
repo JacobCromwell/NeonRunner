@@ -419,7 +419,7 @@ func _test_what_counts() -> void:
 	var whistles: int = _sounds(boss, &"bomb_whistle")
 	var spot: Dictionary = boss.pattern.hit_spot(step)
 	var d: Dictionary = bombs.throw_at(MechaGuppyBombs.Kind.HIT, int(spot["lane"]), float(spot["at"]), float(spot["y"]),
-		float(spot["x_off"]), boss.tuning.hit_seconds)
+		float(spot["x_off"]), boss.pattern.fallback_flight())
 	var circled: bool = d["circle"] != null
 	boss.shark.breach({"x": float(d["x"]), "at": float(spot["at"]), "top": float(spot["y"]), "side": int(spot["side"]),
 		"open_at": float(d["impact"]) - boss.tuning.breach_early, "step": step.index})
@@ -579,7 +579,7 @@ func _test_no_escalation() -> void:
 		baits += 1
 		baits_same = baits_same and is_equal_approx(float(e["at"]) - roof.notch_from, mt.catch_in) \
 			and absf(float(e["seek"]) - mt.bait_seek) < 0.02 and absf(float(e["warning"]) - mt.lock_seconds) < 0.02
-	check(baits_same and baits >= 8, "every step's bait is the same: %.1f m into its notch, following the runner %.2f s, locking %.2f s before it lands (%d baits)"
+	check(baits_same and baits >= 9 - MechaGuppyClimb.FIRST_NOTCH, "every step's bait is the same: %.1f m into its notch, following the runner %.2f s, locking %.2f s before it lands (%d baits)"
 		% [mt.catch_in, mt.bait_seek, mt.lock_seconds, baits])
 	check(_events(boss, &"breach_warning").is_empty() and _events(boss, &"hit").is_empty() and _events(boss, &"catch_open").is_empty()
 		and _events(boss, &"shark_hit").is_empty(), "and no hit: the shark doesn't come up to catch one, nor breach for one")

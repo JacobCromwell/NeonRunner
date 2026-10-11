@@ -35,9 +35,10 @@ extends RefCounted
 ## as long as phase 1's (each roof's run, MechaGuppyTuning.roof_seconds, holds a volley spot and the bait); every margin
 ## stays.
 ## The bait's notch (task E5e-b3; GDD §10, the owner: a bomb dodged where the runner's lane runs out falls past the edge
-## into Mecha Guppy's jaws): each roof but the street, near its end, has an outer lane eaten from notch_back before the
-## next hut (Roof.notch_lane, notch_from) to its end, on a seeded side that has nothing to do with the lanes that lead
-## up (so it's no cue to them); MechaGuppyPattern baits Captain Cogs' bombs into it. A roof too short for one has none.
+## into Mecha Guppy's jaws): each roof from FIRST_NOTCH on, near its end, has an outer lane eaten from notch_back before
+## the next hut (Roof.notch_lane, notch_from) to its end, on a seeded side that has nothing to do with the lanes that
+## lead up (so it's no cue to them); MechaGuppyPattern baits Captain Cogs' bombs into it. A roof too short for one (an
+## extreme tuning: notch_after) has none.
 ## Phase 3 (E5e-c's) is a stub here: its step is the `top`: the last roof runs on, no pads, no hut.
 ## Distances are track distances (metres along the track); heights world heights.
 
@@ -58,9 +59,9 @@ const FAR: float = 1.0e9
 ## The most lanes that lead up on a REACH_BACK step (GDD §10, the owner: "one or two of the roof's lanes reach further
 ## back toward the runner than the others").
 const REACH_BACK_MOST: int = 2
-## A roof's notch starts at least this far past where its run begins (where the riders who climbed onto it can first
-## switch lanes, and past its landing and its full width), or the roof has none (metres).
-const NOTCH_AFTER: float = 6.0
+## The first roof with a notch (task E5e-b3's review): roof 1's run brings the climb's first volley, so the bait comes
+## from roof 2 on, once the first volley has been learned (the street, roof 0, never has one).
+const FIRST_NOTCH: int = 2
 
 
 ## A tiki bar roof the runner lands on and runs along (roof 0: the street the fight starts on).
@@ -322,21 +323,28 @@ func roof_run_seconds() -> float:
 
 
 ## Roof `roof`'s notch for the bait (see the header), once step `step`, from it, is planned: its outer lane on a seeded
-## side, eaten from notch_back before the step's hut to its end; none on the street, nor where it would start less than
-## NOTCH_AFTER past where the roof's run begins.
+## side, eaten from notch_back before the step's hut to its end; none before FIRST_NOTCH, nor where it would start less
+## than notch_after() past where the roof's run begins.
 func _notch(roof: Roof, step: Step) -> void:
 	roof.notch_lane = -1
 	roof.notch_from = FAR
-	if roof.index <= 0 or step.top:
+	if roof.index < FIRST_NOTCH or step.top:
 		return
 	var into: Step = steps[roof.index - 1]
 	var at: float = step.hut_start - tuning.notch_back
 	var begins: float = maxf(maxf(into.free_at, into.land), roof.full_from())
-	if at < begins + NOTCH_AFTER:
+	if at < begins + notch_after():
 		return
 	_rng.seed = hash([_seed, "notch", roof.index])
 	roof.notch_lane = 0 if _rng.randi() % 2 == 0 else lanes - 1
 	roof.notch_from = at
+
+
+## How far past where its run begins a roof's notch starts at the least (metres; task E5e-b3's review): a runner who
+## lands in the notch's lane, or first switches lanes there, has a reaction (MechaGuppyTuning.dodge_reaction), a lane
+## switch and dodge_margin to leave it before its edge. A roof with no room for that has no notch.
+func notch_after() -> float:
+	return (tuning.dodge_reaction + movement.lane_switch_time + tuning.dodge_margin) * speed
 
 
 ## Where the next step's hut would start if it were planned now (in any phase: the steps are as long in each; FAR once

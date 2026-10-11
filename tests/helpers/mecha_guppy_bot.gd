@@ -278,7 +278,8 @@ func _bait(p: Player, now: float) -> void:
 		return
 	var notch: int = roof.notch_lane
 	var plan: Dictionary = boss.pattern.bait_plan(boss.climb.steps[k], p.speed) if boss.pattern != null else {}
-	if plan.is_empty():
+	# No bait to lure (none planned, or the step already hit: its fallback came first).
+	if plan.is_empty() or boss.pattern.hit_on(k):
 		return
 	if not baits:
 		if p.lane == notch and p.distance < float(plan["lock_at"]) and bombs.spots_ahead(p.distance).is_empty() \
@@ -349,11 +350,11 @@ func _floor_beside(p: Player, lane: int) -> bool:
 
 
 ## Phase 1's and phase 2's bombs that can reach the runner (every volley's bombs and every bait's: the fallback's into the
-## chasm never can), from boss `boss`'s events through phase 2's end: {count: [p1, p2], steps: [p1, p2] (the baits, one
-## a step), step: [per step], second: [per second of the phase]}.
+## chasm never can), from boss `boss`'s events through phase 2's end: {count: [p1, p2], steps: [p1, p2] (the steps that
+## threw any), step: [per step], second: [per second of the phase]}.
 static func census(boss: MechaGuppy) -> Dictionary:
 	var count: Array[int] = [0, 0]
-	var steps: Array[int] = [0, 0]
+	var seen: Array[Dictionary] = [{}, {}]
 	var ends: Array[float] = [0.0, 0.0]
 	var begins: Array[float] = [0.0, 0.0]
 	for e: Dictionary in boss.events:
@@ -364,13 +365,15 @@ static func census(boss: MechaGuppy) -> Dictionary:
 			&"volley":
 				for spot: Dictionary in e["spots"]:
 					count[ph] += (spot["lanes"] as Array).size()
+				seen[ph][int(e["step"])] = true
 			&"bait_lock":
 				count[ph] += 1
-				steps[ph] += 1
+				seen[ph][int(e["step"])] = true
 			&"phase_end":
 				ends[ph] = float(e["t"])
 				if ph == 0:
 					begins[1] = float(e["t"])
+	var steps: Array[int] = [seen[0].size(), seen[1].size()]
 	var step: Array[float] = []
 	var second: Array[float] = []
 	for ph: int in 2:

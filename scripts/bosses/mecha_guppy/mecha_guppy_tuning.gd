@@ -154,9 +154,9 @@ extends Resource
 ## side with more lanes that don't, where Mecha Guppy rises to eat; the bomb comes down hit_back before that roof's
 ## front there (metres; the shark's head clear of the roof's face), into its open jaws: a hit, at most one a step and
 ## never on a step the runner fell. It threatens nobody, so it flies only hit_seconds, with its circle but no throw or
-## whistle (nothing to dodge): it goes in ahead of the runner, in view. With 2, a runner who never baits lands a hit
-## every third step.
-@export_range(0, 6) var fallback_after: int = 2
+## whistle (nothing to dodge): it goes in ahead of the runner, in view. With 1 (task E5e-b3's review: 2 dragged a fight
+## with no checkpoint out to about 5 minutes), a runner who never baits lands a hit every other step.
+@export_range(0, 6) var fallback_after: int = 1
 @export_range(6.5, 12.0, 0.25, "suffix:m") var hit_back: float = 6.8
 @export_range(0.5, 1.5, 0.05, "suffix:s") var hit_seconds: float = 0.65
 ## The fallback's breach: Mecha Guppy's head keeps this far clear of the lanes that lead up (metres; hit_spot places the

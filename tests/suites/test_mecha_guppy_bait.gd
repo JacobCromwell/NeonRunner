@@ -2,14 +2,16 @@ extends TestSuite
 ## Mecha Guppy's hits by baiting (GDD §10, the owner, October 11, 2026: Captain Cogs' bombs lock onto the runner's lane,
 ## and one dodged where the lane runs out falls past the edge into Mecha Guppy's jaws; a player who doesn't manage it
 ## still progresses, more slowly: Captain Cogs sometimes misses into the chasm anyway; task E5e-b3), on real physics:
-## - the bait at 3 lanes at 23.8 m/s and 6 lanes at 18 m/s (MechaGuppyBot baiting): its circle shows only on the floor
-##   where the bomb will land, following the runner's lane while it seeks (Captain Cogs' aim heard as it begins), and
-##   locks with the throw onto the lane the runner is in then; locked in the notch's lane, the bomb goes into the jaws
-##   as it passes the roof's top (a hit); the runner left the notch's lane in time, after a reaction;
+## - the bait at 3 lanes at 23.8 m/s and 6 lanes at 18 m/s (MechaGuppyBot baiting), from the first notch on (roof
+##   MechaGuppyClimb.FIRST_NOTCH): its aim stands where the bomb will land, following the runner's lane while it seeks
+##   (Captain Cogs' aim heard as it begins), and locks with the throw onto the lane the runner is in then; locked in the
+##   notch's lane, the bomb goes into the jaws as it passes the roof's top (a hit); the runner left the notch's lane in
+##   time, after a reaction;
 ## - a runner who never baits (MechaGuppyBot.baits off, keeping out of the notch's lane while a bait can lock there)
 ##   still wins phases 1 and 2 by the fallback, at 3, 5 and 6 lanes and both speeds: every hit Captain Cogs' miss into
-##   the chasm, each once fallback_after steps in a row have gone by without one, and slower than a runner who baits
-##   (both bots' phase times printed), never hurt, never with a circle in its lane and no floor to switch to;
+##   the chasm, each once fallback_after steps in a row have gone by without one, no bait on a step already hit (a hit
+##   at most one a step), and slower than a runner who baits (SLOWER; both bots' phase times printed), never hurt, never
+##   with a circle in its lane and no floor to switch to;
 ## - no hit on a step the runner fell, even if the grapple saved them: a runner who lures the bait and then runs off
 ##   the notch's edge (saved) gets no hit from the bomb that falls past it, and a wrong drop (saved) on a step whose
 ##   fallback was due gets none either;
@@ -23,6 +25,9 @@ const LANES: Array[int] = [3, 5, 6]
 const SPEEDS: Array[float] = [18.0, 23.8]
 ## A player's reaction (the suites' bots' usual 0.35 s).
 const REACTION: float = 0.35
+## A runner who never baits takes at least this many times as long over each phase (with fallback_after 1: a hit every
+## other step, against a hit a step from the first notch on).
+const SLOWER: float = 1.5
 
 var sim: RunSim
 var def: BossDef
@@ -112,7 +117,7 @@ func _test_bait(lanes: int, speed: float) -> void:
 	var st: Dictionary = {"seek_frames": 0}
 	await _run(world, 80.0, func() -> bool: return boss.phase_index >= 1, func() -> void:
 		bot.step()
-		var ring: MeshInstance3D = bombs.seek_ring()
+		var ring: Node3D = bombs.seek_ring()
 		if ring != null:
 			st["seek_frames"] = int(st["seek_frames"]) + 1
 			var bait: Dictionary = bombs.bait
@@ -193,11 +198,20 @@ func _test_both_bots(lanes: int, speed: float) -> void:
 			check(kinds_ok and fallbacks.size() == 10 and cadence and int(boss.bombs.stats["baited"]) == 0,
 				"every hit Captain Cogs' miss into the chasm, each after %d steps in a row without a hit (%d hits, %d fallbacks) %s"
 				% [mt.fallback_after, into.size(), fallbacks.size(), tag])
+			var hit_steps: Dictionary = {}
+			for e: Dictionary in fallbacks:
+				hit_steps[int(e["step"])] = true
+			var doubled: Array[int] = []
+			for e: Dictionary in _events(boss, &"bait_seek"):
+				if hit_steps.has(int(e["step"])):
+					doubled.append(int(e["step"]))
+			check(doubled.is_empty(), "no bait on a step its fallback already hit: a hit at most one a step %s%s"
+				% [tag, "" if doubled.is_empty() else " (steps %s)" % [doubled]])
 		await sim.free_world(world)
 	var bait_t: Array = times[0]
 	var miss_t: Array = times[1]
-	var slower: bool = bait_t.size() >= 2 and miss_t.size() >= 2 and float(miss_t[0]) > float(bait_t[0]) * 1.8 \
-		and float(miss_t[1]) > float(bait_t[1]) * 1.8
+	var slower: bool = bait_t.size() >= 2 and miss_t.size() >= 2 and float(miss_t[0]) > float(bait_t[0]) * SLOWER \
+		and float(miss_t[1]) > float(bait_t[1]) * SLOWER
 	check(slower, "a runner who doesn't bait progresses, more slowly: phase 1 ends at %s s against %s s, phase 2 at %s s against %s s (%d lanes, %.1f m/s)"
 		% ["%.1f" % float(miss_t[0]) if miss_t.size() > 0 else "-", "%.1f" % float(bait_t[0]) if bait_t.size() > 0 else "-",
 			"%.1f" % float(miss_t[1]) if miss_t.size() > 1 else "-", "%.1f" % float(bait_t[1]) if bait_t.size() > 1 else "-", lanes, speed])
@@ -225,11 +239,14 @@ func _test_fall_in_notch() -> void:
 		if fell_lane[0] < 0 and not _events(boss, &"fell").is_empty():
 			fell_lane[0] = p.lane)
 	var falls: Array[Dictionary] = _events(boss, &"fell")
-	var locks: Array[Dictionary] = _events(boss, &"bait_lock")
+	var lock: Dictionary = {}
+	for e: Dictionary in _events(boss, &"bait_lock"):
+		if int(e["step"]) == 1:
+			lock = e
 	var step1_hit: bool = false
 	for e: Dictionary in _events(boss, &"hit"):
-		step1_hit = step1_hit or (float(e["t"]) > float(locks[1]["t"]) and float(e["t"]) < float(locks[1]["t"]) + 2.0 if locks.size() > 1 else false)
-	check(p.alive and falls.size() == 1 and int(falls[0]["step"]) == 1 and locks.size() >= 2 and bool(locks[1]["baited"]) and not step1_hit
+		step1_hit = step1_hit or (not lock.is_empty() and float(e["t"]) > float(lock["t"]) and float(e["t"]) < float(lock["t"]) + 2.0)
+	check(p.alive and falls.size() == 1 and int(falls[0]["step"]) == 1 and not lock.is_empty() and bool(lock["baited"]) and not step1_hit
 		and boss.pattern.fell_on(1) and int(boss.bombs.stats["chasm"]) >= 1,
 		"a runner who lured the bait and ran off the notch's edge (the grapple saving them) gets no hit from it: the bomb falls past (%d falls, %d hits)"
 		% [falls.size(), boss.hits_landed])
@@ -250,7 +267,9 @@ func _test_wrong_drop_on_fallback() -> void:
 	var p: Player = world.player
 	p.grapples = 1
 	var mt: MechaGuppyTuning = boss.tuning
-	var due: int = mt.fallback_after
+	# The first bait comes on step FIRST_NOTCH - 1 (its roof's notch): a runner who never baits has its fallback due on
+	# the step fallback_after later.
+	var due: int = MechaGuppyClimb.FIRST_NOTCH - 1 + mt.fallback_after
 	var bot := MechaGuppyBot.new(boss)
 	bot.reaction = REACTION
 	bot.baits = false
@@ -276,8 +295,8 @@ func _test_notch_side() -> void:
 	var boss: MechaGuppy = pair[1]
 	var c: MechaGuppyClimb = boss.climb
 	var p: Player = world.player
-	c.plan_until(600.0, 0)
-	var roof: MechaGuppyClimb.Roof = c.roofs[1]
+	c.plan_until(800.0, 0)
+	var roof: MechaGuppyClimb.Roof = c.roofs[MechaGuppyClimb.FIRST_NOTCH]
 	var notch: int = roof.notch_lane
 	var inner: int = notch + (1 if notch == 0 else -1)
 	var events: Array[StringName] = []
@@ -330,15 +349,16 @@ func _test_no_notch() -> void:
 	var boss: MechaGuppy = pair[1]
 	var bot := MechaGuppyBot.new(boss)
 	bot.reaction = REACTION
-	var due: int = t.fallback_after
+	# The first roof that could have had the bait is roof FIRST_NOTCH: from its step on, each step without one counts.
+	var due: int = MechaGuppyClimb.FIRST_NOTCH - 1 + t.fallback_after
 	await _run(world, 90.0, func() -> bool: return boss.hits_landed >= 2, bot.step)
 	var notched: int = 0
 	for r: MechaGuppyClimb.Roof in boss.climb.roofs:
 		notched += 1 if r.notched() else 0
 	var fallbacks: Array[Dictionary] = _events(boss, &"fallback")
 	check(world.player.alive and notched == 0 and _events(boss, &"bait_seek").is_empty() and boss.hits_landed >= 2
-		and fallbacks.size() >= 2 and int(fallbacks[0]["step"]) == due and int(fallbacks[1]["step"]) == 2 * due + 1,
+		and fallbacks.size() >= 2 and int(fallbacks[0]["step"]) == due and int(fallbacks[1]["step"]) == due + t.fallback_after + 1,
 		"with no room for a notch on any roof (roof_seconds %.1f s, notch_back %.0f m), no bait is offered and the fallback still brings the hits, every %d steps (%d roofs notched, fallbacks on steps %s, %d hits)"
-		% [t.roof_seconds, t.notch_back, due + 1, notched, fallbacks.map(func(e: Dictionary) -> int: return int(e["step"])),
+		% [t.roof_seconds, t.notch_back, t.fallback_after + 1, notched, fallbacks.map(func(e: Dictionary) -> int: return int(e["step"])),
 			boss.hits_landed])
 	await sim.free_world(world)
