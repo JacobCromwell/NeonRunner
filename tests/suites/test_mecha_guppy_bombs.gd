@@ -9,7 +9,9 @@ extends TestSuite
 ##   both speeds, in both phases (phase 1's spot on the higher roof, phase 2's landing spot and roof spot): a way through
 ##   each volley, its every lane on floor at each spot and every lane crossed to get there too (never off a pier's side
 ##   into the chasm), every bomb on a roof's top with no hut over or near it, each spot leaving a lane free, and a roof's
-##   spot never thrown before the runner can switch lanes there (Step.free_at: task E5e-b2's review, the pier trap);
+##   spot never thrown before the runner can switch lanes there (Step.free_at: task E5e-b2's review, the pier trap); no
+##   volley on a roof with a floor bite and a bait, and the first tower's only past its floor bite, thrown once the
+##   runner is past it (task E5e-f);
 ## - a bomb's fuse sparks as it flies, steady with Reduced flashing;
 ## - real contact only: a blast kills a runner in its lane and spares one in the next; it's an enemy attack (armor and
 ##   the shield block it, the dash passes through, claws don't help) too tall to jump, its hitbox smaller than its

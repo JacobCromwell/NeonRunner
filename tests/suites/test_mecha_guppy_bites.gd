@@ -18,6 +18,8 @@ extends TestSuite
 ##   only once the hut's deadline is past (every rider committed: it never tells which lanes lead up), with the rider in
 ##   a lane that leads up; its jaws are never over a lane that leads up above the floor's level; while it lurks before
 ##   one nothing of it shows; each is warned by the rumble;
+## - (Mecha Guppy's floor bite, task E5e-f, rumbles as it rises and crunches as it snaps too, and is counted so; its jaws
+##   come up through the roof the runner runs on, so the checks above leave it to test_mecha_guppy_floor_bite;)
 ## - a retry bites the same.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
