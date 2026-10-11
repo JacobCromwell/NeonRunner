@@ -2,10 +2,13 @@ extends TestSuite
 ## Mecha Guppy and Captain Cogs' climb on real physics (GDD §10; task E5e-b1; its data, plan and pieces:
 ## test_mecha_guppy.gd), at 3, 5 and 6 lanes, at the reference 18 m/s and the Beach's 23.8 m/s, without god mode:
 ## - a runner who reads the climb (MechaGuppyBot: the lanes that lead up read off the hut and the roofs, a lane switch
-##   at a time) and dodges Captain Cogs' bombs (a way through their circles) climbs through phases 1 and 2 without a fall
-##   or a hit taken, landing the hits as it climbs (each step's bomb falling into Mecha Guppy's jaws: task E5e-b2), into
-##   phase 3's top, which ends the fight; the phases' times are printed (the clean bot's); phase 2's climb is 15-25%
-##   faster, measured (the climb alone: the captain and the shark off, a stand-in hit on each landing);
+##   at a time) and dodges Captain Cogs' bombs (a way through their circles, a reaction after they show) climbs through
+##   phases 1 and 2 without a fall or a hit taken, landing the hits as it climbs by baiting (each step's bait locked in
+##   the notch's lane, falling past its edge into Mecha Guppy's jaws: task E5e-b3), into phase 3's top, which ends the
+##   fight; never a circle in its lane while every lane it could switch to has no floor (task E5e-b2's review, the pier
+##   trap); phase 2 has more bombs to dodge than phase 1, a step and a second; the phases' times and the bombs are
+##   printed (the baiting bot's; the bot that doesn't bait: test_mecha_guppy_bait.gd); phase 2's climb is 15-25% faster,
+##   measured (the climb alone: the captain and the shark off, a stand-in hit on each landing);
 ## - the worst case, on physics: before every step's pads the runner goes to the lane farthest from the lanes that
 ##   lead up and jumps right before the pads (the latest anyone flips up), dashing as it jumps too, then reads only
 ##   read_seconds after settling on the hut: it still makes every step, with time to spare (the margin, measured);
@@ -13,7 +16,7 @@ extends TestSuite
 ##   lane ends, at both cues, at 3 and 6 lanes and both speeds; the grapple saves it up onto the higher roof, into
 ##   its nearest lane that leads up (its rope from the lifted runner to the roof's edge), and a revive after the fall
 ##   goes there too;
-## - phase changes: the first steps planned in phase 2 (closer) and phase 3's top come right after the steps already
+## - phase changes: the first steps planned in phase 2 (higher) and phase 3's top come right after the steps already
 ##   in sight, and nothing in sight changes; the top's arrival is logged (top_reached), the stub's minute and the
 ##   waterfall's fade start there;
 ## - no escalation: through a long phase 1 with no hits the climb keeps the same rhythm; a retry plays the same; the
@@ -115,10 +118,12 @@ func _run(world: RunWorld, seconds: float, done: Callable, each: Callable = Call
 
 # --- Through phases 1 and 2 -------------------------------------------------------------------
 
-## A runner who reads the climb and dodges Captain Cogs' bombs climbs through phases 1 and 2 (each step's bomb falling into
-## Mecha Guppy's jaws: a hit) into phase 3's top, which ends the fight, without a fall or a hit taken, at every lane count
-## and both speeds; the phases' times are printed (the clean bot's: GDD §10, the fight may run long but shouldn't drag).
-## Then phase 2's faster climb, measured: eight steps planned in each phase, landing to landing.
+## A runner who reads the climb, dodges Captain Cogs' bombs and baits them climbs through phases 1 and 2 (each step's bait
+## falling into Mecha Guppy's jaws: a hit) into phase 3's top, which ends the fight, without a fall or a hit taken, at
+## every lane count and both speeds, never with a circle in its lane and no floor to switch to; phase 2 has more bombs
+## to dodge (MechaGuppyBot, the bombs suite's census); the phases' times are printed (the baiting bot's: GDD §10, the
+## fight may run long but shouldn't drag). Then phase 2's faster climb, measured: eight steps planned in each phase,
+## landing to landing.
 func _test_climb_through() -> void:
 	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.top_seconds = 8.0)
 	for speed: float in SPEEDS:
@@ -134,7 +139,12 @@ func _test_climb_through() -> void:
 			p.died.connect(func(c: String) -> void: cause[0] = c)
 			var hurt: Array[int] = [0]
 			p.item_used.connect(func(_item: StringName) -> void: hurt[0] += 1)
-			await _run(world, 240.0, func() -> bool: return boss.is_defeated(), bot.step)
+			var traps: Array[String] = []
+			await _run(world, 240.0, func() -> bool: return boss.is_defeated(), func() -> void:
+				bot.step()
+				var trap: String = MechaGuppyBot.circle_trap(boss)
+				if trap != "" and traps.size() < 3:
+					traps.append(trap))
 			check(boss.is_defeated() and p.alive, "a runner who reads the climb and dodges the bombs makes it through phases 1 and 2 and phase 3's top %s%s"
 				% [tag, "" if p.alive else ": %s at %.0f m, %.1f s" % [cause[0], p.distance, boss.fight_time()]])
 			check(bot.min_slack >= REACTION, "with time to spare on every hut (at least %.2f s) %s" % [bot.min_slack, tag])
@@ -148,12 +158,26 @@ func _test_climb_through() -> void:
 				"4 bomb hits end phase 1, 6 more phase 2 (each a bomb into the shark's jaws), and phase 3's top runs out (%d phase ends, %d hits; phases end at %s s) %s"
 				% [ends.size(), hits.size(), times, tag])
 			check(hurt[0] == 0, "the clean runner is never hit (no item used) %s" % tag)
+			check(traps.is_empty(), "never a circle in the runner's lane while every lane they could switch to has no floor %s%s"
+				% [tag, "" if traps.is_empty() else ": " + "; ".join(traps)])
+			var baited: bool = true
+			for e: Dictionary in _events(boss, &"shark_hit"):
+				baited = baited and int(e["kind"]) == MechaGuppyBombs.Kind.BAIT
+			check(baited and bot.baited >= 10 and _events(boss, &"fallback").is_empty(),
+				"every hit is a bait: the bomb locked in the notch's lane and dodged before its edge, falling into the jaws (%d baited) %s"
+				% [bot.baited, tag])
+			var census: Dictionary = MechaGuppyBot.census(boss)
+			var step_n: Array = census["step"]
+			var second_n: Array = census["second"]
+			check(float(step_n[1]) > float(step_n[0]) and float(second_n[1]) > float(second_n[0]),
+				"GDD §10: phase 2 has more bombs to dodge (the ones that can reach the runner, the bait's included): %.2f a step against %.2f, %.3f a second against %.3f %s"
+				% [step_n[1], step_n[0], second_n[1], second_n[0], tag])
 			var stats: Dictionary = boss.bombs.stats
-			print("  Mecha Guppy and Captain Cogs %s, the clean bot: phase 1 ends at %s s, phase 2 at %s s (%.1f s in phase 2), %d roofs, %.0f m up; %d bombs (%d volleys of %d spots, %d on huts, %d into the shark), %d dodging switches, %d bites; least time to spare on a hut %.2f s"
+			print("  Mecha Guppy and Captain Cogs %s, the baiting bot: phase 1 ends at %s s, phase 2 at %s s (%.1f s in phase 2), %d roofs, %.0f m up; %d bombs (%d volleys of %d spots, %d baits, %d into the shark); to dodge %.2f a step and %.3f a second in phase 1, %.2f and %.3f in phase 2; %d dodging switches, %d bites; least time to spare on a hut %.2f s"
 				% [tag, times[0] if times.size() > 0 else "-", times[1] if times.size() > 1 else "-",
 					float(ends[1]["t"]) - float(ends[0]["t"]) if ends.size() > 1 else NAN, bot.steps_climbed, p.floor_y,
-					int(stats["thrown"]), int(stats["volleys"]), int(stats["spots"]), int(stats["hut"]), int(stats["hit"]),
-					bot.dodge_moves, boss.shark.bites, bot.min_slack])
+					int(stats["thrown"]), int(stats["volleys"]), int(stats["spots"]), int(stats["baits"]), int(stats["hit"]),
+					step_n[0], second_n[0], step_n[1], second_n[1], bot.dodge_moves, boss.shark.bites, bot.min_slack])
 			await sim.free_world(world)
 			check(await _phase_rates(lanes, speed), "phase 2's climb is faster as planned %s" % tag)
 
@@ -346,7 +370,8 @@ func _wrong_drop(c: Dictionary) -> void:
 
 ## A phase change reaches the climb with the first step the runner can't see yet: after the third landing in phase 1
 ## four hits bring phase 2, after the third in phase 2 six more bring phase 3. Every step in sight at the change stays
-## as it was, the next one is phase 2's (closer) or phase 3's top, and no step is ever planned within sight (its hut past
+## as it was (its roofs' notches too), the next one is phase 2's (higher) or phase 3's top, and no step is ever planned
+## within sight (its hut past
 ## the edge of sight when it's planned). The runner's arrival on the top is logged (top_reached); the waterfall starts
 ## fading then, and the stub's minute is counted from then.
 func _test_phase_changes() -> void:
@@ -410,11 +435,11 @@ func _test_phase_changes() -> void:
 				else:
 					next_ok = false
 			check(kept, "nothing in sight changes when the phase does %s" % tag)
-			check(next_ok, "the first step past what's in sight is the new phase's: phase 2's closer step, phase 3's top %s" % tag)
+			check(next_ok, "the first step past what's in sight is the new phase's: phase 2's higher step, phase 3's top %s" % tag)
 			check(bool(st["in_sight_ok"]), "no step is ever planned within sight %s" % tag)
 			var delay: float = float(st["first2_t"]) - float((changes[0] as Dictionary)["t"]) if not changes.is_empty() else INF
 			check(float(st["first2_t"]) > 0.0 and delay < 20.0,
-				"phase 2's first (closer) step's pads come %.1f s after the phase begins %s" % [delay, tag])
+				"phase 2's first (higher) step's pads come %.1f s after the phase begins %s" % [delay, tag])
 			var reached: Array[Dictionary] = _events(boss, &"top_reached")
 			var over: Array[Dictionary] = _events(boss, &"top_over")
 			check(reached.size() == 1 and over.size() == 1
@@ -424,7 +449,7 @@ func _test_phase_changes() -> void:
 			check(float(st["top_shown"]) > 0.95 and float(st["after_top"]) >= 0.0 and float(st["after_top"]) < 0.01,
 				"the waterfall stays until the top is reached, then fades (%.2f then %.2f) %s" % [st["top_shown"], st["after_top"], tag])
 			var top_after: float = float(reached[0]["t"]) - float((changes[1] as Dictionary)["t"]) if reached.size() == 1 and changes.size() == 2 else NAN
-			print("  Mecha Guppy's phase changes %s: phase 2's first closer step %.1f s after it begins, the top reached %.1f s after phase 3 begins (%d steps taken back and planned again)"
+			print("  Mecha Guppy's phase changes %s: phase 2's first higher step %.1f s after it begins, the top reached %.1f s after phase 3 begins (%d steps taken back and planned again)"
 				% [tag, delay, top_after, stairs.replanned])
 			await sim.free_world(world)
 
@@ -443,7 +468,9 @@ func _in_sight(boss: MechaGuppy, edge: float) -> Dictionary:
 	for r: MechaGuppyClimb.Roof in boss.climb.roofs:
 		if r.index > 0 and r.first_start() >= edge:
 			break
-		roofs.append([r.index, r.top, r.starts.duplicate()])
+		# A notch in sight (one that may yet be planned again starts no nearer than notch_back short of the edge).
+		var notch: Array = [r.notch_lane, r.notch_from] if r.notched() and r.notch_from < edge - boss.tuning.notch_back else []
+		roofs.append([r.index, r.top, r.starts.duplicate(), notch])
 	return {"steps": steps, "roofs": roofs, "last": last}
 
 
@@ -463,6 +490,9 @@ func _same_as_seen(boss: MechaGuppy, seen: Dictionary) -> bool:
 		var r: MechaGuppyClimb.Roof = boss.climb.roofs[i]
 		if not (is_equal_approx(r.top, entry[1]) and r.starts == entry[2]):
 			return false
+		var notch: Array = entry[3]
+		if not notch.is_empty() and (r.notch_lane != int(notch[0]) or not is_equal_approx(r.notch_from, float(notch[1]))):
+			return false
 	return true
 
 
@@ -481,7 +511,7 @@ func _test_rhythm_and_retry() -> void:
 		bot.reaction = REACTION
 		var landings: PackedFloat32Array = PackedFloat32Array()
 		var state: Dictionary = {"climbed": 0, "visited": 0}
-		await _run(world, 130.0, func() -> bool: return false, func() -> void:
+		await _run(world, 200.0, func() -> bool: return false, func() -> void:
 			bot.step()
 			state["visited"] = maxi(int(state["visited"]), boss.stairs.visited)
 			if bot.steps_climbed > int(state["climbed"]):

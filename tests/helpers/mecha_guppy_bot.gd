@@ -161,8 +161,10 @@ func _prepare(p: Player, next: MechaGuppyClimb.Step, now: float) -> void:
 				far = lane
 		_prepared = next.index
 		_set_target(far, "the worst case: the lane farthest from the lanes that lead up", now)
-	if _jumped != next.index and p.grounded and next.pad - p.distance > 0.0 \
-			and next.pad - p.distance <= p.speed / Engine.physics_ticks_per_second * 1.5:
+	# The last frame before the pads: its hurtbox's front (where the pad strip catches it) short of them by at most a
+	# frame and a half's run.
+	var gap: float = next.pad - p.distance - boss.world.tuning.hurtbox_size.z * 0.5
+	if _jumped != next.index and p.grounded and gap > 0.0 and gap <= p.speed / Engine.physics_ticks_per_second * 1.5:
 		_jumped = next.index
 		p.press(&"jump")
 		log.append({"t": boss.fight_time(), "action": &"jump", "why": "right before the pads (the latest flip)"})
@@ -263,7 +265,7 @@ func _dodge(p: Player, now: float) -> void:
 ## locks; without `baits`, out of the notch's lane (if it's there) before the bait can lock in it.
 func _bait(p: Player, now: float) -> void:
 	var bombs: MechaGuppyBombs = boss.bombs
-	if bombs == null:
+	if bombs == null or not boss.attacks_live():
 		return
 	var bait: Dictionary = bombs.bait
 	var k: int = boss.climb.step_index_at(p.distance)
@@ -291,9 +293,12 @@ func _bait(p: Player, now: float) -> void:
 		if p.lane == notch and bombs.clock - float((bait["drop"] as Dictionary).get("release", bombs.clock)) >= dodge_reaction - 0.0001:
 			_set_target(_inner(notch), "the bait is thrown: out of the notch's lane before its edge", now)
 		return
-	# Not yet locked: once the volley's spots are behind it (and it has reacted), into the notch's lane, while the bait
-	# can still lock there.
+	# Not yet locked: once this roof's volley is thrown and its spots are behind it (and it has reacted), into the notch's
+	# lane, while the bait can still lock there.
 	if not bombs.spots_ahead(p.distance).is_empty() or p.distance >= float(plan["lock_at"]) or _lured == k:
+		return
+	var volley_at: float = boss.pattern.volley_lock(boss.climb.steps[k], p.speed)
+	if volley_at < MechaGuppyClimb.FAR * 0.5 and p.distance < volley_at + 0.5:
 		return
 	if _lure_step != k:
 		_lure_step = k
@@ -338,6 +343,65 @@ func _floor_beside(p: Player, lane: int) -> bool:
 		return false
 	var there: float = climb.floor_at(lane, p.distance, p.position.y + 0.3)
 	return not is_nan(there) and absf(there - top) < 0.05
+
+
+## Phase 1's and phase 2's bombs that can reach the runner (every volley's bombs and every bait's: the fallback's into the
+## chasm never can), from boss `boss`'s events through phase 2's end: {count: [p1, p2], steps: [p1, p2] (the baits, one
+## a step), step: [per step], second: [per second of the phase]}.
+static func census(boss: MechaGuppy) -> Dictionary:
+	var count: Array[int] = [0, 0]
+	var steps: Array[int] = [0, 0]
+	var ends: Array[float] = [0.0, 0.0]
+	var begins: Array[float] = [0.0, 0.0]
+	for e: Dictionary in boss.events:
+		var ph: int = int(e.get("phase", 0))
+		if ph > 1:
+			continue
+		match e["event"]:
+			&"volley":
+				for spot: Dictionary in e["spots"]:
+					count[ph] += (spot["lanes"] as Array).size()
+			&"bait_lock":
+				count[ph] += 1
+				steps[ph] += 1
+			&"phase_end":
+				ends[ph] = float(e["t"])
+				if ph == 0:
+					begins[1] = float(e["t"])
+	var step: Array[float] = []
+	var second: Array[float] = []
+	for ph: int in 2:
+		step.append(float(count[ph]) / maxf(float(steps[ph]), 1.0))
+		second.append(float(count[ph]) / maxf(ends[ph] - begins[ph], 0.001))
+	return {"count": count, "steps": steps, "step": step, "second": second}
+
+
+## Task E5e-b2's review, the pier trap: why a bomb's circle shows in the runner's lane while every lane they could switch
+## to has no floor (on a floor, or in the air over one; on a hut a switch out of its lanes is only refused), or "". The
+## bait's circle following them counts too.
+static func circle_trap(boss: MechaGuppy) -> String:
+	var world: RunWorld = boss.world
+	var p: Player = world.player
+	if p == null or not p.alive or p.surface == Player.Surface.CEILING or boss.bombs == null:
+		return ""
+	var shown: bool = boss.bombs.seek_ring() != null and int(boss.bombs.bait.get("lane", -1)) == p.lane
+	for d: Dictionary in boss.bombs.drops():
+		var circle: MeshInstance3D = d["circle"]
+		if not bool(d["landed"]) and circle != null and is_instance_valid(circle) and circle.visible and int(d["lane"]) == p.lane:
+			shown = true
+	if not shown:
+		return ""
+	var climb: MechaGuppyClimb = boss.climb
+	var top: float = climb.floor_at(p.lane, p.distance, p.position.y + 0.3)
+	if is_nan(top):
+		return ""
+	for lane: int in [p.lane - 1, p.lane + 1]:
+		if lane < 0 or lane >= world.geo.lane_count:
+			continue
+		var there: float = climb.floor_at(lane, p.distance, p.position.y + 0.3)
+		if not is_nan(there) and absf(there - top) < 0.05:
+			return ""
+	return "a circle in the runner's lane %d with no floor beside them at %.0f m" % [p.lane, p.distance]
 
 
 ## The lanes that lead up from the hut a rider `p` is on, as the hut and the roofs show them (physics rays on their

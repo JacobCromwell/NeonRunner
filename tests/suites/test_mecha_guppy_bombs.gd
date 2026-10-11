@@ -524,7 +524,7 @@ func _test_fight(lanes: int, speed: float) -> void:
 			per_phase[int(e["phase"])] += 1
 	check(ends.size() >= 2 and per_phase[0] == 4 and per_phase[1] == 6, "4 hits end phase 1, 6 phase 2 (%s) %s" % [str(per_phase), tag])
 	# Phase 2's more bombs (GDD §10): the bombs that can reach the runner (the volleys' and the baits'), a step and a second.
-	var census: Dictionary = census_of(boss)
+	var census: Dictionary = MechaGuppyBot.census(boss)
 	check(float(census["step"][1]) > float(census["step"][0]) and float(census["second"][1]) > float(census["second"][0]),
 		"phase 2 has more bombs to dodge than phase 1: %.2f a step against %.2f, %.3f a second against %.3f %s"
 		% [census["step"][1], census["step"][0], census["second"][1], census["second"][0], tag])
@@ -533,37 +533,6 @@ func _test_fight(lanes: int, speed: float) -> void:
 			int(bombs.stats["thrown"]), census["step"][0], census["second"][0], census["step"][1], census["second"][1],
 			int(bombs.stats["hit"])])
 	await sim.free_world(world)
-
-
-## Phase 1's and phase 2's bombs that can reach the runner (every volley's bombs and every bait's: the fallback's into the
-## chasm never can), from boss `boss`'s events through phase 2's end: {count: [p1, p2], steps: [p1, p2] (the baits, one
-## a step), step: [per step], second: [per second of the phase]}.
-static func census_of(boss: MechaGuppy) -> Dictionary:
-	var count: Array[int] = [0, 0]
-	var steps: Array[int] = [0, 0]
-	var ends: Array[float] = [0.0, 0.0]
-	var begins: Array[float] = [0.0, 0.0]
-	for e: Dictionary in boss.events:
-		var ph: int = int(e.get("phase", 0))
-		if ph > 1:
-			continue
-		match e["event"]:
-			&"volley":
-				for spot: Dictionary in e["spots"]:
-					count[ph] += (spot["lanes"] as Array).size()
-			&"bait_lock":
-				count[ph] += 1
-				steps[ph] += 1
-			&"phase_end":
-				ends[ph] = float(e["t"])
-				if ph == 0:
-					begins[1] = float(e["t"])
-	var step: Array[float] = []
-	var second: Array[float] = []
-	for ph: int in 2:
-		step.append(float(count[ph]) / maxf(float(steps[ph]), 1.0))
-		second.append(float(count[ph]) / maxf(ends[ph] - begins[ph], 0.001))
-	return {"count": count, "steps": steps, "step": step, "second": second}
 
 
 # --- No escalation, a retry -----------------------------------------------------------------------

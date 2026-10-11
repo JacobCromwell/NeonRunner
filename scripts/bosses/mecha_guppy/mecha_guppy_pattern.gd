@@ -289,6 +289,16 @@ func _volley(step: MechaGuppyClimb.Step, p: Player) -> void:
 	boss.bombs.throw_spots(MechaGuppyBombs.Kind.SPOT, step.index, plan["spots"], float(plan["s_open"]))
 
 
+## Where the runner is as step `step`'s volley is thrown (FAR with none: no room, or a phase without one).
+func volley_lock(step: MechaGuppyClimb.Step, speed: float) -> float:
+	if step.index + 1 >= climb.steps.size():
+		return MechaGuppyClimb.FAR
+	var ats: Array[float] = _volley_places(step, maxf(speed, 1.0))["ats"]
+	if ats.is_empty():
+		return MechaGuppyClimb.FAR
+	return maxf(ats[0] - (tuning.lock_seconds + tuning.arrival_seconds) * maxf(speed, 1.0), step.deadline)
+
+
 ## Step `step`'s volley on roof k + 1 as it would be thrown at a runner in `lane` at `d0` running at `speed` (the pattern
 ## throws it so; the tests plan it from every lane): {spots (MechaGuppyBombs.plan_spots'), s_open (where the runner can
 ## first switch to dodge it: off the hut's end in the air with a landing spot, else their landing or where the roof is
