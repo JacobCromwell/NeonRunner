@@ -270,6 +270,17 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   theirs, `CreditField.material_for`; a test checks every look the warm-up draws). Two standard materials
   that differ only in draw state (blend mode, depth draw or depth test) also get a shader each with the same
   code; the fireball's additive fire and see-through smoke still do (5 programs of City 1's load).
+  **Gradual behind the hint screen** (task PERF3): drawn in one frame, the load froze the screen for minutes
+  on Windows browsers. A level that waits on its hint screen (which hides the world) warms up gradually: the
+  camera draws only the stage's render layer (`ShaderWarmup.LAYER`, used by nothing else), and the stage's
+  samples and the world's shown nodes themselves join it a batch a drawn frame (one look new to the stage
+  each; nodes whose looks are drawn already come along; a quick frame doubles the batch, a slow one halves
+  it), so the screen keeps answering. The lights join the layer too (a camera lights with only the lights it
+  sees: without them every draw compiled a sunless variant the run never uses). Then the camera's cull mask
+  and every node's own layers come back, and `LevelRun.load_progress()` reaches 1: the hint screen's PLAY
+  reads "LOADING n%" until then (DESIGN-TBD). Same programs as all at once, spread out; a rebuilt level's
+  stage gives everything back at once (`cancel`), and a run begun early shows the rest (`finish_now`).
+  Quick play, which has no hint screen, still warms up all at once.
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
   to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.

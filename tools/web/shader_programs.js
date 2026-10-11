@@ -1,14 +1,15 @@
 // The web demo's shader programs (the load times on the web): serves an export locally, plays it in Chromium
 // through Playwright from the title into City 1 (Play: the City's intro, then the level's load and its
 // shader warm-up) and counts every shader program WebGL links on the way, with the ones linked more than
-// once (the same source twice: a duplicate compile). A browser compiles each program while the game waits,
-// and on Windows (ANGLE over Direct3D) one can take seconds, so the count is the web demo's load time.
+// once (the same source twice: a duplicate compile), and the longest frames (the game frozen while they
+// compile). A browser compiles each program while the game waits, and on Windows (ANGLE over Direct3D) one
+// can take seconds, so the count is the web demo's load time.
 //
 //   node tools/web/shader_programs.js [--export=exports/web] [--quiet=60] [--out=build/browser]
 //
 // It stops once no program has been linked for `--quiet` seconds after the level's load began (the
 // count is the same on a slow software renderer, only later). The programs, each with its time and source
-// hash, go to <out>/shader_programs.json. Needs Node and Playwright with its Chromium, as browser_check.js.
+// hash, and the frames over 0.3 s go to <out>/shader_programs.json. Needs Node and Playwright with its Chromium, as browser_check.js.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -54,6 +55,15 @@ function serve(dir) {
 // material's own uniforms (Godot's MaterialUniforms block) say which look it is.
 function hook() {
 	const programs = (window.__programs = []);
+	// Frames the page took longer than a third of a second over (the game frozen meanwhile).
+	const frames = (window.__frames = []);
+	let last = performance.now();
+	const tick = (now) => {
+		if (now - last > 300) frames.push({ at: last, ms: now - last });
+		last = now;
+		requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
 	const proto = WebGL2RenderingContext.prototype;
 	const sources = new WeakMap();
 	const attached = new WeakMap();
@@ -105,9 +115,11 @@ function hook() {
 	// The intro's programs come first, then a pause while it plays, then the level's: done once quiet
 	// after a second burst has begun.
 	let programs = [];
+	let frames = [];
 	for (;;) {
 		await page.waitForTimeout(5000);
 		programs = await page.evaluate(() => window.__programs);
+		frames = await page.evaluate(() => window.__frames);
 		const after = programs.filter((p) => p.at > playAt);
 		const now = await page.evaluate(() => performance.now());
 		const bursts = after.filter((p, i) => i > 0 && p.at - after[i - 1].at > BURST_GAP_MS).length + (after.length ? 1 : 0);
@@ -145,10 +157,16 @@ function hook() {
 		const look = after.find((p) => p.hash === h).look;
 		console.log(`  ${n}x ${h}  ${look || '(no material uniforms)'}`);
 	}
+	// The longest freezes after Play (a software renderer draws every frame slowly, so only the long ones
+	// say much; compare builds on one machine).
+	const long = frames.filter((f) => f.at > playAt).sort((a, b) => b.ms - a.ms).slice(0, 5);
+	console.log(`Longest frames after Play: ${long.map((f) => `${(f.ms / 1000).toFixed(1)} s at ${((f.at - playAt) / 1000).toFixed(1)} s`).join(', ') || 'none over 0.3 s'}`);
 	fs.mkdirSync(OUT, { recursive: true });
-	fs.writeFileSync(path.join(OUT, 'shader_programs.json'), JSON.stringify(programs.map((p) => ({
-		after_play_s: +((p.at - playAt) / 1000).toFixed(2), hash: p.hash, look: p.look,
-	})), null, 1));
+	const sinceplay = (t) => +((t - playAt) / 1000).toFixed(2);
+	fs.writeFileSync(path.join(OUT, 'shader_programs.json'), JSON.stringify({
+		programs: programs.map((p) => ({ after_play_s: sinceplay(p.at), hash: p.hash, look: p.look })),
+		long_frames: frames.map((f) => ({ after_play_s: sinceplay(f.at), seconds: +(f.ms / 1000).toFixed(2) })),
+	}, null, 1));
 	console.log(`Programs written to ${path.relative(ROOT, path.join(OUT, 'shader_programs.json'))}`);
 })().catch((e) => {
 	console.error(e);

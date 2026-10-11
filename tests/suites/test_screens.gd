@@ -105,6 +105,8 @@ func _test_intro() -> void:
 	check(intro != null and App.run.state == LevelRun.State.READY, "campaign starts on its level introduction")
 	if intro == null:
 		return
+	check(is_equal_approx(App.run.load_progress(), 1.0) and not intro.play_button.disabled and intro.play_button.text == "PLAY",
+		"a headless run has no shaders to load: PLAY at once")
 	_check_fits(intro, "level intro")
 	await _check_focus(intro, "level intro")
 	var world: RunWorld = App.run.world
@@ -245,6 +247,21 @@ func _test_hint_paging() -> void:
 		if count == 1:
 			check(screen.previous_button.disabled and screen.next_button.disabled,
 				"single-page intro disables both paging buttons")
+	App.show_title()
+	# Task PERF3: while the prepared level loads (its shaders compiling), PLAY reads LOADING and waits.
+	var progress: Array[float] = [0.4]
+	var loading := LevelIntroScreen.new()
+	loading.context = RunContext.new()
+	loading.context.config = LevelConfig.new()
+	loading.hints = [{"id": "gap", "text": "Jump the gap."}]
+	loading.load_progress = func() -> float: return progress[0]
+	App.show_screen(loading)
+	await _frames(2)
+	check(loading.play_button.disabled and loading.play_button.text == "LOADING 40%" and loading._hint_label.text == "Jump the gap.",
+		"while the level loads, PLAY reads LOADING 40% and waits; the hints can be read meanwhile")
+	progress[0] = 1.0
+	await _frames(2)
+	check(not loading.play_button.disabled and loading.play_button.text == "PLAY", "loaded, PLAY can be pressed")
 	App.show_title()
 
 

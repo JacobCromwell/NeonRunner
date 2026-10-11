@@ -16,7 +16,9 @@ extends TestSuite
 ##   enemy kind's look and each track piece, nothing in it colliding, lit or out of its tiny space, and no
 ##   physics object made or freed by a warm-up (the stage's track holders are made once and reused; the
 ##   enemy looks have none); no program compiled twice over (one Shader per shader code, the credits'
-##   too) and none for the hitbox view's debug boxes.
+##   too) and none for the hitbox view's debug boxes. Gradual behind the hint screen (PERF3): the
+##   camera on the stage's layer, samples and the world's own nodes joining it a batch a frame, then
+##   the camera's mask and the world's layers back, finished.
 ## - The frame monitor's tags, holds and summaries, and the frame graph's spikes and holds.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
@@ -52,6 +54,7 @@ func run() -> void:
 	await _test_freeze_never_chains()
 	_test_boss_props_share_rings()
 	await _test_shader_warmup()
+	await _test_gradual_warmup()
 	await _test_frame_monitor()
 	_test_frame_graph()
 	_test_summaries()
@@ -418,6 +421,86 @@ func _test_shader_warmup() -> void:
 		"the next level's stage dresses the same hazards and areas again (no physics object made or freed)")
 	again.queue_free()
 	camera.queue_free()
+	await sim.free_world(world)
+
+
+## Task PERF3: behind the hint screen the camera draws only the stage's layer, and the stage's samples and
+## the world's shown nodes (themselves, not stand-ins) join it a batch a drawn frame, grouped by the new
+## looks they bring; then the camera's cull mask and the world's layers come back, and DRAWN_FRAMES later
+## it's finished. Frames are stepped by hand (_on_drawn): a headless run draws none.
+func _test_gradual_warmup() -> void:
+	var level: Array = _level("city/1")
+	var world := sim.build_world(level[1], Loadout.full(App.catalog), level[2], level[0])
+	var camera := Camera3D.new()
+	tree.root.add_child(camera)
+	var mask: int = camera.cull_mask
+	var bit: int = ShaderWarmup.LAYER_BIT
+	var at_once := ShaderWarmup.new()
+	at_once.setup(world, camera)
+	var sample_keys: int = at_once.keys.size()
+	at_once.cancel()
+	var shown: Array[GeometryInstance3D] = []
+	var own_layers: Dictionary = {}
+	for node: Node in world.find_children("*", "GeometryInstance3D", true, false):
+		var g := node as GeometryInstance3D
+		if g.is_visible_in_tree():
+			shown.append(g)
+			own_layers[g] = g.layers
+	var sun := DirectionalLight3D.new()
+	tree.root.add_child(sun)
+	var sun_layers: int = sun.layers
+	var stage := ShaderWarmup.new()
+	var finished: Array[bool] = [false]
+	stage.finished.connect(func() -> void: finished[0] = true)
+	stage.setup(world, camera, true)
+	var samples: Array[Node] = stage.find_children("*", "GeometryInstance3D", true, false)
+	check(sun.layers & bit != 0,
+		"the lights join the stage's layer, so every draw compiles lit, as the run draws it (no sunless variants)")
+	check(camera.cull_mask == bit and mask & bit != 0 and stage._waiting.size() == stage._total - 1 and stage.progress() < 0.1,
+		"the camera draws only the stage's layer, and the first frame draws one group of %d" % stage._total)
+	check(stage.keys.size() == sample_keys and stage._total < shown.size() + samples.size(),
+		"it makes the same stand-ins as all at once (the world's shown nodes are drawn themselves), in fewer groups than nodes (%d for %d)" %
+		[stage._total, shown.size() + samples.size()])
+	check(samples.any(func(n: Node) -> bool: return (n as GeometryInstance3D).layers == 0),
+		"a sample waits off every layer until its turn")
+	var last: float = stage.progress()
+	var rising: bool = true
+	var frames: int = 0
+	while not stage._waiting.is_empty() and frames < 1000:
+		stage._on_drawn()
+		rising = rising and stage.progress() >= last
+		last = stage.progress()
+		frames += 1
+	check(shown.all(func(g: GeometryInstance3D) -> bool: return g.layers & bit != 0) and camera.cull_mask == bit and rising and frames > 2,
+		"a batch a frame (quick frames double it), every node the world shows among them (%d frames)" % frames)
+	stage._on_drawn()
+	check(camera.cull_mask == mask and shown.all(func(g: GeometryInstance3D) -> bool: return g.layers == own_layers[g])
+		and sun.layers == sun_layers and not stage.done,
+		"then the camera's cull mask, the world's own layers and the lights' come back")
+	for i: int in ShaderWarmup.DRAWN_FRAMES:
+		stage._on_drawn()
+	check(finished[0] and stage.done and is_equal_approx(stage.progress(), 1.0),
+		"and DRAWN_FRAMES frames later it's finished")
+	var early := ShaderWarmup.new()
+	early.setup(world, camera, true)
+	early.finish_now()
+	check(early._waiting.is_empty() and camera.cull_mask == mask and shown.all(func(g: GeometryInstance3D) -> bool: return g.layers == own_layers[g]),
+		"a run started early shows the rest at once and gives the camera and the world's layers back")
+	early.queue_free()
+	var replaced := ShaderWarmup.new()
+	replaced.setup(world, camera, true)
+	for i: int in 3:
+		replaced._on_drawn()
+	replaced.cancel()
+	var after := ShaderWarmup.new()
+	after.setup(world, camera, true)
+	after.cancel()
+	check(camera.cull_mask == mask and shown.all(func(g: GeometryInstance3D) -> bool: return g.layers == own_layers[g]),
+		"a rebuilt level's stage gives everything back at once, so the next finds the camera's own mask")
+	check(sun.layers == sun_layers, "and the lights' own layers")
+	sun.queue_free()
+	camera.queue_free()
+	await tree.process_frame
 	await sim.free_world(world)
 
 

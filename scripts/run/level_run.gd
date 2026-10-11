@@ -46,6 +46,9 @@ var encounter: BossEncounter
 var minigame: MiniGame
 var camera: RunCamera
 var hud: RunHud
+## The level's shader warm-up while it draws its looks (ShaderWarmup; gradual behind the hint screen); it
+## frees itself when it's done. Null in a headless run.
+var warmup: ShaderWarmup
 ## Screen-space speed lines (G2, Speed effects): a thin CanvasLayer, cheap enough to leave running.
 var speed_lines: SpeedLines
 var state: State = State.RUNNING
@@ -147,9 +150,14 @@ func _build() -> void:
 	camera.make_current()
 	camera.follow(world)
 	# Task PERF1: every look the level may show later is drawn once now, too small to see, so the renderer
-	# compiles its shaders during the load rather than in the frame it first appears.
+	# compiles its shaders during the load rather than in the frame it first appears. Task PERF3: behind the
+	# hint screen a few a frame, so it keeps answering while a browser compiles; PLAY waits (load_progress).
+	if is_instance_valid(warmup):
+		warmup.cancel()
+	warmup = null
 	if ShaderWarmup.needed():
-		ShaderWarmup.new().setup(world, camera)
+		warmup = ShaderWarmup.new()
+		warmup.setup(world, camera, not _start_immediately)
 	else:
 		ShaderWarmup.load_doodads(world)
 	if speed_lines == null:
@@ -207,10 +215,19 @@ func acknowledge_intro_hints(entries: Array[Dictionary]) -> void:
 		_hints.acknowledge(entries)
 
 
+## How far the prepared level's load is (its shader warm-up, ShaderWarmup.progress), 0 to 1: 1 once
+## nothing is left to prepare (always in a headless run).
+func load_progress() -> float:
+	return warmup.progress() if is_instance_valid(warmup) else 1.0
+
+
 ## Starts the already-built world; there is no second generation or loadout purchase.
 func begin() -> void:
 	if state != State.READY:
 		return
+	if is_instance_valid(warmup):
+		# Started before its warm-up was through (the hint screen waits for it): the rest compiles now.
+		warmup.finish_now()
 	_start_immediately = true
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	for entry: Dictionary in _intro_colliders:

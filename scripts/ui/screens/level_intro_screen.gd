@@ -8,6 +8,9 @@ signal hints_presented(entries: Array[Dictionary])
 
 var context: RunContext
 var hints: Array[Dictionary] = []
+## The prepared run's load, 0 to 1 (LevelRun.load_progress: its shaders compiling, task PERF3); PLAY
+## waits for 1. Unset: nothing to wait for.
+var load_progress: Callable
 var play_button: NeonButton
 var hint_list: VBoxContainer
 var page_index: int = 0
@@ -64,9 +67,11 @@ func _ready() -> void:
 		play_requested.emit())
 	content.add_child(play_button)
 	initial_focus = play_button
+	_show_load()
 
 
 func _process(_delta: float) -> void:
+	_show_load()
 	if is_visible_in_tree() and not hints.is_empty():
 		var entry: Dictionary = hints[page_index]
 		if not _presented.has(entry):
@@ -84,6 +89,17 @@ func _input(event: InputEvent) -> void:
 				change_page(-1 if action == &"move_left" else 1)
 			get_viewport().set_input_as_handled()
 			return
+
+
+## DESIGN-TBD (docs/questions/perf3.md): while the level loads, PLAY reads "LOADING n%" and can't be
+## pressed; the hints can be read meanwhile.
+func _show_load() -> void:
+	var progress: float = float(load_progress.call()) if load_progress.is_valid() else 1.0
+	var loading: bool = progress < 1.0
+	var label: String = "LOADING %d%%" % floori(progress * 100.0) if loading else "PLAY"
+	if play_button.text != label:
+		play_button.text = label
+	play_button.disabled = loading
 
 
 func change_page(direction: int) -> void:

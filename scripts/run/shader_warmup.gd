@@ -27,9 +27,31 @@ extends Node3D
 ## Visual only: nothing in it collides, plays or moves the run on, and it never frees a physics object
 ## (the track samples' hazards and areas, _hazards and _areas). A headless run draws nothing, so LevelRun
 ## only adds it when the game renders (needed()).
+##
+## Gradual (task PERF3; a level that waits on its hint screen, which hides the world): drawn all at once,
+## the samples compile in one frame, and on the web a browser compiles each program while the game waits
+## (seconds each on Windows, where Firefox and Edge translate WebGL to Direct3D), so the screen froze for
+## minutes. Gradually, the camera draws only one render layer (LAYER), and the stage's samples and the
+## world's shown nodes (the real ones: each compiles just what it draws, no stand-in needed) join that
+## layer a batch a drawn frame (BATCH_MAX at most: a quick frame
+## doubles the batch, a slow one halves it), so the screen keeps answering. A batch counts the draws that
+## bring a new look; those whose looks are drawn already come along with them (_queue_draws). Once all are
+## drawn the camera and the world's nodes get their own layers back, and after DRAWN_FRAMES more the stage
+## is finished (progress(), finished). finish_now() shows the rest at once; cancel() gives everything back.
+
+signal finished
 
 ## Frames the samples stay drawn: the first compiles, the second catches what a renderer defers by one.
 const DRAWN_FRAMES: int = 2
+## The render layer a gradual stage draws on (no other node uses it): the camera draws only it meanwhile.
+const LAYER: int = 20
+const LAYER_BIT: int = 1 << (LAYER - 1)
+## Most samples a gradual stage shows in one frame.
+const BATCH_MAX: int = 64
+## A drawn frame shorter than this doubles a gradual stage's next batch; one longer than SLOW_FRAME_MS
+## halves it (a browser compiling on Windows: one or two samples a frame).
+const QUICK_FRAME_MS: float = 40.0
+const SLOW_FRAME_MS: float = 150.0
 ## How small the samples are drawn: the widest, a ceiling across the street, is a hundredth of a pixel.
 const SCALE: float = 0.00001
 ## How far in front of the camera they sit.
@@ -50,9 +72,24 @@ static var _areas: Array[Area3D] = []
 
 ## Samples made so far, by what they draw (shader key, mesh kind, instancing).
 var keys: Dictionary = {}
+## Shows its samples a batch a frame behind the hint screen (setup).
+var gradual: bool = false
+## True once every sample has been drawn for DRAWN_FRAMES frames (finished).
+var done: bool = false
 var _frames_left: int = DRAWN_FRAMES
 var _hazards_taken: int = 0
 var _areas_taken: int = 0
+## A gradual stage's draws to come, in groups that each bring a new look (_queue_draws), and how many.
+var _waiting: Array[Array] = []
+var _total: int = 0
+## The nodes a gradual stage has put on its layer as well (the world's shown ones, the lights), with their
+## own layers: [node, layers].
+var _world_layers: Array[Array] = []
+var _batch: int = 1
+var _last_drawn_usec: int = 0
+## The camera a gradual stage draws through while it keeps the world out, with its own cull mask.
+var _camera: Camera3D
+var _cull_mask: int = 0
 
 
 ## True when the game renders (not a headless run): only then is there anything to compile.
@@ -60,9 +97,11 @@ static func needed() -> bool:
 	return DisplayServer.get_name() != "headless"
 
 
-## Builds the samples for `world`'s level in front of `camera` (it becomes the camera's child).
-func setup(world: RunWorld, camera: Camera3D) -> void:
+## Builds the samples for `world`'s level in front of `camera` (it becomes the camera's child). Gradual
+## (`p_gradual`) behind a hint screen that hides the world: a batch a frame, the world kept out meanwhile.
+func setup(world: RunWorld, camera: Camera3D, p_gradual: bool = false) -> void:
 	name = "ShaderWarmup"
+	gradual = p_gradual
 	camera.add_child(self)
 	position = Vector3(0.0, 0.0, -AHEAD)
 	scale = Vector3.ONE * SCALE
@@ -75,19 +114,126 @@ func setup(world: RunWorld, camera: Camera3D) -> void:
 	_sample_track(world)
 	_show_all()
 	_kept = materials_of(self)
+	if gradual:
+		_camera = camera
+		_cull_mask = camera.cull_mask
+		camera.cull_mask = LAYER_BIT
+		# A camera lights with only the lights it sees: the sun off the stage's layer left every draw
+		# compiled without it (DISABLE_LIGHT_DIRECTIONAL), a variant the run never draws.
+		for node: Node in camera.get_tree().root.find_children("*", "VisualInstance3D", true, false):
+			var light := node as VisualInstance3D
+			if not light is GeometryInstance3D and light.is_visible_in_tree() and light.get_world_3d() == camera.get_world_3d():
+				_world_layers.append([light, light.layers])
+				light.layers |= LAYER_BIT
+		_queue_draws(world)
+		_reveal(_batch)
 	RenderingServer.frame_post_draw.connect(_on_drawn)
 
 
 func _exit_tree() -> void:
 	if RenderingServer.frame_post_draw.is_connected(_on_drawn):
 		RenderingServer.frame_post_draw.disconnect(_on_drawn)
+	_give_back()
 
 
+## After each drawn frame: a gradual stage shows its next batch, sized by how long the frame took, and
+## gives the camera and the world's nodes their layers back once all have been drawn; then DRAWN_FRAMES
+## more frames and it's done.
 func _on_drawn() -> void:
+	var now: int = Time.get_ticks_usec()
+	var frame_ms: float = (now - _last_drawn_usec) / 1000.0 if _last_drawn_usec > 0 else SLOW_FRAME_MS
+	_last_drawn_usec = now
+	if not _waiting.is_empty():
+		if frame_ms < QUICK_FRAME_MS:
+			_batch = mini(_batch * 2, BATCH_MAX)
+		elif frame_ms > SLOW_FRAME_MS:
+			_batch = maxi(1, _batch / 2)
+		_reveal(_batch)
+		return
+	if _camera != null:
+		# The last batch has been drawn: the camera draws everything again for the frames left (anything
+		# not queued, a Label3D say, compiles there, still behind the hint screen).
+		_give_back()
+		return
 	_frames_left -= 1
 	if _frames_left <= 0:
 		RenderingServer.frame_post_draw.disconnect(_on_drawn)
+		done = true
+		finished.emit()
 		queue_free()
+
+
+## How far the stage is (0 to 1): a gradual one by the groups it has drawn; 1 once it's done.
+func progress() -> float:
+	if done:
+		return 1.0
+	if not gradual or _total == 0:
+		return 0.9
+	return 0.9 * float(_total - _waiting.size()) / float(_total)
+
+
+## Shows every sample still waiting and gives the camera back (a run that starts before the stage is
+## through): what's left compiles in the next frame.
+func finish_now() -> void:
+	_reveal(_waiting.size())
+	_give_back()
+
+
+## Gives the camera and the world's nodes their layers back at once and goes: a rebuilt level's new stage
+## takes over, and must find the camera's own cull mask, not this stage's.
+func cancel() -> void:
+	_give_back()
+	queue_free()
+
+
+## Orders a gradual stage's draws: the world's shown nodes, then the stage's samples (off every layer
+## until their turn), in groups that each start with a node bringing a look (draw key) not drawn before;
+## the nodes after it whose looks are all drawn already join its group, at no compile.
+func _queue_draws(world: RunWorld) -> void:
+	var nodes: Array[GeometryInstance3D] = []
+	for node: Node in world.find_children("*", "GeometryInstance3D", true, false):
+		if (node as GeometryInstance3D).is_visible_in_tree():
+			nodes.append(node as GeometryInstance3D)
+	for node: Node in find_children("*", "GeometryInstance3D", true, false):
+		(node as GeometryInstance3D).layers = 0
+		nodes.append(node as GeometryInstance3D)
+	var drawn: Dictionary = {}
+	for g: GeometryInstance3D in nodes:
+		var fresh: bool = false
+		for key: String in _draw_keys(g):
+			if not drawn.has(key):
+				drawn[key] = true
+				fresh = true
+		if fresh or _waiting.is_empty():
+			_waiting.append([g])
+		else:
+			_waiting[-1].append(g)
+	_total = _waiting.size()
+
+
+## Puts the next `count` groups on the stage's layer: a sample on it alone, a world node on it as well.
+func _reveal(count: int) -> void:
+	for i: int in mini(count, _waiting.size()):
+		for node: Variant in _waiting.pop_front():
+			if not is_instance_valid(node):
+				continue
+			var g := node as GeometryInstance3D
+			if is_ancestor_of(g):
+				g.layers = LAYER_BIT
+			else:
+				_world_layers.append([g, g.layers])
+				g.layers |= LAYER_BIT
+
+
+## The camera's cull mask and the layers of the world's nodes and the lights, as they were.
+func _give_back() -> void:
+	if _camera != null and is_instance_valid(_camera):
+		_camera.cull_mask = _cull_mask
+	_camera = null
+	for entry: Array in _world_layers:
+		if is_instance_valid(entry[0]):
+			(entry[0] as VisualInstance3D).layers = int(entry[1])
+	_world_layers.clear()
 
 
 ## Samples the materials of every hidden mesh, multimesh and particle node in the run.
@@ -103,6 +249,33 @@ func _sample_hidden(world: RunWorld) -> void:
 
 ## Adds a sample of what `geometry` draws (its mesh with each of its materials), unless one is there.
 func _sample_geometry(geometry: GeometryInstance3D) -> void:
+	var draw: Array = _draw_of(geometry)
+	if draw.is_empty():
+		return
+	var kind: String = draw[0]
+	var mesh: Mesh = draw[1]
+	var materials: Array[Material] = draw[2]
+	var particles := geometry as CPUParticles3D
+	var multimesh_node := geometry as MultiMeshInstance3D
+	for m: Material in materials:
+		var key: String = _draw_key(kind, mesh, m)
+		if keys.has(key) or GreyboxMaterials.is_debug_overlay(m):
+			continue
+		keys[key] = true
+		if particles != null:
+			_add_multimesh(mesh, m, true, true)
+		elif multimesh_node != null:
+			_add_multimesh(mesh, m, multimesh_node.multimesh.use_colors, multimesh_node.multimesh.use_custom_data)
+		else:
+			var inst := MeshInstance3D.new()
+			inst.mesh = mesh
+			inst.material_override = m
+			add_child(inst)
+
+
+## What `geometry` draws: [kind (a mesh, particles, or a multimesh with its colours and custom data), its
+## mesh, its materials (the override, or each surface's)], or [] when it draws no mesh.
+static func _draw_of(geometry: GeometryInstance3D) -> Array:
 	var particles := geometry as CPUParticles3D
 	var multimesh_node := geometry as MultiMeshInstance3D
 	var mesh_node := geometry as MeshInstance3D
@@ -117,7 +290,7 @@ func _sample_geometry(geometry: GeometryInstance3D) -> void:
 	elif mesh_node != null:
 		mesh = mesh_node.mesh
 	if mesh == null:
-		return
+		return []
 	var materials: Array[Material] = []
 	if geometry.material_override != null:
 		materials.append(geometry.material_override)
@@ -128,20 +301,22 @@ func _sample_geometry(geometry: GeometryInstance3D) -> void:
 				m = mesh.surface_get_material(s)
 			if m != null:
 				materials.append(m)
-	for m: Material in materials:
-		var key: String = "%s|%s|%s" % [kind, mesh.get_class(), shader_key(m)]
-		if keys.has(key) or GreyboxMaterials.is_debug_overlay(m):
-			continue
-		keys[key] = true
-		if particles != null:
-			_add_multimesh(mesh, m, true, true)
-		elif multimesh_node != null:
-			_add_multimesh(mesh, m, multimesh_node.multimesh.use_colors, multimesh_node.multimesh.use_custom_data)
-		else:
-			var inst := MeshInstance3D.new()
-			inst.mesh = mesh
-			inst.material_override = m
-			add_child(inst)
+	return [kind, mesh, materials]
+
+
+## A draw's key: the same kind of node drawing the same kind of mesh with the same shader compiles the same.
+static func _draw_key(kind: String, mesh: Mesh, material: Material) -> String:
+	return "%s|%s|%s" % [kind, mesh.get_class(), shader_key(material)]
+
+
+## The keys of what `geometry` draws (a gradual stage's queue, _queue_draws).
+static func _draw_keys(geometry: GeometryInstance3D) -> PackedStringArray:
+	var out := PackedStringArray()
+	var draw: Array = _draw_of(geometry)
+	if not draw.is_empty():
+		for m: Material in draw[2]:
+			out.append(_draw_key(draw[0], draw[1], m))
+	return out
 
 
 ## The shared effects' glow (RunEffects' sparks and debris, as particles; lines and floor warnings, as

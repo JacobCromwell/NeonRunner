@@ -594,6 +594,7 @@ func _show_run_intro() -> void:
 	var intro := LevelIntroScreen.new()
 	intro.context = run.context
 	intro.hints = run.intro_hints()
+	intro.load_progress = run.load_progress
 	intro.hints_presented.connect(func(entries: Array[Dictionary]) -> void:
 		run.acknowledge_intro_hints(entries)
 		save())
