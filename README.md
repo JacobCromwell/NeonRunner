@@ -21,7 +21,7 @@ Casino 2 (`--boss=casino_boss`), the Corporate zone's Hostile Takeover after Cor
 (`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), and the
 Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The Beach's boss,
 Mecha Guppy and Captain Cogs, is being built: debug builds play its first two phases (the climb, the shark's bites,
-Captain Cogs' bombs and the hits) as a preview (`--boss=beach_boss`), and
+Captain Cogs' bombs and the hits by baiting them) as a preview (`--boss=beach_boss`), and
 the campaign still passes through its placeholder card. The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable). The owner's story beats are
 built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
