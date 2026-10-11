@@ -1,9 +1,9 @@
 # E5e: Mecha Guppy and Captain Cogs, open questions
 
 Raised by step E5e-a (the climb's core), step E5e-b1 (the climb itself), step E5e-b2 (the shark, the
-pirate, the bombs and the hits) and step E5e-b3 (the hits by baiting, phase 2's bombs, the review's fixes).
-The rest of the fight is built in E5e-c (phase 3, the defeat), which can answer these as it goes. Where a later
-step changed an earlier placeholder, the entry says so.
+pirate, the bombs and the hits), step E5e-b3 (the hits by baiting, phase 2's bombs, the review's fixes) and step
+E5e-c (phase 3, the defeat, the campaign slot, the par times and rewards). Where a later step changed an earlier
+placeholder, the entry says so.
 
 ## Raised by E5e-a, with E5e-b1's placeholders
 
@@ -134,9 +134,10 @@ step changed an earlier placeholder, the entry says so.
     boss bar (equal health shares).
   - Phase 3 is a flat run on the last roof, with no attacks and no hits, that the fight wins 60 s
     after the runner reaches it (`top_seconds`; `MechaGuppy.top_reached`, logged and signalled for
-    E5e-c).
+    E5e-c). **Changed by E5e-c:** phase 3 is built (see "Raised by E5e-c").
   - Par times of 240 s and 180 s stand in until E5e-c measures the whole fight. (E5e-b3: a runner who baits
     every step clears phases 1 and 2 in 85-96 s, one who never does in 156-176 s, before phase 3's minute.)
+    **Changed by E5e-c:** 177 s and 230 s, measured (see "Raised by E5e-c").
 
 ## Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)
 
@@ -349,3 +350,84 @@ step changed an earlier placeholder, the entry says so.
   exactly `dodge_reaction` after every circle shows and after the bait locks before it moves, and wins at every lane
   count and speed. In scratch runs a bot reacting in 0.65 s also won phases 1 and 2 at 3 and 6 lanes, missing some
   baits (so a little slower), but the plan only promises 0.35 s. Should this fight plan for a slower reaction?
+
+## Raised by E5e-c (phase 3, the defeat, the campaign slot, the par times and rewards)
+
+- **Where Captain Cogs' ship comes level** (GDD §10: "the captain's ship comes level with the player"). Placeholder
+  (`CaptainCogsShip.come_level`, the tuning's "Phase 3"; DESIGN-TBD): as the runner reaches the top, the ship eases
+  over `level_seconds` (3 s) from its station above the climb to one alongside the top on the left (`LEVEL_SIDE`),
+  its hull `level_out` (2.5 m) outside the top's eaves, its keel `level_keel` (1 m) under the deck so its gun deck
+  and the captain stand at the runner's height, `level_ahead` (30 m) ahead, keeping pace, no longer swaying; its
+  three starboard cannons face the top. Alongside rather than ahead over the lanes, so the cannonballs come from
+  the side and Mecha Guppy can leap up beside the top to eat it without its body ever crossing the lanes. Is
+  alongside on the left right, and close enough to read as "level with" the runner?
+- **The script** (GDD §10: a fixed, learnable script, no escalation; the owner's approval of the warnings,
+  item 698). Placeholder (`MechaGuppyTop.plan`, `top_script` "RRW.RWRRW.", `top_first`, `top_beat`, `top_clear`;
+  DESIGN-TBD): the script loops from `top_first` (4 s after the top is reached), a beat every `top_beat` (2.4 s): R a
+  round, W a wave, a dot a rest. No beat's warning starts before the last beat's attack has passed the runner
+  (`BEAT_SPARE`, 0.3 s), so a jump and a switch are never asked for at once, and none whose attack would end later
+  than `top_clear` (1 s) before the minute's end: 18 beats a minute, 12 rounds and 6 waves, the last over 56.3 s in.
+  Everything is timed from the top by the fight's clock, so a retry plays the same and nothing escalates. Is that
+  mix and rhythm right, and should rests come more often?
+- **The rounds' look and rule** (GDD §10; the owner's warning: "red lines down the lanes they'll hit and a cannon's
+  charging sound"). Placeholder (`MechaGuppyRounds`, `round_warning`, `round_flight`, `round_ahead`, `round_close`,
+  `round_radius`; DESIGN-TBD):
+  - A round strikes every other lane (`MechaGuppyTop.struck`): the lanes 0, 2, 4... or the others, alternating round
+    by round, so a clear lane is always one switch away on any lane count. A struck lane with a pickup in its stretch
+    is left out (`PICKUP_CLEAR`).
+  - The warning: a red line down each struck lane on the top's deck (`BossProps.lane_warning`, pulsing, steady with
+    Reduced flashing), over the stretch its ball will roll, with the cannons' charge (cogs_charge, as long as
+    `round_warning`, 0.8 s). Then the broadside (cogs_cannon, a flash, smoke and a recoil): a cannonball from a
+    starboard cannon for each struck lane, lobbed over the eaves (`round_flight`, 0.3 s) onto the far end of its line,
+    `round_ahead` (24 m) ahead, then rolling down the lane at the runner, closing in at `round_close` (50 m/s): it
+    reaches them 1.58 s after its warning at any run speed (the plan needs a reaction, a lane switch and
+    `dodge_margin`: 0.8 s).
+  - The cannonball: an iron ball `round_radius` (1.15 m) with a brass band, rolling; its hitbox 65% of its width, 85%
+    of its height (1.96 m: too tall to jump, so the dodge is a switch) and 70% of its depth, an enemy attack (armor
+    and the shield block it, the dash passes through it).
+
+  Are lobbed balls rolling down the lanes the owner's "rounds"? Is every other lane, alternating, the right shape?
+- **The waves' look** (GDD §10; the owner's warning: "a rising swell and a roar", jumped like the Resonator's ring).
+  Placeholder (`MechaGuppyWaves`, `mecha_guppy_wave.gdshader`, `wave_warning`, `wave_ahead`, `wave_close`,
+  `wave_height`, `wave_depth`; DESIGN-TBD): a swell rises out of the sea beside the top on the right, away from the
+  ship, for `wave_warning` (1.2 s) with its roar (wave_swell, as long), its crest coming up past the deck's edge; then
+  it crashes over every lane `wave_ahead` (24 m) ahead (wave_crash, foam) and its surge rushes along the deck at the
+  runner at `wave_close` (30 m/s), 2.0 s after its warning: a low band across every lane, `wave_height` (0.45 m) tall
+  and `wave_depth` (0.5 m) deep, so a normal jump clears it, as the Resonator's ring's does; armor and the shield
+  block it, the dash passes through it. The water is dark sea blue-green with white foam (it never glows); the surge
+  carries one red line low on its face, the Resonator's ring red, as the sign of a low band to jump (the water's
+  colour alone would not warn). Its streaks stand still with Reduced flashing. Is the red line on the water right,
+  or should the surge read by its foam alone?
+- **The minute and the boss bar** (GDD §10, proposed: the boss bar runs down over the minute). Placeholder
+  (`MechaGuppyTop.run_down`, `top_seconds` 60 s): the minute counts from `top_reached` by the fight's clock; the bar
+  runs from phase 3's share down toward nothing, and the fight is won as it ends (the phase's one counted hit, logged
+  `top_over`), never by a hit: bombs and weapons do nothing in phase 3. The top comes 4.0-13.9 s after phase 3 begins
+  (the steps already in sight first); were it reached within phase 3's intro (2.5 s), the bar would start down, and
+  the beats come, once the intro ends. Right?
+- **The bites stop at the top** (GDD §10). Captain Cogs' bombs (the volleys, the bait, the fallback) stop as phase 3
+  begins, but Mecha Guppy's bites go on through the climb's last steps to the top (the roof just left is still
+  eaten: the level being eaten isn't an attack) and stop the moment the runner stands on the top. Right?
+- **The low cloud at the top**: the waterfall's layers of low cloud fade out with it as the runner reaches the top
+  (the Beach's normal backdrop in phase 3, GDD §10), so the top's sea far below shows hazy and clear. Right?
+- **The leap's staging** (GDD §10: Mecha Guppy "jumps over to the boss, Captain Cogs, and eats the boss"; "Mecha
+  Guppy has eaten Captain Cogs, and it swims away"). Placeholder (`MechaGuppyLeap`, `leap_rise`, `leap_hang`,
+  `leap_fall`, `swim_seconds`; DESIGN-TBD): as the minute ends, Mecha Guppy bursts up out of the sea under the ship,
+  upright and side-on (an eye toward the runner, its chin toward the top, as it always shows itself), its jaws opening
+  wide round the ship's stern half (`leap_rise`, 1.2 s, guppy_leap); its jaws snap shut on the stern with the captain
+  on it (guppy_gulp, a shudder, a shake): the captain and the stern are gone, and the bow half breaks away, tumbling
+  down into the sea with the sail. It hangs a moment (`leap_hang`, 0.45 s), leaning out, falls back out of sight
+  (`leap_fall`, 1.3 s), and swims away (`swim_seconds`, 4 s, guppy_swim): its back and dorsal fin out at sea at least
+  62 m out (nearer, the top's own edge hides the sea far below), a trail of foam, until the haze takes it. The results
+  wait for it (`victory_over`, 7.0 s after the win). Nothing of its jaws comes over the lanes or the top's eaves at any
+  moment, nothing in it has a hitbox, and the runner is in the framework's win god mode. Is eating the stern half
+  with the captain (the bow falling away) the owner's picture, or should it swallow the whole ship?
+- **The victory riff after the gulp**: LevelRun's riff at the defeat is off for this fight (`victory_riff`); the
+  zone's level-complete riff plays `riff_after` (1 s) after the gulp instead (`victory_riff_on`), so the captain is
+  eaten first. Right, or no riff at all?
+- **The rewards** (DESIGN-TBD): `payout_credits` 500 and `defeat_score` 5000, the same as its neighbours' (Hostile
+  Takeover's and the Sleep Taker's, the framework's defaults). Should a later boss pay more?
+- **The par times** (GDD §10, proposed: one star for a win, two and three for par times). Placeholder: set from the
+  whole fight played clean by a runner who baits every step, the way Hostile Takeover's are (three stars 74/68.6 of
+  the slowest clean fight at the campaign's speed, two 96/68.6): clean fights take 157.4-164.4 s at the Beach's
+  23.8 m/s and 159.2-169.7 s at 18 m/s (3, 5 and 6 lanes), so three stars at 177 s and two at 230 s; the time bonus
+  runs out at 280 s. A runner who never baits wins in 223.1-244.3 s: two stars on 3 lanes, one on 5-6. Right?
