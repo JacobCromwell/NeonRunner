@@ -347,9 +347,8 @@ func _build_roof(roof: MechaGuppyClimb.Roof, d: float, far: float) -> bool:
 		state["front"] = true
 	var known: bool = roof.end < MechaGuppyClimb.FAR * 0.5 or climb.top_planned() and roof.index == climb.roofs.size() - 1
 	var end: float = roof.end if known else MechaGuppyClimb.FAR
-	# Unknown end: built no further than the nearest its end or its notch could be (the next step's hut no nearer than
-	# the edge of sight: its notch starts notch_back before that hut, its end past the pad strip and the eaten margin).
-	var limit: float = minf(far, end) if known else minf(far, d + sight + _unknown_reach(roof))
+	# Unknown end: built no further than the nearest its end or its notch could be (_unknown_limit).
+	var limit: float = minf(far, end) if known else minf(far, _unknown_limit(roof, d))
 	var to: float = float(state["to"])
 	while to < limit - 0.01:
 		var next: float = minf(to + SEGMENT, end)
@@ -369,13 +368,17 @@ func _strip_reach() -> float:
 		+ tuning.edge_margin
 
 
-## How far past the edge of sight roof `roof` is built while its end isn't known (the next step not yet planned): to the
-## nearest its end could be, but on a roof that may have a notch (every one but the street) no nearer than its notch
-## could start (notch_back before the next hut, which comes no nearer than the edge of sight).
-func _unknown_reach(roof: MechaGuppyClimb.Roof) -> float:
-	if roof.index <= 0:
-		return _strip_reach()
-	return minf(_strip_reach(), -tuning.notch_back)
+## How far roof `roof` is built while its end isn't known (the next step, from it, not yet planned) with the runner at
+## `d`: to the nearest its end could be (the next hut, which starts no nearer than the edge of sight nor than where the
+## plan would put it now, MechaGuppyClimb.next_hut_start; then the pad strip and the eaten margin), but on a roof that
+## may have a notch no nearer than its notch could start (notch_back before that hut). So it reaches past the edge of sight
+## until the next step is planned (task E5e-b3's review: built only to the edge of sight less notch_back, in whole
+## SEGMENTs, its pieces came into view 168-192 m out, in the haze).
+func _unknown_limit(roof: MechaGuppyClimb.Roof, d: float) -> float:
+	var hut: float = maxf(d + sight, climb.next_hut_start(boss.phase_index, boss.top_due()))
+	if roof.index < MechaGuppyClimb.FIRST_NOTCH:
+		return hut + _strip_reach()
+	return hut - tuning.notch_back
 
 
 ## Roof `roof`'s front pieces: each run of lanes starting before the roof is full width (the lanes that reach back:
