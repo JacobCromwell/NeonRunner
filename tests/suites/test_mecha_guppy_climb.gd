@@ -34,6 +34,9 @@ const LANES: Array[int] = [3, 5, 6]
 const SPEEDS: Array[float] = [18.0, 23.8]
 ## A player's reaction (the suites' bots' usual 0.35 s).
 const REACTION: float = 0.35
+## The worst case's run (seconds): six steps' worth at 6 lanes, whose bitten roofs are the longest (task E5e-f's review:
+## the floor bite counted from where its warning reads and the dash's reach brought the sixth landing to 51.4 s).
+const WORST_SECONDS: float = 60.0
 ## Riding a hut, the camera stays at least this far over the higher roof ahead, so its deck shows (metres; phase 2's
 ## higher steps bring it lowest: 0.6 m measured, against phase 1's 1.2 m).
 const CAM_OVER: float = 0.5
@@ -248,7 +251,7 @@ func _test_worst_case() -> void:
 				bot.worst_case = true
 				bot.dash_flip = dashing
 				bot.reaction = t.read_seconds
-				await _run(world, 50.0, func() -> bool: return false, bot.step)
+				await _run(world, WORST_SECONDS, func() -> bool: return false, bot.step)
 				check(world.player.alive and bot.steps_climbed >= 6,
 					"from the farthest lane, flipping up as late as anyone can%s and reading %.1f s after settling, it makes every step (%d) %s"
 					% [" (a jump and the dash right before the pads)" if dashing else "", t.read_seconds, bot.steps_climbed, tag])

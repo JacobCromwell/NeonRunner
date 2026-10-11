@@ -647,16 +647,26 @@ func save_spot(player: Player) -> Dictionary:
 		# lane nearest theirs.
 		if player.distance >= roof.full_from() and not roof.covers(player.lane, player.distance):
 			lane = _nearest_covered(roof, player.lane, land)
-		# A floor bite that leaves one lane, not yet snapped, ahead of where the save brings them down, too near for its
-		# crossing (task E5e-f): into that lane, as the save's pull moves them anyway. DESIGN-TBD (docs/questions/e5e.md): the
-		# save near a bite.
+		# A floor bite that leaves one lane, not yet snapped, ahead of where the save brings them down, too near to read it
+		# and cross from that lane to the one it leaves (task E5e-f; its review: counted from the lane the save would bring
+		# them down in, not the farthest): into that lane, as the save's pull moves them anyway. DESIGN-TBD
+		# (docs/questions/e5e.md): the save near a bite.
 		var bite: MechaGuppyCrescent = roof.bite
-		if lane >= 0 and bite != null and not bite.skipped and not bite.eaten and not bite.full \
-				and land > bite.from - climb.bite_crossing() * 1.5 and land < bite.to:
+		if lane >= 0 and bite != null and not bite.skipped and not bite.eaten and not bite.full and land < bite.to \
+				and land > bite.from - save_crossing(bite, lane):
 			lane = bite.keep
 		if lane >= 0 and roof.covers(lane, land - SAVE_MARGIN) and roof.covers(lane, land + SAVE_MARGIN):
 			return {"lane": lane, "height": roof.top}
 	return {}
+
+
+## How far short of floor bite `bite` a save may bring a runner down in `lane` (metres): a reaction (the save is sudden),
+## every switch from there to the lane the bite leaves and dodge_margin, with half a hurtbox and the dash's reach (as the
+## bite's own crossing counts them: MechaGuppyClimb.bite_crossing).
+func save_crossing(bite: MechaGuppyCrescent, lane: int) -> float:
+	var t: MovementTuning = world.tuning
+	return (tuning.dodge_reaction + float(absi(bite.keep - lane)) * t.lane_switch_time + tuning.dodge_margin) * climb.speed \
+		+ t.hurtbox_size.z * 0.5 + climb.dash_reach
 
 
 ## The lane of roof `roof` nearest `lane` that it covers at track distance `d` (both ways out to SAVE_MARGIN), or -1.
