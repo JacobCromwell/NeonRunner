@@ -15,7 +15,8 @@ extends TestSuite
 ##   fallback was due gets none either;
 ## - a runner falling in the notch can't switch into the roof's side below its top (just under it, the switch bumps;
 ##   deeper, in the pit, a move does nothing), and the grapple's save takes them back up onto the roof, into its lane
-##   beside the notch.
+##   beside the notch;
+## - with no room for a notch on any roof (an extreme tuning), no bait is offered and the fallback still brings the hits.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
@@ -42,6 +43,7 @@ func run() -> void:
 	await _test_fall_in_notch()
 	await _test_wrong_drop_on_fallback()
 	await _test_notch_side()
+	await _test_no_notch()
 
 
 # --- Helpers -------------------------------------------------------------------------------
@@ -54,14 +56,15 @@ func _movement(speed: float) -> MovementTuning:
 	return t
 
 
-## The fight at `lanes` and `speed` m/s, attacks on: [world, boss].
-func _fight(lanes: int, speed: float) -> Array:
+## The fight at `lanes` and `speed` m/s (with `p_def`, the slot's preview by default), attacks on: [world, boss].
+func _fight(lanes: int, speed: float, p_def: BossDef = null) -> Array:
+	var d: BossDef = p_def if p_def != null else def
 	var t: MovementTuning = _movement(speed)
-	var boss := BossEncounter.create(def) as MechaGuppy
+	var boss := BossEncounter.create(d) as MechaGuppy
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
-	ctx.boss = def
-	ctx.config = BossArena.base_config(def)
+	ctx.boss = d
+	ctx.config = BossArena.base_config(d)
 	ctx.config.lane_count = lanes
 	ctx.tuning = t
 	var arena: BossArena = boss.plan_arena(ctx)
@@ -309,4 +312,33 @@ func _test_notch_side() -> void:
 		else:
 			check(roof.notched() and events.has(&"lane_blocked") and p.lane == notch,
 				"falling in the notch %.1f m under the roof's top, a switch into the roof's side bumps (%s)" % [below, results.back()])
+	await sim.free_world(world)
+
+
+# --- No room for a notch ---------------------------------------------------------------------------
+
+## With no room for a notch on any roof (an extreme tuning: the shortest run on a roof, the longest notch), no bait is
+## ever offered, and the fallback still brings the hits, one every fallback_after + 1 steps: the fight never stalls.
+func _test_no_notch() -> void:
+	var d: BossDef = def.duplicate() as BossDef
+	var t: MechaGuppyTuning = (def.tuning as MechaGuppyTuning).duplicate() as MechaGuppyTuning
+	t.roof_seconds = 1.0
+	t.notch_back = 16.0
+	d.tuning = t
+	var pair: Array = _fight(3, 18.0, d)
+	var world: RunWorld = pair[0]
+	var boss: MechaGuppy = pair[1]
+	var bot := MechaGuppyBot.new(boss)
+	bot.reaction = REACTION
+	var due: int = t.fallback_after
+	await _run(world, 90.0, func() -> bool: return boss.hits_landed >= 2, bot.step)
+	var notched: int = 0
+	for r: MechaGuppyClimb.Roof in boss.climb.roofs:
+		notched += 1 if r.notched() else 0
+	var fallbacks: Array[Dictionary] = _events(boss, &"fallback")
+	check(world.player.alive and notched == 0 and _events(boss, &"bait_seek").is_empty() and boss.hits_landed >= 2
+		and fallbacks.size() >= 2 and int(fallbacks[0]["step"]) == due and int(fallbacks[1]["step"]) == 2 * due + 1,
+		"with no room for a notch on any roof (roof_seconds %.1f s, notch_back %.0f m), no bait is offered and the fallback still brings the hits, every %d steps (%d roofs notched, fallbacks on steps %s, %d hits)"
+		% [t.roof_seconds, t.notch_back, due + 1, notched, fallbacks.map(func(e: Dictionary) -> int: return int(e["step"])),
+			boss.hits_landed])
 	await sim.free_world(world)

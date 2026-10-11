@@ -4615,12 +4615,13 @@ world heights:
     every other lane, clear of the next hut);
   - **the fallback** (`_fallback`, `hit_spot`; GDD §10: "Captain Cogs sometimes misses into the chasm anyway"): once
     `fallback_after` (2) steps in a row have gone by without a hit (`dry`, counted as each step closes after its bait
-    was offered), at the next hut's deadline, with the rider in a lane that leads up and not fallen that step, Captain
+    was offered, or with none to offer: under an extreme tuning a roof may have no room for a notch, and the hits
+    never stall), at the next hut's deadline, with the rider in a lane that leads up and not fallen that step, Captain
     Cogs throws at the chasm in front of roof k + 1, beside the lanes that lead up on the side with more lanes that
     don't (`hit_back`, 6.8 m, before that roof's front, `hit_seconds`, 0.65 s, of flight), and Mecha Guppy breaches
     there: a hit. Never a hit on a step the runner fell, even if the grapple saved them (`note_fall`, `catch_ok`).
   A runner who baits every step lands one hit a step: phase 1 ends at 32.8-36.7 s and phase 2 at 77.5-87.3 s (3, 5, 6
-  lanes at 18 and 23.8 m/s); one who never baits lands one every third step: 88.6-100.0 s and 222.6-251.7 s. Phase 2
+  lanes at 18 and 23.8 m/s); one who never baits lands one every third step: 88.6-99.9 s and 222.6-251.7 s. Phase 2
   has more bombs to dodge (the ones that can reach the runner, the bait's included): 3.5-4.3 a step and 0.46-0.54 a
   second against phase 1's 2.0-2.75 and 0.24-0.31. `attacks_enabled` (tests) turns the bombs and the bites off;
   `hits_enabled` (tests) keeps the hits from landing (no catch, no fallback).

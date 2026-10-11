@@ -283,9 +283,11 @@ step changed an earlier placeholder, the entry says so.
   (every rider committed), with the rider in a lane that leads up, Captain Cogs misses into the chasm beside the lanes
   that lead up and Mecha Guppy rises to eat it (E5e-b2's hit, unchanged; its bomb is neither heard thrown nor whistles,
   since it threatens nobody, and the shark glides deep out of sight until it surges up). A runner who never baits
-  lands a hit every third step: phase 1 ends at 88.6-100.0 s and phase 2 at 222.6-251.7 s, against 32.8-36.7 s and
-  77.5-87.3 s for a runner who baits every step (3, 5 and 6 lanes, 18 and 23.8 m/s). Nothing escalates. Which N does
-  the owner want? (1 would give a hit every other step; 0 a hit every step, leaving no reason to bait.)
+  lands a hit every third step: phase 1 ends at 88.6-99.9 s and phase 2 at 222.6-251.7 s, against 32.8-36.7 s and
+  77.5-87.3 s for a runner who baits every step (3, 5 and 6 lanes, 18 and 23.8 m/s). Nothing escalates. A step with
+  no bait to offer (under an extreme tuning a roof may have no room for a notch) counts as one without a hit, so the
+  hits never stall. Which N does the owner want? (1 would give a hit every other step; 0 a hit every step, leaving no
+  reason to bait.)
 - **No hit on a step the runner fell** (a rule from E5e-b3's brief): on a step where the runner fell, even if
   the grapple (or a revive) saved them, no bomb hits: a bait locked then falls past into the chasm as the shark shuts
   its jaws, and a fallback due then waits for the next step. Right?

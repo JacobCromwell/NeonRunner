@@ -48,7 +48,7 @@ var climb: MechaGuppyClimb
 ## escalates).
 var hits_enabled: bool = true
 ## Steps in a row gone by without a hit, as each step closes (once the runner passes the next step's pads) after its
-## bait was offered; the fallback comes once it reaches fallback_after.
+## bait was offered, or with none to offer; the fallback comes once it reaches fallback_after.
 var dry: int = 0
 ## What's been done (each once a step): "bite:k", "volley:k", "bait:k", "seek:k", "lurk:k", "hit:k".
 var _done: Dictionary = {}
@@ -57,6 +57,9 @@ var _done: Dictionary = {}
 var _offered: Dictionary = {}
 var _hit_steps: Dictionary = {}
 var _fell: Dictionary = {}
+## Steps with no bait to offer while the pattern ran (no room for a notch on the roof it would come down on: an extreme
+## tuning). They count toward the fallback as steps gone by without a hit, so the hits still come.
+var _baitless: Dictionary = {}
 ## The last step closed (dry counts it).
 var _closed: int = -1
 
@@ -125,8 +128,8 @@ func _step_now() -> int:
 	return maxi(climb.step_index_at(world.player.distance), 0)
 
 
-## Closes each step the runner has passed the next step's pads of: a step whose bait was offered adds to `dry`, or resets
-## it with a hit.
+## Closes each step the runner has passed the next step's pads of: a step whose bait was offered (or that had none to
+## offer) adds to `dry`, or resets it with a hit.
 func _close_steps(d: float) -> void:
 	while _closed + 1 < climb.steps.size() - 1:
 		var k: int = _closed + 1
@@ -136,7 +139,7 @@ func _close_steps(d: float) -> void:
 		_closed = k
 		if _hit_steps.has(k):
 			dry = 0
-		elif _offered.has(k):
+		elif _offered.has(k) or _baitless.has(k):
 			dry += 1
 
 
@@ -394,6 +397,7 @@ func _bait(step: MechaGuppyClimb.Step, p: Player) -> void:
 	var plan: Dictionary = bait_plan(step, speed)
 	if plan.is_empty():
 		_done[key] = true
+		_baitless[step.index] = true
 		return
 	if p.distance < float(plan["seek_at"]):
 		return
