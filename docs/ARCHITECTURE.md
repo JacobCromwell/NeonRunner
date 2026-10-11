@@ -4838,9 +4838,9 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
   `PickupField.place`): past where a rider lands, short of the next hut and clear of the bait (before the notch), in
   their lane or the lane they'll land in, off any boss warning, never where a floor bite will take the lane, and in a
   lane a floor bite takes far enough short of its gap that a runner who grabs it (`PICKUP_REACH` either side) still has
-  every switch to the lane it leaves (none over a full-width one: its jump) and `dodge_margin`, or past it
-  (`clear_of_bite`; task E5e-f's review: one just short of the gap asked for a grab and an escape that couldn't both
-  happen).
+  every switch to the lane it leaves (none over a full-width one: its jump), `dodge_margin` and the dash's reach (one
+  who dashes as they grab it still clears the bite), or past it (`clear_of_bite`; task E5e-f's review: one just short
+  of the gap asked for a grab and an escape that couldn't both happen).
 
 In `scripts/bosses/mecha_guppy/`:
 
@@ -4925,7 +4925,7 @@ leaves, the crunch, never before the hut's deadline, steady with Reduced flashin
 it starts across: `dodge_margin` and the slack to spare from when it can be read; a full-width jump clearing it at both
 ends); the snap's real contact (unprotected, armor, the shield, the dash, beside it); a phase change with the jaws open
 (called off) and snapping shut (completing); a fall saved by the grapple and a revive; no pickup asking for a grab and an
-escape that can't both happen; a retry the same), `test_mecha_guppy_tunables` (every tunable at both ends of
+escape that can't both happen, nor one dashing as it's grabbed, on real movement; a retry the same), `test_mecha_guppy_tunables` (every tunable at both ends of
 its range, at 3 lanes and 23.8 m/s and at 6 lanes and 18 m/s: a runner who never baits lives, never meets a circle with
 no floor to switch to, every bait keeps its timings, every fallback is eaten, the hits keep coming, and every floor bite
 met is warned in time, leaves its lane and sits clear of the bait, with no volley on its roof; on the plan at 3, 5 and 6

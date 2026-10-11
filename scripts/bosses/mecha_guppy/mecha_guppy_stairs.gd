@@ -734,8 +734,9 @@ func pickup_spot(lead: float) -> Dictionary:
 ## True if a pickup at track distance `at` in `lane` of roof `roof` leaves a runner who takes it the time to get out of its
 ## floor bite's way (task E5e-f's review: one taken just short of the gap left no time for the switches still needed): in a
 ## lane the bite takes, taken (PICKUP_REACH past `at`) at least every switch from there to the lane the bite leaves (none
-## over a full-width one: its jump) and dodge_margin, with half a hurtbox, short of where its gap reaches that lane; or
-## past the bite. DESIGN-TBD (docs/questions/e5e.md): pickups near a bite.
+## over a full-width one: its jump) and dodge_margin, with half a hurtbox and the dash's reach (a runner who dashes as
+## they grab it still clears the bite, as the climb's other promises hold dashing), short of where its gap reaches that
+## lane; or past the bite. DESIGN-TBD (docs/questions/e5e.md): pickups near a bite.
 func clear_of_bite(roof: MechaGuppyClimb.Roof, lane: int, at: float) -> bool:
 	var bite: MechaGuppyCrescent = roof.bite
 	if bite == null or bite.skipped:
@@ -747,7 +748,8 @@ func clear_of_bite(roof: MechaGuppyClimb.Roof, lane: int, at: float) -> bool:
 	if at - PICKUP_REACH >= bite.to + h:
 		return true
 	var switches: int = 0 if bite.full else absi(bite.keep - lane)
-	var need: float = (float(switches) * world.tuning.lane_switch_time + tuning.dodge_margin) * climb.speed + h
+	var need: float = (float(switches) * world.tuning.lane_switch_time + tuning.dodge_margin) * climb.speed + h \
+		+ climb.dash_reach
 	return at + PICKUP_REACH + need <= gap.x
 
 

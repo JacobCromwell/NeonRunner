@@ -581,9 +581,10 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
 - **Pickups near a bite** (GDD §10's standard armor rule; task E5e-f's review). Placeholder
   (`MechaGuppyStairs.pickup_spot`, `clear_of_bite`): an armor pickup on a bitten roof never lies where the bite will
   take its lane, and in a lane the bite takes it lies far enough short of the gap that a runner who grabs it (2 m
-  either side of it) still has every switch to the lane the bite leaves (none over a full-width bite: its jump) and
-  `dodge_margin` before the gap reaches that lane; otherwise it comes past the bite. Before, one could land just
-  short of the gap with switches still needed: a grab and an escape that couldn't both happen. Right?
+  either side of it) still has every switch to the lane the bite leaves (none over a full-width bite: its jump),
+  `dodge_margin` and the dash's reach before the gap reaches that lane, so one who dashes as they grab it still clears
+  the bite; otherwise it comes past the bite. Before, one could land just short of the gap with switches still needed:
+  a grab and an escape that couldn't both happen. Right?
 - **The hut's end band** (E5e-b1's placeholder: the 4 m orange band where each run of lanes ends on a hut's
   underside, long and bright so it reads from the hut's start). Task E5e-f's review found it filling up to a quarter
   of the screen with bright orange as the chase camera passes just under it when the rider drops. Placeholder

@@ -33,7 +33,8 @@ extends TestSuite
 ##   bitten; with them already snapping shut the snap completes, the chunk going as warned (task E5e-f's review);
 ## - a fall into the gap: the grapple's save and a revive pull the runner up onto the roof (past the gap, or into a lane it
 ##   leaves) and they run on; no hit for that step;
-## - pickups: no armor pickup on a bitten roof asks for a grab and an escape that can't both happen (task E5e-f's review);
+## - pickups: no armor pickup on a bitten roof asks for a grab and an escape that can't both happen (task E5e-f's review),
+##   dashing as they grab it included: from each configuration's tightest spot, a runner who dashes at once still passes;
 ## - a retry plays the same.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
@@ -933,13 +934,18 @@ func _fall(lanes: int, speed: float, phase: int, k: int, mode: String) -> void:
 ## runner anywhere in any lane from before the hut onto a bitten roof to the end of its bite, before its warning and while
 ## it shows, the armor rule's spot (MechaGuppyStairs.pickup_spot at the pickups' lead) on that roof is, in a lane the bite
 ## takes, taken (PICKUP_REACH past it) every switch from there to the lane the bite leaves (none over a full-width one: its
-## jump) and dodge_margin, with half a hurtbox, short of where the gap reaches that lane; or past the bite.
+## jump), dodge_margin, half a hurtbox and the dash's reach short of where the gap reaches that lane; or past the bite. And
+## on real movement, dashing (the coordinator's follow-up to the review): from each configuration's tightest spot before a
+## bite that leaves a lane, a runner who grabs it as late as it's taken, dashes at once and switches lane by lane to the
+## lane the bite leaves passes the eaten bite on the roof's floor.
 func _test_pickups() -> void:
 	var lead: float = (load("res://data/tuning/pickups.tres") as PickupTuning).lead_distance
 	var bad: Array[String] = []
 	var spots: int = 0
 	var beside: int = 0
 	var least: float = INF
+	# Each configuration's tightest spot before a bite that leaves a lane: {lanes, speed, phase, roof, lane, at, spare}.
+	var tightest: Array[Dictionary] = []
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
 			for phase: int in 2:
@@ -955,6 +961,7 @@ func _test_pickups() -> void:
 					c.plan_next(boss.phase_index)
 				var p: Player = world.player
 				var h: float = world.tuning.hurtbox_size.z * 0.5
+				var tight: Dictionary = {}
 				for k: int in [1, 2, 4]:
 					var roof: MechaGuppyClimb.Roof = c.roofs[k]
 					var bite: MechaGuppyCrescent = roof.bite
@@ -985,20 +992,105 @@ func _test_pickups() -> void:
 									continue
 								beside += 1
 								var switches: int = 0 if bite.full else absi(bite.keep - sl)
-								var need: float = (float(switches) * world.tuning.lane_switch_time + boss.tuning.dodge_margin) * speed + h
-								least = minf(least, (gap.x - at - MechaGuppyStairs.PICKUP_REACH - need) / speed)
+								var need: float = (float(switches) * world.tuning.lane_switch_time + boss.tuning.dodge_margin) * speed + h \
+									+ c.dash_reach
+								var spare: float = (gap.x - at - MechaGuppyStairs.PICKUP_REACH - need) / speed
+								least = minf(least, spare)
+								if not bite.full and switches > 0 and (tight.is_empty() or spare < float(tight["spare"])):
+									tight = {"lanes": lanes, "speed": speed, "phase": phase, "roof": k, "lane": sl, "at": at, "spare": spare}
 								if at + MechaGuppyStairs.PICKUP_REACH + need > gap.x + 0.01 and bad.size() < 4:
 									bad.append("(%d lanes, %.1f m/s, phase %d) roof %d%s: a pickup in lane %d at %.1f m, %.1f m short of the gap, %d switches to make (%.1f m)"
 										% [lanes, speed, phase + 1, k, ", warned" if warned else "", sl, at, gap.x - at, switches, need])
 							d += 4.0
 						if warned:
 							boss.floor_bite.call_off()
+				if not tight.is_empty():
+					tightest.append(tight)
 				await sim.free_world(world)
-	print("  Mecha Guppy's floor bites, pickups: %d spots on a bitten roof, %d of them before its bite in a lane it takes, the least %.3f s to spare after the grab, the switches and dodge_margin"
+	print("  Mecha Guppy's floor bites, pickups: %d spots on a bitten roof, %d of them before its bite in a lane it takes, the least %.3f s to spare after the grab, the switches, dodge_margin and the dash's reach"
 		% [spots, beside, least])
 	check(bad.is_empty() and spots > 100,
-		"no pickup asks for a grab and an escape that can't both happen: on a roof with a floor bite, in a lane it takes, a pickup leaves every switch to the lane it leaves (or the jump) and dodge_margin before the gap, or comes past the bite (%d spots, %d before a bite in a lane it takes)%s"
+		"no pickup asks for a grab and an escape that can't both happen: on a roof with a floor bite, in a lane it takes, a pickup leaves every switch to the lane it leaves (or the jump), dodge_margin and the dash's reach before the gap, or comes past the bite (%d spots, %d before a bite in a lane it takes)%s"
 		% [spots, beside, "" if bad.is_empty() else ": " + "; ".join(bad)])
+	# Dashing as they grab it, on real movement.
+	var passed: int = 0
+	var run_least: float = INF
+	var failed: Array[String] = []
+	for tight: Dictionary in tightest:
+		var r: Dictionary = await _pickup_dash(tight)
+		var tag: String = "(%d lanes, %.1f m/s, phase %d) roof %d, lane %d" % [int(tight["lanes"]), float(tight["speed"]),
+			int(tight["phase"]) + 1, int(tight["roof"]), int(tight["lane"])]
+		if bool(r["passed"]) and bool(r["dashed"]):
+			passed += 1
+			run_least = minf(run_least, float(r["spare"]))
+		elif failed.size() < 4:
+			failed.append("%s: %s" % [tag, r["why"]])
+	print("  Mecha Guppy's floor bites, pickups, dashing as they grab it: %d of %d runs from the tightest spots pass the bite, the least %.3f s to spare after the last switch"
+		% [passed, tightest.size(), run_least])
+	check(tightest.size() >= 6 and passed == tightest.size(),
+		"a runner who grabs a pickup as late as it's taken, dashes at once and switches to the lane a floor bite leaves passes the bite (%d of %d runs from each configuration's tightest spot; the least %.3f s to spare)%s"
+		% [passed, tightest.size(), run_least, "" if failed.is_empty() else ": " + "; ".join(failed)])
+
+
+## A runner who grabs a pickup at `tight` (before its roof's floor bite, in a lane the bite takes) as late as it's taken
+## (PICKUP_REACH past it), dashes at once and switches lane by lane to the lane the bite leaves (the bot's cadence: the next
+## press a switch and a frame after the last), the bite eaten ahead: {passed, dashed, spare (seconds at the run's speed,
+## from its last switch's end to its hurtbox's front reaching the gap in the lane it started in), why}.
+func _pickup_dash(tight: Dictionary) -> Dictionary:
+	var loadout := Loadout.new()
+	loadout.tiers[&"dash"] = 4
+	var pair: Array = _fight(int(tight["lanes"]), float(tight["speed"]), int(tight["phase"]), loadout)
+	var world: RunWorld = pair[0]
+	var boss: MechaGuppy = pair[1]
+	boss.attacks_enabled = false
+	var c: MechaGuppyClimb = boss.climb
+	boss.stairs.update(0.0)
+	while c.steps.size() <= 5:
+		c.plan_next(boss.phase_index)
+	var roof: MechaGuppyClimb.Roof = c.roofs[int(tight["roof"])]
+	var bite: MechaGuppyCrescent = roof.bite
+	var lane: int = tight["lane"]
+	var gap: Vector2 = bite.stretch(bite.near_w(lane))
+	var p: Player = world.player
+	var h: float = world.tuning.hurtbox_size.z * 0.5
+	var speed: float = float(tight["speed"])
+	p.distance = float(tight["at"]) + MechaGuppyStairs.PICKUP_REACH
+	_shift(world, lane)
+	p.surface = Player.Surface.FLOOR
+	p.floor_y = roof.top
+	p.h = roof.top
+	p.vh = 0.0
+	p.grounded = true
+	boss.stairs.update(p.distance)
+	# The bite eaten ahead: its warning shown and its snap made, so the hole is real.
+	boss.floor_bite.start(bite)
+	boss.floor_bite.snap()
+	var toward: StringName = &"move_left" if bite.keep < lane else &"move_right"
+	var st: Dictionary = {"dashed": false, "tried": false, "next": -INF, "done_at": NAN, "fell": false}
+	await _run(world, 6.0, func() -> bool: return p.distance > bite.to + 4.0, func() -> void:
+		if not bool(st["tried"]):
+			st["tried"] = true
+			st["dashed"] = (world.powerups as PowerupController).dash.trigger()
+		if p.lane != bite.keep and p.elapsed >= float(st["next"]):
+			p.press(toward)
+			st["next"] = p.elapsed + world.tuning.lane_switch_time + FRAME
+		if is_nan(float(st["done_at"])) and p.lane == bite.keep and float(p.get("_switch_t")) >= 1.0:
+			st["done_at"] = p.distance
+		# Its feet's height (its position follows only once a frame has run).
+		if p.h < roof.top - 0.3:
+			st["fell"] = true)
+	var out: Dictionary = {"dashed": bool(st["dashed"]), "spare": NAN, "why": ""}
+	out["passed"] = p.alive and not bool(st["fell"]) and p.distance > bite.to + 4.0 and p.lane == bite.keep
+	if not is_nan(float(st["done_at"])):
+		out["spare"] = (gap.x - float(st["done_at"]) - h) / speed
+	if not bool(out["passed"]):
+		out["why"] = "%s, lane %d at %.1f m (the gap %.1f-%.1f m in lane %d; switches done at %s)" % [
+			"fell" if bool(st["fell"]) else ("dead" if not p.alive else "didn't pass"), p.lane, p.distance, gap.x, gap.y, lane,
+			"never" if is_nan(float(st["done_at"])) else "%.1f m" % float(st["done_at"])]
+	elif not bool(out["dashed"]):
+		out["why"] = "the dash didn't start"
+	await sim.free_world(world)
+	return out
 
 
 # --- A retry -----------------------------------------------------------------------------------------------------
