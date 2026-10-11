@@ -22,11 +22,14 @@ const SHADER_PATH: String = "res://scripts/bosses/mecha_guppy/mecha_guppy_wave.g
 const WAVE_NAME: String = "wave"
 ## The side of the top the swells rise on (+1 the right: Captain Cogs' ship comes level on the left).
 const WAVE_SIDE: int = 1
-## The swell: its length along the track, how deep below the deck it starts rising from, and its crash: how long it takes
-## to come down across the deck's edge (its lip falling over the outer lane as it collapses into the sea), how far it
-## moves in and drops, and how flat it gets.
+## The swell: its length along the track, how deep below the deck it starts rising from (so its crest breaks the deck's
+## line early in the warning: CREST_BY; task E5e-c's review found it hidden for half the warning from 30 m down), and its
+## crash: how long it takes to come down across the deck's edge (its lip falling over the outer lane as it collapses into
+## the sea), how far it moves in and drops, and how flat it gets.
 const SWELL_LENGTH: float = 24.0
-const SWELL_RISE: float = 30.0
+const SWELL_RISE: float = 11.0
+## The crest stands over the deck by this much into the warning at the latest (seconds; test_mecha_guppy_top checks it).
+const CREST_BY: float = 0.25
 const CRASH_SECONDS: float = 0.4
 const CRASH_IN: float = 2.0
 const CRASH_DROP: float = 14.0
@@ -35,6 +38,8 @@ const CRASH_FLAT: float = 0.45
 ## its crest well above the deck, its lip curling over the outer lane.
 const PROFILE: Array[Vector2] = [Vector2(16.0, -38.0), Vector2(10.0, -21.0), Vector2(5.0, -8.0), Vector2(2.6, 0.0),
 	Vector2(1.8, 3.8), Vector2(0.7, 7.0), Vector2(-1.2, 7.6), Vector2(-2.7, 6.0)]
+## The crest's height over the deck at the swell's full rise (PROFILE's highest point).
+const CREST_Y: float = 7.6
 ## The surge's look over its hitbox (the Resonator's scales: GDD §3, hitboxes smaller than visuals), and its wash behind.
 const CREST_HEIGHT_SCALE: float = 1.35
 const CREST_DEPTH_SCALE: float = 1.4
@@ -161,6 +166,14 @@ func surges() -> Array[Dictionary]:
 	return out
 
 
+## How far wave `w`'s swell crest stands over the deck now (negative: still under its edge; tests: the warning is seen).
+func crest_above(w: Dictionary) -> float:
+	var swell: MeshInstance3D = w.get("swell")
+	if swell == null or not is_instance_valid(swell) or not swell.visible:
+		return -INF
+	return swell.global_position.y + CREST_Y * swell.global_transform.basis.y.length() - float(w["y"])
+
+
 ## True while a swell is rising (a wave's warning is on: the bot, tests).
 func swelling() -> bool:
 	for w: Dictionary in waves:
@@ -260,8 +273,9 @@ func _end(w: Dictionary) -> void:
 		w[key] = null
 
 
-## The swell beside the top at wave `w`'s crash line: rising up out of the sea over its warning (eased), then, `crash`
-## (0 to 1) of the way through its crash, its lip tipping over across the deck as it falls.
+## The swell beside the top at wave `w`'s crash line: rising up out of the sea over its warning (eased out hard, so its
+## crest is over the deck's edge within CREST_BY), then, `crash` (0 to 1) of the way through its crash, its lip tipping
+## over across the deck as it falls.
 func _place_swell(w: Dictionary, crash: float = -1.0) -> void:
 	var swell: MeshInstance3D = w["swell"]
 	if swell == null or not is_instance_valid(swell):
@@ -273,8 +287,8 @@ func _place_swell(w: Dictionary, crash: float = -1.0) -> void:
 	var basis := Basis.from_scale(Vector3(side, 1.0, 1.0))
 	if crash < 0.0:
 		var k: float = clampf((clock - float(w["start"])) / maxf(float(w["crash"]) - float(w["start"]), 0.01), 0.0, 1.0)
-		var e: float = 1.0 - (1.0 - k) * (1.0 - k)
-		swell.global_transform = Transform3D(basis, Vector3(edge, y - SWELL_RISE * (1.0 - e), z))
+		var rest: float = (1.0 - k) * (1.0 - k) * (1.0 - k)
+		swell.global_transform = Transform3D(basis, Vector3(edge, y - SWELL_RISE * rest, z))
 		return
 	# Coming down: in over the deck's edge, its lip falling across the outer lane, collapsing and dropping back into the sea
 	# (the deck hides what passes under it).

@@ -311,9 +311,22 @@ func pose_free(p_hinge: Vector3, basis: Basis, open: float, shown_now: bool = tr
 	_lower.transform = Transform3D(Basis(Vector3.RIGHT, deg_to_rad(MechaGuppySharkModel.LOWER_OPEN) * jaw), Vector3.ZERO)
 
 
-## Its head's transform in the world (its model's space, scaled: the leap's foam finds its fin by it).
+## Its head's transform in the world (its model's space, scaled: the leap finds its snout and tail by it).
 func head_transform() -> Transform3D:
 	return _head.global_transform
+
+
+## Points down its whole length in the world while it shows (tests: where its body reaches): the snout's tip, the hinge,
+## along the body and the tail's end; none while it's out of sight.
+func body_points() -> PackedVector3Array:
+	var out := PackedVector3Array()
+	if not _head.visible:
+		return out
+	var xf: Transform3D = _head.global_transform
+	var end: float = MechaGuppySharkModel.BODY_LENGTH + MechaGuppySharkModel.TAIL_STALK + MechaGuppySharkModel.TAIL_FIN
+	for y: float in [MechaGuppySharkModel.JAW_LENGTH, 0.0, -10.0, -20.0, -30.0, -MechaGuppySharkModel.BODY_LENGTH, -end]:
+		out.append(xf * Vector3(0.0, y, 0.0))
+	return out
 
 
 ## A shudder (the gulp's: the leap).

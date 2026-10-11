@@ -30,8 +30,11 @@ const TIP_CAP: float = 0.35
 ## maw faces them and up.
 const UPPER_OPEN: float = 14.0
 const LOWER_OPEN: float = 48.0
-## The body below the hinge: how far it reaches down.
+## The body below the hinge: how far it reaches down; then its tail (task E5e-c's review: the defeat's leap shows it
+## whole): the stalk this long, and the crescent fin this far past the stalk's end (its upper lobe; the lower is shorter).
 const BODY_LENGTH: float = 40.0
+const TAIL_STALK: float = 3.0
+const TAIL_FIN: float = 8.0
 ## Teeth along each side of a jaw, their height at the hinge (shorter toward the tip), and their base.
 const TEETH_PER_SIDE: int = 11
 const TOOTH_HEIGHT: float = 0.8
@@ -287,6 +290,30 @@ static func _body(s: MeshLayer) -> void:
 			var tone: Color = (BELLY if belly else PLATE) if (i + j) % 2 == 0 else (BELLY_DARK if belly else PLATE_DARK)
 			var outward := Vector3(cos((a + b) * 0.5), 0.0, sin((a + b) * 0.5))
 			_face(s, _rim(w1, p1.x, a), _rim(w1, p1.x, b), _rim(w0, p0.x, b), _rim(w0, p0.x, a), outward, tone.lerp(DEEP, fade))
+	# The tail (seen when it leaps clear of the sea: MechaGuppyLeap's breach; in the chasm it's lost in the dark): the body
+	# narrows to a stalk, closed off at its end, and a tall crescent fin stands up and down from it, edge-on to the
+	# chin's side like the dorsal fin, its upper (back) lobe the longer.
+	var end_w := Vector2(HALF_WIDTH * profile[-1].y, HALF_DEPTH * profile[-1].z)
+	var stalk_w := Vector2(HALF_WIDTH * 0.22, HALF_DEPTH * 0.3)
+	var stalk_y: float = -BODY_LENGTH - TAIL_STALK
+	var tail_tone: Color = PLATE_DARK.lerp(DEEP, 0.85)
+	var tail_end := Vector3(0.0, stalk_y - 0.6, 0.0)
+	for j: int in BODY_SIDES:
+		var a: float = TAU * float(j) / float(BODY_SIDES)
+		var b: float = TAU * float(j + 1) / float(BODY_SIDES)
+		var outward := Vector3(cos((a + b) * 0.5), 0.0, sin((a + b) * 0.5))
+		_face(s, _rim(stalk_w, stalk_y, a), _rim(stalk_w, stalk_y, b), _rim(end_w, -BODY_LENGTH, b),
+			_rim(end_w, -BODY_LENGTH, a), outward, tail_tone)
+		_face(s, _rim(stalk_w, stalk_y, a), _rim(stalk_w, stalk_y, b), tail_end, tail_end, outward + Vector3.DOWN, tail_tone)
+	var fin_front: float = stalk_y + 1.2
+	var fin_back: float = stalk_y - 0.8
+	for lobe: Array in [[-1.0, TAIL_FIN, HALF_DEPTH + 5.5], [1.0, TAIL_FIN * 0.62, HALF_DEPTH + 3.0]]:
+		var sz: float = float(lobe[0])
+		var root0 := Vector3(0.0, fin_front, sz * stalk_w.y * 0.8)
+		var root1 := Vector3(0.0, fin_back, 0.0)
+		var tip := Vector3(0.0, stalk_y - float(lobe[1]), sz * float(lobe[2]))
+		_face(s, root0, root1, tip, tip, Vector3(1.0, 0.0, 0.0), tail_tone)
+		_face(s, root0, root1, tip, tip, Vector3(-1.0, 0.0, 0.0), tail_tone)
 	# The gill slits: five dark slots down each side below the hinge, raked back.
 	for sx: float in [-1.0, 1.0]:
 		for k: int in 5:

@@ -9,17 +9,22 @@ extends TestSuite
 ## - the minute counts from top_reached: the boss bar runs down over it (GDD §10, proposed) and the fight is won as it
 ##   ends, not before; hits don't end phase 3; the ship comes level alongside the top, at the runner's height, in view;
 ## - every round and wave warned, seen and heard, before it lands: a round's red lines down exactly the lanes it strikes
-##   (on the top's deck) with the cannons' charge, a wave's swell rising beside the top with its roar; a dodging runner
+##   (on the top's deck) with the cannons' charge, a wave's swell rising beside the top with its roar, its crest over the
+##   deck's edge from MechaGuppyWaves.CREST_BY into the warning (task E5e-c's review); a dodging runner
 ##   (MechaGuppyBot, the planner's reaction) lives through the minute untouched at 3, 5 and 6 lanes and 18 and 23.8 m/s,
 ##   switching out of every round and jumping every wave, the beats as planned;
 ## - real contact only: a cannonball kills a runner who stays in its lane, and one who jumps it (too tall to jump), and
 ##   never one a lane away; a wave kills a runner who doesn't jump it and spares one who does; armor and the shield block
 ##   either (the item spent), the dash passes through either;
-## - no escalation, a retry plays the same: the script's loops alike, and two attempts the same, beat for beat;
+## - no escalation, a retry plays the same: the script's loops alike, and two attempts the same, beat for beat; beats held
+##   back (the pattern off a while, as an intro would) start late one at a time, each keeping its gap after the last;
+## - the boss bar runs down through the minute at 30, 50 and 60 rendered frames a second, its white segment draining with
+##   the red (BossEncounter.health_runs_down; task E5e-c's review), while a hit's white segment still holds a moment;
 ## - the defeat: Mecha Guppy bursts up beside the top under the ship, gulps the captain with the ship's stern half (the
-##   bow half falling away), falls back and swims away; nothing of it ever over the lanes, nothing in it hurts the runner
-##   (no hazard live after the win), the riff after the gulp, and victory_over only once it has swum away, well within
-##   LevelRun.BOSS_VICTORY_MAX;
+##   bow half falling away), falls back, then breaches out at sea past the shoreline, where the run camera sees it over
+##   the deck's edge, and dives back in with a plume of spray (task E5e-c's review: the swim away must be seen); nothing
+##   of its jaws or its body ever over the lanes or the eaves, nothing in it hurts the runner (no hazard live after the
+##   win), the riff after the gulp, and victory_over dive_after its dive, well within LevelRun.BOSS_VICTORY_MAX;
 ## - the sounds: phase 3's in the library, the warnings as long as their warnings, with no pitch variation.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
@@ -28,6 +33,10 @@ const SPEEDS: Array[float] = [18.0, 23.8]
 const REACTION: float = 0.35
 ## A frame's slack in the timing checks (seconds).
 const FRAME: float = 1.0 / 60.0 + 0.001
+## A swell's crest stands at least this far over the deck from MechaGuppyWaves.CREST_BY into its warning (metres).
+const CREST_SHOWN: float = 1.0
+## The run camera's horizontal view half-angle reckoned for "seen" (degrees: 51 at 16:9, 43 at 4:3).
+const VIEW: float = 48.0
 
 var sim: RunSim
 var def: BossDef
@@ -50,6 +59,8 @@ func run() -> void:
 	await _test_rounds_contact()
 	await _test_waves_contact()
 	await _test_retry()
+	await _test_held_beats()
+	await _test_bar()
 	await _test_defeat()
 
 
@@ -336,6 +347,7 @@ func _test_live(lanes: int, speed: float) -> void:
 		return
 	var problems: Array[String] = []
 	var seen: Dictionary = {}
+	var crests: Dictionary = {}
 	await _run(world, mt.top_seconds + 2.0, func() -> bool: return boss.is_defeated(), func() -> void:
 		bot.step()
 		# A round's red lines down exactly the lanes it strikes, on the top's deck, while it warns.
@@ -348,17 +360,27 @@ func _test_live(lanes: int, speed: float) -> void:
 				var lined: bool = boss.props.warned(lane, float(r["d_meet"]), float(r["d_land"]), float(r["y"]))
 				if lined != (r["lanes"] as Array).has(lane):
 					problems.append("round %d: lane %d %s" % [k, lane, "lined but not struck" if lined else "struck but not lined"])
-		# A wave's swell rising beside the top while it warns.
+		# A wave's swell rising beside the top while it warns, its crest over the deck's edge early in the warning.
 		for w: Dictionary in boss.top.waves.waves:
 			if int(w["state"]) == MechaGuppyWaves.State.SWELL:
 				var swell: MeshInstance3D = w["swell"]
 				if swell == null or not swell.visible or swell.global_position.x * float(MechaGuppyWaves.WAVE_SIDE) < world.geo.wall_x() - 0.01:
-					problems.append("wave %d warns without its swell beside the top" % int(w["k"])))
+					problems.append("wave %d warns without its swell beside the top" % int(w["k"]))
+				var into: float = boss.top.waves.clock - float(w["start"])
+				var crest: float = boss.top.waves.crest_above(w)
+				if crest > 0.0 and not crests.has(int(w["k"])):
+					crests[int(w["k"])] = into
+				if into >= MechaGuppyWaves.CREST_BY and crest < CREST_SHOWN:
+					problems.append("wave %d's crest %.2f m over the deck %.2f s into its warning" % [int(w["k"]), crest, into]))
 	check(boss.is_defeated() and p.alive and hurt[0] == 0,
 		"the dodging runner lives through the minute untouched, and the fight is won %s%s" % [tag,
 			"" if p.alive else " (died at %.1f s)" % boss.fight_time()])
-	check(problems.is_empty(), "every round lines exactly its lanes, every wave rises beside the top as it warns %s%s"
-		% [tag, "" if problems.is_empty() else ": " + "; ".join(problems.slice(0, 3))])
+	var crest_by: float = 0.0
+	for k: int in crests:
+		crest_by = maxf(crest_by, float(crests[k]))
+	check(problems.is_empty() and crests.size() == _events(boss, &"wave").size(),
+		"every round lines exactly its lanes, every wave's swell rises beside the top as it warns, its crest over the deck by %.2f s (at most %.2f s) %s%s"
+		% [crest_by, MechaGuppyWaves.CREST_BY, tag, "" if problems.is_empty() else ": " + "; ".join(problems.slice(0, 3))])
 	# The beats as planned, each warned (seen and heard) its lead before its attack, none over another.
 	var plan: Array[Dictionary] = MechaGuppyTop.plan(mt)
 	var rounds: Array[Dictionary] = _events(boss, &"round")
@@ -591,9 +613,132 @@ func _test_retry() -> void:
 	check(logs[0] != "" and logs[0] == logs[1], "a retry plays phase 3 the same: the same beats at the same moments, the same lanes")
 
 
+# --- Held beats -------------------------------------------------------------------------------------
+
+## Beats held back (the pattern off for a while after the top is reached, as phase 3's intro would) start late, one at a
+## time, each keeping its gap after the last (task E5e-c's review: every overdue beat used to start in the same step, two
+## rounds of opposite lanes striking every lane between them); the runner still dodges them all.
+func _test_held_beats() -> void:
+	var pair: Array = _fight(5, 23.8)
+	var world: RunWorld = pair[0]
+	var boss: MechaGuppy = pair[1]
+	var mt: MechaGuppyTuning = boss.tuning
+	var bot := MechaGuppyBot.new(boss)
+	bot.reaction = REACTION
+	var hurt: Array[int] = [0]
+	world.player.item_used.connect(func(_item: StringName) -> void: hurt[0] += 1)
+	if not await _to_top(world, boss, bot):
+		check(false, "the runner reaches the top (held beats)")
+		await sim.free_world(world)
+		return
+	# Three beats overdue when the pattern comes back.
+	boss.attacks_enabled = false
+	var held: float = mt.top_first + mt.top_beat * 2.5
+	await _run(world, held, func() -> bool: return false, bot.step)
+	var released: float = boss.fight_time()
+	boss.attacks_enabled = true
+	await _run(world, 12.0, func() -> bool: return false, bot.step)
+	var starts: Array[Dictionary] = _events(boss, &"round") + _events(boss, &"wave")
+	starts.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["k"]) < int(b["k"]))
+	var planned: Dictionary = {}
+	for b: Dictionary in MechaGuppyTop.plan(mt):
+		planned[int(b["k"])] = float(b["at"])
+	var ok: bool = starts.size() >= 3 and absf(float(starts[0]["t"]) - released) < FRAME * 2.0
+	for i: int in range(1, starts.size()):
+		var gap: float = float(planned.get(int(starts[i]["k"]), INF)) - float(planned.get(int(starts[i - 1]["k"]), 0.0))
+		ok = ok and float(starts[i]["t"]) - float(starts[i - 1]["t"]) >= gap - FRAME
+	check(ok and world.player.alive and hurt[0] == 0,
+		"beats held back start late, one at a time, each its planned gap after the last (%d beats from %.1f s, %.1f s late), dodged untouched"
+		% [starts.size(), released - boss.top_reached_at, boss.top.late])
+	await sim.free_world(world)
+
+
+# --- The boss bar ------------------------------------------------------------------------------------
+
+## The boss bar (BossBar) through phase 3's minute at 30, 50 and 60 rendered frames a second (task E5e-c's review: below
+## about 55 fps every rendered frame's drop re-armed the white segment's hold, so it never drained): its white segment
+## follows the red fill down (BossEncounter.health_runs_down); and a hit's white segment (every other boss's, and this
+## one's in phases 1 and 2) still holds a moment before it drains.
+func _test_bar() -> void:
+	var pair: Array = _fight(5, 23.8)
+	var world: RunWorld = pair[0]
+	var boss: MechaGuppy = pair[1]
+	var bot := MechaGuppyBot.new(boss)
+	bot.reaction = REACTION
+	check(not boss.health_runs_down(), "the bar's health doesn't run down before the top (hits show their white segment)")
+	if not await _to_top(world, boss, bot):
+		check(false, "the runner reaches the top (the bar)")
+		await sim.free_world(world)
+		return
+	var rates: Array[float] = [30.0, 50.0, 60.0]
+	var bars: Array[BossBar] = []
+	var acc: Array[float] = []
+	var worst: Array[float] = []
+	for fps: float in rates:
+		var bar := BossBar.new()
+		tree.root.add_child(bar)
+		bar.set_process(false)
+		bar.bind(boss)
+		bars.append(bar)
+		acc.append(0.0)
+		worst.append(0.0)
+	var start_ratio: float = boss.health_ratio()
+	await _run(world, 25.0, func() -> bool: return boss.is_defeated(), func() -> void:
+		bot.step()
+		for i: int in bars.size():
+			acc[i] += 1.0 / Engine.physics_ticks_per_second
+			var dt: float = 1.0 / rates[i]
+			while acc[i] >= dt - 0.00001:
+				acc[i] -= dt
+				bars[i]._process(dt)
+			if boss.fight_time() - boss.top_reached_at > 1.0:
+				worst[i] = maxf(worst[i], bars[i].drain_value() - bars[i].value))
+	var drained: bool = boss.health_runs_down() and boss.health_ratio() < start_ratio - 0.1
+	for w: float in worst:
+		drained = drained and w < 0.005
+	check(drained, "through the minute the bar's white segment drains with the red at 30, 50 and 60 fps (at most %s of the bar behind; the red went from %.3f to %.3f)"
+		% [worst.map(func(w: float) -> String: return "%.4f" % w), start_ratio, boss.health_ratio()])
+	for bar: BossBar in bars:
+		bar.queue_free()
+	# A hit (no steady run-down): the white segment holds DRAIN_DELAY, then drains.
+	var hit := BossBar.new()
+	tree.root.add_child(hit)
+	hit.set_process(false)
+	hit.set_state(0.8, PackedFloat32Array(), true, "")
+	hit._process(0.5)
+	hit._process(1.0)
+	hit.set_state(0.7, PackedFloat32Array(), true, "")
+	hit._process(1.0 / 30.0)
+	var held: bool = is_equal_approx(hit.drain_value(), 0.8)
+	for i: int in int(BossBar.DRAIN_DELAY * 30.0) + 6:
+		hit._process(1.0 / 30.0)
+	check(held and hit.drain_value() < 0.8 - 0.01, "a hit's white segment still holds %.1f s before draining (%.3f after)"
+		% [BossBar.DRAIN_DELAY, hit.drain_value()])
+	hit.queue_free()
+	await sim.free_world(world)
+
+
 # --- The defeat -------------------------------------------------------------------------------------
 
-## The leap (see the header), with a short minute.
+## True if the run camera (where RunCamera puts it for the runner now: MovementTuning's camera numbers) sees world point
+## `q`: ahead of it within VIEW degrees of its forward axis, and not under its line past the deck's edge (the coping,
+## MechaGuppyLeap.KERB) on q's side.
+func _seen(world: RunWorld, q: Vector3) -> bool:
+	var p: Player = world.player
+	var mt: MovementTuning = world.tuning
+	var cam := Vector3(p.position.x * mt.camera_follow_x, p.floor_base + mt.camera_height, p.position.z + mt.camera_distance)
+	var rel: Vector3 = q - cam
+	if rel.z >= 0.0 or rad_to_deg(atan2(absf(rel.x), -rel.z)) > VIEW:
+		return false
+	var side: float = signf(q.x)
+	var edge: float = side * (world.geo.wall_x() + MechaGuppyLeap.KERB.x)
+	if absf(q.x) <= absf(edge) or absf(rel.x) < 0.001:
+		return true
+	var y_at: float = cam.y + rel.y * (edge - cam.x) / rel.x
+	return y_at > p.floor_base + MechaGuppyLeap.KERB.y
+
+
+## The leap (see the header), with a short minute, at 3 and 6 lanes.
 func _test_defeat() -> void:
 	for lanes: int in [3, 6]:
 		var tag: String = "(%d lanes)" % lanes
@@ -608,35 +753,85 @@ func _test_defeat() -> void:
 		await _run(world, 60.0, func() -> bool: return boss.is_defeated(), bot.step)
 		check(boss.is_defeated() and boss.leap != null and not boss.victory_over() and not boss.victory_riff(),
 			"the minute up, Mecha Guppy leaps; the results wait, and no riff at the defeat itself %s" % tag)
+		if boss.leap == null:
+			await sim.free_world(world)
+			continue
+		var leap: MechaGuppyLeap = boss.leap
 		# The lanes and the top's eaves beside them.
 		var half: float = world.geo.half_width() + MechaGuppyLooks.EAVE_REACH
-		var st: Dictionary = {"over_lanes": 0, "hazards": 0, "max_y": -INF, "over_at": -1.0, "time": 0.0, "stern": true}
-		var t_def: float = 0.0
-		await _run(world, LevelRun.BOSS_VICTORY_MAX, func() -> bool: return boss.victory_over(), func() -> void:
-			t_def += 1.0 / Engine.physics_ticks_per_second
-			for q: Vector3 in boss.shark.jaws_points():
+		var st: Dictionary = {"over_lanes": 0, "hazards": 0, "max_y": -INF, "air": 0, "seen": 0, "top_y": -INF,
+			"top_seen": false, "top_body": 0, "plume": 0.0, "plume_seen": false, "shore": [], "over_at": -1.0}
+		await _run(world, LevelRun.BOSS_VICTORY_MAX + 4.0, func() -> bool:
+			return leap.step == MechaGuppyLeap.Step.GONE and leap.over() and not leap.plumes[1].playing(), func() -> void:
+			bot.step()
+			var points: PackedVector3Array = boss.shark.jaws_points()
+			points.append_array(boss.shark.body_points())
+			for q: Vector3 in points:
 				if absf(q.x) < half and q.y > p.floor_base - 6.0:
 					st["over_lanes"] = int(st["over_lanes"]) + 1
 				st["max_y"] = maxf(float(st["max_y"]), q.y)
 			var live: int = boss.top.rounds.ball_hazards().size() + boss.top.waves.band_hazards().size() + boss.bombs.blast_hazards().size()
-			st["hazards"] = int(st["hazards"]) + live)
-		var leap: MechaGuppyLeap = boss.leap
+			st["hazards"] = int(st["hazards"]) + live
+			if boss.victory_over() and float(st["over_at"]) < 0.0:
+				st["over_at"] = leap.time
+			# The breach, from its snout breaking the sea to its dive: the hinge seen by the run camera.
+			if leap.marks.has("surface") and not leap.marks.has("dive") and leap.step == MechaGuppyLeap.Step.BREACH:
+				var hinge: Vector3 = boss.shark.head_transform().origin
+				st["air"] = int(st["air"]) + 1
+				if _seen(world, hinge):
+					st["seen"] = int(st["seen"]) + 1
+				if hinge.y > float(st["top_y"]):
+					st["top_y"] = hinge.y
+					st["top_seen"] = _seen(world, hinge)
+					var body: int = 0
+					for q: Vector3 in boss.shark.body_points():
+						body += 1 if _seen(world, q) else 0
+					st["top_body"] = body
+			# Where it breaks the sea and dives back in: past the shoreline.
+			for i: int in 2:
+				var mark: String = "surface" if i == 0 else "dive"
+				if leap.marks.has(mark) and (st["shore"] as Array).size() == i:
+					var tip: Vector3 = leap.snout()
+					(st["shore"] as Array).append(absf(tip.x) - world.geo.wall_x() - BeachOpen.shore(int(signf(tip.x)), -tip.z))
+			# The dive's plume at its tallest: seen.
+			var plume: MechaGuppySplash = leap.plumes[1]
+			if plume.playing() and plume.standing() > float(st["plume"]):
+				st["plume"] = plume.standing()
+				st["plume_seen"] = _seen(world, plume.global_position + Vector3(0.0, plume.standing(), 0.0)))
 		var marks: Dictionary = leap.marks
-		check(boss.victory_over() and marks.has("gulp") and marks.has("swim") and marks.has("over")
-			and absf(float(marks["gulp"]) - mt.leap_rise) < FRAME * 2.0
-			and float(marks["over"]) <= mt.leap_rise + mt.leap_hang + mt.leap_fall + mt.swim_seconds + 0.1
-			and float(marks["over"]) < LevelRun.BOSS_VICTORY_MAX,
-			"it bursts up, gulps at %.2f s, falls back and swims away; the results may follow at %.1f s (at most %.0f s) %s"
-			% [float(marks.get("gulp", -1.0)), float(marks.get("over", -1.0)), LevelRun.BOSS_VICTORY_MAX, tag])
+		var order: bool = true
+		var last: float = -1.0
+		for key: String in ["rise", "gulp", "fall", "breach", "surface", "dive", "over"]:
+			order = order and marks.has(key) and float(marks[key]) >= last
+			last = float(marks.get(key, -1.0))
+		check(order and boss.victory_over() and absf(float(marks["gulp"]) - mt.leap_rise) < FRAME * 2.0
+			and absf(float(marks["over"]) - float(marks["dive"]) - mt.dive_after) < FRAME * 2.0
+			and float(marks["over"]) <= leap.over_by() + FRAME * 2.0 and is_equal_approx(leap.over_by(), MechaGuppyLeap.seconds_to_over(mt))
+			and absf(float(st["over_at"]) - float(marks["over"])) < FRAME * 2.0 and float(marks["over"]) < LevelRun.BOSS_VICTORY_MAX
+			and marks.has("gone"),
+			"it bursts up, gulps at %.2f s, falls back, breaches out at sea at %.2f s and dives back in at %.2f s; the results may follow %.1f s after the win (at most %.0f s), and it's gone at %.1f s %s"
+			% [float(marks.get("gulp", -1.0)), float(marks.get("surface", -1.0)), float(marks.get("dive", -1.0)),
+				float(marks.get("over", -1.0)), LevelRun.BOSS_VICTORY_MAX, float(marks.get("gone", -1.0)), tag])
 		var ship: CaptainCogsShip = boss.ship
 		check(ship.swallowed and not ship.rig.visible and ship.wreck() != null,
 			"the gulp: the captain and the ship's stern half swallowed, the bow half broken away %s" % tag)
 		check(float(st["max_y"]) > p.floor_base + 4.0, "it rises above the top, where the camera sees it (%.1f m over the deck) %s"
 			% [float(st["max_y"]) - p.floor_base, tag])
-		check(int(st["over_lanes"]) == 0, "nothing of its jaws ever over the lanes or the top's eaves (%d points) %s" % [st["over_lanes"], tag])
+		var seen_share: float = float(st["seen"]) / maxf(float(st["air"]), 1.0)
+		check(bool(st["top_seen"]) and int(st["top_body"]) >= 3 and seen_share >= 0.6 and bool(st["plume_seen"]),
+			"the swim away is seen by the run camera over the deck's edge: the breach's hinge %.0f%% of its leap, at its top its head and the front of its body (%d of 7 points along it: the rest, toward the runner, out of the view's side), and the dive's plume (%.0f m tall) %s"
+			% [seen_share * 100.0, int(st["top_body"]), float(st["plume"]), tag])
+		var shore: Array = st["shore"]
+		check(shore.size() == 2 and float(shore[0]) > 4.0 and float(shore[1]) > 4.0,
+			"out at sea: from this low top the camera sees the sea's surface, and it breaks the sea and dives back in past the shoreline (%s m past it) %s"
+			% [shore.map(func(m: float) -> String: return "%.0f" % m), tag])
+		check(int(st["over_lanes"]) == 0, "nothing of its jaws or its body ever over the lanes or the top's eaves (%d points) %s" % [st["over_lanes"], tag])
 		check(int(st["hazards"]) == 0 and p.alive, "nothing in the leap can hurt the runner: no hazard live after the win %s" % tag)
 		var riff: Array[Dictionary] = _events(boss, &"riff")
 		check(riff.size() == (1 if mt.victory_riff_on else 0) and _sounds(boss, &"guppy_gulp").size() == 1
-			and _sounds(boss, &"guppy_leap").size() == 1 and _sounds(boss, &"guppy_swim").size() == 1,
-			"the leap, the gulp and the swim heard, the victory riff after the gulp %s" % tag)
+			and _sounds(boss, &"guppy_leap").size() == 2 and _sounds(boss, &"guppy_swim").size() == 1,
+			"the leap and the breach roar, the gulp and the dive's splash heard, the victory riff after the gulp %s" % tag)
+		print("  Mecha Guppy's defeat %s: the breach %.0f m out, %.0f m ahead, %.0f m over the sea (the camera's line past the deck's edge reckoned from %.0f m out); seen %.0f%% of its leap; the results may follow %.2f s after the win"
+			% [tag, float(leap.breach["out"]), float(leap.breach["ahead"]), float(leap.breach["high"]), float(leap.breach["seen"]),
+				seen_share * 100.0, float(marks.get("over", -1.0))])
 		await sim.free_world(world)

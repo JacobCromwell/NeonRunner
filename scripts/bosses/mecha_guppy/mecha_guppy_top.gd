@@ -20,12 +20,12 @@ extends Node3D
 ## clear, reached in one switch, and its cannonballs reach the runner at least a reaction, a switch and dodge_margin
 ## after its warning shows (round_warning, round_flight, round_ahead, round_close); a wave's surge reaches them at least
 ## a reaction after its swell starts, and a normal jump clears it (wave_height); no beat's warning starts until the last
-## beat's attack has passed the runner, so a jump and a switch are never asked for at the same moment, and a round never
-## strikes a lane holding a pickup in its stretch.
+## beat's attack has passed the runner (by beat_spare), so a jump and a switch are never asked for at the same moment, and
+## a round never strikes a lane holding a pickup in its stretch. A beat held back (the pattern not running yet, as in
+## phase 3's intro) starts late, at most one a physics step, and every later beat keeps its gap after it (`late`), so two
+## rounds never strike together (between them, every lane) and the plan's promises hold; a beat that would then end past
+## the minute's top_clear doesn't start.
 
-## No beat's warning starts until the last beat's attack has passed the runner by this much (seconds): the beat's length
-## is checked against it (plan()).
-const BEAT_SPARE: float = 0.3
 ## A round leaves out a struck lane with a pickup within this of its stretch (metres).
 const PICKUP_CLEAR: float = 3.0
 
@@ -39,6 +39,8 @@ var began_at: float = -1.0
 ## The beats planned for the minute (plan()), and how many have started.
 var beats: Array[Dictionary] = []
 var next_beat: int = 0
+## Seconds the beats run late (one held back: every later beat keeps its gap after it). 0 at the defaults.
+var late: float = 0.0
 ## True once the minute is up (the fight is won then).
 var finished: bool = false
 
@@ -71,6 +73,7 @@ func begin(at: float) -> void:
 	began_at = at
 	beats = plan(tuning)
 	next_beat = 0
+	late = 0.0
 	if boss.ship != null:
 		boss.ship.come_level()
 	boss.log_event(&"top_begin", {"beats": beats.size()})
@@ -91,18 +94,27 @@ func over() -> bool:
 	return started() and elapsed() >= tuning.top_seconds - 0.0001
 
 
-## One physics step of phase 3 (MechaGuppy's ticks drive it): the rounds and the waves move, the beats start on time
-## (while the pattern runs: never in an intro), and the boss bar runs down.
+## One physics step of phase 3 (MechaGuppy's ticks drive it): the rounds and the waves move, the next beat starts on time
+## (while the pattern runs: never in an intro; one held back starts late, the later ones keeping their gaps), and the
+## boss bar runs down.
 func tick(delta: float) -> void:
 	rounds.tick(delta)
 	waves.tick(delta)
 	if not started() or finished:
 		return
 	var t: float = elapsed()
-	while next_beat < beats.size() and t >= float(beats[next_beat]["at"]) - 0.0001 and boss.is_vulnerable() \
-			and boss.attacks_enabled:
-		_start(beats[next_beat])
-		next_beat += 1
+	if next_beat < beats.size() and boss.is_vulnerable() and boss.attacks_enabled:
+		var beat: Dictionary = beats[next_beat]
+		var due: float = float(beat["at"]) + late
+		if t >= due - 0.0001:
+			late += maxf(t - due, 0.0)
+			if float(beat["ends"]) + late > tuning.top_seconds - tuning.top_clear + 0.0001:
+				# Held back so long it would end past the minute's top_clear: no more beats.
+				boss.log_event(&"beats_cut", {"k": int(beat["k"]), "late": late})
+				next_beat = beats.size()
+			else:
+				_start(beat)
+				next_beat += 1
 	run_down()
 
 
@@ -130,7 +142,7 @@ func clear() -> void:
 ## Phase 3's beats for `t` (MechaGuppyTuning; tests check them): [{k (its place in the minute), kind (&"round", &"wave"),
 ## at (seconds after the top is reached), parity (a round: 0 strikes the lanes 0, 2, 4..., 1 the others; -1 for a wave),
 ## n (its number among its kind), lead (seconds from its warning to its attack reaching the runner), ends (seconds after
-## the top: its attack past the runner, and BEAT_SPARE)}]. The script loops from top_first, a beat every top_beat, but
+## the top: its attack past the runner, and beat_spare)}]. The script loops from top_first, a beat every top_beat, but
 ## never before the last beat's attack has ended (only a tuning whose attacks outlast top_beat moves a beat on); none
 ## whose attack would end later than top_clear before the minute's end.
 static func plan(t: MechaGuppyTuning) -> Array[Dictionary]:
@@ -153,7 +165,7 @@ static func plan(t: MechaGuppyTuning) -> Array[Dictionary]:
 				break
 			continue
 		var lead: float = round_lead if letter == "R" else wave_lead
-		var ends: float = at + lead + BEAT_SPARE
+		var ends: float = at + lead + t.beat_spare
 		if ends > t.top_seconds - t.top_clear:
 			break
 		free_at = ends

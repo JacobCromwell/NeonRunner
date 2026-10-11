@@ -5,10 +5,12 @@ extends TestSuite
 ## Beach's 23.8 m/s, baiting and not:
 ## - from its start: phase 1 won by 4 hits, phase 2 by 6 (a baiting runner's every hit a bait into the notch's jaws, a
 ##   runner who never baits every hit Captain Cogs' miss into the chasm, more slowly), then the climb's last steps to the
-##   top, phase 3's minute dodged, the leap and the swim away, and victory_over; the runner never touched;
-## - the par times (BossDef: two_star_seconds, three_star_seconds, time_bonus_seconds) set from the baiting runner's clean
-##   fights at the campaign's 23.8 m/s the way Hostile Takeover's are (three stars a little over the slowest, two about
-##   40 % over it), and a clean fight at 18 m/s earns three stars too; a runner who never baits wins too, with fewer;
+##   top, phase 3's minute dodged, the leap and the swim away, and victory_over; the runner never touched; the swim away
+##   (the breach out at sea and its dive) seen by the run camera over the top's deck edge, at the top's real height;
+## - the par times (BossDef: two_star_seconds, three_star_seconds, time_bonus_seconds): three stars a little over the
+##   baiting runner's slowest clean fight at the campaign's 23.8 m/s, the way Hostile Takeover's are (a clean fight at
+##   18 m/s earns three too); two stars between that and the quickest win without baiting (task E5e-c's review: two stars
+##   need some baiting), so a runner who never baits wins with one star at every lane count and speed;
 ## - the campaign (App): the Beach's boss step follows its last level, the real fight at the Beach's 23.8 m/s under Sunset
 ##   Strip's sky, no god mode; a death in phase 2 shows the run summary, and the retry starts the fight over and plays
 ##   the same; it's won: the results wait for Mecha Guppy to swim away (victory_over) and LevelRun.COMPLETE_PAUSE, then
@@ -26,11 +28,16 @@ const CAMPAIGN_SPEED: float = 23.8
 const REACTION: float = 0.35
 ## The whole fight is over well within this (measured 157-170 s baiting and 223-244 s not, with the leap's 7 s after).
 const MAX_SECONDS: float = 480.0
-## Hostile Takeover's par times over its clean fight (corporate_boss.tres: 74 s and 96 s over 68.6 s).
+## Hostile Takeover's three-star par over its clean fight (corporate_boss.tres: 74 s over 68.6 s).
 const THREE_STAR_OVER: float = 74.0 / 68.6
-const TWO_STAR_OVER: float = 96.0 / 68.6
+## Two stars at least this much over the slowest clean fight (room for a runner who baits most steps but slips), and at
+## least TWO_STAR_SHORT under the quickest win without baiting (seconds).
+const TWO_STAR_ROOM: float = 1.2
+const TWO_STAR_SHORT: float = 5.0
 ## A frame's slack (seconds).
 const FRAME: float = 1.0 / 60.0 + 0.001
+## The run camera's horizontal view half-angle reckoned for "seen" (degrees: 51 at 16:9, 43 at 4:3).
+const VIEW: float = 48.0
 ## The events compared between a first attempt and its retry.
 const LOGGED: Array[StringName] = [&"phase", &"phase_end", &"climb_phase", &"volley", &"bait_seek", &"bait_lock",
 	&"throw", &"hit", &"shark_hit", &"fallback", &"top_reached"]
@@ -141,11 +148,42 @@ func _test_whole(lanes: int, speed: float, baits: bool) -> void:
 	p.died.connect(func(c: String) -> void: cause[0] = c)
 	var used: Array[StringName] = []
 	p.item_used.connect(func(item: StringName) -> void: used.append(item))
-	var won := {"t": -1.0, "frames": 0}
+	var won := {"t": -1.0, "frames": 0, "air": 0, "seen": 0, "top_y": -INF, "top_seen": false, "dive_seen": false, "plume": 0.0,
+		"plume_seen": false}
 	await _run(world, MAX_SECONDS, func() -> bool: return boss.is_defeated() and boss.victory_over(), func() -> void:
 		bot.step()
 		if boss.is_defeated():
-			won["frames"] = int(won["frames"]) + 1)
+			won["frames"] = int(won["frames"]) + 1
+		var leap: MechaGuppyLeap = boss.leap
+		if leap == null:
+			return
+		# The swim away, from its snout breaking the sea until the results may follow: some of it seen (its hinge at the top
+		# of its arc); and the dive's plume at its tallest.
+		if leap.marks.has("surface"):
+			won["air"] = int(won["air"]) + 1
+			var any: bool = false
+			for q: Vector3 in boss.shark.body_points():
+				any = any or _seen(world, q)
+			if any:
+				won["seen"] = int(won["seen"]) + 1
+			if leap.marks.has("dive") and not won.has("dive_frame"):
+				won["dive_frame"] = true
+				won["dive_seen"] = any
+			var hinge: Vector3 = boss.shark.head_transform().origin
+			if not leap.marks.has("dive") and hinge.y > float(won["top_y"]):
+				won["top_y"] = hinge.y
+				won["top_seen"] = _seen(world, hinge)
+		# Where it breaks the sea and dives back in, if the camera sees the sea's surface there: past the shoreline.
+		for mark: String in ["surface", "dive"]:
+			if leap.marks.has(mark) and not won.has(mark):
+				var tip: Vector3 = leap.snout()
+				var water := Vector3(tip.x, float(leap.breach["sea"]), tip.z)
+				won[mark] = not _seen(world, water) \
+					or absf(tip.x) > world.geo.wall_x() + BeachOpen.shore(int(signf(tip.x)), -tip.z) + 4.0
+		var plume: MechaGuppySplash = leap.plumes[1]
+		if plume.playing() and plume.standing() > float(won["plume"]):
+			won["plume"] = plume.standing()
+			won["plume_seen"] = _seen(world, plume.global_position + Vector3(0.0, plume.standing(), 0.0)))
 	var ends: Array[Dictionary] = _events(boss, &"phase_end")
 	var hits: Array[Dictionary] = _events(boss, &"hit")
 	var per_phase: Array[int] = [0, 0, 0]
@@ -179,10 +217,21 @@ func _test_whole(lanes: int, speed: float, baits: bool) -> void:
 	check(beats == plan.size() and bot.top_jumps == _events(boss, &"wave").size(),
 		"the minute's beats all came (%d of %d), every wave jumped %s" % [beats, plan.size(), tag])
 	var leap: MechaGuppyLeap = boss.leap
-	check(leap != null and leap.over() and over_after <= mt.leap_rise + mt.leap_hang + mt.leap_fall + mt.swim_seconds + 0.1
+	check(leap != null and leap.over() and over_after <= leap.over_by() + 0.05
 		and over_after < LevelRun.BOSS_VICTORY_MAX and boss.ship.swallowed,
 		"the defeat: Mecha Guppy leaps, gulps Captain Cogs and swims away in %.1f s (at most %.0f s) %s"
 		% [over_after, LevelRun.BOSS_VICTORY_MAX, tag])
+	var seen_share: float = float(won["seen"]) / maxf(float(won["air"]), 1.0)
+	check(int(won["air"]) > 0 and seen_share >= 0.8 and bool(won["top_seen"]) and bool(won["dive_seen"]),
+		"the swim away seen from the top (%.0f m up): some of the shark %.0f%% of the time from the breach to the results, its hinge at the top of its arc, its body as it dives (the dive's plume %s) %s"
+		% [p.floor_base, seen_share * 100.0, "seen" if bool(won["plume_seen"]) else "under the deck's edge", tag])
+	check(bool(won.get("surface", false)) and bool(won.get("dive", false)),
+		"where the camera sees the sea's surface it breaks and dives back in, it does so past the shoreline %s" % tag)
+	if leap != null and not leap.breach.is_empty():
+		print("    the breach %.0f m out, %.0f m ahead, %.0f m over the sea in %.1f s (begun %.2f s in), from a deck %.0f m up; some of it seen %.0f%% of the time; the dive's plume %s"
+			% [float(leap.breach["out"]), float(leap.breach["ahead"]), float(leap.breach["high"]), float(leap.breach["seconds"]),
+				float(leap.breach["start"]) + MechaGuppyLeap.BREACH_LEAD, p.floor_base, seen_share * 100.0,
+				"seen" if bool(won["plume_seen"]) else "under the deck's edge"])
 	if p.alive and boss.is_defeated():
 		times["%d/%.1f/%s" % [lanes, speed, "bait" if baits else "miss"]] = {
 			"phase_1": float(ends[0]["t"]) if ends.size() > 0 else -1.0,
@@ -191,11 +240,30 @@ func _test_whole(lanes: int, speed: float, baits: bool) -> void:
 	await sim.free_world(world)
 
 
+## True if the run camera (where RunCamera puts it for the runner now: MovementTuning's camera numbers) sees world point
+## `q`: ahead of it within VIEW degrees of its forward axis, and not under its line past the deck's edge (the coping,
+## MechaGuppyLeap.KERB) on q's side.
+func _seen(world: RunWorld, q: Vector3) -> bool:
+	var p: Player = world.player
+	var mt: MovementTuning = world.tuning
+	var cam := Vector3(p.position.x * mt.camera_follow_x, p.floor_base + mt.camera_height, p.position.z + mt.camera_distance)
+	var rel: Vector3 = q - cam
+	if rel.z >= 0.0 or rad_to_deg(atan2(absf(rel.x), -rel.z)) > VIEW:
+		return false
+	var side: float = signf(q.x)
+	var edge: float = side * (world.geo.wall_x() + MechaGuppyLeap.KERB.x)
+	if absf(q.x) <= absf(edge) or absf(rel.x) < 0.001:
+		return true
+	var y_at: float = cam.y + rel.y * (edge - cam.x) / rel.x
+	return y_at > p.floor_base + MechaGuppyLeap.KERB.y
+
+
 # --- The par times -----------------------------------------------------------------------------------------
 
-## Set from the baiting runner's clean fights the way Hostile Takeover's are: three stars a little over the slowest
-## clean fight at the campaign's speed, two about 40 % over it; a clean fight at quick play's 18 m/s earns three stars
-## too; the time bonus runs out a little past two stars. A runner who never baits still wins, with fewer stars.
+## Three stars a little over the baiting runner's slowest clean fight at the campaign's speed, the way Hostile Takeover's
+## are (a clean fight at quick play's 18 m/s earns three stars too); two stars between that and the quickest win without
+## baiting, so they need some baiting and a runner who never baits wins with one star, the same at every lane count and
+## speed; the time bonus runs out a little past two stars.
 func _test_par_times() -> void:
 	var at_campaign: Array[float] = []
 	var at_quick: Array[float] = []
@@ -219,15 +287,17 @@ func _test_par_times() -> void:
 		% [CAMPAIGN_SPEED, at_campaign, SPEEDS[0], at_quick, missing, def.three_star_seconds, def.two_star_seconds,
 			def.time_bonus_seconds])
 	check(at_campaign.max() - at_campaign.min() < 8.0, "a clean fight takes about as long at 3, 5 and 6 lanes (%s)" % [at_campaign])
-	check(absf(def.three_star_seconds - slowest * THREE_STAR_OVER) <= 3.0 and absf(def.two_star_seconds - slowest * TWO_STAR_OVER) <= 5.0,
-		"three stars at %.0f s and two at %.0f s: Hostile Takeover's margins over the slowest clean fight (%.1f s)"
-		% [def.three_star_seconds, def.two_star_seconds, slowest])
+	check(absf(def.three_star_seconds - slowest * THREE_STAR_OVER) <= 3.0,
+		"three stars at %.0f s: Hostile Takeover's margin over the slowest clean fight (%.1f s)" % [def.three_star_seconds, slowest])
+	check(def.two_star_seconds >= slowest * TWO_STAR_ROOM and def.two_star_seconds <= missing.min() - TWO_STAR_SHORT,
+		"two stars at %.0f s: room over the slowest clean fight (%.1f s), short of the quickest win without baiting (%.1f s): they need some baiting"
+		% [def.two_star_seconds, slowest, missing.min()])
 	check(at_quick.max() <= def.three_star_seconds, "a clean fight at %.0f m/s earns three stars too (%s)" % [SPEEDS[0], at_quick])
 	var miss_stars: Array[int] = []
 	for t: float in missing:
 		miss_stars.append(def.stars_for(true, t))
-	check(missing.min() > def.three_star_seconds and not miss_stars.has(0),
-		"a runner who never baits wins too, more slowly, with fewer stars (%s)" % [miss_stars])
+	check(not miss_stars.is_empty() and miss_stars.count(1) == miss_stars.size(),
+		"a runner who never baits wins too, with one star at every lane count and speed (%s)" % [miss_stars])
 	check(def.time_bonus_seconds > def.two_star_seconds and def.time_bonus_seconds <= def.two_star_seconds * 1.3,
 		"the time bonus runs out a little past two stars (%.0f s)" % def.time_bonus_seconds)
 
@@ -326,7 +396,7 @@ func _campaign_flow() -> void:
 	bot = MechaGuppyBot.new(boss)
 	bot.reaction = REACTION
 	var events: Array[Dictionary] = boss.events
-	var at := {"defeat": -1, "over": -1, "results": -1, "god": false}
+	var at := {"defeat": -1, "over": -1, "results": -1, "god": false, "over_by": -1.0}
 	for i: int in int(MAX_SECONDS * 60.0):
 		if App.screen is ResultsScreen:
 			at["results"] = i
@@ -339,13 +409,15 @@ func _campaign_flow() -> void:
 				at["god"] = run.world.player.god_mode
 			if boss.is_defeated() and boss.victory_over() and int(at["over"]) < 0:
 				at["over"] = i
+				at["over_by"] = boss.leap.over_by() if boss.leap != null else -1.0
 			bot.step()
 		await tree.physics_frame
 	check(_fight_log(events, died_at) == first and first != "", "the retry plays the same fight as the first attempt, up to its death")
 	var mt := def.tuning as MechaGuppyTuning
 	var leap_s: float = float(int(at["over"]) - int(at["defeat"])) / 60.0
 	var pause_s: float = float(int(at["results"]) - int(at["over"])) / 60.0
-	check(int(at["defeat"]) > 0 and bool(at["god"]) and leap_s >= mt.leap_rise + mt.leap_hang + mt.leap_fall + mt.swim_seconds - 0.1
+	check(int(at["defeat"]) > 0 and bool(at["god"]) and leap_s >= float(at["over_by"]) - 0.6
+		and leap_s <= float(at["over_by"]) + 0.05
 		and leap_s < LevelRun.BOSS_VICTORY_MAX,
 		"the retry is won; the runner safe (god mode) while Mecha Guppy leaps, eats Captain Cogs and swims away (%.1f s)" % leap_s)
 	check(int(at["results"]) > 0 and absf(pause_s - LevelRun.COMPLETE_PAUSE) < 0.1,

@@ -3,22 +3,28 @@ extends RefCounted
 ## The defeat of Mecha Guppy and Captain Cogs (GDD §10: "if the player dodges these long enough, then the Mecha Guppy jumps
 ## over to the boss, Captain Cogs, and eats the boss because the shark is pissed"; "Defeat: Mecha Guppy has eaten Captain
 ## Cogs, and it swims away"; task E5e-c). MechaGuppy starts it as phase 3's minute ends (the win: the runner keeps running,
-## safe in the framework's god mode, and nothing here has a hitbox), and holds the results until it's over
-## (victory_over). Staged beside the top, where the camera sees it, never over the lanes:
+## safe in the framework's god mode, and nothing here has a hitbox), and holds the results until it has swum away
+## (victory_over). Staged beside the top and out at sea, where the run camera sees it, never over the lanes:
 ## - the rise (leap_rise): Mecha Guppy bursts up out of the sea under Captain Cogs' ship alongside the top, upright, side-on
 ##   (an eye toward the runner, its chin toward the top, as it always shows itself), its jaws opening wide round the
 ##   ship's stern half, with a roar of machinery and water (guppy_leap);
 ## - the gulp: its jaws snap shut on the stern half with the captain on it (guppy_gulp, a shudder, a shake): the captain
 ##   and the stern are gone, and the bow half breaks away, tumbling down into the sea (CaptainCogsShip.swallow);
 ## - it hangs a moment (leap_hang), rising a little on, leaning out from the top;
-## - it falls back (leap_fall), straight down out of sight beside the top (its splash heard: guppy_swim);
-## - it swims away (swim_seconds): out at sea beyond the shoreline, its dorsal fin cutting through the water ahead and out
-##   to sea, a trail of foam behind it, until the haze takes it.
+## - it falls back (leap_fall), straight down out of sight beside the top;
+## - it swims away, seen (task E5e-c's review: from the top, the deck's edge hides the sea for tens of metres out and the
+##   haze the rest, so a fin at the waterline was never seen): out at sea, ahead of the runner, past the shoreline and far
+##   enough out that the run camera sees over the deck's edge (_plan_breach), it bursts out of the water in one long leap
+##   heading away, on ahead and out to sea (the leap's roar again; a plume of spray, MechaGuppySplash), its whole body
+##   clear of the sea, its tail too, at the top of its arc (breach_seconds from the sea back to it), and dives back in
+##   head first (a bigger plume; guppy_swim: the splash, then the churn as it swims off);
+## - the results may follow dive_after its snout is back in the water (victory_over: about 6 s after the win), and the dive
+##   goes on until its tail is under, then it's gone.
 ## The victory riff plays riff_after the gulp (MechaGuppyTuning.victory_riff_on; LevelRun's riff at the defeat is off:
-## MechaGuppy.victory_riff). Everything keeps pace with the runner (the stern half's place beside them when it began), so
+## MechaGuppy.victory_riff). Everything keeps pace with the runner (the scene is laid out ahead of them as it begins), so
 ## it plays out in view; time comes from the boss's ticks. DESIGN-TBD (docs/questions/e5e.md): the leap's staging.
 
-enum Step { NONE, RISE, HANG, FALL, SWIM, OVER }
+enum Step { NONE, RISE, HANG, FALL, BREACH, GONE }
 
 ## The rise starts this far under the deck (metres: out of sight), and ends with the hinge this far under the ship's keel
 ## (its open jaws round the stern half and the captain); the hinge stands this far out from the ship's middle (its chin,
@@ -35,26 +41,45 @@ const GULP_SECONDS: float = 0.15
 ## The hang: how far it rises on (metres), how far it leans out from the top by its end (degrees).
 const HANG_RISE: float = 3.0
 const HANG_LEAN: float = 12.0
-## The fall: how far it drops (metres, under gravity), its lean out by the end (degrees), and its drift out (metres).
-const FALL_DROP: float = 70.0
+## The fall: how far it drops (metres: well out of sight under the deck's edge), its lean out by the end (degrees), and
+## its drift out (metres).
+const FALL_DROP: float = 40.0
 const FALL_LEAN: float = 22.0
 const FALL_OUT: float = 8.0
-## The swim: the hinge this far under the sea (the top of its head and its back just breaking the water, its dorsal fin
-## standing out of it), past the shoreline (SWIM_OUT) and at least SWIM_CLEAR out from the track's middle (nearer, the
-## top's own edge hides the sea far below from the run camera), from SWIM_FROM to SWIM_TO ahead of the runner and out by
-## SWIM_AWAY more (metres; the haze takes it as it goes), a puff of foam at the fin every FOAM_EVERY seconds (its wake:
-## white reads through the haze).
-const SWIM_DEPTH: float = 3.8
-const SWIM_OUT: float = 7.0
-const SWIM_CLEAR: float = 62.0
-const SWIM_FROM: float = 45.0
-const SWIM_TO: float = 120.0
-const SWIM_AWAY: float = 25.0
-const FOAM_EVERY: float = 0.07
-const FOAM_COLOR := Color(0.93, 0.95, 0.93)
-## Where its dorsal fin stands, in its head's space (MechaGuppySharkModel's body: the fin's root along the back), for the
-## foam at the waterline.
-const FIN_AT := Vector3(0.0, -18.0, -3.4)
+## The breach (the swim away): the hinge's highest is BREACH_UNDER under the deck (but at least BREACH_LOWEST over the
+## sea: a low top, as a checkpoint's climb has, still sees a big leap), and at least BREACH_SHOW over the run camera's
+## line past the deck's edge there (the camera follows the runner's lane in part: reckoned a lane further from this side
+## than they are, to spare), and at least BREACH_CLEAR out from the track's middle (clear of the top's tower and the
+## ship's falling bow); where the camera sees the sea's surface it breaks (a low top shows it near, a high one only far
+## out), it leaves and meets the sea at least BREACH_SEA past the shoreline; it pulls away at BREACH_AHEAD (m/s, on top
+## of keeping pace) and out to sea at BREACH_OUT; the top of its arc is at most BREACH_VIEW (degrees) off the camera's
+## forward axis (inside the view on a 4:3 screen too), and it comes up at least BREACH_NEAR ahead of the runner (so most
+## of its length is ahead of the camera at the top of its arc). Its hinge rises from BREACH_LEAD (seconds) under the
+## surface (its snout breaks the sea first). It takes breach_seconds from the sea back to it for a leap BREACH_REF high,
+## longer for a higher one (a higher top, as a runner who never baits climbs to: it moves the same and stays in view
+## longer at the top of its arc), up to BREACH_LONGEST times as long. From a high top the camera sees nothing of its rise
+## out of the sea, far below its line past the deck's edge: the leap then begins already under way, its snout
+## BREACH_HIDDEN under that line (reckoned for the camera over the outer lane on this side, where it sees lowest), so no
+## time goes by on an empty view.
+const BREACH_UNDER: float = 10.0
+const BREACH_LOWEST: float = 24.0
+const BREACH_SHOW: float = 9.0
+const BREACH_SEA: float = 14.0
+const BREACH_CLEAR: float = 40.0
+const BREACH_AHEAD: float = 14.0
+const BREACH_OUT: float = 3.0
+const BREACH_VIEW: float = 38.0
+const BREACH_NEAR: float = 55.0
+const BREACH_LEAD: float = 0.3
+const BREACH_REF: float = 30.0
+const BREACH_LONGEST: float = 1.6
+const BREACH_HIDDEN: float = 2.0
+## The deck's edge the camera looks past (its coping: out past the wall line, up from the deck; the eave slopes away below
+## the camera's line).
+const KERB := Vector2(0.3, 0.2)
+## The plumes (MechaGuppySplash): where it bursts out and where it dives in (height, width; metres).
+const BREACH_PLUME := Vector2(18.0, 14.0)
+const DIVE_PLUME := Vector2(32.0, 24.0)
 
 var boss: MechaGuppy
 var shark: MechaGuppyShark
@@ -65,8 +90,14 @@ var step: Step = Step.NONE
 var time: float = 0.0
 var gulped_at: float = -1.0
 var riff_played: bool = false
-## Moments for the tests: {rise, gulp, fall, swim, over} (seconds into the defeat).
+## Moments for the tests (seconds into the defeat): rise, gulp, fall, breach (it starts up from under the sea), surface
+## (its snout breaks the sea), dive (its snout back in), over (the results may follow), gone (its tail under).
 var marks: Dictionary = {}
+## The breach's plan (_plan_breach; tests): its hinge leaves the sea `out` metres out from the track's middle and `ahead`
+## of the runner, rises `high` metres over the sea, the sea's height `sea`.
+var breach: Dictionary = {}
+## The plumes, the breach's and the dive's.
+var plumes: Array[MechaGuppySplash] = []
 
 ## The leap's place: the hinge's world x beside the top, its offset ahead of the runner (world z), the side it's on (-1
 ## left), the deck's height, the ship's keel there.
@@ -75,8 +106,12 @@ var _rel_z: float = 0.0
 var _side: float = -1.0
 var _deck: float = 0.0
 var _keel: float = 0.0
-var _foam_t: float = 0.0
 var _riff: StringName = &""
+## The breach's motion (relative to the runner): its rise speed and fall-back (m/s, m/s²).
+var _up: float = 0.0
+var _g: float = 0.0
+## Each plume's place, kept pace with: [out, ahead].
+var _plume_at: Array[Vector2] = []
 
 
 func _init(p_boss: MechaGuppy) -> void:
@@ -106,23 +141,30 @@ func start() -> void:
 	var music: MusicDirector = MusicDirector.instance()
 	_riff = MusicDirector.level_complete_sound(music.library.riff_track(music.current()) if music != null else &"",
 		world.sfx_library)
+	for i: int in 2:
+		var plume := MechaGuppySplash.new()
+		plume.name = "Plume%d" % i
+		boss.add_child(plume)
+		plumes.append(plume)
+		_plume_at.append(Vector2.ZERO)
 	shark.hold(true)
 	_pose_rise(0.0)
 	boss.sound(&"guppy_leap", Vector3(_x, _deck - 6.0, _z()))
 	boss.log_event(&"leap", {"x": _x, "deck": _deck})
 
 
-## True once it has played out (the results may follow).
+## True once it has played out (the results may follow: dive_after its snout is back in the sea).
 func over() -> bool:
-	return step == Step.OVER
+	return marks.has("over")
 
 
 ## One physics step after the defeat (MechaGuppy._defeated_tick).
 func tick(delta: float) -> void:
-	if step == Step.NONE or step == Step.OVER:
+	if step == Step.NONE:
 		return
 	time += delta
 	_riff_due()
+	_advance_plumes(delta)
 	match step:
 		Step.RISE:
 			var k: float = clampf(time / maxf(tuning.leap_rise, 0.05), 0.0, 1.0)
@@ -143,20 +185,47 @@ func tick(delta: float) -> void:
 			var lean: float = lerpf(HANG_LEAN, FALL_LEAN, k)
 			shark.pose_free(Vector3(_x + _side * FALL_OUT * k, _gulp_y() + HANG_RISE - drop, _z()), _upright(lean), 0.0)
 			if k >= 1.0:
-				_begin_swim()
-		Step.SWIM:
-			var k: float = clampf((time - float(marks["swim"])) / maxf(tuning.swim_seconds, 0.1), 0.0, 1.0)
-			_pose_swim(k)
-			_foam_t -= delta
-			if _foam_t <= 0.0 and k < 0.92:
-				_foam_t = FOAM_EVERY
-				var fin: Vector3 = _fin_point()
-				boss.world.effects.burst(Vector3(fin.x, _sea_y() + 0.4, fin.z), FOAM_COLOR, 14, 1.3)
-			if k >= 1.0:
+				_plan_breach()
+				step = Step.BREACH
+				marks["breach"] = time
+				_pose_breach(float(breach["start"]))
+		Step.BREACH:
+			var tau: float = time - float(marks["breach"]) + float(breach["start"])
+			_pose_breach(tau)
+			var tip: Vector3 = snout()
+			if not marks.has("surface") and tip.y >= float(breach["sea"]):
+				marks["surface"] = time
+				_plume(0, tip, BREACH_PLUME)
+				boss.sound(&"guppy_leap", tip)
+				boss.log_event(&"breach", {"out": absf(tip.x), "ahead": -tip.z - boss.world.player.distance})
+			elif marks.has("surface") and not marks.has("dive") and tau > 0.0 and tip.y < float(breach["sea"]):
+				marks["dive"] = time
+				_plume(1, tip, DIVE_PLUME)
+				boss.sound(&"guppy_swim", tip)
+				boss.log_event(&"dive", {"out": absf(tip.x)})
+			if marks.has("dive") and tail().y < float(breach["sea"]) - 1.0:
+				step = Step.GONE
+				marks["gone"] = time
 				shark.hold(false)
-				step = Step.OVER
-				marks["over"] = time
-				boss.log_event(&"swum_away")
+	if marks.has("dive") and not marks.has("over") and time >= float(marks["dive"]) + tuning.dive_after - 0.0001:
+		marks["over"] = time
+		boss.log_event(&"swum_away")
+
+
+## The longest the defeat can take until the results may follow, at `t`, for a breach of `airtime` seconds (breach_seconds
+## by default: a leap up to BREACH_REF high) (seconds; tests): the rise, the hang, the fall, the hinge's rise to the
+## surface and the breach, and dive_after.
+static func seconds_to_over(t: MechaGuppyTuning, airtime: float = -1.0) -> float:
+	return t.leap_rise + t.leap_hang + t.leap_fall + BREACH_LEAD + (airtime if airtime > 0.0 else t.breach_seconds) \
+		+ t.dive_after
+
+
+## The same for this leap's breach once it's planned, as it begins (tests).
+func over_by() -> float:
+	if breach.is_empty():
+		return seconds_to_over(tuning)
+	return tuning.leap_rise + tuning.leap_hang + tuning.leap_fall - float(breach["start"]) + float(breach["seconds"]) \
+		+ tuning.dive_after
 
 
 ## Where the leap keeps pace: its world z now (the runner's, plus its offset).
@@ -198,42 +267,109 @@ func _gulp() -> void:
 	boss.log_event(&"gulp", {"x": mouth.x, "y": mouth.y})
 
 
-## The splash beside the top, then the swim out at sea.
-func _begin_swim() -> void:
-	step = Step.SWIM
-	marks["swim"] = time
-	_foam_t = 0.0
-	boss.sound(&"guppy_swim", Vector3(_x, _deck - 8.0, _z()))
-	_pose_swim(0.0)
-	boss.log_event(&"swim", {"fin": _fin_point()})
-
-
 ## The sea's surface (the open beach's water: BeachSkin.beach_drop under the street).
 func _sea_y() -> float:
 	var beach := boss.world.skin as BeachSkin
 	return -beach.beach_drop if beach != null else MechaGuppyWaterfall.SEA_Y
 
 
-## The swim, `k` (0 to 1) of the way: horizontal under the sea out past the shoreline, its back under the water and its
-## dorsal fin out of it, heading away ahead and out to sea.
-func _pose_swim(k: float) -> void:
+## Plans the breach (see the header and the BREACH_ numbers): how high, how far out and how far ahead, from the deck's
+## height, the run camera's place (MovementTuning's camera numbers, the runner's lane) and the shoreline (BeachOpen.shore)
+## along the stretch it plays over.
+func _plan_breach() -> void:
 	var world: RunWorld = boss.world
 	var p: Player = world.player
-	var ahead: float = lerpf(SWIM_FROM, SWIM_TO, k)
-	var d: float = p.distance + ahead
-	var shore: float = maxf(world.geo.wall_x() + BeachOpen.shore(int(_side), d) + SWIM_OUT, SWIM_CLEAR)
-	var out: float = shore + SWIM_AWAY * k
-	var pos := Vector3(_side * out, _sea_y() - SWIM_DEPTH, TrackGeometry.world_z(d))
-	# Heading ahead and out: its snout along the way it swims, its back up.
-	var way := Vector3(_side * SWIM_AWAY, 0.0, -(SWIM_TO - SWIM_FROM + p.speed * tuning.swim_seconds)).normalized()
-	var down := Vector3.DOWN
-	var across: Vector3 = way.cross(down)
-	shark.pose_free(pos, Basis(across, way, down), 0.0)
+	var mt: MovementTuning = world.tuning
+	var sea: float = _sea_y()
+	var high: float = maxf(_deck - BREACH_UNDER - sea, BREACH_LOWEST)
+	var seconds: float = maxf(tuning.breach_seconds, 0.5) * clampf(sqrt(high / BREACH_REF), 1.0, BREACH_LONGEST)
+	_up = 4.0 * high / seconds
+	_g = 8.0 * high / (seconds * seconds)
+	# The camera's place out toward this side (it follows the runner's lane in part: a lane further away, to spare), and
+	# where its line past the deck's edge runs low enough to pass BREACH_SHOW under the hinge at the top of its arc.
+	var cam: float = _side * p.position.x * mt.camera_follow_x - mt.camera_follow_x * world.geo.lane_width
+	var edge: float = world.geo.wall_x() + KERB.x
+	var rise: float = maxf(mt.camera_height - KERB.y, 0.5)
+	var apex: float = sea + high - _deck
+	var seen: float = cam + (edge - cam) * maxf(mt.camera_height - apex + BREACH_SHOW, 0.0) / rise
+	var half: float = seconds * 0.5
+	# Where the sea's own surface may show past the deck's edge (the camera over the outer lane on this side, the nearest it
+	# comes to the edge): from there out, it must break the sea past the shoreline, not the sand.
+	var near: float = (world.geo.half_width() - world.geo.lane_width * 0.5) * mt.camera_follow_x
+	var surface: float = near + (edge - near) * (mt.camera_height + _deck - sea) / rise
+	var out: float = maxf(seen - BREACH_OUT * half, BREACH_CLEAR)
+	var ahead: float = BREACH_NEAR
+	for i: int in 3:
+		# In view at the top of its arc; then past the shoreline where it breaks the sea, if the camera sees that far.
+		var top_out: float = out + BREACH_OUT * half
+		ahead = maxf((top_out - cam) / tan(deg_to_rad(BREACH_VIEW)) - mt.camera_distance - BREACH_AHEAD * half, BREACH_NEAR)
+		var from: float = p.distance + ahead - 10.0
+		var to: float = p.distance + ahead + (p.speed + BREACH_AHEAD) * (seconds + BREACH_LEAD + 1.5) + 10.0
+		var shore: float = 0.0
+		var d: float = from
+		while d <= to:
+			shore = maxf(shore, BeachOpen.shore(int(_side), d))
+			d += 4.0
+		out = maxf(seen - BREACH_OUT * half, BREACH_CLEAR)
+		if out + BREACH_OUT * seconds >= surface:
+			out = maxf(out, world.geo.wall_x() + shore + BREACH_SEA + BREACH_OUT * BREACH_LEAD)
+	# Where it begins: under the sea (its snout breaking it first), or, from a high top, already risen to just out of sight.
+	var start: float = -BREACH_LEAD
+	var snout_len: float = (MechaGuppySharkModel.JAW_LENGTH + MechaGuppySharkModel.TIP_CAP) * MechaGuppyShark.SCALE
+	var tau: float = -BREACH_LEAD
+	while tau < half:
+		var x: float = out + BREACH_OUT * tau
+		var hinge: float = sea + _up * tau - 0.5 * _g * tau * tau
+		var climb: float = (_up - _g * tau) / Vector3(BREACH_OUT, _up - _g * tau, BREACH_AHEAD).length()
+		var line: float = _deck + mt.camera_height - rise * (x - near) / maxf(edge - near, 0.1)
+		if hinge + climb * snout_len >= line - BREACH_HIDDEN:
+			break
+		start = tau
+		tau += 0.02
+	breach = {"out": out, "ahead": ahead, "high": high, "sea": sea, "seen": seen, "surface": surface, "seconds": seconds,
+		"start": start}
+	boss.log_event(&"breach_plan", breach)
 
 
-## The dorsal fin's root at the waterline, in the world.
-func _fin_point() -> Vector3:
-	return shark.head_transform() * FIN_AT
+## The breach `tau` seconds after its hinge reaches the sea's surface (negative before): the hinge on its arc, kept pace
+## with the runner, the head along the way it moves as the runner sees it (snout first, its back up).
+func _pose_breach(tau: float) -> void:
+	var p: Player = boss.world.player
+	var sea: float = float(breach["sea"])
+	var x: float = float(breach["out"]) + BREACH_OUT * tau
+	var ahead: float = float(breach["ahead"]) + BREACH_AHEAD * tau
+	var pos := Vector3(_side * x, sea + _up * tau - 0.5 * _g * tau * tau, TrackGeometry.world_z(p.distance + ahead))
+	var way := Vector3(_side * BREACH_OUT, _up - _g * tau, -BREACH_AHEAD).normalized()
+	var down: Vector3 = (Vector3.DOWN - way * way.dot(Vector3.DOWN)).normalized()
+	shark.pose_free(pos, Basis(way.cross(down), way, down), 0.0)
+
+
+## Its snout's tip and its tail's end, in the world (where it breaks the sea; when it's under; tests).
+func snout() -> Vector3:
+	return shark.head_transform() * Vector3(0.0, MechaGuppySharkModel.JAW_LENGTH + MechaGuppySharkModel.TIP_CAP, 0.0)
+
+
+func tail() -> Vector3:
+	return shark.head_transform() * Vector3(0.0, -MechaGuppySharkModel.BODY_LENGTH - MechaGuppySharkModel.TAIL_STALK
+		- MechaGuppySharkModel.TAIL_FIN, 0.0)
+
+
+## Plume `i` where the snout breaks the sea (at `at`), `size` (height, width), kept pace with from then on.
+func _plume(i: int, at: Vector3, size: Vector2) -> void:
+	var p: Player = boss.world.player
+	_plume_at[i] = Vector2(absf(at.x), -at.z - p.distance)
+	plumes[i].play(Vector3(at.x, float(breach["sea"]), at.z), size.x, size.y)
+
+
+func _advance_plumes(delta: float) -> void:
+	var p: Player = boss.world.player
+	for i: int in plumes.size():
+		var plume: MechaGuppySplash = plumes[i]
+		if not is_instance_valid(plume) or not plume.playing():
+			continue
+		plume.advance(delta)
+		var at: Vector2 = _plume_at[i]
+		plume.global_position = Vector3(_side * at.x, plume.global_position.y, TrackGeometry.world_z(p.distance + at.y))
 
 
 ## The victory riff riff_after the gulp, if it plays (DESIGN-TBD).

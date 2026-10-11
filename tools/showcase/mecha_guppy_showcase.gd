@@ -22,7 +22,9 @@ extends Node3D
 ##              before phase 3's top is planned, a step or two on): the top, the ship coming level alongside it, the
 ##              captain's rounds (red lines, the charge, the cannonballs rolling down the struck lanes, the runner
 ##              switching out) and the waves (the swell rising beside the top, the crash, the surge, the jump)
-##   leap       the same with a short minute (--minute=8 by default): the leap, the gulp and the swim away
+##   leap       the same with a short minute (--minute=8 by default): the leap, the gulp, the fall, then the swim away
+##              (the breach out at sea, the dive and its plume; at 23.8 m/s, 3 lanes: the gulp about frame 177, the
+##              breach 192-219, the results may follow at 225; 6 lanes: 186, 200-228, 234)
 ##   leapcam    the leap seen from beside the top, behind the ship (a camera of its own)
 ##   shark      (E5e-b2) a camera beside Mecha Guppy whenever it's up: its catch beside a roof's notch, its bite, its
 ##              breaches beside the lanes that lead up (with --no-bait), a bomb falling into its jaws (the climb goes on

@@ -97,12 +97,14 @@ extends Resource
 ## escalation): phase 3's pattern, one letter a beat, played in a loop from the moment the runner reaches the top: R a
 ## round (Captain Cogs' cannons strike every other lane, the struck lanes alternating round by round, so each round after
 ## the first moves the runner one lane), W a wave (crashing over every lane: jump it), . a rest. The first beat comes
-## top_first after the top is reached (the ship level by then), each next one top_beat after the last began, and none
-## starts unless its attack is over top_clear before the minute ends (before the leap).
+## top_first after the top is reached (the ship level by then), each next one top_beat after the last began, but never
+## before the last beat's attack has passed the runner by beat_spare (so a jump and a switch are never asked for at once),
+## and none starts unless its attack is over top_clear before the minute ends (before the leap).
 @export var top_script: String = "RRW.RWRRW."
 @export_range(0.0, 10.0, 0.1, "suffix:s") var top_first: float = 4.0
 @export_range(2.0, 5.0, 0.05, "suffix:s") var top_beat: float = 2.4
 @export_range(0.0, 5.0, 0.1, "suffix:s") var top_clear: float = 1.0
+@export_range(0.1, 1.0, 0.05, "suffix:s") var beat_spare: float = 0.3
 ## DESIGN-TBD (GDD §10, the owner: the rounds are warned by "red lines down the lanes they'll hit and a cannon's charging
 ## sound"): the charge (the red lines show and the cannons charge for round_warning, then fire), each cannonball's lob
 ## from its cannon onto the far end of its lane's line (round_flight), where it lands round_ahead ahead of the runner
@@ -129,13 +131,16 @@ extends Resource
 ## DESIGN-TBD (GDD §10: "Mecha Guppy leaps over and eats Captain Cogs"; "the pirate has been eaten by the shark, but the
 ## shark swims away"; docs/questions/e5e.md): when the minute is up, Mecha Guppy bursts up out of the sea under the ship
 ## (leap_rise), its jaws wide; they snap shut on the ship's stern half with the captain on it (the gulp: the bow half
-## breaks away and falls); it hangs a moment (leap_hang), topples away from the top and falls back into the sea
-## (leap_fall), then swims away, its dorsal fin cutting through the sea ahead and out to sea (swim_seconds); the results
-## wait until it's gone (MechaGuppy.victory_over).
+## breaks away and falls); it hangs a moment (leap_hang) and falls back out of sight beside the top (leap_fall). Then it
+## swims away where the run camera sees it: out at sea ahead it bursts out of the water in one long leap heading away, its
+## whole body clear of the sea at the top of its arc (breach_seconds from the sea back to it), and dives back in; the
+## results may follow dive_after its snout is back in the water (MechaGuppy.victory_over), and it's gone once its tail
+## is under (MechaGuppyLeap).
 @export_range(0.5, 3.0, 0.05, "suffix:s") var leap_rise: float = 1.2
 @export_range(0.1, 1.5, 0.05, "suffix:s") var leap_hang: float = 0.45
-@export_range(0.5, 3.0, 0.05, "suffix:s") var leap_fall: float = 1.3
-@export_range(1.0, 8.0, 0.1, "suffix:s") var swim_seconds: float = 4.0
+@export_range(0.4, 2.0, 0.05, "suffix:s") var leap_fall: float = 0.9
+@export_range(1.8, 4.0, 0.05, "suffix:s") var breach_seconds: float = 2.8
+@export_range(0.2, 2.0, 0.05, "suffix:s") var dive_after: float = 0.6
 ## DESIGN-TBD (the brief: "choose whether the victory riff plays"): the victory riff plays riff_after the gulp (as the
 ## shark falls away), or the fight ends without it.
 @export var victory_riff_on: bool = true
@@ -257,9 +262,9 @@ extends Resource
 ## The tunables of phase 3 and the defeat (the groups "Phase 3" and "The defeat"): nothing in phases 1 and 2 reads them
 ## (test_mecha_guppy_tunables leaves them to test_mecha_guppy_top's own sweep).
 const TOP_TUNABLES: PackedStringArray = ["top_seconds", "level_seconds", "level_ahead", "level_out", "level_keel",
-	"top_first", "top_beat", "top_clear", "round_warning", "round_flight", "round_ahead", "round_close", "round_radius",
-	"wave_warning", "wave_ahead", "wave_close", "wave_height", "wave_depth", "leap_rise", "leap_hang", "leap_fall",
-	"swim_seconds", "riff_after"]
+	"top_first", "top_beat", "top_clear", "beat_spare", "round_warning", "round_flight", "round_ahead", "round_close",
+	"round_radius", "wave_warning", "wave_ahead", "wave_close", "wave_height", "wave_depth", "leap_rise", "leap_hang",
+	"leap_fall", "breach_seconds", "dive_after", "riff_after"]
 
 
 ## How far a roof planned in phase `index` stands above the one before (rise in phase 1, phase2_rise after).
