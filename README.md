@@ -498,6 +498,8 @@ tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP
 tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
 tools/godot.sh doodads [--only=a,b] [--review]   regenerate the zone doodads' picture cards
                                 (assets/sprites/doodads/; --review writes the atlases to build/doodad_review/)
+tools/godot.sh cards [--only=city]  render the zones' loading cards from the game's models
+                                (assets/sprites/loading_cards/, a copy in build/loading_cards/; GDD §11)
 tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
 ```

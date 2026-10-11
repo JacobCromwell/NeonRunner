@@ -19,3 +19,19 @@ Still open:
 3. **The other zones' cards.** Only the Neon City has one; the other zones (and the bosses) show a plain
    card on the menu backdrop with the name and the bar. Should each zone get its own card, and what should
    each show? Should a boss fight show a card of its own (the Floating Head, say) rather than its zone's?
+
+4. **The Neon City card's staging** (`assets/sprites/loading_cards/city.png`, rendered by `tools/godot.sh cards`
+   from `tools/asset_gen/loading_cards/city_card.gd`; every number in its `LOOK` table). Choices made to fill
+   in the brief:
+   - The runner runs toward us down the street, turned a little to his right (screen left) so his stride reads;
+     the camera is low and close. The street runs away behind him, the City's moon and skyline where the game
+     shows them.
+   - The cyborgs' arm cannons show their **red charge glow**. It is their own look, but red is the game's attack
+     warning colour; on a loading card it may read as a threat that isn't there. Keep it, or switch it off
+     (`cy0_charge` to `cy3_charge` at 0)?
+   - The fireball lights the runner, the cyborgs and the truck for real; the City's scenery is drawn unlit, so its
+     glow on the street and the tower faces is painted on (soft additive patches, as the truck's headlights are
+     in the game). The sun is a little brighter than in play (0.8, not 0.7), so the near cyborgs read against the
+     dark wall.
+   - A dark gradient and a soft vignette are baked into the picture's bottom, under the name and the bar.
+

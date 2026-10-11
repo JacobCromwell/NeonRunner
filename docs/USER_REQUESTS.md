@@ -18,7 +18,14 @@ NOTE: Mark tasks as done as you complete them.
 ## The web demo's load (October 10–11, 2026)
 
 - [x] The web demo on itch.io (a draft): in Firefox and Edge on Windows "it took way too long for the intro to boot up ... Once the intro finished, the music stopped, and it just sat there". Cause: the browser compiles each shader program while the game waits, seconds each on Windows (confirmed: with Firefox's `webgl.disable-angle`, City 1 loaded in 59 s). Task PERF3. DONE in part: the level-start blocker in the export and 17 duplicate compiles (PR #46); a level's shaders compile a few a frame behind its hint screen (PERF3a).
-- [ ] "I would prefer a progress bar." "Yes, I would take your recommendation of having the load run happen behind a short loading card. And I think these loading cards should change based on level or zone. So if there is a loading card unique for the level, that should take precedence. And if there is not a loading card for the level, then the zone's loading card should suffice. So the loading card for this first zone should be our player character running with a explosion behind him with cyborgs on the sides, an enforcer truck in the background, and the heli drone flying overhead. The background should be the zone in question, aka the cyberpunk zone, the first zone." Task PERF3b (GDD §11, Loading cards).
+- [x] "I would prefer a progress bar." "Yes, I would take your recommendation of having the load run happen behind a short loading card. And I think these loading cards should change based on level or zone. So if there is a loading card unique for the level, that should take precedence. And if there is not a loading card for the level, then the zone's loading card should suffice. So the loading card for this first zone should be our player character running with a explosion behind him with cyborgs on the sides, an enforcer truck in the background, and the heli drone flying overhead. The background should be the zone in question, aka the cyberpunk zone, the first zone." Task PERF3b (GDD §11, Loading cards).
+  - DONE (task PERF3b): a level and a cinematic load behind a full-screen loading card with the name and a progress
+    bar (the level's own card, else its zone's, else a plain card), shown at least a second; the level's hint screen
+    opens once it's loaded, PLAY ready, and the City's intro starts once its card is done. The Neon City's card is
+    rendered from the game's own models (`tools/godot.sh cards`): the runner mid-stride toward us, the yellow-and-red
+    fireball behind him, a pair of TV-head cyborgs on each side aiming at him, an Enforcer Truck behind, the heli
+    drone over him, in the City's street under its moon. Open questions (the minimum time, the card's words, the
+    other zones' cards, the City card's staging): `docs/questions/perf3.md`.
 
 ## Beach volleyball (October 10, 2026)
 

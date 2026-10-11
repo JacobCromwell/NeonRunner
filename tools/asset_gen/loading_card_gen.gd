@@ -19,7 +19,8 @@ extends SceneTree
 ##                                                    each through the camera and checks it lies in the safe
 ##                                                    zone, below.
 ##
-## Regenerate (it renders real 3D frames, so it needs a display: Xvfb with Mesa's software GL works, on the
+## Regenerate with `tools/godot.sh cards [--only=city]` (it uses Xvfb without a display), or by hand (it renders
+## real 3D frames, so it needs a display: Xvfb with Mesa's software GL works, on the
 ## Compatibility renderer, which is what the web and low-end Android run; a GPU window renders the same scene;
 ## `export GODOT=/path/to/the/pinned/godot` first, or put the path in the command):
 ##   xvfb-run -a -s "-screen 0 1920x1080x24" "$GODOT" --path . --rendering-method gl_compatibility \

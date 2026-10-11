@@ -72,6 +72,8 @@ var loading_cards_override: int = -1
 ## Bumped by each load behind a card and by closing a card: a load that waits for its card to be drawn
 ## checks it's still the latest before going on.
 var _load_serial: int = 0
+## A prepared cinematic's shader warm-up behind its loading card (it frees itself when done).
+var _scene_warmup: ShaderWarmup
 var _boss_node: Node
 ## Command-line review aids for --level= runs (see _apply_review_args).
 var _review_args: PackedStringArray = []
@@ -881,16 +883,26 @@ func _play_cinematic(s: CampaignStep) -> void:
 		c.play(s.cinematic, s)
 		return
 	c.prepare(s.cinematic, s)
-	var warmup: ShaderWarmup = null
+	_scene_warmup = null
 	var camera: Camera3D = c.warmup_camera()
 	if ShaderWarmup.needed() and camera != null:
-		warmup = ShaderWarmup.new()
-		warmup.setup_scene(c, camera)
-	loading_card.progress = func() -> float: return warmup.progress() if is_instance_valid(warmup) else 1.0
-	loading_card.done.connect(func() -> void:
-		if c == playing_cinematic():
-			c.start()
-		close_loading_card(), CONNECT_ONE_SHOT)
+		_scene_warmup = ShaderWarmup.new()
+		_scene_warmup.setup_scene(c, camera)
+	loading_card.progress = _scene_load_progress
+	loading_card.done.connect(_start_prepared_cinematic, CONNECT_ONE_SHOT)
+
+
+## How far the prepared cinematic's warm-up behind its loading card is (1 once it's done, or without one).
+func _scene_load_progress() -> float:
+	return _scene_warmup.progress() if is_instance_valid(_scene_warmup) else 1.0
+
+
+## Its loading card done: the prepared cinematic starts, and the card goes.
+func _start_prepared_cinematic() -> void:
+	var c: Cinematic = playing_cinematic()
+	if c != null:
+		c.start()
+	close_loading_card()
 
 
 ## The cinematic playing (a built cinematic slot), or null.

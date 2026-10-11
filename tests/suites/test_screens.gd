@@ -286,6 +286,14 @@ func _test_loading_cards() -> void:
 	check(LoadingCardScreen.card_path_for(zone, level) == "" and LoadingCardScreen.card_path_for(null, null) == "",
 		"no card that exists: a plain card")
 	check(not App.loading_cards_shown(), "a headless run shows no loading cards (it has no shaders to compile)")
+	var named: PackedStringArray = []
+	for z: ZoneDef in App.campaign.zones:
+		for card: String in [z.loading_card] + z.levels.map(func(l: LevelConfig) -> String: return l.loading_card):
+			if card != "" and not ResourceLoader.exists(card):
+				named.append(card)
+	check(named.is_empty(), "every loading card the zones and levels name exists: %s" % ", ".join(named))
+	var city: ZoneDef = App.campaign.zones.filter(func(z: ZoneDef) -> bool: return z.id == &"city")[0]
+	check(LoadingCardScreen.card_path_for(city, null) != "", "the Neon City has its card (GDD §11)")
 	var progress: Array[float] = [0.5]
 	zone.loading_card = picture
 	zone.display_name = "Test Zone"

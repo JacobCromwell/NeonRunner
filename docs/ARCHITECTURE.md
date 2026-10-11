@@ -291,7 +291,10 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   (`Cinematic.prepare`: its clock at 0, no event fired), warmed up behind the card
   (`ShaderWarmup.setup_scene`: a sample of every look in its scene, shown or hidden, since its camera flies
   on to the rest), then `start()`ed; `play()` still does both at once (tests, review tools). A headless run
-  shows no cards (it has nothing to compile) unless a test sets `App.loading_cards_override`.
+  shows no cards (it has nothing to compile) unless a test sets `App.loading_cards_override`. The pictures are
+  rendered from the game's own models: `tools/godot.sh cards` (`tools/asset_gen/loading_card_gen.gd`, one
+  composition a zone in `tools/asset_gen/loading_cards/`, every staging number in its `LOOK` table; it checks
+  every subject lands in the card's safe zone, clear of the bottom fifth the name and the bar cover).
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
   to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.

@@ -25,4 +25,5 @@ boss_intro = ExtResource("c_bintro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")
 in_demo = true
+loading_card = "res://assets/sprites/loading_cards/city.png"
 placeholder = false
