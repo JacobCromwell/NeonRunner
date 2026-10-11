@@ -277,10 +277,21 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   each; nodes whose looks are drawn already come along; a quick frame doubles the batch, a slow one halves
   it), so the screen keeps answering. The lights join the layer too (a camera lights with only the lights it
   sees: without them every draw compiled a sunless variant the run never uses). Then the camera's cull mask
-  and every node's own layers come back, and `LevelRun.load_progress()` reaches 1: the hint screen's PLAY
-  reads "LOADING n%" until then (DESIGN-TBD). Same programs as all at once, spread out; a rebuilt level's
-  stage gives everything back at once (`cancel`), and a run begun early shows the rest (`finish_now`).
-  Quick play, which has no hint screen, still warms up all at once.
+  and every node's own layers come back, and `LevelRun.load_progress()` reaches 1. Same programs as all at
+  once, spread out; a rebuilt level's stage gives everything back at once (`cancel`), and a run begun early
+  shows the rest (`finish_now`). Quick play, which has no hint screen, still warms up all at once.
+  **Loading cards** (task PERF3b; GDD §11): while a level or a cinematic loads, the App shows a
+  `LoadingCardScreen` on its own canvas layer above everything: the level's own picture
+  (`LevelConfig.loading_card`) or else its zone's (`ZoneDef.loading_card`; paths, so the web demo's filter
+  leaves out the cards only other zones show, `DemoFilter.left_out_art`), or a plain card, with the name and
+  a progress bar, for at least `PerformanceTuning.loading_card_min_seconds`. A level start shows the card,
+  waits a frame for it to be drawn, builds the level behind it (`_start_run`), follows
+  `LevelRun.load_progress()`, then opens the hint screen, PLAY ready (the hint screen's own progress bar
+  shows only when it opens on a level still loading, a debug restart). A cinematic is built without starting
+  (`Cinematic.prepare`: its clock at 0, no event fired), warmed up behind the card
+  (`ShaderWarmup.setup_scene`: a sample of every look in its scene, shown or hidden, since its camera flies
+  on to the rest), then `start()`ed; `play()` still does both at once (tests, review tools). A headless run
+  shows no cards (it has nothing to compile) unless a test sets `App.loading_cards_override`.
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
   to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.
@@ -4367,7 +4378,9 @@ task F1) is code-driven: a cinematic is a timeline of camera keys, actors on the
 events, played on a stretch of the slot's zone.
 
 **The flow.** A slot's `CinematicDef.scene` is a scene whose root extends `Cinematic`
-(`scripts/campaign/cinematic.gd`). The App instances it under the world root and calls `play(def, step)`;
+(`scripts/campaign/cinematic.gd`). The App instances it under the world root and calls `play(def, step)`, or
+when the game renders `prepare(def, step)`, warms its shaders up behind the zone's loading card, then
+`start()` (task PERF3b; a sequencer builds in `_prepare()` and starts its clock in `_start()`);
 the cinematic knows its `step`, `zone` and `slot` (`&"intro"`, `&"boss_intro"`, `&"outro"`; played on its
 own, it finds the campaign step whose slot holds its def). At its end it emits `finished` once, and the App
 marks the step done and seen and moves on (`advance_from`), so the next step's first frame follows at once.

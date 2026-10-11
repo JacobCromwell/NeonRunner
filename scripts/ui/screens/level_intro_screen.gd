@@ -12,6 +12,8 @@ var hints: Array[Dictionary] = []
 ## waits for 1. Unset: nothing to wait for.
 var load_progress: Callable
 var play_button: NeonButton
+## The load's progress while the level isn't ready (load_progress); hidden once it is.
+var load_bar: ProgressBar
 var hint_list: VBoxContainer
 var page_index: int = 0
 var previous_button: NeonButton
@@ -60,6 +62,14 @@ func _ready() -> void:
 		_show_page()
 		set_hints([[&"move_left", "PREVIOUS HINT"], [&"move_right", "NEXT HINT"],
 			[&"ui_accept", "SELECT"], [&"ui_cancel", "BACK"]])
+	load_bar = ProgressBar.new()
+	load_bar.min_value = 0.0
+	load_bar.max_value = 1.0
+	load_bar.step = 0.0
+	load_bar.show_percentage = false
+	load_bar.custom_minimum_size = Vector2(UiTheme.px(280), UiTheme.px(8))
+	load_bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(load_bar)
 	play_button = NeonButton.make("PLAY", NeonButton.Kind.PRIMARY, &"play")
 	play_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	play_button.pressed.connect(func() -> void:
@@ -91,14 +101,14 @@ func _input(event: InputEvent) -> void:
 			return
 
 
-## DESIGN-TBD (docs/questions/perf3.md): while the level loads, PLAY reads "LOADING n%" and can't be
-## pressed; the hints can be read meanwhile.
+## While the level loads (GDD §11: a progress bar), the bar above PLAY fills and PLAY can't be pressed; the
+## hints can be read meanwhile. A level loads behind its loading card first, so this shows only when the
+## screen opens on a level still loading (a debug restart).
 func _show_load() -> void:
 	var progress: float = float(load_progress.call()) if load_progress.is_valid() else 1.0
 	var loading: bool = progress < 1.0
-	var label: String = "LOADING %d%%" % floori(progress * 100.0) if loading else "PLAY"
-	if play_button.text != label:
-		play_button.text = label
+	load_bar.visible = loading
+	load_bar.value = progress
 	play_button.disabled = loading
 
 

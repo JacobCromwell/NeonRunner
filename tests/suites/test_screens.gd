@@ -31,6 +31,7 @@ func run() -> void:
 	await _test_settings()
 	await _test_hint_paging()
 	await _test_intro()
+	await _test_loading_cards()
 	await _test_pause()
 	await _test_death()
 	await _test_results()
@@ -105,8 +106,8 @@ func _test_intro() -> void:
 	check(intro != null and App.run.state == LevelRun.State.READY, "campaign starts on its level introduction")
 	if intro == null:
 		return
-	check(is_equal_approx(App.run.load_progress(), 1.0) and not intro.play_button.disabled and intro.play_button.text == "PLAY",
-		"a headless run has no shaders to load: PLAY at once")
+	check(is_equal_approx(App.run.load_progress(), 1.0) and not intro.play_button.disabled and not intro.load_bar.visible,
+		"a headless run has no shaders to load: PLAY at once, no progress bar")
 	_check_fits(intro, "level intro")
 	await _check_focus(intro, "level intro")
 	var world: RunWorld = App.run.world
@@ -248,7 +249,7 @@ func _test_hint_paging() -> void:
 			check(screen.previous_button.disabled and screen.next_button.disabled,
 				"single-page intro disables both paging buttons")
 	App.show_title()
-	# Task PERF3: while the prepared level loads (its shaders compiling), PLAY reads LOADING and waits.
+	# Task PERF3: while the prepared level loads (its shaders compiling), a bar fills above PLAY, which waits.
 	var progress: Array[float] = [0.4]
 	var loading := LevelIntroScreen.new()
 	loading.context = RunContext.new()
@@ -257,12 +258,94 @@ func _test_hint_paging() -> void:
 	loading.load_progress = func() -> float: return progress[0]
 	App.show_screen(loading)
 	await _frames(2)
-	check(loading.play_button.disabled and loading.play_button.text == "LOADING 40%" and loading._hint_label.text == "Jump the gap.",
-		"while the level loads, PLAY reads LOADING 40% and waits; the hints can be read meanwhile")
+	check(loading.play_button.disabled and loading.load_bar.visible and is_equal_approx(loading.load_bar.value, 0.4)
+		and loading._hint_label.text == "Jump the gap.",
+		"while the level loads, a progress bar fills (40%) and PLAY waits; the hints can be read meanwhile")
 	progress[0] = 1.0
 	await _frames(2)
-	check(not loading.play_button.disabled and loading.play_button.text == "PLAY", "loaded, PLAY can be pressed")
+	check(not loading.play_button.disabled and not loading.load_bar.visible and loading.play_button.text == "PLAY",
+		"loaded, the bar goes and PLAY can be pressed")
 	App.show_title()
+
+
+## Task PERF3b (GDD §11, Loading cards): a level's own card wins over its zone's; the card shows its load's
+## progress on a bar for at least its minimum time; a level builds behind it, then its hint screen opens with
+## PLAY ready; a cinematic is built behind it and starts once it closes. A headless run shows none unless a
+## test asks (App.loading_cards_override).
+func _test_loading_cards() -> void:
+	var picture: String = DoodadCards.DIR.path_join("city.png")
+	var zone := ZoneDef.new()
+	zone.loading_card = picture
+	var level := LevelConfig.new()
+	check(LoadingCardScreen.card_path_for(zone, level) == picture and LoadingCardScreen.card_path_for(zone, null) == picture,
+		"a level without a card of its own shows its zone's")
+	level.loading_card = "res://assets/sprites/doodads/gangland.png"
+	check(LoadingCardScreen.card_path_for(zone, level) == level.loading_card, "a level's own card wins over its zone's")
+	level.loading_card = "res://assets/sprites/no_such_card.png"
+	zone.loading_card = ""
+	check(LoadingCardScreen.card_path_for(zone, level) == "" and LoadingCardScreen.card_path_for(null, null) == "",
+		"no card that exists: a plain card")
+	check(not App.loading_cards_shown(), "a headless run shows no loading cards (it has no shaders to compile)")
+	var progress: Array[float] = [0.5]
+	zone.loading_card = picture
+	zone.display_name = "Test Zone"
+	App.show_loading_card(zone, null, "Test Zone", "")
+	var card: LoadingCardScreen = App.loading_card
+	card.progress = func() -> float: return progress[0]
+	var finished: Array[bool] = [false]
+	card.done.connect(func() -> void: finished[0] = true)
+	await _frames(2)
+	check(card.picture != null and card.picture.texture != null and is_equal_approx(card.bar.value, 0.5) and not finished[0],
+		"the card shows its picture and the load's progress on a bar")
+	check((card.get_parent() as CanvasLayer).layer > main.ui_root.layer and (card.get_parent() as CanvasLayer).layer > main.overlay_root.layer,
+		"above the screens and overlays")
+	progress[0] = 1.0
+	await _frames(2)
+	check(not finished[0], "a quick load still shows the card for its minimum time (no flash)")
+	var frames: int = 0
+	while not finished[0] and frames < 600:
+		await tree.process_frame
+		frames += 1
+	check(finished[0] and frames > 10, "then it's done (%d frames later)" % frames)
+	App.close_loading_card()
+	await _frames(1)
+	check(App.loading_card == null and not is_instance_valid(card), "and closes")
+	App.loading_cards_override = 1
+	App.profile = SampleProfiles.fresh()
+	App.start_level(App.campaign.step("city/1"))
+	check(App.loading_card != null and App.run == null, "a level start shows its card first, before building")
+	check(App.loading_card.title == App.campaign.step("city/1").title() and App.loading_card.subtitle == "Neon City",
+		"named for the level and its zone")
+	await _frames(3)
+	check(App.run != null and App.run.state == LevelRun.State.READY and not App.screen is LevelIntroScreen,
+		"the level builds behind the card")
+	frames = 0
+	while App.loading_card != null and frames < 600:
+		await tree.process_frame
+		frames += 1
+	var intro := App.screen as LevelIntroScreen
+	check(intro != null and not intro.play_button.disabled and App.loading_card == null,
+		"once it's loaded the hint screen opens, PLAY ready, and the card goes")
+	App.play_step(App.campaign.step("city/intro"))
+	check(App.loading_card != null and App.playing_cinematic() == null, "a cinematic shows its zone's card first")
+	await _frames(3)
+	var cinematic := App.playing_cinematic() as CinematicSequencer
+	check(cinematic != null and cinematic.camera != null and is_zero_approx(cinematic.time) and not cinematic._started,
+		"the cinematic is built behind the card, its clock not started")
+	frames = 0
+	while App.loading_card != null and frames < 600:
+		await tree.process_frame
+		frames += 1
+	await _frames(3)
+	check(cinematic != null and is_instance_valid(cinematic) and cinematic._started and cinematic.time > 0.0 and App.loading_card == null,
+		"then the card goes and the cinematic plays")
+	App.skip_cinematic()
+	await _frames(2)
+	check(App.loading_card != null and App.playing_cinematic() == null, "skipped, the next step (City 1) shows its card")
+	App.loading_cards_override = -1
+	App.show_title()
+	await _frames(2)
+	check(App.loading_card == null, "leaving for a screen closes a card")
 
 
 func _die() -> void:

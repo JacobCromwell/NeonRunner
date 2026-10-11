@@ -27,14 +27,41 @@ var slot: StringName = &""
 
 
 func play(p_def: CinematicDef, p_step: CampaignStep = null) -> void:
+	prepare(p_def, p_step)
+	start()
+
+
+## Builds the scene without starting it: nothing has happened yet, its clock is at 0. The App warms its
+## shaders up behind a loading card (task PERF3b) before it start()s it; play() does both at once.
+func prepare(p_def: CinematicDef, p_step: CampaignStep = null) -> void:
 	def = p_def
 	step = p_step if p_step != null else find_step(p_def)
 	zone = step.zone if step != null else null
 	slot = StringName(step.id.get_slice("/", 1)) if step != null else &""
+	_prepare()
+
+
+## Starts what prepare() built.
+func start() -> void:
+	_start()
+
+
+## The camera it shows itself through once prepared (a shader warm-up draws in front of it), or null.
+func warmup_camera() -> Camera3D:
+	return null
+
+
+## Override: build the scene (prepare). Default: nothing.
+func _prepare() -> void:
+	pass
+
+
+## Override: start it (start). Default: _play().
+func _start() -> void:
 	_play()
 
 
-## Override: start the cinematic; emit `finished` at the end.
+## Override (a cinematic that builds and starts in one go): start the cinematic; emit `finished` at the end.
 func _play() -> void:
 	finished.emit()
 

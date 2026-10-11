@@ -144,6 +144,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## Marketplace's sunset on its third level; the zone has two, so Marketplace 2 has it (confirmed October
 ## 9, 2026). Null: the zone's own sky. Gameplay never depends on it.
 @export var sky: LevelSky
+## The level's own loading card (GDD §11, Loading cards: a level's own card wins over its zone's,
+## ZoneDef.loading_card). Empty: its zone's. Gameplay never depends on it.
+@export_file("*.png") var loading_card: String = ""
 
 @export_group("Pacing")
 ## Empty run-up before the first pattern.

@@ -34,6 +34,10 @@ extends Resource
 @export var outro: CinematicDef
 ## Part of the web demo (GDD §2: the demo is Zone 1 including its boss).
 @export var in_demo: bool = false
+## The zone's loading card (GDD §11, Loading cards; task PERF3b): the picture shown while one of its levels or
+## cinematics loads, unless the level has its own (LevelConfig.loading_card). A path, not a texture, so the web
+## demo leaves out the cards of the zones it never shows (tools/web/demo_filter.gd). Empty: a plain card.
+@export_file("*.png") var loading_card: String = ""
 ## Not designed yet: shown locked as "coming soon".
 @export var placeholder: bool = false
 ## DESIGN-TBD (GDD §8): the loadout the generator may assume players have by this zone. Empty in

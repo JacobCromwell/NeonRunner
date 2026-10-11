@@ -105,16 +105,37 @@ static func left_out_audio(campaign: Campaign, music: MusicLibrary, sfx: SfxLibr
 
 
 ## The zone doodads' picture cards of the zones the demo never shows, as patterns
-## ("res://assets/sprites/doodads/gangland.*": the atlas, its import file and the manifest).
+## ("res://assets/sprites/doodads/gangland.*": the atlas, its import file and the manifest), and the loading
+## cards only those zones and their levels show (ZoneDef.loading_card, LevelConfig.loading_card; task PERF3b:
+## "res://assets/sprites/loading_cards/gangland.*", the picture and its import file).
 static func left_out_art(campaign: Campaign) -> PackedStringArray:
 	var shown := PackedStringArray()
+	var kept_cards: Dictionary = {}
 	for zone: ZoneDef in campaign.zones:
 		if zone.in_demo:
 			shown.append(String(zone.id))
+			for card: String in loading_cards(zone):
+				kept_cards[card] = true
 	var out := PackedStringArray()
 	for zone: String in DoodadCards.ZONES:
 		if not shown.has(zone):
 			out.append(DoodadCards.DIR.path_join(zone + ".*"))
+	for zone: ZoneDef in campaign.zones:
+		if zone.in_demo:
+			continue
+		for card: String in loading_cards(zone):
+			var pattern: String = card.get_basename() + ".*"
+			if not kept_cards.has(card) and not out.has(pattern):
+				out.append(pattern)
+	return out
+
+
+## The loading cards `zone` and its levels name (GDD §11, Loading cards).
+static func loading_cards(zone: ZoneDef) -> PackedStringArray:
+	var out := PackedStringArray()
+	for card: String in [zone.loading_card] + zone.levels.map(func(l: LevelConfig) -> String: return l.loading_card if l != null else ""):
+		if card != "" and not out.has(card):
+			out.append(card)
 	return out
 
 

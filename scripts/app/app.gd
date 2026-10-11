@@ -63,6 +63,15 @@ var main: Node
 var run: LevelRun
 var screen: Control
 var overlay: Control
+## The loading card while a level or cinematic loads behind it (task PERF3b; GDD §11), on its own canvas
+## layer above everything; null when none shows.
+var loading_card: LoadingCardScreen
+## Tests set it to show loading cards in a headless run (1), or to keep them off (0); -1: only when the game
+## renders (ShaderWarmup.needed()), since a headless run has no shaders to compile.
+var loading_cards_override: int = -1
+## Bumped by each load behind a card and by closing a card: a load that waits for its card to be drawn
+## checks it's still the latest before going on.
+var _load_serial: int = 0
 var _boss_node: Node
 ## Command-line review aids for --level= runs (see _apply_review_args).
 var _review_args: PackedStringArray = []
@@ -186,9 +195,10 @@ func show_demo_end() -> void:
 	show_screen(DemoEndScreen.new())
 
 
-## Replaces the current full screen (and closes any overlay).
+## Replaces the current full screen (and closes any overlay, and a loading card).
 func show_screen(s: Control) -> void:
 	close_overlay()
+	close_loading_card()
 	if screen != null and is_instance_valid(screen):
 		screen.queue_free()
 	screen = s
@@ -572,6 +582,18 @@ func _start_run(ctx: RunContext, music: StringName) -> void:
 		screen.queue_free()
 	screen = null
 	get_tree().paused = false
+	close_loading_card()
+	if ctx.mode != RunContext.Mode.QUICK and loading_cards_shown():
+		# Task PERF3b: the level's loading card shows first, then the level builds behind it (the build takes a
+		# frame of its own), then its shaders compile behind it a few a frame (LevelRun.load_progress); the hint
+		# screen opens once it's all done, PLAY ready.
+		var zone: ZoneDef = ctx.step.zone if ctx.step != null else _zone_of(ctx.config)
+		var serial: int = show_loading_card(zone, ctx.config,
+			ctx.step.title() if ctx.step != null else ctx.config.display_name,
+			zone.display_name if zone != null else "")
+		await _card_drawn()
+		if serial != _load_serial:
+			return
 	run = LevelRun.new()
 	run.name = "LevelRun"
 	main.world_root.add_child(run)
@@ -583,7 +605,11 @@ func _start_run(ctx: RunContext, music: StringName) -> void:
 	run.start(ctx, ctx.mode == RunContext.Mode.QUICK)
 	TouchInput.enabled = ctx.mode == RunContext.Mode.QUICK
 	if ctx.mode != RunContext.Mode.QUICK:
-		_show_run_intro()
+		if loading_card != null:
+			loading_card.progress = run.load_progress
+			loading_card.done.connect(_show_run_intro, CONNECT_ONE_SHOT)
+		else:
+			_show_run_intro()
 	var director: MusicDirector = MusicDirector.instance()
 	if director != null:
 		_play_music(director.library.run_track(music, ctx.boss.id if ctx.is_boss() else &""))
@@ -833,6 +859,15 @@ func _play_cinematic(s: CampaignStep) -> void:
 	if screen != null and is_instance_valid(screen):
 		screen.queue_free()
 	screen = null
+	close_loading_card()
+	var carded: bool = loading_cards_shown()
+	if carded:
+		# Task PERF3b: the zone's loading card shows first; the cinematic is built behind it, its shaders
+		# compile behind it a few a frame (ShaderWarmup.setup_scene), and it starts once they're done.
+		var serial: int = show_loading_card(s.zone, null, s.zone.display_name if s.zone != null else "", "")
+		await _card_drawn()
+		if serial != _load_serial:
+			return
 	var node: Node = (load(s.cinematic.scene) as PackedScene).instantiate()
 	_boss_node = node
 	main.world_root.add_child(node)
@@ -842,7 +877,20 @@ func _play_cinematic(s: CampaignStep) -> void:
 		profile.mark_seen("cinematic/" + s.id)
 		complete_step(s)
 		advance_from(s), CONNECT_ONE_SHOT)
-	c.play(s.cinematic, s)
+	if not carded:
+		c.play(s.cinematic, s)
+		return
+	c.prepare(s.cinematic, s)
+	var warmup: ShaderWarmup = null
+	var camera: Camera3D = c.warmup_camera()
+	if ShaderWarmup.needed() and camera != null:
+		warmup = ShaderWarmup.new()
+		warmup.setup_scene(c, camera)
+	loading_card.progress = func() -> float: return warmup.progress() if is_instance_valid(warmup) else 1.0
+	loading_card.done.connect(func() -> void:
+		if c == playing_cinematic():
+			c.start()
+		close_loading_card(), CONNECT_ONE_SHOT)
 
 
 ## The cinematic playing (a built cinematic slot), or null.
@@ -856,6 +904,56 @@ func skip_cinematic() -> void:
 	var c: Cinematic = playing_cinematic()
 	if c != null:
 		c.skip()
+
+
+# --- Loading cards (task PERF3b; GDD §11) ------------------------------------------------------
+
+## True when a level or cinematic loads behind a loading card: when the game renders (a headless run has no
+## shaders to compile), unless a test says otherwise (loading_cards_override).
+func loading_cards_shown() -> bool:
+	return ShaderWarmup.needed() if loading_cards_override < 0 else loading_cards_override == 1
+
+
+## Shows the loading card of `zone` (or of the level `config`, if it has its own) with its name, replacing
+## any other, and returns the new load's serial (_load_serial).
+func show_loading_card(zone: ZoneDef, config: LevelConfig, title: String, subtitle: String) -> int:
+	close_loading_card()
+	_load_serial += 1
+	var card := LoadingCardScreen.new()
+	card.card_path = LoadingCardScreen.card_path_for(zone, config)
+	card.title = title
+	card.subtitle = subtitle
+	var layer := CanvasLayer.new()
+	layer.name = "LoadingCardLayer"
+	layer.layer = LoadingCardScreen.LAYER
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	layer.add_child(card)
+	if main != null:
+		main.add_child(layer)
+	loading_card = card
+	return _load_serial
+
+
+## Closes the loading card, if one shows; a load still waiting for it to be drawn stops there.
+func close_loading_card() -> void:
+	if loading_card != null and is_instance_valid(loading_card):
+		_load_serial += 1
+		loading_card.get_parent().queue_free()
+	loading_card = null
+
+
+## Waits until the card shown this frame has been drawn (the next frames' work then happens behind it).
+func _card_drawn() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+## The campaign zone whose skin a level wears (an endless run has no step), or null.
+func _zone_of(config: LevelConfig) -> ZoneDef:
+	for zone: ZoneDef in campaign.zones:
+		if config != null and zone.skin != null and zone.skin == config.skin:
+			return zone
+	return null
 
 
 # --- Helpers ----------------------------------------------------------------------------

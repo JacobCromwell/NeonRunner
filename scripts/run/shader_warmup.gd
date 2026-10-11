@@ -115,19 +115,41 @@ func setup(world: RunWorld, camera: Camera3D, p_gradual: bool = false) -> void:
 	_show_all()
 	_kept = materials_of(self)
 	if gradual:
-		_camera = camera
-		_cull_mask = camera.cull_mask
-		camera.cull_mask = LAYER_BIT
-		# A camera lights with only the lights it sees: the sun off the stage's layer left every draw
-		# compiled without it (DISABLE_LIGHT_DIRECTIONAL), a variant the run never draws.
-		for node: Node in camera.get_tree().root.find_children("*", "VisualInstance3D", true, false):
-			var light := node as VisualInstance3D
-			if not light is GeometryInstance3D and light.is_visible_in_tree() and light.get_world_3d() == camera.get_world_3d():
-				_world_layers.append([light, light.layers])
-				light.layers |= LAYER_BIT
-		_queue_draws(world)
-		_reveal(_batch)
+		_begin_gradual(camera, world)
 	RenderingServer.frame_post_draw.connect(_on_drawn)
+
+
+## A gradual stage for a cinematic (task PERF3b), behind its loading card before it starts: a sample of every
+## look in `root`'s scene, shown or hidden (its camera flies on to the rest, and actors enter later), and the
+## shown nodes themselves, joining the stage's layer a batch a drawn frame in front of `camera`.
+func setup_scene(root: Node, camera: Camera3D) -> void:
+	name = "ShaderWarmup"
+	gradual = true
+	camera.add_child(self)
+	position = Vector3(0.0, 0.0, -AHEAD)
+	scale = Vector3.ONE * SCALE
+	_sample_nodes(root, true)
+	_show_all()
+	_kept = materials_of(self)
+	_begin_gradual(camera, root)
+	RenderingServer.frame_post_draw.connect(_on_drawn)
+
+
+## Takes the camera's view down to the stage's layer (and the lights onto it), queues the draws of `root`'s
+## shown nodes and of the samples, and shows the first batch.
+func _begin_gradual(camera: Camera3D, root: Node) -> void:
+	_camera = camera
+	_cull_mask = camera.cull_mask
+	camera.cull_mask = LAYER_BIT
+	# A camera lights with only the lights it sees: the sun off the stage's layer left every draw
+	# compiled without it (DISABLE_LIGHT_DIRECTIONAL), a variant the run never draws.
+	for node: Node in camera.get_tree().root.find_children("*", "VisualInstance3D", true, false):
+		var light := node as VisualInstance3D
+		if not light is GeometryInstance3D and light.is_visible_in_tree() and light.get_world_3d() == camera.get_world_3d():
+			_world_layers.append([light, light.layers])
+			light.layers |= LAYER_BIT
+	_queue_draws(root)
+	_reveal(_batch)
 
 
 func _exit_tree() -> void:
@@ -189,10 +211,10 @@ func cancel() -> void:
 ## Orders a gradual stage's draws: the world's shown nodes, then the stage's samples (off every layer
 ## until their turn), in groups that each start with a node bringing a look (draw key) not drawn before;
 ## the nodes after it whose looks are all drawn already join its group, at no compile.
-func _queue_draws(world: RunWorld) -> void:
+func _queue_draws(root: Node) -> void:
 	var nodes: Array[GeometryInstance3D] = []
-	for node: Node in world.find_children("*", "GeometryInstance3D", true, false):
-		if (node as GeometryInstance3D).is_visible_in_tree():
+	for node: Node in root.find_children("*", "GeometryInstance3D", true, false):
+		if (node as GeometryInstance3D).is_visible_in_tree() and not is_ancestor_of(node):
 			nodes.append(node as GeometryInstance3D)
 	for node: Node in find_children("*", "GeometryInstance3D", true, false):
 		(node as GeometryInstance3D).layers = 0
@@ -238,12 +260,20 @@ func _give_back() -> void:
 
 ## Samples the materials of every hidden mesh, multimesh and particle node in the run.
 func _sample_hidden(world: RunWorld) -> void:
-	var stack: Array[Node] = [world]
+	_sample_nodes(world, false)
+
+
+## Samples the materials of the mesh, multimesh and particle nodes under `root` (not the stage's own): the
+## hidden ones, or with `every` all of them.
+func _sample_nodes(root: Node, every: bool) -> void:
+	var stack: Array[Node] = [root]
 	while not stack.is_empty():
 		var node: Node = stack.pop_back()
+		if node == self:
+			continue
 		stack.append_array(node.get_children())
 		var geometry := node as GeometryInstance3D
-		if geometry != null and not geometry.is_visible_in_tree():
+		if geometry != null and (every or not geometry.is_visible_in_tree()):
 			_sample_geometry(geometry)
 
 

@@ -44,6 +44,7 @@ func run() -> void:
 	sfx = load(App.SFX_PATH) as SfxLibrary
 	_test_preset()
 	_test_filter_from_data()
+	_test_loading_cards()
 	_test_replaced_tracks()
 	_test_resources()
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
@@ -158,6 +159,32 @@ func _test_filter_from_data() -> void:
 
 ## GDD §11: the owner's songs will replace the generated tracks, under the same names or new files named
 ## in the music library. The filter follows the data either way.
+## Task PERF3b: the demo keeps the loading cards its zones and their levels show, and leaves out those only
+## the other zones show (a card two zones share stays).
+func _test_loading_cards() -> void:
+	var made := Campaign.new()
+	var demo := ZoneDef.new()
+	demo.in_demo = true
+	demo.loading_card = "res://assets/sprites/loading_cards/shared.png"
+	var other := ZoneDef.new()
+	other.loading_card = "res://assets/sprites/loading_cards/other.png"
+	var level := LevelConfig.new()
+	level.loading_card = "res://assets/sprites/loading_cards/other_2.png"
+	other.levels = [level]
+	var sharing := ZoneDef.new()
+	sharing.loading_card = demo.loading_card
+	made.zones = [demo, other, sharing]
+	var art: PackedStringArray = DemoFilter.left_out_art(made)
+	check(art.has("res://assets/sprites/loading_cards/other.*") and art.has("res://assets/sprites/loading_cards/other_2.*")
+		and not art.has("res://assets/sprites/loading_cards/shared.*"),
+		"the demo leaves out the loading cards only other zones and their levels show, not one it shows too: %s" % ", ".join(art))
+	var filter: String = DemoFilter.preset_filter()
+	for zone: ZoneDef in App.campaign.zones:
+		if zone.in_demo:
+			for card: String in DemoFilter.loading_cards(zone):
+				check(not DemoFilter.excluded(card, filter), "the demo keeps %s's loading card %s" % [zone.id, card])
+
+
 func _test_replaced_tracks() -> void:
 	var left_out: PackedStringArray
 	# The City's song as a new file: it's kept, and the old file left in the folder isn't.

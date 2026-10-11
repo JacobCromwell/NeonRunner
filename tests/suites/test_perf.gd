@@ -55,6 +55,7 @@ func run() -> void:
 	_test_boss_props_share_rings()
 	await _test_shader_warmup()
 	await _test_gradual_warmup()
+	await _test_scene_warmup()
 	await _test_frame_monitor()
 	_test_frame_graph()
 	_test_summaries()
@@ -502,6 +503,58 @@ func _test_gradual_warmup() -> void:
 	camera.queue_free()
 	await tree.process_frame
 	await sim.free_world(world)
+
+
+## Task PERF3b: a cinematic's stage behind its loading card samples every look in its scene, shown or hidden
+## (its camera flies on to the rest), shows them and the shown nodes a batch a frame on the stage's layer, the
+## lights too, then gives the camera and every layer back.
+func _test_scene_warmup() -> void:
+	var root := Node3D.new()
+	tree.root.add_child(root)
+	var camera := Camera3D.new()
+	root.add_child(camera)
+	var mask: int = camera.cull_mask
+	var looks: Array[Material] = [GreyboxMaterials.flat(Color.RED), GreyboxMaterials.flat(Color.BLUE), GreyboxMaterials.glow(Color.GREEN)]
+	var shown := MeshInstance3D.new()
+	shown.mesh = GreyboxMaterials.unit_box()
+	shown.material_override = looks[0]
+	root.add_child(shown)
+	var hidden := MeshInstance3D.new()
+	hidden.mesh = GreyboxMaterials.unit_box()
+	hidden.material_override = looks[2]
+	hidden.visible = false
+	root.add_child(hidden)
+	var crowd := MultiMeshInstance3D.new()
+	crowd.multimesh = MultiMesh.new()
+	crowd.multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	crowd.multimesh.mesh = GreyboxMaterials.unit_box()
+	crowd.material_override = looks[1]
+	root.add_child(crowd)
+	var sun := DirectionalLight3D.new()
+	root.add_child(sun)
+	var stage := ShaderWarmup.new()
+	stage.setup_scene(root, camera)
+	var sampled: Dictionary = {}
+	for m: Material in ShaderWarmup.materials_of(stage):
+		sampled[m] = true
+	check(looks.all(func(m: Material) -> bool: return sampled.has(m)),
+		"a cinematic's stage samples every look in its scene, shown or hidden (its camera flies on to the rest)")
+	check(camera.cull_mask == ShaderWarmup.LAYER_BIT and sun.layers & ShaderWarmup.LAYER_BIT != 0 and stage.gradual,
+		"gradually, behind its card: the camera on the stage's layer, the lights on it too")
+	var frames: int = 0
+	while not stage._waiting.is_empty() and frames < 100:
+		stage._on_drawn()
+		frames += 1
+	check(shown.layers & ShaderWarmup.LAYER_BIT != 0 and crowd.layers & ShaderWarmup.LAYER_BIT != 0,
+		"the scene's shown nodes join the layer themselves")
+	stage._on_drawn()
+	check(camera.cull_mask == mask and shown.layers == 1 and crowd.layers == 1 and sun.layers == 1,
+		"then the camera, the nodes and the lights get their own layers back")
+	for i: int in ShaderWarmup.DRAWN_FRAMES:
+		stage._on_drawn()
+	check(stage.done and is_equal_approx(stage.progress(), 1.0), "and it finishes")
+	root.queue_free()
+	await tree.process_frame
 
 
 # --- The frame monitor and graph ------------------------------------------------------------------

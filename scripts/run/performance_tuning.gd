@@ -15,6 +15,11 @@ const PATH: String = "res://data/tuning/performance.tres"
 ## frame it's built, as before.
 @export_range(0.0, 8.0, 0.1, "suffix:ms") var chunk_dress_budget_ms: float = 1.0
 
+@export_group("Loading")
+## The least time a loading card shows (LoadingCardScreen; GDD §11, Loading cards), so a quick load (a
+## desktop build, a retry with its shaders built) never flashes it. DESIGN-TBD (docs/questions/perf3.md).
+@export_range(0.0, 5.0, 0.1, "suffix:s") var loading_card_min_seconds: float = 1.0
+
 @export_group("Test budgets")
 ## test_frame_times' budgets for one frame's CPU time (FrameMonitor: a headless run, so no GPU), on a
 ## quiet dev machine; a busy one scales them up by its load factor the way the skin suites' chunk

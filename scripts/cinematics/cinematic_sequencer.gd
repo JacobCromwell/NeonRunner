@@ -53,13 +53,16 @@ var log_lines: PackedStringArray = []
 var _next_event: int = 0
 var _sounds: Dictionary = {}
 var _held: bool = false
+## Started (start): until then a prepared scene's clock stays at 0, its time-0 events not fired yet.
+var _started: bool = false
 var _shake_strength: float = 0.0
 var _shake_time: float = 0.0
 var _shake_left: float = 0.0
 var _shake_t: float = 0.0
 
 
-func _play() -> void:
+## Builds its stage, timeline, camera, actors and overlay without starting the clock (Cinematic.prepare).
+func _prepare() -> void:
 	tuning = load(TUNING_PATH) as MovementTuning
 	sfx = load(SFX_PATH) as SfxLibrary
 	var stage_def: CineStageDef = _stage_def()
@@ -98,8 +101,19 @@ func _play() -> void:
 	for e: CineEvent in playing.events:
 		if e.kind == CineEvent.Kind.SOUND:
 			_sound_player(e.name)
-	# The first frame already shows time 0: its events have fired (a fade from black starts black).
+
+
+## Starts the clock (Cinematic.start). The first frame already shows time 0: its events have fired (a fade
+## from black starts black).
+func _start() -> void:
+	if playing == null:
+		return
+	_started = true
 	advance(0.0)
+
+
+func warmup_camera() -> Camera3D:
+	return camera
 
 
 ## The stage the timeline plays on (null: none). Default: the timeline's own, `timeline.stage`. A script
@@ -177,7 +191,7 @@ func duration() -> float:
 
 
 func _process(delta: float) -> void:
-	if done or _held or playing == null:
+	if done or _held or not _started or playing == null:
 		return
 	advance(delta)
 
