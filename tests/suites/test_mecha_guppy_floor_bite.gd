@@ -14,20 +14,24 @@ extends TestSuite
 ##   nowhere in the crescent (but within EDGE of its edge); at its deepest only the lane it leaves has floor, under a
 ##   runner's whole footprint (none on a full-width bite);
 ## - the warning, in the real fight: the crescent's outline and fill on the floor in the enemy attacks' red, unfogged, from
-##   the moment it shows until the snap, a floor warning on every lane it takes and none on the lane it leaves; the rumble
-##   as Mecha Guppy rises, its snout towering beside the roof's side and its jaws off the track there; its jaws never over
-##   the lane it leaves; the crunch (guppy_bite) as they snap; never before the hut's deadline; the outline's frame steady
-##   with Reduced flashing (only deepening), beating otherwise;
+##   the moment it shows until the snap, a floor warning on every lane it takes and none on the lane it leaves (asked of
+##   the props directly); its own warning sound as Mecha Guppy rises (guppy_floor_warn, never the rumble), its snout
+##   towering beside the roof's side and its jaws off the track there; its jaws never over the lane it leaves; the crunch
+##   (guppy_bite) as they snap; never before the hut's deadline; the outline's frame steady with Reduced flashing (only
+##   deepening), beating otherwise;
 ## - the margins on real movement, in the worst case (where the riders onto a bitten roof can first switch, the runner moved
-##   across into the bitten side's outer lane, the farthest from the one it leaves, the bot reading the warning
-##   dodge_reaction late): it crosses into the lane the bite leaves with dodge_margin to spare (measured from where the
-##   runner was as the warning showed) and passes in it; over a full-width bite (from that lane, its longest stretch), a
-##   reaction before the earliest take-off and a jump that clears the stretch at both ends;
+##   across into the bitten side's outer lane, the farthest from the one it leaves), the bot reading the warning
+##   dodge_reaction late from the roof's floor, from where it can first switch there (the plan's reckoning of when the
+##   warning can be read: task E5e-f's review), and so dashing as it starts across (the plan counts the dash's reach): it
+##   crosses into the lane the bite leaves with dodge_margin to spare (measured from when the warning can be read) and
+##   passes in it; over a full-width bite (from that lane, its longest stretch), a reaction before the earliest take-off
+##   and a jump that clears the stretch at both ends;
 ## - the snap, on real contact: a runner in the bite's area as it snaps without protection dies of Mecha Guppy's bite; the
 ##   armor's block, the shield's and a dash through it each hold the floor under them (GameRules.cut_hold_seconds) and they
 ##   run on past the hole; one beside it, in the lane it leaves, is untouched;
 ## - a fall into the gap: the grapple's save and a revive pull the runner up onto the roof (past the gap, or into a lane it
 ##   leaves) and they run on; no hit for that step;
+## - pickups: no armor pickup on a bitten roof asks for a grab and an escape that can't both happen (task E5e-f's review);
 ## - a retry plays the same.
 
 const BOSS_PATH: String = "res://data/bosses/beach_boss.tres"
@@ -66,6 +70,7 @@ func run() -> void:
 	await _test_margins()
 	await _test_snap()
 	await _test_falls()
+	await _test_pickups()
 	await _test_retry()
 
 
@@ -204,7 +209,7 @@ func _test_plan() -> void:
 							longest = maxf(longest, s.y - s.x)
 							shortest = minf(shortest, s.y - s.x)
 					else:
-						least = minf(least, (b.from - maxf(b.warn_at + t.dodge_reaction * v, into.free_at) - h) / v
+						least = minf(least, (b.from - maxf(b.warn_at, into.free_at) - t.dodge_reaction * v - h - c.dash_reach) / v
 							- float(lanes - 1) * switch)
 						length = b.to - b.from
 						deepest = b.deepest()
@@ -288,6 +293,8 @@ func _test_collision() -> void:
 			var boss: MechaGuppy = pair[1]
 			boss.attacks_enabled = false
 			var c: MechaGuppyClimb = boss.climb
+			# The builder takes in the phase first (a resumed fight's steps out of sight are planned again for it).
+			boss.stairs.update(0.0)
 			while c.steps.size() <= k:
 				c.plan_next(boss.phase_index)
 			var roof: MechaGuppyClimb.Roof = c.roofs[k]
@@ -471,7 +478,8 @@ func _warning(lanes: int, speed: float, phase: int, last: int) -> void:
 		% [int(st["shown"]), int(st["frames"]), tag])
 	check(bool(st["tokens"]), "a floor warning on every lane it takes, none on the lane it leaves %s%s"
 		% [tag, "" if String(st["token_why"]) == "" else ": " + String(st["token_why"])])
-	# The sounds: the rumble as it rises (logged with it), the crunch as its jaws snap, before the chunk goes.
+	# The sounds: its own warning as it rises (logged with it; never the rumble, the harmless bite's and the breach's: task
+	# E5e-f's review), the crunch as its jaws snap, before the chunk goes.
 	var heard: bool = true
 	var deadline_ok: bool = true
 	for w: Dictionary in warnings:
@@ -490,12 +498,12 @@ func _warning(lanes: int, speed: float, phase: int, last: int) -> void:
 			if e["event"] == &"floor_bite_rise" and int(e["roof"]) == k:
 				rose = i
 				var next: Dictionary = boss.events[i + 1] if i + 1 < boss.events.size() else {}
-				rumble = not next.is_empty() and next["event"] == &"sound" and next["name"] == &"guppy_rumble"
+				rumble = not next.is_empty() and next["event"] == &"sound" and next["name"] == &"guppy_floor_warn"
 			elif rose >= 0 and e["event"] == &"sound" and e["name"] == &"guppy_bite" and float(e["t"]) <= snapped_t \
 					and float(e["t"]) >= snapped_t - boss.tuning.bite_snap - 3.0 * FRAME:
 				crunch = true
 		heard = heard and rumble and crunch
-	check(heard and not warnings.is_empty(), "the rumble as Mecha Guppy rises for each, the crunch (guppy_bite) as its jaws snap %s" % tag)
+	check(heard and not warnings.is_empty(), "its own warning sound (guppy_floor_warn, not the rumble) as Mecha Guppy rises for each, the crunch (guppy_bite) as its jaws snap %s" % tag)
 	check(deadline_ok and not warnings.is_empty(), "never before the hut's deadline that led onto its roof (no cue to the lanes that lead up) %s" % tag)
 	check(int(st["snout"]) == bites and bool(st["watch_out"]),
 		"Mecha Guppy's snout towers beside the roof's side on the bite's side as it warns (%d of %d), its jaws off the track %s"
@@ -519,22 +527,33 @@ func _watch(world: RunWorld, boss: MechaGuppy, st: Dictionary) -> void:
 		if outline.visible and fill.visible and outline_mesh != null and outline_mesh.get_surface_count() > 0 \
 				and fill_mesh != null and fill_mesh.get_surface_count() > 0:
 			st["shown"] = int(st["shown"]) + 1
-		for mi: MeshInstance3D in [outline, fill]:
-			var m := mi.material_override as BaseMaterial3D
-			var c: Color = m.albedo_color
-			var red: Color = BossProps.WARNING_COLOR
-			if absf(c.r - red.r) > 0.02 or absf(c.g - red.g) > 0.02 or absf(c.b - red.b) > 0.02 \
-					or m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
-				st["red"] = false
-			if not m.disable_fog:
-				st["fog"] = false
+		var red: Color = BossProps.WARNING_COLOR
+		# The frame: its shader (unshaded, unfogged) in the red; the fill: the glow material, unshaded, unfogged.
+		var frame := outline.material_override as ShaderMaterial
+		var fc: Color = frame.get_shader_parameter(&"color") if frame != null else Color.BLACK
+		var code: String = frame.shader.code if frame != null and frame.shader != null else ""
+		if absf(fc.r - red.r) > 0.02 or absf(fc.g - red.g) > 0.02 or absf(fc.b - red.b) > 0.02 or not code.contains("unshaded"):
+			st["red"] = false
+		if not code.contains("fog_disabled"):
+			st["fog"] = false
+		var m := fill.material_override as BaseMaterial3D
+		var c: Color = m.albedo_color
+		if absf(c.r - red.r) > 0.02 or absf(c.g - red.g) > 0.02 or absf(c.b - red.b) > 0.02 \
+				or m.shading_mode != BaseMaterial3D.SHADING_MODE_UNSHADED:
+			st["red"] = false
+		if not m.disable_fog:
+			st["fog"] = false
+		# A floor warning on every lane it takes at its deepest, none on the lane it leaves (asked of the props directly).
+		var mid: float = (bite.from + bite.to) * 0.5
 		for lane: int in world.geo.lane_count:
-			var s: Vector2 = bite.lane_stretch(lane)
-			var takes: bool = s.x <= s.y
+			var takes: bool = bite.full or lane != bite.keep
 			if takes != boss.props.warned(lane, bite.from, bite.to, top):
 				st["tokens"] = false
 				if String(st["token_why"]) == "":
 					st["token_why"] = "roof %d, lane %d: %s" % [bite.roof, lane, "taken, unwarned" if takes else "left, warned"]
+			if takes != bite.takes(lane, mid) and String(st["token_why"]) == "":
+				st["tokens"] = false
+				st["token_why"] = "roof %d, lane %d: the plan's lanes taken at its deepest disagree" % [bite.roof, lane]
 	var shark: MechaGuppyShark = boss.shark
 	if shark.action.is_empty() or int(shark.action["kind"]) != MechaGuppyShark.Kind.FLOOR:
 		return
@@ -591,29 +610,40 @@ func _test_reduced_flashing() -> void:
 # --- The margins on real movement -------------------------------------------------------------------------------
 
 ## The worst case (see the header) at 3, 5 and 6 lanes, both speeds: phase 1's bites on roofs 1 and 2, phase 2's on roofs
-## 1, 2 and the full-width one on roof 4.
+## 1, 2 and the full-width one on roof 4; the bot reading each as soon as it's on the roof's floor ("floor": off the hut),
+## only from where it can first switch there ("free": the plan's reckoning of when the warning can be read: task E5e-f's
+## review), and from there dashing as it starts across ("dash": the plan counts the dash's reach).
 func _test_margins() -> void:
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
 			for phase: int in 2:
-				await _margins(lanes, speed, phase)
+				for mode: String in ["floor", "free", "dash"]:
+					await _margins(lanes, speed, phase, mode)
 
 
-func _margins(lanes: int, speed: float, phase: int) -> void:
-	var tag: String = "(%d lanes, %.1f m/s, phase %d)" % [lanes, speed, phase + 1]
+func _margins(lanes: int, speed: float, phase: int, mode: String) -> void:
+	var tag: String = "(%d lanes, %.1f m/s, phase %d, %s)" % [lanes, speed, phase + 1,
+		{"floor": "reading it from the floor", "free": "reading it from where it can first switch",
+			"dash": "reading it from where it can first switch, dashing"}[mode]]
 	var last: int = 2 if phase == 0 else 4
-	var pair: Array = _fight(lanes, speed, phase)
+	var loadout: Loadout = null
+	if mode == "dash":
+		loadout = Loadout.new()
+		loadout.tiers[&"dash"] = 4
+	var pair: Array = _fight(lanes, speed, phase, loadout)
 	var world: RunWorld = pair[0]
 	var boss: MechaGuppy = pair[1]
 	var p: Player = world.player
 	var mt: MechaGuppyTuning = boss.tuning
 	var bot := MechaGuppyBot.new(boss)
 	bot.reaction = REACTION
+	bot.bite_seen_from_free = mode != "floor"
 	var cause: Array[String] = [""]
 	p.died.connect(func(c: String) -> void: cause[0] = c)
 	var hurt: Array[int] = [0]
 	p.item_used.connect(func(_item: StringName) -> void: hurt[0] += 1)
 	var shifted: Dictionary = {}
+	var dashed: Dictionary = {}
 	await _run(world, 90.0, func() -> bool:
 		var b: MechaGuppyCrescent = _bite_on(boss, last)
 		return b != null and p.distance > b.to + 5.0, func() -> void:
@@ -631,10 +661,13 @@ func _margins(lanes: int, speed: float, phase: int) -> void:
 				bot.set(&"_next_press", 0.0)
 				if int(bot.get(&"_target")) != b.keep:
 					bot.set(&"_target", -1)
+				if mode == "dash" and (world.powerups as PowerupController).dash.trigger():
+					dashed[k] = true
 		bot.step())
-	var v: float = maxf(p.speed, 1.0)
+	var v: float = speed
 	var h: float = world.tuning.hurtbox_size.z * 0.5
 	var switch: float = world.tuning.lane_switch_time
+	var dash: float = boss.climb.dash_reach
 	# The bot presses each switch a frame after the last has finished, at the frame's grain: it gives this much away a switch.
 	var cadence: float = ceilf((switch + FRAME) / FRAME - 0.001) * FRAME - switch
 	var least_spare: float = INF
@@ -648,15 +681,16 @@ func _margins(lanes: int, speed: float, phase: int) -> void:
 		var k: int = int(w["roof"])
 		var b: MechaGuppyCrescent = boss.climb.roofs[k].bite
 		var into: MechaGuppyClimb.Step = boss.climb.steps[k - 1]
-		var d0: float = float(w["d0"])
+		# Its warning read from its start or from where the runner can first switch, if that's later (the plan's reckoning).
+		var read_at: float = maxf(float(w["d0"]), into.free_at)
 		met += 1
 		var record: Dictionary = {}
 		for r: Dictionary in bot.bites:
 			if int(r["roof"]) == k:
 				record = r
-		if not shifted.has(k) or record.is_empty():
+		if not shifted.has(k) or record.is_empty() or (mode == "dash" and not dashed.has(k)):
 			passed = false
-			why = "roof %d: %s" % [k, "never moved across" if not shifted.has(k) else "never read"]
+			why = "roof %d: %s" % [k, "never moved across" if not shifted.has(k) else ("never read" if record.is_empty() else "no dash")]
 			continue
 		if b.full:
 			# A reaction before the earliest take-off over its longest stretch, and a jump clearing it at both ends.
@@ -664,32 +698,33 @@ func _margins(lanes: int, speed: float, phase: int) -> void:
 			for lane: int in lanes:
 				var s: Vector2 = b.stretch(b.near_w(lane))
 				if s.x <= s.y:
-					run_up = minf(run_up, (s.y - air - (d0 + mt.dodge_reaction * v)) / v)
+					run_up = minf(run_up, (s.y - air - (read_at + mt.dodge_reaction * v)) / v)
 			jump_margin = minf(jump_margin, float(record["margin"]))
 			if not bool(record["jumped"]) or float(record["margin"]) < 0.02:
 				passed = false
 				why = "roof %d: %s" % [k, "no jump" if not bool(record["jumped"]) else "a jump clearing it by %.3f s" % float(record["margin"])]
 		else:
-			var spare: float = (b.from - maxf(d0 + mt.dodge_reaction * v, into.free_at) - h) / v - float(lanes - 1) * switch
+			# A reaction from when it's read, then every switch from the farthest lane, even dashing (the dash's reach).
+			var spare: float = (b.from - read_at - mt.dodge_reaction * v - h - dash) / v - float(lanes - 1) * switch
 			least_spare = minf(least_spare, spare)
 			least_slack = minf(least_slack, float(record["slack"]))
 			if int(record["lane"]) != b.keep or spare < mt.dodge_margin - FRAME - 0.005 \
 					or float(record["slack"]) < mt.dodge_margin - float(lanes - 2) * cadence - 2.0 * FRAME:
 				passed = false
-				why = "roof %d: passed in lane %d (it leaves %d), %.3f s to spare from its warning, %.3f s at the last switch" \
+				why = "roof %d: passed in lane %d (it leaves %d), %.3f s to spare from its reading, %.3f s at the last switch" \
 					% [k, int(record["lane"]), b.keep, spare, float(record["slack"])]
 	var want: int = 0
 	for k: int in range(1, last + 1):
 		want += 1 if MechaGuppyClimb.bitten(k) else 0
 	check(p.alive and hurt[0] == 0 and met == want and passed,
-		"the worst case on real movement: moved into the bitten side's outer lane where it can first switch, the runner reads each floor bite dodge_reaction late and crosses into the lane it leaves with dodge_margin (%.2f s) to spare, or jumps a full-width one (%d bites; least %.3f s to spare from its warning, %.3f s after the last switch's press%s) %s%s"
+		"the worst case on real movement: moved into the bitten side's outer lane where it can first switch, the runner reads each floor bite dodge_reaction late and crosses into the lane it leaves with dodge_margin (%.2f s) to spare, or jumps a full-width one (%d bites; least %.3f s to spare after a reaction from its reading and the switches, %.3f s after the last switch's press%s) %s%s"
 		% [mt.dodge_margin, met, least_spare, least_slack,
-			"" if jump_margin == INF else "; the jump clearing it by %.3f s, its earliest take-off %.3f s after a reaction to its warning" % [jump_margin, run_up],
+			"" if jump_margin == INF else "; the jump clearing it by %.3f s, its earliest take-off %.3f s after a reaction to its reading" % [jump_margin, run_up],
 			tag, "" if p.alive and why == "" else ": " + (cause[0] if not p.alive else why)])
 	if phase == 1:
 		check(run_up >= 0.0 and jump_margin < INF,
-			"a full-width bite's warning gives a reaction before its earliest take-off in every lane (%.3f s after it) %s" % [run_up, tag])
-	print("  Mecha Guppy's floor bites, the worst case %s: %d bites; least %.3f s to spare from the warning after a reaction and every switch from the farthest lane, %.3f s after the bot's last switch's press%s"
+			"a full-width bite's warning gives a reaction from its reading before its earliest take-off in every lane (%.3f s after it) %s" % [run_up, tag])
+	print("  Mecha Guppy's floor bites, the worst case %s: %d bites; least %.3f s to spare after a reaction from its reading and every switch from the farthest lane, %.3f s after the bot's last switch's press%s"
 		% [tag, met, least_spare, least_slack,
 			"" if jump_margin == INF else "; the full-width jump clearing it by %.3f s at either end, its earliest take-off %.3f s after a reaction" % [jump_margin, run_up]])
 	await sim.free_world(world)
@@ -841,6 +876,77 @@ func _fall(lanes: int, speed: float, phase: int, k: int, mode: String) -> void:
 	check(p.alive and p.distance > bite.to + 5.0 and absf(p.floor_y - roof.top) < 0.01,
 		"and they run on past the bite %s" % tag)
 	await sim.free_world(world)
+
+
+# --- Pickups ----------------------------------------------------------------------------------------------------
+
+## No pickup asks for a grab and an escape that can't both happen (task E5e-f's review: one could land just short of the
+## gap in a lane the bite takes, with switches still needed): at 3, 5 and 6 lanes, both speeds, phases 1 and 2, with the
+## runner anywhere in any lane from before the hut onto a bitten roof to the end of its bite, before its warning and while
+## it shows, the armor rule's spot (MechaGuppyStairs.pickup_spot at the pickups' lead) on that roof is, in a lane the bite
+## takes, taken (PICKUP_REACH past it) every switch from there to the lane the bite leaves (none over a full-width one: its
+## jump) and dodge_margin, with half a hurtbox, short of where the gap reaches that lane; or past the bite.
+func _test_pickups() -> void:
+	var lead: float = (load("res://data/tuning/pickups.tres") as PickupTuning).lead_distance
+	var bad: Array[String] = []
+	var spots: int = 0
+	var beside: int = 0
+	for speed: float in SPEEDS:
+		for lanes: int in LANES:
+			for phase: int in 2:
+				var pair: Array = _fight(lanes, speed, phase)
+				var world: RunWorld = pair[0]
+				var boss: MechaGuppy = pair[1]
+				boss.attacks_enabled = false
+				var c: MechaGuppyClimb = boss.climb
+				# The builder takes in the phase first (a resumed fight's steps out of sight are planned again for it), then the
+				# steps are planned ahead.
+				boss.stairs.update(0.0)
+				while c.steps.size() <= 5:
+					c.plan_next(boss.phase_index)
+				var p: Player = world.player
+				var h: float = world.tuning.hurtbox_size.z * 0.5
+				for k: int in [1, 2, 4]:
+					var roof: MechaGuppyClimb.Roof = c.roofs[k]
+					var bite: MechaGuppyCrescent = roof.bite
+					var into: MechaGuppyClimb.Step = c.steps[k - 1]
+					for warned: bool in [false, true]:
+						if warned:
+							boss.floor_bite.start(bite)
+						var d: float = into.deadline - 60.0
+						while d < bite.to:
+							# On the roof before (or riding the hut), the spot goes in a lane that leads up; on this roof, in theirs.
+							var on_it: bool = d >= into.land
+							p.distance = d
+							p.surface = Player.Surface.FLOOR
+							p.floor_y = roof.top if on_it else c.roofs[k - 1].top
+							p.h = p.floor_y
+							p.grounded = true
+							boss.stairs.update(d)
+							for lane: int in lanes:
+								_shift(world, lane)
+								var spot: Dictionary = boss.stairs.pickup_spot(lead)
+								if spot.is_empty() or absf(float(spot["height"]) - roof.top) > 0.01:
+									continue
+								spots += 1
+								var at: float = float(spot["at"])
+								var sl: int = int(spot["lane"])
+								var gap: Vector2 = bite.stretch(bite.near_w(sl))
+								if gap.x > gap.y or at - MechaGuppyStairs.PICKUP_REACH >= bite.to + h:
+									continue
+								beside += 1
+								var switches: int = 0 if bite.full else absi(bite.keep - sl)
+								var need: float = (float(switches) * world.tuning.lane_switch_time + boss.tuning.dodge_margin) * speed + h
+								if at + MechaGuppyStairs.PICKUP_REACH + need > gap.x + 0.01 and bad.size() < 4:
+									bad.append("(%d lanes, %.1f m/s, phase %d) roof %d%s: a pickup in lane %d at %.1f m, %.1f m short of the gap, %d switches to make (%.1f m)"
+										% [lanes, speed, phase + 1, k, ", warned" if warned else "", sl, at, gap.x - at, switches, need])
+							d += 4.0
+						if warned:
+							boss.floor_bite.call_off()
+				await sim.free_world(world)
+	check(bad.is_empty() and spots > 100,
+		"no pickup asks for a grab and an escape that can't both happen: on a roof with a floor bite, in a lane it takes, a pickup leaves every switch to the lane it leaves (or the jump) and dodge_margin before the gap, or comes past the bite (%d spots, %d before a bite in a lane it takes)%s"
+		% [spots, beside, "" if bad.is_empty() else ": " + "; ".join(bad)])
 
 
 # --- A retry -----------------------------------------------------------------------------------------------------
