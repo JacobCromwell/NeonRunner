@@ -14,7 +14,7 @@ extends Node3D
 ##   strip), and its hut (BossProps.ceiling_lanes: each lane ends at its own distance, one section per run of lanes
 ##   ending together); between one roof's eaten edge and the next roof's front, nothing: the chasm Mecha Guppy has
 ##   eaten through the towers, down to the water (a fall);
-## - the top (phase 3's stub): the last roof runs on, in segments for as long as the fight lasts;
+## - the top (phase 3's): the last roof runs on, in segments for as long as the fight lasts;
 ## - the bait's notch (task E5e-b3; MechaGuppyClimb.Roof.notch_lane): past notch_from a roof's pieces leave out its
 ##   notch's lane (their collision and their look), with a lane blocker along the notch's inner side below the top (a
 ##   runner who fell into it can't switch into the tower's side), and the step's pads there go too.

@@ -4,8 +4,8 @@ extends TestSuite
 ## - a runner who reads the climb (MechaGuppyBot: the lanes that lead up read off the hut and the roofs, a lane switch
 ##   at a time) and dodges Captain Cogs' bombs (a way through their circles, a reaction after they show) climbs through
 ##   phases 1 and 2 without a fall or a hit taken, landing the hits as it climbs by baiting (each step's bait locked in
-##   the notch's lane, falling past its edge into Mecha Guppy's jaws: task E5e-b3), into phase 3's top, which ends the
-##   fight; never a circle in its lane while every lane it could switch to has no floor (task E5e-b2's review, the pier
+##   the notch's lane, falling past its edge into Mecha Guppy's jaws: task E5e-b3), into phase 3's top and through its
+##   minute (cut short here; its rounds and waves dodged too: test_mecha_guppy_top), which ends the fight; never a circle in its lane while every lane it could switch to has no floor (task E5e-b2's review, the pier
 ##   trap); phase 2 has more bombs to dodge than phase 1, a step and a second; the phases' times and the bombs are
 ##   printed (the baiting bot's; the bot that doesn't bait: test_mecha_guppy_bait.gd); phase 2's climb is 15-25% faster,
 ##   measured (the climb alone: the captain and the shark off, a stand-in hit on each landing);
@@ -126,8 +126,9 @@ func _run(world: RunWorld, seconds: float, done: Callable, each: Callable = Call
 # --- Through phases 1 and 2 -------------------------------------------------------------------
 
 ## A runner who reads the climb, dodges Captain Cogs' bombs and baits them climbs through phases 1 and 2 (each step's bait
-## falling into Mecha Guppy's jaws: a hit) into phase 3's top, which ends the fight, without a fall or a hit taken, at
-## every lane count and both speeds, never with a circle in its lane and no floor to switch to; phase 2 has more bombs
+## falling into Mecha Guppy's jaws: a hit) into phase 3's top and through its minute (cut to 8 s here), which ends the
+## fight, without a fall or a hit taken, at every lane count and both speeds, never with a circle in its lane and no
+## floor to switch to; phase 2 has more bombs
 ## to dodge (MechaGuppyBot, the bombs suite's census); the phases' times are printed (the baiting bot's: GDD §10, the
 ## fight may run long but shouldn't drag). Then phase 2's faster climb, measured: eight steps planned in each phase,
 ## landing to landing.

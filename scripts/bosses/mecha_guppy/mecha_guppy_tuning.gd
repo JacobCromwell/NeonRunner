@@ -2,8 +2,8 @@ class_name MechaGuppyTuning
 extends Resource
 ## Mecha Guppy and Captain Cogs' numbers (GDD §10, the Beach's boss; data/bosses/beach_boss_tuning.tres, F6 in
 ## its fight). Task E5e-b1 builds the climb (phases 1 and 2's gimmick) and its look; E5e-b2 the shark, the pirate,
-## the bombs and the hits (the groups "Captain Cogs' bombs", "Mecha Guppy's bites", "Captain Cogs' ship"); phase 3 and
-## the defeat are E5e-c's.
+## the bombs and the hits (the groups "Captain Cogs' bombs", "Mecha Guppy's bites", "Captain Cogs' ship"); E5e-b3 the
+## hits by baiting ("The hits"); E5e-c phase 3 and the defeat (the groups "Phase 3" and "The defeat").
 ##
 ## The GDD fixes the climb's shape (MechaGuppyClimb): anti-grav pads up to tiki huts (the ceilings), tiki bar
 ## roofs ahead at a higher level (the floors), the lanes that lead up (one on 3 lanes; one, two or three,

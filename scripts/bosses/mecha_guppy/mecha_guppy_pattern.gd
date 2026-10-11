@@ -40,7 +40,7 @@ extends RefCounted
 ##   It's thrown only once the shark can rise for it, waiting while its bomb can still come down ahead of the runner.
 ## 4 hits end phase 1, 6 phase 2: a runner who baits every step lands one a step (from the first notch on); one who
 ## never does, one every fallback_after + 1 steps.
-## Attacks only while the pattern runs (MechaGuppy.attacks_live: not in an intro, not in phase 3's stub, not once won);
+## Attacks only while the pattern runs (MechaGuppy.attacks_live: not in an intro, not in phase 3, not once won);
 ## the shark's bite of the floor left behind is the level being eaten, not an attack, so it goes on in an intro too.
 
 ## An event whose moment the runner is already this far past (metres: a review moving them on) is skipped.

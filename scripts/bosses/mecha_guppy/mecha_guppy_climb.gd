@@ -39,7 +39,7 @@ extends RefCounted
 ## the next hut (Roof.notch_lane, notch_from) to its end, on a seeded side that has nothing to do with the lanes that
 ## lead up (so it's no cue to them); MechaGuppyPattern baits Captain Cogs' bombs into it. A roof too short for one (an
 ## extreme tuning: notch_after) has none.
-## Phase 3 (E5e-c's) is a stub here: its step is the `top`: the last roof runs on, no pads, no hut.
+## Phase 3's step is the `top` (MechaGuppyTop plays phase 3 on it): the last roof runs on, no pads, no hut.
 ## Distances are track distances (metres along the track); heights world heights.
 
 enum Cue { RUN_ON, REACH_BACK }
