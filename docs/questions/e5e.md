@@ -243,7 +243,7 @@ step changed an earlier placeholder, the entry says so.
     (cogs_aim) and one bomb's circle, a little smaller and steady, follows the runner's lane for `bait_seek`
     (0.6 s), where the bomb will land: `catch_in` (4 m) into the notch (on the roof's top in every other lane). Then
     it **locks** onto the lane the runner is in, with the throw and the whistle, 1.1 s before it lands as they get
-    there (the Floating Head's `lock_seconds`).
+    there (`lock_seconds`, the Floating Head's warning).
   - Locked in the notch's lane, the runner has to switch out before the notch's edge anyway (their lane ends there,
     about a second after the lock at either speed), and the bomb goes on past the edge into the jaws as it passes
     the roof's top: **a hit**. Locked in any other lane, it's a spot of one bomb on the roof, dodged like any other.
@@ -286,7 +286,7 @@ step changed an earlier placeholder, the entry says so.
   lands a hit every third step: phase 1 ends at 88.6-100.0 s and phase 2 at 222.6-251.7 s, against 32.8-36.7 s and
   77.5-87.3 s for a runner who baits every step (3, 5 and 6 lanes, 18 and 23.8 m/s). Nothing escalates. Which N does
   the owner want? (1 would give a hit every other step; 0 a hit every step, leaving no reason to bait.)
-- **No hit on a step the runner fell** (the coordinator's rule for E5e-b3): on a step where the runner fell, even if
+- **No hit on a step the runner fell** (a rule from E5e-b3's brief): on a step where the runner fell, even if
   the grapple (or a revive) saved them, no bomb hits: a bait locked then falls past into the chasm as the shark shuts
   its jaws, and a fallback due then waits for the next step. Right?
 - **A fall into the notch**: a runner who runs on past the notch's edge falls into the chasm; the grapple's save (or
