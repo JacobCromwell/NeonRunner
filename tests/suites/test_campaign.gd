@@ -226,9 +226,9 @@ func _test_steps(campaign: Campaign) -> void:
 ## Dead Zone's, and Gangland's boss intro and the Dead Zone's intro the owner's beats; test_cinematics,
 ## test_sewer_swarm_intro and test_dead_zone_intro check them).
 func _test_slots(campaign: Campaign) -> void:
-	# The Beach's boss is still to be designed (GDD §10; DESIGN-TBD, docs/OPEN_QUESTIONS.md, item 575: its slot's name).
+	# The Beach's boss: Mecha Guppy and Captain Cogs (GDD §10; the owner's title, docs/OPEN_QUESTIONS.md, item 762).
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "",
-		"casino": "The House", "corporate": "Hostile Takeover", "beach": "The Beach's boss", "dead_zone": "Sleep Taker",
+		"casino": "The House", "corporate": "Hostile Takeover", "beach": "Mecha Guppy and Captain Cogs", "dead_zone": "Sleep Taker",
 		"golden": "The Golden Convergence"}
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
@@ -270,9 +270,10 @@ func _test_slots(campaign: Campaign) -> void:
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"golden":
 			check(s.boss != null and s.boss.is_built(), "the Golden Zone's boss step plays The Golden Convergence's fight (task E5d-c)")
 		elif s.kind == CampaignStep.Kind.BOSS and s.zone.id == &"beach":
-			# The owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created".
-			check(s.boss != null and not s.boss.is_built() and s.boss.arena == null and s.boss.phases.is_empty()
-				and s.boss.notes.begins_with("DESIGN-TBD"), "the Beach's boss slot is a placeholder until its fight is designed (task D10c)")
+			# GDD §10: Mecha Guppy and Captain Cogs (task E5e): the slot names its scene since E5e-c.
+			check(s.boss != null and s.boss.is_built() and s.boss.preview() == null and s.boss.phase_count() == 3
+				and s.boss.scene == "res://scenes/bosses/mecha_guppy.tscn",
+				"the Beach's boss step plays Mecha Guppy and Captain Cogs' fight (task E5e-c)")
 		elif s.kind == CampaignStep.Kind.BOSS:
 			check(s.boss != null and not s.boss.is_built(), "boss slot %s is still a placeholder" % s.id)
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
@@ -1143,7 +1144,7 @@ func _test_unlocking() -> void:
 	check(App.step_unlocked(boss) and not App.step_unlocked(campaign.step("beach/outro")), "Sunset Strip opens the Beach's boss slot")
 	App.complete_step(boss)
 	check(App.step_unlocked(campaign.step("beach/outro")) and App.profile.stars(boss.id) == 0,
-		"passing its placeholder opens the outro, with no stars that would show once the fight is built")
+		"the boss step done opens the outro (complete_step gives a boss no stars: its fight records them through its results)")
 	App.complete_step(campaign.step("beach/outro"))
 	check(App.step_unlocked(campaign.step("dead_zone/intro")) and App.next_unfinished_step() == campaign.step("dead_zone/intro"),
 		"the Beach's outro opens the Dead Zone")

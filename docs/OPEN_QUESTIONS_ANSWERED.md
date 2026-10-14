@@ -1278,3 +1278,149 @@ Moved here from `docs/OPEN_QUESTIONS.md`, each with its answer; the GDD records 
     screen there. Skip Poki: it is curated, blocks requests out of the game unless they go through its SDK, and its
     traffic earns through its ads, which the demo doesn't have.
     **Answered (owner, October 14, 2026):** the recommendation, as above (GDD §2).
+
+### The Beach's boss, designed and built (task E5e; filed on October 14, 2026)
+Item 575 moved here from `docs/OPEN_QUESTIONS.md` once the fight was designed and built. After it come the owner's
+answers from the fight's design session, items 749–765 (the session's items were numbered 683–700 on the task's
+branch; its last, 766, waits on the owner in `docs/OPEN_QUESTIONS.md`), and the two questions task E5e's steps
+raised that are answered or superseded, items 783 and 788 (from task E5e's questions file; the rest of items
+767–824 are deferred, in `docs/OPEN_QUESTIONS_DEFERRED.md`). The GDD records the design (§10, Mecha Guppy and
+Captain Cogs).
+
+**The Beach joins the campaign** (from D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone. Keep in mind that there will be a boss battle for the beach, but it has not yet been created. Do not worry about any new enemies at this time. Create level names that fit the theme."; GDD §5, §6 and §10; `data/campaign/campaign.tres`, `data/zones/beach.tres`, `data/levels/beach_1.tres` (Tiki Tides) and `beach_2.tres` (Sunset Strip); play `--level=beach/1`)
+575. **The boss** (GDD §10: "there will be a boss battle for the beach, but it has not yet been created"; task E5e,
+    blocked on design). Placeholder: `data/bosses/beach_boss.tres`, "The Beach's boss", unbuilt: the campaign shows
+    its placeholder card and passes through it to the Beach's outro and the Dead Zone, with no stars. Its fight,
+    name and payout are to be designed. When it's built, `test_app_flow` and `test_screens` need another unbuilt
+    stand-in for their placeholder-card checks.
+    **In progress (owner, October 14, 2026):** the owner is designing the Beach's boss in another session.
+    **Answered and built (owner, October 10–11, 2026; task E5e):** Mecha Guppy and Captain Cogs, a giant
+    mechanical shark and a flying pirate, in a climb (GDD §10). Its design answers are items 749–765; the build's
+    placeholders, its payout among them, are items 767–824. `test_app_flow` and `test_screens` now check the
+    placeholder card on an unbuilt stand-in in its slot (a copy of its `BossDef` with no scene).
+
+**The Beach's boss: the design session** (the owner with Claude, October 10, 2026; GDD §10, Mecha Guppy and Captain Cogs; task E5e)
+749. **The way up: ceilings, to confirm** (GDD §10, The Beach's boss, The climb). The owner proposed two ways up:
+    anti-grav pads to ceilings that drop the runner onto higher floors, or side walls standing in the lanes, climbed by
+    wall hops from wall to wall. The owner's answers on October 10, 2026 (the wrong ceiling lane, ceiling riders and
+    the bombs) follow the ceilings, so the GDD records them, marked *(to confirm)*. Claude's feasibility notes (task
+    E5e in `docs/TASK_PLAN.md`): the ceilings reuse pads, partial ceilings and landing on raised floors; the side-wall
+    climb needs the wall system rewritten (walls stand only at the track's two edges, a wall run slides down, and the
+    wall hop holds a runner at about 4.5 m but never climbs). A cheap mix: a run up an edge wall, then a wall jump onto
+    a higher roof, as onto the Floating Head in its phase 2. Ceilings only, or ceilings with edge-wall steps?
+    **Answered (owner, October 10, 2026):** ceilings only. Nothing for walls in the lanes was built, and the owner
+    doesn't want their cost in time, code complexity and maintenance (GDD §10, Mecha Guppy and Captain Cogs, The
+    climb).
+750. **The name** of the fight, the shark and the pirate.
+    **Answered (owner, October 10, 2026):** the shark is **Mecha Guppy** and the pirate **Captain Cogs**. The fight's
+    own title is item 762.
+751. **Phases and length** (GDD §10: 60–120 seconds; death restarts the fight). How many phases, and what changes in
+    each? Claude's suggestion, not decided: phase 1 ceilings, phase 2 edge-wall steps, phase 3 both, each phase a
+    little faster, as at the other bosses.
+    **Answered (owner, October 10, 2026):** three phases. Phase 1: the climb, dodging bombs, 4 hits. Phase 2: the same
+    with more bombs and a climb 15–25% faster, 6 hits. Phase 3: the runner reaches the top, level with Captain Cogs,
+    whose ship fires rounds dodged by switching lanes while waves crash over lanes to jump; after a minute of dodging,
+    Mecha Guppy leaps over and eats the captain. Placeholder *(proposed)*: about 20% faster, by bringing the steps closer
+    together (the run speed stays the zone's).
+752. **The bombs' warning** (GDD §3 and CLAUDE.md: every attack has a visual and an audio warning). Reuse the Floating
+    Head's (a red target circle where a bomb will land and a falling whistle), with a pirate look on the bombs? How
+    many bombs at once, and how often?
+    **Answered (owner, October 10, 2026):** reuse the Floating Head's warning (the red target circle and the falling
+    whistle) in a pirate look.
+753. **Bombs on a ceiling rider** (owner: ceiling riders aren't safe from them). How does a bomb reach a runner hanging
+    under a ceiling, and where is its warning drawn (on the ceiling's underside, above the rider's head)? For example,
+    the ship flies ahead below the ceiling's line and lobs them in, or the bombs burst through the ceiling.
+    **Answered (owner, October 10, 2026):** for now, a ceiling rider with the ceiling between them and a bomb isn't
+    hurt by it. The owner doesn't want ceilings to be too safe (item 766).
+754. **The shark's bites** (GDD §10: its maw comes up through the floor and eats a huge chunk of the level). Where and
+    when does it bite: ahead of the runner, behind them, under floor they've left, under the floor they're on? If a
+    bite can catch the runner, it's an attack and needs its warning and a way to dodge (a rumble, churning water,
+    cracks spreading). If it only eats floor the runner has left, it kills only a runner who drops back down.
+    **Answered (owner, October 10, 2026):** it eats the floor the runner should have left. A runner who drops off the
+    ceiling in the wrong place falls back down to where it is eating, which kills them. It is mechanical and doesn't
+    glow red (its eyes are item 763).
+755. **How many hits** ("many") end the fight, and does anything else hurt the shark? Weapons chip every other boss,
+    and every other boss also has a big hit (a stomp on a glowing red weak point). Is it bombs only?
+    **Answered (owner, October 10, 2026):** phase 1 ends after 4 bomb hits, phase 2 after 6; phase 3 after the player
+    has dodged attacks for one minute. Weapons do no chip damage in this fight.
+756. **The pirate bomber's fate.** Can it be hurt or beaten, or is it out of reach for the whole fight? Does it
+    appear in later levels (GDD §5: "Anything introduced earlier keeps appearing later"), or only in this fight?
+    **Answered (owner, October 10, 2026):** Captain Cogs is only in this fight: Mecha Guppy eats the captain at the end
+    of phase 3. The player never hurts the captain.
+757. **The last-ditch saves** (owner: a wall to cling to, or the grapple). The grapple today pulls a runner back up out
+    of a pit to the street's level; in the climb it would have to pull them back onto the roof they fell from. A wall:
+    GDD §3's entry grace says a runner already falling into a gap can't get onto a wall, but this fight lets a falling
+    runner catch one. How late may they catch it, and where do walls stand in the climb? The wall hop (GDD §3) lets a
+    runner stay on a wall as long as they like: do the bombs reach wall runners, so a wall isn't a place to wait out
+    the fight (item 417's concern)?
+    **Answered (owner, October 10, 2026):** only occasional side walls, here and there, never the climb's full length,
+    as a last-ditch save that should rescue a player about 20% of the time; Mecha Guppy eats them too, like the
+    floors. If that's too complex to build, the fight has no walls.
+758. **Reading the lanes.** On a ceiling, the camera sits under it looking up. How does the player see which lanes
+    lead to the higher roof before the ceiling ends: the roof in plain view ahead, a marking on the ceiling, or
+    something else?
+    **Answered (owner, October 10, 2026):** either the ceiling lanes that lead up run further than the others, or one
+    or two of the roof's lanes reach further back toward the runner than the others; the two cues alternate.
+759. **The arena's looks.** What forms the ceilings (the Beach's skin uses footbridges, verandas and a party barge)?
+    Do the neon signs on the roofs stay out of the lanes as scenery, or stand in lanes as obstacles? Daylight or
+    sunset (the fight follows Sunset Strip, whose sun is setting, and comes before the outro, "Last light")?
+    **Answered (owner, October 10, 2026):** the ceilings are tiki huts; the neon signs are scenery only, with no
+    effect on play; daylight. The backdrop is a waterfall in phases 1 and 2 and the Beach's normal one in phase 3.
+    **Changed (owner, October 10, 2026):** (later the same day) the sky is Sunset Strip's setting sun after all, as
+    the rule for the boss after a level gives (GDD §5); and the fight may run longer than the usual 60–120 seconds.
+760. **3 lanes against 5–6** (lane count is a parameter). How many of a ceiling's lanes lead up on each?
+    **Answered (owner, October 10, 2026):** one ceiling lane leads up on 3 lanes; on 5–6 lanes, one, two or three,
+    alternating. One safe place to drop to is enough.
+761. **Pickups, granted items, rewards and the defeat.** The standard armor rule (15–17 seconds)? What happens to
+    the shark and the pirate when the fight is won?
+    **Answered (owner, October 10, 2026):** the standard armor rule. The defeat: Mecha Guppy has eaten Captain Cogs
+    and swims away.
+762. **The fight's title** (GDD §10). The owner named the shark Mecha Guppy and the pirate Captain Cogs. Placeholder:
+    the boss slot, its card and the boss bar read "Mecha Guppy and Captain Cogs". Should the fight have a title of its
+    own?
+    **Answered (owner, October 10, 2026):** yes, the title is "Mecha Guppy and Captain Cogs".
+763. **Mecha Guppy's eyes** (GDD §10). First pictured as red eyes ("or whatever eyes make sense"); the owner then said
+    the shark is mechanical and doesn't glow red. Placeholder: dark red lenses that don't glow. Do you want another
+    colour, or lit eyes in a colour that isn't red?
+    **Answered (owner, October 10, 2026):** yes, dark red lenses that don't glow.
+764. **Phase 3's warnings** (GDD §10, Phase 3; every attack has a visual and an audio warning). Placeholder: Captain
+    Cogs' rounds warned by red lines down the lanes they'll hit (the boss's lane warning) with a cannon's charging
+    sound; a wave warned by a rising swell and a roar, jumped like the Resonator's ring (GDD §9.10). Are these right?
+    **Answered (owner, October 10, 2026):** yes, as the placeholders describe.
+765. **A checkpoint before phase 3?** Death restarts a boss fight (GDD §10; only the final boss has a checkpoint), and
+    phase 3's minute comes last, so a death late in it replays the whole fight, about two minutes. Placeholder: no
+    checkpoint, as at every other boss.
+    **Answered (owner, October 10, 2026):** agreed: no checkpoint.
+
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)** (from task E5e's questions file)
+783. **How the hits come** (GDD §10: only a bomb that falls through a gap, off a roof's edge or into a
+  stretch the shark has eaten through, where it's clearly exposed and in the line of fire; "aim the bombs
+  so a runner who dodges well lands hits steadily"). Placeholder (`MechaGuppyPattern._hit`, `hit_spot`,
+  DESIGN-TBD): on every step, at the hut's deadline (when every rider is committed), Captain Cogs throws a
+  bomb at the chasm in front of the higher roof, beside the lanes that lead up on the side with more
+  lanes that don't (`hit_back` 6.8 m before that roof's front; `hit_seconds` 0.65 s of flight, its circle
+  and whistle as every bomb's), and Mecha Guppy rises there to eat, its jaws open as the bomb comes down
+  into them: a hit. So a runner who keeps climbing (who dodges well enough to survive the step) lands one
+  hit a step: 4 steps end phase 1 and 6 phase 2. The clean bot's phase 1 ends at about 24-26 s and phase 2
+  about 29-32 s later. Is "one hit a step" the owner's steady hits? The alternative (hits only when bombs
+  aimed at the runner happen to miss past an edge) would make hits depend on luck and on dodging badly.
+  **Answered (owner, October 11, 2026): bait the bombs.** Captain Cogs' bombs lock onto the runner's lane; a
+  runner who dodges one at a roof's end or a pier's open side sends it past the edge into Mecha Guppy's jaws,
+  a hit, the way the Floating Head's laser is baited into a tower. A player who doesn't manage it still
+  progresses, more slowly: Captain Cogs sometimes misses into the chasm anyway (GDD §10). Built by E5e-b3 (see
+  "Raised by E5e-b3"): the "one hit a step" above is now the fallback, after `fallback_after` steps without a hit.
+788. **The bombs a step, and phase 2's "more bombs"** (GDD §10: the bombs warned like the Floating Head's;
+  phase 2 the same with more bombs). Placeholders (`MechaGuppyTuning`, "Captain Cogs' bombs"):
+  - The Floating Head's warning: a red circle at the floor's height from the throw, a whistle, 1.1 s from
+    the throw to the landing (`lock_seconds`); its salvo rules for the spots (a lane to dodge into always
+    reached in time, never off a pier's side, never under a hut, never on a pickup). The circles never show
+    before the hut's deadline (so they never hint at the lanes that lead up).
+  - Phase 1: a volley of two spots on the higher roof's run each step (one or two bombs a spot on 3 lanes,
+    two or three on 5-6), 2.3-3.5 bombs a step.
+  - Phase 2: one spot on the roof's run, a landing spot where riders come down (dodged in the air off the
+    hut's end), and two bombs on the hut over a rider, which burst on its top (the owner's rule: the
+    ceiling between them shields a rider), 4.3-4.5 bombs a step. The hut's bombs show no circle (nobody can
+    stand there) and a rider under the hut only hears and feels them. Are harmless hut bombs part of the
+    owner's "more bombs", or should phase 2 put more on the roofs instead? **Superseded by E5e-b3** (E5e-b2's
+    review: the hut bombs were harmless and unseen, and phase 2 had fewer bombs to dodge than phase 1): the hut
+    bombs are gone, and phase 2 has more bombs that can reach the runner (see "Raised by E5e-b3").

@@ -198,7 +198,10 @@ builders in `scripts/world/skins/beach/`:
   chunk stays inside the build budget (`SkinSuite`: under 32 surfaces for a five-lane chunk) with a stretch
   open on either or both sides (`test_beach_skin`, hand-built layouts through `RunSim.layout`). Review: `skin_review --skin=beach --open`
   (four shots per stretch: the game camera at the start and 50 m in, from the lane beside the opening, from
-  above), and `--view=run --from=<distance>` with the same flag.
+  above), and `--view=run --from=<distance>` with the same flag. `BeachOpen.shore_side` is the shore alone (the
+  street's edge, the beach, the sea and its scenery, without the gap marks or the shacks' end caps), which
+  `build` draws after the gap marks; the Beach's boss arena, which has no walls at all (`MechaGuppySkin`, Bosses),
+  draws its sides with it.
 - *The ceilings* (`BeachCeilings`; `kind_of()` by the ceiling's width and the walls it reaches, weights
   `footbridge_weight`, `veranda_weight`, `barge_weight`): a boardwalk footbridge across every lane, a veranda
   deck cantilevered from one building (narrow, reaching one wall) and a hovering party barge (any width, or

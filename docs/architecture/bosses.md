@@ -25,8 +25,8 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/boss_encounter.gd` | the fight: health and phases, damage, the checkpoint, the armor rule, the light; helpers and hooks for boss scripts |
 | `scripts/bosses/boss_part.gd` | a piece of the boss in the world: an Enemy the director runs (claw-immune, the dash passes, weak points, surfaces) |
 | `scripts/bosses/boss_arena.gd` | the fight's track: generator laps joined ahead for as long as the fight lasts; `add_pieces()`; track queries |
-| `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings, a wall taken away, floor warnings |
-| `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end |
+| `scripts/bosses/boss_props.gd` | what a boss places within sight: fences, blocks, pads, ceilings (over a lane range, or lane by lane), roofs, a wall taken away, floor warnings; all but the wall at a height (a raised floor) |
+| `scripts/ui/widgets/boss_bar.gd` | the HUD's boss bar, with a marker at each phase's end and a white segment draining after each hit (held a moment, but not while the health runs down steadily: `BossEncounter.health_runs_down`) |
 | `scripts/bosses/test_boss*.gd`, `data/bosses/test_boss*.tres`, `scenes/bosses/test_boss.tscn` | the test boss, outside the campaign (`./play.sh --boss=test_boss`) |
 | `scripts/bosses/floating_head/`, `scenes/bosses/floating_head.tscn`, `data/bosses/city_boss*.tres` | the Floating Head, the City's boss (see below; `./play.sh --boss=city_boss` or `--level=city/boss`) |
 | `scripts/bosses/sleep_taker/`, `scenes/bosses/sleep_taker.tscn`, `data/bosses/dead_zone_boss*.tres` | the Sleep Taker, the Dead Zone's boss (see below; `./play.sh --boss=dead_zone_boss` or `--level=dead_zone/boss`) |
@@ -34,6 +34,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 | `scripts/bosses/hostile_takeover/`, `scenes/bosses/hostile_takeover.tscn`, `data/bosses/corporate_boss*.tres` | Hostile Takeover, the Corporate zone's boss (see below; `./play.sh --level=corporate/boss`) |
 | `scripts/bosses/sewer_swarm/`, `scenes/bosses/sewer_swarm.tscn`, `data/bosses/gangland_boss*.tres` | the Sewer Swarm, Gangland's boss (see below; E4a and E4b: the campaign plays it after Gangland 3, `./play.sh --boss=gangland_boss`) |
 | `scripts/bosses/golden_convergence/`, `scenes/bosses/golden_convergence.tscn`, `data/bosses/golden_boss*.tres` | The Golden Convergence, the Golden Zone's boss and the final villain (see below; `./play.sh --level=golden/boss` or `--boss=golden_boss`) |
+| `scripts/bosses/mecha_guppy/`, `scenes/bosses/mecha_guppy.tscn`, `data/bosses/beach_boss*.tres` | Mecha Guppy and Captain Cogs, the Beach's boss (see below; `./play.sh --level=beach/boss` or `--boss=beach_boss`) |
 
 - **The arena** (`BossArena`): the generator plans `BossDef.arena_laps` laps from the boss's arena
   config (one lap's seed, features, difficulty, pacing and skin; `duration_seconds` is the lap's
@@ -71,6 +72,19 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   (steady with Reduced flashing; `warned(lane, from, to)` says where they are, and pickups keep off
   them); `floor_warning(node, lane, from, to)` counts a boss's own warning drawn its own way (the
   Sleep Taker's mist, its slash's lanes) in `warned()` the same way.
+  **At a height** (task E5e-a, for GDD §10's climb): fences, blocks, pads, ceilings and the floor warnings
+  take an optional `height`, the floor they stand on (0, the street, as always; a roof's top), and are
+  placed as on the street that much higher; a ceiling hangs `ceiling_height` over its floor. `ceiling` takes
+  an optional lane range (`Vector2i(first, last)`, every lane by default: `ALL_LANES`), and
+  `ceiling_lanes(start, ends, height)` builds a ceiling whose lanes end at their own distances (the lanes
+  that lead up run further), one section per run of lanes ending together, each with its far end's band.
+  `roof(lanes, start, end, height)` is a raised floor's top over a lane range (a box on the floor layer,
+  reaching down to the street unless given a `depth`; no hazard, no lane blocker, no look but an optional
+  grey box: the boss adds its look and whatever its sides and front must do). `warned(lane, from, to,
+  height)` asked at a height counts only the warnings on that floor (within `WARNED_HEIGHT`). The runner
+  rides a ceiling at its own height and lands on a roof at any height (Damage and interactions: Ceilings
+  at any height, and Falls); a boss that raises the floor also sets `Player.floor_base` as the runner climbs,
+  its grapple hook (`_grapple_save`) and the climbing camera (`RunWorld.camera_climbs`).
 - **Parts** (`BossPart`, made with `add_part()` through the director): a boss's body shares the fight's
   health (weapon hits go to `BossEncounter.damage`, nothing else defeats it) and has weak points
   (`add_weak_point`: a stomp from above is a big hit; `set_weak_points_enabled` for weak points that
@@ -140,7 +154,9 @@ parts extending `BossPart`, a tuning resource of its own in `data/bosses/<id>_tu
 slot's `BossDef` filled in (scene, phases, arena, numbers). Override the hooks it needs:
 `_plan_lap`, `_build_boss`, `_on_phase_started` / `_intro_tick`, `_on_pattern_started` /
 `_pattern_tick`, `_on_weak_point_hit`, `_on_part_defeated`, `_on_part_emp`, `_on_phase_ended`,
-`_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `_on_armor_pickup_due`. Every attack needs its visual and audio
+`_on_defeated` / `_defeated_tick` / `victory_over` / `victory_riff`, `health_runs_down` (a timed phase's steady
+run-down: the boss bar follows it without the white segment's hold), `_on_armor_pickup_due`, `_grapple_save` (where
+the grapple's save and a revive after a fall take the runner; the default leaves them as they are). Every attack needs its visual and audio
 warning (a floor warning from `props` also keeps pickups away), random choices come from `rng`, and
 time from the physics step. The test boss (`TestBoss`) is a small example. `rng`, the armor pickups' and
 the parts' and brought enemies' seeds hash `BossDef.rng_key()`: the boss's id, or its `seed_id`, the id it
@@ -199,3 +215,14 @@ had before a move, so a renamed boss makes the same random choices (The House, `
   Barrage; E5d-c the Refill Ship, its caged pad hurling the squadron into the ship, the hit that damages the
   suit; E5d-d The Magnate's chase and the defeat; E5d-e the owner's playtest of stage 2: the Claw Slash, the
   Screen Storm, the arena darker, the stomp's chevrons).
+- **Mecha Guppy and Captain Cogs (E5e, see below):** the arena is the boss's own climb: `_plan_lap`
+  eats the street in every lane and opens both walls over every lap, and the climb's roofs, pads and huts are
+  props built within sight (`BossProps.roof`, `ceiling_lanes`, at a height) on E5e-a's core: the floor base
+  (`Player.floor_base`), ceilings at any height, the grapple hook (`_grapple_save`) and the climbing camera
+  (`RunWorld.camera_climbs`). Its hits are counted (`weapons_can_end_phase` off, `weapon_share_cap` 0:
+  weapons do nothing), each `register_hit()` (a bomb of Captain Cogs' falling into Mecha Guppy's jaws: a bait the
+  runner led into a roof's notch, or the fallback's miss into the chasm); the armor rule's pickup goes on the roof
+  ahead at its height (`_on_armor_pickup_due`, `PickupField.place`). Phase 3 takes no hits: its minute on the top ends
+  the fight (the phase's one counted hit as it ends, `damage(hit_damage(), &"time")`), and `victory_over` holds the
+  results while Mecha Guppy leaps, eats Captain Cogs and swims away (`victory_riff` off: the leap plays the riff after
+  the gulp).

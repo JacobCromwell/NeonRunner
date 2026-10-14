@@ -80,7 +80,8 @@ func visual_tick(delta: float) -> void:
 				_ground_y = base.y
 			base.y = minf(base.y, _ground_y)
 		Player.Surface.CEILING:
-			base.y = world.tuning.ceiling_height
+			# On the ceiling's underside, wherever it is (Player.ceiling_y: a boss's may be high up).
+			base.y = p.ceiling_y
 	var flat := Basis(Vector3.RIGHT, -PI * 0.5)  # the quad lies on the surface, its +y pointing forward
 	_field.global_transform = Transform3D(basis * flat * Basis.from_scale(Vector3(lateral * 2.0, length, 1.0)),
 		base + basis * Vector3(0.0, 0.04, -(ahead - BEHIND) * 0.5))

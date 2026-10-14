@@ -27,6 +27,10 @@ volume_db = {
 "car_start": -4.0,
 "car_unlock": -6.0,
 "ceiling_lower": -3.5,
+"cogs_aim": -5.0,
+"cogs_cannon": -3.0,
+"cogs_charge": -5.0,
+"cogs_throw": -5.0,
 "countdown": -3.0,
 "credit_1": -11.5,
 "credit_100": -8.0,
@@ -90,6 +94,13 @@ volume_db = {
 "gilded_sentinel_swing": -4.0,
 "go": -5.0,
 "grapple": -3.5,
+"guppy_bite": -4.0,
+"guppy_clang": -2.5,
+"guppy_floor_warn": -3.0,
+"guppy_gulp": -2.5,
+"guppy_leap": -3.0,
+"guppy_rumble": -3.0,
+"guppy_swim": -4.0,
 "head_crash": -1.0,
 "head_flyover": -3.0,
 "head_laser_charge": -2.5,
@@ -248,7 +259,9 @@ volume_db = {
 "wall_blocked": -5.0,
 "wall_enter": -6.0,
 "wall_jump": -6.0,
-"wall_marks_light": -4.5
+"wall_marks_light": -4.5,
+"wave_crash": -3.0,
+"wave_swell": -4.0
 }
 pitch_variation = {
 "credit_1": 0.03,
