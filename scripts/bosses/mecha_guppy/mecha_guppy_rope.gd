@@ -1,10 +1,10 @@
 class_name MechaGuppyRope
 extends Node3D
 ## The grapple's rope as it saves a falling runner in Mecha Guppy and Captain Cogs' climb (MechaGuppy._grapple_save;
-## DESIGN-TBD, docs/questions/e5e.md: E5e-a's proposal, a glowing rope for a moment). It runs from the runner's chest,
-## followed frame by frame as the save lifts them up (so it never hangs from where they were falling, below the
-## screen), to the roof's edge it caught, for a fraction of a second, then it's gone. A warm white: no hazard colour;
-## steady (nothing to calm for Reduced flashing).
+## DESIGN-TBD, docs/OPEN_QUESTIONS.md item 767: E5e-a's proposal, a glowing rope for a moment). It runs from the
+## runner's chest, followed frame by frame as the save lifts them up (so it never hangs from where they were falling,
+## below the screen), to the roof's edge it caught, for a fraction of a second, then it's gone. A warm white: no hazard
+## colour; steady (nothing to calm for Reduced flashing).
 
 ## Where on the runner it starts (above their feet).
 const CHEST: float = 0.9

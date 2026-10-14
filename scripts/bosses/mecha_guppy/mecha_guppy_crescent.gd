@@ -17,7 +17,7 @@ extends RefCounted
 ## `snap_at`. Its state, set as the fight goes (as Roof.end is moved when a roof is bitten): `warned` once its warning
 ## shows (MechaGuppyClimb.Roof.covers counts the gap from then on), `eaten` once the chunk is gone, `skipped` if it never
 ## came (an intro, phase 3, the shark too busy: as if it had never been planned).
-## DESIGN-TBD (docs/questions/e5e.md): the shape and its teeth.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 812): the shape and its teeth.
 
 ## The scallops: this many teeth along the bite, the edge bulging back toward the floor between two of them by up to
 ## TOOTH_BULGE (metres), less toward its ends; a tooth at the deepest point, so a bite that leaves a lane reaches its edge

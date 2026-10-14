@@ -16,7 +16,7 @@ extends Node3D
 ## A wave's time from its warning to the runner never changes with the run's speed (wave_close, wave_ahead: it keeps pace
 ## with them, as the Resonator's waves close in at the same speed at any pace). Its own clock runs on the boss's ticks
 ## (time from the physics step; it waits while the runner is down). Nothing flickers: the water's streaks run, and stand
-## still with Reduced flashing. DESIGN-TBD (docs/questions/e5e.md): the waves' look and numbers.
+## still with Reduced flashing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 803): the waves' look and numbers.
 
 const SHADER_PATH: String = "res://scripts/bosses/mecha_guppy/mecha_guppy_wave.gdshader"
 const WAVE_NAME: String = "wave"

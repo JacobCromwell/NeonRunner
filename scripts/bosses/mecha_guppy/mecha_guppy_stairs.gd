@@ -7,8 +7,8 @@ extends Node3D
 ##   blocker below its top where a neighbour lane starts later (a lane switch into a roof's side from below its top
 ##   is a blocked move: the clank and a bump, as into a truck's side), and its front solid below where a runner
 ##   could still step up onto it (a Hazard, `is_solid`, that the dash doesn't pass: what looks like a hit is a
-##   hit). DESIGN-TBD (docs/questions/e5e.md): the roof faces' rules. The plan keeps every front out of a living
-##   runner's way: a wrong drop is dead or saved before it gets there; only a runner who steps off the side of a
+##   hit). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 775): the roof faces' rules. The plan keeps every front out of a
+##   living runner's way: a wrong drop is dead or saved before it gets there; only a runner who steps off the side of a
 ##   roof's lanes that reach back, into the gap beside them, can fall into the front of the lanes beyond;
 ## - each step: its pad strip across every lane at the end of its roof (an anti-grav pad per lane, as long as the
 ##   strip), and its hut (BossProps.ceiling_lanes: each lane ends at its own distance, one section per run of lanes
@@ -650,7 +650,7 @@ func save_spot(player: Player) -> Dictionary:
 		# A floor bite that leaves one lane, not yet snapped, ahead of where the save brings them down, too near to read it
 		# and cross from that lane to the one it leaves (task E5e-f; its review: counted from the lane the save would bring
 		# them down in, not the farthest): into that lane, as the save's pull moves them anyway. DESIGN-TBD
-		# (docs/questions/e5e.md): the save near a bite.
+		# (docs/OPEN_QUESTIONS.md item 818): the save near a bite.
 		var bite: MechaGuppyCrescent = roof.bite
 		if lane >= 0 and bite != null and not bite.skipped and not bite.eaten and not bite.full and land < bite.to \
 				and land > bite.from - save_crossing(bite, lane):
@@ -736,7 +736,7 @@ func pickup_spot(lead: float) -> Dictionary:
 ## lane the bite takes, taken (PICKUP_REACH past `at`) at least every switch from there to the lane the bite leaves (none
 ## over a full-width one: its jump) and dodge_margin, with half a hurtbox and the dash's reach (a runner who dashes as
 ## they grab it still clears the bite, as the climb's other promises hold dashing), short of where its gap reaches that
-## lane; or past the bite. DESIGN-TBD (docs/questions/e5e.md): pickups near a bite.
+## lane; or past the bite. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 819): pickups near a bite.
 func clear_of_bite(roof: MechaGuppyClimb.Roof, lane: int, at: float) -> bool:
 	var bite: MechaGuppyCrescent = roof.bite
 	if bite == null or bite.skipped:

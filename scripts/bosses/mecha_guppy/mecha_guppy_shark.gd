@@ -52,7 +52,8 @@ extends Node3D
 ## Its pose (hinge, pitch, yaw, roll, jaw) is always eased from the one before, so it never pops while it can be seen.
 ## advance() is driven by the boss's ticks (time from the physics step; it waits while the runner is down). Nothing
 ## flickers (Reduced flashing has nothing to calm; the hit's fireball and sparks are RunEffects', which honour it).
-## DESIGN-TBD (docs/questions/e5e.md): its size, poses and timings (MechaGuppyTuning, "Mecha Guppy's bites").
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md items 784–786): its size, poses and timings (MechaGuppyTuning, "Mecha Guppy's
+## bites").
 
 enum Kind { BITE, BREACH, FLOOR }
 enum Stage { IDLE, LURKING, RISING, CATCHING, SHUTTING, WAITING, DIVING, BREAKING, OPEN, SNAPPING, SINKING }

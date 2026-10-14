@@ -7,7 +7,7 @@ extends Node3D
 ## the scene so it shows its shape against the pale haze (white alone vanishes into it); it never glows nor takes a
 ## hazard colour, and nothing flickers. Its owner places it and drives it (advance, from the boss's ticks), and keeps it
 ## in place.
-## DESIGN-TBD (docs/questions/e5e.md): the defeat's staging.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 807): the defeat's staging.
 
 ## The plume's life (seconds): up, held, falling back and spreading.
 const RISE: float = 0.35

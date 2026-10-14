@@ -17,7 +17,7 @@ extends Node3D
 ## Every round leaves the lanes it doesn't strike clear, and its time from the warning to the runner never changes with
 ## the run's speed (round_close, round_ahead: it keeps pace with the runner, as the Resonator's waves close in at the same
 ## speed at any pace). Its own clock runs on the boss's ticks (time from the physics step; it waits while the runner is
-## down). DESIGN-TBD (docs/questions/e5e.md): the rounds' numbers and the cannonball's look.
+## down). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 802): the rounds' numbers and the cannonball's look.
 
 const BALL_NAME: String = "Captain Cogs' cannonball"
 ## The hitbox against the ball (GDD §3: a little smaller than the visual): its share of the ball's width, height (from

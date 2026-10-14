@@ -33,8 +33,8 @@ extends Node3D
 ## tests' runner, MechaGuppyBot, and the showcase use them).
 ## Nothing depends on how long the fight has lasted: picks come from seeds of the fight and the step, time from the
 ## physics step (tick: the boss's pattern drives it), so every attempt plays out the same way for the same inputs.
-## DESIGN-TBD (docs/questions/e5e.md): the bombs' look (a round black iron bomb with a brass cog band and a lit fuse),
-## the volleys and what counts as a hit (MechaGuppyTuning, "Captain Cogs' bombs").
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md items 783–799): the bombs' look (a round black iron bomb with a brass cog band and
+## a lit fuse), the volleys and what counts as a hit (MechaGuppyTuning, "Captain Cogs' bombs").
 
 enum Kind { SPOT, HIT, TEST, BAIT }
 enum Lands { ROOF, HUT, CHASM }

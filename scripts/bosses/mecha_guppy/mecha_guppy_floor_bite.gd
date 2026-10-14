@@ -16,7 +16,7 @@ extends Node3D
 ##   area as it snaps, on the floor or in the air) meets the damage rules: armor and the shield block it, the dash passes
 ##   through it. A runner who lives through it (blocked, dashing, safe for a moment after a hit) has the floor under them
 ##   held for GameRules.cut_hold_seconds (FloorCut.hold_under's rule, the Fist Slam's too: the block means something); one
-##   who doesn't block it dies of the bite. DESIGN-TBD (docs/questions/e5e.md).
+##   who doesn't block it dies of the bite. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 815).
 ## - call_off(): a bite whose warning showed but which hasn't snapped when the attacks stop (an intro, the win): its warning
 ##   goes, nothing is bitten, and it counts as skipped.
 ## One bite at a time; its clock is the boss's (tick: the pattern's frames, waiting while the runner is down).

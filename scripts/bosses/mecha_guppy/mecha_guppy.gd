@@ -99,7 +99,7 @@ func _tuning() -> MechaGuppyTuning:
 ## Every lap: nothing of the generator's (no holes, fences, ceilings, pads, enemies, credits), the street eaten in
 ## every lane (the climb's own roofs carry the runner from the start), and no side walls on either side.
 ## DESIGN-TBD: the street eaten from the start (roof 0, the climb's own floor, eaten just past the first pads like
-## every roof), and no walls at all (E5e-d's occasional walls: likely none); docs/questions/e5e.md.
+## every roof), and no walls at all (E5e-d's occasional walls: likely none); docs/OPEN_QUESTIONS.md items 776 and 777.
 func _plan_lap(lap: LevelLayout, _index: int, p_arena: BossArena) -> void:
 	lap.gaps.clear()
 	lap.fences.clear()
@@ -351,9 +351,9 @@ func _place_armor() -> void:
 # --- The grapple's save --------------------------------------------------------------------------------
 
 ## GDD §10 (proposed): the grapple pulls a falling runner up onto the higher roof, into its nearest lane that
-## leads up; a revive after a fall goes there too (DESIGN-TBD, docs/questions/e5e.md). MechaGuppyStairs.save_spot
-## picks the roof and the lane whose path is clear (no solid front in the way, the roof under them where they
-## come down).
+## leads up; a revive after a fall goes there too (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 768).
+## MechaGuppyStairs.save_spot picks the roof and the lane whose path is clear (no solid front in the way, the roof under
+## them where they come down).
 func _grapple_save(player: Player, cause: StringName) -> Dictionary:
 	# A fall: no hit for this step (MechaGuppyPattern.catch_ok; GDD §10's bait never rewards a fall).
 	if pattern != null:
@@ -362,8 +362,8 @@ func _grapple_save(player: Player, cause: StringName) -> Dictionary:
 		return {}
 	var spot: Dictionary = stairs.save_spot(player)
 	log_event(&"save", {"cause": cause, "lane": spot.get("lane", player.lane), "height": spot.get("height", NAN)})
-	# DESIGN-TBD (docs/questions/e5e.md): the grapple's save shows its rope for a moment, from the runner, as the lift
-	# brings them up (followed frame by frame), to the roof's edge it catches (E5e-a's proposal).
+	# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 767): the grapple's save shows its rope for a moment, from the runner, as the
+	# lift brings them up (followed frame by frame), to the roof's edge it catches (E5e-a's proposal).
 	if cause == &"grapple" and not spot.is_empty():
 		var lane: int = int(spot["lane"])
 		var roof_at: float = maxf(stairs.roof_front(lane, float(spot["height"]), player.distance), player.distance + 2.0)

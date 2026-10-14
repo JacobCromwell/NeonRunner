@@ -12,7 +12,7 @@ extends Resource
 ## falling into the floor Mecha Guppy is eating, the camera following the runner up, and phase 2's climb
 ## 15-25% faster (proposed: about 20%, by bringing the steps closer together; the run speed never rises in a
 ## fight; since E5e-b3 phase 2's steps are higher instead, phase2_rise). Every number here is a placeholder
-## (DESIGN-TBD, docs/questions/e5e.md).
+## (DESIGN-TBD, docs/OPEN_QUESTIONS.md items 767–824).
 ##
 ## Pace (docs/ARCHITECTURE.md, Bosses: a boss's own numbers in metres must follow the pace): the distances
 ## marked "at 18 m/s" stand for a time and are multiplied by the run's pace (MovementTuning.pace()), so the
@@ -28,10 +28,10 @@ extends Resource
 ## DESIGN-TBD: how far each tiki bar roof stands above the one before in phase 1 (metres). The climbing camera
 ## sees a roof up to RunCamera.FLOOR_REACH above it, and the hut over a step keeps hut_clearance over the higher roof.
 @export_range(1.5, 6.0, 0.1, "suffix:m") var rise: float = 3.0
-## DESIGN-TBD (GDD §10: phase 2's climb 15-25% faster; docs/questions/e5e.md): each roof's rise in phase 2 (and
-## later). Phase 2's steps are as long as phase 1's (every step's roof holds a volley spot and the bait: roof_seconds),
-## so its climb is faster by being higher: 3.6 m climbs 20% faster in metres per second at 3, 5 and 6 lanes
-## (MechaGuppyClimb.climb_rate).
+## DESIGN-TBD (GDD §10: phase 2's climb 15-25% faster; docs/OPEN_QUESTIONS.md item 797): each roof's rise in phase 2
+## (and later). Phase 2's steps are as long as phase 1's (every step's roof holds a volley spot and the bait:
+## roof_seconds), so its climb is faster by being higher: 3.6 m climbs 20% faster in metres per second at 3, 5 and 6
+## lanes (MechaGuppyClimb.climb_rate).
 @export_range(1.5, 6.0, 0.1, "suffix:m") var phase2_rise: float = 3.6
 ## DESIGN-TBD: a tiki hut's underside over the floor its step starts from (metres; a level's ceilings are 6 m
 ## over the street). It keeps at least hut_clearance over the higher roof under its end. 8.5 m puts the riding view
@@ -62,7 +62,7 @@ extends Resource
 @export_range(1.0, 20.0, 0.5, "suffix:m") var run_on: float = 3.0
 ## DESIGN-TBD: the pad strip across every lane at the end of each roof is longer than the longest jump at the run
 ## speed (with the dash's reach) by this much (metres), so no runner can jump over it: every runner flips up
-## (docs/questions/e5e.md: an unmissable strip).
+## (docs/OPEN_QUESTIONS.md item 773: an unmissable strip).
 @export_range(0.5, 6.0, 0.25, "suffix:m") var strip_margin: float = 2.0
 ## The hut starts this far before its pads (metres at 18 m/s): a pad sits under its hut.
 @export_range(1.0, 10.0, 0.25, "suffix:m") var hut_lead: float = 3.0
@@ -85,10 +85,11 @@ extends Resource
 ## long from the moment the runner reaches the top (MechaGuppy.top_reached); the boss bar runs down over it (GDD §10,
 ## proposed: so the player sees how long is left), and at its end Mecha Guppy leaps (the defeat).
 @export_range(5.0, 120.0, 1.0, "suffix:s") var top_seconds: float = 60.0
-## DESIGN-TBD (GDD §10: "the captain's ship comes level"; docs/questions/e5e.md): Captain Cogs' ship comes alongside the
-## top on the left, level with the runner (its keel level_keel over the runner's deck: below it when negative, so its
-## gun deck is at their height), its middle level_ahead ahead of them (it keeps pace), its near side level_out past the
-## roof's eaves, easing down from its station high above over level_seconds once the runner reaches the top.
+## DESIGN-TBD (GDD §10: "the captain's ship comes level"; docs/OPEN_QUESTIONS.md item 800): Captain Cogs' ship comes
+## alongside the top on the left, level with the runner (its keel level_keel over the runner's deck: below it when
+## negative, so its gun deck is at their height), its middle level_ahead ahead of them (it keeps pace), its near side
+## level_out past the roof's eaves, easing down from its station high above over level_seconds once the runner reaches
+## the top.
 @export_range(1.0, 6.0, 0.1, "suffix:s") var level_seconds: float = 3.0
 @export_range(18.0, 60.0, 0.5, "suffix:m") var level_ahead: float = 30.0
 @export_range(0.5, 6.0, 0.25, "suffix:m") var level_out: float = 2.5
@@ -129,13 +130,13 @@ extends Resource
 
 @export_group("The defeat")
 ## DESIGN-TBD (GDD §10: "Mecha Guppy leaps over and eats Captain Cogs"; "the pirate has been eaten by the shark, but the
-## shark swims away"; docs/questions/e5e.md): when the minute is up, Mecha Guppy bursts up out of the sea under the ship
-## (leap_rise), its jaws wide; they snap shut on the ship's stern half with the captain on it (the gulp: the bow half
-## breaks away and falls); it hangs a moment (leap_hang) and falls back out of sight beside the top (leap_fall). Then it
-## swims away where the run camera sees it: out at sea ahead it bursts out of the water in one long leap heading away, its
-## whole body clear of the sea at the top of its arc (breach_seconds from the sea back to it), and dives back in; the
-## results may follow dive_after its snout is back in the water (MechaGuppy.victory_over), and it's gone once its tail
-## is under (MechaGuppyLeap).
+## shark swims away"; docs/OPEN_QUESTIONS.md item 807): when the minute is up, Mecha Guppy bursts up out of the sea
+## under the ship (leap_rise), its jaws wide; they snap shut on the ship's stern half with the captain on it (the gulp:
+## the bow half breaks away and falls); it hangs a moment (leap_hang) and falls back out of sight beside the top
+## (leap_fall). Then it swims away where the run camera sees it: out at sea ahead it bursts out of the water in one long
+## leap heading away, its whole body clear of the sea at the top of its arc (breach_seconds from the sea back to it),
+## and dives back in; the results may follow dive_after its snout is back in the water (MechaGuppy.victory_over), and
+## it's gone once its tail is under (MechaGuppyLeap).
 @export_range(0.5, 3.0, 0.05, "suffix:s") var leap_rise: float = 1.2
 @export_range(0.1, 1.5, 0.05, "suffix:s") var leap_hang: float = 0.45
 @export_range(0.4, 2.0, 0.05, "suffix:s") var leap_fall: float = 0.9
@@ -199,10 +200,10 @@ extends Resource
 
 @export_group("The hits")
 ## GDD §10 (the owner, October 11, 2026): hurting Mecha Guppy is baiting Captain Cogs' bombs. DESIGN-TBD, the bait's
-## shape (MechaGuppyPattern, docs/questions/e5e.md): near the end of each roof Mecha Guppy has bitten a notch out of an
-## outer lane (a seeded side, nothing to do with the lanes that lead up), its open jaws waiting below. As the runner
-## comes near, one bomb's red circle follows their lane (Captain Cogs taking aim: cogs_aim) for bait_seek, then locks
-## with the throw, lock_seconds before it lands as they get there: a runner in the notch's lane when it locks, who
+## shape (MechaGuppyPattern, docs/OPEN_QUESTIONS.md item 791): near the end of each roof Mecha Guppy has bitten a notch
+## out of an outer lane (a seeded side, nothing to do with the lanes that lead up), its open jaws waiting below. As the
+## runner comes near, one bomb's red circle follows their lane (Captain Cogs taking aim: cogs_aim) for bait_seek, then
+## locks with the throw, lock_seconds before it lands as they get there: a runner in the notch's lane when it locks, who
 ## then switches out before the edge, sends it past the edge into the jaws, a hit; anywhere else it's a blast to dodge.
 ## The notch starts notch_back before the next hut (metres), the bomb lands catch_in into it (metres: clear of the
 ## floor behind, the shark's chin wholly over the notch), and the circle follows the runner bait_seek (seconds).
@@ -252,12 +253,12 @@ extends Resource
 @export_range(0.0, 1.0, 0.05, "suffix:s") var bite_spare: float = 0.3
 
 @export_group("Mecha Guppy's floor bite")
-## DESIGN-TBD (GDD §10, the owner, October 11, 2026: "The floor bite"; task E5e-f; docs/questions/e5e.md): while the runner
-## is still running on a roof, before its pads, Mecha Guppy bites a crescent out of it from one side (MechaGuppyCrescent,
-## planned by MechaGuppyClimb on the roofs it names). Its warning (its outline in red on the floor, its own sound, the
-## shark's snout rising beside the roof's side) shows floor_warning before the runner reaches the bite, never before the
-## hut's deadline (no cue to which lanes lead up), and never shorter than a reaction, every lane switch to the lane it
-## leaves, dodge_margin and the dash's reach (or the shark's rise and lunge): seconds.
+## DESIGN-TBD (GDD §10, the owner, October 11, 2026: "The floor bite"; task E5e-f; docs/OPEN_QUESTIONS.md items
+## 811–823): while the runner is still running on a roof, before its pads, Mecha Guppy bites a crescent out of it from
+## one side (MechaGuppyCrescent, planned by MechaGuppyClimb on the roofs it names). Its warning (its outline in red on
+## the floor, its own sound, the shark's snout rising beside the roof's side) shows floor_warning before the runner
+## reaches the bite, never before the hut's deadline (no cue to which lanes lead up), and never shorter than a reaction,
+## every lane switch to the lane it leaves, dodge_margin and the dash's reach (or the shark's rise and lunge): seconds.
 @export_range(1.0, 3.0, 0.05, "suffix:s") var floor_warning: float = 1.8
 ## DESIGN-TBD: the shark surging up out of the chasm into its watch beside the roof's side as the warning shows (seconds);
 ## its lunge, hold and snap are the bites' (bite_dive, bite_rise, bite_hold, bite_snap).

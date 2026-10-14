@@ -3,7 +3,7 @@ extends RefCounted
 ## Mecha Guppy and Captain Cogs' pattern through phases 1 and 2 (GDD §10; tasks E5e-b2 and E5e-b3): what the shark and the
 ## pirate do on each step of the climb (MechaGuppyClimb.Step k: roof k, its pads and hut, the higher roof k + 1), timed
 ## by where the runner is, the same on every step alike (nothing changes with time but the phase: GDD §10, no escalation).
-## DESIGN-TBD (docs/questions/e5e.md): the whole pattern. Each step:
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md items 783–799 and 811–823): the whole pattern. Each step:
 ## - Mecha Guppy's bite (MechaGuppyShark.bite): once the runner is up on roof k's hut it bites the roof's end off below and
 ##   behind them (bite_length, never past the hut's start: the floor they should have left), the collision and the look
 ##   together (MechaGuppyStairs.eat_roof), with rubble flying; never the floor the runner is on (it waits for them to be on

@@ -625,9 +625,9 @@ func _ride(world: RunWorld, s: MechaGuppyClimb.Step) -> void:
 
 # --- The roofs' faces ------------------------------------------------------------------------------
 
-## GDD §10's climb leaves the roofs' faces to the build (DESIGN-TBD, docs/questions/e5e.md): a lane switch into a
-## roof's side from below its top is a blocked move; off a roof's lanes that reach back (REACH_BACK) the gap beside
-## them is a fall, and a runner falling there who reaches the front of the lanes beyond crashes into it; the
+## GDD §10's climb leaves the roofs' faces to the build (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 775): a lane switch
+## into a roof's side from below its top is a blocked move; off a roof's lanes that reach back (REACH_BACK) the gap
+## beside them is a fall, and a runner falling there who reaches the front of the lanes beyond crashes into it; the
 ## grapple saves them before they get there, back up onto the roof.
 func _test_roof_faces() -> void:
 	for lanes: int in [3, 6]:

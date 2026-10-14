@@ -18,7 +18,7 @@ extends Node3D
 ## The defeat (MechaGuppyLeap): swallow() is the gulp: the stern half and the captain vanish into Mecha Guppy's jaws, and
 ## the bow half (the hull's other mesh, CaptainCogsModel.SPLIT_Z) breaks away, tumbling down into the sea with the cog
 ## wheels, rubble flying from the break.
-## DESIGN-TBD (docs/questions/e5e.md): its stations and the captain's look and size.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md items 787 and 800): its stations and the captain's look and size.
 
 ## How fast its height follows the floor it keeps above (1/s: an ease, never a snap).
 const FOLLOW: float = 1.6

@@ -3796,7 +3796,7 @@ review's fixes), E5e-c (phase 3, the defeat, the campaign slot, the par times an
 floor bite). Where a later step changed an earlier placeholder, the entry says so. Two of them are answered or
 superseded, items 783 and 788 (`docs/OPEN_QUESTIONS_ANSWERED.md`).
 
-**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-a, with E5e-b1's placeholders** (from `docs/questions/e5e.md`)
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-a, with E5e-b1's placeholders** (from task E5e's questions file)
 767. **How the grapple's save onto the higher roof looks** (GDD §8, §10: "it pulls the runner up onto the
   higher roof"). The save has no reel-in: the runner is lifted in one frame to just under the higher
   roof's top and moved into its lane like a lane switch (`Player._pull_up`), and the climbing camera
@@ -3825,7 +3825,7 @@ superseded, items 783 and 788 (`docs/OPEN_QUESTIONS_ANSWERED.md`).
   after the hut's deadline, and it bites the end of the roof just left), and dies unless the grapple saves
   it. Nobody lands on uneaten lower floor.
 
-**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b1 (the climb)** (from `docs/questions/e5e.md`)
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b1 (the climb)** (from task E5e's questions file)
 771. **The climb's sizes and times** (GDD §10 gives the climb's shape, not its numbers). Placeholders in
   `data/bosses/beach_boss_tuning.tres` (`MechaGuppyTuning`, all DESIGN-TBD, tunable with F6 in the
   fight):
@@ -3928,7 +3928,7 @@ superseded, items 783 and 788 (`docs/OPEN_QUESTIONS_ANSWERED.md`).
     every step clears phases 1 and 2 in 85-96 s, one who never does in 156-176 s, before phase 3's minute.)
     **Changed by E5e-c:** 177 s and 210 s (see "Raised by E5e-c").
 
-**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)** (from `docs/questions/e5e.md`)
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)** (from task E5e's questions file)
 784. **Where the shark is eaten "under the lanes that don't lead up"** (GDD §10: "the rest drop them back onto
   the floor they came from, where Mecha Guppy is eating"). Placeholder: the floor there is already gone
   (E5e-b1's chasm); the shark shows itself eating there by breaching in that chasm for the hit, only after
@@ -3985,7 +3985,7 @@ superseded, items 783 and 788 (`docs/OPEN_QUESTIONS_ANSWERED.md`).
   as long as `bait_seek`: ratchet clicks quickening over a servo whirring up, ending on a catch as the circle
   locks; the fallback's bomb is neither heard thrown nor whistles, since there is nothing to dodge.)
 
-**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b3 (the hits by baiting, phase 2's bombs)** (from `docs/questions/e5e.md`)
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b3 (the hits by baiting, phase 2's bombs)** (from task E5e's questions file)
 791. **The bait's shape** (GDD §10, the owner, October 11, 2026: Captain Cogs' bombs lock onto the runner's lane, and
   a runner who dodges one at a roof's end or a pier's open side sends it past the edge into Mecha Guppy's jaws).
   Placeholder (`MechaGuppyPattern._bait`, `MechaGuppyBombs.start_bait` and `lock_bait`, the tuning's "The hits";
@@ -4109,7 +4109,7 @@ superseded, items 783 and 788 (`docs/OPEN_QUESTIONS_ANSWERED.md`).
   count and speed. In scratch runs a bot reacting in 0.65 s also won phases 1 and 2 at 3 and 6 lanes, missing some
   baits (so a little slower), but the plan only promises 0.35 s. Should this fight plan for a slower reaction?
 
-**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-c (phase 3, the defeat, the campaign slot, the par times and rewards)** (from `docs/questions/e5e.md`)
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-c (phase 3, the defeat, the campaign slot, the par times and rewards)** (from task E5e's questions file)
 800. **Where Captain Cogs' ship comes level** (GDD §10: "the captain's ship comes level with the player"). Placeholder
   (`CaptainCogsShip.come_level`, the tuning's "Phase 3"; DESIGN-TBD): as the runner reaches the top, the ship eases
   over `level_seconds` (3 s) from its station above the climb to one alongside the top on the left (`LEVEL_SIDE`),
@@ -4210,7 +4210,7 @@ superseded, items 783 and 788 (`docs/OPEN_QUESTIONS_ANSWERED.md`).
   a runner who never baits wins in 223.1-244.3 s, so one star at every lane count and speed (230 s gave two stars on 3
   lanes and one on 5-6), and two stars need some baiting. Right?
 
-**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-f (Mecha Guppy's floor bite)** (from `docs/questions/e5e.md`)
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-f (Mecha Guppy's floor bite)** (from task E5e's questions file)
 The owner's request (October 11, 2026; GDD §10, "The floor bite"): Mecha Guppy bites a shark-bite crescent out of the
 floor the runner is still running on, before the pads, leaving one lane; in phase 2 the bite is sometimes so big the
 runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `MechaGuppyCrescent`, `MechaGuppyClimb`,

@@ -77,8 +77,8 @@ const REACH_BACK_MOST: int = 2
 ## on roof 3, after the first bait.
 const FIRST_NOTCH: int = 2
 ## The first roof with a floor bite (task E5e-f): roof 1, the first tower, where it comes on its own (no volley, no bait:
-## one new mechanic at a time); from FIRST_NOTCH on, every other roof (bitten()). DESIGN-TBD (docs/questions/e5e.md):
-## which roofs are bitten, and the volley's place after it.
+## one new mechanic at a time); from FIRST_NOTCH on, every other roof (bitten()). DESIGN-TBD (docs/OPEN_QUESTIONS.md
+## item 811): which roofs are bitten, and the volley's place after it.
 const FIRST_BITE: int = 1
 ## A floor bite starts at least this far past where its riders land (metres).
 const LAND_CLEAR: float = 2.0
@@ -381,7 +381,7 @@ func _notch(roof: Roof, step: Step) -> void:
 	_rng.seed = hash([_seed, "notch", roof.index])
 	roof.notch_lane = 0 if _rng.randi() % 2 == 0 else lanes - 1
 	# A bitten roof's notch is on its bite's side: the lane the bite leaves is never the notch's (task E5e-f). DESIGN-TBD
-	# (docs/questions/e5e.md): the notch moved to the bite's side.
+	# (docs/OPEN_QUESTIONS.md item 816): the notch moved to the bite's side.
 	if roof.bite != null:
 		roof.notch_lane = 0 if roof.bite.side < 0 else lanes - 1
 	roof.notch_from = at
@@ -397,8 +397,8 @@ func notch_after() -> float:
 # --- The floor bite (task E5e-f) -------------------------------------------------------------------
 
 ## True if roof `index` carries a floor bite (see the header): roof FIRST_BITE, and every other roof from FIRST_NOTCH on
-## (the even ones, which REACH_BACK steps lead onto). Never the street. DESIGN-TBD (docs/questions/e5e.md): which roofs are
-## bitten (the roofs alternate what they carry).
+## (the even ones, which REACH_BACK steps lead onto). Never the street. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 811):
+## which roofs are bitten (the roofs alternate what they carry).
 static func bitten(index: int) -> bool:
 	return index == FIRST_BITE or (index >= FIRST_NOTCH and index % 2 == 0)
 

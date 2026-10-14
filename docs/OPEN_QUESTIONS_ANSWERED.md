@@ -1283,8 +1283,9 @@ Moved here from `docs/OPEN_QUESTIONS.md`, each with its answer; the GDD records 
 Item 575 moved here from `docs/OPEN_QUESTIONS.md` once the fight was designed and built. After it come the owner's
 answers from the fight's design session, items 749–765 (the session's items were numbered 683–700 on the task's
 branch; its last, 766, waits on the owner in `docs/OPEN_QUESTIONS.md`), and the two questions task E5e's steps
-raised that are answered or superseded, items 783 and 788 (from `docs/questions/e5e.md`; the rest of items 767–824
-are deferred, in `docs/OPEN_QUESTIONS_DEFERRED.md`). The GDD records the design (§10, Mecha Guppy and Captain Cogs).
+raised that are answered or superseded, items 783 and 788 (from task E5e's questions file; the rest of items
+767–824 are deferred, in `docs/OPEN_QUESTIONS_DEFERRED.md`). The GDD records the design (§10, Mecha Guppy and
+Captain Cogs).
 
 **The Beach joins the campaign** (from D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone. Keep in mind that there will be a boss battle for the beach, but it has not yet been created. Do not worry about any new enemies at this time. Create level names that fit the theme."; GDD §5, §6 and §10; `data/campaign/campaign.tres`, `data/zones/beach.tres`, `data/levels/beach_1.tres` (Tiki Tides) and `beach_2.tres` (Sunset Strip); play `--level=beach/1`)
 575. **The boss** (GDD §10: "there will be a boss battle for the beach, but it has not yet been created"; task E5e,
@@ -1391,7 +1392,7 @@ are deferred, in `docs/OPEN_QUESTIONS_DEFERRED.md`). The GDD records the design 
     checkpoint, as at every other boss.
     **Answered (owner, October 10, 2026):** agreed: no checkpoint.
 
-**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)** (from `docs/questions/e5e.md`)
+**E5e, Mecha Guppy and Captain Cogs: Raised by E5e-b2 (the shark, the pirate, the bombs and the hits)** (from task E5e's questions file)
 783. **How the hits come** (GDD §10: only a bomb that falls through a gap, off a roof's edge or into a
   stretch the shark has eaten through, where it's clearly exposed and in the line of fire; "aim the bombs
   so a runner who dodges well lands hits steadily"). Placeholder (`MechaGuppyPattern._hit`, `hit_spot`,

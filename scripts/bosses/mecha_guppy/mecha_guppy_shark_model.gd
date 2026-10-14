@@ -16,7 +16,7 @@ extends RefCounted
 ##   slits, the long body down into the chasm (darker the deeper), its pectoral fins and the dorsal fin.
 ## Sizes are metres at scale 1 (MechaGuppyShark scales it up: it is "the size of a building"). Nothing on it glows:
 ## it has no weak point, and only hazards glow in hazard colours (CLAUDE.md readability rules).
-## DESIGN-TBD (docs/questions/e5e.md): the shark's look.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 786): the shark's look.
 
 ## The jaws: their length along +y, their half width and half depth at the hinge and at the tip.
 const JAW_LENGTH: float = 8.0

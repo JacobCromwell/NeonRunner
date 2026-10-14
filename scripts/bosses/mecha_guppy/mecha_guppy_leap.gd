@@ -22,7 +22,8 @@ extends RefCounted
 ##   goes on until its tail is under, then it's gone.
 ## The victory riff plays riff_after the gulp (MechaGuppyTuning.victory_riff_on; LevelRun's riff at the defeat is off:
 ## MechaGuppy.victory_riff). Everything keeps pace with the runner (the scene is laid out ahead of them as it begins), so
-## it plays out in view; time comes from the boss's ticks. DESIGN-TBD (docs/questions/e5e.md): the leap's staging.
+## it plays out in view; time comes from the boss's ticks. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 807): the leap's
+## staging.
 
 enum Step { NONE, RISE, HANG, FALL, BREACH, GONE }
 

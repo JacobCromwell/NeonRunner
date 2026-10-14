@@ -226,7 +226,7 @@ func _test_steps(campaign: Campaign) -> void:
 ## Dead Zone's, and Gangland's boss intro and the Dead Zone's intro the owner's beats; test_cinematics,
 ## test_sewer_swarm_intro and test_dead_zone_intro check them).
 func _test_slots(campaign: Campaign) -> void:
-	# The Beach's boss: Mecha Guppy and Captain Cogs (GDD §10; the owner's title, docs/OPEN_QUESTIONS.md, item 696).
+	# The Beach's boss: Mecha Guppy and Captain Cogs (GDD §10; the owner's title, docs/OPEN_QUESTIONS.md, item 762).
 	var bosses: Dictionary = {"city": "Floating Head", "gangland": "Sewer Swarm", "marketplace": "",
 		"casino": "The House", "corporate": "Hostile Takeover", "beach": "Mecha Guppy and Captain Cogs", "dead_zone": "Sleep Taker",
 		"golden": "The Golden Convergence"}

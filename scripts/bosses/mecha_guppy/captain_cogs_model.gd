@@ -16,7 +16,7 @@ extends RefCounted
 ## transom). Whole, the two meshes sit together and read as one ship.
 ## Hidden from the climb's physics entirely: it has no collision, so a pad never flips a runner to it
 ## (Player._ceiling_over_pad looks only for the hull layer).
-## DESIGN-TBD (docs/questions/e5e.md): its look and size.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 787): its look and size.
 
 ## Its length, beam and the deck's height over the keel; the stern castle's deck and where it starts.
 const LENGTH: float = 16.0
