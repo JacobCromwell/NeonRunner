@@ -42,7 +42,7 @@ sense of what would be better — a mismatch is a finding, not something to fix 
   arrived without a `tests/suite_map.json` rule (and its name doesn't match its suite), ask for one.
   `tools/godot.sh smoke` is part of every tier.
 - Every `DESIGN-TBD` placeholder is reasonable and clearly marked, with a matching entry in
-  `docs/questions/<task-id>.md` (never written straight into `docs/OPEN_QUESTIONS.md`).
+  `docs/questions/<task-id>.md` (never written straight into `docs/OPEN_QUESTIONS*.md`).
 - Commits are small and descriptive.
 
 **Report format:** a pass/fail line per check above, with file references for anything you flag,

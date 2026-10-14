@@ -20,7 +20,7 @@ and gameplay code never learn a zone's theme. Check the specific task's tier in
 design. **Rules:** `CLAUDE.md` — read it first. For a design gap (an unspecified colour, a motif
 not in the GDD): write the question to `docs/questions/<task-id>.md`, build the smallest
 reasonable placeholder marked `## DESIGN-TBD:`, and list it in your report. Never edit
-`docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS.md`.
+`docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS*.md`.
 
 **The colour and readability rules are non-negotiable:** only hazards glow in hazard colours;
 hazards keep the same colour and shape language in every zone; safe things look safe, deadly parts
