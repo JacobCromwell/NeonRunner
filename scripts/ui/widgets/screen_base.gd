@@ -20,6 +20,10 @@ extends Control
 ## Subclasses may override _ready and _draw freely (the base does its setup in _notification).
 ## If you override _unhandled_input, call super(event) to keep ui_cancel = back.
 ## Children placed under the screen in a .tscn are moved into `content`.
+##
+## `content` sits in a scroll area that only does anything when the content needs more room than the
+## screen has (a phone's short browser window): then it scrolls, in either direction, instead of being cut
+## off. A screen whose content fits looks and lays out as it always did.
 
 signal back_requested
 
@@ -59,6 +63,8 @@ var back_button: NeonButton
 var header_right: HBoxContainer
 ## Where the screen's UI goes: a VBoxContainer filling the space between title bar and footer.
 var content: VBoxContainer
+## The scroll area around `content`: it scrolls only where `content`'s minimum size is bigger than it.
+var content_scroll: ScrollContainer
 var footer: PanelContainer
 var _hints: HBoxContainer
 var _hint_list: Array = []
@@ -118,11 +124,25 @@ func _build() -> void:
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layout.add_child(_body)
+	content_scroll = ScrollContainer.new()
+	content_scroll.name = "ContentScroll"
+	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	content_scroll.follow_focus = true
+	# Passes mouse events on (it still takes the wheel and a finger's drag, which is how it scrolls).
+	content_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	# Clipping only while it scrolls, so a glow reaching past the content isn't cut when nothing does.
+	content_scroll.clip_contents = false
+	_body.add_child(content_scroll)
 	content = VBoxContainer.new()
 	content.name = "Content"
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_body.add_child(content)
+	content_scroll.add_child(content)
+	content_scroll.resized.connect(_update_scroll_clip)
+	content.minimum_size_changed.connect(_update_scroll_clip)
 
 	footer = PanelContainer.new()
 	footer.name = "Footer"
@@ -137,6 +157,11 @@ func _build() -> void:
 
 func _notification(what: int) -> void:
 	match what:
+		NOTIFICATION_ENTER_TREE:
+			# A phone's menus are drawn bigger (UiScale); it ends when the last screen closes.
+			UiScale.screen_entered(self)
+		NOTIFICATION_EXIT_TREE:
+			UiScale.screen_exited(self)
 		NOTIFICATION_READY:
 			# Children from a .tscn (owned by this scene) go into the content area; nodes added by
 			# code (a dialog, a toast) stay where they were put.
@@ -199,6 +224,13 @@ func add_panel(variation: StringName = UiTheme.DIALOG, min_width: float = 0.0) -
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = variation
 	panel.custom_minimum_size.x = UiTheme.px(min_width)
+	if is_short():
+		# A phone held sideways: less padding above and below, which is most of what a dialog can spare.
+		var box := get_theme_stylebox(&"panel", variation).duplicate() as StyleBoxFlat
+		if box != null:
+			box.content_margin_top = UiTheme.px(10)
+			box.content_margin_bottom = UiTheme.px(10)
+			panel.add_theme_stylebox_override(&"panel", box)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	panel.add_child(column)
@@ -266,6 +298,22 @@ func _update_layout() -> void:
 	_body.add_theme_constant_override(&"margin_bottom", gap + 4)
 	# On touch screens the back button is a big icon; with a keyboard it also says BACK.
 	back_button.text = "" if get_theme_constant(&"touch", UiTheme.NEON) == 1 else "BACK"
+
+
+## True on a phone held sideways (a short menu: UiScale.is_short()), where a screen lays itself out
+## compactly. Read when the screen is built; the screen is in the tree by then, at its final size.
+func is_short() -> bool:
+	return UiScale.is_short(get_viewport_rect().size)
+
+
+## True while the content is bigger than its room, which is when the scroll area clips.
+func is_scrolling() -> bool:
+	var need: Vector2 = content.get_combined_minimum_size()
+	return need.x > content_scroll.size.x + 0.5 or need.y > content_scroll.size.y + 0.5
+
+
+func _update_scroll_clip() -> void:
+	content_scroll.clip_contents = is_scrolling()
 
 
 func _update_hints() -> void:

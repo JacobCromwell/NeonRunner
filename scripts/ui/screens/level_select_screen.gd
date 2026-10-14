@@ -249,6 +249,9 @@ func _fill_boss(tile: TileButton, s: CampaignStep, done: bool, locked: bool) -> 
 	top.add_child(stars)
 	var boss_name := ScreenBase.make_label(s.title(), &"", HORIZONTAL_ALIGNMENT_LEFT)
 	boss_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# A long name ("The Golden Convergence") shrinks a little to fit its tile, as the levels' do.
+	boss_name.resized.connect(func() -> void:
+		UiTheme.fit_font(boss_name, get_theme_font(&"font", &"Label"), get_theme_font_size(&"font_size", &"Label"), 0.8))
 	tile.content.add_child(boss_name)
 	if locked:
 		return

@@ -29,15 +29,17 @@ func _ready() -> void:
 	content.add_child(center)
 	var column := VBoxContainer.new()
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_theme_constant_override(&"separation", roundi(UiTheme.px(14)))
+	# A phone held sideways has little height: a smaller name, one row of buttons (below).
+	var short: bool = is_short()
+	column.add_theme_constant_override(&"separation", roundi(UiTheme.px(8 if short else 14)))
 	center.add_child(column)
-	column.add_child(TitleLogo.new())
+	column.add_child(TitleLogo.new(short))
 
 	var menu := VBoxContainer.new()
-	menu.custom_minimum_size.x = UiTheme.px(460)
+	menu.custom_minimum_size.x = UiTheme.px(620 if short else 460)
 	menu.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(menu)
-	continue_button = _continue_tile()
+	continue_button = _continue_tile(short)
 	menu.add_child(continue_button)
 	buttons["continue"] = continue_button
 	var entries: Array = [["levels", "LEVEL SELECT", &"map", App.show_level_select]]
@@ -46,10 +48,11 @@ func _ready() -> void:
 		entries.append(["endless", "ENDLESS", &"infinity", App.start_endless])
 	entries.append(["shop", "SHOP", &"store", func() -> void: App.show_shop()])
 	entries.append(["settings", "SETTINGS", &"settings", func() -> void: App.show_settings()])
-	# Two buttons a row; a lone last button takes the whole row.
+	# Two buttons a row (a phone held sideways: all of them in one); a lone last button takes the whole row.
+	var per_row: int = entries.size() if short else 2
 	var row: HBoxContainer
 	for i: int in entries.size():
-		if i % 2 == 0:
+		if i % per_row == 0:
 			row = HBoxContainer.new()
 			menu.add_child(row)
 		var b := NeonButton.make(entries[i][1], NeonButton.Kind.NORMAL, entries[i][2])
@@ -73,10 +76,10 @@ func _on_profile_changed() -> void:
 
 
 ## The big first button: PLAY at the start, CONTINUE with the next step's name afterwards.
-func _continue_tile() -> TileButton:
+func _continue_tile(short: bool = false) -> TileButton:
 	var tile := TileButton.new()
 	tile.kind = NeonButton.Kind.PRIMARY
-	tile.custom_minimum_size.y = UiTheme.px(70)
+	tile.custom_minimum_size.y = UiTheme.px(60 if short else 70)
 	var next: CampaignStep = App.next_unfinished_step()
 	var fresh: bool = next == null or next.index == 0
 	var row := HBoxContainer.new()
@@ -117,15 +120,16 @@ func _demo_note() -> Control:
 class TitleLogo:
 	extends VBoxContainer
 
-	func _init() -> void:
+	## `short`: the compact name for a phone held sideways.
+	func _init(short: bool = false) -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_theme_constant_override(&"separation", 2)
 		var label := ScreenBase.make_label("NEON RUNNER", UiTheme.TITLE, HORIZONTAL_ALIGNMENT_CENTER)
-		label.add_theme_font_size_override(&"font_size", roundi(UiTheme.px(84)))
-		label.add_theme_constant_override(&"shadow_outline_size", roundi(UiTheme.px(18)))
+		label.add_theme_font_size_override(&"font_size", roundi(UiTheme.px(56 if short else 84)))
+		label.add_theme_constant_override(&"shadow_outline_size", roundi(UiTheme.px(12 if short else 18)))
 		add_child(label)
 		var line := Underline.new()
-		line.custom_minimum_size = Vector2(UiTheme.px(560), UiTheme.px(10))
+		line.custom_minimum_size = Vector2(UiTheme.px(400 if short else 560), UiTheme.px(8 if short else 10))
 		line.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		add_child(line)
 

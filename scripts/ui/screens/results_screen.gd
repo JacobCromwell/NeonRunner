@@ -28,8 +28,10 @@ func _ready() -> void:
 	show_back = false
 	set_hints([[&"ui_accept", "SELECT"]])
 	var ctx: RunContext = result.context
-	var column: VBoxContainer = add_panel(UiTheme.DIALOG, 820.0)
-	column.add_theme_constant_override(&"separation", roundi(UiTheme.px(8)))
+	# A phone held sideways has little height: a smaller title, stars and score, tighter rows.
+	var short: bool = is_short()
+	var column: VBoxContainer = add_panel(UiTheme.DIALOG, 700.0 if short else 820.0)
+	column.add_theme_constant_override(&"separation", roundi(UiTheme.px(4 if short else 8)))
 	var names: PackedStringArray = ResultsScreen.run_names(ctx)
 	var kicker: String = names[0] if names[1] == "" else "%s · %s" % [names[0], names[1].to_upper()]
 	column.add_child(ScreenBase.make_label(kicker, UiTheme.SUBHEADING, HORIZONTAL_ALIGNMENT_CENTER))
@@ -38,26 +40,28 @@ func _ready() -> void:
 		UiTheme.TITLE, HORIZONTAL_ALIGNMENT_CENTER)
 	if not result.completed:
 		heading.add_theme_color_override(&"font_color", UiTheme.style().danger)
+	if short:
+		heading.add_theme_font_size_override(&"font_size", roundi(UiTheme.px(34)))
 	column.add_child(heading)
 	if not result.completed and result.cause != "":
 		column.add_child(ScreenBase.make_label(DeathScreen.cause_text(result.cause), UiTheme.HEADING, HORIZONTAL_ALIGNMENT_CENTER))
 
 	var body := HBoxContainer.new()
-	body.add_theme_constant_override(&"separation", roundi(UiTheme.px(24)))
+	body.add_theme_constant_override(&"separation", roundi(UiTheme.px(16 if short else 24)))
 	column.add_child(body)
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override(&"separation", roundi(UiTheme.px(8)))
+	left.add_theme_constant_override(&"separation", roundi(UiTheme.px(4 if short else 8)))
 	body.add_child(left)
 	if result.completed:
 		stars = StarRow.new()
-		stars.star_size = UiTheme.px(56)
+		stars.star_size = UiTheme.px(40 if short else 56)
 		stars.star_revealed.connect(_on_star)
 		left.add_child(stars)
 		if boss:
 			left.add_child(ScreenBase.make_label(ResultsScreen.par_text(ctx.boss), UiTheme.CAPTION,
 				HORIZONTAL_ALIGNMENT_CENTER))
-	left.add_child(_score_row())
+	left.add_child(_score_row(short))
 	left.add_child(HSeparator.new())
 	left.add_child(_credit_table())
 	var line := VSeparator.new()
@@ -65,7 +69,7 @@ func _ready() -> void:
 	body.add_child(_stats_table())
 
 	var gap := Control.new()
-	gap.custom_minimum_size.y = UiTheme.px(6)
+	gap.custom_minimum_size.y = UiTheme.px(2 if short else 6)
 	column.add_child(gap)
 	var actions := HBoxContainer.new()
 	actions.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -134,7 +138,7 @@ static func _clock(seconds: float) -> String:
 	return "%d:%02d" % [whole / 60, whole % 60]
 
 
-func _score_row() -> Control:
+func _score_row(short: bool = false) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override(&"separation", roundi(UiTheme.px(14)))
@@ -146,7 +150,7 @@ func _score_row() -> Control:
 	score_counter.show_chip = false
 	score_counter.pop_on_gain = false
 	score_counter.count_time = 1.2
-	score_counter.add_theme_font_size_override(&"font_size", roundi(UiTheme.px(44)))
+	score_counter.add_theme_font_size_override(&"font_size", roundi(UiTheme.px(34 if short else 44)))
 	score_counter.count_finished.connect(_on_score_counted, CONNECT_ONE_SHOT)
 	row.add_child(score_counter)
 	new_best = _new_best_chip()
@@ -212,7 +216,7 @@ func _stats_table() -> Control:
 	var st: Dictionary = result.stats
 	var grid := GridContainer.new()
 	grid.columns = 2
-	grid.custom_minimum_size.x = UiTheme.px(290)
+	grid.custom_minimum_size.x = UiTheme.px(250 if is_short() else 290)
 	grid.add_theme_constant_override(&"h_separation", roundi(UiTheme.px(16)))
 	grid.add_theme_constant_override(&"v_separation", roundi(UiTheme.px(2)))
 	var rows: Array = [

@@ -81,3 +81,20 @@ extends Resource
 @export_range(12, 64, 1) var icon_size: int = 24
 @export_range(0, 48, 1) var spacing: int = 12
 @export_range(0, 96, 1) var screen_margin: int = 32
+
+@export_group("Phone screens")
+## How big a phone's menus are at least: the page's own (CSS) pixels per UI pixel. A phone's browser
+## in landscape is 340 to 390 pixels high, so the 720-pixel layout's plain stretch is about 0.5 and the
+## shop's captions came out 9 pixels high. At 0.65 a caption is about 12 pixels, a button 49 and a body
+## line 16: what a finger and a phone's reading distance need. A bigger number makes menus bigger (and
+## shows less of the shop at once). UiScale does it, while a screen is open on a touch device.
+@export_range(0.4, 1.2, 0.01) var phone_min_scale: float = 0.65
+## The most a phone's menus are magnified over the plain stretch (a very small window).
+@export_range(1.0, 4.0, 0.05) var phone_max_factor: float = 2.5
+## The magnifying stops before the menus get narrower than this many UI pixels, so a phone held upright
+## (the page covers the game there, GDD §2) gets small, whole menus rather than big, cut ones.
+@export_range(600, 1280, 10) var phone_min_width: int = 900
+## A touch screen whose menus are shorter than this many UI pixels (a phone held sideways, 460 to 600
+## after the magnifying) gets the compact layouts: the title's buttons in one row, the pause menu's in
+## two, a smaller results panel, the shop's way on up in its title bar.
+@export_range(400, 900, 10) var phone_short_height: int = 620

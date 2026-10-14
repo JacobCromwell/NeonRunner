@@ -10,7 +10,9 @@ extends Node
 ## boss slot: boss (the HUD's boss bar at the checkpoint), boss_pause, boss_death, boss_results.
 ## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
 ## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
-## 3 lanes, credit packs, rewarded ads), --flavor=web_demo (read by App), --scroll-end (scrolls the
+## 3 lanes, credit packs, rewarded ads), --phone (a phone's browser: touch sizing and a mobile device, the
+## build flavor left as it is: use it with --flavor=web_demo; set the window with --resolution=WxH, the
+## page's size in pixels, which the menus' phone scale reads), --flavor=web_demo (read by App), --scroll-end (scrolls the
 ## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
 
@@ -19,13 +21,15 @@ var main: Node
 
 func _ready() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	if args.has("--touch"):
+	if args.has("--touch") or args.has("--phone"):
 		UiTheme.touch_override = 1
 	App.autosave = false
 	if args.has("--mobile"):
 		App.mobile = true
 		Platform.configure_for(BuildFlavor.Kind.FULL_MOBILE)
 		(Platform.backend as StubBackend).fake_ad_seconds = 30.0
+	if args.has("--phone"):
+		App.mobile = true
 	App.profile = SampleProfiles.fresh() if args.has("--fresh") else SampleProfiles.rich()
 	if args.has("--mobile") and not args.has("--fresh"):
 		App.profile.add_purchased(1000)
@@ -103,6 +107,9 @@ func _open(screen: String) -> void:
 ## Starts a campaign level with god mode (so nothing ends it) and lets it run a while.
 func _play(step_id: String, seconds: float) -> void:
 	App.start_level(App.campaign.step(step_id))
+	# A level with hints opens on its introduction: play on, as the Play button does.
+	if App.run.state == LevelRun.State.READY:
+		App.begin_run()
 	App.run.context.god_mode = true
 	App.run.world.player.god_mode = true
 	await _seconds(seconds)

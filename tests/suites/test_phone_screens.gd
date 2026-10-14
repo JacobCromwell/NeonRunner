@@ -1,0 +1,346 @@
+extends TestSuite
+## The menus on a phone's browser (task I3): every screen the web demo shows, laid out at the sizes a
+## phone's page has (844×390, 844×340, 844×300 and 667×375 held sideways, the short ones with the
+## browser's bars; 390×844 and 360×800 held upright), on the real main scene with the window as big as
+## the phone's in device pixels (2 or 3 to a CSS pixel). The headless run draws nothing, so the checks read
+## the layout. UiScale magnifies the menus until the UI's pixels are at least `phone_min_scale` of the
+## page's own, and what a screen then puts on show is
+##   readable   no text under 11 CSS pixels, none cut off (a label's text in its box, a description's
+##              lines all shown);
+##   touchable  every button at least 40 CSS pixels each way;
+##   whole      nothing outside the screen, nothing cut off the side (no sideways scrolling), the
+##              screen's own way on (Continue, Next, Play, Resume) on show without scrolling;
+##   reachable  what can't fit scrolls (the content's scroll area, the shop's, the level list's).
+## The magnifying itself is checked at the end: it follows the window and the pixel ratio, ends when the
+## last screen closes, and does nothing on a desktop, a tablet-sized window or a run.
+
+## [CSS size, device pixels per CSS pixel, held sideways].
+const PHONES: Array = [
+	[Vector2i(844, 390), 3.0, true], [Vector2i(844, 340), 3.0, true], [Vector2i(844, 300), 3.0, true],
+	[Vector2i(667, 375), 2.0, true], [Vector2i(390, 844), 3.0, false], [Vector2i(360, 800), 3.0, false],
+]
+## CSS pixels: the smallest text, and the smallest a finger's target.
+const MIN_TEXT_CSS: float = 11.0
+const MIN_TOUCH_CSS: float = 40.0
+
+var main: Node
+var verbose: bool = false
+
+
+func run() -> void:
+	verbose = OS.get_cmdline_user_args().has("--verbose")
+	_test_factor_maths()
+	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	tree.root.add_child(main)
+	await tree.process_frame
+	var saved: Profile = App.profile
+	var saved_size: Vector2i = tree.root.size
+	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
+	Platform.configure_for(BuildFlavor.Kind.WEB_DEMO)
+	UiTheme.touch_override = 1
+	App.mobile = true
+	for phone: Array in PHONES:
+		var css: Vector2i = phone[0]
+		var ratio: float = phone[1]
+		UiScale.pixel_ratio_override = ratio
+		tree.root.size = Vector2i(roundi(css.x * ratio), roundi(css.y * ratio))
+		for rich: bool in [true, false]:
+			App.profile = SampleProfiles.rich() if rich else SampleProfiles.fresh()
+			await _every_screen("%dx%d %s" % [css.x, css.y, "rich" if rich else "fresh"], ratio, bool(phone[2]))
+	await _test_lifecycle()
+	UiScale.pixel_ratio_override = 0.0
+	tree.root.size = saved_size
+	App.show_title()
+	await _frames(3)
+	BuildFlavor.set_override(-1)
+	Platform.configure_for(BuildFlavor.current())
+	UiTheme.touch_override = -1
+	App.mobile = DeviceProfile.is_mobile()
+	App.profile = saved
+	main.queue_free()
+	App.main = null
+	await tree.process_frame
+
+
+func _frames(count: int) -> void:
+	for i: int in count:
+		await tree.process_frame
+
+
+# --- Every screen at one size ----------------------------------------------------------------
+
+func _every_screen(tag: String, ratio: float, sideways: bool) -> void:
+	var screens: Array = [
+		["title", func() -> void: App.show_title(), &"continue"],
+		["level select", func() -> void: App.show_level_select(), &""],
+		["shop", func() -> void: App.show_shop(), &""],
+		["shop between levels", func() -> void: App.show_shop(App.show_title, "Next"), &"play"],
+		["settings", func() -> void: App.show_settings(), &""],
+		["level intro", func() -> void: App.start_level(App.campaign.step("city/1")), &""],
+		["results", func() -> void: _result(SampleProfiles.result(true)), &"continue"],
+		["run summary", func() -> void: _result(SampleProfiles.result(false)), &"continue"],
+		["boss results", func() -> void: _result(SampleProfiles.boss_result(true)), &"continue"],
+		["demo end", func() -> void: App.show_demo_end(), &""],
+	]
+	for entry: Array in screens:
+		(entry[1] as Callable).call()
+		await _frames(4)
+		_check_screen("%s, %s" % [entry[0], tag], App.screen, ratio, sideways, entry[2])
+	# The overlays over a running level.
+	App.start_level(App.campaign.step("city/1"))
+	App.begin_run()
+	await physics_frames(10)
+	App.pause_game()
+	await _frames(4)
+	_check_screen("pause, %s" % tag, App.overlay, ratio, sideways, &"resume")
+	var pause := App.overlay as PauseScreen
+	if pause != null:
+		pause.buttons["settings"].pressed.emit()
+		await _frames(4)
+		_check_screen("settings over the pause, %s" % tag, App.overlay, ratio, sideways, &"")
+		(App.overlay as ScreenBase).go_back()
+		await _frames(4)
+		pause = App.overlay as PauseScreen
+		if pause != null:
+			pause.buttons["quit"].pressed.emit()
+			await _frames(4)
+			var dialog: Node = pause.find_child("ConfirmDialog", true, false)
+			if dialog == null:
+				for c: Node in pause.get_children():
+					if c is ConfirmDialog:
+						dialog = c
+			if dialog != null:
+				_check_screen("quit dialog over the pause, %s" % tag, pause, ratio, sideways, &"")
+	App.resume_game()
+	await physics_frames(2)
+	var revive: bool = App.revive_options()["item"]
+	App.run.world.player.call(&"_die", "Cyborg")
+	await physics_frames(int((App.rules.death_screen_delay + 0.3) * 60.0))
+	if revive and App.overlay is DeathScreen:
+		_check_screen("revive offer, %s" % tag, App.overlay, ratio, sideways, &"item")
+		App.decline_revive()
+		await _frames(3)
+	App.show_title()
+	await _frames(3)
+
+
+func _result(r: RunResult) -> void:
+	var s := ResultsScreen.new()
+	s.result = r
+	App.show_screen(s)
+
+
+# --- One screen -----------------------------------------------------------------------------
+
+func _check_screen(what: String, screen: Control, ratio: float, sideways: bool, way_on: StringName) -> void:
+	check(screen != null and screen.is_inside_tree(), "%s is on show" % what)
+	if screen == null or not screen.is_inside_tree():
+		return
+	var window: Vector2 = Vector2(tree.root.size)
+	var view: Vector2 = screen.get_viewport_rect().size
+	# CSS pixels on the page for one UI pixel.
+	var css_per_ui: float = window.x / view.x / ratio
+	var style: UiStyle = UiTheme.style()
+	if not sideways:
+		# Held upright, the page covers the game ("turn your phone sideways", GDD §2: the layouts are for
+		# landscape): the menus stay whole and small rather than big and cut, and are still reachable.
+		check(view.x >= float(style.phone_min_width) - 1.0 or tree.root.content_scale_factor <= 1.001,
+			"%s: held upright the menus are at least %d UI pixels wide (%.0f)" % [what, style.phone_min_width, view.x])
+		return
+	var capped: bool = is_equal_approx(tree.root.content_scale_factor, style.phone_max_factor)
+	check(css_per_ui >= style.phone_min_scale - 0.005 or capped,
+		"%s: a UI pixel is %.3f CSS pixels (at least %.2f)" % [what, css_per_ui, style.phone_min_scale])
+	var problems: PackedStringArray = problems_in(screen, css_per_ui, sideways)
+	if way_on != &"":
+		var button: Control = (screen.get("buttons") as Dictionary).get(String(way_on)) if screen.get("buttons") != null else null
+		if button == null and way_on == &"play":
+			button = screen.get("play_button")
+		if button == null:
+			problems.append("the way on (%s) is missing" % way_on)
+		else:
+			var gone: String = _off_screen(button, screen, view, true)
+			if gone != "":
+				problems.append("the way on (%s) %s" % [way_on, gone])
+	check(problems.is_empty(), "%s: %s" % [what, "; ".join(problems.slice(0, 6))])
+	if verbose and not problems.is_empty():
+		print("  %s (%dx%d UI px, %.2f CSS px each):\n    %s" % [what, view.x, view.y, css_per_ui, "\n    ".join(problems.slice(0, 14))])
+
+
+## What is wrong with a screen's layout, as short sentences (empty: nothing). `css_per_ui` turns UI
+## pixels to the page's. Sideways scrolling is a problem in every orientation; a held-upright phone is
+## given a pass on height only (the page covers the game there anyway: GDD §2, docs/questions/e2.md).
+static func problems_in(screen: Control, css_per_ui: float, sideways: bool) -> PackedStringArray:
+	var out := PackedStringArray()
+	var view: Vector2 = screen.get_viewport_rect().size
+	for node: Node in screen.find_children("*", "Control", true, false):
+		var c := node as Control
+		if not c.is_visible_in_tree() or c.size.x < 1.0 or c.size.y < 1.0 or c is ScrollContainer or c is ScrollBar:
+			continue
+		var name: String = _describe(c)
+		if c is BaseButton and not _decor(c):
+			var px: Vector2 = c.size * css_per_ui
+			if px.y < MIN_TOUCH_CSS - 0.5 or px.x < MIN_TOUCH_CSS - 0.5:
+				out.append("%s is %.0f×%.0f CSS px (a finger needs %.0f)" % [name, px.x, px.y, MIN_TOUCH_CSS])
+		if c is Label:
+			var label := c as Label
+			if label.text == "":
+				continue
+			var font: Font = label.get_theme_font(&"font")
+			var size: int = label.get_theme_font_size(&"font_size")
+			if float(size) * css_per_ui < MIN_TEXT_CSS - 0.3:
+				out.append("%s is %.1f CSS px high text" % [name, float(size) * css_per_ui])
+			if label.autowrap_mode == TextServer.AUTOWRAP_OFF:
+				var width: float = font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+				if width > label.size.x + 1.5:
+					out.append("%s's text is cut (%.0f of %.0f)" % [name, width, label.size.x])
+			elif label.max_lines_visible > 0 and label.get_line_count() > label.max_lines_visible:
+				out.append("%s's text needs %d lines, shows %d" % [name, label.get_line_count(), label.max_lines_visible])
+		var gone: String = _off_screen(c, screen, view, false)
+		if gone != "":
+			out.append("%s %s" % [name, gone])
+	# Nothing scrolls sideways, and the screen's own scroll area scrolls up and down only where it must.
+	for node: Node in screen.find_children("*", "ScrollContainer", true, false):
+		var s := node as ScrollContainer
+		if not s.is_visible_in_tree():
+			continue
+		var content: Control = s.get_child(0) as Control if s.get_child_count() > 0 else null
+		if content != null and content.get_combined_minimum_size().x > s.size.x + 1.0 and s.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			out.append("%s scrolls sideways (%.0f of %.0f)" % [_describe(s), content.get_combined_minimum_size().x, s.size.x])
+	return out
+
+
+## "" if `c` is where a finger can reach it: inside the viewport, and inside the scroll area it's in
+## unless `must_show` (then the scroll area must not hide it either), else why not.
+static func _off_screen(c: Control, screen: Control, view: Vector2, must_show: bool) -> String:
+	var rect: Rect2 = c.get_global_rect()
+	var scroller: ScrollContainer = null
+	var node: Node = c.get_parent()
+	while node != null and node != screen:
+		if node is ScrollContainer:
+			scroller = node as ScrollContainer
+			break
+		node = node.get_parent()
+	if scroller == null:
+		var room := Rect2(Vector2.ZERO, view).grow(1.5)
+		if not room.encloses(rect) and not (c is ScreenBase.BackdropView):
+			return "is outside the screen (%s of %s)" % [rect, view]
+		return ""
+	var area: Rect2 = scroller.get_global_rect().grow(1.5)
+	if rect.position.x < area.position.x or rect.end.x > area.end.x:
+		return "is cut off the side of its scroll area (%s in %s)" % [rect, scroller.get_global_rect()]
+	if must_show and (rect.position.y < area.position.y or rect.end.y > area.end.y):
+		return "is scrolled out of sight (%s in %s)" % [rect, scroller.get_global_rect()]
+	return ""
+
+
+## Decoration that is a BaseButton by inheritance only (the switch's knob is drawn by the switch).
+static func _decor(c: Control) -> bool:
+	return c.focus_mode == Control.FOCUS_NONE and not c.is_class("Button") and c.get_class() == "Control"
+
+
+static func _describe(c: Control) -> String:
+	var text: String = ""
+	if c is Label:
+		text = " \"%s\"" % (c as Label).text.left(24)
+	elif c is Button:
+		text = " \"%s\"" % (c as Button).text.left(24)
+	return "%s%s" % [c.get_script().get_global_name() if c.get_script() != null and c.get_script().get_global_name() != &"" else c.get_class(), text]
+
+
+# --- The magnifying itself -----------------------------------------------------------------------
+
+func _test_factor_maths() -> void:
+	var style: UiStyle = UiTheme.style()
+	var base := Vector2(1280, 720)
+	var f: Callable = func(css: Vector2, ratio: float) -> float:
+		return UiScale.factor_for(css * ratio, ratio, base, style.phone_min_scale, style.phone_max_factor,
+			float(style.phone_min_width))
+	# A phone held sideways: the stretch gives min(w / 1280, h / 720) device pixels per UI pixel.
+	var iphone: float = f.call(Vector2(844, 340), 3.0)
+	check(is_equal_approx(iphone, style.phone_min_scale / (340.0 / 720.0)),
+		"a phone's page 844×340 is magnified to %.2f CSS pixels per UI pixel (factor %.3f)" % [style.phone_min_scale, iphone])
+	check(f.call(Vector2(844, 390), 3.0) < iphone and f.call(Vector2(844, 300), 3.0) > iphone,
+		"a shorter page is magnified more")
+	check(is_equal_approx(f.call(Vector2(844, 340), 2.0), f.call(Vector2(844, 340), 3.0)),
+		"the pixel ratio cancels out: the same page in 2 or 3 device pixels per CSS pixel is magnified the same")
+	check(is_equal_approx(f.call(Vector2(1920, 1080), 1.0), 1.0), "a desktop window is not magnified")
+	check(is_equal_approx(f.call(Vector2(1180, 820), 2.0), 1.0), "a tablet's page (1180×820) is not magnified")
+	check(is_equal_approx(f.call(Vector2(1280, 720), 1.0), 1.0), "the base size is not magnified")
+	check(f.call(Vector2(100, 40), 1.0) <= style.phone_max_factor + 0.001, "a tiny window is magnified no more than phone_max_factor")
+	# Held upright the magnifying stops where the menus would be narrower than phone_min_width UI pixels.
+	var upright: float = f.call(Vector2(390, 844), 3.0)
+	var stretch: float = minf(390.0 * 3.0 / 1280.0, 844.0 * 3.0 / 720.0)
+	check(upright > 1.0 and absf(390.0 * 3.0 / (stretch * upright) - float(style.phone_min_width)) < 0.5,
+		"held upright the menus are %d UI pixels wide, not narrower (factor %.2f)" % [style.phone_min_width, upright])
+	check(stretch / 3.0 * upright < style.phone_min_scale, "…which is below the minimum size: small and whole, not big and cut")
+	check(UiScale.factor_for(Vector2.ZERO, 1.0, base, 0.65, 2.5) == 1.0 and UiScale.factor_for(Vector2(10, 10), 1.0, Vector2.ZERO, 0.65, 2.5) == 1.0,
+		"a window or base of no size is left alone")
+	check(UiScale.base_size() == base, "the base size comes from the project settings (1280×720)")
+
+
+func _test_lifecycle() -> void:
+	var style: UiStyle = UiTheme.style()
+	var phone := Vector2i(844 * 3, 340 * 3)
+	UiScale.pixel_ratio_override = 3.0
+	tree.root.size = phone
+	var expected: float = UiScale.factor_for(Vector2(phone), 3.0, UiScale.base_size(), style.phone_min_scale,
+		style.phone_max_factor, float(style.phone_min_width))
+	App.show_title()
+	await _frames(3)
+	check(is_equal_approx(tree.root.content_scale_factor, expected) and expected > 1.2,
+		"a screen on a phone's window magnifies the canvas (%.3f)" % tree.root.content_scale_factor)
+	# Another screen straight after: no step back to 1 between them.
+	var seen: Array[float] = []
+	var watch: Callable = func() -> void: seen.append(tree.root.content_scale_factor)
+	tree.root.size_changed.connect(watch)
+	App.show_shop()
+	await _frames(3)
+	tree.root.size_changed.disconnect(watch)
+	check(not seen.has(1.0) and is_equal_approx(tree.root.content_scale_factor, expected),
+		"the next screen keeps it (it never drops to 1 on the way: %s)" % [seen])
+	# The window changes: the factor follows.
+	tree.root.size = Vector2i(844 * 3, 390 * 3)
+	await _frames(3)
+	var taller: float = UiScale.factor_for(Vector2(tree.root.size), 3.0, UiScale.base_size(), style.phone_min_scale,
+		style.phone_max_factor, float(style.phone_min_width))
+	check(is_equal_approx(tree.root.content_scale_factor, taller) and taller < expected,
+		"a taller window magnifies less (%.3f)" % tree.root.content_scale_factor)
+	tree.root.size = phone
+	await _frames(3)
+	# A run has no screen: the plain stretch (the HUD and the swipes are laid out for it).
+	App.start_level(App.campaign.step("city/1"))
+	await _frames(3)
+	check(App.screen is LevelIntroScreen and tree.root.content_scale_factor > 1.2, "the level's introduction is a screen: magnified")
+	App.begin_run()
+	await physics_frames(10)
+	await _frames(2)
+	check(not UiScale.is_open() and is_equal_approx(tree.root.content_scale_factor, 1.0),
+		"a run on show, no screen open: back to the plain stretch (%.3f)" % tree.root.content_scale_factor)
+	App.pause_game()
+	await _frames(3)
+	check(App.overlay is PauseScreen and is_equal_approx(tree.root.content_scale_factor, expected),
+		"the pause menu over it is magnified again")
+	App.resume_game()
+	await physics_frames(10)
+	await _frames(2)
+	check(is_equal_approx(tree.root.content_scale_factor, 1.0), "and resuming ends it")
+	App.quit_run()
+	await _frames(3)
+	# A desktop, or a touch screen with room: no change.
+	UiTheme.touch_override = 0
+	App.show_title()
+	await _frames(3)
+	check(is_equal_approx(tree.root.content_scale_factor, 1.0), "a desktop's window is never magnified, whatever its size")
+	UiTheme.touch_override = 1
+	UiScale.pixel_ratio_override = 2.0
+	tree.root.size = Vector2i(1180 * 2, 820 * 2)
+	App.show_shop()
+	await _frames(3)
+	check(is_equal_approx(tree.root.content_scale_factor, 1.0), "nor a tablet's page (1180×820)")
+	tree.root.size = phone
+	UiScale.pixel_ratio_override = 3.0
+	App.show_title()
+	await _frames(3)
+	check(not (App.screen as ScreenBase).is_scrolling(), "the title screen fits without scrolling on a phone held sideways")
+	App.show_title()
+	await _frames(2)
