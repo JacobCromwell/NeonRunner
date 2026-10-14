@@ -25,11 +25,14 @@ still to be designed: its slot is a placeholder card the campaign passes through
 built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
 crater as a host cyborg looks on); until the owner describes the rest, each other zone's intro (and the City's boss
 intro) plays a placeholder arrival flyover over the zone, and the other outros are placeholder cards.
-Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
+Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md` (the few needing the owner) or
+`docs/OPEN_QUESTIONS_DEFERRED.md` (standing as built).
 
-Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
-placeholders), `docs/ARCHITECTURE.md` (how the code fits together), `docs/NEXT_STEPS.md` (risk tests and the
-original build plan), `CLAUDE.md` (rules for agents).
+Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (decisions waiting on the
+owner; deferred and answered ones in `docs/OPEN_QUESTIONS_DEFERRED.md` and `_ANSWERED.md`), `docs/ARCHITECTURE.md`
+(the index of the architecture notes in `docs/architecture/`), `docs/USER_REQUESTS.md` (the owner's requests),
+`docs/WORKFLOW.md` (how build sessions run), `docs/NEXT_STEPS.md` (risk tests and the original build plan),
+`CLAUDE.md` (rules for agents).
 
 ## Play it
 

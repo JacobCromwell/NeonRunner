@@ -13,13 +13,15 @@ orchestrator reviews your work against the design document and merges it; you ne
 `main` and never push.
 
 ## Ground rules (read `CLAUDE.md` first; it has the full list)
-- `docs/GDD_CHECKPOINT.md` is the design authority, and `docs/USER_REQUESTS.md` holds the owner's later
+- `docs/GDD_CHECKPOINT.md` is the design authority, and `docs/USER_REQUESTS.md` (built ones in `docs/USER_REQUESTS_DONE.md`) holds the owner's later
   approved revisions, which take precedence where they differ. Don't invent design. For a design gap: write
   the question to `docs/questions/<task-id>.md` (format in `docs/questions/README.md`), build the
   smallest reasonable placeholder marked `DESIGN-TBD:` (a `## DESIGN-TBD:` doc comment on exported
   tunables), and list it in your report. Never edit `docs/GDD_CHECKPOINT.md` or
-  `docs/OPEN_QUESTIONS.md`.
-- Read `docs/ARCHITECTURE.md` and the code you'll touch before changing anything. Match the
+  `docs/OPEN_QUESTIONS*.md`.
+- Before changing anything, read the code you'll touch and the architecture notes for it: the index
+  `docs/ARCHITECTURE.md`, then only the part(s) of `docs/architecture/` it points you to (never the
+  whole folder; `CLAUDE.md`, "Reading the docs"). Match the
   surrounding code: static typing everywhere, `##` doc comments, naming, tunables in data
   resources with `@export_range` hints (so they show in the F6 panel), tests in `tests/suites/`.
 - Stay in scope. Core files (`CLAUDE.md`, "Parallel work") change only in core tasks; if your task
@@ -57,7 +59,8 @@ orchestrator reviews your work against the design document and merges it; you ne
 1. The tier your change needs passes (exit code 0; see Environment) and `tools/godot.sh smoke` prints
    no problems. Add or update tests for what you built. Never report a tier you didn't run.
 2. For anything visual, render frames on both renderers and look at them yourself.
-3. Update `docs/ARCHITECTURE.md`, `README.md` or `data/patterns/README.md` where your change
+3. Update the part of `docs/architecture/` (and its row in the `docs/ARCHITECTURE.md` index, for a new
+   topic), `README.md` or `data/patterns/README.md` where your change
    affects them (never the GDD).
 4. Everything is committed and `git status` is clean.
 

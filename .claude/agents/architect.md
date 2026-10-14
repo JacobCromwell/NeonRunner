@@ -20,7 +20,7 @@ with `@export_range` hints so they reach the F6 panel.
 it first, every time. For a design gap: write the question to `docs/questions/<task-id>.md`
 (format in `docs/questions/README.md`), build the smallest reasonable placeholder marked
 `## DESIGN-TBD:` on the exported tunable it affects, and list it in your report. Never edit
-`docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS.md`.
+`docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS*.md`.
 
 **Parallel work:** one task, one branch named after the task ID, from the latest `main`. The core
 files above (list in `CLAUDE.md`, "Parallel work") change one task at a time — confirm nothing else
