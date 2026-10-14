@@ -539,16 +539,19 @@ func _test_telegraphed_attack() -> void:
 # --- The standard armor rule -----------------------------------------------------------------
 
 ## GDD §10: an armor pickup at the start of the final phase, and another a while after the player's
-## armor or shield breaks, at most once per phase. The fight says when; task B7 places the pickups.
+## armor takes a hit (one it survives, or its last), at most once per phase. A shield break brings none
+## (owner, October 14, 2026), with the armor on or down, so it leaves the phase's pickup for the armor.
+## The fight says when; task B7 places the pickups. Every boss with the rule: test_boss_armor_rule.
 func _test_armor_rule() -> void:
 	var def: BossDef = DummyBoss.make_def([[1, 1, false, 0.1], [1, 1, false, 0.1], [1, 1, false, 0.1]])
 	def.armor_delay_min = 2.0
 	def.armor_delay_max = 3.0
 	var loadout := Loadout.new()
 	loadout.armor = true
-	loadout.charges = {&"shield": 1}
+	loadout.charges = {&"shield": 2}
 	var enc := DummyBoss.new()
 	var world: RunWorld = _fight(enc, def, 5, loadout)
+	var p: Player = world.player
 	var due: Array = []
 	var broken: Array[StringName] = []
 	enc.armor_pickup_due.connect(func(reason: StringName) -> void: due.append([reason, enc.fight_time(), enc.phase_index]))
@@ -557,27 +560,49 @@ func _test_armor_rule() -> void:
 	var shot := Hazard.new()
 	shot.hazard_name = "test shot"
 	shot.is_enemy_attack = true
-	world.player.receive_hit(shot)
+	var wall := Hazard.new()
+	wall.hazard_name = "test wall"
+	wall.is_solid = true
+	# A shield break with the armor still on (a solid hit, which the armor doesn't block), then one with
+	# the armor down: the fight hears both, and neither brings a pickup.
+	check(p.receive_hit(wall) == DamageRules.Outcome.BLOCKED_SHIELD and p.armor == 1 and broken == [&"shield"],
+		"the fight hears a shield break with the armor still on")
+	p.armor = 0
+	p.invulnerable_left = 0.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_SHIELD and broken == [&"shield", &"shield"],
+		"and one with the armor down")
+	await _until(world, func() -> bool: return not due.is_empty(), def.armor_delay_max + 0.5)
+	check(due.is_empty() and _count(enc, &"armor_scheduled") == 0, "a shield break brings no armor pickup (%s)" % [due])
+	# A hit the armor survives (the upgrade's hits): a pickup after the boss's delay, the phase's one still
+	# there after the shield breaks.
+	p.armor = 2
+	p.invulnerable_left = 0.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_ARMOR and p.armor == 1 and broken.size() == 2,
+		"the armor takes a hit and stays on")
 	var t0: float = enc.fight_time()
-	check(broken == [&"armor"], "the fight hears the armor break")
-	await _until(world, func() -> bool: return not due.is_empty(), 4.0)
-	check(due.size() == 1 and due[0][0] == &"protection_broken", "a pickup is due after the break (%s)" % [due])
+	await _until(world, func() -> bool: return not due.is_empty(), def.armor_delay_max + 1.0)
+	check(due.size() == 1 and due[0][0] == &"armor_hit" and int(due[0][2]) == 0, "a pickup is due after the armor's hit (%s)" % [due])
 	if not due.is_empty():
 		var delay: float = float(due[0][1]) - t0
 		check(delay >= 2.0 - 0.02 and delay <= 3.0 + 0.02, "after the boss's delay (%.2f s)" % delay)
-	world.player.invulnerable_left = 0.0
-	world.player.receive_hit(shot)
-	await _until(world, func() -> bool: return due.size() > 1, 4.0)
-	check(broken == [&"armor", &"shield"] and due.size() == 1, "a second break in the same phase brings none (%s)" % [due])
+	# Its last hit, in the same phase: none more.
+	p.invulnerable_left = 0.0
+	p.receive_hit(shot)
+	await _until(world, func() -> bool: return due.size() > 1, def.armor_delay_max + 1.0)
+	check(p.armor == 0 and broken == [&"shield", &"shield", &"armor"] and due.size() == 1,
+		"a second armor hit in the same phase brings none (%s)" % [due])
+	# The next phase answers the armor again: the free armor's one hit, which breaks it.
 	enc.damage(enc.hit_damage(), &"test")
 	await _until(world, func() -> bool: return enc.is_vulnerable(), 1.0)
-	world.player.armor = 1
-	world.player.invulnerable_left = 0.0
-	world.player.receive_hit(shot)
-	await _until(world, func() -> bool: return due.size() > 1, 4.0)
-	check(due.size() == 2 and due[1][0] == &"protection_broken" and int(due[1][2]) == 1, "a break in the next phase brings one again")
+	p.armor = 1
+	p.invulnerable_left = 0.0
+	p.receive_hit(shot)
+	await _until(world, func() -> bool: return due.size() > 1, def.armor_delay_max + 1.0)
+	check(due.size() == 2 and due[1][0] == &"armor_hit" and int(due[1][2]) == 1,
+		"an armor break in the next phase brings one again (%s)" % [due])
 	enc.damage(enc.hit_damage(), &"test")
 	check(due.size() == 3 and due[2][0] == &"final_phase" and enc.is_final_phase(), "the final phase begins with one (%s)" % [due])
+	wall.free()
 	await sim.free_world(world)
 	# Without the rule, nothing is due.
 	def.armor_rule = false

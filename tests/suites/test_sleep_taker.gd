@@ -139,7 +139,7 @@ func _test_data() -> void:
 		"five phases (GDD §10: three; owner, October 10, 2026: two more); the first's intro is its entrance")
 	check(def.weapon_share_cap == 0.0, "GDD §10: weapons have no effect at all (its weapon cap is 0)")
 	check(def.armor_rule and def.armor_delay_min == 15.0 and def.armor_delay_max == 17.0,
-		"the standard armor rule, 15-17 s after a break")
+		"the standard armor rule, 15-17 s after the armor takes a hit")
 	# No new music (owner, September 28, 2026): the Dead Zone's own track.
 	var music := load("res://data/audio/music_library.tres") as MusicLibrary
 	check(def.music == &"dead_zone" and music.has(def.music), "its music is the Dead Zone's existing track")

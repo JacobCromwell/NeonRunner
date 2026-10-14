@@ -12,8 +12,8 @@ extends TestSuite
 ##   the runner reaches it, rises back in front and the face-off goes on; the next pin opens the same
 ##   window at the same pace (no time limit, no escalation), and the ship never touches the runner;
 ## - damage: stomps do the real damage; weapons chip only up to the cap (at most one stomp saved);
-## - the armor pickups (the standard rule, 10-15 s): one as the final phase starts, one after a break
-##   (at most once a phase), never in a bomb's or a cyborg's landing circle nor where a pin goes;
+## - the armor pickups (the standard rule, 10-15 s): one as the final phase starts, one after the armor
+##   takes a hit (at most once a phase), never in a bomb's or a cyborg's landing circle nor where a pin goes;
 ## - the third window's ceiling: bombs never lock under it, the face-off waits past it, and it's never
 ##   in the ship's space;
 ## - the whole fight in its preview, from the entrance to the last stomp, at 3, 5 and 6 lanes; and on a
@@ -538,8 +538,9 @@ func _test_damage() -> void:
 # --- Armor pickups -----------------------------------------------------------------------------------
 
 ## GDD §10's standard armor rule, with the Floating Head's 10-15 s: one armor pickup as the final phase
-## starts, and one 10-15 s after an armor break (at most once a phase), from the framework's hook. None
-## ever lies in a bomb's or a dropped cyborg's landing circle, nor where a pin and its way up go.
+## starts, and one 10-15 s after the armor takes a hit (here the free armor's one hit, which breaks it; at
+## most once a phase), from the framework's hook. None ever lies in a bomb's or a dropped cyborg's landing
+## circle, nor where a pin and its way up go.
 func _test_armor_pickups() -> void:
 	# The free armor every run carries (GDD §4).
 	var armored := Loadout.new()
@@ -576,13 +577,13 @@ func _test_armor_pickups() -> void:
 	var after_break: Array[Dictionary] = []
 	var final_phase: Array[Dictionary] = []
 	for e: Dictionary in dues:
-		if e["reason"] == &"protection_broken":
+		if e["reason"] == &"armor_hit":
 			after_break.append(e)
 		elif e["reason"] == &"final_phase":
 			final_phase.append(e)
 	check(after_break.size() == 1 and float(after_break[0]["t"]) - broke >= head.def.armor_delay_min - 0.02
 		and float(after_break[0]["t"]) - broke <= head.def.armor_delay_max + 0.02,
-		"an armor pickup is due 10-15 s after the break (%.1f s)" % [float(after_break[0]["t"]) - broke if not after_break.is_empty() else -1.0])
+		"an armor pickup is due 10-15 s after the armor's hit (%.1f s)" % [float(after_break[0]["t"]) - broke if not after_break.is_empty() else -1.0])
 	check(final_phase.size() == 1 and int(final_phase[0]["phase"]) == 2, "and one as the final phase starts")
 	check(offered.size() == dues.size(), "each is offered on the track (%d of %d)" % [offered.size(), dues.size()])
 	check(world.pickups.made >= 1, "and appears (%d)" % world.pickups.made)

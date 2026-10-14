@@ -506,8 +506,9 @@ func _test_weapons() -> void:
 
 # --- The armor rule --------------------------------------------------------------------------------
 
-## GDD §10's standard armor rule (15-17 s), with armor at the start (a surge breaks it: a pickup follows) and
-## without (the phase begins unprotected: a pickup follows), once a phase; and one at the final phase's start.
+## GDD §10's standard armor rule (15-17 s), with armor at the start (a surge hits it, its one hit: a pickup
+## follows) and without (the phase begins unprotected: a pickup follows), once a phase; and one at the final
+## phase's start.
 func _test_armor_rule() -> void:
 	# Without armor.
 	var pair: Array = _fight(def, 5, 18.0)
@@ -539,9 +540,9 @@ func _test_armor_rule() -> void:
 		world.player.god_mode = true
 		await _run(world, 20.0, func() -> bool: return not _events(boss, &"armor_pickup").is_empty(), func() -> void: bot.step())
 		var after: Array[Dictionary] = _events(boss, &"armor_pickup")
-		check(not after.is_empty() and after[0]["reason"] == &"protection_broken"
+		check(not after.is_empty() and after[0]["reason"] == &"armor_hit"
 			and float(after[0]["t"]) - at >= 15.0 and float(after[0]["t"]) - at <= 17.05,
-			"its pickup comes %.1f s after the break (15-17 s)" % (float(after[0]["t"]) - at if not after.is_empty() else -1.0))
+			"its pickup comes %.1f s after the armor's hit (15-17 s)" % (float(after[0]["t"]) - at if not after.is_empty() else -1.0))
 	await sim.free_world(world)
 	# The final phase's.
 	pair = _fight(def, 5, 18.0, armored, {"phase": 2})
