@@ -25,7 +25,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 
 | Item | Question |
 |---|---|
-| 766 | Ceilings in the levels are too safe (owner, October 10, 2026): should only one lane be safe to drop to where a level's ceiling ends, the rest free to hold gaps, hazards or enemies? A change to the generator's rules (GDD §3, Safe landing zone). |
+| 766 | Ceilings in the levels are too safe (owner, October 10, 2026): should a level keep at least one safe lane where a ceiling ends, and leave the rest free to hold gaps, hazards or enemies? A change to the generator's rules (GDD §3, Safe landing zone). |
 
 ## The items in full
 
