@@ -2,9 +2,10 @@ extends TestSuite
 ## GDD §10's standard armor rule on every boss that uses it, at 3, 5 and 6 lanes (task I9; owner, October
 ## 14, 2026: only the armor taking a hit brings the armor pickup, never a shield break). In a fight begun
 ## with the free armor and two shields: a shield break with the armor still on (a solid hit, which the armor
-## doesn't block) and one with the armor down schedule no armor pickup, and nothing of the boss's own offers
-## one; a hit the armor survives (the upgrade's hits) then schedules the phase's one, the boss's delay
-## later, so the shield breaks didn't use it up; and the armor's last hit in that phase brings no second.
+## doesn't block) and one with the armor down schedule no armor pickup, and none is offered in the moments
+## after (by the framework or the boss's own script); a hit the armor survives (the upgrade's hits) then
+## schedules the phase's one, the boss's delay later, so the shield breaks didn't use it up; and the
+## armor's last hit in that phase brings no second.
 ## The bosses come from the campaign's slots and the test boss: every one with the armor rule and a built
 ## scene, so a boss built later is checked too. The framework's own cases (the final phase, the next phase,
 ## a boss without the rule) are test_bosses'; each boss's suite plays its pickups out in a real fight.
