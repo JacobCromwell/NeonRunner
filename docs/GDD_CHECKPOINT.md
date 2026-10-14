@@ -33,7 +33,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 |---|---|---|
 | PC (Windows) | Steam | Paid up front. **No ads, no microtransactions.** |
 | Mobile | iOS App Store + Google Play | Free with ads + optional in-app purchases |
-| Web demo | itch.io; possibly Poki / CrazyGames (check each portal's rules on outbound links) | Free. Zone 1 including its boss and the Zone 1 outro (owner, October 14, 2026), then a "get the full game" screen linking to Steam, App Store, Google Play. No ads, no IAP, no leaderboards. |
+| Web demo | itch.io first (owner, October 14, 2026). CrazyGames later, if wanted, with an end screen linking only to the Steam page (its rules allow that link on desktop at the end of a demo). Not Poki. | Free. Zone 1 including its boss and the Zone 1 outro (owner, October 14, 2026), then a "get the full game" screen linking to Steam, App Store, Google Play. No ads, no IAP, no leaderboards. |
 
 - **Engine:** Godot 4, **GDScript** (Godot 4 C# cannot export to web).
 - **Development machine:** Windows, built with Claude Code.

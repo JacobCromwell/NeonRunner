@@ -1257,3 +1257,24 @@ Moved here from `docs/OPEN_QUESTIONS.md`, each with its answer; the GDD records 
     (`DEFAULT_LOOK_SKINS`). Should the Beach get dash walls, and how do they meet its open side walls (standing only
     where a side wall stands beside them, or with no wall route at all), and in what look (a beach bar's front)?
     **Answered (owner, October 14, 2026):** Keep the Beach's walls as they are: no dash walls in the Beach (GDD §9.14).
+
+**The web demo** (from E2; export and check it with `tools/godot.sh web`, README "The web demo"; the demo is City 1–3 and the Floating Head, then the "get the full game" screen)
+231. **The portals' rules on outbound links** (GDD §2: itch.io, possibly Poki or CrazyGames; "check each
+    portal's rules on outbound links"). I couldn't read the rules: this build machine's network policy blocks
+    itch.io, docs.crazygames.com, developers.poki.com and sdk.poki.com. For each portal the demo goes to:
+    - **itch.io:** the demo's own page, where links to Steam, the App Store and Google Play are the usual
+    thing. Do you want its end screen as it is (three store tiles)?
+    - **Poki** and **CrazyGames:** do their rules allow links out of the game to other stores at all, only to
+    some (for example the game's own Steam page), or none? Do they ask for their own SDK (their ads, their
+    analytics, a "game loading/started" call) even in a game without ads? Is there a size or loading-time
+    limit the demo must meet (it downloads about 14 MB compressed, see the report)?
+    Placeholder: one build for every portal, with the three store tiles; the store links open through the
+    platform layer (`Platform.open_store()` → `PlatformBackend.open_url()`), so a portal that forbids them
+    gets a backend of its own that hides or disables the tiles, without touching the game.
+
+    **Recommendation (October 14, 2026):** itch.io first, as built. CrazyGames later, if wanted:
+    its rules allow a link to the game's own store page (Steam, Epic) on desktop at the end of a demo or in the main
+    menu, as long as it isn't the main call to action; no cross-promotion otherwise. That needs a Steam-only end
+    screen there. Skip Poki: it is curated, blocks requests out of the game unless they go through its SDK, and its
+    traffic earns through its ads, which the demo doesn't have.
+    **Answered (owner, October 14, 2026):** the recommendation, as above (GDD §2).
