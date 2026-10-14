@@ -585,12 +585,12 @@ func _test_armor_rule() -> void:
 	if not due.is_empty():
 		var delay: float = float(due[0][1]) - t0
 		check(delay >= 2.0 - 0.02 and delay <= 3.0 + 0.02, "after the boss's delay (%.2f s)" % delay)
-	# Its last hit, in the same phase: none more.
+	# Its last hit, in the same phase (before the runner reaches the pickup just offered): none more.
 	p.invulnerable_left = 0.0
-	p.receive_hit(shot)
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_ARMOR and p.armor == 0
+		and broken == [&"shield", &"shield", &"armor"], "the armor's last hit breaks it")
 	await _until(world, func() -> bool: return due.size() > 1, def.armor_delay_max + 1.0)
-	check(p.armor == 0 and broken == [&"shield", &"shield", &"armor"] and due.size() == 1,
-		"a second armor hit in the same phase brings none (%s)" % [due])
+	check(due.size() == 1, "a second armor hit in the same phase brings none (%s)" % [due])
 	# The next phase answers the armor again: the free armor's one hit, which breaks it.
 	enc.damage(enc.hit_damage(), &"test")
 	await _until(world, func() -> bool: return enc.is_vulnerable(), 1.0)
