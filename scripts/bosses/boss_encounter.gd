@@ -697,7 +697,8 @@ func _on_movement_event(kind: StringName) -> void:
 
 ## True if the player is protected or protection is on its way: armor or a shield held, or an armor
 ## pickup already due (after an armor hit), on the track, waiting for a spot, or held back by the boss
-## (armor_pickups_waiting).
+## (armor_pickups_waiting). DESIGN-TBD (docs/questions/i9.md): a shield held counts, though its break
+## brings no pickup.
 func player_protected() -> bool:
 	var p: Player = world.player
 	if p.armor > 0 or p.shield > 0 or not _armor_due.is_empty() or armor_pickups_waiting() > 0:
