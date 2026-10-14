@@ -107,14 +107,19 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   (best score, best time, stars) and submits the boss leaderboard, `boss/<boss id>/<tier>` (none in
   the web demo). Its results and level-select tile show the boss's stars and bests like a level's.
 - **Pickups** (see Pickups): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the
-  start of the final phase and `armor_delay_min`–`max` seconds after the player's armor or shield
-  breaks, at most `armor_pickups_per_phase` per phase, and each time the encounter offers an armor
-  pickup (`_on_armor_pickup_due`, which a boss may override to place it its own way). With
-  `BossDef.armor_when_unprotected` (E1e, DESIGN-TBD; on for the Floating Head) a phase that begins with
-  the player's armor down and no shield (the free armor still coming back after a break) counts as a
-  break at its start (`player_protected()`: armor up or a shield held, or an armor pickup due, on the
-  track, waiting for a spot or held back by the boss, `armor_pickups_waiting()`), so no phase starts
-  unprotected without a pickup on its way.
+  start of the final phase (`&"final_phase"`) and `armor_delay_min`–`max` seconds after the player's
+  armor takes a hit (`&"armor_hit"`: the Player's `armor_hit` or `armor_break` event, so a hit the
+  upgraded armor survives counts as well as its last; `_on_movement_event`), at most
+  `armor_pickups_per_phase` per phase, and each time the encounter offers an armor pickup
+  (`_on_armor_pickup_due`, which a boss may override to place it its own way). A shield break brings
+  none (owner, October 14, 2026; task I9) and leaves the phase's pickup for the armor: `_on_item_used`
+  only reports the break (`protection_broken`). With
+  `BossDef.armor_when_unprotected` (E1e, DESIGN-TBD; on for every built boss but the test boss) a phase
+  that begins with the player's armor down and no shield (the free armor still coming back after a
+  break) counts as an armor hit at its start (`&"unprotected"`; `player_protected()`: armor up or a
+  shield held, or an armor pickup due, on the track, waiting for a spot or held back by the boss,
+  `armor_pickups_waiting()`), so no phase starts unprotected without a pickup on its way. No boss
+  script answers a hit or a break itself; the rule is the framework's alone.
   `offer_pickup(item, at, lane)` offers an armor, shield or grapple pickup of the boss's own (GDD §10:
   a section of floor that spawns one; the test boss offers a shield in its second phase), and
   `phase_started` and `protection_broken` are there to time them. The win clears every pickup, and

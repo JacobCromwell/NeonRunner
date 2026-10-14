@@ -78,7 +78,11 @@ for framework tests, with `make_def()` for a BossDef from a list of phases; `tes
 in bare worlds and, with the test boss in the City's slot, through the App (at the City's speed there,
 in quick play at the base speed; and an arena planned at 25 m/s keeps its laps' seconds). `test_pickups` checks
 pickup placement against the rules as it writes them itself, over hand-built cases and generated
-tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_armor` covers the
+tracks at 3, 5 and 6 lanes, and the armor rule end to end on the test boss. `test_boss_armor_rule` (I9)
+checks the armor rule on every built boss that uses it (the campaign's slots and the test boss, so a boss
+built later joins) at 3, 5 and 6 lanes, in a fight begun with the free armor and two shields: shield breaks
+(the armor on, then down) schedule and offer no armor pickup, a hit the armor survives schedules the
+phase's one within the boss's delay, and its last hit brings no second. `test_armor` covers the
 free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
 each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
 line and texts, the save migration, and every kind of run through the App (the web demo's too).

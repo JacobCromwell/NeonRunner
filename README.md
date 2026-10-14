@@ -257,7 +257,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
   boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
   to take, from the standard armor rule (at the start of the final phase, and a while after the
-  player's armor or shield breaks) or offered by the boss itself. A campaign boss fight runs at its
+  player's armor takes a hit; a shield break brings none) or offered by the boss itself. A campaign boss fight runs at its
   zone's speed, like the zone's levels (quick play's at the base speed). The test boss (`--boss=test_boss`),
   a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
