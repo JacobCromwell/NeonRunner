@@ -7,9 +7,11 @@
 
 ## Kickoff (for the orchestrator)
 
-Paste this into the main build session:
+**Since October 14, 2026, batches of the owner's requests run from `docs/WORKFLOW.md`, which has the current
+orchestrator prompt.** The original phase 2 kickoff, kept for the record (it now reads the docs per `CLAUDE.md`,
+"Reading the docs", instead of whole):
 
-> Read `CLAUDE.md`, `docs/TASK_PLAN.md`, `docs/GDD_CHECKPOINT.md` and `docs/ARCHITECTURE.md`. You are the orchestrator for build phase 2. Start the "core lane" (B1, then B2, B3, B4, B5, strictly one after another) and, alongside it, up to three tasks from "Wave 1: in parallel". Give each task to a sub-agent with the model and effort level listed here, on its own branch named after the task ID. Review each result against the design document, merge tasks into `main` one at a time, and fold each task's `docs/questions/<task-id>.md` into `docs/OPEN_QUESTIONS.md` when you merge it. Stop and ask the owner only for things marked "owner" or for design gaps you can't cover with a marked placeholder.
+> Read `CLAUDE.md`, `docs/TASK_PLAN.md`, and the index `docs/ARCHITECTURE.md`; search `docs/GDD_CHECKPOINT.md` as tasks need it. You are the orchestrator for build phase 2. Start the "core lane" (B1, then B2, B3, B4, B5, strictly one after another) and, alongside it, up to three tasks from "Wave 1: in parallel". Give each task to a sub-agent with the model and effort level listed here, on its own branch named after the task ID. Review each result against the design document, merge tasks into `main` one at a time, and fold each task's `docs/questions/<task-id>.md` into `docs/OPEN_QUESTIONS.md` when you merge it. Stop and ask the owner only for things marked "owner" or for design gaps you can't cover with a marked placeholder.
 
 ---
 

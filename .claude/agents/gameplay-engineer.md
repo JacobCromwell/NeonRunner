@@ -18,7 +18,7 @@ Overdrive, the boss framework itself) is `architect`'s T1 work instead, even tho
 it first. For a design gap: write the question to `docs/questions/<task-id>.md` (format in
 `docs/questions/README.md`), build the smallest reasonable placeholder marked `## DESIGN-TBD:` on
 the exported tunable it affects, and list it in your report. Never edit
-`docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS.md`.
+`docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS*.md`.
 
 **Parallel work:** one task, one branch named after the task ID, from the latest `main`. A new
 enemy stays entirely in its own files (`scripts/enemies/<type>*.gd`, `data/enemies/<type>.tres`,

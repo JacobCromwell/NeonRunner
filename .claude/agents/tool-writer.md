@@ -16,7 +16,7 @@ tier; say so in your report rather than guessing past the gap.
 **Design authority:** `docs/GDD_CHECKPOINT.md`. Don't invent design. **Rules:** `CLAUDE.md` — read
 it first. For a design gap: write the question to `docs/questions/<task-id>.md` (format in
 `docs/questions/README.md`), build the smallest reasonable placeholder marked `## DESIGN-TBD:`,
-and list it in your report. Never edit `docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS.md`.
+and list it in your report. Never edit `docs/GDD_CHECKPOINT.md` or `docs/OPEN_QUESTIONS*.md`.
 
 **Parallel work:** one task, one branch named after the task ID, from the latest `main`. Keep any
 core-file touch tiny and name it in your report — core files otherwise change in core tasks only.

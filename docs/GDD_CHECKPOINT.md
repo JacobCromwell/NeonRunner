@@ -33,7 +33,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 |---|---|---|
 | PC (Windows) | Steam | Paid up front. **No ads, no microtransactions.** |
 | Mobile | iOS App Store + Google Play | Free with ads + optional in-app purchases |
-| Web demo | itch.io; possibly Poki / CrazyGames (check each portal's rules on outbound links) | Free. Zone 1 including its boss, then a "get the full game" screen linking to Steam, App Store, Google Play. No ads, no IAP, no leaderboards. |
+| Web demo | itch.io first (owner, October 14, 2026). CrazyGames later, if wanted, with an end screen linking only to the Steam page (its rules allow that link on desktop at the end of a demo). Not Poki. | Free. Zone 1 including its boss and the Zone 1 outro (owner, October 14, 2026), then a "get the full game" screen linking to Steam, App Store, Google Play. No ads, no IAP, no leaderboards. |
 
 - **Engine:** Godot 4, **GDScript** (Godot 4 C# cannot export to web).
 - **Development machine:** Windows, built with Claude Code.
@@ -256,6 +256,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 - **Levels:** 1–3 per zone, each 90–150 seconds (City 1 is shorter; so is the Beach's volleyball match, about a minute for a flawless match).
 - **Bosses:** one at the end of each zone, except the Marketplace, which leads straight into the Casino (owner, October 8, 2026). Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
+  - **Owner's answers, October 14, 2026:** the owner will describe each zone's arrival cinematic and the Beach's intro and outro in later sessions; until then the shared arrival flyover and the placeholder cards stand. **Every boss gets a slot for an intro cinematic**, like the City's and Gangland's; the others stay empty (skipped) until the owner decides whether to fill them.
   - **Zone 1 outro** (owner, October 8, 2026): the Floating Head crashes to the ground. The camera comes down from its usual place, a little above and behind the runner, to the runner's level. The runner is running, stops, and looks to the left: a **barricade guarded by many enemies**, all reusing the game's own assets. **Barnacle Turrets stand on the floor** instead of the ceiling, so they look like cannons, with a **row of five cyborgs**, **one of the battle trucks** behind them, and a **heli drone** above it. The camera pans back to the runner, who is startled by so many enemies and runs the other way. The runner **jumps off a truck**, an **explosion** goes off behind them, and they **land in Gangland**. Built in task F2a; the staging choices made to fill in these beats are open questions (`docs/OPEN_QUESTIONS.md` §D, items 369–381).
   - **Gangland boss intro** (owner, October 9, 2026): see §10, Sewer Swarm ("Intro cinematic"). Built in task F2b; the staging choices made to fill in the beat are open questions (`docs/OPEN_QUESTIONS.md` §D, items 387–395).
   - **Gangland outro** (owner, October 9, 2026), after the Sewer Swarm: the **Host lies in the rubble**. The screeches stay **just a moment, sniffing** at the Host, then **scuttle away**. The runner **walks over**. The Host **trembles and hands the runner a golden key**. **Cut to a new scene** with a **sleek, flashy car** not seen before: **angular, almost triangular, sleek and shiny, like a Lambo**. The runner **gets in and drives off into the distance**, and as the car drives off **the camera is at road level**. Owner's follow-up (October 10, 2026): the runner's movement was **stiff and unrealistic**: make it **more fluid and less choppy**; while the runner gets into the new car, **one shot where we see them getting in and, in the seat next to them, a screech sitting nice and cute on the seat**; and the car **drives off faster**. And then (the same day): the screech should **look like the other screeches** (not a cuter remodel), still **sitting there**; when the runner comes in, **the screech and the runner nod at each other, and then the car takes off**. Built in task F2d; the staging choices made to fill in the beats are open questions (`docs/questions/f2d.md`).
@@ -265,6 +266,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
   - **Campaign:** fixed seeds (same layout every attempt).
   - **Endless mode:** random layouts.
   - Each level's difficulty can be tuned individually, with an automatic curve making each level slightly harder than the last.
+  - **No loading card** (owner, October 14, 2026): a level starts without a card covering its generation, as built.
   - **No level gets easier when levels are added** (owner, October 9, 2026, after adding the Casino): every level is too easy, at least on PC. The Marketplace keeps at least the difficulty it had (a little harder is welcome), and Corporate and the zones after it may get harder.
   - Because lane counts differ, "level 5" on PC is not identical to "level 5" on mobile. This is intended: PC is harder.
   - Handmade set pieces (e.g. boss arenas) are allowed.
@@ -295,6 +297,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
   2. **Credits earned:** added to the wallet and spent in the shop.
 - **Mobile:** credits can also be bought with real money. These are tracked separately and excluded from the net worth leaderboard.
 - **Key balancing value:** how fast credits are earned relative to shop prices. On mobile this governs whether purchases feel optional or forced.
+- **Rebalance for the full campaign** (owner, October 14, 2026): the shop prices and the completion payouts were set for a two-zone campaign; rebalance them for the full campaign.
 
 ---
 
@@ -547,7 +550,7 @@ Shared interaction rules apply unless stated otherwise:
 - *(Proposed)* Fairness: the generator never lets a wave arrive on top of a gap or a fence.
 
 ### 9.11 Gilded Sentinels (owner, September 26, 2026; first appear in Golden 2 *(proposed)*)
-- **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**; decorative statues never stand at wall-run height (safe things look safe). They fit the Golden Palace as its guards.
+- **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**. Decorative statues stand in alcoves at the bottom of the walls, also at wall-run height (owner's request, October 2026; this line updated to match on October 14, 2026); only the red eyes and the warning tell a live one apart. They fit the Golden Palace as its guards.
 - **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**. **The warning is half as long as first built** (owner, October 8, 2026: 0.6 s instead of 1.2 s).
 - **Seeing it** (owner, October 8, 2026): the live statue and the back of its niche stand **further forward**, out of the arch's shadow, so the player can make out what it is.
 - **Dodge:** on the wall, pass above or below the swing by timing the wall entry; on the floor, stay out of the outer lane. Later ones swing twice or come in pairs.
@@ -593,7 +596,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Getting through:** the player **dashes through it**. It crumbles and explodes into rubble.
 - **Without the dash** (not owned, switched off, or on cooldown): the player crashes through it and takes **one hit**. **Armor or the shield absorbs it** (an exception to the rule that armor doesn't block solid collisions); with neither, the hit kills. The wall breaks either way.
 - **Walls stay open:** it blocks only the floor. A player running on a side wall passes it. **No ceiling overlaps a dash wall.**
-- **Introduced in the Corporate zone** *(proposed: Corporate 1, after the Buzz Overdrive's introduction)*, and in the zones after it.
+- **Introduced in the Corporate zone** *(proposed: Corporate 1, after the Buzz Overdrive's introduction)*, and in the zones after it, **except the Beach**, whose open side walls stay as they are (owner, October 14, 2026).
 - *(Proposed)* Fairness: walls are spaced so the dash's longest cooldown (8 s) is always over before the next wall, and nothing else that needs the dash comes just before one.
 
 ---
@@ -608,11 +611,12 @@ Shared interaction rules apply unless stated otherwise:
   - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
   - **Death restarts the fight** (no checkpoints), like a level. **Exception: the final fight** has a checkpoint halfway, where the villain may change into a **second stage**.
   - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup.
-  - **Standard armor rule** (decided September 26, 2026; used by the Floating Head and the Sewer Swarm, and the default for later bosses): one armor pickup appears at the start of the final phase. Whenever the player's armor or shield breaks during the fight, another armor pickup appears **15–17 seconds later**, at most once per phase *(proposed cap)*. The **Floating Head keeps 10–15 seconds**, so the first boss is a little gentler; the Sewer Swarm and later bosses use 15–17.
+  - **Standard armor rule** (decided September 26, 2026; used by the Floating Head and the Sewer Swarm, and the default for later bosses): one armor pickup appears at the start of the final phase. Whenever the player's **armor takes a hit** during the fight, another armor pickup appears **15–17 seconds later** (owner, October 14, 2026: a shield break doesn't bring one), at most once per phase *(proposed cap)*. The **Floating Head keeps 10–15 seconds**, so the first boss is a little gentler; the Sewer Swarm and later bosses use 15–17.
   - **Rewards:** beating a boss earns **credits and score points**.
   - **Stars and leaderboards:** bosses have both, like levels (decided September 26, 2026). *(Proposed)* One star for winning; two and three stars for beating par times set per boss in data. The leaderboard ranks the boss score, which includes a time bonus.
   - **No time limit, no escalation:** if the player doesn't land the hits, the fight keeps cycling its pattern until they win or die. It does **not** get harder while a player struggles.
   - Bosses ignore claw contact kills.
+  - **Weapons may end a phase** (owner, October 14, 2026), set per boss in data: on for every boss but Hostile Takeover, whose weapons chip a phase only to just above its end. Stomps and big hits still do the real damage.
   - Every boss must be beatable using only the power-ups granted before the fight.
 - **Roster** (decided September 26, 2026):
 
@@ -810,7 +814,7 @@ Shared interaction rules apply unless stated otherwise:
       - the explosion **races up the feed line into his shoulders**, and **the boss takes damage**. Each hit shows: the first blows out one shoulder's pipes, the second the other's, and the third **bursts the suit open**, burning the man inside: the second stage's entrance;
       - the runner **falls back to the floor unharmed**. *(Proposed)* The floor under the ship is always clear where they land.
     - **Again and again:** a new Refill Ship comes after each later attack phase, until the suit is destroyed and the second stage begins.
-  - **Armor pickups:** the standard armor rule, triggered when the player has **lost all their armor**, with the **longest delay of any boss fight** (owner, October 9, 2026): **22 seconds**.
+  - **Armor pickups:** the standard armor rule, triggered when the player's **armor takes a hit** (owner, October 14, 2026; not by a shield break), with the **longest delay of any boss fight** (owner, October 9, 2026): **22 seconds**.
   - **Second stage, The Magnate** (the fight's halfway checkpoint; direction chosen by the owner, October 9, 2026): the golden suit is destroyed, and the man **pulls himself out of its wreckage, screeching an animal roar of rage**. He's a **twisted abomination, burnt blackish grey** by the suit's destruction, **two to three times the runner's size**.
     - **Look** (owner approved, October 9, 2026): blackish-grey skin cracked like burnt paper or cooled slag; splashes of the suit's gold melted onto him (dull, never glowing); **half of the calm golden mask fused to one side of his face**, dull red tear and all, the other half his real face, roaring; his weak points the **glowing red ports along his spine** where the suit plugged into him; the cape's remains as **burgundy tatters trailing smoke**. **No glowing embers** (orange is a hazard colour). Optional: cracks leaking the cult's **warm white** glow, as if the broadcast lives inside him (checked against the runner's own glow).
     - **The tentacle pipes** turn out to be **cables wiring him into the broadcast**: he is the **source of the feed** on every screen.
