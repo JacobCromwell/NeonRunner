@@ -123,8 +123,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Campaign:** 20 levels in eight zones, about 45 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate and the Dead Zone with two, the
   Beach with three (its second a volleyball mini-game), and the Golden Zone with three.
-  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's fight is
-  being built, and its slot still shows a card) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
+  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is
+  Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
   (skippable), but the Dead Zone's, which plays the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
