@@ -386,6 +386,7 @@ async function phoneMenus(browser) {
 	await s.page.waitForTimeout(3500);
 	const after = await s.page.screenshot({ path: path.join(s.dir, 'shop_scrolled.png') });
 	check(name, !before.equals(after), "a drag up from a card's text scrolls the shop (the frames differ)");
+	await s.page.mouse.move(420, 200);
 	await s.page.mouse.wheel(0, -2000);
 	await s.page.waitForTimeout(3500);
 	const top = await s.page.screenshot();
@@ -478,7 +479,8 @@ async function end(browser) {
 	await s.page.goto(s.url);
 	await booted(s.page, s.log);
 	await s.shot('outro_slot');
-	await s.page.keyboard.press('Enter');
+	// The City's outro is a cinematic ("SKIP · Esc"), not a slot card: skipping it leads to the end screen.
+	await s.page.keyboard.press('Escape');
 	await s.page.waitForTimeout(5000);
 	await s.shot('end_screen');
 	const stores = Object.keys(STORE_LINKS).filter((k) => !k.startsWith('_'));
