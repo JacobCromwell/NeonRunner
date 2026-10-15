@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LastHitWarningTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/last_hit_warning_tuning.gd" id="1_lhw"]
+
+[resource]
+script = ExtResource("1_lhw")
+warn_at_start = true
+onset_delay = 0.2
+pulse_count = 2
+pulse_seconds = 0.68
+pulse_alpha = 0.6
+steady_alpha = 0.28
+reduced_alpha = 0.36
+edge_width = 0.12
+fade_in_seconds = 0.2
+fade_out_seconds = 0.4

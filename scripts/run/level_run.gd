@@ -439,6 +439,7 @@ func _build_debug_tools() -> void:
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
 		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},
 		{"title": "Pickups", "resource": world.pickups.tuning, "path": PickupField.TUNING_PATH},
+		{"title": "One hit from death", "resource": hud.last_hit.tuning, "path": LastHitWarningTuning.PATH},
 		{"title": "Speed effects", "resource": world.effects.tuning, "path": RunEffects.DEFAULT_TUNING_PATH},
 		{"title": "Performance", "resource": PerformanceTuning.load_default(), "path": PerformanceTuning.PATH},
 		{"title": "Music", "resource": load(MusicDirector.LIBRARY_PATH), "path": MusicDirector.LIBRARY_PATH},

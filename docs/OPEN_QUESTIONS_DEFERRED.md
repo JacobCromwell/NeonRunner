@@ -4399,3 +4399,18 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
 831. **Draw the web build's opaque things without a depth pre-pass?** (`rendering/driver/depth_prepass/enable=false`):
   12 fewer programs in City 1, 21 in the Palace, the same image, but more overdraw on the GPU. Placeholder: none; the
   engine's default (on). If tried: a web-only override, measured on a real low-end GPU first.
+
+**I6, one hit from death** (from `docs/questions/i6.md`; GDD §4; tunables in `data/ui/last_hit_warning.tres`, F6 "One hit
+from death"; the siren `last_hit_siren`, `tools/asset_gen/sfx_bank_power.gd`, level in `data/audio/sfx_library.tres`)
+832. **A run that begins unprotected** (only bare loadouts in tests and tools today). Placeholder: the cue plays once at
+  the start (`warn_at_start`, on); after a revive that brings no protection back it plays again.
+833. **The cue's strength, and a non-colour marker.** Placeholder: a red band along the screen's edges (two pulses with the
+  siren, then a dim steady edge; steady with Reduced flashing), drawn under the attack markers; no icon. The siren at
+  −6.5 dB is 2.4 dB under the quietest of the 43 attack warnings on the general loudness weighting, but on a phone's
+  small speaker it is louder than `truck_rev` and within 3 dB of nineteen more; −8.3 dB (or −10.5 dB) would clear them
+  on a phone. Judge by ear in playtest.
+834. **A first-encounter hint for the siren** (that the next hit ends the run, and the armor comes back after 30 s).
+  Placeholder: no hint.
+835. **Is the siren different enough from The House's jackpot siren and the Floating Head's searchlight alarm?**
+  Placeholder: 698/494 Hz (a tritone), 0.34 s a tone, soft detuned triangles, two pulses, 1.44 s; the jackpot is
+  880/660 Hz (a fourth) square waves, the searchlight 1320/990 Hz beeps. Nobody has heard them side by side.
