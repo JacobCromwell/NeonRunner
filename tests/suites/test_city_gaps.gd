@@ -101,7 +101,7 @@ func _test_disabled_levels(campaign: Campaign) -> void:
 	check(LevelConfig.new().gap_encounter_increase == 0.0 and LevelConfig.new().gap_lane_increase == 0.0,
 		"new tunables default off")
 	for step: CampaignStep in campaign.steps():
-		if not step.is_level() or step.id == "city/1":
+		if not step.is_level() or step.id == "city/1" or step.is_minigame():
 			continue
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(step, lanes)

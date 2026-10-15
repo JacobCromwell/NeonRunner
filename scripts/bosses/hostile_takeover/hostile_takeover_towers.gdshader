@@ -18,6 +18,8 @@ render_mode unshaded, cull_back, depth_draw_opaque, world_vertex_coords;
 
 // A level's darker lighting (ZoneSkin.apply_darkness).
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 uniform float speed = 45.0;
 uniform float period = 240.0;
 uniform float slice_length = 40.0;
@@ -61,7 +63,7 @@ void fragment() {
 	vec3 col;
 	if (n.y > 0.5) {
 		// The roof: dark, with a faint rim of plant.
-		col = base * 0.55 * light_factor(scenery_light);
+		col = base * 0.55 * light_factor(scenery_light) * scenery_tint;
 	} else {
 		// Storeys of glass behind steel mullions; a pixel covering many windows shows their average.
 		vec2 cell_size = vec2(1.9, 3.4);
@@ -76,7 +78,7 @@ void fragment() {
 		// Sides the train runs along catch more of the city's glow than the ends.
 		float shade = 0.5 + 0.12 * abs(n.x) + 0.05 * n.z;
 		vec3 wall = mix(base * shade, base * 0.3, win);
-		col = wall * light_factor(scenery_light) + to_linear(tint) * (win * lit * window_glow);
+		col = wall * light_factor(scenery_light) * scenery_tint + to_linear(tint) * (win * lit * window_glow);
 	}
 	ALBEDO = col;
 }

@@ -8,7 +8,8 @@ extends SceneTree
 ##   sfx_bank_power.gd    power-ups, weapons and protective items
 ##   sfx_bank_enemies.gd  enemies: every attack's warning, the attacks, hits and deaths
 ##   sfx_bank_bosses.gd   bosses: their entrances, warnings and attacks
-##   sfx_bank_resonator.gd  the Resonator: its chime (the warning), its pulse and its death
+##   sfx_bank_resonator.gd  the Resonator: its warning (a crackling fire breaking into a wave crash), its
+##                        pulse and its death
 ##   sfx_bank_barnacle.gd   the Barnacle Turret: popping out, its charge-up (the warning), its bolts, its death
 ##   sfx_bank_sleep_taker.gd  the Sleep Taker: its rise, its attacks' warnings (the shriek, the
 ##                        whispering, the inhale) and the attacks
@@ -22,8 +23,28 @@ extends SceneTree
 ##                        coupling stomped and the carriages breaking away
 ##   sfx_bank_sewer_swarm.gd  the Sewer Swarm: the Rising, a surge's rising chitter (the warning) and its
 ##                        rush, a cluster shocked by a fence, falling into a hole, scattering
+##   sfx_bank_magnate.gd  The Magnate (the Golden Convergence's second stage): his roar (a Pounce's warning), growls
+##                        and breathing, the leap and crash, the slam into the gate, the stun and the stomp, the
+##                        cable's crackle (a Cable Lash's warning) and whip, the transition's burst and the suit's
+##                        fall, his defeat (the cables tearing, the screens dying, his death and collapse)
 ##   sfx_bank_enforcer.gd  the Enforcer Truck: its siren (its arrival), a volley's rising whine (the warning)
 ##                        and its laser shots, a rider climbing aboard, its crash into a hole
+##   sfx_bank_golden_convergence.gd  the Golden Convergence: its rise and the cult's chime rung huge and slow,
+##                        the Helidrone Strafe (the squadron out of the cape and back, a pass's whine (the
+##                        warning), its rake and sweep, ricochets, a drone hurled by a pad), the Flying
+##                        Buttress rising and crumbling; the Fist Slam (the grinding wind-up (the warning),
+##                        the slam, the floor breaking, the tower toppling) and the Missile Barrage (the
+##                        hatches (the warning), the launch, the dive's whistle, the fire)
+##   sfx_bank_cinematics.gd  the cinematics' own moments, where the game's sounds don't fit (the Dead Zone's
+##                        intro: the smoking crater, rubble shifting, a hand grabbing an edge, a host turning to
+##                        look and its corrupted screen up close)
+##   sfx_bank_gangland_outro.gd  the Gangland outro's: the screeches sniffing, the golden key's glint, the
+##                        sports car's unlock, scissor door, engine starting and drive-off, and the passenger
+##                        screech's chirp as it nods to the runner
+##   sfx_bank_minigames.gd  the mini-games' own sounds (the Beach's volleyball match: the ball's hit, its bounce in the
+##                        sand, the referee's whistle)
+##   sfx_bank_mecha_guppy.gd  Mecha Guppy and Captain Cogs: the captain's throw, the shark coming up (a bite's and a
+##                        breach's warning), its jaws snapping shut, a bomb clanging into its jaws (a hit)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -48,7 +69,13 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_sentinel.gd"),
 	preload("res://tools/asset_gen/sfx_bank_hostile_takeover.gd"),
 	preload("res://tools/asset_gen/sfx_bank_sewer_swarm.gd"),
+	preload("res://tools/asset_gen/sfx_bank_magnate.gd"),
 	preload("res://tools/asset_gen/sfx_bank_enforcer.gd"),
+	preload("res://tools/asset_gen/sfx_bank_golden_convergence.gd"),
+	preload("res://tools/asset_gen/sfx_bank_cinematics.gd"),
+	preload("res://tools/asset_gen/sfx_bank_gangland_outro.gd"),
+	preload("res://tools/asset_gen/sfx_bank_minigames.gd"),
+	preload("res://tools/asset_gen/sfx_bank_mecha_guppy.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

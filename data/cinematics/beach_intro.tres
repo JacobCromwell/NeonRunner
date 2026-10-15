@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"beach_intro"
+title = "The Beach"
+scene = "res://scenes/cinematics/arrival_flyover.tscn"
+placeholder_text = "DESIGN-TBD: a short scene arriving at the beach, a sandy lane of tiki bars and surf shops running down to the sea."

@@ -24,7 +24,7 @@ func _ready() -> void:
 		elif arg.begins_with("--shot="):
 			shot = arg.trim_prefix("--shot=")
 	if all_skins:
-		for skin: String in ["greybox", "city", "gangland", "marketplace", "golden",
+		for skin: String in ["greybox", "city", "gangland", "marketplace", "casino", "golden",
 			"golden_palace", "corporate", "corporate_plaza", "dead_zone"]:
 			for before: bool in [true, false]:
 				_build(skin, before)

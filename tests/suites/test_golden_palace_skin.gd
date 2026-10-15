@@ -28,10 +28,9 @@ const PALACE_LEVEL_PATH: String = "res://data/levels/golden_3.tres"
 ## pink is about 0.8 (the same budget test_golden_skin uses for the Golden Zone).
 const MAX_SURFACE_CHROMA: float = 0.45
 const GLOW_SATURATION_LIMIT: float = 0.35
-## Gaps: the darkest golden_metal() draws a gold (kit_golden.gdshaderinc), and how much darker than
-## the darkest floor a gap's inside must stay (linear luminance).
+## Gaps: the darkest golden_metal() draws a gold (kit_golden.gdshaderinc); the stairwell and the lower hall
+## are held to SkinSuite.hole_share() against the darkest floor.
 const GOLD_DARKEST: float = 0.5
-const GAP_CONTRAST: float = 0.35
 ## The emblem is shown openly and large (GDD §5): never smaller than this on the walls.
 const EMBLEM_MIN_SIZE: float = 2.0
 
@@ -123,14 +122,15 @@ func _surfaces(skin: GoldenPalaceSkin) -> void:
 
 
 ## Gaps read as holes at a glance (CLAUDE.md readability rules): whatever a gap shows is in deep
-## shade, far darker than any floor can be drawn, and nothing in it glows but the orange edge; no
+## shade, clearly darker than the floor as rendered (SkinSuite.hole_share; task H3: a stairwell and the lower
+## hall show below it), and nothing in it glows but the orange edge; no
 ## floor is drawn in (or near) the edge's colour; the showcase gap carries the full orange edge on
 ## both sides. Checked over whole levels at 3 and 5 lanes.
 func _gaps(skin: GoldenPalaceSkin) -> void:
 	var darkest: float = _linear_luminance(_darkest_gold(skin.stone_colors[0]))
-	var inside: float = _linear_luminance(skin.gap_inside_color)
-	check(inside < darkest * GAP_CONTRAST, "a gap's inside stays far darker than the darkest floor: %.4f vs %.4f" % [
-		inside, darkest])
+	# PAT_PALACE_WELL caps its result at COLOR: gap_inside_color for the stairwell's steps and walls, well_floor_color for the
+	# lower hall (a top face).
+	check_hole_share("the Golden Palace", [skin.gap_inside_color], [skin.well_floor_color], darkest)
 	var like_edge: PackedStringArray = []
 	var surfaces: Array[Color] = [skin.gold_color, skin.gold_shine_color, skin.coffer_color, skin.rib_color]
 	surfaces.append_array(Array(skin.stone_colors))
@@ -173,6 +173,7 @@ func _gaps(skin: GoldenPalaceSkin) -> void:
 		"the near edge's orange lip ends right at the collision edge: %s" % near_lip)
 	check(halo, "the far edge carries its orange halo toward the approaching runner")
 	await free_track(track)
+	var inside: float = maxf(_linear_luminance(skin.gap_inside_color), _linear_luminance(skin.well_floor_color))
 	for lanes: int in [3, 5]:
 		var layout: LevelLayout = level(PALACE_LEVEL_PATH, lanes, 0.6, 9)
 		var world := Node3D.new()

@@ -62,7 +62,8 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 	while float(hole_k) * hole_bay < end:
 		var hole_at: float = (float(hole_k) + 0.5) * hole_bay
 		if hole_at >= start and hole_at < end and _content(side, hole_k) == Content.ALCOVE \
-				and not _low_piece_overlaps_gap(side, hole_at, ALCOVE_SIZE.x * 0.5 + 0.18):
+				and not _low_piece_overlaps_gap(side, hole_at, ALCOVE_SIZE.x * 0.5 + 0.18) \
+				and not skin.crowds_niche(side, hole_at, ALCOVE_SIZE.x * 0.5):
 			holes.append(Rect2(hole_at - ALCOVE_SIZE.x * 0.5, skin.decorative_statue_mount_y(),
 				ALCOVE_SIZE.x, ALCOVE_SIZE.y))
 		hole_k += 1
@@ -109,7 +110,8 @@ func _bay(s: MeshLayer, batch: MeshBatch, side: int, face_x: float, index: int, 
 		Content.GALLERY:
 			_gallery(s, batch, side, face_x, index, at)
 		Content.ALCOVE:
-			if not _low_piece_overlaps_gap(side, at, ALCOVE_SIZE.x * 0.5 + 0.18):
+			if not _low_piece_overlaps_gap(side, at, ALCOVE_SIZE.x * 0.5 + 0.18) \
+					and not skin.crowds_niche(side, at, ALCOVE_SIZE.x * 0.5):
 				_alcove(s, side, face_x, index, at)
 		Content.TAPESTRY:
 			_tapestry(s, side, face_x, index, at)

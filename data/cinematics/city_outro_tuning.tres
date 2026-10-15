@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="CityOutroTuning" format=3]
+
+[ext_resource type="Script" path="res://scripts/cinematics/city_outro_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")

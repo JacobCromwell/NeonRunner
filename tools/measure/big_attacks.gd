@@ -56,7 +56,7 @@ func _run() -> void:
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	if _levels.is_empty():
 		for s: CampaignStep in campaign.steps():
-			if s.is_level():
+			if s.is_level() and not s.is_minigame():
 				_levels.append(s.id)
 	var app: Node = root.get_node_or_null(^"App")
 	if app != null:
@@ -67,7 +67,7 @@ func _run() -> void:
 		+ "  waited s (mean/max, n)  idle dog/reso/drone/truck  tanks rev/pass  log")
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		var wanted: bool = true

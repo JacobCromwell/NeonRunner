@@ -9,6 +9,8 @@ extends TestSuite
 
 var main: Node
 var heard: Array[StringName] = []
+## Boss slots swapped for an unbuilt stand-in (_stand_in): step id → the real BossDef.
+var _real_bosses: Dictionary = {}
 
 
 func run() -> void:
@@ -52,6 +54,26 @@ func run() -> void:
 
 
 # --- Helpers ---------------------------------------------------------------------
+
+## Boss step `id` with an unbuilt stand-in in its slot (a copy of its BossDef with no scene), for the placeholder card a
+## boss not yet built shows: every boss is built now (docs/OPEN_QUESTIONS.md item 575). _restore_stand_ins() puts the
+## real ones back.
+func _stand_in(id: String) -> CampaignStep:
+	var step: CampaignStep = App.campaign.step(id)
+	if not _real_bosses.has(id):
+		_real_bosses[id] = step.boss
+	var copy: BossDef = (_real_bosses[id] as BossDef).duplicate() as BossDef
+	copy.scene = ""
+	copy.preview_scene = ""
+	step.boss = copy
+	return step
+
+
+func _restore_stand_ins() -> void:
+	for id: String in _real_bosses:
+		App.campaign.step(id).boss = _real_bosses[id]
+	_real_bosses.clear()
+
 
 func _frames(count: int) -> void:
 	for i: int in count:
@@ -260,6 +282,12 @@ func _check_fits(screen: Control, what: String) -> void:
 	var need: Vector2 = layout.get_combined_minimum_size() if layout != null else Vector2.ZERO
 	check(need.x <= viewport.x + 0.5 and need.y <= viewport.y + 0.5,
 		"%s fits the screen (needs %s of %s)" % [what, need, viewport])
+	# The content sits in a scroll area (ScreenBase.content_scroll) that scrolls when it has too little
+	# room: at these sizes (1280×720 after stretching, a phone's menus already magnified) none should.
+	var base := screen as ScreenBase
+	if base != null:
+		check(not base.is_scrolling(), "%s needs no scrolling (content needs %s of %s)" % [what,
+			base.content.get_combined_minimum_size(), base.content_scroll.size])
 
 
 ## The screen gave one of its controls the focus, and ui_focus_next moves it to another one.
@@ -303,14 +331,17 @@ func _test_every_screen(tag: String) -> void:
 		["run summary", func() -> void: _show_result(false), ResultsScreen],
 		["boss results", func() -> void: _show_boss_result(true), ResultsScreen],
 		["boss run summary", func() -> void: _show_boss_result(false), ResultsScreen],
-		# The City's boss is built (task E1d), and Gangland's (E4b); the Golden Palace's is still a placeholder card.
-		["boss slot", func() -> void: App.play_step(App.campaign.step("golden/boss")), SlotScreen],
-		# The zones' intros play their arrival flyovers (task F1); the outros are still placeholder cards.
-		["cinematic slot", func() -> void: App.play_step(App.campaign.step("city/outro")), SlotScreen],
+		# The placeholder card a boss not yet built shows: every boss is built now, so an unbuilt stand-in in the Beach's
+		# slot (docs/OPEN_QUESTIONS.md item 575; _stand_in).
+		["boss slot", func() -> void: App.play_step(_stand_in("beach/boss")), SlotScreen],
+		# The zones' intros play their arrival flyovers (task F1) and the City's and Gangland's outros are built
+		# (F2a, F2d); the other outros are still placeholder cards.
+		["cinematic slot", func() -> void: App.play_step(App.campaign.step("marketplace/outro")), SlotScreen],
 		["demo end", func() -> void: App.show_demo_end(), DemoEndScreen],
 	]
 	for entry: Array in screens:
 		await _open_and_check("%s (%s)" % [entry[0], tag], entry[1], entry[2])
+	_restore_stand_ins()
 
 	# The overlays over a running level.
 	await _start_level("city/1")
@@ -421,7 +452,7 @@ func _test_level_select() -> void:
 		check(App.screen is DemoEndScreen, "and leads to the demo's end screen")
 	BuildFlavor.set_override(-1)
 
-	# Deep into the six-zone campaign, the list opens on the next step, scrolled into view, at desktop
+	# Deep into the eight-zone campaign, the list opens on the next step, scrolled into view, at desktop
 	# and touch sizes.
 	for touch: int in [0, 1]:
 		UiTheme.touch_override = touch
@@ -436,7 +467,7 @@ func _test_level_select() -> void:
 		check(tile != null and _focus() == tile, "late in the campaign the next step has the focus (%s, %s)" % [_focus(), tag])
 		check(tile != null and scroll.get_global_rect().encloses(tile.get_global_rect()),
 			"and the list scrolls it into view (%s)" % tag)
-		check(levels.tiles.size() == App.campaign.steps().size(), "every step of the six zones has a tile (%s)" % tag)
+		check(levels.tiles.size() == App.campaign.steps().size(), "every step of every zone has a tile (%s)" % tag)
 	UiTheme.touch_override = 0
 	App.profile = SampleProfiles.rich()
 
@@ -782,17 +813,19 @@ func _test_results() -> void:
 
 func _test_slots_and_demo_end() -> void:
 	App.profile = SampleProfiles.fresh()
-	# The City's boss is built (task E1d), and Gangland's (E4b); the Golden Palace's is still a placeholder card.
-	App.play_step(App.campaign.step("golden/boss"))
+	# A boss not yet built's placeholder card: an unbuilt stand-in in the Beach's slot (every boss is built now).
+	App.play_step(_stand_in("beach/boss"))
 	await _frames(2)
 	var slot := App.screen as SlotScreen
 	check(slot != null and _focus() == slot.continue_button, "the boss slot focuses Continue")
 	if slot == null:
+		_restore_stand_ins()
 		return
 	slot.continue_button.pressed.emit()
 	await _frames(2)
-	check(App.profile.is_completed("golden/boss") and App.screen is SlotScreen
-		and (App.screen as SlotScreen).step.id == "golden/outro", "Continue counts the boss as done and moves on")
+	_restore_stand_ins()
+	check(App.profile.is_completed("beach/boss") and App.screen is SlotScreen
+		and (App.screen as SlotScreen).step.id == "beach/outro", "Continue counts the boss as done and moves on")
 	(App.screen as ScreenBase).go_back()
 	await _frames(1)
 	check(App.screen is LevelSelectScreen, "back returns to the level select")

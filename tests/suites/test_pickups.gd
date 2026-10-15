@@ -6,9 +6,9 @@ extends TestSuite
 ## the way), over hand-built cases and a sweep of generated tracks checked against the rules as this
 ## suite writes them; waiting for a fair spot; taking one (its charge, the stock, the HUD, the player
 ## model), the charge cap, a missed pickup, pooling and the first-encounter hint; the standard armor
-## rule end to end on the test boss (the final phase's pickup, a break then a pickup after the boss's
-## delay, at most once per phase, none after the fight), a boss's own pickups (offer_pickup, the test
-## boss's shield); and, through the App, the stock and quick play's review option.
+## rule end to end on the test boss (the final phase's pickup, an armor hit then a pickup after the
+## boss's delay, at most once per phase, none after the fight), a boss's own pickups (offer_pickup, the
+## test boss's shield); and, through the App, the stock and quick play's review option.
 
 const TEST_BOSS_PATH: String = "res://data/bosses/test_boss.tres"
 
@@ -649,21 +649,21 @@ func _test_hints() -> void:
 		check(shown.size() == intro_count, "a spawning pickup never interrupts play")
 		if pass_index == 0:
 			var ids: Array = shown.map(func(s: Array) -> String: return s[0])
-			check(ids.has("pickup_shield"), "a shield pickup's first appearance brings its hint (%s)" % [ids])
+			check(ids.has("pickup_armor"), "a boss's armor pickup is explained on the intro (%s)" % [ids])
 			for s: Array in shown:
-				if s[0] == "pickup_shield":
-					check(String(s[1]).contains("shield") and String(s[1]).contains("run through"), "saying what it does and how to take it")
-			check(profile.has_seen("hint/pickup_shield") and profile.has_seen("hint/pickup_armor"), "boss pickup hints are remembered from the intro")
+				if s[0] == "pickup_armor":
+					check(String(s[1]).contains("armor") and String(s[1]).contains("run through"), "saying what it does and how to take it")
+			check(profile.has_seen("hint/pickup_armor"), "boss pickup hints are remembered from the intro")
 		else:
-			check(not shown.map(func(s: Array) -> String: return s[0]).has("pickup_shield"), "never twice")
+			check(not shown.map(func(s: Array) -> String: return s[0]).has("pickup_armor"), "never twice")
 		await sim.free_world(world)
 
 
 # --- The boss rule, end to end ------------------------------------------------------------------
 
 ## GDD §10's standard armor rule on the test boss: an armor pickup when the final phase begins, one
-## after the boss's delay when the player's armor or shield breaks, at most once per phase; every
-## one at a fair spot.
+## after the boss's delay when the player's armor takes a hit (a shield break brings none: owner,
+## October 14, 2026), at most once per phase; every one at a fair spot.
 func _test_boss_rule() -> void:
 	for lanes: int in [3, 5, 6]:
 		var enc := BossEncounter.create(test_def) as TestBoss
@@ -708,7 +708,7 @@ func _test_boss_rule() -> void:
 		await _steer(w, int(seen[0][1]))
 		await _until(w, func() -> bool: return w.player.armor > 0 or w.pickups.active.is_empty(), 5.0)
 		check(w.player.armor == 1, "the player takes it: armor again")
-	# At most once per phase: another break brings none.
+	# At most once per phase: another armor hit brings none (nor the shield breaking after it).
 	w.player.god_mode = false
 	w.player.invulnerable_left = 0.0
 	w.player.receive_hit(shot)

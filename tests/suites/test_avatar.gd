@@ -39,6 +39,7 @@ func run() -> void:
 	_test_glow_colours()
 	_test_fit_follows_retune()
 	_test_flash_death_and_reset()
+	_test_dark_glow()
 	_test_cost()
 	await _test_tuning_panel()
 	await _test_self_drive()
@@ -644,6 +645,39 @@ func _test_flash_death_and_reset() -> void:
 	check(avatar.rig.activity == Activity.RUN and avatar.rig.weight(Activity.RUN) == 1.0 and tint.a == 0.0
 		and float(material.get_shader_parameter(&"glow_boost")) == 1.0,
 		"reset() snaps back to a clean run")
+	avatar.free()
+
+
+## Owner, October 10, 2026 (the Sleep Taker's lights out, a completely dark tunnel): the runner glows by
+## its own light in the dark, so the player sees where they are: set_dark_glow widens and strengthens the
+## rim light (its pale steel blue, clear of every hazard colour, _test_glow_colours) up to the whole
+## silhouette, still below the bloom threshold; it powers down with the suit on death and reset() clears it.
+func _test_dark_glow() -> void:
+	var avatar := PlayerAvatar.new()
+	var material := avatar.rig.material as ShaderMaterial
+	avatar.animate(_state(), DT)
+	var rim: float = material.get_shader_parameter(&"rim_strength")
+	check(is_equal_approx(rim, PlayerSuit.RIM_STRENGTH) and is_zero_approx(avatar.get_dark_glow()),
+		"no dark glow by default: the plain rim light (%.2f)" % rim)
+	avatar.set_dark_glow(1.0)
+	var full: float = material.get_shader_parameter(&"rim_strength")
+	var power: float = material.get_shader_parameter(&"rim_power")
+	check(is_equal_approx(full, PlayerAvatar.DARK_RIM_STRENGTH) and full > PlayerSuit.RIM_STRENGTH * 3.0
+		and power < PlayerSuit.RIM_POWER, "in the dark the rim glows over the whole silhouette (%.2f, power %.2f)" % [full, power])
+	var brightest: float = PlayerAvatar.DARK_RIM_STRENGTH * maxf(PlayerSuit.RIM_COLOR.r, maxf(PlayerSuit.RIM_COLOR.g, PlayerSuit.RIM_COLOR.b))
+	check(brightest <= MAX_GLOW_EMISSION, "and stays soft: its brightest emission %.2f, at most the glow threshold" % brightest)
+	avatar.set_dark_glow(0.5)
+	var half: float = material.get_shader_parameter(&"rim_strength")
+	check(half > PlayerSuit.RIM_STRENGTH and half < full, "it rises and fades with the dark (%.2f at half)" % half)
+	avatar.set_dark_glow(1.0)
+	_drive(avatar, _state({"alive": false}), 60, "dark glow on death")
+	var dead: float = material.get_shader_parameter(&"rim_strength")
+	check(dead < PlayerSuit.RIM_STRENGTH + (full - PlayerSuit.RIM_STRENGTH) * 0.2, "it powers down with the suit on death (%.2f)" % dead)
+	avatar.reset()
+	avatar.animate(_state(), DT)
+	check(is_zero_approx(avatar.get_dark_glow())
+		and is_equal_approx(float(material.get_shader_parameter(&"rim_strength")), PlayerSuit.RIM_STRENGTH),
+		"reset() clears it")
 	avatar.free()
 
 

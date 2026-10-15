@@ -6,7 +6,7 @@ extends BossPart
 ## draws it, easing each toward its target.
 ## Declared, never special-cased (CLAUDE.md principle 8), so the shared rules apply as to any enemy:
 ## - immune_to_weapons (GDD §10: like every Bad Dream, weapons have no effect at all): auto-fire never
-##   targets it, and no shot or splash hurts it (R2's rule for hosts); its BossDef's weapon cap is 0
+##   targets it, and no shot or splash hurts it (a fence generator's rule); its BossDef's weapon cap is 0
 ##   besides. Only a generator's EMP hurts it (SleepTaker._on_part_emp), each tearing a chunk away
 ##   (tear(): SleepTakerModel.CHUNK_HEADS);
 ## - a boss's body (BossPart): claws never defeat it, the dash passes through it, it takes no stomps
@@ -43,7 +43,7 @@ var reach: float = 1.0
 ## Materializing (1 = not there yet) and dissolving: set directly, not eased.
 var fade: float = 0.0
 ## Seconds since each chunk (SleepTakerModel.CHUNK_HEADS) was torn away; -1 while it's still there.
-var tear_time := PackedFloat32Array([-1.0, -1.0])
+var tear_time := PackedFloat32Array([-1.0, -1.0, -1.0, -1.0])
 
 var _core: Hazard
 
@@ -183,5 +183,5 @@ func _animate(delta: float) -> void:
 	for i: int in tear_time.size():
 		if tear_time[i] >= 0.0:
 			tear_time[i] += delta
-	model.torn = Vector2(torn(0), torn(1))
+	model.torn = Vector4(torn(0), torn(1), torn(2), torn(3))
 	model.animate()

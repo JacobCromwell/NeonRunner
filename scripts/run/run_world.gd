@@ -37,6 +37,17 @@ var score: ScoreKeeper
 ## The power-up controller (null until the power-ups exist).
 var powerups: Node
 var sounds: PlayerSfx
+## The climb is on (GDD §10, the Beach's boss, whose runner climbs ceilings and roofs 20-30 m above the
+## street): the run camera climbs with the runner (RunCamera's climbing view: it frames them from the floor
+## they're on or came from instead of the street, sees a ceiling from below at that ceiling's own height, and
+## never sits inside a roof), the runner's blob shadow lies on the floor under them (Player.shadow_on_floor),
+## and a landing's shake counts the fall down to the floor landed on (RunEffects). A boss turns it on; off
+## (every level and every other boss fight), all three are as they always were.
+var camera_climbs: bool = false:
+	set(value):
+		camera_climbs = value
+		if player != null:
+			player.shadow_on_floor = value
 
 var _voices: Array[AudioStreamPlayer3D] = []
 var _next_voice: int = 0
@@ -62,8 +73,10 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	player = _add(Player.new(), "Player") as Player
 	player.rules = rules
 	player.setup(tuning, geo, layout.lane_count / 2)
-	# The layout's own list: wall gaps the track gains later (extend_layout) count too.
+	player.shadow_on_floor = camera_climbs
+	# The layout's own lists: wall gaps and dash walls the track gains later (extend_layout) count too.
 	player.wall_gaps = layout.wall_gaps
+	player.dash_walls = layout.dash_walls
 	player.apply_loadout(DamageRules.Armor.create(rules, loadout.tier(&"armor"), loadout.has_armor()),
 		loadout.charge(&"shield"), loadout.charge(&"grapple"),
 		loadout.tier(&"claws") > 0,

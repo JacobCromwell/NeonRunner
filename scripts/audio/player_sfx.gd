@@ -6,6 +6,8 @@ extends Node
 ## Every sound asked for, whether or not it plays (headless runs play none, a library may lack it):
 ## tests listen.
 signal requested(sound: StringName)
+## Every sound cut short by stop(): tests listen.
+signal stopped(sound: StringName)
 
 var _players: Dictionary = {}
 
@@ -37,3 +39,13 @@ func play(sound: StringName) -> void:
 	var p: AudioStreamPlayer = _players.get(String(sound))
 	if p != null and SfxLibrary.audible():
 		p.play()
+
+
+## Cuts a sound off where it is: a warning whose attack will never come (its enemy was shot down
+## first) must not go on to its climax. It stops every playing voice of that sound, so a caller whose
+## sound may overlap another instance's must make sure that's what it wants.
+func stop(sound: StringName) -> void:
+	stopped.emit(sound)
+	var p: AudioStreamPlayer = _players.get(String(sound))
+	if p != null:
+		p.stop()

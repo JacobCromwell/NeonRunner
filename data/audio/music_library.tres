@@ -5,6 +5,8 @@
 [resource]
 script = ExtResource("1_music")
 files = {
+"beach": "res://assets/music/marketplace.wav",
+"casino": "res://assets/music/marketplace.wav",
 "city": "res://assets/music/city.wav",
 "corporate": "res://assets/music/corporate.wav",
 "dead_zone": "res://assets/music/dead_zone.wav",
@@ -18,9 +20,13 @@ files = {
 "zone_4": "res://assets/music/Zone_4_Concrete_Fever.mp3",
 "zone_5": "res://assets/music/Zone_5_Beneath_the_Cracks.mp3",
 "zone_6": "res://assets/music/Zone_6_View_from_the_Zenith.mp3",
+"casino_song": "res://assets/music/Zone_3_2_Casino_Midnight_at_the_atrium.mp3",
+"beach_song": "res://assets/music/Zone_Beach_Palms_at_Terminal_Speed.mp3",
 "boss_1": "res://assets/music/Boss_1_Apex_Combat_Maneuver.mp3"
 }
 volume_db = {
+"beach": -11.0,
+"casino": -11.0,
 "city": -10.5,
 "corporate": -10.5,
 "dead_zone": -10.5,
@@ -34,9 +40,13 @@ volume_db = {
 "zone_4": -10.5,
 "zone_5": -10.5,
 "zone_6": -10.5,
+"casino_song": -11.0,
+"beach_song": -11.0,
 "boss_1": -10.5
 }
 bpm = {
+"beach": 144.0,
+"casino": 144.0,
 "city": 160.0,
 "corporate": 112.0,
 "dead_zone": 84.0,
@@ -49,12 +59,15 @@ zone_tracks = {
 "city": "zone_1",
 "gangland": "zone_2",
 "marketplace": "zone_3",
+"casino": "casino_song",
 "corporate": "zone_4",
+"beach": "beach_song",
 "dead_zone": "zone_5",
 "golden": "zone_6"
 }
 boss_tracks = {
-"city_boss": "boss_1"
+"city_boss": "boss_1",
+"casino_boss": "casino_song"
 }
 riff_tracks = {
 "zone_1": "city",

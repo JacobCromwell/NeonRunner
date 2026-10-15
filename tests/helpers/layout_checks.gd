@@ -6,7 +6,9 @@ extends RefCounted
 ##   lane is a hole is longer than a jump (a floor cut's stretch counts as a hole), fences stand on
 ##   floor, ramps stand on floor with no sign at their wall entry, nothing lies in the end-clear
 ##   stretch, every ceiling keeps GDD §3 (check_ceilings), every zone doodad stands where its push is
-##   fair (check_doodads), and every floor cut keeps GDD §9.9's limits (check_cuts).
+##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), the level's wider gaps
+##   keep theirs (check_wide_gaps, task G7), and every dash wall stands where it's fair (check_dash_walls,
+##   task H7a).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -15,7 +17,8 @@ extends RefCounted
 ##   their first pad and then pads 8–10 s apart (GDD §9.6), a Bad Dream's chase has pads at most
 ##   10 s apart and keeps off Octodog runs (GDD §9.7), Octodog runs stay off pads and ceiling
 ##   landings, cyborgs keep their margin from floor obstacles, every fence generator powers a
-##   fence, and Barnacle Turrets keep their limits (check_turrets, GDD §9.8).
+##   fence, Barnacle Turrets keep their limits (check_turrets, GDD §9.8), and every cyborg planted in a
+##   charge's path stands where the charge flattens it fairly (check_charge_paths, task G7).
 ## Each check goes through `suite.check()`, so failures are reported by the suite that called.
 ## Every check runs at the level's own run speed (level_tuning: a campaign level's is its zone's), with
 ## the margins in metres stretched by its pace, as the generator builds it (GDD §3: a faster zone keeps
@@ -23,6 +26,8 @@ extends RefCounted
 
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
+const BuzzOverdriveRulesScript = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
+const DashWallRulesScript = preload("res://scripts/enemies/dash_wall_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 
@@ -60,6 +65,126 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_doodads(suite, layout, config, tag)
 	check_cuts(suite, layout, config, tag)
 	check_wall_fences(suite, layout, config, tag)
+	check_wide_gaps(suite, layout, config, tag)
+	check_dash_walls(suite, layout, config, tag)
+
+
+## Dash walls (task H7a; GDD §9.14, owner, October 8, 2026), wherever the generator stands one (dash_wall_rules.gd),
+## at any lane count, at the level's own run speed (DashWallTuning's times are seconds at it, or at the dash's
+## speed, so they hold at every zone's speed):
+## - only in a level with the `dash_wall` feature, never before its start; MovementTuning.dash_wall_depth deep;
+##   its footprint between the run-up and the end-clear stretch;
+## - faces at least the spacing apart (the dash's longest cooldown, the margin, and the ground a dash adds);
+## - its footprint (approach_seconds before its face to after_seconds past its back, at the dash's speed) holds
+##   no hole, fence, floor cut's window, doodad, speed pad, pad's zone, ramp or the wall run it launches, and no
+##   ceiling from its start to its landing zone's end ("no ceiling overlaps a dash wall");
+## - at least one side wall open to run past it (no sign from wall_route_seconds before its face to its back),
+##   and neither holds a wall gap or a wall fence there;
+## - nothing that invites a dash comes within the spacing before its face (a Buzz Overdrive's charge meeting
+##   the runner, a fence generator, the end of a Tithe Collector's stay; a zone doodad never needs the dash, so it
+##   keeps off the footprint only);
+## - no panic cyborg's run reaches its footprint, nor any cyborg's walk back (CyborgRules.limits, as the Cyborg
+##   clamps them: it never runs through a standing wall nor cowers in its clear stretch);
+## - and the generator's own re-check finds nothing (DashWallRules.problems: the enemies' keep-outs too).
+static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	if layout.dash_walls.is_empty():
+		return
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var speed: float = tuning.run_speed
+	var t: DashWallTuning = DashWallTuning.load_default()
+	var pt := load("res://data/tuning/powerups.tres") as PowerupTuning
+	var zones := CeilingZones.make(config, tuning)
+	var dash: float = speed + pt.dash_speed_bonus
+	var approach: float = t.approach_seconds * dash
+	var after: float = t.after_seconds * dash
+	var longest: float = pt.dash_cooldown
+	for c: float in pt.dash_upgrade_cooldowns:
+		longest = maxf(longest, c)
+	var spacing: float = (longest + t.cooldown_margin_seconds) * speed + pt.dash_duration * pt.dash_speed_bonus
+	var route: float = t.wall_route_seconds * speed
+	var half: float = tuning.fence_depth * 0.5
+	var tithe_tuning := EnemyDirector.tuning_for("tithe_collector") as TitheCollectorTuning
+	var tithe_stay: float = tithe_tuning.stay_seconds() if tithe_tuning != null else 12.0
+	var cyborg_tuning := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+	var cyborg_spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning, zones)
+	suite.check(config.has_feature("dash_wall"), "dash walls only in a level with the feature " + tag)
+	var start: float = config.feature_start("dash_wall") * layout.length
+	var prev: float = -INF
+	for w: Dictionary in layout.dash_walls:
+		var face: float = float(w["start"])
+		var back: float = float(w["end"])
+		var at: String = "the dash wall at %.1f m %s" % [face, tag]
+		suite.check(face >= start - 0.01, "%s comes after its feature's start (%.0f m)" % [at, start])
+		suite.check(absf(back - face - tuning.dash_wall_depth) < 0.01, "%s is %.2f m deep" % [at, tuning.dash_wall_depth])
+		suite.check(face - approach >= config.start_clear_distance - 0.01 and back + after <= layout.length - config.end_clear_distance + 0.01,
+			"%s keeps its footprint between the run-up and the end-clear stretch" % at)
+		suite.check(face - prev >= spacing - 0.01, "%s is %.0f m after the one before (at least %.0f m)" % [at, face - prev, spacing])
+		prev = face
+		var fp := Vector2(face - approach, back + after)
+		for g: Dictionary in layout.gaps:
+			suite.check(not (float(g["start"]) <= fp.y and float(g["end"]) >= fp.x), "%s has no hole around it (%.1f m)" % [at, float(g["start"])])
+		for f: Dictionary in layout.fences:
+			suite.check(not (float(f["at"]) - half <= fp.y and float(f["at"]) + half >= fp.x), "%s has no fence around it (%.1f m)" % [at, float(f["at"])])
+		for c: Dictionary in layout.cuts:
+			var win: Vector2 = FloorCutPlan.window(c, speed)
+			suite.check(not (win.x <= fp.y and win.y >= fp.x), "%s isn't in a floor cut's window (%.0f-%.0f m)" % [at, win.x, win.y])
+		for d: Dictionary in layout.doodads:
+			suite.check(not (float(d["start"]) <= fp.y and float(d["end"]) >= fp.x), "%s has no doodad around it" % at)
+		for sp: Dictionary in layout.speed_pads:
+			suite.check(not (float(sp["at"]) <= fp.y and float(sp["at"]) + tuning.speed_pad_length >= fp.x), "%s has no speed pad around it" % at)
+		for pad: Dictionary in layout.pads:
+			var zone: Vector2 = zones.pad_zone(float(pad["at"]))
+			suite.check(not (zone.x <= fp.y and zone.y >= fp.x), "%s has no anti-grav pad around it" % at)
+		for r: Dictionary in layout.ramps:
+			var run_end: float = maxf(RampLaunch.of(r, tuning, speed).end(), float(r["at"]) + tuning.ramp_length)
+			suite.check(not (float(r["at"]) <= fp.y and run_end >= fp.x), "%s has no ramp or ramp wall run around it" % at)
+		for h: Dictionary in layout.hulls:
+			var landing: Vector2 = zones.landing_zone(h)
+			suite.check(not (float(h["start"]) <= fp.y and landing.y >= fp.x),
+				"%s has no ceiling or landing zone around it (%.0f-%.0f m)" % [at, float(h["start"]), landing.y])
+		var win := Vector2(face - route, back)
+		var open: int = 0
+		for side: int in [-1, 1]:
+			var clear: bool = true
+			for sg: Dictionary in layout.signs:
+				if int(sg["side"]) == side and float(sg["start"]) <= win.y and float(sg["end"]) >= win.x:
+					clear = false
+			open += 1 if clear else 0
+			for wg: Dictionary in layout.wall_gaps:
+				suite.check(not (int(wg["side"]) == side and float(wg["start"]) <= win.y and float(wg["end"]) >= win.x),
+					"%s has no side wall gap beside it" % at)
+			for wf: Dictionary in layout.wall_fences:
+				suite.check(not (int(wf["side"]) == side and float(wf["at"]) + half >= win.x and float(wf["at"]) - half <= win.y),
+					"%s has no wall fence beside it" % at)
+		suite.check(open > 0, "%s leaves a side wall open to run past it (GDD §9.14)" % at)
+		for e: Dictionary in layout.enemies:
+			var bait: float = NAN
+			match String(e.get("type", "")):
+				"buzz_overdrive":
+					var cut: Dictionary = BuzzOverdriveRulesScript.cut_of(layout, e)
+					if not cut.is_empty():
+						bait = FloorCutPlan.meet(cut, speed)
+				"generator":
+					bait = float(e["at"])
+				"tithe_collector":
+					bait = float(e["at"]) + tithe_stay * speed
+			if not is_nan(bait):
+				suite.check(not (bait >= face - spacing and bait <= face),
+					"%s has no %s inviting the dash in the spacing before it (%.0f m)" % [at, e["type"], bait])
+		for c: Dictionary in layout.enemies:
+			if String(c.get("type", "")) != "cyborg":
+				continue
+			var home: float = float(c["at"])
+			var reach: Vector2 = CyborgRules.limits(cyborg_spans, cyborg_tuning, tuning.pace(), home, layout.length)
+			if home < face:
+				suite.check(reach.y < fp.x, "%s: the cyborg at %.1f m runs no further than %.1f m, short of its clear approach (%.1f m)" % [
+					at, home, reach.y, fp.x])
+			else:
+				suite.check(reach.x > fp.y, "%s: the cyborg at %.1f m walks back no further than %.1f m, past its clear stretch (%.1f m)" % [
+					at, home, reach.x, fp.y])
+	var gen := LevelGenerator.for_layout(config, suite.tuning, layout)
+	var problems: PackedStringArray = DashWallRulesScript.problems(gen)
+	suite.check(problems.is_empty(), "the dash walls keep every placement rule %s %s" % [tag, problems])
 
 
 ## Wall fences (task B5; GDD §9.1: "never where a ramp launches the player into one while it's on, and
@@ -331,6 +456,9 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 			var at: float = float(e["at"])
 			if int(e.get("lane", -1)) == lane and absf(at - end) < 0.01:
 				continue
+			if bool(c.get("park", false)) and int(e.get("lane", -1)) == lane and at > FloorCutPlan.charge_at(c) and at < end \
+					and String((e.get("params", {}) as Dictionary).get(ChargePathPlacement.PARAM, "")) == ChargePathPlacement.TANK:
+				continue  # Task G7: the cyborg planted in its path (check_charge_paths), the one exception.
 			var busy: Array[Vector2] = [LevelGenerator.enemy_floor_span(e, pace)]
 			match String(e["type"]):
 				"cyborg":
@@ -639,6 +767,7 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 				suite.check(not FenceGenerator.fences_in_reach(layout, geo, float(e["at"]), int(e["lane"]), gt.emp_radius).is_empty(),
 					"a fence generator powers a fence (at %.0f) %s" % [e["at"], tag])
 	check_turrets(suite, layout, config, speed, tag)
+	check_charge_paths(suite, layout, config, tag)
 
 
 ## Barnacle Turrets (GDD §9.8; barnacle_turret_rules.gd), at run speed `speed`: only in a level with the
@@ -709,6 +838,138 @@ static func check_turrets(suite: TestSuite, layout: LevelLayout, config: LevelCo
 				"two Barnacle Turrets on one ceiling stand apart (%.1f m) %s" % [absf(float(ats[1]) - float(ats[0])), tag])
 			suite.check(int(per_ceiling[key]["free"]) >= 2,
 				"two Barnacle Turrets only where two of the ceiling's lanes are free of pads %s" % tag)
+
+
+## Wider gaps (task G7; owner, October 7, 2026, GDD §9.13 "Holes": a couple a level, uncommon, still jumpable,
+## and too wide for an Enforcer Truck following the runner in to hop), in a level that asks for them
+## (LevelConfig.wide_gaps; WideGapPlacement), at the level's own run speed:
+## - as many as the level asks for (on a seed not its own, at least one), each its WideGapTuning.jump_fraction of a
+##   jump: more than the truck hops
+##   (EnforcerTruckTuning.max_hop_jump_fraction) and no more than a level may ask a runner to jump
+##   (max_gap_jump_fraction); spacing_seconds apart;
+## - never stacked with another demand (WideGapPlacement.blocker): from its take-off margin to its landing margin
+##   (zone_of: clear_before_seconds, clear_after_seconds, never less than the level's spacing there) no other
+##   hole, fence, ramp or where its wall run drops the runner back, pad's zone, speed pad, ceiling's landing zone,
+##   floor cut's window, enemy's attack or floor, attack the rules keep doodads off, or zone doodad (nor its push's
+##   lead), in any lane; no ceiling or ramp's wall run over the jump itself; and no side wall gap on either wall
+##   within wall_gap_clear_seconds of it.
+## A level that asks for none has none (its rows are 0.55 of a jump at most).
+static func check_wide_gaps(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var speed: float = tuning.run_speed
+	var jump: float = tuning.jump_distance(speed)
+	var et := EnemyDirector.tuning_for("enforcer_truck") as EnforcerTruckTuning
+	var hop: float = et.max_hop_jump_fraction if et != null else 0.6
+	var rows: Array[Dictionary] = WideGapPlacement.wide_rows(layout, jump, hop)
+	if config.wide_gaps <= 0 or WallGapPlacement.is_boss_arena(config):
+		suite.check(rows.is_empty(), "no wider gaps where the level asks for none (%d) %s" % [rows.size(), tag])
+		return
+	var t: WideGapTuning = WideGapPlacement.tuning()
+	# Every campaign level gets its count on its own seed (test_wide_gaps); on another seed a level crowded with
+	# other demands may fit one fewer (the generator says so, LevelGenerator.wide_gap_result), never none.
+	suite.check(rows.size() <= config.wide_gaps and rows.size() >= maxi(config.wide_gaps - 1, mini(config.wide_gaps, 1)),
+		"the level has its %d wider gaps, or one fewer where nothing else fits (%d) %s" % [config.wide_gaps, rows.size(), tag])
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var keeps: Array[Dictionary] = WideGapPlacement.keeps_of(gen)
+	var lead: float = LevelGenerator.doodad_lead_for(gen.tuning)
+	var prev_end: float = -INF
+	for row: Dictionary in rows:
+		var start: float = float(row["start"])
+		var end: float = float(row["end"])
+		var w: String = "(wider gap %.1f-%.1f, %.2f of a jump, lanes %s) %s" % [start, end, (end - start) / jump, row["lanes"], tag]
+		suite.check(end - start > hop * jump + 0.001 and end - start <= config.max_gap_jump_fraction * jump + 0.001
+			and absf(end - start - minf(t.jump_fraction, config.max_gap_jump_fraction) * jump) < 0.01,
+			"a wider gap is too wide for an Enforcer Truck to hop and still jumpable " + w)
+		suite.check(start - prev_end >= t.spacing_seconds * speed - 0.01, "wider gaps keep their spacing " + w)
+		prev_end = end
+		var why: String = WideGapPlacement.blocker(gen, t, Vector2(start, end), row, keeps)
+		suite.check(why == "", "nothing else in any lane from a wider gap's take-off margin to its landing margin (%s) %s"
+			% [why, w])
+		var zone: Vector2 = WideGapPlacement.zone_of(gen, t, Vector2(start, end))
+		suite.check(not layout.doodad_between(zone.x + 0.01, zone.y + lead - 0.01),
+			"no zone doodad (nor its push's lead) at a wider gap's take-off or landing " + w)
+		var clear: float = t.wall_gap_clear_seconds * speed
+		suite.check(not layout.wall_gap_between(start - clear, end + clear), "no side wall gap beside a wider gap " + w)
+
+
+## Cyborgs in charge paths (task G7; owner, October 7, 2026, GDD §9.13 "Teaching"; ChargePathPlacement), at the
+## level's own run speed. Each planted cyborg:
+## - is a plain floor cyborg: never a host, never the panic variant, standing where it's placed;
+## - stands in the path of its charger's charge: an Octodog's planned first lunge, from where the dog stands, two
+##   lanes across along a line through the cyborg (the cyborg in the lane beside the dog's, dog_cyborg_ahead in
+##   front of it, the path free of holes), or a parked Buzz Overdrive's charge (the cyborg in the cut's lane, in
+##   front of its end, past where the cut meets the runner);
+## - is reached by it in view, in_view_seconds or more ahead of a runner at the run speed;
+## - holds its fire from hold_before_seconds before the charge's warning until the charge has passed the runner;
+## - comes where no other big attack is planned around it (attack_margin_seconds).
+## (check_rules' cyborg margin and check_ceilings' floor enemies hold for it as for any cyborg.)
+static func check_charge_paths(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var planted: Array[Dictionary] = ChargePathPlacement.planted_in(layout)
+	if config.charge_path_cyborgs <= 0:
+		suite.check(planted.is_empty(), "no cyborg planted in a charge's path where the level asks for none " + tag)
+		return
+	suite.check(planted.size() <= config.charge_path_cyborgs, "at most %d cyborgs planted in charge paths (%d) %s"
+		% [config.charge_path_cyborgs, planted.size(), tag])
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var v: float = tuning.run_speed
+	var pace: float = tuning.pace()
+	var t: ChargePathTuning = ChargePathPlacement.tuning()
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var ot := EnemyDirector.tuning_for("octodog") as OctodogTuning
+	var scaling: float = config.enemy_scaling
+	for e: Dictionary in planted:
+		var at: float = float(e["at"])
+		var lane: int = int(e["lane"])
+		var params: Dictionary = e.get("params", {})
+		var kind: String = String(params.get(ChargePathPlacement.PARAM, ""))
+		var w: String = "(%s's cyborg at %.1f, lane %d) %s" % [kind, at, lane, tag]
+		suite.check(String(e["type"]) == "cyborg" and int(e.get("side", 0)) == 0 and not bool(params.get("host", false))
+			and not bool(params.get("panic", true)) and bool(params.get("stand", false)),
+			"a plain floor cyborg, never a host, standing where it's placed " + w)
+		var charger: Dictionary = ChargePathPlacement.charger_of(layout, e)
+		suite.check(not charger.is_empty() and String(charger.get("type", "")) == kind, "it stands in its charger's path " + w)
+		if charger.is_empty():
+			continue
+		var hold: Vector2 = params.get("hold_fire", Vector2(INF, -INF))
+		var cp: Dictionary = charger.get("params", {})
+		var warn: float = INF
+		var strike_end: float = -INF
+		var span := Vector2(INF, -INF)
+		var lanes: Array[int] = [lane]
+		if kind == ChargePathPlacement.DOG:
+			var d: float = float(charger["at"])
+			var anchors: Array = cp.get("charge_at", [])
+			var dog_lane: int = int(charger["lane"])
+			var far: int = lane + (lane - dog_lane)
+			suite.check(absi(lane - dog_lane) == 1 and far >= 0 and far < layout.lane_count,
+				"in the lane beside the dog's, its lunge two lanes across " + w)
+			var most: float = t.dog_cyborg_ahead + ChargePathPlacement.DOG_SPOT_STEP * (ChargePathPlacement.DOG_SPOTS - 1)
+			suite.check(d - at >= t.dog_cyborg_ahead * pace - 0.01 and d - at <= most * pace + 0.01,
+				"dog_cyborg_ahead (or a little more) in front of the dog (%.2f m) %s" % [d - at, w])
+			suite.check(not anchors.is_empty() and absf(float(anchors[0]) - (d - ot.stop_distance(v, scaling, pace))) < 0.5,
+				"the dog's first lunge is from its spot " + w)
+			suite.check(ChargePathPlacement.path_clear(gen, ot, dog_lane, lane, d, at), "the lunge's path keeps off every hole " + w)
+			warn = float(anchors[0]) if not anchors.is_empty() else INF
+			strike_end = warn + (ot.windup_time(scaling) + ot.lunge_duration(v, scaling, pace)) * v
+			suite.check(ChargePathPlacement.dog_in_view(gen, t, ot, d, at), "the lunge reaches it in view " + w)
+			span = Vector2(float(cp.get("claim_at", warn)) - t.attack_margin_seconds * v, strike_end + t.attack_margin_seconds * v)
+			lanes = [dog_lane, lane, far]
+			suite.check(absf(float(cp.get("claim_at", INF)) - (warn - t.claim_seconds * v)) < 0.01,
+				"the dog claims its turn claim_seconds before its wind-up " + w)
+		else:
+			var cut: Dictionary = BuzzOverdriveRulesScript.cut_of(layout, charger)
+			suite.check(bool(cut.get("park", false)) and int(cut["lane"]) == lane and at < float(cut["end"])
+				and at > FloorCutPlan.meet(cut, v), "in the parked tank's lane, in front of it, past where its cut meets the runner " + w)
+			warn = FloorCutPlan.warn_at(cut)
+			strike_end = FloorCutPlan.meet(cut, v)
+			suite.check(ChargePathPlacement.tank_in_view(gen, t, cut, at), "the blade reaches it in view " + w)
+			var claim: float = maxf(t.claim_seconds, BuzzOverdriveRulesScript.tuning().claim_seconds)
+			suite.check(is_equal_approx(float(cut.get("claim_seconds", -1.0)), claim), "the tank claims its turn claim_seconds before its rev " + w)
+			span = Vector2(warn - claim * v - t.attack_margin_seconds * v, FloorCutPlan.window(cut, v).y + t.attack_margin_seconds * v)
+		suite.check(hold.x <= warn - t.hold_before_seconds * v + 0.01 and hold.y >= strike_end - 0.01,
+			"it holds its fire from before the warning until the charge has passed the runner " + w)
+		var near: String = ChargePathPlacement.attack_near(gen, charger, span, lanes)
+		suite.check(near == "", "no other big attack planned around it (%s) %s" % [near, w])
 
 
 ## A feature the game knows (LevelConfig.features): one feature_positions() can find, an enemy type

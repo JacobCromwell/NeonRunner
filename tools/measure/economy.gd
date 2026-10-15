@@ -53,7 +53,7 @@ func _run() -> void:
 	var catalog: ShopCatalog = ShopCatalog.load_from()
 	if _levels.is_empty():
 		for s: CampaignStep in campaign.steps():
-			if s.is_level():
+			if s.is_level() and not s.is_minigame():
 				_levels.append(s.id)
 	var rows: Array[Dictionary] = []
 	print("%-16s %5s %5s %6s | %8s %6s %8s %8s | %6s %8s" % [
@@ -63,7 +63,7 @@ func _run() -> void:
 	var zone_order: Array[String] = []
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		var r: Dictionary = _measure_level(campaign, tuning, step)
@@ -73,7 +73,7 @@ func _run() -> void:
 		var death: int = floori(float(good) * rules.death_credit_keep_fraction)
 		wallet += finish
 		r.merge({"id": id, "good": good, "bonus": bonus, "finish": finish, "death": death, "wallet": wallet,
-			"zone": step.zone.display_name, "zone_id": _zone_id(step), "level_index": step.level_index})
+			"zone": step.zone.display_name, "zone_id": _zone_id(step), "number": _level_number(campaign, step)})
 		rows.append(r)
 		print("%-16s %5.1f %5.0f %6s | %8.0f %6.0f %8.0f %8.0f | %6.0f %8.0f" % [
 			id, r["speed"], r["seconds"], step.zone.display_name.substr(0, 6),
@@ -104,6 +104,18 @@ func _run() -> void:
 	if _packs:
 		_print_packs(rows)
 	quit(0)
+
+
+## Level step `step`'s number in the order the campaign plays its levels (1 for the first). Not its
+## level_index, its place on the difficulty curve, which a level off the curve (the Beach's) shares.
+func _level_number(campaign: Campaign, step: CampaignStep) -> int:
+	var n: int = 0
+	for s: CampaignStep in campaign.steps():
+		if s.is_level():
+			n += 1
+		if s == step:
+			return n
+	return 0
 
 
 func _zone_id(step: CampaignStep) -> String:
@@ -155,7 +167,7 @@ func _print_shop(catalog: ShopCatalog, rows: Array[Dictionary]) -> void:
 func _print_afford(label: String, price: int, rows: Array[Dictionary]) -> void:
 	for r: Dictionary in rows:
 		if int(r["wallet"]) >= price:
-			print("%-24s %8d | %-14s %10d %9.1fx" % [label, price, "%s (lvl %d)" % [_level_label(r), int(r["level_index"]) + 1],
+			print("%-24s %8d | %-14s %10d %9.1fx" % [label, price, "%s (lvl %d)" % [_level_label(r), int(r["number"])],
 				int(r["wallet"]), float(price) / maxf(float(r["finish"]), 1.0)])
 			return
 	print("%-24s %8d | %s" % [label, price, "not affordable from one clean playthrough"])
@@ -176,7 +188,7 @@ func _print_packs(rows: Array[Dictionary]) -> void:
 		var reached: String = "beyond the campaign"
 		for r: Dictionary in rows:
 			if int(r["wallet"]) >= amount:
-				reached = "%s (level %d)" % [r.get("zone", ""), int(r["level_index"]) + 1]
+				reached = "%s (level %d)" % [r.get("zone", ""), int(r["number"])]
 				break
 		print("  %-14s %-8s %6d credits: the wallet reaches that much by %s" % [p["title"], p["price_text"], amount, reached])
 

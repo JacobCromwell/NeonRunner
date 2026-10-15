@@ -20,7 +20,7 @@ const LANES: Array[int] = [3, 5, 6]
 ## builds the same sample, so its output shows the numbers this suite checks).
 const OTHER_SEEDS: Array[int] = [9001, 9002]
 ## The sampled levels by band: the first levels (dials 0.15 to 0.20), the middle ones (0.26 to 0.28)
-## and the final ones (0.37 to 0.38). The Hush (dead_zone/2) is checked for fairness only: its quiet
+## and the final ones (0.37 to 0.39). The Hush (dead_zone/2) is checked for fairness only: its quiet
 ## stretches stay quiet by design, so it gains less than its dial.
 const BANDS: Dictionary = {
 	"early": ["city/1", "city/2", "gangland/2"],
@@ -28,11 +28,19 @@ const BANDS: Dictionary = {
 	"late": ["dead_zone/1", "golden/2", "golden/3"],
 }
 const FAIRNESS_ONLY: Array[String] = ["dead_zone/2"]
-## Builds checked for fairness only, as {id, lanes, seed}: golden/1 at 6 lanes on seed 9003 (in
-## tests/suites/test_campaign.gd's seed sweep) once had a zone doodad placed, after the pass, right
-## past a full row in the only lane a new row of holes left open; nothing got past it under the
-## ceiling there (DangerDensity.doodad_ok keeps doodads off such lanes now).
-const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/1", "lanes": 6, "seed": 9003}]
+## Builds checked for fairness, as {id, lanes, seed}, where a zone doodad placed after the pass would stand
+## right past a full row in the only lane the pass's rows leave open, so nothing gets past it: built without
+## DangerDensity.doodad_ok (DoodadsUnchecked) the floor route through the level breaks there, and with it, it
+## holds. Golden 3 at 3 lanes on seed 9019 (rows of holes at 887 and 906 m leave lane 1 open, a fence in each of
+## lanes 0 and 2 follows at 923 m, then the doodad in lane 1 at 927 m) since the H series merged main's Casino
+## (found among 396 seeded builds without DangerDensity.doodad_ok, with Dead Zone 1 at 3 lanes on 9021 and Golden 2
+## at 6 on 9022). The cases before it no longer build that way, so each was re-found rather than dropped: golden/2
+## at 3 lanes on seed 9004 (task K5's: a row of holes, a full fence row, the doodad) lost it with the H series'
+## changes, golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling) on the 15-level curve
+## before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row the pass touched, a full fence
+## row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case checks it
+## still shows its scenario.
+const ROUTE_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 3, "seed": 9019}]
 ## The request, as the actual increase of a band's summed counts with the dial over those without it,
 ## for enemies and for obstacles alike, at each lane count: about 15% in the first levels, about 35%
 ## in the final ones.
@@ -59,6 +67,19 @@ const MOMENT_STEP: float = 1.0
 const MAX_DIAL: float = 0.40
 
 var _dd_tuning: Resource
+
+
+## A generator whose zone doodads skip DangerDensity.doodad_ok (ROUTE_CASES): LevelGenerator._add_doodad asks it
+## only while the pass's plan is there, so without the plan for the call it places the doodad as if the pass
+## hadn't run; everything else is built as usual.
+class DoodadsUnchecked extends LevelGenerator:
+	func _add_doodad(rng: RandomNumberGenerator, size: StringName, start: float, end: float,
+			lane_keeps: Array[Dictionary]) -> Dictionary:
+		var plan: RefCounted = danger_density_plan
+		danger_density_plan = null
+		var entry: Dictionary = super(rng, size, start, end, lane_keeps)
+		danger_density_plan = plan
+		return entry
 
 
 func run() -> void:
@@ -93,6 +114,9 @@ func _test_tuning() -> void:
 func _test_dials(campaign: Campaign) -> void:
 	var levels: Array[CampaignStep] = []
 	for s: CampaignStep in campaign.steps():
+		# A mini-game level (the Beach's volleyball match) isn't generated: no dial.
+		if s.is_minigame():
+			continue
 		if s.is_level():
 			levels.append(s)
 		elif s.boss != null:
@@ -133,7 +157,10 @@ func _test_density(campaign: Campaign) -> void:
 					on_ms += int(built["on_ms"])
 					var off: LevelLayout = built["off"]
 					var on: LevelLayout = built["on"]
-					enemies[li] += Vector2i(off.enemies.size(), on.enemies.size())
+					# Not the cyborgs planted in charge paths (task G7, ChargePathPlacement): the same few with and
+					# without the dial, after the pass's count.
+					enemies[li] += Vector2i(off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
+						on.enemies.size() - ChargePathPlacement.planted_in(on).size())
 					floors[li] += Vector2i(DangerDensity.floor_count(off), DangerDensity.floor_count(on))
 					walls[li] += Vector2i(off.wall_fences.size(), on.wall_fences.size())
 					credits[li] += Vector2i(off.total_credit_value(), on.total_credit_value())
@@ -175,8 +202,13 @@ func _test_density(campaign: Campaign) -> void:
 	for case: Dictionary in ROUTE_CASES:
 		var config: LevelConfig = campaign.configure(campaign.step(String(case["id"])), int(case["lanes"]))
 		config.level_seed = int(case["seed"])
+		var tag: String = "%s lanes=%d seed=%d" % [case["id"], case["lanes"], case["seed"]]
 		var built: Dictionary = _build_pair(config)
-		_check_fair(config, built["gen"], built["off"], "%s lanes=%d seed=%d" % [case["id"], case["lanes"], case["seed"]])
+		_check_fair(config, built["gen"], built["off"], tag)
+		var unchecked: LevelLayout = DoodadsUnchecked.new().generate(config, tuning, LevelGenerator.load_for(config))
+		var route: Dictionary = FloorRoute.new(unchecked, config.movement_for(tuning)).find(0.0, unchecked.length)
+		check(not bool(route["ok"]), "%s still shows its case: without doodad_ok a doodad leaves no way on (%s); else re-pin ROUTE_CASES"
+			% [tag, route.get("reason", "")])
 	print("  danger density build time: %d ms without the dial, %d ms with it" % [off_ms, on_ms])
 	check(on_ms <= MAX_BUILD_TIME_RATIO * off_ms + 2000, "the pass keeps builds quick: %d ms with it, %d ms without" % [on_ms, off_ms])
 
@@ -201,7 +233,9 @@ func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag
 	var result: Dictionary = gen.danger_density_result
 	check(not result.is_empty(), "the pass ran " + tag)
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
-	check(int(result.get("baseline_enemies", -1)) == off.enemies.size(),
+	# A cyborg planted in a charge's path (task G7, ChargePathPlacement) comes after the pass's count, with or
+	# without it.
+	check(int(result.get("baseline_enemies", -1)) == off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
 		"the pass counts the enemies the level holds without it %s" % tag)
 	var pieces: int = 0
 	for key: String in ["widened", "new_row_pieces", "full_rows", "staggered_pieces", "routed", "routed_row_pieces"]:

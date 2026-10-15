@@ -26,15 +26,19 @@ extends Enemy
 ## (task FIX2), a tank that rolls in claims its turn claim_seconds before its rev (claiming(): another
 ## type's big attack that gets ready meanwhile waits), then asks as its rev would start: with another
 ## type's attack begun before its claim still on, it lets the runner pass (no rev, no warning, no cut:
-## it speeds off ahead, out of view, and its floor stays whole), so it never revs into another big
-## attack. A boss's tank (no roll: Hostile Takeover's drop) and every tank with the switch off
-## (GameRules.big_attacks_take_turns) rev as planned, as before (takes_turns()).
+## it speeds off ahead, out of view or to a dash wall standing ahead, and its floor stays whole), so it
+## never revs into another big attack. A boss's tank (no roll: Hostile Takeover's drop) and every tank
+## with the switch off (GameRules.big_attacks_take_turns) rev as planned, as before (takes_turns()).
 ## Its rev and charge sound from its own voice on the blade, so they come from where it is as it rolls
 ## and charges past (the world's voices stay where a sound started), at full volume from a charge's
 ## distance (sound_full_volume_distance); the spin-up is stretched over its rev by pitch (rev_pitch:
 ## lower where it revs longest), and it's kept until its charge has died away.
 ## Numbers: BuzzOverdriveTuning (data/enemies/buzz_overdrive.tres). Look: BuzzOverdriveModel.
 ## Only its charge hurts other hittable enemies on physical blade contact (Enemy._hurt_charge_contacts).
+## A tank with a cyborg planted in its path (task G7; GDD §9.13 "Teaching"; ChargePathPlacement: its cut's `park`)
+## doesn't roll ahead of the player: it waits parked at its cut's end, in view from appear_distance, revs there and
+## charges as planned (the rev, the charge and its claim come where they always would), so its blade crosses the
+## cyborg standing in front of it, in its lane, which a tank keeping its distance ahead would drive through.
 
 ## PASS (task FIX2) comes last, so the others keep their numbers in event logs (tools/measure).
 enum State { PARKED, ROLL, REV, CHARGE, GONE, PASS }
@@ -45,6 +49,8 @@ const WARNING_COLOR := Color(1.0, 0.12, 0.08)
 const SPARK_COLOR := Color(1.0, 0.6, 0.2)
 ## How long each spark flies (seconds).
 const SPARK_LIFETIME: float = 0.3
+## Its death's fireball (RunEffects.fireball, radius in metres; GDD §11): the tank is about as big as a truck.
+const FIRE_SIZE: float = 3.0
 ## The warning line's width, as a share of the lane, as the rev starts and at its end.
 const LINE_WIDTH_START: float = 0.2
 const LINE_WIDTH_END: float = 0.4
@@ -172,7 +178,9 @@ func _tick(delta: float) -> void:
 			TrackGeometry.world_z(float(cut["end"])) - position.z)
 	front = _front_for(p)
 	position = world.lane_point(lane, front)
-	if state == State.PASS and front - p > tuning.appear_distance:
+	# Speeding off ahead after letting the runner pass, it's gone once out of view, or where it meets a dash wall
+	# still standing ahead of them (task H7a: it can't drive through a building).
+	if state == State.PASS and (front - p > tuning.appear_distance or dash_wall_reached(front)):
 		_gone()
 	if state == State.CHARGE:
 		_hurt_charge_contacts(_hitbox, blade_from)
@@ -191,11 +199,14 @@ func _tick(delta: float) -> void:
 
 ## Where its blade is when the player is at `p`: parked a charge's distance past where it sets off,
 ## then that far ahead of the player while it rolls and revs (at the cut's end when the charge
-## starts), then the cut's front, charging back past the player (FloorCutPlan.front_at). Once it has
-## let the runner pass, speeding off ahead of them (_passing_front).
+## starts), then the cut's front, charging back past the player (FloorCutPlan.front_at). A parked tank
+## (task G7, parked()) waits at the cut's end until its charge. Once it has let the runner pass, speeding
+## off ahead of them (_passing_front).
 func _front_for(p: float) -> float:
 	if _passed:
 		return _passing_front(p)
+	if parked() and p < FloorCutPlan.charge_at(cut):
+		return float(cut["end"])
 	var ahead: float = float(cut["charge"])
 	if p < FloorCutPlan.lead_at(cut):
 		return FloorCutPlan.lead_at(cut) + ahead
@@ -218,9 +229,16 @@ func _spin_rate(p: float) -> float:
 ## keyed to the player's distance like the rest): it speeds off ahead of them, from a charge's distance
 ## to appear_distance ahead (out of view) in pass_seconds at the run speed.
 func _passing_front(p: float) -> float:
-	var ahead: float = float(cut["charge"])
+	# A parked tank (task G7) sets off from its cut's end, its warning's distance ahead of the player.
+	var ahead: float = float(cut["warn"]) if parked() else float(cut["charge"])
 	var k: float = maxf(p - FloorCutPlan.warn_at(cut), 0.0) / maxf(_run_speed * tuning.pass_seconds, 0.01)
 	return p + ahead + maxf(tuning.appear_distance - ahead, 1.0) * k * k
+
+
+## True if it waits at its cut's end until its charge rather than rolling ahead of the player (task G7: a
+## cyborg planted in its path, ChargePathPlacement; its cut's `park`).
+func parked() -> bool:
+	return bool(cut.get("park", false))
 
 
 ## Its big attack (GDD §9: big attacks take turns) is on from the rev until its charge has passed the
@@ -242,7 +260,8 @@ func takes_turns() -> bool:
 
 ## Where the player is when it claims its turn: claim_seconds (at the run speed) before its rev.
 func claim_at() -> float:
-	return FloorCutPlan.warn_at(cut) - tuning.claim_seconds * _run_speed
+	# A planted encounter's cut (task G7, ChargePathPlacement) carries a longer claim of its own.
+	return FloorCutPlan.warn_at(cut) - float(cut.get("claim_seconds", tuning.claim_seconds)) * _run_speed
 
 
 ## True while it claims its turn before its rev (takes_turns()): from claim_at() until it revs or lets
@@ -289,7 +308,7 @@ func _on_defeated(_cause: StringName) -> void:
 		floor_cut.stop()
 	_line.visible = false
 	world.play_sfx_at(&"truck_explode", global_position)
-	world.effects.burst(aim_point(), Color(1.0, 0.45, 0.15), 42, 1.3)
+	world.effects.fireball(aim_point(), FIRE_SIZE)
 	world.effects.burst(aim_point() + Vector3(0.0, 0.6, 0.0), Color(0.32, 0.32, 0.34), 22, 1.0)
 	queue_free()
 
@@ -321,7 +340,8 @@ func _lets_runner_pass() -> bool:
 
 
 ## It lets the runner pass (GDD §9; task FIX2): no rev, no warning, no cut (its floor stays whole for
-## good, FloorCut.stop); it speeds off ahead of them (_passing_front) and is gone once out of view.
+## good, FloorCut.stop); it speeds off ahead of them (_passing_front) and is gone once out of view, or where it
+## meets a dash wall still standing ahead of them (Enemy.dash_wall_reached; task H7a).
 func _pass() -> void:
 	state = State.PASS
 	_passed = true

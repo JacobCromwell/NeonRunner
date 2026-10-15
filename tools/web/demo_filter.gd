@@ -13,7 +13,9 @@ extends RefCounted
 ## - music it never plays: every audio file in the music library's folders that no track it plays
 ##   uses, and the files of the tracks it never plays, wherever they are;
 ## - the level-complete riffs of the tracks it never plays (a level ends on the riff of the music
-##   playing, MusicDirector.level_complete_sound: level_complete_<track>).
+##   playing, MusicDirector.level_complete_sound: level_complete_<track>);
+## - the zone doodads' picture cards (DoodadCards: an atlas and its manifest a zone) of the zones it
+##   never shows.
 ## The tracks it plays are named in the data (demo_tracks): so when the owner's songs replace the
 ## generated tracks (GDD §11), under the same file names or new ones named in
 ## data/audio/music_library.tres, `tools/godot.sh web` works the filter out again, and
@@ -102,13 +104,29 @@ static func left_out_audio(campaign: Campaign, music: MusicLibrary, sfx: SfxLibr
 	return out
 
 
+## The zone doodads' picture cards of the zones the demo never shows, as patterns
+## ("res://assets/sprites/doodads/gangland.*": the atlas, its import file and the manifest).
+static func left_out_art(campaign: Campaign) -> PackedStringArray:
+	var shown := PackedStringArray()
+	for zone: ZoneDef in campaign.zones:
+		if zone.in_demo:
+			shown.append(String(zone.id))
+	var out := PackedStringArray()
+	for zone: String in DoodadCards.ZONES:
+		if not shown.has(zone):
+			out.append(DoodadCards.DIR.path_join(zone + ".*"))
+	return out
+
+
 ## The exclude filter the data asks for, in the preset's form ("tests/*, tools/*, ...").
 static func expected() -> String:
 	var patterns := PackedStringArray(SHARED)
 	patterns.append_array(DEBUG_ONLY)
-	for path: String in left_out_audio(load(CAMPAIGN_PATH) as Campaign, load(MUSIC_PATH) as MusicLibrary,
-			load(SFX_PATH) as SfxLibrary):
+	var campaign := load(CAMPAIGN_PATH) as Campaign
+	for path: String in left_out_audio(campaign, load(MUSIC_PATH) as MusicLibrary, load(SFX_PATH) as SfxLibrary):
 		patterns.append(path.trim_prefix("res://"))
+	for pattern: String in left_out_art(campaign):
+		patterns.append(pattern.trim_prefix("res://"))
 	return ", ".join(patterns)
 
 

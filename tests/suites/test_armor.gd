@@ -371,9 +371,9 @@ func _test_migration() -> void:
 	check(p.stock(&"shield") == 2 and p.tier(&"weapon") == 1 and not p.is_equipped(&"magnet"), "everything else is kept")
 	check(p.is_equipped(&"armor"), "the old armor toggle goes, so an upgrade bought later starts switched on")
 	var d: Dictionary = p.to_dict()
-	check(int(d["version"]) == Profile.VERSION and Profile.VERSION == 2, "it saves as version 2")
+	check(int(d["version"]) == Profile.VERSION and Profile.VERSION >= 2, "it saves as the current version (%d)" % Profile.VERSION)
 	var again: Profile = Profile.from_dict(JSON.parse_string(JSON.stringify(d)))
-	check(again.earned == p.earned and again.lifetime_spent == p.lifetime_spent, "a version 2 save isn't paid back twice")
+	check(again.earned == p.earned and again.lifetime_spent == p.lifetime_spent, "a version 2 or later save isn't paid back twice")
 	var oldest: Profile = Profile.from_dict({"earned": 10, "stocks": {"armor": 1}})
 	check(oldest.earned == 160 and oldest.stock(&"armor") == 0, "a save without a version counts as version 1")
 	# Through the file on disk.
@@ -385,8 +385,8 @@ func _test_migration() -> void:
 	check(loaded.earned == 650 and loaded.stock(&"armor") == 0, "SaveService loads a version 1 file migrated")
 	check(SaveService.save_profile(loaded, path), "and saves it back")
 	var reread: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	check(typeof(reread) == TYPE_DICTIONARY and int((reread as Dictionary)["version"]) == 2
-		and SaveService.load_profile(path).earned == 650, "as version 2, paid once")
+	check(typeof(reread) == TYPE_DICTIONARY and int((reread as Dictionary)["version"]) == Profile.VERSION
+		and SaveService.load_profile(path).earned == 650, "as the current version, paid once")
 	SaveService.delete_save(path)
 
 

@@ -1,10 +1,12 @@
 class_name WeaponPowerup
 extends PowerupModule
 ## The weapon line (GDD §8). Fires automatically at the nearest valid target: the director's
-## targets_ahead() never offers hosts or weapon-immune enemies, and fences aren't enemies, so
-## auto-fire ignores them. Tiers (ProjectilePool looks):
+## targets_ahead() never offers weapon-immune enemies (fence generators, the Bad Dream), and fences
+## aren't enemies, so auto-fire ignores them. Hosts are targets like any other cyborg (GDD §9.7, owner,
+## October 8, 2026): a weapon kill releases the host's Bad Dream, so a player who doesn't want that
+## switches the weapon off in the shop. Tiers (ProjectilePool looks):
 ##   1 laser, 2 enhanced laser (new colour, thicker, more damage), 3 missile (more damage, homes),
-##   4 heavy missile (new look, large damage, splash that never hurts hosts, bonus vs swarm).
+##   4 heavy missile (new look, large damage, splash, bonus vs swarm).
 ## Damage is in laser tier 1 shots (GDD §8 damage reference); fire interval, damage, shot speed,
 ## range, splash and homing come from PowerupTuning.
 ##
@@ -232,8 +234,12 @@ func _lead(target: Enemy, from: Vector3, aim: Vector3, speed: float) -> Vector3:
 
 
 func _on_enemy_hit(enemy: Enemy, _damage: float, splash: bool) -> void:
-	# Only the heavy missile splashes; show the blast once, on its direct hit.
-	if is_heavy() and not splash and is_instance_valid(enemy):
-		fx.blast(enemy.aim_point(), world.powerup_tuning.splash_radius)
+	# Only the heavy missile splashes; show the blast once, on its direct hit. A plain missile pops in a small
+	# fireball (GDD §11).
+	if is_missile() and not splash and is_instance_valid(enemy):
+		if is_heavy():
+			fx.blast(enemy.aim_point(), world.powerup_tuning.splash_radius)
+		else:
+			fx.missile_pop(enemy.aim_point())
 	if is_instance_valid(enemy) and not enemy.alive:
 		fx.kill_flash(enemy.aim_point())

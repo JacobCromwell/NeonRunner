@@ -15,7 +15,7 @@ extends RefCounted
 ##     the window shooters' bolts have passed the player
 ##   Octodog: each charge, wind-up and lunge
 ##   Bad Dream: each slash, telegraph to claws
-##   Resonator: each pulse, from its warning (the halos and the chime) until its last wave has passed
+##   Resonator: each pulse, from its warning (the halos and the fire-and-wave sound) until its last wave has passed
 ##     the player
 ##   Gilded Sentinel: each strike, from its eyes' flare (its warning) until its last swing's cut is over
 ##   Buzz Overdrive: its charge, from its rev (its warning) until it's gone (its cut has passed the player)

@@ -8,6 +8,12 @@ extends Resource
 ## continue.
 
 @export var id: StringName = &""
+## The name the fight's random choices are seeded with (BossEncounter: its spins, lanes, parts and the
+## enemies it brings; rng_key()), so it plays the same on every attempt. Empty: its id. A boss whose id
+## changed keeps its old one here, so its fight makes the same random choices: The House, moved from the
+## Marketplace to the Casino (owner, October 8, 2026; task K2), keeps `marketplace_boss` (it now runs at
+## the Casino's 23 m/s with enemy scaling 0.5625).
+@export var seed_id: StringName = &""
 @export var display_name: String = "Boss"
 ## The fight: a scene whose root extends BossEncounter (scripts/bosses/boss_encounter.gd).
 ## Empty = not built yet (placeholder card).
@@ -68,25 +74,33 @@ extends Resource
 
 @export_group("Armor pickups")
 ## GDD §10's standard armor rule: an armor pickup at the start of the final phase, and another some
-## seconds after the player's armor or shield breaks, at most once per phase (proposed cap). The fight
-## schedules them (BossEncounter.armor_pickup_due); the pickups themselves are task B7's.
+## seconds after the player's armor takes a hit, at most once per phase (proposed cap); a shield break
+## brings none (owner, October 14, 2026). The fight schedules them (BossEncounter.armor_pickup_due); the
+## pickups themselves are task B7's.
 @export var armor_rule: bool = true
-## Seconds from a break to its pickup, somewhere in [min, max] (seeded): 15–17 by the standard rule,
-## 10–15 for the Floating Head, the gentler first boss.
+## Seconds from the armor's hit to its pickup, somewhere in [min, max] (seeded): 15–17 by the standard
+## rule, 10–15 for the Floating Head, the gentler first boss.
 @export_range(0.0, 60.0, 0.5, "suffix:s") var armor_delay_min: float = 15.0
 @export_range(0.0, 60.0, 0.5, "suffix:s") var armor_delay_max: float = 17.0
-## Pickups after breaks per phase (GDD §10, proposed: at most one).
+## Pickups after the armor's hits per phase (GDD §10, proposed: at most one).
 @export_range(0, 5) var armor_pickups_per_phase: int = 1
 ## DESIGN-TBD (docs/questions/e1e.md; the owner's playtest, September 30, 2026: a player who brought no
 ## armor saw no pickup before the final phase, since nothing could break): a phase that begins with the
 ## player's armor down and no shield (with the free armor every run carries, while it's broken and
-## coming back) counts as a break at its start (an armor pickup armor_delay_min–max seconds later, that
-## phase's one) unless an armor pickup is already on its way. Off: GDD §10's rule as written.
+## coming back) counts as an armor hit at its start (an armor pickup armor_delay_min–max seconds later,
+## that phase's one) unless an armor pickup is already on its way. Off: GDD §10's rule as written.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 825): a shield held as the phase begins still counts as protection,
+## though its break no longer brings a pickup (task I9), so such a phase brings none.
 @export var armor_when_unprotected: bool = false
 
 
 func is_built() -> bool:
 	return scene != "" and ResourceLoader.exists(scene)
+
+
+## What the fight's random choices are seeded with: seed_id, or the id without one.
+func rng_key() -> String:
+	return String(seed_id if seed_id != &"" else id)
 
 
 ## A copy of this boss that plays its preview scene (a fight still being built), or null if it has

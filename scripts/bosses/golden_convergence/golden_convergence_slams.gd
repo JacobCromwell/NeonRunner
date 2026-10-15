@@ -1,0 +1,939 @@
+class_name GoldenConvergenceSlams
+extends GoldenConvergenceAttack
+## The Fist Slam (GDD §10, the owner's attack, "meant to be scary"; task E5d-b), beat kind `slams`: a sequence
+## of slams from the phase's script (GoldenConvergenceTuning.slam_scripts: phase 1 "Ooa", ON, ON, AHEAD with
+## chances on 2 and 3; later phases "OAooA", chances on 3 and 4), the suit's fists taking turns (left, right),
+## each slam_gap apart over the phase's pace. Every point of a slam is keyed to the runner's distance at the
+## run speed (so a dash never desyncs it):
+## 1. out: the arm swings out on its golden segments and telescopes (GoldenConvergenceSuit.set_arm, past a
+##    full telescope: extend_for) until the fist hovers over the runner's lane at fist_hover_height, over the
+##    middle of the slam's row, following the runner's lane;
+## 2. the warning (slam_track_seconds before the lock, never shortened by the pace): the fist rises toward
+##    fist_raise_height, its shadow grows on the floor under it, the red square (GoldenConvergenceFist) shows
+##    the hole's footprint round the runner's lane, and the deep grinding wind-up plays (gc_grind, a clank at
+##    the lock);
+## 3. the lock, slam_lock_seconds before it lands: the lane it's over now (GoldenConvergence.player_lane) and
+##    the footprint round it (GoldenConvergenceHole.footprint: two lanes on 3 lanes, three on 5 or 6, moved
+##    inward at the edge) are fixed; the red square stops following;
+## 4. the fall (slam_fall_seconds), then the impact as the runner reaches its point: a slam ON the runner
+##    lands as they reach the middle of its row (they're under it unless they've left the footprint); a slam
+##    AHEAD lands slam_ahead_seconds before they reach its row (its hole to be jumped or gone round). The
+##    footprint's floor cuts open at once (FloorCut.advance_to) as one square hole, its look made as it opens
+##    (GoldenConvergenceHole.open); the fist's touch (an enemy attack over the footprint from the floor to
+##    above a jump, kept clear of a wall runner's body: touch_x) is live for slam_hit_seconds; rubble, dust, a
+##    shake, gc_slam and gc_break. A runner under
+##    it who lives through the touch (the armor or the shield blocks it, the dash passes, invulnerable) has
+##    the floor under them held for GameRules.cut_hold_seconds (FloorCut.hold_under): a moment to jump out or
+##    switch lanes. A grapple saves a fall, never the hit;
+## 5. the fist plunges into the hole and goes back to rest at his side (slam_back_seconds over the pace).
+## The holes: each slam's row is planned before the sequence begins (floor cuts must lie past the built track,
+## BossArena.stream_from(), about 180 m ahead), a cut in every lane of the row, since the footprint isn't
+## known until the lock; the lanes outside the footprint never open, and a cut draws nothing until it opens (the
+## court's floor_cut: a row costs the track next to nothing to build). The sequence is planned from the beat
+## before it while that one plays (its ends_at), or from a phase's start (its first beat), or for a phase the
+## Refill Ship's hit ends from its chain reaction (plan_phase_ahead, E5d-c), or at the latest when its beat begins
+## (the first fist then comes out at once and stalks the runner's lane until its warning).
+## The chances (GDD §10: "two slams land at a Flying Buttress"): a Flying Buttress stands in an inner lane
+## where the chance slam lands, its row dug just in front of the gate (so a hole sharing the gate's lane never
+## goes through it: on 3 lanes the middle lane is the only inner one), coming into view buttress_sight before
+## the runner gets there. A fist locked onto the buttress's lane smashes it (GoldenConvergenceButtress.smash):
+## the building it held up topples on the side its arch leans toward (GoldenConvergenceTower, from a pool
+## here) and its side is a wall for tower_wall_seconds of running (longer if the barrage after it would outlast
+## that: GoldenConvergenceTower.wall_seconds); the sequence is over at once (the other gate still standing sinks
+## away) and the Missile Barrage warms up at once as the tower falls (gap_after 0).
+## A fist locked onto another lane digs its hole beside the gate, never through it.
+## Numbers: GoldenConvergenceTuning's "Fist Slam" and "The toppled tower" groups (DESIGN-TBD,
+## docs/OPEN_QUESTIONS.md, items 444–456).
+
+## A slam's warning began, it locked, it landed (the bot and tests read them).
+signal slam_warned(info: Dictionary)
+signal slam_locked(info: Dictionary)
+signal slam_landed(info: Dictionary)
+
+enum Stage { IDLE, ON }
+enum SlamStage { PLANNED, OUT, TRACK, LOCKED, FALL, HIT, BACK, DONE, SKIPPED }
+
+const FIST_SCRIPT: Script = preload("res://scripts/bosses/golden_convergence/golden_convergence_fist.gd")
+## Towers made with the fight (one falls per barrage, so two cover one sinking while the next falls).
+const TOWER_POOL: int = 2
+## The first row starts at least this far past the built track.
+const ROW_MARGIN: float = 2.0
+## How fast the fist follows the runner's lane (1/s), and how fast an arm eases back to rest.
+const FOLLOW_RATE: float = 7.0
+const ARM_RATE: float = 9.0
+## The fist's middle this high over the floor as its knuckles meet it, and as deep as it plunges.
+const CONTACT: float = 2.2
+const PLUNGE: float = 0.4
+## The fist's shadow at its fullest (metres across).
+const SHADOW_SIZE: float = 7.0
+## No slam (an empty, read-only stand-in: _driving).
+const NO_SLAM: Dictionary = {}
+
+var fist: GoldenConvergenceFist
+var towers: Array[GoldenConvergenceTower] = []
+var stage: Stage = Stage.IDLE
+## The sequence under way or planned: {n, letter, kind (&"on" / &"ahead"), chance, fist (0 its right, 1 its
+## left), side (-1, 1), impact_at, row (Vector2: from, to), mid (where the fist lands along the track),
+## out_at, track_at, lock_at, fall_at, stage, t, lane, x, sq (Vector2: the red square's x edges), lanes,
+## buttress_lane, lean, gate_at, buttress, buttress_places (its placement: gate_of()), bait, held, marker,
+## out_from}.
+var slams: Array[Dictionary] = []
+## Slams of a plan dropped (a new one made, a sequence over) whose fist was still down or going back: they play
+## on to rest (their touch off on time, the arm eased back) outside the plan.
+var finishing: Array[Dictionary] = []
+## Sequences begun this fight; whether the last one ended on a buttress hit.
+var sequences: int = 0
+var ended: bool = false
+var ended_by_hit: bool = false
+## The beat a plan is for ("phase:beat number"), the phase it's for, and how it was made (&"ahead", &"phase",
+## &"start", &"chain": E5d-c's Refill Ship, the next phase's first slams planned from its chain reaction).
+var plan_key: String = ""
+var plan_phase: int = -1
+var planned_by: StringName = &""
+## Rows planned this fight (their cuts are on the track for good; a cut never opened is the floor).
+var rows_planned: int = 0
+
+var _rng := RandomNumberGenerator.new()
+var _pace: float = 1.0
+## Per fist: the arm's handles now {target, blend, extend, fist}.
+var _arms: Array[Dictionary] = []
+var _hinted_bait: bool = false
+## The last key _key() made and what for (phase, beats played): asked every frame while the beat before slams
+## plays, made once (E5d polish: no string formatted a frame).
+var _key_for := Vector2i(-1, -1)
+var _key_made: String = ""
+## Where a slam's fist should be now (_goal fills these every frame for each arm: E5d polish, no Dictionary a frame):
+## its target (world space), the arm's blend, its reach (a share of the arm's reach to it), a fist or an open hand,
+## and whether the arm goes there exactly or eases.
+var _goal_target := Vector3.ZERO
+var _goal_blend: float = 0.0
+var _goal_reach: float = 0.0
+var _goal_fist: bool = false
+var _goal_exact: bool = false
+
+
+func _init(p_boss: GoldenConvergence) -> void:
+	super(p_boss, &"slams")
+	fist = boss.add_part(FIST_SCRIPT, {"tuning": boss.tuning}) as GoldenConvergenceFist
+	for i: int in TOWER_POOL:
+		_new_tower()
+	for i: int in GoldenConvergenceFist.RIGS:
+		_arms.append({"target": Vector3.ZERO, "blend": 0.0, "extend": 0.0, "fist": false})
+	boss.phase_started.connect(_on_phase_started)
+
+
+func _new_tower() -> GoldenConvergenceTower:
+	var tower := GoldenConvergenceTower.new()
+	boss.add_child(tower)
+	tower.setup(boss)
+	towers.append(tower)
+	return tower
+
+
+## The towers' meshes at the run's length and every hole's (each footprint's at the run's lane count), now (not
+## mid-fight).
+func prewarm() -> void:
+	var length: float = _tower_length()
+	for tower: GoldenConvergenceTower in towers:
+		tower.prewarm(length)
+	var skin := boss.world.skin as GoldenCourtSkin
+	if skin != null:
+		var geo: TrackGeometry = boss.world.geo
+		GoldenConvergenceHole.prewarm(skin, geo, GoldenConvergenceHole.hole_lanes(geo.lane_count) * geo.lane_width)
+
+
+## The phase's slam script (a letter a slam).
+func script_for(index: int) -> String:
+	var list: PackedStringArray = boss.tuning.slam_scripts
+	if list.is_empty():
+		return "OOA"
+	return list[clampi(index, 0, list.size() - 1)]
+
+
+func busy() -> bool:
+	return stage == Stage.ON
+
+
+## A slam's warning shows (from its red square to its touch).
+func warning_on() -> bool:
+	for s: Dictionary in finishing:
+		if _warning_stage(int(s["stage"])):
+			return true
+	for s: Dictionary in slams:
+		if _warning_stage(int(s["stage"])):
+			return true
+	return false
+
+
+static func _warning_stage(st: int) -> bool:
+	return st >= SlamStage.TRACK and st <= SlamStage.HIT
+
+
+## Down or going back to rest: its touch, then its arm's way back.
+static func _down(st: int) -> bool:
+	return st == SlamStage.HIT or st == SlamStage.BACK
+
+
+## Where the sequence under way will be over: its last slam's touch done.
+func ends_at() -> float:
+	if stage != Stage.ON or slams.is_empty():
+		return -1.0
+	if ended:
+		return boss.player_distance()
+	var last: Dictionary = slams[slams.size() - 1]
+	return float(last["impact_at"]) + boss.speed_planned() * boss.tuning.slam_hit_seconds
+
+
+## None after a buttress hit: the barrage warms up as the tower falls.
+func gap_after() -> float:
+	return 0.0 if ended_by_hit else boss.tuning.beat_gap
+
+
+## The sequence begins (its plan made beforehand if it could be, or now).
+func start(beat: Dictionary) -> void:
+	var d: float = boss.player_distance()
+	var key: String = _key(boss.beats_played)
+	sequences += 1
+	ended = false
+	ended_by_hit = false
+	_pace = boss.pace()
+	if plan_key != key or slams.is_empty() or not _fits(d):
+		_discard()
+		plan_key = key
+		planned_by = &"start"
+		_plan(d)
+	stage = Stage.ON
+	# The first fist comes out now if its plan has it later: it stalks the runner's lane until its warning.
+	var first: Dictionary = slams[0]
+	first["out_at"] = minf(float(first["out_at"]), d)
+	boss.log_event(&"slams_start", {"n": sequences, "script": _letters(), "planned_by": planned_by,
+		"first_impact": first["impact_at"], "runner": d, "beat": beat.get("kind", &"slams")})
+
+
+## True if the plan's first warning can still play in full from `d`.
+func _fits(d: float) -> bool:
+	return not slams.is_empty() and float(slams[0]["track_at"]) >= d - 0.01
+
+
+## The slams under way: those finishing from a dropped plan, then the plan's (a new list: tests; the frame's own code
+## goes through `finishing` and `slams`).
+func in_play() -> Array[Dictionary]:
+	if finishing.is_empty():
+		return slams
+	var out: Array[Dictionary] = finishing.duplicate()
+	out.append_array(slams)
+	return out
+
+
+func _letters() -> String:
+	var out: String = ""
+	for s: Dictionary in slams:
+		out += String(s["letter"])
+	return out
+
+
+## "phase:beat number" for the beat started as the encounter's `played`th.
+func _key(played: int) -> String:
+	var at := Vector2i(boss.phase_index, played)
+	if at != _key_for:
+		_key_for = at
+		_key_made = "%d:%d" % [at.x, at.y]
+	return _key_made
+
+
+# --- Planning -------------------------------------------------------------------------------------------
+
+## Plans phase `phase`'s sequence (the current phase's by default) for a beat starting as the runner reaches
+## `start_d`: each slam's points at the run speed, its row's floor cuts in every lane (past the built track: the
+## whole sequence moves on if its first row would be nearer), the chances' gates.
+func _plan(start_d: float, phase: int = -1) -> void:
+	var index: int = boss.phase_index if phase < 0 else phase
+	plan_phase = index
+	var t: GoldenConvergenceTuning = boss.tuning
+	var geo: TrackGeometry = boss.world.geo
+	var v: float = boss.speed_planned()
+	var p: float = maxf(boss.def.phase_list()[index].pace, 0.05)
+	var lanes: int = boss.lane_count()
+	var letters: String = script_for(index)
+	var row_len: float = GoldenConvergenceHole.hole_lanes(lanes) * geo.lane_width
+	var gap: float = v * t.slam_gap / p
+	var ahead: float = v * t.slam_ahead_seconds
+	_rng.seed = hash([String(boss.def.id), "slams", index, rows_planned, boss.rng.seed])
+	var first_impact: float = start_d + v * (t.slam_out_seconds / p + t.slam_track_seconds + t.slam_lock_seconds)
+	var first_ahead: bool = letters.length() > 0 and letters[0].to_upper() == "A"
+	var first_row: float = first_impact + ahead if first_ahead else first_impact - row_len * 0.5
+	var earliest: float = (boss.arena.stream_from() if boss.arena != null else 0.0) + ROW_MARGIN
+	if first_row < earliest:
+		first_impact += earliest - first_row
+	var cuts := LevelLayout.new()
+	cuts.lane_count = lanes
+	slams.clear()
+	var shift: float = 0.0
+	var least: float = row_gap()
+	# Where the last row (or its gate, a chance's) ends: the next one keeps row_gap() past it.
+	var last_end: float = -INF
+	for k: int in letters.length():
+		var letter: String = letters[k]
+		var kind: StringName = &"ahead" if letter.to_upper() == "A" else &"on"
+		var chance: bool = letter != letter.to_upper()
+		var impact_at: float = first_impact + float(k) * gap + shift
+		var row: Vector2 = _row_for(kind, impact_at, ahead, row_len)
+		# E5d polish: never nearer the last row than a lane switch's run and the margin (an ahead slam's row comes
+		# close to the next slam's on the runner at a later phase's pace): this slam and the ones after it come later.
+		if row.x < last_end + least:
+			var spread: float = last_end + least - row.x
+			shift += spread
+			impact_at += spread
+			row = _row_for(kind, impact_at, ahead, row_len)
+		# A row never lies over the cuts already on the track (a dropped plan's, never opened, stay there: a cut
+		# over a cut would draw the wrong lips): this slam and the ones after it move on past them.
+		for guard: int in 6:
+			var over: float = _cuts_end_over(row)
+			if over < 0.0:
+				break
+			var push: float = over + ROW_MARGIN - row.x
+			shift += push
+			impact_at += push
+			row = _row_for(kind, impact_at, ahead, row_len)
+		var from: float = row.x
+		var lock_at: float = impact_at - v * t.slam_lock_seconds
+		var track_at: float = lock_at - v * t.slam_track_seconds
+		var side: int = -1 if k % 2 == 0 else 1
+		var s := {"n": k, "letter": letter, "kind": kind, "chance": chance, "fist": 0 if side < 0 else 1,
+			"side": side, "impact_at": impact_at, "row": row, "mid": (row.x + row.y) * 0.5,
+			"out_at": track_at - v * t.slam_out_seconds / p, "track_at": track_at, "lock_at": lock_at,
+			"fall_at": impact_at - v * t.slam_fall_seconds, "stage": SlamStage.PLANNED, "t": 0.0, "lane": -1, "x": 0.0,
+			"sq": Vector2.ZERO, "lanes": [], "buttress_lane": -1, "lean": 0, "gate_at": 0.0, "buttress": null,
+			"bait": false, "held": false, "marker": null, "out_from": 0.0}
+		if bool(s["chance"]):
+			var gate_lane: int = 0 if lanes <= 2 else _rng.randi_range(1, lanes - 2)
+			s["buttress_lane"] = gate_lane
+			s["lean"] = _lean(gate_lane, lanes)
+			s["gate_at"] = row.y + t.slam_gate_gap + t.pier_depth * 0.5
+			# The fist smashes into the gate's front, its hole in front of it.
+			s["mid"] = row.y
+		last_end = row.y + (t.slam_gate_gap + t.pier_depth if chance else 0.0)
+		for lane: int in lanes:
+			cuts.cuts.append({"lane": lane, "start": row.x, "end": row.y, "warn": row_len, "charge": 0.0, "keep": 0.0,
+				"speed": 0.0, "slam": true})
+		# Pickups keep off the row (an attack is telegraphed there; a pickup never waits over a hole to come).
+		var marker := Node3D.new()
+		marker.name = "SlamRow"
+		for lane: int in lanes:
+			boss.props.floor_warning(marker, lane, row.x, row.y)
+		s["marker"] = marker
+		slams.append(s)
+		rows_planned += 1
+	if not slams.is_empty():
+		var last_row: Vector2 = slams[slams.size() - 1]["row"]
+		cuts.length = last_row.y + 1.0
+	if boss.arena != null:
+		boss.arena.add_pieces(cuts)
+	boss.log_event(&"slams_planned", {"script": letters, "first_impact": first_impact, "start": start_d,
+		"by": planned_by, "rows": slams.size(), "stream_from": earliest - ROW_MARGIN, "for_phase": index})
+
+
+## The least gap between one slam's row (or a chance's gate) and the next one's (E5d polish): a lane switch's run
+## at the run speed plus slam_row_margin, so a runner landing past a hole can switch out of the next one's
+## footprint and two rows never meet, at every phase's pace, speed and lane count.
+func row_gap() -> float:
+	var switch: float = boss.world.tuning.lane_switch_time if boss.world != null and boss.world.tuning != null else 0.14
+	return boss.speed_planned() * (switch + boss.tuning.slam_row_margin)
+
+
+## The row (its stretch along the track) of a slam of `kind` landing as the runner reaches `impact_at`: around it
+## for one on the runner, `ahead` past it for one ahead.
+static func _row_for(kind: StringName, impact_at: float, ahead: float, row_len: float) -> Vector2:
+	var from: float = impact_at + ahead if kind == &"ahead" else impact_at - row_len * 0.5
+	return Vector2(from, from + row_len)
+
+
+## The furthest end of the floor cuts on the arena's track (any lane) overlapping `row`, or -1 for none.
+func _cuts_end_over(row: Vector2) -> float:
+	if boss.arena == null:
+		return -1.0
+	var end: float = -1.0
+	for c: Dictionary in boss.arena.layout.cuts:
+		if float(c["start"]) < row.y + 0.01 and float(c["end"]) > row.x - 0.01:
+			end = maxf(end, float(c["end"]))
+	return end
+
+
+## The side a chance gate's arch leans to: the nearer edge, either way from the middle lane by the seed.
+func _lean(lane: int, lanes: int) -> int:
+	var mid: float = (lanes - 1) * 0.5
+	if float(lane) < mid - 0.01:
+		return -1
+	if float(lane) > mid + 0.01:
+		return 1
+	return -1 if _rng.randf() < 0.5 else 1
+
+
+## Drops a plan that won't be played (its beat came too late for it, or it's over): its gates still up sink
+## away, a fist still down or going back plays on to rest (finishing). Its cuts stay on the track, whole (a cut
+## never opened is floor: a later plan's rows keep off them, _plan), and the rows never slammed no longer keep
+## pickups off (their floor warnings go).
+func _discard() -> void:
+	for s: Dictionary in slams:
+		if _down(int(s["stage"])):
+			finishing.append(s)
+		elif int(s["stage"]) < SlamStage.HIT and s.get("marker") != null:
+			boss.props.remove(s["marker"] as Node)
+			s["marker"] = null
+		var b: GoldenConvergenceButtress = gate_of(s)
+		if b != null and b.standing():
+			b.sink()
+	slams.clear()
+	plan_key = ""
+	plan_phase = -1
+
+
+## E5d-c: plans phase `index`'s first slams beat ahead of time, from where it will begin (`start_d`): the Refill
+## Ship's chain reaction knows when its hit will end the phase it's in, so the next phase opens with its first
+## fist on time (its holes past the built track already) instead of stalking the runner while they're planned. The
+## plan is kept through the phase's change (clear()) and played when that phase's first beat begins. False if that
+## phase doesn't open with slams.
+func plan_phase_ahead(index: int, start_d: float) -> bool:
+	if index >= GoldenConvergence.STAGE_2 or index >= boss.phase_count() or stage == Stage.ON or boss.is_defeated():
+		return false
+	var beats: Array[Dictionary] = boss.tuning.beats_for(index)
+	if beats.is_empty() or beats[0]["kind"] != kind:
+		return false
+	_discard()
+	plan_key = "%d:%d" % [index, boss.beats_played + 1]
+	planned_by = &"chain"
+	_plan(start_d, index)
+	return true
+
+
+## True if the plan is a later phase's, made ahead of it (plan_phase_ahead) and not begun.
+func _kept_ahead() -> bool:
+	if planned_by != &"chain" or plan_phase < boss.phase_index or slams.is_empty():
+		return false
+	for s: Dictionary in slams:
+		if int(s["stage"]) != SlamStage.PLANNED:
+			return false
+	return true
+
+
+## Plans the next slams beat ahead of time, from the beat under way (its ends_at), so its holes lie past the
+## built track without a wait when it begins.
+func _look_ahead() -> void:
+	if stage == Stage.ON or boss.beats.is_empty():
+		return
+	var current: GoldenConvergenceAttack = boss.beat_attack
+	if current == null or current == self:
+		return
+	var next: int = boss.beat_index + 1
+	if next >= boss.beats.size():
+		next = mini(boss.tuning.loop_start(boss.phase_index), boss.beats.size() - 1)
+	if boss.beats[next]["kind"] != kind:
+		return
+	var key: String = _key(boss.beats_played + 1)
+	if key == plan_key:
+		return
+	var end: float = current.ends_at()
+	if end < 0.0:
+		return
+	_discard()
+	plan_key = key
+	planned_by = &"ahead"
+	_plan(end + boss.speed_planned() * current.gap_after() / boss.pace())
+
+
+## A phase begins: if its first beat is a slam sequence, it's planned from the phase's intro (once the
+## encounter has set the phase up: it clears its attacks as the phase starts).
+func _on_phase_started(index: int) -> void:
+	_plan_phase.call_deferred(index)
+
+
+func _plan_phase(index: int) -> void:
+	if index != boss.phase_index or index >= GoldenConvergence.STAGE_2 or boss.is_defeated() or stage == Stage.ON:
+		return
+	var beats: Array[Dictionary] = boss.tuning.beats_for(index)
+	if beats.is_empty() or beats[0]["kind"] != kind or boss.beat_index >= 0:
+		return
+	var key: String = _key(boss.beats_played + 1)
+	var intro: float = boss.def.phase_list()[index].intro_seconds
+	var left: float = maxf(intro - (boss.state_time if boss.state == BossEncounter.State.INTRO else intro), 0.0)
+	if key != plan_key:
+		_discard()
+		plan_key = key
+		planned_by = &"phase"
+		_plan(boss.player_distance() + boss.speed_planned() * (left + boss.tuning.first_beat_delay / boss.pace()))
+	# Attacks don't tick in the intro: a gate due to rise before the pattern begins rises now (a plan made ahead by
+	# the Refill Ship's chain too).
+	_place_buttresses(boss.speed_planned() * left)
+
+
+# --- The slams ---------------------------------------------------------------------------------------------
+
+func tick(delta: float) -> void:
+	_look_ahead()
+	_place_buttresses()
+	var d: float = boss.player_distance()
+	if stage == Stage.ON:
+		for s: Dictionary in slams:
+			_advance(s, d, delta)
+		if ended or _over():
+			stage = Stage.IDLE
+			boss.log_event(&"slams_done", {"n": sequences, "hit": ended_by_hit})
+	else:
+		for s: Dictionary in slams:
+			# A sequence over: its last fist goes on back to rest.
+			if _down(int(s["stage"])):
+				_advance(s, d, delta)
+	# Those finishing play on to rest, then leave the list (kept in place, in order: no new list a frame).
+	var kept: int = 0
+	for i: int in finishing.size():
+		var s: Dictionary = finishing[i]
+		_advance(s, d, delta)
+		if _down(int(s["stage"])):
+			finishing[kept] = s
+			kept += 1
+	finishing.resize(kept)
+	_marks()
+	_pose_arms(delta)
+	for tower: GoldenConvergenceTower in towers:
+		tower.tick(delta)
+
+
+## A phase's intro or the defeat (its tick() doesn't run): its arms ease back to rest and its towers fall, lie and
+## sink on as they would (a phase ending mid-slam never leaves an arm stretched to the track or a tower in the air).
+func look_tick(delta: float) -> void:
+	_pose_arms(delta)
+	for tower: GoldenConvergenceTower in towers:
+		tower.tick(delta)
+
+
+## Every slam past its touch (or skipped).
+func _over() -> bool:
+	for s: Dictionary in slams:
+		if int(s["stage"]) < SlamStage.BACK:
+			return false
+	return true
+
+
+## Moves slam `s` on through its stages as the runner reaches its points (several in one frame, if a dash
+## carries them past).
+func _advance(s: Dictionary, d: float, delta: float) -> void:
+	var t: GoldenConvergenceTuning = boss.tuning
+	if _down(int(s["stage"])):
+		s["t"] = float(s["t"]) + delta
+	for guard: int in 8:
+		match int(s["stage"]):
+			SlamStage.PLANNED:
+				if ended or d < float(s["out_at"]):
+					break
+				s["stage"] = SlamStage.OUT
+				s["out_from"] = d
+				_follow(s, 1.0)
+			SlamStage.OUT:
+				if d < float(s["track_at"]):
+					break
+				_warn(s)
+			SlamStage.TRACK:
+				if d < float(s["lock_at"]):
+					break
+				_lock(s)
+			SlamStage.LOCKED:
+				if d < float(s["fall_at"]):
+					break
+				s["stage"] = SlamStage.FALL
+			SlamStage.FALL:
+				if d < float(s["impact_at"]):
+					break
+				_impact(s)
+			SlamStage.HIT:
+				_check_under(s)
+				if float(s["t"]) < t.slam_hit_seconds:
+					break
+				fist.touch_off(int(s["fist"]))
+				s["stage"] = SlamStage.BACK
+			SlamStage.BACK:
+				if float(s["t"]) < t.slam_hit_seconds + t.slam_back_seconds / _pace:
+					break
+				s["stage"] = SlamStage.DONE
+			_:
+				break
+	var st: int = int(s["stage"])
+	if st == SlamStage.OUT or st == SlamStage.TRACK:
+		_follow(s, 1.0 - exp(-FOLLOW_RATE * delta))
+
+
+## The fist follows the runner's lane (by `k` of the way this frame): over the lane, the red square over the
+## footprint round it.
+func _follow(s: Dictionary, k: float) -> void:
+	var geo: TrackGeometry = boss.world.geo
+	var lane: int = boss.player_lane()
+	s["lane"] = lane
+	var box: Vector2 = _footprint_x(GoldenConvergenceHole.footprint(lane, geo.lane_count, int(s["side"])))
+	if int(s["stage"]) == SlamStage.PLANNED or (s["sq"] as Vector2) == Vector2.ZERO:
+		s["x"] = geo.lane_x(lane)
+		s["sq"] = box
+		return
+	s["x"] = lerpf(float(s["x"]), geo.lane_x(lane), k)
+	var sq: Vector2 = s["sq"]
+	s["sq"] = Vector2(lerpf(sq.x, box.x, k), lerpf(sq.y, box.y, k))
+
+
+## World x from the first lane's floor edge to the last's (the outer lanes' floor runs on to the wall).
+func _footprint_x(lanes: Array) -> Vector2:
+	var geo: TrackGeometry = boss.world.geo
+	if lanes.is_empty():
+		return Vector2.ZERO
+	return Vector2(geo.lane_floor_span(int(lanes[0])).x, geo.lane_floor_span(int(lanes[lanes.size() - 1])).y)
+
+
+## The warning: the red square, the shadow, the grinding wind-up.
+func _warn(s: Dictionary) -> void:
+	s["stage"] = SlamStage.TRACK
+	s["warned_at"] = boss.fight_time()
+	var info: Dictionary = _info(s)
+	boss.sound(&"gc_grind", boss.sound_point(_fist_point(s)))
+	boss.log_event(&"slam_warned", info)
+	slam_warned.emit(info)
+	boss.hint("fist")
+
+
+## The lock: the lane under the fist now, and the footprint round it, fixed.
+func _lock(s: Dictionary) -> void:
+	var geo: TrackGeometry = boss.world.geo
+	s["stage"] = SlamStage.LOCKED
+	var lane: int = boss.player_lane()
+	s["lane"] = lane
+	s["lanes"] = GoldenConvergenceHole.footprint(lane, geo.lane_count, int(s["side"]))
+	s["sq"] = _footprint_x(s["lanes"])
+	s["x"] = geo.lane_x(lane)
+	var b: GoldenConvergenceButtress = gate_of(s)
+	s["bait"] = bool(s["chance"]) and b != null and b.standing() and lane == int(s["buttress_lane"])
+	s["locked_at"] = boss.fight_time()
+	var info: Dictionary = _info(s)
+	boss.log_event(&"slam_locked", info)
+	slam_locked.emit(info)
+
+
+## The impact: the footprint's floor gone at once as one hole, the fist's touch live, rubble, the shake; a
+## gate under it smashed.
+func _impact(s: Dictionary) -> void:
+	var row: Vector2 = s["row"]
+	var i: int = int(s["fist"])
+	s["stage"] = SlamStage.HIT
+	s["t"] = 0.0
+	s["impacted_at"] = boss.fight_time()
+	var opened: Array[FloorCut] = []
+	for lane: Variant in s["lanes"]:
+		var fc: FloorCut = boss.world.track.floor_cut(int(lane), row.y)
+		if fc != null:
+			opened.append(fc)
+	# The square hole's look over the footprint (made as it opens, from the fight's shared meshes), then the floor
+	# goes: the cuts show it as they open.
+	GoldenConvergenceHole.open(opened, boss.world.skin, boss.world.geo)
+	for fc: FloorCut in opened:
+		fc.advance_to(fc.start)
+	var box: Vector2 = s["sq"]
+	var touch: Vector2 = touch_x(box)
+	fist.set_touch(i, touch.x, touch.y, row.x, row.y)
+	fist.impact(box.x, box.y, row.x, row.y)
+	boss.world.effects.shake(0.55, 0.45)
+	var at: Vector3 = Vector3(float(s["x"]), 0.5, TrackGeometry.world_z(float(s["mid"])))
+	boss.sound(&"gc_slam", boss.sound_point(at))
+	boss.sound(&"gc_break", boss.sound_point(at))
+	var info: Dictionary = _info(s)
+	info["opened"] = opened.size()
+	boss.log_event(&"slam_impact", info)
+	slam_landed.emit(info)
+	_check_under(s)
+	if bool(s["bait"]):
+		_bait(s)
+
+
+## The fist's touch across the track over a footprint spanning world x [box.x, box.y] (its red square's): the same,
+## but kept clear of a wall runner's body lying across the wall's foot, as the barrage's fire is
+## (GoldenConvergenceMissiles.WALL_CLEAR). E5d polish: the toppled tower's wall is the barrage's refuge and the next
+## sequence's first fist can land while it stands; the red square lies on the floor, so a runner on the wall beside
+## it is never touched, at any height, and one on the floor of its outer lane always is. DESIGN-TBD (proposed:
+## docs/OPEN_QUESTIONS.md, item 486).
+func touch_x(box: Vector2) -> Vector2:
+	var geo: TrackGeometry = boss.world.geo
+	var reach: float = boss.world.tuning.hurtbox_size.y + GoldenConvergenceMissiles.WALL_CLEAR
+	return Vector2(maxf(box.x, -geo.wall_x() + reach), minf(box.y, geo.wall_x() - reach))
+
+
+## A runner under the fist's touch who lives through it (blocked by the armor or the shield, dashing,
+## invulnerable) has the floor under them held, once (GDD §10: "the floor under the runner holds for about a
+## second ... A dash through the fist gets the same second").
+func _check_under(s: Dictionary) -> void:
+	if bool(s["held"]):
+		return
+	var p: Player = boss.world.player
+	if not p.alive or p.surface != Player.Surface.FLOOR or not fist.touch_on(int(s["fist"])):
+		return
+	var box: Vector2 = touch_x(s["sq"])
+	var row: Vector2 = s["row"]
+	var half: float = boss.world.tuning.hurtbox_size.x * 0.5
+	var depth: float = boss.world.tuning.hurtbox_size.z * 0.5
+	var x: float = p.position.x
+	if x + half < box.x or x - half > box.y or p.distance + depth < row.x or p.distance - depth > row.y:
+		return
+	var outcome: int = DamageRules.resolve(fist.touch_hazard(int(s["fist"])), p.defense())
+	if outcome == DamageRules.Outcome.KILL:
+		return
+	s["held"] = true
+	var seconds: float = boss.world.rules.cut_hold_seconds if boss.world.rules != null else 1.0
+	var feet: float = boss.world.tuning.foot_half_width
+	var held: Array[int] = []
+	for lane: Variant in s["lanes"]:
+		var span: Vector2 = boss.world.geo.lane_floor_span(int(lane))
+		if x + feet < span.x or x - feet > span.y:
+			continue
+		var fc: FloorCut = boss.world.track.floor_cut(int(lane), row.y)
+		if fc != null:
+			fc.hold_under(p, seconds)
+			held.append(int(lane))
+	boss.log_event(&"slam_hold", {"n": int(s["n"]), "lanes": held, "outcome": outcome, "dashing": p.dashing,
+		"runner": p.distance})
+
+
+## A fist locked onto a gate's lane smashes it: the tower it held up topples, and the sequence is over (the
+## barrage warms up at once).
+func _bait(s: Dictionary) -> void:
+	var t: GoldenConvergenceTuning = boss.tuning
+	var b: GoldenConvergenceButtress = s["buttress"]
+	b.smash()
+	var v: float = boss.speed_planned()
+	var wall_to: float = b.at + v * GoldenConvergenceTower.wall_seconds(t, boss.world.tuning)
+	var length: float = _tower_length()
+	var foot: float = minf(boss.player_distance() - t.tower_behind, wall_to + GoldenConvergenceTower.CROWN - length)
+	var tower: GoldenConvergenceTower = _free_tower()
+	tower.topple(b.lean, foot, length, b.span().x, wall_to)
+	ended = true
+	ended_by_hit = true
+	for other: Dictionary in slams:
+		if other == s:
+			continue
+		if int(other["stage"]) < SlamStage.HIT:
+			other["stage"] = SlamStage.SKIPPED
+		var ob: GoldenConvergenceButtress = gate_of(other)
+		if ob != null and ob.standing():
+			ob.sink()
+	boss.log_event(&"slam_bait", {"n": int(s["n"]), "lane": int(s["lane"]), "side": b.lean, "gate": b.at,
+		"wall_from": b.span().x, "wall_to": wall_to, "runner": boss.player_distance()})
+
+
+## The longest tower the fight needs: from its foot behind the runner as an ahead chance's gate falls (the
+## farthest a gate stands from the runner at its impact) to its wall's end.
+func _tower_length() -> float:
+	var t: GoldenConvergenceTuning = boss.tuning
+	var geo: TrackGeometry = boss.world.geo
+	var v: float = boss.speed_planned()
+	var row_len: float = GoldenConvergenceHole.hole_lanes(geo.lane_count) * geo.lane_width
+	var reach: float = v * t.slam_ahead_seconds + row_len + t.slam_gate_gap + t.pier_depth
+	return GoldenConvergenceTower.length_for(t, boss.world.tuning, v, reach)
+
+
+func _free_tower() -> GoldenConvergenceTower:
+	for tower: GoldenConvergenceTower in towers:
+		if not tower.in_use():
+			return tower
+	var oldest: GoldenConvergenceTower = towers[0]
+	for tower: GoldenConvergenceTower in towers:
+		if tower.falls < oldest.falls:
+			oldest = tower
+	# Every tower in use (a third barrage within one's stay): the oldest gives way, a new one if it's still down.
+	return _new_tower() if oldest.down() else oldest
+
+
+## The towers lying now (the bot and tests).
+func towers_down() -> Array[GoldenConvergenceTower]:
+	var out: Array[GoldenConvergenceTower] = []
+	for tower: GoldenConvergenceTower in towers:
+		if tower.in_use():
+			out.append(tower)
+	return out
+
+
+## Slam `s`'s chance gate while it's still the one raised for it (never a gate gone back to the pool and risen for
+## another attack since), or null.
+func gate_of(s: Dictionary) -> GoldenConvergenceButtress:
+	var b: Variant = s.get("buttress")
+	if b == null or not is_instance_valid(b):
+		return null
+	var gate_node := b as GoldenConvergenceButtress
+	return gate_node if gate_node.is_placement(int(s.get("buttress_places", -1))) else null
+
+
+## Raises each chance's gate once the runner is buttress_sight from it (or will be, `ahead` metres on).
+func _place_buttresses(ahead: float = 0.0) -> void:
+	var d: float = boss.player_distance() + ahead
+	var sight: float = boss.speed_planned() * boss.tuning.buttress_sight
+	for s: Dictionary in slams:
+		if not bool(s["chance"]) or s.get("buttress") != null or int(s["stage"]) == SlamStage.SKIPPED:
+			continue
+		if d >= float(s["gate_at"]) - sight:
+			var b: GoldenConvergenceButtress = boss.place_buttress(int(s["buttress_lane"]), float(s["gate_at"]), int(s["lean"]))
+			s["buttress"] = b
+			s["buttress_places"] = b.places
+			if not _hinted_bait:
+				_hinted_bait = true
+				boss.hint("bait")
+
+
+func _info(s: Dictionary) -> Dictionary:
+	return {"n": int(s["n"]), "kind": s["kind"], "chance": s["chance"], "lane": int(s["lane"]), "lanes": s["lanes"],
+		"row": s["row"], "impact_at": s["impact_at"], "bait": s["bait"], "side": int(s["side"]),
+		"buttress_lane": int(s["buttress_lane"]), "runner": boss.player_distance(), "runner_lane": boss.player_lane()}
+
+
+# --- What it shows -----------------------------------------------------------------------------------------
+
+## The red squares and the shadows for the slams warning now.
+func _marks() -> void:
+	# The fists whose marks show (bits).
+	var shown: int = 0
+	var d: float = boss.player_distance()
+	for s: Dictionary in slams:
+		var st: int = int(s["stage"])
+		if st < SlamStage.TRACK or st > SlamStage.FALL:
+			continue
+		var i: int = int(s["fist"])
+		shown |= 1 << i
+		var row: Vector2 = s["row"]
+		var sq: Vector2 = s["sq"]
+		var k: float = clampf((d - float(s["track_at"])) / maxf(float(s["impact_at"]) - float(s["track_at"]), 0.01), 0.0, 1.0)
+		fist.set_square(i, sq.x, sq.y, row.x, row.y, k)
+		fist.set_shadow(i, float(s["x"]), float(s["mid"]), SHADOW_SIZE, k)
+	for i: int in GoldenConvergenceFist.RIGS:
+		if (shown & (1 << i)) == 0:
+			fist.hide_square(i)
+			fist.hide_shadow(i)
+
+
+## Where the fist of slam `s` is now (world space; its goal, the arm reaching for it).
+func _fist_point(s: Dictionary) -> Vector3:
+	_goal(s, boss.player_distance())
+	return _goal_target
+
+
+## Drives both arms toward their goals: exact while a fist is over the track and coming down, easing back
+## to rest otherwise.
+func _pose_arms(delta: float) -> void:
+	var suit: GoldenConvergenceSuit = boss.suit
+	if suit == null or not is_instance_valid(suit):
+		return
+	var d: float = boss.player_distance()
+	var pose: Transform3D = boss.suit_transform()
+	var k: float = 1.0 - exp(-ARM_RATE * delta)
+	for i: int in _arms.size():
+		var side: int = -1 if i == 0 else 1
+		var driving: Dictionary = _driving(i)
+		var arm: Dictionary = _arms[i]
+		if driving.is_empty():
+			# Easing back to rest; once there, the arm is left alone (nothing of the slams drives it).
+			if not bool(arm.get("active", false)):
+				continue
+			arm["blend"] = lerpf(float(arm["blend"]), 0.0, k)
+			arm["extend"] = lerpf(float(arm["extend"]), 0.0, k)
+			arm["fist"] = float(arm["blend"]) > 0.3 and bool(arm["fist"])
+			if float(arm["blend"]) < 0.002 and float(arm["extend"]) < 0.002:
+				arm["blend"] = 0.0
+				arm["extend"] = 0.0
+				arm["fist"] = false
+				arm["active"] = false
+		else:
+			arm["active"] = true
+			_goal(driving, d)
+			var target: Vector3 = _goal_target
+			var extend: float = suit.extend_for(side, target, pose) * _goal_reach
+			if _goal_exact:
+				arm["target"] = target
+				arm["blend"] = _goal_blend
+				arm["extend"] = extend
+			else:
+				arm["target"] = (arm["target"] as Vector3).lerp(target, k) if float(arm["blend"]) > 0.05 else target
+				arm["blend"] = lerpf(float(arm["blend"]), _goal_blend, k)
+				arm["extend"] = lerpf(float(arm["extend"]), extend, k)
+			arm["fist"] = _goal_fist
+		suit.set_arm(side, arm["target"], float(arm["blend"]), float(arm["extend"]), bool(arm["fist"]))
+
+
+## The slam whose fist `i` drives its arm now (the last of the finishing, then the plan's, from its way out to its
+## way back), or NO_SLAM.
+func _driving(i: int) -> Dictionary:
+	var found: Dictionary = NO_SLAM
+	for s: Dictionary in finishing:
+		if int(s["fist"]) == i and _arm_stage(int(s["stage"])):
+			found = s
+	for s: Dictionary in slams:
+		if int(s["fist"]) == i and _arm_stage(int(s["stage"])):
+			found = s
+	return found
+
+
+static func _arm_stage(st: int) -> bool:
+	return st >= SlamStage.OUT and st <= SlamStage.BACK
+
+
+## Where slam `s`'s fist should be now: _goal_target (world space), _goal_blend, _goal_reach (a share of the arm's
+## reach to it), _goal_fist, _goal_exact.
+func _goal(s: Dictionary, d: float) -> void:
+	var t: GoldenConvergenceTuning = boss.tuning
+	var z: float = TrackGeometry.world_z(float(s["mid"]))
+	var x: float = float(s["x"])
+	_goal_target = Vector3(x, t.fist_hover_height, z)
+	_goal_blend = 0.0
+	_goal_reach = 0.0
+	_goal_fist = false
+	_goal_exact = false
+	match int(s["stage"]):
+		SlamStage.OUT:
+			var span: float = maxf(boss.speed_planned() * t.slam_out_seconds / maxf(_pace, 0.05), 0.5)
+			var u: float = smoothstep(0.0, 1.0, clampf((d - float(s["out_from"])) / span, 0.0, 1.0))
+			_goal_blend = u
+			_goal_reach = u
+			_goal_fist = u > 0.25
+		SlamStage.TRACK, SlamStage.LOCKED:
+			var k: float = clampf((d - float(s["track_at"])) / maxf(float(s["fall_at"]) - float(s["track_at"]), 0.01), 0.0, 1.0)
+			_set_goal(Vector3(x, lerpf(t.fist_hover_height, t.fist_raise_height, smoothstep(0.0, 1.0, k)), z), 1.0, true, true)
+		SlamStage.FALL:
+			var k: float = clampf((d - float(s["fall_at"])) / maxf(float(s["impact_at"]) - float(s["fall_at"]), 0.01), 0.0, 1.0)
+			_set_goal(Vector3(x, lerpf(t.fist_raise_height, CONTACT, k * k), z), 1.0, true, true)
+		SlamStage.HIT:
+			var k: float = smoothstep(0.0, 1.0, clampf(float(s["t"]) / maxf(t.slam_hit_seconds, 0.01), 0.0, 1.0))
+			_set_goal(Vector3(x, lerpf(CONTACT, PLUNGE, k), z), 1.0, true, true)
+		SlamStage.BACK:
+			var back: float = maxf(t.slam_back_seconds / maxf(_pace, 0.05), 0.05)
+			var u: float = smoothstep(0.0, 1.0, clampf((float(s["t"]) - t.slam_hit_seconds) / back, 0.0, 1.0))
+			_set_goal(Vector3(x, PLUNGE, z), 1.0 - u, u < 0.75, false)
+
+
+func _set_goal(target: Vector3, blend: float, as_fist: bool, exact: bool) -> void:
+	_goal_target = target
+	_goal_blend = blend
+	_goal_reach = blend
+	_goal_fist = as_fist
+	_goal_exact = exact
+
+
+# --- Hold, clear ---------------------------------------------------------------------------------------
+
+## Everything gone at once (a phase's end, the defeat), safely: the touches off, the marks gone, the arms
+## easing back to rest, the plan dropped (its cuts stay whole), unless it's a later phase's made ahead by the
+## Refill Ship's chain (E5d-c: kept for that phase's first beat). A tower already down stays its time.
+func clear() -> void:
+	super()
+	fist.clear()
+	var keep: bool = _kept_ahead() and not boss.is_defeated()
+	for s: Dictionary in finishing:
+		if int(s["stage"]) < SlamStage.DONE:
+			s["stage"] = SlamStage.SKIPPED
+	if not keep:
+		for s: Dictionary in slams:
+			if int(s["stage"]) < SlamStage.DONE:
+				s["stage"] = SlamStage.SKIPPED
+	finishing.clear()
+	if not keep:
+		_discard()
+	stage = Stage.IDLE
+	ended = false
+	ended_by_hit = false

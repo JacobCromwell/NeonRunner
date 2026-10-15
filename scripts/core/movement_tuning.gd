@@ -83,6 +83,9 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(0.5, 5.0, 0.1, "suffix:m") var speed_pad_length: float = 2.5
 
 @export_group("Ceiling")
+## How high a ceiling's underside is over the street: every level's ceilings, and a boss's unless it puts one
+## at a height of its own (BossProps.ceiling over a raised floor; the runner rides a ceiling at whatever height
+## its collision box is, Player.ceiling_y).
 @export_range(3.5, 10.0, 0.1, "suffix:m") var ceiling_height: float = 6.0
 ## Speed toward the ceiling given by an anti-grav pad at the moment it flips gravity.
 @export_range(0.0, 20.0, 0.5, "suffix:m/s") var antigrav_launch_velocity: float = 6.0
@@ -96,9 +99,11 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(0.3, 1.2, 0.05, "suffix:m") var hurtbox_slide_height: float = 0.45
 @export var visual_size: Vector3 = Vector3(0.6, 1.28, 0.52)
 ## Once this far below the floor without support, the player is falling into the gap:
-## no more lane switches, jumps or wall entries.
+## no more lane switches, jumps or wall entries. Counted from the street, or from the floor base a boss
+## that raises the floor sets (Player.floor_base, fall_base()).
 @export_range(0.05, 1.0, 0.05, "suffix:m") var pit_depth: float = 0.35
-## How far below the surface the player may drop before counting as a fall death.
+## How far below the surface the player may drop before counting as a fall death (from the street, or the
+## floor base, like pit_depth).
 @export_range(1.0, 10.0, 0.5, "suffix:m") var fall_death_depth: float = 4.0
 
 @export_group("Piece sizes")
@@ -152,6 +157,27 @@ const REFERENCE_SPEED: float = 18.0
 ## switch takes lane_switch_time). DESIGN-TBD.
 @export_range(0.05, 0.4, 0.01, "suffix:s") var doodad_push_time: float = 0.13
 
+@export_group("Dash walls")
+## Dash walls (task H7a; GDD §9.14, owner, October 8, 2026): a building standing across every floor lane,
+## which the runner dashes through. Its look's box (TrackBuilder.dash_wall_size): this tall, this deep along
+## the track, and as wide as the floor less dash_wall_wall_room beside each side wall. Its hitbox is that box
+## less dash_wall_inset at its sides and its face (forgiving, CLAUDE.md principle 4), from just above the
+## floor (so a slide never passes under it) to its top.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 651): taller than any jump: a jump's feet reach jump_height (1.6 m), a wall
+## jump from the top of a wall run (wall_max_height) about 5.3 m; a building of two or three storeys.
+@export_range(6.0, 16.0, 0.1, "suffix:m") var dash_wall_height: float = 9.0
+## DESIGN-TBD: how deep the building is along the track (the runner bursts through it in a tenth of a second).
+@export_range(0.5, 6.0, 0.1, "suffix:m") var dash_wall_depth: float = 2.5
+## DESIGN-TBD: the strip beside each side wall the building leaves open, from the side wall's face in (GDD
+## §9.14: "it blocks only the floor"; a player running on a side wall passes it). The hitbox's edge, this plus
+## dash_wall_inset in from the wall's face, lies between the two runners' bodies: a wall runner's reaches a
+## hurtbox's height (1.09 m) out from the wall's face, so it stays about 0.26 m clear of it; a floor runner's
+## in the middle of the outer lane comes to wall_margin plus half a lane less half its body (1.28 m) from the
+## wall's face, so most of it (0.38 m of its 0.45 m) is inside it.
+@export_range(0.9, 1.6, 0.01, "suffix:m") var dash_wall_wall_room: float = 1.2
+## DESIGN-TBD: how much smaller the hitbox is than the look, at its sides and its face.
+@export_range(0.0, 0.5, 0.01, "suffix:m") var dash_wall_inset: float = 0.15
+
 @export_group("Camera")
 @export_range(3.0, 15.0, 0.1, "suffix:m") var camera_distance: float = 7.5
 @export_range(1.0, 8.0, 0.1, "suffix:m") var camera_height: float = 4.2
@@ -168,6 +194,13 @@ const REFERENCE_SPEED: float = 18.0
 ## player; without this it climbed into the ceiling before passing its end, and what's drawn there
 ## filled the screen (the orange end band's glow, a flash and a glare).
 @export_range(0.2, 3.0, 0.05, "suffix:m") var camera_ceiling_clearance: float = 1.0
+## The climbing view (RunCamera with RunWorld.camera_climbs on: a boss's climb, GDD §10, the Beach's): how far
+## above a roof (a raised floor below it, or ahead) the camera keeps, so it never sits inside the higher roof
+## a ceiling rider will drop onto (RunCamera.floor_limit).
+@export_range(0.2, 3.0, 0.05, "suffix:m") var camera_floor_clearance: float = 1.0
+## The climbing view looks this far ahead, in seconds of running, for a roof it must rise over, so it rises
+## smoothly before it gets there rather than snapping up at the roof's edge (RunCamera.floor_limit).
+@export_range(0.0, 1.5, 0.05, "suffix:s") var camera_climb_lead: float = 0.45
 
 @export_group("Touch")
 ## Swipe length needed, as a fraction of the screen's short side.

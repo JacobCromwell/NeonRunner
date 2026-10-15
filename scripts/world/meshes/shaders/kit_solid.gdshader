@@ -16,6 +16,10 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the lit surfaces dim, glowing ones don't.
 global uniform float scenery_light;
+// The Compatibility renderer's lift of what lies below the street (see the end of fragment()).
+const float UNDER_COMPAT_GAMMA = 0.85;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 uniform float glow_scale = 4.0;
 // Sky glow caught at grazing angles: distant roofs and hulls pick up the neon haze.
 uniform vec3 sheen_color : source_color = vec3(0.35, 0.25, 0.6);
@@ -90,6 +94,8 @@ vec4 cult_mark(vec2 p, float fw) {
 #include "res://scripts/world/meshes/shaders/kit_golden_palace.gdshaderinc"
 // Dead Zone patterns (ids 40-49), after cult_mark(): its scorched emblems use it.
 #include "res://scripts/world/meshes/shaders/kit_dead_zone.gdshaderinc"
+// Casino patterns (ids 80-89, task K1).
+#include "res://scripts/world/meshes/shaders/kit_casino.gdshaderinc"
 
 // Two coordinates in the plane of the face, picked by its dominant axis.
 vec2 face_coords(vec3 n) {
@@ -105,6 +111,9 @@ vec3 paint_graffiti(vec3 col, vec2 p, float seed, float density, float aa) {
 	col = mix(col, vec3(0.05, 0.045, 0.04), g.y * 0.9);
 	return mix(col, fill, g.x * 0.85);
 }
+
+// Beach patterns (ids 90-99, task D10), after face_coords(): it draws steel and timber by face.
+#include "res://scripts/world/meshes/shaders/kit_beach.gdshaderinc"
 
 void vertex() {
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -404,6 +413,14 @@ void fragment() {
 		// and marble.
 		base = golden_palace_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV);
 	}
+	if (pattern >= 80 && pattern < 90) {
+		// The Casino (kit_casino.gdshaderinc, task K1); the eye vector in world space, for its metal.
+		base = casino_surface(pattern, UV2.y, base, v_world, n, (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz, UV, TIME, glow);
+	}
+	if (pattern >= 90 && pattern < 100) {
+		// The Beach (kit_beach.gdshaderinc, task D10); only its neon signs glow.
+		base = beach_surface(pattern, UV2.y, base, v_world, n, UV, TIME, glow);
+	}
 
 	vec3 col;
 	if (glow > 0.002) {
@@ -416,8 +433,20 @@ void fragment() {
 		// Fake city light: tops catch the sky glow, sides the street, undersides the traffic below.
 		float shade = 0.62 + 0.3 * max(n.y, 0.0) + 0.08 * abs(n.x) + 0.06 * n.z - 0.04 * max(-n.y, 0.0);
 		float f = 1.0 - clamp(dot(nv, VIEW), 0.0, 1.0);
-		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength + glass * 0.15);
-		col = (to_linear(base) * shade + sheen) * light_factor(scenery_light);
+		// What lies below the street (the Corporate, Dead Zone and Golden Zone's holes, task H3) takes only
+		// a little of the zone's sheen, which at a hole's grazing walls would drown the scenery in it.
+		float sheen_k = (pattern == 31 || pattern == 41 || pattern == 53 || pattern == 54 || pattern == 71) ? 0.25 : 1.0;
+		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength * sheen_k + glass * 0.15);
+		col = (to_linear(base) * shade + sheen) * light_factor(scenery_light) * scenery_tint;
+#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+		// What lies below the street is authored dim (it is far darker than the street, so a hole reads as a
+		// hole), and the Compatibility renderer shows such dark values darker than Forward+ does (the same
+		// colours drew as near-black there, where its frame at the street's brightness matched): lift them
+		// toward Forward+'s look so the scenery (task H3) shows on both renderers, never past it.
+		if (sheen_k < 1.0) {
+			col = pow(col, vec3(UNDER_COMPAT_GAMMA));
+		}
+#endif
 	}
 	ALBEDO = col;
 }

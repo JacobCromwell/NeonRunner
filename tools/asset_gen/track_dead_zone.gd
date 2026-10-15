@@ -1,5 +1,5 @@
 extends RefCounted
-## "Dead Zone", Zone 5 (a blackened, bombed-out husk of the city: rubble, embers, smoke and silence).
+## "Dead Zone", Zone 7 (a blackened, bombed-out husk of the city: rubble, embers, smoke and silence).
 ## Eerie doom at 84 BPM in C# minor: quiet but never empty. A heartbeat and a ticking sixteenth
 ## pulse keep the runner moving under a drone, a smoky pad and a lonely tremolo guitar, then a slow,
 ## crushing doom riff. The quiet half sits about 5 dB under the heavy one. 16 bars = 45.7 s:

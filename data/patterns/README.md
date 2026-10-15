@@ -101,7 +101,7 @@ when run speed changes.
 
 | Kind | Fields |
 |---|---|
-| `gap` | `lanes`, `jump_frac` (gap length as a fraction of a full jump's distance, capped by the level's `max_gap_jump_fraction`) |
+| `gap` | `lanes`, `jump_frac` (gap length as a fraction of a full jump's distance, capped by the level's `max_gap_jump_fraction`). Keep it at 0.6 or less: an Enforcer Truck hops those, and the tests count a longer row as one of the level's wider gaps, which the generator makes itself (`LevelConfig.wide_gaps`, 0.7 of a jump; task G7, Wider gaps in `docs/ARCHITECTURE.md`) |
 | `fence` | `lanes`, `variant` (`full` = jump or switch lanes; `gapped` = slide under), `pulse_chance`, `pulse_on`, `pulse_off` (seconds) |
 | `sign` | `side` (`left`/`right`/`random`/`both`/`same`), `length`, `bottom`, `top` (height band on the wall, in metres) |
 | `ramp` | `side`. The ramp sits in the outermost lane on that side and launches the player onto the wall, higher than a free entry and with a speed boost that fades like a speed pad's (GDD §3): its wall run covers about 43 m at 18 m/s, against 39 m for a free entry. A wall piece after it meets a faster, higher runner; `RampLaunch` says where the runner is and how high (see Ramps in `docs/ARCHITECTURE.md`) |
@@ -205,6 +205,8 @@ closes in on its own, like the stand-in thief's). It needs no rules script: it d
 weave toward live, from the layout already around it (gaps, fences, floor cuts, other floor enemies),
 so other patterns need nothing for it either, and it can never make a lane unfair (touching it is never
 a hit, CLAUDE.md principle 4).
+It stays about 11 s untouched (`approach_speed` 3.5 m/s, GDD §9.12, owner, October 8, 2026), so it can still be
+in the level when the next pattern's enemies come: nothing is reserved for it, since it never hurts.
 
 The Barnacle Turret (`barnacle_turret`) has no patterns, and no pattern should require it: its rules
 (`barnacle_turret_rules.gd`, after every rule that adds or takes away ceilings) hang turrets from the

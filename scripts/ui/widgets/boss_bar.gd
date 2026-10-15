@@ -3,7 +3,10 @@ extends VBoxContainer
 ## The boss's health on the HUD (GDD §10): its name and phase above a wide bar in the enemy-health red,
 ## with a marker where each phase ends (a marker dims once its phase is over), and a white segment
 ## that drains after each hit, like the enemy health bars. While the boss can't be hurt (its entrance
-## or a phase change) the fill turns grey. Nothing in it blinks (Reduced flashing).
+## or a phase change) the fill turns grey. Nothing in it blinks (Reduced flashing). While the health runs
+## down steadily (BossEncounter.health_runs_down: a timed phase), no drop re-arms the white segment's hold,
+## so it drains with the fill at any frame rate (task E5e-c's review: below about 55 fps every rendered
+## frame's drop re-armed it and the white segment never drained).
 ## DESIGN-TBD (OPEN_QUESTIONS §5, docs/questions/b8.md): the boss HUD's look and place.
 ##   bar.bind(encounter)        # follows the fight from then on
 ##   bar.set_state(0.6, [0.667, 0.333], true, "PHASE 2/3")   # or drive it by hand (tests, showcases)
@@ -82,21 +85,45 @@ func _process(delta: float) -> void:
 	_bar.queue_redraw()
 
 
-## A new health share: after a hit, the white segment holds a moment before it drains.
-func _show_value(v: float) -> void:
+## A new health share: after a hit, the white segment holds a moment before it drains (not while the health
+## runs down steadily: `steady`).
+func _show_value(v: float, steady: bool = false) -> void:
 	var next: float = clampf(v, 0.0, 1.0)
-	if next < value - 0.0001:
+	if next < value - 0.0001 and not steady:
 		_hold = DRAIN_DELAY
 	value = next
 
 
 func _refresh() -> void:
-	_show_value(encounter.health_ratio())
+	_show_value(encounter.health_ratio(), encounter.health_runs_down())
 	marks = encounter.phase_marks()
 	vulnerable = encounter.is_vulnerable() or encounter.is_defeated()
-	phase_label.text = "DEFEATED" if encounter.is_defeated() else \
-		("%s · %d/%d" % [encounter.phase().title(encounter.phase_index).to_upper(), encounter.phase_index + 1,
-			encounter.phase_count()] if encounter.phase_count() > 1 else "")
+	var text: String = ""
+	if encounter.is_defeated():
+		text = "DEFEATED"
+	elif encounter.phase_count() > 1:
+		var count: String = "%d/%d" % [encounter.phase_index + 1, encounter.phase_count()]
+		text = "%s · %s" % [encounter.phase().title(encounter.phase_index).to_upper(), count]
+		# A long name (the final villain's) keeps its room: the phase shows its number alone (DESIGN-TBD,
+		# docs/OPEN_QUESTIONS.md, item 442).
+		if not _fits(text):
+			text = count
+	phase_label.text = text
+
+
+## True if the boss's name and `phase_text` both fit the bar's row (or it isn't laid out yet).
+func _fits(phase_text: String) -> bool:
+	var row: float = size.x
+	if row <= 0.0:
+		return true
+	return _text_width(name_label, name_label.text) + _text_width(phase_label, phase_text) + UiTheme.px(8) <= row
+
+
+static func _text_width(label: Label, text: String) -> float:
+	var font: Font = label.get_theme_font(&"font")
+	if font == null:
+		return 0.0
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, label.get_theme_font_size(&"font_size")).x
 
 
 func _label(variation: StringName, align: HorizontalAlignment) -> Label:

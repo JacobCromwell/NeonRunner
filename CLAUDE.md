@@ -6,11 +6,23 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 ## Source of truth
 - `docs/GDD_CHECKPOINT.md` (later `docs/GDD.md`) is the authority on game design. **Do not invent design.**
 - If a task needs a design decision that isn't in the design document, **do not guess**:
-  1. Add the question to `docs/questions/<task-id>.md` (see "Parallel work"). The orchestrator folds it into `docs/OPEN_QUESTIONS.md` under "Raised during build" when the task merges.
+  1. Add the question to `docs/questions/<task-id>.md` (see "Parallel work"). When the task merges, the orchestrator numbers it and files it in `docs/OPEN_QUESTIONS.md` if work waits on it or its placeholder gets costly to change later, otherwise in `docs/OPEN_QUESTIONS_DEFERRED.md` (rules at the top of `docs/OPEN_QUESTIONS.md`).
   2. Implement the smallest reasonable placeholder, clearly marked `# DESIGN-TBD:` in code.
   3. Report it in your task summary.
 - Record any decision the owner makes in the design document, not only in code. The design document is edited in design sessions with the owner; build agents don't change its design sections.
 - `docs/TASK_PLAN.md` lists the build tasks, their order, and the model and effort level for each.
+- `docs/USER_REQUESTS.md` holds the owner's requests still to do (built ones move to `docs/USER_REQUESTS_DONE.md`).
+
+## Reading the docs (keep it cheap)
+Every agent pays for what it reads, on every task, and the owner's weekly usage limit is what runs out first.
+- **Architecture:** read the index `docs/ARCHITECTURE.md`, then only the part(s) of `docs/architecture/` you need,
+  or just the paragraph (`grep -n "<word>" docs/architecture/*.md`, then read around the hit). Never the whole folder.
+  A reference such as "`docs/ARCHITECTURE.md`, Zone skins" names a topic in the index.
+- **Design:** search `docs/GDD_CHECKPOINT.md` for the section you need (`grep -n "^#\|§9.7"`); don't read it whole.
+- **Questions:** `docs/OPEN_QUESTIONS.md` is short; read it when a task touches design. A cited item number lives in
+  one of `docs/OPEN_QUESTIONS*.md`: `grep -n "^628\. " docs/OPEN_QUESTIONS*.md`. Never read the `_DEFERRED` or
+  `_ANSWERED` files whole. A deferred item's placeholder stands as built.
+- `docs/USER_REQUESTS_DONE.md`, `docs/TASK_PLAN.md`'s finished tasks and `git log` are history: search, don't read.
 
 ## Tech stack
 - **Engine:** Godot 4 (pin the exact version in `project.godot`; do not upgrade without approval).
@@ -75,9 +87,9 @@ This file is for Claude Code and all sub-agents working on this project. Read it
 ## Parallel work
 - **One task, one branch,** named after its ID in `docs/TASK_PLAN.md`, started from the latest `main`.
 - **Merge one at a time:** merge the latest `main` into the task branch, run the tests and the smoke run, then merge.
-- **Questions go in `docs/questions/<task-id>.md`,** never straight into `docs/OPEN_QUESTIONS.md`, so parallel tasks don't collide on the shared list.
+- **Questions go in `docs/questions/<task-id>.md`,** never straight into `docs/OPEN_QUESTIONS*.md`, so parallel tasks don't collide on the shared list.
 - **Core files change one task at a time:** `scripts/world/level_generator.gd`, `scripts/world/track_builder.gd`, `scripts/core/damage_rules.gd`, `scripts/run/run_world.gd`, `scripts/player/player.gd`, and the campaign, zone and level data. The task plan marks which tasks are core.
-- **New enemies stay in their own files** (`docs/ARCHITECTURE.md`, Enemies). A shared change an enemy needs belongs to a core task.
+- **New enemies stay in their own files** (`docs/architecture/enemies.md`). A shared change an enemy needs belongs to a core task.
 
 ## Commands
 `tools/godot.sh` finds the pinned Godot (via `$GODOT`, then `godot4`/`godot` on PATH, then the Windows user

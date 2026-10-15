@@ -62,7 +62,7 @@ const LOOKS: Array[StringName] = [BASE, BRUTE, CASINO, VR_RUNNER, BURNED, GOLDEN
 const LOOK_TITLES: Dictionary = {
 	BASE: "Static TV Head · Neon City",
 	BRUTE: "Broadcast Brute · Gangland",
-	CASINO: "Casino Mob Enforcer · Marketplace",
+	CASINO: "Casino Mob Enforcer · Marketplace and Casino",
 	VR_RUNNER: "Wide-Aspect VR Runner · Corporate",
 	BURNED: "Burned-out TV Head · Dead Zone",
 	GOLDEN: "Ceremonial Enforcer · Golden Zone",

@@ -231,7 +231,7 @@ func spawn(entry: Dictionary) -> Enemy:
 
 
 ## Every living enemy that auto-fire may target, nearest first (GDD §8: the weapon fires at the
-## nearest valid target; hosts and weapon-immune enemies are never targeted).
+## nearest valid target; weapon-immune enemies are never targeted, and hosts are, GDD §9.7).
 func targets_ahead(from: Vector3, max_distance: float) -> Array[Enemy]:
 	var out: Array[Enemy] = []
 	for e: Enemy in active:

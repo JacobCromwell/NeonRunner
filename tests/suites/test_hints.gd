@@ -92,7 +92,7 @@ func _test_campaign_relevance() -> void:
 		"gangland/3": ["generator", "drone"],
 		"marketplace/1": ["barnacle_turret"],
 		"marketplace/2": ["wall_fence"],
-		"corporate/1": ["buzz_overdrive", "wall_fence_low", "wall_fence_high"],
+		"corporate/1": ["buzz_overdrive", "wall_fence_low", "wall_fence_high", "dash_wall"],
 		"corporate/2": ["tithe_collector"],
 		"dead_zone/1": ["host", "bad_dream"],
 		"golden/1": ["resonator"],
@@ -100,7 +100,8 @@ func _test_campaign_relevance() -> void:
 	}
 	var profile := Profile.new()
 	for step: CampaignStep in campaign.steps():
-		if not step.is_level():
+		# A mini-game level's own hint (the Beach's volleyball match) is test_volleyball's: its track isn't generated.
+		if not step.is_level() or step.is_minigame():
 			continue
 		var config: LevelConfig = campaign.configure(step, 3)
 		var world := RunWorld.new()

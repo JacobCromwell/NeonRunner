@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://data/levels/gangland_3.tres" id="lvl_gangland_3"]
 [ext_resource type="Resource" path="res://data/skins/gangland_skin.tres" id="skin"]
 [ext_resource type="Resource" path="res://data/cinematics/gangland_intro.tres" id="c_intro"]
+[ext_resource type="Resource" path="res://data/cinematics/gangland_boss_intro.tres" id="c_bintro"]
 [ext_resource type="Resource" path="res://data/cinematics/gangland_outro.tres" id="c_outro"]
 [ext_resource type="Resource" path="res://data/bosses/gangland_boss.tres" id="boss"]
 
@@ -20,6 +21,7 @@ skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_gangland_1"), ExtResource("lvl_gangland_2"), ExtResource("lvl_gangland_3")])
 run_speed = 21.8
 intro = ExtResource("c_intro")
+boss_intro = ExtResource("c_bintro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")
 in_demo = false

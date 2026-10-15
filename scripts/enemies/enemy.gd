@@ -22,6 +22,10 @@ signal health_changed(enemy: Enemy)
 
 ## NPC friendly fire: defeat listeners must not award player kills, score or thief payouts.
 const CHARGE_DAMAGE_CAUSE: StringName = &"enemy_charge"
+## A flyer clears a standing dash wall's top by this much (metres), and climbs to it (and comes back down
+## after) at this speed (m/s): dash_wall_lift (task H7a). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 656).
+const DASH_WALL_CLEARANCE: float = 1.2
+const DASH_WALL_CLIMB_SPEED: float = 7.0
 
 # --- Declared properties (read by DamageRules, the weapon system and the score) ---------------
 var type_id: StringName = &"enemy"
@@ -30,23 +34,22 @@ var max_health: float = 1.0
 var health: float = 1.0
 ## Score for defeating it (GDD §7: enemy kills add to the level score).
 var score_value: int = 100
-## Weapons can't hurt it and auto-fire never targets it (e.g. the Bad Dream).
+## Weapons can't hurt it and auto-fire never targets it (a fence generator, GDD §9.1; the Bad Dream).
 var immune_to_weapons: bool = false
-## A cyborg carrying a Bad Dream: immune to all weapon damage, like a fence generator (GDD §9.7,
-## decided September 26, 2026, FB 71: a stray shot can never release a Bad Dream by accident). Only
-## a stomp, the claws or the dash still kill it, with the host bonus. Setting this also sets
-## immune_to_weapons, so every host declares its own immunity the way a generator does.
-var is_host: bool = false:
-	set(v):
-		is_host = v
-		if v:
-			immune_to_weapons = true
+## A cyborg carrying a Bad Dream (GDD §9.7): killing it, by any means, releases the Bad Dream
+## (Cyborg._release_bad_dream). Weapons hit hosts (owner, October 8, 2026, replacing the September 26
+## rule that made hosts immune to all weapon damage): auto-fire targets a host like any other cyborg,
+## shots and missile splash hurt it, and it shows a health bar, so a player who doesn't want a Bad Dream
+## released switches the weapon off in the shop (the equip toggle, GDD §8). Declared for the rules that
+## still tell hosts apart: only a stomp, the claws or the dash earn the host bonus (CyborgTuning), other
+## enemies' charges pass a host by (charge_can_hurt), and hosts never board an Enforcer Truck.
+var is_host: bool = false
 ## Destroyed by baiting other enemies' charges into it (GDD §9.13, the Enforcer Truck): an Octodog's lunge
 ## or a Buzz Overdrive's charge (_hurt_charge_contacts) defeats it although it's immune_to_weapons (weapons
 ## still never target or hurt it, direct or splash), and that defeat is the player's doing, a bait:
 ## ScoreKeeper counts it as the player's kill, with its score, unlike any other enemy a charge flattens
 ## (owner revision, October 3, 2026: NPC friendly fire grants nothing). Off for every other enemy: hosts and
-## generators keep their immunity to charges as to weapons.
+## generators are never hurt by a charge (charge_can_hurt).
 var charge_bait: bool = false
 ## Claw contact doesn't defeat it (bosses, the Bad Dream).
 var claw_immune: bool = false
@@ -128,6 +131,45 @@ func track_distance() -> float:
 	return -global_position.z
 
 
+## The height a flyer must hold right now to clear the dash walls standing in its way (task H7a; GDD §9.14: a
+## building across the street, MovementTuning.dash_wall_height tall), or 0 when none is: the wall's top plus
+## DASH_WALL_CLEARANCE, from the moment a climb from `from_height` at DASH_WALL_CLIMB_SPEED must start for the
+## flyer to be over the wall as its front reaches the face, until its body is past the wall's back. `at` is the
+## flyer's track distance, `half_length` half its body's length along the track, and `closing_speed` how fast
+## its body comes at the wall (the runner's speed for a flyer pacing them, more for one pulling away). A flyer
+## ahead of the runner (the heli drone, the Resonator leaving, a fleeing Tithe Collector) climbs to it and back
+## down past the wall, so none flies through a building. Only standing walls count: the runner breaks each one
+## as they reach it, so a flyer ahead of them always meets it standing.
+func dash_wall_lift(at: float, half_length: float, from_height: float, closing_speed: float) -> float:
+	if world == null or world.layout == null or world.layout.dash_walls.is_empty():
+		return 0.0
+	var top: float = world.tuning.dash_wall_height + DASH_WALL_CLEARANCE
+	var lead: float = maxf(top - from_height, 0.0) / DASH_WALL_CLIMB_SPEED * maxf(closing_speed, 1.0) + half_length
+	for w: Dictionary in world.layout.dash_walls:
+		if bool(w.get("smashed", false)):
+			continue
+		if at + lead >= float(w["start"]) and at - half_length <= float(w["end"]):
+			return top
+	return 0.0
+
+
+## True if `front` (the front of a ground enemy ahead of the runner, moving away from them) has reached the face
+## of a dash wall still standing between it and the runner (task H7a; GDD §9.14): it can't drive through a
+## building, so it leaves play there (an Octodog running off ahead or pacing, a Buzz Overdrive speeding off after
+## letting the runner pass). Only standing walls count, and the runner breaks each one as they reach it.
+func dash_wall_reached(front: float) -> bool:
+	if world == null or world.layout == null or world.layout.dash_walls.is_empty():
+		return false
+	var p: float = world.player_distance()
+	for w: Dictionary in world.layout.dash_walls:
+		if bool(w.get("smashed", false)):
+			continue
+		var face: float = float(w["start"])
+		if face > p and front >= face:
+			return true
+	return false
+
+
 ## Where weapons aim and effects appear.
 func aim_point() -> Vector3:
 	return global_position + Vector3(0.0, 0.8, 0.0)
@@ -148,8 +190,9 @@ func is_major_attack_active() -> bool:
 	return false
 
 
-## Auto-fire can pick this enemy (GDD §8: the weapon fires at the nearest valid target). A host is
-## immune_to_weapons (GDD §9.7), so it's already excluded.
+## Auto-fire can pick this enemy (GDD §8: the weapon fires at the nearest valid target): anything alive
+## but an immune_to_weapons enemy. A host is a target like any other cyborg (GDD §9.7, owner, October 8,
+## 2026).
 func targetable() -> bool:
 	return alive and not immune_to_weapons and is_inside_tree()
 
@@ -158,11 +201,21 @@ func health_ratio() -> float:
 	return clampf(health / maxf(max_health, 0.001), 0.0, 1.0)
 
 
-## Weapon-compatible damage (also NPC charge contacts). Never hurts an immune_to_weapons enemy
-## (a host, GDD §9.7; a generator, GDD §9.1), direct or splash alike, but for a charge_bait one's charge
-## contact (GDD §9.13).
+## True if another enemy's charge can hurt it (_hurt_charge_contacts, and take_damage with
+## CHARGE_DAMAGE_CAUSE): never a host (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 629: a charge is no weapon, so hosts
+## kept their immunity to charges when weapons began to hit them, owner, October 8, 2026), nor an
+## immune_to_weapons enemy unless it declares charge_bait (the Enforcer Truck, GDD §9.13). Bosses are left
+## out by _hurt_charge_contacts itself (their parts keep their encounter's rules).
+func charge_can_hurt() -> bool:
+	return not is_host and (charge_bait or not immune_to_weapons)
+
+
+## Weapon-compatible damage (also NPC charge contacts). A weapon (direct or splash alike) never hurts an
+## immune_to_weapons enemy (a generator, GDD §9.1; the Bad Dream); a charge's contact hurts only what
+## charge_can_hurt() allows (a charge_bait enemy despite its immunity, GDD §9.13; never a host).
 func take_damage(amount: float, source: StringName, splash: bool = false) -> void:
-	if not alive or (immune_to_weapons and not (charge_bait and source == CHARGE_DAMAGE_CAUSE)):
+	var immune: bool = (not charge_can_hurt()) if source == CHARGE_DAMAGE_CAUSE else immune_to_weapons
+	if not alive or immune:
 		return
 	health -= amount
 	health_changed.emit(self)
@@ -188,9 +241,9 @@ func _begin_charge_contacts() -> void:
 ## Call only for actual charging motion. The convex hull of a box's start/end corners is its exact
 ## translational sweep, including diagonal lunges (a merged AABB would hit things off that line).
 ## Victims need an active physical part: detached attacks/waves, electrical hazards and lane
-## blockers aren't bodies. Damage uses the usual path, preserving hosts' and weapons' immunities
-## (a weapon-immune victim is hit only if it declares charge_bait: the Enforcer Truck, GDD §9.13)
-## and any subclass damage rules; multiple body parts can hit a victim only once per charge.
+## blockers aren't bodies. Damage uses the usual path, and only what charge_can_hurt() allows is a
+## victim: never a host, and a weapon-immune enemy only if it declares charge_bait (the Enforcer Truck,
+## GDD §9.13); any subclass damage rules apply; multiple body parts can hit a victim only once per charge.
 ## Boss parts keep their encounter-specific damage/progression rules, not ordinary lethal hits.
 func _hurt_charge_contacts(hitbox: Hazard, previous: Transform3D) -> void:
 	if not alive or _charge_contact_query == null or not hitbox.is_active():
@@ -218,7 +271,7 @@ func _hurt_charge_contacts(hitbox: Hazard, previous: Transform3D) -> void:
 			continue
 		var victim: Enemy = victim_box.enemy
 		if not is_instance_valid(victim) or victim == self or not victim.alive \
-				or (victim.immune_to_weapons and not victim.charge_bait) or victim.is_boss:
+				or not victim.charge_can_hurt() or victim.is_boss:
 			continue
 		var id: int = victim.get_instance_id()
 		if _charge_contact_hits.has(id):

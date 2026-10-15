@@ -40,6 +40,9 @@ const FRAME_Z: float = FACE_Z + 0.85
 const REEL_CURVE_DEGREES: float = 30.0
 const BULB: float = 0.24
 const TILT_SHADER: Shader = preload("res://scripts/bosses/the_house/the_house_tilt.gdshader")
+## The warm fake light it's lit with when its arena's skin names none (sheen_for): the Marketplace's
+## (MarketplaceSkin.sheen_color), where the fight was first built.
+const DEFAULT_SHEEN := Color(0.56, 0.42, 0.34)
 
 ## The machine's size and where its parts are, in its own space (see the header).
 class Shape:
@@ -122,11 +125,12 @@ static func shape_for(street_width: float, t: TheHouseTuning, hopper_length: flo
 	return s
 
 
-func build(p_shape: Shape) -> void:
+## Builds the machine to `p_shape`, lit with `p_skin`'s warm light (its arena's; solid_material).
+func build(p_shape: Shape, p_skin: ZoneSkin = null) -> void:
 	shape = p_shape
 	for child: Node in get_children():
 		child.queue_free()
-	var solid: ShaderMaterial = solid_material()
+	var solid: ShaderMaterial = solid_material(p_skin)
 	var batch := MeshBatch.new()
 	_cabinet(batch.layer(solid))
 	batch.commit(self, "Cabinet")
@@ -180,9 +184,17 @@ func build(p_shape: Shape) -> void:
 	animate()
 
 
-## The kit's solid material for the machine: lit with the Marketplace's warm fake light.
-static func solid_material() -> ShaderMaterial:
-	return MeshKit.solid({"glow_scale": 4.0, "sheen_color": Color(0.56, 0.42, 0.34), "sheen_strength": 0.16})
+## The kit's solid material for the machine and its props: lit with its arena's warm fake light
+## (sheen_for: the arena skin's own sheen colour).
+static func solid_material(skin: ZoneSkin = null) -> ShaderMaterial:
+	return MeshKit.solid({"glow_scale": 4.0, "sheen_color": sheen_for(skin), "sheen_strength": 0.16})
+
+
+## The warm fake light the machine is lit with in `skin`: the skin's `sheen_color` if it has one (the
+## Marketplace's skin, the arena's look until the Casino's own is in, task K1), else DEFAULT_SHEEN.
+static func sheen_for(skin: ZoneSkin) -> Color:
+	var value: Variant = skin.get(&"sheen_color") if skin != null else null
+	return value as Color if value is Color else DEFAULT_SHEEN
 
 
 ## Pushes the animated state (the fields above) to the shaders and the moving parts.

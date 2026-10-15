@@ -1,9 +1,9 @@
 class_name LevelRun
 extends Node3D
 ## One level or boss fight being played. Generates the layout for a RunContext (a boss fight's arena
-## comes from its BossEncounter, GDD §10), builds the RunWorld, and runs the camera, HUD, music and
-## debug tools. The App owns the flow around a run (death screen, revive, results, shop, retry);
-## LevelRun only plays and reports:
+## comes from its BossEncounter, GDD §10; a mini-game level's track from its MiniGame, which then joins the
+## world), builds the RunWorld, and runs the camera, HUD, music and debug tools. The App owns the flow around a
+## run (death screen, revive, results, shop, retry); LevelRun only plays and reports:
 ## - `died` when the player dies (after a short pause so the death reads). The App answers with
 ##   revive() or give_up().
 ## - `finished` with the RunResult when the level is completed (a boss fight: the boss is beaten) or
@@ -42,6 +42,8 @@ var rules: GameRules
 var world: RunWorld
 ## The boss fight in this run, or null for a level.
 var encounter: BossEncounter
+## The mini-game this level plays (LevelConfig.minigame: the Beach's volleyball match), or null.
+var minigame: MiniGame
 var camera: RunCamera
 var hud: RunHud
 ## Screen-space speed lines (G2, Speed effects): a thin CanvasLayer, cheap enough to leave running.
@@ -81,6 +83,7 @@ func _build() -> void:
 		world.queue_free()
 		remove_child(world)
 	encounter = null
+	minigame = null
 	var layout: LevelLayout
 	var arena: BossArena = null
 	if context.is_boss():
@@ -88,12 +91,19 @@ func _build() -> void:
 		if encounter == null:
 			push_error("LevelRun: boss %s has no fight to play (BossDef.scene)" % context.boss.id)
 		arena = encounter.plan_arena(context) if encounter != null else null
+	elif context.config.plays_minigame():
+		# A level that plays a mini-game (the Beach's volleyball match): the game plans its own track.
+		minigame = MiniGame.create(context.config.minigame)
+		if minigame == null:
+			push_error("LevelRun: level %s has no mini-game to play (MiniGameDef.scene)" % context.config.id)
 	if arena != null:
 		layout = arena.layout
+	elif minigame != null:
+		layout = minigame.plan_layout(context)
 	else:
-		var gen := LevelGenerator.new()
-		layout = gen.generate(context.config, context.tuning, LevelGenerator.load_for(context.config))
-		for line: String in gen.warnings:
+		# Task PERF2: a run of the level the last run built (a retry) plays a copy of that build (LevelCache).
+		layout = LevelCache.layout_for(context)
+		for line: String in LevelCache.warnings:
 			push_warning("LevelGenerator: " + line)
 	world = RunWorld.new()
 	world.name = "World"
@@ -112,6 +122,8 @@ func _build() -> void:
 	if encounter != null:
 		encounter.setup(world, context, arena)
 		encounter.defeated.connect(_on_boss_defeated)
+	if minigame != null:
+		minigame.setup(world, context)
 	if not context.review_pickups.is_empty():
 		world.pickups.start_review(context.review_pickups)
 	if context.review_thief and ResourceLoader.exists(STAND_IN_THIEF):
@@ -125,8 +137,9 @@ func _build() -> void:
 		sun.light_energy = 0.7
 		sun.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 		add_child(sun)
-	# The zone's look with the level's darkness (GDD §5, The Hush): only the scenery darkens.
-	_env.environment = world.skin.level_environment(context.config.darkness)
+	# The zone's look with the level's own sky, if it has one, and its darkness (GDD §5, The Hush): only
+	# the scenery darkens.
+	_env.environment = world.skin.level_environment(context.config.darkness, context.config.sky)
 	_lighting_run = self
 	if camera == null:
 		camera = RunCamera.new()
@@ -137,6 +150,8 @@ func _build() -> void:
 	# compiles its shaders during the load rather than in the frame it first appears.
 	if ShaderWarmup.needed():
 		ShaderWarmup.new().setup(world, camera)
+	else:
+		ShaderWarmup.load_doodads(world)
 	if speed_lines == null:
 		speed_lines = SpeedLines.new()
 		add_child(speed_lines)
@@ -208,12 +223,14 @@ func begin() -> void:
 	world.start()
 
 
-## A level's darker lighting ends with its run (ZoneSkin.apply_darkness sets a global uniform), unless
-## a newer run has set its own since.
+## A level's darker lighting and the street's light under its own sky end with its run
+## (ZoneSkin.apply_darkness and set_scenery_tint set global uniforms), unless a newer run has set its
+## own since.
 func _exit_tree() -> void:
 	if _lighting_run == self:
 		_lighting_run = null
 		ZoneSkin.set_scenery_light(1.0)
+		ZoneSkin.set_scenery_tint(Color.WHITE)
 
 
 ## Continues after a death (revive item or rewarded ad). The App calls this.
@@ -438,11 +455,28 @@ func _build_debug_tools() -> void:
 		var wall_fences: WallFenceTuning = WallFencePlacement.tuning()
 		if wall_fences.resource_path != "":
 			sections.append({"title": "Wall fences", "resource": wall_fences, "path": wall_fences.resource_path})
-	# How often and how long side walls break (WallGapPlacement), in a level that has them; Restart level rebuilds.
+	# How often and how long side walls break (WallGapPlacement), in a level that has them: the level's own numbers
+	# if it has them (task D10b, the Beach's open walls), else the shared ones; Restart level rebuilds.
 	if context.config.has_feature(WallGapPlacement.FEATURE):
-		var wall_gaps: WallGapTuning = WallGapPlacement.tuning()
+		var wall_gaps: WallGapTuning = WallGapPlacement.tuning_for(context.config)
 		if wall_gaps.resource_path != "":
 			sections.append({"title": "Wall gaps", "resource": wall_gaps, "path": wall_gaps.resource_path})
+	# Task G7: how wide the wider gaps are and what they keep clear of, and where planted cyborgs stand in charge
+	# paths, in a level that asks for them (LevelConfig.wide_gaps, charge_path_cyborgs); Restart level rebuilds.
+	if context.config.wide_gaps > 0:
+		var wide_gaps: WideGapTuning = WideGapPlacement.tuning()
+		if wide_gaps.resource_path != "":
+			sections.append({"title": "Wider gaps", "resource": wide_gaps, "path": wide_gaps.resource_path})
+	if context.config.charge_path_cyborgs > 0:
+		var charge_paths: ChargePathTuning = ChargePathPlacement.tuning()
+		if charge_paths.resource_path != "":
+			sections.append({"title": "Charge paths", "resource": charge_paths, "path": charge_paths.resource_path})
+	# Task H7a: where dash walls stand and what keeps clear around them, in a level that has them (how many is
+	# the level's LevelConfig.dash_walls, in "Level pacing"; the wall's size is in "Movement"); Restart rebuilds.
+	if context.config.has_feature("dash_wall"):
+		var dash_walls: DashWallTuning = DashWallTuning.load_default()
+		if dash_walls.resource_path != "":
+			sections.append({"title": "Dash walls", "resource": dash_walls, "path": dash_walls.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss
@@ -450,6 +484,12 @@ func _build_debug_tools() -> void:
 			sections.append({"title": "Boss: " + def.display_name, "resource": def, "path": def.resource_path})
 		if def.tuning != null and def.tuning.resource_path != "":
 			sections.append({"title": "Boss tuning", "resource": def.tuning, "path": def.tuning.resource_path})
+	if minigame != null:
+		# The mini-game's own numbers (the volleyball match's timings, aim, scoring and payout).
+		var game_tuning: Resource = minigame.def_tuning()
+		if game_tuning != null and game_tuning.resource_path != "":
+			sections.append({"title": "Mini-game: " + minigame.def.display_name, "resource": game_tuning,
+				"path": game_tuning.resource_path})
 	# The level's enemy types. Every enemy of a type shares its tuning resource, so changes reach the
 	# ones in play (numbers an enemy reads once, such as health, apply to the next ones spawned).
 	var types: PackedStringArray = []

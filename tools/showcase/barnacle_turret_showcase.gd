@@ -59,7 +59,7 @@ func _ready() -> void:
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
 	var config := LevelConfig.new()
 	config.lane_count = _lanes
-	config.enemy_scaling = 0.43
+	config.enemy_scaling = 6.0 / 16.0  # Marketplace 1's
 	var skin_path: String = "res://data/skins/%s_skin.tres" % skin_name
 	var skin: ZoneSkin = load(skin_path) as ZoneSkin if ResourceLoader.exists(skin_path) else null
 	if skin != null and variant != "":

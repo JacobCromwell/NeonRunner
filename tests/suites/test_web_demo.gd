@@ -95,6 +95,14 @@ func _test_preset() -> void:
 	var head: String = String(presets.get_value(options, "html/head_include", ""))
 	check(head.contains("orientation: portrait") and head.contains("pointer: coarse") and head.contains("sideways")
 		and head.contains("DESIGN-TBD"), "a phone held upright is asked to turn sideways (the game is landscape, GDD §2)")
+	# Sound on an iPhone with its silent switch on (task I3): the page marks its audio 'playback', behind
+	# every guard (a browser without the Audio Session API, or one that refuses, skips it).
+	check(head.contains("<script>") and head.contains("'audioSession' in navigator") and head.contains("navigator.audioSession.type = 'playback'")
+		and head.contains("try {") and head.contains("catch (e)"),
+		"the page sets navigator.audioSession.type = 'playback' (Safari's silent switch mutes Web Audio otherwise), inside a try and a feature check")
+	check(head.contains("visibilitychange") and head.contains("touchend") and head.contains("pointerup"),
+		"and again on the first touch, click or key and when the page returns to the front")
+	check(not head.contains("$GODOT"), "the head include holds no Godot template placeholder")
 	var includes: PackedStringArray = DemoFilter.patterns_of(String(presets.get_value(section, "include_filter", "")))
 	check(includes.has("*.json") and includes.has("assets/fonts/*/OFL.txt"), "it takes the data read as text and the font licenses")
 	# The filter matches the data.
@@ -218,7 +226,8 @@ func _test_resources() -> void:
 
 
 ## The res:// files the demo references, each with what referenced it: the main scene, the autoloads,
-## the icon and the bus layout; every path written in a script or shader it keeps; the demo zones'
+## the icon and the bus layout; every path written in a script or shader it keeps, and the script of
+## every global class (class_name) named in a script it keeps outside comments; the demo zones'
 ## boss fights and cinematics (named by path); the files the game finds in its folders by name (enemy
 ## scripts, rules and tunings, the kit's shaders, the patterns); its music and sounds; the data it
 ## reads as text; and all of their dependencies.
@@ -234,6 +243,13 @@ func _demo_references(filter: String) -> Dictionary:
 		if key.begins_with("autoload/"):
 			todo.append(PackedStringArray([String(ProjectSettings.get_setting(key)).trim_prefix("*"), "project.godot"]))
 	var literal := RegEx.create_from_string("\"(res://[^\"%]+\\.[a-zA-Z0-9]+)\"")
+	# A class_name isn't a dependency Godot lists, yet a kept script naming one the filter leaves out
+	# fails to compile in the export (hint_director.gd naming TestBoss did).
+	var classes: Dictionary = {}
+	for c: Dictionary in ProjectSettings.get_global_class_list():
+		classes[String(c["class"])] = String(c["path"])
+	var word := RegEx.create_from_string("\\b[A-Z]\\w*")
+	var comment := RegEx.create_from_string("(?m)#.*$")
 	for path: String in _files("res://scripts", ["gd", "gdshader", "gdshaderinc"]) + _files("res://scenes", ["tscn"]):
 		if DemoFilter.excluded(path, filter):
 			continue
@@ -267,6 +283,10 @@ func _demo_references(filter: String) -> Dictionary:
 		if path == "" or refs.has(path):
 			continue
 		refs[path] = item[1]
+		if path.get_extension() == "gd" and not DemoFilter.excluded(path, filter):
+			for m: RegExMatch in word.search_all(comment.sub(FileAccess.get_file_as_string(path), "", true)):
+				if classes.has(m.get_string()) and not refs.has(classes[m.get_string()]):
+					todo.append(PackedStringArray([classes[m.get_string()], path]))
 		if not ResourceLoader.exists(path):
 			continue
 		for dep: String in ResourceLoader.get_dependencies(path):

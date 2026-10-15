@@ -22,6 +22,8 @@ float light_factor(float f) {
 #endif
 }
 
+// DashWallKit.hash11 (GDScript) replicates this function, so a test can tell what a shader draws for a seed
+// (CorporateDashWall's lobby seeds): change both together.
 float hash11(float p) {
 	p = fract(p * 0.1031);
 	p *= p + 33.33;

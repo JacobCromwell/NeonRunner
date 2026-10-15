@@ -7,19 +7,17 @@
 [ext_resource type="Resource" path="res://data/skins/marketplace_skin.tres" id="skin"]
 [ext_resource type="Resource" path="res://data/cinematics/marketplace_intro.tres" id="c_intro"]
 [ext_resource type="Resource" path="res://data/cinematics/marketplace_outro.tres" id="c_outro"]
-[ext_resource type="Resource" path="res://data/bosses/marketplace_boss.tres" id="boss"]
 
 [resource]
 script = ExtResource("1_script")
 id = &"marketplace"
 display_name = "Marketplace"
-tagline = "Stall roofs, awnings, casinos and a bustling open-air market."
+tagline = "Stall roofs, awnings and a bustling open-air market."
 music = &"marketplace"
 skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_marketplace_1"), ExtResource("lvl_marketplace_2")])
 run_speed = 22.6
 intro = ExtResource("c_intro")
 outro = ExtResource("c_outro")
-boss = ExtResource("boss")
 in_demo = false
 placeholder = false

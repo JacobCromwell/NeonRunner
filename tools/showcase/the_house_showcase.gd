@@ -1,8 +1,8 @@
 extends Node3D
 ## The House up close and in scripted runs, for visual review (GDD §10, task E5a; not part of the game).
-## It builds the fight the way the game does (its arena on the Marketplace's stall roofs, in its arena's
+## It builds the fight the way the game does (its arena on its zone's street, in its arena's
 ## look), with a runner who plays it by its warnings (TheHouseBot) or stands still. The fight itself:
-## ./play.sh --boss=marketplace_boss (debug builds). Render frames on both renderers, e.g.:
+## ./play.sh --boss=casino_boss (debug builds). Render frames on both renderers, e.g.:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot4 --path . --resolution 960x540 --fixed-fps 10 \
 ##     --write-movie build/house/f.png --quit-after 60 res://tools/showcase/the_house_showcase.tscn \
 ##     -- --scenario=model --lanes=5
@@ -23,7 +23,7 @@ extends Node3D
 ##   defeat    phase 3 to its end: the last jackpot and stomp, then the wild spin, the jam and TILT, the
 ##             collapse in coins
 ##   fight     the fight as it comes, with the bot
-## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 22.6),
+## Options: --lanes=N (3, 5 or 6; 5 by default), --speed=N (18 by default; the campaign's 23),
 ## --symbols=a,b,c (the spin's three symbols: cherry, bar, lightning), --phase=N, --reduced-flashing,
 ## --still, --events (prints each of the boss's events with its frame, for picking frames).
 ## Frames worth a look (at --fixed-fps 10): entrance 0-45; spin: the lever about frame 53, the reels
@@ -31,7 +31,7 @@ extends Node3D
 ## lighting up from about frame 53 and pressed about 66-79; jackpot: the jackpot about frame 80, the
 ## fountain and the sag 83-92, the stomp about 102; wall, ceiling, defeat: print --events and pick.
 
-const BOSS_PATH: String = "res://data/bosses/marketplace_boss.tres"
+const BOSS_PATH: String = "res://data/bosses/casino_boss.tres"
 
 var scenario: String = "model"
 var world: RunWorld

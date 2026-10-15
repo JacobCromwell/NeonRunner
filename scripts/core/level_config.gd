@@ -1,8 +1,8 @@
 class_name LevelConfig
 extends Resource
 ## One level: generator settings plus what the campaign shows. Campaign levels use fixed seeds.
-## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position;
-## standalone use (quick play, tests) takes the values stored here.
+## The campaign (Campaign/ZoneDef) sets difficulty and enemy_scaling from the level's position, unless the
+## level is off its curve (off_curve); standalone use (quick play, tests) takes the values stored here.
 
 ## Features the campaign schedule (GDD §5) already lists for enemies and mechanics that aren't built
 ## yet. Each does nothing until its code and patterns exist: its patterns `require` the name, its
@@ -27,7 +27,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## run starts (GameRules.lanes_pc / lanes_mobile); tests and the F1 debug key set it directly.
 @export_range(3, 8) var lane_count: int = 3
 ## GDD §4: levels last 90–150 seconds. DESIGN-TBD: each campaign level's length (together they make
-## GDD §5's "a flawless run through every level takes about 35 minutes").
+## GDD §5's "a flawless run through every level takes about 40 minutes").
 @export_range(30.0, 150.0, 1.0, "suffix:s") var duration_seconds: float = 120.0
 ## The run speed this level is built and played at (GDD §3, owner's playtest September 30, 2026: it
 ## rises zone by zone). 0: its zone's (ZoneDef.run_speed) in the campaign, else the movement tuning's
@@ -46,6 +46,21 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0.0, 1.0, 0.05) var difficulty_ramp: float = 0.25
 ## 0 = first campaign level, 1 = last: enemies scale fire rate, speed and health with it (GDD §6).
 @export_range(0.0, 1.0, 0.05) var enemy_scaling: float = 0.0
+## Off the campaign's difficulty curve (task D10c; the owner, October 9, 2026: the Beach goes between Corporate and
+## the Dead Zone, after the playtests every other level was tuned in): the campaign plays this level at its own
+## difficulty (plus the difficulty tier's bonus; difficulty_bias doesn't apply) and enemy_scaling instead of at a
+## place on its curve, and leaves it out of the curve's count and of the other levels' feature ages, so every
+## level on the curve keeps exactly the difficulty, enemy scaling, ages and recency it had (Campaign.configure).
+## Its own feature ages count every level before it. Off: the level is on the curve, as every level was before.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md, items 569–572): the Beach's two levels; whether the curve is later re-spread over every
+## level, the Beach's included.
+@export var off_curve: bool = false
+## A mini-game this level plays instead of a generated layout (MiniGame; the owner, October 10, 2026: the Beach's
+## second level, a beach volleyball match, data/minigames/volleyball.tres): LevelRun asks the game for the level's
+## track and the game runs on it, so the generator, the features and the pacing below don't apply. Such a level
+## sits off the curve (off_curve) and counts for no other level's feature ages (Campaign.feature_ages). Null: a
+## generated level, as every other level is.
+@export var minigame: MiniGameDef
 ## Mechanics and enemies this level may use. A pattern is only picked when every entry of its
 ## `requires` list is here (GDD §6: introduce one new mechanic at a time). Core movement pieces
 ## (gaps, fences, signs, walls) need no feature. Known features:
@@ -59,15 +74,27 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   fences over the low or the high part of the wall only, from Corporate 1 (task B5; no patterns: the
 ##   generator places them, WallFencePlacement)
 ## - wall_gaps: side wall gaps, stretches of a side wall with no wall-running surface (owner's
-##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena (no patterns:
-##   the generator places them, WallGapPlacement; tuning in data/tuning/wall_gaps.tres)
+##   answers, docs/USER_REQUESTS.md), from Gangland 1 (Zone 2) on, never in a boss arena unless the
+##   arena opts in with wall_gap_tuning (no patterns: the generator places them, WallGapPlacement;
+##   tuning in data/tuning/wall_gaps.tres, or the level's own, wall_gap_tuning)
 ## - enforcer_truck: the Enforcer Truck (GDD §9.13; task C6), from Corporate 2 (no patterns: its rules,
 ##   enforcer_truck_rules.gd, bring it in around the level's Octodog and Buzz Overdrive charges, its baits,
 ##   so a level needs octodog or buzz_overdrive for it to appear)
+## - dash_wall: dash walls, buildings across every floor lane the runner dashes through (GDD §9.14; task
+##   H7a), from Corporate 1 (no patterns: their rules, dash_wall_rules.gd, stand up to dash_walls of them
+##   where they're fair)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
 @export var features: PackedStringArray = PackedStringArray(["ramps", "ceilings", "pulsing"])
+## The `wall_gaps` feature's numbers for this config (WallGapPlacement.tuning_for): null for every
+## level's, data/tuning/wall_gaps.tres, and the level is built exactly as before. A boss arena gets wall gaps
+## only with numbers of its own here (and the feature listed): the opt-in (BossArena.base_config keeps the
+## feature only then). The Sleep Taker's arena opts in (owner, October 8, 2026: "the walls aren't safe": many
+## gaps). A level may take its own too (task D10b; the owner, October 9, 2026, on the Beach: "I want this zone to
+## feel more open ... have them appear about 50% of the time that they are now currently appearing"): the Beach's
+## levels take data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length.
+@export var wall_gap_tuning: WallGapTuning
 ## Features that start partway into the level (GDD §5: City 1 meets its cyborgs late in the level):
 ## feature name → share of the level (0–1). Nothing of that feature is placed before its start,
 ## by patterns or by rules scripts, and the first pattern picked from there uses it (as soon as one
@@ -110,6 +137,13 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## surfaces; hazards, triggers, enemies, the player, credits and the HUD keep their glow and their
 ## light (ZoneSkin.apply_darkness). DESIGN-TBD: The Hush's value.
 @export_range(0.0, 1.0, 0.05) var darkness: float = 0.0
+## The level's own sky over its zone's (owner, October 8, 2026: a few levels show the time of day or the
+## weather turning; GDD §5, "Skies show progression"): the sky, the distance fog and the street's light
+## under it change (LevelSky, ZoneSkin.level_environment); the boss fight after the level keeps it
+## (Campaign.configure_boss), and so does its boss's intro (CineStage.sky_for). The owner asked for the
+## Marketplace's sunset on its third level; the zone has two, so Marketplace 2 has it (confirmed October
+## 9, 2026). Null: the zone's own sky. Gameplay never depends on it.
+@export var sky: LevelSky
 
 @export_group("Pacing")
 ## Empty run-up before the first pattern.
@@ -143,6 +177,27 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## build places, where it's fair: an open lane and the level's spacing around everything it adds.
 ## 0 turns it off: the level is built exactly as before (quick play, the tests, boss arenas).
 @export_range(0.0, 1.0, 0.01) var danger_density_increase: float = 0.0
+## Wider gaps (owner, October 7, 2026, GDD §9.13 "Holes"; task G7): this many of the level's gap rows
+## come out longer along the run (WideGapTuning.jump_fraction of a jump, data/tuning/wide_gaps.tres):
+## still jumpable, too wide for an Enforcer Truck to hop, so one that follows the runner into one is
+## wrecked. Uncommon: "a couple of times each level" (WideGapPlacement). 0 turns it off: the level is
+## built exactly as before (quick play, the tests, boss arenas). DESIGN-TBD: 2 in every campaign level.
+@export_range(0, 6) var wide_gaps: int = 0
+## Cyborgs in charge paths (owner, October 7, 2026, GDD §9.13 "Teaching"; task G7): up to this many of the
+## level's Octodog lunges and Buzz Overdrive charges get a plain cyborg standing in their path, so the
+## player sees a charge flatten another enemy (ChargePathPlacement; numbers in data/tuning/charge_paths.tres).
+## 0 turns it off: the level is built exactly as before. DESIGN-TBD: 1 in every campaign level with Octodogs
+## or Buzz Overdrives (Gangland 2 on), so the player meets it several times before the Enforcer Truck.
+@export_range(0, 4) var charge_path_cyborgs: int = 0
+## Dash walls (owner, October 8, 2026, GDD §9.14; task H7a): with the `dash_wall` feature, the generator
+## stands up to this many buildings across the level's floor lanes for the runner to dash through
+## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown
+## is over before the next (data/tuning/dash_walls.tres); fewer where the level leaves no room, never none.
+## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 644): 1 to 4 by level
+## (2 in Corporate 1, up to 3 in Dead Zone 1 and Golden 2; a level asks for no more than its track holds on every
+## lane count: Corporate 2, The Hush and Golden 1 hold one, Golden 1 since the walls keep off an Enforcer Truck's
+## showing windows, task C6c); quick play's prototype level takes this default.
+@export_range(0, 8) var dash_walls: int = 3
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are
@@ -250,6 +305,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 
 func has_feature(feature: String) -> bool:
 	return features.has(feature)
+
+
+## True if the level plays a mini-game (minigame) rather than a generated layout.
+func plays_minigame() -> bool:
+	return minigame != null
 
 
 ## The movement tuning this level runs on: `base` itself unless the level has a run speed of its own

@@ -21,6 +21,7 @@ func run() -> void:
 	await _test_slots_and_demo()
 	await _test_ad_revive()
 	await _test_darker_level()
+	await _test_level_sky()
 	await _test_endless()
 
 	App.show_title()
@@ -121,17 +122,38 @@ func _test_pause() -> void:
 
 
 func _test_slots_and_demo() -> void:
-	# The City's boss is built (task E1d; test_floating_head_defeat.gd plays its whole flow), and Gangland's
-	# (E4b), the Marketplace's and the Dead Zone's; the Golden Palace's is still a placeholder card.
-	App.play_step(App.campaign.step("golden/boss"))
-	check(App.screen is SlotScreen and App.run == null, "an unbuilt boss shows its placeholder card")
+	# A boss not yet built shows its placeholder card. Every zone's boss is built now (the Beach's last: Mecha Guppy and
+	# Captain Cogs, task E5e-c), so an unbuilt stand-in takes the Beach's slot for the check (docs/OPEN_QUESTIONS.md item
+	# 575): a copy of its BossDef with no scene. Continuing passes through it to the Beach's outro, and on to the Dead
+	# Zone.
+	var step: CampaignStep = App.campaign.step("beach/boss")
+	var real: BossDef = step.boss if step != null else null
+	check(real != null and real.is_built() and real.preview() == null, "the Beach's boss slot plays its fight (task E5e-c)")
+	if real == null:
+		return
+	var stand_in: BossDef = real.duplicate() as BossDef
+	stand_in.scene = ""
+	stand_in.preview_scene = ""
+	step.boss = stand_in
+	App.play_step(step)
 	var card := App.screen as SlotScreen
+	check(card != null and App.run == null, "an unbuilt boss shows its placeholder card")
+	if card != null:
+		App.complete_step(card.step)
+	step.boss = real
 	if card == null:
 		return
-	App.complete_step(card.step)
 	App.advance_from(card.step)
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "golden/outro",
+	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "beach/outro",
 		"continuing moves on to the next step (the outro cinematic slot)")
+	var outro := App.screen as SlotScreen
+	if outro != null:
+		App.complete_step(outro.step)
+		App.advance_from(outro.step)
+		# The Dead Zone's intro is its own scene (task F2c: the runner climbing out of a crater), not a flyover.
+		var intro := App.playing_cinematic() as DeadZoneIntro
+		check(intro != null and intro.step.id == "dead_zone/intro", "and the Beach's outro on to the Dead Zone's intro")
+		App.show_level_select()
 	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
 	App.advance_from(App.campaign.step("city/outro"))
 	check(App.screen is DemoEndScreen, "the web demo ends after Zone 1 with the store-link screen (GDD §2)")
@@ -178,6 +200,19 @@ func _test_endless() -> void:
 		check(not ctx.config.guarantee_features and city_3.guarantee_features,
 			"endless skips the campaign's every-feature guarantee (a 20-minute level needs no rebuilds)")
 	App.show_title()
+	# With Gangland reached, endless copies Gangland 3 but not its own sky (or the street's light under it).
+	for s: CampaignStep in App.campaign.steps():
+		if s.index < App.campaign.step("gangland/3").index:
+			App.profile.record_run(s.id, 0, true, 100, 3, 10.0)
+	var rotor_wash: LevelConfig = App.campaign.step("gangland/3").level
+	App.start_endless()
+	App.begin_run()
+	await physics_frames(3)
+	var gang: RunContext = App.run.context if App.run != null else null
+	check(gang != null and gang.config.features == rotor_wash.features and gang.config.sky == null
+		and _cloud_amount(App.run) == 0.0 and ZoneSkin.scenery_tint_now == Color.WHITE and rotor_wash.sky != null,
+		"endless in Gangland plays Gangland 3's features under the zone's own sky (Gangland 3 keeps its own)")
+	App.show_title()
 	# With the Dead Zone reached, endless copies The Hush but not its own remix: its pacing in bursts,
 	# the hosts it picks more often, or its darkness.
 	for s: CampaignStep in App.campaign.steps():
@@ -219,6 +254,45 @@ func _test_darker_level() -> void:
 	App.show_title()
 	await physics_frames(2)
 	check(ZoneSkin.scenery_light_now == 1.0, "and the light comes back when the run ends")
+
+
+## A level's own sky (LevelConfig.sky; owner, October 8, 2026) reaches its run: Gangland 3's run has its
+## cloudy blood-red sky, fog and street light, the Sewer Swarm's fight after it the same, Gangland 2's the
+## zone's own, and the street's light comes back when the run ends.
+func _test_level_sky() -> void:
+	await _campaign_level("gangland/3")
+	var run: LevelRun = App.run
+	var sky: LevelSky = run.context.config.sky if run != null else null
+	check(sky != null and sky.sky.has("cloud_amount"), "Gangland 3 starts, with its own sky")
+	if sky == null:
+		return
+	var env: Environment = run.get_world_3d().environment
+	check(env != null and is_equal_approx(_cloud_amount(run), float(sky.sky["cloud_amount"]))
+		and env.fog_light_color == sky.fog_color, "its run's sky is cloudy, and the fog takes its colour")
+	check(ZoneSkin.scenery_tint_now == sky.scenery_tint, "and the street's light follows it")
+	App.start_boss(App.campaign.step("gangland/boss"))
+	App.begin_run()
+	await physics_frames(10)
+	check(App.run != null and App.run.context.config.sky == sky and is_equal_approx(_cloud_amount(App.run),
+		float(sky.sky["cloud_amount"])) and ZoneSkin.scenery_tint_now == sky.scenery_tint,
+		"the Sewer Swarm's fight keeps Gangland 3's sky and street light")
+	await _campaign_level("gangland/2")
+	check(App.run != null and App.run.context.config.sky == null and _cloud_amount(App.run) == 0.0
+		and App.run.get_world_3d().environment.fog_light_color == (App.run.world.skin as GanglandSkin).fog_color,
+		"Gangland 2's run has the zone's own sky")
+	check(ZoneSkin.scenery_tint_now == Color.WHITE, "and the zone's own street light")
+	await _campaign_level("gangland/3")
+	App.show_title()
+	await physics_frames(2)
+	check(ZoneSkin.scenery_tint_now == Color.WHITE, "the street's light comes back when the run ends")
+
+
+## The cloud cover of a run's sky (0 when the shader's default, no clouds, holds).
+func _cloud_amount(run: LevelRun) -> float:
+	var env: Environment = run.get_world_3d().environment if run != null else null
+	var m: ShaderMaterial = env.sky.sky_material as ShaderMaterial if env != null and env.sky != null else null
+	var v: Variant = m.get_shader_parameter("cloud_amount") if m != null else null
+	return float(v) if v != null else 0.0
 
 
 func get_tree_paused() -> bool:

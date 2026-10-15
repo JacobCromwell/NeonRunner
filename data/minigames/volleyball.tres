@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="MiniGameDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/minigames/minigame_def.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/minigames/volleyball_tuning.tres" id="2_tuning"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"volleyball"
+display_name = "Beach Volleyball"
+scene = "res://scenes/minigames/volleyball.tscn"
+tuning = ExtResource("2_tuning")

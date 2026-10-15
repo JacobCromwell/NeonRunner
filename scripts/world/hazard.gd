@@ -16,8 +16,17 @@ var hazard_name: String = "hazard"
 var is_electrical: bool = false
 ## An enemy attack (shots, lunges, swipes, slashes). Blocked by armor (GDD §8).
 var is_enemy_attack: bool = false
-## A solid collision (signs, trucks, walls, enemy bodies). Armor does not block these.
+## A solid collision (signs, trucks, walls, enemy bodies). Armor does not block these, unless
+## armor_blocks_solid says so.
 var is_solid: bool = false
+## A solid collision armor absorbs all the same (GDD §9.14, owner, October 8, 2026: a dash wall crashed into
+## without the dash is one hit that "armor or the shield absorbs", an exception to armor's rule for solid
+## collisions). False for every other hazard: armor never blocks a sign, a truck's body or a wall.
+var armor_blocks_solid: bool = false
+## What a contact with this hazard breaks, whatever the contact does to the player (a dash wall, task H7a: it
+## crumbles at any contact, a dash, a crash the armor or the shield absorbs, a kill, god mode or the
+## invulnerability window alike; Player.receive_hit breaks it). Null for every other hazard.
+var breakable: DashBreakable = null
 ## The juggernaut dash passes through every hazard except falls unless this is false (FB 17).
 var dash_passes: bool = true
 ## A thief's touch (GDD §9.12, the Tithe Collector): touching this robs instead of hurting

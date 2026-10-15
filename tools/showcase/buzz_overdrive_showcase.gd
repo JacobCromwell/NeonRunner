@@ -15,7 +15,7 @@ extends Node3D
 ##     --lane=N              its lane (default the middle one)
 ##     --speed=N             the run speed (default the zone's: Corporate 23.4, the Dead Zone 24.2, the Golden
 ##                           Zone 25; the encounter keeps its timing in seconds)
-##     --scaling=X           the level's enemy scaling, which sets its rev (default Corporate 1's, 0.57)
+##     --scaling=X           the level's enemy scaling, which sets its rev (default Corporate 1's, 0.625)
 ##     --high                a camera high behind the runner, looking down its lane
 ##     --side                a camera low beside its lane, level with the runner
 ##     --stay                the runner stays in its lane: the armor blocks the saw, the floor holds for a
@@ -57,7 +57,7 @@ func _ready() -> void:
 	var lanes: int = 3
 	var lane: int = -1
 	var speed: float = -1.0
-	var scaling: float = 8.0 / 14.0
+	var scaling: float = 10.0 / 16.0
 	var stay: bool = false
 	var lets_pass: bool = false
 	for arg: String in OS.get_cmdline_user_args():

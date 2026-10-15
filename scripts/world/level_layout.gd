@@ -62,12 +62,20 @@ var wall_fences: Array[Dictionary] = []
 ## get onto the wall there, and one on it drops off at the gap (Player.wall_supported). Sorted by
 ## start; both walls may have one over the same stretch.
 var wall_gaps: Array[Dictionary] = []
+## {start, end, seed}: a dash wall (task H7a; GDD §9.14, owner, October 8, 2026): a building standing
+## across every floor lane from track distance `start` (its face, toward the runner) to `end`, leaving the
+## side walls open. The runner dashes through it, crashes through it without the dash (one hit: the armor
+## or the shield takes it, else it kills) or passes it on a side wall; it crumbles whichever they do and
+## stays broken for the rest of the attempt (its entry marked "smashed", with "broken_by"). `seed` varies
+## its look. The generator places them (scripts/enemies/dash_wall_rules.gd, only where they're fair), the
+## track builder builds each as a DashBreakable (TrackBuilder) and the skin dresses it (ZoneSkin.dash_wall).
+var dash_walls: Array[Dictionary] = []
 
 
 ## Every list of pieces, by name. A level without doodads has no "doodads" key, one without floor
-## cuts no "cuts" key, one without wall fences no "wall_fences" key and one without wall gaps no
-## "wall_gaps" key, so its dictionary (and every hash or dump of it) is the same as before those
-## existed.
+## cuts no "cuts" key, one without wall fences no "wall_fences" key, one without wall gaps no
+## "wall_gaps" key and one without dash walls no "dash_walls" key, so its dictionary (and every hash or
+## dump of it) is the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -90,11 +98,14 @@ func to_dict() -> Dictionary:
 		out["wall_fences"] = wall_fences
 	if not wall_gaps.is_empty():
 		out["wall_gaps"] = wall_gaps
+	if not dash_walls.is_empty():
+		out["dash_walls"] = dash_walls
 	return out
 
 
-## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences and wall
-## gaps included, whether or not this layout has any yet), and moves its end to other's if that's further.
+## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps
+## and dash walls included, whether or not this layout has any yet), and moves its end to other's if
+## that's further.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
@@ -110,6 +121,8 @@ func append_pieces(other: LevelLayout) -> void:
 		wall_fences.append_array(other.wall_fences)
 	if not lists.has("wall_gaps"):
 		wall_gaps.append_array(other.wall_gaps)
+	if not lists.has("dash_walls"):
+		dash_walls.append_array(other.dash_walls)
 	length = maxf(length, other.length)
 
 
@@ -130,6 +143,7 @@ func copy() -> LevelLayout:
 	out.cuts = cuts.duplicate(true)
 	out.wall_fences = wall_fences.duplicate(true)
 	out.wall_gaps = wall_gaps.duplicate(true)
+	out.dash_walls = dash_walls.duplicate(true)
 	return out
 
 
@@ -153,13 +167,24 @@ func gapped_between(lane: int, from: float, to: float) -> bool:
 	return false
 
 
-## True if a doodad stands anywhere in [from, to]: in `lane`, or in any lane with -1. The enemies'
-## fairness checks ask it (an attack is never timed onto a doodad, which narrows the player's moves:
-## CyborgGun.path_clear, Octodog.window_clear, Resonator.pulse_clear, the drone's barrage and the
-## hover truck's cannon).
+## True if a doodad stands anywhere in [from, to]: in `lane`, or in any lane with -1. A dash wall (task
+## H7a) counts in every lane, since it stands across all of them (dash_wall_between). The enemies'
+## fairness checks ask it (an attack is never timed onto a doodad or a dash wall, which narrow the
+## player's moves: CyborgGun.path_clear, Octodog.window_clear, Resonator.pulse_clear, the drone's barrage,
+## the hover truck's cannon and the Enforcer Truck's escape), and so do the generator's (a floor cut's
+## lane, a floor credit, a Gilded Sentinel's stretch, a cyborg planted in a charge's path). A smashed one
+## still counts, so an attack waits by it the same on every attempt.
 func doodad_between(from: float, to: float, lane: int = -1) -> bool:
 	for d: Dictionary in doodads:
 		if float(d["start"]) <= to and float(d["end"]) >= from and (lane < 0 or int(d["lane"]) == lane):
+			return true
+	return dash_wall_between(from, to)
+
+
+## True if a dash wall (dash_walls, from its face to its back) stands anywhere in [from, to], broken or not.
+func dash_wall_between(from: float, to: float) -> bool:
+	for w: Dictionary in dash_walls:
+		if float(w["start"]) <= to and float(w["end"]) >= from:
 			return true
 	return false
 

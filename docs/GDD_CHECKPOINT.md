@@ -33,7 +33,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 |---|---|---|
 | PC (Windows) | Steam | Paid up front. **No ads, no microtransactions.** |
 | Mobile | iOS App Store + Google Play | Free with ads + optional in-app purchases |
-| Web demo | itch.io; possibly Poki / CrazyGames (check each portal's rules on outbound links) | Free. Zone 1 including its boss, then a "get the full game" screen linking to Steam, App Store, Google Play. No ads, no IAP, no leaderboards. |
+| Web demo | itch.io first (owner, October 14, 2026). CrazyGames later, if wanted, with an end screen linking only to the Steam page (its rules allow that link on desktop at the end of a demo). Not Poki. | Free. Zone 1 including its boss and the Zone 1 outro (owner, October 14, 2026), then a "get the full game" screen linking to Steam, App Store, Google Play. No ads, no IAP, no leaderboards. |
 
 - **Engine:** Godot 4, **GDScript** (Godot 4 C# cannot export to web).
 - **Development machine:** Windows, built with Claude Code.
@@ -66,6 +66,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Slide:** the player slides downward over **2 seconds**, then drops to the floor.
 - **Height:** matters for collision. Timing of entry decides whether you pass above or below a hazard.
 - **Wall jump:** pressing jump while on a wall leaps back out toward the lanes.
+- **Wall hop** (owner's playtest, October 9, 2026): jumping off a wall and straight back onto it starts a fresh wall run, so a skilled player can stay on a wall **as long as they like**. The owner likes it: it's a move players are meant to discover for themselves, and it **must not be patched out**.
 - **Signs:** block wall entry, and colliding with one causes damage. A blocked entry plays a metallic clank **and a small sideways bump**, so the player sees why they didn't get onto the wall (decided September 26, 2026).
 - **Vents** exist **only at the bottom of walls**, which punishes lingering (see Sewer Screech).
 
@@ -74,11 +75,14 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Lanes:** the ceiling has lanes, but the hull must look like a ship: no large gaps between lanes.
 - **Duration:** the player stays on the ceiling until the ship's hull ends, then drops back down.
 - **The floor beneath may be dangerous** (changed September 26, 2026, replacing the September 25 rule that kept it clear). The ceiling is a way to **escape the danger on the floor**, so the floor under a ceiling may hold gaps, hazards and enemies.
-- **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on.
+- **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on. **Exception:** the Beach's boss fight, where a ceiling may end over floor Mecha Guppy has eaten, and one safe place to drop to is enough (owner, October 10, 2026; §10). The owner wants this rule revisited for the levels too: "often the ceiling is way too safe" (October 10, 2026; `docs/OPEN_QUESTIONS.md` item 766).
 - **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
 - **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
 - **The ceiling is never required:** the floor route under a ceiling is always survivable without taking the pad. The ceiling is the easier route (decided September 26, 2026).
 - **Ceiling hazards** (decided September 26, 2026): ceilings may carry hazards of their own, but none in zones 1–2 *(proposed; owner agreed)*. The first is the **Barnacle Turret** (§9.8), introduced in the Marketplace.
+- **Ceiling scenarios** (owner, October 14, 2026): never in zones 1–2; sprinkled into later zones.
+  - **Pick the right pad:** a ceiling carries **electric fences** (§9.1) that hit a player who takes the **first** anti-grav pad; a **second pad further along** lands the player past them, safe. First introduced simply, with one unsafe pad and one safe one; later, **several pads**, some leading to safe parts of the ceiling and some to dangerous parts, and the player has to read which is which.
+  - **The treasure stash:** a **separate return pad** partway along a ceiling (apart from the ceiling's usual way back down at its end) sends the player back to the floor as usual, and it is the **only way into a treasure stash**: a stretch of floor walled off by doodads. For a stash in the third lane: a doodad at its start in that lane, and doodads in the two adjacent lanes alongside it, so a player strictly on the floor can't get in. It holds **two or three of the highest-denomination credits**.
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
@@ -102,7 +106,17 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
   - The Marketplace: plenty of plants and casino machines.
   - The other zones' doodads follow each zone's look.
   - They never hurt. Running into one **pushes the player into a neighbouring lane**: the side with room, or, if both sides have room, a side chosen per doodad (the same on every attempt).
+  - **Their look** (owner, October 9, 2026): each doodad stays a simple box with a picture of the object drawn on it, and the parts that are open air are see-through (a stall's open middle between its counter and its little roof, a van's empty windows, the bays of a colonnade). Never a jumble of shapes. The looks, approved the same day:
+    - The Neon City: a street vending machine or a pillar covered in posters (small), a street-food stall (medium), a little shop with a roll-down shutter (large).
+    - Gangland: a stack of rusted oil drums (small), a burned-out van (medium), a broken-down tin shack with a half-open shutter (large).
+    - The Marketplace: a potted palm or a flowering bush (small), a vendor's stall with a wooden base, a post in each corner, a striped little roof and its goods in the open middle (medium), a bank of slot machines back to back (large).
+    - Corporate: a steel planter with a trimmed shrub (small), a glass security booth (medium), a military supply container (large).
+    - The Dead Zone: a broken concrete column (small), a rubble heap (medium), a burned-out bus (large).
+    - The Golden Zone, outdoors and in the Golden Palace: a robed statue on a plinth or a gilded urn with a shrub (small), a wall fountain (medium), a colonnade with red drapes (large).
+  - A doodad doesn't show which way it will push (owner, October 9, 2026: no hint needed).
+  - Its outline may dip below the full height at its edges (the rubble heap) as long as its middle stays high, so it still reads as too tall to jump. Doodads are lit like the street around them, with no coloured edge glow.
   - *(Proposed:)* a push never lands the player on a gap or a hazard, and it costs nothing else.
+  - **The dash smashes a doodad** (owner, October 8, 2026): dashing into one breaks it apart, and the player keeps their lane with no push and no damage.
 
 ---
 
@@ -111,6 +125,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **One hit ends the run**, unless protected by armor or a shield.
 - **Falls:** into gaps between trucks or holes in the street, within a lane. Switching lanes into a lane that has a gap under you = fall. Lane switching itself is safe.
 - **Invulnerability:** after armor or a shield breaks, the player gets about **1 second of invulnerability** (character flashes).
+- **One hit from death** (owner, October 14, 2026): when the player has run out of all armor and shields, an **audio and visual cue** says they are a single hit away from death. The sound is a **two-tone siren**.
 - **Free armor** (owner's playtest, September 30, 2026): every level and boss fight starts with armor, and after it breaks it **comes back 30 seconds later**. The armor in the shop becomes an upgrade to it (§8).
 - **No checkpoints.** Levels are short (**90–150 seconds**). Death restarts the level.
 - **On death, and when quitting a level from the pause menu, the player keeps 20%** of credits collected during that attempt (quitting decided September 26, 2026, so deliberately dying never pays better than quitting). Completing a level always pays far more, so deliberate dying is never profitable.
@@ -136,16 +151,18 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### Zone roster (decided September 26, 2026)
 **Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
 
-**Six zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section.
+**Eight zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section. The **Casino** was added as Zone 4 by the owner on October 8, 2026, between the Marketplace and Corporate; the zones after it moved down one place. The **Beach** was added by the owner on October 9, 2026, between Corporate and the Dead Zone (zone 6 since the Casino joined).
 
 | # | Zone | Mood (reference) | Palette |
 |---|---|---|---|
 | 1 | **Neon City** | Blade Runner | Keep the current city skin |
 | 2 | **Gangland** | Mad Max, but in a cyberpunk setting | Browns and tans |
 | 3 | **Marketplace** | A bustling, happy market | Tan, with livelier colours: whites, blue awnings, splashes of colour in shop signs and visible products |
-| 4 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | Steel and gunmetal grey, military olive, cold and sterile white light, and one harsh brand colour (chosen by the art agent, away from the hazard colours) |
-| 5 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
-| 6 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
+| 4 | **Casino** (owner, October 8, 2026) | A covered casino street at night: gaudy, warm and a little seedy (reference: `docs/art/reference/casino_zone.webp`) | Dark iron and aged brass, warm lamplight and haze, a vaulted glass roof; its neon kept to the colour rule below |
+| 5 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | Steel and gunmetal grey, military olive, cold and sterile white light, and one harsh brand colour (chosen by the art agent, away from the hazard colours) |
+| 6 | **Beach** (owner, October 9, 2026) | A festive cyberpunk party beach: bamboo tiki bars, surf shops and lounges by the sea *(proposed, from the owner's reference image)* | Warm sand, honey bamboo and timber, straw thatch, a turquoise sea, black rust-streaked steel; decorative neon in violet, blue and warm white *(proposed)* |
+| 7 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
+| 8 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
 
 **Zone 1: Neon City.** Floor: roofs of trucks driving toward the player; gaps between trucks. Walls: building facades with signs. Ceilings: undersides of low-flying ships.
 
@@ -155,11 +172,31 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Citizens:** interesting and funny citizens are **scenery only**, not real 3D characters or anything the player interacts with. They are seen inside the shops along the low part of the walls, as animations that play. They may react to the runner passing (startled, cheering, happy); the goal is to be funny or uplifting.
 - **Conditions:** they are added only if they don't noticeably cost performance on mid-range phones and don't add much code complexity.
 
-**Zone 4: Corporate.** Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. Floor: roofs of maglev trains or plazas *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and similar, and occasionally a military ship.
+**Zone 4: Casino** (owner, October 8, 2026). The casino district the market street leads into: a long covered street lined with casinos, under a vaulted roof of glass and iron, with brass pipes running along the walls, stacked balconies, hanging banners and casino signs everywhere (the owner's reference image, `docs/art/reference/casino_zone.webp`).
+- **Only the scenery is new:** the zone's walls, floor, ceilings and background. It **reuses the Marketplace's enemies and characters** as they are (the Casino Mob Enforcer cyborgs, its heli drones, hover trucks and the rest): no new enemy, cyborg, vehicle or character looks.
+- **Two levels, then The House** (§10), which moves here from the Marketplace.
+- Floor, gaps and ceiling pieces: chosen by the art agent from the reference *(to confirm)*.
+- **The glass roof is whole** (owner, October 9, 2026): no broken or missing panes.
+- **Two named casinos** (owner, October 9, 2026): their big signs carry real lettering, **"Gasket's House of Chance"** and **"The Brass Lotus"** (the names in the reference image). No pedestrians on the street; the Marketplace's citizens in the shop windows are enough.
+- **Music:** the owner supplies the Casino's song (October 9, 2026).
 
-**Zone 5: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
+**Zone 5: Corporate.** Close to the Neon City, but plainly corporate. Corporations and the military are intertwined, so there is a visible military presence. Generic, soulless corporate art. Floor: roofs of maglev trains or plazas *(proposed; owner agreed)*. Ceilings: undersides of buildings, bridges and similar, and occasionally a military ship.
 
-**Zone 6: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
+**Zone 6: the Beach** (owner, October 9, 2026; reference image `docs/art/reference/beach_zone.jpg`).
+- **Look:** a sandy lane between bamboo tiki bars, surf shops and lounges, running down to the sea.
+- **Floor and gaps:** the floor is sand and boardwalk *(proposed)*, and **the gaps are pools of water.** A fall makes a splash.
+- **Side walls:** they stand **about half as often as in other zones**, in long open stretches, so the player sees the surroundings.
+- **Enemies:** **no new enemy assets**; the zone reuses existing enemies, and its cyborgs wear an existing zone look.
+- **Signs:** wordless, like every zone's.
+- **Place in the campaign:** between Corporate and the Dead Zone (owner, October 9, 2026): zone 6, after the Casino joined as zone 4.
+- **New enemies:** none for now. "Do not worry about any new enemies at this time" (owner, October 9, 2026), so for now it is the one zone that introduces none, a remix of everything before it. Its boss fight brings its own: Mecha Guppy, a giant mechanical shark, and Captain Cogs, a flying pirate (owner, October 10, 2026; §10).
+- **Three levels** (owner, October 10, 2026): Tiki Tides, then a **beach volleyball mini-game**, then Sunset Strip (which was the second level until then).
+- **The volleyball match** (owner, October 10, 2026): the level **starts like a normal level for the first couple of seconds**, then the runner **walks up to a volleyball court** with a net and **another person**: a new character **wearing swim trunks**. He **hits the ball over**; the runner has to **get underneath it and jump to hit it back**, and it goes back and forth. **If the runner misses, he gets a point; if the runner hits it back over the net enough times ("say three or four"), the runner gets a point. First to four points.** The runner then gets a **cash payout by the points won: 100 credits for one point, 400 for all four**, and **leaves and runs across the finish line**. *(Proposed, docs/questions/d10e.md:)* the level's name, *Net Gains*; three returns win a point; a ring on the sand shows where the ball comes down and a closing ring when to jump; a ball that drops, or bounces off a runner who didn't jump, is his point; each ball of a rally comes a little quicker and further away, never quicker than the runner can reach and jump; the payout replaces the level's completion bonus; stars by the points won; the net sinks into the sand after the match so the runner runs on over it; he is a tanned beach player in ocean-blue board shorts and dark sunglasses; the runner can't die in it.
+- **Boss:** Mecha Guppy and Captain Cogs: a giant mechanical shark eating the level from below and a flying pirate throwing bombs, in a climb over tiki bar roofs, under Sunset Strip's setting sun (owner, October 10, 2026; §10).
+
+**Zone 7: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
+
+**Zone 8: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
 - **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
 - **Final level: the Golden Palace.** The player runs **inside** the palace, which is so huge and grand that its interior is basically the size of a city. It plays like any other level; only the skin is an interior (floors, walls and ceilings are the palace's own halls, galleries and arches). The final boss follows it.
 
@@ -173,7 +210,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Cyborg Viewing Devices** (decided September 26, 2026): the cult's philosophy reaches people **through their screens**. The more devoted someone is, the more of their face the device replaces, until the screen *is* the face: that's what the cyborg gangsters are. The order to attack the runner reaches them the same way, through the feed. Told purely through the environment and the cyborgs' look (no words): screen heads on the enemies, the same feed playing on billboards and in shop windows, and glitching screens on hosts, whose feed the Bad Dream has corrupted.
 
 ### Level schedule and enemy introductions (decided September 26, 2026)
-**Every zone introduces at least one new enemy.** New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
+**Every zone introduces at least one new enemy,** except the Casino, which reuses the Marketplace's (owner, October 8, 2026), and for now the Beach, a remix of everything before it (owner, October 9, 2026). New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
 
 | Zone | Level (name) | New in this level |
 |---|---|---|
@@ -185,17 +222,30 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 3 · Rotor Wash | Fence generators and **heli drones** |
 | 3. Marketplace | 1 · Awning Alley | The **Barnacle Turret** (§9.8), the first ceiling hazard |
 | | 2 · Shopfront Sparks | **Wall fences** (§9.1), plus screeches from wall vents in the shopfronts *(proposed)* |
-| 4. Corporate | 1 · Maglev Line | **Buzz Overdrive** (§9.9) |
+| 4. Casino | 1 · Brass Arcade | Nothing new: the Marketplace's enemies and mechanics in a new setting (owner, October 8, 2026). What each Casino level adds is still to design *(to confirm)* |
+| | 2 · House Edge | Then **The House** (§10) |
+| 5. Corporate | 1 · Maglev Line | **Buzz Overdrive** (§9.9) |
 | | 2 · Checkpoint Plaza | The **Tithe Collector** (§9.12) and the **Enforcer Truck** (§9.13, owner, October 4, 2026), with a heavier military presence *(proposed)* |
-| 5. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
+| 6. Beach | 1 · Tiki Tides | Nothing new for now: a remix of everything so far, in daylight, with the side walls standing about half as often (owner, October 9, 2026) |
+| | 2 · Net Gains *(proposed name)* | A mini-game: a beach volleyball match against a man in swim trunks, paid by the points won (owner, October 10, 2026) |
+| | 3 · Sunset Strip | The same remix as Tiki Tides as the sun starts to set |
+| 7. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
 | | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
-| 6. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
+| 8. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
 
-Level names approved by the owner (September 26, 2026).
+Level names approved by the owner (September 26, 2026; the Casino's on October 9, 2026). The Beach's names were proposed on October 9, 2026, at the owner's request ("create level names that fit the theme"), and its volleyball match's on October 10, 2026.
 
-**15 levels plus 6 bosses.** A flawless run through every level takes about 35 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
+**Skies show progression** (owner, October 8, 2026). Most levels keep their zone's sky; a few change it, so the player sees time passing and what lies ahead:
+- **Neon City 1:** the sun just starting to rise, with pinks and purples touching the undersides of clouds. *(Moved from City 3, which fits it less well thematically; City 2 and 3 keep the dark night sky.)*
+- **Gangland 3:** a cloudy, blood-red sky, warning that a fiery stretch lies ahead.
+- **Marketplace:** a darkening sky as the sun sets, with deep blues and pinks at the very bottom of the sky. The owner asked for it on the zone's third level; the Marketplace has two (the owner kept it at two when adding the Casino, October 8, 2026), so it is on **Marketplace 2**, its last (confirmed by the owner, October 9, 2026).
+- **The Beach** (owner, October 9, 2026): daylight on its first level; on its last, the sun starting to set, not dark, with some purples and oranges in the sky.
+- **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's; The House, which follows Casino 2 since the Casino was added, under the Casino's own sky). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
+- **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
+
+**20 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Beach's, Mecha Guppy and Captain Cogs, designed on October 10, 2026, §10; the Beach's volleyball match is its second level since October 10, 2026). A flawless run through every level takes about 45 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
@@ -206,15 +256,22 @@ Level names approved by the owner (September 26, 2026).
 
 ## 6. Structure, Progression & Replay
 
-- **Zones:** 6 at launch, each with a distinct look (see §5).
-- **Levels:** 1–3 per zone, each 90–150 seconds.
-- **Bosses:** one at the end of each zone. Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
+- **Zones:** 8 at launch, each with a distinct look (see §5).
+- **Levels:** 1–3 per zone, each 90–150 seconds (City 1 is shorter; so is the Beach's volleyball match, about a minute for a flawless match).
+- **Bosses:** one at the end of each zone, except the Marketplace, which leads straight into the Casino (owner, October 8, 2026). Each boss is its own scripted encounter and scene, but **plays as close to the main runner as possible** (refined September 26, 2026; see §10). The build leaves a slot for each.
 - **Cinematics:** short, minor cinematics between levels and zones give a sense of progression (decided September 26, 2026). Content comes later; the build leaves slots for them.
+  - **Owner's answers, October 14, 2026:** the owner will describe each zone's arrival cinematic and the Beach's intro and outro in later sessions; until then the shared arrival flyover and the placeholder cards stand. **Every boss gets a slot for an intro cinematic**, like the City's and Gangland's; the others stay empty (skipped) until the owner decides whether to fill them.
+  - **Zone 1 outro** (owner, October 8, 2026): the Floating Head crashes to the ground. The camera comes down from its usual place, a little above and behind the runner, to the runner's level. The runner is running, stops, and looks to the left: a **barricade guarded by many enemies**, all reusing the game's own assets. **Barnacle Turrets stand on the floor** instead of the ceiling, so they look like cannons, with a **row of five cyborgs**, **one of the battle trucks** behind them, and a **heli drone** above it. The camera pans back to the runner, who is startled by so many enemies and runs the other way. The runner **jumps off a truck**, an **explosion** goes off behind them, and they **land in Gangland**. Built in task F2a; the staging choices made to fill in these beats are open questions (`docs/OPEN_QUESTIONS.md` §D, items 369–381).
+  - **Gangland boss intro** (owner, October 9, 2026): see §10, Sewer Swarm ("Intro cinematic"). Built in task F2b; the staging choices made to fill in the beat are open questions (`docs/OPEN_QUESTIONS.md` §D, items 387–395).
+  - **Gangland outro** (owner, October 9, 2026), after the Sewer Swarm: the **Host lies in the rubble**. The screeches stay **just a moment, sniffing** at the Host, then **scuttle away**. The runner **walks over**. The Host **trembles and hands the runner a golden key**. **Cut to a new scene** with a **sleek, flashy car** not seen before: **angular, almost triangular, sleek and shiny, like a Lambo**. The runner **gets in and drives off into the distance**, and as the car drives off **the camera is at road level**. Owner's follow-up (October 10, 2026): the runner's movement was **stiff and unrealistic**: make it **more fluid and less choppy**; while the runner gets into the new car, **one shot where we see them getting in and, in the seat next to them, a screech sitting nice and cute on the seat**; and the car **drives off faster**. And then (the same day): the screech should **look like the other screeches** (not a cuter remodel), still **sitting there**; when the runner comes in, **the screech and the runner nod at each other, and then the car takes off**. Built in task F2d; the staging choices made to fill in the beats are open questions (`docs/questions/f2d.md`).
+  - **Dead Zone intro** (owner, October 9, 2026): it opens on a **smoking crater** in the Dead Zone's ground that **looks like a gap**, with the runner **lying on the ground inside it**. After a moment the runner **shakes themselves** and starts to pull themselves out. A **cut to ground level**: at first only the runner's **hands grabbing the edge** of the crater, then they **pull themselves up**. Throughout, **cyborgs can be seen in the distance**: **two lying on the ground, motionless**, and a **third crouched over them**, and we can't tell whether it was eating them or what exactly it was doing. As the runner pulls themselves up, the crouched cyborg **looks over**: it is a **host** (§9.7, the Cyborg's Bad Dream). A **cut to an extreme close-up of its glitching face**, looking menacingly at the camera, then a **fade to black**. The owner's answers on the staging (October 9, 2026): a cut to a **medium shot** of the host first, then the **extreme close-up**, with the host's **entire face filling the screen**; the **zone's title card** appears in the close-up **as it starts to fade to black**; the crater **has a floor** the runner lies on; the host's ambiguous crouched work over the bodies stays; **what put the runner in the crater is shown in a cinematic before this one** (its beats to come). Built in task F2c; the staging choices still open are in `docs/questions/f2c.md`.
 - **Estimated first playthrough:** roughly 20–50 minutes. This is a known risk for a paid Steam game (Steam's refund window is 2 hours of play), so replay value is critical.
 - **Levels are built by a rule-based generator** from obstacle and enemy patterns plus a difficulty value, fitted to the device's lane count.
   - **Campaign:** fixed seeds (same layout every attempt).
   - **Endless mode:** random layouts.
   - Each level's difficulty can be tuned individually, with an automatic curve making each level slightly harder than the last.
+  - **No loading card** (owner, October 14, 2026): a level starts without a card covering its generation, as built.
+  - **No level gets easier when levels are added** (owner, October 9, 2026, after adding the Casino): every level is too easy, at least on PC. The Marketplace keeps at least the difficulty it had (a little harder is welcome), and Corporate and the zones after it may get harder.
   - Because lane counts differ, "level 5" on PC is not identical to "level 5" on mobile. This is intended: PC is harder.
   - Handmade set pieces (e.g. boss arenas) are allowed.
 - **Replay features:**
@@ -238,11 +295,13 @@ Level names approved by the owner (September 26, 2026).
 
 - **Credits** are scattered across floor, walls, and ceiling in **several clearly distinguishable denominations**.
 - **High-value credits sit in risky spots:** gap edges, next to enemies, near hazards, far along wall runs.
+- **Wall-hop credits** (owner, October 9, 2026): a gentle nudge toward the wall hop (§3). Some long walls carry **high-value credits further along than one wall run reaches**, so only a player inventive enough to wall hop collects them. *(Proposed)* From Gangland on, about once a level, on a stretch of wall long enough with no wall gap.
 - **Each run produces two numbers:**
   1. **Level score:** credits collected plus bonuses (enemy kills, ramp multipliers, etc.). Feeds stars and level leaderboards. **Never spent.**
   2. **Credits earned:** added to the wallet and spent in the shop.
 - **Mobile:** credits can also be bought with real money. These are tracked separately and excluded from the net worth leaderboard.
 - **Key balancing value:** how fast credits are earned relative to shop prices. On mobile this governs whether purchases feel optional or forced.
+- **Rebalance for the full campaign** (owner, October 14, 2026): the shop prices and the completion payouts were set for a two-zone campaign; rebalance them for the full campaign.
 
 ---
 
@@ -315,7 +374,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Passing through:** the shield, armor, and juggernaut get you through. Claws don't.
 - **Weapons:** cannot destroy fences, and auto-fire ignores them.
 - **Generators:** occasional; **most fences have none**.
-  - Destroyed by a **stomp** or the **dash**. **Weapons never set one off** (decided September 26, 2026): auto-fire never targets generators and missile splash never damages them, the same rule as for hosts, so an EMP is always the player's choice.
+  - Destroyed by a **stomp** or the **dash**. **Weapons never set one off** (decided September 26, 2026): auto-fire never targets generators and missile splash never damages them, so an EMP is always the player's choice. (Hosts had the same rule until October 8, 2026; weapons now hit them, §9.7.)
   - Sends out an **EMP** that disables fences within a short radius for the rest of the level *(assumed duration)*.
   - The EMP also dissolves the Cyborg's Bad Dream.
 - **Wall fences** (owner, September 26, 2026; first appear in Marketplace 2 *(proposed)*): electric fences that **span a side wall** and **turn off and on** from time to time, to make the walls less safe.
@@ -341,10 +400,12 @@ Shared interaction rules apply unless stated otherwise:
     - **Golden Zone:** derived from the Casino Mob Enforcer by the art agent.
     - Gold and brass may appear on variants as **unlit ornament**; the screen always glows cold white; nothing glows copper.
     - **No variant is bigger than the base.** The concept sheets are references and jumping-off points, not specs to copy, since a bigger body would no longer match the hitboxes.
+    - **Drawn 20% bigger** (owner, October 14, 2026): the cyborgs were hard to see in the first zone, so they are drawn 20% bigger **with their hitboxes unchanged**, to make them easier to see without making them harder. *(Proposed)* In the Neon City only, where the problem was seen; the other zones' variants keep their size.
 - **Movement:** stands mostly on **truck roofs** and moves slowly toward the player, dropping behind quickly.
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
   - Bolts are slow enough to dodge by switching lanes.
+  - **Up to two bursts in the air at once** (owner, October 8, 2026): cyborgs, window cyborgs and Barnacle Turrets share the limit. The build had allowed only one, which looked unnatural. Big attacks still take turns (§9).
 - **Panic variant (~1 in 3):** runs away in a panic, firing wildly over its shoulder, with a shocked "O" face on its visor.
 - **Window cyborgs:** upper body in building windows.
   - They don't move; they shoot at the player.
@@ -429,7 +490,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Origin:**
   - Bursts out of a **host cyborg** when the host is killed.
   - Hosts are **visibly marked**: their LED visor glitches with purple static and corrupted expressions.
-  - **Auto-fire never targets hosts**, and missile splash never damages them. **Hosts are immune to all weapon damage** (decided September 26, 2026), so a stray shot can never release a Bad Dream by accident. Killing a host is always a deliberate choice (stomp, claws, or dash) and earns a big score bonus.
+  - **Weapons hit hosts** (owner, October 8, 2026, replacing the September 26 rule that hosts were immune to all weapon damage): **auto-fire targets hosts** like any other cyborg, and a weapon kill releases the host's Bad Dream. The player who doesn't want that **switches the weapon off** in the shop (the equip toggle), so carrying a weapon into host levels becomes a choice with a cost. Killing a host with a stomp, claws or the dash still earns a big score bonus.
 - **Movement:**
   - **Passes through fences and physical barriers.**
   - Drifts toward the player's lane at a limited sideways speed.
@@ -460,7 +521,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Body:** treated like the cyborg's body. Running into it is deadly unless the player has the shield or claws (or is dashing); armor doesn't help.
 - **Armor and shield:** both block its shots.
 - **Scaling:** across the campaign it fires somewhat faster and takes slightly more damage to kill, but never by much.
-- **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Only one fires at a time *(proposed)*.
+- **Limits:** never on a one-lane ceiling (no room to dodge); at most **2 per ceiling**. Up to two cyborg-type bursts are in the air at once (§9.2; owner, October 8, 2026), so both turrets on a ceiling may fire together.
 
 ### 9.9 Buzz Overdrive (owner, September 26, 2026; the Corporate zone's new enemy, first appears in Corporate 1)
 - **Look:** a **truck-sized buzzsaw tank** with a giant, **vertical** buzzsaw blade. Militaristic. If it can be seen at gameplay size, a **red, angry eye on each side**.
@@ -468,7 +529,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Sequence:**
   1. The player sees it **in the distance**, in its lane.
   2. It **revs in view for a few seconds**, with a spin-up noise as its blade spins up. During the wind-up, **the lane it is about to cut lights up with a red warning line** on the floor (like the Octodog's lunge line).
-  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**, from where it started charging all the way back past the player. The cut edges glow the usual gap-edge orange.
+  3. It **charges forward along its lane** toward the player, **slicing the floor in half** as it goes. The floor it has cut **becomes a gap**, from where it started charging all the way back past the player. The cut edges glow the usual gap-edge orange. **Inside the cut, the player sees the zone's own scenery below the street**, the same as through an ordinary gap (owner, October 8, 2026): the canal in the Golden Zone, the trench under the maglev line, and so on, never a dark box.
   4. It goes off the screen behind the player, and that's the end of it.
 - **Dodge:** leave its lane before it arrives. It only threatens **its own floor lane**: wall runners and ceiling runners are safe, even beside it.
 - **Contact:** touching the buzzsaw hurts. The **shield and armor block it**. After a block, the floor under the player **holds for about a second**, just enough to switch lanes (a jump would land back in the cut lane). Escaping after a block should be of **medium difficulty**.
@@ -478,7 +539,7 @@ Shared interaction rules apply unless stated otherwise:
   - **The dash smashes it**, but that's a risky panic move: the player dashes straight into the cut lane, so it's only survivable with the grapple hook.
   - **No stomp** (the player would land on the blade).
 - **Limits:** only one at a time. It never cuts a lane holding a ramp, a pad or the safe landing zone after a ceiling. On 3 lanes, two lanes always stay whole.
-- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **two zones after it (the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026). Its health stays at 22 shots.
+- **Scaling:** the only change across the campaign is that its **rev time gets slightly shorter**. It appears in the Corporate zone and the **zones after it (the Beach, the Dead Zone and the Golden Zone)**, so the speed-up is spread over few levels and it never gets too fast (corrected September 26, 2026; the Beach, between Corporate and the Dead Zone since October 9, 2026, remixes everything before it). Its health stays at 22 shots.
 - **Implementation note:** the generator plans each cut in advance (lane, start and end), so levels stay fair and identical on every attempt; the saw is just the visible cause. This is the first floor that turns into a gap during play.
 
 ### 9.10 Resonator (the owner's "Hymn Censer" reworked in a sci-fi form; the Golden Zone's new enemy, first appears in Golden 1)
@@ -486,7 +547,7 @@ Shared interaction rules apply unless stated otherwise:
 - **Look** *(proposed)*: a floating, slender golden spire ringed by 2–3 slowly turning halos around a red glowing core. Elegant luxury tech rather than religious.
 - **Sequence** *(proposed)*:
   1. It hovers far ahead.
-  2. Before each pulse, its halos spin up and line up, and it plays the cult's signature **three-note chime**, pleasant like a public-address jingle. That's the audio warning, and its pleasantness is the creepy part.
+  2. Before each pulse, its halos spin up and line up, with an audio warning. **The warning sounds like a crackling build-up of fire breaking into a crashing wave** (owner, October 8, 2026, replacing the three-note chime, which sounded like a doorbell).
   3. It sends a **red shockwave ring rolling along the floor toward the player, across every lane**.
   4. It leaves after a few pulses. Later in the zone it pulses faster or sends double waves.
 - **Dodge:** jump the wave, or be on a wall or the ceiling (waves only travel along the floor).
@@ -494,14 +555,15 @@ Shared interaction rules apply unless stated otherwise:
 - *(Proposed)* Fairness: the generator never lets a wave arrive on top of a gap or a fence.
 
 ### 9.11 Gilded Sentinels (owner, September 26, 2026; first appear in Golden 2 *(proposed)*)
-- **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**; decorative statues never stand at wall-run height (safe things look safe). They fit the Golden Palace as its guards.
-- **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**.
+- **Look:** the Golden Zone's walls are lined with golden statues holding halberds, most of them decorative. A **live** one stands in a niche **at wall-run height** with **glowing red eyes**. Decorative statues stand in alcoves at the bottom of the walls, also at wall-run height (owner's request, October 2026; this line updated to match on October 14, 2026); only the red eyes and the warning tell a live one apart. They fit the Golden Palace as its guards.
+- **Attack:** as the player approaches, its eyes flare and stone grinds (visual and audio warning); then it **swings its halberd across its wall section and the outer floor lane**. **The warning is half as long as first built** (owner, October 8, 2026: 0.6 s instead of 1.2 s).
+- **Seeing it** (owner, October 8, 2026): the live statue and the back of its niche stand **further forward**, out of the arch's shadow, so the player can make out what it is.
 - **Dodge:** on the wall, pass above or below the swing by timing the wall entry; on the floor, stay out of the outer lane. Later ones swing twice or come in pairs.
 - **Kill:** a stomp from a wall jump *(proposed)*, or weapons: **17 shots** at laser tier 1, with no special weapon rule (decided September 26, 2026). Armor blocks the halberd; the statue's body is solid *(proposed)*.
 
 ### 9.12 Tithe Collector (owner, September 26, 2026; first appears in Corporate 2 *(proposed)*)
 - **Look:** a small, fast gold drone with a collection plate; smug and gaudy.
-- **Behaviour:** darts along the lanes ahead of the player and **sucks up the credits in its path** (a visible stream of credits flowing into it). It weaves through the most dangerous lanes, so chasing it is the risk.
+- **Behaviour:** darts along the lanes ahead of the player and **sucks up the credits in its path** (a visible stream of credits flowing into it). It weaves through the most dangerous lanes, so chasing it is the risk. It **stays in the level twice as long as first built** (owner, October 8, 2026).
 - **Catch it** (stomp, shoot or dash through it) and it bursts into **everything it took plus a jackpot**.
 - **Touching it isn't deadly:** it grabs **25% of the credits collected this run** (decided September 26, 2026) and flies off. This is the game's first non-lethal hit.
 - *(Proposed)* It is **not a heli drone**: anti-grav pads don't affect it, and it has no rotors, so it doesn't look like one.
@@ -514,20 +576,33 @@ Shared interaction rules apply unless stated otherwise:
 - **Movement:**
   - **Drives on the street behind the player** and **follows the player's lane changes after a short delay** *(proposed: about 0.8 s)*, so a late dodge leaves it in the lane the player just left.
   - **Seeing it:** it's behind the camera, so its **headlight beams and light bar shine forward onto the floor of its lane**, and a small marker at the screen's bottom edge shows its lane. The light bar honours Reduced flashing.
+  - **Showing itself** (owner, October 8, 2026): its model would otherwise never be seen, so **every so often it speeds up until it's on screen for a few seconds, then drops back**, even at the cost of some clutter. *(Proposed)* It pulls up beside the runner in a neighbouring lane rather than right behind them, so it never hides the runner. Its sides are safe but solid while it's there, like the hover truck's. It never takes the only free lane, and never shows itself during an attack's warning or a bait.
+  - **Room to show itself** (owner, October 9, 2026): each chase keeps a short calm stretch for its showing, at a small cost to danger density (about 2% fewer enemies and obstacles on its levels). **It shows itself before the player can bait it:** a truck arrives early enough for its showing to come before its first bait. **A chase with no room for a showing gives its truck to another bait's chase that has room,** wherever the level has another bait. To a runner in an outer lane it shows itself **two lanes in**, leaving the lane between free.
+  - **Making room where there is none** (owner, October 9, 2026): it **may show itself while a hover truck or a Gilded Sentinel is around**, as long as the runner keeps a free lane to dodge into (more clutter on screen is accepted). Where a level's first bait comes right after its calm start, **the truck arrives a few seconds early and shows itself in the last part of the calm start**; the bait stays where it is. A level with two trucks but room for only one showing **keeps both**.
+  - **Its end is a visible explosion** (owner, October 8, 2026): however it's destroyed (a Buzz Overdrive's charge, an Octodog's lunge, a cut or a wider gap), it explodes where the player can see it. The flash honours Reduced flashing.
   - **Holes:** it hops ordinary gaps as the player does. A **Buzz Overdrive's floor cut** in its lane, or **a gap too wide to hop**, wrecks it.
+    - **Wider gaps** (owner, October 7, 2026): every level has **a couple of wider gaps**. They're uncommon, still jumpable by the player, and wide enough that an Enforcer following the player into one is wrecked.
   - **During an Octodog's attack** it **closes right up behind the player**, so the Octodog's lunge (which ends just behind the player) reaches it. *(Proposed)* While that close it must not hide the runner: it stays under the camera's line of sight, or its body turns see-through while its lights stay solid.
   - **Gives up after about 25 seconds** if not destroyed (like the hover truck).
 - **Attack:** **lasers** at the player's lane. Each volley is warned by **a red line on the floor ahead and a rising whine**, and dodged by changing lanes, which also moves the truck. *(Proposed)* Its volleys are a big attack for turn-taking (§9), so it never fires while an Octodog or Buzz Overdrive charges.
 - **Killing it:**
   - **The only ways:** **bait an Octodog's lunge or a Buzz Overdrive's charge into it**, or **lead it into a Buzz Overdrive's cut or a gap too wide to hop**.
   - It's immune to weapons, stomps, claws and the dash. *(Proposed)* It never touches the player.
-- **Picking up cyborgs:** a cyborg the player left alive that is in the truck's lane when the truck passes is **picked up**. It rides on the roof as a visible gunner and **raises the truck's rate of fire**. *(Proposed: up to 3 riders.)* Destroying the truck pays a **bonus for each rider aboard**, so a skilled player may let it load up before baiting it.
+- **Picking up cyborgs:** a cyborg the player left alive that is in the truck's lane when the truck passes is **picked up**. It rides on the roof as a visible gunner and **raises the truck's rate of fire**. *(Proposed: up to 3 riders.)* Destroying the truck pays a **bonus for each rider aboard**, so a skilled player may let it load up before baiting it. **Hosts never board, and riders can't be shot off** (owner, October 7, 2026).
 - **Placement:**
   - **Up to two per level**, never two at once.
   - Each one is placed only where **at least one Octodog or Buzz Overdrive charge comes during its chase**, so it always has a chance to be destroyed.
   - It appears where Octodogs or Buzz Overdrives appear, **introduced in Corporate 2** with a first-encounter hint.
-- **Teaching** *(proposed)*: before its first appearance, the player sees a charge flatten another enemy (an Octodog lunging through a cyborg), so the rule is learned before it's needed.
+- **Teaching** (owner, October 7, 2026): **occasionally a cyborg stands in the path of an Octodog's lunge or a Buzz Overdrive's charge**, so the player sees a charge flatten another enemy. At least one comes before the Enforcer's first appearance in Corporate 2.
 - **Name:** "Enforcer" is also used in two cyborg variants' art names (§9.2: Gangland's "Broadcast Brute" Enforcer and the Marketplace's "Casino Mob Enforcer"). The truck keeps the name.
+
+### 9.14 Dash walls (owner, October 8, 2026; first appear in the Corporate zone)
+- **What:** a wall standing **across every floor lane**, like a building in the middle of the street. It uses the zone's side-wall look (the same building faces), turned to face the player.
+- **Getting through:** the player **dashes through it**. It crumbles and explodes into rubble.
+- **Without the dash** (not owned, switched off, or on cooldown): the player crashes through it and takes **one hit**. **Armor or the shield absorbs it** (an exception to the rule that armor doesn't block solid collisions); with neither, the hit kills. The wall breaks either way.
+- **Walls stay open:** it blocks only the floor. A player running on a side wall passes it. **No ceiling overlaps a dash wall.**
+- **Introduced in the Corporate zone** *(proposed: Corporate 1, after the Buzz Overdrive's introduction)*, and in the zones after it, **except the Beach**, whose open side walls stay as they are (owner, October 14, 2026).
+- *(Proposed)* Fairness: walls are spaced so the dash's longest cooldown (8 s) is always over before the next wall, and nothing else that needs the dash comes just before one.
 
 ---
 
@@ -536,16 +611,17 @@ Shared interaction rules apply unless stated otherwise:
 - **General:**
   - One per zone.
   - Each boss is its own scripted encounter with its own scene and rules, not a variant of a normal level (decided September 26, 2026).
-  - **Gameplay stays as close to the main runner as possible** (refined September 26, 2026): the same controls, camera and movement. A boss may get its own gimmick that makes it play differently, but none has been chosen yet.
+  - **Gameplay stays as close to the main runner as possible** (refined September 26, 2026): the same controls, camera and movement. A boss may get its own gimmick that makes it play differently. The first is the Beach's, Mecha Guppy and Captain Cogs: a climb, with the camera following the runner up (owner, October 10, 2026).
   - Unique scripted encounters (handmade arenas are allowed within the generator system).
   - **Length:** about the same as a level, **60–120 seconds**. The final boss may run a little longer, to be more challenging.
   - **Death restarts the fight** (no checkpoints), like a level. **Exception: the final fight** has a checkpoint halfway, where the villain may change into a **second stage**.
   - **Items:** players bring their current items into the fight. Some fights may also offer **pickups**, for example a section of floor that spawns an armor, shield or grapple pickup.
-  - **Standard armor rule** (decided September 26, 2026; used by the Floating Head and the Sewer Swarm, and the default for later bosses): one armor pickup appears at the start of the final phase. Whenever the player's armor or shield breaks during the fight, another armor pickup appears **15–17 seconds later**, at most once per phase *(proposed cap)*. The **Floating Head keeps 10–15 seconds**, so the first boss is a little gentler; the Sewer Swarm and later bosses use 15–17.
+  - **Standard armor rule** (decided September 26, 2026; used by the Floating Head and the Sewer Swarm, and the default for later bosses): one armor pickup appears at the start of the final phase. Whenever the player's **armor takes a hit** during the fight, another armor pickup appears **15–17 seconds later** (owner, October 14, 2026: a shield break doesn't bring one), at most once per phase *(proposed cap)*. The **Floating Head keeps 10–15 seconds**, so the first boss is a little gentler; the Sewer Swarm and later bosses use 15–17.
   - **Rewards:** beating a boss earns **credits and score points**.
   - **Stars and leaderboards:** bosses have both, like levels (decided September 26, 2026). *(Proposed)* One star for winning; two and three stars for beating par times set per boss in data. The leaderboard ranks the boss score, which includes a time bonus.
   - **No time limit, no escalation:** if the player doesn't land the hits, the fight keeps cycling its pattern until they win or die. It does **not** get harder while a player struggles.
   - Bosses ignore claw contact kills.
+  - **Weapons may end a phase** (owner, October 14, 2026), set per boss in data: on for every boss but Hostile Takeover, whose weapons chip a phase only to just above its end. Stomps and big hits still do the real damage.
   - Every boss must be beatable using only the power-ups granted before the fight.
 - **Roster** (decided September 26, 2026):
 
@@ -553,30 +629,45 @@ Shared interaction rules apply unless stated otherwise:
   |---|---|
   | 1. Neon City | Floating Head |
   | 2. Gangland | Sewer Swarm |
-  | 3. Marketplace | The House |
-  | 4. Corporate | Hostile Takeover |
-  | 5. Dead Zone | Sleep Taker |
-  | 6. Golden Zone | The final villain |
+  | 3. Marketplace | None: it leads into the Casino (owner, October 8, 2026) |
+  | 4. Casino | The House (moved from the Marketplace; owner, October 8, 2026) |
+  | 5. Corporate | Hostile Takeover |
+  | 6. Beach | Mecha Guppy and Captain Cogs: a giant mechanical shark and a flying pirate, in a climb (owner, October 10, 2026) |
+  | 7. Dead Zone | Sleep Taker |
+  | 8. Golden Zone | The Golden Convergence (the final villain) |
 
 - **Floating Head** (Neon City). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
   - **What it is:** a **giant ship**. Its back is a **giant cybernetic propaganda face** that watches over the city and **shouts its propaganda**.
-  - **Bombing run:** the ship flies in overhead and **drops bombs toward the player**. Owner's playtest update (October 2, 2026): all bombing runs end about **30% sooner**; the initial 16-second run is now **11.2 seconds**, and later 8-second runs are **5.6 seconds**. A searchlight sweeps the lanes and the bombs fall where it lingers, with a falling whistle, so the light is the visual warning.
+  - **Bombing run:** the ship flies in overhead and **drops bombs toward the player**. Owner's playtest update (October 2, 2026): all bombing runs end about **30% sooner**; the initial 16-second run is now **11.2 seconds**, and later 8-second runs are **5.6 seconds** (10 seconds since the salvos, below). A searchlight sweeps the lanes and the bombs fall where it lingers, with a falling whistle, so the light is the visual warning.
   - **The reveal:** the ship finishes its flyby **directly in front of the player**, and its back turns out to be the face.
   - **Face-off attacks:** **eye lasers** while it looks at the player. *(Proposed)* The eyes glow and whine, then twin beams sweep across the lanes: jump a low sweep, slide under a high one, or switch lanes when a beam drags down a lane. **Cyborg drop** (kept): its mouth opens and drops 1–2 cyborgs onto the trucks ahead, who then fight like normal cyborgs.
   - **First laser is jumpable without dash** (owner's playtest, October 2, 2026): the low horizontal sweep must fit within a normal jump started at the firing cue, without requiring the dash power-up. High sweeps still require a slide; lane drags still require changing lanes.
   - **Back to the sky:** once or twice during the fight it rises for another bombing run (shorter than the first).
+    - **Salvos** (owner, October 9, 2026): the first bombing run stays as it is (one spot at a time, one or two bombs). In the next run, the light marks **two to four spots at once**, each hit by **one or two bombs**. The first spot is the closest to the player and each later one a little further along the track, so the player can see the path they'll have to take before the bombs are released. The third phase's run drops salvos too (owner, October 9, 2026).
+      - **How each spot is placed** (owner, October 9, 2026): each spot leaves the player as few lanes as possible, always at least one way through. **On 3 lanes** a spot takes one or two bombs and leaves **one lane: a forced path**. **On five or more lanes**, where a player could otherwise step clear of a whole salvo, it's harder: a spot takes up to **three bombs side by side** and leaves **a choice of two lanes**.
+      - **Spots closer together** (owner, October 9, 2026): **10 m** apart at 18 m/s instead of 12 m, about 0.56 s from one blast to the next.
+      - **Later runs longer** (owner, October 9, 2026: 10–12 seconds), to fit the salvos: **10 seconds** instead of 5.6, still shorter than the first run. That fits three salvos of four spots, and a flawless fight still pins the same towers (at 11 seconds it would miss one and run past 120 seconds on 3 lanes).
+      - **Far spots look the same** (owner, October 9, 2026): every target circle is the same red at any distance (the City's fog doesn't tint the far ones).
   - **Bringing it down** (the owner's idea of a building falling on it): marked, cracked towers stand ahead at the roadside. The player **baits the eye laser into a marked tower** by leading the beam to that side and dodging at the last moment, the way players bait an Octodog into a gap. The tower topples onto the ship and pins it low across the trucks. If the player doesn't manage it, the laser eventually clips a tower on its own, so a struggling player still gets a chance; baiting it is faster and scores more.
   - **Weak points**: glowing **red** on top of the head, the same language as the hover truck's weak point. While it's pinned, the player **stomps** one. Each phase uses a different Zone 1 skill to get on top: (1) run up the fallen tower like a ramp; (2) wall-jump onto it; (3) ride a ship's underside via an anti-grav pad and drop onto it when the hull ends.
   - **Getting on top is forgiving** (owner's playtest, September 30, 2026): a lane switch onto the fallen tower partway along still gets the runner onto it, and each phase's route onto the head must be obvious and always there.
   - **Three phases**, one stomp each. After a stomp it shakes free, shrieks and rises; the next phase is faster, with more cyborgs.
   - **Damage:** stomps do the real damage (a third of its health each); weapons chip away slowly (tuned so even the best weapon saves at most one stomp over the whole fight).
   - **Propaganda voice:** a heavily distorted announcement voice that isn't meant to be understood, plus a few short slogans shown as text on its face screen (so only those slogans need translating).
-  - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor or shield breaks during the fight, another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
+  - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor takes a hit during the fight (not a shield's break; owner, October 14, 2026, §10), another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
   - **Kept simple:** no bonus damage for shooting into its open mouth.
   - **Defeat**: its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead; the runner runs through the wreck. This leads into the zone's outro, and in the web demo into the "get the full game" screen.
 - **Sewer Swarm** (Gangland). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
   - **What it is:** a mutant horde of screeches rising from the sewers. It builds up on both sides of the street, and a mob attacks while the horde shifts **ahead of and behind** the player.
   - **The Host** at the heart of the swarm: a **poor person with electronic components fused to their sickly body**, mostly hidden under the screeches latched onto them. An unconnected monster, not one of the villain's (§1).
+  - **Intro cinematic** (owner's story beat, October 9, 2026; Gangland's boss-intro slot, before the fight). The camera stays **at ground level** throughout, so the player feels more in the runner's shoes.
+    - The runner runs down the middle of the street, with **manhole covers on either side**.
+    - After **2 seconds**, **one** screech jumps out of a manhole. The runner easily avoids it and keeps moving forward.
+    - **A second later**, **three** jump out of manholes on either side, **two on one side and one on the other**. The runner dodges them.
+    - **A second later**, **five on the left and six on the right**. The runner runs past them.
+    - Then **more and more** pour out of the manholes. They also start **dropping from the sky**, from outside the camera's view, landing on the ground and **running beside the runner**.
+    - Soon a **wall or wave of screeches** is seen behind the runner, running after them.
+    - As the wall gets closer, **one cut** to the mass of screeches: in a **dark area** inside it, a **glint of the Host** in the middle of the swarm can just be made out.
   - **The fight is Gangland's final exam** (screeches, ramps, baiting, fences) in three phases of about 30 seconds each:
     1. **Rising:** manholes and wall vents shake all along both sides, and screeches pour out and merge into clusters at the roadside. A cluster **surges down a lane** ahead of the player, with a red lane line and a rising chitter as the warning.
     2. **Surrounded:** clusters also strike **from behind**. The warning is a **chittering sound** plus a **visible rising wave of the swarm** on screen, curling like a breaking wave or a scorpion's stinger, about to strike its lane. The swarm also **climbs the walls**, taking them away as an escape route, but only **temporarily**, and the phase must stay engaging: **one wall at a time for a few seconds, alternating sides**, so one wall is always free.
@@ -588,8 +679,8 @@ Shared interaction rules apply unless stated otherwise:
   - **Implementation:** 4–5 gameplay entities ("clusters"), each rendered as many screech-variant creatures using MultiMesh plus a shader for per-creature motion. It looks like hundreds, but only 4–5 are simulated. The Host is one more entity.
   - **Performance on phones** (owner, October 2, 2026): build it now with crowd sizes that scale (set in data, and smaller on low-end devices); the phone test (risk test R4, task E3) comes later and sets the sizes.
   - **Defeat: the Host is freed.** The screeches scatter, the implants short out, and the person slumps free.
-- **The House** (Marketplace). The design round's pitch, approved by the owner (September 26, 2026). The owner will playtest it once built and may revisit it.
-  - **What it is:** a **slot machine the size of a building**, rolling down the market street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous, to match the Marketplace's happy mood. The citizens in the shop windows cheer and duck throughout.
+- **The House** (Casino; it was the Marketplace's boss until the owner added the Casino zone on October 8, 2026, and the fight itself is unchanged). The design round's pitch, approved by the owner (September 26, 2026). The owner will playtest it once built and may revisit it.
+  - **What it is:** a **slot machine the size of a building**, rolling down the casino street on treads, lights blazing and jingling. Loud, gaudy and a little ridiculous, to match the Marketplace's happy mood that the Casino carries on. The citizens in the shop windows cheer and duck throughout.
   - **Tied to the villain:** the cult secretly owns the casino. Its symbol is hidden on the machine, and the jackpot money flows up to the Golden Zone. The owner is also open to making the tie direct.
   - **The spin (the warning):** it paces ahead of the player and yanks its giant lever. Three huge reels on its chest spin and stop one at a time, each with a *ding*, over about 2 seconds. The symbols announce the attacks, in reel order:
     - **Cherry:** cherry bombs lobbed into lanes, with target circles on the floor (the Floating Head's bomb warning).
@@ -597,7 +688,7 @@ Shared interaction rules apply unless stated otherwise:
     - **BAR:** heavy gold blocks slammed down into lanes; switch around them.
     - Two or three of a kind make a bigger version of that attack. Three symbols are enough for now.
   - **Rigging the jackpot:** while the reels spin, big glowing **7 buttons** appear along the route. Running over one locks its reel on 7. With all three locked: **JACKPOT**. Sirens go off, the machine overloads and sprays a fountain of real credits to grab, and its **coin hopper bursts open on top** as a glowing red weak point while it sags low. The player **stomps** it.
-  - **Three phases,** with the buttons getting harder to reach, as the Marketplace's final exam: (1) all three on the floor; (2) one on a wall, with wall fences in play; (3) one on a ceiling reached by an anti-grav pad, guarded by Barnacle Turrets.
+  - **Three phases,** with the buttons getting harder to reach, as the final exam of the Marketplace's mechanics, which the Casino reuses: (1) all three on the floor; (2) one on a wall, with wall fences in play; (3) one on a ceiling reached by an anti-grav pad, guarded by Barnacle Turrets.
   - **Missed buttons:** it just spins again (no time limit, no escalation). Weapons chip away at it; stomps do the real damage.
   - **Defeat:** the reels spin wildly and jam, "TILT" flashes, and it collapses in an explosion of coins while the shops erupt in cheers.
   - **Pickups:** the standard armor rule (15–17 seconds).
@@ -605,15 +696,23 @@ Shared interaction rules apply unless stated otherwise:
   - **What it is:** in the Dead Zone, when a cyborg dies, its Bad Dream doesn't dissolve. Over the years they drifted together through the ruins and fused into **one colossal nightmare** haunting the silent city: black with purple highlights like the Bad Dream, but vast, with dozens of circular maws and long clawed fingers.
   - **Tied to the villain indirectly:** the nightmares are an unintended consequence of what the cult has done to people's minds.
   - **Immune to weapons,** like every Bad Dream, so the fight is pure movement skill. **Only the EMP hurts it.** Fence generators are the Dead Zone's last working machines; blowing one near the nightmare tears part of it away.
-  - **Lighting:** the arena is **darker than normal lighting, but never pitch black**. Hazards keep glowing in their usual colours, so the fight stays readable.
+  - **Lighting:** the arena is **darker than normal lighting, but never pitch black**. Hazards keep glowing in their usual colours, so the fight stays readable. Lights out is the exception (below): there it goes completely dark.
   - **Attacks** (each with a visual and audio warning):
-    - **Giant slash** across three lanes: the maw opens with a shriek (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling.
+    - **Giant slash** across three lanes: the maw opens with a shriek (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling. **No ceilings in this fight** (owner, October 10, 2026): every slash used to come as the player reached a ceiling with its anti-grav pad, which made the attack too easy to escape. Get out of those lanes, or run up a side wall; even on the phone (3 lanes, where the slash covers the whole street) **there is always a side wall the player can run to**.
     - **Grasping hands** rising from the floor: purple mist pools in the lane, with whispering. Switch lanes.
-    - **Lights out:** after a deep inhale, it swallows much of the light. It gets **darker still, but not pitch black**, and the glowing hazards stay visible while hands and slashes keep coming.
-  - **It can't reach the ceiling** (the Bad Dream rule), so anti-grav pads are the refuge from the big slashes.
+    - **Lights out:** after a deep inhale, it swallows the light, and the glowing hazards stay visible while hands and slashes keep coming. (As first built it got darker still, but not pitch black; the October 10, 2026 decision below replaces that.) **Half as bright again as first built** (owner, October 8, 2026): everything that is lit gets 50% darker than the first build's lights-out, while glowing things (gap edges, lasers, warnings) stay as visible as before.
+    - **A completely dark tunnel** (owner, October 10, 2026): lights out gets **about 75 to 100% darker than the October 8 version**. The player runs down a completely dark tunnel where the only things they can see are **the glow of the hazards and the glow of the attacks**, with none of the other environmental cues. **The player character glows** so the player still has a sense of where they are.
+    - **The hands spread out** (owner, October 8, 2026): one round of hands rises at **several distances along the street**, not all at the same spot, so the player has to make several lane switches in a row to get through one round.
+    - **The walls aren't safe** (owner, October 8, 2026): the arena's side walls have **many gaps**, and the hands attack the walls much more often.
+    - **Twice as many floor gaps** as first built (owner, October 8, 2026).
+    - **More hands, more often** (owner, October 10, 2026): the hands that come out of the ground are **greater in number and more frequent**, to make the fight more challenging.
+    - **More wall gaps** (owner, October 10, 2026), to make it **harder to dodge the main attack**.
+    - **About three times as many floor gaps** as the October 8 version (owner, October 10, 2026), to make the dark sections more of a challenge.
+  - **It can't reach the ceiling** (the Bad Dream rule), so anti-grav pads are the refuge from the big slashes. Replaced by the owner (October 10, 2026): the arena has no ceilings, and the side walls are the refuge (above).
   - **Hurting it:** glowing fence generators stand along the route. The player **lures it close** (it lunges toward them), then **destroys the generator with a stomp or the dash**; the EMP rips a chunk of the nightmare away.
   - **Weapons never set off a generator** (the rule everywhere, §9.1), so the weapon can't trigger an EMP before the player wants it. Weapons have no effect in this fight at all.
   - **Three phases,** three EMP hits. It gets hungrier each phase (faster hands, more lights-out). A missed generator is followed by another (no time limit, no escalation).
+  - **Five phases** (owner, October 10, 2026: "it ends almost too fast"): two more chunks on its health bar, five EMP hits. The two new phases **introduce no new mechanics**; they ramp up the difficulty with **more hands, a little more often: about 10% more in the fourth phase and 20% more in the fifth**. A fight longer than two minutes is fine.
   - **Defeat:** the last EMP bursts it into hundreds of wisps, each a faint face or figure that drifts upward and fades as the dreams are released. Then silence, and the first grey dawn light breaks over the Dead Zone, setting up the Golden Zone.
   - **Pickups:** the standard armor rule (15–17 seconds). EMP flashes honour Reduced flashing.
 - **Hostile Takeover** (Corporate). The design round's pitch, approved by the owner (September 26, 2026).
@@ -626,8 +725,120 @@ Shared interaction rules apply unless stated otherwise:
   - **Defeat:** the gunship spins away and explodes; the locomotive derails and ploughs through the lobby of a corporate tower, bringing down a giant, soulless logo sculpture.
   - **Missed weak points** come around again (no time limit, no escalation). Weapons chip; stomps do the real damage.
   - **Pickups:** the standard armor rule (15–17 seconds).
-- **Remaining boss:** the final villain's fight *(open)*.
-
+- **Mecha Guppy and Captain Cogs** (Beach). The owner's design (October 10, 2026), worked out with Claude's feasibility notes the same day; the owner's answers are items 749–761 in `docs/OPEN_QUESTIONS_ANSWERED.md`. The parts marked *(proposed)* are Claude's, for the owner's review; the owner settled the last details (items 762–765) the same day. The fight's title is **Mecha Guppy and Captain Cogs**.
+  - **What it is:** **Mecha Guppy**, a giant mechanical shark, eats the level from below, while **Captain Cogs**, a pirate in a flying ship, throws bombs down at the runner. The runner keeps running forward as always and **climbs** through the first two phases, until they're level with Captain Cogs.
+  - **Mecha Guppy:** **gigantic, the size of a building**, and **mechanical**. Its **maw comes up through the floor** and eats a **huge chunk of the level**. It can be seen **ahead of the runner and behind them**, and it's so large that the player will mostly only ever see its **giant jaws and its eyes**. **It doesn't glow red** (owner): it has no weak point to stomp. Its eyes are **dark red lenses that don't glow** (owner, October 10, 2026).
+  - **Captain Cogs:** a **new enemy**, only in this fight (Mecha Guppy eats the captain at the end): a **pirate** mixed with a futuristic look, in a **floating ship flying above** the track. The **bombs** are warned like the Floating Head's (a red target circle where each will land, and a falling whistle), in a pirate look.
+  - **The climb** (phases 1 and 2; this boss's gimmick): **ceilings only** (owner: side walls standing in the lanes would cost too much time and code complexity, and be hard to maintain). The runner takes **anti-grav pads** up to ceilings, the **tiki huts**. Ahead, higher floor lanes stand on **tiki bar roofs**, with **a few neon signs that are scenery only** (no effect on play; the colour rule, §5, holds for them). When a ceiling ends, some of its lanes drop the runner onto the higher roof and the rest drop them back onto the floor they came from, where Mecha Guppy is eating: falling into it is **instant death**. The **camera follows the runner up**.
+    - **The lanes that lead up:** **one on 3 lanes**; on **5–6 lanes**, **one, two or three**, alternating. **One safe place to drop to is enough** (owner).
+    - **Reading them:** either the **ceiling lanes that lead up run further** than the others, or **one or two of the roof's lanes reach further back** toward the runner than the others. The two cues **alternate**.
+    - **Ceiling riders and the bombs:** a rider with the ceiling between them and a bomb **isn't hurt by it** (owner, for now; the owner doesn't want ceilings to be too safe).
+  - **Hurting Mecha Guppy:** dodging the bombs. **Not every miss hurts it**: only a bomb that **falls through a gap**, **off a roof's edge**, or into a stretch it has **eaten through**, where it is **clearly exposed and in the line of fire**. **By baiting** (owner, October 11, 2026): Captain Cogs' bombs **lock onto the runner's lane**, and a runner who **dodges one at a roof's end or a pier's open side** sends it **past the edge into Mecha Guppy's jaws**, a hit, the way the Floating Head's laser is baited into a tower. A player who doesn't manage it still progresses, **more slowly**: Captain Cogs **sometimes misses into the chasm anyway**. **Weapons do nothing** in this fight: no chip damage.
+  - **Phase 1:** the climb, dodging bombs. **4 hits** end it.
+  - **Phase 2:** the same, with **more bombs** and a **climb 15–25% faster**. **6 hits** end it. *(Proposed)* About 20% faster, by making each step taller (3.6 m instead of 3 m): closer steps would leave no room on the roofs for the bombs and the bait. The run speed stays the zone's, as in every boss fight.
+  - **The floor bite** (owner, October 11, 2026): a new attack of Mecha Guppy's in phases 1 and 2. While the runner is **still running on the floor**, before they reach the anti-grav pads, it **takes a bite out of the floor**, shaped **like a shark's bite**: a crescent coming in from one side of the floor, deepest in the middle and shallower at its front and back. The owner's sketch (seen from above; `*` is the bitten gap, the rest is floor):
+    ```
+    ______
+    |        **
+    |      ***
+    |        **
+    --------
+    ```
+    - **Phase 1:** the bite **leaves the runner one lane to run on**.
+    - **Phase 2:** the bite is **so big that sometimes the runner has to jump over the gap**.
+  - **Phase 3, level with Captain Cogs:** the runner reaches the top, **on equal footing with Captain Cogs**. The captain's ship comes level and **fires rounds of attacks** that the player dodges by **switching lanes**, and **waves crash over lanes**, which the player **jumps**. Each has its visual and audio warning, like every attack (owner, October 10, 2026): the rounds are warned by **red lines down the lanes they'll hit** and a **cannon's charging sound**; a wave by a **rising swell and a roar**, and it is jumped like the Resonator's ring (§9.10). After the player has **dodged for one minute**, **Mecha Guppy leaps over and eats Captain Cogs**: the shark is angry. *(Proposed)* The boss bar runs down over the minute, so the player sees how long is left.
+  - **Backdrop:** **a waterfall** in phases 1 and 2, while the runner climbs; **the Beach's normal backdrop** in phase 3. The sky is **Sunset Strip's setting sun**, as the rule for the boss after a level gives (§5; the owner, October 10, 2026, first asked for daylight, then kept the sunset the same day).
+  - **Walls:** only **occasional side walls**, here and there, **never the climb's full length**: a **last-ditch save** that should rescue a player **about 20% of the time**. Mecha Guppy **eats the walls too**, like the floors. A falling runner may catch one. The **grapple** (§8) also saves a fall: it pulls the runner up onto the higher roof *(proposed: into its nearest lane that leads up)*, the "way to get up" the owner asked for. If the walls prove too complex to build, the fight has none (owner). **The owner's rule** (October 10, 2026): keep them only if they add about 7 out of 10 or more to the play, and drop them at about 1–2. **Not built** (October 11, 2026): rated about 2 out of 10 once phases 1 and 2 were playable. The climb's edges are open air beside towers, so walls would be new structures; they'd help only a runner falling from a hut's end in an outer lane who presses outward within a fraction of a second; they'd stand where Mecha Guppy rises beside the notch for the bait; the wall hop would turn them into a place to wait out the bombs; and the grapple already gives the last-ditch save. So the fight has **no walls**; the owner can overrule.
+  - **Length:** it **may run longer than the usual 60–120 seconds** (owner, October 10, 2026): phase 3's minute comes on top of phases 1 and 2's ten hits.
+  - **No checkpoint** (owner, October 10, 2026): a death restarts the fight, as at every boss but the final one.
+  - **Exceptions to the general rules:** the safe landing zone (§3): one safe place to drop to is enough here. The ceiling is the way up, so it is required (as in Hostile Takeover's phase 2 and the Floating Head's phase 3). It may run longer than a boss fight's usual 60–120 seconds. A falling runner may catch a wall (§3's entry grace).
+  - **Pickups:** the standard armor rule (15–17 seconds).
+  - **Defeat:** Mecha Guppy has eaten Captain Cogs, and it **swims away**.
+- **The Golden Convergence** (Golden Zone; the final villain). The owner's design (October 9, 2026). The owner then asked Claude to fill in the rest and build it (owner's mandate, October 9, 2026): those parts are marked *(proposed)* for the owner's review, with the questions in `docs/OPEN_QUESTIONS.md` §D, items 416–503.
+  - **Name:** the fight, and the golden construct, are **The Golden Convergence**. The man inside is **The Magnate**.
+  - **What it is:** a **giant mechanical construct**, a golden exoskeleton that the villain rides inside: a gaudy, almost religious relic, but entirely man-made. It floats in the distance ahead of the runner. **The man inside isn't visible** until the second stage.
+  - **Look (the golden suit):**
+    - A man's shape, a giant golden behemoth, with **extra-large shoulders, arms and hands**.
+    - **A calm human face, cast in gold, with a red tear.** The tear is a **dull red and never glows**, so it never reads as a weak point.
+    - **Decoration:** the cult's own symbols (the Convergent Triad, halo rings like the Resonator's), gold filigree, and signs of wealth, ego and self-righteousness. **No real-world religious symbols.**
+    - **Pipes** come out of its shoulders. They fire missiles (the Missile Barrage, below).
+    - **No legs:** metallic pipes, almost like tentacles, trail from its lower body and run out beyond the view.
+    - **The cape** doesn't have to follow physics: a huge, undulating cloud of **burgundy** cloth with lots of **black folds and shadows**, billowing from the boss's back. It **never glows** (the colour rule, §5), so red hazards and warnings stay readable. It's scenery, not an attack.
+  - **The arena** *(proposed)*: **the Grand Court**, the heart of the Golden Palace (§5). A wide golden causeway runs through a hall so vast it has its own sky under a painted, gilded vault. **No walls line it** (below): low golden balustrades edge it, with reflecting pools far below, and the palace's **towers** stand off to either side, the buildings the Flying Buttresses hold up. Giant screens hung on the towers show **the feed**: the cult's emblem and the calm golden face in stage 1, The Magnate's roaring face in stage 2. The track itself is plain: no holes, fences, ceilings, doodads or enemies of its own. Every danger is the boss's.
+  - **No side walls:** the arena has none, except where a destroyed Flying Buttress brings a building down to make one (Fist Slam, below). Beyond the outer lanes, a **low golden balustrade** bumps the runner back (the bump the game already uses when a boss takes a wall away), so there's no new way to die.
+  - **The entrance** *(proposed)*: as the runner comes into the court, the Golden Convergence **rises into view at the far end**, its cape unfurling into its cloud. The cult's three-note chime (the Resonator's, §9.10) rings out, huge and slow, and the calm golden face looks down the causeway at the runner. Then phase 1 begins.
+  - **Stage 1, the golden suit:** **three phases**, built from three attacks: the **Helidrone Strafe**, the **Fist Slam** and the **Missile Barrage** (all below). The suit takes damage when the player destroys a **Refill Ship** (below): **each ship destroyed takes a third of its health.** **Weapons chip** at it slowly, by the Floating Head's rule: even the best weapon saves at most one ship over the whole stage.
+    - **Phase 1:** a Helidrone Strafe on its own (3 passes, no pad; it teaches the strafe), then a Fist Slam sequence, a Missile Barrage, and the Refill Ship with a Helidrone Strafe.
+    - **Phases 2 and 3:** Fist Slams, Missile Barrage, Fist Slams, Missile Barrage, then the Refill Ship with a Helidrone Strafe (7 passes).
+    - **A missed pad:** the ship finishes refilling and flies off, and the phase's loop starts again from the slams. It never gets harder (no escalation, above).
+    - *(Proposed)* **Pace:** each phase a little faster than the last (paces 1, 1.1 and 1.2). Between phases, the suit reels from the blast for a few seconds (the phase's intro), then attacks again.
+  - **Helidrone Strafe** (owner's attack):
+    - **The squadron:** heli drones (the heli drone's model, **never coloured red**) come **out of the cape**, move and fire as one through all of the strafe's passes, and then leave. It's a single attack, not separate enemies.
+    - **Size:** one drone for every other lane (half the lanes, rounded up): **2 on 3 lanes, 3 on 5 or 6 lanes**.
+    - **Fixed paths:** unlike a normal heli drone, it never tracks the player. On each pass the drones fly a fixed line and rake the floor with fire.
+      - **Vertical pass:** the drones fly down the lanes, raking every other lane. The covered lanes **switch between passes** (odd lanes, then even lanes), so each vertical pass moves the player. Most come **head-on**; some come **from behind** the player. *(Proposed)* The first pass covers the outer lanes (lanes 1, 3, 5 counting from 1).
+      - **The spare drone:** when a pass covers fewer lanes than there are drones (on 5 lanes, 3 then 2; on 3 lanes, 2 then 1), the spare drone pulls up above the formation and holds its fire, so a drone never flies over a safe lane.
+      - **Horizontal pass:** the drones fly from wall to wall, raking a line across the track **and up both walls at every height**. The player dodges it **through a Flying Buttress** (below) or with **the dash**. Horizontal passes are **less frequent** than vertical ones. *(Proposed)* The live line's fire reaches above a jump, so a jump doesn't dodge it.
+      - **Extra lines for show:** a horizontal pass rakes **several lines** across the track, further down the field, so it looks busier than it is. **Only one line is live**: the one at the Flying Buttress, with the red warning line. *(Proposed)* The extra lines get no red warning line and no buttress, their fire is over well before the runner reaches them, and they leave only dark, non-glowing scorch marks (what looks like a hit is a hit, §3).
+      - Together, the passes draw a hatch pattern over the track, one pass after another, a second or two apart.
+    - **Passes per strafe:** **3 in phase 1, 7 in later phases**, in a **fixed script** (learnable, and fair for par times): **V-V-H** in phase 1 and **V-V-H-V-V-H-V** in later phases (V = vertical, H = horizontal). *(Proposed)* Every phase 1 pass comes head-on; in the 7-pass strafe, the 4th and the 7th come from behind.
+    - **Warning:** before each pass, a **red line on the floor** where the fire will land, about a second ahead, and a gatling **spin-up whine**.
+    - **Walls:** fire in an outer lane hits a runner **low on the wall** but not one **high up** (what looks like a hit is a hit, §3).
+    - **Weapons never target the squadron.**
+    - **Anti-grav pads** destroy the whole squadron, as they do heli drones (§9.6). In this fight pads appear only for the Refill Ship (below).
+    - Nothing else is on the track during a strafe.
+  - **Flying Buttress** (owner's new doodad for this fight): **taller than other doodads**. It looks like it holds up buildings out of sight on either side of the track, and may run out beyond the view (the unseen part isn't rendered).
+    - **A gate:** its pier rises from an **inner lane, never an outer one**, with a tall arched opening at its foot that the runner runs through. Its flying arch leaps from the top of the pier out over the wall toward the unseen building. The player has to move into its lane to take cover. *(Proposed)* Its arch leans toward the nearer edge of the track (either way from the middle lane, by the fight's seed).
+    - **How it shelters:** the squadron rakes the horizontal pass's live line exactly along the buttress, so the bullets spark off the stone above the opening. The **red warning line crosses every lane except the opening.**
+    - The sides of the gate are solid but safe, like any doodad: a lane switch into one bumps the player.
+    - **When:** it appears for the Helidrone Strafe's **horizontal passes** and for the **Fist Slam** (below). *(Proposed)* In stage 2, also for The Magnate's Pounce.
+    - **Fairness:** one buttress for each horizontal pass, always there (the dash is a bonus, not required: every boss must be beatable without bought items). It comes into view well before its line, and there's always time to reach it from the farthest lane (up to four lane switches on 6 lanes).
+  - **Fist Slam** (owner's attack, October 9, 2026; stage 1). It's meant to be **scary**.
+    - **Targeting and warning:** he raises a fist on an arm that **telescopes out on golden segments** to reach the track, and pulls back afterwards. The fist **follows the runner's lane, then locks about a second before it falls**. The fist rises, its shadow grows on the floor, a **red square** marks where it will land, and a deep grinding wind-up plays.
+    - **The slam:** the fist **smashes straight through the floor, out of sight, and goes back to rest at his side**. It never blocks a lane; it leaves a **large square hole at least two lanes wide** at once (the floor turns into a gap during play, as it does under the Buzz Overdrive's cut, §9.9). *(Proposed)* Two lanes wide on 3 lanes, three on 5 or 6, as long as it is wide, around the locked lane (moved inward at the track's edge). Its edges glow the usual gap-edge orange.
+    - **A runner under the fist is hit.** Unprotected, that's death. **Armor and the shield block the fist, but the hole is still there.** As after a blocked Buzz Overdrive cut (§9.9), **the floor under the runner holds for about a second**, a split second to jump out (the hole is a short jump) or switch lanes. A **dash** through the fist gets the same second. The grapple hook (it saves a fall, not a hit) and the revive item are the last resorts.
+    - **Quick succession:** sometimes he slams several times in a row, **alternating left and right fists**: **up to 3 slams in phase 1, up to 5 in later phases**. Sometimes a fist lands **further ahead** of the runner, so the holes have to be jumped (a hole can always be jumped). *(Proposed)* A fixed script per phase: in phase 1, slams 1 and 2 come down on the runner and slam 3 ahead; in later phases, slams 1, 3 and 4 on the runner and 2 and 5 ahead; about two seconds apart, divided by the phase's pace.
+    - **Baited into a Flying Buttress,** the fist destroys it. The building it held up, off screen, **topples forward along the track** on the side the buttress's arch leans toward, and its side forms a **wall** the runner can wall-run on (the normal wall run, no new move). The tower is scenery and never lands on the track. It **stays for about 8–12 seconds**: long enough to escape the Missile Barrage warming up, not for the rest of the stage. Every barrage needs a buttress baited again.
+    - **Two chances a sequence:** in each slam sequence, **two slams land at a Flying Buttress**. Hitting one **ends the sequence, and the Missile Barrage starts warming up as the tower falls**, so the wall is there for the whole barrage. If the sequence ends without a buttress hit, the barrage comes anyway. *(Proposed)* The chances are slams that come down on the runner: slams 2 and 3 in phase 1, 3 and 4 later. The buttress stands where that slam will land, and the fist hits it when it locks onto the buttress's lane (a fist locked onto another lane digs its hole beside the buttress, never through it).
+  - **Missile Barrage** (owner's attack, October 9, 2026; stage 1):
+    - **Warning:** the shoulder pipes open, missiles climb high with a launch roar, and red target marks spread across the floor. The warning leaves time to reach the wall from the far side (up to 5 lane switches on 6 lanes, plus the wall entry). *(Proposed)* The missiles hang at the top of their climb, then dive with a rising whistle while the marks fill in; the fire lands when they're full.
+    - The missiles **cover the whole floor, every lane**, and leave a **fiery trail**. The fire burns **longer than one layer of protection alone can carry the runner through** (the dash's 0.6 s, or one blocked hit's second of invulnerability), **long enough that two layers can** (the owner's example: one armor hit plus the dash, 1.6 s), and **shorter than one wall run without claws**, so the runner always drops back onto floor that's no longer burning. The wall-run timing isn't changed for this fight: a runner who gets on too early can **wall hop** (§3) to stay up, and by the final boss players are expected to know it. *(Proposed)* About 1.5 seconds, in data, set in playtesting; its flames reach about a metre up, so a jump only delays them.
+    - **The fallen tower's wall is the only clean escape,** and it's **safe at every height**.
+    - **No wall** (the player never baited the fist): **the barrage comes anyway, and the player takes the hit.**
+    - **Armor and the shield count** against the barrage, as they do against the Helidrone Strafe and the Fist Slam. **Protection stacks the usual way** (owner, October 9, 2026): each armor hit and the shield blocks one touch of the fire and gives the usual second of invulnerability, and the dash passes through for 0.6 s. At about 1.5 s of fire, the free armor alone (1 hit) isn't enough; one armor hit plus the dash, two armor hits (any shop tier) or armor plus the shield get the runner through, a bit toasty.
+  - **Damaging the suit: the Refill Ship** (owner's design, October 9, 2026):
+    - **When:** after the boss has fired its Missile Barrages (**one in phase 1, two in later phases**), a **ship comes in to refill his missiles**. It feeds them to him along a **line running to his shoulder pipes**.
+    - **The ship is a ceiling,** like most ships in the game. *(Proposed)* It's a gilded cult cargo ship, its flat plated belly across every lane at ceiling height, racks of missiles along its flanks, pacing the runner while it refills.
+    - **The way up:** an **anti-grav pad** under the ship, **caged by electric fences** (§9.1). A runner who touches a fence is hit unless they **dash** through or first **knock out the cage's generator** (a stomp or the dash), whose pulse switches the fences off. Armor and the shield get through a fence at the cost of a hit, as usual.
+      - **A closed cage:** fences in the lanes beside the pad as well, and the front fence placed so a jump over it lands past the pad. The only ways in are the dash, the generator, or spending armor or the shield. *(Proposed)* The cage's sides are fences running along the pad lane's edges, from the front fence to past the pad, so a lane switch into the cage touches one.
+      - **The generator** stands in a **lane next to the cage, just before it**, with room after its pulse to switch into the pad's lane.
+      - **A clear route:** the lanes the runner needs for the generator and the pad are never under the strafe's fire when the runner could reasonably be there, and no horizontal pass lands while the cage is coming up. *(Proposed)* The squadron holds its fire while the cage comes up and the runner goes for it, hovering in formation beside the ship, and fires on once the runner is past the pad.
+    - **The squadron:** around then, a **Helidrone Strafe** is starting or under way. Stepping on the pad **hurls the whole squadron up into the Refill Ship** (the heli drone pad rule, §9.6), setting off a **chain reaction**:
+      - the ship **goes spinning off to the side and explodes**, and the missiles it carries all explode;
+      - the squadron explodes, which **ends that strafe**;
+      - the explosion **races up the feed line into his shoulders**, and **the boss takes damage**. Each hit shows: the first blows out one shoulder's pipes, the second the other's, and the third **bursts the suit open**, burning the man inside: the second stage's entrance;
+      - the runner **falls back to the floor unharmed**. *(Proposed)* The floor under the ship is always clear where they land.
+    - **Again and again:** a new Refill Ship comes after each later attack phase, until the suit is destroyed and the second stage begins.
+  - **Armor pickups:** the standard armor rule, triggered when the player's **armor takes a hit** (owner, October 14, 2026; not by a shield break), with the **longest delay of any boss fight** (owner, October 9, 2026): **22 seconds**.
+  - **Second stage, The Magnate** (the fight's halfway checkpoint; direction chosen by the owner, October 9, 2026): the golden suit is destroyed, and the man **pulls himself out of its wreckage, screeching an animal roar of rage**. He's a **twisted abomination, burnt blackish grey** by the suit's destruction, **two to three times the runner's size**.
+    - **Look** (owner approved, October 9, 2026): blackish-grey skin cracked like burnt paper or cooled slag; splashes of the suit's gold melted onto him (dull, never glowing); **half of the calm golden mask fused to one side of his face**, dull red tear and all, the other half his real face, roaring; his weak points the **glowing red ports along his spine** where the suit plugged into him; the cape's remains as **burgundy tatters trailing smoke**. **No glowing embers** (orange is a hazard colour). Optional: cracks leaking the cult's **warm white** glow, as if the broadcast lives inside him (checked against the runner's own glow).
+    - **The tentacle pipes** turn out to be **cables wiring him into the broadcast**: he is the **source of the feed** on every screen.
+    - *(Proposed)* **The transition:** the third ship's blast bursts the suit open; its golden plates fall away and the empty suit crashes down beside the causeway. The Magnate claws his way out, roars, and leaps over the runner to land behind them. The checkpoint is here.
+    - *(Proposed)* **The same open causeway:** stage 2 stays in the Grand Court with no side walls, like stage 1. With walls, the wall hop (§3) would let a runner wait out every attack on a wall. His "walls and ceilings" are the balustrades, the towers' faces and the high arches over the causeway, all out of the runner's reach.
+    - **A chase:** stage 1 is a calm, distant giant the player can't touch; stage 2 flips it. He's fast and feral and **hunts the runner from behind** on all fours, **leaping along the palace's walls and ceilings**. He shows himself the way the Enforcer Truck does (§9.13): he overtakes along a wall or ceiling, lands ahead, then drops back. His **roar** is the audio warning. *(Proposed)* Behind the runner, his shadow and a marker at the screen's bottom edge show his lane, as with the Enforcer Truck.
+    - **Beating him is baiting him,** the lesson every earlier boss taught. The player lures him into the arena. Each time he's **stunned**, his weak points are exposed for a **stomp**.
+    - *(Proposed)* **Pounce**, his main attack (every phase): with a roar, his marker turns red and he leaps from behind over the runner, **locking onto their lane about a second before he lands**; a red square marks where he'll land, ahead in that lane. Dodge: leave the lane. He crashes down, then bounds off onto a balustrade or an arch and drops back behind.
+    - *(Proposed)* **The bait:** a Flying Buttress comes up ahead for every second Pounce. Locked onto the buttress's lane as the runner reaches it, he crashes into the gate, too big to fit through, and is **stunned**: he slumps in its rubble across two lanes, his back to the runner, the red ports on his spine glowing. The runner **stomps a port by jumping onto his back** (from either lane). If they haven't by the time they're nearly on him, he shakes free and leaps away (a miss), and the bait comes around again. While stunned he's solid but safe: switching into him bumps the runner.
+    - *(Proposed)* **Cable Lash** (from the second phase of stage 2): running along a balustrade beside the track, he rears back one of his broadcast cables (with a rising crackle) and whips it across every lane ahead: **low, jump it; high, slide under it**. A red line across the floor shows where it will sweep, as with the Floating Head's lasers.
+    - *(Proposed)* **Three stomps,** one a phase, each faster and angrier (paces 1, 1.15 and 1.3). After a stomp he hurls himself clear, roaring, and drops back behind.
+    - **Owner's playtest (October 9, 2026):** the owner loved the fight, but stage 2 was **too hard to hurt The Magnate**, and felt **slower, duller and less dangerous** than stage 1. Three changes, with the specifics Claude proposed, all approved by the owner the same day:
+      - **Claw Slash** (new attack): he **runs up behind the runner and slashes at them with his claws**, and the player has **only a split second to dodge**. The warning: his marker flashes red with a sharp snarl (not the Pounce's roar) and red claw marks flash on the floor of the runner's lane; the swipe comes about half a second later (never sooner at a faster phase), over the runner's lane only and reaching above a jump: **dodge by switching lanes** (or the dash; armor and the shield block it). In the last phase he slashes twice in a row, the second locking onto the lane the runner dodged into.
+      - **Screen Storm** (new attack): **TV screens on gold tentacles come crashing down from the sky on either side of the runner**, smashing lots of spots in lots of lanes, so the player has to **dodge and weave**. **Some of the screens hit The Magnate, chipping his health.** They're the feed's own screens, his glitching face on them, hanging from long gold broadcast tentacles out of the dark vault. Each spot is marked by a red square and the screen's growing shadow, with a rising glitch-whine, about 0.9 s before it crashes; a storm drops 10–16 screens over about 5 s, planned so a runner who moves a reaction time after each warning always has a way through. A crash hurts only in its square (and above a jump), shatters the screen, and its tentacle yanks it back up: nothing stays on the track. During a storm he runs close behind the runner where the camera shows him, and about a third of the screens crash on him: each takes about a twelfth of the phase's health (a storm about a quarter), so storms alone can end a phase (as the Floating Head's laser clips a tower on its own); the stomp stays the quick way.
+      - **Darker:** the arena gets **about 30% darker once stage 2 starts**, a sign that The Magnate is losing control. It fades down through the transition; hazards and warnings keep their glow; the light comes back as he falls.
+      - **More going on:** new beat scripts weave the new attacks between his Pounces, with shorter gaps between beats: phase 4 Pounce, Slash, Screens, Pounce with the bait, Slash, Screens; phase 5 adds Cable Lashes; phase 6 makes the Slashes double.
+      - **The stomp easier to read:** while he's stunned, green chevrons on the floor (the game's "jump here" marks, as before the Hostile Takeover's couplings) show where to take off, and the stun leaves time to line up the jump (at least about 1.5 s from the stun to the last takeoff).
+  - **Defeat: the feed dies.** When The Magnate falls, **the feed cuts out on every screen in the world**, freeing everyone the cult held. It closes the Cyborg Viewing Devices' story (§5) without words, and leads into the ending. *(Proposed)* The third stomp: he convulses, his cables tear out of his back one by one, and the screens on the towers glitch and go dark, one after another outward. The music cuts out with them. In the silence he collapses on the causeway ahead, the last light in his cracks goes out, and the runner runs past him; then the victory riff.
+  - *(Proposed)* **Numbers** (all in data): six phases in the boss's health (three for the suit, three for The Magnate, a sixth each); weapons chip at most one big hit's worth over the whole fight; a payout of 1,000 credits and 10,000 points for the win; par times measured from a clean fight. The Golden Zone's music for now (a final boss theme is a question for the owner).
 ---
 
 ## 11. Art Direction (so far)
@@ -654,7 +865,8 @@ Shared interaction rules apply unless stated otherwise:
   
   The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. Customization is still open.
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
-- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key. **No more generated songs** (decided September 28, 2026): the owner will provide the game's songs later; until then the game keeps the generated tracks it already has, and no new music is generated (a place that needs a song it doesn't have reuses an existing track or plays none).
+- **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key. **No more generated songs** (decided September 28, 2026): the owner will provide the game's songs later; until then the game keeps the generated tracks it already has, and no new music is generated (a place that needs a song it doesn't have reuses an existing track or plays none). This applies to songs only (owner, October 9, 2026): there is no reason not to make **new sound effects where the existing ones don't cover a moment properly** (a cinematic's included), in the same style.
+- **Explosions** (owner, October 8, 2026): every explosion in the game (the heli drone's crash, the trucks, the Buzz Overdrive, generators, missiles and bosses) is a big, visually impressive **yellow and red fireball**. Reduced flashing softens it.
 - **Readability rules:**
   - Hazards keep a consistent color and shape language across zones.
   - Safe things look safe; deadly parts look deadly.

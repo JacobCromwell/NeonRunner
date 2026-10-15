@@ -131,7 +131,9 @@ static func _introduce(gen: LevelGenerator, t: GildedSentinelTuning, placed: Arr
 			return
 	var rng: RandomNumberGenerator = gen.rng_for("gilded_sentinel_intro")
 	var first_side: int = -1 if rng.randf() < 0.5 else 1
-	var lead: float = (t.warning_seconds + t.strike_lead_seconds) * gen.speed + t.section_length * 0.5
+	# Where its attack window starts, back from its spot: a Sentinel at start + lead has its window (the warning
+	# or, when it starts earlier, the escape lane's lead, GildedSentinelTuning.attack_window) begin at start.
+	var lead: float = -t.attack_window(0.0, 1, gen.speed).x
 	for strict: bool in [true, false]:
 		var at: float = maxf(start, gen.config.start_clear_distance) + lead
 		while t.warn_at(at, 1, gen.speed) <= reach:
@@ -373,6 +375,31 @@ static func _ramp_problem(gen: LevelGenerator, t: GildedSentinelTuning, side: in
 			if low <= band.y + 0.05:
 				return "a ramp's wall run reaches its band (ramp at %.0f)" % r_at
 	return ""
+
+
+## True if a wall enemy of `type` at track distance `at` on wall `side` (a window cyborg, or a wall vent's
+## Screech: `params` "source" "vent", the default) would stand on one of `gen`'s Sentinels' wall sections,
+## as problem() measures them ("a window cyborg is on its wall section", "a wall vent's screech is on its
+## wall section"). For the passes that add wall enemies after these rules (the danger density pass,
+## DangerDensity._type_rules_ok): they keep off it, as the wall fences do (WallFencePlacement).
+static func on_wall_section(gen: LevelGenerator, type: String, side: int, at: float, params: Dictionary = {}) -> bool:
+	if side != -1 and side != 1:
+		return false
+	var reach: float = 0.0
+	if type == "window_cyborg":
+		reach = _window_cyborg_half_length()
+	elif type != "screech" or String(params.get("source", "vent")) != "vent":
+		return false
+	var t: GildedSentinelTuning = tuning()
+	var v: float = gen.speed
+	for e: Dictionary in sentinels_in(gen.layout):
+		if int(e["side"]) != side:
+			continue
+		var guard: Vector2 = t.guarded_stretch(float(e["at"]), int((e.get("params", {}) as Dictionary).get("swings", 1)))
+		var wall := Vector2(guard.x - t.approach_seconds * v, guard.y + t.wall_clear_seconds * v)
+		if at + reach >= wall.x and at - reach <= wall.y:
+			return true
+	return false
 
 
 ## Half a window cyborg's window along the track (WindowCyborgTuning.window_length).

@@ -14,7 +14,10 @@ signal died(cause: String)
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
 ## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
-## doodad shoved the player into a neighbouring lane), robbed (a thief's touch took credits, GDD §9.12),
+## doodad shoved the player into a neighbouring lane), doodad_smash (the dash broke a zone doodad apart:
+## `<kind>_smash` for a DashBreakable of another kind: dash_wall_smash, a dash wall crumbling, task H7a,
+## whether the dash smashed it, the runner crashed through it or passed it on a side wall),
+## robbed (a thief's touch took credits, GDD §9.12),
 ## wall_missing (a wall entry refused where a wall gap leaves no wall: no bump, there's nothing to
 ## bump against), wall_gap_drop (a wall runner reached a wall gap and dropped off into the outer lane).
 ## The three blocked moves (lane_blocked, wall_blocked, and ceiling_blocked: a move past the edge of a
@@ -33,6 +36,11 @@ signal item_gained(item: StringName)
 signal armor_changed
 ## The player's contact defeated an enemy (cause: &"stomp", &"claws" or &"dash").
 signal enemy_contact(enemy: Enemy, cause: StringName)
+## The dash broke something apart (GDD §3, owner, October 8, 2026: a zone doodad; task H5), or a dash wall
+## broke as the runner reached it (GDD §9.14; task H7a: the dash smashed it, they crashed through it, or they
+## passed it on a side wall; DashBreakable.broken_by says which): it has switched off its collision and hidden
+## its look (DashBreakable.smash), and the `<kind>_smash` movement event follows. RunEffects flings its pieces.
+signal smashed(breakable: DashBreakable)
 signal revived
 
 enum Surface { FLOOR, CEILING, WALL }
@@ -49,16 +57,42 @@ const PUSH_HEAD_ON_SHARE: float = 0.15
 ## The doodad contact starts this far above the feet, so a player standing on a doodad's top (it's
 ## solid) isn't pushed by it (metres).
 const DOODAD_FEET_CLEARANCE: float = 0.05
+## A doodad the dash has claimed (_smash_claims: the dash reaches its front before it ends, or a switch
+## into its side began while dashing) still breaks on contact this long after the dash ends (seconds):
+## the contact may come a frame or two after the dash's last one (frame steps; the claim already counts a
+## ramp's or speed pad's boost fading, _dash_reach). A dash that ends short of a doodad it never claimed
+## pushes as usual. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 636).
+const SMASH_CLAIM_GRACE: float = 0.1
+## An anti-grav pad flips the player to the first ceiling within this far above the pad (metres): a level's
+## ceilings are MovementTuning.ceiling_height up, a boss's may stand at a height of their own (GDD §10, the
+## Beach's climb). With none there, the standard height stands in (ceiling_y).
+const CEILING_SEARCH: float = 30.0
+## Heights within this of each other count as the same (metres): a ceiling within it of the standard height
+## (fall_base() plus ceiling_height) is taken at exactly that height, a ceiling a rider stands on that has
+## moved further than this from ceiling_y takes ceiling_y with it, and a floor base no further than this above
+## the floor stood on is that floor (_ceiling_reference, _follow_ceiling, fall_base).
+const HEIGHT_SNAP: float = 0.001
+## A fall faster than pit_depth a frame (a fast fall, a long drop, the pull up to a high ceiling) lands on a
+## surface whose top the feet passed during the frame (_crossed_top), up to this far above where the feet
+## were as the frame began (metres).
+const CROSS_MARGIN: float = 0.01
 
 var tuning: MovementTuning
 var geo: TrackGeometry
 ## The level's side wall gaps (LevelLayout.wall_gaps, the world's own list, so gaps a longer track adds
 ## count too): where a wall has no wall-running surface (wall_supported).
 var wall_gaps: Array[Dictionary] = []
+## The level's dash walls (LevelLayout.dash_walls, the world's own list; task H7a): without any, the approach
+## check (_check_dash_walls) never queries the physics world.
+var dash_walls: Array[Dictionary] = []
 ## Game-wide rules (stomp bounce, invulnerability windows, ...). A default copy if none is set.
 var rules: GameRules
 var god_mode: bool = false
 var running: bool = false
+## A mini-game's hold on the run (MiniGame; the Beach's volleyball match, whose runner walks up to the court and
+## plays on the spot): the runner moves along the track at this speed (m/s) instead of the run's own, boosts and
+## the dash's bonus included, while lanes, jumps and slides work as usual. Below 0: the run's own speed.
+var speed_override: float = -1.0
 
 # Protection, set from the run's loadout (GDD §8). Breakable items are single charges.
 ## The armor (GDD §4, §8): up or coming back; its rules are DamageRules.Armor's.
@@ -82,18 +116,49 @@ var theft_immune_left: float = 0.0
 var dashing: bool = false
 ## Accessibility (reduced flashing): the invulnerability tint holds steady instead of flickering.
 var steady_flash: bool = false
+## The blob shadow lies on the floor found under the player (a roof high above the street) instead of at
+## the street's level: on while the climb is on (RunWorld.camera_climbs sets it: the Beach's boss), off in
+## every level and every other boss fight, where it's drawn at the street's level as it always was.
+var shadow_on_floor: bool = false
 
 var distance: float = 0.0
 var speed: float = 0.0
 var lane: int = 0
 var surface: Surface = Surface.FLOOR
-## Distance from the current surface: height above the floor, depth below the hull, or height on a wall.
+## Distance from the current surface: height above the street on the floor (world y), depth below the
+## ceiling (ceiling_y), or height on a wall.
 var h: float = 0.0
 ## Velocity away from the current surface.
 var vh: float = 0.0
 var grounded: bool = true
 var in_pit: bool = false
 var alive: bool = true
+## World height of the underside of the ceiling the player rides, or rode last (GDD §3: reached by an
+## anti-grav pad): the first ceiling over the pad that flipped them up (its collision box on the hull layer
+## says where it is, so a boss's may stand at any height: GDD §10, the Beach's climb), or the standard height
+## (MovementTuning.ceiling_height above fall_base()) when none is there. A ceiling within HEIGHT_SNAP of the
+## standard height is taken at exactly that height, so every level's ceilings play as they always have; one
+## that moves while they ride it (a gunship's belly coming down, a ceiling lowering in) takes it along.
+var ceiling_y: float = 6.0
+## World height of the floor the player stands on, or stood on last while they're in the air, on a ceiling
+## or on a wall: the street (0) or a raised one (a hover truck's roof, a boss's roof). The climbing camera
+## frames the runner from it (RunCamera, RunWorld.camera_climbs).
+var floor_y: float = 0.0
+## World height falls are counted from (GDD §10, the Beach's climb: a fall from a roof high above the street
+## ends as far below the floor fallen from as one from the street), set by a boss that raises the floor: a
+## player with nothing under them more than pit_depth below it is falling into a pit (no more lane switches,
+## jumps or wall entries; the grapple saves them there), and fall_death_depth below it the fall kills them.
+## It never counts above the floor they last stood on (fall_base()), so a boss may raise it ahead of the
+## climb. 0, the street, in every level and every other boss fight.
+var floor_base: float = 0.0
+## Where the grapple hook's save (GDD §8: it saves one fall) and a revive after a fall take the player: a
+## boss's own (BossEncounter._grapple_save; GDD §10, the Beach's climb: up onto the higher roof, into its
+## nearest lane that leads up). Called as the save happens with this player and the cause (&"grapple" or
+## &"revive"), it returns {"lane": int, "height": float}: the lane to pull them into (moved across like a lane
+## switch) and the world height of the floor to pull them up onto (at or above fall_base()), either of which
+## may be left out (their own lane; fall_base()). Unset, or an empty Dictionary back: straight up out of the
+## pit, as the save always has been (_pull_up).
+var grapple_save: Callable
 ## The level clock: seconds since the run started.
 var elapsed: float = 0.0
 var wall_side: int = 0
@@ -135,8 +200,22 @@ var _push_doodad: int = 0
 var _push_ignore_left: float = 0.0
 ## How many times zone doodads have pushed the player this run (tests and tools).
 var pushes: int = 0
+## How many zone doodads and dash walls the dash has smashed this run (tests and tools).
+var smashes: int = 0
+## How many dash walls the runner crashed through without the dash (one hit each, GDD §9.14), and passed on a
+## side wall, this run (task H7a; tests and tools).
+var crashes: int = 0
+var wall_passes: int = 0
+## The doodads the dash has claimed (GDD §3: dashing into one smashes it), by instance id: each breaks
+## when the body reaches it instead of pushing (_check_doodads). Kept while dashing and for
+## SMASH_CLAIM_GRACE after (_smash_grace_left), then let go.
+var _smash_claims: Dictionary = {}
+var _smash_grace_left: float = 0.0
 var _doodad_shape := BoxShape3D.new()
 var _doodad_query := PhysicsShapeQueryParameters3D.new()
+## The dash walls ahead (task H7a, _check_dash_walls): a query on their layer.
+var _wall_shape := BoxShape3D.new()
+var _wall_query := PhysicsShapeQueryParameters3D.new()
 var _dash_left: float = 0.0
 var _dash_bonus: float = 0.0
 var _last_speed_pad: int = 0
@@ -178,6 +257,10 @@ func _ready() -> void:
 	_doodad_query.collide_with_areas = true
 	_doodad_query.collide_with_bodies = false
 	_doodad_query.collision_mask = TrackBuilder.LAYER_DOODAD
+	_wall_query.shape = _wall_shape
+	_wall_query.collide_with_areas = true
+	_wall_query.collide_with_bodies = false
+	_wall_query.collision_mask = TrackBuilder.LAYER_DASH_WALL
 
 
 func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> void:
@@ -188,6 +271,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	distance = 0.0
 	elapsed = 0.0
 	speed = tuning.run_speed
+	speed_override = -1.0
 	lane = start_lane
 	_x = geo.lane_x(lane)
 	_switch_t = 1.0
@@ -197,6 +281,10 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	grounded = true
 	in_pit = false
 	alive = true
+	floor_base = 0.0
+	floor_y = 0.0
+	ceiling_y = tuning.ceiling_height
+	grapple_save = Callable()
 	wall_side = 0
 	_boost = 0.0
 	_jump_buffer = 0.0
@@ -215,6 +303,11 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_push_doodad = 0
 	_push_ignore_left = 0.0
 	pushes = 0
+	smashes = 0
+	crashes = 0
+	wall_passes = 0
+	_smash_claims.clear()
+	_smash_grace_left = 0.0
 	invulnerable_left = 0.0
 	theft_immune_left = 0.0
 	dashing = false
@@ -293,11 +386,18 @@ func defense() -> DamageRules.Defense:
 
 ## Resolves one contact with a hazard (obstacle, enemy hitbox or projectile) and applies the
 ## outcome. `stomping`: the player is dropping onto it from above. Returns the outcome.
+## A breakable obstacle's contact (Hazard.breakable: a dash wall, task H7a) also breaks it, whatever the
+## outcome (DamageRules: the dash's pass, a hit the armor or the shield absorbs, a kill, god mode or the
+## invulnerability window alike; GDD §9.14: "the wall breaks either way"), before the outcome applies, so
+## the runner who lives goes on through it.
 func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 	if not alive:
 		return DamageRules.Outcome.IGNORE
 	var d: DamageRules.Defense = defense()
 	var outcome: DamageRules.Outcome = DamageRules.resolve(hazard, d, stomping)
+	var b: DashBreakable = hazard.breakable
+	if b != null and is_instance_valid(b) and not b.is_smashed():
+		_break(b, &"dash" if d.dashing else &"crash")
 	match outcome:
 		DamageRules.Outcome.BLOCKED_ARMOR:
 			invulnerable_left = rules.hit_invulnerability
@@ -334,7 +434,8 @@ func receive_hit(hazard: Hazard, stomping: bool = false) -> DamageRules.Outcome:
 
 
 ## Brings the player back where they died (GDD §4: revive item or rewarded ad), invulnerable for
-## a moment. A player who fell is pulled back up like the grapple hook.
+## a moment. A player who fell is pulled back up like the grapple hook (_pull_up: where a boss's
+## grapple_save says, if it has one).
 func revive() -> void:
 	if alive:
 		return
@@ -346,15 +447,16 @@ func revive() -> void:
 		_armor_changed()
 	if _death_cause == "fell" or in_pit:
 		in_pit = false
-		h = maxf(h, -tuning.pit_depth)
-		vh = rules.grapple_pull_velocity
-		grounded = false
+		# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 768): a revive after a fall asks a boss's grapple_save too, so in the
+		# Beach's climb it puts the runner where the grapple would (the boss sees the cause, &"revive").
+		_pull_up(&"revive")
 	_event(&"revive")
 	revived.emit()
 
 
-## The juggernaut dash (GDD §8): passes through hazards for `duration` seconds, `speed_bonus` faster.
-## Cooldowns belong to the power-up that calls this.
+## The juggernaut dash (GDD §8): passes through hazards for `duration` seconds, `speed_bonus` faster,
+## and smashes the zone doodads (GDD §3, _check_doodads) and the dash walls (GDD §9.14, _check_dash_walls)
+## it runs into. Cooldowns belong to the power-up that calls this.
 func start_dash(duration: float, speed_bonus: float) -> void:
 	if not alive:
 		return
@@ -422,10 +524,17 @@ func _physics_process(delta: float) -> void:
 		if _dash_left <= 0.0:
 			dashing = false
 			_dash_bonus = 0.0
+			_smash_grace_left = SMASH_CLAIM_GRACE
 			_event(&"dash_end")
+	elif not _smash_claims.is_empty():
+		_smash_grace_left -= delta
+		if _smash_grace_left <= 0.0:
+			_smash_claims.clear()
 	# A ramp's boost and a speed pad's fade away the same way (GDD §3).
 	_boost = tuning.boost_left(_boost, delta)
 	speed = tuning.run_speed + tuning.speed_gain_per_minute * elapsed / 60.0 + _boost + _dash_bonus
+	if speed_override >= 0.0:
+		speed = speed_override
 	var motion: float = speed * delta
 	distance += motion
 
@@ -439,6 +548,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_apply_transform(delta)
 	_check_doodads(motion)
+	_check_dash_walls(motion)
 	_check_triggers(motion)
 	_check_hazards(motion)
 
@@ -505,7 +615,10 @@ func _event(kind: StringName) -> void:
 # --- Lanes -----------------------------------------------------------------
 
 func _start_switch(target: int) -> void:
-	if target != lane and _lane_blocked(target):
+	# GDD §3 (owner, October 8, 2026): dashing into a zone doodad smashes it, from the side too, so a
+	# doodad's side doesn't block a dashing player (_lane_blocked claims it; it breaks on contact).
+	# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 635): a dashing switch into a doodad's side smashes it.
+	if target != lane and _lane_blocked(target, dashing):
 		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
 		var dir: int = signi(target - lane)
 		_start_bump(dir, rules.lane_bump_fraction * absf(geo.lane_x(target) - geo.lane_x(lane)), tuning.lane_switch_time, false)
@@ -569,15 +682,28 @@ static func _push_progress(k: float) -> float:
 	return 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 1.0 / 3.0)
 
 
-## True if a solid side (a lane blocker) fills `target` lane beside the player right now.
-func _lane_blocked(target: int) -> bool:
+## True if a solid side (a lane blocker) fills `target` lane beside the player right now. With
+## `dash_through` (the player is dashing: GDD §3, the dash smashes a zone doodad) a zone doodad's side
+## doesn't count: it's claimed (_smash_claims) and breaks when the body reaches it (_check_doodads).
+## Any other solid side (a hover truck's, a boss's prop) blocks a dashing player too.
+func _lane_blocked(target: int, dash_through: bool = false) -> bool:
 	if target < 0 or target >= geo.lane_count:
 		return false
 	var height: float = _hurtbox_height()
 	var y: float = position.y + height * 0.5 if surface != Surface.CEILING else position.y - height * 0.5
 	_blocker_shape.size = Vector3(geo.lane_width * 0.5, height, tuning.hurtbox_size.z + 0.6)
 	_blocker_query.transform = Transform3D(Basis.IDENTITY, Vector3(geo.lane_x(target), y, TrackGeometry.world_z(distance)))
-	return not get_world_3d().direct_space_state.intersect_shape(_blocker_query, 1).is_empty()
+	var hits: Array[Dictionary] = get_world_3d().direct_space_state.intersect_shape(_blocker_query, 4 if dash_through else 1)
+	if not dash_through or hits.is_empty():
+		return not hits.is_empty()
+	var claims: Array[int] = []
+	for hit: Dictionary in hits:
+		if not hit["collider"] is DashBreakable:
+			return true
+		claims.append((hit["collider"] as Node).get_instance_id())
+	for id: int in claims:
+		_smash_claims[id] = true
+	return false
 
 
 # --- Floor & ceiling -------------------------------------------------------
@@ -589,7 +715,10 @@ func _update_vertical(delta: float) -> void:
 			grounded = false
 			_coyote = tuning.coyote_time
 		else:
-			h = ground  # Follows moving platforms (a hover truck's roof).
+			# Follows moving platforms (a hover truck's roof; a gunship's belly, _follow_ceiling).
+			h = _follow_ceiling(ground)
+			if surface == Surface.FLOOR:
+				floor_y = h
 
 	if _jump_buffer > 0.0 and (grounded or _coyote > 0.0) and not in_pit:
 		vh = tuning.jump_velocity()
@@ -603,6 +732,7 @@ func _update_vertical(delta: float) -> void:
 		vh = 0.0
 		return
 
+	var from_h: float = h
 	var gravity: float = tuning.gravity() * (tuning.fall_gravity_multiplier if vh < 0.0 else 1.0)
 	vh -= gravity * delta
 	h += vh * delta
@@ -614,33 +744,83 @@ func _update_vertical(delta: float) -> void:
 	if not in_pit and not is_nan(top) and h <= top and h > top - tuning.pit_depth:
 		_land(top)
 		return
-	if h > 0.0:
-		return
+	# A fall faster than pit_depth a frame lands on a surface whose top the feet passed this frame.
+	if not in_pit and from_h - h > tuning.pit_depth:
+		var crossed: float = _crossed_top(from_h)
+		if not is_nan(crossed):
+			_land(crossed)
+			return
 	if surface == Surface.CEILING:
+		if h > 0.0:
+			return
 		_flip(Surface.FLOOR, 0.0)
 		_event(&"hull_end")
-	else:
-		if h < -tuning.pit_depth and not in_pit:
-			if grapples > 0:
-				_use_grapple()
-				return
-			in_pit = true
-		if h < -tuning.fall_death_depth:
-			_die("fell")
+		return
+	# Falls count from the street, or from the floor base a boss sets (GDD §10, the Beach's climb).
+	var base: float = fall_base()
+	if h > base:
+		return
+	if h < base - tuning.pit_depth and not in_pit:
+		if grapples > 0:
+			_use_grapple()
+			return
+		in_pit = true
+	if h < base - tuning.fall_death_depth:
+		_die("fell")
 
 
 ## GDD §8: the grapple hook saves the player from one fall, then breaks.
 func _use_grapple() -> void:
 	grapples -= 1
-	h = -tuning.pit_depth
-	vh = rules.grapple_pull_velocity
-	grounded = false
+	_pull_up(&"grapple")
 	item_used.emit(&"grapple")
 	_event(&"grapple")
 
 
+## The height falls are counted from now: the floor base a boss sets (floor_base), or the floor the player
+## last stood on (floor_y) when the floor base is above it (a floor base raised ahead of the climb never
+## drops a player who isn't up there yet into a pit). The street (0) in every level.
+func fall_base() -> float:
+	return floor_y if floor_base > floor_y + HEIGHT_SNAP else floor_base
+
+
+## The pull up out of a pit (`cause`: &"grapple", the grapple hook's save, or &"revive", a revive after a
+## fall): straight up to just under the floor falls count from with the grapple's pull, as it always was, or
+## where a boss's grapple_save says (a lane to pull them into, a floor to pull them up onto). It never pulls
+## them down.
+func _pull_up(cause: StringName) -> void:
+	var to: Dictionary = {}
+	if grapple_save.is_valid():
+		var answer: Variant = grapple_save.call(self, cause)
+		if answer is Dictionary:
+			to = answer
+	if to.has("lane"):
+		_pull_into_lane(int(to["lane"]))
+	# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 767): a save onto a higher floor (the Beach's climb) lifts the runner to
+	# just under it at once, with no rope shown, then pulls them up as any save does.
+	h = maxf(h, float(to.get("height", fall_base())) - tuning.pit_depth)
+	vh = rules.grapple_pull_velocity
+	grounded = false
+
+
+## Moves the player into lane `target` as the grapple pulls them up (grapple_save): across like a lane
+## switch, over lane_switch_time however many lanes away.
+func _pull_into_lane(target: int) -> void:
+	target = clampi(target, 0, geo.lane_count - 1)
+	if target == lane:
+		return
+	_bumping = false
+	_pushing = false
+	lane = target
+	_switch_from = _x
+	_switch_to = geo.lane_x(target)
+	_switch_t = 0.0
+
+
 func _land(top: float = 0.0) -> void:
-	h = top
+	h = _follow_ceiling(top)
+	if surface == Surface.FLOOR:
+		floor_y = top
 	vh = 0.0
 	grounded = true
 	_event(&"land")
@@ -649,9 +829,10 @@ func _land(top: float = 0.0) -> void:
 		_slide_left = tuning.slide_duration
 
 
-## Swaps between floor and ceiling while keeping the player's world height and velocity.
+## Swaps between floor and ceiling while keeping the player's world height and velocity. The ceiling is
+## the one at ceiling_y (a pad sets it as it flips them up, _check_triggers).
 func _flip(to: Surface, extra_velocity: float) -> void:
-	h = tuning.ceiling_height - h
+	h = ceiling_y - h
 	vh = -vh - extra_velocity
 	surface = to
 	grounded = false
@@ -663,6 +844,13 @@ func _flip(to: Surface, extra_velocity: float) -> void:
 ## player's footprint, from 0.6 m above the feet to 0.3 m below; NAN if there is none. On the floor
 ## that's the track (0) or a raised surface such as a hover truck's roof; on the ceiling, the hull.
 func _support_top() -> float:
+	return _support_between(h + 0.6, h - 0.3)
+
+
+## The height (away from the current surface, like `h`) of the highest supporting surface under the
+## player's footprint whose top lies between `from_h` and `to_h` (rays from the one to the other: the first
+## surface each meets); NAN if there is none. On the ceiling, measured from ceiling_y.
+func _support_between(from_h: float, to_h: float) -> float:
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var on_floor: bool = surface == Surface.FLOOR
 	_ray.collision_mask = TrackBuilder.LAYER_FLOOR if on_floor else TrackBuilder.LAYER_HULL
@@ -670,18 +858,62 @@ func _support_top() -> float:
 	var best: float = NAN
 	for ox: float in [-tuning.foot_half_width, tuning.foot_half_width]:
 		for oz: float in [-tuning.foot_half_depth, tuning.foot_half_depth]:
-			_ray.from = Vector3(_x + ox, _surface_y(h + 0.6), z + oz)
-			_ray.to = Vector3(_x + ox, _surface_y(h - 0.3), z + oz)
+			_ray.from = Vector3(_x + ox, _surface_y(from_h), z + oz)
+			_ray.to = Vector3(_x + ox, _surface_y(to_h), z + oz)
 			var hit: Dictionary = space.intersect_ray(_ray)
 			if not hit.is_empty():
-				var top: float = (hit["position"] as Vector3).y if on_floor else tuning.ceiling_height - (hit["position"] as Vector3).y
+				var top: float = (hit["position"] as Vector3).y if on_floor else ceiling_y - (hit["position"] as Vector3).y
 				best = top if is_nan(best) else maxf(best, top)
 	return best
 
 
+## A fall faster than pit_depth a frame (a fast fall, a long drop off a high ceiling, the pull up to a high
+## ceiling) can pass a surface's top between two frames, beyond _support_top's reach below the feet, and
+## would drop through it: the highest top the feet passed this frame, from where they were as it began
+## (`from_h`, CROSS_MARGIN above) down to where they are; NAN if none. A fall slower than that never needs
+## it: _support_top's reach covers every top it passes.
+func _crossed_top(from_h: float) -> float:
+	var top: float = _support_between(from_h + CROSS_MARGIN, h - 0.3)
+	return top if not is_nan(top) and top >= h else NAN
+
+
+## The ceiling height a rider takes for a ceiling whose underside is at world height `underside`: exactly
+## the standard one (fall_base() plus ceiling_height) when it's within HEIGHT_SNAP of it, else its own.
+func _ceiling_reference(underside: float) -> float:
+	var standard: float = fall_base() + tuning.ceiling_height
+	return standard if absf(underside - standard) <= HEIGHT_SNAP else underside
+
+
+## On the ceiling, the rider's depth below the underside they stand on or land on, given as `top`
+## (measured from ceiling_y, as _support_top gives it): a ceiling further than HEIGHT_SNAP from ceiling_y
+## (one moving as they ride it, a gunship's belly coming down, or one found by its pad while it was still
+## moving) takes ceiling_y along to where it is, so its end, its lanes (_ceiling_over) and the climbing
+## camera go by where it really is. On the floor, `top` as it is.
+func _follow_ceiling(top: float) -> float:
+	if surface != Surface.CEILING or absf(top) <= HEIGHT_SNAP:
+		return top
+	var underside: float = ceiling_y - top
+	ceiling_y = _ceiling_reference(underside)
+	return ceiling_y - underside
+
+
+## The height of the ceiling `pad` flips the player to (ceiling_y): the underside of the first ceiling
+## (anything on the hull layer: the track's, a boss's, a gunship's belly) over the pad's lane within
+## CEILING_SEARCH above the feet (_ceiling_reference), or the standard height (fall_base() plus
+## ceiling_height) with none there: the player flips up into nothing and drops straight back.
+func _ceiling_over_pad(pad: Area3D) -> float:
+	_ray.collision_mask = TrackBuilder.LAYER_HULL
+	_ray.from = Vector3(pad.global_position.x, position.y + 0.1, TrackGeometry.world_z(distance))
+	_ray.to = _ray.from + Vector3(0.0, CEILING_SEARCH, 0.0)
+	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(_ray)
+	if hit.is_empty():
+		return fall_base() + tuning.ceiling_height
+	return _ceiling_reference((hit["position"] as Vector3).y)
+
+
 ## World y of a point `height` away from the current surface (floor or ceiling).
 func _surface_y(height: float) -> float:
-	return height if surface != Surface.CEILING else tuning.ceiling_height - height
+	return height if surface != Surface.CEILING else ceiling_y - height
 
 
 ## GDD §3 (decided September 26, 2026): ceilings don't have to cover every lane, and on one the player
@@ -693,14 +925,16 @@ func _ceiling_ends_before(target: int) -> bool:
 
 
 ## True if a ceiling section (anything on the hull layer: the track's ceilings, a boss's) is over the
-## middle of lane `lane_index` at the player's distance, at the ceiling's height. The ceiling's own
-## collision box says where it is, so this follows its lanes exactly.
+## middle of lane `lane_index` at the player's distance, at the height of the ceiling they ride
+## (ceiling_y). The ceiling's own collision box says where it is, so this follows its lanes exactly, and a
+## ceiling whose lanes end at different distances (one section per run of lanes, BossProps.ceiling_lanes)
+## holds the player within the lanes it still covers.
 func _ceiling_over(lane_index: int) -> bool:
 	var x: float = geo.lane_x(lane_index)
 	var z: float = TrackGeometry.world_z(distance)
 	_ray.collision_mask = TrackBuilder.LAYER_HULL
-	_ray.from = Vector3(x, tuning.ceiling_height - 0.6, z)
-	_ray.to = Vector3(x, tuning.ceiling_height + 0.3, z)
+	_ray.from = Vector3(x, ceiling_y - 0.6, z)
+	_ray.to = Vector3(x, ceiling_y + 0.3, z)
 	return not get_world_3d().direct_space_state.intersect_ray(_ray).is_empty()
 
 
@@ -903,6 +1137,12 @@ func repel_from_wall() -> bool:
 ## if they caught its front corner mid-switch; a side without room (another lane blocker there) gives
 ## way to the other. Ceiling riders and wall runners never meet one (TrackBuilder; the generator keeps
 ## doodads off ceilings and out of the outermost lanes).
+## The dash smashes one instead (GDD §3, owner, October 8, 2026: "dashing into one breaks it apart, and
+## the player keeps their lane with no push and no damage"; _dash_claims): a doodad the dash reaches
+## before it ends is claimed when it comes within the push's reach, and breaks (_smash) when the body
+## meets it, head-on, at a front corner or from the side (a switch into it while dashing, _lane_blocked);
+## the player runs on in their lane, at their speed. A dash that ends short of one leaves it unclaimed,
+## and it pushes as usual, at the push's usual time.
 func _check_doodads(motion: float) -> void:
 	if surface != Surface.FLOOR or in_pit:
 		return
@@ -920,12 +1160,23 @@ func _check_doodads(motion: float) -> void:
 		var area := hit["collider"] as Area3D
 		if area == null or not area.has_meta(&"doodad"):
 			continue
-		if area.get_instance_id() == _push_doodad and (_pushing or _push_ignore_left > 0.0):
-			continue
 		var d: Dictionary = area.get_meta(&"doodad")
+		var gap: float = float(d["start"]) - front
+		# The doodad pushing the player is left alone while its push carries them (it pushes once). A dash
+		# started during the push doesn't smash it: the push completes (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 640).
+		# Once a move has cut the push short, a dash that steers back into it takes it: claimed (a dashing
+		# switch into its side, _lane_blocked) or the dash reaches it (_dash_claims), so it breaks on contact
+		# instead of the body sinking into it while it's still left alone.
+		if area.get_instance_id() == _push_doodad and (_pushing or _push_ignore_left > 0.0) \
+				and not _smash_claims.has(area.get_instance_id()) and (_pushing or not _dash_claims(area, gap)):
+			continue
+		if _dash_claims(area, gap):
+			# The body meets it by the next frame (or is already beside it): it breaks now, before they touch.
+			if gap <= motion:
+				_smash(area as DashBreakable)
+			continue
 		var width: float = tuning.doodad_size(StringName(d["size"])).x
 		var centre: float = geo.lane_x(int(d["lane"]))
-		var gap: float = float(d["start"]) - front
 		var off: float = _x - centre
 		var dir: int = int(d["side"])
 		if absf(off) > PUSH_HEAD_ON_SHARE * geo.lane_width:
@@ -935,6 +1186,43 @@ func _check_doodads(motion: float) -> void:
 			continue
 		_start_push(area, int(d["lane"]), dir, int(d["side"]))
 		return
+
+
+## True if the dash takes doodad `area` (GDD §3: dashing into one smashes it), whose front is `gap` metres
+## ahead of the body's (below 0 once the body is level with it): claimed already (a switch into its side
+## while dashing, or an earlier frame of this approach), or the dash lasts until the body gets there (it
+## covers `gap` in the time it has left, _dash_reach), which claims it now. Only a DashBreakable (what the
+## track builds) breaks.
+func _dash_claims(area: Area3D, gap: float) -> bool:
+	if not area is DashBreakable:
+		return false
+	var id: int = area.get_instance_id()
+	if _smash_claims.has(id):
+		return true
+	if not dashing or maxf(gap, 0.0) > _dash_reach():
+		return false
+	_smash_claims[id] = true
+	return true
+
+
+## How far along the track the player runs in the time the dash has left (metres): the speed without
+## the ramp's or speed pad's boost over that time, plus what the boost adds while it fades
+## (MovementTuning.boost_distance, as it fades each frame: boost_left).
+func _dash_reach() -> float:
+	return maxf(speed - _boost, 0.0) * _dash_left + tuning.boost_distance(_boost, _dash_left)
+
+
+## The dash breaks doodad `b` apart (GDD §3, owner, October 8, 2026; DashBreakable.smash: its body, lane
+## blocker and standable top go, and its look): no push and no damage, and the player runs on in their
+## lane at their speed. `smashed` and the `<kind>_smash` event follow (RunEffects flings its pieces and
+## shakes lightly; the event plays the crunch). DESIGN-TBD (docs/OPEN_QUESTIONS.md item 637): it scores nothing.
+func _smash(b: DashBreakable) -> void:
+	_smash_claims.erase(b.get_instance_id())
+	if not b.smash():
+		return
+	smashes += 1
+	smashed.emit(b)
+	_event(StringName("%s_smash" % b.kind))
 
 
 ## How long into a push the body clears the side of a doodad `width` wide: starting `toward` metres off
@@ -976,6 +1264,78 @@ func _push_room(target: int) -> bool:
 	return target >= 0 and target < geo.lane_count and not _lane_blocked(target)
 
 
+# --- Dash walls ---------------------------------------------------------------------------------
+
+## GDD §9.14 (owner, October 8, 2026; task H7a): a dash wall stands across every floor lane, and it breaks as
+## the runner reaches it, whatever they do, so it never stands between the chase camera and them:
+## - dashing into it smashes it (no damage, the lane and the speed kept), a frame before the body would
+##   touch it: claimed as a doodad is (_dash_claims: the dash lasts until the body gets there, a fading
+##   boost counted; the claim outlives the dash by SMASH_CLAIM_GRACE), broken when the body's front meets its
+##   face (the box its look fills, TrackBuilder.LAYER_DASH_WALL);
+## - a runner on a side wall beside it (their body clear of its hitbox across and up: the strip it leaves
+##   open, MovementTuning.dash_wall_wall_room) passes it: it crumbles as their front reaches its face, and it
+##   costs nothing;
+## - anyone else meets its hitbox (_check_hazards, after this): the crash, one hit (DamageRules: the armor or
+##   the shield absorbs it, else it kills), which breaks it too (receive_hit).
+## A dash that ends before the body gets there leaves it unclaimed: the body meets its hitbox, a crash.
+func _check_dash_walls(motion: float) -> void:
+	if dash_walls.is_empty():
+		return
+	var depth: float = tuning.visual_size.z
+	var front: float = distance + depth * 0.5
+	var back: float = distance - depth * 0.5
+	var reach: float = maxf(_dash_reach() if dashing else 0.0, motion) + 0.05
+	# Across the whole track, and every height a runner reaches: whatever surface they're on.
+	_wall_shape.size = Vector3(geo.wall_x() * 2.0 + 2.0, tuning.ceiling_height + 4.0, front + reach - back)
+	_wall_query.transform = Transform3D(Basis.IDENTITY, Vector3(0.0, _wall_shape.size.y * 0.5 - 1.0,
+		TrackGeometry.world_z((back + front + reach) * 0.5)))
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_wall_query, 4):
+		var b := hit["collider"] as DashBreakable
+		if b == null or b.is_smashed() or b.kind != &"dash_wall":
+			continue
+		var gap: float = float(b.entry["start"]) - front
+		if _dash_claims(b, gap):
+			# The body meets its face by the next frame (or is level with it already): it breaks now, untouched.
+			if gap <= motion:
+				_break(b, &"dash")
+			continue
+		if gap <= motion and not _in_wall_way(b):
+			# A wall runner beside it: it crumbles as they reach it, and they run on past.
+			_break(b, &"pass")
+
+
+## True if the body (its hurtbox now, across and up) lies within dash wall `b`'s hitbox's width and height:
+## running on, it meets it (a crash) rather than passing beside it.
+func _in_wall_way(b: DashBreakable) -> bool:
+	var hitbox: Hazard = b.hitbox()
+	if hitbox == null:
+		return true
+	var mine: AABB = hurtbox_aabb()
+	var c: Vector3 = hitbox.global_position
+	var half: Vector3 = hitbox.size * 0.5
+	return mine.position.x < c.x + half.x and mine.end.x > c.x - half.x \
+		and mine.position.y < c.y + half.y and mine.end.y > c.y - half.y
+
+
+## Dash wall `b` breaks as the runner reaches it (GDD §9.14; DashBreakable.smash with `how`: &"dash", &"crash"
+## or &"pass"): `smashed` and the `dash_wall_smash` event follow (RunEffects crumbles it, the event plays the
+## crash). What the crash costs is receive_hit's (DamageRules); a smash or a pass costs nothing and scores
+## nothing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 653): no score for breaking one.
+func _break(b: DashBreakable, how: StringName) -> void:
+	_smash_claims.erase(b.get_instance_id())
+	if not b.smash(how):
+		return
+	match how:
+		&"dash":
+			smashes += 1
+		&"crash":
+			crashes += 1
+		_:
+			wall_passes += 1
+	smashed.emit(b)
+	_event(StringName("%s_smash" % b.kind))
+
+
 # --- Triggers & hazards ----------------------------------------------------
 
 ## Pads and ramps under the feet, swept back over this frame's motion.
@@ -988,6 +1348,8 @@ func _check_triggers(motion: float) -> void:
 		var area := hit["collider"] as Area3D
 		match area.get_meta(&"kind", &""):
 			&"pad":
+				# Up to the ceiling over the pad, at whatever height it is.
+				ceiling_y = _ceiling_over_pad(area)
 				_flip(Surface.CEILING, tuning.antigrav_launch_velocity)
 				_event(&"pad")
 				_hold_to_pad_lane(area)
@@ -1038,6 +1400,7 @@ func _die(cause: String) -> void:
 	alive = false
 	dashing = false
 	_dash_bonus = 0.0
+	_smash_claims.clear()
 	_death_cause = cause
 	_update_avatar(0.0)  # Avatar: starts the collapse (the avatar finishes it on its own).
 	_event(&"died")
@@ -1056,6 +1419,16 @@ func _show_dead(on: bool) -> void:
 func _update_flash() -> void:
 	var on: bool = invulnerable_left > 0.0 and (steady_flash or int(invulnerable_left * 16.0) % 2 == 1)
 	_avatar.set_flash(on)
+
+
+## How far the player model glows by its own light in the dark, 0–1 (PlayerAvatar.set_dark_glow): a
+## boss's lights out sets it (the Sleep Taker's), so the runner still sees where they are.
+func set_dark_glow(amount: float) -> void:
+	_avatar.set_dark_glow(amount)
+
+
+func dark_glow() -> float:
+	return _avatar.get_dark_glow()
 
 
 ## What the player model shows the player carrying (PlayerAvatar.set_equipment): claws, armor,
@@ -1082,7 +1455,7 @@ func _apply_transform(delta: float) -> void:
 	var roll_target: float = 0.0
 	match surface:
 		Surface.CEILING:
-			y = tuning.ceiling_height - h
+			y = ceiling_y - h
 			roll_target = PI
 		Surface.WALL:
 			roll_target = wall_side * PI * 0.5
@@ -1133,14 +1506,16 @@ func _switch_dir() -> int:
 	return _bump_dir
 
 
-## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps.
-## Over a gap there's no surface, so no shadow, which is itself a cue.
+## A blob shadow on the surface below (or above, on the ceiling) to read height and gaps: at the street's
+## level on the floor, or on the floor found under the player while the climb is on (shadow_on_floor: a
+## roof high above the street); on the ceiling's underside, wherever it is (ceiling_y). Over a gap there's
+## no surface, so no shadow, which is itself a cue.
 func _update_shadow() -> void:
 	if surface == Surface.WALL or not is_inside_tree():
 		_shadow.visible = false
 		return
 	var on_floor: bool = surface == Surface.FLOOR
-	var plane_y: float = 0.0 if on_floor else tuning.ceiling_height
+	var plane_y: float = 0.0 if on_floor else ceiling_y
 	_ray.collision_mask = TrackBuilder.LAYER_FLOOR if on_floor else TrackBuilder.LAYER_HULL
 	var away: float = 1.0 if on_floor else -1.0
 	_ray.from = position + Vector3(0.0, away * 0.1, 0.0)
@@ -1149,6 +1524,8 @@ func _update_shadow() -> void:
 	_shadow.visible = not hit.is_empty()
 	if hit.is_empty():
 		return
+	if on_floor and shadow_on_floor:
+		plane_y = (hit["position"] as Vector3).y
 	var gap: float = absf(position.y - plane_y)
 	var s: float = clampf(1.0 - gap / 6.0, 0.35, 1.0)
 	_shadow.global_position = Vector3(position.x, plane_y + (0.02 if on_floor else -0.02), position.z)

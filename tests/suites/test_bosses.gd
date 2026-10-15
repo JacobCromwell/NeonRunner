@@ -96,6 +96,13 @@ func _test_data() -> void:
 	check(d.stars_for(false, 10.0) == 0 and d.stars_for(true, 45.0) == 3 and d.stars_for(true, 60.0) == 2
 		and d.stars_for(true, 200.0) == 1, "one star for a win, two and three for beating the par times")
 	check(d.time_bonus(60.0) == 3000 and d.time_bonus(130.0) == 0, "the time bonus pays for every second under its mark")
+	# A fight's random choices are seeded by its id, or by the id it had before a move (BossDef.seed_id: The
+	# House keeps marketplace_boss's, test_the_house), so a renamed boss makes the same random choices.
+	var keyed := BossDef.new()
+	keyed.id = &"zone_boss"
+	var plain_key: String = keyed.rng_key()
+	keyed.seed_id = &"old_boss"
+	check(plain_key == "zone_boss" and keyed.rng_key() == "old_boss", "a fight is seeded by its id, or by its seed_id")
 
 	# The test boss: built, outside the campaign, exercising a checkpoint and a faster phase.
 	check(test_def != null and test_def.is_built(), "the test boss is built")
@@ -112,14 +119,22 @@ func _test_data() -> void:
 	for sound: StringName in [&"truck_cannon_charge", &"truck_cannon", &"truck_bang", &"drone_swoop", &"truck_explode"]:
 		check(sfx.stream(sound) != null, "the test boss's sound %s exists" % sound)
 
-	# The campaign's boss slots carry the standard armor rule (GDD §10: 15–17 s; the Floating Head 10–15).
+	# The campaign's boss slots carry the standard armor rule (GDD §10: 15–17 s; the Floating Head 10–15; the
+	# Golden Convergence the longest, 22). The Marketplace has none (GDD §10: it leads straight into the Casino,
+	# whose boss The House now is).
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for zone: ZoneDef in campaign.zones:
 		var b: BossDef = zone.boss
-		var gentle: bool = zone.id == &"city"
-		check(b.armor_rule and is_equal_approx(b.armor_delay_min, 10.0 if gentle else 15.0)
-			and is_equal_approx(b.armor_delay_max, 15.0 if gentle else 17.0),
-			"%s's boss uses the armor rule with a %s s delay" % [zone.id, "10–15" if gentle else "15–17"])
+		if b == null:
+			check(zone.id == &"marketplace", "only the Marketplace has no boss slot (%s)" % zone.id)
+			continue
+		var delay := Vector2(15.0, 17.0)
+		if zone.id == &"city":
+			delay = Vector2(10.0, 15.0)
+		elif zone.id == &"golden":
+			delay = Vector2(22.0, 22.0)
+		check(b.armor_rule and is_equal_approx(b.armor_delay_min, delay.x) and is_equal_approx(b.armor_delay_max, delay.y),
+			"%s's boss uses the armor rule with a %.0f–%.0f s delay" % [zone.id, delay.x, delay.y])
 
 
 # --- The arena -----------------------------------------------------------------------------
@@ -524,16 +539,19 @@ func _test_telegraphed_attack() -> void:
 # --- The standard armor rule -----------------------------------------------------------------
 
 ## GDD §10: an armor pickup at the start of the final phase, and another a while after the player's
-## armor or shield breaks, at most once per phase. The fight says when; task B7 places the pickups.
+## armor takes a hit (one it survives, or its last), at most once per phase. A shield break brings none
+## (owner, October 14, 2026), with the armor on or down, so it leaves the phase's pickup for the armor.
+## The fight says when; task B7 places the pickups. Every boss with the rule: test_boss_armor_rule.
 func _test_armor_rule() -> void:
 	var def: BossDef = DummyBoss.make_def([[1, 1, false, 0.1], [1, 1, false, 0.1], [1, 1, false, 0.1]])
 	def.armor_delay_min = 2.0
 	def.armor_delay_max = 3.0
 	var loadout := Loadout.new()
 	loadout.armor = true
-	loadout.charges = {&"shield": 1}
+	loadout.charges = {&"shield": 2}
 	var enc := DummyBoss.new()
 	var world: RunWorld = _fight(enc, def, 5, loadout)
+	var p: Player = world.player
 	var due: Array = []
 	var broken: Array[StringName] = []
 	enc.armor_pickup_due.connect(func(reason: StringName) -> void: due.append([reason, enc.fight_time(), enc.phase_index]))
@@ -542,27 +560,49 @@ func _test_armor_rule() -> void:
 	var shot := Hazard.new()
 	shot.hazard_name = "test shot"
 	shot.is_enemy_attack = true
-	world.player.receive_hit(shot)
+	var wall := Hazard.new()
+	wall.hazard_name = "test wall"
+	wall.is_solid = true
+	# A shield break with the armor still on (a solid hit, which the armor doesn't block), then one with
+	# the armor down: the fight hears both, and neither brings a pickup.
+	check(p.receive_hit(wall) == DamageRules.Outcome.BLOCKED_SHIELD and p.armor == 1 and broken == [&"shield"],
+		"the fight hears a shield break with the armor still on")
+	p.armor = 0
+	p.invulnerable_left = 0.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_SHIELD and broken == [&"shield", &"shield"],
+		"and one with the armor down")
+	await _until(world, func() -> bool: return not due.is_empty(), def.armor_delay_max + 0.5)
+	check(due.is_empty() and _count(enc, &"armor_scheduled") == 0, "a shield break brings no armor pickup (%s)" % [due])
+	# A hit the armor survives (the upgrade's hits): a pickup after the boss's delay, the phase's one still
+	# there after the shield breaks.
+	p.armor = 2
+	p.invulnerable_left = 0.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_ARMOR and p.armor == 1 and broken.size() == 2,
+		"the armor takes a hit and stays on")
 	var t0: float = enc.fight_time()
-	check(broken == [&"armor"], "the fight hears the armor break")
-	await _until(world, func() -> bool: return not due.is_empty(), 4.0)
-	check(due.size() == 1 and due[0][0] == &"protection_broken", "a pickup is due after the break (%s)" % [due])
+	await _until(world, func() -> bool: return not due.is_empty(), def.armor_delay_max + 1.0)
+	check(due.size() == 1 and due[0][0] == &"armor_hit" and int(due[0][2]) == 0, "a pickup is due after the armor's hit (%s)" % [due])
 	if not due.is_empty():
 		var delay: float = float(due[0][1]) - t0
 		check(delay >= 2.0 - 0.02 and delay <= 3.0 + 0.02, "after the boss's delay (%.2f s)" % delay)
-	world.player.invulnerable_left = 0.0
-	world.player.receive_hit(shot)
-	await _until(world, func() -> bool: return due.size() > 1, 4.0)
-	check(broken == [&"armor", &"shield"] and due.size() == 1, "a second break in the same phase brings none (%s)" % [due])
+	# Its last hit, in the same phase (before the runner reaches the pickup just offered): none more.
+	p.invulnerable_left = 0.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_ARMOR and p.armor == 0
+		and broken == [&"shield", &"shield", &"armor"], "the armor's last hit breaks it")
+	await _until(world, func() -> bool: return due.size() > 1, def.armor_delay_max + 1.0)
+	check(due.size() == 1, "a second armor hit in the same phase brings none (%s)" % [due])
+	# The next phase answers the armor again: the free armor's one hit, which breaks it.
 	enc.damage(enc.hit_damage(), &"test")
 	await _until(world, func() -> bool: return enc.is_vulnerable(), 1.0)
-	world.player.armor = 1
-	world.player.invulnerable_left = 0.0
-	world.player.receive_hit(shot)
-	await _until(world, func() -> bool: return due.size() > 1, 4.0)
-	check(due.size() == 2 and due[1][0] == &"protection_broken" and int(due[1][2]) == 1, "a break in the next phase brings one again")
+	p.armor = 1
+	p.invulnerable_left = 0.0
+	p.receive_hit(shot)
+	await _until(world, func() -> bool: return due.size() > 1, def.armor_delay_max + 1.0)
+	check(due.size() == 2 and due[1][0] == &"armor_hit" and int(due[1][2]) == 1,
+		"an armor break in the next phase brings one again (%s)" % [due])
 	enc.damage(enc.hit_damage(), &"test")
 	check(due.size() == 3 and due[2][0] == &"final_phase" and enc.is_final_phase(), "the final phase begins with one (%s)" % [due])
+	wall.free()
 	await sim.free_world(world)
 	# Without the rule, nothing is due.
 	def.armor_rule = false
@@ -903,7 +943,8 @@ func _app_win(step: CampaignStep) -> void:
 	(App.screen as ShopScreen).on_close.call()
 	App.begin_run()
 	await physics_frames(3)
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro", "and on to the zone's outro")
+	check(App.playing_cinematic() is CityOutro and App.playing_cinematic().step.id == "city/outro",
+		"and on to the zone's outro (task F2a)")
 	App.show_level_select()
 	await tree.process_frame
 	var tile: TileButton = (App.screen as LevelSelectScreen).tiles.get("city/boss")
@@ -1024,8 +1065,9 @@ func _app_demo(step: CampaignStep) -> void:
 		App.continue_after_result(results.result)
 		(App.screen as ShopScreen).on_close.call()
 		await physics_frames(3)
-		check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "city/outro", "the City's outro follows")
-		(App.screen as SlotScreen).continue_button.pressed.emit()
+		check(App.playing_cinematic() is CityOutro and App.playing_cinematic().step.id == "city/outro",
+			"the City's outro follows")
+		App.skip_cinematic()
 		await tree.process_frame
 		check(App.screen is DemoEndScreen, "then the demo ends with the store links")
 	BuildFlavor.set_override(-1)

@@ -10,9 +10,12 @@ extends Enemy
 ##   only while the rider stays on the ceiling through the bolt's arrival and a lane beside theirs,
 ##   within the ceiling, is clear of turret bodies around it (_path_fair), so the rider always has a
 ##   lane to dodge into and, on a two-lane ceiling where that lane is the turret's own, room to switch
-##   back out before passing it. Only one fires at a time (GDD §9.8, proposed): the cyborgs' airspace
-##   (CyborgGun.AIRSPACE_META) holds every burst while another is in the air. Its burst is a small
-##   attack, like a cyborg's: it doesn't take turns with the big ones (EnemyDirector).
+##   back out before passing it. It shares the cyborgs' airspace (CyborgAirspace): up to two bursts of
+##   theirs and the turrets' are in the air at once (GDD §9.2 and §9.8, owner, October 8, 2026), so both
+##   turrets on a ceiling may fire together; the crossfire rule (CyborgGun) keeps a lane the rider can
+##   dodge into free of both, and the rider only dodges within its ceiling and never into a turret
+##   (_lane_open). Its burst is a small attack, like a cyborg's: it doesn't take turns with the big ones
+##   (EnemyDirector).
 ## - Body (GDD §9.8): a body against the underside and a stompable top below it, its crown, the top
 ##   as a rider on the ceiling sees it (Hazard.upside_down). Running
 ##   into it is deadly unless armored, shielded, clawed or dashing; armor absorbs one contact hit.
@@ -105,6 +108,7 @@ func _build() -> void:
 	gun.shot_name = SHOT_NAME
 	gun.may_attack = _may_attack
 	gun.path_rule = _path_fair
+	gun.lane_rule = _lane_open
 	gun.enabled = bool(p.get("fires", true))
 	health_changed.connect(func(_e: Enemy) -> void: model.flash())
 
@@ -207,6 +211,14 @@ func _path_fair(from_d: float, to_d: float) -> bool:
 		if not body_in_lane(n, from_here - tuning.body_reach, to_d + tuning.body_reach):
 			return true
 	return false
+
+
+## Whether a rider dodging its bolts can switch into `to_lane` (CyborgGun.lane_rule, the crossfire
+## rule): within its ceiling's lanes, and no turret's body in that lane from the rider (`from_d`) to past
+## where the bolts arrive (`to_d`), as _path_fair has it.
+func _lane_open(to_lane: int, from_d: float, to_d: float) -> bool:
+	return to_lane >= first_lane and to_lane <= last_lane \
+		and not body_in_lane(to_lane, from_d - tuning.body_reach, to_d + tuning.body_reach)
 
 
 ## True if a living turret on this one's ceiling (this one included) has its body in `lane` anywhere

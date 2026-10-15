@@ -11,7 +11,10 @@ extends Enemy
 ##   is safe; bullets are spaced so they can zigzag back through the stream, and the whole barrage
 ##   lands within the hit invulnerability window, so armor or a shield protects through all of it.
 ##   At a player on a wall it keeps firing (it leads the wall-run descent); while the player is on
-##   the ceiling it waits. The barrage is a big attack (GDD §9): while another type's is on, the
+##   the ceiling it waits.
+## - Dash walls (task H7a; GDD §9.14): it rises over a standing one in its way and comes back down past it
+##   (Enemy.dash_wall_lift, `lift`), and no wind-up starts while a wall is near enough that it would climb
+##   before its barrage and cooldown are over (_doodad_in_reach), so it never fires on the climb. The barrage is a big attack (GDD §9): while another type's is on, the
 ##   drone keeps following and winds up once its turn comes (EnemyDirector.major_attack_blocked).
 ## - Kill: stepping on any anti-grav pad hurls every drone on screen up into the ship's hull
 ##   (drone_crash), over the lanes that ceiling covers (a narrow ceiling, GDD §3: it veers into the
@@ -34,6 +37,10 @@ const HURL_ACCEL: float = 45.0
 const HURL_MAX_TIME: float = 0.8
 const EYE_COLOR := Color(1.0, 0.12, 0.08)
 const HOT_COLOR := Color(1.0, 0.38, 0.1)
+## Its fireballs (RunEffects.fireball, radius in metres): a small one when it's hit and starts to spin down,
+## a big one where it crashes (GDD §11: every explosion is a yellow-and-red fireball).
+const FIRE_HIT_SIZE: float = 1.0
+const FIRE_CRASH_SIZE: float = 2.4
 
 ## Models per zone variant, built once: {body, rotor, barrels} ArrayMeshes.
 static var _models: Dictionary = {}
@@ -78,6 +85,9 @@ var _hurl_x: float = 0.0
 var _hurl_from: float = 0.0
 var _hurl_time: float = 0.0
 var _flash_left: float = 0.0
+## Metres it has risen over its hover height to clear a dash wall in its way (task H7a; Enemy.dash_wall_lift),
+## and back to 0 past it. Its hurl or its fall starts from where it is, lift and all.
+var lift: float = 0.0
 
 var _pivot: Node3D
 var _rotors: Array[MeshInstance3D] = []
@@ -140,6 +150,7 @@ func _tick(delta: float) -> void:
 			_lat_v = move_toward(_lat_v, 0.0, 30.0 * delta)
 			if _state_time >= tune.cooldown:
 				_enter_follow(tune.follow_time_at(_scaling) + rng.randf_range(-0.25, 0.25))
+	_update_lift(p, delta)
 	_place(p, delta)
 	while _pending_shots > 0:
 		_pending_shots -= 1
@@ -190,6 +201,20 @@ func _track_player(p: Player, delta: float) -> void:
 
 func _hover_ahead() -> float:
 	return tune.hover_ahead + slot * tune.wave_spacing
+
+
+## Its body's half length along the track (metres), for the dash walls it rises over.
+func _half_length() -> float:
+	return 1.0 * tune.model_scale
+
+
+## Rises over a standing dash wall in its way, and back down past it (task H7a; Enemy.dash_wall_lift), in
+## every state: the wind-up never starts where it would climb (_doodad_in_reach).
+func _update_lift(p: Player, delta: float) -> void:
+	if state == State.WAITING:
+		return
+	var need: float = dash_wall_lift(p.distance + rel_ahead, _half_length(), rel_y, maxf(p.speed, 1.0))
+	lift = move_toward(lift, maxf(need - rel_y, 0.0), DASH_WALL_CLIMB_SPEED * delta)
 
 
 func _hover_height() -> float:
@@ -273,14 +298,26 @@ func _can_attack(p: Player) -> bool:
 ## stretch the player runs from now until a barrage started now would have passed them: its wind-up,
 ## its bullets and their flight. The generator keeps doodads off a wave until its first pad, so this
 ## holds back only a drone that outlived its pads. DESIGN-TBD (docs/questions/g5.md 5).
+## A dash wall counts as a doodad does (LevelLayout.doodad_between, in every lane), and further for the drone's
+## own way (task H7a): none whose face it would start climbing to (Enemy.dash_wall_lift) before its wind-up,
+## barrage and cooldown are over, so it never fires on the climb. Broken walls count too, as doodads do, so
+## it holds the same on every attempt.
 func _doodad_in_reach(p: Player) -> bool:
-	if world.layout.doodads.is_empty():
+	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty():
 		return false
 	var window: float = world.rules.hit_invulnerability if world.rules != null else 1.0
 	var flight: float = _hover_ahead() / maxf(tune.bullet_speed_at(_scaling), 1.0) + tune.bullet_overshoot
 	var seconds: float = tune.windup_at(_scaling) + tune.barrage_count(_scaling, window) * tune.bullet_interval_at(_scaling) \
 		+ flight
-	return world.layout.doodad_between(p.distance - 1.0, p.distance + maxf(p.speed, 1.0) * seconds)
+	var run: float = maxf(p.speed, 1.0)
+	if world.layout.doodad_between(p.distance - 1.0, p.distance + run * seconds):
+		return true
+	if world.layout.dash_walls.is_empty():
+		return false
+	var top: float = world.tuning.dash_wall_height + DASH_WALL_CLEARANCE
+	var climb: float = maxf(top - _hover_height(), 0.0) / DASH_WALL_CLIMB_SPEED * run + _half_length()
+	return world.layout.dash_wall_between(p.distance - 1.0,
+		p.distance + _hover_ahead() + run * (seconds + tune.cooldown) + climb)
 
 
 ## A wind-up and its barrage are a big attack (GDD §9, §9.7): the Cyborg's Bad Dream never slashes
@@ -432,6 +469,8 @@ func _on_defeated(cause: StringName) -> void:
 	_state_time = 0.0
 	_down_cause = cause
 	_down_v = tune.hurl_speed if cause == &"pad" else 1.5
+	rel_y += lift
+	lift = 0.0
 	if cause == &"pad":
 		_hurl_from = rel_x
 		_hurl_x = hurl_x(world, world.player, rel_x)
@@ -440,7 +479,8 @@ func _on_defeated(cause: StringName) -> void:
 	_aim_line.visible = false
 	_flash.visible = false
 	_pending_shots = 0
-	world.effects.burst(global_position, Color(1.0, 0.55, 0.2), 14, 0.5)
+	# Hit: it bursts into flames and spins down (the crash is the big one).
+	world.effects.fireball(global_position, FIRE_HIT_SIZE, false)
 
 
 func _update_down(delta: float) -> void:
@@ -491,7 +531,7 @@ static func hurl_x(p_world: RunWorld, player: Player, x: float) -> float:
 func _crash() -> void:
 	var at: Vector3 = global_position
 	world.play_sfx_at(&"drone_crash", at)
-	world.effects.burst(at, Color(1.0, 0.5, 0.15), 36, 1.1)
+	world.effects.fireball(at, FIRE_CRASH_SIZE)
 	world.effects.burst(at, Color(0.7, 0.75, 0.85), 16, 0.7)
 	world.effects.shake(0.2, 0.25)
 	queue_free()
@@ -505,7 +545,7 @@ func _world_point(p: Player, x: float, y: float, ahead: float) -> Vector3:
 
 func _place(p: Player, delta: float) -> void:
 	var bob: float = sin(_bob_t * 2.3) * 0.07
-	global_position = _world_point(p, rel_x, rel_y + bob, rel_ahead)
+	global_position = _world_point(p, rel_x, rel_y + lift + bob, rel_ahead)
 	_pivot.rotation = Vector3(0.0, 0.0, clampf(-_lat_v * 0.05, -0.45, 0.45))
 	_rotors[0].rotate_y(30.0 * delta)
 	_rotors[1].rotate_y(-30.0 * delta)
@@ -553,28 +593,11 @@ func _update_aim_line(aim: Vector3) -> void:
 
 
 func _build_model() -> void:
-	var model: Dictionary = _model(world.skin.enemy_variant if world.skin != null else &"city")
-	_pivot = Node3D.new()
-	_pivot.scale = Vector3.ONE * tune.model_scale
-	add_child(_pivot)
-	var body := MeshInstance3D.new()
-	body.mesh = model["body"]
-	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_pivot.add_child(body)
-	for sx: float in [-1.0, 1.0]:
-		var r := MeshInstance3D.new()
-		r.mesh = model["rotor"]
-		r.position = Vector3(sx * 1.02, 0.32, -0.02)
-		r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		_pivot.add_child(r)
-		_rotors.append(r)
-	_gun = Node3D.new()
-	_gun.position = Vector3(0.0, -0.36, 0.18)
-	_pivot.add_child(_gun)
-	_barrels = MeshInstance3D.new()
-	_barrels.mesh = model["barrels"]
-	_barrels.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_gun.add_child(_barrels)
+	var parts: Dictionary = add_model(self, world.skin.enemy_variant if world.skin != null else &"city", tune.model_scale)
+	_pivot = parts["pivot"]
+	_rotors.assign(parts["rotors"])
+	_gun = parts["gun"]
+	_barrels = parts["barrels"]
 	_barrel_hot = GreyboxMaterials.glow(HOT_COLOR, 3.5)
 	_muzzle = Node3D.new()
 	_muzzle.position = Vector3(0.0, 0.0, -0.7)
@@ -591,17 +614,53 @@ func _build_model() -> void:
 	add_child(_aim_line)
 
 
+## Its look alone, visual only, under `parent` (the drone itself, or a cinematic's prop): the body on a
+## pivot scaled by `model_scale` (DroneTuning.model_scale), its two rotors and the gatling's mount and
+## barrels. Returns {pivot, rotors: [left, right], gun, barrels}. `hostile` off draws it without its red
+## (the eye and the band in a cold white and gold, no amber): the Golden Convergence's squadron, the heli
+## drone's model "never coloured red" (GDD §10), the visuals of an attack rather than an enemy.
+static func add_model(parent: Node3D, variant: StringName, model_scale: float, hostile: bool = true) -> Dictionary:
+	var model: Dictionary = _model(variant, hostile)
+	var pivot := Node3D.new()
+	pivot.scale = Vector3.ONE * model_scale
+	parent.add_child(pivot)
+	var body := MeshInstance3D.new()
+	body.mesh = model["body"]
+	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	pivot.add_child(body)
+	var rotors: Array[MeshInstance3D] = []
+	for sx: float in [-1.0, 1.0]:
+		var r := MeshInstance3D.new()
+		r.mesh = model["rotor"]
+		r.position = Vector3(sx * 1.02, 0.32, -0.02)
+		r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pivot.add_child(r)
+		rotors.append(r)
+	var gun := Node3D.new()
+	gun.position = Vector3(0.0, -0.36, 0.18)
+	pivot.add_child(gun)
+	var barrels := MeshInstance3D.new()
+	barrels.mesh = model["barrels"]
+	barrels.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	gun.add_child(barrels)
+	return {"pivot": pivot, "rotors": rotors, "gun": gun, "barrels": barrels}
+
+
 ## Low-poly model in local space: the drone faces +z (toward the player it hovers ahead of).
-## Hostile read in every zone: red eye and a red-hot gatling when it winds up (enemy fire is red).
-static func _model(variant: StringName) -> Dictionary:
-	if _models.has(variant):
-		return _models[variant]
+## Hostile read in every zone: red eye and a red-hot gatling when it winds up (enemy fire is red). Not
+## `hostile` (add_model): the eye in a cold white and the band in unlit gold instead, no amber.
+static func _model(variant: StringName, hostile: bool = true) -> Dictionary:
+	var model_key: String = "%s|%s" % [variant, hostile]
+	if _models.has(model_key):
+		return _models[model_key]
 	var scav: bool = variant == &"scavenger"
 	var hull: Material = GreyboxMaterials.flat(Color(0.55, 0.36, 0.22) if scav else Color(0.46, 0.5, 0.62))
 	var dark: Material = GreyboxMaterials.flat(Color(0.11, 0.11, 0.14))
 	var trim: Material = GreyboxMaterials.flat(Color(0.3, 0.26, 0.22) if scav else Color(0.55, 0.6, 0.7))
-	var eye: Material = GreyboxMaterials.glow(EYE_COLOR, 4.0)
-	var amber: Material = GreyboxMaterials.glow(Color(1.0, 0.62, 0.15), 3.0)
+	var eye: Material = GreyboxMaterials.glow(EYE_COLOR, 4.0) if hostile else GreyboxMaterials.glow(Color(0.82, 0.88, 1.0), 1.6)
+	var band: Material = eye if hostile else GreyboxMaterials.flat(Color(0.78, 0.66, 0.42))
+	var amber: Material = GreyboxMaterials.glow(Color(1.0, 0.62, 0.15), 3.0) if hostile \
+		else GreyboxMaterials.glow(Color(1.0, 0.94, 0.84), 1.4)
 	var thrust: Material = GreyboxMaterials.glow(Color(0.45, 0.75, 1.0), 2.5)
 
 	var b := MeshBatch.new()
@@ -609,7 +668,7 @@ static func _model(variant: StringName) -> Dictionary:
 	b.wedge(hull, Vector3(0.0, -0.03, 0.6), Vector3(0.9, 0.32, 0.34), Vector3(PI * 0.5, 0.0, 0.0))
 	b.box(eye, Vector3(0.0, 0.12, 0.455), Vector3(0.6, 0.08, 0.03))
 	# A red band around the hull: the hostile read from any side.
-	b.box(eye, Vector3(0.0, -0.1, 0.0), Vector3(1.02, 0.05, 0.92))
+	b.box(band, Vector3(0.0, -0.1, 0.0), Vector3(1.02, 0.05, 0.92))
 	b.box(dark, Vector3(0.0, 0.26, -0.06), Vector3(0.62, 0.14, 0.58))
 	b.box(trim, Vector3(0.0, 0.35, -0.4), Vector3(0.08, 0.26, 0.26))
 	for sx: float in [-1.0, 1.0]:
@@ -643,5 +702,5 @@ static func _model(variant: StringName) -> Dictionary:
 	var barrels: ArrayMesh = g.commit()
 
 	var out := {"body": body, "rotor": rotor, "barrels": barrels}
-	_models[variant] = out
+	_models[model_key] = out
 	return out

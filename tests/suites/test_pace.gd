@@ -62,7 +62,8 @@ func _test_speed_data() -> void:
 	var quick := load(LEVEL_PATH) as LevelConfig
 	check(quick.run_speed == 0.0 and quick.fill_empty_seconds == 0.0, "quick play's level keeps the base speed and no fill pass")
 	for s: CampaignStep in campaign.steps():
-		if s.is_level():
+		# A mini-game level (the Beach's volleyball match) plans its own track, not the generator's.
+		if s.is_level() and not s.is_minigame():
 			var config: LevelConfig = campaign.configure(s, 3)
 			check(is_equal_approx(config.run_speed, s.zone.run_speed), "%s runs at its zone's speed (%.1f)" % [s.id, config.run_speed])
 			check(is_equal_approx(campaign.configure(s, 3, 1).run_speed, s.zone.run_speed * campaign.speed_multiplier(1)),
@@ -182,6 +183,12 @@ func _test_fill_pass() -> void:
 				config.level_seed = 7000 + k
 				var patterns: Array = LevelGenerator.load_for(config)
 				var tag: String = "%s lanes=%d seed=%d" % [id, lanes, config.level_seed]
+				# The dash walls but an introduction come after the fill pass (task H7a, DashWallRules.after_doodads):
+				# they stand in the room it left, and where none fits, one makes room by taking an enemy out. None of
+				# these levels introduces them, so both builds leave them out: what's compared is the fill pass's own
+				# doing.
+				check(not config.feature_starts.has("dash_wall"), "%s doesn't introduce dash walls %s" % [id, tag])
+				config.dash_walls = 0
 				var off: LevelConfig = config.duplicate() as LevelConfig
 				off.fill_empty_seconds = 0.0
 				var gen := LevelGenerator.new()

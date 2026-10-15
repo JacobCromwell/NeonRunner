@@ -84,12 +84,17 @@ extends RefCounted
 ##   on the lift), speed pads, floor cuts, the rules' lane-less keep-outs but those of the tuning's
 ##   keep_out_exempt_features (a host's chase), quiet stretches (The Hush) and plain ceilings
 ##   (_plain_ceiling_keeps: one the level won't put a gauntlet under yet stays plain whole);
+## - the rules' calm stretches (an Enforcer Truck's showing window, task C6c: Plan.calm) take nothing either
+##   half adds, no enemy where it stands (CALM_ROOM either side) or attacks, no piece of a row; but nothing
+##   keeps the clearance from one, and they shape no room, so the pass draws as it would without them;
 ## - with the clearance, its window overlaps at most overlap_max other attack windows, all of the
 ##   tuning's twin_tolerated_types and none a host's (a twin's own group apart): every big threat (a
 ##   drone, a resonator's pulse, an Octodog, a Buzz Overdrive, a Gilded Sentinel) keeps its stretch;
 ## - over that whole window a floor enemy leaves min_free_lanes lanes free of floor enemies, holes,
 ##   fences and kept lanes (a hover truck's), all the time: the open lane never has to be switched to;
-##   its type's own rules hold (a cyborg's obstacle margin and panic roll, a window cyborg's signs);
+##   its type's own rules hold (a cyborg's obstacle margin and panic roll, a window cyborg's signs), and a
+##   wall enemy keeps off what the rules keep wall enemies off (LevelGenerator.wall_section_rules: a Gilded
+##   Sentinel's wall section, task K4);
 ## - an added piece keeps the clearance from every fixed stretch and sign, from every enemy's attack
 ##   window but those of row_tolerated_types (whose floor lane stays kept and never counts as open), from
 ##   a quiet stretch, a cyborg's obstacle margin and a pad's lane (a row beside a pad may still lead the
@@ -149,6 +154,9 @@ const ROUTE_SWITCH_SLACK: float = 1.0
 ## Metres a zone doodad's stretch reaches past either end in its route check (doodad_ok): no standing
 ## right at it, nor a jump's arc over it.
 const DOODAD_ROUTE_MARGIN: float = 1.5
+## Metres either side of where an added enemy stands that keep off the rules' calm stretches too (Plan.calm): the
+## room a floor enemy keeps in its lane (as an Enforcer Truck's showing counts it, EnforcerTruckRoom.ENEMY_ROOM).
+const CALM_ROOM: float = 3.0
 
 
 ## Stretches of track [lo, hi], sorted by start, each with an id: quick overlap queries. Track
@@ -214,6 +222,10 @@ class Plan:
 	var hooks: Dictionary = {}
 	## Track no added enemy touches, in any lane (_enemy_fixed).
 	var fixed: Spans = Spans.new()
+	## The rules' calm stretches (their lane-less keep-outs marked calm: an Enforcer Truck's showing window, task
+	## C6c): nothing either half adds stands or attacks in one (_calm_clear, _in_room, _in_row_room), but they shape
+	## none of its rooms, and nothing keeps the clearance from them.
+	var calm: Spans = Spans.new()
 	## Per lane: what a rule keeps it free for (a hover truck's lane all its stay); after the fill pass
 	## also each floor enemy's attack window in its lane and each pad's lane with the clearance.
 	var kept: Array[Spans] = []
@@ -241,6 +253,9 @@ class Plan:
 	var cyborg_spans: Array[Vector2] = []
 	var window_rules: GDScript
 	var window_half: float = 0.0
+	## The rules that keep wall enemies off stretches of their wall (LevelGenerator.wall_section_rules: the
+	## Gilded Sentinels' wall sections), which the wall enemies the pass adds keep off (_type_rules_ok).
+	var wall_rules: Array[GDScript] = []
 	var added: Array[Dictionary] = []
 	## After the fill pass: the stretches where rows may widen (rooms: clear of fixed stretches, signs,
 	## quiet stretches and the attack windows not of row_tolerated_types, with the clearance), every row
@@ -602,13 +617,17 @@ static func _plan(gen: LevelGenerator, patterns: Array, rng: RandomNumberGenerat
 	for lane: int in plan.lanes:
 		plan.kept.append(Spans.new())
 		plan.lane_pieces.append(Spans.new())
+	for k: Dictionary in gen.rules_doodad_keep_outs():
+		if not k.has("lane") and bool(k.get("calm", false)):
+			plan.calm.add(float(k["from"]), float(k["to"]))
 	return plan
 
 
 ## The stretches neither half adds to, in any lane: ramps (to the end of their launch), ceiling landing
-## zones, speed pads, floor cuts' windows and the rules' lane-less keep-outs (a Gilded Sentinel's turn;
-## not those of the tuning's keep_out_exempt_features: a host's chase). Each half adds its own
-## (_enemy_fixed, _index_obstacles): pads, quiet stretches, plain ceilings.
+## zones, speed pads, floor cuts' windows and the rules' lane-less keep-outs (a Gilded Sentinel's
+## turn; not those of the tuning's keep_out_exempt_features: a host's chase; nor their calm stretches,
+## Plan.calm). Each half adds its own (_enemy_fixed, _index_obstacles): pads, quiet stretches, plain
+## ceilings.
 static func _fixed_stretches(plan: Plan) -> Array[Vector2]:
 	var gen: LevelGenerator = plan.gen
 	var layout: LevelLayout = gen.layout
@@ -631,7 +650,7 @@ static func _fixed_stretches(plan: Plan) -> Array[Vector2]:
 		if script == null or not script.has_method("doodad_keep_outs"):
 			continue
 		for k: Dictionary in script.call("doodad_keep_outs", gen):
-			if not k.has("lane"):
+			if not k.has("lane") and not bool(k.get("calm", false)):
 				out.append(Vector2(float(k["from"]), float(k["to"])))
 	return out
 
@@ -710,6 +729,7 @@ static func _index_enemies(plan: Plan) -> void:
 		var t: Resource = load(path) if ResourceLoader.exists(path) else null
 		if t != null:
 			plan.window_half = float(t.get("window_length")) * 0.5 + float(consts.get("SIGN_CLEARANCE", 0.0))
+	plan.wall_rules = gen.wall_section_rules()
 
 
 ## Indexes a hole's or fence's `span` in `lane` (the enemy half's plan.lane_pieces).
@@ -881,7 +901,9 @@ static func _overlap_ok(plan: Plan, window: Vector2, group: Array[int]) -> bool:
 
 
 ## True if `probe`'s type's own rules would keep it: a cyborg's obstacle margin (CyborgRules), a window
-## cyborg's signs (WindowCyborgRules).
+## cyborg's signs (WindowCyborgRules), and for a wall enemy, the stretches the rules keep wall enemies off
+## (plan.wall_rules: a Gilded Sentinel's wall section, which a window cyborg or a wall vent's Screech keeps
+## off, GildedSentinelRules.on_wall_section; their rules ran before the pass).
 static func _type_rules_ok(plan: Plan, probe: Dictionary) -> bool:
 	var type: String = String(probe["type"])
 	var at: float = float(probe["at"])
@@ -892,6 +914,11 @@ static func _type_rules_ok(plan: Plan, probe: Dictionary) -> bool:
 	if type == "window_cyborg" and plan.window_rules != null \
 			and plan.window_rules.call("_sign_near", plan.gen.layout, int(probe["side"]), at, plan.window_half):
 		return false
+	var side: int = int(probe.get("side", 0))
+	if side != 0:
+		for rules: GDScript in plan.wall_rules:
+			if rules.call("on_wall_section", plan.gen, type, side, at, probe.get("params", {})):
+				return false
 	return true
 
 
@@ -1004,7 +1031,7 @@ static func _twin_fits(plan: Plan, probe: Dictionary, group: Array[int], anchor_
 	var k: Vector2 = attack_window(gen, probe, plan.hooks)
 	var after: float = 0.0 if absf(at - anchor_at) < EPSILON else _clear(plan, at)
 	var full := Vector2(k.x, k.y + after)
-	if full.x < plan.lo or full.y > plan.hi or not plan.fixed.clear(full.x, full.y):
+	if full.x < plan.lo or full.y > plan.hi or not plan.fixed.clear(full.x, full.y) or not _calm_clear(plan, probe, k):
 		return false
 	return _overlap_ok(plan, full, group) and _floor_ok(plan, probe, full) and _type_rules_ok(plan, probe)
 
@@ -1018,7 +1045,7 @@ static func _encounter_fits(plan: Plan, probe: Dictionary) -> bool:
 	var at: float = float(probe["at"])
 	var k: Vector2 = attack_window(plan.gen, probe, plan.hooks)
 	var window := Vector2(k.x - _clear(plan, k.x), k.y + _clear(plan, k.y))
-	if window.x < plan.lo or window.y > plan.hi or not plan.fixed.clear(k.x, k.y):
+	if window.x < plan.lo or window.y > plan.hi or not plan.fixed.clear(k.x, k.y) or not _calm_clear(plan, probe, k):
 		return false
 	var none: Array[int] = []
 	return _overlap_ok(plan, window, none) and _floor_ok(plan, probe, window) \
@@ -1113,7 +1140,7 @@ static func _add_turrets(plan: Plan, target: int) -> int:
 					continue
 				var at: float = float(rules.call("off_credits", layout, h, lane, plan.rng.randf_range(lo, hi),
 					Vector2(lo, hi), margin))
-				if is_nan(at):
+				if is_nan(at) or not plan.calm.clear(at - CALM_ROOM, at + CALM_ROOM):
 					continue
 				var lane_span: Vector2i = layout.hull_lanes(h)
 				var entry: Dictionary = {"type": TURRET, "at": at, "lane": lane, "side": 0,
@@ -1254,6 +1281,10 @@ static func _index_obstacles(plan: Plan) -> void:
 	for s: Dictionary in layout.signs:
 		protections.append(_margined(plan, Vector2(float(s["start"]), float(s["end"]))))
 	protections.append_array(gen.quiet_stretches())
+	# Task G7: each wider gap from its take-off margin to its landing margin (WideGapPlacement.keep_outs, placed
+	# before the fill pass), as it stands: those margins are the level's spacing there already, so each stays the
+	# only demand at its take-off and landing.
+	protections.append_array(WideGapPlacement.keep_outs(gen))
 	var strict: Array[Vector2] = []
 	for q: Vector2 in gen.quiet_stretches():
 		strict.append(_margined(plan, q))
@@ -1366,16 +1397,30 @@ static func _plain_ceiling(plan: Plan, h: Dictionary) -> bool:
 	return true
 
 
-## True if [a, b] lies in one of the rooms (clear of every protection with its margin).
+## True if [a, b] lies in one of the rooms (clear of every protection with its margin) and off every calm
+## stretch (Plan.calm).
 static func _in_room(plan: Plan, a: float, b: float) -> bool:
 	var i: int = plan.room_starts.bsearch(a, false) - 1
-	return i >= 0 and plan.rooms[i].y >= b
+	return i >= 0 and plan.rooms[i].y >= b and plan.calm.clear(a, b)
 
 
-## True if [a, b] lies in one of the row rooms (clear of every enemy's attack window too).
+## True if [a, b] lies in one of the row rooms (clear of every enemy's attack window too) and off every calm
+## stretch (Plan.calm).
 static func _in_row_room(plan: Plan, a: float, b: float) -> bool:
 	var i: int = plan.row_room_starts.bsearch(a, false) - 1
-	return i >= 0 and plan.row_rooms[i].y >= b
+	return i >= 0 and plan.row_rooms[i].y >= b and plan.calm.clear(a, b)
+
+
+## True if enemy `probe` keeps off every calm stretch (Plan.calm): where it stands (CALM_ROOM either side) and its
+## attack window `k` (attack_window).
+static func _calm_clear(plan: Plan, probe: Dictionary, k: Vector2) -> bool:
+	var at: float = float(probe["at"])
+	var from: float = at - CALM_ROOM
+	var to: float = at + CALM_ROOM
+	if k.y >= k.x:
+		from = minf(from, k.x)
+		to = maxf(to, k.y)
+	return plan.calm.clear(from, to)
 
 
 ## The floor lanes enemy entry `e` attacks in: its lane, or for a wall enemy that uses the floor (a

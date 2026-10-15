@@ -4,29 +4,35 @@ A neon 3D runner for PC (Steam), Android, iOS and a web demo. You run lanes, sid
 through zones full of enemies, and a single hit ends the run. Built with Godot 4.7.2 and GDScript only.
 
 **Status:** the game is built around everything designed so far:
-- the whole campaign structure: six zones and 15 levels
+- the whole campaign structure: seven zones and 17 levels
 - seven enemy types, plus fence generators
 - the shop, power-ups and economy
 - every screen and the HUD
-- all six zone looks (the Neon City, Gangland, the Marketplace, Corporate, the Dead Zone and the Golden Zone),
+- all seven zone looks (the Neon City, Gangland, the Marketplace, Corporate, the Beach, the Dead Zone and the
+  Golden Zone),
   owner-supplied zone music, generated default music and sound effects
 - all three build flavors
 
 Boss fights have their framework (they play in the runner, with phases, a health bar, checkpoints,
 stars and payouts); a test boss shows the framework at work. The Neon City's boss, the Floating Head,
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
-Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Marketplace's House after
-Marketplace 2 (`--boss=marketplace_boss`), the Corporate zone's Hostile Takeover after Corporate 2
-(`--boss=corporate_boss`), and Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`); the
-Golden Zone's final villain is still a placeholder slot. The short cinematics are built with a code-driven cinematic toolkit
-(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable); until the owner
-describes the story beats, each zone's intro (and the City's boss intro) plays a placeholder arrival flyover
-over the zone, and the outros are placeholder cards.
-Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md`.
+Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Casino's House after
+Casino 2 (`--boss=casino_boss`), the Corporate zone's Hostile Takeover after Corporate 2
+(`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), the Beach's
+Mecha Guppy and Captain Cogs after Beach 3 (`--boss=beach_boss`), and the Golden Zone's final villain, The
+Golden Convergence, after Golden 3 (`--boss=golden_boss`). The short cinematics are built with a code-driven cinematic toolkit
+(camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable). The owner's story beats are
+built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
+crater as a host cyborg looks on); until the owner describes the rest, each other zone's intro (and the City's boss
+intro) plays a placeholder arrival flyover over the zone, and the other outros are placeholder cards.
+Every placeholder decision is listed in `docs/OPEN_QUESTIONS.md` (the few needing the owner) or
+`docs/OPEN_QUESTIONS_DEFERRED.md` (standing as built).
 
-Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (open decisions and
-placeholders), `docs/ARCHITECTURE.md` (how the code fits together), `docs/NEXT_STEPS.md` (risk tests and the
-original build plan), `CLAUDE.md` (rules for agents).
+Docs: `docs/GDD_CHECKPOINT.md` (the design, the authority), `docs/OPEN_QUESTIONS.md` (decisions waiting on the
+owner; deferred and answered ones in `docs/OPEN_QUESTIONS_DEFERRED.md` and `_ANSWERED.md`), `docs/ARCHITECTURE.md`
+(the index of the architecture notes in `docs/architecture/`), `docs/USER_REQUESTS.md` (the owner's requests),
+`docs/WORKFLOW.md` (how build sessions run), `docs/NEXT_STEPS.md` (risk tests and the original build plan),
+`CLAUDE.md` (rules for agents).
 
 ## Play it
 
@@ -53,17 +59,17 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
-| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden` or `golden_palace` (Golden 3's interior) |
+| `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `casino`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden`, `golden_palace` (Golden 3's interior) or `beach` (the Beach) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
-| `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts): the chance each stretch with room for one gets one. Campaign levels have their own share |
+| `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `marketplace_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, `--level=casino/1` the Casino's first level, and `--level=beach/1`, `beach/2` (the volleyball match) and `beach/3` the Beach's levels, `beach/boss` its boss (`tools/godot.sh smoke --level=beach/1` smoke-runs one) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence; `beach_boss`: Mecha Guppy and Captain Cogs) with the full game flow (a fight still being built plays as quick play). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -80,16 +86,19 @@ The owner-supplied MP3s are copied unmodified into `assets/music/`:
 | Zone 1 - Neon City | Under the Iron Sky |
 | Zone 2 - Gangland | Alleyway Ambush |
 | Zone 3 - Marketplace | Jackpot Plaza |
-| Zone 4 - Corporate | Concrete Fever |
-| Zone 5 - Dead Zone | Beneath the Cracks |
-| Zone 6 - Golden Zone | View from the Zenith |
+| Zone 4 - Casino | Midnight at the Atrium |
+| Zone 5 - Corporate | Concrete Fever |
+| Zone 6 - Beach | Palms at Terminal Speed |
+| Zone 7 - Dead Zone | Beneath the Cracks |
+| Zone 8 - Golden Zone | View from the Zenith |
 | Boss 1 - Floating Head | Apex Combat Maneuver |
 
 Menus, cutscenes (including the Boss 1 intro), and unmatched bosses keep their generated default
 music. `Horizon_Of_Glass.mp3` is intentionally unused. Gameplay replacements are selected through
 `zone_tracks` and `boss_tracks` in `data/audio/music_library.tres`; the original track entries remain
 available for cinematics. Songs loop in full and retain the existing pause duck, death dip and
-zone completion sounds (`riff_tracks`), whose keys have not been retuned to the supplied songs.
+zone completion sounds (`riff_tracks`); the Casino and Beach songs use the fallback City riff until
+matching completion sounds are added.
 `tools/godot.sh music` regenerates only the default WAVs, not the supplied MP3s.
 
 ## Controls
@@ -111,11 +120,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** 15 levels in six zones, about 35 minutes of flawless running: the Neon City (the web demo's
-  zone) and Gangland with three levels each, the Marketplace, Corporate and the Dead Zone with two, and the
-  Golden Zone with three.
-  Each zone has a boss slot and cinematic slots; its intro plays a placeholder arrival flyover over the zone
-  in its own look (skippable). Each level introduces about one new thing (GDD §5), where
+- **Campaign:** 20 levels in eight zones, about 45 minutes of flawless running: the Neon City (the web demo's
+  zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate and the Dead Zone with two, the
+  Beach with three (its second a volleyball mini-game), and the Golden Zone with three.
+  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is
+  Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
+  (skippable), but the Dead Zone's, which plays the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.
@@ -125,29 +135,41 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   6. Gangland 3 *Rotor Wash*: fence generators and heli drones.
   7. Marketplace 1 *Awning Alley*: the Barnacle Turret.
   8. Marketplace 2 *Shopfront Sparks*: wall fences, and sewer screeches from the shopfronts' wall vents.
-  9. Corporate 1 *Maglev Line*: the Buzz Overdrive, then partial wall fences.
-  10. Corporate 2 *Checkpoint Plaza*: the Tithe Collector and the Enforcer Truck, and a heavier military
+  9. Casino 1 *Brass Arcade*: nothing new, the Marketplace's enemies and mechanics on the casino street.
+  10. Casino 2 *House Edge*: nothing new either, then The House.
+  11. Corporate 1 *Maglev Line*: the Buzz Overdrive, dash walls, then partial wall fences.
+  12. Corporate 2 *Checkpoint Plaza*: the Tithe Collector and the Enforcer Truck, and a heavier military
       presence (more drones, hover trucks and Buzz Overdrives).
-  11. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
-  12. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
+  13. Beach 1 *Tiki Tides*: nothing new, a remix of everything so far in daylight, with the side walls standing
+      about half as often, so the beach and the sea show beyond them.
+  14. Beach 2 *Net Gains*: a mini-game. A couple of seconds of run, then the runner walks up to a volleyball
+      court on the open beach and plays a man in swim trunks: get under the ball (a ring marks where it comes
+      down, a closing ring when to jump) and jump to hit it back. Three returns win a point, a miss loses one,
+      first to four; each point won pays 100 credits. Then the net sinks and the runner runs to the finish line.
+  15. Beach 3 *Sunset Strip*: Tiki Tides' remix as the sun starts to set. The Beach's levels sit between
+      Corporate 2 and Dead Zone 1 in difficulty, off the campaign's curve, so no other level changed.
+  16. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
+  17. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
       bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
-  13. Golden 1 *Gilded Canals*: the Resonator.
-  14. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
-  15. Golden 3 *The Golden Palace*, then the final boss.
+  18. Golden 1 *Gilded Canals*: the Resonator.
+  19. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  20. Golden 3 *The Golden Palace*, then the final boss.
 
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
   enemies, obstacles from obstacles), so no level gets easier; enemies whose rules keep only so many (hosts,
   hover trucks, drones, Octodogs, Resonators) and the rare vent screech aren't boosted (the campaign's recency
   curve, `data/tuning/feature_recency.tres`).
-  Level names are placeholders, except the Golden Palace.
+  Level names are placeholders, except the Golden Palace; the Casino's are proposals, and what each Casino
+  level adds is still to design (it plays Marketplace 2's set for now).
 - **Movement:** floor lanes, side-wall runs and wall jumps (a sign blocking the wall bumps you back with a
   clank), anti-grav pads onto the ceiling, ramps (higher onto the wall, with a speed boost that fades like
   a speed pad's), speed pads. From the second half of City 2 on, about half the ceilings cover only some of
   the lanes (a placeholder amount): on one you switch lanes only within it (a move past its edge bumps you
   back with the clank), and a one-lane ceiling is short.
-- **Obstacles:** gaps, signs, and electric fences (full-height or gapped, always-on or pulsing), some with a
-  generator that switches them off. Floors that turn into gaps during play: after a warning, a lane's floor
+- **Obstacles:** gaps (every campaign level has a couple of wider ones: still a normal jump, but an Enforcer
+  Truck following you into one is wrecked), signs, and electric fences (full-height or gapped, always-on or
+  pulsing), some with a generator that switches them off. Floors that turn into gaps during play: after a warning, a lane's floor
   is cut away from ahead of you back past you, its edges glowing the gap orange (the Buzz Overdrive's cuts;
   in quick play also a grey-box stand-in, `--features=floor_cutter`). Wall fences (from Marketplace 2):
   the same pink crackle across the wall-run path between emitters on the facade, switching off and on with
@@ -156,16 +178,29 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   them) or its top (step onto the wall without a jump to run below them). Armor, the shield and the dash get
   you through, claws don't, and a generator's EMP switches them off. They're never where a ramp launches you
   along their wall, never beside a sign or a window cyborg, and the outer lane beside them is always clear
-  to drop into (in quick play, `--features=wall_fences,wall_fences_partial`).
+  to drop into (in quick play, `--features=wall_fences,wall_fences_partial`). Dash walls (from Corporate 1,
+  1 to 4 a level, placeholder counts): a building standing across every floor lane, in the zone's own colours.
+  Dash through it and it crumbles into rubble; without the dash (not owned, switched off or on cooldown) you
+  crash through it and take one hit, which the armor or a shield absorbs (with neither, it kills); a run along
+  a side wall passes it. They stand far enough apart for the dash's longest cooldown to be over before the next,
+  with nothing else asking for the dash just before one, a clear stretch before and after, never under a
+  ceiling, and a side wall always open beside them. A hover truck drops behind you and lets you go first, and
+  a heli drone flies over one (in quick play, `--features=dash_wall --full-loadout`).
 - **Enemies:**
-  - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder
+  - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder. Up to two
+    bursts of the cyborgs, window cyborgs and Barnacle Turrets fly at once (`GameRules.max_bursts_in_air`,
+    in the F6 panel), and never so that a single lane switch can't dodge them
   - window cyborgs
   - the hover truck mini-boss
-  - the Octodog; its active charges can kill other vulnerable enemies on physical contact
+  - the Octodog; its active charges can kill other vulnerable enemies on physical contact (now and then a cyborg
+    stands in the path of an Octodog's lunge or a Buzz Overdrive's charge, so you see it flattened)
   - the sewer screech
   - the heli drone
   - the Cyborg's Bad Dream, released by killing a host cyborg (from Dead Zone 1; in quick play, try
-    `--features=cyborg,host,ceilings`)
+    `--features=cyborg,host,ceilings`). Weapons hit hosts: auto-fire targets them like any other cyborg, and a
+    weapon kill releases the Bad Dream too (switch the weapon off in the shop to spare them); a stomp, the
+    claws or the dash also earn the host bonus. A Bad Dream shot loose ahead of you lurks over its host's
+    spot, harmless, until you come close, and only then begins its chase
   - the Barnacle Turret (from Marketplace 1): a dome with a chest cannon that pops out of a ceiling's
     underside and shoots only at a rider on that ceiling, the cyborgs' way (its muzzle glows red with a
     charge-up sound, then a short burst: switch lanes). Armor or the shield absorbs a body-contact hit;
@@ -173,8 +208,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     (jump on the ceiling and drop back onto it) or weapons kill it. Mechanical in most zones, a furry
     creature in Gangland and the Marketplace (in quick play, `--features=ceilings,barnacle_turret`)
   - the Resonator (from Golden 1): a golden broadcast spire hovering far ahead. When its halos line up
-    and its three-note chime plays, a red wave rolls along the floor across every lane: jump it, or be
-    on a wall or the ceiling. Shoot it down or wait until it leaves (in quick play, `--features=resonator`)
+    and a fire roars and crackles up, breaking into a crashing wave, a red wave rolls along the floor
+    across every lane: jump it, or be on a wall or the ceiling. Shoot it down or wait until it leaves
+    (in quick play, `--features=resonator`)
   - the Buzz Overdrive (from Corporate 1): a buzzsaw tank parked in its lane far ahead. It rolls ahead of
     you, then revs (the spin-up, its eyes flaring, a red line over its lane) and charges back down its lane,
     cutting the floor into a gap behind it: leave its lane. The armor or shield blocks it and the floor holds
@@ -184,13 +220,14 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     it physically hits, without awarding player kill bonuses (in quick play, `--features=buzz_overdrive`)
   - the Tithe Collector (from Corporate 2, skipping the Dead Zone, back in the Golden Zone): a small gold
     drone with a collection plate, smug and gaudy (plain metal, no rotors; anti-grav pads don't affect
-    it). It appears ahead of you and closes in slowly, sucking up the credits in its lane along the way
+    it). It appears ahead of you and closes in slowly (left alone, it stays in the level about 11
+    seconds), sucking up the credits in its lane along the way
     and weaving toward whichever lane has the most hazards ahead, so chasing it is the risk. Touching it
     isn't deadly: it grabs 25% of the credits you've collected and flies off. Catch it (stomp, shoot, or
     dash through it) for everything it took, plus a jackpot (in quick play, `--features=tithe_collector`,
     or review its shared mechanism with `--thief`)
-  - the Gilded Sentinels (from Golden 2): golden statues with halberds in niches set into the walls at
-    wall-run height, their eyes red. When its eyes flare and stone grinds, a Sentinel's halberd cuts what
+  - the Gilded Sentinels (from Golden 2): golden statues with halberds in lit niches set into the walls at
+    wall-run height, their eyes red. When its eyes flare and stone grinds (0.6 s of warning), a Sentinel's halberd cuts what
     lights up red: a band of its wall around the height where you step onto it, and the outer lane. Leave
     the lane, or on the wall pass above the band (jump onto the wall) or below it (onto the wall early).
     Later ones swing twice or stand in pairs across the street. The armor or shield blocks the cut;
@@ -203,16 +240,24 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
     lane changes a moment late. When your lane lights red ahead and its whine rises, change lanes before
     its lasers come up the lane. Weapons, stomps, the claws and the dash can't hurt it: bait an Octodog's
     lunge or a Buzz Overdrive's charge into it by dodging late (it closes right up behind you while an
-    Octodog attacks), or lead it into a stopped cut. Cyborgs you pass alive in its lane climb onto its roof
-    (up to three): each makes it fire faster, and each pays a bonus when it's destroyed. It gives up after
-    about 25 s (in quick play, `--features=octodog,enforcer_truck`)
+    Octodog attacks), or lead it into a stopped cut or a gap too wide for it to hop; it blows up in view.
+    Cyborgs you pass alive in its lane climb onto its roof (up to three): each makes it fire faster, and each
+    pays a bonus when it's destroyed. Now and then (as it arrives, and once more if there's room) it speeds up
+    beside you for a few seconds so you can see it, then drops back: its sides are solid but harmless (a lane
+    change into it bumps you back) and it gives way as you move toward it. Beside a runner by a wall it pulls up
+    two lanes in, leaving the lane between free. A hover truck or a Gilded Sentinel doesn't stop it as long as you
+    keep a free lane: a hover truck's lane counts as a wall (beside one it pulls up two lanes in on your other side),
+    and it keeps clear of a hover truck bursting in and a Sentinel's swing. Where a level's first bait comes right
+    after its start, it arrives in the run-up and shows itself there. The generator keeps a calm stretch for a
+    showing in every chase that has room for one, wherever you run. It gives up after about 25 s (in quick play,
+    `--features=octodog,enforcer_truck`)
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
   no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
   boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
   to take, from the standard armor rule (at the start of the final phase, and a while after the
-  player's armor or shield breaks) or offered by the boss itself. A campaign boss fight runs at its
+  player's armor takes a hit; a shield break brings none) or offered by the boss itself. A campaign boss fight runs at its
   zone's speed, like the zone's levels (quick play's at the base speed). The test boss (`--boss=test_boss`),
   a hovering core that blasts the lane it lights up red and drops dazed into the player's lane to be
   stomped, shows it all (it offers a shield in its second phase). The Floating Head, the Neon City's
@@ -235,24 +280,32 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the pace. About 100 s for a runner who never misses (`--boss=city_boss`, or the campaign's
   `--level=city/boss`). The Sleep Taker, the Dead Zone's boss, plays after Dead Zone 2, at the Dead
   Zone's 24.2 m/s (its distances follow the pace too): a colossal nightmare of fused Bad Dreams with
-  dozens of maws, looming over the darkened street. Weapons can't touch it. As the runner reaches a
-  charred bridge, its belly's great maw opens with a shriek and the three lanes it will slash light up
-  red: take the bridge's pad up onto the ceiling, where it can't reach, or leave those lanes. Purple
-  mist pooling in the runner's lane, with whispering, means a hand is about to burst up: switch lanes.
-  Hand volleys progress from one hand to two, then stay at three across phase changes. Later volleys
-  can reach inward from either side wall, with mist on the wall warning each spot. An adjacent floor
-  lane always stays safe, including on the three-lane playfield.
-  After a deep inhale it swallows the light, and the street goes darker while every hazard keeps
-  glowing. Only a fence generator's EMP hurts it: a generator comes into sight far ahead, its pink
-  beacon showing through the nightmare; as the runner nears it the nightmare lunges in after them, and
+  dozens of maws, looming over the darkened street. Weapons can't touch it, and its street has no
+  ceilings. Every so often its belly's great maw opens with a shriek and the three lanes it will slash
+  light up red: leave those lanes, or run up a side wall, where its claws can't reach (one wall always
+  stands there; the other may be broken by gaps). Its hands
+  come in rounds spread along the street: with a whisper, purple mist pools where each hand will burst
+  up, row after row, each row leaving one lane open one lane over from the last, so the runner weaves
+  through a round with a lane switch at every row. Rounds grow from three rows to six across the fight
+  and come often (a single row where only that fits before a slash or a lure), and every row also
+  reaches in from both side walls, with mist on the wall warning the spot. Its street's side walls break
+  into many gaps, and it has six times the holes it first had; a round only
+  comes where a way through it exists (the planner proves it with the real lane-switch time). After a
+  deep inhale it swallows the light, and the street becomes a completely dark tunnel: only the glowing
+  hazards, warnings and attacks show, and the runner glows by its own light so the player sees where
+  they are. Only a fence generator's EMP hurts it: a generator comes into
+  sight far ahead, its pink beacon showing through the nightmare; as the runner nears it the nightmare
+  lunges in after them, and
   once arcs leap from the generator into it, a stomp on the generator (or the dash) tears a chunk of
-  the nightmare away. Three EMPs, three phases, each hungrier; the last bursts it into hundreds of faint
-  faces and figures rising into the dark, the music falls silent and a grey dawn breaks over the Dead
-  Zone. About 80 s for a runner who never misses (`--boss=dead_zone_boss`, or the campaign's
-  `--level=dead_zone/boss`). The House, the Marketplace's boss, plays after Marketplace 2, at the
-  Marketplace's 22.6 m/s (its distances follow the pace too): a towering slot machine on treads rolling
-  down the market street ahead of the runner. It pulls its lever and spins its three reels, and each
-  symbol they stop on is an attack: cherries lob cherry bombs whose landing circles light up first, a
+  the nightmare away. Five EMPs, five phases, each hungrier (the last two only bring more hands, more
+  often); the last bursts it into hundreds of faint faces and figures rising into the dark, the music
+  falls silent and a grey dawn breaks over the Dead Zone. About 140 s for a runner who never misses
+  (`--boss=dead_zone_boss`, or the campaign's
+  `--level=dead_zone/boss`). The House, the Casino's boss (the Marketplace's until the Casino was added;
+  its fight makes the same random choices, now with enemy scaling 0.5625), plays after Casino 2, at the
+  Casino's 23 m/s (its distances follow the pace too): a
+  towering slot machine on treads rolling down the street ahead of the runner. It pulls its lever and
+  spins its three reels, and each symbol they stop on is an attack: cherries lob cherry bombs whose landing circles light up first, a
   lightning bolt rolls a pink fence across lanes (jump or slide it like any fence), a BAR slams heavy
   gold blocks into lanes; two or three of a kind make it bigger. Big glowing 7 buttons light up along the
   street: running over one locks a reel on 7, and with all three locked it hits the JACKPOT (sirens, a
@@ -264,8 +317,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the pad's lane, Barnacle Turrets further along. Beaten, its reels spin wildly and jam, TILT flashes
   over them, and it collapses into   the street in an explosion of coins while the citizens cheer. The revised fight opens with
   three attack-only spins per phase before its buttons appear, with shorter gaps and wider cherry
-  and lightning coverage. Its three-/two-star pars are 86/108 s (`--boss=marketplace_boss`, or the campaign's
-  `--level=marketplace/boss`). Hostile Takeover, the Corporate zone's boss, comes after Corporate 2
+  and lightning coverage. Its three-/two-star pars are 86/108 s (`--boss=casino_boss`, or the campaign's
+  `--level=casino/boss`). Hostile Takeover, the Corporate zone's boss, comes after Corporate 2
   (`--boss=corporate_boss` or `--level=corporate/boss`): the runner lands on the rear roof of the Chairman's armored
   maglev train and runs forward along it, jumping the gaps between its carriages, the track's sound
   barriers on either side and the city streaming past beyond them and far below; a military gunship
@@ -307,8 +360,90 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   downtime, while every attack still warns first. Weapons thin a surging cluster too, the heavy missile
   most of all. Its crowds are hundreds of screeches
   drawn with a MultiMesh and a shader, their sizes in data for the phone test
-  (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout). The Golden Zone's
-  final villain is still to be built.
+  (`res://tools/showcase/swarm_stress.tscn`, a stress scene with a frame-time readout).
+  The Golden Convergence, the Golden Zone's boss and the final villain (task E5d), plays in the campaign after
+  Golden 3 at the zone's 25 m/s (debug builds: `--level=golden/boss`, or `--boss=golden_boss` at 18 m/s;
+  `--phase=4` starts at its halfway checkpoint, stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
+  balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
+  a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
+  dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
+  out of the cape and makes its passes as one. A vertical pass rakes every other lane after red lines and a
+  gatling whine (switch to a lane between them; a jump doesn't clear the fire); a horizontal pass sweeps a
+  line across the track and up the walls, after a red line over every lane but the arch of a Flying
+  Buttress rising in an inner lane (run through the arch, or dash). Phase 1 opens with a V-V-H strafe. Then
+  the Fist Slam: an arm telescopes out on golden segments and its fist follows the runner's lane, rising
+  with a deep grind while its shadow grows and a red square marks the hole to come; it locks about a second
+  before it falls and smashes a square hole through the floor (on the runner or ahead of them, to be
+  jumped). Two slams a sequence land at a Flying Buttress: lead the fist onto its lane and it smashes the
+  gate, and the tower it held up topples beside the causeway, its side a wall for about 10 s. The Missile
+  Barrage warms up as it falls: the shoulder pipes open, missiles climb with a roar, hang, then dive with a
+  rising whistle while red marks fill in, and every lane burns for about 1.5 s; the tower's wall is the
+  clean escape (armor plus the dash, two armor hits or armor plus the shield also get through). Then the
+  Refill Ship, the only way to damage the suit: a gilded cargo ship flies in beside the causeway and feeds a
+  shoulder's pipes along a line, missiles riding up it, while the squadron comes out for a strafe; after its
+  first pass the squadron holds its fire, hovering beside the ship, as a closed cage flickers up ahead: an
+  anti-grav pad behind a front fence, fences along its sides, a generator in the lane beside it. Stomp the
+  generator (its pulse switches the cage off) and switch onto the pad, dash through the front fence, or take
+  it on the armor or the shield (a jump over the fence lands past the pad). The ship has come down over the
+  runner: the pad flips them up onto its belly and hurls the squadron into its missile racks; the missiles go
+  up along the racks, the ship spins away and explodes, the runner drops back to the floor, and the blast
+  races up the line into the suit's shoulder. The first ship blows out one shoulder's pipes, the second the
+  other's, the third bursts the suit open; miss the pad and the ship flies off, and the phase comes round
+  again from the slams (`tools/showcase/golden_convergence_showcase.tscn` shows the suit and each attack).
+  Stage 2 (task E5d-d), from the halfway checkpoint: the suit bursts open and The Magnate, burnt and roaring,
+  claws out as every screen switches to his face, and leaps over the runner to hunt them from behind (his
+  shadow and a marker at the bottom of the screen show his lane). His Pounce: a roar as the marker turns red,
+  a leap over the runner, locking onto their lane about a second before he lands, a red square where he will
+  (leave the lane; a jump won't clear him). Every second Pounce raises a Flying Buttress: be in its lane as he
+  locks on and he crashes into its gate, stunned across two lanes; green chevrons on the floor show where to
+  take off, and a jump onto his back stomps a red port on his spine, one stomp a phase. After the owner's
+  playtest (task E5d-e) the court grows about 30% darker through the transition, and his beats come closer
+  together. His Claw Slash: a sharp snarl as the marker flashes red and red claw marks flash in the runner's
+  lane; half a second later he lunges in from behind and swipes that lane, higher than a jump (switch lanes;
+  in phase 6 he slashes twice, the second time at the lane the runner dodged into). His Screen Storm: up on a
+  balustrade ahead of the runner, he brings the feed's screens crashing down from the vault on gold tentacles,
+  10 to 16 over about 5 s, each marked by a red square, its growing shadow and a rising glitch-whine about
+  0.9 s before it hits; a runner who moves a reaction time after each warning always has a way through. Three
+  screens a storm crash onto him instead, each a twelfth of the phase's health, so four storms end a phase as
+  well as a stomp. From phase 5 his Cable Lash whips across every lane after a rising crackle and
+  a red line (low: jump it; high: slide under it). When he falls the light comes back and the feed dies: his
+  cables tear out, the screens go dark outward, the music cuts out, and he collapses as the runner runs past
+  (`tools/showcase/golden_convergence_magnate_showcase.tscn` shows him and each part).
+  Mecha Guppy and Captain Cogs, the Beach's boss (task E5e), plays in the campaign after Beach 3 at the Beach's
+  23.8 m/s under Sunset Strip's sunset (debug builds: `--level=beach/boss` or `--boss=beach_boss`; `--phase=3`
+  starts at the climb's last steps before the top). Mecha Guppy, a building-sized mechanical shark, has eaten
+  the street, and the runner climbs out of its reach over tiki bar towers that stand all the way down to the
+  water, with chasms eaten between them. A strip of anti-grav pads flips them up onto a hovering tiki hut.
+  Ahead, the next tower's roof stands 3 m higher, and only some of the hut's lanes drop them onto it: one on
+  3 lanes, and one, two or three on 5-6 lanes. Either those lanes of the hut run on further, lit, or the
+  roof's lanes reach back under the hut on a pier, the two cues taking turns. The other lanes drop the
+  runner into the chasm, a fall unless the grapple saves them (it pulls them up onto the higher roof). A
+  rider anywhere on a hut has time to read the lanes and switch, with 0.9 s to spare, from the farthest lane
+  after the latest flip. The camera follows them up past a giant waterfall whose foot sinks below as they
+  climb, over a hazy sea and clouds, under Sunset Strip's sunset in the campaign. Phase 2 climbs about 20%
+  faster (its roofs stand 3.6 m apart). Mecha Guppy rises beside the end of each roof the runner leaves (a
+  rumble warns of it) and bites it off once they're up on the hut. Captain Cogs, a clockwork-armed pirate in a
+  flying galleon ahead, throws bombs warned like the Floating Head's (a red circle where each lands, a
+  whistle): a volley on the roofs to dodge, and in phase 2 more of them, with a bomb where riders land. On
+  the first tower, and from the second on every other roof (those carry no volley), Mecha Guppy bites a
+  crescent out of the floor ahead of the runner (E5e-f): a red crescent on the deck and knocking under it
+  warn of it, and it leaves one lane to switch into (in phase 2 some bites cross every lane: jump the gap).
+  Weapons do nothing; the bombs are the way to hurt the shark. From the second tower on, near each roof's
+  end it has bitten away an outer lane and waits below, jaws open. As the runner nears, Captain Cogs' red
+  target follows their lane, then locks onto it with the throw: a runner who leads it into the bitten lane
+  and switches out before the edge sends the bomb past the edge into the jaws, a hit (4 end phase 1, 6
+  phase 2). A runner who doesn't manage it still gets there, more slowly: after a step without a hit,
+  Captain Cogs misses into the chasm beside the lanes that lead up and the shark rises to eat the bomb.
+  Phase 3 (E5e-c): at the top the climb ends on a long flat roof deck, and Captain Cogs' ship comes level
+  alongside it. For a minute, the boss bar running down, the captain fires rounds and the sea throws waves, one
+  at a time to a fixed script: a round shows red lines down every other lane with the cannons' charge, then the
+  cannonballs land at the far end and roll down those lanes (switch out: they're too tall to jump); a wave rises
+  out of the sea beside the deck with a roar, then crashes over it and surges along every lane (jump it, like
+  the Resonator's ring). When the minute is up, Mecha Guppy bursts up beside the deck, gulps the captain with
+  the ship's stern and falls back, then leaps out of the sea further out in one long arc and dives away. Three
+  stars under 177 s, two under 210 s
+  (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs, the bait, phase 3
+  and the leap).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
@@ -334,7 +469,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - supplied music for all six zones and Boss 1, generated defaults for menus/cutscenes/unmatched bosses
+  - supplied music for all eight zones and Boss 1 (The House shares the Casino song), generated defaults
+    for menus/cutscenes/unmatched bosses
     (music dips when the runner dies), and 76 sound
     effects, among them the level-complete riff in each zone's key
   - first-encounter hints
@@ -348,11 +484,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 F6 pauses the game and opens a panel with sections for movement, game rules, power-ups, the runner's animation,
 pickups, speed effects (the camera's field-of-view kick and lane lean, speed lines, shake, hit-stop and the
-sparks and debris on kills and blocked hits), performance (how long a frame may spend dressing the track; see
+sparks and debris on kills and blocked hits, and the fireball every explosion is: counts, lengths, brightness, overall size), performance (how long a frame may spend dressing the track; see
 Smooth frames), the music's pause duck and death dip, level pacing, the campaign's
-recency curve for pick weights (in a campaign level) and each enemy type in the level. Changes apply immediately;
+recency curve for pick weights (in a campaign level), the wider gaps and the cyborgs planted in charge paths (in a
+level that asks for them: **Wider gaps**, **Charge paths**) and each enemy type in the level. Changes apply immediately;
 pacing, pick weights, speed, jump and size
-changes also reshape the level, so press **Restart level** to rebuild it. **Save** writes the values back to
+changes also reshape the level, so press **Restart level** to rebuild it (a restart or retry reuses the level it
+built, so it starts at once, until something the build reads changes, here or anywhere). **Save** writes the values back to
 their files in `data/`; **Reload files** undoes unsaved changes. Every other number is in `data/` too: enemy
 tunings in `data/enemies/`, prices in
 `data/shop/catalog.json`, patterns in `data/patterns/` (format: `data/patterns/README.md`), sound volumes in
@@ -396,6 +534,8 @@ tools/godot.sh smoke [options]  40 s of the real game, headless; prints only pro
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP3s unchanged)
 tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
+tools/godot.sh doodads [--only=a,b] [--review]   regenerate the zone doodads' picture cards
+                                (assets/sprites/doodads/; --review writes the atlases to build/doodad_review/)
 tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
 tools/godot.sh import           force a resource import
 ```
@@ -410,7 +550,20 @@ family, the Barnacle Turret's looks and a ride past it, a floor cut in any zone'
 model and an encounter with it, the Floating Head, the Sleep Taker (its lure and defeat, `--scenario=lure`, and its readability
 in the dark, `--scenario=measure`), The House (`--scenario=spin|buttons|jackpot|wall|ceiling|defeat|fight`), Hostile Takeover (`--scenario=run|train|gunship|locomotive|coupling|contract|merger|defeat`), the Sewer Swarm (`--scenario=rising|surge|fence|hole|fight|model|behind|host|stomp|defeat|hostmodel`) and its crowds' stress test for the phone (`swarm_stress`: N clusters of C screeches with a frame-time and draw-call readout), the UI kit, every screen, a zone skin's fixed review track, the cult's feed,
 the Golden Zone's statues, the Gilded Sentinels (each route past one, and its kick), the Enforcer Truck (its
-chase and a volley, each bait, a too-wide gap, its model; `--scenario=chase|octodog|buzz|gap|model`), any campaign slot's cinematic and the cinematic toolkit's sampler); each script's header
+chase and a volley, showing itself beside the runner and bumping a lane change back, each bait, a cut and a
+too-wide gap, each ending in its blast, its model; `--scenario=chase|show|octodog|buzz|cut|gap|model`), a wider gap
+jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), zone doodads pushing the
+runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
+armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`), an
+Octodog's lunge and a
+Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
+explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,
+`--scenario=sizes|drone|truck|buzz|enforcer|generator|missile|bomb`, `--reduced` for Reduced flashing),
+any campaign slot's cinematic and the cinematic toolkit's sampler (from any moment with `--from=S`),
+and the Beach's volleyball match played by a bot,
+with screenshots on its events and a close-up of the rival or a view beside the court: `xvfb-run -a godot --path .
+--rendering-method gl_compatibility --resolution 960x540 --fixed-fps 30 -s res://tools/showcase/volleyball_review.gd --
+--level=beach/2 --bot=perfect --shot-events=hit,point --camera=rival`); each script's header
 lists its options. For example, a zone's arrival flyover rendered to frames on the web / low-end renderer:
 `godot --path . --rendering-method gl_compatibility --fixed-fps 10 --write-movie build/cine/f.png --quit-after 100
 res://tools/showcase/cinematic_review.tscn -- --slot=golden/intro --once`.
@@ -422,6 +575,22 @@ many Buzz Overdrives revved or let the runner pass:
 `godot --headless --fixed-fps 60 -s res://tools/measure/big_attacks.gd -- [--levels=gangland/3] [--lanes=3,5,6]
 [--seeds=6] [--features=octodog]` (the whole campaign, both ways, takes about ten minutes on the levels' own seeds;
 its header lists the options).
+
+`tools/measure/host_releases.gd` measures when the Bad Dreams are released in the campaign's host levels with each
+weapon tier (weapons hit hosts) against where the generator planned their chases, and holds every chase to the
+generator's guarantees (its anti-grav pads, what the generator keeps off chases, one chase at a time, no slash
+during an Octodog's charge or a drone's barrage):
+`godot --headless --fixed-fps 60 -s res://tools/measure/host_releases.gd -- [--levels=dead_zone/1] [--lanes=3,5,6]
+[--tiers=0,1,2,3,4] [--old-rule]` (every host level at 3, 5 and 6 lanes with the five loadouts takes about ten
+minutes; `--old-rule` makes hosts immune to weapons again, for comparison).
+
+`tools/measure/enforcer_shows.gd` counts the Enforcer Truck's showings chase by chase over simulated runs of the
+levels with the truck, a god-mode runner keeping to each lane in turn: its showings, its planned showing window,
+whether that comes before the chase's first bait and whether it was used, and why a chase had none; the totals count
+the chases with a window before their bait and the runs with a showing: `godot --headless --fixed-fps 60 -s
+res://tools/measure/enforcer_shows.gd -- [--levels=corporate/2] [--lanes=3,5,6] [--runner=all|middle|N] [--seeds=N]
+[--out=build/measure/x.json]` (all six levels at every lane count and lane, on their own seeds, take about three
+minutes; its header lists the options).
 
 `tools/measure/level_pace.gd` measures each campaign level's pace and density: its run speed, events per minute
 (obstacle rows, holes, enemies, big attacks, mechanics, zone doodads and the pushes a runner who ignores them
@@ -459,6 +628,12 @@ renderer to judge, under xvfb with the driver's shader cache off, so a frame tha
 --fixed-fps 60 --rendering-method gl_compatibility -s res://tools/measure/truck_cost.gd -- [--skin=gangland]
 [--trucks=2] [--bench]` (about two minutes; its header lists the options).
 
+`tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
+level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the
+time from pressing retry to the run starting (a retry of the same level reuses the level it built):
+`godot --headless -s res://tools/measure/level_builds.gd -- [--repeat=3] [--bosses] [--passes=corporate/2:5]
+[--retry=corporate/2,dead_zone/1]` (its header lists the options).
+
 `tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
 available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
 death or quit pays (GDD §4); then lays the shop's prices (`data/shop/catalog.json`) against the running
@@ -475,6 +650,12 @@ those the cap left out, whether the defeat played out, and whether every attempt
 `godot --headless --fixed-fps 60 -s res://tools/measure/hostile_takeover.gd -- [--lanes=3,5,6] [--speeds=18,23.4]
 [--attempts=2] [--die-in=3] [--misses=N] [--bay-misses=N] [--pass-misses=N] [--clamps-per-pass=N]` (about a
 minute for every setup).
+
+`tools/measure/sleep_taker_arena.gd` counts the Sleep Taker's arena over its three laps as the fight plans them
+(refuges and all), at every lane count and speed: its rows of holes and lane-gaps, fences, refuges and side wall
+gaps (and their rate a minute); `--first` counts it as first built, before the owner's October 8 and 10, 2026
+changes (six times the floor gaps, many wall gaps): `godot --headless -s res://tools/measure/sleep_taker_arena.gd --
+[--lanes=3,5,6] [--speeds=18,24.2] [--first]` (a few seconds).
 
 ## The web demo
 
@@ -503,8 +684,14 @@ browser.
 4. **In a browser:** `node tools/web/browser_check.js` drives both exports in Chromium through Playwright (Node
    and Playwright with its Chromium needed): loading, the title on the Compatibility renderer, the sound after
    the first key, the canvas at other window sizes, City 1's glow, saves that survive a reload, the shop, a phone
-   (taps, a swipe, held upright), and the end screen's store links. Frames and the console go to
-   `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
+   (taps, a swipe, held upright), an iPhone's page held sideways (`phone_menus`: the menus magnified to be
+   readable, and a finger's drag scrolling the shop and the level select), the page's `audio_session` (Safari's
+   silent switch: the page asks for 'playback' sound, tried with a stand-in for Safari's API), and the end
+   screen's store links. Frames and the console go to `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
+5. **Its shader programs:** `node tools/web/shader_programs.js` plays the release export from the title into
+   City 1 and counts the shader programs WebGL compiles on the way, and any compiled more than once. The
+   browser compiles each while the game waits, and on Windows (where Firefox and Edge translate WebGL to
+   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes.
 
 On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
 `"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.
@@ -546,7 +733,21 @@ spare (see Tools, above). Covered:
   level without them built byte for byte as before, and the push on real physics (both ways, into the edge
   lanes, jumping or sliding into one, a corner caught mid-switch, a blocked side entry, landing on top, a
   ceiling rider passing over, shots passing through), with campaign doodads run into at their level's speed
-  and always onto safe floor, and drones and hover trucks holding fire while one is in reach.
+  and always onto safe floor, and drones and hover trucks holding fire while one is in reach. The dash smashes
+  one: head-on and from the side, with no push and no damage, the lane kept, a dash that ends short pushing as
+  usual; its pieces in its look's own colours, the crunch and a light shake; it stays smashed for the attempt
+  and a retry rebuilds it; campaign doodads dashed through at their level's speed, and whatever a doodad hid
+  coming late enough after it, at the dash's speed, to react and move.
+- **Dash walls:** placed only where they're fair in every level that has them (3, 5 and 6 lanes, its own seed and
+  others: spaced past the dash's longest cooldown, a clear stretch around each, never under a ceiling, a side
+  wall open beside each, no dash bait just before one), Corporate 1 introducing them right after their start,
+  the rest standing after the danger density pass and the doodads without taking their room, The Hush's out of
+  its quiet stretches; on real physics in every lane, a dash smashing one untouched, a crash killing a runner
+  with no protection (the armor or a shield absorbing it in a full world, god mode shrugging it off), jumping or
+  sliding into one crashing too, a wall runner passing it; the crumble (pieces in its colours, dust, a heavier
+  shake, its sound); it stays broken for the attempt and a retry rebuilds it; every zone's look; a hover truck
+  giving way, a heli drone flying over one, a panic cyborg stopping short of one, and an Octodog or a Buzz
+  Overdrive running off ahead leaving at its face.
 - **Floor cuts:** cuts planned only where they're fair (one at a time, never through a ramp, a pad or a
   ceiling's landing zone, the other lanes whole, room to leave the lane after the warning; hundreds of
   levels at 3, 5 and 6 lanes), a level without them built byte for byte as before, and on real physics:
@@ -615,10 +816,14 @@ spare (see Tools, above). Covered:
 - **Cinematics:** the toolkit's camera and actor paths (smooth, eased and cut moves, cameras riding with an
   actor), a timeline's checks, a cinematic played to its end with every event in order, skipping (the pause
   action and the Skip button), Reduced flashing, holding while the game is in the background, a cinematic
-  described in data, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
+  described in data, the poses that play out over time (lying, getting up, climbing out; cyborgs lying still
+  and crouching), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
   skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
-  camera's view), and the App's flow through a built slot, the web demo's too.
-- **Screens:** every screen at desktop and touch sizes.
+  camera's view), and the App's flow through a built slot, the web demo's too; each owner-beat cinematic has
+  its own suite (`test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`).
+- **Screens:** every screen at desktop and touch sizes; and (`phone_screens`) every screen the web demo shows at
+  the sizes of a phone's page, sideways and upright: text and finger targets big enough, nothing cut off or
+  out of sight, scrolling where it must.
 - **The web demo:** its export preset, and a filter that leaves out only what the demo never loads, worked out
   from the data (and following a replaced track); everything the demo's scenes, scripts and data reference kept
   and loading; the demo walked from the title through the City's three levels and the Floating Head to the
@@ -644,7 +849,7 @@ spare (see Tools, above). Covered:
   has a suite of its own). Every skin builds its ceilings from the lanes they cover, with the orange end
   band across them and nothing below the underside past the far end, where the camera passes as you drop.
 - **Sounds and music:** every sound and track loads, generated defaults loop seamlessly, supplied songs
-  loop in full and match all 15 levels and Boss 1, unmatched scenes retain defaults, the death dip
+  loop in full and match all 17 levels and Boss 1, unmatched scenes retain defaults, the death dip
   combines with the pause duck, and the original zone completion riffs remain available.
 - **Frame times:** City 3, Marketplace 2 and Golden 2 played as the game plays them, each pass in a fresh
   process, their 99th percentile and worst frame held to budgets in `data/tuning/performance.tres` (scaled by
@@ -663,7 +868,7 @@ tools/                  godot.sh (play/edit/test/smoke/sfx/music/web), asset gen
                         the web demo's export tools and browser check (web/)
 scenes/main.tscn        the main scene: world, screens and overlays
 scenes/bosses/          boss fight scenes (the test boss and the Floating Head so far)
-scenes/cinematics/      cinematic scenes (the placeholder arrival flyover so far)
+scenes/cinematics/      cinematic scenes (the placeholder arrival flyover and the owner-beat cinematics)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
 scripts/player/         the Player controller and its avatar
@@ -672,7 +877,8 @@ scripts/enemies/        one script (plus tuning and generator rules) per enemy t
 scripts/powerups/       the permanent power-ups
 scripts/world/          level layout, generator, track builder, hazards; zone skins and the mesh kit
 scripts/campaign/       campaign, zones, bosses (BossDef, BossPhase) and cinematic slots (CinematicDef, Cinematic)
-scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...) and the flyover
+scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline, CineStage, ...), the flyover and
+                        the owner-beat cinematics (the City outro, sewer_swarm_intro/, dead_zone_intro/)
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
                         and one folder per boss (floating_head/, sleep_taker/, the_house/, hostile_takeover/,
                         sewer_swarm/)

@@ -18,7 +18,7 @@ const BUS: StringName = &"Music"
 @export var volume_db: Dictionary = {}
 ## Tempo of generated loops in beats per minute (4/4). Owner-supplied songs need not list a tempo.
 @export var bpm: Dictionary = {}
-## Default zone track -> replacement for levels, quick play and endless; cinematics keep the default.
+## Default zone track -> replacement for levels, quick play and endless; cinematics keep the generated default.
 @export var zone_tracks: Dictionary = {}
 ## Boss id -> replacement for that fight only. Unmatched bosses keep their default track.
 @export var boss_tracks: Dictionary = {}

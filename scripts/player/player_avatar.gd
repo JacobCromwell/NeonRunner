@@ -31,6 +31,11 @@ extends Node3D
 ##   set_flash(on: bool)
 ##       The invulnerability flicker: the Player toggles it; while on, the whole body is tinted a
 ##       bright pale copper.
+##   set_dark_glow(amount: float)
+##       0–1: how far the runner glows by its own light in the dark (a boss's lights out: the Sleep
+##       Taker's). Its pale rim light grows from the outline to the whole silhouette (DARK_RIM_STRENGTH,
+##       DARK_RIM_POWER), so a runner on an unlit street still sees where they are; the copper trim keeps
+##       its glow. 0 (the default, and after reset()) is the normal look.
 ##   fit_to(size: Vector3)
 ##       Scales the model to a visual size (MovementTuning.visual_size): width, height (feet to the
 ##       tips of the hair in the run pose), depth. Cheap to call every frame.
@@ -53,6 +58,12 @@ const DEAD_GLOW: float = 0.06
 ## While dashing the copper brightens, but stays soft (no gap-edge orange under bloom).
 const DASH_GLOW: float = 1.35
 const GLOW_SPEED: float = 10.0
+## At full dark glow (set_dark_glow(1)): the rim light's strength and falloff (PlayerSuit.RIM_STRENGTH
+## and RIM_POWER normally). Broad and strong enough to show the whole silhouette on a black street, in
+## the rim's pale steel blue (clear of every hazard colour), and still below the bloom threshold
+## (DESIGN-TBD, docs/questions/h11.md).
+const DARK_RIM_STRENGTH: float = 1.1
+const DARK_RIM_POWER: float = 1.4
 ## Shield bubble radii and centre height, per metre of visual height; standing and sliding.
 const SHIELD_RADII := Vector3(0.4, 0.53, 0.4)
 const SHIELD_RADII_SLIDE := Vector3(0.48, 0.34, 0.62)
@@ -79,6 +90,7 @@ var _last_state: Dictionary = {}
 var _unfed_ticks: int = 0
 var _flash: bool = false
 var _glow: float = 1.0
+var _dark_glow: float = 0.0
 var _death_flash: float = 0.0
 var _was_alive: bool = true
 ## True from reset() until the next animate(): equipment set then is the run's loadout, not a break.
@@ -148,6 +160,18 @@ func set_flash(on: bool) -> void:
 	_update_material()
 
 
+func set_dark_glow(amount: float) -> void:
+	amount = clampf(amount, 0.0, 1.0)
+	if is_equal_approx(amount, _dark_glow):
+		return
+	_dark_glow = amount
+	_update_material()
+
+
+func get_dark_glow() -> float:
+	return _dark_glow
+
+
 func fit_to(size: Vector3) -> void:
 	if size == _size or size.x <= 0.0 or size.y <= 0.0 or size.z <= 0.0:
 		return
@@ -170,6 +194,7 @@ func reset() -> void:
 	rig.reset_pose()
 	_flash = false
 	_glow = 1.0
+	_dark_glow = 0.0
 	_death_flash = 0.0
 	_was_alive = true
 	_last_state = {}
@@ -229,6 +254,10 @@ func _step(state: Dictionary, delta: float) -> void:
 
 func _update_material() -> void:
 	_material.set_shader_parameter(&"glow_boost", _glow)
+	# The dark glow powers down with the trim on death (DEAD_GLOW), and doesn't brighten with the dash.
+	var dark: float = _dark_glow * minf(_glow, 1.0)
+	_material.set_shader_parameter(&"rim_strength", lerpf(PlayerSuit.RIM_STRENGTH, DARK_RIM_STRENGTH, dark))
+	_material.set_shader_parameter(&"rim_power", lerpf(PlayerSuit.RIM_POWER, DARK_RIM_POWER, dark))
 	var tint := Color(1.0, 1.0, 1.0, 0.0)
 	if _death_flash > 0.0:
 		tint = Color(DEATH_COLOR, 0.7 * _death_flash)

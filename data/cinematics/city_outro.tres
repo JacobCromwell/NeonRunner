@@ -6,4 +6,5 @@
 script = ExtResource("1_script")
 id = &"city_outro"
 title = "Out of the city"
-placeholder_text = "DESIGN-TBD: a short scene after the Zone 1 boss, heading for Gangland."
+scene = "res://scenes/cinematics/city_outro.tscn"
+placeholder_text = "The Floating Head crashes; a roadblock bars the way; the runner leaps off the trucks and lands in Gangland."

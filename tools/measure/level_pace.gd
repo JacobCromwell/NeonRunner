@@ -74,7 +74,7 @@ func _run() -> void:
 	var tuning := load(TUNING_PATH) as MovementTuning
 	if _levels.is_empty():
 		for s: CampaignStep in campaign.steps():
-			if s.is_level():
+			if s.is_level() and not s.is_minigame():
 				_levels.append(s.id)
 	var started: int = Time.get_ticks_msec()
 	var dump: Dictionary = {}
@@ -84,7 +84,7 @@ func _run() -> void:
 			"worst", "mean", "credit", "count"])
 	for id: String in _levels:
 		var step: CampaignStep = campaign.step(id)
-		if step == null or not step.is_level():
+		if step == null or not step.is_level() or step.is_minigame():
 			print("%s: not a campaign level" % id)
 			continue
 		var rows: Array[Dictionary] = []

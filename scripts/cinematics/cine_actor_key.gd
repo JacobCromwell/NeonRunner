@@ -5,17 +5,31 @@ extends CineKey
 ## start lane's centre, y metres up from the floor, z metres along the track); between keys the actor
 ## moves as `move` says (CinePath), and its stride keeps pace with the ground it covers.
 
-## Where it is (track space). y above 0 is in the air (the runner jumps or falls).
+## Where it is (track space). y off 0 is in the air (the runner jumps, or falls past the floor's edge).
 @export var position: Vector3 = Vector3.ZERO
 ## Its pose from this key on (empty: keep the one before). The runner: `run` (it runs, walks or stands
-## by how fast it moves, and is in the air above the floor), `slide`, `dash`, `stomp`, `dead`. A
-## cyborg: `idle`/`walk` (by how fast it moves), `aim`, `run_away`, `cower`, `die` (falls, once).
+## by how fast it moves, and is in the air above the floor), `slide`, `dash`, `stomp`, `dead`, and the
+## poses that play out over `progress` (CinePoses): `lie` (on its back), `get_up` (from lying to standing,
+## reaching up), `climb` (out over an edge, its hands holding the key's position) and `get_in` (into a low car
+## on its right, through an open door, to sitting); and `walk` (a walk at walking pace, standing at ease when
+## it stops). A cyborg:
+## `idle`/`walk` (by how fast it moves), `aim`, `run_away`, `cower`, `die` (falls, once), `lie` (lying
+## still, its screen dark) and `crouch` (crouched low over something in front of it).
 @export var pose: StringName = &""
+## How far through a pose that plays out over time (the runner's `lie`, `get_up`, `climb` and `get_in`) it is from
+## this key on, 0-1 (below 0: keep the last); between keys it moves as the position does.
+@export_range(-1.0, 1.0, 0.01) var progress: float = -1.0
 ## True: it faces the way it moves (holding its heading while it stands). False: it turns to `yaw`.
 @export var face_path: bool = true
 ## Its heading when not facing the way it moves, degrees: 0 faces down the track (the way the runner
 ## runs), 180 faces back toward an oncoming runner, + turns left.
 @export_range(-180.0, 180.0, 1.0, "suffix:°") var yaw: float = 0.0
+## The actor's head turned from the way its body faces at this key, degrees (+ looks left): its chest,
+## neck and head share the turn, and between keys it turns smoothly from one key's look to the next.
+@export_range(-150.0, 150.0, 1.0, "suffix:°") var look: float = 0.0
+## Its head tipped from its pose at this key, degrees (+ looks up): its neck and head share it (a cyborg's
+## chest a little too, so a crouched one straightens to look up), and between keys it moves as `look` does.
+@export_range(-90.0, 90.0, 1.0, "suffix:°") var look_up: float = 0.0
 ## A cyborg's face from this key on (empty: keep it): neutral, aiming, shocked, dead, corrupt_grin,
 ## corrupt_broken (CyborgKit.Face).
 @export var expression: StringName = &""

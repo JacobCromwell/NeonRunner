@@ -32,12 +32,11 @@ const CORP_LEVEL_PATH: String = "res://data/levels/corporate_2.tres"
 const MAX_SURFACE_CHROMA: float = 0.45
 ## A glowing colour this saturated (HSV) must keep to the decorative hues (blue to violet).
 const GLOW_SATURATION_LIMIT: float = 0.35
-## Gaps: the floor shading's lowest broad factor (a freight car's corrugation, sheet tone and
-## shoulders; kit_corporate.gdshaderinc, corp_roof), PAT_CORP_UNDER's brightest factor (the top of a
-## face), and how much darker than the darkest floor a gap's inside must stay (linear luminance).
+## Gaps: the floor shading's lowest broad factor (a freight car's corrugation, sheet tone and shoulders;
+## kit_corporate.gdshaderinc, corp_roof). What is below the running surface is held to SkinSuite.hole_share():
+## PAT_CORP_UNDER caps its result at COLOR, so the walls' (gap_inside_color), the guideways' (guideway_color) and the
+## trench's or lower level's (trench_color) are its true peaks.
 const FLOOR_SHADE_MIN: float = 0.6
-const UNDER_MAX_FACTOR: float = 0.95
-const GAP_CONTRAST: float = 0.35
 ## The showcase track's gap (SkinSuite.showcase_track): lane 3 of 5, 50-57 m.
 const GAP_LANE := Vector2(1.2, 3.6)
 const GAP := Vector2(50.0, 57.0)
@@ -257,9 +256,8 @@ func _gaps(skin: CorporateSkin, what: String) -> void:
 		darkest = minf(darkest, _linear_luminance(c * Color(FLOOR_SHADE_MIN, FLOOR_SHADE_MIN, FLOOR_SHADE_MIN)))
 		if _near_colour(c, skin.gap_edge_color):
 			like_edge.append(str(c))
-	var inside: float = _linear_luminance(skin.gap_inside_color * Color(UNDER_MAX_FACTOR, UNDER_MAX_FACTOR, UNDER_MAX_FACTOR))
-	check(inside < darkest * GAP_CONTRAST, "%s: a gap's inside stays far darker than the darkest floor: %.4f vs %.4f" % [
-		what, inside, darkest])
+	# The beams are seen from above and from the side: counted as tops (the brighter shading).
+	check_hole_share(what, [skin.gap_inside_color], [skin.guideway_color, skin.trench_color], darkest)
 	check(like_edge.is_empty(), "%s: no floor is drawn in the gap edge's colour: %s" % [what, ", ".join(like_edge)])
 	var track: TrackBuilder = showcase_track(skin)
 	var strip := Vector2(INF, -INF)
@@ -288,7 +286,8 @@ func _gaps(skin: CorporateSkin, what: String) -> void:
 	var layout: LevelLayout = level(CORP_LEVEL_PATH, 5, 0.6, 9)
 	var bad: PackedStringArray = []
 	var count: Array[int] = [0]
-	var shade: float = _linear_luminance(skin.gap_inside_color) + 0.0001
+	var shade: float = maxf(_linear_luminance(skin.gap_inside_color), maxf(_linear_luminance(skin.guideway_color),
+		_linear_luminance(skin.trench_color))) + 0.0001
 	var geo := TrackGeometry.new(5, tuning)
 	await visit_level(layout, skin, func(m: MeshInstance3D, arrays: Array, material: Material) -> void:
 		if under_hazard(m) or _under(m, func(n: Node) -> bool: return n is Area3D) or material == skin.drift_material():

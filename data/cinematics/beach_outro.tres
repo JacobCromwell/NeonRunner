@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"beach_outro"
+title = "Last light"
+placeholder_text = "DESIGN-TBD: a short scene after the Beach boss, as the sun goes down, heading for the Dead Zone: what puts the runner in the smoking crater the Dead Zone's intro opens on (GDD §6)."

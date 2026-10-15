@@ -10,6 +10,9 @@ extends Enemy
 ##   wall runner's body lies along the wall face): only its swing does. The Golden Zone's skins open the
 ##   niche in their walls (GoldenSkin.note_wall_enemies, GoldenStatue.recess); in any other skin (quick
 ##   play) it stands in front of the wall in the kit's niche as a review stand-in, its hitboxes the same.
+##   Task H1 (GDD §9.11, owner, October 8, 2026): it stands almost flush with the face (placed by its real
+##   outline, reach_out()), in a shallower, wider niche whose inside is lit bronze, not black (the skins draw
+##   it with GoldenStatue.recess(lit)); its warning is 0.6 s. Nothing of it goes in front of the face.
 ## - The attack, once, as the runner approaches: when they are warning_seconds (plus a moment) at their
 ##   speed from the stretch it guards, its eyes flare, stone grinds (gilded_sentinel_grind) and the red
 ##   marks of what it will cut light up: a band of its wall (GildedSentinelTuning.band, the heights around
@@ -70,12 +73,23 @@ const POSE_HUSK: Dictionary = {"shoulder_r": Vector3(2.0, 0.0, 6.0), "elbow_r": 
 ## Frames baked along each move (both ends included): rest to wind-up, the swing, the recovery.
 const FRAMES: int = 8
 enum Move { RAISE, SWING, RECOVER, HUSK }
-## Seconds the halberd takes to sweep through a swing (the cut is live for strike_seconds from its start),
-## and the wind-up at the end of the warning.
+## Seconds the halberd takes to sweep through a swing (the cut is live for strike_seconds from its start).
+## (The wind-up at the end of the warning is the tuning's raise_seconds(), a share of the warning.)
 const SWEEP_SECONDS: float = 0.16
-const RAISE_SECONDS: float = 0.55
-## The eyes: their glow at rest, during the warning (rising to full) and once it's down (dark).
-const EYES_IDLE: float = 0.9
+## How much lighter the gold of the statue is than the kit's: the decorative statues' albedo lift
+## (GoldenSkin.decorative_statue_mesh), so the live one reads against its niche as they do against theirs. It
+## is albedo only: gold never glows in the Golden Zone (GDD §5), only the eyes do.
+const STATUE_LIFT: float = 0.08
+## The red the flare tints a niche with (sRGB; the shader takes it in linear light), how opaque it gets, and the
+## share of the warning in which it gets there. A red laid over the bronze (not added to it: that goes orange,
+## and gap edges are orange) passes through orange hues while it is faint, so it rises fast and is Sentinel red
+## for the rest of the warning; the suite measures the blended colour's hue (niche_tint_alpha).
+const NICHE_TINT := Color(0.86, 0.02, 0.03)
+const NICHE_TINT_MAX: float = 0.85
+const NICHE_TINT_RAMP: float = 0.3
+## The eyes: their glow at rest, during the warning (rising to full) and once it's down (dark). DESIGN-TBD
+## (docs/OPEN_QUESTIONS.md item 605): a little more at rest than first built (0.9), so the live statue is picked out early.
+const EYES_IDLE: float = 1.6
 const EYES_FULL: float = 6.0
 ## The marks' brightness: at the warning's start, at its end, and a swing's flash (softer with Reduced
 ## flashing); how fast a flash and the marks fade.
@@ -91,10 +105,13 @@ const HUSK_KEEP: float = 40.0
 
 ## Baked statue frames, shared by every Sentinel: {[kit, scale, mirrored] key: Array of [move][frame]}.
 static var _frames: Dictionary = {}
+## How far a frame reaches out of its wall and into it when turned (reach_out): {[mesh, turn, side]: Vector2}.
+static var _reaches: Dictionary = {}
 ## The statue kit outside the Golden Zone's skins (quick play's review stand-in).
 static var _plain_kit: GoldenStatue = null
-## The cut's shader (cut_shader()).
+## The cut's shader (cut_shader()) and the niche glow's (_niche_material()).
 static var _cut_shader: Shader = null
+static var _niche_shader: Shader = null
 
 var tune: GildedSentinelTuning
 var side: int = 1
@@ -160,6 +177,12 @@ static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	cut.material_override = _cut_material()
 	cut.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(cut)
+	# The niche's glow has a shader of its own (only in the Golden Zone's skins, which open the niche).
+	var glow := MeshInstance3D.new()
+	glow.mesh = cut.mesh
+	glow.material_override = _niche_material()
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(glow)
 	return root
 
 
@@ -203,7 +226,7 @@ func _build_statue() -> void:
 	var turn := Basis(Vector3.UP, -side * (PI * 0.5 - tune.statue_turn))
 	var rest: ArrayMesh = (_move_set[Move.RAISE] as Array)[0]
 	# How far the rest pose reaches toward the street and back into the wall from the statue's origin.
-	var reach: Vector2 = _reach_out(rest.get_aabb(), turn)
+	var reach: Vector2 = reach_out(rest, turn, side)
 	var depth: float = tune.statue_inset + reach.x if opens else -(reach.y + 0.04)
 	_statue_root.transform = Transform3D(turn, Vector3(side * depth, tune.niche_sill, 0.0))
 	_statue = MeshInstance3D.new()
@@ -218,7 +241,7 @@ func _build_statue() -> void:
 		_glow = MeshInstance3D.new()
 		_glow.name = "NicheGlow"
 		_glow.mesh = _niche_glow_mesh()
-		_glow.material_override = _cut_material()
+		_glow.material_override = _niche_material()
 		_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_glow.visible = false
 		add_child(_glow)
@@ -229,15 +252,24 @@ func _build_statue() -> void:
 		niche.commit(self, "Niche")
 
 
-## How far a statue mesh of bounds `box`, turned by `turn`, reaches toward the street (x) and back into
-## the wall (y) from its origin, along the wall's normal.
-func _reach_out(box: AABB, turn: Basis) -> Vector2:
+## How far a statue mesh, turned by `turn`, reaches toward the street (x) and back into the wall (y) from
+## its origin, along the wall's normal on wall `side`: its real vertices. (The bounds of a turned figure's box
+## overstated how far it reaches toward the street by 0.033 m at the turn it has, so the statue stood that much
+## further back for them: its front was 0.063 m behind the face, not the 0.03 it was set to.) Measured once for
+## each frame and turn: every Sentinel on a wall shares them.
+static func reach_out(mesh: Mesh, turn: Basis, side: int) -> Vector2:
+	var key: Array = [mesh.get_instance_id(), turn, side]
+	if _reaches.has(key):
+		return _reaches[key]
 	var out := Vector2(-INF, -INF)
 	var street := Vector3(-side, 0.0, 0.0)
-	for i: int in 8:
-		var c: Vector3 = turn * box.get_endpoint(i)
-		out.x = maxf(out.x, c.dot(street))
-		out.y = maxf(out.y, -c.dot(street))
+	for s: int in mesh.get_surface_count():
+		var verts: PackedVector3Array = mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+		for v: Vector3 in verts:
+			var along: float = (turn * v).dot(street)
+			out.x = maxf(out.x, along)
+			out.y = maxf(out.y, -along)
+	_reaches[key] = out
 	return out
 
 
@@ -308,6 +340,23 @@ static func _cut_material() -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = cut_shader()
 	return m
+
+
+## The niche glow's material: its own shader (a red tint over the niche, not red added to it).
+static func _niche_material() -> ShaderMaterial:
+	if _niche_shader == null:
+		_niche_shader = load("res://scripts/enemies/gilded_sentinel_niche.gdshader") as Shader
+	var lin: Color = NICHE_TINT.srgb_to_linear()
+	var m := ShaderMaterial.new()
+	m.shader = _niche_shader
+	m.set_shader_parameter(&"tint", Vector3(lin.r, lin.g, lin.b))
+	return m
+
+
+## How opaque the red tint over its niche is at the eyes' flare `flare` (0 to 1 over the warning): fast, so it is
+## Sentinel red from `NICHE_TINT_RAMP` of the warning on. A steady rise, with no throb (Reduced flashing).
+static func niche_tint_alpha(flare: float) -> float:
+	return NICHE_TINT_MAX * clampf(flare / NICHE_TINT_RAMP, 0.0, 1.0)
 
 
 ## The marks' and slashes' shader, loaded once and kept (task PERF1: loaded afresh, it was parsed again by
@@ -430,6 +479,12 @@ static func _bake(kit: GoldenStatue, scale: float, mirrored: bool, pose: Diction
 			continue
 		var into: MeshLayer = eyes if which == GoldenStatue.Part.EYES else gold
 		into.append(kit.part(which), base * (xforms[which] as Transform3D))
+	# The gold a little lighter, as the decorative statues' (STATUE_LIFT): the figure reads against its niche from
+	# far down the street.
+	for i: int in gold.colors.size():
+		if roundi(gold.uv2s[i].x) == MeshKit.PAT_GOLD:
+			var c: Color = gold.colors[i]
+			gold.colors[i] = Color(minf(c.r + STATUE_LIFT, 1.0), minf(c.g + STATUE_LIFT, 1.0), minf(c.b + STATUE_LIFT, 1.0), c.a)
 	return batch.to_mesh()
 
 
@@ -649,7 +704,8 @@ func _process(delta: float) -> void:
 		State.WARNING:
 			var k: float = clampf(_state_time / tune.warning_seconds, 0.0, 1.0)
 			flare = k
-			var wind: float = clampf((_state_time - (tune.warning_seconds - RAISE_SECONDS)) / RAISE_SECONDS, 0.0, 1.0)
+			var raise: float = maxf(tune.raise_seconds(), 0.01)
+			var wind: float = clampf((_state_time - (tune.warning_seconds - raise)) / raise, 0.0, 1.0)
 			_show_frame(Move.RAISE, smoothstep(0.0, 1.0, wind))
 			_mark_strength = lerpf(MARK_START, MARK_FULL, k)
 			_mark_fill = smoothstep(0.0, 0.85, k)
@@ -685,8 +741,7 @@ func _process(delta: float) -> void:
 	if _glow != null:
 		_glow.visible = flare > 0.01
 		var gm := _glow.material_override as ShaderMaterial
-		gm.set_shader_parameter(&"strength", 0.9 * flare * throb)
-		gm.set_shader_parameter(&"fill", 1.0)
+		gm.set_shader_parameter(&"strength", niche_tint_alpha(flare))
 	_update_marks(delta, reduced)
 
 

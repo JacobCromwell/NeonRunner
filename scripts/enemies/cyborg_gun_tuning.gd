@@ -38,8 +38,20 @@ extends EnemyTuning
 ## player can't use (a burst is never timed onto a full-lane fence).
 @export_range(0.0, 30.0, 0.5, "suffix:m") var clear_before_impact: float = 12.0
 @export_range(0.0, 30.0, 0.5, "suffix:m") var clear_after_impact: float = 8.0
-## Only one cyborg bursts at a time; the next may start charging this long after a burst's last bolt.
+## A burst keeps its place in the air (CyborgAirspace: GameRules.max_bursts_in_air at once, GDD §9.2)
+## until this long after its last bolt: with every place taken, the next starts charging only then.
 @export_range(0.0, 3.0, 0.05, "suffix:s") var burst_gap: float = 0.5
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 600): the crossfire rule (CyborgGun._crossfire_fair). Bursts whose
+## bolts arrive within this long of each other must leave the runner a way out, a place one move away that
+## none of them is aimed at (wild fire never arrives that close to another burst); otherwise the later one
+## waits, before its charge-up, until its bolts would arrive at least this long before or after the
+## others', time enough to switch lanes between them.
+@export_range(0.0, 2.0, 0.05, "suffix:s") var crossfire_gap: float = 0.5
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 600): the runner's reaction time, for the crossfire rule. A burst still
+## charging that began its charge-up longer ago than this may be dodged before another's aim locks, so a
+## burst about to start takes it as aimed where the runner is now; one that began since will lock where the
+## new one does.
+@export_range(0.0, 1.0, 0.05, "suffix:s") var reaction_time: float = 0.25
 
 
 func reload_at(t: float) -> float:

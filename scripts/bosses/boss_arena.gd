@@ -23,7 +23,10 @@ extends RefCounted
 ## pays instead). Enemies a lap lists come into play like a level's: the director spawns those of the
 ## laps planned before the world was built, the arena those added later, each at its type's lead.
 ## No lap has side wall gaps (owner's answer: none in boss levels): base_config leaves the `wall_gaps`
-## feature out, and WallGapPlacement refuses an arena's config anyway.
+## feature out, and WallGapPlacement refuses an arena's config anyway, unless the arena opts in: its
+## config lists the feature and carries wall-gap numbers of its own (LevelConfig.wall_gap_tuning; the
+## Sleep Taker's, owner, October 8, 2026: "the walls aren't safe"). Its laps then keep their gaps as they
+## join the track (shifted()).
 ##
 ## Pace (GDD §3: the run speed rises zone by zone, and a boss fight runs at its zone's speed like the
 ## zone's levels): the arena is planned at its config's run speed (LevelConfig.movement_for: its zone's
@@ -67,11 +70,13 @@ static func base_config(def: BossDef) -> LevelConfig:
 	var out: LevelConfig = def.arena.duplicate() as LevelConfig if def.arena != null else LevelConfig.new()
 	if def.arena == null:
 		out.features = PackedStringArray()
-	# Owner's answer (docs/USER_REQUESTS.md): no side wall gaps in boss levels, whatever the arena lists.
-	var features := PackedStringArray(out.features)
-	while features.has(WallGapPlacement.FEATURE):
-		features.remove_at(features.find(WallGapPlacement.FEATURE))
-	out.features = features
+	# Owner's answer (docs/USER_REQUESTS.md): no side wall gaps in boss levels, whatever the arena lists,
+	# unless the arena opts in with wall-gap numbers of its own (the Sleep Taker's, owner, October 8, 2026).
+	if out.wall_gap_tuning == null:
+		var features := PackedStringArray(out.features)
+		while features.has(WallGapPlacement.FEATURE):
+			features.remove_at(features.find(WallGapPlacement.FEATURE))
+		out.features = features
 	out.id = StringName("%s_arena" % def.id)
 	out.display_name = def.display_name
 	out.difficulty_ramp = 0.0
@@ -123,6 +128,8 @@ static func shifted(source: LevelLayout, offset: float) -> LevelLayout:
 		out.cuts.append(_shift(c, offset))
 	for w: Dictionary in source.wall_fences:
 		out.wall_fences.append(_shift(w, offset))
+	for g: Dictionary in source.wall_gaps:
+		out.wall_gaps.append(_shift(g, offset))
 	return out
 
 

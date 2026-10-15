@@ -31,8 +31,9 @@ extends Node3D
 ## track (where it drops cyborgs and takes aim at a tower, the fairness margins) are at the run's pace
 ## (FloatingHead.metres; GDD §3), so they take as long to run at any speed. Big attacks never overlap
 ## (GDD §9): its lasers wait while a cyborg it dropped is still ahead of the runner (drop_hold_max at
-## most), and share the cyborgs' "airspace" (CyborgGun.AIRSPACE_META), so no cyborg's burst starts
-## during a laser attack and no laser attack during a burst.
+## most), and claim the cyborgs' whole airspace (CyborgAirspace.claim_whole), so no cyborg's burst
+## starts during a laser attack and no laser attack starts while any burst is in the air (the cyborgs
+## may have two at once, GDD §9.2: the lasers wait for both).
 ## Fairness: a sweep only comes while the floor is clear in every lane where the runner will be while
 ## it crosses the street (it's dodged in the air or on the ground); a drag only where a lane beside the
 ## runner's is free to switch into (FloatingHead.escape_lane), and its burning line keeps clear of a
@@ -1039,24 +1040,25 @@ func _estimate(kind: StringName) -> float:
 
 # --- Airspace (big attacks take turns with the cyborgs' bursts) -------------------------------------
 
+## Nothing holds the cyborgs' airspace: no burst is in the air and its own claim is over.
 func _airspace_free() -> bool:
 	return world.level_time() >= _airspace_until()
 
 
-## Until when (level time) the airspace is claimed.
+## Until when (level time) the airspace is claimed, by a cyborg's burst or by its own lasers.
 func _airspace_until() -> float:
-	return float(world.get_meta(CyborgGun.AIRSPACE_META, -1.0e9))
+	return CyborgAirspace.of(world).claimed_until(world.level_time())
 
 
+## Claims the whole airspace for `seconds` from now (or longer if it already has): no burst starts.
 func _claim_airspace(seconds: float) -> void:
-	world.set_meta(CyborgGun.AIRSPACE_META, maxf(float(world.get_meta(CyborgGun.AIRSPACE_META, -1.0e9)),
-		world.level_time() + seconds))
+	CyborgAirspace.of(world).claim_whole(self, world.level_time() + seconds, world.level_time())
 
 
+## Gives up its own claim (the cyborgs' bursts keep theirs).
 func _release_airspace() -> void:
-	if world != null and world.has_meta(CyborgGun.AIRSPACE_META) \
-			and float(world.get_meta(CyborgGun.AIRSPACE_META)) > world.level_time():
-		world.set_meta(CyborgGun.AIRSPACE_META, world.level_time())
+	if world != null:
+		CyborgAirspace.of(world).release(self, world.level_time())
 
 
 # --- Nodes -----------------------------------------------------------------------------------------

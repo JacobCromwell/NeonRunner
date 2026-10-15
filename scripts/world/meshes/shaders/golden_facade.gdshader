@@ -36,6 +36,8 @@ render_mode unshaded, cull_back;
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the faces dim like all the scenery.
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 // Colours are sRGB Vector3s (GoldenSkin.srgb()), converted once here with to_linear(), like the
 // vertex colours, so both renderers match.
 uniform vec3 glass_color = vec3(0.1, 0.11, 0.13);
@@ -270,5 +272,5 @@ void fragment() {
 		light *= mix(vec3(1.0), dusk_tint, smoothstep(14.0, 60.0, y));
 		col *= light_factor3(light);
 	}
-	ALBEDO = col * light_factor(scenery_light);
+	ALBEDO = col * light_factor(scenery_light) * scenery_tint;
 }

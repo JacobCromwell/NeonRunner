@@ -22,7 +22,7 @@ uniform float reach = 1.0;     // arm stretch (1 = rest length)
 uniform float attack = 0.0;    // the great maw's throat and the claws heat up to enemy-attack red
 uniform float lunge = 0.0;     // the upper body thrusts toward the runner
 uniform float fade = 0.0;      // 0 = solid, 1 = gone (it materializes through it too)
-uniform vec2 torn = vec2(0.0); // each chunk ripped away by an EMP: 0 = there, 1 = gone
+uniform vec4 torn = vec4(0.0); // each chunk ripped away by an EMP: 0 = there, 1 = gone
 uniform float seed = 0.0;
 uniform vec4 rim_color : source_color = vec4(0.58, 0.28, 1.0, 1.0);
 uniform vec4 attack_color : source_color = vec4(1.0, 0.12, 0.08, 1.0);
@@ -58,7 +58,7 @@ void vertex() {
 	float id = floor((UV.x - part) * 64.0 + 0.5);
 	float chunk = floor(UV.y * 0.1 + 0.01);
 	float w = UV.y - chunk * 10.0;
-	float tear = chunk < 0.5 ? 0.0 : (chunk < 1.5 ? torn.x : torn.y);
+	float tear = chunk < 0.5 ? 0.0 : (chunk < 1.5 ? torn.x : (chunk < 2.5 ? torn.y : (chunk < 3.5 ? torn.z : torn.w)));
 	float t = TIME + seed * 7.3;
 	vec3 v = VERTEX;
 	v_rest = v;

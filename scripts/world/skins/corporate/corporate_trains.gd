@@ -320,28 +320,25 @@ func below(batch: MeshBatch, half_width: float, lane_width: float, start: float,
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	var shade: Color = skin.gap_inside_color
 	var floor_y: float = -skin.trench_depth
-	s.rect(Vector3(-half_width, floor_y, -start), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(end - start)), shade, 0.0,
-		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 2.0)
-	for side: float in [-1.0, 1.0]:
-		var x: float = side * half_width
-		if side < 0.0:
-			s.rect(Vector3(x, floor_y, -end), Vector3(0, 0, end - start), Vector3(0, -floor_y, 0), shade, 0.0,
-				MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
-		else:
-			s.rect(Vector3(x, floor_y, -start), Vector3(0, 0, -(end - start)), Vector3(0, -floor_y, 0), shade, 0.0,
-				MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 1.0)
+	s.rect(Vector3(-half_width, floor_y, -start), Vector3(half_width * 2.0, 0, 0), Vector3(0, 0, -(end - start)), skin.trench_color,
+		0.0, MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 2.0)
+	# The trench's walls (face the street: the kit culls back faces), seen through the outer lanes' holes.
+	s.rect(Vector3(-half_width, floor_y, -start), Vector3(0, 0, -(end - start)), Vector3(0, -floor_y, 0), shade, 0.0,
+		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
+	s.rect(Vector3(half_width, floor_y, -end), Vector3(0, 0, end - start), Vector3(0, -floor_y, 0), shade, 0.0,
+		MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
 	# One guideway per lane (lanes from the street's width: its margin to the walls is under half a lane).
 	var lanes: int = maxi(1, floori(half_width * 2.0 / lane_width))
 	var top: float = -skin.guideway_depth
 	var mid: float = (start + end) * 0.5
 	for i: int in lanes:
 		var lx: float = (float(i) - (lanes - 1) * 0.5) * lane_width
-		s.box(Vector3(lx, top - BEAM_HEIGHT * 0.5, -mid), Vector3(BEAM_WIDTH, BEAM_HEIGHT, end - start), shade, 0.0,
+		s.box(Vector3(lx, top - BEAM_HEIGHT * 0.5, -mid), Vector3(BEAM_WIDTH, BEAM_HEIGHT, end - start), skin.guideway_color, 0.0,
 			MeshKit.PAT_CORP_UNDER, MeshKit.FACE_PY | MeshKit.FACE_PX | MeshKit.FACE_NX, 3.0)
 		var p: float = ceilf(start / PIER_SPACING) * PIER_SPACING
 		while p < end:
 			s.box(Vector3(lx, (top - BEAM_HEIGHT + floor_y) * 0.5, -p), Vector3(BEAM_WIDTH * 0.8, top - BEAM_HEIGHT - floor_y, 1.0),
-				shade, 0.0, MeshKit.PAT_CORP_UNDER, MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PZ, 3.0)
+				skin.guideway_color, 0.0, MeshKit.PAT_CORP_UNDER, MeshKit.FACE_PX | MeshKit.FACE_NX | MeshKit.FACE_PZ, 3.0)
 			p += PIER_SPACING
 	MeshKit.drift_particles(batch.layer(skin.drift_material()), start, end, TrackBuilder.CHUNK_LENGTH, half_width - 0.7,
 		7.0, skin.dust_count, skin.scrap_count, skin.streak_count,

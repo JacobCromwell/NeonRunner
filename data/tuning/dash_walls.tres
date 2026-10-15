@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="DashWallTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/dash_wall_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+approach_seconds = 0.6
+after_seconds = 0.6
+wall_route_seconds = 0.6
+cooldown_margin_seconds = 1.0
+keep_dash_baits = true
+intro_window_seconds = 10.0
+clear_plain_pieces = true
+search_step = 1.0

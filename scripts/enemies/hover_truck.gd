@@ -20,6 +20,14 @@ extends Enemy
 ##   truck_rev, flashing spikes, glowing thrusters, a glow thrown ahead onto the floor and the wall) and
 ##   only when a player in its lane could still get out. The spikes' hitbox is narrower than the lane, so a player beside
 ##   it or on the wall next to it is never caught.
+## - Dash walls (task H7a; GDD §9.14; DESIGN-TBD, docs/OPEN_QUESTIONS.md item 654): it gives way to one. A standing
+##   wall coming within the time it needs to drop behind the runner (_wall_ahead: HoverTruckTuning
+##   .give_way_seconds, WALL_GIVE_WAY_MARGIN more) sends it into its lurch back from pacing or from alongside,
+##   and it holds back, revving for no forward lurch, until the runner has broken the wall: the runner meets
+##   every wall first, and the truck follows them through. Its cannon holds fire near one (_doodad_in_reach).
+##   Where it can't drop back (the runner is in its lane behind it, ridden, leaving ahead) its nose bursts
+##   through a standing wall it reaches, as it burst out of the building (_burst_dash_walls). The generator
+##   keeps the walls off its entrance only (dash_wall_rules.gd, truck_entrance).
 ## - Kill: land on its roof (a moving floor surface; routes: a ramp onto the wall then a wall jump,
 ##   or get ahead of it during a backward lurch, run on the wall and jump on as it lurches forward)
 ##   and stomp the glowing red weak point on the lower cab roof. While ridden it eases back so the
@@ -60,19 +68,22 @@ const GLOW_BRIGHT: float = 0.5
 ## How high above the floor the floor disc lies, and its distance past the nose.
 const GLOW_FLOOR_Y: float = 0.06
 const GLOW_AHEAD: float = 0.9
-## The fireball's size at the start and the end of its swell, and how long it lasts.
-const BOOM_FROM: float = 1.2
-const BOOM_TO: float = 5.0
+## Its fireballs (RunEffects.fireball, radius in metres; GDD §11): where it blows up (a truck is about 7 m
+## long), and where it bursts through the wall (a quick one, no smoke: the burst hazard is only for a moment).
+const FIRE_EXPLODE_SIZE: float = 3.8
+const FIRE_BURST_SIZE: float = 2.6
+const FIRE_OFF_WALL: float = 2.2
+## How long the wreck's node outlasts its explosion.
 const BOOM_SECONDS: float = 0.45
-const BOOM_ALPHA: float = 0.9
+## Task H7a (DESIGN-TBD): seconds of run past the time it needs to drop behind the runner at which a standing
+## dash wall ahead makes it give way (_wall_ahead).
+const WALL_GIVE_WAY_MARGIN: float = 0.6
 
 ## Models per zone variant and shape, built once.
 static var _models: Dictionary = {}
-## The glow's disc (one mesh for the floor and the wall) and its two materials, and the fireball's ball:
-## built once, shared by every truck.
+## The glow's disc (one mesh for the floor and the wall) and its two materials: built once, shared by every truck.
 static var _glow_disc: ArrayMesh
 static var _glow_mats: Array[StandardMaterial3D] = []
-static var _boom_ball: SphereMesh
 
 var state: State = State.HIDDEN
 var tune: HoverTruckTuning
@@ -89,6 +100,8 @@ var burst_time: float = -1.0
 var leave_time: float = -1.0
 var cannon_shots: int = 0
 var forward_lurches: int = 0
+## Dash walls it burst through (task H7a: only where it couldn't give way).
+var walls_burst: int = 0
 
 var _at: float = 0.0
 var _scaling: float = 0.0
@@ -124,9 +137,9 @@ var _smoke_left: float = 0.0
 var _rubble: Array[MeshInstance3D] = []
 var _rubble_v: Array[Vector3] = []
 var _rubble_left: float = 0.0
-var _boom: MeshInstance3D
-var _boom_mat: StandardMaterial3D
-var _boom_t: float = 0.0
+## Seconds since it blew up, or -1 before: the wreck's node stays this long after its fireball goes off
+## (RunEffects.fireball is pooled and not the truck's, so nothing of it is freed with the truck).
+var _boom_t: float = -1.0
 
 var _model: Node3D
 var _spikes_mesh: MeshInstance3D
@@ -159,16 +172,17 @@ var _mats: Dictionary = {}
 var _spikes_flash: bool = false
 var _thrust_hot: bool = false
 var _thrust_boost: float = 1.0
-var _frame_lit: bool = false
+var _frame_look: int = 0
 var _brake_on: bool = false
 var _guns_hot: bool = false
 var _glow_state: int = 0
 
 
 ## A hover truck's whole look for EnemyDirector.warm_up (which frees it) and ShaderWarmup (tasks PERF1 and I5):
-## every part of its model and of the wall it bursts through, the glows its parts swap in, the glow it throws
-## ahead and the fireball. The first one builds the meshes and materials every later truck shares (30 to 70 ms on
-## the dev machine, which the first truck met in the frame it spawned). No physics object and no light.
+## every part of its model and of the wall it bursts through, the glows its parts swap in and the glow it throws
+## ahead (its fireballs are RunEffects', pooled and warmed with the run). The first one builds the meshes and
+## materials every later truck shares (30 to 70 ms on the dev machine, which the first truck met in the frame it
+## spawned). No physics object and no light.
 static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 	var t: HoverTruckTuning = EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
 	if t == null:
@@ -180,9 +194,10 @@ static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 		var part := MeshInstance3D.new()
 		part.mesh = meshes[key]
 		look.add_child(part)
-	var swapped: Array[Material] = [GreyboxMaterials.glow(HOT, 3.2), GreyboxMaterials.glow(FLASH, 6.0),
-		GreyboxMaterials.glow(AMBER, 5.0), GreyboxMaterials.glow(HOT, 4.5), GreyboxMaterials.flat(FACADE),
+	var swapped: Array[Material] = [GreyboxMaterials.glow(HOT, 4.5), GreyboxMaterials.flat(FACADE),
 		GreyboxMaterials.flat(CHUNK)]
+	for m: Variant in _swap_materials().values():
+		swapped.append(m as Material)
 	for m: Material in swapped:
 		var box := MeshInstance3D.new()
 		box.mesh = GreyboxMaterials.unit_box()
@@ -193,11 +208,18 @@ static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
 		glow.mesh = _glow_mesh()
 		glow.material_override = _glow_material(bright)
 		look.add_child(glow)
-	var ball := MeshInstance3D.new()
-	ball.mesh = _fireball()
-	ball.material_override = _boom_material()
-	look.add_child(ball)
 	return look
+
+
+## The glows its parts swap in as it moves through its states (the thrusters and gunners hot, the spikes and the
+## bang frame flashing or soft, the brake lights), shared by every truck.
+static func _swap_materials() -> Dictionary:
+	return {
+		"hot": GreyboxMaterials.glow(HOT, 3.2),
+		"flash": GreyboxMaterials.glow(FLASH, 6.0),
+		"flash_soft": GreyboxMaterials.glow(FLASH, 2.4),
+		"brake_on": GreyboxMaterials.glow(AMBER, 5.0),
+	}
 
 
 func _build() -> void:
@@ -220,11 +242,7 @@ func _build() -> void:
 	_guns = bool(params.get("guns", true))
 	shooters = tune.shooters_at(_scaling) if _guns else 0
 	_bob_t = rng.randf() * TAU
-	_mats = {
-		"hot": GreyboxMaterials.glow(HOT, 3.2),
-		"flash": GreyboxMaterials.glow(FLASH, 6.0),
-		"brake_on": GreyboxMaterials.glow(AMBER, 5.0),
-	}
+	_mats = _swap_materials()
 	_build_body()
 	_build_hitboxes()
 	_build_wall_fx()
@@ -272,6 +290,7 @@ func _tick(delta: float) -> void:
 				_update_cycle(delta)
 	if state != State.HIDDEN and state != State.BANGING:
 		_place()
+		_burst_dash_walls()
 	_animate(delta)
 
 
@@ -380,8 +399,7 @@ func _burst() -> void:
 	_burst_hazard.set_enabled(true)
 	_burst_left = tune.burst_hazard_seconds
 	world.play_sfx_at(&"truck_burst", _wall_point(0.0, 1.5))
-	for i: int in 3:
-		world.effects.burst(_wall_point((i - 1) * tune.length * 0.35, 1.0 + i * 0.5), Color(1.0, 0.4 + 0.18 * i, 0.08), 40, 1.2)
+	world.effects.fireball(_wall_point(0.0, 1.5), FIRE_BURST_SIZE, false, 1.2)
 	world.effects.burst(_wall_point(0.0, 1.2), Color(0.5, 0.47, 0.44), 30, 1.0)
 	world.effects.shake(0.4, 0.45)
 	_launch_rubble()
@@ -435,6 +453,9 @@ func _update_cycle(delta: float) -> void:
 				# The player is in its lane ahead of it (it can't pace past them): the threat there is
 				# the forward lurch, after its warning.
 				_enter(State.LEAVING if due else State.HOLD_BACK)
+			elif _giving_way():
+				# Task H7a: a dash wall ahead: it drops behind the runner and lets them break it first.
+				_enter(State.LEAVING if due else State.LURCH_BACK)
 			elif (_pace_clock >= _pace_time or due) and _charge_left < 0.0 and _volley.is_empty():
 				_enter(State.LEAVING if due else State.LURCH_BACK)
 		State.LURCH_BACK:
@@ -449,9 +470,10 @@ func _update_cycle(delta: float) -> void:
 			_aim_for(tune.back_offset, tune.drift_speed, tune.drift_accel)
 			if due:
 				_enter(State.LEAVING)
-			elif _state_time >= tune.hold_back_seconds and _escape_ok() \
+			elif _state_time >= tune.hold_back_seconds and _escape_ok() and not _wall_ahead(_attack_seconds()) \
 					and not world.director.major_attack_blocked(self):
-				# GDD §9: it holds back until no other type's big attack is on, then revs.
+				# GDD §9: it holds back until no other type's big attack is on, then revs; task H7a: nor
+				# while a dash wall comes before its forward lurch and its stay alongside are over.
 				_enter(State.REV)
 		State.REV:
 			_aim_for(offset, tune.drift_speed, tune.drift_accel)
@@ -465,6 +487,8 @@ func _update_cycle(delta: float) -> void:
 			_aim_for(tune.alongside_offset, tune.drift_speed, tune.drift_accel)
 			if due or _state_time >= tune.alongside_seconds:
 				_enter(State.LEAVING if due else State.PACE)
+			elif _giving_way():
+				_enter(State.LURCH_BACK)
 		State.RIDDEN:
 			if not player_riding():
 				_enter(State.LEAVING if due else State.HOLD_BACK)
@@ -545,20 +569,28 @@ func _player_inside() -> bool:
 
 
 ## A player in its lane ahead of it must be able to get out before the forward lurch arrives:
-## onto the wall beside it (no sign in the way) or into the next lane (no gap, fence or zone doodad
-## there: a doodad's side would block the switch).
+## onto the wall beside it (no sign in the way, and no side wall gap: a move onto the wall inside one is
+## refused, LevelLayout.wall_gaps) or into the next lane (no gap, fence or zone doodad there: a doodad's
+## side would block the switch). A player already on that wall ahead of it is out of its way, unless the
+## wall opens before the lurch is over: they'd drop off into its lane in front of the spikes, so it waits
+## until they're down (task D10c review: the Beach's walls stand on about half of a level).
 func _escape_ok() -> bool:
 	var p: Player = world.player
-	if not player_in_lane() or offset + tune.length * 0.5 > 0.0:
+	if offset + tune.length * 0.5 > 0.0:
 		return true
 	var d: float = p.distance
 	var reach: float = d + (tune.rev_seconds + tune.escape_margin) * maxf(p.speed, 1.0)
 	var layout: LevelLayout = world.layout
-	var wall_ok: bool = true
+	if p.surface == Player.Surface.WALL and p.wall_side == side:
+		return not layout.wall_gap_between(d - 1.0, reach, side)
+	if not player_in_lane():
+		return true
+	var wall_ok: bool = not layout.wall_gap_between(d - 1.0, reach, side)
 	for s: Dictionary in layout.signs:
+		if not wall_ok:
+			break
 		if int(s["side"]) == side and float(s["start"]) <= reach and float(s["end"]) >= d - 1.0:
 			wall_ok = false
-			break
 	var inward: int = lane - side
 	var lane_ok: bool = inward >= 0 and inward < layout.lane_count \
 		and not layout.gapped_between(inward, d - 1.0, reach + 3.0) and not layout.doodad_between(d - 1.0, reach + 3.0, inward)
@@ -618,7 +650,7 @@ func _can_fire() -> bool:
 ## and out of its lane until it has left, so this holds back only a truck that stays longer.
 ## DESIGN-TBD (docs/questions/g5.md 5).
 func _doodad_in_reach() -> bool:
-	if world.layout.doodads.is_empty():
+	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty():
 		return false
 	var p: Player = world.player
 	var seconds: float = tune.cannon_charge_seconds + maxf(offset, 0.0) / maxf(tune.shell_speed_at(_scaling), 1.0) \
@@ -697,7 +729,7 @@ func _on_defeated(_cause: StringName) -> void:
 func _update_wreck(delta: float) -> void:
 	_state_time += delta
 	offset += tune.wreck_skid_speed * (1.0 - clampf(_state_time / tune.wreck_seconds, 0.0, 1.0)) * delta
-	if _boom != null:
+	if _boom_t >= 0.0:
 		_update_boom(delta)
 		return
 	_x = move_toward(_x, side * (world.geo.wall_x() - tune.width * 0.5 - 0.1), 3.0 * delta)
@@ -716,50 +748,20 @@ func _update_wreck(delta: float) -> void:
 func _explode() -> void:
 	var at: Vector3 = global_position + Vector3(0.0, 1.2, 0.0)
 	world.play_sfx_at(&"truck_explode", at)
-	world.effects.burst(at, Color(1.0, 0.5, 0.1), 60, 1.6)
-	world.effects.burst(at + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.85, 0.3), 30, 1.1)
+	# It skids into its wall: the fireball is set a little out into the street, so the wall doesn't cut it off.
+	world.effects.fireball(at - Vector3(side * FIRE_OFF_WALL, 0.0, 0.0), FIRE_EXPLODE_SIZE)
 	world.effects.burst(at, Color(0.45, 0.42, 0.4), 24, 1.0)
 	world.effects.shake(0.5, 0.5)
-	# A fireball swells and fades where the truck was, then it's gone (one shared ball; its own material, since
-	# its alpha fades).
+	# The truck is gone in the fireball (a pooled effect, RunEffects.fireball); its node waits out BOOM_SECONDS.
 	_model.visible = false
-	_boom_mat = _boom_material()
-	_boom = _mesh_node(self, _fireball(), Vector3(0.0, 1.2, 0.0))
-	_boom.material_override = _boom_mat
 	_boom_t = 0.0
 
 
 func _update_boom(delta: float) -> void:
 	_boom_t += delta
-	var k: float = clampf(_boom_t / BOOM_SECONDS, 0.0, 1.0)
-	_boom.scale = Vector3.ONE * lerpf(BOOM_FROM, BOOM_TO, 1.0 - pow(1.0 - k, 2.0))
-	_boom_mat.albedo_color.a = BOOM_ALPHA * (1.0 - k)
 	_place()
-	if k >= 1.0:
+	if _boom_t >= BOOM_SECONDS:
 		queue_free()
-
-
-## The fireball's ball, made once.
-static func _fireball() -> SphereMesh:
-	if _boom_ball == null:
-		_boom_ball = SphereMesh.new()
-		_boom_ball.radius = 0.5
-		_boom_ball.height = 1.0
-		_boom_ball.radial_segments = 12
-		_boom_ball.rings = 6
-	return _boom_ball
-
-
-## A fireball's own material: glowing orange and see-through, unlit, fading as it swells (_update_boom).
-static func _boom_material() -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.albedo_color = Color(1.0, 0.55, 0.15, BOOM_ALPHA)
-	m.emission_enabled = true
-	m.emission = Color(1.0, 0.5, 0.1)
-	m.emission_energy_multiplier = 4.0
-	return m
 
 
 # --- Presentation --------------------------------------------------------------------------------
@@ -772,6 +774,73 @@ func _place() -> void:
 
 func _front_point() -> Vector3:
 	return global_position + global_basis * Vector3(0.0, 1.0, -tune.length * 0.5 - tune.nose_length)
+
+
+## The face (track distance) of the nearest standing dash wall the runner hasn't reached yet, or INF.
+func _next_wall() -> float:
+	var p: Player = world.player
+	var best: float = INF
+	for w: Dictionary in world.layout.dash_walls:
+		var face: float = float(w["start"])
+		if not bool(w.get("smashed", false)) and face >= p.distance - 1.0 and face < best:
+			best = face
+	return best
+
+
+## True if the runner comes to a standing dash wall within the time the truck needs to drop behind them from
+## where it is now (HoverTruckTuning.give_way_seconds) with WALL_GIVE_WAY_MARGIN and `extra_seconds` more
+## (task H7a).
+func _wall_ahead(extra_seconds: float = 0.0) -> bool:
+	if world.layout.dash_walls.is_empty():
+		return false
+	var face: float = _next_wall()
+	if is_inf(face):
+		return false
+	var p: Player = world.player
+	var seconds: float = tune.give_way_seconds(offset) + WALL_GIVE_WAY_MARGIN + extra_seconds
+	return face - p.distance <= seconds * maxf(p.speed, 1.0)
+
+
+## True if it gives way to a dash wall now (_wall_ahead; task H7a): one is coming, and it can drop back (the
+## runner isn't in its lane behind it: it never backs into them).
+func _giving_way() -> bool:
+	return _wall_ahead() and not (player_in_lane() and offset - tune.length * 0.5 > 0.0)
+
+
+## Seconds from the rev's start until its forward lurch and its stay alongside are over, and it could give way
+## again (task H7a: no rev while a dash wall comes within them).
+func _attack_seconds() -> float:
+	return tune.rev_seconds + 2.0 + tune.alongside_seconds + tune.give_way_seconds(tune.alongside_offset)
+
+
+## GDD §9.14 (task H7a): a standing dash wall its nose reaches (anywhere along its body, so one it emerged
+## beside goes too) is burst through as it burst out of the building: it breaks (DashBreakable.smash, broken
+## by &"hover_truck"; one whose chunk isn't built yet is marked broken in the layout, so it's never built)
+## and crumbles with its crash, flung along the truck's way (RunEffects.crumble, dash_wall_smash). The
+## runner then finds it broken: it costs them nothing.
+func _burst_dash_walls() -> void:
+	var walls: Array[Dictionary] = world.layout.dash_walls
+	if walls.is_empty() or state == State.WRECKED:
+		return
+	var centre: float = world.player.distance + offset
+	var tip: float = centre + tune.length * 0.5 + tune.nose_length
+	var rear: float = centre - tune.length * 0.5
+	for w: Dictionary in walls:
+		if bool(w.get("smashed", false)) or float(w["start"]) > tip or float(w["end"]) < rear:
+			continue
+		var b: DashBreakable = world.track.dash_wall_for(w) if world.track != null else null
+		if b == null:
+			w["smashed"] = true
+			w["broken_by"] = "hover_truck"
+			walls_burst += 1
+			continue
+		if not b.smash(&"hover_truck"):
+			continue
+		walls_burst += 1
+		var push := Vector3(0.0, 0.0, -maxf(world.player.speed + offset_speed, 0.0))
+		if world.effects != null:
+			world.effects.crumble(b, push)
+		world.play_sfx_at(&"dash_wall_smash", _front_point())
 
 
 ## A point on the wall face it bursts through: `along` metres from its burst point, `height` up.
@@ -864,10 +933,12 @@ func _animate_wall(delta: float) -> void:
 		_bulge.position.x = -side * (0.1 + 0.45 * _bulge_push)
 		_frame_flash -= delta
 		_bang_frame.visible = state == State.BANGING
-		var lit: bool = _frame_flash > 0.0
-		if lit != _frame_lit:
-			_frame_lit = lit
-			_bang_frame.material_override = _mats["flash"] if lit else null
+		# The frame flashes with each bang; with Reduced flashing it glows steadily and softly all through the
+		# banging.
+		var look: int = 2 if Settings.flashing_reduced else (1 if _frame_flash > 0.0 else 0)
+		if look != _frame_look:
+			_frame_look = look
+			_bang_frame.material_override = _mats["flash_soft"] if look == 2 else (_mats["flash"] if look == 1 else null)
 	if _burst_left > 0.0:
 		_burst_left -= delta
 		if _burst_left <= 0.0:

@@ -6,10 +6,10 @@ extends Enemy
 ## running to each of its fences.
 ## - Destroyed by a **stomp** or the **dash** only. **Weapons never set it off** (GDD §9.1, decided
 ##   September 26, 2026): immune_to_weapons keeps it off auto-fire's target list and blocks all
-##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash); the
-##   same rule as for hosts, whom auto-fire never targets (GDD §9.7), so an EMP is always the
-##   player's choice. Claws and plain contact don't destroy it (FB 73); its body is solid, so
-##   running into it hurts like any solid obstacle (armor doesn't help).
+##   weapon damage (a direct hit, a stray shot aimed elsewhere, a homing missile, or splash), so an
+##   EMP is always the player's choice (hosts had the same rule until October 8, 2026; weapons now hit
+##   them, GDD §9.7). Claws and plain contact don't destroy it (FB 73); its body is solid, so
+##   running into it kills, unless armor (which absorbs the hit, armor_blocks_solid) or the shield is up.
 ## - Destroying it sets off an EMP (RunWorld.emp): every fence within emp_radius (DESIGN-TBD, in
 ##   data/enemies/generator.tres) switches off for the rest of the level, and every enemy hears it
 ##   (the Cyborg's Bad Dream dissolves, GDD §9.7).
@@ -23,6 +23,12 @@ const BODY_SIZE := Vector3(0.8, 0.7, 0.8)
 const TOP_SIZE := Vector3(0.8, 0.45, 0.8)
 const TOP_Y: float = 0.925
 const HUSK_KEEP: float = 40.0
+## Its fireball (RunEffects.fireball, radius in metres; GDD §11), inside the EMP's cyan ring (World.emp): the runner
+## is usually standing on it (a stomp, a dash, claws), so it is small, held in and quick, with no smoke (it must not
+## hide the runner or the lanes and fences the EMP has just switched off).
+const FIRE_SIZE: float = 1.2
+const FIRE_SPREAD: float = 0.5
+const FIRE_PACE: float = 1.5
 const CABLE_Y: float = 0.02
 
 var tuning: FenceGeneratorTuning
@@ -75,8 +81,11 @@ func _build() -> void:
 	lane = clampi(int(spawn.get("lane", 0)), 0, world.geo.lane_count - 1)
 	var at: float = float(spawn.get("at", 0.0))
 	position = world.lane_point(lane, at)
-	add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5, 0.0))
-	add_hitbox(&"top", TOP_SIZE, Vector3(0.0, TOP_Y, 0.0))
+	# Armor absorbs a collision with the body like any other damage it works against (owner, October 10, 2026).
+	add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5, 0.0)).armor_blocks_solid = true
+	# The top overlaps the body when the runner meets the machine head-on, so it must absorb too: any
+	# unflagged hitbox touched in the same frame would still kill.
+	add_hitbox(&"top", TOP_SIZE, Vector3(0.0, TOP_Y, 0.0)).armor_blocks_solid = true
 	powered = fences_in_reach(world.layout, world.geo, at, lane, tuning.emp_radius)
 	_build_visuals()
 
@@ -107,6 +116,7 @@ static func fences_in_reach(layout: LevelLayout, geo: TrackGeometry, at: float, 
 func _on_defeated(_cause: StringName) -> void:
 	_husk = true
 	world.emp(aim_point(), tuning.emp_radius)
+	world.effects.fireball(global_position + Vector3(0.0, 0.9, 0.0), FIRE_SIZE, false, FIRE_PACE, FIRE_SPREAD)
 	world.effects.burst(global_position + Vector3(0.0, 0.9, 0.0), Color(1.0, 0.55, 0.9), 30, 1.0)
 	_body.material_override = Kit.part_material(&"dead")
 	_energy.visible = false

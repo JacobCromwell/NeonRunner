@@ -15,6 +15,8 @@ render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, skip_vertex_tr
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the scenery dims with it.
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 
 uniform float slice_length = 40.0;
 // Speeds toward the player over the ground (m/s); the player's own speed adds to them.
@@ -83,6 +85,6 @@ void fragment() {
 	} else if (v_kind > 0.5) {
 		shape = 1.0;
 	}
-	ALBEDO = to_linear(COLOR.rgb) * light_factor(scenery_light);
+	ALBEDO = to_linear(COLOR.rgb) * light_factor(scenery_light) * scenery_tint;
 	ALPHA = v_alpha * shape;
 }

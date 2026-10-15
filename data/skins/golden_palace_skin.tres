@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skin")
 enemy_variant = &"golden"
+gap_inside_color = Color(0.24, 0.235, 0.22, 1)
 moon_radius = 0.0
 lot_length = 8.0
 gallery_share = 0.3

@@ -274,7 +274,7 @@ func _pier(facade: MeshLayer, side: int, face_x: float, p0: float, p1: float, u0
 func _shop_window(batch: MeshBatch, b: Building, w: Vector2, face_x: float) -> void:
 	var variant: int = MeshKit.hash_i(b.side, MeshKit.key(w.x), 41) % WINDOW_VARIANTS
 	var tv: bool = _has_tv(b, w)
-	batch.append(_window_template(b.kind, w.y - w.x, variant, b.side, tv), Transform3D(Basis.IDENTITY,
+	batch.append(window_template(b.kind, w.y - w.x, variant, b.side, tv), Transform3D(Basis.IDENTITY,
 		Vector3(face_x, 0.0, -w.x)))
 	if tv:
 		var size: Vector3 = _tv_size(w.y - w.x)
@@ -302,7 +302,7 @@ static func _tv_size(width: float) -> Vector3:
 ## -width): the display behind the opening (a back wall of goods, its floor, top and sides). The
 ## frame around it is painted by the facade shader on the piers, sill and lintel. Built for the left
 ## wall and mirrored once for the right.
-func _window_template(kind: int, width: float, variant: int, side: int, tv: bool) -> MeshBatch:
+func window_template(kind: int, width: float, variant: int, side: int, tv: bool) -> MeshBatch:
 	var key := Vector4i(kind, roundi(width * 100.0), variant * 2 + (1 if tv else 0), side)
 	var found: MeshBatch = _window_templates.get(key)
 	if found != null:
@@ -311,7 +311,7 @@ func _window_template(kind: int, width: float, variant: int, side: int, tv: bool
 		_window_templates.clear()
 	var t := MeshBatch.new()
 	if side > 0:
-		t.append(_window_template(kind, width, variant, -1, tv), Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)),
+		t.append(window_template(kind, width, variant, -1, tv), Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)),
 			Vector3.ZERO))
 		_window_templates[key] = t
 		return t

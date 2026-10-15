@@ -5,17 +5,20 @@ extends RefCounted
 ## player's named actions, only reacts to what the fight shows, and reacts `reaction` seconds after a
 ## warning starts, like a player:
 ## - the giant slash's warning (the lanes it lights red, the shriek): if it's in those lanes, it heads
-##   for the refuge's nearest pad lane (`slash_escape` &"pad"), or for the nearest lane outside the slash
-##   whose floor is clear (&"lanes"; the pad when there's none), or stays put (&"none", to show the
-##   slash hits);
-## - a hand's mist in its lane: it switches to the lane the fight keeps free (SleepTaker.escape_lane),
-##   unless `dodges_hands` is off;
+##   for the nearest side wall that stands from where it is to past the strike (it reads the wall gaps'
+##   glowing edges, SleepTaker.wall_whole) and runs up it, riding it through the strike and jumping off
+##   once the claws have gone by (`slash_escape` &"wall"; the arena has no ceilings since the owner's
+##   October 10, 2026 change), or for the nearest lane outside the slash whose floor is clear (&"lanes";
+##   the wall when there's none, as at 3 lanes), or stays put (&"none", to show the slash hits);
+## - a round of hands (its mists along the street): once it reacts, it finds its way through the round
+##   and the street around it from where it is (SleepTakerHands.route_from, the router the round was
+##   planned by) and makes each lane switch where that way has it, unless `dodges_hands` is off;
 ## - a generator in sight (SleepTakerLure): with `smashes` on, it heads for the generator's lane and
 ##   stomps it (jumping so it comes down on its top) or, with `dashes` on, dashes into it; with
 ##   `smashes` off it keeps out of its lane (a runner who lets every generator go by);
 ## - otherwise it keeps to `home_lane` (if set) and, with `reads_track` on, runs the arena like any
 ##   runner: it jumps the holes and full fences in its lane and slides under gapped ones.
-## On the ceiling it rides it out.
+## On a wall it rides it out.
 
 ## Reading the track (as FloatingHeadBot): a hole is jumped this far before its edge, a full fence this
 ## far before it, no later than FENCE_JUMP_LAST before it; a gapped fence slid under from this far.
@@ -27,7 +30,7 @@ const FENCE_JUMP_LAST: float = 3.6
 const FENCE_SLIDE_LEAD: float = 3.5
 
 var boss: SleepTaker
-var slash_escape: StringName = &"pad"
+var slash_escape: StringName = &"wall"
 var dodges_hands: bool = true
 ## Seconds from a warning's start to its first move.
 var reaction: float = 0.3
@@ -52,9 +55,21 @@ var _hold_until: float = -1.0
 ## The generator it's going for (the lure's count when it saw it), and whether it has jumped for it.
 var _gen_seen: int = 0
 var _gen_jumped: int = 0
+## The round of hands it has seen (SleepTakerHands.rounds), when it reacts to it (fight time; -1 once it
+## has), and the lane switches of its way through it still to make ({at, from, to}).
+var _round_seen: int = 0
+var _round_react: float = -1.0
+var _moves: Array[Dictionary] = []
+## The wall it's taking against a slash (-1 left, 1 right, 0 none), and the fight time the claws are gone
+## by, when it jumps back off.
+var _wall: int = 0
+var _wall_until: float = -1.0
+## Rounds it found a way through, and those it found none through (it then dodges by the doors).
+var routes_found: int = 0
+var routes_missing: int = 0
 
 
-func _init(p_boss: SleepTaker, p_escape: StringName = &"pad") -> void:
+func _init(p_boss: SleepTaker, p_escape: StringName = &"wall") -> void:
 	boss = p_boss
 	slash_escape = p_escape
 
@@ -71,20 +86,39 @@ func step() -> void:
 		if now >= float(_pending[i]["at"]):
 			_go(int(_pending[i]["lane"]), String(_pending[i]["why"]))
 			_hold_until = maxf(_hold_until, now + 2.5)
+			if int(_pending[i].get("wall", 0)) != 0:
+				_wall = int(_pending[i]["wall"])
+				_wall_until = float(_pending[i]["until"])
 			_pending.remove_at(i)
 	var gen_lane: int = _read_generator()
+	# A round of hands in play: it keeps to its way through it (the generator's lure comes after).
+	var hands_on: bool = dodges_hands and boss.hands.busy()
 	if gen_lane >= 0 and _target < 0 and _pending.is_empty() and player.surface == Player.Surface.FLOOR \
-			and not boss.slash.warning_on() and not _mist_in(gen_lane):
-		if player.lane != gen_lane:
+			and not boss.slash.warning_on() and not hands_on and not _mist_in(gen_lane):
+		if player.lane != gen_lane and _can_switch(gen_lane):
 			_go(gen_lane, "generator" if smashes else "around a generator")
 	elif home_lane >= 0 and _target < 0 and _pending.is_empty() and now > _hold_until \
 			and player.surface == Player.Surface.FLOOR and not boss.slash.warning_on() and not boss.hands.busy():
-		if player.lane != home_lane:
+		if player.lane != home_lane and _can_switch(home_lane):
 			_go(home_lane, "home")
 	_walk()
+	_take_wall()
 	_smash()
 	if reads_track:
 		_read_track()
+
+
+## True if it can head for `lane` now: the floor of every lane on the way is clear where it switches (a
+## runner never steps sideways onto a hole).
+func _can_switch(lane: int) -> bool:
+	var player: Player = boss.world.player
+	var d: float = player.distance
+	var steps: int = absi(lane - player.lane)
+	var to: float = d + player.speed * (boss.world.tuning.lane_switch_time * steps + 0.25)
+	for l: int in range(mini(lane, player.lane), maxi(lane, player.lane) + 1):
+		if l != player.lane and not boss.floor_clear_lane(l, d - 1.0, to):
+			return false
+	return true
 
 
 ## The lane it wants for the generator in sight: its own (to smash it), or the nearest other whose floor
@@ -103,7 +137,15 @@ func _read_generator() -> int:
 	if _goes_for(lure):
 		return lane if _gen_jumped != lure.count else -1
 	var d: float = boss.world.player.distance
-	return _free_lane([lane], lane, d, at + 10.0) if at - d < 40.0 * boss.run_pace() else -1
+	var k: float = boss.run_pace()
+	if at - d >= 40.0 * k:
+		return -1
+	# A lane clear around the generator; with the arena's many holes there may be none, and then the next
+	# lane in (it jumps that lane's holes as it reads the track).
+	var free: int = _free_lane([lane], lane, maxf(d, at - 10.0 * k), at + 10.0 * k)
+	if free < 0:
+		free = lane - 1 if lane * 2 >= boss.lane_count() - 1 else lane + 1
+	return free
 
 
 ## In the generator's lane as it nears: a jump timed to come down on its top (a stomp), or the dash.
@@ -164,33 +206,92 @@ func _read_slash() -> void:
 	_handled[id] = true
 	var lanes: Array[int] = s.lanes()
 	var pl: int = boss.player_lane()
-	if slash_escape == &"none" or not lanes.has(pl) or boss.world.player.surface == Player.Surface.CEILING:
+	if slash_escape == &"none" or not lanes.has(pl) or boss.world.player.surface != Player.Surface.FLOOR:
 		return
-	var to: int = -1
 	if slash_escape == &"lanes":
-		to = _free_lane(lanes, pl, float(s.attack["at"]), float(s.attack["strike_at"]) + 3.0)
-	if to < 0 and float(s.attack["refuge"]) >= 0.0:
-		to = _nearest(SleepTaker.pad_lanes(boss.lane_count(), boss.tuning), pl)
-	if to >= 0:
-		_pending.append({"at": boss.fight_time() + reaction, "lane": to, "why": "slash"})
+		var to: int = _free_lane(lanes, pl, float(s.attack["at"]), float(s.attack["strike_at"]) + 3.0)
+		if to >= 0:
+			_pending.append({"at": boss.fight_time() + reaction, "lane": to, "why": "slash"})
+			return
+	# The nearest wall standing from here to past the strike: its outer lane, then up onto it.
+	var t: SleepTakerTuning = boss.tuning
+	var v: float = boss.speed()
+	var strike: float = float(s.attack["strike_at"])
+	var n: int = boss.lane_count()
+	# The nearer wall first.
+	var sides: Array[int] = [-1, 1]
+	if pl * 2 >= n - 1:
+		sides.reverse()
+	for side: int in sides:
+		if boss.wall_whole(side, boss.world.player.distance, strike + v * (t.slash_active + 0.2) + t.slash_depth):
+			_pending.append({"at": boss.fight_time() + reaction, "lane": 0 if side < 0 else n - 1, "why": "slash: to the wall",
+				"wall": side, "until": boss.fight_time() + (strike - boss.world.player.distance) / v + t.slash_active + 0.25})
+			return
 
 
-## A hand's mist in its lane: out of it, once it reacts.
-func _read_hands() -> void:
+## Against a slash: in the outer lane beside the wall it chose, up onto it (a move past the outer lane);
+## on it, it rides it until the claws are gone by, then jumps back off onto the street.
+func _take_wall() -> void:
+	if _wall == 0:
+		return
 	var player: Player = boss.world.player
-	for h: Dictionary in boss.hands.active:
-		var id: String = "hand%d" % int(h["n"])
-		if _handled.has(id) or int(h["stage"]) != SleepTakerHands.Stage.MIST or int(h["side"]) != 0:
-			continue
-		_handled[id] = true
-		var lane: int = int(h["lane"])
-		var mine: int = _target if _target >= 0 else player.lane
-		if lane != mine:
-			continue
-		var e: int = int(h["escape"])
-		if e < 0:
-			e = lane + (1 if lane < boss.lane_count() - 1 else -1)
-		_pending.append({"at": boss.fight_time() + reaction, "lane": e, "why": "hand"})
+	var now: float = boss.fight_time()
+	if player.surface == Player.Surface.WALL:
+		if now >= _wall_until:
+			_wall = 0
+			_press(&"move_right" if player.wall_side < 0 else &"move_left", "off the wall")
+		return
+	if now >= _wall_until:
+		_wall = 0
+		return
+	var outer: int = 0 if _wall < 0 else boss.lane_count() - 1
+	if player.surface == Player.Surface.FLOOR and player.lane == outer:
+		_press(&"move_left" if _wall < 0 else &"move_right", "up the wall")
+
+
+## A round of hands: `reaction` seconds after its mists show, its way through the round from where it
+## is (SleepTakerHands.route_from, moving at once), then each lane switch where that way has it.
+func _read_hands() -> void:
+	var hands: SleepTakerHands = boss.hands
+	var player: Player = boss.world.player
+	if hands.rounds != _round_seen:
+		_round_seen = hands.rounds
+		_round_react = boss.fight_time() + reaction
+		_moves.clear()
+	if _round_react >= 0.0 and boss.fight_time() >= _round_react:
+		_round_react = -1.0
+		if player.surface == Player.Surface.FLOOR and hands.busy():
+			var route: Dictionary = hands.route_from(player.lane, player.distance, player.distance)
+			if bool(route["ok"]):
+				routes_found += 1
+				_moves.assign(route["moves"])
+			else:
+				routes_missing += 1
+				_moves = _door_moves(player.lane)
+			log.append({"t": boss.fight_time(), "action": &"round", "why": "%d switches" % _moves.size()})
+	if _moves.is_empty() or _target >= 0 or player.surface != Player.Surface.FLOOR:
+		return
+	var m: Dictionary = _moves[0]
+	if player.distance >= float(m["at"]):
+		_moves.pop_front()
+		_go(int(m["to"]), "hand")
+		_hold_until = maxf(_hold_until, boss.fight_time() + 2.5)
+
+
+## Without a way (it shouldn't happen: every round is planned with one): one lane at a time toward each
+## row's door, from the row before's.
+func _door_moves(from: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lane: int = from
+	var d: float = boss.world.player.distance
+	for row: Dictionary in boss.hands.round_plan.get("rows", []):
+		var door: int = int(row["door"])
+		while door >= 0 and lane != door:
+			var to: int = lane + (1 if door > lane else -1)
+			out.append({"at": d, "from": lane, "to": to})
+			lane = to
+		d = float(row["at"]) + 2.0
+	return out
 
 
 ## The nearest lane outside `struck` whose floor (and the lanes on the way) is clear from `from` to `to`.
@@ -208,14 +309,6 @@ func _free_lane(struck: Array[int], pl: int, from: float, to: float) -> int:
 			if ok:
 				return e
 	return -1
-
-
-static func _nearest(lanes: Array[int], pl: int) -> int:
-	var best: int = -1
-	for l: int in lanes:
-		if best < 0 or absi(l - pl) < absi(best - pl):
-			best = l
-	return best
 
 
 ## The arena's own holes and fences in the lane it runs in (or is moving to), read like any runner.

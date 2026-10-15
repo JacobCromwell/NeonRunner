@@ -20,6 +20,7 @@ extends TestSuite
 ## - the same seed plays out the same way, and generated levels played through check every burst.
 
 const Rules = preload("res://scripts/enemies/barnacle_turret_rules.gd")
+const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const TURRET_TUNING_PATH: String = "res://data/enemies/barnacle_turret.tres"
 const TYPE: String = "barnacle_turret"
@@ -116,6 +117,19 @@ func _contact_outcomes(turret: BarnacleTurret) -> Array[int]:
 			"both contact parts declare armor-blockable damage without losing their body/top roles")
 		box.contacted.connect(func(outcome: int) -> void: outcomes.append(outcome))
 	return outcomes
+
+
+## The most bursts in the air at once, from each burst's [start of its charge-up, its last bolt or its
+## cancel] (level times; one that ends as another starts doesn't overlap it). As test_cyborg's.
+static func _most_at_once(bursts: Array) -> int:
+	var most: int = 0
+	for b: Array in bursts:
+		var on: int = 0
+		for o: Array in bursts:
+			if float(o[0]) <= float(b[0]) and (is_same(o, b) or float(o[1]) > float(b[0]) + 0.001):
+				on += 1
+		most = maxi(most, on)
+	return most
 
 
 ## The level's turret entries.
@@ -220,7 +234,8 @@ func _test_looks() -> void:
 	for v: StringName in expect:
 		check(BarnacleTurretModel.is_creature(v) == bool(expect[v]), "%s wears the %s look" % [v,
 			"creature" if expect[v] else "mechanical"])
-	for skin_path: String in ["res://data/skins/marketplace_skin.tres", "res://data/skins/gangland_skin.tres"]:
+	for skin_path: String in ["res://data/skins/marketplace_skin.tres", "res://data/skins/casino_skin.tres",
+			"res://data/skins/gangland_skin.tres"]:
 		var skin := load(skin_path) as ZoneSkin
 		check(skin != null and BarnacleTurretModel.is_creature(skin.enemy_variant), "%s's turrets are creatures" % skin_path)
 	for skin_path: String in ["res://data/skins/city_skin.tres", "res://data/skins/corporate_skin.tres",
@@ -278,12 +293,14 @@ func _check_no_hazard_glow(mesh: Mesh, what: String) -> void:
 ## (LayoutChecks.check_turrets, and the shared checks), the same every time; Marketplace 1 meets its
 ## first one soon after the start, alone on its ceiling, and has no pairs; levels without the feature
 ## have none. Isolating turret placement from the additive density pass, the same level without the
-## feature is otherwise identical (bar its introduction ceiling, pad and credits).
+## feature is otherwise identical (bar its introduction ceiling, pad and credits). The Enforcer Truck's
+## showing windows (task C6c) read the turrets (one its body would hide keeps it from showing there), so
+## that comparison plans none (EnforcerTruckTuning.show_window_planned off).
 func _test_placement() -> void:
 	var pairs: int = 0
 	var added: int = 0
 	for s: CampaignStep in campaign.steps():
-		if not s.is_level():
+		if not s.is_level() or s.is_minigame():
 			continue
 		var has: bool = s.level.has_feature(TYPE)
 		for lanes: int in [3, 5, 6]:
@@ -317,15 +334,21 @@ func _test_placement() -> void:
 					if float(e["at"]) < float(first["at"]):
 						first = e
 				var reach: float = start + bt.intro_seconds * gen.speed
-				check(float(first["at"]) >= start and float(first["at"]) <= reach,
-					"Marketplace 1 meets its first turret soon after the start (%.0f m, start %.0f) %s" % [first["at"], start, tag])
+				# At the start itself counts (the rules may place it right there: the same 0.01 m the other
+				# "nothing before its start" checks allow for rounding).
+				check(float(first["at"]) >= start - 0.01 and float(first["at"]) <= reach + 0.01,
+					"Marketplace 1 meets its first turret soon after the start (%.2f m, start %.2f) %s" % [first["at"], start, tag])
 				check(int(per[float(first["params"]["hull_start"])]) == 1, "alone on its ceiling " + tag)
 				for key: Variant in per:
 					check(int(per[key]) == 1, "no pairs in Marketplace 1 " + tag)
 			# Density budgets all enemies, so removing turrets changes its additions. Compare the
-			# turret rule alone; the full-density layout still gets the fairness checks above.
+			# turret rule alone; the full-density layout still gets the fairness checks above. An Enforcer
+			# Truck's showing windows depend on where the turrets hang: neither build plans them.
 			var isolated_config: LevelConfig = config.duplicate() as LevelConfig
 			isolated_config.danger_density_increase = 0.0
+			var truck_tuning: EnforcerTruckTuning = EnforcerRules.tuning()
+			var planned: bool = truck_tuning.show_window_planned
+			truck_tuning.show_window_planned = false
 			var isolated: LevelLayout = LevelGenerator.new().generate(isolated_config, tuning,
 				LevelGenerator.load_for(isolated_config))
 			var bare: LevelConfig = isolated_config.duplicate() as LevelConfig
@@ -337,6 +360,7 @@ func _test_placement() -> void:
 			bare.feature_starts = config.feature_starts.duplicate()
 			bare.feature_starts.erase(TYPE)
 			var other: LevelLayout = LevelGenerator.new().generate(bare, tuning, LevelGenerator.load_for(bare))
+			truck_tuning.show_window_planned = planned
 			var a: Dictionary = isolated.to_dict()
 			var kept: Array = []
 			for e: Dictionary in isolated.enemies:
@@ -743,8 +767,9 @@ func _test_determinism() -> void:
 
 ## Generated levels played through by a rider who takes every pad (god mode, grapples for the gaps):
 ## every burst comes from a turret ahead of a rider on its own ceiling, after its charge-up, with
-## enough warning, its bolts arriving while the rider is still on the ceiling; one burst in the air at
-## a time; never at a player off its ceiling.
+## enough warning, its bolts arriving while the rider is still on the ceiling; at most
+## GameRules.max_bursts_in_air bursts in the air at a time (GDD §9.2 and §9.8: two); never at a player
+## off its ceiling.
 func _test_fair_play() -> void:
 	var bursts_total: int = 0
 	for c: Array in [["corporate/2", 3], ["corporate/2", 5], ["marketplace/2", 6]]:
@@ -803,6 +828,7 @@ func _test_fair_play() -> void:
 							"a charge-up only at a rider on its ceiling %s" % tag)
 					&"cancel":
 						charge_t = -1.0
+						bursts[-1][1] = float(ev["t"])
 					&"shot":
 						var at: float = ev["t"]
 						check(charge_t >= 0.0 and at - charge_t >= bt.charge_time - 0.02, "every bolt follows a charge-up " + tag)
@@ -814,9 +840,9 @@ func _test_fair_play() -> void:
 						check(float(ev["impact"]) + bt.clear_after_impact <= float(m["end"]) - bt.end_margin + 0.5,
 							"every bolt arrives while the rider is still on the ceiling %s" % tag)
 						bursts[-1][1] = at
-		bursts.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-		for k: int in range(1, bursts.size()):
-			check(float(bursts[k][0]) >= float(bursts[k - 1][1]) - 0.001, "one burst in the air at a time " + tag)
+		var most: int = _most_at_once(bursts)
+		check(most <= w.rules.max_bursts_in_air,
+			"at most %d bursts in the air at a time (%d) %s" % [w.rules.max_bursts_in_air, most, tag])
 		bursts_total += bursts.size()
 		check(not met.is_empty(), "the run met turrets %s" % tag)
 		await sim.free_world(w)

@@ -24,6 +24,9 @@
 #   tools/godot.sh sfx [--review]     regenerate assets/sfx/*.wav from tools/asset_gen/sfx_gen.gd
 #   tools/godot.sh music [--review]   regenerate assets/music/*.wav from tools/asset_gen/music_gen.gd
 #                                     (--review writes images to build/sfx_review/, build/music_review/)
+#   tools/godot.sh doodads [--only=a,b] [--review]   regenerate assets/sprites/doodads/<zone>.png and
+#                                     .json (the zone doodads' picture cards) from
+#                                     tools/asset_gen/doodad_art_gen.gd (--review: atlases to build/doodad_review/)
 #   tools/godot.sh citizens           regenerate assets/sprites/citizens/*.png (the Marketplace
 #                                     citizens' flipbooks) from tools/asset_gen/citizen_sheet_gen.gd
 #   tools/godot.sh web [--debug] [--serve]  export the web demo to exports/web/ (--debug: a debug build to
@@ -354,6 +357,12 @@ case "$command" in
 	music)
 		import_if_stale
 		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/music_gen.gd -- "$@" 2>&1 | quiet
+		run_import
+		;;
+	doodads)
+		# Paints on the CPU (DoodadPaint), so it runs headless.
+		import_if_stale
+		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/doodad_art_gen.gd -- "$@" 2>&1 | quiet
 		run_import
 		;;
 	citizens)

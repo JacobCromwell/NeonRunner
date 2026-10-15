@@ -19,6 +19,14 @@
 //   end      the debug export with --level=city/outro: Enter leads to the "get the full game"
 //            screen, whose store tiles open the links in data/platform/store_links.json in a new
 //            tab (window.open, recorded here, never followed).
+//   phone_menus  an iPhone's page held sideways with the browser's bars (844x340 CSS pixels, the debug
+//            export, which logs how far the menus are magnified, UiScale): the log says a UI pixel is
+//            at least 0.64 of a CSS pixel (the engine knows the page's pixel ratio), the title and the
+//            shop answer taps and a finger's drag scrolls the shop (frames in phone_menus/).
+//   audio_session  the page marks its sound 'playback' (navigator.audioSession.type, which keeps an
+//            iPhone's silent switch from muting Web Audio): on a stand-in for Safari's API it's set at
+//            once and set again after a tap if the browser reset it; a browser without the API, and one
+//            that throws on it, load the game with no error.
 // Every scenario fails on a page error or an error in the console, and lists the warnings. Exit
 // code 0 when every check passes.
 
@@ -32,10 +40,11 @@ const options = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsW
 	return [k, v === undefined ? true : v];
 }));
 const OUT = path.resolve(ROOT, options.out || 'build/browser');
-const SCENARIOS = String(options.scenario || 'desktop,shop,phone,end').split(',');
+const SCENARIOS = String(options.scenario || 'desktop,shop,phone,end,phone_menus,audio_session').split(',');
 const RELEASE = path.join(ROOT, 'exports/web');
 const DEBUG = path.join(ROOT, 'exports/web_debug');
 const STORE_LINKS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/platform/store_links.json'), 'utf8'));
+const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const PHONE_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36';
 // The browser's own notice that sound waits for a gesture (the autoplay policy): expected.
 const EXPECTED_WARNINGS = [/The AudioContext was not allowed to start/];
@@ -351,6 +360,118 @@ async function phone(browser) {
 	server.close();
 }
 
+// An iPhone's page held sideways with the browser's bars: the menus are magnified to be readable.
+async function phoneMenus(browser) {
+	const name = 'phone_menus';
+	// Two device pixels to a CSS pixel keeps software WebGL quick; the magnifying works from the
+	// page's size in CSS pixels, so the layout is the one a 3x phone gets.
+	const iphone = { viewport: { width: 844, height: 340 }, userAgent: IPHONE_UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
+	const server = await serve(DEBUG);
+	const s = await openPage(browser, name, iphone, server);
+	await s.page.goto(s.url);
+	await booted(s.page, s.log, 9000);
+	await s.shot('title');
+	const logged = s.log.filter((l) => l.text.startsWith('[ui] menus magnified'));
+	const m = logged.length ? /x([\d.]+) \(window (\d+)x(\d+), pixel ratio ([\d.]+), ([\d.]+) CSS px per UI px\)/.exec(logged[logged.length - 1].text) : null;
+	check(name, m !== null && Number(m[4]) === 2 && Number(m[2]) === 1688 && Number(m[3]) === 680,
+		`the engine sees the page as ${m ? `${m[2]}x${m[3]} device pixels at ratio ${m[4]}` : 'no log line'} (844x340 CSS pixels at 2 per pixel)`);
+	check(name, m !== null && Number(m[5]) >= 0.64 && Number(m[5]) <= 0.7,
+		`and magnifies the menus to ${m ? m[5] : '?'} CSS pixels per UI pixel (x${m ? m[1] : '?'}), not the plain stretch's 0.2 to 0.5`);
+	// The title's SHOP button, by a tap (the compact title: three buttons in a row).
+	await s.page.touchscreen.tap(430, 243);
+	await s.page.waitForTimeout(6000);
+	const before = await s.page.screenshot({ path: path.join(s.dir, 'shop.png') });
+	// A finger's drag up the card list scrolls it, wherever it starts: on a card's text, then on a price button.
+	await swipe(s.cdp, 130, 190, 130, 40);
+	await s.page.waitForTimeout(3500);
+	const after = await s.page.screenshot({ path: path.join(s.dir, 'shop_scrolled.png') });
+	check(name, !before.equals(after), "a drag up from a card's text scrolls the shop (the frames differ)");
+	await s.page.mouse.move(420, 200);
+	await s.page.mouse.wheel(0, -2000);
+	await s.page.waitForTimeout(3500);
+	const top = await s.page.screenshot();
+	check(name, !top.equals(after), 'the wheel scrolls it back up (the frame differs from the scrolled one)');
+	await swipe(s.cdp, 425, 257, 425, 107);
+	await s.page.waitForTimeout(3500);
+	const fromButton = await s.page.screenshot({ path: path.join(s.dir, 'shop_scrolled_from_button.png') });
+	check(name, !top.equals(fromButton), 'and a drag that starts on a price button scrolls it too');
+	// Back (the arrow in the title bar), then the level select (a tile list) scrolls by a drag from a tile.
+	await s.page.touchscreen.tap(34, 30);
+	await s.page.waitForTimeout(4000);
+	await s.page.touchscreen.tap(190, 243);
+	await s.page.waitForTimeout(6000);
+	const levels = await s.page.screenshot({ path: path.join(s.dir, 'level_select.png') });
+	await swipe(s.cdp, 250, 250, 250, 100);
+	await s.page.waitForTimeout(3500);
+	const levelsScrolled = await s.page.screenshot({ path: path.join(s.dir, 'level_select_scrolled.png') });
+	check(name, !levels.equals(levelsScrolled), "a drag from a level tile scrolls the level select");
+	await finish(name, s);
+	server.close();
+}
+
+// The page's sound is 'playback' where the browser has the Audio Session API, and loads anyway where not.
+async function audioSession(browser) {
+	const name = 'audio_session';
+	const server = await serve(RELEASE);
+	const phoneContext = { viewport: { width: 640, height: 300 }, userAgent: IPHONE_UA, isMobile: true, hasTouch: true, deviceScaleFactor: 1 };
+	const stand_in = () => {
+		// What Safari has: navigator.audioSession with a type that starts as 'auto'.
+		window.__sets = [];
+		const session = {
+			_type: 'auto',
+			get type() { return this._type; },
+			set type(v) { window.__sets.push(v); this._type = v; },
+		};
+		Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true });
+	};
+	// 1) A browser with the API.
+	let s = await openPage(browser, name, phoneContext, server, 'audio_session_api');
+	await s.page.addInitScript(stand_in);
+	await s.page.goto(s.url);
+	await booted(s.page, s.log, 4000);
+	let state = await s.page.evaluate(() => ({ type: navigator.audioSession.type, sets: window.__sets }));
+	check(name, state.type === 'playback' && state.sets[0] === 'playback', `with the Audio Session API the page sets its type to 'playback' at once (${JSON.stringify(state.sets)})`);
+	// The browser sets it back (something else wrote it): the next tap puts it right again.
+	await s.page.evaluate(() => { navigator.audioSession._type = 'auto'; });
+	await s.page.touchscreen.tap(320, 150);
+	await s.page.waitForTimeout(1500);
+	state = await s.page.evaluate(() => navigator.audioSession.type);
+	check(name, state === 'playback', `and again after a tap, if it was reset (${state})`);
+	await s.page.evaluate(() => { navigator.audioSession._type = 'auto'; });
+	await s.page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+	state = await s.page.evaluate(() => navigator.audioSession.type);
+	check(name, state === 'playback', `and when the page comes back to the front (${state})`);
+	await finish(name, s);
+	// 2) A browser that has no API at all.
+	s = await openPage(browser, name, phoneContext, server, 'audio_session_none');
+	await s.page.addInitScript(() => {
+		try { delete Navigator.prototype.audioSession; } catch (e) { /* nothing to delete */ }
+		Object.defineProperty(navigator, 'audioSession', { value: undefined, configurable: true });
+	});
+	await s.page.goto(s.url);
+	const renderer = await booted(s.page, s.log, 3000);
+	check(name, renderer !== null && s.log.every((l) => l.type !== 'pageerror'), `a browser without the API loads the game, no page error (${renderer ? 'renderer up' : 'no renderer line'})`);
+	await finish(name, s);
+	// 3) A browser whose API refuses the setting.
+	s = await openPage(browser, name, phoneContext, server, 'audio_session_refuses');
+	await s.page.addInitScript(() => {
+		const session = { get type() { return 'auto'; }, set type(v) { throw new DOMException('not allowed', 'InvalidStateError'); } };
+		Object.defineProperty(navigator, 'audioSession', { value: session, configurable: true });
+	});
+	await s.page.goto(s.url);
+	const refused = await booted(s.page, s.log, 3000);
+	check(name, refused !== null && s.log.every((l) => l.type !== 'pageerror'), `and one that throws on it too (${refused ? 'renderer up' : 'no renderer line'})`);
+	await finish(name, s);
+	// 4) The real browser: Chromium's own Audio Session API, if it has one.
+	s = await openPage(browser, name, { viewport: { width: 640, height: 300 } }, server, 'audio_session_chromium');
+	await s.page.goto(s.url);
+	await booted(s.page, s.log, 3000);
+	const real = await s.page.evaluate(() => ('audioSession' in navigator) ? navigator.audioSession.type : null);
+	check(name, real === null || real === 'playback', `Chromium ${real === null ? 'has no navigator.audioSession' : "reports the type 'playback'"} (${real})`);
+	await finish(name, s);
+	server.close();
+}
+
 async function end(browser) {
 	const name = 'end';
 	const server = await serve(DEBUG, { args: ['--level=city/outro'] });
@@ -358,7 +479,8 @@ async function end(browser) {
 	await s.page.goto(s.url);
 	await booted(s.page, s.log);
 	await s.shot('outro_slot');
-	await s.page.keyboard.press('Enter');
+	// The City's outro is a cinematic ("SKIP · Esc"), not a slot card: skipping it leads to the end screen.
+	await s.page.keyboard.press('Escape');
 	await s.page.waitForTimeout(5000);
 	await s.shot('end_screen');
 	const stores = Object.keys(STORE_LINKS).filter((k) => !k.startsWith('_'));
@@ -383,7 +505,7 @@ async function end(browser) {
 		executablePath: options.chromium || undefined,
 		args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 	});
-	const all = { desktop, shop, phone, end };
+	const all = { desktop, shop, phone, end, phone_menus: phoneMenus, audio_session: audioSession };
 	for (const scenario of SCENARIOS) {
 		if (!all[scenario]) {
 			check(scenario, false, 'no such scenario');

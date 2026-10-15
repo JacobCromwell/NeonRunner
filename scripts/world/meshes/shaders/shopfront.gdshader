@@ -35,6 +35,8 @@ render_mode unshaded, cull_back;
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the scenery dims with it.
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 
 uniform vec3 trim_color : source_color = vec3(0.9, 0.88, 0.82);
 // Window frames, jambs and caps: pale anodised aluminium.
@@ -319,5 +321,5 @@ void fragment() {
 	float line = sun_line + 2.5 * (value_noise(vec2(world.z * 0.04, sign(n.x) * 7.0)) - 0.5) * 2.0;
 	float sunlit = sun_face * smoothstep(line - 0.4, line + 0.8, uv.y) * lit_by_sun;
 	col += albedo * to_linear(sun_color) * (sun_strength * sunlit);
-	ALBEDO = col * light_factor(scenery_light);
+	ALBEDO = col * light_factor(scenery_light) * scenery_tint;
 }

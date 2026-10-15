@@ -85,7 +85,7 @@ static func geometry(option: int) -> Array[Dictionary]:
 
 
 ## A. Broadcast Halo: a core with three broken concentric rings, their gaps rotated apart, echoing
-## the Resonator's own halos and its three-note chime (GDD §9.10). Reads as a generic signal/network
+## the Resonator's own halos (GDD §9.10). Reads as a generic signal/network
 ## mark, so it hides easily in a corporate wordmark; in the Golden Zone it becomes a gold sunburst
 ## medallion with a red core stone.
 static func _geometry_a() -> Array[Dictionary]:

@@ -62,7 +62,7 @@ extends BossEncounter
 ## front of the runner, its face tearing into static (DYING: held still with Reduced flashing), loses
 ## power and plunges forward into the street (FALLING: head_power_down; its screen collapses to a line
 ## and its lights die) at the first stretch ahead clear of holes and fences (crash_site), where it
-## breaks up (WRECKED: head_crash, dust, debris and cold sparks, no flash): its dead face falls flat in
+## breaks up (WRECKED: head_crash, a fireball over the wreck and at each end of it, dust, debris and cold sparks): its dead face falls flat in
 ## the street and its stern half lies sunk between the trucks, torn open at both ends, a tunnel the
 ## lanes run through (FloatingHeadModel's wreck). The runner runs over its face and through the wreck:
 ## nothing in it hurts, and anything left where it landed is crushed. The results wait until the runner
@@ -106,6 +106,12 @@ const SPARKS_EVERY: float = 0.9
 const SMOKE := Color(0.32, 0.32, 0.36)
 const DEBRIS := Color(0.2, 0.2, 0.26)
 const WRECK_SPARK := Color(0.8, 0.88, 1.0)
+## Its fireballs (RunEffects.fireball, radius in metres; GDD §11): the crash's, over the wreck (smaller at each
+## end of it), and the tower's landing on the ship (the hull bursting under it).
+const CRASH_FIRE_SIZE: float = 9.0
+## They play a little faster than their size makes them, so the way through the wreck is clear sooner.
+const CRASH_FIRE_PACE: float = 1.25
+const IMPACT_FIRE_SIZE: float = 3.2
 
 var body: FloatingHeadBody
 var tuning: FloatingHeadTuning
@@ -822,6 +828,7 @@ func _on_impact(side: int) -> void:
 	world.effects.shake(0.7, 0.9)
 	world.effects.burst(at, FloatingHeadTower.CONCRETE_LIGHT, 60, 2.0)
 	world.effects.burst(at + Vector3(0.0, -2.0, 0.0), FloatingHeadFaceOff.SPARK, 40, 1.4)
+	world.effects.fireball(at, IMPACT_FIRE_SIZE, false)
 	log_event(&"pinned", {"stern": pin_stern, "side": side, "route": route})
 	if pinned_tower != null and is_instance_valid(pinned_tower):
 		var along: float = -pinned_tower.axis_world().z
@@ -1174,7 +1181,7 @@ func _falling_tick() -> void:
 		_crash()
 
 
-## It hits the street and breaks up (the crash: sound, dust, debris, a heavy shake; no flash): its face
+## It hits the street and breaks up (the crash: sound, three fireballs, dust, debris, a heavy shake): its face
 ## tears off and falls flat into the street before it, its bow breaks away, and its stern half lies sunk
 ## between the trucks, a dark wreck the lanes run through. Anything left where it lands is crushed.
 func _crash() -> void:
@@ -1192,6 +1199,10 @@ func _crash() -> void:
 	var mid := Vector3(0.0, 1.0, TrackGeometry.world_z(crash_at + wreck_length() * 0.5))
 	sound(&"head_crash", body.screen_world())
 	world.effects.shake(0.9, 1.2)
+	# The ship goes up as it hits: a fireball over the wreck and one at each end (its own smoke follows).
+	world.effects.fireball(mid + Vector3(0.0, s.height * 0.2, 0.0), CRASH_FIRE_SIZE, false, CRASH_FIRE_PACE)
+	world.effects.fireball(Vector3(0.0, 2.0, TrackGeometry.world_z(crash_at + wreck_length() + 2.0)), CRASH_FIRE_SIZE * 0.75, false, CRASH_FIRE_PACE)
+	world.effects.fireball(Vector3(0.0, 1.0, TrackGeometry.world_z(crash_at - face_lead() * 0.5)), CRASH_FIRE_SIZE * 0.6, false, CRASH_FIRE_PACE)
 	world.effects.burst(mid, FloatingHeadTower.CONCRETE, 64, 3.0)
 	world.effects.burst(Vector3(0.0, 2.0, TrackGeometry.world_z(crash_at + wreck_length() + 2.0)), DEBRIS, 48, 2.2)
 	world.effects.burst(Vector3(0.0, 0.5, TrackGeometry.world_z(crash_at - face_lead() * 0.5)),

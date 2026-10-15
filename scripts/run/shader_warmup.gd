@@ -8,13 +8,17 @@ extends Node3D
 ##
 ## What it draws, each once (by shader and mesh kind):
 ## - every material on the run's hidden nodes: what waits in pools (shots, the weapon's effects) and
-##   the runner's protections and power-ups not shown yet;
-## - the shared effects' glow (sparks and debris, lines and warnings, opaque and see-through);
+##   the runner's protections and power-ups not shown yet; but not the hitbox view's boxes
+##   (GreyboxMaterials.is_debug_overlay): only a debug build shows them, and a release build would compile
+##   their shader for nothing (on the web, a few of the load's programs);
+## - the shared effects' glow (sparks and debris, lines and warnings, opaque and see-through) and the
+##   fireball's three looks (additive fire and embers, see-through smoke; FireballPool, task H6);
 ## - one look of every enemy kind the level brings (EnemyDirector.warm_looks), every part of it shown
 ##   (a muzzle's charge, a lunge line);
 ## - one of each track piece the zone skin dresses: fences full and gapped in each of their states,
-##   wall fences, a sign, a pad, a ramp, a speed pad, full and narrow ceilings, every doodad size, gap
-##   edges and the finish line;
+##   wall fences, a sign, a pad, a ramp, a speed pad, full and narrow ceilings, every doodad size, a dash
+##   wall (task H7a, in a level that has them; its crumble's pieces and dust wait hidden in RunEffects, so
+##   they're sampled with the hidden nodes), gap edges and the finish line;
 ## - every credit denomination's look (CreditField.mesh_for/material_for), since a level's own layout
 ##   may carry only some of them, or none at all (a boss's track, Hostile Takeover's) and still drop
 ##   one later (a Tithe Collector's trail, a jackpot's fountain, CreditField.place).
@@ -64,6 +68,7 @@ func setup(world: RunWorld, camera: Camera3D) -> void:
 	scale = Vector3.ONE * SCALE
 	_sample_hidden(world)
 	_sample_effects()
+	_sample_fireballs(world)
 	_sample_credits()
 	for look: Node in world.director.warm_looks():
 		add_child(look)
@@ -125,7 +130,7 @@ func _sample_geometry(geometry: GeometryInstance3D) -> void:
 				materials.append(m)
 	for m: Material in materials:
 		var key: String = "%s|%s|%s" % [kind, mesh.get_class(), shader_key(m)]
-		if keys.has(key):
+		if keys.has(key) or GreyboxMaterials.is_debug_overlay(m):
 			continue
 		keys[key] = true
 		if particles != null:
@@ -154,6 +159,20 @@ func _sample_effects() -> void:
 		box.mesh = GreyboxMaterials.unit_box()
 		box.material_override = glow
 		add_child(box)
+
+
+## The fireball's materials (every explosion in the game: FireballPool): additive fire and embers and
+## see-through smoke, billboard particles, which a renderer prepares when the first one is drawn, so the
+## first explosion of a run would otherwise be a long frame.
+func _sample_fireballs(world: RunWorld) -> void:
+	if world.effects == null:
+		return
+	for material: Material in world.effects.fireballs().materials():
+		var key: String = "fireball|%s" % shader_key(material)
+		if keys.has(key):
+			continue
+		keys[key] = true
+		_add_multimesh(FireballPool.quad(), material, true, true)
 
 
 ## Every credit denomination's look, one instance each, matching CreditField's own placed-credit
@@ -199,6 +218,20 @@ func _show_all() -> void:
 		node3d.visible = not node is Light3D
 		if node is CPUParticles3D:
 			_sample_geometry(node as CPUParticles3D)
+
+
+## A headless run has no warm-up (needed()), yet a zone's doodads still read their pictures from disk the first
+## time one is dressed (DoodadCards.for_zone: an atlas file, a few milliseconds). LevelRun dresses one here
+## during the load instead, so that read never lands in a frame of the run, as it doesn't when the game renders
+## (the warm-up's own doodads load it). Nothing is kept: the doodad goes at once.
+static func load_doodads(world: RunWorld) -> void:
+	if world.skin == null:
+		return
+	var size_class: StringName = LevelLayout.DOODAD_SIZES[0]
+	var box_size: Vector3 = world.tuning.doodad_size(size_class)
+	var body := Node3D.new()
+	world.skin.doodad(body, Vector3(box_size.x, box_size.y, 4.0), size_class, 1, 0)
+	body.free()
 
 
 ## One of each track piece the zone skin dresses, at the track's start, on parents that collide with
@@ -247,6 +280,10 @@ func _sample_track(world: RunWorld) -> void:
 		var body := Node3D.new()
 		add_child(body)
 		skin.doodad(body, Vector3(box_size.x, box_size.y, 4.0), size_class, 1, 0)
+	if world.layout != null and not world.layout.dash_walls.is_empty():
+		var wall := Node3D.new()
+		add_child(wall)
+		skin.dash_wall(wall, TrackBuilder.dash_wall_size(geo, t, t.dash_wall_depth), 0)
 	var floor_root := Node3D.new()
 	add_child(floor_root)
 	var span: Vector2 = geo.lane_floor_span(0)

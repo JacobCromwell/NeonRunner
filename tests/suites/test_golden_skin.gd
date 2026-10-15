@@ -33,14 +33,12 @@ const GLOW_SATURATION_LIMIT: float = 0.35
 ## this much less saturated (HSV).
 const GOLD_DISTANCE: float = 0.3
 const GOLD_SATURATION_GAP: float = 0.25
-## Gaps: the darkest golden_metal() draws a gold (the dark end of its reflection: half its colour,
-## a quarter greyed; kit_golden.gdshaderinc), the brightest factors PAT_UNDERDECK and PAT_CANAL
-## give their colours, and how much darker than the darkest floor a gap's inside must stay (linear
-## luminance).
+## Gaps: the darkest golden_metal() draws a gold (the dark end of its reflection: half its colour, a quarter
+## greyed; kit_golden.gdshaderinc). What is below the walkways is held to SkinSuite.hole_share() with the
+## patterns' true peaks: PAT_UNDERDECK caps its result at COLOR (gap_inside_color) plus the sky's colour
+## (canal_sky_color), PAT_CANAL at its COLOR (canal_color) plus the sky's and the lamps' (canal_lamp_color); every
+## other term in the shader is a fraction of those.
 const GOLD_DARKEST: float = 0.5
-const UNDER_MAX_FACTOR: float = 1.0
-const CANAL_MAX_FACTOR: float = 1.12
-const GAP_CONTRAST: float = 0.35
 ## The emblem is shown openly and large (GDD §5): never smaller than this on the walls and overhead.
 const EMBLEM_MIN_SIZE: float = 2.0
 
@@ -184,15 +182,17 @@ func _surfaces(skin: GoldenSkin) -> void:
 	var drapes: Vector3 = facade.get_shader_parameter("drape_color")
 	check(_same_rgb(Color(drapes.x, drapes.y, drapes.z), skin.red_color), "the windows' drapes are the zone's red (unlit)")
 	# A level's darker lighting (ZoneSkin.apply_darkness) reaches the zone's own facade shader, as it
-	# does the kit's: its faces dim with the global scenery_light, once, as a linear factor.
+	# does the kit's: its faces dim with the global scenery_light, once, as a linear factor, and take the
+	# street's light under a level's own sky (the global scenery_tint, LevelSky) with it.
 	var code: String = FileAccess.get_file_as_string(facade.shader.resource_path)
 	check(code.contains("global uniform float scenery_light;") and code.count("scenery_light") == 2
-		and code.contains("ALBEDO = col * light_factor(scenery_light);"), "the facades dim with a level's darker lighting")
+		and code.contains("ALBEDO = col * light_factor(scenery_light) * scenery_tint;"),
+		"the facades dim with a level's darker lighting, and take the street's light under a level's own sky")
 
 
 ## Gaps read as holes at a glance, as in every zone (CLAUDE.md readability rules): whatever a gap
-## shows is in deep shade or dark water, far darker than any walkway or ridden underside can be
-## drawn, and nothing in it glows but the orange edge; no floor is drawn in (or near) the edge's
+## shows (the quay's arches and the canal's water, task H3) stays clearly darker than any walkway as rendered
+## (SkinSuite.hole_share, counting what the water reflects), and nothing in it glows but the orange edge; no floor is drawn in (or near) the edge's
 ## colour; the showcase gap carries the full orange edge on both sides (the lip on the deck right at
 ## the collision edge, the strip along the top of its face, and on the far side the halo). Checked
 ## over whole levels at 3 and 5 lanes: below the walkways there is nothing but the shade, the water,
@@ -204,10 +204,8 @@ func _gaps(skin: GoldenSkin) -> void:
 	var darkest: float = INF
 	for c: Color in floors:
 		darkest = minf(darkest, _linear_luminance(c))
-	var inside: float = maxf(_linear_luminance(skin.gap_inside_color * Color(UNDER_MAX_FACTOR, UNDER_MAX_FACTOR,
-		UNDER_MAX_FACTOR)), _linear_luminance(skin.canal_color * Color(CANAL_MAX_FACTOR, CANAL_MAX_FACTOR, CANAL_MAX_FACTOR)))
-	check(inside < darkest * GAP_CONTRAST, "a gap's inside stays far darker than the darkest walkway: %.4f vs %.4f" % [
-		inside, darkest])
+	check_hole_share("the Golden Zone", [SkinSuite.srgb_sum([skin.gap_inside_color, skin.canal_sky_color])],
+		[SkinSuite.srgb_sum([skin.canal_color, skin.canal_sky_color, skin.canal_lamp_color])], darkest)
 	# Floors: the walkways and kerbs, and the undersides a rider runs on (bridges, archways, yachts).
 	var like_edge: PackedStringArray = []
 	var surfaces: Array[Color] = [skin.walkway_color, skin.gold_color, skin.gold_shine_color, skin.kerb_color, skin.coffer_color,
@@ -254,7 +252,7 @@ func _gaps(skin: GoldenSkin) -> void:
 	check(halo, "the far edge carries its orange halo toward the approaching runner")
 	await free_track(track)
 	# Whole levels, chunk by chunk: below the walkways only the shade, the water, the strips, the halo.
-	var shade: float = inside + 0.0001
+	var shade: float = maxf(_linear_luminance(skin.gap_inside_color), _linear_luminance(skin.canal_color)) + 0.0001
 	for lanes: int in [3, 5]:
 		var layout: LevelLayout = level(GOLDEN_LEVEL_PATH, lanes, 0.6, 9)
 		var world := Node3D.new()

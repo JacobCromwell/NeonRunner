@@ -59,7 +59,7 @@ func _build() -> void:
 	model = TheHouseModel.new()
 	model.name = "Model"
 	add_child(model)
-	model.build(_shape)
+	model.build(_shape, world.skin)
 	var s: TheHouseModel.Shape = _shape
 	_core = add_hitbox(&"body", Vector3(s.width - 0.2, s.height, s.depth),
 		Vector3(0.0, s.height * 0.5, -s.depth * 0.5), false)

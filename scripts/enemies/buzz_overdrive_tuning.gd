@@ -18,7 +18,7 @@ extends EnemyTuning
 @export_group("Attack")
 ## How long it revs before it charges: its warning (GDD §9.9: "revs in view for a few seconds"). The
 ## level's enemy_scaling picks a value between the two (0 = the campaign's first level, 1 = its last):
-## it first appears in Corporate 1 (scaling 0.57: 2.93 s) and revs a little faster each level up to the
+## it first appears in Corporate 1 (scaling 0.625: 2.88 s) and revs a little faster each level up to the
 ## Golden Palace (2.5 s), the only thing that changes across the campaign (GDD §9.9).
 @export_range(1.0, 6.0, 0.05, "suffix:s") var rev_seconds_early: float = 3.5
 @export_range(1.0, 6.0, 0.05, "suffix:s") var rev_seconds_late: float = 2.5

@@ -14,7 +14,7 @@ const TOGGLES: Array = [
 	["screen_shake", "Screen shake", "The camera shakes on hits and hard landings."],
 	["reduced_flashing", "Reduced flashing", "Softer flashes: steady glows instead of blinking."],
 	["hints", "Show hints", "A short tip the first time something new appears."],
-	["citizens", "Market citizens", "Shoppers in the Marketplace's shop windows (always off on low-end devices)."],
+	["citizens", "Market citizens", "Shoppers in the shop windows of the Marketplace and the Casino (always off on low-end devices)."],
 ]
 ## The fonts the game ships with. The SIL Open Font License asks for its text to go with them: here
 ## it's one button away (the export presets include *.txt for these files).

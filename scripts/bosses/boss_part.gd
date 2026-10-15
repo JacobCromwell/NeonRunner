@@ -140,7 +140,8 @@ func weak_points_enabled() -> bool:
 
 ## A solid surface the player can stand on (`ceiling` off: a pinned ship's top, the hover truck's
 ## roof) or ride underneath like a ceiling section (`ceiling` on: a gunship's belly, reached by an
-## anti-grav pad). It moves with the part. Box in the part's local space (or `parent`'s).
+## anti-grav pad), at any height: the player rides a belly where it is and goes with it as it moves
+## (Player.ceiling_y). It moves with the part. Box in the part's local space (or `parent`'s).
 func add_surface(box_size: Vector3, offset: Vector3, ceiling: bool = false, parent: Node3D = null) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.collision_layer = TrackBuilder.LAYER_HULL if ceiling else TrackBuilder.LAYER_FLOOR

@@ -16,9 +16,13 @@ extends RefCounted
 ##    in the moment after a theft (Defense.theft_immune), so one touch robs once. It isn't damage, so
 ##    nothing below stops it. (Steps 2–4 still come first: the dash, a stomp and the claws catch it.)
 ## 6. Invulnerability (after a block or revive) and god mode ignore everything harmful.
-## 7. Armor that is up blocks an electrical hazard or an enemy attack, never a solid collision.
+## 7. Armor that is up blocks an electrical hazard or an enemy attack, never a solid collision, unless the
+##    hazard declares armor_blocks_solid (a dash wall's crash, GDD §9.14: "armor or the shield absorbs it").
 ## 8. The shield blocks one hit of anything.
 ## 9. Otherwise the player dies (one hit ends the run, GDD §4).
+## A breakable obstacle (Hazard.breakable: a dash wall, task H7a) also breaks at any contact, whatever the
+## outcome above (the dash's IGNORE, a block, a kill, god mode or the invulnerability window): the Player
+## applies that with the outcome (Player.receive_hit), so the runner passes it after an absorbed hit.
 ##
 ## The armor itself (GDD §4, §8) is a state with rules of its own, below (Armor): up with its hits left,
 ## or broken and coming back. The Player holds one and applies what resolve() says to it.
@@ -83,7 +87,7 @@ static func resolve(hazard: Hazard, defense: Defense, stomping: bool = false) ->
 
 	if defense.invulnerable or defense.god_mode:
 		return Outcome.IGNORE
-	if defense.armor and (hazard.is_electrical or hazard.is_enemy_attack):
+	if defense.armor and (hazard.is_electrical or hazard.is_enemy_attack or hazard.armor_blocks_solid):
 		return Outcome.BLOCKED_ARMOR
 	if defense.shield:
 		return Outcome.BLOCKED_SHIELD

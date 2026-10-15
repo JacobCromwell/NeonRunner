@@ -72,8 +72,9 @@ extends EnemyTuning
 ## How long the ceiling above each scheduled pad lasts (FB 90).
 @export_range(1.0, 8.0, 0.5, "suffix:s") var pad_ceiling_seconds: float = 3.0
 ## A wave can bring a second drone (extra attackers, GDD §6) only from this
-## enemy_scaling on, and never as a level's first wave (one new thing at a time; FB 89).
-@export_range(0.0, 1.0, 0.05) var pair_min_scaling: float = 0.5
+## enemy_scaling on, and never as a level's first wave (one new thing at a time; FB 89). 0.4: from
+## Marketplace 2 on (0.5 before the Casino's levels re-spaced the campaign's enemy scaling, task K2).
+@export_range(0.0, 1.0, 0.05) var pair_min_scaling: float = 0.4
 ## A new wave of drones comes at least this long after the previous one (FB 89).
 @export_range(0.0, 120.0, 1.0, "suffix:s") var min_wave_gap_seconds: float = 20.0
 ## A level with the drone feature always gets at least one drone (FB 89; the patterns may pick

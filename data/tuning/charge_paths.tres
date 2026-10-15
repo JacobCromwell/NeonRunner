@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ChargePathTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/charge_path_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+dog_cyborg_ahead = 2.5
+claim_seconds = 4.0
+tank_cyborg_seconds = 0.35
+hold_before_seconds = 1.0
+hold_after_seconds = 0.5
+in_view_seconds = 0.4
+attack_margin_seconds = 2.0
+skip_introductions = true

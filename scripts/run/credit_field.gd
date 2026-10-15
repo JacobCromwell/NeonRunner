@@ -90,6 +90,8 @@ var _placed: Dictionary = {}
 var _placed_entries: Dictionary = {}
 static var _meshes: Dictionary = {}
 static var _materials: Dictionary = {}
+## Shader code → its one Shader, shared by every denomination drawn with it (material_for).
+static var _shaders: Dictionary = {}
 
 
 func setup(p_world: RunWorld) -> void:
@@ -335,13 +337,18 @@ static func color_of(value: int) -> Color:
 
 
 ## A denomination's spinning material (one per denomination, shared by every credit drawn in
-## its look: the field's, and RunEffects' coin streams).
+## its look: the field's, and RunEffects' coin streams). The denominations with the same code share
+## its Shader: the renderer compiles a shader once per Shader, not once per code, so one each was
+## the same program compiled three times over (the web demo's load).
 static func material_for(value: int) -> Material:
 	if not _materials.has(value):
-		var shader := Shader.new()
-		shader.code = HIGH_CREDIT_SHADER if value == 100 else SPIN_SHADER
+		var code: String = HIGH_CREDIT_SHADER if value == 100 else SPIN_SHADER
+		if not _shaders.has(code):
+			var shader := Shader.new()
+			shader.code = code
+			_shaders[code] = shader
 		var m := ShaderMaterial.new()
-		m.shader = shader
+		m.shader = _shaders[code]
 		m.set_shader_parameter(&"color", color_of(value))
 		if value != 100:
 			m.set_shader_parameter(&"energy", 2.0 if value < 25 else 3.0)

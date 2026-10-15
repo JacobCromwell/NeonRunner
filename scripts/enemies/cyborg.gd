@@ -3,14 +3,15 @@ extends Enemy
 ## The cyborg (GDD §9.2): a humanoid standing on the floor lanes (the truck roofs), a ragged gangster
 ## whose whole head is a screen showing its LED face (CyborgBody, CyborgSuit), with an arm cannon
 ## (CyborgGun: a visible charge-up with a sound, bursts of 2–3 loosely aimed laser bolts, a reload
-## pause).
+## pause). Up to two bursts of the cyborg-type guns are in the air at once (CyborgAirspace, GDD §9.2).
 ## - Normal: walks slowly toward the player, stopping to shoot, and drops behind quickly once passed.
 ## - Panic variant (about 1 in 3, rolled by the generator: params.panic): freezes with a shocked "O"
 ##   face when the player comes near, then runs away ahead of them, firing wildly over its shoulder,
 ##   and cowers once it runs out of room.
 ## - Host (params.host, feature `host`, GDD §9.7): its screen glitches purple and purple veins glow
-##   along its neck and arms. Auto-fire never targets it and missile splash never hurts it; killing
-##   it earns a big bonus and releases the Bad Dream.
+##   along its neck and arms. Weapons hit it like any other cyborg (owner, October 8, 2026: auto-fire
+##   targets it, shots and splash hurt it); killing it, by any means, releases the Bad Dream, and a
+##   stomp, the claws or the dash also earn the big host bonus (_release_bad_dream). It never panics.
 ## Killed by a stomp on the head, weapons, claws or the dash: a stompable top over the head and a
 ## solid body (both slightly smaller than the visuals, and the body stops below the stomp line, so a
 ## player dropping onto the head only ever touches the head).
@@ -23,13 +24,22 @@ extends Enemy
 ## gun's `pace`), so in a faster zone it walks, flees and shoots faster, from further out, in the same
 ## seconds.
 ##
-## Spawn params: panic (bool), host (bool), fires (bool, default true; tests), health (float).
+## - Planted in a charge's path (task G7; GDD §9.13 "Teaching"; ChargePathPlacement, params `charge_path`): a
+##   plain floor cyborg that stands where it was placed (params `stand`: no walk toward the player) so an Octodog's
+##   lunge or a Buzz Overdrive's charge meets it where planned, and holds its fire while the runner is in its
+##   `hold_fire` stretch (a Vector2 of the runner's distances: the charge's warning and strike), with no bolt of
+##   its arriving there either (CyborgGun.hold).
+##
+## Spawn params: panic (bool), host (bool), fires (bool, default true; tests), health (float), stand (bool),
+## hold_fire (Vector2).
 
 enum Mode { WAIT, WALK, STARTLED, FLEE, COWER, PASSED }
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const BAD_DREAM_SCRIPT: String = "res://scripts/enemies/bad_dream.gd"
+## The player's own contacts (DamageRules.defeat_cause): a host they kill this way earns the host bonus.
+const CONTACT_CAUSES: Array[StringName] = [&"stomp", &"claws", &"dash"]
 ## The solid body: slimmer than the visual torso and legs (arms included), and ending at 1.0 m, below
 ## the stomp line (the head's top minus GameRules.stomp_tolerance).
 const BODY_SIZE := Vector3(0.4, 1.0, 0.28)
@@ -49,6 +59,10 @@ var home: float = 0.0
 ## The closest it may walk toward the player, and the furthest a panic run may take it.
 var walk_limit: float = 0.0
 var run_limit: float = 0.0
+## Task G7: it stands where it was placed (params `stand`), and holds its fire while the runner is in this
+## stretch of their distances (params `hold_fire`; empty: never).
+var stand: bool = false
+var hold_fire := Vector2(INF, -INF)
 
 ## Speed along the track: + = forward (away from the player).
 var _speed: float = 0.0
@@ -90,6 +104,9 @@ func _build() -> void:
 		is_panic = bool(p["panic"])
 	else:
 		is_panic = not is_host and rng.randf() < tuning.panic_chance
+	stand = bool(p.get("stand", false))
+	if p.get("hold_fire") is Vector2:
+		hold_fire = p["hold_fire"]
 	add_hitbox(&"body", BODY_SIZE, Vector3(0.0, BODY_SIZE.y * 0.5, 0.0))
 	add_hitbox(&"top", HEAD_SIZE, Vector3(0.0, HEAD_Y, 0.0))
 	body = CyborgBody.new()
@@ -101,6 +118,7 @@ func _build() -> void:
 	gun.wild_spread = tuning.panic_spread
 	gun.enabled = bool(p.get("fires", true))
 	gun.may_attack = _may_attack
+	gun.hold = hold_fire
 	_compute_limits()
 	health_changed.connect(func(_e: Enemy) -> void: body.flash())
 
@@ -159,15 +177,18 @@ func _on_defeated(cause: StringName) -> void:
 	# DESIGN-TBD (docs/questions/p2.md 1): they were orange.
 	world.effects.burst(aim_point(), Kit.LED_COLOR, 20, 0.7)
 	if is_host:
-		_release_bad_dream()
+		_release_bad_dream(cause)
 	body.death_finished.connect(queue_free)
 	body.die(cause)
 
 
-## GDD §9.7: killing a host is a deliberate choice that earns a big bonus, then the Bad Dream bursts
-## out of it. The Bad Dream is spawned only once its script exists.
-func _release_bad_dream() -> void:
-	world.score.add_bonus(&"host", tuning.host_bonus, "Host")
+## GDD §9.7: the Bad Dream bursts out of a killed host, whatever killed it (a weapon too, owner, October
+## 8, 2026). A stomp, the claws or the dash earn the big host bonus (host_bonus); a weapon kill earns
+## weapon_host_bonus (DESIGN-TBD, docs/OPEN_QUESTIONS.md item 628: 0, so it pays an ordinary cyborg kill's score
+## only). ScoreKeeper pays the kill itself either way. The Bad Dream is spawned only once its script
+## exists.
+func _release_bad_dream(cause: StringName) -> void:
+	world.score.add_bonus(&"host", host_bonus_for(cause), "Host")
 	world.play_sfx_at(&"bad_dream_emerge", aim_point())
 	world.effects.burst(aim_point(), Kit.GLITCH_COLOR, 36, 1.2)
 	if ResourceLoader.exists(BAD_DREAM_SCRIPT):
@@ -177,12 +198,23 @@ func _release_bad_dream() -> void:
 		world.director.spawn.call_deferred(entry)
 
 
+## The host bonus a host's defeat by `cause` earns (GDD §9.7): host_bonus for the player's own contact (a
+## stomp, the claws or the dash, DamageRules.defeat_cause), weapon_host_bonus for a shot or a missile's
+## splash, and nothing for any other cause (none defeats a host today: other enemies' charges pass it by).
+func host_bonus_for(cause: StringName) -> int:
+	if cause in CONTACT_CAUSES:
+		return tuning.host_bonus
+	return tuning.weapon_host_bonus if cause == &"weapon" else 0
+
+
 func _may_attack() -> bool:
 	var player: Player = world.player
 	if not player.alive or not player.running or player.surface == Player.Surface.CEILING:
 		return false
 	if mode == Mode.PASSED or mode == Mode.STARTLED or (is_panic and mode == Mode.WAIT):
 		return false
+	if player.distance >= hold_fire.x and player.distance <= hold_fire.y:
+		return false  # Task G7: planted in a charge's path, it holds its fire through the charge.
 	var ahead: float = track_distance() - player.distance
 	return ahead > 0.0 and ahead <= gun.engage_distance()
 
@@ -196,23 +228,17 @@ func _enter(next: Mode) -> void:
 			gun.stop()
 
 
-## Keeps the walk and the panic run clear of every obstacle (GDD §9 fairness) and of every ceiling's
-## landing zone (GDD §3: the floor there is safe to land on).
+## Keeps the walk and the panic run clear of every obstacle (GDD §9 fairness; a dash wall's clear stretch too,
+## task H7a: it never runs through a standing wall nor cowers right behind it) and of every ceiling's landing
+## zone (GDD §3: the floor there is safe to land on): CyborgRules.obstacle_spans and limits.
 func _compute_limits() -> void:
-	var margin: float = CyborgRules.obstacle_margin_at(tuning, world.tuning.pace())
-	walk_limit = home - tuning.walk_max
-	run_limit = minf(home + tuning.panic_run_max * world.tuning.pace(), world.layout.length - margin)
 	var zones := CeilingZones.make(world.config, world.tuning)
-	for s: Vector2 in CyborgRules.obstacle_spans(world.layout, world.tuning, zones):
-		if s.y <= home:
-			walk_limit = maxf(walk_limit, s.y + margin)
-		elif s.x >= home:
-			run_limit = minf(run_limit, s.x - margin)
-		else:
-			walk_limit = home
-			run_limit = home
-	walk_limit = minf(walk_limit, home)
-	run_limit = maxf(run_limit, home)
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(world.layout, world.tuning, zones)
+	var at: Vector2 = CyborgRules.limits(spans, tuning, world.tuning.pace(), home, world.layout.length)
+	walk_limit = at.x
+	run_limit = at.y
+	if stand:
+		walk_limit = home
 
 
 func _update_body(delta: float) -> void:

@@ -106,6 +106,10 @@ const SCREENS_DARK_AT: float = 0.9
 ## The gunship's explosion rolls on in blasts this long after it blows (seconds), and the crash's too.
 const BLASTS: Array[float] = [0.0, 0.18, 0.36]
 const CRASHES: Array[float] = [0.0, 0.22]
+## How big each of those blasts is, one entry for each of them (metres across, HostileTakeoverLobby.blast): the
+## first of each is the big one.
+const BLAST_SIZES: Array[float] = [18.0, 12.0, 9.0]
+const CRASH_BLAST_SIZES: Array[float] = [20.0, 12.0]
 ## The city's towers keep this far clear of the lobby either side.
 const LOBBY_CLEAR: float = 6.0
 
@@ -578,10 +582,9 @@ func _defeated_tick(delta: float) -> void:
 	if _crashed:
 		lobby.topple((t - tuning.crash_at) / TOPPLE_SECONDS)
 	_place_gunship()
-	# Beaten, the parts no longer tick: the screens' and the blasts' clocks run from here.
+	# Beaten, the parts no longer tick: the screens' clock runs from here.
 	screens.step(delta)
 	screens.pace(player_distance())
-	lobby.step(delta)
 
 
 ## The gunship blows up in the sky, away from the line (its blasts roll on: _blast).
@@ -596,14 +599,12 @@ func _explode() -> void:
 	log_event(&"gunship_exploded")
 
 
-## One of the explosion's blasts (`i`-th), each a little further out: a fireball (HostileTakeoverLobby.blast)
-## on the first, sparks on each.
+## One of the explosion's blasts (`i`-th), each a little further out: a fireball on each, the first the
+## biggest (HostileTakeoverLobby.blast, RunEffects' pooled fireball), and a shower of sparks.
 func _blast(i: int) -> void:
 	var at: Vector3 = _explosion_at + Vector3((i - 1) * 3.0, i * 1.5, -i * 2.0)
-	if i == 0:
-		lobby.blast(_explosion_at, 16.0)
+	lobby.blast(at, BLAST_SIZES[i])
 	world.effects.burst(at, Color(1.0, 0.86, 0.6), 64, 3.2 - i * 0.4)
-	world.effects.burst(at + Vector3(0.0, 1.0, 0.0), HostileTakeoverModel.ENGINE if i == 0 else Color(1.0, 0.62, 0.3), 40, 2.4)
 
 
 ## The locomotive ploughs into the lobby (its blasts: _crash_blast); its sculpture starts to topple.
@@ -617,12 +618,11 @@ func _crash() -> void:
 	log_event(&"locomotive_crashed")
 
 
-## One of the crash's blasts (`i`-th): a fireball out of the lobby's front on the first, glass and sparks
-## bursting out on each.
+## One of the crash's blasts (`i`-th): a fireball out of the lobby's front on each, the first the biggest,
+## and glass and sparks bursting out.
 func _crash_blast(i: int) -> void:
 	var at: Vector3 = lobby.lobby_world() + Vector3(0.0, i * 2.0, -i * 4.0)
-	if i == 0:
-		lobby.blast(lobby.lobby_world() + Vector3(0.0, 4.0, 0.0), 18.0)
+	lobby.blast(at + Vector3(0.0, 4.0 if i == 0 else 1.0, 0.0), CRASH_BLAST_SIZES[i])
 	world.effects.burst(at, HostileTakeoverModel.COLD_WHITE, 64, 3.0 - i * 0.6)
 	world.effects.burst(at + Vector3(0.0, 1.5, 0.0), Color(1.0, 0.86, 0.6), 40, 2.2)
 

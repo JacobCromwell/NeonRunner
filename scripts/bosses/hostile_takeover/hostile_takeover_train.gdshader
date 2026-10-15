@@ -15,6 +15,8 @@ render_mode unshaded, cull_back, depth_draw_opaque, world_vertex_coords;
 
 // A level's darker lighting (ZoneSkin.apply_darkness): the lit surfaces dim, glowing ones don't.
 global uniform float scenery_light;
+// The street's light under a level's own sky (ZoneSkin.set_scenery_tint; white = the zone's own).
+global uniform vec3 scenery_tint;
 uniform float glow_scale = 4.0;
 uniform vec3 sheen_color : source_color = vec3(0.3, 0.34, 0.42);
 uniform float sheen_strength = 0.2;
@@ -101,7 +103,7 @@ void fragment() {
 		float shade = 0.62 + 0.3 * max(n.y, 0.0) + 0.08 * abs(n.x) + 0.06 * n.z - 0.04 * max(-n.y, 0.0);
 		float f = 1.0 - clamp(dot(nv, VIEW), 0.0, 1.0);
 		vec3 sheen = to_linear(sheen_color) * (f * f * f * sheen_strength);
-		col = (to_linear(base) * shade + sheen) * light_factor(scenery_light);
+		col = (to_linear(base) * shade + sheen) * light_factor(scenery_light) * scenery_tint;
 	}
 	ALBEDO = col;
 }

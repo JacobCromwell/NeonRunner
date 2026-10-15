@@ -3,14 +3,12 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   gilded_sentinel_grind  the warning (GDD §9.11: "its eyes flare and stone grinds"): a heavy stone
 ##                          statue coming to life, a gritty grinding over a deep rumble that swells
 ##                          through the warning, and the scrape of the halberd being drawn back over
-##                          its last part (GildedSentinel.RAISE_SECONDS before the swing). Nothing like
+##                          its last part (GildedSentinelTuning.raise_seconds() before the swing). Nothing like
 ##                          any other warning: no chime, crackle or whine.
 ##   gilded_sentinel_swing  the halberd sweeping through its cut: a heavy, fast whoosh with the blade's
 ##                          ring at its front and a stone thud.
 ##   gilded_sentinel_break  shot down or kicked: stone cracking and crumbling, gold clattering, a dull
 ##                          thump.
-
-const SentinelScript = preload("res://scripts/enemies/gilded_sentinel.gd")
 
 
 func sounds() -> Dictionary:
@@ -21,10 +19,20 @@ func sounds() -> Dictionary:
 	}
 
 
+## The sentinel's tuning (data/enemies/gilded_sentinel.tres): the grind is as long as its warning.
+func _tuning() -> GildedSentinelTuning:
+	var t := load("res://data/enemies/gilded_sentinel.tres") as GildedSentinelTuning
+	return t if t != null else GildedSentinelTuning.new()
+
+
 ## Seconds the warning lasts (GildedSentinelTuning.warning_seconds): the grind fills it.
 func _warning() -> float:
-	var t := load("res://data/enemies/gilded_sentinel.tres") as GildedSentinelTuning
-	return t.warning_seconds if t != null else 1.2
+	return _tuning().warning_seconds
+
+
+## Seconds the halberd takes to be drawn back, at the end of the warning (raise_seconds()).
+func _raise() -> float:
+	return minf(_tuning().raise_seconds(), _warning())
 
 
 ## Stone grinding on stone: noise through low resonant band-passes, chopped into grains at an uneven
@@ -57,12 +65,13 @@ func _grind() -> PackedFloat32Array:
 		rumble[i] *= smoothstep(0.0, 0.3, t) * (1.0 - smoothstep(length - 0.15, length, t))
 	DSP.mix(b, rumble, 0.0, 0.45)
 	# The halberd drawn back: a rising metal scrape, ringing as it ends.
-	var draw_at: float = maxf(_warning() - SentinelScript.RAISE_SECONDS, 0.0)
-	var scrape := DSP.noise(SentinelScript.RAISE_SECONDS, rng)
+	var raise: float = _raise()
+	var draw_at: float = maxf(_warning() - raise, 0.0)
+	var scrape := DSP.noise(raise, rng)
 	DSP.filter_sweep(scrape, &"bandpass", 1800.0, 5200.0, 4.0)
 	DSP.shape(scrape, 0.12, 0.08)
 	DSP.mix(b, scrape, draw_at, 0.55)
-	DSP.mix(b, DSP.metal_hit(0.45, 1320.0, 0.18, rng), draw_at + SentinelScript.RAISE_SECONDS * 0.85, 0.25)
+	DSP.mix(b, DSP.metal_hit(0.45, 1320.0, 0.18, rng), draw_at + raise * 0.85, 0.25)
 	DSP.drive(b, 1.6)
 	DSP.crush(b, 10, 16000.0)
 	return b

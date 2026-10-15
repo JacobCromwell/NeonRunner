@@ -194,18 +194,22 @@ func _test_projectiles() -> void:
 	check(not r["alive"], "a 250 m/s shot still hits (swept)")
 	await sim.free_world(w)
 
-	# Player shots damage enemies; splash never hurts hosts.
+	# Player shots damage enemies, and hosts like any other (GDD §9.7, owner, October 8, 2026); splash never
+	# hurts a weapon-immune enemy (a fence generator's rule, GDD §9.1).
 	w = sim.build_world(flat)
 	var target: Enemy = w.director.spawn({"type": "dummy", "script": DUMMY, "at": 40.0, "lane": 1, "seed": 1, "params": {"health": 2.0}})
 	var host: Enemy = w.director.spawn({"type": "dummy", "script": DUMMY, "at": 41.0, "lane": 2, "seed": 2, "params": {"health": 2.0, "host": true}})
-	check(not host.targetable() and target.targetable(), "hosts are never auto-fire targets (GDD §9.7)")
+	var immune: Enemy = w.director.spawn({"type": "dummy", "script": DUMMY, "at": 41.0, "lane": 0, "seed": 3, "params": {"health": 2.0, "immune": true}})
+	check(host.targetable() and target.targetable() and not immune.targetable(),
+		"hosts are auto-fire targets (GDD §9.7); weapon-immune enemies aren't")
 	var ahead: Array[Enemy] = w.director.targets_ahead(Vector3(0.0, 0.6, 0.0), 80.0)
-	check(ahead.size() == 1 and ahead[0] == target, "targets_ahead skips hosts")
+	check(ahead.size() == 2 and ahead.has(target) and ahead.has(host), "targets_ahead offers hosts and skips the immune")
 	w.projectiles.fire_player(Vector3(w.geo.lane_x(1), 0.6, -20.0), Vector3(0.0, 0.0, -80.0), 1.0, &"missile",
 		null, 0.0, 5.0, 1.0)
 	await sim.step_world(w, 0.4, [], [], false)
 	check(is_equal_approx(target.health, 1.0), "a player shot damages its target (%.1f)" % target.health)
-	check(is_equal_approx(host.health, 2.0), "splash never damages a host")
+	check(is_equal_approx(host.health, 1.0), "splash damages a host (%.1f)" % host.health)
+	check(is_equal_approx(immune.health, 2.0), "splash never damages a weapon-immune enemy")
 	w.projectiles.fire_player(Vector3(w.geo.lane_x(1), 0.6, -30.0), Vector3(0.0, 0.0, -80.0), 1.0)
 	await sim.step_world(w, 0.3, [], [], false)
 	check((not is_instance_valid(target) or not target.alive) and w.score.kills == 1, "enough damage defeats the enemy and counts the kill")
