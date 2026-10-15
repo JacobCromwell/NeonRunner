@@ -4,6 +4,7 @@
 
 [resource]
 script = ExtResource("1_skin")
+cyborg_draw_scale = 1.2
 enemy_variant = &"vr_runner"
 floor_style = 1
 trench_depth = 9.0
