@@ -9,7 +9,7 @@ extends Node3D
 ## yellow-and-red fireballs (FireballPool, GDD §11: every explosion is one; one slot a bomb, built with the props, so
 ## nothing is built mid-scene). Everything is worked out from the time (update), so stepping or skipping shows the
 ## same; the fireballs burn on real frames once set off, as everywhere. Visual only: no hitbox, no damage.
-## DESIGN-TBD (docs/questions/f2e.md): the ships' formation and height, the bombs' number, places and size.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 851–861): the ships' formation and height, the bombs' number, places and size.
 
 const BOSS_SKIN_PATH: String = "res://data/bosses/golden_boss_skin.tres"
 const SPEED_FX_PATH: String = "res://data/tuning/speed_fx.tres"

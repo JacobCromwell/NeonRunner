@@ -3,7 +3,7 @@ extends Resource
 ## The Beach's outro's numbers (BeachOutro; the owner's beats, October 15, 2026):
 ## data/cinematics/beach_outro_tuning.tres. Times are seconds from its start; places are in track space (CineStage:
 ## x metres right of the start lane's centre, y up, z along the track), most of them from the tiki bar's counter.
-## DESIGN-TBD (docs/questions/f2e.md): the staging these fill in.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 851–861): the staging these fill in.
 
 @export_group("Length")
 @export_range(20.0, 60.0, 0.1, "suffix:s") var duration: float = 39.6

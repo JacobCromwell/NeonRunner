@@ -298,7 +298,7 @@ toolkit the poses that play out over time (`CinePoses`, a cyborg's `lie` and `cr
 turn, models on the cinematic's clock, and sound events at their own level.
 
 **The Beach's outro** (`BeachOutro`, task F2e; the owner's beats, October 15, 2026; what they leave open is DESIGN-TBD,
-`docs/questions/f2e.md`; numbers in `data/cinematics/beach_outro_tuning.tres`): 39.6 s after Mecha Guppy and Captain
+`docs/OPEN_QUESTIONS_DEFERRED.md` items 851–861; numbers in `data/cinematics/beach_outro_tuning.tres`): 39.6 s after Mecha Guppy and Captain
 Cogs, on one stage in the fight's look (`after_fight`: the arena's open shore on both sides, under Sunset Strip's sky),
 on the level's lanes, the pool a gap in the start lane (the Beach's gaps are pools). The fight's music fades out as it
 opens; no music of its own. Out at sea Mecha Guppy (`MechaGuppySharkModel`'s meshes, smaller than in the fight) leaps

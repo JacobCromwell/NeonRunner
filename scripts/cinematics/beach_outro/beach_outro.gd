@@ -23,7 +23,7 @@ extends CinematicSequencer
 ## Beach's gaps are pools of water). The Golden Palace is a set of its own, closed, high over the stage: for its shot
 ## the street hides, its fog goes off and the scenery's light goes down (restored after, and when it ends). Everything
 ## is worked out from the time (_on_advance), so stepping or skipping shows the same.
-## DESIGN-TBD (docs/questions/f2e.md): the staging the beats leave open.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 851–861): the staging the beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/beach_outro_tuning.tres"
 ## The runner slows to a stop at the counter over this long (an eased stop), and squares up to it this long after.
@@ -421,7 +421,7 @@ func _stage_near(near: float) -> float:
 
 func _events(t: CineTimeline) -> void:
 	t.effect(0.0, CineEvent.FADE_IN, n.fade_in)
-	# The fight's music fades out: the fight is over. DESIGN-TBD (docs/questions/f2e.md): no music of its own.
+	# The fight's music fades out: the fight is over. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 851–861): no music of its own.
 	t.music(0.0, &"", n.music_fade)
 	t.sound(n.breach_at, &"guppy_leap", -4.0)
 	t.sound(n.breach_at + n.breach_seconds, &"guppy_swim", -3.0)

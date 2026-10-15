@@ -12,7 +12,7 @@ extends Node3D
 ## camera, its hand a fist with the index finger out (pointing_finger(): the model's gold). Moved by the cinematic's
 ## clock (update). Visual only.
 ## Its space: the suit's (its waist at the origin, +y up, +z its front, where the camera is).
-## DESIGN-TBD (docs/questions/f2e.md): the room's look, the screens' number and the pointing hand.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 851–861): the room's look, the screens' number and the pointing hand.
 
 const BOSS_SKIN_PATH: String = "res://data/bosses/golden_boss_skin.tres"
 const FEED_SHADER: String = "res://scripts/bosses/golden_convergence/golden_court_feed.gdshader"

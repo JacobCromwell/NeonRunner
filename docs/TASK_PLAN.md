@@ -555,7 +555,7 @@ volleyball rival) gestures to the menu; the runner holds up two fingers; he turn
 the Golden Palace: in a dark room walled with the feed's screens the Golden Convergence raises its arm and points; its
 refill ships fly; back at the beach they bomb it, the two run, explosions left and right, and the runner jumps into a
 pool (a gap) as the last bomb's fire fills the picture. Two new sounds (`tools/asset_gen/sfx_bank_beach_outro.gd`),
-`test_beach_outro`. The staging choices are in `docs/questions/f2e.md`.
+`test_beach_outro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md` items 851–861.
 
 ### H. The owner's requests (October 8, 2026)
 

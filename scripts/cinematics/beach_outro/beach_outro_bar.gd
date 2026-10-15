@@ -19,7 +19,7 @@ extends Node3D
 ##   behind the counter, hands over his head, as the bombs come.
 ## Its space ("bar space"): the origin on the floor at the middle of the counter's front, x across the track (+x out
 ## into the street), y up, z along the track (the node's -z: it sits in world axes, track z being world -z).
-## DESIGN-TBD (docs/questions/f2e.md): the dressing's looks and the bartender's moves.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 851–861): the dressing's looks and the bartender's moves.
 
 ## The kiosk's counter as BeachDoodads builds it (unscaled metres): its top over the kiosk's floor, and its front
 ## (the top slab's) in from the kiosk's +x side.
