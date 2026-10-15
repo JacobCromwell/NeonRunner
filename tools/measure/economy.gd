@@ -14,9 +14,11 @@ extends SceneTree
 ##   --share=0.7                  the share of a level's credits the typical player collects (GDD §7 names
 ##                                no number, so this stands in for "a good, not perfect, clean run with no
 ##                                magnet": reported, not a design decision)
-##   --weak-share=0.45            the same for the weaker player (the two-star line, GameRules.two_star_share)
+##   --weak-share=0.45            the same for the weaker player (default: the two-star line, GameRules.two_star_share)
 ##   --fails=0, --weak-fails=2    failed attempts a player makes at each level before finishing it
 ##   --points=4, --weak-points=2  points the player wins in the Beach's volleyball match (100 credits each)
+##   --stash=1, --weak-stash=0    the share of the treasure stashes' credits (task I4; PC lanes only) the player
+##                                takes: they sit on an optional ceiling route (DESIGN-TBD, docs/questions/i7.md)
 ##   --bonus-base=N               what-ifs: GameRules.completion_bonus_base and _per_level, for this run
 ##   --bonus-per-level=N          only (the data is not touched)
 ##   --mobile=true|false          mobile's catalog prices and no slow time (default false, PC)
@@ -27,21 +29,24 @@ extends SceneTree
 ##
 ## The two players (the same campaign, in order, nothing bought along the way) and the rest of the model are in
 ## tools/measure/economy_model.gd, which test_economy.gd shares: the typical player collects 70% of each
-## level's credits, never dies, wins every boss and the whole volleyball match (400 credits); the weaker one
-## collects 45%, fails every level twice first and wins two volleyball points (200 credits).
+## level's credits (the treasure stashes' too), never dies, wins every boss and the whole volleyball match (400
+## credits); the weaker one collects the two-star line (45%), takes no stash, fails every level twice first and
+## wins two volleyball points (200 credits).
 ##
 ## Per level: run speed, length, credits available (a layout's total_credit_value(), averaged over lane counts
-## and seeds), a good run's share of them, the completion bonus (GameRules.completion_bonus), the finish payout
-## (both), what a death or quit pays (death_credit_keep_fraction of the good run's credits, GDD §4), and each
-## player's running wallet. "wallet" counts levels and the volleyball match only: the conservative reading
-## that test_economy.gd pins, since a boss may take retries; "+boss" also counts the boss payouts a player who
-## wins them has by then (the shop opens after a boss too). Per zone: the same, summed.
+## and seeds) of which the treasure stashes' (task I4: total_credit_value() less star_credit_value()), a good
+## run's share of them, the completion bonus (GameRules.completion_bonus), the finish payout (both), what a death
+## or quit pays (death_credit_keep_fraction of the good run's credits, GDD §4), and each player's running wallet.
+## "wallet" counts levels and the volleyball match only: the reading of the owner's October 3 anchors (measured
+## with "no purchases or boss payouts"), which test_economy.gd pins; "+boss" also counts the boss payouts every
+## player past a boss has been paid (the next zone opens only after it). Per zone: the same, summed.
 ##
 ## Then the shop: every item and tier, its price, the line total (the tier's price and every tier before it,
 ## since tiers are bought in order), and the first level the wallet covers, for the price alone, for the line,
 ## with the boss payouts, and for the weaker player. The line is the real cost of owning a tier, and the
-## reading test_economy.gd pins. A tier's "x finish" is its line total over the typical finish payout of the
-## level it first fits.
+## reading test_economy.gd pins. A tier that first fits at level N is affordable after finishing N, so usable
+## from N + 1 (or from the shop after N's boss, in the "+boss" reading). A tier's "x fin" is its line total over
+## the typical finish payout of the level it first fits ("-" at the volleyball match, which pays by points).
 
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
@@ -57,7 +62,7 @@ var _mobile: bool = false
 var _packs: bool = false
 var _bonus_base: int = -1
 var _bonus_per_level: int = -1
-var _players: Array[Dictionary] = EconomyModel.players()
+var _players: Array[Dictionary] = []
 
 
 func _initialize() -> void:
@@ -65,10 +70,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	_parse_args()
 	var campaign := load(CAMPAIGN_PATH) as Campaign
 	var tuning := load(TUNING_PATH) as MovementTuning
 	var rules := load(RULES_PATH) as GameRules
+	_players = EconomyModel.players(rules)
+	_parse_args()
 	if _bonus_base >= 0:
 		rules.completion_bonus_base = _bonus_base
 	if _bonus_per_level >= 0:
@@ -91,6 +97,7 @@ func _run() -> void:
 ## calls this for each level, with `tuning` bound).
 func _measure_level(campaign: Campaign, step: CampaignStep, tuning: MovementTuning) -> Dictionary:
 	var credits_sum: float = 0.0
+	var stash_sum: float = 0.0
 	var speed_sum: float = 0.0
 	var seconds_sum: float = 0.0
 	var n: int = 0
@@ -102,46 +109,48 @@ func _measure_level(campaign: Campaign, step: CampaignStep, tuning: MovementTuni
 			var gen := LevelGenerator.new()
 			var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
 			credits_sum += layout.total_credit_value()
+			stash_sum += layout.total_credit_value() - layout.star_credit_value()
 			speed_sum += gen.speed
 			seconds_sum += layout.length / gen.speed
 			n += 1
-	return {"credits": credits_sum / n, "speed": speed_sum / n, "seconds": seconds_sum / n}
+	return {"credits": credits_sum / n, "stash": stash_sum / n, "speed": speed_sum / n, "seconds": seconds_sum / n}
 
 
 func _print_levels(steps: Array[Dictionary], walks: Array[Array]) -> void:
 	print("Wallets: levels and the volleyball match only; +boss also counts the boss payouts. Players: %s" % _players_text())
-	print("%-16s %5s %4s %-7s | %7s %5s %6s %6s | %5s %7s %7s | %6s %7s %7s" % [
-		"step", "m/s", "s", "zone", "credits", "good", "finish", "death", "bonus", "wallet", "+boss", "weak", "wallet", "+boss"])
+	print("%-16s %5s %4s %-7s | %7s %5s %5s %6s %6s | %5s %7s %7s | %6s %7s %7s" % [
+		"step", "m/s", "s", "zone", "credits", "stash", "good", "finish", "death", "bonus", "wallet", "+boss", "weak", "wallet", "+boss"])
 	for i: int in steps.size():
 		var r: Dictionary = steps[i]
 		var t: Dictionary = walks[0][i]
 		var k: Dictionary = walks[1][i] if walks.size() > 1 else t
 		match String(r["kind"]):
 			"level":
-				print("%-16s %5.1f %4.0f %-7s | %7.0f %5d %6d %6d | %5d %7d %7d | %6d %7d %7d" % [
-					r["id"], r["speed"], r["seconds"], String(r["zone"]).substr(0, 7), r["credits"], t["good"],
+				print("%-16s %5.1f %4.0f %-7s | %7.0f %5.0f %5d %6d %6d | %5d %7d %7d | %6d %7d %7d" % [
+					r["id"], r["speed"], r["seconds"], String(r["zone"]).substr(0, 7), r["credits"], r["stash"], t["good"],
 					t["finish"], t["death"], t["bonus"], t["wallet"], t["wallet_all"],
 					int(k["finish"]) + int(k["retries"]), k["wallet"], k["wallet_all"]])
 			"minigame":
-				print("%-16s %5s %4s %-7s | %7s %5s %6d %6s | %5d %7d %7d | %6d %7d %7d" % [
-					r["id"], "-", "-", String(r["zone"]).substr(0, 7), "match", "-", t["finish"], "-", t["bonus"],
+				print("%-16s %5s %4s %-7s | %7s %5s %5s %6d %6s | %5d %7d %7d | %6d %7d %7d" % [
+					r["id"], "-", "-", String(r["zone"]).substr(0, 7), "match", "-", "-", t["finish"], "-", t["bonus"],
 					t["wallet"], t["wallet_all"], k["finish"], k["wallet"], k["wallet_all"]])
 			_:
-				print("%-16s %5s %4s %-7s | %7s %5s %6s %6s | %5d %7s %7d | %6s %7s %7d" % [
-					r["id"], "", "", String(r["zone"]).substr(0, 7), "boss", "", "", "", t["bonus"], "", t["wallet_all"],
+				print("%-16s %5s %4s %-7s | %7s %5s %5s %6s %6s | %5d %7s %7d | %6s %7s %7d" % [
+					r["id"], "", "", String(r["zone"]).substr(0, 7), "boss", "", "", "", "", t["bonus"], "", t["wallet_all"],
 					"", "", k["wallet_all"]])
 
 
 func _players_text() -> String:
 	var parts: PackedStringArray = []
 	for p: Dictionary in _players:
-		parts.append("%s %d%% of credits, %d failed tries a level, %d volleyball points" % [
-			p["name"], roundi(float(p["share"]) * 100.0), p["fails"], p["points"]])
+		parts.append("%s %d%% of credits (%s stashes), %d failed tries a level, %d volleyball points" % [
+			p["name"], roundi(float(p["share"]) * 100.0), "takes the" if float(p["stash"]) > 0.0 else "no", p["fails"], p["points"]])
 	return "; ".join(parts)
 
 
-## Per zone: its levels, their credits, each player's wallet at the zone's last level and after its boss, and
-## the cost of restocking the three breakables over the zone's average typical finish payout.
+## Per zone: its levels (the volleyball match counts as one; its credits are the generated levels'), each
+## player's wallet at the zone's last level and after its boss, and the cost of restocking the three breakables
+## over the average typical finish payout of the zone's generated levels.
 func _print_zones(steps: Array[Dictionary], walks: Array[Array], catalog: ShopCatalog) -> void:
 	var restock: int = 0
 	for item: ShopItem in catalog.items_for(_mobile):
@@ -160,11 +169,11 @@ func _print_zones(steps: Array[Dictionary], walks: Array[Array], catalog: ShopCa
 			zone_order.append(zid)
 		var z: Dictionary = zones[zid]
 		z["last"] = i
-		if String(r["kind"]) == "level":
+		if String(r["kind"]) != "boss":
 			z["levels"] = int(z["levels"]) + 1
+		if String(r["kind"]) == "level":
 			z["credits"] = float(z["credits"]) + float(r["credits"])
 			z["good"] = int(z["good"]) + int(walks[0][i]["good"])
-		if String(r["kind"]) != "boss":
 			z["finish"] = int(z["finish"]) + int(walks[0][i]["finish"])
 			z["count"] = int(z["count"]) + 1
 	for zid: String in zone_order:
@@ -206,11 +215,13 @@ func _print_shop(catalog: ShopCatalog, steps: Array[Dictionary], walks: Array[Ar
 func _print_afford(label: String, price: int, line: int, steps: Array[Dictionary], typical: Array[Dictionary],
 		weak: Array[Dictionary]) -> void:
 	var at: int = EconomyModel.first_fit(typical, steps, line, false)
-	var finish: float = float(typical[at]["finish"]) if at >= 0 else 0.0
-	print("%-32s %6d %6d | %-17s | %-17s %-17s | %-17s | %6.1fx" % [label.substr(0, 32), price, line,
+	var times: String = "-"
+	if at >= 0 and String(steps[at]["kind"]) == "level":
+		times = "%.1fx" % (float(line) / maxf(float(typical[at]["finish"]), 1.0))
+	print("%-32s %6d %6d | %-17s | %-17s %-17s | %-17s | %7s" % [label.substr(0, 32), price, line,
 		_label(steps, EconomyModel.first_fit(typical, steps, price, false)), _label(steps, at),
 		_label(steps, EconomyModel.first_fit(typical, steps, line, true)), _label(steps, EconomyModel.first_fit(weak, steps, line, false)),
-		float(line) / maxf(finish, 1.0)])
+		times])
 
 
 ## The whole permanent catalog against what a playthrough pays.
@@ -278,6 +289,10 @@ func _parse_args() -> void:
 			_players[0]["points"] = int(value)
 		elif arg.begins_with("--weak-points="):
 			_players[1]["points"] = int(value)
+		elif arg.begins_with("--stash="):
+			_players[0]["stash"] = float(value)
+		elif arg.begins_with("--weak-stash="):
+			_players[1]["stash"] = float(value)
 		elif arg.begins_with("--bonus-base="):
 			_bonus_base = int(value)
 		elif arg.begins_with("--bonus-per-level="):

@@ -649,8 +649,9 @@ time from pressing retry to the run starting (a retry of the same level reuses t
 available, what a good run collects, the payout for finishing, and what a death or quit pays (GDD §4); then
 lays the shop's prices (`data/shop/catalog.json`) against the running wallets of two players who finish every
 level once, in order, with nothing bought along the way (a typical one, 70% of a level's credits, and a weaker
-one, 45% and two failed tries a level): the first level each tier is in reach of, counting the tiers before it
-(tiers are bought in order), alone and with the boss payouts, and how many finish payouts it costs:
+one, 45%, no treasure stash and two failed tries a level): the first level each tier is affordable after,
+counting the tiers before it (tiers are bought in order), alone and with the boss payouts, and how many finish
+payouts it costs:
 `godot --headless -s res://tools/measure/economy.gd -- [--lanes=5 --seeds=0] [--mobile=true] [--packs]
 [--bonus-per-level=30]` (its header lists the options; `--packs` also checks the mobile credit packs' sizes
 against the curve, and the bonus options try other completion payouts without touching the data).

@@ -8,33 +8,45 @@ extends RefCounted
 ## The players:
 ##   typical  collects 70% of each level's credits ("a good, not perfect, clean run with no magnet": GDD §7
 ##            names no number, so this is a stand-in, reported, not a design decision), never dies, wins every
-##            boss and the whole volleyball match (four points);
-##   weaker   collects 45% (the two-star line, GameRules.two_star_share), fails every level twice before
-##            finishing it (each failed attempt gets FAIL_PROGRESS of the way and pays
-##            death_credit_keep_fraction of the credits it had collected), wins two volleyball points, and wins
-##            every boss (their failed tries pay too little to count).
+##            boss and the whole volleyball match (four points), and takes the treasure stashes (task I4)
+##            at the same share;
+##   weaker   collects GameRules.two_star_share (the two-star line) of each level's credits, fails every level
+##            twice before finishing it (each failed attempt gets FAIL_PROGRESS of the way and pays
+##            death_credit_keep_fraction of the credits it had collected), wins two volleyball points, takes
+##            no treasure stash, and wins every boss (their failed tries pay too little to count).
 ## Neither uses a magnet or buys a breakable. The volleyball level pays its match's payout (100 credits a
 ## point) instead of the completion bonus; its few run-in credits are left out.
 ##
-## A walk's two wallets: "wallet" counts the levels and the match only, the conservative reading the test pins
-## (a boss may take retries); "wallet_all" also counts the boss payouts a player who wins them has by then.
+## A treasure stash (task I4, GDD §3 "Ceiling scenarios": two or three of the highest-denomination credits behind a
+## mid-ceiling return pad) is optional, PC-only (5 and 6 lanes: 3 and 4 have none) and reachable only by taking a
+## ceiling route, so a level's stash credits are kept apart ("stash" in a row) and a player's "stash" is the
+## share of them it takes (1.0, or 0.0 for none). DESIGN-TBD (docs/questions/i7.md): the typical player takes them
+## at its usual share, the weaker one none.
+##
+## A walk's two wallets: "wallet" counts the levels and the match only, the reading of the owner's October 3
+## anchors (measured with "no purchases or boss payouts"), which test_economy pins; "wallet_all" also counts the
+## boss payouts every player past a boss has been paid (the next zone opens only after it). A tier that "first
+## fits" at a step is affordable after finishing it, so usable from the next step; the "+boss" reading shows
+## where the boss payouts bring it forward.
 
 ## How far through a level a failed attempt gets, on average.
 const FAIL_PROGRESS: float = 0.5
 
 
-static func players() -> Array[Dictionary]:
+## The two players; the weaker one's share is the rules' two-star line.
+static func players(rules: GameRules) -> Array[Dictionary]:
 	return [
-		{"name": "typical", "share": 0.7, "fails": 0, "points": 4},
-		{"name": "weaker", "share": 0.45, "fails": 2, "points": 2},
+		{"name": "typical", "share": 0.7, "fails": 0, "points": 4, "stash": 1.0},
+		{"name": "weaker", "share": rules.two_star_share, "fails": 2, "points": 2, "stash": 0.0},
 	]
 
 
 ## Every level, the volleyball match and boss in campaign order (cinematics left out), as dictionaries: "id",
 ## "zone", "zone_id", "number" (a level's place in the campaign's play order, 0 for a boss), "level_index" and
 ## "kind" ("level", "minigame" or "boss"); a level also gets what `measure` (a Callable taking the Campaign and
-## the CampaignStep, returning {credits, speed, seconds}) makes of it, the match its payout per point and the
-## points that win it, a boss its payout (0 if its scene isn't built). `only` limits the steps by id.
+## the CampaignStep, returning {credits, stash, speed, seconds}: all the credits and the treasure stashes' part of
+## them) makes of it, the match its payout per point and the points that win it, a boss its payout (0 if its
+## scene isn't built). `only` limits the steps by id.
 static func rows(campaign: Campaign, measure: Callable, only: PackedStringArray = PackedStringArray()) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var number: int = 0
@@ -69,6 +81,7 @@ static func walk(player: Dictionary, rules: GameRules, rows_in: Array[Dictionary
 	var share: float = player["share"]
 	var fails: int = player["fails"]
 	var points: int = player["points"]
+	var stash_take: float = player["stash"]
 	var wallet: int = 0
 	var wallet_all: int = 0
 	var out: Array[Dictionary] = []
@@ -76,8 +89,9 @@ static func walk(player: Dictionary, rules: GameRules, rows_in: Array[Dictionary
 		var w: Dictionary = {"good": 0, "bonus": 0, "finish": 0, "death": 0, "retries": 0}
 		match String(r["kind"]):
 			"level":
-				var credits: float = float(r["credits"])
-				w["good"] = roundi(credits * share)
+				var stash: float = float(r.get("stash", 0.0))
+				var credits: float = float(r["credits"]) - stash
+				w["good"] = roundi((credits + stash * stash_take) * share)
 				w["bonus"] = rules.completion_bonus(int(r["level_index"]))
 				w["finish"] = int(w["good"]) + int(w["bonus"])
 				w["death"] = floori(float(w["good"]) * rules.death_credit_keep_fraction)

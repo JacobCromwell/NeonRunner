@@ -8,19 +8,21 @@ extends TestSuite
 ## The model the tool reports: a typical and a weaker player's walks through the campaign (see its header).
 const EconomyModel = preload("res://tools/measure/economy_model.gd")
 ## I7: the level each tier of the shop first fits at, for a typical player on PC (5 lanes, each level's own seed)
-## who finishes every level once, in order, and buys nothing along the way, not counting the boss payouts. A tier
-## costs its line total (its price and every tier before it: tiers are bought in order). Campaign levels, with the
-## volleyball match counted: City 1-3 are levels 1-3, Gangland 1-3 4-6, Marketplace 1-2 7-8, Casino 1-2 9-10,
-## Corporate 1-2 11-12, Beach 1-3 13-15, Dead Zone 1-2 16-17, Golden 1-3 18-20. Where each is needed (GDD §5's
-## schedule, §8's damage reference; the reasoning is in docs/questions/i7.md):
-##   armor I the owner's "died a lot" note (GDD §4, the October 3 early-economy revision: it fits City 1); II as
-##   Gangland's attackers arrive, III before the Casino's mixed crowd, IV before the Dead Zone, whose Bad Dreams
-##   ignore weapons; laser I Gangland 1 (the owner: 1,800, first affordable at the campaign's 4th level), II
-##   before Marketplace 1's first ceiling hazard, missile at Corporate 1 (Buzz Overdrive), heavy missile at
-##   Golden 1 (the Sentinels and the Resonator's waves; the capstone); claws by Octodog's debut (claws beat
-##   tentacles); the dash by Gangland, its three cheaper upgrades (the owner's prices) over the next levels, all
-##   four before the Corporate zone's dash walls; magnet I as an early credit boost, II at Gangland 1, III at
-##   Marketplace 2; slow time (PC only) at Casino 1, as the run gets quick and dense.
+## who finishes every level once, in order, and buys nothing along the way, not counting the boss payouts (the
+## owner's October 3 anchors were measured "with no purchases or boss payouts"). A tier costs its line total (its
+## price and every tier before it: tiers are bought in order). "First fits at N" means affordable after finishing
+## N, so usable from N + 1. Campaign levels, with the volleyball match counted: City 1-3 are levels 1-3, Gangland
+## 1-3 4-6, Marketplace 1-2 7-8, Casino 1-2 9-10, Corporate 1-2 11-12, Beach 1-3 13-15, Dead Zone 1-2 16-17,
+## Golden 1-3 18-20. Where each is placed (GDD §5's schedule; the reasoning is in docs/questions/i7.md):
+##   armor I the owner's "died a lot" note (GDD §4, the October 3 early-economy revision: it fits City 1); II at
+##   Gangland 1, III at Marketplace 2 (usable from the Casino's mixed crowd), IV at Beach 3 (usable from the
+##   Dead Zone, whose Bad Dreams ignore weapons); laser I Gangland 1 (the owner: 1,800, first affordable at the
+##   campaign's 4th level); laser II Marketplace 1, missile Corporate 1, heavy missile Golden 1 (usable from
+##   Golden 2, the Sentinels' debut); claws Gangland 2; the dash at Gangland 1, its three cheaper upgrades (the
+##   owner's prices) over the next levels, all four by Marketplace 2, before the Corporate zone's dash walls;
+##   magnet I as an early credit boost, II at Gangland 1, III at Marketplace 2; slow time (PC only) as it was.
+## Where that is later than the enemy it answers debuts (the Octodog in Gangland 2, the Barnacle Turret in
+## Marketplace 1, Buzz Overdrive in Corporate 1), it is in time only once the boss payouts are counted (IN_TIME).
 ## DESIGN-TBD (docs/questions/i7.md): the placements the GDD says nothing about.
 const FIRST_FIT: Dictionary = {
 	&"armor:1": "city/1", &"armor:2": "gangland/1", &"armor:3": "marketplace/2", &"armor:4": "beach/3",
@@ -28,7 +30,16 @@ const FIRST_FIT: Dictionary = {
 	&"claws:1": "gangland/2",
 	&"dash:1": "gangland/1", &"dash:2": "gangland/2", &"dash:3": "gangland/3", &"dash:4": "marketplace/2",
 	&"magnet:1": "city/2", &"magnet:2": "gangland/1", &"magnet:3": "marketplace/2",
-	&"slow_time:1": "casino/1",
+	&"slow_time:1": "gangland/2",
+}
+## The step by whose end a tier must be affordable once the boss payouts are counted (a boss pays on the win, and
+## the next zone opens only after it, so every player past a boss has been paid), so it is usable before the enemy
+## or zone that wants it: claws before the Octodog (Gangland 2), the Enhanced laser before the Barnacle Turret
+## (Marketplace 1), the dash line before the Corporate dash walls (Corporate 1), the Missile before Buzz
+## Overdrive (Corporate 1), Armor IV before the Dead Zone, the Heavy missile before Golden 1.
+const IN_TIME: Dictionary = {
+	&"claws:1": "gangland/1", &"weapon:2": "gangland/3", &"dash:4": "casino/2", &"weapon:3": "casino/2",
+	&"armor:4": "beach/3", &"weapon:4": "dead_zone/2",
 }
 ## How many levels either side of its place a tier may first fit. The credits a layout holds move as the generator's
 ## later tasks add and shift them, and a place that is a level out only means the same price lands a level
@@ -286,9 +297,9 @@ func _economy(lanes: int, only: PackedStringArray = PackedStringArray()) -> Dict
 		var config: LevelConfig = c.configure(step, lanes)
 		# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
 		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
-		return {"credits": layout.total_credit_value()}
+		return {"credits": layout.total_credit_value(), "stash": layout.total_credit_value() - layout.star_credit_value()}
 	var rows: Array[Dictionary] = EconomyModel.rows(campaign, measure, only)
-	var players: Array[Dictionary] = EconomyModel.players()
+	var players: Array[Dictionary] = EconomyModel.players(rules)
 	return {"rows": rows, "typical": EconomyModel.walk(players[0], rules, rows),
 		"weaker": EconomyModel.walk(players[1], rules, rows)}
 
@@ -357,6 +368,14 @@ func _test_balance_curve() -> void:
 			"%s (line %d) first fits at level %d (%s), pinned to level %d (%s) give or take %d" % [
 				item.tier_name(tier), line, got, rows[at]["id"] if at >= 0 else "beyond the campaign", want,
 				FIRST_FIT[key], FIT_TOLERANCE])
+
+	# In time for what wants them, once the boss payouts are counted (IN_TIME).
+	for key: StringName in IN_TIME:
+		var item: ShopItem = catalog.item(StringName(String(key).get_slice(":", 0)))
+		var tier: int = int(String(key).get_slice(":", 1))
+		var line: int = EconomyModel.line_totals(item, false)[tier - 1]
+		check(_fits_by(typical, rows, line, true, IN_TIME[key]),
+			"%s (line %d) is affordable by the end of %s, boss payouts counted" % [item.tier_name(tier), line, IN_TIME[key]])
 
 	# The owner's anchors. The October 3 early-economy revision: armor I fits City 1 (its lower earnings are
 	# intentional, tests change instead of rewards or prices). Laser I costs 1,800 and first fits at the
@@ -434,7 +453,7 @@ func _test_shorter_city_earnings() -> void:
 	var short_credits: int = short_layout.total_credit_value()
 	var former_credits: int = former_layout.total_credit_value()
 	var bonus: int = rules.completion_bonus(step.level_index)
-	var share: float = EconomyModel.players()[0]["share"]
+	var share: float = EconomyModel.players(rules)[0]["share"]
 	var short_wallet: int = roundi(short_credits * share) + bonus
 	var former_wallet: int = roundi(former_credits * share) + bonus
 	print("  City 1 isolated shortening (no additive gaps): 110s %d credits / %d wallet -> 55s %d credits / %d wallet"
