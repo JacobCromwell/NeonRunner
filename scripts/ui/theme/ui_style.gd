@@ -94,6 +94,12 @@ extends Resource
 ## The magnifying stops before the menus get narrower than this many UI pixels, so a phone held upright
 ## (the page covers the game there, GDD §2) gets small, whole menus rather than big, cut ones.
 @export_range(600, 1280, 10) var phone_min_width: int = 900
+## How far a pointer may move, in UI pixels, between pressing and releasing a button in a screen and still
+## press it: further, it's a drag, which scrolls the list it's in instead. A finger's tap and a mouse's
+## jitter move a few pixels (16 UI pixels are about 10 CSS pixels on a phone), a deliberate scroll many
+## more. Applied to every scroll area in a screen (Godot's own default is 0, which cancels any press that
+## moves at all).
+@export_range(0, 48, 1) var scroll_deadzone: int = 16
 ## A touch screen whose menus are shorter than this many UI pixels (a phone held sideways, 460 to 600
 ## after the magnifying) gets the compact layouts: the title's buttons in one row, the pause menu's in
 ## two, a smaller results panel, the shop's way on up in its title bar.

@@ -130,8 +130,10 @@ func _build() -> void:
 	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	content_scroll.follow_focus = true
-	# Passes mouse events on (it still takes the wheel and a finger's drag, which is how it scrolls).
-	content_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	# It takes the wheel and a drag only while the content needs more room than it has (_update_scroll_clip):
+	# until then it ignores the mouse, so a press on a button is never taken for the start of a scroll.
+	content_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content_scroll.scroll_deadzone = UiTheme.style().scroll_deadzone
 	# Clipping only while it scrolls, so a glow reaching past the content isn't cut when nothing does.
 	content_scroll.clip_contents = false
 	_body.add_child(content_scroll)
@@ -306,9 +308,16 @@ func _update_layout() -> void:
 ## A finger that starts a drag on a panel, a card or a button must scroll the list it is in: such a control
 ## takes the touch (mouse filter STOP) unless it's told to pass it on, and then only a drag that starts on
 ## bare background scrolls (a phone's shop was nearly all cards). So every panel and button in a screen
-## passes touches on; a button still takes its own press, and a slider keeps its drag.
+## that takes touches (never one that ignores them, like a toast) passes them on; a button still takes its
+## own press, and a slider keeps its drag. A scroll area in a screen gets the style's `scroll_deadzone`: a
+## ScrollContainer (4.7) takes a press for the start of a scroll at the first pixel of movement, which would
+## cancel the press of any tap that moves a little, a mouse's too.
 func _on_node_added(node: Node) -> void:
-	if (node is PanelContainer or node is BaseButton) and is_ancestor_of(node):
+	if not is_ancestor_of(node):
+		return
+	if node is ScrollContainer:
+		(node as ScrollContainer).scroll_deadzone = UiTheme.style().scroll_deadzone
+	elif (node is PanelContainer or node is BaseButton) and (node as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
 		(node as Control).mouse_filter = Control.MOUSE_FILTER_PASS
 
 
@@ -325,7 +334,9 @@ func is_scrolling() -> bool:
 
 
 func _update_scroll_clip() -> void:
-	content_scroll.clip_contents = is_scrolling()
+	var scrolling: bool = is_scrolling()
+	content_scroll.clip_contents = scrolling
+	content_scroll.mouse_filter = Control.MOUSE_FILTER_PASS if scrolling else Control.MOUSE_FILTER_IGNORE
 
 
 func _update_hints() -> void:

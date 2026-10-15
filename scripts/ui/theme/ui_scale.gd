@@ -8,21 +8,26 @@ extends RefCounted
 ## landscape shows the page about 340 to 390 pixels high (with the browser's bars), and the 720-pixel
 ## layout was drawn at about half its size there, the shop's 19-pixel captions at 9 (about 1.5 mm).
 ##
-## So while a screen (anything extending `ScreenBase`) is open on a touch device, the root window's
-## `content_scale_factor` magnifies the whole canvas until one UI pixel is at least `phone_min_scale` of
-## the page's own (CSS) pixels. The layout is the same code at a smaller logical size: the title bar,
-## the cards' flow and the scroll areas settle to the room they get, and the controls keep a finger's
-## size. Only menus: a run keeps the project's stretch (the HUD, and the swipes in logical pixels), so
-## the factor goes back to 1 when the last screen closes. Nothing happens on a desktop, or on a tablet
-## or any window big enough to reach the minimum already.
+## So while a screen (anything extending `ScreenBase`) is open on a touch device in a web page (the web
+## demo on a phone), the root window's `content_scale_factor` magnifies the whole canvas until one UI
+## pixel is at least `phone_min_scale` of the page's own (CSS) pixels. The layout is the same code at a
+## smaller logical size: the title bar, the cards' flow and the scroll areas settle to the room they get,
+## and the controls keep a finger's size. Only menus: a run keeps the project's stretch (the HUD, and the
+## swipes in logical pixels), so the factor goes back to 1 when the last screen closes. Nothing happens on
+## a desktop, or on a tablet or any window big enough to reach the minimum already.
+##
+## Web only for now: the native mobile builds (full_mobile: the endless button, credit packs, the ad
+## revive) haven't been looked at with it, and `screen_get_scale()` on Android isn't known to give the
+## page-style ratio this needs. Lift the check in `factor_now()` when they have.
 ##
 ## `factor_for()` is the maths (the same on every device); `screen_entered()` and `screen_exited()` are
 ## called by `ScreenBase`.
 
 ## What the page's pixel ratio is taken to be where the display server can't say (the tests: a headless
-## run has no real window): 0 = ask the display server. On the web it's `devicePixelRatio`, on Android
-## the screen's density.
+## run has no real window): 0 = ask the display server, which on the web gives `devicePixelRatio`.
 static var pixel_ratio_override: float = 0.0
+## The tests set it to run as in a web page (the run itself isn't one).
+static var assume_web: bool = false
 
 static var _open: Dictionary = {}
 static var _connected: Window
@@ -50,21 +55,17 @@ static func factor_for(window: Vector2, pixel_ratio: float, base: Vector2, min_s
 	return maxf(factor, 1.0)
 
 
-## The factor for `window` on this device now: 1 unless it's a touch device (UiTheme.is_touch()).
+## The factor for `window` on this device now: 1 unless it's a touch device (UiTheme.is_touch()) in a
+## web page.
 static func factor_now(window: Window) -> float:
-	if not UiTheme.is_touch() or window == null:
-		return 1.0
-	# A headless run (the tests, the smoke runs) has a 64×64 stand-in for a window, which the stretch
-	# turns into 1280×1280 UI pixels: nothing to magnify, unless a test gives the window a size and a
-	# pixel ratio of its own.
-	if DisplayServer.get_name() == "headless" and pixel_ratio_override <= 0.0:
+	if not UiTheme.is_touch() or window == null or not (assume_web or OS.has_feature("web")):
 		return 1.0
 	var s: UiStyle = UiTheme.style()
 	return factor_for(Vector2(window.size), pixel_ratio(), base_size(), s.phone_min_scale, s.phone_max_factor,
 		float(s.phone_min_width))
 
 
-## Device pixels to a page (CSS) pixel: the web's devicePixelRatio, an Android screen's density.
+## Device pixels to a page (CSS) pixel: the web's devicePixelRatio.
 static func pixel_ratio() -> float:
 	if pixel_ratio_override > 0.0:
 		return pixel_ratio_override

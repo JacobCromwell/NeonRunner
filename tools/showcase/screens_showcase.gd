@@ -24,6 +24,9 @@ func _ready() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if args.has("--touch") or args.has("--phone"):
 		UiTheme.touch_override = 1
+	if args.has("--phone"):
+		# As in a phone's web page: the menus are magnified to be readable (UiScale, web only).
+		UiScale.assume_web = true
 	App.autosave = false
 	if args.has("--mobile"):
 		App.mobile = true

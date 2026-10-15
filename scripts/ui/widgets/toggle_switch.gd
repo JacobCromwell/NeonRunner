@@ -23,7 +23,6 @@ var _holding: bool = false
 func _init() -> void:
 	toggle_mode = true
 	focus_mode = Control.FOCUS_ALL
-	mouse_filter = Control.MOUSE_FILTER_PASS
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	UiSounds.bind(self)
 	button_down.connect(_set_holding.bind(true))
