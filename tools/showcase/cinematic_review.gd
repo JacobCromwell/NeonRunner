@@ -9,7 +9,8 @@ extends Node3D
 ## Options:
 ##   --slot=<step id>     the campaign step whose cinematic plays (default city/intro): a zone's intro
 ##                        (<zone>/intro), the City's or Gangland's boss intro (city/boss_intro, gangland/boss_intro),
-##                        the City's or Gangland's outro (city/outro, gangland/outro)
+##                        the City's or Gangland's outro (city/outro, gangland/outro). The other bosses' intro
+##                        slots (casino/boss_intro, ...) are empty until the owner fills them: nothing to play
 ##   --sampler            the toolkit sampler instead, in the zone --zone= names (default city)
 ##   --lanes=N            lanes (default: as many as a level on this device)
 ##   --reduced-flashing   with Settings > Reduced flashing on
@@ -65,6 +66,15 @@ func _start() -> void:
 				step.zone_index = zi
 	else:
 		step = App.campaign.step(_opt("slot", "city/intro"))
+		if step == null:
+			var empty: PackedStringArray = PackedStringArray()
+			for slot: Dictionary in App.campaign.empty_slots():
+				empty.append(String(slot["id"]))
+			if empty.has(_opt("slot", "city/intro")):
+				push_error("cinematic_review: %s is an empty slot (the campaign skips it until its CinematicDef has a scene)"
+					% _opt("slot", "city/intro"))
+				get_tree().quit(1)
+				return
 		if step == null or step.cinematic == null or not step.cinematic.is_built():
 			push_error("cinematic_review: %s has no built cinematic" % _opt("slot", "city/intro"))
 			get_tree().quit(1)
