@@ -18,8 +18,8 @@ The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `g
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
 cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster, but the
 Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
-Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); the Beach's boss is still to be
-designed (below). A zone's music
+Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); the Beach's boss is Mecha Guppy and
+Captain Cogs (`beach_boss`, Bosses below). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
 quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
 over the 17 levels on it (FB 4, FB 5; the Beach's three, task D10c and its volleyball match, D10e, are off it, so the Beach moved no other
@@ -115,10 +115,10 @@ continues past. A cinematic is a scene whose root extends `Cinematic` (emit `fin
 City's boss intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
 Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the Dead Zone's intro its own (`DeadZoneIntro`,
 task F2c), and the other outros are still cards. A boss is
-built on the boss framework (Bosses, below). Every zone's boss but the Beach's is built (its step plays the fight;
-the Golden Convergence last, task E5d-c), each slot holding the phases GDD §10 gives its boss and its armor-rule
-delay. The Beach's slot (`data/bosses/beach_boss.tres`, task D10c) has no scene, phases or arena until its fight
-is designed (task E5e): the campaign shows its card and passes through it, with no stars (`test_app_flow` and
-`test_screens` check the boss slot's card on it). A fight
+built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Beach's
+Mecha Guppy and Captain Cogs last, task E5e-c), each slot holding the phases GDD §10 gives its boss and its
+armor-rule delay. With no placeholder slot left, `test_app_flow` and `test_screens` check the boss slot's card on an
+unbuilt stand-in in the Beach's slot (a copy of its `BossDef` with no scene, put back after;
+`docs/OPEN_QUESTIONS.md` item 575). A fight
 still being built names its scene in the slot's `preview_scene` instead of `scene`: the campaign keeps the card,
 and debug builds play the fight with `--boss=<boss id>` as quick play (`BossDef.preview()`), so nothing is recorded.

@@ -9,7 +9,13 @@ extends Node3D
 ##   (armor, the shield and the dash get through; claws don't); it can come in flickering first;
 ## - block(lane, at, size): a solid obstacle slammed into a lane (The House's gold blocks): deadly to
 ##   run into, solid to switch lanes into; the boss script adds its look;
-## - pad(lane, at) and ceiling(start, end): an anti-grav pad and a ceiling section (the zone's looks);
+## - pad(lane, at) and ceiling(start, end, lanes): an anti-grav pad and a ceiling section, over every
+##   lane or a range of them (the zone's looks); ceiling_lanes(start, ends): a ceiling whose lanes end at
+##   different distances (GDD §10, the Beach's climb: the lanes that lead up run further), one section
+##   per run of lanes ending together;
+## - roof(lanes, start, end, height): a raised floor's top over a range of lanes (the Beach's climb: a
+##   tiki bar's roof the runner drops onto and runs along), on the floor layer like the street; the boss
+##   script adds its look;
 ## - block_wall(side, from, to): a stretch of wall the player can't enter (the Sewer Swarm climbs one
 ##   wall at a time); the boss script draws what took it;
 ## - lane_warning(lane, from, to) and circle_warning(at, lane, radius): the red floor warnings of an
@@ -18,19 +24,28 @@ extends Node3D
 ## - floor_warning(node, lane, from, to): a boss's own floor warning, drawn its own way (Sleep Taker's
 ##   purple mist), counted by warned() like the red ones;
 ## - keep(node, until): anything else, freed once the player is past `until`.
+## Every call that places something on the floor (fences, blocks, pads, ceilings and the floor warnings)
+## takes an optional `height`, the floor it stands on: 0, the street, as always, or a raised floor's top
+## (a roof), the prop placed as on the street that much higher (a ceiling hangs ceiling_height over it).
 ## The node sits at the world origin whatever its parent does (top_level).
 
 ## A prop is freed once the player is this far past its end.
 const KEEP_BEHIND: float = 30.0
 ## The warnings' colour: enemy-attack red, in every zone (CLAUDE.md readability rules).
 const WARNING_COLOR := Color(1.0, 0.12, 0.08)
+## Every lane, at any lane count (ceiling(), roof(): a lane range's last lane below 0 is the last lane).
+const ALL_LANES := Vector2i(0, -1)
+## warned() asked at a height counts the floor warnings within this of it (metres): those on that floor.
+const WARNED_HEIGHT: float = 1.0
+## A roof's grey box (roof(..., grey_box)): a plain, unlit-looking grey, nothing a hazard would wear.
+const ROOF_COLOR := Color(0.3, 0.31, 0.36)
 
 var world: RunWorld
 ## Placed props: {node, until}.
 var _placed: Array[Dictionary] = []
 ## Warnings that pulse: {node, base: Transform3D, t}.
 var _pulsing: Array[Dictionary] = []
-## Floor warnings, for warned(): {node, from, to, x0, x1} (track distances, world x).
+## Floor warnings, for warned(): {node, from, to, x0, x1, y} (track distances, world x, the floor's height).
 var _warned: Array[Dictionary] = []
 ## Target circles' rings by radius (circle_warning): one mesh for every circle of a size (task PERF1).
 ## (A boss's first row of fences built the skin kit's fence look in its frame, 3.8 ms on the dev machine
@@ -45,16 +60,16 @@ func setup(p_world: RunWorld) -> void:
 	transform = Transform3D.IDENTITY
 
 
-## A pink electric fence across `lane` at track distance `at`: "full" (jump it or switch lanes) or
-## "gapped" (slide under it). With `warning_seconds`, it flickers harmlessly (and crackles) that long
-## before it switches on, the fence's own warning.
-func fence(lane: int, at: float, variant: String = "full", warning_seconds: float = 0.0) -> Hazard:
+## A pink electric fence across `lane` at track distance `at`, on the floor `height` up (0: the street):
+## "full" (jump it or switch lanes) or "gapped" (slide under it). With `warning_seconds`, it flickers
+## harmlessly (and crackles) that long before it switches on, the fence's own warning.
+func fence(lane: int, at: float, variant: String = "full", warning_seconds: float = 0.0, height: float = 0.0) -> Hazard:
 	var t: MovementTuning = world.tuning
 	var gapped: bool = variant == "gapped"
 	var bottom: float = t.fence_gapped_bottom if gapped else 0.0
 	var top: float = t.fence_gapped_top if gapped else t.fence_full_top
 	var size := Vector3(world.geo.lane_width - 0.2, top - bottom, t.fence_depth)
-	var hazard: Hazard = _hazard(Vector3(world.geo.lane_x(lane), (bottom + top) * 0.5, TrackGeometry.world_z(at)),
+	var hazard: Hazard = _hazard(Vector3(world.geo.lane_x(lane), height + (bottom + top) * 0.5, TrackGeometry.world_z(at)),
 		size, TrackBuilder.LAYER_HAZARD)
 	hazard.hazard_name = "fence (%s)" % variant
 	hazard.is_electrical = true
@@ -66,11 +81,12 @@ func fence(lane: int, at: float, variant: String = "full", warning_seconds: floa
 	return hazard
 
 
-## A solid obstacle filling `lane` from `at` on (size: width, height and depth in metres): deadly to
-## run into, and the player can't switch lanes into it (a truck's side). Armor doesn't stop it; the
-## shield and the dash do (the shared rules for solid collisions).
-func block(lane: int, at: float, size: Vector3, block_name: String = "block") -> Hazard:
-	var center := Vector3(world.geo.lane_x(lane), size.y * 0.5, TrackGeometry.world_z(at + size.z * 0.5))
+## A solid obstacle filling `lane` from `at` on (size: width, height and depth in metres), standing on
+## the floor `height` up (0: the street): deadly to run into, and the player can't switch lanes into it
+## (a truck's side). Armor doesn't stop it; the shield and the dash do (the shared rules for solid
+## collisions).
+func block(lane: int, at: float, size: Vector3, block_name: String = "block", height: float = 0.0) -> Hazard:
+	var center := Vector3(world.geo.lane_x(lane), height + size.y * 0.5, TrackGeometry.world_z(at + size.z * 0.5))
 	var hazard: Hazard = _hazard(center, size, TrackBuilder.LAYER_HAZARD)
 	hazard.hazard_name = block_name
 	hazard.is_solid = true
@@ -84,16 +100,17 @@ func block(lane: int, at: float, size: Vector3, block_name: String = "block") ->
 	return hazard
 
 
-## An anti-grav pad in `lane` at `at`, with the zone's pad look. Give it a ceiling above (ceiling()),
-## or the player flips up into nothing and drops straight back.
-func pad(lane: int, at: float) -> Area3D:
+## An anti-grav pad in `lane` at `at`, on the floor `height` up (0: the street), with the zone's pad look.
+## Give it a ceiling above (ceiling()), or the player flips up into nothing and drops straight back. It
+## flips the player to the first ceiling over it, at whatever height that is (Player.ceiling_y).
+func pad(lane: int, at: float, height: float = 0.0) -> Area3D:
 	var size := Vector3(world.geo.lane_width * 0.7, 0.5, world.tuning.pad_length)
 	var area := Area3D.new()
 	area.collision_layer = TrackBuilder.LAYER_TRIGGER
 	area.collision_mask = 0
 	area.monitoring = false
 	area.set_meta(&"kind", &"pad")
-	area.position = Vector3(world.geo.lane_x(lane), size.y * 0.5, TrackGeometry.world_z(at) - size.z * 0.5)
+	area.position = Vector3(world.geo.lane_x(lane), height + size.y * 0.5, TrackGeometry.world_z(at) - size.z * 0.5)
 	add_child(area)
 	_add_shape(area, size)
 	world.skin.pad(area, size)
@@ -101,13 +118,16 @@ func pad(lane: int, at: float) -> Area3D:
 	return area
 
 
-## A ceiling section over every lane from `start` to `end`, with the zone's ceiling look.
-func ceiling(start: float, end: float) -> Node3D:
+## A ceiling section from `start` to `end` with the zone's ceiling look, over every lane or the lanes
+## `lanes` (Vector2i(first, last): a narrow ceiling, GDD §3, which the player switches lanes within), its
+## underside MovementTuning.ceiling_height above the floor `height` up (0: the street, as every level's
+## ceilings). The player rides it at its own height (Player.ceiling_y).
+func ceiling(start: float, end: float, lanes: Vector2i = ALL_LANES, height: float = 0.0) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Ceiling"
 	add_child(root)
-	var section := CeilingSection.make(world.geo, world.tuning.ceiling_height, TrackBuilder.HULL_THICKNESS, start, end,
-		Vector2i(0, world.geo.lane_count - 1))
+	var section := CeilingSection.make(world.geo, height + world.tuning.ceiling_height, TrackBuilder.HULL_THICKNESS,
+		start, end, _lane_range(lanes))
 	var body := StaticBody3D.new()
 	body.collision_layer = TrackBuilder.LAYER_HULL
 	body.collision_mask = 0
@@ -117,6 +137,53 @@ func ceiling(start: float, end: float) -> Node3D:
 	world.skin.ceiling_section(root, section)
 	keep(root, end)
 	return root
+
+
+## A ceiling from `start` whose lanes end at distances of their own (GDD §10, the Beach's climb: "the
+## ceiling lanes that lead up run further"): lane i's at ends[i], none in a lane whose end is at or before
+## `start` (or past the end of `ends`). One ceiling section (ceiling(), each with its own far end's band)
+## for each run of neighbouring lanes that end together, its underside ceiling_height above the floor
+## `height` up. A rider switches lanes only within the lanes still covered where they are
+## (Player._ceiling_over), and drops at their own lane's end. Returns the sections, left to right.
+func ceiling_lanes(start: float, ends: PackedFloat32Array, height: float = 0.0) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	var n: int = mini(ends.size(), world.geo.lane_count)
+	var first: int = 0
+	while first < n:
+		var last: int = first
+		while last + 1 < n and is_equal_approx(ends[last + 1], ends[first]):
+			last += 1
+		if ends[first] > start:
+			out.append(ceiling(start, ends[first], Vector2i(first, last), height))
+		first = last + 1
+	return out
+
+
+## A raised floor's top (GDD §10, the Beach's climb: a tiki bar's roof the runner drops onto and runs
+## along) over the lanes `lanes` (Vector2i(first, last); the outer lanes reach the walls, as the street
+## does) from `start` to `end`, its top `height` up: a box on the floor layer, like the street, reaching
+## `depth` down from its top (by default down to the street: a block standing on it, not a slab anything
+## passes under). The player lands on it from any height (Player._support_top, _crossed_top) and runs
+## along it. Nothing else: no hazard, no lane blocker and, unless `grey_box`, no look (reviews and tests);
+## the boss script adds its look and whatever its sides and front must do.
+func roof(lanes: Vector2i, start: float, end: float, height: float, depth: float = -1.0,
+		grey_box: bool = false) -> StaticBody3D:
+	var span: Vector2i = _lane_range(lanes)
+	var x0: float = world.geo.lane_floor_span(span.x).x
+	var x1: float = world.geo.lane_floor_span(span.y).y
+	var thick: float = maxf(depth if depth > 0.0 else height, 0.1)
+	var size := Vector3(x1 - x0, thick, maxf(end - start, 0.1))
+	var body := StaticBody3D.new()
+	body.name = "Roof"
+	body.collision_layer = TrackBuilder.LAYER_FLOOR
+	body.collision_mask = 0
+	body.position = Vector3((x0 + x1) * 0.5, height - thick * 0.5, TrackGeometry.world_z((start + end) * 0.5))
+	add_child(body)
+	_add_shape(body, size)
+	if grey_box:
+		GreyboxMaterials.add_box(body, Vector3.ZERO, size, GreyboxMaterials.scenery(ROOF_COLOR))
+	keep(body, end)
+	return body
 
 
 ## Takes the wall on `side` (-1 left, +1 right) away between two track distances: the player can't
@@ -134,46 +201,49 @@ func block_wall(side: int, from: float, to: float) -> Area3D:
 	return area
 
 
-## A red warning line on the floor of `lane` from track distance `from` to `to`: where an attack
-## will strike. It pulses as long as it's shown (a steady glow with Reduced flashing).
-func lane_warning(lane: int, from: float, to: float) -> MeshInstance3D:
+## A red warning line on the floor of `lane` from track distance `from` to `to`, on the floor `height` up
+## (0: the street): where an attack will strike. It pulses as long as it's shown (a steady glow with
+## Reduced flashing).
+func lane_warning(lane: int, from: float, to: float, height: float = 0.0) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = GreyboxMaterials.unit_box()
 	mesh.material_override = GreyboxMaterials.glow(WARNING_COLOR, 2.6, 0.75)
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var base := Transform3D(Basis.from_scale(Vector3(world.geo.lane_width * 0.34, 0.04, absf(to - from))),
-		Vector3(world.geo.lane_x(lane), 0.03, -(from + to) * 0.5))
+		Vector3(world.geo.lane_x(lane), height + 0.03, -(from + to) * 0.5))
 	mesh.transform = base
 	add_child(mesh)
 	_pulsing.append({"node": mesh, "base": base, "t": 0.0})
-	floor_warning(mesh, lane, from, to)
+	floor_warning(mesh, lane, from, to, height)
 	return mesh
 
 
 ## Marks `node`, a boss's own floor warning drawn its own way (Sleep Taker's mist pooling in a lane),
-## as a floor warning over `lane` between track distances `from` and `to`, like lane_warning: warned()
-## counts it while it's shown (pickups keep off it), and it's freed once the player is past `to`.
-func floor_warning(node: Node3D, lane: int, from: float, to: float) -> Node3D:
+## as a floor warning over `lane` between track distances `from` and `to`, on the floor `height` up (0:
+## the street), like lane_warning: warned() counts it while it's shown (pickups keep off it), and it's
+## freed once the player is past `to`.
+func floor_warning(node: Node3D, lane: int, from: float, to: float, height: float = 0.0) -> Node3D:
 	var half: float = world.geo.lane_width * 0.5
 	_warned.append({"node": node, "from": minf(from, to), "to": maxf(from, to),
-		"x0": world.geo.lane_x(lane) - half, "x1": world.geo.lane_x(lane) + half})
+		"x0": world.geo.lane_x(lane) - half, "x1": world.geo.lane_x(lane) + half, "y": height})
 	return keep(node, maxf(from, to))
 
 
 ## A red target circle on the floor at track distance `at` over `lane` (x offset `x` from the lane's
-## centre): where a bomb or a blow will land.
-func circle_warning(at: float, lane: int, radius: float = 1.0, x: float = 0.0) -> MeshInstance3D:
+## centre), on the floor `height` up (0: the street): where a bomb or a blow will land.
+func circle_warning(at: float, lane: int, radius: float = 1.0, x: float = 0.0, height: float = 0.0) -> MeshInstance3D:
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = _ring(radius)
 	mesh.material_override = GreyboxMaterials.glow(WARNING_COLOR, 2.6, 0.85)
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var base := Transform3D(Basis.from_scale(Vector3(1.0, 0.25, 1.0)),
-		Vector3(world.geo.lane_x(lane) + x, 0.05, TrackGeometry.world_z(at)))
+		Vector3(world.geo.lane_x(lane) + x, height + 0.05, TrackGeometry.world_z(at)))
 	mesh.transform = base
 	add_child(mesh)
 	_pulsing.append({"node": mesh, "base": base, "t": 0.0})
 	var cx: float = world.geo.lane_x(lane) + x
-	_warned.append({"node": mesh, "from": at - radius, "to": at + radius, "x0": cx - radius, "x1": cx + radius})
+	_warned.append({"node": mesh, "from": at - radius, "to": at + radius, "x0": cx - radius, "x1": cx + radius,
+		"y": height})
 	keep(mesh, at + radius)
 	return mesh
 
@@ -209,14 +279,18 @@ func remove(node: Node) -> void:
 
 ## True while a floor warning (lane_warning, circle_warning) still shown reaches the middle of `lane`
 ## (where a runner in that lane is: a circle that only grazes the lane's edge doesn't count) somewhere
-## between track distances `from` and `to`: an attack is telegraphed there.
-func warned(lane: int, from: float, to: float) -> bool:
+## between track distances `from` and `to`: an attack is telegraphed there. Asked at a `height` (a raised
+## floor's top), only the warnings on that floor (within WARNED_HEIGHT of it) count; by default, a warning
+## on any floor does.
+func warned(lane: int, from: float, to: float, height: float = NAN) -> bool:
 	var x0: float = world.geo.lane_x(lane) - world.geo.lane_width * 0.25
 	var x1: float = world.geo.lane_x(lane) + world.geo.lane_width * 0.25
 	for i: int in range(_warned.size() - 1, -1, -1):
 		var w: Dictionary = _warned[i]
 		if not is_instance_valid(w["node"]) or (w["node"] as Node).is_queued_for_deletion():
 			_warned.remove_at(i)
+			continue
+		if not is_nan(height) and absf(float(w["y"]) - height) > WARNED_HEIGHT:
 			continue
 		if float(w["from"]) <= to and float(w["to"]) >= from and float(w["x0"]) < x1 and float(w["x1"]) > x0:
 			return true
@@ -294,6 +368,14 @@ func _warn_then_arm(hazard: Hazard, seconds: float) -> void:
 		var h := instance_from_id(id) as Hazard
 		if h != null and h.state == Hazard.State.WARNING:
 			h.set_enabled(true))
+
+
+## A lane range (Vector2i(first, last)) within the track's lanes; a last lane below 0 is the last lane
+## (ALL_LANES).
+func _lane_range(lanes: Vector2i) -> Vector2i:
+	var last_lane: int = world.geo.lane_count - 1
+	var first: int = clampi(lanes.x, 0, last_lane)
+	return Vector2i(first, last_lane if lanes.y < 0 else clampi(lanes.y, first, last_lane))
 
 
 static func _add_shape(owner_node: CollisionObject3D, size: Vector3) -> void:

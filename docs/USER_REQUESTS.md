@@ -17,8 +17,6 @@ request that is now in the done file.
 
 - [ ] (I7) **Rebalance the economy for the full campaign** (GDD §7; `docs/OPEN_QUESTIONS_ANSWERED.md` item 16). The shop prices and the completion payouts (100 + 25 per campaign level) were set for a two-zone campaign. Rebalance them for all eight zones with `tools/measure/economy.gd`, so each upgrade first fits about where the campaign needs it. Prices and payouts live in data (`data/shop/catalog.json` and the tuning files). Keep the approved early-economy revision (October 3, 2026) and the laser I price (1,800 credits, first affordable at City 4) unless the curve can't hold them, and report the before and after.
 - [ ] (I8) **An intro cinematic slot for every boss** (GDD §6; item 395). The City and Gangland have boss intros. Give the other bosses (The House, Hostile Takeover, the Beach's boss, the Sleep Taker, the Golden Convergence) an empty intro slot that the campaign skips until it's filled, so the owner can add their beats later without a structural change.
-- [ ] (I9) **The boss armor pickup comes only after the armor takes a hit** (GDD §10, standard armor rule; item 483). A shield break no longer schedules it. This is a boss framework change (`BossEncounter._on_item_used`), so it's a T1 task: check every boss that uses the armor rule, at 3, 5 and 6 lanes.
-
 
 ## The owner's batch requests (October 14, 2026)
 

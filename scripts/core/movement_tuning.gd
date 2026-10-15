@@ -83,6 +83,9 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(0.5, 5.0, 0.1, "suffix:m") var speed_pad_length: float = 2.5
 
 @export_group("Ceiling")
+## How high a ceiling's underside is over the street: every level's ceilings, and a boss's unless it puts one
+## at a height of its own (BossProps.ceiling over a raised floor; the runner rides a ceiling at whatever height
+## its collision box is, Player.ceiling_y).
 @export_range(3.5, 10.0, 0.1, "suffix:m") var ceiling_height: float = 6.0
 ## Speed toward the ceiling given by an anti-grav pad at the moment it flips gravity.
 @export_range(0.0, 20.0, 0.5, "suffix:m/s") var antigrav_launch_velocity: float = 6.0
@@ -96,9 +99,11 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(0.3, 1.2, 0.05, "suffix:m") var hurtbox_slide_height: float = 0.45
 @export var visual_size: Vector3 = Vector3(0.6, 1.28, 0.52)
 ## Once this far below the floor without support, the player is falling into the gap:
-## no more lane switches, jumps or wall entries.
+## no more lane switches, jumps or wall entries. Counted from the street, or from the floor base a boss
+## that raises the floor sets (Player.floor_base, fall_base()).
 @export_range(0.05, 1.0, 0.05, "suffix:m") var pit_depth: float = 0.35
-## How far below the surface the player may drop before counting as a fall death.
+## How far below the surface the player may drop before counting as a fall death (from the street, or the
+## floor base, like pit_depth).
 @export_range(1.0, 10.0, 0.5, "suffix:m") var fall_death_depth: float = 4.0
 
 @export_group("Piece sizes")
@@ -189,6 +194,13 @@ const REFERENCE_SPEED: float = 18.0
 ## player; without this it climbed into the ceiling before passing its end, and what's drawn there
 ## filled the screen (the orange end band's glow, a flash and a glare).
 @export_range(0.2, 3.0, 0.05, "suffix:m") var camera_ceiling_clearance: float = 1.0
+## The climbing view (RunCamera with RunWorld.camera_climbs on: a boss's climb, GDD §10, the Beach's): how far
+## above a roof (a raised floor below it, or ahead) the camera keeps, so it never sits inside the higher roof
+## a ceiling rider will drop onto (RunCamera.floor_limit).
+@export_range(0.2, 3.0, 0.05, "suffix:m") var camera_floor_clearance: float = 1.0
+## The climbing view looks this far ahead, in seconds of running, for a roof it must rise over, so it rises
+## smoothly before it gets there rather than snapping up at the roof's edge (RunCamera.floor_limit).
+@export_range(0.0, 1.5, 0.05, "suffix:s") var camera_climb_lead: float = 0.45
 
 @export_group("Touch")
 ## Swipe length needed, as a fraction of the screen's short side.
