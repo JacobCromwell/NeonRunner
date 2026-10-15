@@ -626,13 +626,16 @@ time from pressing retry to the run starting (a retry of the same level reuses t
 `godot --headless -s res://tools/measure/level_builds.gd -- [--repeat=3] [--bosses] [--passes=corporate/2:5]
 [--retry=corporate/2,dead_zone/1]` (its header lists the options).
 
-`tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
-available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
-death or quit pays (GDD §4); then lays the shop's prices (`data/shop/catalog.json`) against the running
-wallet of a player who finishes every level once, in order, with nothing bought along the way: the first
-level each price is in reach of, and how many of that level's finish payouts it costs:
-`godot --headless -s res://tools/measure/economy.gd -- [--share=0.7] [--mobile=true] [--packs]` (its header
-lists the options; `--packs` also checks the mobile credit packs' sizes against the curve).
+`tools/measure/economy.gd` measures the campaign's economy (tasks R7 and I7): per level and zone, the credits
+available, what a good run collects, the payout for finishing, and what a death or quit pays (GDD §4); then
+lays the shop's prices (`data/shop/catalog.json`) against the running wallets of two players who finish every
+level once, in order, with nothing bought along the way (a typical one, 70% of a level's credits, and a weaker
+one, 45% and two failed tries a level): the first level each tier is in reach of, counting the tiers before it
+(tiers are bought in order), alone and with the boss payouts, and how many finish payouts it costs:
+`godot --headless -s res://tools/measure/economy.gd -- [--lanes=5 --seeds=0] [--mobile=true] [--packs]
+[--bonus-per-level=30]` (its header lists the options; `--packs` also checks the mobile credit packs' sizes
+against the curve, and the bonus options try other completion payouts without touching the data).
+`tools/measure/economy_model.gd` is the model it shares with `test_economy`.
 
 `tools/measure/hostile_takeover.gd` plays Hostile Takeover through quick play at every lane count and speed
 the test suite only samples: a runner who plays it by what it shows dies in phase 3 once the war engine has
