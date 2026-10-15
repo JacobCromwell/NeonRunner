@@ -26,11 +26,12 @@ const SIREN_TAIL: float = 0.08
 
 @export_group("Pulses")
 ## How many times the screen's edges pulse with the siren, one for each high tone. The siren is made for this
-## many (see the header).
-@export_range(1, 4) var pulse_count: int = 3
-## Seconds from one pulse to the next: one high tone and one low tone of the siren. Never faster than 3 a second
-## (the usual limit for anything that flashes, and Reduced flashing switches the pulses off anyway).
-@export_range(0.34, 0.6, 0.01, "suffix:s") var pulse_seconds: float = 0.44
+## many (see the header). At most 3, so the longest siren stays under the sound library's 2.5 s.
+@export_range(1, 3) var pulse_count: int = 2
+## Seconds from one pulse to the next: one high tone and one low tone of the siren, slower than the other two-tone
+## sounds in a fight (The House's jackpot, the searchlight's beeps). Never faster than 3 a second (the usual limit for
+## anything that flashes, and Reduced flashing switches the pulses off anyway).
+@export_range(0.34, 0.8, 0.01, "suffix:s") var pulse_seconds: float = 0.68
 ## How strong the red is at the very edge at the top of a pulse (0 clear, 1 solid).
 @export_range(0.1, 1.0, 0.01) var pulse_alpha: float = 0.6
 
@@ -40,8 +41,8 @@ const SIREN_TAIL: float = 0.08
 @export_range(0.05, 0.6, 0.01) var steady_alpha: float = 0.28
 ## The same with Reduced flashing on: no pulses, so the steady edge is a little stronger to make up for them.
 @export_range(0.05, 0.8, 0.01) var reduced_alpha: float = 0.36
-## How far in from the screen's edge the red reaches, as a share of the screen's height. A few percent of the view
-## on a phone held sideways, never the lanes.
+## How far in from the screen's edge the red reaches, as a share of the screen's height (its shorter side). Only the
+## edges are drawn, about a third of the screen at the most, and the middle where the lanes are read is clear.
 @export_range(0.04, 0.3, 0.01) var edge_width: float = 0.12
 ## Seconds the edge takes to come up when the protection runs out.
 @export_range(0.05, 1.0, 0.05, "suffix:s") var fade_in_seconds: float = 0.2

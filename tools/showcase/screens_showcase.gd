@@ -153,7 +153,7 @@ func _hud_armor() -> void:
 
 ## The "one hit from death" cue on City 1 (god mode, so nothing ends it): the free armor breaks at 1 s, but the shield the
 ## sample profile carries is still held, so nothing shows; the shield breaks at 2 s, the edges pulse red with the siren
-## (LastHitWarning, three pulses over about 1.4 s) and settle to a dim steady edge, and the armor comes back at 6 s,
+## (LastHitWarning, two pulses over about 1.4 s) and settle to a dim steady edge, and the armor comes back at 6 s,
 ## when the edge fades away. `--reduced-flashing` shows Reduced flashing's steady edge.
 func _hud_last_hit() -> void:
 	await _play("city/1", 1.0)

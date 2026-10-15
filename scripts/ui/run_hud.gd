@@ -14,7 +14,8 @@ extends CanvasLayer
 ## sound is the player's `armor_back`). A pickup taken during the run (GDD §10) flashes its item's
 ## icon, which joins the protections in its place if the run didn't bring that item.
 ## With no armor hit or shield left (GDD §4, "One hit from death") the screen's edges pulse red with a
-## two-tone siren and then hold a dim red edge (LastHitWarning, `last_hit`, drawn under everything else here).
+## two-tone siren and then hold a dim red edge (LastHitWarning, `last_hit`, a canvas layer of its own under this one and
+## the attack markers).
 ## A theft (GDD §9.12, ScoreKeeper.stolen) counts the credits down in the loss colour (CreditCounter's
 ## drop_on_loss) with a "Robbed" pop-up beside them (its sound is the player's `robbed`; the coins fly
 ## to the thief in the world, RunEffects); a caught thief's payback and jackpot pop up as they come
@@ -73,9 +74,10 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UiTheme.apply(root, true)
 	add_child(root)
-	# Under the rest of the HUD: the red edge never covers a number or an icon.
+	# Its own canvas layer, under SpeedLines, the attack markers and this HUD: the red edge never covers a lane
+	# marker, a number or an icon.
 	last_hit = LastHitWarning.new()
-	root.add_child(last_hit)
+	add_child(last_hit)
 	_frame = Control.new()
 	_frame.name = "SafeFrame"
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE

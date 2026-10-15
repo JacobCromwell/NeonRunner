@@ -6,8 +6,8 @@
 script = ExtResource("1_lhw")
 warn_at_start = true
 onset_delay = 0.2
-pulse_count = 3
-pulse_seconds = 0.44
+pulse_count = 2
+pulse_seconds = 0.68
 pulse_alpha = 0.6
 steady_alpha = 0.28
 reduced_alpha = 0.36
