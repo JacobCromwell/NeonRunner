@@ -13,6 +13,8 @@ volume_db = {
 "bad_dream_emerge": -4.0,
 "bad_dream_shriek": -2.5,
 "bad_dream_slash": -4.0,
+"bar_glass": -9.0,
+"bar_shaker": -10.0,
 "barnacle_charge": -3.0,
 "barnacle_death": -8.0,
 "barnacle_emerge": -6.5,

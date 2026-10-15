@@ -114,7 +114,8 @@ continues past. A cinematic is a scene whose root extends `Cinematic` (emit `fin
 `skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the Dead Zone's and the
 City's boss intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
 Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the Dead Zone's intro its own (`DeadZoneIntro`,
-task F2c), and the other outros are still cards. A boss is
+task F2c), Gangland's and the Beach's outros theirs (`GanglandOutro`, F2d; `BeachOutro`, F2e), and the other outros are
+still cards. A boss is
 built on the boss framework (Bosses, below). Every zone's boss is built (its step plays the fight; the Beach's
 Mecha Guppy and Captain Cogs last, task E5e-c), each slot holding the phases GDD §10 gives its boss and its
 armor-rule delay. With no placeholder slot left, `test_app_flow` and `test_screens` check the boss slot's card on an

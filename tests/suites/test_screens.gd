@@ -818,9 +818,10 @@ func _test_slots_and_demo_end() -> void:
 	slot.continue_button.pressed.emit()
 	await _frames(2)
 	_restore_stand_ins()
-	check(App.profile.is_completed("beach/boss") and App.screen is SlotScreen
-		and (App.screen as SlotScreen).step.id == "beach/outro", "Continue counts the boss as done and moves on")
-	(App.screen as ScreenBase).go_back()
+	var outro := App.playing_cinematic()
+	check(App.profile.is_completed("beach/boss") and outro != null and outro.step.id == "beach/outro",
+		"Continue counts the boss as done and moves on (the Beach's outro plays)")
+	App.show_level_select()
 	await _frames(1)
 	check(App.screen is LevelSelectScreen, "back returns to the level select")
 	App.show_demo_end()

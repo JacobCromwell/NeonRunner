@@ -9,7 +9,7 @@ extends Node3D
 ## Options:
 ##   --slot=<step id>     the campaign step whose cinematic plays (default city/intro): a zone's intro
 ##                        (<zone>/intro), the City's or Gangland's boss intro (city/boss_intro, gangland/boss_intro),
-##                        the City's or Gangland's outro (city/outro, gangland/outro)
+##                        the City's, Gangland's or the Beach's outro (city/outro, gangland/outro, beach/outro)
 ##   --sampler            the toolkit sampler instead, in the zone --zone= names (default city)
 ##   --lanes=N            lanes (default: as many as a level on this device)
 ##   --reduced-flashing   with Settings > Reduced flashing on

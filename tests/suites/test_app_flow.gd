@@ -144,12 +144,13 @@ func _test_slots_and_demo() -> void:
 	if card == null:
 		return
 	App.advance_from(card.step)
-	check(App.screen is SlotScreen and (App.screen as SlotScreen).step.id == "beach/outro",
-		"continuing moves on to the next step (the outro cinematic slot)")
-	var outro := App.screen as SlotScreen
+	# The Beach's outro is its own scene (task F2e: the tiki bar and the raid).
+	var outro := App.playing_cinematic() as BeachOutro
+	check(outro != null and outro.step.id == "beach/outro" and App.screen == null,
+		"continuing moves on to the next step (the Beach's outro cinematic)")
 	if outro != null:
-		App.complete_step(outro.step)
-		App.advance_from(outro.step)
+		App.skip_cinematic()
+		await physics_frames(3)
 		# The Dead Zone's intro is its own scene (task F2c: the runner climbing out of a crater), not a flyover.
 		var intro := App.playing_cinematic() as DeadZoneIntro
 		check(intro != null and intro.step.id == "dead_zone/intro", "and the Beach's outro on to the Dead Zone's intro")

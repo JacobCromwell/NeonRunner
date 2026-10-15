@@ -35,6 +35,7 @@ never ends, and a level never starts, unattended.
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
 | `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`, `CarPassenger`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props, the sports car and the screech on its passenger seat; its sounds in `tools/asset_gen/sfx_bank_gangland_outro.gd` |
 | `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
+| `beach_outro/` (`BeachOutro`, `BeachOutroTuning`, `BeachOutroBar`, `BeachOutroScreech`, `BeachOutroPalace`, `BeachOutroRaid`), `scenes/cinematics/beach_outro.tscn`, `data/cinematics/beach_outro_tuning.tres`, `tools/asset_gen/sfx_bank_beach_outro.gd` | the Beach's outro, the owner's beats (below), its props and its two sounds |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -292,3 +293,42 @@ zone's track fades in under them. It sets up in about 19 ms (about 240 ms the fi
 costs at most about 2 ms a step (headless, `test_dead_zone_intro`); the crater adds 5 draw calls. It added to the
 toolkit the poses that play out over time (`CinePoses`, a cyborg's `lie` and `crouch`), `look_up` and a cyborg's head
 turn, models on the cinematic's clock, and sound events at their own level.
+
+**The Beach's outro** (`BeachOutro`, task F2e; the owner's beats, October 15, 2026; what they leave open is DESIGN-TBD,
+`docs/questions/f2e.md`; numbers in `data/cinematics/beach_outro_tuning.tres`): 39.6 s after Mecha Guppy and Captain
+Cogs, on one stage in the fight's look (`after_fight`: the arena's open shore on both sides, under Sunset Strip's sky),
+on the level's lanes, the pool a gap in the start lane (the Beach's gaps are pools). The fight's music fades out as it
+opens; no music of its own. Out at sea Mecha Guppy (`MechaGuppySharkModel`'s meshes, smaller than in the fight) leaps
+out in one long arc heading away (the fight's plumes, `MechaGuppySplash`, where it breaks the sea and where it dives),
+then swims off, its back and fin cutting the water, and sinks. The camera turns (a pan whose looks are kept a few
+metres off, so it turns evenly) to the runner watching it from the promenade, the screech friend sitting at their feet;
+they turn and walk (`CinePoses.walk`) to a tiki bar at the street's left edge, the screech trotting beside them. Cut to
+them walking up to the counter. From the bartender's own eyes (his body hidden in those shots) the screech hops up onto
+the counter and sits there. The bartender, from the street: he points to the menu on the wall (`GanglandOutro.aim_arm`)
+and asks with open hands. His view again: the runner holds up two fingers (two finger boxes on the runner's right hand
+joint, the hand raised), the screech nodding along. Wider: he nods, turns his back and shakes the drinks. Cut to the
+Golden Palace: the Golden Convergence's calm face close up in a dark room walled with the feed's screens, then the
+camera swings to three-quarters as it raises its arm and points straight ahead, its index finger out. Cut to its refill
+ships flying in a V at the camera and over it. Back at the bar, the two drinks are on the counter; the first bombs land
+out on the beach; the two look up (low behind them, the ships passing over and the bombs falling), leave the drinks and
+run, the camera ahead of them looking back as the blasts go off to one side, then the other; behind them, the pool
+ahead: the runner (and the screech) leap in as the last bomb goes off on it, the fire fills the picture (a fade to its
+colour, slower and darker with Reduced flashing) and then black; the Dead Zone's intro opens on them lying in a crater.
+
+Its props are its own, moved by the clock (`_on_advance`), so stepping or skipping shows the same: `BeachOutroBar` (the
+Beach's own tiki bar kiosk, `BeachSkin.doodad`'s large one, built bigger and scaled to the characters; one more mesh of
+its dressing in the skin's materials: a wordless chalk menu board, a violet neon cocktail glass, two bamboo stools, two
+paper lanterns; the two drinks; the bartender, `VolleyballRivalSuit` on the humanoid rig, posed by script, with a
+shaker in his hand), `BeachOutroScreech` (a `CarPassenger`: the Gangland outro's passenger body sitting, plus the
+screeches' running body for the trot, the hop and the run, in Gangland's look), `BeachOutroPalace` (a closed room of
+dark panels with three walls of the Grand Court's feed screens, `golden_court_feed.gdshader`, and the Golden Convergence
+from `GoldenConvergenceModel`'s meshes at 0.3 scale, its cape gathered in, a finger added to its fist,
+`pointing_finger`), and `BeachOutroRaid` (three `GoldenConvergenceShipModel` refill ships with their racks, the bombs
+their rack missiles, and a `FireballPool` of its own with a slot a bomb). The palace hangs 300 m over the bar; for its
+shot the stage hides, the environment's fog goes off and the scenery's light goes down (`ZoneSkin.set_scenery_light`,
+the room's 0.25), all put back as the shot ends and when it finishes or is skipped. The street stays built back for the
+shots looking back along it (`_stage_near`). Its sounds are the game's (`guppy_leap`, `guppy_swim`, `screech_chirp`,
+`gc_chime`, `gc_ship`, `bomb_whistle`, `bomb_blast`, `splash`) and two of its own
+(`tools/asset_gen/sfx_bank_beach_outro.gd`: `bar_shaker`, `bar_glass`). Cost (headless, `test_beach_outro`): about
+30-60 ms to set up (about 600 ms the first time, with cold mesh caches), about 0.45 ms a step and at most about 5 ms;
+its props add about 33 draw calls. It adds no asset files beyond its two sounds, and nothing to the toolkit.
