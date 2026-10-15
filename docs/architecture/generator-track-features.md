@@ -709,10 +709,11 @@ throughout (`docs/questions/j2.md`).
   carries them across: the pull's leap would drop them back in. Its first-encounter hint is `wall_run_gap`
   (`data/hints/hints.json`).
 - **How many** (`tools/measure/wall_run_gaps.gd`, campaign levels on their own and two more seeds at 3, 5 and 6
-  lanes): a build has on average 1.9 in the Marketplace (one in Marketplace 1, from halfway), 2.7 in the Casino, 2.3 in
-  Corporate, 2.6 on the Beach, 2.5 in the Dead Zone and 1.8 in the Golden Zone, whose levels are the most crowded
-  (their Resonators, Gilded Sentinels and hover trucks leave few 4-second stretches free); every build measured
-  (and every one of `test_campaign`'s seed sweep) has one.
+  lanes): a build has on average 1.9 in the Marketplace (one in Marketplace 1, from halfway), 2.6 in the Casino, 2.3 in
+  Corporate, on the Beach and in the Dead Zone, and 1.8 in the Golden Zone, whose levels are the most crowded (their
+  Resonators, Gilded Sentinels and hover trucks leave few 4-second stretches free); every build measured (and every
+  one of `test_campaign`'s seed sweep, 216) has one, the last resort making room in 3 of the 117 and 5 of the 216,
+  all Golden builds on other seeds than their own.
 
 **Wall-run gaps on the track.** Their holes are built like any (`TrackBuilder._floor_pieces`, the zone's floor edges).
 `TrackBuilder._build_chunk` has the skin light each one's wall where it runs through the chunk
