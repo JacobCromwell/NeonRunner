@@ -95,10 +95,11 @@ extends Resource
 @export_range(8.0, 30.0, 0.5, "suffix:m") var level_ahead: float = 11.0
 @export_range(0.5, 6.0, 0.25, "suffix:m") var level_out: float = 2.5
 @export_range(-3.0, 3.0, 0.1, "suffix:m") var level_keel: float = -1.0
-## Mecha Guppy's watch beside the top on the right (MechaGuppyShark.top_watch): upright, side-on, an eye just over the deck,
-## the middle of its head guppy_ahead ahead of the runner (it keeps pace; its whole head in the run camera's view, the bombs
-## turning into its rear half once past the deck), rising into it over guppy_rise.
-@export_range(4.0, 10.0, 0.25, "suffix:m") var guppy_ahead: float = 7.0
+## Mecha Guppy's watch beside the top on the right (MechaGuppyShark.top_watch): swimming alongside, level, the upper half
+## of its face over the water, its jaws' hinge guppy_ahead ahead of the runner (it keeps pace, bobbing and surging; the
+## upper half of its face in the run camera's view, its body running back alongside the runner, where the bombs fly into
+## its flank; the owner chose this over a view far enough ahead to show its dorsal fin), rising into it over guppy_rise.
+@export_range(6.0, 16.0, 0.5, "suffix:m") var guppy_ahead: float = 10.0
 @export_range(0.4, 2.0, 0.05, "suffix:s") var guppy_rise: float = 1.0
 ## The barrages (MechaGuppyBarrage; GDD §10): the first comes top_first after the top is reached (the ship level and Mecha
 ## Guppy up by then), each a word of barrage_script (looped): one bomb a letter, L low (jump it) or H high (slide under it),

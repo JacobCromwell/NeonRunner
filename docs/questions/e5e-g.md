@@ -28,8 +28,11 @@ marked DESIGN-TBD in `scripts/bosses/mecha_guppy/mecha_guppy_tuning.gd` ("Phase 
 7. **The floor bite's size after each wave.** ("depending on how big the bite is".) Placeholder: from the right (Mecha
    Guppy's side), the first leaving one lane (lane 0), the next across every lane to jump, alternating; the climb's
    sizes and warning rules.
-8. **Mecha Guppy's look on the right.** Placeholder: its floor-bite watch pose (upright, side-on, jaws shut), its head
-   7 m ahead of the runner (`guppy_ahead`) so the whole head is in view; the bombs turn into its head's rear half after
-   crossing the deck. Its splash: upright, facing the runner with its jaws wide, ahead where the wave's swell rises.
+8. **Mecha Guppy's swim on the right.** (The owner chose it swimming level, the upper half of its face showing, bobbing
+   and surging, with water on both sides, on October 15, 2026.) Placeholder numbers: its hinge 10 m ahead
+   (`guppy_ahead`), 1.2 m under the deck (`MechaGuppyShark.SWIM_SINK`), bobbing 0.35 m every 2.6 s and surging 1.6 m
+   every 5.5 s (`SWIM_*`); the water a plane at its waterline on each side, the backdrop's sea colour. Its splash
+   (upright, facing the runner with its jaws wide, ahead where the wave's swell rises) and its roar (`guppy_roar`, a
+   short mechanical growl under the clang) are placeholders too.
 9. **The defeat's start.** Placeholder: on the last hit Mecha Guppy dives out of sight from its watch (0.45 s), then
    the defeat plays as before (it bursts up under the ship and eats the captain); the results wait 0.45 s longer.

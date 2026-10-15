@@ -139,10 +139,19 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
     `level_keel` (1 m) under the deck, its middle `level_lead()` ahead: `level_ahead` (11 m) and `LEVEL_PER_WALL` (0.8)
     more for each metre a wider top's wall line stands past a three-lane top's, so the captain on his stern castle stands
     on the run camera's left (measured: from every lane but a wide top's outer right ones; its sail from every lane).
-  - **Mecha Guppy's watch on the right** (`MechaGuppyShark.top_watch`, `Kind.WATCH`): it rises (`guppy_rise` 1 s, the
-    rumble) into an upright, side-on pose beside the top on the right (a floor bite's watch, `WATCH_OUT` (1 m) further
-    out, its jaws shut: nothing of it over the eaves), the middle of its head `guppy_ahead` (7 m) ahead of the runner,
-    keeping pace (`advance`'s pace: the whole motion moves with the runner), its whole head in the run camera's view.
+  - **Mecha Guppy's watch on the right** (`MechaGuppyShark.top_watch`, `Kind.WATCH`; the owner, October 15, 2026: "horizontal,
+    as though it is swimming alongside the player and the roof"): it rises (`guppy_rise` 1 s, the rumble) out of the
+    water into a level pose beside the top on the right (pitch 90°, yaw 180°: its snout ahead along the track, its back up,
+    an eye toward the runner, its jaws shut), its hinge `SWIM_SINK` (1.2 m) under the deck so the upper half of its face
+    is over the water, its broadest `SWIM_CLEAR` (0.8 m) outside the eaves, its hinge `guppy_ahead` (10 m) ahead of the
+    runner and its body running back alongside them, keeping pace (`advance`'s pace), bobbing `SWIM_BOB` (0.35 m, with
+    a `SWIM_NOD` of its snout) and surging forward and back `SWIM_SURGE` (1.6 m) as it keeps up. The owner chose this
+    view over one far enough ahead to show its dorsal fin (16-31 m behind its jaws). Its dive (`top_dive`) sinks it
+    still level.
+  - **The water** (`MechaGuppyTop._place_water`, `water_y`): from phase 3's start, a plane of sea water on each side of
+    the top (`WATER_SIZE`, from the eaves outward, keeping pace; the backdrop's sea shader in the Beach's `sea_mid_color`)
+    at Mecha Guppy's waterline, so it swims rather than hangs in the air, alike on both sides (the owner); the splash's
+    plumes break out of it and the defeat's swim away leaps out of it (`MechaGuppyLeap._sea_y`).
   - **The barrages** (`MechaGuppyBarrage`; the owner: bombs "horizontally ... jumpable and dodgeable ... some will be up
     high and some will be down low ... a little bit smaller"): from `top_first` (4 s) on, word after word of
     `barrage_script` ("LHLH HLLH LLHL HHLH", looped), one bomb a letter, L low, H high. A bomb's warning (`fire`): the
@@ -159,7 +168,7 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
     runner's 1.09 m top, over a jump's reach) over the deck. The next bomb's warning comes `bomb_gap` (1.5 s) after the
     last's at the soonest and never before the last has passed the runner by `beat_spare` (one line, one dodge at a
     time); `barrage_rest` (1.2 s) between barrages. A bomb that reaches the shark is a hit (`MechaGuppyTop.bomb_landed`:
-    the clang, the fireball, a shudder); one that met the runner (armor or the shield took it) bursts there and hits
+    the clang, the fireball, a shudder, and its roar, guppy_roar); one that met the runner (armor or the shield took it) bursts there and hits
     nothing; the dash passes through one, which flies on (a hit).
   - **The dive, the splash, the wave and the bite** (the owner: "it will go underneath the water. And then when it
     reappears, it causes a splash, which causes the wave attack. Then, after the wave attack, the Mecha Guppy will do its
@@ -471,7 +480,7 @@ to dodge, a step that threw any and a second) for the suites). Sounds
 (`tools/asset_gen/sfx_bank_mecha_guppy.gd`): cogs_throw, cogs_aim (the bait's aim, as long as `bait_seek`),
 guppy_rumble (a bite's, a catch's and a breach's warning), guppy_floor_warn (a floor bite's own warning: knocks under
 the deck, timbers groaning, teeth screeching up through the wood), guppy_bite (a bite's snap and a floor bite's),
-guppy_clang; phase 3's cogs_charge (a bomb's warning, as long as `bomb_warning`), cogs_cannon (its shot), guppy_leap (the
+guppy_clang; phase 3's guppy_roar (a bomb hits it), cogs_charge (a bomb's warning, as long as `bomb_warning`), cogs_cannon (its shot), guppy_leap (the
 splash), wave_swell (as long as `wave_warning`) and wave_crash, and the defeat's guppy_leap (the rise, and again the breach), guppy_gulp and guppy_swim (the dive); the
 bombs keep the Floating Head's bomb_whistle and bomb_blast. Hints: `enemy:beach_boss` (the climb in short, weapons doing
 nothing), `boss:beach_boss/climb` (how to read the lanes that lead up), `/floor_bite` (the red crescent and the knocking

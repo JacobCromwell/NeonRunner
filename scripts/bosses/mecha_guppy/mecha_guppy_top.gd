@@ -34,6 +34,11 @@ enum Act { NONE, RISE, BARRAGE, DIVE, SPLASH, WAVE, BITE, RETURN }
 const PLUME := Vector2(12.0, 10.0)
 ## It dives this long after the hit that brings its dive (seconds: its shudder shows first).
 const DIVE_AFTER: float = 0.5
+## The water on each side of the top (the owner, October 15, 2026: Mecha Guppy swimming alongside the roof, the water on
+## both sides alike): a plane this big (across, along), from just outside the eaves outward, reaching WATER_BEHIND behind
+## the runner and the rest ahead into the haze.
+const WATER_SIZE := Vector2(300.0, 500.0)
+const WATER_BEHIND: float = 50.0
 
 var boss: MechaGuppy
 var world: RunWorld
@@ -66,6 +71,8 @@ var finished: bool = false
 var beats: Array[Dictionary] = []
 
 var _beat_k: int = 0
+## The water Mecha Guppy swims in, on both sides of the top (water_y), keeping pace with the runner.
+var _water: Array[MeshInstance3D] = []
 var _plume_played: int = 0
 
 
@@ -87,6 +94,22 @@ func setup(p_boss: MechaGuppy) -> void:
 	plume = MechaGuppySplash.new()
 	plume.name = "SplashPlume"
 	add_child(plume)
+	var mat := ShaderMaterial.new()
+	mat.shader = load(MechaGuppyWaterfall.SEA_SHADER_PATH) as Shader
+	var beach := world.skin as BeachSkin
+	if beach != null:
+		mat.set_shader_parameter(&"sea_color", beach.sea_mid_color)
+	for side: int in [-1, 1]:
+		var water := MeshInstance3D.new()
+		water.name = "Water%s" % ("Left" if side < 0 else "Right")
+		var plane := PlaneMesh.new()
+		plane.size = WATER_SIZE
+		water.mesh = plane
+		water.material_override = mat
+		water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		water.visible = false
+		add_child(water)
+		_water.append(water)
 
 
 ## True once phase 3 has begun (the runner reached the top).
@@ -120,6 +143,7 @@ func tick(delta: float) -> void:
 	barrage.tick(delta)
 	waves.tick(delta)
 	plume.advance(delta)
+	_place_water()
 	if not started() or finished or not boss.is_vulnerable() or not boss.attacks_enabled:
 		return
 	var t: float = elapsed()
@@ -161,13 +185,20 @@ func tick(delta: float) -> void:
 				_next_barrage(t + tuning.barrage_rest)
 
 
-## A bomb reached Mecha Guppy (MechaGuppyBarrage): its clang, fireball and shudder, and the hit (the boss bar drops; the
-## last one wins the fight).
+## The water's surface on both sides of the top (world y): the waterline Mecha Guppy swims at (the upper half of its face
+## over it); the deck's level until the top is reached.
+func water_y() -> float:
+	return world.player.floor_base - MechaGuppyShark.SWIM_SINK
+
+
+## A bomb reached Mecha Guppy (MechaGuppyBarrage): its clang, fireball and shudder, its roar (the owner: "a little roar
+## whenever it gets hit by a bomb"), and the hit (the boss bar drops; the last one wins the fight).
 func bomb_landed(_b: Dictionary, point: Vector3) -> void:
 	if finished:
 		return
 	if boss.shark != null:
 		boss.shark.hit(point)
+		boss.sound(&"guppy_roar", boss.shark.head_transform().origin)
 	hits += 1
 	hits_since_dive += 1
 	last_hit_at = elapsed()
@@ -258,7 +289,7 @@ func _play_plume() -> void:
 	if _plume_played >= 2 or boss.shark == null:
 		_plume_played += 1
 		return
-	var at: Vector3 = Vector3(boss.shark.hinge.x, world.player.floor_base, boss.shark.hinge.z)
+	var at: Vector3 = Vector3(boss.shark.hinge.x, water_y(), boss.shark.hinge.z)
 	plume.play(at, PLUME.x * (1.0 if _plume_played == 0 else 0.8), PLUME.y)
 	_plume_played += 1
 
@@ -279,6 +310,21 @@ func _floor_bite() -> void:
 	else:
 		bite.skipped = true
 		boss.log_event(&"floor_bite_skipped", {"roof": bite.roof, "top": true})
+
+
+## The water on both sides of the top, from phase 3's start (and through the defeat, where Mecha Guppy dives into it and
+## swims away), keeping pace with the runner.
+func _place_water() -> void:
+	var shown: bool = started()
+	var p: Player = world.player
+	var x0: float = world.geo.wall_x() + MechaGuppyLooks.EAVE_REACH
+	for i: int in _water.size():
+		var side: float = -1.0 if i == 0 else 1.0
+		var water: MeshInstance3D = _water[i]
+		water.visible = shown
+		if shown:
+			water.global_position = Vector3(side * (x0 + WATER_SIZE.x * 0.5), water_y(),
+				TrackGeometry.world_z(p.distance - WATER_BEHIND + WATER_SIZE.y * 0.5))
 
 
 func _set_act(next: Act) -> void:

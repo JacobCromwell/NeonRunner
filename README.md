@@ -441,11 +441,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   phase 2). A runner who doesn't manage it still gets there, more slowly: after a step without a hit,
   Captain Cogs misses into the chasm beside the lanes that lead up and the shark rises to eat the bomb.
   Phase 3 (E5e-c, reworked by the owner in E5e-g): at the top the climb ends on a long flat roof deck, Captain
-  Cogs' ship comes level alongside it on the left and Mecha Guppy rises beside it on the right. The boss bar is
+  Cogs' ship comes level alongside it on the left and Mecha Guppy swims alongside it on the right, in water on
+  both sides of the deck, bobbing and surging as it keeps up. The boss bar is
   now the shark's health. The captain fires barrages of bombs across the deck from a swivel gun on his stern
   castle, one at a time to a fixed script, each warned by a red line across the lanes at its height and the
   gun's charge: a low one you jump, a high one you slide under. Every bomb that gets past you flies on into
-  Mecha Guppy (16 hits). After every 4 hits it dives, bursts back up ahead with a splash that raises a wave
+  Mecha Guppy, which roars (16 hits). After every 4 hits it dives, bursts back up ahead with a splash that raises a wave
   (it crashes over the deck and surges along every lane: jump it, like the Resonator's ring), then bites a
   crescent out of the deck from the right (the first leaves a lane to switch into, the next crosses every lane:
   jump it), and comes back up. On the last hit Mecha Guppy dives, bursts up beside the deck, gulps the captain

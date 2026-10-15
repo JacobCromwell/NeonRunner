@@ -302,6 +302,9 @@ func _gulp() -> void:
 
 ## The sea's surface (the open beach's water: BeachSkin.beach_drop under the street).
 func _sea_y() -> float:
+	# Phase 3's water beside the top (task E5e-g), once it shows: it swims away in that.
+	if boss.top != null and boss.top.started():
+		return boss.top.water_y()
 	var beach := boss.world.skin as BeachSkin
 	return -beach.beach_drop if beach != null else MechaGuppyWaterfall.SEA_Y
 

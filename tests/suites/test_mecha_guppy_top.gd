@@ -216,7 +216,7 @@ func _test_sounds() -> void:
 	var library := load("res://data/audio/sfx_library.tres") as SfxLibrary
 	var missing: Array[String] = []
 	for sound: StringName in [&"cogs_charge", &"cogs_cannon", &"wave_swell", &"wave_crash", &"guppy_leap", &"guppy_gulp",
-			&"guppy_swim", &"guppy_clang", &"guppy_rumble", &"guppy_floor_warn", &"guppy_bite"]:
+			&"guppy_swim", &"guppy_clang", &"guppy_roar", &"guppy_rumble", &"guppy_floor_warn", &"guppy_bite"]:
 		if library.stream(sound) == null or not library.volume_db.has(String(sound)):
 			missing.append(String(sound))
 	check(missing.is_empty(), "phase 3's and the defeat's sounds are in the library (%s missing)" % [missing])
@@ -320,6 +320,8 @@ func _test_live(lanes: int, speed: float) -> void:
 	var drops_ok: bool = drops.size() == hits
 	for d: float in drops:
 		drops_ok = drops_ok and absf(d - share) < 0.001 * boss.max_health + 0.0001
+	check(_sounds(boss, &"guppy_roar").size() == landed.size(),
+		"Mecha Guppy roars at every hit (%d roars, %d hits) %s" % [_sounds(boss, &"guppy_roar").size(), landed.size(), tag])
 	check(landed.size() == hits and boss.top.hits == hits and drops_ok and boss.top.barrage.burst == 0,
 		"every bomb past the runner flies on into Mecha Guppy: %d hits, each dropping the bar one hit's share, win it (%d drops of %s; %d burst) %s"
 		% [landed.size(), drops.size(), drops.map(func(d: float) -> String: return "%.3f" % d).slice(0, 3), boss.top.barrage.burst, tag])
