@@ -78,7 +78,7 @@ func build(p_config: LevelConfig, p_layout: LevelLayout, p_tuning: MovementTunin
 	player.wall_gaps = layout.wall_gaps
 	player.dash_walls = layout.dash_walls
 	# Task J2: the grapple's or a revive's save from a fall into a wall-run gap puts the runner on its lit wall.
-	if not layout.wall_run_gaps.is_empty():
+	if config.has_feature(WallRunGapPlacement.FEATURE) or not layout.wall_run_gaps.is_empty():
 		player.grapple_save = Callable(WallRunGapPlacement, &"grapple_save").bind(layout)
 	player.apply_loadout(DamageRules.Armor.create(rules, loadout.tier(&"armor"), loadout.has_armor()),
 		loadout.charge(&"shield"), loadout.charge(&"grapple"),

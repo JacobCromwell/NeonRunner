@@ -122,7 +122,7 @@ const INTRODUCTION_REACH: float = 210.0
 ## item 521 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 531).
 ## Task J2's wall-run gaps are no pattern pick either: their rules put the first where a whole clear stretch (about
 ## 4 s of run in every lane, its run-in, lit stretch, gap and landing floor) fits past the start, the earliest that
-## takes the least out of its way, which in Marketplace 1 is 2 to 23 s after it on its own seeds (WallRunGapPlacement;
+## takes the least out of its way, which in Marketplace 1 is 5 to 26 s after it on its own seeds (WallRunGapPlacement;
 ## DESIGN-TBD, docs/questions/j2.md). Nothing of them before their start is checked all the same.
 const SPACED_FROM_START: Array = ["wall_gaps", "wall_run_gaps"]
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the

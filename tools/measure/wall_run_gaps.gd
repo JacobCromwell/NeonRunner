@@ -1,8 +1,10 @@
 extends SceneTree
 ## Measures the wall-run gaps (task J2; WallRunGapPlacement): every campaign level that has them, at each lane count,
-## on its own seed and `--seeds` others (9001 on), as the campaign configures it: how many each build places, where
-## (the gap's start, its lit wall's side), how many plain pieces each took out of its way, the pass's constraints and
-## any rule a placed one breaks (WallRunGapPlacement.problem); then a summary per zone (the mean count a build).
+## on its own seed and `--seeds` others (9001 on), as the campaign configures it: where they may start from (the
+## feature's start or the run-up), how many each build places, where (the gap's start, its lit wall's side), what each
+## took out of its way (its cost; the plain pieces and the enemies that went), the pass's constraints and any rule a
+## placed one breaks (WallRunGapPlacement.problem); then a summary per zone (the mean count a build). `--set=name:value`
+## sets the shared tuning's numbers in memory for the run.
 ## `--dump=<step id>` prints a text map of each wall-run gap in that level's build (one row per lane and per wall, a
 ## column per DUMP_STEP metres, from its clear run-in to its landing floor's end): the level dump a review asks for.
 ## From the project folder (with XDG_DATA_HOME set as for the tests):
@@ -75,10 +77,11 @@ func _run() -> void:
 					if why != "":
 						problems.append("%.0f m: %s" % [float(w["start"]), why])
 				var report: Dictionary = gen.wall_run_gap_result
-				print("%s lanes=%d seed=%d (%.1f m/s, gap %.1f m, zone %.0f m): %d [%s] cost %s (%d pieces, %d enemies), %d ms%s%s%s" % [
-					s.id, lanes, config.level_seed, gen.speed, shape.gap, shape.zone(), layout.wall_run_gaps.size(),
+				print("%s lanes=%d seed=%d (%.1f m/s, gap %.1f m, zone %.0f m, from %.0f m): %d [%s] cost %s (%d pieces, %d enemies), the pass %d ms of the build's %d ms%s%s%s" % [
+					s.id, lanes, config.level_seed, gen.speed, shape.gap, shape.zone(),
+					maxf(gen.feature_start(WallRunGapPlacement.FEATURE), config.start_clear_distance), layout.wall_run_gaps.size(),
 					", ".join(where), report.get("costs", []), int(report.get("taken_out", 0)),
-					int(report.get("enemies_taken_out", 0)), ms,
+					int(report.get("enemies_taken_out", 0)), int(report.get("ms", 0)), ms,
 					"" if problems.is_empty() else "; PROBLEMS: " + "; ".join(problems),
 					"" if (report.get("constraints", []) as Array).is_empty() else "; " + "; ".join(report["constraints"]),
 					"" if gen.warnings.is_empty() else "; WARNINGS: " + "; ".join(gen.warnings)])

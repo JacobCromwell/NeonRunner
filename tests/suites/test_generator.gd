@@ -9,7 +9,7 @@ extends TestSuite
 ## curve for pick weights (FeatureRecency); quiet stretches and bursts (LevelConfig.quiet_seconds);
 ## floors that turn into gaps during play (task B4; GDD §9.9): cuts planned only where its limits allow
 ## (sweeps at 3, 5 and 6 lanes, under narrow ceilings and with every built feature, each limit by hand,
-## the clearing, and nothing changed without cuts).
+## the clearing, and nothing changed without cuts); wall-run gaps in quick play's level with the feature (task J2).
 
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
@@ -58,7 +58,38 @@ func run() -> void:
 	_test_floor_cuts(base)
 	_test_cut_limits(base)
 	_test_cut_placement(base)
+	_test_wall_run_gaps(base)
 	await _test_floor_routes_on_physics(base)
+
+
+## Wall-run gaps (task J2; docs/ARCHITECTURE.md, The generator, Wall-run gaps) in quick play's level with the feature
+## (`--features=wall_run_gaps`, with floor enemies that may make way for one), at 3, 5 and 6 lanes over seeds and
+## difficulties: at least one in every build, every one keeping its rules (check_layout's check_wall_run_gaps), no
+## warnings, the same seed the same level. (The sweep above, without the feature, has none: check_layout too.)
+func _test_wall_run_gaps(base: LevelConfig) -> void:
+	var counts: Array[int] = []
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.3, 1.0]:
+			for level_seed: int in range(1, 5):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = level_seed
+				var features := PackedStringArray(config.features)
+				features.append_array(PackedStringArray(["cyborg", "screech", WallRunGapPlacement.FEATURE]))
+				config.features = features
+				var tag: String = "(wall-run gaps) lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var patterns: Array = LevelGenerator.load_for(config)
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				check(not a.wall_run_gaps.is_empty(), "the level has wall-run gaps %s (%s)" % [tag,
+					gen.wall_run_gap_result.get("constraints", [])])
+				LayoutChecks.check_layout(self, a, config, tag)
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				counts.append(a.wall_run_gaps.size())
+	print("  wall-run gaps in quick play's level with the feature: %s" % [counts])
 
 
 ## GDD §3 and §7: the credits along each ramp's wall run are the ones LevelGenerator.wall_run_credits

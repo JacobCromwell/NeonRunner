@@ -18,8 +18,8 @@ extends RefCounted
 ##    after them the wall-run gaps (the `wall_run_gaps` feature, from Marketplace 1; task J2, the owner, October
 ##    15, 2026; wall_run_gaps_rules.gd, WallRunGapPlacement): a stretch where every floor lane is a hole too long
 ##    to jump, one side wall lit as the way across, where nothing the rules planned is in the way (plain pieces of
-##    the patterns go), its clear run-in and landing floor kept by every pass after the rules as a dash wall's
-##    footprint is, its lit wall by the wall fences and the side wall gaps.
+##    the patterns and a few small enemies go), its clear run-in and landing floor kept by every pass after the
+##    rules as a dash wall's footprint is, its lit wall by the wall fences and the side wall gaps.
 ## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
 ##    stretches. Around it, danger density (LevelConfig.danger_density_increase; DangerDensity,
 ##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
@@ -222,8 +222,8 @@ var show_window_result: Dictionary = {}
 ## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's
 ## danger_density_increase is 0.
 var danger_density_result: Dictionary = {}
-## The wall-run gaps of the last build (WallRunGapPlacement.place, task J2: placed, the plain pieces taken out of
-## their way, constraints); empty in a level without the `wall_run_gaps` feature.
+## The wall-run gaps of the last build (WallRunGapPlacement.place, task J2: how many were due and placed, the plain
+## pieces and enemies taken out of their way, constraints); empty in a level without the `wall_run_gaps` feature.
 var wall_run_gap_result: Dictionary = {}
 ## The floor pieces the danger density pass added in the last build that the credit pass gives no
 ## risky credit (DangerDensity, its tuning's credit_added_pieces off): more danger, not more pay.

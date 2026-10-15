@@ -17,14 +17,15 @@ const PATH: String = "res://data/tuning/wall_run_gaps.tres"
 @export_group("Frequency")
 ## DESIGN-TBD: a level gets about one wall-run gap per this many seconds of run from the feature's start to its
 ## end-clear stretch, at difficulty 0 and 1 (the level's difficulty halfway along that stretch,
-## LevelGenerator.difficulty_at), so later zones and later levels get more: one in the level that brings them in
-## (Marketplace 1, from halfway), two or three in a middle level, three or four in the Golden Zone's, as the level's
-## other content leaves room. At least one in every level with the feature.
+## LevelGenerator.difficulty_at), so later zones and later levels ask for more: one in the level that brings them in
+## (Marketplace 1, from halfway), two or three in a middle level, three or four in the Golden Zone's, as many as the
+## level's other content leaves room for (the crowded Golden Zone's fit about two). At least one in every level with
+## the feature.
 @export_range(10.0, 180.0, 0.5, "suffix:s") var spacing_seconds_easy: float = 70.0
 @export_range(10.0, 180.0, 0.5, "suffix:s") var spacing_seconds_hard: float = 40.0
 ## DESIGN-TBD: each is due at a seeded spot of its share of the level, and goes where it fits within this many seconds
-## of run either side of it (in the level that brings them in, the first from the feature's start on, as soon as one
-## fits), at the spot that needs the fewest plain pieces taken out of its way, the nearest of those.
+## of run either side of it (in the level that brings them in, the first within this many seconds from the feature's
+## start, as soon as one fits), at the spot that takes the least out of its way, the nearest of those.
 @export_range(1.0, 60.0, 0.5, "suffix:s") var search_seconds: float = 40.0
 ## DESIGN-TBD: the least seconds of run between one wall-run gap's landing floor and the next one's clear run-in.
 @export_range(0.0, 60.0, 0.5, "suffix:s") var min_spacing_seconds: float = 15.0
@@ -41,9 +42,9 @@ const PATH: String = "res://data/tuning/wall_run_gaps.tres"
 
 @export_group("Clearance")
 ## DESIGN-TBD: seconds of run before the lit stretch with nothing in any lane (no hole, fence, doodad, pad, ramp,
-## speed pad, ceiling, floor cut or enemy's attack; a ceiling's landing zone may reach in, clear floor itself): with
-## the lit stretch, 1.3 s for the runner to get across to the wall's side (up to five lane switches on 6 lanes, 0.7 s,
-## after a reaction) and step on. The gap and its lit wall show from far further back.
+## speed pad, ceiling or its landing zone, floor cut or enemy's attack): with the lit stretch, 1.3 s for the runner to
+## get across to the wall's side (up to five lane switches on 6 lanes, 0.7 s, after a reaction) and step on. The gap
+## and its lit wall show from far further back.
 @export_range(0.3, 4.0, 0.05, "suffix:s") var approach_seconds: float = 0.8
 ## DESIGN-TBD: seconds of run after the gap with nothing in any lane: the safe landing floor. Never shorter than where
 ## the latest standard wall run (a step onto the wall at the gap's edge, with the jump grace) drops the runner back,

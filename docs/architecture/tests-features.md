@@ -319,6 +319,19 @@ its window is full, at 6 its window comes after its bait), played from its start
 runner leads its first truck over that wider gap, where it's wrecked; and the pass's last way (task K5) on
 `LAST_RESORT_CASES` (the build's one wider gap from it, fair, past every truck's showing, every window holding) and
 on a plain stretch fenced every 15 m (plain fences make way for it, pulsing ones keep it from coming).
+`test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
+run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
+leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit
+wall clear past the longest wall run); every campaign level with the feature at 3, 5 and 6 lanes on its own build
+(`LayoutCache`): no warnings, at least one, `LayoutChecks.check_wall_run_gaps` (part of `check_layout`, so
+`test_campaign`'s seed sweep checks them too) and a floor route across each that steps onto the lit wall from the lit
+stretch (FloorRoute's wall-run move), the count by zone printed; none in the City's or Gangland's levels, quick play
+or a boss arena; the same seed the same level. On real physics at 3, 5 and 6 lanes and both walls: a step onto the
+lit wall early, midway or late on the lit stretch crosses onto the landing floor; with claws too; a jump, a jump with
+the dash or the dash alone falls in, as does a step onto the wall well before the lit stretch; the grapple's save and a
+revive after a fall put the runner on the lit wall and across. Every zone skin lights the lit wall in green chevrons
+over exactly the stretch to step on and the gap, on the wall face, facing the street, seamless across chunks; and a
+heli drone's barrage and a Bad Dream's slash hold off only while a crossing is in their reach.
 `test_ceiling_scenarios` checks the ceiling scenarios (task I4; The generator, Ceiling scenarios): their numbers and
 heights (a ceiling fence above a floor runner's jump, a hover truck roof's, a wall runner's body and the chase
 camera); none in the City's, Gangland's or the Marketplace's levels; in every level that lists them, at 3, 5 and 6

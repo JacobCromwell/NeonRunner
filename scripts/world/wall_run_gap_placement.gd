@@ -19,40 +19,45 @@ extends RefCounted
 ## - the gap, in every lane;
 ## - the safe landing floor (landing_seconds, never shorter than where the latest standard wall run drops the runner
 ##   back, LANDING_SLACK_SECONDS more), with nothing in any lane.
-## Every number is WallRunGapTuning's (data/tuning/wall_run_gaps.tres). With the shipped numbers the gap is about 1.3 s
-## of run (30 m at the Marketplace's 22.6 m/s, 33 m at the Golden Zone's 25), against about 0.75 s of run and the
-## dash's 4.8 m for the longest jump (a full jump, its jump grace, the dash all the way): no jump or dash crosses it.
+## Every number is WallRunGapTuning's (data/tuning/wall_run_gaps.tres). With the shipped numbers the gap is 1.41 s of
+## run (31.9 m at the Marketplace's 22.6 m/s, 35.2 m at the Golden Zone's 25), against about 1 s of run for the longest
+## jump (a full jump, its jump grace, the dash all the way; 1.2 s with a speed pad's whole boost): no jump crosses it.
 ##
-## Where (place), from the generator after every pass that puts things on the floor (the doodads and the dash walls,
-## LevelGenerator._build) and before the wall fences, the side wall gaps and the credits, from a stream of its own
-## (rng_for(FEATURE)), so a level is built as before up to it:
-## - only in a level with the `wall_run_gaps` feature (from Marketplace 1; never in the first zone), never in a boss
+## When (place): from the rules (wall_run_gaps_rules.gd, which runs after every other feature's rules) and before the
+## danger density pass, the planted cyborgs, the wider gaps, the fill pass, the zone doodads, the dash walls after them,
+## the wall fences, the side wall gaps and the credits, from a stream of its own (rng_for(FEATURE)): every enemy, ceiling,
+## pad, ramp, floor cut and wall piece the rules plan is there to keep off, and every pass after it keeps off it (the
+## rules' doodad_keep_outs and fill_keep_outs, CyborgRules.obstacle_spans, on_wall_section, WallFencePlacement.keep_outs,
+## WallGapPlacement.keep_outs). Where:
+## - only in a level with the `wall_run_gaps` feature (from Marketplace 1; never in the first zones), never in a boss
 ##   arena (WallGapPlacement.is_boss_arena), never before the feature's start, between the run-up and the end-clear
 ##   stretch;
-## - its whole clear stretch, from the run-in to the end of the landing floor, off everything that may not go: every
-##   enemy's attack (DangerDensity.attack_window: what it keeps and the floor it uses), every attack the rules keep the
-##   floor off (LevelGenerator.rules_doodad_keep_outs: a Bad Dream's chase, a Gilded Sentinel's strike, a hover truck's
-##   stay, an Enforcer Truck's showing window, a dash wall's footprint, a treasure stash), an Enforcer Truck's chase
-##   before its showing (EnforcerRules.wide_gap_keep_outs, as a wider gap keeps off it: it would wreck the truck before
-##   it has shown itself; past it, a truck following the runner into the gap is wrecked there, as in a wider gap), every
-##   ceiling to the end of its landing zone and every pad's zone, every ramp to the end of the longest wall run it
-##   launches, speed pads, floor cuts' windows, the wider gaps' zones, and fences that may not go (pulsing ones, ones a
-##   fence generator powers) and a treasure stash's doodads;
+## - its whole clear stretch, from the run-in to the end of the landing floor, off everything that may not go
+##   (floor_keep_outs, keep_outs_by_part): everything a wider gap's zone keeps off (WideGapPlacement.keeps_of: every
+##   enemy's attack and the floor it uses, a floor cyborg's obstacle margin, each planned Resonator pulse, the rules'
+##   keep-outs: a Bad Dream's chase, a Gilded Sentinel's strike, a hover truck's stay, an Enforcer Truck's showing window
+##   and its chase before it, a dash wall's footprint, a treasure stash), every pad and its lift, every ramp to the end
+##   of the longest wall run it launches, speed pads, floor cuts' windows, the wider gaps' zones, fences that may not go
+##   (pulsing ones, ones a fence generator powers), every ceiling and its landing zone (no ceiling overlaps it, nor a
+##   ceiling's safe landing zone), and no pad's run-up over its gap;
 ## - its lit wall whole and clear (wall_keep_outs) from wall_clear_seconds before the lit stretch to past the longest
 ##   wall run a runner may take over the gap (claws, the dash and a save onto the wall at its far edge, wall_clear_seconds
 ##   more): no sign (it blocks the entry and hurts), no wall enemy (a window cyborg, a vent's screech, a Gilded Sentinel's
-##   wall section); the wall fences and side wall gaps after it keep off that stretch (WallFencePlacement.keep_outs,
-##   WallGapPlacement.keep_outs), and the other wall stays whole (no side wall gap) from other_wall_clear_seconds before
-##   the gap to as far past it;
-## - plain pieces in its way go (holes, fences that may go, zone doodads that aren't a stash's: taking content out never
-##   makes a level unfair), and of the spots that fit near where one is due, the one with the fewest in its way.
-## How many: about one every spacing_seconds_easy to _hard (by the difficulty where the last one stood), from the
-## feature's start in the level that brings it in (its introduction, as soon as one fits), else first_spacing_share of a
-## spacing after the run-up. A level with the feature gets at least one (anywhere past its start), or a warning.
+##   wall section), no wall fence or side wall gap; the other wall stays whole (no side wall gap) from
+##   other_wall_clear_seconds before the gap to as far past it;
+## - what is in its way goes (_removable): plain pieces (holes, fences that may go, zone doodads that aren't a stash's:
+##   taking content out never makes a level unfair) and small enemies (_small_enemies: a plain floor cyborg, a manhole
+##   screech, never the level's first of its kind), the danger density pass counting the level's enemies after it; of
+##   the spots that fit near where one is due, the one that takes the least out (_cost), the nearest of those.
+## How many: about one per spacing_seconds_easy to _hard of run (by the difficulty halfway through the stretch), each
+## due at a seeded spot of its share and placed within search_seconds of it, min_spacing_seconds apart; in the level
+## that brings them in the first as soon as one fits past the feature's start. A level with the feature gets at least
+## one (anywhere past its start, as a last resort with a Resonator's visit taken out of its way, _big_enemies), or a
+## warning.
 ##
 ## Never in a boss arena, quick play's prototype level or a level without the feature: those draw nothing and are built
 ## exactly as before. DESIGN-TBD (docs/questions/j2.md): every number, the lit wall's look, where the feature starts,
-## a grapple's or a revive's save onto the lit wall (grapple_save).
+## what may make way, a grapple's or a revive's save onto the lit wall (grapple_save).
 
 const FEATURE: String = "wall_run_gaps"
 ## Claws lengthen wall runs (PowerupTuning.claws_wall_time_multiplier) and the dash carries a wall runner further.
@@ -112,16 +117,12 @@ class Shape:
 		return approach + window + gap + landing
 
 	## The parts of a wall-run gap whose clear stretch starts at 0, as Vector2(from, to) offsets along the track (see
-	## keep_outs_by_part): what `whole`, `ceilings`, `run_ups` and `landings` keep off; and its lit wall's stretch
-	## (`wall`, wall_path).
+	## keep_outs_by_part): what `run_ups` keep off (the gap), what the rest keep off (`whole`, `ceilings`, `landings`:
+	## the whole clear stretch); and its lit wall's stretch (`wall`, wall_path).
 	func part(name: String) -> Vector2:
 		match name:
-			"ceilings":
-				return Vector2(0.0, approach + window + gap + exit_margin)
 			"run_ups":
 				return Vector2(approach + window, approach + window + gap)
-			"landings":
-				return Vector2(approach, approach + window + gap)
 			"wall":
 				return Vector2(approach - wall_before, approach + window + gap + wall_after)
 		return Vector2(0.0, zone())
@@ -256,13 +257,15 @@ static func wall_keep_outs_for(lay: LevelLayout, speed: float, side: int, other:
 
 
 ## Places the level's wall-run gaps (see the header). Returns its report (LevelGenerator.wall_run_gap_result): {} when
-## the level has no `wall_run_gaps` (or is a boss arena); else {placed (how many), taken_out (plain pieces that went),
-## costs (each one's pieces taken out), constraints (why none, if so)}.
+## the level has no `wall_run_gaps` (or is a boss arena); else {target (how many were due), placed (how many),
+## taken_out (plain pieces that went), enemies_taken_out, costs (each one's _cost as placed), constraints (why fewer,
+## or none, if so), ms (how long the pass took, for the review tools)}.
 static func place(gen: LevelGenerator) -> Dictionary:
 	var lay: LevelLayout = gen.layout
 	lay.wall_run_gaps.clear()
 	if not gen.config.has_feature(FEATURE) or WallGapPlacement.is_boss_arena(gen.config):
 		return {}
+	var t0: int = Time.get_ticks_usec()
 	var p := _Pass.new()
 	p.gen = gen
 	p.t = tuning()
@@ -318,7 +321,7 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		GeneratorRules.keep_powered(gen)
 	lay.wall_run_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	return {"target": count, "placed": lay.wall_run_gaps.size(), "taken_out": p.taken_out,
-		"enemies_taken_out": p.enemies_out, "costs": p.costs, "constraints": constraints}
+		"enemies_taken_out": p.enemies_out, "costs": p.costs, "constraints": constraints, "ms": (Time.get_ticks_usec() - t0) / 1000}
 
 
 ## How many wall-run gaps a level is due (see the header): one per spacing_seconds_easy to _hard (by the level's
@@ -565,11 +568,10 @@ static func _fence_stays(gen: LevelGenerator, f: Dictionary) -> bool:
 
 
 ## What each part of a wall-run gap keeps off (see the header), at `gen`'s level, as Vector2 stretches of track in no
-## particular order: {whole (no wall-run gap's clear stretch reaches one, in any lane), ceilings (each ceiling section,
-## which the clear run-in, the lit stretch, the gap and the exit margin keep off: a ceiling ending before the run-in
-## drops its riders onto clear floor with the whole run-in ahead, and one may start over the landing floor), run_ups
-## (each pad's run-up, clear floor in its lane a full jump long: kept off the gap only), landings (each ceiling's landing
-## zone, clear floor: kept off the lit stretch and the gap only)}. `whole` is floor_keep_outs.
+## particular order: {whole (no wall-run gap's clear stretch reaches one, in any lane), ceilings (each ceiling section:
+## none overlaps the clear stretch), run_ups (each pad's run-up, clear floor in its lane a full jump long: kept off the
+## gap only, as the pad and its lift keep off the whole), landings (each ceiling's landing zone: none overlaps the clear
+## stretch, so no ceiling's rider comes down in it)}. `whole` is floor_keep_outs.
 static func keep_outs_by_part(gen: LevelGenerator) -> Dictionary:
 	var ceilings: Array[Vector2] = []
 	var run_ups: Array[Vector2] = []

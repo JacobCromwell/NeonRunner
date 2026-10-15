@@ -647,3 +647,73 @@ doodads are ordinary zone doodads (`DashBreakable`: the push, the blocking sides
 camera of a ceiling rider rides lower than a doodad's top (`camera_ceiling_height`), and a stash's doodads stand under
 a ceiling: `RunCamera.doodad_floor` keeps it `camera_doodad_clearance` above any doodad it's level with, rising toward
 one ahead.
+
+**Wall-run gaps** (task J2; the owner, October 15, 2026, `docs/USER_REQUESTS.md`: "sections, especially in later zones
+and levels, where there is a gap over the ENTIRE floor (every lane), and the only way to cross is a wall run ...
+consider a wall an acceptable/safe path"). **A wall run is an accepted safe path here**: the one place a level asks
+for the wall, and every rule below keeps that path whole, clear and long enough. The `wall_run_gaps` feature, from
+halfway into Marketplace 1 (`feature_starts` 0.5) on, in every later level, never in the City or Gangland, a boss
+arena or quick play; it has no patterns. `LevelLayout.wall_run_gaps` holds `{side, start, end, entry, approach,
+landing, wall_to}` (left out of `to_dict()` while empty); its holes are ordinary `gaps` entries marked
+`LevelLayout.WALL_RUN_HOLE`, which the jump checks (`LayoutChecks`), `GapDensity.rows` (so the wider gaps never take
+one for a row) and the credits' risky gap credit leave out. `WallRunGapPlacement` (`scripts/world/`) holds every rule
+and the shape, numbers in `WallRunGapTuning` (`data/tuning/wall_run_gaps.tres`, F6 "Wall-run gaps"); DESIGN-TBD
+throughout (`docs/questions/j2.md`).
+- **Its shape** (`shape_for`, seconds of run at the level's speed, from the standard wall run,
+  `MovementTuning.wall_entry_time + wall_slide_time`, 2.16 s: no claws, no wall hop): a clear run-in
+  (`approach_seconds`, 0.8 s) and the lit stretch (`entry_window_seconds`, 0.5 s), together time to cross a 6-lane
+  track to the wall; the gap, a standard wall run less the lit stretch and `exit_margin_seconds` (1.41 s: 31.9 m at
+  the Marketplace's 22.6 m/s, 35.2 m at the Golden Zone's 25), so a step onto the wall anywhere on the lit stretch
+  carries the runner across, the earliest leaving the wall past the far edge, the latest (at the edge, with the jump
+  grace) dropping back onto the landing floor (`landing_seconds`, never shorter than that drop plus
+  `LANDING_SLACK_SECONDS`). No jump crosses it: a full jump with its grace and the dash all the way reach about 1 s
+  of run, 1.2 s with a speed pad's or a ramp's whole boost. A step onto the wall before the lit stretch drops the
+  runner in (a wall hop is never asked for; claws, the dash and a wall hop only carry them further).
+- **When and where**: its rules (`wall_run_gaps_rules.gd`) run last of the rules (`RUN_AFTER` every feature whose rules
+  plan something), before the danger density pass, the planted cyborgs, the wider gaps, the fill pass, the doodads,
+  the dash walls after them, the wall fences, the side wall gaps and the credits, from `rng_for("wall_run_gaps")`.
+  About one per `spacing_seconds_easy` to `_hard` (70 to 40 s, by the difficulty halfway through the stretch),
+  each due at a seeded spot of its share and placed within `search_seconds` (40 s) of it at the spot that takes the
+  least out of its way, the nearest of those; the level that brings them in places its first as soon as one fits
+  past the start (each unit taken out weighs a second later, `INTRO_COST_SECONDS`); one at least, anywhere past the
+  start, as a last resort taking a Resonator's visit out (never the first; `_big_enemies`), else a warning.
+  `min_spacing_seconds` between one's landing floor and the next one's run-in.
+- **What it keeps off** (`floor_keep_outs`, `keep_outs_by_part`, `wall_keep_outs`): from its run-in to the end of its
+  landing floor nothing in any lane: no other hole, fence, doodad, pad and its lift, ramp and the longest wall run it
+  launches, speed pad, floor cut's window, wider gap's zone, and no enemy's attack or the floor it uses (everything a
+  wider gap's zone keeps: `WideGapPlacement.keeps_of`, the rules' keep-outs, each planned Resonator pulse); no
+  ceiling and no ceiling's landing zone overlaps it, and no pad's run-up reaches its gap. Its lit wall stays whole
+  and clear from `wall_clear_seconds` before the lit stretch to past
+  the longest wall run over the gap (`wall_to`: claws, the dash, a save onto the wall at the far edge): no sign, wall
+  enemy (`WallGapTuning.wall_enemy_seconds` either side), wall fence or side wall gap; the other wall keeps no side
+  wall gap beside the gap (`other_wall_clear_seconds`).
+- **Making room** (`_removable`): plain pieces in its way go (holes, fences but pulsing ones or ones a fence generator
+  powers, zone doodads but a treasure stash's), and small enemies (`_small_enemies`: a plain floor cyborg, a manhole
+  screech; never a host, a planted cyborg, a vent screech, nor the level's first of its kind), each weighing
+  `ENEMY_WEIGHT` plain pieces. It runs before the danger density pass counts the level's enemies, so that pass's
+  count and share are the level's as it stands.
+- **After it**: every later pass keeps off its clear stretch (`doodad_keep_outs`, `fill_keep_outs`, with `KEEP_MARGIN`);
+  a cyborg's walk and panic run stop short of it (`CyborgRules.obstacle_spans`), a wall enemy the danger density pass
+  adds keeps off its lit wall (`on_wall_section`), and the wall fences and side wall gaps keep off it
+  (`WallFencePlacement.keep_outs`, `WallGapPlacement.keep_outs`). `problem(gen, w)` re-checks a finished layout
+  (`LayoutChecks.check_wall_run_gaps`, part of `check_layout`).
+- **At run time**: the attacks a wall runner can't dodge over the gap hold off while a crossing (`approach` to `end`,
+  `LevelLayout.wall_run_between`) lies in their reach: a heli drone's barrage (`Drone._wall_run_in_reach`) and a Bad
+  Dream's slash (`BadDream._wall_run_in_reach`; a host's chase only comes if the player kills it, so the generator
+  can't plan around it). A cyborg's bolts never land near a hole (`CyborgGun`), a Resonator's pulse waits for clear
+  floor (`Resonator.pulse_clear`). The grapple's save and a revive after a fall into one put the runner on its lit
+  wall (`WallRunGapPlacement.grapple_save`, set by `RunWorld.build`; `Player._pull_up`'s `{"wall": side}`), whose run
+  carries them across: the pull's leap would drop them back in. Its first-encounter hint is `wall_run_gap`
+  (`data/hints/hints.json`).
+- **How many** (`tools/measure/wall_run_gaps.gd`, campaign levels on their own and two more seeds at 3, 5 and 6
+  lanes): a build has on average 1.9 in the Marketplace (one in Marketplace 1, from halfway), 2.7 in the Casino, 2.3 in
+  Corporate, 2.6 on the Beach, 2.5 in the Dead Zone and 1.8 in the Golden Zone, whose levels are the most crowded
+  (their Resonators, Gilded Sentinels and hover trucks leave few 4-second stretches free); every build measured
+  (and every one of `test_campaign`'s seed sweep) has one.
+
+**Wall-run gaps on the track.** Their holes are built like any (`TrackBuilder._floor_pieces`, the zone's floor edges).
+`TrackBuilder._build_chunk` has the skin light each one's wall where it runs through the chunk
+(`LevelLayout.wall_run_guides`, `ZoneSkin.wall_run_guide`, Zone skins): by default the ramps' green chevrons
+(`ramp_color`, as the Floating Head's wall marks show a wall run), a tall, bright, framed panel over the lit stretch
+(where to step on) and a strip at running height over the gap, streaming ahead, never in a hazard colour, never
+flickering (Reduced flashing leaves it as it is). Visual only, no collision.
