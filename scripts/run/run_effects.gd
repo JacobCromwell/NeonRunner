@@ -552,7 +552,11 @@ func _on_player_event(kind: StringName) -> void:
 			shake(tuning.stomp_shake_strength, tuning.stomp_shake_time)
 			freeze(tuning.stomp_freeze_time)
 		&"land":
-			if _air_peak_h >= tuning.land_shake_fall_height:
+			# While the camera climbs (RunWorld.camera_climbs), a fall is measured down to the floor landed on,
+			# so a jump on a roof high above the street isn't a hard landing.
+			var landed_on: float = world.player.floor_y \
+				if world.camera_climbs and world.player.surface == Player.Surface.FLOOR else 0.0
+			if _air_peak_h - landed_on >= tuning.land_shake_fall_height:
 				shake(tuning.land_shake_strength, tuning.land_shake_time)
 			_air_peak_h = 0.0
 		&"armor_hit":

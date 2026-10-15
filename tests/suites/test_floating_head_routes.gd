@@ -450,8 +450,8 @@ func _test_route_hints() -> void:
 # --- Armor -------------------------------------------------------------------------------------
 
 ## GDD §10's standard armor rule gave a runner with no armor up and no shield nothing before the final
-## phase (nothing could break). Now a phase that begins with them unprotected counts as a break: an
-## armor pickup 10-15 s in, which appears. Since G3 every run carries the free armor, so that's a phase
+## phase (no armor to take a hit). Now a phase that begins with them unprotected counts as an armor hit:
+## an armor pickup 10-15 s in, which appears. Since G3 every run carries the free armor, so that's a phase
 ## begun while it's broken and coming back (or a run without it). With the armor up or a shield it's the
 ## rule as before; and a runner whose armor is up still gets the final phase's pickup (taking it adds a
 ## hit, G3).

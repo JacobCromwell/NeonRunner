@@ -7,7 +7,7 @@ extends TestSuite
 ## - the data: data/zones/beach.tres, the campaign's zone 6 between Corporate and the Dead Zone (id beach, the Beach
 ##   skin, Tiki Tides, the volleyball match (Net Gains, beach/2: the owner, October 10, 2026; a mini-game, played by
 ##   test_volleyball) and Sunset Strip, now beach/3, its music track `beach`, a stand-in on tracks the game has, its intro and
-##   outro cinematic slots and its boss slot, a placeholder, outside the web demo); its levels: Corporate 2's
+##   outro cinematic slots and its boss slot, Mecha Guppy and Captain Cogs, outside the web demo); its levels: Corporate 2's
 ##   features (a remix, no new enemy assets), nothing introduced, off the campaign's difficulty curve, a
 ##   difficulty, enemy scaling, danger density and run speed between Corporate 2's and Dead Zone 1's, durations of
 ##   145 and 150 s, seeds of their own, the open-walls tuning (data/tuning/beach_wall_gaps.tres, whose margins
@@ -110,9 +110,9 @@ func _test_data() -> void:
 			library.path(zone.music).get_file(), library.path(library.run_track(zone.music)).get_file()])
 	check(zone.intro != null and zone.intro.is_built() and zone.outro != null and not zone.outro.is_built() and zone.boss_intro == null,
 		"its intro plays the arrival flyover, its outro is a placeholder card, and it has no boss intro")
-	# The owner, October 9, 2026: "there will be a boss battle for the beach, but it has not yet been created".
-	check(zone.boss != null and zone.boss.id == &"beach_boss" and not zone.boss.is_built() and zone.boss.preview() == null,
-		"its boss slot is a placeholder: the campaign passes through it")
+	# Its boss, Mecha Guppy and Captain Cogs (GDD §10, task E5e): the campaign plays the fight (its scene, since E5e-c).
+	check(zone.boss != null and zone.boss.id == &"beach_boss" and zone.boss.is_built() and zone.boss.preview() == null,
+		"its boss slot plays Mecha Guppy and Captain Cogs' fight")
 	check(not zone.in_demo, "outside the web demo")
 	var before: CampaignStep = campaign.step(BEFORE)
 	var after: CampaignStep = campaign.step(AFTER)

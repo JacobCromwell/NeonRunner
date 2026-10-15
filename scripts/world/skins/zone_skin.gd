@@ -107,6 +107,13 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 ## other enemies' weathering (&"scavenger" weathered, anything else clean). Each zone's value is listed
 ## in docs/ARCHITECTURE.md (Zone skins). Their hazard colours and shapes stay the same everywhere.
 @export var enemy_variant: StringName = &"city"
+## How much bigger this zone draws its cyborgs: the floor cyborgs (panic variant and hosts too) and the window
+## cyborgs (CyborgSuit.draw_scale), a factor on the model only, from the feet (a window cyborg: from its waist).
+## Their hitboxes, bolts and everything gameplay reads stay as they are, so a bigger one is easier to see, not
+## harder to dodge. Owner, October 14, 2026 (GDD §9.2): the cyborgs were hard to see in the first zone, so
+## the Neon City draws them 1.2 times bigger (data/skins/city_skin.tres); the other zones keep 1.0.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 829): whether the other zones follow; it is this one number in each skin.
+@export_range(0.5, 2.0, 0.01) var cyborg_draw_scale: float = 1.0
 
 @export_group("Doodads")
 ## The colours of the default doodad look (doodad()), sRGB: its body, its top and its base plinth. The

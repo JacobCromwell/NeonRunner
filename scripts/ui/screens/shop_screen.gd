@@ -74,15 +74,22 @@ func _ready() -> void:
 		var inset := Control.new()
 		inset.custom_minimum_size.x = UiTheme.px(16)
 		back_button.add_sibling(inset)
-		var actions := HBoxContainer.new()
-		actions.alignment = BoxContainer.ALIGNMENT_END
-		actions.add_theme_constant_override(&"separation", roundi(UiTheme.px(12)))
-		content.add_child(actions)
+		# A phone held sideways has no height to spare for a row of its own: the way on goes in the title
+		# bar, where it's always in reach, and the credits' own label gives way to it.
+		var short: bool = is_short()
+		var actions: HBoxContainer = header_right
+		if short:
+			_net_worth.visible = false
+		else:
+			actions = HBoxContainer.new()
+			actions.alignment = BoxContainer.ALIGNMENT_END
+			actions.add_theme_constant_override(&"separation", roundi(UiTheme.px(12)))
+			content.add_child(actions)
 		menu_button = NeonButton.make("MENU", NeonButton.Kind.FLAT, &"home")
 		menu_button.pressed.connect(App.show_title)
 		actions.add_child(menu_button)
 		play_button = NeonButton.make(play_label.to_upper(), NeonButton.Kind.PRIMARY, _play_icon())
-		play_button.custom_minimum_size.x = UiTheme.px(220)
+		play_button.custom_minimum_size.x = UiTheme.px(170 if short else 220)
 		play_button.pressed.connect(_leave)
 		actions.add_child(play_button)
 		initial_focus = play_button

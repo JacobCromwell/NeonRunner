@@ -190,6 +190,12 @@ static func parts() -> HumanoidParts:
 	return _parts
 
 
+## How much bigger the zone draws its cyborgs (the skin's cyborg_draw_scale; 1 without a skin): the model
+## only, never a hitbox, a bolt's start or anything else gameplay reads.
+static func draw_scale(skin: ZoneSkin) -> float:
+	return maxf(skin.cyborg_draw_scale, 0.1) if skin != null else 1.0
+
+
 ## The look a skin's enemy_variant dresses the cyborgs in: a look's own name picks it, the Neon City's
 ## and Gangland's variants map to theirs (VARIANT_LOOKS), anything else wears the base.
 static func look_for(variant: StringName) -> StringName:

@@ -68,6 +68,7 @@ func run() -> void:
 	await _test_hitboxes_pinned()
 	await _test_hitboxes_inside()
 	await _test_not_bigger()
+	await _test_draw_scale()
 	_test_look()
 	_test_variant_looks()
 	_test_weapons()
@@ -317,6 +318,62 @@ func _test_hitboxes_inside() -> void:
 		wc.retire()
 		await physics_frames(1)
 	await sim.free_world(w)
+
+
+## The owner's October 14 request (GDD §9.2, "Drawn 20% bigger"): the Neon City draws its cyborgs 1.2 times
+## bigger (ZoneSkin.cyborg_draw_scale), the other zones as before, and nothing gameplay reads changes: every
+## hitbox, where the gun's bolts start, where a floor cyborg's feet and a window cyborg's waist are.
+func _test_draw_scale() -> void:
+	var city := load("res://data/skins/city_skin.tres") as ZoneSkin
+	check(city != null and is_equal_approx(city.cyborg_draw_scale, 1.2), "the Neon City draws its cyborgs 1.2 times bigger")
+	var dir := DirAccess.open("res://data/skins")
+	for file: String in dir.get_files():
+		if file.ends_with("_skin.tres") and file != "city_skin.tres":
+			var other := load("res://data/skins/" + file) as ZoneSkin
+			check(other != null and is_equal_approx(other.cyborg_draw_scale, 1.0),
+				"%s: the other zones' cyborgs are drawn at their own size" % file)
+	check(is_equal_approx(CyborgSuit.draw_scale(null), 1.0), "without a skin a cyborg is drawn at its own size")
+	var w: RunWorld = sim.build_world(RunSim.layout(5, 400.0))
+	var drawn: Dictionary = {}
+	for factor: float in [1.0, 1.2]:
+		var skin := w.skin.duplicate() as ZoneSkin
+		skin.cyborg_draw_scale = factor
+		w.skin = skin
+		var c := w.director.spawn({"type": "cyborg", "at": 60.0, "lane": 2, "seed": 3,
+			"params": {"panic": false, "fires": false, "host": false}}) as Cyborg
+		var h := w.director.spawn({"type": "cyborg", "at": 70.0, "lane": 1, "seed": 4,
+			"params": {"panic": true, "fires": false, "host": true}}) as Cyborg
+		var wc := w.director.spawn({"type": "window_cyborg", "at": 80.0, "lane": 4, "side": 1, "seed": 4,
+			"params": {"fires": false}}) as WindowCyborg
+		await physics_frames(2)
+		drawn[factor] = {"floor": _visual_bounds(c.body, c), "host": _visual_bounds(h.body, h),
+			"window": _visual_bounds(wc.body, wc),
+			"waist": wc.to_local(wc.body.rig.joint(&"pelvis").global_position),
+			"boxes": [_hitboxes(c), _hitboxes(h), _hitboxes(wc)],
+			"muzzles": [c.gun.muzzle_offset, h.gun.muzzle_offset, wc.gun.muzzle_offset],
+			"reach": [c.gun.muzzle_reach, h.gun.muzzle_reach, wc.gun.muzzle_reach],
+			"bases": [c.gun._muzzle_base() - c.global_position, wc.gun._muzzle_base() - wc.global_position]}
+		for e: Enemy in [c, h, wc]:
+			e.retire()
+		await physics_frames(1)
+	await sim.free_world(w)
+	var a: Dictionary = drawn[1.0]
+	var b: Dictionary = drawn[1.2]
+	for key: String in ["floor", "host", "window"]:
+		var from: AABB = a[key]
+		var to: AABB = b[key]
+		check((to.size - from.size * 1.2).length() < 0.05,
+			"%s: drawn 1.2 times bigger (%s from %s)" % [key, str(to.size), str(from.size)])
+	var feet_a: AABB = a["floor"]
+	var feet_b: AABB = b["floor"]
+	check(absf(feet_b.position.y - feet_a.position.y) < 0.005, "a floor cyborg still stands on the floor (soles at %.3f, was %.3f)"
+		% [feet_b.position.y, feet_a.position.y])
+	check((b["waist"] as Vector3).is_equal_approx(a["waist"]), "a window cyborg's waist stays where it was (%s, was %s)"
+		% [str(b["waist"]), str(a["waist"])])
+	check(str(b["boxes"]) == str(a["boxes"]), "every hitbox is what it was: %s" % str(b["boxes"]))
+	check(b["muzzles"] == a["muzzles"] and b["reach"] == a["reach"], "the gun's muzzle point is what it was")
+	check((b["bases"][0] as Vector3).is_equal_approx(a["bases"][0]) and (b["bases"][1] as Vector3).is_equal_approx(a["bases"][1]),
+		"the bolts start where they did (%s)" % str(b["bases"]))
 
 
 ## No look is bigger than the base (brief: a bigger body would no longer match the hitboxes, which are
