@@ -271,10 +271,15 @@ static func _metal(scav: bool) -> StandardMaterial3D:
 	return _materials[key]
 
 
+## The hatch's near-black recess. It has the features of GreyboxMaterials.glow() (opaque, unshaded, emission on and
+## black), so it draws with the glow's shader instead of one of its own: an unshaded material ignores its emission,
+## so nothing drawn changes, and a lair's level loads 6 programs fewer on the web.
 static func _dark() -> StandardMaterial3D:
 	if not _materials.has("dark"):
 		var m := StandardMaterial3D.new()
 		m.albedo_color = Color(0.005, 0.006, 0.004)
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.emission_enabled = true
+		m.emission = Color.BLACK
 		_materials["dark"] = m
 	return _materials["dark"]

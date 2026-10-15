@@ -52,6 +52,11 @@ static func glow(color: Color, energy: float = 2.0, alpha: float = 1.0) -> Stand
 
 
 ## Unshaded, see-through colour, drawn on top when `on_top` (debug overlays: is_debug_overlay).
+## It has the same standard-material features as glow() with an alpha (a shadow is that look in black), which
+## means the same shader: the renderer makes one shader for each set of features, and this look drew the player's
+## shadow with a shader of its own, the same code as the glow's, for 5 programs of every level's load on the web.
+## Nothing drawn changes: an unshaded material ignores its emission (rendered both ways, the pixels are the same),
+## so the emission here is switched on and black.
 static func overlay(color: Color, on_top: bool) -> StandardMaterial3D:
 	var key: String = "overlay_%s_%s" % [color.to_html(), on_top]
 	if not _cache.has(key):
@@ -59,6 +64,8 @@ static func overlay(color: Color, on_top: bool) -> StandardMaterial3D:
 		m.albedo_color = color
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.emission_enabled = true
+		m.emission = Color.BLACK
 		m.no_depth_test = on_top
 		if on_top:
 			m.set_meta(&"debug_overlay", true)
