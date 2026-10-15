@@ -74,9 +74,10 @@ and its added hazards earn no extra risk-credit pay.
 - *A menu, not a checklist.* The whole permanent catalog costs 43,650 (PC), 2.7 playthroughs of a typical player
   (2.1 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
   along the way owns only part of it after one playthrough. Every completion pays again, so replays fill the rest.
-- *Mobile.* 3 lanes hold about 10% fewer credits (14,702 for a typical player's levels), so a tier first fits at
-  most a level or two later. Nothing is needed to progress (GDD §8), and a $0.99 pack (1,000) is 1.2 finishes,
-  a $4.99 crate (6,000) 7.2: neither looks forced.
+- *Mobile.* 3 lanes hold about 10% fewer credits (14,702 for a typical player's levels, 18,702 with the bosses; the
+  mobile catalog is 37,650 without slow time), so a tier first fits at most a level later (Armor I at City 2, the
+  Heavy missile at level 19). Nothing is needed to progress (GDD §8), and a $0.99 pack (1,000) is 1.3 finishes,
+  a $4.99 crate (6,000) 8.0: neither looks forced.
 - *Breakables.* Shield 400, grapple 250 and revive 600 stay under a finish and a half of a typical player from City
   2 on; all three together are 2.4 finishes in the City and 1.2 to 1.7 after.
 
