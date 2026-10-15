@@ -23,6 +23,7 @@ const SONGS: Dictionary = {
 	&"zone_6": "Zone_6_View_from_the_Zenith.mp3",
 	&"casino_song": "Zone_3_2_Casino_Midnight_at_the_atrium.mp3",
 	&"beach_song": "Zone_Beach_Palms_at_Terminal_Speed.mp3",
+	&"beach_boss_song": "Zone_Beach_Boss_Teeth_in_the_Surf.mp3",
 	&"boss_1": "Boss_1_Apex_Combat_Maneuver.mp3",
 }
 const GENERATED_ZONE_DEFAULTS: Dictionary = {&"casino": &"marketplace", &"beach": &"marketplace"}
@@ -36,7 +37,7 @@ const ZONE_SONGS: Dictionary = {
 	&"dead_zone": &"zone_5",
 	&"golden": &"zone_6",
 }
-const BOSS_SONGS: Dictionary = {&"city_boss": &"boss_1", &"casino_boss": &"casino_song"}
+const BOSS_SONGS: Dictionary = {&"city_boss": &"boss_1", &"casino_boss": &"casino_song", &"beach_boss": &"beach_boss_song"}
 const ZONES_WITHOUT_RIFFS: Array[StringName] = [&"casino_song", &"beach_song"]
 const SONG_BUDGET_BYTES: int = 40 * 1024 * 1024
 ## Generated defaults must stay under this in the repo (about 3 MB per 40–60 s loop of 32 kHz PCM).
@@ -116,8 +117,9 @@ func _test_supplied_songs() -> void:
 	check(library.boss_tracks.size() == BOSS_SONGS.size() and library.riff_track(&"boss_1") == &"city",
 		"Boss 1 and The House use supplied music, retaining available completion sounds")
 	check(MusicDirector.level_complete_sound(&"casino_song", App.sfx_library) == MusicDirector.LEVEL_COMPLETE
-		and MusicDirector.level_complete_sound(&"beach_song", App.sfx_library) == MusicDirector.LEVEL_COMPLETE,
-		"Casino and Beach songs use the E completion riff until matching riffs are added")
+		and MusicDirector.level_complete_sound(&"beach_song", App.sfx_library) == MusicDirector.LEVEL_COMPLETE
+		and MusicDirector.level_complete_sound(&"beach_boss_song", App.sfx_library) == MusicDirector.LEVEL_COMPLETE,
+		"Casino, Beach and Beach boss songs use the E completion riff until matching riffs are added")
 	check(library.run_track(&"city", &"test_boss") == &"city", "the test boss keeps its default song")
 	check(library.path(&"menu") == "res://assets/music/menu.wav", "menus keep their original song")
 	check(not library.files.values().has("res://assets/music/Horizon_Of_Glass.mp3"), "Horizon of Glass remains unused")
