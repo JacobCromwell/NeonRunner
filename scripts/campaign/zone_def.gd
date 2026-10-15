@@ -25,7 +25,8 @@ extends Resource
 @export_range(0.0, 40.0, 0.1, "suffix:m/s") var run_speed: float = 0.0
 ## Optional cinematic before the first level.
 @export var intro: CinematicDef
-## Optional cinematic before the boss.
+## The cinematic before the boss (item 395: every boss has one; the City's and Gangland's are built, the rest
+## empty slots, CinematicDef.skip_while_empty, which the campaign skips until a scene is set).
 @export var boss_intro: CinematicDef
 ## The zone's boss (GDD §10); none for a zone that leads straight into the next (the Marketplace, into the
 ## Casino: owner, October 8, 2026).

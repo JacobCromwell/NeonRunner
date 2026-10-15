@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"beach_boss_intro"
+title = "Mecha Guppy and Captain Cogs"
+scene = ""
+skip_while_empty = true
+placeholder_text = "DESIGN-TBD: an empty slot for the owner's beats before Mecha Guppy and Captain Cogs (the Beach's boss). The campaign skips it until a scene is set (item 395)."

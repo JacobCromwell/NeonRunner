@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="CinematicDef" format=3]
+
+[ext_resource type="Script" path="res://scripts/campaign/cinematic_def.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = &"golden_boss_intro"
+title = "The Golden Convergence"
+scene = ""
+skip_while_empty = true
+placeholder_text = "DESIGN-TBD: an empty slot for the owner's beats before The Golden Convergence (the Golden Zone's boss). The campaign skips it until a scene is set (item 395)."

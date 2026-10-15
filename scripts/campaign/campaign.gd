@@ -225,7 +225,7 @@ func _build_steps() -> void:
 		var zone: ZoneDef = zones[zi]
 		if zone.placeholder or zone.levels.is_empty():
 			continue
-		if zone.intro != null:
+		if zone.intro != null and not zone.intro.is_skipped():
 			_add_cinematic(zone, zi, "intro", zone.intro)
 		for li: int in zone.levels.size():
 			var s := CampaignStep.new()
@@ -243,7 +243,7 @@ func _build_steps() -> void:
 				s.level_index = level_index
 				level_index += 1
 			_append(s)
-		if zone.boss_intro != null:
+		if zone.boss_intro != null and not zone.boss_intro.is_skipped():
 			_add_cinematic(zone, zi, "boss_intro", zone.boss_intro)
 		if zone.boss != null:
 			var b := CampaignStep.new()
@@ -253,8 +253,23 @@ func _build_steps() -> void:
 			b.zone_index = zi
 			b.boss = zone.boss
 			_append(b)
-		if zone.outro != null:
+		if zone.outro != null and not zone.outro.is_skipped():
 			_add_cinematic(zone, zi, "outro", zone.outro)
+
+
+## Every cinematic slot the campaign skips for now (an empty one, CinematicDef.skip_while_empty), in campaign
+## order, for the level select's debug view and the review tools: each is {"id": "<zone id>/<slot>", "zone", "def"}.
+## Filling one (setting its def's scene) takes it out of this list and puts its step into the campaign.
+func empty_slots() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for zone: ZoneDef in zones:
+		if zone.placeholder or zone.levels.is_empty():
+			continue
+		for slot: String in ["intro", "boss_intro", "outro"]:
+			var def: CinematicDef = zone.get(slot) as CinematicDef
+			if def != null and def.is_skipped():
+				out.append({"id": "%s/%s" % [zone.id, slot], "zone": zone, "def": def})
+	return out
 
 
 func _add_cinematic(zone: ZoneDef, zi: int, slot: String, def: CinematicDef) -> void:

@@ -133,12 +133,39 @@ func _zone_section(zone: ZoneDef, zi: int, steps: Array[CampaignStep]) -> Contro
 	header.add_child(_zone_stars(zone, steps))
 	var row := HFlowContainer.new()
 	column.add_child(row)
+	# Debug builds show the empty cinematic slots the campaign skips (item 395), where their steps would go.
+	var empty: Dictionary[String, CinematicDef] = {}
+	if OS.is_debug_build():
+		for slot: Dictionary in App.campaign.empty_slots():
+			if slot["zone"] == zone:
+				empty[String(slot["id"]).get_slice("/", 1)] = slot["def"]
+	if empty.has("intro"):
+		row.add_child(_empty_slot_tile(zone, "intro"))
 	for s: CampaignStep in steps:
 		if s.zone == zone:
+			if s.kind == CampaignStep.Kind.BOSS and empty.has("boss_intro"):
+				row.add_child(_empty_slot_tile(zone, "boss_intro"))
 			var tile: TileButton = _step_tile(s)
 			row.add_child(tile)
 			tiles[s.id] = tile
+	if empty.has("outro"):
+		row.add_child(_empty_slot_tile(zone, "outro"))
 	return panel
+
+
+## A tile for an empty cinematic slot the campaign skips (debug builds only): not pressable, it only shows
+## that the slot is there for the owner to fill.
+func _empty_slot_tile(zone: ZoneDef, slot: String) -> TileButton:
+	var tile := TileButton.new()
+	tile.tooltip_text = "Empty slot: the campaign skips it until its cinematic has a scene (CinematicDef.scene)"
+	tile.custom_minimum_size.x = UiTheme.px(112)
+	tile.content.add_child(_centered_icon(&"film", 28, UiTheme.style().text_disabled))
+	tile.add_label(slot.replace("_", " ").to_upper(), UiTheme.CAPTION)
+	tile.content.add_child(_badge(&"info", "EMPTY SLOT", UiTheme.style().text_dim))
+	tile.disabled = true
+	tile.content.modulate = Color(1, 1, 1, 0.55)
+	tile.name = "EmptySlot_%s_%s" % [zone.id, slot]
+	return tile
 
 
 ## Stars earned in the zone out of the most possible, on the chosen tier: its levels', and its boss's

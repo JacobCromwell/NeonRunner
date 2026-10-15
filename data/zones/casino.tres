@@ -7,6 +7,7 @@
 [ext_resource type="Resource" path="res://data/skins/casino_skin.tres" id="skin"]
 [ext_resource type="Resource" path="res://data/cinematics/casino_intro.tres" id="c_intro"]
 [ext_resource type="Resource" path="res://data/cinematics/casino_outro.tres" id="c_outro"]
+[ext_resource type="Resource" path="res://data/cinematics/casino_boss_intro.tres" id="c_bintro"]
 [ext_resource type="Resource" path="res://data/bosses/casino_boss.tres" id="boss"]
 
 [resource]
@@ -19,6 +20,7 @@ skin = ExtResource("skin")
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_casino_1"), ExtResource("lvl_casino_2")])
 run_speed = 23.0
 intro = ExtResource("c_intro")
+boss_intro = ExtResource("c_bintro")
 outro = ExtResource("c_outro")
 boss = ExtResource("boss")
 in_demo = false
