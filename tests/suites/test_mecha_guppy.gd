@@ -2,9 +2,9 @@ extends TestSuite
 ## Mecha Guppy and Captain Cogs, the Beach's boss (GDD §10; task E5e-b1: the climb, its look and the fight's frame),
 ## at 3, 5 and 6 lanes, at the reference 18 m/s and the Beach's 23.8 m/s:
 ## - its data: the slot (beach_boss) names its scene (task E5e-c: the campaign plays it after Sunset Strip), the owner's
-##   title, three phases (4 hits, 6 hits, phase 3 the minute on the top), weapons doing nothing, the standard armor rule,
+##   title, three phases (4 hits, 6 hits, 16 on the top), weapons doing nothing, the standard armor rule,
 ##   the Beach's look without walls, the campaign under Sunset Strip's sky at the Beach's speed, its rewards in line with
-##   its neighbours', its hints (the climb, the floor bite, the bombs, the hits, phase 3's rounds and waves);
+##   its neighbours', its hints (the climb, the floor bite, the bombs, the hits, phase 3's barrage and waves);
 ## - the climb's plan (MechaGuppyClimb), over many steps: the lanes that lead up (one on 3 lanes; one, two or three
 ##   on 5 and 6, the count changing every step, one or two on a roof that reaches back; neighbours; never every lane;
 ##   never the same block twice running), the two cues alternating and each shaped as the owner put it, the
@@ -27,7 +27,7 @@ extends TestSuite
 ##   hit), and the grapple saves either before it gets there;
 ## - hits (register_hit, which Captain Cogs' bombs call: test_mecha_guppy_bombs): none in an intro, 4 end phase 1, 6
 ##   phase 2; weapons do nothing;
-##   phase 3's minute ends top_seconds after the runner reaches the top (the leap: the fight won); the waterfall in phases
+##   none on phase 3's last steps of the climb, 16 on the top win the fight (the leap); the waterfall in phases
 ##   1 and 2 only; the floor base follows the climb and the climbing view is on;
 ## - the armor rule's pickups on the roof the runner will run along, at its height, not under a hut.
 
@@ -138,9 +138,9 @@ func _test_data(slot: BossDef) -> void:
 	check(slot.is_built() and slot.scene == "res://scenes/bosses/mecha_guppy.tscn" and slot.preview_scene == ""
 		and slot.preview() == null, "the campaign plays the fight in the Beach's boss slot (its scene, task E5e-c)")
 	var list: Array[BossPhase] = def.phase_list()
-	check(list.size() == 3 and list[0].hits == 4 and list[1].hits == 6 and list[2].hits == 1
+	check(list.size() == 3 and list[0].hits == 4 and list[1].hits == 6 and list[2].hits == 16
 		and list[2].display_name == "Level with Captain Cogs",
-		"GDD §10: three phases; 4 hits end phase 1, 6 phase 2; phase 3, level with Captain Cogs, ends with its minute")
+		"GDD §10: three phases; 4 hits end phase 1, 6 phase 2; phase 3, level with Captain Cogs, 16 (Mecha Guppy's health on the top)")
 	var corporate := load("res://data/bosses/corporate_boss.tres") as BossDef
 	var dead_zone := load("res://data/bosses/dead_zone_boss.tres") as BossDef
 	check(def.payout_credits == corporate.payout_credits and def.payout_credits == dead_zone.payout_credits
@@ -166,9 +166,9 @@ func _test_data(slot: BossDef) -> void:
 	for h: Dictionary in (hints as Dictionary).get("hints", []):
 		triggers.append(h.get("trigger", ""))
 	check(triggers.has("enemy:beach_boss") and triggers.has("boss:beach_boss/climb") and triggers.has("boss:beach_boss/bombs")
-		and triggers.has("boss:beach_boss/hits") and triggers.has("boss:beach_boss/rounds") and triggers.has("boss:beach_boss/waves")
+		and triggers.has("boss:beach_boss/hits") and triggers.has("boss:beach_boss/barrage") and triggers.has("boss:beach_boss/waves")
 		and triggers.has("boss:beach_boss/floor_bite"),
-		"its hints: the fight, how to read the lanes that lead up, Mecha Guppy's floor bite, Captain Cogs' bombs and how they hurt Mecha Guppy, phase 3's rounds and waves")
+		"its hints: the fight, how to read the lanes that lead up, Mecha Guppy's floor bite, Captain Cogs' bombs and how they hurt Mecha Guppy, phase 3's barrage and waves")
 	var t := def.tuning as MechaGuppyTuning
 	check(maxf(t.rise, t.phase2_rise) <= RunCamera.FLOOR_REACH - 1.0,
 		"each step's rise (%.1f m, %.1f m in phase 2) stays well within the climbing camera's roof reach (%.1f m)"
@@ -698,8 +698,7 @@ func _test_roof_faces() -> void:
 # --- Hits, phases, weapons ---------------------------------------------------------------------------
 
 func _test_hits_and_phases() -> void:
-	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.top_seconds = 3.0)
-	var pair: Array = _fight(5, 18.0, {}, quick)
+	var pair: Array = _fight(5, 18.0, {})
 	var world: RunWorld = pair[0]
 	var boss: MechaGuppy = pair[1]
 	# A runner who climbs keeps the fight going through its phases.
@@ -721,18 +720,21 @@ func _test_hits_and_phases() -> void:
 	boss.register_hit()
 	check(boss.phase_index == 2 and boss.top_due(), "the sixth hit ends phase 2 (GDD §10: 6 hits): phase 3, the top")
 	await _run(world, 4.0, func() -> bool: return boss.is_vulnerable(), climber.step)
-	check(not boss.register_hit() and boss.phase_index == 2, "phase 3 isn't ended by hits (GDD §10: by a minute of dodging)")
+	check(not boss.register_hit() and boss.phase_index == 2, "no hit counts on phase 3's last steps of the climb, before the top")
 	check(boss.waterfall.shown > 0.99 and boss.top_reached_at < 0.0, "the waterfall stays while the runner climbs on to the top")
 	await _run(world, 40.0, func() -> bool: return boss.top_reached_at >= 0.0, climber.step)
 	check(boss.top_reached_at >= 0.0 and boss.on_top() and _events(boss, &"top_reached").size() == 1,
 		"phase 3: the runner reaches the top, which runs on flat (logged: top_reached)")
 	await _run(world, 2.3, func() -> bool: return false, climber.step)
 	check(boss.waterfall.shown < 0.01 and not boss.is_defeated(), "then the Beach's own backdrop (the waterfall gone)")
-	await _run(world, 6.0, func() -> bool: return boss.is_defeated(), climber.step)
-	var over: Array[Dictionary] = _events(boss, &"top_over")
-	check(boss.is_defeated() and over.size() == 1 and absf(float(over[0]["t"]) - boss.top_reached_at - 3.0) < 0.1,
-		"phase 3's minute ends top_seconds after the runner reaches the top: the fight is won (defeated %s)" % boss.is_defeated())
-	check(_events(boss, &"hit").size() == 10 and world.player.alive, "every hit logged (%d)" % _events(boss, &"hit").size())
+	var before: int = boss.top.hits
+	for i: int in 15:
+		boss.register_hit()
+	check(boss.phase_index == 2 and not boss.is_defeated() and not boss.health_runs_down(),
+		"on the top, fifteen hits leave phase 3 running (GDD §10, October 15, 2026: Mecha Guppy's health, 16 hits)")
+	boss.register_hit()
+	check(boss.is_defeated() and before == 0, "the sixteenth hit wins the fight (defeated %s)" % boss.is_defeated())
+	check(_events(boss, &"hit").size() == 26 and world.player.alive, "every hit logged (%d)" % _events(boss, &"hit").size())
 	await sim.free_world(world)
 	# The floor base follows the climb: the roof of the step the runner is in.
 	pair = _fight(3, 18.0)

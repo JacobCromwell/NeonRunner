@@ -259,8 +259,9 @@ func health_ratio() -> float:
 	return clampf(health / max_health, 0.0, 1.0)
 
 
-## True while the boss's health runs down steadily rather than by hits (a timed phase: Mecha Guppy's minute on the top):
-## the boss bar then follows it down without the white segment's hold after each drop (BossBar). Never by default.
+## True while the boss's health runs down steadily rather than by hits (a timed phase; Mecha Guppy's minute on the top
+## used it until task E5e-g gave that phase hits): the boss bar then follows it down without the white segment's hold
+## after each drop (BossBar). Never by default.
 func health_runs_down() -> bool:
 	return false
 

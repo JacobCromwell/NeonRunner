@@ -171,7 +171,7 @@ func snap() -> void:
 		outcome = DamageRules.resolve(in_area, p.defense())
 		if outcome != DamageRules.Outcome.KILL:
 			_hold_under(p, top)
-	var box: AABB = boss.stairs.eat_crescent(bite.roof)
+	var box: AABB = boss.stairs.eat_crescent(bite.roof, bite)
 	_clear_warning()
 	var colors := PackedColorArray()
 	var beach := world.skin as BeachSkin

@@ -49,13 +49,24 @@ extends Node3D
 ##   dropping FLOOR_DROP with the chunk (on_snap: the floor goes), its jaws under the deck from then on, then sinks. It
 ##   has no hitbox of its own (the snap's is MechaGuppyFloorBite's) and no bomb counts in its jaws then
 ##   (mouth_contains). It may start from a sink already all under the floor, as a breach may.
+## - phase 3 (task E5e-g; GDD §10, the owner, October 15, 2026: Mecha Guppy on the right of the top, Captain Cogs' bombs
+##   hitting it, swimming alongside; MechaGuppyTop drives it): top_watch() raises it out of the water into its watch
+##   beside the top on the right: level, as if swimming alongside the roof (its snout ahead, its back up, an eye toward
+##   the runner, jaws shut, the upper half of its face over the water: MechaGuppyTop.water_y), its hinge
+##   MechaGuppyTuning.guppy_ahead ahead of the runner and its body running back alongside them, keeping pace, bobbing and
+##   surging forward and back as it keeps up (SWIM_*): the bombs flying across the deck hit its flank (hit():
+##   top_flank_x and top_flank_ahead are where). top_dive() sinks it out of sight, still level, keeping pace;
+##   top_splash() bursts it up out of the sea ahead on the right, upright and facing the runner with its jaws wide,
+##   holds, and falls back in (the splash that makes the wave; MechaGuppyTop plays the plumes and starts the wave); its
+##   floor bite is floor_bite() as on the climb. Nothing of it has a hitbox, and no part of it comes over the lanes or
+##   the eaves (its broadest SWIM_CLEAR outside them).
 ## Its pose (hinge, pitch, yaw, roll, jaw) is always eased from the one before, so it never pops while it can be seen.
 ## advance() is driven by the boss's ticks (time from the physics step; it waits while the runner is down). Nothing
 ## flickers (Reduced flashing has nothing to calm; the hit's fireball and sparks are RunEffects', which honour it).
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md items 784–786): its size, poses and timings (MechaGuppyTuning, "Mecha Guppy's
 ## bites").
 
-enum Kind { BITE, BREACH, FLOOR }
+enum Kind { BITE, BREACH, FLOOR, WATCH, SPLASH }
 enum Stage { IDLE, LURKING, RISING, CATCHING, SHUTTING, WAITING, DIVING, BREAKING, OPEN, SNAPPING, SINKING }
 
 ## How big it is (MechaGuppySharkModel's metres times this): its jaws 12 m long, its head 12.6 m across.
@@ -122,6 +133,31 @@ const FLOOR_CLEAR: float = 0.4
 const FLOOR_SINK: float = 0.4
 const FLOOR_LEAN: float = 90.0 - MechaGuppySharkModel.LOWER_OPEN
 const FLOOR_DROP: float = 10.5
+## Phase 3's splash (top_splash): it surges up from the deep over SPLASH_RISE to its hinge SPLASH_UP over the deck (its open
+## jaws towering over it), holds SPLASH_HOLD, and falls back over SPLASH_FALL (seconds, metres). A bomb meets its head
+## FLANK_IN inside its inner side (metres: the fireball shows on it).
+const SPLASH_RISE: float = 0.35
+const SPLASH_UP: float = 1.0
+const SPLASH_HOLD: float = 0.3
+const SPLASH_FALL: float = 0.55
+const FLANK_IN: float = 0.3
+## Phase 3's watch: it swims alongside the top, level, its snout ahead and its back up (the owner, October 15, 2026:
+## "horizontal, as though it is swimming alongside the player and the roof"), its hinge SWIM_SINK under the deck's level
+## (the upper half of its face over it), its broadest SWIM_CLEAR outside the eaves (nothing of it over them); its body's
+## broadest share of its head's half width (MechaGuppySharkModel's body profile). Its splash faces the runner, its jaws
+## opening along the track, its head's inner side SPLASH_CLEAR out past the eaves.
+const SWIM_SINK: float = 1.2
+const SWIM_CLEAR: float = 0.8
+const BODY_BROADEST: float = 1.12
+## Swimming, it bobs up and down SWIM_BOB (metres) every SWIM_BOB_PERIOD (seconds), its snout dipping and rising
+## SWIM_NOD (degrees) with it, and surges forward and drops back SWIM_SURGE (metres) every SWIM_SURGE_PERIOD as it keeps up
+## (the owner, October 15, 2026). On top of its pose: it never comes nearer the eaves.
+const SWIM_BOB: float = 0.35
+const SWIM_BOB_PERIOD: float = 2.6
+const SWIM_NOD: float = 1.5
+const SWIM_SURGE: float = 1.6
+const SWIM_SURGE_PERIOD: float = 5.5
+const SPLASH_CLEAR: float = 1.5
 
 ## Called with the action as a bite's jaws snap shut (MechaGuppyPattern.on_snap eats the roof).
 var on_snap: Callable
@@ -155,9 +191,17 @@ var roll: float = 0.0
 var yaw: float = 0.0
 ## Held out of its stages (the leap, MechaGuppyLeap: pose_free sets its pose).
 var held: bool = false
+## Phase 3's watches, dives and splashes made (tests).
+var watches: int = 0
+var dives: int = 0
+var splashes: int = 0
 
 var _from: Dictionary = {}
 var _to: Dictionary = {}
+## The runner's world z as a paced action (phase 3's watch and dive) last moved with them.
+var _pace_z: float = 0.0
+## Seconds it has swum in phase 3's watch (its bob and surge).
+var _swim_t: float = 0.0
 var _stage_seconds: float = 1.0
 var _shudder: float = 0.0
 var _head: Node3D
@@ -293,6 +337,85 @@ func abort_floor() -> void:
 		_go(Stage.SINKING, _deep_pose(), tuning.bite_sink)
 
 
+## Phase 3 (see the header): it rises into its watch beside the top (over MechaGuppyTuning.guppy_rise; from out of
+## sight, or from wherever it is) and stays there, keeping pace with the runner, until top_dive(). `top`: the deck's
+## height. False (nothing done) while a bite or a splash is under way.
+func top_watch(top: float) -> bool:
+	if busy() and not (int(action.get("kind", -1)) == Kind.WATCH):
+		return false
+	var was_shown: bool = stage != Stage.IDLE and _head.visible
+	action = {"kind": Kind.WATCH, "side": 1, "top": top, "pace": true}
+	_swim_t = 0.0
+	_pace_z = TrackGeometry.world_z(world.player.distance)
+	var to: Dictionary = _watch_pose()
+	if not was_shown:
+		var start: Dictionary = to.duplicate()
+		start["hinge"] = (to["hinge"] as Vector3) - Vector3(0.0, DEEP, 0.0)
+		_appear(start)
+	watches += 1
+	boss.sound(&"guppy_rumble", to["hinge"] as Vector3 + Vector3(0.0, jaw_length() * 0.5, 0.0))
+	boss.log_event(&"guppy_watch", {"x": (to["hinge"] as Vector3).x})
+	_go(Stage.RISING, to, tuning.guppy_rise)
+	return true
+
+
+## True while it stands in its phase 3 watch (risen, keeping pace beside the runner): the bombs may fly.
+func watching() -> bool:
+	return not action.is_empty() and int(action["kind"]) == Kind.WATCH and stage == Stage.WAITING
+
+
+## Phase 3: it sinks out of sight from its watch (over bite_sink), keeping pace; then it's idle.
+func top_dive() -> void:
+	if action.is_empty() or int(action["kind"]) != Kind.WATCH:
+		return
+	dives += 1
+	boss.log_event(&"guppy_dive")
+	# Down out of sight still level, as it swims (keeping pace).
+	var down: Dictionary = _watch_pose()
+	down["hinge"] = (down["hinge"] as Vector3) - Vector3(0.0, DEEP, 0.0)
+	down["hinge"] = Vector3((down["hinge"] as Vector3).x, (down["hinge"] as Vector3).y, hinge.z)
+	_go(Stage.SINKING, down, tuning.bite_sink)
+
+
+## Phase 3's splash (see the header): from out of sight it bursts up out of the sea beside the top on the right at track
+## distance `at` (held there: the runner comes toward it), its jaws wide; it holds and falls back in. False (nothing done)
+## unless it's idle. splash_seconds() is how long it takes.
+func top_splash(at: float, top: float) -> bool:
+	if stage != Stage.IDLE:
+		return false
+	action = {"kind": Kind.SPLASH, "side": 1, "top": top, "at": at}
+	var to: Dictionary = _splash_pose()
+	var start: Dictionary = to.duplicate()
+	start["hinge"] = (to["hinge"] as Vector3) - Vector3(0.0, DEEP, 0.0)
+	start["jaw"] = 0.2
+	_appear(start)
+	splashes += 1
+	boss.log_event(&"guppy_splash", {"at": at})
+	_go(Stage.RISING, to, SPLASH_RISE)
+	return true
+
+
+## A splash's seconds: up, held, and back down under the deck.
+static func splash_seconds() -> float:
+	return SPLASH_RISE + SPLASH_HOLD + SPLASH_FALL
+
+
+## Where a bomb flying across the deck meets its body swimming alongside (world x): FLANK_IN inside its flank.
+func top_flank_x() -> float:
+	return _swim_x() - MechaGuppySharkModel.HALF_WIDTH * BODY_BROADEST * SCALE + FLANK_IN
+
+
+## How far ahead of the runner a bomb meets it (metres): beside them, where its body runs alongside the top.
+func top_flank_ahead() -> float:
+	return 0.0
+
+
+## Its hinge's world x swimming alongside the top: its broadest SWIM_CLEAR outside the eaves.
+func _swim_x() -> float:
+	return world.geo.wall_x() + MechaGuppyLooks.EAVE_REACH + SWIM_CLEAR \
+		+ MechaGuppySharkModel.HALF_WIDTH * BODY_BROADEST * SCALE
+
+
 ## How long a bite takes from now, once its runner is up on the hut, until a breach may come up again (can_breach):
 ## the dive (from a catch no faster than DIVE_SPEED along the track), the lunge, the hold, the snap and SINK_CLEAR of
 ## the sink.
@@ -313,8 +436,9 @@ func mouth_contains(p: Vector3) -> bool:
 	if action.is_empty() or jaw < OPEN_ENOUGH or (stage != Stage.BREAKING and stage != Stage.OPEN and stage != Stage.SNAPPING
 			and stage != Stage.CATCHING):
 		return false
-	# A floor bite's jaws aren't a target (task E5e-f: only a bomb baited or missed into the chasm hurts it).
-	if int(action["kind"]) == Kind.FLOOR:
+	# A floor bite's jaws aren't a target (task E5e-f: only a bomb baited or missed into the chasm hurts it), nor phase 3's
+	# (its bombs hit its head: MechaGuppyTop).
+	if int(action["kind"]) in [Kind.FLOOR, Kind.WATCH, Kind.SPLASH]:
 		return false
 	var local: Vector3 = _head.global_transform.affine_inverse() * p
 	var u: float = local.y / MechaGuppySharkModel.JAW_LENGTH
@@ -398,13 +522,25 @@ func advance(delta: float) -> void:
 		return
 	stage_time += delta
 	var kind: int = int(action.get("kind", Kind.BITE))
+	if int(action.get("kind", -1)) == Kind.WATCH:
+		_swim_t += delta
+	if bool(action.get("pace", false)):
+		# Phase 3's watch and dive keep pace with the runner: the whole motion moves with them.
+		var z: float = TrackGeometry.world_z(world.player.distance)
+		var dz := Vector3(0.0, 0.0, z - _pace_z)
+		_pace_z = z
+		hinge += dz
+		_from["hinge"] = (_from["hinge"] as Vector3) + dz
+		_to["hinge"] = (_to["hinge"] as Vector3) + dz
 	match stage:
 		Stage.LURKING:
 			_ease(stage_time / _stage_seconds)
 		Stage.RISING:
 			_ease(stage_time / _stage_seconds)
 			if stage_time >= _stage_seconds:
-				if _has_catch():
+				if kind == Kind.SPLASH:
+					_go(Stage.OPEN, _splash_pose(), SPLASH_HOLD)
+				elif _has_catch():
 					catches += 1
 					boss.log_event(&"catch_open", {"roof": int(action.get("roof", -1)),
 						"at": float((action["catch"] as Dictionary)["at"])})
@@ -423,7 +559,9 @@ func advance(delta: float) -> void:
 				_go(Stage.WAITING, catch_pose(0.0, true), 1.0)
 		Stage.WAITING:
 			_ease(1.0)
-			if _may_break():
+			if kind == Kind.WATCH:
+				pass
+			elif _may_break():
 				if kind == Kind.BITE and _yields():
 					# A fallback is due that its bite would leave no time for (MechaGuppyPattern._bite_fits): it sinks away
 					# uneaten, so it's free to rise for the fallback.
@@ -444,6 +582,14 @@ func advance(delta: float) -> void:
 				_go(Stage.OPEN, _open_pose(), 1.0)
 		Stage.OPEN:
 			_ease(1.0)
+			if kind == Kind.SPLASH:
+				if stage_time >= _stage_seconds:
+					var down: Dictionary = _splash_pose()
+					down["hinge"] = (down["hinge"] as Vector3) - Vector3(0.0, DEEP * 0.6, 0.0)
+					down["jaw"] = 0.0
+					_go(Stage.SINKING, down, SPLASH_FALL)
+				_apply()
+				return
 			# A breach shuts at once on a step the runner fell (no hit then: MechaGuppyPattern.catch_ok).
 			var no_catch: bool = kind == Kind.BREACH and boss.pattern != null and not boss.pattern.catch_ok()
 			var shut: bool = stage_time >= (tuning.breach_hold if kind == Kind.BREACH else tuning.bite_hold) or no_catch
@@ -534,9 +680,13 @@ func _bite_x() -> float:
 
 ## The pose it comes up to first: a bite's watch (upright beside the roof's end, its chin toward the track, jaws shut, an
 ## eye just over the roof's top), or with a catch its catch (catch_pose, its jaws opening as it comes); a breach's
-## (under the floor's level, jaws all but shut, where it will break through).
+## (under the floor's level, jaws all but shut, where it will break through); phase 3's watch or splash.
 func _rise_pose() -> Dictionary:
 	var top: float = float(action["top"])
+	if int(action["kind"]) == Kind.WATCH:
+		return _watch_pose()
+	if int(action["kind"]) == Kind.SPLASH:
+		return _splash_pose()
 	if _has_catch():
 		return catch_pose(1.0)
 	if int(action["kind"]) == Kind.BITE or int(action["kind"]) == Kind.FLOOR:
@@ -576,6 +726,24 @@ func _open_pose() -> Dictionary:
 			"yaw": -side * PI * 0.5, "roll": side * deg_to_rad(FLOOR_LEAN), "jaw": 1.0}
 	return {"hinge": Vector3(hinge_x(float(action["x"]), int(side)), top - BREACH_SINK, _z()), "pitch": 0.0,
 		"yaw": side * PI * 0.5, "roll": 0.0, "jaw": 1.0}
+
+
+## Phase 3's watch: swimming alongside the top on the right, level (its snout ahead along the track, its back and dorsal
+## fin up, an eye toward the runner, jaws shut), the upper half of its face over the deck's level, its hinge guppy_ahead
+## ahead of the runner and its body running back alongside them (moved with them: advance's pace).
+func _watch_pose() -> Dictionary:
+	var top: float = float(action["top"])
+	var z: float = TrackGeometry.world_z(world.player.distance + tuning.guppy_ahead)
+	return {"hinge": Vector3(_swim_x(), top - SWIM_SINK, z), "pitch": PI * 0.5, "yaw": PI, "roll": 0.0, "jaw": 0.0}
+
+
+## Phase 3's splash at its height: upright beside the top on the right at its spot, facing the runner (its jaws, wide,
+## opening along the track: never over the deck), its hinge SPLASH_UP over the deck.
+func _splash_pose() -> Dictionary:
+	var top: float = float(action["top"])
+	var x: float = world.geo.wall_x() + MechaGuppyLooks.EAVE_REACH + SPLASH_CLEAR + MechaGuppySharkModel.HALF_WIDTH * SCALE
+	return {"hinge": Vector3(x, top + SPLASH_UP, TrackGeometry.world_z(float(action["at"]))), "pitch": 0.0, "yaw": 0.0,
+		"roll": 0.0, "jaw": 1.0}
 
 
 ## Deep under the middle of the chasm where a breach will come, facing the runner (out of sight: lurk() hides it).
@@ -699,7 +867,12 @@ func _apply() -> void:
 		wobble = deg_to_rad(SHUDDER_DEGREES) * (_shudder / SHUDDER_SECONDS) * sin((SHUDDER_SECONDS - _shudder) * 38.0)
 	var basis := (Basis(Vector3.BACK, roll + wobble) * Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)).scaled_local(
 		Vector3.ONE * SCALE)
-	_head.global_transform = Transform3D(basis, hinge)
+	var at: Vector3 = hinge
+	if not action.is_empty() and int(action["kind"]) == Kind.WATCH:
+		var bob: float = sin(TAU * _swim_t / SWIM_BOB_PERIOD)
+		at += Vector3(0.0, SWIM_BOB * bob, -SWIM_SURGE * sin(TAU * _swim_t / SWIM_SURGE_PERIOD))
+		basis = Basis(Vector3.RIGHT, deg_to_rad(SWIM_NOD) * cos(TAU * _swim_t / SWIM_BOB_PERIOD)) * basis
+	_head.global_transform = Transform3D(basis, at)
 	# The snout (z < 0) tips back a little, the chin (z > 0) drops wide.
 	_upper.transform = Transform3D(Basis(Vector3.RIGHT, -deg_to_rad(MechaGuppySharkModel.UPPER_OPEN) * jaw), Vector3.ZERO)
 	_lower.transform = Transform3D(Basis(Vector3.RIGHT, deg_to_rad(MechaGuppySharkModel.LOWER_OPEN) * jaw), Vector3.ZERO)

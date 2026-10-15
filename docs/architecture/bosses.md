@@ -229,7 +229,7 @@ had before a move, so a renamed boss makes the same random choices (The House, `
   (`RunWorld.camera_climbs`). Its hits are counted (`weapons_can_end_phase` off, `weapon_share_cap` 0:
   weapons do nothing), each `register_hit()` (a bomb of Captain Cogs' falling into Mecha Guppy's jaws: a bait the
   runner led into a roof's notch, or the fallback's miss into the chasm); the armor rule's pickup goes on the roof
-  ahead at its height (`_on_armor_pickup_due`, `PickupField.place`). Phase 3 takes no hits: its minute on the top ends
-  the fight (the phase's one counted hit as it ends, `damage(hit_damage(), &"time")`), and `victory_over` holds the
+  ahead at its height (`_on_armor_pickup_due`, `PickupField.place`). Phase 3's 16 hits come on the top (task E5e-g: every
+  bomb Captain Cogs fires across the deck that gets past the runner flies on into Mecha Guppy), and `victory_over` holds the
   results while Mecha Guppy leaps, eats Captain Cogs and swims away (`victory_riff` off: the leap plays the riff after
   the gulp).
