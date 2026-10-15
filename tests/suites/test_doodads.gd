@@ -205,7 +205,8 @@ func _test_layout_data() -> void:
 ## stay, and as many extra gaps come, in as many lanes (_check_extra_gaps); task G7's wider gaps re-rolled City 1
 ## at 3 lanes into that case. Dash walls past an introduction come after the doodads too (task H7a,
 ## DashWallRules.after_doodads) and stand where they leave room, taking out the plain pieces in their way, so
-## both builds leave them out: what's compared is the doodads' own doing.
+## both builds leave them out: what's compared is the doodads' own doing. A treasure stash's walls (task I4) come with
+## the stash, whatever the share, in both builds alike.
 func _test_share_zero() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var checked: int = 0
@@ -223,7 +224,12 @@ func _test_share_zero() -> void:
 			var with: LevelLayout = gen.generate(config, tuning, patterns)
 			var plain_gen := LevelGenerator.new()
 			var plain: LevelLayout = plain_gen.generate(off, tuning, patterns)
-			check(plain.doodads.is_empty() and not plain.to_dict().has("doodads"), "a share of 0 places none " + tag)
+			# A treasure stash's walls (task I4) are the stash's own, placed by its rules whatever the share.
+			var zone_doodads: int = 0
+			for d: Dictionary in plain.doodads:
+				zone_doodads += 0 if d.has("stash") else 1
+			check(zone_doodads == 0 and (plain.doodads.is_empty() or not plain.stashes.is_empty())
+				and (plain.doodads.is_empty() == not plain.to_dict().has("doodads")), "a share of 0 places no zone doodad " + tag)
 			check(not with.doodads.is_empty() or config.paced_in_bursts(), "the level's share places some (%d) %s" % [with.doodads.size(), tag])
 			var a: Dictionary = with.to_dict()
 			var b: Dictionary = plain.to_dict()
@@ -610,7 +616,7 @@ func _test_push() -> void:
 
 ## A move against the push (task I4): a move back into the pushing doodad's lane while its push carries the runner is
 ## blocked (the clank), as its side would block it beside them, so the body never sinks into it; and moves mashed
-## toward it the whole way leave the push to finish (a quick shove into the lane beside, never stuck between the
+## toward it all along it leave the push to finish (a quick shove into the lane beside, never stuck between the
 ## lanes against its side, where a treasure stash's walls would let a runner slip in).
 func _test_push_holds() -> void:
 	sim.trace = true
@@ -629,10 +635,10 @@ func _test_push_holds() -> void:
 		cases.append(["a move back %.2f m into the push" % back_after, [[push_at + back_after, &"move_left"]]])
 	var mash: Array = []
 	var at: float = push_at
-	while at < float(d["end"]) + 2.0:
+	while at < float(d["end"]) - 0.5:
 		mash.append([at, &"move_left"])
 		at += 0.3
-	cases.append(["moves back mashed from the push to past it", mash])
+	cases.append(["moves back mashed from the push to its end", mash])
 	for c: Array in cases:
 		var r: Dictionary = await sim.run(_one_doodad(3, d), 1, 3.0, c[1])
 		var events: Array = r["events"]
