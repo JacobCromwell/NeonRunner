@@ -7,7 +7,7 @@ extends Resource
 ## fenced_ceiling_pads). Times are seconds at the level's run speed and lengths in metres at
 ## MovementTuning.REFERENCE_SPEED (stretched by the level's pace) unless they say otherwise, so a faster zone keeps
 ## them in seconds (GDD §3, Pace). Every number here is a first value for playtesting (DESIGN-TBD,
-## docs/questions/i4.md).
+## items 836–845 (docs/OPEN_QUESTIONS*.md)).
 
 @export_group("Both")
 ## A scenario keeps at least this long (seconds of run) from another's ceiling, so a level sprinkles them rather

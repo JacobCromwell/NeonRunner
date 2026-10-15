@@ -42,7 +42,7 @@ var bonuses: Dictionary = {}
 ## Score multiplier on credits (a ramp-launched wall run, GDD §3).
 var multiplier: float = 1.0
 ## Best possible credit score in this level (for stars): every credit but a treasure stash's
-## (LevelLayout.star_credit_value; task I4, DESIGN-TBD docs/questions/i4.md 9: a stash's credits count in
+## (LevelLayout.star_credit_value; task I4, DESIGN-TBD item 844: a stash's credits count in
 ## `credits` and `score` when collected, never in what the stars ask for). A thief's hold() leaves out what
 ## it took off the track while it holds it.
 var max_credit_score: int = 0

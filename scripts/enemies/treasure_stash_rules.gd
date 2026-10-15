@@ -14,7 +14,7 @@ extends RefCounted
 ## - the stash's lane: an inner lane with inner lanes either side (lanes_for), so its walls never stand in an
 ##   outermost lane (a wall runner's body reaches into that lane, and one dropping off the wall lands there) and a
 ##   floor runner always has a lane past it; covered by the ceiling. With fewer than 5 lanes there's none, and no
-##   stash (DESIGN-TBD, docs/questions/i4.md 2: on 3 lanes the owner's shape would close every floor lane);
+##   stash (DESIGN-TBD, item 837: on 3 lanes the owner's shape would close every floor lane);
 ## - the return pad, in that lane on the ceiling's underside (LevelLayout.return_pads), see_seconds after where the
 ##   ceiling's rider arrives at the earliest, as late as the ceiling allows (partway along it); the ceiling runs on
 ##   past the stash (ceiling_after_seconds) where it must (CeilingScenarios.can_extend), so a rider who stays on drops
@@ -32,10 +32,10 @@ extends RefCounted
 ## A floor runner meets the front doodad's push into a neighbouring lane, then the wall's push further out: the walls
 ## push outward (their side), and every push finds room (Player._start_push), as the walls start only past where the
 ## front doodad's push lands. The walls' sides keep a runner beside them out; the dash smashes into the stash (H5;
-## docs/questions/i4.md). The stash's doodads join LevelLayout.doodads at once (marked "stash"), so the rules after it
+## items 836–845 (docs/OPEN_QUESTIONS*.md)). The stash's doodads join LevelLayout.doodads at once (marked "stash"), so the rules after it
 ## see them (the Resonator's pulses keep off them, the Enforcer Truck's showing reads them), and the zone doodads'
 ## look seeds don't count them; everything after the rules keeps off its floor (doodad_keep_outs, fill_keep_outs).
-## DESIGN-TBD throughout (docs/questions/i4.md).
+## DESIGN-TBD throughout (items 836–845 (docs/OPEN_QUESTIONS*.md)).
 
 const FEATURE: String = "treasure_stash"
 ## Sprinkled in (GDD §3: "sprinkle them in during later zones"), never guaranteed: a level gets a stash only where one

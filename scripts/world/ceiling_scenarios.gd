@@ -16,7 +16,7 @@ extends RefCounted
 ## scenario takes it.
 ## The physics it times them by is the Player's (rise_seconds, drop_seconds, jump_low_seconds), at the level's run
 ## speed; test_ceiling_scenarios replays them on real physics. Numbers: CeilingScenarioTuning
-## (data/tuning/ceiling_scenarios.tres). DESIGN-TBD throughout (docs/questions/i4.md).
+## (data/tuning/ceiling_scenarios.tres). DESIGN-TBD throughout (items 836–845 (docs/OPEN_QUESTIONS*.md)).
 
 const STASH: String = "treasure_stash"
 const FENCED: String = "fenced_ceiling"

@@ -21,7 +21,7 @@ extends TestSuite
 ##   before it or alongside it, never gets in and takes none of its credits, nor pulls one with the top magnet; the
 ##   return pad's rider (switching to its lane on the ceiling) drops in, never pushed, collects every credit (into the
 ##   run's credits and score, not the stars' best score) and runs out of its open end; a rider who stays on in another
-##   lane drops beyond it; the dash smashes in (H5; docs/questions/i4.md);
+##   lane drops beyond it; the dash smashes in (H5; items 836–845 (docs/OPEN_QUESTIONS*.md));
 ## - the track builds a ceiling fence as an electrical hazard hanging below the underside and a return pad as a
 ##   trigger on it, turned to face the floor; every skin dresses both (the fence's field in the zone's fence
 ##   materials, whose shader honours Reduced flashing; the return pad as its anti-grav pad); the chase camera stays
@@ -319,7 +319,7 @@ func _test_campaign() -> void:
 		% [counts[STASH], counts["stash_builds"], counts[FENCED], counts["fenced_builds"], counts["several"]])
 
 
-## Task I4's review (docs/questions/i4.md 9): a treasure stash's credits never count in the stars' best score
+## Task I4's review (item 844): a treasure stash's credits never count in the stars' best score
 ## (LevelLayout.star_credit_value, ScoreKeeper.max_credit_score), so every campaign build's three-star line is reached
 ## without its stash: the level's other credits alone clear it. (Collected, they count in the run's credits and score:
 ## _ride_stash.)
@@ -598,7 +598,7 @@ func _test_fenced_protection() -> void:
 	check(bool(r["alive"]) and float(r["distance"]) > float(h["end"]), "and the unsafe pad's rider rides on (%s)" % r["cause"])
 
 
-## Task I4's review (docs/questions/i4.md 10): a heli drone that outlived its pads (there's none before the fenced
+## Task I4's review (item 845): a heli drone that outlived its pads (there's none before the fenced
 ## ceiling here) fires before the pick, holds its barrages through it (the hull's "pick", Drone._pick_in_reach), and
 ## the pick's safe pad, the next pad that works, hurls it as any pad does. The safe pad's rider runs past the unsafe
 ## pads in a lane free of them (as _ride_fenced's), in god mode through the barrages before the pick.
@@ -742,7 +742,7 @@ func _ride_stash(pick: Dictionary, lanes: int, floor_runners: bool) -> void:
 				check(is_equal_approx(float(r["magnet"]), top) and int(r["pickups"]) == 0 and bool(r["alive"]),
 					"a floor runner with the top magnet (%.1f m) %s lane %d pulls none of its credits (%d) %s"
 					% [float(r["magnet"]), "pressing toward it from" if pressing else "holding", start, r["pickups"], tag])
-		# The dash smashes in (H5; docs/questions/i4.md 3).
+		# The dash smashes in (H5; item 838).
 		var dash := func(p: Player) -> void:
 			if p.distance >= float(s["start"]) - 4.0 and not p.dashing and p.smashes == 0:
 				RunSim.act(p, &"dash")

@@ -34,7 +34,7 @@ extends RefCounted
 ## LayoutChecks.check_fenced). The pads are marked: "fenced" ("unsafe", "safe") on each, "added" on those these
 ## rules add, which the drone schedule's spacing doesn't count (LayoutChecks.check_rules): they're a choice within
 ## one ceiling, after its first pad. The floor under the ceiling holds what it held (GDD §3: it may be dangerous, and
-## the ceiling is never required). DESIGN-TBD throughout (docs/questions/i4.md; the drones: 10).
+## the ceiling is never required). DESIGN-TBD throughout (items 836–845 (docs/OPEN_QUESTIONS*.md); the drones: 10).
 
 const FEATURE: String = "fenced_ceiling"
 ## Sprinkled in, never guaranteed: a level gets one only where a ceiling fits it (as a treasure stash,
@@ -70,7 +70,7 @@ static func apply(gen: LevelGenerator) -> void:
 
 ## How many anti-grav pads a fenced ceiling has in a level of `lanes` lanes asking for `asked`
 ## (LevelConfig.fenced_ceiling_pads): at least 2, and fewer than the lanes, so a floor runner who wants none of them
-## always has a lane without one (on 3 lanes, the simple version's two). DESIGN-TBD (docs/questions/i4.md).
+## always has a lane without one (on 3 lanes, the simple version's two). DESIGN-TBD (items 836–845 (docs/OPEN_QUESTIONS*.md)).
 static func pad_count(asked: int, lanes: int) -> int:
 	return clampi(asked, 2, maxi(lanes - 1, 2))
 

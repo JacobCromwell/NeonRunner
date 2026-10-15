@@ -49,7 +49,7 @@ const FIRST_LEVEL: Dictionary = {
 	"host": "dead_zone/1",
 	"resonator": "golden/1",
 	"gilded_sentinel": "golden/2",
-	# Task I4 (GDD §3, "Ceiling scenarios": never in zones 1-2; DESIGN-TBD, docs/questions/i4.md): from the Casino.
+	# Task I4 (GDD §3, "Ceiling scenarios": never in zones 1-2; DESIGN-TBD, items 836–845 (docs/OPEN_QUESTIONS*.md)): from the Casino.
 	"treasure_stash": "casino/1", "fenced_ceiling": "casino/2",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
@@ -93,7 +93,7 @@ const NO_NEW_ENEMY: Dictionary = {
 }
 ## The mechanics a zone of NO_NEW_ENEMY introduces all the same: the Casino's ceiling scenarios (task I4; GDD §3,
 ## "Ceiling scenarios": never in zones 1-2, sprinkled into later zones; DESIGN-TBD where they start,
-## docs/questions/i4.md).
+## items 836–845 (docs/OPEN_QUESTIONS*.md)).
 const NEW_MECHANICS: Dictionary = {
 	"casino": ["treasure_stash", "fenced_ceiling"],
 }

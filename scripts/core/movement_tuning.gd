@@ -135,7 +135,7 @@ const REFERENCE_SPEED: float = 18.0
 ## Ceiling fences (task I4; GDD §3, "Ceiling scenarios": pick the right pad): an electric fence hanging from a
 ## ceiling's underside across a lane, this deep below it, a fence deep (fence_depth) along the track. A rider on
 ## the hull is in it; one jumping clears it for part of the jump, so a fenced ceiling hangs rows of them
-## (CeilingScenarios.row_plan). DESIGN-TBD (docs/questions/i4.md): kept above the chase camera's highest under a
+## (CeilingScenarios.row_plan). DESIGN-TBD (items 836–845 (docs/OPEN_QUESTIONS*.md)): kept above the chase camera's highest under a
 ## ceiling (camera_ceiling_clearance below the underside, less the field's glow), so the camera following a
 ## floor runner, even one jumping, never passes through one.
 @export_range(0.4, 0.95, 0.05, "suffix:m") var ceiling_fence_depth: float = 0.85
@@ -203,7 +203,7 @@ const REFERENCE_SPEED: float = 18.0
 @export_range(0.2, 3.0, 0.05, "suffix:m") var camera_ceiling_clearance: float = 1.0
 ## How far above a zone doodad's top the camera stays while it passes over one (RunCamera.doodad_floor): the
 ## camera riding below a ceiling (camera_ceiling_height) is lower than a doodad, and a treasure stash's
-## doodads stand under its ceiling (task I4). DESIGN-TBD (docs/questions/i4.md).
+## doodads stand under its ceiling (task I4). DESIGN-TBD (items 836–845 (docs/OPEN_QUESTIONS*.md)).
 @export_range(0.1, 1.5, 0.05, "suffix:m") var camera_doodad_clearance: float = 0.4
 ## The climbing view (RunCamera with RunWorld.camera_climbs on: a boss's climb, GDD §10, the Beach's): how far
 ## above a roof (a raised floor below it, or ahead) the camera keeps, so it never sits inside the higher roof

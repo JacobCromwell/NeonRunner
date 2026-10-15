@@ -199,7 +199,7 @@ func total_credit_value() -> int:
 ## The best credit score the stars count (ScoreKeeper.max_credit_score, GameRules.stars_for): every credit but a
 ## treasure stash's (task I4). A stash is an optional reward a floor runner can't reach (and there's none on 3 or 4
 ## lanes), so the three-star line never asks for it; collected, its credits still count in the run's credits (the
-## wallet) and its level score. DESIGN-TBD (docs/questions/i4.md 9).
+## wallet) and its level score. DESIGN-TBD (item 844).
 func star_credit_value() -> int:
 	var total: int = 0
 	for c: Dictionary in credits:

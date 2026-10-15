@@ -329,7 +329,7 @@ func _doodad_in_reach(p: Player) -> bool:
 ## The generator keeps a wave's arrival and first pad off a pick (CeilingScenarios.event_spans), so this holds back
 ## only a drone that outlived its pads: the pick's safe pad, which hurls it as any pad does, is the next pad that
 ## works, and the pick's seconds are calm, so a missed pad still costs no more than the schedule's 8–10 s of
-## barrages. DESIGN-TBD (docs/questions/i4.md 10).
+## barrages. DESIGN-TBD (item 845).
 func _pick_in_reach(p: Player) -> bool:
 	var run: float = maxf(p.speed, 1.0)
 	return world.layout.fenced_pick_between(p.distance - 1.0, p.distance + run * _barrage_seconds())

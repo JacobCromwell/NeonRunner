@@ -20,4 +20,3 @@ request that is now in the done file.
 
 ## The owner's batch requests (October 14, 2026)
 
-- [ ] **Ceiling scenarios** (I4; GDD §3, Ceiling scenarios). Not in zones 1–2; sprinkled into later zones. (a) Pick the right pad: electric fences on a ceiling hit a player who takes the first anti-grav pad; a second pad further along avoids them. First one safe and one unsafe pad; later several pads, some safe and some not. (b) The treasure stash: a separate return pad partway along a ceiling drops the player into a stretch of floor walled off by doodads (for a stash in lane 3: a doodad at its start, and doodads in the two adjacent lanes), holding two or three of the highest-denomination credits.

@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**836** after task E5e and I1–I9 so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**846** after task E5e and I1–I9 so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -27,6 +27,8 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 |---|---|
 | 766 | Ceilings in the levels are too safe (owner, October 10, 2026): should a level keep at least one safe lane where a ceiling ends, and leave the rest free to hold gaps, hazards or enemies? A change to the generator's rules (GDD §3, Safe landing zone). |
 | 828 | The web demo's music on phones: keep it as samples (about 52–60 MB a song in memory, a stop of 0.3–3 s when one starts), stream it (no memory cost, but it may crackle on a slow phone), or ship lighter songs for the web? Needs a try on a real iPhone. |
+| 837 | No treasure stash on 3 or 4 lanes, so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
+| 838 | GDD §3 calls the return pad the only way into a stash, but the dash smashes in and a wall-jump can land on a stash wall and step down. Allow both as skill routes, or block them? |
 
 ## The items in full
 
@@ -45,3 +47,21 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
     "Stream" playback (music only) has none of that memory and makes the death dip's low-pass work on the web, but
     without threads it mixes on the page's thread, so a phone under about 20 fps could crackle. A third way: smaller
     songs for the web build (mono, or 22 kHz). It needs a try on a real iPhone. Placeholder: none; music stays as samples.
+
+**I4, ceiling scenarios** (from `docs/questions/i4.md`; GDD §3, "Ceiling scenarios"; numbers in `data/tuning/ceiling_scenarios.tres`, F6 "Ceiling scenarios", or the level data)
+837. **No treasure stash on 3 or 4 lanes.** The owner's shape (a doodad across the stash's lane, doodads in both
+  neighbouring lanes alongside) would close every floor lane on 3 lanes, and on 4 it puts a wall in an outermost lane,
+  where a wall runner's body reaches and where one dropping off the wall lands.
+  **Placeholder:** a stash only in an inner lane with inner lanes either side (`treasure_stash_rules.gd`, `lanes_for`):
+  lane 3 of 5, lane 3 or 4 of 6; none on mobile's 3 lanes. Alternatives: an outermost-lane stash walled on one side by
+  doodads and on the other by the side wall (with a sign along it, so no wall run drops in), or a shorter stash.
+838. **Other ways into a stash.** GDD §3 calls the return pad "the only way in".
+  **Placeholder (nothing blocks these):** the dash (H5) smashes the doodad across the stash's lane and runs in
+  (test_ceiling_scenarios checks it does); proposed: keep, as the dash's reward. A floor runner can't jump a doodad
+  (2.6 m tall, a jump's feet reach 1.6 m) and is pushed out of the stash's lane at its front and out of its walls'
+  lanes alongside, and no magnet reaches a stash's credits from the floor: they lie past the top tier's pull from
+  wherever a runner is still close enough beside the stash to pull from (`treasure_stash_rules.gd`, `magnet_reach`;
+  before the review they cleared it by luck, 0.10 m at the closest). But a doodad's top is a surface: a runner who jumps
+  onto the side wall before a stash in lane 3 (5 lanes) and wall-jumps off it can land on the stash's wall in lane 2
+  and step down into the stash (tried on real physics: it collects the credits). Proposed: allow it as a skill route;
+  or stand a sign on the side wall before and alongside the stash.

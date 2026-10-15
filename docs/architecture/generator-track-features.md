@@ -583,7 +583,7 @@ Casino 2; the several-pad version from Corporate 1). Both build on `CeilingScena
 placement helpers, and the Player's physics they're timed by: a pad's flip and rise, a drop off the ceiling, a jump),
 with their numbers in `CeilingScenarioTuning` (`data/tuning/ceiling_scenarios.tres`, F6 "Ceiling scenarios") and how
 many a level gets in its own data (`LevelConfig.treasure_stashes`, `fenced_ceilings`, `fenced_ceiling_pads`).
-DESIGN-TBD throughout (`docs/questions/i4.md`).
+DESIGN-TBD throughout (items 836–845 in `docs/OPEN_QUESTIONS*.md`).
 - **When**: after every rule that places ceilings, pads, ramps or floor enemies or plans charges and cuts (their
   `RUN_AFTER`), the stash first; the Barnacle Turrets, the Resonator, the Enforcer Truck and the dash walls run after
   and plan around them. So every rule before them plans as it would without them. A scenario takes one of the

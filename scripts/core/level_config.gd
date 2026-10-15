@@ -207,16 +207,16 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings
 ## into a treasure stash's (treasure_stash_rules.gd), where one fits (an inner lane with inner lanes beside it:
-## none on fewer than 5 lanes). DESIGN-TBD (docs/questions/i4.md): 1 a level from Casino 1.
+## none on fewer than 5 lanes). DESIGN-TBD (items 836–845 (docs/OPEN_QUESTIONS*.md)): 1 a level from Casino 1.
 @export_range(0, 4) var treasure_stashes: int = 1
 ## With the `fenced_ceiling` feature, up to this many ceilings carry fences that catch the rider of their first
 ## pads, with a later pad that lands its rider past them (fenced_ceiling_rules.gd). DESIGN-TBD
-## (docs/questions/i4.md): 1 a level from Casino 2.
+## (items 836–845 (docs/OPEN_QUESTIONS*.md)): 1 a level from Casino 2.
 @export_range(0, 4) var fenced_ceilings: int = 1
 ## How many anti-grav pads a fenced ceiling has: 2 is the simple first version (one pad into the fences, one past
 ## them); more is the later version (GDD §3: "several pads, some leading to safe parts of the ceiling and some to
 ## dangerous parts"), half of them (rounded up) before the fences, in different lanes; never as many as the lanes
-## (fenced_ceiling_rules.gd pad_count: on 3 lanes, 2). DESIGN-TBD (docs/questions/i4.md): 3 from Corporate 1.
+## (fenced_ceiling_rules.gd pad_count: on 3 lanes, 2). DESIGN-TBD (items 836–845 (docs/OPEN_QUESTIONS*.md)): 3 from Corporate 1.
 @export_range(2, 6) var fenced_ceiling_pads: int = 2
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
