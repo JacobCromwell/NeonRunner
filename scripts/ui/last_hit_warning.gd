@@ -12,14 +12,14 @@ extends CanvasLayer
 ##   from the player's state every frame, not from a signal, so every way of losing or regaining protection
 ##   (a break, a pickup, a revive, a test or review tool setting `armor`) is the same to it. A level or a fight
 ##   that begins unprotected gives the cue once at the start (`LastHitWarningTuning.warn_at_start`, DESIGN-TBD,
-##   docs/questions/i6.md). Nothing runs while the game is paused (this node pauses with the run). Its clock is
+##   items 832–835). Nothing runs while the game is paused (this node pauses with the run). Its clock is
 ##   real time: slow time slows `delta`, not the siren, so the pulses are divided back to real seconds.
 ## - **Sound.** `last_hit_siren` (tools/asset_gen/sfx_bank_power.gd), once on entering the state, through the
 ##   run's own PlayerSfx on the SFX bus: not a loop, so it never masks the warning of an attack, and it ducks
 ##   nothing. `onset_delay` after the break, so the armor's own break sound is heard first. It is cut off if the
 ##   cue ends first. It is mixed under every attack warning in the library on the general loudness weighting
 ##   (test_last_hit_warning); on a phone speaker, which has little below 450 Hz, it is closer to some of them
-##   (docs/questions/i6.md 2).
+##   (item 833).
 ## - **Look.** Four ColorRects (the two sides and the stretches of top and bottom between them, so nothing is
 ##   drawn twice and the middle of the screen costs nothing) on one canvas_item shader, like SpeedLines: a soft
 ##   red band along the edges, `edge_width` of the screen's height (its shorter side) deep, on a CanvasLayer of its own **under**

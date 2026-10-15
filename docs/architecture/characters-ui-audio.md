@@ -84,7 +84,7 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
     armor's return, a pickup, a revive and a test setting `armor` are all the same to it; it ends when protection
     returns, the player dies or the run isn't being played any more (`LevelRun.state` is not RUNNING: a level
     finished, a boss beaten), and it never shows in a mini-game level (`LevelConfig.plays_minigame()`). A run that
-    begins unprotected gives the cue once at the start (`warn_at_start`, DESIGN-TBD, `docs/questions/i6.md`); the
+    begins unprotected gives the cue once at the start (`warn_at_start`, DESIGN-TBD, items 832–835); the
     game's own runs always begin with the free armor, so that is a bare `Loadout` in tests and tools. Its clock is
     real time (`delta / Engine.time_scale`, as `MusicDirector` and the slow-time tint do): slow time slows the
     frame's `delta`, not the siren, which is a recording.
@@ -125,7 +125,7 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
       which also fails if a sound named like a warning isn't in it). On the phone weighting (a small speaker, little
       below 450 Hz) it is only louder than `truck_rev`, an engine rumble, and within about 3 dB of nineteen others,
       since a phone drops the low parts of many warnings but not the siren's: the owner's call
-      (`docs/questions/i6.md` 2). The suite prints the figures.
+      (item 833). The suite prints the figures.
     Numbers: `LastHitWarningTuning` (`data/ui/last_hit_warning.tres`, F6 "One hit from death").
     `tools/showcase/screens_showcase.tscn -- --screen=hud_last_hit` plays it (`--reduced-flashing`).
   - **Menus on a phone** (task I3): the project stretches 1280×720 to the window (`canvas_items`, `expand`),

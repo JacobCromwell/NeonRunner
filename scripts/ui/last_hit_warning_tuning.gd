@@ -9,14 +9,14 @@ extends Resource
 ## The siren is a recording (`tools/godot.sh sfx --only=last_hit_siren`, tools/asset_gen/sfx_bank_power.gd) made
 ## for `pulse_count` and `pulse_seconds`: change either, and regenerate it so the pulses and the tones stay
 ## together (test_last_hit_warning measures the file against them). Every number here is a first value for
-## playtesting (DESIGN-TBD, docs/questions/i6.md).
+## playtesting (DESIGN-TBD, items 832–835).
 
 const PATH: String = "res://data/ui/last_hit_warning.tres"
 ## Seconds of quiet after the last tone in the siren's file.
 const SIREN_TAIL: float = 0.08
 
 @export_group("When")
-## DESIGN-TBD (docs/questions/i6.md 1): a level or a fight that begins with the player unprotected (a loadout
+## DESIGN-TBD (item 832): a level or a fight that begins with the player unprotected (a loadout
 ## with no armor: the game's own runs always start with the free armor) gives the cue once at the start, as if
 ## the protection had just run out. Off: the cue waits until the player has been protected once.
 @export var warn_at_start: bool = true

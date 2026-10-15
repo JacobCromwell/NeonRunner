@@ -38,7 +38,7 @@ const WARNING_NAMES: String = "warn|charge|windup|whine|chitter|swell|grind"
 const JACKPOT_SECONDS_PER_TONE: float = 0.23
 const SEARCHLIGHT_SECONDS_PER_TONE: float = 0.14
 ## Warnings the siren may be as loud as or louder than on a phone speaker (set from the measured figures; see
-## docs/questions/i6.md 2: the owner may want it lower still).
+## item 833: the owner may want it lower still).
 const PHONE_LOUDER_MAX: int = 2
 const SIREN_PATH: String = "res://assets/sfx/last_hit_siren.wav"
 const TEST_BOSS_PATH: String = "res://data/bosses/test_boss.tres"
@@ -157,7 +157,7 @@ func _test_siren_file() -> void:
 		float(siren["k"]), margin, ATTACK_WARNINGS.size(), quietest_name["k"], float(quietest["k"])])
 	check(margin < 6.0, "but not so far under that it is lost (%.1f dB)" % margin)
 	# A phone speaker has little below 450 Hz, which is most of what many warnings are made of, so the siren
-	# (494 and 698 Hz) is relatively louder there: reported for the owner (docs/questions/i6.md 2), and held to the
+	# (494 and 698 Hz) is relatively louder there: reported for the owner (item 833), and held to the
 	# few warnings it is already known to match.
 	var phone_margin: float = float(quietest["phone"]) - float(siren["phone"])
 	print("  last_hit_siren on a phone speaker: %.1f dB heard, %.1f dB against the quietest attack warning (%s, %.1f dB); as loud as or louder than %d of %d: %s; within 3 dB over it: %s" % [
