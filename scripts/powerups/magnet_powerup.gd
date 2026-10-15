@@ -68,8 +68,8 @@ func visual_tick(delta: float) -> void:
 		return
 	_pulse = move_toward(_pulse, 0.0, delta * 3.0)
 	var r: float = radius()
-	var lateral: float = minf(r, world.geo.lane_width * 1.25)
-	var ahead: float = r * 2.5
+	var lateral: float = minf(r, world.geo.lane_width * CreditField.MAGNET_LANES)
+	var ahead: float = r * CreditField.MAGNET_AHEAD
 	var length: float = ahead + BEHIND
 	var basis: Basis = surface_basis(p)
 	var base: Vector3 = p.global_position

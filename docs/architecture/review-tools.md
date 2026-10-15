@@ -26,7 +26,10 @@ them instead, task H5: a small and a medium one head-on, a large one from the si
 short of a fourth and pushes, `--reduced-flashing`), dash walls (`dash_wall_review`, task H7a: three walls in
 any zone's look at its speed, `--take=smash` (the dash), `crash` (the armor, then the shield, then a kill),
 `pass` (on the side wall) or `look` (a still in front of one, for task H7b's looks), `--hitboxes`,
-`--reduced-flashing`, `--god`), floor cuts
+`--reduced-flashing`, `--god`), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
+treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
+`--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`
+for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), floor cuts
 (`floor_cut_review`: the stand-in's warning, charge and the gap it leaves beside a runner who switched
 out, in any zone's look at any lane count and speed, through the game camera or a high one; `--stay`
 for an armor block and the floor's hold, `--kill=D` for a cut stopped where its cause dies,

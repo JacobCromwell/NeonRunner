@@ -478,6 +478,12 @@ func _build_debug_tools() -> void:
 		var dash_walls: DashWallTuning = DashWallTuning.load_default()
 		if dash_walls.resource_path != "":
 			sections.append({"title": "Dash walls", "resource": dash_walls, "path": dash_walls.resource_path})
+	# Task I4: the ceiling scenarios' numbers, in a level that has them (how many is the level's own, in "Level
+	# pacing"; the fences' depth is in "Movement"); Restart rebuilds.
+	if context.config.has_feature(CeilingScenarios.STASH) or context.config.has_feature(CeilingScenarios.FENCED):
+		var scenarios: CeilingScenarioTuning = CeilingScenarios.tuning()
+		if scenarios.resource_path != "":
+			sections.append({"title": "Ceiling scenarios", "resource": scenarios, "path": scenarios.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss

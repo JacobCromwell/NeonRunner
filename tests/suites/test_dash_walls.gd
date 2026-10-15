@@ -47,8 +47,11 @@ const OTHER_SEEDS: int = 2
 ## ways, still late, and no wall fits from the feature's start up to it. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 676).
 const LATE_INTRODUCTION_LANES: Array[int] = [5]
 ## The build where only the last resort gives a level its wall (DashWallRules.after_doodads: the zone doodads in the
-## way go too; the H merge, with task K4's curve): checked both ways. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 677).
-const LAST_RESORT_CASE: Dictionary = {"id": "corporate/2", "lanes": 3, "seed": 7101}
+## way go too): checked both ways. Golden 1 at 3 lanes on seed 7294 since task I4's ceiling scenarios (the one such
+## build among seeds 7000-7449 of Corporate 2 and seeds 7000-7249 of The Hush at 3 lanes, and 7250-7449 of Golden 1),
+## where Corporate 2 at 3 lanes on seed 7101 (the H merge's, with task K4's curve) no longer needs it. DESIGN-TBD
+## (docs/OPEN_QUESTIONS.md item 677).
+const LAST_RESORT_CASE: Dictionary = {"id": "golden/1", "lanes": 3, "seed": 7294}
 ## A wall's look is one small mesh: at most this many surfaces and vertices, built (the first time, in a skin whose
 ## materials already exist) in under these milliseconds on average and at most (DESIGN-TBD: measured about 1 ms and
 ## 4000 vertices; the room is for a loaded machine).

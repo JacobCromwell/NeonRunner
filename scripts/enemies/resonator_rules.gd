@@ -34,7 +34,7 @@ extends RefCounted
 
 const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck", "octodog", "cyborg", "window_cyborg",
 	"screech", "screech_vents", "generator", "barnacle_turret", "wall_fences", "wall_fences_partial",
-	"buzz_overdrive", "tithe_collector", "gilded_sentinel"]
+	"buzz_overdrive", "tithe_collector", "gilded_sentinel", "treasure_stash", "fenced_ceiling"]
 const TYPE: String = "resonator"
 ## Metres between the warning starts tried for a pulse, and the spots tried for a guaranteed Resonator.
 const STEP: float = 2.0

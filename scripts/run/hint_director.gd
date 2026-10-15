@@ -183,6 +183,14 @@ func _first_at(trigger: String) -> float:
 			# Task H7a (GDD §9.14): the first dash wall's face.
 			for dw: Dictionary in layout.dash_walls:
 				found.append(float(dw["start"]))
+		"treasure_stash":
+			# Task I4 (GDD §3, "Ceiling scenarios"): the first treasure stash's start.
+			for st: Dictionary in layout.stashes:
+				found.append(float(st["start"]))
+		"fenced_ceiling":
+			# Task I4: the first ceiling fence.
+			for cf: Dictionary in layout.ceiling_fences:
+				found.append(float(cf["at"]))
 	if found.is_empty():
 		return -1.0
 	return found.min()

@@ -49,6 +49,8 @@ const FIRST_LEVEL: Dictionary = {
 	"host": "dead_zone/1",
 	"resonator": "golden/1",
 	"gilded_sentinel": "golden/2",
+	# Task I4 (GDD §3, "Ceiling scenarios": never in zones 1-2; DESIGN-TBD, docs/questions/i4.md): from the Casino.
+	"treasure_stash": "casino/1", "fenced_ceiling": "casino/2",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
@@ -75,19 +77,25 @@ const LEFT_OUT: Dictionary = {
 ## docs/OPEN_QUESTIONS.md, item 579).
 const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "beach/3", "dead_zone/1", "dead_zone/2", "golden/1",
 	"golden/2", "golden/3"]
-## Levels that bring nothing new (GDD §5): the Casino's two "the Marketplace's enemies and mechanics in a new
-## setting" (owner, October 8, 2026; what each Casino level adds is still to design), the Beach's, a remix of
-## everything before it (owner, October 9, 2026: "Do not worry about any new enemies at this time"), Dead Zone 2
-## "a quiet, eerie remix", Golden 3 the Golden Palace. (The Beach's volleyball match, beach/2, places no features at
-## all: the schedule leaves it out.)
-const NOTHING_NEW: Array = ["casino/1", "casino/2", "beach/1", "beach/3", "dead_zone/2", "golden/3"]
+## Levels that bring nothing new (GDD §5): the Beach's, a remix of everything before it (owner, October 9, 2026:
+## "Do not worry about any new enemies at this time"), Dead Zone 2 "a quiet, eerie remix", Golden 3 the Golden
+## Palace. (The Beach's volleyball match, beach/2, places no features at all: the schedule leaves it out. The
+## Casino's two, "the Marketplace's enemies and mechanics in a new setting" (owner, October 8, 2026), bring the
+## ceiling scenarios since task I4.)
+const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "golden/3"]
 ## Zones that introduce no new enemy, the exceptions to GDD §5's rule, and why: the Casino ("every zone introduces
 ## at least one new enemy, except the Casino, which reuses the Marketplace's", owner, October 8, 2026) and the Beach,
 ## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"). Neither introduces anything
-## else either (NOTHING_NEW).
+## else either (NOTHING_NEW), but for the mechanics in NEW_MECHANICS.
 const NO_NEW_ENEMY: Dictionary = {
 	"casino": "it reuses the Marketplace's (GDD §5, owner)",
 	"beach": "a remix of everything before it (owner, October 9, 2026)",
+}
+## The mechanics a zone of NO_NEW_ENEMY introduces all the same: the Casino's ceiling scenarios (task I4; GDD §3,
+## "Ceiling scenarios": never in zones 1-2, sprinkled into later zones; DESIGN-TBD where they start,
+## docs/questions/i4.md).
+const NEW_MECHANICS: Dictionary = {
+	"casino": ["treasure_stash", "fenced_ceiling"],
 }
 ## The seed sweep: the levels with the most features (the Beach's remix has as many as Corporate 2), and The
 ## Hush (paced in bursts), on this many seeds each at 3, 5 and 6 lanes.
@@ -338,19 +346,26 @@ func _test_schedule(campaign: Campaign) -> void:
 		var new_thing: bool = false
 		for f: String in first_seen:
 			new_enemy = new_enemy or (ENEMIES.has(f) and String(first_seen[f]).begins_with(String(zone[0]) + "/"))
-			new_thing = new_thing or String(first_seen[f]).begins_with(String(zone[0]) + "/")
+			new_thing = new_thing or (String(first_seen[f]).begins_with(String(zone[0]) + "/")
+				and not (NEW_MECHANICS.get(zone[0], []) as Array).has(f))
 		if NO_NEW_ENEMY.has(zone[0]):
 			check(not new_enemy and not new_thing, "%s introduces no new enemy, nor anything else: %s" % [zone[0],
 				NO_NEW_ENEMY[zone[0]]])
 		else:
 			check(new_enemy, "%s introduces at least one new enemy (GDD §5)" % zone[0])
-	# The Casino plays the Marketplace's last level's set, nothing more (task K2, DESIGN-TBD until the owner
-	# says what each Casino level adds): every feature the Marketplace brought, and nothing new.
+	# The Casino plays the Marketplace's last level's set (task K2, DESIGN-TBD until the owner says what each Casino
+	# level adds): every feature the Marketplace brought, and no new enemy; and it brings in the ceiling scenarios
+	# (task I4), Casino 1 the treasure stash and Casino 2 the fenced ceiling, each from a start of its own.
 	var market_2: LevelConfig = campaign.step("marketplace/2").level
-	for id: String in ["casino/1", "casino/2"]:
+	var scenarios: Dictionary = {"casino/1": ["treasure_stash"], "casino/2": ["treasure_stash", "fenced_ceiling"]}
+	for id: String in scenarios:
 		var casino: LevelConfig = campaign.step(id).level
-		check(casino.features == market_2.features and casino.feature_starts.is_empty(),
-			"%s plays Marketplace 2's features, with no introductions (%s)" % [id, casino.features])
+		var want: PackedStringArray = market_2.features.duplicate()
+		for f: String in scenarios[id]:
+			want.append(f)
+		var starts: Array = casino.feature_starts.keys()
+		check(casino.features == want and starts.size() == 1 and starts[0] == (scenarios[id] as Array)[-1],
+			"%s plays Marketplace 2's features and brings in a ceiling scenario (%s; starts %s)" % [id, casino.features, starts])
 	var city_1: LevelConfig = campaign.step("city/1").level
 	check(city_1.feature_start("cyborg") >= 0.5, "City 1's cyborgs come late in the level (%.2f)" % city_1.feature_start("cyborg"))
 	for id: String in ["marketplace/1", "marketplace/2", "casino/1", "casino/2", "corporate/1", "corporate/2", "beach/1", "beach/3",
@@ -749,12 +764,16 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 			check(not placeable.has(f), "`%s` is planned: nothing places it yet %s" % [f, tag])
 			continue
 		var at: Array[float] = LayoutChecks.feature_positions(layout, f)
-		check(not at.is_empty(), "%s has `%s` (GDD §5: earlier features keep appearing) %s" % [s.id, f, tag])
+		# A feature sprinkled in (the ceiling scenarios, task I4) may miss a build: test_ceiling_scenarios counts them.
+		check(not at.is_empty() or LayoutChecks.occasional(f),
+			"%s has `%s` (GDD §5: earlier features keep appearing) %s" % [s.id, f, tag])
 		if not config.feature_starts.has(f) or at.is_empty():
 			continue
 		var start: float = gen.feature_start(f)
 		check(at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
-		if SPACED_FROM_START.has(f):
+		# A ceiling scenario's introduction (task I4) is the first of the level's own ceilings that fits one from its
+		# start, not a pattern picked there: test_ceiling_scenarios checks it's the first.
+		if SPACED_FROM_START.has(f) or LayoutChecks.occasional(f):
 			continue
 		stats["introductions"] = int(stats["introductions"]) + 1
 		if at[0] > start + INTRODUCTION_REACH * gen.pace:
