@@ -46,7 +46,7 @@ extends Resource
 ## Where they stand at the counter, out from its front.
 @export_range(0.15, 1.0, 0.01, "suffix:m") var counter_gap: float = 0.3
 ## Holding up two fingers for two drinks: the hand up, held, down.
-@export_range(10.0, 30.0, 0.05, "suffix:s") var fingers_at: float = 19.1
+@export_range(10.0, 30.0, 0.05, "suffix:s") var fingers_at: float = 19.5
 @export_range(0.5, 3.0, 0.05, "suffix:s") var fingers_seconds: float = 1.6
 ## They run for it: from the bar down the street to the pool (their pace is what reaches its edge at jump_at).
 @export_range(20.0, 40.0, 0.05, "suffix:s") var run_at: float = 33.9
@@ -73,11 +73,11 @@ extends Resource
 ## counter (from the counter's front: x back from it, z along it).
 @export_range(1.0, 2.0, 0.01, "suffix:m") var bartender_height: float = 1.4
 @export var bartender_at: Vector3 = Vector3(-0.95, 0.0, 0.35)
-## He gestures to the menu on the wall and asks; nods; turns his back to make the drinks (shaking them); then he's
+## He turns round to the menu on the wall and points to it, turns back and asks; nods; turns his back to make the drinks (shaking them); then he's
 ## set them on the counter (the cut away and back) and ducks when the bombs fall.
 @export_range(10.0, 30.0, 0.05, "suffix:s") var gesture_at: float = 16.0
-@export_range(0.5, 3.0, 0.05, "suffix:s") var gesture_seconds: float = 1.4
-@export_range(10.0, 30.0, 0.05, "suffix:s") var ask_at: float = 17.4
+@export_range(0.5, 3.0, 0.05, "suffix:s") var gesture_seconds: float = 1.9
+@export_range(10.0, 30.0, 0.05, "suffix:s") var ask_at: float = 18.0
 @export_range(10.0, 30.0, 0.05, "suffix:s") var nod_at: float = 21.5
 @export_range(10.0, 30.0, 0.05, "suffix:s") var turn_back_at: float = 21.9
 @export_range(10.0, 30.0, 0.05, "suffix:s") var shake_at: float = 22.6
@@ -88,7 +88,7 @@ extends Resource
 @export_range(5.0, 20.0, 0.05, "suffix:s") var up_close_at: float = 10.9
 @export_range(5.0, 25.0, 0.05, "suffix:s") var bartender_view_at: float = 13.1
 @export_range(5.0, 25.0, 0.05, "suffix:s") var bartender_shot_at: float = 15.6
-@export_range(5.0, 30.0, 0.05, "suffix:s") var order_shot_at: float = 18.5
+@export_range(5.0, 30.0, 0.05, "suffix:s") var order_shot_at: float = 19.0
 @export_range(5.0, 30.0, 0.05, "suffix:s") var back_shot_at: float = 21.4
 ## The Golden Palace: the Golden Convergence's face in its dark room of screens, its hand rising to point; then its
 ## ships, flying.

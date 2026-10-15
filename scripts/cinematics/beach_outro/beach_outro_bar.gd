@@ -56,6 +56,10 @@ const PINEAPPLE := Color(0.86, 0.74, 0.32)
 const STRAW := Color(0.88, 0.88, 0.85)
 const UMBRELLA := Color(0.35, 0.5, 0.82)
 const STEEL := Color(0.62, 0.64, 0.68)
+## Pointing to the menu he turns this share of the way round to face it (his head turns the rest), taking this long to
+## turn each way.
+const MENU_TURN: float = 0.8
+const MENU_TURN_SECONDS: float = 0.5
 ## How fast he turns his back and back round (seconds), how deep he ducks (metres) and how quickly.
 const TURN_SECONDS: float = 0.6
 const DUCK_DEPTH: float = 0.72
@@ -258,7 +262,13 @@ func update(t: float) -> void:
 		d.visible = served
 	# Facing the customers (+x), turned to the back wall while he makes the drinks; facing them again once served.
 	var away: float = smoothstep(n.turn_back_at, n.turn_back_at + TURN_SECONDS, t) * (0.0 if served else 1.0)
-	bartender.rotation.y = -PI * 0.5 + PI * away
+	# The gesture to the menu: he turns most of the way round to it (as a person would, to point at something behind
+	# them), points, and turns back to them.
+	var turn: float = _window(t, n.gesture_at, n.gesture_at + MENU_TURN_SECONDS,
+		n.gesture_at + n.gesture_seconds - MENU_TURN_SECONDS, n.gesture_at + n.gesture_seconds)
+	var to_menu: Vector3 = local(menu_center) - bartender.position
+	var menu_yaw: float = atan2(-to_menu.x, -to_menu.z)
+	bartender.rotation.y = lerpf(-PI * 0.5, menu_yaw, MENU_TURN * turn) + PI * away
 	# Ducking behind the counter as the bombs come.
 	var duck: float = smoothstep(n.duck_at, n.duck_at + DUCK_SECONDS, t)
 	rig.animate({"speed": 0.0}, delta)
@@ -276,12 +286,13 @@ func update(t: float) -> void:
 		_arm(1, Vector3(40.0, 0.0, 12.0), Vector3(40.0, 0.0, 0.0), 1.0)
 		_arm(-1, Vector3(40.0, 0.0, 12.0), Vector3(40.0, 0.0, 0.0), 1.0)
 		return
-	# The gesture to the menu: his head turns to it and his right arm points up at it.
-	var point: float = _window(t, n.gesture_at, n.gesture_at + 0.45, n.gesture_at + n.gesture_seconds - 0.3,
-		n.gesture_at + n.gesture_seconds + 0.2)
+	# Turned to the menu, his head turns the rest of the way to it and his right arm points up at it, in front of him.
+	var point: float = _window(t, n.gesture_at + MENU_TURN_SECONDS * 0.6, n.gesture_at + MENU_TURN_SECONDS + 0.2,
+		n.gesture_at + n.gesture_seconds - MENU_TURN_SECONDS - 0.15, n.gesture_at + n.gesture_seconds - MENU_TURN_SECONDS * 0.4)
+	if turn > 0.0:
+		_turn_head(head, (menu_yaw + PI * 0.5) * (1.0 - MENU_TURN) * turn, deg_to_rad(14.0) * turn)
 	if point > 0.0:
 		GanglandOutro.aim_arm(rig, &"r", to_global(local(menu_center)), point)
-		_turn_head(head, deg_to_rad(-70.0) * point, deg_to_rad(12.0) * point)
 	# Asking: open hands, palms up, a tilt of his head.
 	var ask: float = _window(t, n.ask_at, n.ask_at + 0.35, n.ask_at + 1.2, n.ask_at + 1.6)
 	if ask > 0.0:

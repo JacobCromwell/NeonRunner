@@ -304,8 +304,9 @@ then swims off, its back and fin cutting the water, and sinks. The camera turns 
 metres off, so it turns evenly) to the runner watching it from the promenade, the screech friend sitting at their feet;
 they turn and walk (`CinePoses.walk`) to a tiki bar at the street's left edge, the screech trotting beside them. Cut to
 them walking up to the counter. From the bartender's own eyes (his body hidden in those shots) the screech hops up onto
-the counter and sits there. The bartender, from the street: he points to the menu on the wall (`GanglandOutro.aim_arm`)
-and asks with open hands. His view again: the runner holds up two fingers (two finger boxes on the runner's right hand
+the counter and sits there. The bartender, from the street: he turns most of the way round to the menu on the wall, his head
+the rest, points up at it in front of him (`GanglandOutro.aim_arm`; the owner, October 15, 2026: turn to it "like a
+human would"), turns back to them and asks with open hands. His view again: the runner holds up two fingers (two finger boxes on the runner's right hand
 joint, the hand raised), the screech nodding along. Wider: he nods, turns his back and shakes the drinks. Cut to the
 Golden Palace: the Golden Convergence's calm face close up in a dark room walled with the feed's screens, then the
 camera swings to three-quarters as it raises its arm and points straight ahead, its index finger out. Cut to its refill
