@@ -22,7 +22,8 @@ const SUITE_TIMES_PATH: String = "res://tests/.suite_times.json"
 ## can't measure this: --fixed-fps runs game time far faster than real time. A full run (78 suites,
 ## about 6.4 million checks) takes about 27 minutes of CPU, 13 minutes of wall time on 3 jobs, on
 ## the owner's machine with a native Godot, and has run far longer under load from other agents,
-## so the limit leaves room above that. `tools/godot.sh test --gate` (tests/suite_map.json,
+## so the limit leaves room above that; a loaded machine can raise it with the environment variable
+## NEONRUNNER_TEST_WATCHDOG (seconds). `tools/godot.sh test --gate` (tests/suite_map.json,
 ## tools/test_plan.py) runs the fast suites plus the ones for the changed files in under a minute.
 const WATCHDOG_SECONDS: int = 2400
 
@@ -30,15 +31,21 @@ var _deadline_msec: int = 0
 
 
 func _initialize() -> void:
-	_deadline_msec = Time.get_ticks_msec() + WATCHDOG_SECONDS * 1000
+	_deadline_msec = Time.get_ticks_msec() + _watchdog_seconds() * 1000
 	_run.call_deferred()
 
 
 func _process(_delta: float) -> bool:
 	if Time.get_ticks_msec() > _deadline_msec:
-		print("TEST RUN STUCK: no result after %d s of real time (see the errors above)" % WATCHDOG_SECONDS)
+		print("TEST RUN STUCK: no result after %d s of real time (see the errors above)" % _watchdog_seconds())
 		quit(1)
 	return false
+
+
+## WATCHDOG_SECONDS, or NEONRUNNER_TEST_WATCHDOG's seconds when it is set (a loaded machine's full tier).
+func _watchdog_seconds() -> int:
+	var env: String = OS.get_environment("NEONRUNNER_TEST_WATCHDOG")
+	return int(env) if env.is_valid_int() and int(env) > 0 else WATCHDOG_SECONDS
 
 
 func _run() -> void:

@@ -1,6 +1,9 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
 ## Power-ups, weapons and protective items: the dash, slow time, lasers and missiles, hits and stomps,
-## the armor, shield, grapple hook and revive, and the pickups that bring them during a fight.
+## the armor, shield, grapple hook and revive, the siren that says the next hit is the last, and the pickups that
+## bring them during a fight.
+
+const LAST_HIT_TUNING_PATH: String = "res://data/ui/last_hit_warning.tres"
 
 const E2: float = 82.41
 const E4: float = 329.63
@@ -8,6 +11,7 @@ const B4: float = 493.88
 const E5: float = 659.26
 const GS5: float = 830.61
 const B5: float = 987.77
+const F5: float = 698.46
 const E6: float = 1318.51
 const GS6: float = 1661.22
 const B6: float = 1975.53
@@ -20,6 +24,7 @@ func sounds() -> Dictionary:
 		"armor_hit": _armor_hit,
 		"armor_back": _armor_back,
 		"shield_break": _shield_break,
+		"last_hit_siren": _last_hit_siren,
 		"grapple": _grapple,
 		"revive": _revive,
 		"pickup": _pickup,
@@ -151,6 +156,40 @@ func _revive() -> PackedFloat32Array:
 	DSP.mix(b, DSP.crash(1.0, rng), 0.77, 0.12)
 	DSP.mix(b, DSP.kick(0.25, 150.0, 45.0, rng), 0.77, 0.6)
 	DSP.crush(b, 11, 24000.0)
+	return b
+
+
+## One hit from death (GDD §4, owner, October 14, 2026): the armor and the shield are gone, and the next hit ends
+## the run. A two-tone siren: a high tone (F5) and a low one (B4, a tritone below) alternating, each a pair of
+## slightly detuned triangle waves (a soft, shimmering "nee-naw", not a bright square) through a low-pass, with a clean
+## edge. It sits lower than the other two-tone sounds the player can hear in a fight, and alternates slower: The
+## House's jackpot (`house_jackpot`, 880 and 660 Hz about 0.23 s each, a reward) and the Floating Head's searchlight
+## (`searchlight_lock`, 1320 then 990 Hz in 0.14 s beeps, a bomb's warning). Plain steady tones, not a sweep and not
+## noise, so it can't be mistaken for an attack's warning (a rising whine or a crackle), the Enforcer Truck's whooping
+## arrival, or the armor's breaking; it plays once and stops. One pair of tones for each of the HUD's pulses
+## (LastHitWarningTuning: `pulse_count` pulses, `pulse_seconds` apart, the high tone on each pulse), so regenerate it
+## after changing either.
+func _last_hit_siren() -> PackedFloat32Array:
+	var count: int = 2
+	var period: float = 0.68
+	var seconds: float = float(count) * period + 0.08
+	var tuning: Resource = load(LAST_HIT_TUNING_PATH) if ResourceLoader.exists(LAST_HIT_TUNING_PATH) else null
+	if tuning != null and tuning.has_method(&"siren_seconds"):
+		count = int(tuning.get("pulse_count"))
+		period = float(tuning.get("pulse_seconds"))
+		seconds = float(tuning.call(&"siren_seconds"))
+	var half: float = period * 0.5
+	var b := DSP.buffer(seconds)
+	for k: int in count:
+		for j: int in 2:
+			var hz: float = F5 if j == 0 else B4
+			var tone := DSP.osc(half, func(_u: float) -> float: return hz, &"triangle")
+			DSP.mix(tone, DSP.osc(half, func(_u: float) -> float: return hz * 1.007, &"triangle"), 0.0, 0.55)
+			DSP.filter(tone, &"lowpass", 2600.0, 0.8)
+			DSP.adsr(tone, 0.008, 0.06, 0.9, 0.03)
+			DSP.mix(b, tone, float(k) * period + float(j) * half, 0.5)
+	DSP.drive(b, 1.2)
+	DSP.crush(b, 12, 22000.0)
 	return b
 
 

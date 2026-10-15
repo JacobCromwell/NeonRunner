@@ -242,7 +242,8 @@ func _check_level(config: LevelConfig, tag: String, own: bool, stats: Dictionary
 			stats["truck_builds"] = int(stats["truck_builds"]) + 1
 			stats["trucks"] = int(stats["trucks"]) + (1 if present else 0)
 			continue
-		check(present, "has `%s` %s" % [f, tag])
+		# A feature sprinkled in (the ceiling scenarios, task I4) may miss a build: test_ceiling_scenarios counts them.
+		check(present or LayoutChecks.occasional(f), "has `%s` %s" % [f, tag])
 	check(not layout.signs.is_empty(), "has wall signs " + tag)
 	_check_open_walls(gen, config, tag, stats)
 	_check_wall_pieces(gen, tag, stats)

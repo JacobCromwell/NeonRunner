@@ -439,6 +439,7 @@ func _build_debug_tools() -> void:
 		{"title": "Power-ups", "resource": App.powerup_tuning, "path": App.POWERUPS_PATH},
 		{"title": "Runner animation", "resource": load(PlayerAvatar.ANIM_TUNING_PATH), "path": PlayerAvatar.ANIM_TUNING_PATH},
 		{"title": "Pickups", "resource": world.pickups.tuning, "path": PickupField.TUNING_PATH},
+		{"title": "One hit from death", "resource": hud.last_hit.tuning, "path": LastHitWarningTuning.PATH},
 		{"title": "Speed effects", "resource": world.effects.tuning, "path": RunEffects.DEFAULT_TUNING_PATH},
 		{"title": "Performance", "resource": PerformanceTuning.load_default(), "path": PerformanceTuning.PATH},
 		{"title": "Music", "resource": load(MusicDirector.LIBRARY_PATH), "path": MusicDirector.LIBRARY_PATH},
@@ -477,6 +478,12 @@ func _build_debug_tools() -> void:
 		var dash_walls: DashWallTuning = DashWallTuning.load_default()
 		if dash_walls.resource_path != "":
 			sections.append({"title": "Dash walls", "resource": dash_walls, "path": dash_walls.resource_path})
+	# Task I4: the ceiling scenarios' numbers, in a level that has them (how many is the level's own, in "Level
+	# pacing"; the fences' depth is in "Movement"); Restart rebuilds.
+	if context.config.has_feature(CeilingScenarios.STASH) or context.config.has_feature(CeilingScenarios.FENCED):
+		var scenarios: CeilingScenarioTuning = CeilingScenarios.tuning()
+		if scenarios.resource_path != "":
+			sections.append({"title": "Ceiling scenarios", "resource": scenarios, "path": scenarios.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss

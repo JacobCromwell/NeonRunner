@@ -59,7 +59,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -186,6 +186,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   with nothing else asking for the dash just before one, a clear stretch before and after, never under a
   ceiling, and a side wall always open beside them. A hover truck drops behind you and lets you go first, and
   a heli drone flies over one (in quick play, `--features=dash_wall --full-loadout`).
+  Ceiling scenarios (from the Casino, now and then): a ceiling whose first pad lifts you into rows of
+  electric fences hanging under it (the pink crackle, seen from the street), with a later pad that lands you past
+  them (from Corporate, several pads, and you read which are which); and a treasure stash, a stretch of floor walled
+  off by doodads with two or three of the richest credits inside, which you can't get into from the street: ride the
+  ceiling above it and step on the downward-pointing pad in its lane to drop straight in (on 5 or 6 lanes; quick
+  play, `--features=ceilings,treasure_stash,fenced_ceiling --lanes=5 --difficulty=0.7`).
 - **Enemies:**
   - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder. Up to two
     bursts of the cyborgs, window cyborgs and Barnacle Turrets fly at once (`GameRules.max_bursts_in_air`,
@@ -446,7 +452,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   and the leap).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
-  and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
+  and a ring filling while it comes back. Armor pickups in boss fights bring it back at once. With no armor hit
+  and no shield left the player is one hit from death: the screen's edges pulse red twice with a two-tone
+  siren and then hold a dim red edge until protection is back (steady, never pulsing, with Reduced flashing; none
+  in the volleyball match; `docs/architecture/characters-ui-audio.md`, "One hit from death").
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are six permanent
   lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
   wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 1,800 / 800 / 1,000 /
@@ -554,7 +563,9 @@ chase and a volley, showing itself beside the runner and bumping a lane change b
 too-wide gap, each ending in its blast, its model; `--scenario=chase|show|octodog|buzz|cut|gap|model`), a wider gap
 jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), zone doodads pushing the
 runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
-armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`), an
+armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`), a
+campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
+`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
 Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
 explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,
@@ -619,6 +630,14 @@ shaders first drawn after the load, and under xvfb it also counts draw calls and
 `godot --headless --fixed-fps 60 -s
 res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
 (the whole campaign takes about fifteen minutes; its header lists the options).
+
+`tools/measure/truck_cost.gd` measures what a hover truck costs a run (task I5, the truck's "big performance drop on a
+phone"): a quick-play run with trucks spawned at set times, each phase of their visit (hidden, banging, the burst,
+pacing, the rev, the wreck) framed apart with its draw calls, objects, nodes and real lights. Run it on the
+renderer to judge, under xvfb with the driver's shader cache off, so a frame that compiled shaders shows:
+`MESA_SHADER_CACHE_DISABLE=true xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --resolution 640x360
+--fixed-fps 60 --rendering-method gl_compatibility -s res://tools/measure/truck_cost.gd -- [--skin=gangland]
+[--trucks=2] [--bench]` (about two minutes; its header lists the options).
 
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the
@@ -686,7 +705,19 @@ browser.
 5. **Its shader programs:** `node tools/web/shader_programs.js` plays the release export from the title into
    City 1 and counts the shader programs WebGL compiles on the way, and any compiled more than once. The
    browser compiles each while the game waits, and on Windows (where Firefox and Edge translate WebGL to
-   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes.
+   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes. It
+   also counts each program's draws (a program never drawn: the engine compiles four unused ones of its own for
+   each shader) and the wait on the compiler (`--sources` keeps every program's GLSL for finding which shader
+   it is). The wait is software WebGL's, a rough guide only (a browser defers compiles, so a program's time
+   includes what was queued before it): the program and character counts are the solid numbers, the load time
+   needs a real Chrome or Edge on Windows. For another level, `--build --level=gangland/1` exports a debug build
+   of its own (`exports/web_zones`, with every zone's doodad pictures; the web preset in `export_presets.cfg` is
+   edited for that export only and put back at once, also if it fails) and opens it on that level (the full
+   game's flavor, no title, no intro); `--export=<dir>` opens a debug export you made. `tools/measure/zone_shaders.gd`
+   is its in-engine twin (headless, seconds): the Shaders and standard-material looks of a level or a boss's
+   arena, which come twice and which only the warm-up draws (`godot --headless -s
+   res://tools/measure/zone_shaders.gd -- [--levels=city/1,golden/3] [--bosses] [--detail]`;
+   `docs/architecture/run.md`, Smooth frames).
 
 On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
 `"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.

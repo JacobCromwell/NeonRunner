@@ -77,6 +77,57 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   for text and numbers. On the HUD, draw icons from `IconFactory.texture()` (cached, tinted with a
   modulate colour) rather than `IconFactory.draw()`: every polygon or polyline command costs its own
   draw call every frame, and the HUD's icons alone were once 220 of about 370.
+  - **One hit from death** (task I6, GDD §4, owner, October 14, 2026): while the player is alive in a level or a
+    boss fight with no armor hit and no shield left, `RunHud.last_hit` (`LastHitWarning`, `scripts/ui/`) shows a
+    red band along the screen's edges and plays the two-tone siren `last_hit_siren` once. It reads
+    the player's state every frame (`armor_state.is_up()`, `shield`, `alive`), not a signal, so a break, the free
+    armor's return, a pickup, a revive and a test setting `armor` are all the same to it; it ends when protection
+    returns, the player dies or the run isn't being played any more (`LevelRun.state` is not RUNNING: a level
+    finished, a boss beaten), and it never shows in a mini-game level (`LevelConfig.plays_minigame()`). A run that
+    begins unprotected gives the cue once at the start (`warn_at_start`, DESIGN-TBD, items 832–835); the
+    game's own runs always begin with the free armor, so that is a bare `Loadout` in tests and tools. Its clock is
+    real time (`delta / Engine.time_scale`, as `MusicDirector` and the slow-time tint do): slow time slows the
+    frame's `delta`, not the siren, which is a recording.
+    - *The edge* is four `ColorRect` strips on one canvas_item shader (like `SpeedLines`, so the Compatibility
+      renderer and the web draw it): the two sides, full height, and the top and bottom between them
+      (`strip_rects()`), so nothing is drawn twice and only about a third of the screen is (the middle costs
+      nothing), each shaded by the screen's own edges (`origin`, `extent`). The band is `edge_width` of the screen's
+      shorter side deep, in the kit's danger red (`UiStyle.danger`; red is the hazard colour, so it stays on the
+      HUD). It tints the scenery along the edges and the floor right under the runner, not the lanes ahead. Its
+      strength: a fade up to `steady_alpha`, then one swell to `pulse_alpha` for each of `pulse_count` high
+      tones, `pulse_seconds` apart (never more than 3 a second), `onset_delay` after the break so the armor's own
+      break sound is heard first. **Reduced flashing** (`Settings.flashing_reduced`, read each frame) has no
+      pulses: the edge fades in to `reduced_alpha` and holds.
+    - *Its layer:* the cue is a `CanvasLayer` of its own, `LastHitWarning.LAYER` (2), a child of the HUD, **under**
+      every other overlay: `SpeedLines` (3), the attack markers (4: the Enforcer Truck's lane marker, the Magnate's
+      chevron and blink, the volleyball HUD), the slow-time tint (4) and the HUD (5). So the band never covers a
+      marker whose colour is a warning (the Magnate's white-to-red turn and red blink are a Pounce's and a Claw
+      Slash's warnings) or a number. `test_last_hit_warning` scans the scripts' canvas layers and fails if any
+      is at or under the cue's. A canvas layer inside another is drawn even while the outer one is hidden (the
+      HUD is hidden during a level's intro), which the warm-up relies on.
+    - *Compiled with the level* (task PERF1's rule): every cue of the session uses one `Shader`
+      (`LastHitWarning.shared_shader()`), and where the game renders `setup()` calls `warm_up()`, which draws the
+      strips at no strength for `ShaderWarmup.DRAWN_FRAMES` frames (counted on `RenderingServer.frame_post_draw`,
+      so the intro's held game doesn't stop it) and sets `LastHitWarning.warmed`; the first armor break then
+      compiles nothing. A headless run draws nothing and warms nothing.
+    - *The siren* (`tools/asset_gen/sfx_bank_power.gd`) is F5 and B4 (a tritone) alternating, each tone a pair of
+      slightly detuned triangle waves through a low-pass (a soft, shimmering "nee-naw"), 0.34 s a tone, once for
+      each pulse; the bank reads `pulse_count` and `pulse_seconds` from the tuning, so regenerate it
+      (`tools/godot.sh sfx --only=last_hit_siren`) after changing either. It is deliberately not like the other
+      two-tone sounds the player hears in a fight: lower, slower and softer than The House's jackpot (880 and
+      660 Hz, 0.23 s a tone, over a fanfare; a reward) and the Floating Head's searchlight (1320 then 990 Hz in
+      0.14 s beeps; a bomb's warning), and flat tones where the attack warnings are rising whines and crackles and
+      the Enforcer Truck's siren sweeps. It plays once through the world's `PlayerSfx` (`requested` and `stopped`
+      for tests) on the SFX bus, ducks nothing, and is cut off if the cue ends first.
+    - *Its level* (`last_hit_siren` in `data/audio/sfx_library.tres`) is set so that, as heard on the general
+      weighting (the loudest 400 ms K-weighted, `audio_review.gd`, plus the library's level), it is at least about
+      2 dB under the quietest of every attack warning in the library (the 43 in `test_last_hit_warning`'s list,
+      which also fails if a sound named like a warning isn't in it). On the phone weighting (a small speaker, little
+      below 450 Hz) it is only louder than `truck_rev`, an engine rumble, and within about 3 dB of nineteen others,
+      since a phone drops the low parts of many warnings but not the siren's: the owner's call
+      (item 833). The suite prints the figures.
+    Numbers: `LastHitWarningTuning` (`data/ui/last_hit_warning.tres`, F6 "One hit from death").
+    `tools/showcase/screens_showcase.tscn -- --screen=hud_last_hit` plays it (`--reduced-flashing`).
   - **Menus on a phone** (task I3): the project stretches 1280×720 to the window (`canvas_items`, `expand`),
     so a screen's sizes are fractions of the window's height; a phone browser's page is 340 to 390 CSS pixels
     high with its bars, which drew the shop's captions 9 pixels high. `UiScale` (`theme/ui_scale.gd`)

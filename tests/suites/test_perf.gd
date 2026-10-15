@@ -17,9 +17,13 @@ extends TestSuite
 ##   physics object made or freed by a warm-up (the stage's track holders are made once and reused; the
 ##   enemy looks have none); no program compiled twice over (one Shader per shader code, the credits'
 ##   too) and none for the hitbox view's debug boxes.
+## - Looks that share a shader (task I1, the web demo's programs): the player's shadow and a screech lair's
+##   dark recess draw with the glow's shaders, the speed lines share one Shader (test_zone_shaders checks each
+##   zone's first level, the Golden Palace and every built boss's arena for any other twin).
 ## - The frame monitor's tags, holds and summaries, and the frame graph's spikes and holds.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
+const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 ## The enemy kinds whose scripts give a warm_up look, as layout entries.
 const WARM_ENTRIES: Array[Dictionary] = [
@@ -35,6 +39,7 @@ const WARM_ENTRIES: Array[Dictionary] = [
 	{"type": "gilded_sentinel", "at": 580.0, "lane": 0, "side": 1, "seed": 12, "params": {}},
 	{"type": "tithe_collector", "at": 600.0, "lane": 1, "seed": 13, "params": {}},
 	{"type": "enforcer_truck", "at": 620.0, "lane": 1, "seed": 14, "params": {}},
+	{"type": "hover_truck", "at": 640.0, "lane": 4, "side": 1, "seed": 15, "params": {}},
 ]
 
 var sim: RunSim
@@ -52,6 +57,7 @@ func run() -> void:
 	await _test_freeze_never_chains()
 	_test_boss_props_share_rings()
 	await _test_shader_warmup()
+	_test_shared_pieces()
 	await _test_frame_monitor()
 	_test_frame_graph()
 	_test_summaries()
@@ -233,12 +239,12 @@ func _test_enemy_warm_up() -> void:
 	for e: Dictionary in director.warm_entries():
 		if not EnemyDirector._scripts.has(String(e["type"])) or EnemyDirector._scripts[String(e["type"])] == null:
 			unloaded.append(String(e["type"]))
-	check(unloaded.is_empty() and director.warm_entries().size() == 13,
+	check(unloaded.is_empty() and director.warm_entries().size() == 14,
 		"each type's script is loaded with the level (%d kinds; not loaded: %s)" % [director.warm_entries().size(), ", ".join(unloaded)])
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes_before and director.get_child_count() == children_before
 		and director.active.is_empty(), "nothing it built stays: no node in the tree, no enemy in play")
 	check(heard.is_empty(), "nothing is heard while it readies them (%s)" % ", ".join(heard))
-	check(EnemyDirector._kept.size() >= 13, "the looks' materials are kept, so their shaders stay built (%d)" % EnemyDirector._kept.size())
+	check(EnemyDirector._kept.size() >= 14, "the looks' materials are kept, so their shaders stay built (%d)" % EnemyDirector._kept.size())
 	var count: int = EnemyDirector._warmed.size()
 	director.warm_up()
 	check(EnemyDirector._warmed.size() == count, "once a process: a second level with the same kinds readies nothing again")
@@ -252,7 +258,7 @@ func _test_enemy_warm_up() -> void:
 			physics.append(String(look.name))
 		look.free()
 	check(physics.is_empty(), "a look has no physics object (freeing one would reorder later contacts): %s" % ", ".join(physics))
-	check(looks.size() == 13 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
+	check(looks.size() == 14 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
 		looks.size(), empty])
 	await sim.free_world(world)
 
@@ -360,6 +366,9 @@ func _test_shader_warmup() -> void:
 	check(big.is_empty(), "a few frames on, every sample is still too small to see (none at full size in the world): %s" %
 		", ".join(big.slice(0, 4)))
 	check(_count_script(stage, CyborgBody) >= 3, "it draws the cyborgs' looks (a cyborg, a host, a window cyborg)")
+	var truck_glow: Material = TruckScript._glow_material(true)
+	check(drawn.has(truck_glow) and drawn.has(TruckScript._glow_material(false)),
+		"it draws the hover truck's warning glow, both strengths (no real light: that built a lit shader's second version mid-run)")
 	var cuts: int = 0
 	for node: Node in stage.find_children("*", "MeshInstance3D", true, false):
 		var cut := (node as MeshInstance3D).material_override as ShaderMaterial
@@ -419,6 +428,31 @@ func _test_shader_warmup() -> void:
 	again.queue_free()
 	camera.queue_free()
 	await sim.free_world(world)
+
+
+# --- Shared looks ---------------------------------------------------------------------------------
+
+## The pieces that once made a shader of their own (task I1; the renderer compiles a program per Shader and per set
+## of a standard material's features, five or six of them, and on the web every one is a wait at the level's load): the
+## player's shadow and a lair's dark recess draw with the glow's shaders (a black emission gives them its features,
+## and adds nothing to the picture), the speed lines share one Shader. test_zone_shaders checks every zone's first
+## level and every boss's arena for the same kind of twin.
+func _test_shared_pieces() -> void:
+	var glow_alpha: String = ShaderWarmup.shader_key(GreyboxMaterials.glow(Color.WHITE, 3.0, 0.75))
+	var glow_opaque: String = ShaderWarmup.shader_key(GreyboxMaterials.glow(Color.WHITE, 3.0, 1.0))
+	check(ShaderWarmup.shader_key(GreyboxMaterials.overlay(GreyboxMaterials.SHADOW, false)) == glow_alpha,
+		"the player's shadow draws with the glow's see-through shader, not one of its own")
+	check(ShaderWarmup.shader_key(ScreechLair._dark()) == glow_opaque, "a lair's dark recess draws with the glow's opaque shader")
+	var lines_a := SpeedLines.new()
+	var lines_b := SpeedLines.new()
+	var speed_fx := load("res://data/tuning/speed_fx.tres") as SpeedFxTuning
+	lines_a.setup(null, speed_fx)
+	lines_b.setup(null, speed_fx)
+	check((lines_a._material as ShaderMaterial).shader != null
+		and (lines_a._material as ShaderMaterial).shader == (lines_b._material as ShaderMaterial).shader,
+		"every run's speed lines share one Shader (one compile for the session, not one a level)")
+	lines_a.free()
+	lines_b.free()
 
 
 # --- The frame monitor and graph ------------------------------------------------------------------

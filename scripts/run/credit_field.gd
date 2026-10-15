@@ -73,6 +73,12 @@ enum State { IDLE, PULLED, GONE }
 const PLACE_CHUNK: int = 32
 ## A credit this far behind the player is passed for good: the field never walks back to it.
 const PASSED_BEHIND: float = 3.0
+## The magnet (_in_magnet) pulls a credit up to this many pull radii ahead of the player's middle, and never further
+## sideways than this many lane widths (GDD §8: the player's lane and the lanes next to it). MagnetPowerup's look
+## covers the same; a treasure stash's credits lie past the top tier's reach from the floor (task I4,
+## treasure_stash_rules.gd magnet_reach).
+const MAGNET_AHEAD: float = 2.5
+const MAGNET_LANES: float = 1.25
 
 var world: RunWorld
 ## Magnet pull radius in metres (0 = off). The magnet power-up sets it.
@@ -220,7 +226,7 @@ func _physics_process(delta: float) -> void:
 	var box: AABB = player.hurtbox_aabb()
 	box = AABB(box.position - PICKUP_MARGIN, box.size + PICKUP_MARGIN * 2.0)
 	box = box.merge(AABB(box.position + Vector3(0.0, 0.0, motion), box.size))
-	var reach: float = maxf(magnet_radius * 2.5, 2.0)
+	var reach: float = maxf(magnet_radius * MAGNET_AHEAD, 2.0)
 	var d: float = player.distance
 
 	while _next < _entries.size() and float(_entries[_next]["at"]) < d - PASSED_BEHIND:
@@ -249,10 +255,10 @@ func _in_magnet(e: Dictionary, player: Player) -> bool:
 		return false
 	var offset: Vector3 = (e["pos"] as Vector3) - (player.hurtbox_aabb().get_center())
 	var ahead: float = -offset.z
-	if ahead < -1.0 or ahead > magnet_radius * 2.5:
+	if ahead < -1.0 or ahead > magnet_radius * MAGNET_AHEAD:
 		return false
 	# GDD §8: the pull never reaches past the lanes next to the player's.
-	var lateral_cap: float = world.geo.lane_width * 1.25
+	var lateral_cap: float = world.geo.lane_width * MAGNET_LANES
 	var lateral: float = absf(offset.x) if surface != "wall" else absf(offset.y)
 	return lateral <= minf(magnet_radius, lateral_cap)
 

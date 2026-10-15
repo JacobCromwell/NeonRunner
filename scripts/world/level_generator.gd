@@ -116,6 +116,14 @@ extends RefCounted
 ## them clear to drop off into, no floor cut or big attack meanwhile), so everything else in a level is
 ## built exactly as without them. A level that brings them in meets its first one soon after the
 ## feature's start, alone, with a long off time.
+##
+## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: never in zones 1-2): last of
+## the rules, the `treasure_stash` and `fenced_ceiling` rules (CeilingScenarios) turn a few of the level's own
+## ceilings into a treasure stash's (a return pad over a stretch of floor walled off by doodads, holding the
+## highest-denomination credits) or a fenced one's (rows of fences after its first pads, a later pad past them),
+## so every rule before them plans as it would without them; what they add keeps every ceiling's rules, and every
+## pass after them keeps off a stash's floor (their rules' keep-outs). The credit pass keeps other credits out of a
+## stash and off the fences (_drop_unsafe_credits).
 
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 ## The danger density pass (LevelConfig.danger_density_increase); no class_name, so loaded here.
@@ -153,6 +161,9 @@ const FILL_CEILING_AFTER_PAD_SECONDS: float = 1.0
 const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
 ## A floor credit this close to a zone doodad in its lane (or inside it) is dropped (metres).
 const DOODAD_CREDIT_MARGIN: float = 1.0
+## A ceiling credit this close to a ceiling fence in its lane (task I4), beyond the fence's own half depth, is
+## dropped (metres): a credit never lures a rider into a fence.
+const CEILING_FENCE_CREDIT_MARGIN: float = 1.5
 ## A player leaving a floor cut's lane is out of it by the time the cut's front is this many metres
 ## ahead of them (cut_escape_clear): the cause's reach, the body's and a frame of closing in.
 const CUT_CONTACT_METRES: float = 4.0
@@ -1728,9 +1739,13 @@ func _add_doodad(rng: RandomNumberGenerator, size: StringName, start: float, end
 		return {}
 	var pick: int = rng.randi_range(0, lanes.size() - 1)
 	var room_sides: Array = sides[pick]
+	# Its look's seed counts the zone doodads before it, not a treasure stash's (task I4), whose look seeds are its own.
+	var count: int = 0
+	for d: Dictionary in layout.doodads:
+		count += 0 if d.has("stash") else 1
 	var entry := {"lane": lanes[pick], "start": start, "end": end, "size": size,
 		"side": room_sides[rng.randi_range(0, room_sides.size() - 1)],
-		"seed": hash([config.level_seed, "doodad", layout.doodads.size()])}
+		"seed": hash([config.level_seed, "doodad", count])}
 	layout.doodads.append(entry)
 	return entry
 
@@ -2237,7 +2252,9 @@ func _place_ceiling_credits(rng: RandomNumberGenerator) -> void:
 
 ## Drops credits that would sit inside a hazard, a zone doodad or a dash wall (task H7a), over a hole the
 ## player can't reach, or in a floor cut's lane while it's on (they'd lure the player into its way, then
-## hang over the gap it leaves).
+## hang over the gap it leaves). A treasure stash (task I4) holds only its own credits: no other floor credit
+## lies in its lane or its walls' between its start and its open end; and no credit hangs on a ceiling by one of
+## its fences (in its lane, within CEILING_FENCE_CREDIT_MARGIN).
 func _drop_unsafe_credits() -> void:
 	var kept: Array[Dictionary] = []
 	for c: Dictionary in layout.credits:
@@ -2245,6 +2262,8 @@ func _drop_unsafe_credits() -> void:
 			var d: float = c["at"]
 			var lane: int = c["lane"]
 			if lane < 0 or lane >= layout.lane_count:
+				continue
+			if not bool(c.get("stash", false)) and _in_stash(lane, d):
 				continue
 			if not c["risky"] and layout.gapped_between(lane, d - 0.5, d + 0.5):
 				continue
@@ -2264,8 +2283,29 @@ func _drop_unsafe_credits() -> void:
 			# No wall there to run along (a wall gap): nothing to collect it from.
 			if layout.wall_gap_between(float(c["at"]) - 1.0, float(c["at"]) + 1.0, int(c["side"])):
 				continue
+		elif c["surface"] == "ceiling":
+			if _ceiling_fence_near(int(c["lane"]), float(c["at"]), tuning.fence_depth * 0.5 + CEILING_FENCE_CREDIT_MARGIN):
+				continue
 		kept.append(c)
 	layout.credits = kept
+
+
+## True if track distance `d` in `lane` lies in a treasure stash (LevelLayout.stashes; task I4): in its lane or
+## either wall's, from its start to its open end (a credit's reach, DOODAD_CREDIT_MARGIN, either side).
+func _in_stash(lane: int, d: float) -> bool:
+	for s: Dictionary in layout.stashes:
+		if absi(lane - int(s["lane"])) <= 1 and d >= float(s["start"]) - DOODAD_CREDIT_MARGIN \
+				and d <= float(s["end"]) + DOODAD_CREDIT_MARGIN:
+			return true
+	return false
+
+
+## True if a ceiling fence (LevelLayout.ceiling_fences; task I4) stands in `lane` within `margin` of `d`.
+func _ceiling_fence_near(lane: int, d: float, margin: float) -> bool:
+	for f: Dictionary in layout.ceiling_fences:
+		if int(f["lane"]) == lane and absf(float(f["at"]) - d) < margin:
+			return true
+	return false
 
 
 func _fence_near(lane: int, d: float, margin: float) -> bool:

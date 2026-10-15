@@ -74,6 +74,8 @@ var _level_time: float = 0.0
 var _fence_nodes: Dictionary = {}
 ## Built wall fence hazards by their index in layout.wall_fences (task B5), likewise.
 var _wall_fence_nodes: Dictionary = {}
+## Built ceiling fence hazards by their index in layout.ceiling_fences (task I4), likewise.
+var _ceiling_fence_nodes: Dictionary = {}
 ## Built dash walls (task H7a), in the order they were built (dash_wall_for, dash_wall_nodes).
 var _dash_wall_nodes: Array[DashBreakable] = []
 ## The skin's calls still to make (dress_budget_usec), in order: [chunk start, chunk root, Callable].
@@ -95,6 +97,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	_buckets.clear()
 	_fence_nodes.clear()
 	_wall_fence_nodes.clear()
+	_ceiling_fence_nodes.clear()
 	_dash_wall_nodes.clear()
 	_cut_nodes.clear()
 	_dressing.clear()
@@ -104,7 +107,7 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 	for lane: int in layout.lane_count:
 		_lane_gaps.append([])
 		_lane_cuts.append([])
-	_add_pieces(layout, 0, 0)
+	_add_pieces(layout, 0, 0, 0)
 
 
 ## Lengthens the track while it runs (a boss arena's next lap, BossArena; endless mode's next stretch):
@@ -115,8 +118,9 @@ func set_layout(p_layout: LevelLayout, p_tuning: MovementTuning, p_skin: ZoneSki
 func extend_layout(extra: LevelLayout) -> void:
 	var first_fence: int = layout.fences.size()
 	var first_wall_fence: int = layout.wall_fences.size()
+	var first_ceiling_fence: int = layout.ceiling_fences.size()
 	layout.append_pieces(extra)
-	_add_pieces(extra, first_fence, first_wall_fence)
+	_add_pieces(extra, first_fence, first_wall_fence, first_ceiling_fence)
 
 
 ## Track distance up to which chunks are built.
@@ -177,9 +181,10 @@ func floor_cuts() -> Array[FloorCut]:
 
 
 ## Switches off, for the rest of the level, every fence within `radius` of `center` (world space),
-## including fences not built yet (GDD §9.1: a destroyed generator's EMP): floor fences, and wall fences
-## (task B5; GDD §9.1: "a generator's EMP switches them off"), each measured from where its field meets
-## the track (a floor fence's lane, a wall fence's wall face) at the EMP's height. Returns how many.
+## including fences not built yet (GDD §9.1: a destroyed generator's EMP): floor fences, wall fences
+## (task B5; GDD §9.1: "a generator's EMP switches them off") and ceiling fences (task I4: the same rules as a
+## floor fence's), each measured from where its field meets the track (a floor or ceiling fence's lane, a wall
+## fence's wall face) at the EMP's height. Returns how many.
 func disable_fences_near(center: Vector3, radius: float) -> int:
 	var count: int = 0
 	for f: Dictionary in layout.fences:
@@ -204,6 +209,16 @@ func disable_fences_near(center: Vector3, radius: float) -> int:
 		var wall_node: Variant = _wall_fence_nodes.get(w.get("index", -1))
 		if wall_node != null and is_instance_valid(wall_node):
 			(wall_node as Hazard).set_enabled(false)
+	for f: Dictionary in layout.ceiling_fences:
+		if f.get("disabled", false):
+			continue
+		if Vector3(geo.lane_x(int(f["lane"])), center.y, TrackGeometry.world_z(float(f["at"]))).distance_to(center) > radius:
+			continue
+		f["disabled"] = true
+		count += 1
+		var ceiling_node: Variant = _ceiling_fence_nodes.get(f.get("index", -1))
+		if ceiling_node != null and is_instance_valid(ceiling_node):
+			(ceiling_node as Hazard).set_enabled(false)
 	return count
 
 
@@ -223,6 +238,18 @@ func wall_fence_hazards() -> Array[Hazard]:
 	keys.sort()
 	for k: Variant in keys:
 		var h: Variant = _wall_fence_nodes[k]
+		if is_instance_valid(h) and not (h as Node).is_queued_for_deletion():
+			out.append(h)
+	return out
+
+
+## Built ceiling fence hazards (task I4; for tests, review tools and effects), in layout order.
+func ceiling_fence_hazards() -> Array[Hazard]:
+	var out: Array[Hazard] = []
+	var keys: Array = _ceiling_fence_nodes.keys()
+	keys.sort()
+	for k: Variant in keys:
+		var h: Variant = _ceiling_fence_nodes[k]
 		if is_instance_valid(h) and not (h as Node).is_queued_for_deletion():
 			out.append(h)
 	return out
@@ -273,9 +300,9 @@ func set_hitboxes_visible(on: bool) -> void:
 
 
 ## Sorts the track pieces of `pieces` (the whole layout, or an extension of it) into the chunks that
-## build them. `first_fence` and `first_wall_fence` are the layout indices of its first fence and wall
-## fence.
-func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int) -> void:
+## build them. `first_fence`, `first_wall_fence` and `first_ceiling_fence` are the layout indices of its first
+## fence, wall fence and ceiling fence.
+func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int, first_ceiling_fence: int) -> void:
 	_last_chunk = int(ceil((layout.length + RUN_OUT) / CHUNK_LENGTH))
 	for g: Dictionary in pieces.gaps:
 		_lane_gaps[g["lane"]].append(g)
@@ -294,6 +321,10 @@ func _add_pieces(pieces: LevelLayout, first_fence: int, first_wall_fence: int) -
 	_bucket("speed_pads", pieces.speed_pads, "at", tuning.speed_pad_length)
 	_bucket("doodads", pieces.doodads, "start", 0.0, "end")
 	_bucket("dash_walls", pieces.dash_walls, "start", 0.0, "end")
+	for i: int in pieces.ceiling_fences.size():
+		pieces.ceiling_fences[i]["index"] = first_ceiling_fence + i
+	_bucket("ceiling_fences", pieces.ceiling_fences, "at", tuning.fence_depth)
+	_bucket("return_pads", pieces.return_pads, "at", tuning.pad_length)
 	# A floor cut is built in the chunk where its stretch starts, which stays until the player is past
 	# its cause's spot; each chunk draws the slices of its lane's floor within it.
 	for c: Dictionary in pieces.cuts:
@@ -384,6 +415,10 @@ func _build_chunk(index: int) -> void:
 		_build_doodad(root, d)
 	for w: Dictionary in bucket.get("dash_walls", []):
 		_build_dash_wall(root, w)
+	for f: Dictionary in bucket.get("ceiling_fences", []):
+		_build_ceiling_fence(root, f)
+	for p: Dictionary in bucket.get("return_pads", []):
+		_build_return_pad(root, p)
 
 
 ## A skin call for the chunk being built: made now, or queued with a dressing budget (dress_budget_usec).
@@ -694,6 +729,38 @@ func _build_dash_wall(root: Node3D, w: Dictionary) -> void:
 	_dress(func() -> void:
 		skin.dash_wall(wall, size, look_seed)
 		wall.debris_colors = skin.dash_wall_debris_colors(wall, look_seed))
+
+
+## A ceiling fence (task I4; GDD §3, "Ceiling scenarios": a fenced ceiling's rows; LevelLayout.ceiling_fences): an
+## electric field hanging from the ceiling's underside across its lane, as wide as a floor fence (a lane less a
+## margin), MovementTuning.ceiling_fence_depth below the underside and a fence deep along the track. A hazard like a
+## floor fence (electrical: DamageRules lets armor, the shield and the dash through, never claws), always on, switched
+## off for good by an EMP (disable_fences_near). It hangs above anything a floor runner reaches (a jump's) and the
+## chase camera's highest under a ceiling (RunCamera.ceiling_limit), and short of a wall runner's body (the wall run's
+## top). The skin draws it (ZoneSkin.ceiling_fence).
+func _build_ceiling_fence(root: Node3D, f: Dictionary) -> void:
+	var depth: float = tuning.ceiling_fence_depth
+	var size := Vector3(geo.lane_width - 0.2, depth, tuning.fence_depth)
+	var hazard := _hazard(root, Vector3(geo.lane_x(int(f["lane"])), tuning.ceiling_height - depth * 0.5, -float(f["at"])),
+		size, LAYER_HAZARD)
+	hazard.hazard_name = "ceiling fence"
+	hazard.is_electrical = true
+	_dress(skin.ceiling_fence.bind(hazard, size))
+	_ceiling_fence_nodes[int(f.get("index", _ceiling_fence_nodes.size()))] = hazard
+	if f.get("disabled", false):
+		hazard.set_enabled(false)
+
+
+## A return pad (task I4; GDD §3, "Ceiling scenarios": the treasure stash's; LevelLayout.return_pads): a trigger on
+## the ceiling's underside in its lane, a pad's size, which drops a rider who steps on it back to the floor (Player).
+## The node is turned upside down (about the track's axis), so the skin's look for it, by default the anti-grav
+## pad's (ZoneSkin.return_pad), points back down at the floor; its trigger box is the same either way up.
+func _build_return_pad(root: Node3D, p: Dictionary) -> void:
+	var size := Vector3(geo.lane_width * 0.7, 0.5, tuning.pad_length)
+	var area := _trigger(root, &"return_pad", Vector3(geo.lane_x(int(p["lane"])), tuning.ceiling_height - size.y * 0.5,
+		-float(p["at"]) - size.z * 0.5), size)
+	area.rotation.z = PI
+	_dress(skin.return_pad.bind(area, size))
 
 
 func _hazard(root: Node3D, center: Vector3, size: Vector3, layers: int) -> Hazard:

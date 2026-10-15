@@ -77,6 +77,7 @@ func run() -> void:
 	_test_skins()
 	_test_cards()
 	await _test_push()
+	await _test_push_holds()
 	await _test_jump_and_slide()
 	await _test_mid_switch()
 	await _test_blocked_side()
@@ -204,7 +205,8 @@ func _test_layout_data() -> void:
 ## stay, and as many extra gaps come, in as many lanes (_check_extra_gaps); task G7's wider gaps re-rolled City 1
 ## at 3 lanes into that case. Dash walls past an introduction come after the doodads too (task H7a,
 ## DashWallRules.after_doodads) and stand where they leave room, taking out the plain pieces in their way, so
-## both builds leave them out: what's compared is the doodads' own doing.
+## both builds leave them out: what's compared is the doodads' own doing. A treasure stash's walls (task I4) come with
+## the stash, whatever the share, in both builds alike.
 func _test_share_zero() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var checked: int = 0
@@ -222,7 +224,12 @@ func _test_share_zero() -> void:
 			var with: LevelLayout = gen.generate(config, tuning, patterns)
 			var plain_gen := LevelGenerator.new()
 			var plain: LevelLayout = plain_gen.generate(off, tuning, patterns)
-			check(plain.doodads.is_empty() and not plain.to_dict().has("doodads"), "a share of 0 places none " + tag)
+			# A treasure stash's walls (task I4) are the stash's own, placed by its rules whatever the share.
+			var zone_doodads: int = 0
+			for d: Dictionary in plain.doodads:
+				zone_doodads += 0 if d.has("stash") else 1
+			check(zone_doodads == 0 and (plain.doodads.is_empty() or not plain.stashes.is_empty())
+				and (plain.doodads.is_empty() == not plain.to_dict().has("doodads")), "a share of 0 places no zone doodad " + tag)
 			check(not with.doodads.is_empty() or config.paced_in_bursts(), "the level's share places some (%d) %s" % [with.doodads.size(), tag])
 			var a: Dictionary = with.to_dict()
 			var b: Dictionary = plain.to_dict()
@@ -607,6 +614,50 @@ func _test_push() -> void:
 	check(runs == 32, "pushes run: %d" % runs)
 
 
+## A move against the push (task I4): a move back into the pushing doodad's lane while its push carries the runner is
+## blocked (the clank), as its side would block it beside them, so the body never sinks into it; and moves mashed
+## toward it all along it leave the push to finish (a quick shove into the lane beside, never stuck between the
+## lanes against its side, where a treasure stash's walls would let a runner slip in).
+func _test_push_holds() -> void:
+	sim.trace = true
+	var geo := TrackGeometry.new(3, tuning)
+	var d: Dictionary = _doodad(1, 40.0, &"medium", 1)
+	var calib: Dictionary = await sim.run(_one_doodad(3, d), 1, 3.0, [])
+	var push_at: float = -1.0
+	for s: Dictionary in calib["trace"]:
+		if int(s["lane"]) == 2:
+			push_at = float(s["d"])
+			break
+	check(push_at > 0.0, "the doodad pushes the runner (at %.2f m)" % push_at)
+	var frame: float = 1.0 / Engine.physics_ticks_per_second
+	var cases: Array = []
+	for back_after: float in [0.05, 0.3, 0.8]:
+		cases.append(["a move back %.2f m into the push" % back_after, [[push_at + back_after, &"move_left"]]])
+	var mash: Array = []
+	var at: float = push_at
+	while at < float(d["end"]) - 0.5:
+		mash.append([at, &"move_left"])
+		at += 0.3
+	cases.append(["moves back mashed from the push to its end", mash])
+	for c: Array in cases:
+		var r: Dictionary = await sim.run(_one_doodad(3, d), 1, 3.0, c[1])
+		var events: Array = r["events"]
+		var start: float = -1.0
+		var done: float = -1.0
+		for s: Dictionary in r["trace"]:
+			if start < 0.0 and int(s["lane"]) == 2:
+				start = float(s["t"])
+			if start >= 0.0 and done < 0.0 and absf(float(s["x"]) - geo.lane_x(2)) < 0.01:
+				done = float(s["t"])
+		check(r["alive"] and events.count(&"doodad_push") == 1 and events.has(&"lane_blocked") and int(r["lane"]) == 2,
+			"%s is blocked: the runner ends in the lane beside (lane %d, %s)" % [c[0], r["lane"], events])
+		check(start >= 0.0 and done >= 0.0 and done - start <= tuning.doodad_push_time + 1.5 * frame,
+			"%s: the push still lands in the next lane's middle within %.2f s (%.3f s)" % [c[0], tuning.doodad_push_time, done - start])
+		var sink: float = _sink(r["trace"], d, geo)
+		check(sink <= SINK_TOLERANCE, "%s: the body never sinks into it (%.3f m)" % [c[0], sink])
+	sim.trace = false
+
+
 ## GDD §3 (G5 brief): a player jumping into a doodad is pushed the same way (it's too tall to jump: the
 ## jump's feet stay below its top), and so is one sliding into it.
 func _test_jump_and_slide() -> void:
@@ -776,6 +827,9 @@ func _test_safe_floor_every_time() -> void:
 			var after: float = config.spacing_seconds_hard * fast.run_speed
 			var tried: int = 0
 			for d: Dictionary in layout.doodads:
+				# A treasure stash's doodads stand together, under its ceiling (task I4): test_ceiling_scenarios runs them.
+				if d.has("stash"):
+					continue
 				if tried >= SAFE_RUNS_PER_LEVEL:
 					break
 				tried += 1
@@ -1355,6 +1409,9 @@ func _test_dash_campaign() -> void:
 			var after: float = config.spacing_seconds_hard * fast.run_speed
 			var tried: int = 0
 			for d: Dictionary in layout.doodads:
+				# A treasure stash's doodads (task I4): test_ceiling_scenarios dashes into one.
+				if d.has("stash"):
+					continue
 				if tried >= DASH_RUNS_PER_LEVEL:
 					break
 				tried += 1
@@ -1427,6 +1484,10 @@ func _test_dash_fairness() -> void:
 					every.append(Vector2(float(k["from"]), float(k["to"])))
 			var half: float = fast.fence_depth * 0.5
 			for d: Dictionary in layout.doodads:
+				# A treasure stash's doodads stand under its ceiling, and what the dash shows behind them is the stash
+				# (task I4: test_ceiling_scenarios).
+				if d.has("stash"):
+					continue
 				var lane: int = int(d["lane"])
 				var mine: Array[Vector2] = []
 				for g: Dictionary in layout.gaps:

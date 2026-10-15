@@ -9,7 +9,7 @@ display_name = "Sentinel Row"
 level_seed = 602
 duration_seconds = 150.0
 difficulty_bias = 0.05
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents", "buzz_overdrive", "wall_fences_partial", "dash_wall", "tithe_collector", "enforcer_truck", "host", "resonator", "gilded_sentinel")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents", "treasure_stash", "fenced_ceiling", "buzz_overdrive", "wall_fences_partial", "dash_wall", "tithe_collector", "enforcer_truck", "host", "resonator", "gilded_sentinel")
 guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "gilded_sentinel": 0.1
@@ -24,3 +24,4 @@ dash_walls = 2
 credit_trail_chance = 0.6
 credit_trail_min = 5
 doodad_share = 0.8
+fenced_ceiling_pads = 3

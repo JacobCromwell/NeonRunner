@@ -132,6 +132,13 @@ const REFERENCE_SPEED: float = 18.0
 ## runner's body (which reaches about a hurtbox height out), never as far as a floor runner in the middle
 ## of the outer lane (WallFencePlan.reach holds it short of them).
 @export_range(0.2, 1.5, 0.05, "suffix:m") var wall_fence_reach: float = 0.9
+## Ceiling fences (task I4; GDD §3, "Ceiling scenarios": pick the right pad): an electric fence hanging from a
+## ceiling's underside across a lane, this deep below it, a fence deep (fence_depth) along the track. A rider on
+## the hull is in it; one jumping clears it for part of the jump, so a fenced ceiling hangs rows of them
+## (CeilingScenarios.row_plan). DESIGN-TBD (docs/questions/i4.md): kept above the chase camera's highest under a
+## ceiling (camera_ceiling_clearance below the underside, less the field's glow), so the camera following a
+## floor runner, even one jumping, never passes through one.
+@export_range(0.4, 0.95, 0.05, "suffix:m") var ceiling_fence_depth: float = 0.85
 ## How far a sign sticks out from the wall face.
 @export_range(0.3, 1.5, 0.05, "suffix:m") var sign_depth: float = 0.9
 @export_range(0.5, 5.0, 0.1, "suffix:m") var pad_length: float = 2.0
@@ -194,6 +201,10 @@ const REFERENCE_SPEED: float = 18.0
 ## player; without this it climbed into the ceiling before passing its end, and what's drawn there
 ## filled the screen (the orange end band's glow, a flash and a glare).
 @export_range(0.2, 3.0, 0.05, "suffix:m") var camera_ceiling_clearance: float = 1.0
+## How far above a zone doodad's top the camera stays while it passes over one (RunCamera.doodad_floor): the
+## camera riding below a ceiling (camera_ceiling_height) is lower than a doodad, and a treasure stash's
+## doodads stand under its ceiling (task I4). DESIGN-TBD (docs/questions/i4.md).
+@export_range(0.1, 1.5, 0.05, "suffix:m") var camera_doodad_clearance: float = 0.4
 ## The climbing view (RunCamera with RunWorld.camera_climbs on: a boss's climb, GDD §10, the Beach's): how far
 ## above a roof (a raised floor below it, or ahead) the camera keeps, so it never sits inside the higher roof
 ## a ceiling rider will drop onto (RunCamera.floor_limit).
