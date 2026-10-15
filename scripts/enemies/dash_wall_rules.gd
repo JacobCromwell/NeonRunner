@@ -532,7 +532,8 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float, dood
 	for h: Dictionary in lay.hulls:
 		mark_fixed.call(Vector2(float(h["start"]), gen.zones.landing_zone(h).y), false)
 	for d: Dictionary in lay.doodads:
-		if doodads_go:
+		# A treasure stash's doodads (task I4) are its walls, never scenery that may go.
+		if doodads_go and not d.has("stash"):
 			mark_enemy.call(d, doodad_span(gen, d), false)
 		else:
 			mark_fixed.call(doodad_span(gen, d), false)
