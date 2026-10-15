@@ -434,6 +434,8 @@ func _test_phase_changes() -> void:
 				elif float(st["first2_t"]) < 0.0 and p.distance >= boss.climb.steps[first2].pad:
 					st["first2_t"] = boss.fight_time()
 				if boss.top_reached_at >= 0.0:
+					# Phase 3 is won by its bombs' hits (task E5e-g): its attacks on from the top.
+					boss.attacks_enabled = true
 					if float(st["top_shown"]) < 0.0:
 						st["top_shown"] = boss.waterfall.shown
 					elif float(st["after_top"]) < 0.0 and boss.fight_time() >= boss.top_reached_at + 2.5:
