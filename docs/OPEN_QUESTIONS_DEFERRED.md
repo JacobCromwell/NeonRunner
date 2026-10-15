@@ -3785,3 +3785,15 @@ fight) or `data/bosses/dead_zone_boss.tres` (its phases and par times), marked D
   walls (43 of 453). Should these be confirmed in playtest?
 748. **Overhead dressing over a gap** (skybridges, strings of lights). Placeholder: zone skins leave
   overhead pieces out across a gap, so some may end at the gap's edge.
+
+### Folded on October 15, 2026 (the October 14 batch, tasks I1–I9)
+
+**I9, the boss armor pickup only after the armor takes a hit** (from `docs/questions/i9.md`)
+749. **A phase that begins with the armor down but a shield held** (GDD §10, the standard armor rule; item 251,
+  `BossDef.armor_when_unprotected`). A held shield counts as protection at a phase's start, so such a phase schedules
+  no pickup, and since I9 its shield's break brings none either. Should a phase begun with the armor down count as
+  unprotected even with a shield held? Placeholder: a held shield counts (`BossEncounter.player_protected()`, marked
+  `DESIGN-TBD`, and on `BossDef.armor_when_unprotected`).
+750. **A hit the upgraded armor survives** (GDD §10, "whenever the player's armor takes a hit"). Placeholder: any armor
+  hit schedules the phase's pickup, not only the hit that breaks it, so with 2–3 hit armor the first survived hit
+  uses the phase's one pickup. One condition in `BossEncounter._on_movement_event` if the owner meant only the break.

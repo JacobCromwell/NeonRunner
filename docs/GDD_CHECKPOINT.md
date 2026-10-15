@@ -654,7 +654,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Three phases**, one stomp each. After a stomp it shakes free, shrieks and rises; the next phase is faster, with more cyborgs.
   - **Damage:** stomps do the real damage (a third of its health each); weapons chip away slowly (tuned so even the best weapon saves at most one stomp over the whole fight).
   - **Propaganda voice:** a heavily distorted announcement voice that isn't meant to be understood, plus a few short slogans shown as text on its face screen (so only those slogans need translating).
-  - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor or shield breaks during the fight, another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
+  - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor takes a hit during the fight (not a shield's break; owner, October 14, 2026, §10), another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
   - **Kept simple:** no bonus damage for shooting into its open mouth.
   - **Defeat**: its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead; the runner runs through the wreck. This leads into the zone's outro, and in the web demo into the "get the full game" screen.
 - **Sewer Swarm** (Gangland). Owner's design, with the design round's additions approved by the owner (September 26, 2026).
