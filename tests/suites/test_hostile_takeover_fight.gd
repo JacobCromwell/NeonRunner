@@ -815,8 +815,8 @@ func _test_weapons() -> void:
 
 # --- The armor rule ------------------------------------------------------------------------------
 
-## GDD §10's standard rule (15-17 s): the free armor broken (a guard's bolt), an armor pickup is due 15-17 s
-## later and appears on a roof, never over a gap.
+## GDD §10's standard rule (15-17 s): the free armor takes a hit (a guard's bolt; its one hit, so it breaks), an
+## armor pickup is due 15-17 s later and appears on a roof, never over a gap.
 func _test_armor_broken() -> void:
 	var armored := Loadout.new()
 	armored.armor = true
@@ -840,7 +840,7 @@ func _test_armor_broken() -> void:
 				spots["bad"] += 1)
 	var dues: Array[Dictionary] = _events(boss, &"armor_pickup")
 	var after: float = float(dues[0]["t"]) - broke if not dues.is_empty() else -1.0
-	check(_events(boss, &"protection_broken").size() == 1 and dues.size() == 1 and dues[0]["reason"] == &"protection_broken"
+	check(_events(boss, &"protection_broken").size() == 1 and dues.size() == 1 and dues[0]["reason"] == &"armor_hit"
 		and after >= def.armor_delay_min - 0.02 and after <= def.armor_delay_max + 0.02,
 		"its free armor broken, an armor pickup is due %.1f s later" % after)
 	check(world.pickups.made >= 1 and int(spots["bad"]) == 0 and world.player.alive, "and appears on a roof, never over a gap")
@@ -848,7 +848,7 @@ func _test_armor_broken() -> void:
 
 
 ## Without armor (the free armor broken before the fight, or a run without it): the phase begun unprotected
-## counts as a break, an armor pickup 15-17 s in.
+## counts as an armor hit, an armor pickup 15-17 s in.
 func _test_armor_unprotected() -> void:
 	var pair: Array = _fight(3, 18.0)
 	var world: RunWorld = pair[0]
