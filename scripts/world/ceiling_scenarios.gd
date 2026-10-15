@@ -146,7 +146,10 @@ static func lane_keeps(gen: LevelGenerator) -> Array[Dictionary]:
 
 
 ## Where a scenario adds no pad: from `margin_seconds` of run before each drone wave arrives until its first pad
-## (GDD §9.6: a pad hurls every drone on screen, and from a wave's arrival to its first pad no pad may come).
+## (GDD §9.6: a pad hurls every drone on screen, and from a wave's arrival to its first pad no pad may come). The
+## first pad itself, the one the drone schedule put first_pad_seconds or more after the arrival (up to its slack),
+## ends the window, so a fenced ceiling's pick, which starts before its first pad, never makes it a trap (task I4's
+## review). Without a pad after it, the window runs first_pad_seconds.
 static func drone_windows(gen: LevelGenerator, margin_seconds: float) -> Array[Vector2]:
 	var layout: LevelLayout = gen.layout
 	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
@@ -156,11 +159,11 @@ static func drone_windows(gen: LevelGenerator, margin_seconds: float) -> Array[V
 		if String(e.get("type", "")) != "drone":
 			continue
 		var at: float = float(e["at"])
-		var first: float = at + wait
+		var first: float = INF
 		for p: Dictionary in layout.pads:
 			if float(p["at"]) > at + 0.01:
 				first = minf(first, float(p["at"]))
-		out.append(Vector2(at - margin_seconds * gen.speed, first))
+		out.append(Vector2(at - margin_seconds * gen.speed, first if first < INF else at + wait))
 	return out
 
 
