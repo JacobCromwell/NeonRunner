@@ -429,7 +429,8 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 | E5b | **Hostile Takeover** (Corporate boss) | B4, B5, B7, B8, C2, C5, D4 | XL | T1 |
 | E5c | **Sleep Taker** (Dead Zone boss) | B7, B8, B9, D5 | XL | T1 |
 | E5d | **The Golden Convergence** (the final villain; designed October 9, 2026) | B4, B7, B8, B9, D6b, heli drone | XL | T1 |
-| E5e | **The Beach's boss** (blocked on design: the owner, October 9, 2026, "there will be a boss battle for the beach, but it has not yet been created") | B7, B8, D10c | XL | T1 |
+| E5e | **Mecha Guppy and Captain Cogs** (the Beach's boss; designed October 10, 2026; steps E5e-a to E5e-d) | B7, B8, D10c | XL | T1 |
+| E5e-f | **Mecha Guppy's floor bite** (the owner's new attack, October 11, 2026) | E5e | L | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -465,7 +466,30 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 
 **Done:** all four steps. E5d-d merged before E5d-c, so E5d-c also switched the slot to `scene` (the campaign plays the fight after Golden 3), set the par times from the bot's clean whole fight, and has the bot win the whole fight at 3, 5 and 6 lanes and 18 and 25 m/s (`test_golden_convergence_whole`). E5d-e, the owner's playtest of stage 2, is built (`test_golden_convergence_slash`, `test_golden_convergence_storm`; the whole fight won again at every lane count and speed, the par times re-measured).
 
-**E5e: the Beach's boss** (blocked on design; GDD §10's roster: "to be designed"). Its slot is `data/bosses/beach_boss.tres`, a placeholder card the campaign passes through after Sunset Strip (task D10c). Once the owner designs the fight, it is built on the boss framework like E5a–E5d, in the Beach's look, with its sounds, warnings, hints, bot and tests, and the slot switches to its `scene`.
+**E5e: Mecha Guppy and Captain Cogs, the Beach's boss** (designed with the owner, October 10, 2026: GDD §10; the owner's answers are `docs/OPEN_QUESTIONS_ANSWERED.md` items 749–765; the owner cleared it to build the same day). Its slot is `data/bosses/beach_boss.tres`, a placeholder card the campaign passes through after Sunset Strip (task D10c). It is built on the boss framework like E5a–E5d, in the Beach's look, with its sounds, warnings, hints, bot and tests, and the slot switches to its `scene`.
+
+The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the level from below while Captain Cogs, a pirate in a flying ship, throws bombs. In phases 1 and 2 the runner climbs by anti-grav pads and tiki-hut ceilings onto higher and higher tiki bar roofs, the camera following them up past a waterfall; a bomb that falls through a gap, off a roof's edge or onto the exposed shark hurts it (4 hits, then 6; weapons do nothing). In phase 3 the runner is level with Captain Cogs and dodges the captain's rounds and the waves for a minute, then Mecha Guppy eats the captain.
+
+**What the climb needs that the game doesn't have yet** (Claude's feasibility notes, October 10, 2026). Most of it is core work (the player, the camera, the boss framework), so it goes in one task at a time (step E5e-a below):
+- **Ceilings at any height.** The ceiling's height is one number (`MovementTuning.ceiling_height`, 6 m) that the player's flip, ride and hull end use (`Player._flip`, `_surface_y`, `_support_top`, `_ceiling_over`), so each ceiling has to carry its own. Landing on a raised floor already works at any height (`Player._support_top`, as on a hover truck's roof or the Floating Head's pinned head), so a drop onto a higher roof, or past it onto whatever floor is left below, needs nothing new.
+- **A camera that climbs.** `RunCamera` follows only `camera_follow_y` (0.45) of the runner's height, so 30 m up the runner would leave the top of the screen. On a ceiling it drops to a fixed `camera_ceiling_height` (2.4 m) and looks up at the fixed ceiling height; over a higher roof it would sit inside the roof.
+- **Boss props at a height.** `BossProps` places fences, pads, ceilings and floor warnings at the street's level, and its ceiling covers every lane (the climb's ceilings end lane by lane).
+- **Falls counted from the floor fallen from.** `fall_death_depth` counts from the street, so a fall from a roof 20 m up lasts about 1.2 s before it ends, against about 0.5 s from the street. The grapple pulls a runner back up to the street's level; here it has to pull them up onto the higher roof, into its nearest lane that leads up.
+- **Wall heights from the floor beside the wall,** for the occasional walls: a wall's entry and exit heights and `wall_max_height` count from the street, and GDD §3's entry grace keeps a falling runner off a wall, which this fight allows.
+- **The skin seen from 20–30 m up:** the waterfall backdrop, and the Beach's look built to be seen from the street.
+- **No faster running in phase 2.** The run speed never rises in a boss fight (Bosses, `docs/ARCHITECTURE.md`), so phase 2's faster climb comes from the steps coming closer together.
+- **Reused as they are:** anti-grav pads, ceilings over only some lanes (the runner kept within them), the drop at a ceiling's end, runtime floor cuts with their warnings (task B4) for the bites, the Floating Head's bomb warnings, `BossProps.block_wall` for a wall eaten away, `BossDef.weapon_share_cap` for no chip damage, and a defeat that plays out on the track (`victory_over()`, as the Floating Head's crash).
+- **Not chosen** (item 749): the side-wall climb the owner also weighed (walls standing in the lanes, wall hops from wall to wall). Walls stand only at the track's two edges (`TrackGeometry.wall_x()`, about a hundred uses, with the wall gaps, fences and signs kept per side); a wall jump always heads back to the floor lanes (`Player._leave_wall`); a wall run slides down; and the wall hop holds a runner at about 4.5 m (`wall_entry_height` plus `wall_air_entry_factor` of their height, capped at `wall_max_height`) but never climbs.
+
+**Steps** (each merged on its own):
+1. **E5e-a, the climb's core** (core: `player.gd`, `run_camera.gd` and the boss framework, so alone): ceilings at any height, the climbing camera, boss props at a height (ceilings lane by lane), falls and the grapple counted from the floor fallen from. Every existing level and boss plays exactly as before (`--tier=full`).
+2. **E5e-b, phases 1 and 2:** the climb's arena (tiki huts and tiki bar roofs at rising heights; the lanes that lead up, one on 3 lanes and one, two or three alternating on 5–6; the two cues alternating), Mecha Guppy's model and bites, Captain Cogs and the ship, the bombs (blocked by a ceiling between them and a rider), the hits, phase 2's extra bombs and faster climb, the waterfall backdrop, the armor rule.
+3. **E5e-c, phase 3 and the defeat:** level with Captain Cogs, the captain's rounds and the waves, the minute, Mecha Guppy's leap and the eating, the shark swimming away, the Beach's normal backdrop; the slot's `scene`, par times and rewards; the bot wins the whole fight at 3, 5 and 6 lanes.
+4. **E5e-d, the walls** (core: `player.gd`; last, so they can be dropped: the owner wants to hear how they go, and keeps them only if they add a lot to the play, about 7 out of 10 or more, and drops them at about 1–2): occasional side walls in the climb, never its full length, eaten like the floors, that a falling runner may catch, set so they save about one wrong drop in five; wall heights from the floor beside them.
+
+**Done:** E5e-a, E5e-b (in three parts: the climb; Mecha Guppy, Captain Cogs and the bombs; hits by baiting, as the owner chose on October 11, 2026) and E5e-c are built and each reviewed; E5e-d (the walls) is dropped under the owner's rule. The campaign plays the fight after Sunset Strip (`beach/boss`); the whole-fight bots, baiting and not, win at 3, 5 and 6 lanes and at 18 and 23.8 m/s. Its placeholders are items 767–810 in `docs/OPEN_QUESTIONS_DEFERRED.md` (783 and 788, answered and superseded, in `docs/OPEN_QUESTIONS_ANSWERED.md`).
+
+**E5e-f: Mecha Guppy's floor bite** (the owner, October 11, 2026; GDD §10, "The floor bite"). While the runner is still on a roof, before the pads, Mecha Guppy bites a shark-bite crescent out of it from one side: one lane left in phase 1, and in phase 2 sometimes the whole width, jumped. **Done:** built and reviewed; roofs take turns carrying the bite or a volley, with the bait on both; the full tier passes. Its placeholders are items 811–824 in `docs/OPEN_QUESTIONS_DEFERRED.md`.
 
 ### F. Cinematics
 
@@ -557,6 +581,8 @@ From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (
 | I7 | **The economy rebalanced for eight zones** (GDD §7; `docs/USER_REQUESTS.md`, October 14) | – | M | T2 |
 | I8 | **An empty intro slot for every boss** (GDD §6). **Core** (campaign data). | I4 | S | T3 |
 | I9 | **The boss armor pickup only after the armor takes a hit** (GDD §10; boss framework) | – | S–M | T1 |
+| I10 | **Warnings drawn brighter don't get brighter** (found in I1's review): `GreyboxMaterials.glow()` makes unshaded materials, which ignore emission on every renderer, so its `energy` argument does nothing and two looks differing only in energy draw the same (the screech lair's slots at rest 0.35 and warning 4.0; the Hover Truck's AMBER and FLASH; the Enforcer Truck; the Golden Convergence's warnings). Audit every warning against "every attack has a visual warning" and make the brighter state visibly brighter (colour or a shaded/emissive look), both renderers, Reduced flashing honoured. For the next batch. | – | M | T2 |
+| I11 | **One street shader per zone** (I1's question 1): `kit_solid.gdshader` carries every zone's patterns in each program; a zone-only variant may cut the web's compile wait substantially (trial: 47–65% in software WebGL, a rough figure). Measure the City variant on a real Windows Chrome or Edge first; choose the variant from data (skin, boss and cinematic definitions), one small shader file per zone; a built-mesh test that every pattern id a zone's levels, boss, cinematics, enemies and doodads use is in its variant; endless and quick-play mixes keep the full shader; pixel-identical frames. **Core** (a hook in the run's build). For the next batch. | I1 | M–L | T1 |
 
 ---
 
@@ -599,7 +625,7 @@ From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro and F2d's Gangland outro) and E5e (the Beach's boss). E5d (designed October 9, 2026) is built. **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro and F2d's Gangland outro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 

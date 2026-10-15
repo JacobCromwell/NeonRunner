@@ -101,6 +101,24 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints. Held upright, the page
   covers the game with "turn your phone sideways" (a style in the preset's `html/head_include`) and
   `App._on_window_resized()` pauses a running level (both DESIGN-TBD, `docs/questions/e2.md`).
+- *A phone's menus* (task I3): held sideways a phone's page is about 844×340 CSS pixels with the browser's bars
+  (390 high at most), a third to a half of the 720-pixel layout's height, so the menus were drawn at half size
+  (the shop's captions 9 pixels). `UiScale` magnifies them while a screen is open (until a UI pixel is 0.65 CSS
+  pixel); the compact layouts, the scroll net and the touch drags are in Characters, UI and audio, Menus on a
+  phone. Godot's web build reads the page's `devicePixelRatio` through `DisplayServer.screen_get_scale()`;
+  `browser_check.js phone_menus` (the debug export logs the factor) checks that in Chromium at 844×340.
+- *Sound on an iPhone* (task I3; items 827–828 in `docs/OPEN_QUESTIONS*.md`): the demo's sound is all Web Audio (the web default,
+  sample playback), which Safari mutes while the phone's ring/silent switch is on. The preset's
+  `html/head_include` sets `navigator.audioSession.type = 'playback'` (the Audio Session API; guarded by a
+  feature check and a try, set at load, on the first touch, click or key and when the page returns to the
+  front), so the demo plays through the switch like a video; a browser without the API skips it
+  (`browser_check.js audio_session` checks it with a stand-in for Safari's API, with none, and with one that
+  throws; `test_web_demo` keeps the script in the preset). Godot itself resumes the AudioContext on a
+  touch's start and end, a key and a mouse press (`DisplayServerWeb`), which iOS accepts at `touchend`. What
+  only a real iPhone can say: that Safari applies the type to Web Audio (the likeliest cause of a silent
+  phone), and how the demo's memory fares on an older one (a track is held decoded: Characters, UI and
+  audio, Audio, On the web). An iPad that asks for desktop sites reports a Mac, so Godot's `web_ios` tag, and
+  with it `DeviceProfile.is_mobile()`, is false there: it gets the desktop layout.
 - *Touch words:* `DeviceProfile.has_touch()` means a phone, a tablet or a real touch screen. The project lets
   the mouse stand in for touch (`input_devices/pointing/emulate_touch_from_mouse`), which makes
   `DisplayServer.is_touchscreen_available()` true on every desktop and in every desktop browser, so the

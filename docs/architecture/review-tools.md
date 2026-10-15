@@ -63,7 +63,8 @@ kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit
 the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
 and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;
 its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
-filling, back), a zone skin
+filling, back; `--phone --flavor=web_demo` with the engine's `--resolution 844x340` shows a screen as a
+phone's browser does, the menus magnified, and `--shot=<png>` saves it), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost

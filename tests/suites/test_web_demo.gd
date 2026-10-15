@@ -95,6 +95,14 @@ func _test_preset() -> void:
 	var head: String = String(presets.get_value(options, "html/head_include", ""))
 	check(head.contains("orientation: portrait") and head.contains("pointer: coarse") and head.contains("sideways")
 		and head.contains("DESIGN-TBD"), "a phone held upright is asked to turn sideways (the game is landscape, GDD §2)")
+	# Sound on an iPhone with its silent switch on (task I3): the page marks its audio 'playback', behind
+	# every guard (a browser without the Audio Session API, or one that refuses, skips it).
+	check(head.contains("<script>") and head.contains("'audioSession' in navigator") and head.contains("navigator.audioSession.type = 'playback'")
+		and head.contains("try {") and head.contains("catch (e)"),
+		"the page sets navigator.audioSession.type = 'playback' (Safari's silent switch mutes Web Audio otherwise), inside a try and a feature check")
+	check(head.contains("visibilitychange") and head.contains("touchend") and head.contains("pointerup"),
+		"and again on the first touch, click or key and when the page returns to the front")
+	check(not head.contains("$GODOT"), "the head include holds no Godot template placeholder")
 	var includes: PackedStringArray = DemoFilter.patterns_of(String(presets.get_value(section, "include_filter", "")))
 	check(includes.has("*.json") and includes.has("assets/fonts/*/OFL.txt"), "it takes the data read as text and the font licenses")
 	# The filter matches the data.

@@ -46,8 +46,9 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##   gc_leave     a missed pad: the ship's engines spooling up and receding as it flies off (leave_seconds)
 
 const TUNING_PATH: String = "res://data/bosses/golden_boss_tuning.tres"
-## The Resonator's chime (sfx_bank_resonator.gd): its notes, struck the same way.
-const ResonatorBank = preload("res://tools/asset_gen/sfx_bank_resonator.gd")
+## The cult's chime's notes (Hz): G5, C6, E6 (the Resonator's chime, §9.10, before the owner replaced its
+## warning on October 8, 2026; the cult's chime lives on here).
+const CHIME_HZ: Array[float] = [783.99, 1046.5, 1318.51]
 ## The chime's notes rung slow (the Resonator's are 0.42 s apart): seconds from the first.
 const CHIME_AT: Array[float] = [0.0, 0.7, 1.4]
 ## A sound effect's longest (test_units: every sound is under 2.5 s).
@@ -183,14 +184,13 @@ func _rise() -> PackedFloat32Array:
 ## echo, the last note fading out by MAX_SECONDS.
 func _chime() -> PackedFloat32Array:
 	var rng := _rng(1702)
-	var resonator: RefCounted = ResonatorBank.new()
-	var hz: Array[float] = ResonatorBank.CHIME_HZ
+	var hz: Array[float] = CHIME_HZ
 	var length: float = MAX_SECONDS
 	var b := DSP.buffer(length)
 	for k: int in hz.size():
 		var ring: float = length - CHIME_AT[k]
-		DSP.mix(b, resonator.call(&"_chime_note", hz[k], ring, rng), CHIME_AT[k], 0.7)
-		DSP.mix(b, resonator.call(&"_chime_note", hz[k] * 0.5, ring, rng), CHIME_AT[k], 0.8)
+		DSP.mix(b, _chime_note(hz[k], ring, rng), CHIME_AT[k], 0.7)
+		DSP.mix(b, _chime_note(hz[k] * 0.5, ring, rng), CHIME_AT[k], 0.8)
 		var low := DSP.osc(ring, func(_u: float) -> float: return hz[k] * 0.25, &"triangle")
 		DSP.envelope(low, 0.01, 1.4, 0.2)
 		DSP.mix(b, low, CHIME_AT[k], 0.35)
@@ -203,6 +203,31 @@ func _chime() -> PackedFloat32Array:
 	DSP.filter(b, &"highpass", 70.0)
 	_fade_out(b, 0.6)
 	DSP.crush(b, 11, 26000.0)
+	return b
+
+
+## One chime note: a soft mallet on a tuned bar (the fundamental, a quiet octave and the bar's bright
+## fourth partial, which dies fast), a glassy FM bell over it, and a slow shimmer (the Resonator's old chime
+## note, unchanged).
+func _chime_note(hz: float, seconds: float, rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds)
+	var partials: Array[Vector3] = [Vector3(1.0, 1.0, 0.9), Vector3(2.0, 0.22, 0.45), Vector3(3.98, 0.16, 0.12)]
+	for p: Vector3 in partials:
+		var phase: float = rng.randf()
+		for i: int in b.size():
+			var t: float = float(i) / RATE
+			phase = fmod(phase + hz * p.x / RATE, 1.0)
+			b[i] += sin(phase * TAU) * p.y * exp(-t / p.z)
+	var glass := _fm_note(seconds, hz, 3.5, 1.6, 0.25, 0.35)
+	DSP.mix(b, glass, 0.0, 0.3)
+	# A gentle, slow shimmer (like a vibraphone's), and a soft mallet attack.
+	for i: int in b.size():
+		var t: float = float(i) / RATE
+		b[i] *= (1.0 + 0.08 * sin(TAU * 5.2 * t)) * minf(1.0, t / 0.004)
+	var knock := DSP.noise(0.03, rng)
+	DSP.filter(knock, &"bandpass", hz * 2.0, 1.5)
+	DSP.envelope(knock, 0.0005, 0.006)
+	DSP.mix(b, knock, 0.0, 0.25)
 	return b
 
 

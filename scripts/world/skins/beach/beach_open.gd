@@ -104,8 +104,18 @@ func _flat(s: MeshLayer, side: int, wall: float, y: float, d0: float, d1: float,
 func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var s: MeshLayer = batch.layer(skin.solid_material())
 	ZoneSkin.standard_wall_gap(s, side, face_x, start, end, gap, skin.gap_edge_color, skin.gap_inside_color)
+	shore_side(batch, side, face_x, start, end, gap)
+	if gap.y >= start - 0.001 and gap.y <= end + 0.001:
+		skin.shacks().gap_end_cap(batch, side, face_x, gap.y, -skin.beach_drop)
+
+
+## The open shore beside the street on `side` over [start, end] within the opening `gap` (build's look without the
+## standard gap marks and the cut shack's end): the street's edge dropping to the beach (a weathered timber seawall
+## facing the beach, seen only from outside it), the beach, the sea and the scenery on it. MechaGuppySkin draws the
+## Beach's boss arena, which has no walls at all, with it alone.
+func shore_side(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var s: MeshLayer = batch.layer(skin.solid_material())
 	ground(batch, side, face_x, start, end, 0.0)
-	# The promenade's edge: a weathered timber seawall facing the beach (seen only from outside it).
 	var drop: float = skin.beach_drop
 	var timber: Color = skin.timber_color * 0.7
 	var param: float = MeshKit.beach_timber_param(2, 1, 5)
@@ -115,8 +125,6 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float,
 	else:
 		s.rect(Vector3(face_x, -drop, -start), Vector3(0, 0, -(end - start)), Vector3(0, drop, 0), timber, 0.0, MeshKit.PAT_BEACH_TIMBER,
 			Vector2.ZERO, Vector2.ONE, param)
-	if gap.y >= start - 0.001 and gap.y <= end + 0.001:
-		skin.shacks().gap_end_cap(batch, side, face_x, gap.y, -drop)
 	var wall: float = absf(face_x)
 	for item: Dictionary in placed(side, start, end, gap):
 		_place(s, side, wall, item)

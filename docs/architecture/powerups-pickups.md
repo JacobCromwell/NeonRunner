@@ -52,4 +52,8 @@ that offer their own), never in levels, so no pattern places one. `PickupField`
   it clear of every hazard colour; its size and icon keep it apart from credits. Sounds `pickup_appear`
   and `pickup`; a first-encounter hint per item (`pickup:<item>` in `data/hints/hints.json`). Pickups
   are pooled.
+- **Placed by a boss:** `place(item, lane, at, height)` puts a pickup down at once, `height` up (0, the street, by
+  default: `world.lane_point(lane, at, height)`), at a spot the caller vouches is fair, for a boss whose floors
+  are its own (task E5e-b1: Mecha Guppy and Captain Cogs' armor pickup on the roof ahead, Bosses). It's taken and
+  missed like any other; `offer()` and its rules are unchanged.
 - **Review:** quick play's `--pickups[=armor,shield,grapple]` offers them in turn (debug builds).

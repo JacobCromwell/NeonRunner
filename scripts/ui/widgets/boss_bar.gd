@@ -3,7 +3,10 @@ extends VBoxContainer
 ## The boss's health on the HUD (GDD §10): its name and phase above a wide bar in the enemy-health red,
 ## with a marker where each phase ends (a marker dims once its phase is over), and a white segment
 ## that drains after each hit, like the enemy health bars. While the boss can't be hurt (its entrance
-## or a phase change) the fill turns grey. Nothing in it blinks (Reduced flashing).
+## or a phase change) the fill turns grey. Nothing in it blinks (Reduced flashing). While the health runs
+## down steadily (BossEncounter.health_runs_down: a timed phase), no drop re-arms the white segment's hold,
+## so it drains with the fill at any frame rate (task E5e-c's review: below about 55 fps every rendered
+## frame's drop re-armed it and the white segment never drained).
 ## DESIGN-TBD (OPEN_QUESTIONS §5, docs/questions/b8.md): the boss HUD's look and place.
 ##   bar.bind(encounter)        # follows the fight from then on
 ##   bar.set_state(0.6, [0.667, 0.333], true, "PHASE 2/3")   # or drive it by hand (tests, showcases)
@@ -82,16 +85,17 @@ func _process(delta: float) -> void:
 	_bar.queue_redraw()
 
 
-## A new health share: after a hit, the white segment holds a moment before it drains.
-func _show_value(v: float) -> void:
+## A new health share: after a hit, the white segment holds a moment before it drains (not while the health
+## runs down steadily: `steady`).
+func _show_value(v: float, steady: bool = false) -> void:
 	var next: float = clampf(v, 0.0, 1.0)
-	if next < value - 0.0001:
+	if next < value - 0.0001 and not steady:
 		_hold = DRAIN_DELAY
 	value = next
 
 
 func _refresh() -> void:
-	_show_value(encounter.health_ratio())
+	_show_value(encounter.health_ratio(), encounter.health_runs_down())
 	marks = encounter.phase_marks()
 	vulnerable = encounter.is_vulnerable() or encounter.is_defeated()
 	var text: String = ""

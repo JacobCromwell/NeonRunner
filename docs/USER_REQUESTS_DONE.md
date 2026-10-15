@@ -222,3 +222,13 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 - [x] Sleep Taker: get rid of the ceilings in the fight completely. Every three-lane slash came with a ceiling, which neutered the attack on PC; even on the phone there should be a side wall the player can run to. (H12: no ceilings or pads; each slash's stretch keeps its floor clear and one side wall standing from the warning to past the strike, the other wall keeping its gaps; that wall's lane stays clear until a wall run against the slash is over; the slash's reach now stops short of a wall runner.)
 
 - [x] Sleep Taker: it ends almost too fast: two more chunks on the health bar, two more phases, no new mechanics, more hands a little more often, about 10% more in the first new phase and 20% more in the second. A fight over two minutes is fine. (H12: five phases at paces 1, 1.15, 1.3, 1.45 and 1.55, the last two with the third's attack list; on the same track the fourth and fifth bring 6–47% and 16–81% more hands than the third, depending on the lane count; four chunks torn away before the last EMP bursts it; about 139 s for a runner who never misses; par times 150 s for three stars, 190 s for two.)
+
+## Owner's answers to the open questions (October 14, 2026)
+
+- [x] (I9) **The boss armor pickup comes only after the armor takes a hit** (GDD §10, standard armor rule; item 483). A shield break no longer schedules it. This is a boss framework change (`BossEncounter._on_item_used`), so it's a T1 task: check every boss that uses the armor rule, at 3, 5 and 6 lanes. (DONE, I9: a hit on the armor, not a shield break, schedules the phase's pickup, for every boss; reason `armor_hit`; suite test_boss_armor_rule at 3, 5 and 6 lanes. Items 825–826.)
+
+## The owner's batch requests (October 14, 2026)
+
+- [x] **The shop on mobile, and music on one iPhone** (I3). On the itch.io demo on a phone the shop is scrunched and hard to read. One playtester's iPhone played no music (the owner's iPhone did): look for a known bug, or say if it was likely the phone's settings. (DONE, I3: the web demo's menus are drawn larger on a phone (at least 0.65 CSS px a UI px), scroll when they must, with compact layouts for a short page, and a drag on a card scrolls; the page asks Safari to play through the silent switch, the likeliest cause; items 827–828.)
+
+- [x] **Cyborgs 20% bigger** (I2; GDD §9.2). They're hard to see in the first zone. Draw them 20% bigger without changing their hitboxes, so they're easier to see but no harder. (DONE, I2: the Neon City's floor and window cyborgs are drawn 1.2 times bigger (ZoneSkin.cyborg_draw_scale in the City's skin), from their feet or waist; every hitbox and the bolts' start unchanged. Other zones keep their size for now, item 829.)

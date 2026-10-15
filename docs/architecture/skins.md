@@ -317,6 +317,30 @@ ranges at 3, 5 and 6 lanes and checks all of this, so every zone's skin is held 
 `ceiling_section` (or `hull`) from the section, keep the band and every glow past the far end above the
 underside, and check the drop on both renderers (`skin_review --narrow`, Review tools).
 
+**The climbing view** (task E5e-a, for GDD §10's climb: the camera follows the runner up). The run camera
+follows only `camera_follow_y` (0.45) of the runner's height and sees a ceiling from below at a fixed
+`camera_ceiling_height`, so 25-30 m up the runner would leave the top of the screen and, under a high
+ceiling, the camera would sit inside the roof below it. A boss turns on `RunWorld.camera_climbs` (off in
+every level and every other boss fight, where the camera is exactly as it was): the usual framing is kept
+to the floor the runner is on or came from (`Player.floor_y`) instead of the street, and on a ceiling the
+usual view from below is kept to that ceiling's own height (`Player.ceiling_y`; `RunCamera._climb_aim`).
+It never sits inside a roof: `RunCamera.floor_limit` keeps it `camera_floor_clearance` above any floor-layer
+top within `CEILING_SIDE` to either side, from `CEILING_BEHIND` behind to some way ahead, whose top is up to
+`FLOOR_REACH` above it, but not one it's beneath (a raised slab it passes under: a ray up meets its
+underside). The camera eases toward a height that clears a roof `camera_climb_lead` seconds of running
+ahead, so it rises over the higher roof a ceiling rider will drop onto before it gets there, and is held
+above any roof right at it. `ceiling_limit` holds as always and wins where both can't be kept. Every target
+is eased as before, so a ride up to a ceiling and a landing on a higher roof never snap the view. The roof
+check is one pass over its samples a frame with the camera's own ray queries (`floor_limits`; the static
+`floor_limit` is the same for tools and tests), so it allocates no query objects. The same switch turns
+on two other climb looks: the runner's blob shadow lies on the floor under them (`Player.shadow_on_floor`,
+set by `camera_climbs`' setter) instead of at the street's level, where it stays in every level, under a
+hover truck's roof or a boss's deck as it always was; and a landing's shake measures the fall down to the
+floor landed on, not from the street (`RunEffects`). `test_climb` climbs five steps to a roof 30 m up at
+3, 5 and 6 lanes and checks the runner stays on screen, the camera is never in a roof and keeps under every
+ceiling, and never moves more than 0.4 m in a frame (0.30 m at most measured); without the climbing view
+the runner leaves the screen up there.
+
 Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `MarketplaceSkin`
 (Zone 3, the Marketplace), `CasinoSkin` (Zone 4, the Casino, task K1), `CorporateSkin` (Zone 5,
 Corporate), `BeachSkin` (Zone 6, the Beach; task D10, in the campaign since D10c), `DeadZoneSkin` (Zone 7, the
@@ -343,6 +367,9 @@ value, the one thing a new zone's skin sets for its enemies:
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
 | Beach (D10) | `&"casino"` | the Casino Mob Enforcer | clean |
+
+A skin's `cyborg_draw_scale` (1.0; the Neon City's 1.2, task I2) draws that zone's cyborgs bigger without touching
+a hitbox (`docs/architecture/enemies.md`, the cyborgs' look).
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
 Marketplace, the Casino and the Beach) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its
