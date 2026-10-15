@@ -4376,3 +4376,11 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
 826. **A hit the upgraded armor survives** (GDD §10, "whenever the player's armor takes a hit"). Placeholder: any armor
   hit schedules the phase's pickup, not only the hit that breaks it, so with 2–3 hit armor the first survived hit
   uses the phase's one pickup. One condition in `BossEncounter._on_movement_event` if the owner meant only the break.
+
+**I3, the menus on a phone; sound on an iPhone** (from `docs/questions/i3.md`)
+827. **Should the web demo play through an iPhone's ring/silent switch?** (GDD §11; §2, the web demo.) Safari mutes all
+  Web Audio (the demo's music and effects) while the switch is on; the page can ask for "playback" audio
+  (`navigator.audioSession.type`, Safari 17+), which plays through the switch, as videos do, and pauses another app's
+  audio when the demo's sound starts. The likeliest reason one playtester's iPhone had no music. Placeholder: it plays
+  through (the "Web (demo)" preset's `html/head_include` in `export_presets.cfg`, marked `DESIGN-TBD`); removing the
+  `<script>` block restores the switch.

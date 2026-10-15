@@ -226,3 +226,7 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## Owner's answers to the open questions (October 14, 2026)
 
 - [x] (I9) **The boss armor pickup comes only after the armor takes a hit** (GDD §10, standard armor rule; item 483). A shield break no longer schedules it. This is a boss framework change (`BossEncounter._on_item_used`), so it's a T1 task: check every boss that uses the armor rule, at 3, 5 and 6 lanes. (DONE, I9: a hit on the armor, not a shield break, schedules the phase's pickup, for every boss; reason `armor_hit`; suite test_boss_armor_rule at 3, 5 and 6 lanes. Items 825–826.)
+
+## The owner's batch requests (October 14, 2026)
+
+- [x] **The shop on mobile, and music on one iPhone** (I3). On the itch.io demo on a phone the shop is scrunched and hard to read. One playtester's iPhone played no music (the owner's iPhone did): look for a known bug, or say if it was likely the phone's settings. (DONE, I3: the web demo's menus are drawn larger on a phone (at least 0.65 CSS px a UI px), scroll when they must, with compact layouts for a short page, and a drag on a card scrolls; the page asks Safari to play through the silent switch, the likeliest cause; items 827–828.)

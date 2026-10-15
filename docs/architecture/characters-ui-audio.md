@@ -172,4 +172,4 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
     one go on the page's thread), kept as 32-bit stereo: the Zone 1 song is 52 MB, the Boss 1 song 60 MB, and
     Godot's web audio code copies a sample's buffer again each time it starts. *Effects:* Music bus effects
     don't apply to samples, so the death dip's low-pass (`MusicDirector.dip_filter`) is silent on the web;
-    only its volume dip is heard. Playing music as a stream would change all three (`docs/questions/i3.md`).
+    only its volume dip is heard. Playing music as a stream would change all three (`docs/OPEN_QUESTIONS.md` item 828).

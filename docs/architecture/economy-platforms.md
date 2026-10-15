@@ -107,7 +107,7 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   pixel); the compact layouts, the scroll net and the touch drags are in Characters, UI and audio, Menus on a
   phone. Godot's web build reads the page's `devicePixelRatio` through `DisplayServer.screen_get_scale()`;
   `browser_check.js phone_menus` (the debug export logs the factor) checks that in Chromium at 844×340.
-- *Sound on an iPhone* (task I3; `docs/questions/i3.md`): the demo's sound is all Web Audio (the web default,
+- *Sound on an iPhone* (task I3; items 827–828 in `docs/OPEN_QUESTIONS*.md`): the demo's sound is all Web Audio (the web default,
   sample playback), which Safari mutes while the phone's ring/silent switch is on. The preset's
   `html/head_include` sets `navigator.audioSession.type = 'playback'` (the Audio Session API; guarded by a
   feature check and a try, set at load, on the first touch, click or key and when the page returns to the
