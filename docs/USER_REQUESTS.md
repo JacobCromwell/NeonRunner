@@ -12,9 +12,3 @@ request that is now in the done file.
 ## Wall hop nudge (October 9, 2026)
 
 - [ ] Gently teach the wall hop (jumping off a side wall and straight back on, for an unlimited wall run; GDD §3). Some long walls carry high-value credits further along than one wall run reaches, so a player has to get inventive to collect them (GDD §7, Wall-hop credits). Proposed: from Gangland on, about once a level, on a stretch of wall with no wall gap. Don't patch the wall hop itself; the owner relies on it in every playtest. The October 14 batch left it for the next batch, behind I4 (the generator).
-
-## Owner's answers to the open questions (October 14, 2026)
-
-
-## The owner's batch requests (October 14, 2026)
-
