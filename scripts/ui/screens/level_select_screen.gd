@@ -125,6 +125,10 @@ func _zone_section(zone: ZoneDef, zi: int, steps: Array[CampaignStep]) -> Contro
 	if zone.tagline != "":
 		var tagline := ScreenBase.make_label(zone.tagline, UiTheme.CAPTION)
 		tagline.size_flags_vertical = Control.SIZE_SHRINK_END
+		# One line where there's room; wrapped where there isn't (a phone's page: the list needs no
+		# sideways scroll for the longest of them).
+		tagline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tagline.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_row.add_child(tagline)
 	header.add_child(_zone_stars(zone, steps))
 	var row := HFlowContainer.new()
@@ -248,7 +252,10 @@ func _fill_boss(tile: TileButton, s: CampaignStep, done: bool, locked: bool) -> 
 	stars.add_theme_constant_override(&"separation", roundi(UiTheme.px(4)))
 	top.add_child(stars)
 	var boss_name := ScreenBase.make_label(s.title(), &"", HORIZONTAL_ALIGNMENT_LEFT)
-	boss_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# A long name ("The Golden Convergence", "Mecha Guppy and Captain Cogs") takes a second line rather than
+	# lose its end (the tile is the width of one line of the shorter names).
+	boss_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	boss_name.max_lines_visible = 2
 	tile.content.add_child(boss_name)
 	if locked:
 		return

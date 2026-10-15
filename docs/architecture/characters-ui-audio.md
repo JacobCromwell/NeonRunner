@@ -77,6 +77,44 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   for text and numbers. On the HUD, draw icons from `IconFactory.texture()` (cached, tinted with a
   modulate colour) rather than `IconFactory.draw()`: every polygon or polyline command costs its own
   draw call every frame, and the HUD's icons alone were once 220 of about 370.
+  - **Menus on a phone** (task I3): the project stretches 1280×720 to the window (`canvas_items`, `expand`),
+    so a screen's sizes are fractions of the window's height; a phone browser's page is 340 to 390 CSS pixels
+    high with its bars, which drew the shop's captions 9 pixels high. `UiScale` (`theme/ui_scale.gd`)
+    magnifies the root window's `content_scale_factor` while a `ScreenBase` is open on a touch device **in a web
+    page** (native mobile builds are left alone until someone has looked at them with it), until one UI pixel is
+    at least `UiStyle.phone_min_scale` (0.65) CSS pixels: `factor_for()` takes the window's size and
+    `DisplayServer.screen_get_scale()` (the page's `devicePixelRatio`), never more than `phone_max_factor`, and
+    not so far that the menus get narrower than `phone_min_width` (a phone held upright stays small and whole;
+    the page covers it there, GDD §2). It's 1 on a desktop, a tablet and a run (the HUD and the swipes keep the
+    plain stretch), back to 1 when the last screen closes (deferred a frame, so the next screen doesn't see a
+    step), and outside a web page unless a test sets `UiScale.assume_web`, `pixel_ratio_override` and a window
+    size (`test_phone_screens`; headless windows are 64×64).
+    - A screen asks `is_short()` (`phone_short_height`, 620 UI pixels: a phone held sideways) for its compact
+      layout: the title's name smaller and its buttons in one row, the pause menu's in two columns, the results
+      panel's smaller title, stars and score, panels with less padding above and below (`add_panel`), and the
+      shop's Menu and Next in the title bar instead of a row of their own. Read when the screen is built.
+    - `ScreenBase.content` sits in `content_scroll`, a scroll area that does nothing unless the content needs
+      more room than the screen has (then it scrolls both ways rather than cut it off; until then it ignores the
+      mouse, so it can't take a press for a scroll); `is_scrolling()` says which, and desktop-sized tests still
+      need it false.
+    - A finger's drag scrolls a list only if it reaches the `ScrollContainer`; a panel or button takes the
+      touch (mouse filter STOP), so a drag that began on a shop card did nothing. Every `PanelContainer` and
+      button in a screen that takes touches passes them on (`ScreenBase._on_node_added`; a toast, which ignores
+      them, still does), and a button still takes its own press. Sliders keep their drag. Then a press that
+      moves must stay a press: Godot 4.7's `ScrollContainer` takes any press for the start of a scroll at the
+      first pixel of movement (its `scroll_deadzone` is 0), which cancelled the press of every tap that moved a
+      little, a mouse's too. Every scroll area in a screen gets `UiStyle.scroll_deadzone` (16 UI pixels, about
+      10 CSS pixels on a phone): a tap that moves less presses, a drag that moves more scrolls.
+    - `test_phone_screens` lays every screen the demo shows (and the pause, its settings and quit dialog, and
+      the revive offer) out at 844×390, 844×340, 844×300, 667×375 and 640×290 sideways and 390×844 and 360×800
+      upright, in device pixels as a phone has them, and checks the text size (11 CSS pixels at least, none cut),
+      finger targets (40 at least), nothing off the screen or cut at the side, the screen's way on in sight,
+      and panels and buttons passing touches; plus the magnifying's maths and lifecycle, and taps and drags
+      (a tap moving a few pixels presses the title's, the shop's, a level tile's, the pause's and the revive
+      offer's buttons; a drag past the deadzone scrolls the shop and the level select without pressing).
+      `godot --resolution 844x340 res://tools/showcase/screens_showcase.tscn -- --screen=shop --phone
+      --flavor=web_demo --shot=build/shop.png` renders one (the window's size is the page's, at pixel ratio 1;
+      the showcase sets `UiScale.assume_web` for `--phone`).
 - **Audio:** `SfxLibrary` maps sound names to `assets/sfx/*.wav` (volumes in
   `data/audio/sfx_library.tres`). The cyborg firing effect alone is -3.2 dB instead of -5.5 dB:
   about 1.303 times its former amplitude, matching the owner's approximately 30% increase;
@@ -125,3 +163,13 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
       rolling in (a double pulse's second wave has only this), with no pitched hum under the crash.
     - *Shot down in its warning,* a Resonator cuts the sound off before its crash (`PlayerSfx.stop()`):
       with no wave coming, the crash must not land.
+  - **On the web** (task I3; `docs/architecture/economy-platforms.md`, The web demo): every `AudioStreamPlayer`
+    plays with Godot's web default, "Sample" (`audio/general/default_playback_type.web`), so music and effects
+    both go through the browser's Web Audio, not the engine's own mixer. Three things follow. *The silent
+    switch:* Safari mutes Web Audio while an iPhone's ring/silent switch is on (a video isn't muted), so the web
+    preset's head include sets `navigator.audioSession.type = 'playback'` (guarded; the demo then plays through
+    the switch). *Memory:* a sample is a whole decoded track (`AudioDriverWeb::register_sample` decodes it in
+    one go on the page's thread), kept as 32-bit stereo: the Zone 1 song is 52 MB, the Boss 1 song 60 MB, and
+    Godot's web audio code copies a sample's buffer again each time it starts. *Effects:* Music bus effects
+    don't apply to samples, so the death dip's low-pass (`MusicDirector.dip_filter`) is silent on the web;
+    only its volume dip is heard. Playing music as a stream would change all three (`docs/questions/i3.md`).
