@@ -104,13 +104,11 @@ func _every_screen(tag: String, ratio: float, sideways: bool) -> void:
 		if pause != null:
 			pause.buttons["quit"].pressed.emit()
 			await _frames(4)
-			var dialog: Node = pause.find_child("ConfirmDialog", true, false)
-			if dialog == null:
-				for c: Node in pause.get_children():
-					if c is ConfirmDialog:
-						dialog = c
-			if dialog != null:
-				_check_screen("quit dialog over the pause, %s" % tag, pause, ratio, sideways, &"")
+			var asked: bool = false
+			for c: Node in pause.get_children():
+				asked = asked or c is ConfirmDialog
+			check(asked, "quitting from the pause asks first, on the phone too (%s)" % tag)
+			_check_screen("quit dialog over the pause, %s" % tag, pause, ratio, sideways, &"")
 	App.resume_game()
 	await physics_frames(2)
 	var revive: bool = App.revive_options()["item"]
@@ -150,7 +148,7 @@ func _check_screen(what: String, screen: Control, ratio: float, sideways: bool, 
 	var capped: bool = is_equal_approx(tree.root.content_scale_factor, style.phone_max_factor)
 	check(css_per_ui >= style.phone_min_scale - 0.005 or capped,
 		"%s: a UI pixel is %.3f CSS pixels (at least %.2f)" % [what, css_per_ui, style.phone_min_scale])
-	var problems: PackedStringArray = problems_in(screen, css_per_ui, sideways)
+	var problems: PackedStringArray = problems_in(screen, css_per_ui)
 	if way_on != &"":
 		var button: Control = (screen.get("buttons") as Dictionary).get(String(way_on)) if screen.get("buttons") != null else null
 		if button == null and way_on == &"play":
@@ -167,9 +165,8 @@ func _check_screen(what: String, screen: Control, ratio: float, sideways: bool, 
 
 
 ## What is wrong with a screen's layout, as short sentences (empty: nothing). `css_per_ui` turns UI
-## pixels to the page's. Sideways scrolling is a problem in every orientation; a held-upright phone is
-## given a pass on height only (the page covers the game there anyway: GDD §2, docs/questions/e2.md).
-static func problems_in(screen: Control, css_per_ui: float, sideways: bool) -> PackedStringArray:
+## pixels to the page's.
+static func problems_in(screen: Control, css_per_ui: float) -> PackedStringArray:
 	var out := PackedStringArray()
 	var view: Vector2 = screen.get_viewport_rect().size
 	for node: Node in screen.find_children("*", "Control", true, false):
@@ -177,6 +174,9 @@ static func problems_in(screen: Control, css_per_ui: float, sideways: bool) -> P
 		if not c.is_visible_in_tree() or c.size.x < 1.0 or c.size.y < 1.0 or c is ScrollContainer or c is ScrollBar:
 			continue
 		var name: String = _describe(c)
+		# A touch that starts on a panel or a button must reach the scroll area around it (a drag scrolls).
+		if (c is PanelContainer or c is BaseButton) and c.mouse_filter == Control.MOUSE_FILTER_STOP and _in_scroll(c, screen):
+			out.append("%s takes a finger's drag (mouse filter STOP), so a drag that starts on it can't scroll" % name)
 		if c is BaseButton and not _decor(c):
 			var px: Vector2 = c.size * css_per_ui
 			if px.y < MIN_TOUCH_CSS - 0.5 or px.x < MIN_TOUCH_CSS - 0.5:
@@ -231,6 +231,16 @@ static func _off_screen(c: Control, screen: Control, view: Vector2, must_show: b
 	if must_show and (rect.position.y < area.position.y or rect.end.y > area.end.y):
 		return "is scrolled out of sight (%s in %s)" % [rect, scroller.get_global_rect()]
 	return ""
+
+
+## True if `c` has a scroll area between it and the screen.
+static func _in_scroll(c: Control, screen: Control) -> bool:
+	var node: Node = c.get_parent()
+	while node != null and node != screen:
+		if node is ScrollContainer:
+			return true
+		node = node.get_parent()
+	return false
 
 
 ## Decoration that is a BaseButton by inheritance only (the switch's knob is drawn by the switch).

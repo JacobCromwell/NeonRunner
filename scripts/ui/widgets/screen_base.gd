@@ -160,8 +160,11 @@ func _notification(what: int) -> void:
 		NOTIFICATION_ENTER_TREE:
 			# A phone's menus are drawn bigger (UiScale); it ends when the last screen closes.
 			UiScale.screen_entered(self)
+			get_tree().node_added.connect(_on_node_added)
 		NOTIFICATION_EXIT_TREE:
 			UiScale.screen_exited(self)
+			if get_tree().node_added.is_connected(_on_node_added):
+				get_tree().node_added.disconnect(_on_node_added)
 		NOTIFICATION_READY:
 			# Children from a .tscn (owned by this scene) go into the content area; nodes added by
 			# code (a dialog, a toast) stay where they were put.
@@ -298,6 +301,15 @@ func _update_layout() -> void:
 	_body.add_theme_constant_override(&"margin_bottom", gap + 4)
 	# On touch screens the back button is a big icon; with a keyboard it also says BACK.
 	back_button.text = "" if get_theme_constant(&"touch", UiTheme.NEON) == 1 else "BACK"
+
+
+## A finger that starts a drag on a panel, a card or a button must scroll the list it is in: such a control
+## takes the touch (mouse filter STOP) unless it's told to pass it on, and then only a drag that starts on
+## bare background scrolls (a phone's shop was nearly all cards). So every panel and button in a screen
+## passes touches on; a button still takes its own press, and a slider keeps its drag.
+func _on_node_added(node: Node) -> void:
+	if (node is PanelContainer or node is BaseButton) and is_ancestor_of(node):
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_PASS
 
 
 ## True on a phone held sideways (a short menu: UiScale.is_short()), where a screen lays itself out

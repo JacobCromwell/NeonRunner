@@ -376,8 +376,12 @@ wall, then dying: both retries from the build's layout with both built whole (th
 and look; the restart's standing in the physics world) and the restart, not dashing, playing as on a fresh build
 (tasks H5 and H7a, the H merge), the debug keys, F6 edits and another level building again, and endless mode
 building on every run and keeping nothing.
-`test_web_demo` checks the web demo's preset, its export filter against
-the data and everything the demo references, and walks the demo from the title to its end screen (see
-Platforms and build flavors). The runner frees
+`test_web_demo` checks the web demo's preset (the head include's audio session script too), its export filter
+against the data and everything the demo references, and walks the demo from the title to its end screen (see
+Platforms and build flavors). `test_phone_screens` (task I3; Characters, UI and audio, Menus on a phone) lays
+every screen the demo shows out at phone sizes, sideways and upright, in device pixels, and checks what a
+phone's player needs of it: text and finger targets big enough, nothing cut or off the screen, the way on in
+sight, touches passing to the scroll areas, and `UiScale`'s maths and lifecycle (`--verbose` after the suite
+name lists every problem found). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
 to load, and ends a stuck run after 2400 s of real time.

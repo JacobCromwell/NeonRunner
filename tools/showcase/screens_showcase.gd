@@ -11,8 +11,9 @@ extends Node
 ## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
 ## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
 ## 3 lanes, credit packs, rewarded ads), --phone (a phone's browser: touch sizing and a mobile device, the
-## build flavor left as it is: use it with --flavor=web_demo; set the window with --resolution=WxH, the
-## page's size in pixels, which the menus' phone scale reads), --flavor=web_demo (read by App), --scroll-end (scrolls the
+## build flavor left as it is, so use it with --flavor=web_demo; the window's size, from the engine's own
+## --resolution=WxH before the `--`, is the page's: 844x340 is a phone held sideways with the browser's bars,
+## and the menus are magnified to be readable there, UiScale), --flavor=web_demo (read by App), --scroll-end (scrolls the
 ## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
 

@@ -46,6 +46,8 @@ static func make(label: String, button_kind: Kind = Kind.NORMAL, icon_id: String
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
+	# A drag that starts on a button scrolls the list it's in, as one on anything else does.
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	UiSounds.bind(self)
 
 

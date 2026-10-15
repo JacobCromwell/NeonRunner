@@ -641,8 +641,10 @@ browser.
 4. **In a browser:** `node tools/web/browser_check.js` drives both exports in Chromium through Playwright (Node
    and Playwright with its Chromium needed): loading, the title on the Compatibility renderer, the sound after
    the first key, the canvas at other window sizes, City 1's glow, saves that survive a reload, the shop, a phone
-   (taps, a swipe, held upright), and the end screen's store links. Frames and the console go to
-   `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
+   (taps, a swipe, held upright), an iPhone's page held sideways (`phone_menus`: the menus magnified to be
+   readable, and a finger's drag scrolling the shop and the level select), the page's `audio_session` (Safari's
+   silent switch: the page asks for 'playback' sound, tried with a stand-in for Safari's API), and the end
+   screen's store links. Frames and the console go to `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
 5. **Its shader programs:** `node tools/web/shader_programs.js` plays the release export from the title into
    City 1 and counts the shader programs WebGL compiles on the way, and any compiled more than once. The
    browser compiles each while the game waits, and on Windows (where Firefox and Edge translate WebGL to
@@ -776,7 +778,9 @@ spare (see Tools, above). Covered:
   skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
   camera's view), and the App's flow through a built slot, the web demo's too; each owner-beat cinematic has
   its own suite (`test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`).
-- **Screens:** every screen at desktop and touch sizes.
+- **Screens:** every screen at desktop and touch sizes; and (`phone_screens`) every screen the web demo shows at
+  the sizes of a phone's page, sideways and upright: text and finger targets big enough, nothing cut off or
+  out of sight, scrolling where it must.
 - **The web demo:** its export preset, and a filter that leaves out only what the demo never loads, worked out
   from the data (and following a replaced track); everything the demo's scenes, scripts and data reference kept
   and loading; the demo walked from the title through the City's three levels and the Floating Head to the

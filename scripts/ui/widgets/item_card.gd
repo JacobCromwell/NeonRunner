@@ -98,6 +98,8 @@ var _metrics_queued: bool = false
 
 func _init() -> void:
 	theme_type_variation = UiTheme.CARD
+	# A finger that starts a drag on a card must scroll the shop (a panel takes the touch by default).
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	var column := VBoxContainer.new()
 	add_child(column)
 	var top := HBoxContainer.new()

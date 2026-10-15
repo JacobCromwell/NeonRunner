@@ -128,3 +128,8 @@ static func _apply(window: Window) -> void:
 	var target: float = factor_now(window) if not _open.is_empty() else 1.0
 	if not is_equal_approx(window.content_scale_factor, target):
 		window.content_scale_factor = target
+		# In a browser's console (debug exports only), tools/web/browser_check.js reads it.
+		if target > 1.0 and OS.has_feature("web") and OS.is_debug_build():
+			var stretch: float = minf(window.size.x / base_size().x, window.size.y / base_size().y)
+			print("[ui] menus magnified x%.3f (window %dx%d, pixel ratio %.2f, %.3f CSS px per UI px)" % [
+				target, window.size.x, window.size.y, pixel_ratio(), stretch * target / pixel_ratio()])
