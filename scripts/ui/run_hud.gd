@@ -13,6 +13,8 @@ extends CanvasLayer
 ## it's broken a ring filling in the kit's calm accent until it's back, when the icon flashes (its
 ## sound is the player's `armor_back`). A pickup taken during the run (GDD §10) flashes its item's
 ## icon, which joins the protections in its place if the run didn't bring that item.
+## With no armor hit or shield left (GDD §4, "One hit from death") the screen's edges pulse red with a
+## two-tone siren and then hold a dim red edge (LastHitWarning, `last_hit`, drawn under everything else here).
 ## A theft (GDD §9.12, ScoreKeeper.stolen) counts the credits down in the loss colour (CreditCounter's
 ## drop_on_loss) with a "Robbed" pop-up beside them (its sound is the player's `robbed`; the coins fly
 ## to the thief in the world, RunEffects); a caught thief's payback and jackpot pop up as they come
@@ -42,6 +44,8 @@ var progress: ProgressMeter
 ## The boss's health in a boss fight (in the progress meter's place).
 var boss_bar: BossBar
 var pause_button: NeonButton
+## The "one hit from death" cue: red screen edges and a siren while the player has no armor or shield (GDD §4).
+var last_hit: LastHitWarning
 ## Id (armor, shield, grapple, or a power-up's id) -> its CooldownIcon.
 var item_icons: Dictionary = {}
 
@@ -69,6 +73,9 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	UiTheme.apply(root, true)
 	add_child(root)
+	# Under the rest of the HUD: the red edge never covers a number or an icon.
+	last_hit = LastHitWarning.new()
+	root.add_child(last_hit)
 	_frame = Control.new()
 	_frame.name = "SafeFrame"
 	_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -213,6 +220,9 @@ func bind(p_world: RunWorld, p_context: RunContext) -> void:
 	_build_items()
 	set_message("")
 	_fit_frame()
+	# The cue counts only while the run is being played (not once it is won, given up or dead).
+	var run: LevelRun = get_parent() as LevelRun
+	last_hit.setup(world, context, (func() -> bool: return run.state == LevelRun.State.RUNNING) if run != null else Callable())
 
 
 func set_message(text: String) -> void:

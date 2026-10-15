@@ -144,6 +144,7 @@ volume_db = {
 "key_glint": -6.0,
 "land": -9.0,
 "laser_fire": -12.5,
+"last_hit_siren": -4.5,
 "level_complete": -3.0,
 "level_complete_corporate": -2.0,
 "level_complete_dead_zone": -2.5,

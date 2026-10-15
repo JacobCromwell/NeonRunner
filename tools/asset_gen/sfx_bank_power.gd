@@ -1,6 +1,9 @@
 extends "res://tools/asset_gen/sfx_bank.gd"
 ## Power-ups, weapons and protective items: the dash, slow time, lasers and missiles, hits and stomps,
-## the armor, shield, grapple hook and revive, and the pickups that bring them during a fight.
+## the armor, shield, grapple hook and revive, the siren that says the next hit is the last, and the pickups that
+## bring them during a fight.
+
+const LAST_HIT_TUNING_PATH: String = "res://data/ui/last_hit_warning.tres"
 
 const E2: float = 82.41
 const E4: float = 329.63
@@ -8,6 +11,7 @@ const B4: float = 493.88
 const E5: float = 659.26
 const GS5: float = 830.61
 const B5: float = 987.77
+const FS5: float = 739.99
 const E6: float = 1318.51
 const GS6: float = 1661.22
 const B6: float = 1975.53
@@ -20,6 +24,7 @@ func sounds() -> Dictionary:
 		"armor_hit": _armor_hit,
 		"armor_back": _armor_back,
 		"shield_break": _shield_break,
+		"last_hit_siren": _last_hit_siren,
 		"grapple": _grapple,
 		"revive": _revive,
 		"pickup": _pickup,
@@ -151,6 +156,36 @@ func _revive() -> PackedFloat32Array:
 	DSP.mix(b, DSP.crash(1.0, rng), 0.77, 0.12)
 	DSP.mix(b, DSP.kick(0.25, 150.0, 45.0, rng), 0.77, 0.6)
 	DSP.crush(b, 11, 24000.0)
+	return b
+
+
+## One hit from death (GDD §4, owner, October 14, 2026): the armor and the shield are gone, and the next hit ends
+## the run. A two-tone siren: a high tone (B5) and a low one (F#5, a fourth below) alternating, a square wave
+## through a gentle low-pass so it buzzes like a security alarm, each tone with a clean edge. Plain steady
+## tones, not a sweep and not noise, so it can't be mistaken for an attack's warning (a rising whine or a
+## crackle), the Enforcer Truck's whooping arrival, or the armor's breaking; it plays once and stops. One pair
+## of tones for each of the HUD's pulses (LastHitWarningTuning: `pulse_count` pulses, `pulse_seconds` apart, the
+## high tone on each pulse), so regenerate it after changing either.
+func _last_hit_siren() -> PackedFloat32Array:
+	var count: int = 3
+	var period: float = 0.44
+	var seconds: float = float(count) * period + 0.08
+	var tuning: Resource = load(LAST_HIT_TUNING_PATH) if ResourceLoader.exists(LAST_HIT_TUNING_PATH) else null
+	if tuning != null and tuning.has_method(&"siren_seconds"):
+		count = int(tuning.get("pulse_count"))
+		period = float(tuning.get("pulse_seconds"))
+		seconds = float(tuning.call(&"siren_seconds"))
+	var half: float = period * 0.5
+	var b := DSP.buffer(seconds)
+	for k: int in count:
+		for j: int in 2:
+			var hz: float = B5 if j == 0 else FS5
+			var tone := DSP.osc(half, func(_u: float) -> float: return hz, &"square")
+			DSP.filter(tone, &"lowpass", 3200.0, 0.8)
+			DSP.adsr(tone, 0.006, 0.05, 0.92, 0.015)
+			DSP.mix(b, tone, float(k) * period + float(j) * half, 0.6)
+	DSP.drive(b, 1.3)
+	DSP.crush(b, 11, 22000.0)
 	return b
 
 
