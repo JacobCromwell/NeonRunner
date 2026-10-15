@@ -577,6 +577,25 @@ From the owner's list in `docs/USER_REQUESTS.md` (October 8, 2026), recorded in 
 | H11 | **Sleep Taker, again** (owner, October 10, 2026; `docs/USER_REQUESTS.md`): lights out a completely dark tunnel (75–100% darker than H9's) with the runner glowing by its own light, more hands and more often, more wall gaps (the slash's approach no longer kept whole), three times H9's floor gaps (GDD §10). **Core** (player: the runner's dark glow). | H9 | M | T1 |
 | H12 | **Sleep Taker: no ceilings, five phases** (owner, October 10, 2026; `docs/USER_REQUESTS.md`): the slash's refuges lose their bridges and pads (a side wall the way out, kept standing), and two more phases with more hands a little more often (GDD §10). | H11 | M | T1 |
 
+### I. The owner's batch (October 14, 2026)
+
+From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (`docs/WORKFLOW.md`). Recorded in the GDD where they change design. The doodad wall-lane preference and the wall-hop credits (both generator, core) wait for the next batch, behind I4.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| I1 | **Shader cleanup in every zone:** the web demo's shader-program count, zone by zone, cut where shaders are duplicated or unused, with nothing drawn changing (`fca7f77`'s method, `tools/web/shader_programs.js`) | – | M–L | T2 |
+| I2 | **Cyborgs drawn 20% bigger, hitboxes unchanged** (GDD §9.2) | – | S | T3 |
+| I3 | **The shop on a phone's screen; the iPhone without music** (the web demo) | – | M | T2 |
+| I4 | **Ceiling scenarios:** pick the right pad (fenced ceilings), the treasure stash behind a mid-ceiling return pad (GDD §3). **Core** (generator, track builder, level data). | – | L | T1 |
+| I5 | **The Hover Truck's cost on phones:** its entrance and cannon, measured and made cheaper (GDD §9.3) | – | M | T2 |
+| I6 | **One hit from death:** a two-tone siren and a visual cue when armor and shields are all gone (GDD §4) | – | S–M | T2 |
+| I7 | **The economy rebalanced for eight zones** (GDD §7; `docs/USER_REQUESTS.md`, October 14) | – | M | T2 |
+| I8 | **An empty intro slot for every boss** (GDD §6). **Core** (campaign data). | I4 | S | T3 |
+| I9 | **The boss armor pickup only after the armor takes a hit** (GDD §10; boss framework) | – | S–M | T1 |
+| I10 | **Warnings drawn brighter don't get brighter** (found in I1's review): `GreyboxMaterials.glow()` makes unshaded materials, which ignore emission on every renderer, so its `energy` argument does nothing and two looks differing only in energy draw the same (the screech lair's slots at rest 0.35 and warning 4.0; the Hover Truck's AMBER and FLASH; the Enforcer Truck; the Golden Convergence's warnings). Audit every warning against "every attack has a visual warning" and make the brighter state visibly brighter (colour or a shaded/emissive look), both renderers, Reduced flashing honoured. For the next batch. | – | M | T2 |
+| I11 | **One street shader per zone** (I1's question 1): `kit_solid.gdshader` carries every zone's patterns in each program; a zone-only variant may cut the web's compile wait substantially (trial: 47–65% in software WebGL, a rough figure). Measure the City variant on a real Windows Chrome or Edge first; choose the variant from data (skin, boss and cinematic definitions), one small shader file per zone; a built-mesh test that every pattern id a zone's levels, boss, cinematics, enemies and doodads use is in its variant; endless and quick-play mixes keep the full shader; pixel-identical frames. **Core** (a hook in the run's build). For the next batch. | I1 | M–L | T1 |
+| I12 | **The cinematics' real lights** (found in I5): the Dead Zone intro's crater (`dead_zone_crater.gd`) and Gangland outro's sports car cabin (`sports_car_model.gd`) each make an `OmniLight3D`, which on Compatibility and Mobile builds a second version of every lit shader in reach the first time it shows (the Hover Truck's was a 6–10 s frame on software GL). Make each a glow mesh as I5 did, and a test that no cinematic or boss stage has a real light. For the next batch. | – | S | T2 |
+
 ---
 
 ## Order at a glance

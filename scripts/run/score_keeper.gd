@@ -41,8 +41,10 @@ var longest_wall_run: float = 0.0
 var bonuses: Dictionary = {}
 ## Score multiplier on credits (a ramp-launched wall run, GDD §3).
 var multiplier: float = 1.0
-## Best possible credit score in this level (for stars). A thief's hold() leaves out what it took off
-## the track while it holds it.
+## Best possible credit score in this level (for stars): every credit but a treasure stash's
+## (LevelLayout.star_credit_value; task I4, DESIGN-TBD item 844: a stash's credits count in
+## `credits` and `score` when collected, never in what the stars ask for). A thief's hold() leaves out what
+## it took off the track while it holds it.
 var max_credit_score: int = 0
 ## Thefts (GDD §9.12): how many, the credits thieves took from the player (returned or not), what caught
 ## thieves gave back (what they held), and the jackpots they paid on top.
@@ -61,7 +63,7 @@ var _held: Dictionary = {}
 func setup(p_world: RunWorld) -> void:
 	world = p_world
 	_rules = world.rules
-	max_credit_score = world.layout.total_credit_value()
+	max_credit_score = world.layout.star_credit_value()
 	world.player.movement_event.connect(_on_player_event)
 	world.player.robbed.connect(_on_robbed)
 	world.director.enemy_defeated.connect(_on_enemy_defeated)

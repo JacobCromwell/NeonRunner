@@ -14,6 +14,9 @@ events, played on a stretch of the slot's zone.
 the cinematic knows its `step`, `zone` and `slot` (`&"intro"`, `&"boss_intro"`, `&"outro"`; played on its
 own, it finds the campaign step whose slot holds its def). At its end it emits `finished` once, and the App
 marks the step done and seen and moves on (`advance_from`), so the next step's first frame follows at once.
+**Empty slots:** a def with `skip_while_empty` and no scene (the five boss intros besides the City's and Gangland's,
+item 395) gets no campaign step at all, so none of this runs for it; setting its `scene` is all that fills it
+(`docs/architecture/campaign.md`, Empty boss-intro slots).
 **Skipping:** the pause action (Esc / P) or the cinematic's Skip button emits `skip_requested`, the App
 answers with `skip_cinematic()` → `skip()`, and the cinematic ends within the call. `App.playing_cinematic()`
 is the one playing. A cinematic holds while the game is in the background (focus lost, app paused), so it

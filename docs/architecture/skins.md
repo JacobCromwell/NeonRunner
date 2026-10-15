@@ -289,6 +289,20 @@ skin without them). A zone may override `wall_fence()` to draw its own emitters 
 `test_wall_fences` builds every skin in `data/skins/` (and the grey box) at 3 and 5 lanes on both walls in every
 band; review a look with `wall_fence_review` (Review tools) on both renderers.
 
+**Ceiling fences' and return pads' looks** (task I4; GDD §3, "Ceiling scenarios"). The hook
+`ceiling_fence(hazard, size)` draws a fenced ceiling's fence in hazard-local space, centred on its hitbox `size` (x
+across the lane, y down from the underside at +size.y / 2, z along the track). It must read as the floor fence's pink
+crackle hung from the ceiling, in every zone, from the floor before the pad that lifts a rider into it: the zone's
+fence field (`wall_fence_look()`) on `MeshKit.dress_fence`, held by an emitter along the underside
+(`ceiling_fence_mounts`: a housing flush with it in `wall_fence_mount_color`, a glowing strip toward the field and a
+glowing cap at each end, with the zone's fence part materials), nothing else glowing, nothing below the field (the
+chase camera passes just below it) and nothing past its lane; following the hazard's state (an EMP's OFF) and steady
+with Reduced flashing, as the fence shaders are. The default (`standard_ceiling_fence`) works for every zone; a zone
+may override `ceiling_fence()` to draw its own emitter around the same field. `return_pad(trigger, size)` dresses a
+treasure stash's return pad: the track turns the trigger upside down, so the default, the zone's own `pad()`, points
+back down at the floor (GDD §3: it looks safe, with no hazard colour). `test_ceiling_scenarios` dresses both with
+every skin in `data/skins/` and the grey box.
+
 **Ceilings from their lanes** (B3). `TrackBuilder` (and `BossProps.ceiling`) describe each ceiling as a
 `CeilingSection` (`scripts/world/ceiling_section.gd`): its span along the track, the lanes it covers
 (`first_lane`, `last_lane`, `full()`), its collision box (`center`, `size`), the lane seams inside it
@@ -367,6 +381,9 @@ value, the one thing a new zone's skin sets for its enemies:
 | Dead Zone (D5) | `&"burned"` | the base, burned out | clean |
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
 | Beach (D10) | `&"casino"` | the Casino Mob Enforcer | clean |
+
+A skin's `cyborg_draw_scale` (1.0; the Neon City's 1.2, task I2) draws that zone's cyborgs bigger without touching
+a hitbox (`docs/architecture/enemies.md`, the cyborgs' look).
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the
 Marketplace, the Casino and the Beach) and its mechanical look on every other value (`BarnacleTurretModel.is_creature`), with its

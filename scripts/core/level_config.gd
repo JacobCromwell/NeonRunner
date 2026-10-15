@@ -83,6 +83,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## - dash_wall: dash walls, buildings across every floor lane the runner dashes through (GDD §9.14; task
 ##   H7a), from Corporate 1 (no patterns: their rules, dash_wall_rules.gd, stand up to dash_walls of them
 ##   where they're fair)
+## - treasure_stash and fenced_ceiling: the ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", never in
+##   zones 1-2): a return pad partway along a ceiling that drops the rider into a stretch of floor walled off by
+##   doodads, from Casino 1; a ceiling whose first pad lifts the rider into rows of fences and whose later pad
+##   lands them past them, from Casino 2 (no patterns: their rules, treasure_stash_rules.gd and
+##   fenced_ceiling_rules.gd, turn up to treasure_stashes and fenced_ceilings of the level's ceilings into them)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.
@@ -194,10 +199,25 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown
 ## is over before the next (data/tuning/dash_walls.tres); fewer where the level leaves no room, never none.
 ## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 644): 1 to 4 by level
-## (2 in Corporate 1, up to 3 in Dead Zone 1 and Golden 2; a level asks for no more than its track holds on every
-## lane count: Corporate 2, The Hush and Golden 1 hold one, Golden 1 since the walls keep off an Enforcer Truck's
-## showing windows, task C6c); quick play's prototype level takes this default.
+## (2 in Corporate 1, up to 3 in Golden 2; a level asks for no more than its track holds on every lane count:
+## Corporate 2, The Hush and Golden 1 hold one, Golden 1 since the walls keep off an Enforcer Truck's showing windows,
+## task C6c, and Dead Zone 1 two since its ceiling scenarios came, task I4: at 3 lanes its fenced ceiling's build
+## leaves room for no third); quick play's prototype level takes this default.
 @export_range(0, 8) var dash_walls: int = 3
+## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
+## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings
+## into a treasure stash's (treasure_stash_rules.gd), where one fits (an inner lane with inner lanes beside it:
+## none on fewer than 5 lanes). DESIGN-TBD (items 836–845 (docs/OPEN_QUESTIONS*.md)): 1 a level from Casino 1.
+@export_range(0, 4) var treasure_stashes: int = 1
+## With the `fenced_ceiling` feature, up to this many ceilings carry fences that catch the rider of their first
+## pads, with a later pad that lands its rider past them (fenced_ceiling_rules.gd). DESIGN-TBD
+## (items 836–845 (docs/OPEN_QUESTIONS*.md)): 1 a level from Casino 2.
+@export_range(0, 4) var fenced_ceilings: int = 1
+## How many anti-grav pads a fenced ceiling has: 2 is the simple first version (one pad into the fences, one past
+## them); more is the later version (GDD §3: "several pads, some leading to safe parts of the ceiling and some to
+## dangerous parts"), half of them (rounded up) before the fences, in different lanes; never as many as the lanes
+## (fenced_ceiling_rules.gd pad_count: on 3 lanes, 2). DESIGN-TBD (items 836–845 (docs/OPEN_QUESTIONS*.md)): 3 from Corporate 1.
+@export_range(2, 6) var fenced_ceiling_pads: int = 2
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many
 ## seconds at run speed with a burst of burst_seconds, quiet first. In a quiet stretch patterns are

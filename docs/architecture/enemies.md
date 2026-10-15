@@ -58,8 +58,9 @@ with every part the enemy may show later
 (`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
 `brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
 screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator, Buzz Overdrive, Gilded Sentinel
-(its statue's frames for both walls, its eyes, its cut marks' shader) and Enforcer Truck (its model with
-every rider, its light bar's and floor lights' states, its warning line) have hooks, and a boss fight names the
+(its statue's frames for both walls, its eyes, its cut marks' shader), Enforcer Truck (its model with
+every rider, its light bar's and floor lights' states, its warning line) and hover truck (its model, the glows
+its parts swap in, the wall effects, its warning glow: task I5) have hooks, and a boss fight names the
 enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped cyborgs, the Sleep
 Taker's generators); a new enemy whose first spawn builds anything costly adds one, and a kit keeps the
 shaders it loads (a static cache, as the kits do) rather than loading them per spawn (`test_perf` checks
@@ -68,6 +69,17 @@ Enemy fire uses the pool's red "enemy_*" looks in every zone. `world.skin.enemy_
 zone look: the cyborgs (window cyborgs and hosts too) dress in the zone variant
 `CyborgSuit.look_for()` finds for it (see Zone skins for each zone's value, and Characters), and the
 other enemies weather by it (`&"scavenger"` weathered, any other value the clean `&"city"` look).
+**Drawn size** (GDD §9.2, "Drawn 20% bigger", owner, October 14, 2026; task I2): `ZoneSkin.cyborg_draw_scale`
+(`CyborgSuit.draw_scale(skin)`; the Neon City 1.2 in `data/skins/city_skin.tres`, every other skin 1.0, DESIGN-TBD:
+item 829) scales the cyborgs' model only, never a hitbox: the floor cyborgs (the panic variant and
+the hosts too, the same model) set it as `body.scale`, so they stay standing on the floor (the body's origin is its
+soles); a window cyborg multiplies it into its own `BODY_SCALE` (1.25) and places the body so its waist stays where it
+was (the legs are hidden: it grows up and out of the same place, its head reaching the window frame's top). Every
+hitbox, the gun's muzzle point (`CyborgGun.muzzle_offset`, `muzzle_reach`: the bolts start where they did even
+though the drawn cannon sits a little higher and further out) and the floor-use spans are unchanged;
+`test_cyborg_body` (`_test_draw_scale`) pins all of it. Not scaled: the hover truck's driver and
+cinematic cyborgs (`CineActorNode`), which build `CyborgBody` themselves. It is read once at spawn, so a change shows
+on the next run (it isn't in the F6 panel, which lists tuning resources rather than skins).
 
 A level uses an enemy only if its `features` list has the type's name (GDD §6: one new thing at a
 time), from the feature's start if the level gives it one (The generator). Quick play can add

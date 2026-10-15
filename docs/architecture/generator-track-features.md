@@ -101,7 +101,8 @@ in), the sizes and the push.
 Enemies whose attacks a doodad could make unfair (its side blocks a dodge, its push moves the player)
 count them at runtime too, through `LevelLayout.doodad_between()`, for an attack that could come later
 than the generator planned it: a drone holds its barrage and a hover truck its cannon while a doodad
-stands in the stretch the attack would take (`_doodad_in_reach`), an Octodog charge or a Resonator pulse
+stands in the stretch the attack would take (`_doodad_in_reach`; a drone holds it for a fenced ceiling's pick too,
+`_pick_in_reach`, task I4), an Octodog charge or a Resonator pulse
 moved on by a wait for its turn waits (`Octodog.window_clear`, `Resonator.pulse_clear`), cyborg bolts
 never land by one (`CyborgGun.path_clear`), a cyborg's walk and panic run keep their margin from one
 (`CyborgRules.obstacle_spans`), and a hover truck only lurches at a player who can leave its lane
@@ -521,8 +522,9 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 3 by level, DESIGN-
   room for one as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger,
   nor a Buzz Overdrive an Enforcer Truck counts among its baits; the spacing of every bait it can't take out
   stays), and where even that leaves none, the last resort takes the zone doodads in the way out too (`doodads_go`:
-  scenery, never a feature; Corporate 2 at 3 lanes on seed 7101 on K4's curve, `test_dash_walls`' `LAST_RESORT_CASE`;
-  DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 677).
+  scenery, never a feature, nor a treasure stash's walls; Corporate 2 at 3 lanes on seed 7101 on K4's curve, Golden 1
+  at 3 lanes on seed 7294 since task I4, `test_dash_walls`' `LAST_RESORT_CASE`; DESIGN-TBD, `docs/OPEN_QUESTIONS.md`
+  item 677).
 Both draw from `rng_for("dash_wall")`, so the passes before them place exactly what they did, and a level with a
 count of 0 (or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
 - **A footprint in every lane**, from `approach_seconds` before the face to `after_seconds` past the back, at the
@@ -564,7 +566,8 @@ the side wall gaps and wall fences beside them (`wall_keep_outs`), and the credi
 `LevelLayout.doodad_between` counts a wall in every lane, so a dropped credit or a floor cut's lane never lands in
 one either). `problems(gen)` re-checks a finished layout (the tests, `LayoutChecks.check_dash_walls`). Every
 campaign level gets its full count on its own seed at 3, 5 and 6 lanes (Corporate 2 and The Hush ask for 1, Golden 1
-and Golden 3 for 2: their tracks have room for no more on some lane counts).
+and Golden 3 for 2, and Dead Zone 1 for 2 since its ceiling scenarios, task I4: their tracks have room for no more on
+some lane counts).
 
 **Dash walls on the track.** `TrackBuilder._build_dash_wall` builds each in the chunk where it stands (Damage and
 interactions: the box on `LAYER_DASH_WALL`, the forgiving hitbox), sized by `TrackBuilder.dash_wall_size()` (as
@@ -572,3 +575,75 @@ wide as the floor less `dash_wall_wall_room` beside each side wall, `dash_wall_h
 `dash_wall_hitbox()`, and has the zone skin dress it (`ZoneSkin.dash_wall`, Zone skins) and name its pieces'
 colours (`dash_wall_debris_colors`). `dash_wall_for(entry)` finds a built one; one broken in this attempt is never
 built again.
+
+**Ceiling scenarios** (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: never in zones 1–2, sprinkled
+into later zones). Two features with no patterns whose rules turn a few of a level's own ceilings into a scenario:
+`treasure_stash` (`treasure_stash_rules.gd`, from Casino 1) and `fenced_ceiling` (`fenced_ceiling_rules.gd`, from
+Casino 2; the several-pad version from Corporate 1). Both build on `CeilingScenarios` (`scripts/world/`: the shared
+placement helpers, and the Player's physics they're timed by: a pad's flip and rise, a drop off the ceiling, a jump),
+with their numbers in `CeilingScenarioTuning` (`data/tuning/ceiling_scenarios.tres`, F6 "Ceiling scenarios") and how
+many a level gets in its own data (`LevelConfig.treasure_stashes`, `fenced_ceilings`, `fenced_ceiling_pads`).
+DESIGN-TBD throughout (items 836–845 in `docs/OPEN_QUESTIONS*.md`).
+- **When**: after every rule that places ceilings, pads, ramps or floor enemies or plans charges and cuts (their
+  `RUN_AFTER`), the stash first; the Barnacle Turrets, the Resonator, the Enforcer Truck and the dash walls run after
+  and plan around them. So every rule before them plans as it would without them. A scenario takes one of the
+  level's ceilings (`candidates`: one with a pad, none another scenario took, none with a turret) and marks it
+  (`hull["scenario"]`): no turret hangs from it (`BarnacleTurretRules.mount_lanes`, which the danger density pass's
+  turrets go through too). A level that gives the feature a start gets it on the first ceiling that fits from there
+  (its introduction); the rest are seeded picks (`rng_for(feature)`), `min_gap_seconds` from every other scenario
+  (`choose`). Endless mode gets them once its difficulty reaches `stash_min_difficulty` / `fenced_min_difficulty`.
+  They're sprinkled, never guaranteed (`OCCASIONAL` in their rules; `LayoutChecks.occasional`): the campaign's checks
+  don't ask every build for one.
+- **What they keep off**: what they add on the floor (a stash's floor, an added pad's zone, a ceiling run on further:
+  `can_extend`) keeps off `busy_spans` (every enemy's fill keep-out, floor cut windows, dash wall footprints, the
+  rules' keep-outs in every lane and their fill keep-outs, quiet stretches); an added pad also keeps off every drone
+  wave's window (`drone_windows`) and a lane a rule keeps (`lane_keeps`). Where a ceiling runs on, the plain holes
+  and fences on its new landing zone go (`extend`, `clear_floor`, which keeps every fence generator powering a fence).
+- **A treasure stash** (`LevelLayout.stashes`, its record; `return_pads`; its doodads and credits are ordinary
+  `doodads` and `credits` entries marked `stash`): in an inner lane with inner lanes either side (`lanes_for`: none on
+  3 or 4 lanes). Its return pad hangs in that lane `see_seconds` after the ceiling's rider arrives, as late as the
+  ceiling allows, and the ceiling runs on `ceiling_after_seconds` past the stash. `stash_offsets` lays it out from the
+  return pad by the drop's physics: a doodad across its lane whose end the dropping rider clears, walls back to back
+  in both neighbouring lanes from `wall_overlap` before that one's end to past the last credit, pushing outward, and
+  2–3 credits of the highest denomination past where the rider lands and past the top magnet's reach from the floor
+  (`magnet_reach`: `CreditField.MAGNET_AHEAD` of the largest `PowerupTuning.magnet_radius`, from the walls' start,
+  as a floor runner the magnet reaches across from is short of them). Its floor (from the front doodad's push to the
+  level's spacing past its open end) holds nothing else in any lane; its holes and fences go. Its doodads join
+  `layout.doodads` at once, so the rules after it see them; the zone doodads' look seeds count only zone doodads.
+  Its credits count in a run's credits and score, never in the stars' best score (`LevelLayout.star_credit_value`,
+  `ScoreKeeper.max_credit_score`; DESIGN-TBD item 9).
+- **A fenced ceiling** (`LevelLayout.ceiling_fences`; its pads marked `fenced`, `unsafe` or `safe`, and `added` on the
+  ones the rules add): two lanes wide or more, with `fenced_ceiling_pads` pads but fewer than the lanes (`pad_count`:
+  a floor runner always has a lane without one; on 3 lanes the simple version). Its own pads are unsafe (the later
+  version adds more, each in a new lane); rows of fences cross every lane it covers from just past where the last
+  unsafe pad's rider (at the run speed plus `rider_boost`) comes within `MovementTuning.ceiling_fence_depth` of the
+  underside, spaced by
+  `CeilingScenarios.row_plan` so no jump rhythm clears them all (a rider jumping is near the underside for
+  `jump_low_seconds` of every jump); the safe pads follow `safe_gap` past the last row, and the ceiling runs on
+  `safe_ride_seconds` past their riders' arrival. The pick plays out alone: no Bad Dream chase, Gilded Sentinel strike,
+  floor cut, drone wave's arrival or quiet stretch from its first pad's run-up to its last safe pad (`event_spans`),
+  and no ramp's wall run or hover truck within a jump of its rows under an outer lane it covers (`wall_jump_near`: a
+  jump off a high wall run reaches a ceiling fence). Its ceiling records that stretch (`hull["pick"]`,
+  `LevelLayout.fenced_pick_between`): a heli drone that outlived its pads starts no barrage that would play out there
+  (`Drone._pick_in_reach`). After a level's first drone wave every pad is the drone schedule's, so the trap stands
+  where a scheduled pad would; the pick's safe pad hurls the drones as any pad does, and as the pick is calm, a missed
+  pad costs no more than the schedule's 8–10 s of barrages (`LayoutChecks.check_fenced`; DESIGN-TBD item 10). The
+  added pads don't count in the drones' pad schedule (`LayoutChecks.check_rules`).
+- **After the rules**: every later pass keeps off a stash's floor (`doodad_keep_outs`, `fill_keep_outs`); the credit
+  pass keeps every other floor credit out of a stash and its walls' lanes (`LevelGenerator._in_stash`) and every
+  ceiling credit `CEILING_FENCE_CREDIT_MARGIN` off a ceiling fence. `LayoutChecks.check_scenarios` checks every rule
+  on a finished layout (part of `check_layout`); `check_doodads` leaves the stash's doodads to it.
+
+**Ceiling scenarios on the track.** `TrackBuilder._build_ceiling_fence` builds a ceiling fence as an electrical
+Hazard ("ceiling fence"), always on, hanging `ceiling_fence_depth` (0.85 m) below the underside, a fence deep and a
+lane wide less 0.2 m: above the chase camera's highest under a ceiling, a floor runner's jump (from the floor or a
+hover truck's roof) and a wall runner's body. An EMP switches it off like any fence (`disable_fences_near`;
+`ceiling_fence_hazards()` lists the built ones). `_build_return_pad` builds a return pad as a trigger (`kind`
+`return_pad`) on the underside, turned upside down. The skin dresses both (`ZoneSkin.ceiling_fence`, `return_pad`;
+Zone skins). On the ceiling the Player's trigger check runs too, its sensor reaching from the feet toward the
+underside, and only a return pad counts there: it drops the rider as a ceiling's end does (`_drop_from_ceiling`: the
+floor's gravity from the underside, the lane kept, the `hull_end` event; `return_drops` counts them). A stash's
+doodads are ordinary zone doodads (`DashBreakable`: the push, the blocking sides, the dash smashes them). The chase
+camera of a ceiling rider rides lower than a doodad's top (`camera_ceiling_height`), and a stash's doodads stand under
+a ceiling: `RunCamera.doodad_floor` keeps it `camera_doodad_clearance` above any doodad it's level with, rising toward
+one ahead.

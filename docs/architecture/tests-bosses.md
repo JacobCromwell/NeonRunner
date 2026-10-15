@@ -99,7 +99,7 @@ fall, no stomp), the Tithe Collector skimming its trail, a runner hit in a straf
 warning is over, the dropped tank's rules with the armor (its blade blocked, the floor held), the armored
 carriage impassable without its runway, a drop bay let go by and the next cycle's stomped, a pass let go by
 and clamps left in a pass coming around in the next, weapons poured on never ending a phase and never
-saving a clamp, the armor rule (a break, no armor, the final phase), the whole fight the same on every
+saving a clamp, the armor rule (an armor hit, no armor, the final phase), the whole fight the same on every
 attempt, quick play at two setups (phases 1 and 2 won, a death once docked, the retry won whole, and quick
 play starting over after the defeat), and the campaign at 23.4 m/s at every lane count (Corporate 2, a
 death in the fight's last phase, the retry won with three stars, the shop, the outro);

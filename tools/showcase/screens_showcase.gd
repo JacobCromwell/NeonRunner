@@ -6,11 +6,18 @@ extends Node
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
 ## failed, slot, cinematic, demo_end, hud; hud_armor (the HUD's armor through its states, GDD §4: up
 ## until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
-## the upgrade's tier N, default 0: the free armor); and a boss fight, with the test boss in the City's
+## the upgrade's tier N, default 0: the free armor); hud_last_hit (the "one hit from death" cue, GDD §4: the
+## free armor breaks at 1 s (a shield still held: nothing shows), the shield at 2 s and then the screen's edges
+## pulse red with the siren and hold a dim edge until the armor is back at 6 s; --reduced-flashing shows the
+## steady edge instead of pulses, and --hold stops with the edge steady, for a --shot at a phone's shape);
+## and a boss fight, with the test boss in the City's
 ## boss slot: boss (the HUD's boss bar at the checkpoint), boss_pause, boss_death, boss_results.
 ## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
 ## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
-## 3 lanes, credit packs, rewarded ads), --flavor=web_demo (read by App), --scroll-end (scrolls the
+## 3 lanes, credit packs, rewarded ads), --phone (a phone's browser: touch sizing and a mobile device, the
+## build flavor left as it is, so use it with --flavor=web_demo; the window's size, from the engine's own
+## --resolution=WxH before the `--`, is the page's: 844x340 is a phone held sideways with the browser's bars,
+## and the menus are magnified to be readable there, UiScale), --flavor=web_demo (read by App), --scroll-end (scrolls the
 ## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
 
@@ -19,13 +26,18 @@ var main: Node
 
 func _ready() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	if args.has("--touch"):
+	if args.has("--touch") or args.has("--phone"):
 		UiTheme.touch_override = 1
+	if args.has("--phone"):
+		# As in a phone's web page: the menus are magnified to be readable (UiScale, web only).
+		UiScale.assume_web = true
 	App.autosave = false
 	if args.has("--mobile"):
 		App.mobile = true
 		Platform.configure_for(BuildFlavor.Kind.FULL_MOBILE)
 		(Platform.backend as StubBackend).fake_ad_seconds = 30.0
+	if args.has("--phone"):
+		App.mobile = true
 	App.profile = SampleProfiles.fresh() if args.has("--fresh") else SampleProfiles.rich()
 	if args.has("--mobile") and not args.has("--fresh"):
 		App.profile.add_purchased(1000)
@@ -94,6 +106,8 @@ func _open(screen: String) -> void:
 			App.run.hud.show_hint("Cyborgs fire in bursts: watch the arm glow, then switch lanes. Stomp their heads!")
 		"hud_armor":
 			await _hud_armor()
+		"hud_last_hit":
+			await _hud_last_hit()
 		"boss", "boss_pause", "boss_death", "boss_results":
 			await _boss(screen)
 		_:
@@ -103,6 +117,9 @@ func _open(screen: String) -> void:
 ## Starts a campaign level with god mode (so nothing ends it) and lets it run a while.
 func _play(step_id: String, seconds: float) -> void:
 	App.start_level(App.campaign.step(step_id))
+	# A level with hints opens on its introduction: play on, as the Play button does.
+	if App.run.state == LevelRun.State.READY:
+		App.begin_run()
 	App.run.context.god_mode = true
 	App.run.world.player.god_mode = true
 	await _seconds(seconds)
@@ -132,6 +149,38 @@ func _hud_armor() -> void:
 	p.armor_state.recharge_left = p.armor_state.recharge_time * 0.67
 	await _seconds(1.5)
 	p.armor_state.recharge_left = 0.3
+
+
+## The "one hit from death" cue on City 1 (god mode, so nothing ends it): the free armor breaks at 1 s, but the shield the
+## sample profile carries is still held, so nothing shows; the shield breaks at 2 s, the edges pulse red with the siren
+## (LastHitWarning, two pulses over about 1.4 s) and settle to a dim steady edge, and the armor comes back at 6 s,
+## when the edge fades away. `--reduced-flashing` shows Reduced flashing's steady edge.
+func _hud_last_hit() -> void:
+	await _play("city/1", 1.0)
+	var p: Player = App.run.world.player
+	if OS.get_cmdline_user_args().has("--reduced-flashing"):
+		Settings.flashing_reduced = true
+	var shot := Hazard.new()
+	shot.hazard_name = "showcase shot"
+	shot.is_enemy_attack = true
+	p.god_mode = false
+	while p.armor > 0:
+		p.invulnerable_left = 0.0
+		p.receive_hit(shot)
+	p.god_mode = true
+	await _seconds(1.0)
+	p.god_mode = false
+	while p.shield > 0:
+		p.invulnerable_left = 0.0
+		p.receive_hit(shot)
+	p.god_mode = true
+	shot.free()
+	# --hold stops with the cue steady (for a --shot at any window size).
+	if OS.get_cmdline_user_args().has("--hold"):
+		await _seconds(2.5)
+		return
+	await _seconds(4.0)
+	p.armor_state.recharge_left = 0.05
 
 
 ## A boss fight on the campaign flow: the test boss in the City's boss slot, god mode, played into its

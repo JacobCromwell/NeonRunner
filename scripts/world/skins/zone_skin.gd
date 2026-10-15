@@ -95,6 +95,8 @@ const DASH_WALL_BAY: float = 2.4
 const DASH_WALL_WINDOW := Vector2(1.2, 1.45)
 ## The standard wall fence look's emitter meshes (wall_fence_mounts), built once each.
 static var _wall_fence_meshes: Dictionary = {}
+## The standard ceiling fence look's emitter meshes (ceiling_fence_mounts, task I4), built once each.
+static var _ceiling_fence_meshes: Dictionary = {}
 
 ## The wall fence pink of a skin without a fence_color of its own (the grey box's, the City's).
 const WALL_FENCE_COLOR := Color(1.0, 0.18, 0.62)
@@ -105,6 +107,13 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 ## other enemies' weathering (&"scavenger" weathered, anything else clean). Each zone's value is listed
 ## in docs/ARCHITECTURE.md (Zone skins). Their hazard colours and shapes stay the same everywhere.
 @export var enemy_variant: StringName = &"city"
+## How much bigger this zone draws its cyborgs: the floor cyborgs (panic variant and hosts too) and the window
+## cyborgs (CyborgSuit.draw_scale), a factor on the model only, from the feet (a window cyborg: from its waist).
+## Their hitboxes, bolts and everything gameplay reads stay as they are, so a bigger one is easier to see, not
+## harder to dodge. Owner, October 14, 2026 (GDD §9.2): the cyborgs were hard to see in the first zone, so
+## the Neon City draws them 1.2 times bigger (data/skins/city_skin.tres); the other zones keep 1.0.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 829): whether the other zones follow; it is this one number in each skin.
+@export_range(0.5, 2.0, 0.01) var cyborg_draw_scale: float = 1.0
 
 @export_group("Doodads")
 ## The colours of the default doodad look (doodad()), sRGB: its body, its top and its base plinth. The
@@ -549,6 +558,64 @@ static func wall_fence_mounts(size: Vector3, side: int, floor_y: float, hot_mate
 	mesh = batch.to_mesh()
 	_wall_fence_meshes[key] = mesh
 	return mesh
+
+
+## A ceiling fence (task I4; GDD §3, "Ceiling scenarios": a fenced ceiling's rows; TrackBuilder._build_ceiling_fence):
+## an electric fence hanging from the ceiling's underside across a lane, in hazard-local space, centred on its
+## hitbox `size` (x across the lane, y down from the underside at +size.y / 2, z along the track). It's always on;
+## follow the hazard's state all the same (an EMP switches it off: HazardStateVisual, through MeshKit.dress_fence)
+## and honour Reduced flashing (the fence shaders do). It must read as the floor fence's pink crackle hung from
+## the ceiling, in every zone, from the floor before the pad that lifts a rider into it: the same field, held
+## by an emitter along the underside, nothing else glowing; and nothing below the field (the chase camera passes
+## just below it, RunCamera.ceiling_limit), nothing out past its lane. The default (standard_ceiling_fence) works
+## for every zone, with the zone's own fence materials (wall_fence_look()) and its wall_fence_mount_color for the
+## emitter's housing. A zone may override this to draw its own emitter around the same field.
+func ceiling_fence(hazard: Hazard, size: Vector3) -> void:
+	var look: Dictionary = wall_fence_look()
+	standard_ceiling_fence(hazard, size, look["field"], look["parts"], look["solid"], wall_fence_mount_color, look["color"])
+
+
+## The standard ceiling fence look (ceiling_fence()): the field (MeshKit.dress_fence: a little wider than the
+## hitbox, and a little deeper, which still leaves it above the chase camera) and its emitter along the underside
+## (ceiling_fence_mounts).
+static func standard_ceiling_fence(hazard: Hazard, size: Vector3, field_materials: Array[Material],
+		part_materials: Array[Material], solid: Material, mount_color: Color, color: Color) -> void:
+	MeshKit.dress_fence(hazard, size, ceiling_fence_mounts(size, part_materials[0], solid, mount_color, color),
+		field_materials, part_materials)
+
+
+## The emitter of the standard ceiling fence look: a housing flush with the underside across the field's width (in
+## `mount_color`, lit by `solid`), a glowing strip along its face toward the field and a glowing cap at each end
+## (in `color`, with `hot_material`, so they follow the hazard's state). Hazard-local, the underside at
+## +size.y / 2. Cached by its size and materials.
+static func ceiling_fence_mounts(size: Vector3, hot_material: Material, solid: Material, mount_color: Color,
+		color: Color) -> ArrayMesh:
+	var key: String = "ceiling_mounts_%s_%d_%d_%s_%s" % [size, hot_material.get_instance_id(), solid.get_instance_id(),
+		mount_color, color]
+	var mesh: ArrayMesh = _ceiling_fence_meshes.get(key)
+	if mesh != null:
+		return mesh
+	var batch := MeshBatch.new()
+	var metal: MeshLayer = batch.layer(solid)
+	var hot: MeshLayer = batch.layer(hot_material)
+	var top: float = size.y * 0.5
+	var y: float = top - WALL_EMITTER_THICKNESS * 0.5
+	metal.box(Vector3(0.0, y, 0.0), Vector3(size.x + 0.12, WALL_EMITTER_THICKNESS, 0.24), mount_color)
+	hot.box(Vector3(0.0, top - WALL_EMITTER_THICKNESS - 0.012, 0.0), Vector3(size.x, 0.024, 0.08), color, 0.9)
+	for side: float in [-1.0, 1.0]:
+		hot.box(Vector3(side * (size.x * 0.5 + 0.04), y, 0.0), Vector3(0.08, WALL_EMITTER_THICKNESS + 0.04, 0.26), color, 1.0)
+	mesh = batch.to_mesh()
+	_ceiling_fence_meshes[key] = mesh
+	return mesh
+
+
+## A return pad (task I4; GDD §3, "Ceiling scenarios": the treasure stash's; TrackBuilder._build_return_pad): a
+## trigger on a ceiling's underside that drops a rider who steps on it back to the floor. `trigger` is turned upside
+## down, so this draws in its space as pad() does for a pad on the floor (the underside at -size.y / 2 in it): the
+## default is the anti-grav pad's own look, pointing back down at the floor (GDD §3 asks it to look safe, with no new
+## hazard colour). A zone may override it with a look of its own.
+func return_pad(trigger: Area3D, size: Vector3) -> void:
+	pad(trigger, size)
 
 
 ## A ceiling section (TrackBuilder, and a boss's BossProps.ceiling). `section` covers a contiguous

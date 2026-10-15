@@ -4364,3 +4364,178 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
   rules: the slowest clean fight at 23.8 m/s is 161.9 s (three stars at 174.6 s by Hostile Takeover's margin, within
   3 s of 177 s), the slowest at 18 m/s 175.7 s (still three stars, by 1.3 s), and the quickest win without baiting
   226.1 s. Which rule is meant for three stars?
+
+### Folded on October 15, 2026 (the October 14 batch, tasks I1–I9)
+
+**I9, the boss armor pickup only after the armor takes a hit** (from `docs/questions/i9.md`)
+825. **A phase that begins with the armor down but a shield held** (GDD §10, the standard armor rule; item 251,
+  `BossDef.armor_when_unprotected`). A held shield counts as protection at a phase's start, so such a phase schedules
+  no pickup, and since I9 its shield's break brings none either. Should a phase begun with the armor down count as
+  unprotected even with a shield held? Placeholder: a held shield counts (`BossEncounter.player_protected()`, marked
+  `DESIGN-TBD`, and on `BossDef.armor_when_unprotected`).
+826. **A hit the upgraded armor survives** (GDD §10, "whenever the player's armor takes a hit"). Placeholder: any armor
+  hit schedules the phase's pickup, not only the hit that breaks it, so with 2–3 hit armor the first survived hit
+  uses the phase's one pickup. One condition in `BossEncounter._on_movement_event` if the owner meant only the break.
+
+**I3, the menus on a phone; sound on an iPhone** (from `docs/questions/i3.md`)
+827. **Should the web demo play through an iPhone's ring/silent switch?** (GDD §11; §2, the web demo.) Safari mutes all
+  Web Audio (the demo's music and effects) while the switch is on; the page can ask for "playback" audio
+  (`navigator.audioSession.type`, Safari 17+), which plays through the switch, as videos do, and pauses another app's
+  audio when the demo's sound starts. The likeliest reason one playtester's iPhone had no music. Placeholder: it plays
+  through (the "Web (demo)" preset's `html/head_include` in `export_presets.cfg`, marked `DESIGN-TBD`); removing the
+  `<script>` block restores the switch.
+
+**I2, the cyborgs drawn bigger** (from `docs/questions/i2.md`)
+829. **Should the other zones draw their cyborgs bigger too?** (GDD §9.2, "Drawn 20% bigger".) Placeholder: the Neon City
+  only, `ZoneSkin.cyborg_draw_scale` 1.2 in `data/skins/city_skin.tres`, 1.0 in every other skin (marked `DESIGN-TBD`);
+  one number per skin. The model only: hitboxes, bolts and floor use are unchanged. A window cyborg drawn bigger
+  reaches further above its window frame, so check each zone's look if it follows.
+
+**I1, shader cleanup in every zone** (from `docs/questions/i1.md`; both technical, no GDD section)
+830. **Split the street shader per zone?** `kit_solid.gdshader` carries every zone's patterns in each of its programs; a
+  zone-only variant cut the web's compile wait by about half or more in a software-WebGL trial (a rough figure;
+  compiles are deferred). Placeholder: none; every zone draws with the one shader. Scheduled as task I11 (next batch,
+  T1): measure on a real Windows Chrome or Edge first, choose the variant from data, guard every pattern id a zone uses.
+831. **Draw the web build's opaque things without a depth pre-pass?** (`rendering/driver/depth_prepass/enable=false`):
+  12 fewer programs in City 1, 21 in the Palace, the same image, but more overdraw on the GPU. Placeholder: none; the
+  engine's default (on). If tried: a web-only override, measured on a real low-end GPU first.
+
+**I6, one hit from death** (from `docs/questions/i6.md`; GDD §4; tunables in `data/ui/last_hit_warning.tres`, F6 "One hit
+from death"; the siren `last_hit_siren`, `tools/asset_gen/sfx_bank_power.gd`, level in `data/audio/sfx_library.tres`)
+832. **A run that begins unprotected** (only bare loadouts in tests and tools today). Placeholder: the cue plays once at
+  the start (`warn_at_start`, on); after a revive that brings no protection back it plays again.
+833. **The cue's strength, and a non-colour marker.** Placeholder: a red band along the screen's edges (two pulses with the
+  siren, then a dim steady edge; steady with Reduced flashing), drawn under the attack markers; no icon. The siren at
+  −6.5 dB is 2.4 dB under the quietest of the 43 attack warnings on the general loudness weighting, but on a phone's
+  small speaker it is louder than `truck_rev` and within 3 dB of nineteen more; −8.3 dB (or −10.5 dB) would clear them
+  on a phone. Judge by ear in playtest.
+834. **A first-encounter hint for the siren** (that the next hit ends the run, and the armor comes back after 30 s).
+  Placeholder: no hint.
+835. **Is the siren different enough from The House's jackpot siren and the Floating Head's searchlight alarm?**
+  Placeholder: 698/494 Hz (a tritone), 0.34 s a tone, soft detuned triangles, two pulses, 1.44 s; the jackpot is
+  880/660 Hz (a fourth) square waves, the searchlight 1320/990 Hz beeps. Nobody has heard them side by side.
+
+**I4, ceiling scenarios** (from `docs/questions/i4.md`; GDD §3, "Ceiling scenarios"; numbers in `data/tuning/ceiling_scenarios.tres`, F6 "Ceiling scenarios", or the level data)
+836. **Where they start, and how often.** GDD §3 says "never in zones 1–2; sprinkled into later zones".
+  **Placeholder:** the treasure stash from Casino 1, the fenced ceiling from Casino 2 (its simple version: one unsafe
+  pad, one safe), the several-pad version from Corporate 1 (`fenced_ceiling_pads = 3`); every later level lists both.
+  None in the Marketplace (zone 3), which introduces the Barnacle Turret (its first level) and wall fences and screech
+  vents (its second); the Casino plays the Marketplace's set with nothing new of its own (task K2), so it introduces
+  these two, one a level.
+  At most one of each a level (`LevelConfig.treasure_stashes`, `fenced_ceilings`), only where one fits (they're never
+  guaranteed: no build is rebuilt for one), at least `min_gap_seconds` (10 s) from each other. A level that introduces
+  one (`feature_starts`: Casino 1's stash, Casino 2's fenced ceiling, both at 0.25) gets it on the first of its own
+  ceilings that fits from there, which comes late in those two levels (Casino 1: 137 s of 145 at 5 lanes, 81 s at 6;
+  Casino 2: 131–143 s). If the owner wants the introduction early, the rules can add a ceiling of their own for it,
+  as the Barnacle Turret's introduction does. Endless mode gets them once its difficulty reaches
+  `stash_min_difficulty` (0.5) and `fenced_min_difficulty` (0.55), at the furthest zone's last level's counts: at most
+  one of each in a 20-minute run.
+839. **The stash's shape.** **Placeholder:** the return pad in the stash's lane on the ceiling's underside,
+  `see_seconds` (1.5 s) after the ceiling's rider arrives, as late along the ceiling as it allows; it looks like the
+  zone's anti-grav pad turned to point down (`ZoneSkin.return_pad`: safe-looking, no hazard colour) and drops its rider
+  as a ceiling's end does (lane kept, the hull-end sound). The stash starts where that drop can't land on its front
+  doodad (a medium doodad, `front_size`, its end passed with `drop_clearance` 0.5 m to spare); the walls alongside
+  start 1 m (`wall_overlap`) before the front doodad's end, push outward, and run back to back to past the last
+  credit; the far end opens onto the track. 2 or 3 credits of the highest denomination (100), drawn per stash, in its
+  lane past where its rider lands and past the top magnet's reach from the floor (item 838: it makes a stash about 1-2 m
+  longer than the drop alone needs). The ceiling runs on 0.3 s (`ceiling_after_seconds`) past the stash, so a rider who
+  stays on drops beyond it. Nothing else stands on its floor (from the front doodad's push to the spacing past its
+  open end).
+840. **The fenced ceiling's fences.** **Placeholder:** always on; rows of fences across every lane the ceiling covers,
+  hanging `MovementTuning.ceiling_fence_depth` (0.85 m) below the underside, from just past where the last unsafe
+  pad's rider (at the run speed plus `rider_boost`, 6 m/s) comes within that reach, as close together as a rider near
+  the underside covers in a jump and over more than a whole jump (about 5 rows over 20 m), so switching lanes or
+  jumping doesn't get past; the zone's wall fence pink crackle under an emitter along the underside, seen from the floor
+  before the pads. The usual fence rules hold (DamageRules: armor or the shield takes the hit and the invulnerability
+  carries the rider through the rest; the dash too; claws don't; an EMP switches them off). The depth keeps them above
+  the chase camera, a jump from the floor or a hover truck's roof, and a wall runner's body.
+841. **The pick.** **Placeholder:** the ceiling's own pads are the unsafe ones (half of `fenced_ceiling_pads`, rounded
+  up: the several-pad version adds more, `pad_step_seconds` 0.6 s apart, each in a new lane; never as many pads as
+  lanes, so a floor runner always has a lane without one: on 3 lanes, only the simple version); the safe ones come
+  `safe_gap` (1.5 m) past the last row, 0.6 s apart, each in a lane of its own (another than the unsafe pads' where one
+  is free; at 3 lanes a safe pad may share an unsafe one's lane), and the ceiling runs on `safe_ride_seconds` (1.5 s)
+  past their riders' arrival. One thing at a time: never on a ceiling with a Barnacle Turret, and the pick never
+  plays out during a Bad Dream chase, a Gilded Sentinel's strike, a floor cut, a drone wave's arrival (its first pad,
+  the one that hurls the drones, is never a trap) or a quiet stretch, and a drone still about holds its barrages
+  through it (item 845). The added pads keep off every drone wave's window and don't count in the drones' 8–10 s pad
+  schedule (GDD §9.6).
+842. **Wall hops under a fenced ceiling.** A jump off a side wall from high on it (a ramp's wall run, or wall hops: GDD
+  §3) lifts the runner's head above a ceiling fence's bottom, into the fence over the outer lane when the ceiling
+  covers it. **Placeholder:** no fenced ceiling where a ramp's wall run or a hover truck comes within a jump of its rows
+  on a side whose outer lane it covers (`CeilingScenarios.wall_jump_near`); plain wall hops can still reach them (the
+  fences are in plain view, and touching one is a hit). Proposed: keep. Alternatives: keep fenced ceilings off the
+  outer lanes (none on 3 lanes then), or signs along the walls beside the rows.
+843. **Dead Zone 1's dash walls.** With its fenced ceiling, Dead Zone 1's 3-lane build has room for two dash walls, not
+  three (the scenario changes the passes after the rules, and a zone doodad now stands where the third went).
+  **Placeholder:** Dead Zone 1 asks for 2 (`data/levels/dead_zone_1.tres`, `dash_walls`; it was 3), as a level asks
+  for no more than its track holds on every lane count (item 675's rule).
+844. **A stash's credits and the stars.** A level's star thresholds are shares of its best credit score. Counted in it,
+  a stash was 17-31% of its level's best score, and in 11 of the 22 stash builds (Casino 1 to the Golden Palace at 5
+  and 6 lanes) collecting everything else reached only 69-75% against the 75% three-star line: an optional reward, on
+  PC only (no stash on 3 or 4 lanes), close to required for three stars. **Placeholder (changed in review):** a
+  stash's credits are left out of the stars' best score (`ScoreKeeper.max_credit_score`:
+  `LevelLayout.star_credit_value`), as the credits a thief holds are; collected, they still count in the run's credits
+  (the wallet) and its level score, so a stash can push a run past the line. test_ceiling_scenarios checks that every
+  build's other credits alone clear three stars. Alternative: count them, and lower the line or leave it.
+845. **The heli drones and a fenced ceiling.** From a level's first drone wave on, the drones' rules own every pad (a pad
+  every 8-10 s to the level's end, GDD §9.6), and a drone stays until a pad hurls it or the level ends. So a fenced
+  ceiling after the first wave takes one of the schedule's pads as its trap (17 of 22 builds), and a drone the player
+  didn't bring down yet is still about at the pick. Keeping fenced ceilings before every level's first wave instead
+  would leave 5 of the 22. **Placeholder:** the pick is calm: a drone that outlived its pads starts no barrage that
+  would play out there (`Drone._pick_in_reach`, the ceiling's recorded pick, from its first pad's run-up to its last
+  safe pad), and the pick's safe pad, which hurls the drones as any pad does, is the next pad that works; a missed pad
+  still costs no more than the schedule's 8-10 s of barrages (the pad before the pick lies at most 10 s before it:
+  LayoutChecks). No wave arrives or waits for its first pad during a pick (as before). Alternatives: no fenced ceiling
+  after a level's first drone wave; or the trap added before a scheduled pad, which becomes the safe one.
+
+**I7, the economy rebalanced for eight zones** (from `docs/questions/i7.md`; GDD §7–§8; measure with `tools/measure/economy.gd --lanes=5 --seeds=0`, pins `FIRST_FIT` and `IN_TIME` in `tests/suites/test_economy.gd`, prices in `data/shop/catalog.json`. "First fits at N": a typical player's wallet (70% of each level's credits, no deaths, nothing bought, no boss payouts, as the October 3 anchors were measured) covers the tier's line total after finishing level N in play order, so it is usable from N + 1; the "+boss" reading is up to three levels earlier for the capstones)
+846. **When should each upgrade come into reach?** (GDD §7 "Rebalance for the full campaign", §8, §5's schedule.) The
+  GDD fixes none of it except what the owner has said: Armor I fits City 1 (October 3), Laser I costs 1,800 and
+  first fits at the campaign's 4th level (October 11), and the dash's upgrades cost 800 / 1,000 / 1,200. The rest
+  is placed by what each thing answers, and where it is later than the enemy's debut it is in time only once the
+  boss payouts are counted:
+  - claws (the Octodog's tentacles, debut Gangland 2, level 5) first fit at 5, usable from 6; affordable after
+  Gangland 1 once the City boss has paid;
+  - Laser II (the Barnacle Turret, debut Marketplace 1, level 7) first fits at 7, usable from 8; affordable after
+  Gangland 3 on the "+boss" reading;
+  - Armor III first fits at 8, usable from the Casino's mixed crowd (9);
+  - the dash line is complete at 8, before the Corporate dash walls (11);
+  - Missile (Buzz Overdrive, debut Corporate 1, level 11) first fits at 11, usable from 12; affordable after
+  Casino 2 on the "+boss" reading;
+  - Armor IV first fits at 15, usable from the Dead Zone (16), whose Bad Dreams ignore weapons;
+  - Heavy missile first fits at 18, usable from Golden 2 (19), where the Sentinels (17 shots at tier 1) debut;
+  Golden 1's Resonator waves come a level earlier; affordable after Dead Zone 1 on the "+boss" reading.
+  - **Placeholder** (`DESIGN-TBD`, `data/shop/catalog.json`'s notes and `FIRST_FIT`): everything held but two
+  prices: **Armor IV 6,000 to 6,500** and **Heavy missile 9,500 to 7,000**. Held: Armor I 350, Laser I 1,800, the
+  dash's four prices, claws 2,600, magnet 700 / 1,600 / 3,200, Armor II 1,700, Armor III 3,400, Laser II 2,200,
+  Missile 4,800, Slow time 2,400 and the breakables (shield 400, grapple 250, revive 600).
+  - **Slow time** has no anchor in the GDD ("PC only, cooldown-based"). It stays 2,400 (first fits at level 5,
+  usable from 6). **Proposal for the owner:** 6,000, first fitting at Casino 1 (level 9), where the run gets quick
+  and dense (21.0 m/s in the City, 25.0 in the Golden Zone). Should it move?
+  Are the other placements right?
+847. **Should a first playthrough reach the capstones?** (GDD §6, replay value; §7 "key balancing value".) The whole
+  permanent catalog costs 43,050; a typical player's playthrough pays 18,382 from the levels and the match
+  (22,382 with the bosses), so the catalog is 2.3 playthroughs (1.9 with the bosses), and a player who buys as
+  they go owns about half of it by the end. "First fits" says when a tier is in reach if saved for, not that a
+  player who also bought Armor I, Laser I and the dash can afford the Heavy missile at level 18. Every completion
+  pays again, so the rest comes from replays: about 25 replays of a level that pays 1,000 (21 if the first
+  playthrough's boss payouts are counted; the best level, Dead Zone 1, pays about 1,280). Is that the intended
+  grind, or should the capstones (Armor IV, Heavy missile) be cheaper so a first playthrough can own them?
+  - **Placeholder:** the prices above. The alternative is to halve the late tiers (Armor III and IV, Magnet III,
+  Missile, Heavy missile, Slow time), which puts the Heavy missile at about level 13 and Armor IV at about 10.
+849. **The dash's base price.** (GDD §8.) The owner approved the three upgrades (800 / 1,000 / 1,200, test_economy's
+  dash checks) against "the existing base price", 1,800. At 1,800 the dash first fits at level 4 and all four
+  tiers by level 8, well before the dash walls start (level 11, GDD §9.14). A base of about 5,000 would put the
+  whole line at levels 8 to 11, "as its use appears", at the cost of the dash arriving four levels later than
+  today for everything else it does (fences, doodads, enemies).
+  - **Placeholder:** 1,800, unchanged.
+850. **The treasure stashes in the economy.** (GDD §3 "Ceiling scenarios", §7; task I4.) A stash holds two or three of
+  the highest-denomination credits behind a mid-ceiling return pad: 200 to 300 credits a level from Casino 1 on,
+  at 5 and 6 lanes only. It is optional and out of a floor runner's reach, so the three-star line leaves it out
+  (`LevelLayout.star_credit_value()`), but it counts in the wallet. It lifts a typical playthrough from 16,343 to
+  18,382 on PC. How much of it should the economy assume a player takes?
+  - **Placeholder** (`DESIGN-TBD`, `tools/measure/economy_model.gd`): the typical player takes the stashes at its
+  usual 70% share, the weaker player none, and 3 lanes have none (so a mobile player's tiers come up to two
+  levels later than a PC player's: Armor I at City 2, Armor IV at level 17, and the Heavy missile only after
+  Golden 1 once the boss payouts are counted). If nobody takes them, the same placements would want Missile
+  3,800, Armor IV 5,500 and Heavy missile 6,000.

@@ -16,6 +16,8 @@ extends Enemy
 ##   (Enemy.dash_wall_lift, `lift`), and no wind-up starts while a wall is near enough that it would climb
 ##   before its barrage and cooldown are over (_doodad_in_reach), so it never fires on the climb. The barrage is a big attack (GDD §9): while another type's is on, the
 ##   drone keeps following and winds up once its turn comes (EnemyDirector.major_attack_blocked).
+## - Fenced ceilings (task I4; GDD §3, "Ceiling scenarios"): no barrage plays out while the player picks a fenced
+##   ceiling's pad, the trap from the safe one (_pick_in_reach); it keeps following and fires once they're past.
 ## - Kill: stepping on any anti-grav pad hurls every drone on screen up into the ship's hull
 ##   (drone_crash), over the lanes that ceiling covers (a narrow ceiling, GDD §3: it veers into the
 ##   ceiling's lanes as it rises); weapons take 17 laser tier 1 shots (health 15, stretched by
@@ -282,6 +284,9 @@ func _update_follow(p: Player, delta: float) -> void:
 	# GDD §3: never at a player a zone doodad hems in (asked before its turn, so it never holds one).
 	if _doodad_in_reach(p):
 		return
+	# Task I4: nor at one picking a fenced ceiling's pad (asked before its turn as well).
+	if _pick_in_reach(p):
+		return
 	# GDD §9.7: no barrage starts while the Cyborg's Bad Dream chases; GDD §9: nor while another
 	# type's big attack is on (it keeps following and waits for its turn).
 	if world.director.major_attack_blocked(self):
@@ -305,10 +310,7 @@ func _can_attack(p: Player) -> bool:
 func _doodad_in_reach(p: Player) -> bool:
 	if world.layout.doodads.is_empty() and world.layout.dash_walls.is_empty():
 		return false
-	var window: float = world.rules.hit_invulnerability if world.rules != null else 1.0
-	var flight: float = _hover_ahead() / maxf(tune.bullet_speed_at(_scaling), 1.0) + tune.bullet_overshoot
-	var seconds: float = tune.windup_at(_scaling) + tune.barrage_count(_scaling, window) * tune.bullet_interval_at(_scaling) \
-		+ flight
+	var seconds: float = _barrage_seconds()
 	var run: float = maxf(p.speed, 1.0)
 	if world.layout.doodad_between(p.distance - 1.0, p.distance + run * seconds):
 		return true
@@ -318,6 +320,26 @@ func _doodad_in_reach(p: Player) -> bool:
 	var climb: float = maxf(top - _hover_height(), 0.0) / DASH_WALL_CLIMB_SPEED * run + _half_length()
 	return world.layout.dash_wall_between(p.distance - 1.0,
 		p.distance + _hover_ahead() + run * (seconds + tune.cooldown) + climb)
+
+
+## Task I4 (GDD §3, "Ceiling scenarios": pick the right pad; the pick plays out alone, one new thing at a time): a
+## barrage never plays out while the player picks a fenced ceiling's pad, the trap from the safe one under its rows of
+## fences. True while a fenced ceiling's pick (LevelLayout.fenced_pick_between: from its first pad's run-up to its
+## last safe pad) lies along the stretch the player runs from now until a barrage started now would have passed them.
+## The generator keeps a wave's arrival and first pad off a pick (CeilingScenarios.event_spans), so this holds back
+## only a drone that outlived its pads: the pick's safe pad, which hurls it as any pad does, is the next pad that
+## works, and the pick's seconds are calm, so a missed pad still costs no more than the schedule's 8–10 s of
+## barrages. DESIGN-TBD (item 845).
+func _pick_in_reach(p: Player) -> bool:
+	var run: float = maxf(p.speed, 1.0)
+	return world.layout.fenced_pick_between(p.distance - 1.0, p.distance + run * _barrage_seconds())
+
+
+## How long a barrage started now takes until it has passed the player: its wind-up, its bullets and their flight.
+func _barrage_seconds() -> float:
+	var window: float = world.rules.hit_invulnerability if world.rules != null else 1.0
+	var flight: float = _hover_ahead() / maxf(tune.bullet_speed_at(_scaling), 1.0) + tune.bullet_overshoot
+	return tune.windup_at(_scaling) + tune.barrage_count(_scaling, window) * tune.bullet_interval_at(_scaling) + flight
 
 
 ## A wind-up and its barrage are a big attack (GDD §9, §9.7): the Cyborg's Bad Dream never slashes

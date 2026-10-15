@@ -51,7 +51,7 @@ extends EnemyTuning
 @export_range(1.0, 10.0, 0.1, "suffix:s") var pace_seconds_late: float = 4.5
 @export_range(0.3, 5.0, 0.1, "suffix:s") var hold_back_seconds: float = 1.6
 ## The forward lurch's warning: an engine rev (truck_rev), flashing spikes, glowing thrusters and a
-## light thrown ahead of it onto the floor.
+## glow thrown ahead of it onto the floor and the wall (a real light would make a phone build every lit shader twice).
 @export_range(0.5, 2.5, 0.05, "suffix:s") var rev_seconds: float = 1.0
 @export_range(0.3, 5.0, 0.1, "suffix:s") var alongside_seconds: float = 1.8
 @export_range(2.0, 30.0, 0.5, "suffix:m/s") var lurch_back_speed: float = 13.0

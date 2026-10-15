@@ -52,7 +52,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     theft takes a share of what's left. The level score never drops (GDD §7: never spent), so a theft
     never costs a star or a leaderboard place. `hold(thief, value)` is for credits a thief takes off the
     track before the player gets them (C5's collector sucks them up): it holds them, and the stars' best
-    score (`max_credit_score`) leaves them out while it does. Any defeat of a thief is a catch: the
+    score (`max_credit_score`: every credit but a treasure stash's, `LevelLayout.star_credit_value`, task
+    I4) leaves them out while it does. Any defeat of a thief is a catch: the
     director's `enemy_defeated` calls `pay_out(thief, enemy.jackpot_credits)`, which pays everything it
     holds plus its jackpot straight into the run's credits for a player-attributed defeat (with the
     `jackpot` sound; what it took off the
@@ -217,9 +218,14 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   through the doodad); a side with no room (the track's edge, a lane blocker there) gives way to the
   other. A jump or a slide into one is pushed the same way (doodads are too tall to jump), a switch into
   its side is a blocked move (above: the clank and the bump), and a player who comes down on its top
-  lands on it and runs along it. It costs nothing: DamageRules never sees it, the run's speed stays,
-  and shots and weapons pass through it. Wall runners and ceiling riders never meet one (the generator
-  keeps them out of the outermost lanes and from under ceilings).
+  lands on it and runs along it. While a push carries the player (task I4), a move back into the pushing
+  doodad's lane is blocked too (`_into_pushed_from`: it stands just ahead there, short of its side's reach,
+  and won't push again until its push is done, so the body would sink into it), and a blocked move only
+  clanks: the push finishes (cut into a bump, it left the body between the lanes against the doodad's side
+  for as long as the moves kept coming; a treasure stash's walls rely on the push to keep a runner out).
+  It costs nothing: DamageRules never sees it, the run's speed stays, and shots and weapons pass through
+  it. Wall runners and ceiling riders never meet one (the generator keeps them out of the outermost lanes
+  and from under ceilings).
 - **The dash smashes a zone doodad** (GDD §3, owner, October 8, 2026; task H5): dashing into one breaks it
   apart, and the player keeps their lane with no push and no damage. The track builds every doodad as a
   `DashBreakable` (`scripts/world/dash_breakable.gd`: an Area3D carrying its layout entry, its box and the

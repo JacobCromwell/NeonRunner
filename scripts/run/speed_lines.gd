@@ -36,6 +36,11 @@ void fragment() {
 }
 """
 
+## The one Shader of every SpeedLines (each level's run makes its own overlay). The renderer compiles a shader once
+## per Shader resource, and frees it with the last material that holds it: a Shader made for each overlay was
+## the same program compiled again at each level's load, the web demo's included.
+static var _shader: Shader
+
 var world: RunWorld
 var tuning: SpeedFxTuning
 
@@ -55,9 +60,11 @@ func setup(p_world: RunWorld, p_tuning: SpeedFxTuning) -> void:
 	_rect = ColorRect.new()
 	_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _shader == null:
+		_shader = Shader.new()
+		_shader.code = SHADER
 	_material = ShaderMaterial.new()
-	_material.shader = Shader.new()
-	_material.shader.code = SHADER
+	_material.shader = _shader
 	_material.set_shader_parameter(&"color", COLOR)
 	_material.set_shader_parameter(&"safe_width", tuning.lines_safe_width)
 	_rect.material = _material

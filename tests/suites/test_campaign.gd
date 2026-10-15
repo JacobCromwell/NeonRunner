@@ -49,6 +49,8 @@ const FIRST_LEVEL: Dictionary = {
 	"host": "dead_zone/1",
 	"resonator": "golden/1",
 	"gilded_sentinel": "golden/2",
+	# Task I4 (GDD §3, "Ceiling scenarios": never in zones 1-2; DESIGN-TBD, items 836–845 (docs/OPEN_QUESTIONS*.md)): from the Casino.
+	"treasure_stash": "casino/1", "fenced_ceiling": "casino/2",
 }
 ## The documented exceptions to "anything introduced earlier keeps appearing later" (GDD §5): the
 ## levels that leave a feature out once it's introduced.
@@ -75,19 +77,25 @@ const LEFT_OUT: Dictionary = {
 ## docs/OPEN_QUESTIONS.md, item 579).
 const BUZZ_OVERDRIVE_LEVELS: Array = ["corporate/1", "corporate/2", "beach/1", "beach/3", "dead_zone/1", "dead_zone/2", "golden/1",
 	"golden/2", "golden/3"]
-## Levels that bring nothing new (GDD §5): the Casino's two "the Marketplace's enemies and mechanics in a new
-## setting" (owner, October 8, 2026; what each Casino level adds is still to design), the Beach's, a remix of
-## everything before it (owner, October 9, 2026: "Do not worry about any new enemies at this time"), Dead Zone 2
-## "a quiet, eerie remix", Golden 3 the Golden Palace. (The Beach's volleyball match, beach/2, places no features at
-## all: the schedule leaves it out.)
-const NOTHING_NEW: Array = ["casino/1", "casino/2", "beach/1", "beach/3", "dead_zone/2", "golden/3"]
+## Levels that bring nothing new (GDD §5): the Beach's, a remix of everything before it (owner, October 9, 2026:
+## "Do not worry about any new enemies at this time"), Dead Zone 2 "a quiet, eerie remix", Golden 3 the Golden
+## Palace. (The Beach's volleyball match, beach/2, places no features at all: the schedule leaves it out. The
+## Casino's two, "the Marketplace's enemies and mechanics in a new setting" (owner, October 8, 2026), bring the
+## ceiling scenarios since task I4.)
+const NOTHING_NEW: Array = ["beach/1", "beach/3", "dead_zone/2", "golden/3"]
 ## Zones that introduce no new enemy, the exceptions to GDD §5's rule, and why: the Casino ("every zone introduces
 ## at least one new enemy, except the Casino, which reuses the Marketplace's", owner, October 8, 2026) and the Beach,
 ## for now (owner, October 9, 2026: "Do not worry about any new enemies at this time"). Neither introduces anything
-## else either (NOTHING_NEW).
+## else either (NOTHING_NEW), but for the mechanics in NEW_MECHANICS.
 const NO_NEW_ENEMY: Dictionary = {
 	"casino": "it reuses the Marketplace's (GDD §5, owner)",
 	"beach": "a remix of everything before it (owner, October 9, 2026)",
+}
+## The mechanics a zone of NO_NEW_ENEMY introduces all the same: the Casino's ceiling scenarios (task I4; GDD §3,
+## "Ceiling scenarios": never in zones 1-2, sprinkled into later zones; DESIGN-TBD where they start,
+## items 836–845 (docs/OPEN_QUESTIONS*.md)).
+const NEW_MECHANICS: Dictionary = {
+	"casino": ["treasure_stash", "fenced_ceiling"],
 }
 ## The seed sweep: the levels with the most features (the Beach's remix has as many as Corporate 2), and The
 ## Hush (paced in bursts), on this many seeds each at 3, 5 and 6 lanes.
@@ -130,6 +138,7 @@ func run() -> void:
 	_test_zones(campaign)
 	_test_steps(campaign)
 	_test_slots(campaign)
+	_test_boss_intro_slots(campaign)
 	_test_schedule(campaign)
 	_test_curve_and_lengths(campaign)
 	_test_no_level_easier(campaign)
@@ -241,7 +250,11 @@ func _test_slots(campaign: Campaign) -> void:
 			check(zone.boss != null and String(zone.boss.id) == id + "_boss" and zone.boss.notes != "",
 				"%s's boss slot has its id and notes" % id)
 		check(zone.intro != null and zone.outro != null, "%s has intro and outro cinematic slots" % id)
-		check((zone.boss_intro != null) == (id in ["city", "gangland"]), "only the City and Gangland have boss-intro slots")
+		# Item 395: every boss has an intro slot; the City's and Gangland's are built, the rest empty and skipped.
+		check((zone.boss_intro != null) == (zone.boss != null), "%s has a boss-intro slot exactly when it has a boss" % id)
+		check(zone.boss_intro == null or (zone.boss_intro.is_built() == (id in ["city", "gangland"])
+			and zone.boss_intro.is_skipped() == not (id in ["city", "gangland"])),
+			"%s's boss-intro slot is built (the City's, Gangland's) or empty and skipped (item 395)" % id)
 		for def: CinematicDef in [zone.intro, zone.boss_intro, zone.outro]:
 			if def != null:
 				check(String(def.id).begins_with(id + "_") and def.title != "" and def.placeholder_text != "",
@@ -298,6 +311,76 @@ func _test_slots(campaign: Campaign) -> void:
 ## GDD §5's schedule in the level data: each feature first appears in its level; later levels keep
 ## it (with the documented exceptions); every zone brings a new enemy and each level about one new
 ## thing, each introduced at a start of its own (LevelConfig.feature_starts), City 1's cyborgs late.
+## Item 395 (task I8): every boss has an intro slot. The City's and Gangland's play; the other five (The House,
+## Hostile Takeover, the Beach's, the Sleep Taker's, the Golden Convergence's) are empty slots the campaign skips:
+## no step, so no screen, no delay and no save entry; Marketplace has no boss, so no slot. Filling one needs only
+## its def's scene.
+func _test_boss_intro_slots(campaign: Campaign) -> void:
+	var empty_zones: PackedStringArray = ["casino", "corporate", "beach", "dead_zone", "golden"]
+	var listed: PackedStringArray = []
+	for slot: Dictionary in campaign.empty_slots():
+		listed.append(String(slot["id"]))
+	check(listed == PackedStringArray(["casino/boss_intro", "corporate/boss_intro", "beach/boss_intro",
+		"dead_zone/boss_intro", "golden/boss_intro"]), "the campaign lists the five empty boss-intro slots in order (%s)" % [listed])
+	for zone: ZoneDef in campaign.zones:
+		var id: String = String(zone.id)
+		if id in empty_zones:
+			var def: CinematicDef = zone.boss_intro
+			check(def != null and def.scene == "" and def.skip_while_empty and def.is_skipped() and not def.is_built()
+				and String(def.id) == id + "_boss_intro", "%s's boss intro is an empty slot" % id)
+			check(campaign.step(id + "/boss_intro") == null, "%s's boss intro has no step: the campaign skips it" % id)
+			var boss: CampaignStep = campaign.step(id + "/boss")
+			var before: CampaignStep = campaign.steps()[boss.index - 1]
+			check(boss != null and before.zone == zone and before.is_level() and campaign.next_step(before) == boss,
+				"%s: the step after the zone's last level is its boss (nothing between)" % id)
+		elif id in ["city", "gangland"]:
+			var built: CampaignStep = campaign.step(id + "/boss_intro")
+			check(built != null and built.cinematic.is_built() and not built.cinematic.is_skipped()
+				and campaign.next_step(built) == campaign.step(id + "/boss"), "%s's boss intro still plays, before its boss" % id)
+	# Nothing else about the schedule changes: no empty slot has a step, and the indices run on without a gap.
+	var ids: PackedStringArray = []
+	var in_order: bool = true
+	for s: CampaignStep in campaign.steps():
+		in_order = in_order and s.index == ids.size()
+		ids.append(s.id)
+	var no_empty: bool = true
+	for slot: Dictionary in campaign.empty_slots():
+		no_empty = no_empty and not ids.has(String(slot["id"]))
+	check(in_order and no_empty, "no empty slot has a step, and the steps' indices run on in order")
+	# Filling a slot is data only: with a scene set, the same campaign gets the step, before the boss.
+	var def: CinematicDef = campaign.step("golden/boss").zone.boss_intro
+	def.scene = "res://scenes/cinematics/arrival_flyover.tscn"
+	var filled := campaign.duplicate() as Campaign
+	var added: CampaignStep = filled.step("golden/boss_intro")
+	check(added != null and filled.next_step(added) == filled.step("golden/boss") and filled.steps().size() == ids.size() + 1
+		and not def.is_skipped() and filled.empty_slots().size() == 4 and filled.step("golden/3").index + 1 == added.index,
+		"setting the slot's scene brings its step in, between the last level and the boss, and takes it off the empty list")
+	var old_save := Profile.new()
+	for s: CampaignStep in campaign.steps():
+		if s.index <= campaign.step("golden/boss").index:
+			old_save.record_run(s.id, 0, true, 1000, 3, 90.0)
+	var app: Node = tree.root.get_node_or_null(^"App")
+	var saved: Campaign = null
+	var saved_profile: Profile = null
+	if app != null:
+		saved = App.campaign
+		saved_profile = App.profile
+		App.campaign = filled
+		App.profile = old_save
+		check(App.step_done(added) and App.step_unlocked(filled.step("golden/boss")) and App.step_unlocked(filled.step("golden/outro"))
+			and App.next_unfinished_step() == filled.step("golden/outro"),
+			"a save from before the slot was filled counts it done: the boss stays open and Continue goes on to the outro")
+		App.campaign = saved
+		App.profile = saved_profile
+	def.scene = ""
+	check(def.is_skipped() and campaign.step("golden/boss_intro") == null, "(the slot is empty again)")
+	# The web demo ends after the City's boss: its scope and steps are as they were.
+	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
+	for s: CampaignStep in campaign.steps():
+		check(s.zone.in_demo == (s.zone.id == &"city"), "web demo: %s is in scope only for the City" % s.id)
+	BuildFlavor.set_override(-1)
+
+
 func _test_schedule(campaign: Campaign) -> void:
 	var levels: Array[CampaignStep] = []
 	for s: CampaignStep in campaign.steps():
@@ -338,19 +421,26 @@ func _test_schedule(campaign: Campaign) -> void:
 		var new_thing: bool = false
 		for f: String in first_seen:
 			new_enemy = new_enemy or (ENEMIES.has(f) and String(first_seen[f]).begins_with(String(zone[0]) + "/"))
-			new_thing = new_thing or String(first_seen[f]).begins_with(String(zone[0]) + "/")
+			new_thing = new_thing or (String(first_seen[f]).begins_with(String(zone[0]) + "/")
+				and not (NEW_MECHANICS.get(zone[0], []) as Array).has(f))
 		if NO_NEW_ENEMY.has(zone[0]):
 			check(not new_enemy and not new_thing, "%s introduces no new enemy, nor anything else: %s" % [zone[0],
 				NO_NEW_ENEMY[zone[0]]])
 		else:
 			check(new_enemy, "%s introduces at least one new enemy (GDD §5)" % zone[0])
-	# The Casino plays the Marketplace's last level's set, nothing more (task K2, DESIGN-TBD until the owner
-	# says what each Casino level adds): every feature the Marketplace brought, and nothing new.
+	# The Casino plays the Marketplace's last level's set (task K2, DESIGN-TBD until the owner says what each Casino
+	# level adds): every feature the Marketplace brought, and no new enemy; and it brings in the ceiling scenarios
+	# (task I4), Casino 1 the treasure stash and Casino 2 the fenced ceiling, each from a start of its own.
 	var market_2: LevelConfig = campaign.step("marketplace/2").level
-	for id: String in ["casino/1", "casino/2"]:
+	var scenarios: Dictionary = {"casino/1": ["treasure_stash"], "casino/2": ["treasure_stash", "fenced_ceiling"]}
+	for id: String in scenarios:
 		var casino: LevelConfig = campaign.step(id).level
-		check(casino.features == market_2.features and casino.feature_starts.is_empty(),
-			"%s plays Marketplace 2's features, with no introductions (%s)" % [id, casino.features])
+		var want: PackedStringArray = market_2.features.duplicate()
+		for f: String in scenarios[id]:
+			want.append(f)
+		var starts: Array = casino.feature_starts.keys()
+		check(casino.features == want and starts.size() == 1 and starts[0] == (scenarios[id] as Array)[-1],
+			"%s plays Marketplace 2's features and brings in a ceiling scenario (%s; starts %s)" % [id, casino.features, starts])
 	var city_1: LevelConfig = campaign.step("city/1").level
 	check(city_1.feature_start("cyborg") >= 0.5, "City 1's cyborgs come late in the level (%.2f)" % city_1.feature_start("cyborg"))
 	for id: String in ["marketplace/1", "marketplace/2", "casino/1", "casino/2", "corporate/1", "corporate/2", "beach/1", "beach/3",
@@ -749,12 +839,16 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 			check(not placeable.has(f), "`%s` is planned: nothing places it yet %s" % [f, tag])
 			continue
 		var at: Array[float] = LayoutChecks.feature_positions(layout, f)
-		check(not at.is_empty(), "%s has `%s` (GDD §5: earlier features keep appearing) %s" % [s.id, f, tag])
+		# A feature sprinkled in (the ceiling scenarios, task I4) may miss a build: test_ceiling_scenarios counts them.
+		check(not at.is_empty() or LayoutChecks.occasional(f),
+			"%s has `%s` (GDD §5: earlier features keep appearing) %s" % [s.id, f, tag])
 		if not config.feature_starts.has(f) or at.is_empty():
 			continue
 		var start: float = gen.feature_start(f)
 		check(at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
-		if SPACED_FROM_START.has(f):
+		# A ceiling scenario's introduction (task I4) is the first of the level's own ceilings that fits one from its
+		# start, not a pattern picked there: test_ceiling_scenarios checks it's the first.
+		if SPACED_FROM_START.has(f) or LayoutChecks.occasional(f):
 			continue
 		stats["introductions"] = int(stats["introductions"]) + 1
 		if at[0] > start + INTRODUCTION_REACH * gen.pace:

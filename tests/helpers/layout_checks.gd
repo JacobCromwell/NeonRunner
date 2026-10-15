@@ -7,14 +7,15 @@ extends RefCounted
 ##   floor, ramps stand on floor with no sign at their wall entry, nothing lies in the end-clear
 ##   stretch, every ceiling keeps GDD §3 (check_ceilings), every zone doodad stands where its push is
 ##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), the level's wider gaps
-##   keep theirs (check_wide_gaps, task G7), and every dash wall stands where it's fair (check_dash_walls,
-##   task H7a).
+##   keep theirs (check_wide_gaps, task G7), every dash wall stands where it's fair (check_dash_walls,
+##   task H7a), and every ceiling scenario keeps its rules (check_scenarios, task I4).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
 ##   its pad (FloorRoute).
 ## - check_rules: the enemy rules still hold when many features share a level: drones get 10 s before
-##   their first pad and then pads 8–10 s apart (GDD §9.6), a Bad Dream's chase has pads at most
+##   their first pad and then pads 8–10 s apart (GDD §9.6; a fenced ceiling's added pads, a choice on one
+##   ceiling, aside: task I4), a Bad Dream's chase has pads at most
 ##   10 s apart and keeps off Octodog runs (GDD §9.7), Octodog runs stay off pads and ceiling
 ##   landings, cyborgs keep their margin from floor obstacles, every fence generator powers a
 ##   fence, Barnacle Turrets keep their limits (check_turrets, GDD §9.8), and every cyborg planted in a
@@ -28,6 +29,8 @@ const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const HoverTruckRules = preload("res://scripts/enemies/hover_truck_rules.gd")
 const BuzzOverdriveRulesScript = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const DashWallRulesScript = preload("res://scripts/enemies/dash_wall_rules.gd")
+const TreasureStashRules = preload("res://scripts/enemies/treasure_stash_rules.gd")
+const FencedCeilingRules = preload("res://scripts/enemies/fenced_ceiling_rules.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 
@@ -67,6 +70,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_wall_fences(suite, layout, config, tag)
 	check_wide_gaps(suite, layout, config, tag)
 	check_dash_walls(suite, layout, config, tag)
+	check_scenarios(suite, layout, config, tag)
 
 
 ## Dash walls (task H7a; GDD §9.14, owner, October 8, 2026), wherever the generator stands one (dash_wall_rules.gd),
@@ -495,6 +499,7 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 ##   Dream chase and drone wave until its first pad, any lane while a hover truck is surely there, and
 ##   never in or pushing into a truck's lane until it has left;
 ## - one at a time: LevelConfig.doodad_gap_seconds from one's end to the next one's front.
+## A treasure stash's doodads (task I4) aren't zone doodads standing on their own: check_scenarios checks them.
 static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.doodads.is_empty():
 		return
@@ -545,7 +550,12 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 				trucks.append(e)
 				busy.append(["a hover truck's shortest stay", Vector2(HoverTruckRules.window_start(tt, at, pace),
 					at + tt.stay_min_seconds * speed)])
-	var sorted: Array[Dictionary] = layout.doodads.duplicate()
+	# A treasure stash's doodads (marked "stash", task I4) stand under its ceiling, side by side: check_scenarios checks
+	# them.
+	var sorted: Array[Dictionary] = []
+	for d: Dictionary in layout.doodads:
+		if not d.has("stash"):
+			sorted.append(d)
 	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	var prev_end: float = -INF
 	for d: Dictionary in sorted:
@@ -670,6 +680,320 @@ static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) ->
 	return grid.find(grid.clear_start(from - ROUTE_LEAD), zones.landing_zone(h).y)
 
 
+## The ceiling scenarios (task I4; GDD §3, "Ceiling scenarios"; CeilingScenarios), wherever the generator makes one,
+## at any lane count, at the level's own run speed (CeilingScenarioTuning's times are seconds at it):
+## - each only in a level with its feature (a treasure stash's pieces `treasure_stash`, a fenced ceiling's
+##   `fenced_ceiling`), on a ceiling of its own whose pads come after the feature's start, no Barnacle Turret hanging
+##   from it, at most the level's count of each, min_gap_seconds from the scenario before;
+## - a treasure stash (check_stash): in an inner lane with inner lanes either side; its return pad on its ceiling's
+##   underside over its lane, see_seconds after the ceiling's rider arrives at the latest; the ceiling running on past
+##   it; one doodad across its lane at its start, its walls back to back alongside in both neighbouring lanes, pushing
+##   outward, from beside that one (room for its push, then overlapping it) to its open end; two or three credits of
+##   the highest denomination inside, past where the return pad's rider lands, and no other floor credit in it or
+##   beside it; its floor, from the front doodad's push to the spacing past its open end, holding nothing else in any
+##   lane (no hole, fence, floor cut's window, floor enemy, pad's zone, speed pad, ramp's run, other doodad, dash wall
+##   or other ceiling);
+## - a fenced ceiling (check_fenced): two lanes wide or more; every pad under it marked, the unsafe ones (half the
+##   level's fenced_ceiling_pads, rounded up, or more) before its rows of fences and the safe ones (the rest, at least
+##   one) past them, in lanes of their own; rows across every lane it covers, within it, from past where the last
+##   unsafe pad's rider (at the fastest, rider_boost) comes within a fence's reach of the underside, no further apart
+##   than row_plan's spacing and over at least a jump at that speed; a safe pad's rider clear of the last row as they
+##   rise, and the ceiling running on safe_ride_seconds past their arrival; no ceiling credit by a fence, and no wall
+##   jump reaching a row (CeilingScenarios.wall_jump_near);
+## - and no ceiling fence, return pad or added pad anywhere else.
+## Their physics (where a rider meets a fence, lands in the stash) is replayed by test_ceiling_scenarios.gd.
+static func check_scenarios(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var taken: Array[Dictionary] = []
+	for h: Dictionary in layout.hulls:
+		if h.has(CeilingScenarios.KEY):
+			taken.append(h)
+	var added: bool = false
+	for p: Dictionary in layout.pads:
+		added = added or p.has("added") or p.has("fenced")
+	if taken.is_empty() and not added and layout.stashes.is_empty() and layout.return_pads.is_empty() \
+			and layout.ceiling_fences.is_empty():
+		return
+	var gen := LevelGenerator.for_layout(config, suite.tuning, layout)
+	var t: CeilingScenarioTuning = CeilingScenarios.tuning()
+	taken.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	var counts: Dictionary = {CeilingScenarios.STASH: 0, CeilingScenarios.FENCED: 0}
+	var prev_end: float = -INF
+	for h: Dictionary in taken:
+		var kind: String = CeilingScenarios.scenario_of(h)
+		var at: String = "the %s ceiling at %.1f m %s" % [kind, float(h["start"]), tag]
+		suite.check(counts.has(kind), "%s is a known scenario" % at)
+		suite.check(config.has_feature(kind), "%s: only in a level with its feature" % at)
+		suite.check(not CeilingScenarios.turret_on(layout, h), "%s: no Barnacle Turret hangs from it" % at)
+		var pads: Array[Dictionary] = CeilingScenarios.pads_under(layout, h)
+		suite.check(not pads.is_empty() and float(pads[0]["at"]) >= config.feature_start(kind) * layout.length - 0.01,
+			"%s: its pads come after its feature's start" % at)
+		var span := Vector2(float(h["start"]), gen.zones.landing_zone(h).y)
+		suite.check(span.x - prev_end >= t.min_gap_seconds * gen.speed - 0.01,
+			"%s: %.1f s after the scenario before it (at least %.0f s)" % [at, (span.x - prev_end) / gen.speed, t.min_gap_seconds])
+		prev_end = span.y
+		counts[kind] = int(counts.get(kind, 0)) + 1
+		if kind == CeilingScenarios.FENCED:
+			check_fenced(suite, gen, t, h, tag)
+	suite.check(int(counts[CeilingScenarios.STASH]) <= config.treasure_stashes and layout.stashes.size() == int(counts[CeilingScenarios.STASH]),
+		"a treasure stash for every stash's ceiling, at most the level's %d %s" % [config.treasure_stashes, tag])
+	suite.check(int(counts[CeilingScenarios.FENCED]) <= config.fenced_ceilings,
+		"at most the level's %d fenced ceilings %s" % [config.fenced_ceilings, tag])
+	for s: Dictionary in layout.stashes:
+		check_stash(suite, gen, t, s, tag)
+	# Nothing of theirs anywhere else.
+	var half: float = gen.tuning.fence_depth * 0.5
+	for f: Dictionary in layout.ceiling_fences:
+		var h: Dictionary = layout.hull_at(float(f["at"]), int(f["lane"]))
+		suite.check(CeilingScenarios.scenario_of(h) == CeilingScenarios.FENCED and float(f["at"]) - half >= float(h["start"])
+			and float(f["at"]) + half <= float(h["end"]),
+			"a ceiling fence (at %.1f m, lane %d) hangs within a fenced ceiling over its lane %s" % [f["at"], f["lane"], tag])
+	for r: Dictionary in layout.return_pads:
+		var mine: bool = false
+		for s: Dictionary in layout.stashes:
+			mine = mine or (int(s["lane"]) == int(r["lane"]) and absf(float(s["pad"]) - float(r["at"])) < 0.01)
+		suite.check(mine, "a return pad (at %.1f m) is a treasure stash's %s" % [r["at"], tag])
+	for p: Dictionary in layout.pads:
+		if p.has("added") or p.has("fenced"):
+			var h: Dictionary = layout.hull_at(float(p["at"]), int(p["lane"]))
+			suite.check(CeilingScenarios.scenario_of(h) == CeilingScenarios.FENCED,
+				"a pad marked by a fenced ceiling (at %.1f m) lies under one %s" % [p["at"], tag])
+
+
+## A treasure stash `s` (LevelLayout.stashes) in `gen`'s level keeps its rules (check_scenarios).
+static func check_stash(suite: TestSuite, gen: LevelGenerator, t: CeilingScenarioTuning, s: Dictionary, tag: String) -> void:
+	var layout: LevelLayout = gen.layout
+	var mt: MovementTuning = gen.tuning
+	var v: float = gen.speed
+	var n: int = layout.lane_count
+	var lane: int = int(s["lane"])
+	var start: float = float(s["start"])
+	var end: float = float(s["end"])
+	var pad: float = float(s["pad"])
+	var at: String = "the treasure stash at %.1f m (lane %d) %s" % [start, lane, tag]
+	suite.check(gen.config.has_feature(CeilingScenarios.STASH), "%s: only in a level with the feature" % at)
+	suite.check(lane >= 2 and lane <= n - 3, "%s is in an inner lane with inner lanes either side" % at)
+	# Its ceiling and its return pad.
+	var h: Dictionary = {}
+	for x: Dictionary in layout.hulls:
+		if absf(float(x["start"]) - float(s["hull_start"])) < 0.01:
+			h = x
+	suite.check(CeilingScenarios.scenario_of(h) == CeilingScenarios.STASH, "%s has its ceiling" % at)
+	if h.is_empty():
+		return
+	var returns: int = 0
+	for r: Dictionary in layout.return_pads:
+		returns += 1 if int(r["lane"]) == lane and absf(float(r["at"]) - pad) < 0.01 else 0
+	suite.check(returns == 1, "%s has its return pad over its lane" % at)
+	suite.check(layout.hull_covers(h, lane) and pad >= float(h["start"]) and pad + mt.pad_length <= float(h["end"]),
+		"%s: its return pad hangs under its ceiling" % at)
+	var pads: Array[Dictionary] = CeilingScenarios.pads_under(layout, h)
+	if not pads.is_empty():
+		var arrive: float = CeilingScenarios.flip_late(float(pads[-1]["at"]), v) + v * CeilingScenarios.rise_seconds(mt, 0.0)
+		suite.check(pad >= arrive + t.see_seconds * v - 0.01,
+			"%s: its return pad comes %.2f s after the ceiling's rider arrives (at least %.1f s)" % [at, (pad - arrive) / v, t.see_seconds])
+	suite.check(float(h["end"]) >= end + t.ceiling_after_seconds * v - 0.01, "%s: its ceiling runs on past its open end" % at)
+	# Its doodads.
+	var front: Array[Dictionary] = []
+	var left: Array[Dictionary] = []
+	var right: Array[Dictionary] = []
+	for d: Dictionary in layout.doodads:
+		if not d.has("stash") or float(d["end"]) < start - 0.01 or float(d["start"]) > end + 0.01:
+			continue
+		if int(d["lane"]) == lane:
+			front.append(d)
+		elif int(d["lane"]) == lane - 1:
+			left.append(d)
+		elif int(d["lane"]) == lane + 1:
+			right.append(d)
+	suite.check(front.size() == 1, "%s: one doodad across its lane at its start (%d)" % [at, front.size()])
+	if front.size() != 1:
+		return
+	var front_end: float = float(front[0]["end"])
+	suite.check(absf(float(front[0]["start"]) - start) < 0.01, "%s: the doodad across its lane stands at its start" % at)
+	suite.check(absf(front_end - start - mt.doodad_size(StringName(front[0]["size"])).z) < 0.01,
+		"%s: the doodad across it is as long as its size class" % at)
+	# The walls start past room for that doodad's push, and overlap it by wall_overlap (or all it leaves).
+	var overlap: float = minf(t.wall_overlap, front_end - start - TreasureStashRules.PUSH_ROOM)
+	for side: int in [-1, 1]:
+		var chain: Array[Dictionary] = left if side < 0 else right
+		var w: String = "%s: its wall in lane %d" % [at, lane + side]
+		suite.check(not chain.is_empty(), "%s stands" % w)
+		if chain.is_empty():
+			continue
+		chain.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+		var first: float = float(chain[0]["start"])
+		suite.check(absf(first - float(s["walls_from"])) < 0.01, "%s starts where the record says" % w)
+		suite.check(first >= start + TreasureStashRules.PUSH_ROOM - 0.01 and first <= front_end - overlap + 0.01,
+			"%s starts beside the doodad across it (%.2f m past its front, %.2f m before its end)" % [w, first - start, front_end - first])
+		var cursor: float = first
+		for d: Dictionary in chain:
+			suite.check(absf(float(d["start"]) - cursor) < 0.01, "%s runs back to back (%.2f m)" % [w, float(d["start"])])
+			suite.check(int(d["side"]) == side, "%s pushes outward" % w)
+			suite.check(absf(float(d["end"]) - float(d["start"]) - mt.doodad_size(StringName(d["size"])).z) < 0.01,
+				"%s: each doodad is as long as its size class" % w)
+			cursor = float(d["end"])
+		suite.check(absf(cursor - end) < 0.01, "%s reaches its open end" % w)
+	# Its credits.
+	var land: float = pad + CeilingScenarios.flip_late(0.0, v) \
+		+ v * (CeilingScenarios.drop_seconds(mt, 0.0) + CeilingScenarios.frame_seconds())
+	var mine: int = 0
+	for c: Dictionary in layout.credits:
+		var d: float = float(c["at"])
+		if String(c["surface"]) != "floor" or absi(int(c["lane"]) - lane) > 1 or d < start - 1.0 or d > end + 1.0:
+			continue
+		if not c.has("stash"):
+			suite.check(false, "%s holds only its own credits (a credit at %.1f m, lane %d)" % [at, d, c["lane"]])
+			continue
+		mine += 1
+		suite.check(int(c["lane"]) == lane and int(c["value"]) == LevelGenerator.DENOMINATIONS.max(),
+			"%s: its credits are the highest denomination, in its lane" % at)
+		suite.check(d >= land - 0.01 and d <= end - t.credit_end_margin + 0.01,
+			"%s: a credit (%.1f m) lies past where the return pad's rider lands (%.1f m) and inside its open end" % [at, d, land])
+		# Task I4's review: past the top magnet's reach from wherever a floor runner close enough to pull from is (short
+		# of the walls' start).
+		var pull: float = float(s["walls_from"]) + TreasureStashRules.magnet_reach()
+		suite.check(TreasureStashRules.magnet_reach() > 0.0 and d > pull,
+			"%s: a credit (%.1f m) lies past the top magnet's reach from the floor (%.1f m)" % [at, d, pull])
+	suite.check(mine >= mini(t.credits_min, t.credits_max) and mine <= maxi(t.credits_min, t.credits_max),
+		"%s holds %d credits (%d to %d)" % [at, mine, t.credits_min, t.credits_max])
+	# Its floor.
+	var area := Vector2(float(s["keep_from"]), float(s["keep_to"]))
+	suite.check(area.x <= start - LevelGenerator.doodad_lead_for(mt) + 0.01 and area.y >= end + gen.doodad_after(end) - 0.01,
+		"%s keeps its floor from the push before it to the spacing past it" % at)
+	var half: float = mt.fence_depth * 0.5
+	var busy: Array[Array] = []
+	for g: Dictionary in layout.gaps:
+		busy.append(["a hole", Vector2(g["start"], g["end"])])
+	for f: Dictionary in layout.fences:
+		busy.append(["a fence", Vector2(float(f["at"]) - half, float(f["at"]) + half)])
+	for c: Dictionary in layout.cuts:
+		busy.append(["a floor cut's window", FloorCutPlan.window(c, v)])
+	for e: Dictionary in layout.enemies:
+		var span: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
+		if span.y >= span.x:
+			busy.append(["a floor enemy (%s at %.0f)" % [e["type"], e["at"]], span])
+	for p: Dictionary in layout.pads:
+		busy.append(["a pad's zone", gen.zones.pad_zone(float(p["at"]))])
+	for p: Dictionary in layout.speed_pads:
+		busy.append(["a speed pad", Vector2(p["at"], float(p["at"]) + mt.speed_pad_length)])
+	for r: Dictionary in layout.ramps:
+		busy.append(["a ramp and its wall run", Vector2(r["at"], maxf(gen.ramp_launch(r).end(), float(r["at"]) + mt.ramp_length))])
+	for d: Dictionary in layout.doodads:
+		if not d.has("stash"):
+			busy.append(["a zone doodad", Vector2(d["start"], d["end"])])
+	for w: Dictionary in layout.dash_walls:
+		busy.append(["a dash wall", DashWallRulesScript.footprint(gen, w)])
+	for x: Dictionary in layout.hulls:
+		if not is_same(x, h):
+			busy.append(["another ceiling", Vector2(float(x["start"]), gen.zones.landing_zone(x).y)])
+	for b: Array in busy:
+		var span: Vector2 = b[1]
+		suite.check(span.x > area.y or span.y < area.x, "%s: nothing else on its floor (%s at %.1f-%.1f m)" % [at, b[0], span.x, span.y])
+
+
+## A fenced ceiling `h` in `gen`'s level keeps its rules (check_scenarios).
+static func check_fenced(suite: TestSuite, gen: LevelGenerator, t: CeilingScenarioTuning, h: Dictionary, tag: String) -> void:
+	var layout: LevelLayout = gen.layout
+	var mt: MovementTuning = gen.tuning
+	var v: float = gen.speed
+	var v_max: float = v + t.rider_boost
+	var half: float = mt.fence_depth * 0.5
+	var lanes: Vector2i = layout.hull_lanes(h)
+	var at: String = "the fenced ceiling at %.1f m %s" % [float(h["start"]), tag]
+	suite.check(layout.hull_width(h) >= 2, "%s is two lanes wide or more" % at)
+	var unsafe: Array[Dictionary] = []
+	var safe: Array[Dictionary] = []
+	var pads: Array[Dictionary] = CeilingScenarios.pads_under(layout, h)
+	for p: Dictionary in pads:
+		match String(p.get("fenced", "")):
+			"unsafe":
+				unsafe.append(p)
+			"safe":
+				safe.append(p)
+	suite.check(unsafe.size() + safe.size() == pads.size(), "%s: every pad under it is marked unsafe or safe" % at)
+	var total: int = FencedCeilingRules.pad_count(gen.config.fenced_ceiling_pads, layout.lane_count)
+	suite.check(unsafe.size() >= FencedCeilingRules.unsafe_count(total), "%s has %d unsafe pads (at least %d)"
+		% [at, unsafe.size(), FencedCeilingRules.unsafe_count(total)])
+	suite.check(safe.size() == maxi(total - FencedCeilingRules.unsafe_count(total), 1), "%s has %d safe pads" % [at, safe.size()])
+	if unsafe.is_empty() or safe.is_empty():
+		return
+	var rows: Array[float] = []
+	for f: Dictionary in layout.ceiling_fences:
+		var d: float = float(f["at"])
+		if d >= float(h["start"]) and d <= float(h["end"]) and not rows.has(d):
+			rows.append(d)
+	rows.sort()
+	var plan: Dictionary = CeilingScenarios.row_plan(mt, v, v_max, t.row_margin)
+	suite.check(rows.size() >= 2, "%s hangs rows of fences (%d)" % [at, rows.size()])
+	if rows.size() < 2:
+		return
+	var want: Array[int] = []
+	for lane: int in range(lanes.x, lanes.y + 1):
+		want.append(lane)
+	for r: float in rows:
+		var covered: Array[int] = []
+		for f: Dictionary in layout.ceiling_fences:
+			if float(f["at"]) == r:
+				covered.append(int(f["lane"]))
+		covered.sort()
+		suite.check(covered == want, "%s: the row at %.1f m crosses every lane it covers (%s)" % [at, r, covered])
+		suite.check(r - half >= float(h["start"]) and r + half <= float(h["end"]), "%s: the row at %.1f m hangs within it" % [at, r])
+	for i: int in rows.size() - 1:
+		suite.check(rows[i + 1] - rows[i] <= float(plan["spacing"]) + 0.01,
+			"%s: its rows are at most %.2f m apart (%.2f m)" % [at, float(plan["spacing"]), rows[i + 1] - rows[i]])
+	suite.check(rows[-1] - rows[0] >= CeilingScenarios.jump_seconds(mt) * v_max - 0.01,
+		"%s: its rows reach over a whole jump at %.0f m/s (%.1f m)" % [at, v_max, rows[-1] - rows[0]])
+	var last_unsafe: float = float(unsafe[-1]["at"])
+	var reach: float = CeilingScenarios.flip_late(last_unsafe, v_max) \
+		+ v_max * CeilingScenarios.rise_seconds(mt, mt.ceiling_fence_depth) + half
+	suite.check(rows[0] >= reach - 0.01, "%s: its first row (%.1f m) is past where the last unsafe pad's rider comes within reach (%.1f m)"
+		% [at, rows[0], reach])
+	var safe_lanes: Array[int] = []
+	for p: Dictionary in safe:
+		var body_back: float = CeilingScenarios.flip_early(float(p["at"])) - mt.hurtbox_size.z * 0.5
+		suite.check(body_back > rows[-1] + half, "%s: the safe pad at %.1f m lifts its rider clear of the last row" % [at, p["at"]])
+		suite.check(not safe_lanes.has(int(p["lane"])), "%s: its safe pads lie in lanes of their own" % at)
+		safe_lanes.append(int(p["lane"]))
+	var arrive: float = CeilingScenarios.flip_late(float(safe[-1]["at"]), v_max) + v_max * CeilingScenarios.rise_seconds(mt, 0.0)
+	suite.check(float(h["end"]) >= arrive + t.safe_ride_seconds * v - 0.01,
+		"%s runs on %.1f s past its last safe pad's rider's arrival" % [at, (float(h["end"]) - arrive) / v])
+	for c: Dictionary in layout.credits:
+		if String(c["surface"]) != "ceiling" or float(c["at"]) < float(h["start"]) or float(c["at"]) > float(h["end"]):
+			continue
+		for r: float in rows:
+			suite.check(absf(float(c["at"]) - r) >= half + LevelGenerator.CEILING_FENCE_CREDIT_MARGIN - 0.01,
+				"%s: no ceiling credit by a fence (%.1f m, row %.1f m)" % [at, c["at"], r])
+	suite.check(not CeilingScenarios.wall_jump_near(gen, h, rows[0] - half, rows[-1] + half),
+		"%s: no wall jump reaches its rows (a ramp's wall run or a hover truck beside them)" % at)
+	# The heli drones (task I4's review). It records its pick, which a drone that outlived its pads holds its barrages
+	# through (LevelLayout.fenced_pick_between, Drone._pick_in_reach); no wave arrives during it, nor has its first pad
+	# there; and with a wave about, the last pad before the pick that works (any but a trap) lies no more than the
+	# drone schedule's pad_repeat_max_seconds before it (GDD §9.6: a missed pad, another 8–10 s later), and the pick
+	# ends with its safe pads: a missed pad costs no more barrage time than the schedule allows.
+	var pick: Variant = h.get("pick")
+	var scene := Vector2(gen.zones.pad_zone(float(pads[0]["at"])).x, float(safe[-1]["at"]) + mt.pad_length)
+	suite.check(pick is Array and (pick as Array).size() == 2 and float(pick[0]) <= scene.x + 0.01 and float(pick[1]) >= scene.y - 0.01,
+		"%s records its pick, from its first pad's run-up to its last safe pad (%s; %.1f-%.1f m)" % [at, pick, scene.x, scene.y])
+	suite.check(layout.fenced_pick_between(scene.x, scene.x) and layout.fenced_pick_between(scene.y, scene.y),
+		"%s: a drone reads its pick from the layout" % at)
+	for w: Vector2 in CeilingScenarios.drone_windows(gen, t.drone_margin_seconds):
+		suite.check(w.y < scene.x or w.x > scene.y, "%s: no drone wave arrives or waits for its first pad during its pick (%.0f-%.0f m)"
+			% [at, w.x, w.y])
+	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
+	var first_wave: float = INF
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "drone":
+			first_wave = minf(first_wave, float(e["at"]))
+	if dt != null and first_wave < scene.x:
+		var before: float = -INF
+		for p: Dictionary in layout.pads:
+			if String(p.get("fenced", "")) != "unsafe" and float(p["at"]) < scene.x and float(p["at"]) > first_wave:
+				before = maxf(before, float(p["at"]))
+		suite.check((scene.x - before) / v <= dt.pad_repeat_max_seconds + 0.001,
+			"%s: with a drone wave about, the pad before its pick that works lies %.2f s before it (at most %.1f s)"
+			% [at, (scene.x - before) / v, dt.pad_repeat_max_seconds])
+
+
 static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	var tuning: MovementTuning = level_tuning(suite, config)
 	var speed: float = tuning.run_speed
@@ -700,12 +1024,20 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 			if p > drones[0] + 0.01:
 				schedule_start = p
 				break
-		for i: int in pads.size() - 1:
-			if pads[i] < schedule_start - 0.01:
+		# The schedule is the pads every rule but a ceiling scenario places: a fenced ceiling's added pads (task I4,
+		# marked "added") are a choice on a ceiling after its first pad, off every drone wave's window
+		# (CeilingScenarios.drone_windows; the first pad after a drone, above, counts them).
+		var schedule: Array[float] = []
+		for p: Dictionary in layout.pads:
+			if not p.has("added") and not schedule.has(float(p["at"])):
+				schedule.append(float(p["at"]))
+		schedule.sort()
+		for i: int in schedule.size() - 1:
+			if schedule[i] < schedule_start - 0.01:
 				continue
-			var gap: float = (pads[i + 1] - pads[i]) / speed
+			var gap: float = (schedule[i + 1] - schedule[i]) / speed
 			suite.check(gap >= dt.pad_repeat_min_seconds - 0.001 and gap <= dt.pad_repeat_max_seconds + 0.001,
-				"a drone's pads stay 8–10 s apart (%.2f s at %.0f m) %s" % [gap, pads[i], tag])
+				"a drone's pads stay 8–10 s apart (%.2f s at %.0f m) %s" % [gap, schedule[i], tag])
 	# Bad Dream chases (GDD §9.7).
 	var bt := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
 	var last_ok: float = layout.length - config.end_clear_distance \
@@ -1006,6 +1338,16 @@ static func can_locate(feature: String) -> bool:
 	if ResourceLoader.exists(rules) and (load(rules) as GDScript).has_method("positions"):
 		return true
 	return ResourceLoader.exists("res://scripts/enemies/%s.gd" % feature)
+
+
+## True if `feature` is sprinkled in rather than guaranteed (its rules script's OCCASIONAL: the ceiling scenarios,
+## task I4): a build of a level that lists it may have none, so the campaign checks don't ask every build for one.
+static func occasional(feature: String) -> bool:
+	var rules: String = "res://scripts/enemies/%s_rules.gd" % feature
+	if not ResourceLoader.exists(rules):
+		return false
+	var script := load(rules) as GDScript
+	return script != null and bool(script.get_script_constant_map().get("OCCASIONAL", false))
 
 
 ## Track distances of everything `feature` placed (the generator's own check,

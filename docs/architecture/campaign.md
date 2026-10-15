@@ -16,7 +16,8 @@ plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the cam
 The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
 `marketplace`, `casino`, `corporate`, `beach`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 3, 2 and 3 levels in
 `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
-cinematic slots (the City and Gangland also a boss intro) and a boss slot from GDD §10's roster, but the
+cinematic slots (every boss also an intro slot: built for the City's and Gangland's, empty and skipped for the
+rest, Empty boss-intro slots below) and a boss slot from GDD §10's roster, but the
 Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
 Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); the Beach's boss is Mecha Guppy and
 Captain Cogs (`beach_boss`, Bosses below). A zone's music
@@ -108,6 +109,20 @@ campaign without the volleyball match (task D10e: every level and boss, Sunset S
 as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
 (`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all its levels (19, the volleyball match aside), the Beach's numbers, its
 completion bonus, Continue for old saves, its boss, cinematics and music.
+
+**Empty boss-intro slots** (task I8; the owner, October 14, 2026, item 395: every boss gets a slot for an intro
+cinematic, to fill when the owner adds the beats). The City's and Gangland's boss intros play; The House's, Hostile
+Takeover's, the Beach's, the Sleep Taker's and the Golden Convergence's are `data/cinematics/<zone id>_boss_intro.tres`,
+set as the zone's `boss_intro`, with no `scene` and `skip_while_empty = true` (`CinematicDef.is_skipped()`: marked and
+not built). `Campaign._build_steps` builds no step for a skipped slot, so the campaign goes from the zone's last level
+straight to its boss: no card, no black frame, no delay, nothing recorded, and no step id or index changes for the
+steps already there (the Marketplace has no boss, so no slot). `Campaign.empty_slots()` lists the skipped slots (the
+level select shows them as dim, unpressable "EMPTY SLOT" tiles in debug builds; `cinematic_review` says a slot is
+empty). **Filling one is data only:** make a scene whose root extends `Cinematic` (Cinematics, "Writing a
+cinematic"), set the def's `scene`, and the step `<zone id>/boss_intro` appears before the boss. A save from before
+that counts it done once the boss is (`App.step_done`: a cinematic slot added after a save had passed it), so the
+boss stays open and Continue goes on. The web demo (the City only) is unchanged. `skip_while_empty` works on a
+zone's intro and outro too; the existing ones don't set it and keep their placeholder cards.
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support

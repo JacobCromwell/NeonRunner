@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="CeilingScenarioTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/ceiling_scenario_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+min_gap_seconds = 10.0
+drone_margin_seconds = 3.0
+stash_min_difficulty = 0.5
+see_seconds = 1.5
+front_size = 1
+wall_overlap = 1.0
+drop_clearance = 0.5
+credits_min = 2
+credits_max = 3
+credit_lead = 1.0
+credit_spacing = 2.0
+credit_end_margin = 1.5
+ceiling_after_seconds = 0.3
+fenced_min_difficulty = 0.55
+rider_boost = 6.0
+row_margin = 0.5
+safe_gap = 1.5
+safe_ride_seconds = 1.5
+pad_step_seconds = 0.6

@@ -194,14 +194,17 @@ var _bump_shape := BoxShape3D.new()
 var _bump_query := PhysicsShapeQueryParameters3D.new()
 ## A zone doodad's push (GDD §3, _check_doodads) is playing out (the lane switch machinery carries it,
 ## over doodad_push_time), and the doodad's instance id with how long it's still ignored: it pushes once,
-## even if a move cuts its push short.
+## even if a move cuts its push short. `_push_lane` is the doodad's lane (_into_pushed_from).
 var _pushing: bool = false
 var _push_doodad: int = 0
 var _push_ignore_left: float = 0.0
+var _push_lane: int = -1
 ## How many times zone doodads have pushed the player this run (tests and tools).
 var pushes: int = 0
 ## How many zone doodads and dash walls the dash has smashed this run (tests and tools).
 var smashes: int = 0
+## How many times a return pad (task I4) dropped the player off a ceiling this run (tests and tools).
+var return_drops: int = 0
 ## How many dash walls the runner crashed through without the dash (one hit each, GDD §9.14), and passed on a
 ## side wall, this run (task H7a; tests and tools).
 var crashes: int = 0
@@ -302,8 +305,10 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_pushing = false
 	_push_doodad = 0
 	_push_ignore_left = 0.0
+	_push_lane = -1
 	pushes = 0
 	smashes = 0
+	return_drops = 0
 	crashes = 0
 	wall_passes = 0
 	_smash_claims.clear()
@@ -618,7 +623,13 @@ func _start_switch(target: int) -> void:
 	# GDD §3 (owner, October 8, 2026): dashing into a zone doodad smashes it, from the side too, so a
 	# doodad's side doesn't block a dashing player (_lane_blocked claims it; it breaks on contact).
 	# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 635): a dashing switch into a doodad's side smashes it.
-	if target != lane and _lane_blocked(target, dashing):
+	if target != lane and (_lane_blocked(target, dashing) or _into_pushed_from(target)):
+		# A blocked move while a doodad's push carries the player leaves the push to finish (the clank plays): cut
+		# into a bump, it left the body between the lanes, against the doodad's side, for as long as the moves kept
+		# coming (task I4: a treasure stash's walls push a runner out of its reach).
+		if _pushing:
+			_event(&"lane_blocked")
+			return
 		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
 		var dir: int = signi(target - lane)
 		_start_bump(dir, rules.lane_bump_fraction * absf(geo.lane_x(target) - geo.lane_x(lane)), tuning.lane_switch_time, false)
@@ -680,6 +691,14 @@ static func _push_x(from: float, to: float, t: float) -> float:
 ## t, the inverse of what _push_x eases: the progress at which it has come `k` of the way.
 static func _push_progress(k: float) -> float:
 	return 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 1.0 / 3.0)
+
+
+## True if `target` is the lane of the zone doodad whose push is carrying the player, or has just carried them (task
+## I4): it stands just ahead there, short of its side's reach (_lane_blocked), and leaves them alone until its push is
+## done (_check_doodads), so a move back into it would sink the body into it ("the body never sinks into it"). A
+## dashing player's move goes through: the dash takes the doodad (_dash_claims).
+func _into_pushed_from(target: int) -> bool:
+	return not dashing and (_pushing or _push_ignore_left > 0.0) and target == _push_lane
 
 
 ## True if a solid side (a lane blocker) fills `target` lane beside the player right now. With
@@ -1251,6 +1270,7 @@ func _start_push(area: Area3D, doodad_lane: int, dir: int, own_side: int) -> voi
 	_pushing = true
 	_push_doodad = area.get_instance_id()
 	_push_ignore_left = tuning.doodad_push_time
+	_push_lane = doodad_lane
 	lane = target
 	_switch_from = _x
 	_switch_to = geo.lane_x(target)
@@ -1338,14 +1358,22 @@ func _break(b: DashBreakable, how: StringName) -> void:
 
 # --- Triggers & hazards ----------------------------------------------------
 
-## Pads and ramps under the feet, swept back over this frame's motion.
+## Pads and ramps under the feet, swept back over this frame's motion. On a ceiling, its return pads (task I4;
+## GDD §3, "Ceiling scenarios"): the sensor reaches from the feet down from the underside instead.
 func _check_triggers(motion: float) -> void:
-	if surface != Surface.FLOOR or not grounded:
+	if surface == Surface.WALL or not grounded:
 		return
+	var ceiling: bool = surface == Surface.CEILING
 	_trigger_shape.size = SENSOR_SIZE + Vector3(0.0, 0.0, motion)
-	_trigger_query.transform = Transform3D(Basis.IDENTITY, position + Vector3(0.0, SENSOR_SIZE.y * 0.5, motion * 0.5))
+	var reach: float = -SENSOR_SIZE.y * 0.5 if ceiling else SENSOR_SIZE.y * 0.5
+	_trigger_query.transform = Transform3D(Basis.IDENTITY, position + Vector3(0.0, reach, motion * 0.5))
 	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_trigger_query, 4):
 		var area := hit["collider"] as Area3D
+		if ceiling:
+			if area.get_meta(&"kind", &"") == &"return_pad":
+				_drop_from_ceiling()
+				return
+			continue
 		match area.get_meta(&"kind", &""):
 			&"pad":
 				# Up to the ceiling over the pad, at whatever height it is.
@@ -1362,6 +1390,15 @@ func _check_triggers(motion: float) -> void:
 					_last_speed_pad = area.get_instance_id()
 					_boost += tuning.speed_pad_boost  # Fades like a ramp's (boost_left).
 					_event(&"speed_pad")
+
+
+## A return pad (task I4; GDD §3, "Ceiling scenarios": "sends the player back to the floor as usual") drops the
+## rider off the ceiling the way its end does: the floor's gravity from the underside, keeping their lane and any
+## lane switch under way, and the hull_end event (its sound, and what listens for a drop: a Bad Dream, a boss).
+func _drop_from_ceiling() -> void:
+	_flip(Surface.FLOOR, 0.0)
+	return_drops += 1
+	_event(&"hull_end")
 
 
 ## The damage hitbox as it is now, stretched back over this frame's motion: any hazard

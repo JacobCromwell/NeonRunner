@@ -77,6 +77,95 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   for text and numbers. On the HUD, draw icons from `IconFactory.texture()` (cached, tinted with a
   modulate colour) rather than `IconFactory.draw()`: every polygon or polyline command costs its own
   draw call every frame, and the HUD's icons alone were once 220 of about 370.
+  - **One hit from death** (task I6, GDD §4, owner, October 14, 2026): while the player is alive in a level or a
+    boss fight with no armor hit and no shield left, `RunHud.last_hit` (`LastHitWarning`, `scripts/ui/`) shows a
+    red band along the screen's edges and plays the two-tone siren `last_hit_siren` once. It reads
+    the player's state every frame (`armor_state.is_up()`, `shield`, `alive`), not a signal, so a break, the free
+    armor's return, a pickup, a revive and a test setting `armor` are all the same to it; it ends when protection
+    returns, the player dies or the run isn't being played any more (`LevelRun.state` is not RUNNING: a level
+    finished, a boss beaten), and it never shows in a mini-game level (`LevelConfig.plays_minigame()`). A run that
+    begins unprotected gives the cue once at the start (`warn_at_start`, DESIGN-TBD, items 832–835); the
+    game's own runs always begin with the free armor, so that is a bare `Loadout` in tests and tools. Its clock is
+    real time (`delta / Engine.time_scale`, as `MusicDirector` and the slow-time tint do): slow time slows the
+    frame's `delta`, not the siren, which is a recording.
+    - *The edge* is four `ColorRect` strips on one canvas_item shader (like `SpeedLines`, so the Compatibility
+      renderer and the web draw it): the two sides, full height, and the top and bottom between them
+      (`strip_rects()`), so nothing is drawn twice and only about a third of the screen is (the middle costs
+      nothing), each shaded by the screen's own edges (`origin`, `extent`). The band is `edge_width` of the screen's
+      shorter side deep, in the kit's danger red (`UiStyle.danger`; red is the hazard colour, so it stays on the
+      HUD). It tints the scenery along the edges and the floor right under the runner, not the lanes ahead. Its
+      strength: a fade up to `steady_alpha`, then one swell to `pulse_alpha` for each of `pulse_count` high
+      tones, `pulse_seconds` apart (never more than 3 a second), `onset_delay` after the break so the armor's own
+      break sound is heard first. **Reduced flashing** (`Settings.flashing_reduced`, read each frame) has no
+      pulses: the edge fades in to `reduced_alpha` and holds.
+    - *Its layer:* the cue is a `CanvasLayer` of its own, `LastHitWarning.LAYER` (2), a child of the HUD, **under**
+      every other overlay: `SpeedLines` (3), the attack markers (4: the Enforcer Truck's lane marker, the Magnate's
+      chevron and blink, the volleyball HUD), the slow-time tint (4) and the HUD (5). So the band never covers a
+      marker whose colour is a warning (the Magnate's white-to-red turn and red blink are a Pounce's and a Claw
+      Slash's warnings) or a number. `test_last_hit_warning` scans the scripts' canvas layers and fails if any
+      is at or under the cue's. A canvas layer inside another is drawn even while the outer one is hidden (the
+      HUD is hidden during a level's intro), which the warm-up relies on.
+    - *Compiled with the level* (task PERF1's rule): every cue of the session uses one `Shader`
+      (`LastHitWarning.shared_shader()`), and where the game renders `setup()` calls `warm_up()`, which draws the
+      strips at no strength for `ShaderWarmup.DRAWN_FRAMES` frames (counted on `RenderingServer.frame_post_draw`,
+      so the intro's held game doesn't stop it) and sets `LastHitWarning.warmed`; the first armor break then
+      compiles nothing. A headless run draws nothing and warms nothing.
+    - *The siren* (`tools/asset_gen/sfx_bank_power.gd`) is F5 and B4 (a tritone) alternating, each tone a pair of
+      slightly detuned triangle waves through a low-pass (a soft, shimmering "nee-naw"), 0.34 s a tone, once for
+      each pulse; the bank reads `pulse_count` and `pulse_seconds` from the tuning, so regenerate it
+      (`tools/godot.sh sfx --only=last_hit_siren`) after changing either. It is deliberately not like the other
+      two-tone sounds the player hears in a fight: lower, slower and softer than The House's jackpot (880 and
+      660 Hz, 0.23 s a tone, over a fanfare; a reward) and the Floating Head's searchlight (1320 then 990 Hz in
+      0.14 s beeps; a bomb's warning), and flat tones where the attack warnings are rising whines and crackles and
+      the Enforcer Truck's siren sweeps. It plays once through the world's `PlayerSfx` (`requested` and `stopped`
+      for tests) on the SFX bus, ducks nothing, and is cut off if the cue ends first.
+    - *Its level* (`last_hit_siren` in `data/audio/sfx_library.tres`) is set so that, as heard on the general
+      weighting (the loudest 400 ms K-weighted, `audio_review.gd`, plus the library's level), it is at least about
+      2 dB under the quietest of every attack warning in the library (the 43 in `test_last_hit_warning`'s list,
+      which also fails if a sound named like a warning isn't in it). On the phone weighting (a small speaker, little
+      below 450 Hz) it is only louder than `truck_rev`, an engine rumble, and within about 3 dB of nineteen others,
+      since a phone drops the low parts of many warnings but not the siren's: the owner's call
+      (item 833). The suite prints the figures.
+    Numbers: `LastHitWarningTuning` (`data/ui/last_hit_warning.tres`, F6 "One hit from death").
+    `tools/showcase/screens_showcase.tscn -- --screen=hud_last_hit` plays it (`--reduced-flashing`).
+  - **Menus on a phone** (task I3): the project stretches 1280×720 to the window (`canvas_items`, `expand`),
+    so a screen's sizes are fractions of the window's height; a phone browser's page is 340 to 390 CSS pixels
+    high with its bars, which drew the shop's captions 9 pixels high. `UiScale` (`theme/ui_scale.gd`)
+    magnifies the root window's `content_scale_factor` while a `ScreenBase` is open on a touch device **in a web
+    page** (native mobile builds are left alone until someone has looked at them with it), until one UI pixel is
+    at least `UiStyle.phone_min_scale` (0.65) CSS pixels: `factor_for()` takes the window's size and
+    `DisplayServer.screen_get_scale()` (the page's `devicePixelRatio`), never more than `phone_max_factor`, and
+    not so far that the menus get narrower than `phone_min_width` (a phone held upright stays small and whole;
+    the page covers it there, GDD §2). It's 1 on a desktop, a tablet and a run (the HUD and the swipes keep the
+    plain stretch), back to 1 when the last screen closes (deferred a frame, so the next screen doesn't see a
+    step), and outside a web page unless a test sets `UiScale.assume_web`, `pixel_ratio_override` and a window
+    size (`test_phone_screens`; headless windows are 64×64).
+    - A screen asks `is_short()` (`phone_short_height`, 620 UI pixels: a phone held sideways) for its compact
+      layout: the title's name smaller and its buttons in one row, the pause menu's in two columns, the results
+      panel's smaller title, stars and score, panels with less padding above and below (`add_panel`), and the
+      shop's Menu and Next in the title bar instead of a row of their own. Read when the screen is built.
+    - `ScreenBase.content` sits in `content_scroll`, a scroll area that does nothing unless the content needs
+      more room than the screen has (then it scrolls both ways rather than cut it off; until then it ignores the
+      mouse, so it can't take a press for a scroll); `is_scrolling()` says which, and desktop-sized tests still
+      need it false.
+    - A finger's drag scrolls a list only if it reaches the `ScrollContainer`; a panel or button takes the
+      touch (mouse filter STOP), so a drag that began on a shop card did nothing. Every `PanelContainer` and
+      button in a screen that takes touches passes them on (`ScreenBase._on_node_added`; a toast, which ignores
+      them, still does), and a button still takes its own press. Sliders keep their drag. Then a press that
+      moves must stay a press: Godot 4.7's `ScrollContainer` takes any press for the start of a scroll at the
+      first pixel of movement (its `scroll_deadzone` is 0), which cancelled the press of every tap that moved a
+      little, a mouse's too. Every scroll area in a screen gets `UiStyle.scroll_deadzone` (16 UI pixels, about
+      10 CSS pixels on a phone): a tap that moves less presses, a drag that moves more scrolls.
+    - `test_phone_screens` lays every screen the demo shows (and the pause, its settings and quit dialog, and
+      the revive offer) out at 844×390, 844×340, 844×300, 667×375 and 640×290 sideways and 390×844 and 360×800
+      upright, in device pixels as a phone has them, and checks the text size (11 CSS pixels at least, none cut),
+      finger targets (40 at least), nothing off the screen or cut at the side, the screen's way on in sight,
+      and panels and buttons passing touches; plus the magnifying's maths and lifecycle, and taps and drags
+      (a tap moving a few pixels presses the title's, the shop's, a level tile's, the pause's and the revive
+      offer's buttons; a drag past the deadzone scrolls the shop and the level select without pressing).
+      `godot --resolution 844x340 res://tools/showcase/screens_showcase.tscn -- --screen=shop --phone
+      --flavor=web_demo --shot=build/shop.png` renders one (the window's size is the page's, at pixel ratio 1;
+      the showcase sets `UiScale.assume_web` for `--phone`).
 - **Audio:** `SfxLibrary` maps sound names to `assets/sfx/*.wav` (volumes in
   `data/audio/sfx_library.tres`). The cyborg firing effect alone is -3.2 dB instead of -5.5 dB:
   about 1.303 times its former amplitude, matching the owner's approximately 30% increase;
@@ -125,3 +214,13 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
       rolling in (a double pulse's second wave has only this), with no pitched hum under the crash.
     - *Shot down in its warning,* a Resonator cuts the sound off before its crash (`PlayerSfx.stop()`):
       with no wave coming, the crash must not land.
+  - **On the web** (task I3; `docs/architecture/economy-platforms.md`, The web demo): every `AudioStreamPlayer`
+    plays with Godot's web default, "Sample" (`audio/general/default_playback_type.web`), so music and effects
+    both go through the browser's Web Audio, not the engine's own mixer. Three things follow. *The silent
+    switch:* Safari mutes Web Audio while an iPhone's ring/silent switch is on (a video isn't muted), so the web
+    preset's head include sets `navigator.audioSession.type = 'playback'` (guarded; the demo then plays through
+    the switch). *Memory:* a sample is a whole decoded track (`AudioDriverWeb::register_sample` decodes it in
+    one go on the page's thread), kept as 32-bit stereo: the Zone 1 song is 52 MB, the Boss 1 song 60 MB, and
+    Godot's web audio code copies a sample's buffer again each time it starts. *Effects:* Music bus effects
+    don't apply to samples, so the death dip's low-pass (`MusicDirector.dip_filter`) is silent on the web;
+    only its volume dip is heard. Playing music as a stream would change all three (`docs/OPEN_QUESTIONS.md` item 828).

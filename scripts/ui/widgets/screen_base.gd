@@ -20,6 +20,10 @@ extends Control
 ## Subclasses may override _ready and _draw freely (the base does its setup in _notification).
 ## If you override _unhandled_input, call super(event) to keep ui_cancel = back.
 ## Children placed under the screen in a .tscn are moved into `content`.
+##
+## `content` sits in a scroll area that only does anything when the content needs more room than the
+## screen has (a phone's short browser window): then it scrolls, in either direction, instead of being cut
+## off. A screen whose content fits looks and lays out as it always did.
 
 signal back_requested
 
@@ -59,6 +63,8 @@ var back_button: NeonButton
 var header_right: HBoxContainer
 ## Where the screen's UI goes: a VBoxContainer filling the space between title bar and footer.
 var content: VBoxContainer
+## The scroll area around `content`: it scrolls only where `content`'s minimum size is bigger than it.
+var content_scroll: ScrollContainer
 var footer: PanelContainer
 var _hints: HBoxContainer
 var _hint_list: Array = []
@@ -118,11 +124,27 @@ func _build() -> void:
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layout.add_child(_body)
+	content_scroll = ScrollContainer.new()
+	content_scroll.name = "ContentScroll"
+	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	content_scroll.follow_focus = true
+	# It takes the wheel and a drag only while the content needs more room than it has (_update_scroll_clip):
+	# until then it ignores the mouse, so a press on a button is never taken for the start of a scroll.
+	content_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content_scroll.scroll_deadzone = UiTheme.style().scroll_deadzone
+	# Clipping only while it scrolls, so a glow reaching past the content isn't cut when nothing does.
+	content_scroll.clip_contents = false
+	_body.add_child(content_scroll)
 	content = VBoxContainer.new()
 	content.name = "Content"
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_body.add_child(content)
+	content_scroll.add_child(content)
+	content_scroll.resized.connect(_update_scroll_clip)
+	content.minimum_size_changed.connect(_update_scroll_clip)
 
 	footer = PanelContainer.new()
 	footer.name = "Footer"
@@ -137,6 +159,14 @@ func _build() -> void:
 
 func _notification(what: int) -> void:
 	match what:
+		NOTIFICATION_ENTER_TREE:
+			# A phone's menus are drawn bigger (UiScale); it ends when the last screen closes.
+			UiScale.screen_entered(self)
+			get_tree().node_added.connect(_on_node_added)
+		NOTIFICATION_EXIT_TREE:
+			UiScale.screen_exited(self)
+			if get_tree().node_added.is_connected(_on_node_added):
+				get_tree().node_added.disconnect(_on_node_added)
 		NOTIFICATION_READY:
 			# Children from a .tscn (owned by this scene) go into the content area; nodes added by
 			# code (a dialog, a toast) stay where they were put.
@@ -199,6 +229,13 @@ func add_panel(variation: StringName = UiTheme.DIALOG, min_width: float = 0.0) -
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = variation
 	panel.custom_minimum_size.x = UiTheme.px(min_width)
+	if is_short():
+		# A phone held sideways: less padding above and below, which is most of what a dialog can spare.
+		var box := get_theme_stylebox(&"panel", variation).duplicate() as StyleBoxFlat
+		if box != null:
+			box.content_margin_top = UiTheme.px(10)
+			box.content_margin_bottom = UiTheme.px(10)
+			panel.add_theme_stylebox_override(&"panel", box)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	panel.add_child(column)
@@ -266,6 +303,43 @@ func _update_layout() -> void:
 	_body.add_theme_constant_override(&"margin_bottom", gap + 4)
 	# On touch screens the back button is a big icon; with a keyboard it also says BACK.
 	back_button.text = "" if get_theme_constant(&"touch", UiTheme.NEON) == 1 else "BACK"
+
+
+## A finger that starts a drag on a panel, a card or a button must scroll the list it is in: such a control
+## takes the touch (mouse filter STOP) unless it's told to pass it on, and then only a drag that starts on
+## bare background scrolls (a phone's shop was nearly all cards). So every panel and button in a screen
+## that takes touches (never one that ignores them, like a toast) passes them on; a button still takes its
+## own press, and a slider keeps its drag. A scroll area in a screen gets the style's `scroll_deadzone`: a
+## ScrollContainer (4.7) takes a press for the start of a scroll at the first pixel of movement, which would
+## cancel the press of any tap that moves a little, a mouse's too.
+func _on_node_added(node: Node) -> void:
+	if not is_ancestor_of(node):
+		return
+	if node is ScrollContainer:
+		(node as ScrollContainer).scroll_deadzone = UiTheme.style().scroll_deadzone
+	elif (node is PanelContainer or node is BaseButton) and (node as Control).mouse_filter == Control.MOUSE_FILTER_STOP:
+		(node as Control).mouse_filter = Control.MOUSE_FILTER_PASS
+
+
+## True on a phone held sideways (a short menu: UiScale.is_short()), where a screen lays itself out
+## compactly. Read when the screen is built; the screen is in the tree by then, at its final size (a screen built
+## outside the tree, as some tests do, is never short).
+func is_short() -> bool:
+	if not is_inside_tree():
+		return false
+	return UiScale.is_short(get_viewport_rect().size)
+
+
+## True while the content is bigger than its room, which is when the scroll area clips.
+func is_scrolling() -> bool:
+	var need: Vector2 = content.get_combined_minimum_size()
+	return need.x > content_scroll.size.x + 0.5 or need.y > content_scroll.size.y + 0.5
+
+
+func _update_scroll_clip() -> void:
+	var scrolling: bool = is_scrolling()
+	content_scroll.clip_contents = scrolling
+	content_scroll.mouse_filter = Control.MOUSE_FILTER_PASS if scrolling else Control.MOUSE_FILTER_IGNORE
 
 
 func _update_hints() -> void:

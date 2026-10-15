@@ -80,6 +80,9 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
 - **The ceiling is never required:** the floor route under a ceiling is always survivable without taking the pad. The ceiling is the easier route (decided September 26, 2026).
 - **Ceiling hazards** (decided September 26, 2026): ceilings may carry hazards of their own, but none in zones 1–2 *(proposed; owner agreed)*. The first is the **Barnacle Turret** (§9.8), introduced in the Marketplace.
+- **Ceiling scenarios** (owner, October 14, 2026): never in zones 1–2; sprinkled into later zones.
+  - **Pick the right pad:** a ceiling carries **electric fences** (§9.1) that hit a player who takes the **first** anti-grav pad; a **second pad further along** lands the player past them, safe. First introduced simply, with one unsafe pad and one safe one; later, **several pads**, some leading to safe parts of the ceiling and some to dangerous parts, and the player has to read which is which.
+  - **The treasure stash:** a **separate return pad** partway along a ceiling (apart from the ceiling's usual way back down at its end) sends the player back to the floor as usual, and it is the **only way into a treasure stash**: a stretch of floor walled off by doodads. For a stash in the third lane: a doodad at its start in that lane, and doodads in the two adjacent lanes alongside it, so a player strictly on the floor can't get in. It holds **two or three of the highest-denomination credits**.
 
 ### Collision rules (core principle)
 - **Damage only on real contact.** Lanes determine movement, not hits. A bullet in your lane that doesn't touch you does not hurt you.
@@ -122,6 +125,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **One hit ends the run**, unless protected by armor or a shield.
 - **Falls:** into gaps between trucks or holes in the street, within a lane. Switching lanes into a lane that has a gap under you = fall. Lane switching itself is safe.
 - **Invulnerability:** after armor or a shield breaks, the player gets about **1 second of invulnerability** (character flashes).
+- **One hit from death** (owner, October 14, 2026): when the player has run out of all armor and shields, an **audio and visual cue** says they are a single hit away from death. The sound is a **two-tone siren**.
 - **Free armor** (owner's playtest, September 30, 2026): every level and boss fight starts with armor, and after it breaks it **comes back 30 seconds later**. The armor in the shop becomes an upgrade to it (§8).
 - **No checkpoints.** Levels are short (**90–150 seconds**). Death restarts the level.
 - **On death, and when quitting a level from the pause menu, the player keeps 20%** of credits collected during that attempt (quitting decided September 26, 2026, so deliberately dying never pays better than quitting). Completing a level always pays far more, so deliberate dying is never profitable.
@@ -396,6 +400,7 @@ Shared interaction rules apply unless stated otherwise:
     - **Golden Zone:** derived from the Casino Mob Enforcer by the art agent.
     - Gold and brass may appear on variants as **unlit ornament**; the screen always glows cold white; nothing glows copper.
     - **No variant is bigger than the base.** The concept sheets are references and jumping-off points, not specs to copy, since a bigger body would no longer match the hitboxes.
+    - **Drawn 20% bigger** (owner, October 14, 2026): the cyborgs were hard to see in the first zone, so they are drawn 20% bigger **with their hitboxes unchanged**, to make them easier to see without making them harder. *(Proposed)* In the Neon City only, where the problem was seen; the other zones' variants keep their size.
 - **Movement:** stands mostly on **truck roofs** and moves slowly toward the player, dropping behind quickly.
 - **Attack:** loosely aimed laser bolts in **bursts of 2–3**, then a pause to reload.
   - Each burst has a **visible charge-up** (arm cannon glow).
@@ -649,7 +654,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Three phases**, one stomp each. After a stomp it shakes free, shrieks and rises; the next phase is faster, with more cyborgs.
   - **Damage:** stomps do the real damage (a third of its health each); weapons chip away slowly (tuned so even the best weapon saves at most one stomp over the whole fight).
   - **Propaganda voice:** a heavily distorted announcement voice that isn't meant to be understood, plus a few short slogans shown as text on its face screen (so only those slogans need translating).
-  - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor or shield breaks during the fight, another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
+  - **Armor pickups:** one appears at the start of the final phase. In addition, whenever the player's armor takes a hit during the fight (not a shield's break; owner, October 14, 2026, §10), another armor pickup appears **10–15 seconds later** to give them a chance (at most once per phase *(proposed)*).
   - **Kept simple:** no bonus damage for shooting into its open mouth.
   - **Defeat**: its face glitches, the propaganda cuts out mid-shout, and it crashes into the street ahead; the runner runs through the wreck. This leads into the zone's outro, and in the web demo into the "get the full game" screen.
 - **Sewer Swarm** (Gangland). Owner's design, with the design round's additions approved by the owner (September 26, 2026).

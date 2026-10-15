@@ -43,10 +43,11 @@ extends RefCounted
 ## Each entry's params carry its ceiling: hull_start, hull_end, first_lane, last_lane.
 
 const TYPE: String = "barnacle_turret"
-## Every feature whose rules may add or take away ceilings or pads (the Resonator's run after these).
+## Every feature whose rules may add or take away ceilings or pads (the Resonator's run after these), the ceiling
+## scenarios' too (task I4: they take ceilings before the turrets do, and no turret hangs from one of theirs).
 const RUN_AFTER: Array[String] = ["drone", "host", "hover_truck", "octodog", "cyborg", "window_cyborg",
 	"screech", "screech_vents", "generator", "wall_fences", "wall_fences_partial", "buzz_overdrive",
-	"tithe_collector", "gilded_sentinel"]
+	"tithe_collector", "gilded_sentinel", "treasure_stash", "fenced_ceiling"]
 ## The generator's credits on a ceiling (LevelGenerator._place_ceiling_credits): the rich one in the
 ## lane furthest from a pad's sits this share of the way from the pad to the ceiling's end.
 const FAR_CREDIT_SHARE: float = 0.7
@@ -213,11 +214,12 @@ static func intro_by(gen: LevelGenerator, t: BarnacleTurretTuning) -> float:
 ## lo and hi the track distances between which a turret there may stand (after_pad_seconds past the
 ## ceiling's last pad, or tight_after_pad_seconds where that lane is the only one beside a pad's lane,
 ## see tight_lane(); before_end_seconds before its end; never before the feature's start); [] if none
-## may (a one-lane ceiling, every lane a pad's, no pad, or too short).
+## may (a one-lane ceiling, a ceiling scenario's (task I4: one new thing at a time; CeilingScenarios.KEY), every
+## lane a pad's, no pad, or too short).
 static func mount_lanes(gen: LevelGenerator, h: Dictionary, t: BarnacleTurretTuning) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var layout: LevelLayout = gen.layout
-	if layout.hull_width(h) < 2:
+	if layout.hull_width(h) < 2 or h.has(CeilingScenarios.KEY):
 		return out
 	var span: Vector2i = layout.hull_lanes(h)
 	var pad_lanes: Array[int] = []

@@ -125,16 +125,47 @@ func _zone_section(zone: ZoneDef, zi: int, steps: Array[CampaignStep]) -> Contro
 	if zone.tagline != "":
 		var tagline := ScreenBase.make_label(zone.tagline, UiTheme.CAPTION)
 		tagline.size_flags_vertical = Control.SIZE_SHRINK_END
+		# One line where there's room; wrapped where there isn't (a phone's page: the list needs no
+		# sideways scroll for the longest of them).
+		tagline.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tagline.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		name_row.add_child(tagline)
 	header.add_child(_zone_stars(zone, steps))
 	var row := HFlowContainer.new()
 	column.add_child(row)
+	# Debug builds show the empty cinematic slots the campaign skips (item 395), where their steps would go.
+	var empty: Dictionary[String, CinematicDef] = {}
+	if OS.is_debug_build():
+		for slot: Dictionary in App.campaign.empty_slots():
+			if slot["zone"] == zone:
+				empty[String(slot["id"]).get_slice("/", 1)] = slot["def"]
+	if empty.has("intro"):
+		row.add_child(_empty_slot_tile(zone, "intro"))
 	for s: CampaignStep in steps:
 		if s.zone == zone:
+			if s.kind == CampaignStep.Kind.BOSS and empty.has("boss_intro"):
+				row.add_child(_empty_slot_tile(zone, "boss_intro"))
 			var tile: TileButton = _step_tile(s)
 			row.add_child(tile)
 			tiles[s.id] = tile
+	if empty.has("outro"):
+		row.add_child(_empty_slot_tile(zone, "outro"))
 	return panel
+
+
+## A tile for an empty cinematic slot the campaign skips (debug builds only): not pressable, it only shows
+## that the slot is there for the owner to fill.
+func _empty_slot_tile(zone: ZoneDef, slot: String) -> TileButton:
+	var tile := TileButton.new()
+	tile.tooltip_text = "Empty slot: the campaign skips it until its cinematic has a scene (CinematicDef.scene)"
+	tile.custom_minimum_size.x = UiTheme.px(112)
+	tile.content.add_child(_centered_icon(&"film", 28, UiTheme.style().text_disabled))
+	tile.add_label(slot.replace("_", " ").to_upper(), UiTheme.CAPTION)
+	tile.content.add_child(_badge(&"info", "EMPTY SLOT", UiTheme.style().text_dim))
+	tile.disabled = true
+	tile.content.modulate = Color(1, 1, 1, 0.55)
+	tile.name = "EmptySlot_%s_%s" % [zone.id, slot]
+	return tile
 
 
 ## Stars earned in the zone out of the most possible, on the chosen tier: its levels', and its boss's
@@ -248,7 +279,10 @@ func _fill_boss(tile: TileButton, s: CampaignStep, done: bool, locked: bool) -> 
 	stars.add_theme_constant_override(&"separation", roundi(UiTheme.px(4)))
 	top.add_child(stars)
 	var boss_name := ScreenBase.make_label(s.title(), &"", HORIZONTAL_ALIGNMENT_LEFT)
-	boss_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# A long name ("The Golden Convergence", "Mecha Guppy and Captain Cogs") takes a second line rather than
+	# lose its end (the tile is the width of one line of the shorter names).
+	boss_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	boss_name.max_lines_visible = 2
 	tile.content.add_child(boss_name)
 	if locked:
 		return

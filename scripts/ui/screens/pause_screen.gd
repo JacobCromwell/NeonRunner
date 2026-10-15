@@ -15,7 +15,7 @@ func _ready() -> void:
 	show_title_bar = false
 	back_requested.connect(App.resume_game)
 	set_hints([[&"ui_accept", "SELECT"], [&"ui_cancel", "RESUME"]])
-	var column: VBoxContainer = add_panel(UiTheme.DIALOG, 440.0)
+	var column: VBoxContainer = add_panel(UiTheme.DIALOG, 640.0 if is_short() else 440.0)
 	column.add_theme_constant_override(&"separation", roundi(UiTheme.px(10)))
 	column.add_child(ScreenBase.make_label("PAUSED", UiTheme.TITLE, HORIZONTAL_ALIGNMENT_CENTER))
 
@@ -34,17 +34,28 @@ func _ready() -> void:
 	gap.custom_minimum_size.y = UiTheme.px(4)
 	column.add_child(gap)
 	var boss: bool = run != null and run.context != null and run.context.is_boss()
-	_add_button(column, "resume", "RESUME", NeonButton.Kind.PRIMARY, &"play", App.resume_game)
-	_add_button(column, "restart", "RESTART FIGHT" if boss else "RESTART LEVEL", NeonButton.Kind.NORMAL, &"restart", _restart)
-	_add_button(column, "settings", "SETTINGS", NeonButton.Kind.NORMAL, &"settings", _open_settings)
-	_add_button(column, "quit", "QUIT TO MENU", NeonButton.Kind.FLAT, &"home", _ask_quit)
+	# A phone held sideways has no height for four stacked buttons: two columns of two.
+	var grid: Container = column
+	if is_short():
+		var two := GridContainer.new()
+		two.columns = 2
+		two.add_theme_constant_override(&"h_separation", roundi(UiTheme.px(10)))
+		two.add_theme_constant_override(&"v_separation", roundi(UiTheme.px(10)))
+		column.add_child(two)
+		grid = two
+	_add_button(grid, "resume", "RESUME", NeonButton.Kind.PRIMARY, &"play", App.resume_game)
+	_add_button(grid, "restart", "RESTART FIGHT" if boss else "RESTART LEVEL", NeonButton.Kind.NORMAL, &"restart", _restart)
+	_add_button(grid, "settings", "SETTINGS", NeonButton.Kind.NORMAL, &"settings", _open_settings)
+	_add_button(grid, "quit", "QUIT TO MENU", NeonButton.Kind.FLAT, &"home", _ask_quit)
 	initial_focus = buttons["resume"]
 
 
-func _add_button(parent: Control, id: String, label: String, kind: NeonButton.Kind, icon_name: StringName,
+func _add_button(parent: Container, id: String, label: String, kind: NeonButton.Kind, icon_name: StringName,
 		action: Callable) -> void:
 	var b := NeonButton.make(label, kind, icon_name)
 	b.pressed.connect(action)
+	if parent is GridContainer:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(b)
 	buttons[id] = b
 
