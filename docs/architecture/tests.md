@@ -86,6 +86,17 @@ phase's one within the boss's delay, and its last hit brings no second. `test_ar
 free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
 each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
 line and texts, the save migration, and every kind of run through the App (the web demo's too).
+`test_last_hit_warning` covers the "one hit from death" cue (I6; GDD §4): the tuning's ranges and F6 sliders; the
+siren's file (two flat tones alternating once per pulse, slower than the jackpot's and the searchlight's, no
+loop, and mixed under every attack warning in the library, 43 of them, on the general and the phone loudness
+weightings, with a guard that a sound named like a warning is in the list); the cue's canvas layer (under every other
+layer the scripts build, found by scanning them) and its four strips (only the edges are drawn, nothing twice);
+the one shared shader and its warm-up frames; the cue stepped by hand on a bare world (the free armor breaking, a
+shield still held, an upgraded armor's surviving hits, the armor's return, a pickup, death and a revive, a start
+with no armor, a run that is over, a mini-game level, and the siren played once and cut off when the cue ends
+first); the pulses' count, rhythm and the steady edge after them, also under slow time; Reduced flashing (no
+pulsing); the HUD running it by itself and a pause holding it; and through the App a level, a retry, a death, both
+boss fights and their end, and the volleyball match.
 `test_theft` covers the robbed hit (B6; GDD §9.12): a thief's touch resolving to `ROBBED` over every
 combination of protections (never hurt, nothing used up; caught by the dash, a stomp, the claws), every
 other hazard resolving exactly as before (a copy of the rules before B6, over every hazard kind, enemy
