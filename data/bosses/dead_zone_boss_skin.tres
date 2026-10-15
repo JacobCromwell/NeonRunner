@@ -4,6 +4,7 @@
 
 [resource]
 script = ExtResource("1_skin")
+cyborg_draw_scale = 1.2
 enemy_variant = &"burned"
 skybridge_share = 0.0
 feed_tower_share = 0.0
