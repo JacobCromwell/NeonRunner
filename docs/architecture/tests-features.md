@@ -38,7 +38,42 @@ ceilings (B3) from the layout to the screen: the
 sections and collision boxes the track builds for each range at 3, 5 and 6 lanes, moves on a ceiling
 (within it, and blocked at its edges with the bump and the clank's event, on real physics), a pad
 holding the player to its lane, a one-lane ceiling ridden and dropped from, the camera kept under a
-ceiling and past its end, and every skin's ceilings (see Zone skins). `test_audio` checks
+ceiling and past its end, and every skin's ceilings (see Zone skins). `test_climb` (task E5e-a) covers the
+climb's core for GDD §10's Beach boss at 3, 5 and 6 lanes: ceilings at their own heights (from the street,
+and from a roof 9 m up to a ceiling at 15 m), a ceiling moving while ridden, a ceiling ending lane by lane
+holding a switch within the lanes it still covers, the drop onto a raised roof in a lane it covers and past
+it (onto the street, or to a death where the street is eaten) in one it doesn't, falls counted from the
+floor base (as soon and as deep as from the street, in the pit as deep; a floor base above the runner never
+dropping them), fast falls landing where they cross a floor (onto the street and back onto a ceiling), the
+shadow on the roof only while the climb is on, the grapple's save and a revive after a fall
+going where the hook says (and the framework's hook leaving them as they were), the climbing camera up a
+five-step climb to 30 m, and boss props at a height. `test_mecha_guppy` (task E5e-b1) checks the Beach boss's data
+(the slot's scene, title, phases, weapons doing nothing, the armor rule, the look without walls, the campaign under
+Sunset Strip's sky, its rewards and par times, its hints), the climb's plan over 60 steps at 3, 5 and 6 lanes and both speeds (the lanes that
+lead up and their counts, the cues alternating and shaped as the owner put them, the reading margin from the latest
+settle in every lane, the hut full width until the deadline, a wrong drop dead before the next front even dashing,
+an unjumpable pad strip, the reaching lanes past the latest settle, never the same lanes three times running for a
+cue, phase 2 15-25% faster with every margin kept (task E5e-b3: its higher rise, steps as long), the notches'
+promises (E5e-b3: an outer lane on a seeded side whatever leads up, eaten far enough past the landing for the
+bait), no escalation, a retry the same), every tunable at both ends of its F6 range keeping those promises, the built climb against its plan on real physics (roof tops, hut ends, pads,
+fronts and blocked sides, the lanes that lead up read off the collision, the edge of sight at the fog's end), the
+roof faces' rules, the hits and phases (phase 3's minute from the runner's arrival on the top), and the armor
+pickups on the roof ahead. `test_mecha_guppy_climb` plays it on physics without god mode with `MechaGuppyBot`:
+through phases 1 and 2 (the bot baiting each step's hit, task E5e-b3) into phase 3's top at 3, 5 and 6 lanes and 18
+and 23.8 m/s, phase 2's rate and its census of bombs to deal with measured, never a circle in the runner's lane with
+no floor to switch to; the worst case (the farthest lane, the latest flip, also dashing, reading `read_seconds`
+late, and with `reach_back` at 30 m) making every step with time to spare; wrong drops at both cues from the
+farthest wrong lane, dashing, dying by a fall before the higher roof's front (and saved by the grapple or a revive
+onto the higher roof, in its nearest lane that leads up, the rope from the lifted runner); phase changes (nothing in
+sight changes, the next step is the new phase's, nothing ever planned in sight, `top_reached` starting phase 3's
+minute and the waterfall's fade); the same rhythm through a long phase 1 and on a retry, with the builder's work a
+frame staying small; and the climbing camera (the runner on screen, never inside a roof, under 0.40 m a frame, the
+shadow on the roof, over phase 1's steps and phase 2's higher ones); it prints its figures. `test_mecha_guppy_bombs`,
+`test_mecha_guppy_bites`, `test_mecha_guppy_bait` and `test_mecha_guppy_tunables` (tasks E5e-b2 and E5e-b3) check
+Captain Cogs' bombs, Mecha Guppy's bites and catches, the bait with both bots' phase times, and the bait's and the
+fallback's promises at both ends of every tunable's range; `test_mecha_guppy_top` and `test_mecha_guppy_whole` (task
+E5e-c) phase 3 and the defeat, and the whole fight with its par times and the campaign's flow (see Mecha Guppy and
+Captain Cogs). `test_audio` checks
 the music files (seamless loops, lengths, tempos, size budgets), the Music autoload's fades, duck and
 death dip on its players' levels and the bus's low-pass (headless runs never start a player), and the
 run's music hooks through the App. `test_cinematics` checks the cinematic toolkit: its paths (smooth,

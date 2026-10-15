@@ -123,6 +123,31 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   the feet within `GameRules.stomp_tolerance` of the hazard's `bottom_y()`). Only such hitboxes can be
   stomped from the ceiling; on the floor nothing changed.
 - Falls aren't hazards: the Player handles them (the grapple hook saves one fall).
+  - **Counted from the floor fallen from** (task E5e-a, for GDD §10's climb, the Beach's boss): the pit
+    (`pit_depth`: no more lane switches, jumps or wall entries; the grapple fires here) and the fall's death
+    (`fall_death_depth`) are measured down from `Player.fall_base()`: the floor base a boss that raises the
+    floor sets (`Player.floor_base`, 0 in every level and every other boss fight), or the floor the runner
+    last stood on (`Player.floor_y`) if that's lower, so a floor base raised ahead of the climb never drops a
+    runner who isn't up there yet. A fall off a roof 20 m up then ends as soon, and as far below it, as a fall
+    into the street's pit (about 0.5 s), where it took about 1.2 s counted from the street.
+  - **The save goes where the boss says**: the grapple's save, and a revive after a fall, pull the runner up
+    with the grapple's pull from just under a floor (`Player._pull_up`): by default straight up out of the pit
+    (just under `fall_base()`, as it always was), or where `Player.grapple_save` says, a Callable a boss fight
+    sets to its own hook as it begins (`BossEncounter._grapple_save(player, cause)`, `cause` &"grapple" or
+    &"revive"; the framework's returns `{}`, the default). It returns `{lane, height}`: the lane to pull them
+    into (moved across like a lane switch) and the world height of the floor to pull them up onto (GDD §10:
+    the Beach's climb pulls them up onto the higher roof, into its nearest lane that leads up). Either may be
+    left out; the save never pulls them down.
+  - **A fast fall lands where it crosses a floor.** A landing is found by `_support_top`'s rays, 0.6 m above
+    the feet to 0.3 m below, and allowed up to `pit_depth` below the top; a fall faster than `pit_depth` a
+    frame could end a frame that far below a top it passed and drop through it. Such a frame now looks from
+    where the feet were as it began (`_crossed_top`) and lands on the highest top they passed. Slower falls
+    never need it, so they land exactly as before. It catches the air slide's fast fall (22 m/s and more):
+    on the unchanged code (437d46e), a slide pressed 1 to 40 frames into a jump dropped through the street
+    at 4 of those 40 timings (3, 11, 30 and 34 frames), and at the same 4 threw a rider who had jumped off
+    a ceiling off it mid-ceiling as they slid back up (an early `hull_end`). It also catches long drops
+    off high ceilings, and the anti-grav pull up to a ceiling higher than `ceiling_height` (which could
+    pass through it and fall back).
 - **The armor** (GDD §4 and §8, owner's playtest, September 30, 2026) is a state with rules of its own,
   `DamageRules.Armor`: up with its hits left, or broken and coming back. Every run the profile starts
   (levels, boss fights, retries, quick play, endless, the web demo) carries it free (`Loadout.armor`),
@@ -153,7 +178,23 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   `Player._bump_ceiling_edge`, a bump that stops short of the ceiling's edge). The player asks the
   ceilings themselves: a ray on the hull layer over the middle of each lane (`_ceiling_over`), so the
   track's ceilings and a boss's (`BossProps.ceiling`) hold the player in alike, and a pad lands the
-  player in its own lane even if a switch was under way (`_hold_to_pad_lane`).
+  player in its own lane even if a switch was under way (`_hold_to_pad_lane`). A ceiling whose lanes end
+  at different distances (`BossProps.ceiling_lanes`: one section per run of lanes ending together) holds
+  the player within the lanes still covered where they are, and each lane drops at its own end.
+- **Ceilings at any height** (task E5e-a, for GDD §10's climb). Each ceiling carries its own height: its
+  collision box on the hull layer. A pad flips the player to the first ceiling over the pad's lane within
+  `Player.CEILING_SEARCH` (30 m) of the feet (`_ceiling_over_pad`), and `Player.ceiling_y` holds the
+  height of the ceiling they ride (or rode last), which the flip (`_flip`), the ride (`_support_top`,
+  `_surface_y`), the drop at its end, the lanes on it (`_ceiling_over`), the shadow on its underside, the
+  magnet's field and the climbing camera all use. With no ceiling over the pad the standard height stands in (`ceiling_height` above
+  `fall_base()`): the player flips up into nothing and drops back, as ever. A ceiling within
+  `HEIGHT_SNAP` (1 mm) of the standard height is taken at exactly that height, so every level's ceilings
+  (all at `ceiling_height`) play exactly as before; one that moves while it's ridden (a gunship's belly
+  coming down, the Floating Head's third-window ceiling lowering in) takes `ceiling_y` along while the
+  player stands on it (`_follow_ceiling`), so the drop at its end comes from where it really is. At its
+  end the player drops onto whatever is below on the floor layer: a raised roof (landed on at any height
+  through `_support_top`, and `_crossed_top` for a long drop), the floor far below, or nothing (a fall).
+  `Player.floor_y` is the floor they stand on or last stood on (the street or a raised one).
 - **Wall fences are fences** (task B5; GDD §9.1: "the same rules as floor fences"). A wall fence's field is
   an electrical Hazard like a floor fence's (TrackBuilder._build_wall_fence), so DamageRules lets armor, the
   shield and the dash through and never claws, and weapons never see it (it's no enemy). It's on the

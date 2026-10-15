@@ -43,6 +43,8 @@ extends SceneTree
 ##                        screech's chirp as it nods to the runner
 ##   sfx_bank_minigames.gd  the mini-games' own sounds (the Beach's volleyball match: the ball's hit, its bounce in the
 ##                        sand, the referee's whistle)
+##   sfx_bank_mecha_guppy.gd  Mecha Guppy and Captain Cogs: the captain's throw, the shark coming up (a bite's and a
+##                        breach's warning), its jaws snapping shut, a bomb clanging into its jaws (a hit)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -73,6 +75,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_cinematics.gd"),
 	preload("res://tools/asset_gen/sfx_bank_gangland_outro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_minigames.gd"),
+	preload("res://tools/asset_gen/sfx_bank_mecha_guppy.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"

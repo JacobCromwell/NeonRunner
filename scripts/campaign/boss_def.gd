@@ -89,7 +89,7 @@ extends Resource
 ## player's armor down and no shield (with the free armor every run carries, while it's broken and
 ## coming back) counts as an armor hit at its start (an armor pickup armor_delay_min–max seconds later,
 ## that phase's one) unless an armor pickup is already on its way. Off: GDD §10's rule as written.
-## DESIGN-TBD (docs/questions/i9.md): a shield held as the phase begins still counts as protection,
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 825): a shield held as the phase begins still counts as protection,
 ## though its break no longer brings a pickup (task I9), so such a phase brings none.
 @export var armor_when_unprotected: bool = false
 

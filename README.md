@@ -18,9 +18,9 @@ stars and payouts); a test boss shows the framework at work. The Neon City's bos
 is built and plays in the campaign after City 3 (debug builds: `--boss=city_boss`), and so is the Dead
 Zone's Sleep Taker after Dead Zone 2 (`--boss=dead_zone_boss`), and the Casino's House after
 Casino 2 (`--boss=casino_boss`), the Corporate zone's Hostile Takeover after Corporate 2
-(`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), and the
-Golden Zone's final villain, The Golden Convergence, after Golden 3 (`--boss=golden_boss`). The Beach's boss is
-still to be designed: its slot is a placeholder card the campaign passes through. The short cinematics are built with a code-driven cinematic toolkit
+(`--boss=corporate_boss`), Gangland's Sewer Swarm after Gangland 3 (`--boss=gangland_boss`), the Beach's
+Mecha Guppy and Captain Cogs after Beach 3 (`--boss=beach_boss`), and the Golden Zone's final villain, The
+Golden Convergence, after Golden 3 (`--boss=golden_boss`). The short cinematics are built with a code-driven cinematic toolkit
 (camera paths, the runner and cyborgs on the humanoid rig, timed events, skippable). The owner's story beats are
 built for the City's outro, Gangland's boss intro and the Dead Zone's intro (the runner climbing out of a smoking
 crater as a host cyborg looks on); until the owner describes the rest, each other zone's intro (and the City's boss
@@ -68,8 +68,8 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each stretch with room for one gets one. Campaign levels have their own share |
 | `--pickups` | Quick play with armor, shield and grapple pickups in turn, to review their look (`--pickups=shield,grapple` for some). In the game only boss fights have pickups |
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
-| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, `--level=casino/1` the Casino's first level, and `--level=beach/1`, `beach/2` (the volleyball match) and `beach/3` the Beach's levels (`tools/godot.sh smoke --level=beach/1` smoke-runs one) |
-| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence) with the full game flow once it's built, and as quick play while it's being built. Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, `--level=casino/1` the Casino's first level, and `--level=beach/1`, `beach/2` (the volleyball match) and `beach/3` the Beach's levels, `beach/boss` its boss (`tools/godot.sh smoke --level=beach/1` smoke-runs one) |
+| `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence; `beach_boss`: Mecha Guppy and Captain Cogs) with the full game flow (a fight still being built plays as quick play). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -123,8 +123,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Campaign:** 20 levels in eight zones, about 45 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate and the Dead Zone with two, the
   Beach with three (its second a volleyball mini-game), and the Golden Zone with three.
-  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is still to
-  be designed) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
+  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is
+  Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
   (skippable), but the Dead Zone's, which plays the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
@@ -409,6 +409,41 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   a red line (low: jump it; high: slide under it). When he falls the light comes back and the feed dies: his
   cables tear out, the screens go dark outward, the music cuts out, and he collapses as the runner runs past
   (`tools/showcase/golden_convergence_magnate_showcase.tscn` shows him and each part).
+  Mecha Guppy and Captain Cogs, the Beach's boss (task E5e), plays in the campaign after Beach 3 at the Beach's
+  23.8 m/s under Sunset Strip's sunset (debug builds: `--level=beach/boss` or `--boss=beach_boss`; `--phase=3`
+  starts at the climb's last steps before the top). Mecha Guppy, a building-sized mechanical shark, has eaten
+  the street, and the runner climbs out of its reach over tiki bar towers that stand all the way down to the
+  water, with chasms eaten between them. A strip of anti-grav pads flips them up onto a hovering tiki hut.
+  Ahead, the next tower's roof stands 3 m higher, and only some of the hut's lanes drop them onto it: one on
+  3 lanes, and one, two or three on 5-6 lanes. Either those lanes of the hut run on further, lit, or the
+  roof's lanes reach back under the hut on a pier, the two cues taking turns. The other lanes drop the
+  runner into the chasm, a fall unless the grapple saves them (it pulls them up onto the higher roof). A
+  rider anywhere on a hut has time to read the lanes and switch, with 0.9 s to spare, from the farthest lane
+  after the latest flip. The camera follows them up past a giant waterfall whose foot sinks below as they
+  climb, over a hazy sea and clouds, under Sunset Strip's sunset in the campaign. Phase 2 climbs about 20%
+  faster (its roofs stand 3.6 m apart). Mecha Guppy rises beside the end of each roof the runner leaves (a
+  rumble warns of it) and bites it off once they're up on the hut. Captain Cogs, a clockwork-armed pirate in a
+  flying galleon ahead, throws bombs warned like the Floating Head's (a red circle where each lands, a
+  whistle): a volley on the roofs to dodge, and in phase 2 more of them, with a bomb where riders land. On
+  the first tower, and from the second on every other roof (those carry no volley), Mecha Guppy bites a
+  crescent out of the floor ahead of the runner (E5e-f): a red crescent on the deck and knocking under it
+  warn of it, and it leaves one lane to switch into (in phase 2 some bites cross every lane: jump the gap).
+  Weapons do nothing; the bombs are the way to hurt the shark. From the second tower on, near each roof's
+  end it has bitten away an outer lane and waits below, jaws open. As the runner nears, Captain Cogs' red
+  target follows their lane, then locks onto it with the throw: a runner who leads it into the bitten lane
+  and switches out before the edge sends the bomb past the edge into the jaws, a hit (4 end phase 1, 6
+  phase 2). A runner who doesn't manage it still gets there, more slowly: after a step without a hit,
+  Captain Cogs misses into the chasm beside the lanes that lead up and the shark rises to eat the bomb.
+  Phase 3 (E5e-c): at the top the climb ends on a long flat roof deck, and Captain Cogs' ship comes level
+  alongside it. For a minute, the boss bar running down, the captain fires rounds and the sea throws waves, one
+  at a time to a fixed script: a round shows red lines down every other lane with the cannons' charge, then the
+  cannonballs land at the far end and roll down those lanes (switch out: they're too tall to jump); a wave rises
+  out of the sea beside the deck with a roar, then crashes over it and surges along every lane (jump it, like
+  the Resonator's ring). When the minute is up, Mecha Guppy bursts up beside the deck, gulps the captain with
+  the ship's stern and falls back, then leaps out of the sea further out in one long arc and dives away. Three
+  stars under 177 s, two under 210 s
+  (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs, the bait, phase 3
+  and the leap).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
   electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once.
