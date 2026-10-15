@@ -57,6 +57,8 @@ static func glow(color: Color, energy: float = 2.0, alpha: float = 1.0) -> Stand
 ## shadow with a shader of its own, the same code as the glow's, for 5 programs of every level's load on the web.
 ## Nothing drawn changes: the emission is black, which adds nothing (and an unshaded material ignores its emission
 ## anyway: rendered both ways, the pixels are the same).
+## Don't `duplicate()` it: in Godot 4.7.2 the copy of an unshaded material loses its emission_* settings, so it
+## quietly gets a shader of its own again.
 static func overlay(color: Color, on_top: bool) -> StandardMaterial3D:
 	var key: String = "overlay_%s_%s" % [color.to_html(), on_top]
 	if not _cache.has(key):

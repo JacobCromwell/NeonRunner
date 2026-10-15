@@ -5,8 +5,9 @@
 // and on Windows (ANGLE over Direct3D) one can take seconds, so the count is the web demo's load time.
 //
 //   node tools/web/shader_programs.js [--export=exports/web] [--quiet=60] [--out=build/browser]
-//   node tools/web/shader_programs.js --export=exports/web_debug --level=gangland/1 [--lanes=5] [--hold=S]
-//   (either takes --sources: every program's GLSL goes to <out>/programs/<hash>.glsl)
+//   node tools/web/shader_programs.js --build --level=gangland/1 [--lanes=5] [--hold=S]
+//   node tools/web/shader_programs.js --export=exports/web_debug --level=gangland/1
+//   (any takes --sources: every program's GLSL goes to <out>/programs/<hash>.glsl)
 //
 // It stops once no program has been linked for `--quiet` seconds after the level's load began (the
 // count is the same on a slow software renderer, only later). The programs, each with its time and source
@@ -17,9 +18,13 @@
 // title and no intro (as the full game's flavor, `--flavor=full_pc`: the demo's flavor sends any level
 // past City 3 to its end screen), so the count is everything from the page's start to the level's load (the title
 // screen's programs and the level introduction's among them). The demo's export filter leaves out the other
-// zones' doodad pictures: take them out of the web preset's exclude_filter (temporarily) for a count of
-// another zone's. `--hold=S` keeps going S seconds after the load with the level started (the introduction's
-// PLAY pressed): the programs its first moments of play compile.
+// zones' doodad pictures, which another zone's level needs, so `--build` exports a debug build of its own to
+// exports/web_zones (needs the web export templates and an imported project: `tools/godot.sh import`; the
+// Godot found by $GODOT, else godot4, `--godot=` names one): it takes those pictures out of the web preset's
+// exclude_filter for that export only, and puts export_presets.cfg back as it was before anything else
+// happens (also when the export fails or the run is stopped), so the file is never left edited.
+// `--hold=S` keeps going S seconds after the load with the level started (the introduction's PLAY
+// pressed): the programs its first moments of play compile.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -29,8 +34,8 @@ const options = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsW
 	const [k, v] = a.slice(2).split('=');
 	return [k, v === undefined ? true : v];
 }));
-const EXPORT = path.resolve(ROOT, options.export || 'exports/web');
-const OUT = path.resolve(ROOT, options.out || 'build/browser');
+const EXPORT = path.resolve(ROOT, options.build ? 'exports/web_zones' : (options.export || 'exports/web'));
+const OUT =path.resolve(ROOT, options.out || 'build/browser');
 const QUIET_MS = Number(options.quiet || 60) * 1000;
 // A debug export opened on one level (see the header), instead of the demo played from its title.
 const LEVEL = options.level || '';
@@ -95,9 +100,11 @@ function hook(keepSources) {
 	};
 	const records = new WeakMap();
 	let current = null;
-	// Time the game waits on the compiler: the calls that block until a shader or program is built
-	// (compileShader and its status query, linkProgram and its status query). In this browser (software
-	// WebGL) the figures are not a Windows machine's, but they follow the program's size.
+	// Time the game waits in the calls that block until a shader or program is built (compileShader and its
+	// status query, linkProgram and its status query). A ROUGH figure: a browser defers compiles, so the wait is
+	// charged to whichever call asks for the result first, including time spent on what was queued ahead of it,
+	// and this browser's software WebGL is not a Windows machine's Direct3D. The program and character counts
+	// are the solid numbers; the time needs a real Chrome or Edge on Windows.
 	const shaderMs = new WeakMap();
 	const timed = (name, after) => {
 		const original = proto[name];
@@ -148,7 +155,43 @@ function hook(keepSources) {
 	}
 }
 
+// --build: a debug export of the Web (demo) preset into EXPORT, the other zones' doodad pictures let through. The
+// preset is edited for the export only: export_presets.cfg is put back whatever happens (the export failing, the
+// run stopped with Ctrl+C), and checked to be back before the level is opened.
+function buildExport() {
+	const { execFileSync } = require('child_process');
+	const presets = path.join(ROOT, 'export_presets.cfg');
+	const original = fs.readFileSync(presets, 'utf8');
+	const restore = () => {
+		try {
+			if (fs.readFileSync(presets, 'utf8') !== original) fs.writeFileSync(presets, original);
+		} catch (e) {
+			console.error(`export_presets.cfg COULD NOT BE PUT BACK: ${e.message} (git checkout export_presets.cfg)`);
+		}
+	};
+	process.on('exit', restore);
+	for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => process.exit(1));
+	const edited = original.replace(/, assets\/sprites\/doodads\/\w+\.\*/g, '');
+	fs.rmSync(EXPORT, { recursive: true, force: true });
+	fs.mkdirSync(EXPORT, { recursive: true });
+	fs.writeFileSync(presets, edited);
+	console.log(`Exporting the Web (demo) preset, debug, with every zone's doodad pictures to ${path.relative(ROOT, EXPORT)} ...`);
+	try {
+		execFileSync(options.godot || process.env.GODOT || 'godot4',
+			['--headless', '--path', ROOT, '--export-debug', 'Web (demo)', path.join(EXPORT, 'index.html')], { stdio: 'ignore' });
+	} catch (e) {
+		console.error(`The export failed (${e.message}). Are the web export templates installed and the project imported?`);
+	} finally {
+		restore();
+	}
+	if (fs.readFileSync(presets, 'utf8') !== original) {
+		console.error('export_presets.cfg was not put back: git checkout export_presets.cfg');
+		process.exit(1);
+	}
+}
+
 (async () => {
+	if (options.build) buildExport();
 	if (!fs.existsSync(path.join(EXPORT, 'index.html'))) {
 		console.error(`No export at ${EXPORT}: tools/godot.sh web`);
 		process.exit(1);
@@ -227,7 +270,7 @@ function hook(keepSources) {
 	console.log(`Never drawn: ${idle.length} of ${programs.length} programs${idle.length ? ' (' + idle.map((p) => p.hash).join(', ') + ')' : ''}`);
 	const totalMs = programs.reduce((sum, p) => sum + (p.ms || 0), 0);
 	const chars = programs.reduce((sum, p) => sum + p.size, 0);
-	console.log(`Compiler wait: ${(totalMs / 1000).toFixed(1)} s in this browser (software WebGL), ${(chars / 1e6).toFixed(1)} M characters of shader code linked`);
+	console.log(`Compiler wait: ${(totalMs / 1000).toFixed(1)} s in this browser (software WebGL; rough, see the hook's comment), ${(chars / 1e6).toFixed(1)} M characters of shader code linked`);
 	fs.mkdirSync(OUT, { recursive: true });
 	fs.writeFileSync(path.join(OUT, 'shader_programs.json'), JSON.stringify(programs.map((p) => ({
 		after_play_s: +((p.at - playAt) / 1000).toFixed(2), hash: p.hash, look: p.look, size: p.size, draws: p.draws,

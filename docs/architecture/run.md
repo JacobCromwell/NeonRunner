@@ -264,21 +264,29 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   street shader for rubble, and the glow for sparks and boxes), a see-through one's colour pass. So a
   zone's cost is its number of distinct shaders and looks (24 in City 1 to 39 in the Palace now, times about
   5.4), not its draws, materials or meshes; `kit_solid` alone is 8 programs of 319 k characters (they carry
-  every zone's patterns), 34 to 47% of the compiler wait in software WebGL for 11 to 17% of the characters.
-  **What was found:** no zone draws one shader code from two Shaders (the zones' skins, the enemies' models and the power-ups all share by file or by
-  code; many use instance uniforms), and the only program compiled twice in any zone is still the fireball's 5.
-  Cut: the player's shadow (`GreyboxMaterials.overlay`) and a screech lair's dark recess (`ScreechLair._dark`) were
-  unshaded standard materials without emission, so each made a shader of its own next to the glow's (same
-  features but emission on): they carry a black emission now and draw with the glow's shaders (5 programs in
-  every zone, 6 more where a lair stands: -5 in City 1 and the Marketplace, -11 in the others), and the speed
-  lines share one Shader (every run made its own). **Left, and why:** the fireball pair (a blend mode apart, as
+  every zone's patterns), 11 to 17% of a load's characters. (The compiler wait `shader_programs.js` prints is
+  rough: a browser defers compiles, so a program's time includes what was queued ahead of it, and software WebGL
+  is not Direct3D; in it the street shader took the largest share. Programs and characters are the solid
+  numbers; the time needs a real Windows Chrome or Edge.)
+  **What was found:** no zone or boss arena draws one shader code from two Shaders (the zones' skins, the
+  enemies' models and the power-ups all share by file or by code; many use instance uniforms), and the only
+  program compiled twice in any zone is still the fireball's 5. Cut: the player's shadow
+  (`GreyboxMaterials.overlay`), a screech lair's dark recess (`ScreechLair._dark`) and the Floating Head's tower
+  cut (`FloatingHeadTower`) were unshaded standard materials without emission, so each made a shader of its own
+  next to the glow's (same features but emission on): they carry a black emission now and draw with the glow's
+  shaders (5 programs in every zone, 6 more where a lair stands: -5 in City 1 and the Marketplace, -11 in the
+  others; and the demo's boss fight one look fewer, 29 to 28, about 6 programs), and the speed lines share one Shader (every run made its own).
+  Such a material must not be `duplicate()`d: in Godot 4.7.2 the copy of an unshaded material loses its
+  emission_* settings, and it gets a shader of its own again. **Left, and why:** the fireball pair (a blend mode apart, as
   above); the other standard looks (lit, vertex-colour, two-sided and blend differences are visible); the street
   shader's other zones' patterns (a per-zone variant, the program half the size, 162 k instead of 319 k
-  characters in City 1, cut the compiler wait by 47 to 65% in a trial in City 1, the Beach and the Palace, but
-  changes how every skin, boss prop and cinematic gets its shader and needs a hook in a core file); and the
+  characters in City 1, took about half or more off software WebGL's rough wait in a trial in City 1, the Beach
+  and the Palace, but changes how every skin, boss prop and cinematic gets its shader and needs a hook in a core
+  file); and the
   depth pre-pass (`rendering/driver/depth_prepass/enable=false` is 12 to 21 programs fewer, same image, a GPU
-  trade). Both are in `docs/questions/i1.md`. `test_perf` checks every zone's first level (no shader code in two Shaders, no two
-  standard looks differing only in an unshaded one's emission).
+  trade). Both are in `docs/questions/i1.md`. `test_zone_shaders` checks every zone's first level, the Golden Palace and
+  every built boss's arena (no shader code in two Shaders, no two standard looks differing only in an unshaded
+  one's emission); `test_perf` the shadow, the recess and the speed lines.
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4
   to 24 a level (about 6 a minute with a full loadout). Each holds the camera still for three frames while the run
   goes on, so the view jumps 1.0 to 1.25 m when it lets go: on screen, exactly what a dropped frame looks like.

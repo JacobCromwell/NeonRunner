@@ -1,19 +1,22 @@
 extends SceneTree
-## Counts the shaders a campaign level draws, to find the ones built twice and the ones never drawn (task I1,
-## the owner's "shader cleanup in every zone", October 14, 2026). The renderer compiles a program per Shader
-## resource (not per shader code) and per standard-material look (the set of features that make Godot's shader
-## for it), and five or six programs of each: four default variants the engine builds when it first uses a
+## Counts the shaders a campaign level or boss arena draws, to find the ones built twice and the ones never drawn
+## (task I1, the owner's "shader cleanup in every zone", October 14, 2026). The renderer compiles a program per
+## Shader resource (not per shader code) and per standard-material look (the set of features that make Godot's
+## shader for it), and five or six programs of each: four default variants the engine builds when it first uses a
 ## shader (never drawn) and the colour and depth passes' as drawn. So the number of distinct Shader objects and
-## standard-material looks a level uses, times about 5.4, is the program count `tools/web/shader_programs.js`
-## measures on the web export (City 1: 24 and 130). It needs no renderer, so it runs headless. From the project
-## folder (with XDG_DATA_HOME set as for the tests):
+## standard-material looks a level uses ("shaders and looks"), times about 5.4, is the program count
+## `tools/web/shader_programs.js` measures on the web export (City 1: 24 and 130). It needs no renderer, so it runs
+## headless. From the project folder (with XDG_DATA_HOME set as for the tests):
 ##   godot --headless -s res://tools/measure/zone_shaders.gd -- [options]
 ## Options:
-##   --levels=city/1,gangland/1   campaign levels (default: each zone's first level and the Golden Palace)
+##   --levels=city/1,gangland/1   campaign levels and bosses (default: each zone's first level and the Golden
+##                                Palace); a boss step such as city/boss builds its arena and the boss, as the
+##                                framework's tests do, and plays a second of the fight
+##   --bosses                     also every built boss
 ##   --lanes=5                    the lane count (default 5)
-##   --detail                     also list every shader and standard look of the level, who draws it, and the
-##                                standard materials in words (a look two of which differ only in what the
-##                                renderer ignores is one look drawn with two shaders)
+##   --detail                     also list every shader and standard look, who draws it, and the standard
+##                                materials in words (a look two of which differ only in what the renderer
+##                                ignores is one look drawn with two shaders)
 ##   --out=build/measure/zone_shaders.json   write the numbers there
 ##
 ## What it does for each level: builds the world as a run does (the level's own skin, full loadout, the
@@ -27,6 +30,10 @@ extends SceneTree
 ## - "warmed only": shader keys only the warm-up's samples draw (the samples cover looks a level may show
 ##   later: every enemy kind it brings, every piece the skin dresses), and "walked only": keys the walk of
 ##   the track found that the warm-up did not draw (a shader the run would first compile mid-run).
+## ShaderWarmup.shader_key leaves some settings out (the texture filter, distance and proximity fades, grow,
+## the emission operator, and so on), which also change a standard material's shader, so the looks counted here
+## can only come out low, and two looks it takes for one may be two shaders; the web tool's program count is the
+## truth.
 
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
@@ -36,6 +43,7 @@ const DEFAULT_LEVELS: Array[String] = ["city/1", "gangland/1", "marketplace/1", 
 var _levels: Array[String] = []
 var _lanes: int = 5
 var _detail: bool = false
+var _all_bosses: bool = false
 var _out: String = ""
 var _results: Dictionary = {}
 
@@ -50,6 +58,8 @@ func _run() -> void:
 		if arg.begins_with("--levels="):
 			for id: String in value.split(",", false):
 				_levels.append(id)
+		elif arg == "--bosses":
+			_all_bosses = true
 		elif arg.begins_with("--lanes="):
 			_lanes = int(value)
 		elif arg == "--detail":
@@ -58,6 +68,10 @@ func _run() -> void:
 			_out = value
 	if _levels.is_empty():
 		_levels.append_array(DEFAULT_LEVELS)
+	if _all_bosses:
+		for step: CampaignStep in (load(CAMPAIGN_PATH) as Campaign).steps():
+			if step.kind == CampaignStep.Kind.BOSS and step.boss != null and step.boss.is_built() and not _levels.has(step.id):
+				_levels.append(step.id)
 	for id: String in _levels:
 		await _survey(id)
 	if _out != "":
@@ -68,20 +82,46 @@ func _run() -> void:
 	quit(0)
 
 
-## One level: build, walk the track, add the warm-up, print.
+## One level or boss: build, walk the track, add the warm-up, print.
 func _survey(id: String) -> void:
 	var campaign := load(CAMPAIGN_PATH) as Campaign
 	var tuning := load(TUNING_PATH) as MovementTuning
 	var step: CampaignStep = campaign.step(id)
-	if step == null or not step.is_level():
-		print("%s: no such campaign level" % id)
+	var is_boss: bool = step != null and step.kind == CampaignStep.Kind.BOSS and step.boss != null and step.boss.is_built()
+	if step == null or not (step.is_level() or is_boss):
+		print("%s: no such campaign level or built boss" % id)
 		return
-	var config: LevelConfig = campaign.configure(step, _lanes)
-	var t: MovementTuning = config.movement_for(tuning)
-	var layout: LevelLayout = LevelGenerator.new().generate(config, t, LevelGenerator.load_for(config))
-	var sim := RunSim.new(self, t)
 	var catalog: Object = root.get_node(^"/root/App").get(&"catalog")
-	var world: RunWorld = sim.build_world(layout, Loadout.full(catalog), t, config)
+	var config: LevelConfig
+	var t: MovementTuning
+	var layout: LevelLayout
+	var world: RunWorld
+	var sim: RunSim
+	if is_boss:
+		# As the framework's tests set a fight up: the arena planned, a world built on it, the boss set up in it.
+		var enc := BossEncounter.create(step.boss)
+		var ctx := RunContext.new()
+		ctx.mode = RunContext.Mode.QUICK
+		ctx.boss = step.boss
+		ctx.config = BossArena.base_config(step.boss)
+		ctx.config.lane_count = _lanes
+		ctx.tuning = ctx.config.movement_for(tuning)
+		var arena: BossArena = enc.plan_arena(ctx)
+		config = ctx.config
+		t = ctx.tuning
+		layout = arena.layout
+		sim = RunSim.new(self, t)
+		world = sim.build_world(layout, Loadout.full(catalog), t, config)
+		enc.setup(world, ctx, arena)
+		# A second of the fight: what a boss builds as the runner nears it (the Floating Head's towers) is there.
+		world.player.god_mode = true
+		await sim.step_world(world, 1.0, [], [], false)
+	else:
+		config = campaign.configure(step, _lanes)
+		t = config.movement_for(tuning)
+		layout = LevelGenerator.new().generate(config, t, LevelGenerator.load_for(config))
+		sim = RunSim.new(self, t)
+		world = sim.build_world(layout, Loadout.full(catalog), t, config)
 	await physics_frame
 	# What the level draws: the world as built, then the whole track dressed chunk by chunk.
 	var walked: Dictionary = {}
@@ -196,10 +236,10 @@ func _report(id: String, config: LevelConfig, all: Dictionary, walked: Dictionar
 			only_walked += 1
 	var skin_name: String = config.skin.get_script().resource_path.get_file() if config.skin != null else "-"
 	print("== %s (%s, %s)" % [id, config.display_name, skin_name])
-	print("   shader objects: %d (%d distinct codes; %d codes in several objects, %d programs built again)" % [
+	print("   shader objects: %d (%d distinct codes; %d codes in several objects, %d Shaders of a code already built)" % [
 		shaders.size(), by_code.size(), duplicate_codes, extra_objects])
 	print("   standard looks: %d (%d materials), other materials: %d" % [std_keys.size(), std_objects, others])
-	print("   programs (shader objects + standard looks): %d" % (shaders.size() + std_keys.size()))
+	print("   shaders and looks (shader objects + standard looks; the programs are about 5.4 times this): %d" % (shaders.size() + std_keys.size()))
 	print("   %d keys warmed, %d walked; warmed only: %d, walked only: %d" % [
 		warmed_keys.size(), walked_keys.size(), only_warmed, only_walked])
 	for code: String in by_code:
@@ -230,7 +270,7 @@ func _report(id: String, config: LevelConfig, all: Dictionary, walked: Dictionar
 			if per_key[k] > 4:
 				print("   std %s: %d materials, first drawn by %s" % [k.md5_text().left(6), per_key[k], std_keys[k]["user"]])
 	_results[id] = {"shader_objects": shaders.size(), "distinct_codes": by_code.size(), "standard_looks": std_keys.size(),
-		"programs": shaders.size() + std_keys.size(), "built_again": extra_objects, "warmed_only": only_warmed,
+		"shaders_and_looks": shaders.size() + std_keys.size(), "built_again": extra_objects, "warmed_only": only_warmed,
 		"walked_only": only_walked}
 
 

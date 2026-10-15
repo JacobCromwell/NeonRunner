@@ -686,12 +686,16 @@ browser.
    Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes. It
    also counts each program's draws (a program never drawn: the engine compiles four unused ones of its own for
    each shader) and the wait on the compiler (`--sources` keeps every program's GLSL for finding which shader
-   it is). For another level, `--export=exports/web_debug --level=gangland/1` opens a debug export on it at once
-   (the full game's flavor, no title, no intro; the web preset's exclude filter has to let that zone's doodad
-   pictures through, as the demo's keeps them out). `tools/measure/zone_shaders.gd` is its in-engine twin
-   (headless, seconds): a level's Shaders and standard-material looks, which come twice and which only the
-   warm-up draws (`godot --headless -s res://tools/measure/zone_shaders.gd -- [--levels=city/1,golden/3]
-   [--detail]`; `docs/architecture/run.md`, Smooth frames).
+   it is). The wait is software WebGL's, a rough guide only (a browser defers compiles, so a program's time
+   includes what was queued before it): the program and character counts are the solid numbers, the load time
+   needs a real Chrome or Edge on Windows. For another level, `--build --level=gangland/1` exports a debug build
+   of its own (`exports/web_zones`, with every zone's doodad pictures; the web preset in `export_presets.cfg` is
+   edited for that export only and put back at once, also if it fails) and opens it on that level (the full
+   game's flavor, no title, no intro); `--export=<dir>` opens a debug export you made. `tools/measure/zone_shaders.gd`
+   is its in-engine twin (headless, seconds): the Shaders and standard-material looks of a level or a boss's
+   arena, which come twice and which only the warm-up draws (`godot --headless -s
+   res://tools/measure/zone_shaders.gd -- [--levels=city/1,golden/3] [--bosses] [--detail]`;
+   `docs/architecture/run.md`, Smooth frames).
 
 On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
 `"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.

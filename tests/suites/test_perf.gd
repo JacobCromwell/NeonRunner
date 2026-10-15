@@ -17,6 +17,9 @@ extends TestSuite
 ##   physics object made or freed by a warm-up (the stage's track holders are made once and reused; the
 ##   enemy looks have none); no program compiled twice over (one Shader per shader code, the credits'
 ##   too) and none for the hitbox view's debug boxes.
+## - Looks that share a shader (task I1, the web demo's programs): the player's shadow and a screech lair's
+##   dark recess draw with the glow's shaders, the speed lines share one Shader (test_zone_shaders checks each
+##   zone's first level, the Golden Palace and every built boss's arena for any other twin).
 ## - The frame monitor's tags, holds and summaries, and the frame graph's spikes and holds.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
@@ -37,11 +40,6 @@ const WARM_ENTRIES: Array[Dictionary] = [
 	{"type": "enforcer_truck", "at": 620.0, "lane": 1, "seed": 14, "params": {}},
 ]
 
-## Each zone's first level and the Golden Palace: the levels whose shaders the web demo's cost per zone counts
-## (tools/web/shader_programs.js, tools/measure/zone_shaders.gd).
-const ZONE_LEVELS: Array[String] = ["city/1", "gangland/1", "marketplace/1", "casino/1", "corporate/1", "beach/1",
-	"dead_zone/1", "golden/1", "golden/3"]
-
 var sim: RunSim
 var campaign: Campaign
 
@@ -57,7 +55,7 @@ func run() -> void:
 	await _test_freeze_never_chains()
 	_test_boss_props_share_rings()
 	await _test_shader_warmup()
-	await _test_one_program_per_look()
+	_test_shared_pieces()
 	await _test_frame_monitor()
 	_test_frame_graph()
 	_test_summaries()
@@ -427,62 +425,14 @@ func _test_shader_warmup() -> void:
 	await sim.free_world(world)
 
 
-# --- One program per look -------------------------------------------------------------------------
+# --- Shared looks ---------------------------------------------------------------------------------
 
-## The renderer compiles a program for each Shader and for each set of a standard material's features, five or six
-## of them (four the engine's own), and on the web every one is a wait at the level's load
-## (tools/web/shader_programs.js, tools/measure/zone_shaders.gd; task I1). So in each zone's first level (and the
-## Golden Palace), with the track's first stretch dressed and the shader warm-up's stage built: one look is one
-## shader. No shader code is in two Shaders, and no two standard materials differ only in what the renderer
-## ignores (the emission of an unshaded one). And the shared pieces that once made their own: the speed lines'
-## Shader, the player's shadow and a lair's dark recess (they draw with the glow's shader).
-func _test_one_program_per_look() -> void:
-	var twice: PackedStringArray = []
-	var twins: PackedStringArray = []
-	var shaders_seen: int = 0
-	var looks_seen: int = 0
-	for id: String in ZONE_LEVELS:
-		var level: Array = _level(id)
-		var t: MovementTuning = level[2]
-		var world := sim.build_world(level[1], Loadout.full(App.catalog), t, level[0])
-		var camera := Camera3D.new()
-		tree.root.add_child(camera)
-		var stage := ShaderWarmup.new()
-		stage.setup(world, camera)
-		world.track.update(300.0, 300.0 / t.run_speed)
-		world.track.dress_all()
-		var drawn: Array[Material] = ShaderWarmup.materials_of(world)
-		drawn.append_array(ShaderWarmup.materials_of(stage))
-		var shaders_of_code: Dictionary = {}
-		var keys_of_look: Dictionary = {}
-		for m: Material in drawn:
-			var sm := m as ShaderMaterial
-			if sm != null and sm.shader != null:
-				if not shaders_of_code.has(sm.shader.code):
-					shaders_of_code[sm.shader.code] = {}
-				shaders_of_code[sm.shader.code][sm.shader] = true
-			var b := m as BaseMaterial3D
-			if b != null:
-				var look: String = _look_key(b)
-				if not keys_of_look.has(look):
-					keys_of_look[look] = {}
-				keys_of_look[look][ShaderWarmup.shader_key(b)] = true
-		shaders_seen += shaders_of_code.size()
-		looks_seen += keys_of_look.size()
-		for code: String in shaders_of_code:
-			if shaders_of_code[code].size() > 1:
-				twice.append("%s: %d Shaders of code %s" % [id, shaders_of_code[code].size(), code.md5_text().left(8)])
-		for look: String in keys_of_look:
-			if keys_of_look[look].size() > 1:
-				twins.append("%s: %d shaders for the look %s" % [id, keys_of_look[look].size(), look.md5_text().left(8)])
-		stage.queue_free()
-		camera.queue_free()
-		await sim.free_world(world)
-	check(shaders_seen > 100 and looks_seen > 50, "the zones' levels were looked at (%d shaders, %d standard looks in all)" % [
-		shaders_seen, looks_seen])
-	check(twice.is_empty(), "no zone's first level draws one shader code from two Shaders: %s" % ", ".join(twice.slice(0, 4)))
-	check(twins.is_empty(), "nor two standard materials that differ only in an unshaded one's emission: %s" % ", ".join(twins.slice(0, 4)))
-	# The pieces that once made a shader of their own.
+## The pieces that once made a shader of their own (task I1; the renderer compiles a program per Shader and per set
+## of a standard material's features, five or six of them, and on the web every one is a wait at the level's load): the
+## player's shadow and a lair's dark recess draw with the glow's shaders (a black emission gives them its features,
+## and adds nothing to the picture), the speed lines share one Shader. test_zone_shaders checks every zone's first
+## level and every boss's arena for the same kind of twin.
+func _test_shared_pieces() -> void:
 	var glow_alpha: String = ShaderWarmup.shader_key(GreyboxMaterials.glow(Color.WHITE, 3.0, 0.75))
 	var glow_opaque: String = ShaderWarmup.shader_key(GreyboxMaterials.glow(Color.WHITE, 3.0, 1.0))
 	check(ShaderWarmup.shader_key(GreyboxMaterials.overlay(GreyboxMaterials.SHADOW, false)) == glow_alpha,
@@ -498,25 +448,6 @@ func _test_one_program_per_look() -> void:
 		"every run's speed lines share one Shader (one compile for the session, not one a level)")
 	lines_a.free()
 	lines_b.free()
-
-
-## What a standard material draws as, apart from what the renderer ignores: ShaderWarmup.shader_key's settings, but
-## an unshaded material's emission isn't one (it draws its albedo alone).
-static func _look_key(b: BaseMaterial3D) -> String:
-	var parts: PackedStringArray = []
-	for setting: int in [b.transparency, b.shading_mode, b.blend_mode, b.cull_mode, b.depth_draw_mode, b.diffuse_mode,
-			b.specular_mode, b.billboard_mode]:
-		parts.append(str(setting))
-	for f: int in BaseMaterial3D.FLAG_MAX:
-		parts.append("1" if b.get_flag(f) else "0")
-	for f: int in BaseMaterial3D.FEATURE_MAX:
-		var on: bool = b.get_feature(f)
-		if f == BaseMaterial3D.FEATURE_EMISSION and b.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
-			on = false
-		parts.append("1" if on else "0")
-	for p: int in BaseMaterial3D.TEXTURE_MAX:
-		parts.append("1" if b.get_texture(p) != null else "0")
-	return ",".join(parts)
 
 
 # --- The frame monitor and graph ------------------------------------------------------------------
