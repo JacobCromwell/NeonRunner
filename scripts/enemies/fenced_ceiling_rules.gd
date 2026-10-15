@@ -26,10 +26,15 @@ extends RefCounted
 ## §9.6). The pick plays out alone (one new thing at a time): from its first pad's run-up to its last safe pad no
 ## other rule's chase or attack, floor cut, drone wave's arrival or quiet stretch (CeilingScenarios.event_spans); and
 ## no ramp's wall run or hover truck under an outer lane it covers comes within a jump of its rows (a jump off a wall
-## run started high reaches a ceiling fence: CeilingScenarios.wall_jump_near). The pads are marked: "fenced" ("unsafe", "safe") on each, "added" on those these rules add, which the
-## drone schedule's spacing doesn't count (LayoutChecks.check_rules): they're a choice within one ceiling, after its
-## first pad. The floor under the ceiling holds what it held (GDD §3: it may be dangerous, and the ceiling is never
-## required). DESIGN-TBD throughout (docs/questions/i4.md).
+## run started high reaches a ceiling fence: CeilingScenarios.wall_jump_near). A heli drone that outlived its pads
+## holds its barrages through the pick too (the hull's "pick": LevelLayout.fenced_pick_between, Drone._pick_in_reach).
+## From a level's first drone wave on, every pad is the drone schedule's (drone_rules.gd), so the trap stands where a
+## scheduled pad would; the pick's safe pad hurls the drones as any pad does and is the next one that works, and as
+## the pick is calm, a missed pad still costs no more than the schedule's 8–10 s of barrages (GDD §9.6;
+## LayoutChecks.check_fenced). The pads are marked: "fenced" ("unsafe", "safe") on each, "added" on those these
+## rules add, which the drone schedule's spacing doesn't count (LayoutChecks.check_rules): they're a choice within
+## one ceiling, after its first pad. The floor under the ceiling holds what it held (GDD §3: it may be dangerous, and
+## the ceiling is never required). DESIGN-TBD throughout (docs/questions/i4.md; the drones: 10).
 
 const FEATURE: String = "fenced_ceiling"
 ## Sprinkled in, never guaranteed: a level gets one only where a ceiling fits it (as a treasure stash,
@@ -157,7 +162,7 @@ static func plan_on(gen: LevelGenerator, t: CeilingScenarioTuning, h: Dictionary
 	if end > float(h["end"]) and not CeilingScenarios.can_extend(gen, h, end, busy):
 		return {}
 	return {"hull": h, "unsafe": unsafe, "safe": safe, "added": added, "rows": row_at, "end": end,
-		"span": Vector2(float(h["start"]), end + gen.zones.landing)}
+		"span": Vector2(float(h["start"]), end + gen.zones.landing), "pick": scene}
 
 
 ## A pad a fenced ceiling adds at `at`, in a lane of `lanes` (Vector2i) the ceiling covers: lanes `avoid` doesn't
@@ -210,7 +215,8 @@ static func _shuffled(values: Array[int], rng: RandomNumberGenerator) -> Array[i
 
 
 ## Turns plan `plan` (plan_on) into the fenced ceiling: clears its added pads' zones, runs its ceiling on where it
-## must, marks the ceiling and its pads, and adds its pads and its rows of fences.
+## must, marks the ceiling (and records its pick, for the heli drones: LevelLayout.fenced_pick_between) and its
+## pads, and adds its pads and its rows of fences.
 static func _build(gen: LevelGenerator, plan: Dictionary) -> void:
 	var layout: LevelLayout = gen.layout
 	var h: Dictionary = plan["hull"]
@@ -222,6 +228,8 @@ static func _build(gen: LevelGenerator, plan: Dictionary) -> void:
 	if float(plan["end"]) > float(h["end"]):
 		CeilingScenarios.extend(gen, h, plan["end"])
 	h[CeilingScenarios.KEY] = FEATURE
+	var pick: Vector2 = plan["pick"]
+	h["pick"] = [pick.x, pick.y]
 	for p: Dictionary in CeilingScenarios.pads_under(layout, h):
 		p["fenced"] = "unsafe"
 	for spot: Dictionary in plan["added"]:

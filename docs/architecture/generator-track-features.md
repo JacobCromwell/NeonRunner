@@ -101,7 +101,8 @@ in), the sizes and the push.
 Enemies whose attacks a doodad could make unfair (its side blocks a dodge, its push moves the player)
 count them at runtime too, through `LevelLayout.doodad_between()`, for an attack that could come later
 than the generator planned it: a drone holds its barrage and a hover truck its cannon while a doodad
-stands in the stretch the attack would take (`_doodad_in_reach`), an Octodog charge or a Resonator pulse
+stands in the stretch the attack would take (`_doodad_in_reach`; a drone holds it for a fenced ceiling's pick too,
+`_pick_in_reach`, task I4), an Octodog charge or a Resonator pulse
 moved on by a wait for its turn waits (`Octodog.window_clear`, `Resonator.pulse_clear`), cyborg bolts
 never land by one (`CyborgGun.path_clear`), a cyborg's walk and panic run keep their margin from one
 (`CyborgRules.obstacle_spans`), and a hover truck only lurches at a player who can leave its lane
@@ -604,9 +605,13 @@ DESIGN-TBD throughout (`docs/questions/i4.md`).
   ceiling allows, and the ceiling runs on `ceiling_after_seconds` past the stash. `stash_offsets` lays it out from the
   return pad by the drop's physics: a doodad across its lane whose end the dropping rider clears, walls back to back
   in both neighbouring lanes from `wall_overlap` before that one's end to past the last credit, pushing outward, and
-  2–3 credits of the highest denomination past where the rider lands. Its floor (from the front doodad's push to the
+  2–3 credits of the highest denomination past where the rider lands and past the top magnet's reach from the floor
+  (`magnet_reach`: `CreditField.MAGNET_AHEAD` of the largest `PowerupTuning.magnet_radius`, from the walls' start,
+  as a floor runner the magnet reaches across from is short of them). Its floor (from the front doodad's push to the
   level's spacing past its open end) holds nothing else in any lane; its holes and fences go. Its doodads join
   `layout.doodads` at once, so the rules after it see them; the zone doodads' look seeds count only zone doodads.
+  Its credits count in a run's credits and score, never in the stars' best score (`LevelLayout.star_credit_value`,
+  `ScoreKeeper.max_credit_score`; DESIGN-TBD item 9).
 - **A fenced ceiling** (`LevelLayout.ceiling_fences`; its pads marked `fenced`, `unsafe` or `safe`, and `added` on the
   ones the rules add): two lanes wide or more, with `fenced_ceiling_pads` pads but fewer than the lanes (`pad_count`:
   a floor runner always has a lane without one; on 3 lanes the simple version). Its own pads are unsafe (the later
@@ -618,8 +623,12 @@ DESIGN-TBD throughout (`docs/questions/i4.md`).
   `safe_ride_seconds` past their riders' arrival. The pick plays out alone: no Bad Dream chase, Gilded Sentinel strike,
   floor cut, drone wave's arrival or quiet stretch from its first pad's run-up to its last safe pad (`event_spans`),
   and no ramp's wall run or hover truck within a jump of its rows under an outer lane it covers (`wall_jump_near`: a
-  jump off a high wall run reaches a ceiling fence). The added pads don't count in the drones' pad schedule
-  (`LayoutChecks.check_rules`).
+  jump off a high wall run reaches a ceiling fence). Its ceiling records that stretch (`hull["pick"]`,
+  `LevelLayout.fenced_pick_between`): a heli drone that outlived its pads starts no barrage that would play out there
+  (`Drone._pick_in_reach`). After a level's first drone wave every pad is the drone schedule's, so the trap stands
+  where a scheduled pad would; the pick's safe pad hurls the drones as any pad does, and as the pick is calm, a missed
+  pad costs no more than the schedule's 8–10 s of barrages (`LayoutChecks.check_fenced`; DESIGN-TBD item 10). The
+  added pads don't count in the drones' pad schedule (`LayoutChecks.check_rules`).
 - **After the rules**: every later pass keeps off a stash's floor (`doodad_keep_outs`, `fill_keep_outs`); the credit
   pass keeps every other floor credit out of a stash and its walls' lanes (`LevelGenerator._in_stash`) and every
   ceiling credit `CEILING_FENCE_CREDIT_MARGIN` off a ceiling fence. `LayoutChecks.check_scenarios` checks every rule

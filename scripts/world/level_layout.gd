@@ -18,7 +18,9 @@ var signs: Array[Dictionary] = []
 ## {start, end}: a ceiling section over every lane, or {start, end, first_lane, last_lane} over a
 ## contiguous range of lanes only (a narrow ceiling, GDD §3: "ceilings don't have to cover every
 ## lane"). Read the range with hull_lanes(); a range over every lane is stored without the keys, so
-## full-width ceilings stay exactly as they were.
+## full-width ceilings stay exactly as they were. A ceiling scenario (task I4) marks its ceiling with
+## "scenario" (CeilingScenarios.KEY), and a fenced ceiling records its pick as "pick": [from, to], from
+## its first pad's run-up to its last safe pad (fenced_pick_between).
 var hulls: Array[Dictionary] = []
 ## {lane, at}: anti-grav pad in a floor lane.
 var pads: Array[Dictionary] = []
@@ -185,11 +187,24 @@ func outer_lane(side: int) -> int:
 	return 0 if side < 0 else lane_count - 1
 
 
-## Total value of every credit: the best possible credit score, used for stars.
+## Total value of every credit, a treasure stash's too: what a run can collect (the economy's tools and tests). The
+## stars count star_credit_value().
 func total_credit_value() -> int:
 	var total: int = 0
 	for c: Dictionary in credits:
 		total += int(c["value"])
+	return total
+
+
+## The best credit score the stars count (ScoreKeeper.max_credit_score, GameRules.stars_for): every credit but a
+## treasure stash's (task I4). A stash is an optional reward a floor runner can't reach (and there's none on 3 or 4
+## lanes), so the three-star line never asks for it; collected, its credits still count in the run's credits (the
+## wallet) and its level score. DESIGN-TBD (docs/questions/i4.md 9).
+func star_credit_value() -> int:
+	var total: int = 0
+	for c: Dictionary in credits:
+		if not c.has("stash"):
+			total += int(c["value"])
 	return total
 
 
@@ -213,6 +228,17 @@ func doodad_between(from: float, to: float, lane: int = -1) -> bool:
 		if float(d["start"]) <= to and float(d["end"]) >= from and (lane < 0 or int(d["lane"]) == lane):
 			return true
 	return dash_wall_between(from, to)
+
+
+## True if a fenced ceiling's pick (task I4: its hull's "pick", from its first pad's run-up to its last safe pad,
+## where the player reads which pad is the trap) overlaps [from, to]. A heli drone never starts a barrage that would
+## play out there (Drone._pick_in_reach).
+func fenced_pick_between(from: float, to: float) -> bool:
+	for h: Dictionary in hulls:
+		var pick: Variant = h.get("pick")
+		if pick is Array and (pick as Array).size() == 2 and float(pick[0]) <= to and float(pick[1]) >= from:
+			return true
+	return false
 
 
 ## True if a dash wall (dash_walls, from its face to its back) stands anywhere in [from, to], broken or not.

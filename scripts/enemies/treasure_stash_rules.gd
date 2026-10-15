@@ -14,7 +14,7 @@ extends RefCounted
 ## - the stash's lane: an inner lane with inner lanes either side (lanes_for), so its walls never stand in an
 ##   outermost lane (a wall runner's body reaches into that lane, and one dropping off the wall lands there) and a
 ##   floor runner always has a lane past it; covered by the ceiling. With fewer than 5 lanes there's none, and no
-##   stash (DESIGN-TBD, docs/questions/i4.md 1: on 3 lanes the owner's shape would close every floor lane);
+##   stash (DESIGN-TBD, docs/questions/i4.md 2: on 3 lanes the owner's shape would close every floor lane);
 ## - the return pad, in that lane on the ceiling's underside (LevelLayout.return_pads), see_seconds after where the
 ##   ceiling's rider arrives at the earliest, as late as the ceiling allows (partway along it); the ceiling runs on
 ##   past the stash (ceiling_after_seconds) where it must (CeilingScenarios.can_extend), so a rider who stays on drops
@@ -23,8 +23,9 @@ extends RefCounted
 ##   (front_size) whose end the rider passes over before coming down to its top (drop_clearance, the Player's fall:
 ##   CeilingScenarios.drop_seconds); doodads alongside in both neighbouring lanes, back to back (wall_chain), from
 ##   wall_overlap before its end (a runner beside it can't slip in where it ends) to the stash's open end; the credits
-##   in its lane past where the rider lands at the latest (CeilingScenarios.flip_late, a frame's slack), two or three
-##   of the highest denomination (LevelGenerator.DENOMINATIONS), the last credit_end_margin inside the open end;
+##   in its lane past where the rider lands at the latest (CeilingScenarios.flip_late, a frame's slack) and past the
+##   top magnet's reach from the floor (magnet_reach), two or three of the highest denomination
+##   (LevelGenerator.DENOMINATIONS), the last credit_end_margin inside the open end;
 ## - its floor in every lane, from the front doodad's push (LevelGenerator.doodad_lead_for) to the level's spacing
 ##   past its open end (doodad_after), off everything another rule keeps (CeilingScenarios.busy_spans), every pad's
 ##   zone, ramp's wall run, speed pad and other ceiling; the holes and fences there go (CeilingScenarios.clear_floor).
@@ -54,6 +55,8 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 const PUSH_ROOM: float = 0.5
 ## A stash's credits float this high above the floor (as a floor trail's).
 const CREDIT_HEIGHT: float = 0.7
+## The power-ups' numbers: the magnet's pull radius by tier (magnet_reach).
+const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 
 
 static func apply(gen: LevelGenerator) -> void:
@@ -140,17 +143,34 @@ static func stash_offsets(gen: LevelGenerator, t: CeilingScenarioTuning, credits
 	# ... and lands at the latest a frame after the fall alone takes them to the floor.
 	var land: float = CeilingScenarios.flip_late(0.0, v) \
 		+ v * (CeilingScenarios.drop_seconds(mt, 0.0) + CeilingScenarios.frame_seconds())
+	var walls_from: float = maxf(front_start + PUSH_ROOM, front_end - t.wall_overlap)
+	# Past the top magnet's reach from the floor (task I4's review: "out of the magnet's reach only by luck"). The
+	# magnet reaches a credit from a lane next to the player's at most (CreditField.MAGNET_LANES), and a floor runner
+	# that close to the stash's lane is short of its walls' start: beside a wall, its push keeps the body more than a
+	# lane and a quarter out. From there it pulls up to magnet_reach() ahead of the body's middle; a frame's run on.
+	var first: float = maxf(land + gen.metres(t.credit_lead),
+		walls_from + magnet_reach() + v * CeilingScenarios.frame_seconds())
 	var spots: Array[float] = []
 	for i: int in maxi(credits, 1):
-		spots.append(land + gen.metres(t.credit_lead + i * t.credit_spacing))
+		spots.append(first + gen.metres(i * t.credit_spacing))
 	var need: float = spots[-1] + t.credit_end_margin
-	var walls_from: float = maxf(front_start + PUSH_ROOM, front_end - t.wall_overlap)
 	var chain: Array[StringName] = wall_chain(mt, need - walls_from)
 	var length: float = 0.0
 	for s: StringName in chain:
 		length += mt.doodad_size(s).z
 	return {"front": front, "front_start": front_start, "front_end": front_end, "land": land, "credits": spots,
 		"walls_from": walls_from, "chain": chain, "end": walls_from + length}
+
+
+## How far ahead of a player's middle the top tier of the magnet pulls a credit (CreditField._in_magnet:
+## MAGNET_AHEAD of PowerupTuning.magnet_radius's largest radius), in metres; 0 without the power-ups' numbers.
+static func magnet_reach() -> float:
+	var pt := load(POWERUPS_PATH) as PowerupTuning if ResourceLoader.exists(POWERUPS_PATH) else null
+	var radius: float = 0.0
+	if pt != null:
+		for r: float in pt.magnet_radius:
+			radius = maxf(radius, r)
+	return CreditField.MAGNET_AHEAD * radius
 
 
 ## The size classes of a stash's wall (LevelLayout.DOODAD_SIZES), back to back, at least `length` metres: the

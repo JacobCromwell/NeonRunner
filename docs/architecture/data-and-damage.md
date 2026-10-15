@@ -52,7 +52,8 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
     theft takes a share of what's left. The level score never drops (GDD §7: never spent), so a theft
     never costs a star or a leaderboard place. `hold(thief, value)` is for credits a thief takes off the
     track before the player gets them (C5's collector sucks them up): it holds them, and the stars' best
-    score (`max_credit_score`) leaves them out while it does. Any defeat of a thief is a catch: the
+    score (`max_credit_score`: every credit but a treasure stash's, `LevelLayout.star_credit_value`, task
+    I4) leaves them out while it does. Any defeat of a thief is a catch: the
     director's `enemy_defeated` calls `pay_out(thief, enemy.jackpot_credits)`, which pays everything it
     holds plus its jackpot straight into the run's credits for a player-attributed defeat (with the
     `jackpot` sound; what it took off the

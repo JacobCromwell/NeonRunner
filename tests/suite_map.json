@@ -90,7 +90,7 @@
     {"match": "scripts/enemies/cyborg_poses.gd", "suites": ["cyborg_body", "cyborg", "window_cyborg", "cinematics", "city_outro", "dead_zone_intro"]},
     {"match": "scripts/enemies/bad_dream.gd", "suites": ["bad_dream", "host_releases"]},
     {"match": "scripts/enemies/cyborg_gun.gd", "suites": ["cyborg", "cyborg_airspace", "window_cyborg", "barnacle_turret", "floating_head_faceoff", "charge_paths"]},
-    {"match": "scripts/enemies/drone.gd", "suites": ["drone", "fireballs", "dash_walls"]},
+    {"match": "scripts/enemies/drone.gd", "suites": ["drone", "fireballs", "dash_walls", "ceiling_scenarios"]},
     {"match": "scripts/enemies/hover_truck.gd", "suites": ["hover_truck", "fireballs", "dash_walls"]},
     {"match": "scripts/enemies/hover_truck_tuning.gd", "suites": ["hover_truck", "dash_walls"]},
     {"match": "scripts/enemies/resonator.gd", "suites": ["resonator", "dash_walls"]},

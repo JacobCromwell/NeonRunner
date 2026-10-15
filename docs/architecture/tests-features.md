@@ -324,16 +324,20 @@ heights (a ceiling fence above a floor runner's jump, a hover truck roof's, a wa
 camera); none in the City's, Gangland's or the Marketplace's levels; in every level that lists them, at 3, 5 and 6
 lanes, `LayoutChecks.check_scenarios` on its own build (`LayoutCache`), Casino 1's stash at 5 and 6 lanes (none on
 3), Casino 2's simple fenced ceiling at every lane count, the several-pad version later, how many over the campaign
-(printed); endless mode's only past their minimum difficulty; an uncached rebuild the same. On real physics: the
+(printed); every stash build's other credits alone clearing three stars (a stash's are out of the stars' best
+score); endless mode's only past their minimum difficulty; an uncached rebuild the same. On real physics: the
 CeilingScenarios physics against the Player's trace (a pad's flip and rise, a return pad's drop and fall, a jump and
 its low stretch); excerpts of the campaign's fenced ceilings (the simple one at each lane count, a several-pad one
 at 5 and 6): every unsafe pad's rider, in every lane the ceiling covers, still, hopping over the first or second row
-or jumping all the way, dies of a ceiling fence; every safe pad's rider (who runs past the unsafe pads in a lane free of them)
-drops off past the ceiling alive; a floor runner jumping under the fences is never touched; armor gets an unsafe
-pad's rider through, and an EMP switches the fences off; excerpts of the stashes at 5 and 6 lanes (the first and the
-last in campaign order): floor runners from every lane pressing toward the stash every frame, from before it and
-from alongside it, never inside it and taking no credit; the dash smashing in; the return pad's rider landing
-inside, never pushed, collecting every credit and running out; one who stays on in another lane dropping beyond it.
+or jumping all the way, dies of a ceiling fence; every safe pad's rider (who runs past the unsafe pads in a lane free
+of them) drops off past the ceiling alive; a floor runner jumping under the fences is never touched; armor gets an
+unsafe pad's rider through, and an EMP switches the fences off; a heli drone that outlived its pads fires before the
+pick, holds its barrages through it, and is hurled by the safe pad; excerpts of the stashes at 5 and 6 lanes (the
+first and the last in campaign order): floor runners from every lane pressing toward the stash every frame, from
+before it and from alongside it, never inside it and taking no credit, nor with the top magnet, holding a lane or
+pressing toward it; the dash smashing in; the return pad's rider landing inside, never pushed, collecting every
+credit (into the run's credits and score, not the stars' best score) and running out; one who stays on in another
+lane dropping beyond it.
 The track builds the fences (an electrical hazard at its depth and size, dressed) and the return pad (on the
 underside, turned down, over the stash's lane) and every stash doodad; every skin dresses both (the field in the
 zone's fence materials, whose shader honours Reduced flashing; the return pad as its pad); the chase camera stays

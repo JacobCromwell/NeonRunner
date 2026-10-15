@@ -1159,8 +1159,9 @@ func _test_show_bump() -> void:
 ## runner's lane and in `left`, so `right` would be the only free lane there; it never shows itself in `right`
 ## while that spot lies ahead (nor in `left`, not clear). The doodads push the runner out of their lanes as they
 ## reach them, and a push finishes (task I4: a move back into the pushing doodad's lane waits for it), so the runner
-## may settle beside them before they end: a showing begun then, beside that lane, is fair, but never in `right` or
-## `left`. With the runner's lane free there instead, it shows
+## may settle beside them before they end: a showing begun then is fair if it's next to the lane they're in and isn't
+## their only free lane (theirs and the ones beside it, with no doodad for the rest of the spot). With the runner's
+## lane free there instead, it shows
 ## itself in `right` as it arrives (the runner keeps their own lane). A runner by a wall (task C6c,
 ## EnforcerTruckRoom.sides), at 3 and 5 lanes: it comes alongside two lanes in, never in the lane between, which
 ## stays theirs to dodge into.
@@ -1205,10 +1206,18 @@ func _test_show_fairness() -> void:
 					"%s its lane free, the runner keeps a lane: it shows itself as it arrives in lane %d (lane %d, at %.0f m)" % [tag,
 					mid + 1, show_lane, first_show])
 			else:
-				var beside: bool = first_show >= spot and show_lane != mid + 1 and show_lane != mid - 1
+				# A showing begun beside the doodads: next to the runner's lane, and never their only free one (theirs and
+				# the lanes beside it, with no doodad there for the rest of the spot).
+				var free: Array[int] = []
+				for l: int in [runner_lane - 1, runner_lane, runner_lane + 1]:
+					if l >= 0 and l < lanes and not layout.doodad_between(first_show, spot + 3.0, l):
+						free.append(l)
+				var beside: bool = first_show >= spot and absi(show_lane - runner_lane) == 1 and free.has(show_lane) \
+					and free.size() >= 2
 				check(first_show < 0.0 or first_show > spot + 3.0 or beside, ("%s doodads in the runner's lane and lane %d at %.0f m: "
-					+ "it never takes lane %d, the only free one there (%s; first showing at %.0f m, in lane %d, the runner in %d)")
-					% [tag, mid - 1, spot, mid + 1, why, first_show, show_lane, runner_lane])
+					+ "it never takes lane %d, the only free one there, nor the runner's only free lane beside the doodads "
+					+ "(%s; first showing at %.0f m, in lane %d, the runner in %d, free %s)")
+					% [tag, mid - 1, spot, mid + 1, why, first_show, show_lane, runner_lane, free])
 			await sim.free_world(w)
 	# A runner by a wall.
 	for lanes: int in [3, 5]:

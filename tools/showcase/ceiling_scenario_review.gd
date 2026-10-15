@@ -196,6 +196,8 @@ func _excerpt(source: LevelLayout, h: Dictionary) -> LevelLayout:
 	hull = h.duplicate(true)
 	hull["start"] = float(h["start"]) + shift
 	hull["end"] = float(h["end"]) + shift
+	if h.has("pick"):
+		hull["pick"] = [float(h["pick"][0]) + shift, float(h["pick"][1]) + shift]
 	var out := LevelLayout.new()
 	out.lane_count = source.lane_count
 	out.length = float(hull["end"]) + 160.0

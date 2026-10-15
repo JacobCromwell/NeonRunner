@@ -6,19 +6,22 @@ extends TestSuite
 ##   none); in every level that lists them, at 3, 5 and 6 lanes, each keeps its rules (LayoutChecks.check_scenarios,
 ##   with the rest of check_layout and check_rules); Casino 1 introduces the treasure stash at 5 and 6 lanes (none
 ##   fits on fewer, DESIGN-TBD) and Casino 2 the simple fenced ceiling (one unsafe pad, one safe) at every lane count;
-##   the several-pad version comes later; both keep turning up over the campaign; endless mode gets them only where
+##   the several-pad version comes later; both keep turning up over the campaign; every stash build's three-star line
+##   is reached without its stash (its credits are out of the stars' best score); endless mode gets them only where
 ##   its difficulty has reached their minimum; the same seed builds the same level (an uncached rebuild);
 ## - the physics they're timed by (CeilingScenarios: a pad's flip and rise, a drop off a return pad, a jump and its
 ##   low stretch) is the Player's, on real physics;
 ## - a fenced ceiling, on real physics (excerpts of the generated levels, at 3, 5 and 6 lanes, the simple version, and
-##   the several-pad one at 5 and 6: never as many pads as lanes): every unsafe pad's rider meets a fence in every lane the ceiling covers, staying put, hopping
-##   over the first row or jumping all the way, and dies of it; every safe pad's rider rides on in every lane, jumping
-##   or not, and drops off past the ceiling alive; a floor runner under it, jumping, is never touched; armor gets an
-##   unsafe pad's rider through; an EMP switches its fences off;
+##   the several-pad one at 5 and 6: never as many pads as lanes): every unsafe pad's rider meets a fence in every
+##   lane the ceiling covers, staying put, hopping over the first row or jumping all the way, and dies of it; every
+##   safe pad's rider rides on in every lane, jumping or not, and drops off past the ceiling alive; a floor runner
+##   under it, jumping, is never touched; armor gets an unsafe pad's rider through; an EMP switches its fences off; a
+##   heli drone that outlived its pads holds its barrages through the pick, and its safe pad hurls it;
 ## - a treasure stash, on real physics (excerpts at 5 and 6 lanes): a floor runner switching toward it from every lane,
-##   before it or alongside it, never gets in and takes none of its credits; the return pad's rider (switching to its
-##   lane on the ceiling) drops in, never pushed, collects every credit and runs out of its open end; a rider who
-##   stays on in another lane drops beyond it; the dash smashes in (H5; docs/questions/i4.md);
+##   before it or alongside it, never gets in and takes none of its credits, nor pulls one with the top magnet; the
+##   return pad's rider (switching to its lane on the ceiling) drops in, never pushed, collects every credit (into the
+##   run's credits and score, not the stars' best score) and runs out of its open end; a rider who stays on in another
+##   lane drops beyond it; the dash smashes in (H5; docs/questions/i4.md);
 ## - the track builds a ceiling fence as an electrical hazard hanging below the underside and a return pad as a
 ##   trigger on it, turned to face the floor; every skin dresses both (the fence's field in the zone's fence
 ##   materials, whose shader honours Reduced flashing; the return pad as its anti-grav pad); the chase camera stays
@@ -26,6 +29,7 @@ extends TestSuite
 
 const Stash = preload("res://scripts/enemies/treasure_stash_rules.gd")
 const Fenced = preload("res://scripts/enemies/fenced_ceiling_rules.gd")
+const DroneScript = preload("res://scripts/enemies/drone.gd")
 const STASH: String = CeilingScenarios.STASH
 const FENCED: String = CeilingScenarios.FENCED
 const LANE_COUNTS: Array[int] = [3, 5, 6]
@@ -35,6 +39,9 @@ const WITHOUT: Array[StringName] = [&"city", &"gangland", &"marketplace"]
 const PAD_AT: float = 60.0
 ## A floor runner's excerpt starts this far before the stash.
 const RUN_UP: float = 45.0
+## An excerpt with a heli drone (_test_fenced_drone) has its first pad this far along: room for the drone to arrive
+## and fire first.
+const DRONE_PAD_AT: float = 320.0
 
 var campaign: Campaign
 var st: CeilingScenarioTuning
@@ -50,11 +57,13 @@ func run() -> void:
 	sim = RunSim.new(tree, tuning)
 	_test_tuning()
 	_test_campaign()
+	_test_stars()
 	_test_endless()
 	_test_determinism()
 	await _test_physics()
 	await _test_fenced_rides()
 	await _test_fenced_protection()
+	await _test_fenced_drone()
 	await _test_stash_rides()
 	await _test_track()
 	_test_skins()
@@ -89,6 +98,8 @@ static func _excerpt(layout: LevelLayout, h: Dictionary, shift: float, pads: boo
 	var hull: Dictionary = h.duplicate(true)
 	hull["start"] = float(h["start"]) + shift
 	hull["end"] = float(h["end"]) + shift
+	if h.has("pick"):
+		hull["pick"] = [float(h["pick"][0]) + shift, float(h["pick"][1]) + shift]
 	var out := RunSim.layout(layout.lane_count, float(hull["end"]) + 150.0)
 	out.hulls.append(hull)
 	if pads:
@@ -124,7 +135,8 @@ static func _excerpt(layout: LevelLayout, h: Dictionary, shift: float, pads: boo
 ## Runs a full world over `layout` (RunSim.build_world, at `mt`) from `start_lane` for up to `seconds`, calling
 ## `each.call(player)` before every physics frame; stops when the player dies. Returns {trace (after every frame:
 ## d, x, h, surface, lane, alive), alive, cause, distance, surface, lane, pushes, smashes, return_drops, pickups (credits
-## collected), events}.
+## collected), credits and score (ScoreKeeper's), best (its max_credit_score), magnet (the credit field's pull radius),
+## events}.
 func _drive(layout: LevelLayout, mt: MovementTuning, start_lane: int, seconds: float, each: Callable,
 		loadout: Loadout = null, before: Callable = Callable()) -> Dictionary:
 	var world: RunWorld = sim.build_world(layout, loadout, mt)
@@ -158,6 +170,10 @@ func _drive_world(world: RunWorld, seconds: float, each: Callable) -> Dictionary
 	out["smashes"] = player.smashes
 	out["return_drops"] = player.return_drops
 	out["pickups"] = world.score.credit_pickups
+	out["credits"] = world.score.credits
+	out["score"] = world.score.score
+	out["best"] = world.score.max_credit_score
+	out["magnet"] = world.credits.magnet_radius
 	return out
 
 
@@ -301,6 +317,34 @@ func _test_campaign() -> void:
 	check(int(counts["several"]) >= 3, "the several-pad version comes later in the campaign (%d)" % counts["several"])
 	print("  ceiling scenarios: %d stashes in %d builds at 5-6 lanes, %d fenced ceilings in %d builds (%d with several pads)"
 		% [counts[STASH], counts["stash_builds"], counts[FENCED], counts["fenced_builds"], counts["several"]])
+
+
+## Task I4's review (docs/questions/i4.md 9): a treasure stash's credits never count in the stars' best score
+## (LevelLayout.star_credit_value, ScoreKeeper.max_credit_score), so every campaign build's three-star line is reached
+## without its stash: the level's other credits alone clear it. (Collected, they count in the run's credits and score:
+## _ride_stash.)
+func _test_stars() -> void:
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	var shares: Array[float] = []
+	for lanes: int in [5, 6]:
+		for pick: Dictionary in (found[STASH] as Dictionary).get(lanes, []):
+			var layout: LevelLayout = pick["layout"]
+			var stash: int = 0
+			for c: Dictionary in layout.credits:
+				stash += int(c["value"]) if c.has("stash") else 0
+			var without: int = layout.total_credit_value() - stash
+			var tag: String = "%s at %d lanes" % [pick["id"], lanes]
+			check(stash > 0 and layout.star_credit_value() == without,
+				"%s: the stars' best score (%d) is every credit but its stash's (%d of %d)" % [tag, layout.star_credit_value(), stash,
+				layout.total_credit_value()])
+			check(rules.stars_for(true, without, layout.star_credit_value()) == 3,
+				"%s: every credit but its stash's clears the three-star line (%d of %d, at %.0f%%)" % [tag, without,
+				layout.star_credit_value(), rules.three_star_share * 100.0])
+			shares.append(float(stash) / float(maxi(layout.total_credit_value(), 1)))
+	check(not shares.is_empty(), "stashes to weigh against the stars")
+	if not shares.is_empty():
+		print("  a stash is %.0f-%.0f%% of its level's credits (%d builds); the stars leave it out" % [shares.min() * 100.0,
+			shares.max() * 100.0, shares.size()])
 
 
 ## Endless mode (App.start_endless: the furthest zone's last level, its difficulty rising from 0.2, every feature
@@ -554,6 +598,80 @@ func _test_fenced_protection() -> void:
 	check(bool(r["alive"]) and float(r["distance"]) > float(h["end"]), "and the unsafe pad's rider rides on (%s)" % r["cause"])
 
 
+## Task I4's review (docs/questions/i4.md 10): a heli drone that outlived its pads (there's none before the fenced
+## ceiling here) fires before the pick, holds its barrages through it (the hull's "pick", Drone._pick_in_reach), and
+## the pick's safe pad, the next pad that works, hurls it as any pad does. The safe pad's rider runs past the unsafe
+## pads in a lane free of them (as _ride_fenced's), in god mode through the barrages before the pick.
+func _test_fenced_drone() -> void:
+	var picks: Array[Dictionary] = _fenced_picks(5)
+	check(not picks.is_empty(), "a fenced ceiling to meet a drone at")
+	if picks.is_empty():
+		return
+	var pick: Dictionary = picks[0]
+	var config: LevelConfig = pick["config"]
+	var mt: MovementTuning = config.movement_for(tuning)
+	var v: float = mt.run_speed
+	var own: Array[Dictionary] = CeilingScenarios.pads_under(pick["layout"], pick["hull"])
+	var ex: Dictionary = _excerpt(pick["layout"], pick["hull"], DRONE_PAD_AT - float(own[0]["at"]))
+	var layout: LevelLayout = ex["layout"]
+	var h: Dictionary = ex["hull"]
+	check(h.has("pick"), "a fenced ceiling records its pick")
+	if not h.has("pick"):
+		return
+	var span := Vector2(float(h["pick"][0]), float(h["pick"][1]))
+	var tag: String = "(%s lanes=5, the fenced ceiling at %.0f m; its pick %.0f-%.0f m here)" % [pick["id"],
+		float(pick["hull"]["start"]), span.x, span.y]
+	# The safe pad's rider: in the lane free of the unsafe pads nearest the safe pad's, into its lane past them.
+	var unsafe_lanes: Array[int] = []
+	var last_unsafe: float = 0.0
+	var safe_lane: int = -1
+	for p: Dictionary in layout.pads:
+		if String(p["fenced"]) == "unsafe":
+			unsafe_lanes.append(int(p["lane"]))
+			last_unsafe = maxf(last_unsafe, float(p["at"]))
+		elif safe_lane < 0:
+			safe_lane = int(p["lane"])
+	var start: int = -1
+	for lane: int in layout.lane_count:
+		if not unsafe_lanes.has(lane) and (start < 0 or absi(lane - safe_lane) < absi(start - safe_lane)):
+			start = lane
+	var moves: Array = []
+	var dir: StringName = &"move_right" if safe_lane > start else &"move_left"
+	for k: int in absi(safe_lane - start):
+		moves.append([last_unsafe + mt.pad_length + 2.0 + k * 3.0, dir])
+	var watch := {"drone": null, "cause": &"", "before": 0, "during": []}
+	var on_defeat := func(e: Enemy, cause: StringName) -> void:
+		if e == watch["drone"]:
+			watch["cause"] = cause
+	var setup := func(w: RunWorld) -> void:
+		w.player.god_mode = true
+		w.director.enemy_defeated.connect(on_defeat)
+		watch["drone"] = w.director.spawn({"type": "drone", "at": 20.0, "lane": start, "side": 0, "seed": 5,
+			"params": {"slot": 0}})
+	var ride: Callable = _rider(safe_lane, _none())
+	var each := func(p: Player) -> void:
+		while not moves.is_empty() and p.distance >= float(moves[0][0]):
+			p.press(moves.pop_front()[1])
+		ride.call(p)
+		var d: Variant = watch["drone"]
+		if d == null or not is_instance_valid(d) or not (d as Enemy).alive:
+			return
+		if p.distance < span.x:
+			watch["before"] = int((d as Enemy).get(&"barrages"))
+			return
+		var s: int = int((d as Enemy).get(&"state"))
+		if p.distance <= span.y and (s == DroneScript.State.WINDUP or s == DroneScript.State.FIRE):
+			(watch["during"] as Array).append(snappedf(p.distance, 0.1))
+	var r: Dictionary = await _drive(layout, mt, start, (float(h["end"]) + 20.0) / v, each, null, setup)
+	check(int(watch["before"]) >= 1, "a drone that outlived its pads fires before the pick (%d barrages) %s"
+		% [watch["before"], tag])
+	check((watch["during"] as Array).is_empty(), "and holds its barrages through the pick (winding up or firing at %s) %s"
+		% [(watch["during"] as Array).slice(0, 4), tag])
+	check(watch["cause"] == &"pad" and String(r["surface"]) == "floor" and float(r["distance"]) > float(h["end"]),
+		"the pick's safe pad hurls it, as any pad does (%s), and its rider rides on (%s at %.0f m) %s"
+		% [watch["cause"], r["surface"], r["distance"], tag])
+
+
 # --- The treasure stash -----------------------------------------------------------------------------
 
 func _test_stash_rides() -> void:
@@ -608,6 +726,22 @@ func _ride_stash(pick: Dictionary, lanes: int, floor_runners: bool) -> void:
 				check(inside.is_empty() and int(r["pickups"]) == 0 and bool(r["alive"]),
 					"a floor runner from lane %d switching toward it from %.1f m never gets in (%d frames inside: %s; %d credits; from %.1f to %.1f) %s"
 					% [start, from - float(s["start"]), inside.size(), inside.slice(0, 2), r["pickups"], inside_from, inside_to, tag])
+		# The top magnet (task I4's review): a floor runner holding any lane, or pressing toward the stash from before
+		# it, pulls none of its credits (they lie past its reach: treasure_stash_rules.gd magnet_reach).
+		var pt := load(Stash.POWERUPS_PATH) as PowerupTuning
+		var magnet := Loadout.new()
+		magnet.tiers[&"magnet"] = pt.magnet_radius.size()
+		var top: float = PowerupTuning.at_tier(pt.magnet_radius, pt.magnet_radius.size())
+		for start: int in lanes:
+			for pressing: bool in [false, true]:
+				var press_from: float = float(s["start"]) - 12.0
+				var toward := func(p: Player) -> void:
+					if pressing and p.distance >= press_from and p.distance <= float(s["end"]) and p.lane != lane:
+						p.press(&"move_right" if lane > p.lane else &"move_left")
+				var r: Dictionary = await _drive(layout, mt, start, seconds, toward, magnet)
+				check(is_equal_approx(float(r["magnet"]), top) and int(r["pickups"]) == 0 and bool(r["alive"]),
+					"a floor runner with the top magnet (%.1f m) %s lane %d pulls none of its credits (%d) %s"
+					% [float(r["magnet"]), "pressing toward it from" if pressing else "holding", start, r["pickups"], tag])
 		# The dash smashes in (H5; docs/questions/i4.md 3).
 		var dash := func(p: Player) -> void:
 			if p.distance >= float(s["start"]) - 4.0 and not p.dashing and p.smashes == 0:
@@ -635,6 +769,12 @@ func _ride_stash(pick: Dictionary, lanes: int, floor_runners: bool) -> void:
 	check(bool(r2["alive"]) and int(r2["pushes"]) == 0 and float(r2["distance"]) > float(s2["end"]) + 5.0,
 		"who runs out of its open end, never pushed (%d pushes, %s) %s" % [r2["pushes"], r2["cause"], tag])
 	check(int(r2["pickups"]) == count and count >= 2, "and collects every one of its %d credits (%d) %s" % [count, r2["pickups"], tag])
+	# Task I4's review: they count in the run's credits (the wallet) and its score, never in the stars' best score (the
+	# excerpt holds the stash's credits alone, so that's none).
+	var value: int = count * LevelGenerator.DENOMINATIONS.max()
+	check(int(r2["credits"]) == value and int(r2["score"]) >= value and int(r2["best"]) == 0 and full.star_credit_value() == 0,
+		"its credits count in the run's credits (%d of %d) and score (%d), not in the stars' best score (%d) %s"
+		% [r2["credits"], value, r2["score"], r2["best"], tag])
 	# A rider who stays on in another lane drops beyond it.
 	var other: int = _other_lane(full, h2, lane)
 	if other < 0:

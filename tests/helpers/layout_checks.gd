@@ -849,6 +849,11 @@ static func check_stash(suite: TestSuite, gen: LevelGenerator, t: CeilingScenari
 			"%s: its credits are the highest denomination, in its lane" % at)
 		suite.check(d >= land - 0.01 and d <= end - t.credit_end_margin + 0.01,
 			"%s: a credit (%.1f m) lies past where the return pad's rider lands (%.1f m) and inside its open end" % [at, d, land])
+		# Task I4's review: past the top magnet's reach from wherever a floor runner close enough to pull from is (short
+		# of the walls' start).
+		var pull: float = float(s["walls_from"]) + TreasureStashRules.magnet_reach()
+		suite.check(TreasureStashRules.magnet_reach() > 0.0 and d > pull,
+			"%s: a credit (%.1f m) lies past the top magnet's reach from the floor (%.1f m)" % [at, d, pull])
 	suite.check(mine >= mini(t.credits_min, t.credits_max) and mine <= maxi(t.credits_min, t.credits_max),
 		"%s holds %d credits (%d to %d)" % [at, mine, t.credits_min, t.credits_max])
 	# Its floor.
@@ -960,6 +965,33 @@ static func check_fenced(suite: TestSuite, gen: LevelGenerator, t: CeilingScenar
 				"%s: no ceiling credit by a fence (%.1f m, row %.1f m)" % [at, c["at"], r])
 	suite.check(not CeilingScenarios.wall_jump_near(gen, h, rows[0] - half, rows[-1] + half),
 		"%s: no wall jump reaches its rows (a ramp's wall run or a hover truck beside them)" % at)
+	# The heli drones (task I4's review). It records its pick, which a drone that outlived its pads holds its barrages
+	# through (LevelLayout.fenced_pick_between, Drone._pick_in_reach); no wave arrives during it, nor has its first pad
+	# there; and with a wave about, the last pad before the pick that works (any but a trap) lies no more than the
+	# drone schedule's pad_repeat_max_seconds before it (GDD §9.6: a missed pad, another 8–10 s later), and the pick
+	# ends with its safe pads: a missed pad costs no more barrage time than the schedule allows.
+	var pick: Variant = h.get("pick")
+	var scene := Vector2(gen.zones.pad_zone(float(pads[0]["at"])).x, float(safe[-1]["at"]) + mt.pad_length)
+	suite.check(pick is Array and (pick as Array).size() == 2 and float(pick[0]) <= scene.x + 0.01 and float(pick[1]) >= scene.y - 0.01,
+		"%s records its pick, from its first pad's run-up to its last safe pad (%s; %.1f-%.1f m)" % [at, pick, scene.x, scene.y])
+	suite.check(layout.fenced_pick_between(scene.x, scene.x) and layout.fenced_pick_between(scene.y, scene.y),
+		"%s: a drone reads its pick from the layout" % at)
+	for w: Vector2 in CeilingScenarios.drone_windows(gen, t.drone_margin_seconds):
+		suite.check(w.y < scene.x or w.x > scene.y, "%s: no drone wave arrives or waits for its first pad during its pick (%.0f-%.0f m)"
+			% [at, w.x, w.y])
+	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
+	var first_wave: float = INF
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "drone":
+			first_wave = minf(first_wave, float(e["at"]))
+	if dt != null and first_wave < scene.x:
+		var before: float = -INF
+		for p: Dictionary in layout.pads:
+			if String(p.get("fenced", "")) != "unsafe" and float(p["at"]) < scene.x and float(p["at"]) > first_wave:
+				before = maxf(before, float(p["at"]))
+		suite.check((scene.x - before) / v <= dt.pad_repeat_max_seconds + 0.001,
+			"%s: with a drone wave about, the pad before its pick that works lies %.2f s before it (at most %.1f s)"
+			% [at, (scene.x - before) / v, dt.pad_repeat_max_seconds])
 
 
 static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
