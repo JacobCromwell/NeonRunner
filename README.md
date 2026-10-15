@@ -451,6 +451,14 @@ shaders first drawn after the load, and under xvfb it also counts draw calls and
 res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
 (the whole campaign takes about fifteen minutes; its header lists the options).
 
+`tools/measure/truck_cost.gd` measures what a hover truck costs a run (task I5, the truck's "big performance drop on a
+phone"): a quick-play run with trucks spawned at set times, each phase of their visit (hidden, banging, the burst,
+pacing, the rev, the wreck) framed apart with its draw calls, objects, nodes and real lights. Run it on the
+renderer to judge, under xvfb with the driver's shader cache off, so a frame that compiled shaders shows:
+`MESA_SHADER_CACHE_DISABLE=true xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --resolution 640x360
+--fixed-fps 60 --rendering-method gl_compatibility -s res://tools/measure/truck_cost.gd -- [--skin=gangland]
+[--trucks=2] [--bench]` (about two minutes; its header lists the options).
+
 `tools/measure/economy.gd` measures the campaign's economy (task R7): per level and zone, the credits
 available, what a good run collects (a stand-in share, default 0.7), the payout for finishing, and what a
 death or quit pays (GDD §4); then lays the shop's prices (`data/shop/catalog.json`) against the running

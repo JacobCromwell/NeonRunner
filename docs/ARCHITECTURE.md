@@ -263,6 +263,46 @@ and 2.1 s on Forward+ and 0.75, 0.36 and 0.59 s on Compatibility) and none after
 draw calls (248 to 279 a frame), primitives (44,000 to 49,000) and objects (336 to 404) are the same, the
 most in a frame higher by the warm-up's samples in the level's first two frames.
 
+### The hover truck's cost on a phone (task I5, the owner's report, October 14, 2026)
+
+"The Hover Truck causes a big performance drop on a playtester's phone." Measured on the Compatibility renderer
+(a phone's, the web demo's; `tools/measure/truck_cost.gd`: a quick-play run, trucks spawned at set times, each
+phase of their visit framed apart, software GL under xvfb with the driver's shader cache off; Vulkan isn't
+available in the dev container, so Forward+ and Mobile weren't run), the cost was one thing and two small ones:
+
+- **Its `OmniLight3D`, the only real light in the game** (the rev's "light thrown ahead", energy 0 the rest of the
+  time). The first omni light a Compatibility scene shows, even at energy 0, makes the renderer build a second
+  version of every lit shader within its 7 m range (a probe scene of five lit materials and a sun: 270 to 400 ms).
+  At the truck's burst, when its model, light included, was first shown, that was 3 to 6 s in software on Gangland
+  and the City, and another 0.3 to 0.4 s at a later truck's burst on the other wall (other shaders in reach);
+  after it, every lit pixel in range paid for the light, for the truck's whole stay (the steady cost can't be
+  resolved on a shared machine: a llvmpipe frame varies by 10% by itself). The Mobile renderer specialises its
+  pipelines by the lights a draw has (`RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION`), so it likely pays
+  the same in pipelines. Now the light is two plain glow discs, one on the floor
+  past the nose and one on the wall beside it (`HoverTruck._glow_mesh()`: a fan fading from solid to nothing by
+  vertex alpha, added light, unlit, two shared materials, dim and bright; `GLOW_*`), shown exactly through the rev
+  and the forward lurch, flashing with the spikes and steady with Reduced flashing, as the light was (side by side
+  frames of the rev, in the close-up scene and in a Gangland run, read the same). **No scene node may be a real light** (`OmniLight3D`,
+  `SpotLight3D`; the one `DirectionalLight3D` per run is the sun): a warm glow is a mesh, and `test_hover_truck`
+  fails on any light in a run with a truck.
+- **Its first spawn built its model** (4 to 5 ms on the dev machine, 30 to 70 ms in PERF1's count, in the spawn's
+  frame, and its first draw's shaders then: 0.3 to 0.6 s in software): it had no `warm_up` hook like the other
+  enemies. It has one now: its model, the glows its parts swap in, the wall effects, the warning glow and the
+  fireball, readied with the level and drawn by `ShaderWarmup`.
+- **Per-frame work while hidden** (its first seconds, from the spawn lead until it bangs): the animation ran on a
+  hidden model, setting about ten properties a frame, five of them material overrides (each makes the renderer
+  look the part over again, even to the same material). It now does nothing until it bangs, sets a part's
+  material only when it changes (a hidden tick is 2.5 to 0.8 µs, a pacing one the same 12 to 25 µs), and the
+  explosion's ball is built once.
+
+Not the cause: draw calls and triangles (its model is 25 surfaces and 1,250 to 1,860 triangles: 19 draw calls,
+27 with two gunners, against a frame's 170 to 250, and the facade's panel and cracks while it bangs and the rubble
+for 1.3 s after), particles and rubble (pooled and pre-built), physics (two roofs, a blocker, three hitboxes) and
+the wall (nothing rebuilds it: the hole is a quad over the facade). A seeded run's event log is the same before and after (corporate/1,
+gangland/2 and city/3, `frame_times.gd --log`). `RunEffects.burst()` sets each particle system's `amount` on
+every call, which reallocates its buffers whether it changed or not (a truck's burst starts four); skipping an
+unchanged amount is a small win for every effect, left to a task on `RunEffects`.
+
 ## Data (tunables live in data, CLAUDE.md principle 7)
 
 | File | What |
@@ -475,8 +515,9 @@ with every part the enemy may show later
 (`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
 `brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
 screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator, Buzz Overdrive, Gilded Sentinel
-(its statue's frames for both walls, its eyes, its cut marks' shader) and Enforcer Truck (its model with
-every rider, its light bar's and floor lights' states, its warning line) have hooks, and a boss fight names the
+(its statue's frames for both walls, its eyes, its cut marks' shader), Enforcer Truck (its model with
+every rider, its light bar's and floor lights' states, its warning line) and hover truck (its model, the glows
+its parts swap in, the wall effects, its warning glow, its fireball: task I5) have hooks, and a boss fight names the
 enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped cyborgs, the Sleep
 Taker's generators); a new enemy whose first spawn builds anything costly adds one, and a kit keeps the
 shaders it loads (a static cache, as the kits do) rather than loading them per spawn (`test_perf` checks
@@ -3342,7 +3383,7 @@ game: a chunk's dressing spread over frames (the same gameplay nodes in each chu
 dressed, every chunk dressed before the player is `DRESS_BY` from it, a chunk freed undressed skipped without
 errors, and a seeded run on Gangland 2 with its enemies giving the same trace, events and enemy log at budgets of
 0, 1 µs and 1 ms), enemy types readied with the level (every hooked kind and a host's Bad Dream, scripts loaded,
-nothing left in the tree or heard, once a process, `warm_looks()`), hit-stops that never stack or chain, BossProps'
+nothing left in the tree or heard, once a process, `warm_looks()`, the hover truck's among them), hit-stops that never stack or chain, BossProps'
 shared rings, the shader warm-up stage (the cyborgs' looks, fences in every state, particles as particles, the
 run's hidden looks, nothing colliding, lit or top-level), the frame monitor's tags (chunks, a spawn, a kill and
 its hit-stop, the held frames) and summaries, and the frame graph's spikes and holds. `test_frame_times` plays
@@ -3445,6 +3486,25 @@ about ten minutes; `--seeds=6` adds six other seeds a level, `--seeds=9007-9020`
 enemies' own states and the live shots, never from the turn-taking code (only the waits come from the
 director's answers), and hashes each run's event log, so two builds (or the switch off and a build
 without the rule) can be compared run by run.
+
+`test_hover_truck`'s cost checks (task I5; A run, The hover truck's cost on a phone) hold a truck to what a renderer
+pays for it: its model built with the level and not by its first spawn, a warm-up look with a material for every
+one it shows through a whole visit (spawn, banging, burst, pacing, lurch back, rev, forward lurch, shot down,
+explosion), no `OmniLight3D` or `SpotLight3D` anywhere in play, no node made while it plays (the explosion's ball
+apart), and its warning glow shown exactly through the rev and the forward lurch, flashing with the spikes and
+steady with Reduced flashing. Six of those checks fail on the build before I5.
+
+`tools/measure/truck_cost.gd` measures what a hover truck costs a run (task I5): it plays a quick-play run with the
+truck's feature through the App, spawns trucks at set times (`--trucks`, `--stay`, `--kill`) and reports, per phase of
+the visit (away, hidden, banging, the burst, pacing, the lurches, the rev, the wreck), the frames' median, 95th
+percentile and worst time, the game's part of them, and the median draw calls, primitives, objects, nodes, real lights
+in the tree and the pipelines built, then the slowest frames with their phase and tags. Under xvfb with
+`--rendering-method gl_compatibility` and `MESA_SHADER_CACHE_DISABLE=true` (so the driver's disk cache doesn't hide
+compiles) a frame that built shaders stands out by hundreds of milliseconds, which is how the light was found; the
+times are software's, the counts are any renderer's. `--bench` times a truck's spawn and its per-frame script work,
+`--probe-lights` alternates the run's lights shown and hidden, `--trace` prints the tick of each phase (to find
+frames in a `--write-movie` capture), `--pre-burst` fires two spark bursts first, `--no-light` frees any light a
+truck has (for an older build). It runs on an older build too: copy it into an archive of that build.
 
 `tools/measure/frame_times.gd` measures frame times (task PERF1; A run, Smooth frames): it plays campaign
 levels and boss fights (built ones, and ones still being built through their preview scene) through the App

@@ -17,8 +17,8 @@ extends Enemy
 ##   it never backs or drifts into a player in its lane. The one deadly part looks deadly: the
 ##   glowing front spikes (a sleek nose in the city, a spiked plow with barbed wire for
 ##   scavengers) are live only during the forward lurch, which comes after its warning (the rev:
-##   truck_rev, flashing spikes, glowing thrusters, a glow thrown ahead onto the floor and the wall) and only when a player in
-##   its lane could still get out. The spikes' hitbox is narrower than the lane, so a player beside
+##   truck_rev, flashing spikes, glowing thrusters, a glow thrown ahead onto the floor and the wall) and
+##   only when a player in its lane could still get out. The spikes' hitbox is narrower than the lane, so a player beside
 ##   it or on the wall next to it is never caught.
 ## - Kill: land on its roof (a moving floor surface; routes: a ramp onto the wall then a wall jump,
 ##   or get ahead of it during a backward lurch, run on the wall and jump on as it lurches forward)

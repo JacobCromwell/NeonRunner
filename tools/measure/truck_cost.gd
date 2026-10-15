@@ -32,7 +32,8 @@ extends SceneTree
 ## (draw calls, objects, primitives, nodes, lights), and a frame that compiled shaders stands out by hundreds
 ## of milliseconds. Set MESA_SHADER_CACHE_DISABLE=true so the driver's own disk cache doesn't hide the compiles.
 ## Output: one row per phase (frames, median and worst frame ms, the game's median ms, median draw calls,
-## objects, nodes and lights in the tree), the slowest frames with their phase and tags, and each truck's
+## objects, nodes and lights in the tree, and the pipelines a Forward+ or Mobile renderer built in it: 0 on
+## Compatibility, which compiles shaders without counting them), the slowest frames with their phase and tags, and each truck's
 ## cost over the frames before it came.
 
 const MONITOR_SCRIPT: String = "res://scripts/run/frame_monitor.gd"
@@ -103,6 +104,8 @@ var _objects := PackedInt32Array()
 var _nodes := PackedInt32Array()
 var _lights := PackedInt32Array()
 var _probe_on := PackedByteArray()
+var _pipelines := PackedInt32Array()
+var _compiles_seen: int = 0
 var _truck_no := PackedInt32Array()
 var _rendering: bool = false
 
@@ -307,6 +310,13 @@ func _record() -> void:
 		_primitives.append(0)
 		_objects.append(0)
 	_nodes.append(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)))
+	var compiled: int = 0
+	for info: int in [RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_CANVAS, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_MESH,
+			RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SURFACE, RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_DRAW,
+			RenderingServer.RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION]:
+		compiled += RenderingServer.get_rendering_info(info)
+	_pipelines.append(compiled - _compiles_seen)
+	_compiles_seen = compiled
 	var lights: Array[Node] = _run.find_children("*", "OmniLight3D", true, false)
 	var shown: int = 0
 	var probed: int = 1
@@ -338,7 +348,7 @@ func _report() -> void:
 	for k: Variant in by_phase:
 		if not order.has(String(k)):
 			order.append(String(k))
-	print("phase         frames | frame ms: median   p95  worst | game ms | draws prims  objects nodes lights")
+	print("phase         frames | frame ms: median   p95  worst | game ms | draws prims  objects nodes lights pipelines")
 	for key: String in order:
 		if not by_phase.has(key):
 			continue
@@ -412,9 +422,12 @@ func _row(label: String, idx: Array, totals: PackedInt32Array, logics: PackedInt
 		lights.append(_lights[f])
 	var s: Dictionary = monitor_class.call(&"summarize", ms)
 	var g: Dictionary = monitor_class.call(&"summarize", game)
-	return "%-13s %6d | %8.1f %7.1f %7.1f | %6.2f | %5d %6d %6d %5d %4d" % [label, idx.size(), float(s["median"]),
+	var pipelines: int = 0
+	for i: Variant in idx:
+		pipelines += _pipelines[int(i)]
+	return "%-13s %6d | %8.1f %7.1f %7.1f | %6.2f | %5d %6d %6d %5d %4d %8d" % [label, idx.size(), float(s["median"]),
 		float(s["p95"]), float(s["worst"]), float(g["median"]), int(_median(draws)), int(_median(prims)),
-		int(_median(objs)), int(_median(nodes)), int(_median(lights))]
+		int(_median(objs)), int(_median(nodes)), int(_median(lights)), pipelines]
 
 
 static func _median(values: PackedFloat32Array) -> float:
