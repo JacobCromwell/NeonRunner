@@ -525,7 +525,9 @@ chase and a volley, showing itself beside the runner and bumping a lane change b
 too-wide gap, each ending in its blast, its model; `--scenario=chase|show|octodog|buzz|cut|gap|model`), a wider gap
 jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), zone doodads pushing the
 runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
-armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`), an
+armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`), a
+campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
+`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
 Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
 explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,

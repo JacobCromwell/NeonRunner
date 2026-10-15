@@ -776,6 +776,9 @@ func _test_safe_floor_every_time() -> void:
 			var after: float = config.spacing_seconds_hard * fast.run_speed
 			var tried: int = 0
 			for d: Dictionary in layout.doodads:
+				# A treasure stash's doodads stand together, under its ceiling (task I4): test_ceiling_scenarios runs them.
+				if d.has("stash"):
+					continue
 				if tried >= SAFE_RUNS_PER_LEVEL:
 					break
 				tried += 1
@@ -1355,6 +1358,9 @@ func _test_dash_campaign() -> void:
 			var after: float = config.spacing_seconds_hard * fast.run_speed
 			var tried: int = 0
 			for d: Dictionary in layout.doodads:
+				# A treasure stash's doodads (task I4): test_ceiling_scenarios dashes into one.
+				if d.has("stash"):
+					continue
 				if tried >= DASH_RUNS_PER_LEVEL:
 					break
 				tried += 1
@@ -1427,6 +1433,10 @@ func _test_dash_fairness() -> void:
 					every.append(Vector2(float(k["from"]), float(k["to"])))
 			var half: float = fast.fence_depth * 0.5
 			for d: Dictionary in layout.doodads:
+				# A treasure stash's doodads stand under its ceiling, and what the dash shows behind them is the stash
+				# (task I4: test_ceiling_scenarios).
+				if d.has("stash"):
+					continue
 				var lane: int = int(d["lane"])
 				var mine: Array[Vector2] = []
 				for g: Dictionary in layout.gaps:
