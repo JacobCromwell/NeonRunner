@@ -70,7 +70,7 @@ zone look: the cyborgs (window cyborgs and hosts too) dress in the zone variant
 other enemies weather by it (`&"scavenger"` weathered, any other value the clean `&"city"` look).
 **Drawn size** (GDD §9.2, "Drawn 20% bigger", owner, October 14, 2026; task I2): `ZoneSkin.cyborg_draw_scale`
 (`CyborgSuit.draw_scale(skin)`; the Neon City 1.2 in `data/skins/city_skin.tres`, every other skin 1.0, DESIGN-TBD:
-`docs/questions/i2.md`) scales the cyborgs' model only, never a hitbox: the floor cyborgs (the panic variant and
+item 829) scales the cyborgs' model only, never a hitbox: the floor cyborgs (the panic variant and
 the hosts too, the same model) set it as `body.scale`, so they stay standing on the floor (the body's origin is its
 soles); a window cyborg multiplies it into its own `BODY_SCALE` (1.25) and places the body so its waist stays where it
 was (the legs are hidden: it grows up and out of the same place, its head reaching the window frame's top). Every

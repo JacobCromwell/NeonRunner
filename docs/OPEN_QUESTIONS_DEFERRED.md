@@ -4384,3 +4384,9 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
   audio when the demo's sound starts. The likeliest reason one playtester's iPhone had no music. Placeholder: it plays
   through (the "Web (demo)" preset's `html/head_include` in `export_presets.cfg`, marked `DESIGN-TBD`); removing the
   `<script>` block restores the switch.
+
+**I2, the cyborgs drawn bigger** (from `docs/questions/i2.md`)
+829. **Should the other zones draw their cyborgs bigger too?** (GDD §9.2, "Drawn 20% bigger".) Placeholder: the Neon City
+  only, `ZoneSkin.cyborg_draw_scale` 1.2 in `data/skins/city_skin.tres`, 1.0 in every other skin (marked `DESIGN-TBD`);
+  one number per skin. The model only: hitboxes, bolts and floor use are unchanged. A window cyborg drawn bigger
+  reaches further above its window frame, so check each zone's look if it follows.

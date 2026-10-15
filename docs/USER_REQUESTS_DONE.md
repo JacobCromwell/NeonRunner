@@ -230,3 +230,5 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## The owner's batch requests (October 14, 2026)
 
 - [x] **The shop on mobile, and music on one iPhone** (I3). On the itch.io demo on a phone the shop is scrunched and hard to read. One playtester's iPhone played no music (the owner's iPhone did): look for a known bug, or say if it was likely the phone's settings. (DONE, I3: the web demo's menus are drawn larger on a phone (at least 0.65 CSS px a UI px), scroll when they must, with compact layouts for a short page, and a drag on a card scrolls; the page asks Safari to play through the silent switch, the likeliest cause; items 827–828.)
+
+- [x] **Cyborgs 20% bigger** (I2; GDD §9.2). They're hard to see in the first zone. Draw them 20% bigger without changing their hitboxes, so they're easier to see but no harder. (DONE, I2: the Neon City's floor and window cyborgs are drawn 1.2 times bigger (ZoneSkin.cyborg_draw_scale in the City's skin), from their feet or waist; every hitbox and the bolts' start unchanged. Other zones keep their size for now, item 829.)

@@ -110,7 +110,7 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 ## Their hitboxes, bolts and everything gameplay reads stay as they are, so a bigger one is easier to see, not
 ## harder to dodge. Owner, October 14, 2026 (GDD §9.2): the cyborgs were hard to see in the first zone, so
 ## the Neon City draws them 1.2 times bigger (data/skins/city_skin.tres); the other zones keep 1.0.
-## ## DESIGN-TBD (docs/questions/i2.md): whether the other zones follow; it is this one number in each skin.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 829): whether the other zones follow; it is this one number in each skin.
 @export_range(0.5, 2.0, 0.01) var cyborg_draw_scale: float = 1.0
 
 @export_group("Doodads")
