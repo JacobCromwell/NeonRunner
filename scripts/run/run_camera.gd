@@ -28,6 +28,14 @@ const CEILING_BEHIND: float = 3.0
 ## ceiling_limit looks for a ceiling from this far below the camera to this far above it.
 const CEILING_BELOW: float = 2.0
 const CEILING_SEARCH: float = 14.0
+## doodad_floor looks for a zone doodad this far to either side of the camera, and from this far behind it to this
+## far ahead (metres): it starts rising over one before it gets there, and stays above it until it's past.
+const DOODAD_SIDE: float = 1.2
+const DOODAD_BEHIND: float = 1.0
+const DOODAD_AHEAD: float = 6.0
+
+## doodad_floor's query, made once.
+static var _doodad_query: PhysicsShapeQueryParameters3D
 
 var world: RunWorld
 ## SpeedFxTuning for the fov kick and the lane lean: world.effects.tuning, set by RunEffects.setup
@@ -78,11 +86,15 @@ func _update(delta: float, instant: bool) -> void:
 		# Drop below the ceiling and look up at the player hanging from it.
 		cam_y = t.camera_ceiling_height
 		look_y = t.ceiling_height - 1.2
-	var limit: float = ceiling_limit(get_world_3d().direct_space_state,
-		Vector3(_focus.x, _focus.y, p.z + t.camera_distance), t)
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var here := Vector3(_focus.x, _focus.y, p.z + t.camera_distance)
+	var limit: float = ceiling_limit(space, here, t)
+	# Never into a zone doodad below: the camera riding below a ceiling is lower than a doodad's top, and a treasure
+	# stash's stand under one (task I4). It rises toward one ahead, and stays above one it's over.
+	var low: Vector2 = doodad_floor(space, here, t)
 	var k: float = 1.0 if instant else 1.0 - exp(-t.camera_smoothing * delta)
 	_focus.x = lerpf(_focus.x, p.x * t.camera_follow_x, k)
-	_focus.y = minf(lerpf(_focus.y, minf(cam_y, limit), k), limit)
+	_focus.y = maxf(minf(lerpf(_focus.y, maxf(minf(cam_y, limit), maxf(low.x, low.y)), k), limit), low.x)
 	_look_y = lerpf(_look_y, look_y, k)
 	fov = _fov_kick(t.camera_fov, world.player.speed, delta, instant)
 	var lean_rad: float = deg_to_rad(_lane_lean(delta, instant))
@@ -141,6 +153,39 @@ static func ceiling_limit(space: PhysicsDirectSpaceState3D, pos: Vector3, t: Mov
 			if not hit.is_empty():
 				limit = minf(limit, (hit["position"] as Vector3).y - t.camera_ceiling_clearance)
 	return limit
+
+
+## The lowest the camera at `pos` (world space) may be over the zone doodads near it (TrackBuilder.LAYER_DOODAD; a
+## smashed one has none): Vector2(over one it's level with, over one ahead), each camera_doodad_clearance above the
+## highest such doodad's top, or -INF with none. Within DOODAD_SIDE to either side, from DOODAD_BEHIND behind it (it's
+## level with a doodad until it's that far past its back) to DOODAD_AHEAD ahead. A camera above both never notices;
+## only the low camera that looks up at a ceiling rider (camera_ceiling_height) ever meets one (task I4: a treasure
+## stash's doodads stand under its ceiling, where the zone doodads never do).
+static func doodad_floor(space: PhysicsDirectSpaceState3D, pos: Vector3, t: MovementTuning) -> Vector2:
+	if _doodad_query == null:
+		_doodad_query = PhysicsShapeQueryParameters3D.new()
+		_doodad_query.collide_with_areas = true
+		_doodad_query.collide_with_bodies = false
+		_doodad_query.collision_mask = TrackBuilder.LAYER_DOODAD
+		var box := BoxShape3D.new()
+		box.size = Vector3(DOODAD_SIDE * 2.0, 6.0, DOODAD_BEHIND + DOODAD_AHEAD)
+		_doodad_query.shape = box
+	# Ahead is toward -z (TrackGeometry.world_z).
+	_doodad_query.transform = Transform3D(Basis.IDENTITY, Vector3(pos.x, 3.0, pos.z - (DOODAD_AHEAD - DOODAD_BEHIND) * 0.5))
+	var out := Vector2(-INF, -INF)
+	for hit: Dictionary in space.intersect_shape(_doodad_query, 8):
+		var body := hit["collider"] as DashBreakable
+		if body == null or body.is_smashed():
+			continue
+		var top: float = body.global_position.y + body.size.y * 0.5 + t.camera_doodad_clearance
+		# Its face toward the runner (and the camera behind them) is at +z, its far end at -z.
+		var face: float = body.global_position.z + body.size.z * 0.5
+		var far: float = body.global_position.z - body.size.z * 0.5
+		if pos.z <= face + DOODAD_BEHIND and pos.z >= far - DOODAD_BEHIND:
+			out.x = maxf(out.x, top)
+		else:
+			out.y = maxf(out.y, top)
+	return out
 
 
 func _on_shake(strength: float, duration: float) -> void:

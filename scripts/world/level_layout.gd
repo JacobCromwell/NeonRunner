@@ -70,12 +70,31 @@ var wall_gaps: Array[Dictionary] = []
 ## its look. The generator places them (scripts/enemies/dash_wall_rules.gd, only where they're fair), the
 ## track builder builds each as a DashBreakable (TrackBuilder) and the skin dresses it (ZoneSkin.dash_wall).
 var dash_walls: Array[Dictionary] = []
+## {lane, at}: an electric fence hanging from a ceiling across `lane` at track distance `at` (task I4; GDD §3,
+## "Ceiling scenarios": pick the right pad), always on. A fenced ceiling (fenced_ceiling_rules.gd) hangs rows of
+## them across every lane it covers after its unsafe pads' arrival. The track builder builds each as an
+## electrical hazard below the ceiling's underside (TrackBuilder, MovementTuning.ceiling_fence_depth), the skin
+## draws it (ZoneSkin.ceiling_fence).
+var ceiling_fences: Array[Dictionary] = []
+## {lane, at}: a return pad on a ceiling's underside in `lane`, from track distance `at` to a pad's length on
+## (task I4; GDD §3, "Ceiling scenarios": the treasure stash). A rider who steps on it drops back to the floor
+## the way a ceiling's end drops them (Player). The generator places one over each treasure stash
+## (treasure_stash_rules.gd); the track builder builds it as a trigger, the skin dresses it (ZoneSkin.return_pad).
+var return_pads: Array[Dictionary] = []
+## {lane, start, end, walls_from, pad, hull_start}: a treasure stash (task I4; GDD §3, "Ceiling scenarios"): a
+## stretch of floor in `lane`, walled off by zone doodads, that only a ceiling's return pad (at `pad`, over the
+## ceiling starting at `hull_start`) drops a player into. A doodad stands in its lane from `start`; doodads stand
+## in both neighbouring lanes from `walls_from` to `end`, where it opens onto the track; inside lie its credits.
+## The pieces are ordinary entries of `doodads` (marked "stash"), `return_pads` and `credits` (marked "stash");
+## this is the record that ties them together (treasure_stash_rules.gd, the checks and the credit pass).
+var stashes: Array[Dictionary] = []
 
 
 ## Every list of pieces, by name. A level without doodads has no "doodads" key, one without floor
 ## cuts no "cuts" key, one without wall fences no "wall_fences" key, one without wall gaps no
-## "wall_gaps" key and one without dash walls no "dash_walls" key, so its dictionary (and every hash or
-## dump of it) is the same as before those existed.
+## "wall_gaps" key, one without dash walls no "dash_walls" key, and one without ceiling scenarios (task I4)
+## no "ceiling_fences", "return_pads" or "stashes" key, so its dictionary (and every hash or dump of it) is
+## the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -100,12 +119,18 @@ func to_dict() -> Dictionary:
 		out["wall_gaps"] = wall_gaps
 	if not dash_walls.is_empty():
 		out["dash_walls"] = dash_walls
+	if not ceiling_fences.is_empty():
+		out["ceiling_fences"] = ceiling_fences
+	if not return_pads.is_empty():
+		out["return_pads"] = return_pads
+	if not stashes.is_empty():
+		out["stashes"] = stashes
 	return out
 
 
-## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps
-## and dash walls included, whether or not this layout has any yet), and moves its end to other's if
-## that's further.
+## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps,
+## dash walls and the ceiling scenarios' pieces included, whether or not this layout has any yet), and moves
+## its end to other's if that's further.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
@@ -123,6 +148,12 @@ func append_pieces(other: LevelLayout) -> void:
 		wall_gaps.append_array(other.wall_gaps)
 	if not lists.has("dash_walls"):
 		dash_walls.append_array(other.dash_walls)
+	if not lists.has("ceiling_fences"):
+		ceiling_fences.append_array(other.ceiling_fences)
+	if not lists.has("return_pads"):
+		return_pads.append_array(other.return_pads)
+	if not lists.has("stashes"):
+		stashes.append_array(other.stashes)
 	length = maxf(length, other.length)
 
 
@@ -144,6 +175,9 @@ func copy() -> LevelLayout:
 	out.wall_fences = wall_fences.duplicate(true)
 	out.wall_gaps = wall_gaps.duplicate(true)
 	out.dash_walls = dash_walls.duplicate(true)
+	out.ceiling_fences = ceiling_fences.duplicate(true)
+	out.return_pads = return_pads.duplicate(true)
+	out.stashes = stashes.duplicate(true)
 	return out
 
 

@@ -158,6 +158,8 @@ var _push_ignore_left: float = 0.0
 var pushes: int = 0
 ## How many zone doodads and dash walls the dash has smashed this run (tests and tools).
 var smashes: int = 0
+## How many times a return pad (task I4) dropped the player off a ceiling this run (tests and tools).
+var return_drops: int = 0
 ## How many dash walls the runner crashed through without the dash (one hit each, GDD §9.14), and passed on a
 ## side wall, this run (task H7a; tests and tools).
 var crashes: int = 0
@@ -256,6 +258,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_push_ignore_left = 0.0
 	pushes = 0
 	smashes = 0
+	return_drops = 0
 	crashes = 0
 	wall_passes = 0
 	_smash_claims.clear()
@@ -1181,14 +1184,22 @@ func _break(b: DashBreakable, how: StringName) -> void:
 
 # --- Triggers & hazards ----------------------------------------------------
 
-## Pads and ramps under the feet, swept back over this frame's motion.
+## Pads and ramps under the feet, swept back over this frame's motion. On a ceiling, its return pads (task I4;
+## GDD §3, "Ceiling scenarios"): the sensor reaches from the feet down from the underside instead.
 func _check_triggers(motion: float) -> void:
-	if surface != Surface.FLOOR or not grounded:
+	if surface == Surface.WALL or not grounded:
 		return
+	var ceiling: bool = surface == Surface.CEILING
 	_trigger_shape.size = SENSOR_SIZE + Vector3(0.0, 0.0, motion)
-	_trigger_query.transform = Transform3D(Basis.IDENTITY, position + Vector3(0.0, SENSOR_SIZE.y * 0.5, motion * 0.5))
+	var reach: float = -SENSOR_SIZE.y * 0.5 if ceiling else SENSOR_SIZE.y * 0.5
+	_trigger_query.transform = Transform3D(Basis.IDENTITY, position + Vector3(0.0, reach, motion * 0.5))
 	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_trigger_query, 4):
 		var area := hit["collider"] as Area3D
+		if ceiling:
+			if area.get_meta(&"kind", &"") == &"return_pad":
+				_drop_from_ceiling()
+				return
+			continue
 		match area.get_meta(&"kind", &""):
 			&"pad":
 				_flip(Surface.CEILING, tuning.antigrav_launch_velocity)
@@ -1203,6 +1214,15 @@ func _check_triggers(motion: float) -> void:
 					_last_speed_pad = area.get_instance_id()
 					_boost += tuning.speed_pad_boost  # Fades like a ramp's (boost_left).
 					_event(&"speed_pad")
+
+
+## A return pad (task I4; GDD §3, "Ceiling scenarios": "sends the player back to the floor as usual") drops the
+## rider off the ceiling the way its end does: the floor's gravity from the underside, keeping their lane and any
+## lane switch under way, and the hull_end event (its sound, and what listens for a drop: a Bad Dream, a boss).
+func _drop_from_ceiling() -> void:
+	_flip(Surface.FLOOR, 0.0)
+	return_drops += 1
+	_event(&"hull_end")
 
 
 ## The damage hitbox as it is now, stretched back over this frame's motion: any hazard
