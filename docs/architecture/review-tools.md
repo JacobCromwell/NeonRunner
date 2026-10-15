@@ -142,6 +142,19 @@ only (the dummy renderer); xvfb's software renderers give valid counts, not time
 runs on older builds too (it reads them by property names): copy it and `scripts/run/frame_monitor.gd` into
 a `git archive` of the build.
 
+`tools/measure/zone_shaders.gd` counts the shaders a level draws (task I1; A run, Smooth frames): headless, a few
+seconds a level, for each zone's first level and the Golden Palace (`--levels=` for others, `--bosses` for every
+built boss's arena: the boss set up as the framework's tests do and a second of the fight played). It builds the
+level's world as a run does (full loadout, `--lanes=`), walks its whole track with the chunks dressed, spawns one of
+each enemy kind its layout brings, builds the shader warm-up's stage, and prints the distinct Shader objects (and how
+many codes come in more than one), the distinct standard-material looks (`ShaderWarmup.shader_key`), the keys only
+the warm-up or only the level's own nodes draw, and with `--detail` each shader or look with the node that draws it
+and the standard materials in words (opaque, unshaded, two-sided, vertex-colour, ...). Shaders plus looks, times
+about 5.4, is what `tools/web/shader_programs.js` counts on the web export (City 1: 24 and 130; the looks can only
+come out low, since `ShaderWarmup.shader_key` leaves out some settings that change a standard material's shader);
+the web tool is the ground truth (it also counts each program's draws and its wait on the compiler), this one finds which shader
+a program is. `--out=build/measure/x.json` keeps the numbers.
+
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2; A run, Retries
 reuse the built level): each campaign level's first build (the generator's, after one untimed build in the
 process; the fastest of `--repeat=N`, with the builds its every-feature guarantee made) at each lane count,

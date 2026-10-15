@@ -17,6 +17,9 @@ extends TestSuite
 ##   physics object made or freed by a warm-up (the stage's track holders are made once and reused; the
 ##   enemy looks have none); no program compiled twice over (one Shader per shader code, the credits'
 ##   too) and none for the hitbox view's debug boxes.
+## - Looks that share a shader (task I1, the web demo's programs): the player's shadow and a screech lair's
+##   dark recess draw with the glow's shaders, the speed lines share one Shader (test_zone_shaders checks each
+##   zone's first level, the Golden Palace and every built boss's arena for any other twin).
 ## - The frame monitor's tags, holds and summaries, and the frame graph's spikes and holds.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
@@ -52,6 +55,7 @@ func run() -> void:
 	await _test_freeze_never_chains()
 	_test_boss_props_share_rings()
 	await _test_shader_warmup()
+	_test_shared_pieces()
 	await _test_frame_monitor()
 	_test_frame_graph()
 	_test_summaries()
@@ -419,6 +423,31 @@ func _test_shader_warmup() -> void:
 	again.queue_free()
 	camera.queue_free()
 	await sim.free_world(world)
+
+
+# --- Shared looks ---------------------------------------------------------------------------------
+
+## The pieces that once made a shader of their own (task I1; the renderer compiles a program per Shader and per set
+## of a standard material's features, five or six of them, and on the web every one is a wait at the level's load): the
+## player's shadow and a lair's dark recess draw with the glow's shaders (a black emission gives them its features,
+## and adds nothing to the picture), the speed lines share one Shader. test_zone_shaders checks every zone's first
+## level and every boss's arena for the same kind of twin.
+func _test_shared_pieces() -> void:
+	var glow_alpha: String = ShaderWarmup.shader_key(GreyboxMaterials.glow(Color.WHITE, 3.0, 0.75))
+	var glow_opaque: String = ShaderWarmup.shader_key(GreyboxMaterials.glow(Color.WHITE, 3.0, 1.0))
+	check(ShaderWarmup.shader_key(GreyboxMaterials.overlay(GreyboxMaterials.SHADOW, false)) == glow_alpha,
+		"the player's shadow draws with the glow's see-through shader, not one of its own")
+	check(ShaderWarmup.shader_key(ScreechLair._dark()) == glow_opaque, "a lair's dark recess draws with the glow's opaque shader")
+	var lines_a := SpeedLines.new()
+	var lines_b := SpeedLines.new()
+	var speed_fx := load("res://data/tuning/speed_fx.tres") as SpeedFxTuning
+	lines_a.setup(null, speed_fx)
+	lines_b.setup(null, speed_fx)
+	check((lines_a._material as ShaderMaterial).shader != null
+		and (lines_a._material as ShaderMaterial).shader == (lines_b._material as ShaderMaterial).shader,
+		"every run's speed lines share one Shader (one compile for the session, not one a level)")
+	lines_a.free()
+	lines_b.free()
 
 
 # --- The frame monitor and graph ------------------------------------------------------------------

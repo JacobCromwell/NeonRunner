@@ -29,7 +29,7 @@
     "gilded_sentinel", "golden_convergence", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
     "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache", "volleyball",
-    "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite"
+    "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite", "zone_shaders"
   ],
   "rules": [
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
@@ -73,7 +73,10 @@
     {"match": "scripts/run/level_run.gd", "tier": "full"},
     {"match": "scripts/run/rubble_burst.gd", "tier": "merge", "suites": ["doodads", "speed_fx", "perf", "dash_walls"]},
     {"match": "scripts/run/run_effects.gd", "tier": "merge", "suites": ["climb", "dash_walls", "doodads", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts"]},
-    {"match": "scripts/run/shader_warmup.gd", "tier": "merge", "suites": ["dash_walls", "doodads", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts"]},
+    {"match": "scripts/run/shader_warmup.gd", "tier": "merge", "suites": ["dash_walls", "doodads", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "zone_shaders", "frame_times", "charge_contacts"]},
+    {"match": "scripts/world/greybox_materials.gd", "tier": "merge", "suites": ["perf", "zone_shaders"]},
+    {"match": "scripts/enemies/screech_lair.gd", "suites": ["screech", "perf", "zone_shaders"]},
+    {"match": "scripts/bosses/floating_head/floating_head_tower.gd", "suites": ["zone_shaders"]},
     {"match": "scripts/run/level_cache.gd", "tier": "full"},
     {"match": "scripts/run/run_camera.gd", "tier": "merge", "suites": ["climb", "ceilings", "speed_fx", "app_flow", "cinematics", "perf", "frame_times"]},
     {"match": "scripts/run/*", "tier": "merge", "suites": ["app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
