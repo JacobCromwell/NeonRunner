@@ -322,8 +322,11 @@ func _on_node_added(node: Node) -> void:
 
 
 ## True on a phone held sideways (a short menu: UiScale.is_short()), where a screen lays itself out
-## compactly. Read when the screen is built; the screen is in the tree by then, at its final size.
+## compactly. Read when the screen is built; the screen is in the tree by then, at its final size (a screen built
+## outside the tree, as some tests do, is never short).
 func is_short() -> bool:
+	if not is_inside_tree():
+		return false
 	return UiScale.is_short(get_viewport_rect().size)
 
 
