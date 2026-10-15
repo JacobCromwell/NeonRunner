@@ -15,7 +15,6 @@ request that is now in the done file.
 
 ## Owner's answers to the open questions (October 14, 2026)
 
-- [ ] (I8) **An intro cinematic slot for every boss** (GDD §6; item 395). The City and Gangland have boss intros. Give the other bosses (The House, Hostile Takeover, the Beach's boss, the Sleep Taker, the Golden Convergence) an empty intro slot that the campaign skips until it's filled, so the owner can add their beats later without a structural change.
 
 ## The owner's batch requests (October 14, 2026)
 
