@@ -413,6 +413,16 @@ func _test_level_select() -> void:
 		if not levels.tiles.has(s.id):
 			missing += 1
 	check(missing == 0, "every campaign step has a tile (%d missing)" % missing)
+	# Item 395: a debug build shows each empty cinematic slot the campaign skips, unpressable, before its zone's boss.
+	var empty_tiles: int = 0
+	for slot: Dictionary in App.campaign.empty_slots():
+		var zone_id: String = String(slot["id"]).get_slice("/", 0)
+		var tile := levels.find_child("EmptySlot_%s_boss_intro" % zone_id, true, false) as TileButton
+		if tile != null and tile.disabled and not levels.tiles.has(slot["id"]) and tile.get_parent() == (levels.tiles[zone_id + "/boss"] as TileButton).get_parent() \
+				and tile.get_index() + 1 == (levels.tiles[zone_id + "/boss"] as TileButton).get_index():
+			empty_tiles += 1
+	check(empty_tiles == App.campaign.empty_slots().size() and empty_tiles == 5 or not OS.is_debug_build(),
+		"the level select shows the five empty boss-intro slots in debug builds (%d)" % empty_tiles)
 	check(not (levels.tiles["city/3"] as TileButton).disabled and (levels.tiles["city/boss"] as TileButton).disabled,
 		"steps are open up to the next unfinished one, locked after it")
 	check(_focus() == levels.tiles["city/3"], "the next step to play has the focus (%s)" % _focus())
