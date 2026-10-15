@@ -472,6 +472,9 @@ each feature a pattern can place there is in the finished level, at any lane cou
   many missed features ask for it), so their entries move until one leaves the truck room to arrive (task
   K4: a rare seeded build had none, on the earlier curves too). Rules whose data allows none (a static
   `places_any()` false: the truck's `per_level_max` 0) ask for none.
+- A feature sprinkled in rather than guaranteed (its rules script's `OCCASIONAL`: the ceiling scenarios, task I4,
+  which take a level's own ceilings only where one fits) is never required, and the campaign checks don't ask
+  every build for one (`LayoutChecks.occasional`); `test_ceiling_scenarios` counts them over the campaign.
 
 **Pace** (GDD §3, owner's playtest September 30, 2026: about 21 m/s in the Neon City rising zone by
 zone to about 25 m/s in the Golden Zone). A level's run speed is its own `LevelConfig.run_speed`, which
