@@ -176,9 +176,10 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   `music_song.gd` (stems on a 16th grid that wrap around the loop, and loop-safe effects) and
   `music_instruments.gd`, and a new one is listed in `music_gen.gd` and the library. **No new tracks are
   generated** (owner, September 28, 2026). Owner-supplied MP3s replace gameplay in every zone and
-  the Floating Head and The House fights. `MusicLibrary.zone_tracks` maps a zone's generated default
-  to its supplied song, while `boss_tracks` maps a boss id to its supplied song; The House shares the
-  Casino song. The Beach and Casino retain generated defaults for cinematics. Their songs have no
+  the Floating Head, The House and Mecha Guppy fights. `MusicLibrary.zone_tracks` maps a zone's generated default
+  to its supplied song, while `boss_tracks` maps a boss id to its supplied song; The House uses the
+  Casino song, and the Mecha Guppy fight uses its own boss song, `Zone_Beach_Boss_Teeth_in_the_Surf.mp3`
+  (re-encoded to 160 kbps to stay within the 40 MB supplied-song budget). The Beach and Casino retain generated defaults for cinematics. Their songs have no
   dedicated completion riffs yet and use the fallback City riff. `App._start_run` resolves these for campaign,
   quick play, endless and retries; cinematics and menus bypass the overrides, and unmatched bosses
   keep their defaults. All levels within a zone share its song. MP3s loop in full; regeneration
