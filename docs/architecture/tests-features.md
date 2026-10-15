@@ -291,9 +291,9 @@ lanes, `LayoutChecks.check_scenarios` on its own build (`LayoutCache`), Casino 1
 3), Casino 2's simple fenced ceiling at every lane count, the several-pad version later, how many over the campaign
 (printed); endless mode's only past their minimum difficulty; an uncached rebuild the same. On real physics: the
 CeilingScenarios physics against the Player's trace (a pad's flip and rise, a return pad's drop and fall, a jump and
-its low stretch); excerpts of the campaign's fenced ceilings (the simple one at each lane count, a several-pad one at 5 and 6):
-every unsafe pad's rider, in every lane the ceiling covers, still, hopping over the first or second row or jumping
-all the way, dies of a ceiling fence; every safe pad's rider (who runs past the unsafe pads in a lane free of them)
+its low stretch); excerpts of the campaign's fenced ceilings (the simple one at each lane count, a several-pad one
+at 5 and 6): every unsafe pad's rider, in every lane the ceiling covers, still, hopping over the first or second row
+or jumping all the way, dies of a ceiling fence; every safe pad's rider (who runs past the unsafe pads in a lane free of them)
 drops off past the ceiling alive; a floor runner jumping under the fences is never touched; armor gets an unsafe
 pad's rider through, and an EMP switches the fences off; excerpts of the stashes at 5 and 6 lanes (the first and the
 last in campaign order): floor runners from every lane pressing toward the stash every frame, from before it and

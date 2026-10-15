@@ -180,9 +180,10 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   doodad's lane is blocked too (`_into_pushed_from`: it stands just ahead there, short of its side's reach,
   and won't push again until its push is done, so the body would sink into it), and a blocked move only
   clanks: the push finishes (cut into a bump, it left the body between the lanes against the doodad's side
-  for as long as the moves kept coming; a treasure stash's walls rely on the push to keep a runner out). It costs nothing: DamageRules never sees it, the run's speed stays,
-  and shots and weapons pass through it. Wall runners and ceiling riders never meet one (the generator
-  keeps them out of the outermost lanes and from under ceilings).
+  for as long as the moves kept coming; a treasure stash's walls rely on the push to keep a runner out).
+  It costs nothing: DamageRules never sees it, the run's speed stays, and shots and weapons pass through
+  it. Wall runners and ceiling riders never meet one (the generator keeps them out of the outermost lanes
+  and from under ceilings).
 - **The dash smashes a zone doodad** (GDD §3, owner, October 8, 2026; task H5): dashing into one breaks it
   apart, and the player keeps their lane with no push and no damage. The track builds every doodad as a
   `DashBreakable` (`scripts/world/dash_breakable.gd`: an Area3D carrying its layout entry, its box and the
