@@ -5,7 +5,7 @@ extends TestSuite
 ##   at a time) and dodges Captain Cogs' bombs (a way through their circles, a reaction after they show) climbs through
 ##   phases 1 and 2 without a fall or a hit taken, landing the hits as it climbs by baiting (each step's bait locked in
 ##   the notch's lane, falling past its edge into Mecha Guppy's jaws: task E5e-b3), into phase 3's top and through its
-##   minute (cut short here; its rounds and waves dodged too: test_mecha_guppy_top), which ends the fight; never a circle in its lane while every lane it could switch to has no floor (task E5e-b2's review, the pier
+##   hits (cut to three here; its bombs dodged too, all of phase 3: test_mecha_guppy_top), which end the fight; never a circle in its lane while every lane it could switch to has no floor (task E5e-b2's review, the pier
 ##   trap); phase 2 has more bombs to dodge than phase 1, a step and a second; the phases' times and the bombs are
 ##   printed (the baiting bot's; the bot that doesn't bait: test_mecha_guppy_bait.gd); phase 2's climb is 15-25% faster,
 ##   measured (the climb alone: the captain and the shark off, a stand-in hit on each landing);
@@ -17,7 +17,7 @@ extends TestSuite
 ##   its nearest lane that leads up (its rope from the lifted runner to the roof's edge), and a revive after the fall
 ##   goes there too;
 ## - phase changes: the first steps planned in phase 2 (higher) and phase 3's top come right after the steps already
-##   in sight, and nothing in sight changes; the top's arrival is logged (top_reached), phase 3's minute and the
+##   in sight, and nothing in sight changes; the top's arrival is logged (top_reached), phase 3's attacks and the
 ##   waterfall's fade start there;
 ## - no escalation: through a long phase 1 with no hits the climb keeps the same rhythm; a retry plays the same; the
 ##   builder's work a frame doesn't grow with the fight;
@@ -97,11 +97,17 @@ func _fight(lanes: int, speed: float, p_def: BossDef = null, dash: bool = false,
 	return [world, boss]
 
 
-func _def_with(edit: Callable) -> BossDef:
+func _def_with(edit: Callable, top_hits: int = -1) -> BossDef:
 	var out: BossDef = def.duplicate() as BossDef
 	var t: MechaGuppyTuning = (def.tuning as MechaGuppyTuning).duplicate() as MechaGuppyTuning
 	edit.call(t)
 	out.tuning = t
+	if top_hits > 0:
+		var phases: Array[BossPhase] = []
+		for ph: BossPhase in def.phases:
+			phases.append(ph.duplicate() as BossPhase)
+		phases[2].hits = top_hits
+		out.phases = phases
 	return out
 
 
@@ -129,14 +135,15 @@ func _run(world: RunWorld, seconds: float, done: Callable, each: Callable = Call
 # --- Through phases 1 and 2 -------------------------------------------------------------------
 
 ## A runner who reads the climb, dodges Captain Cogs' bombs and baits them climbs through phases 1 and 2 (each step's bait
-## falling into Mecha Guppy's jaws: a hit) into phase 3's top and through its minute (cut to 8 s here), which ends the
-## fight, without a fall or a hit taken, at every lane count and both speeds, never with a circle in its lane and no
+## falling into Mecha Guppy's jaws: a hit) into phase 3's top and through its hits (cut to three here: bombs past the
+## runner into Mecha Guppy), which end the fight, without a fall or a hit taken, at every lane count and both speeds, never with a circle in its lane and no
 ## floor to switch to; phase 2 has more bombs
 ## to dodge (MechaGuppyBot, the bombs suite's census); the phases' times are printed (the baiting bot's: GDD §10, the
 ## fight may run long but shouldn't drag). Then phase 2's faster climb, measured: eight steps planned in each phase,
 ## landing to landing.
 func _test_climb_through() -> void:
-	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.top_seconds = 8.0)
+	# Phase 3 cut to three hits (no dive): its bombs dodged too (all of it: test_mecha_guppy_top).
+	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.dive_every = 8, 3)
 	for speed: float in SPEEDS:
 		for lanes: int in LANES:
 			var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
@@ -165,8 +172,8 @@ func _test_climb_through() -> void:
 			var bombed: bool = true
 			for h: Dictionary in hits:
 				bombed = bombed and h["cause"] == &"bomb"
-			check(ends.size() == 2 and hits.size() == 10 and bombed and not _events(boss, &"top_over").is_empty(),
-				"4 bomb hits end phase 1, 6 more phase 2 (each a bomb into the shark's jaws), and phase 3's top runs out (%d phase ends, %d hits; phases end at %s s) %s"
+			check(ends.size() == 2 and hits.size() == 13 and bombed and boss.top.hits == 3,
+				"4 bomb hits end phase 1, 6 more phase 2 (each a bomb into the shark's jaws), and phase 3's bombs past the runner into Mecha Guppy win it (%d phase ends, %d hits; phases end at %s s) %s"
 				% [ends.size(), hits.size(), times, tag])
 			check(hurt[0] == 0, "the clean runner is never hit (no item used) %s" % tag)
 			check(traps.is_empty(), "never a circle in the runner's lane while every lane they could switch to has no floor %s%s"
@@ -384,9 +391,9 @@ func _wrong_drop(c: Dictionary) -> void:
 ## as it was (its roofs' notches too), the next one is phase 2's (higher) or phase 3's top, and no step is ever planned
 ## within sight (its hut past
 ## the edge of sight when it's planned). The runner's arrival on the top is logged (top_reached); the waterfall starts
-## fading then, and phase 3's minute is counted from then.
+## fading then, and phase 3's attacks begin then.
 func _test_phase_changes() -> void:
-	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.top_seconds = 5.0)
+	var quick: BossDef = _def_with(func(t: MechaGuppyTuning) -> void: t.dive_every = 8, 2)
 	for lanes: int in [3, 6]:
 		for speed: float in SPEEDS:
 			var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
@@ -452,11 +459,12 @@ func _test_phase_changes() -> void:
 			check(float(st["first2_t"]) > 0.0 and delay < 20.0,
 				"phase 2's first (higher) step's pads come %.1f s after the phase begins %s" % [delay, tag])
 			var reached: Array[Dictionary] = _events(boss, &"top_reached")
-			var over: Array[Dictionary] = _events(boss, &"top_over")
-			check(reached.size() == 1 and over.size() == 1
-				and absf(float(over[0]["t"]) - float(reached[0]["t"]) - 5.0) < 0.1,
-				"the runner's arrival on the top is logged, and phase 3's minute is counted from it (%s) %s"
-				% [[reached.size(), over.size()], tag])
+			var begun: Array[Dictionary] = _events(boss, &"top_begin")
+			var first: Array[Dictionary] = _events(boss, &"bomb_warning")
+			check(reached.size() == 1 and begun.size() == 1 and absf(float(begun[0]["t"]) - float(reached[0]["t"])) < 0.001
+				and not first.is_empty() and float(first[0]["t"]) >= float(reached[0]["t"]) + quick.tuning.top_first - 0.02,
+				"the runner's arrival on the top is logged, and phase 3's attacks begin from it (%s) %s"
+				% [[reached.size(), begun.size()], tag])
 			check(float(st["top_shown"]) > 0.95 and float(st["after_top"]) >= 0.0 and float(st["after_top"]) < 0.01,
 				"the waterfall stays until the top is reached, then fades (%.2f then %.2f) %s" % [st["top_shown"], st["after_top"], tag])
 			var top_after: float = float(reached[0]["t"]) - float((changes[1] as Dictionary)["t"]) if reached.size() == 1 and changes.size() == 2 else NAN

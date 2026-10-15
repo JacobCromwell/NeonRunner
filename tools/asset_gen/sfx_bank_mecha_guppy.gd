@@ -16,11 +16,11 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                 snap and a floor bite's)
 ##   guppy_clang   a bomb in its jaws (a hit): the bomb's crack and boom, a great steel clang ringing out, sparks
 ##                 crackling, the shark's machinery groaning
-## Phase 3 and the defeat (task E5e-c):
-##   cogs_charge   the rounds' warning (with their red lines), as long as MechaGuppyTuning.round_warning (regenerate it
-##                 when that changes): the cannons charging, a brass capacitor whine rising with a quickening tremolo, a
+## Phase 3 and the defeat (tasks E5e-c and E5e-g):
+##   cogs_charge   a bomb's warning (with its red line), as long as MechaGuppyTuning.bomb_warning (regenerate it when
+##                 that changes): the captain's swivel gun charging, a brass capacitor whine rising with a quickening tremolo, a
 ##                 fuse fizzing, the gunners' clacks, ending on the firing lock
-##   cogs_cannon   the broadside: a cannon's crack and boom, a deep thump, the balls' rush
+##   cogs_cannon   the shot: a cannon's crack and boom, a deep thump, the bomb's rush
 ##   wave_swell    a wave's warning (with its rising swell), as long as MechaGuppyTuning.wave_warning (regenerate it when
 ##                 that changes): water rushing up into a swell, a deep roar building under it to the crash
 ##   wave_crash    the wave crashing over the deck: a burst of water, a heavy thump, the surge hissing on
@@ -194,11 +194,11 @@ func _tuned(field: StringName, fallback: float) -> float:
 	return float(t.get(field)) if t != null else fallback
 
 
-## The cannons charging, as long as round_warning: a capacitor whine rising from 160 to 1300 Hz under a tremolo that
+## The gun charging, as long as bomb_warning: a capacitor whine rising from 160 to 1300 Hz under a tremolo that
 ## quickens (it carries on a phone's speaker), a fuse fizzing, three clacks as the gunners load, and the firing lock.
 func _charge() -> PackedFloat32Array:
 	var rng := _rng(2111)
-	var d: float = _tuned(&"round_warning", 0.8)
+	var d: float = _tuned(&"bomb_warning", 0.8)
 	var b := DSP.buffer(d)
 	var whine := DSP.osc(d, func(u: float) -> float: return DSP.sweep(160.0, 1300.0, u * u), &"saw")
 	DSP.filter(whine, &"bandpass", 900.0, 0.9)

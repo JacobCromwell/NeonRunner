@@ -431,6 +431,7 @@ The owner added a **Casino** zone between the Marketplace and Corporate (GDD §5
 | E5d | **The Golden Convergence** (the final villain; designed October 9, 2026) | B4, B7, B8, B9, D6b, heli drone | XL | T1 |
 | E5e | **Mecha Guppy and Captain Cogs** (the Beach's boss; designed October 10, 2026; steps E5e-a to E5e-d) | B7, B8, D10c | XL | T1 |
 | E5e-f | **Mecha Guppy's floor bite** (the owner's new attack, October 11, 2026) | E5e | L | T1 |
+| E5e-g | **Phase 3 reworked** (the owner, October 15, 2026): Mecha Guppy on the right, Captain Cogs' bombs across the deck, high and low, hitting it; its health bar; the dive, splash, wave and floor bite | E5e-f | L | T1 |
 
 **E1: Floating Head steps.**
 1. Ship and face models.
@@ -490,6 +491,8 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 **Done:** E5e-a, E5e-b (in three parts: the climb; Mecha Guppy, Captain Cogs and the bombs; hits by baiting, as the owner chose on October 11, 2026) and E5e-c are built and each reviewed; E5e-d (the walls) is dropped under the owner's rule. The campaign plays the fight after Sunset Strip (`beach/boss`); the whole-fight bots, baiting and not, win at 3, 5 and 6 lanes and at 18 and 23.8 m/s. Its placeholders are items 767–810 in `docs/OPEN_QUESTIONS_DEFERRED.md` (783 and 788, answered and superseded, in `docs/OPEN_QUESTIONS_ANSWERED.md`).
 
 **E5e-f: Mecha Guppy's floor bite** (the owner, October 11, 2026; GDD §10, "The floor bite"). While the runner is still on a roof, before the pads, Mecha Guppy bites a shark-bite crescent out of it from one side: one lane left in phase 1, and in phase 2 sometimes the whole width, jumped. **Done:** built and reviewed; roofs take turns carrying the bite or a volley, with the bait on both; the full tier passes. Its placeholders are items 811–824 in `docs/OPEN_QUESTIONS_DEFERRED.md`.
+
+**E5e-g: phase 3 reworked** (the owner, October 15, 2026; GDD §10, "Phase 3, level with Captain Cogs"). Mecha Guppy joins phase 3 on the right of the screen, Captain Cogs on the left. The captain's attacks come across the deck in barrages of smaller bombs, high (slide under) and low (jump), and every one the runner dodges hits Mecha Guppy; the minute is replaced by a health bar, the shark's (16 hits). After some hits it dives, comes back up with a splash that makes the wave, then does its floor bite on the top, and comes back up. The rest of the fight is unchanged. **Done:** built; the phase 3, whole-fight and Mecha Guppy suites pass. Its placeholders are in `docs/questions/e5e-g.md`.
 
 ### F. Cinematics
 

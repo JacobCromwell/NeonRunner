@@ -6,7 +6,7 @@ extends BossEncounter
 ## and higher tiki bar roofs, the camera following them up past a waterfall, under Sunset Strip's setting sun.
 ## Task E5e-b1 builds the climb, its look and the fight's frame; E5e-b2 the shark, the pirate, the bombs and what
 ## hurts the shark; E5e-b3 the hits by baiting; E5e-c phase 3 and the defeat, and the campaign plays it (the slot's
-## scene, after Sunset Strip).
+## scene, after Sunset Strip); E5e-g phase 3 as the owner reworked it (October 15, 2026).
 ##
 ## The arena (BossDef.arena, data/bosses/beach_boss.tres): the Beach's look (MechaGuppySkin, a BeachSkin with the
 ## climb's tiki huts, tiki bar towers and chasms, data/bosses/beach_boss_skin.tres), the street eaten from the start
@@ -20,13 +20,15 @@ extends BossEncounter
 ## floor Mecha Guppy has eaten: a fall, death unless the grapple saves it (_grapple_save: up onto the higher roof,
 ## into its nearest lane that leads up; a revive after a fall goes there too). Phase 2's climb is about 20%
 ## faster: its steps are higher (MechaGuppyTuning.phase2_rise) and as long, the run speed never rises.
-## Phase 3, "Level with Captain Cogs" (GDD §10; task E5e-c, MechaGuppyTop): its step is the top, the climb's last roof
-## running on flat (a long tiki bar roof deck: no more pads, huts, bites or bombs). When the runner reaches it
-## (top_reached, logged), the waterfall backdrop (MechaGuppyWaterfall) and its low cloud give way to the Beach's own,
-## Captain Cogs' ship comes level alongside the top, and the minute (top_seconds) starts: the boss bar runs down over it
-## while the captain's rounds (lanes struck by cannonballs: a switch) and the waves (crashing over every lane: a jump)
-## come on a fixed, looped script timed from that moment. When it's up, the fight is won (a counted hit, &"time").
-## The defeat (MechaGuppyLeap): Mecha Guppy bursts up under the ship, gulps the captain with the ship's stern half, falls
+## Phase 3, "Level with Captain Cogs" (GDD §10; tasks E5e-c and E5e-g, MechaGuppyTop): its step is the top, the climb's
+## last roof running on flat (a long tiki bar roof deck: no more pads, huts or the climb's bites and bombs). When the
+## runner reaches it (top_reached, logged), the waterfall backdrop (MechaGuppyWaterfall) and its low cloud give way to the
+## Beach's own, Captain Cogs' ship comes level alongside the top on the left and Mecha Guppy rises beside it on the right:
+## the captain's barrages of bombs fly across the deck, low (a jump) or high (a slide), on a fixed, looped script, and
+## every bomb that gets past the runner hits Mecha Guppy (the boss bar is its health: BossPhase.hits of them). After a
+## few hits it dives, bursts back up with a splash that makes a wave (a jump), then bites a chunk out of the top (a switch
+## or a jump) and comes back up. The last hit wins the fight.
+## The defeat (MechaGuppyLeap): Mecha Guppy dives from its watch, bursts up under the ship, gulps the captain with the ship's stern half, falls
 ## back and swims away; the results wait until it's gone (victory_over), and the victory riff comes after the gulp
 ## (MechaGuppyTuning.victory_riff_on), not at the defeat (victory_riff).
 ##
@@ -40,7 +42,8 @@ extends BossEncounter
 ## ahead and above, throwing the bombs (MechaGuppyBombs: the Floating Head's warning, a circle at the floor's height
 ## and a whistle); MechaGuppyPattern times them step by step, the same every step. The bombs, the bites and the hits
 ## run only while attacks_enabled (tests turn them off to check the climb alone).
-## Hits (GDD §10: phase 1 ends after 4, phase 2 after 6; BossPhase.hits; the owner, October 11, 2026: by baiting):
+## Hits (GDD §10: phase 1 ends after 4, phase 2 after 6, phase 3 after 16; BossPhase.hits; the owner, October 11, 2026:
+## by baiting; in phase 3, October 15, 2026: every bomb dodged on the top flies into Mecha Guppy, MechaGuppyTop):
 ## register_hit(), which the bombs call when one falls into Mecha Guppy's open jaws (the stretch it has eaten through,
 ## where it's exposed and in the line of fire): the bait's bomb, locked onto a runner in the notch's lane who switched
 ## out before its edge, or the fallback's, Captain Cogs missing into the chasm once fallback_after steps in a row went
@@ -61,7 +64,7 @@ const ROPE_COLOR := Color(1.0, 0.92, 0.78)
 const ROPE_SECONDS: float = 0.35
 const ROPE_THICKNESS: float = 0.06
 
-## The runner stands on phase 3's top (its minute and its attacks start here: MechaGuppyTop).
+## The runner stands on phase 3's top (its attacks start here: MechaGuppyTop).
 signal top_reached
 
 var tuning: MechaGuppyTuning
@@ -75,7 +78,8 @@ var bombs: MechaGuppyBombs
 var pattern: MechaGuppyPattern
 ## Mecha Guppy's floor bite: its warning, its snap and the floor held after a block (task E5e-f).
 var floor_bite: MechaGuppyFloorBite
-## Phase 3 (its minute, the captain's rounds and the waves) and the defeat (the leap; null until the win).
+## Phase 3 (the captain's barrages, Mecha Guppy's dives, splashes, waves and floor bites) and the defeat (the leap; null
+## until the win).
 var top: MechaGuppyTop
 var leap: MechaGuppyLeap
 ## Off: no bombs and no bites (the climb's own tests turn them off to check the climb alone; on in the game).
@@ -199,10 +203,6 @@ func _pattern_tick(delta: float) -> void:
 	_advance(delta)
 	_place_armor()
 	_watch_top()
-	# GDD §10: the minute on the top is up (the runner dodged for it): Mecha Guppy leaps, the fight is won.
-	if top_due() and top != null and top.over():
-		log_event(&"top_over")
-		damage(hit_damage(), &"time")
 
 
 ## True while the runner stands on phase 3's top (the last roof, which runs on).
@@ -216,8 +216,8 @@ func on_top() -> bool:
 
 
 ## The moment the runner reaches the top: logged and signalled, the waterfall and its low cloud give way to the Beach's
-## own backdrop (GDD §10: the waterfall in phases 1 and 2), and phase 3's minute begins (MechaGuppyTop.begin: the ship
-## comes level, the script starts).
+## own backdrop (GDD §10: the waterfall in phases 1 and 2), and phase 3 begins (MechaGuppyTop.begin: the ship comes
+## level, Mecha Guppy rises beside the top, the barrages start).
 func _watch_top() -> void:
 	if top_reached_at >= 0.0 or not top_due() or not on_top():
 		return
@@ -230,7 +230,7 @@ func _watch_top() -> void:
 	top_reached.emit()
 
 
-## The win (phase 3's minute is up): every attack gone, and Mecha Guppy leaps (MechaGuppyLeap).
+## The win (phase 3's last hit): every attack gone, and Mecha Guppy leaps (MechaGuppyLeap).
 func _on_defeated() -> void:
 	_armor_waiting = 0
 	if bombs != null:
@@ -265,12 +265,6 @@ func victory_over() -> bool:
 ## No riff at the defeat: the leap plays it after the gulp, or not (MechaGuppyTuning.victory_riff_on).
 func victory_riff() -> bool:
 	return false
-
-
-## Phase 3's minute runs the boss bar down steadily (MechaGuppyTop.run_down): the bar follows it without the white
-## segment's hold after each drop (BossBar).
-func health_runs_down() -> bool:
-	return top != null and top.started() and not top.finished
 
 
 ## The captain, the shark, the bombs and the pattern, one physics step (the fight's ticks: they wait while the runner is
@@ -308,14 +302,15 @@ func sound(sound_name: StringName, pos: Vector3) -> void:
 	log_event(&"sound", {"name": sound_name})
 
 
-## A hit on Mecha Guppy (GDD §10: a bomb that falls through a gap, off a roof's edge or onto the exposed shark):
-## one of the phase's BossPhase.hits (4 in phase 1, 6 in phase 2). The bombs call this (MechaGuppyBombs); the tests too. Only
-## counts while the climb's pattern runs (not in an intro, not in phase 3, which a minute of dodging ends, not once
-## it's beaten). True if it counted.
+## A hit on Mecha Guppy (GDD §10: a bomb that falls through a gap, off a roof's edge or onto the exposed shark; in phase
+## 3, a bomb flying across the top past the runner into its head): one of the phase's BossPhase.hits (4 in phase 1, 6 in
+## phase 2, 16 in phase 3). The bombs call this (MechaGuppyBombs, MechaGuppyTop); the tests too. Only counts while the
+## climb's pattern runs, or once the runner is on phase 3's top (not in an intro, not on phase 3's last steps of the
+## climb, not once it's beaten). True if it counted.
 func register_hit(cause: StringName = &"bomb") -> bool:
-	if not is_vulnerable() or top_due():
+	if not is_vulnerable() or (top_due() and (top == null or not top.started())):
 		return false
-	if pattern != null:
+	if pattern != null and not top_due():
 		pattern.note_hit()
 	hits_landed += 1
 	log_event(&"hit", {"cause": cause, "of": phase().hits, "landed": phase_hits + 1})

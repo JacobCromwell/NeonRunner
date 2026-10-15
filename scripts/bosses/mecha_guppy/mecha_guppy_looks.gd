@@ -210,7 +210,7 @@ func roof_segment(r: MechaGuppyClimb.Roof, from: float, to: float, ended: bool) 
 	if notched:
 		starts[r.notch_lane] = MechaGuppyClimb.FAR
 	# Its floor bite, once eaten, where it crosses this piece (never past the notch's start: it comes before it).
-	var bite: MechaGuppyCrescent = r.bite
+	var bite: MechaGuppyCrescent = r.bite_over(from, to)
 	if bite == null or not bite.eaten or bite.skipped or notched or bite.to <= from + 0.01 or bite.from >= to - 0.01:
 		bite = null
 	for lane: int in geo.lane_count:

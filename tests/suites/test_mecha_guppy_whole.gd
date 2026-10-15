@@ -1,11 +1,12 @@
 extends TestSuite
-## Mecha Guppy and Captain Cogs played whole (GDD §10; task E5e-c), with a runner who plays it by what it shows
-## (MechaGuppyBot: it reads the lanes that lead up `REACTION` late and dodges Captain Cogs' bombs, rounds and waves the
+## Mecha Guppy and Captain Cogs played whole (GDD §10; tasks E5e-c and E5e-g), with a runner who plays it by what it shows
+## (MechaGuppyBot: it reads the lanes that lead up `REACTION` late and dodges Captain Cogs' bombs and the waves the
 ## planner's dodge_reaction late; no god mode, no loadout), at 3, 5 and 6 lanes and at quick play's 18 m/s and the
 ## Beach's 23.8 m/s, baiting and not:
 ## - from its start: phase 1 won by 4 hits, phase 2 by 6 (a baiting runner's every hit a bait into the notch's jaws, a
 ##   runner who never baits every hit Captain Cogs' miss into the chasm, more slowly), then the climb's last steps to the
-##   top, phase 3's minute dodged, the leap and the swim away, and victory_over; the runner never touched; the swim away
+##   top, phase 3's 16 hits (every bomb dodged on the top flies on into Mecha Guppy; its dives, waves and floor bites
+##   dodged too), the leap and the swim away, and victory_over; the runner never touched; the swim away
 ##   (the breach out at sea and its dive) seen by the run camera over the top's deck edge, at the top's real height;
 ## - the par times (BossDef: two_star_seconds, three_star_seconds, time_bonus_seconds): three stars a little over the
 ##   baiting runner's slowest clean fight at the campaign's 23.8 m/s, the way Hostile Takeover's are (a clean fight at
@@ -198,8 +199,8 @@ func _test_whole(lanes: int, speed: float, baits: bool) -> void:
 	check(p.alive and boss.is_defeated() and boss.victory_over() and used.is_empty() and not p.god_mode,
 		"the bot wins the whole fight untouched, without god mode %s%s" % [tag,
 			"" if p.alive and used.is_empty() else ": %s %s at %.1f s" % [cause[0], used, boss.fight_time()]])
-	check(ends.size() >= 2 and per_phase[0] == 4 and per_phase[1] == 6 and per_phase[2] == 0,
-		"4 hits end phase 1, 6 phase 2, none counts in phase 3 (%s) %s" % [per_phase, tag])
+	check(ends.size() >= 2 and per_phase[0] == 4 and per_phase[1] == 6 and per_phase[2] == def.phases[2].hits,
+		"4 hits end phase 1, 6 phase 2, %d phase 3 (%s) %s" % [def.phases[2].hits, per_phase, tag])
 	var into: Array[Dictionary] = _events(boss, &"shark_hit")
 	var kinds_ok: bool = into.size() == 10
 	for e: Dictionary in into:
@@ -207,15 +208,19 @@ func _test_whole(lanes: int, speed: float, baits: bool) -> void:
 			and int(e["kind"]) == (MechaGuppyBombs.Kind.BAIT if baits else MechaGuppyBombs.Kind.HIT)
 	check(kinds_ok and (_events(boss, &"fallback").is_empty() if baits else _events(boss, &"fallback").size() == 10),
 		"every hit %s %s" % ["a bait into the notch's jaws" if baits else "Captain Cogs' miss into the chasm (the fallback)", tag])
-	var over: Array[Dictionary] = _events(boss, &"top_over")
 	check(boss.top_reached_at > float(ends[1]["t"]) if ends.size() > 1 else false,
 		"then the climb's last steps to the top, after phase 2 (%.1f s) %s" % [boss.top_reached_at, tag])
-	check(over.size() == 1 and absf(t_won - boss.top_reached_at - mt.top_seconds) < FRAME * 2.0,
-		"phase 3 is won as its minute ends, %.0f s after the top is reached %s" % [mt.top_seconds, tag])
-	var plan: Array[Dictionary] = MechaGuppyTop.plan(mt)
-	var beats: int = _events(boss, &"round").size() + _events(boss, &"round_skipped").size() + _events(boss, &"wave").size()
-	check(beats == plan.size() and bot.top_jumps == _events(boss, &"wave").size(),
-		"the minute's beats all came (%d of %d), every wave jumped %s" % [beats, plan.size(), tag])
+	var landed: Array[Dictionary] = _events(boss, &"bomb_landed")
+	check(landed.size() == def.phases[2].hits and absf(t_won - float(landed[-1]["t"])) < FRAME * 2.0 if not landed.is_empty() else false,
+		"phase 3 is won as the last bomb past the runner hits Mecha Guppy (%d bombs landed, won %.1f s after the top) %s"
+		% [landed.size(), t_won - boss.top_reached_at, tag])
+	var warns: Array[Dictionary] = _events(boss, &"bomb_warning")
+	var highs: int = warns.filter(func(e: Dictionary) -> bool: return bool(e["high"])).size()
+	var waves: int = _events(boss, &"wave").size()
+	check(bot.top_slides == highs and bot.top_jumps == warns.size() - highs + waves and waves > 0
+		and bot.bites.size() >= _events(boss, &"floor_bite_snap").size(),
+		"every high bomb slid under (%d), every low one and every wave jumped (%d), every floor bite read %s"
+		% [highs, bot.top_jumps, tag])
 	var leap: MechaGuppyLeap = boss.leap
 	check(leap != null and leap.over() and over_after <= leap.over_by() + 0.05
 		and over_after < LevelRun.BOSS_VICTORY_MAX and boss.ship.swallowed,

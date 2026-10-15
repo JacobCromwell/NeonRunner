@@ -5,6 +5,8 @@ extends RefCounted
 ## Cogs, and it swims away"; task E5e-c). MechaGuppy starts it as phase 3's minute ends (the win: the runner keeps running,
 ## safe in the framework's god mode, and nothing here has a hitbox), and holds the results until it has swum away
 ## (victory_over). Staged beside the top and out at sea, where the run camera sees it, never over the lanes:
+## - the dive (task E5e-g: phase 3's last hit finds it in its watch beside the top on the right): it sinks out of sight
+##   there first (DIVE_SECONDS), so it never jumps across to the ship's side in view;
 ## - the rise (leap_rise): Mecha Guppy bursts up out of the sea under Captain Cogs' ship alongside the top, upright, side-on
 ##   (an eye toward the runner, its chin toward the top, as it always shows itself), its jaws opening wide round the
 ##   ship's stern half, with a roar of machinery and water (guppy_leap);
@@ -25,8 +27,11 @@ extends RefCounted
 ## it plays out in view; time comes from the boss's ticks. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 807): the leap's
 ## staging.
 
-enum Step { NONE, RISE, HANG, FALL, BREACH, GONE }
+enum Step { NONE, DIVE, RISE, HANG, FALL, BREACH, GONE }
 
+## The dive from its watch (task E5e-g): this long (seconds), this far down (metres: out of sight under the deck's edge).
+const DIVE_SECONDS: float = 0.45
+const DIVE_DROP: float = 26.0
 ## The rise starts this far under the deck (metres: out of sight), and ends with the hinge this far under the ship's keel
 ## (its open jaws round the stern half and the captain); the hinge stands this far out from the ship's middle (its chin,
 ## dropped toward the top, under the hull, its tip clear of the lanes and the top's eaves: never over them).
@@ -113,6 +118,12 @@ var _up: float = 0.0
 var _g: float = 0.0
 ## Each plume's place, kept pace with: [out, ahead].
 var _plume_at: Array[Vector2] = []
+## The dive's start: its head's place and turn (unscaled), its jaws, the runner's world z then; and how long the dive
+## takes (0 when it wasn't showing).
+var _dive_from := Transform3D.IDENTITY
+var _dive_jaw: float = 0.0
+var _dive_z: float = 0.0
+var _lead: float = 0.0
 
 
 func _init(p_boss: MechaGuppy) -> void:
@@ -126,11 +137,17 @@ func _init(p_boss: MechaGuppy) -> void:
 func start() -> void:
 	var world: RunWorld = boss.world
 	var p: Player = world.player
-	step = Step.RISE
 	time = 0.0
 	gulped_at = -1.0
 	riff_played = false
-	marks = {"rise": 0.0}
+	# In its watch beside the top (phase 3): it dives out of sight first.
+	_lead = DIVE_SECONDS if shark.shown() else 0.0
+	step = Step.DIVE if _lead > 0.0 else Step.RISE
+	marks = {"rise": _lead}
+	var head: Transform3D = shark.head_transform()
+	_dive_from = Transform3D(head.basis.orthonormalized(), head.origin)
+	_dive_jaw = shark.jaw
+	_dive_z = TrackGeometry.world_z(p.distance)
 	_side = float(CaptainCogsShip.LEVEL_SIDE)
 	_deck = p.floor_base
 	var stern := Vector3(0.0, 0.0, (CaptainCogsModel.SPLIT_Z + CaptainCogsModel.LENGTH * 0.5) * 0.5)
@@ -149,9 +166,16 @@ func start() -> void:
 		plumes.append(plume)
 		_plume_at.append(Vector2.ZERO)
 	shark.hold(true)
+	if step == Step.RISE:
+		_begin_rise()
+	else:
+		shark.pose_free(_dive_from.origin, _dive_from.basis, _dive_jaw)
+	boss.log_event(&"leap", {"x": _x, "deck": _deck})
+
+
+func _begin_rise() -> void:
 	_pose_rise(0.0)
 	boss.sound(&"guppy_leap", Vector3(_x, _deck - 6.0, _z()))
-	boss.log_event(&"leap", {"x": _x, "deck": _deck})
 
 
 ## True once it has played out (the results may follow: dive_after its snout is back in the sea).
@@ -167,8 +191,16 @@ func tick(delta: float) -> void:
 	_riff_due()
 	_advance_plumes(delta)
 	match step:
+		Step.DIVE:
+			var k: float = clampf(time / DIVE_SECONDS, 0.0, 1.0)
+			var dz: float = TrackGeometry.world_z(boss.world.player.distance) - _dive_z
+			var at: Vector3 = _dive_from.origin + Vector3(0.0, -DIVE_DROP * k * k, dz)
+			shark.pose_free(at, _dive_from.basis, _dive_jaw * (1.0 - k), k < 1.0)
+			if k >= 1.0:
+				step = Step.RISE
+				_begin_rise()
 		Step.RISE:
-			var k: float = clampf(time / maxf(tuning.leap_rise, 0.05), 0.0, 1.0)
+			var k: float = clampf((time - _lead) / maxf(tuning.leap_rise, 0.05), 0.0, 1.0)
 			_pose_rise(k)
 			if k >= 1.0:
 				_gulp()
@@ -214,18 +246,18 @@ func tick(delta: float) -> void:
 
 
 ## The longest the defeat can take until the results may follow, at `t`, for a breach of `airtime` seconds (breach_seconds
-## by default: a leap up to BREACH_REF high) (seconds; tests): the rise, the hang, the fall, the hinge's rise to the
-## surface and the breach, and dive_after.
+## by default: a leap up to BREACH_REF high) (seconds; tests): the dive from its watch, the rise, the hang, the fall, the
+## hinge's rise to the surface and the breach, and dive_after.
 static func seconds_to_over(t: MechaGuppyTuning, airtime: float = -1.0) -> float:
-	return t.leap_rise + t.leap_hang + t.leap_fall + BREACH_LEAD + (airtime if airtime > 0.0 else t.breach_seconds) \
-		+ t.dive_after
+	return DIVE_SECONDS + t.leap_rise + t.leap_hang + t.leap_fall + BREACH_LEAD \
+		+ (airtime if airtime > 0.0 else t.breach_seconds) + t.dive_after
 
 
 ## The same for this leap's breach once it's planned, as it begins (tests).
 func over_by() -> float:
 	if breach.is_empty():
 		return seconds_to_over(tuning)
-	return tuning.leap_rise + tuning.leap_hang + tuning.leap_fall - float(breach["start"]) + float(breach["seconds"]) \
+	return _lead + tuning.leap_rise + tuning.leap_hang + tuning.leap_fall - float(breach["start"]) + float(breach["seconds"]) \
 		+ tuning.dive_after
 
 

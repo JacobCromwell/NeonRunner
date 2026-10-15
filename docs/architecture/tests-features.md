@@ -57,7 +57,7 @@ cue, phase 2 15-25% faster with every margin kept (task E5e-b3: its higher rise,
 promises (E5e-b3: an outer lane on a seeded side whatever leads up, eaten far enough past the landing for the
 bait), no escalation, a retry the same), every tunable at both ends of its F6 range keeping those promises, the built climb against its plan on real physics (roof tops, hut ends, pads,
 fronts and blocked sides, the lanes that lead up read off the collision, the edge of sight at the fog's end), the
-roof faces' rules, the hits and phases (phase 3's minute from the runner's arrival on the top), and the armor
+roof faces' rules, the hits and phases (phase 3's 16 hits counted once the runner is on the top), and the armor
 pickups on the roof ahead. `test_mecha_guppy_climb` plays it on physics without god mode with `MechaGuppyBot`:
 through phases 1 and 2 (the bot baiting each step's hit, task E5e-b3) into phase 3's top at 3, 5 and 6 lanes and 18
 and 23.8 m/s, phase 2's rate and its census of bombs to deal with measured, never a circle in the runner's lane with
@@ -66,7 +66,7 @@ late, and with `reach_back` at 30 m) making every step with time to spare; wrong
 farthest wrong lane, dashing, dying by a fall before the higher roof's front (and saved by the grapple or a revive
 onto the higher roof, in its nearest lane that leads up, the rope from the lifted runner); phase changes (nothing in
 sight changes, the next step is the new phase's, nothing ever planned in sight, `top_reached` starting phase 3's
-minute and the waterfall's fade); the same rhythm through a long phase 1 and on a retry, with the builder's work a
+attacks and the waterfall's fade); the same rhythm through a long phase 1 and on a retry, with the builder's work a
 frame staying small; and the climbing camera (the runner on screen, never inside a roof, under 0.40 m a frame, the
 shadow on the roof, over phase 1's steps and phase 2's higher ones); it prints its figures. `test_mecha_guppy_bombs`,
 `test_mecha_guppy_bites`, `test_mecha_guppy_bait` and `test_mecha_guppy_tunables` (tasks E5e-b2 and E5e-b3) check

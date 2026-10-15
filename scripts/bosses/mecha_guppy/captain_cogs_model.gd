@@ -33,6 +33,14 @@ const WHEEL_RADIUS: float = 2.1
 ## The cannons along each side (bow to stern), and how far a cannon's muzzle stands out of its port.
 const CANNONS: int = 3
 const CANNON_OUT: float = 0.45
+## The captain's swivel guns on the stern castle's side rails (task E5e-g: phase 3's bombs, fired across the top), just
+## ahead of where he stands: where along the hull, how high over the castle's deck, how far the muzzle stands out past the
+## rail, and the barrel's length and radius.
+const SWIVEL_Z: float = 5.6
+const SWIVEL_UP: float = 1.05
+const SWIVEL_OUT: float = 0.75
+const SWIVEL_LENGTH: float = 1.1
+const SWIVEL_RADIUS: float = 0.13
 
 const WOOD := Color(0.31, 0.2, 0.12)
 const WOOD_DARK := Color(0.2, 0.13, 0.08)
@@ -170,6 +178,16 @@ static func _hull(h: Halves, skin: BeachSkin) -> void:
 	for side: float in [-1.0, 1.0]:
 		st.box(Vector3(side * (cw0 - 0.08), CASTLE + 0.45, (c0 + back) * 0.5), Vector3(0.1, 0.9, back - c0), WOOD_DARK)
 	st.box(Vector3(0.0, CASTLE + 0.45, back - 0.08), Vector3(cw0 * 2.0, 0.9, 0.1), WOOD_DARK)
+	# The captain's swivel guns on the side rails (phase 3's bombs): an iron yoke on the rail, a brass barrel pointing out.
+	for side: float in [-1.0, 1.0]:
+		var muzzle: Vector3 = swivel_at(int(side))
+		var mid := Vector3(muzzle.x - side * SWIVEL_LENGTH * 0.5, muzzle.y, muzzle.z)
+		st.box(Vector3(side * (cw0 - 0.08), CASTLE + 0.95, SWIVEL_Z), Vector3(0.14, 0.2, 0.14), IRON)
+		st.box(Vector3(side * (cw0 - 0.02), muzzle.y - 0.08, SWIVEL_Z), Vector3(0.3, 0.06, 0.34), IRON)
+		st.prism_xform(Transform3D(Basis(Vector3.BACK, -side * PI * 0.5).scaled_local(Vector3(SWIVEL_RADIUS, SWIVEL_LENGTH,
+			SWIVEL_RADIUS)), mid - Vector3(side * SWIVEL_LENGTH * 0.5, 0.0, 0.0)), 8, BRASS)
+		st.prism_xform(Transform3D(Basis(Vector3.BACK, -side * PI * 0.5).scaled_local(Vector3(SWIVEL_RADIUS * 1.35, 0.12,
+			SWIVEL_RADIUS * 1.35)), muzzle - Vector3(side * 0.12, 0.0, 0.0)), 8, BRASS)
 	for side: float in [-1.0, 1.0]:
 		var lamp := Vector3(side * (cw0 - 0.1), CASTLE + 1.3, back - 0.1)
 		st.box(lamp + Vector3(0.0, -0.35, 0.0), Vector3(0.08, 0.7, 0.08), BRASS)
@@ -209,6 +227,13 @@ static func _hull(h: Halves, skin: BeachSkin) -> void:
 static func cannon_at(side: int, k: int) -> Vector3:
 	var z: float = lerpf(-LENGTH * 0.18, LENGTH * 0.22, float(k) / float(maxi(CANNONS - 1, 1)))
 	return Vector3(float(side) * (half_beam(DECK * 0.62, z) + CANNON_OUT), DECK * 0.62, z)
+
+
+## Where the swivel gun on side `side` (-1 left, +1 right) has its muzzle, in the ship's space: on the stern castle's rail
+## just ahead of the captain (CaptainCogsShip fires phase 3's bombs from there, task E5e-g).
+static func swivel_at(side: int) -> Vector3:
+	var rail: float = half_beam(DECK, CASTLE_FROM) - 0.05
+	return Vector3(float(side) * (rail + SWIVEL_OUT), CASTLE + SWIVEL_UP, SWIVEL_Z)
 
 
 ## The sail's emblem: a skull with cog teeth round it, painted dark, facing the runner (+z).

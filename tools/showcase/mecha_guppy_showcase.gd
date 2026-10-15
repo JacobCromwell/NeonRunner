@@ -17,12 +17,15 @@ extends Node3D
 ##   hut        the runner standing under the first hut, or step S's with --start=S (the run camera's view from under
 ##              it): reading the cue
 ##   top        phase 3 (--phase=3 implied): the climb's last steps, then the top, the waterfall gone, the ship coming
-##              level, the rounds and the waves (E5e-c)
+##              level on the left and Mecha Guppy rising on the right, the barrages, the dives, waves and floor bites
+##              (E5e-c, E5e-g)
 ##   level      (E5e-c) the same from a realistic height (--start=10 by default: the runner moved on to step 10's roof
-##              before phase 3's top is planned, a step or two on): the top, the ship coming level alongside it, the
-##              captain's rounds (red lines, the charge, the cannonballs rolling down the struck lanes, the runner
-##              switching out) and the waves (the swell rising beside the top, the crash, the surge, the jump)
-##   leap       the same with a short minute (--minute=8 by default): the leap, the gulp, the fall, then the swim away
+##              before phase 3's top is planned, a step or two on): the top, the ship coming level alongside it on the
+##              left and Mecha Guppy in its watch on the right, the captain's bombs across the deck (the red line at
+##              each one's height, the charge, the runner jumping the low ones and sliding under the high ones, each
+##              flying on into the shark), its dives, its splash and the wave (the swell, the crash, the surge, the
+##              jump), its floor bites on the top
+##   leap       the same with phase 3 cut short (--hits=2 by default): the leap, the gulp, the fall, then the swim away
 ##              (the breach out at sea, the dive and its plume; at 23.8 m/s, 3 lanes: the gulp about frame 177, the
 ##              breach 192-219, the results may follow at 225; 6 lanes: 186, 200-228, 234)
 ##   leapcam    the leap seen from beside the top, behind the ship (a camera of its own)
@@ -41,8 +44,8 @@ extends Node3D
 ## boss's events with their frames, for picking frames), --no-attacks (the climb alone: no bombs, no bites),
 ## --no-bait (the runner doesn't bait: Captain Cogs' fallback misses into the chasm bring the hits), --start=S (move
 ## the runner on to step S's roof first: a view from higher up; with --phase=2 the steps it plans are phase 2's),
-## --minute=S (phase 3's minute, top_seconds, cut to S seconds: a review aid), --stand (phase 3: the runner neither dodges
-## nor jumps; with --god, to see every attack reach the runner's lane).
+## --hits=N (phase 3's hits cut to N, no dive before the last: a review aid), --stand (phase 3: the runner neither jumps
+## nor slides; with --god, to see every attack reach the runner).
 ## Frames worth a look (at --fixed-fps 10, 23.8 m/s, 5 lanes): climb, the first pads about frame 36, on the first hut
 ## 41-78, its lane's end and the drop about 78, the first roof 84-117, the second hut 122-146; wrong, the drop and the
 ## fall about 65-75; grapple, the save about 71-79; side, any frame. bait: the shark rising beside roof 2's notch (its
@@ -77,15 +80,15 @@ func _ready() -> void:
 	var daylight: bool = false
 	var attacks: bool = true
 	var baits: bool = true
-	var minute: float = -1.0
+	var top_hits: int = -1
 	var stand: bool = false
 	var god: bool = false
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--scenario="):
 			scenario = v
-		elif arg.begins_with("--minute="):
-			minute = float(v)
+		elif arg.begins_with("--hits="):
+			top_hits = int(v)
 		elif arg == "--stand":
 			stand = true
 		elif arg == "--god":
@@ -113,14 +116,19 @@ func _ready() -> void:
 		phase = 3
 	if scenario in ["level", "leap", "leapcam"] and _start_step == 0:
 		_start_step = 10
-	if scenario in ["leap", "leapcam"] and minute < 0.0:
-		minute = 8.0
+	if scenario in ["leap", "leapcam"] and top_hits < 0:
+		top_hits = 2
 	var slot: BossDef = load(BOSS_PATH) as BossDef
 	var def: BossDef = slot.preview() if slot.preview() != null else slot.duplicate() as BossDef
-	if minute > 0.0:
+	if top_hits > 0:
 		var mt: MechaGuppyTuning = (def.tuning as MechaGuppyTuning).duplicate() as MechaGuppyTuning
-		mt.top_seconds = minute
+		mt.dive_every = maxi(top_hits, mt.dive_every)
 		def.tuning = mt
+		var phases: Array[BossPhase] = []
+		for ph: BossPhase in def.phases:
+			phases.append(ph.duplicate() as BossPhase)
+		phases[2].hits = top_hits
+		def.phases = phases
 	var base := load("res://data/tuning/movement.tres") as MovementTuning
 	var tuning: MovementTuning = base.duplicate() as MovementTuning
 	tuning.run_speed = speed
@@ -204,7 +212,7 @@ func _physics_process(delta: float) -> void:
 				# Beside the top on the ship's side, behind it and above the deck, looking across it at the ship.
 				var side: float = float(CaptainCogsShip.LEVEL_SIDE)
 				var deck: float = world.player.floor_base
-				var ahead: float = TrackGeometry.world_z(world.player.distance + boss.tuning.level_ahead)
+				var ahead: float = TrackGeometry.world_z(world.player.distance + boss.ship.level_lead())
 				_cam.global_position = Vector3(side * (world.geo.wall_x() + 34.0), deck + 10.0, ahead + 30.0)
 				_cam.look_at(Vector3(side * (world.geo.wall_x() + 6.0), deck + 1.0, ahead - 4.0), Vector3.UP)
 			_:
