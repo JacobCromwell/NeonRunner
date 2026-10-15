@@ -113,6 +113,9 @@ func _build() -> void:
 	body.name = "Body"
 	add_child(body)
 	body.build(world.skin.enemy_variant, is_host, false, int(spawn.get("seed", 0)))
+	# Drawn bigger in some zones (ZoneSkin.cyborg_draw_scale), from its feet; the hitboxes and the gun's
+	# muzzle point (CyborgGun.muzzle_offset) are gameplay's and stay as they are.
+	body.scale = Vector3.ONE * CyborgSuit.draw_scale(world.skin)
 	gun = CyborgGun.new(self, world, tuning, rng, body)
 	gun.wild = is_panic
 	gun.wild_spread = tuning.panic_spread

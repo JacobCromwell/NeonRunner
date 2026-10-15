@@ -68,11 +68,14 @@ func _build() -> void:
 	body.name = "Body"
 	add_child(body)
 	body.build(world.skin.enemy_variant, false, true, int(spawn.get("seed", 0)))
-	body.scale = Vector3.ONE * BODY_SCALE
+	# Bigger still where the zone draws its cyborgs bigger (ZoneSkin.cyborg_draw_scale), about the waist, which
+	# stays where it was: the legs are hidden, so the upper body grows up and out of the same place.
+	var drawn: float = BODY_SCALE * CyborgSuit.draw_scale(world.skin)
+	body.scale = Vector3.ONE * drawn
 	body.lean = 0.3
 	# Facing the lanes (the body's front is its local +Z), waist just below the band.
 	body.rotation.y = -side * PI * 0.5
-	body.position = Vector3(-side * 0.16, band_bottom - 0.05 - (CyborgBody.HIP_Y + 0.06) * BODY_SCALE, 0.0)
+	body.position = Vector3(-side * 0.16, band_bottom - 0.05 - 0.06 * BODY_SCALE - CyborgBody.HIP_Y * drawn, 0.0)
 	gun = CyborgGun.new(self, world, tuning, rng, body)
 	gun.muzzle_offset = Vector3(-side * 0.45, band_bottom + 0.45, 0.0)
 	gun.muzzle_reach = 0.35
