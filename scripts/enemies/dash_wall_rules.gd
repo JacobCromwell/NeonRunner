@@ -103,7 +103,7 @@ const FEATURE: String = "dash_wall"
 const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", "cyborg", "window_cyborg", "host",
 	"hover_truck", "octodog", "screech", "screech_vents", "drone", "generator", "wall_fences", "wall_fences_partial",
 	"buzz_overdrive", "barnacle_turret", "tithe_collector", "resonator", "gilded_sentinel", "enforcer_truck",
-	"floor_cutter"]
+	"floor_cutter", "treasure_stash", "fenced_ceiling"]
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"

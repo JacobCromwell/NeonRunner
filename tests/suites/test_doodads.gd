@@ -77,6 +77,7 @@ func run() -> void:
 	_test_skins()
 	_test_cards()
 	await _test_push()
+	await _test_push_holds()
 	await _test_jump_and_slide()
 	await _test_mid_switch()
 	await _test_blocked_side()
@@ -605,6 +606,50 @@ func _test_push() -> void:
 					runs += 1
 	sim.trace = false
 	check(runs == 32, "pushes run: %d" % runs)
+
+
+## A move against the push (task I4): a move back into the pushing doodad's lane while its push carries the runner is
+## blocked (the clank), as its side would block it beside them, so the body never sinks into it; and moves mashed
+## toward it the whole way leave the push to finish (a quick shove into the lane beside, never stuck between the
+## lanes against its side, where a treasure stash's walls would let a runner slip in).
+func _test_push_holds() -> void:
+	sim.trace = true
+	var geo := TrackGeometry.new(3, tuning)
+	var d: Dictionary = _doodad(1, 40.0, &"medium", 1)
+	var calib: Dictionary = await sim.run(_one_doodad(3, d), 1, 3.0, [])
+	var push_at: float = -1.0
+	for s: Dictionary in calib["trace"]:
+		if int(s["lane"]) == 2:
+			push_at = float(s["d"])
+			break
+	check(push_at > 0.0, "the doodad pushes the runner (at %.2f m)" % push_at)
+	var frame: float = 1.0 / Engine.physics_ticks_per_second
+	var cases: Array = []
+	for back_after: float in [0.05, 0.3, 0.8]:
+		cases.append(["a move back %.2f m into the push" % back_after, [[push_at + back_after, &"move_left"]]])
+	var mash: Array = []
+	var at: float = push_at
+	while at < float(d["end"]) + 2.0:
+		mash.append([at, &"move_left"])
+		at += 0.3
+	cases.append(["moves back mashed from the push to past it", mash])
+	for c: Array in cases:
+		var r: Dictionary = await sim.run(_one_doodad(3, d), 1, 3.0, c[1])
+		var events: Array = r["events"]
+		var start: float = -1.0
+		var done: float = -1.0
+		for s: Dictionary in r["trace"]:
+			if start < 0.0 and int(s["lane"]) == 2:
+				start = float(s["t"])
+			if start >= 0.0 and done < 0.0 and absf(float(s["x"]) - geo.lane_x(2)) < 0.01:
+				done = float(s["t"])
+		check(r["alive"] and events.count(&"doodad_push") == 1 and events.has(&"lane_blocked") and int(r["lane"]) == 2,
+			"%s is blocked: the runner ends in the lane beside (lane %d, %s)" % [c[0], r["lane"], events])
+		check(start >= 0.0 and done >= 0.0 and done - start <= tuning.doodad_push_time + 1.5 * frame,
+			"%s: the push still lands in the next lane's middle within %.2f s (%.3f s)" % [c[0], tuning.doodad_push_time, done - start])
+		var sink: float = _sink(r["trace"], d, geo)
+		check(sink <= SINK_TOLERANCE, "%s: the body never sinks into it (%.3f m)" % [c[0], sink])
+	sim.trace = false
 
 
 ## GDD §3 (G5 brief): a player jumping into a doodad is pushed the same way (it's too tall to jump: the
