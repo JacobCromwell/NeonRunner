@@ -9,10 +9,11 @@ display_name = "Awning Alley"
 level_seed = 301
 duration_seconds = 140.0
 difficulty_bias = 0.0
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_run_gaps")
 guarantee_features = true
 feature_starts = Dictionary[String, float]({
-"barnacle_turret": 0.1
+"barnacle_turret": 0.1,
+"wall_run_gaps": 0.5
 })
 narrow_ceiling_share = 0.5
 spacing_seconds_easy = 1.1
