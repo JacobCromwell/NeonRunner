@@ -156,8 +156,9 @@ var floor_base: float = 0.0
 ## nearest lane that leads up). Called as the save happens with this player and the cause (&"grapple" or
 ## &"revive"), it returns {"lane": int, "height": float}: the lane to pull them into (moved across like a lane
 ## switch) and the world height of the floor to pull them up onto (at or above fall_base()), either of which
-## may be left out (their own lane; fall_base()). Unset, or an empty Dictionary back: straight up out of the
-## pit, as the save always has been (_pull_up).
+## may be left out (their own lane; fall_base()); or {"wall": side}: onto that wall's wall run (task J2, a
+## wall-run gap's lit wall: WallRunGapPlacement.grapple_save, which RunWorld sets in a level with them). Unset,
+## or an empty Dictionary back: straight up out of the pit, as the save always has been (_pull_up).
 var grapple_save: Callable
 ## The level clock: seconds since the run started.
 var elapsed: float = 0.0
@@ -805,14 +806,26 @@ func fall_base() -> float:
 
 ## The pull up out of a pit (`cause`: &"grapple", the grapple hook's save, or &"revive", a revive after a
 ## fall): straight up to just under the floor falls count from with the grapple's pull, as it always was, or
-## where a boss's grapple_save says (a lane to pull them into, a floor to pull them up onto). It never pulls
-## them down.
+## where a boss's grapple_save says (a lane to pull them into, a floor to pull them up onto), or onto a wall's
+## wall run where grapple_save says so (task J2: in a wall-run gap, where the pull's leap would drop them back
+## into the holes, the lit wall's run carries them across; from the floor's height, as a step onto the wall). It
+## never pulls them down.
 func _pull_up(cause: StringName) -> void:
 	var to: Dictionary = {}
 	if grapple_save.is_valid():
 		var answer: Variant = grapple_save.call(self, cause)
 		if answer is Dictionary:
 			to = answer
+	if to.has("wall"):
+		# DESIGN-TBD (docs/questions/j2.md): the save onto the wall shows no rope, like a save onto a higher floor.
+		var was: float = h
+		h = maxf(h, fall_base())
+		vh = 0.0
+		grounded = true
+		if _try_enter_wall(int(to["wall"]), false):
+			return
+		h = was
+		grounded = false
 	if to.has("lane"):
 		_pull_into_lane(int(to["lane"]))
 	# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 767): a save onto a higher floor (the Beach's climb) lifts the runner to

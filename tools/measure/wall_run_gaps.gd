@@ -75,9 +75,10 @@ func _run() -> void:
 					if why != "":
 						problems.append("%.0f m: %s" % [float(w["start"]), why])
 				var report: Dictionary = gen.wall_run_gap_result
-				print("%s lanes=%d seed=%d (%.1f m/s, gap %.1f m, zone %.0f m): %d [%s] took out %s (%d), %d ms%s%s%s" % [
+				print("%s lanes=%d seed=%d (%.1f m/s, gap %.1f m, zone %.0f m): %d [%s] cost %s (%d pieces, %d enemies), %d ms%s%s%s" % [
 					s.id, lanes, config.level_seed, gen.speed, shape.gap, shape.zone(), layout.wall_run_gaps.size(),
-					", ".join(where), report.get("costs", []), int(report.get("taken_out", 0)), ms,
+					", ".join(where), report.get("costs", []), int(report.get("taken_out", 0)),
+					int(report.get("enemies_taken_out", 0)), ms,
 					"" if problems.is_empty() else "; PROBLEMS: " + "; ".join(problems),
 					"" if (report.get("constraints", []) as Array).is_empty() else "; " + "; ".join(report["constraints"]),
 					"" if gen.warnings.is_empty() else "; WARNINGS: " + "; ".join(gen.warnings)])

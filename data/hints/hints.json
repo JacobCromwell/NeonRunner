@@ -11,6 +11,7 @@
 		{ "id": "wall_fence_low", "trigger": "wall_fence_low", "text": "This wall fence covers only the bottom of the wall: jump ({jump}) before you step onto the wall to run above it." },
 		{ "id": "wall_gap", "trigger": "wall_gap", "text": "Orange edges mark a break in a side wall: there's no wall to run on there, so a wall run drops you into the outer lane. Watch for them and step back onto the wall past the break ({move_left} / {move_right})." },
 		{ "id": "wall_fence_high", "trigger": "wall_fence_high", "text": "This wall fence covers only the top of the wall: step onto the wall without jumping to run below it." },
+		{ "id": "wall_run_gap", "trigger": "wall_run_gap", "text": "The whole street drops away ahead, too far to jump: run along the wall with the green arrows. Move into the outer lane and step onto the wall where the arrows begin ({move_left} / {move_right}); the wall run carries you across." },
 		{ "id": "pad", "trigger": "pad", "text": "Step on the cyan pad to flip up onto the ceiling." },
 		{ "id": "ramp", "trigger": "ramp", "text": "Green ramps launch you high onto the wall, with a burst of speed." },
 		{ "id": "speed_pad", "trigger": "speed_pad", "text": "Speed pads give you a burst of speed." },

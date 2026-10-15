@@ -102,6 +102,7 @@ func _is_introduced(trigger: String, boss_id: String) -> bool:
 		"fence_pulsing": feature = "pulsing"
 		"wall_fence": feature = "wall_fences"
 		"wall_gap": feature = "wall_gaps"
+		"wall_run_gap": feature = "wall_run_gaps"
 		"wall_fence_low", "wall_fence_high": feature = "wall_fences_partial"
 		"enemy:bad_dream": feature = "host"
 	if feature == "screech" and not world.config.feature_ages.has(feature):
@@ -170,6 +171,10 @@ func _first_at(trigger: String) -> float:
 		"wall_gap":
 			for wg: Dictionary in layout.wall_gaps:
 				found.append(float(wg["start"]))
+		"wall_run_gap":
+			# Task J2: the first wall-run gap's holes.
+			for wr: Dictionary in layout.wall_run_gaps:
+				found.append(float(wr["start"]))
 		"pad":
 			for pd: Dictionary in layout.pads:
 				found.append(float(pd["at"]))

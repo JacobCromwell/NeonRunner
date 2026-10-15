@@ -42,7 +42,9 @@ const FIRST_LEVEL: Dictionary = {
 	"screech": "gangland/1", "ramps": "gangland/1", "wall_gaps": "gangland/1",
 	"octodog": "gangland/2", "speed_pads": "gangland/2",
 	"generator": "gangland/3", "drone": "gangland/3",
-	"barnacle_turret": "marketplace/1",
+	# Task J2 (the owner, October 15, 2026: "especially in later zones and levels"; DESIGN-TBD where they start,
+	# docs/questions/j2.md): wall-run gaps from halfway into Marketplace 1.
+	"barnacle_turret": "marketplace/1", "wall_run_gaps": "marketplace/1",
 	"wall_fences": "marketplace/2", "screech_vents": "marketplace/2",
 	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1", "dash_wall": "corporate/1",
 	"tithe_collector": "corporate/2", "enforcer_truck": "corporate/2",
@@ -118,7 +120,11 @@ const INTRODUCTION_REACH: float = 210.0
 ## ones, but the levels' own seeds then had 6 late of 66, 3 of them wall gaps, and now 9). Left out, the
 ## levels' own seeds had 6 late of 63 on K2's curve, the check's limit (3 before; docs/OPEN_QUESTIONS.md §D,
 ## item 521 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 531).
-const SPACED_FROM_START: Array = ["wall_gaps"]
+## Task J2's wall-run gaps are no pattern pick either: their rules put the first where a whole clear stretch (about
+## 4 s of run in every lane, its run-in, lit stretch, gap and landing floor) fits past the start, the earliest that
+## takes the least out of its way, which in Marketplace 1 is 2 to 23 s after it on its own seeds (WallRunGapPlacement;
+## DESIGN-TBD, docs/questions/j2.md). Nothing of them before their start is checked all the same.
+const SPACED_FROM_START: Array = ["wall_gaps", "wall_run_gaps"]
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
 ## Marketplace's boss, and the Marketplace's outro led to Corporate (_test_old_saves).
 const V2_STEPS: PackedStringArray = ["city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",

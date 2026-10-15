@@ -6,7 +6,7 @@
 script = ExtResource("1_tuning")
 spacing_seconds_easy = 70.0
 spacing_seconds_hard = 40.0
-search_seconds = 20.0
+search_seconds = 40.0
 min_spacing_seconds = 15.0
 entry_window_seconds = 0.5
 exit_margin_seconds = 0.25

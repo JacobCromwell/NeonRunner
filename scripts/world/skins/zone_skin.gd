@@ -76,6 +76,21 @@ const WALL_GAP_DEPTH: float = 6.0
 const WALL_GAP_LIP: float = 0.3
 const WALL_GAP_LEADING_GLOW: float = 0.9
 const WALL_GAP_TRAILING_GLOW: float = 0.5
+## A wall-run gap's lit wall's standard look (standard_wall_run_guide, task J2; metres, glow), the ramps' green
+## chevrons as the Floating Head's wall marks show a wall run (FloatingHeadWallMarks): the stretch to step on is a tall
+## panel (WALL_RUN_STEP_LOW to _HIGH), the wall over the gap a strip at running height (WALL_RUN_STRIP_LOW to _HIGH,
+## where a wall runner's body passes), each chevron WALL_RUN_PANEL / 3 long, standing WALL_RUN_PROUD off the wall line
+## (clear of the facades' faces), framed with lines; its colour when the skin has no ramp_color.
+const WALL_RUN_STEP_LOW: float = 0.3
+const WALL_RUN_STEP_HIGH: float = 3.6
+const WALL_RUN_STRIP_LOW: float = 1.0
+const WALL_RUN_STRIP_HIGH: float = 2.5
+const WALL_RUN_PANEL: float = 2.4
+const WALL_RUN_PROUD: float = 0.06
+const WALL_RUN_STEP_GLOW: float = 1.3
+const WALL_RUN_STRIP_GLOW: float = 0.8
+const WALL_RUN_EDGE_GLOW: float = 1.0
+const WALL_RUN_COLOR := Color(0.3, 1.0, 0.35)
 
 ## The default doodad meshes, by size, push side and palette (built once each).
 static var _doodad_meshes: Dictionary = {}
@@ -439,6 +454,62 @@ static func standard_wall_gap(s: MeshLayer, side: int, face_x: float, start: flo
 			Vector3(0.06, top - bottom, WALL_GAP_EDGE_WIDTH), edge, glow)
 		s.box(Vector3(face_x + out * WALL_GAP_EDGE_WIDTH * 0.5, (top + bottom) * 0.5, -(at - dir * 0.02)),
 			Vector3(WALL_GAP_EDGE_WIDTH, top - bottom, 0.04), edge, glow)
+
+
+## A wall-run gap's lit wall (task J2; LevelLayout.wall_run_gaps: every floor lane is a hole and this wall is the
+## way across), its part between two track distances [start, end] on wall `side` (`face_x` the wall face's signed
+## world x); `lit` is the whole of it, Vector3(where the stretch to step on starts, where the gap starts, where it
+## ends). TrackBuilder draws it after wall_section() for the same chunk, over the wall. Visual only, no collision. It
+## must read at a glance, at speed, in every zone, that the wall is the way: the default (standard_wall_run_guide)
+## lights the stretch to step on with a tall, bright, framed panel of the ramps' green chevrons streaming ahead, and
+## the wall over the gap with a strip of them at running height, in the skin's ramp_color (the colour of the ramps
+## that launch wall runs; never a hazard colour: safe things look safe). The chevrons only scroll, like the ramps',
+## so Reduced flashing leaves it as it is. DESIGN-TBD (docs/questions/j2.md): the look.
+func wall_run_guide(parent: Node3D, side: int, face_x: float, start: float, end: float, lit: Vector3) -> void:
+	var color: Variant = get("ramp_color")
+	var batch := MeshBatch.new()
+	standard_wall_run_guide(batch.layer(MeshKit.solid()), side, face_x, start, end, lit,
+		color if color is Color else WALL_RUN_COLOR)
+	batch.commit(parent, "WallRunGuide")
+
+
+## The standard lit wall look (wall_run_guide), into `s` (the kit's solid shader), in `color`: its part [start, end]
+## of the whole `lit`. The chevrons run on along the whole of it (UV.x in WALL_RUN_PANEL lengths from lit.x), so the
+## parts of one in two chunks meet seamlessly.
+static func standard_wall_run_guide(s: MeshLayer, side: int, face_x: float, start: float, end: float, lit: Vector3,
+		color: Color) -> void:
+	var x: float = face_x - float(side) * WALL_RUN_PROUD
+	var bright: Color = color.lerp(Color.WHITE, 0.25)
+	# The stretch to step on [lit.x, lit.y], tall and bright, then the strip over the gap [lit.y, lit.z].
+	for step: bool in [true, false]:
+		var from: float = lit.x if step else lit.y
+		var to: float = lit.y if step else lit.z
+		var a: float = maxf(from, start)
+		var b: float = minf(to, end)
+		if b <= a + 0.001:
+			continue
+		var low: float = WALL_RUN_STEP_LOW if step else WALL_RUN_STRIP_LOW
+		var high: float = WALL_RUN_STEP_HIGH if step else WALL_RUN_STRIP_HIGH
+		var uv0 := Vector2((a - lit.x) / WALL_RUN_PANEL, 0.0)
+		var uv1 := Vector2((b - lit.x) / WALL_RUN_PANEL, 1.0)
+		# UV.x runs down the track (u = -z), so the arrows point and stream ahead; the face looks into the street.
+		var u := Vector3(0.0, 0.0, -(b - a))
+		if side < 0:
+			s.rect(Vector3(x, low, TrackGeometry.world_z(a)), u, Vector3(0.0, high - low, 0.0),
+				bright if step else color, WALL_RUN_STEP_GLOW if step else WALL_RUN_STRIP_GLOW, MeshKit.PAT_CHEVRON,
+				uv0, uv1, 1.0)
+		else:
+			s.rect(Vector3(x, high, TrackGeometry.world_z(a)), u, Vector3(0.0, low - high, 0.0),
+				bright if step else color, WALL_RUN_STEP_GLOW if step else WALL_RUN_STRIP_GLOW, MeshKit.PAT_CHEVRON,
+				uv0, uv1, 1.0)
+		# Lines along its top and bottom, and up its ends where they fall in this part.
+		var z_mid: float = TrackGeometry.world_z((a + b) * 0.5)
+		for y: float in [low, high]:
+			s.box(Vector3(x, y, z_mid), Vector3(0.05, 0.07, b - a), color, WALL_RUN_EDGE_GLOW)
+		for at: float in [from, to]:
+			if step and at >= start - 0.001 and at <= end + 0.001:
+				s.box(Vector3(x, (low + high) * 0.5, TrackGeometry.world_z(at)), Vector3(0.06, high - low, 0.09), color,
+					WALL_RUN_EDGE_GLOW)
 
 
 ## The wall gaps (LevelLayout.wall_gaps, whole, as Vector2(start, end)) on `side` near the chunk

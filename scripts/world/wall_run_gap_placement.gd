@@ -57,6 +57,7 @@ extends RefCounted
 const FEATURE: String = "wall_run_gaps"
 ## Claws lengthen wall runs (PowerupTuning.claws_wall_time_multiplier) and the dash carries a wall runner further.
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
+const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
 ## Metres between the spots a wall-run gap is tried at along a free stretch (_fit).
@@ -74,6 +75,14 @@ const TOUCH: float = 0.01
 ## Metres the passes after the rules keep off either end of a wall-run gap's clear stretch beyond it (keep_out): a
 ## piece placed right at its end, a fence's half depth say, stays outside it.
 const KEEP_MARGIN: float = 0.5
+## What taking one small enemy out of a wall-run gap's way costs (_cost), against 1 for a plain piece: a spot that
+## takes out a few holes, fences or doodads wins over one that takes out an enemy.
+const ENEMY_WEIGHT: int = 4
+## What each pulse of a Resonator's visit in a wall-run gap's way costs in the last resort (_big_enemies).
+const BIG_WEIGHT: int = 25
+## In the level that brings them in, its first comes as soon as one fits: each unit of what a spot takes out of its way
+## (_cost) weighs as this many seconds of run later (_fit).
+const INTRO_COST_SECONDS: float = 1.0
 
 
 ## A wall-run gap's sizes at one run speed (shape_for), in metres along the track.
@@ -128,15 +137,19 @@ class _Pass:
 	## "run_ups", "landings"); each side wall's (wall_keep_outs), [left, right].
 	var parts: Dictionary = {}
 	var walls: Array = []
-	## The plain pieces that may go (_removable): {span, list, piece}, by where they start; their starts, and the
-	## longest one's length (_cost looks them up by start).
+	## What may go (_removable): {span, list, piece, weight}, by where they start; their starts, and the longest one's
+	## length (_cost looks them up by start).
 	var pieces: Array[Dictionary] = []
 	var starts := PackedFloat64Array()
 	var longest: float = 0.0
+	## Plain pieces and enemies taken out, and each wall-run gap's cost (_cost) as placed.
 	var taken_out: int = 0
+	var enemies_out: int = 0
 	var costs: Array[int] = []
+	## The last resort (place): a Resonator's visit may go too (_big_enemies).
+	var big: bool = false
 
-	## Sets the plain pieces that may go (_removable's), sorted by where they start.
+	## Sets what may go (_removable's), sorted by where it starts.
 	func set_pieces(list: Array[Dictionary]) -> void:
 		pieces = list
 		pieces.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["span"] as Vector2).x < (b["span"] as Vector2).x)
@@ -275,28 +288,37 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		# Every draw happens whether or not one fits, so one blocked spot never reshuffles the rest.
 		var due: float = lerpf(from, last, (float(k) + rng.randf_range(0.25, 0.75)) / float(count))
 		var side: int = -1 if rng.randf() < 0.5 else 1
-		# The level that brings them in meets its first as soon as one fits past the feature's start.
-		var lo: float = from if introduces and k == 0 else maxf(due - search, from)
-		var hi: float = minf((from if introduces and k == 0 else due) + search, last)
-		var fit: Dictionary = _fit(p, lo, hi, side, lo if introduces and k == 0 else due)
+		var fit: Dictionary = {}
+		if introduces and k == 0:
+			# The level that brings them in meets its first as soon as one fits past the feature's start, each unit of
+			# what it takes out of its way weighing as INTRO_COST_SECONDS of run later.
+			fit = _fit(p, from, minf(from + search, last), side, from, INTRO_COST_SECONDS * v)
+		else:
+			fit = _fit(p, maxf(due - search, from), minf(due + search, last), side, due)
 		if not fit.is_empty():
 			_add(p, fit)
 	if lay.wall_run_gaps.is_empty() and last >= from:
 		# GDD §5: a feature a level has appears in it. Anywhere past its start, the earliest that needs the fewest pieces
-		# taken out.
-		var fit: Dictionary = _fit(p, from, last, -1 if rng.randf() < 0.5 else 1, from)
+		# taken out; as a last resort, a Resonator's visit may go too (_big_enemies).
+		var side: int = -1 if rng.randf() < 0.5 else 1
+		var fit: Dictionary = _fit(p, from, last, side, from)
+		if fit.is_empty():
+			p.big = true
+			p.parts["whole"] = WallFencePlacement.merged(floor_keep_outs(gen, true))
+			p.set_pieces(_removable(gen, true))
+			fit = _fit(p, from, last, side, from)
 		if not fit.is_empty():
 			_add(p, fit)
 	if lay.wall_run_gaps.is_empty():
-		constraints.append("no room anywhere past its start (%.0f m)" % from)
+		constraints.append("no room anywhere past its start (%.0f m); most room without: %s" % [from, _blockers(p, from, last)])
 		gen.warnings.append("wall-run gaps: no fair room anywhere for one (every feature should appear, GDD §5)")
 	elif lay.wall_run_gaps.size() < count:
 		constraints.append("only %d of %d fit: no room near the others' spots" % [lay.wall_run_gaps.size(), count])
 	if p.taken_out > 0:
 		GeneratorRules.keep_powered(gen)
 	lay.wall_run_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
-	return {"target": count, "placed": lay.wall_run_gaps.size(), "taken_out": p.taken_out, "costs": p.costs,
-		"constraints": constraints}
+	return {"target": count, "placed": lay.wall_run_gaps.size(), "taken_out": p.taken_out,
+		"enemies_taken_out": p.enemies_out, "costs": p.costs, "constraints": constraints}
 
 
 ## How many wall-run gaps a level is due (see the header): one per spacing_seconds_easy to _hard (by the level's
@@ -308,10 +330,12 @@ static func planned_count(gen: LevelGenerator, t: WallRunGapTuning, from: float,
 	return maxi(1, roundi((last - from) / maxf(spacing * gen.speed, 1.0)))
 
 
-## The wall-run gap (make) whose clear run-in starts in [lo, hi] that fits (_starts) and needs the fewest plain pieces
-## taken out (_cost), the nearest `target` of those; its lit wall on `side` if one fits there, else on the other. {} if
-## none fits. The entry carries its cost under "cost" (taken off when it's added).
-static func _fit(p: _Pass, lo: float, hi: float, side: int, target: float) -> Dictionary:
+## The wall-run gap (make) whose clear run-in starts in [lo, hi] that fits (_starts) and needs the least taken out of
+## its way (_cost), the nearest `target` of those; or, with `per_cost` (metres), the one nearest `target` counting each
+## unit of cost as that many metres further (an introduction: as soon as one fits, INTRO_COST_SECONDS). Its lit wall on
+## `side` if one fits there, else on the other. {} if none fits. The entry carries its cost under "cost" (taken off
+## when it's added).
+static func _fit(p: _Pass, lo: float, hi: float, side: int, target: float, per_cost: float = 0.0) -> Dictionary:
 	for s: int in [side, -side]:
 		var best: Dictionary = {}
 		var best_cost: int = 1 << 30
@@ -322,7 +346,12 @@ static func _fit(p: _Pass, lo: float, hi: float, side: int, target: float) -> Di
 				var at: float = minf(a, free.y)
 				var cost: int = _cost(p, at)
 				var off: float = absf(at - target)
-				if cost < best_cost or (cost == best_cost and off < best_off - EPSILON):
+				var better: bool = cost < best_cost or (cost == best_cost and off < best_off - EPSILON)
+				if per_cost > 0.0:
+					var score: float = off + cost * per_cost
+					var best_score: float = best_off + best_cost * per_cost
+					better = score < best_score - EPSILON or (absf(score - best_score) <= EPSILON and cost < best_cost)
+				if better:
 					best_cost = cost
 					best_off = off
 					best = make(p.shape, at, s)
@@ -362,7 +391,8 @@ static func _starts(p: _Pass, side: int, lo: float, hi: float) -> Array[Vector2]
 	return out
 
 
-## How many plain pieces (_removable) a wall-run gap whose clear run-in starts at `a` takes out.
+## What a wall-run gap whose clear run-in starts at `a` takes out of its way (_removable): 1 for each plain piece,
+## ENEMY_WEIGHT for each small enemy.
 static func _cost(p: _Pass, a: float) -> int:
 	var to: float = a + p.shape.zone()
 	var n: int = 0
@@ -370,48 +400,42 @@ static func _cost(p: _Pass, a: float) -> int:
 	var i: int = p.starts.bsearch(a - p.longest - EPSILON)
 	while i < p.pieces.size() and p.starts[i] < to:
 		if (p.pieces[i]["span"] as Vector2).y > a:
-			n += 1
+			n += int(p.pieces[i]["weight"])
 		i += 1
 	return n
 
 
-## Adds wall-run gap `w` (_fit): takes out the plain pieces in its clear stretch, cuts every lane from its start to its
-## end (holes marked LevelLayout.WALL_RUN_HOLE: the credit pass gives them no risky credit), and keeps the next ones off
-## it. The danger density pass's report forgets the rows it touched that went (they no longer stand).
+## Adds wall-run gap `w` (_fit): takes out what is in its way (_removable: the plain pieces in its clear stretch, the
+## small enemies whose keep-out reaches it), cuts every lane from its start to its end (holes marked
+## LevelLayout.WALL_RUN_HOLE: the credit pass gives them no risky credit), and keeps the next ones off it. It runs
+## before the danger density pass, which counts the level's enemies after it.
 static func _add(p: _Pass, w: Dictionary) -> void:
 	var gen: LevelGenerator = p.gen
 	var lay: LevelLayout = gen.layout
 	var zone := Vector2(float(w["approach"]), float(w["landing"]))
 	var cost: int = int(w.get("cost", 0))
 	w.erase("cost")
-	var gone: int = 0
 	for k: Dictionary in p.pieces:
 		var s: Vector2 = k["span"]
 		if s.x >= zone.y or s.y <= zone.x:
 			continue
 		match String(k["list"]):
 			"gaps":
-				gone += _erase(lay.gaps, k["piece"])
+				p.taken_out += _erase(lay.gaps, k["piece"])
 			"fences":
-				gone += _erase(lay.fences, k["piece"])
+				p.taken_out += _erase(lay.fences, k["piece"])
 			"doodads":
-				gone += _erase(lay.doodads, k["piece"])
-	p.taken_out += gone
+				p.taken_out += _erase(lay.doodads, k["piece"])
+			"enemies":
+				p.enemies_out += _erase(lay.enemies, k["piece"])
 	p.costs.append(cost)
 	for lane: int in lay.lane_count:
 		lay.gaps.append({"lane": lane, "start": float(w["start"]), "end": float(w["end"]), LevelLayout.WALL_RUN_HOLE: true})
 	lay.wall_run_gaps.append(w)
-	var touched: Variant = gen.danger_density_result.get("rows_touched")
-	if touched is Array:
-		var kept: Array = []
-		for row: Dictionary in touched:
-			if float(row["start"]) >= zone.y or float(row["end"]) <= zone.x:
-				kept.append(row)
-		gen.danger_density_result["rows_touched"] = kept
 	# The next ones keep min_spacing_seconds from it.
 	var room: float = p.t.min_spacing_seconds * gen.speed
 	p.parts["whole"] = WallFencePlacement.merged(p.parts["whole"] + [Vector2(zone.x - room, zone.y + room)])
-	p.set_pieces(_removable(gen))
+	p.set_pieces(_removable(gen, p.big))
 
 
 ## Takes `piece` (the very entry) out of `list`; 1 if it was there, else 0.
@@ -436,25 +460,95 @@ static func _wide_rows(gen: LevelGenerator) -> Array[Vector2]:
 	return out
 
 
-## The plain pieces a wall-run gap may take out of its way: holes (but a wider gap's or another wall-run gap's), fences
-## (but pulsing ones and ones a fence generator powers) and zone doodads (but a treasure stash's). Each {span (along the
-## track), list (its LevelLayout list's name), piece}.
-static func _removable(gen: LevelGenerator) -> Array[Dictionary]:
+## What a wall-run gap may take out of its way: the plain pieces, holes (but a wider gap's or another wall-run gap's),
+## fences (but pulsing ones and ones a fence generator powers) and zone doodads (but a treasure stash's), the small
+## enemies (_small_enemies) whose keep-out (_enemy_span) reaches it, and with `big` (place's last resort) the
+## Resonators of _big_enemies whose pulses reach it. Each {span (along the track), list (its LevelLayout list's name),
+## piece, weight (_cost's: 1, ENEMY_WEIGHT for a small enemy, BIG_WEIGHT for each pulse of a Resonator)}.
+static func _removable(gen: LevelGenerator, big: bool = false) -> Array[Dictionary]:
 	var lay: LevelLayout = gen.layout
 	var out: Array[Dictionary] = []
 	var wide: Array[Vector2] = _wide_rows(gen)
 	for g: Dictionary in lay.gaps:
 		if LevelLayout.is_wall_run_hole(g) or _in_rows(g, wide):
 			continue
-		out.append({"span": Vector2(float(g["start"]), float(g["end"])), "list": "gaps", "piece": g})
+		out.append({"span": Vector2(float(g["start"]), float(g["end"])), "list": "gaps", "piece": g, "weight": 1})
 	var half: float = gen.tuning.fence_depth * 0.5
 	for f: Dictionary in lay.fences:
 		if not _fence_stays(gen, f):
-			out.append({"span": Vector2(float(f["at"]) - half, float(f["at"]) + half), "list": "fences", "piece": f})
+			out.append({"span": Vector2(float(f["at"]) - half, float(f["at"]) + half), "list": "fences", "piece": f,
+				"weight": 1})
 	for d: Dictionary in lay.doodads:
 		if not d.has("stash"):
-			out.append({"span": Vector2(float(d["start"]), float(d["end"])), "list": "doodads", "piece": d})
+			out.append({"span": Vector2(float(d["start"]), float(d["end"])), "list": "doodads", "piece": d, "weight": 1})
+	var hooks: Dictionary = {}
+	for e: Dictionary in _small_enemies(gen):
+		out.append({"span": _enemy_span(gen, e, hooks), "list": "enemies", "piece": e, "weight": ENEMY_WEIGHT})
+	if big:
+		for e: Dictionary in _big_enemies(gen):
+			for w: Vector2 in LevelGenerator.DangerDensity.resonator_pulse_windows(gen, e):
+				out.append({"span": w, "list": "enemies", "piece": e, "weight": BIG_WEIGHT})
 	return out
+
+
+## The Resonators a wall-run gap may take out of its way as a last resort (place: where no other spot in the level fits
+## one), every visit but the level's first (its feature's introduction stays where it was): a visit leaves nothing
+## behind, and taking content out never makes a level unfair; the danger density pass counts the level's enemies after
+## it.
+static func _big_enemies(gen: LevelGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var at: Array[float] = LevelGenerator.feature_positions(gen.layout, "resonator")
+	var first: float = at[0] if not at.is_empty() else INF
+	for e: Dictionary in gen.layout.enemies:
+		if String(e.get("type", "")) == "resonator" and absf(float(e["at"]) - first) > EPSILON:
+			out.append(e)
+	return out
+
+
+## The small enemies a wall-run gap may take out of its way, as a dash wall's introduction may (DashWallRules
+## ._make_room; it runs before the danger density pass counts the level's enemies): floor cyborgs (never a host, whose
+## chase is planned on it, nor one planted in a charge's path) and manhole screeches (never a wall vent's), never the
+## first of its kind in the level (its feature's first, LevelGenerator.feature_positions: every feature keeps its
+## introduction where it was, and never loses its last).
+static func _small_enemies(gen: LevelGenerator) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var firsts: Dictionary = {}
+	for feature: String in ["cyborg", "screech"]:
+		var at: Array[float] = LevelGenerator.feature_positions(gen.layout, feature)
+		firsts[feature] = at[0] if not at.is_empty() else INF
+	for e: Dictionary in gen.layout.enemies:
+		var type: String = String(e.get("type", ""))
+		var params: Dictionary = e.get("params", {})
+		var at: float = float(e["at"])
+		match type:
+			"cyborg":
+				if bool(params.get("host", false)) or params.has(ChargePathPlacement.PARAM):
+					continue
+			"screech":
+				if int(e.get("side", 0)) != 0 or String(params.get("source", "manhole")) == "vent":
+					continue
+			_:
+				continue
+		if absf(at - float(firsts[type])) > EPSILON:
+			out.append(e)
+	return out
+
+
+## What a small enemy (_small_enemies) keeps a wall-run gap's clear stretch off, as a wider gap's zone keeps
+## (WideGapPlacement.keeps_of): a floor cyborg its obstacle margin either side (CyborgRules.obstacle_margin_at; its walk
+## and panic run keep it too), any other its keep-out (LevelGenerator.enemy_keep_out) with the floor it uses
+## (LevelGenerator.enemy_floor_span). `hooks` caches each type's rules script.
+static func _enemy_span(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -> Vector2:
+	var at: float = float(e["at"])
+	if String(e.get("type", "")) == "cyborg":
+		var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+		var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
+		return Vector2(at - margin, at + margin)
+	var span := Vector2(at, at)
+	for k: Vector2 in [gen.enemy_keep_out(e, hooks), LevelGenerator.enemy_floor_span(e, gen.pace)]:
+		if k.y >= k.x:
+			span = Vector2(minf(span.x, k.x), maxf(span.y, k.y))
+	return span
 
 
 ## True if hole `g` belongs to one of `rows` (the wider gaps, Vector2(start, end)).
@@ -502,31 +596,59 @@ static func keep_outs_by_part(gen: LevelGenerator) -> Dictionary:
 ##   never comes down into the clear stretch, or onto the lit wall, still on its run;
 ## - the wider gaps' zones, fences that may not go (pulsing ones, ones a fence generator powers) and a treasure stash's
 ##   doodads.
-static func floor_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
-	var lay: LevelLayout = gen.layout
+static func floor_keep_outs(gen: LevelGenerator, big: bool = false) -> Array[Vector2]:
 	var out: Array[Vector2] = []
+	for k: Dictionary in floor_keeps(gen, big):
+		out.append(k["span"])
+	return out
+
+
+## floor_keep_outs with what each is, {span (Vector2), what (for the report: WideGapPlacement.keeps_of's, or "a pad's
+## lift", "a ramp's wall run", "a treasure stash", "a wider gap", "a fence that stays", or an enemy's type)}. With
+## `big` (place's last resort), the pulses of the Resonators that may go then (_big_enemies) are left out too.
+static func floor_keeps(gen: LevelGenerator, big: bool = false) -> Array[Dictionary]:
+	var lay: LevelLayout = gen.layout
+	var out: Array[Dictionary] = []
+	var pulses: String = "a Resonator's pulse"
 	for k: Dictionary in WideGapPlacement.keeps_of(gen):
 		var what: String = String(k["what"])
-		# The wall-run gaps' own clear stretches (wall_run_gaps_rules.gd) are kept apart by the pass itself.
-		if what in ["a fence", "a doodad", "a ceiling", "a ceiling's landing zone", "a pad", FEATURE]:
+		# The wall-run gaps' own clear stretches (wall_run_gaps_rules.gd) are kept apart by the pass itself; the cyborgs
+		# and screeches (and with `big` the Resonators' pulses) come below.
+		if what in ["a fence", "a doodad", "a ceiling", "a ceiling's landing zone", "a pad", FEATURE, "a cyborg", "screech"] \
+				or big and what == pulses:
 			continue
-		out.append(k["span"])
+		out.append({"span": k["span"], "what": what})
+	# Every cyborg and screech but the small enemies that may go (_removable), with the keep-out a wider gap's zone
+	# keeps; with `big`, every Resonator's pulses but those of the ones that may go.
+	var small: Array[Dictionary] = _small_enemies(gen)
+	var going: Array[Dictionary] = []
+	if big:
+		going = _big_enemies(gen)
+	var hooks: Dictionary = {}
+	for e: Dictionary in lay.enemies:
+		var type: String = String(e.get("type", ""))
+		if (type == "cyborg" or type == "screech") and not small.has(e):
+			out.append({"span": _enemy_span(gen, e, hooks), "what": type})
+		elif big and type == "resonator" and not going.has(e):
+			for w: Vector2 in LevelGenerator.DangerDensity.resonator_pulse_windows(gen, e):
+				out.append({"span": w, "what": pulses})
 	for pad: Dictionary in lay.pads:
 		var at: float = float(pad["at"])
-		out.append(Vector2(at, gen.zones.pad_zone(at).y))
+		out.append({"span": Vector2(at, gen.zones.pad_zone(at).y), "what": "a pad's lift"})
 	for r: Dictionary in lay.ramps:
 		var at: float = float(r["at"])
-		out.append(Vector2(at, maxf(WallFencePlacement.ramp_run_end(gen, r), at + gen.tuning.ramp_length)))
+		out.append({"span": Vector2(at, maxf(WallFencePlacement.ramp_run_end(gen, r), at + gen.tuning.ramp_length)),
+			"what": "a ramp's wall run"})
 	for d: Dictionary in lay.doodads:
 		if d.has("stash"):
-			out.append(Vector2(float(d["start"]), float(d["end"])))
+			out.append({"span": Vector2(float(d["start"]), float(d["end"])), "what": "a treasure stash"})
 	var wt: WideGapTuning = WideGapPlacement.tuning()
 	for span: Vector2 in _wide_rows(gen):
-		out.append(WideGapPlacement.zone_of(gen, wt, span))
+		out.append({"span": WideGapPlacement.zone_of(gen, wt, span), "what": "a wider gap"})
 	var half: float = gen.tuning.fence_depth * 0.5
 	for f: Dictionary in lay.fences:
 		if _fence_stays(gen, f):
-			out.append(Vector2(float(f["at"]) - half, float(f["at"]) + half))
+			out.append({"span": Vector2(float(f["at"]) - half, float(f["at"]) + half), "what": "a fence that stays"})
 	return out
 
 
@@ -536,31 +658,93 @@ static func floor_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
 ## side, a Gilded Sentinel's whole wall section (WallFencePlacement.sentinel_wall_section). Vector2, in no particular
 ## order.
 static func wall_keep_outs(gen: LevelGenerator, side: int, t: WallRunGapTuning = null) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for k: Dictionary in wall_keeps(gen, side, t):
+		out.append(k["span"])
+	return out
+
+
+## wall_keep_outs with what each is, {span (Vector2), what ("a sign", "a wall fence", "a wall gap", or the wall enemy's
+## type)}.
+static func wall_keeps(gen: LevelGenerator, side: int, t: WallRunGapTuning = null) -> Array[Dictionary]:
 	var tt: WallRunGapTuning = t if t != null else tuning()
 	var lay: LevelLayout = gen.layout
 	var v: float = gen.speed
 	var clear: float = tt.wall_clear_seconds * v
 	var enemy: float = WallGapPlacement.tuning().wall_enemy_seconds * v
 	var half: float = gen.tuning.fence_depth * 0.5
-	var out: Array[Vector2] = []
+	var out: Array[Dictionary] = []
 	for s: Dictionary in lay.signs:
 		if int(s["side"]) == side:
-			out.append(Vector2(float(s["start"]), float(s["end"])))
+			out.append({"span": Vector2(float(s["start"]), float(s["end"])), "what": "a sign"})
 	for wf: Dictionary in lay.wall_fences:
 		if int(wf["side"]) == side:
-			out.append(Vector2(float(wf["at"]) - half, float(wf["at"]) + half))
+			out.append({"span": Vector2(float(wf["at"]) - half, float(wf["at"]) + half), "what": "a wall fence"})
 	for g: Dictionary in lay.wall_gaps:
 		if int(g["side"]) == side:
-			out.append(Vector2(float(g["start"]), float(g["end"])))
+			out.append({"span": Vector2(float(g["start"]), float(g["end"])), "what": "a wall gap"})
 	for e: Dictionary in lay.enemies:
 		if int(e.get("side", 0)) != side:
 			continue
 		var at: float = float(e["at"])
-		out.append(Vector2(at - enemy, at + enemy))
-		if String(e.get("type", "")) == "gilded_sentinel":
+		var type: String = String(e.get("type", ""))
+		out.append({"span": Vector2(at - enemy, at + enemy), "what": type})
+		if type == "gilded_sentinel":
 			var section: Vector2 = WallFencePlacement.sentinel_wall_section(gen, e)
-			out.append(Vector2(section.x - clear, section.y + clear))
+			out.append({"span": Vector2(section.x - clear, section.y + clear), "what": type})
 	return out
+
+
+## What keeps any wall-run gap from fitting with its clear run-in starting in [from, last] (place's constraints, when
+## none does): the kinds of keep-out (floor_keeps', a part's, wall_keeps') that, left out, would leave the most room
+## for one, as "what (metres of starts it would free)", the three that would free any, most first.
+static func _blockers(p: _Pass, from: float, last: float) -> String:
+	var ground: Array[Dictionary] = []
+	var o: Vector2 = p.shape.part("whole")
+	for k: Dictionary in floor_keeps(p.gen, p.big):
+		var s: Vector2 = k["span"]
+		ground.append({"range": Vector2(s.x - o.y, s.y - o.x), "what": k["what"]})
+	var by_part: Dictionary = keep_outs_by_part(p.gen)
+	for name: String in ["ceilings", "run_ups", "landings"]:
+		var po: Vector2 = p.shape.part(name)
+		for s: Vector2 in by_part[name]:
+			ground.append({"range": Vector2(s.x - po.y, s.y - po.x), "what": name})
+	var w: Vector2 = p.shape.part("wall")
+	var walls: Array = []
+	for side: int in [-1, 1]:
+		var list: Array[Dictionary] = []
+		for k: Dictionary in wall_keeps(p.gen, side, p.t):
+			var s: Vector2 = k["span"]
+			list.append({"range": Vector2(s.x - w.y, s.y - w.x), "what": "%s (wall)" % k["what"]})
+		walls.append(list)
+	var whats: Dictionary = {}
+	for k: Dictionary in ground + walls[0] + walls[1]:
+		whats[String(k["what"])] = true
+	var room: Array = []
+	for what: String in whats:
+		var free_floor: Array[Vector2] = _free_without(ground, what, from, last)
+		var free_sides: Array[Vector2] = _free_without(walls[0], what, from, last)
+		free_sides.append_array(_free_without(walls[1], what, from, last))
+		var metres: float = 0.0
+		for a: Vector2 in free_floor:
+			for b: Vector2 in WallFencePlacement.merged(free_sides):
+				metres += maxf(minf(a.y, b.y) - maxf(a.x, b.x), 0.0)
+		if metres > EPSILON:
+			room.append([metres, what])
+	room.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+	var out: PackedStringArray = []
+	for r: Array in room.slice(0, 3):
+		out.append("%s (%.0f m)" % [r[1], r[0]])
+	return ", ".join(out) if not out.is_empty() else "no one kind of keep-out alone"
+
+
+## The stretches of [from, to] no range of `keeps` ({range, what}) but those of `what` covers.
+static func _free_without(keeps: Array, what: String, from: float, to: float) -> Array[Vector2]:
+	var blocked: Array[Vector2] = []
+	for k: Dictionary in keeps:
+		if String(k["what"]) != what:
+			blocked.append(k["range"])
+	return LevelGenerator.free_stretches(WallFencePlacement.merged(blocked), from, to)
 
 
 ## Why wall-run gap `w` (an entry of `gen`'s layout's wall_run_gaps) breaks a rule of the header in the finished layout,
@@ -604,6 +788,11 @@ static func problem(gen: LevelGenerator, w: Dictionary) -> String:
 	for d: Dictionary in lay.doodads:
 		if float(d["start"]) < zone.y and float(d["end"]) > zone.x:
 			return "a zone doodad (lane %d at %.1f m) in its clear stretch" % [int(d["lane"]), float(d["start"])]
+	var hooks: Dictionary = {}
+	for e: Dictionary in _small_enemies(gen):
+		var s: Vector2 = _enemy_span(gen, e, hooks)
+		if s.x < zone.y and s.y > zone.x:
+			return "a %s (at %.1f m) keeps off its clear stretch (%.1f-%.1f m)" % [String(e["type"]), float(e["at"]), s.x, s.y]
 	var by_part: Dictionary = keep_outs_by_part(gen)
 	for name: String in by_part:
 		var o: Vector2 = shape.part(name)

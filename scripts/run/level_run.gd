@@ -484,6 +484,12 @@ func _build_debug_tools() -> void:
 		var scenarios: CeilingScenarioTuning = CeilingScenarios.tuning()
 		if scenarios.resource_path != "":
 			sections.append({"title": "Ceiling scenarios", "resource": scenarios, "path": scenarios.resource_path})
+	# Task J2: how often wall-run gaps come, their size and what they keep clear of, in a level that has them; Restart
+	# level rebuilds.
+	if context.config.has_feature(WallRunGapPlacement.FEATURE):
+		var wall_run_gaps: WallRunGapTuning = WallRunGapPlacement.tuning()
+		if wall_run_gaps.resource_path != "":
+			sections.append({"title": "Wall-run gaps", "resource": wall_run_gaps, "path": wall_run_gaps.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss

@@ -25,7 +25,7 @@ const PATH: String = "res://data/tuning/wall_run_gaps.tres"
 ## DESIGN-TBD: each is due at a seeded spot of its share of the level, and goes where it fits within this many seconds
 ## of run either side of it (in the level that brings them in, the first from the feature's start on, as soon as one
 ## fits), at the spot that needs the fewest plain pieces taken out of its way, the nearest of those.
-@export_range(1.0, 60.0, 0.5, "suffix:s") var search_seconds: float = 20.0
+@export_range(1.0, 60.0, 0.5, "suffix:s") var search_seconds: float = 40.0
 ## DESIGN-TBD: the least seconds of run between one wall-run gap's landing floor and the next one's clear run-in.
 @export_range(0.0, 60.0, 0.5, "suffix:s") var min_spacing_seconds: float = 15.0
 

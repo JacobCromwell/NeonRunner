@@ -21,7 +21,8 @@
     "sewer_swarm_whole", "sewer_swarm_surrounded", "the_house_attacks", "the_house_phases", "the_house_fight",
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
     "enforcer_truck_runs", "wide_gaps", "charge_paths", "host_releases", "dash_walls", "beach_levels",
-    "mecha_guppy_climb", "mecha_guppy_bait", "mecha_guppy_tunables", "mecha_guppy_top", "mecha_guppy_whole"
+    "mecha_guppy_climb", "mecha_guppy_bait", "mecha_guppy_tunables", "mecha_guppy_top", "mecha_guppy_whole",
+    "wall_run_gaps"
   ],
   "medium": [
     "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm",
@@ -42,6 +43,9 @@
     {"match": "scripts/world/floor_cut*.gd", "tier": "full"},
     {"match": "scripts/world/gap_density.gd", "tier": "full"},
     {"match": "scripts/world/danger_density*.gd", "tier": "full", "suites": ["danger_density"]},
+    {"match": "scripts/world/wall_run_gap_*.gd", "tier": "full", "suites": ["wall_run_gaps", "campaign", "wall_fences", "wall_gaps"]},
+    {"match": "scripts/enemies/wall_run_gaps_rules.gd", "tier": "full", "suites": ["wall_run_gaps", "campaign"]},
+    {"match": "data/tuning/wall_run_gaps.tres", "tier": "full", "suites": ["wall_run_gaps", "campaign"]},
     {"match": "scripts/world/wall_*_placement.gd", "tier": "full"},
     {"match": "scripts/world/wall_*_plan.gd", "tier": "full"},
     {"match": "scripts/world/wall_*_tuning.gd", "tier": "full"},

@@ -4,8 +4,10 @@ extends RefCounted
 ## the ceiling is never required; the floor route under it is always survivable without the pad).
 ## Tests only. A conservative model of the player's floor moves at run speed: running, switching one
 ## lane at a time on the ground, a full jump (over holes, and over full-height fences only where the
-## arc clears them), and slides under gapped fences (pressed again to slide on). It never uses a wall,
-## a lane switch in the air, coyote time or a jump out of a slide, never steps on a pad, ramp or speed
+## arc clears them), and slides under gapped fences (pressed again to slide on). It never uses a wall
+## but a wall-run gap's (task J2, LevelLayout.wall_run_gaps: from its outer lane on its lit stretch, a step
+## onto the lit wall and a standard wall run across, landing back in that lane past where the run and its
+## drop end), a lane switch in the air, coyote time or a jump out of a slide, never steps on a pad, ramp or speed
 ## pad, treats pulsing fences as always on, keeps out of a zone doodad's lane where it stands (no push,
 ## and no jump over it: it's too tall), keeps out of a floor cut's lane from where the cut would reach a
 ## player still in it (FloorCutPlan, keyed to the player's distance: the floor there is whole only
@@ -44,7 +46,7 @@ const GAPPED: int = 4
 const FULL: int = 8
 const KINDS: Array[int] = [STAND_BAD, SLIDE_BAD, GAPPED, FULL]
 
-enum Move { START, RUN, LEFT, RIGHT, JUMP, SLIDE }
+enum Move { START, RUN, LEFT, RIGHT, JUMP, SLIDE, WALL }
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -63,6 +65,10 @@ var _land_from: int = 0
 var _slide_steps: int = 0
 var _switch_steps: int = 0
 var _clear: Vector2i
+## Task J2: the states (lane * size + step) a wall run across a wall-run gap may start from (its outer lane on its
+## lit stretch, GAP_MARGIN inside it), and the steps from there to where the run and its drop land the runner.
+var _wall_starts: Dictionary = {}
+var _wall_steps: int = 0
 
 
 func _init(p_layout: LevelLayout, p_tuning: MovementTuning) -> void:
@@ -91,6 +97,13 @@ func _init(p_layout: LevelLayout, p_tuning: MovementTuning) -> void:
 	_slide_steps = int(floor(tuning.slide_duration * speed / STEP))
 	_switch_steps = int(ceil(tuning.lane_switch_time * speed / STEP)) + 1
 	_clear = _clear_window()
+	var wall_run: float = (tuning.wall_entry_time + tuning.wall_slide_time + WallRunGapPlacement.drop_seconds(tuning)) * speed
+	_wall_steps = int(ceil(wall_run / STEP))
+	for w: Dictionary in layout.wall_run_gaps:
+		var lane: int = layout.outer_lane(int(w["side"]))
+		for i: int in range(int(ceil((float(w["entry"]) + GAP_MARGIN) / STEP)), int(floor((float(w["start"]) - GAP_MARGIN) / STEP)) + 1):
+			if i >= 0 and i < size:
+				_wall_starts[lane * size + i] = true
 
 
 ## A floor route from `from` to `to` (track distances), starting in any lane where the player can
@@ -133,6 +146,13 @@ func find(from: float, to: float, start_lane: int = -1) -> Dictionary:
 				reach[here + 1] = 1
 				prev[here + 1] = here
 				move[here + 1] = Move.RUN
+			# Task J2: from a wall-run gap's lit stretch, onto its lit wall and across, landing back in this lane with
+			# room around the landing (the side, for the action, in the move's high bits).
+			if not _wall_starts.is_empty() and _wall_starts.has(lane * size + i):
+				var land_at: int = i + _wall_steps
+				var m: int = int(ceil(LANDING_MARGIN / STEP))
+				if land_at + m <= last and sums[b_stand + land_at + m + 1] == sums[b_stand + land_at - m]:
+					_arrive(reach, prev, move, here + _wall_steps, here, Move.WALL + 16 * (1 if lane > 0 else 0))
 			# Switch a lane: both lanes free to stand in while the player crosses.
 			var j: int = i + _switch_steps
 			if j <= last and sums[b_stand + j + 1] == sums[b_stand + i]:
@@ -189,6 +209,8 @@ func find(from: float, to: float, start_lane: int = -1) -> Dictionary:
 			Move.SLIDE:
 				for k: int in s.y / 16:
 					actions.append([d + k * (_slide_steps - 2) * STEP, &"slide"])
+			Move.WALL:
+				actions.append([d, &"move_right" if s.y / 16 == 1 else &"move_left"])
 	return {"ok": true, "start_lane": at / span, "end_lane": found / span, "actions": actions, "reason": "",
 		"from": start_d, "to": to}
 

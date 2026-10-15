@@ -240,6 +240,16 @@ func wall_run_between(from: float, to: float) -> bool:
 	return false
 
 
+## The lit walls (ZoneSkin.wall_run_guide) on wall `side` of the wall-run gaps whose lit wall reaches into [from, to):
+## each Vector3(entry, start, end), the stretch to step on and the gap (wall_run_gaps).
+func wall_run_guides(side: int, from: float, to: float) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for w: Dictionary in wall_run_gaps:
+		if int(w["side"]) == side and float(w["entry"]) < to and float(w["end"]) > from:
+			out.append(Vector3(float(w["entry"]), float(w["start"]), float(w["end"])))
+	return out
+
+
 ## Total value of every credit, a treasure stash's too: what a run can collect (the economy's tools and tests). The
 ## stars count star_credit_value().
 func total_credit_value() -> int:
