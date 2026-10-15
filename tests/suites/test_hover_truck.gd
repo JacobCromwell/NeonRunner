@@ -1,5 +1,6 @@
 extends TestSuite
-## The hover truck (GDD §9.3) in full RunWorlds on real physics, and its generator rules.
+## The hover truck (GDD §9.3) in full RunWorlds on real physics, and its generator rules; and (task I5) what
+## it costs a renderer: no real light, its look readied with the level, nothing new made while it plays.
 
 const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 const DroneScript := preload("res://scripts/enemies/drone.gd")
@@ -22,6 +23,7 @@ func run() -> void:
 	await _test_leaving()
 	await _test_weapons()
 	await _test_takes_turns()
+	await _test_cost()
 	_test_rules()
 
 
@@ -507,6 +509,132 @@ func _test_takes_turns() -> void:
 					"%s: it goes during the barrage, as before the rule (%.2f s, the barrage over at %.2f s)" % [tag, went, barrage_over])
 				check(watch.overlap > 0.2, "%s: the two overlap (%.2f s)" % [tag, watch.overlap])
 			await sim.free_world(w)
+
+
+# --- What it costs a renderer (task I5) ------------------------------------------------------------
+
+## Task I5 (the owner's "big performance drop on a playtester's phone", October 14, 2026). A phone's renderer,
+## the Compatibility one, builds a second version of every lit shader within reach of the first OmniLight3D it
+## shows (6 s in software, at the truck's burst, when its nose light came on) and lights every pixel around it
+## after: the truck was the only real light in the game. Its warning glow is plain glow now. It is readied with
+## the level like every other enemy (the model, and every material it shows), and builds nothing while it plays.
+func _test_cost() -> void:
+	# Its model is built with the level, not by the first truck to spawn (30 to 70 ms in that frame).
+	TruckScript._models.clear()
+	EnemyDirector._warmed.clear()
+	var layout := RunSim.layout(3, 600.0)
+	layout.enemies.append({"type": "hover_truck", "at": 300.0, "lane": 2, "side": 1, "seed": 5, "params": {}})
+	var w: RunWorld = sim.build_world(layout)
+	check(not TruckScript._models.is_empty(), "the level readies its truck's model before any truck spawns (%d built)" %
+		TruckScript._models.size())
+	check(w.director.active.is_empty() and _lights(w) == 0, "...and nothing of it is in play or lit")
+	await sim.free_world(w)
+
+	# A whole visit by a late truck (two gunners): spawn, banging, burst, pacing, the cannon, a lurch back, the
+	# rev, the forward lurch, then shot down: spin-out, explosion.
+	var late := LevelConfig.new()
+	late.enemy_scaling = 1.0
+	w = sim.build_world(RunSim.layout(3, 1200.0), null, null, late)
+	w.player.god_mode = true
+	var hooked: bool = EnemyDirector._has_hook(TruckScript, &"warm_up")
+	check(hooked, "it has a warm-up look for the level to ready")
+	var warm: Dictionary = {}
+	if hooked:
+		var script: GDScript = TruckScript
+		var look: Node = script.call(&"warm_up", w, {}) as Node
+		warm = _shader_keys(look)
+		check(_count_nodes(look, "Light3D") == 0 and _count_nodes(look, "CollisionObject3D") == 0 and look.get_child_count() > 10,
+			"its warm-up look has every part and no light or physics object (%d parts)" % look.get_child_count())
+		look.free()
+	var t := _truck(w, 90.0, {"stay": 12.0})
+	var ref: WeakRef = weakref(t)
+	var nodes_at_spawn: int = _count_nodes(t, "Node")
+	# (A lambda copies the plain variables it uses: what it records goes in arrays and dictionaries.)
+	var nodes_peak: Array = [nodes_at_spawn]
+	var seen: Dictionary = {}
+	var lights: Array = [0]
+	var states: Dictionary = {}
+	var killed: Array = [false]
+	await _run_until(w, 40.0, func() -> bool:
+		var live: TruckScript = ref.get_ref() as TruckScript
+		if live == null:
+			return true
+		states[live.state] = true
+		for m: Material in ShaderWarmup.materials_of(live):
+			seen[ShaderWarmup.shader_key(m)] = true
+		lights[0] = maxi(lights[0], _lights(w))
+		if live.state != S.WRECKED:
+			nodes_peak[0] = maxi(nodes_peak[0], _count_nodes(live, "Node"))
+		if live.state == S.LURCH_FWD and not killed[0]:
+			killed[0] = true
+			live.defeat(&"weapon")
+		return false)
+	for state: S in [S.HIDDEN, S.BANGING, S.EMERGE, S.PACE, S.LURCH_BACK, S.REV, S.LURCH_FWD, S.WRECKED]:
+		check(states.has(state), "the visit went through %s" % S.keys()[state])
+	var uncovered: PackedStringArray = []
+	for key: String in seen:
+		if not warm.has(key):
+			uncovered.append(key)
+	check(uncovered.is_empty(), "every material it shows, in every state, is in its warm-up look (%d shaders; not: %s)" % [
+		seen.size(), "; ".join(uncovered)])
+	check(lights[0] == 0, "no OmniLight3D or SpotLight3D anywhere in play while it is around (%d at most)" % lights[0])
+	check(nodes_peak[0] == nodes_at_spawn, "it makes no node while it plays, burst and revs included (%d at spawn, %d at most)" % [
+		nodes_at_spawn, nodes_peak[0]])
+	check(ref.get_ref() == null, "and it is gone after the explosion")
+	await sim.free_world(w)
+
+	# The glow it throws ahead: only through the rev and the lurch, flashing with the spikes (steady with Reduced
+	# flashing), floor and wall alike.
+	var was: bool = Settings.flashing_reduced
+	for reduced: bool in [false, true]:
+		Settings.flashing_reduced = reduced
+		w = sim.build_world(RunSim.layout(3, 800.0))
+		w.player.god_mode = true
+		t = _truck(w, 0.0, {"skip_entrance": true, "phase": "hold_back", "offset": -7.0, "guns": false})
+		# (Looked up by name: a build without the glow still loads this suite and fails it.)
+		var glow: Node3D = t.get(&"_glow") as Node3D
+		check(glow != null and not glow.visible, "reduced %s: it throws a glow ahead, hidden before the rev" % reduced)
+		if glow == null:
+			await sim.free_world(w)
+			continue
+		var floor_glow: Node3D = t.get(&"_glow_floor") as Node3D
+		var wall_glow: Node3D = t.get(&"_glow_wall") as Node3D
+		var levels: Dictionary = {}
+		var wrong: Array = [0]
+		await _run_until(w, 12.0, func() -> bool:
+			var live: bool = t.state == S.REV or t.state == S.LURCH_FWD
+			if live or t.state == S.HOLD_BACK:
+				levels[[t.state, int(t.get(&"_glow_state"))]] = true
+			if live != floor_glow.is_visible_in_tree() or live != wall_glow.is_visible_in_tree():
+				wrong[0] += 1
+			return t.state == S.ALONGSIDE)
+		check(wrong[0] == 0, "reduced %s: the glow shows exactly through the rev and the forward lurch (%d frames off)" % [
+			reduced, wrong[0]])
+		check(levels.has([S.LURCH_FWD, 2]) and levels.has([S.HOLD_BACK, 0]) and not levels.has([S.LURCH_FWD, 1]),
+			"reduced %s: bright through the lurch, off while it holds back" % reduced)
+		if reduced:
+			check(levels.has([S.REV, 2]) and not levels.has([S.REV, 1]), "with Reduced flashing the rev's glow is steady, never dim")
+		else:
+			check(levels.has([S.REV, 2]) and levels.has([S.REV, 1]), "the rev's glow flashes between dim and bright with the spikes")
+		await sim.free_world(w)
+	Settings.flashing_reduced = was
+
+
+## Every light (omni and spot) in `root`'s tree.
+static func _lights(root: Node) -> int:
+	return _count_nodes(root, "OmniLight3D") + _count_nodes(root, "SpotLight3D")
+
+
+static func _count_nodes(root: Node, cls: String) -> int:
+	return root.find_children("*", cls, true, false).size()
+
+
+## The shader keys (ShaderWarmup.shader_key) of every material drawn under `root`.
+static func _shader_keys(root: Node) -> Dictionary:
+	var out: Dictionary = {}
+	for m: Material in ShaderWarmup.materials_of(root):
+		out[ShaderWarmup.shader_key(m)] = true
+	return out
 
 
 ## Generator rules (GDD §9.3) over many seeds, difficulties and lane counts, and in the campaign

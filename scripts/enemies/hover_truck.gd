@@ -17,7 +17,7 @@ extends Enemy
 ##   it never backs or drifts into a player in its lane. The one deadly part looks deadly: the
 ##   glowing front spikes (a sleek nose in the city, a spiked plow with barbed wire for
 ##   scavengers) are live only during the forward lurch, which comes after its warning (the rev:
-##   truck_rev, flashing spikes, glowing thrusters, a light thrown ahead) and only when a player in
+##   truck_rev, flashing spikes, glowing thrusters, a glow thrown ahead onto the floor and the wall) and only when a player in
 ##   its lane could still get out. The spikes' hitbox is narrower than the lane, so a player beside
 ##   it or on the wall next to it is never caught.
 ## - Kill: land on its roof (a moving floor surface; routes: a ramp onto the wall then a wall jump,
@@ -47,9 +47,32 @@ const SAFE := Color(0.25, 0.85, 1.0)
 const HOVER := Color(0.3, 0.6, 1.0)
 const AMBER := Color(1.0, 0.6, 0.12)
 const FACADE := Color(0.24, 0.2, 0.3)
+const CHUNK := Color(0.3, 0.28, 0.3)
+## The glow it throws ahead onto the floor and the wall beside it through the rev and the lurch (the warning's
+## light): a soft disc of this radius on each, fading to nothing at its rim, drawn as plain glow. It replaces a
+## real OmniLight3D, which made the Compatibility renderer (phones, the web demo) build a second version of
+## every lit shader within 7 m the moment it showed, and light every lit pixel around it after (task I5).
+const GLOW_RADIUS: float = 5.0
+## How strongly it glows (the disc's centre, as an alpha added to what's behind): dim between the flashes of a
+## rev, bright on a flash and through the lurch.
+const GLOW_DIM: float = 0.14
+const GLOW_BRIGHT: float = 0.5
+## How high above the floor the floor disc lies, and its distance past the nose.
+const GLOW_FLOOR_Y: float = 0.06
+const GLOW_AHEAD: float = 0.9
+## The fireball's size at the start and the end of its swell, and how long it lasts.
+const BOOM_FROM: float = 1.2
+const BOOM_TO: float = 5.0
+const BOOM_SECONDS: float = 0.45
+const BOOM_ALPHA: float = 0.9
 
 ## Models per zone variant and shape, built once.
 static var _models: Dictionary = {}
+## The glow's disc (one mesh for the floor and the wall) and its two materials, and the fireball's ball:
+## built once, shared by every truck.
+static var _glow_disc: ArrayMesh
+static var _glow_mats: Array[StandardMaterial3D] = []
+static var _boom_ball: SphereMesh
 
 var state: State = State.HIDDEN
 var tune: HoverTruckTuning
@@ -115,7 +138,9 @@ var _cannon_muzzle: Node3D
 var _charge: MeshInstance3D
 var _shooter_guns: Array[MeshInstance3D] = []
 var _shooter_muzzles: Array[Node3D] = []
-var _nose_light: OmniLight3D
+var _glow: Node3D
+var _glow_floor: MeshInstance3D
+var _glow_wall: MeshInstance3D
 var _roofs: Array[StaticBody3D] = []
 var _blocker: Area3D
 var _spikes: Hazard
@@ -129,6 +154,50 @@ var _hole: Node3D
 var _hole_fire: MeshInstance3D
 var _burst_hazard: Hazard
 var _mats: Dictionary = {}
+## What _animate last set on the model's parts (a material override set again, even to the same material,
+## makes the renderer look the part over again: set only when it changes).
+var _spikes_flash: bool = false
+var _thrust_hot: bool = false
+var _thrust_boost: float = 1.0
+var _frame_lit: bool = false
+var _brake_on: bool = false
+var _guns_hot: bool = false
+var _glow_state: int = 0
+
+
+## A hover truck's whole look for EnemyDirector.warm_up (which frees it) and ShaderWarmup (tasks PERF1 and I5):
+## every part of its model and of the wall it bursts through, the glows its parts swap in, the glow it throws
+## ahead and the fireball. The first one builds the meshes and materials every later truck shares (30 to 70 ms on
+## the dev machine, which the first truck met in the frame it spawned). No physics object and no light.
+static func warm_up(world: RunWorld, _entry: Dictionary) -> Node:
+	var t: HoverTruckTuning = EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
+	if t == null:
+		t = HoverTruckTuning.new()
+	var look := Node3D.new()
+	look.name = "HoverTruckWarmUp"
+	var meshes: Dictionary = _meshes(world.skin.enemy_variant if world.skin != null else &"city", t)
+	for key: String in meshes:
+		var part := MeshInstance3D.new()
+		part.mesh = meshes[key]
+		look.add_child(part)
+	var swapped: Array[Material] = [GreyboxMaterials.glow(HOT, 3.2), GreyboxMaterials.glow(FLASH, 6.0),
+		GreyboxMaterials.glow(AMBER, 5.0), GreyboxMaterials.glow(HOT, 4.5), GreyboxMaterials.flat(FACADE),
+		GreyboxMaterials.flat(CHUNK)]
+	for m: Material in swapped:
+		var box := MeshInstance3D.new()
+		box.mesh = GreyboxMaterials.unit_box()
+		box.material_override = m
+		look.add_child(box)
+	for bright: bool in [false, true]:
+		var glow := MeshInstance3D.new()
+		glow.mesh = _glow_mesh()
+		glow.material_override = _glow_material(bright)
+		look.add_child(glow)
+	var ball := MeshInstance3D.new()
+	ball.mesh = _fireball()
+	ball.material_override = _boom_material()
+	look.add_child(ball)
+	return look
 
 
 func _build() -> void:
@@ -620,7 +689,7 @@ func _on_defeated(_cause: StringName) -> void:
 	_charge_left = -1.0
 	_volley.clear()
 	_wreck_spin = -side * rng.randf_range(0.5, 0.8)
-	_nose_light.light_energy = 0.0
+	_set_glow(0)
 	world.effects.burst(_weak_mesh.global_position + Vector3(0.0, 0.3, 0.0), WEAK, 28, 0.9)
 	world.effects.shake(0.25, 0.3)
 
@@ -651,33 +720,46 @@ func _explode() -> void:
 	world.effects.burst(at + Vector3(0.0, 0.8, 0.0), Color(1.0, 0.85, 0.3), 30, 1.1)
 	world.effects.burst(at, Color(0.45, 0.42, 0.4), 24, 1.0)
 	world.effects.shake(0.5, 0.5)
-	# A fireball swells and fades where the truck was, then it's gone.
+	# A fireball swells and fades where the truck was, then it's gone (one shared ball; its own material, since
+	# its alpha fades).
 	_model.visible = false
-	var ball := SphereMesh.new()
-	ball.radius = 0.5
-	ball.height = 1.0
-	ball.radial_segments = 12
-	ball.rings = 6
-	_boom_mat = StandardMaterial3D.new()
-	_boom_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_boom_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_boom_mat.albedo_color = Color(1.0, 0.55, 0.15, 0.9)
-	_boom_mat.emission_enabled = true
-	_boom_mat.emission = Color(1.0, 0.5, 0.1)
-	_boom_mat.emission_energy_multiplier = 4.0
-	_boom = _mesh_node(self, ball, Vector3(0.0, 1.2, 0.0))
+	_boom_mat = _boom_material()
+	_boom = _mesh_node(self, _fireball(), Vector3(0.0, 1.2, 0.0))
 	_boom.material_override = _boom_mat
 	_boom_t = 0.0
 
 
 func _update_boom(delta: float) -> void:
 	_boom_t += delta
-	var k: float = clampf(_boom_t / 0.45, 0.0, 1.0)
-	_boom.scale = Vector3.ONE * lerpf(1.2, 5.0, 1.0 - pow(1.0 - k, 2.0))
-	_boom_mat.albedo_color.a = 0.9 * (1.0 - k)
+	var k: float = clampf(_boom_t / BOOM_SECONDS, 0.0, 1.0)
+	_boom.scale = Vector3.ONE * lerpf(BOOM_FROM, BOOM_TO, 1.0 - pow(1.0 - k, 2.0))
+	_boom_mat.albedo_color.a = BOOM_ALPHA * (1.0 - k)
 	_place()
 	if k >= 1.0:
 		queue_free()
+
+
+## The fireball's ball, made once.
+static func _fireball() -> SphereMesh:
+	if _boom_ball == null:
+		_boom_ball = SphereMesh.new()
+		_boom_ball.radius = 0.5
+		_boom_ball.height = 1.0
+		_boom_ball.radial_segments = 12
+		_boom_ball.rings = 6
+	return _boom_ball
+
+
+## A fireball's own material: glowing orange and see-through, unlit, fading as it swells (_update_boom).
+static func _boom_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_color = Color(1.0, 0.55, 0.15, BOOM_ALPHA)
+	m.emission_enabled = true
+	m.emission = Color(1.0, 0.5, 0.1)
+	m.emission_energy_multiplier = 4.0
+	return m
 
 
 # --- Presentation --------------------------------------------------------------------------------
@@ -705,6 +787,17 @@ func _set_solid(on: bool) -> void:
 
 
 func _animate(delta: float) -> void:
+	# Nothing shows before the banging: the model is hidden, the facade still, no glow or flash lit.
+	if state == State.HIDDEN:
+		return
+	if state != State.BANGING:
+		_animate_truck(delta)
+	_animate_wall(delta)
+
+
+## The model: pitching with its lurches, the weak point's pulse, the spikes, thrusters, glow and brake lights of
+## the rev and the lurch, the cannon's charge and aim. A part's material is set only when it changes.
+func _animate_truck(delta: float) -> void:
 	# The hull pitches with its lurches.
 	var accel: float = (offset_speed - _prev_speed) / maxf(delta, 0.0001)
 	_prev_speed = offset_speed
@@ -717,29 +810,64 @@ func _animate(delta: float) -> void:
 	var revving: bool = state == State.REV
 	var lurching: bool = state == State.LURCH_FWD
 	var flash_on: bool = lurching or (revving and (Settings.flashing_reduced or int(_state_time * 10.0) % 2 == 0))
-	_spikes_mesh.material_override = _mats["flash"] if flash_on else null
-	_nose_light.light_energy = (4.0 if flash_on else 1.0) if (revving or lurching) else 0.0
-	_thrust.material_override = _mats["hot"] if revving or lurching else null
+	if flash_on != _spikes_flash:
+		_spikes_flash = flash_on
+		_spikes_mesh.material_override = _mats["flash"] if flash_on else null
+	var hot: bool = revving or lurching
+	if hot != _thrust_hot:
+		_thrust_hot = hot
+		_thrust.material_override = _mats["hot"] if hot else null
 	var boost: float = 1.0 + (1.8 if lurching else (0.9 if revving else 0.0))
-	_thrust.scale = Vector3(1.0, 1.0, boost)
-	_brake.material_override = _mats["brake_on"] if state == State.LURCH_BACK or (state == State.WRECKED) else null
+	if boost != _thrust_boost:
+		_thrust_boost = boost
+		_thrust.scale = Vector3(1.0, 1.0, boost)
+	var braking: bool = state == State.LURCH_BACK or state == State.WRECKED
+	if braking != _brake_on:
+		_brake_on = braking
+		_brake.material_override = _mats["brake_on"] if braking else null
+	# The glow it throws ahead (the rev's light): dim between the flashes, bright on one and through the lurch.
+	var glow_state: int = (2 if flash_on else 1) if hot else 0
+	if glow_state != _glow_state:
+		_set_glow(glow_state)
 	# The cannon's charge glow grows until it fires; the gunners' weapons glow with it.
 	var charging: bool = _charge_left >= 0.0
-	var k: float = 1.0 - clampf(_charge_left / tune.cannon_charge_seconds, 0.0, 1.0) if charging else 0.0
 	_charge.visible = charging
-	_charge.scale = Vector3.ONE * (0.15 + 0.5 * k) * (1.0 + 0.15 * sin(_state_time * 40.0))
-	for g: MeshInstance3D in _shooter_guns:
-		g.material_override = _mats["hot"] if charging or not _volley.is_empty() else null
+	if charging:
+		var k: float = 1.0 - clampf(_charge_left / tune.cannon_charge_seconds, 0.0, 1.0)
+		_charge.scale = Vector3.ONE * (0.15 + 0.5 * k) * (1.0 + 0.15 * sin(_state_time * 40.0))
+	var guns_hot: bool = charging or not _volley.is_empty()
+	if guns_hot != _guns_hot:
+		_guns_hot = guns_hot
+		for g: MeshInstance3D in _shooter_guns:
+			g.material_override = _mats["hot"] if guns_hot else null
 	if state == State.PACE or charging:
 		var aim: Vector3 = _aim_at_player()
 		if aim.distance_squared_to(_cannon.global_position) > 1.0:
 			_cannon.look_at(aim, Vector3.UP)
-	# The wall: bulging with each bang, then the burst's hazard window and debris.
-	_bulge_push = move_toward(_bulge_push, 0.0, 4.0 * delta)
-	_bulge.position.x = -side * (0.1 + 0.45 * _bulge_push)
-	_frame_flash -= delta
-	_bang_frame.visible = state == State.BANGING
-	_bang_frame.material_override = _mats["flash"] if _frame_flash > 0.0 else null
+
+
+## Shows the glow thrown ahead at `level` (0 off, 1 dim, 2 bright).
+func _set_glow(level: int) -> void:
+	_glow_state = level
+	_glow.visible = level > 0
+	if level > 0:
+		var mat: StandardMaterial3D = _glow_material(level == 2)
+		_glow_floor.material_override = mat
+		_glow_wall.material_override = mat
+
+
+## The wall it came through: bulging with each bang, then the burst's hazard window, the hole's fire and the
+## debris.
+func _animate_wall(delta: float) -> void:
+	if _bulge.visible:
+		_bulge_push = move_toward(_bulge_push, 0.0, 4.0 * delta)
+		_bulge.position.x = -side * (0.1 + 0.45 * _bulge_push)
+		_frame_flash -= delta
+		_bang_frame.visible = state == State.BANGING
+		var lit: bool = _frame_flash > 0.0
+		if lit != _frame_lit:
+			_frame_lit = lit
+			_bang_frame.material_override = _mats["flash"] if lit else null
 	if _burst_left > 0.0:
 		_burst_left -= delta
 		if _burst_left <= 0.0:
@@ -847,12 +975,76 @@ func _build_body() -> void:
 		muzzle.position = at + Vector3(0.14, -0.12, 0.5)
 		_model.add_child(muzzle)
 		_shooter_muzzles.append(muzzle)
-	_nose_light = OmniLight3D.new()
-	_nose_light.light_color = HOT
-	_nose_light.omni_range = 7.0
-	_nose_light.light_energy = 0.0
-	_nose_light.position = Vector3(0.0, 1.0, -t.length * 0.5 - t.nose_length - 0.6)
-	_model.add_child(_nose_light)
+	_build_glow()
+
+
+## The glow it throws ahead (GLOW_RADIUS): a disc on the floor past the nose and one on the wall beside it, hidden
+## until the rev. On the truck itself rather than the model, so the hull's pitch never lifts one off the floor.
+func _build_glow() -> void:
+	var z: float = -tune.length * 0.5 - tune.nose_length - GLOW_AHEAD
+	var disc: ArrayMesh = _glow_mesh()
+	_glow = Node3D.new()
+	_glow.visible = false
+	add_child(_glow)
+	_glow_floor = _mesh_node(_glow, disc, Vector3(0.0, tune.bob_height + GLOW_FLOOR_Y, z))
+	_glow_floor.rotation.x = -PI * 0.5
+	_glow_floor.scale = Vector3.ONE * GLOW_RADIUS
+	var wall_x: float = side * (world.geo.wall_x() - 0.08) - _lane_x
+	_glow_wall = _mesh_node(_glow, disc, Vector3(wall_x, 1.0, z))
+	_glow_wall.rotation.y = PI * 0.5
+	_glow_wall.scale = Vector3.ONE * GLOW_RADIUS
+	_glow_floor.material_override = _glow_material(false)
+	_glow_wall.material_override = _glow_material(false)
+
+
+## The glow's disc, in the xy plane, radius 1: white that fades from solid at the centre to nothing at the rim
+## (vertex alpha; the material gives it its colour and strength). Made once.
+static func _glow_mesh() -> ArrayMesh:
+	if _glow_disc != null:
+		return _glow_disc
+	const SEGMENTS: int = 20
+	# Radius and alpha of each ring after the centre: about (1 - r)^2, so it falls off like a light does.
+	var rings: Array[Vector2] = [Vector2(0.3, 0.49), Vector2(0.6, 0.16), Vector2(1.0, 0.0)]
+	var verts := PackedVector3Array([Vector3.ZERO])
+	var colors := PackedColorArray([Color.WHITE])
+	for ring: Vector2 in rings:
+		for i: int in SEGMENTS:
+			var a: float = TAU * i / SEGMENTS
+			verts.append(Vector3(cos(a) * ring.x, sin(a) * ring.x, 0.0))
+			colors.append(Color(1.0, 1.0, 1.0, ring.y))
+	var indices := PackedInt32Array()
+	for i: int in SEGMENTS:
+		indices.append_array([0, 1 + i, 1 + (i + 1) % SEGMENTS])
+	for r: int in rings.size() - 1:
+		var inner: int = 1 + r * SEGMENTS
+		var outer: int = inner + SEGMENTS
+		for i: int in SEGMENTS:
+			var j: int = (i + 1) % SEGMENTS
+			indices.append_array([inner + i, outer + i, outer + j, inner + i, outer + j, inner + j])
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	_glow_disc = ArrayMesh.new()
+	_glow_disc.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return _glow_disc
+
+
+## The glow's material, dim or bright: plain added light (unlit, see-through, drawn from both sides, tinted by the
+## disc's alpha), the same two for every truck.
+static func _glow_material(bright: bool) -> StandardMaterial3D:
+	if _glow_mats.is_empty():
+		for strength: float in [GLOW_DIM, GLOW_BRIGHT]:
+			var m := StandardMaterial3D.new()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			m.vertex_color_use_as_albedo = true
+			m.albedo_color = Color(HOT.r, HOT.g, HOT.b, strength)
+			_glow_mats.append(m)
+	return _glow_mats[1 if bright else 0]
 
 
 func _build_wall_fx() -> void:
@@ -866,9 +1058,11 @@ func _build_wall_fx() -> void:
 	# The facade panel it bangs on, framed in warning glow: bulges toward the track with each bang
 	# (the frame flashes) and cracks open.
 	_bulge = Node3D.new()
+	_bulge.position.x = -side * 0.1
 	_wall_fx.add_child(_bulge)
 	GreyboxMaterials.add_box(_bulge, Vector3(0.0, 1.45, 0.0), Vector3(0.3, 2.7, t.length + 0.4), GreyboxMaterials.flat(FACADE))
 	_bang_frame = _mesh_node(_bulge, meshes["bang_frame"], Vector3(-side * 0.17, 0.0, 0.0))
+	_bang_frame.visible = false
 	for i: int in 5:
 		var crack := GreyboxMaterials.add_box(_bulge, Vector3(-side * 0.17, rng.randf_range(0.6, 2.3),
 			rng.randf_range(-t.length * 0.42, t.length * 0.42)), Vector3(0.03, 0.07, rng.randf_range(1.0, 2.0)),
@@ -881,7 +1075,7 @@ func _build_wall_fx() -> void:
 	_wall_fx.add_child(_hole)
 	_mesh_node(_hole, meshes["hole"], Vector3(-side * 0.04, 0.0, 0.0))
 	_hole_fire = _mesh_node(_hole, meshes["hole_fire"], Vector3(-side * 0.06, 0.0, 0.0))
-	var chunk: Material = GreyboxMaterials.flat(Color(0.3, 0.28, 0.3))
+	var chunk: Material = GreyboxMaterials.flat(CHUNK)
 	for i: int in 7:
 		var r := GreyboxMaterials.add_box(_wall_fx, Vector3.ZERO, Vector3.ONE * rng.randf_range(0.18, 0.4), chunk)
 		r.visible = false

@@ -19,6 +19,7 @@ extends TestSuite
 ## - The frame monitor's tags, holds and summaries, and the frame graph's spikes and holds.
 
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
+const TruckScript := preload("res://scripts/enemies/hover_truck.gd")
 const DUMMY: String = "res://tests/helpers/dummy_enemy.gd"
 ## The enemy kinds whose scripts give a warm_up look, as layout entries.
 const WARM_ENTRIES: Array[Dictionary] = [
@@ -34,6 +35,7 @@ const WARM_ENTRIES: Array[Dictionary] = [
 	{"type": "gilded_sentinel", "at": 580.0, "lane": 0, "side": 1, "seed": 12, "params": {}},
 	{"type": "tithe_collector", "at": 600.0, "lane": 1, "seed": 13, "params": {}},
 	{"type": "enforcer_truck", "at": 620.0, "lane": 1, "seed": 14, "params": {}},
+	{"type": "hover_truck", "at": 640.0, "lane": 4, "side": 1, "seed": 15, "params": {}},
 ]
 
 var sim: RunSim
@@ -232,12 +234,12 @@ func _test_enemy_warm_up() -> void:
 	for e: Dictionary in director.warm_entries():
 		if not EnemyDirector._scripts.has(String(e["type"])) or EnemyDirector._scripts[String(e["type"])] == null:
 			unloaded.append(String(e["type"]))
-	check(unloaded.is_empty() and director.warm_entries().size() == 13,
+	check(unloaded.is_empty() and director.warm_entries().size() == 14,
 		"each type's script is loaded with the level (%d kinds; not loaded: %s)" % [director.warm_entries().size(), ", ".join(unloaded)])
 	check(int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes_before and director.get_child_count() == children_before
 		and director.active.is_empty(), "nothing it built stays: no node in the tree, no enemy in play")
 	check(heard.is_empty(), "nothing is heard while it readies them (%s)" % ", ".join(heard))
-	check(EnemyDirector._kept.size() >= 13, "the looks' materials are kept, so their shaders stay built (%d)" % EnemyDirector._kept.size())
+	check(EnemyDirector._kept.size() >= 14, "the looks' materials are kept, so their shaders stay built (%d)" % EnemyDirector._kept.size())
 	var count: int = EnemyDirector._warmed.size()
 	director.warm_up()
 	check(EnemyDirector._warmed.size() == count, "once a process: a second level with the same kinds readies nothing again")
@@ -251,7 +253,7 @@ func _test_enemy_warm_up() -> void:
 			physics.append(String(look.name))
 		look.free()
 	check(physics.is_empty(), "a look has no physics object (freeing one would reorder later contacts): %s" % ", ".join(physics))
-	check(looks.size() == 13 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
+	check(looks.size() == 14 and empty == 0, "warm_looks() gives one look of each kind, built outside the tree (%d, %d empty)" % [
 		looks.size(), empty])
 	await sim.free_world(world)
 
@@ -359,6 +361,9 @@ func _test_shader_warmup() -> void:
 	check(big.is_empty(), "a few frames on, every sample is still too small to see (none at full size in the world): %s" %
 		", ".join(big.slice(0, 4)))
 	check(_count_script(stage, CyborgBody) >= 3, "it draws the cyborgs' looks (a cyborg, a host, a window cyborg)")
+	var truck_glow: Material = TruckScript._glow_material(true)
+	check(drawn.has(truck_glow) and drawn.has(TruckScript._glow_material(false)),
+		"it draws the hover truck's warning glow, both strengths (no real light: that built a lit shader's second version mid-run)")
 	var cuts: int = 0
 	for node: Node in stage.find_children("*", "MeshInstance3D", true, false):
 		var cut := (node as MeshInstance3D).material_override as ShaderMaterial
