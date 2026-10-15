@@ -284,7 +284,7 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   and the Palace, but changes how every skin, boss prop and cinematic gets its shader and needs a hook in a core
   file); and the
   depth pre-pass (`rendering/driver/depth_prepass/enable=false` is 12 to 21 programs fewer, same image, a GPU
-  trade). Both are in `docs/questions/i1.md`. `test_zone_shaders` checks every zone's first level, the Golden Palace and
+  trade). Both are items 830–831 in `docs/OPEN_QUESTIONS_DEFERRED.md`. `test_zone_shaders` checks every zone's first level, the Golden Palace and
   every built boss's arena (no shader code in two Shaders, no two standard looks differing only in an unshaded
   one's emission); `test_perf` the shadow, the recess and the speed lines.
 - **Hit-stops** (G2's brief freeze on every kill and stomp): none in the build before the playtest work, now 4

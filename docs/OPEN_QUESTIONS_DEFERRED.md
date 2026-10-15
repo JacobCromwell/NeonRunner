@@ -4390,3 +4390,12 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
   only, `ZoneSkin.cyborg_draw_scale` 1.2 in `data/skins/city_skin.tres`, 1.0 in every other skin (marked `DESIGN-TBD`);
   one number per skin. The model only: hitboxes, bolts and floor use are unchanged. A window cyborg drawn bigger
   reaches further above its window frame, so check each zone's look if it follows.
+
+**I1, shader cleanup in every zone** (from `docs/questions/i1.md`; both technical, no GDD section)
+830. **Split the street shader per zone?** `kit_solid.gdshader` carries every zone's patterns in each of its programs; a
+  zone-only variant cut the web's compile wait by about half or more in a software-WebGL trial (a rough figure;
+  compiles are deferred). Placeholder: none; every zone draws with the one shader. Scheduled as task I11 (next batch,
+  T1): measure on a real Windows Chrome or Edge first, choose the variant from data, guard every pattern id a zone uses.
+831. **Draw the web build's opaque things without a depth pre-pass?** (`rendering/driver/depth_prepass/enable=false`):
+  12 fewer programs in City 1, 21 in the Palace, the same image, but more overdraw on the GPU. Placeholder: none; the
+  engine's default (on). If tried: a web-only override, measured on a real low-end GPU first.

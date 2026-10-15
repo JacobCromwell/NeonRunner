@@ -20,7 +20,6 @@ request that is now in the done file.
 
 ## The owner's batch requests (October 14, 2026)
 
-- [ ] **Shader cleanup in every zone** (I1). An earlier session found unused or duplicated shaders in Zone 1 (`fca7f77`, City 1's load compiles 17 fewer shader programs) and removing them helped performance without changing the look. Check every other zone for the same gains and make them.
 - [ ] **Ceiling scenarios** (I4; GDD §3, Ceiling scenarios). Not in zones 1–2; sprinkled into later zones. (a) Pick the right pad: electric fences on a ceiling hit a player who takes the first anti-grav pad; a second pad further along avoids them. First one safe and one unsafe pad; later several pads, some safe and some not. (b) The treasure stash: a separate return pad partway along a ceiling drops the player into a stretch of floor walled off by doodads (for a stash in lane 3: a doodad at its start, and doodads in the two adjacent lanes), holding two or three of the highest-denomination credits.
 - [ ] **The Hover Truck lags on mobile** (I5; GDD §9.3). The truck that smashes in through the side wall and fires its cannon causes a big performance drop on a playtester's phone. Find and make performance improvements.
 - [ ] **One hit from death** (I6; GDD §4). An audio and visual cue when the player has run out of all armor and shields; the sound is a two-tone siren.
