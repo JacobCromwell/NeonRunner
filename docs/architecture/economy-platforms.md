@@ -10,12 +10,13 @@ unspent), item tiers and stock, equip toggles, records per difficulty tier, sett
 owned, switched-on items; one charge of each breakable per attempt; and the free armor every run
 starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
 items) sells the permanent items tier by tier, among them the armor upgrade (GDD §8: four tiers; hits
-and waits in `GameRules`; prices in the catalog, laid against the campaign's economy by R7 and still
-DESIGN-TBD pending the owner, `docs/questions/r7.md`), and the breakables (shield, grapple, revive) as
-stock. `tools/measure/economy.gd` reads a campaign's credits, payouts and the shop's prices together
-(task R7): per level and zone, the credits available, a good run's share of them, the finish payout and
-what a death or quit pays, the running wallet of a single clean playthrough, and the first level each
-catalog price is in reach of it.
+and waits in `GameRules`; prices in the catalog, laid against the campaign's economy by R7 and rebalanced
+for all eight zones by I7, still DESIGN-TBD pending the owner, `docs/questions/i7.md`), and the breakables
+(shield, grapple, revive) as stock. `tools/measure/economy.gd` reads a campaign's credits, payouts and the
+shop's prices together (tasks R7, I7): per level and zone, the credits available, a good run's share of
+them, the finish payout and what a death or quit pays, the running wallets of a typical and a weaker player
+who finish every level once, and the first level each tier is in reach of (the model is
+`tools/measure/economy_model.gd`, shared with `test_economy`).
 
 **Approved early-economy revision (October 3, 2026; pre-density earnings snapshot).** The owner's answers in
 `docs/USER_REQUESTS.md` supersede the historical R7 early-affordability assumption: City 1 stays
@@ -24,9 +25,10 @@ After the approved additive 30% floor-gap changes and Zone 2+ playable wall gaps
 `--lanes=5 --seeds=0 --share=0.7` (native campaign seeds, default difficulty, no purchases or boss
 payouts), City 1 has **389** available credits, **272** collected and a **372** wallet including
 its unchanged 100-credit finish bonus. City 2's wallet is **833**, City 3's **1,495**: Armor I
-at 350 still fits City 1; Laser I at 900 first fits City 3, not City 2. Only that affordability
-deadline changes; claws still fit Gangland 2, dash and slow time still fit by Gangland 3, and every
-catalog price remains attainable within one clean playthrough (**11,877** total).
+at 350 still fits City 1; Laser I at 900 first fits City 3, not City 2 (it later rose to 1,800, so it
+first fits the campaign's 4th level, Gangland 1: the figures below are as measured then, the placements
+now are in the I7 section). Only that affordability deadline changes; claws still fit Gangland 2, and
+every catalog price remains attainable within one clean playthrough (**11,877** total).
 The isolated duration comparison disables additive floor gaps on in-memory copies only: 110 seconds
 earns 556 available credits / 489 wallet, versus 55 seconds' 341 / 339. This historical controlled
 comparison is not the current post-gap wallet. Economy tests retain the other affordability,
@@ -34,6 +36,76 @@ death-versus-finish and whole-playthrough guards, plus a shortening-driven earni
 The subsequent danger-density overlay can move collectibles around new hazards, so the figures above
 are historical rather than freshly measured totals. It changes neither duration nor reward tables,
 and its added hazards earn no extra risk-credit pay.
+
+**The rebalance for eight zones (task I7; the owner's answer of October 14, 2026, GDD §7; DESIGN-TBD, questions in
+`docs/questions/i7.md`).** The prices and payouts were set for a two-zone campaign.
+- *How a tier is read.* Tiers are bought in order, so a tier costs its **line total** (its price and every tier
+  before it). R7's tool read each tier's price alone, which put the Heavy missile at level 13 when owning it costs
+  18,300, more than a typical player earns from the levels of a whole playthrough (16,343 before I4). A tier
+  **first fits** at the first level (the volleyball match counted) where the running wallet covers its line total.
+  That is **affordable after finishing that level, so usable from the next.** The pinned wallet leaves out the
+  boss payouts, because the owner's October 3 anchors were measured "with no purchases or boss payouts"; but a boss
+  pays on the win and the next zone opens only after it, so every player past a boss has been paid, and the
+  "+boss" reading (shown beside it) is the shop a player really has: for the capstones it is up to three levels
+  earlier. The **typical** player (`tools/measure/economy_model.gd`) keeps 70% of each level's credits, never dies,
+  wins the whole match (400) and every boss, takes the treasure stashes at the same share, uses no magnet and buys
+  nothing along the way; the **weaker** one keeps the two-star line (45%), takes no stash, fails every level twice
+  first (each try pays 20% of what it had) and wins two match points.
+- *Treasure stashes (task I4).* A stash (`LevelLayout.total_credit_value()` less `star_credit_value()`: 200 to 300
+  credits a level from Casino 1 on, 5 and 6 lanes only) sits on an optional ceiling route, so the model keeps it
+  apart: the typical player takes it, the weaker one and 3 lanes have none. It lifts a typical playthrough from
+  16,343 to 18,382 and pulled Armor IV and the Heavy missile two levels early, which is why they moved.
+  DESIGN-TBD (`docs/questions/i7.md`).
+- *Levels* are numbered in play order: City 1-3 are 1-3, Gangland 4-6, Marketplace 7-8, Casino 9-10, Corporate
+  11-12, Beach 13-15 (the match is 14), Dead Zone 16-17 and Golden 18-20.
+- *Where each tier first fits* (5 lanes, each level's own seed; `test_economy.gd`'s `FIRST_FIT`, give or take one
+  level, and `IN_TIME` for the "+boss" column). Held: everything but two prices (Armor I 350, which fits City 1,
+  the October 3 revision; Laser I 1,800, first affordable at level 4; the dash's four prices, the owner's).
+  Moved: **Armor IV 6,000 to 6,500** (it would fit the volleyball match, by 23 credits) and **Heavy missile 9,500 to
+  7,000** (it would first fit at Golden 3). Slow time stays 2,400.
+
+| Tier | Price | Line | Affordable after | Usable from | With boss payouts, after | Weaker player |
+|---|---|---|---|---|---|---|
+| Armor I / II / III / IV | 350 / 1,700 / 3,400 / 6,500 | 350 / 2,050 / 5,450 / 11,950 | 1 City 1 / 4 Gangland 1 / 8 Marketplace 2 / 15 Beach 3 | 2 / 5 / 9 Casino 1 / 16 Dead Zone 1 | City 1 / Gangland 1 / Marketplace 1 / Beach 1 | 2 / 5 / 10 / 18 |
+| Laser, Enhanced laser | 1,800 / 2,200 | 1,800 / 4,000 | 4 Gangland 1 / 7 Marketplace 1 | 5 / 8 | City boss / Gangland 3 | 4 / 8 |
+| Missile, Heavy missile | 4,800 / 7,000 | 8,800 / 15,800 | 11 Corporate 1 / 18 Golden 1 | 12 / 19 Golden 2 | Casino 2 / Dead Zone 1 | 15 / beyond (17,829 with the bosses) |
+| Claws | 2,600 | 2,600 | 5 Gangland 2 | 6 | Gangland 1 | 6 |
+| Dash I / II / III / IV | 1,800 / 800 / 1,000 / 1,200 | 1,800 / 2,600 / 3,600 / 4,800 | 4 / 5 / 6 / 8 Marketplace 2 | 5 / 6 / 7 / 9 | City boss / Gangland 1 / Gangland 3 / Gangland boss | 4 / 6 / 7 / 9 |
+| Magnet I / II / III | 700 / 1,600 / 3,200 | 700 / 2,300 / 5,500 | 2 City 2 / 4 Gangland 1 / 8 Marketplace 2 | 3 / 5 / 9 | City 2 / Gangland 1 / Marketplace 1 | 2 / 5 / 10 |
+| Slow time (PC) | 2,400 | 2,400 | 5 Gangland 2 | 6 | Gangland 1 | 5 |
+
+- *What each placement answers* (GDD §5's schedule). Where "usable from" is after the enemy debuts, the tier is in
+  time only on the "+boss" reading:
+  - claws against the Octodog's tentacles (debuts in Gangland 2, level 5): usable from level 6, but affordable
+    after Gangland 1 once the City boss has paid;
+  - the Enhanced laser against the Barnacle Turret (Marketplace 1, level 7): usable from level 8, or from level 7
+    on the "+boss" reading (affordable after Gangland 3);
+  - the Missile against Buzz Overdrive (Corporate 1, level 11): usable from level 12, or from level 11 on the
+    "+boss" reading (affordable after Casino 2);
+  - the dash line (all four by level 8, 9 usable) before the Corporate dash walls (level 11);
+  - Armor III from the Casino's mixed crowd, and Armor IV from the Dead Zone, whose Bad Dreams ignore weapons;
+  - the Heavy missile from Golden 2, where the Sentinels (17 shots at tier 1) debut with peak difficulty; Golden
+    1's Resonator waves come a level earlier. On the "+boss" reading it is in reach after Dead Zone 1;
+  - Slow time (GDD says only "PC only, cooldown-based") and the magnet are not tied to an enemy.
+- *Wallets at each zone's end* (typical, no boss payouts / with them; weaker, the same): City 1,549 / 2,049 (1,278 /
+  1,778); Gangland 3,804 / 4,804 (3,152 / 4,152); Marketplace 5,650 / 6,650 (4,695 / 5,695); Casino 7,919 / 9,419
+  (6,263 / 7,763); Corporate 9,888 / 11,888 (7,730 / 9,730); Beach 12,530 / 15,030 (9,505 / 12,005); Dead Zone
+  14,935 / 17,935 (11,225 / 14,225); Golden 18,382 / 22,382 (13,829 / 17,829).
+- *Payouts held.* The completion bonus stays 100 + 25 a level (City 1's 100 is the approved early revision, and a
+  steeper slope moves only the late tiers: 35 a level puts Heavy missile at level 17, 15 at level 19) and the boss
+  payouts stay 500 (1,000 for the last). The prices were placed against them. A boss pays 500 whatever the zone:
+  77% of a City 3 finish, 46% of a Dead Zone 1 finish (`docs/questions/i7.md`, question 3).
+- *A menu, not a checklist.* The whole permanent catalog costs 43,050 (PC), 2.3 playthroughs of a typical player
+  (1.9 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
+  along the way owns only part of it after one playthrough. Every completion pays again, so the rest is about 25
+  replays of a level that pays 1,000 (21 if the first playthrough's boss payouts are counted).
+- *Mobile.* 3 lanes hold no stash and about 20% fewer credits than 5 (14,886 for a typical player's levels, 18,886
+  with the bosses; the mobile catalog is 40,650 without slow time), so a tier first fits up to two levels later
+  (Armor I at City 2, Armor IV at level 17) and the Heavy missile is out of reach on the levels alone, in reach
+  after Golden 1 on the "+boss" reading. Nothing is needed to progress (GDD §8), and a $0.99 pack (1,000) is 1.3
+  finishes, a $4.99 crate (6,000) 7.9: neither looks forced.
+- *Breakables.* Shield 400, grapple 250 and revive 600 stay under a finish and a half of a typical player from City
+  2 on; all three together are 2.4 finishes in the City and 1.0 to 1.7 after.
 
 The save has a version (`Profile.VERSION`, now 3). `Profile.from_dict()` brings an older save up to
 date as it loads (`_migrate`): version 1's armor stock (armor was a breakable then) is paid back in

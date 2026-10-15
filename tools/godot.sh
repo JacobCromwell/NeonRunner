@@ -248,6 +248,14 @@ PYEOF
 		while IFS= read -r fl; do
 			fail_lines+=("$fl")
 		done < <(grep '^FAIL: ' "$out")
+		# A runtime error in a suite aborts that test function but not the suite, which would still say "ok":
+		# count it as a failure (I7 found test_economy skipping half its checks this way).
+		if grep -q 'SCRIPT ERROR' "$out"; then
+			overall=1
+			while IFS= read -r fl; do
+				fail_lines+=("FAIL: $fl")
+			done < <(grep -A1 'SCRIPT ERROR' "$out" | grep -v '^--$' | paste - - | sed -E 's/[[:space:]]+/ /g')
+		fi
 	done
 	echo ""
 	if [[ $overall -eq 0 ]]; then
@@ -327,8 +335,17 @@ case "$command" in
 		[[ -z "$jobs" ]] && jobs=1
 		if [[ "$jobs" -le 1 ]]; then
 			set +e
-			"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "${rest[@]}" 2>&1 | quiet
+			local_log="$(mktemp)"
+			"$GODOT_BIN" --headless --path "$PROJECT" --fixed-fps 60 -s res://tests/run_tests.gd -- "${rest[@]}" 2>&1 \
+				| tee "$local_log" | quiet
 			status=${PIPESTATUS[0]}
+			# A runtime error in a suite aborts that test function but not the suite (see run_tests_parallel).
+			if grep -q 'SCRIPT ERROR' "$local_log"; then
+				grep -A1 'SCRIPT ERROR' "$local_log" | grep -v '^--$' | paste - - | sed -E 's/[[:space:]]+/ /g; s/^/FAIL: /'
+				echo "FAILED: a script error in a suite (see above)"
+				[[ $status -eq 0 ]] && status=1
+			fi
+			rm -f "$local_log"
 			exit "$status"
 		fi
 		run_tests_parallel "$jobs" "${rest[@]}"

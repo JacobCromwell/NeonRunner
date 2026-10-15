@@ -1,21 +1,50 @@
 extends TestSuite
 ## Wallet, items, records, saving, the shop catalog, loadouts and the App's buy flow. Also the
-## balancing pass (task R7, after the owner's playtest: G1's pace, G3's free armor, G4's weaker laser
-## tier 1): the catalog's prices laid against what `tools/measure/economy.gd` reads from the campaign
-## (the reasoning is in docs/questions/r7.md).
+## balancing passes (task R7, after the owner's playtest: G1's pace, G3's free armor, G4's weaker laser
+## tier 1; task I7, the rebalance for all eight zones): the catalog's prices laid against what
+## `tools/measure/economy.gd` reads from the campaign (the reasoning is in docs/questions/i7.md and
+## docs/architecture/economy-platforms.md).
 
-## Mirrors tools/measure/economy.gd's stand-in for a good, not perfect, clean run with no magnet
-## (GDD §7 names no number): see that tool's header.
-const GOOD_RUN_SHARE: float = 0.7
-## The level each item should be in reach by, in a single clean playthrough with nothing bought along
-## the way (campaign order, 0-based; GDD §5's schedule, test_campaign.gd's FIRST_LEVEL): armor I is
-## the owner's "died a lot" note (GDD §4); claws by Octodog's debut (claws beat tentacles, GDD §8).
-## USER_REQUESTS.md approves intentionally lower earnings from 55-second City 1, not compensation:
-## after its additive gaps armor I still fits City 1, but laser I moves from City 2 to City 3.
-const AFFORD_BY: Dictionary = {
-	&"armor:1": "city/1", &"weapon:1": "city/4", &"claws:1": "gangland/2", &"dash:1": "gangland/3",
-	&"slow_time:1": "gangland/3",
+## The model the tool reports: a typical and a weaker player's walks through the campaign (see its header).
+const EconomyModel = preload("res://tools/measure/economy_model.gd")
+## I7: the level each tier of the shop first fits at, for a typical player on PC (5 lanes, each level's own seed)
+## who finishes every level once, in order, and buys nothing along the way, not counting the boss payouts (the
+## owner's October 3 anchors were measured "with no purchases or boss payouts"). A tier costs its line total (its
+## price and every tier before it: tiers are bought in order). "First fits at N" means affordable after finishing
+## N, so usable from N + 1. Campaign levels, with the volleyball match counted: City 1-3 are levels 1-3, Gangland
+## 1-3 4-6, Marketplace 1-2 7-8, Casino 1-2 9-10, Corporate 1-2 11-12, Beach 1-3 13-15, Dead Zone 1-2 16-17,
+## Golden 1-3 18-20. Where each is placed (GDD §5's schedule; the reasoning is in docs/questions/i7.md):
+##   armor I the owner's "died a lot" note (GDD §4, the October 3 early-economy revision: it fits City 1); II at
+##   Gangland 1, III at Marketplace 2 (usable from the Casino's mixed crowd), IV at Beach 3 (usable from the
+##   Dead Zone, whose Bad Dreams ignore weapons); laser I Gangland 1 (the owner: 1,800, first affordable at the
+##   campaign's 4th level); laser II Marketplace 1, missile Corporate 1, heavy missile Golden 1 (usable from
+##   Golden 2, the Sentinels' debut); claws Gangland 2; the dash at Gangland 1, its three cheaper upgrades (the
+##   owner's prices) over the next levels, all four by Marketplace 2, before the Corporate zone's dash walls;
+##   magnet I as an early credit boost, II at Gangland 1, III at Marketplace 2; slow time (PC only) as it was.
+## Where that is later than the enemy it answers debuts (the Octodog in Gangland 2, the Barnacle Turret in
+## Marketplace 1, Buzz Overdrive in Corporate 1), it is in time only once the boss payouts are counted (IN_TIME).
+## DESIGN-TBD (docs/questions/i7.md): the placements the GDD says nothing about.
+const FIRST_FIT: Dictionary = {
+	&"armor:1": "city/1", &"armor:2": "gangland/1", &"armor:3": "marketplace/2", &"armor:4": "beach/3",
+	&"weapon:1": "gangland/1", &"weapon:2": "marketplace/1", &"weapon:3": "corporate/1", &"weapon:4": "golden/1",
+	&"claws:1": "gangland/2",
+	&"dash:1": "gangland/1", &"dash:2": "gangland/2", &"dash:3": "gangland/3", &"dash:4": "marketplace/2",
+	&"magnet:1": "city/2", &"magnet:2": "gangland/1", &"magnet:3": "marketplace/2",
+	&"slow_time:1": "gangland/2",
 }
+## The step by whose end a tier must be affordable once the boss payouts are counted (a boss pays on the win, and
+## the next zone opens only after it, so every player past a boss has been paid), so it is usable before the enemy
+## or zone that wants it: claws before the Octodog (Gangland 2), the Enhanced laser before the Barnacle Turret
+## (Marketplace 1), the dash line before the Corporate dash walls (Corporate 1), the Missile before Buzz
+## Overdrive (Corporate 1), Armor IV before the Dead Zone, the Heavy missile before Golden 1.
+const IN_TIME: Dictionary = {
+	&"claws:1": "gangland/1", &"weapon:2": "gangland/3", &"dash:4": "casino/2", &"weapon:3": "casino/2",
+	&"armor:4": "beach/3", &"weapon:4": "dead_zone/2",
+}
+## How many levels either side of its place a tier may first fit. The credits a layout holds move as the generator's
+## later tasks add and shift them, and a place that is a level out only means the same price lands a level
+## earlier or later, so this absorbs drift without hiding a real shift in the curve.
+const FIT_TOLERANCE: int = 1
 
 
 func run() -> void:
@@ -256,69 +285,154 @@ func _test_dash_shop() -> void:
 	App.mobile = saved_mobile
 
 
-## R7: builds the same running wallet tools/measure/economy.gd reports (every campaign level
-## finished once, in order, nothing bought along the way, a good run collecting GOOD_RUN_SHARE of a
-## level's credits) and checks the catalog's prices against it: deaths and quits never pay more than
-## finishing (GDD §4), every AFFORD_BY item is in reach by its level, and nothing in the catalog costs
-## more than a single clean playthrough ever earns (CLAUDE.md: nothing a first playthrough can't
-## afford). Also the star thresholds (GDD §6): two_star_share < three_star_share, so they still order
-## correctly, and a clean run (well above the good-run share) clears three stars on credits alone,
-## without needing bonus points. 5 lanes only (PC default): lane count moves each level's credit total
-## a little but not the shape of the curve (see the tool's own README entry for the full sweep).
-func _test_balance_curve() -> void:
+## The campaign's economy as tools/measure/economy.gd reads it (tools/measure/economy_model.gd, shared): the
+## campaign's levels, the volleyball match and the bosses in order, the credits each level offers at `lanes`
+## lanes (each level's own seed, the layout cache), and the typical and weaker players' walks through them
+## (nothing bought along the way). `only` limits the steps by id. Returns {rows, typical, weaker}.
+func _economy(lanes: int, only: PackedStringArray = PackedStringArray()) -> Dictionary:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var tuning := load("res://data/tuning/movement.tres") as MovementTuning
+	var rules := load("res://data/tuning/game_rules.tres") as GameRules
+	var measure := func(c: Campaign, step: CampaignStep) -> Dictionary:
+		var config: LevelConfig = c.configure(step, lanes)
+		# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
+		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
+		return {"credits": layout.total_credit_value(), "stash": layout.total_credit_value() - layout.star_credit_value()}
+	var rows: Array[Dictionary] = EconomyModel.rows(campaign, measure, only)
+	var players: Array[Dictionary] = EconomyModel.players(rules)
+	return {"rows": rows, "typical": EconomyModel.walk(players[0], rules, rows),
+		"weaker": EconomyModel.walk(players[1], rules, rows)}
+
+
+## The index of the step with id `id` in `rows` (campaign order, bosses included).
+func _row_of(rows: Array[Dictionary], id: String) -> int:
+	for i: int in rows.size():
+		if String(rows[i]["id"]) == id:
+			return i
+	return -1
+
+
+## Whether `price` fits the walk's wallet (the levels and the match only, or with the boss payouts) by the end of
+## step `id`.
+func _fits_by(walk: Array[Dictionary], rows: Array[Dictionary], price: int, with_bosses: bool, id: String) -> bool:
+	var at: int = EconomyModel.first_fit(walk, rows, price, with_bosses)
+	return at >= 0 and at <= _row_of(rows, id)
+
+
+## R7, I7: lays the catalog's prices against the campaign's economy. A tier costs its price and every tier before
+## it (tiers are bought in order): its line total. It first fits at the first level, counting the volleyball
+## match, whose running wallet (a typical player finishing every level once, in order, buying nothing along the
+## way, and not counting the boss payouts) covers that. Each tier is pinned to the level it was placed at
+## (FIRST_FIT, GDD §5's schedule; the reasoning is in docs/questions/i7.md and docs/architecture/economy-platforms.md),
+## give or take FIT_TOLERANCE levels. Also: the owner's anchors (Armor I fits City 1, Laser I first fits at the 4th
+## level and costs 1,800), deaths and quits never pay more than finishing (GDD §4), the star shares still order,
+## every tier is in reach within one playthrough, a weaker player and a mobile one still reach the early tiers
+## close behind, and the breakables stay cheap to restock. 5 lanes (PC's default): the lane count moves each
+## level's credit total a little but not the shape of the curve (the tool's own sweep shows it).
+func _test_balance_curve() -> void:
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	var catalog: ShopCatalog = ShopCatalog.load_from()
 	check(rules.two_star_share < rules.three_star_share and rules.three_star_share <= 1.0,
 		"the star shares still order two below three (%.2f < %.2f)" % [rules.two_star_share, rules.three_star_share])
-	var wallet_by_level: Dictionary = {}
-	var wallet: int = 0
-	var max_wallet: int = 0
-	for step: CampaignStep in campaign.steps():
-		# A mini-game level (the Beach's volleyball match) isn't generated: it pays its run-in's few credits and the
-		# match's payout (test_volleyball), left out here, so the wallets below are a little under what a playthrough
-		# earns.
-		if not step.is_level() or step.is_minigame():
+	var economy: Dictionary = _economy(5)
+	var rows: Array[Dictionary] = economy["rows"]
+	var typical: Array[Dictionary] = economy["typical"]
+	var weaker: Array[Dictionary] = economy["weaker"]
+	for i: int in rows.size():
+		if String(rows[i]["kind"]) != "level":
 			continue
-		var config: LevelConfig = campaign.configure(step, 5)
-		# T-SPEED: this level's own default build (LayoutCache), shared with other suites.
-		var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
-		var available: int = layout.total_credit_value()
-		var good: int = roundi(available * GOOD_RUN_SHARE)
-		var bonus: int = rules.completion_bonus(step.level_index)
-		var finish: int = good + bonus
-		var death: int = floori(good * rules.death_credit_keep_fraction)
-		check(death < finish, "%s: a death or quit never pays more than finishing (%d < %d)" % [step.id, death, finish])
-		# A clean run (well above the good-run share) clears three stars on credits alone: the share
-		# formula is scale-invariant (score and max_credit_score are both counted in credits), so this
-		# holds for every level once it holds for one, but it's checked per level to catch a future
-		# level-specific credit source the generator folds into max_credit_score oddly.
-		check(available > 0 and 0.9 >= rules.three_star_share,
-			"%s: a clean run's share (0.9) still clears three stars (needs %.2f)" % [step.id, rules.three_star_share])
-		wallet += finish
-		wallet_by_level[step.id] = wallet
-		max_wallet = wallet
-	for key: String in AFFORD_BY:
-		var item_id: StringName = StringName(String(key).get_slice(":", 0))
-		var tier: int = int(String(key).get_slice(":", 1))
-		var item: ShopItem = catalog.item(item_id)
-		var price: int = item.price_of(tier, false)
-		var by_wallet: int = int(wallet_by_level[AFFORD_BY[key]])
-		check(price <= by_wallet, "%s is affordable by %s (price %d, wallet %d)" % [
-			item.tier_name(tier), AFFORD_BY[key], price, by_wallet])
-	check(int(wallet_by_level["city/2"]) < catalog.item(&"weapon").price_of(1, false),
-		"intentional early earnings delay laser I until City 4 (City 2 wallet %d)" % wallet_by_level["city/2"])
+		# Deaths and quits never pay more than finishing; a clean run (well above the good-run share) clears three
+		# stars on credits alone (the share formula is scale-invariant, so this holds for every level once it holds
+		# for one, but it's checked per level to catch a future level-specific credit source the generator folds
+		# into max_credit_score oddly).
+		check(float(rows[i]["credits"]) > 0 and int(typical[i]["death"]) < int(typical[i]["finish"]),
+			"%s: a death or quit never pays more than finishing (%d < %d)" % [rows[i]["id"], typical[i]["death"], typical[i]["finish"]])
+		check(0.9 >= rules.three_star_share, "%s: a clean run's share (0.9) still clears three stars (needs %.2f)" % [
+			rows[i]["id"], rules.three_star_share])
+
+	# Every tier is pinned to the level it first fits at.
 	for item: ShopItem in catalog.items:
-		var prices: Array[int] = []
+		if item.kind != ShopItem.Kind.PERMANENT:
+			continue
+		for t: int in item.tier_count():
+			check(FIRST_FIT.has(StringName("%s:%d" % [item.id, t + 1])),
+				"%s tier %d has a level it should first fit at (FIRST_FIT)" % [item.id, t + 1])
+	for key: StringName in FIRST_FIT:
+		var item: ShopItem = catalog.item(StringName(String(key).get_slice(":", 0)))
+		var tier: int = int(String(key).get_slice(":", 1))
+		var line: int = EconomyModel.line_totals(item, false)[tier - 1]
+		var at: int = EconomyModel.first_fit(typical, rows, line, false)
+		var want: int = int(rows[_row_of(rows, FIRST_FIT[key])]["number"])
+		var got: int = int(rows[at]["number"]) if at >= 0 else -1
+		check(got > 0 and absi(got - want) <= FIT_TOLERANCE,
+			"%s (line %d) first fits at level %d (%s), pinned to level %d (%s) give or take %d" % [
+				item.tier_name(tier), line, got, rows[at]["id"] if at >= 0 else "beyond the campaign", want,
+				FIRST_FIT[key], FIT_TOLERANCE])
+
+	# In time for what wants them, once the boss payouts are counted (IN_TIME).
+	for key: StringName in IN_TIME:
+		var item: ShopItem = catalog.item(StringName(String(key).get_slice(":", 0)))
+		var tier: int = int(String(key).get_slice(":", 1))
+		var line: int = EconomyModel.line_totals(item, false)[tier - 1]
+		check(_fits_by(typical, rows, line, true, IN_TIME[key]),
+			"%s (line %d) is affordable by the end of %s, boss payouts counted" % [item.tier_name(tier), line, IN_TIME[key]])
+
+	# The owner's anchors. The October 3 early-economy revision: armor I fits City 1 (its lower earnings are
+	# intentional, tests change instead of rewards or prices). Laser I costs 1,800 and first fits at the
+	# campaign's 4th level, Gangland 1: City 3's wallet is short of it.
+	check(catalog.item(&"armor").price_of(1, false) == 350 and catalog.item(&"weapon").price_of(1, false) == 1800,
+		"Armor I costs 350 and Laser I 1,800")
+	check(EconomyModel.first_fit(typical, rows, 350, false) == _row_of(rows, "city/1"),
+		"Armor I fits City 1 (wallet %d)" % typical[0]["wallet"])
+	var laser_at: int = EconomyModel.first_fit(typical, rows, 1800, false)
+	check(laser_at == _row_of(rows, "gangland/1") and int(rows[laser_at]["number"]) == 4,
+		"Laser I first fits at the campaign's 4th level, Gangland 1")
+	check(int(typical[_row_of(rows, "city/3")]["wallet"]) < 1800 and int(typical[laser_at]["wallet"]) >= 1800,
+		"City 3's wallet (%d) is short of Laser I; Gangland 1's (%d) covers it" % [
+			typical[_row_of(rows, "city/3")]["wallet"], typical[laser_at]["wallet"]])
+
+	# Every tier is in reach within a single playthrough: a typical player's wallet (no boss payouts) covers
+	# the longest line, and so does a weaker one's with the boss payouts they must win to progress.
+	var last: int = rows.size() - 1
+	for item: ShopItem in catalog.items:
+		var longest: int = item.price
+		if item.kind == ShopItem.Kind.PERMANENT:
+			var lines: PackedInt32Array = EconomyModel.line_totals(item, false)
+			longest = lines[lines.size() - 1]
+		check(longest <= int(typical[last]["wallet"]), "%s never costs more than one clean playthrough earns (%d <= %d)" % [
+			item.display_name, longest, typical[last]["wallet"]])
+		check(longest <= int(weaker[last]["wallet_all"]), "%s is within a weaker player's one playthrough, bosses included (%d <= %d)" % [
+			item.display_name, longest, weaker[last]["wallet_all"]])
+
+	# A weaker player (the two-star line, two failed tries a level) is not left far behind early.
+	check(_fits_by(weaker, rows, 350, false, "city/2"), "a weaker player affords Armor I by City 2")
+	check(_fits_by(weaker, rows, 1800, false, "gangland/2"), "a weaker player affords Laser I by Gangland 2")
+
+	# The breakables stay cheap to restock: each costs at most a finish and a half of a typical player from City 2 on,
+	# and the three together at most two and a half finishes from City 3 on.
+	var restock: int = 0
+	for item: ShopItem in catalog.items:
 		if item.kind == ShopItem.Kind.BREAKABLE:
-			prices.append(item.price)
-		else:
-			for t: int in item.tier_count():
-				prices.append(item.price_of(t + 1, false))
-		for price: int in prices:
-			check(price <= max_wallet, "%s never costs more than one clean playthrough ever earns (%d <= %d)" % [
-				item.display_name, price, max_wallet])
+			restock += item.price
+	for i: int in range(_row_of(rows, "city/2"), rows.size()):
+		if String(rows[i]["kind"]) != "level":
+			continue
+		var finish: float = typical[i]["finish"]
+		for item: ShopItem in catalog.items:
+			if item.kind == ShopItem.Kind.BREAKABLE:
+				check(float(item.price) <= 1.5 * finish, "%s: a %s (%d) costs at most a finish and a half (%d)" % [
+					rows[i]["id"], item.id, item.price, finish])
+		if i >= _row_of(rows, "city/3"):
+			check(float(restock) <= 2.5 * finish, "%s: restocking a shield, grapple and revive (%d) is at most two and a half finishes (%d)" % [
+				rows[i]["id"], restock, finish])
+
+	# Mobile (3 lanes): fewer credits, the same shape (the tool's --mobile=true reads the whole campaign; this
+	# generates only the first five levels): Armor I by City 2, Laser I by Gangland 2.
+	var mobile: Dictionary = _economy(3, PackedStringArray(["city/1", "city/2", "city/3", "gangland/1", "gangland/2"]))
+	var m_rows: Array[Dictionary] = mobile["rows"]
+	var m_typical: Array[Dictionary] = mobile["typical"]
+	check(_fits_by(m_typical, m_rows, 350, false, "city/2"), "a 3-lane player affords Armor I by City 2")
+	check(_fits_by(m_typical, m_rows, 1800, false, "gangland/2"), "a 3-lane player affords Laser I by Gangland 2")
 
 
 ## Isolate the approved duration change from the later additive gaps, using copies only.
@@ -339,8 +453,9 @@ func _test_shorter_city_earnings() -> void:
 	var short_credits: int = short_layout.total_credit_value()
 	var former_credits: int = former_layout.total_credit_value()
 	var bonus: int = rules.completion_bonus(step.level_index)
-	var short_wallet: int = roundi(short_credits * GOOD_RUN_SHARE) + bonus
-	var former_wallet: int = roundi(former_credits * GOOD_RUN_SHARE) + bonus
+	var share: float = EconomyModel.players(rules)[0]["share"]
+	var short_wallet: int = roundi(short_credits * share) + bonus
+	var former_wallet: int = roundi(former_credits * share) + bonus
 	print("  City 1 isolated shortening (no additive gaps): 110s %d credits / %d wallet -> 55s %d credits / %d wallet"
 		% [former_credits, former_wallet, short_credits, short_wallet])
 	check(shipped.duration_seconds == 55.0 and step.level.duration_seconds == 55.0,

@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"_note": "DESIGN-TBD: prices and most tier counts are placeholders (OPEN_QUESTIONS §4), except the owner's dash upgrades (USER_REQUESTS.md): four total tiers, the existing base price and three upgrades at 800 / 1000 / 1200 credits. GDD §8 fixes the weapon's four tiers. R7 laid these prices against tools/measure/economy.gd's reading of the post-playtest economy (G1 pace, G3 free armor, G4 laser tier 1); see docs/questions/r7.md for the table and what's still open.",
+	"_note": "DESIGN-TBD: prices and most tier counts are placeholders (OPEN_QUESTIONS §4), except the owner's dash upgrades (USER_REQUESTS.md): four total tiers, the existing base price and three upgrades at 800 / 1000 / 1200 credits. GDD §8 fixes the weapon's four tiers. R7 laid these prices against tools/measure/economy.gd's reading of the post-playtest economy (G1 pace, G3 free armor, G4 laser tier 1); I7 rebalanced them for all eight zones (GDD §7, the owner's answer of October 14, 2026): each tier is read at its line total (its price and every tier before it, since tiers are bought in order) against the wallet of a typical player who finishes every level once, and test_economy.gd pins the level each tier first fits at (the table is in docs/architecture/economy-platforms.md). A tier that first fits at level N is affordable after finishing N, so usable from N + 1. Held: Armor I 350 (the October 3 early-economy revision), Laser I 1800 (first affordable at the campaign's 4th level, Gangland 1) and the dash's four prices. Moved: Armor IV 6000 to 6500 and Heavy missile 9500 to 7000, which I4's treasure-stash credits had pulled too early; see docs/questions/i7.md.",
 	"items": [
 		{
 			"id": "weapon", "kind": "permanent", "icon": "weapon",
@@ -10,7 +10,7 @@
 				{ "name": "Laser", "price": 1800, "description": "Fires automatically at the nearest valid target. Enemies show health bars." },
 				{ "name": "Enhanced laser", "price": 2200, "description": "A thicker beam in a new colour. More damage." },
 				{ "name": "Missile", "price": 4800, "description": "Slower shots, much more damage." },
-				{ "name": "Heavy missile", "price": 9500, "description": "Huge damage with splash, and bonus damage against swarms." }
+				{ "name": "Heavy missile", "price": 7000, "description": "Huge damage with splash, and bonus damage against swarms." }
 			]
 		},
 		{
@@ -53,13 +53,13 @@
 		{
 			"id": "armor", "kind": "permanent", "icon": "armor",
 			"name": "Armor",
-			"_note": "GDD §4, §8: every run starts with the free armor; these tiers upgrade it, alternating between one more hit and a shorter wait. Hits and waits are in data/tuning/game_rules.tres ({hits}, {seconds}). DESIGN-TBD: prices (R7, docs/questions/r7.md): Armor I is priced to come early (the owner died a lot, GDD §4 playtest note) — within one clean run of City 1, or a handful of death attempts; the other tiers keep their placeholders, which already land near a zone boundary each (see the questions file's table).",
+			"_note": "GDD §4, §8: every run starts with the free armor; these tiers upgrade it, alternating between one more hit and a shorter wait. Hits and waits are in data/tuning/game_rules.tres ({hits}, {seconds}). DESIGN-TBD: prices (R7, I7, docs/questions/i7.md): Armor I is priced to come early (the owner died a lot, GDD §4 playtest note), within one clean run of City 1; the tiers then land a zone apart: II at Gangland 1, III at Marketplace 2, IV at Beach 3, so it is usable from the Dead Zone, whose Bad Dreams ignore weapons.",
 			"description": "Free every run. Takes {hits} from attacks or electricity (not crashes or falls), back {seconds} s after it breaks.",
 			"tiers": [
 				{ "name": "Armor I", "price": 350, "description": "{hits} before it breaks, back {seconds} s after." },
 				{ "name": "Armor II", "price": 1700, "description": "{hits} before it breaks, back {seconds} s after." },
 				{ "name": "Armor III", "price": 3400, "description": "{hits} before it breaks, back {seconds} s after." },
-				{ "name": "Armor IV", "price": 6000, "description": "{hits} before it breaks, back {seconds} s after." }
+				{ "name": "Armor IV", "price": 6500, "description": "{hits} before it breaks, back {seconds} s after." }
 			]
 		},
 		{

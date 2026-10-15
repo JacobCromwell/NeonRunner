@@ -171,6 +171,7 @@
     {"match": "tools/asset_gen/music*", "suites": ["audio"]},
     {"match": "tools/web/*", "suites": ["web_demo"]},
     {"match": "tools/measure/danger_density.gd", "suites": ["danger_density"]},
+    {"match": "tools/measure/economy*.gd", "suites": ["economy"]},
     {"match": "tools/measure/attack_watch.gd", "suites": ["enemy_director", "buzz_overdrive", "resonator", "enforcer_truck_runs", "perf", "host_releases"]},
     {"match": "tools/measure/host_*.gd", "suites": ["host_releases"]},
     {"match": "tools/smoke/*", "suites": ["smoke_play"]},
