@@ -646,7 +646,15 @@ browser.
 5. **Its shader programs:** `node tools/web/shader_programs.js` plays the release export from the title into
    City 1 and counts the shader programs WebGL compiles on the way, and any compiled more than once. The
    browser compiles each while the game waits, and on Windows (where Firefox and Edge translate WebGL to
-   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes.
+   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes. It
+   also counts each program's draws (a program never drawn: the engine compiles four unused ones of its own for
+   each shader) and the wait on the compiler (`--sources` keeps every program's GLSL for finding which shader
+   it is). For another level, `--export=exports/web_debug --level=gangland/1` opens a debug export on it at once
+   (the full game's flavor, no title, no intro; the web preset's exclude filter has to let that zone's doodad
+   pictures through, as the demo's keeps them out). `tools/measure/zone_shaders.gd` is its in-engine twin
+   (headless, seconds): a level's Shaders and standard-material looks, which come twice and which only the
+   warm-up draws (`godot --headless -s res://tools/measure/zone_shaders.gd -- [--levels=city/1,golden/3]
+   [--detail]`; `docs/architecture/run.md`, Smooth frames).
 
 On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
 `"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.

@@ -55,8 +55,8 @@ static func glow(color: Color, energy: float = 2.0, alpha: float = 1.0) -> Stand
 ## It has the same standard-material features as glow() with an alpha (a shadow is that look in black), which
 ## means the same shader: the renderer makes one shader for each set of features, and this look drew the player's
 ## shadow with a shader of its own, the same code as the glow's, for 5 programs of every level's load on the web.
-## Nothing drawn changes: an unshaded material ignores its emission (rendered both ways, the pixels are the same),
-## so the emission here is switched on and black.
+## Nothing drawn changes: the emission is black, which adds nothing (and an unshaded material ignores its emission
+## anyway: rendered both ways, the pixels are the same).
 static func overlay(color: Color, on_top: bool) -> StandardMaterial3D:
 	var key: String = "overlay_%s_%s" % [color.to_html(), on_top]
 	if not _cache.has(key):

@@ -347,7 +347,11 @@ errors, and a seeded run on Gangland 2 with its enemies giving the same trace, e
 0, 1 µs and 1 ms), enemy types readied with the level (every hooked kind and a host's Bad Dream, scripts loaded,
 nothing left in the tree or heard, once a process, `warm_looks()`), hit-stops that never stack or chain, BossProps'
 shared rings, the shader warm-up stage (the cyborgs' looks, fences in every state, particles as particles, the
-run's hidden looks, nothing colliding, lit or top-level), the frame monitor's tags (chunks, a spawn, a kill and
+run's hidden looks, nothing colliding, lit or top-level), one program per look in each zone's first level and the
+Golden Palace (task I1: the world, some of its track dressed and the warm-up's stage built; no shader code in two
+Shaders, no two standard materials differing only in an unshaded one's emission, which the renderer ignores; the
+player's shadow and a screech lair's dark recess drawing with the glow's shaders, the speed lines sharing one
+Shader), the frame monitor's tags (chunks, a spawn, a kill and
 its hit-stop, the held frames) and summaries, and the frame graph's spikes and holds. `test_frame_times` plays
 City 3, Marketplace 2 and Golden 2 for 40 s each as the game does (`frame_times.gd --child`, two passes, each in
 a fresh process, each frame's faster time) and holds their 99th percentile and worst frame to

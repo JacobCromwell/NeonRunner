@@ -1,21 +1,26 @@
 extends SceneTree
 ## Counts the shaders a campaign level draws, to find the ones built twice and the ones never drawn (task I1,
-## the owner's "shader cleanup in every zone", October 14, 2026). A renderer compiles a program per Shader
-## resource (not per shader code) and one per standard-material look, so the count of distinct Shader objects
-## and standard-material keys a level uses is the in-engine twin of `tools/web/shader_programs.js` (which
-## counts the programs WebGL links in a browser). It needs no renderer, so it runs headless. From the project
+## the owner's "shader cleanup in every zone", October 14, 2026). The renderer compiles a program per Shader
+## resource (not per shader code) and per standard-material look (the set of features that make Godot's shader
+## for it), and five or six programs of each: four default variants the engine builds when it first uses a
+## shader (never drawn) and the colour and depth passes' as drawn. So the number of distinct Shader objects and
+## standard-material looks a level uses, times about 5.4, is the program count `tools/web/shader_programs.js`
+## measures on the web export (City 1: 24 and 130). It needs no renderer, so it runs headless. From the project
 ## folder (with XDG_DATA_HOME set as for the tests):
 ##   godot --headless -s res://tools/measure/zone_shaders.gd -- [options]
 ## Options:
 ##   --levels=city/1,gangland/1   campaign levels (default: each zone's first level and the Golden Palace)
 ##   --lanes=5                    the lane count (default 5)
-##   --detail                     also list every shader of the level and where it is drawn
+##   --detail                     also list every shader and standard look of the level, who draws it, and the
+##                                standard materials in words (a look two of which differ only in what the
+##                                renderer ignores is one look drawn with two shaders)
 ##   --out=build/measure/zone_shaders.json   write the numbers there
 ##
 ## What it does for each level: builds the world as a run does (the level's own skin, full loadout, the
 ## level's enemies and credits), walks the whole track with the chunks dressed (so every look the level's
-## own layout dresses is built once), adds the shader warm-up's samples (ShaderWarmup, built the way LevelRun
-## does, though a headless run never draws them) and prints:
+## own layout dresses is built once), spawns one of each enemy kind the layout brings, adds the shader
+## warm-up's samples (ShaderWarmup, built the way LevelRun does, though a headless run never draws them) and
+## prints:
 ## - "shader objects": distinct Shader resources on ShaderMaterials, and the distinct codes among them (more
 ##   objects than codes: one code built into several programs);
 ## - "standard looks": distinct StandardMaterial3D/ORMMaterial3D shader keys (ShaderWarmup.shader_key);
