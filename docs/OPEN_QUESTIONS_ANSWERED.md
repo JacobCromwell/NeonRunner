@@ -1424,3 +1424,9 @@ Captain Cogs).
     owner's "more bombs", or should phase 2 put more on the roofs instead? **Superseded by E5e-b3** (E5e-b2's
     review: the hut bombs were harmless and unseen, and phase 2 had fewer bombs to dodge than phase 1): the hut
     bombs are gone, and phase 2 has more bombs that can reach the runner (see "Raised by E5e-b3").
+
+**F2e, the Beach's outro** (from `docs/questions/f2e.md`)
+862. **Its length** (GDD §1 and §6: "5–15 second cinematics"). Built at 39.6 s, to give the owner's many beats time.
+  **Answered (owner, October 15, 2026):** "I am okay with this movie being a little bit longer than the others."
+  Their follow-up the same day is built too: the bartender no longer stretches his arm back to point at the menu
+  behind him; he turns to it "like a human would", points, and turns back to them.

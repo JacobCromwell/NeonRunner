@@ -504,13 +504,14 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2b | **Gangland boss intro** (the owner's beat, October 9, 2026) | F1 | M | T2 |
 | F2c | **The Dead Zone's intro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
 | F2d | **Gangland outro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
+| F2e | **The Beach's outro** (the owner's beats, October 15, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b, F2c and F2d have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b, F2c, F2d and F2e have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -548,6 +549,16 @@ the cinematic review tool, and six sounds (`tools/asset_gen/sfx_bank_gangland_ou
 screech sitting on the passenger seat (`CarPassenger`: one of the screeches from before, posed sitting), the two nodding
 to each other (a seventh sound, `screech_chirp`), and the car drives off faster. The
 staging choices are in `docs/questions/f2d.md`.
+
+**F2e: the Beach's outro** (owner, October 15, 2026). **Done:** `BeachOutro` (`scripts/cinematics/beach_outro/`) in the
+Beach's outro slot, in place of its placeholder card. Mecha Guppy leaps out at sea and swims away; the camera pans to
+the runner, who walks over to a tiki bar (the Beach's own kiosk doodad, dressed: a wordless menu board, stools,
+lanterns) with their screech friend; from the bartender's view the screech hops up onto the counter; the bartender (the
+volleyball rival) gestures to the menu; the runner holds up two fingers; he turns his back to make the drinks. Cut to
+the Golden Palace: in a dark room walled with the feed's screens the Golden Convergence raises its arm and points; its
+refill ships fly; back at the beach they bomb it, the two run, explosions left and right, and the runner jumps into a
+pool (a gap) as the last bomb's fire fills the picture. Two new sounds (`tools/asset_gen/sfx_bank_beach_outro.gd`),
+`test_beach_outro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md` items 851–861.
 
 ### H. The owner's requests (October 8, 2026)
 
@@ -629,7 +640,7 @@ From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro and F2d's Gangland outro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro and F2e's Beach outro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
@@ -638,6 +649,6 @@ From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (
 ## Still to design with the owner
 
 - **Bosses:** the owner's review of the Golden Convergence's proposed parts (`docs/OPEN_QUESTIONS.md` items 416–503).
-- **Cinematics:** story beats for each slot but the City's outro, Gangland's outro, the Dead Zone's intro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
+- **Cinematics:** story beats for each slot but the City's outro, Gangland's outro, the Beach's outro, the Dead Zone's intro (GDD §6) and Gangland's boss intro (GDD §10, Sewer Swarm).
 - **Placeholder review:** a keep-or-change pass over the numbered items in `docs/OPEN_QUESTIONS.md` §D.
 - **Remaining rounds:** player and power-up numbers, screens and stars, audio, mobile and ads, title, accessibility, languages, age rating, budget and check-ins.
