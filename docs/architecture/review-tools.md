@@ -123,6 +123,20 @@ with the same pads as a stomp's (10.00 s at most), nothing kept off chases met, 
 and no slash during an Octodog's charge or a drone's barrage. The Octodogs that never charged with tiers 2–4
 (1, 1 and 2 of 6) never charge with `--old-rule` either: the weapon shoots them first.
 
+`tools/measure/truck_cost.gd` measures what a hover truck costs a run (task I5; A run, The hover truck's cost on a
+phone): it plays a quick-play run with the truck's feature through the App, spawns trucks at set times (`--trucks`,
+`--stay`, `--kill`) and reports, per phase of the visit (away, hidden, banging, the burst, pacing, the lurches, the
+rev, the wreck), the frames' median, 95th percentile and worst time, the game's part of them, and the median draw
+calls, primitives, objects, nodes, real lights in the tree and the pipelines built, then the slowest frames with
+their phase and tags. Under xvfb with `--rendering-method gl_compatibility` and `MESA_SHADER_CACHE_DISABLE=true` (so
+the driver's disk cache doesn't hide compiles) a frame that built shaders stands out by hundreds of milliseconds,
+which is how the light was found; the times are software's (on a loaded machine a spike that doesn't come back at the
+same frame in a second run is noise), the counts are any renderer's. `--bench` times a truck's spawn and its
+per-frame script work, `--probe-lights` alternates the run's lights shown and hidden, `--trace` prints the tick of
+each phase (to find frames in a `--write-movie` capture), `--pre-burst` fires two spark bursts first, `--no-light`
+frees any light a truck has (for an older build). It runs on an older build too: copy it into an archive of that
+build.
+
 `tools/measure/frame_times.gd` measures frame times (task PERF1; A run, Smooth frames): it plays campaign
 levels and boss fights (built ones, and ones still being built through their preview scene) through the App
 as the game does, without App.boot (a stand-in for the main scene), with a scripted runner (god mode, no

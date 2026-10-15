@@ -620,6 +620,14 @@ shaders first drawn after the load, and under xvfb it also counts draw calls and
 res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
 (the whole campaign takes about fifteen minutes; its header lists the options).
 
+`tools/measure/truck_cost.gd` measures what a hover truck costs a run (task I5, the truck's "big performance drop on a
+phone"): a quick-play run with trucks spawned at set times, each phase of their visit (hidden, banging, the burst,
+pacing, the rev, the wreck) framed apart with its draw calls, objects, nodes and real lights. Run it on the
+renderer to judge, under xvfb with the driver's shader cache off, so a frame that compiled shaders shows:
+`MESA_SHADER_CACHE_DISABLE=true xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --resolution 640x360
+--fixed-fps 60 --rendering-method gl_compatibility -s res://tools/measure/truck_cost.gd -- [--skin=gangland]
+[--trucks=2] [--bench]` (about two minutes; its header lists the options).
+
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the
 time from pressing retry to the run starting (a retry of the same level reuses the level it built):

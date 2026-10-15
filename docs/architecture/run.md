@@ -366,6 +366,57 @@ and 2.1 s on Forward+ and 0.75, 0.36 and 0.59 s on Compatibility) and none after
 draw calls (248 to 279 a frame), primitives (44,000 to 49,000) and objects (336 to 404) are the same, the
 most in a frame higher by the warm-up's samples in the level's first two frames.
 
+### The hover truck's cost on a phone (task I5, the owner's report, October 14, 2026)
+
+"The Hover Truck causes a big performance drop on a playtester's phone." Measured on the Compatibility renderer
+(a phone's, the web demo's; `tools/measure/truck_cost.gd`: a quick-play run, trucks spawned at set times, each
+phase of their visit framed apart, software GL under xvfb with the driver's shader cache off; Vulkan isn't
+available in the dev container, so Forward+ and Mobile weren't run), the cost was one thing and two small ones:
+
+- **Its `OmniLight3D`, the only real light in a run** (the rev's "light thrown ahead", energy 0 the rest of the
+  time). The first omni light a Compatibility scene shows, even at energy 0, makes the renderer build a second
+  version of every lit shader within its 7 m range (a probe scene of five lit materials and a sun: 270 to 400 ms).
+  At the truck's burst, when its model, light included, was first shown, that was one frame of 6.0 s on the City
+  and 8.9 s on Gangland in software (on the main of October 15; 5.7 and 5.9 s on the main of C6's merge), and
+  another 0.2 to 0.3 s when a later truck on the other wall first lurched back (other shaders in reach); after it,
+  every lit pixel in range paid for the light, for the truck's whole stay (the steady cost can't be resolved on a
+  shared machine: a llvmpipe frame varies by 10% by itself). The Mobile renderer
+  specialises its pipelines by the lights a draw has (`RENDERING_INFO_PIPELINE_COMPILATIONS_SPECIALIZATION`), so
+  it likely pays the same in pipelines. Now the light is two plain glow discs, one on the floor past the nose and
+  one on the wall beside it (`HoverTruck._glow_mesh()`: a fan fading from solid to nothing by vertex alpha, added
+  light, unlit, two shared materials, dim and bright; `GLOW_*`), shown exactly through the rev and the forward
+  lurch, flashing with the spikes and steady with Reduced flashing, as the light was. The zone kits' street and
+  wall shaders are all `unshaded`, so the old light never lit a zone's street or walls (only lit objects, the runner
+  and the truck's own panels, took an orange tint, now gone); the glow is the first time the rev's light thrown
+  ahead shows in a zone. Its strength differs by renderer: about twice as strong on Forward+ and Mobile as on
+  Compatibility, where its dim half is near-invisible and the flash reads as on and off (I5's review). **A run has no real light** (`OmniLight3D`,
+  `SpotLight3D`; its one `DirectionalLight3D` is the sun): a warm glow is a mesh, and `test_hover_truck` fails on
+  any light in a run with a truck. (Two cinematics still have one each, the Dead Zone's crater and the sports
+  car's cabin; the first time either shows it builds its lit shaders' second versions the same way.)
+- **Its first spawn built its model** (4 to 5 ms on the dev machine, 30 to 70 ms in PERF1's count, in the spawn's
+  frame, and its first draw's shaders then: 0.3 to 0.6 s in software): it had no `warm_up` hook like the other
+  enemies. It has one now: its model, the glows its parts swap in, the wall effects and the warning glow, readied
+  with the level and drawn by `ShaderWarmup` (its fireballs are `RunEffects.fireball`'s, pooled and warmed with
+  the run).
+- **Per-frame work while hidden** (its first seconds, from the spawn lead until it bangs): the animation ran on a
+  hidden model, setting about ten properties a frame, five of them material overrides (each makes the renderer
+  look the part over again, even to the same material). It now does nothing until it bangs and sets a part's
+  material only when it changes (a hidden tick is 2.5 to 0.8 µs, a pacing one the same 12 to 25 µs).
+
+On the current main, trucks of both sides in the same seeded run (5 lanes, 640×360, 9 s stays), the worst frames
+of the visits were 8.9 s (the burst), 0.6 s (the spawn), 0.3 and 0.2 s (the other wall's lurch back) and 0.17 s
+(the wreck) on Gangland, and 6.0, 0.35, 0.33, 0.28 and 0.22 s on the City; with the glow and the warm-up the
+worst frame of a visit is 85 ms in both, within 1.5 to 2.5 times the median, rev, lurch and wreck included. It
+reads the same: a seeded run's event log is unchanged (corporate/1, gangland/2 and city/3, `frame_times.gd
+--log`) and its headless frame times are (corporate/1 median 0.86 to 0.84 ms, 99th percentile 2.57 to 2.42 ms).
+
+Not the cause: draw calls and triangles (its model is 25 surfaces and 1,250 to 1,860 triangles: 19 draw calls,
+27 with two gunners, against a frame's 170 to 250, and the facade's panel and cracks while it bangs and the rubble
+for 1.3 s after), particles and rubble (pooled and pre-built), physics (two roofs, a blocker, three hitboxes) and
+the wall (nothing rebuilds it: the hole is a quad over the facade). `RunEffects.burst()` sets each particle
+system's `amount` on every call, which reallocates its buffers whether it changed or not (a truck's burst starts
+a few); skipping an unchanged amount is a small win for every effect, left to a task on `RunEffects`.
+
 ### Retries reuse the built level (task PERF2, the owner's approval, October 9, 2026)
 
 Generating its level was the slow part of starting a run, and every attempt did it again, though a campaign
