@@ -25,14 +25,10 @@ extends SceneTree
 ## Use --lanes=5 --seeds=0 to reproduce test_economy.gd's affordability curve (PC's default lane count and
 ## each level's own seed).
 ##
-## The two players (the same campaign, in order, nothing bought along the way):
-##   typical  collects 70% of each level's credits, never dies, wins every boss and the whole volleyball
-##            match (four points, 400 credits);
-##   weaker   collects 45% (the two-star line), fails every level twice first (each failed attempt gets half
-##            way, and pays death_credit_keep_fraction of what it had collected), wins two volleyball points
-##            (200 credits); wins every boss, whose failed tries pay too little to count.
-## Neither uses a magnet or buys a breakable. The volleyball level pays its match's payout instead of the
-## completion bonus (its few run-in credits are left out).
+## The two players (the same campaign, in order, nothing bought along the way) and the rest of the model are in
+## tools/measure/economy_model.gd, which test_economy.gd shares: the typical player collects 70% of each
+## level's credits, never dies, wins every boss and the whole volleyball match (400 credits); the weaker one
+## collects 45%, fails every level twice first and wins two volleyball points (200 credits).
 ##
 ## Per level: run speed, length, credits available (a layout's total_credit_value(), averaged over lane counts
 ## and seeds), a good run's share of them, the completion bonus (GameRules.completion_bonus), the finish payout
@@ -51,8 +47,7 @@ const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const RULES_PATH: String = "res://data/tuning/game_rules.tres"
 
-## How far through a level a failed attempt gets, on average.
-const FAIL_PROGRESS: float = 0.5
+const EconomyModel = preload("res://tools/measure/economy_model.gd")
 
 var _levels: PackedStringArray = []
 var _lanes: Array[int] = [3, 5, 6]
@@ -62,10 +57,7 @@ var _mobile: bool = false
 var _packs: bool = false
 var _bonus_base: int = -1
 var _bonus_per_level: int = -1
-var _players: Array[Dictionary] = [
-	{"name": "typical", "share": 0.7, "fails": 0, "points": 4},
-	{"name": "weaker", "share": 0.45, "fails": 2, "points": 2},
-]
+var _players: Array[Dictionary] = EconomyModel.players()
 
 
 func _initialize() -> void:
@@ -82,10 +74,10 @@ func _run() -> void:
 	if _bonus_per_level >= 0:
 		rules.completion_bonus_per_level = _bonus_per_level
 	var catalog: ShopCatalog = ShopCatalog.load_from()
-	var steps: Array[Dictionary] = _collect_steps(campaign, tuning)
+	var steps: Array[Dictionary] = EconomyModel.rows(campaign, _measure_level.bind(tuning), _levels)
 	var walks: Array[Array] = []
 	for player: Dictionary in _players:
-		walks.append(_walk(player, rules, steps))
+		walks.append(EconomyModel.walk(player, rules, steps))
 	_print_levels(steps, walks)
 	_print_zones(steps, walks, catalog)
 	_print_shop(catalog, steps, walks)
@@ -95,39 +87,9 @@ func _run() -> void:
 	quit(0)
 
 
-## Every level, the volleyball match and boss in campaign order, with what the generator makes of each level.
-func _collect_steps(campaign: Campaign, tuning: MovementTuning) -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	var number: int = 0
-	for s: CampaignStep in campaign.steps():
-		if s.is_level():
-			number += 1
-		if not s.is_level() and s.kind != CampaignStep.Kind.BOSS:
-			continue
-		if not _levels.is_empty() and not _levels.has(s.id):
-			continue
-		var row: Dictionary = {"id": s.id, "zone": s.zone.display_name, "zone_id": _zone_id(s),
-			"number": number if s.is_level() else 0, "level_index": s.level_index}
-		if s.is_minigame():
-			var game_tuning: Resource = s.level.minigame.tuning
-			row["kind"] = "minigame"
-			row["per_point"] = int(game_tuning.get(&"payout_per_point")) if game_tuning != null else 0
-			row["points_to_win"] = int(game_tuning.get(&"points_to_win")) if game_tuning != null else 4
-		elif s.is_level():
-			row["kind"] = "level"
-			row.merge(_measure_level(campaign, tuning, s))
-		else:
-			row["kind"] = "boss"
-			row["payout"] = s.boss.payout_credits if s.boss != null and s.boss.scene != "" else 0
-		out.append(row)
-	return out
-
-
-func _zone_id(step: CampaignStep) -> String:
-	return "%d_%s" % [step.zone_index, step.zone.display_name]
-
-
-func _measure_level(campaign: Campaign, tuning: MovementTuning, step: CampaignStep) -> Dictionary:
+## What the generator makes of a level, averaged over the lane counts and seeds asked for (EconomyModel.rows
+## calls this for each level, with `tuning` bound).
+func _measure_level(campaign: Campaign, step: CampaignStep, tuning: MovementTuning) -> Dictionary:
 	var credits_sum: float = 0.0
 	var speed_sum: float = 0.0
 	var seconds_sum: float = 0.0
@@ -144,42 +106,6 @@ func _measure_level(campaign: Campaign, tuning: MovementTuning, step: CampaignSt
 			seconds_sum += layout.length / gen.speed
 			n += 1
 	return {"credits": credits_sum / n, "speed": speed_sum / n, "seconds": seconds_sum / n}
-
-
-## One player's walk through `steps`: per step the good run's credits, the completion bonus (a boss's or the
-## match's payout), the finish payout, a death's, the failed attempts' and the running wallets (see the header).
-func _walk(player: Dictionary, rules: GameRules, steps: Array[Dictionary]) -> Array[Dictionary]:
-	var share: float = player["share"]
-	var fails: int = player["fails"]
-	var points: int = player["points"]
-	var wallet: int = 0
-	var wallet_all: int = 0
-	var out: Array[Dictionary] = []
-	for r: Dictionary in steps:
-		var w: Dictionary = {"good": 0, "bonus": 0, "finish": 0, "death": 0, "retries": 0}
-		match String(r["kind"]):
-			"level":
-				var credits: float = float(r["credits"])
-				w["good"] = roundi(credits * share)
-				w["bonus"] = rules.completion_bonus(int(r["level_index"]))
-				w["finish"] = int(w["good"]) + int(w["bonus"])
-				w["death"] = floori(float(w["good"]) * rules.death_credit_keep_fraction)
-				w["retries"] = fails * floori(float(roundi(credits * share * FAIL_PROGRESS)) * rules.death_credit_keep_fraction)
-				wallet += int(w["finish"]) + int(w["retries"])
-				wallet_all += int(w["finish"]) + int(w["retries"])
-			"minigame":
-				var pay: int = mini(points, int(r["points_to_win"])) * int(r["per_point"])
-				w["bonus"] = pay
-				w["finish"] = pay
-				wallet += pay
-				wallet_all += pay
-			"boss":
-				w["bonus"] = int(r["payout"])
-				wallet_all += int(r["payout"])
-		w["wallet"] = wallet
-		w["wallet_all"] = wallet_all
-		out.append(w)
-	return out
 
 
 func _print_levels(steps: Array[Dictionary], walks: Array[Array]) -> void:
@@ -252,17 +178,6 @@ func _print_zones(steps: Array[Dictionary], walks: Array[Array], catalog: ShopCa
 	print("(restock: shield + grapple + revive over the zone's average typical finish payout)")
 
 
-## The index of the first step whose wallet covers `price` (levels and the match only, or with boss payouts),
-## or -1.
-func _first_fit(walk: Array[Dictionary], steps: Array[Dictionary], price: int, with_bosses: bool) -> int:
-	for i: int in steps.size():
-		if String(steps[i]["kind"]) == "boss" and not with_bosses:
-			continue
-		if int(walk[i]["wallet_all" if with_bosses else "wallet"]) >= price:
-			return i
-	return -1
-
-
 func _label(steps: Array[Dictionary], index: int) -> String:
 	if index < 0:
 		return "beyond"
@@ -290,11 +205,11 @@ func _print_shop(catalog: ShopCatalog, steps: Array[Dictionary], walks: Array[Ar
 
 func _print_afford(label: String, price: int, line: int, steps: Array[Dictionary], typical: Array[Dictionary],
 		weak: Array[Dictionary]) -> void:
-	var at: int = _first_fit(typical, steps, line, false)
+	var at: int = EconomyModel.first_fit(typical, steps, line, false)
 	var finish: float = float(typical[at]["finish"]) if at >= 0 else 0.0
 	print("%-32s %6d %6d | %-17s | %-17s %-17s | %-17s | %6.1fx" % [label.substr(0, 32), price, line,
-		_label(steps, _first_fit(typical, steps, price, false)), _label(steps, at),
-		_label(steps, _first_fit(typical, steps, line, true)), _label(steps, _first_fit(weak, steps, line, false)),
+		_label(steps, EconomyModel.first_fit(typical, steps, price, false)), _label(steps, at),
+		_label(steps, EconomyModel.first_fit(typical, steps, line, true)), _label(steps, EconomyModel.first_fit(weak, steps, line, false)),
 		float(line) / maxf(finish, 1.0)])
 
 
@@ -336,7 +251,7 @@ func _print_packs(steps: Array[Dictionary], walks: Array[Array]) -> void:
 		var amount: int = int(p["credits"])
 		print("  %-14s %-8s %6d credits = %.1f typical finishes (average %d); the wallet reaches that much by %s" % [
 			p["title"], p["price_text"], amount, float(amount) / maxf(average, 1.0), roundi(average),
-			_label(steps, _first_fit(walks[0], steps, amount, false))])
+			_label(steps, EconomyModel.first_fit(walks[0], steps, amount, false))])
 
 
 func _parse_args() -> void:
