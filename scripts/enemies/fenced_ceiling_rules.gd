@@ -8,7 +8,8 @@ extends RefCounted
 ## treasure stashes (RUN_AFTER), and turns up to LevelConfig.fenced_ceilings of the level's ceilings two lanes wide
 ## or more into fenced ones (CeilingScenarios: candidates, choose; the first from the feature's start in a level
 ## that gives it one), only where the level's difficulty has reached CeilingScenarioTuning.fenced_min_difficulty.
-## On a ceiling it takes (LevelConfig.fenced_ceiling_pads pads in all, half of them, rounded up, unsafe):
+## On a ceiling it takes (LevelConfig.fenced_ceiling_pads pads in all, fewer than the lanes: pad_count; half of them,
+## rounded up, unsafe):
 ## - the unsafe pads: the ceiling's own (the drone's schedule and a Bad Dream chase's keep theirs: CeilingScenarios),
 ##   and for the later version more, pad_step_seconds apart, each in a lane none of them takes;
 ## - the fences: rows across every lane the ceiling covers (LevelLayout.ceiling_fences), always on, from past where
@@ -62,6 +63,13 @@ static func apply(gen: LevelGenerator) -> void:
 			_build(gen, plan)
 
 
+## How many anti-grav pads a fenced ceiling has in a level of `lanes` lanes asking for `asked`
+## (LevelConfig.fenced_ceiling_pads): at least 2, and fewer than the lanes, so a floor runner who wants none of them
+## always has a lane without one (on 3 lanes, the simple version's two). DESIGN-TBD (docs/questions/i4.md).
+static func pad_count(asked: int, lanes: int) -> int:
+	return clampi(asked, 2, maxi(lanes - 1, 2))
+
+
 ## How many of a fenced ceiling's `pads` are unsafe (before its fences): half, rounded up (one of two).
 static func unsafe_count(pads: int) -> int:
 	return ceili(maxi(pads, 2) / 2.0)
@@ -89,7 +97,7 @@ static func plan_on(gen: LevelGenerator, t: CeilingScenarioTuning, h: Dictionary
 	if not gen.feature_started(FEATURE, first) \
 			or gen.difficulty_at(clampf(first / layout.length, 0.0, 1.0)) < t.fenced_min_difficulty - 0.0001:
 		return {}
-	var total: int = maxi(gen.config.fenced_ceiling_pads, 2)
+	var total: int = pad_count(gen.config.fenced_ceiling_pads, layout.lane_count)
 	var lanes: Vector2i = layout.hull_lanes(h)
 	var windows: Array[Vector2] = CeilingScenarios.drone_windows(gen, t.drone_margin_seconds)
 	var keeps: Array[Dictionary] = CeilingScenarios.lane_keeps(gen)

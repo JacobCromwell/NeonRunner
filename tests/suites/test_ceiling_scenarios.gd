@@ -10,8 +10,8 @@ extends TestSuite
 ##   its difficulty has reached their minimum; the same seed builds the same level (an uncached rebuild);
 ## - the physics they're timed by (CeilingScenarios: a pad's flip and rise, a drop off a return pad, a jump and its
 ##   low stretch) is the Player's, on real physics;
-## - a fenced ceiling, on real physics (excerpts of the generated levels, at 3, 5 and 6 lanes, the simple version and
-##   the several-pad one): every unsafe pad's rider meets a fence in every lane the ceiling covers, staying put, hopping
+## - a fenced ceiling, on real physics (excerpts of the generated levels, at 3, 5 and 6 lanes, the simple version, and
+##   the several-pad one at 5 and 6: never as many pads as lanes): every unsafe pad's rider meets a fence in every lane the ceiling covers, staying put, hopping
 ##   over the first row or jumping all the way, and dies of it; every safe pad's rider rides on in every lane, jumping
 ##   or not, and drops off past the ceiling alive; a floor runner under it, jumping, is never touched; armor gets an
 ##   unsafe pad's rider through; an EMP switches its fences off;
@@ -230,6 +230,8 @@ func _test_tuning() -> void:
 		and str(Stash.lanes_for(6)) == "[2, 3]", "a stash takes an inner lane with inner lanes either side: none on 3 or 4 lanes")
 	check(Fenced.unsafe_count(2) == 1 and Fenced.unsafe_count(3) == 2 and Fenced.unsafe_count(4) == 2,
 		"half of a fenced ceiling's pads, rounded up, are unsafe")
+	check(Fenced.pad_count(3, 3) == 2 and Fenced.pad_count(3, 5) == 3 and Fenced.pad_count(6, 5) == 4
+		and Fenced.pad_count(1, 6) == 2, "a fenced ceiling has 2 pads or more, fewer than the lanes")
 
 
 # --- Placement --------------------------------------------------------------------------------------
@@ -428,7 +430,9 @@ func _test_fenced_rides() -> void:
 	var rides: int = 0
 	for lanes: int in LANE_COUNTS:
 		var picks: Array[Dictionary] = _fenced_picks(lanes)
-		check(picks.size() == 2, "a simple and a several-pad fenced ceiling to ride at %d lanes (%d)" % [lanes, picks.size()])
+		# On 3 lanes a fenced ceiling has no more than two pads (Fenced.pad_count: a lane always left without one).
+		check(picks.size() == (1 if lanes < 4 else 2), "a simple and a several-pad fenced ceiling to ride at %d lanes (%d)"
+			% [lanes, picks.size()])
 		for pick: Dictionary in picks:
 			rides += await _ride_fenced(pick, lanes)
 	print("  fenced ceilings: %d rides" % rides)

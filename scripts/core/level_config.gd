@@ -215,8 +215,8 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0, 4) var fenced_ceilings: int = 1
 ## How many anti-grav pads a fenced ceiling has: 2 is the simple first version (one pad into the fences, one past
 ## them); more is the later version (GDD §3: "several pads, some leading to safe parts of the ceiling and some to
-## dangerous parts"), half of them (rounded up) before the fences, in different lanes. DESIGN-TBD
-## (docs/questions/i4.md): 3 from Corporate 1.
+## dangerous parts"), half of them (rounded up) before the fences, in different lanes; never as many as the lanes
+## (fenced_ceiling_rules.gd pad_count: on 3 lanes, 2). DESIGN-TBD (docs/questions/i4.md): 3 from Corporate 1.
 @export_range(2, 6) var fenced_ceiling_pads: int = 2
 ## Quiet stretches and bursts (GDD §5, The Hush: long silent stretches broken by sudden threats).
 ## With quiet_seconds above 0, the level after its run-up alternates a quiet stretch of that many

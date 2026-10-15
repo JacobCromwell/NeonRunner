@@ -906,7 +906,7 @@ static func check_fenced(suite: TestSuite, gen: LevelGenerator, t: CeilingScenar
 			"safe":
 				safe.append(p)
 	suite.check(unsafe.size() + safe.size() == pads.size(), "%s: every pad under it is marked unsafe or safe" % at)
-	var total: int = maxi(gen.config.fenced_ceiling_pads, 2)
+	var total: int = FencedCeilingRules.pad_count(gen.config.fenced_ceiling_pads, layout.lane_count)
 	suite.check(unsafe.size() >= FencedCeilingRules.unsafe_count(total), "%s has %d unsafe pads (at least %d)"
 		% [at, unsafe.size(), FencedCeilingRules.unsafe_count(total)])
 	suite.check(safe.size() == maxi(total - FencedCeilingRules.unsafe_count(total), 1), "%s has %d safe pads" % [at, safe.size()])

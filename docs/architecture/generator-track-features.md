@@ -521,8 +521,9 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 3 by level, DESIGN-
   room for one as an introduction does (`_make_room` over the whole level; never a planted cyborg or its charger,
   nor a Buzz Overdrive an Enforcer Truck counts among its baits; the spacing of every bait it can't take out
   stays), and where even that leaves none, the last resort takes the zone doodads in the way out too (`doodads_go`:
-  scenery, never a feature; Corporate 2 at 3 lanes on seed 7101 on K4's curve, `test_dash_walls`' `LAST_RESORT_CASE`;
-  DESIGN-TBD, `docs/OPEN_QUESTIONS.md` item 677).
+  scenery, never a feature, nor a treasure stash's walls; Corporate 2 at 3 lanes on seed 7101 on K4's curve, Golden 1
+  at 3 lanes on seed 7294 since task I4, `test_dash_walls`' `LAST_RESORT_CASE`; DESIGN-TBD, `docs/OPEN_QUESTIONS.md`
+  item 677).
 Both draw from `rng_for("dash_wall")`, so the passes before them place exactly what they did, and a level with a
 count of 0 (or without the feature) is built byte for byte as before. Its header holds every rule; in short (`Plan`):
 - **A footprint in every lane**, from `approach_seconds` before the face to `after_seconds` past the back, at the
@@ -607,8 +608,9 @@ DESIGN-TBD throughout (`docs/questions/i4.md`).
   level's spacing past its open end) holds nothing else in any lane; its holes and fences go. Its doodads join
   `layout.doodads` at once, so the rules after it see them; the zone doodads' look seeds count only zone doodads.
 - **A fenced ceiling** (`LevelLayout.ceiling_fences`; its pads marked `fenced`, `unsafe` or `safe`, and `added` on the
-  ones the rules add): two lanes wide or more. Its own pads are unsafe (the later version adds more, each in a new
-  lane); rows of fences cross every lane it covers from just past where the last unsafe pad's rider (at the run speed
+  ones the rules add): two lanes wide or more, with `fenced_ceiling_pads` pads but fewer than the lanes (`pad_count`:
+  a floor runner always has a lane without one; on 3 lanes the simple version). Its own pads are unsafe (the later
+  version adds more, each in a new lane); rows of fences cross every lane it covers from just past where the last unsafe pad's rider (at the run speed
   plus `rider_boost`) comes within `MovementTuning.ceiling_fence_depth` of the underside, spaced by
   `CeilingScenarios.row_plan` so no jump rhythm clears them all (a rider jumping is near the underside for
   `jump_low_seconds` of every jump); the safe pads follow `safe_gap` past the last row, and the ceiling runs on
