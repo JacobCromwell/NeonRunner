@@ -4539,3 +4539,38 @@ from death"; the siren `last_hit_siren`, `tools/asset_gen/sfx_bank_power.gd`, le
   levels later than a PC player's: Armor I at City 2, Armor IV at level 17, and the Heavy missile only after
   Golden 1 once the boss payouts are counted). If nobody takes them, the same placements would want Missile
   3,800, Armor IV 5,500 and Heavy missile 6,000.
+
+**F2e, the Beach's outro** (from `docs/questions/f2e.md`)
+The owner's beats (October 15, 2026; GDD §6, Cinematics) are built as given, with the owner's follow-up the same day
+(the bartender turns round to the menu to point at it, then back). These are the choices made to fill them in. Each is
+a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTuning`) or in code marked `DESIGN-TBD`
+(`scripts/cinematics/beach_outro/`). The owner reviewed the result ("looks great") before it merged.
+
+851. **Where it happens.** The fight ends on a tiki roof high over the sea; the outro opens back down on the promenade,
+  in the fight's look (the arena's open shore on both sides, under Sunset Strip's sunset sky, `CineStageDef.after_fight`).
+  Should it instead open where the fight ended, up on the roof?
+852. **Mecha Guppy swimming away.** Placeholder: one more leap out of the sea (the defeat's breach, at 1.1 scale against
+  the fight's 1.5) about 58 m out, a dive, then its back and dorsal fin cutting the water as it swims off. Or only a fin?
+853. **The screech friend.** Placeholder: the Gangland outro's passenger, still in Gangland's grimy look, its spines
+  keeping the screeches' red-orange glow; it sits at the runner's feet, trots beside them, hops onto the counter, and
+  runs and jumps into the pool with them.
+854. **The bar.** Placeholder: the Beach's tiki bar kiosk doodad, scaled to the characters, at the street's left edge
+  with the sea behind it; a wordless chalk menu (pictograms and lines, as the Beach's signs have no words), a small
+  violet neon cocktail glass, two bamboo stools, two paper lanterns. Should the menu have words?
+855. **The bartender's voice.** Placeholder: the volleyball rival (1.4 m) asks only with a gesture: no voice line or card.
+856. **The drinks.** Placeholder: two tall sunset-coloured cocktails with a pineapple wedge, a straw and a paper umbrella,
+  one for the runner and one for the screech, set down while the scene is away at the palace.
+857. **The Golden Palace room.** Placeholder: a closed room of near-black panels with three walls of the feed's screens
+  (three rows of nine, the Grand Court's feed), the golden suit at 0.3 of its fight size, its cape gathered in a little,
+  the light at 0.25; it raises its right arm and points its index finger ahead (a finger added to the fist), the camera
+  swinging to three-quarters so the finger reads. Or The Magnate, or a face on a screen?
+858. **The ships and the bombs.** Placeholder: three of the fight's refill ships in a V, 44 m up at 24 m/s; eight bombs
+  (their racks' missiles): three on the beach beyond the bar, then one to each side of the runner in turn (the
+  screen's left first), one by the pool and the last on it as they go in.
+859. **The fire.** Placeholder: the shared fireball at 3–5 m; the fire filling the picture is a fade to fire-orange over
+  0.3 s (0.75 s and darker with Reduced flashing), then to black over 0.7 s.
+860. **Music.** Placeholder: none of its own; the fight's track fades out as it opens and it plays on sound effects (two
+  new: `bar_shaker`, `bar_glass`). A calm beach track at the bar, or a sting at the palace?
+861. **The hand-off to the Dead Zone.** It ends on the fire, then black, and the Dead Zone's intro opens on the runner in a
+  smoking crater. Is the pool's explosion what makes that crater (the Beach outro card's old question: what puts them
+  there)?

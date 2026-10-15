@@ -108,8 +108,8 @@ func _test_data() -> void:
 		and library.has(library.run_track(zone.music)) and library.run_track(zone.music) != zone.music,
 		"its music track `beach` plays the game's existing tracks: %s in cinematics, %s in its levels" % [
 			library.path(zone.music).get_file(), library.path(library.run_track(zone.music)).get_file()])
-	check(zone.intro != null and zone.intro.is_built() and zone.outro != null and not zone.outro.is_built() and zone.boss_intro != null and zone.boss_intro.is_skipped(),
-		"its intro plays the arrival flyover, its outro is a placeholder card, and its boss intro is an empty slot the campaign skips")
+	check(zone.intro != null and zone.intro.is_built() and zone.outro != null and zone.outro.is_built() and zone.boss_intro != null and zone.boss_intro.is_skipped(),
+		"its intro plays the arrival flyover, its outro its own scene (task F2e), and its boss intro is an empty slot the campaign skips")
 	# Its boss, Mecha Guppy and Captain Cogs (GDD §10, task E5e): the campaign plays the fight (its scene, since E5e-c).
 	check(zone.boss != null and zone.boss.id == &"beach_boss" and zone.boss.is_built() and zone.boss.preview() == null,
 		"its boss slot plays Mecha Guppy and Captain Cogs' fight")
