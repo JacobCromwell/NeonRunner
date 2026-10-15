@@ -610,8 +610,9 @@ DESIGN-TBD throughout (`docs/questions/i4.md`).
 - **A fenced ceiling** (`LevelLayout.ceiling_fences`; its pads marked `fenced`, `unsafe` or `safe`, and `added` on the
   ones the rules add): two lanes wide or more, with `fenced_ceiling_pads` pads but fewer than the lanes (`pad_count`:
   a floor runner always has a lane without one; on 3 lanes the simple version). Its own pads are unsafe (the later
-  version adds more, each in a new lane); rows of fences cross every lane it covers from just past where the last unsafe pad's rider (at the run speed
-  plus `rider_boost`) comes within `MovementTuning.ceiling_fence_depth` of the underside, spaced by
+  version adds more, each in a new lane); rows of fences cross every lane it covers from just past where the last
+  unsafe pad's rider (at the run speed plus `rider_boost`) comes within `MovementTuning.ceiling_fence_depth` of the
+  underside, spaced by
   `CeilingScenarios.row_plan` so no jump rhythm clears them all (a rider jumping is near the underside for
   `jump_low_seconds` of every jump); the safe pads follow `safe_gap` past the last row, and the ceiling runs on
   `safe_ride_seconds` past their riders' arrival. The pick plays out alone: no Bad Dream chase, Gilded Sentinel strike,
