@@ -125,6 +125,20 @@ with the same pads as a stomp's (10.00 s at most), nothing kept off chases met, 
 and no slash during an Octodog's charge or a drone's barrage. The Octodogs that never charged with tiers 2–4
 (1, 1 and 2 of 6) never charge with `--old-rule` either: the weapon shoots them first.
 
+`tools/measure/truck_cost.gd` measures what a hover truck costs a run (task I5; A run, The hover truck's cost on a
+phone): it plays a quick-play run with the truck's feature through the App, spawns trucks at set times (`--trucks`,
+`--stay`, `--kill`) and reports, per phase of the visit (away, hidden, banging, the burst, pacing, the lurches, the
+rev, the wreck), the frames' median, 95th percentile and worst time, the game's part of them, and the median draw
+calls, primitives, objects, nodes, real lights in the tree and the pipelines built, then the slowest frames with
+their phase and tags. Under xvfb with `--rendering-method gl_compatibility` and `MESA_SHADER_CACHE_DISABLE=true` (so
+the driver's disk cache doesn't hide compiles) a frame that built shaders stands out by hundreds of milliseconds,
+which is how the light was found; the times are software's (on a loaded machine a spike that doesn't come back at the
+same frame in a second run is noise), the counts are any renderer's. `--bench` times a truck's spawn and its
+per-frame script work, `--probe-lights` alternates the run's lights shown and hidden, `--trace` prints the tick of
+each phase (to find frames in a `--write-movie` capture), `--pre-burst` fires two spark bursts first, `--no-light`
+frees any light a truck has (for an older build). It runs on an older build too: copy it into an archive of that
+build.
+
 `tools/measure/frame_times.gd` measures frame times (task PERF1; A run, Smooth frames): it plays campaign
 levels and boss fights (built ones, and ones still being built through their preview scene) through the App
 as the game does, without App.boot (a stand-in for the main scene), with a scripted runner (god mode, no
@@ -143,6 +157,19 @@ only (the dummy renderer); xvfb's software renderers give valid counts, not time
 [--frames] [--out=build/measure/x.json]`; the whole campaign and its bosses take about fifteen minutes). It
 runs on older builds too (it reads them by property names): copy it and `scripts/run/frame_monitor.gd` into
 a `git archive` of the build.
+
+`tools/measure/zone_shaders.gd` counts the shaders a level draws (task I1; A run, Smooth frames): headless, a few
+seconds a level, for each zone's first level and the Golden Palace (`--levels=` for others, `--bosses` for every
+built boss's arena: the boss set up as the framework's tests do and a second of the fight played). It builds the
+level's world as a run does (full loadout, `--lanes=`), walks its whole track with the chunks dressed, spawns one of
+each enemy kind its layout brings, builds the shader warm-up's stage, and prints the distinct Shader objects (and how
+many codes come in more than one), the distinct standard-material looks (`ShaderWarmup.shader_key`), the keys only
+the warm-up or only the level's own nodes draw, and with `--detail` each shader or look with the node that draws it
+and the standard materials in words (opaque, unshaded, two-sided, vertex-colour, ...). Shaders plus looks, times
+about 5.4, is what `tools/web/shader_programs.js` counts on the web export (City 1: 24 and 130; the looks can only
+come out low, since `ShaderWarmup.shader_key` leaves out some settings that change a standard material's shader);
+the web tool is the ground truth (it also counts each program's draws and its wait on the compiler), this one finds which shader
+a program is. `--out=build/measure/x.json` keeps the numbers.
 
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2; A run, Retries
 reuse the built level): each campaign level's first build (the generator's, after one untimed build in the

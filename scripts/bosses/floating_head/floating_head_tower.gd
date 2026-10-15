@@ -99,6 +99,10 @@ func setup(p_world: RunWorld, p_tuning: FloatingHeadTuning, p_at: float, p_side:
 	_cut.mesh = GreyboxMaterials.unit_box()
 	_cut_material = StandardMaterial3D.new()
 	_cut_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# Black emission: the features of GreyboxMaterials.glow() (opaque, unshaded, emission on), so the cut draws with
+	# the glow's shader, not one of its own (6 programs of the fight's load); it adds nothing to the picture.
+	_cut_material.emission_enabled = true
+	_cut_material.emission = Color.BLACK
 	_cut_material.albedo_color = CUT
 	_cut.material_override = _cut_material
 	_cut.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
