@@ -11,7 +11,7 @@ owned, switched-on items; one charge of each breakable per attempt; and the free
 starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
 items) sells the permanent items tier by tier, among them the armor upgrade (GDD §8: four tiers; hits
 and waits in `GameRules`; prices in the catalog, laid against the campaign's economy by R7 and rebalanced
-for all eight zones by I7, still DESIGN-TBD pending the owner, `docs/questions/i7.md`), and the breakables
+for all eight zones by I7, still DESIGN-TBD pending the owner, items 846–850 in `docs/OPEN_QUESTIONS*.md`), and the breakables
 (shield, grapple, revive) as stock. `tools/measure/economy.gd` reads a campaign's credits, payouts and the
 shop's prices together (tasks R7, I7): per level and zone, the credits available, a good run's share of
 them, the finish payout and what a death or quit pays, the running wallets of a typical and a weaker player
@@ -38,7 +38,7 @@ are historical rather than freshly measured totals. It changes neither duration 
 and its added hazards earn no extra risk-credit pay.
 
 **The rebalance for eight zones (task I7; the owner's answer of October 14, 2026, GDD §7; DESIGN-TBD, questions in
-`docs/questions/i7.md`).** The prices and payouts were set for a two-zone campaign.
+items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set for a two-zone campaign.
 - *How a tier is read.* Tiers are bought in order, so a tier costs its **line total** (its price and every tier
   before it). R7's tool read each tier's price alone, which put the Heavy missile at level 13 when owning it costs
   18,300, more than a typical player earns from the levels of a whole playthrough (16,343 before I4). A tier
@@ -55,7 +55,7 @@ and its added hazards earn no extra risk-credit pay.
   credits a level from Casino 1 on, 5 and 6 lanes only) sits on an optional ceiling route, so the model keeps it
   apart: the typical player takes it, the weaker one and 3 lanes have none. It lifts a typical playthrough from
   16,343 to 18,382 and pulled Armor IV and the Heavy missile two levels early, which is why they moved.
-  DESIGN-TBD (`docs/questions/i7.md`).
+  DESIGN-TBD (items 846–850 in `docs/OPEN_QUESTIONS*.md`).
 - *Levels* are numbered in play order: City 1-3 are 1-3, Gangland 4-6, Marketplace 7-8, Casino 9-10, Corporate
   11-12, Beach 13-15 (the match is 14), Dead Zone 16-17 and Golden 18-20.
 - *Where each tier first fits* (5 lanes, each level's own seed; `test_economy.gd`'s `FIRST_FIT`, give or take one
@@ -94,7 +94,7 @@ and its added hazards earn no extra risk-credit pay.
 - *Payouts held.* The completion bonus stays 100 + 25 a level (City 1's 100 is the approved early revision, and a
   steeper slope moves only the late tiers: 35 a level puts Heavy missile at level 17, 15 at level 19) and the boss
   payouts stay 500 (1,000 for the last). The prices were placed against them. A boss pays 500 whatever the zone:
-  77% of a City 3 finish, 46% of a Dead Zone 1 finish (`docs/questions/i7.md`, question 3).
+  77% of a City 3 finish, 46% of a Dead Zone 1 finish (items 846–850 in `docs/OPEN_QUESTIONS*.md`, question 3).
 - *A menu, not a checklist.* The whole permanent catalog costs 43,050 (PC), 2.3 playthroughs of a typical player
   (1.9 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
   along the way owns only part of it after one playthrough. Every completion pays again, so the rest is about 25

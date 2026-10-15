@@ -18,7 +18,7 @@ extends SceneTree
 ##   --fails=0, --weak-fails=2    failed attempts a player makes at each level before finishing it
 ##   --points=4, --weak-points=2  points the player wins in the Beach's volleyball match (100 credits each)
 ##   --stash=1, --weak-stash=0    the share of the treasure stashes' credits (task I4; PC lanes only) the player
-##                                takes: they sit on an optional ceiling route (DESIGN-TBD, docs/questions/i7.md)
+##                                takes: they sit on an optional ceiling route (DESIGN-TBD, items 846-850 in docs/OPEN_QUESTIONS*.md)
 ##   --bonus-base=N               what-ifs: GameRules.completion_bonus_base and _per_level, for this run
 ##   --bonus-per-level=N          only (the data is not touched)
 ##   --mobile=true|false          mobile's catalog prices and no slow time (default false, PC)

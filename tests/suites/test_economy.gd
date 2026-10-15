@@ -2,7 +2,7 @@ extends TestSuite
 ## Wallet, items, records, saving, the shop catalog, loadouts and the App's buy flow. Also the
 ## balancing passes (task R7, after the owner's playtest: G1's pace, G3's free armor, G4's weaker laser
 ## tier 1; task I7, the rebalance for all eight zones): the catalog's prices laid against what
-## `tools/measure/economy.gd` reads from the campaign (the reasoning is in docs/questions/i7.md and
+## `tools/measure/economy.gd` reads from the campaign (the reasoning is in items 846-850 in docs/OPEN_QUESTIONS*.md and
 ## docs/architecture/economy-platforms.md).
 
 ## The model the tool reports: a typical and a weaker player's walks through the campaign (see its header).
@@ -13,7 +13,7 @@ const EconomyModel = preload("res://tools/measure/economy_model.gd")
 ## price and every tier before it: tiers are bought in order). "First fits at N" means affordable after finishing
 ## N, so usable from N + 1. Campaign levels, with the volleyball match counted: City 1-3 are levels 1-3, Gangland
 ## 1-3 4-6, Marketplace 1-2 7-8, Casino 1-2 9-10, Corporate 1-2 11-12, Beach 1-3 13-15, Dead Zone 1-2 16-17,
-## Golden 1-3 18-20. Where each is placed (GDD §5's schedule; the reasoning is in docs/questions/i7.md):
+## Golden 1-3 18-20. Where each is placed (GDD §5's schedule; the reasoning is in items 846-850 in docs/OPEN_QUESTIONS*.md):
 ##   armor I the owner's "died a lot" note (GDD §4, the October 3 early-economy revision: it fits City 1); II at
 ##   Gangland 1, III at Marketplace 2 (usable from the Casino's mixed crowd), IV at Beach 3 (usable from the
 ##   Dead Zone, whose Bad Dreams ignore weapons); laser I Gangland 1 (the owner: 1,800, first affordable at the
@@ -23,7 +23,7 @@ const EconomyModel = preload("res://tools/measure/economy_model.gd")
 ##   magnet I as an early credit boost, II at Gangland 1, III at Marketplace 2; slow time (PC only) as it was.
 ## Where that is later than the enemy it answers debuts (the Octodog in Gangland 2, the Barnacle Turret in
 ## Marketplace 1, Buzz Overdrive in Corporate 1), it is in time only once the boss payouts are counted (IN_TIME).
-## DESIGN-TBD (docs/questions/i7.md): the placements the GDD says nothing about.
+## DESIGN-TBD (items 846-850 in docs/OPEN_QUESTIONS*.md): the placements the GDD says nothing about.
 const FIRST_FIT: Dictionary = {
 	&"armor:1": "city/1", &"armor:2": "gangland/1", &"armor:3": "marketplace/2", &"armor:4": "beach/3",
 	&"weapon:1": "gangland/1", &"weapon:2": "marketplace/1", &"weapon:3": "corporate/1", &"weapon:4": "golden/1",
@@ -323,7 +323,7 @@ func _fits_by(walk: Array[Dictionary], rows: Array[Dictionary], price: int, with
 ## it (tiers are bought in order): its line total. It first fits at the first level, counting the volleyball
 ## match, whose running wallet (a typical player finishing every level once, in order, buying nothing along the
 ## way, and not counting the boss payouts) covers that. Each tier is pinned to the level it was placed at
-## (FIRST_FIT, GDD §5's schedule; the reasoning is in docs/questions/i7.md and docs/architecture/economy-platforms.md),
+## (FIRST_FIT, GDD §5's schedule; the reasoning is in items 846-850 in docs/OPEN_QUESTIONS*.md and docs/architecture/economy-platforms.md),
 ## give or take FIT_TOLERANCE levels. Also: the owner's anchors (Armor I fits City 1, Laser I first fits at the 4th
 ## level and costs 1,800), deaths and quits never pay more than finishing (GDD §4), the star shares still order,
 ## every tier is in reach within one playthrough, a weaker player and a mobile one still reach the early tiers
