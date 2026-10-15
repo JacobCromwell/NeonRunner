@@ -22,12 +22,18 @@ extends RefCounted
 ## Every pad it adds keeps the rules of every pad (CeilingZones.pad_clear: its plain holes and fences go; never a
 ## floor enemy, a floor cut or a ramp in its way), off what every other rule keeps (CeilingScenarios.busy_spans,
 ## lane_keeps: a hover truck's lane) and off every drone wave's window (drone_windows: a pad hurls the drones, GDD
-## §9.6). The pads are marked: "fenced" ("unsafe", "safe") on each, "added" on those these rules add, which the
+## §9.6). The pick plays out alone (one new thing at a time): from its first pad's run-up to its last safe pad no
+## other rule's chase or attack, floor cut, drone wave's arrival or quiet stretch (CeilingScenarios.event_spans); and
+## no ramp's wall run or hover truck under an outer lane it covers comes within a jump of its rows (a jump off a wall
+## run started high reaches a ceiling fence: CeilingScenarios.wall_jump_near). The pads are marked: "fenced" ("unsafe", "safe") on each, "added" on those these rules add, which the
 ## drone schedule's spacing doesn't count (LayoutChecks.check_rules): they're a choice within one ceiling, after its
 ## first pad. The floor under the ceiling holds what it held (GDD §3: it may be dangerous, and the ceiling is never
 ## required). DESIGN-TBD throughout (docs/questions/i4.md).
 
 const FEATURE: String = "fenced_ceiling"
+## Sprinkled in, never guaranteed: a level gets one only where a ceiling fits it (as a treasure stash,
+## treasure_stash_rules.gd; LayoutChecks.occasional).
+const OCCASIONAL: bool = true
 ## Every feature whose rules place, move or drop floor enemies, plan charges or cuts, or add ceilings, pads and
 ## ramps, and the treasure stashes: a fenced ceiling takes a ceiling of the level's final floor. The Barnacle
 ## Turrets, the Resonator, the Enforcer Truck and the dash walls run after it, as after a stash (treasure_stash_rules).
@@ -129,6 +135,14 @@ static func plan_on(gen: LevelGenerator, t: CeilingScenarioTuning, h: Dictionary
 		added.append(spot)
 		safe_lanes.append(int(spot["lane"]))
 		at += step
+	# The pick plays out alone: from the run-up to its first pad to its last safe pad, no other rule's chase or attack,
+	# floor cut, drone wave's arrival or quiet stretch (CeilingScenarios.event_spans). And no wall jump reaches a row.
+	var scene := Vector2(gen.zones.pad_zone(first).x, float(safe[-1]["at"]) + mt.pad_length)
+	if CeilingScenarios.hits(CeilingScenarios.event_spans(gen, t.drone_margin_seconds), scene.x, scene.y):
+		return {}
+	var half: float = mt.fence_depth * 0.5
+	if CeilingScenarios.wall_jump_near(gen, h, row_at[0] - half, row_at[-1] + half):
+		return {}
 	# The ceiling runs on safe_ride_seconds past where the last safe pad's rider arrives at the latest.
 	var end: float = maxf(float(h["end"]), CeilingScenarios.flip_late(float(safe[-1]["at"]), v_max)
 		+ v_max * CeilingScenarios.rise_seconds(mt, 0.0) + t.safe_ride_seconds * v)

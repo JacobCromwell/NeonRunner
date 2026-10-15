@@ -37,6 +37,10 @@ extends RefCounted
 ## DESIGN-TBD throughout (docs/questions/i4.md).
 
 const FEATURE: String = "treasure_stash"
+## Sprinkled in (GDD §3: "sprinkle them in during later zones"), never guaranteed: a level gets a stash only where one
+## fits (no patterns force one; with fewer than 5 lanes there's none), so the campaign's checks don't ask every build
+## of a level that lists the feature for one (LayoutChecks.occasional; test_ceiling_scenarios counts them).
+const OCCASIONAL: bool = true
 ## Every feature whose rules place, move or drop floor enemies, plan charges or cuts, or add ceilings, pads and
 ## ramps: a stash takes a ceiling of the level's final floor. The rules that plan around what's on the floor and
 ## its ceilings run after it (their own RUN_AFTER): the Barnacle Turrets (never on a scenario's ceiling), the

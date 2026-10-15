@@ -63,8 +63,10 @@ static func rise_seconds(t: MovementTuning, depth: float) -> float:
 
 
 ## Seconds from a drop off a ceiling (a return pad's, or past its end) until the falling runner's feet are
-## `height` above the floor: from rest at the underside, at the descending gravity (a hair sooner than the
-## Player's first frame, which falls at the plain one: what passes over something by this passes over it).
+## `height` above the floor: from rest at the underside, at the descending gravity. The Player's frame steps put
+## it within a frame either way (its first frame falls at the plain gravity, the rest a little faster than the
+## smooth fall): what's placed by it leaves room for that (CeilingScenarioTuning.drop_clearance, a frame's slack
+## where the rider lands).
 static func drop_seconds(t: MovementTuning, height: float) -> float:
 	var a: float = maxf(t.gravity() * t.fall_gravity_multiplier, 0.01)
 	return sqrt(2.0 * maxf(t.ceiling_height - height, 0.0) / a)
@@ -160,6 +162,50 @@ static func drone_windows(gen: LevelGenerator, margin_seconds: float) -> Array[V
 				first = minf(first, float(p["at"]))
 		out.append(Vector2(at - margin_seconds * gen.speed, first))
 	return out
+
+
+## The stretches where a fenced ceiling's pick may not play out (one new thing at a time): every rule's chase or
+## attack kept in every lane (LevelGenerator.rules_doodad_keep_outs without a lane: a Bad Dream's chase, a Gilded
+## Sentinel's strike, a treasure stash's floor), every floor cut's window, a level's quiet stretches, and every
+## drone wave's window (drone_windows, `margin_seconds` before it: the pad that hurls the drones is never a trap).
+static func event_spans(gen: LevelGenerator, margin_seconds: float) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	for k: Dictionary in gen.rules_doodad_keep_outs():
+		if not k.has("lane"):
+			out.append(Vector2(float(k["from"]), float(k["to"])))
+	for c: Dictionary in gen.layout.cuts:
+		out.append(FloorCutPlan.window(c, gen.speed))
+	out.append_array(gen.quiet_stretches())
+	out.append_array(drone_windows(gen, margin_seconds))
+	return out
+
+
+## True if a jump off a side wall could carry a floor runner up into something hanging from ceiling `h` over
+## [from, to] (a fenced ceiling's rows): a wall run started high (a ramp's, MovementTuning.ramp_entry_height, or one
+## entered from a hover truck's roof) puts a wall jump's head above a ceiling fence's bottom, and the jump comes down
+## into the outer lane. So: true if the ceiling covers an outer lane, and a ramp on that side launches a wall run
+## that ends within a jump of the stretch, or a hover truck is about (LevelGenerator.enemy_keep_out) within a jump.
+static func wall_jump_near(gen: LevelGenerator, h: Dictionary, from: float, to: float) -> bool:
+	var layout: LevelLayout = gen.layout
+	var lanes: Vector2i = layout.hull_lanes(h)
+	var sides: Array[int] = []
+	for side: int in [-1, 1]:
+		if CeilingZones.in_lanes(layout.outer_lane(side), lanes):
+			sides.append(side)
+	if sides.is_empty():
+		return false
+	var reach: float = gen.jump_distance
+	for r: Dictionary in layout.ramps:
+		var at: float = float(r["at"])
+		var run_end: float = maxf(gen.ramp_launch(r).end(), at + gen.tuning.ramp_length)
+		if sides.has(int(r["side"])) and at <= to and run_end + reach >= from:
+			return true
+	for e: Dictionary in layout.enemies:
+		if String(e.get("type", "")) == "hover_truck":
+			var k: Vector2 = gen.enemy_keep_out(e)
+			if k.x <= to + reach and k.y + reach >= from:
+				return true
+	return false
 
 
 ## True if a span of `spans` reaches into [from, to].
@@ -269,13 +315,17 @@ static func _apart(spans: Array[Vector2], span: Vector2, gap: float) -> bool:
 
 ## True if ceiling `h` may run on to `end` (later than its own end): its new landing zone ends before the level's
 ## end-clear stretch, holds no floor cut's lane window and no floor enemy (CeilingZones: its holes and fences are
-## cleared when it's run on, extend()), lies off `busy`, and the ceiling touches no other one, nor reaches with its
-## landing zone the next.
+## cleared when it's run on, extend()), lies off `busy`, the ceiling touches no other one, nor reaches with its
+## landing zone the next, and a one-lane ceiling stays short (LevelConfig.one_lane_ceiling_seconds from its pads).
 static func can_extend(gen: LevelGenerator, h: Dictionary, end: float, busy: Array[Vector2]) -> bool:
 	var layout: LevelLayout = gen.layout
 	var zone := Vector2(end, end + gen.zones.landing)
 	if zone.y > layout.length - gen.config.end_clear_distance:
 		return false
+	if layout.hull_width(h) == 1 and layout.lane_count > 1:
+		for p: Dictionary in pads_under(layout, h):
+			if end - float(p["at"]) > gen.config.one_lane_ceiling_seconds * gen.speed:
+				return false
 	if hits(busy, float(h["end"]), zone.y):
 		return false
 	for other: Dictionary in layout.hulls:

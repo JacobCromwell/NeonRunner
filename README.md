@@ -59,7 +59,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -186,6 +186,12 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   with nothing else asking for the dash just before one, a clear stretch before and after, never under a
   ceiling, and a side wall always open beside them. A hover truck drops behind you and lets you go first, and
   a heli drone flies over one (in quick play, `--features=dash_wall --full-loadout`).
+  Ceiling scenarios (from the Casino, now and then): a ceiling whose first pad lifts you into rows of
+  electric fences hanging under it (the pink crackle, seen from the street), with a later pad that lands you past
+  them (from Corporate, several pads, and you read which are which); and a treasure stash, a stretch of floor walled
+  off by doodads with two or three of the richest credits inside, which you can't get into from the street: ride the
+  ceiling above it and step on the downward-pointing pad in its lane to drop straight in (on 5 or 6 lanes; quick
+  play, `--features=ceilings,treasure_stash,fenced_ceiling --lanes=5 --difficulty=0.7`).
 - **Enemies:**
   - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder. Up to two
     bursts of the cyborgs, window cyborgs and Barnacle Turrets fly at once (`GameRules.max_bursts_in_air`,

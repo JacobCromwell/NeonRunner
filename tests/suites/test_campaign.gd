@@ -748,12 +748,16 @@ func _check_level(s: CampaignStep, config: LevelConfig, tag: String, stats: Dict
 			check(not placeable.has(f), "`%s` is planned: nothing places it yet %s" % [f, tag])
 			continue
 		var at: Array[float] = LayoutChecks.feature_positions(layout, f)
-		check(not at.is_empty(), "%s has `%s` (GDD §5: earlier features keep appearing) %s" % [s.id, f, tag])
+		# A feature sprinkled in (the ceiling scenarios, task I4) may miss a build: test_ceiling_scenarios counts them.
+		check(not at.is_empty() or LayoutChecks.occasional(f),
+			"%s has `%s` (GDD §5: earlier features keep appearing) %s" % [s.id, f, tag])
 		if not config.feature_starts.has(f) or at.is_empty():
 			continue
 		var start: float = gen.feature_start(f)
 		check(at[0] >= start - 0.01, "nothing of `%s` before its start (%.0f m) %s" % [f, start, tag])
-		if SPACED_FROM_START.has(f):
+		# A ceiling scenario's introduction (task I4) is the first of the level's own ceilings that fits one from its
+		# start, not a pattern picked there: test_ceiling_scenarios checks it's the first.
+		if SPACED_FROM_START.has(f) or LayoutChecks.occasional(f):
 			continue
 		stats["introductions"] = int(stats["introductions"]) + 1
 		if at[0] > start + INTRODUCTION_REACH * gen.pace:

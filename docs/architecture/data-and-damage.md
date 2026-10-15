@@ -176,7 +176,11 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   through the doodad); a side with no room (the track's edge, a lane blocker there) gives way to the
   other. A jump or a slide into one is pushed the same way (doodads are too tall to jump), a switch into
   its side is a blocked move (above: the clank and the bump), and a player who comes down on its top
-  lands on it and runs along it. It costs nothing: DamageRules never sees it, the run's speed stays,
+  lands on it and runs along it. While a push carries the player (task I4), a move back into the pushing
+  doodad's lane is blocked too (`_into_pushed_from`: it stands just ahead there, short of its side's reach,
+  and won't push again until its push is done, so the body would sink into it), and a blocked move only
+  clanks: the push finishes (cut into a bump, it left the body between the lanes against the doodad's side
+  for as long as the moves kept coming; a treasure stash's walls rely on the push to keep a runner out). It costs nothing: DamageRules never sees it, the run's speed stays,
   and shots and weapons pass through it. Wall runners and ceiling riders never meet one (the generator
   keeps them out of the outermost lanes and from under ceilings).
 - **The dash smashes a zone doodad** (GDD §3, owner, October 8, 2026; task H5): dashing into one breaks it

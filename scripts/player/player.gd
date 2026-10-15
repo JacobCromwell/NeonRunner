@@ -150,10 +150,11 @@ var _bump_shape := BoxShape3D.new()
 var _bump_query := PhysicsShapeQueryParameters3D.new()
 ## A zone doodad's push (GDD §3, _check_doodads) is playing out (the lane switch machinery carries it,
 ## over doodad_push_time), and the doodad's instance id with how long it's still ignored: it pushes once,
-## even if a move cuts its push short.
+## even if a move cuts its push short. `_push_lane` is the doodad's lane (_into_pushed_from).
 var _pushing: bool = false
 var _push_doodad: int = 0
 var _push_ignore_left: float = 0.0
+var _push_lane: int = -1
 ## How many times zone doodads have pushed the player this run (tests and tools).
 var pushes: int = 0
 ## How many zone doodads and dash walls the dash has smashed this run (tests and tools).
@@ -256,6 +257,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_pushing = false
 	_push_doodad = 0
 	_push_ignore_left = 0.0
+	_push_lane = -1
 	pushes = 0
 	smashes = 0
 	return_drops = 0
@@ -572,7 +574,13 @@ func _start_switch(target: int) -> void:
 	# GDD §3 (owner, October 8, 2026): dashing into a zone doodad smashes it, from the side too, so a
 	# doodad's side doesn't block a dashing player (_lane_blocked claims it; it breaks on contact).
 	# DESIGN-TBD (docs/OPEN_QUESTIONS.md item 635): a dashing switch into a doodad's side smashes it.
-	if target != lane and _lane_blocked(target, dashing):
+	if target != lane and (_lane_blocked(target, dashing) or _into_pushed_from(target)):
+		# A blocked move while a doodad's push carries the player leaves the push to finish (the clank plays): cut
+		# into a bump, it left the body between the lanes, against the doodad's side, for as long as the moves kept
+		# coming (task I4: a treasure stash's walls push a runner out of its reach).
+		if _pushing:
+			_event(&"lane_blocked")
+			return
 		# GDD §9.3: a solid side (the hover truck's) bumps the player back.
 		var dir: int = signi(target - lane)
 		_start_bump(dir, rules.lane_bump_fraction * absf(geo.lane_x(target) - geo.lane_x(lane)), tuning.lane_switch_time, false)
@@ -634,6 +642,14 @@ static func _push_x(from: float, to: float, t: float) -> float:
 ## t, the inverse of what _push_x eases: the progress at which it has come `k` of the way.
 static func _push_progress(k: float) -> float:
 	return 1.0 - pow(1.0 - clampf(k, 0.0, 1.0), 1.0 / 3.0)
+
+
+## True if `target` is the lane of the zone doodad whose push is carrying the player, or has just carried them (task
+## I4): it stands just ahead there, short of its side's reach (_lane_blocked), and leaves them alone until its push is
+## done (_check_doodads), so a move back into it would sink the body into it ("the body never sinks into it"). A
+## dashing player's move goes through: the dash takes the doodad (_dash_claims).
+func _into_pushed_from(target: int) -> bool:
+	return not dashing and (_pushing or _push_ignore_left > 0.0) and target == _push_lane
 
 
 ## True if a solid side (a lane blocker) fills `target` lane beside the player right now. With
@@ -1097,6 +1113,7 @@ func _start_push(area: Area3D, doodad_lane: int, dir: int, own_side: int) -> voi
 	_pushing = true
 	_push_doodad = area.get_instance_id()
 	_push_ignore_left = tuning.doodad_push_time
+	_push_lane = doodad_lane
 	lane = target
 	_switch_from = _x
 	_switch_to = geo.lane_x(target)
