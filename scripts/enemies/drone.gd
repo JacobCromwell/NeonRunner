@@ -344,9 +344,9 @@ func _pick_in_reach(p: Player) -> bool:
 ## barrage never plays out while the player heads for a wall-run gap's lit wall or runs it over the gap (a wall runner
 ## there can't zigzag, and leaving the wall drops them in). True while a wall-run gap's crossing
 ## (LevelLayout.wall_run_between: from its clear run-in to its far edge) lies along the stretch the player runs from now
-## until a barrage started now would have passed them. The generator keeps a wave until its first pad off a wall-run gap
-## (WallRunGapPlacement), so this holds back only a drone that outlived its pads, for the few seconds of the crossing.
-## DESIGN-TBD (docs/questions/j2.md).
+## until a barrage started now would have passed them. A drone follows the runner for as long as it lives, so the
+## generator can't keep its barrages off a wall-run gap (WallRunGapPlacement): this holds one back for the few seconds
+## of the crossing, and it fires once they're across. DESIGN-TBD (docs/questions/j2.md).
 func _wall_run_in_reach(p: Player) -> bool:
 	if world.layout.wall_run_gaps.is_empty():
 		return false

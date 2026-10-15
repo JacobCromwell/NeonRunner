@@ -676,13 +676,16 @@ throughout (`docs/questions/j2.md`).
   each due at a seeded spot of its share and placed within `search_seconds` (40 s) of it at the spot that takes the
   least out of its way, the nearest of those; the level that brings them in places its first as soon as one fits
   past the start (each unit taken out weighs a second later, `INTRO_COST_SECONDS`); one at least, anywhere past the
-  start, as a last resort taking a Resonator's visit out (never the first; `_big_enemies`), else a warning.
+  start, as a last resort with one big encounter that leaves nothing behind taken out of the level (`_make_room`,
+  `MAKE_ROOM_TYPES`: a Resonator's visit, a Gilded Sentinel or a hover truck, never the level's first of its kind; the
+  report's constraints name it), else a warning.
   `min_spacing_seconds` between one's landing floor and the next one's run-in.
 - **What it keeps off** (`floor_keep_outs`, `keep_outs_by_part`, `wall_keep_outs`): from its run-in to the end of its
   landing floor nothing in any lane: no other hole, fence, doodad, pad and its lift, ramp and the longest wall run it
   launches, speed pad, floor cut's window, wider gap's zone, and no enemy's attack or the floor it uses (everything a
-  wider gap's zone keeps: `WideGapPlacement.keeps_of`, the rules' keep-outs, each planned Resonator pulse); no
-  ceiling and no ceiling's landing zone overlaps it, and no pad's run-up reaches its gap. Its lit wall stays whole
+  wider gap's zone keeps: `WideGapPlacement.keeps_of`, the rules' keep-outs, each planned Resonator pulse; but a heli
+  drone's wave until its first pad, whose barrages hold off at run time, below); no ceiling and no ceiling's landing
+  zone overlaps it, and no pad's run-up reaches its gap. Its lit wall stays whole
   and clear from `wall_clear_seconds` before the lit stretch to past
   the longest wall run over the gap (`wall_to`: claws, the dash, a save onto the wall at the far edge): no sign, wall
   enemy (`WallGapTuning.wall_enemy_seconds` either side), wall fence or side wall gap; the other wall keeps no side
