@@ -628,6 +628,14 @@ shaders first drawn after the load, and under xvfb it also counts draw calls and
 res://tools/measure/frame_times.gd -- [--levels=city/1] [--bosses=city_boss] [--passes=2] [--frames] [--log]`
 (the whole campaign takes about fifteen minutes; its header lists the options).
 
+`tools/measure/truck_cost.gd` measures what a hover truck costs a run (task I5, the truck's "big performance drop on a
+phone"): a quick-play run with trucks spawned at set times, each phase of their visit (hidden, banging, the burst,
+pacing, the rev, the wreck) framed apart with its draw calls, objects, nodes and real lights. Run it on the
+renderer to judge, under xvfb with the driver's shader cache off, so a frame that compiled shaders shows:
+`MESA_SHADER_CACHE_DISABLE=true xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --resolution 640x360
+--fixed-fps 60 --rendering-method gl_compatibility -s res://tools/measure/truck_cost.gd -- [--skin=gangland]
+[--trucks=2] [--bench]` (about two minutes; its header lists the options).
+
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the
 time from pressing retry to the run starting (a retry of the same level reuses the level it built):
@@ -691,7 +699,19 @@ browser.
 5. **Its shader programs:** `node tools/web/shader_programs.js` plays the release export from the title into
    City 1 and counts the shader programs WebGL compiles on the way, and any compiled more than once. The
    browser compiles each while the game waits, and on Windows (where Firefox and Edge translate WebGL to
-   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes.
+   Direct3D) one can take seconds, so this count is the demo's load time there. It takes a few minutes. It
+   also counts each program's draws (a program never drawn: the engine compiles four unused ones of its own for
+   each shader) and the wait on the compiler (`--sources` keeps every program's GLSL for finding which shader
+   it is). The wait is software WebGL's, a rough guide only (a browser defers compiles, so a program's time
+   includes what was queued before it): the program and character counts are the solid numbers, the load time
+   needs a real Chrome or Edge on Windows. For another level, `--build --level=gangland/1` exports a debug build
+   of its own (`exports/web_zones`, with every zone's doodad pictures; the web preset in `export_presets.cfg` is
+   edited for that export only and put back at once, also if it fails) and opens it on that level (the full
+   game's flavor, no title, no intro); `--export=<dir>` opens a debug export you made. `tools/measure/zone_shaders.gd`
+   is its in-engine twin (headless, seconds): the Shaders and standard-material looks of a level or a boss's
+   arena, which come twice and which only the warm-up draws (`godot --headless -s
+   res://tools/measure/zone_shaders.gd -- [--levels=city/1,golden/3] [--bosses] [--detail]`;
+   `docs/architecture/run.md`, Smooth frames).
 
 On a debug build, the options go into the page's engine settings: in `exports/web_debug/index.html`, set
 `"args":["--","--level=city/outro"]` in `GODOT_CONFIG` to open on the City's outro, one step from the end screen.

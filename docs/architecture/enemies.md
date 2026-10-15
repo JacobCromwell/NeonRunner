@@ -58,8 +58,9 @@ with every part the enemy may show later
 (`warm_looks()`, A run). A type whose enemies bring others into play names them with a static
 `brings(entry: Dictionary) -> Array[Dictionary]` (a host cyborg's Bad Dream). The cyborg, window cyborg,
 screech, Octodog, Resonator, Barnacle Turret, Bad Dream, fence generator, Buzz Overdrive, Gilded Sentinel
-(its statue's frames for both walls, its eyes, its cut marks' shader) and Enforcer Truck (its model with
-every rider, its light bar's and floor lights' states, its warning line) have hooks, and a boss fight names the
+(its statue's frames for both walls, its eyes, its cut marks' shader), Enforcer Truck (its model with
+every rider, its light bar's and floor lights' states, its warning line) and hover truck (its model, the glows
+its parts swap in, the wall effects, its warning glow: task I5) have hooks, and a boss fight names the
 enemies it brings itself with `BossEncounter.warm_enemies()` (the Floating Head's dropped cyborgs, the Sleep
 Taker's generators); a new enemy whose first spawn builds anything costly adds one, and a kit keeps the
 shaders it loads (a static cache, as the kits do) rather than loading them per spawn (`test_perf` checks

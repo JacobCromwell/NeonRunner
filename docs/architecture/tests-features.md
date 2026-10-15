@@ -399,9 +399,10 @@ game: a chunk's dressing spread over frames (the same gameplay nodes in each chu
 dressed, every chunk dressed before the player is `DRESS_BY` from it, a chunk freed undressed skipped without
 errors, and a seeded run on Gangland 2 with its enemies giving the same trace, events and enemy log at budgets of
 0, 1 µs and 1 ms), enemy types readied with the level (every hooked kind and a host's Bad Dream, scripts loaded,
-nothing left in the tree or heard, once a process, `warm_looks()`), hit-stops that never stack or chain, BossProps'
+nothing left in the tree or heard, once a process, `warm_looks()`, the hover truck's among them), hit-stops that never stack or chain, BossProps'
 shared rings, the shader warm-up stage (the cyborgs' looks, fences in every state, particles as particles, the
-run's hidden looks, nothing colliding, lit or top-level), the frame monitor's tags (chunks, a spawn, a kill and
+run's hidden looks, nothing colliding, lit or top-level), the player's shadow and a screech lair's dark recess drawing with the glow's shaders and the speed lines sharing one
+Shader (task I1), the frame monitor's tags (chunks, a spawn, a kill and
 its hit-stop, the held frames) and summaries, and the frame graph's spikes and holds. `test_frame_times` plays
 City 3, Marketplace 2 and Golden 2 for 40 s each as the game does (`frame_times.gd --child`, two passes, each in
 a fresh process, each frame's faster time) and holds their 99th percentile and worst frame to
@@ -415,6 +416,12 @@ machine's bursty load cleared far less often than it cleared the frames' own tai
 of 2400 chances) -- read as load factor 1.00x on a machine other agents' test runs kept busy, while the level's
 own p99 and worst frame were plainly slower, failing under real `--jobs` load that a true reading would have
 covered.
+`test_hover_truck`'s cost checks (task I5; A run, The hover truck's cost on a phone) hold a truck to what a renderer
+pays for it: its model built with the level and not by its first spawn, a warm-up look with a material for every
+one it shows through a whole visit (spawn, banging, burst, pacing, lurch back, rev, forward lurch, shot down,
+explosion), no `OmniLight3D` or `SpotLight3D` anywhere in play, no node made while it plays (its explosion is
+`RunEffects.fireball`'s, pooled), and its warning glow shown exactly through the rev and the forward lurch,
+flashing with the spikes and steady with Reduced flashing. Six of those checks fail on the build before I5.
 `test_level_cache` checks that a retry plays a copy of the last build exactly as a fresh build (task PERF2; A
 run, Retries reuse the built level): the key (the same for the same level configured again or with another
 look; another for each thing the build reads: seed, lane count, difficulty, features, feature starts, pacing,
@@ -439,3 +446,11 @@ sight, touches passing to the scroll areas, and `UiScale`'s maths and lifecycle 
 name lists every problem found). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
 to load, and ends a stuck run after 2400 s of real time.
+
+`test_zone_shaders` checks one program per look (task I1; A run, Smooth frames: the web demo's programs): in each
+zone's first level, the Golden Palace and every built boss's arena (`LayoutCache` layouts; the world built, a second
+of a boss's fight played so what it builds as the runner nears is there, some of the track dressed and the shader
+warm-up's stage built) no shader code is in two Shaders, and no two standard materials differ only in what the
+renderer ignores (the emission of an unshaded one: such a look is the glow's with a shader of its own, as the player's
+shadow, a screech lair's recess and the Floating Head's tower cut were). A medium suite; the files that make such looks
+(`greybox_materials.gd`, `shader_warmup.gd`, `screech_lair.gd`, the tower) map to it in `tests/suite_map.json`.
