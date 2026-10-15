@@ -199,9 +199,10 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown
 ## is over before the next (data/tuning/dash_walls.tres); fewer where the level leaves no room, never none.
 ## 0 turns them off. Without the feature it does nothing. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 644): 1 to 4 by level
-## (2 in Corporate 1, up to 3 in Dead Zone 1 and Golden 2; a level asks for no more than its track holds on every
-## lane count: Corporate 2, The Hush and Golden 1 hold one, Golden 1 since the walls keep off an Enforcer Truck's
-## showing windows, task C6c); quick play's prototype level takes this default.
+## (2 in Corporate 1, up to 3 in Golden 2; a level asks for no more than its track holds on every lane count:
+## Corporate 2, The Hush and Golden 1 hold one, Golden 1 since the walls keep off an Enforcer Truck's showing windows,
+## task C6c, and Dead Zone 1 two since its ceiling scenarios came, task I4: at 3 lanes its fenced ceiling's build
+## leaves room for no third); quick play's prototype level takes this default.
 @export_range(0, 8) var dash_walls: int = 3
 ## Ceiling scenarios (task I4; GDD §3, "Ceiling scenarios", owner, October 14, 2026: "sprinkle them in during
 ## later zones"): with the `treasure_stash` feature, the generator turns up to this many of the level's ceilings

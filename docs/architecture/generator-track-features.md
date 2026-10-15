@@ -564,7 +564,8 @@ the side wall gaps and wall fences beside them (`wall_keep_outs`), and the credi
 `LevelLayout.doodad_between` counts a wall in every lane, so a dropped credit or a floor cut's lane never lands in
 one either). `problems(gen)` re-checks a finished layout (the tests, `LayoutChecks.check_dash_walls`). Every
 campaign level gets its full count on its own seed at 3, 5 and 6 lanes (Corporate 2 and The Hush ask for 1, Golden 1
-and Golden 3 for 2: their tracks have room for no more on some lane counts).
+and Golden 3 for 2, and Dead Zone 1 for 2 since its ceiling scenarios, task I4: their tracks have room for no more on
+some lane counts).
 
 **Dash walls on the track.** `TrackBuilder._build_dash_wall` builds each in the chunk where it stands (Damage and
 interactions: the box on `LAYER_DASH_WALL`, the forgiving hitbox), sized by `TrackBuilder.dash_wall_size()` (as
