@@ -54,8 +54,8 @@ extends RefCounted
 ## How many: about one per spacing_seconds_easy to _hard of run (by the difficulty halfway through the stretch), each
 ## due at a seeded spot of its share and placed within search_seconds of it, min_spacing_seconds apart; in the level
 ## that brings them in the first as soon as one fits past the feature's start. A level with the feature gets at least
-## one (anywhere past its start; as a last resort with one big encounter taken out of its way, _make_room), or a
-## warning.
+## one (anywhere past its start; as a last resort with one big encounter taken out of its way, _make_room, and then
+## with the signs on its lit wall's stretch taken off, _signs_go), or a warning.
 ##
 ## Never in a boss arena, quick play's prototype level or a level without the feature: those draw nothing and are built
 ## exactly as before. DESIGN-TBD (docs/questions/j2.md): every number, the lit wall's look, where the feature starts,
@@ -152,6 +152,10 @@ class _Pass:
 	var costs: Array[int] = []
 	## What the last resort took out (_make_room): "type at distance", or "".
 	var made_room: String = ""
+	## The last resort's last step (_signs_go): the lit wall's signs may go too (wall_keep_outs leaves them out), and
+	## how many went.
+	var signs_go: bool = false
+	var signs_out: int = 0
 
 	## Sets what may go (_removable's), sorted by where it starts.
 	func set_pieces(list: Array[Dictionary]) -> void:
@@ -306,6 +310,8 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		var fit: Dictionary = _fit(p, from, last, side, from)
 		if fit.is_empty():
 			fit = _make_room(p, from, last, side)
+		if fit.is_empty():
+			fit = _signs_go(p, from, last, side)
 		if not fit.is_empty():
 			_add(p, fit)
 	if lay.wall_run_gaps.is_empty():
@@ -315,11 +321,14 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		constraints.append("only %d of %d fit: no room near the others' spots" % [lay.wall_run_gaps.size(), count])
 	if p.made_room != "":
 		constraints.append("the last resort took out %s to make room for one" % p.made_room)
+	if p.signs_out > 0:
+		constraints.append("the last resort took %d sign(s) off its lit wall to make room for one" % p.signs_out)
 	if p.taken_out > 0:
 		GeneratorRules.keep_powered(gen)
 	lay.wall_run_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	return {"target": count, "placed": lay.wall_run_gaps.size(), "taken_out": p.taken_out,
-		"enemies_taken_out": p.enemies_out, "costs": p.costs, "constraints": constraints, "ms": (Time.get_ticks_usec() - t0) / 1000}
+		"enemies_taken_out": p.enemies_out, "signs_taken_out": p.signs_out, "costs": p.costs, "constraints": constraints,
+		"ms": (Time.get_ticks_usec() - t0) / 1000}
 
 
 ## Reads what the pass keeps off from the level as it stands (keep_outs_by_part, wall_keep_outs) and what may go
@@ -330,8 +339,8 @@ static func _survey(p: _Pass) -> void:
 	by_part["whole"].append_array(p.gen.wall_run_gap_reserve)
 	for name: String in by_part:
 		p.parts[name] = WallFencePlacement.merged(by_part[name])
-	p.walls = [WallFencePlacement.merged(wall_keep_outs(p.gen, -1, p.t)),
-		WallFencePlacement.merged(wall_keep_outs(p.gen, 1, p.t))]
+	p.walls = [WallFencePlacement.merged(wall_keep_outs(p.gen, -1, p.t, p.signs_go)),
+		WallFencePlacement.merged(wall_keep_outs(p.gen, 1, p.t, p.signs_go))]
 	p.set_pieces(_removable(p.gen))
 
 
@@ -362,6 +371,24 @@ static func _make_room(p: _Pass, from: float, last: float, side: int) -> Diction
 		lay.enemies.insert(i, e)
 	_survey(p)
 	return {}
+
+
+## The last resort's last step (place), where even a big encounter taken out leaves no room (_make_room): the signs on
+## its lit wall's stretch (wall_path) go too, so a level with the feature still has one. A sign blocks the step onto the
+## wall and hurts a wall runner (GDD §3); it is the patterns' wall content, and taking content out never makes a level
+## unfair. The spot is found as by _fit with the lit walls' signs left out of the way (p.signs_go), from `from` to
+## `last`, its lit wall on `side` first; _add takes the signs off (each counted in p.signs_out, the report's
+## constraints say so). {} if none fits even so (the pass is as it was). DESIGN-TBD (docs/questions/j2.md item 8).
+static func _signs_go(p: _Pass, from: float, last: float, side: int) -> Dictionary:
+	p.signs_go = true
+	_survey(p)
+	var fit: Dictionary = _fit(p, from, last, side, from)
+	p.signs_go = false
+	if fit.is_empty():
+		_survey(p)
+		return {}
+	fit["signs_go"] = true
+	return fit
 
 
 ## The big encounters _make_room may take out (MAKE_ROOM_TYPES), in the level's order: every one but the level's first
@@ -474,6 +501,17 @@ static func _add(p: _Pass, w: Dictionary) -> void:
 	var zone := Vector2(float(w["approach"]), float(w["landing"]))
 	var cost: int = int(w.get("cost", 0))
 	w.erase("cost")
+	if bool(w.get("signs_go", false)):
+		# The last resort's last step (_signs_go): the signs on its lit wall's stretch go.
+		w.erase("signs_go")
+		var path: Vector2 = wall_path(w, gen.speed, p.t)
+		var kept: Array[Dictionary] = []
+		for s: Dictionary in lay.signs:
+			if int(s["side"]) == int(w["side"]) and float(s["start"]) < path.y and float(s["end"]) > path.x:
+				p.signs_out += 1
+				continue
+			kept.append(s)
+		lay.signs.assign(kept)
 	for k: Dictionary in p.pieces:
 		var s: Vector2 = k["span"]
 		if s.x >= zone.y or s.y <= zone.x:
@@ -692,17 +730,19 @@ static func floor_keeps(gen: LevelGenerator) -> Array[Dictionary]:
 ## its wall fences (a fence deep: the path carries the margins, wall_clear_seconds either side), its side wall gaps, and
 ## its wall enemies (a window cyborg's window, a vent's screech, any other) with WallGapTuning.wall_enemy_seconds either
 ## side, a Gilded Sentinel's whole wall section (WallFencePlacement.sentinel_wall_section). Vector2, in no particular
-## order.
-static func wall_keep_outs(gen: LevelGenerator, side: int, t: WallRunGapTuning = null) -> Array[Vector2]:
+## order. With `without_signs`, its signs are left out (the last resort's last step, _signs_go).
+static func wall_keep_outs(gen: LevelGenerator, side: int, t: WallRunGapTuning = null,
+		without_signs: bool = false) -> Array[Vector2]:
 	var out: Array[Vector2] = []
-	for k: Dictionary in wall_keeps(gen, side, t):
+	for k: Dictionary in wall_keeps(gen, side, t, without_signs):
 		out.append(k["span"])
 	return out
 
 
 ## wall_keep_outs with what each is, {span (Vector2), what ("a sign", "a wall fence", "a wall gap", or the wall enemy's
-## type)}.
-static func wall_keeps(gen: LevelGenerator, side: int, t: WallRunGapTuning = null) -> Array[Dictionary]:
+## type)}; without its signs with `without_signs`.
+static func wall_keeps(gen: LevelGenerator, side: int, t: WallRunGapTuning = null,
+		without_signs: bool = false) -> Array[Dictionary]:
 	var tt: WallRunGapTuning = t if t != null else tuning()
 	var lay: LevelLayout = gen.layout
 	var v: float = gen.speed
@@ -711,7 +751,7 @@ static func wall_keeps(gen: LevelGenerator, side: int, t: WallRunGapTuning = nul
 	var half: float = gen.tuning.fence_depth * 0.5
 	var out: Array[Dictionary] = []
 	for s: Dictionary in lay.signs:
-		if int(s["side"]) == side:
+		if int(s["side"]) == side and not without_signs:
 			out.append({"span": Vector2(float(s["start"]), float(s["end"])), "what": "a sign"})
 	for wf: Dictionary in lay.wall_fences:
 		if int(wf["side"]) == side:

@@ -678,7 +678,10 @@ throughout (`docs/questions/j2.md`).
   past the start (each unit taken out weighs a second later, `INTRO_COST_SECONDS`); one at least, anywhere past the
   start, as a last resort with one big encounter that leaves nothing behind taken out of the level (`_make_room`,
   `MAKE_ROOM_TYPES`: a Resonator's visit, a Gilded Sentinel or a hover truck, never the level's first of its kind; the
-  report's constraints name it), else a warning.
+  report's constraints name it), and where that leaves no room either, with the signs on its lit wall's stretch taken
+  off (`_signs_go`: a sign blocks the step onto the wall and hurts a wall runner; Marketplace 1 at 5 lanes on seed
+  7301, one sign), else a warning (Marketplace 1 on seeds 9003 at 3 lanes and 9004 at 5, whose hover truck in the way
+  is the level's first: no campaign build or suite builds those).
   `min_spacing_seconds` between one's landing floor and the next one's run-in.
 - **What it keeps off** (`floor_keep_outs`, `keep_outs_by_part`, `wall_keep_outs`): from its run-in to the end of its
   landing floor nothing in any lane: no other hole, fence, doodad, pad and its lift, ramp and the longest wall run it

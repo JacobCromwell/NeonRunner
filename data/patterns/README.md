@@ -275,6 +275,7 @@ crossed by a wall run on its lit side wall; from Marketplace 1 on) have no patte
 them: their rules (`wall_run_gaps_rules.gd`, after every other feature's rules, before the danger density pass)
 place them where nothing the rules planned is in the way, about one every 40 to 70 s of run (by difficulty;
 `data/tuning/wall_run_gaps.tres`). Plain pieces of the patterns in their way go (holes, fences that may go, zone
-doodads), and so may a plain floor cyborg or a manhole screech (never a host, never the level's first of its kind).
-For patterns this means only that a few of their pieces may make way for one. See `docs/ARCHITECTURE.md`, The
+doodads), and so may a plain floor cyborg or a manhole screech (never a host, never the level's first of its kind);
+as a last resort, a sign on the lit wall too. For patterns this means only that a few of their pieces may make way
+for one. See `docs/ARCHITECTURE.md`, The
 generator, Wall-run gaps.
