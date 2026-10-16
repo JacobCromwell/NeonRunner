@@ -868,7 +868,7 @@ spare (see Tools, above). Covered:
   and crouching), every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's
   skin from its data, a camera that never flies into a ceiling or out of the street, ending in the run
   camera's view), and the App's flow through a built slot, the web demo's too; each owner-beat cinematic has
-  its own suite (`test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`).
+  its own suite (`test_city_intro`, `test_city_outro`, `test_sewer_swarm_intro`, `test_dead_zone_intro`).
 - **Screens:** every screen at desktop and touch sizes; and (`phone_screens`) every screen the web demo shows at
   the sizes of a phone's page, sideways and upright: text and finger targets big enough, nothing cut off or
   out of sight, scrolling where it must.

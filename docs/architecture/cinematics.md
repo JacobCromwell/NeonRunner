@@ -35,6 +35,7 @@ never ends, and a level never starts, unattended.
 | `cine_overlay.gd` (`CineOverlay`) | the 2D layer: letterbox bars, fades, flashes, text cards (menu fonts, capitals) and the Skip button (showing the pause key), in the safe area |
 | `arrival_flyover.gd`, `arrival_flyover_tuning.gd`, `scenes/cinematics/arrival_flyover.tscn`, `data/cinematics/arrival_flyover.tres` | the placeholder arrival flyover (below) |
 | `city_outro.gd`, `city_outro_set.gd`, `city_outro_tuning.gd`, `scenes/cinematics/city_outro.tscn`, `data/cinematics/city_outro_tuning.tres` | the Neon City's outro (below) and its props |
+| `city_intro/` (`CityIntro`, `CityIntroTuning`, `CityIntroStreet`, `CityIntroTraffic`, `CityIntroCrowd`, `city_intro_crowd.gdshader`, `CityIntroWindow`, `CityIntroHead`), `scenes/cinematics/city_intro.tscn`, `data/cinematics/city_intro_tuning.tres`, `tools/asset_gen/sfx_bank_city_intro.gd` | the Neon City's intro, the game's first cinematic, the owner's beats (below), its street, its props and its four sounds |
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
 | `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`, `CarPassenger`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props, the sports car and the screech on its passenger seat; its sounds in `tools/asset_gen/sfx_bank_gangland_outro.gd` |
 | `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
@@ -157,7 +158,7 @@ id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to st
 each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
-numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the Dead Zone's, which has the
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the City's and the Dead Zone's, which have the
 owner's beats) and the City's boss intro play it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
 and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
 the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
@@ -165,6 +166,64 @@ CITY"; before a boss, the boss, as the level select does), the slot's music come
 after 9.5 s, as the level (or the fight) opens on the same view. Gaps beside the runner's lane show the
 zone's floor pieces. It sets up in about 15-40 ms and costs about 0.3 ms a frame (headless), so it stays
 cheap on the web, where the demo plays the City's two.
+
+**The City's intro** (`CityIntro`, task F2f; the owner's beats, October 16, 2026, GDD §6 Cinematics, "Zone 1 intro"; what they
+leave open is DESIGN-TBD, `docs/questions/f2f.md`; numbers in `data/cinematics/city_intro_tuning.tres`): the game's first
+cinematic, 20 s, in the City's intro slot (the City's boss intro keeps the arrival flyover). **The set.** The stage is the
+City's own stretch of towers with *no floor* (every lane a gap, 8 lanes wide whatever the device's), so only the road far below
+shows, and the stage is lifted (`stage.position.y = road_depth`) so that road is y = 0: the runner and the cyborgs stand on the
+street itself, not on the truck roofs, and no toolkit code that assumes the floor is at y = 0 changes. The props live in a node
+that undoes the lift, so they are built in plain world space (y = 0 the road, x = 0 the street's middle, track distance z is
+world z = -z); the timeline's points are track space, which `CityIntro.tp()` makes from the street frame (x from the middle).
+**The beats.** 0-5 s, a flyby from 46 m up behind the Head's light, down the canyon of towers, the camera following the light's
+spot down into the street, one continuous move (the keys are data: `move_*`, smooth); 5-9 s, at street level (1.5-1.8 m, human
+height), seven cyborgs trudging toward the camera down the middle of the road under the Floating Head, its face showing, its
+searchlight sweeping over them; 9-13 s, the light sweeps along the left wall past a lit window and, just after it, the glass
+bursts (`burst_at`: the pane gone, a dark opening with teeth of glass, 44 shards flying out, tumbling and lying on the road, no
+flash); the runner leaps out onto the first cyborg's head (the stomp pose, a tenth of a second's hit-stop, a camera shake; the
+cyborg is squashed with its screen ERR then dark, as a stomp kills in play: the toolkit's new `stomped` cyborg pose calls
+`CyborgBody.die(&"stomp")`), hops over the second and the fifth and runs down the street at 8.5 m/s, the light whipping back to
+catch them (`catch_at`) as the Head notices; 13-18 s, the Head: a cut to its face from the street (startled: eyes wide, an "O";
+angry; then it yells, the jaw wide open and lit, the picture breaking up, the camera pulling back and down for the drop), a cut
+back to the street as every cyborg's screen flickers at once (static, calm, static) and turns angry (with Reduced flashing one
+change, no flicker) and they turn (each a moment apart) and chase at 7 m/s; 18-20 s, Zone 1's title card ("ZONE 1" / "NEON CITY",
+the existing card) over the chase, the street camera drifting on behind it, and a half-second fade to black; the level opens on
+its own view. Only two cuts (to the Head's face and back); the Head's reaction times (`startle_at`, `angry_at`, `yell_at`) and
+the surge (`flicker_at`) are data. The zone's own track fades in over 4 s; nothing flashes (the glass is shards, not a flash).
+**The Head.** `CityIntroHead` is the fight's ship as a prop (it needs no run: FloatingHeadBody lives in one): the hull, the face
+screen under the fight's own face shader, the jaw and its lit mouth, the searchlight and its beam and spot (the fight's own meshes
+and shader, `FloatingHeadBombing.beam_mesh()` / `spot_mesh()`, made public for it), the bay doors and weak-point covers, the lift
+pads' glow on the street. Its light is always the fight's cold white (never red: red is the bombs'); it is driven from the clock
+(`express`, `light`) like every cinematic prop. Two small changes to the fight's files, neither of which changes the fight: the face
+shader's new `surprise` (0 by default: the eyes wide with the lids out of sight and small pupils, the brows raised, an "O" drawn
+under the nose; `FloatingHeadBody.surprise` sets it) and the light shader's `near_fade` (0 by default: the beam and its spot fade
+out within that many metres of the camera, so the street-level camera is never inside a white cone).
+**The street.** `CityIntroStreet`: asphalt over the road far below (whose own traffic streaks were made to be seen from the roofs),
+lane paint (white: yellow is the hazards'), crosswalks, kerbs and sidewalks, shopfronts along both walls (a lit window with shelves,
+a door, a neon sign of glyph rows in the City's accent colours, a pool of light on the pavement), warm street lamps with a halo and
+a pool; two draw calls. `CityIntroTraffic`: hover cars (two bodies, six paints), a hover bus (two paints) and the skin's own hover
+trucks (CityTrucks, built in a copy of the skin whose gap-edge and marker lights are headlight white and whose cab and container
+paints leave out the reds, since orange reads as a gap's edge) in the road's two outer lanes, one each way, the middle being the
+cyborgs'; a MultiMesh to each look (17), each vehicle placed from the clock on a loop, one speed to a lane so none ever catches
+up with another, and a stretch both lanes keep clear (`traffic_clear`) where the camera looks through them as the glass bursts.
+`CityIntroCrowd`: a few hundred low-poly people (a new person, in the kind of the Marketplace's citizens, which are flipbook cards
+that never walk) on both sidewalks, all one MultiMesh walked by a vertex shader (`city_intro_crowd.gdshader`: the legs and arms
+swing, the body bobs, each wraps round the loop; the CPU's cost per frame is one uniform; the parts are tagged in UV2, since a
+MultiMesh without instance colours zeroes the vertex colour). A low-end device gets half the vehicles and people
+(`DeviceProfile.is_low_end()`, `low_end_share`). `CityIntroWindow`: the lit window, its frame, its opening and its shards (a
+MultiMesh, worked out analytically from the clock). Colour rules: nothing lit or painted is a hazard's hue (a test checks the
+palettes), only the Head's light and the cyborgs' screens are cold white. **The actors.** The runner and seven cyborgs
+(the City draws its cyborgs 1.2 times their rig, as in play); their places are formulas (`cyborg_at`), so the runner's
+keys (the leap, the stomp on the first one's head, two hops each over the head of the cyborg that comes toward them) are worked out
+from them and a test checks the runner lands on its head and clears the others. **The toolkit.** One new cyborg pose, `stomped`
+(`CineActorNode`, `CineTimeline.CYBORG_POSES`). The review tool takes `--cam=px,py,pz,tx,ty,tz[,fov]` (a held camera, for close-ups
+of a set) and `--stats` (the renderer's draw calls, objects and triangles every ten frames). **Cost** (headless, `test_city_intro`):
+about 45 ms to set up (about 320 ms the first time, with cold mesh caches), about 1.1 ms a step, its props 54 draw calls; in the
+renderer (`--stats`, Compatibility on llvmpipe) a whole frame is 160-180 draw calls and about 58k triangles in the street, 65 draw
+calls and 41k at the Head's face (the flyover is 70-100 draw calls and 8k triangles): about twice the flyover's draw calls on
+the web demo's first cinematic. Its four new sounds (`tools/asset_gen/sfx_bank_city_intro.gd`, built on the bosses' bank for
+the Head's voice): `window_smash`, `head_startle`, `head_yell` (2.2 s) and `feed_surge`; the rest are the game's (`jump`,
+`land`, `stomp`, `enemy_death`).
 
 **The City outro** (`CityOutro`, task F2a; the owner's beats, GDD §6 Cinematics; its staging is DESIGN-TBD,
 `docs/OPEN_QUESTIONS.md` §D, items 369–381; numbers in `data/cinematics/city_outro_tuning.tres`): 15 s. From the run camera's view

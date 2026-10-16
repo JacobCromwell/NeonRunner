@@ -83,7 +83,8 @@ of each from the game camera, from beside the opening and from above (a skin's `
 open beach); `--from=D` starts the run further on, `--reduced-flashing`
 turns Reduced flashing on), the Beach's splash (`splash_review`: a real `RunWorld` with a skin, a pool in the
 runner's lane and the game camera, for a real fall; `--skin`, `--sky`, `--lanes`, `--grapple`, `--side`), a cinematic (`cinematic_review`: any campaign slot's cinematic on its own, as
-the App plays it, or the toolkit's sampler; `--from=S` starts S seconds in), and comparison
+the App plays it, or the toolkit's sampler; `--from=S` starts S seconds in, `--cam=px,py,pz,tx,ty,tz[,fov]` holds the camera there for a
+close-up of a set, `--stats` prints the renderer's draw calls and triangles), and comparison
 sheets for an open design choice (`cult_emblem_sheet`, D7). Each script's header lists its options. Render
 frames on the Compatibility renderer (the web and low-end Android path) with `--write-movie`, as in
 `CLAUDE.md`.

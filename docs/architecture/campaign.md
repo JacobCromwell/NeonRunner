@@ -126,8 +126,8 @@ zone's intro and outro too; the existing ones don't set it and keep their placeh
 
 A `BossDef` or `CinematicDef` with an empty `scene` shows a placeholder card, which the player
 continues past. A cinematic is a scene whose root extends `Cinematic` (emit `finished`, support
-`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the Dead Zone's and the
-City's boss intro play a placeholder arrival flyover, the City's outro plays its own scene (`CityOutro`, task F2a),
+`skip()`), built with the cinematic toolkit (Cinematics, below): every zone's intro but the City's and the Dead Zone's and
+the City's boss intro play a placeholder arrival flyover, the City's intro plays its own scene (`CityIntro`, task F2f), the City's outro plays its own scene (`CityOutro`, task F2a),
 Gangland's boss intro plays its own (`SewerSwarmIntro`, task F2b), the Dead Zone's intro its own (`DeadZoneIntro`,
 task F2c), Gangland's and the Beach's outros theirs (`GanglandOutro`, F2d; `BeachOutro`, F2e), and the other outros are
 still cards. A boss is
