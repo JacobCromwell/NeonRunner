@@ -79,10 +79,12 @@ extends EnemyTuning
 ## Owner, task K1 (replacing GDD §9.7's "cannot reach the ship's hull"): the Bad Dream slashes a runner on a
 ## ceiling as it does one on the floor: the same warning (shriek, open maw, the covered lanes lit red, here on
 ## the ceiling's underside), the same three lanes (the rider's and one either side, clamped at the street's
-## edges), the same lunge. DESIGN-TBD (docs/questions/k1.md): everything below.
+## edges; two lanes, or one, where three would leave no ceiling lane to move to), the same lunge.
+## DESIGN-TBD (docs/questions/k1.md): everything below.
 ## It rears up toward the hull for the slash until its head is this far under the underside.
 @export_range(0.1, 3.0, 0.1, "suffix:m") var hull_clearance: float = 0.6
-## How fast it rears up (and comes back down, outside a slash).
+## How fast it rears up toward the hull for the slash (it settles back at a fixed 3 m/s afterwards, as after
+## a slash at the floor).
 @export_range(0.5, 10.0, 0.5, "suffix:m/s") var ceiling_rise_speed: float = 3.0
 ## It waits this long after a runner's anti-grav pad flipped them (the flight up takes about 0.4 s) before it
 ## telegraphs at them, so a warning isn't spent in the air.

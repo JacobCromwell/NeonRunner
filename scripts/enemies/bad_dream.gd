@@ -35,11 +35,16 @@ extends Enemy
 ##   either side, clamped at the street's edges) and the same lunge; the claws hang from the underside
 ##   (ceiling_slash_reach) and still catch a rider's jump. Only leaving the locked lanes dodges it, and a ceiling
 ##   has no wall to run to (Player: no way from the ceiling onto a wall) nor a way to drop at will, so it
-##   slashes only when a ceiling lane outside the band is left to move to (_escape_open: with the ceiling
-##   over fewer lanes, the slash can leave none, and then it doesn't come), when the ceiling lasts over the
-##   rider's lane until the claws have passed (a rider dropping off its end would fall through them), no
-##   return pad is about to drop them, and the rider has been up ceiling_settle_time (not in the air from
-##   their pad). The slash stays where it was locked: a runner who drops or flips meanwhile is out of it.
+##   slashes only when a ceiling lane outside the band is left to move to (_escape_open): where the
+##   three-lane band would cover the whole ceiling (the middle lane of a 3-lane street, a ceiling three lanes
+##   wide), it locks two lanes instead, the rider's and one side's, and on a two-lane ceiling only the
+##   rider's (_narrowed_ceiling_band; DESIGN-TBD, docs/questions/k1.md 1); a one-lane ceiling, or one whose
+##   other lanes are shut, stays a refuge. A lane is a way out only if the ceiling lasts over it until the
+##   claws have passed, no return pad drops the rider there and no enemy's body (a Barnacle Turret's) hangs
+##   in it. It also slashes only when the ceiling lasts over the rider's lane until then (a rider dropping
+##   off its end would fall through the claws), no return pad is about to drop them, and the rider has been up
+##   ceiling_settle_time (not in the air from their pad). The slash stays where it was locked: a runner who
+##   drops or flips meanwhile is out of it.
 ## - Immune to weapons (auto-fire never targets it), stomping and claws. Its slash is an enemy
 ##   attack, so armor or the shield blocks one; the juggernaut dash passes through it safely and
 ##   doesn't hurt it (DamageRules; declared properties only). Touching its body (it never
@@ -90,7 +95,7 @@ var band := Vector2i(-1, -1)
 ## Slashes made so far.
 var slashes: int = 0
 ## Events as [name, level time]: emerge, lurk, chase (a lurk's end: its chase begins), drift, telegraph,
-## lunge, slash, recover, wait, resume, dissolve, emp, bonus, fizzle. Tests read it.
+## lunge, slash, recover, dissolve, emp, bonus, fizzle. Tests read it.
 var history: Array = []
 ## Lurking over the spot it burst out of until the runner comes within hover_ahead (see the header): its
 ## chase hasn't begun.
@@ -127,6 +132,8 @@ var _dissolve_in_place: bool = false
 var _arc_time: float = -1.0
 var _arc_dir: float = 1.0
 var _blocker_query := PhysicsShapeQueryParameters3D.new()
+## Looks for an enemy's body in a ceiling lane (_body_in_lane).
+var _body_query := PhysicsShapeQueryParameters3D.new()
 
 var _body: Hazard
 var _slash: Hazard
@@ -183,6 +190,10 @@ func _build() -> void:
 	var blocker_shape := BoxShape3D.new()
 	blocker_shape.size = Vector3(geo.lane_width * 0.5, 1.0, 6.0)
 	_blocker_query.shape = blocker_shape
+	_body_query.collide_with_areas = true
+	_body_query.collide_with_bodies = false
+	_body_query.collision_mask = TrackBuilder.LAYER_HAZARD
+	_body_query.shape = BoxShape3D.new()
 	_build_visuals()
 	world.player.movement_event.connect(_on_player_event)
 	history.append(["emerge", world.level_time()])
@@ -311,6 +322,8 @@ func _drift(p: Player, delta: float) -> void:
 	if not lined_up and (_align_wait < _t.max_align_wait or p.surface == Player.Surface.WALL):
 		return
 	var b: Vector2i = band_for(p)
+	if p.surface == Player.Surface.CEILING and not _escape_open(p, b):
+		b = _narrowed_ceiling_band(p, b)
 	if _escape_open(p, b):
 		_start_telegraph(b, p)
 
@@ -328,6 +341,25 @@ func _may_slash(p: Player) -> bool:
 	if chase_time + _t.warning_time(_scaling) + _t.slash_active > chase_seconds:
 		return false
 	return p.surface != Player.Surface.CEILING or (_ceiling_time >= _t.ceiling_settle_time and _ceiling_holds(p))
+
+
+## DESIGN-TBD (docs/questions/k1.md 1): where the three-lane band `b` would leave a ceiling rider no lane to
+## move to (the middle lane of a three-lane street, a ceiling three lanes wide), the slash locks fewer lanes
+## so a rider on a ceiling stays hittable and keeps a fair escape: the rider's lane and one side's (one
+## whose way out is open, at random when both are), or on a two-lane ceiling the rider's lane alone. `b`
+## itself when none leaves a way out (a one-lane ceiling, or one whose other lanes are shut): a refuge.
+func _narrowed_ceiling_band(p: Player, b: Vector2i) -> Vector2i:
+	var n: int = world.geo.lane_count
+	var lane: int = clampi(p.lane, 0, n - 1)
+	var open: Array[Vector2i] = []
+	for side: Vector2i in [Vector2i(lane, lane + 1), Vector2i(lane - 1, lane)]:
+		if side.x >= 0 and side.y < n and _escape_open(p, side):
+			open.append(side)
+	if open.is_empty() and _escape_open(p, Vector2i(lane, lane)):
+		open.append(Vector2i(lane, lane))
+	if open.is_empty():
+		return b
+	return open[0] if open.size() == 1 else open[rng.randi_range(0, open.size() - 1)]
 
 
 func _start_telegraph(b: Vector2i, p: Player) -> void:
@@ -555,11 +587,13 @@ func slash_box_for(b: Vector2i, ceiling_y: float = NAN) -> AABB:
 ##
 ## A ceiling rider (task K1) has the ceiling's lanes only: a wall can't be reached from a ceiling, and
 ## nothing drops them at will, so what is left is a lane outside the band that the ceiling covers
-## and that nothing solid fills (_ceiling_lane_open). With the ceiling over three lanes or fewer, or a
-## rider in the middle of a three-lane street, the band covers every ceiling lane and no slash comes.
+## and that nothing shuts (_ceiling_lane_open). With the ceiling over three lanes or fewer, or a rider in
+## the middle of a three-lane street, the three-lane band covers every ceiling lane: _narrowed_ceiling_band
+## then locks fewer lanes, and where even that leaves no way out, no slash comes.
 func _escape_open(p: Player, b: Vector2i) -> bool:
 	var n: int = world.geo.lane_count
 	if p.surface == Player.Surface.CEILING:
+		# DESIGN-TBD (docs/questions/k1.md 1): no wall to run to, so only a free ceiling lane counts.
 		for lane: int in n:
 			if (lane < b.x or lane > b.y) and _ceiling_lane_open(lane, p):
 				return true
@@ -588,16 +622,20 @@ func _lane_blocked(lane: int, p: Player) -> bool:
 	return not get_world_3d().direct_space_state.intersect_shape(_blocker_query, 1).is_empty()
 
 
-## A ceiling lane a rider can move to and be safe in: the ceiling is over every lane from theirs to it,
-## now and when they get there (a switch takes lane_switch_time a lane; a move past a ceiling's edge is
-## blocked, Player._ceiling_ends_before), and nothing solid fills it.
+## A ceiling lane a rider can move to and wait in until the claws have passed: the ceiling is over every lane
+## from theirs to it, now and when they get there (a switch takes lane_switch_time a lane; a move past a
+## ceiling's edge is blocked, Player._ceiling_ends_before), and over it until the strike (_strike_reach), no
+## return pad drops them there, no enemy's body hangs in it, and nothing solid fills it.
 func _ceiling_lane_open(lane: int, p: Player) -> bool:
 	var reach: float = maxf(p.speed, 1.0) * world.tuning.lane_switch_time * absi(lane - p.lane)
 	for d: float in [p.distance, p.distance + reach]:
 		for l: int in range(mini(lane, p.lane), maxi(lane, p.lane) + 1):
 			if not world.layout.under_hull(d, l):
 				return false
-	return not _lane_blocked(lane, p)
+	var until: float = _strike_reach(p)
+	if not _hull_lasts(lane, p.distance, until) or _return_pad_in(lane, p.distance, until):
+		return false
+	return not _body_in_lane(lane, p, until) and not _lane_blocked(lane, p)
 
 
 ## Where a slash started now would have struck and finished: the track distance the player reaches by
@@ -611,22 +649,48 @@ func _strike_reach(p: Player) -> float:
 ## and no return pad (Player._drop_from_ceiling) in their lane drops them before then.
 func _ceiling_holds(p: Player) -> bool:
 	var until: float = _strike_reach(p)
-	var at: float = p.distance
-	# The ceiling section over their lane, and whatever section carries on from where it ends.
+	return _hull_lasts(p.lane, p.distance, until) and not _return_pad_in(p.lane, p.distance, until)
+
+
+## A ceiling is over `lane` all the way from `from` to `until`: the section over it there, and whatever
+## section carries on from where it ends.
+func _hull_lasts(lane: int, from: float, until: float) -> bool:
+	var at: float = from
 	for i: int in 4:
-		var h: Dictionary = world.layout.hull_at(at, p.lane)
+		var h: Dictionary = world.layout.hull_at(at, lane)
 		if h.is_empty():
 			return false
 		at = float(h["end"])
 		if at >= until:
-			break
+			return true
 		at += 0.01
-	if at < until:
-		return false
+	return false
+
+
+## A return pad (Player._drop_from_ceiling) in `lane` lies between `from` and `until`.
+func _return_pad_in(lane: int, from: float, until: float) -> bool:
 	for r: Dictionary in world.layout.return_pads:
-		if int(r["lane"]) == p.lane and float(r["at"]) <= until and float(r["at"]) + world.tuning.pad_length >= p.distance:
-			return false
-	return true
+		if int(r["lane"]) == lane and float(r["at"]) <= until and float(r["at"]) + world.tuning.pad_length >= from:
+			return true
+	return false
+
+
+## An enemy's body (a Barnacle Turret's, hanging from the underside) lies in `lane` where a rider hangs,
+## anywhere between a little behind the player and the strike: moving there would run into it.
+func _body_in_lane(lane: int, p: Player, until: float) -> bool:
+	if not is_inside_tree():
+		return false
+	var from: float = p.distance - 1.0
+	var to: float = until + 1.0
+	var height: float = world.tuning.hurtbox_size.y
+	(_body_query.shape as BoxShape3D).size = Vector3(world.tuning.hurtbox_size.x, height, to - from)
+	_body_query.transform = Transform3D(Basis.IDENTITY,
+		Vector3(world.geo.lane_x(lane), p.ceiling_y - height * 0.5, TrackGeometry.world_z((from + to) * 0.5)))
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_body_query, 16):
+		var hazard := hit["collider"] as Hazard
+		if hazard != null and hazard.enemy != null and hazard.enemy != self and hazard.enemy.alive:
+			return true
+	return false
 
 
 func _sign_between(side: int, from: float, to: float) -> bool:

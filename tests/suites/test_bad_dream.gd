@@ -45,6 +45,8 @@ func run() -> void:
 	await _test_ceiling_slash()
 	await _test_ceiling_dodge()
 	await _test_ceiling_no_escape()
+	await _test_ceiling_middle_rider()
+	await _test_ceiling_escape_closed()
 	await _test_ceiling_holds()
 	await _test_ceiling_then_floor()
 	await _test_follows_onto_wall()
@@ -74,13 +76,13 @@ func _loadout(items: Dictionary) -> Loadout:
 ## A world with the player in `player_lane` and a Bad Dream already floating in front of them (no
 ## emergence), over `dream_lane` (default: the player's). Returns [world, dream].
 func _world(lanes: int, player_lane: int, params: Dictionary = {}, loadout: Loadout = null,
-		layout: LevelLayout = null, dream_lane: int = -1, config: LevelConfig = null) -> Array:
+		layout: LevelLayout = null, dream_lane: int = -1, config: LevelConfig = null, dream_seed: int = 5) -> Array:
 	var l: LevelLayout = layout if layout != null else RunSim.layout(lanes, 1500.0)
 	var w: RunWorld = sim.build_world(l, loadout, null, config)
 	w.player.setup(tuning, w.geo, player_lane)
 	var p: Dictionary = {"emerge": false}
 	p.merge(params, true)
-	var dream := w.director.spawn({"type": "bad_dream", "at": 0.0, "side": 0, "seed": 5, "params": p,
+	var dream := w.director.spawn({"type": "bad_dream", "at": 0.0, "side": 0, "seed": dream_seed, "params": p,
 		"lane": dream_lane if dream_lane >= 0 else player_lane}) as BadDream
 	await tree.physics_frame
 	w.player.running = true
@@ -573,12 +575,19 @@ const CEILING_PAD_AT: float = 12.0
 ## running long (a return pad per entry of `return_pads`), and the dream floating in front of them. Returns
 ## [world, dream, level time of the pad's flip] once the player is on the ceiling and the dream isn't attacking.
 func _ceiling_world(lanes: int, lane: int, covered: Vector2i, seconds: float, loadout: Loadout = null,
-		return_pads: Array[Dictionary] = []) -> Array:
+		return_pads: Array[Dictionary] = [], dream_seed: int = 5) -> Array:
 	var l := RunSim.layout(lanes, 1500.0)
 	l.hulls.append(LevelLayout.make_hull(CEILING_PAD_AT - 3.0, CEILING_PAD_AT + seconds * tuning.run_speed, covered, lanes))
+	return await _ceiling_world_of(l, lane, return_pads, loadout, dream_seed)
+
+
+## _ceiling_world over a layout `l` that already has its ceilings (a pad in `lane` is added at CEILING_PAD_AT).
+func _ceiling_world_of(l: LevelLayout, lane: int, return_pads: Array[Dictionary] = [], loadout: Loadout = null,
+		dream_seed: int = 5) -> Array:
+	var lanes: int = l.lane_count
 	l.pads.append({"lane": lane, "at": CEILING_PAD_AT})
 	l.return_pads.append_array(return_pads)
-	var made: Array = await _world(lanes, lane, {"chase": 30.0}, loadout, l)
+	var made: Array = await _world(lanes, lane, {"chase": 30.0}, loadout, l, -1, null, dream_seed)
 	var w: RunWorld = made[0]
 	var dream: BadDream = made[1]
 	await _until(func() -> bool: return w.player.surface == Player.Surface.CEILING, 4.0)
@@ -748,29 +757,34 @@ func _test_ceiling_dodge() -> void:
 
 
 ## The 'no escape left' rule on a ceiling (a ceiling has no wall to run to, and nothing drops the rider at will):
-## the three-lane slash comes only if a ceiling lane outside it is left to move to. With the ceiling over fewer
-## lanes (or three lanes in all, for a rider in the middle) it doesn't come, and the dream just floats; a ceiling
-## lane is lit only where the ceiling is, and the lanes the ceiling doesn't have don't count as a way out.
+## the slash comes only if a ceiling lane outside it is left to move to. Where the three-lane band would cover
+## every ceiling lane (the middle lane of a 3-lane street, a ceiling three lanes wide), it locks two lanes, the
+## rider's and one side's, and on a two-lane ceiling only the rider's (DESIGN-TBD, docs/questions/k1.md 1); a
+## one-lane ceiling stays a refuge. A ceiling lane is lit only where the ceiling is, and the lanes the ceiling
+## doesn't have don't count as a way out.
 func _test_ceiling_no_escape() -> void:
-	# [lanes, ceiling's lanes, rider's lane, whether the slash comes]
+	# [lanes, ceiling's lanes, rider's lane, the bands it may lock (none: no slash comes)]
 	var cases: Array = [
-		[3, Vector2i(0, 2), 1, false],
-		[3, Vector2i(0, 2), 0, true],
-		[3, Vector2i(0, 2), 2, true],
-		[5, Vector2i(1, 3), 2, false],
-		[5, Vector2i(1, 3), 1, true],
-		[5, Vector2i(1, 3), 3, true],
-		[5, Vector2i(0, 1), 0, false],
-		[5, Vector2i(3, 4), 4, false],
-		[5, Vector2i(0, 2), 0, true],
-		[6, Vector2i(1, 4), 2, true],
-		[6, Vector2i(2, 3), 2, false],
+		[3, Vector2i(0, 2), 1, [Vector2i(0, 1), Vector2i(1, 2)]],
+		[3, Vector2i(0, 2), 0, [Vector2i(0, 1)]],
+		[3, Vector2i(0, 2), 2, [Vector2i(1, 2)]],
+		[5, Vector2i(1, 3), 2, [Vector2i(1, 2), Vector2i(2, 3)]],
+		[5, Vector2i(1, 3), 1, [Vector2i(0, 2)]],
+		[5, Vector2i(1, 3), 3, [Vector2i(2, 4)]],
+		[5, Vector2i(0, 1), 0, [Vector2i(0, 0)]],
+		[5, Vector2i(0, 1), 1, [Vector2i(1, 2)]],
+		[5, Vector2i(3, 4), 4, [Vector2i(4, 4)]],
+		[5, Vector2i(0, 2), 0, [Vector2i(0, 1)]],
+		[6, Vector2i(1, 4), 2, [Vector2i(1, 3)]],
+		[6, Vector2i(2, 3), 2, [Vector2i(1, 2)]],
+		[5, Vector2i(2, 2), 2, []],
+		[3, Vector2i(1, 1), 1, []],
 	]
 	for c: Array in cases:
 		var lanes: int = c[0]
 		var covered: Vector2i = c[1]
 		var rider: int = c[2]
-		var comes: bool = c[3]
+		var allowed: Array = c[3]
 		var tag: String = "lanes=%d ceiling %d..%d rider=%d" % [lanes, covered.x, covered.y, rider]
 		var made: Array = await _ceiling_world(lanes, rider, covered, 5.0)
 		var w: RunWorld = made[0]
@@ -778,15 +792,16 @@ func _test_ceiling_no_escape() -> void:
 		var id: int = dream.get_instance_id()
 		check(w.player.surface == Player.Surface.CEILING, "the rider is up " + tag)
 		var told: int = _count(id, "telegraph")
-		if not comes:
+		if allowed.is_empty():
 			var ride: Array = await _ride(w, dream, 5.0)
 			check(float(ride[0]) > 2.0 and int(ride[1]) == 0 and w.player.alive,
 				"no slash with no ceiling lane to move to, though they ride %.1f s %s (%d telegraphs)" % [ride[0], tag, ride[1]])
 			await sim.free_world(w)
 			continue
 		await _until(func() -> bool: return _count(id, "telegraph") > told or not w.player.alive, 4.0)
-		var band: Vector2i = _expected_band(lanes, rider)
-		check(_count(id, "telegraph") > told and dream.band == band, "the slash comes over %s %s (%s)" % [band, tag, dream.band])
+		var band: Vector2i = dream.band
+		check(_count(id, "telegraph") > told and allowed.has(band), "the slash comes over one of %s %s (%s)" % [allowed, tag, band])
+		check(band.x <= rider and rider <= band.y, "and takes in the rider's lane %s (%s)" % [tag, band])
 		await physics_frames(3)
 		var marks := dream.get_node(^"LaneMarks") as MeshInstance3D
 		if marks.mesh != null:
@@ -809,6 +824,98 @@ func _test_ceiling_no_escape() -> void:
 		await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 3.0)
 		check(w.player.alive and w.player.lane == out and w.player.surface == Player.Surface.CEILING,
 			"and moving there dodges it %s (%s)" % [tag, w.player.last_event])
+		await sim.free_world(w)
+
+
+## A rider in the middle of a 3-lane street's ceiling (or of a ceiling three lanes wide) is hittable: the slash
+## locks the rider's lane and one side's, either side by the dream's seed, and a rider who stays is hit while one
+## who moves to the free lane (one switch) is not.
+func _test_ceiling_middle_rider() -> void:
+	var late: float = t.warning_time(0.0) - 0.36
+	var seen: Dictionary = {}
+	for config: Array in [[3, Vector2i(0, 2), 1], [5, Vector2i(1, 3), 2], [6, Vector2i(2, 4), 3]]:
+		var lanes: int = config[0]
+		var covered: Vector2i = config[1]
+		var rider: int = config[2]
+		for dream_seed: int in [1, 2, 3, 4, 5, 6]:
+			var tag: String = "lanes=%d ceiling %d..%d seed %d" % [lanes, covered.x, covered.y, dream_seed]
+			# Moves to the free lane (late, at the last moment) ...
+			var made: Array = await _ceiling_world(lanes, rider, covered, 6.0, null, [] as Array[Dictionary], dream_seed)
+			var w: RunWorld = made[0]
+			var dream: BadDream = made[1]
+			var id: int = dream.get_instance_id()
+			var told: int = _count(id, "telegraph")
+			await _until(func() -> bool: return _count(id, "telegraph") > told, 4.0)
+			var band: Vector2i = dream.band
+			var side: int = band.y - rider if band.y > rider else band.x - rider
+			check(band.y - band.x == 1 and band.x <= rider and rider <= band.y and absi(side) == 1,
+				"two lanes: the rider's and one side's (%s) %s" % [band, tag])
+			seen[[lanes, side]] = true
+			await _wait(late)
+			w.player.press(&"move_left" if side > 0 else &"move_right")
+			await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 3.0)
+			check(w.player.alive and w.player.lane == rider - side and w.player.surface == Player.Surface.CEILING,
+				"moving to the free lane dodges it %s (%s)" % [tag, w.player.last_event])
+			await sim.free_world(w)
+			# ... and staying is hit.
+			made = await _ceiling_world(lanes, rider, covered, 6.0, null, [] as Array[Dictionary], dream_seed)
+			w = made[0]
+			dream = made[1]
+			id = dream.get_instance_id()
+			await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 4.0)
+			check(not w.player.alive and w.player.last_event.contains(SLASH_NAME),
+				"a rider who stays is hit %s (%s)" % [tag, w.player.last_event])
+			await sim.free_world(w)
+	for lanes: int in [3, 5, 6]:
+		check(seen.has([lanes, 1]) and seen.has([lanes, -1]), "either side is picked (lanes=%d: %s)" % [lanes, seen.keys()])
+
+
+## A lane isn't a way out if the ceiling over it ends before the claws have passed, if a return pad would drop the
+## rider there, or if an enemy's body (a Barnacle Turret's) hangs in it between them and the strike; one behind them
+## or beyond the strike doesn't count. On a two-lane ceiling the only way out is the other lane.
+func _test_ceiling_escape_closed() -> void:
+	# [what's different about the other lane, where its ceiling ends, where a turret hangs in it (-1: none), its
+	# return pads, whether the slash comes, the track distance to watch no slash come until (-1: five seconds)]
+	var cases: Array = [
+		["its ceiling lasts", 150.0, -1.0, [] as Array[Dictionary], true, -1.0],
+		["its ceiling ends before the strike", 40.0, -1.0, [] as Array[Dictionary], false, -1.0],
+		["a return pad drops them there", 150.0, -1.0, [{"lane": 1, "at": 46.0}] as Array[Dictionary], false, 44.0],
+		["a turret hangs there before the strike", 150.0, 46.0, [] as Array[Dictionary], false, 44.0],
+		["a turret hangs there beyond the strike", 150.0, 120.0, [] as Array[Dictionary], true, -1.0],
+		["a turret hung there behind them", 150.0, 14.0, [] as Array[Dictionary], true, -1.0],
+	]
+	for c: Array in cases:
+		var l := RunSim.layout(5, 1500.0)
+		# Their lane's ceiling goes on; the other's (lane 1) ends at c[1].
+		l.hulls.append(LevelLayout.make_hull(CEILING_PAD_AT - 3.0, 150.0, Vector2i(0, 0), 5))
+		l.hulls.append(LevelLayout.make_hull(CEILING_PAD_AT - 3.0, float(c[1]), Vector2i(1, 1), 5))
+		var made: Array = await _ceiling_world_of(l, 0, c[3])
+		var w: RunWorld = made[0]
+		var dream: BadDream = made[1]
+		var id: int = dream.get_instance_id()
+		if float(c[2]) > 0.0:
+			var turret := w.director.spawn({"type": "barnacle_turret", "at": float(c[2]), "lane": 1, "side": 0, "seed": 3,
+				"params": {"fires": false}}) as BarnacleTurret
+			check(turret != null, "a turret hangs in lane 1 (%s)" % c[0])
+		var told: int = _count(id, "telegraph")
+		if bool(c[4]):
+			await _until(func() -> bool: return _count(id, "telegraph") > told or not w.player.alive, 4.0)
+			check(_count(id, "telegraph") > told and dream.band == Vector2i(0, 0),
+				"%s: its only lane is slashed and the other is the way out (%s)" % [c[0], dream.band])
+		elif float(c[5]) < 0.0:
+			var ride: Array = await _ride(w, dream, 5.0)
+			check(float(ride[0]) > 1.5 and int(ride[1]) == 0 and w.player.alive,
+				"%s: no way out, no slash (%d telegraphs in %.1f s)" % [c[0], ride[1], ride[0]])
+		else:
+			# The turret or the return pad shuts the lane until the runner is past it: no slash till then, and
+			# one once it's behind them.
+			var watch: float = c[5]
+			await _until(func() -> bool: return w.player.distance >= watch or not w.player.alive, 5.0)
+			check(w.player.alive and w.player.distance >= watch and _count(id, "telegraph") == told,
+				"%s: no way out, no slash (%d telegraphs up to %.0f m)" % [c[0], _count(id, "telegraph") - told, w.player.distance])
+			await _until(func() -> bool: return _count(id, "telegraph") > told or not w.player.alive, 3.0)
+			check(_count(id, "telegraph") > told and dream.band == Vector2i(0, 0),
+				"%s: and once it is behind them the other lane is a way out (%s)" % [c[0], dream.band])
 		await sim.free_world(w)
 
 

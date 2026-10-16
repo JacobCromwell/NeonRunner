@@ -283,16 +283,21 @@ locks the surface: a ceiling slash's box (`slash_box_for(band, ceiling_y)`) hang
 jump away from the ceiling is still hit, as a floor jump is) from the rider's `Player.ceiling_y` with `side_margin` at
 every edge, and stays there whatever the player does meanwhile, so a runner who drops or flips out of it is safe.
 Fairness (`_may_slash`, `_escape_open`): only a rider who has been up `ceiling_settle_time` (the flight from the pad
-takes about 0.4 s); only under a ceiling that lasts over their lane until the claws have passed (`_ceiling_holds`
-reads `LevelLayout.hull_at` along the way, and `return_pads`: falling off an end or a return pad's drop would pass
-through claws hanging from the underside); and only when a lane outside the band is left to move to that the ceiling
-covers (`_ceiling_lane_open`: `LevelLayout.under_hull` for every lane from theirs, now and as they arrive, and no solid
-side in it): a ceiling has no wall to run to (Player: no way from the ceiling onto a wall) and nothing drops a rider at
-will, so on a ceiling over three lanes or fewer, or for the middle lane of a 3-lane street, the band covers it all and
-the dream just floats (maw shut, head tipped back). The floor and wall slashes, the generator (pads, host rules) and the
-Sleep Taker's slash (its own `SleepTakerSlash`; it shares only `BadDreamModel`'s lane marks and streaks) are as they
-were. `test_bad_dream` covers the box, the warning, the dodge (a jump doesn't), the no-escape and narrow ceilings, and a
-ceiling that ends or a return pad that comes too soon.
+takes about 0.4 s); only under a ceiling that lasts over their lane until the claws have passed (`_ceiling_holds`:
+`_hull_lasts` reads `LevelLayout.hull_at` along the way, `_return_pad_in` the `return_pads`; falling off an end or a
+return pad's drop would pass through claws hanging from the underside); and only when a lane outside the band is left
+to move to (`_ceiling_lane_open`): the ceiling over every lane from theirs, now and as they arrive
+(`LevelLayout.under_hull`) and over that lane until the strike (`_strike_reach`), no return pad dropping them there,
+no enemy's body in it (`_body_in_lane`: a physics query on the hazard layer for a hitbox with an `enemy`, a Barnacle
+Turret's, from a little behind the rider to the strike) and no solid side. A ceiling has no wall to run to (Player: no
+way from the ceiling onto a wall) and nothing drops a rider at will; where the three-lane band would cover every
+ceiling lane (the middle lane of a 3-lane street, a ceiling three lanes wide), `_narrowed_ceiling_band` locks two
+lanes, the rider's and one side's (random, one whose way out is open), or on a two-lane ceiling the rider's alone
+(DESIGN-TBD, `docs/questions/k1.md` 1); a one-lane ceiling, or one whose other lanes are shut, is a refuge: the dream
+just floats (maw shut, head tipped back). The floor and wall slashes, the generator (pads, host rules) and the Sleep
+Taker's slash (its own `SleepTakerSlash`; it shares only `BadDreamModel`'s lane marks and streaks) are as they were.
+`test_bad_dream` covers the box, the warning, the dodge (a jump doesn't), the narrowed bands and the middle lane's
+hit and dodge, ceilings and turrets that shut the way out, and a ceiling that ends or a return pad that comes too soon.
 
 **Dash walls** (task H7a; GDD §9.14: a building across every floor lane, which the runner breaks as they
 reach it). Every enemy that holds an attack by a zone doodad holds it by a wall (`LevelLayout.doodad_between`
