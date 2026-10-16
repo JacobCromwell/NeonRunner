@@ -9,7 +9,7 @@ display_name = "House Edge"
 level_seed = 702
 duration_seconds = 150.0
 difficulty_bias = 0.0
-features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_fences", "screech_vents", "treasure_stash", "fenced_ceiling")
+features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_run_gaps", "wall_fences", "screech_vents", "treasure_stash", "fenced_ceiling")
 guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "fenced_ceiling": 0.25

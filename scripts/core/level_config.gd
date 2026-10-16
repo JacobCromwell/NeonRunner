@@ -88,6 +88,10 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ##   doodads, from Casino 1; a ceiling whose first pad lifts the rider into rows of fences and whose later pad
 ##   lands them past them, from Casino 2 (no patterns: their rules, treasure_stash_rules.gd and
 ##   fenced_ceiling_rules.gd, turn up to treasure_stashes and fenced_ceilings of the level's ceilings into them)
+## - wall_run_gaps: wall-run gaps (task J2; the owner, October 15, 2026, docs/USER_REQUESTS.md), a hole over
+##   every floor lane crossed by a wall run on its lit side wall, from Marketplace 1 (halfway in) on, never in
+##   zone 1 or a boss arena (no patterns: their rules, wall_run_gaps_rules.gd, place them, WallRunGapPlacement;
+##   tuning in data/tuning/wall_run_gaps.tres)
 ## - the planned ones in PLANNED_FEATURES
 ## Rules scripts run in this list's order (see LevelGenerator), so the campaign keeps the order in
 ## which the schedule introduces features.

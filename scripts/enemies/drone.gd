@@ -18,6 +18,8 @@ extends Enemy
 ##   drone keeps following and winds up once its turn comes (EnemyDirector.major_attack_blocked).
 ## - Fenced ceilings (task I4; GDD §3, "Ceiling scenarios"): no barrage plays out while the player picks a fenced
 ##   ceiling's pad, the trap from the safe one (_pick_in_reach); it keeps following and fires once they're past.
+## - Wall-run gaps (task J2): no barrage plays out while the player heads for a wall-run gap's lit wall or runs it over
+##   the gap (_wall_run_in_reach); it keeps following and fires once they're across.
 ## - Kill: stepping on any anti-grav pad hurls every drone on screen up into the ship's hull
 ##   (drone_crash), over the lanes that ceiling covers (a narrow ceiling, GDD §3: it veers into the
 ##   ceiling's lanes as it rises); weapons take 17 laser tier 1 shots (health 15, stretched by
@@ -287,6 +289,9 @@ func _update_follow(p: Player, delta: float) -> void:
 	# Task I4: nor at one picking a fenced ceiling's pad (asked before its turn as well).
 	if _pick_in_reach(p):
 		return
+	# Task J2: nor at one heading for, or running, a wall-run gap's lit wall (asked before its turn as well).
+	if _wall_run_in_reach(p):
+		return
 	# GDD §9.7: no barrage starts while the Cyborg's Bad Dream chases; GDD §9: nor while another
 	# type's big attack is on (it keeps following and waits for its turn).
 	if world.director.major_attack_blocked(self):
@@ -333,6 +338,20 @@ func _doodad_in_reach(p: Player) -> bool:
 func _pick_in_reach(p: Player) -> bool:
 	var run: float = maxf(p.speed, 1.0)
 	return world.layout.fenced_pick_between(p.distance - 1.0, p.distance + run * _barrage_seconds())
+
+
+## Task J2 (a wall-run gap, the owner, October 15, 2026: every floor lane a hole, a side wall the only way across): a
+## barrage never plays out while the player heads for a wall-run gap's lit wall or runs it over the gap (a wall runner
+## there can't zigzag, and leaving the wall drops them in). True while a wall-run gap's crossing
+## (LevelLayout.wall_run_between: from its clear run-in to its far edge) lies along the stretch the player runs from now
+## until a barrage started now would have passed them. A drone follows the runner for as long as it lives, so the
+## generator can't keep its barrages off a wall-run gap (WallRunGapPlacement): this holds one back for the few seconds
+## of the crossing, and it fires once they're across. DESIGN-TBD (docs/questions/j2.md).
+func _wall_run_in_reach(p: Player) -> bool:
+	if world.layout.wall_run_gaps.is_empty():
+		return false
+	var run: float = maxf(p.speed, 1.0)
+	return world.layout.wall_run_between(p.distance - 1.0, p.distance + run * _barrage_seconds())
 
 
 ## How long a barrage started now takes until it has passed the player: its wind-up, its bullets and their flight.

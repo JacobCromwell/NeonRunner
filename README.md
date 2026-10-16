@@ -59,7 +59,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 |---|---|
 | `--quick` | Quick play: the prototype level, restarting on death, with the debug keys and HUD |
 | `--seed=N --lanes=N --difficulty=X` | Quick play with that seed, lane count (3, 5 or 6) or difficulty (0–1) |
-| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
+| `--features=cyborg,drone` | Quick play with extra level features: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `generator`, `hover_truck`, `octodog`, `screech`, `screech_vents`, `drone`, `barnacle_turret` (with `ceilings`), `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel` (with `--skin=golden` or `golden_palace`, whose walls open its niche), `enforcer_truck` (with `octodog` or `buzz_overdrive`, its baits)), wall fences (`wall_fences`, and `wall_fences_partial` for partial ones), dash walls (`dash_wall`: buildings across the street to dash through; with `--full-loadout` for the dash), the ceiling scenarios (`treasure_stash`, on 5 or 6 lanes, and `fenced_ceiling`, both with `ceilings`), wall-run gaps (`wall_run_gaps`: the whole street a hole, crossed on its lit side wall), or `floor_cutter` (a grey-box stand-in that cuts a lane's floor into a gap during play, for review). The full list is in `LevelConfig` |
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
@@ -186,6 +186,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   with nothing else asking for the dash just before one, a clear stretch before and after, never under a
   ceiling, and a side wall always open beside them. A hover truck drops behind you and lets you go first, and
   a heli drone flies over one (in quick play, `--features=dash_wall --full-loadout`).
+  Wall-run gaps (from halfway into Marketplace 1, one to a few a level, more asked for in later levels, though
+  the crowded Golden Zone fits the fewest; placeholder numbers): the whole street drops away for longer than any jump, even with the dash, and one side wall lights up
+  with the ramps' green arrows. Get into that wall's outer lane and step onto the wall where the arrows begin: the
+  wall run carries you across onto a clear landing. The wall is the safe path there, kept clear of signs, wall
+  fences, wall enemies and wall gaps, with nothing else in any lane around it, and drones and a Bad Dream hold
+  their attacks while you cross; the grapple or a revive puts you back on that wall (in quick play,
+  `--features=wall_run_gaps`).
   Ceiling scenarios (from the Casino, now and then): a ceiling whose first pad lifts you into rows of
   electric fences hanging under it (the pink crackle, seen from the street), with a later pad that lands you past
   them (from Corporate, several pads, and you read which are which); and a treasure stash, a stretch of floor walled
@@ -567,7 +574,9 @@ chase and a volley, showing itself beside the runner and bumping a lane change b
 too-wide gap, each ending in its blast, its model; `--scenario=chase|show|octodog|buzz|cut|gap|model`), a wider gap
 jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump|enforcer`), zone doodads pushing the
 runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
-armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`), a
+armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`),
+wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a still of the lit wall in any zone's
+look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
 `--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
 Octodog's lunge and a
@@ -779,6 +788,14 @@ spare (see Tools, above). Covered:
   shake, its sound); it stays broken for the attempt and a retry rebuilds it; every zone's look; a hover truck
   giving way, a heli drone flying over one, a panic cyborg stopping short of one, and an Octodog or a Buzz
   Overdrive running off ahead leaving at its face.
+- **Wall-run gaps:** at every zone's speed longer than any jump (with every boost and the dash), crossed by a
+  standard wall run from anywhere on the lit stretch onto a clear landing; in every level from Marketplace 1 on at 3,
+  5 and 6 lanes (its own seed, and the campaign's seed sweep), none before, in a boss arena or quick play, every one
+  with nothing else in any lane from its run-in to its landing, its lit wall clear past the longest wall run and a
+  floor route across that steps onto it; on real physics, a step onto the lit wall early, midway or late crossing
+  (with claws too), a jump, a jump with the dash, the dash alone or a step onto the wall too early falling in, the
+  grapple's save and a revive putting the runner on the lit wall and across; every zone's lit wall; drones and Bad
+  Dreams holding their attacks while a crossing is in reach.
 - **Floor cuts:** cuts planned only where they're fair (one at a time, never through a ramp, a pad or a
   ceiling's landing zone, the other lanes whole, room to leave the lane after the warning; hundreds of
   levels at 3, 5 and 6 lanes), a level without them built byte for byte as before, and on real physics:

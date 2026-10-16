@@ -387,13 +387,17 @@ func _build_chunk(index: int) -> void:
 		var solid: Array[Vector2] = layout.wall_solid_pieces(side, c0, c1)
 		var gaps: Array[Vector2] = layout.wall_gap_spans(side, c0, c1)
 		var near_gaps: Array[Vector2] = layout.wall_gap_spans(side, c0 - CHUNK_LENGTH, c1 + CHUNK_LENGTH)
+		# Task J2: a wall-run gap's lit wall, the way across it (drawn over the wall, after it).
+		var guides: Array[Vector3] = layout.wall_run_guides(side, c0, c1)
 		_dress(func() -> void:
 			skin.note_wall_gaps(side, near_gaps)
 			skin.note_wall_enemies(side, c0, c1, wall_enemies)
 			for piece: Vector2 in solid:
 				skin.wall_section(root, side, side * geo.wall_x(), piece.x, piece.y)
 			for gap: Vector2 in gaps:
-				skin.wall_gap(root, side, side * geo.wall_x(), maxf(gap.x, c0), minf(gap.y, c1), gap))
+				skin.wall_gap(root, side, side * geo.wall_x(), maxf(gap.x, c0), minf(gap.y, c1), gap)
+			for lit: Vector3 in guides:
+				skin.wall_run_guide(root, side, side * geo.wall_x(), maxf(lit.x, c0), minf(lit.z, c1), lit))
 	if layout.length >= c0 and layout.length < c1:
 		_dress(skin.finish_line.bind(root, geo.half_width() * 2.0, layout.length))
 

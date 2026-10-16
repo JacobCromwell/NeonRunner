@@ -55,6 +55,9 @@ extends RefCounted
 ##    taken out as in 3. (_add_clearing; task K5: on 306 builds of the Enforcer's levels, a Dead Zone 1 seed whose
 ##    only room was an Enforcer Truck's chase before its showing, which task C6e keeps every wider gap off, and a
 ##    Golden Palace seed with none at all).
+## Before 4., where the level is still short of its count, its wall-run gaps but its first give way (task J2;
+## WallRunGapPlacement.set_aside): 1. to 3. again with them out of the way, then each comes back where the wider gaps
+## left its way as it was (put_back).
 ## Which ones: with prefer_enforcer_chases, first one in each Enforcer Truck's chase, once the truck has settled
 ## behind the runner (EnforcerTruckTuning.bait_after_seconds) and before it may drop back (CHASE_END_SECONDS
 ## before it gives up), so the runner can lead it in: from the first of the three sources above with one there,
@@ -117,14 +120,7 @@ static func place(gen: LevelGenerator) -> Dictionary:
 	p.length = length_for(gen, p.t)
 	p.keeps = keeps_of(gen)
 	p.across = maxi(1, gen.layout.lane_count - 1)
-	var blocked: Dictionary = {}
-	for row: Dictionary in GapDensity.rows(gen.layout):
-		var span: Vector2 = _widened(gen, p.t, row, p.length, p.keeps)
-		if span.y > span.x:
-			p.candidates.append({"row": row, "span": span, "lanes": (row["lanes"] as Array).size()})
-		else:
-			var what: String = blocker(gen, p.t, Vector2(float(row["start"]), float(row["start"]) + p.length), row, p.keeps)
-			blocked[what] = int(blocked.get(what, 0)) + 1
+	var blocked: Dictionary = _find_candidates(p)
 	if p.t.prefer_enforcer_chases:
 		for chase: Vector2 in _chases(gen):
 			if p.rows.size() >= want:
@@ -133,6 +129,56 @@ static func place(gen: LevelGenerator) -> Dictionary:
 				if not (p.t.add_rows and _add_one(p, chase, chase.x)):
 					_clear_one(p, chase, chase.x)
 	var whole := Vector2(gen.config.start_clear_distance, gen.layout.length - gen.config.end_clear_distance)
+	_from_sources(p, want, whole)
+	if p.rows.size() < want:
+		# Task J2: a level's wall-run gaps but its first give way to its wider gaps (WallRunGapPlacement.set_aside):
+		# with them out of the way, the sources again for the ones still missing; then each wall-run gap whose way they
+		# left as it was comes back (put_back).
+		var aside: Array[Dictionary] = WallRunGapPlacement.set_aside(gen)
+		if not aside.is_empty():
+			p.keeps = keeps_of(gen)
+			p.candidates.clear()
+			_find_candidates(p)
+			_from_sources(p, want, whole)
+			# Every wider gap's zone as planned: the level's own rows it makes longer are in the layout only later.
+			var zones: Array[Vector2] = []
+			for span: Vector2 in p.rows:
+				zones.append(zone_of(gen, p.t, span))
+			WallRunGapPlacement.put_back(gen, aside, "the wider gaps", zones)
+			# What came back keeps the last way below off it as the rest of the level's content does.
+			p.keeps = keeps_of(gen)
+	if p.rows.is_empty() and p.t.add_rows:
+		_add_clearing(p, whole, (whole.x + whole.y) * 0.5)
+	if p.taken_out > 0:
+		GeneratorRules.keep_powered(gen)
+	p.rows.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var constraints: PackedStringArray = []
+	if p.rows.size() < want:
+		constraints.append("only %d of %d wider gaps fit: nowhere else has its margins clear (or the spacing)" % [
+			p.rows.size(), want])
+	return {"target": want, "rows": p.rows, "widened": p.widened, "added": p.added, "added_clearing": p.added_clearing,
+		"cleared": p.cleared, "taken_out": p.taken_out, "blocked": blocked, "constraints": constraints,
+		"deferred": p.deferred}
+
+
+## The level's own rows (GapDensity.rows) a wider gap could be made of where they stand (_widened), into p.candidates;
+## returns what kept the others ("<what>" -> how many rows: the report's `blocked`).
+static func _find_candidates(p: _Pass) -> Dictionary:
+	var blocked: Dictionary = {}
+	for row: Dictionary in GapDensity.rows(p.gen.layout):
+		var span: Vector2 = _widened(p.gen, p.t, row, p.length, p.keeps)
+		if span.y > span.x:
+			p.candidates.append({"row": row, "span": span, "lanes": (row["lanes"] as Array).size()})
+		else:
+			var what: String = blocker(p.gen, p.t, Vector2(float(row["start"]), float(row["start"]) + p.length), row, p.keeps)
+			blocked[what] = int(blocked.get(what, 0)) + 1
+	return blocked
+
+
+## The rest of the level's `want` wider gaps after the Enforcer chases' (place), spread through `whole`: each source in
+## turn (the level's own rows made longer, new rows with add_rows, rows cleared of plain pieces), used up before the
+## next, each due at a seeded spot of its share.
+static func _from_sources(p: _Pass, want: int, whole: Vector2) -> void:
 	for source: int in 3:
 		if source == 1 and not p.t.add_rows:
 			continue
@@ -146,18 +192,6 @@ static func place(gen: LevelGenerator) -> Dictionary:
 					_add_one(p, whole, target)
 				2:
 					_clear_one(p, whole, target)
-	if p.rows.is_empty() and p.t.add_rows:
-		_add_clearing(p, whole, (whole.x + whole.y) * 0.5)
-	if p.taken_out > 0:
-		GeneratorRules.keep_powered(gen)
-	p.rows.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
-	var constraints: PackedStringArray = []
-	if p.rows.size() < want:
-		constraints.append("only %d of %d wider gaps fit: nowhere else has its margins clear (or the spacing)" % [
-			p.rows.size(), want])
-	return {"target": want, "rows": p.rows, "widened": p.widened, "added": p.added, "added_clearing": p.added_clearing,
-		"cleared": p.cleared, "taken_out": p.taken_out, "blocked": blocked, "constraints": constraints,
-		"deferred": p.deferred}
 
 
 ## Makes longer the level's own rows place() chose (its report's `deferred`), once the fill pass has run (see the

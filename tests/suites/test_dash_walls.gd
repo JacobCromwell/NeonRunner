@@ -50,8 +50,10 @@ const LATE_INTRODUCTION_LANES: Array[int] = [5]
 ## way go too): checked both ways. Golden 1 at 3 lanes on seed 7294 since task I4's ceiling scenarios (the one such
 ## build among seeds 7000-7449 of Corporate 2 and seeds 7000-7249 of The Hush at 3 lanes, and 7250-7449 of Golden 1),
 ## where Corporate 2 at 3 lanes on seed 7101 (the H merge's, with task K4's curve) no longer needs it. DESIGN-TBD
-## (docs/OPEN_QUESTIONS.md item 677).
-const LAST_RESORT_CASE: Dictionary = {"id": "golden/1", "lanes": 3, "seed": 7294}
+## (docs/OPEN_QUESTIONS.md item 677). Built without its `without` features: since task J2 a level's later wall-run
+## gaps give way to its walls first (WallRunGapPlacement.set_aside), and none of those seeds needs the last resort with
+## them (Golden 1's own wall-run gaps make the room on seed 7294), so the case is that level without the feature.
+const LAST_RESORT_CASE: Dictionary = {"id": "golden/1", "lanes": 3, "seed": 7294, "without": ["wall_run_gaps"]}
 ## A wall's look is one small mesh: at most this many surfaces and vertices, built (the first time, in a skin whose
 ## materials already exist) in under these milliseconds on average and at most (DESIGN-TBD: measured about 1 ms and
 ## 4000 vertices; the room is for a loaded machine).
@@ -310,7 +312,13 @@ func _test_last_resort() -> void:
 	var none: LevelConfig = campaign.configure(campaign.step(String(c["id"])), int(c["lanes"]))
 	none.level_seed = int(c["seed"])
 	none.dash_walls = 0
-	var tag: String = "(%s, %d lanes, seed %d)" % [c["id"], c["lanes"], c["seed"]]
+	for cfg: LevelConfig in [config, none]:
+		var features: PackedStringArray = cfg.features.duplicate()
+		for feature: String in c.get("without", []):
+			if features.has(feature):
+				features.remove_at(features.find(feature))
+		cfg.features = features
+	var tag: String = "(%s, %d lanes, seed %d, without %s)" % [c["id"], c["lanes"], c["seed"], c.get("without", [])]
 	var gen := LevelGenerator.new()
 	gen.generate(config, tuning, LevelGenerator.load_for(config))
 	var plain := LevelGenerator.new()

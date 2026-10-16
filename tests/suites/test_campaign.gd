@@ -42,7 +42,9 @@ const FIRST_LEVEL: Dictionary = {
 	"screech": "gangland/1", "ramps": "gangland/1", "wall_gaps": "gangland/1",
 	"octodog": "gangland/2", "speed_pads": "gangland/2",
 	"generator": "gangland/3", "drone": "gangland/3",
-	"barnacle_turret": "marketplace/1",
+	# Task J2 (the owner, October 15, 2026: "especially in later zones and levels"; DESIGN-TBD where they start,
+	# docs/questions/j2.md): wall-run gaps from halfway into Marketplace 1.
+	"barnacle_turret": "marketplace/1", "wall_run_gaps": "marketplace/1",
 	"wall_fences": "marketplace/2", "screech_vents": "marketplace/2",
 	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1", "dash_wall": "corporate/1",
 	"tithe_collector": "corporate/2", "enforcer_truck": "corporate/2",
@@ -118,7 +120,20 @@ const INTRODUCTION_REACH: float = 210.0
 ## ones, but the levels' own seeds then had 6 late of 66, 3 of them wall gaps, and now 9). Left out, the
 ## levels' own seeds had 6 late of 63 on K2's curve, the check's limit (3 before; docs/OPEN_QUESTIONS.md §D,
 ## item 521 lists them for the owner), and have 5 on task K4's (docs/OPEN_QUESTIONS.md §D, item 531).
-const SPACED_FROM_START: Array = ["wall_gaps"]
+## Task J2's wall-run gaps are no pattern pick either: their rules put the first where a whole clear stretch (about
+## 4 s of run in every lane, its run-in, lit stretch, gap and landing floor) fits past the start, the earliest that
+## takes the least out of its way, which in Marketplace 1 is 5 to 26 s after it on its own seeds (WallRunGapPlacement;
+## DESIGN-TBD, docs/questions/j2.md). Nothing of them before their start is checked all the same.
+const SPACED_FROM_START: Array = ["wall_gaps", "wall_run_gaps"]
+## The Hush's seed sweep's builds (_test_hush) with no fair room anywhere for a wall-run gap (task J2): at 3 lanes, their
+## drone's pad schedule (a ceiling every 8 to 10 s from its first wave, whose pads it owns), their only hover truck and
+## Octodog, their Enforcer Truck's chase and their ceilings' landing zones take every 4-second stretch, so they warn
+## and have none (WallRunGapPlacement: nothing may go that the drone or a feature counts on). Every campaign build has
+## its wall-run gaps (test_wall_run_gaps). Each is checked to still warn so (else take it out of the list).
+## DESIGN-TBD (docs/questions/j2.md item 12).
+const WALL_RUN_GAP_CROWDED: PackedStringArray = ["The Hush without the remix lanes=3 seed=9206", "Dead Zone 1 lanes=3 seed=9208"]
+## The warning a build in WALL_RUN_GAP_CROWDED gives (WallRunGapPlacement.place).
+const WALL_RUN_GAP_WARNING: String = "wall-run gaps: no fair room anywhere for one (every feature should appear, GDD §5)"
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
 ## Marketplace's boss, and the Marketplace's outro led to Corporate (_test_old_saves).
 const V2_STEPS: PackedStringArray = ["city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",
@@ -1096,7 +1111,12 @@ func _test_hush(campaign: Campaign) -> void:
 				# its pacing queries (quiet_at, quiet_stretches), all pure once a layout exists.
 				var gen: LevelGenerator = LayoutCache.generator(config, tuning, patterns)
 				var layout: LevelLayout = gen.layout
-				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				if WALL_RUN_GAP_CROWDED.has(tag):
+					check(gen.warnings == PackedStringArray([WALL_RUN_GAP_WARNING]) and layout.wall_run_gaps.is_empty(),
+						"%s still has no room for a wall-run gap, and warns of nothing else (else take it out of WALL_RUN_GAP_CROWDED): %s"
+						% [tag, gen.warnings])
+				else:
+					check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 				for e: Dictionary in layout.enemies:
 					var host: bool = String(e["type"]) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false))
 					hosts[which] += 1 if host else 0

@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**863** after task E5e, I1–I9 and F2e so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**878** after task E5e, I1–I9, F2e, J2 and J3 so far, not counting E5e-g's file, which is still to file; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -30,6 +30,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 837 | No treasure stash on 3 or 4 lanes, so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
 | 838 | GDD §3 calls the return pad the only way into a stash, but the dash smashes in and a wall-jump can land on a stash wall and step down. Allow both as skill routes, or block them? |
 | 848 | The economy's payouts: held at 100 + 25 a level and a flat 500 per boss (77% of a City 3 finish, 46% of a Dead Zone 1 finish) while I7 re-placed the prices. Change them, or keep them? |
+| 864 | Wall-run-only gaps (J2): the Beach and Golden Zone get the fewest (about 1.3–2 a level against 2–2.5 mid-campaign), the opposite of the owner's "especially later zones", because those levels are crowded. Take a big encounter out per extra gap, let gaps win over wider gaps and dash walls late, or keep it? (Full text below.) |
 
 ## The items in full
 
@@ -77,3 +78,19 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
   500 (1,000 for the last) whatever the zone, 77% of a City 3 finish but 46% of a Dead Zone 1 finish. Should the
   late levels, or the bosses, pay more?
   - **Placeholder:** unchanged (`data/tuning/game_rules.tres`, `data/bosses/*.tres`).
+
+**Wall-run-only gaps** (the owner, October 15, 2026; GDD §3, §5, §9; task J2)
+864. **How often.** How many a level, and how should that rise through the campaign? (GDD §5, Level schedule.)
+   Placeholder: about one per 70 s of run at difficulty 0 to one per 40 s at difficulty 1 (`spacing_seconds_easy`,
+   `spacing_seconds_hard`), each placed within 40 s of a seeded spot (`search_seconds`), at least 15 s between two
+   (`min_spacing_seconds`), at least one in every level with the feature. Measured over the campaign's own seed and two
+   more at 3, 5 and 6 lanes, a build has on average 1.9 in the Marketplace (one in Marketplace 1), 2.6 in the Casino,
+   2.3 in Corporate, 2.1 on the Beach, 2.0 in the Dead Zone and 1.5 in the Golden Zone, where the levels are most
+   crowded and fewer fit than the numbers ask for (3 to 4); 15 of those 117 builds had one give way to a wider gap or a
+   dash wall (item 10). So the latest zone has the fewest, the opposite of "especially in later zones". Asking for more
+   there doesn't help: the Golden Zone's and the Beach's builds already ask for 3 to 4 and fit fewer (the Beach's open
+   walls leave few lit walls whole). Should more room be made for them there, and at what cost? Taking a big encounter
+   out for every one, not only a level's only one (item 8), would take Resonators and Gilded Sentinels out of the
+   Golden Zone (Golden 2 is "Sentinel Row"); letting them win over the wider gaps and the dash walls (item 10) would
+   leave those levels short of their own counts (GDD §9.13, §9.14); and more of them takes more of the room the
+   danger density pass fills at 3 lanes (item 12). None of that is done yet.

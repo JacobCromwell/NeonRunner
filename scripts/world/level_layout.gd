@@ -6,10 +6,14 @@ extends RefCounted
 
 ## A doodad's size classes, smallest first (LevelLayout.doodads `size`; MovementTuning.doodad_size).
 const DOODAD_SIZES: Array[StringName] = [&"small", &"medium", &"large"]
+## The key that marks a hole of a wall-run gap (gaps; wall_run_gaps): it isn't one to jump, so the checks on
+## jumpable holes and rows of holes leave it out (is_wall_run_hole).
+const WALL_RUN_HOLE: String = "wall_run"
 
 var lane_count: int = 3
 var length: float = 0.0
-## {lane, start, end}: a hole in the floor segment of one lane.
+## {lane, start, end}: a hole in the floor segment of one lane. A wall-run gap's holes (wall_run_gaps) also carry
+## WALL_RUN_HOLE: true.
 var gaps: Array[Dictionary] = []
 ## {lane, at, variant ("full" | "gapped"), pulsing, pulse_on, pulse_off, phase}
 var fences: Array[Dictionary] = []
@@ -90,13 +94,22 @@ var return_pads: Array[Dictionary] = []
 ## The pieces are ordinary entries of `doodads` (marked "stash"), `return_pads` and `credits` (marked "stash");
 ## this is the record that ties them together (treasure_stash_rules.gd, the checks and the credit pass).
 var stashes: Array[Dictionary] = []
+## {side, start, end, entry, approach, landing, wall_to}: a wall-run gap (task J2; the owner, October 15, 2026: "a gap
+## over the ENTIRE floor (every lane), and the only way to cross is a wall run"): every floor lane is a hole from
+## `start` to `end` (entries of `gaps` marked WALL_RUN_HOLE), and wall `side` (-1 left, 1 right) is the way across: lit
+## from `entry` (the earliest a step onto it carries a standard wall run past `end`) to `end`, whole and clear of
+## signs, wall enemies, wall fences and wall gaps until `wall_to`. Nothing stands in any lane from `approach` (where
+## the clear run-in starts) to `landing` (where the safe landing floor ends). The generator places them
+## (WallRunGapPlacement), the track builder builds the holes like any and the skin lights the wall
+## (ZoneSkin.wall_run_guide). Sorted by start.
+var wall_run_gaps: Array[Dictionary] = []
 
 
 ## Every list of pieces, by name. A level without doodads has no "doodads" key, one without floor
 ## cuts no "cuts" key, one without wall fences no "wall_fences" key, one without wall gaps no
-## "wall_gaps" key, one without dash walls no "dash_walls" key, and one without ceiling scenarios (task I4)
-## no "ceiling_fences", "return_pads" or "stashes" key, so its dictionary (and every hash or dump of it) is
-## the same as before those existed.
+## "wall_gaps" key, one without dash walls no "dash_walls" key, one without ceiling scenarios (task I4)
+## no "ceiling_fences", "return_pads" or "stashes" key, and one without wall-run gaps (task J2) no
+## "wall_run_gaps" key, so its dictionary (and every hash or dump of it) is the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -127,12 +140,14 @@ func to_dict() -> Dictionary:
 		out["return_pads"] = return_pads
 	if not stashes.is_empty():
 		out["stashes"] = stashes
+	if not wall_run_gaps.is_empty():
+		out["wall_run_gaps"] = wall_run_gaps
 	return out
 
 
 ## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps,
-## dash walls and the ceiling scenarios' pieces included, whether or not this layout has any yet), and moves
-## its end to other's if that's further.
+## dash walls, the ceiling scenarios' pieces and wall-run gaps included, whether or not this layout has any yet),
+## and moves its end to other's if that's further.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
@@ -156,6 +171,8 @@ func append_pieces(other: LevelLayout) -> void:
 		return_pads.append_array(other.return_pads)
 	if not lists.has("stashes"):
 		stashes.append_array(other.stashes)
+	if not lists.has("wall_run_gaps"):
+		wall_run_gaps.append_array(other.wall_run_gaps)
 	length = maxf(length, other.length)
 
 
@@ -180,11 +197,57 @@ func copy() -> LevelLayout:
 	out.ceiling_fences = ceiling_fences.duplicate(true)
 	out.return_pads = return_pads.duplicate(true)
 	out.stashes = stashes.duplicate(true)
+	out.wall_run_gaps = wall_run_gaps.duplicate(true)
 	return out
 
 
 func outer_lane(side: int) -> int:
 	return 0 if side < 0 else lane_count - 1
+
+
+## True if hole `g` (an entry of `gaps`) is a wall-run gap's (WALL_RUN_HOLE; wall_run_gaps): a stretch the runner
+## crosses on a wall, never a jump.
+static func is_wall_run_hole(g: Dictionary) -> bool:
+	return bool(g.get(WALL_RUN_HOLE, false))
+
+
+## The wall-run gap (wall_run_gaps) whose holes reach track distance `d` within `margin` metres either side of its
+## [start, end], or {} if none does.
+func wall_run_gap_at(d: float, margin: float = 0.0) -> Dictionary:
+	for w: Dictionary in wall_run_gaps:
+		if d >= float(w["start"]) - margin and d <= float(w["end"]) + margin:
+			return w
+	return {}
+
+
+## True if a wall-run gap's clear stretch (wall_run_gaps: from its `approach` to its `landing`, in every lane)
+## reaches anywhere into [from, to].
+func wall_run_zone_between(from: float, to: float) -> bool:
+	for w: Dictionary in wall_run_gaps:
+		if float(w["approach"]) <= to and float(w["landing"]) >= from:
+			return true
+	return false
+
+
+## True if a wall-run gap's crossing (wall_run_gaps: from its clear run-in's start, where the runner heads for its lit
+## wall, to its gap's far end, `approach` to `end`) reaches anywhere into [from, to]: no move but the wall run there.
+## An attack that could only be dodged another way holds off while one lies in its reach (a heli drone's barrage, a Bad
+## Dream's slash).
+func wall_run_between(from: float, to: float) -> bool:
+	for w: Dictionary in wall_run_gaps:
+		if float(w["approach"]) <= to and float(w["end"]) >= from:
+			return true
+	return false
+
+
+## The lit walls (ZoneSkin.wall_run_guide) on wall `side` of the wall-run gaps whose lit wall reaches into [from, to):
+## each Vector3(entry, start, end), the stretch to step on and the gap (wall_run_gaps).
+func wall_run_guides(side: int, from: float, to: float) -> Array[Vector3]:
+	var out: Array[Vector3] = []
+	for w: Dictionary in wall_run_gaps:
+		if int(w["side"]) == side and float(w["entry"]) < to and float(w["end"]) > from:
+			out.append(Vector3(float(w["entry"]), float(w["start"]), float(w["end"])))
+	return out
 
 
 ## Total value of every credit, a treasure stash's too: what a run can collect (the economy's tools and tests). The

@@ -48,7 +48,9 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	var finish_buffer: float = layout.length - config.end_clear_distance + 0.001
 	for g: Dictionary in layout.gaps:
 		suite.check(g["lane"] >= 0 and g["lane"] < n, "gap lane in range " + tag)
-		suite.check(g["end"] - g["start"] <= max_gap, "gap jumpable (%.1f m) %s" % [g["end"] - g["start"], tag])
+		# Task J2: a wall-run gap's holes are crossed on its lit wall, never jumped (check_wall_run_gaps).
+		if not LevelLayout.is_wall_run_hole(g):
+			suite.check(g["end"] - g["start"] <= max_gap, "gap jumpable (%.1f m) %s" % [g["end"] - g["start"], tag])
 		suite.check(g["end"] <= finish_buffer, "gap before the end-clear stretch " + tag)
 	for f: Dictionary in layout.fences:
 		suite.check(f["lane"] >= 0 and f["lane"] < n, "fence lane in range " + tag)
@@ -71,6 +73,66 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_wide_gaps(suite, layout, config, tag)
 	check_dash_walls(suite, layout, config, tag)
 	check_scenarios(suite, layout, config, tag)
+	check_wall_run_gaps(suite, layout, config, tag)
+
+
+## Wall-run gaps (task J2; the owner, October 15, 2026: "a gap over the ENTIRE floor (every lane), and the only way to
+## cross is a wall run"; WallRunGapPlacement), wherever the generator places one, at any lane count, at the level's own
+## run speed:
+## - only in a level with the `wall_run_gaps` feature, never in a boss arena, and every hole marked as one's
+##   (LevelLayout.WALL_RUN_HOLE) belongs to one, a hole in every lane over its gap;
+## - no jump crosses it: longer than a full jump with its jump grace and the dash all the way, even with a speed pad's
+##   or a ramp's whole boost (and longer than the generator's longest jumpable hole);
+## - a standard wall run (no claws, no wall hop) carries a runner across from anywhere on its lit stretch: one from the
+##   lit stretch's first metre leaves the wall exit_margin_seconds past the gap's far edge, one from its last metre
+##   (with the jump grace) drops them back onto the landing floor before it ends;
+## - they keep apart (min_spacing_seconds), and the generator's own re-check finds nothing (WallRunGapPlacement
+##   .problem: its shape, its clear run-in and landing floor clear in every lane of holes, fences, doodads, enemies'
+##   attacks and every other keep-out, its lit wall clear of signs, wall enemies, wall fences and wall gaps over the
+##   longest wall run, the other wall whole beside it).
+static func check_wall_run_gaps(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var holes: int = 0
+	for g: Dictionary in layout.gaps:
+		if LevelLayout.is_wall_run_hole(g):
+			holes += 1
+	if layout.wall_run_gaps.is_empty():
+		suite.check(holes == 0, "no wall-run gap's hole without its wall-run gap (%d) %s" % [holes, tag])
+		return
+	suite.check(config.has_feature(WallRunGapPlacement.FEATURE) and not WallGapPlacement.is_boss_arena(config),
+		"wall-run gaps only in a level with the feature, never in a boss arena " + tag)
+	suite.check(holes == layout.wall_run_gaps.size() * layout.lane_count,
+		"every wall-run gap's hole belongs to one, one in each lane (%d holes, %d gaps) %s" % [holes, layout.wall_run_gaps.size(), tag])
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var v: float = tuning.run_speed
+	var t: WallRunGapTuning = WallRunGapPlacement.tuning()
+	var pt: PowerupTuning = WallRunGapPlacement.powerups()
+	# The longest a runner flies from the floor: a full jump with its jump grace, at the run speed with a speed pad's
+	# or a ramp's whole boost, and the dash's extra all the way.
+	var fast: float = v + maxf(tuning.speed_pad_boost, tuning.ramp_speed_boost)
+	var reach: float = tuning.jump_distance(fast) + tuning.coyote_time * fast + pt.dash_duration * pt.dash_speed_bonus \
+		+ tuning.visual_size.z
+	var max_gap: float = tuning.jump_distance(v) * config.max_gap_jump_fraction
+	var wall_run: float = (tuning.wall_entry_time + tuning.wall_slide_time) * v
+	var drop: float = WallRunGapPlacement.drop_seconds(tuning) * v
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var prev_landing: float = -INF
+	for w: Dictionary in layout.wall_run_gaps:
+		var start: float = float(w["start"])
+		var end: float = float(w["end"])
+		var entry: float = float(w["entry"])
+		var landing: float = float(w["landing"])
+		var where: String = "(wall-run gap %.1f-%.1f, lit wall %s) %s" % [start, end, "left" if int(w["side"]) < 0 else "right", tag]
+		suite.check(end - start > reach and end - start > max_gap,
+			"no jump crosses it, nor a jump and the dash (%.1f m against %.1f m) %s" % [end - start, reach, where])
+		suite.check(entry + wall_run >= end + t.exit_margin_seconds * v - 0.01,
+			"a standard wall run from the lit stretch's first metre leaves the wall past its far edge " + where)
+		suite.check(start + tuning.coyote_time * v + wall_run + drop <= landing + 0.01,
+			"a standard wall run from the lit stretch's last metre drops the runner onto the landing floor " + where)
+		suite.check(float(w["approach"]) - prev_landing >= t.min_spacing_seconds * v - 0.01,
+			"wall-run gaps keep their spacing " + where)
+		prev_landing = landing
+		var why: String = WallRunGapPlacement.problem(gen, w)
+		suite.check(why == "", "a wall-run gap keeps its rules (%s) %s" % [why, where])
 
 
 ## Dash walls (task H7a; GDD §9.14, owner, October 8, 2026), wherever the generator stands one (dash_wall_rules.gd),
@@ -1364,13 +1426,14 @@ static func gapped_between(layout: LevelLayout, lane: int, from: float, to: floa
 
 
 ## Longest stretch where every lane is a hole at once (intersection of the lanes' gap intervals; a
-## floor cut's stretch counts as a hole in its lane).
+## floor cut's stretch counts as a hole in its lane). A wall-run gap's holes (task J2) are left out: no jump
+## crosses one, its lit wall does (check_wall_run_gaps keeps every other hole out of its clear stretch).
 static func longest_all_lane_hole(layout: LevelLayout) -> float:
 	var common: Array[Vector2] = []
 	for lane: int in layout.lane_count:
 		var mine: Array[Vector2] = []
 		for g: Dictionary in layout.gaps:
-			if g["lane"] == lane:
+			if g["lane"] == lane and not LevelLayout.is_wall_run_hole(g):
 				mine.append(Vector2(g["start"], g["end"]))
 		for c: Dictionary in layout.cuts:
 			if int(c["lane"]) == lane:

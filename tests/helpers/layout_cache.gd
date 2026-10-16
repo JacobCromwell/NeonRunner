@@ -40,6 +40,7 @@ class _Entry:
 	var charge_path_result: Dictionary
 	var danger_density_result: Dictionary
 	var show_window_result: Dictionary
+	var wall_run_gap_result: Dictionary
 
 
 static var _cache: Dictionary = {}  ## String signature (_key) -> _Entry
@@ -60,7 +61,7 @@ static func generate(config: LevelConfig, tuning: MovementTuning, patterns: Arra
 
 ## generate(), with a LevelGenerator standing in for the one that built it: `LevelGenerator.for_layout`
 ## over a copy() of the cached layout, with its attempts/warnings/picks/fills and its passes' reports
-## (gap density, wider gaps, charge paths, danger density, the Enforcer Trucks' showing windows) filled
+## (gap density, wider gaps, charge paths, danger density, the Enforcer Trucks' showing windows, the wall-run gaps) filled
 ## in from the cached build. A caller that reads those fields, or calls one of the generator's pure, read-only
 ## queries that only look at config/pace/layout.length -- feature_start, feature_share_at,
 ## difficulty_at, quiet_at, quiet_stretches, stretch_end, burst_index, placeable_features,
@@ -85,6 +86,7 @@ static func generator(config: LevelConfig, tuning: MovementTuning, patterns: Arr
 	gen.charge_path_result = entry.charge_path_result.duplicate(true)
 	gen.danger_density_result = entry.danger_density_result.duplicate(true)
 	gen.show_window_result = entry.show_window_result.duplicate(true)
+	gen.wall_run_gap_result = entry.wall_run_gap_result.duplicate(true)
 	return gen
 
 
@@ -115,6 +117,7 @@ static func _build(config: LevelConfig, tuning: MovementTuning, patterns: Array)
 	e.charge_path_result = gen.charge_path_result.duplicate(true)
 	e.danger_density_result = gen.danger_density_result.duplicate(true)
 	e.show_window_result = gen.show_window_result.duplicate(true)
+	e.wall_run_gap_result = gen.wall_run_gap_result.duplicate(true)
 	return e
 
 

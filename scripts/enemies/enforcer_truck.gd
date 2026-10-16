@@ -50,8 +50,10 @@ extends Enemy
 ##   volley starts only when a lane beside the runner's is clear to switch into until its last bolt has passed
 ##   (the escape), never while the runner is off the floor, and never from EnforcerTruckTuning.hold_seconds()
 ##   before one of its baits attacks (an Octodog's wind-up, a Buzz Overdrive's rev) until the attack is over, so
-##   a volley never meets one, big attacks taking turns or not. Its volleys are a big attack (GDD §9: big
-##   attacks take turns): it asks the director before each warning and waits while another type's is on.
+##   a volley never meets one, big attacks taking turns or not; nor while a wall-run gap's crossing would come
+##   before its last bolt (task J2, _wall_run_in_reach): it waits until the runner is across. Its volleys are a big
+##   attack (GDD §9: big attacks take turns): it asks the director before each warning and waits while another
+##   type's is on.
 ## - Its baits: while an Octodog attacks it closes right up behind the runner (close_gap), so the lunge, which
 ##   ends lunge_overshoot behind the runner, reaches it; its body stays under the camera's line of sight to
 ##   the runner meanwhile (EnforcerTruckModel's profile). An Octodog's lunge or a Buzz Overdrive's charge that
@@ -1253,7 +1255,22 @@ func _ready_to_fire() -> bool:
 		# its place there never holds an Octodog back.
 		world.director.give_up_turn(self)
 		return false
+	if _wall_run_in_reach(p):
+		return false
 	return escape_clear(clampi(p.lane, 0, world.geo.lane_count - 1))
+
+
+## Task J2 (a wall-run gap, the owner, October 15, 2026: every floor lane a hole, a side wall the only way across): no
+## volley starts whose warning and bolts would come while the runner heads for a wall-run gap's lit wall or runs it over
+## the gap (LevelLayout.wall_run_between: from its clear run-in to its far edge), from now until its last bolt has
+## passed (EnforcerTruckTuning.volley_seconds): a runner there has no lane to leave the bolts' lane into but the wall
+## too early. The truck chases from behind as long as it lives, so the generator can't keep its volleys off a wall-run
+## gap (WallRunGapPlacement): it holds them for the few seconds of the crossing, as a heli drone's barrages and a Bad
+## Dream's slash do. DESIGN-TBD (docs/questions/j2.md item 7).
+func _wall_run_in_reach(p: Player) -> bool:
+	if world.layout.wall_run_gaps.is_empty():
+		return false
+	return world.layout.wall_run_between(p.distance - 1.0, p.distance + tuning.volley_seconds() * maxf(p.speed, 1.0) + 2.0)
 
 
 ## True while its first volley waits for its first showing (show_wait_seconds past its time at most): it hasn't

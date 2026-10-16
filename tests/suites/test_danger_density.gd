@@ -42,8 +42,9 @@ const FAIRNESS_ONLY: Array[String] = ["dead_zone/2"]
 ## the H series' changes, golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling) on the
 ## 15-level curve before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row the pass touched, a
 ## full fence row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case
-## checks it still shows its scenario.
-const ROUTE_CASES: Array[Dictionary] = [{"id": "dead_zone/1", "lanes": 3, "seed": 9021}]
+## checks it still shows its scenario. Built without its `without` features: since task J2 the level's wall-run gaps
+## take the stretch of its case, so the case is that level without them.
+const ROUTE_CASES: Array[Dictionary] = [{"id": "dead_zone/1", "lanes": 3, "seed": 9021, "without": ["wall_run_gaps"]}]
 ## The request, as the actual increase of a band's summed counts with the dial over those without it,
 ## for enemies and for obstacles alike, at each lane count: about 15% in the first levels, about 35%
 ## in the final ones.
@@ -53,6 +54,13 @@ const TARGET_RATIO: Dictionary = {"early": 1.15, "late": 1.35}
 ## Gilded Sentinel stretches leave the least room), so a tighter tolerance would test which levels
 ## and seeds were sampled rather than the pass.
 const TOLERANCE: float = 0.05
+## Task J2 (the owner, October 15, 2026, docs/USER_REQUESTS.md: wall-run gaps "especially in later zones and levels"):
+## a final level's wall-run gaps each keep about 4 s of run clear in every lane, with the level's spacing either side,
+## where this pass would otherwise add enemies and rows. With only 3 lanes its extra pieces come from more rows along
+## the track (a row may take two lanes at most), so fewer fit, and there the final band's floor is this much lower: it
+## lands at about x1.29 for enemies and x1.28 for obstacles over this sample (about x1.33 and x1.30 built without the
+## feature). By band, then lane count. DESIGN-TBD (docs/questions/j2.md item 12): which request gives way at 3 lanes.
+const WALL_RUN_GAP_ROOM: Dictionary = {"late": {3: 0.04}}
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
 ## final ones' and above the first band and below the last, at every lane count, for both counts.
 const MIDDLE_RANGE := Vector2(1.15, 1.35)
@@ -167,7 +175,8 @@ func _test_density(campaign: Campaign) -> void:
 					floors[li] += Vector2i(DangerDensity.floor_count(off), DangerDensity.floor_count(on))
 					walls[li] += Vector2i(off.wall_fences.size(), on.wall_fences.size())
 					credits[li] += Vector2i(off.total_credit_value(), on.total_credit_value())
-					_check_fair(config, built["gen"], off, "%s lanes=%d seed=%d" % [id, LANES[li], config.level_seed])
+					_check_fair(config, built["gen"], off, "%s lanes=%d seed=%d" % [id, LANES[li], config.level_seed],
+						built["off_gen"])
 		var band_ratios: Array[Vector2] = []
 		for li: int in LANES.size():
 			var obstacles: Vector2i = floors[li] + walls[li]
@@ -186,6 +195,7 @@ func _test_density(campaign: Campaign) -> void:
 			if TARGET_RATIO.has(band):
 				lo = float(TARGET_RATIO[band]) - TOLERANCE
 				hi = float(TARGET_RATIO[band]) + TOLERANCE
+			lo -= float((WALL_RUN_GAP_ROOM.get(band, {}) as Dictionary).get(LANES[li], 0.0))
 			check(e >= lo - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, lo, hi])
 			check(o >= lo - 0.0005 and o <= hi + 0.0005, "%s: obstacles x%.3f, within x%.2f..x%.2f" % [tag, o, lo, hi])
 		ratios[band] = band_ratios
@@ -201,13 +211,19 @@ func _test_density(campaign: Campaign) -> void:
 		for lanes: int in LANES:
 			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
 			var built: Dictionary = _build_pair(config)
-			_check_fair(config, built["gen"], built["off"], "%s lanes=%d seed=%d" % [id, lanes, config.level_seed])
+			_check_fair(config, built["gen"], built["off"], "%s lanes=%d seed=%d" % [id, lanes, config.level_seed],
+				built["off_gen"])
 	for case: Dictionary in ROUTE_CASES:
 		var config: LevelConfig = campaign.configure(campaign.step(String(case["id"])), int(case["lanes"]))
 		config.level_seed = int(case["seed"])
-		var tag: String = "%s lanes=%d seed=%d" % [case["id"], case["lanes"], case["seed"]]
+		var features: PackedStringArray = config.features.duplicate()
+		for feature: String in case.get("without", []):
+			if features.has(feature):
+				features.remove_at(features.find(feature))
+		config.features = features
+		var tag: String = "%s lanes=%d seed=%d without %s" % [case["id"], case["lanes"], case["seed"], case.get("without", [])]
 		var built: Dictionary = _build_pair(config)
-		_check_fair(config, built["gen"], built["off"], tag)
+		_check_fair(config, built["gen"], built["off"], tag, built["off_gen"])
 		var unchecked: LevelLayout = DoodadsUnchecked.new().generate(config, tuning, LevelGenerator.load_for(config))
 		var route: Dictionary = FloorRoute.new(unchecked, config.movement_for(tuning)).find(0.0, unchecked.length)
 		check(not bool(route["ok"]), "%s still shows its case: without doodad_ok a doodad leaves no way on (%s); else re-pin ROUTE_CASES"
@@ -216,29 +232,35 @@ func _test_density(campaign: Campaign) -> void:
 	check(on_ms <= MAX_BUILD_TIME_RATIO * off_ms + 2000, "the pass keeps builds quick: %d ms with it, %d ms without" % [on_ms, off_ms])
 
 
-## `config` built with its dial and with the dial at 0: {gen, on, off, on_ms, off_ms}.
+## `config` built with its dial and with the dial at 0: {gen, on, off_gen, off, on_ms, off_ms}.
 func _build_pair(config: LevelConfig) -> Dictionary:
 	var patterns: Array = LevelGenerator.load_for(config)
 	var zero: LevelConfig = config.duplicate() as LevelConfig
 	zero.danger_density_increase = 0.0
 	var t0: int = Time.get_ticks_msec()
-	var off: LevelLayout = LevelGenerator.new().generate(zero, tuning, patterns)
+	var off_gen := LevelGenerator.new()
+	var off: LevelLayout = off_gen.generate(zero, tuning, patterns)
 	var t1: int = Time.get_ticks_msec()
 	var gen := LevelGenerator.new()
 	var on: LevelLayout = gen.generate(config, tuning, patterns)
 	var t2: int = Time.get_ticks_msec()
-	return {"gen": gen, "on": on, "off": off, "off_ms": t1 - t0, "on_ms": t2 - t1}
+	return {"gen": gen, "on": on, "off_gen": off_gen, "off": off, "off_ms": t1 - t0, "on_ms": t2 - t1}
 
 
-## The pass's fairness on `gen`'s build (with the dial) of `config`; `off` is the build without it.
-func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag: String) -> void:
+## The pass's fairness on `gen`'s build (with the dial) of `config`; `off` is the build without it, by `off_gen`.
+func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag: String, off_gen: LevelGenerator) -> void:
 	var layout: LevelLayout = gen.layout
 	var result: Dictionary = gen.danger_density_result
 	check(not result.is_empty(), "the pass ran " + tag)
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 	# A cyborg planted in a charge's path (task G7, ChargePathPlacement) comes after the pass's count, with or
-	# without it.
-	check(int(result.get("baseline_enemies", -1)) == off.enemies.size() - ChargePathPlacement.planted_in(off).size(),
+	# without it. Task J2: a build whose wider gaps its first wall-run gap crowded out is built once more with that one
+	# elsewhere (LevelGenerator._make_wide_gap_room), whose own last resort may take an encounter out, so the level the
+	# pass counts and the one built without it may differ by what their wall-run gaps took out (enemies_taken_out).
+	var taken: int = int(gen.wall_run_gap_result.get("enemies_taken_out", 0))
+	var off_taken: int = int(off_gen.wall_run_gap_result.get("enemies_taken_out", 0))
+	check(int(result.get("baseline_enemies", -1)) + taken
+		== off.enemies.size() - ChargePathPlacement.planted_in(off).size() + off_taken,
 		"the pass counts the enemies the level holds without it %s" % tag)
 	var pieces: int = 0
 	for key: String in ["widened", "new_row_pieces", "full_rows", "staggered_pieces", "routed", "routed_row_pieces"]:

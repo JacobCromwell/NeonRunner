@@ -89,7 +89,7 @@ pattern like the Octodog's fits when its dog does). Patterns need nothing specia
 | `min_difficulty` / `max_difficulty` | The pattern can be picked only while the current difficulty (0–1) is in this range |
 | `weight` | Relative pick chance among the patterns that qualify |
 | `min_lanes` | Optional. Skip on devices with fewer lanes |
-| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, the Barnacle Turret and the Enforcer Truck have no patterns: see below) |
+| `requires` | Optional. Features the level must have: `ramps`, `ceilings`, `pulsing`, `speed_pads`, an enemy type (`cyborg`, `window_cyborg`, `host`, `hover_truck`, `octodog`, `screech`, `drone`, `generator`, `resonator`, `buzz_overdrive`, `tithe_collector`, `gilded_sentinel`), or `screech_vents` (wall-vent screeches only, rare, for zones whose floor has no manholes, GDD §9.5). (The wall fences, `wall_fences` and `wall_fences_partial`, the Barnacle Turret, the Enforcer Truck and the wall-run gaps, `wall_run_gaps`, have no patterns: see below) |
 | `length` | Metres of track the pattern takes (the generator extends it for long gaps and hulls) |
 | `elements` | The pieces to place (see below) |
 
@@ -269,3 +269,13 @@ the bait comes during its chase. It drives behind the runner and never uses the 
 nothing for it, and a level is the same with or without it but for its trucks (and for what the danger
 density pass adds, since it counts them among the level's enemies). A level whose patterns bring
 no Octodog or Buzz Overdrive gets none. See `docs/ARCHITECTURE.md`, The generator, Enforcer Trucks.
+
+Wall-run gaps (`wall_run_gaps`; task J2, the owner, October 15, 2026: a hole over every floor lane, too long to jump,
+crossed by a wall run on its lit side wall; from Marketplace 1 on) have no patterns, and no pattern should require
+them: their rules (`wall_run_gaps_rules.gd`, after every other feature's rules, before the danger density pass)
+place them where nothing the rules planned is in the way, about one every 40 to 70 s of run (by difficulty;
+`data/tuning/wall_run_gaps.tres`). Plain pieces of the patterns in their way go (holes, fences that may go, zone
+doodads), and so may a plain floor cyborg or a manhole screech (never a host, never the level's first of its kind);
+as a last resort, a sign on the lit wall too. For patterns this means only that a few of their pieces may make way
+for one. See `docs/ARCHITECTURE.md`, The
+generator, Wall-run gaps.
