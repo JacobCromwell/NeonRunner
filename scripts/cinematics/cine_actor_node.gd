@@ -313,6 +313,11 @@ func _update_cyborg(i: int, others: Dictionary) -> void:
 			if not _died:
 				_died = true
 				body.die(&"shot")
+		&"stomped":
+			# Landed on from above: squashed flat, its screen ERR then dark, the way a stomp kills in play.
+			if not _died:
+				_died = true
+				body.die(&"stomp")
 		&"lie":
 			body.set_pose(CyborgBody.Pose.LIE)
 		&"crouch":

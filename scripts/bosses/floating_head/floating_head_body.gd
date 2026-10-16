@@ -57,6 +57,8 @@ var shape: FloatingHeadModel.Shape
 ## The face screen powering on (0 off, 1 the face) and its expression (FloatingHead drives these).
 var screen_power: float = 0.0
 var anger: float = 0.35
+## 0 (the fight's face) to 1: startled, the eyes wide and an "O" for a mouth (the City intro's: the face shader's `surprise`).
+var surprise: float = 0.0
 var eye_charge: float = 0.0
 var glitch: float = 0.0
 var lamp: Lamp = Lamp.OFF
@@ -507,6 +509,7 @@ func _animate(delta: float) -> void:
 	_screen_material.set_shader_parameter(&"power", clampf(screen_power, 0.0, 1.0))
 	_screen_material.set_shader_parameter(&"look", _look)
 	_screen_material.set_shader_parameter(&"anger", anger)
+	_screen_material.set_shader_parameter(&"surprise", surprise)
 	_screen_material.set_shader_parameter(&"blink", blink if screen_power >= 1.0 else 0.0)
 	_screen_material.set_shader_parameter(&"eye_charge", eye_charge)
 	_screen_material.set_shader_parameter(&"glitch", glitch)

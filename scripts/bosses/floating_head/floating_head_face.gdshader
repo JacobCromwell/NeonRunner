@@ -34,6 +34,9 @@ uniform vec2 look = vec2(0.0);
 uniform float anger = 0.35;
 // Eyelids: 0 open, 1 shut.
 uniform float blink = 0.0;
+// 0 as the fight draws it; 1 startled (the City intro, GDD §6, Zone 1 intro): the eyes wide open with the lids out of
+// sight and small pupils, the brows raised, a round "O" for a mouth under the nose, like the cyborgs' panic face.
+uniform float surprise = 0.0;
 // The eye lasers' warning (task E1b): the eyes turn red and glow brighter.
 uniform float eye_charge = 0.0;
 // Picture break-up (the defeat, task E1d): rows tear and static floods in.
@@ -73,18 +76,18 @@ vec3 fh_eye(vec2 p, float side, float aa) {
 	vec2 q = p - vec2(side * 0.26, 0.02);
 	// Mirrored, so +x runs to the outer corner on both sides.
 	q.x *= side;
-	vec2 r = vec2(0.17, 0.095);
+	vec2 r = vec2(0.17, 0.095) * vec2(1.0 + 0.1 * surprise, 1.0 + 0.5 * surprise);
 	float d = fh_ellipse(q, r);
 	// The upper lid comes down: all along it as it blinks, at the inner corner in anger.
 	float inner = clamp((r.x - q.x) / (2.0 * r.x), 0.0, 1.0);
-	float lid = r.y * (1.0 - 2.0 * blink) - anger * (0.012 + 0.052 * inner);
+	float lid = r.y * (1.0 - 2.0 * blink) - anger * (0.012 + 0.052 * inner) + surprise * 0.1 * (1.0 - blink);
 	float lid_d = q.y - lid;
 	float open_d = max(d, lid_d);
 	float outline = max(abs(d) - 0.018, lid_d);
 	float lid_line = max(abs(lid_d) - 0.018, d);
 	vec2 ic = vec2(look.x * side * 0.07, look.y * 0.03 - 0.008);
-	float iris = length(q - ic) - 0.064;
-	float pupil = length(q - ic) - 0.026;
+	float iris = length(q - ic) - 0.064 * (1.0 - 0.3 * surprise);
+	float pupil = length(q - ic) - 0.026 * (1.0 - 0.35 * surprise);
 	float inside = fh_fill(open_d, aa);
 	return vec3(fh_fill(min(outline, lid_line), aa), inside, fh_fill(iris, aa) * (1.0 - fh_fill(pupil, aa)) * inside);
 }
@@ -97,10 +100,12 @@ vec3 fh_face(vec2 p, float aa) {
 	float bright = max(max(left.x, right.x), max(left.z, right.z));
 	for (int i = 0; i < 2; i++) {
 		float side = i == 0 ? -1.0 : 1.0;
-		vec2 a = vec2(side * 0.09, 0.165 - anger * 0.055);
-		vec2 b = vec2(side * 0.43, 0.215 + anger * 0.012);
+		vec2 a = vec2(side * 0.09, 0.165 - anger * 0.055 + surprise * 0.085);
+		vec2 b = vec2(side * 0.43, 0.215 + anger * 0.012 + surprise * 0.06);
 		bright = max(bright, fh_fill(fh_segment(p, a, b) - 0.032, aa));
 	}
+	// The startled "O": a round mouth under the nose.
+	bright = max(bright, fh_fill(abs(fh_ellipse(p - vec2(0.0, -0.32), vec2(0.055, 0.065))) - 0.018, aa) * surprise);
 	// A nose line with a short base, and circuit traces down the cheeks and across the forehead.
 	float dim = fh_fill(fh_segment(p, vec2(0.0, -0.04), vec2(0.0, -0.2)) - 0.01, aa);
 	dim = max(dim, fh_fill(fh_segment(p, vec2(-0.055, -0.21), vec2(0.055, -0.21)) - 0.01, aa));

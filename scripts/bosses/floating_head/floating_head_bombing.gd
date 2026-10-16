@@ -872,6 +872,15 @@ func _mesh_node(mesh: Mesh, material: Material, node_name: String) -> MeshInstan
 	return node
 
 
+## The searchlight's beam and spot meshes, for the City intro's Head (CityIntroHead), which lights its own street the same way.
+static func beam_mesh() -> ArrayMesh:
+	return _cone_mesh()
+
+
+static func spot_mesh() -> ArrayMesh:
+	return _quad_mesh()
+
+
 ## The beam: an open cone along -z from radius 0.3 at the lamp (z = 0) to 1 at the floor (z = -1),
 ## with normals for its soft edges and UV.y running along it.
 static func _cone_mesh() -> ArrayMesh:
