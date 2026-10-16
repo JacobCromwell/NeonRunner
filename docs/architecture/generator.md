@@ -37,6 +37,10 @@ have 30.2%. The wall fences' share (`wall_fence_increase_scale`) went from 1.25 
 campaign's own builds from Marketplace 2 on, and makes no floor room; the sample has 30.6% with it, the 7 seeds
 31.9%, and their enemies about 30% either way. `test_danger_density`'s sample then has 13-19% more enemies and 17%
 more obstacles in the first levels, 26-28% and 27-28% in the middle ones, and 32-36% and 31-39% in the final ones.
+The wall-run gaps (task J2) take room the pass would fill (each keeps about 4 s of run clear in every lane, the
+level's spacing either side): the sample's final band at 3 lanes then has about 29% more enemies and 28% more
+obstacles (33% and 30% without them; 5 and 6 lanes 31-36%), and `test_danger_density` lets that band land 4% lower
+at 3 lanes (`WALL_RUN_GAP_ROOM`; DESIGN-TBD, `docs/questions/j2.md` item 12).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 

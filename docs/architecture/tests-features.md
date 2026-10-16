@@ -322,7 +322,9 @@ on a plain stretch fenced every 15 m (plain fences make way for it, pulsing ones
 `test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
 run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
 leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit
-wall clear past the longest wall run); every campaign level with the feature at 3, 5 and 6 lanes on its own build
+wall clear past the longest wall run; claws adding less to a wall run than the run-in and the lit stretch last, so a
+runner who passed a dash wall on a wall comes down before the gap); every campaign level with the feature at 3, 5 and
+6 lanes on its own build
 (`LayoutCache`): no warnings, at least one, `LayoutChecks.check_wall_run_gaps` (part of `check_layout`, so
 `test_campaign`'s seed sweep checks them too) and a floor route across each that steps onto the lit wall from the lit
 stretch (FloorRoute's wall-run move), the count by zone printed; none in the City's or Gangland's levels, quick play
@@ -333,7 +335,10 @@ lit wall early, midway or late on the lit stretch crosses onto the landing floor
 the dash or the dash alone falls in, as does a step onto the wall well before the lit stretch; the grapple's save and a
 revive after a fall put the runner on the lit wall and across. Every zone skin lights the lit wall in green chevrons
 over exactly the stretch to step on and the gap, on the wall face, facing the street, seamless across chunks; and a
-heli drone's barrage and a Bad Dream's slash hold off only while a crossing is in their reach.
+heli drone's barrage and a Bad Dream's slash hold off only while a crossing is in their reach. `test_campaign`'s sweep
+of The Hush lists the builds crowded past any wall-run gap (`WALL_RUN_GAP_CROWDED`: they warn of that and nothing
+else), and `test_danger_density` lets the final band land lower at 3 lanes where the wall-run gaps take the pass's room
+(`WALL_RUN_GAP_ROOM`); its route case and `test_gilded_sentinel`'s Sentinel wall case are built without them.
 `test_ceiling_scenarios` checks the ceiling scenarios (task I4; The generator, Ceiling scenarios): their numbers and
 heights (a ceiling fence above a floor runner's jump, a hover truck roof's, a wall runner's body and the chase
 camera); none in the City's, Gangland's or the Marketplace's levels; in every level that lists them, at 3, 5 and 6

@@ -680,13 +680,11 @@ throughout (`docs/questions/j2.md`).
   `MAKE_ROOM_TYPES`: a Resonator's visit, a Gilded Sentinel or a hover truck, never the level's first of its kind; the
   report's constraints name it), and where that leaves no room either, with the signs on its lit wall's stretch taken
   off (`_signs_go`: a sign blocks the step onto the wall and hurts a wall runner; Marketplace 1 at 5 lanes on seed
-  7301, one sign), and where even that leaves none, with one plain ceiling taken out with its pads (`_ceilings_go`,
-  `PadPlacement.remove_hull`, as a drone's pad schedule takes a pattern's ceilings out: no ceiling scenario, nothing
-  hanging from it, never the level's first, nor one with a pad a host's chase or a drone wave counts on; a ceiling is
-  never the only way over its floor, GDD §3; The Hush without its remix on seed 9206 and Dead Zone 1 on seed 9208 at 3
-  lanes, test_campaign's sweep, where a ceiling or its landing zone took every 4-second stretch), else a warning
-  (Marketplace 1 on seeds 9003 at 3 lanes and 9004 at 5, whose hover truck in the way is the level's first: no campaign
-  build or suite builds those). `min_spacing_seconds` between one's landing floor and the next one's run-in.
+  7301, one sign), else a warning (Marketplace 1 on seeds 9003 at 3 lanes and 9004 at 5, whose hover truck in the way
+  is the level's first; and at 3 lanes The Hush without its remix on seed 9206 and Dead Zone 1 on seed 9208, in
+  `test_campaign`'s sweep, whose drone pad schedule, its ceilings every 8 to 10 s, and its only hover truck and
+  Octodog leave no 4-second stretch: `test_campaign`'s `WALL_RUN_GAP_CROWDED`; no campaign build has one).
+  `min_spacing_seconds` between one's landing floor and the next one's run-in.
 - **What it keeps off** (`floor_keep_outs`, `keep_outs_by_part`, `wall_keep_outs`): from its run-in to the end of its
   landing floor nothing in any lane: no other hole, fence, doodad, pad and its lift, ramp and the longest wall run it
   launches, speed pad, floor cut's window, wider gap's zone, and no enemy's attack or the floor it uses (everything a

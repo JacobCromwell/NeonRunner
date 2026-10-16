@@ -54,6 +54,13 @@ const TARGET_RATIO: Dictionary = {"early": 1.15, "late": 1.35}
 ## Gilded Sentinel stretches leave the least room), so a tighter tolerance would test which levels
 ## and seeds were sampled rather than the pass.
 const TOLERANCE: float = 0.05
+## Task J2 (the owner, October 15, 2026, docs/USER_REQUESTS.md: wall-run gaps "especially in later zones and levels"):
+## a final level's wall-run gaps each keep about 4 s of run clear in every lane, with the level's spacing either side,
+## where this pass would otherwise add enemies and rows. With only 3 lanes its extra pieces come from more rows along
+## the track (a row may take two lanes at most), so fewer fit, and there the final band's floor is this much lower: it
+## lands at about x1.29 for enemies and x1.28 for obstacles over this sample (about x1.33 and x1.30 built without the
+## feature). By band, then lane count. DESIGN-TBD (docs/questions/j2.md item 12): which request gives way at 3 lanes.
+const WALL_RUN_GAP_ROOM: Dictionary = {"late": {3: 0.04}}
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
 ## final ones' and above the first band and below the last, at every lane count, for both counts.
 const MIDDLE_RANGE := Vector2(1.15, 1.35)
@@ -188,6 +195,7 @@ func _test_density(campaign: Campaign) -> void:
 			if TARGET_RATIO.has(band):
 				lo = float(TARGET_RATIO[band]) - TOLERANCE
 				hi = float(TARGET_RATIO[band]) + TOLERANCE
+			lo -= float((WALL_RUN_GAP_ROOM.get(band, {}) as Dictionary).get(LANES[li], 0.0))
 			check(e >= lo - 0.0005 and e <= hi + 0.0005, "%s: enemies x%.3f, within x%.2f..x%.2f" % [tag, e, lo, hi])
 			check(o >= lo - 0.0005 and o <= hi + 0.0005, "%s: obstacles x%.3f, within x%.2f..x%.2f" % [tag, o, lo, hi])
 		ratios[band] = band_ratios

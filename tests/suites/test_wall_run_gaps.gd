@@ -6,7 +6,8 @@ extends SkinSuite
 ##   pad's or a ramp's whole boost and the dash all the way); a standard wall run (no claws, no wall hop) from the lit
 ##   stretch's first metre leaves the wall past the far edge, one from its last drops the runner onto the landing
 ##   floor; the run-in and the lit stretch give time to cross every lane of a 6-lane track; the lit wall stays clear
-##   past the longest wall run (claws and the dash);
+##   past the longest wall run (claws and the dash); claws add less to a wall run than the run-in and the lit stretch
+##   last (a runner who passed a dash wall on a wall comes down before the gap, WallRunGapPlacement.past_dash_wall);
 ## - the generator: every campaign level with the feature (from Marketplace 1 on), at 3, 5 and 6 lanes on its own seed,
 ##   has at least one, every one keeping its rules (LayoutChecks.check_wall_run_gaps) with a floor route across it
 ##   (FloorRoute: the wall run from its lit stretch, the only move that crosses); per zone, how many a build (printed);
@@ -98,6 +99,9 @@ func _test_numbers() -> void:
 		check(shape.wall_after >= shape.longest_seconds * v + pt.dash_duration * pt.dash_speed_bonus,
 			"the lit wall stays clear past the longest wall run, with claws and the dash " + tag)
 		check(shape.longest_seconds > shape.wall_run_seconds, "claws only lengthen the wall run " + tag)
+		# A dash wall keeps a standard wall run past it off the clear stretch (WallRunGapPlacement.past_dash_wall).
+		check(shape.longest_seconds - shape.wall_run_seconds < t.approach_seconds + t.entry_window_seconds,
+			"claws add less to a wall run than the run-in and the lit stretch last: a clawed runner past a dash wall comes down before the gap " + tag)
 
 
 func _test_campaign() -> void:
