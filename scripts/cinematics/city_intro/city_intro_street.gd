@@ -71,7 +71,6 @@ func _road(solid: MeshLayer, z0: float, z1: float) -> void:
 ## Lane paint: a solid double line down the middle, dashed lines between the lanes, solid edge lines, and crosswalks.
 func _paint(solid: MeshLayer, z0: float, z1: float) -> void:
 	var y: float = 0.03
-	var len: float = z1 - z0
 	for x: float in [-0.14, 0.14]:
 		_strip(solid, x, 0.1, z0, z1, y)
 	for x: float in [-road_half * 0.5, road_half * 0.5]:
@@ -88,7 +87,6 @@ func _paint(solid: MeshLayer, z0: float, z1: float) -> void:
 		while x < road_half - 0.4:
 			solid.rect(Vector3(x, y, -(at - 2.0)), Vector3(bar, 0.0, 0.0), Vector3(0.0, 0.0, -4.0), MARKING, PAINT_GLOW)
 			x += bar * 2.0
-	len = len
 
 
 ## Where the crosswalks are (track distances) in [z0, z1]: every so often, off the stretch the cyborgs march.
@@ -167,18 +165,14 @@ func _shop(solid: MeshLayer, glow: MeshLayer, side: int, x: float, a: float, b: 
 	var accent: Color = skin.neon_colors[(key >> 5) % skin.neon_colors.size()]
 	var board_a: float = a + 0.15
 	var board_b: float = b - 0.15
-	var sign_seed: float = float((key >> 2) % 90)
 	_wall_rect(solid, side, in_x - side * 0.04, board_a, board_b, 2.95, 3.5, accent, 0.5, MeshKit.PAT_GLYPHS, 0.0, true)
 	_wall_rect(solid, side, in_x - side * 0.045, board_a - 0.05, board_b + 0.05, 2.92, 2.95, accent, 0.5)
 	_wall_rect(solid, side, in_x - side * 0.045, board_a - 0.05, board_b + 0.05, 3.5, 3.53, accent, 0.5)
-	sign_seed = sign_seed
 	# The light on the pavement in front of the window.
-	var spill_w: float = 2.2
 	var sx0: float = x - side * 0.05
 	var sx1: float = x - side * (SIDEWALK - 0.15)
 	glow.rect(Vector3(minf(sx0, sx1), KERB + 0.015, -b), Vector3(absf(sx1 - sx0), 0.0, 0.0), Vector3(0.0, 0.0, b - a),
 		light, 0.06, MeshKit.SHAPE_FLAT)
-	spill_w = spill_w
 
 
 ## A rectangle on a wall's face, between track distances a and b and heights y0 and y1, facing the street (side -1 the
