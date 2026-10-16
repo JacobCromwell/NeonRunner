@@ -203,16 +203,17 @@ static func landing_seconds(m: MovementTuning, t: WallRunGapTuning) -> float:
 
 
 ## How far past a dash wall's back a runner who passes it on a side wall (GDD §9.14: without the dash or the armor) may
-## still be on that wall or coming down off it: the longest wall run (claws), as if they stepped on at its back, the
-## dash's extra and the drop back to the floor. A wall-run gap's clear stretch keeps off that (floor_keeps; a dash wall
-## placed after the wall-run gaps keeps its face that far before one, DashWallRules.plan_for), as it keeps off a ramp's
-## longest wall run: a runner still on a wall when its lit stretch comes would have no fresh wall run for the gap, and
-## one whose wall run ends over the gap drops into it.
+## still be on that wall or coming down off it: a standard wall run as if they stepped on at its back, the dash's extra
+## and the drop back to the floor. A wall-run gap's clear stretch keeps off that (floor_keeps; a dash wall placed after
+## the wall-run gaps keeps its face that far before one, DashWallRules.plan_for), so that runner is back on the floor,
+## in either outer lane, before the clear run-in begins, with all of it to get to the lit wall: one still on a wall as
+## the lit stretch comes has no fresh wall run for the gap, and one whose wall run ends over the gap drops into it.
+## With claws their wall run lasts longer, but never past the clear run-in and the lit stretch (both together outlast
+## what claws add), so they come down onto the floor before the gap. DESIGN-TBD (docs/questions/j2.md item 11).
 static func past_dash_wall(gen: LevelGenerator, pt: PowerupTuning = null) -> float:
 	var p: PowerupTuning = pt if pt != null else powerups()
 	var m: MovementTuning = gen.tuning
-	var longest: float = m.wall_entry_time + m.wall_slide_time * maxf(p.claws_wall_time_multiplier, 1.0)
-	return (longest + drop_seconds(m)) * gen.speed + p.dash_duration * p.dash_speed_bonus
+	return (m.wall_entry_time + m.wall_slide_time + drop_seconds(m)) * gen.speed + p.dash_duration * p.dash_speed_bonus
 
 
 ## A wall-run gap's sizes (Shape) for movement tuning `m` at run speed `speed` (m/s), from `t` (the shared numbers by

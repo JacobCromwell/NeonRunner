@@ -680,15 +680,22 @@ throughout (`docs/questions/j2.md`).
   `MAKE_ROOM_TYPES`: a Resonator's visit, a Gilded Sentinel or a hover truck, never the level's first of its kind; the
   report's constraints name it), and where that leaves no room either, with the signs on its lit wall's stretch taken
   off (`_signs_go`: a sign blocks the step onto the wall and hurts a wall runner; Marketplace 1 at 5 lanes on seed
-  7301, one sign), else a warning (Marketplace 1 on seeds 9003 at 3 lanes and 9004 at 5, whose hover truck in the way
-  is the level's first: no campaign build or suite builds those).
-  `min_spacing_seconds` between one's landing floor and the next one's run-in.
+  7301, one sign), and where even that leaves none, with one plain ceiling taken out with its pads (`_ceilings_go`,
+  `PadPlacement.remove_hull`, as a drone's pad schedule takes a pattern's ceilings out: no ceiling scenario, nothing
+  hanging from it, never the level's first, nor one with a pad a host's chase or a drone wave counts on; a ceiling is
+  never the only way over its floor, GDD §3; The Hush without its remix on seed 9206 and Dead Zone 1 on seed 9208 at 3
+  lanes, test_campaign's sweep, where a ceiling or its landing zone took every 4-second stretch), else a warning
+  (Marketplace 1 on seeds 9003 at 3 lanes and 9004 at 5, whose hover truck in the way is the level's first: no campaign
+  build or suite builds those). `min_spacing_seconds` between one's landing floor and the next one's run-in.
 - **What it keeps off** (`floor_keep_outs`, `keep_outs_by_part`, `wall_keep_outs`): from its run-in to the end of its
   landing floor nothing in any lane: no other hole, fence, doodad, pad and its lift, ramp and the longest wall run it
   launches, speed pad, floor cut's window, wider gap's zone, and no enemy's attack or the floor it uses (everything a
   wider gap's zone keeps: `WideGapPlacement.keeps_of`, the rules' keep-outs, each planned Resonator pulse; but a heli
-  drone's wave until its first pad, whose barrages hold off at run time, below); no ceiling and no ceiling's landing
-  zone overlaps it, and no pad's run-up reaches its gap. Its lit wall stays whole
+  drone's wave until its first pad, whose barrages hold off at run time, below), nor the longest wall run past a dash
+  wall (`past_dash_wall`, from its face: claws, the dash and the drop as if the runner stepped on at its back; a runner
+  without the dash passes one on a side wall, GDD §9.14, and one still on a wall when the lit stretch comes has no
+  fresh wall run for the gap); no ceiling and no ceiling's landing zone overlaps it, and no pad's run-up reaches its
+  gap. Its lit wall stays whole
   and clear from `wall_clear_seconds` before the lit stretch to past
   the longest wall run over the gap (`wall_to`: claws, the dash, a save onto the wall at the far edge): no sign, wall
   enemy (`WallGapTuning.wall_enemy_seconds` either side), wall fence or side wall gap; the other wall keeps no side
@@ -700,8 +707,9 @@ throughout (`docs/questions/j2.md`).
   count and share are the level's as it stands.
 - **After it**: every later pass keeps off its clear stretch (`doodad_keep_outs`, `fill_keep_outs`, with `KEEP_MARGIN`);
   a cyborg's walk and panic run stop short of it (`CyborgRules.obstacle_spans`), a wall enemy the danger density pass
-  adds keeps off its lit wall (`on_wall_section`), and the wall fences and side wall gaps keep off it
-  (`WallFencePlacement.keep_outs`, `WallGapPlacement.keep_outs`). `problem(gen, w)` re-checks a finished layout
+  adds keeps off its lit wall (`on_wall_section`), a dash wall placed after it keeps its face a wall run past it
+  (`past_dash_wall`) before the clear stretch (`DashWallRules.plan_for`, `problems`), and the wall fences and side wall
+  gaps keep off it (`WallFencePlacement.keep_outs`, `WallGapPlacement.keep_outs`). `problem(gen, w)` re-checks a finished layout
   (`LayoutChecks.check_wall_run_gaps`, part of `check_layout`).
 - **Giving way**: a later pass short of its own count lets the level's wall-run gaps but its first make way
   (`set_aside`, `put_back`): the wider gaps (`WideGapPlacement.place`, before its last way) and the dash walls
