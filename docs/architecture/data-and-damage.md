@@ -31,9 +31,11 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
 
 - **Hazards declare, `DamageRules` decides.** A `Hazard` (`scripts/world/hazard.gd`) is an Area3D on
   the hazard layer with properties: `is_electrical`, `is_enemy_attack`, `is_solid`, `armor_blocks_solid`
-  (a solid hit armor absorbs all the same: a dash wall's crash, below), `breakable` (what any contact breaks:
-  a dash wall), `dash_passes`, `steals_share` (a thief's touch, below), `enemy` (owning enemy or null) and
-  `part` (`&"body"`, `&"top"`, `&"weak_point"`, `&"attack"`).
+  (a solid hit armor absorbs all the same: a dash wall's crash and a sign, below, and a fence generator's
+  body), `passes_after_block` (once armor or the shield took its hit, the runner goes on through the rest of
+  it: a sign, below), `breakable` (what any contact breaks: a dash wall), `dash_passes`, `steals_share` (a
+  thief's touch, below), `enemy` (owning enemy or null) and `part` (`&"body"`, `&"top"`, `&"weak_point"`,
+  `&"attack"`).
 - The player checks contacts each frame (a swept shape query) and calls `Player.receive_hit(hazard,
   stomping)`, which asks `DamageRules.resolve()` and applies the outcome: `IGNORE`,
   `BLOCKED_ARMOR`, `BLOCKED_SHIELD` (then ~1 s invulnerability), `KILL`, `DEFEAT_ENEMY` (claws or
@@ -168,6 +170,29 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   the pickup's extra hit; the revive; that the free armor can't be switched off.
 - Enemy shots go through `ProjectilePool.fire_enemy()`; the pool sweeps each shot against the
   player's hitbox and calls `receive_hit`, so armor, shield, invulnerability and the dash all apply.
+- **Signs: the armor takes the hit** (task K3, the owner's request: a sign no longer kills a runner whose armor
+  is up). A sign (`TrackBuilder._build_sign`: a box out of its wall on the hazard and wall blocker layers, met by
+  a wall runner who runs into it, or comes down the wall into a low one) is solid and declares
+  `armor_blocks_solid`, so DamageRules lets armor that is up absorb it, before the shield, as it absorbs an enemy
+  attack: one hit (`block()`, the `armor_hit` or `armor_break` event, `item_used(&"armor")` as it breaks, the
+  blocked count), the usual invulnerability window, and the armor's wait. With no armor and no shield it kills
+  ("sign") as before; the dash passes it; god mode and the window ignore it. Only signs changed: a truck's body,
+  a boss's block (`BossProps.block`), an enemy's body, a wall and a fall stay deadly through armor. A wall entry
+  beside a sign is still only blocked (the clank and the bump, which stops short of it: nothing is used).
+  - *One hit pays for the whole sign.* The wall runner whose armor (or shield) took a sign's hit runs on along the
+    wall through it (DESIGN-TBD, `docs/questions/k3.md` 1: rather than being knocked off the wall or the sign
+    giving way). The window alone covers it today (the longest pattern sign, 14 m at the reference speed and stretched
+    with the pace like every pattern's metres, takes about 0.8 s to run through at any pace, against the 1 s
+    window), but the window is an F6 tunable (down to 0.2 s) and a sign's length is pattern data, so the sign also
+    declares `passes_after_block`: once a hit of it was blocked
+    (`DamageRules.lets_through`), `Player._check_hazards` leaves it alone while the body is still in it
+    (`_passing`, by instance id, refreshed every frame the body touches it and forgotten the first frame it
+    doesn't), so the runner can't be hit by it again or die inside it. A dash that ends inside a sign leaves the
+    rest of it to the armor the same way. Nothing else declares it: after a blocked hit of anything else only the
+    window protects, as before (the Golden Convergence's fire relies on that).
+  - Everything that reacts to a hit hears a sign's like any other: the HUD, the run's effects and sounds, the
+    last-hit warning (it reads the armor's state) and a boss's armor rule (no boss arena has signs; each clears
+    its laps').
 - **Blocked moves bump, never hurt.** A lane switch into a solid side (a lane blocker: the hover
   truck's, a boss's block) and a wall entry where the wall is blocked (a sign, or a wall a boss takes
   away; GDD §3) move the player out toward it and back (`Player._start_bump`) with the clank
@@ -272,9 +297,9 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   - **anyone else** meets its hitbox: the crash (`_check_hazards` → `receive_hit`). DamageRules decides it as
     any hit, with one declared exception: armor that is up blocks a hazard with `armor_blocks_solid` (GDD
     §9.14: "armor or the shield absorbs it", an exception to the rule that armor never blocks solid
-    collisions; nothing else declares it, so a sign or a truck's body stays a hit armor never blocks), then
-    the shield, else it kills ("dash wall"); god mode and the invulnerability window ignore it, the dash
-    passes it. Whatever the outcome, `receive_hit` breaks a hazard's `breakable` (broken by `crash`, or
+    collisions; a sign declares it too since task K3, above, while a truck's body stays a hit armor never
+    blocks), then the shield, else it kills ("dash wall"); god mode and the invulnerability window ignore it,
+    the dash passes it. Whatever the outcome, `receive_hit` breaks a hazard's `breakable` (broken by `crash`, or
     `dash` for a dashing body), so the runner goes on through it after an absorbed hit, with the usual
     invulnerability.
   `Player._break(b, how)` does it: `DashBreakable.smash(how)` (its entry marked `smashed` and `broken_by`, its

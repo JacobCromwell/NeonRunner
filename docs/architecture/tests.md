@@ -86,6 +86,16 @@ phase's one within the boss's delay, and its last hit brings no second. `test_ar
 free armor and its upgrade (G3): the state's rules, its wait at any frame rate and not while paused,
 each tier's numbers alternating as GDD §8 says, a run's block, revive and pickups, the HUD, the shop
 line and texts, the save migration, and every kind of run through the App (the web demo's too).
+`test_sign_armor` covers a sign taking the armor's hit (task K3, the owner's request): the sign as the track
+builds it (solid, `armor_blocks_solid`, `passes_after_block`, its layers; nothing else built lets a runner
+through after a block); a wall runner into the longest pattern sign at 3, 5 and 6 lanes on both walls (with the
+free armor up they live: the break at its face, the usual window, the armor's wait from the hit, the blocked
+count, on along the wall through it and out past it, one contact; with nothing up it kills at its face); an
+upgraded armor losing one hit, the shield with and without the armor, a ramp's runner into a high sign and one
+coming down into a low sign, a blocked entry beside a sign using nothing, the broken armor not stopping the next
+sign, the dash (passing one; ending inside a long one); one hit paying for a 30 m sign under F6's shortest window
+(with a control that dies without `passes_after_block`); and a truck's body and an enemy's body still killing
+through armor. `test_damage_rules` has the pure rules (`resolve`, `lets_through`).
 `test_last_hit_warning` covers the "one hit from death" cue (I6; GDD §4): the tuning's ranges and F6 sliders; the
 siren's file (two flat tones alternating once per pulse, slower than the jackpot's and the searchlight's, no
 loop, and mixed under every attack warning in the library, 43 of them, on the general and the phone loudness

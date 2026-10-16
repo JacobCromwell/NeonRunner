@@ -8,7 +8,9 @@ var _nodes: Array[Node] = []
 
 func run() -> void:
 	var fence: Hazard = _hazard(false, false, true)
-	var sign_box: Hazard = _hazard(true, false, false)
+	# A plain solid: a truck's body, a boss's block, a wall.
+	var solid: Hazard = _hazard(true, false, false)
+	var sign_box: Hazard = _sign()
 	var shot: Hazard = _hazard(false, true, false)
 	var body: Hazard = _enemy_part(&"body")
 	var top: Hazard = _enemy_part(&"top")
@@ -22,10 +24,13 @@ func run() -> void:
 	check(DamageRules.resolve(fence, _d()) == O.IGNORE, "an inactive hazard does nothing")
 	fence.set_enabled(true)
 
-	# Armor: electrical hazards and enemy attacks, never solid collisions (GDD §8).
+	# Armor: electrical hazards and enemy attacks, never solid collisions (GDD §8), except one that declares
+	# armor_blocks_solid: a sign (task K3, the owner's request), as a dash wall's crash.
 	check(DamageRules.resolve(fence, _d("armor")) == O.BLOCKED_ARMOR, "armor blocks an electrical fence")
 	check(DamageRules.resolve(shot, _d("armor")) == O.BLOCKED_ARMOR, "armor blocks an enemy shot")
-	check(DamageRules.resolve(sign_box, _d("armor")) == O.KILL, "armor doesn't block a solid sign")
+	check(DamageRules.resolve(solid, _d("armor")) == O.KILL, "armor doesn't block a plain solid collision (a truck's body, a wall)")
+	check(DamageRules.resolve(sign_box, _d("armor")) == O.BLOCKED_ARMOR, "armor takes a sign's hit (it declares armor_blocks_solid)")
+	check(DamageRules.resolve(sign_box, _d()) == O.KILL, "a sign still kills a runner with no armor and no shield")
 	check(DamageRules.resolve(body, _d("armor")) == O.KILL, "armor doesn't block a solid enemy body")
 	# Barnacle contacts opt into the existing enemy-attack rule, while retaining body/top roles.
 	check(DamageRules.resolve(contact_body, _d("armor")) == O.BLOCKED_ARMOR, "armor blocks an opted-in body contact")
@@ -48,15 +53,32 @@ func run() -> void:
 		"a stomp still defeats an opted-in crown before armor is used")
 	# Shield: anything.
 	check(DamageRules.resolve(sign_box, _d("shield")) == O.BLOCKED_SHIELD, "the shield blocks a sign")
+	check(DamageRules.resolve(solid, _d("shield")) == O.BLOCKED_SHIELD, "the shield blocks a plain solid")
 	check(DamageRules.resolve(fence, _d("shield")) == O.BLOCKED_SHIELD, "the shield blocks a fence")
 	check(DamageRules.resolve(fence, _d("armor", "shield")) == O.BLOCKED_ARMOR, "armor is used before the shield when it applies")
-	check(DamageRules.resolve(sign_box, _d("armor", "shield")) == O.BLOCKED_SHIELD, "the shield covers what armor can't")
+	check(DamageRules.resolve(sign_box, _d("armor", "shield")) == O.BLOCKED_ARMOR, "armor is used before the shield on a sign too")
+	check(DamageRules.resolve(solid, _d("armor", "shield")) == O.BLOCKED_SHIELD, "the shield covers what armor can't")
 	# Invulnerability window and god mode.
 	check(DamageRules.resolve(fence, _d("invulnerable")) == O.IGNORE, "invulnerable players ignore hazards")
+	check(DamageRules.resolve(sign_box, _d("armor", "invulnerable")) == O.IGNORE,
+		"the invulnerability window ignores a sign before the armor takes another hit")
 	check(DamageRules.resolve(sign_box, _d("god")) == O.IGNORE, "god mode ignores hazards")
+
+	# Who goes on through a hazard after a block (task K3): a sign whose hit armor or the shield took, nothing else.
+	check(DamageRules.lets_through(sign_box, O.BLOCKED_ARMOR) and DamageRules.lets_through(sign_box, O.BLOCKED_SHIELD),
+		"a sign whose hit armor or the shield took lets the runner through the rest of it")
+	check(not DamageRules.lets_through(sign_box, O.KILL) and not DamageRules.lets_through(sign_box, O.IGNORE),
+		"nothing lets a runner through that wasn't blocked")
+	var crash: Hazard = _hazard(true, false, false)
+	crash.armor_blocks_solid = true
+	check(not DamageRules.lets_through(fence, O.BLOCKED_ARMOR) and not DamageRules.lets_through(shot, O.BLOCKED_ARMOR)
+		and not DamageRules.lets_through(solid, O.BLOCKED_SHIELD) and not DamageRules.lets_through(crash, O.BLOCKED_ARMOR)
+		and not DamageRules.lets_through(body, O.BLOCKED_SHIELD),
+		"nothing else does: a fence, a shot, a plain solid, a dash wall's crash, an enemy's body")
 
 	# Dash: passes through obstacles and enemies' attacks, defeats enemies (GDD §8, §9.1).
 	check(DamageRules.resolve(fence, _d("dashing")) == O.IGNORE, "the dash passes through a fence")
+	check(DamageRules.resolve(sign_box, _d("armor", "dashing")) == O.IGNORE, "the dash passes through a sign, nothing used")
 	check(DamageRules.resolve(shot, _d("dashing")) == O.IGNORE, "the dash passes through enemy fire")
 	check(DamageRules.resolve(body, _d("dashing")) == O.DEFEAT_ENEMY, "the dash defeats an enemy it hits")
 	(body.enemy as Enemy).dash_kills = false
@@ -116,6 +138,15 @@ func _hazard(solid: bool, attack: bool, electrical: bool) -> Hazard:
 	h.is_enemy_attack = attack
 	h.is_electrical = electrical
 	_nodes.append(h)
+	return h
+
+
+## A sign as the track builds it (TrackBuilder._build_sign; test_sign_armor checks the built one): solid, a hit
+## armor absorbs all the same, which lets the runner through after a block.
+func _sign() -> Hazard:
+	var h: Hazard = _hazard(true, false, false)
+	h.armor_blocks_solid = true
+	h.passes_after_block = true
 	return h
 
 

@@ -589,6 +589,13 @@ func _build_wall_fence(root: Node3D, w: Dictionary) -> void:
 		hazard.set_enabled(false)
 
 
+## A sign (GDD §3: it blocks wall entry, and colliding with one causes damage): a box standing out of its wall
+## by sign_depth over the layout entry's heights and stretch, on the hazard layer and the wall blocker layer
+## (a wall entry beside it clanks and bumps, Player._try_enter_wall). A wall runner who runs into it takes a
+## hit: solid, but one that armor absorbs all the same (Hazard.armor_blocks_solid; task K3, the owner's request:
+## a sign no longer kills a runner whose armor is up), then the shield, else it kills ("sign"). Once the armor
+## or the shield took its hit, the runner goes on through the rest of it (Hazard.passes_after_block), so a sign
+## longer than the invulnerability window never kills them inside it. The skin dresses it (ZoneSkin.wall_sign).
 func _build_sign(root: Node3D, s: Dictionary) -> void:
 	var side: int = s["side"]
 	var size := Vector3(tuning.sign_depth, s["top"] - s["bottom"], s["end"] - s["start"])
@@ -597,6 +604,10 @@ func _build_sign(root: Node3D, s: Dictionary) -> void:
 		size, LAYER_HAZARD | LAYER_WALL_BLOCKER)
 	hazard.hazard_name = "sign"
 	hazard.is_solid = true
+	hazard.armor_blocks_solid = true
+	# DESIGN-TBD (docs/questions/k3.md 1): after an absorbed hit the wall runner runs on along the wall through
+	# the sign (as the shield always let them), rather than being knocked off the wall or the sign giving way.
+	hazard.passes_after_block = true
 	_dress(skin.wall_sign.bind(hazard, size))
 
 
