@@ -55,9 +55,10 @@ func _step() -> CampaignStep:
 
 
 ## A CityIntro for the City's intro slot, in the tree, its clock stepped by the test.
-func _start() -> CityIntro:
+func _start(low_end: bool = false) -> CityIntro:
 	var s: CampaignStep = _step()
 	var seq := (load(s.cinematic.scene) as PackedScene).instantiate() as CityIntro
+	seq.low_end = low_end
 	tree.root.add_child(seq)
 	seq.play(s.cinematic, s)
 	seq.set_process(false)
@@ -266,8 +267,8 @@ func _test_beats(lanes: int) -> void:
 	check(float(yelling["jaw"]) > 0.95 and bool(yelling["mouth"]) and float(yelling["glitch"]) > 0.2 and float(yelling["anger"]) > 0.95,
 		"%s: then it yells (the jaw wide open, the mouth lit, the picture breaking up: %s)" % [tag, yelling])
 	check(light_ok, "%s: its light is cold white throughout, never red (red is the bombs')" % tag)
-	check(jumps == [snappedf(n.head_at, 0.01), snappedf(n.reverse_at, 0.01), snappedf(n.card_at, 0.01)] or _same_times(jumps,
-		[n.head_at, n.reverse_at, n.card_at]), "%s: the camera cuts only three times: to the Head's face, back to the street, to the chase (%s)" % [tag, jumps])
+	check(_same_times(jumps, [n.head_at, n.reverse_at]),
+		"%s: the camera cuts only twice: to the Head's face and back to the street, and drifts on under the title card (%s)" % [tag, jumps])
 	check(problems.is_empty(), "%s: the camera moves in one continuous move down to the street, stays in it and above the road: %s" % [
 		tag, problems.slice(0, 3)])
 	check(setup_msec < SETUP_BUDGET_MSEC and worst_step < STEP_BUDGET_MSEC,
@@ -400,7 +401,7 @@ func _test_props() -> void:
 	var crowd: CityIntroCrowd = seq.crowd
 	check(street.lamp_heads.size() > 10 and street.draw_calls <= 3, "the street is dressed with lamps, shops and paint in %d draw calls" % street.draw_calls)
 	# Traffic: two lanes of vehicles, never on top of each other, never in the stretch kept clear when the camera looks there.
-	check(traffic.vehicles.size() == n.vehicles_per_lane * 2 and traffic.looks.size() == 17, "%d vehicles in %d looks" % [
+	check(traffic.vehicles.size() == seq.vehicle_count() * 2 and traffic.looks.size() == 17, "%d vehicles in %d looks" % [
 		traffic.vehicles.size(), traffic.looks.size()])
 	var overlap: bool = false
 	var in_clear: int = 0
@@ -425,7 +426,7 @@ func _test_props() -> void:
 		lanes_ok = lanes_ok and absf(v.lane_x) < street.road_half and absf(v.lane_x) > street.road_half * 0.5
 	check(lanes_ok, "the traffic keeps to the road's outer lanes, the middle is the cyborgs'")
 	# People: on the sidewalks, always, walking.
-	check(crowd.count == n.people_per_side * 2, "%d people on the sidewalks" % crowd.count)
+	check(crowd.count == seq.people_count() * 2, "%d people on the sidewalks" % crowd.count)
 	var on_walk: bool = true
 	var moved: bool = false
 	for i: int in range(0, crowd.count, 7):
@@ -447,6 +448,13 @@ func _test_props() -> void:
 		if _hazard_hue(c):
 			hazard.append(c.to_html())
 	check(hazard.is_empty(), "no lit or painted colour of the street, its traffic or its window is a hazard's hue: %s" % [hazard])
+	# A low-end device gets fewer of both.
+	var small: CityIntro = _start(true)
+	check(small.traffic.vehicles.size() < traffic.vehicles.size() and small.crowd.count < crowd.count
+		and small.crowd.count == roundi(n.people_per_side * n.low_end_share) * 2,
+		"a low-end device gets fewer vehicles and people (%d and %d, not %d and %d)" % [small.traffic.vehicles.size(),
+		small.crowd.count, traffic.vehicles.size(), crowd.count])
+	await _free(small)
 	await _free(seq)
 
 

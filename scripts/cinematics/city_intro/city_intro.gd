@@ -30,6 +30,8 @@ const FLICKER_FACES: Array[StringName] = [&"corrupt_broken", &"neutral", &"corru
 
 ## Its numbers (null: NUMBERS_PATH's).
 @export var numbers: CityIntroTuning
+## Fewer vehicles and people (DeviceProfile.is_low_end(), read as it starts; tools and tests may set it before).
+var low_end: bool = false
 
 var n: CityIntroTuning
 ## The props.
@@ -66,6 +68,7 @@ func _numbers() -> CityIntroTuning:
 ## The City's stretch of towers with no floor: every lane a gap, so only the road far below shows.
 func _stage_def() -> CineStageDef:
 	n = _numbers()
+	low_end = low_end or DeviceProfile.is_low_end()
 	var d := CineStageDef.new()
 	d.lanes = n.street_lanes
 	d.length = n.stage_length
@@ -127,11 +130,11 @@ func _build_props() -> void:
 	traffic = CityIntroTraffic.new()
 	traffic.name = "Traffic"
 	set_root.add_child(traffic)
-	traffic.build(skin, street.road_half, n.loop_from, n.loop_to, n.vehicles_per_lane, n.vehicle_speeds, n.traffic_clear)
+	traffic.build(skin, street.road_half, n.loop_from, n.loop_to, vehicle_count(), n.vehicle_speeds, n.traffic_clear)
 	crowd = CityIntroCrowd.new()
 	crowd.name = "Crowd"
 	set_root.add_child(crowd)
-	crowd.build(street.road_half, street.wall_half, n.loop_from, n.loop_to, n.people_per_side, n.people_speeds)
+	crowd.build(street.road_half, street.wall_half, n.loop_from, n.loop_to, people_count(), n.people_speeds)
 	window = CityIntroWindow.new()
 	window.name = "Window"
 	set_root.add_child(window)
@@ -142,6 +145,15 @@ func _build_props() -> void:
 	set_root.add_child(head)
 	head.build(geo, load(BOSS_TUNING_PATH) as FloatingHeadTuning)
 	head.place(n.face_at, n.belly)
+
+
+## How many vehicles to a lane and people to a sidewalk this device gets.
+func vehicle_count() -> int:
+	return maxi(roundi(n.vehicles_per_lane * (n.low_end_share if low_end else 1.0)), 4)
+
+
+func people_count() -> int:
+	return roundi(n.people_per_side * (n.low_end_share if low_end else 1.0))
 
 
 # --- The plan -----------------------------------------------------------------------------------------------
@@ -169,9 +181,9 @@ func _plan_light() -> void:
 		[n.street_at + 2.2, Vector3(-2.2, 0.0, _march_z(mid, n.street_at + 2.2) - 3.0)],
 		[n.street_at + 3.1, Vector3(1.8, 0.0, _march_z(mid, n.street_at + 3.1))],
 		[n.escape_at - 0.2, Vector3(-3.2, 0.0, n.window_z + 2.5)],
-		[n.burst_at - 0.65, Vector3(wall * 0.86, 0.7, n.window_z - 3.0)],
-		[n.burst_at - 0.35, Vector3(wall, n.window_sill + n.window_height * 0.5, n.window_z - 1.4)],
-		[n.burst_at - 0.05, Vector3(wall, n.window_sill + n.window_height * 0.5, n.window_z + 2.6)],
+		[n.burst_at - 0.65, Vector3(wall * 0.86, 0.7, n.window_z - 1.2)],
+		[n.burst_at - 0.35, Vector3(wall, n.window_sill + n.window_height * 0.5, n.window_z - 0.6)],
+		[n.burst_at - 0.05, Vector3(wall, n.window_sill + n.window_height * 0.5, n.window_z + 3.2)],
 		[n.burst_at + 1.0, Vector3(wall, n.window_sill + 0.3, n.window_z + 9.0)],
 		[notice_at, Vector3(wall * 0.6, 0.2, n.window_z + 12.0)],
 	]
@@ -362,15 +374,13 @@ func _camera(t: CineTimeline) -> void:
 			CinePath.Move.CUT if i == 0 else CinePath.Move.LINEAR, n.head_fovs[i])
 		key.trans = Tween.TRANS_SINE
 		key.easing = Tween.EASE_IN_OUT
-	# The street again: the cyborgs' surge and turn.
+	# The street again: the cyborgs' surge and turn, the camera drifting forward; at the title card it eases on behind the chase.
 	t.shot(n.reverse_at, tpv(n.street_from), tpv(n.street_look_from), CinePath.Move.CUT, n.street_fov)
-	var drift: CineCameraKey = t.shot(n.card_at - 0.004, tpv(n.street_to), tpv(n.street_look_to), CinePath.Move.LINEAR,
-		n.street_fov)
+	var drift: CineCameraKey = t.shot(n.card_at, tpv(n.street_to), tpv(n.street_look_to), CinePath.Move.LINEAR, n.street_fov)
 	drift.trans = Tween.TRANS_LINEAR
-	# And low behind the chase, under the title card.
-	t.shot(n.card_at, tpv(n.chase_from), tpv(n.chase_look_from), CinePath.Move.CUT, n.chase_fov)
 	var fly: CineCameraKey = t.shot(n.duration, tpv(n.chase_to), tpv(n.chase_look_to), CinePath.Move.LINEAR, n.chase_fov)
-	fly.trans = Tween.TRANS_LINEAR
+	fly.trans = Tween.TRANS_SINE
+	fly.easing = Tween.EASE_IN
 
 
 # --- Sounds and effects -------------------------------------------------------------------------------------

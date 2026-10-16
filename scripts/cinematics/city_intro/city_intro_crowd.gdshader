@@ -2,8 +2,8 @@
 // MultiMesh and moved by this shader alone, so a frame costs the CPU one uniform (`u_time`, the cinematic's clock).
 //   per instance  its transform (where it starts and which way it faces: local +z is the way it walks),
 //                 INSTANCE_CUSTOM = (look seed, gait phase 0-1, speed along world z in m/s (its sign the way it walks), size)
-//   per vertex    COLOR.r = the part (x10): 0 torso, 1 left leg, 2 right leg, 3 left arm, 4 right arm, 5 head, 6 hair,
-//                 7 a shoulder strip of neon trim
+//   per vertex    UV2.x = the part: 0 torso, 1 left leg, 2 right leg, 3 left arm, 4 right arm, 5 head, 6 hair, 7 a shoulder
+//                 strip of neon trim (the vertex colour isn't used: a MultiMesh without instance colours zeroes it)
 // The walk cycle swings the legs and arms about the hip and shoulder and bobs the body; a person that walks out of the
 // loop's end comes back in at its other. Unshaded with the kit's fake city light (the same on every renderer); its colours
 // are plain clothes in muted tones and skin, never a hazard's hue, never the cold white of a cyborg's screen.
@@ -70,7 +70,7 @@ float h(float x, float k) {
 
 void vertex() {
 	vec4 cd = INSTANCE_CUSTOM;
-	v_part = floor(COLOR.r * 10.0 + 0.5);
+	v_part = floor(UV2.x + 0.5);
 	v_seed = cd.x;
 	vec3 p = VERTEX;
 	float speed = abs(cd.z);

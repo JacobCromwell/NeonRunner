@@ -14,6 +14,9 @@ extends Node3D
 const FACE_SHADER: String = "res://scripts/bosses/floating_head/floating_head_face.gdshader"
 const LENS_WHITE := Color(0.85, 0.92, 1.0)
 const FACE_WHITE := Color(0.86, 0.91, 1.0)
+## The light fades out within this many metres of the camera (the light shader's near_fade): the camera is in the street it shines
+## down, and the beam and its spot never fill the picture.
+const NEAR_FADE: float = 9.0
 
 var shape: FloatingHeadModel.Shape
 var ship: Node3D
@@ -106,10 +109,12 @@ func _build_light() -> void:
 	_beam_material.shader = shader
 	_beam_material.set_shader_parameter(&"shape", 0)
 	_beam_material.set_shader_parameter(&"light_color", FloatingHeadBombing.LIGHT_WHITE)
+	_beam_material.set_shader_parameter(&"near_fade", NEAR_FADE)
 	_spot_material = ShaderMaterial.new()
 	_spot_material.shader = shader
 	_spot_material.set_shader_parameter(&"shape", 1)
 	_spot_material.set_shader_parameter(&"light_color", FloatingHeadBombing.LIGHT_WHITE)
+	_spot_material.set_shader_parameter(&"near_fade", NEAR_FADE)
 	beam = MeshInstance3D.new()
 	beam.name = "Beam"
 	beam.mesh = FloatingHeadBombing.beam_mesh()

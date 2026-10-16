@@ -16,6 +16,8 @@ extends Node3D
 ##   --reduced-flashing   with Settings > Reduced flashing on
 ##   --once               quits when it ends instead of playing it again
 ##   --from=S             starts S seconds in (steps its clock there first), for renders of a later moment
+##   --cam=px,py,pz,tx,ty,tz[,fov]  holds the camera there (track space) instead of the cinematic's own, for close-ups of a set
+##   --stats              prints the frame's draw calls, objects and vertices (the renderer's own count) every 10 frames
 ## Each event is printed with its time and frame as it fires, to find the matching frames.
 
 const SAMPLER_PATH: String = "res://tools/showcase/cinematic_sampler.tres"
@@ -38,6 +40,12 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	_frame += 1
+	if _has("stats") and _frame % 10 == 0:
+		var seq0 := cinematic as CinematicSequencer
+		print("  frame %4d (%.2f s): %d draw calls, %d objects, %d vertices" % [_frame, seq0.time if seq0 != null else 0.0,
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
 	var seq := cinematic as CinematicSequencer
 	if seq != null and is_instance_valid(seq):
 		while _logged < seq.log_lines.size():
@@ -89,6 +97,15 @@ func _start() -> void:
 	cinematic.play(def, step)
 	var from: float = float(_opt("from", "0"))
 	var seq := cinematic as CinematicSequencer
+	if seq != null and _opt("cam", "") != "":
+		var v: PackedStringArray = _opt("cam", "").split(",")
+		if v.size() >= 6:
+			var key := CineCameraKey.new()
+			key.position = Vector3(float(v[0]), float(v[1]), float(v[2]))
+			key.target = Vector3(float(v[3]), float(v[4]), float(v[5]))
+			key.fov = float(v[6]) if v.size() > 6 else 55.0
+			var keys: Array[CineCameraKey] = [key]
+			seq.playing.camera = keys
 	if seq != null and from > 0.0:
 		while not seq.done and seq.time < from - 0.0001:
 			seq.advance(minf(1.0 / 30.0, from - seq.time))

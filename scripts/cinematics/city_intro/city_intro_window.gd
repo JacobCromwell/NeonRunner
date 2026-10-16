@@ -73,7 +73,7 @@ func build(skin: CitySkin, wall_half: float, p_side: int, p_z: float, p_sill: fl
 	var ib := MeshBatch.new()
 	var is_: MeshLayer = ib.layer(skin.solid_material())
 	var ig: MeshLayer = ib.layer(skin.glow_material())
-	_rect(is_, fx - side * 0.02, z0, z1, y0, y1, ROOM_LIGHT.darkened(0.25), 0.5)
+	_rect(is_, fx - side * 0.02, z0, z1, y0, y1, ROOM_LIGHT.darkened(0.25), 0.3)
 	_rect(is_, fx - side * 0.03, z0, z1, y0, y0 + height * 0.18, ROOM_LIGHT.darkened(0.6), 0.3)
 	_rect(ig, fx - side * 0.04, z0 - 0.3, z1 + 0.3, y0 - 0.3, y1 + 0.3, ROOM_LIGHT, 0.25, MeshKit.SHAPE_RADIAL)
 	for k: int in 2:

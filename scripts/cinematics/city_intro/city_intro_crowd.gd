@@ -85,7 +85,7 @@ func position_at(i: int, t: float) -> Vector3:
 
 
 ## One person, feet on y = 0, facing +z, about 1.7 m: legs, torso, arms, head, hair and a shoulder strip, the parts tagged
-## in the vertex colour for the shader (red channel: the part number over ten).
+## for the shader in the UV2 the kit keeps its pattern ids in.
 func _person() -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var l: MeshLayer = batch.layer(null)
@@ -101,4 +101,4 @@ func _person() -> ArrayMesh:
 
 
 func _part(layer: MeshLayer, center: Vector3, size: Vector3, part: int) -> void:
-	layer.box(center, size, Color(float(part) / 10.0, 0.0, 0.0), 0.0)
+	layer.box(center, size, Color.WHITE, 0.0, part)
