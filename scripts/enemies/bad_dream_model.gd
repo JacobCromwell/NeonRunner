@@ -48,6 +48,7 @@ uniform float maw = 0.0;       // the circular maw opening
 uniform float raise = 0.0;     // arms lifted and spread over the lanes it will slash
 uniform float slash = 0.0;     // the arms sweeping down and across
 uniform float reach = 1.0;     // arm stretch (1 = rest length), to span the lanes
+uniform float swing_down = 1.0;     // how far the slash swings the arms down (1 = to its sides; 0 = they stay up, sweeping across)
 uniform float attack = 0.0;    // throat and claws heat up to enemy-attack red
 uniform float lunge = 0.0;     // the upper body thrusts toward the player
 uniform float fade = 0.0;      // 0 = solid, 1 = dissolved (it also materializes through it)
@@ -96,7 +97,7 @@ void vertex() {
 		p = rot_z(p, sx * 1.25 * raise);
 		p = rot_x(p, 0.55 * raise);
 		// Slash: down and across in front of it.
-		p = rot_z(p, -sx * 1.5 * slash);
+		p = rot_z(p, -sx * 1.5 * slash * swing_down);
 		p = rot_y(p, -sx * 1.15 * slash);
 		v = pivot + p;
 		v_hot = smoothstep(0.8, 0.9, w);
@@ -225,6 +226,8 @@ var maw: float = 0.0
 var raise: float = 0.0
 var slash: float = 0.0
 var reach: float = 1.0
+## 1: the slash swings the arms down to its sides; 0: a slash at a ceiling, where they stay up and sweep across.
+var swing_down: float = 1.0
 var attack: float = 0.0
 var lunge: float = 0.0
 var fade: float = 0.0
@@ -293,7 +296,7 @@ func build(p_seed: float) -> void:
 func animate() -> void:
 	if _liquid_material == null:
 		return
-	for pair: Array in [[&"maw", maw], [&"raise", raise], [&"slash", slash], [&"reach", reach],
+	for pair: Array in [[&"maw", maw], [&"raise", raise], [&"slash", slash], [&"reach", reach], [&"swing_down", swing_down],
 			[&"attack", attack], [&"lunge", lunge], [&"fade", fade]]:
 		_liquid_material.set_shader_parameter(pair[0], pair[1])
 	_vapor_material.set_shader_parameter(&"lunge", lunge)

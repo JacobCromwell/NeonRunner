@@ -3,7 +3,9 @@ extends EnemyTuning
 ## Numbers for the Cyborg's Bad Dream (GDD §9.7), in data/enemies/bad_dream.tres. The GDD fixes the
 ## three-lane slash, a slash every ~3–4 s and a 20–30 s chase; the owner's placeholder review approved
 ## the escape rules, the pad schedule and the survival bonus as is (FB 99, FB 100, FB 104, FB 105).
-## Values still marked DESIGN-TBD are placeholders until playtested (FB 96–98). Pairs named
+## Values still marked DESIGN-TBD are placeholders until playtested (FB 96–98); the ceiling rider's slash is the
+## owner's (task K1: it hits a runner on a ceiling like one on the floor) with placeholder numbers
+## (docs/questions/k1.md). Pairs named
 ## _early/_late scale with the level's enemy_scaling (GDD §6). The enemy (bad_dream.gd) and the host
 ## rules (host_rules.gd) both read them, so a chase is planned with the same numbers it's played with.
 
@@ -32,7 +34,7 @@ extends EnemyTuning
 ## damage box scales with it.
 @export_range(0.5, 2.0, 0.05) var model_scale: float = 1.3
 ## DESIGN-TBD: it floats this far ahead of the player, facing them and keeping pace (inside the
-## camera's view), with the tip of its tail this high. Its head stays hull_clearance under a ceiling.
+## camera's view), with the tip of its tail this high.
 @export_range(3.0, 20.0, 0.5, "suffix:m") var hover_ahead: float = 7.5
 @export_range(0.0, 2.5, 0.05, "suffix:m") var hover_height: float = 0.35
 ## How fast it closes in on (or backs off to) that distance outside a lunge.
@@ -43,10 +45,6 @@ extends EnemyTuning
 @export_range(0.1, 10.0, 0.1, "suffix:m/s") var wall_follow_speed: float = 1.5
 ## Over a wall it floats this far inside the wall face.
 @export_range(0.3, 3.0, 0.05, "suffix:m") var wall_inset: float = 1.0
-## GDD §9.7: it can't reach a ship's hull. While the player rides a ceiling it waits below, this far
-## ahead (DESIGN-TBD), reaching up but never closer to the hull than hull_clearance.
-@export_range(3.0, 20.0, 0.5, "suffix:m") var wait_ahead: float = 7.0
-@export_range(0.5, 3.0, 0.1, "suffix:m") var hull_clearance: float = 1.2
 
 @export_group("Slash")
 ## DESIGN-TBD: the telegraph (the covered lanes lit up in enemy-attack red, the maw opening, the
@@ -76,6 +74,22 @@ extends EnemyTuning
 @export_range(0.5, 4.0, 0.1, "suffix:m") var slash_depth: float = 1.6
 ## A slash at a player on a wall covers the wall (up to this height) and the outer lane (FB 99).
 @export_range(1.0, 6.0, 0.1, "suffix:m") var wall_slash_top: float = 4.8
+
+@export_group("Slashing a ceiling rider")
+## Owner, task K1 (replacing GDD §9.7's "cannot reach the ship's hull"): the Bad Dream slashes a runner on a
+## ceiling as it does one on the floor: the same warning (shriek, open maw, the covered lanes lit red, here on
+## the ceiling's underside), the same three lanes (the rider's and one either side, clamped at the street's
+## edges), the same lunge. DESIGN-TBD (docs/questions/k1.md): everything below.
+## It rears up toward the hull for the slash until its head is this far under the underside.
+@export_range(0.1, 3.0, 0.1, "suffix:m") var hull_clearance: float = 0.6
+## How fast it rears up (and comes back down, outside a slash).
+@export_range(0.5, 10.0, 0.5, "suffix:m/s") var ceiling_rise_speed: float = 3.0
+## It waits this long after a runner's anti-grav pad flipped them (the flight up takes about 0.4 s) before it
+## telegraphs at them, so a warning isn't spent in the air.
+@export_range(0.0, 3.0, 0.05, "suffix:s") var ceiling_settle_time: float = 0.5
+## The claws reach this far down from the underside (the mirror of slash_height: a rider's jump, which goes
+## down from a ceiling, no more dodges the slash than a floor runner's does).
+@export_range(0.5, 4.0, 0.05, "suffix:m") var ceiling_slash_reach: float = 1.75
 
 @export_group("Generator rules")
 ## GDD §9.7: anti-grav pads are guaranteed during the chase: from the host's spot until

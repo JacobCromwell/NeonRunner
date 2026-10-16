@@ -5,7 +5,7 @@ extends Node3D
 ##     --write-movie build/bd/f.png --quit-after 230 res://tools/showcase/bad_dream_showcase.tscn -- --view=play
 ## A real RunWorld with a scripted player in god mode (so every slash shows without ending the run):
 ## the player dashes into a host (the Bad Dream bursts out), sits out one slash and dodges the next,
-## runs through fences it floats through, takes an anti-grav pad (it waits below), comes back down,
+## runs through fences it floats through, takes an anti-grav pad (it slashes at them on the ceiling, task K1), comes back down,
 ## and outlasts the chase until it dissolves.
 ## Views: play (default, the real run camera) or close (a camera beside the player, looking at it).
 ## Options: --lanes=N, --skin=<name> (data/skins/<name>_skin.tres), --chase=seconds (default 16),
