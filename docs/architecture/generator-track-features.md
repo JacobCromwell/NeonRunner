@@ -700,6 +700,18 @@ throughout (`docs/questions/j2.md`).
   adds keeps off its lit wall (`on_wall_section`), and the wall fences and side wall gaps keep off it
   (`WallFencePlacement.keep_outs`, `WallGapPlacement.keep_outs`). `problem(gen, w)` re-checks a finished layout
   (`LayoutChecks.check_wall_run_gaps`, part of `check_layout`).
+- **Giving way**: a later pass short of its own count lets the level's wall-run gaps but its first make way
+  (`set_aside`, `put_back`): the wider gaps (`WideGapPlacement.place`, before its last way) and the dash walls
+  (`DashWallRules.after_doodads`, before the quiet stretches and making room) look again with them out of the way,
+  and each comes back where that pass left its way as it was (`problem` finds nothing, and no wider gap planned there:
+  the level's own rows are made longer only after the fill pass); the report counts the rest (`gave_way`,
+  constraints). The first never gives way, so the level keeps one. Where a finished build's wider gaps still fall
+  short and it has wall-run gaps, the generator builds it once more with the first one's clear stretch kept for them
+  (`LevelGenerator._make_wide_gap_room`, `wall_run_gap_reserve`, `WallRunGapPlacement.wide_gap_reserve`; never in the
+  level that brings the feature in), so it goes elsewhere, its own last resort making room as ever (Golden 2 at 3
+  lanes on its own seed: a Gilded Sentinel that isn't the level's first). That build stands only with every wider gap,
+  a wall-run gap, every feature and no warning, else the level is built as before; it isn't a build of the guarantee
+  (`attempts`). DESIGN-TBD (`docs/questions/j2.md`): which gives way when a level has room for only one.
 - **At run time**: the attacks a wall runner can't dodge over the gap hold off while a crossing (`approach` to `end`,
   `LevelLayout.wall_run_between`) lies in their reach: a heli drone's barrage (`Drone._wall_run_in_reach`) and a Bad
   Dream's slash (`BadDream._wall_run_in_reach`; a host's chase only comes if the player kills it, so the generator
@@ -709,11 +721,12 @@ throughout (`docs/questions/j2.md`).
   carries them across: the pull's leap would drop them back in. Its first-encounter hint is `wall_run_gap`
   (`data/hints/hints.json`).
 - **How many** (`tools/measure/wall_run_gaps.gd`, campaign levels on their own and two more seeds at 3, 5 and 6
-  lanes): a build has on average 1.9 in the Marketplace (one in Marketplace 1, from halfway), 2.6 in the Casino, 2.3 in
-  Corporate, on the Beach and in the Dead Zone, and 1.8 in the Golden Zone, whose levels are the most crowded (their
-  Resonators, Gilded Sentinels and hover trucks leave few 4-second stretches free); every build measured (and every
-  one of `test_campaign`'s seed sweep, 216) has one, the last resort making room in 3 of the 117 and 5 of the 216,
-  all Golden builds on other seeds than their own.
+  lanes, 117 builds): a build has on average 1.9 in the Marketplace (one in Marketplace 1, from halfway), 2.6 in the
+  Casino, 2.3 in Corporate, 2.1 on the Beach, 2.0 in the Dead Zone and 1.5 in the Golden Zone, whose levels are the
+  most crowded (their Resonators, Gilded Sentinels and hover trucks leave few 4-second stretches free); 15 of the 117
+  had one give way to the wider gaps or the dash walls. Every build measured (and every one of `test_campaign`'s seed
+  sweep) has one, the last resort making room in 4 of the 117, all Golden builds at 3 lanes (one of them Golden 2's
+  own, through the wider gaps' rebuild).
 
 **Wall-run gaps on the track.** Their holes are built like any (`TrackBuilder._floor_pieces`, the zone's floor edges).
 `TrackBuilder._build_chunk` has the skin light each one's wall where it runs through the chunk

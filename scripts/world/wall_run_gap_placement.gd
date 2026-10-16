@@ -869,6 +869,7 @@ static func wide_gap_reserve(gen: LevelGenerator) -> Array[Vector2]:
 ## DashWallRules.after_doodads): takes every wall-run gap but the level's first out of `gen`'s layout (its entry and its
 ## holes; the first never gives way, so a level with the feature keeps one) and returns them, so the pass can look again
 ## with them out of its way. put_back puts back each one that still fits. [] where the level has fewer than two.
+## DESIGN-TBD (docs/questions/j2.md): which gives way where a level has room for only one.
 static func set_aside(gen: LevelGenerator) -> Array[Dictionary]:
 	var lay: LevelLayout = gen.layout
 	var out: Array[Dictionary] = []

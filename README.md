@@ -186,8 +186,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   with nothing else asking for the dash just before one, a clear stretch before and after, never under a
   ceiling, and a side wall always open beside them. A hover truck drops behind you and lets you go first, and
   a heli drone flies over one (in quick play, `--features=dash_wall --full-loadout`).
-  Wall-run gaps (from halfway into Marketplace 1, one to a few a level, more in later levels; placeholder
-  numbers): the whole street drops away for longer than any jump, even with the dash, and one side wall lights up
+  Wall-run gaps (from halfway into Marketplace 1, one to a few a level, more asked for in later levels, though
+  the crowded Golden Zone fits the fewest; placeholder numbers): the whole street drops away for longer than any jump, even with the dash, and one side wall lights up
   with the ramps' green arrows. Get into that wall's outer lane and step onto the wall where the arrows begin: the
   wall run carries you across onto a clear landing. The wall is the safe path there, kept clear of signs, wall
   fences, wall enemies and wall gaps, with nothing else in any lane around it, and drones and a Bad Dream hold

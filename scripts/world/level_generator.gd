@@ -324,7 +324,8 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 ## for the wider gaps (wall_run_gap_reserve, WallRunGapPlacement.wide_gap_reserve), the wall-run gap goes elsewhere
 ## (its own last resort making room as ever). That build stands if it has every wider gap, a wall-run gap, every
 ## feature (`needed`) and no warning; else the level is built as it was. Not a build of the guarantee: `attempts`
-## stays as it was. A level that needs no such room is built exactly as before.
+## stays as it was. A level that needs no such room is built exactly as before. DESIGN-TBD (docs/questions/j2.md): which
+## of the two gives way where a level has room for only one.
 func _make_wide_gap_room(patterns: Array, forced: Dictionary, needed: PackedStringArray) -> LevelLayout:
 	var reserve: Array[Vector2] = WallRunGapPlacement.wide_gap_reserve(self)
 	if reserve.is_empty():
