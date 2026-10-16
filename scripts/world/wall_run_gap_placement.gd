@@ -982,11 +982,18 @@ static func _set_holes(lay: LevelLayout, w: Dictionary, present: bool) -> void:
 
 
 ## Player.grapple_save for a level with wall-run gaps (RunWorld sets it, `layout` bound): a runner pulled up out of a
-## fall into a wall-run gap's holes (the grapple hook's save, GDD §8, or a revive's, GDD §4) is put on its lit wall
-## (Player._pull_up: {"wall": side}), whose wall run carries them across; the gap is longer than the pull's leap, which
-## would drop them back in. {} anywhere else: the save as it always was. DESIGN-TBD (docs/questions/j2.md).
+## fall into a wall-run gap's holes, within save_margin of them (the grapple hook's save, GDD §8, or a revive's, GDD §4),
+## is put on its lit wall (Player._pull_up: {"wall": side}), whose wall run carries them across; the gap is longer than
+## the pull's leap, which would drop them back in. That run leaves the wall by `until`, in time to come down onto the
+## landing floor (landing_slack_seconds before its end) however far along the gap the save came: a whole wall run from
+## its far edge would carry them past it. {} anywhere else: the save as it always was. DESIGN-TBD
+## (docs/questions/j2.md item 6).
 static func grapple_save(player: Player, _cause: StringName, layout: LevelLayout) -> Dictionary:
-	var w: Dictionary = layout.wall_run_gap_at(player.distance, tuning().save_margin)
+	var t: WallRunGapTuning = tuning()
+	var w: Dictionary = layout.wall_run_gap_at(player.distance, t.save_margin)
 	if w.is_empty():
 		return {}
-	return {"wall": int(w["side"])}
+	var out: Dictionary = {"wall": int(w["side"])}
+	if player.tuning != null:
+		out["until"] = float(w["landing"]) - (drop_seconds(player.tuning) + t.landing_slack_seconds) * maxf(player.speed, 1.0)
+	return out

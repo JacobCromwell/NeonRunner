@@ -16,7 +16,8 @@ extends SkinSuite
 ## - real physics at 3, 5 and 6 lanes, both walls: a step onto the lit wall early, midway or late on the lit stretch
 ##   carries the runner across onto the landing floor; with claws too; a jump, a jump with the dash, or the dash alone
 ##   never crosses, nor a step onto the wall well before the lit stretch; the grapple's save and a revive after a fall
-##   into the gap put the runner on the lit wall, whose run carries them across;
+##   into the gap put the runner on the lit wall, whose run carries them across (and off the wall over the landing
+##   floor, even from the gap's far edge);
 ## - the track: every zone skin lights the lit wall with the ramps' green chevrons (never a hazard colour) over exactly
 ##   the stretch to step on and the gap, on the wall face, facing the street, seamless across chunks, nothing on the
 ##   other wall, and builds without errors;
@@ -280,7 +281,8 @@ func _test_claws() -> void:
 
 
 ## The grapple's save and a revive after a fall into the gap put the runner on the lit wall (WallRunGapPlacement
-## .grapple_save, RunWorld sets it), whose run carries them across.
+## .grapple_save, RunWorld sets it), whose run carries them across, and off it over the landing floor even from the
+## gap's far edge.
 func _test_saves() -> void:
 	for lanes: int in [3, 5, 6]:
 		for side: int in [-1, 1]:
@@ -311,6 +313,19 @@ func _test_saves() -> void:
 			check(bool(r["alive"]) and float(r["distance"]) > float(w["landing"]),
 				"and its wall run carries them across %s (fell at %.0f m: %s, %.0f m)" % [tag, died_at, r["cause"],
 				float(r["distance"])])
+			await sim.free_world(world)
+			# A save at the gap's far edge: a whole wall run from there would carry the runner past the landing floor; it
+			# leaves the wall in time to come down on it.
+			world = sim.build_world(layout)
+			r = await sim.step_world(world, seconds)
+			world.player.distance = float(w["end"]) + 2.0
+			world.player.revive()
+			check(world.player.surface == Player.Surface.WALL, "a revive at the gap's far edge puts the runner on the lit wall " + tag)
+			var down: float = float(w["landing"]) - 1.0
+			r = await sim.step_world(world, seconds, [], [down])
+			check(bool(r["alive"]) and float(r["distance"]) > float(w["landing"]) and r["at"].has(down)
+				and r["at"][down]["surface"] == "floor",
+				"and its wall run ends over the landing floor %s: %s, %s" % [tag, r["cause"], r["at"].get(down, {})])
 			await sim.free_world(world)
 	# Anywhere else the save is the old one: {} back, straight up.
 	var plain: LevelLayout = _track(3, 1, tuning)

@@ -157,8 +157,9 @@ var floor_base: float = 0.0
 ## &"revive"), it returns {"lane": int, "height": float}: the lane to pull them into (moved across like a lane
 ## switch) and the world height of the floor to pull them up onto (at or above fall_base()), either of which
 ## may be left out (their own lane; fall_base()); or {"wall": side}: onto that wall's wall run (task J2, a
-## wall-run gap's lit wall: WallRunGapPlacement.grapple_save, which RunWorld sets in a level with them). Unset,
-## or an empty Dictionary back: straight up out of the pit, as the save always has been (_pull_up).
+## wall-run gap's lit wall: WallRunGapPlacement.grapple_save, which RunWorld sets in a level with them), with
+## "until", the track distance that run leaves the wall by. Unset, or an empty Dictionary back: straight up out of
+## the pit, as the save always has been (_pull_up).
 var grapple_save: Callable
 ## The level clock: seconds since the run started.
 var elapsed: float = 0.0
@@ -808,8 +809,8 @@ func fall_base() -> float:
 ## fall): straight up to just under the floor falls count from with the grapple's pull, as it always was, or
 ## where a boss's grapple_save says (a lane to pull them into, a floor to pull them up onto), or onto a wall's
 ## wall run where grapple_save says so (task J2: in a wall-run gap, where the pull's leap would drop them back
-## into the holes, the lit wall's run carries them across; from the floor's height, as a step onto the wall). It
-## never pulls them down.
+## into the holes, the lit wall's run carries them across; from the floor's height, as a step onto the wall, and
+## off the wall by its `until`, over the landing floor). It never pulls them down.
 func _pull_up(cause: StringName) -> void:
 	var to: Dictionary = {}
 	if grapple_save.is_valid():
@@ -823,6 +824,11 @@ func _pull_up(cause: StringName) -> void:
 		vh = 0.0
 		grounded = true
 		if _try_enter_wall(int(to["wall"]), false):
+			if to.has("until"):
+				# Its run leaves the wall by `until`: cut short as if it had begun earlier, never made longer.
+				var whole: float = tuning.wall_entry_time + tuning.wall_slide_time * wall_time_multiplier
+				var left: float = (float(to["until"]) - distance) / maxf(speed, 1.0)
+				_wall_t = clampf(whole - left, 0.0, whole)
 			return
 		h = was
 		grounded = false
