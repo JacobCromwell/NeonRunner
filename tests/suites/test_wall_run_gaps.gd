@@ -39,6 +39,7 @@ func run() -> void:
 	_test_numbers()
 	_test_campaign()
 	_test_without()
+	_test_wide_gap_room()
 	await _test_crossings()
 	await _test_claws()
 	await _test_saves()
@@ -162,6 +163,46 @@ func _test_without() -> void:
 	var gen := LevelGenerator.new()
 	_check_none(gen.generate(arena, tuning, LevelGenerator.load_for(arena)), "a boss arena")
 	check(gen.wall_run_gap_result.is_empty(), "the pass reports nothing in a boss arena")
+
+
+## A level's first wall-run gap makes room for a wider gap it crowds out (LevelGenerator._make_wide_gap_room): what a
+## finished build keeps for its wider gaps in the one more build (WallRunGapPlacement.wide_gap_reserve) is its first
+## wall-run gap's clear stretch where its wider gaps fall short, and nothing where they're all there, where it has no
+## wall-run gap, or in the level that brings the feature in; and Golden 2 at 3 lanes on its own seed, whose one clear
+## stretch both want, has every wider gap and its wall-run gap elsewhere, its own last resort having made the room.
+func _test_wide_gap_room() -> void:
+	var mt: MovementTuning = tuning
+	var shape: WallRunGapPlacement.Shape = WallRunGapPlacement.shape_for(mt, mt.run_speed)
+	var later: Dictionary = WallRunGapPlacement.make(shape, 1500.0, -1)
+	var first: Dictionary = WallRunGapPlacement.make(shape, 500.0, 1)
+	var short := {"rows": [Vector2(2000.0, 2012.0)]}
+	var full := {"rows": [Vector2(2000.0, 2012.0), Vector2(2600.0, 2612.0)]}
+	for id: String in ["golden/2", "marketplace/1"]:
+		var config: LevelConfig = campaign.configure(campaign.step(id), 3)
+		var lay: LevelLayout = RunSim.layout(3, 3000.0)
+		lay.wall_run_gaps.assign([later, first])
+		var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, lay)
+		gen.wide_gap_result = short
+		var reserve: Array[Vector2] = WallRunGapPlacement.wide_gap_reserve(gen)
+		if id == "marketplace/1":
+			check(reserve.is_empty(), "the level that brings them in keeps its first where it is introduced")
+			continue
+		check(config.wide_gaps == 2 and reserve.size() == 1 and reserve[0] == WallRunGapPlacement.keep_out(first),
+			"a build a wider gap short keeps its first wall-run gap's clear stretch for them (%s)" % [reserve])
+		gen.wide_gap_result = full
+		check(WallRunGapPlacement.wide_gap_reserve(gen).is_empty(), "a build with every wider gap keeps nothing")
+		gen.wide_gap_result = short
+		lay.wall_run_gaps.clear()
+		check(WallRunGapPlacement.wide_gap_reserve(gen).is_empty(), "a build with no wall-run gap keeps nothing")
+	var golden: LevelConfig = campaign.configure(campaign.step("golden/2"), 3)
+	var built: LevelGenerator = LayoutCache.generator(golden, tuning, LevelGenerator.load_for(golden))
+	var made: bool = false
+	for c: String in built.wall_run_gap_result.get("constraints", []):
+		made = made or c.begins_with("the last resort took out")
+	check(WideGapPlacement.rows_of(built).size() == golden.wide_gaps and not built.layout.wall_run_gaps.is_empty() and made
+		and WallRunGapPlacement.wide_gap_reserve(built).is_empty() and built.warnings.is_empty(),
+		"Golden 2 at 3 lanes has every wider gap and its wall-run gap, its last resort having made the room (%s)"
+		% [built.wall_run_gap_result.get("constraints", [])])
 
 
 func _check_none(layout: LevelLayout, tag: String) -> void:

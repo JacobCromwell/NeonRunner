@@ -326,7 +326,9 @@ wall clear past the longest wall run); every campaign level with the feature at 
 (`LayoutCache`): no warnings, at least one, `LayoutChecks.check_wall_run_gaps` (part of `check_layout`, so
 `test_campaign`'s seed sweep checks them too) and a floor route across each that steps onto the lit wall from the lit
 stretch (FloorRoute's wall-run move), the count by zone printed; none in the City's or Gangland's levels, quick play
-or a boss arena; the same seed the same level. On real physics at 3, 5 and 6 lanes and both walls: a step onto the
+or a boss arena; the same seed the same level; what a build a wider gap short keeps for its wider gaps in one more build
+(`WallRunGapPlacement.wide_gap_reserve`: its first one's clear stretch, never in the level that brings them in), and
+Golden 2 at 3 lanes with every wider gap and its wall-run gap moved by its own last resort. On real physics at 3, 5 and 6 lanes and both walls: a step onto the
 lit wall early, midway or late on the lit stretch crosses onto the landing floor; with claws too; a jump, a jump with
 the dash or the dash alone falls in, as does a step onto the wall well before the lit stretch; the grapple's save and a
 revive after a fall put the runner on the lit wall and across. Every zone skin lights the lit wall in green chevrons
