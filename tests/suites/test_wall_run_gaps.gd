@@ -21,7 +21,8 @@ extends SkinSuite
 ##   the stretch to step on and the gap, on the wall face, facing the street, seamless across chunks, nothing on the
 ##   other wall, and builds without errors;
 ## - the attacks a runner can't dodge on the wall hold off while a crossing is in their reach (a heli drone's barrage, a
-##   Bad Dream's slash: their _wall_run_in_reach).
+##   Bad Dream's slash, an Enforcer Truck's volley, an Octodog's wind-up a wait for its turn moved on: their
+##   _wall_run_in_reach).
 
 const FEATURE: String = "wall_run_gaps"
 const DroneScript = preload("res://scripts/enemies/drone.gd")
@@ -29,6 +30,9 @@ const DroneScript = preload("res://scripts/enemies/drone.gd")
 const WITHOUT: Array = ["city/1", "city/2", "city/3", "gangland/1", "gangland/2", "gangland/3"]
 ## Where the synthetic track's wall-run gap's clear run-in starts (metres), on a 400 m track.
 const APPROACH_AT: float = 100.0
+## Metres of the runner's run an Octodog's charge winding up now plays out over, for _test_holds (any window shows
+## the hold; the dog's own, OctodogTuning.window_length, is a little longer).
+const DOG_WINDOW: float = 20.0
 
 var sim: RunSim
 var campaign: Campaign
@@ -378,8 +382,9 @@ func _test_skins() -> void:
 					float(covered.get(w, 0.0)), float(w["end"]) - float(w["entry"]), tag])
 
 
-## A heli drone's barrage and a Bad Dream's slash hold off while a crossing (from the clear run-in to the gap's far
-## edge) lies in their reach, and only then.
+## A heli drone's barrage, a Bad Dream's slash, an Enforcer Truck's volley and an Octodog's wind-up (one a wait for its
+## turn moved on) hold off while a crossing (from the clear run-in to the gap's far edge) lies in their reach, and only
+## then.
 func _test_holds() -> void:
 	var layout: LevelLayout = _track(5, 1, tuning)
 	var w: Dictionary = layout.wall_run_gaps[0]
@@ -388,6 +393,9 @@ func _test_holds() -> void:
 		"params": {"slot": 0}})
 	var dream: Enemy = world.director.spawn({"type": "bad_dream", "at": 0.0, "lane": 2, "side": 0, "seed": 5,
 		"params": {"emerge": false}})
+	var truck: Enemy = world.director.spawn({"type": "enforcer_truck", "at": 0.0, "lane": 2, "side": 0, "seed": 7,
+		"params": {}})
+	var dog: Enemy = world.director.spawn({"type": "octodog", "at": 300.0, "lane": 2, "side": 0, "seed": 5, "params": {}})
 	await tree.physics_frame
 	var p: Player = world.player
 	var cases: Array = [[float(w["approach"]) - 150.0, false], [float(w["approach"]) - 2.0, true],
@@ -399,5 +407,11 @@ func _test_holds() -> void:
 			"a drone %s its barrage %s" % ["holds" if c[1] else "doesn't hold", where])
 		check(bool(dream.call(&"_wall_run_in_reach", p)) == bool(c[1]),
 			"a Bad Dream %s its slash %s" % ["holds" if c[1] else "doesn't hold", where])
+		check(bool(truck.call(&"_wall_run_in_reach", p)) == bool(c[1]),
+			"an Enforcer Truck %s its volley %s" % ["holds" if c[1] else "doesn't hold", where])
+		# A charge winding up now plays out over the next DOG_WINDOW metres of the runner's run.
+		check(bool(dog.call(&"_wall_run_in_reach", p.distance, DOG_WINDOW)) == bool(c[1]),
+			"an Octodog %s its wind-up %s" % ["holds" if c[1] else "doesn't hold", where])
 	check(drone.get_script() == DroneScript, "the drone is the heli drone")
+	check(truck is EnforcerTruck and dog is Octodog, "the truck is the Enforcer Truck and the dog the Octodog")
 	await sim.free_world(world)
