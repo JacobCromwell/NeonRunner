@@ -4715,3 +4715,20 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
    crashes" under-promises. **Placeholder:** both texts unchanged (`data/shop/catalog.json`, the armor's
    `description`, marked in its `_note`; `data/hints/hints.json`, `pickup_armor`). A longer shop line must still
    fit the item card's three lines on a phone (`test_phone_screens`).
+
+### Folded on October 16, 2026 (task K2, the Sentinels on the wall face)
+
+886. **Nothing in front of the face.** Placeholder: nothing of any statue, live or decorative, stands in front of the wall face
+   at rest (the suite checks every vertex), so a wall runner's body (it lies along the face, out to 1.28 m) and the runner's
+   side clearance are exactly as before, and no cut hitbox or mark moved. What did change: the live statue's solid `body` and
+   `top` boxes are `niche_depth - 0.1` deep behind the face, so they went from 0.68 m to 0.30 m (where nothing in play
+   reaches), and the wider niche (`in_chunk` keeps a niche inside its track chunk with `niche_width / 2 + 0.3` m) moves a
+   Sentinel by up to 0.10 m in about 26% of random-seed Golden 2 and 3 builds. A statue that stood out of the wall (a
+   free-standing knight on a plinth) would read even better but would block the wall run at its height: a design change.
+   Does the owner want that, with the wall run going over or under it?
+887. **The swing steps out of the relief.** Placeholder (`GildedSentinelTuning.statue_swing_relief`, 0.7): as it draws its
+   halberd back the live statue un-squashes from 0.4 to 0.7 of its depth about the face (its front stays just behind it)
+   and goes back as it recovers, so its halberd comes about 0.71 m out of the wall at most (it came 1.22 m at the wind-up's
+   peak and 1.01 m in the swing before K2; the 0.54 and 0.78 m of the raised end pose are not its fullest reach). The cut's
+   hitboxes, marks and the red slash are exactly as they were. Is that enough of a swing, or should it reach further out of
+   the wall (the cut itself reaches 1.2 m)?

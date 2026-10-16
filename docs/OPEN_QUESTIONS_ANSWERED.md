@@ -1476,3 +1476,15 @@ Captain Cogs).
 
 ### Folded on October 16, 2026 (task K1, the Bad Dream slashes a ceiling rider)
   **Answered (owner, October 16, 2026):** Closed with 875, as built.
+
+### Folded on October 16, 2026 (task K2, the Sentinels on the wall face)
+
+885. **A high relief, flat to the wall.** ANSWERED by the owner's approval of the frames (October 16, 2026: "They look good"):
+   the relief stands. Placeholder (DESIGN-TBD, now the owner's look): both kinds of statue are squashed along the wall's normal
+   to 0.4 of their depth (`GildedSentinelTuning.statue_relief`, read by `GoldenSkin.decorative_statue_relief()`: the live
+   one is the decorative one with its eyes lit), the live one's front 0.008 m behind the face (`statue_inset` 0.02 m times
+   the relief) and a decorative one's 0.02 m (`GoldenSkin.statue_base_inset`, was 0.10 m), in niches 0.4 m deep (was
+   0.78 m; the decorative alcoves went from 1.56 m to about 0.44 m) and 2.0 m wide (the live one was 1.8 m, so one less
+   tell). The live statue's rest pose is now the decorative guard (the halberd's blade turned along the wall), and the
+   decorative vigil and salute poses were reworked to keep their blades and hands close to the body. From 20 m on five
+   lanes 89% of the live statue shows (was 44%) and 68 to 73% of a decorative one (was 3 to 16%).
