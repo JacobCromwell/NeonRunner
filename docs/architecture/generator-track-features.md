@@ -666,7 +666,7 @@ throughout (`docs/questions/j2.md`).
   the Marketplace's 22.6 m/s, 35.2 m at the Golden Zone's 25), so a step onto the wall anywhere on the lit stretch
   carries the runner across, the earliest leaving the wall past the far edge, the latest (at the edge, with the jump
   grace) dropping back onto the landing floor (`landing_seconds`, never shorter than that drop plus
-  `LANDING_SLACK_SECONDS`). No jump crosses it: a full jump with its grace and the dash all the way reach about 1 s
+  `landing_slack_seconds`). No jump crosses it: a full jump with its grace and the dash all the way reach about 1 s
   of run, 1.2 s with a speed pad's or a ramp's whole boost. A step onto the wall before the lit stretch drops the
   runner in (a wall hop is never asked for; claws, the dash and a wall hop only carry them further).
 - **When and where**: its rules (`wall_run_gaps_rules.gd`) run last of the rules (`RUN_AFTER` every feature whose rules

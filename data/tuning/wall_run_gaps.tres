@@ -12,5 +12,7 @@ entry_window_seconds = 0.5
 exit_margin_seconds = 0.25
 approach_seconds = 0.8
 landing_seconds = 1.3
+landing_slack_seconds = 0.3
 wall_clear_seconds = 0.5
 other_wall_clear_seconds = 0.5
+save_margin = 6.0

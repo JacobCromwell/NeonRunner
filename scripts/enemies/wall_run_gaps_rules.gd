@@ -38,8 +38,12 @@ static func positions(layout: LevelLayout) -> Array[float]:
 
 
 ## What the passes after the rules keep off in every lane (LevelGenerator.rules_doodad_keep_outs): each wall-run gap's
-## clear stretch, from its clear run-in to the end of its landing floor (WallRunGapPlacement.keep_out), {from, to,
-## type}. Not a calm stretch: a pass keeps its usual spacing from it, as from a piece.
+## clear stretch, from its clear run-in to the end of its landing floor (WallRunGapPlacement.keep_out: KEEP_MARGIN more
+## at both ends), {from, to, type}. Not a calm stretch: nothing a later pass adds stands or attacks in it. The danger
+## density pass keeps its clearance from it as from any fixed stretch (DangerDensity); the fill pass (fill_keep_outs,
+## without its margin) and the zone doodads keep off it as it stands, the wider gaps, the planted cyborgs and the dash
+## walls with their own zones' margins, so what they add may stand close past its ends, as the patterns placed before
+## it may (the landing floor's landing_slack_seconds is the room after the latest step onto the wall).
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for w: Dictionary in gen.layout.wall_run_gaps:

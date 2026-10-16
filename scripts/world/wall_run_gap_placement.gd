@@ -18,7 +18,7 @@ extends RefCounted
 ##   they wall hop, GDD §3: never asked for). Claws, the dash and a wall hop only carry them further.
 ## - the gap, in every lane;
 ## - the safe landing floor (landing_seconds, never shorter than where the latest standard wall run drops the runner
-##   back, LANDING_SLACK_SECONDS more), with nothing in any lane.
+##   back, landing_slack_seconds more), with nothing in any lane.
 ## Every number is WallRunGapTuning's (data/tuning/wall_run_gaps.tres). With the shipped numbers the gap is 1.41 s of
 ## run (31.9 m at the Marketplace's 22.6 m/s, 35.2 m at the Golden Zone's 25), against about 1 s of run for the longest
 ## jump (a full jump, its jump grace, the dash all the way; 1.2 s with a speed pad's whole boost): no jump crosses it.
@@ -69,12 +69,6 @@ const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
 ## Metres between the spots a wall-run gap is tried at along a free stretch (_fit).
 const STEP: float = 1.0
-## Seconds of run the safe landing floor reaches past where the latest standard wall run drops the runner back onto it
-## (landing_seconds): the feet come down a frame or two later than the model says, and a moment to stand.
-const LANDING_SLACK_SECONDS: float = 0.3
-## Metres either side of a wall-run gap's holes where a runner pulled up out of a fall is saved onto its lit wall
-## (grapple_save): one falling in at its far edge has run on under the floor by the time the grapple catches them.
-const SAVE_MARGIN: float = 6.0
 ## Two track distances closer than this are the same spot.
 const EPSILON: float = 0.001
 ## Metres two stretches may overlap and still count as touching (problem): float rounding at a shared end.
@@ -192,9 +186,9 @@ static func latest_drop_seconds(m: MovementTuning, t: WallRunGapTuning) -> float
 
 
 ## The safe landing floor's length in seconds of run: the tuning's, never shorter than where the latest standard wall
-## run drops the runner back (latest_drop_seconds) plus LANDING_SLACK_SECONDS.
+## run drops the runner back (latest_drop_seconds) plus the tuning's landing_slack_seconds.
 static func landing_seconds(m: MovementTuning, t: WallRunGapTuning) -> float:
-	return maxf(t.landing_seconds, latest_drop_seconds(m, t) + LANDING_SLACK_SECONDS)
+	return maxf(t.landing_seconds, latest_drop_seconds(m, t) + t.landing_slack_seconds)
 
 
 ## How far past a dash wall's back a runner who passes it on a side wall (GDD §9.14: without the dash or the armor) may
@@ -992,7 +986,7 @@ static func _set_holes(lay: LevelLayout, w: Dictionary, present: bool) -> void:
 ## (Player._pull_up: {"wall": side}), whose wall run carries them across; the gap is longer than the pull's leap, which
 ## would drop them back in. {} anywhere else: the save as it always was. DESIGN-TBD (docs/questions/j2.md).
 static func grapple_save(player: Player, _cause: StringName, layout: LevelLayout) -> Dictionary:
-	var w: Dictionary = layout.wall_run_gap_at(player.distance, SAVE_MARGIN)
+	var w: Dictionary = layout.wall_run_gap_at(player.distance, tuning().save_margin)
 	if w.is_empty():
 		return {}
 	return {"wall": int(w["side"])}

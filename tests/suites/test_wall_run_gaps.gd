@@ -92,7 +92,7 @@ func _test_numbers() -> void:
 			"a standard wall run from the lit stretch's first metre leaves the wall exit_margin past the far edge " + tag)
 		var latest: float = shape.window + m.coyote_time * v + wall_run + WallRunGapPlacement.drop_seconds(m) * v
 		check(shape.approach + latest <= shape.approach + shape.window + shape.gap + shape.landing
-			- WallRunGapPlacement.LANDING_SLACK_SECONDS * v + 0.01,
+			- t.landing_slack_seconds * v + 0.01,
 			"one from its last metre, with the jump grace, drops the runner onto the landing floor " + tag)
 		check(t.approach_seconds + t.entry_window_seconds >= 5.0 * m.lane_switch_time + 0.3,
 			"the run-in and the lit stretch give time to cross 6 lanes to the wall " + tag)

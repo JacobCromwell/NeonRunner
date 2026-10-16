@@ -48,8 +48,12 @@ const PATH: String = "res://data/tuning/wall_run_gaps.tres"
 @export_range(0.3, 4.0, 0.05, "suffix:s") var approach_seconds: float = 0.8
 ## DESIGN-TBD: seconds of run after the gap with nothing in any lane: the safe landing floor. Never shorter than where
 ## the latest standard wall run (a step onto the wall at the gap's edge, with the jump grace) drops the runner back,
-## plus LANDING_SLACK_SECONDS (WallRunGapPlacement.landing_seconds): about 1.29 s with the shipped numbers.
+## plus landing_slack_seconds (WallRunGapPlacement.landing_seconds): about 1.29 s with the shipped numbers.
 @export_range(0.5, 4.0, 0.05, "suffix:s") var landing_seconds: float = 1.3
+## DESIGN-TBD: seconds of run the safe landing floor reaches past where the latest standard wall run drops the runner
+## back onto it (landing_seconds is never shorter): the feet come down a frame or two later than the model says, and a
+## moment to stand before what comes after the landing floor.
+@export_range(0.0, 1.0, 0.05, "suffix:s") var landing_slack_seconds: float = 0.3
 ## DESIGN-TBD: seconds of run kept whole and clear on the lit wall (no sign, wall enemy, wall fence or side wall gap)
 ## before the lit stretch and past the longest wall run a runner may take over the gap (with claws, the dash, or a
 ## save onto the wall).
@@ -58,6 +62,12 @@ const PATH: String = "res://data/tuning/wall_run_gaps.tres"
 ## never dropped into the gap by a missing wall. Its signs, wall fences and wall enemies stay (only the lit wall is
 ## the way).
 @export_range(0.0, 3.0, 0.05, "suffix:s") var other_wall_clear_seconds: float = 0.5
+
+@export_group("Saves")
+## DESIGN-TBD: metres either side of a wall-run gap's holes where a runner pulled up out of a fall (the grapple's save,
+## GDD §8, or a revive's, GDD §4) is put on its lit wall instead (WallRunGapPlacement.grapple_save): one falling in at
+## its far edge has run on under the floor by the time the grapple catches them.
+@export_range(0.0, 20.0, 0.5, "suffix:m") var save_margin: float = 6.0
 
 
 ## `easy` at difficulty 0 to `hard` at 1.
