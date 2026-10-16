@@ -27,7 +27,8 @@ extends BossEncounter
 ## the captain's barrages of bombs fly across the deck, low (a jump) or high (a slide), on a fixed, looped script, and
 ## every bomb that gets past the runner hits Mecha Guppy (the boss bar is its health: BossPhase.hits of them). After a
 ## few hits it dives, bursts back up with a splash that makes a wave (a jump), then bites a chunk out of the top (a switch
-## or a jump) and comes back up. The last hit wins the fight.
+## or a jump) and comes back up. The last hit wins the fight. The hole each bite leaves in the top shows the sea at its
+## bottom, the water Mecha Guppy swims in beside the top (MechaGuppyBiteWater, task J3; a look only).
 ## The defeat (MechaGuppyLeap): Mecha Guppy dives from its watch, bursts up under the ship, gulps the captain with the ship's stern half, falls
 ## back and swims away; the results wait until it's gone (victory_over), and the victory riff comes after the gulp
 ## (MechaGuppyTuning.victory_riff_on), not at the defeat (victory_riff).
@@ -82,6 +83,8 @@ var floor_bite: MechaGuppyFloorBite
 ## until the win).
 var top: MechaGuppyTop
 var leap: MechaGuppyLeap
+## The sea at the bottom of the holes Mecha Guppy bites out of phase 3's top (task J3; look only).
+var bite_water: MechaGuppyBiteWater
 ## Off: no bombs and no bites (the climb's own tests turn them off to check the climb alone; on in the game).
 var attacks_enabled: bool = true
 ## Hits landed over the fight (register_hit).
@@ -161,6 +164,10 @@ func _build_boss() -> void:
 	top.name = "Top"
 	add_child(top)
 	top.setup(self)
+	bite_water = MechaGuppyBiteWater.new()
+	bite_water.name = "BiteWater"
+	add_child(bite_water)
+	bite_water.setup(self)
 
 
 ## The run's pace (MovementTuning.pace(): 1 at 18 m/s): the climb's distances that stand for a time follow it.
