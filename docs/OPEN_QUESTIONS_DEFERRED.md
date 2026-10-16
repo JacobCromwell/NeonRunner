@@ -4574,3 +4574,110 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
 861. **The hand-off to the Dead Zone.** It ends on the fire, then black, and the Dead Zone's intro opens on the runner in a
   smoking crater. Is the pool's explosion what makes that crater (the Beach outro card's old question: what puts them
   there)?
+
+
+**Wall-run-only gaps** (the owner, October 15, 2026; GDD §3, §5, §9; task J2)
+863. **The section's sizes.** How long should the clear run-in, the lit stretch (the window to step onto the wall), the
+   gap's margin past a wall run and the safe landing floor be? (GDD §3, Side walls and Pace.)
+   Placeholder: run-in `approach_seconds` 0.8 s, lit stretch `entry_window_seconds` 0.5 s (11 m at 22.6 m/s), exit
+   margin `exit_margin_seconds` 0.25 s, landing floor `landing_seconds` 1.3 s (never less than the latest standard
+   wall run's landing plus `landing_slack_seconds`, 0.3 s). The gap is the standard wall run
+   (2.16 s, no claws, no wall hop) less the lit stretch and the exit margin: 1.41 s of run, 31.9 m in the Marketplace,
+   35.2 m in the Golden Zone; the whole section takes about 4 s of run. DESIGN-TBD in `wall_run_gap_tuning.gd`.
+865. **Where they start.** From which level? (GDD §5.)
+   Placeholder: from halfway into Marketplace 1 (`data/levels/marketplace_1.tres`, `feature_starts` 0.5), and in every
+   later level (the Casino, Corporate, the Beach, the Dead Zone, the Golden Zone and the Golden Palace); never in the
+   City or Gangland, a boss arena or quick play. Endless mode has them from the Marketplace zone on (it plays a zone's
+   last level). The first one comes where its whole clear stretch fits past the start: 5 to 26 s after it in
+   Marketplace 1's own builds (`test_campaign` counts it with the wall gaps, `SPACED_FROM_START`, not among the
+   introductions that land right after their start). This goes against GDD §5's "each level introduces about one new
+   thing": Marketplace 1 already introduces the Barnacle Turret (from a tenth of the way in), so it now brings two new
+   things. Should the wall-run gaps start in a level of their own instead, and which?
+866. **The lit wall's look.** How should the game show that the wall is the way? (GDD §11; CLAUDE.md readability.)
+   Placeholder: the ramps' green chevrons (`ramp_color`), as the Floating Head's wall marks show a wall run: a tall,
+   bright, framed panel over the lit stretch and a strip at running height over the gap, streaming ahead
+   (`ZoneSkin.standard_wall_run_guide`); the gap's edges glow as every hole's do; no sound of its own (it's a fixed
+   piece of the track, like a hole), and a first-encounter hint (`wall_run_gap` in `data/hints/hints.json`).
+867. **Which wall.** Should the other wall be a way across too? (GDD §3, Side walls.)
+   Placeholder: one wall is lit, picked by the seed (the other one where the first has no room); it alone is kept
+   whole and clear (no sign, wall enemy, wall fence or side wall gap from before the lit stretch to past the longest
+   wall run). The other wall only keeps no side wall gap beside the gap (`other_wall_clear_seconds` 0.5 s): a wall run
+   on it may cross too, unless its signs, wall fences or wall enemies stop it.
+868. **The grapple and a revive.** What should the grapple's save (GDD §8) and a revive after a fall (GDD §4) do in a
+   wall-run gap? The ordinary pull straight up would drop the runner back into the holes.
+   Placeholder: both put the runner straight onto the lit wall's run from the floor's height, with no rope shown
+   (`WallRunGapPlacement.grapple_save`, `Player._pull_up`'s `{"wall": side}`), within 6 m of the holes
+   (`save_margin`); that run leaves the wall in time to come down onto the landing floor (`until`), so a save at the
+   gap's far edge is cut short rather than carrying the runner past it.
+869. **Attacks during a crossing.** May an enemy attack a runner crossing on the wall? (GDD §9.6, §9.7, §9 fairness.)
+   Placeholder: the generator keeps every planned attack off the section (as a wider gap's zone does), but a heli
+   drone's barrages, a Bad Dream's slash (whose chase only comes if the player kills a host) and an Enforcer Truck's
+   volleys (it chases from behind as long as it lives): at run time none of them starts while a crossing, from the
+   run-in to the gap's far edge, lies in its reach (`Drone._wall_run_in_reach`, `BadDream._wall_run_in_reach`,
+   `EnforcerTruck._wall_run_in_reach`); they wait the few seconds it takes. An Octodog whose charges a wait for its turn
+   moved on waits ahead the same way, its moved charges moving on (`Octodog._wall_run_in_reach`).
+870. **What may make way.** What may a wall-run gap take out of a level to fit? (GDD §5, §9.)
+   Placeholder: plain pieces (holes, fences that don't pulse and no generator powers, zone doodads but a treasure
+   stash's), and small enemies: a plain floor cyborg or a manhole screech (never a host, a vent screech or the level's
+   first of its kind), each weighing four plain pieces (`ENEMY_WEIGHT`). Only where no spot in the whole level fits
+   one (4 of 117 measured builds, all Golden at 3 lanes; on a level's own seed only Golden 2 at 3 lanes, whose only
+   room its wider gaps need, item 10) does one big encounter that leaves nothing behind go (`_make_room`: a
+   Resonator's visit, a Gilded Sentinel or a hover truck, never the level's first of its kind), and where even that
+   leaves none, the signs on the lit wall's stretch go (`_signs_go`; Marketplace 1 at 5 lanes on seed 7301). A level's
+   first of its kind never goes, so on two other seeds of Marketplace 1 (9003 at 3 lanes, 9004 at 5) a hover truck
+   leaves no room and the build warns; the campaign plays only its own seed.
+871. **Late wall entries.** A runner who jumps at the gap's edge and steps onto the wall in the air, or one with claws,
+   runs on past the landing floor and drops back onto whatever lies there, as at the end of any wall run. Should the
+   landing floor cover those too (it covers a step onto the wall from the lit stretch, and the wall stays clear past
+   the longest run)? A wall jump over the gap drops the runner into it.
+   Placeholder: no; only the standard step from the lit stretch is guaranteed a clear landing.
+872. **When a level has room for only one.** In a crowded level a wall-run gap, a wider gap (GDD §9.13: "every level
+   has a couple of wider gaps") and a dash wall (GDD §9.14) can need the same clear stretch. Which gives way?
+   Placeholder: the wider gaps and the dash walls win over every wall-run gap but the level's first: a pass short of
+   its count sets those aside, looks again, and puts back each whose way it left as it was
+   (`WallRunGapPlacement.set_aside`, `put_back`). The first moves rather than goes: where a finished build's wider gaps
+   still fall short, the level is built once more with its stretch kept for them, so it goes elsewhere, its own last
+   resort taking out one big encounter if it must (`LevelGenerator._make_wide_gap_room`; Golden 2 at 3 lanes on its own
+   seed, a Gilded Sentinel), and that build stands only if it has everything. On other seeds a crowded level may still
+   have one wider gap fewer, as it could before.
+873. **A dash wall right before one.** A runner without the dash passes a dash wall on a side wall (GDD §9.14). Standing
+   one just before a wall-run gap left that runner on a wall, or coming down, as the lit stretch came (Golden 2 at 5
+   lanes and Golden 3 at 3 lanes on their own seeds): their wall run then ends over the gap, and a step onto the wall
+   does nothing while they're still on one. How far apart should they be? (GDD §9.14; CLAUDE.md fairness.)
+   Placeholder: the clear stretch keeps off a standard wall run past a dash wall, from its face to its back plus a
+   standard wall run (no claws), the drop and the dash's extra (`WallRunGapPlacement.past_dash_wall`, about 2.3 s of
+   run and 4.8 m), so that runner is back on the floor with the whole run-in left; a dash wall placed after the
+   wall-run gaps keeps its face that far before one (`DashWallRules.plan_for`). With claws the run lasts 1 s longer,
+   less than the run-in and the lit stretch together (1.3 s; `test_wall_run_gaps` checks it), so a clawed runner still
+   comes down before the gap, on the run-in or the lit stretch, where a step onto the wall carries them across. Keeping
+   the clawed run's whole length off (as a ramp's launch is kept off) cost Golden 2 at 5 lanes one of its two dash walls.
+874. **The final levels at 3 lanes: danger density against wall-run gaps.** The danger density request (about 35% more
+   enemies and obstacles by the final levels) and this one need the same track at 3 lanes: each wall-run gap keeps about
+   4 s of run clear in every lane, with the level's spacing either side, where the pass would add enemies and rows, and
+   with only 3 lanes the pass's extra pieces come from more rows along the track. Over `test_danger_density`'s final
+   band (Dead Zone 1, Golden 2 and 3 on three seeds) the pass then adds about 29% more enemies and 28% more obstacles at
+   3 lanes (about 33% and 30% without the wall-run gaps; 5 and 6 lanes stay at 31% to 36%). Which should give way at 3
+   lanes: fewer wall-run gaps there, or the pass's share? (GDD §5; `docs/USER_REQUESTS_DONE.md`, danger density.)
+   Placeholder: both stay as they are, and `test_danger_density` lets the final band at 3 lanes land 4% lower
+   (`WALL_RUN_GAP_ROOM`).
+   Also: on two of `test_campaign`'s sweep seeds at 3 lanes (The Hush without its remix on seed 9206, Dead Zone 1 on
+   seed 9208) no wall-run gap fits at all: a heli drone's pad schedule (a ceiling every 8 to 10 s), the level's only hover
+   truck and Octodog, an Enforcer Truck's chase and the ceilings' landing zones take every 4-second stretch, and
+   nothing they count on may go. Those builds warn and have none (`test_campaign`'s `WALL_RUN_GAP_CROWDED`); every
+   campaign build has its own. Should a level that crowded make room some other way (move a drone's pad, take a
+   feature's only encounter out), or go without?
+
+**Blue water in the shark's phase 3 bite** (the owner, October 15, 2026; GDD §10; task J3)
+875. **Where the water lies.** Placeholder (`MechaGuppyBiteWater`, DESIGN-TBD): from each top bite's snap, the sea at the
+   bottom of its hole, at the same surface and in the same look as the water beside the top (`MechaGuppyTop.water_y`,
+   1.2 m under the deck; the backdrop's sea shader in `sea_mid_color`). It covers the whole crescent, and 6 m past each
+   of its ends under the eave, and runs out through the bitten side under the water beside it, so the hole reads as
+   bitten through to the sea Mecha Guppy swims in. The water is a look only: phase 3's timing, hitboxes and falls are
+   unchanged. A runner who falls into the hole still falls through the water, with no splash (unlike the Beach's
+   pools). Is the sea just under the deck right, or should the hole look deeper? Should a fall into it splash?
+876. **A gap should still read as deadly** (§3: safe things look safe). The Beach's pools are deliberately dark, so a gap
+   reads as a hole; this water is the sea's bright turquoise, 1.2 m down. The bite keeps its red warning and the
+   eaten edge's orange lip. Is bright water at the bottom of a deadly gap acceptable, or should it be darker?
+877. **Only the top's bites?** Placeholder: phases 1 and 2's floor bites and the climb's chasms (phase 3's last steps
+   before the top included) are exactly as they were (the owner: "still works great"). They still open onto the haze,
+   or onto the street's dark water low down. Should they show water too?
