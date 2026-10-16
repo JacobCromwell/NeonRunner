@@ -104,6 +104,14 @@ WSLg use the Compatibility renderer on the GPU through Mesa's D3D12 driver; head
   `name` (exit code 0 = pass). All of these boot the real game scene. `--jobs=N` splits the suites across N
   Godot processes, balanced by each suite's last measured time (`tests/.suite_times.json`); the tiers default
   to half the CPUs (at most 3), plain `test` to 1.
+- **Long tiers: shard them over containers.** A tier that takes more than about 10 minutes on one container (the
+  full tier is 50+ minutes on 4 CPUs) can hit the "stuck" timer (2400 s) or lose its work to a container restart.
+  `tools/godot.sh test --tier=full --shard=K/N` runs only share K of N of the suites (the same balanced split on every
+  container, so the shards together are the whole tier). Spread it over 5 or 6 containers (cloud sessions started
+  with `create_session`, one per shard, all on the same commit that is already pushed) and require **every** shard
+  to exit 0; a tier counts as passed only when all N shards did. A suite that fails only a frame-time or build-time
+  budget while several runs share a machine is rerun alone (`--suite=<name>`) before it is called a failure.
+  Push before a long run, run it in the background with its log in the scratchpad, and poll the log.
 - Smoke run: `tools/godot.sh smoke [game args]` (prints only problems; exit code 1 if any). Without args it runs quick play.
 - Play: `./play.sh` opens the title screen in a game window on the user's desktop. Quick play and review options
   (debug builds only): `--quick --lanes=6 --seed=4 --difficulty=0.6 --god --nofall --full-loadout

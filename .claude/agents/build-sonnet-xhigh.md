@@ -44,6 +44,9 @@ orchestrator reviews your work against the design document and merges it; you ne
   covering what you changed, and the full tier when you touch a core file), and `--tier=merge` before
   you report (`--tier=full` for core, generator, level or pattern changes). Add new suites to
   `tests/suite_map.json`.
+- A tier that would run past about 10 minutes (the full tier: 50+ minutes) goes in the background with its log in the
+  scratchpad, and you push your branch first: a container restart kills running work. The orchestrator may shard the
+  full tier over several containers (`tools/godot.sh test --tier=full --shard=K/N`; `CLAUDE.md`, Workflow rules).
 - Rendering frames (software rendering under a virtual display, no GPU):
   `xvfb-run -a -s "-screen 0 1280x720x24" godot4 --path . --resolution 960x540 --fixed-fps 10 --write-movie build/<dir>/f.png --quit-after <frames> -- <game args>`
   Add `--rendering-method gl_compatibility` (before `--`) for the web / low-end renderer, and a

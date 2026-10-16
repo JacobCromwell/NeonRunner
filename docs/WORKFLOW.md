@@ -40,6 +40,10 @@ some small edits.
   Keep max effort for T1 builds and their reviews.
 - **Test tiers.** Agents run `--gate` per task; the orchestrator runs `--tier=merge` before a merge and `--tier=full`
   once per batch, not after every merge (`CLAUDE.md`, Workflow rules).
+- **Shard long tiers.** `--tier=full` (and `--tier=merge` on a loaded machine) takes 50+ minutes on one container,
+  long enough to hit the 2400 s "stuck" timer or a container restart. Run it as `--shard=K/N` over 5 or 6
+  containers (cloud sessions via `create_session`, one per shard, on a pushed commit) and count it as passed only
+  when every shard exits 0 (`CLAUDE.md`, Workflow rules). Agents push and checkpoint before any long run.
 - **Bundle small requests.** Several tweaks in the same area go to one agent as one task.
 
 ## Prompts to paste
@@ -53,7 +57,7 @@ some small edits.
 > touches a core file. Review T1/T2 tasks with the `reviewer` agent and T3/T4 diffs yourself. Merge into `main` one at
 > a time (merge `main` into the branch, `--tier=merge`, then merge), file each task's `docs/questions/<task-id>.md` per
 > the rules at the top of `docs/OPEN_QUESTIONS.md`, tick each request with a short DONE note and move it to
-> `docs/USER_REQUESTS_DONE.md`. Run `--tier=full` once at the end. Stop and ask me only for a design gap that a marked
+> `docs/USER_REQUESTS_DONE.md`. Run `--tier=full` once at the end (sharded over 5 or 6 containers, `--shard=K/N`, if it would run longer than ~10 minutes). Stop and ask me only for a design gap that a marked
 > placeholder can't cover. End with a list of what changed, what to playtest, and any new questions.
 
 **Single fix** (Sonnet):
