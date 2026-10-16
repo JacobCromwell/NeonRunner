@@ -3,7 +3,9 @@ extends TestSuite
 ## (stomp, claws, dash, or a weapon, which hits hosts since October 8, 2026: shot down ahead, it lurks until
 ## the runner comes) and only then; its immunities and the counters (weapons, stomping, claws,
 ## the dash, armor, the shield, a generator's EMP); the three-lane slash at 3, 5 and 6 lanes (exactly
-## those lanes, edges clamped), its warning and its dodge; waiting below a ceiling, following onto a
+## those lanes, edges clamped), its warning and its dodge; slashing a runner on a ceiling (task K1: the same
+## warning and lanes, claws hanging from the underside, and the fairness rules: an escape lane under the
+## ceiling, a ceiling that lasts, no slash in the air from the pad); following onto a
 ## wall slowly, and the wall slash; the chase's end and survival bonus; one at a time; never with an
 ## Octodog charge sequence or a drone barrage; and its generator rules (host_rules.gd) over lane
 ## counts, seeds and difficulties, alone and together with drones and Octodogs.
@@ -39,7 +41,14 @@ func run() -> void:
 	await _test_slash_lanes()
 	await _test_dodge()
 	await _test_warning()
-	await _test_waits_below_ceiling()
+	await _test_ceiling_slash_box()
+	await _test_ceiling_slash()
+	await _test_ceiling_dodge()
+	await _test_ceiling_no_escape()
+	await _test_ceiling_middle_rider()
+	await _test_ceiling_escape_closed()
+	await _test_ceiling_holds()
+	await _test_ceiling_then_floor()
 	await _test_follows_onto_wall()
 	await _test_wall_slash()
 	await _test_chase_end()
@@ -67,13 +76,13 @@ func _loadout(items: Dictionary) -> Loadout:
 ## A world with the player in `player_lane` and a Bad Dream already floating in front of them (no
 ## emergence), over `dream_lane` (default: the player's). Returns [world, dream].
 func _world(lanes: int, player_lane: int, params: Dictionary = {}, loadout: Loadout = null,
-		layout: LevelLayout = null, dream_lane: int = -1, config: LevelConfig = null) -> Array:
+		layout: LevelLayout = null, dream_lane: int = -1, config: LevelConfig = null, dream_seed: int = 5) -> Array:
 	var l: LevelLayout = layout if layout != null else RunSim.layout(lanes, 1500.0)
 	var w: RunWorld = sim.build_world(l, loadout, null, config)
 	w.player.setup(tuning, w.geo, player_lane)
 	var p: Dictionary = {"emerge": false}
 	p.merge(params, true)
-	var dream := w.director.spawn({"type": "bad_dream", "at": 0.0, "side": 0, "seed": 5, "params": p,
+	var dream := w.director.spawn({"type": "bad_dream", "at": 0.0, "side": 0, "seed": dream_seed, "params": p,
 		"lane": dream_lane if dream_lane >= 0 else player_lane}) as BadDream
 	await tree.physics_frame
 	w.player.running = true
@@ -143,6 +152,10 @@ func _test_declared() -> void:
 		check(t.warning_time(s) >= 0.9, "scaling %.1f: the slash is telegraphed %.2f s ahead (at least 0.9 s)"
 			% [s, t.warning_time(s)])
 	check(t.slash_height > tuning.jump_height + 0.05, "the claws sweep higher than a jump's feet reach: only leaving the lanes dodges")
+	check(t.ceiling_slash_reach > tuning.jump_height + 0.05,
+		"and they hang lower from a ceiling than a jump from it reaches: a rider's jump doesn't dodge either")
+	check(t.hull_clearance > 0.0 and t.ceiling_settle_time >= 0.4 and t.ceiling_rise_speed > 0.0,
+		"the ceiling slash's numbers are in data (a head under the hull, a settle after the pad's flight)")
 	var made: Array = await _world(5, 2)
 	var w: RunWorld = made[0]
 	var dream: BadDream = made[1]
@@ -550,41 +563,425 @@ func _test_warning() -> void:
 
 # --- Where it goes -------------------------------------------------------------------------------
 
-## GDD §9.7: it can't reach a ship's hull: while the player rides a ceiling it waits below (no
-## telegraph, never near the hull, still in front of them) and attacks again once they're down.
-func _test_waits_below_ceiling() -> void:
-	var l := RunSim.layout(5, 1500.0)
-	l.hulls.append({"start": 57.0, "end": 60.0 + 5.0 * tuning.run_speed})
-	l.pads.append({"lane": 2, "at": 60.0})
-	var made: Array = await _world(5, 2, {"chase": 30.0}, null, l)
+# --- A ceiling rider (task K1) --------------------------------------------------------------------
+# Owner, task K1: the Bad Dream hits a runner on a ceiling (GDD §9.7 used to say it waits below the hull).
+
+## Where the test ceilings' anti-grav pad is (track distance): close, so the rider is up before the dream's first
+## telegraph is due.
+const CEILING_PAD_AT: float = 12.0
+
+
+## A world with the player in `lane` taking an anti-grav pad onto a ceiling over lanes `covered`, `seconds` of
+## running long (a return pad per entry of `return_pads`), and the dream floating in front of them. Returns
+## [world, dream, level time of the pad's flip] once the player is on the ceiling and the dream isn't attacking.
+func _ceiling_world(lanes: int, lane: int, covered: Vector2i, seconds: float, loadout: Loadout = null,
+		return_pads: Array[Dictionary] = [], dream_seed: int = 5) -> Array:
+	var l := RunSim.layout(lanes, 1500.0)
+	l.hulls.append(LevelLayout.make_hull(CEILING_PAD_AT - 3.0, CEILING_PAD_AT + seconds * tuning.run_speed, covered, lanes))
+	return await _ceiling_world_of(l, lane, return_pads, loadout, dream_seed)
+
+
+## _ceiling_world over a layout `l` that already has its ceilings (a pad in `lane` is added at CEILING_PAD_AT).
+func _ceiling_world_of(l: LevelLayout, lane: int, return_pads: Array[Dictionary] = [], loadout: Loadout = null,
+		dream_seed: int = 5) -> Array:
+	var lanes: int = l.lane_count
+	l.pads.append({"lane": lane, "at": CEILING_PAD_AT})
+	l.return_pads.append_array(return_pads)
+	var made: Array = await _world(lanes, lane, {"chase": 30.0}, loadout, l, -1, null, dream_seed)
+	var w: RunWorld = made[0]
+	var dream: BadDream = made[1]
+	await _until(func() -> bool: return w.player.surface == Player.Surface.CEILING, 4.0)
+	var flipped: float = w.level_time()
+	await _until(func() -> bool: return not dream.is_attacking(), 2.0)
+	return [w, dream, flipped]
+
+
+## Steps frames while the player rides a ceiling (at most `seconds`) and returns [seconds ridden, telegraphs the
+## dream started meanwhile].
+func _ride(w: RunWorld, dream: BadDream, seconds: float) -> Array:
+	var id: int = dream.get_instance_id()
+	var told: int = _count(id, "telegraph")
+	var start: float = w.level_time()
+	await _until(func() -> bool: return w.player.surface != Player.Surface.CEILING or not w.player.alive, seconds)
+	return [w.level_time() - start, _count(id, "telegraph") - told]
+
+
+## The slash's damage box for a ceiling rider hangs from the underside over the same lanes as the floor's (the
+## rider's and one either side, clamped at the street's edges, at 3, 5 and 6 lanes): it holds a rider (hanging
+## still, sliding, or at the top of a jump away from the ceiling) in exactly those lanes, and never reaches the floor.
+func _test_ceiling_slash_box() -> void:
+	var half := Vector3(tuning.hurtbox_size.x * 0.5, 0.0, tuning.hurtbox_size.z * 0.5)
+	var up: float = tuning.ceiling_height
+	for lanes: int in [3, 5, 6]:
+		var made: Array = await _world(lanes, 0)
+		var w: RunWorld = made[0]
+		var dream: BadDream = made[1]
+		for rider: int in lanes:
+			var tag: String = "lanes=%d rider=%d" % [lanes, rider]
+			var band: Vector2i = _expected_band(lanes, rider)
+			var box: AABB = dream.slash_box_for(band, up)
+			check(is_equal_approx(box.end.y, up) and is_equal_approx(box.size.y, t.ceiling_slash_reach),
+				"the claws hang %.2f m from the underside %s" % [box.size.y, tag])
+			for lane: int in lanes:
+				var covered: bool = lane >= band.x and lane <= band.y
+				for pose: Array in [[0.0, tuning.hurtbox_size.y], [0.0, tuning.hurtbox_slide_height],
+						[tuning.jump_height, tuning.hurtbox_size.y]]:
+					var depth: float = pose[0]
+					var height: float = pose[1]
+					var body := AABB(Vector3(w.geo.lane_x(lane), up - depth - height, 0.0) - half,
+						Vector3(tuning.hurtbox_size.x, height, tuning.hurtbox_size.z))
+					check(box.intersects(body) == covered, "lane %d (%.1f m down, %.2f m tall) %s by the claws %s" % [lane,
+						depth, height, "is reached" if covered else "is out of reach", tag])
+				for h: float in [0.0, tuning.jump_height]:
+					var runner := AABB(Vector3(w.geo.lane_x(lane), h, 0.0) - half, tuning.hurtbox_size)
+					check(not box.intersects(runner), "a floor runner under it is safe (lane %d, %.1f m up) %s" % [lane, h, tag])
+		await sim.free_world(w)
+
+
+## A runner on a ceiling is telegraphed at and slashed like one on the floor (owner, task K1): not before they've
+## settled from their pad's flight, with the shriek and the covered lanes lit on the underside at least the warning
+## time before the claws are live, the dream rearing up toward the hull without reaching it, the claws hanging
+## from the underside; and a rider who stays is hit.
+func _test_ceiling_slash() -> void:
+	var made: Array = await _ceiling_world(5, 2, Vector2i(0, 4), 6.0)
+	var w: RunWorld = made[0]
+	var dream: BadDream = made[1]
+	var flipped: float = made[2]
+	var id: int = dream.get_instance_id()
+	var told: int = _count(id, "telegraph")
+	var up: float = w.player.ceiling_y
+	check(w.player.surface == Player.Surface.CEILING and is_equal_approx(up, tuning.ceiling_height), "the player rides the ceiling")
+	var marks := dream.get_node(^"LaneMarks") as MeshInstance3D
+	var started: bool = await _until(func() -> bool: return _count(id, "telegraph") > told or not w.player.alive, 4.0)
+	var t0: float = _time_of(dream, "telegraph", told)
+	check(started and w.player.surface == Player.Surface.CEILING and w.player.alive, "it telegraphs at a runner on a ceiling")
+	check(dream.slash_on_ceiling() and is_equal_approx(dream.slash_ceiling_y(), up), "its slash hangs from their ceiling")
+	check(dream.band == _expected_band(5, 2), "over the lanes the floor's would cover (%s)" % [dream.band])
+	check(t0 >= flipped + t.ceiling_settle_time - 0.05 and t0 <= flipped + t.ceiling_settle_time + 0.6,
+		"after the rider has settled from the pad's flight, and soon after (%.2f s after the flip)" % (t0 - flipped))
+	await physics_frames(3)
+	check(marks.visible and marks.mesh != null, "the telegraph lights the covered lanes")
+	if marks.mesh != null:
+		var aabb: AABB = marks.mesh.get_aabb()
+		var lo: float = w.geo.lane_x(dream.band.x) - w.geo.lane_width * 0.5
+		var hi: float = w.geo.lane_x(dream.band.y) + w.geo.lane_width * 0.5
+		check(aabb.position.x >= lo - 0.01 and aabb.end.x <= hi + 0.01 and aabb.size.x > (hi - lo) * 0.85,
+			"exactly across the covered lanes (%.1f..%.1f of %.1f..%.1f)" % [aabb.position.x, aabb.end.x, lo, hi])
+		check(absf(marks.global_position.y - up) < 0.1 and marks.global_position.y < up,
+			"on the ceiling's underside (%.2f m, the ceiling at %.1f m)" % [marks.global_position.y, up])
+	var highest: float = -INF
+	var nearest: float = INF
+	for i: int in int(3.0 * Engine.physics_ticks_per_second):
+		if _count(id, "slash") >= 1 or not w.player.alive:
+			break
+		await tree.physics_frame
+		highest = maxf(highest, dream.top_height())
+		nearest = minf(nearest, dream.rel_ahead)
+	check(_count(id, "slash") >= 1 and dream.is_slashing(), "the claws go live")
+	var claws: Hazard = dream.slash_hitbox()
+	check(absf(claws.global_position.y - (up - t.ceiling_slash_reach * 0.5)) < 0.01
+		and is_equal_approx(claws.size.y, t.ceiling_slash_reach), "hanging from the underside (centre %.2f m, %.2f m deep)" %
+		[claws.global_position.y, claws.size.y])
+	check(highest <= up - t.hull_clearance + 0.05 and highest > up - t.hull_clearance - 0.6,
+		"it rears up toward the hull, its head %.2f m under it at the most (top %.2f m, hull at %.1f m)" % [up - highest, highest, up])
+	check(nearest >= t.lunge_ahead - 0.01, "and stays in front of the player (%.1f m ahead at the nearest)" % nearest)
+	var t1: float = _time_of(dream, "slash")
+	check(t1 - t0 >= t.warning_time(0.0) - 0.02 and t1 - t0 >= 0.9, "the claws are live %.2f s after the telegraph starts" % (t1 - t0))
+	var shriek: bool = false
+	var whoosh: bool = false
+	for snd: Array in dream.sounds:
+		shriek = shriek or (snd[0] == &"bad_dream_shriek" and absf(float(snd[1]) - t0) < 0.001)
+		whoosh = whoosh or (snd[0] == &"bad_dream_slash" and float(snd[1]) >= t0 + t.telegraph_time(0.0) - 0.02 and float(snd[1]) <= t1)
+	check(shriek and whoosh, "it shrieks as the telegraph starts and whooshes as it lunges (%s)" % [dream.sounds])
+	await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 2.0)
+	check(not w.player.alive and w.player.last_event.contains(SLASH_NAME),
+		"a rider who stays in the covered lanes is hit (%s)" % w.player.last_event)
+	await sim.free_world(w)
+
+	# Armor blocks one, as for a floor runner.
+	made = await _ceiling_world(5, 2, Vector2i(0, 4), 6.0, _loadout({"armor": 1}))
+	w = made[0]
+	dream = made[1]
+	id = dream.get_instance_id()
+	var events: Array = []
+	w.player.movement_event.connect(func(k: StringName) -> void: events.append(k))
+	await _until(func() -> bool: return _count(id, "recover") >= 1 or not w.player.alive, 5.0)
+	check(w.player.alive and dream.slash_on_ceiling() and dream.slashes == 1 and events.has(&"armor_break"),
+		"armor blocks a ceiling slash (%s, %s)" % [w.player.last_event, events])
+	await sim.free_world(w)
+
+
+## Leaving the locked lanes dodges a ceiling slash, soon after the telegraph or at the last moment, in both
+## directions where a ceiling lane is free: a jump away from the ceiling doesn't. (A ceiling has no wall to run to.)
+func _test_ceiling_dodge() -> void:
+	var late: float = t.warning_time(0.0) - 0.36
+	for lanes: int in [3, 5, 6]:
+		for rider: int in [0, lanes / 2, lanes - 1]:
+			var band: Vector2i = _expected_band(lanes, rider)
+			for dir: int in [-1, 1]:
+				var out: int = band.x - 1 if dir < 0 else band.y + 1
+				if out < 0 or out >= lanes:
+					continue
+				for delay: float in [0.15, late]:
+					var tag: String = "lanes=%d rider=%d %s x%d after %.2f s" % [lanes, rider,
+						"left" if dir < 0 else "right", absi(out - rider), delay]
+					var made: Array = await _ceiling_world(lanes, rider, Vector2i(0, lanes - 1), 6.0)
+					var w: RunWorld = made[0]
+					var dream: BadDream = made[1]
+					var id: int = dream.get_instance_id()
+					var told: int = _count(id, "telegraph")
+					var slashed: int = dream.slashes
+					await _until(func() -> bool: return _count(id, "telegraph") > told, 4.0)
+					await _wait(delay)
+					for m: int in absi(out - rider):
+						w.player.press(&"move_left" if dir < 0 else &"move_right")
+					await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 3.0)
+					check(w.player.alive and dream.slashes == slashed + 1 and dream.slash_on_ceiling()
+						and w.player.surface == Player.Surface.CEILING and w.player.lane == out,
+						"leaving the lanes dodges the ceiling slash: %s (%s)" % [tag, w.player.last_event])
+					await sim.free_world(w)
+
+	# A jump at the strike (the top of a jump is 1.6 m down from the ceiling, the claws hang 1.75 m) doesn't dodge it.
+	var made: Array = await _ceiling_world(5, 2, Vector2i(0, 4), 6.0)
+	var w: RunWorld = made[0]
+	var dream: BadDream = made[1]
+	var id: int = dream.get_instance_id()
+	var told: int = _count(id, "telegraph")
+	await _until(func() -> bool: return _count(id, "telegraph") > told, 4.0)
+	await _wait(late)
+	w.player.press(&"jump")
+	await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 3.0)
+	check(not w.player.alive and w.player.last_event.contains(SLASH_NAME),
+		"a jump away from the ceiling doesn't dodge it (%s)" % w.player.last_event)
+	await sim.free_world(w)
+
+
+## The 'no escape left' rule on a ceiling (a ceiling has no wall to run to, and nothing drops the rider at will):
+## the slash comes only if a ceiling lane outside it is left to move to. Where the three-lane band would cover
+## every ceiling lane (the middle lane of a 3-lane street, a ceiling three lanes wide), it locks two lanes, the
+## rider's and one side's, and on a two-lane ceiling only the rider's (DESIGN-TBD, docs/questions/k1.md 1); a
+## one-lane ceiling stays a refuge. A ceiling lane is lit only where the ceiling is, and the lanes the ceiling
+## doesn't have don't count as a way out.
+func _test_ceiling_no_escape() -> void:
+	# [lanes, ceiling's lanes, rider's lane, the bands it may lock (none: no slash comes)]
+	var cases: Array = [
+		[3, Vector2i(0, 2), 1, [Vector2i(0, 1), Vector2i(1, 2)]],
+		[3, Vector2i(0, 2), 0, [Vector2i(0, 1)]],
+		[3, Vector2i(0, 2), 2, [Vector2i(1, 2)]],
+		[5, Vector2i(1, 3), 2, [Vector2i(1, 2), Vector2i(2, 3)]],
+		[5, Vector2i(1, 3), 1, [Vector2i(0, 2)]],
+		[5, Vector2i(1, 3), 3, [Vector2i(2, 4)]],
+		[5, Vector2i(0, 1), 0, [Vector2i(0, 0)]],
+		[5, Vector2i(0, 1), 1, [Vector2i(1, 2)]],
+		[5, Vector2i(3, 4), 4, [Vector2i(4, 4)]],
+		[5, Vector2i(0, 2), 0, [Vector2i(0, 1)]],
+		[6, Vector2i(1, 4), 2, [Vector2i(1, 3)]],
+		[6, Vector2i(2, 3), 2, [Vector2i(1, 2)]],
+		[5, Vector2i(2, 2), 2, []],
+		[3, Vector2i(1, 1), 1, []],
+	]
+	for c: Array in cases:
+		var lanes: int = c[0]
+		var covered: Vector2i = c[1]
+		var rider: int = c[2]
+		var allowed: Array = c[3]
+		var tag: String = "lanes=%d ceiling %d..%d rider=%d" % [lanes, covered.x, covered.y, rider]
+		var made: Array = await _ceiling_world(lanes, rider, covered, 5.0)
+		var w: RunWorld = made[0]
+		var dream: BadDream = made[1]
+		var id: int = dream.get_instance_id()
+		check(w.player.surface == Player.Surface.CEILING, "the rider is up " + tag)
+		var told: int = _count(id, "telegraph")
+		if allowed.is_empty():
+			var ride: Array = await _ride(w, dream, 5.0)
+			check(float(ride[0]) > 2.0 and int(ride[1]) == 0 and w.player.alive,
+				"no slash with no ceiling lane to move to, though they ride %.1f s %s (%d telegraphs)" % [ride[0], tag, ride[1]])
+			await sim.free_world(w)
+			continue
+		await _until(func() -> bool: return _count(id, "telegraph") > told or not w.player.alive, 4.0)
+		var band: Vector2i = dream.band
+		check(_count(id, "telegraph") > told and allowed.has(band), "the slash comes over one of %s %s (%s)" % [allowed, tag, band])
+		check(band.x <= rider and rider <= band.y, "and takes in the rider's lane %s (%s)" % [tag, band])
+		await physics_frames(3)
+		var marks := dream.get_node(^"LaneMarks") as MeshInstance3D
+		if marks.mesh != null:
+			var aabb: AABB = marks.mesh.get_aabb()
+			var first: int = maxi(band.x, covered.x)
+			var last: int = mini(band.y, covered.y)
+			var lo: float = w.geo.lane_x(first) - w.geo.lane_width * 0.5
+			var hi: float = w.geo.lane_x(last) + w.geo.lane_width * 0.5
+			check(aabb.position.x >= lo - 0.01 and aabb.end.x <= hi + 0.01 and aabb.size.x > (hi - lo) * 0.85,
+				"lit only where the ceiling is (%.1f..%.1f of %.1f..%.1f) %s" % [aabb.position.x, aabb.end.x, lo, hi, tag])
+		# A free ceiling lane is a way out: the nearest one outside the band.
+		var out: int = -1
+		for lane: int in range(covered.x, covered.y + 1):
+			if (lane < band.x or lane > band.y) and (out < 0 or absi(lane - rider) < absi(out - rider)):
+				out = lane
+		check(out >= 0, "there is a ceiling lane to move to " + tag)
+		await _wait(0.2)
+		for m: int in absi(out - rider):
+			w.player.press(&"move_left" if out < rider else &"move_right")
+		await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 3.0)
+		check(w.player.alive and w.player.lane == out and w.player.surface == Player.Surface.CEILING,
+			"and moving there dodges it %s (%s)" % [tag, w.player.last_event])
+		await sim.free_world(w)
+
+
+## A rider in the middle of a 3-lane street's ceiling (or of a ceiling three lanes wide) is hittable: the slash
+## locks the rider's lane and one side's, either side by the dream's seed, and a rider who stays is hit while one
+## who moves to the free lane (one switch) is not.
+func _test_ceiling_middle_rider() -> void:
+	var late: float = t.warning_time(0.0) - 0.36
+	var seen: Dictionary = {}
+	for config: Array in [[3, Vector2i(0, 2), 1], [5, Vector2i(1, 3), 2], [6, Vector2i(2, 4), 3]]:
+		var lanes: int = config[0]
+		var covered: Vector2i = config[1]
+		var rider: int = config[2]
+		for dream_seed: int in [1, 2, 3, 4, 5, 6]:
+			var tag: String = "lanes=%d ceiling %d..%d seed %d" % [lanes, covered.x, covered.y, dream_seed]
+			# Moves to the free lane (late, at the last moment) ...
+			var made: Array = await _ceiling_world(lanes, rider, covered, 6.0, null, [] as Array[Dictionary], dream_seed)
+			var w: RunWorld = made[0]
+			var dream: BadDream = made[1]
+			var id: int = dream.get_instance_id()
+			var told: int = _count(id, "telegraph")
+			await _until(func() -> bool: return _count(id, "telegraph") > told, 4.0)
+			var band: Vector2i = dream.band
+			var side: int = band.y - rider if band.y > rider else band.x - rider
+			check(band.y - band.x == 1 and band.x <= rider and rider <= band.y and absi(side) == 1,
+				"two lanes: the rider's and one side's (%s) %s" % [band, tag])
+			seen[[lanes, side]] = true
+			await _wait(late)
+			w.player.press(&"move_left" if side > 0 else &"move_right")
+			await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 3.0)
+			check(w.player.alive and w.player.lane == rider - side and w.player.surface == Player.Surface.CEILING,
+				"moving to the free lane dodges it %s (%s)" % [tag, w.player.last_event])
+			await sim.free_world(w)
+			# ... and staying is hit.
+			made = await _ceiling_world(lanes, rider, covered, 6.0, null, [] as Array[Dictionary], dream_seed)
+			w = made[0]
+			dream = made[1]
+			id = dream.get_instance_id()
+			await _until(func() -> bool: return not w.player.alive or _count(id, "recover") >= 1, 4.0)
+			check(not w.player.alive and w.player.last_event.contains(SLASH_NAME),
+				"a rider who stays is hit %s (%s)" % [tag, w.player.last_event])
+			await sim.free_world(w)
+	for lanes: int in [3, 5, 6]:
+		check(seen.has([lanes, 1]) and seen.has([lanes, -1]), "either side is picked (lanes=%d: %s)" % [lanes, seen.keys()])
+
+
+## A lane isn't a way out if the ceiling over it ends before the claws have passed, if a return pad would drop the
+## rider there, or if an enemy's body (a Barnacle Turret's) hangs in it between them and the strike; one behind them
+## or beyond the strike doesn't count. On a two-lane ceiling the only way out is the other lane.
+func _test_ceiling_escape_closed() -> void:
+	# [what's different about the other lane, where its ceiling ends, where a turret hangs in it (-1: none), its
+	# return pads, whether the slash comes, the track distance to watch no slash come until (-1: five seconds)]
+	var cases: Array = [
+		["its ceiling lasts", 150.0, -1.0, [] as Array[Dictionary], true, -1.0],
+		["its ceiling ends before the strike", 40.0, -1.0, [] as Array[Dictionary], false, -1.0],
+		["a return pad drops them there", 150.0, -1.0, [{"lane": 1, "at": 46.0}] as Array[Dictionary], false, 44.0],
+		["a turret hangs there before the strike", 150.0, 46.0, [] as Array[Dictionary], false, 44.0],
+		["a turret hangs there beyond the strike", 150.0, 120.0, [] as Array[Dictionary], true, -1.0],
+		["a turret hung there behind them", 150.0, 14.0, [] as Array[Dictionary], true, -1.0],
+	]
+	for c: Array in cases:
+		var l := RunSim.layout(5, 1500.0)
+		# Their lane's ceiling goes on; the other's (lane 1) ends at c[1].
+		l.hulls.append(LevelLayout.make_hull(CEILING_PAD_AT - 3.0, 150.0, Vector2i(0, 0), 5))
+		l.hulls.append(LevelLayout.make_hull(CEILING_PAD_AT - 3.0, float(c[1]), Vector2i(1, 1), 5))
+		var made: Array = await _ceiling_world_of(l, 0, c[3])
+		var w: RunWorld = made[0]
+		var dream: BadDream = made[1]
+		var id: int = dream.get_instance_id()
+		if float(c[2]) > 0.0:
+			var turret := w.director.spawn({"type": "barnacle_turret", "at": float(c[2]), "lane": 1, "side": 0, "seed": 3,
+				"params": {"fires": false}}) as BarnacleTurret
+			check(turret != null, "a turret hangs in lane 1 (%s)" % c[0])
+		var told: int = _count(id, "telegraph")
+		if bool(c[4]):
+			await _until(func() -> bool: return _count(id, "telegraph") > told or not w.player.alive, 4.0)
+			check(_count(id, "telegraph") > told and dream.band == Vector2i(0, 0),
+				"%s: its only lane is slashed and the other is the way out (%s)" % [c[0], dream.band])
+		elif float(c[5]) < 0.0:
+			var ride: Array = await _ride(w, dream, 5.0)
+			check(float(ride[0]) > 1.5 and int(ride[1]) == 0 and w.player.alive,
+				"%s: no way out, no slash (%d telegraphs in %.1f s)" % [c[0], ride[1], ride[0]])
+		else:
+			# The turret or the return pad shuts the lane until the runner is past it: no slash till then, and
+			# one once it's behind them.
+			var watch: float = c[5]
+			await _until(func() -> bool: return w.player.distance >= watch or not w.player.alive, 5.0)
+			check(w.player.alive and w.player.distance >= watch and _count(id, "telegraph") == told,
+				"%s: no way out, no slash (%d telegraphs up to %.0f m)" % [c[0], _count(id, "telegraph") - told, w.player.distance])
+			await _until(func() -> bool: return _count(id, "telegraph") > told or not w.player.alive, 3.0)
+			check(_count(id, "telegraph") > told and dream.band == Vector2i(0, 0),
+				"%s: and once it is behind them the other lane is a way out (%s)" % [c[0], dream.band])
+		await sim.free_world(w)
+
+
+## The slash comes only at a ceiling that holds until the claws have passed, with no return pad dropping the rider
+## first: a rider falling out of the ceiling's end or a return pad's drop would fall through claws hanging from the
+## underside. The dream floats on meanwhile, and slashes the floor again once they're down.
+func _test_ceiling_holds() -> void:
+	var cases: Array = [
+		["a ceiling that ends too soon", 1.3, [] as Array[Dictionary]],
+		["a return pad about to drop them", 6.0, [{"lane": 2, "at": 40.0}] as Array[Dictionary]],
+	]
+	for c: Array in cases:
+		var made: Array = await _ceiling_world(5, 2, Vector2i(0, 4), c[1], null, c[2])
+		var w: RunWorld = made[0]
+		var dream: BadDream = made[1]
+		var id: int = dream.get_instance_id()
+		w.player.god_mode = true
+		var told: int = _count(id, "telegraph")
+		var ride: Array = await _ride(w, dream, 5.0)
+		check(w.player.surface != Player.Surface.CEILING and int(ride[1]) == 0,
+			"%s: no telegraph while they're up (%d, rode %.1f s)" % [c[0], ride[1], ride[0]])
+		var landed: Array = [false]
+		w.player.movement_event.connect(func(k: StringName) -> void: landed[0] = landed[0] or k == &"land")
+		await _until(func() -> bool: return landed[0], 3.0)
+		var down_at: float = w.level_time()
+		await _until(func() -> bool: return _count(id, "telegraph") > told, 6.0)
+		check(_count(id, "telegraph") > told and _time_of(dream, "telegraph", told) >= down_at - 0.001
+			and not dream.slash_on_ceiling(), "%s: once they're down it slashes the floor again" % c[0])
+		await sim.free_world(w)
+
+
+## One ceiling ride in god mode (so every slash shows): the dream telegraphs at the rider on the ceiling, never
+## while they're falling off its end, and slashes the floor once they've landed, its slash hanging from the
+## underside then and from the floor now.
+func _test_ceiling_then_floor() -> void:
+	var made: Array = await _ceiling_world(5, 2, Vector2i(0, 4), 4.0)
 	var w: RunWorld = made[0]
 	var dream: BadDream = made[1]
 	var id: int = dream.get_instance_id()
 	w.player.god_mode = true
-	await _until(func() -> bool: return w.player.surface == Player.Surface.CEILING, 6.0)
-	check(w.player.surface == Player.Surface.CEILING, "the player took the pad")
-	await _until(func() -> bool: return not dream.is_attacking(), 2.0)
-	var told: int = _count(id, "telegraph")
-	var highest: float = -INF
-	var nearest: float = INF
-	var waited: bool = false
-	while w.player.surface == Player.Surface.CEILING:
-		await tree.physics_frame
-		highest = maxf(highest, dream.top_height())
-		nearest = minf(nearest, dream.rel_ahead)
-		waited = waited or dream.is_waiting()
-	check(waited and _count(id, "wait") >= 1, "it waits below while the player is on the ceiling")
-	check(_count(id, "telegraph") == told, "and never telegraphs up there")
-	check(highest <= tuning.ceiling_height - t.hull_clearance + 0.01,
-		"its head stays below the hull (top %.2f m, hull at %.1f m)" % [highest, tuning.ceiling_height])
-	check(nearest > t.lunge_ahead, "and in front of the player (%.1f m ahead at the nearest)" % nearest)
 	var landed: Array = [false]
-	w.player.movement_event.connect(func(k: StringName) -> void: landed[0] = landed[0] or k == &"land")
-	await _until(func() -> bool: return landed[0], 3.0)
-	var down_at: float = w.level_time()
-	await _until(func() -> bool: return _count(id, "telegraph") > told, 6.0)
-	check(_count(id, "telegraph") > told and _time_of(dream, "telegraph", told) >= down_at - 0.001,
-		"once the player is back down, it attacks again")
+	var dropped: Array = [false]
+	w.player.movement_event.connect(func(k: StringName) -> void:
+		landed[0] = landed[0] or k == &"land"
+		dropped[0] = dropped[0] or k == &"hull_end")
+	# [surface at the start, whether the slash hangs from a ceiling, falling] of every telegraph started from here.
+	var starts: Array = []
+	var seen: int = _count(id, "telegraph")
+	for i: int in int(12.0 * Engine.physics_ticks_per_second):
+		await tree.physics_frame
+		if _count(id, "telegraph") > seen:
+			seen = _count(id, "telegraph")
+			starts.append([w.player.surface, dream.slash_on_ceiling(), dropped[0] and not landed[0]])
+		if landed[0] and starts.size() >= 2 and starts[starts.size() - 1][0] != Player.Surface.CEILING:
+			break
+	var on_ceiling: int = 0
+	var after_drop: int = 0
+	var floor_slashes: int = 0
+	for s: Array in starts:
+		on_ceiling += 1 if s[0] == Player.Surface.CEILING and s[1] else 0
+		after_drop += 1 if s[2] else 0
+		floor_slashes += 1 if s[0] != Player.Surface.CEILING and not s[1] else 0
+		check(s[0] == Player.Surface.CEILING or not s[1], "a slash hangs from a ceiling only when its target rode one (%s)" % [s])
+	check(on_ceiling >= 1, "it slashed at the rider on the ceiling (%s)" % [starts])
+	check(after_drop == 0, "and never at a runner falling off its end (%s)" % [starts])
+	check(floor_slashes >= 1, "and the floor again once they landed (%s)" % [starts])
 	await sim.free_world(w)
 
 
