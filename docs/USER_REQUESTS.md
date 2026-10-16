@@ -12,3 +12,7 @@ request that is now in the done file.
 ## Wall hop nudge (October 9, 2026)
 
 - [ ] Gently teach the wall hop (jumping off a side wall and straight back on, for an unlimited wall run; GDD §3). Some long walls carry high-value credits further along than one wall run reaches, so a player has to get inventive to collect them (GDD §7, Wall-hop credits). Proposed: from Gangland on, about once a level, on a stretch of wall with no wall gap. Don't patch the wall hop itself; the owner relies on it in every playtest. The October 14 batch left it for the next batch, behind I4 (the generator).
+
+## The Neon City's intro (October 16, 2026)
+
+- [ ] Build the City's intro cinematic, the game's first (GDD §6, Cinematics, "Zone 1 intro"; task F2f): a flyby over the busy city, cyborgs trudging under the Floating Head's watching searchlight, the runner bursting out of a window and stomping one, the Head startled, angry and yelling through the feed, then the title card. About 20 seconds.
