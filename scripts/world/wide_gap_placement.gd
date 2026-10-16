@@ -145,6 +145,8 @@ static func place(gen: LevelGenerator) -> Dictionary:
 			for span: Vector2 in p.rows:
 				zones.append(zone_of(gen, p.t, span))
 			WallRunGapPlacement.put_back(gen, aside, "the wider gaps", zones)
+			# What came back keeps the last way below off it as the rest of the level's content does.
+			p.keeps = keeps_of(gen)
 	if p.rows.is_empty() and p.t.add_rows:
 		_add_clearing(p, whole, (whole.x + whole.y) * 0.5)
 	if p.taken_out > 0:
