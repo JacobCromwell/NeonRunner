@@ -30,7 +30,7 @@ extends RefCounted
 ##   its polyline (the collision's: MechaGuppyStairs), the planks running on unbroken past it; the eaten edge's orange
 ##   lip and steel coping along the scalloped edge on the deck, the glowing strip on its face and the dark broken face
 ##   down to the water; no tower wall, eave or lantern posts along the bitten side over it (nor the far side where a
-##   full-width bite cuts through).
+##   full-width bite cuts through). On phase 3's top, the sea at the bottom of its hole (MechaGuppyBiteWater, task J3).
 ## - A hut: a plank platform hovering on four violet-blue lift pods outside the lanes, its underside one surface
 ##   across its lanes with flush joists, a dark seam and a warm lamp row along each lane seam (and along each run of
 ##   lanes' edge, so the lanes that lead up visibly run on, lit, past the others: RUN_ON), the orange band of every
