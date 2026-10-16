@@ -326,6 +326,8 @@ static func place(gen: LevelGenerator) -> Dictionary:
 ## (_removable), into `p`.
 static func _survey(p: _Pass) -> void:
 	var by_part: Dictionary = keep_outs_by_part(p.gen)
+	# A stretch the build keeps for the wider gaps (LevelGenerator.wall_run_gap_reserve, wide_gap_reserve) too.
+	by_part["whole"].append_array(p.gen.wall_run_gap_reserve)
 	for name: String in by_part:
 		p.parts[name] = WallFencePlacement.merged(by_part[name])
 	p.walls = [WallFencePlacement.merged(wall_keep_outs(p.gen, -1, p.t)),
@@ -844,6 +846,25 @@ static func problem(gen: LevelGenerator, w: Dictionary) -> String:
 	return ""
 
 
+## What a finished build of `gen` keeps for its wider gaps in the one more build that may make them room
+## (LevelGenerator._make_wide_gap_room, LevelGenerator.wall_run_gap_reserve): where the build's wider gaps fall short of
+## the level's count (WideGapPlacement.rows_of) and it has wall-run gaps, its first one's clear stretch (keep_out),
+## which never gives way to them in their own pass (set_aside), so its wall-run gap goes elsewhere. [] otherwise, and
+## in the level that brings the feature in (its first stays where it is introduced).
+static func wide_gap_reserve(gen: LevelGenerator) -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var lay: LevelLayout = gen.layout
+	if gen.config.wide_gaps <= 0 or lay.wall_run_gaps.is_empty() or gen.config.feature_starts.has(FEATURE) \
+			or WideGapPlacement.rows_of(gen).size() >= gen.config.wide_gaps:
+		return out
+	var first: Dictionary = lay.wall_run_gaps[0]
+	for w: Dictionary in lay.wall_run_gaps:
+		if float(w["start"]) < float(first["start"]):
+			first = w
+	out.append(keep_out(first))
+	return out
+
+
 ## For a later pass that falls short of its own count (the wider gaps, WideGapPlacement.place; the dash walls,
 ## DashWallRules.after_doodads): takes every wall-run gap but the level's first out of `gen`'s layout (its entry and its
 ## holes; the first never gives way, so a level with the feature keeps one) and returns them, so the pass can look again
@@ -862,15 +883,20 @@ static func set_aside(gen: LevelGenerator) -> Array[Dictionary]:
 
 
 ## Puts back each wall-run gap of `aside` (set_aside's) where the pass that set it aside left its way as it was (problem
-## finds nothing: its clear stretch, its lit wall, the other wall); the rest stay out, given way to `by` (for the report:
+## finds nothing: its clear stretch, its lit wall, the other wall) and its clear stretch reaches none of `keep_off`
+## (what that pass plans that isn't in the layout yet: the wider gaps' zones, whose own rows they make longer only after
+## the fill pass, WideGapPlacement.widen_deferred); the rest stay out, given way to `by` (for the report:
 ## LevelGenerator.wall_run_gap_result's `placed`, `gave_way` and constraints). Returns how many stayed out.
-static func put_back(gen: LevelGenerator, aside: Array[Dictionary], by: String) -> int:
+static func put_back(gen: LevelGenerator, aside: Array[Dictionary], by: String, keep_off: Array[Vector2] = []) -> int:
 	var lay: LevelLayout = gen.layout
 	var out: int = 0
 	for w: Dictionary in aside:
 		lay.wall_run_gaps.append(w)
 		_set_holes(lay, w, true)
-		if problem(gen, w) != "":
+		var reaches: bool = false
+		for k: Vector2 in keep_off:
+			reaches = reaches or (k.x < float(w["landing"]) - TOUCH and k.y > float(w["approach"]) + TOUCH)
+		if reaches or problem(gen, w) != "":
 			lay.wall_run_gaps.erase(w)
 			_set_holes(lay, w, false)
 			out += 1

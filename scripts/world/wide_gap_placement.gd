@@ -140,7 +140,11 @@ static func place(gen: LevelGenerator) -> Dictionary:
 			p.candidates.clear()
 			_find_candidates(p)
 			_from_sources(p, want, whole)
-			WallRunGapPlacement.put_back(gen, aside, "the wider gaps")
+			# Every wider gap's zone as planned: the level's own rows it makes longer are in the layout only later.
+			var zones: Array[Vector2] = []
+			for span: Vector2 in p.rows:
+				zones.append(zone_of(gen, p.t, span))
+			WallRunGapPlacement.put_back(gen, aside, "the wider gaps", zones)
 	if p.rows.is_empty() and p.t.add_rows:
 		_add_clearing(p, whole, (whole.x + whole.y) * 0.5)
 	if p.taken_out > 0:
