@@ -256,3 +256,7 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 - [x] **Wall-run-only gaps** (J2; GDD §3, §9). Some sections, especially in later zones and levels, where a gap spans the whole floor and the only way across is a wall run. (DONE, J2: from halfway into Marketplace 1 on, about 1.3–2.6 a level; every floor lane is a hole no jump or dash crosses, one side wall is lit with the ramps' green chevrons, a plain wall run (no claws, no wall hop) carries the runner onto a landing floor; a clear run-in, nothing on the wall, drones, Bad Dreams, Enforcer Trucks and Octodogs hold their attacks, grapple and revive saves end over the landing floor, a first-time hint. Not in the City, Gangland, boss arenas or quick play. Late zones get the fewest, the opposite of the request: items 864 (open), 863–874.)
 - [x] **Beach boss: water in the shark's third-phase bite** (J3; GDD §10, Mecha Guppy). (DONE, J3: each chomp bite on the top in the reworked phase 3 now shows the sea at the bottom of its hole, in the same look as the water beside the top; phases 1 and 2 and the climb's chasms unchanged; look only. Items 875–877: does bright water still read as deadly.)
 
+
+## October 16, 2026 batch
+
+- [x] The Bad Dream should be able to hit the player on the ceiling. DONE (K1): it telegraphs and slashes a ceiling rider like a floor runner (lanes lit on the underside, same warning); fewer lanes where three would leave no way out; a ceiling rider is hit only after a 0.5 s settle and never into an ending ceiling. Questions 878-882.

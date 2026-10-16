@@ -4681,3 +4681,41 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
 877. **Only the top's bites?** Placeholder: phases 1 and 2's floor bites and the climb's chasms (phase 3's last steps
    before the top included) are exactly as they were (the owner: "still works great"). They still open onto the haze,
    or onto the street's dark water low down. Should they show water too?
+
+### Folded on October 16, 2026 (task K1, the Bad Dream slashes a ceiling rider)
+
+878. **Riders the three-lane band would leave no way out: the middle lane of a 3-lane street (the phone) and ceilings
+   three lanes wide or narrower.** Placeholder (DESIGN-TBD, `BadDream._narrowed_ceiling_band`; the reviewer's, so
+   that a ceiling is no refuge): the slash locks two lanes instead, the rider's and one side's (either side, at
+   random from the dream's seed, one whose way out is open), so the rider keeps a free lane one switch away; on a
+   two-lane ceiling it locks the rider's lane alone, the other being the way out. Still full refuges, since a free
+   ceiling lane is what a fair slash needs: a one-lane ceiling, and any ceiling whose other lanes are shut at that
+   moment (the ceiling ending, a return pad, a Barnacle Turret or another enemy's body in them, a solid side). Is a
+   two-lane or one-lane slash right (it departs from §9.7's three lanes, for a rider with no wall to run to), or
+   should a ceiling rider with no free lane stay safe, or the dream slash only the lane under a one-lane ceiling
+   while the rider can't leave it?
+879. **How the slash is timed against the pad.** Placeholder (DESIGN-TBD, `ceiling_settle_time` 0.5 s): it doesn't
+   telegraph until the runner has been up that long since their pad flipped them (the flight up takes about 0.4 s), so
+   a warning isn't spent in the air; and it doesn't telegraph unless the ceiling lasts over their lane until the claws
+   have passed (a rider falling off the end would fall through them), nor with a return pad about to drop them. Measured
+   by the reviewer on generated levels with the host rules' 3 s chase ceilings (`pad_ceiling_seconds`): 9 of 24 rides
+   were slashed (a slash is possible only from 0.5 s to about 1.3 s after the flip, and only when its 3-4 s timer is
+   due then), so a host-chase ceiling is a short stay the slash only sometimes reaches. Is that right, or should the
+   generator's chase ceilings be longer now that the ceiling is no refuge (a generator change, not made here)?
+880. **The anti-grav pads' role.** GDD §9.7 guarantees pads "during the chase" and §3 calls the ceiling the escape from
+   it; the pads are unchanged (the generator, `HostRules`), but a pad now only dodges a floor slash that was telegraphed
+   while the runner was on the floor (they're out of the locked floor lanes) and no more: the next slash can find
+   them on the ceiling. Is a pad still the chase's guaranteed way out, or what is it for now?
+881. **The look of its reach.** Placeholder (DESIGN-TBD, `hull_clearance` 0.6 m, `ceiling_rise_speed`
+   3 m/s, `ceiling_slash_reach` 1.75 m): it rears up until its head is 0.6 m under the underside (never into the hull),
+   its arms stay up and sweep across instead of down, and its claw streaks hang from the underside. Between slashes,
+   with a rider on a ceiling, it floats as usual (maw shut, head tipped back to look up) where it used to wait with its
+   maw open "reaching up at the hull it can't reach". Is the rearing-up right, or should it rise further into the hull?
+882. **A Barnacle Turret (or another enemy's body) on the ceiling the dream slashes at.** Placeholder (DESIGN-TBD,
+   `BadDream._body_in_lane`): an enemy's hitbox in a ceiling lane between a little behind the rider and where the claws
+   will have struck (a turret hanging in the way out) shuts that lane, so the dream doesn't slash a rider whose only
+   way out would run into a turret (it narrows the band, or holds the slash, until the turret is behind them). The
+   generator doesn't keep the two apart (`barnacle_turret_rules.gd` hangs turrets from the level's final ceilings, a
+   chase's pad ceilings included; they only meet in a level that has both features), and the turret's own bolts are
+   an enemy attack on the same rider, so a ceiling can now ask a rider to dodge both. Should a chase's ceiling be kept
+   free of turrets (one new thing at a time), or may the turret add to the dodge?

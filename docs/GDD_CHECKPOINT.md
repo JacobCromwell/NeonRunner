@@ -496,7 +496,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Passes through fences and physical barriers.**
   - Drifts toward the player's lane at a limited sideways speed.
   - Follows onto walls slowly.
-  - **Cannot reach the ship's hull.** It waits below until the player drops.
+  - **Reaches the ship's hull** (owner, October 16, 2026; it used to wait below until the player dropped). It telegraphs and slashes a player riding a ceiling like one on the floor; where three lanes would leave no free ceiling lane, it locks fewer (`docs/OPEN_QUESTIONS_DEFERRED.md` item 878).
 - **Attack:** a clearly telegraphed **lunging slash across three lanes** (your lane and the lanes on either side), with the maw opening and a shriek. It repeats every ~3–4 seconds for **20–30 seconds**, then dissolves.
 - **Immune to weapons, stomping, and claws.**
 - **Defenses and counters:**
