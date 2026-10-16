@@ -13,8 +13,9 @@ extends SkinSuite
 ## - the play space stays clear, and nothing sticks out of the walls below the colonnade's
 ##   entablature (frieze_top), the same calm band every zone keeps;
 ## - decorative statues are mesh-only wall-base alcoves in the same niche shape a live Gilded
-##   Sentinel's uses (the live enemy remains at wall-run height), and never glow; statue_spots() lists
-##   exactly where they are built;
+##   Sentinel's uses (the live enemy remains at wall-run height), standing as a relief on the wall face
+##   (task K2: each pose's front just behind it, in a shallow recess of its own), and never glow;
+##   statue_spots() lists exactly where they are built;
 ## - the ceiling pieces (a bridge or an archway needs every lane; a chandelier hangs over any width;
 ##   a hanging chandelier never dips below the running surface) are left to the shared test_ceilings
 ##   suite, which sweeps every skin in data/skins/ as soon as its file exists;
@@ -301,11 +302,19 @@ func _statues(skin: GoldenPalaceSkin) -> void:
 	check(skin.decorative_statue_mount_y() <= tuning.wall_margin + 0.001 and skin.decorative_statue_mount_y() < wall_run_top,
 		"decorative statues are mounted at the wall base (%.2f m), below the wall-run band (%.2f m)" % [
 			skin.decorative_statue_mount_y(), wall_run_top])
-	var projected: Vector2 = skin.decorative_statue_projection()
-	check(absf(skin.decorative_statue_inset() - (projected.x + skin.statue_base_inset)) < 0.001
-			and absf(skin.decorative_statue_recess_depth() - (skin.decorative_statue_inset() + projected.y + 0.05)) < 0.001,
-		"mount and recess use projected pose bounds (outward %.2f, wallward %.2f, inset %.2f, depth %.2f)" % [
-			projected.x, projected.y, skin.decorative_statue_inset(), skin.decorative_statue_recess_depth()])
+	# Task K2: each pose stands as a relief on the wall face (its front statue_base_inset behind the face), with a
+	# shallow recess of its own; the one depth of "any pose" is the deepest of them.
+	var deepest: float = 0.0
+	var mounts_ok: bool = true
+	for pose: StringName in GoldenStatue.DECORATIVE:
+		var projected: Vector2 = skin.decorative_statue_projection(pose)
+		mounts_ok = mounts_ok and absf(skin.decorative_statue_inset(pose) - (projected.x + skin.statue_base_inset)) < 0.001 \
+			and absf(skin.decorative_statue_recess_depth(pose)
+				- (skin.decorative_statue_inset(pose) + projected.y + 0.05)) < 0.001
+		deepest = maxf(deepest, skin.decorative_statue_recess_depth(pose))
+	check(mounts_ok and absf(skin.decorative_statue_recess_depth() - deepest) < 0.001 and deepest < 0.7,
+		"each pose's mount and recess use its projected bounds as a relief (relief %.2f, deepest recess %.2f m)" % [
+			skin.decorative_statue_relief(), deepest])
 	var count: int = 0
 	var poses: Dictionary = {}
 	var low: PackedStringArray = []
@@ -322,7 +331,7 @@ func _statues(skin: GoldenPalaceSkin) -> void:
 				var c: Vector3 = s["center"]
 				var facing: Vector3 = s["facing"]
 				if absf(c.y - skin.decorative_statue_mount_y()) > 0.001 or not GoldenStatue.DECORATIVE.has(s["pose"]) \
-						or absf(c.x - (side * geo.wall_x() + side * skin.decorative_statue_inset())) > 0.001 \
+						or absf(c.x - (side * geo.wall_x() + side * skin.decorative_statue_inset(s["pose"], side))) > 0.001 \
 						or facing.dot(Vector3(-side, 0.0, 0.0)) < 0.99:
 					low.append("%s %s" % [c, s["pose"]])
 			var batch := MeshBatch.new()

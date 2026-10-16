@@ -13,7 +13,11 @@ extends TestSuite
 ## Golden 2 and the Golden Palace's real layouts. And, for the owner's requests of October 8, 2026 (GDD §9.11,
 ## task H1): the 0.6 s warning against a runner's 0.35 s reaction (a floor runner leaves the lane in time, a wall
 ## runner escapes with two moves), the grind as long as the warning, the statue and every statue niche lit (not
-## black), the flare's red hue, and no see-through slot beside a live niche at a chunk's end.
+## black), the flare's red hue, and no see-through slot beside a live niche at a chunk's end. And, for the owner's
+## request of October 2026 (task K2: the knights are too far back in their recess to be seen): the live statue and the
+## decorative ones stand on the wall face as a shallow relief (nothing in front of the face, so the wall run and the
+## runner's side clearance are as they were), most of each shows through its opening from far down the street, and
+## the live one steps out for its swing without a hitbox changing.
 
 const Rules = preload("res://scripts/enemies/gilded_sentinel_rules.gd")
 const AttackWatch = preload("res://tools/measure/attack_watch.gd")
@@ -22,6 +26,12 @@ const TURN_DUMMY: String = "res://tests/helpers/turn_dummy.gd"
 const GOLDEN_SKIN: String = "res://data/skins/golden_skin.tres"
 const PALACE_SKIN: String = "res://data/skins/golden_palace_skin.tres"
 const CUT_NAME: String = "Gilded Sentinel's halberd"
+## Task K2: how edge-on the runner sees a wall from far down the street (the distance along it over their distance
+## from the wall: 20 m from a middle lane on 5 lanes, 12 m on 3), and the share of a statue that must show through
+## its opening from there: two thirds (the live statue shows 89% and the decorative ones 68 to 73%, where it was 44%
+## and 3 to 16% before K2: the statues stood 0.35 to 1.1 m back, behind the near edge of their openings).
+const VIEW_RATIO: float = 3.2
+const MIN_SEEN: float = 0.65
 ## The scripted runs' Sentinel stands here (inside a track chunk), and they run at these speeds.
 const AT: float = 60.0
 const SPEEDS: Array[float] = [18.0, 25.0]
@@ -61,6 +71,7 @@ func run() -> void:
 	await _test_chunk_boundaries()
 	_test_open_rects()
 	await _test_look()
+	await _test_steps_out()
 	await _test_skin_opens_niche()
 	await _test_warning_first()
 	await _test_floor()
@@ -219,6 +230,55 @@ func _test_decorative_statues() -> void:
 		check(count > 0 and absf(lowest - base_y) < 0.001 and lowest < top,
 			"%s: its %d decorative statues use the wall-base mount at %.1f m, below the wall-run band (%.1f m)"
 			% [path.get_file(), count, lowest, top])
+		_test_decorative_relief(skin, path)
+
+
+## Task K2 (owner: the knights are too far back in their recess to be seen): the decorative statues stand as the live
+## one does, a relief right on the wall face. Each is squashed to the live statue's relief, its front just behind the
+## face (never in front of it: nothing of the walls projects into the wall-run path, and the runner's side clearance is
+## as it was), in a shallow recess, and from far down the street most of it shows through its opening.
+func _test_decorative_relief(skin: GoldenSkin, path: String) -> void:
+	check(absf(skin.decorative_statue_relief() - t.statue_relief) < 0.001 and skin.decorative_statue_relief() < 0.6,
+		"%s: the decorative statues have the live statue's relief (%.2f)" % [path.get_file(), skin.decorative_statue_relief()])
+	var open: float = GoldenFacades.BASE_STATUE_NICHE_SIZE.x
+	var worst: float = 1.0
+	# How far out of the face a statue's most forward point stands (<= 0: behind it), over every statue; and the
+	# least forward one's, and the deepest point of any, in metres behind the face.
+	var out_most: float = -INF
+	var out_least: float = INF
+	var deepest: float = 0.0
+	var holds: bool = true
+	var count: int = 0
+	for side: int in [-1, 1]:
+		var face_x: float = side * 4.5
+		for spot: Dictionary in skin.statue_spots(side, face_x, 0.0, 300.0):
+			var pose: StringName = spot["pose"]
+			var center: Vector3 = spot["center"]
+			var basis: Basis = skin.decorative_statue_basis(spot["facing"])
+			var points := PackedVector2Array()
+			var front: float = -INF
+			var back: float = 0.0
+			for v: Vector3 in skin.decorative_statue_mesh(GoldenStatue.pose_named(pose)).verts:
+				var local: Vector3 = basis * v
+				# Along the track toward the street's far end, and how far behind the face.
+				var behind: float = side * (center.x - face_x) + side * local.x
+				points.append(Vector2(-local.z, behind))
+				front = maxf(front, -behind)
+				back = maxf(back, behind)
+			out_most = maxf(out_most, front)
+			out_least = minf(out_least, front)
+			deepest = maxf(deepest, back)
+			holds = holds and skin.decorative_statue_recess_depth(pose) >= back - 0.001
+			worst = minf(worst, _visible_share(points, open, VIEW_RATIO))
+			count += 1
+	check(count > 0 and out_most <= 0.001,
+		"%s: no decorative statue stands in front of the wall face (%d statues; the most forward one's front is %.3f m behind it)"
+		% [path.get_file(), count, -out_most])
+	check(out_least >= -(skin.statue_base_inset + 0.005) and holds and deepest <= 0.5,
+		"%s: each decorative statue's front is within %.2f m of the face (%.3f m at most behind it), its alcove holds it and it is %.2f m deep at most"
+		% [path.get_file(), skin.statue_base_inset, -out_least, deepest])
+	check(worst >= MIN_SEEN, "%s: from far down the street at least %.0f%% of every decorative statue shows through its alcove (%.0f%%)"
+		% [path.get_file(), MIN_SEEN * 100.0, worst * 100.0])
 
 
 ## GoldenSkin.open_rects: the wall face less the niches, exactly, with neighbouring pieces sharing edges.
@@ -299,9 +359,19 @@ func _test_look() -> void:
 		check(reach.x >= -(t.statue_inset + 0.01) and reach.x <= 0.001,
 			"side %d: the statue's front stands almost flush with the face (%.3f m behind it, statue_inset %.2f)"
 			% [s.side, -reach.x, t.statue_inset])
-		check(reach.y <= t.niche_depth - 0.03 and t.niche_depth <= 0.8,
-			"side %d: the niche's back is close behind the statue (the statue %.2f m deep, the niche %.2f)"
+		# Owner, task K2: still "too far back in the recess". The statue is a relief on the wall face: a niche 0.4 m
+		# deep with the statue under 0.3 m of it and about a third as thick as the whole statue, where it was 0.78 m
+		# with a statue 0.7 m deep standing in the middle of it.
+		check(reach.y <= t.niche_depth - 0.03 and t.niche_depth <= 0.45 and reach.y <= 0.32,
+			"side %d: the niche is shallow and its back close behind the statue (the statue %.2f m deep, the niche %.2f)"
 			% [s.side, reach.y, t.niche_depth])
+		check(t.statue_relief < 0.6 and reach.y + reach.x <= 0.3,
+			"side %d: the statue stands as a relief (%.2f of its depth, %.2f m thick)" % [s.side, t.statue_relief, reach.y + reach.x])
+		# Owner, task K2: the player can see it. From where a runner in the middle lane of a street sees the wall edge-on
+		# (the distance along it 3.2 times their distance from it: 20 m on 5 lanes, 12 m on 3) most of the statue shows.
+		var seen: float = _visible_share(_statue_points(s), t.niche_width, VIEW_RATIO)
+		check(seen >= MIN_SEEN, "side %d: from far down the street %.0f%% of the live statue shows through its opening (at least %.0f%%)"
+			% [s.side, seen * 100.0, MIN_SEEN * 100.0])
 		var body: Hazard = s.body_box()
 		var body_front: float = s.side * (body.global_position.x - s.side * body.size.x * 0.5) - w.geo.wall_x()
 		var body_back: float = s.side * (body.global_position.x + s.side * body.size.x * 0.5) - w.geo.wall_x()
@@ -309,6 +379,36 @@ func _test_look() -> void:
 			"side %d: the solid body stands behind the face and as far back as the statue (%.2f to %.2f m, the statue to %.2f)"
 			% [s.side, body_front, body_back, reach.y])
 	await sim.free_world(w)
+
+
+## The statue's current frame as points (Vector2(along the track from its niche's middle, toward the street's far
+## end; how far behind the wall face)), from its real vertices.
+func _statue_points(s: GildedSentinel) -> PackedVector2Array:
+	var body := s.get_node("Statue/Body") as MeshInstance3D
+	var root := s.get_node("Statue") as Node3D
+	var out := PackedVector2Array()
+	for si: int in body.mesh.get_surface_count():
+		var verts: PackedVector3Array = body.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+		for v: Vector3 in verts:
+			var p: Vector3 = root.transform * v
+			out.append(Vector2(-p.z, s.side * p.x))
+	return out
+
+
+## The share of a statue's width (the span of `points`, see _statue_points, as the runner sees it) a runner sees
+## through an opening `open` wide centred on 0, from where the distance along the street is `ratio` times their
+## distance from the wall: a point `d` behind the face shows through the face plane `d * ratio` nearer to the
+## runner than it is, so the opening's near edge hides what stands deep in it.
+func _visible_share(points: PackedVector2Array, open: float, ratio: float) -> float:
+	var lo: float = INF
+	var hi: float = -INF
+	for p: Vector2 in points:
+		var apparent: float = p.x - p.y * ratio
+		lo = minf(lo, apparent)
+		hi = maxf(hi, apparent)
+	if hi <= lo:
+		return 0.0
+	return clampf((minf(hi, open * 0.5) - maxf(lo, -open * 0.5)) / (hi - lo), 0.0, 1.0)
 
 
 ## How far the statue's current frame reaches out of the wall face (x, > 0 = out over the wall-run path)
@@ -620,6 +720,46 @@ func _vertices(root: Node) -> int:
 			for si: int in mesh.get_surface_count():
 				n += mesh.surface_get_array_len(si)
 	return n
+
+
+## Task K2: at rest the statue is a relief on the face; it steps out of the wall to its swing relief as it draws its
+## halberd back (the swing then reaches out of its niche over the wall-run path as a swing always did, its marks and
+## cut as they were), holds that through its swing and goes back into the wall as it recovers. Its hitboxes stay put.
+func _test_steps_out() -> void:
+	var made: Array = await _world(3, 1, 25.0, [{"side": -1}], null, GOLDEN_SKIN)
+	var w: RunWorld = made[0]
+	var s: GildedSentinel = made[1][0]
+	var body_size: Vector3 = s.body_box().size
+	var cuts: Array = []
+	for boxes: Array in s.cut_boxes():
+		for h: Hazard in boxes:
+			cuts.append([h.size, h.position])
+	check(is_equal_approx(s.current_relief(), t.statue_relief) and t.statue_swing_relief > t.statue_relief,
+		"at rest the statue is a relief of %.2f of its depth and steps out to %.2f for its swing" % [s.current_relief(), t.statue_swing_relief])
+	var most: float = 0.0
+	var farthest_out: float = -INF
+	var struck_at: float = -1.0
+	w.player.running = true
+	for i: int in int(_seconds_to(AT + 5.0, 25.0) * 60.0):
+		await tree.physics_frame
+		most = maxf(most, s.current_relief())
+		if s.state == GildedSentinel.State.STRIKE:
+			struck_at = s.current_relief() if struck_at < 0.0 else struck_at
+		farthest_out = maxf(farthest_out, _statue_reach(s).x)
+	check(absf(most - t.statue_swing_relief) < 0.01 and absf(struck_at - t.statue_swing_relief) < 0.02,
+		"it steps out to its swing relief for the swing (%.2f at most, %.2f as the swing starts)" % [most, struck_at])
+	check(is_equal_approx(s.current_relief(), t.statue_relief) and s.state == GildedSentinel.State.DONE,
+		"it is back to its rest relief once it has recovered (%.2f)" % s.current_relief())
+	# The swing's halberd still comes out of the face over the wall-run path, as a swing always did (about half a metre).
+	check(farthest_out >= 0.35 and farthest_out <= 0.9, "its swing reaches %.2f m out of the wall face" % farthest_out)
+	var unchanged: bool = s.body_box().size.is_equal_approx(body_size)
+	var n: int = 0
+	for boxes: Array in s.cut_boxes():
+		for h: Hazard in boxes:
+			unchanged = unchanged and (h.size as Vector3).is_equal_approx(cuts[n][0]) and (h.position as Vector3).is_equal_approx(cuts[n][1])
+			n += 1
+	check(unchanged, "its hitboxes are what they were before it stepped out")
+	await sim.free_world(w)
 
 
 # --- The warning comes first ----------------------------------------------------------------------

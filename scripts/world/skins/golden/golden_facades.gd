@@ -274,7 +274,8 @@ func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[D
 		var b: Building = building(side, span)
 		for s: Vector2 in b.statues:
 			if s.x >= start and s.x < end:
-				out.append({"side": side, "at": s.x, "center": skin.decorative_statue_mount(side, face_x, s.x),
+				out.append({"side": side, "at": s.x,
+					"center": skin.decorative_statue_mount(side, face_x, s.x, GoldenStatue.DECORATIVE[int(s.y)]),
 					"facing": _statue_facing(side), "height": GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE,
 					"pose": GoldenStatue.DECORATIVE[int(s.y)]})
 		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 5)
@@ -397,10 +398,10 @@ func _palace(_batch: MeshBatch, facade: MeshLayer, solid: MeshLayer, b: Building
 		if s.x >= start and s.x < end and not skin.crowds_niche(side, s.x, BASE_STATUE_NICHE_SIZE.x * 0.5):
 			var niche_basis := Basis(Vector3.UP, atan2(float(-side), 0.0))
 			solid.append(skin.statues().recess(BASE_STATUE_NICHE_SIZE.x, BASE_STATUE_NICHE_SIZE.y,
-				skin.decorative_statue_recess_depth()),
+				skin.decorative_statue_recess_depth(GoldenStatue.DECORATIVE[int(s.y)], side)),
 				Transform3D(niche_basis, Vector3(face_x, skin.decorative_statue_mount_y(), -s.x)))
 			solid.append(_statue(side, int(s.y)), Transform3D(Basis.IDENTITY,
-				skin.decorative_statue_mount(side, face_x, s.x)))
+				skin.decorative_statue_mount(side, face_x, s.x, GoldenStatue.DECORATIVE[int(s.y)])))
 	# Balconies under some upper windows (a column of windows every cell, as the shader lays them out).
 	var cw: float = cell_width(b.seed)
 	var first_floor: float = skin.frieze_top + STOREY
@@ -526,7 +527,7 @@ func _statue(side: int, pose: int) -> MeshLayer:
 	var t := MeshLayer.new()
 	var facing: Vector3 = _statue_facing(side)
 	t.append(skin.decorative_statue_mesh(GoldenStatue.pose_named(GoldenStatue.DECORATIVE[pose])),
-		Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)), Vector3.ZERO))
+		Transform3D(skin.decorative_statue_basis(facing), Vector3.ZERO))
 	_templates[key] = t
 	return t
 

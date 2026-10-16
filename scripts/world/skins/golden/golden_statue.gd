@@ -32,11 +32,16 @@ extends RefCounted
 ##                                     its shaft runs along the grip's +Y, the blade toward its +Z; with
 ##                                     the forearm pointing forward, (90, 0, 0) holds it upright
 ##   head                     Vector3  the helmet: x > 0 nods it down, y > 0 turns it to its left
-## POSES: the decorative &"guard" (upright at its right side, the butt by its foot), &"vigil" (planted
-## before it, both hands on the shaft) and &"salute" (upright, the left fist on its chest, head high);
-## and two for a Sentinel's swing, &"raise" (drawn back high over its right shoulder) and &"strike"
-## (chopped down in front of it and across toward its left, the blade down, into the lane before its
-## niche), proposals for task C4 to tune.
+## POSES: the decorative &"guard" (upright at its right side, the butt by its foot, the blade turned
+## along the wall), &"vigil" (upright before it, both hands on the shaft, its blade turned along the wall
+## too) and &"salute" (the guard with the left fist on its chest, head high); and two for a Sentinel's
+## swing, &"raise" (drawn back high over its right shoulder) and &"strike" (chopped down in front of it
+## and across toward its left, the blade down, into the lane before its niche), proposals for task C4 to
+## tune. Since task K2 the decorative poses stand in a shallow relief on the wall face
+## (GildedSentinel.statue_relief(): squashed along the wall's normal, see GoldenSkin.decorative_statue_basis),
+## so the blade of each is turned flat to the wall and the hands keep close to the body: nothing of one
+## reaches far toward the street. A live Sentinel's rest is the guard (POSE_GUARD), so at rest it is the
+## decorative guard with its eyes lit.
 
 enum Part { BODY, HEAD, EYES, UPPER_ARM_R, FOREARM_R, UPPER_ARM_L, FOREARM_L, HALBERD, PEDESTAL }
 
@@ -77,12 +82,15 @@ const LIT_SHADE: float = 0.65
 
 const REST: Dictionary = {"shoulder_r": Vector3(6.0, 0.0, 6.0), "elbow_r": 8.0, "shoulder_l": Vector3(6.0, 0.0, 6.0),
 	"elbow_l": 8.0, "grip": Vector3(0.0, 0.0, 0.0), "head": Vector3.ZERO}
+## The guard: the halberd upright at its right side, its forearm drawn back and the blade turned along the wall
+## (so nothing of it reaches toward the street: task K2's relief). Also a live Sentinel's rest (GildedSentinel).
+const POSE_GUARD: Dictionary = {"shoulder_r": Vector3(-8.0, 0.0, 8.0), "elbow_r": 92.0, "grip": Vector3(0.0, 90.0, 84.0),
+	"shoulder_l": Vector3(4.0, 0.0, 7.0), "elbow_l": 14.0, "head": Vector3(4.0, 0.0, 0.0)}
 const POSES: Dictionary = {
-	&"guard": {"shoulder_r": Vector3(16.0, 0.0, 8.0), "elbow_r": 74.0, "grip": Vector3(90.0, 0.0, 0.0),
-		"shoulder_l": Vector3(4.0, 0.0, 7.0), "elbow_l": 14.0, "head": Vector3(4.0, 0.0, 0.0)},
-	&"vigil": {"shoulder_r": Vector3(34.0, 22.0, -4.0), "elbow_r": 62.0, "grip": Vector3(90.0, -22.0, 0.0),
-		"shoulder_l": Vector3(34.0, -22.0, -4.0), "elbow_l": 62.0, "head": Vector3(12.0, 0.0, 0.0)},
-	&"salute": {"shoulder_r": Vector3(16.0, 0.0, 8.0), "elbow_r": 74.0, "grip": Vector3(90.0, 0.0, 0.0),
+	&"guard": POSE_GUARD,
+	&"vigil": {"shoulder_r": Vector3(20.0, 22.0, -4.0), "elbow_r": 70.0, "grip": Vector3(23.4, 93.8, 90.0),
+		"shoulder_l": Vector3(20.0, -22.0, -4.0), "elbow_l": 70.0, "head": Vector3(12.0, 0.0, 0.0)},
+	&"salute": {"shoulder_r": Vector3(-8.0, 0.0, 8.0), "elbow_r": 92.0, "grip": Vector3(0.0, 90.0, 84.0),
 		"shoulder_l": Vector3(22.0, -38.0, -6.0), "elbow_l": 118.0, "head": Vector3(-6.0, 0.0, 0.0)},
 	&"raise": {"shoulder_r": Vector3(150.0, 20.0, 18.0), "elbow_r": 40.0, "grip": Vector3(60.0, 0.0, 0.0),
 		"shoulder_l": Vector3(30.0, 0.0, 12.0), "elbow_l": 40.0, "head": Vector3(-4.0, -12.0, 0.0)},

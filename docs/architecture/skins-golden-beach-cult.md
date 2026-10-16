@@ -40,13 +40,25 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   into an arch; a decorative alcove that would overlap it is left out, `crowds_niche()`); the Golden Palace's
   walls do the same with their panel. The skin's kit is
   `GoldenSkin.statues()` (its gold and solid material). Decorative statues in both Golden skins stand
-  at `statue_base_height` (0.10 m). The shared mount helper uses each rotated pose's outward projection
-  plus `statue_base_inset` (0.10 m safety margin), rather than unnecessarily burying the body using
-  a rotation-independent radius. The recess back clears the wallward projection by 0.05 m, and the
-  decorative opening is 2.0 m wide. A decorative-mesh-only gold albedo lift, without emissive glow,
+  at `statue_base_height` (0.10 m). **They stand on the wall face as a relief** (task K2; owner: "too far back in
+  their recess to see", docs/questions/k2.md): each is squashed along the wall's normal to the live Sentinel's relief
+  (`GildedSentinel.statue_relief()`, 0.4; `GoldenSkin.decorative_statue_basis(facing)` turns it to face the street, a
+  three-quarter view toward the approach in the Golden Zone and straight on in the Palace, `decorative_statue_turn()`),
+  and mounted by its own pose's outward projection on its own wall (`decorative_statue_projection(pose, side)`, squashed
+  and turned) plus `statue_base_inset` (0.02 m, from 0.10), so its front stands 0.02 m behind the face, never in front of
+  it: nothing of the walls projects into the wall-run path, and the runner's side clearance is untouched. The
+  recess back clears the wallward projection by 0.05 m (about 0.44 m deep, from 1.56 m; `decorative_statue_recess_depth`),
+  and the decorative opening is 2.0 m wide. The decorative poses keep their halberd's blade turned along the wall and
+  their hands close to the body (`GoldenStatue.POSES`; the guard is also a live Sentinel's rest), so a pose is
+  not deeper than the rest. From 20 m down a five-lane street, 68 to 73% of a decorative statue's width shows through
+  its alcove (3 to 16% before; `test_gilded_sentinel`). A decorative-mesh-only gold albedo lift, without emissive glow,
   keeps guards discernible from the runner camera. Pedestals and recess sills stay at or above the
   floor, and every pose stays behind the wall face. `GoldenSkin.statue_spots()` lists them. Their meshes are scenery only;
-  live Sentinel niche positions and hitboxes are unchanged.
+  the live Sentinel's niche is not: it is shallower (`niche_depth` 0.4 m) and wider (`niche_width` 2.0 m, from
+  1.8 m), so `in_chunk` in `gilded_sentinel_rules.gd` (`niche_width / 2 + CHUNK_MARGIN`) moves a Sentinel by up to 0.10 m in
+  about 26% of random-seed Golden 2 and 3 builds, and its solid `body` and `top` hitboxes went from 0.68 m to
+  0.30 m deep behind the face (`niche_depth - 0.1`); its cut's hitboxes (the wall band and the lane) and marks are
+  unchanged.
 - *Ceilings from their lanes (task B3).* `GoldenCeilings` builds a golden bridge (a coffered underside,
   a marble face with the emblem's crest, water off some into gilded troughs), a gallery of golden arches
   (only across every lane) or a hover-yacht from the ceiling's collision box and lane seams; over fewer

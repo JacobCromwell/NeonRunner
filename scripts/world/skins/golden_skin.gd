@@ -192,10 +192,11 @@ extends ZoneSkin
 ## Includes the small floor-safe trim under the visual recess; the model's pedestal begins at this
 ## height and the recess sill bottoms at the floor.
 @export_range(0.0, 2.0, 0.01, "suffix:m") var statue_base_height: float = 0.10
-## Extra safety inset behind the wall face, added to the pose-projected outward reach for the
-## facade's three-quarter turn and the Palace's outward-facing pose. This keeps the actual halberd
-## and arm envelope behind the wall without burying the whole model in an oversized radial recess.
-@export_range(0.0, 1.5, 0.05, "suffix:m") var statue_base_inset: float = 0.10
+## How far behind the wall face the front of a decorative statue (its pose's furthest reach toward the
+## street, squashed to its relief, decorative_statue_projection) stands: 0.02 m, as a live Sentinel's
+## (GildedSentinelTuning.statue_inset), so the statue stands right on the face (task K2; 0.10 m before).
+## Never in front of it: nothing of the walls projects into the wall-run path.
+@export_range(0.0, 1.5, 0.01, "suffix:m") var statue_base_inset: float = 0.02
 ## Kept as the old high-ledge tuning value for compatibility with existing reviews and data. It no
 ## longer controls decorative placement; use statue_base_height for the wall-base mount.
 @export_range(7.0, 16.0, 0.1, "suffix:m") var statue_min_height: float = 8.8
@@ -296,8 +297,10 @@ var _props: GoldenProps
 var _doodads: GoldenDoodads
 var _dash_walls: GoldenDashWall
 var _statues: GoldenStatue
-var _decorative_inset: float = -1.0
-var _decorative_projection: Vector2 = Vector2(-1.0, -1.0)
+## What the decorative statues' placement was worked out from, once, by pose (decorative_statue_projection):
+## {pose: Vector2(outward, wallward)}, the share of its depth they have (the live statue's relief), and the meshes.
+var _decorative_projection: Dictionary = {}
+var _decorative_relief: float = -1.0
 var _decorative_meshes: Dictionary = {}
 ## The latest wall face seen (wall_section runs before a chunk's ceilings): bridges and archways reach
 ## from wall to wall.
@@ -553,53 +556,93 @@ func decorative_statue_mount_y() -> float:
 	return statue_base_height
 
 
-## The actual projected horizontal envelope of every decorative pose. x is the largest reach toward
-## the street (used for the mount inset); y is the largest reach toward the wall (used for the recess
-## back). It covers both the Palace's direct outward turn and the facade's three-quarter approach turn.
-func decorative_statue_projection() -> Vector2:
-	if _decorative_projection.x >= 0.0:
-		return _decorative_projection
+## The share of its full depth a decorative statue has (task K2): the live Sentinel's relief (GildedSentinel.
+## statue_relief), so a live statue at rest is the decorative one with its eyes lit. The statue is squashed
+## along the wall's normal, to a high relief that stands on the wall face instead of far back in a recess,
+## where it was hidden from down the street behind the near edge of its opening.
+func decorative_statue_relief() -> float:
+	if _decorative_relief < 0.0:
+		_decorative_relief = GildedSentinel.statue_relief()
+	return _decorative_relief
+
+
+## The basis a decorative statue is appended to a wall with: turned to face `facing` (a horizontal vector,
+## toward the street: the Golden Zone's walls turn it a little toward the approaching runner, the Palace's
+## face it straight on), then squashed along the wall's normal (world X) to the relief. A wall's normal is
+## world X on both sides, so the squash is the same on the left and the right (and the basis keeps its handedness).
+func decorative_statue_basis(facing: Vector3) -> Basis:
+	return Basis.from_scale(Vector3(decorative_statue_relief(), 1.0, 1.0)) * Basis(Vector3.UP, atan2(facing.x, facing.z))
+
+
+## How far a decorative statue turns from facing the street toward the approaching runner (radians): the Golden
+## Zone's walls turn it a three-quarter view (GoldenFacades.STATUE_TURN); the Palace's skin faces it straight on.
+func decorative_statue_turn() -> float:
+	return GoldenFacades.STATUE_TURN
+
+
+## The actual projected horizontal envelope of decorative pose `pose` as it stands in the wall on `side` (squashed
+## to the relief), or of every decorative pose if `pose` is left out and of both walls if `side` is 0. x is the
+## largest reach toward the street (used for the mount inset); y is the largest reach toward the wall (used for the
+## recess back). The statue turns to (-side*cos(T), 0, sin(T)), T being decorative_statue_turn().
+func decorative_statue_projection(pose: StringName = &"", side: int = 0) -> Vector2:
+	var key: String = "%s/%d" % [pose, side]
+	if _decorative_projection.has(key):
+		return _decorative_projection[key]
+	var relief: float = decorative_statue_relief()
+	var turn_sin: float = sin(decorative_statue_turn())
+	var turn_cos: float = cos(decorative_statue_turn())
+	var poses: Array[StringName] = []
+	if pose != &"":
+		poses.append(pose)
+	else:
+		poses.assign(GoldenStatue.DECORATIVE)
+	var sides: Array[int] = []
+	if side != 0:
+		sides.append(side)
+	else:
+		sides.assign([-1, 1])
 	var outward: float = 0.0
 	var wallward: float = 0.0
-	var turn_sin: float = sin(GoldenFacades.STATUE_TURN)
-	var turn_cos: float = cos(GoldenFacades.STATUE_TURN)
-	for pose: StringName in GoldenStatue.DECORATIVE:
-		for v: Vector3 in statues().mesh(GoldenStatue.pose_named(pose)).verts:
-			# Palace statues face directly toward the street: local +Z is outward.
-			outward = maxf(outward, v.z)
-			wallward = maxf(wallward, -v.z)
-			for side: int in [-1, 1]:
-				# GoldenFacades turns local +Z toward (-side*cos(T), 0, sin(T)).
-				var facade_outward: float = turn_cos * v.z - float(side) * turn_sin * v.x
-				var facade_wallward: float = -facade_outward
-				outward = maxf(outward, facade_outward)
-				wallward = maxf(wallward, facade_wallward)
-	_decorative_projection = Vector2(outward, wallward)
-	return _decorative_projection
+	for p: StringName in poses:
+		for v: Vector3 in statues().mesh(GoldenStatue.pose_named(p)).verts:
+			for s: int in sides:
+				var along_normal: float = relief * (turn_cos * v.z - float(s) * turn_sin * v.x)
+				outward = maxf(outward, along_normal)
+				wallward = maxf(wallward, -along_normal)
+	_decorative_projection[key] = Vector2(outward, wallward)
+	return _decorative_projection[key]
 
 
-func decorative_statue_inset() -> float:
-	if _decorative_inset >= 0.0:
-		return _decorative_inset
-	_decorative_inset = decorative_statue_projection().x + statue_base_inset
-	return _decorative_inset
+## How far behind the wall face the origin of decorative pose `pose` stands on wall `side` (the deepest, with no
+## pose or no side given): its front (the furthest it reaches toward the street, as a relief) is `statue_base_inset`
+## behind the face.
+func decorative_statue_inset(pose: StringName = &"", side: int = 0) -> float:
+	return decorative_statue_projection(pose, side).x + statue_base_inset
 
 
-## The wallward extent of the actual projected poses, for the dark recess back and focused regressions.
-func decorative_statue_wallward_extent() -> float:
-	return decorative_statue_projection().y
+## The wallward extent of the actual projected poses, for the recess back and focused regressions.
+func decorative_statue_wallward_extent(pose: StringName = &"", side: int = 0) -> float:
+	return decorative_statue_projection(pose, side).y
 
 
-## The visual recess leaves the actual wallward pose projection behind the mount before its dark back.
-## This keeps the back from occluding a decorative model, while remaining mesh-only.
-func decorative_statue_recess_depth() -> float:
-	return decorative_statue_inset() + decorative_statue_wallward_extent() + 0.05
+## The visual recess leaves the actual wallward pose projection behind the mount before its back. This keeps
+## the back from occluding a decorative model, while remaining mesh-only. Each pose stands with its own front
+## on the face, so each has its own recess, about as shallow as the live Sentinel's niche is (GildedSentinelTuning.
+## niche_depth); with no pose given, the deepest one's.
+func decorative_statue_recess_depth(pose: StringName = &"", side: int = 0) -> float:
+	if pose != &"":
+		return decorative_statue_inset(pose, side) + decorative_statue_wallward_extent(pose, side) + 0.05
+	var deepest: float = 0.0
+	for p: StringName in GoldenStatue.DECORATIVE:
+		deepest = maxf(deepest, decorative_statue_recess_depth(p, side))
+	return deepest
 
 
-## The feet/origin of a base-mounted decorative statue. The side term is intentional: both walls use
-## the same inward mount, regardless of lane count, while each skin keeps its own facing turn.
-func decorative_statue_mount(side: int, face_x: float, at: float) -> Vector3:
-	return Vector3(face_x + side * decorative_statue_inset(), decorative_statue_mount_y(), -at)
+## The feet/origin of a base-mounted decorative statue in pose `pose` on wall `side` (the deepest pose's, if it is
+## left out). The side term is intentional: both walls use the same inward mount, regardless of lane count, while
+## each skin keeps its own facing turn.
+func decorative_statue_mount(side: int, face_x: float, at: float, pose: StringName = &"") -> Vector3:
+	return Vector3(face_x + side * decorative_statue_inset(pose, side), decorative_statue_mount_y(), -at)
 
 
 # --- The cult's feed and emblem ------------------------------------------------------------
