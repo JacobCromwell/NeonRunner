@@ -401,6 +401,7 @@ func _events(t: CineTimeline) -> void:
 	t.sound(hop_times[1] + n.hop_seconds, &"land", -4.0)
 	# The Head: startled, then angry, then it yells; the yell goes through the feed.
 	t.sound(n.startle_at - 0.04, &"head_startle")
+	t.effect(n.startle_at, CineEvent.SHAKE, 0.25, 0.1)
 	t.sound(n.yell_at, &"head_yell")
 	t.effect(n.yell_at, CineEvent.SHAKE, 1.5, 0.05)
 	t.sound(n.flicker_at, &"feed_surge")
