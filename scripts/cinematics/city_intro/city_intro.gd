@@ -6,15 +6,17 @@ extends CinematicSequencer
 ##    searchlight sweeping it, the camera following the light down into the street in one continuous move.
 ## 2. At street level, human height: cyborgs trudging down the street toward us, the Head looming overhead, its face
 ##    showing, its cold-white light sweeping over them (it watches, never attacks: red is the bombs').
-## 3. The light sweeps past a window; the glass bursts just behind it; the runner leaps out, lands on one cyborg's head
-##    (the stomp) and hops over the others, and runs down the street; the light whips back to catch them.
+## 3. The light sweeps past a feed billboard (the Head's face on a screen a floor up the building); the picture tears and the
+##    screen bursts just behind the light, glass and sparks; the runner leaps out of it, lands on one cyborg's head (the
+##    stomp) and hops over the others, and runs down the street; the light whips back to catch them.
 ## 4. The Head: startled, then angry, then it yells. The yell goes through the feed: every cyborg's screen face flickers
 ##    at once and turns angry, and they turn and give chase.
-## 5. Zone 1's title card over the chase, and a fade to black; play begins.
+## 5. The game's title, NEON RUNNER (this is its first cinematic), then Zone 1's title card, over the chase, and a fade to
+##    black; play begins.
 ##
 ## On the toolkit: the stage is the City's own stretch of towers with no floor (every lane a gap), lifted so the road
 ## far below is y = 0, and what a street has is this cinematic's own props (CityIntroStreet, CityIntroTraffic,
-## CityIntroCrowd, CityIntroWindow, and the Head: CityIntroHead), built on the stage so they hide with it and moved by
+## CityIntroCrowd, CityIntroBillboard, and the Head: CityIntroHead), built on the stage so they hide with it and moved by
 ## the clock (`_on_advance`), so stepping or skipping shows the same. The runner and the cyborgs are the timeline's actors.
 ## The numbers are data: `numbers`, by default data/cinematics/city_intro_tuning.tres (CityIntroTuning).
 ## DESIGN-TBD (docs/questions/f2f.md): what the owner's beats leave open.
@@ -39,7 +41,7 @@ var set_root: Node3D
 var street: CityIntroStreet
 var traffic: CityIntroTraffic
 var crowd: CityIntroCrowd
-var window: CityIntroWindow
+var billboard: CityIntroBillboard
 var head: CityIntroHead
 ## How far the stage is lifted so the road far below the City's trucks is y = 0.
 var lift: float = 0.0
@@ -49,7 +51,7 @@ var light_points: Array = []
 ## When the Head notices the runner and the light whips round to them (it has them by `catch_at`).
 var notice_at: float = 0.0
 var catch_at: float = 0.0
-## What the runner's keys planned: when they leave the window, land on the first cyborg, hop over the second and the
+## What the runner's keys planned: when they leave the billboard, land on the first cyborg, hop over the second and the
 ## fourth, and where they are when they start running (street frame).
 var leap_at: float = 0.0
 var hop_times: Array[float] = []
@@ -135,11 +137,10 @@ func _build_props() -> void:
 	crowd.name = "Crowd"
 	set_root.add_child(crowd)
 	crowd.build(street.road_half, street.wall_half, n.loop_from, n.loop_to, people_count(), n.people_speeds)
-	window = CityIntroWindow.new()
-	window.name = "Window"
-	set_root.add_child(window)
-	window.build(skin, street.wall_half, n.window_side, n.window_z, n.window_sill, n.window_width, n.window_height,
-		n.shard_count, n.burst_at)
+	billboard = CityIntroBillboard.new()
+	billboard.name = "Billboard"
+	set_root.add_child(billboard)
+	billboard.build(skin, street.wall_half, n)
 	head = CityIntroHead.new()
 	head.name = "Head"
 	set_root.add_child(head)
@@ -167,10 +168,16 @@ func _plan() -> void:
 
 
 ## The searchlight's path: it sweeps over the street ahead as the camera follows it down, then over the cyborgs as they
-## trudge, then along the wall past the window (the glass bursts just behind it), on a little further, searching; then, as the
-## Head notices the runner, it whips back to catch them (`light_at`). Times and places in the street frame.
+## trudge, then along the wall across the billboard (the screen bursts just behind it), on a little further, searching; then, as
+## the Head notices the runner, it whips back to catch them (`light_at`). Times and places in the street frame.
 func _plan_light() -> void:
-	var wall: float = float(n.window_side) * street.wall_half
+	var side: float = float(n.billboard_side)
+	var wall: float = side * street.wall_half
+	# The light lands on the screen's face, which stands out of the wall.
+	var front: float = wall - side * (CityIntroBillboard.OUT + 0.08)
+	var a: float = n.billboard_z - n.billboard_width * 0.5
+	var b: float = n.billboard_z + n.billboard_width * 0.5
+	var mid_y: float = n.billboard_sill + n.billboard_height * 0.5
 	var mid: float = n.lead_z + n.march_places[n.march_places.size() - 1].y * 0.5
 	var pts: Array = [
 		[0.0, Vector3(0.0, 0.0, 10.0)],
@@ -180,12 +187,12 @@ func _plan_light() -> void:
 		[n.street_at + 1.1, Vector3(2.2, 0.0, _march_z(mid, n.street_at + 1.1) + 2.5)],
 		[n.street_at + 2.2, Vector3(-2.2, 0.0, _march_z(mid, n.street_at + 2.2) - 3.0)],
 		[n.street_at + 3.1, Vector3(1.8, 0.0, _march_z(mid, n.street_at + 3.1))],
-		[n.escape_at - 0.2, Vector3(-3.2, 0.0, n.window_z + 2.5)],
-		[n.burst_at - 0.65, Vector3(wall * 0.86, 0.7, n.window_z - 1.2)],
-		[n.burst_at - 0.35, Vector3(wall, n.window_sill + n.window_height * 0.5, n.window_z - 0.6)],
-		[n.burst_at - 0.05, Vector3(wall, n.window_sill + n.window_height * 0.5, n.window_z + 3.2)],
-		[n.burst_at + 1.0, Vector3(wall, n.window_sill + 0.3, n.window_z + 9.0)],
-		[notice_at, Vector3(wall * 0.6, 0.2, n.window_z + 12.0)],
+		[n.escape_at - 0.2, Vector3(-3.2, 0.0, n.billboard_z + 2.5)],
+		[n.burst_at - 0.75, Vector3(wall * 0.86, 0.7, a - 0.9)],
+		[n.burst_at - 0.5, Vector3(front, mid_y, a - 0.1)],
+		[n.burst_at - 0.05, Vector3(front, mid_y, b + 1.0)],
+		[n.burst_at + 1.0, Vector3(wall, n.billboard_sill + 0.3, n.billboard_z + 9.0)],
+		[notice_at, Vector3(wall * 0.6, 0.2, n.billboard_z + 12.0)],
 	]
 	for p: Array in pts:
 		var k := CineKey.new()
@@ -214,7 +221,7 @@ func light_at(t: float) -> Dictionary:
 		spot = spot.lerp(on, k)
 		wall_k *= 1.0 - k
 		radius = lerpf(radius, n.runner_spot_radius, k)
-	var wall_normal := Vector3(-float(n.window_side), 0.0, 0.0)
+	var wall_normal := Vector3(-float(n.billboard_side), 0.0, 0.0)
 	var normal: Vector3 = Vector3.UP.lerp(wall_normal, wall_k).normalized()
 	return {"point": spot, "normal": normal, "radius": radius}
 
@@ -241,13 +248,13 @@ func head_top() -> float:
 func _runner(t: CineTimeline) -> void:
 	var r: CineActor = t.actor(&"runner")
 	r.enter = n.burst_at - 0.2
-	var side: float = float(n.window_side)
+	var side: float = float(n.billboard_side)
 	var wall: float = side * street.wall_half
 	var top: float = head_top()
 	var stomp: float = n.stomp_at
-	# Behind the wall, then through the window as it bursts: running, off the sill.
-	var inside: Vector3 = Vector3(wall + side * 1.4, n.window_sill, n.window_z)
-	var sill: Vector3 = Vector3(wall - side * 0.1, n.window_sill, n.window_z)
+	# Behind the wall, then through the screen as it bursts: running, off the frame's bottom edge.
+	var inside: Vector3 = Vector3(wall + side * 1.4, n.billboard_sill, n.billboard_z)
+	var sill: Vector3 = Vector3(wall - side * (CityIntroBillboard.OUT + 0.1), n.billboard_sill, n.billboard_z)
 	r.at(n.burst_at - 0.2, tpv(inside), &"run")
 	r.at(leap_at, tpv(sill), &"run")
 	# The leap: out across the street onto the first cyborg's head, the stomp pose for the last of it.
@@ -374,9 +381,9 @@ func _camera(t: CineTimeline) -> void:
 			CinePath.Move.CUT if i == 0 else CinePath.Move.LINEAR, n.head_fovs[i])
 		key.trans = Tween.TRANS_SINE
 		key.easing = Tween.EASE_IN_OUT
-	# The street again: the cyborgs' surge and turn, the camera drifting forward; at the title card it eases on behind the chase.
+	# The street again: the cyborgs' surge and turn, the camera drifting forward; at the title it eases on behind the chase.
 	t.shot(n.reverse_at, tpv(n.street_from), tpv(n.street_look_from), CinePath.Move.CUT, n.street_fov)
-	var drift: CineCameraKey = t.shot(n.card_at, tpv(n.street_to), tpv(n.street_look_to), CinePath.Move.LINEAR, n.street_fov)
+	var drift: CineCameraKey = t.shot(n.title_at, tpv(n.street_to), tpv(n.street_look_to), CinePath.Move.LINEAR, n.street_fov)
 	drift.trans = Tween.TRANS_LINEAR
 	var fly: CineCameraKey = t.shot(n.duration, tpv(n.chase_to), tpv(n.chase_look_to), CinePath.Move.LINEAR, n.chase_fov)
 	fly.trans = Tween.TRANS_SINE
@@ -388,8 +395,8 @@ func _camera(t: CineTimeline) -> void:
 func _events(t: CineTimeline) -> void:
 	t.effect(0.0, CineEvent.FADE_IN, n.fade_in)
 	t.music(0.0, CineEvent.ZONE_MUSIC, n.music_fade)
-	# The glass bursts; the runner leaps; the stomp (and the cyborg's end); the two hops.
-	t.sound(n.burst_at, &"window_smash")
+	# The screen bursts; the runner leaps; the stomp (and the cyborg's end); the two hops.
+	t.sound(n.burst_at, &"billboard_smash")
 	t.effect(n.burst_at, CineEvent.SHAKE, 0.3, 0.1)
 	t.sound(leap_at + 0.03, &"jump")
 	t.sound(n.stomp_at, &"stomp")
@@ -405,6 +412,9 @@ func _events(t: CineTimeline) -> void:
 	t.sound(n.yell_at, &"head_yell")
 	t.effect(n.yell_at, CineEvent.SHAKE, 1.5, 0.05)
 	t.sound(n.flicker_at, &"feed_surge")
+	# The game's title (this is its first cinematic), then the zone's card, in the same style, one after the other.
+	t.sound(n.title_at, &"title_sting")
+	t.card(n.title_at, n.title_text, "", n.title_seconds)
 	t.card(n.card_at, "{zone}", "ZONE {zone_number}", n.card_seconds)
 	t.effect(n.duration - n.fade_out, CineEvent.FADE_OUT, n.fade_out)
 
@@ -420,9 +430,9 @@ func _on_advance(_delta: float) -> void:
 				node.scale = Vector3.ONE * draw_scale
 	traffic.update(time)
 	crowd.update(time)
-	window.update(time)
 	var spot: Dictionary = light_at(time)
 	var p: Vector3 = spot["point"]
+	billboard.update(time, world_of(p))
 	head.light(world_of(p), spot["normal"], spot["radius"], 1.0)
 	head.express(time, world_of(p), face_anger(time), face_surprise(time), face_jaw(time), face_glitch(time))
 

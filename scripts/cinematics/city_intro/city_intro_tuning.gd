@@ -5,26 +5,34 @@ extends Resource
 ## busy Neon City at night (people, cars, buses and trucks on the streets), the camera following the Floating Head's
 ## searchlight beam down into the street in one continuous move; at street level cyborgs trudging down the street with
 ## the Head looming overhead, its face showing, its cold-white searchlight watching over them; the light sweeps past a
-## window, the glass bursts just behind it, the runner leaps out, stomps one cyborg and jumps over the others and runs
+## billboard, the screen bursts just behind it, the runner leaps out, stomps one cyborg and jumps over the others and runs
 ## down the street, the light whipping back to catch them; the Head startled, then angry, then yelling, the yell going
 ## through the feed (every cyborg's screen face flickers at once and turns angry) and the cyborgs turning to give chase;
-## then Zone 1's title card, and play begins. The rest (the street, the window, how many cyborgs, where everyone stands,
+## then the game's title, NEON RUNNER (this is its first cinematic), Zone 1's title card, and play begins. The owner's later
+## answers (October 16, 2026): the runner bursts out through a billboard showing the feed, the Head's face, rather than a plain
+## window, and the title comes first. The rest (the street, the billboard's place, how many cyborgs, where everyone stands,
 ## the camera's places, the sounds) is DESIGN-TBD (docs/questions/f2f.md).
 ## Positions are metres in the street's own frame: x across from the street's middle (+ right, looking down the track),
 ## y up from the road, z the track distance (the way the runner runs; 0 where the camera starts at street level). The
 ## beats' times are seconds from the start.
 
 @export_group("Timing")
-## DESIGN-TBD (docs/questions/f2f.md 11): the title card and the ending.
-## About 20 s (the owner: longer than GDD §1's 5-15 s is fine for this one).
-@export_range(5.0, 40.0, 0.1, "suffix:s") var duration: float = 20.0
+## DESIGN-TBD (docs/questions/f2f.md 11): the title cards and the ending.
+## About 20 s, plus the title card (the owner: longer than GDD §1's 5-15 s is fine for this one, and the total may run a couple
+## of seconds past 20 for the game's title).
+@export_range(5.0, 40.0, 0.1, "suffix:s") var duration: float = 21.7
 @export_range(0.0, 3.0, 0.05, "suffix:s") var fade_in: float = 0.7
 ## The flyby ends and the street begins (the camera is at street level then); the escape begins (the light turns to the
-## window); the Head's part begins (it has seen the runner); the title card comes up; it ends in a fade to black.
+## billboard); the Head's part begins (it has seen the runner); the game's title comes up over the chase (a punchy 1.5-2 s),
+## then Zone 1's title card; it ends in a fade to black.
 @export_range(1.0, 10.0, 0.05, "suffix:s") var street_at: float = 5.0
 @export_range(4.0, 14.0, 0.05, "suffix:s") var escape_at: float = 9.0
 @export_range(8.0, 18.0, 0.05, "suffix:s") var head_at: float = 13.0
-@export_range(14.0, 30.0, 0.05, "suffix:s") var card_at: float = 18.0
+@export_range(14.0, 30.0, 0.05, "suffix:s") var title_at: float = 17.8
+@export_range(1.0, 3.0, 0.05, "suffix:s") var title_seconds: float = 1.8
+## The game's name on its card (the title screen's: a working title).
+@export var title_text: String = "NEON RUNNER"
+@export_range(14.0, 30.0, 0.05, "suffix:s") var card_at: float = 19.7
 @export_range(1.0, 5.0, 0.05, "suffix:s") var card_seconds: float = 2.0
 @export_range(0.1, 2.0, 0.05, "suffix:s") var fade_out: float = 0.5
 @export_range(0.0, 8.0, 0.1, "suffix:s") var music_fade: float = 4.0
@@ -51,7 +59,7 @@ extends Resource
 @export_range(0.1, 1.0, 0.05) var low_end_share: float = 0.5
 ## The loop traffic and people go round (track distances): behind the camera's start to beyond the fog.
 ## A stretch of road both lanes keep clear where the camera looks through it (x its middle's track distance, y the time it
-## is there, z its length), so no vehicle hides the window and the cyborgs as the glass bursts and the runner leaps.
+## is there, z its length), so no vehicle hides the billboard and the cyborgs as the screen bursts and the runner leaps.
 @export var traffic_clear: Vector3 = Vector3(14.0, 10.3, 56.0)
 @export_range(-300.0, -50.0, 5.0, "suffix:m") var loop_from: float = -110.0
 @export_range(150.0, 400.0, 5.0, "suffix:m") var loop_to: float = 210.0
@@ -74,17 +82,21 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var yell_glitch: float = 0.35
 @export_range(0.0, 1.0, 0.05) var startle_jaw: float = 0.3
 
-@export_group("The window")
-## DESIGN-TBD (docs/questions/f2f.md 2): which window, and how it bursts.
-## A building window on a wall (`window_side` -1 the left), at this track distance, its sill this high, this wide and
-## tall. It bursts at `burst_at`; the glass flies out as `shard_count` shards.
-@export_range(-1, 1, 2) var window_side: int = -1
-@export_range(5.0, 40.0, 0.5, "suffix:m") var window_z: float = 14.0
-@export_range(2.0, 7.0, 0.1, "suffix:m") var window_sill: float = 4.2
-@export_range(1.0, 4.0, 0.1, "suffix:m") var window_width: float = 3.0
-@export_range(1.0, 3.5, 0.1, "suffix:m") var window_height: float = 2.3
+@export_group("The billboard")
+## DESIGN-TBD (docs/questions/f2f.md 2): which billboard, and how it bursts.
+## The feed billboard (the Head's face on a screen) on a building's face (`billboard_side` -1 the left), at this track distance,
+## its bottom edge this high (first-floor height: above the shopfronts' signs, low enough for the leap down onto the cyborg's
+## head to read), this wide and tall. Its screen bursts at `burst_at` (after the picture has torn for `billboard_glitch_seconds`);
+## the glass flies out as `shard_count` shards and `spark_count` sparks (a share of them with Reduced flashing).
+@export_range(-1, 1, 2) var billboard_side: int = -1
+@export_range(5.0, 40.0, 0.5, "suffix:m") var billboard_z: float = 14.0
+@export_range(2.0, 7.0, 0.1, "suffix:m") var billboard_sill: float = 3.7
+@export_range(2.0, 7.0, 0.1, "suffix:m") var billboard_width: float = 4.4
+@export_range(1.0, 5.0, 0.1, "suffix:m") var billboard_height: float = 2.8
+@export_range(0.0, 1.0, 0.05, "suffix:s") var billboard_glitch_seconds: float = 0.35
 @export_range(9.0, 12.0, 0.05, "suffix:s") var burst_at: float = 9.9
-@export_range(0, 120) var shard_count: int = 44
+@export_range(0, 120) var shard_count: int = 56
+@export_range(0, 120) var spark_count: int = 40
 
 @export_group("The cyborgs")
 ## DESIGN-TBD (docs/questions/f2f.md 3, 4, 9): how many cyborgs and how they march, how the stomp reads, the feed's surge and the chase.
@@ -104,7 +116,7 @@ extends Resource
 
 @export_group("The runner")
 ## DESIGN-TBD (docs/questions/f2f.md 5): how fast they run.
-## They burst out of the window, land on the first cyborg's head (the stomp), hop over the second and a later one, and run
+## They burst out of the billboard, land on the first cyborg's head (the stomp), hop over the second and a later one, and run
 ## down the street at this speed (m/s), the way the levels run.
 @export_range(5.0, 25.0, 0.5, "suffix:m/s") var run_speed: float = 8.5
 @export_range(0.5, 3.0, 0.05, "suffix:m") var hop_clearance: float = 0.8
@@ -124,8 +136,8 @@ extends Resource
 	Vector3(0.0, 1.65, 5.4), Vector3(-0.6, 1.5, 6.4), Vector3(-0.2, 1.8, 7.0), Vector3(0.2, 2.3, 7.6),
 	Vector3(0.4, 2.6, 8.2)])
 @export var move_targets: PackedVector3Array = PackedVector3Array([Vector3(0.0, 0.0, 8.0), Vector3(0.5, 0.0, 13.0),
-	Vector3(0.0, 3.0, 18.0), Vector3(0.0, 5.0, 24.0), Vector3(-0.8, 3.8, 21.0), Vector3(-3.6, 3.4, 16.5),
-	Vector3(-3.6, 3.2, 13.5), Vector3(-2.4, 2.4, 12.5), Vector3(-0.8, 2.4, 18.0), Vector3(0.3, 2.4, 28.0),
+	Vector3(0.0, 3.0, 18.0), Vector3(0.0, 5.0, 24.0), Vector3(-0.8, 3.8, 21.0), Vector3(-5.2, 3.7, 15.6),
+	Vector3(-5.2, 3.5, 13.2), Vector3(-2.4, 2.4, 12.5), Vector3(-0.8, 2.4, 18.0), Vector3(0.3, 2.4, 28.0),
 	Vector3(0.4, 3.2, 36.0)])
 @export var move_fovs: PackedFloat32Array = PackedFloat32Array([62.0, 60.0, 58.0, 55.0, 50.0, 46.0, 40.0, 36.0, 40.0, 44.0, 46.0])
 ## The cut to the Head's face (`head_at`), looking up at it from the street: tight on the startled face, pushing in as it

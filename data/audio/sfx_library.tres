@@ -19,6 +19,7 @@ volume_db = {
 "barnacle_death": -8.0,
 "barnacle_emerge": -6.5,
 "barnacle_shot": -4.0,
+"billboard_smash": -4.0,
 "bomb_blast": -2.0,
 "bomb_whistle": -3.5,
 "bonus": -6.5,
@@ -245,6 +246,7 @@ volume_db = {
 "takeover_strafe": -3.0,
 "takeover_whine": -5.0,
 "tithe_collector_cue": -5.0,
+"title_sting": -3.0,
 "tower_crack": -2.0,
 "tower_crash": -1.5,
 "truck_bang": -1.0,
@@ -268,8 +270,7 @@ volume_db = {
 "wall_jump": -6.0,
 "wall_marks_light": -4.5,
 "wave_crash": -3.0,
-"wave_swell": -4.0,
-"window_smash": -4.0
+"wave_swell": -4.0
 }
 pitch_variation = {
 "credit_1": 0.03,

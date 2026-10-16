@@ -563,15 +563,16 @@ pool (a gap) as the last bomb's fire fills the picture. Two new sounds (`tools/a
 
 **F2f: the Neon City's intro** (owner, October 16, 2026; GDD §6, Cinematics, "Zone 1 intro"). **Done:** `CityIntro`
 (`scripts/cinematics/city_intro/`) in the City's intro slot, in place of the placeholder flyover (the City's boss intro keeps
-it): 20 s on a real street (the City's towers with no floor, the road lifted to y = 0, dressed with shopfronts, lamps, traffic
+it): 21.7 s (20 s of story and the game's title) on a real street (the City's towers with no floor, the road lifted to y = 0, dressed with shopfronts, lamps, traffic
 and a few hundred people). A flyby from above following the Floating Head's cold-white searchlight down into the street in one
-continuous move; cyborgs trudging toward the camera under the Head, its face showing; the light sweeping along the wall past a
-window, the glass bursting just behind it; the runner leaping out, stomping the first cyborg (squashed as a stomp kills in play)
+continuous move; cyborgs trudging toward the camera under the Head, its face showing; the light sweeping along the wall across
+a feed billboard (the Head's face on a screen a floor up the building), its picture tearing and its screen bursting just behind
+the light (glass and cold-white sparks; Reduced flashing: fewer sparks, a slow glow); the runner leaping out, stomping the first cyborg (squashed as a stomp kills in play)
 and hopping over two more, the light whipping back to catch them; the Head startled (a new `surprise` look on its face shader),
 angry and yelling, every cyborg's screen flickering at once and turning angry (once, with Reduced flashing), the cyborgs
-turning and chasing; Zone 1's title card over the chase. Four new sounds (`tools/asset_gen/sfx_bank_city_intro.gd`),
-`test_city_intro`. The staging choices are in `docs/questions/f2f.md`; two ideas the owner has not decided (the runner bursting
-through a feed billboard showing the Head's face; the game's title before the zone card) are listed there and not built.
+turning and chasing; the game's title, "NEON RUNNER", then Zone 1's title card, over the chase. Five new sounds
+(`tools/asset_gen/sfx_bank_city_intro.gd`), `test_city_intro`. The staging choices are in `docs/questions/f2f.md`; the
+owner's two later answers (the billboard, the game's title first) are built.
 
 ### H. The owner's requests (October 8, 2026)
 

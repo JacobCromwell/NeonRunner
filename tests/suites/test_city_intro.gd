@@ -3,15 +3,17 @@ extends TestSuite
 ## the placeholder flyover); at 3, 5 and 6 lanes it plays its beats in order on a real street (the City's stretch with no
 ## floor, its road lifted to y = 0): a flyby from above down into the street in one continuous camera move, cyborgs
 ## trudging toward the camera under the Floating Head, its face showing, its searchlight cold white (never red) sweeping over
-## them, along the wall past a window and, just after it, the glass bursting; the runner leaping out onto the first cyborg's head
-## (the stomp: it is squashed as a stomp kills), hopping over two more and running down the street, the light whipping back to
-## catch them; the Head startled (wide eyes, an "O"), angry, yelling (the jaw open), every cyborg's screen face flickering at
-## once and turning angry (Reduced flashing: one change), the cyborgs turning and chasing; then the title card over the chase and
-## a fade to black. It is about 20 s; the street's traffic and people, the camera's place, what each costs, the palette (no
-## hazard hue on anything safe), skipping, stepping the clock coarsely, and the App's flow (it plays first in the campaign, and the
-## web demo plays it).
+## them, along the wall across a feed billboard (the Head's face on a screen a floor up) whose picture tears and which bursts just
+## behind the light, glass and sparks (Reduced flashing: fewer sparks, a slow glow for the flare); the runner leaping out of it onto
+## the first cyborg's head (the stomp: it is squashed as a stomp kills), hopping over two more and running down the street, the
+## light whipping back to catch them; the Head startled (wide eyes, an "O"), angry, yelling (the jaw open), every cyborg's screen
+## face flickering at once and turning angry (Reduced flashing: one change), the cyborgs turning and chasing; then the game's title
+## NEON RUNNER, then the zone's title card, over the chase, and a fade to black. It is about 20 s, plus the title (21.7 s); the
+## street's traffic and people, the camera's place, what each costs, the palette (no hazard hue on anything safe), skipping,
+## stepping the clock coarsely, and the App's flow (it plays first in the campaign, and the web demo plays it).
 
 const Kit = preload("res://scripts/enemies/cyborg_kit.gd")
+const FACE_SHADER: String = "res://scripts/bosses/floating_head/floating_head_face.gdshader"
 const LANES: Array[int] = [3, 5, 6]
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
 const STEP: float = 1.0 / 30.0
@@ -38,6 +40,9 @@ func run() -> void:
 	App.rules.lanes_pc = lanes_pc
 	await _test_surge(false)
 	await _test_surge(true)
+	await _test_billboard(false)
+	await _test_billboard(true)
+	await _test_title_cards()
 	await _test_stomp_squash()
 	await _test_props()
 	await _test_coarse_steps()
@@ -87,16 +92,22 @@ func _test_slot() -> void:
 	check(boss.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn",
 		"the City's boss intro keeps the arrival flyover (the owner's beats are for the zone's intro)")
 	var n := load("res://data/cinematics/city_intro_tuning.tres") as CityIntroTuning
-	check(n != null and n.duration >= 19.0 and n.duration <= 21.0, "about 20 s long (%.1f s)" % [n.duration if n != null else 0.0])
-	# The beats the owner gave, in order: street, escape, the window's burst, the stomp, the Head's startle, anger and yell,
-	# the feed's surge, the cut back, the title card, the end.
+	check(n != null and n.duration >= 20.0 and n.duration <= 23.0,
+		"about 20 s long, a couple of seconds more for the game's title (%.1f s)" % [n.duration if n != null else 0.0])
+	# The beats the owner gave, in order: street, escape, the billboard's burst, the stomp, the Head's startle, anger and yell,
+	# the feed's surge, the cut back, the game's title, the zone's title card, the end.
 	check(n.street_at < n.escape_at and n.escape_at < n.burst_at and n.burst_at < n.stomp_at and n.stomp_at < n.head_at
 		and n.head_at == n.startle_at and n.startle_at < n.angry_at and n.angry_at < n.yell_at and n.yell_at < n.flicker_at
-		and n.flicker_at + n.flicker_seconds < n.card_at and n.reverse_at < n.card_at and n.card_at + n.card_seconds <= n.duration + 0.01
+		and n.flicker_at + n.flicker_seconds < n.title_at and n.reverse_at < n.title_at and n.title_at + n.title_seconds < n.card_at
+		and n.card_at + n.card_seconds <= n.duration + 0.01
 		and n.head_times[0] == n.head_at and n.head_times[n.head_times.size() - 1] < n.reverse_at,
 		"its beats are in the owner's order")
 	check(absf((n.street_at) - 5.0) < 1.0 and absf((n.head_at - n.escape_at) - 4.0) < 0.5 and absf(n.card_seconds - 2.0) < 0.5,
 		"its parts are about as long as the owner's staging (flyby 5 s, street 4 s, escape 4 s, the Head 5 s, card 2 s)")
+	check(n.title_seconds >= 1.5 and n.title_seconds <= 2.0 and n.title_text == "NEON RUNNER",
+		"the game's title, NEON RUNNER, is up for 1.5 to 2 s (%.1f s) before the zone's card" % n.title_seconds)
+	check(n.billboard_sill >= 3.0 and n.billboard_sill <= 4.5 and n.billboard_sill + n.billboard_height < 8.0,
+		"the billboard is mounted about a floor up (%.1f m to its bottom edge), low enough for the leap onto the cyborg's head" % n.billboard_sill)
 
 
 ## The face shader's new look (the startled "O") is off by default: the fight's face is as it was.
@@ -120,7 +131,7 @@ func _test_beats(lanes: int) -> void:
 	check(seq.stage.skin == zone.skin and seq.stage.geo.lane_count == n.street_lanes,
 		"%s: it plays in the City's look from the zone's data, on its own street (%d lanes, whatever the device's)" % [tag, n.street_lanes])
 	check(seq.playing.problems(sfx).is_empty(), "%s: a sound timeline: %s" % [tag, seq.playing.problems(sfx)])
-	check(seq.duration() >= 19.0 and seq.duration() <= 21.0, "%s: about 20 s (%.1f s)" % [tag, seq.duration()])
+	check(seq.duration() >= 20.0 and seq.duration() <= 23.0, "%s: about 20 s, plus the game's title (%.1f s)" % [tag, seq.duration()])
 	# The street: no truck roofs, every lane a hole over the road, which is y = 0 (the stage lifted to it).
 	var no_roofs: bool = true
 	for lane: int in seq.stage.geo.lane_count:
@@ -155,7 +166,7 @@ func _test_beats(lanes: int) -> void:
 	var jaw_peak: float = 0.0
 	var anger_peak: float = 0.0
 	var light_ok: bool = true
-	var spot_at_window: float = INF
+	var spot_at_board: float = INF
 	var spot_after: float = -INF
 	var spot_on_runner: float = INF
 	var hop_clear: Array[float] = [INF, INF]
@@ -196,14 +207,14 @@ func _test_beats(lanes: int) -> void:
 		var beam_color: Color = seq.head._beam_material.get_shader_parameter(&"light_color")
 		var spot_color: Color = seq.head._spot_material.get_shader_parameter(&"light_color")
 		light_ok = light_ok and _cold(beam_color) and _cold(spot_color)
-		# The light: along the wall past the window just before the glass bursts, then on the runner.
+		# The light: along the wall across the billboard just before the screen bursts, then on the runner.
 		var light: Dictionary = seq.light_at(t)
 		var lp: Vector3 = light["point"]
 		if absf(t - (n.burst_at - 0.3)) < STEP * 0.5:
-			spot_at_window = Vector2(lp.z - n.window_z, lp.y - (n.window_sill + n.window_height * 0.5)).length()
-			seen["wall_normal"] = (light["normal"] as Vector3).x * -float(n.window_side)
+			spot_at_board = Vector2(lp.z - n.billboard_z, lp.y - (n.billboard_sill + n.billboard_height * 0.5)).length()
+			seen["wall_normal"] = (light["normal"] as Vector3).x * -float(n.billboard_side)
 		if absf(t - n.burst_at) < STEP * 0.5:
-			spot_after = (lp.z - n.window_z) * 1.0
+			spot_after = (lp.z - n.billboard_z) * 1.0
 		if absf(t - (seq.catch_at + 0.3)) < STEP * 0.5:
 			var rp: Vector3 = seq._street_of(runner.global_position)
 			spot_on_runner = Vector2(lp.x - rp.x, lp.z - rp.z).length()
@@ -229,24 +240,35 @@ func _test_beats(lanes: int) -> void:
 				var d: float = Vector2(rp4.x + seq.stage.origin_x - c2.x, rp4.z - c2.z).length()
 				if d < 0.5 and rp4.y < top - 0.15 and not (i == 0 and t < n.stomp_at + 0.02):
 					inside.append("%.2f s: inside cyborg %d" % [t, i])
-		for moment: float in [n.burst_at - 0.05, n.burst_at + 0.2, n.stomp_at + 0.3, n.stomp_at + 1.0, n.startle_at + 0.4,
-				n.angry_at + 0.5, n.yell_at + 0.5, n.card_at - 0.3]:
+		for moment: float in [n.burst_at - 0.45, n.burst_at - 0.05, n.burst_at + 0.2, n.stomp_at + 0.3, n.stomp_at + 1.0,
+				n.startle_at + 0.4, n.angry_at + 0.5, n.yell_at + 0.5, n.title_at + 0.9, n.card_at + 0.9]:
 			if not seen.has(moment) and t >= moment:
-				seen[moment] = {"window_intact": seq.window.intact.visible, "opening": seq.window.broken.visible,
-					"shards": seq.window.shards.visible, "c0_face": cyborgs[0].body.face, "c0_screen": cyborgs[0].body.screen_power,
+				seen[moment] = {"whole": seq.billboard.intact.visible, "opening": seq.billboard.broken.visible,
+					"shards": seq.billboard.shards.visible, "sparks": seq.billboard.sparks.visible,
+					"glitch": float(seq.billboard.face.get_shader_parameter(&"glitch")), "look": seq.billboard.look.x,
+					"card": seq.overlay.card_title.text, "caption": seq.overlay.card_caption.text,
+					"c0_face": cyborgs[0].body.face, "c0_screen": cyborgs[0].body.screen_power,
 					"surprise": float(face.get_shader_parameter(&"surprise")), "anger": float(face.get_shader_parameter(&"anger")),
-					"jaw": seq.head.jaw_open, "mouth": seq.head.mouth_glow.visible, "glitch": float(face.get_shader_parameter(&"glitch")),
+					"jaw": seq.head.jaw_open, "mouth": seq.head.mouth_glow.visible, "head_glitch": float(face.get_shader_parameter(&"glitch")),
 					"runner_visible": runner.visible, "runner_x": runner.position.x}
 	check(seq.done and not seq.skipped, "%s: it plays to its end" % tag)
 	var s_before: Dictionary = seen[n.burst_at - 0.05]
 	var s_after: Dictionary = seen[n.burst_at + 0.2]
-	check(bool(s_before["window_intact"]) and not bool(s_before["opening"]) and absf(float(s_before["runner_x"])) > seq.street.wall_half,
-		"%s: before the burst the window is intact, a lit pane, and the runner is still behind the wall" % tag)
-	check(not bool(s_after["window_intact"]) and bool(s_after["opening"]) and bool(s_after["shards"]) and bool(s_after["runner_visible"]),
-		"%s: it bursts as planned: the pane gone, an opening, glass flying, the runner out of it" % tag)
-	check(spot_at_window < 3.0 and float(seen["wall_normal"]) > 0.9,
-		"%s: the light is on the wall at the window just before it bursts (%.1f m off, facing the street)" % [tag, spot_at_window])
-	check(spot_after > 1.5, "%s: and has swept past it by the time the glass bursts (%.1f m past)" % [tag, spot_after])
+	check(bool(s_before["whole"]) and not bool(s_before["opening"]) and not bool(s_before["shards"])
+		and absf(float(s_before["runner_x"])) > seq.street.wall_half,
+		"%s: before the burst the billboard is whole, showing the feed, and the runner is still behind the wall" % tag)
+	check(not bool(s_after["whole"]) and bool(s_after["opening"]) and bool(s_after["shards"]) and bool(s_after["sparks"])
+		and bool(s_after["runner_visible"]),
+		"%s: it bursts as planned: the screen gone, the frame's opening, glass and sparks flying, the runner out of it" % tag)
+	var s_tear0: Dictionary = seen[n.burst_at - 0.45]
+	var s_tear1: Dictionary = seen[n.burst_at - 0.05]
+	check(float(s_tear0["glitch"]) < 0.05 and float(s_tear1["glitch"]) > 0.4,
+		"%s: the feed's picture tears in the moment before it bursts (%.2f then %.2f)" % [tag, float(s_tear0["glitch"]), float(s_tear1["glitch"])])
+	check(float(s_tear1["look"]) > float(s_tear0["look"]) + 0.2,
+		"%s: the face on the billboard follows the searchlight across it with its eyes (%.2f to %.2f)" % [tag, float(s_tear0["look"]), float(s_tear1["look"])])
+	check(spot_at_board < 3.0 and float(seen["wall_normal"]) > 0.9,
+		"%s: the light is on the wall at the billboard just before it bursts (%.1f m off, facing the street)" % [tag, spot_at_board])
+	check(spot_after > 1.5, "%s: and has swept past it by the time the screen bursts (%.1f m past)" % [tag, spot_after])
 	check(stomp_gap < 0.3 and absf(float(seen["stomp_height"])) < 0.15,
 		"%s: the runner lands on the first cyborg's head (%.2f m off, %.2f m from its top)" % [tag, stomp_gap, float(seen["stomp_height"])])
 	var squashed: Dictionary = seen[n.stomp_at + 0.3]
@@ -264,11 +286,11 @@ func _test_beats(lanes: int) -> void:
 	check(float(angry["surprise"]) < 0.02 and float(angry["anger"]) > 0.95 and float(angry["jaw"]) < 0.1,
 		"%s: then angry (the brows down, the jaw shut: %s)" % [tag, angry])
 	var yelling: Dictionary = seen[n.yell_at + 0.5]
-	check(float(yelling["jaw"]) > 0.95 and bool(yelling["mouth"]) and float(yelling["glitch"]) > 0.2 and float(yelling["anger"]) > 0.95,
+	check(float(yelling["jaw"]) > 0.95 and bool(yelling["mouth"]) and float(yelling["head_glitch"]) > 0.2 and float(yelling["anger"]) > 0.95,
 		"%s: then it yells (the jaw wide open, the mouth lit, the picture breaking up: %s)" % [tag, yelling])
 	check(light_ok, "%s: its light is cold white throughout, never red (red is the bombs')" % tag)
 	check(_same_times(jumps, [n.head_at, n.reverse_at]),
-		"%s: the camera cuts only twice: to the Head's face and back to the street, and drifts on under the title card (%s)" % [tag, jumps])
+		"%s: the camera cuts only twice: to the Head's face and back to the street, and drifts on under the titles (%s)" % [tag, jumps])
 	check(problems.is_empty(), "%s: the camera moves in one continuous move down to the street, stays in it and above the road: %s" % [
 		tag, problems.slice(0, 3)])
 	check(setup_msec < SETUP_BUDGET_MSEC and worst_step < STEP_BUDGET_MSEC,
@@ -277,8 +299,9 @@ func _test_beats(lanes: int) -> void:
 	check(max_calls <= PROP_DRAW_CALLS, "%s: its props add at most %d draw calls (%d)" % [tag, PROP_DRAW_CALLS, max_calls])
 	print("  city intro, %s: setup %.1f ms, step %.2f ms (worst %.2f), props %d draw calls" % [
 		tag, setup_msec, sum_step / maxf(steps, 1), worst_step, max_calls])
-	var wanted: PackedStringArray = ["music city", "sound window_smash", "sound jump", "sound stomp", "sound enemy_death",
-		"sound head_startle", "sound head_yell", "sound feed_surge", "text Neon City", "effect fade_out"]
+	var wanted: PackedStringArray = ["music city", "sound billboard_smash", "sound jump", "sound stomp", "sound enemy_death",
+		"sound head_startle", "sound head_yell", "sound feed_surge", "sound title_sting", "text NEON RUNNER", "text Neon City",
+		"effect fade_out"]
 	var at: int = -1
 	var in_order: bool = true
 	for w: String in wanted:
@@ -286,7 +309,11 @@ func _test_beats(lanes: int) -> void:
 		in_order = in_order and i > at
 		at = maxi(at, i)
 	check(in_order, "%s: its beats come in order (%s)" % [tag, seq.log_lines])
-	check(not seq.log_lines.has("effect flash"), "%s: nothing flashes the picture (the glass is shards, not a flash)" % tag)
+	check(not seq.log_lines.has("effect flash"), "%s: nothing flashes the picture (the screen's burst is shards, sparks and a flare in the set)" % tag)
+	var shown: Dictionary = seen[n.title_at + 0.9]
+	var zone_card: Dictionary = seen[n.card_at + 0.9]
+	check(shown["card"] == "NEON RUNNER" and shown["caption"] == "" and zone_card["card"] == "NEON CITY" and zone_card["caption"] == "ZONE 1",
+		"%s: the game's title is on the card first (%s), then the zone's (%s over %s)" % [tag, shown["card"], zone_card["card"], zone_card["caption"]])
 	var tracks: Array[String] = []
 	for line: String in seq.log_lines:
 		if line.begins_with("music "):
@@ -380,6 +407,79 @@ func _test_surge(reduced: bool) -> void:
 	await _free(seq)
 
 
+## The feed billboard: where it is and what it shows, and how it bursts: the picture tears, the screen goes, glass and sparks
+## fly out and the flare pops (with Reduced flashing: a share of the sparks, the flare a slow faint glow), all of it settling.
+func _test_billboard(reduced: bool) -> void:
+	var was: bool = Settings.flashing_reduced
+	Settings.flashing_reduced = reduced
+	var tag: String = "Reduced flashing" if reduced else "normal"
+	var seq: CityIntro = _start()
+	var n: CityIntroTuning = seq.n
+	var bb: CityIntroBillboard = seq.billboard
+	var side: float = float(n.billboard_side)
+	var wall: float = side * seq.street.wall_half
+	var sc: Vector3 = bb.screen.global_position
+	var basis: Basis = bb.screen.global_transform.basis
+	check(bb.face.shader != null and bb.face.shader.resource_path == FACE_SHADER and is_equal_approx(float(bb.face.get_shader_parameter(&"power")), 1.0),
+		"%s: the billboard shows the Head's face, under the fight's own face shader, lit" % tag)
+	check(-side * (sc.x - wall) > 0.2 and -side * (sc.x - wall) < 1.0 and absf(sc.y - (n.billboard_sill + n.billboard_height * 0.5)) < 0.01
+		and absf(sc.z + n.billboard_z) < 0.01, "%s: it stands out of the wall on its side, at its height and place (%s)" % [tag, sc])
+	check(absf(basis.z.x * -side - 1.0) < 0.001 and absf(basis.x.z - side) < 0.001,
+		"%s: its face looks at the street, the right way round (not mirrored)" % tag)
+	check(bb.frame.visible and bb.intact.visible and not bb.broken.visible and not bb.shards.visible and not bb.sparks.visible and not bb.flare.visible,
+		"%s: before the burst: the frame and the feed show, nothing of the burst does" % tag)
+	check(bb.active_sparks() == (roundi(n.spark_count * CityIntroBillboard.REDUCED_SPARKS) if reduced else n.spark_count),
+		"%s: %d of the %d sparks fly" % [tag, bb.active_sparks(), n.spark_count])
+	# The burst: a moment after it, then settling.
+	_run_to(seq, n.burst_at + 0.12)
+	check(not bb.intact.visible and bb.broken.visible and bb.frame.visible and bb.shards.visible and bb.sparks.visible,
+		"%s: the screen is gone and the frame is left, dark, with glass and sparks flying" % tag)
+	var out: bool = true
+	var flying: int = 0
+	for i: int in bb.multi.instance_count:
+		out = out and -side * (bb.shard_position(i, 0.12).x - wall) > 0.2
+	for i: int in bb.spark_multi.instance_count:
+		if bb.spark_alive(i, 0.12):
+			out = out and -side * (bb.spark_position(i, 0.12).x - wall) > 0.2
+			flying += 1
+	check(out and flying == bb.active_sparks(), "%s: they fly out of the screen into the street (%d sparks in flight)" % [tag, flying])
+	var pop: float = bb.flare_scale
+	if reduced:
+		check(pop > 0.0 and pop < CityIntroBillboard.REDUCED_FLARE * 0.5 and CityIntroBillboard.flare_at(CityIntroBillboard.FLARE_RISE_REDUCED) <= CityIntroBillboard.REDUCED_FLARE + 0.001
+			and CityIntroBillboard.FLARE_RISE_REDUCED >= 0.25 and CityIntroBillboard.FLARE_FALL_REDUCED >= 0.7,
+			"%s: the flare is a slow faint glow, not a pop (%.2f a moment in, at most %.1f, over %.1f s)" % [
+			tag, pop, CityIntroBillboard.REDUCED_FLARE, CityIntroBillboard.FLARE_RISE_REDUCED + CityIntroBillboard.FLARE_FALL_REDUCED])
+	else:
+		check(pop > 0.5 and bb.flare.visible, "%s: the flare pops up where the screen was (%.2f)" % [tag, pop])
+	# Everything settles: the sparks gone within a second, the glass lying on the road, the flare out.
+	_run_to(seq, n.burst_at + 1.6)
+	var gone: bool = true
+	for i: int in bb.spark_multi.instance_count:
+		gone = gone and not bb.spark_alive(i, 1.6)
+	var flat: bool = true
+	for i: int in bb.multi.instance_count:
+		flat = flat and absf(bb.shard_position(i, 5.0).y - CityIntroBillboard.GROUND) < 0.001
+	check(gone and flat and not bb.flare.visible, "%s: the sparks and the flare are gone within 1.6 s and the glass lies on the road" % tag)
+	Settings.flashing_reduced = was
+	await _free(seq)
+
+
+## The game's title and then the zone's card: two text events, one after the other, in order, neither cut short.
+func _test_title_cards() -> void:
+	var seq: CityIntro = _start()
+	var n: CityIntroTuning = seq.n
+	var texts: Array[CineEvent] = []
+	for e: CineEvent in seq.playing.events:
+		if e.kind == CineEvent.Kind.TEXT:
+			texts.append(e)
+	check(texts.size() == 2 and texts[0].text == n.title_text and texts[1].text == "{zone}" and texts[1].caption == "ZONE {zone_number}",
+		"the cinematic has two cards: the game's title, then the zone's (%d)" % texts.size())
+	check(texts.size() == 2 and texts[0].time + texts[0].duration < texts[1].time and texts[1].time + texts[1].duration <= seq.duration() + 0.01
+		and texts[0].duration >= 1.5 and texts[0].duration <= 2.0,
+		"the title is up for 1.5 to 2 s and is gone before the zone's card comes up, which ends with the cinematic")
+	await _free(seq)
+
+
 ## The stomped cyborg goes the way a stomp kills in play: squashed flat, its screen dark (its tween runs in real time).
 func _test_stomp_squash() -> void:
 	var seq: CityIntro = _start()
@@ -420,7 +520,7 @@ func _test_props() -> void:
 				if gap < (traffic.looks[va.look].length + traffic.looks[vb.look].length) * 0.5:
 					overlap = true
 	check(not overlap, "no two vehicles in a lane ever overlap")
-	check(in_clear == 0, "no vehicle is in the stretch kept clear where the camera looks through it as the glass bursts (%d)" % in_clear)
+	check(in_clear == 0, "no vehicle is in the stretch kept clear where the camera looks through it as the screen bursts (%d)" % in_clear)
 	var lanes_ok: bool = true
 	for v: CityIntroTraffic.Vehicle in traffic.vehicles:
 		lanes_ok = lanes_ok and absf(v.lane_x) < street.road_half and absf(v.lane_x) > street.road_half * 0.5
@@ -439,7 +539,7 @@ func _test_props() -> void:
 	var palette: Array[Color] = []
 	palette.append_array(CityIntroStreet.SHOP_LIGHTS)
 	palette.append_array([CityIntroStreet.LAMP_LIGHT, CityIntroTraffic.WINDOW_LIGHT, CityIntroTraffic.SIGN_LIGHT,
-		CityIntroWindow.ROOM_LIGHT, seq.stage.skin.get(&"traffic_tail_color"), seq.stage.skin.get(&"thruster_color")])
+		CityIntroBillboard.FEED_WHITE, seq.stage.skin.get(&"traffic_tail_color"), seq.stage.skin.get(&"thruster_color")])
 	palette.append_array(CityIntroTraffic.PAINTS)
 	for c: Color in seq.stage.skin.get(&"neon_colors"):
 		palette.append(c)
@@ -447,7 +547,7 @@ func _test_props() -> void:
 	for c: Color in palette:
 		if _hazard_hue(c):
 			hazard.append(c.to_html())
-	check(hazard.is_empty(), "no lit or painted colour of the street, its traffic or its window is a hazard's hue: %s" % [hazard])
+	check(hazard.is_empty(), "no lit or painted colour of the street, its traffic or its billboard is a hazard's hue: %s" % [hazard])
 	# A low-end device gets fewer of both.
 	var small: CityIntro = _start(true)
 	check(small.traffic.vehicles.size() < traffic.vehicles.size() and small.crowd.count < crowd.count
@@ -481,8 +581,9 @@ func _test_coarse_steps() -> void:
 	check(absf(a.head.anger - b.head.anger) < 0.001 and a.head.jaw_open == b.head.jaw_open
 		and a.head.lens_world().distance_to(b.head.lens_world()) < 0.01, "the Head's face and light are the same")
 	check(a.traffic.looks[0].multi.get_instance_transform(0).origin.distance_to(b.traffic.looks[0].multi.get_instance_transform(0).origin) < 0.01
-		and a.window.shard_position(3, 2.0).distance_to(b.window.shard_position(3, 2.0)) < 0.001,
-		"so are the traffic and the glass")
+		and a.billboard.shard_position(3, 2.0).distance_to(b.billboard.shard_position(3, 2.0)) < 0.001
+		and a.billboard.spark_position(5, 0.3).distance_to(b.billboard.spark_position(5, 0.3)) < 0.001,
+		"so are the traffic, the glass and the sparks")
 	await _free(a)
 	await _free(b)
 

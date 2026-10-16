@@ -1,6 +1,7 @@
 # Questions from task F2f (the Neon City's intro; the owner's beats, October 16, 2026)
 
-The owner's beats (GDD §6, Cinematics, "Zone 1 intro") leave these staging details open. Each has a placeholder, marked
+The owner's beats (GDD §6, Cinematics, "Zone 1 intro", with his October 16 answers: the runner bursts out through a feed
+billboard, and the game's title comes before the zone's card) leave these staging details open. Each has a placeholder, marked
 `DESIGN-TBD` in `scripts/cinematics/city_intro/city_intro_tuning.gd` (its numbers, in `data/cinematics/city_intro_tuning.tres`) or
 in the file named, and built so it is cheap to change.
 
@@ -10,11 +11,18 @@ in the file named, and built so it is cheap to change.
    fight; dressed with asphalt and lane paint, crosswalks, sidewalks, shopfronts with lit windows and neon signs, and warm street
    lamps (`CityIntroStreet`). `street_lanes`, `dress_*`.
 
-2. **Which window, and how does it burst?** (GDD §6: "the light sweeps past a building window, the glass bursts just behind it".)
-   Placeholder: a lit window in the left wall's second storey, 14 m ahead of the camera's street-level start, 4.2 m up, 3.0 x 2.3 m,
-   warm light behind its glass; it bursts as the light has just passed it (a spray of 44 glass shards that tumble, fall and lie on the
-   road, and a dark opening with a few teeth of glass left; no flash). `window_*`, `burst_at`, `shard_count`
-   (`CityIntroWindow`).
+2. **Which billboard, and how does it burst?** (GDD §6: the light sweeps past, the runner bursts out through "a billboard showing the
+   feed, the Head's face", mounted "at about first-floor height" so the leap onto the cyborg's head reads.) Placeholder: a 4.4 x 2.8 m
+   screen in a grey frame standing 0.45 m out of the left wall, 14 m ahead of the camera's street-level start, its bottom edge 3.7 m up
+   (above the shopfronts' signs, a floor up; the leap down onto a cyborg's head is 1.9 m plus the arc). It shows the Head's face under
+   the fight's own face shader (stern, the pupils following the searchlight across it), a cold-white trim and a cold-white spill on the
+   wall; the light crosses it, the picture tears for a third of a second, and the screen bursts just behind the light (glass: 56 shards
+   that tumble, fall and lie on the road; 40 cold-white sparks and a flare where the screen was; the frame left dark with a few
+   teeth of glass and dangling cables, no light on it: the feed is broken). With Reduced flashing: 35% of the sparks, the flare a slow
+   faint glow (no pop), and the face shader's static held still. Cold white, never a hazard colour (the sparks are not orange).
+   Nothing flashes the picture. Sound: `billboard_smash` (glass and a power surge cut dead, sparks crackling). `billboard_*`, `burst_at`,
+   `shard_count`, `spark_count` (`CityIntroBillboard`). Open: whether the billboard's face should do more than watch (it might startle
+   as the runner bursts out of it).
 
 3. **How many cyborgs, where, and how do they march?** Placeholder: seven, in a loose column 13.5 m deep down the middle of the road
    (the traffic keeps to the outer lanes), trudging toward the camera at 1 m/s, their screens calm; the first is the one stomped, the
@@ -40,7 +48,7 @@ in the file named, and built so it is cheap to change.
 
 7. **The Head's place and look.** (GDD §6: the face shown, the light cold white.) Placeholder: its face's plane 40 m ahead of the
    camera's street-level start, its belly 11 m up (its crown under the towers), its face lit from the first frame, its searchlight
-   sweeping the street under the camera's descent, then the cyborgs, then the wall past the window; the light is cold white (the
+   sweeping the street under the camera's descent, then the cyborgs, then the wall across the billboard; the light is cold white (the
    fight's own beam and spot) and never red. `face_at`, `belly`, `spot_radius`, `CityIntro._plan_light`.
 
 8. **The startled, angry and yelling faces.** (GDD §6: "startled, then angry, and yells".) Placeholder: startled for a second (the
@@ -59,17 +67,20 @@ in the file named, and built so it is cheap to change.
 
 10. **The camera.** (GDD §6: "one continuous move", "a panning shot at street level / human height".) Placeholder: from 46 m up behind
     the Head's light, down the canyon of towers to street level, following the light's spot, panning down the street and onto the
-    window and the first cyborg (one move, no cut, 5 s of flyby and 4 s of street); a cut to the Head's face from the street, tight on
+    billboard and the first cyborg (one move, no cut, 5 s of flyby and 4 s of street, the view swinging left to the billboard
+    for the burst, and then with the runner across the street); a cut to the Head's face from the street, tight on
     the startled face, in on the angry one, back and down for the jaw's drop; a cut back to the street, low in front of the cyborgs,
-    which drifts on behind the chase under the title card. `move_*`, `head_*`, `street_*`, `chase_*`.
+    which drifts on behind the chase under the title cards. `move_*`, `head_*`, `street_*`, `chase_*`.
 
-11. **The title card and the ending.** (GDD §6: "Zone 1's title card, and play begins".) Placeholder: the existing card ("ZONE 1" /
-    "NEON CITY") over the last 2 s of the chase, then a half-second fade to black, as the arrival flyover ends; the level opens on its
-    own view. The City's own music (the zone's track) comes in over 4 s from the start; no music of its own (GDD §11). `card_at`,
-    `card_seconds`, `fade_out`, `music_fade`.
+11. **The title cards and the ending.** (GDD §6: the game's title, then "Zone 1's title card, and play begins"; the total may run a
+    couple of seconds past 20.) Placeholder: after the chase has run for a second, the game's title, "NEON RUNNER" (the title screen's
+    working title), on the existing card (no caption, 1.8 s, fading in and out as every card does), with a short deep sting
+    (`title_sting`); a tenth of a second after it has gone, the zone's card ("ZONE 1" / "NEON CITY", 2 s), then a half-second fade to
+    black, as the arrival flyover ends; the level opens on its own view. 21.7 s in all. The City's own music (the zone's track) comes in
+    over 4 s from the start; no music of its own (GDD §11). Open: whether the title wants a bigger or different card than the zone's
+    (it is the same size and style), and whether it should be over black rather than the chase. `title_at`, `title_seconds`,
+    `title_text`, `card_at`, `card_seconds`, `fade_out`, `music_fade`.
 
-12. **New sounds.** The game's own sounds cover the jump, the land, the stomp and a cyborg's death; four are new, in the game's
-    style (`tools/asset_gen/sfx_bank_city_intro.gd`): `window_smash`, `head_startle`, `head_yell` (2.2 s) and `feed_surge`.
-
-13. **Not built, the owner has not decided them.** (a) The runner bursting through a feed billboard showing the Head's face
-    instead of a plain window. (b) Showing the game's title before the zone card.
+12. **New sounds.** The game's own sounds cover the jump, the land, the stomp and a cyborg's death; five are new, in the game's style
+    (`tools/asset_gen/sfx_bank_city_intro.gd`): `billboard_smash`, `head_startle`, `head_yell` (2.2 s), `feed_surge` and
+    `title_sting`.

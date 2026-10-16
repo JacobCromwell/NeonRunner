@@ -46,7 +46,7 @@ extends SceneTree
 ##   sfx_bank_mecha_guppy.gd  Mecha Guppy and Captain Cogs: the captain's throw, the shark coming up (a bite's and a
 ##                        breach's warning), its jaws snapping shut, a bomb clanging into its jaws (a hit)
 ##   sfx_bank_beach_outro.gd  the Beach outro's: the bartender's cocktail shaker and the two drinks set down
-##   sfx_bank_city_intro.gd  the City intro's: the window bursting, the Floating Head startled, its yell, and the feed's surge
+##   sfx_bank_city_intro.gd  the City intro's: the billboard bursting, the Floating Head startled, its yell, the feed's surge, the title sting
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
