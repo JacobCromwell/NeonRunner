@@ -122,7 +122,7 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
   as they are (their notches too); the first one past the edge of sight is phase 2's: measured, its pads come
   10.6-18.7 s after the phase begins.
 - **Phase 3, level with Captain Cogs** (tasks E5e-c and E5e-g, the owner's rework of October 15, 2026; `MechaGuppyTop`,
-  DESIGN-TBD, `docs/questions/e5e-g.md`): its step is the top, the roof the runner is on running on flat with no pads or
+  DESIGN-TBD, `docs/OPEN_QUESTIONS_ANSWERED.md` items 888-896, answered, stands as built): its step is the top, the roof the runner is on running on flat with no pads or
   hut (and no notch), planned right after the steps in sight (it comes 4.0-13.9 s after phase 3 begins, measured).
   Captain Cogs' bombs of the climb stop as phase 3 begins (`attacks_live`); Mecha Guppy's bites of the climb go on through
   its last steps and stop when the runner stands on the top (`on_top`, `bites_live`): then `top_reached` is logged and

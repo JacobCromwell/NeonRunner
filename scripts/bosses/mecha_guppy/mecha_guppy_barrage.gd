@@ -21,7 +21,7 @@ extends Node3D
 ##   (MechaGuppyTop.bomb_landed: the clang, the fireball, a shudder, and the boss bar drops). A bomb that met the runner
 ##   (armor or the shield took it) bursts there instead and hits nothing.
 ## Its time from the warning to the runner never changes with the run's speed (it keeps pace with them). Its own clock runs
-## on the boss's ticks (time from the physics step; it waits while the runner is down). DESIGN-TBD (docs/questions/e5e-g.md):
+## on the boss's ticks (time from the physics step; it waits while the runner is down). DESIGN-TBD (docs/OPEN_QUESTIONS_ANSWERED.md items 888-896, E5e-g: answered, stands as built):
 ## the bombs' numbers and the warning's look.
 
 const BOMB_NAME: String = "Captain Cogs' bomb"

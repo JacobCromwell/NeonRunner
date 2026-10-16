@@ -84,7 +84,7 @@ extends Resource
 ## Phase 3, level with Captain Cogs (GDD §10; reworked by the owner, October 15, 2026: Mecha Guppy beside the top on the
 ## right, Captain Cogs on the left firing bombs across the deck, high and low, that the runner jumps or slides under and
 ## that hit Mecha Guppy; its health bar in place of the minute; it dives after some hits, comes back up with a splash that
-## makes the wave, then bites the floor). DESIGN-TBD (docs/questions/e5e-g.md): every number of the group.
+## makes the wave, then bites the floor). DESIGN-TBD (docs/OPEN_QUESTIONS_ANSWERED.md items 888-896, E5e-g: answered, stands as built): every number of the group.
 ## Captain Cogs' ship comes alongside the top on the left, level with the runner (its keel level_keel over the runner's
 ## deck: below it when negative, so its gun deck is at their height), its middle level_ahead ahead of them (it keeps pace:
 ## near enough that the captain's swivel gun fires across the deck at them and he stands in view on the screen's left; a
