@@ -62,8 +62,8 @@ extends Resource
 ## Its face: startled (`startle_at`: the eyes wide, an "O" for a mouth), then angry (`angry_at`), then yelling (`yell_at`:
 ## the jaw wide open, the picture breaking up a little), and how long each change takes.
 @export_range(8.0, 20.0, 0.05, "suffix:s") var startle_at: float = 13.0
-@export_range(8.0, 20.0, 0.05, "suffix:s") var angry_at: float = 14.3
-@export_range(8.0, 20.0, 0.05, "suffix:s") var yell_at: float = 15.4
+@export_range(8.0, 20.0, 0.05, "suffix:s") var angry_at: float = 14.0
+@export_range(8.0, 20.0, 0.05, "suffix:s") var yell_at: float = 15.0
 @export_range(0.05, 1.0, 0.05, "suffix:s") var expression_seconds: float = 0.25
 @export_range(0.0, 1.0, 0.05) var yell_glitch: float = 0.35
 @export_range(0.0, 1.0, 0.05) var startle_jaw: float = 0.3
@@ -89,10 +89,10 @@ extends Resource
 @export_range(9.0, 13.0, 0.05, "suffix:s") var stomp_at: float = 10.55
 ## The yell goes through the feed: every screen face flickers at `flicker_at` and has turned angry within `flicker_seconds`;
 ## they turn round (`turn_seconds`) and chase at `chase_speed` (m/s).
-@export_range(12.0, 20.0, 0.05, "suffix:s") var flicker_at: float = 15.9
+@export_range(12.0, 20.0, 0.05, "suffix:s") var flicker_at: float = 15.5
 @export_range(0.1, 1.0, 0.05, "suffix:s") var flicker_seconds: float = 0.4
-@export_range(0.2, 2.0, 0.05, "suffix:s") var turn_seconds: float = 0.6
-@export_range(1.0, 12.0, 0.1, "suffix:m/s") var chase_speed: float = 6.0
+@export_range(0.2, 2.0, 0.05, "suffix:s") var turn_seconds: float = 0.5
+@export_range(1.0, 12.0, 0.1, "suffix:m/s") var chase_speed: float = 7.0
 
 @export_group("The runner")
 ## They burst out of the window, land on the first cyborg's head (the stomp), hop over the second and a later one, and run
@@ -100,35 +100,39 @@ extends Resource
 @export_range(5.0, 25.0, 0.5, "suffix:m/s") var run_speed: float = 8.5
 @export_range(0.5, 3.0, 0.05, "suffix:m") var hop_clearance: float = 1.1
 ## A hop over a cyborg takes this long, and the strides between the two are this long.
-@export_range(0.3, 1.2, 0.05, "suffix:s") var hop_seconds: float = 0.6
+@export_range(0.3, 1.2, 0.05, "suffix:s") var hop_seconds: float = 0.65
+## The runner hangs on the cyborg's head this long before they bounce on (a hit-stop, as a stomp has in play).
+@export_range(0.0, 0.4, 0.01, "suffix:s") var stomp_hold: float = 0.12
 @export_range(0.05, 0.6, 0.05, "suffix:s") var stride_seconds: float = 0.15
 
 @export_group("The cameras")
 ## One continuous move from the flyby down into the street and through the escape, until the cut to the Head (`head_at`):
 ## its keys' times, where the camera is, what it looks at and its lens.
-@export var move_times: PackedFloat32Array = PackedFloat32Array([0.0, 2.0, 3.6, 5.0, 7.0, 9.0, 10.2, 11.0, 12.0, 12.99])
+@export var move_times: PackedFloat32Array = PackedFloat32Array([0.0, 2.0, 3.6, 5.0, 7.0, 9.0, 10.2, 10.7, 11.3, 12.2, 12.99])
 @export var move_positions: PackedVector3Array = PackedVector3Array([Vector3(2.5, 46.0, -48.0), Vector3(-1.5, 24.0, -26.0),
-	Vector3(0.8, 8.0, -12.0), Vector3(1.8, 1.8, -1.0), Vector3(1.4, 1.65, 0.2), Vector3(0.9, 1.6, 1.4),
-	Vector3(0.9, 1.7, 2.2), Vector3(0.9, 1.9, 2.8), Vector3(0.8, 2.2, 3.6), Vector3(0.7, 2.5, 4.4)])
+	Vector3(0.8, 8.0, -9.0), Vector3(1.8, 1.8, 1.0), Vector3(1.4, 1.65, 2.0), Vector3(0.9, 1.6, 2.8),
+	Vector3(0.2, 1.65, 4.2), Vector3(-0.5, 1.5, 6.0), Vector3(-0.2, 1.8, 7.0), Vector3(0.2, 2.3, 7.8),
+	Vector3(0.4, 2.7, 8.6)])
 @export var move_targets: PackedVector3Array = PackedVector3Array([Vector3(0.0, 0.0, 8.0), Vector3(0.5, 0.0, 13.0),
 	Vector3(0.0, 3.0, 19.0), Vector3(0.0, 5.0, 25.0), Vector3(-0.5, 4.2, 22.5), Vector3(-3.5, 3.4, 16.5),
-	Vector3(-4.5, 3.2, 14.5), Vector3(-2.0, 2.6, 17.5), Vector3(0.0, 2.4, 27.0), Vector3(0.4, 2.8, 35.0)])
-@export var move_fovs: PackedFloat32Array = PackedFloat32Array([62.0, 60.0, 58.0, 55.0, 50.0, 46.0, 42.0, 42.0, 44.0, 46.0])
+	Vector3(-3.6, 3.2, 13.5), Vector3(-2.4, 2.4, 12.5), Vector3(-0.8, 2.4, 18.0), Vector3(0.3, 2.4, 28.0),
+	Vector3(0.4, 3.2, 36.0)])
+@export var move_fovs: PackedFloat32Array = PackedFloat32Array([62.0, 60.0, 58.0, 55.0, 50.0, 46.0, 40.0, 36.0, 40.0, 44.0, 46.0])
 ## The cut to the Head's face (`head_at`), looking up at it from the street: tight on the startled face, pushing in as it
 ## turns angry, then pulling back and tilting down to show the jaw drop for the yell, until the cut back (`reverse_at`).
 ## Positions are from the Head's face (x across, y up from the road, z toward the camera along the track), by time.
-@export var head_times: PackedFloat32Array = PackedFloat32Array([13.0, 14.3, 15.3, 15.69])
+@export var head_times: PackedFloat32Array = PackedFloat32Array([13.0, 14.0, 14.9, 15.44])
 @export var head_positions: PackedVector3Array = PackedVector3Array([Vector3(3.0, 7.0, -13.0), Vector3(2.0, 8.0, -11.0),
 	Vector3(1.6, 8.5, -10.5), Vector3(0.5, 7.0, -20.0)])
 @export var head_looks: PackedVector3Array = PackedVector3Array([Vector3(0.0, 18.4, 0.0), Vector3(0.0, 18.0, 0.0),
 	Vector3(0.0, 17.5, 0.0), Vector3(0.0, 14.2, 0.0)])
 @export var head_fovs: PackedFloat32Array = PackedFloat32Array([34.0, 30.0, 30.0, 38.0])
-@export_range(10.0, 20.0, 0.05, "suffix:s") var reverse_at: float = 15.7
+@export_range(10.0, 20.0, 0.05, "suffix:s") var reverse_at: float = 15.45
 ## The cut back to the street (`reverse_at`) for the cyborgs' surge and turn, from low in the street.
-@export var street_from: Vector3 = Vector3(0.8, 1.6, 3.6)
-@export var street_to: Vector3 = Vector3(0.8, 1.9, 6.0)
-@export var street_look_from: Vector3 = Vector3(0.0, 2.6, 14.0)
-@export var street_look_to: Vector3 = Vector3(0.0, 3.0, 22.0)
+@export var street_from: Vector3 = Vector3(0.8, 1.6, -1.5)
+@export var street_to: Vector3 = Vector3(0.8, 1.9, 1.0)
+@export var street_look_from: Vector3 = Vector3(0.0, 2.6, 12.0)
+@export var street_look_to: Vector3 = Vector3(0.0, 3.0, 20.0)
 @export_range(15.0, 80.0, 0.5, "suffix:°") var street_fov: float = 46.0
 ## The last shot (`card_at`), low behind the chase looking down the street at the cyborgs running for the Head, under the
 ## title card.

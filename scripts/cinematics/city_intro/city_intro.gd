@@ -244,12 +244,14 @@ func _runner(t: CineTimeline) -> void:
 	# The stomp, and the bounce on over the second cyborg, which comes toward them: the hop is mirrored about it, so its
 	# top is over the cyborg.
 	var hop: float = n.hop_seconds
-	var mid1: float = stomp + hop * 0.5
+	var go: float = stomp + n.stomp_hold
+	r.at(go, tpv(landing))
+	var mid1: float = go + hop * 0.5
 	var over1: Vector3 = cyborg_at(1, mid1)
 	var land1 := Vector3(over1.x + 0.3, 0.0, 2.0 * over1.z - landing.z)
-	_arc(r, stomp, landing, stomp + hop, land1, top + n.hop_clearance - (landing.y + land1.y) * 0.5, -1.0, &"run")
+	_arc(r, go, landing, go + hop, land1, top + n.hop_clearance - (landing.y + land1.y) * 0.5, -1.0, &"run")
 	# A stride or two, and the next hop, over the fifth.
-	var take2: float = stomp + hop + n.stride_seconds
+	var take2: float = go + hop + n.stride_seconds
 	var from2 := Vector3(land1.x + 0.3, 0.0, land1.z + n.run_speed * n.stride_seconds)
 	r.at(take2, tpv(from2))
 	var mid2: float = take2 + hop * 0.5
@@ -383,8 +385,8 @@ func _events(t: CineTimeline) -> void:
 	t.sound(n.stomp_at, &"stomp")
 	t.effect(n.stomp_at, CineEvent.SHAKE, 0.25, 0.08)
 	t.sound(n.stomp_at + 0.04, &"enemy_death", -2.0)
-	t.sound(n.stomp_at + 0.12, &"jump", -4.0)
-	t.sound(n.stomp_at + n.hop_seconds, &"land", -4.0)
+	t.sound(n.stomp_at + n.stomp_hold, &"jump", -4.0)
+	t.sound(n.stomp_at + n.stomp_hold + n.hop_seconds, &"land", -4.0)
 	t.sound(hop_times[1] + 0.02, &"jump", -4.0)
 	t.sound(hop_times[1] + n.hop_seconds, &"land", -4.0)
 	# The Head: startled, then angry, then it yells; the yell goes through the feed.
