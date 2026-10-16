@@ -54,7 +54,11 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
   its alcove (3 to 16% before; `test_gilded_sentinel`). A decorative-mesh-only gold albedo lift, without emissive glow,
   keeps guards discernible from the runner camera. Pedestals and recess sills stay at or above the
   floor, and every pose stays behind the wall face. `GoldenSkin.statue_spots()` lists them. Their meshes are scenery only;
-  live Sentinel niche positions and hitboxes are unchanged (the niche is shallower: `niche_depth` 0.4 m).
+  the live Sentinel's niche is not: it is shallower (`niche_depth` 0.4 m) and wider (`niche_width` 2.0 m, from
+  1.8 m), so `in_chunk` in `gilded_sentinel_rules.gd` (`niche_width / 2 + CHUNK_MARGIN`) moves a Sentinel by up to 0.10 m in
+  about 26% of random-seed Golden 2 and 3 builds, and its solid `body` and `top` hitboxes went from 0.68 m to
+  0.30 m deep behind the face (`niche_depth - 0.1`); its cut's hitboxes (the wall band and the lane) and marks are
+  unchanged.
 - *Ceilings from their lanes (task B3).* `GoldenCeilings` builds a golden bridge (a coffered underside,
   a marble face with the emblem's crest, water off some into gilded troughs), a gallery of golden arches
   (only across every lane) or a hover-yacht from the ceiling's collision box and lane seams; over fewer

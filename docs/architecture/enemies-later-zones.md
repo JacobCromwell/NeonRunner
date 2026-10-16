@@ -121,7 +121,7 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
 - **In its niche.** A wall enemy (`side`), standing in a niche set into the wall at wall-run height: a
   2.6 m statue standing out from the wall would block a wall run at all of its heights, so the statue (the
   Golden Zone's kit, `GoldenStatue`, at `statue_scale`) stands in the recess with its front
-  `statue_inset` (0.02 m) behind the face, as a shallow relief (task K2, below). Nothing of it reaches over the
+  `statue_inset` (0.02 m; 0.008 m once the relief squashes it, task K2, below) behind the face. Nothing of it reaches over the
   wall-run path (a wall runner's body lies along the face); only its swing does. The Golden Zone's skins open the
   niche (Zone skins: the statue kit's `recess()`, `GoldenSkin.note_wall_enemies`); in any other skin (quick
   play) it stands in front of the wall in the kit's `niche()` as a review stand-in, its hitboxes the same
@@ -150,18 +150,22 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
     edge of its opening: a point `d` behind the face shows through it `d * (distance along the street / the runner's
     distance from the wall)` further toward the runner, a ratio of 3.2 at 20 m on five lanes (12 m on three), so
     from there only 44% of its width showed. The statue is now a high relief: squashed along the wall's normal to
-    `statue_relief` (0.4: 0.27 m deep), about the face, so its front stays `statue_inset` behind it, in a niche
+    `statue_relief` (0.4: 0.27 m deep), about the face, so its front stays `statue_inset` times the relief (0.008 m)
+    behind it (the decorative statues' fronts stand `statue_base_inset`, 0.02 m, behind it), in a niche
     `niche_depth` 0.4 m deep and `niche_width` 2.0 m wide (the decorative alcoves'; 89% of the statue shows from 20 m
     on five lanes, `test_gilded_sentinel` measures it). **Nothing is in front of the face** (the suite checks every
     vertex of the live statue and the decorative ones), so the wall run, a wall runner's body (it lies along the
-    face) and the runner's side clearance are as they were; the solid `body` hitbox, still behind the face, is
-    shallower with the niche (`niche_depth - 0.1`), where nothing in play reaches. Only in the Golden Zone's skins
+    face) and the runner's side clearance are as they were; the solid `body` and `top` hitboxes, still behind the
+    face, are shallower with the niche (`niche_depth - 0.1`: 0.68 m to 0.30 m deep), where nothing in play reaches.
+    The wider niche moves a Sentinel by up to 0.10 m in the builds where `in_chunk` keeps its niche inside a track
+    chunk (`niche_width / 2 + CHUNK_MARGIN`, about 26% of random-seed Golden 2 and 3 builds). Only in the Golden Zone's skins
     (the review stand-in in other skins is the whole statue). The relief is squashed by the statue's node (`Statue`'s
     transform, `_set_relief`), so the baked frames are shared and unchanged. **The swing steps out**: as it draws its
     halberd back the statue un-squashes about the face to `statue_swing_relief` (0.7) and goes back as it recovers
-    (visual only: the swing's cut, hitboxes, marks and slash are the same), so its swing reaches about 0.5 m out of the
-    face, over the wall-run path as a swing always did (0.78 m at its fullest before K2). The decorative statues have
-    the same relief (`GoldenSkin.decorative_statue_basis`, from `GildedSentinel.statue_relief()`; Zone skins).
+    (visual only: the swing's cut, hitboxes, marks and slash are the same), so its halberd still comes out of the face
+    over the wall-run path as a swing always did: about 0.71 m at most (1.22 m at the wind-up's peak and 1.01 m in the
+    swing before K2; the 0.54 and 0.78 m of the raised end pose are not its fullest reach). The decorative statues
+    have the same relief (`GoldenSkin.decorative_statue_basis`, from `GildedSentinel.statue_relief()`; Zone skins).
   - *Lit, not black, every niche alike.* `GoldenStatue.recess()` draws the inside of every statue niche, a live
     Sentinel's and the decorative alcoves' (outdoor facades and the Palace), in warm bronze stone
     (`LIT_BACK`, `LIT_SIDES` for the surface seen through the opening, `LIT_CEILING`): plain lit surfaces,

@@ -31,7 +31,11 @@ chunk's end, the reaction checks (a floor runner's lane change and a wall runner
 grind as long as the warning, the Golden skins opening the niche and leaving out a decorative alcove that
 would overlap it,
 decorative statues on
-recessed wall-base mounts, its attack window covering its floor, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
+recessed wall-base mounts, the statues as a relief on the wall face (K2: the live statue and every decorative
+one in both Golden skins have the live relief, nothing of any stands in front of the face, each is within the
+skin's inset of it in a shallow niche that holds it, and from the 20 m view of a 5-lane street 65% or more of
+its width shows through its opening, the live one's steps out to its swing relief and back with its hitboxes
+unchanged), its attack window covering its floor, its placement rules on hand-built layouts at 3, 5 and 6 lanes, the wall fences keeping off
 it, and Golden 2 and the Palace's real layouts (its rules, `LayoutChecks.check_layout`, the introduction,
 the same build twice). `test_ceilings` covers narrow
 ceilings (B3) from the layout to the screen: the

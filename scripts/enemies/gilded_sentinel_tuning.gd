@@ -47,15 +47,16 @@ extends EnemyTuning
 ## live one is no different from them.
 @export_range(0.2, 1.0, 0.01) var statue_relief: float = 0.4
 ## DESIGN-TBD (docs/questions/k2.md): its relief while it draws its halberd back, holds and swings (a share of the
-## statue's full depth, never less than statue_relief): it steps out of the wall as it winds up, so the swing reaches
-## out of its niche as it did before the relief (0.7: the halberd's reach out of the face, 0.78 m at its fullest
-## before K2, is about 0.5 m), and goes back into it as it recovers. Visual only, behind the face (only the swing's
-## halberd, as before, comes out over the wall-run path: the cut's hitboxes and marks are the same).
+## statue's full depth, never less than statue_relief): it steps out of the wall as it winds up, so the swing still
+## reaches out of its niche (0.7: the halberd comes at most about 0.71 m out of the face; before K2 it came 1.22 m
+## at the wind-up's peak and 1.01 m in the swing), and goes back into it as it recovers. Visual only (only the
+## swing's halberd, as before, comes out over the wall-run path: the cut's hitboxes and marks are the same).
 @export_range(0.2, 1.0, 0.01) var statue_swing_relief: float = 0.7
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 604): how far the front of the statue (its real outline at rest, not its
-## bounding box) stands behind the wall face, before the relief squashes it: almost flush, 0.02 m. Never in front
-## of the face: a statue there would block a wall run (a wall runner's body lies along it), which would be a
-## design change.
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 604, superseded by task K2: the owner found the statue still too far
+## back, so the niche widened to 2.0 m and the statue became a relief, docs/questions/k2.md): how far the front of
+## the statue (its real outline at rest, not its bounding box) stands behind the wall face, before the relief squashes
+## it: almost flush, 0.02 m (statue_inset * statue_relief = 0.008 m as it stands). Never in front of the face: a
+## statue there would block a wall run (a wall runner's body lies along it), which would be a design change.
 @export_range(0.0, 0.3, 0.01, "suffix:m") var statue_inset: float = 0.02
 ## DESIGN-TBD: how far it turns from the street toward the approaching runner (radians; the
 ## decorative statues on the ledges turn the same way, GoldenFacades.STATUE_TURN).

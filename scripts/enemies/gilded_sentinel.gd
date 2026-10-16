@@ -2,9 +2,9 @@ class_name GildedSentinel
 extends Enemy
 ## A Gilded Sentinel (GDD §9.11), the Golden Zone's live statue: a golden guardian with a halberd (the
 ## zone's statue kit, GoldenStatue) standing in a niche at wall-run height, its eyes glowing red. The
-## decorative statues stand only on the ledges far above (GoldenSkin.statue_min_height), so a statue at
-## wall-run height is always a live one (safe things look safe). Numbers: data/enemies/gilded_sentinel.tres
-## (GildedSentinelTuning); DESIGN-TBD, docs/questions/c4.md.
+## decorative statues stand in alcoves at the wall base, also at wall-run height (GDD §9.11, owner's request,
+## October 2026): only the red eyes and the warning tell a live one apart (it is the decorative guard at rest).
+## Numbers: data/enemies/gilded_sentinel.tres (GildedSentinelTuning); DESIGN-TBD, docs/questions/c4.md.
 ## - Where: a wall enemy (`side`, not a lane). Its niche goes into the wall, and the statue stands in it
 ##   with its front just behind the wall face, so nothing of it reaches out over the wall-run path (a
 ##   wall runner's body lies along the wall face): only its swing does. The Golden Zone's skins open the
@@ -239,8 +239,8 @@ func _build_statue() -> void:
 	var reach: Vector2 = reach_out(rest, turn, side)
 	var depth: float = tune.statue_inset + reach.x if opens else -(reach.y + 0.04)
 	# A relief (task K2): the statue is squashed along the wall's normal (the node's X: a wall enemy's node is
-	# not turned) about the wall face, so its front stays statue_inset behind the face and the rest of it is
-	# closer to the face, where a runner far down the street sees it. Only in the Golden Zone's skins, whose
+	# not turned) about the wall face, so its front stays statue_inset * the relief (0.008 m) behind the face
+	# and the rest of it is closer to the face, where a runner far down the street sees it. Only in the Golden Zone's skins, whose
 	# walls open the niche; the review stand-in in front of the wall in any other skin is the whole statue.
 	_turn = turn
 	_depth = depth
