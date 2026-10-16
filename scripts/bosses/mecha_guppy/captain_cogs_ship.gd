@@ -13,8 +13,8 @@ extends Node3D
 ## MechaGuppyTuning.level_seconds to its station alongside the top, on the left (LEVEL_SIDE), level_ahead ahead of the
 ## runner, its keel level_keel over their deck (its gun deck at their height, the captain on its stern castle just above
 ## them), its near side level_out past the roof's eaves, swaying no more across the lanes, only bobbing. There it fires
-## phase 3's rounds from its starboard cannons, the ones facing the top (fire(): a flash and smoke at each muzzle, the
-## hull's recoil, the captain's arm swung over as the order; cannon_world()).
+## phase 3's bombs from the captain's swivel gun on the stern castle's rail facing the top (task E5e-g; fire_swivel(): a
+## flash and smoke at its muzzle, a little recoil, the captain's arm swung over; swivel_world()), level_lead() ahead.
 ## The defeat (MechaGuppyLeap): swallow() is the gulp: the stern half and the captain vanish into Mecha Guppy's jaws, and
 ## the bow half (the hull's other mesh, CaptainCogsModel.SPLIT_Z) breaks away, tumbling down into the sea with the cog
 ## wheels, rubble flying from the break.
@@ -38,6 +38,9 @@ const WHEEL_SPIN: float = 1.4
 ## Phase 3: the side of the top the ship comes level on (-1 the left; the waves rise on the other side), how far its
 ## sway across the lanes shrinks there (it holds its broadside steady), and a cannon's recoil (metres, seconds).
 const LEVEL_SIDE: int = -1
+## Its level station's lead grows this much for each metre a wider top's wall line stands past a three-lane top's
+## (level_lead).
+const LEVEL_PER_WALL: float = 0.8
 const LEVEL_SWAY: float = 0.0
 const RECOIL: float = 0.35
 const RECOIL_SECONDS: float = 0.5
@@ -130,7 +133,7 @@ func advance(delta: float) -> void:
 	_recoil = maxf(_recoil - delta, 0.0)
 	var kick: float = RECOIL * sin(clampf(_recoil / RECOIL_SECONDS, 0.0, 1.0) * PI) * float(LEVEL_SIDE)
 	global_transform = Transform3D(Basis(Vector3.BACK, roll),
-		Vector3(x + kick, _y + bob, TrackGeometry.world_z(p.distance + lerpf(tuning.ship_ahead, tuning.level_ahead, k))))
+		Vector3(x + kick, _y + bob, TrackGeometry.world_z(p.distance + lerpf(tuning.ship_ahead, level_lead(), k))))
 	for i: int in _wheels.size():
 		_wheels[i].rotation.x = _t * WHEEL_SPIN * (1.0 if i == 0 else -1.0)
 	_pose(delta)
@@ -158,14 +161,39 @@ func cannon_world(k: int) -> Vector3:
 	return global_transform * CaptainCogsModel.cannon_at(-LEVEL_SIDE, k)
 
 
-## Fires a broadside of `count` cannons (phase 3's rounds; MechaGuppyRounds starts each ball at cannon_world): a flash and
-## smoke at each muzzle, the hull's recoil, the captain swinging an arm over as the order (as a throw).
-func fire(count: int) -> void:
+## The captain's swivel gun's muzzle (world space) on the side facing the top (phase 3's bombs: MechaGuppyBarrage).
+func swivel_world() -> Vector3:
+	return global_transform * CaptainCogsModel.swivel_at(-LEVEL_SIDE)
+
+
+## The captain fires his swivel gun (phase 3's bombs): a flash and smoke at its muzzle, a little recoil, his arm swung
+## over as he fires (as a throw).
+func fire_swivel() -> void:
+	broadsides += 1
+	_recoil = RECOIL_SECONDS * 0.5
+	_throw_t = 0.0
+	var out := Vector3(float(-LEVEL_SIDE), 0.0, 0.0)
+	var at: Vector3 = swivel_world()
+	world.effects.burst(at + out * 0.3, FLASH_COLOR, 8, 0.35)
+	world.effects.debris(at + out * 0.6, SMOKE_COLOR, 4, 0.6)
+
+
+## How far ahead of the runner its middle keeps at its level station: level_ahead, and on a wider top LEVEL_PER_WALL
+## more for each metre its wall line stands past a three-lane top's, so the captain stays on the screen's left from the
+## middle lanes (task E5e-g: the owner's Captain Cogs on the left of the screen, Mecha Guppy on the right).
+func level_lead() -> float:
+	var three: float = world.geo.lane_width * 1.5
+	return tuning.level_ahead + LEVEL_PER_WALL * maxf(world.geo.wall_x() - three, 0.0)
+
+
+## Fires `count` cannons from cannon `first` on (phase 3's bombs; MechaGuppyBarrage starts each bomb at cannon_world): a
+## flash and smoke at each muzzle, the hull's recoil, the captain swinging an arm over as the order (as a throw).
+func fire(count: int, first: int = 0) -> void:
 	broadsides += 1
 	_recoil = RECOIL_SECONDS
 	_throw_t = 0.0
 	var out := Vector3(float(-LEVEL_SIDE), 0.0, 0.0)
-	for k: int in mini(count, CaptainCogsModel.CANNONS):
+	for k: int in range(clampi(first, 0, CaptainCogsModel.CANNONS - 1), mini(first + count, CaptainCogsModel.CANNONS)):
 		var at: Vector3 = cannon_world(k)
 		world.effects.burst(at + out * 0.4, FLASH_COLOR, 10, 0.45)
 		world.effects.debris(at + out * 0.8, SMOKE_COLOR, 5, 0.8)

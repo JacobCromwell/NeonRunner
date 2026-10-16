@@ -103,6 +103,9 @@ class Roof:
 	var notch_from: float = FAR
 	## Mecha Guppy's floor bite on it (task E5e-f), or null.
 	var bite: MechaGuppyCrescent = null
+	## Phase 3's floor bites on the top (task E5e-g: one each time Mecha Guppy comes back up after a dive), front to back,
+	## never overlapping; empty on every other roof.
+	var top_bites: Array[MechaGuppyCrescent] = []
 
 	func start_in(lane: int) -> float:
 		return starts[clampi(lane, 0, starts.size() - 1)]
@@ -140,12 +143,26 @@ class Roof:
 	func covers(lane: int, d: float) -> bool:
 		if lane < 0 or lane >= starts.size() or d < starts[lane] or d >= end_in(lane):
 			return false
-		return bite == null or bite.skipped or not (bite.warned or bite.eaten) or not bite.takes(lane, d)
+		var b: MechaGuppyCrescent = bite_at(d)
+		return b == null or b.skipped or not (b.warned or b.eaten) or not b.takes(lane, d)
 
 	## True if it's under `lane` at `d` whatever its floor bite does, warned or not yet (the pickups and the grapple's save
 	## keep off where it will be).
 	func keeps(lane: int, d: float) -> bool:
-		return covers(lane, d) and (bite == null or bite.skipped or not bite.takes(lane, d))
+		var b: MechaGuppyCrescent = bite_at(d)
+		return covers(lane, d) and (b == null or b.skipped or not b.takes(lane, d))
+
+	## Its floor bite over track distance `d` (the climb's, or one of the top's), or null.
+	func bite_at(d: float) -> MechaGuppyCrescent:
+		return bite_over(d, d)
+
+	## Its floor bite reaching into track distances [`from`, `to`] (the climb's, or the first of the top's that does), or
+	## the climb's with none (null without one).
+	func bite_over(from: float, to: float) -> MechaGuppyCrescent:
+		for b: MechaGuppyCrescent in top_bites:
+			if b.from <= to and b.to >= from:
+				return b
+		return bite
 
 
 ## One step up: roof `index` to roof index + 1.
@@ -490,6 +507,24 @@ func _plan_bite(roof: Roof, into: Step, phase: int) -> MechaGuppyCrescent:
 	return bite
 
 
+## Phase 3's floor bite on the top (task E5e-g; MechaGuppyTop), its warning starting now with the runner at track distance
+## `d`: from side `side`, full width or leaving one lane as `full` says, sized as the climb's are, its front where its warning
+## gets every promise of the climb's (bite_warning_seconds: a reaction and every switch to the lane it leaves, or the
+## shark's rise and lunge before its snap). Added to the top's bites (Roof.top_bites) and returned; null before the top.
+func plan_top_bite(d: float, full: bool, side: int) -> MechaGuppyCrescent:
+	if not top_planned():
+		return null
+	var roof: Roof = roofs[-1]
+	var length: float = bite_length(full)
+	var front: float = maxf(d + bite_warning_seconds(full, length) * speed, roof.full_from() + LAND_CLEAR)
+	var bite := MechaGuppyCrescent.make(roof.index, side, front, length, full, tuning.full_through, _geo,
+		Vector2(movement.foot_half_width, movement.foot_half_depth))
+	bite.snap_at = front - snap_lead(full, length)
+	bite.warn_at = d
+	roof.top_bites.append(bite)
+	return bite
+
+
 ## The latest a floor bite's warning may begin (track distance) and still be fair: Mecha Guppy's rise and lunge before its
 ## snap, and a reaction and the crossing before the bite from where the runner can switch.
 func bite_latest(bite: MechaGuppyCrescent) -> float:
@@ -543,6 +578,7 @@ func truncate(index: int) -> void:
 	roofs[index].notch_lane = -1
 	roofs[index].notch_from = FAR
 	roofs[index].bite = null
+	roofs[index].top_bites.clear()
 
 
 ## Plans steps while the climb's furthest planned piece is short of track distance `until` (phase `phase`; the top

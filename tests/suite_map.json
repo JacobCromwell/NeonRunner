@@ -31,7 +31,8 @@
     "gilded_sentinel", "golden_convergence", "golden_skin", "hostile_takeover", "hover_truck", "octodog", "screech",
     "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache", "volleyball",
-    "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite", "zone_shaders"
+    "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite", "mecha_guppy_bite_water",
+    "zone_shaders"
   ],
   "rules": [
     {"match": "scripts/world/level_generator.gd", "tier": "full"},

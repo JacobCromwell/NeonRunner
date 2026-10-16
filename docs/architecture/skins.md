@@ -389,7 +389,8 @@ value, the one thing a new zone's skin sets for its enemies:
 | Golden Zone (D6a) | `&"golden"` | the ceremonial enforcer | clean |
 | Beach (D10) | `&"casino"` | the Casino Mob Enforcer | clean |
 
-A skin's `cyborg_draw_scale` (1.0; the Neon City's 1.2, task I2) draws that zone's cyborgs bigger without touching
+A skin's `cyborg_draw_scale` (the class default 1.0; 1.2 in every zone skin and boss-arena skin: the Neon City in task I2,
+the rest in J1; DESIGN-TBD item 829) draws that zone's cyborgs bigger without touching
 a hitbox (`docs/architecture/enemies.md`, the cyborgs' look).
 
 The Barnacle Turret wears its furry creature look on `&"scavenger"` and `&"casino"` (Gangland, the

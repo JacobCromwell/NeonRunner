@@ -22,6 +22,7 @@ files = {
 "zone_6": "res://assets/music/Zone_6_View_from_the_Zenith.mp3",
 "casino_song": "res://assets/music/Zone_3_2_Casino_Midnight_at_the_atrium.mp3",
 "beach_song": "res://assets/music/Zone_Beach_Palms_at_Terminal_Speed.mp3",
+"beach_boss_song": "res://assets/music/Zone_Beach_Boss_Teeth_in_the_Surf.mp3",
 "boss_1": "res://assets/music/Boss_1_Apex_Combat_Maneuver.mp3"
 }
 volume_db = {
@@ -42,6 +43,7 @@ volume_db = {
 "zone_6": -10.5,
 "casino_song": -11.0,
 "beach_song": -11.0,
+"beach_boss_song": -11.0,
 "boss_1": -10.5
 }
 bpm = {
@@ -67,7 +69,8 @@ zone_tracks = {
 }
 boss_tracks = {
 "city_boss": "boss_1",
-"casino_boss": "casino_song"
+"casino_boss": "casino_song",
+"beach_boss": "beach_boss_song"
 }
 riff_tracks = {
 "zone_1": "city",

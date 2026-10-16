@@ -4,6 +4,7 @@
 
 [resource]
 script = ExtResource("1_skin")
+cyborg_draw_scale = 1.2
 enemy_variant = &"casino"
 bunting_height = 28.0
 overhang_min_height = 14.5

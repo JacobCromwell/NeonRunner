@@ -302,12 +302,13 @@ func eat_roof(index: int, cut: float) -> AABB:
 
 ## Mecha Guppy's floor bite on roof `index` snaps (MechaGuppyFloorBite): the chunk is gone. Its pieces that the bite
 ## crosses are built again with the crescent bitten out (_roof_piece; their look too), so the floor holds where its look
-## shows deck and nowhere in the gap. Returns the box bitten (world space) for its rubble, or an empty AABB.
-func eat_crescent(index: int) -> AABB:
+## shows deck and nowhere in the gap. `p_bite`: which of the top's bites (phase 3: Roof.top_bites); the roof's own by
+## default. Returns the box bitten (world space) for its rubble, or an empty AABB.
+func eat_crescent(index: int, p_bite: MechaGuppyCrescent = null) -> AABB:
 	if index <= 0 or index >= climb.roofs.size():
 		return AABB()
 	var roof: MechaGuppyClimb.Roof = climb.roofs[index]
-	var bite: MechaGuppyCrescent = roof.bite
+	var bite: MechaGuppyCrescent = p_bite if p_bite != null else roof.bite
 	if bite == null or bite.skipped:
 		return AABB()
 	bite.eaten = true
@@ -462,7 +463,7 @@ func _roof_piece(roof: MechaGuppyClimb.Roof, from: float, to: float, ended: bool
 	if notched:
 		lanes = Vector2i(1, lanes.y) if roof.notch_lane == 0 else Vector2i(0, lanes.y - 1)
 	var street: bool = roof.index == 0
-	var bite: MechaGuppyCrescent = roof.bite
+	var bite: MechaGuppyCrescent = roof.bite_over(from, to)
 	if bite != null and bite.eaten and not bite.skipped and not notched and from < bite.to - 0.01 and to > bite.from + 0.01:
 		var a: float = maxf(from, bite.from)
 		var b: float = minf(to, bite.to)
@@ -650,8 +651,8 @@ func save_spot(player: Player) -> Dictionary:
 		# A floor bite that leaves one lane, not yet snapped, ahead of where the save brings them down, too near to read it
 		# and cross from that lane to the one it leaves (task E5e-f; its review: counted from the lane the save would bring
 		# them down in, not the farthest): into that lane, as the save's pull moves them anyway. DESIGN-TBD
-		# (docs/OPEN_QUESTIONS.md item 818): the save near a bite.
-		var bite: MechaGuppyCrescent = roof.bite
+		# (docs/OPEN_QUESTIONS.md item 818): the save near a bite (on the top, its next one: task E5e-g).
+		var bite: MechaGuppyCrescent = roof.bite_over(land, INF)
 		if lane >= 0 and bite != null and not bite.skipped and not bite.eaten and not bite.full and land < bite.to \
 				and land > bite.from - save_crossing(bite, lane):
 			lane = bite.keep
@@ -738,7 +739,7 @@ func pickup_spot(lead: float) -> Dictionary:
 ## they grab it still clears the bite, as the climb's other promises hold dashing), short of where its gap reaches that
 ## lane; or past the bite. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 819): pickups near a bite.
 func clear_of_bite(roof: MechaGuppyClimb.Roof, lane: int, at: float) -> bool:
-	var bite: MechaGuppyCrescent = roof.bite
+	var bite: MechaGuppyCrescent = roof.bite_over(at - PICKUP_REACH - world.tuning.hurtbox_size.z, INF)
 	if bite == null or bite.skipped:
 		return true
 	var gap: Vector2 = bite.stretch(bite.near_w(lane))

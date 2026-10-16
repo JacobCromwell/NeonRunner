@@ -34,11 +34,14 @@ extends RefCounted
 ## last switch's press (or its reading, with none to make) to its hurtbox's front reaching the bite, less the switch;
 ## `jump_margin` the least its jumps cleared a full-width bite's stretch by, either end (seconds); `bites` what it met.
 ## With `floor_bites` off it ignores them, running on in its lane into the gap (the tests' fall).
-## Phase 3 (task E5e-c, MechaGuppyTop), on the top: it reads Captain Cogs' rounds by their red lines and the waves by
-## their swells, `dodge_reaction` late (the planner's own reaction): once a round's lines show, it switches to the nearest
-## lane they leave clear (the one toward the middle on a tie), and once a wave's swell is rising, it jumps as the surge
-## rushes in, JUMP_LEAD before it reaches it (mid-way through the time a jump clears its band); `top_jumps` and
-## `top_switches` count them. With `top_dodges` off it does neither (the tests' runner who stays put).
+## Phase 3 (tasks E5e-c and E5e-g, MechaGuppyTop), on the top: it reads Captain Cogs' bombs by their red lines and the
+## waves by their swells, `dodge_reaction` late (the planner's own reaction): a low bomb it jumps, timed so its feet are
+## over the bomb's hitbox for the middle of a jump's clear stretch as the bomb reaches its lane; under a high one it
+## slides, SLIDE_LEAD before the bomb reaches it; and once a wave's swell is rising, it jumps as the surge rushes in,
+## JUMP_LEAD before it reaches it (mid-way through the time a jump clears its band). Mecha Guppy's floor bites on the top
+## it reads as on the climb. `top_jumps` and `top_slides` count them, `bomb_margin` is the least a jump cleared a low
+## bomb's hitbox by in time, either side (seconds). With `top_dodges` off it does none of it (the tests' runner who
+## stays put; floor bites aside, which `floor_bites` governs).
 
 var boss: MechaGuppy
 ## Seconds after settling on a hut before it reads the lanes that lead up.
@@ -79,12 +82,15 @@ var baits: bool = true
 var baited: int = 0
 ## Tests: at this step it lures the bait, then stays in the notch's lane and runs off its edge (a fall) (-1: never).
 var stay_in_notch_at: int = -1
-## Phase 3: dodges the rounds and jumps the waves; the switches and jumps it made for them.
+## Phase 3: jumps the low bombs and the waves and slides under the high bombs; the jumps and slides it made for them.
 var top_dodges: bool = true
-var top_switches: int = 0
 var top_jumps: int = 0
-## Phase 3: the jump comes this long before a surge reaches the runner (seconds).
+var top_slides: int = 0
+var bomb_margin: float = INF
+## Phase 3: the jump comes this long before a surge reaches the runner (seconds); the slide this long before a high bomb
+## reaches it.
 const JUMP_LEAD: float = 0.3
+const SLIDE_LEAD: float = 0.25
 ## The floor bites: the least time to spare before one that leaves a lane, the least a jump cleared a full-width one by
 ## (seconds), and each one met: {roof, full, from (its lane as it read it), keep, slack, margin, lane (as it passed)}.
 var bite_slack: float = INF
@@ -111,15 +117,15 @@ var _lure_from: float = INF
 var _lured: int = -1
 ## When the volley's spots were last ahead of it (bomb clock).
 var _spots_seen: float = -INF
-## Phase 3: when each round's lines and each wave's swell were first seen (their clocks), and the waves jumped.
-var _rounds_seen: Dictionary = {}
+## Phase 3: the bombs and the waves it has dodged or jumped, and when each wave's swell was first seen (its clock).
+var _bombs_done: Dictionary = {}
 var _waves_seen: Dictionary = {}
 var _waves_jumped: Dictionary = {}
 ## The floor bite being read (its record in `bites`), and when the runner last got past one (bomb clock).
 var _bite: Dictionary = {}
 var _bite_passed: float = -INF
 ## The floor bite whose warning it has seen, and when it first saw it (the floor bite's clock).
-var _seen_roof: int = -1
+var _seen_bite: MechaGuppyCrescent = null
 var _seen_at: float = 0.0
 
 
@@ -382,14 +388,14 @@ func _floor_bite(p: Player, now: float) -> void:
 	# after.
 	if bite_seen_from_free and bite.roof >= 1 and p.distance < boss.climb.steps[bite.roof - 1].free_at:
 		return
-	if _seen_roof != bite.roof:
-		_seen_roof = bite.roof
+	if _seen_bite != bite:
+		_seen_bite = bite
 		_seen_at = fb.clock
 	if fb.clock - _seen_at < dodge_reaction - 0.0001:
 		return
-	if _bite.is_empty() or int(_bite["roof"]) != bite.roof:
+	if _bite.is_empty() or int(_bite["roof"]) != bite.roof or not is_equal_approx(float(_bite["at"]), bite.from):
 		_bite = {"roof": bite.roof, "full": bite.full, "from": p.lane, "keep": bite.keep, "slack": INF, "margin": INF,
-			"to": bite.to, "jumped": false, "lane": -1}
+			"to": bite.to, "at": bite.from, "jumped": false, "lane": -1}
 		bites.append(_bite)
 		if not bite.full and p.lane == bite.keep:
 			_bite_slack(p, bite, 0.0)
@@ -452,36 +458,39 @@ func _lane_end(p: Player, now: float) -> void:
 		_set_target(_inner(roof.notch_lane), "its lane ends ahead (the notch): out in time", now)
 
 
-## Phase 3 (see the header): out of a round's struck lanes, over a wave's surge, each a reaction after its warning shows.
+## Phase 3 (see the header): over a low bomb, under a high one, over a wave's surge, each a reaction after its warning
+## shows.
 func _top(p: Player, now: float) -> void:
 	var top: MechaGuppyTop = boss.top
 	if top == null or not top.started():
 		return
-	var rounds: MechaGuppyRounds = top.rounds
-	var struck: Dictionary = {}
-	for r: Dictionary in rounds.rounds:
-		if int(r["state"]) == MechaGuppyRounds.State.DONE or r.has("passed"):
+	var mt: MovementTuning = boss.world.tuning
+	for b: Dictionary in top.barrage.bombs:
+		var k: int = int(b["k"])
+		if _bombs_done.has(k) or int(b["state"]) == MechaGuppyBarrage.State.DONE or float(b["passed"]) >= 0.0 \
+				or top.barrage.clock - float(b["start"]) < dodge_reaction - 0.0001:
 			continue
-		var k: int = int(r["k"])
-		if not _rounds_seen.has(k):
-			_rounds_seen[k] = rounds.clock
-		if rounds.clock - float(_rounds_seen[k]) < dodge_reaction - 0.0001:
+		var coming: Array[Dictionary] = top.barrage.incoming(p.position.x)
+		if coming.is_empty():
 			continue
-		for lane: int in r["lanes"]:
-			struck[lane] = true
-	var aim: int = _target if _target >= 0 else p.lane
-	if struck.has(aim):
-		var best: int = -1
-		var middle: float = (boss.lane_count() - 1) * 0.5
-		for lane: int in boss.lane_count():
-			if struck.has(lane):
-				continue
-			if best < 0 or absi(lane - p.lane) < absi(best - p.lane) \
-					or (absi(lane - p.lane) == absi(best - p.lane) and absf(lane - middle) < absf(best - middle)):
-				best = lane
-		if best >= 0:
-			top_switches += absi(best - p.lane)
-			_set_target(best, "Captain Cogs' round: out of the lanes its red lines strike", now)
+		var at: float = float(coming[0]["at"])
+		if bool(b["high"]):
+			if at <= SLIDE_LEAD and p.grounded:
+				_bombs_done[k] = true
+				top_slides += 1
+				p.press(&"slide")
+				log.append({"t": boss.fight_time(), "action": &"slide", "why": "under a high bomb (%.2f s away)" % at})
+		else:
+			var band: Vector2 = MechaGuppyBarrage.hit_band(boss.tuning, false)
+			var clear: Vector2 = jump_clear(mt, band.y)
+			var lead: float = (clear.x + clear.y) * 0.5
+			if at <= lead and p.grounded:
+				_bombs_done[k] = true
+				top_jumps += 1
+				p.press(&"jump")
+				bomb_margin = minf(bomb_margin, minf(at - clear.x, clear.y - at))
+				log.append({"t": boss.fight_time(), "action": &"jump", "why": "over a low bomb (%.2f s away)" % at})
+		break
 	var waves: MechaGuppyWaves = top.waves
 	for w: Dictionary in waves.waves:
 		var k: int = int(w["k"])
@@ -500,6 +509,18 @@ func _top(p: Player, now: float) -> void:
 			top_jumps += 1
 			p.press(&"jump")
 			log.append({"t": boss.fight_time(), "action": &"jump", "why": "a wave's surge rushing in (%.2f s away)" % time_to})
+
+
+## When a jump from the floor has the runner's feet over `height` (seconds after the press): Vector2(from, to), on `mt`'s
+## movement (its rise, then its faster fall).
+static func jump_clear(mt: MovementTuning, height: float) -> Vector2:
+	var v: float = mt.jump_velocity()
+	var g: float = mt.gravity()
+	var h: float = minf(height, mt.jump_height - 0.001)
+	var up: float = (v - sqrt(maxf(v * v - 2.0 * g * h, 0.0))) / g
+	var apex: float = v / g
+	var down: float = sqrt(2.0 * (mt.jump_height - h) / (g * mt.fall_gravity_multiplier))
+	return Vector2(up, apex + down)
 
 
 ## True while a spot of Captain Cogs' lies ahead of it (it keeps to the way through rather than the worst case's lane).

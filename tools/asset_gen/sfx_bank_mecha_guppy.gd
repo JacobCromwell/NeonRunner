@@ -16,17 +16,18 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ##                 snap and a floor bite's)
 ##   guppy_clang   a bomb in its jaws (a hit): the bomb's crack and boom, a great steel clang ringing out, sparks
 ##                 crackling, the shark's machinery groaning
-## Phase 3 and the defeat (task E5e-c):
-##   cogs_charge   the rounds' warning (with their red lines), as long as MechaGuppyTuning.round_warning (regenerate it
-##                 when that changes): the cannons charging, a brass capacitor whine rising with a quickening tremolo, a
+## Phase 3 and the defeat (tasks E5e-c and E5e-g):
+##   cogs_charge   a bomb's warning (with its red line), as long as MechaGuppyTuning.bomb_warning (regenerate it when
+##                 that changes): the captain's swivel gun charging, a brass capacitor whine rising with a quickening tremolo, a
 ##                 fuse fizzing, the gunners' clacks, ending on the firing lock
-##   cogs_cannon   the broadside: a cannon's crack and boom, a deep thump, the balls' rush
+##   cogs_cannon   the shot: a cannon's crack and boom, a deep thump, the bomb's rush
 ##   wave_swell    a wave's warning (with its rising swell), as long as MechaGuppyTuning.wave_warning (regenerate it when
 ##                 that changes): water rushing up into a swell, a deep roar building under it to the crash
 ##   wave_crash    the wave crashing over the deck: a burst of water, a heavy thump, the surge hissing on
 ##   guppy_leap    Mecha Guppy bursting up out of the sea under the ship: water exploding upward, machinery roaring up, a
 ##                 rising whine, plates clanking
 ##   guppy_gulp    its jaws snapping shut on the ship: a huge steel clank, timber crunching, a deep gulp, a groan
+##   guppy_roar    (task E5e-g) a bomb hits it on the top: a short mechanical growl under the clang
 ##   guppy_swim    it falls back into the sea and swims away: a great splash, then churning water and machinery fading
 
 
@@ -41,6 +42,7 @@ func sounds() -> Dictionary:
 		"guppy_floor_warn": _floor_warn,
 		"guppy_bite": _bite,
 		"guppy_clang": _clang,
+		"guppy_roar": _roar,
 		"cogs_charge": _charge,
 		"cogs_cannon": _cannon,
 		"wave_swell": _swell,
@@ -186,6 +188,31 @@ func _clang() -> PackedFloat32Array:
 	return b
 
 
+## Mecha Guppy's roar as a bomb hits it in phase 3 (task E5e-g, the owner: "a little roar whenever it gets hit by a
+## bomb"), under the clang: a short mechanical growl, two detuned saws sliding down from 120 to 62 Hz through a throaty
+## band, driven hard, with a rasp of air and a steel screech on top that carries on a phone's speaker.
+func _roar() -> PackedFloat32Array:
+	var rng := _rng(2105)
+	var d: float = 0.85
+	var b := DSP.buffer(d)
+	var growl := DSP.osc(d, func(u: float) -> float: return DSP.sweep(120.0, 62.0, u), &"saw")
+	DSP.mix(growl, DSP.osc(d, func(u: float) -> float: return DSP.sweep(127.0, 66.0, u), &"saw"), 0.0, 0.8)
+	DSP.filter(growl, &"bandpass", 380.0, 0.8)
+	DSP.drive(growl, 3.2)
+	DSP.adsr(growl, 0.06, 0.15, 0.7, 0.35)
+	DSP.mix(b, growl, 0.0, 0.9)
+	var rasp := DSP.noise(d, rng)
+	DSP.filter_sweep(rasp, &"bandpass", 1400.0, 500.0, 1.2)
+	DSP.adsr(rasp, 0.05, 0.2, 0.5, 0.3)
+	DSP.mix(b, rasp, 0.0, 0.45)
+	var screech := DSP.osc(0.5, func(u: float) -> float: return DSP.sweep(900.0, 620.0, u), &"square")
+	DSP.filter(screech, &"bandpass", 800.0, 1.2)
+	DSP.adsr(screech, 0.04, 0.1, 0.6, 0.2)
+	DSP.mix(b, screech, 0.02, 0.3)
+	DSP.crush(b, 10, 18000.0)
+	return b
+
+
 # --- Phase 3 and the defeat (task E5e-c) ------------------------------------------------------------
 
 ## A phase 3 timing from the tuning (seconds), or `fallback`.
@@ -194,11 +221,11 @@ func _tuned(field: StringName, fallback: float) -> float:
 	return float(t.get(field)) if t != null else fallback
 
 
-## The cannons charging, as long as round_warning: a capacitor whine rising from 160 to 1300 Hz under a tremolo that
+## The gun charging, as long as bomb_warning: a capacitor whine rising from 160 to 1300 Hz under a tremolo that
 ## quickens (it carries on a phone's speaker), a fuse fizzing, three clacks as the gunners load, and the firing lock.
 func _charge() -> PackedFloat32Array:
 	var rng := _rng(2111)
-	var d: float = _tuned(&"round_warning", 0.8)
+	var d: float = _tuned(&"bomb_warning", 0.8)
 	var b := DSP.buffer(d)
 	var whine := DSP.osc(d, func(u: float) -> float: return DSP.sweep(160.0, 1300.0, u * u), &"saw")
 	DSP.filter(whine, &"bandpass", 900.0, 0.9)

@@ -320,18 +320,25 @@ func _test_hitboxes_inside() -> void:
 	await sim.free_world(w)
 
 
-## The owner's October 14 request (GDD §9.2, "Drawn 20% bigger"): the Neon City draws its cyborgs 1.2 times
-## bigger (ZoneSkin.cyborg_draw_scale), the other zones as before, and nothing gameplay reads changes: every
+## The owner's October 14 request (GDD §9.2, "Drawn 20% bigger"; the Neon City in task I2, every other zone in
+## J1): every zone draws its cyborgs 1.2 times bigger (ZoneSkin.cyborg_draw_scale, in every zone skin and every
+## boss-arena skin), and nothing gameplay reads changes: every
 ## hitbox, where the gun's bolts start, where a floor cyborg's feet and a window cyborg's waist are.
 func _test_draw_scale() -> void:
 	var city := load("res://data/skins/city_skin.tres") as ZoneSkin
 	check(city != null and is_equal_approx(city.cyborg_draw_scale, 1.2), "the Neon City draws its cyborgs 1.2 times bigger")
-	var dir := DirAccess.open("res://data/skins")
-	for file: String in dir.get_files():
-		if file.ends_with("_skin.tres") and file != "city_skin.tres":
-			var other := load("res://data/skins/" + file) as ZoneSkin
-			check(other != null and is_equal_approx(other.cyborg_draw_scale, 1.0),
-				"%s: the other zones' cyborgs are drawn at their own size" % file)
+	var skins_found: int = 0
+	for folder: String in ["res://data/skins/", "res://data/bosses/"]:
+		for file: String in DirAccess.open(folder).get_files():
+			if file.ends_with("_skin.tres") and file != "city_skin.tres":
+				var other := load(folder + file) as ZoneSkin
+				skins_found += 1
+				check(other != null and is_equal_approx(other.cyborg_draw_scale, 1.2),
+					"%s%s: every zone (and boss arena) draws its cyborgs 1.2 times bigger" % [folder, file])
+	check(skins_found >= 17, "every zone skin and boss-arena skin was checked (%d)" % skins_found)
+	var boss_city := load("res://data/bosses/city_boss_skin.tres") as ZoneSkin
+	check(boss_city != null and is_equal_approx(boss_city.cyborg_draw_scale, city.cyborg_draw_scale),
+		"the Floating Head's arena draws the cyborgs it drops as big as the City's street does")
 	check(is_equal_approx(CyborgSuit.draw_scale(null), 1.0), "without a skin a cyborg is drawn at its own size")
 	var w: RunWorld = sim.build_world(RunSim.layout(5, 400.0))
 	var drawn: Dictionary = {}

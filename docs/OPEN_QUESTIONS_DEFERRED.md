@@ -4386,9 +4386,9 @@ runner has to jump the gap. Everything below is a placeholder (DESIGN-TBD in `Me
   `<script>` block restores the switch.
 
 **I2, the cyborgs drawn bigger** (from `docs/questions/i2.md`)
-829. **Should the other zones draw their cyborgs bigger too?** (GDD §9.2, "Drawn 20% bigger".) Placeholder: the Neon City
-  only, `ZoneSkin.cyborg_draw_scale` 1.2 in `data/skins/city_skin.tres`, 1.0 in every other skin (marked `DESIGN-TBD`);
-  one number per skin. The model only: hitboxes, bolts and floor use are unchanged. A window cyborg drawn bigger
+829. **Should the other zones draw their cyborgs bigger too?** (GDD §9.2, "Drawn 20% bigger".) Answered by the owner's
+  later request (task J1): yes, 1.2 in every zone. Placeholder as built: `ZoneSkin.cyborg_draw_scale` 1.2 in every skin
+  in `data/skins/` and `data/bosses/` (marked `DESIGN-TBD`); one number per skin, so a zone can be tuned apart. The model only: hitboxes, bolts and floor use are unchanged. A window cyborg drawn bigger
   reaches further above its window frame, so check each zone's look if it follows.
 
 **I1, shader cleanup in every zone** (from `docs/questions/i1.md`; both technical, no GDD section)
