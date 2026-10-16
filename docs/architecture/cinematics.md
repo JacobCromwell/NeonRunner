@@ -38,6 +38,7 @@ never ends, and a level never starts, unattended.
 | `sewer_swarm_intro/` (`SewerSwarmIntro`, `SewerSwarmIntroTuning`, `SwarmIntroScreeches`, `SwarmIntroSwarm`, `swarm_intro_glint.gdshader`), `scenes/cinematics/sewer_swarm_intro.tscn`, `data/cinematics/sewer_swarm_intro.tres` | Gangland's boss intro, the owner's story beat (below) |
 | `gangland_outro/` (`GanglandOutro`, `GanglandOutroTuning`, `GanglandOutroSet`, `SportsCarModel`, `sports_car.gdshader`, `CarPassenger`), `scenes/cinematics/gangland_outro.tscn`, `data/cinematics/gangland_outro_tuning.tres` | Gangland's outro, the owner's beats (below), its props, the sports car and the screech on its passenger seat; its sounds in `tools/asset_gen/sfx_bank_gangland_outro.gd` |
 | `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
+| `marketplace_intro/` (`MarketplaceIntro`, `MarketplaceIntroTuning`, `MarketplaceIntroSet`, `MarketplaceIntroVendor`, `marketplace_intro_card.gdshader`), `scenes/cinematics/marketplace_intro.tscn`, `data/cinematics/marketplace_intro_tuning.tres`, `tools/asset_gen/sfx_bank_marketplace_intro.gd` | the Marketplace's intro, the owner's beats (below), its props, the stall-keeper, the photo card and the voices |
 | `beach_outro/` (`BeachOutro`, `BeachOutroTuning`, `BeachOutroBar`, `BeachOutroScreech`, `BeachOutroPalace`, `BeachOutroRaid`), `scenes/cinematics/beach_outro.tscn`, `data/cinematics/beach_outro_tuning.tres`, `tools/asset_gen/sfx_bank_beach_outro.gd` | the Beach's outro, the owner's beats (below), its props and its two sounds |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
@@ -157,8 +158,8 @@ id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to st
 each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
-numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the Dead Zone's, which has the
-owner's beats) and the City's boss intro play it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the Marketplace's and the Dead Zone's,
+which have the owner's beats) and the City's boss intro play it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
 and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
 the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
 CITY"; before a boss, the boss, as the level select does), the slot's music comes in, and it fades to black
@@ -336,3 +337,30 @@ shots looking back along it (`_stage_near`). Its sounds are the game's (`guppy_l
 (`tools/asset_gen/sfx_bank_beach_outro.gd`: `bar_shaker`, `bar_glass`). Cost (headless, `test_beach_outro`): about
 30-60 ms to set up (about 600 ms the first time, with cold mesh caches), about 0.45 ms a step and at most about 5 ms;
 its props add about 33 draw calls. It adds no asset files beyond its two sounds, and nothing to the toolkit.
+
+**The Marketplace's intro** (`MarketplaceIntro`, task F2f; the owner's beats, October 16, 2026, GDD §6 Cinematics; what
+they leave open is DESIGN-TBD, `docs/questions/f2f.md`; numbers in `data/cinematics/marketplace_intro_tuning.tres`):
+38.6 s before Marketplace 1, on one stretch of the zone's street in the level's lanes, the zone's music fading in under
+it. A line of eight market stalls stands end to end along the left of the street: the Marketplace's stall doodad (its
+picture cards, `DoodadCards.mesh_for`), scaled to the characters (0.72) as the Beach outro's tiki bar is, their awnings
+in a few colours (`doodad_card.gdshader`'s `recolor`, which every level leaves off: one material a colour), every other
+one turned end for end. The runner walks up (`CinePoses.walk`) to the one with a stall-keeper in it and holds up a card to
+her (their right arm aimed at its grip, `GanglandOutro.aim_arm`; the card comes up in their hand and settles at a fixed
+place with its face to her eyes, so the close-up is framed exactly); the camera cuts to it close from her side, pushing
+in: the Chairman's photo (Hostile Takeover's man; `chairman_face.gdshaderinc`, the one face of him, which the fight's
+merger screens draw too) and handwriting scribbled too fast to read. She talks, her mouth working (a mesh of its own on
+her head joint) and her head bobbing, her arms waving about; the runner nods twice (`look_up` keys) and walks off down
+the street. A cyborg in the zone's look walks up to her counter and talks (its head bobbing, its left hand beating time);
+she answers and points after the runner (the arm on their side, following them); it looks where she points, turns to
+three others waiting about further back and waves them over (its arm up toward them, its forearm beckoning), and the four
+set off after the runner, who is small in the distance. Black, the zone's title card on it, and the level. The voices
+are mumbling, no words (the owner: as the grown-ups talk in Charlie Brown): four sounds of its own
+(`tools/asset_gen/sfx_bank_marketplace_intro.gd`: `mumble_vendor`, `mumble_vendor_point`, `mumble_cyborg`,
+`mumble_cyborg_call`), each syllable a "wah" from a small formant synth (a buzz through two vowel resonances opening from
+"oo" and closing, under a low-pass that opens with the syllable: a muted trombone talking), the cyborg's lower, rasping,
+overdriven and crushed. `MarketplaceIntroSet` holds the props on the stage (the stalls, the vendor, the card);
+`MarketplaceIntroVendor` is the stall-keeper on the humanoid rig, simplified from the owner's reference picture (messy
+bun, an eyepiece over one eye, a striped neck scarf, a work apron, a bracer on her wrist; nothing on her glows), posed by
+script (`pose()`: her head easing toward whoever she looks at, talking, waving, pointing; her hands on the counter
+otherwise). The shots looking back down the street keep it built behind them (`_stage_near`). Everything is worked out
+from the time, so stepping or skipping shows the same. Cost and checks: `test_marketplace_intro`.

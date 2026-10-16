@@ -505,13 +505,14 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2c | **The Dead Zone's intro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
 | F2d | **Gangland outro** (the owner's beats, October 9, 2026) | F1 | M | T2 |
 | F2e | **The Beach's outro** (the owner's beats, October 15, 2026) | F1 | M | T2 |
+| F2f | **The Marketplace's intro** (the owner's beats, October 16, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b, F2c, F2d and F2e have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a, F2b, F2c, F2d, F2e and F2f have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -559,6 +560,16 @@ the Golden Palace: in a dark room walled with the feed's screens the Golden Conv
 refill ships fly; back at the beach they bomb it, the two run, explosions left and right, and the runner jumps into a
 pool (a gap) as the last bomb's fire fills the picture. Two new sounds (`tools/asset_gen/sfx_bank_beach_outro.gd`),
 `test_beach_outro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md` items 851–861.
+
+**F2f: the Marketplace's intro** (owner, October 16, 2026; GDD §6, Cinematics). **Done:** `MarketplaceIntro`
+(`scripts/cinematics/marketplace_intro/`) in the Marketplace's intro slot, in place of the arrival flyover. The runner
+walks up to a stall in a line of eight (the Marketplace's stall doodad, its awnings in a few colours) and shows the
+stall-keeper (a new character on the humanoid rig, simplified from the owner's reference picture) a card with the
+Chairman's photo and scribbled writing; a close-up on the card; she waves her arms and mumbles; the runner nods twice and
+walks off. A cyborg walks up and talks to her, gruffer; she answers and points after the runner; it waves three others
+over and they follow. Four new sounds, mumbled voices with no words (`tools/asset_gen/sfx_bank_marketplace_intro.gd`);
+the Chairman's face is now one shader include shared with the fight's merger screens; `test_marketplace_intro`. The
+staging choices are `docs/questions/f2f.md`.
 
 ### H. The owner's requests (October 8, 2026)
 
@@ -640,7 +651,7 @@ From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro and F2e's Beach outro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro, F2e's Beach outro and F2f's Marketplace intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 
