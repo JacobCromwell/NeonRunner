@@ -333,9 +333,10 @@ or a boss arena; the same seed the same level; what a build a wider gap short ke
 Golden 2 at 3 lanes with every wider gap and its wall-run gap moved by its own last resort. On real physics at 3, 5 and 6 lanes and both walls: a step onto the
 lit wall early, midway or late on the lit stretch crosses onto the landing floor; with claws too; a jump, a jump with
 the dash or the dash alone falls in, as does a step onto the wall well before the lit stretch; the grapple's save and a
-revive after a fall put the runner on the lit wall and across. Every zone skin lights the lit wall in green chevrons
-over exactly the stretch to step on and the gap, on the wall face, facing the street, seamless across chunks; and a
-heli drone's barrage and a Bad Dream's slash hold off only while a crossing is in their reach. `test_campaign`'s sweep
+revive after a fall put the runner on the lit wall and across, and a save at the gap's far edge off the wall over the
+landing floor. Every zone skin lights the lit wall in green chevrons over exactly the stretch to step on and the gap,
+on the wall face, facing the street, seamless across chunks; and a heli drone's barrage, a Bad Dream's slash, an
+Enforcer Truck's volley and an Octodog's wind-up hold off only while a crossing is in their reach. `test_campaign`'s sweep
 of The Hush lists the builds crowded past any wall-run gap (`WALL_RUN_GAP_CROWDED`: they warn of that and nothing
 else), and `test_danger_density` lets the final band land lower at 3 lanes where the wall-run gaps take the pass's room
 (`WALL_RUN_GAP_ROOM`); its route case and `test_gilded_sentinel`'s Sentinel wall case are built without them.

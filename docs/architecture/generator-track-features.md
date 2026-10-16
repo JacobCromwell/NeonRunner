@@ -689,11 +689,12 @@ throughout (`docs/questions/j2.md`).
   landing floor nothing in any lane: no other hole, fence, doodad, pad and its lift, ramp and the longest wall run it
   launches, speed pad, floor cut's window, wider gap's zone, and no enemy's attack or the floor it uses (everything a
   wider gap's zone keeps: `WideGapPlacement.keeps_of`, the rules' keep-outs, each planned Resonator pulse; but a heli
-  drone's wave until its first pad, whose barrages hold off at run time, below), nor the longest wall run past a dash
-  wall (`past_dash_wall`, from its face: claws, the dash and the drop as if the runner stepped on at its back; a runner
-  without the dash passes one on a side wall, GDD §9.14, and one still on a wall when the lit stretch comes has no
-  fresh wall run for the gap); no ceiling and no ceiling's landing zone overlaps it, and no pad's run-up reaches its
-  gap. Its lit wall stays whole
+  drone's wave until its first pad, whose barrages hold off at run time, below), nor a standard wall run past a dash
+  wall (`past_dash_wall`, from its face: a standard wall run as if the runner stepped on at its back, the drop and the
+  dash's extra; a runner without the dash passes one on a side wall, GDD §9.14, and one still on a wall when the lit
+  stretch comes has no fresh wall run for the gap; claws add less than the run-in and the lit stretch last, so a clawed
+  runner still comes down before the gap); no ceiling and no ceiling's landing zone overlaps it, and no pad's run-up
+  reaches its gap. Its lit wall stays whole
   and clear from `wall_clear_seconds` before the lit stretch to past
   the longest wall run over the gap (`wall_to`: claws, the dash, a save onto the wall at the far edge): no sign, wall
   enemy (`WallGapTuning.wall_enemy_seconds` either side), wall fence or side wall gap; the other wall keeps no side
@@ -721,14 +722,19 @@ throughout (`docs/questions/j2.md`).
   lanes on its own seed: a Gilded Sentinel that isn't the level's first). That build stands only with every wider gap,
   a wall-run gap, every feature and no warning, else the level is built as before; it isn't a build of the guarantee
   (`attempts`). DESIGN-TBD (`docs/questions/j2.md`): which gives way when a level has room for only one.
-- **At run time**: the attacks a wall runner can't dodge over the gap hold off while a crossing (`approach` to `end`,
-  `LevelLayout.wall_run_between`) lies in their reach: a heli drone's barrage (`Drone._wall_run_in_reach`) and a Bad
-  Dream's slash (`BadDream._wall_run_in_reach`; a host's chase only comes if the player kills it, so the generator
-  can't plan around it). A cyborg's bolts never land near a hole (`CyborgGun`), a Resonator's pulse waits for clear
-  floor (`Resonator.pulse_clear`). The grapple's save and a revive after a fall into one put the runner on its lit
-  wall (`WallRunGapPlacement.grapple_save`, set by `RunWorld.build`; `Player._pull_up`'s `{"wall": side}`), whose run
-  carries them across: the pull's leap would drop them back in. Its first-encounter hint is `wall_run_gap`
-  (`data/hints/hints.json`).
+- **At run time**: the attacks a runner can't dodge on the way to the wall or over the gap hold off while a crossing
+  (`approach` to `end`, `LevelLayout.wall_run_between`) lies in their reach: a heli drone's barrage
+  (`Drone._wall_run_in_reach`), a Bad Dream's slash (`BadDream._wall_run_in_reach`; a host's chase only comes if the
+  player kills it, so the generator can't plan around it) and an Enforcer Truck's volley, from its warning to its last
+  bolt (`EnforcerTruck._wall_run_in_reach`: it chases from behind as long as it lives); and an Octodog whose charges a
+  wait for its turn moved on waits ahead while one lies in its charge's stretch, its moved charges moving on
+  (`Octodog._wall_run_in_reach`; its planned charges keep off the crossing already). A cyborg's bolts never land near a
+  hole (`CyborgGun`), a Resonator's pulse waits for clear floor (`Resonator.pulse_clear`). The grapple's save and a
+  revive after a fall into one (within `save_margin` of its holes) put the runner on its lit wall
+  (`WallRunGapPlacement.grapple_save`, set by `RunWorld.build`; `Player._pull_up`'s `{"wall": side, "until": d}`), whose
+  run carries them across and leaves the wall by `until`, in time to come down onto the landing floor (a save at the
+  far edge has its run cut short; an ordinary wall run is unchanged): the pull's leap would drop them back in. Its
+  first-encounter hint is `wall_run_gap` (`data/hints/hints.json`).
 - **How many** (`tools/measure/wall_run_gaps.gd`, campaign levels on their own and two more seeds at 3, 5 and 6
   lanes, 117 builds): a build has on average 1.9 in the Marketplace (one in Marketplace 1, from halfway), 2.6 in the
   Casino, 2.3 in Corporate, 2.1 on the Beach, 2.0 in the Dead Zone and 1.5 in the Golden Zone, whose levels are the
