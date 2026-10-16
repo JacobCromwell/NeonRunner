@@ -13,6 +13,9 @@ extends Enemy
 ##   Task H1 (GDD §9.11, owner, October 8, 2026): it stands almost flush with the face (placed by its real
 ##   outline, reach_out()), in a shallower, wider niche whose inside is lit bronze, not black (the skins draw
 ##   it with GoldenStatue.recess(lit)); its warning is 0.6 s. Nothing of it goes in front of the face.
+##   Task K2 (owner, October 2026: still too far back to see): it is a high relief, squashed along the wall's
+##   normal to statue_relief about the face (_set_relief), in a niche 0.4 m deep, so it stands on the wall
+##   face where a runner far down the street sees all of it; it steps out to statue_swing_relief as it winds up.
 ## - The attack, once, as the runner approaches: when they are warning_seconds (plus a moment) at their
 ##   speed from the stretch it guards, its eyes flare, stone grinds (gilded_sentinel_grind) and the red
 ##   marks of what it will cut light up: a band of its wall (GildedSentinelTuning.band, the heights around
@@ -62,8 +65,7 @@ const RED := Color(1.0, 0.12, 0.08)
 ## strike are the kit's (D6a's proposals for this task): drawn back high over its right shoulder, then
 ## chopped down in front of it and across toward its left (toward the approaching runner on either wall:
 ## the statue is mirrored on the left wall). Defeated, it slumps.
-const POSE_REST: Dictionary = {"shoulder_r": Vector3(-8.0, 0.0, 8.0), "elbow_r": 92.0, "grip": Vector3(0.0, 90.0, 84.0),
-	"shoulder_l": Vector3(4.0, 0.0, 7.0), "elbow_l": 14.0, "head": Vector3(4.0, 0.0, 0.0)}
+const POSE_REST: Dictionary = GoldenStatue.POSE_GUARD
 const POSE_RAISE: Dictionary = {"shoulder_r": Vector3(150.0, 20.0, 18.0), "elbow_r": 40.0, "grip": Vector3(60.0, 0.0, 0.0),
 	"shoulder_l": Vector3(30.0, 0.0, 12.0), "elbow_l": 40.0, "head": Vector3(-4.0, -12.0, 0.0)}
 const POSE_STRIKE: Dictionary = {"shoulder_r": Vector3(55.0, 30.0, -5.0), "elbow_r": 20.0, "grip": Vector3(200.0, 0.0, 0.0),
@@ -137,6 +139,14 @@ var _body: Hazard
 var _top: Hazard
 var _statue: MeshInstance3D
 var _statue_root: Node3D
+## What the statue's transform is made of (_set_relief): how it is turned, how far behind the face its origin
+## stands before the relief squashes it, and the relief it has now (a share of its full depth). In the Golden
+## Zone's skins (_relief_steps) the statue steps out of the wall to its swing's relief (statue_swing_relief) for
+## its attack and back.
+var _turn: Basis = Basis.IDENTITY
+var _depth: float = 0.0
+var _relief: float = 1.0
+var _relief_steps: bool = false
 var _eyes: StandardMaterial3D
 var _marks: Array[MeshInstance3D] = []
 ## The eyes' red light in the niche (its far side and back), rising with their flare: what a runner sees
@@ -228,7 +238,14 @@ func _build_statue() -> void:
 	# How far the rest pose reaches toward the street and back into the wall from the statue's origin.
 	var reach: Vector2 = reach_out(rest, turn, side)
 	var depth: float = tune.statue_inset + reach.x if opens else -(reach.y + 0.04)
-	_statue_root.transform = Transform3D(turn, Vector3(side * depth, tune.niche_sill, 0.0))
+	# A relief (task K2): the statue is squashed along the wall's normal (the node's X: a wall enemy's node is
+	# not turned) about the wall face, so its front stays statue_inset behind the face and the rest of it is
+	# closer to the face, where a runner far down the street sees it. Only in the Golden Zone's skins, whose
+	# walls open the niche; the review stand-in in front of the wall in any other skin is the whole statue.
+	_turn = turn
+	_depth = depth
+	_relief_steps = opens
+	_set_relief(tune.statue_relief if opens else 1.0)
 	_statue = MeshInstance3D.new()
 	_statue.name = "Body"
 	_statue.mesh = rest
@@ -250,6 +267,17 @@ func _build_statue() -> void:
 		niche.layer(kit.material).append(kit.niche(tune.niche_width, tune.niche_height),
 			Transform3D(Basis(Vector3.UP, -side * PI * 0.5), Vector3(0.0, tune.niche_sill, 0.0)))
 		niche.commit(self, "Niche")
+
+
+## Squashes the statue to `relief` of its full depth along the wall's normal, about the wall face (so its front stays
+## put and the rest of it stands nearer the face the lower this is). A wall enemy's node is not turned, so its X is the
+## wall's normal. Does nothing if it already is.
+func _set_relief(relief: float) -> void:
+	if is_equal_approx(relief, _relief) and _statue_root.transform != Transform3D.IDENTITY:
+		return
+	_relief = relief
+	_statue_root.transform = Transform3D(Basis.from_scale(Vector3(relief, 1.0, 1.0)) * _turn,
+		Vector3(side * _depth * relief, tune.niche_sill, 0.0))
 
 
 ## How far a statue mesh, turned by `turn`, reaches toward the street (x) and back into the wall (y) from
@@ -687,6 +715,8 @@ func _process(delta: float) -> void:
 	if _husk:
 		_down_t += delta
 		_show_frame(Move.HUSK, 0.0)
+		if _relief_steps:
+			_set_relief(tune.statue_relief)
 		_eyes.emission_energy_multiplier = 0.0
 		_eyes.albedo_color = Color(0.05, 0.04, 0.04)
 		if _glow != null:
@@ -696,6 +726,10 @@ func _process(delta: float) -> void:
 			queue_free()
 		return
 	var reduced: bool = Settings.flashing_reduced
+	# The relief it stands in: the rest relief, and the swing's (it steps out of the wall) while it draws back,
+	# holds, swings and comes back.
+	var relief: float = tune.statue_relief
+	var stepped: float = maxf(tune.statue_swing_relief, tune.statue_relief)
 	match state:
 		State.IDLE, State.DONE:
 			flare = move_toward(flare, 0.0, delta * 1.5)
@@ -707,15 +741,18 @@ func _process(delta: float) -> void:
 			var raise: float = maxf(tune.raise_seconds(), 0.01)
 			var wind: float = clampf((_state_time - (tune.warning_seconds - raise)) / raise, 0.0, 1.0)
 			_show_frame(Move.RAISE, smoothstep(0.0, 1.0, wind))
+			relief = lerpf(relief, stepped, smoothstep(0.0, 1.0, wind))
 			_mark_strength = lerpf(MARK_START, MARK_FULL, k)
 			_mark_fill = smoothstep(0.0, 0.85, k)
 		State.HOLD:
 			flare = 1.0
 			_show_frame(Move.RAISE, 1.0)
+			relief = stepped
 			_mark_strength = MARK_FULL
 			_mark_fill = 1.0
 		State.STRIKE:
 			flare = 1.0
+			relief = stepped
 			_mark_strength = MARK_FULL
 			_mark_fill = 1.0
 			var last: int = 0
@@ -732,7 +769,10 @@ func _process(delta: float) -> void:
 				_show_frame(Move.RAISE, 1.0 - smoothstep(0.0, 1.0, k))
 			else:
 				_show_frame(Move.RECOVER, smoothstep(0.0, 1.0, k))
+			relief = lerpf(stepped, relief, smoothstep(0.0, 1.0, k))
 			_fade_marks(delta)
+	if _relief_steps:
+		_set_relief(relief)
 	# The eyes flare: a steady rise (Reduced flashing), or throbbing faster as the swing nears.
 	var throb: float = 1.0
 	if (state == State.WARNING or state == State.HOLD) and not reduced:
@@ -807,6 +847,11 @@ func state_name() -> String:
 	return STATE_NAMES[state]
 
 
+## The share of its full depth the statue has now (task K2): the relief it rests in, or the swing's.
+func current_relief() -> float:
+	return _relief
+
+
 ## The events in order, as [event, level time] (tests).
 func events(names: PackedStringArray) -> Array:
 	var out: Array = []
@@ -830,3 +875,10 @@ static func niche_rect(entry: Dictionary) -> Rect2:
 static func niche_depth() -> float:
 	var t := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
 	return t.niche_depth if t != null else GildedSentinelTuning.new().niche_depth
+
+
+## The share of its full depth a statue in the Golden Zone's walls has, live or decorative (task K2): the
+## relief the statues stand in (GildedSentinelTuning.statue_relief).
+static func statue_relief() -> float:
+	var t := EnemyDirector.tuning_for("gilded_sentinel") as GildedSentinelTuning
+	return t.statue_relief if t != null else GildedSentinelTuning.new().statue_relief

@@ -26,22 +26,36 @@ extends EnemyTuning
 ## wall-run band (GDD §9.11: a live one stands in a niche at wall-run height). Seen from down the street
 ## the wall is almost edge-on, and whatever stands deep in an opening hides behind its near edge (a point
 ## x deep shows through the opening that many times (the distance along the street over the runner's
-## distance from the wall) further along it). So the opening is wide, 1.8 m from 1.4 m (the decorative
-## alcoves' are 2.0 m): more of the statue and the niche's back show (GDD §9.11, owner, October 8, 2026).
-@export_range(0.8, 2.5, 0.05, "suffix:m") var niche_width: float = 1.8
+## distance from the wall) further along it). So the opening is wide, 2.0 m like the decorative alcoves'
+## (1.8 m since October 8, 2026, from 1.4 m): more of the statue and the niche's back show, and the live
+## niche has one less tell (GDD §9.11, owner, October 8, 2026, and again for task K2).
+@export_range(0.8, 2.5, 0.05, "suffix:m") var niche_width: float = 2.0
 @export_range(0.0, 2.0, 0.05, "suffix:m") var niche_sill: float = 0.75
 @export_range(1.5, 4.0, 0.05, "suffix:m") var niche_height: float = 2.7
-## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 604): how deep the niche goes into the wall: deep enough for the whole
-## statue at rest (its depth turned as it stands is about 0.7 m, from statue_inset), so nothing of it reaches
-## out over the wall-run path (a wall runner's body lies along the wall face). 0.78 m, from 0.9 as first
-## built: its back is nearer the face, so the niche's back stands further forward (GDD §9.11, owner,
-## October 8, 2026). The statue's solid body (a hitbox `niche_depth - 0.1` deep behind the face) follows it.
-@export_range(0.5, 1.5, 0.05, "suffix:m") var niche_depth: float = 0.78
+## DESIGN-TBD (docs/questions/k2.md): how deep the niche goes into the wall: deep enough for the statue at rest
+## as a relief (its depth at statue_relief, about 0.28 m as it stands), so nothing of it reaches out over the
+## wall-run path (a wall runner's body lies along the wall face). 0.40 m, from 0.78 m (0.9 m as first built):
+## the niche is shallow, the statue stands on the wall (GDD §9.11, owner, October 8, 2026 and again for task
+## K2). The statue's solid body (a hitbox `niche_depth - 0.1` deep behind the face) follows it.
+@export_range(0.2, 1.5, 0.05, "suffix:m") var niche_depth: float = 0.4
+## DESIGN-TBD (docs/questions/k2.md): the statue's depth as a share of its full depth: it stands in the niche
+## as a high relief, squashed along the wall's normal, so its whole body is within a few decimetres of the wall
+## face, where a runner sees it from far down the street (a point x deep shows through an opening that many
+## times (the distance along the street over the runner's distance from the wall) further along it, so
+## depth hides a statue far down the street). 0.4: from 0.68 m deep to 0.27 m. 1 is the full statue as it was
+## before task K2. The decorative statues in the alcoves read it too (GoldenSkin.decorative_statue_basis), so the
+## live one is no different from them.
+@export_range(0.2, 1.0, 0.01) var statue_relief: float = 0.4
+## DESIGN-TBD (docs/questions/k2.md): its relief while it draws its halberd back, holds and swings (a share of the
+## statue's full depth, never less than statue_relief): it steps out of the wall as it winds up, so the swing reaches
+## out of its niche as it did before the relief (0.7: the halberd's reach out of the face, 0.78 m at its fullest
+## before K2, is about 0.5 m), and goes back into it as it recovers. Visual only, behind the face (only the swing's
+## halberd, as before, comes out over the wall-run path: the cut's hitboxes and marks are the same).
+@export_range(0.2, 1.0, 0.01) var statue_swing_relief: float = 0.7
 ## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 604): how far the front of the statue (its real outline at rest, not its
-## bounding box) stands behind the wall face: almost flush, 0.02 m. It was 0.03 m of a bounding box that
-## overstated how far the statue reaches by 0.033 m, so its real front was 0.063 m behind the face: the
-## statue moved forward by about 4 cm. Never in front of the face: a statue there would block a wall run
-## (a wall runner's body lies along it), which would be a design change.
+## bounding box) stands behind the wall face, before the relief squashes it: almost flush, 0.02 m. Never in front
+## of the face: a statue there would block a wall run (a wall runner's body lies along it), which would be a
+## design change.
 @export_range(0.0, 0.3, 0.01, "suffix:m") var statue_inset: float = 0.02
 ## DESIGN-TBD: how far it turns from the street toward the approaching runner (radians; the
 ## decorative statues on the ledges turn the same way, GoldenFacades.STATUE_TURN).

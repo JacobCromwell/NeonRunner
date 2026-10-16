@@ -140,6 +140,12 @@ func hull(parent: Node3D, center: Vector3, size: Vector3, lane_edges_x: Array[fl
 # --- The statue kit, the cult's emblem and feed (reused from the colonnade's bays, not the Golden
 # Zone's exterior ledges and towers) -----------------------------------------------------------
 
+## The colonnade's statues face the street straight on (the Golden Zone's walls turn them toward the approach).
+func decorative_statue_turn() -> float:
+	return 0.0
+
+
+## The decorative statues on the walls whose feet lie between two track distances (see GoldenSkin.statue_spots).
 func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
 	return walls().statue_spots(side, face_x, start, end)
 

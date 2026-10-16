@@ -179,11 +179,12 @@ func _alcove(s: MeshLayer, side: int, face_x: float, index: int, at: float) -> v
 	var facing := Vector3(-side, 0.0, 0.0)
 	var basis := Basis(Vector3.UP, atan2(facing.x, facing.z))
 	var origin := Vector3(face_x, y, -at)
-	s.append(skin.statues().recess(ALCOVE_SIZE.x, ALCOVE_SIZE.y, skin.decorative_statue_recess_depth()),
-		Transform3D(basis, origin))
 	var pose: int = MeshKit.hash_i(side, index, 221) % GoldenStatue.DECORATIVE.size()
+	s.append(skin.statues().recess(ALCOVE_SIZE.x, ALCOVE_SIZE.y, skin.decorative_statue_recess_depth(GoldenStatue.DECORATIVE[pose], side)),
+		Transform3D(basis, origin))
 	s.append(skin.decorative_statue_mesh(GoldenStatue.pose_named(GoldenStatue.DECORATIVE[pose])),
-		Transform3D(basis, skin.decorative_statue_mount(side, face_x, at)))
+		Transform3D(skin.decorative_statue_basis(facing),
+			skin.decorative_statue_mount(side, face_x, at, GoldenStatue.DECORATIVE[pose])))
 
 
 ## A length of the zone's heavy red cloth with a gold trim and fringe, hung above the band
@@ -224,8 +225,9 @@ func statue_spots(side: int, face_x: float, start: float, end: float) -> Array[D
 		if bx >= start and bx < end and _content(side, k) == Content.ALCOVE:
 			var y: float = skin.decorative_statue_mount_y()
 			var pose: int = MeshKit.hash_i(side, k, 221) % GoldenStatue.DECORATIVE.size()
-			out.append({"side": side, "at": bx, "center": skin.decorative_statue_mount(side, face_x, bx), "facing": Vector3(-side, 0.0, 0.0),
-				"height": GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE, "pose": GoldenStatue.DECORATIVE[pose]})
+			out.append({"side": side, "at": bx, "center": skin.decorative_statue_mount(side, face_x, bx, GoldenStatue.DECORATIVE[pose]),
+				"facing": Vector3(-side, 0.0, 0.0), "height": GoldenStatue.PEDESTAL_HEIGHT + GoldenStatue.STATURE,
+				"pose": GoldenStatue.DECORATIVE[pose]})
 		k += 1
 	return out
 

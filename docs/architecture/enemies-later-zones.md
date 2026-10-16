@@ -121,11 +121,13 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
 - **In its niche.** A wall enemy (`side`), standing in a niche set into the wall at wall-run height: a
   2.6 m statue standing out from the wall would block a wall run at all of its heights, so the statue (the
   Golden Zone's kit, `GoldenStatue`, at `statue_scale`) stands in the recess with its front
-  `statue_inset` (0.02 m) behind the face. Nothing of it reaches over the wall-run path (a wall runner's body lies
-  along the face); only its swing does. The Golden Zone's skins open the niche (Zone skins: the statue
-  kit's `recess()`, `GoldenSkin.note_wall_enemies`); in any other skin (quick play) it stands in front of
-  the wall in the kit's `niche()` as a review stand-in, its hitboxes the same. At rest it holds its
-  halberd upright at its side, the blade turned along the wall, so it fits the niche whole.
+  `statue_inset` (0.02 m) behind the face, as a shallow relief (task K2, below). Nothing of it reaches over the
+  wall-run path (a wall runner's body lies along the face); only its swing does. The Golden Zone's skins open the
+  niche (Zone skins: the statue kit's `recess()`, `GoldenSkin.note_wall_enemies`); in any other skin (quick
+  play) it stands in front of the wall in the kit's `niche()` as a review stand-in, its hitboxes the same
+  (the whole statue, not a relief). At rest it holds its halberd upright at its side, the blade turned along the
+  wall (the kit's decorative `guard` pose, `GoldenStatue.POSE_GUARD`: at rest it is the decorative guard with its
+  eyes lit), so it fits the niche whole.
 - **Seeing it** (task H1, GDD §9.11, owner, October 8, 2026: "too hard to see inside the arched recess").
   Seen from down the street the wall is almost edge-on, and whatever stands deep in an opening hides behind
   its near edge: a point `x` deep shows through it `x * distance / (the runner's distance from the wall)`
@@ -134,7 +136,8 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
   stays physical**, so nothing of the statue goes in front of the wall face (a wall runner's body lies along
   it; a statue standing out of the wall would block the wall run, a design change for the owner) and the solid
   `body` hitbox (`niche_depth - 0.1` deep behind the face) reaches as far back as the statue does (the suite
-  checks both). **The statue moved only about 4 cm; most of the gain is lighting and a wider opening.**
+  checks both). **The statue moved only about 4 cm; most of the gain was lighting and a wider opening**: the owner
+  said it was still too far back (task K2, the bullet below).
   - *Placement from the real outline.* `GildedSentinel.reach_out()` measures the statue's rest frame by its
     vertices (cached per frame and turn), not its turned bounding box, which overstated how far it reaches
     toward the street by 0.033 m: its real front was 0.063 m behind the face, not the 0.03 it was set to, and
@@ -142,6 +145,23 @@ across the street), its cut's shader (`gilded_sentinel_cut.gdshader`), its sound
   - *A shallower, wider niche.* `niche_depth` 0.78 m (from 0.9: the statue is about 0.7 m deep as it stands)
     and `niche_width` 1.8 m (from 1.4), so more of the statue and of the niche's back show at a grazing angle.
     Both are tunables the skin reads (`GildedSentinel.niche_rect()`, `niche_depth()`); the hitboxes follow.
+  - *On the wall face* (task K2, owner, October 2026: "still too far back in the wall recess for the player to
+    see"; docs/questions/k2.md). A statue 0.44 m back with its back 0.7 m behind the face still hid behind the near
+    edge of its opening: a point `d` behind the face shows through it `d * (distance along the street / the runner's
+    distance from the wall)` further toward the runner, a ratio of 3.2 at 20 m on five lanes (12 m on three), so
+    from there only 44% of its width showed. The statue is now a high relief: squashed along the wall's normal to
+    `statue_relief` (0.4: 0.27 m deep), about the face, so its front stays `statue_inset` behind it, in a niche
+    `niche_depth` 0.4 m deep and `niche_width` 2.0 m wide (the decorative alcoves'; 89% of the statue shows from 20 m
+    on five lanes, `test_gilded_sentinel` measures it). **Nothing is in front of the face** (the suite checks every
+    vertex of the live statue and the decorative ones), so the wall run, a wall runner's body (it lies along the
+    face) and the runner's side clearance are as they were; the solid `body` hitbox, still behind the face, is
+    shallower with the niche (`niche_depth - 0.1`), where nothing in play reaches. Only in the Golden Zone's skins
+    (the review stand-in in other skins is the whole statue). The relief is squashed by the statue's node (`Statue`'s
+    transform, `_set_relief`), so the baked frames are shared and unchanged. **The swing steps out**: as it draws its
+    halberd back the statue un-squashes about the face to `statue_swing_relief` (0.7) and goes back as it recovers
+    (visual only: the swing's cut, hitboxes, marks and slash are the same), so its swing reaches about 0.5 m out of the
+    face, over the wall-run path as a swing always did (0.78 m at its fullest before K2). The decorative statues have
+    the same relief (`GoldenSkin.decorative_statue_basis`, from `GildedSentinel.statue_relief()`; Zone skins).
   - *Lit, not black, every niche alike.* `GoldenStatue.recess()` draws the inside of every statue niche, a live
     Sentinel's and the decorative alcoves' (outdoor facades and the Palace), in warm bronze stone
     (`LIT_BACK`, `LIT_SIDES` for the surface seen through the opening, `LIT_CEILING`): plain lit surfaces,
