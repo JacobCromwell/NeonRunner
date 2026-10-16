@@ -15,4 +15,4 @@ request that is now in the done file.
 
 ## The Neon City's intro (October 16, 2026)
 
-- [ ] Build the City's intro cinematic, the game's first (GDD §6, Cinematics, "Zone 1 intro"; task F2f): a flyby over the busy city, cyborgs trudging under the Floating Head's watching searchlight, the runner bursting out of a window and stomping one, the Head startled, angry and yelling through the feed, then the title card. About 20 seconds.
+- [ ] Build the City's intro cinematic, the game's first (GDD §6, Cinematics, "Zone 1 intro"; task F2f): a flyby over the busy city, cyborgs trudging under the Floating Head's watching searchlight, the runner bursting out through a feed billboard showing the Head's face and stomping one, the Head startled, angry and yelling through the feed, then "NEON RUNNER" and the zone card. About 22 seconds.
