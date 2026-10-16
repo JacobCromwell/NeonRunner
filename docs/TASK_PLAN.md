@@ -569,7 +569,7 @@ Gangland's look, one in the Marketplace's, the leader in the Casino's, a little 
 truck, and pulls back to show both; they yell at each other, the leader's warned shot misses, the left gang gets angry,
 their Octodog charges (its own wind-up first), bowls one cyborg over and pounces on another, and the rest open fire; cut
 back to the runner, who turns slowly to the right, left hand up over their face, and walks off down the right-hand
-street. 21.6 s. Five sounds of its own (`tools/asset_gen/sfx_bank_gangland_intro.gd`) and `HoverTruck.add_model` (the
+street, the zone's title card coming up (the owner's follow-up, the same day). 21.6 s. Five sounds of its own (`tools/asset_gen/sfx_bank_gangland_intro.gd`) and `HoverTruck.add_model` (the
 truck's look at rest, for props); nothing added to the toolkit. The staging choices are in `docs/questions/f2f.md`.
 
 ### H. The owner's requests (October 8, 2026)

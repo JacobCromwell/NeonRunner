@@ -41,8 +41,9 @@ the code:
    hand coming up in front of the left side of their face (toward the fight) and staying up as they walk off at a walk
    (1.35 m/s), head down a little. It fades to black as they reach the mouth of the right-hand street; Gangland 1 then
    opens on its own run view (not on that street).
-10. **No title card.** The arrival flyover this replaces showed a card naming the zone ("ZONE 2", "GANGLAND"); the beats
-    don't mention one, so there is none. Should the zone's card come up (at the end, as the Dead Zone's does)?
+10. **The title card** (answered by the owner, October 16, 2026: "add the Gangland title card as the player character
+    walks away at the end"). Built: the zone's card ("ZONE 2", "GANGLAND", from the zone's data) comes up 0.3 s after
+    the runner starts walking away and stays 2.9 s, held on as the picture fades to black.
 11. **The junction's corners.** A level's wall gap carries orange marks (the floor cut's colour) that tell a runner the
     wall stops there; at a story's street corner they read as a hazard, so the corners are covered with concrete piers
     and a kerb across each side street's mouth (`GanglandIntroSet.corners_mesh`). The City outro's openings still show

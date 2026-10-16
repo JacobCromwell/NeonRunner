@@ -59,11 +59,17 @@ extends Resource
 @export_range(0.3, 4.0, 0.05, "suffix:s") var walk_after: float = 1.25
 @export_range(0.5, 3.0, 0.05, "suffix:m/s") var walk_speed: float = 1.35
 @export_range(3.0, 40.0, 0.5, "suffix:m") var walk_u: float = 14.0
+## The zone's title card ("ZONE 2", "GANGLAND", from the zone's data) comes up this long after they start walking away
+## (the owner, October 16, 2026), for `card_seconds` in all (its own fades included), held on as the picture fades to
+## black and gone before the cinematic ends.
+@export_range(0.0, 3.0, 0.05, "suffix:s") var card_after: float = 0.3
+@export_range(1.0, 5.0, 0.05, "suffix:s") var card_seconds: float = 2.9
 
 @export_group("The gangs")
 ## The left gang (the Octodog's crew): its two cyborgs (u, v, and the degrees their bodies are turned from facing
 ## the other gang toward the camera), in Gangland's look (DESIGN-TBD, docs/questions/f2f.md, 2 and 3: they face the
-## other gang, "to their right" read as the camera's right; the beats don't name their look), and their Octodog between them, `dog_scale` times its size
+## other gang, "to their right" read as the camera's right; the beats don't name their look), and their Octodog
+## between them, `dog_scale` times its size
 ## in play (the owner: a large one).
 @export var left_cyborgs: PackedVector3Array = PackedVector3Array([Vector3(27.4, 2.2, 22.0), Vector3(28.9, -2.7, 30.0)])
 @export var dog_at: Vector2 = Vector2(28.2, 0.0)

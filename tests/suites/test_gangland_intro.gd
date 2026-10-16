@@ -7,7 +7,7 @@ extends TestSuite
 ## forward in the middle) and their hover truck behind them; the pan back out to both; the leader's warned shot that
 ## misses; the left gang angry; the Octodog's warned charge, bowling one cyborg over and pouncing on another, the
 ## leader dodging; the firefight; the cut back to the runner, who turns slowly to the right, their left hand coming up
-## over their face, and walks off down the right-hand street; its sounds (its own, and the game's warnings each before
+## over their face, and walks off down the right-hand street, the zone's title card coming up; its sounds (its own, and the game's warnings each before
 ## its attack); what it costs; skipping; and the App's flow (skipping it starts Gangland 1).
 
 const LANES: Array[int] = [3, 5, 6]
@@ -318,6 +318,15 @@ func _check_intro(lanes: int) -> void:
 	check(end.x > seq.stand.x + 3.0 and end.x > stage.wall_x(1) - 3.0 and absf(end.z - j) < seq.side_half(),
 		"%s: and they walk off toward the right-hand street (%s)" % [tag, end])
 	check(seq.log_lines.has("music %s" % s.zone.music), "%s: the zone's music (%s)" % [tag, seq.log_lines])
+	# The zone's title card as they walk away (the owner, October 16, 2026), gone before the end.
+	var card: CineEvent = null
+	for e: CineEvent in seq.playing.events:
+		if e.kind == CineEvent.Kind.TEXT:
+			card = e
+	check(card != null and seq.log_lines.has("text %s" % seq.fill_text("{zone}")) and card.time > seq.t_walk
+		and card.time < n.duration - n.fade_out and card.time + card.duration <= n.duration,
+		"%s: the zone's title card comes up as they walk away and is gone by the end (%s)" % [tag,
+		"%.2f s for %.2f s" % [card.time, card.duration] if card != null else "none"])
 	var heard := PackedStringArray()
 	for line: String in seq.log_lines:
 		if line.begins_with("sound "):

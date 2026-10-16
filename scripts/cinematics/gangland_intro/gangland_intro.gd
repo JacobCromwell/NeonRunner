@@ -39,6 +39,8 @@ const HAND_DOWN: float = 0.02
 ## pounces on.
 const DOG_REACH: float = 0.55
 const DOG_ON_TOP: float = 0.12
+## Under the title card the last shot looks this high over the runner's feet (metres), so they walk away below it.
+const CARD_LOOK: float = 1.75
 ## The bolts of the firefight: how far past their mark the misses fly (metres), and the share that hit their mark.
 const MISS_RANGE := Vector2(6.0, 11.0)
 const HIT_SHARE: float = 0.35
@@ -401,8 +403,12 @@ func _add_camera(t: CineTimeline) -> void:
 	first.watch = &"runner"
 	var go: CineCameraKey = t.shot(t_walk, back, Vector3(0.0, 1.3, 0.0), CinePath.Move.SMOOTH, n.fov)
 	go.watch = &"runner"
-	var gone: CineCameraKey = t.shot(n.duration, back + Vector3(0.6, 0.0, -0.3), Vector3(0.0, 1.2, 0.0),
-		CinePath.Move.SMOOTH, n.fov - 4.0)
+	# As the title card comes up (in the middle of the picture), the camera tilts up a little so they walk away under it.
+	var card: CineCameraKey = _pan(t.shot(t_walk + n.card_after + 0.8, back + Vector3(0.3, 0.05, -0.15),
+		Vector3(0.0, CARD_LOOK, 0.0), CinePath.Move.LINEAR, n.fov))
+	card.watch = &"runner"
+	var gone: CineCameraKey = _still(t.shot(n.duration, back + Vector3(0.6, 0.1, -0.3), Vector3(0.0, CARD_LOOK, 0.0),
+		CinePath.Move.LINEAR, n.fov - 2.0))
 	gone.watch = &"runner"
 
 
@@ -428,7 +434,6 @@ static func _ride(k: CineCameraKey) -> CineCameraKey:
 
 # --- Sounds, effects and cues --------------------------------------------------------------------
 
-## DESIGN-TBD (docs/questions/f2f.md, 10): no title card naming the zone (the arrival flyover had one).
 func _add_events(t: CineTimeline) -> void:
 	t.effect(0.0, CineEvent.FADE_IN, n.fade_in)
 	t.music(0.0, CineEvent.ZONE_MUSIC, n.music_fade)
@@ -456,6 +461,8 @@ func _add_events(t: CineTimeline) -> void:
 		at += 0.3 + 0.17 * float((k * 5) % 4)
 		k += 1
 	t.effect(n.duration - n.fade_out, CineEvent.FADE_OUT, n.fade_out)
+	# The zone's title card as the runner walks away (the owner, October 16, 2026), from the zone's data.
+	t.card(t_walk + n.card_after, "{zone}", "ZONE {zone_number}", n.card_seconds)
 
 
 func _on_cue(cue_name: StringName) -> void:

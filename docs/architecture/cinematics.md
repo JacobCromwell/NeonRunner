@@ -293,7 +293,8 @@ the rest bursting on the street and the walls beyond). Cut back to the runner, f
 looking toward the fight, then turn slowly to the right (`turn_rate` 2: most of the way round in about 1.5 s), their left
 hand coming up in front of their face on the side toward the fight and staying up (a two-bone reach of the left arm,
 `GanglandIntro.reach_arm`, layered on the walk), and walk off into the right-hand street as the shots go on behind the
-corner, further off, thinning out; black, and Gangland 1. The zone's music comes in from the start and carries on into
+corner, further off, thinning out; as they walk away the zone's title card comes up ("ZONE 2", "GANGLAND", from the
+zone's data; the owner's follow-up, October 16, 2026), held on as it fades to black; then Gangland 1. The zone's music comes in from the start and carries on into
 the level.
 
 `GanglandIntroSet` holds the props, built on the stage: the two side streets (the zone's street pieces and building
