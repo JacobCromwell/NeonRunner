@@ -32,6 +32,9 @@ sense of what would be better — a mismatch is a finding, not something to fix 
   colour/shape language, only hazards glow in hazard colours, one new mechanic at a time.
 - For generator/track/damage changes: the fairness sweep still passes at 3, 5 and 6 lanes, and no
   code assumes a specific lane count.
+- A tier that would run past about 10 minutes (the full tier: 50+ minutes) goes in the background with its log in the
+  scratchpad, and you push your branch first: a container restart kills running work. The orchestrator may shard the
+  full tier over several containers (`tools/godot.sh test --tier=full --shard=K/N`; `CLAUDE.md`, Workflow rules).
 - For visual work: frames rendered on both the default and Compatibility (`gl_compatibility`)
   renderers, and Reduced Flashing honoured wherever something flickers.
 - Tests exist for what changed, and the right tier passed: `tools/godot.sh test --tier=merge` on the

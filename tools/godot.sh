@@ -14,6 +14,8 @@
 #   tools/godot.sh test --tier=merge  before a branch merges: everything but the slow sweeps and fight
 #                                     simulations, plus the suites for the changed files
 #   tools/godot.sh test --tier=full   every suite (the same as plain `test --jobs=N`)
+#   tools/godot.sh test --shard=K/N [--tier=full|--jobs=N]   run only share K of N of the suites (the same split on every
+#                                     container): how to spread a long tier over several cloud containers
 #   tools/godot.sh test [--suite=x] [--jobs=N]   run the headless tests (exit code 0 = pass); --suite=x
 #                                     runs only the suites whose file name contains x. --jobs=N (default 1,
 #                                     unchanged behaviour) splits the suites across N Godot processes,
@@ -185,6 +187,41 @@ run_tests_parallel() {
 		exit 1
 	fi
 	local times_file="$ROOT/tests/.suite_times.json"
+	if [[ -n "${SHARD:-}" ]]; then
+		# --shard=K/N: keep only this container's balanced share of the suites (the same split on every container).
+		mapfile -t suites < <(python3 - "$SHARD" "$times_file" "$ROOT/tests/suites" "${suites[@]}" <<'PYEOF'
+import json, os, sys
+k, n = (int(x) for x in sys.argv[1].split("/"))
+times = {}
+try:
+	times = json.load(open(sys.argv[2]))
+except Exception:
+	pass
+def weight(s):
+	# a measured time, else the file's size as a stand-in, so the split balances without a measurement
+	if s in times:
+		return float(times[s])
+	try:
+		return os.path.getsize(os.path.join(sys.argv[3], s)) / 20000.0 + 0.5
+	except OSError:
+		return 1.0
+order = sorted(sys.argv[4:], key=lambda s: (-weight(s), s))
+loads = [0.0] * n
+mine = []
+for s in order:
+	i = min(range(n), key=lambda j: (loads[j], j))
+	loads[i] += weight(s)
+	if i == k - 1:
+		mine.append(s)
+print("\n".join(sorted(mine)))
+PYEOF
+		)
+		echo "Shard $SHARD: ${#suites[@]} suites"
+		if [[ ${#suites[@]} -eq 0 ]]; then
+			echo "This shard has no suites."
+			exit 0
+		fi
+	fi
 	local groups=()
 	mapfile -t groups < <(python3 - "$jobs" "$times_file" "${suites[@]}" <<'PYEOF'
 import json, sys
@@ -296,6 +333,7 @@ case "$command" in
 		for arg in "$@"; do
 			case "$arg" in
 				--jobs=*) jobs="${arg#--jobs=}" ;;
+				--shard=*) SHARD="${arg#--shard=}" ;;
 				--gate) tier="gate" ;;
 				--tier=*) tier="${arg#--tier=}" ;;
 				--base=*|--paths=*) plan_args+=("$arg") ;;
@@ -333,6 +371,9 @@ case "$command" in
 			run_tests_parallel "$jobs" "${rest[@]}"
 		fi
 		[[ -z "$jobs" ]] && jobs=1
+		if [[ -n "${SHARD:-}" ]]; then
+			run_tests_parallel "$jobs" "${rest[@]}"
+		fi
 		if [[ "$jobs" -le 1 ]]; then
 			set +e
 			local_log="$(mktemp)"
