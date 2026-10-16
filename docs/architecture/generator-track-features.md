@@ -733,9 +733,10 @@ throughout (`docs/questions/j2.md`).
   lanes, 117 builds): a build has on average 1.9 in the Marketplace (one in Marketplace 1, from halfway), 2.6 in the
   Casino, 2.3 in Corporate, 2.1 on the Beach, 2.0 in the Dead Zone and 1.5 in the Golden Zone, whose levels are the
   most crowded (their Resonators, Gilded Sentinels and hover trucks leave few 4-second stretches free); 15 of the 117
-  had one give way to the wider gaps or the dash walls. Every build measured (and every one of `test_campaign`'s seed
-  sweep) has one, the last resort making room in 4 of the 117, all Golden builds at 3 lanes (one of them Golden 2's
-  own, through the wider gaps' rebuild).
+  had one give way to the wider gaps or the dash walls. Every build measured has one, the last resort making room in 4
+  of the 117, all Golden builds at 3 lanes (one of them Golden 2's own, through the wider gaps' rebuild); of
+  `test_campaign`'s seed sweep, two Dead Zone builds at 3 lanes have none (`WALL_RUN_GAP_CROWDED`, above). Measured
+  again with the dash wall rule (`past_dash_wall`): the same means, 117 builds.
 
 **Wall-run gaps on the track.** Their holes are built like any (`TrackBuilder._floor_pieces`, the zone's floor edges).
 `TrackBuilder._build_chunk` has the skin light each one's wall where it runs through the chunk
