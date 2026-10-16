@@ -260,3 +260,4 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## October 16, 2026 batch
 
 - [x] The Bad Dream should be able to hit the player on the ceiling. DONE (K1): it telegraphs and slashes a ceiling rider like a floor runner (lanes lit on the underside, same warning); fewer lanes where three would leave no way out; a ceiling rider is hit only after a 0.5 s settle and never into an ending ceiling. Questions 878-882.
+- [x] Wall signs (black and yellow stripes) must not kill a player with armor: they take one armor hit instead. DONE (K3): armor (then the shield) takes a sign's hit with the usual invulnerability; the runner passes on through that sign. Without protection a sign still kills; trucks, walls and falls unchanged. Questions 883-884.

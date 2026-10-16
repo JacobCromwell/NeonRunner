@@ -462,7 +462,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs, the bait, phase 3
   and the leap).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
-  electrical hazard (never a crash or a fall) and comes back 30 s after it breaks; the HUD shows its hits
+  electrical hazard (never a truck crash or a fall; a sign's hit counts) and comes back 30 s after it breaks; the HUD shows its hits
   and a ring filling while it comes back. Armor pickups in boss fights bring it back at once. With no armor hit
   and no shield left the player is one hit from death: the screen's edges pulse red twice with a two-tone
   siren and then hold a dim red edge until protection is back (steady, never pulsing, with Reduced flashing; none

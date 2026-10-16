@@ -319,7 +319,7 @@ The shop appears between levels and after every death.
 | **Juggernaut dash** | Tap-triggered; barrels through enemies and obstacles. Uses a **cooldown**. | *(open)* |
 | **Magnet** | Automatically pulls in nearby credits. | Radius upgrades, **hard cap at the player's lane plus adjacent lanes**; never pulls credits from another surface (floor ↔ wall ↔ ceiling). |
 | **Slow time** | **PC only**, E key, cooldown-based. | *(open)* |
-| **Armor** (changed September 30, 2026; it was a breakable) | Free at the start of every level and boss fight. Blocks one **enemy attack or electrical hazard**; does NOT block solid collisions (signs, trucks, walls) or falls. After it breaks it **comes back 30 seconds later**. | Tiers **alternate** between one more hit before it breaks and a shorter wait before it comes back *(numbers open)*. |
+| **Armor** (changed September 30, 2026; it was a breakable) | Free at the start of every level and boss fight. Blocks one **enemy attack or electrical hazard**; does NOT block solid collisions (trucks, walls) or falls, but **does take a sign's hit** (owner, October 16, 2026: one armor hit used, the runner lives; no armor, a sign still kills). After it breaks it **comes back 30 seconds later**. | Tiers **alternate** between one more hit before it breaks and a shorter wait before it comes back *(numbers open)*. |
 
 ### Breakable (break when used, then buy again)
 
@@ -359,7 +359,7 @@ The shop appears between levels and after every death.
 **Big attacks take turns** (decided September 26, 2026): the major attacks of different enemy types never overlap (for example, a drone barrage never lands during a hover truck's lurch or cannon shot), so the player never has to dodge two big attacks at once. The owner found early playtests not very challenging, so this may be reverted after playtesting.
 
 Shared interaction rules apply unless stated otherwise:
-- Armor blocks enemy attacks and electrical hazards.
+- Armor blocks enemy attacks and electrical hazards, and takes one hit from a sign.
 - The shield blocks anything.
 - Claws kill on contact.
 - The juggernaut dash smashes through.

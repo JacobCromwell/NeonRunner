@@ -4719,3 +4719,24 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
    chase's pad ceilings included; they only meet in a level that has both features), and the turret's own bolts are
    an enemy attack on the same rider, so a ceiling can now ask a rider to dodge both. Should a chase's ceiling be kept
    free of turrets (one new thing at a time), or may the turret add to the dodge?
+
+### Folded on October 16, 2026 (task K3, a sign takes the armor's hit)
+
+883. **What happens to a wall runner after armor (or the shield) takes a sign's hit?** (GDD §3, Signs; §4, the
+   invulnerability window; §8, Armor.) The owner asked for "the usual invulnerability window"; it doesn't say where
+   the runner goes. **Placeholder:** they run on along the wall through the sign, as the shield has always let
+   them, and one hit pays for the whole sign: the sign declares `Hazard.passes_after_block`, so it can't hit them
+   again while their body is still in it, even if the window (an F6 tunable, down to 0.2 s) runs out first or a
+   pattern places a longer sign. DESIGN-TBD in `TrackBuilder._build_sign` (`scripts/world/track_builder.gd`).
+   On screen (rendered frames, both renderers): the armor's break bursts at the sign's face, then the runner is
+   hidden inside the sign for the time it takes to pass (up to about 0.8 s, the longest pattern sign's), glimpsed
+   flashing, and comes out the far end; the chase camera passes about a metre from the sign's lane-side face.
+   Alternatives: knock them off the wall into the outer lane (truer to "signs block the wall", but it can drop
+   them into a hole below, a death the armor was meant to prevent), or make the sign give way like a dash wall
+   (it would need a breaking look and sound).
+884. **Should the armor's texts mention signs?** (GDD §8, Armor; the shop.) The shop's armor line says "Takes {hits}
+   from attacks or electricity (not crashes or falls)" and the armor pickup's hint says "Armor blocks enemy attacks
+   and electric shocks". A sign's hit (and, since H7a, a dash wall's crash) is now taken by the armor, so "not
+   crashes" under-promises. **Placeholder:** both texts unchanged (`data/shop/catalog.json`, the armor's
+   `description`, marked in its `_note`; `data/hints/hints.json`, `pickup_armor`). A longer shop line must still
+   fit the item card's three lines on a phone (`test_phone_screens`).
