@@ -179,20 +179,21 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   ("sign") as before; the dash passes it; god mode and the window ignore it. Only signs changed: a truck's body,
   a boss's block (`BossProps.block`), an enemy's body, a wall and a fall stay deadly through armor. A wall entry
   beside a sign is still only blocked (the clank and the bump, which stops short of it: nothing is used).
-  - *One hit pays for the whole sign.* The wall runner whose armor (or shield) took a sign's hit runs on along the
-    wall through it (DESIGN-TBD, `docs/questions/k3.md` 1: rather than being knocked off the wall or the sign
-    giving way). The window alone covers it today (the longest pattern sign, 14 m at the reference speed and stretched
-    with the pace like every pattern's metres, takes about 0.8 s to run through at any pace, against the 1 s
-    window), but the window is an F6 tunable (down to 0.2 s) and a sign's length is pattern data, so the sign also
-    declares `passes_after_block`: once a hit of it was blocked
+  - *One hit pays for the whole sign.* The wall runner whose armor (or shield) took a sign's hit runs on along
+    the wall through it (DESIGN-TBD, `docs/questions/k3.md` 1: rather than being knocked off the wall or the
+    sign giving way). The window alone covers it today (the longest pattern sign, 14 m at the reference speed
+    and stretched with the pace like every pattern's metres, takes about 0.8 s to run through at any pace,
+    against the 1 s window), but the window is an F6 tunable (down to 0.2 s) and a sign's length is pattern
+    data, so the sign also declares `passes_after_block`: once a hit of it was blocked
     (`DamageRules.lets_through`), `Player._check_hazards` leaves it alone while the body is still in it
     (`_passing`, by instance id, refreshed every frame the body touches it and forgotten the first frame it
-    doesn't), so the runner can't be hit by it again or die inside it. A dash that ends inside a sign leaves the
-    rest of it to the armor the same way. Nothing else declares it: after a blocked hit of anything else only the
-    window protects, as before (the Golden Convergence's fire relies on that).
+    doesn't), so the runner can't be hit by it again or die inside it. A dash that ends inside a sign leaves
+    the rest of it to the armor the same way. Nothing else declares it: after a blocked hit of anything else
+    only the window protects, as before (the Golden Convergence's fire relies on that).
   - Everything that reacts to a hit hears a sign's like any other: the HUD, the run's effects and sounds, the
-    last-hit warning (it reads the armor's state) and a boss's armor rule (no boss arena has signs; each clears
-    its laps').
+    last-hit warning (it reads the armor's state) and a boss's armor rule (the built bosses' arenas have no
+    signs, each clearing its laps', but the test boss's generated laps may, and count a sign's armor hit like
+    any other).
 - **Blocked moves bump, never hurt.** A lane switch into a solid side (a lane blocker: the hover
   truck's, a boss's block) and a wall entry where the wall is blocked (a sign, or a wall a boss takes
   away; GDD §3) move the player out toward it and back (`Player._start_bump`) with the clank
