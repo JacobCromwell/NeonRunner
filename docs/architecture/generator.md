@@ -460,7 +460,9 @@ each feature a pattern can place there is in the finished level, at any lane cou
 - Every build runs every pass and rule unchanged, so the guarantee never bends a fairness rule. After
   `GUARANTEE_ATTEMPTS` builds the level keeps the build that missed the fewest, with a warning (the
   campaign tests fail on any warning). `attempts` says how many builds a level took (about two on
-  average in the campaign).
+  average in the campaign). A level whose wider gaps its first wall-run gap crowded out is built once
+  more after the guarantee, that build kept only if it has everything (task J2; generator-track-features,
+  Wall-run gaps, Giving way); `attempts` doesn't count it.
 - Rules that hold the room for a feature themselves also add one where it fits when a level is left
   without any, which saves a build: a drone wave and a hover truck in any level (their tunings'
   `guarantee_one_wave` and `guarantee_one`), and a host, an Octodog and a Resonator in a level with
