@@ -86,7 +86,10 @@ const WALL_RUN_STEP_HIGH: float = 3.6
 const WALL_RUN_STRIP_LOW: float = 1.0
 const WALL_RUN_STRIP_HIGH: float = 2.5
 const WALL_RUN_PANEL: float = 2.4
-const WALL_RUN_PROUD: float = 0.06
+const WALL_RUN_PROUD: float = 0.04
+## Its frame lines stand off the wall line to here, just past the panel's face (the skins' suites let nothing stand
+## more than 5 cm off a wall in the wall-run band).
+const WALL_RUN_LINE_PROUD: float = 0.045
 const WALL_RUN_STEP_GLOW: float = 1.3
 const WALL_RUN_STRIP_GLOW: float = 0.8
 const WALL_RUN_EDGE_GLOW: float = 1.0
@@ -502,14 +505,16 @@ static func standard_wall_run_guide(s: MeshLayer, side: int, face_x: float, star
 			s.rect(Vector3(x, high, TrackGeometry.world_z(a)), u, Vector3(0.0, low - high, 0.0),
 				bright if step else color, WALL_RUN_STEP_GLOW if step else WALL_RUN_STRIP_GLOW, MeshKit.PAT_CHEVRON,
 				uv0, uv1, 1.0)
-		# Lines along its top and bottom, and up its ends where they fall in this part.
+		# Lines along its top and bottom, and up its ends where they fall in this part: from the wall line to just past
+		# the panel's face (WALL_RUN_LINE_PROUD), never further off the wall than the skins let anything stand.
+		var line_x: float = face_x - float(side) * WALL_RUN_LINE_PROUD * 0.5
 		var z_mid: float = TrackGeometry.world_z((a + b) * 0.5)
 		for y: float in [low, high]:
-			s.box(Vector3(x, y, z_mid), Vector3(0.05, 0.07, b - a), color, WALL_RUN_EDGE_GLOW)
+			s.box(Vector3(line_x, y, z_mid), Vector3(WALL_RUN_LINE_PROUD, 0.07, b - a), color, WALL_RUN_EDGE_GLOW)
 		for at: float in [from, to]:
 			if step and at >= start - 0.001 and at <= end + 0.001:
-				s.box(Vector3(x, (low + high) * 0.5, TrackGeometry.world_z(at)), Vector3(0.06, high - low, 0.09), color,
-					WALL_RUN_EDGE_GLOW)
+				s.box(Vector3(line_x, (low + high) * 0.5, TrackGeometry.world_z(at)),
+					Vector3(WALL_RUN_LINE_PROUD, high - low, 0.09), color, WALL_RUN_EDGE_GLOW)
 
 
 ## The wall gaps (LevelLayout.wall_gaps, whole, as Vector2(start, end)) on `side` near the chunk

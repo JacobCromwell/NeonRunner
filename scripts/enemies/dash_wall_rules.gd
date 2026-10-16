@@ -81,7 +81,9 @@ extends RefCounted
 ## past it (the stretch from the first possible face to the last cut into as many parts, a seeded spot aimed
 ## for in each, the best fair spot in that part taken: nothing to take out first, then the nearest), then the
 ## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
-## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
+## most that fit, as far apart as they can be; still short, its wall-run gaps but its first give way (task J2,
+## WallRunGapPlacement.set_aside: the best spots again with them out of the way, then each comes back where the
+## walls left its way as it was, put_back). A level left with no wall at all makes room for one as an
 ## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
 ## Overdrive an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way
 ## going too (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677), and one with no fair spot even then gets a
@@ -336,6 +338,19 @@ static func after_doodads(gen: LevelGenerator) -> void:
 			chosen = most
 	for at: float in chosen:
 		_place(gen, plan, at, faces)
+	if faces.size() < count:
+		# Task J2: the level's wall-run gaps but its first give way to its dash walls (WallRunGapPlacement.set_aside):
+		# with them out of the way, the best spots of the rest for the ones still missing; then each wall-run gap whose
+		# way the walls left as it was comes back (put_back).
+		var aside: Array[Dictionary] = WallRunGapPlacement.set_aside(gen)
+		if not aside.is_empty():
+			plan = plan_for(gen, t)
+			while faces.size() < count:
+				var at: float = plan.best(plan.lo, plan.hi, plan.lo, faces)
+				if is_nan(at):
+					break
+				_place(gen, plan, at, faces)
+			WallRunGapPlacement.put_back(gen, aside, "the dash walls")
 	# Kept out of the quiet stretches, a level paced in bursts may have no room left: one stands in a quiet
 	# stretch rather than none at all.
 	if faces.is_empty() and not gen.quiet_stretches().is_empty():

@@ -1426,13 +1426,14 @@ static func gapped_between(layout: LevelLayout, lane: int, from: float, to: floa
 
 
 ## Longest stretch where every lane is a hole at once (intersection of the lanes' gap intervals; a
-## floor cut's stretch counts as a hole in its lane).
+## floor cut's stretch counts as a hole in its lane). A wall-run gap's holes (task J2) are left out: no jump
+## crosses one, its lit wall does (check_wall_run_gaps keeps every other hole out of its clear stretch).
 static func longest_all_lane_hole(layout: LevelLayout) -> float:
 	var common: Array[Vector2] = []
 	for lane: int in layout.lane_count:
 		var mine: Array[Vector2] = []
 		for g: Dictionary in layout.gaps:
-			if g["lane"] == lane:
+			if g["lane"] == lane and not LevelLayout.is_wall_run_hole(g):
 				mine.append(Vector2(g["start"], g["end"]))
 		for c: Dictionary in layout.cuts:
 			if int(c["lane"]) == lane:

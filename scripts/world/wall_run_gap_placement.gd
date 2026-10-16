@@ -486,8 +486,7 @@ static func _add(p: _Pass, w: Dictionary) -> void:
 			"enemies":
 				p.enemies_out += _erase(lay.enemies, k["piece"])
 	p.costs.append(cost)
-	for lane: int in lay.lane_count:
-		lay.gaps.append({"lane": lane, "start": float(w["start"]), "end": float(w["end"]), LevelLayout.WALL_RUN_HOLE: true})
+	_set_holes(lay, w, true)
 	lay.wall_run_gaps.append(w)
 	# The next ones keep min_spacing_seconds from it.
 	var room: float = p.t.min_spacing_seconds * gen.speed
@@ -572,15 +571,17 @@ static func _small_enemies(gen: LevelGenerator) -> Array[Dictionary]:
 	return out
 
 
-## What a small enemy (_small_enemies) keeps a wall-run gap's clear stretch off, as a wider gap's zone keeps
-## (WideGapPlacement.keeps_of): a floor cyborg its obstacle margin either side (CyborgRules.obstacle_margin_at; its walk
-## and panic run keep it too), any other its keep-out (LevelGenerator.enemy_keep_out) with the floor it uses
+## What a cyborg or a screech (the small enemies, _small_enemies, and the ones that stay) keeps a wall-run gap's clear
+## stretch off, as a wider gap's zone keeps (WideGapPlacement.keeps_of): a floor cyborg its obstacle margin either side
+## (CyborgRules.obstacle_margin_at; its walk and panic run keep it too) and KEEP_MARGIN more (the clear stretch is one
+## of its obstacle spans once placed, CyborgRules.obstacle_spans, and the rules count a cyborg right at its margin as
+## too near), any other its keep-out (LevelGenerator.enemy_keep_out) with the floor it uses
 ## (LevelGenerator.enemy_floor_span). `hooks` caches each type's rules script.
 static func _enemy_span(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -> Vector2:
 	var at: float = float(e["at"])
 	if String(e.get("type", "")) == "cyborg":
 		var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
-		var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
+		var margin: float = (CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)) + KEEP_MARGIN
 		return Vector2(at - margin, at + margin)
 	var span := Vector2(at, at)
 	for k: Vector2 in [gen.enemy_keep_out(e, hooks), LevelGenerator.enemy_floor_span(e, gen.pace)]:
@@ -841,6 +842,62 @@ static func problem(gen: LevelGenerator, w: Dictionary) -> String:
 	if lay.wall_gap_between(float(w["start"]) - clear + TOUCH, float(w["end"]) + clear - TOUCH, -side):
 		return "the other wall has a gap beside it"
 	return ""
+
+
+## For a later pass that falls short of its own count (the wider gaps, WideGapPlacement.place; the dash walls,
+## DashWallRules.after_doodads): takes every wall-run gap but the level's first out of `gen`'s layout (its entry and its
+## holes; the first never gives way, so a level with the feature keeps one) and returns them, so the pass can look again
+## with them out of its way. put_back puts back each one that still fits. [] where the level has fewer than two.
+static func set_aside(gen: LevelGenerator) -> Array[Dictionary]:
+	var lay: LevelLayout = gen.layout
+	var out: Array[Dictionary] = []
+	if lay.wall_run_gaps.size() < 2:
+		return out
+	lay.wall_run_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	out.assign(lay.wall_run_gaps.slice(1))
+	lay.wall_run_gaps.resize(1)
+	for w: Dictionary in out:
+		_set_holes(lay, w, false)
+	return out
+
+
+## Puts back each wall-run gap of `aside` (set_aside's) where the pass that set it aside left its way as it was (problem
+## finds nothing: its clear stretch, its lit wall, the other wall); the rest stay out, given way to `by` (for the report:
+## LevelGenerator.wall_run_gap_result's `placed`, `gave_way` and constraints). Returns how many stayed out.
+static func put_back(gen: LevelGenerator, aside: Array[Dictionary], by: String) -> int:
+	var lay: LevelLayout = gen.layout
+	var out: int = 0
+	for w: Dictionary in aside:
+		lay.wall_run_gaps.append(w)
+		_set_holes(lay, w, true)
+		if problem(gen, w) != "":
+			lay.wall_run_gaps.erase(w)
+			_set_holes(lay, w, false)
+			out += 1
+	lay.wall_run_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	var report: Dictionary = gen.wall_run_gap_result
+	if out > 0 and not report.is_empty():
+		report["placed"] = lay.wall_run_gaps.size()
+		report["gave_way"] = int(report.get("gave_way", 0)) + out
+		var constraints: PackedStringArray = report.get("constraints", PackedStringArray())
+		constraints.append("%d gave way to %s" % [out, by])
+		report["constraints"] = constraints
+	return out
+
+
+## Adds wall-run gap `w`'s holes, one in every lane over its gap, to `lay`'s (or, with `present` false, takes them out).
+static func _set_holes(lay: LevelLayout, w: Dictionary, present: bool) -> void:
+	if present:
+		for lane: int in lay.lane_count:
+			lay.gaps.append({"lane": lane, "start": float(w["start"]), "end": float(w["end"]), LevelLayout.WALL_RUN_HOLE: true})
+		return
+	var kept: Array[Dictionary] = []
+	for g: Dictionary in lay.gaps:
+		if LevelLayout.is_wall_run_hole(g) and absf(float(g["start"]) - float(w["start"])) < 0.01 \
+				and absf(float(g["end"]) - float(w["end"])) < 0.01:
+			continue
+		kept.append(g)
+	lay.gaps.assign(kept)
 
 
 ## Player.grapple_save for a level with wall-run gaps (RunWorld sets it, `layout` bound): a runner pulled up out of a

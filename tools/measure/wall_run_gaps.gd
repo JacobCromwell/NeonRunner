@@ -9,7 +9,7 @@ extends SceneTree
 ## column per DUMP_STEP metres, from its clear run-in to its landing floor's end): the level dump a review asks for.
 ## From the project folder (with XDG_DATA_HOME set as for the tests):
 ##   godot --headless -s res://tools/measure/wall_run_gaps.gd -- [--lanes=3,5,6] [--seeds=2] [--levels=golden/1,...]
-##       [--dump=marketplace/1]
+##       [--dump=marketplace/1] [--seed-list=9206,9208] [--no-remix] [--set=name:value,...]
 
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 ## Metres a column of the dump's map stands for.
@@ -19,6 +19,8 @@ var _lanes: Array[int] = [3, 5, 6]
 var _seeds: int = 0
 var _levels: PackedStringArray = []
 var _dump: String = ""
+var _seed_list: Array[int] = []
+var _no_remix: bool = false
 ## The shared tuning, held for the whole run so a --set stays (the resource cache keeps no resource nothing holds).
 var _tuning: WallRunGapTuning
 
@@ -41,6 +43,13 @@ func _run() -> void:
 			_levels = value.split(",", false)
 		elif arg.begins_with("--dump="):
 			_dump = value
+		elif arg.begins_with("--seed-list="):
+			# Review aid: these seeds too (after the level's own and --seeds').
+			for part: String in value.split(",", false):
+				_seed_list.append(int(part))
+		elif arg == "--no-remix":
+			# Review aid: each build without a paced level's remix (test_campaign's "The Hush without the remix").
+			_no_remix = true
 		elif arg.begins_with("--set="):
 			# Review aid: --set=approach_seconds:0.8,entry_window_seconds:0.5 sets the shared tuning's numbers in memory.
 			for pair: String in value.split(",", false):
@@ -60,10 +69,17 @@ func _run() -> void:
 			var seeds: Array[int] = [-1]
 			for k: int in _seeds:
 				seeds.append(9001 + k)
+			seeds.append_array(_seed_list)
 			for level_seed: int in seeds:
 				var config: LevelConfig = campaign.configure(s, lanes)
 				if level_seed >= 0:
 					config.level_seed = level_seed
+				if _no_remix:
+					config.quiet_seconds = 0.0
+					config.quiet_features = PackedStringArray()
+					var none: Dictionary[String, float] = {}
+					config.feature_weights = none
+					config.darkness = 0.0
 				var gen := LevelGenerator.new()
 				var t0: int = Time.get_ticks_msec()
 				var layout: LevelLayout = gen.generate(config, base, LevelGenerator.load_for(config))
