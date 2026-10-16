@@ -483,6 +483,13 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if _counts(k):
 			p.mark_span(p.blocked, Vector2(float(k["from"]), float(k["to"])))
+	# Task J2: no wall-run gap's clear stretch within a wall run past the wall (WallRunGapPlacement.past_dash_wall): a
+	# runner who passed it on a side wall would still be on a wall, or coming down, when its lit stretch comes.
+	if not lay.wall_run_gaps.is_empty():
+		var past: float = WallRunGapPlacement.past_dash_wall(gen, pt)
+		for wr: Dictionary in lay.wall_run_gaps:
+			var k: Vector2 = WallRunGapPlacement.keep_out(wr)
+			p.mark_faces(p.blocked, Vector2(k.x - p.depth - past, k.y))
 	if p.t.keep_dash_baits:
 		for b: float in bait_points(gen):
 			p.mark_faces(p.blocked, Vector2(b, b + p.spacing))
@@ -951,6 +958,12 @@ static func _why(gen: LevelGenerator, plan: Plan, face: float) -> String:
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if _counts(k) and float(k["from"]) <= fp.y and float(k["to"]) >= fp.x:
 			found.append("a rule's keep-out %.1f-%.1f m" % [float(k["from"]), float(k["to"])])
+	if not lay.wall_run_gaps.is_empty():
+		var past: float = WallRunGapPlacement.past_dash_wall(gen)
+		for wr: Dictionary in lay.wall_run_gaps:
+			var k: Vector2 = WallRunGapPlacement.keep_out(wr)
+			if face >= k.x - plan.depth - past and face <= k.y:
+				found.append("a wall-run gap's clear stretch from %.1f m within a wall run past it" % k.x)
 	if plan.t.keep_dash_baits:
 		for b: float in bait_points(gen):
 			if face >= b and face <= b + plan.spacing:

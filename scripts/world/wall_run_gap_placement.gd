@@ -67,6 +67,11 @@ const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 const CyborgRules = preload("res://scripts/enemies/cyborg_rules.gd")
 const EnforcerRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const GeneratorRules = preload("res://scripts/enemies/generator_rules.gd")
+## The last resort's last step takes a plain ceiling out with its pads as a drone's pad schedule does (_ceilings_go),
+## never one whose pads a host's chase or a drone wave counts on.
+const PadPlacement = preload("res://scripts/enemies/pad_placement.gd")
+const HostRules = preload("res://scripts/enemies/host_rules.gd")
+const DroneRules = preload("res://scripts/enemies/drone_rules.gd")
 ## Metres between the spots a wall-run gap is tried at along a free stretch (_fit).
 const STEP: float = 1.0
 ## Seconds of run the safe landing floor reaches past where the latest standard wall run drops the runner back onto it
@@ -197,6 +202,19 @@ static func landing_seconds(m: MovementTuning, t: WallRunGapTuning) -> float:
 	return maxf(t.landing_seconds, latest_drop_seconds(m, t) + LANDING_SLACK_SECONDS)
 
 
+## How far past a dash wall's back a runner who passes it on a side wall (GDD §9.14: without the dash or the armor) may
+## still be on that wall or coming down off it: the longest wall run (claws), as if they stepped on at its back, the
+## dash's extra and the drop back to the floor. A wall-run gap's clear stretch keeps off that (floor_keeps; a dash wall
+## placed after the wall-run gaps keeps its face that far before one, DashWallRules.plan_for), as it keeps off a ramp's
+## longest wall run: a runner still on a wall when its lit stretch comes would have no fresh wall run for the gap, and
+## one whose wall run ends over the gap drops into it.
+static func past_dash_wall(gen: LevelGenerator, pt: PowerupTuning = null) -> float:
+	var p: PowerupTuning = pt if pt != null else powerups()
+	var m: MovementTuning = gen.tuning
+	var longest: float = m.wall_entry_time + m.wall_slide_time * maxf(p.claws_wall_time_multiplier, 1.0)
+	return (longest + drop_seconds(m)) * gen.speed + p.dash_duration * p.dash_speed_bonus
+
+
 ## A wall-run gap's sizes (Shape) for movement tuning `m` at run speed `speed` (m/s), from `t` (the shared numbers by
 ## default) and `pt` (the power-ups': claws and the dash).
 static func shape_for(m: MovementTuning, speed: float, t: WallRunGapTuning = null, pt: PowerupTuning = null) -> Shape:
@@ -312,6 +330,8 @@ static func place(gen: LevelGenerator) -> Dictionary:
 			fit = _make_room(p, from, last, side)
 		if fit.is_empty():
 			fit = _signs_go(p, from, last, side)
+		if fit.is_empty():
+			fit = _ceilings_go(p, from, last, side)
 		if not fit.is_empty():
 			_add(p, fit)
 	if lay.wall_run_gaps.is_empty():
@@ -389,6 +409,71 @@ static func _signs_go(p: _Pass, from: float, last: float, side: int) -> Dictiona
 		return {}
 	fit["signs_go"] = true
 	return fit
+
+
+## The last resort's very last step (place), where even the signs going leaves no room (_signs_go): one plain ceiling
+## goes with its pads (PadPlacement.remove_hull, as a drone's pad schedule takes a pattern's ceilings out), each in turn
+## from the level's start (_ceiling_candidates), and a spot looked for without it as _signs_go looks; the first that
+## leaves room stays out. A ceiling is a way over the floor below it, never the only one (GDD §3: the floor under a
+## ceiling is survivable without its pad), and taking content out never makes a level unfair. It is what a crowded
+## level at 3 lanes needs where a ceiling or its landing zone takes every 4-second stretch (The Hush without its remix
+## on seed 9206, Dead Zone 1 on seed 9208, in test_campaign's sweep). {} if none does (the level is as it was).
+## DESIGN-TBD (docs/questions/j2.md item 8).
+static func _ceilings_go(p: _Pass, from: float, last: float, side: int) -> Dictionary:
+	var lay: LevelLayout = p.gen.layout
+	for h: Dictionary in _ceiling_candidates(p.gen):
+		var hulls: Array[Dictionary] = lay.hulls.duplicate()
+		var pads: Array[Dictionary] = lay.pads.duplicate()
+		PadPlacement.remove_hull(lay, h)
+		var fit: Dictionary = _signs_go(p, from, last, side)
+		if not fit.is_empty():
+			p.made_room = "the ceiling at %.0f-%.0f m with its pads (%d)" % [float(h["start"]), float(h["end"]),
+				pads.size() - lay.pads.size()]
+			return fit
+		lay.hulls.assign(hulls)
+		lay.pads.assign(pads)
+	_survey(p)
+	return {}
+
+
+## The ceilings _ceilings_go may take out, in the level's order: plain ones (no ceiling scenario, CeilingScenarios.KEY,
+## and nothing hanging from one: a Barnacle Turret's params name its ceiling), never the one over the level's first pad
+## (the `ceilings` feature keeps its introduction), nor one with a pad another feature counts on: one in a host's chase
+## (host_rules.gd keeps a pad every pad_gap_seconds over it) or the first after a drone wave's arrival (the pad that
+## ends its barrages, drone_rules.gd keep_out).
+static func _ceiling_candidates(gen: LevelGenerator) -> Array[Dictionary]:
+	var lay: LevelLayout = gen.layout
+	var pads: Array[float] = LevelGenerator.feature_positions(lay, "ceilings")
+	var first: float = pads[0] if not pads.is_empty() else INF
+	var counted: Array[Vector2] = HostRules.chase_stretches(gen)
+	var hung: Array[float] = []
+	for e: Dictionary in lay.enemies:
+		var params: Dictionary = e.get("params", {})
+		if params.has("hull_start"):
+			hung.append(float(params["hull_start"]))
+		if String(e.get("type", "")) == "drone":
+			var wave: Vector2 = DroneRules.keep_out(gen, e)
+			counted.append(Vector2(wave.y, wave.y))
+	var out: Array[Dictionary] = []
+	for h: Dictionary in lay.hulls:
+		if h.has(CeilingScenarios.KEY):
+			continue
+		var a: float = float(h["start"])
+		var b: float = float(h["end"])
+		var plain: bool = true
+		for at: float in hung:
+			plain = plain and absf(at - a) > EPSILON
+		for pad: Dictionary in lay.pads:
+			var at: float = float(pad["at"])
+			if not plain or at < a - EPSILON or at > b + EPSILON:
+				continue
+			plain = absf(at - first) > EPSILON
+			for s: Vector2 in counted:
+				plain = plain and (at < s.x - EPSILON or at > s.y + EPSILON)
+		if plain:
+			out.append(h)
+	out.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return float(x["start"]) < float(y["start"]))
+	return out
 
 
 ## The big encounters _make_room may take out (MAKE_ROOM_TYPES), in the level's order: every one but the level's first
@@ -716,6 +801,11 @@ static func floor_keeps(gen: LevelGenerator) -> Array[Dictionary]:
 	for d: Dictionary in lay.doodads:
 		if d.has("stash"):
 			out.append({"span": Vector2(float(d["start"]), float(d["end"])), "what": "a treasure stash"})
+	# A runner who passes a dash wall on a side wall is on it, or coming down off it, to past_dash_wall past its back.
+	if not lay.dash_walls.is_empty():
+		var past: float = past_dash_wall(gen)
+		for dw: Dictionary in lay.dash_walls:
+			out.append({"span": Vector2(float(dw["start"]), float(dw["end"]) + past), "what": "a wall run past a dash wall"})
 	var wt: WideGapTuning = WideGapPlacement.tuning()
 	for span: Vector2 in _wide_rows(gen):
 		out.append({"span": WideGapPlacement.zone_of(gen, wt, span), "what": "a wider gap"})
