@@ -1,6 +1,6 @@
 class_name Hazard
 extends Area3D
-## Anything that can hurt the player on contact: obstacles (fences, signs), enemy hitboxes and
+## Anything that can hurt the player on contact: obstacles (fences, signs, dash walls), enemy hitboxes and
 ## enemy projectiles. Hazards declare properties; DamageRules decides what a contact does, so
 ## hazards never apply damage themselves. Visuals and sounds follow `state_changed` and never
 ## change gameplay. After the Player resolves a contact it emits `contacted` with the outcome
@@ -19,10 +19,19 @@ var is_enemy_attack: bool = false
 ## A solid collision (signs, trucks, walls, enemy bodies). Armor does not block these, unless
 ## armor_blocks_solid says so.
 var is_solid: bool = false
-## A solid collision armor absorbs all the same (GDD §9.14, owner, October 8, 2026: a dash wall crashed into
-## without the dash is one hit that "armor or the shield absorbs", an exception to armor's rule for solid
-## collisions). False for every other hazard: armor never blocks a sign, a truck's body or a wall.
+## A solid collision armor absorbs all the same, an exception to armor's rule for solid collisions: a dash wall
+## crashed into without the dash (GDD §9.14, owner, October 8, 2026: one hit that "armor or the shield absorbs"),
+## a fence generator's body, and a sign (task K3, owner's request: a sign no longer kills a runner whose armor is
+## up; the armor takes the hit). False for every other hazard: armor never blocks a truck's body, a boss's block or
+## a wall, and a fall is no hazard at all.
 var armor_blocks_solid: bool = false
+## Once a hit of it is absorbed (DamageRules: BLOCKED_ARMOR or BLOCKED_SHIELD), the runner goes on through the
+## rest of it: it can't hit them again until their body is clear of it (DamageRules.lets_through,
+## Player._check_hazards). A sign (task K3): the wall runner whose armor or shield took its hit runs on along the
+## wall through it, however long it is and however short the invulnerability window. False for every other
+## hazard: after a blocked hit of anything else only the invulnerability window protects, and touching it after
+## that is another hit (a dash wall needs none of this: the contact breaks it, `breakable`).
+var passes_after_block: bool = false
 ## What a contact with this hazard breaks, whatever the contact does to the player (a dash wall, task H7a: it
 ## crumbles at any contact, a dash, a crash the armor or the shield absorbs, a kill, god mode or the
 ## invulnerability window alike; Player.receive_hit breaks it). Null for every other hazard.

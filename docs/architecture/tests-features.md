@@ -165,7 +165,7 @@ with no walls, only the pieces in their way taken out); The Hush's walls out of 
 the feature or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
 armor absorbs and that breaks it, across the floor lanes and short of the side walls, taller than any jump, the
 skin's hook and colours, a broken one never built); the damage rules (the dash, armor, the shield, a kill, god
-mode, the invulnerability window; a sign still a hit armor never blocks); on real physics at 3, 5 and 6 lanes in
+mode, the invulnerability window; a truck's body still a hit armor never blocks); on real physics at 3, 5 and 6 lanes in
 every lane, a dash smashing it before the body touches it (no hit, the lane and the distance run unchanged), a
 crash killing a runner with no protection at its face (the outer lanes too) and breaking it, a dash that ends
 short crashing, a jump and a slide crashing, a dash in the air smashing it, a wall runner passing it on either

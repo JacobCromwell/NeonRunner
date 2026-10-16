@@ -227,6 +227,10 @@ var _last_speed_pad: int = 0
 var _death_cause: String = ""
 var _blocker_shape := BoxShape3D.new()
 var _blocker_query := PhysicsShapeQueryParameters3D.new()
+## The hazards the body is going on through after armor or the shield absorbed a hit of each (task K3,
+## DamageRules.lets_through: a sign), by instance id, with the physics frame the body last touched each:
+## left alone until a frame the body is clear of it (_check_hazards).
+var _passing: Dictionary = {}
 
 var _pivot: Node3D
 var _avatar: PlayerAvatar  # Avatar
@@ -315,6 +319,7 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	wall_passes = 0
 	_smash_claims.clear()
 	_smash_grace_left = 0.0
+	_passing.clear()
 	invulnerable_left = 0.0
 	theft_immune_left = 0.0
 	dashing = false
@@ -1421,19 +1426,34 @@ func _drop_from_ceiling() -> void:
 
 
 ## The damage hitbox as it is now, stretched back over this frame's motion: any hazard
-## the body passed through since the last frame counts as a real contact.
+## the body passed through since the last frame counts as a real contact. A hazard the runner goes on
+## through after armor or the shield absorbed its hit (task K3, DamageRules.lets_through: a sign the wall
+## runner ran into) is no contact while the body is still in it (_passing): the hit they paid covers the whole
+## of it, even past the invulnerability window. Clear of it, they're forgotten.
 func _check_hazards(motion: float) -> void:
 	var height: float = _hurtbox_height()
 	_hazard_shape.size = Vector3(tuning.hurtbox_size.x, height, tuning.hurtbox_size.z + motion)
 	var basis := Basis(Vector3.BACK, _roll)
 	_hazard_query.transform = Transform3D(basis, position + basis * Vector3(0.0, height * 0.5, motion * 0.5))
+	var frame: int = Engine.get_physics_frames()
 	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_hazard_query, 8):
 		var hazard := hit["collider"] as Hazard
 		if hazard == null:
 			continue
-		receive_hit(hazard, _is_stomping(hazard))
+		var id: int = hazard.get_instance_id()
+		if _passing.has(id):
+			_passing[id] = frame
+			continue
+		var outcome: DamageRules.Outcome = receive_hit(hazard, _is_stomping(hazard))
 		if not alive:
 			return
+		# (A hazard whose contact freed it at once has nothing left to pass through.)
+		if is_instance_valid(hazard) and DamageRules.lets_through(hazard, outcome):
+			_passing[id] = frame
+	if not _passing.is_empty():
+		for id: int in _passing.keys():
+			if int(_passing[id]) != frame:
+				_passing.erase(id)
 
 
 ## Dropping onto the hazard from above: on the floor, descending, feet near its top. On the ceiling the

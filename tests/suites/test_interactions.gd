@@ -51,12 +51,18 @@ func _test_protection() -> void:
 	check(r["alive"], "a second hit inside the invulnerability window is ignored (%s)" % r["cause"])
 	await sim.free_world(w)
 
+	# A sign takes the armor's hit (task K3, the owner's request; test_sign_armor has the rest).
 	var wall_sign := RunSim.layout(3)
 	wall_sign.signs.append({"side": 1, "start": 25.0, "end": 35.0, "bottom": 0.0, "top": 5.5})
 	var to_wall: Array = [[6.0, &"move_right"], [10.0, &"move_right"]]
 	w = sim.build_world(wall_sign, _loadout({"armor": 1}))
 	r = await sim.step_world(w, 2.0, to_wall)
-	check(not r["alive"] and r["cause"] == "sign", "armor doesn't stop a sign (%s)" % r["cause"])
+	check(r["alive"] and r["events"].has(&"armor_break") and w.player.armor == 0 and w.score.blocked == 1,
+		"armor stops a sign: it breaks, and the wall runner lives (%s)" % r["cause"])
+	await sim.free_world(w)
+	w = sim.build_world(wall_sign)
+	r = await sim.step_world(w, 2.0, to_wall)
+	check(not r["alive"] and r["cause"] == "sign", "with no armor and no shield a sign kills (%s)" % r["cause"])
 	await sim.free_world(w)
 	w = sim.build_world(wall_sign, _loadout({"shield": 1}))
 	r = await sim.step_world(w, 2.0, to_wall)

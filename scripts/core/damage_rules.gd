@@ -17,12 +17,18 @@ extends RefCounted
 ##    nothing below stops it. (Steps 2–4 still come first: the dash, a stomp and the claws catch it.)
 ## 6. Invulnerability (after a block or revive) and god mode ignore everything harmful.
 ## 7. Armor that is up blocks an electrical hazard or an enemy attack, never a solid collision, unless the
-##    hazard declares armor_blocks_solid (a dash wall's crash, GDD §9.14: "armor or the shield absorbs it").
+##    hazard declares armor_blocks_solid (a dash wall's crash, GDD §9.14: "armor or the shield absorbs it";
+##    a sign, task K3, the owner's request: with armor up a sign takes the armor's hit instead of the run).
+##    A truck's body, a boss's block, a wall and a fall stay deadly through armor.
 ## 8. The shield blocks one hit of anything.
 ## 9. Otherwise the player dies (one hit ends the run, GDD §4).
 ## A breakable obstacle (Hazard.breakable: a dash wall, task H7a) also breaks at any contact, whatever the
 ## outcome above (the dash's IGNORE, a block, a kill, god mode or the invulnerability window): the Player
 ## applies that with the outcome (Player.receive_hit), so the runner passes it after an absorbed hit.
+## An obstacle that stands (Hazard.passes_after_block: a sign, task K3) lets the runner through the rest of it
+## once a hit of it is absorbed (lets_through): the Player leaves it alone until the body is clear of it
+## (Player._check_hazards), so the runner who paid a hit for it never dies inside it when the invulnerability
+## window runs out first.
 ##
 ## The armor itself (GDD §4, §8) is a state with rules of its own, below (Armor): up with its hits left,
 ## or broken and coming back. The Player holds one and applies what resolve() says to it.
@@ -101,10 +107,18 @@ static func defeat_cause(outcome: Outcome, defense: Defense) -> StringName:
 	return &"dash" if defense.dashing else &"claws"
 
 
+## True if the runner goes on through `hazard` after a contact with it came out `outcome` (task K3): it declares
+## passes_after_block (a sign) and armor or the shield absorbed the hit. The Player then leaves it alone until
+## the body is clear of it (Player._check_hazards): one hit pays for the whole of it.
+static func lets_through(hazard: Hazard, outcome: Outcome) -> bool:
+	return hazard.passes_after_block and (outcome == Outcome.BLOCKED_ARMOR or outcome == Outcome.BLOCKED_SHIELD)
+
+
 ## The runner's armor (GDD §4 and §8, owner's playtest, September 30, 2026). Every level and boss fight
 ## starts with it, free; the shop's armor is an upgrade to it (GameRules: hits and wait per tier).
-## - Up, with `hits` left: each contact resolve() answers BLOCKED_ARMOR (an enemy attack or an
-##   electrical hazard) takes one hit (block()), and the Player gives the usual invulnerability.
+## - Up, with `hits` left: each contact resolve() answers BLOCKED_ARMOR (an enemy attack, an electrical
+##   hazard, or a solid one that declares armor_blocks_solid: a dash wall, a sign) takes one hit (block()),
+##   and the Player gives the usual invulnerability.
 ## - When its last hit goes, it breaks, and it comes back whole `recharge_time` later, on the run's
 ##   clock: tick() advances the wait from the Player's physics step, so a pause (or a death) stops it,
 ##   and it's the same at any frame rate.

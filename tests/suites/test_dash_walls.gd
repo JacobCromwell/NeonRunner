@@ -539,13 +539,13 @@ func _test_track() -> void:
 
 ## A dash wall's hitbox through DamageRules: the dash passes it, armor absorbs the crash (an exception to
 ## armor's rule for solid hits), then the shield, otherwise it kills; god mode and the invulnerability window
-## ignore it. A sign stays a solid hit armor never blocks.
+## ignore it. A plain solid (a truck's body) stays a hit armor never blocks.
 func _test_damage_rules() -> void:
 	var wall := Hazard.new()
 	wall.is_solid = true
 	wall.armor_blocks_solid = true
-	var sign := Hazard.new()
-	sign.is_solid = true
+	var body := Hazard.new()
+	body.is_solid = true
 	var d := DamageRules.Defense.new()
 	check(DamageRules.resolve(wall, d) == O.KILL, "with no protection, the crash kills")
 	d.dashing = true
@@ -554,7 +554,7 @@ func _test_damage_rules() -> void:
 	d.armor = true
 	d.shield = true
 	check(DamageRules.resolve(wall, d) == O.BLOCKED_ARMOR, "armor absorbs the crash first")
-	check(DamageRules.resolve(sign, d) == O.BLOCKED_SHIELD, "a sign stays a solid hit armor never blocks")
+	check(DamageRules.resolve(body, d) == O.BLOCKED_SHIELD, "a truck's body stays a solid hit armor never blocks")
 	d.armor = false
 	check(DamageRules.resolve(wall, d) == O.BLOCKED_SHIELD, "then the shield")
 	d.shield = false
@@ -564,7 +564,7 @@ func _test_damage_rules() -> void:
 	d.invulnerable = true
 	check(DamageRules.resolve(wall, d) == O.IGNORE, "the invulnerability window ignores it")
 	wall.free()
-	sign.free()
+	body.free()
 
 
 # --- On real physics -----------------------------------------------------------------------------
