@@ -210,7 +210,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 - **Cyborg Viewing Devices** (decided September 26, 2026): the cult's philosophy reaches people **through their screens**. The more devoted someone is, the more of their face the device replaces, until the screen *is* the face: that's what the cyborg gangsters are. The order to attack the runner reaches them the same way, through the feed. Told purely through the environment and the cyborgs' look (no words): screen heads on the enemies, the same feed playing on billboards and in shop windows, and glitching screens on hosts, whose feed the Bad Dream has corrupted.
 
 ### Level schedule and enemy introductions (decided September 26, 2026)
-**Every zone introduces at least one new enemy,** except the Casino, which reuses the Marketplace's (owner, October 8, 2026), and for now the Beach, a remix of everything before it (owner, October 9, 2026). New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing.
+**Every zone introduces at least one new enemy,** except the Casino, which reuses the Marketplace's (owner, October 8, 2026), and for now the Beach, a remix of everything before it (owner, October 9, 2026). New enemies are preferred over new mechanics. Anything introduced earlier keeps appearing later. Each level introduces about one new thing (owner, October 16, 2026: more than one is fine; levels may introduce several new things).
 
 | Zone | Level (name) | New in this level |
 |---|---|---|

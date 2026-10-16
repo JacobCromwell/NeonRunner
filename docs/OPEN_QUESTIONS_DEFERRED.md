@@ -4584,15 +4584,6 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
    wall run's landing plus `landing_slack_seconds`, 0.3 s). The gap is the standard wall run
    (2.16 s, no claws, no wall hop) less the lit stretch and the exit margin: 1.41 s of run, 31.9 m in the Marketplace,
    35.2 m in the Golden Zone; the whole section takes about 4 s of run. DESIGN-TBD in `wall_run_gap_tuning.gd`.
-865. **Where they start.** From which level? (GDD §5.)
-   Placeholder: from halfway into Marketplace 1 (`data/levels/marketplace_1.tres`, `feature_starts` 0.5), and in every
-   later level (the Casino, Corporate, the Beach, the Dead Zone, the Golden Zone and the Golden Palace); never in the
-   City or Gangland, a boss arena or quick play. Endless mode has them from the Marketplace zone on (it plays a zone's
-   last level). The first one comes where its whole clear stretch fits past the start: 5 to 26 s after it in
-   Marketplace 1's own builds (`test_campaign` counts it with the wall gaps, `SPACED_FROM_START`, not among the
-   introductions that land right after their start). This goes against GDD §5's "each level introduces about one new
-   thing": Marketplace 1 already introduces the Barnacle Turret (from a tenth of the way in), so it now brings two new
-   things. Should the wall-run gaps start in a level of their own instead, and which?
 866. **The lit wall's look.** How should the game show that the wall is the way? (GDD §11; CLAUDE.md readability.)
    Placeholder: the ramps' green chevrons (`ramp_color`), as the Floating Head's wall marks show a wall run: a tall,
    bright, framed panel over the lit stretch and a strip at running height over the gap, streaming ahead
@@ -4668,22 +4659,6 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
    feature's only encounter out), or go without?
 
 **Blue water in the shark's phase 3 bite** (the owner, October 15, 2026; GDD §10; task J3)
-875. **Where the water lies.** Placeholder (`MechaGuppyBiteWater`, DESIGN-TBD): from each top bite's snap, the sea at the
-   bottom of its hole, at the same surface and in the same look as the water beside the top (`MechaGuppyTop.water_y`,
-   1.2 m under the deck; the backdrop's sea shader in `sea_mid_color`). It covers the whole crescent, and 6 m past each
-   of its ends under the eave, and runs out through the bitten side under the water beside it, so the hole reads as
-   bitten through to the sea Mecha Guppy swims in. The water is a look only: phase 3's timing, hitboxes and falls are
-   unchanged. A runner who falls into the hole still falls through the water, with no splash (unlike the Beach's
-   pools). Is the sea just under the deck right, or should the hole look deeper? Should a fall into it splash?
-876. **A gap should still read as deadly** (§3: safe things look safe). The Beach's pools are deliberately dark, so a gap
-   reads as a hole; this water is the sea's bright turquoise, 1.2 m down. The bite keeps its red warning and the
-   eaten edge's orange lip. Is bright water at the bottom of a deadly gap acceptable, or should it be darker?
-877. **Only the top's bites?** Placeholder: phases 1 and 2's floor bites and the climb's chasms (phase 3's last steps
-   before the top included) are exactly as they were (the owner: "still works great"). They still open onto the haze,
-   or onto the street's dark water low down. Should they show water too?
-
-### Folded on October 16, 2026 (task K1, the Bad Dream slashes a ceiling rider)
-
 878. **Riders the three-lane band would leave no way out: the middle lane of a 3-lane street (the phone) and ceilings
    three lanes wide or narrower.** Placeholder (DESIGN-TBD, `BadDream._narrowed_ceiling_band`; the reviewer's, so
    that a ceiling is no refuge): the slash locks two lanes instead, the rider's and one side's (either side, at

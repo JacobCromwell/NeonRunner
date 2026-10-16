@@ -1430,3 +1430,49 @@ Captain Cogs).
   **Answered (owner, October 15, 2026):** "I am okay with this movie being a little bit longer than the others."
   Their follow-up the same day is built too: the bartender no longer stretches his arm back to point at the menu
   behind him; he turns to it "like a human would", points, and turns back to them.
+
+
+**Answered (October 16, 2026, the batch of October 15): wall-run gaps (J2) and the shark bite's water (J3)**
+864. **How often.** How many a level, and how should that rise through the campaign? (GDD §5, Level schedule.)
+   Placeholder: about one per 70 s of run at difficulty 0 to one per 40 s at difficulty 1 (`spacing_seconds_easy`,
+   `spacing_seconds_hard`), each placed within 40 s of a seeded spot (`search_seconds`), at least 15 s between two
+   (`min_spacing_seconds`), at least one in every level with the feature. Measured over the campaign's own seed and two
+   more at 3, 5 and 6 lanes, a build has on average 1.9 in the Marketplace (one in Marketplace 1), 2.6 in the Casino,
+   2.3 in Corporate, 2.1 on the Beach, 2.0 in the Dead Zone and 1.5 in the Golden Zone, where the levels are most
+   crowded and fewer fit than the numbers ask for (3 to 4); 15 of those 117 builds had one give way to a wider gap or a
+   dash wall (item 10). So the latest zone has the fewest, the opposite of "especially in later zones". Asking for more
+   there doesn't help: the Golden Zone's and the Beach's builds already ask for 3 to 4 and fit fewer (the Beach's open
+   walls leave few lit walls whole). Should more room be made for them there, and at what cost? Taking a big encounter
+   out for every one, not only a level's only one (item 8), would take Resonators and Gilded Sentinels out of the
+   Golden Zone (Golden 2 is "Sentinel Row"); letting them win over the wider gaps and the dash walls (item 10) would
+   leave those levels short of their own counts (GDD §9.13, §9.14); and more of them takes more of the room the
+   danger density pass fills at 3 lanes (item 12). None of that is done yet.
+  **Answered (owner, October 16, 2026):** Keep the Beach's and the Golden Zone's wall-run gaps as built (the fewest of any zone, because those levels are crowded); no encounter is taken out to fit more.
+865. **Where they start.** From which level? (GDD §5.)
+   Placeholder: from halfway into Marketplace 1 (`data/levels/marketplace_1.tres`, `feature_starts` 0.5), and in every
+   later level (the Casino, Corporate, the Beach, the Dead Zone, the Golden Zone and the Golden Palace); never in the
+   City or Gangland, a boss arena or quick play. Endless mode has them from the Marketplace zone on (it plays a zone's
+   last level). The first one comes where its whole clear stretch fits past the start: 5 to 26 s after it in
+   Marketplace 1's own builds (`test_campaign` counts it with the wall gaps, `SPACED_FROM_START`, not among the
+   introductions that land right after their start). This goes against GDD §5's "each level introduces about one new
+   thing": Marketplace 1 already introduces the Barnacle Turret (from a tenth of the way in), so it now brings two new
+   things. Should the wall-run gaps start in a level of their own instead, and which?
+  **Answered (owner, October 16, 2026):** Fine as built: Marketplace 1 introduces a second new thing beside the Barnacle Turret. "It is fine to conflict with that. We're going to introduce more than one or two new things per level."
+875. **Where the water lies.** Placeholder (`MechaGuppyBiteWater`, DESIGN-TBD): from each top bite's snap, the sea at the
+   bottom of its hole, at the same surface and in the same look as the water beside the top (`MechaGuppyTop.water_y`,
+   1.2 m under the deck; the backdrop's sea shader in `sea_mid_color`). It covers the whole crescent, and 6 m past each
+   of its ends under the eave, and runs out through the bitten side under the water beside it, so the hole reads as
+   bitten through to the sea Mecha Guppy swims in. The water is a look only: phase 3's timing, hitboxes and falls are
+   unchanged. A runner who falls into the hole still falls through the water, with no splash (unlike the Beach's
+   pools). Is the sea just under the deck right, or should the hole look deeper? Should a fall into it splash?
+  **Answered (owner, October 16, 2026):** Closed: "the way it looked with my first playtest was fine"; the water stays as built.
+876. **A gap should still read as deadly** (§3: safe things look safe). The Beach's pools are deliberately dark, so a gap
+   reads as a hole; this water is the sea's bright turquoise, 1.2 m down. The bite keeps its red warning and the
+   eaten edge's orange lip. Is bright water at the bottom of a deadly gap acceptable, or should it be darker?
+  **Answered (owner, October 16, 2026):** Closed with 875, as built.
+877. **Only the top's bites?** Placeholder: phases 1 and 2's floor bites and the climb's chasms (phase 3's last steps
+   before the top included) are exactly as they were (the owner: "still works great"). They still open onto the haze,
+   or onto the street's dark water low down. Should they show water too?
+
+### Folded on October 16, 2026 (task K1, the Bad Dream slashes a ceiling rider)
+  **Answered (owner, October 16, 2026):** Closed with 875, as built.
