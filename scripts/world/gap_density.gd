@@ -4,9 +4,13 @@ extends RefCounted
 ## grounded lane through its reaction window, or a clear full-width jump and landing.
 
 
+## The layout's rows of holes to jump or step around: the holes sharing a start and an end, {start, end, lanes}. A
+## wall-run gap's holes (LevelLayout.is_wall_run_hole; task J2) are no row: they're crossed on a wall.
 static func rows(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for g: Dictionary in layout.gaps:
+		if LevelLayout.is_wall_run_hole(g):
+			continue
 		var row: Dictionary = {}
 		for existing: Dictionary in out:
 			if existing["start"] == g["start"] and existing["end"] == g["end"]:

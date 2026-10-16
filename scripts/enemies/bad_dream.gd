@@ -38,7 +38,8 @@ extends Enemy
 ##   them there). It only telegraphs with the player on the floor or a wall (not falling into a hole
 ##   or dropping from a ceiling), never when the slash couldn't land before its chase ends, and never
 ##   when no escape is left (a free floor lane, or a wall no sign blocks: on three lanes the middle
-##   lane's slash covers the whole floor).
+##   lane's slash covers the whole floor). Nor while a wall-run gap's crossing is in its reach (task J2,
+##   _wall_run_in_reach): the slash waits until the player is across.
 ## - GDD §9.7 at runtime: its chase is an exclusive major attack (Enemy.exclusive_major_attack):
 ##   Octodogs and drones don't start a charge sequence or a barrage while it chases, and it holds its
 ##   slash while one of theirs is on (EnemyDirector.major_attack_blocked). While big attacks take
@@ -304,14 +305,30 @@ func _drift(p: Player, delta: float) -> void:
 
 ## Whether a telegraph may start now: the player is on the floor or a wall, not falling into a hole
 ## or coming down from a ceiling (it waits below the hull until they're down); no other enemy's
-## major attack is on (GDD §9.7, and GDD §9 while big attacks take turns); and the slash lands
-## before the chase ends.
+## major attack is on (GDD §9.7, and GDD §9 while big attacks take turns); the slash lands
+## before the chase ends; and no wall-run gap's crossing lies in its reach (_wall_run_in_reach).
 func _may_slash(p: Player) -> bool:
 	if not p.alive or not p.running or p.in_pit or _dropping or p.surface == Player.Surface.CEILING:
 		return false
 	if world.director.major_attack_blocked(self):
 		return false
+	if _wall_run_in_reach(p):
+		return false
 	return chase_time + _t.warning_time(_scaling) + _t.slash_active <= chase_seconds
+
+
+## Task J2 (a wall-run gap, the owner, October 15, 2026: every floor lane a hole, a side wall the only way across): no
+## telegraph starts whose slash would land while the player heads for a wall-run gap's lit wall or runs it over the gap
+## (LevelLayout.wall_run_between: from its clear run-in to its far edge), from now until its warning and slash are over.
+## Over the gap the slash covers the wall and the outer lane, and leaving the wall drops the player in; in the run-in the
+## way out could be onto the lit wall too early. A host's chase only comes if the player kills it, so the generator
+## can't keep wall-run gaps off one: the slash waits instead, for the few seconds of the crossing (the chase clock
+## runs on). DESIGN-TBD (docs/questions/j2.md).
+func _wall_run_in_reach(p: Player) -> bool:
+	if world.layout.wall_run_gaps.is_empty():
+		return false
+	var reach: float = maxf(p.speed, 1.0) * (_t.warning_time(_scaling) + _t.slash_active)
+	return world.layout.wall_run_between(p.distance - 1.0, p.distance + reach + 1.0)
 
 
 func _start_telegraph(b: Vector2i) -> void:

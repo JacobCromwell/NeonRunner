@@ -81,7 +81,9 @@ extends RefCounted
 ## past it (the stretch from the first possible face to the last cut into as many parts, a seeded spot aimed
 ## for in each, the best fair spot in that part taken: nothing to take out first, then the nearest), then the
 ## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
-## most that fit, as far apart as they can be. A level left with no wall at all makes room for one as an
+## most that fit, as far apart as they can be; still short, its wall-run gaps but its first give way (task J2,
+## WallRunGapPlacement.set_aside: the best spots again with them out of the way, then each comes back where the
+## walls left its way as it was, put_back). A level left with no wall at all makes room for one as an
 ## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
 ## Overdrive an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way
 ## going too (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677), and one with no fair spot even then gets a
@@ -336,6 +338,19 @@ static func after_doodads(gen: LevelGenerator) -> void:
 			chosen = most
 	for at: float in chosen:
 		_place(gen, plan, at, faces)
+	if faces.size() < count:
+		# Task J2: the level's wall-run gaps but its first give way to its dash walls (WallRunGapPlacement.set_aside):
+		# with them out of the way, the best spots of the rest for the ones still missing; then each wall-run gap whose
+		# way the walls left as it was comes back (put_back).
+		var aside: Array[Dictionary] = WallRunGapPlacement.set_aside(gen)
+		if not aside.is_empty():
+			plan = plan_for(gen, t)
+			while faces.size() < count:
+				var at: float = plan.best(plan.lo, plan.hi, plan.lo, faces)
+				if is_nan(at):
+					break
+				_place(gen, plan, at, faces)
+			WallRunGapPlacement.put_back(gen, aside, "the dash walls")
 	# Kept out of the quiet stretches, a level paced in bursts may have no room left: one stands in a quiet
 	# stretch rather than none at all.
 	if faces.is_empty() and not gen.quiet_stretches().is_empty():
@@ -468,6 +483,13 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if _counts(k):
 			p.mark_span(p.blocked, Vector2(float(k["from"]), float(k["to"])))
+	# Task J2: no wall-run gap's clear stretch within a wall run past the wall (WallRunGapPlacement.past_dash_wall): a
+	# runner who passed it on a side wall would still be on a wall, or coming down, when its lit stretch comes.
+	if not lay.wall_run_gaps.is_empty():
+		var past: float = WallRunGapPlacement.past_dash_wall(gen, pt)
+		for wr: Dictionary in lay.wall_run_gaps:
+			var k: Vector2 = WallRunGapPlacement.keep_out(wr)
+			p.mark_faces(p.blocked, Vector2(k.x - p.depth - past, k.y))
 	if p.t.keep_dash_baits:
 		for b: float in bait_points(gen):
 			p.mark_faces(p.blocked, Vector2(b, b + p.spacing))
@@ -936,6 +958,12 @@ static func _why(gen: LevelGenerator, plan: Plan, face: float) -> String:
 	for k: Dictionary in gen.rules_doodad_keep_outs():
 		if _counts(k) and float(k["from"]) <= fp.y and float(k["to"]) >= fp.x:
 			found.append("a rule's keep-out %.1f-%.1f m" % [float(k["from"]), float(k["to"])])
+	if not lay.wall_run_gaps.is_empty():
+		var past: float = WallRunGapPlacement.past_dash_wall(gen)
+		for wr: Dictionary in lay.wall_run_gaps:
+			var k: Vector2 = WallRunGapPlacement.keep_out(wr)
+			if face >= k.x - plan.depth - past and face <= k.y:
+				found.append("a wall-run gap's clear stretch from %.1f m within a wall run past it" % k.x)
 	if plan.t.keep_dash_baits:
 		for b: float in bait_points(gen):
 			if face >= b and face <= b + plan.spacing:

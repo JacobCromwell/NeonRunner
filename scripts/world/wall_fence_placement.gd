@@ -204,6 +204,10 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 		if int(r["side"]) == side:
 			out.append({"from": float(r["at"]) - t.ramp_before_seconds * v - half,
 				"to": ramp_run_end(gen, r) + t.ramp_after_seconds * v + half, "why": "a ramp launches the player along its wall"})
+	# Task J2: a wall-run gap's lit wall, the way across it, from before its lit stretch to past the longest wall run over
+	# it (WallRunGapPlacement.wall_path). Its other wall needs no rule of its own: the outer lane beside it is a hole.
+	for k: Vector2 in WallRunGapPlacement.wall_keep_outs_for(lay, v, side, false):
+		out.append({"from": k.x - half, "to": k.y + half, "why": "a wall-run gap's lit wall is the way across"})
 	# The floor beside it: its drop window in the outer lane.
 	var drop: Array[Vector2] = []
 	for g: Dictionary in lay.gaps:

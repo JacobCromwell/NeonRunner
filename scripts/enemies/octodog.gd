@@ -22,7 +22,8 @@ extends Enemy
 ## Charges are planned by the generator (octodog_rules.gd: params "charges" and "charge_at", the
 ## player distances where each wind-up may start) so no charge lands on an unavoidable obstacle.
 ## Before each wind-up the dog checks the stretch again and waits (runs ahead of the player) while
-## it isn't clear. Spawned without a plan (tests, quick experiments), it plans for itself.
+## it isn't clear, or while a wall-run gap's crossing lies in it (task J2, _wall_run_in_reach). Spawned
+## without a plan (tests, quick experiments), it plans for itself.
 ##
 ## Its charge sequence is a big attack (GDD §9, is_major_attack_active). Its first wind-up waits
 ## while another enemy's big attack is on (EnemyDirector.major_attack_blocked): the dog keeps pacing
@@ -274,7 +275,7 @@ func _can_wind_up(v: float) -> bool:
 		return false  # never winds up standing over a hole
 	var from: float = player.distance
 	var window: float = _t.window_length(v, _scaling, _run_pace)
-	if not window_clear(world.layout, from, from + window, _run_pace):
+	if not window_clear(world.layout, from, from + window, _run_pace) or _wall_run_in_reach(from, window):
 		return false
 	if _turn_shift > 0.0 and (not charge_clear(world.layout, from, window, _run_pace) or from + window > _last_window_end()):
 		return false
@@ -322,7 +323,18 @@ func _moves_on(v: float) -> bool:
 			return false
 	var from: float = world.player.distance
 	var window: float = _t.window_length(v, _scaling, _run_pace)
-	return not charge_clear(world.layout, from, window, _run_pace) and from + window <= _last_window_end()
+	return (not charge_clear(world.layout, from, window, _run_pace) or _wall_run_in_reach(from, window)) \
+		and from + window <= _last_window_end()
+
+
+## Task J2 (a wall-run gap, the owner, October 15, 2026: every floor lane a hole, a side wall the only way across): true
+## while a wall-run gap's crossing (LevelLayout.wall_run_between: from its clear run-in to its far edge) lies along the
+## stretch [from, from + window] a charge winding up now would play out over: a runner heading for the lit wall or on it
+## has no lane to dodge into. The generator keeps the dog's planned charges off wall-run gaps (WallRunGapPlacement);
+## this holds back one that a wait for its turn moved on into one, as any stretch that isn't clear does: it waits ahead
+## (and its moved charges move on, _moves_on) until the runner is across. DESIGN-TBD (docs/questions/j2.md item 7).
+func _wall_run_in_reach(from: float, window: float) -> bool:
+	return not world.layout.wall_run_gaps.is_empty() and world.layout.wall_run_between(from - 1.0, from + window)
 
 
 ## GDD §9, §9.7: its charge sequence, from its first wind-up until it gives up, is a big attack: the

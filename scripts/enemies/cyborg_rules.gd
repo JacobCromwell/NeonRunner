@@ -45,8 +45,10 @@ static func apply(gen: LevelGenerator) -> void:
 ## panic run meet them), every dash wall's footprint (task H7a; DashWallTuning.footprint: its clear
 ## approach, the wall and the stretch past it at the dash's speed; placed after these rules too, so a panic
 ## run stops before a wall's approach and never runs through it or cowers in the clear stretch behind it),
-## and every ceiling section's landing zone (`zones`, CeilingZones; the level's pacing at run speed). The
-## floor under a ceiling isn't one (GDD §3).
+## every ceiling section's landing zone (`zones`, CeilingZones; the level's pacing at run speed), and every
+## wall-run gap's clear stretch (task J2: its run-in, its gap and its landing floor; placed after these rules,
+## which keep their cyborgs' reach off it, so the passes after it keep their margin from it and a panic run
+## stops short of it). The floor under a ceiling isn't one (GDD §3).
 static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: CeilingZones) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for d: Dictionary in layout.doodads:
@@ -68,6 +70,9 @@ static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: Ceilin
 	for s: Dictionary in layout.speed_pads:
 		out.append(Vector2(s["at"], float(s["at"]) + t.speed_pad_length))
 	out.append_array(zones.landing_zones(layout))
+	# Task J2: a wall-run gap's whole clear stretch, its run-in and landing floor with its gap (wall_run_gaps_rules.gd).
+	for w: Dictionary in layout.wall_run_gaps:
+		out.append(Vector2(float(w["approach"]), float(w["landing"])))
 	return out
 
 

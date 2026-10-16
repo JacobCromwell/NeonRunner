@@ -14,7 +14,12 @@ extends RefCounted
 ##    Last of them, a dash wall's introduction (the `dash_wall` feature, task H7a; dash_wall_rules.gd: a
 ##    building across every floor lane the runner dashes through) where the level gives the feature a start,
 ##    which every pass after the rules keeps off (fill_keep_outs, doodad_keep_outs, the rules' keep-outs). The
-##    walls in turn keep off the rules' calm stretches (an Enforcer Truck's showing windows, task C6c).
+##    walls in turn keep off the rules' calm stretches (an Enforcer Truck's showing windows, task C6c). And
+##    after them the wall-run gaps (the `wall_run_gaps` feature, from Marketplace 1; task J2, the owner, October
+##    15, 2026; wall_run_gaps_rules.gd, WallRunGapPlacement): a stretch where every floor lane is a hole too long
+##    to jump, one side wall lit as the way across, where nothing the rules planned is in the way (plain pieces of
+##    the patterns and a few small enemies go), its clear run-in and landing floor kept by every pass after the
+##    rules as a dash wall's footprint is, its lit wall by the wall fences and the side wall gaps.
 ## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
 ##    stretches. Around it, danger density (LevelConfig.danger_density_increase; DangerDensity,
 ##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
@@ -217,6 +222,12 @@ var show_window_result: Dictionary = {}
 ## then apply_wall_fences: counts, targets, what each lever added, shortfalls); empty when the level's
 ## danger_density_increase is 0.
 var danger_density_result: Dictionary = {}
+## The wall-run gaps of the last build (WallRunGapPlacement.place, task J2: how many were due and placed, the plain
+## pieces and enemies taken out of their way, constraints); empty in a level without the `wall_run_gaps` feature.
+var wall_run_gap_result: Dictionary = {}
+## Stretches of track (Vector2) no wall-run gap's clear stretch may reach in the build being made (task J2; set only
+## for the wider gaps' rebuild, _make_wide_gap_room; WallRunGapPlacement.place keeps off them). Empty otherwise.
+var wall_run_gap_reserve: Array[Vector2] = []
 ## The floor pieces the danger density pass added in the last build that the credit pass gives no
 ## risky credit (DangerDensity, its tuning's credit_added_pieces off): more danger, not more pay.
 var uncredited: Dictionary = {}
@@ -272,6 +283,7 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 	jump_distance = tuning.jump_distance(speed)
 	zones = CeilingZones.make(config, tuning, speed)
 	attempts = 1
+	wall_run_gap_reserve.clear()
 	if not config.guarantee_features:
 		return _build(patterns, {})
 	# Each feature missing from a build gets a pick forced at a new spot in the next one
@@ -288,7 +300,7 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 			needed.append_array(dependent_features(needed))
 		var missing: PackedStringArray = missing_features(needed)
 		if missing.is_empty():
-			return layout
+			return _make_wide_gap_room(patterns, forced, needed)
 		if attempt == 0 or missing.size() < best_missing.size():
 			best = forced.duplicate()
 			best_missing = missing
@@ -304,6 +316,27 @@ func generate(p_config: LevelConfig, p_tuning: MovementTuning, patterns: Array) 
 	warnings.append("guarantee: after %d builds the level still has no %s (every feature should appear, GDD §5)"
 		% [GUARANTEE_ATTEMPTS, ", ".join(best_missing)])
 	return layout
+
+
+## Task J2: a crowded level's wider gaps may fall short where its first wall-run gap took the only room left for one
+## (its later ones give way in the wider gaps' own pass, WallRunGapPlacement.set_aside; the first never does, so the
+## level keeps one). Built once more (`forced` as the build that stands) with that wall-run gap's clear stretch kept
+## for the wider gaps (wall_run_gap_reserve, WallRunGapPlacement.wide_gap_reserve), the wall-run gap goes elsewhere
+## (its own last resort making room as ever). That build stands if it has every wider gap, a wall-run gap, every
+## feature (`needed`) and no warning; else the level is built as it was. Not a build of the guarantee: `attempts`
+## stays as it was. A level that needs no such room is built exactly as before. DESIGN-TBD (docs/questions/j2.md): which
+## of the two gives way where a level has room for only one.
+func _make_wide_gap_room(patterns: Array, forced: Dictionary, needed: PackedStringArray) -> LevelLayout:
+	var reserve: Array[Vector2] = WallRunGapPlacement.wide_gap_reserve(self)
+	if reserve.is_empty():
+		return layout
+	wall_run_gap_reserve = reserve
+	_build(patterns, forced)
+	wall_run_gap_reserve = []
+	if WideGapPlacement.rows_of(self).size() >= config.wide_gaps and not layout.wall_run_gaps.is_empty() \
+			and warnings.is_empty() and missing_features(needed).is_empty():
+		return layout
+	return _build(patterns, forced)
 
 
 ## A generator over a layout that already exists, for the checks its helpers make during a run (a boss
@@ -338,6 +371,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	wide_gap_result = {}
 	charge_path_result = {}
 	show_window_result = {}
+	wall_run_gap_result = {}
 	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
@@ -2170,10 +2204,13 @@ func _place_trails(rng: RandomNumberGenerator) -> void:
 			_add_credit(d, "floor", l, 0, 0.7, 1)
 
 
-## A richer credit right at a gap's edge and an arc of credits along the jump over it.
+## A richer credit right at a gap's edge and an arc of credits along the jump over it. None for a wall-run gap's
+## holes (task J2): no jump crosses one, and an arc over it would lure the runner off the edge.
 func _place_gap_credits(rng: RandomNumberGenerator) -> void:
 	var done: Dictionary = {}
 	for g: Dictionary in layout.gaps:
+		if LevelLayout.is_wall_run_hole(g):
+			continue
 		var key: String = "%.1f" % float(g["start"])
 		if uncredited.has(g) or done.has(key) or rng.randf() >= config.credit_gap_chance:
 			continue

@@ -90,7 +90,7 @@ func _test_campaign_relevance() -> void:
 		"gangland/1": ["ramp", "screech", "wall_gap"],
 		"gangland/2": ["octodog", "speed_pad"],
 		"gangland/3": ["generator", "drone"],
-		"marketplace/1": ["barnacle_turret"],
+		"marketplace/1": ["barnacle_turret", "wall_run_gap"],
 		"marketplace/2": ["wall_fence"],
 		# Task I4: Casino 2's fenced ceiling (Casino 1's treasure stash fits no 3-lane track).
 		"casino/2": ["fenced_ceiling"],

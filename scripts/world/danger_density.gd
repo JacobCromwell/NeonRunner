@@ -292,9 +292,16 @@ static func enemy_count(layout: LevelLayout) -> int:
 
 
 ## The floor pieces the pass's floor target counts in `layout`: holes and fences lane by lane, signs and
-## floor cuts.
+## floor cuts; never a wall-run gap's holes.
 static func floor_count(layout: LevelLayout) -> int:
-	return layout.gaps.size() + layout.fences.size() + layout.signs.size() + layout.cuts.size()
+	var holes: int = layout.gaps.size()
+	# Task J2: a wall-run gap's holes (LevelLayout.WALL_RUN_HOLE) are a set piece crossed on its lit wall, which the
+	# pass keeps clear of, not floor pieces to dodge or jump (GapDensity.rows leaves them out too).
+	if not layout.wall_run_gaps.is_empty():
+		for g: Dictionary in layout.gaps:
+			if LevelLayout.is_wall_run_hole(g):
+				holes -= 1
+	return holes + layout.fences.size() + layout.signs.size() + layout.cuts.size()
 
 
 ## Every obstacle piece in `layout`: its floor pieces (floor_count) and wall fences.

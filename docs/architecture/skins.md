@@ -14,6 +14,13 @@ for each side (a no-op default): the chunk's wall enemy layout entries (type, at
 skin whose own scenery would otherwise double up with one (the Marketplace's citizens, task D3, kept
 clear of window cyborgs) or make room for one (the Golden Zone's skins open a Gilded Sentinel's niche,
 task C4); read-only and visual only, like every other hook.
+After a side's wall sections and wall gaps it calls `wall_run_guide(parent, side, face_x, start, end, lit)` for each
+wall-run gap's lit wall in the chunk (task J2; The generator, Wall-run gaps: `lit` is Vector3(where the stretch to
+step on starts, the gap's start, its end), `start`/`end` the part in this chunk). The default
+(`standard_wall_run_guide`, which no skin overrides yet) draws the ramps' green chevrons in the skin's `ramp_color`
+(`WALL_RUN_COLOR` without one), as the Floating Head's wall marks show a wall run: a tall, bright, framed panel over the
+stretch to step on and a strip at running height over the gap, `WALL_RUN_PROUD` off the wall line, its pattern running
+on across chunks; never a hazard colour, never flickering. A skin may draw its own, as long as it reads as the way.
 In a run, a chunk's hooks come over the few frames after its gameplay nodes are built, in order, each
 side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_budget_usec`, task PERF1;
 A run, Smooth frames): a hook never counts on the frame it's called in, and a hazard's look shows the

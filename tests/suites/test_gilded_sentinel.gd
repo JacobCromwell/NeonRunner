@@ -31,8 +31,9 @@ const SPEEDS: Array[float] = [18.0, 25.0]
 ## 3536 m (the first such build of Golden 2's and the Palace's on seeds 9001-9120 since task I4's ceiling scenarios;
 ## the Palace at 3 lanes on seed 9024, the H series' case, at 3 lanes on seed 9039, task K5's, and Golden 2 at 5
 ## lanes on seed 9034, K4's, no longer build that way). Built as shipped every Sentinel keeps its rules; built
-## without the check, the problem shows (else re-pin the case).
-const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 6, "seed": 9004}]
+## without the check, the problem shows (else re-pin the case). Built without its `without` features: since task J2
+## the level's wall-run gaps move what the pass adds on that seed, so the case is that level without them.
+const SENTINEL_WALL_CASES: Array[Dictionary] = [{"id": "golden/3", "lanes": 6, "seed": 9004, "without": ["wall_run_gaps"]}]
 
 var sim: RunSim
 var t: GildedSentinelTuning
@@ -1307,7 +1308,12 @@ func _test_campaign() -> void:
 	for case: Dictionary in SENTINEL_WALL_CASES:
 		var config: LevelConfig = campaign.configure(campaign.step(String(case["id"])), int(case["lanes"]))
 		config.level_seed = int(case["seed"])
-		var tag: String = "%s lanes=%d seed=%d" % [case["id"], case["lanes"], case["seed"]]
+		var features: PackedStringArray = config.features.duplicate()
+		for feature: String in case.get("without", []):
+			if features.has(feature):
+				features.remove_at(features.find(feature))
+		config.features = features
+		var tag: String = "%s lanes=%d seed=%d without %s" % [case["id"], case["lanes"], case["seed"], case.get("without", [])]
 		var patterns: Array = LevelGenerator.load_for(config)
 		var gen := LevelGenerator.new()
 		var shipped: LevelLayout = gen.generate(config, tuning, patterns)

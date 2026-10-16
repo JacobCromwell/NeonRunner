@@ -383,4 +383,8 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	# its wall route's start to its back (DashWallRules.wall_keep_outs), with the usual margin.
 	for k: Vector2 in DashWallRules.wall_keep_outs(gen):
 		out.append(Vector2(k.x - clear, k.y + clear))
+	# Task J2: a wall-run gap's lit wall stays whole from before its lit stretch to past the longest wall run over it,
+	# and its other wall beside the gap, so no runner on either is dropped into it (WallRunGapPlacement.wall_keep_outs_for:
+	# their margins are their own).
+	out.append_array(WallRunGapPlacement.wall_keep_outs_for(lay, v, side, true))
 	return WallFencePlacement.merged(out)
