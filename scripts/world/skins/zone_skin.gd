@@ -502,7 +502,7 @@ static func standard_wall_gap(s: MeshLayer, side: int, face_x: float, start: flo
 ## `gap` on wall `side` (face at world x `face_x`), the ground `ground` WALL_GAP_RECESS_FLOOR below the street, the
 ## face across it `wall` WALL_GAP_RECESS_DEPTH back, and the two cut ends' faces (each where it falls in the part;
 ## the far end's faces the runner coming up) from the ground to WALL_GAP_RECESS_TOP, all out of the same plain
-## pattern: six quads for the whole gap. `top` and `floor_y` are for a skin whose buildings are lower or taller or
+## pattern: four quads for the whole gap. `top` and `floor_y` are for a skin whose buildings are lower or taller or
 ## whose ground lies deeper.
 static func standard_wall_gap_recess(s: MeshLayer, side: int, face_x: float, start: float, end: float, gap: Vector2,
 		wall: Color, ground: Color, top: float = WALL_GAP_RECESS_TOP, floor_y: float = WALL_GAP_RECESS_FLOOR,

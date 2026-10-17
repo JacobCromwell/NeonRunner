@@ -30,10 +30,11 @@ extends SkinSuite
 ## - what a gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the background"):
 ##   every zone skin closes the opening with a recess (ZoneSkin.wall_gap_recess), checked by software rays: from where a
 ##   runner's camera is (the middle and outer lanes and the wall, at floor, wall-run and ceiling heights, before, at and
-##   in the gap) through the opening and out at least 3 degrees below the horizontal, in either direction along the
-##   track, every ray meets a front-facing face of the solid kit or a facade shader (the surfaces cull their backs, so
-##   the back of a face is nothing) before it leaves; none escapes to the sky's skyline below the horizon;
-##   the cut ends' faces rise past the 7 m the dark slabs once stood to; and the recess adds no collision.
+##   in the gap) through the opening and out at least 3 degrees below the horizontal, going on along the track (the
+##   camera looks ahead), every ray meets a front-facing face of the solid kit or a facade shader (the surfaces cull
+##   their backs, so the back of a face is nothing) before it leaves; none escapes to the sky's skyline below the
+##   horizon; each cut end's face faces into the opening and rises past the 7 m the dark slabs once stood to. (The skin
+##   suites check that a skin adds no collision; the recess is a mesh only.)
 
 ## The levels with the shared numbers' few, rare gaps (the Beach's open their walls by their own numbers: task D10b,
 ## test_beach_levels).
@@ -170,8 +171,8 @@ func _test_skins() -> void:
 			var face: float = TrackGeometry.new(lanes, tuning).wall_x()
 			var lead := {-1: false, 1: false}
 			var ghosts: Array[String] = []
-			# The faces beyond each wall line (world space, triangles) the recess check casts rays at, and the tallest
-			# of each gap's end faces and the most any surface of the chunk adds to the collision tree (none).
+			# The faces beyond each wall line (world space, triangles) the recess check casts rays at, and the height of
+			# each gap end's face.
 			var beyond := {-1: PackedVector3Array(), 1: PackedVector3Array()}
 			var end_tops: Dictionary = {}
 			start_error_count()

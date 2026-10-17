@@ -33,7 +33,7 @@ wall line: both cut ends' faces (`MeshKit.end_quad`: `leading` faces on down the
 coming up, the one the camera sees), from the zone's own plane far below the street (the same one `below()` draws
 across the street: the market floor, the trench, the crater floor, the void, the canal, the well, the road, the
 Beach's open sand) to the building's top in its colours and window grid, the face of a building across, and that
-ground. It is built where a gap is and nowhere else (about 6 quads for a whole gap and a handful of vertices more per
+ground. It is built where a gap is and nowhere else (a few quads for a whole gap and a handful of vertices more per
 chunk part), in the layers the walls draw with, so it adds no surface and no shader (`test_zone_shaders`), no collision
 and nothing that glows. A skin with a facade shader puts the faces in the facade layer in the building's own style
 (`MarketFacades.recess`, `CasinoFacades` through its `_under_depth` and `_under_pattern`, `GanglandRuins.recess`,
