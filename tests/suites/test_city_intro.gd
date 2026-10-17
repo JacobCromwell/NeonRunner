@@ -1,5 +1,5 @@
 extends TestSuite
-## The Neon City's intro (CityIntro, task F2f; the owner's beats, GDD §6 Cinematics, "Zone 1 intro"): its slot plays it (not
+## The Neon City's intro (CityIntro, task F2g; the owner's beats, GDD §6 Cinematics, "Zone 1 intro"): its slot plays it (not
 ## the placeholder flyover); at 3, 5 and 6 lanes it plays its beats in order on a real street (the City's stretch with no
 ## floor, its road lifted to y = 0): a flyby from above down into the street in one continuous camera move, cyborgs
 ## trudging toward the camera under the Floating Head, its face showing, its searchlight cold white (never red) sweeping over

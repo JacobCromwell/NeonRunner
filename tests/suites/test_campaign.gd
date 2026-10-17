@@ -312,7 +312,7 @@ func _test_slots(campaign: Campaign) -> void:
 				"the Dead Zone's intro plays its own scene, the owner's beats (task F2d)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "city/intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/city_intro.tscn" and s.cinematic.is_built(),
-				"the City's intro plays its own scene, the owner's beats (task F2f)")
+				"the City's intro plays its own scene, the owner's beats (task F2g)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id.ends_with("intro"):
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/arrival_flyover.tscn"
 				and s.cinematic.is_built(), "cinematic slot %s plays the placeholder arrival flyover (task F1)" % s.id)

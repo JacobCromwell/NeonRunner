@@ -11,13 +11,13 @@ extends Resource
 ## then the game's title, NEON RUNNER (this is its first cinematic), Zone 1's title card, and play begins. The owner's later
 ## answers (October 16, 2026): the runner bursts out through a billboard showing the feed, the Head's face, rather than a plain
 ## window, and the title comes first. The rest (the street, the billboard's place, how many cyborgs, where everyone stands,
-## the camera's places, the sounds) is DESIGN-TBD (docs/questions/f2f.md).
+## the camera's places, the sounds) is DESIGN-TBD (docs/questions/f2g.md).
 ## Positions are metres in the street's own frame: x across from the street's middle (+ right, looking down the track),
 ## y up from the road, z the track distance (the way the runner runs; 0 where the camera starts at street level). The
 ## beats' times are seconds from the start.
 
 @export_group("Timing")
-## DESIGN-TBD (docs/questions/f2f.md 11): the title cards and the ending.
+## DESIGN-TBD (docs/questions/f2g.md 11): the title cards and the ending.
 ## About 20 s, plus the title card (the owner: longer than GDD §1's 5-15 s is fine for this one, and the total may run a couple
 ## of seconds past 20 for the game's title).
 @export_range(5.0, 40.0, 0.1, "suffix:s") var duration: float = 21.7
@@ -38,7 +38,7 @@ extends Resource
 @export_range(0.0, 8.0, 0.1, "suffix:s") var music_fade: float = 4.0
 
 @export_group("The street")
-## DESIGN-TBD (docs/questions/f2f.md 1): which street, how wide and how it is dressed.
+## DESIGN-TBD (docs/questions/f2g.md 1): which street, how wide and how it is dressed.
 ## 8 lanes: a boulevard 19.8 m wide between its walls, whatever the device's lane count (the Head is built to the street's
 ## width, as in its fight), with the road far below the truck roofs the levels run on lifted to y = 0.
 @export_range(3, 8) var street_lanes: int = 8
@@ -48,7 +48,7 @@ extends Resource
 @export_range(100.0, 400.0, 5.0, "suffix:m") var dress_to: float = 230.0
 
 @export_group("Traffic and people")
-## DESIGN-TBD (docs/questions/f2f.md 6): how many people, cars, buses and trucks.
+## DESIGN-TBD (docs/questions/f2g.md 6): how many people, cars, buses and trucks.
 ## Vehicles to each of the road's two outer lanes (the cyborgs march in the middle), their speeds (m/s; the lane toward the
 ## camera's the first, the lane away the second), and people to each sidewalk and their walking speeds.
 @export_range(0, 40) var vehicles_per_lane: int = 12
@@ -65,7 +65,7 @@ extends Resource
 @export_range(150.0, 400.0, 5.0, "suffix:m") var loop_to: float = 210.0
 
 @export_group("The Floating Head")
-## DESIGN-TBD (docs/questions/f2f.md 7, 8): where the Head hangs, how it sweeps, and its startled, angry and yelling faces.
+## DESIGN-TBD (docs/questions/f2g.md 7, 8): where the Head hangs, how it sweeps, and its startled, angry and yelling faces.
 ## Its face's plane at this track distance, over the middle of the street, its belly this high.
 @export_range(10.0, 120.0, 0.5, "suffix:m") var face_at: float = 40.0
 @export_range(4.0, 25.0, 0.1, "suffix:m") var belly: float = 11.0
@@ -83,7 +83,7 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var startle_jaw: float = 0.3
 
 @export_group("The billboard")
-## DESIGN-TBD (docs/questions/f2f.md 2): which billboard, and how it bursts.
+## DESIGN-TBD (docs/questions/f2g.md 2): which billboard, and how it bursts.
 ## The feed billboard (the Head's face on a screen) on a building's face (`billboard_side` -1 the left), at this track distance,
 ## its bottom edge this high (first-floor height: above the shopfronts' signs, low enough for the leap down onto the cyborg's
 ## head to read), this wide and tall. Its screen bursts at `burst_at` (after the picture has torn for `billboard_glitch_seconds`);
@@ -99,7 +99,7 @@ extends Resource
 @export_range(0, 120) var spark_count: int = 40
 
 @export_group("The cyborgs")
-## DESIGN-TBD (docs/questions/f2f.md 3, 4, 9): how many cyborgs and how they march, how the stomp reads, the feed's surge and the chase.
+## DESIGN-TBD (docs/questions/f2g.md 3, 4, 9): how many cyborgs and how they march, how the stomp reads, the feed's surge and the chase.
 ## Seven trudging down the street toward the camera at this pace (m/s), each a (x across, z behind the first) place, the
 ## first the one the runner stomps. `lead_z` is where the first is when it is stomped, `stomp_at` when.
 @export_range(0.3, 3.0, 0.05, "suffix:m/s") var march_speed: float = 1.0
@@ -115,7 +115,7 @@ extends Resource
 @export_range(1.0, 12.0, 0.1, "suffix:m/s") var chase_speed: float = 7.0
 
 @export_group("The runner")
-## DESIGN-TBD (docs/questions/f2f.md 5): how fast they run.
+## DESIGN-TBD (docs/questions/f2g.md 5): how fast they run.
 ## They burst out of the billboard, land on the first cyborg's head (the stomp), hop over the second and a later one, and run
 ## down the street at this speed (m/s), the way the levels run.
 @export_range(5.0, 25.0, 0.5, "suffix:m/s") var run_speed: float = 8.5
@@ -127,7 +127,7 @@ extends Resource
 @export_range(0.05, 0.6, 0.05, "suffix:s") var stride_seconds: float = 0.15
 
 @export_group("The cameras")
-## DESIGN-TBD (docs/questions/f2f.md 10): the camera's places.
+## DESIGN-TBD (docs/questions/f2g.md 10): the camera's places.
 ## One continuous move from the flyby down into the street and through the escape, until the cut to the Head (`head_at`):
 ## its keys' times, where the camera is, what it looks at and its lens.
 @export var move_times: PackedFloat32Array = PackedFloat32Array([0.0, 2.0, 3.6, 5.0, 7.0, 9.0, 10.2, 10.7, 11.3, 12.2, 12.99])

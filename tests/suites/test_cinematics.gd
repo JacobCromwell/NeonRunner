@@ -571,7 +571,7 @@ func _test_app_flow() -> void:
 	var saved: Profile = App.profile
 	App.profile = SampleProfiles.fresh()
 
-	# A new player's campaign opens on the City's intro (task F2f), then City 1 follows.
+	# A new player's campaign opens on the City's intro (task F2g), then City 1 follows.
 	App.continue_campaign()
 	await tree.process_frame
 	var c := App.playing_cinematic() as CinematicSequencer

@@ -1,4 +1,4 @@
-# Questions from task F2f (the Neon City's intro; the owner's beats, October 16, 2026)
+# Questions from task F2g (the Neon City's intro; the owner's beats, October 16, 2026)
 
 The owner's beats (GDD §6, Cinematics, "Zone 1 intro", with his October 16 answers: the runner bursts out through a feed
 billboard, and the game's title comes before the zone's card) leave these staging details open. Each has a placeholder, marked
