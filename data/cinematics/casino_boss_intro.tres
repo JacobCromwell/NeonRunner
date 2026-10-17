@@ -6,6 +6,5 @@
 script = ExtResource("1_script")
 id = &"casino_boss_intro"
 title = "The House"
-scene = ""
-skip_while_empty = true
-placeholder_text = "DESIGN-TBD: an empty slot for the owner's beats before The House (the Casino's boss). The campaign skips it until a scene is set (item 395)."
+scene = "res://scenes/cinematics/casino_boss_intro.tscn"
+placeholder_text = "Inside the bustling casino, the roulette lands to cheers; the runner spots the Chairman across the floor and goes after him past his guards; he slips through a golden door, and the wall beside it bursts open on The House."
