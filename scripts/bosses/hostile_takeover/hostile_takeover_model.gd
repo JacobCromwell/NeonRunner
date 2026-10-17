@@ -13,8 +13,8 @@ extends RefCounted
 ## - the locomotive leading the train (locomotive()): an armoured power car as wide as the train, rising
 ##   over the carriages' roofs, the corporation's mark glowing in the brand's blue over its rear window,
 ##   cold-white marker lamps (never a tail light's red), and behind the window the Chairman's suite, lit
-##   cold white, with the Chairman standing at the glass (chairman(): a man in a dark suit, hands behind
-##   his back, watching the runner; GDD §10: "the player gets a glimpse of him");
+##   cold white, with the Chairman standing at the glass (chairman(): a man in a long black coat, one
+##   hand on a cane, watching the runner; GDD §10: "the player gets a glimpse of him");
 ## - a carriage coupling (coupling_*): two coupler arms from the carriages' ends meeting in a knuckle in the
 ##   middle of the gap, its red dome on top (the weak points' language, the hover truck's: it glows red when
 ##   live), and the take-off cue: the zone's green ramp chevrons on the roof in its lane, where a jump comes
@@ -40,11 +40,15 @@ const ENGINE := Color(0.55, 0.66, 1.0)
 const GLASS := Color(0.03, 0.035, 0.045)
 ## The weak points' red (the hover truck's and the Floating Head's).
 const WEAK := Color(1.0, 0.08, 0.1)
-## The Chairman: a charcoal suit, a white shirt, a navy tie (nothing red), pale skin, dark hair.
+## The Chairman (chairman_face.gdshaderinc has his look): a long black coat with a tall collar over gunmetal
+## shoulder plates and a dark tactical vest, a tech brace at his throat, pale skin, dark hair; the tech's lights
+## the brand's blue (nothing red, nothing cyan: those are hazards' colours).
 const SUIT := Color(0.07, 0.07, 0.085)
-const SHIRT := Color(0.88, 0.9, 0.94)
-const TIE := Color(0.08, 0.11, 0.26)
-const SKIN := Color(0.78, 0.66, 0.58)
+const COAT := Color(0.075, 0.075, 0.085)
+const VEST := Color(0.12, 0.125, 0.14)
+const ARMOR := Color(0.2, 0.21, 0.24)
+const TECH := Color(0.3, 0.5, 1.0)
+const SKIN := Color(0.76, 0.64, 0.56)
 const HAIR := Color(0.06, 0.055, 0.05)
 
 ## The gunship's length and its hull's height over its belly (its belly is at y = 0 in its own space).
@@ -388,9 +392,11 @@ static func chairman_spot() -> Vector3:
 	return Vector3(0.0, LOCO_WINDOW.x, -CHAIRMAN_BACK)
 
 
-## The Chairman (GDD §10: one of the villain's inner circle, glimpsed in the locomotive's window): a man in
-## a charcoal suit with a white shirt and a navy tie, hands clasped behind his back, standing square to
-## the window and watching the runner. In his own space: his feet at the origin, facing +z.
+## The Chairman (GDD §10: one of the villain's inner circle, glimpsed in the locomotive's window; his look is
+## chairman_face.gdshaderinc's): a man in a long black coat hanging open over a tactical vest, its collar turned
+## up tall, gunmetal plates on his shoulders, a tech brace at his throat, the brand's blue lights on them; one
+## hand on a cane, standing square to the window and watching the runner. In his own space: his feet at the
+## origin, facing +z.
 static func chairman(skin: ZoneSkin = null) -> ArrayMesh:
 	var key: String = "chairman_%d" % (skin.get_instance_id() if skin != null else 0)
 	if _cache.has(key):
@@ -398,31 +404,48 @@ static func chairman(skin: ZoneSkin = null) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	var s: MeshLayer = batch.layer(solid_material(skin))
 	var k: float = CHAIRMAN_HEIGHT / 1.85
-	# Legs and shoes.
+	# Legs and heavy boots.
 	for xs: float in [-1.0, 1.0]:
-		s.box(Vector3(xs * 0.11, 0.45, 0.0) * k, Vector3(0.17, 0.9, 0.2) * k, SUIT, 0.0, MeshKit.PAT_PLAIN)
-		s.box(Vector3(xs * 0.11, 0.04, 0.05) * k, Vector3(0.15, 0.08, 0.3) * k, HAIR, 0.0, MeshKit.PAT_PLAIN)
-	# The jacket: hips, chest and broad shoulders.
-	s.box(Vector3(0.0, 1.05, 0.0) * k, Vector3(0.42, 0.34, 0.24) * k, SUIT, 0.0, MeshKit.PAT_PLAIN)
-	s.box(Vector3(0.0, 1.38, 0.0) * k, Vector3(0.5, 0.36, 0.27) * k, SUIT, 0.0, MeshKit.PAT_PLAIN)
-	s.box(Vector3(0.0, 1.55, -0.01) * k, Vector3(0.6, 0.08, 0.26) * k, SUIT, 0.0, MeshKit.PAT_PLAIN)
-	# The shirt's V and the tie, on the jacket's front.
-	s.quad(Vector3(-0.1, 1.56, 0.136) * k, Vector3(0.0, 1.56, 0.136) * k, Vector3(0.0, 1.3, 0.136) * k, Vector3(-0.02, 1.3, 0.136) * k, SHIRT)
-	s.quad(Vector3(0.0, 1.56, 0.136) * k, Vector3(0.1, 1.56, 0.136) * k, Vector3(0.02, 1.3, 0.136) * k, Vector3(0.0, 1.3, 0.136) * k, SHIRT)
-	s.box(Vector3(0.0, 1.38, 0.14) * k, Vector3(0.05, 0.3, 0.01) * k, TIE, 0.0, MeshKit.PAT_PLAIN)
-	# Arms down at his sides, the hands clasped behind his back.
+		s.box(Vector3(xs * 0.11, 0.5, 0.0) * k, Vector3(0.16, 0.8, 0.19) * k, SUIT, 0.0, MeshKit.PAT_PLAIN)
+		s.box(Vector3(xs * 0.11, 0.08, 0.04) * k, Vector3(0.16, 0.16, 0.3) * k, HAIR, 0.0, MeshKit.PAT_PLAIN)
+	# The coat's skirts to below his knees, open at the front.
 	for xs: float in [-1.0, 1.0]:
-		s.box(Vector3(xs * 0.3, 1.32, -0.03) * k, Vector3(0.12, 0.42, 0.14) * k, SUIT, 0.0, MeshKit.PAT_PLAIN)
-		s.box(Vector3(xs * 0.22, 1.02, -0.12) * k, Vector3(0.11, 0.3, 0.12) * k, SUIT, 0.0, MeshKit.PAT_PLAIN)
-	s.box(Vector3(0.0, 0.92, -0.17) * k, Vector3(0.2, 0.1, 0.08) * k, SKIN, 0.0, MeshKit.PAT_PLAIN)
-	# The neck, the head (square-jawed, slicked dark hair).
-	s.box(Vector3(0.0, 1.62, 0.0) * k, Vector3(0.12, 0.1, 0.12) * k, SKIN, 0.0, MeshKit.PAT_PLAIN)
-	s.box(Vector3(0.0, 1.76, 0.01) * k, Vector3(0.2, 0.24, 0.22) * k, SKIN, 0.0, MeshKit.PAT_PLAIN)
-	s.box(Vector3(0.0, 1.9, -0.02) * k, Vector3(0.22, 0.07, 0.24) * k, HAIR, 0.0, MeshKit.PAT_PLAIN)
-	s.box(Vector3(0.0, 1.8, -0.1) * k, Vector3(0.22, 0.2, 0.06) * k, HAIR, 0.0, MeshKit.PAT_PLAIN)
-	# His eyes: two dark bars under the brow (he's watching).
+		s.box(Vector3(xs * 0.145, 0.62, -0.01) * k, Vector3(0.21, 0.6, 0.27) * k, COAT, 0.0, MeshKit.PAT_PLAIN)
+	# The coat over his hips and chest, the vest between its fronts and its light.
+	s.box(Vector3(0.0, 1.07, 0.0) * k, Vector3(0.44, 0.32, 0.25) * k, COAT, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, 1.38, 0.0) * k, Vector3(0.5, 0.36, 0.27) * k, COAT, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, 1.2, 0.13) * k, Vector3(0.16, 0.6, 0.02) * k, VEST, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	s.box(Vector3(0.0, 1.42, 0.142) * k, Vector3(0.025, 0.12, 0.01) * k, TECH, 0.3, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	# Gunmetal plates on his shoulders, a light along each.
 	for xs: float in [-1.0, 1.0]:
-		s.box(Vector3(xs * 0.05, 1.79, 0.122) * k, Vector3(0.05, 0.02, 0.01) * k, HAIR, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+		s.box(Vector3(xs * 0.29, 1.56, 0.0) * k, Vector3(0.2, 0.1, 0.3) * k, ARMOR, 0.0, MeshKit.PAT_PLAIN)
+		s.box(Vector3(xs * 0.3, 1.56, 0.152) * k, Vector3(0.1, 0.018, 0.01) * k, TECH, 0.3, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	# The tall collar, turned up either side of his neck and flaring out, and its back.
+	for xs: float in [-1.0, 1.0]:
+		var tilt := Basis(Vector3.BACK, -xs * 0.25)
+		s.box_xform(Transform3D(tilt * Basis.from_scale(Vector3(0.05, 0.24, 0.2) * k), Vector3(xs * 0.12, 1.68, 0.0) * k), COAT, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, 1.68, -0.1) * k, Vector3(0.24, 0.24, 0.04) * k, COAT, 0.0, MeshKit.PAT_PLAIN)
+	# Arms down at his sides, gunmetal hands (cybernetic), a light at each wrist; his left hand on the cane.
+	for xs: float in [-1.0, 1.0]:
+		s.box(Vector3(xs * 0.3, 1.32, 0.0) * k, Vector3(0.12, 0.42, 0.14) * k, COAT, 0.0, MeshKit.PAT_PLAIN)
+		s.box(Vector3(xs * 0.31, 0.98, 0.03) * k, Vector3(0.11, 0.32, 0.13) * k, COAT, 0.0, MeshKit.PAT_PLAIN)
+		s.box(Vector3(xs * 0.367, 0.98, 0.03) * k, Vector3(0.01, 0.1, 0.06) * k, TECH, 0.3, MeshKit.PAT_PLAIN,
+			MeshKit.FACE_PX if xs > 0.0 else MeshKit.FACE_NX)
+		s.box(Vector3(xs * 0.31, 0.78, 0.04) * k, Vector3(0.09, 0.11, 0.1) * k, ARMOR, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.36, 0.38, 0.1) * k, Vector3(0.03, 0.76, 0.03) * k, STEEL_DARK, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.34, 0.75, 0.08) * k, Vector3(0.05, 0.05, 0.08) * k, ARMOR, 0.0, MeshKit.PAT_PLAIN)
+	# The neck and the tech brace round it.
+	s.box(Vector3(0.0, 1.66, 0.0) * k, Vector3(0.11, 0.1, 0.11) * k, SKIN, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, 1.62, 0.0) * k, Vector3(0.14, 0.06, 0.14) * k, ARMOR, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, 1.62, 0.072) * k, Vector3(0.09, 0.012, 0.01) * k, TECH, 0.3, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	# The head (lean, square-jawed), the hair cut close at the sides, the top swept back.
+	s.box(Vector3(0.0, 1.78, 0.01) * k, Vector3(0.19, 0.24, 0.21) * k, SKIN, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.01, 1.92, -0.01) * k, Vector3(0.17, 0.07, 0.23) * k, HAIR, 0.0, MeshKit.PAT_PLAIN)
+	s.box(Vector3(0.0, 1.82, -0.095) * k, Vector3(0.2, 0.16, 0.04) * k, HAIR, 0.0, MeshKit.PAT_PLAIN)
+	# His eyes: two dark bars under the brow (he's watching); the implant's light at his left temple.
+	for xs: float in [-1.0, 1.0]:
+		s.box(Vector3(xs * 0.048, 1.8, 0.117) * k, Vector3(0.05, 0.02, 0.01) * k, HAIR, 0.0, MeshKit.PAT_PLAIN, MeshKit.FACE_PZ)
+	s.box(Vector3(0.096, 1.83, 0.06) * k, Vector3(0.01, 0.05, 0.03) * k, TECH, 0.3, MeshKit.PAT_PLAIN, MeshKit.FACE_PX)
 	var mesh: ArrayMesh = batch.to_mesh()
 	_cache[key] = mesh
 	return mesh
