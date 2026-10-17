@@ -508,11 +508,16 @@ func _test_shop() -> void:
 	await _frames(2)
 	var shop := App.screen as ShopScreen
 	check(shop.cards.size() == App.catalog.items_for(false).size(), "a card for every item sold on PC (%d)" % shop.cards.size())
+	var dash_card: ItemCard = shop.cards[&"dash"]
+	check(dash_card.get_index() == 0 and dash_card.get_parent().get_index() == 1
+		and shop.cards[&"weapon"].get_parent() == dash_card.get_parent()
+		and shop.cards[&"grapple"].get_parent().get_index() > dash_card.get_parent().get_index(),
+		"the dash is the very first card in the shop, above the breakable items (L8)")
 	var grapple: ItemCard = shop.cards[&"grapple"]
 	var shield: ItemCard = shop.cards[&"shield"]
 	check(grapple.stock == 1 and grapple.max_stock == 5 and grapple.status_label.text == "STOCK 1/5", "a breakable shows its stock (%s)" % grapple.status_label.text)
 	check(shield.state == ItemCard.State.MAXED and not shield.buy_button.visible, "a full stock can't be bought")
-	check(_focus() == grapple.buy_button, "the first item that can be bought has the focus (%s)" % _focus())
+	check(_focus() == dash_card.buy_button, "the first item that can be bought has the focus: the dash, now the first card (%s)" % _focus())
 	var armor: ItemCard = shop.cards[&"armor"]
 	check(armor.stock == -1 and armor.tier == 1 and armor.max_tier == 4 and armor.title == "Armor I" and armor.equip_switch.visible
 		and armor.get_parent() == shop.cards[&"weapon"].get_parent() and armor.description.begins_with("Next: Armor II."),
@@ -578,20 +583,20 @@ func _test_dash_shop() -> void:
 	var saved: Profile = App.profile
 	var saved_mobile: bool = App.mobile
 	var saved_touch: int = UiTheme.touch_override
-	var prices: PackedInt32Array = PackedInt32Array([1800, 800, 1000, 1200])
+	var prices: PackedInt32Array = PackedInt32Array([300, 450, 600, 700])
 	var cooldowns: PackedInt32Array = PackedInt32Array([8, 6, 4, 3])
 	var item: ShopItem = App.catalog.item(&"dash")
 	for mobile: bool in [false, true]:
 		App.mobile = mobile
 		UiTheme.touch_override = 1 if mobile else 0
 		App.profile = Profile.new()
-		App.profile.add_earned(4800)
+		App.profile.add_earned(2050)
 		App.show_shop()
 		await _frames(2)
 		var shop: ShopScreen = App.screen as ShopScreen
 		var card: ItemCard = shop.cards[&"dash"]
 		check(card.tier == 0 and card.max_tier == 4 and card.pips.visible and card.pips.tiers == 4
-			and card.price == 1800 and not card.equip_switch.visible and card.description.contains("8 seconds"),
+			and card.price == 300 and not card.equip_switch.visible and card.description.contains("8 seconds"),
 			"%s shows the original dash price, base cooldown and four tier pips before purchase" % ["mobile" if mobile else "PC"])
 		for tier: int in range(1, 5):
 			var before: int = App.profile.credits()
@@ -612,12 +617,12 @@ func _test_dash_shop() -> void:
 					"dash tier %d advertises only the next upgrade and its cooldown" % tier)
 			if tier == 1:
 				var balance: int = App.profile.credits()
-				App.profile.earned = 799
+				App.profile.earned = 449
 				App.profile_changed.emit()
 				await _frames(1)
 				check(card.state == ItemCard.State.CANT_AFFORD and card.buy_button.disabled
-					and card.price == 800 and card.tier == 1,
-					"an existing dash owner with 799 credits sees the 800-credit upgrade disabled")
+					and card.price == 450 and card.tier == 1,
+					"an existing dash owner with 449 credits sees the 450-credit upgrade disabled")
 				App.profile.earned = balance
 				App.profile_changed.emit()
 				card.equip_toggled.emit(&"dash", false)
