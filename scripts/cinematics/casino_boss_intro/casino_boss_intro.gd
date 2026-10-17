@@ -18,7 +18,7 @@ extends CinematicSequencer
 ## A script on the toolkit, its numbers data (`numbers`, by default data/cinematics/casino_boss_intro_tuning.tres,
 ## CasinoBossIntroTuning). It plays wholly in the hall, a closed set on the stage (the street's track hidden under it);
 ## everything is worked out from the time (_on_advance), so stepping or skipping shows the same.
-## DESIGN-TBD (docs/questions/f2i.md): the staging the beats leave open, the hall and the people's looks.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 948–959): the staging the beats leave open, the hall and the people's looks.
 
 const NUMBERS_PATH: String = "res://data/cinematics/casino_boss_intro_tuning.tres"
 ## The fight's numbers, for The House's size (the hole is cut to fit the fight's own machine).

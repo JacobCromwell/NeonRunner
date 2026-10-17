@@ -606,7 +606,7 @@ holographic games, slot machines, the bar, a golden door) with about sixty patro
 the runner leans on the bar with the screech; the Chairman (his new look) crosses the floor between the two women; the
 runner goes after him, dives past his two guards; he leaves by the golden door, which bangs shut; the wall beside it
 trembles and bursts, and The House (the fight's own machine) stands in the hole. Eight new sounds
-(`tools/asset_gen/sfx_bank_casino_boss_intro.gd`), `test_casino_boss_intro`. The staging choices are `docs/questions/f2i.md`.
+(`tools/asset_gen/sfx_bank_casino_boss_intro.gd`), `test_casino_boss_intro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md` items 948–959.
 
 ### H. The owner's requests (October 8, 2026)
 

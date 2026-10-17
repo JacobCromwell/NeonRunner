@@ -482,7 +482,7 @@ script (`pose()`: her head easing toward whoever she looks at, talking, waving, 
 otherwise). The shots looking back down the street keep it built behind them (`_stage_near`). Everything is worked out
 from the time, so stepping or skipping shows the same. Cost and checks: `test_marketplace_intro`.
 **The Casino's boss intro** (`CasinoBossIntro`, task F2i; the owner's beats, October 17, 2026, GDD §10 The House, "Intro
-cinematic"; what they leave open is DESIGN-TBD, `docs/questions/f2i.md`; numbers in `data/cinematics/casino_boss_intro_tuning.tres`):
+cinematic"; what they leave open is DESIGN-TBD, `docs/OPEN_QUESTIONS_DEFERRED.md` items 948–959; numbers in `data/cinematics/casino_boss_intro_tuning.tres`):
 34.8 s before The House, wholly inside a casino hall (`CasinoHall`), a closed set standing on the stage: the street's track is
 hidden (`stage.track.visible`), the fog is off, and the scenery's light and tint are set to the hall's warm lamplight while it
 plays (set back as it ends); the hall adds its own lights for the people on the rig (a warm key and a lamp at each

@@ -10,7 +10,7 @@ extends Resource
 ## wall, where the Chairman goes through an elegant golden door that closes behind him; the wall to its left trembles,
 ## the camera pulls back to show it whole, it collapses into rubble and The House stands in the hole.
 ## The rest (timings, places, the camera, the hall, the people's looks, the sounds) is DESIGN-TBD
-## (docs/questions/f2i.md). Times are seconds from the start; points are track space (CineStage: x metres
+## (docs/OPEN_QUESTIONS_DEFERRED.md items 948–959). Times are seconds from the start; points are track space (CineStage: x metres
 ## right, y up, z along), the hall's (CasinoHall: the near wall at z = 0, the back wall at z = 40).
 
 @export_group("Timing")
