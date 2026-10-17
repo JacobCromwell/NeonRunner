@@ -80,7 +80,7 @@ func _paint(solid: MeshLayer, z0: float, z1: float) -> void:
 			z += DASH + DASH_GAP
 	for x: float in [-road_half + 0.25, road_half - 0.25]:
 		_strip(solid, x, 0.1, z0, z1, y)
-	# Crosswalks: zebra bars across the road, with the sidewalks' kerbs dropped to meet them.
+	# Crosswalks: zebra bars of paint across the road.
 	for at: float in crosswalks(z0, z1):
 		var bar: float = 0.5
 		var x: float = -road_half + 0.5
@@ -89,7 +89,8 @@ func _paint(solid: MeshLayer, z0: float, z1: float) -> void:
 			x += bar * 2.0
 
 
-## Where the crosswalks are (track distances) in [z0, z1]: every so often, off the stretch the cyborgs march.
+## Where the crosswalks are (track distances) in [z0, z1]: every 70 m, one of them (at 24 m) under the cyborgs' first steps. They are
+## paint only: the kerb runs on across them.
 static func crosswalks(z0: float, z1: float) -> Array[float]:
 	var out: Array[float] = []
 	var at: float = ceilf(z0 / 70.0) * 70.0 + 24.0

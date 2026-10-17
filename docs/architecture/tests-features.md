@@ -101,6 +101,8 @@ the runner when the Head has them, the Head startled, angry and yelling by its f
 the feed's surge (every screen changes at once, flickering normally, once with Reduced flashing, ending angry; the turn and the
 chase); the traffic (two outer lanes, no overlaps, the stretch kept clear) and the people (on the sidewalks, walking); no hazard
 hue on anything safe; the low-end counts; stepping the clock coarsely shows the same moment; `skip()`; costs and draw calls; and
+the spot staying on the road through the whip, the chase no faster than the cyborg walk's authored pace, the shader warm-up
+(`CityIntroWarmup`: it samples the glass, the sparks and the runner; the shards share the effects' glow and the sparks one Shader),
 the two title cards (the game's title for 1.5-2 s, gone before the zone's card, which ends with the cinematic) and the App's flow (it
 opens a new campaign, the web demo plays it). `test_city_outro` checks the City outro (F2a): at 3, 5 and 6
 lanes its beats in order (the crash into the wreck, the camera at the runner's level, the look left, the pan

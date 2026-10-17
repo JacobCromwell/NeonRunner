@@ -40,7 +40,8 @@ in the file named, and built so it is cheap to change.
 
 6. **How many people, cars, buses and trucks, and what are they?** (GDD §6: "lots of people, cars, buses and trucks moving on the
    streets below, reusing what assets exist".) Placeholder: 130 people on each sidewalk (a low-poly person of the Marketplace
-   citizens' kind: plain, never a hazard's hue, never a cyborg's cold white, a strip of neon on some shoulders; the citizens
+   citizens' kind: plain, never a hazard's hue, nothing glowing (the palest a pale jacket and a thin pale blue-white neon strip on some shoulders,
+   dim beside the cyborgs' screens); the citizens
    themselves are flipbook cards that never walk), 12 vehicles in each of the road's two outer lanes: hover cars and a hover bus
    (new, by code, in the City's kit: muted paints, white headlights, violet tail lights) and the skin's own hover trucks (their
    orange marker lights and edges made headlight white and their red paint left out, since orange reads as a gap's edge). A low-end
@@ -61,7 +62,10 @@ in the file named, and built so it is cheap to change.
    they turn and give chase".) Placeholder: they stop where they are as the yell starts, every screen (a few hundredths apart)
    flickers through the corrupted "broken" face and the calm face and the broken one again, then shows the angry face (the
    cannon-charging one; no red glow: nothing is charging); they turn round a moment apart (half a second) and chase down the street
-   at 7 m/s in their walking pose. The corrupted faces are the hosts' glitches (purple on a host); here they are plain white, for a
+   at 2.5 m/s in their walking pose: the pace that pose's stride is authored for (`full_stride_speed` of
+   `data/tuning/cyborg_walk_animation.tres`), since at a run's speed (7 m/s was the first try) its feet skate, the walk's cadence topping
+   out at 1.6 strides a second, and the only run a cyborg has is the panic variant's flight (head twisted back, an arm flailing).
+   Open: a proper angry run for a chasing cyborg would let them keep pace. The corrupted faces are the hosts' glitches (purple on a host); here they are plain white, for a
    moment, on ordinary cyborgs. With Reduced flashing the screens change once, calm to angry, with no flicker. `flicker_at`,
    `flicker_seconds`, `turn_seconds`, `chase_speed`, `CityIntro.FLICKER_FACES`.
 

@@ -4,7 +4,7 @@ extends Node3D
 ## a few hundred people on both sidewalks, walking both ways, some with a strip of neon on their shoulders. The
 ## Marketplace's citizens (CitizenRig) are baked flipbook cards that stand and cheer in shop windows; they never walk, so
 ## these are a new low-poly person of the same plain, ordinary kind (skin tones and everyday clothes in muted tones, never
-## a hazard's hue, never a cyborg's cold white), all in one MultiMesh and walked by a vertex shader (city_intro_crowd.gdshader):
+## a hazard's hue, nothing glowing: the palest are a pale jacket and a thin pale blue-white neon trim, dim beside the cyborgs' screens), all in one MultiMesh and walked by a vertex shader (city_intro_crowd.gdshader):
 ## the CPU's cost per frame is one uniform, however many there are.
 ##
 ## World space (see CityIntroStreet): the sidewalks between the kerbs and the walls; a track distance z is world z = -z.

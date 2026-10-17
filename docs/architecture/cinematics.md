@@ -189,7 +189,7 @@ cyborg is squashed with its screen ERR then dark, as a stomp kills in play: the 
 catch them (`catch_at`) as the Head notices; 13-18 s, the Head: a cut to its face from the street (startled: eyes wide, an "O";
 angry; then it yells, the jaw wide open and lit, the picture breaking up, the camera pulling back and down for the drop), a cut
 back to the street as every cyborg's screen flickers at once (static, calm, static) and turns angry (with Reduced flashing one
-change, no flicker) and they turn (each a moment apart) and chase at 7 m/s; 17.8-21.7 s, over the chase, the game's title ("NEON
+change, no flicker) and they turn (each a moment apart) and chase at 2.5 m/s (their walk's own pace: faster and its feet would skate); 17.8-21.7 s, over the chase, the game's title ("NEON
 RUNNER", the owner's October 16 answer: this is its first cinematic; the existing card, 1.8 s, with a short sting) and then Zone
 1's title card ("ZONE 1" / "NEON CITY", the same card, 2 s), the street camera drifting on behind them, and a half-second fade to
 black; the level opens on its own view. Only two cuts (to the Head's face and back); the Head's reaction times (`startle_at`, `angry_at`, `yell_at`) and
@@ -218,9 +218,14 @@ MultiMesh without instance colours zeroes the vertex colour). A low-end device g
 brackets), the feed (the screen, the Head's own face shader on a quad: stern, the pupils following the searchlight, `glitch`
 rising as it is about to burst; a cold-white trim and spill), the opening (a dark recess, teeth of glass, cables), the shards
 (a MultiMesh), the sparks (a MultiMesh of thin streaks, additive, cold white) and the flare (a soft glow that pops), all worked out
-analytically from the clock. With Reduced flashing a third of the sparks fly and the flare is a slow faint glow (the face shader
+analytically from the clock (the shards use the effects' shared see-through glow, `GreyboxMaterials.glow`, as a two-sided triangle; the
+sparks' Shader is one static instance shared by every play). `CityIntroWarmup` is the run's `ShaderWarmup` (task PERF1) pointed at the
+intro's hidden nodes: as the intro fades in it draws one tiny sample of the runner's, the glass's, the sparks' and the flare's looks
+in front of the camera (only when the game renders), so the Compatibility renderer (the web demo) compiles none of them at the
+burst. With Reduced flashing a third of the sparks fly and the flare is a slow faint glow (the face shader
 holds its static still, as everywhere). Colour rules: nothing lit or painted is a hazard's hue (a test checks the
-palettes), only the Head's light and the cyborgs' screens are cold white. **The actors.** The runner and seven cyborgs
+palettes); the cold-white glows are the Head's light and face, the billboard's feed and sparks, and the cyborgs' screens (the traffic's
+headlights are white too; the people wear muted clothes, the palest a pale jacket and a thin pale blue-white trim, dim beside them). **The actors.** The runner and seven cyborgs
 (the City draws its cyborgs 1.2 times their rig, as in play); their places are formulas (`cyborg_at`), so the runner's
 keys (the leap, the stomp on the first one's head, two hops each over the head of the cyborg that comes toward them) are worked out
 from them and a test checks the runner lands on its head and clears the others. **The toolkit.** One new cyborg pose, `stomped`

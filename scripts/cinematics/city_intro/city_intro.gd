@@ -58,6 +58,8 @@ var hop_times: Array[float] = []
 var run_from := Vector3.ZERO
 var run_from_at: float = 0.0
 
+## The shader warm-up (CityIntroWarmup), while the intro fades in: null when the game doesn't render, and once it is done.
+var warmup: CityIntroWarmup
 var _scaled: bool = false
 
 
@@ -216,7 +218,9 @@ func light_at(t: float) -> Dictionary:
 	var runner := actors.get(&"runner") as CineActorNode
 	if runner != null and t >= notice_at:
 		# The whip: from where it was searching to the runner, quick, then on them wherever they run.
+		# On the road under them, not at their height: the spot is on the street, even while they are up in a hop.
 		var on: Vector3 = _street_of(runner.point_at(t))
+		on.y = 0.0
 		var k: float = smoothstep(notice_at, catch_at, t)
 		spot = spot.lerp(on, k)
 		wall_k *= 1.0 - k
@@ -421,6 +425,18 @@ func _events(t: CineTimeline) -> void:
 
 # --- The clock ----------------------------------------------------------------------------------------------
 
+## Draws, as the intro fades in, a tiny sample of every look that first shows later (CityIntroWarmup: the runner, the glass, the
+## sparks): the renderer builds their shaders then and not at the burst. Only when the game renders.
+func _warm_up() -> void:
+	if not ShaderWarmup.needed():
+		return
+	var roots: Array[Node] = [set_root]
+	for node: CineActorNode in actors.values():
+		roots.append(node)
+	warmup = CityIntroWarmup.new()
+	warmup.setup_intro(camera, roots)
+
+
 func _on_advance(_delta: float) -> void:
 	if not _scaled:
 		_scaled = true
@@ -428,6 +444,7 @@ func _on_advance(_delta: float) -> void:
 		for node: CineActorNode in actors.values():
 			if node.body != null:
 				node.scale = Vector3.ONE * draw_scale
+		_warm_up()
 	traffic.update(time)
 	crowd.update(time)
 	var spot: Dictionary = light_at(time)

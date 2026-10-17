@@ -37,6 +37,18 @@ const FLARE_RISE_REDUCED: float = 0.3
 const FLARE_FALL_REDUCED: float = 0.8
 ## How far the picture tears (the face shader's `glitch`) as the screen is about to burst.
 const GLITCH_PEAK: float = 0.75
+## The glass shards' look: the effects' shared see-through glow (GreyboxMaterials.glow, one shader for every such look, which
+## the warm-up compiles while the intro fades in), pale blue-white.
+const SHARD_COLOR := Color(0.74, 0.88, 1.0)
+const SHARD_ENERGY: float = 1.1
+const SHARD_ALPHA: float = 0.78
+## The sparks' shader: additive and unshaded, so cold white and bright in any renderer; one Shader shared by every play (a
+## Shader made each time would be compiled each time).
+const SPARK_SHADER_CODE: String = "shader_type spatial;\nrender_mode unshaded, blend_add, cull_disabled, depth_draw_never;\n" \
+	+ "uniform vec3 spark_color : source_color = vec3(0.8, 0.92, 1.0);\nuniform float energy = 2.4;\n" \
+	+ "void fragment() { ALBEDO = spark_color * energy; }\n"
+
+static var _spark_shader: Shader
 
 ## The billboard: its side (-1 left), where it is (track distance of its middle), its sill and its size.
 var side: int = -1
@@ -232,21 +244,19 @@ func _triangle(layer: MeshLayer, depth: float, a: float, b: float, c: float, y_b
 
 
 func _build_shards(count: int) -> void:
+	# A triangle seen from both sides (its back is a second triangle wound the other way, so the shared glow material needs no
+	# double-sided shader of its own).
 	var tri := ArrayMesh.new()
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(0.0, 0.6, 0.0), Vector3(-0.4, -0.4, 0.0), Vector3(0.4, -0.4, 0.0)])
-	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.BACK, Vector3.BACK, Vector3.BACK])
+	var top := Vector3(0.0, 0.6, 0.0)
+	var left := Vector3(-0.4, -0.4, 0.0)
+	var right := Vector3(0.4, -0.4, 0.0)
+	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([top, left, right, top, right, left])
+	arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.BACK, Vector3.BACK, Vector3.BACK, Vector3.FORWARD, Vector3.FORWARD,
+		Vector3.FORWARD])
 	tri.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.74, 0.88, 1.0, 0.78)
-	mat.emission_enabled = true
-	mat.emission = Color(0.55, 0.75, 1.0)
-	mat.emission_energy_multiplier = 1.1
-	tri.surface_set_material(0, mat)
+	tri.surface_set_material(0, GreyboxMaterials.glow(SHARD_COLOR, SHARD_ENERGY, SHARD_ALPHA))
 	multi = MultiMesh.new()
 	multi.transform_format = MultiMesh.TRANSFORM_3D
 	multi.mesh = tri
@@ -279,14 +289,18 @@ func _build_shards(count: int) -> void:
 	_place_shards(0.0)
 
 
+## The sparks' shader, made once a process (not once a play).
+static func spark_shader() -> Shader:
+	if _spark_shader == null:
+		_spark_shader = Shader.new()
+		_spark_shader.code = SPARK_SHADER_CODE
+	return _spark_shader
+
+
 ## The sparks: short bright streaks of the feed's cold white, thrown out of the screen, falling and dying within a second.
 func _build_sparks(count: int) -> void:
-	var shader := Shader.new()
-	shader.code = "shader_type spatial;\nrender_mode unshaded, blend_add, cull_disabled, depth_draw_never;\n" \
-		+ "uniform vec3 spark_color : source_color = vec3(0.8, 0.92, 1.0);\nuniform float energy = 2.4;\n" \
-		+ "void fragment() { ALBEDO = spark_color * energy; }\n"
 	var mat := ShaderMaterial.new()
-	mat.shader = shader
+	mat.shader = spark_shader()
 	var box := BoxMesh.new()
 	box.size = Vector3.ONE
 	box.material = mat

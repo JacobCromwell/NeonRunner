@@ -43,6 +43,7 @@ func run() -> void:
 	await _test_billboard(false)
 	await _test_billboard(true)
 	await _test_title_cards()
+	await _test_warmup()
 	await _test_stomp_squash()
 	await _test_props()
 	await _test_coarse_steps()
@@ -169,6 +170,7 @@ func _test_beats(lanes: int) -> void:
 	var spot_at_board: float = INF
 	var spot_after: float = -INF
 	var spot_on_runner: float = INF
+	var whip_height: float = -INF
 	var hop_clear: Array[float] = [INF, INF]
 	var hop_gap: Array[float] = [INF, INF]
 	var hops: Array[float] = [n.stomp_at + n.stomp_hold + n.hop_seconds * 0.5,
@@ -215,6 +217,8 @@ func _test_beats(lanes: int) -> void:
 			seen["wall_normal"] = (light["normal"] as Vector3).x * -float(n.billboard_side)
 		if absf(t - n.burst_at) < STEP * 0.5:
 			spot_after = (lp.z - n.billboard_z) * 1.0
+		if t >= seq.notice_at + 0.1 and t <= seq.catch_at - 0.1:
+			whip_height = maxf(whip_height, lp.y)
 		if absf(t - (seq.catch_at + 0.3)) < STEP * 0.5:
 			var rp: Vector3 = seq._street_of(runner.global_position)
 			spot_on_runner = Vector2(lp.x - rp.x, lp.z - rp.z).length()
@@ -279,6 +283,7 @@ func _test_beats(lanes: int) -> void:
 		tag, hop_gap[0], hop_gap[1], hop_clear[0], hop_clear[1]])
 	check(inside.is_empty(), "%s: the runner is never inside a cyborg after the leap: %s" % [tag, inside.slice(0, 3)])
 	check(spot_on_runner < 2.5, "%s: the light whips back and is on the runner (%.1f m) as the Head has them" % [tag, spot_on_runner])
+	check(whip_height < 0.3, "%s: the spot stays on the road through the whip (%.2f m up at most), even with the runner up in a hop" % [tag, whip_height])
 	var startled: Dictionary = seen[n.startle_at + 0.4]
 	check(float(startled["surprise"]) > 0.95 and float(startled["anger"]) < 0.05 and float(startled["jaw"]) > n.startle_jaw * 0.9
 		and float(startled["jaw"]) < 0.5, "%s: the Head is startled (wide eyes, an O, the jaw just open: %s)" % [tag, startled])
@@ -403,6 +408,10 @@ func _test_surge(reduced: bool) -> void:
 	for c: CineActorNode in live:
 		chasing = chasing and absf(wrapf(c.yaw, -PI, PI)) < 0.3 and c.speed > n.chase_speed * 0.85
 	check(chasing, "%s: and they have turned round to give chase, at %.1f m/s" % [tag, n.chase_speed])
+	var walk_pace: float = CyborgSuit.walk_tuning().full_stride_speed
+	check(n.chase_speed <= walk_pace + 0.01,
+		"%s: the chase is no faster than the pace the cyborg's walk is authored for (%.1f of %.1f m/s), so its feet don't skate" % [
+		tag, n.chase_speed, walk_pace])
 	Settings.flashing_reduced = was
 	await _free(seq)
 
@@ -461,6 +470,44 @@ func _test_billboard(reduced: bool) -> void:
 		flat = flat and absf(bb.shard_position(i, 5.0).y - CityIntroBillboard.GROUND) < 0.001
 	check(gone and flat and not bb.flare.visible, "%s: the sparks and the flare are gone within 1.6 s and the glass lies on the road" % tag)
 	Settings.flashing_reduced = was
+	await _free(seq)
+
+
+## The warm-up (CityIntroWarmup: tiny samples drawn while the intro fades in, so no shader is first compiled at the burst) finds
+## the looks that show late: the runner, the glass shards, the sparks, and builds nothing for what shows from the start. (CityIntro
+## adds it only when the game renders; here it is built by hand.)
+func _test_warmup() -> void:
+	var seq: CityIntro = _start()
+	seq.advance(STEP)
+	check((seq.warmup != null) == ShaderWarmup.needed(), "the intro has a warm-up to draw exactly when the game renders")
+	var roots: Array[Node] = [seq.set_root]
+	for node: CineActorNode in seq.actors.values():
+		roots.append(node)
+	var warm := CityIntroWarmup.new()
+	warm.setup_intro(seq.camera, roots)
+	var bb: CityIntroBillboard = seq.billboard
+	var shard: Material = bb.multi.mesh.surface_get_material(0)
+	var spark: Material = (bb.spark_multi.mesh as BoxMesh).material
+	var keys: PackedStringArray = PackedStringArray(warm.keys.keys())
+	var has_shard: bool = keys.has("multimesh00|ArrayMesh|%s" % ShaderWarmup.shader_key(shard))
+	var has_spark: bool = keys.has("multimesh00|BoxMesh|%s" % ShaderWarmup.shader_key(spark))
+	var meshes: int = 0
+	for k: String in keys:
+		if k.begins_with("mesh|"):
+			meshes += 1
+	check(has_shard and has_spark and meshes >= 2 and warm.samples() >= 4,
+		"the warm-up samples the glass (the shared see-through glow), the sparks' shader and the runner's looks (%d looks)" % warm.samples())
+	check(warm.get_parent() == seq.camera and is_equal_approx(warm.scale.x, ShaderWarmup.SCALE) and warm.position.z < 0.0,
+		"the samples sit in front of the camera, far too small to see")
+	check(shard == GreyboxMaterials.glow(CityIntroBillboard.SHARD_COLOR, CityIntroBillboard.SHARD_ENERGY, CityIntroBillboard.SHARD_ALPHA)
+		and (spark as ShaderMaterial).shader == CityIntroBillboard.spark_shader(),
+		"the shards use the effects' shared see-through glow and the sparks one Shader shared by every play")
+	var other: CityIntro = _start()
+	other.advance(STEP)
+	check((other.billboard.spark_multi.mesh as BoxMesh).material is ShaderMaterial
+		and ((other.billboard.spark_multi.mesh as BoxMesh).material as ShaderMaterial).shader == (spark as ShaderMaterial).shader,
+		"a second play uses the same sparks Shader, not a new one to compile")
+	await _free(other)
 	await _free(seq)
 
 

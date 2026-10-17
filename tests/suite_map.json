@@ -86,6 +86,7 @@
     {"match": "scripts/enemies/screech_lair.gd", "suites": ["screech", "perf", "zone_shaders"]},
     {"match": "scripts/bosses/floating_head/floating_head_tower.gd", "suites": ["zone_shaders"]},
     {"match": "scripts/bosses/floating_head/floating_head_face.gdshader", "suites": ["floating_head*", "city_intro", "zone_shaders"]},
+    {"match": "scripts/bosses/floating_head/floating_head_light.gdshader", "suites": ["floating_head*", "city_intro"]},
     {"match": "scripts/bosses/floating_head/floating_head_body.gd", "suites": ["floating_head*", "city_intro"]},
     {"match": "scripts/bosses/floating_head/floating_head_bombing.gd", "suites": ["floating_head*", "city_intro"]},
     {"match": "scripts/bosses/floating_head/floating_head_model.gd", "suites": ["floating_head*", "city_outro", "city_intro"]},

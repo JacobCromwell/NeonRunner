@@ -17,7 +17,7 @@ extends Node3D
 ##   --once               quits when it ends instead of playing it again
 ##   --from=S             starts S seconds in (steps its clock there first), for renders of a later moment
 ##   --cam=px,py,pz,tx,ty,tz[,fov]  holds the camera there (track space) instead of the cinematic's own, for close-ups of a set
-##   --stats              prints the frame's draw calls, objects and vertices (the renderer's own count) every 10 frames
+##   --stats              prints the frame's draw calls, objects and primitives (the renderer's own count) every 10 frames
 ## Each event is printed with its time and frame as it fires, to find the matching frames.
 
 const SAMPLER_PATH: String = "res://tools/showcase/cinematic_sampler.tres"
@@ -42,7 +42,7 @@ func _process(_delta: float) -> void:
 	_frame += 1
 	if _has("stats") and _frame % 10 == 0:
 		var seq0 := cinematic as CinematicSequencer
-		print("  frame %4d (%.2f s): %d draw calls, %d objects, %d vertices" % [_frame, seq0.time if seq0 != null else 0.0,
+		print("  frame %4d (%.2f s): %d draw calls, %d objects, %d primitives" % [_frame, seq0.time if seq0 != null else 0.0,
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])

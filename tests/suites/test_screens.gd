@@ -397,7 +397,7 @@ func _test_title() -> void:
 	await physics_frames(3)
 	var first: Cinematic = App.playing_cinematic()
 	check(first != null and first.step.id == "city/intro",
-		"a new player's Play starts the campaign at its first step (the City's arrival flyover)")
+		"a new player's Play starts the campaign at its first step (the City's intro)")
 	App.profile = SampleProfiles.rich()
 
 

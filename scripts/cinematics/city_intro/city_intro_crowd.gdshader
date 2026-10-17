@@ -6,7 +6,8 @@
 //                 strip of neon trim (the vertex colour isn't used: a MultiMesh without instance colours zeroes it)
 // The walk cycle swings the legs and arms about the hip and shoulder and bobs the body; a person that walks out of the
 // loop's end comes back in at its other. Unshaded with the kit's fake city light (the same on every renderer); its colours
-// are plain clothes in muted tones and skin, never a hazard's hue, never the cold white of a cyborg's screen.
+// are plain clothes in muted tones and skin, never a hazard's hue. Nothing glows: the palest things (a pale jacket, grey hair, one
+// thin strip of pale blue-white neon trim) are dim beside the cyborgs' lit screens and the Head's face.
 shader_type spatial;
 render_mode unshaded, cull_back, depth_draw_opaque;
 

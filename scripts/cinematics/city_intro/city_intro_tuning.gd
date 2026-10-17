@@ -108,11 +108,14 @@ extends Resource
 @export_range(5.0, 40.0, 0.1, "suffix:m") var lead_z: float = 12.0
 @export_range(9.0, 13.0, 0.05, "suffix:s") var stomp_at: float = 10.55
 ## The yell goes through the feed: every screen face flickers at `flicker_at` and has turned angry within `flicker_seconds`;
-## they turn round (`turn_seconds`) and chase at `chase_speed` (m/s).
+## they turn round (`turn_seconds`) and chase at `chase_speed` (m/s): the pace the cyborgs' walk pose is authored for (its
+## `full_stride_speed`, data/tuning/cyborg_walk_animation.tres), since at a run's speed that pose's feet would skate (its cadence
+## tops out at 1.6 strides a second; the toolkit has no angry run for a cyborg: the only run is the panic variant's flight).
+## DESIGN-TBD (docs/questions/f2g.md 9): a proper angry run for the chase.
 @export_range(12.0, 20.0, 0.05, "suffix:s") var flicker_at: float = 15.5
 @export_range(0.1, 1.0, 0.05, "suffix:s") var flicker_seconds: float = 0.4
 @export_range(0.2, 2.0, 0.05, "suffix:s") var turn_seconds: float = 0.5
-@export_range(1.0, 12.0, 0.1, "suffix:m/s") var chase_speed: float = 7.0
+@export_range(1.0, 12.0, 0.1, "suffix:m/s") var chase_speed: float = 2.5
 
 @export_group("The runner")
 ## DESIGN-TBD (docs/questions/f2g.md 5): how fast they run.
@@ -154,10 +157,10 @@ extends Resource
 @export var street_from: Vector3 = Vector3(0.8, 1.5, 2.5)
 @export var street_to: Vector3 = Vector3(0.6, 1.8, 5.0)
 @export var street_look_from: Vector3 = Vector3(0.0, 2.4, 12.0)
-@export var street_look_to: Vector3 = Vector3(0.0, 2.8, 20.0)
+@export var street_look_to: Vector3 = Vector3(0.0, 4.0, 20.0)
 @export_range(15.0, 80.0, 0.5, "suffix:°") var street_fov: float = 40.0
 ## The street camera goes on through the title card (`card_at`), drifting on behind the chase to this (an ease, no cut): low
 ## behind the cyborgs running for the Head, under the title card.
 @export var chase_to: Vector3 = Vector3(0.6, 2.4, 13.0)
-@export var chase_look_to: Vector3 = Vector3(0.0, 4.5, 40.0)
+@export var chase_look_to: Vector3 = Vector3(0.0, 6.0, 40.0)
 @export_range(15.0, 80.0, 0.5, "suffix:°") var chase_fov: float = 54.0
