@@ -63,8 +63,8 @@ extends RefCounted
 ## - A wider gap (task G7) from its take-off margin to its landing margin (WideGapPlacement.keep_outs), as it
 ##   keeps off a wall: each stays the only demand at its take-off and landing. A cyborg planted in a charge's
 ##   path (task G7) keeps its encounter (ChargePathPlacement.encounter_span: from its charger's claim to past its
-##   strike) as every big attack does. And a zone doodad keeps its push's lead before it and the level's spacing
-##   past it (doodad_span), as it keeps them from a wall placed before it.
+##   strike) as every big attack does. And a zone doodad keeps its push's lead before it and a lane switch's room
+##   past it (doodad_span; task L6), as it keeps them from a wall placed before it.
 ## - A level's quiet stretches (The Hush, GDD §5: "long silent stretches"; LevelGenerator.quiet_stretches), as the
 ##   fill and danger density passes keep them, unless that leaves the level with no wall: then one stands in one.
 ## Plain holes and fences (never a pulsing fence or one a fence generator powers; in the second stage the fill
@@ -81,9 +81,11 @@ extends RefCounted
 ## past it (the stretch from the first possible face to the last cut into as many parts, a seeded spot aimed
 ## for in each, the best fair spot in that part taken: nothing to take out first, then the nearest), then the
 ## best of the rest wherever a part had none, then, where the level is crowded and that leaves it short, the
-## most that fit, as far apart as they can be; still short, its wall-run gaps but its first give way (task J2,
-## WallRunGapPlacement.set_aside: the best spots again with them out of the way, then each comes back where the
-## walls left its way as it was, put_back). A level left with no wall at all makes room for one as an
+## most that fit, as far apart as they can be; still short, the zone doodads in the way of the rest go (task
+## L6, _clear_doodads: scenery, so it gives way before any feature does); still short, its wall-run gaps but
+## its first give way (task J2, WallRunGapPlacement.set_aside: the best spots again with them out of the way,
+## then each comes back where the walls left its way as it was, put_back). A level left with no wall at all,
+## even with every zone doodad in the way gone, makes room for one as an
 ## introduction does (_make_room, over the whole level; never a planted cyborg or its charger, nor a Buzz
 ## Overdrive an Enforcer Truck counts among its baits), then, the last resort, with the zone doodads in the way
 ## going too (scenery: DESIGN-TBD, docs/OPEN_QUESTIONS.md item 677), and one with no fair spot even then gets a
@@ -301,7 +303,8 @@ static func apply(gen: LevelGenerator) -> void:
 ## passes before left (see the header), spread through the level: a part each, a seeded spot aimed for in it
 ## (every draw is made, so a part without room never reshuffles the next), then the best of the rest; where
 ## that leaves the level short of its count (a crowded level, its fair spots few and close), the most that fit,
-## as far apart as they can be (_most_apart); and a level left with none at all makes room for one
+## as far apart as they can be (_most_apart); then the zone doodads in the way of the rest go (_clear_doodads, task
+## L6), then the wall-run gaps but the first (task J2); and a level left with none at all makes room for one
 ## (_make_room, over the whole level).
 static func after_doodads(gen: LevelGenerator) -> void:
 	var count: int = gen.config.dash_walls
@@ -339,6 +342,15 @@ static func after_doodads(gen: LevelGenerator) -> void:
 			chosen = most
 	for at: float in chosen:
 		_place(gen, plan, at, faces)
+	# Task L6: the zone doodads stand in far more of a level's free room than they did, and they're scenery: a level
+	# they leave short of its walls takes out the ones in the way of the rest before any feature gives way
+	# (_clear_doodads). DESIGN-TBD (docs/questions/l6.md 6).
+	while faces.size() < count:
+		var cleared: float = _clear_doodads(gen, t, faces)
+		if is_nan(cleared):
+			break
+		plan = plan_for(gen, t)
+		_place(gen, plan, cleared, faces)
 	if faces.size() < count:
 		# Task J2: the level's wall-run gaps but its first give way to its dash walls (WallRunGapPlacement.set_aside):
 		# with them out of the way, the best spots of the rest for the ones still missing; then each wall-run gap whose
@@ -419,7 +431,10 @@ static func _first_apart(spots: Array[float], gap: float, want: int) -> Array[fl
 ## and every hole and fence too, and the wall gaps and wall fences against the route; while placing, plain
 ## pieces only cost what taking them out costs, and with `quiet` a level's quiet stretches stay clear too (The
 ## Hush's long silent stretches, LevelGenerator.quiet_stretches, as the fill and danger density passes keep them).
-static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bool = false, quiet: bool = true) -> Plan:
+## Without `scenery` the zone doodads count for nothing (a treasure stash's still do: its walls), for a wall they
+## would give way to (_clear_doodads).
+static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bool = false, quiet: bool = true,
+		scenery: bool = true) -> Plan:
 	var p := Plan.new()
 	p.gen = gen
 	p.t = t if t != null else tuning()
@@ -474,7 +489,8 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 		for q: Vector2 in gen.quiet_stretches():
 			p.mark_span(p.blocked, q)
 	for d: Dictionary in lay.doodads:
-		p.mark_span(p.blocked, doodad_span(gen, d) if not checking else Vector2(float(d["start"]), float(d["end"])))
+		if scenery or d.has("stash"):
+			p.mark_span(p.blocked, doodad_span(gen, d) if not checking else Vector2(float(d["start"]), float(d["end"])))
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		for span: Vector2 in enemy_spans(gen, e, hooks):
@@ -506,6 +522,40 @@ static func plan_for(gen: LevelGenerator, t: DashWallTuning = null, checking: bo
 			if p.signs_left[i] > 0 and p.signs_right[i] > 0:
 				p.blocked[i] += 1
 	return p
+
+
+## Task L6: a face for one more wall where only zone doodads stand in the way (never a treasure stash's: its walls),
+## for a level they leave short of its walls (after_doodads). With them out of the way (plan_for without `scenery`),
+## the face that fits (Plan.fits: `faces` spaced from) with the fewest of them in its way (doodad_span), then the fewest
+## plain pieces, then the earliest; the doodads in its way go from the layout, a row whole (as _take_out takes one).
+## Taking scenery out never makes a level unfair, and moves nothing a feature has. NAN where no face fits even with
+## them out of the way, and then none goes.
+static func _clear_doodads(gen: LevelGenerator, t: DashWallTuning, faces: Array[float]) -> float:
+	var lay: LevelLayout = gen.layout
+	var plan: Plan = plan_for(gen, t, false, true, false)
+	var in_way := PackedInt32Array()
+	in_way.resize(plan.size())
+	in_way.fill(0)
+	for d: Dictionary in lay.doodads:
+		if not d.has("stash"):
+			plan.mark_span(in_way, doodad_span(gen, d))
+	var pick: int = -1
+	for i: int in plan.size():
+		if in_way[i] == 0 or not plan.fits(i, faces):
+			continue
+		if pick < 0 or in_way[i] < in_way[pick] or (in_way[i] == in_way[pick] and plan.spot_cost(i) < plan.spot_cost(pick)):
+			pick = i
+	if pick < 0:
+		return NAN
+	var fp: Vector2 = plan.footprint(plan.face_at(pick))
+	var rows: Array[String] = []
+	for d: Dictionary in lay.doodads:
+		var span: Vector2 = doodad_span(gen, d)
+		if not d.has("stash") and span.x <= fp.y and span.y >= fp.x:
+			rows.append("%d %s" % [int(d["lane"]), var_to_str(d.get("row", d["start"]))])
+	_keep(lay.doodads, func(d: Dictionary) -> bool:
+		return d.has("stash") or not rows.has("%d %s" % [int(d["lane"]), var_to_str(d.get("row", d["start"]))]))
+	return plan.face_at(pick)
 
 
 ## Makes room for the introduction in faces [a, b] (apply()), where no wall fits: the face there that the
@@ -766,12 +816,14 @@ static func enemy_spans(gen: LevelGenerator, e: Dictionary, hooks: Dictionary) -
 
 
 ## What zone doodad `d` keeps a wall's footprint off, placed after it (the second stage), as a doodad placed after a
-## wall keeps them from its footprint (LevelGenerator._place_doodads): its push's lead before it
-## (LevelGenerator.doodad_lead_for), so its push never comes in a wall's clear stretch, and the level's spacing
-## past it (doodad_after), so a runner who dashes through it has time to see what it hid (task H5).
+## wall keeps them from its footprint (LevelGenerator._place_doodads, doodad_keep_outs: what every lane keeps): its
+## push's lead before it (LevelGenerator.doodad_lead_for), so its push never comes in a wall's clear stretch, and a
+## lane switch's room past its end (LevelGenerator.doodad_reach; task L6, the level's spacing before it). The wall's
+## clear approach before its face (DashWallTuning.approach_seconds at the dash's speed) then puts its face past what
+## the doodad hides in its lane (task H5), which a runner who dashes through the doodad sees at the smash.
 static func doodad_span(gen: LevelGenerator, d: Dictionary) -> Vector2:
-	var end: float = float(d["end"])
-	return Vector2(float(d["start"]) - LevelGenerator.doodad_lead_for(gen.tuning), end + gen.doodad_after(end))
+	var start: float = float(d["start"])
+	return Vector2(start - LevelGenerator.doodad_lead_for(gen.tuning), start + gen.doodad_reach(float(d["end"]) - start))
 
 
 ## A hover truck at `at`: its entrance, the stretch a wall's footprint keeps off (enemy_spans), from the start of
