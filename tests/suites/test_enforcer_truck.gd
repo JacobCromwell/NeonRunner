@@ -1224,9 +1224,12 @@ static func _fits_beside(span: Vector2, spans: Array[Vector2], skip: int, room: 
 
 
 ## Its rules only add its trucks: with danger density off (whose enemy count counts them), the wider gaps off (task
-## G7: they go in a truck's chase first) and its showing windows not planned (task C6c: a window moves a truck's
-## arrival, takes out what's in its way and keeps the later passes off it, _test_show_windows), Corporate 2 and Golden
-## 2 are the same level with or without the feature but for the trucks.
+## G7: they go in a truck's chase first), the Buzz Overdrives' company off (task L2: a tank a truck's chase comes near
+## gets none, BuzzCompanyPlacement) and its showing windows not planned (task C6c: a window moves a truck's arrival,
+## takes out what's in its way and keeps the later passes off it, _test_show_windows), Corporate 2 and Golden 2 are the
+## same level with or without the feature but for the trucks. With the company on, they differ only by the trucks and
+## the company the trucks withhold (the company's cyborgs, holes and fences, its cut keys, and the wall fences that run
+## by a tank with company, with the wall gaps and credits that move with them).
 func _test_only_its_trucks() -> void:
 	t.show_window_planned = false
 	_only_its_trucks()
@@ -1236,25 +1239,49 @@ func _test_only_its_trucks() -> void:
 func _only_its_trucks() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for id: String in ["corporate/2", "golden/2"]:
-		var config: LevelConfig = campaign.configure(campaign.step(id), 5)
-		config.danger_density_increase = 0.0
-		config.wide_gaps = 0
-		var m: MovementTuning = config.movement_for(tuning)
-		var patterns: Array = LevelGenerator.load_for(config)
-		var with_it: LevelLayout = LevelGenerator.new().generate(config, m, patterns)
-		var without: LevelConfig = config.duplicate() as LevelConfig
-		var features: PackedStringArray = config.features.duplicate()
-		features.remove_at(features.find("enforcer_truck"))
-		without.features = features
-		var plain: LevelLayout = LevelGenerator.new().generate(without, m, patterns)
-		var stripped: LevelLayout = with_it.copy()
-		var kept: Array[Dictionary] = []
-		for e: Dictionary in stripped.enemies:
-			if String(e["type"]) != "enforcer_truck":
-				kept.append(e)
-		stripped.enemies = kept
-		check(not Rules.trucks_in(with_it).is_empty() and JSON.stringify(stripped.to_dict()) == JSON.stringify(plain.to_dict()),
-			"%s (no danger density, no wider gaps): the same level but for its trucks" % id)
+		for company: bool in [false, true]:
+			var config: LevelConfig = campaign.configure(campaign.step(id), 5)
+			config.danger_density_increase = 0.0
+			config.wide_gaps = 0
+			config.buzz_company = company
+			var m: MovementTuning = config.movement_for(tuning)
+			var patterns: Array = LevelGenerator.load_for(config)
+			var with_it: LevelLayout = LevelGenerator.new().generate(config, m, patterns)
+			var without: LevelConfig = config.duplicate() as LevelConfig
+			var features: PackedStringArray = config.features.duplicate()
+			features.remove_at(features.find("enforcer_truck"))
+			without.features = features
+			var plain: LevelLayout = LevelGenerator.new().generate(without, m, patterns)
+			var stripped: LevelLayout = with_it.copy()
+			var kept: Array[Dictionary] = []
+			for e: Dictionary in stripped.enemies:
+				if String(e["type"]) != "enforcer_truck":
+					kept.append(e)
+			stripped.enemies = kept
+			if not company:
+				check(not Rules.trucks_in(with_it).is_empty() and JSON.stringify(stripped.to_dict()) == JSON.stringify(plain.to_dict()),
+					"%s (no danger density, no wider gaps, no company): the same level but for its trucks" % id)
+			else:
+				check(JSON.stringify(_without_company(stripped)) == JSON.stringify(_without_company(plain)),
+					"%s (no danger density, no wider gaps): the same level but for its trucks and the company they withhold" % id)
+
+
+## `layout` without a Buzz Overdrive's company (task L2, BuzzCompanyPlacement: its cyborgs, holes and fences, its cut
+## keys) and without what moves with it (the wall fences, which run by a tank with company, the wall gaps, which keep
+## off them, and the credits), as a dictionary.
+static func _without_company(layout: LevelLayout) -> Dictionary:
+	var d: Dictionary = layout.to_dict().duplicate(true)
+	for key: String in ["wall_fences", "wall_gaps", "credits"]:
+		d.erase(key)
+	for key: String in ["gaps", "fences", "enemies"]:
+		var kept: Array = []
+		for item: Dictionary in d[key]:
+			if not item.has(BuzzCompanyPlacement.PARAM) and not BuzzCompanyPlacement.is_company(item):
+				kept.append(item)
+		d[key] = kept
+	for c: Dictionary in d.get("cuts", []):
+		c.erase(BuzzCompanyPlacement.CUT_KEY)
+	return d
 
 
 ## Quick play: no bait, no truck (GDD §9.13: only where an Octodog or a Buzz Overdrive charges); with

@@ -9,6 +9,8 @@ extends SceneTree
 ##   --lanes=3,5,6                   lane counts (default 3,5,6)
 ##   --seeds=N                       each level's own seed and N others, 9001 to 9000 + N (default 4)
 ##   --company=off                   build every level with LevelConfig.buzz_company off (as before task L2)
+##   --company-set=key:value;...     set BuzzCompanyTuning properties (numbers; 0 and 1 for switches) before building,
+##                                   e.g. --company-set=cyborgs_max:2;rows_max:3, to try values before the data file
 ##   --out=build/measure/x.json      also write every tank's numbers there
 ##   --dump=FILE                     also write every layout (LevelLayout.to_dict) there as JSON, keyed
 ##                                   "<level> lanes=<n> seed=<s>" as tools/measure/level_pace.gd keys its own
@@ -48,6 +50,8 @@ var _out: String = ""
 var _dump: String = ""
 var _print_tanks: bool = false
 var _company_off: bool = false
+## The company tuning --company-set changed: held so the resource cache keeps it.
+var _kept_tuning: Resource = null
 
 
 func _initialize() -> void:
@@ -140,6 +144,20 @@ func _parse_args() -> void:
 			_dump = value
 		elif arg == "--company=off":
 			_company_off = true
+		elif arg.begins_with("--company-set=") and ResourceLoader.exists("res://data/tuning/buzz_company.tres"):
+			# The live resource (cached: the pass loads the same one).
+			var company: Resource = load("res://data/tuning/buzz_company.tres")
+			for pair: String in arg.trim_prefix("--company-set=").split(";", false):
+				var key: String = pair.get_slice(":", 0)
+				var number: float = float(pair.get_slice(":", 1))
+				match typeof(company.get(key)):
+					TYPE_BOOL:
+						company.set(key, number != 0.0)
+					TYPE_INT:
+						company.set(key, int(number))
+					_:
+						company.set(key, number)
+				_kept_tuning = company
 		elif arg == "--tanks":
 			_print_tanks = true
 

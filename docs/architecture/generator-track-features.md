@@ -166,7 +166,12 @@ against it:
 Wall runners and ceiling riders need no rule: a cut only takes floor away, in its own lane, and its
 cause's hitbox stays in its lane. What comes after the rules keeps off cuts too: the fill pass keeps off
 a cut's whole window in every lane (`fill_keep_outs`), doodads off its lane window, never pushing into
-it (`doodad_keep_outs`' lane keeps), floor credits skip it, and `floor_clear()` counts it as a hole.
+it (`doodad_keep_outs`' lane keeps), floor credits skip it, and `floor_clear()` counts it as a hole. The
+one pass that comes into a cut's window is a Buzz Overdrive's company (task L2; The generator, Company for the
+Buzz Overdrive): it keeps every rule above (its lane, its whole lanes, its escape) and a lane beside it clear
+over its attack, and its cyborgs are the other exception to "nothing else going on" (`cut_problem` and
+`check_cuts` leave them to `check_buzz_company`, as they leave a parked tank's planted cyborg to
+`check_charge_paths`).
 `LayoutChecks.check_cuts` holds every generated layout to all of it at 3, 5 and 6 lanes, with a
 `FloorRoute` out of the cut's lane from the reaction time on (`FloorRoute` keeps out of a cut's lane
 from where it would reach a player in it). The stand-in cause (`floor_cutter`, a debug-only quick-play
@@ -245,7 +250,10 @@ pace):
   keep-out of a drone wave, a hover truck, an Octodog or a floor cut's cause, `LevelGenerator.enemy_keep_out`;
   each of a Resonator's pulses, from its warning until its wave has passed the player, `resonator_pulses`,
   since between its pulses nothing asks for the wall; and every Bad Dream chase) reaches its drop window (the
-  wall is one of their escapes; the fill pass keeps its extra obstacles off them the same way);
+  wall is one of their escapes; the fill pass keeps its extra obstacles off them the same way). A Buzz Overdrive
+  with company (task L2, the owner's "laser fences" with it; its cut carries `BuzzCompanyPlacement.CUT_KEY`) is the
+  exception: its runner escapes along the floor into the lane beside its cut and a wall runner is safe from it, so
+  its cut and its rev keep only the drop rule above (its lane window in the outer lane beside a fence);
 - the level: its drop window between the run-up and the end-clear stretch; other wall fences
   `same_side_gap_seconds` apart on one wall (a wall run meets one at a time) and `gap_seconds` on either.
 Zone doodads need no rule: they stand in inner lanes and push only into neighbouring lanes, never onto a wall,
@@ -271,7 +279,9 @@ partial past `wall_fences_partial`'s start (a third of Corporate 1's, which brin
 and `cut_problem` refuses a floor cut whose window reaches a wall fence's drop window (a boss arena's; a
 level's wall fences come after its cuts). `LayoutChecks.check_wall_fences` (from `check_layout`) holds every
 generated layout to all of it independently, at 3, 5 and 6 lanes. DESIGN-TBD (`docs/questions/b5.md`): every
-number in `WallFenceTuning`, the bands and the reach, partial ones pulsing too, and keeping off big attacks.
+number in `WallFenceTuning`, the bands and the reach, partial ones pulsing too, and keeping off big attacks
+(`docs/questions/l2.md`: running by a Buzz Overdrive with company, where they come about 2.3 times as often as
+elsewhere in Corporate 1, the danger density pass's wall half filling the room that opened).
 
 **Wall fences on the track.** `TrackBuilder._build_wall_fence` builds each as a Hazard in the chunk where it
 stands: its hitbox `WallFencePlan.hitbox` (from the wall face out by the reach, over its band, a fence deep),

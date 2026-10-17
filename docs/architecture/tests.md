@@ -52,8 +52,10 @@ suite over every campaign level at 3, 5 and 6 lanes, the enemy suites over their
 them `check_ceilings` (GDD §3: pads that can be stepped on and under their ceiling, safe landing zones
 over each ceiling's lanes, a one-lane ceiling short, and a floor route under every ceiling without its
 pad, found by `FloorRoute`, `tests/helpers/floor_route.gd`, which keeps out of a zone doodad's lane where
-it stands) and `check_doodads` (G5: every doodad in an inner lane, one at a time, with nothing else in
-any lane from its push to the spacing after it and off every lane-bound attack), and finds a
+it stands), `check_doodads` (G5: every doodad in an inner lane, one at a time, with nothing else in
+any lane from its push to the spacing after it and off every lane-bound attack) and `check_buzz_company` (L2: a
+Buzz Overdrive's company only where it may have some, out of its lane and escape lane, its cyborgs holding their
+fire), and finds a
 feature's pieces in a layout with the generator's own `LevelGenerator.feature_positions()`; a task
 that adds a new kind of piece extends it (and `FloorRoute`'s cells, if the piece is on the floor), or
 gives its rules script `positions()`. The generator suite also checks the recency curve's pick weights

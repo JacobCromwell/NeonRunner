@@ -20,12 +20,12 @@ extends TestSuite
 const Rules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
 const TruckRules = preload("res://scripts/enemies/enforcer_truck_rules.gd")
 const Measure = preload("res://tools/measure/buzz_company.gd")
-const LEVELS: Array[String] = ["corporate/1", "corporate/2", "beach/1", "beach/3", "dead_zone/1", "dead_zone/2", "golden/1",
-	"golden/2", "golden/3"]
+const LEVELS: Array[String] = ["corporate/1", "corporate/2", "beach/1", "beach/3", "dead_zone/1", "dead_zone/2",
+	"golden/1", "golden/2", "golden/3"]
 const SEEDS: Array[int] = [-1, 9001, 9002]
-const EVERY: PackedStringArray = ["ramps", "ceilings", "pulsing", "speed_pads", "cyborg", "window_cyborg", "hover_truck",
-	"octodog", "screech", "drone", "generator", "host", "resonator", "barnacle_turret", "buzz_overdrive", "wall_fences",
-	"wall_fences_partial"]
+const EVERY: PackedStringArray = ["ramps", "ceilings", "pulsing", "speed_pads", "cyborg", "window_cyborg",
+	"hover_truck", "octodog", "screech", "drone", "generator", "host", "resonator", "barnacle_turret", "buzz_overdrive",
+	"wall_fences", "wall_fences_partial"]
 
 var sim: RunSim
 var campaign: Campaign
@@ -48,9 +48,11 @@ func run() -> void:
 # --- Data ----------------------------------------------------------------------------------------------------------
 
 func _test_data() -> void:
-	check(t.resource_path == BuzzCompanyTuning.PATH and t.enabled, "the company's numbers load from data/tuning/buzz_company.tres")
+	check(t.resource_path == BuzzCompanyTuning.PATH and t.enabled,
+		"the company's numbers load from data/tuning/buzz_company.tres")
 	check(t.rows_max > 0 and t.cyborgs_max > 0 and t.hold_before_seconds > 0.0 and t.hold_after_seconds > 0.0
-		and not t.on_introduction, "it adds rows and cyborgs, holds their fire around the attack, and leaves the introduction alone")
+		and not t.on_introduction,
+		"it adds rows and cyborgs, holds their fire around the attack, and leaves the introduction alone")
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			check(s.level.buzz_company == s.level.has_feature(Rules.TYPE),

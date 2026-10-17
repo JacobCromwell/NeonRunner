@@ -39,12 +39,13 @@ extends RefCounted
 ##   (DangerDensity: its attack window, CyborgRules.keep_out and its floor, off the fixed stretches, pads, quiet
 ##   stretches and plain ceilings, enemy_fixed_stretches, and the rules' calm stretches; with the level's spacing around
 ##   it, at most overlap_max other attack windows, all of small enemies; its own lane and another free of pieces, kept
-##   lanes and floor enemies; never before the level's first cyborg; the cyborg rules' margin from every piece and off
-##   every ceiling's safe floor): plain floor cyborgs, never a host, never the panic variant (a panic run could carry one
-##   into E), holding their fire from hold_before_seconds before the warning to hold_after_seconds past the window (no
-##   bolt of theirs lands meanwhile: Cyborg.hold_fire, as a cyborg in a charge's path holds it). One whose floor reaches
-##   the attack stands only in a lane beside E (cyborgs_in_attack), so a runner beside it can always step into E; the
-##   others before it, in any lane but C. Their params carry PARAM (their tank's cut's end).
+##   lanes and floor enemies; never before the level's introduction of cyborgs, _cyborgs_from; the cyborg rules'
+##   margin from every piece and off every ceiling's safe floor): plain floor cyborgs, never a host, never the panic
+##   variant (a panic run could carry one into E), holding their fire from hold_before_seconds before the warning to
+##   hold_after_seconds past the window (no bolt of theirs lands meanwhile: Cyborg.hold_fire, as a cyborg in a
+##   charge's path holds it). One whose floor reaches the attack stands only in a lane beside E (cyborgs_in_attack), so
+##   a runner beside it can always step into E; the others before it, in any lane but C. Their params carry PARAM
+##   (their tank's cut's end).
 ## - rows of holes or fences (rows_max: the level's one-row fillers, picked as the fill pass picks them there), as
 ##   wide as the filler asks but the lanes above allow, each keeping the fill pass's margin (the level's spacing and a
 ##   pattern's tail, times spacing_scale) from everything the fill pass keeps off (LevelGenerator.fill_keep_outs,
@@ -192,7 +193,8 @@ static func cyborgs_of(layout: LevelLayout, cut: Dictionary) -> Array[Dictionary
 	var out: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
 		var params: Dictionary = e.get("params", {})
-		if String(e.get("type", "")) == CYBORG and params.has(PARAM) and absf(float(params[PARAM]) - float(cut["end"])) < 0.01:
+		if String(e.get("type", "")) == CYBORG and params.has(PARAM) \
+				and absf(float(params[PARAM]) - float(cut["end"])) < 0.01:
 			out.append(e)
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["at"]) < float(b["at"]))
 	return out
@@ -353,7 +355,8 @@ static func _add_encounter(gen: LevelGenerator, t: BuzzCompanyTuning, rng: Rando
 			continue
 		var k := Vector2(spot - before, spot + after)
 		var window := Vector2(k.x - DangerDensity.clearance(gen, k.x, dt), k.y + DangerDensity.clearance(gen, k.y, dt))
-		var lanes: Array[int] = _cyborg_lanes(gen, t, cut, attack, escape, spot, Vector2(spot - reach.x, spot + reach.y), window)
+		var floor_span := Vector2(spot - reach.x, spot + reach.y)
+		var lanes: Array[int] = _cyborg_lanes(gen, t, cut, attack, escape, spot, floor_span, window)
 		_shuffle(lanes, rng)
 		for size: int in range(mini(count, lanes.size()), 0, -1):
 			var pick: Array[int] = lanes.slice(0, size)
@@ -577,7 +580,8 @@ static func _lane_left(gen: LevelGenerator, cut: Dictionary, attack: Vector2, sp
 ## One of the level's one-row fillers (a single hole or fence element whose lanes are random, all but some, or all; no
 ## pulsing) picked by its weight as the fill pass picks there (LevelGenerator.pick_weights with `fill`), among those
 ## that fit between `at` and `room_end`: {kind, variant, mode, width, span, element}; {} where none does.
-static func _pick_row(gen: LevelGenerator, rng: RandomNumberGenerator, patterns: Array, at: float, room_end: float) -> Dictionary:
+static func _pick_row(gen: LevelGenerator, rng: RandomNumberGenerator, patterns: Array, at: float,
+		room_end: float) -> Dictionary:
 	var difficulty: float = gen.difficulty_at(clampf(at / gen.layout.length, 0.0, 1.0))
 	var pool: Dictionary = gen.pick_weights(patterns, difficulty, at, "", true)
 	var rows: Array[Dictionary] = []
@@ -665,8 +669,8 @@ static func _row_lanes(gen: LevelGenerator, rng: RandomNumberGenerator, cut: Dic
 
 ## Adds `row` in `lanes` and keeps it if the cut keeps what company could take from it (_cut_ok); else takes it out
 ## again. True if kept.
-static func _try_row(gen: LevelGenerator, rng: RandomNumberGenerator, tank: Dictionary, cut: Dictionary, attack: Vector2,
-		escape: int, row: Dictionary, lanes: Array[int]) -> bool:
+static func _try_row(gen: LevelGenerator, rng: RandomNumberGenerator, tank: Dictionary, cut: Dictionary,
+		attack: Vector2, escape: int, row: Dictionary, lanes: Array[int]) -> bool:
 	var span: Vector2 = row["span"]
 	var element: Dictionary = row["element"]
 	var added: Array[Dictionary] = []
