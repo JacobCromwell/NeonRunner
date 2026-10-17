@@ -533,6 +533,12 @@ func _test_fight(lanes: int, speed: float) -> void:
 		if int(e["phase"]) < 2:
 			per_phase[int(e["phase"])] += 1
 	check(ends.size() >= 2 and per_phase[0] == 2 and per_phase[1] == 6, "2 hits end phase 1, 6 phase 2 (%s) %s" % [str(per_phase), tag])
+	# Phase 1 is short (task L9: 2 hits), but it still throws a volley before it ends, not only baits (GDD §10: the climb, dodging bombs).
+	var first_volleys: int = 0
+	for e: Dictionary in _events(boss, &"volley"):
+		if int(e["phase"]) == 0:
+			first_volleys += 1
+	check(first_volleys >= 1, "phase 1 throws a volley before it ends, not only baits (%d volleys) %s" % [first_volleys, tag])
 	# Phase 2's more bombs (GDD §10): the bombs that can reach the runner (the volleys' and the baits'), a step and a second.
 	var census: Dictionary = MechaGuppyBot.census(boss)
 	check(float(census["step"][1]) > float(census["step"][0]) and float(census["second"][1]) > float(census["second"][0]),

@@ -240,14 +240,14 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
   camera's forward axis and at least `BREACH_NEAR` (55 m) ahead; pulling away at `BREACH_AHEAD` (14 m/s) and out at
   `BREACH_OUT` (3 m/s), its head along the way it moves as the runner sees it; `breach_seconds` for a leap up to
   `BREACH_REF` (30 m) high, longer for a higher one so it moves the same (up to `BREACH_LONGEST`, 1.6 times: a runner
-  who never baits climbs to a top about 73 m up); and from a high top, whose camera sees nothing of the rise out of
+  who never baits climbs higher, its phase 1 taking more steps); and from a high top, whose camera sees nothing of the rise out of
   the sea far below, it begins already under way, its snout `BREACH_HIDDEN` (2 m) under the camera's line (reckoned
   for the camera over the outer lane on that side, where it sees lowest), so no time goes by on an empty view.
   Everything keeps pace with the runner.
   No point of its jaws or its body comes over the lanes or the top's eaves at any moment (the suites check every
   frame), nothing in it has a hitbox, and the runner is in the framework's win god mode. `victory_over()` holds the
-  results until `dive_after` (0.6 s) after its snout is back in the sea (5.9-6.2 s after the win, 6.6-7.0 s from a
-  73 m top; `over_by`; `LevelRun.BOSS_VICTORY_MAX` 20 s); the dive goes on until its tail is under, then it's gone
+  results until `dive_after` (0.6 s) after its snout is back in the sea (5.9-6.2 s after the win, about 6.4 s
+  from any top, test_mecha_guppy_whole; `over_by`; `LevelRun.BOSS_VICTORY_MAX` 20 s); the dive goes on until its tail is under, then it's gone
   (`hold(false)`). LevelRun's riff at the defeat is off (`victory_riff()`), and the zone's level-complete riff plays
   `riff_after` (1 s) after the gulp (`victory_riff_on`).
 - **The whole fight** (`test_mecha_guppy_whole`): a runner who baits every step wins in 141.1-144.7 s at the Beach's
