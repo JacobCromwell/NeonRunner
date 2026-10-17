@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**926** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h and L1 so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**933** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4 and L5 so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -31,6 +31,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 838 | GDD §3 calls the return pad the only way into a stash, but the dash smashes in and a wall-jump can land on a stash wall and step down. Allow both as skill routes, or block them? |
 | 848 | The economy's payouts: held at 100 + 25 a level and a flat 500 per boss (77% of a City 3 finish, 46% of a Dead Zone 1 finish) while I7 re-placed the prices. Change them, or keep them? |
 | 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
+| 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 
 ## The items in full
 
@@ -95,3 +96,17 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    cover is only a net; or removes the cover and keeps the safe-area and scale fixes (both are independent of it).
    A running level pauses behind either cover, as for a phone call (`App._on_page_cover`, marked DESIGN-TBD): a
    placeholder too, since it is the cover's reason to exist that the game can't be played behind it.
+
+**L5, the wall-run guide only where it's introduced** (from `docs/questions/l5.md`; the batch of October 17, 2026)
+932. **Without the lit wall, nothing marks which wall is safe.** (Found in L5's review.) The gap's own wall is kept clear
+   of signs, wall enemies, wall fences and side wall gaps; the other wall is kept clear only of wall fences and side wall
+   gaps (`WallRunGapPlacement.wall_keep_outs_for`), because J2 took the lit wall to show the way
+   (`wall_run_gap_tuning.gd`). Measured over the later zones' levels (own seeds plus two, 3/5/6 lanes), in 37 of 201
+   gaps (18%) the unlit wall carries a hazard along a crossing's stretch: Casino 10/46, Corporate 5/41, Beach 9/37,
+   Dead Zone 4/36, Golden 9/41; window cyborgs 30, signs 14, live Gilded Sentinels 3. Over the hole the runner can't
+   leave the wall, and a sign kills without armor, a window cyborg's body hurts through armor, and a live Sentinel is
+   told from the statues only by its red eyes; on 6 lanes the clear wall may be five lane changes (0.7 s) away.
+   (a) Accept it as part of "use their brain" (the hint says "a clear wall"); (b) keep signs and wall enemies off the
+   other wall too where there's no guide (a core generator task, costing room where gaps already fit fewer than asked,
+   `docs/questions/j2.md` item 2; the generator would need to know where the guide shows); or (c) a subtler cue on the
+   clear wall than the arrows. Placeholder: (a).

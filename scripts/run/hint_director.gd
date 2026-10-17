@@ -72,13 +72,24 @@ func setup(p_world: RunWorld, p_profile: Profile, p_touch: bool, p_context: RunC
 		elif trigger != "start":
 			include = _first_at(trigger) >= 0.0
 		if include:
-			var entry: Dictionary = {"id": id, "text": format_text(String(h.get("text", "")))}
+			var entry: Dictionary = {"id": id, "text": format_text(_text_of(h))}
 			if _is_introduced(trigger, boss_id):
 				new_hints.append(entry)
 			else:
 				reminders.append(entry)
 	intro_hints.append_array(new_hints)
 	intro_hints.append_array(reminders)
+
+
+## A hint's text: its `text_no_guide` (task L5) where the level's zone skin leaves out the wall-run gap's lit wall
+## (ZoneSkin.show_wall_run_guide: only the Marketplace lights it), so a hint carried into a later zone never points at
+## green arrows that aren't there; else its `text`.
+func _text_of(h: Dictionary) -> String:
+	if h.has("text_no_guide"):
+		var skin: ZoneSkin = world.skin if world.skin != null else world.config.skin
+		if skin != null and not skin.show_wall_run_guide:
+			return String(h["text_no_guide"])
+	return String(h.get("text", ""))
 
 
 ## Campaign recency is already derived from the actual ordered level configs. Older unseen

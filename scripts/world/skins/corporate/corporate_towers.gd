@@ -33,6 +33,8 @@ const STYLE_BLAST: int = 3
 const STYLE_SERVICE: int = 4
 ## How far buildings reach back from the street (their near ends show above lower neighbours).
 const DEPTH: float = 28.0
+## How far back a wall gap's recess reaches from the wall face (recess(), task L4); more than the tallest setback.
+const RECESS_DEPTH: float = 24.0
 const SETBACKS: Array[float] = [0.0, 0.0, 0.0, 4.0, 8.0, 12.0]
 const LOW_SHARE: float = 0.16
 ## What hangs out over the street from the walls stays above this height, and every ceiling below it.
@@ -116,6 +118,57 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 	var mark_x: float = face_x - side * 0.02
 	for h: float in skin.wall_height_marks:
 		solid.box(Vector3(mark_x, h, -(start + end) * 0.5), Vector3(0.03, 0.05, end - start), skin.wall_mark_color)
+
+
+## What a wall gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the
+## background"): the gap's part [start, end] of a service alley between the two buildings it cuts: their end faces
+## (RECESS_DEPTH deep: the podium's cladding, the tower's glass and its service crown, a low building's roof line),
+## the face of a tower across it, and the trench floor far below, in the same deep shade as the trench's walls
+## (CorporateTrains.below; PAT_CORP_UNDER). Everything goes in the facade and solid layers the walls draw with.
+func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var facade: MeshLayer = batch.layer(skin.facade_material())
+	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var floor_y: float = -skin.trench_depth
+	var shade: Color = skin.gap_inside_color
+	var band: float = skin.band_top
+	var x_back: float = face_x + side * RECESS_DEPTH
+	var x_min: float = minf(face_x, x_back)
+	# The trench floor, and the building across: its foot in the trench's shade, its podium, its tower.
+	solid.rect(Vector3(x_min, floor_y, -start), Vector3(RECESS_DEPTH, 0.0, 0.0), Vector3(0.0, 0.0, -(end - start)),
+		skin.trench_color, 0.0, MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 4.0)
+	var lot: float = skin.lot_length
+	var across: Building = building(side, building_at(side, floori((gap.x + gap.y) * 0.5 / lot)))
+	if side < 0:
+		solid.rect(Vector3(x_back, floor_y, -start), Vector3(0.0, 0.0, -(end - start)), Vector3(0.0, -floor_y, 0.0), shade,
+			0.0, MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
+	else:
+		solid.rect(Vector3(x_back, floor_y, -end), Vector3(0.0, 0.0, end - start), Vector3(0.0, -floor_y, 0.0), shade, 0.0,
+			MeshKit.PAT_CORP_UNDER, Vector2.ZERO, Vector2.ONE, 5.0)
+	var back_h: float = 60.0 + 70.0 * MeshKit.hash01(side, across.id, 26)
+	var back_seed: int = across.seed + 21
+	_face(facade, side, x_back, start, end, 0.0, band, across.podium, 0.0, STYLE_PODIUM, back_seed)
+	_face(facade, side, x_back, start, end, band, back_h - 4.6, across.wall.darkened(0.1), across.lit, across.style, back_seed)
+	_face(facade, side, x_back, start, end, back_h - 4.6, back_h, across.wall.darkened(0.1), 0.0, STYLE_SERVICE, back_seed)
+	# The two buildings' end faces: the one before the gap looks on down the street (seen only from the side), the one
+	# after it faces the runner.
+	for end_at: float in [gap.x, gap.y]:
+		if end_at < start - 0.001 or end_at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(end_at, gap.x)
+		var b: Building = building(side, building_at(side, floori((end_at - 0.01 if leading else end_at + 0.01) / lot)))
+		MeshKit.end_quad(solid, x_min, x_min + RECESS_DEPTH, end_at, floor_y, 0.0, leading, shade, 0.0, MeshKit.PAT_CORP_UNDER, 5.0)
+		var band_style: int = STYLE_BLAST if b.kind == Kind.COMPOUND else STYLE_PODIUM
+		var band_color: Color = skin.blast_colors[0] if b.kind == Kind.COMPOUND else b.podium
+		var top: float = band if b.kind == Kind.TOWER else b.height
+		MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, 0.0, top, leading, band_color, 0.0, band_style, float(b.seed))
+		if b.kind == Kind.TOWER:
+			var tower_x: float = face_x + side * b.setback
+			var t_min: float = minf(tower_x, x_back)
+			var t_max: float = maxf(tower_x, x_back)
+			var crown: float = b.height - 4.6
+			MeshKit.end_quad(facade, t_min, t_max, end_at, band, crown, leading, b.wall, b.lit, b.style, float(b.seed + 3))
+			MeshKit.end_quad(facade, t_min, t_max, end_at, crown, b.height, leading, b.wall, 0.0, STYLE_SERVICE,
+				float(b.seed + 3))
 
 
 ## The first and last lot of the building covering `lot_index` on this side.

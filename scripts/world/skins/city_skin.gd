@@ -202,16 +202,19 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
-## A wall gap (ZoneSkin.wall_gap), and with the left wall the road under the street that the towers
-## draw with it.
-func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
-	super(parent, side, face_x, start, end, gap)
+## With the left wall of a wall gap (ZoneSkin.wall_gap_extras), the road under the street that the towers draw with
+## it.
+func wall_gap_extras(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	if side < 0:
 		var w: float = absf(face_x)
-		var batch := MeshBatch.new()
 		batch.layer(road_material()).rect(Vector3(-w, -road_depth, -start), Vector3(w * 2.0, 0, 0),
 			Vector3(0, 0, -(end - start)), road_color)
-		batch.commit(parent)
+
+
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): an alley between the two towers it cuts, their
+## end faces, the tower across it and the road far below (CityTowers.recess).
+func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	towers().recess(batch, side, face_x, start, end, gap)
 
 
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:

@@ -5,4 +5,5 @@
 [resource]
 script = ExtResource("1_skin")
 cyborg_draw_scale = 1.2
+show_wall_run_guide = false
 enemy_variant = &"casino"

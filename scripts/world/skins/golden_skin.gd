@@ -356,15 +356,18 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
-## A wall gap (ZoneSkin.wall_gap), and with the left wall the walkways below (no sky bridge from a
-## missing wall). The placement keeps gaps off a Gilded Sentinel's wall section, so no niche is here.
-func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+## With the left wall of a wall gap (ZoneSkin.wall_gap_extras), the walkways below (no sky bridge from a missing wall).
+## The placement keeps gaps off a Gilded Sentinel's wall section, so no niche is here.
+func wall_gap_extras(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
-	super(parent, side, face_x, start, end, gap)
 	if side < 0:
-		var batch := MeshBatch.new()
 		walkways().below(batch, absf(face_x), start, end)
-		batch.commit(parent)
+
+
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): a canal-side lane between the two buildings
+## it cuts, their end faces, the palace across it and the canal running on (GoldenFacades.recess).
+func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	facades().recess(batch, side, face_x, start, end, gap)
 
 
 ## The wall enemies TrackBuilder is about to build on `side` (ZoneSkin.note_wall_enemies): each Gilded

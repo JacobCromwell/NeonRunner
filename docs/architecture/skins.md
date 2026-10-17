@@ -17,10 +17,42 @@ task C4); read-only and visual only, like every other hook.
 After a side's wall sections and wall gaps it calls `wall_run_guide(parent, side, face_x, start, end, lit)` for each
 wall-run gap's lit wall in the chunk (task J2; The generator, Wall-run gaps: `lit` is Vector3(where the stretch to
 step on starts, the gap's start, its end), `start`/`end` the part in this chunk). The default
-(`standard_wall_run_guide`, which no skin overrides yet) draws the ramps' green chevrons in the skin's `ramp_color`
+(`standard_wall_run_guide`, which no skin overrides yet) draws, in a skin with `show_wall_run_guide` (the default,
+`true`; every zone's skin after the Marketplace's sets it `false` and draws nothing: task L5, the owner, October 17,
+2026, "making the player use their brain a little bit more"; The generator, Wall-run gaps on the track), the ramps' green chevrons in the skin's `ramp_color`
 (`WALL_RUN_COLOR` without one), as the Floating Head's wall marks show a wall run: a tall, bright, framed panel over the
 stretch to step on and a strip at running height over the gap, `WALL_RUN_PROUD` off the wall line, its pattern running
 on across chunks; never a hazard colour, never flickering. A skin may draw its own, as long as it reads as the way.
+**What a side wall gap shows behind it** (task L4; the owner, October 17, 2026: "there is a hole in the wall, and
+one of the buildings in the background doesn't have any other sides to it ... these holes leave an ugly unrendered
+section in the background. Please add a little bit of background"). The skins draw a building as the flat face
+the street sees (plus a near end above lower neighbours), so a wall left out for a gap showed the sky's skyline
+below the horizon through it and, at the cut, the building's open end. `ZoneSkin.wall_gap` now builds one batch from
+three calls: `wall_gap_marks` (`standard_wall_gap`: the orange lip and the stripes up the cut edges, the cross-zone
+language; its old 6 m by 7 m dark slabs are gone), `wall_gap_recess(batch, side, face_x, start, end, gap)`, which
+closes the opening, and `wall_gap_extras(batch, side, face_x, start, end)`, a skin's own additions (with the left wall,
+the plane below the street its `below()` draws); one mesh instance. The recess: the gap's part is **an alley between the two buildings it cuts**, `RECESS_DEPTH` (16-24 m) deep behind the
+wall line: both cut ends' faces (`MeshKit.end_quad`: `leading` faces on down the track, the other faces the runner
+coming up, the one the camera sees), from the zone's own plane far below the street (the same one `below()` draws
+across the street: the market floor, the trench, the crater floor, the void, the canal, the well, the road) to the
+building's top in its colours and window grid, the face of a building across, and that
+ground. It is built where a gap is and nowhere else (a few quads for a whole gap and a handful of vertices more per
+chunk part), in the layers the walls draw with, so it adds no material and no shader (`test_zone_shaders`) and no
+collision, and costs a gap part at most the facade and solid surfaces (one or two draw calls, shared with the extras'
+solid layer); nothing in it is a glow or a hazard's colour (the buildings' own lit windows and the City road's traffic
+are what they always were). A skin with a facade shader puts the faces in the facade layer in the building's own style
+(`MarketFacades.recess`, `CasinoFacades` through its `_under_depth` and `_under_pattern`, `GanglandRuins.recess`,
+`CorporateTowers.recess`, `DeadTowers.recess`, `GoldenFacades.recess`, `GoldenPalaceWalls.recess`,
+`CityTowers.recess`); Gangland's is a collapsed stretch (its ruins' end faces and broken tops, the crater floor), the
+City's an alley down to the road, and the default (`standard_wall_gap_recess`, in `gap_inside_color` lifted toward grey)
+is what the grey box draws. `ZoneSkin.wall_gap_recess_on` (not exported, true) switches the recess off: a cinematic stage whose
+def has wall gaps (`CineStage.build`; the City outro's and the Gangland intro's openings onto the skyline and a side
+street) draws its track with a copy of the skin that has it off, which also brings the old dark slabs back, so what those
+sets build in the openings is exactly what it was. `test_wall_gaps` checks it with software rays (`TriangleMesh`) from where a runner's camera is: every
+ray through the opening and at least 3 degrees below the horizontal, along the track, meets a face that faces it; none
+escapes to the sky's skyline. Review it with `tools/showcase/wall_gap_review.tscn -- --skin=<zone>` (Review tools).
+DESIGN-TBD (items 926-928 in `docs/OPEN_QUESTIONS*.md`): that a gap shows an alley, its depth and its ground.
+
 In a run, a chunk's hooks come over the few frames after its gameplay nodes are built, in order, each
 side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_budget_usec`, task PERF1;
 A run, Smooth frames): a hook never counts on the frame it's called in, and a hazard's look shows the

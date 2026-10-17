@@ -32,8 +32,13 @@ any zone's look at its speed, `--take=smash` (the dash), `crash` (the armor, the
 `--reduced-flashing`, `--god`), wall-run gaps (`wall_run_gap_review`, task J2: two shaped as the generator shapes
 them, the right wall lit then the left, in any zone's look at its speed, `--take=cross` (onto the lit wall midway
 along the lit stretch), `grapple` (the grapple's save onto the wall), `fall` or `look` (a still at the lit wall),
-`--lanes=N`, `--close`, `--god`; `tools/measure/wall_run_gaps.gd` counts them per campaign build and zone, lists
-their constraints and dumps a level's as text with `--dump=<step id>`), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
+`--guide=on|off` (the lit wall whatever the skin says; only the Marketplace's skin lights it, task L5), `--lanes=N`, `--close`, `--god`; `tools/measure/wall_run_gaps.gd` counts them per campaign build and zone, lists
+their constraints and dumps a level's as text with `--dump=<step id>`), side wall gaps (`wall_gap_review`, task L4:
+an open street in any zone's look with side wall gaps as the generator places them (a left, a right and a both-walls
+one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
+the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across
+the street and from above; every shot is a PNG of the viewport in `--out=DIR`, so either renderer and any window size
+work, `--skin=`, `--lanes=`, `--gap=N`, `--shot=a,b`, `--darkness=X`), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
 treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
 `--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`
 for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), floor cuts
