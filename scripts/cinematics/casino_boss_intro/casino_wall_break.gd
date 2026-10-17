@@ -22,7 +22,7 @@ const GRAVITY: float = 13.0
 ## The heap at the hole's foot: its height at the wall and how far out it spreads.
 const HEAP_HEIGHT: float = 1.4
 const HEAP_REACH: float = 5.0
-const PLASTER := Color(0.44, 0.38, 0.34)
+const PLASTER := Color(0.34, 0.29, 0.26)
 const SEAM_OVERLAP := Vector3(0.03, 0.03, 0.0)
 const CRACK := Color(0.07, 0.04, 0.05)
 

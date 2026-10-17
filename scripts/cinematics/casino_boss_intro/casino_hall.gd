@@ -48,6 +48,9 @@ const BAR_DEPTH: float = 0.7
 const DOOR_X: float = 7.5
 const DOOR_WIDTH: float = 2.4
 const DOOR_HEIGHT: float = 3.8
+## The House stands this far behind the wall's back face (its bulbs and treads stand out of its face: none may poke
+## through the wall before it falls).
+const HOUSE_BACK: float = 0.7
 ## The tables: [kind, middle (x, z), turn (degrees)].
 const BLACKJACK_A := Vector3(-12.0, 0.0, 15.5)
 const BLACKJACK_B := Vector3(-1.2, 0.0, 17.0)
@@ -140,7 +143,7 @@ func setup(p_skin: ZoneSkin, p_house_shape: TheHouseModel.Shape, p_hole_x: float
 	house_holder.name = "House"
 	add_child(house_holder)
 	# Its face just behind the wall, looking into the hall (its own +z is the hall's -z, this node's +z).
-	house_holder.position = L(Vector3(hole_x, 0.0, DEPTH + 0.25))
+	house_holder.position = L(Vector3(hole_x, 0.0, DEPTH + WALL_THICK + HOUSE_BACK))
 	house = TheHouseModel.new()
 	house.name = "Machine"
 	house_holder.add_child(house)
