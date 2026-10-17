@@ -19,7 +19,7 @@ extends CinematicSequencer
 ## CityIntroCrowd, CityIntroBillboard, and the Head: CityIntroHead), built on the stage so they hide with it and moved by
 ## the clock (`_on_advance`), so stepping or skipping shows the same. The runner and the cyborgs are the timeline's actors.
 ## The numbers are data: `numbers`, by default data/cinematics/city_intro_tuning.tres (CityIntroTuning).
-## DESIGN-TBD (docs/questions/f2g.md): what the owner's beats leave open.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 897-908): what the owner's beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/city_intro_tuning.tres"
 const BOSS_TUNING_PATH: String = "res://data/bosses/city_boss_tuning.tres"
