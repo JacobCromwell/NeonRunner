@@ -66,16 +66,17 @@ barren": scenery pieces standing in lanes, specific to each zone, that never hur
 pushes the player into a neighbouring lane, the side with room, a side chosen per doodad when both have
 it). `LevelLayout.doodads` holds {lane, start, end, size, side, seed}: a size class
 (`LevelLayout.DOODAD_SIZES`, small, medium, large; `MovementTuning.doodad_size()` gives its box, the
-skin its look), the side it pushes to and a number to vary its look by. The list is left out of
+skin its look), the side it pushes to and a number to vary its look by (a row's doodads also hold `row`
+and `look`: Doodads in rows, below). The list is left out of
 `to_dict()` when it's empty, so a level without doodads is the same data as before. `_place_doodads` runs
 after the fill pass and before the credits, on its own stream (`rng_for("doodads")`; with
 `LevelConfig.doodad_share` 0 it draws nothing and the level is built byte for byte as before), so
 doodads only add to a level: they take a lane rather than needing a reaction, and nothing after them can
 undo or crowd them. It puts them only where they're fair (`LayoutChecks.check_doodads` holds every
 generated layout to this, at 3, 5 and 6 lanes):
-- in an inner lane, never the outermost one (a wall runner's body reaches into the outer lane, and the
-  wall-runner collision stays as it is), pushing into a neighbouring lane with room (no lane a rule
-  keeps), a seeded side when both have it;
+- in an inner lane, pushing into a neighbouring lane with room (no lane a rule keeps), a seeded side when
+  both have it; or, since task L3, in the outermost lane by an open side wall, pushing inward (The lane by
+  a side wall, below);
 - where nothing else goes on in any lane from `doodad_lead_for()` before its front (the push's time at
   run speed: the push lands on clear floor) to the level's spacing after its end (`doodad_after()`: the
   player can cross its lane again before what comes next, as between two patterns). What's kept is
@@ -90,7 +91,7 @@ generated layout to this, at 3, 5 and 6 lanes):
   its push's lead stands in it, but it shapes no stretch, so the doodads draw as without it elsewhere; the
   other later passes keep their additions off it without spacing from it);
 - one at a time, `doodad_gap_seconds` from one's end to the next one's front, so a few in a row never
-  make a slalom.
+  make a slalom; a row (below) counts as one, from its last one's end.
 Each stretch with room gets one with the level's `doodad_share` (a seeded spot in it; the next spot in a
 long stretch the same chance), in a size class its weights allow (`doodad_*_weight`), from
 `doodad_start`. Floor credits keep out of them (`DOODAD_CREDIT_MARGIN`); nothing else moves or goes for
@@ -112,8 +113,65 @@ and big attack as before (a credit inside a doodad goes, one or none a level), 3
 minute (doodads a minute: City 1 2.8, the rest of the City 4.5 to 5.3, Gangland 2.7 to 4.4, the
 Marketplace about 4, Corporate about 3, Dead Zone 1 2.3, The Hush 1, the Golden Zone 2.5 to 3), the mean
 empty stretch down from 1.2–1.45 s to 1.0–1.3 s. The longest empty stretches stay about as they were:
-they lie under ceilings or around enemies, where doodads never stand. A runner who keeps to the middle
-lane at 3 lanes meets every doodad (they all stand there); at 5 and 6 lanes about a third of them.
+they lie under ceilings or around enemies, where doodads never stand. Before task L3 a runner who kept to
+the middle lane at 3 lanes met every doodad (they all stood there); since then about four in ten of them
+(The lane by a side wall, below).
+
+**Doodads in rows** (task L3; the owner, October 17, 2026: "occasionally ... rows of similar doodads: three plant
+doodads one right after the other, or three market stalls, one followed by a space, followed by another stall";
+`docs/questions/l3.md` 1 and 4). A doodad `_place_doodads` draws is, with `LevelConfig.doodad_row_chance` (0.5), the
+first of a row (`_row_shape`, from a stream of its own, `rng_for("doodad_rows")`): `doodad_row_min` to
+`doodad_row_max` (2 to 4) of its size class, in its lane, pushing to its side, either one right after the other
+(`DOODAD_ROW_TOUCH`, 5 cm apart: their boxes' faces, and the pictures on them, never lie in one plane) or with a
+doodad's length between each two (`doodad_row_spaced_share`, 0.5), as many as fit in the stretch's room (with a
+sliver to spare, so a row never meets what's either side to the centimetre), else one doodad. Every rule above holds
+for the row as one doodad from its first front to its last end: its lane and push side fit along all of it, the
+danger density pass's route check (`DangerDensity.doodad_ok`) takes its whole stretch, and the next doodad comes
+`doodad_gap_seconds` after its last. Each of its doodads is an entry of its own with `row` (its stretch, [start,
+end]) and `look` (its first one's seed: the track builder dresses each with it, so a row is one kind, three palms,
+never a palm, a bush and a palm; each keeps a `seed` of its own, which its pieces fly by when the dash smashes it).
+`LevelLayout.doodad_extent()` gives a doodad's row's stretch, and every check that counts doodads counts a row whole,
+the spaces between them too (no runner goes in there, between a side that blocks the switch and a front that pushes):
+`doodad_between()` (every enemy's runtime check, the floor credits), `CyborgRules.obstacle_spans`, `EnforcerTruckRoom`,
+`FloorRoute`, the wall fences and the side wall gaps, and `BossArena.shifted` moves a row's stretch with it. A row is
+never a slalom or a wall of doodads (one lane, a lane always free beside it), and the dash smashes along it as far as
+it lasts, the next one pushing as usual (`test_doodads`). Most doodads are small ones (a level's stretches leave room
+for little more, about nine in ten before the task too), so most rows are two or three small ones; the City's levels,
+whose free stretches hold one small doodad at a time, have almost none.
+
+**The lane by a side wall** (task L3; the owner, October 9, 2026, held until the dash smash (H5) and the generator
+work (I4) were done: "doodads prefer the lane next to the side wall when it's open, without costing gameplay: not where
+the generator already has something on that part of the wall or needs it open"; `docs/questions/l3.md` 2, 3, 5 and
+6). A doodad (or a row) takes the outermost lane by an open wall with `doodad_wall_lane_share` (0.6; either wall,
+seeded, when both are; the only choice where no inner lane fits), pushing inward (`_add_doodads`, the stream of the
+rows). Open is `wall_lane_keep_outs(side)`: nothing on that wall within `doodad_wall_clear_seconds` (1 s) of it (a
+sign, a wall enemy as the fill pass keeps for it or a window cyborg's window, a Gilded Sentinel's wall section, a ramp
+from its foot to the end of the longest wall run it launches, `WallFencePlacement.ramp_run_end`, a wall-run gap's lit
+wall); no dash wall's wall route (in its footprint, which every doodad keeps from), no wall fence's drop window and no
+side wall gap beside it or starting within `doodad_wall_drop()` before it (the fall from the highest wall run and the
+push's lead: a wall runner dropped off comes down in front of it); and every lane around it clear, as for every
+doodad, so no wall run is launched by it or needed there, and free entry from its lane only waits until it's past. The
+wall fences and side wall gaps come after the doodads and keep off them in turn (`WallFencePlacement.keep_outs`' drop
+windows, `WallGapPlacement.keep_outs`), and no wall credit lies within `DOODAD_WALL_CREDIT_MARGIN` (3 m) of one
+(`_drop_unsafe_credits`; the wall-hop credits to come, GDD §7, keep off them the same way). A wall runner's body
+reaches into that lane, and a free entry or the slide down leaves every runner low on the wall, so placement alone
+can't keep them apart (the wall hop keeps a runner on a wall as long as they like): one low enough to meet it breaks it
+as they reach it, as the dash smashes one, and runs on (`Player._check_wall_doodads`; Damage and interactions), while
+one high enough (a ramp's launch) passes over it standing. `LayoutChecks.check_wall_lane_doodad` holds every doodad by
+a wall to all of this, and `check_wall_fences` keeps the drop windows off them.
+
+Measured (`tools/measure/level_pace.gd --doodads`, each level's own seed and four others at 3, 5 and 6 lanes, against
+`--set=doodad_row_chance:0;doodad_wall_lane_share:0`, which builds all 405 layouts, quick play's too, byte for byte as
+before the task): every row of holes or fences, enemy, big attack and mechanic as before; doodads a minute up (rows add
+doodads, and the wall lane gives a spot where no inner lane fitted): the City 4.0–4.7 to 4.0–5.1, Gangland 3.0–3.5 to
+3.8–4.0, the Marketplace 2.6–3.1 to 3.4–3.7, the Casino 1.8–2.5 to 2.4–2.6, Corporate 1.6–1.9 to 1.8–2.5, the Beach
+1.3–1.5 to 1.6–2.0, the Dead Zone 0.5–0.8 to 0.7–1.1, the Golden Zone 1.1–1.3 to 1.5–1.7; rows a level 0 to 0.3–0.9
+outside the City (0 to 0.07 there), holding 11 to 38% of the doodads (69% at the Dead Zone's 5 lanes, whose few doodads
+make two rows a large share); 31 to 69% of the doodads by a side wall (about 55% in most zones); events a minute up
+by 0 to 0.9 (1–2%); wall fences a level as before (at most 0.3 fewer); open side wall as before but on the Beach,
+whose open walls stand 1 to 3% more around its doodads by them. A runner who keeps to the middle lane takes about
+half the pushes it took (the tool's middle-lane pushes, over 3, 5 and 6 lanes: the City 1.4–2.6 a minute to 0.5–1.1,
+the Marketplace 1.3–1.5 to 0.7–0.8, the Golden Zone 0.7–1.2 to 0.5–0.8).
 
 **A runner who dashes through a doodad** (task H5; the dash smashes one: Damage and interactions, "The
 dash smashes a zone doodad"): a doodad is 2.6 m tall and hides its own lane right behind it from the
@@ -248,8 +306,9 @@ pace):
   wall is one of their escapes; the fill pass keeps its extra obstacles off them the same way);
 - the level: its drop window between the run-up and the end-clear stretch; other wall fences
   `same_side_gap_seconds` apart on one wall (a wall run meets one at a time) and `gap_seconds` on either.
-Zone doodads need no rule: they stand in inner lanes and push only into neighbouring lanes, never onto a wall,
-and a wall fence never reaches a floor runner, so the two never meet (G5's keep-outs stand as they were).
+Zone doodads in inner lanes need no rule: they push only into neighbouring lanes, never onto a wall, and a wall
+fence never reaches a floor runner, so the two never meet (G5's keep-outs stand as they were). One by a side wall
+(task L3) is the floor beside it: a wall fence's drop window keeps off its whole row, as off a hole in that lane.
 How many: from the feature's start a spot every `spacing_seconds_easy` to `_hard` of run (by the difficulty
 there, `spacing_jitter` either way), on a random wall (the other if it has no fair spot within
 `search_seconds`), at the first fair spot from there; past `wall_fences_partial`'s start `partial_share` of them
@@ -315,7 +374,9 @@ both walls (`data/tuning/wall_gaps.tres`, seconds at the level's run speed). Eac
 run-up, the end-clear stretch, signs, wall fences, wall enemies (a Gilded Sentinel's whole wall section),
 ceilings over the outer lane, and a ramp's launch and longest wall run (`WallGapPlacement.keep_outs`, each
 widened by `clear_seconds`). The outer lane beside a gap is deliberately not kept clear: the owner wants
-players to read gaps coming. A level with the feature always gets at least one gap. Boss arenas get none
+players to read gaps coming. The one exception (task L3) is a zone doodad by that wall: the wall stands beside
+it and from `LevelGenerator.doodad_wall_drop()` before it (the fall from the highest wall run and the push's
+lead), so a runner dropped off never comes down on one. A level with the feature always gets at least one gap. Boss arenas get none
 (`BossArena.base_config` strips the feature and `WallGapPlacement.is_boss_arena` refuses an `_arena` config)
 unless an arena opts in: its config lists the feature and carries numbers of its own,
 `LevelConfig.wall_gap_tuning` (`WallGapPlacement.tuning_for(config)` reads them; null for every level, which

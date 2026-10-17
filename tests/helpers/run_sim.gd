@@ -9,7 +9,8 @@ extends RefCounted
 ## `probes`: distances at which to record the player's state in result["at"][distance].
 ## The result also holds how many times zone doodads pushed the player ("pushes") and how many things the dash
 ## smashed ("smashes"), and the dash walls they crashed through without it ("crashes") or passed on a side wall
-## ("wall_passes"; task H7a).
+## ("wall_passes"; task H7a), and the zone doodads by a side wall that broke as a wall runner reached them
+## ("doodad_passes"; task L3).
 ##
 ## Full worlds (enemies, projectiles, credits, score) for interaction tests:
 ##   var world: RunWorld = sim.build_world(layout, loadout)
@@ -18,7 +19,8 @@ extends RefCounted
 ##
 ## With `trace` on, both also record the player after every physics frame in result["trace"]:
 ## {t (the level clock), d (distance), x (world x), h, speed, surface, lane, alive, lean (the
-## sideways lean the model is shown, Player._switch_dir), dashing, smashes (so far)}.
+## sideways lean the model is shown, Player._switch_dir), dashing, smashes (so far), doodad_passes (so far;
+## task L3)}.
 
 ## The dash's numbers for a &"dash" action (loaded once).
 static var _powerups: PowerupTuning
@@ -94,6 +96,7 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	result["smashes"] = player.smashes
 	result["crashes"] = player.crashes
 	result["wall_passes"] = player.wall_passes
+	result["doodad_passes"] = player.doodad_passes
 	world.queue_free()
 	await tree.process_frame
 	return result
@@ -168,4 +171,5 @@ func free_world(world: RunWorld) -> void:
 static func _sample(player: Player) -> Dictionary:
 	return {"t": player.elapsed, "d": player.distance, "x": player.position.x, "h": player.h,
 		"speed": player.speed, "surface": player.surface_name(), "lane": player.lane, "alive": player.alive,
-		"lean": int(player.call(&"_switch_dir")), "dashing": player.dashing, "smashes": player.smashes}
+		"lean": int(player.call(&"_switch_dir")), "dashing": player.dashing, "smashes": player.smashes,
+		"doodad_passes": player.doodad_passes}

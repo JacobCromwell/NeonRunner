@@ -275,9 +275,10 @@ func _build_cells() -> void:
 		marks.append([layout.outer_lane(int(r["side"])), float(r["at"]) - TRIGGER_MARGIN,
 			float(r["at"]) + tuning.ramp_length + TRIGGER_MARGIN, STAND_BAD | SLIDE_BAD])
 	for d: Dictionary in layout.doodads:
-		# Nowhere to stand or slide, and no jump over it (GAPPED keeps any arc off it).
-		marks.append([int(d["lane"]), float(d["start"]) - DOODAD_MARGIN, float(d["end"]) + DOODAD_MARGIN,
-			STAND_BAD | SLIDE_BAD | GAPPED])
+		# Nowhere to stand or slide, and no jump over it (GAPPED keeps any arc off it); a row (task L3) from its first
+		# one's front to its last one's end, the space between them too (LevelLayout.doodad_extent).
+		var span: Vector2 = LevelLayout.doodad_extent(d)
+		marks.append([int(d["lane"]), span.x - DOODAD_MARGIN, span.y + DOODAD_MARGIN, STAND_BAD | SLIDE_BAD | GAPPED])
 	for c: Dictionary in layout.cuts:
 		# A floor cut's lane is whole until the cut reaches the player (keyed to their distance): out of
 		# it from where its front is LevelGenerator.CUT_CONTACT_METRES ahead of them, to past its cause's

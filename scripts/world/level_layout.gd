@@ -43,6 +43,10 @@ var enemies: Array[Dictionary] = []
 ## switch like a solid side. `size` is its size class (DOODAD_SIZES: the skin picks the look, the
 ## movement tuning its width and height), `seed` varies the look. The generator plans them
 ## (LevelGenerator: doodads), the track builder builds them (TrackBuilder, ZoneSkin.doodad).
+## A doodad in a row (task L3, the owner, October 17, 2026: rows of similar doodads) also holds `row`:
+## [start, end], the whole row's stretch, from its first one's front to its last one's end, and `look`, the
+## seed its look is picked by (its first one's `seed`): the row's doodads share its lane, size class, side and
+## look, each its own entry with a seed of its own (doodad_extent).
 var doodads: Array[Dictionary] = []
 ## {lane, start, end, warn, charge, keep, speed}: a floor cut planned in advance (task B4; GDD §9.9,
 ## the Buzz Overdrive's): the floor of `lane` from `start` to `end` turns into a gap during play, run
@@ -285,12 +289,24 @@ func gapped_between(lane: int, from: float, to: float) -> bool:
 ## player's moves: CyborgGun.path_clear, Octodog.window_clear, Resonator.pulse_clear, the drone's barrage,
 ## the hover truck's cannon and the Enforcer Truck's escape), and so do the generator's (a floor cut's
 ## lane, a floor credit, a Gilded Sentinel's stretch, a cyborg planted in a charge's path). A smashed one
-## still counts, so an attack waits by it the same on every attempt.
+## still counts, so an attack waits by it the same on every attempt. A row of doodads (task L3) counts
+## from its first one's front to its last one's end, the space between them too (doodad_extent): no
+## runner goes into its lane there, between a side that blocks the switch and a front that pushes.
 func doodad_between(from: float, to: float, lane: int = -1) -> bool:
 	for d: Dictionary in doodads:
-		if float(d["start"]) <= to and float(d["end"]) >= from and (lane < 0 or int(d["lane"]) == lane):
+		var span: Vector2 = doodad_extent(d)
+		if span.x <= to and span.y >= from and (lane < 0 or int(d["lane"]) == lane):
 			return true
 	return dash_wall_between(from, to)
+
+
+## The stretch doodad entry `d` (one of `doodads`) keeps its lane for: its row's (`row`: from the row's first
+## front to its last end, task L3), or its own from start to end.
+static func doodad_extent(d: Dictionary) -> Vector2:
+	if d.has("row"):
+		var row: Array = d["row"]
+		return Vector2(float(row[0]), float(row[1]))
+	return Vector2(float(d["start"]), float(d["end"]))
 
 
 ## True if a fenced ceiling's pick (task I4: its hull's "pick", from its first pad's run-up to its last safe pad,

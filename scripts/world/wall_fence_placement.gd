@@ -32,9 +32,10 @@ extends RefCounted
 ## - the level: its drop window between the run-up and the end-clear stretch;
 ## - other wall fences: same_side_gap_seconds apart on one wall (a wall run meets one at a time), and
 ##   gap_seconds apart on either.
-## Zone doodads (G5) need no rule: they stand in inner lanes only, never pushing anyone onto a wall, and
-## a wall fence's field never reaches a floor runner (WallFencePlan.reach), so neither ever meets the
-## other; their keep-outs stay as they were.
+## Zone doodads (G5) in inner lanes need no rule: they never push anyone onto a wall, and a wall fence's
+## field never reaches a floor runner (WallFencePlan.reach), so neither ever meets the other. One standing
+## by a side wall (task L3, LevelGenerator.wall_lane_keep_outs) is the floor beside it: its drop window
+## keeps off the doodad's whole row, as off a hole in that lane.
 ##
 ## How many, and where: from the feature's start, a spot every spacing_seconds of run or so (from easy
 ## to hard with the difficulty there, varied by spacing_jitter), on a random wall (the other if that one
@@ -213,6 +214,10 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 	for g: Dictionary in lay.gaps:
 		if int(g["lane"]) == lane:
 			drop.append(Vector2(float(g["start"]), float(g["end"])))
+	# Task L3: a zone doodad by this wall (a row's whole stretch): a drop-off never lands on one.
+	for d: Dictionary in lay.doodads:
+		if int(d["lane"]) == lane:
+			drop.append(LevelLayout.doodad_extent(d))
 	var fence_half: float = tuning.fence_depth * 0.5
 	for f: Dictionary in lay.fences:
 		if int(f["lane"]) == lane:

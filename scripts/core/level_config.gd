@@ -303,8 +303,33 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0.0, 1.0, 0.05) var doodad_medium_weight: float = 1.0
 @export_range(0.0, 1.0, 0.05) var doodad_large_weight: float = 1.0
 ## The least time between one doodad's end and the next one's front, at run speed, so a few in a row
-## never make a slalom. DESIGN-TBD.
+## never make a slalom. DESIGN-TBD. A row of doodads (doodad_row_chance) counts as one: from its last
+## one's end to the next doodad's front.
 @export_range(0.5, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 2.5
+## Doodads in rows (the owner, October 17, 2026, task L3: "occasionally ... rows of similar doodads: three plant
+## doodads one right after the other, or three market stalls, one followed by a space ..."): the chance that a
+## doodad is the first of a row, the rest of the same size class and look, in its lane, pushing to its side, all
+## kept by the doodads' rules as one (LevelGenerator._place_doodads). A row that doesn't fit where it's drawn is
+## shorter, or one doodad (so most rows are where a level leaves long stretches free). 0: no rows, and the doodads are
+## exactly as before. DESIGN-TBD (docs/questions/l3.md 1).
+@export_range(0.0, 1.0, 0.05) var doodad_row_chance: float = 0.5
+## How many doodads a row has (each count as likely). DESIGN-TBD (docs/questions/l3.md 1).
+@export_range(2, 4) var doodad_row_min: int = 2
+@export_range(2, 4) var doodad_row_max: int = 4
+## Of the rows, the share with a doodad's length of space between each two (the owner's market stalls); the
+## others stand one right after the other (the owner's plants: LevelGenerator.DOODAD_ROW_TOUCH, a sliver apart).
+## DESIGN-TBD (docs/questions/l3.md 1).
+@export_range(0.0, 1.0, 0.05) var doodad_row_spaced_share: float = 0.5
+## Doodads prefer the lane by a side wall when it's open (the owner, October 9, 2026, held until task L3: "without
+## costing gameplay: not where the generator already has something on that part of the wall or needs it open";
+## LevelGenerator.wall_lane_keep_outs): the chance a doodad (or a row) that may stand in an outermost lane does,
+## by an open wall (either, seeded, when both are). 0: inner lanes only, as before. DESIGN-TBD (docs/questions/l3.md
+## 3).
+@export_range(0.0, 1.0, 0.05) var doodad_wall_lane_share: float = 0.6
+## How much wall either side of a doodad by a side wall stays clear of what stands on that wall (a sign, a window
+## cyborg's window, a wall vent, a Gilded Sentinel's niche, a ramp's longest wall run), at run speed.
+## DESIGN-TBD (docs/questions/l3.md 3).
+@export_range(0.0, 3.0, 0.1, "suffix:s") var doodad_wall_clear_seconds: float = 1.0
 
 @export_group("Credits")
 ## Credit placement (GDD §7; FB 9): trails of small credits fill the clear stretches between

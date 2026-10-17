@@ -52,7 +52,8 @@ static func apply(gen: LevelGenerator) -> void:
 static func obstacle_spans(layout: LevelLayout, t: MovementTuning, zones: CeilingZones) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for d: Dictionary in layout.doodads:
-		out.append(Vector2(d["start"], d["end"]))
+		# A row of doodads (task L3) from its first one's front to its last one's end, the space between them too.
+		out.append(LevelLayout.doodad_extent(d))
 	if not layout.dash_walls.is_empty():
 		var dt: DashWallTuning = DashWallTuning.load_default()
 		var pt := load(POWERUPS_PATH) as PowerupTuning if ResourceLoader.exists(POWERUPS_PATH) else null

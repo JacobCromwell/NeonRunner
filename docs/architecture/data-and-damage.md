@@ -250,8 +250,14 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   clanks: the push finishes (cut into a bump, it left the body between the lanes against the doodad's side
   for as long as the moves kept coming; a treasure stash's walls rely on the push to keep a runner out).
   It costs nothing: DamageRules never sees it, the run's speed stays, and shots and weapons pass through
-  it. Wall runners and ceiling riders never meet one (the generator keeps them out of the outermost lanes
-  and from under ceilings).
+  it. Ceiling riders never meet one (the generator keeps them from under ceilings), and wall runners never
+  meet one either: since task L3 a doodad may stand in the lane by a side wall where nothing needs that part
+  of the wall (The generator, Zone doodads), and a wall runner's body reaches into that lane, so one low
+  enough on the wall to meet it breaks it as they reach it (`Player._check_wall_doodads`: their body, its
+  visual size from the wall's face out to its head, and the upright body an entry turns from, a frame ahead;
+  `DashBreakable.smash(&"pass")`, `doodad_passes`, the `smashed` signal and the `doodad_smash` event as for the
+  dash: its pieces, the crunch, the light shake; no push, no damage, no score) and runs on along the wall,
+  while one high enough passes over it standing. DESIGN-TBD (`docs/questions/l3.md` 2).
 - **The dash smashes a zone doodad** (GDD §3, owner, October 8, 2026; task H5): dashing into one breaks it
   apart, and the player keeps their lane with no push and no damage. The track builds every doodad as a
   `DashBreakable` (`scripts/world/dash_breakable.gd`: an Area3D carrying its layout entry, its box and the

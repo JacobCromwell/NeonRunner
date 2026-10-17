@@ -112,8 +112,10 @@ static func build(layout: LevelLayout, geometry: TrackGeometry, mt: MovementTuni
 		for key: String in ["hard", "jump", "solid"]:
 			_add(by[key], int(f["lane"]), float(f["at"]) - half, float(f["at"]) + half)
 	for d: Dictionary in layout.doodads:
+		# A row of doodads (task L3) from its first one's front to its last one's end, the space between them too.
+		var span: Vector2 = LevelLayout.doodad_extent(d)
 		for key: String in ["hard", "must", "late", "solid"]:
-			_add(by[key], int(d["lane"]), float(d["start"]), float(d["end"]))
+			_add(by[key], int(d["lane"]), span.x, span.y)
 	# A dash wall (task H7a) stands in every lane: it would drive into it ahead of the runner, who breaks it only as
 	# they reach it. (The generator keeps every wall off its planned showing windows; this keeps its other showings
 	# off them too.) DESIGN-TBD (docs/OPEN_QUESTIONS.md item 671).

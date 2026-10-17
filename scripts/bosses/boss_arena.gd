@@ -109,8 +109,9 @@ static func plan(def: BossDef, p_config: LevelConfig, p_tuning: MovementTuning,
 	return arena
 
 
-## A copy of `source` moved `offset` metres along the track: every piece's at, start and end, and an
-## enemy's planned floor span (a floor cut's other distances are relative to its end, so it moves whole).
+## A copy of `source` moved `offset` metres along the track: every piece's at, start and end, an enemy's
+## planned floor span and a row of doodads' stretch (a floor cut's other distances are relative to its end, so it
+## moves whole).
 static func shifted(source: LevelLayout, offset: float) -> LevelLayout:
 	var out := LevelLayout.new()
 	out.lane_count = source.lane_count
@@ -334,4 +335,8 @@ static func _shift(item: Dictionary, offset: float) -> Dictionary:
 	var params: Variant = out.get("params")
 	if params is Dictionary and (params as Dictionary).get("floor_span") is Vector2:
 		params["floor_span"] = (params["floor_span"] as Vector2) + Vector2(offset, offset)
+	# A doodad of a row (task L3, LevelLayout.doodads) carries its row's stretch, which moves with it.
+	if out.get("row") is Array:
+		var row: Array = out["row"]
+		out["row"] = [float(row[0]) + offset, float(row[1]) + offset]
 	return out
