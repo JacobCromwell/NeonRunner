@@ -27,7 +27,7 @@ const SPEEDS: Array[float] = [18.0, 23.8]
 const CAMPAIGN_SPEED: float = 23.8
 ## The bot's reaction reading a hut's lanes (the suites' usual 0.35 s; it dodges the planner's dodge_reaction late).
 const REACTION: float = 0.35
-## The whole fight is over well within this (measured 157-170 s baiting and 223-244 s not, with the leap's 7 s after).
+## The whole fight is over well within this (measured 141-158 s baiting and 193-220 s not, with the leap's 7 s after).
 const MAX_SECONDS: float = 480.0
 ## Hostile Takeover's three-star par over its clean fight (corporate_boss.tres: 74 s over 68.6 s).
 const THREE_STAR_OVER: float = 74.0 / 68.6
