@@ -54,7 +54,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
   neighbouring lanes alongside) would close every floor lane on 3 lanes, and on 4 it puts a wall in an outermost lane,
   where a wall runner's body reaches and where one dropping off the wall lands.
   **Placeholder:** a stash only in an inner lane with inner lanes either side (`treasure_stash_rules.gd`, `lanes_for`):
-  lane 3 of 5, lane 3 or 4 of 6; none on mobile's 3 lanes. Alternatives: an outermost-lane stash walled on one side by
+  lane 3 of 5, lane 3 or 4 of 6; none at 3 lanes (no longer a shipped device count: mobile uses 5). Alternatives: an outermost-lane stash walled on one side by
   doodads and on the other by the side wall (with a sign along it, so no wall run drops in), or a shorter stash.
 838. **Other ways into a stash.** GDD §3 calls the return pad "the only way in".
   **Placeholder (nothing blocks these):** the dash (H5) smashes the doodad across the stash's lane and runs in

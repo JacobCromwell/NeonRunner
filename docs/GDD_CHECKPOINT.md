@@ -53,7 +53,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Y:** height, meaningful especially on side walls.
 
 ### Floor
-- **Lanes:** 3 on mobile; 5–6 on PC *(exact PC count open)*.
+- **Lanes:** 5 on mobile (owner, October 2026: it was 3; five lanes played fine on the phone); 5–6 on PC *(exact PC count open)*. 3 lanes remains a supported count for the generator and tests, but no shipped device uses it.
 - **Lane switch:** left/right arrow keys (PC) or swipe left/right (mobile). The switch is animated; the player is physically between lanes mid-switch.
 - **Jump:** swipe up on mobile *(PC key open)*.
 - **Slide:** swipe down on mobile; down arrow on PC.
@@ -283,7 +283,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
   - Each level's difficulty can be tuned individually, with an automatic curve making each level slightly harder than the last.
   - **No loading card** (owner, October 14, 2026): a level starts without a card covering its generation, as built.
   - **No level gets easier when levels are added** (owner, October 9, 2026, after adding the Casino): every level is too easy, at least on PC. The Marketplace keeps at least the difficulty it had (a little harder is welcome), and Corporate and the zones after it may get harder.
-  - Because lane counts differ, "level 5" on PC is not identical to "level 5" on mobile. This is intended: PC is harder.
+  - Mobile and PC now share 5 lanes (owner, October 2026), so a level is no longer easier on mobile for its lane count; a PC count of 6 would still make PC harder.
   - Handmade set pieces (e.g. boss arenas) are allowed.
 - **Replay features:**
   - Star ratings or grades per level
@@ -709,7 +709,7 @@ Shared interaction rules apply unless stated otherwise:
   - **Immune to weapons,** like every Bad Dream, so the fight is pure movement skill. **Only the EMP hurts it.** Fence generators are the Dead Zone's last working machines; blowing one near the nightmare tears part of it away.
   - **Lighting:** the arena is **darker than normal lighting, but never pitch black**. Hazards keep glowing in their usual colours, so the fight stays readable. Lights out is the exception (below): there it goes completely dark.
   - **Attacks** (each with a visual and audio warning):
-    - **Giant slash** across three lanes: the maw opens with a shriek (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling. **No ceilings in this fight** (owner, October 10, 2026): every slash used to come as the player reached a ceiling with its anti-grav pad, which made the attack too easy to escape. Get out of those lanes, or run up a side wall; even on the phone (3 lanes, where the slash covers the whole street) **there is always a side wall the player can run to**.
+    - **Giant slash** across three lanes: the maw opens with a shriek (the Bad Dream's warning, bigger). Get out of those lanes, or up onto the ceiling. **No ceilings in this fight** (owner, October 10, 2026): every slash used to come as the player reached a ceiling with its anti-grav pad, which made the attack too easy to escape. Get out of those lanes, or run up a side wall; even on a 3-lane street (no shipped device now; the slash covers the whole street there) **there is always a side wall the player can run to**.
     - **Grasping hands** rising from the floor: purple mist pools in the lane, with whispering. Switch lanes.
     - **Lights out:** after a deep inhale, it swallows the light, and the glowing hazards stay visible while hands and slashes keep coming. (As first built it got darker still, but not pitch black; the October 10, 2026 decision below replaces that.) **Half as bright again as first built** (owner, October 8, 2026): everything that is lit gets 50% darker than the first build's lights-out, while glowing things (gap edges, lasers, warnings) stay as visible as before.
     - **A completely dark tunnel** (owner, October 10, 2026): lights out gets **about 75 to 100% darker than the October 8 version**. The player runs down a completely dark tunnel where the only things they can see are **the glow of the hazards and the glow of the attacks**, with none of the other environmental cues. **The player character glows** so the player still has a sense of where they are.

@@ -426,7 +426,7 @@ func _test_balance_curve() -> void:
 			check(float(restock) <= 2.5 * finish, "%s: restocking a shield, grapple and revive (%d) is at most two and a half finishes (%d)" % [
 				rows[i]["id"], restock, finish])
 
-	# Mobile (3 lanes): fewer credits, the same shape (the tool's --mobile=true reads the whole campaign; this
+	# Mobile at 3 lanes (mobile now uses 5 like PC; this keeps the 3-lane economy covered): fewer credits, the same shape (the tool's --mobile=true reads the whole campaign; this
 	# generates only the first five levels): Armor I by City 2, Laser I by Gangland 2.
 	var mobile: Dictionary = _economy(3, PackedStringArray(["city/1", "city/2", "city/3", "gangland/1", "gangland/2"]))
 	var m_rows: Array[Dictionary] = mobile["rows"]

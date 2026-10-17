@@ -6,6 +6,8 @@ extends Resource
 
 @export_group("Lanes")
 ## GDD §3 said 3 lanes on mobile, 5–6 on PC; the owner approved 5 on mobile too (October 2026). DESIGN-TBD: the exact PC count is open (OPEN_QUESTIONS §8).
+## KEEP lanes_pc AND lanes_mobile AS TWO SEPARATE VARIABLES even though both are 5 today (owner's rule, October
+## 2026): the owner may want to tune mobile on its own later. Do not merge them into one "lanes" value.
 @export_range(3, 8) var lanes_pc: int = 5
 @export_range(3, 8) var lanes_mobile: int = 5
 

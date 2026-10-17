@@ -52,7 +52,7 @@ var campaign: Campaign
 var catalog: ShopCatalog
 var sfx_library: SfxLibrary
 var profile: Profile
-## Mobile device (3 lanes, touch, no slow time).
+## Mobile device (5 lanes like PC, touch, no slow time).
 var mobile: bool = false
 var save_path: String = SaveService.PATH
 ## Tests turn this off so they never touch the player's save.

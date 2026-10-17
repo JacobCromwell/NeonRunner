@@ -36,7 +36,7 @@ Every agent pays for what it reads, on every task, and the owner's weekly usage 
 3. **Level generator:**
    - Data-driven patterns plus a difficulty value.
    - **Seeded random numbers** (fixed seeds for the campaign, random in endless mode).
-   - **Lane count is a parameter** (3 on mobile, 5–6 on PC). No generator code may assume a specific lane count.
+   - **Lane count is a parameter** (5 on mobile and 5–6 on PC; 3 stays a supported value, used by tests and the economy tool). **Keep `lanes_pc` and `lanes_mobile` in `GameRules` as two separate variables** even though both are 5: the owner wants to be able to tune mobile alone later. Never merge them. No generator code may assume a specific lane count.
 4. **Collision:** damage happens only on actual hitbox contact. Damage hitboxes are slightly smaller than the visuals. Lanes are movement targets, never collision logic.
 5. **A platform services layer** wraps everything platform-specific:
    - Ads, in-app purchases, leaderboards, store links, achievements, cloud save

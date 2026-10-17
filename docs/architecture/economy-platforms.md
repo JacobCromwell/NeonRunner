@@ -99,7 +99,7 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   (1.9 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
   along the way owns only part of it after one playthrough. Every completion pays again, so the rest is about 25
   replays of a level that pays 1,000 (21 if the first playthrough's boss payouts are counted).
-- *Mobile.* 3 lanes hold no stash and about 20% fewer credits than 5 (14,886 for a typical player's levels, 18,886
+- *Mobile.* (Measured when mobile had 3 lanes; mobile now has 5 like PC, owner October 2026, so these figures are history: re-measure with `tools/measure/economy.gd --mobile=true --lanes=5` before relying on them.) 3 lanes hold no stash and about 20% fewer credits than 5 (14,886 for a typical player's levels, 18,886
   with the bosses; the mobile catalog is 40,650 without slow time), so a tier first fits up to two levels later
   (Armor I at City 2, Armor IV at level 17) and the Heavy missile is out of reach on the levels alone, in reach
   after Golden 1 on the "+boss" reading. Nothing is needed to progress (GDD §8), and a $0.99 pack (1,000) is 1.3
@@ -170,7 +170,7 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
   the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
   resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
-  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints. Held upright, the page
+  engine's `web_android` and `web_ios` tags): 5 lanes (like PC), the touch layout and hints. Held upright, the page
   covers the game with "turn your phone sideways" (a style in the preset's `html/head_include`) and
   `App._on_window_resized()` pauses a running level (both DESIGN-TBD, `docs/questions/e2.md`).
 - *A phone's menus* (task I3): held sideways a phone's page is about 844×340 CSS pixels with the browser's bars
