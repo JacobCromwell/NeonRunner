@@ -94,6 +94,12 @@ extends Resource
 ## The magnifying stops before the menus get narrower than this many UI pixels, so a phone held upright
 ## (the page covers the game there, GDD §2) gets small, whole menus rather than big, cut ones.
 @export_range(600, 1280, 10) var phone_min_width: int = 900
+## How small a page may be taken to be shown on a phone's glass, as a fraction of its natural size: a host
+## page (itch.io's frame) shrinks an embed wider than the screen to fit it, and `UiScale.embed_scale_for()`
+## guesses by how much from the page's width and the screen's. Never below this, so a browser that misreports
+## its screen can't magnify the menus without end.
+## DESIGN-TBD: 0.4 is a guess no real phone has checked (docs/questions/l1.md, item 2).
+@export_range(0.2, 1.0, 0.05) var phone_min_embed_scale: float = 0.4
 ## How far a pointer may move, in UI pixels, between pressing and releasing a button in a screen and still
 ## press it: further, it's a drag, which scrolls the list it's in instead. A finger's tap and a mouse's
 ## jitter move a few pixels (16 UI pixels are about 10 CSS pixels on a phone), a deliberate scroll many

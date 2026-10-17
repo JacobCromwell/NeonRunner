@@ -17,7 +17,10 @@ extends Node
 ## 3 lanes, credit packs, rewarded ads), --phone (a phone's browser: touch sizing and a mobile device, the
 ## build flavor left as it is, so use it with --flavor=web_demo; the window's size, from the engine's own
 ## --resolution=WxH before the `--`, is the page's: 844x340 is a phone held sideways with the browser's bars,
-## and the menus are magnified to be readable there, UiScale), --flavor=web_demo (read by App), --scroll-end (scrolls the
+## and the menus are magnified to be readable there, UiScale; with --screen-size=WxH, the phone's screen in the page's
+## pixels, a page shown smaller than its own, like itch.io's 960x540 frame shrunk to the phone's width: `--resolution
+## 960x540 ... -- --phone --screen-size=667x375`; and --insets=l,t,r,b, the page's safe-area insets in the page's
+## pixels, for a notch: `--insets=47,0,47,21`), --flavor=web_demo (read by App), --scroll-end (scrolls the
 ## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
 
@@ -31,6 +34,15 @@ func _ready() -> void:
 	if args.has("--phone"):
 		# As in a phone's web page: the menus are magnified to be readable (UiScale, web only).
 		UiScale.assume_web = true
+	for arg: String in args:
+		if arg.begins_with("--screen-size="):
+			var wh: PackedFloat64Array = arg.get_slice("=", 1).replace("x", ",").split_floats(",")
+			if wh.size() == 2:
+				UiScale.screen_size_override = Vector2(wh[0], wh[1])
+		elif arg.begins_with("--insets="):
+			var lt: PackedFloat64Array = arg.get_slice("=", 1).split_floats(",")
+			if lt.size() == 4:
+				WebPage.insets_override = Vector4(lt[0], lt[1], lt[2], lt[3])
 	App.autosave = false
 	if args.has("--mobile"):
 		App.mobile = true
