@@ -170,15 +170,76 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
   the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
   resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
-  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints. Held upright, the page
-  covers the game with "turn your phone sideways" (a style in the preset's `html/head_include`) and
-  `App._on_window_resized()` pauses a running level (both DESIGN-TBD, `docs/questions/e2.md`).
-- *A phone's menus* (task I3): held sideways a phone's page is about 844×340 CSS pixels with the browser's bars
-  (390 high at most), a third to a half of the 720-pixel layout's height, so the menus were drawn at half size
+  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints.
+- *The page's covers* (`html/head_include` in the preset: a style and a script that defines `window.neonPage`;
+  DESIGN-TBD, `docs/questions/e2.md` and `l1.md`). A phone's page that is taller than wide, or that the browser
+  says is held upright, is covered with "Turn your phone sideways to play" (the game is landscape, GDD §2). A
+  phone's frame (the game in an iframe, as itch.io shows it) that is not about the screen's size (wider than
+  the screen's long side, narrower than four fifths of it, taller than its short side: a fixed embed the host
+  page shrinks or crops, or a small one) is covered with "Play it full screen": a link that opens the game's
+  own address in a tab of its own, where the page is the phone's (or `requestFullscreen()` where the browser
+  has it, which an iPhone does not), and "Play here anyway" under it, so no cover ever locks anyone out
+  (it holds until the frame fits or the phone is turned). A page that is not framed goes by its own shape
+  alone. The page's text keeps its size on the glass in a shrunk frame (`--neon-u`), and the card keeps to
+  the part of a tall frame a phone can show. Whenever a cover appears the page calls
+  `window.neonPage.onCover()`, which the game sets (`WebPage.watch_cover()`, `App._on_page_cover()`), and a
+  running level pauses as it does for a phone call, so nothing happens unseen behind the cover (a frame keeps
+  its size when the phone is turned, so nothing resizes and only the page can say; `App._on_window_resized()`
+  does the same for a page that is itself held upright). A `blur` sent to the canvas was tried first and did
+  not pause the run: `App` pauses on the application's focus loss, which a canvas blur is not.
+  iOS reports `screen.width` and `screen.height` as for an upright phone whichever way it is held, so the
+  device's orientation comes from `screen.orientation`, then `window.orientation`, and only a framed page
+  uses it. `neonPage.insets()` also hands the game the browser's safe-area insets (`WebPage`, Characters, UI and
+  audio, Menus on a phone), and `neonPage.mode()` says which cover is up (`''`, `'turn'`, `'fit'`).
+- *On itch.io* (task L1): itch.io shows an HTML5 zip in an iframe of the size set on the project page. On a
+  phone that frame is the page's problem, not the game's: left at a fixed 960×540 it is shrunk to the screen's
+  width, or cropped by the browser's bars, so the game reads a desktop-sized window and the menus come out tiny
+  or cut off. What the game does about it is above (the menus are sized for what the screen shows, the card
+  offers full screen); what the project page should say is below. Neither a phone nor itch.io's page could be
+  reached from where this was built, so the settings are itch.io's documented options as known, tried in
+  Chromium's iPhone emulation (`itch_embed`), not on a real iPhone: the checks at the end of this bullet are
+  the real test.
+  - Upload the zip with `index.html` at its top (`tools/godot.sh web`, then zip `exports/web/`), kind of project
+    **HTML**, "This file will be played in the browser" ticked.
+  - **Viewport dimensions: 960 × 540** (16:9; the game fills whatever frame it is given, so this is only the
+    size of the frame on a desktop page; 1280 × 720 for a bigger one if the page's column is wide enough).
+  - **Mobile friendly: ticked.** itch.io then launches the game from a "Run game" tap into a frame that fills
+    the phone's page, which is the case the menus are made for (the title whole, 0.65 of a CSS pixel to a UI
+    pixel). **Orientation: Landscape** (an iPhone's Safari cannot lock the orientation; the game's own cover
+    asks the player to turn the phone).
+  - **Fullscreen button: ticked** (a desktop and an Android browser use it; an iPhone has no fullscreen for a
+    page, so it does nothing there).
+  - "Click to launch in fullscreen" and "Automatically start on page load" are the owner's taste: the first
+    tap on the game also lets Safari play its sound (the AudioContext resumes on a touch), so auto-start
+    gains nothing on a phone. **Enable scrollbars: off. Enable SharedArrayBuffer support: off**: the demo is
+    exported without threads, so nothing uses it, and it only adds isolation headers to the page.
+  - Whatever those say, a phone whose frame turns out not to fit gets the "Play it full screen" card, so a
+    forgotten setting costs one tap rather than unreadable menus.
+  - *To check on an iPhone* (only a real one can say): (1) with "Mobile friendly" on, tap "Run game" and turn the
+    phone sideways: the title shows PLAY, LEVEL SELECT, SHOP and SETTINGS and the demo line whole, the shop's
+    cards read without squinting, nothing sits under the notch or the home bar, the HUD in a level too;
+    (2) turn it upright: "Turn your phone sideways to play" covers the game and a running level pauses;
+    (3) with "Mobile friendly" off, the card "Play it full screen" shows over the frame: "Open full screen" opens
+    the game in a Safari tab of its own (is the menu then readable? its save is probably separate from the
+    frame's: browsers keep a frame's storage apart by the page around it, so progress made in itch.io's
+    frame does not show in the tab), "Play here anyway" plays on in the frame; (4) the notch, in both
+    Safari's tab and itch.io's full-window frame, in both turns (left and right); (5) that Safari reports the
+    phone's turn to the frame (`screen.orientation` or `window.orientation`): if the cover appears the wrong way
+    round, "Play here anyway" is still there and the page's `upright()` function is the place to look.
+- *A phone's menus* (tasks I3 and L1): held sideways a phone's page is about 844×340 CSS pixels with the browser's
+  bars (390 high at most), a third to a half of the 720-pixel layout's height, so the menus were drawn at half size
   (the shop's captions 9 pixels). `UiScale` magnifies them while a screen is open (until a UI pixel is 0.65 CSS
-  pixel); the compact layouts, the scroll net and the touch drags are in Characters, UI and audio, Menus on a
-  phone. Godot's web build reads the page's `devicePixelRatio` through `DisplayServer.screen_get_scale()`;
-  `browser_check.js phone_menus` (the debug export logs the factor) checks that in Chromium at 844×340.
+  pixel, counting how small the host page shows the frame); the compact layouts, the scroll net, the touch drags,
+  the embed scale and the page's safe areas are in Characters, UI and audio, Menus on a phone. Godot's web build
+  reads the page's `devicePixelRatio` through `DisplayServer.screen_get_scale()` and the screen through
+  `screen_get_size()`; `browser_check.js phone_menus` (the debug export logs the factor) checks that in Chromium
+  at 844×340 with the screen an iPhone reports, and `itch_embed` checks the page in an iframe as itch.io shows
+  it: "mobile friendly" (a full-page frame, with and without a notch's insets), a fixed 960×540 embed on an
+  iPhone SE (the card, its link, playing on, the menus' size), the same held upright and turned, and a running
+  level that pauses behind the card. **What L1 found (the first cause of the owner's iPhone report):** the menus
+  were squeezed into the top of the phone by a bottom margin of 40% of its height, because the display server's
+  screen and safe area are not the page's (Characters, UI and audio, Safe areas on the web); a fixed embed
+  shrunk by the host page was the second.
 - *Sound on an iPhone* (task I3; items 827–828 in `docs/OPEN_QUESTIONS*.md`): the demo's sound is all Web Audio (the web default,
   sample playback), which Safari mutes while the phone's ring/silent switch is on. The preset's
   `html/head_include` sets `navigator.audioSession.type = 'playback'` (the Audio Session API; guarded by a

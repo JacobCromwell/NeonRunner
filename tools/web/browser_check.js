@@ -21,8 +21,16 @@
 //            tab (window.open, recorded here, never followed).
 //   phone_menus  an iPhone's page held sideways with the browser's bars (844x340 CSS pixels, the debug
 //            export, which logs how far the menus are magnified, UiScale): the log says a UI pixel is
-//            at least 0.64 of a CSS pixel (the engine knows the page's pixel ratio), the title and the
-//            shop answer taps and a finger's drag scrolls the shop (frames in phone_menus/).
+//            at least 0.64 of a CSS pixel (the engine knows the page's pixel ratio), the title is on show
+//            whole (an iPhone reports its screen as 390x844 held either way, which once read as a bottom
+//            margin of 40% of the page), the title and the shop answer taps and a finger's drag scrolls
+//            the shop (frames in phone_menus/).
+//   itch_embed  the demo inside a host page's iframe, as itch.io shows an HTML5 game, on an iPhone (390x844
+//            screen as iOS reports it; task L1): "mobile friendly" (the frame fills the page: no cover, the
+//            title whole, a notch's insets read from the page), a fixed 960x540 embed the host page zooms
+//            out (the "Play it full screen" card: its link, the way to play on, the menus sized for what
+//            the screen shows), the same held upright, and a running level that pauses behind the card
+//            when the phone is turned (frames in itch_embed_*/).
 //   audio_session  the page marks its sound 'playback' (navigator.audioSession.type, which keeps an
 //            iPhone's silent switch from muting Web Audio): on a stand-in for Safari's API it's set at
 //            once and set again after a tap if the browser reset it; a browser without the API, and one
@@ -40,7 +48,7 @@ const options = Object.fromEntries(process.argv.slice(2).filter((a) => a.startsW
 	return [k, v === undefined ? true : v];
 }));
 const OUT = path.resolve(ROOT, options.out || 'build/browser');
-const SCENARIOS = String(options.scenario || 'desktop,shop,phone,end,phone_menus,audio_session').split(',');
+const SCENARIOS = String(options.scenario || 'desktop,shop,phone,end,phone_menus,itch_embed,audio_session').split(',');
 const RELEASE = path.join(ROOT, 'exports/web');
 const DEBUG = path.join(ROOT, 'exports/web_debug');
 const STORE_LINKS = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/platform/store_links.json'), 'utf8'));
@@ -194,6 +202,59 @@ function readProfile(page) {
 		return { key: String(key), json: JSON.parse(new TextDecoder().decode(new Uint8Array(entry.contents.buffer, entry.contents.byteOffset, entry.contents.byteLength))) };
 	});
 }
+
+// An iPhone's view of its own turning: screen.width and screen.height stay as for a phone held upright
+// (390x844) whichever way it is held, and window.orientation and screen.orientation say which way it is
+// held (window.__turn: 90 sideways, 0 upright). Playwright's `screen` option gives the sizes, not the
+// turning. An iPhone has no fullscreen for a page. Add it with page.addInitScript(iosTurning, turn); a
+// later turnPhone() changes the turning and the page's size.
+function iosTurning(turn) {
+	window.__turn = turn;
+	Object.defineProperty(window, 'orientation', { get: () => window.__turn, configurable: true });
+	Object.defineProperty(screen, 'orientation', {
+		get: () => ({ type: window.__turn % 180 === 0 ? 'portrait-primary' : 'landscape-primary', angle: window.__turn, addEventListener() {} }),
+		configurable: true,
+	});
+	Object.defineProperty(document, 'fullscreenEnabled', { get: () => false, configurable: true });
+	Object.defineProperty(document, 'webkitFullscreenEnabled', { get: () => false, configurable: true });
+}
+
+async function turnPhone(s, turn, viewport) {
+	await s.page.setViewportSize(viewport);
+	for (const f of s.page.frames()) await f.evaluate((t) => { window.__turn = t; }, turn);
+}
+
+// How far down a screenshot the lowest bright text is, as a fraction of its height: a title squeezed
+// into the top of the page (a margin the size of the phone's hidden half) is at 0.3, the whole one at 0.7.
+async function lowestBrightRow(browser, png) {
+	const page = await browser.newPage();
+	const fraction = await page.evaluate(async (b64) => {
+		const img = new Image();
+		img.src = 'data:image/png;base64,' + b64;
+		await img.decode();
+		const c = document.createElement('canvas');
+		c.width = img.width;
+		c.height = img.height;
+		const g = c.getContext('2d');
+		g.drawImage(img, 0, 0);
+		const d = g.getImageData(0, 0, c.width, c.height).data;
+		let last = -1;
+		for (let y = 0; y < c.height; y++) {
+			let n = 0;
+			for (let x = 0; x < c.width; x++) {
+				const i = (y * c.width + x) * 4;
+				if (d[i] > 200 && d[i + 1] > 200 && d[i + 2] > 200) n++;
+			}
+			if (n >= 6) last = y;
+		}
+		return last / c.height;
+	}, png.toString('base64'));
+	await page.close();
+	return fraction;
+}
+
+const frameOf = (page) => page.frames().find((f) => f !== page.mainFrame());
+const neonMode = (frame) => frame.evaluate(() => (window.neonPage ? window.neonPage.mode() : 'no neonPage'));
 
 async function desktop(browser) {
 	const name = 'desktop';
@@ -365,18 +426,23 @@ async function phoneMenus(browser) {
 	const name = 'phone_menus';
 	// Two device pixels to a CSS pixel keeps software WebGL quick; the magnifying works from the
 	// page's size in CSS pixels, so the layout is the one a 3x phone gets.
-	const iphone = { viewport: { width: 844, height: 340 }, userAgent: IPHONE_UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
+	// With the screen an iPhone reports (390x844 whichever way it is held): the display server's screen is not the page.
+	const iphone = { viewport: { width: 844, height: 340 }, screen: { width: 390, height: 844 }, userAgent: IPHONE_UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
 	const server = await serve(DEBUG);
 	const s = await openPage(browser, name, iphone, server);
+	await s.page.addInitScript(iosTurning, 90);
 	await s.page.goto(s.url);
 	await booted(s.page, s.log, 9000);
-	await s.shot('title');
+	const titleShot = await s.page.screenshot({ path: path.join(s.dir, 'title.png') });
 	const logged = s.log.filter((l) => l.text.startsWith('[ui] menus magnified'));
-	const m = logged.length ? /x([\d.]+) \(window (\d+)x(\d+), pixel ratio ([\d.]+), ([\d.]+) CSS px per UI px\)/.exec(logged[logged.length - 1].text) : null;
+	const m = logged.length ? /x([\d.]+) \(window (\d+)x(\d+), pixel ratio ([\d.]+), page shown at ([\d.]+), ([\d.]+) CSS px per UI px\)/.exec(logged[logged.length - 1].text) : null;
 	check(name, m !== null && Number(m[4]) === 2 && Number(m[2]) === 1688 && Number(m[3]) === 680,
 		`the engine sees the page as ${m ? `${m[2]}x${m[3]} device pixels at ratio ${m[4]}` : 'no log line'} (844x340 CSS pixels at 2 per pixel)`);
-	check(name, m !== null && Number(m[5]) >= 0.64 && Number(m[5]) <= 0.7,
-		`and magnifies the menus to ${m ? m[5] : '?'} CSS pixels per UI pixel (x${m ? m[1] : '?'}), not the plain stretch's 0.2 to 0.5`);
+	check(name, m !== null && Number(m[6]) >= 0.64 && Number(m[6]) <= 0.7,
+		`and magnifies the menus to ${m ? m[6] : '?'} CSS pixels per UI pixel (x${m ? m[1] : '?'}), not the plain stretch's 0.2 to 0.5`);
+	const low = await lowestBrightRow(browser, titleShot);
+	check(name, low >= 0.6, `the whole title is on show on that iPhone (its lowest bright text is ${(low * 100).toFixed(0)}% down the page; squeezed into the top it was 30%)`);
+	check(name, !s.log.some((l) => l.text.startsWith('[ui] page safe area')), 'and the page has no safe-area insets to apply (Safari keeps its page clear of the notch itself)');
 	// The title's SHOP button, by a tap (the compact title: three buttons in a row).
 	await s.page.touchscreen.tap(430, 243);
 	await s.page.waitForTimeout(6000);
@@ -407,6 +473,215 @@ async function phoneMenus(browser) {
 	check(name, !levels.equals(levelsScrolled), "a drag from a level tile scrolls the level select");
 	await finish(name, s);
 	server.close();
+}
+
+// The demo in a host page's iframe, as itch.io shows an HTML5 game (task L1). The host page is another
+// origin (another port), as itch.io's is. Its kinds: `mobile`, a frame that fills the page ("Mobile friendly");
+// `fixed`, a 960x540 embed on a page whose width the browser zooms out to show the embed whole (Safari does
+// that with content wider than the screen).
+function serveHost(gameUrl) {
+	const frame = (style) => `<iframe src="${gameUrl}" width="960" height="540" style="border:0;${style}" allow="autoplay; fullscreen *" scrolling="no"></iframe>`;
+	const pages = {
+		mobile: ['width=device-width, initial-scale=1, viewport-fit=cover', frame('position:fixed;left:0;top:0;width:100%;height:100%')],
+		fixed: ['width=960', '<div class="bar">itch.io header</div>' + frame('display:block')],
+	};
+	const server = http.createServer((req, res) => {
+		const entry = pages[req.url.slice(1).split('?')[0]];
+		if (!entry) {
+			res.writeHead(404);
+			res.end();
+			return;
+		}
+		res.writeHead(200, { 'Content-Type': 'text/html' });
+		res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="${entry[0]}"><title>host</title>`
+			+ '<link rel="icon" href="data:,"><style>body{margin:0;background:#222;color:#ccc;font:14px sans-serif}.bar{padding:6px 10px;background:#333}</style></head>'
+			+ `<body>${entry[1]}</body></html>`);
+	});
+	return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(server)));
+}
+
+// An iPhone 14 (390x844 points) or a smaller one (an SE: 375x667), at 2 device pixels to a point (software
+// WebGL stays quick).
+function iphoneContext(turn, screen = { width: 390, height: 844 }) {
+	return { viewport: phoneViewport(turn, screen), screen, userAgent: IPHONE_UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2 };
+}
+
+// The page of a phone with this screen (as iOS reports it, upright) held turn degrees: Safari's compact bar
+// takes about 50 points of it held sideways, its bars about 180 held upright (390x844: 844x340 and 390x664).
+function phoneViewport(turn, screen) {
+	const wide = Math.max(screen.width, screen.height);
+	const narrow = Math.min(screen.width, screen.height);
+	return turn === 90 ? { width: wide, height: narrow - 50 } : { width: narrow, height: wide - 180 };
+}
+
+async function itchEmbed(browser) {
+	const name = 'itch_embed';
+	// --part=mobile,fixed,android,upright,level runs only those parts (each boots the game: minutes in software WebGL).
+	const parts = options.part ? String(options.part).split(',') : null;
+	const want = (part) => parts === null || parts.includes(part);
+	const magnified = (log) => log.filter((l) => l.text.startsWith('[ui] menus magnified'));
+	const parseMagnified = (text) => {
+		const m = /x([\d.]+) \(window (\d+)x(\d+), pixel ratio ([\d.]+), page shown at ([\d.]+), ([\d.]+) CSS px per UI px\)/.exec(text);
+		return m ? { factor: Number(m[1]), w: Number(m[2]), h: Number(m[3]), ratio: Number(m[4]), shown: Number(m[5]), css: Number(m[6]) } : null;
+	};
+	const game = await serve(DEBUG);
+	const gameUrl = `http://127.0.0.1:${game.address().port}/`;
+	const host = await serveHost(gameUrl);
+	const hostUrl = (kind) => `http://127.0.0.1:${host.address().port}/${kind}`;
+	let s = null;
+	let frame = null;
+	let m = null;
+
+	// 1) "Mobile friendly": the frame fills the page. No cover, the title whole, the menus at a readable size.
+	if (want('mobile')) {
+		s = await openPage(browser, name, iphoneContext(90), game, 'itch_embed_mobile');
+		await s.page.addInitScript(iosTurning, 90);
+		await s.page.goto(hostUrl('mobile'));
+		await booted(s.page, s.log, 9000);
+		frame = frameOf(s.page);
+		const shot = await s.page.screenshot({ path: path.join(s.dir, 'title.png') });
+		m = magnified(s.log).length ? parseMagnified(magnified(s.log).pop().text) : null;
+		check(name, m !== null && m.w === 1688 && m.h === 680 && m.ratio === 2 && m.shown === 1 && m.css >= 0.64 && m.css <= 0.7,
+			`a frame that fills the phone's page: the menus at ${m ? m.css : '?'} CSS pixels per UI pixel, the page at its own size (${m ? `${m.w}x${m.h} at ratio ${m.ratio}, shown at ${m.shown}` : 'no log line'})`);
+		check(name, (await neonMode(frame)) === '', `and no cover on it (mode '${await neonMode(frame)}')`);
+		const whole = await lowestBrightRow(browser, shot);
+		check(name, whole >= 0.6, `the whole title is on show (its lowest bright text is ${(whole * 100).toFixed(0)}% down the page)`);
+		await s.page.touchscreen.tap(430, 243);
+		await s.page.waitForTimeout(6000);
+		await s.shot('shop_after_tap');
+		check(name, !s.log.some((l) => l.text.startsWith('[ui] page safe area')), 'no safe-area insets: the browser put none on the frame');
+		await finish(name, s);
+
+	}
+	if (want('mobile')) {
+		// 1b) The same behind a notch: the page's own safe-area insets (the host's viewport-fit=cover lets the frame
+		// reach under it) are kept clear.
+		s = await openPage(browser, name, iphoneContext(90), game, 'itch_embed_notch');
+		await s.page.addInitScript(iosTurning, 90);
+		await s.cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, left: 47, bottom: 21, right: 47 } });
+		await s.page.goto(hostUrl('mobile'));
+		await booted(s.page, s.log, 9000);
+		await s.shot('title');
+		const inset = s.log.filter((l) => l.text.startsWith('[ui] page safe area')).pop();
+		check(name, inset !== undefined && inset.text.includes('(47.0, 0.0, 47.0, 21.0)'),
+			`with a notch the game reads the page's safe-area insets (${inset ? inset.text : 'no log line'})`);
+		await finish(name, s);
+
+	}
+	if (want('fixed')) {
+		// 2) A fixed 960x540 embed on an iPhone SE, held sideways: the host page zooms it out to the page's width.
+		// The page asks for the game full screen; the link is the game's own page; or play on, the menus sized for
+		// what the screen shows (the page is 960 wide, the phone's screen 667 long: shown at about 0.69).
+		s = await openPage(browser, name, iphoneContext(90, { width: 375, height: 667 }), game, 'itch_embed_fixed');
+		await s.page.addInitScript(iosTurning, 90);
+		await s.page.goto(hostUrl('fixed'));
+		await booted(s.page, s.log, 9000);
+		frame = frameOf(s.page);
+		check(name, (await neonMode(frame)) === 'fit', `a fixed 960x540 embed is offered the game full screen (mode '${await neonMode(frame)}')`);
+		const card = await frame.evaluate(() => {
+			const box = document.getElementById('neon-fit');
+			const link = box.querySelector('a');
+			const stay = box.querySelector('button');
+			const bottom = stay.getBoundingClientRect().bottom;
+			const visible = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--neon-box'));
+			return { href: link.href, target: link.target, shown: getComputedStyle(box).display !== 'none', stayBottom: bottom, box: visible, title: box.firstChild.textContent };
+		});
+		check(name, card.shown && card.title === 'Play it full screen' && card.href === gameUrl && card.target === '_blank',
+			`the card's link opens the game's own page in a new tab (${card.href}, ${card.target})`);
+		check(name, card.stayBottom <= card.box + 1, `and the card sits within what the phone can show of the frame (its last button ends at ${card.stayBottom.toFixed(0)} of ${card.box})`);
+		await s.page.screenshot({ path: path.join(s.dir, 'card.png') });
+		const opened = s.context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+		await frame.evaluate(() => document.querySelector('#neon-fit a').click());
+		const tab = await opened;
+		check(name, tab !== null && tab.url().startsWith(gameUrl), `tapping it opens a new tab on the game (${tab ? tab.url() : 'no new tab'})`);
+		if (tab) await tab.close();
+		await frame.evaluate(() => document.querySelector('#neon-fit button').click());
+		await s.page.waitForTimeout(1500);
+		check(name, (await neonMode(frame)) === '', `"Play here anyway" takes the card away (mode '${await neonMode(frame)}')`);
+		await s.page.waitForTimeout(2500);
+		await s.shot('played_here');
+		m = magnified(s.log).length ? parseMagnified(magnified(s.log).pop().text) : null;
+		check(name, m !== null && m.shown > 0.65 && m.shown < 0.73 && m.css >= 0.64 && m.css <= 0.7 && m.factor > 1.2,
+			`playing on, the menus are sized for what the screen shows: ${m ? `the page at ${m.shown}, ${m.css} CSS pixels per UI pixel (x${m.factor})` : 'no log line'}`);
+		await finish(name, s);
+
+	}
+	if (want('android')) {
+		// 2b) An Android phone has the Fullscreen API: the card's button makes the frame fullscreen, where the menus fit.
+		s = await openPage(browser, name, { viewport: { width: 844, height: 340 }, screen: { width: 844, height: 390 }, userAgent: PHONE_UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, game, 'itch_embed_android');
+		await s.page.goto(hostUrl('fixed'));
+		await booted(s.page, s.log, 6000);
+		frame = frameOf(s.page);
+		check(name, (await neonMode(frame)) === 'fit', `on an Android phone the fixed embed is offered full screen too (mode '${await neonMode(frame)}')`);
+		await frame.evaluate(() => document.querySelector('#neon-fit a').click());
+		await s.page.waitForTimeout(6000);
+		const full = await frame.evaluate(() => ({ element: !!document.fullscreenElement, size: [innerWidth, innerHeight] }));
+		check(name, full.element && (await neonMode(frame)) === '', `its button makes the frame fullscreen (${full.size.join('x')} CSS pixels) and the card goes (mode '${await neonMode(frame)}')`);
+		await s.shot('fullscreen');
+		await finish(name, s);
+
+	}
+	if (want('upright')) {
+		// 3) The same embed held upright: the page asks to turn the phone (the frame's own shape can't show it),
+		// and then, turned, offers the game full screen.
+		s = await openPage(browser, name, iphoneContext(0), game, 'itch_embed_upright');
+		await s.page.addInitScript(iosTurning, 0);
+		await s.page.goto(hostUrl('fixed'));
+		await s.page.waitForTimeout(4000);
+		frame = frameOf(s.page);
+		const upright = await frame.evaluate(() => ({ mode: window.neonPage.mode(), title: document.getElementById('neon-fit').firstChild.textContent }));
+		check(name, upright.mode === 'fit' && upright.title === 'Turn your phone sideways',
+			`a landscape embed on a phone held upright asks to turn it (${upright.mode}: ${upright.title})`);
+		await s.page.screenshot({ path: path.join(s.dir, 'upright.png') });
+		await turnPhone(s, 90, phoneViewport(90, { width: 390, height: 844 }));
+		await s.page.waitForTimeout(2000);
+		const turned = await frame.evaluate(() => ({ mode: window.neonPage.mode(), title: document.getElementById('neon-fit').firstChild.textContent }));
+		check(name, turned.mode === 'fit' && turned.title === 'Play it full screen', `turned, it offers the game full screen (${turned.mode}: ${turned.title})`);
+		await finish(name, s);
+
+		// 3b) The page that fills the screen, held upright: the page's own shape is portrait, and it says so.
+		s = await openPage(browser, name, iphoneContext(0), game, 'itch_embed_mobile_upright');
+		await s.page.addInitScript(iosTurning, 0);
+		await s.page.goto(hostUrl('mobile'));
+		await s.page.waitForTimeout(4000);
+		frame = frameOf(s.page);
+		const notice = await frame.evaluate(() => getComputedStyle(document.body, '::after').content);
+		check(name, (await neonMode(frame)) === 'turn' && notice.includes('sideways'), `a frame that fills a phone held upright says to turn it (${await neonMode(frame)}: ${notice})`);
+		await s.page.screenshot({ path: path.join(s.dir, 'upright.png') });
+		await finish(name, s);
+	}
+	game.close();
+	host.close();
+
+	if (want('level')) {
+		// 4) A level running in a fixed embed when the phone is turned upright: the frame keeps its size (nothing
+		// resizes), so only the page's cover tells the game; it pauses, as for a phone call.
+		const level = await serve(DEBUG, { args: ['--level=city/1', '--god', '--nofall'] });
+		const levelHost = await serveHost(`http://127.0.0.1:${level.address().port}/`);
+		s = await openPage(browser, name, { ...iphoneContext(90, { width: 375, height: 667 }), deviceScaleFactor: 1 }, level, 'itch_embed_level');
+		await s.page.addInitScript(iosTurning, 90);
+		await s.page.goto(`http://127.0.0.1:${levelHost.address().port}/fixed`);
+		await booted(s.page, s.log, 12000);
+		frame = frameOf(s.page);
+		await frame.evaluate(() => document.querySelector('#neon-fit button').click());
+		await s.page.waitForTimeout(6000);
+		// The level opens on its introduction, whose PLAY owns the focus: Enter starts the run.
+		await frame.evaluate(() => document.getElementById('canvas').focus());
+		await s.page.keyboard.press('Enter');
+		await s.page.waitForTimeout(12000);
+		const before = magnified(s.log).length;
+		await turnPhone(s, 0, phoneViewport(0, { width: 375, height: 667 }));
+		await s.page.waitForTimeout(10000);
+		check(name, (await neonMode(frame)) === 'fit', `held upright it asks to turn the phone again (mode '${await neonMode(frame)}')`);
+		check(name, magnified(s.log).length > before, `and the running level paused behind it: the pause menu opened (${magnified(s.log).length - before} new menu(s) magnified)`);
+		await s.shot('paused_behind_cover');
+		await turnPhone(s, 90, phoneViewport(90, { width: 375, height: 667 }));
+		await s.page.waitForTimeout(8000);
+		await s.shot('turned_back');
+		await finish(name, s);
+		level.close();
+		levelHost.close();
+	}
 }
 
 // The page's sound is 'playback' where the browser has the Audio Session API, and loads anyway where not.
@@ -505,7 +780,7 @@ async function end(browser) {
 		executablePath: options.chromium || undefined,
 		args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
 	});
-	const all = { desktop, shop, phone, end, phone_menus: phoneMenus, audio_session: audioSession };
+	const all = { desktop, shop, phone, end, phone_menus: phoneMenus, itch_embed: itchEmbed, audio_session: audioSession };
 	for (const scenario of SCENARIOS) {
 		if (!all[scenario]) {
 			check(scenario, false, 'no such scenario');

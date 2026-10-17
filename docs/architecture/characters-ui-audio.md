@@ -140,6 +140,27 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
     plain stretch), back to 1 when the last screen closes (deferred a frame, so the next screen doesn't see a
     step), and outside a web page unless a test sets `UiScale.assume_web`, `pixel_ratio_override` and a window
     size (`test_phone_screens`; headless windows are 64×64).
+    - **A page shown smaller than its own pixels** (task L1): itch.io puts an HTML5 game in an iframe of a fixed
+      size (960×540, say) and a phone's browser shrinks that to the screen's width, so the game reads a 960-pixel
+      window at the phone's pixel ratio and cannot see that it looks 0.7 (or 0.4) of that size. `UiScale.
+      embed_scale_for()` estimates it: the page's width against the screen's long side (`screen_get_size()`,
+      which on the web is `screen.width` and `screen.height` times the pixel ratio; only a phone held sideways
+      plays, the page covers it otherwise), never below `UiStyle.phone_min_embed_scale` (0.4), and
+      `factor_for()` counts it in, so a UI pixel is still 0.65 of what the player sees. It is 1 for a page
+      that fills the screen, which is every case but a fixed embed (a full-window frame, Safari's own tab).
+      `screen_size_override` is the tests'. The page's own cover is the real answer to such a frame (Economy,
+      platforms, The web demo); this keeps the menus readable when the player plays on in it.
+    - **Safe areas on the web** (task L1): `UiTheme.safe_area_margins()` used to take the display server's
+      safe area against its screen. On the web the first is the *window* and the second the *physical screen*
+      times the pixel ratio, and iOS reports `screen.width`/`screen.height` as for a phone held upright whichever
+      way it is held (390×844 on an iPhone 14), so held sideways the difference read as a bottom inset of 40% of
+      the page: every menu and the run's HUD were squeezed into the top of the phone, "scrunched up". (The I3
+      tests and `browser_check` never saw it: Playwright's emulated screen is the viewport.) In a web page the
+      margins now come from the page (`WebPage`, `scripts/ui/theme/web_page.gd`): `window.neonPage.insets()`,
+      defined by the preset's page script, is `env(safe-area-inset-*)` in CSS pixels read in the game's own
+      frame (zero where the browser keeps the page clear of the notch itself, which Safari does unless a page
+      asks for `viewport-fit=cover`; an embedding page that does gives the frame its insets), scaled to UI
+      pixels; native builds keep the display server's. `WebPage.insets_override` is the tests'.
     - A screen asks `is_short()` (`phone_short_height`, 620 UI pixels: a phone held sideways) for its compact
       layout: the title's name smaller and its buttons in one row, the pause menu's in two columns, the results
       panel's smaller title, stars and score, panels with less padding above and below (`add_panel`), and the
@@ -158,14 +179,20 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
       10 CSS pixels on a phone): a tap that moves less presses, a drag that moves more scrolls.
     - `test_phone_screens` lays every screen the demo shows (and the pause, its settings and quit dialog, and
       the revive offer) out at 844×390, 844×340, 844×300, 667×375 and 640×290 sideways and 390×844 and 360×800
-      upright, in device pixels as a phone has them, and checks the text size (11 CSS pixels at least, none cut),
-      finger targets (40 at least), nothing off the screen or cut at the side, the screen's way on in sight,
+      upright, and a 960×540 embed shrunk to an iPhone SE's and an iPhone 14's screen and the 844×340 page on a
+      390×844 screen (the embed scale counted), in device pixels as a phone has them, and checks the text size
+      (11 CSS pixels at least, none cut), finger targets (40 at least), nothing off the screen or cut at the side, the screen's way on in sight,
       and panels and buttons passing touches; plus the magnifying's maths and lifecycle, and taps and drags
       (a tap moving a few pixels presses the title's, the shop's, a level tile's, the pause's and the revive
-      offer's buttons; a drag past the deadzone scrolls the shop and the level select without pressing).
+      offer's buttons; a drag past the deadzone scrolls the shop and the level select without pressing), the
+      embed scale's maths and its effect on the factor, and the page's safe-area insets (parsing, the notch's
+      margins at the magnified size, none on a desktop). `tools/web/browser_check.js` checks the same in a real
+      browser, with the screen an iPhone reports (`phone_menus`, `itch_embed`).
       `godot --resolution 844x340 res://tools/showcase/screens_showcase.tscn -- --screen=shop --phone
       --flavor=web_demo --shot=build/shop.png` renders one (the window's size is the page's, at pixel ratio 1;
-      the showcase sets `UiScale.assume_web` for `--phone`).
+      the showcase sets `UiScale.assume_web` for `--phone`); `--screen-size=667x375` says how big the phone's
+      screen is (a 960×540 page, `--resolution 960x540`, then looks shrunk to it, as itch.io's frame does) and
+      `--insets=47,0,47,21` the page's safe-area insets (a notch).
 - **Audio:** `SfxLibrary` maps sound names to `assets/sfx/*.wav` (volumes in
   `data/audio/sfx_library.tres`). The cyborg firing effect alone is -3.2 dB instead of -5.5 dB:
   about 1.303 times its former amplitude, matching the owner's approximately 30% increase;

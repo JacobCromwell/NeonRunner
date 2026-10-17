@@ -14,11 +14,16 @@ extends TestSuite
 ## The magnifying itself is checked at the end: it follows the window and the pixel ratio, ends when the
 ## last screen closes, and does nothing on a desktop, a tablet-sized window or a run.
 
-## [CSS size, device pixels per CSS pixel, held sideways].
+## [CSS size, device pixels per CSS pixel, held sideways, the phone's screen in CSS pixels as the browser
+## reports it (optional: for a page that is not the whole screen)]. The last three are itch.io's 960×540 embed
+## shrunk to a phone's width by the host page (task L1): the game reads a 960-pixel window, and the screen
+## says how much smaller than that it looks (an iPhone SE's 667 pixels long: two thirds).
 const PHONES: Array = [
 	[Vector2i(844, 390), 3.0, true], [Vector2i(844, 340), 3.0, true], [Vector2i(844, 300), 3.0, true],
 	[Vector2i(667, 375), 2.0, true], [Vector2i(640, 290), 3.0, true],
 	[Vector2i(390, 844), 3.0, false], [Vector2i(360, 800), 3.0, false],
+	[Vector2i(960, 540), 3.0, true, Vector2i(375, 667)], [Vector2i(960, 540), 3.0, true, Vector2i(390, 844)],
+	[Vector2i(844, 340), 3.0, true, Vector2i(390, 844)],
 ]
 ## CSS pixels: the smallest text, and the smallest a finger's target.
 const MIN_TEXT_CSS: float = 11.0
@@ -44,12 +49,22 @@ func run() -> void:
 	for phone: Array in PHONES:
 		var css: Vector2i = phone[0]
 		var ratio: float = phone[1]
+		var screen_css: Vector2i = phone[3] if phone.size() > 3 else Vector2i.ZERO
 		UiScale.pixel_ratio_override = ratio
+		UiScale.screen_size_override = Vector2(screen_css) * ratio
 		tree.root.size = Vector2i(roundi(css.x * ratio), roundi(css.y * ratio))
+		# What a CSS pixel of the page is on the glass: the checks count a UI pixel in the page's own pixels,
+		# and the page may be shown smaller than they are, so the pixel ratio they use is the ratio over that.
+		var shown: float = UiScale.embed_scale_for(Vector2(tree.root.size), UiScale.screen_size_override)
 		for rich: bool in [true, false]:
 			App.profile = SampleProfiles.rich() if rich else SampleProfiles.fresh()
-			await _every_screen("%dx%d %s" % [css.x, css.y, "rich" if rich else "fresh"], ratio, bool(phone[2]))
+			var tag: String = "%dx%d %s%s" % [css.x, css.y, "rich" if rich else "fresh",
+				" on a %dx%d screen" % [screen_css.x, screen_css.y] if screen_css != Vector2i.ZERO else ""]
+			await _every_screen(tag, ratio / shown, bool(phone[2]))
+	UiScale.screen_size_override = Vector2.ZERO
 	await _test_lifecycle()
+	await _test_embed_scale()
+	await _test_page_safe_area()
 	await _test_taps_and_drags(true)
 	UiScale.assume_web = false
 	UiScale.pixel_ratio_override = 0.0
@@ -286,6 +301,28 @@ func _test_factor_maths() -> void:
 	check(UiScale.factor_for(Vector2.ZERO, 1.0, base, 0.65, 2.5) == 1.0 and UiScale.factor_for(Vector2(10, 10), 1.0, Vector2.ZERO, 0.65, 2.5) == 1.0,
 		"a window or base of no size is left alone")
 	check(UiScale.base_size() == base, "the base size comes from the project settings (1280×720)")
+	# A page shown smaller than its own pixels (itch.io's fixed embed shrunk to the phone's width).
+	var shown: Callable = func(css: Vector2, ratio: float, screen: Vector2) -> float:
+		return UiScale.embed_scale_for(css * ratio, screen * ratio, style.phone_min_embed_scale)
+	check(is_equal_approx(shown.call(Vector2(960, 540), 3.0, Vector2(390, 844)), 844.0 / 960.0),
+		"a 960-pixel page on an iPhone 14 (390×844 as iOS reports it, held sideways) is shown at %.3f of its size" % (844.0 / 960.0))
+	check(is_equal_approx(shown.call(Vector2(960, 540), 3.0, Vector2(844, 390)), 844.0 / 960.0),
+		"…and the same where the browser swaps the screen's sides with the phone")
+	check(is_equal_approx(shown.call(Vector2(844, 340), 3.0, Vector2(390, 844)), 1.0)
+		and is_equal_approx(shown.call(Vector2(750, 390), 3.0, Vector2(390, 844)), 1.0),
+		"a page that fits the screen is shown at its own size (a full-screen frame, with or without a notch's gap)")
+	check(is_equal_approx(shown.call(Vector2(390, 664), 3.0, Vector2(390, 844)), 1.0),
+		"a page that is itself held upright counts the screen's short side, so a phone held upright is not taken for a shrunk page")
+	check(is_equal_approx(shown.call(Vector2(5000, 2800), 1.0, Vector2(390, 844)), style.phone_min_embed_scale),
+		"a page much wider than the screen is taken to be shrunk no further than phone_min_embed_scale")
+	check(is_equal_approx(shown.call(Vector2(960, 540), 3.0, Vector2.ZERO), 1.0) and is_equal_approx(shown.call(Vector2.ZERO, 3.0, Vector2(390, 844)), 1.0),
+		"where the screen or the page has no size (not a browser) the page is shown at its own size")
+	var se: float = shown.call(Vector2(960, 540), 3.0, Vector2(375, 667))
+	var plain: float = f.call(Vector2(960, 540), 3.0)
+	var counted: float = UiScale.factor_for(Vector2(960, 540) * 3.0, 3.0, base, style.phone_min_scale, style.phone_max_factor,
+		float(style.phone_min_width), se)
+	check(is_equal_approx(plain, 1.0) and is_equal_approx(counted, style.phone_min_scale / (0.75 * se)),
+		"a 960×540 page shrunk to an iPhone SE's width (x%.3f) is magnified x%.3f, where counting only its pixels would leave it at x%.3f" % [se, counted, plain])
 
 
 func _test_lifecycle() -> void:
@@ -358,6 +395,84 @@ func _test_lifecycle() -> void:
 	App.show_title()
 	await _frames(3)
 	check(not (App.screen as ScreenBase).is_scrolling(), "the title screen fits without scrolling on a phone held sideways")
+	App.show_title()
+	await _frames(2)
+
+
+## A page shown smaller than its pixels (itch.io's 960×540 embed, the host page shrinking it to an iPhone SE's
+## width) is magnified for what the screen shows, and a browser that doesn't tell the screen changes nothing.
+func _test_embed_scale() -> void:
+	var style: UiStyle = UiTheme.style()
+	var window := Vector2i(960 * 3, 540 * 3)
+	UiScale.pixel_ratio_override = 3.0
+	tree.root.size = window
+	UiScale.screen_size_override = Vector2.ZERO
+	App.show_title()
+	await _frames(3)
+	check(is_equal_approx(tree.root.content_scale_factor, 1.0),
+		"a 960×540 page whose screen the browser doesn't tell is left at x%.3f (its own pixels are big enough)" % tree.root.content_scale_factor)
+	UiScale.screen_size_override = Vector2(375, 667) * 3.0
+	App.show_shop()
+	await _frames(3)
+	var shown: float = UiScale.embed_scale_for(Vector2(window), UiScale.screen_size_override, style.phone_min_embed_scale)
+	var expected: float = UiScale.factor_for(Vector2(window), 3.0, UiScale.base_size(), style.phone_min_scale,
+		style.phone_max_factor, float(style.phone_min_width), shown)
+	check(expected > 1.2 and is_equal_approx(tree.root.content_scale_factor, expected),
+		"the same page on an iPhone SE's screen (shown at %.3f) is magnified x%.3f, as the maths says (x%.3f)" % [shown, tree.root.content_scale_factor, expected])
+	# On a desktop or in a run the screen means nothing.
+	UiTheme.touch_override = 0
+	App.show_title()
+	await _frames(3)
+	check(is_equal_approx(tree.root.content_scale_factor, 1.0), "a desktop is not magnified whatever its screen says")
+	UiTheme.touch_override = 1
+	UiScale.screen_size_override = Vector2.ZERO
+	App.show_title()
+	await _frames(2)
+
+
+## The page's safe-area insets (WebPage), not the display server's screen and safe area, keep a screen clear
+## of a notch in a web page: an iPhone's `screen.height` is 844 held either way, and the display server's safe
+## area is the window, so their difference read as a bottom margin of 40% of the page (task L1).
+func _test_page_safe_area() -> void:
+	check(WebPage.parse_insets("47,0,47.5,21") == Vector4(47, 0, 47.5, 21), "the page's insets 'left,top,right,bottom' parse")
+	check(WebPage.parse_insets("") == Vector4.ZERO and WebPage.parse_insets("1,2,3") == Vector4.ZERO and WebPage.parse_insets("a,b,c,d") == Vector4.ZERO,
+		"anything else is no inset")
+	check(WebPage.parse_insets("-5,0,500,12") == Vector4(0, 0, 0, 12), "a negative or absurd one counts as none")
+	UiScale.assume_web = true
+	UiTheme.touch_override = 1
+	UiScale.pixel_ratio_override = 3.0
+	tree.root.size = Vector2i(844 * 3, 340 * 3)
+	WebPage.insets_override = Vector4.ZERO
+	App.show_title()
+	await _frames(3)
+	var screen := App.screen as ScreenBase
+	check(UiTheme.safe_area_margins(screen) == Vector4.ZERO,
+		"a page with no insets leaves a screen no margins, whatever the display server's screen and safe area say")
+	var safe: Control = screen.get("_safe") as Control
+	check(safe != null and safe.get_theme_constant(&"margin_bottom") == 0 and safe.get_theme_constant(&"margin_left") == 0,
+		"the screen's own margins are none")
+	# A notch's insets (CSS pixels) are kept clear, in UI pixels at the magnified size.
+	WebPage.insets_override = Vector4(47, 0, 47, 21)
+	await _frames(1)
+	tree.root.size = Vector2i(844 * 3, 341 * 3)
+	await _frames(3)
+	tree.root.size = Vector2i(844 * 3, 340 * 3)
+	await _frames(3)
+	var view_width: float = screen.get_viewport_rect().size.x
+	var k: float = view_width / 844.0
+	var margins: Vector4 = UiTheme.safe_area_margins(screen)
+	check(margins.is_equal_approx(Vector4(47, 0, 47, 21) * k) and k > 1.0,
+		"a notch's insets (47, 0, 47, 21 CSS pixels) are %s UI pixels at x%.2f" % [margins, k])
+	check(safe.get_theme_constant(&"margin_left") == roundi(47.0 * k) and safe.get_theme_constant(&"margin_bottom") == roundi(21.0 * k),
+		"and the screen keeps clear of them")
+	# Not a touch device, or not a web page: nothing from the page.
+	UiTheme.touch_override = 0
+	check(UiTheme.safe_area_margins(screen) == Vector4.ZERO, "a desktop browser gets no margins from the page")
+	UiTheme.touch_override = 1
+	WebPage.insets_override = null
+	UiScale.assume_web = false
+	check(UiTheme.safe_area_margins(screen) == Vector4.ZERO, "and neither does anything but a web page or a native phone (a test has neither)")
+	UiScale.assume_web = true
 	App.show_title()
 	await _frames(2)
 
