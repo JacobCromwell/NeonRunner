@@ -48,8 +48,9 @@ extends RefCounted
 ##   full-height ones, Corporate 1's partial ones) is the first of its kind, within intro_seconds of the
 ##   start: at the earliest fair spot on either wall where no enemy is about (calm), where one comes in
 ##   time, else the earliest fair one (only if none comes in time, the first fair one past it); alone,
-##   with no other wall fence on either wall within same_side_gap_seconds; with a long off time
-##   (intro_off_seconds). So the player meets it gently, right after its first-encounter hint.
+##   with no other wall fence on either wall within same_side_gap_seconds, and off every floor cut's window
+##   (a Buzz Overdrive's with company too, task L2); with a long off time (intro_off_seconds). So the player
+##   meets it gently, right after its first-encounter hint.
 ## - Every feature appears (GDD §5; LevelGenerator.feature_positions): a level left without a
 ##   full-height one (or a partial one, with the partial feature) gets one at the first fair spot past
 ##   its start; a level with no fair spot at all gets a warning.
@@ -374,19 +375,25 @@ static func _partial_band(rng: RandomNumberGenerator) -> String:
 ## The introduction of a wall fence of `band` (see the header): the earliest fair spot on either wall
 ## within intro_seconds of `start` where no enemy is about (calm), else the earliest fair one there, else
 ## (late) the first fair one past it; either way the first of its kind, with the long off time, and off
-## the stretches `alone` keeps clear (another introduction's). Returns its entry, or {} if there's no fair
-## spot past `start` at all.
+## the stretches `alone` keeps clear (another introduction's) and every floor cut's window, a Buzz Overdrive's
+## with company too (task L2: keep_outs lets the others run by one; the new kind still comes alone, one new
+## mechanic at a time). Returns its entry, or {} if there's no fair spot past `start` at all.
 static func _introduce(gen: LevelGenerator, t: WallFenceTuning, rng: RandomNumberGenerator, keeps: Array,
 		band: String, start: float, alone: Array[Vector2] = []) -> Dictionary:
 	var by: float = start + t.intro_seconds * gen.speed
 	var side: int = -1 if rng.randf() < 0.5 else 1
+	var apart: Array[Vector2] = []
+	apart.append_array(alone)
+	for c: Dictionary in gen.layout.cuts:
+		var w: Vector2 = FloorCutPlan.window(c, gen.speed)
+		apart.append(Vector2(w.x - t.drop_after_seconds * gen.speed, w.y + t.drop_before_seconds * gen.speed))
 	var calm: Array[Vector2] = _calm_keep_outs(gen, t)
-	calm.append_array(alone)
+	calm.append_array(apart)
 	var entry: Dictionary = _fit(gen, t, rng, keeps, band, [side, -side], start, by, true, calm, true)
 	if entry.is_empty():
-		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, by, true, alone, true)
+		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, by, true, apart, true)
 	if entry.is_empty():
-		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, gen.layout.length, true, alone, true)
+		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, gen.layout.length, true, apart, true)
 	return entry
 
 

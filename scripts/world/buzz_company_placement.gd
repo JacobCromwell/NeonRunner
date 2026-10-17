@@ -81,6 +81,33 @@ const CALM_ROOM: float = 3.0
 const SWITCH_MARGIN: float = 1.0
 
 
+## What the pass asks of the level again and again, asked once (task L2's review: about a tenth of a long level's
+## build went on asking it per spot and lane). The rules' keep-outs (LevelGenerator.rules_doodad_keep_outs: a hover
+## truck's lane, a Bad Dream's chase, a Gilded Sentinel's turn, an Enforcer Truck's showing window, a dash wall, a
+## stash, a wall-run gap), which nothing the company adds changes, asked once a pass; the cyborg rules' obstacle spans
+## and margin (CyborgRules), which only its rows change, asked again for each encounter (_add_encounter).
+class Asked:
+	extends RefCounted
+	## The rules' keep-outs of one lane ({lane, from, to}).
+	var lane_keeps: Array[Dictionary] = []
+	## The rules' keep-outs of every lane.
+	var everywhere: Array[Vector2] = []
+	## Those of every lane the rules call calm (an Enforcer Truck's showing window).
+	var calm: Array[Vector2] = []
+	## CyborgRules.obstacle_spans of the layout as it stands, and a cyborg's obstacle margin (_add_encounter).
+	var obstacles: Array[Vector2] = []
+	var margin: float = 0.0
+
+	func _init(gen: LevelGenerator) -> void:
+		for k: Dictionary in gen.rules_doodad_keep_outs():
+			if k.has("lane"):
+				lane_keeps.append(k)
+				continue
+			everywhere.append(Vector2(float(k["from"]), float(k["to"])))
+			if bool(k.get("calm", false)):
+				calm.append(everywhere[-1])
+
+
 static func tuning() -> BuzzCompanyTuning:
 	return BuzzCompanyTuning.load_default()
 
@@ -95,6 +122,7 @@ static func place(gen: LevelGenerator, patterns: Array) -> Dictionary:
 	if not t.enabled:
 		return {}
 	var rng: RandomNumberGenerator = gen.rng_for(PARAM)
+	var asked := Asked.new(gen)
 	var made: Array[Dictionary] = []
 	var skipped: Dictionary = {}
 	var totals := {"rows": 0, "pieces": 0, "cyborgs": 0}
@@ -105,7 +133,7 @@ static func place(gen: LevelGenerator, patterns: Array) -> Dictionary:
 		if why != "":
 			skipped[why] = int(skipped.get(why, 0)) + 1
 			continue
-		var one: Dictionary = _keep_company(gen, t, rng, patterns, tanks[i], cut)
+		var one: Dictionary = _keep_company(gen, t, rng, patterns, tanks[i], cut, asked)
 		made.append(one)
 		for key: String in totals:
 			totals[key] = int(totals[key]) + int(one[key])
@@ -172,8 +200,9 @@ static func hold_of(gen: LevelGenerator, t: BuzzCompanyTuning, cut: Dictionary) 
 ## True if floor lane `lane` holds nothing over `span` (SWITCH_MARGIN wider) that a runner switching into it or
 ## running on in it meets: no hole, fence, pad, speed pad, ramp, zone doodad or other floor cut
 ## (LevelGenerator._lane_busy), no floor enemy's stretch but the tank `tank`'s own, and no lane a rule keeps (a hover
-## truck's). An escape lane must be (see the header).
-static func lane_clear(gen: LevelGenerator, lane: int, span: Vector2, tank: Dictionary = {}) -> bool:
+## truck's). An escape lane must be (see the header). `asked`: the pass's (Asked), else the level is asked.
+static func lane_clear(gen: LevelGenerator, lane: int, span: Vector2, tank: Dictionary = {},
+		asked: Asked = null) -> bool:
 	var a: float = span.x - SWITCH_MARGIN
 	var b: float = span.y + SWITCH_MARGIN
 	for s: Vector2 in gen._lane_busy(gen.layout, lane):
@@ -185,7 +214,7 @@ static func lane_clear(gen: LevelGenerator, lane: int, span: Vector2, tank: Dict
 		var fs: Vector2 = LevelGenerator.enemy_floor_span(e, gen.pace)
 		if fs.y >= fs.x and fs.x <= b and fs.y >= a:
 			return false
-	return not _lane_kept(gen, lane, Vector2(a, b))
+	return not _lane_kept(gen, lane, Vector2(a, b), asked)
 
 
 ## Every cyborg the pass gave company to the tank whose cut is `cut`, along the track.
@@ -218,9 +247,9 @@ static func is_company(e: Dictionary) -> bool:
 # --- One tank's company --------------------------------------------------------------------------------------------
 
 static func _keep_company(gen: LevelGenerator, t: BuzzCompanyTuning, rng: RandomNumberGenerator, patterns: Array,
-		tank: Dictionary, cut: Dictionary) -> Dictionary:
+		tank: Dictionary, cut: Dictionary, asked: Asked) -> Dictionary:
 	var attack: Vector2 = attack_of(gen, t, cut)
-	var escape: int = _escape_lane(gen, rng, cut, attack, tank)
+	var escape: int = _escape_lane(gen, rng, cut, attack, tank, asked)
 	cut[CUT_KEY] = escape
 	var made := {"at": float(tank["at"]), "lane": int(cut["lane"]), "escape": escape, "rows": 0, "pieces": 0,
 		"cyborgs": 0}
@@ -228,11 +257,12 @@ static func _keep_company(gen: LevelGenerator, t: BuzzCompanyTuning, rng: Random
 	for k: int in t.cyborgs_max:
 		if rng.randf() >= t.cyborg_chance:
 			continue
-		var added: int = _add_encounter(gen, t, rng, patterns, tank, cut, attack, escape, fixed)
+		var added: int = _add_encounter(gen, t, rng, patterns, tank, cut, attack, escape, fixed, asked)
 		if added == 0:
 			break
 		made["cyborgs"] = int(made["cyborgs"]) + added
-	var rows: Vector2i = _add_rows(gen, t, rng, patterns, tank, cut, attack, escape, _blocked(gen, t, patterns, cut))
+	var blocked: Array[Vector2] = _blocked(gen, t, patterns, cut, asked)
+	var rows: Vector2i = _add_rows(gen, t, rng, patterns, tank, cut, attack, escape, blocked, asked)
 	made["rows"] = rows.x
 	made["pieces"] = rows.y
 	return made
@@ -241,12 +271,12 @@ static func _keep_company(gen: LevelGenerator, t: BuzzCompanyTuning, rng: Random
 ## The tank's escape lane (see the header): one of its cut's neighbours clear over the attack (lane_clear), a seeded
 ## pick where both are; -1 where neither is.
 static func _escape_lane(gen: LevelGenerator, rng: RandomNumberGenerator, cut: Dictionary, attack: Vector2,
-		tank: Dictionary) -> int:
+		tank: Dictionary, asked: Asked) -> int:
 	var lane: int = int(cut["lane"])
 	var options: Array[int] = []
 	for side: int in [-1, 1]:
 		var l: int = lane + side
-		if l >= 0 and l < gen.layout.lane_count and lane_clear(gen, l, attack, tank):
+		if l >= 0 and l < gen.layout.lane_count and lane_clear(gen, l, attack, tank, asked):
 			options.append(l)
 	if options.is_empty():
 		return -1
@@ -262,8 +292,8 @@ static func _free(spans: Array[Vector2], a: float, b: float) -> bool:
 
 
 ## True if a rule keeps floor lane `lane` somewhere in `span` (rules_doodad_keep_outs with a lane: a hover truck's).
-static func _lane_kept(gen: LevelGenerator, lane: int, span: Vector2) -> bool:
-	for k: Dictionary in gen.rules_doodad_keep_outs():
+static func _lane_kept(gen: LevelGenerator, lane: int, span: Vector2, asked: Asked = null) -> bool:
+	for k: Dictionary in asked.lane_keeps if asked != null else gen.rules_doodad_keep_outs():
 		if k.has("lane") and int(k["lane"]) == lane and float(k["from"]) <= span.y and float(k["to"]) >= span.x:
 			return true
 	return false
@@ -289,7 +319,8 @@ static func _in_attack(attack: Vector2, span: Vector2) -> bool:
 ## lane window (no hole or fence), the lanes beside it whole enough along its stretch (GDD §9.9;
 ## LevelGenerator.whole_lanes_for_cut), room to leave its lane after its warning (LevelGenerator.cut_escape_clear) and
 ## its escape lane still clear over the attack (lane_clear).
-static func _cut_ok(gen: LevelGenerator, tank: Dictionary, cut: Dictionary, attack: Vector2, escape: int) -> bool:
+static func _cut_ok(gen: LevelGenerator, tank: Dictionary, cut: Dictionary, attack: Vector2, escape: int,
+		asked: Asked) -> bool:
 	var lane: int = int(cut["lane"])
 	var n: int = gen.layout.lane_count
 	if _lane_pieced(gen, lane, FloorCutPlan.lane_window(cut)):
@@ -300,7 +331,7 @@ static func _cut_ok(gen: LevelGenerator, tank: Dictionary, cut: Dictionary, atta
 			holed[int(g["lane"])] = true
 	if holed.size() > n - 1 - gen.whole_lanes_for_cut(n) or not gen.cut_escape_clear(cut):
 		return false
-	return escape < 0 or lane_clear(gen, escape, attack, tank)
+	return escape < 0 or lane_clear(gen, escape, attack, tank, asked)
 
 
 ## Takes `item` (that very entry) out of `list`.
@@ -316,17 +347,20 @@ static func _remove(list: Array[Dictionary], item: Dictionary) -> void:
 ## One cyborg encounter standing in the tank's stretch where one fits (see the header): a spot picked at random among
 ## those whose attack window (its approach may reach back before the stretch) keeps off `fixed`
 ## (DangerDensity.enemy_fixed_stretches, without this tank's window) with the level's spacing around it inside the
-## playable track, where company cyborgs may come (_cyborgs_from); the encounter one of the level's plain cyborg
-## patterns there, in as many of the lanes _cyborg_lanes allows as it asks (fewer where those don't fit), where
-## _encounter_fits. Returns how many cyborgs it added (0: none fits).
+## playable track, where company cyborgs may come (_cyborgs_from), and keeps off the rules' calm stretches with where
+## it stands (CALM_ROOM either side), as the danger density pass keeps an enemy it adds; the encounter one of the
+## level's plain cyborg patterns there, in as many of the lanes _cyborg_lanes allows as it asks (fewer where those
+## don't fit), where _encounter_fits. Returns how many cyborgs it added (0: none fits).
 static func _add_encounter(gen: LevelGenerator, t: BuzzCompanyTuning, rng: RandomNumberGenerator, patterns: Array,
-		tank: Dictionary, cut: Dictionary, attack: Vector2, escape: int, fixed: Array[Vector2]) -> int:
+		tank: Dictionary, cut: Dictionary, attack: Vector2, escape: int, fixed: Array[Vector2], asked: Asked) -> int:
 	var v: float = gen.speed
 	var dt: Resource = DangerDensity.tuning()
 	var ct := EnemyDirector.tuning_for(CYBORG) as CyborgTuning
 	if ct == null:
 		ct = CyborgTuning.new()
 	var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace)
+	asked.margin = margin
+	asked.obstacles = CyborgRules.obstacle_spans(gen.layout, gen.tuning, gen.zones)
 	var reach := Vector2(ct.floor_reach_before * gen.pace, ct.floor_reach_after * gen.pace)
 	# Its attack window (DangerDensity.attack_window: its keep-out, CyborgRules.keep_out, and the floor it uses).
 	var before: float = maxf(maxf(LevelGenerator.FILL_ENEMY_LEAD_SECONDS * v, margin), reach.x)
@@ -340,7 +374,8 @@ static func _add_encounter(gen: LevelGenerator, t: BuzzCompanyTuning, rng: Rando
 	while x <= stretch.y:
 		var k := Vector2(x - before, x + after)
 		if x > first + 0.01 and k.x - DangerDensity.clearance(gen, k.x, dt) >= lo \
-				and k.y + DangerDensity.clearance(gen, k.y, dt) <= hi and _free(fixed, k.x, k.y):
+				and k.y + DangerDensity.clearance(gen, k.y, dt) <= hi and _free(fixed, k.x, k.y) \
+				and _free(asked.calm, minf(x - CALM_ROOM, k.x), maxf(x + CALM_ROOM, k.y)):
 			spots.append(x)
 		x += SPOT_STEP_SECONDS * v
 	for i: int in range(spots.size() - 1, 0, -1):
@@ -356,11 +391,11 @@ static func _add_encounter(gen: LevelGenerator, t: BuzzCompanyTuning, rng: Rando
 		var k := Vector2(spot - before, spot + after)
 		var window := Vector2(k.x - DangerDensity.clearance(gen, k.x, dt), k.y + DangerDensity.clearance(gen, k.y, dt))
 		var floor_span := Vector2(spot - reach.x, spot + reach.y)
-		var lanes: Array[int] = _cyborg_lanes(gen, t, cut, attack, escape, spot, floor_span, window)
+		var lanes: Array[int] = _cyborg_lanes(gen, t, cut, attack, escape, spot, floor_span, window, asked)
 		_shuffle(lanes, rng)
 		for size: int in range(mini(count, lanes.size()), 0, -1):
 			var pick: Array[int] = lanes.slice(0, size)
-			if not _encounter_fits(gen, dt, tank, cut, window, pick):
+			if not _encounter_fits(gen, dt, tank, cut, window, pick, asked):
 				continue
 			var added: Array[Dictionary] = []
 			for l: int in pick:
@@ -370,7 +405,7 @@ static func _add_encounter(gen: LevelGenerator, t: BuzzCompanyTuning, rng: Rando
 					"params": {"panic": false, "host": false, "hold_fire": hold, PARAM: float(cut["end"])}}
 				gen.layout.enemies.append(entry)
 				added.append(entry)
-			if _cut_ok(gen, tank, cut, attack, escape):
+			if _cut_ok(gen, tank, cut, attack, escape, asked):
 				gen._trim_clear_stretches(k)
 				return added.size()
 			for entry: Dictionary in added:
@@ -416,7 +451,7 @@ static func _encounter_count(gen: LevelGenerator, rng: RandomNumberGenerator, pa
 ## (with cyborgs_in_attack and an escape lane); free of holes, fences and what a rule keeps over `window` (the danger
 ## density pass's own lane rule), and where _cyborg_fits.
 static func _cyborg_lanes(gen: LevelGenerator, t: BuzzCompanyTuning, cut: Dictionary, attack: Vector2, escape: int,
-		at: float, floor_span: Vector2, window: Vector2) -> Array[int]:
+		at: float, floor_span: Vector2, window: Vector2, asked: Asked) -> Array[int]:
 	var out: Array[int] = []
 	var in_attack: bool = _in_attack(attack, floor_span)
 	if in_attack and (not t.cyborgs_in_attack or escape < 0):
@@ -426,7 +461,7 @@ static func _cyborg_lanes(gen: LevelGenerator, t: BuzzCompanyTuning, cut: Dictio
 			continue
 		if in_attack and (l == escape or absi(l - escape) != 1):
 			continue
-		if _lane_kept(gen, l, window) or _lane_pieced(gen, l, window) or not _cyborg_fits(gen, at, l):
+		if _lane_kept(gen, l, window, asked) or _lane_pieced(gen, l, window) or not _cyborg_fits(gen, at, l, asked):
 			continue
 		out.append(l)
 	return out
@@ -438,7 +473,7 @@ static func _cyborg_lanes(gen: LevelGenerator, t: BuzzCompanyTuning, cut: Dictio
 ## tank's own aside: this is its company), and min_free_lanes lanes stay free beside it of floor enemies (the tank's
 ## lane counts as taken), holes, fences and kept lanes.
 static func _encounter_fits(gen: LevelGenerator, dt: Resource, tank: Dictionary, cut: Dictionary, window: Vector2,
-		pick: Array[int]) -> bool:
+		pick: Array[int], asked: Asked) -> bool:
 	var tolerated: PackedStringArray = dt.get("twin_tolerated_types")
 	var overlap_max: int = maxi(int(dt.get("overlap_max")), 0)
 	var n: int = gen.layout.lane_count
@@ -465,25 +500,17 @@ static func _encounter_fits(gen: LevelGenerator, dt: Resource, tank: Dictionary,
 				elif int(e.get("side", 0)) != 0:
 					taken[gen.layout.outer_lane(int(e["side"]))] = true
 	for l: int in n:
-		if _lane_kept(gen, l, window) or _lane_pieced(gen, l, window):
+		if _lane_kept(gen, l, window, asked) or _lane_pieced(gen, l, window):
 			taken[l] = true
 	return n - taken.size() >= min_free
 
 
 ## True if a cyborg at `at` in floor lane `lane` keeps the cyborg rules' margin (CyborgRules: no hole, fence, ramp, pad,
-## speed pad or landing zone near, in any lane), stands on floor, off every ceiling's safe floor (CeilingZones
-## .enemy_clear) and off the rules' calm stretches (CALM_ROOM either side), as a cyborg in a charge's path does
-## (ChargePathPlacement).
-static func _cyborg_fits(gen: LevelGenerator, at: float, lane: int) -> bool:
-	var ct := EnemyDirector.tuning_for(CYBORG) as CyborgTuning
-	var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
-	var spans: Array[Vector2] = CyborgRules.obstacle_spans(gen.layout, gen.tuning, gen.zones)
-	if CyborgRules.near_any(spans, at, margin) or gen.layout.gapped_between(lane, at - 1.0, at + 1.0):
+## speed pad or landing zone near, in any lane), stands on floor and off every ceiling's safe floor (CeilingZones
+## .enemy_clear), as a cyborg in a charge's path does (ChargePathPlacement).
+static func _cyborg_fits(gen: LevelGenerator, at: float, lane: int, asked: Asked) -> bool:
+	if CyborgRules.near_any(asked.obstacles, at, asked.margin) or gen.layout.gapped_between(lane, at - 1.0, at + 1.0):
 		return false
-	for k: Dictionary in gen.rules_doodad_keep_outs():
-		if bool(k.get("calm", false)) and not k.has("lane") and at + CALM_ROOM >= float(k["from"]) \
-				and at - CALM_ROOM <= float(k["to"]):
-			return false
 	var probe := {"type": CYBORG, "at": at, "lane": lane, "side": 0, "params": {}}
 	return gen.zones.enemy_clear(gen.layout, probe)
 
@@ -522,13 +549,12 @@ static func _company_count(layout: LevelLayout) -> int:
 ## cause's (LevelGenerator.fill_keep_outs: every piece, every other enemy's keep-out, the company cyborgs' too, ramps,
 ## pads, ceilings and their landing zones), its margins times spacing_scale, and what the rules keep in every lane (a
 ## Bad Dream's chase, a Gilded Sentinel's turn, an Enforcer Truck's showing window), as it stands.
-static func _blocked(gen: LevelGenerator, t: BuzzCompanyTuning, patterns: Array, cut: Dictionary) -> Array[Vector2]:
+static func _blocked(gen: LevelGenerator, t: BuzzCompanyTuning, patterns: Array, cut: Dictionary,
+		asked: Asked) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for k: Vector4 in gen.fill_keep_outs(patterns, true, cut)["keep"]:
 		out.append(Vector2(k.x - k.z * t.spacing_scale, k.y + k.w * t.spacing_scale))
-	for k: Dictionary in gen.rules_doodad_keep_outs():
-		if not k.has("lane"):
-			out.append(Vector2(float(k["from"]), float(k["to"])))
+	out.append_array(asked.everywhere)
 	return out
 
 
@@ -543,7 +569,7 @@ static func _margin(gen: LevelGenerator, t: BuzzCompanyTuning, at: float) -> flo
 ## lanes _row_lanes allows with a lane left free beside it (a spot where none fits moves on SPOT_STEP_SECONDS).
 ## Returns (rows, pieces).
 static func _add_rows(gen: LevelGenerator, t: BuzzCompanyTuning, rng: RandomNumberGenerator, patterns: Array,
-		tank: Dictionary, cut: Dictionary, attack: Vector2, escape: int, blocked: Array[Vector2]) -> Vector2i:
+		tank: Dictionary, cut: Dictionary, attack: Vector2, escape: int, blocked: Array[Vector2], asked: Asked) -> Vector2i:
 	var stretch: Vector2 = stretch_of(gen, t, cut)
 	var last: float = minf(stretch.y, gen.layout.length - gen.config.end_clear_distance)
 	var rows: int = 0
@@ -555,10 +581,10 @@ static func _add_rows(gen: LevelGenerator, t: BuzzCompanyTuning, rng: RandomNumb
 			var row: Dictionary = _pick_row(gen, rng, patterns, cursor, region.y)
 			if row.is_empty():
 				break
-			var lanes: Array[int] = _row_lanes(gen, rng, cut, attack, escape, row)
+			var lanes: Array[int] = _row_lanes(gen, rng, cut, attack, escape, row, asked)
 			var span: Vector2 = row["span"]
-			if lanes.is_empty() or not _lane_left(gen, cut, attack, span, lanes) \
-					or not _try_row(gen, rng, tank, cut, attack, escape, row, lanes):
+			if lanes.is_empty() or not _lane_left(gen, cut, attack, span, lanes, asked) \
+					or not _try_row(gen, rng, tank, cut, attack, escape, row, lanes, asked):
 				cursor += step
 				continue
 			rows += 1
@@ -569,11 +595,12 @@ static func _add_rows(gen: LevelGenerator, t: BuzzCompanyTuning, rng: RandomNumb
 
 ## True if, beside a row taking `taken` over `span`, a lane stays free for the runner: not the cut's lane in the
 ## attack, none `taken`, none a rule keeps there. (The escape lane always is in the attack, the cut's lane before.)
-static func _lane_left(gen: LevelGenerator, cut: Dictionary, attack: Vector2, span: Vector2, taken: Array[int]) -> bool:
+static func _lane_left(gen: LevelGenerator, cut: Dictionary, attack: Vector2, span: Vector2, taken: Array[int],
+		asked: Asked) -> bool:
 	for l: int in gen.layout.lane_count:
 		if taken.has(l) or (l == int(cut["lane"]) and _in_attack(attack, span)):
 			continue
-		if not _lane_kept(gen, l, span):
+		if not _lane_kept(gen, l, span, asked):
 			return true
 	return false
 
@@ -626,7 +653,7 @@ static func _pick_row(gen: LevelGenerator, rng: RandomNumberGenerator, patterns:
 ## up to the limit), never the cut's neighbours; never a lane a rule keeps there; a fence only on floor. As many as the
 ## filler asks (its count, all but its count, or all) of those, picked at random; [] where none.
 static func _row_lanes(gen: LevelGenerator, rng: RandomNumberGenerator, cut: Dictionary, attack: Vector2, escape: int,
-		row: Dictionary) -> Array[int]:
+		row: Dictionary, asked: Asked = null) -> Array[int]:
 	var n: int = gen.layout.lane_count
 	var lane: int = int(cut["lane"])
 	var span: Vector2 = row["span"]
@@ -636,7 +663,7 @@ static func _row_lanes(gen: LevelGenerator, rng: RandomNumberGenerator, cut: Dic
 		return out
 	var allowed: Array[int] = []
 	for l: int in n:
-		if l == lane or (in_attack and l == escape) or _lane_kept(gen, l, span):
+		if l == lane or (in_attack and l == escape) or _lane_kept(gen, l, span, asked):
 			continue
 		if row["kind"] == "fence" and gen.layout.gapped_between(l, span.x, span.y):
 			continue
@@ -671,7 +698,7 @@ static func _row_lanes(gen: LevelGenerator, rng: RandomNumberGenerator, cut: Dic
 ## Adds `row` in `lanes` and keeps it if the cut keeps what company could take from it (_cut_ok); else takes it out
 ## again. True if kept.
 static func _try_row(gen: LevelGenerator, rng: RandomNumberGenerator, tank: Dictionary, cut: Dictionary,
-		attack: Vector2, escape: int, row: Dictionary, lanes: Array[int]) -> bool:
+		attack: Vector2, escape: int, row: Dictionary, lanes: Array[int], asked: Asked) -> bool:
 	var span: Vector2 = row["span"]
 	var element: Dictionary = row["element"]
 	var added: Array[Dictionary] = []
@@ -686,7 +713,7 @@ static func _try_row(gen: LevelGenerator, rng: RandomNumberGenerator, tank: Dict
 				"phase": rng.randf(), PARAM: float(cut["end"])}
 			gen.layout.fences.append(piece)
 		added.append(piece)
-	if _cut_ok(gen, tank, cut, attack, escape):
+	if _cut_ok(gen, tank, cut, attack, escape, asked):
 		for piece: Dictionary in added:
 			gen.uncredited[piece] = true
 		gen._trim_clear_stretches(span)

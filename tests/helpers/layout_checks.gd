@@ -31,6 +31,7 @@ const BuzzOverdriveRulesScript = preload("res://scripts/enemies/buzz_overdrive_r
 const DashWallRulesScript = preload("res://scripts/enemies/dash_wall_rules.gd")
 const TreasureStashRules = preload("res://scripts/enemies/treasure_stash_rules.gd")
 const FencedCeilingRules = preload("res://scripts/enemies/fenced_ceiling_rules.gd")
+const DangerDensityScript = preload("res://scripts/world/danger_density.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
 
@@ -276,7 +277,9 @@ static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: Leve
 ##   stay, Octodog run, Resonator pulse (from its warning until its wave has passed the player), Bad
 ##   Dream chase or Gilded Sentinel's attack (from its eyes' flare to its last swing) reaches its drop
 ##   window; and never on a Gilded Sentinel's wall section (task C4);
-## - spaced from the other wall fences: same_side_gap_seconds on its wall, gap_seconds on either.
+## - spaced from the other wall fences: same_side_gap_seconds on its wall, gap_seconds on either;
+## - an introduction (the first of a kind whose feature has a start in the level) off every floor cut's window, a
+##   Buzz Overdrive's with company too.
 static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.wall_fences.is_empty():
 		return
@@ -428,6 +431,24 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 			if int(o["side"]) == side:
 				suite.check(apart >= t.same_side_gap_seconds * speed - 0.02,
 					"wall fences on one wall stand %.1f s apart at least (%.1f m) %s" % [t.same_side_gap_seconds, apart, x])
+	# An introduction (the first of a kind whose feature has a start in the level, LevelConfig.feature_starts) comes
+	# alone: off every floor cut's window, a Buzz Overdrive's with company too (task L2's review; one new mechanic at a
+	# time), though the others may run by one with company.
+	for partial: bool in [false, true]:
+		if not config.feature_starts.has("wall_fences_partial" if partial else "wall_fences"):
+			continue
+		var first: Dictionary = {}
+		for w: Dictionary in layout.wall_fences:
+			if WallFencePlan.is_partial(w) == partial and (first.is_empty() or float(w["at"]) < float(first["at"])):
+				first = w
+		if first.is_empty():
+			continue
+		var at: float = float(first["at"])
+		for c: Dictionary in layout.cuts:
+			var cw: Vector2 = FloorCutPlan.window(c, speed)
+			suite.check(cw.x > at + after or cw.y < at - before,
+				"the introduction of %s wall fences (at %.1f) keeps off every floor cut's window (%.1f-%.1f) %s" % [
+					"partial" if partial else "full-height", at, cw.x, cw.y, tag])
 
 
 ## Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's: "it never cuts a lane holding a ramp, a pad or
@@ -571,6 +592,17 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 ##   another lane than the cut's, standing in its stretch, holding its fire over hold_of at least, with the cyborg
 ##   rules' margin from every piece (CyborgRules); one whose floor reaches the attack only beside the escape lane, never
 ##   in it;
+## - each of its cyborg encounters (its cyborgs at one spot) by the danger density pass's rules for an enemy it adds,
+##   as the layout stood when it came (later tanks' company aside; with more than one encounter a tank, the tank's
+##   other ones aside too): past the level's introduction of cyborgs (the feature's start and, in a level that
+##   introduces them, its first plain cyborg), where it stands (BuzzCompanyPlacement.CALM_ROOM either side) and its
+##   attack window (DangerDensity.attack_window) off every calm stretch the rules keep (an Enforcer Truck's showing
+##   window), and over that window with the level's clearance either side at most overlap_max other attack windows,
+##   all of twin_tolerated_types and none a host's, and min_free_lanes lanes free of them (the floor enemies'), of the
+##   cut's lane and its own, of holes, fences and lanes a rule keeps;
+## - a floor route (FloorRoute) through its stretch to past its window from every lane: from the clear stretch before
+##   its stretch, and from every lane but the cut's where a player can stand a reaction after its warning (check_cuts
+##   holds the cut's own lane to one);
 ## - every company cyborg, hole and fence in the layout belongs to a cut with company.
 ## The cut's own rules (check_cuts: its lane, its whole lanes, a floor route out of its lane from its warning) hold
 ## with its company as without.
@@ -602,6 +634,25 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning, zones)
 	var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
 	var margin: float = CyborgRules.obstacle_margin_at(ct, pace)
+	var dt: Resource = DangerDensityScript.tuning()
+	var tolerated: PackedStringArray = dt.get("twin_tolerated_types")
+	var overlap_max: int = maxi(int(dt.get("overlap_max")), 0)
+	var min_free: int = clampi(int(dt.get("min_free_lanes")), 1, maxi(n - 1, 1))
+	var rules_keeps: Array[Dictionary] = gen.rules_doodad_keep_outs()
+	var grid := FloorRoute.new(layout, tuning)
+	# Where company cyborgs may stand from: past the cyborgs' start and, in a level that introduces them, its first plain
+	# one (not a host, nor planted in a charge's path, nor company).
+	var cyborgs_from: float = INF
+	if config.has_feature("cyborg"):
+		cyborgs_from = gen.feature_start("cyborg")
+		if int(config.feature_ages.get("cyborg", -1)) == 0 or config.feature_starts.has("cyborg"):
+			var first_plain: float = INF
+			for o: Dictionary in layout.enemies:
+				var op: Dictionary = o.get("params", {})
+				if String(o.get("type", "")) == "cyborg" and not bool(op.get("host", false)) \
+						and not op.has(ChargePathPlacement.PARAM) and not op.has(BuzzCompanyPlacement.PARAM):
+					first_plain = minf(first_plain, float(o["at"]))
+			cyborgs_from = maxf(cyborgs_from, first_plain)
 	var first_lead: float = INF
 	for c: Dictionary in layout.cuts:
 		first_lead = minf(first_lead, FloorCutPlan.lead_at(c))
@@ -683,6 +734,73 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 			if in_attack.call(LevelGenerator.enemy_floor_span(e, pace)):
 				suite.check(t.cyborgs_in_attack and escape >= 0 and e_lane != escape and absi(e_lane - escape) == 1,
 					"one the runner meets in its attack stands beside the escape lane, never in it " + where)
+		# Its cyborg encounters, by the danger density pass's rules for an enemy it adds (task L2's review).
+		var groups: Dictionary = {}
+		for e: Dictionary in BuzzCompanyPlacement.cyborgs_of(layout, c):
+			var key: String = "%.2f" % float(e["at"])
+			if not groups.has(key):
+				groups[key] = []
+			(groups[key] as Array).append(e)
+		for group: Array in groups.values():
+			var e0: Dictionary = group[0]
+			var at: float = float(e0["at"])
+			var where: String = "(company cyborgs at %.1f) %s" % [at, w]
+			suite.check(at > cyborgs_from, "never before the level's introduction of cyborgs (%.1f) %s" % [cyborgs_from, where])
+			var k: Vector2 = DangerDensityScript.attack_window(gen, e0)
+			var calm_from: float = minf(at - BuzzCompanyPlacement.CALM_ROOM, k.x)
+			var calm_to: float = maxf(at + BuzzCompanyPlacement.CALM_ROOM, k.y)
+			for keep: Dictionary in rules_keeps:
+				if bool(keep.get("calm", false)) and not keep.has("lane"):
+					suite.check(float(keep["to"]) < calm_from or float(keep["from"]) > calm_to,
+						"where it stands and its attack off every calm stretch (%.1f-%.1f) %s" % [keep["from"], keep["to"], where])
+			var window := Vector2(k.x - DangerDensityScript.clearance(gen, k.x, dt),
+				k.y + DangerDensityScript.clearance(gen, k.y, dt))
+			var taken: Dictionary = {lane: true}
+			for o: Dictionary in group:
+				taken[int(o["lane"])] = true
+			var overlaps: int = 0
+			var hooks: Dictionary = {}
+			for o: Dictionary in layout.enemies:
+				var op: Dictionary = o.get("params", {})
+				# The tank, this tank's company, and later tanks' (which came after it).
+				if is_same(o, tank) or (op.has(BuzzCompanyPlacement.PARAM) and float(op[BuzzCompanyPlacement.PARAM]) > end - 0.01):
+					continue
+				for ow: Vector2 in DangerDensityScript.attack_windows(gen, o, hooks, dt):
+					if ow.y < ow.x or ow.x > window.y or ow.y < window.x:
+						continue
+					overlaps += 1
+					suite.check(tolerated.has(String(o.get("type", ""))) and not bool(op.get("host", false)),
+						"only the small attacks the pass tolerates near it, never a host's (%s at %.1f) %s" % [o["type"], float(o["at"]), where])
+					if LevelGenerator.enemy_uses_floor(o):
+						var o_lane: int = int(o.get("lane", -1))
+						if o_lane >= 0 and o_lane < n:
+							taken[o_lane] = true
+						elif int(o.get("side", 0)) != 0:
+							taken[layout.outer_lane(int(o["side"]))] = true
+			suite.check(overlaps <= overlap_max, "at most %d other attacks near it (%d) %s" % [overlap_max, overlaps, where])
+			for l: int in n:
+				if layout.gapped_between(l, window.x, window.y):
+					taken[l] = true
+				for f: Dictionary in layout.fences:
+					if int(f["lane"]) == l and float(f["at"]) - half <= window.y and float(f["at"]) + half >= window.x:
+						taken[l] = true
+				for keep: Dictionary in rules_keeps:
+					if keep.has("lane") and int(keep["lane"]) == l and float(keep["from"]) <= window.y and float(keep["to"]) >= window.x:
+						taken[l] = true
+			suite.check(n - taken.size() >= min_free, "%d lane(s) free beside it (taken: %s) %s" % [min_free, taken.keys(), where])
+		# A floor route through its company from every lane: from the clear stretch before its stretch (every lane), and a
+		# reaction after its warning from every lane but its own where a player can stand (check_cuts: its own lane).
+		var route_to: float = FloorCutPlan.window(c, v).y + 2.0
+		var starts: Array[float] = [grid.clear_start(stretch.x), FloorCutPlan.warn_at(c) + config.cut_reaction_seconds * v]
+		for s: int in starts.size():
+			var start: float = starts[s]
+			var i0: int = maxi(int(ceil(start / FloorRoute.STEP)), 0)
+			for l: int in n:
+				if (s == 1 and l == lane) or not grid._free(0, l, i0, i0):
+					continue
+				var route: Dictionary = grid.find(start, route_to, l)
+				suite.check(bool(route["ok"]), "a floor route through its company from lane %d at %.1f (%s) %s" % [
+					l, start, route["reason"], w])
 
 
 ## Zone doodads (GDD §3, owner's playtest September 30, 2026): scenery standing in lanes that never

@@ -254,7 +254,9 @@ Enforcer Truck, and at 3, 5 and 6 lanes the lanes a row may take in the attack);
 least three tanks in four with company and rows, cyborgs and wall fences among it, the level's own seed built with the
 switch off the same level but for the company and what keeps off it, and the measure tool's threat rate in their
 visits at least 1.5 times the rate without it; it prints the counts); quick play with every built feature and the
-switch on (company of every kind); and on real physics at each lane count, the company tank with the most cyborgs: a
+switch on (company of every kind); the review's case of a new kind meeting company (Corporate 1 at 5 lanes on seed
+7019: its partial wall fences' introduction off every floor cut's window, a company tank's too); and on real physics
+at each lane count, the company tank with the most cyborgs: a
 runner in its lane who leaves into its escape lane at the warning untouched, its cut run, and no burst charged nor
 bolt landed by its cyborgs while the runner is in their hold.
 `test_enforcer_truck` checks the Enforcer Truck (C6; GDD §9.13) off the road: its numbers (the owner's 0.8 s,

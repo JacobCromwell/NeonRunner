@@ -11,6 +11,8 @@ extends TestSuite
 ##   each level's own seed everything the passes before it place is the same with it as without it;
 ## - quick play with every feature (the fill pass, doodads, the danger density pass and wall fences too) at 3, 5 and 6
 ##   lanes with company: the same checks, and every kind of company comes;
+## - the review's case of a new kind meeting company: Corporate 1's partial wall fences introduced off every floor
+##   cut's window, a company tank's too (5 lanes, seed 7019);
 ## - its rules on a plain track: the escape lane and what keeps one, the tanks that get none, the lanes a row may take
 ##   (never the cut's, never the escape lane in the attack, holes only where GDD §9.9's whole lanes allow);
 ## - on real physics: a runner in a company tank's lane who leaves into its escape lane a reaction after its warning
@@ -42,6 +44,7 @@ func run() -> void:
 	_test_rules()
 	_test_campaign()
 	_test_quick_play()
+	_test_introductions()
 	await _test_physics()
 
 
@@ -304,6 +307,32 @@ func _test_quick_play() -> void:
 	check(company > 0 and pieces > 0 and cyborgs > 0 and fenced > 0,
 		"quick play's Buzz Overdrives get company of every kind among every other feature (%d tanks: %d pieces, %d cyborgs, %d by a wall fence)"
 		% [company, pieces, cyborgs, fenced])
+
+
+## Task L2's review: a new kind still comes alone. Corporate 1's partial wall fences are introduced off every floor
+## cut's window, a company tank's too, though the other wall fences may run by one (WallFencePlacement._introduce; at
+## 5 lanes on seed 7019 the introduction landed at 2161 m, inside a company tank's attack, 2143-2278 m): the build's
+## layout checks (check_wall_fences holds every introduction to it), with company and the introduction in it.
+func _test_introductions() -> void:
+	var config: LevelConfig = campaign.configure(campaign.step("corporate/1"), 5)
+	config.level_seed = 7019
+	var gen := LevelGenerator.new()
+	var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+	var tag: String = "(corporate/1, 5 lanes, seed 7019)"
+	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+	LayoutChecks.check_layout(self, layout, config, tag)
+	var first: Dictionary = {}
+	for w: Dictionary in layout.wall_fences:
+		if WallFencePlan.is_partial(w) and (first.is_empty() or float(w["at"]) < float(first["at"])):
+			first = w
+	var company: Array[Vector2] = []
+	for c: Dictionary in layout.cuts:
+		if c.has(BuzzCompanyPlacement.CUT_KEY):
+			company.append(FloorCutPlan.window(c, gen.speed))
+	check(not first.is_empty() and not company.is_empty(),
+		"the case keeps its partial wall fences' introduction and a tank with company %s" % tag)
+	if not first.is_empty():
+		print("  partial wall fences' introduction at %.0f m; company tanks' windows %s" % [float(first["at"]), company])
 
 
 # --- Real physics --------------------------------------------------------------------------------------------------
