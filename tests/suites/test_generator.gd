@@ -9,7 +9,8 @@ extends TestSuite
 ## curve for pick weights (FeatureRecency); quiet stretches and bursts (LevelConfig.quiet_seconds);
 ## floors that turn into gaps during play (task B4; GDD §9.9): cuts planned only where its limits allow
 ## (sweeps at 3, 5 and 6 lanes, under narrow ceilings and with every built feature, each limit by hand,
-## the clearing, and nothing changed without cuts); wall-run gaps in quick play's level with the feature (task J2).
+## the clearing, and nothing changed without cuts); wall-run gaps in quick play's level with the feature (task J2);
+## the Buzz Overdrive's company over seeds, difficulties and lane counts (task L2).
 
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
@@ -60,6 +61,7 @@ func run() -> void:
 	_test_floor_cuts(base)
 	_test_cut_limits(base)
 	_test_cut_placement(base)
+	_test_buzz_company(base)
 	_test_wall_run_gaps(base)
 	await _test_floor_routes_on_physics(base)
 
@@ -1428,6 +1430,53 @@ func _test_floor_cuts(base: LevelConfig) -> void:
 		check(none.cuts.is_empty() and JSON.stringify(none.to_dict()) == JSON.stringify(without.to_dict()),
 			"a level whose rules plan no cut is the same data as one without them (%d lanes)" % lanes)
 	t.first_seconds = first
+
+
+## The Buzz Overdrive's company (task L2; docs/ARCHITECTURE.md, The generator, Company for the Buzz Overdrive) keeps
+## every fairness rule at 3, 5 and 6 lanes over seeds and difficulties: quick play's level with the tank, cyborgs,
+## wall fences, the fill pass and zone doodads (danger density on in every other build) and LevelConfig.buzz_company
+## on, deterministic, every layout held to check_layout (check_buzz_company, check_cuts, check_wall_fences among it) and
+## check_rules; the company comes with cyborgs and rows somewhere in the sweep.
+func _test_buzz_company(base: LevelConfig) -> void:
+	var levels: int = 0
+	var tanks: int = 0
+	var company: int = 0
+	var cyborgs: int = 0
+	var pieces: int = 0
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.0, 0.5, 1.0]:
+			for level_seed: int in range(1, 5):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.enemy_scaling = difficulty
+				config.level_seed = level_seed
+				config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "cyborg", "buzz_overdrive",
+					"wall_fences"])
+				config.fill_empty_seconds = 2.0
+				config.doodad_share = 0.5
+				config.danger_density_increase = 0.3 if level_seed % 2 == 0 else 0.0
+				config.buzz_company = true
+				var patterns: Array = LevelGenerator.load_for(config)
+				var tag: String = "(Buzz Overdrive company) lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				LayoutChecks.check_layout(self, a, config, tag)
+				LayoutChecks.check_rules(self, a, config, tag)
+				levels += 1
+				for c: Dictionary in a.cuts:
+					tanks += 1
+					if c.has(BuzzCompanyPlacement.CUT_KEY):
+						company += 1
+						cyborgs += BuzzCompanyPlacement.cyborgs_of(a, c).size()
+						pieces += BuzzCompanyPlacement.pieces_of(a, c).size()
+	print("  Buzz Overdrive company: %d of %d tanks in %d levels, %d cyborgs, %d holes and fences" % [company, tanks,
+		levels, cyborgs, pieces])
+	check(company > 0 and cyborgs > 0 and pieces > 0,
+		"the Buzz Overdrives get company over the sweep, cyborgs and rows among it (%d of %d tanks)" % [company, tanks])
 
 
 ## A plain track for checking one floor cut's limits by hand: `lanes` lanes, a generator over it

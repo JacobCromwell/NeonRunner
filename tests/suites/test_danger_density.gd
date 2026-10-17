@@ -253,20 +253,28 @@ func _check_fair(config: LevelConfig, gen: LevelGenerator, off: LevelLayout, tag
 	var result: Dictionary = gen.danger_density_result
 	check(not result.is_empty(), "the pass ran " + tag)
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
-	# A cyborg planted in a charge's path (task G7, ChargePathPlacement) comes after the pass's count, with or
-	# without it. Task J2: a build whose wider gaps its first wall-run gap crowded out is built once more with that one
-	# elsewhere (LevelGenerator._make_wide_gap_room), whose own last resort may take an encounter out, so the level the
-	# pass counts and the one built without it may differ by what their wall-run gaps took out (enemies_taken_out).
+	# A cyborg planted in a charge's path (task G7, ChargePathPlacement) and a Buzz Overdrive's company cyborgs (task
+	# L2, BuzzCompanyPlacement) come after the pass's count, with or without it. Task J2: a build whose wider gaps its
+	# first wall-run gap crowded out is built once more with that one elsewhere (LevelGenerator._make_wide_gap_room),
+	# whose own last resort may take an encounter out, so the level the pass counts and the one built without it may
+	# differ by what their wall-run gaps took out (enemies_taken_out).
 	var taken: int = int(gen.wall_run_gap_result.get("enemies_taken_out", 0))
 	var off_taken: int = int(off_gen.wall_run_gap_result.get("enemies_taken_out", 0))
+	var off_company: int = off.enemies.filter(func(e: Dictionary) -> bool: return BuzzCompanyPlacement.is_company(e)).size()
 	check(int(result.get("baseline_enemies", -1)) + taken
-		== off.enemies.size() - ChargePathPlacement.planted_in(off).size() + off_taken,
+		== off.enemies.size() - ChargePathPlacement.planted_in(off).size() - off_company + off_taken,
 		"the pass counts the enemies the level holds without it %s" % tag)
 	var pieces: int = 0
 	for key: String in ["widened", "new_row_pieces", "full_rows", "staggered_pieces", "routed", "routed_row_pieces"]:
 		pieces += int(result.get(key, 0))
-	check(gen.uncredited.size() == pieces, "no risky credit for any of the %d pieces the pass added (%d marked) %s" % [
-		pieces, gen.uncredited.size(), tag])
+	# Task L2: a Buzz Overdrive's company (after the pass) gets no risky credit either; its pieces carry its key.
+	var company: int = gen.uncredited.keys().filter(func(p: Dictionary) -> bool: return p.has(BuzzCompanyPlacement.PARAM)).size()
+	check(gen.uncredited.size() - company == pieces, "no risky credit for any of the %d pieces the pass added (%d marked, %d of them a Buzz Overdrive's company) %s" % [
+		pieces, gen.uncredited.size(), company, tag])
+	for list: Array[Dictionary] in [layout.gaps, layout.fences]:
+		for p: Dictionary in list:
+			if p.has(BuzzCompanyPlacement.PARAM) and not gen.uncredited.has(p):
+				check(false, "no risky credit for a Buzz Overdrive's company either %s (%s)" % [tag, p])
 	LayoutChecks.check_layout(self, layout, config, tag)
 	LayoutChecks.check_rules(self, layout, config, tag)
 	var movement: MovementTuning = config.movement_for(tuning)

@@ -129,7 +129,8 @@ const NO_KEEP_TYPES: PackedStringArray = ["drone", "enforcer_truck"]
 ## (truck_entrance): its first moments of pacing.
 const TRUCK_SETTLE_SECONDS: float = 1.0
 ## Enemy types the introduction may take out to make room for itself (_make_room): ones that leave nothing
-## behind but a Buzz Overdrive's own floor cut, which goes with it (never a host: its chase is planned on it).
+## behind but a Buzz Overdrive's own floor cut, which goes with it (never a host: its chase is planned on it; nor a
+## Buzz Overdrive with company, task L2, whose company would be left behind).
 const MAKE_ROOM_TYPES: PackedStringArray = ["buzz_overdrive", "generator", "cyborg", "window_cyborg", "screech"]
 
 
@@ -575,10 +576,12 @@ static func _make_room(gen: LevelGenerator, plan: Plan, a: float, b: float, dood
 	for e: Dictionary in lay.enemies:
 		var type: String = String(e.get("type", ""))
 		# Never a host (its chase is planned on it), a cyborg planted in a charge's path or its charger (task G7: the
-		# encounter goes whole or not at all, and it keeps its own count), nor a Buzz Overdrive an Enforcer Truck
-		# counts among its baits (GDD §9.13: each truck has one, EnforcerTruckRules).
+		# encounter goes whole or not at all, and it keeps its own count), a Buzz Overdrive an Enforcer Truck counts
+		# among its baits (GDD §9.13: each truck has one, EnforcerTruckRules), nor one with company (task L2,
+		# BuzzCompanyPlacement: its company stands for it).
 		var mine: bool = MAKE_ROOM_TYPES.has(type) and not bool((e.get("params", {}) as Dictionary).get("host", false)) \
-			and not planted.has(e) and not chargers.has(e) and not _is_enforcer_bait(gen, e, enforcer_baits)
+			and not planted.has(e) and not chargers.has(e) and not _is_enforcer_bait(gen, e, enforcer_baits) \
+			and not (type == BUZZ and BuzzRules.cut_of(lay, e).has(BuzzCompanyPlacement.CUT_KEY))
 		if mine:
 			removable.append(e)
 		for span: Vector2 in enemy_spans(gen, e, hooks):

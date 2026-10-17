@@ -31,6 +31,11 @@ extends RefCounted
 ##    Then, before the fill pass: wider gaps (LevelConfig.wide_gaps; WideGapPlacement, task G7): a couple of
 ##    the level's rows longer along the run (or new rows where too few fit), too wide for an Enforcer Truck
 ##    to hop; the fill pass and the danger density pass then keep their spacing from them.
+##    After the danger density pass's floor pieces: company for the Buzz Overdrives (LevelConfig.buzz_company;
+##    BuzzCompanyPlacement, task L2): a tank no Enforcer Truck chases (bar the level's introduction of it) gets
+##    cyborgs and rows of holes or fences in its stretch, which every pass before it keeps clear, out of its own
+##    lane and, over its attack, out of the neighbouring lane its runner escapes into; the passes after it keep
+##    off them as off anything.
 ## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
 ##    nothing else goes on (_place_doodads). After them, the rules' `static func after_doodads(gen:
 ##    LevelGenerator)` (_after_doodad_rules): the rest of the level's dash walls, in the room the passes
@@ -111,8 +116,9 @@ extends RefCounted
 ## (on 3 lanes two stay whole; LevelConfig.cut_holes_beside on more), nothing else going on meanwhile,
 ## and room to leave its lane after the warning (cut_escape_clear). Everything planned after a cut
 ## keeps off it: the fill pass and zone doodads (fill_keep_outs, doodad_keep_outs), floor_clear,
-## ceilings added later (CeilingZones) and floor credits in its lane. A level without cuts is built
-## exactly as before.
+## ceilings added later (CeilingZones) and floor credits in its lane; only a Buzz Overdrive's company
+## (task L2, BuzzCompanyPlacement) comes into its window, keeping all of the above, and wall fences run by a
+## cut with company. A level without cuts is built exactly as before.
 ##
 ## Wall fences (task B5; GDD §9.1: electric fences that span a side wall and switch off and on, to make
 ## the walls less safe; full-height ones from Marketplace 2, partial ones over the low or the high part
@@ -233,6 +239,9 @@ var danger_density_result: Dictionary = {}
 ## The wall-run gaps of the last build (WallRunGapPlacement.place, task J2: how many were due and placed, the plain
 ## pieces and enemies taken out of their way, constraints); empty in a level without the `wall_run_gaps` feature.
 var wall_run_gap_result: Dictionary = {}
+## The Buzz Overdrives' company in the last build (BuzzCompanyPlacement.place, task L2: each tank's escape lane, rows,
+## pieces and cyborgs, and why the others got none); empty in a level that asks for none (LevelConfig.buzz_company).
+var buzz_company_result: Dictionary = {}
 ## Stretches of track (Vector2) no wall-run gap's clear stretch may reach in the build being made (task J2; set only
 ## for the wider gaps' rebuild, _make_wide_gap_room; WallRunGapPlacement.place keeps off them). Empty otherwise.
 var wall_run_gap_reserve: Array[Vector2] = []
@@ -380,6 +389,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	charge_path_result = {}
 	show_window_result = {}
 	wall_run_gap_result = {}
+	buzz_company_result = {}
 	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0
@@ -423,6 +433,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_fill_empty_stretches(patterns)
 	WideGapPlacement.widen_deferred(self)
 	danger_density_result = DangerDensity.apply_obstacles(self, patterns, danger_density_result)
+	buzz_company_result = BuzzCompanyPlacement.place(self, patterns)
 	_place_doodads(patterns)
 	# Only the doodads ask it, and it holds this generator: let it go.
 	danger_density_plan = null
@@ -1074,7 +1085,8 @@ func missing_features(needed: PackedStringArray) -> PackedStringArray:
 ## pads (ceilings), speed pads (speed_pads), pulsing fences (pulsing), full-height wall fences
 ## (wall_fences) and partial ones (wall_fences_partial), host cyborgs (host), cyborgs that aren't hosts
 ## (cyborg; nor planted in a charge's path, task G7: an extra the charge flattens, never the level's own
-## cyborg encounter), screeches from wall vents (screech_vents), and otherwise the enemies of that type, which
+## cyborg encounter; nor a Buzz Overdrive's company, task L2, an extra too), screeches from wall vents
+## (screech_vents), and otherwise the enemies of that type, which
 ## covers every enemy type. A feature whose rules script declares
 ## `static func positions(layout: LevelLayout) -> Array[float]` answers for itself (a new kind of
 ## piece).
@@ -1117,7 +1129,8 @@ static func feature_positions(p_layout: LevelLayout, feature: String) -> Array[f
 				var hit: bool = false
 				match feature:
 					"cyborg":
-						hit = type == "cyborg" and not host and not params.has(ChargePathPlacement.PARAM)
+						hit = type == "cyborg" and not host and not params.has(ChargePathPlacement.PARAM) \
+							and not params.has(BuzzCompanyPlacement.PARAM)
 					"host":
 						hit = host
 					"screech_vents":
@@ -1463,8 +1476,10 @@ static func is_filler(pattern: Dictionary) -> bool:
 ## every lane, from its warning to its end (FloorCutPlan.window); every dash wall's footprint, in every lane
 ## (task H7a, DashWallRules.footprint: its clear approach, the wall and the clear stretch past it); and with
 ## `with_rules`, the calm stretches the rules keep (rules_fill_keep_outs: an Enforcer Truck's showing window, task
-## C6c). (Zone doodads come after the fill pass, into what it leaves: _place_doodads.)
-func fill_keep_outs(patterns: Array, with_rules: bool = true) -> Dictionary:
+## C6c). (Zone doodads come after the fill pass, into what it leaves: _place_doodads.) With `except_cut`, without that
+## floor cut's window and its cause's keep-out (task L2: what a Buzz Overdrive's company keeps off,
+## BuzzCompanyPlacement).
+func fill_keep_outs(patterns: Array, with_rules: bool = true, except_cut: Dictionary = {}) -> Dictionary:
 	var out: Array[Vector4] = []
 	var half: float = tuning.fence_depth * 0.5
 	for g: Dictionary in layout.gaps:
@@ -1481,11 +1496,16 @@ func fill_keep_outs(patterns: Array, with_rules: bool = true) -> Dictionary:
 		out.append(Vector4(float(p["at"]), float(p["at"]) + tuning.pad_length, 0.0, 0.0))
 	var hooks: Dictionary = {}
 	for e: Dictionary in layout.enemies:
+		if not except_cut.is_empty() and int(e.get("lane", -1)) == int(except_cut["lane"]) \
+				and absf(float(e["at"]) - float(except_cut["end"])) < 0.01:
+			continue
 		var k: Vector2 = _enemy_keep_out(e, hooks)
 		out.append(_keep(k.x, k.y))
 	# A floor cut, in every lane, from its warning to its end or past its cause, whichever is later
 	# (GDD §9.9: nothing else in its lane, its neighbours kept whole, nothing else going on).
 	for c: Dictionary in layout.cuts:
+		if is_same(c, except_cut):
+			continue
 		var w: Vector2 = FloorCutPlan.window(c, speed)
 		out.append(_keep(w.x, w.y))
 	# A dash wall (task H7a), in every lane: its clear approach, the wall and the clear stretch past it.
@@ -2072,7 +2092,9 @@ func add_cut(cut: Dictionary) -> bool:
 ## - nothing else goes on meanwhile: no enemy's keep-out (what the fill pass keeps for it,
 ##   _enemy_keep_out) reaches its attack window (FloorCutPlan.attack_window: from its warning; a cause
 ##   on its way before it, a Buzz Overdrive rolling ahead, attacks nobody yet), bar its own cause (an
-##   entry at its `end` in its lane), nor does a lane-bound attack the rules keep doodads off
+##   entry at its `end` in its lane) and, on a cut with company (task L2), its own company cyborgs, which
+##   keep the company's rules instead (BuzzCompanyPlacement: beside its escape lane, holding their fire),
+##   nor does a lane-bound attack the rules keep doodads off
 ##   (rules_doodad_keep_outs, read from the level's own enemies: a Bad Dream's chase in any lane, a
 ##   hover truck's stay in its lane), nor a wall fence's drop window over its whole window (task B5: a
 ##   boss arena's wall fences; a level's come after its cuts and keep off them, WallFencePlacement);
@@ -2137,6 +2159,9 @@ func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
 	for e: Dictionary in lay.enemies:
 		if int(e.get("lane", -1)) == lane and absf(float(e["at"]) - end) < 0.01:
 			continue  # Its own cause, waiting at its end.
+		if cut.has(BuzzCompanyPlacement.CUT_KEY) and BuzzCompanyPlacement.is_company(e) \
+				and absf(float((e["params"] as Dictionary)[BuzzCompanyPlacement.PARAM]) - end) < 0.01:
+			continue  # Task L2: its own company, which keeps the company's rules (BuzzCompanyPlacement).
 		var k: Vector2 = _enemy_keep_out(e, hooks)
 		if k.x <= attack.y and k.y >= attack.x:
 			return "an enemy (%s at %.0f) is about meanwhile" % [e.get("type", "?"), float(e["at"])]
@@ -2187,7 +2212,8 @@ func cut_escape_clear(cut: Dictionary, p_layout: LevelLayout = null) -> bool:
 
 
 ## The stretches of `lane` in `lay` where a player can't switch in: holes, fences, pads, speed pads,
-## ramps, zone doodads and floor cuts' lane windows, each with CUT_SWITCH_MARGIN around it.
+## ramps, zone doodads (a row whole, the spaces between its doodads too: task L3, LevelLayout.doodad_extent) and
+## floor cuts' lane windows, each with CUT_SWITCH_MARGIN around it.
 func _lane_busy(lay: LevelLayout, lane: int) -> Array[Vector2]:
 	var m: float = CUT_SWITCH_MARGIN
 	var half: float = tuning.fence_depth * 0.5
@@ -2209,7 +2235,8 @@ func _lane_busy(lay: LevelLayout, lane: int) -> Array[Vector2]:
 			out.append(Vector2(float(rp["at"]) - m, float(rp["at"]) + tuning.ramp_length + m))
 	for d: Dictionary in lay.doodads:
 		if int(d["lane"]) == lane:
-			out.append(Vector2(float(d["start"]) - m, float(d["end"]) + m))
+			var span: Vector2 = LevelLayout.doodad_extent(d)
+			out.append(Vector2(span.x - m, span.y + m))
 	for c: Dictionary in lay.cuts:
 		if int(c["lane"]) == lane:
 			var w: Vector2 = FloorCutPlan.lane_window(c)

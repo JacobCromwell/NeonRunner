@@ -22,7 +22,7 @@
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
     "enforcer_truck_runs", "wide_gaps", "charge_paths", "host_releases", "dash_walls", "beach_levels",
     "mecha_guppy_climb", "mecha_guppy_bait", "mecha_guppy_tunables", "mecha_guppy_top", "mecha_guppy_whole",
-    "wall_run_gaps"
+    "wall_run_gaps", "buzz_company"
   ],
   "medium": [
     "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm",
@@ -53,6 +53,8 @@
     {"match": "scripts/world/ramp_launch.gd", "tier": "full"},
     {"match": "scripts/world/wide_gap_*.gd", "tier": "full", "suites": ["wide_gaps", "enforcer_truck_runs"]},
     {"match": "scripts/world/charge_path_*.gd", "tier": "full", "suites": ["charge_paths", "octodog", "buzz_overdrive", "cyborg", "dash_walls"]},
+    {"match": "scripts/world/buzz_company_*.gd", "tier": "full", "suites": ["buzz_company", "buzz_overdrive", "floor_cuts", "wall_fences", "charge_paths", "danger_density", "enforcer_truck", "generator"]},
+    {"match": "data/tuning/buzz_company.tres", "tier": "full", "suites": ["buzz_company", "buzz_overdrive", "wall_fences", "enforcer_truck", "generator"]},
     {"match": "scripts/world/hazard.gd", "tier": "full", "suites": ["sign_armor", "damage_rules"]},
     {"match": "scripts/world/dash_breakable.gd", "tier": "full", "suites": ["doodads", "powerups", "dash_walls"]},
     {"match": "scripts/world/dash_wall_tuning.gd", "tier": "full", "suites": ["dash_walls"]},
@@ -189,6 +191,7 @@
     {"match": "tools/asset_gen/music*", "suites": ["audio"]},
     {"match": "tools/web/*", "suites": ["web_demo"]},
     {"match": "tools/measure/danger_density.gd", "suites": ["danger_density"]},
+    {"match": "tools/measure/buzz_company.gd", "suites": ["buzz_company"]},
     {"match": "tools/measure/economy*.gd", "suites": ["economy"]},
     {"match": "tools/measure/attack_watch.gd", "suites": ["enemy_director", "buzz_overdrive", "resonator", "enforcer_truck_runs", "perf", "host_releases"]},
     {"match": "tools/measure/host_*.gd", "suites": ["host_releases"]},

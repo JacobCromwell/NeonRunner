@@ -4949,3 +4949,63 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
    this one (both share the hint's id), so nobody is told the arrows are gone or when to step on without them: should
    the first later level with a gap (Casino 1) carry a one-time note? Placeholder: that text, "along a clear wall"
    (DESIGN-TBD in the hint catalog's `_note`); no note for a returning player.
+
+### Folded on October 17, 2026 (task L2, the Buzz Overdrive's company)
+
+933. **The level's introduction of it.** Should Corporate 1's first Buzz Overdrive, its introduction right after its
+   hint, have company too? (GDD §5, Level schedule; "introduce one new mechanic at a time".)
+   Placeholder: no, it comes alone (`on_introduction` off), as the wall fences' introduction comes alone. That is one
+   of the about 2.4 tanks in every build of Corporate 1 (15 of the 36 measured, item 9).
+
+935. **How much.** How many cyborgs and rows should a tank's stretch take? (GDD §3, Busier levels.) The owner's "extra
+   gaps or laser fences" are read as the floor's holes and electric fences (§9.1) and, item 8, the wall fences.
+   Placeholder: up to 1 cyborg encounter (`cyborgs_max`, with `cyborg_chance` 0.85: one of the level's own plain cyborg
+   patterns there, a single or a pair) and up to 4 rows of holes or fences (`rows_max`: the level's one-row fillers,
+   picked as the fill pass picks them), each keeping the fill pass's spacing (`spacing_scale` 1), in the room the
+   ceilings, pads and landing zones there leave. Measured: see item 9.
+
+936. **What goes in its attack.** From just before its rev (`attack_margin_seconds`, 0.5 s) to the end of its cut's
+   window, company keeps out of its lane and of one lane beside it (its escape lane, a seeded pick of the clear ones),
+   so a runner in its lane at the warning leaves into that lane and runs on there whatever the others hold; holes there
+   only where GDD §9.9's whole lanes allow (none on 3 lanes, one lane at 5 and 6, never beside the cut). A cyborg the
+   runner meets in the attack stands only beside the escape lane (`cyborgs_in_attack`), so a runner beside it can step
+   into the clear lane; on 3 lanes with the cut in the middle lane none can. Should the attack be busier (holes on
+   3 lanes beside the cut, a cyborg in any lane) or calmer (nothing in it, company only while it rolls in)?
+
+937. **Company cyborgs hold their fire through the attack.** They charge no burst and land no bolt from 0.5 s before
+   the warning to 0.5 s past the cut's window (`hold_before_seconds`, `hold_after_seconds`; `Cyborg.hold_fire`, as a
+   cyborg planted in a charge's path holds it): the rev and the charge stay the one attack to dodge, the cyborgs a
+   body to step around or stomp, and they shoot while the tank rolls in. Should they fire during the rev (harder; the
+   cyborgs' crossfire rule, `CyborgGun.way_out`, doesn't know the cut's lane is about to be a hole)?
+
+938. **Never the panic variant.** Company cyborgs never panic (a panic run ahead could carry one into the escape lane).
+   Placeholder: `panic` false on every company cyborg (GDD §9.2: about one cyborg in three panics).
+
+939. **No Octodog.** The Octodog's charges and the tank's are both big attacks that take turns (GDD §9). Its charge
+   sequence (3 or 4 charges at the Corporate zone's scaling, about 9 to 13 s at its pace) is longer than the tank is in
+   view before it claims its turn (about 5.5 s: 4 s parked in the distance, 1.5 s of its roll), and the stretch before
+   that is the patterns'. A dog fitted there would mostly attack before the tank comes into view, and one still on as
+   the tank's rev would start makes the tank let the runner pass (task FIX2). Should the generator plan a "dog, then
+   tank" encounter (a pattern of its own: the dog's charges, then the tank rolling in as the last ones end)?
+   Placeholder: none.
+
+940. **Laser fences by it.** Wall fences may run by a tank with company (B5 kept them off every cut and big attack, item
+   in `docs/questions/b5.md`): its runner escapes along the floor and a wall runner is safe from it, so only the drop
+   rule stays (the outer lane beside a fence clear to drop into, the cut's lane included). The danger density pass's
+   wall half, which was short of room, fills the room that opened: in Corporate 1 a company tank's visit now has about
+   2.3 times the wall fences of the rest of the level (0.28 a second against 0.12; 0.05 before), most of its company
+   on 3 lanes, where the floor has least room (item 9). Is that wanted, or should the company stretch take only the
+   level's own rate (`DangerDensityTuning.wall_fence_increase_scale` governs the extra ones)?
+
+941. **The numbers** (`tools/measure/buzz_company.gd`, each level's own seed and four others at 3, 5 and 6 lanes, 135
+   builds of the nine levels with the tank, 179 tanks; a visit runs from where a tank comes into view to where it's
+   gone, about 10 s, its attack from its rev; threats are enemies other than the tank, rows of holes or fences, signs
+   and wall fences). Before, then with company:
+   - The 33 tanks it gives company to (Corporate 1 21, Corporate 2 5, Beach 1 3, Beach 3 1, Dead Zone 1 2, Dead Zone
+   2 1; none in the Golden Zone, item 2) every one got some. Threats a second in their visits 0.24, now 0.60 (the
+   rest of each level 0.52 to 0.84, Corporate 1's 0.77); in their attacks 0.03, now 0.44. Per visit: other enemies
+   0.82, now 1.42; cyborgs 0.15, now 0.76 (a visit with one 9%, now 67%: 38% on 3 lanes, 83% on 5, 88% on 6); rows
+   0.88, now 1.61 (a visit with one 42%, now 61%); wall fences 0.36, now 2.33. The longest stretch of a visit with
+   no threat at all, 6.2 s, now 2.7 s.
+   - The 131 tanks an Enforcer Truck comes near and the 15 introductions measure exactly as before, and every level
+   built with `buzz_company` off is the same layout as before task L2, byte for byte (the 135 builds' dumps).

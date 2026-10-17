@@ -198,6 +198,12 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## 0 turns it off: the level is built exactly as before. DESIGN-TBD: 1 in every campaign level with Octodogs
 ## or Buzz Overdrives (Gangland 2 on), so the player meets it several times before the Enforcer Truck.
 @export_range(0, 4) var charge_path_cyborgs: int = 0
+## Company for the Buzz Overdrive (the owner, October 17, 2026; task L2): with the `buzz_overdrive` feature, a tank
+## no Enforcer Truck chases (bar the level's introduction of it) gets cyborgs and rows of holes or fences in its
+## stretch, and wall fences may run by it, out of its lane and of the lane its runner escapes into
+## (BuzzCompanyPlacement; numbers in data/tuning/buzz_company.tres). Off: the level is built exactly as before (quick
+## play, the tests, boss arenas). On in every campaign level with the Buzz Overdrive.
+@export var buzz_company: bool = false
 ## Dash walls (owner, October 8, 2026, GDD §9.14; task H7a): with the `dash_wall` feature, the generator
 ## stands up to this many buildings across the level's floor lanes for the runner to dash through
 ## (dash_wall_rules.gd), spread through the level where they're fair, spaced so the dash's longest cooldown

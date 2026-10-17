@@ -525,3 +525,38 @@ stand in from the credit trails, and a stretch too short for a full trail gets a
 (`credit_trail_min`, 5 in campaign levels, 0 = as before), with a lower trail chance, so each level's
 credits stay about where they were (task R7 owns the economy). `tools/measure/level_pace.gd` measures
 each level's pace and density (Review tools).
+
+**Company for the Buzz Overdrive** (task L2; the owner, October 17, 2026: other enemies and track hazards on the
+playfield with it "unless this is done for performance", sparse being fine where an Enforcer Truck is likely on the map
+with it; `BuzzCompanyPlacement`, `scripts/world/buzz_company_placement.gd`, its numbers in `BuzzCompanyTuning`,
+`data/tuning/buzz_company.tres`, F6 "Buzz Overdrive company"). Why its stretch was empty: its pattern holds its whole
+encounter (200 m at the reference speed, about 11 s), and every pass after the rules kept its cut's window (from where
+it sets off to the cut's end, about 9 s) clear in every lane: the fill pass, the danger density pass and the doodads
+(B4's placeholder, "nothing else goes on during a cut") and the wall fences (B5's, "one thing at a time"). None of it
+was for performance (the tank is cheap to run: Enemies, A floor cutter). In a level with `LevelConfig.buzz_company`
+(every campaign level with the Buzz Overdrive; off in quick play, the tests' own levels and boss arenas, which build
+exactly as before), after the danger density pass's floor pieces and before the doodads, from a stream of its own,
+every tank but the level's introduction of it (`on_introduction`) and those an Enforcer Truck's chase comes within
+`truck_margin_seconds` of (`truck_near`) gets company in its stretch, from where it sets off to its window's end
+(`stretch_of`): in every lane but its own while it rolls in; over its attack (from `attack_margin_seconds` before its
+rev, `attack_of`) also out of its escape lane, a neighbour of its lane clear of everything over the attack (the cut's
+`company` key; -1, and nothing in the attack, where neither is), so a runner in its lane at the warning leaves into it
+and runs on there whatever the rest holds; holes there only where GDD §9.9's whole lanes allow (none on 3 lanes, never
+beside the cut). Cyborg encounters (one of the level's plain cyborg patterns, `cyborgs_max`, `cyborg_chance`) by the
+danger density pass's own rules for an enemy it adds (`DangerDensity.enemy_fixed_stretches` without this tank's window:
+off pads, landing zones, plain ceilings and the rest; a couple of small attacks near at most, a free lane, the cyborg
+rules' margin; never before a level's introduction of cyborgs), plain and never the panic variant, holding their fire
+from just before the warning to just past the window (`hold_fire`), one met in the attack only beside the escape lane;
+rows of holes or fences (the level's one-row fillers, `rows_max`) with the fill pass's spacing from everything, a lane
+left free beside each. Each addition re-checks what it could take from the cut (its lane, its whole lanes, its escape:
+`cut_escape_clear`); the pieces get no risky credit. Wall fences run by a tank with company, keeping only their drop
+rule (Wall fences). The passes before it build every level exactly as without it, and the Enforcer Truck's chases and
+the introductions come out as before. No Octodog: its charge sequence and the tank's are big attacks that take turns,
+and its 9 to 13 s don't fit the 5.5 s the tank is in view before its claim. Measured (`tools/measure/buzz_company.gd`,
+each level's own seed and four others at 3, 5 and 6 lanes, 135 builds): the 33 tanks it gives company to (21 in
+Corporate 1, 12 in the next five levels, none in the Golden Zone, where a truck is always about) every one got some;
+their visits went from 0.24 threats a second to 0.60 (the rest of a level 0.52 to 0.84), their attacks from 0.03 to
+0.44, a cyborg in 67% of them (9% before; 38% on 3 lanes, 83% and 88% on 5 and 6), a row in 61% (42%), and their
+longest stretch with no threat from 6.2 s to 2.7 s; the wall fences' share of it is large (Corporate 1's company visits
+0.28 a second against 0.12 elsewhere). `LayoutChecks.check_buzz_company` (from `check_layout`) holds every layout to
+it; `test_buzz_company` checks it. DESIGN-TBD: items 933-941 in `docs/OPEN_QUESTIONS*.md`.
