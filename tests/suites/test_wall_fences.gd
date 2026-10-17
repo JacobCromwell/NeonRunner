@@ -532,7 +532,9 @@ func _test_pace() -> void:
 ## The brief: nothing changes for levels without the feature. A level without wall fences has none and
 ## no wall_fences list in its data; a level with them is exactly the same without them but for its wall
 ## fences (they come after the doodads, from a stream of their own, and the credits never look at them):
-## the same pattern picks, fillers, guarantee builds, pieces, enemies and credits.
+## the same pattern picks, fillers, guarantee builds, pieces, enemies and credits. Like the wall gaps, the
+## zone doodads by a side wall (task L3) keep off the walls where a level brings in wall fences, so they move
+## with them: compared without them on both sides.
 func _test_same_without() -> void:
 	for id: String in WITHOUT:
 		for lanes: int in [3, 5, 6]:
@@ -549,6 +551,11 @@ func _test_same_without() -> void:
 			var gapless := PackedStringArray(config.features)
 			gapless.remove_at(gapless.find(WallGapPlacement.FEATURE))
 			config.features = gapless
+			# Task L3: the doodads by a side wall keep both walls open where a level brings in wall fences
+			# (LevelGenerator.wall_lane_keep_outs: their introduction's stretch), so they move with them: compared
+			# with the doodads in the inner lanes on both sides (LayoutChecks.check_wall_lane_doodad holds the ones
+			# by a wall to the introduction's stretch, and _test_introductions sees them keep it open).
+			config.doodad_wall_lane_share = 0.0
 			var bare: LevelConfig = config.duplicate() as LevelConfig
 			var features := PackedStringArray()
 			for f: String in config.features:

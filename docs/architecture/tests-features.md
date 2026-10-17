@@ -447,7 +447,8 @@ every campaign level with them (own seed and others, 3, 5 and 6 lanes) placing t
 1's introductions (first of their kind, alone, off long, within `intro_seconds` on the levels' own seeds and on
 most others, mostly where no enemy is about); Marketplace 2 at 18 and 25 m/s (the margins in seconds); every
 campaign level exactly the same without the features but for its wall fences (pattern picks, fillers and
-guarantee builds too), and the levels without them having none; quick play with them among every rule's pieces
+guarantee builds too; compared without wall gaps and without doodads by a side wall, which move with them, task
+L3), and the levels without them having none; quick play with them among every rule's pieces
 (`LayoutChecks.check_layout`); `wall_fence_problem` naming each rule; the hints; every skin's look; and a boss
 arena carrying them.
 `test_fireballs` checks the shared explosion (task H6; A run, Speed effects): the pool is bounded and reused

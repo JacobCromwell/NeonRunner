@@ -374,9 +374,10 @@ func _test_placement() -> void:
 			if extra == 1:
 				# The introduction's ceiling, its pad and credits, and (the fill pass keeps off its
 				# landing and pad, after the rules, on a random stream of its own) the fillers from there on,
-				# and the zone doodads placed into what the fill pass leaves (G5, on a stream of their own).
+				# and the zone doodads placed into what the fill pass leaves (G5, on a stream of their own),
+				# and the side wall gaps, which keep off the doodads by a wall (task L3, WallGapPlacement).
 				added += 1
-				for key: String in ["hulls", "pads", "credits", "gaps", "fences", "doodads"]:
+				for key: String in ["hulls", "pads", "credits", "gaps", "fences", "doodads", "wall_gaps"]:
 					a.erase(key)
 					b.erase(key)
 			check(_canon(a) == _canon(b), "turret placement alone leaves the rest of the level unchanged " + tag)
