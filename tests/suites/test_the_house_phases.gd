@@ -278,6 +278,13 @@ func _campaign_flow(lanes: int) -> void:
 		return
 	App.continue_after_result(level_result)
 	(App.screen as ShopScreen).on_close.call()
+	await tree.process_frame
+	# The boss intro plays (task F2i, CasinoBossIntro); the player skips it.
+	var intro: Cinematic = App.playing_cinematic()
+	check(intro is CasinoBossIntro and intro.step.id == "casino/boss_intro", "then the boss intro's cinematic %s" % tag)
+	if intro == null:
+		return
+	App.skip_cinematic()
 	App.begin_run()
 	await physics_frames(3)
 	var run: LevelRun = App.run
