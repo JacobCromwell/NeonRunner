@@ -209,7 +209,7 @@ func _test_steps(campaign: Campaign) -> void:
 		"city/intro", "city/1", "city/2", "city/3", "city/boss_intro", "city/boss", "city/outro",
 		"gangland/intro", "gangland/1", "gangland/2", "gangland/3", "gangland/boss_intro", "gangland/boss", "gangland/outro",
 		"marketplace/intro", "marketplace/1", "marketplace/2", "marketplace/outro",
-		"casino/intro", "casino/1", "casino/2", "casino/boss", "casino/outro",
+		"casino/intro", "casino/1", "casino/2", "casino/boss_intro", "casino/boss", "casino/outro",
 		"corporate/intro", "corporate/1", "corporate/2", "corporate/boss", "corporate/outro",
 		"beach/intro", "beach/1", "beach/2", "beach/3", "beach/boss", "beach/outro",
 		"dead_zone/intro", "dead_zone/1", "dead_zone/2", "dead_zone/boss", "dead_zone/outro",
@@ -338,17 +338,18 @@ func _test_slots(campaign: Campaign) -> void:
 ## GDD §5's schedule in the level data: each feature first appears in its level; later levels keep
 ## it (with the documented exceptions); every zone brings a new enemy and each level about one new
 ## thing, each introduced at a start of its own (LevelConfig.feature_starts), City 1's cyborgs late.
-## Item 395 (task I8): every boss has an intro slot. The City's and Gangland's play; the other five (The House,
-## Hostile Takeover, the Beach's, the Sleep Taker's, the Golden Convergence's) are empty slots the campaign skips:
+## Item 395 (task I8): every boss has an intro slot. The City's, Gangland's and the Casino's play (The House's since the
+## owner's beats of October 17, 2026); the other four (Hostile Takeover, the Beach's, the Sleep Taker's, the Golden
+## Convergence's) are empty slots the campaign skips:
 ## no step, so no screen, no delay and no save entry; Marketplace has no boss, so no slot. Filling one needs only
 ## its def's scene.
 func _test_boss_intro_slots(campaign: Campaign) -> void:
-	var empty_zones: PackedStringArray = ["casino", "corporate", "beach", "dead_zone", "golden"]
+	var empty_zones: PackedStringArray = ["corporate", "beach", "dead_zone", "golden"]
 	var listed: PackedStringArray = []
 	for slot: Dictionary in campaign.empty_slots():
 		listed.append(String(slot["id"]))
-	check(listed == PackedStringArray(["casino/boss_intro", "corporate/boss_intro", "beach/boss_intro",
-		"dead_zone/boss_intro", "golden/boss_intro"]), "the campaign lists the five empty boss-intro slots in order (%s)" % [listed])
+	check(listed == PackedStringArray(["corporate/boss_intro", "beach/boss_intro", "dead_zone/boss_intro", "golden/boss_intro"]),
+		"the campaign lists the four empty boss-intro slots in order (%s)" % [listed])
 	for zone: ZoneDef in campaign.zones:
 		var id: String = String(zone.id)
 		if id in empty_zones:
