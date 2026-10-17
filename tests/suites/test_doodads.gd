@@ -62,6 +62,8 @@ const SAFE_RUNS_PER_LEVEL: int = 3
 const DASH_RUNS_PER_LEVEL: int = 2
 ## The reaction time the suites give a runner to see something and start to act (the boss bots').
 const REACTION: float = 0.35
+## Wall runs swept to end just before a doodad by their wall, per lane count, wall and speed (_off_wall_sweep).
+const OFF_WALL_EXITS: int = 12
 
 
 ## Records the doodad hook's calls (and dresses nothing).
@@ -390,9 +392,11 @@ static func _rows_of(layout: LevelLayout) -> Array[Array]:
 ## Rows (task L3, the owner, October 17, 2026: "occasionally ... rows of similar doodads: three plant doodads one
 ## right after the other, or three market stalls, one followed by a space ..."; LevelGenerator._row_shape): with every
 ## doodad the first of a row (doodad_row_chance 1), in quick play's level at 3, 5 and 6 lanes over seeds and
-## difficulties, with and without every built feature: rows of every length from two to four, both spacings and every
-## size class stand, each where it's fair (check_layout's check_doodads and check_row), in inner lanes and by the side
-## walls, deterministic, no warnings; with the chance at 0 no doodad is in a row or carries a row's keys.
+## difficulties, with and without every built feature: rows of three and four (doodad_row_min to doodad_row_max, never
+## two), small ones one right after the other and medium and large ones a doodad's length apart (by size class,
+## LevelConfig.doodad_row_spaced), in every size class, each where it's fair (check_layout's check_doodads and
+## check_row), in inner lanes and by the side walls, deterministic, no warnings; with the chance at 0 no doodad is in
+## a row or carries a row's keys.
 func _test_rows() -> void:
 	var base: LevelConfig = load(LEVEL_PATH) as LevelConfig
 	for lanes: int in [3, 5, 6]:
@@ -426,8 +430,12 @@ func _test_rows() -> void:
 						rows += 1
 						lengths[row.size()] = true
 						var space: float = float((row[1] as Dictionary)["start"]) - float((row[0] as Dictionary)["end"])
-						spacings["touching" if absf(space - LevelGenerator.DOODAD_ROW_TOUCH) < 0.01 else "spaced"] = true
-						sizes[StringName((row[0] as Dictionary)["size"])] = true
+						var size: StringName = StringName((row[0] as Dictionary)["size"])
+						var touching: bool = absf(space - LevelGenerator.DOODAD_ROW_TOUCH) < 0.01
+						spacings["touching" if touching else "spaced"] = true
+						check(touching == (size == &"small"), "small ones touch, medium and large ones stand apart (%s, %.2f m) %s"
+							% [size, space, tag])
+						sizes[size] = true
 						var lane: int = int((row[0] as Dictionary)["lane"])
 						where["by a wall" if lane == 0 or lane == lanes - 1 else "inner"] = true
 					var off: LevelConfig = config.duplicate() as LevelConfig
@@ -435,8 +443,8 @@ func _test_rows() -> void:
 					var plain: LevelLayout = LevelGenerator.new().generate(off, tuning, patterns)
 					for d: Dictionary in plain.doodads:
 						singles_left = singles_left and not d.has("row") and not d.has("look")
-		check(rows > 0 and lengths.has(2) and lengths.has(3) and lengths.has(4),
-			"at %d lanes rows of two, three and four stand (%d rows: %s)" % [lanes, rows, lengths.keys()])
+		check(rows > 0 and lengths.has(3) and lengths.has(4) and not lengths.has(2),
+			"at %d lanes rows of three and four stand, never two (%d rows: %s)" % [lanes, rows, lengths.keys()])
 		check(spacings.size() == 2, "one right after the other and a doodad's length apart (%s)" % [spacings.keys()])
 		check(sizes.size() == LevelLayout.DOODAD_SIZES.size(), "in every size class (%s)" % [sizes.keys()])
 		check(where.size() == 2, "in inner lanes and by the side walls (%s)" % [where.keys()])
@@ -1126,6 +1134,10 @@ func _run_into(layout: LevelLayout, d: Dictionary, t: MovementTuning, lead: floa
 			for k: String in ["at", "start", "end"]:
 				if moved.has(k):
 					moved[k] = float(moved[k]) + offset
+			# A row's doodad (task L3) carries its row's stretch, which moves with it (LevelLayout.doodad_extent).
+			if moved.has("row"):
+				var stretch: Array = moved["row"]
+				moved["row"] = [float(stretch[0]) + offset, float(stretch[1]) + offset]
 			if key == "doodads":
 				part.doodads.append(moved)
 			else:
@@ -1997,8 +2009,111 @@ func _test_wall_runner() -> void:
 						check(_wall_sink(r["trace"], d, geo) <= 0.0001 and _sink(_before_pass(r["trace"]), d, geo) <= SINK_TOLERANCE,
 							"the body is never inside it while it stands " + x)
 						runs += 1
-	sim.trace = false
 	check(runs == 138, "wall runners by doodads: %d" % runs)
+	# Task L3's review: off the wall just before one, at the base speed and the Golden Zone's.
+	var fast: MovementTuning = tuning.duplicate() as MovementTuning
+	fast.run_speed = 25.0
+	var off: int = 0
+	for t: MovementTuning in [tuning, fast]:
+		off += await _off_wall_sweep(t)
+	sim.trace = false
+	check(off == 2 * (4 * (6 * 2 * 3) + 4 * OFF_WALL_EXITS), "runners off a wall by doodads: %d" % off)
+
+
+## A runner who leaves a side wall just before a doodad by it comes down in the outer lane in front of it (task L3's
+## review: its push would aim at the wall, with no lane there, and fall back inward through it): it breaks as the
+## body reaches it (Player._off_wall), never pushing them through it. At `t`'s speed, at 3 and 6 lanes, by either wall:
+## a wall jump and a move back toward the lanes from 0.25 to 4 m before a small or a large one, a wall jump as far
+## before the next one of a spaced row by the wall (its first broken as the runner on the wall reached it), and the
+## wall run's own end OFF_WALL_EXITS times from 5 m before a medium one to just past its front: alive, never a push,
+## at most one break of it, the body never inside one while it stands. The number of runs.
+func _off_wall_sweep(t: MovementTuning) -> int:
+	var runs: int = 0
+	for lanes: int in [3, 6]:
+		var geo := TrackGeometry.new(lanes, t)
+		for wall: int in [-1, 1]:
+			var outer: int = 0 if wall < 0 else lanes - 1
+			var toward: StringName = &"move_left" if wall < 0 else &"move_right"
+			var away: StringName = &"move_right" if wall < 0 else &"move_left"
+			for size: StringName in [&"small", &"large"]:
+				var length: float = t.doodad_size(size).z
+				for before: float in [0.25, 0.5, 1.0, 1.5, 2.5, 4.0]:
+					for how: String in ["jump", "away", "row"]:
+						var target: Dictionary
+						var k: int = 0
+						var layout: LevelLayout
+						var actions: Array = []
+						if how == "row":
+							var row: Array[Dictionary] = _row(outer, 60.0, size, -wall, 2, true)
+							layout = _with_doodads(lanes, row)
+							target = row[1]
+							k = 1
+							actions = [[50.0, toward], [float(target["start"]) - before, &"jump"]]
+						else:
+							target = _doodad(outer, 60.0, size, -wall, length)
+							layout = _one_doodad(lanes, target)
+							actions = [[44.0, toward], [60.0 - before, &"jump" if how == "jump" else away]]
+						var r: Dictionary = await sim.run(layout, outer, 5.0, actions, [], t)
+						var x: String = "(%s %.2f m before it, %s, %d lanes, by wall %+d, %.0f m/s)" % [how, before, size, lanes, wall,
+							t.run_speed]
+						check(r["alive"] and int(r["pushes"]) == 0 and int(r["doodad_passes"]) <= k + 1,
+							"off the wall just before a doodad by it: no push, it breaks at most once (%d pushes, %d broke) %s"
+							% [r["pushes"], r["doodad_passes"], x])
+						check(_standing_sink(r["trace"], target, k, geo, t) <= SINK_TOLERANCE,
+							"the body never inside it while it stands " + x)
+						runs += 1
+			# The wall run's own end: from where a plain wall run ends, entries that end it from 5 m before a medium one to
+			# just past its front.
+			var probe: Dictionary = await sim.run(RunSim.layout(lanes), outer, 5.0, [[10.0, toward]], [], t)
+			var exit_at: float = _wall_exit(probe["trace"])
+			check(exit_at > 10.0, "a plain wall run ends (%.1f m) at %.0f m/s" % [exit_at, t.run_speed])
+			for i: int in OFF_WALL_EXITS:
+				var entry: float = 60.0 - (exit_at - 10.0) - 5.0 + 5.5 * float(i) / float(OFF_WALL_EXITS - 1)
+				var d: Dictionary = _doodad(outer, 60.0, &"medium", -wall)
+				var r: Dictionary = await sim.run(_one_doodad(lanes, d), outer, 5.0, [[entry, toward]], [], t)
+				var x: String = "(the wall run's end, entry at %.2f, %d lanes, by wall %+d, %.0f m/s)" % [entry, lanes, wall, t.run_speed]
+				check(r["alive"] and int(r["pushes"]) == 0 and int(r["doodad_passes"]) <= 1,
+					"off the wall at its run's end just before a doodad by it: no push (%d pushes, %d broke) %s"
+					% [r["pushes"], r["doodad_passes"], x])
+				check(_standing_sink(r["trace"], d, 0, geo, t) <= SINK_TOLERANCE, "the body never inside it while it stands " + x)
+				runs += 1
+	return runs
+
+
+## Where a run's trace first comes off a wall onto the floor (metres; -1 if it never does).
+func _wall_exit(trace: Array) -> float:
+	var prev: String = ""
+	for s: Dictionary in trace:
+		if prev == "wall" and String(s["surface"]) == "floor":
+			return float(s["d"])
+		prev = String(s["surface"])
+	return -1.0
+
+
+## The most the body sank into doodad `d` while it stood (metres): on the floor (_sink's body) and on a wall
+## (_wall_sink's), over the frames before the run's breaks (wall runners' passes and the dash's smashes) came to more
+## than `k` (the breaks before `d`'s own: 0 for a lone doodad, 1 for the next one of a row whose first broke).
+func _standing_sink(trace: Array, d: Dictionary, k: int, geo: TrackGeometry, t: MovementTuning) -> float:
+	var box: Vector3 = t.doodad_size(StringName(d["size"]))
+	var x0: float = geo.lane_x(int(d["lane"])) - box.x * 0.5
+	var x1: float = geo.lane_x(int(d["lane"])) + box.x * 0.5
+	var floor_frames: Array = []
+	var worst: float = 0.0
+	for s: Dictionary in trace:
+		if int(s.get("doodad_passes", 0)) + int(s.get("smashes", 0)) > k:
+			break
+		if String(s["surface"]) == "floor":
+			floor_frames.append(s)
+		elif String(s["surface"]) == "wall":
+			var x: float = float(s["x"])
+			var head: float = x - signf(x) * t.visual_size.y
+			var ox: float = minf(maxf(x, head), x1) - maxf(minf(x, head), x0)
+			var oz: float = minf(float(s["d"]) + t.visual_size.z * 0.5, float(d["end"])) \
+				- maxf(float(s["d"]) - t.visual_size.z * 0.5, float(d["start"]))
+			var oy: float = minf(float(s["h"]) + t.visual_size.x * 0.5, box.y) - maxf(float(s["h"]) - t.visual_size.x * 0.5, 0.0)
+			if ox > 0.0 and oz > 0.0 and oy > 0.0:
+				worst = maxf(worst, minf(ox, minf(oz, oy)))
+	return maxf(worst, _sink(floor_frames, d, geo, t))
 
 
 ## A doodad by a side wall on the floor (task L3), at 3, 5 and 6 lanes, by either wall: a floor runner in its lane meets

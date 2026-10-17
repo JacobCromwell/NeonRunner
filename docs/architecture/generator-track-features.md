@@ -121,10 +121,13 @@ the middle lane at 3 lanes met every doodad (they all stood there); since then a
 doodads one right after the other, or three market stalls, one followed by a space, followed by another stall";
 `docs/questions/l3.md` 1 and 4). A doodad `_place_doodads` draws is, with `LevelConfig.doodad_row_chance` (0.5), the
 first of a row (`_row_shape`, from a stream of its own, `rng_for("doodad_rows")`): `doodad_row_min` to
-`doodad_row_max` (2 to 4) of its size class, in its lane, pushing to its side, either one right after the other
-(`DOODAD_ROW_TOUCH`, 5 cm apart: their boxes' faces, and the pictures on them, never lie in one plane) or with a
-doodad's length between each two (`doodad_row_spaced_share`, 0.5), as many as fit in the stretch's room (with a
-sliver to spare, so a row never meets what's either side to the centimetre), else one doodad. Every rule above holds
+`doodad_row_max` (3 to 4, the owner's examples being three long; task L3's review) of its size class, in its lane,
+pushing to its side, either one right after the other (`DOODAD_ROW_TOUCH`, 5 cm apart: their boxes' faces, and the
+pictures on them, never lie in one plane) or with a doodad's length between each two, by size class
+(`LevelConfig.doodad_row_spaced`: `doodad_row_spaced_small` 0, `_medium` and `_large` 1, so small ones touch like the
+owner's plants and medium and large ones stand apart like the stalls), as many as fit in the stretch's room (with a
+sliver to spare, so a row never meets what's either side to the centimetre), down to `doodad_row_min`, else one
+doodad. Every rule above holds
 for the row as one doodad from its first front to its last end: its lane and push side fit along all of it, the
 danger density pass's route check (`DangerDensity.doodad_ok`) takes its whole stretch, and the next doodad comes
 `doodad_gap_seconds` after its last. Each of its doodads is an entry of its own with `row` (its stretch, [start,
@@ -161,8 +164,9 @@ the same way). A wall runner's body reaches into that lane, and a free entry or 
 low on the wall, so placement alone can't keep them apart (the wall hop keeps a runner on a wall as long as they
 like): one low enough to meet it breaks it as they reach it, as the dash smashes one, and runs on
 (`Player._check_wall_doodads`; Damage and interactions), while one high enough (a ramp's launch) passes over it
-standing. `LayoutChecks.check_wall_lane_doodad` holds every doodad by a wall to all of this, and `check_wall_fences`
-keeps the drop windows off them.
+standing; and one who has just left the wall (its end, a wall jump, a move back toward the lanes) breaks one by it
+in their way too, rather than being pushed back through it (`Player._off_wall`). `LayoutChecks.check_wall_lane_doodad`
+holds every doodad by a wall to all of this, and `check_wall_fences` keeps the drop windows off them.
 
 Measured (`tools/measure/level_pace.gd --doodads`, each level's own seed and four others at 3, 5 and 6 lanes, against
 `--set=doodad_row_chance:0;doodad_wall_lane_share:0`, which builds all 405 layouts, quick play's too, byte for byte as

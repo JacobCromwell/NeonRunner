@@ -183,8 +183,9 @@ retry builds the same level with it whole, pushing a runner who doesn't dash); e
 colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes; and the
 fairness measure for a runner who dashes through (The generator, Zone doodads). `RunSim` takes a `&"dash"`
 action. Task L3 added rows and the lane by a side wall: rows placed over quick play's level at 3, 5 and 6 lanes
-with every doodad the first of a row (every length from two to four, both spacings, every size class, inner lanes
-and by the walls, `check_row`; none with the chance at 0); the lane by a side wall in quick play's level with
+with every doodad the first of a row (three and four long, never two; small ones touching and medium and large ones
+spaced, every size class, inner lanes and by the walls, `check_row`; none with the chance at 0); the lane by a side
+wall in quick play's level with
 everything that stands on or by a wall (ramps, signs, window cyborgs, vents, hover trucks, wall fences, side wall
 gaps, wall-run gaps, dash walls), `check_wall_lane_doodad` and the wall fences' drop windows, the share drawing
 (none at 0, most at 1); the campaign's rows and doodads by a wall counted (rows now and then, never most of the
@@ -193,7 +194,10 @@ two boxes one right after the other, one shared mesh in the Marketplace's cards;
 once and blocking a switch all along it (a runner switching into a space pushed back out), the dash along a row
 (every one it reaches smashed, the next pushing where it ends), a wall runner low on the wall breaking a doodad by
 it as they reach it and one a ramp launched passing over it standing (swept over free entries and ramps 3 to 35 m
-before it: never a push, never the body inside a standing one), a floor runner by a wall pushed inward and blocked
+before it: never a push, never the body inside a standing one), a runner leaving the wall just before one (a wall
+jump or a move back toward the lanes 0.25 to 4 m before a lone one or a spaced row's next one, the wall run's own
+end from 5 m before one, at the base speed and 25 m/s: it breaks as the body reaches it, never a push back through
+it), a floor runner by a wall pushed inward and blocked
 from its side, and the campaign's first row and first doodad by a wall of every level run into, dashed into and
 met from the wall. `RunSim` reports `doodad_passes`. The simulated runs of
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps

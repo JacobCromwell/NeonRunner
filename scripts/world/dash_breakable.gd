@@ -11,8 +11,8 @@ extends Area3D
 ##   which the Player's approach check finds), with a Hazard child, its forgiving hitbox (solid, armor
 ##   absorbs it: Hazard.armor_blocks_solid; and it breaks this at any contact: Hazard.breakable).
 ## The Player decides when the dash reaches it and calls smash() (and for a dash wall also on a crash or as a
-## wall runner passes it; for a doodad by a side wall as a wall runner low on that wall reaches it, task L3,
-## Player._check_wall_doodads); what the break looks and sounds like is the run's: Player.smashed (RunEffects
+## wall runner passes it; for a doodad by a side wall as a wall runner low on that wall, or one just off it, reaches
+## it, task L3, Player._pass_doodad); what the break looks and sounds like is the run's: Player.smashed (RunEffects
 ## flings its pieces in `debris_colors`: a doodad's rubble, a wall's bigger crumble and dust) and the
 ## `<kind>_smash` movement event (its sound: `doodad_smash.wav`, `dash_wall_smash.wav`; and a shake).
 ##

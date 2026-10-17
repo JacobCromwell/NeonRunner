@@ -825,10 +825,11 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 ##   Dream chase and drone wave until its first pad, any lane while a hover truck is surely there, and
 ##   never in or pushing into a truck's lane until it has left;
 ## - one at a time: LevelConfig.doodad_gap_seconds from one's end (a row's last one's) to the next one's front;
-## - a row (task L3: doodads sharing a `row`): from two to doodad_row_max of them, never a slalom or a wall of
-##   doodads: one lane, one size class, one side and one look (`look`, its first one's seed), each one's front
-##   either DOODAD_ROW_TOUCH or a doodad's length past the one before's end, the same all along the row, and its
-##   `row` from its first one's front to its last one's end; every rule above holds for each of them.
+## - a row (task L3: doodads sharing a `row`): from doodad_row_min to doodad_row_max of them, never a slalom or a
+##   wall of doodads: one lane, one size class, one side and one look (`look`, its first one's seed), each one's
+##   front either DOODAD_ROW_TOUCH or a doodad's length past the one before's end as its size class says
+##   (LevelConfig.doodad_row_spaced), the same all along the row, and its `row` from its first one's front to its
+##   last one's end; every rule above holds for each of them.
 ## A treasure stash's doodads (task I4) aren't zone doodads standing on their own: check_scenarios checks them.
 static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	if layout.doodads.is_empty():
@@ -936,17 +937,20 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 
 
 ## A row of zone doodads (task L3, the owner, October 17, 2026: "rows of similar doodads"; LevelLayout.doodads
-## `row`), its doodads `row` in order: from two to doodad_row_max of them, never a slalom or a wall of doodads (one
-## lane, one size class, one side) and of one kind (one look, its first one's seed), each one's front either
-## LevelGenerator.DOODAD_ROW_TOUCH or a doodad's length past the end of the one before, the same all along, and
-## its stretch from its first one's front to its last one's end.
+## `row`), its doodads `row` in order: from doodad_row_min to doodad_row_max of them, never a slalom or a wall of
+## doodads (one lane, one size class, one side) and of one kind (one look, its first one's seed), each one's front
+## either LevelGenerator.DOODAD_ROW_TOUCH or a doodad's length past the end of the one before (touching where its
+## size class's LevelConfig.doodad_row_spaced is 0, the owner's plants; spaced where it's 1, the owner's stalls),
+## the same all along, and its stretch from its first one's front to its last one's end.
 static func check_row(suite: TestSuite, row: Array, config: LevelConfig, tuning: MovementTuning, tag: String) -> void:
 	var first: Dictionary = row[0]
 	var last: Dictionary = row[-1]
 	var stretch: Array = first["row"]
 	var t: String = "(row of %d at %.1f, lane %d) %s" % [row.size(), float(first["start"]), int(first["lane"]), tag]
-	suite.check(row.size() >= 2 and row.size() <= maxi(config.doodad_row_min, config.doodad_row_max),
-		"a row holds two doodads to doodad_row_max " + t)
+	var least: int = maxi(mini(config.doodad_row_min, config.doodad_row_max), 2)
+	suite.check(row.size() >= least and row.size() <= maxi(config.doodad_row_min, config.doodad_row_max),
+		"a row holds doodad_row_min to doodad_row_max doodads " + t)
+	var spaced: float = config.doodad_row_spaced(StringName(first["size"]))
 	suite.check(absf(float(stretch[0]) - float(first["start"])) < 0.01 and absf(float(stretch[1]) - float(last["end"])) < 0.01,
 		"a row's stretch runs from its first one's front to its last one's end " + t)
 	suite.check(int(first.get("look", -1)) == int(first["seed"]), "a row's look is its first one's seed " + t)
@@ -958,8 +962,11 @@ static func check_row(suite: TestSuite, row: Array, config: LevelConfig, tuning:
 			and int(d["side"]) == int(first["side"]) and int(d.get("look", -2)) == int(first.get("look", -1)),
 			"a row's doodads share one lane, size class, side and look (no slalom, one kind) " + t)
 		var space: float = float(d["start"]) - float((row[i - 1] as Dictionary)["end"])
-		suite.check(absf(space - LevelGenerator.DOODAD_ROW_TOUCH) < 0.01 or absf(space - length) < 0.01,
+		var touching: bool = absf(space - LevelGenerator.DOODAD_ROW_TOUCH) < 0.01
+		suite.check(touching or absf(space - length) < 0.01,
 			"a row's doodads stand one right after the other or a doodad's length apart (%.2f m) %s" % [space, t])
+		suite.check((spaced > 0.0 or touching) and (spaced < 1.0 or not touching),
+			"a row's spacing follows its size class (%s: spaced share %.2f, %.2f m) %s" % [first["size"], spaced, space, t])
 		if not is_nan(step):
 			suite.check(absf(space - step) < 0.01, "a row keeps one spacing all along (%.2f m, then %.2f m) %s" % [step, space, t])
 		step = space

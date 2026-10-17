@@ -316,16 +316,22 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## doodads one right after the other, or three market stalls, one followed by a space ..."): the chance that a
 ## doodad is the first of a row, the rest of the same size class and look, in its lane, pushing to its side, all
 ## kept by the doodads' rules as one (LevelGenerator._place_doodads). A row that doesn't fit where it's drawn is
-## shorter, or one doodad (so most rows are where a level leaves long stretches free). 0: no rows, and the doodads are
-## exactly as before. DESIGN-TBD (docs/questions/l3.md 1).
+## shorter, down to doodad_row_min, else one doodad (so rows come where a level leaves long stretches free). 0: no
+## rows, and the doodads are exactly as before. DESIGN-TBD (docs/questions/l3.md 1).
 @export_range(0.0, 1.0, 0.05) var doodad_row_chance: float = 0.5
-## How many doodads a row has (each count as likely). DESIGN-TBD (docs/questions/l3.md 1).
-@export_range(2, 4) var doodad_row_min: int = 2
+## How many doodads a row has (each count as likely; the owner's examples are three long). DESIGN-TBD
+## (docs/questions/l3.md 1).
+@export_range(2, 4) var doodad_row_min: int = 3
 @export_range(2, 4) var doodad_row_max: int = 4
-## Of the rows, the share with a doodad's length of space between each two (the owner's market stalls); the
-## others stand one right after the other (the owner's plants: LevelGenerator.DOODAD_ROW_TOUCH, a sliver apart).
-## DESIGN-TBD (docs/questions/l3.md 1).
-@export_range(0.0, 1.0, 0.05) var doodad_row_spaced_share: float = 0.5
+## Of the rows of small doodads, the share with a doodad's length of space between each two; the others stand one
+## right after the other (LevelGenerator.DOODAD_ROW_TOUCH, a sliver apart). The owner's examples by size class:
+## "three plant doodads one right after the other" (small ones touch) and "three market stalls, one followed by a
+## space, followed by another stall" (medium and large ones spaced). DESIGN-TBD (docs/questions/l3.md 1).
+@export_range(0.0, 1.0, 0.05) var doodad_row_spaced_small: float = 0.0
+## The same for rows of medium doodads.
+@export_range(0.0, 1.0, 0.05) var doodad_row_spaced_medium: float = 1.0
+## The same for rows of large doodads.
+@export_range(0.0, 1.0, 0.05) var doodad_row_spaced_large: float = 1.0
 ## Doodads prefer the lane by a side wall when it's open (the owner, October 9, 2026, held until task L3: "without
 ## costing gameplay: not where the generator already has something on that part of the wall or needs it open";
 ## LevelGenerator.wall_lane_keep_outs): the chance a doodad (or a row) that may stand in an outermost lane does,
@@ -386,6 +392,17 @@ func feature_start(feature: String) -> float:
 ## Factor on the pick weight of `feature`'s patterns: 1 unless feature_weights lists it.
 func feature_weight(feature: String) -> float:
 	return maxf(float(feature_weights.get(feature, 1.0)), 0.0)
+
+
+## The share of the rows of doodads of size class `size` (LevelLayout.DOODAD_SIZES) with a doodad's length between
+## each two (task L3): doodad_row_spaced_small, doodad_row_spaced_medium or doodad_row_spaced_large.
+func doodad_row_spaced(size: StringName) -> float:
+	match size:
+		&"small":
+			return doodad_row_spaced_small
+		&"medium":
+			return doodad_row_spaced_medium
+	return doodad_row_spaced_large
 
 
 ## True if the campaign's recency curve shapes this level's pick weights (feature_recency, switched

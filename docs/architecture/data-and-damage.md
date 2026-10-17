@@ -257,7 +257,12 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   visual size from the wall's face out to its head, and the upright body an entry turns from, a frame ahead;
   `DashBreakable.smash(&"pass")`, `doodad_passes`, the `smashed` signal and the `doodad_smash` event as for the
   dash: its pieces, the crunch, the light shake; no push, no damage, no score) and runs on along the wall,
-  while one high enough passes over it standing. DESIGN-TBD (`docs/questions/l3.md` 2).
+  while one high enough passes over it standing. So does one by that wall a runner who has just left it
+  comes down in front of (task L3's review: the wall run's end, a wall jump, a move back toward the lanes,
+  a wall gap's drop): its push would aim at the wall, find no lane there and fall back inward through it, so
+  for `lane_switch_time` + `doodad_push_time` after leaving (`Player._off_wall`) one by that wall in their way
+  is claimed and breaks as the body reaches it (`Player._pass_doodad`, as for the wall runner), never pushing.
+  DESIGN-TBD (`docs/questions/l3.md` 2).
 - **The dash smashes a zone doodad** (GDD §3, owner, October 8, 2026; task H5): dashing into one breaks it
   apart, and the player keeps their lane with no push and no damage. The track builds every doodad as a
   `DashBreakable` (`scripts/world/dash_breakable.gd`: an Area3D carrying its layout entry, its box and the

@@ -1719,9 +1719,10 @@ func _trim_clear_stretches(span: Vector2) -> void:
 ## fits. With LevelConfig.doodad_row_chance it's the first of a row (task L3, the owner, October 17, 2026:
 ## "occasionally ... rows of similar doodads"; _row_shape): doodad_row_min to doodad_row_max of them, of its
 ## size class and look, in its lane, pushing to its side, one right after the other (DOODAD_ROW_TOUCH apart)
-## or with a doodad's length between each two (doodad_row_spaced_share), the whole row kept by every rule
-## above as one doodad from its first front to its last end (LevelLayout.doodad_extent), as long as fits
-## there. Its own random stream (rng_for("doodads")), and the rows' and the wall lane's another
+## or with a doodad's length between each two (by size class, LevelConfig.doodad_row_spaced: small ones touch,
+## medium and large ones stand apart), the whole row kept by every rule above as one doodad from its first front
+## to its last end (LevelLayout.doodad_extent), as long as fits there (never shorter than doodad_row_min). Its own
+## random stream (rng_for("doodads")), and the rows' and the wall lane's another
 ## (rng_for("doodad_rows")): with doodad_share 0 nothing is drawn and the level is built exactly as before,
 ## and with doodad_row_chance and doodad_wall_lane_share 0 the doodads are exactly as before task L3.
 ## DESIGN-TBD (docs/questions/g5.md 1 and 4; docs/questions/l3.md): where doodads stand, how many, the rows.
@@ -1763,7 +1764,7 @@ func _place_doodads(patterns: Array) -> void:
 			var size: StringName = _pick_doodad_size(rng, weights, room)
 			var length: float = tuning.doodad_size(size).z
 			# A row (task L3): how many, and from one's front to the next one's; Vector2(1, 0) for one doodad.
-			var row: Vector2 = _row_shape(row_rng, length, room)
+			var row: Vector2 = _row_shape(row_rng, size, length, room)
 			var extent: float = (row.x - 1.0) * row.y + length
 			var start: float = cursor + rng.randf() * (room - extent)
 			# A calm stretch (an Enforcer Truck's showing window, task C6c) takes no doodad, nor its push's lead; it
@@ -1801,22 +1802,25 @@ func _pick_doodad_size(rng: RandomNumberGenerator, weights: Array[float], room: 
 	return LevelLayout.DOODAD_SIZES[0]
 
 
-## What a doodad drawn `length` metres long, with `room` metres for it, becomes (task L3: LevelConfig's
-## doodad_row_*): Vector2(how many in its row, metres from one's front to the next one's), Vector2(1, 0) for
-## one doodad. The first of a row with doodad_row_chance; doodad_row_min to doodad_row_max of them (each count
-## as likely), with a doodad's length between each two (doodad_row_spaced_share) or DOODAD_ROW_TOUCH; fewer
-## where `room` holds fewer, one where it holds no two. Draws from `row_rng` only, and nothing with the chance 0.
-func _row_shape(row_rng: RandomNumberGenerator, length: float, room: float) -> Vector2:
+## What a doodad of size class `size`, `length` metres long, with `room` metres for it, becomes (task L3:
+## LevelConfig's doodad_row_*): Vector2(how many in its row, metres from one's front to the next one's), Vector2(1, 0)
+## for one doodad. The first of a row with doodad_row_chance; doodad_row_min to doodad_row_max of them (each count as
+## likely), with a doodad's length between each two (the size class's share, LevelConfig.doodad_row_spaced: the
+## owner's stalls) or DOODAD_ROW_TOUCH (the owner's plants); fewer where `room` holds fewer, down to doodad_row_min,
+## and one doodad where it holds no row that long. Draws from `row_rng` only, and nothing with the chance 0.
+func _row_shape(row_rng: RandomNumberGenerator, size: StringName, length: float, room: float) -> Vector2:
 	if config.doodad_row_chance <= 0.0 or row_rng.randf() >= config.doodad_row_chance:
 		return Vector2(1.0, 0.0)
-	var count: int = row_rng.randi_range(mini(config.doodad_row_min, config.doodad_row_max),
-		maxi(config.doodad_row_min, config.doodad_row_max))
-	var step: float = length + (length if row_rng.randf() < config.doodad_row_spaced_share else DOODAD_ROW_TOUCH)
+	var least: int = maxi(mini(config.doodad_row_min, config.doodad_row_max), 2)
+	var count: int = row_rng.randi_range(least, maxi(config.doodad_row_min, config.doodad_row_max))
+	var step: float = length + (length if row_rng.randf() < config.doodad_row_spaced(size) else DOODAD_ROW_TOUCH)
 	# A sliver of play left over: a row that filled its room to the centimetre would meet what's either side of it
 	# (a filler the fill pass spaced from a landing zone leaves room for exactly two small ones touching).
-	while count > 1 and (count - 1) * step + length > room - DOODAD_ROW_TOUCH:
+	while count > least and (count - 1) * step + length > room - DOODAD_ROW_TOUCH:
 		count -= 1
-	return Vector2(count, step) if count > 1 else Vector2(1.0, 0.0)
+	if (count - 1) * step + length > room - DOODAD_ROW_TOUCH:
+		return Vector2(1.0, 0.0)
+	return Vector2(count, step)
 
 
 ## Adds `count` doodads of `size` (one, or a row: task L3), the first from `start`, each `step` metres on from the
