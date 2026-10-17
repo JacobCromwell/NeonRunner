@@ -4875,3 +4875,39 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
 922. **New sounds.** The game's own sounds cover the jump, the land, the stomp and a cyborg's death; five are new, in the game's style
    (`tools/asset_gen/sfx_bank_city_intro.gd`): `billboard_smash`, `head_startle`, `head_yell` (2.2 s), `feed_surge` and
    `title_sting`.
+
+### Folded on October 17, 2026 (task L1, the demo's menus on an iPhone)
+
+924. **How small a page may a phone be taken to show?** (`UiStyle.phone_min_embed_scale`, 0.4.) When a host page
+   shrinks a fixed embed to the phone's width, the game estimates how small it looks from the page's width and the
+   screen's long side, and sizes the menus for that, never assuming a page is shown at less than this fraction of
+   its own size. A wrong guess only makes the menus a little bigger or smaller than the 0.65-CSS-pixel target
+   (`phone_min_scale`), and the cover above is the real answer for such a frame. No owner decision
+   needed unless the 0.4 floor is wrong for a real device.
+
+925. **What does a phone held upright in a frame that looks landscape do?** (GDD §2.) The page's cover says "Turn
+   your phone sideways" when the browser reports the phone upright, even if the frame's own shape is landscape (a
+   fixed embed). It is the "Play it full screen" card with a different heading, so "Play here anyway" is there if a
+   browser misreports its orientation. A top-level page (not framed) goes by its own shape alone, as before.
+
+### Folded on October 17, 2026 (task L4, backgrounds seen through side wall gaps)
+
+926. **What a wall gap shows.** Should the opening show a closed alley between the two buildings it cuts (their end faces, a
+   building across, the ground), or something with more life or distance (a side street receding, a market or a plaza
+   behind it, citizens, lights)? (GDD §5, the zones' looks; §3, Side walls.)
+   Placeholder: a closed alley in every zone, 16-24 m deep (`RECESS_DEPTH` in each zone's wall class), the cut buildings'
+   own colours and window grids, a building across at 22-130 m up depending on the zone, no
+   citizens, nothing hung across (no cables or lines: they read as fences), nothing of its own that glows. Marked `DESIGN-TBD` in
+   `ZoneSkin.wall_gap_recess`.
+
+927. **Where its ground lies.** Should the alley's floor be the zone's own plane far below the street (the market floor,
+   the trench, the crater floor, the void, the canal, the well, the road), as built, or the street's level, so the
+   opening looks like a way out (it isn't: no one can leave the lanes)? (GDD §9.9, Holes: "inside the cut, the player sees
+   the zone's own scenery below the street".)
+   Placeholder: the plane the zone's `below()` draws across the street, run on under the alley, in the same deep shade,
+   so a gap in the wall reads like a hole in the floor, never like floor.
+
+928. **The Beach's cut shack.** Its open stretches already showed the beach and sea (task D10b); the end the wall stops with
+   now gets the same bamboo end and gable as the end it starts again with (`BeachShacks.gap_end_cap`, `leading`), since
+   the black block that stood there was the one unrendered thing left. Nothing else of the Beach's changed.
+   Placeholder: that end cap; the shared gap marks stay.

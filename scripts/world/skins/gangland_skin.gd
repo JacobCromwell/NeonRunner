@@ -293,14 +293,17 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
-## A wall gap (ZoneSkin.wall_gap), and with the left wall the street below (nothing strung across from
-## a missing wall).
-func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
-	super(parent, side, face_x, start, end, gap)
+## With the left wall of a wall gap (ZoneSkin.wall_gap_extras), the street below (nothing strung across from a
+## missing wall).
+func wall_gap_extras(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	if side < 0:
-		var batch := MeshBatch.new()
 		street().below(batch, absf(face_x), start, end)
-		batch.commit(parent)
+
+
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): a collapsed stretch between the two ruins
+## it cuts, their end faces and the face across it down to the crater floor (GanglandRuins.recess).
+func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	ruins().recess(batch, side, face_x, start, end, gap)
 
 
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:

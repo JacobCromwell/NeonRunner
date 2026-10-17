@@ -578,7 +578,8 @@ jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump
 runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
 armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`),
 wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a still of the lit wall in any zone's
-look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), a
+look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
+them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
 `--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
 Octodog's lunge and a
@@ -710,12 +711,19 @@ browser.
 3. **Serve it:** `tools/godot.sh web --serve` exports, checks and serves it at http://localhost:8060 (or any
    static web server over `exports/web/`, e.g. `python3 -m http.server 8060 --directory exports/web`). It's
    built without thread support, so it needs no special headers; upload the folder's files as they are (for
-   itch.io, a zip with `index.html` at its top).
+   itch.io, a zip with `index.html` at its top). **On itch.io**, for the menus to read on a phone: project kind
+   HTML, "This file will be played in the browser", **Viewport dimensions 960 × 540**, **Mobile friendly
+   ticked** with **Orientation Landscape**, Fullscreen button ticked, scrollbars off, SharedArrayBuffer off
+   (`docs/architecture/economy-platforms.md`, The web demo, On itch.io). A phone whose frame doesn't fit its
+   screen is offered the game full screen by the page itself.
 4. **In a browser:** `node tools/web/browser_check.js` drives both exports in Chromium through Playwright (Node
    and Playwright with its Chromium needed): loading, the title on the Compatibility renderer, the sound after
    the first key, the canvas at other window sizes, City 1's glow, saves that survive a reload, the shop, a phone
    (taps, a swipe, held upright), an iPhone's page held sideways (`phone_menus`: the menus magnified to be
-   readable, and a finger's drag scrolling the shop and the level select), the page's `audio_session` (Safari's
+   readable, the whole title on show with the screen size an iPhone reports, and a finger's drag scrolling the
+   shop and the level select), the demo inside a host page's iframe as itch.io shows it (`itch_embed`: a frame
+   that fills the page, with and without a notch; a fixed 960x540 embed and its "Play it full screen" card;
+   held upright; a level pausing behind the card), the page's `audio_session` (Safari's
    silent switch: the page asks for 'playback' sound, tried with a stand-in for Safari's API), and the end
    screen's store links. Frames and the console go to `build/browser/`. Software WebGL (no GPU) draws a level at a frame every few seconds, so it takes a while.
 5. **Its shader programs:** `node tools/web/shader_programs.js` plays the release export from the title into

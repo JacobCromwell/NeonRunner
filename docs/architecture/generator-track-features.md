@@ -327,7 +327,9 @@ walls aren't safe"; task H11, October 10, 2026: more again; `data/bosses/dead_zo
 On the track, `TrackBuilder._build_chunk` asks the skin for `wall_section` over the solid pieces only and
 `ZoneSkin.wall_gap(parent, side, face_x, start, end, gap)` over each gap's part in the chunk (with the whole
 gap, so its ends are drawn once). The default look (`standard_wall_gap`) is an orange lip along the floor
-edge, dark caps where the wall is cut, and orange stripes up the cut edges, the leading one brighter. Zone
+edge and orange stripes up the cut edges, the leading one brighter, and behind it each skin closes the opening with
+a recess, an alley between the two cut buildings (`ZoneSkin.wall_gap_recess`, task L4: the cut ends' faces, the face
+across and the ground, `docs/architecture/skins.md`, What a side wall gap shows behind it). Zone
 skins add their floor-level dressing under the left wall (street, walkways, stalls) and leave out
 overhead pieces. `ZoneSkin.note_wall_gaps` lets a skin that draws an element whole by its centre leave out
 one that would reach into a gap (the Marketplace's shop windows).

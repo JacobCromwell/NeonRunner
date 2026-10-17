@@ -18,6 +18,7 @@ func run() -> void:
 	await _test_revive_with_item()
 	await _test_completion()
 	await _test_pause()
+	await _test_page_cover()
 	await _test_slots_and_demo()
 	await _test_ad_revive()
 	await _test_darker_level()
@@ -119,6 +120,38 @@ func _test_pause() -> void:
 	App.resume_game()
 	await physics_frames(10)
 	check(not get_tree_paused() and App.run.world.player.distance > d, "resume continues the run")
+
+
+## The web page covers the game (a phone held upright, a frame that doesn't fit its screen: `WebPage`, task L1) and
+## says so through `App._on_page_cover()`: a running level pauses as for a phone call, once, and only a running
+## one. (A frame keeps its size when the phone is turned, so nothing resizes: the page's word is all there is.)
+func _test_page_cover() -> void:
+	# A level waiting on its introduction isn't running: nothing to pause.
+	App.start_level(App.campaign.step("city/1"))
+	await physics_frames(2)
+	check(App.run != null and App.run.state == LevelRun.State.READY, "a level on its introduction screen is not running")
+	App._on_page_cover()
+	check(not get_tree_paused() and not (App.overlay is PauseScreen), "a cover over it pauses nothing")
+	# A running one pauses, with the pause menu.
+	App.begin_run()
+	await physics_frames(10)
+	check(App.run.state == LevelRun.State.RUNNING and not get_tree_paused(), "the run is on")
+	App._on_page_cover()
+	check(get_tree_paused() and App.overlay is PauseScreen, "a cover over a running level pauses it, with the pause menu")
+	# Again (the phone turned twice, say): the same menu, not a second one.
+	var menu: Node = App.overlay
+	App._on_page_cover()
+	check(get_tree_paused() and App.overlay == menu and is_instance_valid(menu) and not menu.is_queued_for_deletion(),
+		"a second cover changes nothing: the same pause menu stays")
+	App.resume_game()
+	await physics_frames(10)
+	check(not get_tree_paused() and App.overlay == null, "resuming goes on with the run")
+	# No run at all (the title screen): nothing either.
+	App.show_title()
+	await tree.process_frame
+	await tree.process_frame
+	App._on_page_cover()
+	check(App.run == null and not get_tree_paused() and App.overlay == null, "a cover over a screen with no run pauses nothing")
 
 
 func _test_slots_and_demo() -> void:

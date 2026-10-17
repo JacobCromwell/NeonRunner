@@ -238,8 +238,15 @@ static func draw_tabular(ci: CanvasItem, font: Font, position: Vector2, text: St
 
 ## Insets (left, top, right, bottom) in canvas units that keep content clear of notches and rounded
 ## corners. Zero except on phones and tablets (a desktop's "safe area" is just the taskbar's gap).
+## In a web page the display server can't say (its safe area is the window and its screen is the whole
+## phone, not held the way it is: that read as a bottom inset of 40% of an iPhone's height), so the
+## page's own safe-area insets are used (`WebPage`, task L1).
 static func safe_area_margins(control: Control) -> Vector4:
-	if not DeviceProfile.is_mobile() or not control.is_inside_tree():
+	if not control.is_inside_tree():
+		return Vector4.ZERO
+	if WebPage.is_web():
+		return WebPage.safe_margins(control) if is_touch() else Vector4.ZERO
+	if not DeviceProfile.is_mobile():
 		return Vector4.ZERO
 	var screen := Vector2(DisplayServer.screen_get_size())
 	var safe := Rect2(DisplayServer.get_display_safe_area())

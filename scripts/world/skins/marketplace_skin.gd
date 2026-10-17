@@ -308,15 +308,17 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	citizens().build(parent, side, face_x, start, end)
 
 
-## A wall gap (ZoneSkin.wall_gap), and with the left wall the stalls below (no lines strung from a
-## missing wall).
-func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+## With the left wall of a wall gap (ZoneSkin.wall_gap_extras), the stalls below (no lines strung from a missing wall).
+func wall_gap_extras(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
-	super(parent, side, face_x, start, end, gap)
 	if side < 0:
-		var batch := MeshBatch.new()
 		stalls().below(batch, absf(face_x), start, end)
-		batch.commit(parent)
+
+
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): an alley between the two buildings it cuts,
+## their end faces in their own colours and window grids, the face across, the market floor (MarketFacades.recess).
+func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	facades().recess(batch, side, face_x, start, end, gap)
 
 
 ## The wall gaps near the wall TrackBuilder is about to draw (ZoneSkin hook): a shop window reaching

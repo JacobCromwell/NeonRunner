@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**923** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g and F2h so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**929** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1 and L4 so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -30,6 +30,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 837 | No treasure stash on 3 or 4 lanes, so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
 | 838 | GDD §3 calls the return pad the only way into a stash, but the dash smashes in and a wall-jump can land on a stash wall and step down. Allow both as skill routes, or block them? |
 | 848 | The economy's payouts: held at 100 + 25 a level and a flat 500 per boss (77% of a City 3 finish, 46% of a Dead Zone 1 finish) while I7 re-placed the prices. Change them, or keep them? |
+| 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
 
 ## The items in full
 
@@ -77,3 +78,20 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
   500 (1,000 for the last) whatever the zone, 77% of a City 3 finish but 46% of a Dead Zone 1 finish. Should the
   late levels, or the bosses, pay more?
   - **Placeholder:** unchanged (`data/tuning/game_rules.tres`, `data/bosses/*.tres`).
+
+**L1, the demo's menus on an iPhone, from itch.io** (from `docs/questions/l1.md`; the batch of October 17, 2026)
+923. **Should the web demo send a phone whose frame doesn't fit its screen to a full-screen tab of its own?**
+   (GDD §2, platforms; item 233 is its sibling, the turn-your-phone cover.) An itch.io page that isn't set
+   "Mobile friendly" shows the game in a fixed-size frame (960×540, say) that a phone's browser shrinks or crops,
+   so however the menus are drawn, they are small or cut off. Placeholder (`DESIGN-TBD` in the preset's
+   `html/head_include`, `export_presets.cfg`): a phone whose frame is not about the screen's size gets a cover,
+   "Play it full screen" (a link that opens the game's own page in a tab of its own, where the page is the phone's;
+   the Fullscreen API where the browser has it, which an iPhone doesn't), with "Play here anyway" under it, so the
+   cover never locks anyone out. The cover also appears where the phone says it is held upright inside a landscape
+   frame. The link carries the game's own address on itch.io's file host, which is not the project page's secret
+   URL: whoever has it can open the game without the page. The tab's save is probably separate from the frame's
+   (browsers partition a frame's storage by the page around it), so a player who opens it starts the demo's
+   progress afresh there. If that matters, the owner sets "Mobile friendly" and the
+   cover is only a net; or removes the cover and keeps the safe-area and scale fixes (both are independent of it).
+   A running level pauses behind either cover, as for a phone call (`App._on_page_cover`, marked DESIGN-TBD): a
+   placeholder too, since it is the cover's reason to exist that the game can't be played behind it.

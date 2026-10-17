@@ -33,6 +33,8 @@ const CELL_WIDTHS: Array[float] = [2.6, 3.0, 2.2, 3.4]
 const STOREY: float = 3.2
 ## How far buildings reach back from the street (their near ends show above lower neighbours).
 const DEPTH: float = 22.0
+## How far back a wall gap's recess reaches from the wall face (recess(), task L4).
+const RECESS_DEPTH: float = 20.0
 const SETBACKS: Array[float] = [0.0, 0.0, 0.0, 3.0, 5.0]
 const LOW_SHARE: float = 0.2
 ## Added to a PAT_SHOPSIGN parameter: lettering only, without the shop's own mark.
@@ -153,6 +155,68 @@ func building(side: int, span: Vector2i) -> Building:
 	b.grid_start = b.b0 + ((b.b1 - b.b0) - cells * b.cell) * 0.5
 	_buildings[key] = b
 	return b
+
+
+## What a wall gap shows behind it (task L4; the owner, October 17, 2026: "the character is running down the
+## Marketplace street, there is a hole in the wall, and one of the buildings in the background doesn't have
+## any other sides to it"): the cut is an alley between the two buildings it splits, so its part [start, end]
+## gets what an alley has and nothing more: the two buildings' end faces (`RECESS_DEPTH` deep, in their own
+## colours and window grid, from the market floor to their tops: the end faces a gap's dark slabs used to
+## stand in for up to 7 m), the face of the building across it, and the market floor, running on from the
+## street's own plane under the stall roofs (the same deep shade, PAT_UNDER, so it reads as the hole it is
+## and never as a way). The far ends' faces (looking forward: the one at the gap's far end; the other
+## shows from the side) go into the gap's batch, in the facade and solid layers the walls draw with: no material or
+## shader of its own (at most those two surfaces).
+func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var facade: MeshLayer = batch.layer(skin.facade_material())
+	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var out: float = float(side)
+	var bottom: float = -_under_depth()
+	var under: int = _under_pattern()
+	var x_back: float = face_x + out * RECESS_DEPTH
+	var x_min: float = minf(face_x, x_back)
+	# The market floor, on from the plane under the street (MarketStalls.below) to the building across.
+	solid.rect(Vector3(x_min, bottom, -start), Vector3(RECESS_DEPTH, 0.0, 0.0), Vector3(0.0, 0.0, -(end - start)),
+		skin.gap_inside_color, 0.0, under, Vector2.ZERO, Vector2.ONE, 2.0)
+	# The building across the alley: taller than most, a little darker (it is further off, in the street's shade).
+	var across: Building = building_at(side, (gap.x + gap.y) * 0.5)
+	var back_h: float = 22.0 + 16.0 * MeshKit.hash01(side, across.id, 24)
+	var back_wall: Color = skin.stucco_colors[MeshKit.hash_i(side, across.id, 25) % skin.stucco_colors.size()].darkened(0.1)
+	var back_seed: int = across.seed + 17
+	_panel(solid, side, x_back, start, end, bottom, 0.0, skin.gap_inside_color, 0.0, under, 1.0)
+	_face(facade, side, x_back, start, end, 0.0, skin.gallery_top, back_wall, 0.3, STYLE_LOWER, back_seed, 0.0)
+	_face(facade, side, x_back, start, end, skin.gallery_top, back_h, back_wall, 0.3, STYLE_UPPER, back_seed, 0.0)
+	# The two buildings' end faces: the one before the gap looks on down the street (the camera sees it only from
+	# the side), the one after it faces the runner coming up.
+	for end_at: float in [gap.x, gap.y]:
+		if end_at < start - 0.001 or end_at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(end_at, gap.x)
+		var b: Building = building_at(side, end_at - 0.01 if leading else end_at + 0.01)
+		var upper_style: int = [STYLE_UPPER, STYLE_CASINO, STYLE_HALL][b.kind]
+		# Under the stall roofs in the walls' own deep shade, then the plinth up to the shop windows' top, then
+		# the storeys.
+		MeshKit.end_quad(solid, x_min, x_min + RECESS_DEPTH, end_at, bottom, 0.0, leading, skin.gap_inside_color, 0.0,
+			under, 0.0)
+		MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, 0.0, skin.gallery_top, leading, b.wall, b.lit,
+			STYLE_LOWER, float(b.seed + 3))
+		MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, skin.gallery_top, b.height, leading, b.wall, b.lit,
+			upper_style, float(b.seed + 3))
+
+
+## How far below the street the ground under the buildings lies, and the kit pattern of everything below the street
+## (recess(); the Casino's trench is its own).
+func _under_depth() -> float:
+	return skin.market_depth
+
+
+func _under_pattern() -> int:
+	return MeshKit.PAT_UNDER
+
+
+## The building on `side` at track distance `d` (the lot run holding it).
+func building_at(side: int, d: float) -> Building:
+	return building(side, MeshKit.lot_run(side, floori(d / skin.lot_length), 0.45, 3, 3))
 
 
 ## The billboards playing the cult's feed (MarketplaceSkin.feed_boards()) with middles in [start, end).
