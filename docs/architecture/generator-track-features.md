@@ -96,9 +96,13 @@ front and `doodad_lane_room()` (a lane switch at run speed and `DOODAD_LANE_MARG
 - nothing kept in every lane reaches it from its push's lead to that room past its end (`doodad_keep_outs()`,
   `doodad_reach()`): every enemy's stretch as the fill pass keeps it (its attack as the runner closes in, or what its
   rules keep: a drone wave until its first pad, a hover truck's shortest stay, a Resonator's visit), since the enemies'
-  own fairness checks hold an attack back while a doodad stands anywhere along it (below); every floor cut's window
-  (GDD §9.9: nothing else goes on meanwhile); every dash wall's footprint; every ceiling from its start to the end of
-  its landing zone and every pad's zone (the chase camera rides below a ceiling, lower than a doodad's top); the
+  own fairness checks hold an attack back while a doodad stands anywhere along it (below), or a longer one its rules
+  keep the doodads alone off (`doodad_enemy_keep_out`: a Resonator's visit and the waits its rules leave it after, to
+  where the next visit may begin, `ResonatorRules.doodad_keep_out`: a first pulse a wait moved on is never dropped,
+  and a doodad right after the visit left Golden 1's second Resonator at 5 lanes no clear floor before the next one
+  sent it away); every floor cut's window (GDD §9.9: nothing else goes on meanwhile); every dash wall's footprint;
+  every ceiling from its start to the end of its landing zone and every pad's zone (the chase camera rides below a
+  ceiling, lower than a doodad's top); the
   level's quiet stretches (The Hush); each wider gap's zone (`WideGapPlacement.keep_outs`: the only demand from its
   take-off margin to its landing margin); and what the rules keep: a rules script may declare `static func
   doodad_keep_outs(gen) -> Array[Dictionary]` with entries {from, to} (every lane: the host rules' Bad Dream chases, a
@@ -166,7 +170,7 @@ lanes, 405 layouts, before the task and after it): doodads a minute (a treasure 
 | Corporate | 2.6 → 4.0 | 2.2 → 5.5 | 1.9 → 5.6 | 0.7 / 0.5 / 0.1 → 1.8 / 2.4 / 2.7 |
 | Beach | 2.0 → 4.9 | 1.9 → 5.3 | 1.6 → 5.4 | 0.4 / 0.4 / 0.3 → 3.0 / 2.7 / 2.7 |
 | Dead Zone | 0.8 → 1.7 | 0.9 → 1.9 | 1.1 → 2.6 | 0.2 / 0.4 / 0.3 → 1.1 / 1.0 / 1.6 |
-| Golden Zone | 1.7 → 3.6 | 1.4 → 4.1 | 1.6 → 4.7 | 0.4 / 0.1 / 0.5 → 1.9 / 2.3 / 3.0 |
+| Golden Zone | 1.7 → 3.4 | 1.4 → 2.9 | 1.6 → 3.6 | 0.4 / 0.1 / 0.5 → 1.9 / 1.6 / 2.2 |
 
 City 1 went from 2.8 to 4.9 a minute over its lane counts (its share 0.15 and rows a quarter as often keep it the
 gentlest), City 2 and 3 from about 4.8 to 9 (their shares as they were: the room lane by lane is what grew). The Dead
@@ -174,27 +178,29 @@ Zone stays the sparest: what every lane keeps (its enemies' attacks, its ceiling
 most of its levels (`docs/questions/l6.md` 4). Every row of holes or fences, enemy, big attack and mechanic is as
 before (but where a dash wall, placed after the doodads, now stands elsewhere and takes out other plain pieces: 0.1 a
 minute more or fewer rows in four levels); events a minute up by 0.3 to 4.6 (the doodads), the mean empty stretch down
-by 0.01 to 0.1 s, the longest about as it was; a runner who ignores them takes 1.0 to 2.0 pushes a minute (0.6 to 1.2
-before; The Hush 0.3 both times). Rows come 1.7 to 3.9 a level from Gangland on (1 to 1.6 in the Dead Zone),
-nearly nine levels in ten with one at least (351 rows of two, 204 of three and 163 of four over the 405 layouts, 314
-of them spaced), holding 43 to 72% of the doodads by zone and lane count (2 to 67% before); half the doodads are small
+by 0.01 to 0.1 s, the longest about as it was; a runner who ignores them takes 0.8 to 2.0 pushes a minute (0.6 to 1.2
+before; The Hush 0.3 both times). Rows come 1.6 to 3.9 a level from Gangland on (1 to 1.6 in the Dead Zone),
+nearly nine levels in ten with one at least (335 rows of two, 200 of three and 160 of four over the 405 layouts, 305
+of them spaced), holding 43 to 68% of the doodads by zone and lane count (2 to 67% before); half the doodads are small
 ones (29% medium, 21% large; about nine in ten small before: the free stretches held little more), and 32 to 81% stand
 by a side wall (29 to 73%), but on the Beach, whose open walls come first: 18 to 59% there (`doodad_wall_lane_share`
 0.15, The lane by a side wall, below).
 What they cost (the owner asked whether more doodads hurt performance; `tools/measure/doodad_cost.gd`: every campaign
 level's own build at 3, 5 and 6 lanes with its zone's skin, chunk by chunk as a run builds it, the minimum of three
-passes, before the task and after it; and `tools/measure/frame_times.gd` headless on City 2, Gangland 3 and Golden 2, the
-levels with the most doodads and the busiest late one, at 5 and 3 lanes): over the 57 builds a level holds 12.5 doodads
-where it held 5.7, and a chunk's build takes 1.89 ms on average where it took 1.85 (3.01 ms at the most where 2.90,
-within the runs' noise), with 17.7 mesh surfaces (each a draw call when on screen) and 7.4 collision objects where it
-had 17.6 and 7.2: a doodad is one surface and two static bodies (its box and its lane blocker). The track a run keeps
-built (from behind the runner to what it builds ahead) holds at the most 6.3 doodads at once where it held 4.7 (a
-treasure stash's among them), 70.6 collision objects where 69.7 and 172.4 surfaces where 172.3; the most any build's
-doodads add over the same build without them is 10 doodads, 15 collision objects and 8 surfaces. The frames are as they
-were: medians 1.0 to 1.2 ms before and after on every level and lane count, 99th percentiles 2.2 to 3.0 ms within about
-0.1 ms of each other, the worst frames an Enforcer Truck's spawn as before. On a phone or in the web demo it doesn't
-matter: a few more static boxes on the track, built with their chunk, are a few more draw calls among about 170 and a
-few more static bodies among about 70.
+passes, before the task and after it; `tools/measure/frame_times.gd` headless on City 2, Gangland 3 and Golden 2, the
+levels with the most doodads and the busiest late one, at 5 and 3 lanes; and its renderer counts under xvfb): over the
+57 builds a level holds 12.1 doodads where it held 5.7, and a chunk's build takes 1.80 ms on average where it took 1.85
+(2.86 ms at the most where 2.90: the runs' noise), with 17.7 mesh surfaces (each a draw call when on screen) and 7.4
+collision objects where it had 17.6 and 7.2: a doodad is one surface and two static bodies (its box and its lane
+blocker). The track a run keeps built (from behind the runner to what it builds ahead) holds at the most 6.3 doodads at
+once where it held 4.7 (a treasure stash's among them), 70.6 collision objects where 69.7 and 172.4 surfaces where
+172.3; the most any build's doodads add over the same build without them is 10 doodads, 15 collision objects and 8
+surfaces. The frames are as they were: medians 1.0 to 1.2 ms before and after on every level and lane count, 99th
+percentiles 2.2 to 3.0 ms within about 0.1 ms of each other, the worst frames an Enforcer Truck's spawn as before (measured
+before the Beach's wall lane share and the Resonator's waits, which only take doodads away). City 2's first 20 s at 5
+lanes draws 249 calls a frame (the median) where it drew 246 on Forward+, 261 where 258 on Compatibility, and 305 and
+321 at the most both times. On a phone or in the web demo it doesn't matter: a few more static boxes on the track,
+built with their chunk, are a few more draw calls among about 170 to 300 and a few more static bodies among about 70.
 
 **Doodads in rows** (task L3; the owner, October 17, 2026: "occasionally ... rows of similar doodads: three plant
 doodads one right after the other, or three market stalls, one followed by a space, followed by another stall";
@@ -279,7 +285,7 @@ The placement keeps the level's spacing after every doodad clear in its own lane
 `spacing_seconds_hard`, 0.9 s at run speed; in every lane until task L6), so it needed no rule of its own: what a
 doodad hides is in its own lane, and the lanes beside it stay clear a lane switch's room past its end. Measured at task
 L6 over every campaign level at 3, 5 and 6 lanes (`test_doodads`' `_test_dash_fairness`, each level's own build, a row
-as one: 108, 185 and 157 doodads and rows), the first thing after a doodad in its lane (a hole, a wider gap, a fence, a
+as one: 108, 179 and 152 doodads and rows), the first thing after a doodad in its lane (a hole, a wider gap, a fence, a
 pad, a speed pad, a floor cut's lane window, an enemy standing in it, another doodad) comes at least 0.77, 0.75 and
 0.75 s after its front at 3, 5 and 6 lanes at the dash's speed (medians 1.7 to 2 s), and 0.72, 0.70 and 0.70 s after
 its end (a runner who dashed into its side near its end sees it there at the latest; medians about 1.5 to 1.7 s),
