@@ -39,6 +39,8 @@ const PILASTER_CAP: float = 0.26
 const RELIEF_PANEL: float = 1.3
 const RIM_DEPTH: float = 0.08
 const STANDOFF: float = 0.04
+## How far back a wall gap's recess reaches from the wall face (recess(), task L4).
+const RECESS_DEPTH: float = 16.0
 
 ## Weak: the skin owns this builder, so a strong reference back would keep both alive forever.
 var skin: GoldenPalaceSkin:
@@ -87,6 +89,39 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 				and not _low_piece_overlaps_gap(side, float(k) * bay, PILASTER_RADIUS):
 			_pilaster(s, side, face_x, float(k) * bay)
 		k += 1
+
+
+## What a wall gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the
+## background"): the gap's part [start, end] of a side hall opening off the colonnade: the two cut ends' faces and
+## the wall across it, in the same marble (PAT_PALACE_PANEL, world position, so it carries on from the walls
+## either side) up to the pilasters' height, and the well's floor and stone running on below (PAT_PALACE_WELL, as
+## GoldenPalaceFloor.below draws them), so nothing is left unrendered. All in the solid layer the walls draw with.
+func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var s: MeshLayer = batch.layer(skin.solid_material())
+	var floor_y: float = -skin.canal_depth
+	var x_back: float = face_x + side * RECESS_DEPTH
+	var x_min: float = minf(face_x, x_back)
+	var shade: Color = skin.gap_inside_color
+	s.rect(Vector3(x_min, floor_y, -start), Vector3(RECESS_DEPTH, 0.0, 0.0), Vector3(0.0, 0.0, -(end - start)),
+		skin.well_floor_color, 0.0, MeshKit.PAT_PALACE_WELL, Vector2.ZERO, Vector2.ONE, 1.0)
+	# The wall across: the well's stone below the floor, the marble above it up past the pilasters.
+	var back_top: float = skin.pilaster_height + 3.0
+	if side < 0:
+		s.rect(Vector3(x_back, floor_y, -start), Vector3(0.0, 0.0, -(end - start)), Vector3(0.0, -floor_y, 0.0), shade, 0.0,
+			MeshKit.PAT_PALACE_WELL)
+	else:
+		s.rect(Vector3(x_back, floor_y, -end), Vector3(0.0, 0.0, end - start), Vector3(0.0, -floor_y, 0.0), shade, 0.0,
+			MeshKit.PAT_PALACE_WELL)
+	MeshKit.facade_quad(s, side, x_back, start, end, 0.0, back_top, back_top, skin.stone_colors[0].darkened(0.08), 0.0,
+		MeshKit.PAT_PALACE_PANEL, 0.0)
+	# The cut ends' faces: the one before the gap looks on down the hall, the one after it faces the runner.
+	for end_at: float in [gap.x, gap.y]:
+		if end_at < start - 0.001 or end_at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(end_at, gap.x)
+		MeshKit.end_quad(s, x_min, x_min + RECESS_DEPTH, end_at, floor_y, 0.0, leading, shade, 0.0, MeshKit.PAT_PALACE_WELL, 0.0)
+		MeshKit.end_quad(s, x_min, x_min + RECESS_DEPTH, end_at, 0.0, skin.pilaster_height, leading, skin.stone_colors[0], 0.0,
+			MeshKit.PAT_PALACE_PANEL, 0.0)
 
 
 ## The pilaster at track distance `at` (shared by the two bays it stands between): an octagonal

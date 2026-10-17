@@ -932,6 +932,22 @@ static func facade_quad(layer: MeshLayer, side: int, x: float, u0: float, u1: fl
 			Vector2(u1, y0), Vector2(u1, top1), Vector2(u0, top0), Vector2(u0, y0), color, lit, style, seed)
 
 
+## A piece across the track at distance `at` (the plane z = -at), from world x `x0` to `x1` and height y0 to y1,
+## with UV (x, y) in metres: the end face of a wall cut off by a wall gap (task L4). `leading` faces on down the
+## track (the end of the wall before a gap: the runner sees it only from the side); otherwise it faces back down
+## the track (the start of the wall after the gap, which the runner sees coming up). `glow` and `style` go where
+## facade_quad's `lit` and `style` do (or a solid layer's glow and pattern, with `param` as `seed`).
+static func end_quad(layer: MeshLayer, x0: float, x1: float, at: float, y0: float, y1: float, leading: bool,
+		color: Color, glow: float, style: int, seed: float) -> void:
+	var z: float = -at
+	if leading:
+		layer.quad_uv(Vector3(x1, y0, z), Vector3(x1, y1, z), Vector3(x0, y1, z), Vector3(x0, y0, z),
+			Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1), Vector2(x0, y0), color, glow, style, seed)
+	else:
+		layer.quad_uv(Vector3(x0, y0, z), Vector3(x0, y1, z), Vector3(x1, y1, z), Vector3(x1, y0, z),
+			Vector2(x0, y0), Vector2(x0, y1), Vector2(x1, y1), Vector2(x1, y0), color, glow, style, seed)
+
+
 ## A run of facade pieces in the wall plane at x (see facade_quad): piece k spans track distances
 ## us[k] to us[k + 1], from y0 up to a top edge running from tops[k] to tops[k + 1]. Built in bulk,
 ## for broken silhouettes made of many pieces.

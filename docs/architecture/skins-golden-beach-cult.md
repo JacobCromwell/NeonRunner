@@ -23,6 +23,10 @@ shader, `golden_facade.gdshader`. White and cream with red and gold accents (GDD
 - *The calm band.* Every building face is flush from the canal to `band_top` (7 m), with gold wall-run
   height marks and recessed openings for decorative wall-base guards and live Sentinels; nothing
   projects into the wall-run path. The entablature above retains its architectural ledge.
+- *Wall gaps open onto a canal-side lane* (task L4, `GoldenFacades.recess`): the cut buildings' end faces (plinth,
+  calm band, frieze, then a palace's or gallery's windows or a tower's glass, setbacks and crown) 20 m back in their
+  own stone, a palace across, and the canal running on from the one under the walkways (`PAT_CANAL`, the walkways'
+  shade below them).
 - *The statue kit* (`GoldenStatue`, for the Gilded Sentinels, task C4). Statue space: the pedestal's
   foot at the origin, facing +Z. Poses are dictionaries of joint angles (`shoulder_r/l`, `elbow_r/l`,
   `grip`, `head`, in degrees; missing keys take `REST`); `POSES` names the decorative `guard`, `vigil`,
@@ -111,6 +115,9 @@ same script, different values). Only `floor_segment()`, `wall_section()` and `ce
   (their statues, recesses and frames) and pilasters are omitted when their footprints cross a physical
   wall gap, including at chunk boundaries. `statue_spots()`, `feed_boards()` and `cult_emblems()` list a
   bay's content the same way the Golden Zone's `GoldenFacades` lists its ledges, frames and banners.
+- *Wall gaps open onto a side hall* (task L4, `GoldenPalaceWalls.recess`, 16 m deep, not the Golden Zone's lane):
+  the cut ends' faces and the wall across in the same marble (`PAT_PALACE_PANEL`, world position, so it carries on from
+  the colonnade either side) up past the pilasters, the well's floor and stone below.
 - *The ceilings* (`GoldenPalaceCeilings`, task B3's narrow-ceiling rule): a bridge between galleries or
   an archway (both need every lane; over fewer lanes both fold into the narrower BALCONY) or a hanging
   chandelier (the yacht's weight, reused: it hangs over any width). Every underside reuses
@@ -198,14 +205,15 @@ builders in `scripts/world/skins/beach/`:
 - *Open stretches* (`BeachSkin.wall_gap`, `BeachOpen` in `beach_open.gd`; the owner: "much longer sections where
   there aren't sidewalls, and the player can see the surrounding area a little bit better"): where a level
   opens the side wall (`TrackBuilder` passes each chunk's slice of the gap, any length, to `wall_gap`), the
-  skin draws the standard gap marks (`ZoneSkin.standard_wall_gap`: the orange lip, the 6 m dark end slabs, the
-  orange stripes) and, chunk by chunk with every position hashed from the track distance (so a stretch is
+  skin draws the standard gap marks (`ZoneSkin.standard_wall_gap`: the orange lip and the orange stripes; the
+  dark end slabs stay here, under the shacks' end caps) and, chunk by chunk with every position hashed from the track distance (so a stretch is
   the same however chunks cut it): the beach, from the wall line outward and 1.4 m below the street
   (`beach_drop`: sand, a wet band, a foam line, shallows, the mid sea and the deep, the shoreline swinging
   16-64 m past the wall line, 8 m quads), and on it palms, umbrellas with loungers, surfboards stuck in the sand
   and now and then a bamboo and thatch hut, kept dry, `open_margin` (9 m) from the gap's ends and `open_near`
   (9 m) from the wall line so nothing stands near the runner or the lip, with no collision. The shack at
-  each end of a gap is closed with a timber gable (`BeachShacks.gap_end_cap`), and the walls' own pieces
+  each end of a gap is closed with its end and a timber gable (`BeachShacks.gap_end_cap`, task L4: the end the wall
+  stops with as well as the one it starts again with, so no black slab shows from the beach side), and the walls' own pieces
   carry the beach on behind them (`BeachOpen.ground`), so the view past a shack's end isn't the void. Every
   chunk stays inside the build budget (`SkinSuite`: under 32 surfaces for a five-lane chunk) with a stretch
   open on either or both sides (`test_beach_skin`, hand-built layouts through `RunSim.layout`). Review: `skin_review --skin=beach --open`

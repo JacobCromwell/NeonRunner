@@ -98,16 +98,18 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
-## A wall gap (ZoneSkin.wall_gap), and with the left wall the palace floor below. The placement keeps
-## gaps off a Gilded Sentinel's wall section, so no niche is here.
-func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+## With the left wall of a wall gap (ZoneSkin.wall_gap_extras), the palace floor below (not GoldenSkin's: its walkways
+## are not the palace's floor). The placement keeps gaps off a Gilded Sentinel's wall section, so no niche is here.
+func wall_gap_extras(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
-	# Not GoldenSkin's: its walkways are not the palace's floor.
-	wall_gap_marks(parent, side, face_x, start, end, gap)
 	if side < 0:
-		var batch := MeshBatch.new()
 		palace_floor().below(batch, absf(face_x), start, end)
-		batch.commit(parent)
+
+
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): a side hall of the same marble, not the
+## Golden Zone's canal-side lane (GoldenPalaceWalls.recess).
+func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	walls().recess(batch, side, face_x, start, end, gap)
 
 
 ## The wall gaps near the wall TrackBuilder is about to draw. GoldenPalaceWalls uses this to leave

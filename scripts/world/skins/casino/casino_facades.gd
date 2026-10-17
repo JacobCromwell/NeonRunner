@@ -78,6 +78,15 @@ func building(side: int, span: Vector2i) -> MarketFacades.Building:
 	return b
 
 
+## What lies below the street in a wall gap's recess (MarketFacades.recess): the trench, in the Casino's shade.
+func _under_depth() -> float:
+	return csk.trench_depth
+
+
+func _under_pattern() -> int:
+	return MeshKit.PAT_CASINO_UNDER
+
+
 ## The building's shop windows at `scale` times the Marketplace's bay width: the same piers, fewer bays.
 static func _widen(b: MarketFacades.Building, scale: float) -> void:
 	var count: int = b.windows.size()

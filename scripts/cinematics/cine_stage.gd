@@ -59,7 +59,14 @@ func build(p_def: CineStageDef, p_skin: ZoneSkin, p_tuning: MovementTuning, lane
 	track = TrackBuilder.new()
 	track.name = "Track"
 	add_child(track)
-	track.set_layout(layout, tuning, skin)
+	# A stage's openings (CineStageDef.wall_gaps) are where its set looks out of the street (a side street, the
+	# skyline) and builds what it shows itself, so the track draws them with a copy of the skin that doesn't close a wall
+	# gap with the alley a level's gaps get (ZoneSkin.wall_gap_recess_on, task L4); `skin` stays the shared resource.
+	var track_skin: ZoneSkin = skin
+	if not layout.wall_gaps.is_empty():
+		track_skin = skin.duplicate() as ZoneSkin
+		track_skin.wall_gap_recess_on = false
+	track.set_layout(layout, tuning, track_skin)
 	var world_env := WorldEnvironment.new()
 	world_env.name = "Environment"
 	sky = p_sky
