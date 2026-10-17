@@ -18,9 +18,12 @@ extends SkinSuite
 ##   never crosses, nor a step onto the wall well before the lit stretch; the grapple's save and a revive after a fall
 ##   into the gap put the runner on the lit wall, whose run carries them across (and off the wall over the landing
 ##   floor, even from the gap's far edge);
-## - the track: every zone skin lights the lit wall with the ramps' green chevrons (never a hazard colour) over exactly
-##   the stretch to step on and the gap, on the wall face, facing the street, seamless across chunks, nothing on the
-##   other wall, and builds without errors;
+## - the track: only the Marketplace's skin lights the lit wall (task L5, the owner, October 17, 2026: no guide in the
+##   zones after the one that introduces the mechanic; the hole itself is the cue; no gap needs a speed boost, so no
+##   zone keeps it for one) and the grey box and the earlier zones' skins do (they never have one in a campaign
+##   level): the ramps' green chevrons (never a hazard colour) over exactly the stretch to step on and the gap, on the
+##   wall face, facing the street, seamless across chunks, nothing on the other wall; every other skin draws nothing
+##   of it; both build without errors;
 ## - the attacks a runner can't dodge on the wall hold off while a crossing is in their reach (a heli drone's barrage, a
 ##   Bad Dream's slash, an Enforcer Truck's volley, an Octodog's wind-up a wait for its turn moved on: their
 ##   _wall_run_in_reach).
@@ -337,11 +340,20 @@ func _test_saves() -> void:
 	p.free()
 
 
-## Every zone skin lights the lit wall: the ramps' green chevrons over the stretch to step on and the gap, on the
-## wall face, facing the street, their pattern running on across a chunk boundary, nothing on the other wall.
+## A skin that lights the lit wall (ZoneSkin.show_wall_run_guide) draws the ramps' green chevrons over the stretch to
+## step on and the gap, on the wall face, facing the street, their pattern running on across a chunk boundary, nothing
+## on the other wall; one that doesn't draws none of it (task L5). Only the Marketplace's skin of the zones that have
+## wall-run gaps shows it.
 func _test_skins() -> void:
+	for s: CampaignStep in _levels():
+		var skin: ZoneSkin = campaign.configure(s, 3).skin
+		var marketplace: bool = s.zone.id == &"marketplace"
+		check(skin != null and skin.show_wall_run_guide == marketplace,
+			"%s %s its wall-run gaps' lit walls (the Marketplace introduces them, no later zone shows the way)" % [
+			s.zone.id, "lights" if marketplace else "leaves out"])
 	var skins: Array[ZoneSkin] = [GreyboxSkin.new()]
 	var names: Array[String] = ["grey box"]
+	check(skins[0].show_wall_run_guide, "the grey box, quick play's and the review tools' default, lights them")
 	for file: String in DirAccess.get_files_at("res://data/skins"):
 		if file.ends_with(".tres"):
 			skins.append(load("res://data/skins".path_join(file)) as ZoneSkin)
@@ -361,10 +373,12 @@ func _test_skins() -> void:
 			var face: float = TrackGeometry.new(lanes, tuning).wall_x()
 			var covered: Dictionary = {}
 			var bad: Array[String] = []
+			var drawn: Array[String] = []
 			start_error_count()
 			await visit_level(layout, skins[i], func(m: MeshInstance3D, arrays: Array, _mat: Material) -> void:
 				if not String(m.name).contains("WallRunGuide"):
 					return
+				drawn.append(String(m.name))
 				for rect: Dictionary in SkinSuite.rects_of(m, arrays):
 					if int(rect["pattern"]) != MeshKit.PAT_CHEVRON:
 						continue
@@ -390,6 +404,10 @@ func _test_skins() -> void:
 						bad.append("chevrons out of step at %.1f (uv %.3f)" % [a, uv0.x])
 					covered[w] = float(covered.get(w, 0.0)) + (b - a))
 			stop_error_count("building wall-run gaps' lit walls " + tag)
+			if not skins[i].show_wall_run_guide:
+				check(drawn.is_empty(), "a skin that leaves out the lit walls draws none of them %s (%s)" % [tag, drawn])
+				continue
+			check(not drawn.is_empty(), "a skin that lights the lit walls draws them %s" % tag)
 			check(bad.is_empty(), "the lit walls are drawn right %s: %s" % [tag, bad.slice(0, 3)])
 			for w: Dictionary in layout.wall_run_gaps:
 				check(absf(float(covered.get(w, 0.0)) - (float(w["end"]) - float(w["entry"]))) < 0.05,

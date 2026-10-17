@@ -29,7 +29,7 @@ any zone's look at its speed, `--take=smash` (the dash), `crash` (the armor, the
 `--reduced-flashing`, `--god`), wall-run gaps (`wall_run_gap_review`, task J2: two shaped as the generator shapes
 them, the right wall lit then the left, in any zone's look at its speed, `--take=cross` (onto the lit wall midway
 along the lit stretch), `grapple` (the grapple's save onto the wall), `fall` or `look` (a still at the lit wall),
-`--lanes=N`, `--close`, `--god`; `tools/measure/wall_run_gaps.gd` counts them per campaign build and zone, lists
+`--guide=on|off` (the lit wall whatever the skin says; only the Marketplace's skin lights it, task L5), `--lanes=N`, `--close`, `--god`; `tools/measure/wall_run_gaps.gd` counts them per campaign build and zone, lists
 their constraints and dumps a level's as text with `--dump=<step id>`), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
 treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
 `--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`

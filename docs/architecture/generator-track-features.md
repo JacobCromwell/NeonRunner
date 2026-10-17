@@ -745,8 +745,25 @@ throughout (`docs/questions/j2.md`).
   again with the dash wall rule (`past_dash_wall`): the same means, 117 builds.
 
 **Wall-run gaps on the track.** Their holes are built like any (`TrackBuilder._floor_pieces`, the zone's floor edges).
-`TrackBuilder._build_chunk` has the skin light each one's wall where it runs through the chunk
-(`LevelLayout.wall_run_guides`, `ZoneSkin.wall_run_guide`, Zone skins): by default the ramps' green chevrons
+`TrackBuilder._build_chunk` asks the skin to light each one's wall where it runs through the chunk
+(`LevelLayout.wall_run_guides`, `ZoneSkin.wall_run_guide`, Zone skins), and **only the Marketplace's skin does** (task L5;
+the owner, October 17, 2026: the green ramp is fine where the mechanic is introduced, too easy after it, "making the
+player use their brain a little bit more"). Every later zone's skin (`data/skins/`: Casino, Corporate and its plaza
+floor, the Beach, the Dead Zone, the Golden Zone and its palace) sets `show_wall_run_guide = false`, so `wall_run_guide`
+draws nothing there and the cue is the hole itself: the street's edge coming, with the step onto the wall in the last
+`entry_window_seconds` before it (a step up to `exit_margin_seconds` earlier still also crosses, and one up to the jump
+grace, `coyote_time`, past the edge). The gap's wall stays whole and clear whether it is lit or not, but the other wall may carry a sign, a wall
+fence or a wall enemy there, so the runner reads both walls; the grey box and the earlier zones' skins (which never
+have a wall-run gap in the campaign) keep the default `true`, so quick play (`--features=wall_run_gaps`, with
+`--skin=<zone>` for another zone's look) and the review tools show it unless the skin says otherwise
+(`wall_run_gap_review --guide=on|off` forces either). **No gap needs a speed boost**, so no zone keeps the guide for
+one: the gap is a standard wall run (`shape_for`) at the zone's own run speed (a faster zone's gap is longer by the
+same ratio, `test_numbers`), no speed pad, ramp or other boost is in its clear stretch (`floor_keep_outs`), and the
+suite checks that no jump crosses it even with every boost and the dash. The first-encounter hint has two texts
+(`wall_run_gap` in `data/hints/hints.json`; `HintDirector._text_of`): `text` points at the green arrows, and
+`text_no_guide` says to step onto the wall just before the street ends, said where the level's skin leaves the guide out
+(a reminder for a profile that never saw it in the Marketplace). DESIGN-TBD (`docs/questions/l5.md`): whether the 0.5 s
+stretch is readable without the guide. Where the guide is shown it is by default the ramps' green chevrons
 (`ramp_color`, as the Floating Head's wall marks show a wall run), a tall, bright, framed panel over the lit stretch
 (where to step on) and a strip at running height over the gap, streaming ahead, never in a hazard colour, never
 flickering (Reduced flashing leaves it as it is). Visual only, no collision.

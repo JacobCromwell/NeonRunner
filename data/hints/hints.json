@@ -1,5 +1,5 @@
 {
-	"_note": "First-encounter hints paged on the level introduction, once per profile. Triggers select actual layout encounters or this boss's routes/pickups; campaign feature ages put new concepts before older unseen encounters. Only visited pages are acknowledged on PLAY. {action} names the rebound key (PC) or gesture (touch).",
+	"_note": "First-encounter hints paged on the level introduction, once per profile. Triggers select actual layout encounters or this boss's routes/pickups; campaign feature ages put new concepts before older unseen encounters. Only visited pages are acknowledged on PLAY. {action} names the rebound key (PC) or gesture (touch). A hint may carry text_no_guide, said instead of text where the level's zone skin leaves out the wall-run gap's lit wall (ZoneSkin.show_wall_run_guide, task L5).",
 	"hints": [
 		{ "id": "lanes", "trigger": "start", "text": "Switch lanes with {move_left} and {move_right}." },
 		{ "id": "gap", "trigger": "gap", "text": "Gaps: jump with {jump}, or switch lanes." },
@@ -11,7 +11,7 @@
 		{ "id": "wall_fence_low", "trigger": "wall_fence_low", "text": "This wall fence covers only the bottom of the wall: jump ({jump}) before you step onto the wall to run above it." },
 		{ "id": "wall_gap", "trigger": "wall_gap", "text": "Orange edges mark a break in a side wall: there's no wall to run on there, so a wall run drops you into the outer lane. Watch for them and step back onto the wall past the break ({move_left} / {move_right})." },
 		{ "id": "wall_fence_high", "trigger": "wall_fence_high", "text": "This wall fence covers only the top of the wall: step onto the wall without jumping to run below it." },
-		{ "id": "wall_run_gap", "trigger": "wall_run_gap", "text": "The whole street drops away ahead, too far to jump: run along the wall with the green arrows. Move into the outer lane and step onto the wall where the arrows begin ({move_left} / {move_right}); the wall run carries you across." },
+		{ "id": "wall_run_gap", "trigger": "wall_run_gap", "text": "The whole street drops away ahead, too far to jump: run along the wall with the green arrows. Move into the outer lane and step onto the wall where the arrows begin ({move_left} / {move_right}); the wall run carries you across.", "text_no_guide": "The whole street drops away ahead, too far to jump: cross it along a wall. Move into the outer lane and step onto the wall just before the street ends ({move_left} / {move_right}); the wall run carries you across, but step on too early and it ends over the hole." },
 		{ "id": "pad", "trigger": "pad", "text": "Step on the cyan pad to flip up onto the ceiling." },
 		{ "id": "ramp", "trigger": "ramp", "text": "Green ramps launch you high onto the wall, with a burst of speed." },
 		{ "id": "speed_pad", "trigger": "speed_pad", "text": "Speed pads give you a burst of speed." },

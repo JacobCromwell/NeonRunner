@@ -187,9 +187,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   ceiling, and a side wall always open beside them. A hover truck drops behind you and lets you go first, and
   a heli drone flies over one (in quick play, `--features=dash_wall --full-loadout`).
   Wall-run gaps (from halfway into Marketplace 1, one to a few a level, more asked for in later levels, though
-  the crowded Golden Zone fits the fewest; placeholder numbers): the whole street drops away for longer than any jump, even with the dash, and one side wall lights up
-  with the ramps' green arrows. Get into that wall's outer lane and step onto the wall where the arrows begin: the
-  wall run carries you across onto a clear landing. The wall is the safe path there, kept clear of signs, wall
+  the crowded Golden Zone fits the fewest; placeholder numbers): the whole street drops away for longer than any jump, even with the dash. In the Marketplace, where they
+  are introduced, one side wall lights up with the ramps' green arrows; in every later zone it doesn't, and the hole itself
+  is the cue (`ZoneSkin.show_wall_run_guide`, a flag in each zone's skin; no gap needs a speed boost to cross). Get into a
+  clear wall's outer lane and step onto the wall just before the street ends (where the arrows begin, in the Marketplace): the
+  wall run carries you across onto a clear landing. The wall the level means (the one the Marketplace lights) is the safe path there, kept clear of signs, wall
   fences, wall enemies and wall gaps, with nothing else in any lane around it, and drones and a Bad Dream hold
   their attacks while you cross; the grapple or a revive puts you back on that wall (in quick play,
   `--features=wall_run_gaps`).
