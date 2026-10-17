@@ -21,10 +21,10 @@ const OUT_PATH: String = "res://assets/models/market_person.res"
 const ARCHETYPE: int = 0
 const SHOES: int = 4
 const EYES: int = 5
-## The eyes (metres at the rig's own scale): each side's distance from the middle, height above the head joint, size, and how
+## The eyes (metres at the rig's own scale): each side's distance from the middle, height above the head joint (the face's middle is the head's lift above it), size, and how
 ## far the face (the head's front, -z) is from the joint.
 const EYE_SPREAD: float = 0.036
-const EYE_HEIGHT: float = 0.014
+const EYE_HEIGHT: float = CitizenRig.HEAD_LIFT + 0.014
 const EYE_SIZE := Vector3(0.026, 0.022, 0.008)
 const FACE_Z: float = -0.075
 ## Vertices closer than this (metres), in one class and one moving part, are one.

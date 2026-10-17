@@ -22,11 +22,14 @@ render_mode unshaded, cull_back, depth_draw_opaque;
 global uniform float scenery_light;
 global uniform vec3 scenery_tint;
 
-// x the crowd's clock (s, the sum of the frames' time: it stops while the game is paused), y and z the runner's world x and z.
+// x the crowd's clock (s, the sum of the frames' time: it stops while the game is paused), y and z the runner's world x and z,
+// w 1 when there is a runner to watch (a crowd outside any run, such as the Marketplace intro's street, faces forward).
 uniform vec4 u_state = vec4(0.0);
 // What is happening: x the clock when it began (a long time ago: nothing), y the runner's world z when it began, z its kind
-// (0 a cheer, 1 a flinch).
+// (0 a cheer, 1 a flinch). The one before it is kept too (u_event_prev), so a reaction begun while another is under way adds
+// to it as it eases in from nothing, and the one it follows eases out: nothing snaps.
 uniform vec4 u_event = vec4(-1000.0, 0.0, 0.0, 0.0);
+uniform vec4 u_event_prev = vec4(-1000.0, 0.0, 0.0, 0.0);
 // A cheer: x its length (s), y the hop's height (m), z how far ahead of the runner it reaches (m), w how far behind.
 uniform vec4 u_cheer = vec4(0.9, 0.28, 48.0, 12.0);
 // x the ripple (s a metre), y the lateness a person has of their own (s), z the distance the heads turn fully within (m),
@@ -48,10 +51,32 @@ uniform vec4 shoes[3];
 varying flat float v_class;
 varying flat float v_seed;
 
+// MarketPeople.posed() and MarketPeople.reaction() are GDScript mirrors of what follows (a test keeps the constants the same
+// and checks the arm roots stay on the body through a cheer and a flinch): change them together.
+const float ARMS_CHEER = 2.65;
+const float ARMS_FLINCH = 2.35;
+const float CROUCH = 0.26;
+const float TIP = 0.25;
+
 vec2 rot(vec2 d, float a) {
 	float c = cos(a);
 	float s = sin(a);
 	return vec2(d.x * c - d.y * s, d.x * s + d.y * c);
+}
+
+// How far through reaction `ev` the person standing at world z `z` is, as (arms thrown up 0-1 in a cheer, hop 0-1, flinch
+// 0-1): k runs 0 to 1 over it, later the farther the person is from where the runner was, and later by their own lateness
+// `late`; only those within the cheer's reach of that place take part. Every amount is 0 at k = 0 and k = 1.
+vec3 reaction(vec4 ev, float z, float late, float t) {
+	float dz = z - ev.y;
+	float in_reach = step(-u_cheer.z, dz) * step(dz, u_cheer.w);
+	float is_flinch = step(0.5, ev.z);
+	float k = (t - ev.x - abs(dz) * u_motion.x - late * u_motion.y) / mix(u_cheer.x, u_limits.z, is_flinch);
+	float on = in_reach * step(0.0, k) * step(k, 1.0);
+	float arms_up = smoothstep(0.0, 0.22, k) * (1.0 - smoothstep(0.72, 1.0, k));
+	float hk = clamp((k - 0.08) / 0.72, 0.0, 1.0);
+	float bump = sin(3.14159 * clamp(k, 0.0, 1.0));
+	return on * vec3(arms_up * (1.0 - is_flinch), 4.0 * hk * (1.0 - hk) * (1.0 - is_flinch), bump * is_flinch);
 }
 
 void vertex() {
@@ -65,47 +90,37 @@ void vertex() {
 	float t = u_state.x;
 	float phase = cd.y * 6.2832;
 
-	// A cheer or a flinch under way: k runs 0 to 1 over it, later the farther from the runner, and later by this
-	// person's own lateness; only those within the cheer's reach of where the runner was take part.
-	float dz = origin.z - u_event.y;
-	float in_reach = step(-u_cheer.z, dz) * step(dz, u_cheer.w);
-	float length_s = u_event.z > 0.5 ? u_limits.z : u_cheer.x;
-	float k = (t - u_event.x - abs(dz) * u_motion.x - cd.z * u_motion.y) / length_s;
-	float on = in_reach * step(0.0, k) * step(k, 1.0);
-	float cheer = on * step(u_event.z, 0.5);
-	float flinch = on * step(0.5, u_event.z);
-	float arms_up = smoothstep(0.0, 0.22, k) * (1.0 - smoothstep(0.72, 1.0, k));
-	float hk = clamp((k - 0.08) / 0.72, 0.0, 1.0);
-	float hop = 4.0 * hk * (1.0 - hk);
-	float bump = sin(3.14159 * clamp(k, 0.0, 1.0));
+	// A cheer or a flinch under way (two at most, added).
+	vec3 r = min(reaction(u_event, origin.z, cd.z, t) + reaction(u_event_prev, origin.z, cd.z, t), vec3(1.0));
+	float flinch = r.z;
+	float arms = min(r.x * ARMS_CHEER + flinch * ARMS_FLINCH, ARMS_CHEER);
 
-	// At ease: a breath, and a slow sway about the feet.
-	p.y *= 1.0 + 0.004 * sin(t * 1.9 + phase * 1.3);
-	p.y *= 1.0 - 0.26 * flinch * bump;
-
+	// The head and the arms turn about their pivots at the person's own size, standing straight...
 	if (moves > 0.5 && moves < 1.5) {
 		// The head turns about the neck toward the runner: the angle to them from straight ahead of this person's body
 		// (local -z), held to what a neck can do, and less the farther they are.
 		vec3 to = vec3(u_state.y - origin.x, 0.0, u_state.z - origin.z);
 		float lx = dot(to, normalize(MODEL_MATRIX[0].xyz));
 		float lz = dot(to, normalize(MODEL_MATRIX[2].xyz));
-		float turn = -clamp(atan(lx, -lz), -u_limits.x, u_limits.x) * (1.0 - smoothstep(u_motion.z, u_motion.w, length(to)));
-		float tip = flinch * bump * 0.25;
+		float follow = u_state.w * (1.0 - smoothstep(u_motion.z, u_motion.w, length(to)));
+		float turn = -clamp(atan(lx, -lz), -u_limits.x, u_limits.x) * follow;
 		vec3 d = p - u_neck;
 		d.xz = vec2(d.x * cos(turn) + d.z * sin(turn), -d.x * sin(turn) + d.z * cos(turn));
-		d.yz = rot(d.yz, tip);
+		d.yz = rot(d.yz, flinch * TIP);
 		p = u_neck + d;
 	} else if (moves > 1.5) {
-		// An arm swings about its shoulder, up and out: thrown up in a cheer, up over the head in a flinch (with the crouch).
+		// An arm swings about its shoulder, up and out: thrown up in a cheer, up over the head in a flinch.
 		bool right = moves > 2.5;
 		vec3 sh = right ? u_shoulder_r : u_shoulder_l;
-		float angle = (cheer * arms_up * 2.65 + flinch * bump * 2.35) * (right ? 1.0 : -1.0);
 		vec3 d = p - sh;
-		d.xy = rot(d.xy, angle);
+		d.xy = rot(d.xy, arms * (right ? 1.0 : -1.0));
 		p = sh + d;
 	}
+	// ...then the whole body: a breath, the crouch of a flinch (about the feet, so the arms' roots go down with the
+	// shoulders they hang from), a slow sway about the feet, and the hop.
+	p.y *= (1.0 + 0.004 * sin(t * 1.9 + phase * 1.3)) * (1.0 - CROUCH * flinch);
 	p.x += p.y * u_limits.y * sin(t * 0.7 + phase);
-	p.y += cheer * hop * u_cheer.y / height_scale;
+	p.y += r.y * u_cheer.y / height_scale;
 	VERTEX = p;
 }
 

@@ -34,12 +34,14 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   windows are not citizens: they are the cult's feed TVs, `feed_window_share` 0.22 of the windows, playing the calm cyborg
   face, and the window cyborgs' screen heads.) `tools/asset_gen/citizen_person_gen.gd` (`tools/godot.sh citizens`,
   headless) poses the shared `HumanoidRig` (`CitizenRig`) standing at ease and bakes one welded, indexed mesh,
-  `assets/models/market_person.res` (288 vertices, 500 triangles, 1.25 m, feet on y = 0, facing -z, two small dark eyes
-  so a turning head reads): UV2 tags every vertex with a colour class (trousers, shirt, skin, hair, shoes, eyes) and what
+  `assets/models/market_person.res` (288 vertices, 500 triangles, 1.33 m, feet on y = 0, facing -z, two small dark eyes
+  so a turning head reads; `CitizenRig`'s limb pieces hang from their joints and its head sits on the shoulders, so nothing
+  floats off the figure: a test counts the front silhouette's pieces, one): UV2 tags every vertex with a colour class (trousers, shirt, skin, hair, shoes, eyes) and what
   moves it (the body, the head, the left or right arm), and the mesh's meta holds the neck and shoulder pivots.
   `MarketCitizens` (`scripts/world/skins/marketplace/`), called from `wall_section()`, seeds which eligible `shop_windows()`
   get one (never a feed window, `screen`; `CITIZEN_SHARE` 0.32) from the window's own track position (`person_for()`:
-  where they stand inside, 1.5 to 1.74 m tall, their build, the way they face: the lanes, turned 20 to 50 degrees toward
+  where they stand inside, their height and build (D3's three archetypes as three silhouettes of the one mesh: the tall slim
+  shopper, the short wide regular, the vendor between, 1.47 to 1.74 m, a few per cent each of their own), the way they face: the lanes, turned 20 to 50 degrees toward
   the end of the street the runner comes from, and their seeds), so a chunk builds the same citizens every time, and adds one
   `MarketCrowd` to the section: one `MultiMeshInstance3D` of the people (one draw call and three nodes however many), in the
   `"market_citizens"` group with a public `react(kind)` (D3's hook for The House, E5a: `&"cheer"` and `&"startled"`, the
@@ -47,8 +49,13 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   never flickering, the same on the Compatibility renderer) dresses each from `MarketPeople`'s palettes (muted clothes, a
   test pins saturation, brightness and vividness; no skin-coloured shirt) by the seed in the instance's custom data and moves
   them in the vertex shader: a sway and a breath at ease, the head turning about the neck to follow the runner (from
-  `look_far` 52 m, fully within 16 m, 72 degrees at the most), and a cheer or a flinch from one uniform. One shared
-  `ShaderMaterial` serves every crowd; `MarketPeople.tick()` (the first crowd to process in a frame) sets its one uniform
+  `look_far` 52 m, fully within 16 m, 72 degrees at the most; a crowd with no run at all, the Marketplace intro's street, faces
+  forward, `u_state.w`), and a cheer or a flinch from one uniform. The head and arms turn about their pivots first and the crouch
+  scales the body after, so the arms' roots go down with the shoulders (`MarketPeople.posed()` and `reaction()` mirror the shader's
+  vertex function, a test keeps them and the arms on the body through a cheer, a flinch and a blend); two reactions at once add,
+  the one under way kept in `u_event_prev`, so nothing snaps. One shared
+  `ShaderMaterial` serves every crowd; `MarketPeople.tick()` (the first crowd of the run to process in a frame: one outside it, such as the
+  warm-up's sample, leaves the frame to them) sets its one uniform
   `u_state` (the crowd's clock, which stops in a pause and slows with slow-time, and the runner's place, read from the
   `RunWorld` the crowd finds up its tree), `u_event` only when something cheers: the CPU does nothing per person.
   What cheers (`data/citizens/market_people.tres`, `MarketPeopleTuning`, all DESIGN-TBD, `docs/questions/l7.md`): a credit

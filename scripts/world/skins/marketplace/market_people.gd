@@ -38,6 +38,14 @@ const PANTS: PackedColorArray = [
 	Color(0.54, 0.50, 0.42), Color(0.36, 0.31, 0.29)]
 const SHOES: PackedColorArray = [Color(0.12, 0.11, 0.11), Color(0.28, 0.20, 0.15), Color(0.34, 0.34, 0.36)]
 
+const NO_EVENT := Vector4(-1000.0, 0.0, 0.0, 0.0)
+## What the shader does to a person (market_person.gdshader's constants; posed() and reaction() mirror its vertex function):
+## the arms' swing in a cheer and in a flinch (radians), the crouch (the share of their height lost), the head's tip.
+const ARMS_CHEER: float = 2.65
+const ARMS_FLINCH: float = 2.35
+const CROUCH: float = 0.26
+const TIP: float = 0.25
+
 static var _mesh: ArrayMesh
 static var _material: ShaderMaterial
 static var _tuning: MarketPeopleTuning
@@ -51,6 +59,9 @@ static var _world: WeakRef
 static var _event_start: float = -1000.0
 static var _event_kind: StringName = &""
 static var _event_frame: int = -1
+## The shader's two event slots (u_event and the one before it, u_event_prev): (clock at the start, the runner's world z, kind).
+static var _event := NO_EVENT
+static var _event_prev := NO_EVENT
 
 
 ## The baked person (null until `tools/godot.sh citizens` has baked it: the skin then builds no citizens, rather than crash).
@@ -102,22 +113,35 @@ static func material() -> ShaderMaterial:
 
 # --- The clock --------------------------------------------------------------------------------------------------------
 
+## Called by a crowd as it enters the tree (MarketCrowd._ready): finds its run, if it is in one, so that a crowd outside any
+## run (the warm-up's sample) never drives a frame before the run's own crowds have ticked.
+static func attach(crowd: Node) -> void:
+	_find_world(crowd)
+
+
 ## Called by every crowd each frame (MarketCrowd._process): the first one of a frame advances the clock by `delta` and sets
-## the material's uniform to the clock and the runner's place; the others do nothing.
+## the material's uniform to the clock and the runner's place; the others do nothing. A crowd outside every run lets one of
+## the run's own drive while a run is on; with no run at all (the Marketplace intro's street) it drives, and the heads face forward.
 static func tick(from: Node, delta: float) -> void:
 	var frame: int = Engine.get_process_frames()
 	if frame == _tick_frame:
 		return
+	var world: RunWorld = _find_world(from)
+	if world == null and _world != null and _world.get_ref() != null:
+		return  # A run is on and this crowd is not in it (the warm-up's sample): a crowd of the run drives the frame.
 	_tick_frame = frame
 	_clock += delta
-	var world: RunWorld = _find_world(from)
+	var watching: bool = false
 	if world != null and world.player != null:
 		_runner = world.player.global_position
+		watching = true
 	elif _runner_override != null:
 		_runner = _runner_override
+		watching = true
 	var m: ShaderMaterial = material()
 	if m != null:
-		m.set_shader_parameter(&"u_state", Vector4(_clock, _runner.x, _runner.z, 0.0))
+		# With no runner to watch (a crowd outside any run: the Marketplace intro's street) the heads face forward.
+		m.set_shader_parameter(&"u_state", Vector4(_clock, _runner.x, _runner.z, 1.0 if watching else 0.0))
 
 
 ## Where the people look, with no run to ask (reviews and tests): the runner's world position. A run's player always wins.
@@ -137,8 +161,7 @@ static func reset() -> void:
 	_event_kind = &""
 	_event_frame = -1
 	_runner_override = null
-	if _material != null:
-		_material.set_shader_parameter(&"u_event", Vector4(-1000.0, 0.0, 0.0, 0.0))
+	_set_events(NO_EVENT, NO_EVENT)
 
 
 # --- What cheers them -------------------------------------------------------------------------------------------------
@@ -158,7 +181,21 @@ static func react(kind: StringName) -> void:
 	_event_frame = frame
 	_event_kind = kind
 	_event_start = _clock
-	m.set_shader_parameter(&"u_event", Vector4(_clock, _runner.z, 1.0 if kind == STARTLED else 0.0, 0.0))
+	# The reaction under way stays in the second slot while this one eases in, so the two blend.
+	_set_events(Vector4(_clock, _runner.z, 1.0 if kind == STARTLED else 0.0, 0.0), _event)
+
+
+static func _set_events(current: Vector4, previous: Vector4) -> void:
+	_event = current
+	_event_prev = previous
+	if _material != null:
+		_material.set_shader_parameter(&"u_event", current)
+		_material.set_shader_parameter(&"u_event_prev", previous)
+
+
+## The two event slots as the shader has them, newest first: for tests.
+static func events() -> Array[Vector4]:
+	return [_event, _event_prev] as Array[Vector4]
 
 
 ## Seconds since the last cheer or flinch began (a long time if none has): for tests.
@@ -181,8 +218,7 @@ static func _find_world(from: Node) -> RunWorld:
 	_world = weakref(world)
 	_event_start = -1000.0
 	_event_kind = &""
-	if _material != null:
-		_material.set_shader_parameter(&"u_event", Vector4(-1000.0, 0.0, 0.0, 0.0))
+	_set_events(NO_EVENT, NO_EVENT)
 	if world.credits != null and not world.credits.collected.is_connected(_on_credit):
 		world.credits.collected.connect(_on_credit)
 	if world.director != null and not world.director.enemy_defeated.is_connected(_on_enemy_defeated):
@@ -202,3 +238,53 @@ static func _on_enemy_defeated(enemy: Enemy, cause: StringName) -> void:
 		return
 	if tuning().cheer_enemy_types.has(String(enemy.type_id)):
 		react(CHEER)
+
+
+# --- The shader's pose, mirrored ---------------------------------------------------------------------------------------
+
+## How far through the reaction `ev` (an event slot) the person standing at world z `z` is, with their own lateness `late`
+## (0-1), at clock `t`, as (arms thrown up 0-1 in a cheer, hop 0-1, flinch 0-1): a GDScript mirror of market_person.gdshader's
+## reaction(), change both together. Every amount is 0 where the reaction begins and ends.
+static func reaction(ev: Vector4, z: float, late: float, t: float) -> Vector3:
+	var tune: MarketPeopleTuning = tuning()
+	var dz: float = z - ev.y
+	if dz < -tune.cheer_ahead or dz > tune.cheer_behind:
+		return Vector3.ZERO
+	var is_flinch: bool = ev.z > 0.5
+	var k: float = (t - ev.x - absf(dz) * tune.ripple - late * tune.jitter) / (tune.startle_seconds if is_flinch else tune.cheer_seconds)
+	if k < 0.0 or k > 1.0:
+		return Vector3.ZERO
+	var arms_up: float = smoothstep(0.0, 0.22, k) * (1.0 - smoothstep(0.72, 1.0, k))
+	var hk: float = clampf((k - 0.08) / 0.72, 0.0, 1.0)
+	var bump: float = sin(PI * k)
+	if is_flinch:
+		return Vector3(0.0, 0.0, bump)
+	return Vector3(arms_up, 4.0 * hk * (1.0 - hk), 0.0)
+
+
+## A vertex `p` of the baked person as the shader poses it, a GDScript mirror of market_person.gdshader's vertex() in the
+## person's own space, change both together: `moves` its part (0 body, 1 head, 2 left arm, 3 right arm), `r` the reactions'
+## amounts (reaction(), the two slots added and held to 1), `turn` the head's turn about the neck (radians), `breath` and
+## `sway` the ease's, `hop` the hop's height in the mesh's own metres, `pivots` the mesh's meta. The head and the arms turn
+## about their pivots first, the crouch and the sway scale and lean the whole body after, so an arm's root goes down and
+## sways with the shoulder it hangs from.
+static func posed(p: Vector3, moves: int, r: Vector3, turn: float, breath: float, sway: float, hop: float,
+		pivots: Dictionary) -> Vector3:
+	var flinch: float = minf(r.z, 1.0)
+	var arms: float = minf(minf(r.x, 1.0) * ARMS_CHEER + flinch * ARMS_FLINCH, ARMS_CHEER)
+	if moves == 1:
+		var neck: Vector3 = pivots[&"neck"]
+		var d: Vector3 = p - neck
+		var xz: Vector2 = Vector2(d.x, d.z).rotated(-turn)
+		var yz: Vector2 = Vector2(d.y, xz.y).rotated(flinch * TIP)
+		p = neck + Vector3(xz.x, yz.x, yz.y)
+	elif moves >= 2:
+		var right: bool = moves == 3
+		var sh: Vector3 = pivots[&"shoulder_r"] if right else pivots[&"shoulder_l"]
+		var d: Vector3 = p - sh
+		var xy: Vector2 = Vector2(d.x, d.y).rotated(arms * (1.0 if right else -1.0))
+		p = sh + Vector3(xy.x, xy.y, d.z)
+	p.y *= (1.0 + breath) * (1.0 - CROUCH * flinch)
+	p.x += p.y * sway
+	p.y += minf(r.y, 1.0) * hop
+	return p

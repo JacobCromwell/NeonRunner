@@ -21,12 +21,16 @@ const CITIZEN_SHARE: float = 0.32
 ## wider than its drawn window (WindowCyborgTuning.window_length / 2) so the two are never close
 ## enough to read as the same thing (DESIGN-TBD, docs/questions/d3.md).
 const CYBORG_MARGIN: float = 2.2
-## A person's height range (metres: shorter and taller), and the most of a window's height one may take (heads clear the lintel).
-const HEIGHT_RANGE := Vector2(1.5, 1.74)
+## The tallest person's height (metres), and the most of a window's height one may take (heads clear the lintel). D3's three
+## archetypes (CitizenRig.ARCHETYPES: the vendor, the shopper and the regular) give the silhouettes, as one person each: the
+## shopper is the tallest and slimmest, the regular the shortest and widest, the vendor between (each with a few per cent of
+## their own), all from the one mesh (a person's scale), so variety costs no draw call.
+const HEIGHT_TALLEST: float = 1.74
 const HEAD_ROOM_SHARE: float = 0.9
-## Build (the width and depth over the height), how deep into the display they stand (the share of its depth, from the
-## glass), and how far they turn from facing the lanes toward the runner's approach (degrees): DESIGN-TBD.
-const BUILD_RANGE := Vector2(0.92, 1.1)
+## How much a person's own height and build differ from their archetype's (the factor's range).
+const OWN_RANGE := Vector2(0.96, 1.04)
+## How deep into the display they stand (the share of its depth, from the glass), and how far they turn from facing the
+## lanes toward the runner's approach (degrees): DESIGN-TBD.
 const DEPTH_RANGE := Vector2(0.42, 0.6)
 const TURN_RANGE := Vector2(20.0, 50.0)
 ## A person's width with room to spare, kept clear of a window's piers (metres).
@@ -79,10 +83,12 @@ func spawn(parent: Node3D, people: Array[Dictionary]) -> void:
 func person_for(w: Dictionary, side: int, key: int) -> Dictionary:
 	var bottom: float = float(w["bottom"])
 	var top: float = float(w["top"])
-	var height: float = minf(lerpf(HEIGHT_RANGE.x, HEIGHT_RANGE.y, MeshKit.hash01(side, key, 223)),
-		(top - bottom) * HEAD_ROOM_SHARE)
+	var archetype: CitizenRig.Archetype = CitizenRig.ARCHETYPES[MeshKit.hash_i(side, key, 223) % CitizenRig.archetype_count()]
+	var design: Vector3 = archetype.design_size
+	var height: float = minf(HEIGHT_TALLEST * design.y / _tallest_design() * lerpf(OWN_RANGE.x, OWN_RANGE.y,
+		MeshKit.hash01(side, key, 225)), (top - bottom) * HEAD_ROOM_SHARE)
 	var stature: float = height / MarketPeople.stature()
-	var build: float = lerpf(BUILD_RANGE.x, BUILD_RANGE.y, MeshKit.hash01(side, key, 227))
+	var build: float = design.x / design.y / _mean_aspect() * lerpf(OWN_RANGE.x, OWN_RANGE.y, MeshKit.hash01(side, key, 227))
 	var center: Vector3 = w["center"]
 	var along: float = (MeshKit.hash01(side, key, 229) - 0.5) * maxf(float(w["width"]) - PERSON_WIDTH, 0.0) * 0.8
 	var depth: float = float(w["depth"]) * lerpf(DEPTH_RANGE.x, DEPTH_RANGE.y, MeshKit.hash01(side, key, 231))
@@ -100,3 +106,18 @@ func person_for(w: Dictionary, side: int, key: int) -> Dictionary:
 ## A person standing at the origin, for the shader warm-up (MarketplaceSkin.warm_samples).
 static func sample_person() -> Dictionary:
 	return {"pos": Vector3.ZERO, "heading": 0.0, "scale": Vector3.ONE, "look": 0.5, "phase": 0.0, "late": 0.0, "at": 0.0}
+
+
+## The tallest archetype's design height, and the archetypes' mean width over height (a person's scale is relative to them).
+static func _tallest_design() -> float:
+	var tallest: float = 0.0
+	for a: CitizenRig.Archetype in CitizenRig.ARCHETYPES:
+		tallest = maxf(tallest, a.design_size.y)
+	return tallest
+
+
+static func _mean_aspect() -> float:
+	var sum: float = 0.0
+	for a: CitizenRig.Archetype in CitizenRig.ARCHETYPES:
+		sum += a.design_size.x / a.design_size.y
+	return sum / float(CitizenRig.archetype_count())

@@ -15,6 +15,8 @@ extends Node3D
 ##                   --cheer has a cheer begin two frames into each shot (--hold=20 or more, past the cooldown), and
 ##                   --flinch The House's duck instead; --sweep=M walks the runner past the shot's citizen from M metres
 ##                   before it to M metres after over --sweep-frames (default 30), to see the heads turn
+##   --focus=feet|head|full  with --view=window, the close shots: at the person's feet, at their head and shoulders, or
+##                   at the whole of them (default)
 ##   --reduced-flashing  Settings > Reduced flashing on
 ##   --no-citizens   Settings.citizens_enabled off
 ## It prints each citizen it finds with its track distance and side.
@@ -159,7 +161,15 @@ func _shot_list() -> Array:
 		var side: float = signf(p.x)
 		var at: float = -p.z
 		var eye := Vector3(p.x - side * 2.6, 1.7, p.z + 2.4)
-		out.append([at, eye, Vector3(p.x, 1.2, p.z), "citizen %d close, from the lane beside it (%.1f m)" % [shown, at]])
+		var look := Vector3(p.x, 1.2, p.z)
+		match _opt("focus", "full"):
+			"feet":
+				eye = Vector3(p.x - side * 1.5, p.y + 0.3, p.z + 1.1)
+				look = Vector3(p.x, p.y + 0.2, p.z)
+			"head":
+				eye = Vector3(p.x - side * 1.5, p.y + 1.55, p.z + 1.1)
+				look = Vector3(p.x, p.y + 1.45, p.z)
+		out.append([at, eye, look, "citizen %d close, from the lane beside it (%.1f m)" % [shown, at]])
 		out.append([at, Vector3(0.0, tuning.camera_height, -(at - 14.0)), Vector3(p.x, 1.3, p.z),
 			"citizen %d from the game camera 14 m before" % shown])
 		out.append([at, Vector3(0.0, tuning.camera_height, -(at - 7.0)), Vector3(p.x, 1.3, p.z),

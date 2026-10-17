@@ -104,34 +104,44 @@ static func _blend(out: HumanoidPose, a: HumanoidPose, b: HumanoidPose, t: float
 	out.finish(1.0)
 
 
-# --- Body (simple boxes and prisms: cheap to bake, never seen in 3D at runtime) -------------
+# --- Body (simple boxes and prisms: cheap to bake) -----------------------------------------
+
+## Every limb piece hangs from its joint (the thigh from the hip, the forearm from the elbow...), as the cinematics' people do
+## (MarketplaceIntroVendor): a piece centred on its joint left a gap below it (the baked person's shoes floated 0.12 m under
+## its trousers, its hands 0.015 m under its forearms). The pieces run a centimetre past the joint they hang from, so a bent
+## joint shows no gap. The head sits on the chest, HEAD_LIFT above its joint (which is the chest's top): a head centred on
+## its joint was half sunk into the collar.
+const HEAD_LIFT: float = 0.08
 
 static func _body(list: Array[HumanoidPiece], a: Archetype) -> void:
 	_add(list, &"pelvis", BOX, Vector3(0.23, 0.16, 0.16), Vector3.ZERO, a.pants_color, {"chamfer": 0.3})
-	_add(list, &"chest", BOX, Vector3(0.27, 0.34, 0.18), Vector3(0.0, 0.17, 0.0), a.shirt_color, {"chamfer": 0.3,
+	_add(list, &"chest", BOX, Vector3(0.27, 0.35, 0.18), Vector3(0.0, 0.165, 0.0), a.shirt_color, {"chamfer": 0.3,
 		"top_scale": Vector2(0.92, 0.95)})
 
 
 static func _head(list: Array[HumanoidPiece], a: Archetype) -> void:
-	_add(list, &"neck", PRISM, Vector3(0.07, 0.07, 0.07), Vector3.ZERO, a.skin_color, {"sides": 8})
-	_add(list, &"head", BOX, Vector3(0.15, 0.17, 0.15), Vector3.ZERO, a.skin_color, {"chamfer": 0.35,
+	_add(list, &"neck", PRISM, Vector3(0.07, 0.07, 0.07), Vector3(0.0, 0.03, 0.0), a.skin_color, {"sides": 8})
+	_add(list, &"head", BOX, Vector3(0.15, 0.17, 0.15), Vector3(0.0, HEAD_LIFT, 0.0), a.skin_color, {"chamfer": 0.35,
 		"top_scale": Vector2(0.9, 0.92)})
-	_add(list, &"head", PRISM, Vector3(0.158, 0.085, 0.158), Vector3(0.0, 0.1, 0.004), a.hair_color,
+	_add(list, &"head", PRISM, Vector3(0.158, 0.085, 0.158), Vector3(0.0, HEAD_LIFT + 0.1, 0.004), a.hair_color,
 		{"sides": 8, "top_scale": Vector2(0.75, 0.75)})
 
 
 static func _arms(list: Array[HumanoidPiece], a: Archetype) -> void:
-	_add(list, &"upper_arm", PRISM, Vector3(0.08, 0.2, 0.08), Vector3.ZERO, a.shirt_color, {"sides": 8,
+	# (The upper arm sits a centimetre in from its joint, toward the body: the joint is just outside the shirt's side, and an
+	# arm tangent to it left a hairline between the two in the front view.)
+	_add(list, &"upper_arm", PRISM, Vector3(0.08, 0.21, 0.08), Vector3(-0.012, -0.095, 0.0), a.shirt_color, {"sides": 8,
 		"top_scale": Vector2(0.9, 0.9), "side": MIRRORED})
-	_add(list, &"forearm", PRISM, Vector3(0.068, 0.18, 0.068), Vector3.ZERO, a.skin_color, {"sides": 8,
+	_add(list, &"forearm", PRISM, Vector3(0.068, 0.19, 0.068), Vector3(0.0, -0.085, 0.0), a.skin_color, {"sides": 8,
 		"top_scale": Vector2(0.88, 0.88), "side": MIRRORED})
-	_add(list, &"hand", BOX, Vector3(0.06, 0.08, 0.05), Vector3.ZERO, a.skin_color, {"chamfer": 0.3, "side": MIRRORED})
+	_add(list, &"hand", BOX, Vector3(0.06, 0.08, 0.05), Vector3(0.0, -0.04, 0.0), a.skin_color, {"chamfer": 0.3,
+		"side": MIRRORED})
 
 
 static func _legs(list: Array[HumanoidPiece], a: Archetype) -> void:
-	_add(list, &"thigh", PRISM, Vector3(0.115, 0.3, 0.115), Vector3.ZERO, a.pants_color, {"sides": 8,
+	_add(list, &"thigh", PRISM, Vector3(0.115, 0.31, 0.115), Vector3(0.0, -0.145, 0.0), a.pants_color, {"sides": 8,
 		"top_scale": Vector2(1.08, 1.08), "side": MIRRORED})
-	_add(list, &"shin", PRISM, Vector3(0.09, 0.3, 0.09), Vector3.ZERO, a.pants_color, {"sides": 8,
+	_add(list, &"shin", PRISM, Vector3(0.09, 0.31, 0.09), Vector3(0.0, -0.145, 0.0), a.pants_color, {"sides": 8,
 		"top_scale": Vector2(1.05, 1.05), "side": MIRRORED})
 	_add(list, &"foot", BOX, Vector3(0.09, 0.08, 0.18), Vector3(0.0, -0.01, -0.03), a.hair_color,
 		{"chamfer": 0.25, "top_scale": Vector2(0.9, 0.8), "side": MIRRORED})

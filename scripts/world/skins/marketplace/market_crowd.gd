@@ -67,5 +67,9 @@ func react(kind: StringName) -> void:
 	MarketPeople.react(kind)
 
 
+func _ready() -> void:
+	MarketPeople.attach(self)
+
+
 func _process(delta: float) -> void:
 	MarketPeople.tick(self, delta)
