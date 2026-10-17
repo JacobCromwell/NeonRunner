@@ -17,6 +17,9 @@ uniform float strength = 1.0;
 uniform int shape = 0;
 uniform float fade_begin = 90.0;
 uniform float fade_end = 320.0;
+// 0 as the fight draws it; above 0 the light fades out within this many metres of the camera (the City intro's camera
+// stands in the street the light shines down: it never fills the picture).
+uniform float near_fade = 0.0;
 
 void fragment() {
 	float a;
@@ -32,6 +35,9 @@ void fragment() {
 		a = disc * 0.75 + rim * 0.5;
 	}
 	float fade = 1.0 - smoothstep(fade_begin, fade_end, length(VERTEX));
+	if (near_fade > 0.0) {
+		fade *= smoothstep(near_fade * 0.3, near_fade, length(VERTEX));
+	}
 	float k = max(a * strength * fade, 0.0);
 #if CURRENT_RENDERER == RENDERER_COMPATIBILITY
 	// Compatibility adds light in sRGB space, where a faint additive light reads far dimmer than the

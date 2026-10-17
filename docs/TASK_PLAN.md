@@ -507,6 +507,7 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2e | **The Beach's outro** (the owner's beats, October 15, 2026) | F1 | M | T2 |
 | F2f | **The Marketplace's intro** (the owner's beats, October 16, 2026) | F1 | M | T2 |
 | F2g | **Gangland's intro** (the owner's beats, October 16, 2026) | F1 | M | T2 |
+| F2h | **The Neon City's intro**, the game's first cinematic (the owner's beats, October 16, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
@@ -582,6 +583,19 @@ their Octodog charges (its own wind-up first), bowls one cyborg over and pounces
 back to the runner, who turns slowly to the right, left hand up over their face, and walks off down the right-hand
 street, the zone's title card coming up (the owner's follow-up, the same day). 21.6 s. Five sounds of its own (`tools/asset_gen/sfx_bank_gangland_intro.gd`) and `HoverTruck.add_model` (the
 truck's look at rest, for props); nothing added to the toolkit. The staging choices are in `docs/OPEN_QUESTIONS_DEFERRED.md`, items 897–910 (906, the title card, answered).
+
+**F2h: the Neon City's intro** (owner, October 16, 2026; GDD §6, Cinematics, "Zone 1 intro"). **Done:** `CityIntro`
+(`scripts/cinematics/city_intro/`) in the City's intro slot, in place of the placeholder flyover (the City's boss intro keeps
+it): 21.7 s (20 s of story and the game's title) on a real street (the City's towers with no floor, the road lifted to y = 0, dressed with shopfronts, lamps, traffic
+and a few hundred people). A flyby from above following the Floating Head's cold-white searchlight down into the street in one
+continuous move; cyborgs trudging toward the camera under the Head, its face showing; the light sweeping along the wall across
+a feed billboard (the Head's face on a screen a floor up the building), its picture tearing and its screen bursting just behind
+the light (glass and cold-white sparks; Reduced flashing: fewer sparks, a slow glow); the runner leaping out, stomping the first cyborg (squashed as a stomp kills in play)
+and hopping over two more, the light whipping back to catch them; the Head startled (a new `surprise` look on its face shader),
+angry and yelling, every cyborg's screen flickering at once and turning angry (once, with Reduced flashing), the cyborgs
+turning and chasing; the game's title, "NEON RUNNER", then Zone 1's title card, over the chase. Five new sounds
+(`tools/asset_gen/sfx_bank_city_intro.gd`), `test_city_intro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md` items 911–922; the
+owner's two later answers (the billboard, the game's title first) are built.
 
 ### H. The owner's requests (October 8, 2026)
 
@@ -663,7 +677,7 @@ From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro, F2e's Beach outro, F2f's Marketplace intro and F2g's Gangland intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro, F2e's Beach outro, F2f's Marketplace intro F2g's Gangland intro and F2h's City intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 

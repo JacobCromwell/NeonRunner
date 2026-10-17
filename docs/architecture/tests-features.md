@@ -86,10 +86,25 @@ eased and cut moves, cameras riding with an actor), a timeline's `problems()`, a
 action and the Skip button, Reduced flashing, holding in the background, the sampler (a cinematic described
 in data), the poses that play out over time (the runner lying, getting up and climbing with its hands holding the
 keys' position; cyborgs lying still and crouching, turning their heads by `look` and `look_up`), sound events at
-their own level, every zone's arrival flyover and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
+their own level, every zone's arrival flyover (but the City's and the Dead Zone's intros) and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
-next step follows, skipping, the web demo). `test_city_outro` checks the City outro (F2a): at 3, 5 and 6
+next step follows, skipping, the web demo). `test_city_intro` checks the City's intro (F2h): its slot (the City's boss intro
+keeps the flyover); at 3, 5 and 6 lanes its beats in order on a real street (every lane a gap, the road lifted to y = 0), the
+camera's one continuous move down to the street with only two cuts, staying in the street above the road and out of the traffic's
+lanes, the light on the wall at the feed billboard just before its screen bursts and past it as it does, the billboard's
+picture tearing before the burst and its eyes following the light, the billboard (the Head's face shader, standing out of the wall
+the right way round, a floor up) and its burst (the screen gone, glass and sparks flying out, the flare; with Reduced flashing a
+share of the sparks and a slow faint glow; everything settled within 1.6 s), the runner landing on the first
+cyborg's head and clearing the second and the fifth and never inside one, the stomped cyborg's ERR and flattening, the light on
+the runner when the Head has them, the Head startled, angry and yelling by its face's state, its light cold white throughout;
+the feed's surge (every screen changes at once, flickering normally, once with Reduced flashing, ending angry; the turn and the
+chase); the traffic (two outer lanes, no overlaps, the stretch kept clear) and the people (on the sidewalks, walking); no hazard
+hue on anything safe; the low-end counts; stepping the clock coarsely shows the same moment; `skip()`; costs and draw calls; and
+the spot staying on the road through the whip, the chase no faster than the cyborg walk's authored pace, the shader warm-up
+(`CityIntroWarmup`: it samples the glass, the sparks and the runner; the shards share the effects' glow and the sparks one Shader),
+the two title cards (the game's title for 1.5-2 s, gone before the zone's card, which ends with the cinematic) and the App's flow (it
+opens a new campaign, the web demo plays it). `test_city_outro` checks the City outro (F2a): at 3, 5 and 6
 lanes its beats in order (the crash into the wreck, the camera at the runner's level, the look left, the pan
 onto the roadblock, the startle, the leap out of the right wall's opening with the blast behind, the cut to
 the next zone and the landing), a camera that only leaves the street through an opening, only the City's

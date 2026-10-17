@@ -13,7 +13,8 @@ extends CineKey
 ## reaching up), `climb` (out over an edge, its hands holding the key's position) and `get_in` (into a low car
 ## on its right, through an open door, to sitting); and `walk` (a walk at walking pace, standing at ease when
 ## it stops). A cyborg:
-## `idle`/`walk` (by how fast it moves), `aim`, `run_away`, `cower`, `die` (falls, once), `lie` (lying
+## `idle`/`walk` (by how fast it moves), `aim`, `run_away`, `cower`, `die` (falls, once), `stomped` (squashed flat, once, as
+## a stomp kills it in play), `lie` (lying
 ## still, its screen dark) and `crouch` (crouched low over something in front of it).
 @export var pose: StringName = &""
 ## How far through a pose that plays out over time (the runner's `lie`, `get_up`, `climb` and `get_in`) it is from
