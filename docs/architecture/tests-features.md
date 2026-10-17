@@ -225,7 +225,8 @@ stand-in's warning (a red line from the warning point, never before, and a sound
 Reduced flashing); and that the stand-in stays out of the campaign. `test_generator` sweeps the stand-in's cuts over seeds,
 difficulties and lane counts, under narrow ceilings and in busy levels with every built feature
 (`LayoutChecks.check_cuts`), checks each of GDD §9.9's limits by hand and `CutPlacement`'s clearing, and
-shows a level whose rules plan no cut is the same data as one without them.
+shows a level whose rules plan no cut is the same data as one without them; it sweeps the Buzz Overdrive's company
+(task L2) the same way, in quick play's level with the tank, cyborgs and wall fences.
 `test_buzz_overdrive` checks the Buzz Overdrive (C2; GDD §9.9): its numbers (health 20 everywhere, a rev
 a little shorter level by level, its warning and charge in seconds at every zone's speed), its look
 (every variant within an enemy's budget, only hazard colours glowing), its plan, every campaign level
@@ -245,6 +246,19 @@ it with the switch off or for a boss's tank (no roll), and Dead Zone 1's origina
 real hover truck ready to lurch 0.85 s before its rev (0.62 s for a tank that takes no turns; now the
 truck waits and nothing overlaps). `test_enemy_director`'s campaign runs hold Dead Zone 1 at 5 lanes to
 no overlap at all.
+`test_buzz_company` checks the Buzz Overdrive's company (task L2; The generator, Company for the Buzz Overdrive): its
+data (on in every campaign level with the tank, off elsewhere); its rules on a plain track (its stretch and attack, a
+clear escape lane and what takes one out, which tanks may have company: a boss's, the introduction, one near an
+Enforcer Truck, and at 3, 5 and 6 lanes the lanes a row may take in the attack); every level with the tank at 3, 5 and 6 lanes on its own seed and two others
+(`LayoutChecks.check_layout` and `check_rules`, the cut's `company` key exactly where `company_problem` allows it, at
+least three tanks in four with company and rows, cyborgs and wall fences among it, the level's own seed built with the
+switch off the same level but for the company and what keeps off it, and the measure tool's threat rate in their
+visits at least 1.5 times the rate without it; it prints the counts); quick play with every built feature and the
+switch on (company of every kind); the review's case of a new kind meeting company (Corporate 1 at 5 lanes on seed
+7019: its partial wall fences' introduction off every floor cut's window, a company tank's too); and on real physics
+at each lane count, the company tank with the most cyborgs: a
+runner in its lane who leaves into its escape lane at the warning untouched, its cut run, and no burst charged nor
+bolt landed by its cyborgs while the runner is in their hold.
 `test_enforcer_truck` checks the Enforcer Truck (C6; GDD §9.13) off the road: its numbers (the owner's 0.8 s,
 25 s, 3 riders, 2 a level; its close gap inside an Octodog's lunge at every zone's pace; its follow gap behind
 the camera; a shot's bolts over a slide and a whole jump; each rider quickening it), its look in every zone's
@@ -280,7 +294,8 @@ for one showing (`BOTH_TRUCKS`, checked both ways: Corporate 2 at 6 lanes, Dead 
 wherever it goes off, never in front of the runner, no core and a softer fire with Reduced flashing, its fading materials the warmed ones'
 shaders); every campaign level that lists it at 3, 5 and 6 lanes (own seed
 and others: the placement rules, baits in every chase, Corporate 2 always with one, the same every build; it
-prints the counts), the same level without it but for its trucks (its windows not planned), quick play without a
+prints the counts), the same level without it but for its trucks (its windows not planned; with the Buzz
+Overdrive's company on, but for the company its trucks hold back too, task L2), quick play without a
 bait having none; its
 marker, light bar and Reduced flashing; its warm-up look (its blast's too); and its data. `test_enforcer_truck_runs` plays it on
 real physics at 3, 5 and 6 lanes and at 18 and 23.4 m/s, with a scripted runner (no armor) that steps aside

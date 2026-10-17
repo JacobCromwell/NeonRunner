@@ -251,6 +251,8 @@ class Plan:
 	var cyborg_rules: GDScript
 	var cyborg_tuning: Resource
 	var cyborg_spans: Array[Vector2] = []
+	## A floor cut whose window the fixed stretches leave out (enemy_fixed_stretches; task L2): {} for the pass.
+	var except_cut: Dictionary = {}
 	var window_rules: GDScript
 	var window_half: float = 0.0
 	## The rules that keep wall enemies off stretches of their wall (LevelGenerator.wall_section_rules: the
@@ -647,7 +649,8 @@ static func _fixed_stretches(plan: Plan) -> Array[Vector2]:
 	for p: Dictionary in layout.speed_pads:
 		out.append(Vector2(float(p["at"]), float(p["at"]) + gen.tuning.speed_pad_length))
 	for c: Dictionary in layout.cuts:
-		out.append(FloorCutPlan.window(c, gen.speed))
+		if not is_same(c, plan.except_cut):
+			out.append(FloorCutPlan.window(c, gen.speed))
 	var exempt: PackedStringArray = plan.tuning.get("keep_out_exempt_features")
 	for feature: String in gen.config.features:
 		if exempt.has(feature):
@@ -758,6 +761,15 @@ static func _enemy_fixed(plan: Plan) -> Array[Vector2]:
 	out.append_array(gen.quiet_stretches())
 	out.append_array(_plain_ceiling_keeps(plan))
 	return out
+
+
+## The stretches an enemy the pass adds keeps its attack window off (_enemy_fixed), as they stand now, without floor
+## cut `except_cut`'s window: for a pass that adds enemies by the same rules into that cut's stretch (task L2: a Buzz
+## Overdrive's company, BuzzCompanyPlacement).
+static func enemy_fixed_stretches(gen: LevelGenerator, patterns: Array, except_cut: Dictionary = {}) -> Array[Vector2]:
+	var plan: Plan = _plan(gen, patterns, RandomNumberGenerator.new())
+	plan.except_cut = except_cut
+	return _enemy_fixed(plan)
 
 ## True if `pattern` is among what the level would pick at track distance `at` (pick_weights: its
 ## difficulty range there, its features, the pacing).

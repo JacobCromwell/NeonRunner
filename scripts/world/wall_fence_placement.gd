@@ -28,7 +28,9 @@ extends RefCounted
 ##   (an enemy keep-out of the drone's, the hover truck's, the Octodog's or a floor cut's cause; each of
 ##   a Resonator's pulses, from its warning until its wave has passed the player) and no Bad Dream chase
 ##   or Gilded Sentinel's attack (both the rules' keep-outs in every lane) reaches its drop window (the
-##   wall is one of their escapes; one big thing at a time);
+##   wall is one of their escapes; one big thing at a time); but a Buzz Overdrive with company (task L2,
+##   BuzzCompanyPlacement: its runner escapes along the floor, into the lane beside its cut, and a wall
+##   runner is safe from it) keeps only the drop rule above, its cut's lane in the outer lane;
 ## - the level: its drop window between the run-up and the end-clear stretch;
 ## - other wall fences: same_side_gap_seconds apart on one wall (a wall run meets one at a time), and
 ##   gap_seconds apart on either.
@@ -46,8 +48,9 @@ extends RefCounted
 ##   full-height ones, Corporate 1's partial ones) is the first of its kind, within intro_seconds of the
 ##   start: at the earliest fair spot on either wall where no enemy is about (calm), where one comes in
 ##   time, else the earliest fair one (only if none comes in time, the first fair one past it); alone,
-##   with no other wall fence on either wall within same_side_gap_seconds; with a long off time
-##   (intro_off_seconds). So the player meets it gently, right after its first-encounter hint.
+##   with no other wall fence on either wall within same_side_gap_seconds, and off every floor cut's window
+##   (a Buzz Overdrive's with company too, task L2); with a long off time (intro_off_seconds). So the player
+##   meets it gently, right after its first-encounter hint.
 ## - Every feature appears (GDD §5; LevelGenerator.feature_positions): a level left without a
 ##   full-height one (or a partial one, with the partial feature) gets one at the first fair spot past
 ##   its start; a level with no fair spot at all gets a warning.
@@ -239,16 +242,19 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 			drop.append(Vector2(float(k["from"]), float(k["to"])))
 	for s: Vector2 in drop:
 		out.append({"from": s.x - after, "to": s.y + before, "why": "the outer lane beside it isn't clear to drop off into"})
-	# What runs meanwhile: floor cuts, big attacks, Bad Dream chases.
+	# What runs meanwhile: floor cuts, big attacks, Bad Dream chases. A Buzz Overdrive with company (task L2,
+	# BuzzCompanyPlacement) is the exception: its cut and its rev keep only the drop rule above (its lane window in the
+	# outer lane), so the walls carry their usual share of fences while it's about. DESIGN-TBD (docs/questions/l2.md).
 	var busy: Array[Vector2] = []
 	for c: Dictionary in lay.cuts:
-		busy.append(FloorCutPlan.window(c, v))
+		if not c.has(BuzzCompanyPlacement.CUT_KEY):
+			busy.append(FloorCutPlan.window(c, v))
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		var pulses: Array[Vector2] = resonator_pulses(gen, e)
 		if not pulses.is_empty():
 			busy.append_array(pulses)
-		elif BIG_ATTACKS.has(String(e.get("type", ""))):
+		elif BIG_ATTACKS.has(String(e.get("type", ""))) and not _with_company(lay, e):
 			busy.append(gen.enemy_keep_out(e, hooks))
 	for k: Dictionary in attacks:
 		if not k.has("lane"):
@@ -257,6 +263,16 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 		if s.y >= s.x:
 			out.append({"from": s.x - after, "to": s.y + before, "why": "a floor cut or a big attack runs meanwhile"})
 	return out
+
+
+## True if enemy entry `e` is a Buzz Overdrive whose cut has company (task L2: BuzzCompanyPlacement.CUT_KEY).
+static func _with_company(lay: LevelLayout, e: Dictionary) -> bool:
+	if String(e.get("type", "")) != BuzzCompanyPlacement.TANK:
+		return false
+	for c: Dictionary in lay.cuts:
+		if int(c["lane"]) == int(e.get("lane", -1)) and absf(float(c["end"]) - float(e["at"])) < 0.01:
+			return c.has(BuzzCompanyPlacement.CUT_KEY)
+	return false
 
 
 ## The wall section a Gilded Sentinel (task C4, GDD §9.11) keeps to itself on its wall: from its wall-run
@@ -359,19 +375,25 @@ static func _partial_band(rng: RandomNumberGenerator) -> String:
 ## The introduction of a wall fence of `band` (see the header): the earliest fair spot on either wall
 ## within intro_seconds of `start` where no enemy is about (calm), else the earliest fair one there, else
 ## (late) the first fair one past it; either way the first of its kind, with the long off time, and off
-## the stretches `alone` keeps clear (another introduction's). Returns its entry, or {} if there's no fair
-## spot past `start` at all.
+## the stretches `alone` keeps clear (another introduction's) and every floor cut's window, a Buzz Overdrive's
+## with company too (task L2: keep_outs lets the others run by one; the new kind still comes alone, one new
+## mechanic at a time). Returns its entry, or {} if there's no fair spot past `start` at all.
 static func _introduce(gen: LevelGenerator, t: WallFenceTuning, rng: RandomNumberGenerator, keeps: Array,
 		band: String, start: float, alone: Array[Vector2] = []) -> Dictionary:
 	var by: float = start + t.intro_seconds * gen.speed
 	var side: int = -1 if rng.randf() < 0.5 else 1
+	var apart: Array[Vector2] = []
+	apart.append_array(alone)
+	for c: Dictionary in gen.layout.cuts:
+		var w: Vector2 = FloorCutPlan.window(c, gen.speed)
+		apart.append(Vector2(w.x - t.drop_after_seconds * gen.speed, w.y + t.drop_before_seconds * gen.speed))
 	var calm: Array[Vector2] = _calm_keep_outs(gen, t)
-	calm.append_array(alone)
+	calm.append_array(apart)
 	var entry: Dictionary = _fit(gen, t, rng, keeps, band, [side, -side], start, by, true, calm, true)
 	if entry.is_empty():
-		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, by, true, alone, true)
+		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, by, true, apart, true)
 	if entry.is_empty():
-		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, gen.layout.length, true, alone, true)
+		entry = _fit(gen, t, rng, keeps, band, [side, -side], start, gen.layout.length, true, apart, true)
 	return entry
 
 

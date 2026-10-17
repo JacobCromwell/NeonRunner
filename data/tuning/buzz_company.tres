@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuzzCompanyTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/buzz_company_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+enabled = true
+on_introduction = false
+truck_margin_seconds = 2.0
+attack_margin_seconds = 0.5
+rows_max = 4
+spacing_scale = 1.0
+cyborgs_max = 1
+cyborg_chance = 0.85
+cyborgs_in_attack = true
+hold_before_seconds = 0.5
+hold_after_seconds = 0.5

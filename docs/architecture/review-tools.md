@@ -235,3 +235,14 @@ its credits. `--old-data=DIR` builds the levels with another version's data (the
 `git archive`), `--dump=FILE` writes every layout as JSON, so the new code with the old data can be
 compared byte for byte with the old build's dump, and `--set=key:value` tries level values before they go
 in the files (`godot --headless -s res://tools/measure/level_pace.gd -- --seeds=4`; about half a minute).
+
+`tools/measure/buzz_company.gd` measures what shares the screen with each Buzz Overdrive (task L2; The generator,
+Company for the Buzz Overdrive): for every tank in the levels that have it, at 3, 5 and 6 lanes on each level's own
+seed and others, what the runner meets during its visit (from where it comes into view to where it's gone) and its
+attack (from its rev): enemies but the tank and Enforcer Trucks, rows of holes or fences, signs, wall fences, zone
+doodads and dash walls, the longest stretch with no threat, and the threats a second in the rest of the level. Each
+tank is in a group (near an Enforcer Truck's chase, the level's introduction, parked for a planted cyborg, or other),
+and per level it prints the groups' numbers. `--company=off` builds the levels as before the task, `--company-set=
+key:value` tries `BuzzCompanyTuning` values before they go in the file, `--out` writes every tank's numbers and
+`--dump` every layout as JSON, keyed as `level_pace.gd` keys its own (`godot --headless -s
+res://tools/measure/buzz_company.gd -- --seeds=4`; about four minutes). `test_buzz_company` uses its `measure()`.
