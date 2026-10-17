@@ -265,11 +265,12 @@ func _test_slots(campaign: Campaign) -> void:
 			check(zone.boss != null and String(zone.boss.id) == id + "_boss" and zone.boss.notes != "",
 				"%s's boss slot has its id and notes" % id)
 		check(zone.intro != null and zone.outro != null, "%s has intro and outro cinematic slots" % id)
-		# Item 395: every boss has an intro slot; the City's and Gangland's are built, the rest empty and skipped.
+		# Item 395: every boss has an intro slot; the City's, Gangland's and the Casino's are built, the rest empty and
+		# skipped.
 		check((zone.boss_intro != null) == (zone.boss != null), "%s has a boss-intro slot exactly when it has a boss" % id)
-		check(zone.boss_intro == null or (zone.boss_intro.is_built() == (id in ["city", "gangland"])
-			and zone.boss_intro.is_skipped() == not (id in ["city", "gangland"])),
-			"%s's boss-intro slot is built (the City's, Gangland's) or empty and skipped (item 395)" % id)
+		check(zone.boss_intro == null or (zone.boss_intro.is_built() == (id in ["city", "gangland", "casino"])
+			and zone.boss_intro.is_skipped() == not (id in ["city", "gangland", "casino"])),
+			"%s's boss-intro slot is built (the City's, Gangland's, the Casino's) or empty and skipped (item 395)" % id)
 		for def: CinematicDef in [zone.intro, zone.boss_intro, zone.outro]:
 			if def != null:
 				check(String(def.id).begins_with(id + "_") and def.title != "" and def.placeholder_text != "",
@@ -307,6 +308,9 @@ func _test_slots(campaign: Campaign) -> void:
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/boss_intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/sewer_swarm_intro.tscn" and s.cinematic.is_built(),
 				"Gangland's boss intro plays its own scene, the owner's beat (task F2b)")
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "casino/boss_intro":
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/casino_boss_intro.tscn" and s.cinematic.is_built(),
+				"the Casino's boss intro plays its own scene, the owner's beats (task F2i)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/gangland_intro.tscn" and s.cinematic.is_built(),
 				"Gangland's intro plays its own scene, the owner's beats (task F2h)")
@@ -381,7 +385,7 @@ func _test_boss_intro_slots(campaign: Campaign) -> void:
 	var filled := campaign.duplicate() as Campaign
 	var added: CampaignStep = filled.step("golden/boss_intro")
 	check(added != null and filled.next_step(added) == filled.step("golden/boss") and filled.steps().size() == ids.size() + 1
-		and not def.is_skipped() and filled.empty_slots().size() == 4 and filled.step("golden/3").index + 1 == added.index,
+		and not def.is_skipped() and filled.empty_slots().size() == 3 and filled.step("golden/3").index + 1 == added.index,
 		"setting the slot's scene brings its step in, between the last level and the boss, and takes it off the empty list")
 	var old_save := Profile.new()
 	for s: CampaignStep in campaign.steps():

@@ -421,8 +421,8 @@ func _test_level_select() -> void:
 		if tile != null and tile.disabled and not levels.tiles.has(slot["id"]) and tile.get_parent() == (levels.tiles[zone_id + "/boss"] as TileButton).get_parent() \
 				and tile.get_index() + 1 == (levels.tiles[zone_id + "/boss"] as TileButton).get_index():
 			empty_tiles += 1
-	check(empty_tiles == App.campaign.empty_slots().size() and empty_tiles == 5 or not OS.is_debug_build(),
-		"the level select shows the five empty boss-intro slots in debug builds (%d)" % empty_tiles)
+	check(empty_tiles == App.campaign.empty_slots().size() and empty_tiles == 4 or not OS.is_debug_build(),
+		"the level select shows the four empty boss-intro slots in debug builds (%d)" % empty_tiles)
 	check(not (levels.tiles["city/3"] as TileButton).disabled and (levels.tiles["city/boss"] as TileButton).disabled,
 		"steps are open up to the next unfinished one, locked after it")
 	check(_focus() == levels.tiles["city/3"], "the next step to play has the focus (%s)" % _focus())
