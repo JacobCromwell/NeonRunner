@@ -172,25 +172,35 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
   engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints.
 - *The page's covers* (`html/head_include` in the preset: a style and a script that defines `window.neonPage`;
-  DESIGN-TBD, `docs/questions/e2.md` and `l1.md`). A phone's page that is taller than wide, or that the browser
-  says is held upright, is covered with "Turn your phone sideways to play" (the game is landscape, GDD §2). A
-  phone's frame (the game in an iframe, as itch.io shows it) that is not about the screen's size (wider than
-  the screen's long side, narrower than four fifths of it, taller than its short side: a fixed embed the host
-  page shrinks or crops, or a small one) is covered with "Play it full screen": a link that opens the game's
-  own address in a tab of its own, where the page is the phone's (or `requestFullscreen()` where the browser
-  has it, which an iPhone does not), and "Play here anyway" under it, so no cover ever locks anyone out
-  (it holds until the frame fits or the phone is turned). A page that is not framed goes by its own shape
-  alone. The page's text keeps its size on the glass in a shrunk frame (`--neon-u`), and the card keeps to
-  the part of a tall frame a phone can show. Whenever a cover appears the page calls
-  `window.neonPage.onCover()`, which the game sets (`WebPage.watch_cover()`, `App._on_page_cover()`), and a
-  running level pauses as it does for a phone call, so nothing happens unseen behind the cover (a frame keeps
-  its size when the phone is turned, so nothing resizes and only the page can say; `App._on_window_resized()`
-  does the same for a page that is itself held upright). A `blur` sent to the canvas was tried first and did
-  not pause the run: `App` pauses on the application's focus loss, which a canvas blur is not.
-  iOS reports `screen.width` and `screen.height` as for an upright phone whichever way it is held, so the
-  device's orientation comes from `screen.orientation`, then `window.orientation`, and only a framed page
-  uses it. `neonPage.insets()` also hands the game the browser's safe-area insets (`WebPage`, Characters, UI and
-  audio, Menus on a phone), and `neonPage.mode()` says which cover is up (`''`, `'turn'`, `'fit'`).
+  DESIGN-TBD, `docs/questions/e2.md` and `l1.md`). Only a phone (a coarse pointer and a screen whose short
+  side is 520 CSS pixels or less: a desktop's touch screen is not one) is covered. There are two covers:
+  - **"Turn your phone sideways to play"**, the full cover with no way past it: a page whose own shape is taller
+    than wide (the game is landscape, GDD §2). In a frame that needs the phone held upright *and* a portrait
+    frame; a page that is not framed goes by its own shape alone.
+  - **"Play it full screen"**, a card the player can dismiss, for a phone's frame (the game in an iframe, as
+    itch.io shows it) that is not about the screen's size: wider than the screen's long side, narrower than
+    four fifths of it, taller than its short side (a fixed embed the host page shrinks or crops, or a small
+    one). It has a link that opens the game's own address in a tab of its own, where the page is the phone's
+    (or `requestFullscreen()` where the browser has it, which an iPhone does not), and "Play here anyway"
+    under it, so it never locks anyone out (the dismissal holds until the frame fits or the phone is turned).
+    The same card, headed **"Turn your phone sideways"**, is what a *landscape* frame on a phone the browser
+    says is held upright gets (a frame's own shape can't show that; a browser that misreports its orientation
+    is why this one can be dismissed too).
+  A turn changes the page's size a moment after the orientation, so the card (and a change of its wording)
+  appears only once two measurements half a second apart agree, where the full cover and "no cover" apply at
+  once; "Play here anyway" asks the phone's orientation afresh when it is pressed. The page's text keeps its
+  size on the glass in a shrunk frame (`--neon-u`); the card's backdrop covers the whole frame, so the game under
+  it isn't live, and the card itself keeps to the part of a tall frame a phone can show (`--neon-box`). Whenever
+  a cover appears the page calls `window.neonPage.onCover()`, which the game sets (`WebPage.watch_cover()`,
+  `App._on_page_cover()`), and a running level pauses as it does for a phone call, so nothing happens unseen
+  behind the cover (a frame keeps its size when the phone is turned, so nothing resizes and only the page can
+  say; `App._on_window_resized()` does the same for a page that is itself held upright; `test_app_flow` checks
+  `_on_page_cover`). A `blur` sent to the canvas was tried first and did not pause the run: `App` pauses on the
+  application's focus loss, which a canvas blur is not. iOS reports `screen.width` and `screen.height` as for
+  an upright phone whichever way it is held, so the device's orientation comes from `screen.orientation`, then
+  `window.orientation`, and only a framed page uses it. `neonPage.insets()` also hands the game the browser's
+  safe-area insets (`WebPage`, Characters, UI and audio, Menus on a phone), and `neonPage.mode()` says which
+  cover is up (`''`, `'turn'`, `'fit'`).
 - *On itch.io* (task L1): itch.io shows an HTML5 zip in an iframe of the size set on the project page. On a
   phone that frame is the page's problem, not the game's: left at a fixed 960×540 it is shrunk to the screen's
   width, or cropped by the browser's bars, so the game reads a desktop-sized window and the menus come out tiny

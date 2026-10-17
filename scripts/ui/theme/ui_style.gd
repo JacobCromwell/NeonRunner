@@ -98,6 +98,7 @@ extends Resource
 ## page (itch.io's frame) shrinks an embed wider than the screen to fit it, and `UiScale.embed_scale_for()`
 ## guesses by how much from the page's width and the screen's. Never below this, so a browser that misreports
 ## its screen can't magnify the menus without end.
+## DESIGN-TBD: 0.4 is a guess no real phone has checked (docs/questions/l1.md, item 2).
 @export_range(0.2, 1.0, 0.05) var phone_min_embed_scale: float = 0.4
 ## How far a pointer may move, in UI pixels, between pressing and releasing a button in a screen and still
 ## press it: further, it's a drag, which scrolls the list it's in instead. A finger's tap and a mouse's

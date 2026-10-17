@@ -117,6 +117,8 @@ func _on_window_resized() -> void:
 ## The web page covered the game (a phone held upright, or a frame that doesn't fit its screen: the web
 ## preset's page script, WebPage): a running level pauses, as for a phone call, so nothing happens unseen
 ## behind the cover (the frame keeps its size when the phone is turned, so nothing resizes: the page says).
+# DESIGN-TBD: whether a cover over the game pauses a running level, and which covers (docs/questions/l1.md, items 1
+# and 3). Placeholder: every cover does, like a phone call; the pause menu waits when the cover goes.
 func _on_page_cover() -> void:
 	if run != null and run.state == LevelRun.State.RUNNING and run.context.mode != RunContext.Mode.QUICK:
 		pause_game()

@@ -419,7 +419,7 @@ func _test_embed_scale() -> void:
 		style.phone_max_factor, float(style.phone_min_width), shown)
 	check(expected > 1.2 and is_equal_approx(tree.root.content_scale_factor, expected),
 		"the same page on an iPhone SE's screen (shown at %.3f) is magnified x%.3f, as the maths says (x%.3f)" % [shown, tree.root.content_scale_factor, expected])
-	# On a desktop or in a run the screen means nothing.
+	# On a desktop the screen means nothing.
 	UiTheme.touch_override = 0
 	App.show_title()
 	await _frames(3)

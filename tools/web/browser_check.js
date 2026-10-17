@@ -14,8 +14,9 @@
 //   shop     the release export with a saved profile holding credits (written to IndexedDB before
 //            the game starts): the title shows them, the shop buys, and the purchase is saved.
 //   phone    an Android phone in landscape: the title and menus answer taps; in City 1 (the debug
-//            export, --god --nofall) a swipe changes lanes; held upright, the page asks to turn it
-//            sideways and the level pauses; turned back, the pause menu waits.
+//            export, --god --nofall, started from its introduction) a swipe changes lanes; held upright,
+//            the page asks to turn it sideways and the level pauses (the pause menu opens); turned back,
+//            the pause menu waits.
 //   end      the debug export with --level=city/outro: Enter leads to the "get the full game"
 //            screen, whose store tiles open the links in data/platform/store_links.json in a new
 //            tab (window.open, recorded here, never followed).
@@ -256,6 +257,24 @@ async function lowestBrightRow(browser, png) {
 const frameOf = (page) => page.frames().find((f) => f !== page.mainFrame());
 const neonMode = (frame) => frame.evaluate(() => (window.neonPage ? window.neonPage.mode() : 'no neonPage'));
 
+// The page answers a turn once two measurements half a second apart agree (a card, not the full cover), and a
+// busy engine (a level in software WebGL) slows the page's timers: wait for the cover, and its heading if given.
+async function coverIs(frame, mode, title = null) {
+	try {
+		await frame.waitForFunction(([m, t]) => window.neonPage && window.neonPage.mode() === m
+			&& (t === null || document.querySelector('#neon-fit .neon-title').textContent === t), [mode, title], { timeout: 90000, polling: 250 });
+		return true;
+	} catch (e) {
+		return false;
+	}
+}
+
+// Waits, polling, until `test()` is true or `ms` pass.
+async function waitUntil(page, test, ms = 90000) {
+	for (let waited = 0; waited < ms && !test(); waited += 500) await page.waitForTimeout(500);
+	return test();
+}
+
 async function desktop(browser) {
 	const name = 'desktop';
 	const server = await serve(RELEASE, { bytesPerSecond: 8e6 });
@@ -397,19 +416,28 @@ async function phone(browser) {
 	await s.shot('tapped_play');
 	await finish(name, s);
 	server.close();
-	// A level (the debug export, safe from hits and falls): a swipe, then held upright and back.
+	// A level (the debug export, safe from hits and falls): started from its introduction, a swipe, then held
+	// upright (the run pauses: the pause menu opens, which the debug export logs as the menus' magnifying) and back.
+	const menusOpened = (log) => log.filter((l) => l.text.startsWith('[ui] menus magnified')).length;
 	server = await serve(DEBUG, { args: ['--level=city/1', '--god', '--nofall'] });
 	s = await openPage(browser, name, phoneContext, server, 'phone_level');
 	const cdp = s.cdp;
 	await s.page.goto(s.url);
 	await booted(s.page, s.log, 15000);
+	// The level opens on its introduction, whose PLAY owns the focus: Enter starts the run.
+	await s.page.evaluate(() => document.getElementById('canvas').focus());
+	await s.page.keyboard.press('Enter');
+	await s.page.waitForTimeout(12000);
 	await s.shot('level_before_swipe');
 	await swipe(cdp, 560, 250, 360, 250);
 	await s.page.waitForTimeout(6000);
 	await s.shot('level_after_swipe');
+	const opened = menusOpened(s.log);
 	await s.page.setViewportSize({ width: 390, height: 844 });
 	await s.page.waitForTimeout(6000);
+	await waitUntil(s.page, () => menusOpened(s.log) > opened, 60000);
 	await s.shot('held_upright');
+	check(name, menusOpened(s.log) > opened, `and the running level paused when the phone was turned: the pause menu opened (${menusOpened(s.log) - opened} new menu(s) magnified)`);
 	const notice = await s.page.evaluate(() => getComputedStyle(document.body, '::after').content);
 	check(name, notice.includes('sideways'), `held upright, the page asks to turn the phone sideways (${notice})`);
 	await s.page.setViewportSize({ width: 844, height: 390 });
@@ -577,14 +605,14 @@ async function itchEmbed(browser) {
 		await s.page.goto(hostUrl('fixed'));
 		await booted(s.page, s.log, 9000);
 		frame = frameOf(s.page);
-		check(name, (await neonMode(frame)) === 'fit', `a fixed 960x540 embed is offered the game full screen (mode '${await neonMode(frame)}')`);
+		check(name, await coverIs(frame, 'fit'), `a fixed 960x540 embed is offered the game full screen (mode '${await neonMode(frame)}')`);
 		const card = await frame.evaluate(() => {
 			const box = document.getElementById('neon-fit');
 			const link = box.querySelector('a');
 			const stay = box.querySelector('button');
 			const bottom = stay.getBoundingClientRect().bottom;
 			const visible = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--neon-box'));
-			return { href: link.href, target: link.target, shown: getComputedStyle(box).display !== 'none', stayBottom: bottom, box: visible, title: box.firstChild.textContent };
+			return { href: link.href, target: link.target, shown: getComputedStyle(box).display !== 'none', stayBottom: bottom, box: visible, title: box.querySelector('.neon-title').textContent };
 		});
 		check(name, card.shown && card.title === 'Play it full screen' && card.href === gameUrl && card.target === '_blank',
 			`the card's link opens the game's own page in a new tab (${card.href}, ${card.target})`);
@@ -612,7 +640,7 @@ async function itchEmbed(browser) {
 		await s.page.goto(hostUrl('fixed'));
 		await booted(s.page, s.log, 6000);
 		frame = frameOf(s.page);
-		check(name, (await neonMode(frame)) === 'fit', `on an Android phone the fixed embed is offered full screen too (mode '${await neonMode(frame)}')`);
+		check(name, await coverIs(frame, 'fit'), `on an Android phone the fixed embed is offered full screen too (mode '${await neonMode(frame)}')`);
 		await frame.evaluate(() => document.querySelector('#neon-fit a').click());
 		await s.page.waitForTimeout(6000);
 		const full = await frame.evaluate(() => ({ element: !!document.fullscreenElement, size: [innerWidth, innerHeight] }));
@@ -629,13 +657,14 @@ async function itchEmbed(browser) {
 		await s.page.goto(hostUrl('fixed'));
 		await s.page.waitForTimeout(4000);
 		frame = frameOf(s.page);
-		const upright = await frame.evaluate(() => ({ mode: window.neonPage.mode(), title: document.getElementById('neon-fit').firstChild.textContent }));
+		await coverIs(frame, 'fit', 'Turn your phone sideways');
+		const upright = await frame.evaluate(() => ({ mode: window.neonPage.mode(), title: document.querySelector('#neon-fit .neon-title').textContent }));
 		check(name, upright.mode === 'fit' && upright.title === 'Turn your phone sideways',
 			`a landscape embed on a phone held upright asks to turn it (${upright.mode}: ${upright.title})`);
 		await s.page.screenshot({ path: path.join(s.dir, 'upright.png') });
 		await turnPhone(s, 90, phoneViewport(90, { width: 390, height: 844 }));
-		await s.page.waitForTimeout(2000);
-		const turned = await frame.evaluate(() => ({ mode: window.neonPage.mode(), title: document.getElementById('neon-fit').firstChild.textContent }));
+		await coverIs(frame, 'fit', 'Play it full screen');
+		const turned = await frame.evaluate(() => ({ mode: window.neonPage.mode(), title: document.querySelector('#neon-fit .neon-title').textContent }));
 		check(name, turned.mode === 'fit' && turned.title === 'Play it full screen', `turned, it offers the game full screen (${turned.mode}: ${turned.title})`);
 		await finish(name, s);
 
@@ -671,9 +700,9 @@ async function itchEmbed(browser) {
 		await s.page.waitForTimeout(12000);
 		const before = magnified(s.log).length;
 		await turnPhone(s, 0, phoneViewport(0, { width: 375, height: 667 }));
-		await s.page.waitForTimeout(10000);
-		check(name, (await neonMode(frame)) === 'fit', `held upright it asks to turn the phone again (mode '${await neonMode(frame)}')`);
-		check(name, magnified(s.log).length > before, `and the running level paused behind it: the pause menu opened (${magnified(s.log).length - before} new menu(s) magnified)`);
+		check(name, await coverIs(frame, 'fit'), `held upright it asks to turn the phone again (mode '${await neonMode(frame)}')`);
+		const paused = await waitUntil(s.page, () => magnified(s.log).length > before);
+		check(name, paused, `and the running level paused behind it: the pause menu opened (${magnified(s.log).length - before} new menu(s) magnified)`);
 		await s.shot('paused_behind_cover');
 		await turnPhone(s, 90, phoneViewport(90, { width: 375, height: 667 }));
 		await s.page.waitForTimeout(8000);
