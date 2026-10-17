@@ -555,7 +555,7 @@ tools/godot.sh smoke [options]  40 s of the real game, headless; prints only pro
                                  what the run did; `--smoke-frames=N` shortens it)
 tools/godot.sh sfx [--review]   regenerate the sound effects (assets/sfx/) from tools/asset_gen/
 tools/godot.sh music [--review] regenerate default WAV music (leaves supplied MP3s unchanged)
-tools/godot.sh citizens         regenerate the Marketplace citizens' sprite sheets (assets/sprites/citizens/)
+tools/godot.sh citizens         regenerate the Marketplace citizens' baked person (assets/models/market_person.res)
 tools/godot.sh doodads [--only=a,b] [--review]   regenerate the zone doodads' picture cards
                                 (assets/sprites/doodads/; --review writes the atlases to build/doodad_review/)
 tools/godot.sh web [--debug] [--serve]  export the web demo and check it (see The web demo)
@@ -654,6 +654,14 @@ renderer to judge, under xvfb with the driver's shader cache off, so a frame tha
 `MESA_SHADER_CACHE_DISABLE=true xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --resolution 640x360
 --fixed-fps 60 --rendering-method gl_compatibility -s res://tools/measure/truck_cost.gd -- [--skin=gangland]
 [--trucks=2] [--bench]` (about two minutes; its header lists the options).
+
+`tools/measure/market_people_cost.gd` measures what the Marketplace's citizens cost to build (task L7): each level's chunks
+built with them off and on (`Settings.citizens_enabled`), their own build alone, and what they add a chunk (nodes, draw
+calls, vertices drawn, MultiMesh instances), the same tool on any version of the citizens:
+`godot --headless -s res://tools/measure/market_people_cost.gd -- [--passes=5] [--levels=marketplace_1] [--lanes=5]
+[--skin=casino]`. `tools/showcase/market_people_review.tscn` shows them from the game's camera or still cameras close to
+one's window, with a cheer, a flinch or the runner walked past one to see the heads turn (`--view=run|window`, `--cheer`,
+`--flinch`, `--sweep=40`; its header lists the options).
 
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the

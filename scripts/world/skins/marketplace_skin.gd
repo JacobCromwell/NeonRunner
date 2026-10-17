@@ -593,6 +593,14 @@ func citizens() -> MarketCitizens:
 	return _citizens
 
 
+## One citizen for the shader warm-up (ShaderWarmup, task PERF1, calls this on a skin that has it): the people's mesh and
+## shader drawn once while the level loads, so the Compatibility renderer doesn't compile them the first time a window
+## with a citizen comes into view mid-run.
+func warm_samples(parent: Node3D) -> void:
+	if Settings.citizens_enabled:
+		citizens().spawn(parent, [MarketCitizens.sample_person()] as Array[Dictionary])
+
+
 func doodads() -> MarketDoodads:
 	if _doodads == null:
 		_doodads = MarketDoodads.new(self)

@@ -27,29 +27,58 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   between two track distances (position on the glass, width, bottom, top, depth into the building,
   kind), computed from track positions alone, so it can be asked before or after a chunk exists.
   Citizens stand inside, between the glass plane and `face_x + side * depth`.
-- *The Marketplace citizens (task D3, GDD §5 "Citizens"; scenery only, never real 3D characters).*
-  `tools/asset_gen/citizen_sheet_gen.gd` bakes a few archetypes (`CitizenRig`, on the same shared
-  `HumanoidRig` the player and cyborgs use, GDD §9.2) into flipbook sprite sheets
-  (`CitizenSheet`: a fixed grid, one row per clip: idle, startled, cheer) at
-  `assets/sprites/citizens/*.png` (`tools/godot.sh citizens` regenerates them). `MarketCitizens`
-  (`scripts/world/skins/marketplace/`), called from `wall_section()`, seeds which eligible
-  `shop_windows()` get one (never a feed window, `screen`) from the window's own track position, so
-  a chunk builds the same citizens every time. `MarketCitizen` plays the baked sheet back as one
-  cheap unlit, double-sided quad (a `StandardMaterial3D.duplicate()` per card, its `uv1_offset` the
-  only thing that changes, driven in GDScript, not a shader) and reacts (startled or cheering) once
-  the player's own track distance comes within range of its window, easing back to idle on its own;
-  every live one joins the `"market_citizens"` group with a public `react(kind)`, the hook for The
-  House (E5a, GDD §10: "the citizens in the shop windows cheer and duck throughout") to use later.
-  Kept apart from window cyborgs (GDD §9.2; `docs/questions/d3.md`): citizens never glow and their
-  windows stay lit, and `ZoneSkin.note_wall_enemies(side, start, end, enemies)` (a small, generic
-  hook `TrackBuilder` calls just before `wall_section()`, a no-op for every other skin) tells
-  `MarketplaceSkin` which window cyborgs the chunk is about to place, so `MarketCitizens` keeps
-  `CYBORG_MARGIN` clear of each one's track position (`MarketplaceSkin.reserved_near()`). Switched
-  off by `Settings.citizens_enabled` (`DeviceProfile.is_low_end()`, DESIGN-TBD: nothing decides
-  "low-end" project-wide yet) and `Settings.DEFAULTS["citizens"]`, kept current by `apply_visuals()`
-  like `flashing_reduced`, so the skin never needs a `Profile`. `test_marketplace_citizens` and
-  `test_marketplace_skin`'s existing budgets (`SkinSuite`) cover it; with `CITIZEN_SHARE` at 0.16 it
-  adds about 2 surfaces and under 10 vertices per 5-lane chunk on top of the Marketplace's own ~21.
+- *The Marketplace citizens (tasks D3 and L7, GDD §5 "Citizens"; scenery only, no collision, nothing the player touches).*
+  Real low-poly people standing at ease in the shops. (D3 built them as flipbook cards; the owner never noticed them and
+  asked for the newer rendered people if they cost little, so L7 measured and replaced the cards: the numbers are
+  below and in `docs/architecture/run.md`, Chunk builds. The "black rectangles with crude faces" the owner saw in the
+  windows are not citizens: they are the cult's feed TVs, `feed_window_share` 0.22 of the windows, playing the calm cyborg
+  face, and the window cyborgs' screen heads.) `tools/asset_gen/citizen_person_gen.gd` (`tools/godot.sh citizens`,
+  headless) poses the shared `HumanoidRig` (`CitizenRig`) standing at ease and bakes one welded, indexed mesh,
+  `assets/models/market_person.res` (288 vertices, 500 triangles, 1.25 m, feet on y = 0, facing -z, two small dark eyes
+  so a turning head reads): UV2 tags every vertex with a colour class (trousers, shirt, skin, hair, shoes, eyes) and what
+  moves it (the body, the head, the left or right arm), and the mesh's meta holds the neck and shoulder pivots.
+  `MarketCitizens` (`scripts/world/skins/marketplace/`), called from `wall_section()`, seeds which eligible `shop_windows()`
+  get one (never a feed window, `screen`; `CITIZEN_SHARE` 0.32) from the window's own track position (`person_for()`:
+  where they stand inside, 1.5 to 1.74 m tall, their build, the way they face: the lanes, turned 20 to 50 degrees toward
+  the end of the street the runner comes from, and their seeds), so a chunk builds the same citizens every time, and adds one
+  `MarketCrowd` to the section: one `MultiMeshInstance3D` of the people (one draw call and three nodes however many), in the
+  `"market_citizens"` group with a public `react(kind)` (D3's hook for The House, E5a: `&"cheer"` and `&"startled"`, the
+  duck). `market_person.gdshader` (unshaded, the kit's fake light times `scenery_light` and `scenery_tint`, never glowing,
+  never flickering, the same on the Compatibility renderer) dresses each from `MarketPeople`'s palettes (muted clothes, a
+  test pins saturation, brightness and vividness; no skin-coloured shirt) by the seed in the instance's custom data and moves
+  them in the vertex shader: a sway and a breath at ease, the head turning about the neck to follow the runner (from
+  `look_far` 52 m, fully within 16 m, 72 degrees at the most), and a cheer or a flinch from one uniform. One shared
+  `ShaderMaterial` serves every crowd; `MarketPeople.tick()` (the first crowd to process in a frame) sets its one uniform
+  `u_state` (the crowd's clock, which stops in a pause and slows with slow-time, and the runner's place, read from the
+  `RunWorld` the crowd finds up its tree), `u_event` only when something cheers: the CPU does nothing per person.
+  What cheers (`data/citizens/market_people.tres`, `MarketPeopleTuning`, all DESIGN-TBD, `docs/questions/l7.md`): a credit
+  pickup worth 25 or more (`CreditField.collected`; the top two denominations, about ten a level), and the player's defeat
+  of a hover truck, an Enforcer Truck, a heli drone, a Buzz Overdrive or a Resonator (`EnemyDirector.enemy_defeated`,
+  `cheer_enemy_types` by `Enemy.type_id`; an enemy another's charge flattened counts only if it declares `charge_bait`, as the
+  score has it). The skin side listens: the first crowd to tick in a run finds its `RunWorld` and connects both signals once
+  (no core file is touched), and The House's `react()` calls arrive through the group. Citizens within 48 m ahead of the runner
+  and 12 m behind hop once (0.28 m, 0.9 s, both arms thrown up), the cheer rippling out from the runner (0.012 s a metre, and
+  up to 0.18 s of their own lateness), no more than one cheer per 1.6 s; a flinch crouches them with their arms up. No sound.
+  Nothing flashes, so Reduced flashing has nothing to hold still. `MarketplaceSkin.warm_samples()` gives `ShaderWarmup` (the
+  one hook outside the skin) a person to draw while the level loads, so the Compatibility renderer never compiles the shader
+  mid-run (`frame_times --shaders`: none first drawn later). Kept apart from window cyborgs (GDD §9.2; `docs/questions/d3.md`):
+  citizens never glow and their windows stay lit, and `ZoneSkin.note_wall_enemies(side, start, end, enemies)` (a small, generic
+  hook `TrackBuilder` calls just before `wall_section()`, a no-op for every other skin) tells `MarketplaceSkin` which window
+  cyborgs the chunk is about to place, so `MarketCitizens` keeps `CYBORG_MARGIN` clear of each one's track position
+  (`MarketplaceSkin.reserved_near()`). Switched off by `Settings.citizens_enabled` (`DeviceProfile.is_low_end()`,
+  DESIGN-TBD: nothing decides "low-end" project-wide yet) and `Settings.DEFAULTS["citizens"]`, kept current by
+  `apply_visuals()` like `flashing_reduced`, so the skin never needs a `Profile`. Cost, against the cards (one a card at 0.16 of the windows; the people at 0.32, twice as many), measured with
+  `tools/measure/market_people_cost.gd` on `marketplace_1` and `_2` at 3, 5 and 6 lanes: the citizens' own build 0.22 to
+  0.31 ms a 40 m chunk (the cards' 0.35 to 0.42), 4.5 people, 1.9 draw calls and 3.8 nodes a chunk (the cards' 2.3, 2.3 and
+  4.5), and about 1,300 vertices drawn a chunk (the cards' 9: a person is 288 vertices and 500 triangles); a whole chunk's
+  build reads the same as with the cards (+0.3 ms of its 2 ms either way, within the run-to-run noise) and
+  `test_marketplace_skin`'s budgets (4 ms mean, 32 surfaces) read as before (its tally counts `MeshInstance3D` surfaces only,
+  so read the measuring tool's lines for what the people draw). Played (`tools/measure/frame_times.gd`, Marketplace 2, 40 s):
+  the CPU's frame times are unchanged (median 1.0 ms, p99 3.0 ms, worst 4.6 to 5.5 ms, with the cards and with the people);
+  on the Compatibility renderer (software, so counts only) the draw calls are the same (277 median, 410 to 415 most), objects the
+  same, primitives 48,200 to 58,100 a frame (+10,000 triangles in view, +21%) and materials 160 to 119, no shader first
+  drawn after the load. `test_marketplace_citizens` covers the person's mesh and budget, the palettes and the shader's rules, the placement, the
+  switch, one crowd a section, the warm-up sample and every cheer.
 - *Ceilings from their lanes (task B3).* `MarketCeilings` builds every kind (a building bridging the
   street, an overpass, a merchant ship, a floating ad) from the ceiling's collision box and lane
   seams, so a ceiling over fewer lanes just builds narrower; only a full-width ceiling becomes a
@@ -154,7 +183,7 @@ paved street, warm lamplight and haze.
 - *Scenery only, on the Marketplace's skin.* The owner asked for new walls, floor, ceilings and background
   and no new characters, so `CasinoSkin` extends `MarketplaceSkin` and keeps its `enemy_variant = &"casino"`
   (the Casino Mob Enforcer and the Marketplace's other enemies, as they are), its citizens (`MarketCitizens`,
-  the same class, in the same `market_citizens` group The House's crowds cheer and duck through), its plant
+  the same people, in the same `market_citizens` group The House's crowds cheer and duck through), its plant
   and casino-machine doodads (`MarketDoodads`, in the Casino's palette), the cult's feed and emblem, and its
   `shop_windows()`, `reserved_near()` and `note_wall_enemies()` contract. `CasinoFacades` extends
   `MarketFacades` and `CasinoProps` extends `MarketProps`: the same lots and windows and the same fence and
@@ -248,7 +277,7 @@ paved street, warm lamplight and haze.
   build time follows its vertices and its calls, and the Casino is the Marketplace's walls plus a roof and
   dressing, so it was the first skin over the line. What it costs now (6 lanes, one 40 m chunk, ms): the walls
   2.2 (windows and piers 0.4, lounge balconies, units and blade signs 0.3, wall lamps 0.2, the casino signs
-  and names 0.2, pipes 0.1), the roof 0.35, citizens 0.3, the commit 0.25, on top of the floors, fences and
+  and names 0.2, pipes 0.1), the roof 0.35, citizens 0.15 (task L7's people, one MultiMesh a wall section; the cards were 0.3), the commit 0.25, on top of the floors, fences and
   the track's own 1.5; vertices about 10.5k a chunk (the Marketplace's 9.8k). Kept down by: cached templates
   for everything that repeats (a wall lamp, a lantern per chain length, a fan per quarter turn in six
   turns, a blade sign's frame per tenth of a metre of height, balconies, units: each a bulk append of one

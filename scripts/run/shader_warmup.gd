@@ -292,6 +292,11 @@ func _sample_track(world: RunWorld) -> void:
 	var finish := Node3D.new()
 	add_child(finish)
 	skin.finish_line(finish, geo.half_width() * 2.0, 0.0)
+	# Scenery a skin first shows mid-run, not in the level's first chunks (the Marketplace's citizens, task L7).
+	if skin.has_method(&"warm_samples"):
+		var scenery := Node3D.new()
+		add_child(scenery)
+		skin.call(&"warm_samples", scenery)
 
 
 ## The next hazard to dress (_hazards: made the first time, out of the tree, colliding with nothing), on

@@ -4,7 +4,7 @@ extends SkinSuite
 ## and 6 lanes (the Marketplace's richest, whose features the Casino's levels share), then the Casino's
 ## own:
 ## - it is the owner's request: scenery only. The enemies keep the Marketplace's look (enemy_variant
-##   &"casino"), the citizens in the shop windows are the Marketplace's own class (MarketCitizen, in the
+##   &"casino"), the citizens in the shop windows are the Marketplace's own people (MarketCitizens and MarketCrowd, in the
 ##   group The House's crowds use), and nothing here builds a character;
 ## - gaps keep the orange edge glow right on the collision edge, and read as holes: everything under the
 ##   paving is in deep shade, far darker than any paving, nothing in there glows but the orange edge;
@@ -550,7 +550,7 @@ func _wider_bays(skin: CasinoSkin) -> void:
 
 
 ## The Marketplace citizens play in the Casino's windows (the owner's request: no new characters): the very
-## same class, in the group The House's crowds cheer and duck through (market_citizens), placed in free
+## same people (MarketCrowd), in the group The House's crowds cheer and duck through (market_citizens), placed in free
 ## windows only, and switched off with Settings.citizens_enabled.
 func _citizens(skin: CasinoSkin) -> void:
 	var geo := TrackGeometry.new(5, tuning)
@@ -566,19 +566,19 @@ func _citizens(skin: CasinoSkin) -> void:
 	var parent := Node3D.new()
 	tree.root.add_child(parent)
 	skin.citizens().build(parent, side, face_x, 0.0, 240.0)
-	var placed: Array[MarketCitizen] = []
-	for child: Node in parent.get_children():
-		if child is MarketCitizen:
-			placed.append(child as MarketCitizen)
+	var placed: Array[Dictionary] = MarketCrowd.people_under(parent)
 	var avoided: bool = true
-	for c: MarketCitizen in placed:
-		avoided = avoided and absf(c.at - free_at) > MarketCitizens.CYBORG_MARGIN
+	for c: Dictionary in placed:
+		avoided = avoided and absf(float(c["at"]) - free_at) > MarketCitizens.CYBORG_MARGIN
 	check(not placed.is_empty() and avoided, "the Marketplace's citizens play in the casino's windows, never beside a window cyborg (%d)" % placed.size())
+	var crowds: int = 0
 	var grouped: int = 0
-	for c: MarketCitizen in placed:
-		grouped += 1 if c.is_in_group(&"market_citizens") else 0
-	check(grouped == placed.size() and grouped > 0, "they join the market_citizens group The House's crowds use (%d of %d)" % [
-		grouped, placed.size()])
+	for child: Node in parent.get_children():
+		if child is MarketCrowd:
+			crowds += 1
+			grouped += 1 if child.is_in_group(&"market_citizens") else 0
+	check(grouped == crowds and grouped > 0, "their crowd joins the market_citizens group The House's crowds use (%d of %d)" % [
+		grouped, crowds])
 	skin.note_wall_enemies(side, 0.0, 240.0, [])
 	# The same citizens as the Marketplace's own builder places (CasinoCitizens only skips listing every window),
 	# with a wall gap in the way too.
@@ -592,11 +592,11 @@ func _citizens(skin: CasinoSkin) -> void:
 		var ours := Node3D.new()
 		plain_citizens.build(theirs, side, face_x, 0.0, 240.0)
 		skin.citizens().build(ours, side, face_x, 0.0, 240.0)
-		agree = agree and theirs.get_child_count() == ours.get_child_count()
-		for i: int in mini(theirs.get_child_count(), ours.get_child_count()):
-			var a: MarketCitizen = theirs.get_child(i) as MarketCitizen
-			var b: MarketCitizen = ours.get_child(i) as MarketCitizen
-			agree = agree and a.position == b.position and is_equal_approx(a.at, b.at)
+		var their_people: Array[Dictionary] = MarketCrowd.people_under(theirs)
+		var our_people: Array[Dictionary] = MarketCrowd.people_under(ours)
+		agree = agree and their_people.size() == our_people.size()
+		for i: int in mini(their_people.size(), our_people.size()):
+			agree = agree and their_people[i] == our_people[i]
 			compared += 1
 		theirs.free()
 		ours.free()
