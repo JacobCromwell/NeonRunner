@@ -22,10 +22,11 @@ extends SceneTree
 ##                                 (numbers), e.g. --set=fill_empty_seconds:2.5;spacing_seconds_easy:1.3,
 ##                                 to try values before putting them in the level files
 ##   --doodads                     also print the zone doodads by zone and lane count (task L3): doodads a
-##                                 minute (a treasure stash's left out), rows a level, the share of doodads
-##                                 in a row and in an outermost lane (by a side wall), events a minute, the
-##                                 wall fences a level and the metres of open side wall a level (wall gaps);
-##                                 --set=doodad_row_chance:0;doodad_wall_lane_share:0 builds them as before
+##                                 minute (a treasure stash's left out), rows a level and (task L6) how many of
+##                                 them two, three and four long, the share of levels with a row, the share of
+##                                 doodads in a row and in an outermost lane (by a side wall), events a minute,
+##                                 the wall fences a level and the metres of open side wall a level (wall gaps);
+##                                 --set=doodad_share:0 builds the levels without them
 ##
 ## Per level (the average over its lane counts and seeds) it prints the run speed, the level's length,
 ## and per minute of play: obstacle rows (a row of holes or fences at one spot, and each sign), of which
@@ -402,29 +403,35 @@ func _add_doodads(zone: String, lanes: int, gen: LevelGenerator, layout: LevelLa
 			var row: String = var_to_str(d["row"])
 			rows[row] = int(rows.get(row, 0)) + 1
 	var in_rows: int = 0
+	# Task L6: the rows by length (two, three, four).
+	var by_length: Array[int] = [0, 0, 0]
 	for k: String in rows:
 		in_rows += int(rows[k])
+		by_length[clampi(int(rows[k]) - 2, 0, 2)] += 1
 	var open: float = 0.0
 	for g: Dictionary in layout.wall_gaps:
 		open += float(g["end"]) - float(g["start"])
 	var add: Dictionary = {"layouts": 1.0, "minutes": minutes, "doodads": doodads, "rows": rows.size(),
 		"in_rows": in_rows, "outer": outer, "events": float(measured["events"]) * minutes,
-		"wall_fences": layout.wall_fences.size(), "open_wall": open}
+		"wall_fences": layout.wall_fences.size(), "open_wall": open, "rows2": by_length[0], "rows3": by_length[1],
+		"rows4": by_length[2], "with_row": 1.0 if rows.size() > 0 else 0.0}
 	for k: String in add:
 		s[k] = float(s.get(k, 0.0)) + float(add[k])
 	_doodad_sums[key] = s
 
 
-## The --doodads table (task L3): by zone and lane count, over its levels and seeds.
+## The --doodads table (task L3): by zone and lane count, over its levels and seeds. Task L6 added the rows by length
+## (rows of two, three and four a level) and the share of levels with a row at all.
 func _print_doodads() -> void:
 	print("")
-	print("%-12s %5s %4s | %8s %8s %7s %7s %8s | %8s %9s" % ["zone", "lanes", "n", "dood/min", "rows/lvl", "in row",
-		"outer", "evts/min", "wfence/l", "open m/l"])
+	print("%-12s %5s %4s | %8s %8s %14s %7s %7s %7s %8s | %8s %9s" % ["zone", "lanes", "n", "dood/min", "rows/lvl",
+		"of 2/3/4 a lvl", "w/ row", "in row", "outer", "evts/min", "wfence/l", "open m/l"])
 	for key: String in _doodad_sums:
 		var s: Dictionary = _doodad_sums[key]
 		var n: float = maxf(float(s["layouts"]), 1.0)
 		var d: float = maxf(float(s["doodads"]), 1.0)
-		print("%-12s %5s %4d | %8.2f %8.2f %6.0f%% %6.0f%% %8.1f | %8.1f %9.0f" % [key.get_slice(" ", 0),
-			key.get_slice(" ", 1), int(n), float(s["doodads"]) / float(s["minutes"]), float(s["rows"]) / n,
-			100.0 * float(s["in_rows"]) / d, 100.0 * float(s["outer"]) / d, float(s["events"]) / float(s["minutes"]),
-			float(s["wall_fences"]) / n, float(s["open_wall"]) / n])
+		print("%-12s %5s %4d | %8.2f %8.2f %4.2f/%4.2f/%4.2f %6.0f%% %6.0f%% %6.0f%% %8.1f | %8.1f %9.0f" % [
+			key.get_slice(" ", 0), key.get_slice(" ", 1), int(n), float(s["doodads"]) / float(s["minutes"]),
+			float(s["rows"]) / n, float(s["rows2"]) / n, float(s["rows3"]) / n, float(s["rows4"]) / n,
+			100.0 * float(s["with_row"]) / n, 100.0 * float(s["in_rows"]) / d, 100.0 * float(s["outer"]) / d,
+			float(s["events"]) / float(s["minutes"]), float(s["wall_fences"]) / n, float(s["open_wall"]) / n])
