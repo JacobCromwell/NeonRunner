@@ -200,8 +200,8 @@ func _test_climb_through() -> void:
 			check(await _phase_rates(lanes, speed), "phase 2's climb is faster as planned %s" % tag)
 
 
-## Phase 2's climb against phase 1's, on physics: eight steps planned in phase 1, landing to landing, then phase 1's hits
-## (2: phase 2), then eight steps planned in phase 2. GDD §10: 15-25% faster (proposed: about 20%). True if it is.
+## Phase 2's climb against phase 1's, on physics: eight steps planned in phase 1, landing to landing, then phase 1's two
+## hits (phase 2), then eight steps planned in phase 2. GDD §10: 15-25% faster (proposed: about 20%). True if it is.
 func _phase_rates(lanes: int, speed: float) -> bool:
 	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
 	var pair: Array = _fight(lanes, speed)
