@@ -50,8 +50,10 @@ extends RefCounted
 ##   lane but one before it locks (bait_plan). A fallback due on a step that leads onto a bitten roof waits for the next
 ##   step (Mecha Guppy can't breach in front of that roof and rise for its bite too); at the default fallback_after the
 ##   fallbacks never fall on those steps anyway.
-## 4 hits end phase 1, 6 phase 2: a runner who baits every step lands one a step (from the first notch on); one who
-## never does, one every fallback_after + 1 steps (or the next step that doesn't lead onto a floor bite).
+## 2 hits end phase 1 (task L9: it had 4), 6 phase 2: a runner who baits every step lands one a step (from the first
+## notch on: phase 1 ends with the bait of step 2, after roof 1's floor bite alone, roof 2's floor bite and first bait,
+## and roof 3's first volley and bait); one who never does, one every fallback_after + 1 steps (or the next step that
+## doesn't lead onto a floor bite: phase 1 ends with the fallback of step 4).
 ## Attacks only while the pattern runs (MechaGuppy.attacks_live: not in an intro, not in phase 3, not once won);
 ## the shark's bite of the floor left behind is the level being eaten, not an attack, so it goes on in an intro too.
 

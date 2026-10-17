@@ -22,7 +22,7 @@ extends TestSuite
 ## - the fight (3 lanes at 23.8 m/s, 6 at 18 m/s, MechaGuppyBot baiting): every bomb shows its red circle where it
 ##   lands, at that floor's height, out of the fog, from the throw until it lands (lock_seconds at least, a volley's
 ##   later spots longer), each throw heard, each bomb whistling before it lands; every hit is the bait's bomb into the
-##   shark's jaws over its notch, 4 end phase 1 and 6 phase 2; phase 2 has more bombs to dodge than phase 1 (the bombs
+##   shark's jaws over its notch, 2 end phase 1 and 6 phase 2; phase 2 has more bombs to dodge than phase 1 (the bombs
 ##   that can reach the runner, the bait's included), a step and a second; the clean runner is never hurt;
 ## - no escalation: with no hit ever landing (MechaGuppyPattern.hits_enabled off), phase 1 goes on step after step
 ##   with the same bombs a step, the same spots and the same bait from the same places; a retry plays the same bombs.
@@ -517,7 +517,8 @@ func _test_fight(lanes: int, speed: float) -> void:
 	# The hits: each the bait's bomb into the shark's jaws over its notch.
 	var hits: Array[Dictionary] = _events(boss, &"hit")
 	var into: Array[Dictionary] = _events(boss, &"shark_hit")
-	var ok: bool = hits.size() == 10 and into.size() == 10
+	# 2 hits end phase 1, 6 phase 2.
+	var ok: bool = hits.size() == 8 and into.size() == 8
 	for h: Dictionary in hits:
 		ok = ok and h["cause"] == &"bomb"
 	for e: Dictionary in into:
@@ -531,7 +532,13 @@ func _test_fight(lanes: int, speed: float) -> void:
 	for e: Dictionary in hits:
 		if int(e["phase"]) < 2:
 			per_phase[int(e["phase"])] += 1
-	check(ends.size() >= 2 and per_phase[0] == 4 and per_phase[1] == 6, "4 hits end phase 1, 6 phase 2 (%s) %s" % [str(per_phase), tag])
+	check(ends.size() >= 2 and per_phase[0] == 2 and per_phase[1] == 6, "2 hits end phase 1, 6 phase 2 (%s) %s" % [str(per_phase), tag])
+	# Phase 1 is short (task L9: 2 hits), but it still throws a volley before it ends, not only baits (GDD §10: the climb, dodging bombs).
+	var first_volleys: int = 0
+	for e: Dictionary in _events(boss, &"volley"):
+		if int(e["phase"]) == 0:
+			first_volleys += 1
+	check(first_volleys >= 1, "phase 1 throws a volley before it ends, not only baits (%d volleys) %s" % [first_volleys, tag])
 	# Phase 2's more bombs (GDD §10): the bombs that can reach the runner (the volleys' and the baits'), a step and a second.
 	var census: Dictionary = MechaGuppyBot.census(boss)
 	check(float(census["step"][1]) > float(census["step"][0]) and float(census["second"][1]) > float(census["second"][0]),

@@ -120,7 +120,10 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
   steps as long as phase 1's (each roof's run holds a volley spot and the bait), so every margin stays: 20.0% faster
   at 3, 5 and 6 lanes and both speeds (`climb_rate`, and on physics). The steps in sight when the phase changes stay
   as they are (their notches too); the first one past the edge of sight is phase 2's: measured, its pads come
-  10.6-18.7 s after the phase begins.
+  10.6-18.7 s after the phase begins. With phase 1's 2 hits (task L9) phase 2 begins at roof 3's end for a runner who
+  baits: at 5 and 6 lanes at 23.8 m/s roof 4's step is past sight then and is planned again in phase 2, so roof 4's
+  floor bite is phase 2's first and crosses every lane (`_bite_full`), about 4 s into phase 2; at 3 lanes and at 18 m/s
+  it stays phase 1's, leaving a lane, and the first full-width bite is roof 8's, as for a runner who never baits.
 - **Phase 3, level with Captain Cogs** (tasks E5e-c and E5e-g, the owner's rework of October 15, 2026; `MechaGuppyTop`,
   DESIGN-TBD, `docs/OPEN_QUESTIONS_ANSWERED.md` items 888-896, answered, stands as built): its step is the top, the roof the runner is on running on flat with no pads or
   hut (and no notch), planned right after the steps in sight (it comes 4.0-13.9 s after phase 3 begins, measured).
@@ -237,24 +240,28 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
   camera's forward axis and at least `BREACH_NEAR` (55 m) ahead; pulling away at `BREACH_AHEAD` (14 m/s) and out at
   `BREACH_OUT` (3 m/s), its head along the way it moves as the runner sees it; `breach_seconds` for a leap up to
   `BREACH_REF` (30 m) high, longer for a higher one so it moves the same (up to `BREACH_LONGEST`, 1.6 times: a runner
-  who never baits climbs to a top about 73 m up); and from a high top, whose camera sees nothing of the rise out of
+  who never baits climbs higher, its phase 1 taking more steps); and from a high top, whose camera sees nothing of the rise out of
   the sea far below, it begins already under way, its snout `BREACH_HIDDEN` (2 m) under the camera's line (reckoned
   for the camera over the outer lane on that side, where it sees lowest), so no time goes by on an empty view.
   Everything keeps pace with the runner.
   No point of its jaws or its body comes over the lanes or the top's eaves at any moment (the suites check every
   frame), nothing in it has a hitbox, and the runner is in the framework's win god mode. `victory_over()` holds the
-  results until `dive_after` (0.6 s) after its snout is back in the sea (5.9-6.2 s after the win, 6.6-7.0 s from a
-  73 m top; `over_by`; `LevelRun.BOSS_VICTORY_MAX` 20 s); the dive goes on until its tail is under, then it's gone
+  results until `dive_after` (0.6 s) after its snout is back in the sea (5.9-6.2 s after the win, about 6.4 s
+  from any top, test_mecha_guppy_whole; `over_by`; `LevelRun.BOSS_VICTORY_MAX` 20 s); the dive goes on until its tail is under, then it's gone
   (`hold(false)`). LevelRun's riff at the defeat is off (`victory_riff()`), and the zone's level-complete riff plays
   `riff_after` (1 s) after the gulp (`victory_riff_on`).
-- **The whole fight** (`test_mecha_guppy_whole`): a runner who baits every step wins in 156.5-164.1 s at the Beach's
-  23.8 m/s and 160.5-178.6 s at 18 m/s (3, 5 and 6 lanes: phase 1 over at 41.0-47.2 s, phase 2 at 86.5-100.8 s, the
-  top at 98.0-115.7 s, then phase 3's 16 hits, 57-63 s), one who never baits in 223.4-255.3 s (task E5e-g's phase 3
-  runs a little longer on a wide top: its floor bites cross more lanes, the ship stands further ahead). Three stars at
-  179 s (Hostile Takeover's margin over the slowest clean fight at 23.8 m/s, raised from 177 s by task E5e-g so the
-  slowest at 18 m/s, 178.6 s, still earns them), two at 210 s (task E5e-c's review: below the quickest win without
-  baiting, so two stars need some baiting and a runner who never baits earns one at every lane count and speed), the
-  time bonus to 260 s. Its rewards are its neighbours' (500 credits, 5000 points; DESIGN-TBD).
+- **The whole fight** (`test_mecha_guppy_whole`): a runner who baits every step wins in 141.1-144.7 s at the Beach's
+  23.8 m/s and 144.4-158.3 s at 18 m/s (3, 5 and 6 lanes: phase 1 over at 25.8-29.4 s, phase 2 at 71.3-83.0 s, the
+  top at 81.4-97.8 s, then phase 3's 16 hits, 57-61 s), one who never baits in 192.9-219.7 s (task E5e-g's phase 3
+  runs a little longer on a wide top: its floor bites cross more lanes, the ship stands further ahead). The par times
+  follow the suite's rule, measured again by task L9 (phase 1's 2 hits: they were 179 s, 210 s and 260 s): three stars
+  at 159 s (Hostile Takeover's margin over the slowest clean fight at 23.8 m/s, 144.7 s, gives 156.1 s; within its 3 s,
+  159 s so the slowest at 18 m/s, 158.3 s, still earns them, as task E5e-g raised 177 s to 179 s), two at 182 s
+  (task E5e-c's review: below the quickest win without baiting, so two stars need some baiting and a runner who never
+  baits earns one at every lane count and speed; between 1.2 times the slowest clean fight, 173.6 s, and 5 s short of
+  that quickest win, 192.9 s, where the owner's 210 s stood between the old bounds), the time bonus to 225 s (the old
+  1.24 times two stars, just past the slowest win without baiting). Its rewards are its neighbours' (500 credits, 5000
+  points; DESIGN-TBD).
 - **Building it** (`MechaGuppyStairs`): everything up to the build horizon, `BUILD_MARGIN` past the edge of sight
   (`sight`: the arena skin's fog end, 200 m, fully fogged), is built through the boss's props and freed once
   passed; roofs in 24 m pieces, never past where they could still be eaten or notched: a roof whose end isn't planned
@@ -289,7 +296,8 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
   the nearest lane with floor where they come down (`_nearest_covered`), in practice past the gap in their own lane.
 - **Hits** (GDD §10, the owner, October 11, 2026: by baiting): each phase's hits are counted
   (`weapons_can_end_phase` off, `weapon_share_cap` 0: weapons do nothing). `register_hit(cause)` lands one while the
-  climb's pattern runs (4 end phase 1, 6 phase 2), but not in an intro or in phase 3. Captain Cogs' bombs call it:
+  climb's pattern runs (2 end phase 1, 6 phase 2; phase 1 had 4 until task L9, the owner's October 17, 2026 request
+  to make it half as long), but not in an intro or in phase 3. Captain Cogs' bombs call it:
   the bait's, locked onto a runner in the notch's lane who switched out before its edge, or the fallback's (below).
 - **Mecha Guppy** (`MechaGuppyShark`, its look `MechaGuppySharkModel`; E5e-b2, DESIGN-TBD): a building-sized
   mechanical shark, code-built and flat-shaded on the skin's solid material (riveted steel plates, rows of steel
@@ -424,11 +432,17 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
     runner fell, even if the grapple saved them (`note_fall`, `catch_ok`). One due on a step that leads onto a roof with
     a floor bite waits for the next step (`bitten_next`, logged `fallback_deferred`: the shark can't breach in front of
     that roof and rise for its bite too); at `fallback_after` 1 they never fall on those steps anyway.
-  A runner who baits every step lands one hit a step from the first notch on: phase 1 ends at 41.0-47.2 s and phase 2 at
-  86.5-100.8 s (3, 5, 6 lanes at 18 and 23.8 m/s); one who never baits lands one every other step: 67.4-78.5 s and
-  158.5-185.7 s (1.6 and 1.8 times as long). Phase 2 has more bombs to dodge (the ones that can reach the runner, the
-  bait's included, counted over the steps that threw any): 2.50-3.17 a step and 0.317-0.366 a second against phase 1's
-  1.50-2.00 and 0.142-0.180 (fewer since the roofs with a floor bite have no volley). `attacks_enabled` (tests) turns the
+  A runner who baits every step lands one hit a step from the first notch on: phase 1 ends with the bait of step 2
+  (after roof 1's floor bite alone, roof 2's floor bite and the first bait, roof 3's first volley and its bait), at
+  25.8-29.4 s, and phase 2 at 71.3-83.0 s (3, 5, 6 lanes at 18 and 23.8 m/s); one who never baits lands one every other
+  step, phase 1 ending with the fallback of step 4 (after the floor bites of roofs 1, 2 and 4, the baits after the last
+  two, roof 3's volley and the first fallback's breach): 37.0-42.8 s and 128.1-150.0 s (1.4 and 1.8 times as long).
+  Phase 1 had 4 hits until task L9 (the owner, October 17, 2026: half as long), ending at 41.0-47.2 s and 67.4-78.5 s:
+  it is 37-38% shorter for a runner who baits and 45% for one who doesn't, its lead-in to the first notch (the 3 s
+  intro, the start's run, the first tower's floor bite alone) now a larger share. Phase 2 has more bombs to dodge (the
+  ones that can reach the runner, the bait's included, counted over the steps that threw any): 2.50-3.17 a step and
+  0.317-0.366 a second against phase 1's 1.50-2.00 and 0.113-0.144 (fewer since the roofs with a floor bite have no
+  volley, and phase 1's lead-in throws none; 0.142-0.180 a second with 4 hits). `attacks_enabled` (tests) turns the
   bombs and the bites off; `hits_enabled` (tests) keeps the hits from landing (no catch, no fallback).
 - **The armor rule's pickup** (the standard 15-17 s, `armor_when_unprotected` like every boss) goes on the roof
   the runner will run along, at its height (`_on_armor_pickup_due`, `MechaGuppyStairs.pickup_spot`,
@@ -464,7 +478,7 @@ In `scripts/bosses/mecha_guppy/`:
 | `mecha_guppy_waterfall.gd` (`MechaGuppyWaterfall`), `mecha_guppy_waterfall.gdshader`, `mecha_guppy_sea.gdshader`, `mecha_guppy_clouds.gdshader` | the backdrop: the waterfall, a flat-topped massif `DISTANCE` (420 m) ahead of the camera whose rock, lip (`LIP_Y`, 150 m) and mist are drawn at world heights (the cliffs slide down past a climber, its foot sinks below; past the lip a plateau card shows its top), its flanks sloping to the sea so the horizon shows beside it (fades out with `set_shown` at the top, its clouds with it); a sea plane at sea level around the camera out to the far plane, the sky below the horizon set to the fog's colour (`abyss_color`) so the far sea meets the horizon at any height; layers of low cloud at fixed world heights beside the climb, shown once the runner is above them. Unshaded, nothing flickering |
 | `mecha_guppy_rope.gd` (`MechaGuppyRope`) | the grapple's rope: from the runner (followed frame by frame as the save lifts them) to the roof's edge, for a moment; `ends()` for tests |
 | `mecha_guppy_tuning.gd`, `data/bosses/beach_boss_tuning.tres` | its numbers (F6 in its fight; all DESIGN-TBD, `docs/OPEN_QUESTIONS.md` items 767–824): the climb's (`rise`, `phase2_rise`, `roof_seconds`, ...), "Captain Cogs' bombs" (with the fairness numbers `floor_clear`, `hut_clear`, `escape_after`), "The hits" (`bait_seek`, `notch_back`, `catch_in`, `fallback_after`, `hit_back`, `hit_seconds`, `lane_clear`, `breach_early`, `lurk_seconds`), "Mecha Guppy's bites" (with `bite_spare`), "Mecha Guppy's floor bite" (`floor_warning`, `floor_rise`, `floor_bite_length`, `full_every`, `full_jump_share`, `full_through`, `floor_snap_lead`), "Captain Cogs' ship", "Phase 3" (`level_*`, `guppy_ahead`, `guppy_rise`, `top_first`, `barrage_script`, `bomb_gap`, `barrage_rest`, `beat_spare`, `bomb_*`, `low_height`, `high_height`, `dive_every`, `surface_after`, `bite_after`, `wave_*`), "The defeat" (`leap_rise`, `leap_hang`, `leap_fall`, `breach_seconds`, `dive_after`, `victory_riff_on`, `riff_after`); `per_phase`, `rise_at`, `TOP_TUNABLES` |
-| `data/bosses/beach_boss.tres` | its slot: `scene`, the owner's title, three phases (4 hits, 6 hits, and 16 on the top), weapons capped at nothing and unable to end a phase, one lap of arena (the Beach's skin, no features, a clear start), the standard armor rule with `armor_when_unprotected`, the Beach's music, par times measured on the whole fight (179 s, 210 s; the time bonus to 260 s), its neighbours' rewards (500 credits, 5000 points) |
+| `data/bosses/beach_boss.tres` | its slot: `scene`, the owner's title, three phases (2 hits, task L9; 6 hits; and 16 on the top), weapons capped at nothing and unable to end a phase, one lap of arena (the Beach's skin, no features, a clear start), the standard armor rule with `armor_when_unprotected`, the Beach's music, par times measured on the whole fight (159 s, 182 s; the time bonus to 225 s), its neighbours' rewards (500 credits, 5000 points) |
 
 Also: `scenes/bosses/mecha_guppy.tscn`; `tools/showcase/mecha_guppy_showcase.tscn` (scripted runs for reviews:
 `--scenario=climb/wrong/grapple/side/hut/top/level/leap/leapcam/shark/ship/bombs/bait/hits`, `--lanes`, `--speed` (23.8
@@ -503,7 +517,7 @@ bombs keep the Floating Head's bomb_whistle and bomb_blast. Hints: `enemy:beach_
 nothing), `boss:beach_boss/climb` (how to read the lanes that lead up), `/floor_bite` (the red crescent and the knocking
 under the deck: switch into the lane it leaves; in phase 2 jump a gap across every lane), `/bombs` (the circles, the
 whistle) and `/hits` (the bait: lead Captain Cogs' red target into the notch's lane, switch out before the edge; Captain
-Cogs only sometimes misses for you; 4 and 6 hits), `/barrage` (the red line at the bomb's height: jump a low one, slide under a
+Cogs only sometimes misses for you; 2 and 6 hits), `/barrage` (the red line at the bomb's height: jump a low one, slide under a
 high one; each one dodged flies into Mecha Guppy) and `/waves` (the dive, the splash, the swell and the roar: jump the
 surge; then the bite). Suites: `test_mecha_guppy`
 (the data, the plan and its notches, the built climb, the
