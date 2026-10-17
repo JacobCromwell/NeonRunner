@@ -4911,3 +4911,41 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
    now gets the same bamboo end and gable as the end it starts again with (`BeachShacks.gap_end_cap`, `leading`), since
    the black block that stood there was the one unrendered thing left. Nothing else of the Beach's changed.
    Placeholder: that end cap; the shared gap marks stay.
+
+### Folded on October 17, 2026 (task L5, the wall-run guide only where it's introduced)
+
+929. **Is the stretch to step on readable without the guide?** Without the green chevrons the cue is the hole itself: the
+   street ending ahead, in every lane, with its glowing edge. The runner has to be in the outer lane (the clear run-in,
+   `approach_seconds` 0.8 s, is there for the lane changes) and step onto the wall in the stretch before the edge
+   (`entry_window_seconds`, 0.5 s: 11.3 m in the Marketplace, 11.7 m in Corporate, 12.5 m in the Golden Zone). The
+   real tolerance is a little wider than that stretch: a step up to `exit_margin_seconds` (0.25 s) earlier still
+   crosses (0.75 s, 17 to 19 m before the edge), and one up to the jump grace (`coyote_time`, 0.08 s, about 2 m) past it;
+   a step earlier than that drops the runner in (the wall run ends over the hole; the grapple's save puts them back on
+   the wall), which is the mistake a player who runs at the wall as soon as they see the hole will make, and what
+   "using their brain" costs. The other wall may carry a sign, a wall fence or a wall enemy where the gap's wall is
+   guaranteed clear, so the runner now also picks the wall. Is 0.5 s (0.75 s with the margin) a fair window to hit by
+   eye with no mark on the wall, at the later zones' speeds? It can only grow a little: the gap gets shorter by as
+   much and must stay longer than any jump (about 1.2 s of run with every boost and the dash, against 1.41 s now). Or
+   should the later zones show something else short of the green arrows (a sound at the edge, a sign far ahead)? The
+   timing was not changed. (GDD §3, Side walls; task J2's item 1 in `docs/questions/j2.md`.) Seen in rendered frames
+   (`wall_run_gap_review --skin=corporate --take=cross`, with `--guide=on` for the comparison): the Corporate hole reads
+   as a dark trench with an orange lip across every lane from the start of the run-in, so the gap itself is easy to see
+   coming; what nothing now says is the instant to step on, so a first-time player has the hint's words and the lip to
+   go by.
+   Placeholder: the timing as it stands (`data/tuning/wall_run_gaps.tres`, `entry_window_seconds`; DESIGN-TBD in
+   `wall_run_gap_tuning.gd`).
+
+930. **Which levels of the Marketplace keep the guide?** The request names the zone that introduces the mechanic; the
+   Marketplace brings wall-run gaps in halfway into Marketplace 1 and has them in Marketplace 2 as well. Should the
+   guide go after the first level (or the first few gaps) rather than at the zone's end?
+   Placeholder: the whole Marketplace keeps it (a flag per zone skin, not per level), every later zone's skin has it off
+   (`show_wall_run_guide` in `data/skins/*.tres`; DESIGN-TBD on `ZoneSkin.show_wall_run_guide`).
+
+931. **The first-encounter hint without the guide.** The hint said to run "along the wall with the green arrows". A
+   profile that never saw it in the Marketplace (hints off at the time, or a page skipped) gets it as a reminder in a
+   later zone, where there are no arrows, so that zone's hint is `text_no_guide` ("step onto the wall just before the
+   street ends ... step on too early and it ends over the hole") in `data/hints/hints.json`. Is that the right thing to
+   tell a player who has never been shown the mechanic? A returning player who read the Marketplace's hint never sees
+   this one (both share the hint's id), so nobody is told the arrows are gone or when to step on without them: should
+   the first later level with a gap (Casino 1) carry a one-time note? Placeholder: that text, "along a clear wall"
+   (DESIGN-TBD in the hint catalog's `_note`); no note for a returning player.

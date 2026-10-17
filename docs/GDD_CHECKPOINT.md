@@ -69,6 +69,8 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Wall hop** (owner's playtest, October 9, 2026): jumping off a wall and straight back onto it starts a fresh wall run, so a skilled player can stay on a wall **as long as they like**. The owner likes it: it's a move players are meant to discover for themselves, and it **must not be patched out**.
 - **Signs:** block wall entry, and colliding with one causes damage. A blocked entry plays a metallic clank **and a small sideways bump**, so the player sees why they didn't get onto the wall (decided September 26, 2026).
 - **Vents** exist **only at the bottom of walls**, which punishes lingering (see Sewer Screech).
+- **Wall-run gaps** (owner, October 15, 2026): some sections, especially in later zones and levels, have a gap over **every floor lane**, and the only way across is a **wall run**. Here the wall is an accepted, safe path. They begin in the Marketplace.
+  - **The guide only where they're introduced** (owner, October 17, 2026): the green lit wall that shows the way is right for the zone that brings wall-run gaps in (the Marketplace), but too easy later. **Later zones show no guide**, so the player has to work it out, unless a zone made a speed boost necessary to cross (none does). *(Open: item 932, whether the safe wall needs another cue.)*
 
 ### Ceiling (city: undersides of low-flying spaceships)
 - **Reached** by stepping on **anti-grav pads** in floor lanes, which flip gravity.

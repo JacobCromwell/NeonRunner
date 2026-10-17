@@ -764,7 +764,7 @@ same ratio, `test_numbers`), no speed pad, ramp or other boost is in its clear s
 suite checks that no jump crosses it even with every boost and the dash. The first-encounter hint has two texts
 (`wall_run_gap` in `data/hints/hints.json`; `HintDirector._text_of`): `text` points at the green arrows, and
 `text_no_guide` says to step onto the wall just before the street ends, said where the level's skin leaves the guide out
-(a reminder for a profile that never saw it in the Marketplace). DESIGN-TBD (`docs/questions/l5.md`): whether the 0.5 s
+(a reminder for a profile that never saw it in the Marketplace). DESIGN-TBD (items 929-932 in `docs/OPEN_QUESTIONS*.md`): whether the 0.5 s
 stretch is readable without the guide. Where the guide is shown it is by default the ramps' green chevrons
 (`ramp_color`, as the Floating Head's wall marks show a wall run), a tall, bright, framed panel over the lit stretch
 (where to step on) and a strip at running height over the gap, streaming ahead, never in a hazard colour, never

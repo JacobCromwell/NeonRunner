@@ -1,5 +1,5 @@
 {
-	"_note": "First-encounter hints paged on the level introduction, once per profile. Triggers select actual layout encounters or this boss's routes/pickups; campaign feature ages put new concepts before older unseen encounters. Only visited pages are acknowledged on PLAY. {action} names the rebound key (PC) or gesture (touch). A hint may carry text_no_guide, said instead of text where the level's zone skin leaves out the wall-run gap's lit wall (ZoneSkin.show_wall_run_guide, task L5). DESIGN-TBD (docs/questions/l5.md item 3): the wording of text_no_guide.",
+	"_note": "First-encounter hints paged on the level introduction, once per profile. Triggers select actual layout encounters or this boss's routes/pickups; campaign feature ages put new concepts before older unseen encounters. Only visited pages are acknowledged on PLAY. {action} names the rebound key (PC) or gesture (touch). A hint may carry text_no_guide, said instead of text where the level's zone skin leaves out the wall-run gap's lit wall (ZoneSkin.show_wall_run_guide, task L5). DESIGN-TBD (item 931 in docs/OPEN_QUESTIONS*.md): the wording of text_no_guide.",
 	"hints": [
 		{ "id": "lanes", "trigger": "start", "text": "Switch lanes with {move_left} and {move_right}." },
 		{ "id": "gap", "trigger": "gap", "text": "Gaps: jump with {jump}, or switch lanes." },

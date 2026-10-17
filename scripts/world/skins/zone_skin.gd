@@ -180,7 +180,7 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 ## every later zone's skin sets this to false and the hole itself is the cue). Keep it true where a zone's gap needs a
 ## speed boost to cross (none does: the gap is sized for a standard wall run at the zone's own run speed). True here,
 ## so the grey box and the earlier zones' skins (quick play, review tools) still show it. DESIGN-TBD
-## (docs/questions/l5.md): which zones keep it.
+## (items 929-932 in docs/OPEN_QUESTIONS*.md): which zones keep it.
 @export var show_wall_run_guide: bool = true
 
 
