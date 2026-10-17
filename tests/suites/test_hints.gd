@@ -101,6 +101,7 @@ func _test_campaign_relevance() -> void:
 		"golden/2": ["gilded_sentinel"],
 	}
 	var profile := Profile.new()
+	var wall_run_hints: Dictionary = {}
 	for step: CampaignStep in campaign.steps():
 		# A mini-game level's own hint (the Beach's volleyball match) is test_volleyball's: its track isn't generated.
 		if not step.is_level() or step.is_minigame():
@@ -134,11 +135,21 @@ func _test_campaign_relevance() -> void:
 		ids = director.intro_hints.map(func(entry: Dictionary) -> String: return entry["id"])
 		if step.level_index > 0:
 			check(not ids.has("lanes"), "%s does not repeat the start primer" % step.id)
+		# Task L5: only the Marketplace lights a wall-run gap's way, so only its hint points at the green arrows; a later
+		# zone's, a reminder for a profile that never saw it, says where to step onto the wall instead.
+		for entry: Dictionary in director.intro_hints:
+			if String(entry["id"]) == "wall_run_gap":
+				var arrows: bool = String(entry["text"]).contains("green arrows")
+				check(arrows == (step.zone.id == &"marketplace"), "%s's wall-run gap hint %s the green arrows (%s)" % [
+					step.id, "points at" if arrows else "leaves out", entry["text"]])
+				wall_run_hints[arrows] = int(wall_run_hints.get(arrows, 0)) + 1
 		var introduced: Array = expected.get(step.id, [])
 		if not introduced.is_empty():
 			check(introduced.has(ids[0]), "%s prioritizes its newly introduced content (%s)" % [step.id, ids])
 		director.free()
 		world.free()
+	check(wall_run_hints.get(true, 0) > 0 and wall_run_hints.get(false, 0) > 0,
+		"the wall-run gap hint is checked with and without the green arrows (%s)" % [wall_run_hints])
 
 
 func _test_settings_and_acknowledgement() -> void:

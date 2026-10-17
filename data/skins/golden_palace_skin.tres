@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_skin")
 cyborg_draw_scale = 1.2
+show_wall_run_guide = false
 enemy_variant = &"golden"
 gap_inside_color = Color(0.24, 0.235, 0.22, 1)
 moon_radius = 0.0

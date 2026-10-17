@@ -17,7 +17,9 @@ task C4); read-only and visual only, like every other hook.
 After a side's wall sections and wall gaps it calls `wall_run_guide(parent, side, face_x, start, end, lit)` for each
 wall-run gap's lit wall in the chunk (task J2; The generator, Wall-run gaps: `lit` is Vector3(where the stretch to
 step on starts, the gap's start, its end), `start`/`end` the part in this chunk). The default
-(`standard_wall_run_guide`, which no skin overrides yet) draws the ramps' green chevrons in the skin's `ramp_color`
+(`standard_wall_run_guide`, which no skin overrides yet) draws, in a skin with `show_wall_run_guide` (the default,
+`true`; every zone's skin after the Marketplace's sets it `false` and draws nothing: task L5, the owner, October 17,
+2026, "making the player use their brain a little bit more"; The generator, Wall-run gaps on the track), the ramps' green chevrons in the skin's `ramp_color`
 (`WALL_RUN_COLOR` without one), as the Floating Head's wall marks show a wall run: a tall, bright, framed panel over the
 stretch to step on and a strip at running height over the gap, `WALL_RUN_PROUD` off the wall line, its pattern running
 on across chunks; never a hazard colour, never flickering. A skin may draw its own, as long as it reads as the way.

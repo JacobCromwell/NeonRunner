@@ -174,6 +174,15 @@ const WALL_EMITTER_THICKNESS: float = 0.1
 @export var dash_wall_palette: PackedColorArray = PackedColorArray([Color(0.35, 0.36, 0.39), Color(0.25, 0.26, 0.29),
 	Color(0.07, 0.08, 0.1), Color(0.035, 0.035, 0.045)])
 
+@export_group("Wall-run gaps")
+## Whether this zone lights a wall-run gap's way across with the green chevrons (wall_run_guide, task L5; the owner,
+## October 17, 2026: the lit wall is fine where the mechanic is introduced, the Marketplace, but too easy after it, so
+## every later zone's skin sets this to false and the hole itself is the cue). Keep it true where a zone's gap needs a
+## speed boost to cross (none does: the gap is sized for a standard wall run at the zone's own run speed). True here,
+## so the grey box and the earlier zones' skins (quick play, review tools) still show it. DESIGN-TBD
+## (docs/questions/l5.md): which zones keep it.
+@export var show_wall_run_guide: bool = true
+
 
 func make_environment() -> Environment:
 	return Environment.new()
@@ -547,6 +556,9 @@ static func standard_wall_gap_recess(s: MeshLayer, side: int, face_x: float, sta
 ## that launch wall runs; never a hazard colour: safe things look safe). The chevrons only scroll, like the ramps',
 ## so Reduced flashing leaves it as it is. DESIGN-TBD (docs/questions/j2.md): the look.
 func wall_run_guide(parent: Node3D, side: int, face_x: float, start: float, end: float, lit: Vector3) -> void:
+	# Task L5: only a skin with show_wall_run_guide lights it (the Marketplace's); the others leave the hole as the cue.
+	if not show_wall_run_guide:
+		return
 	var color: Variant = get("ramp_color")
 	var batch := MeshBatch.new()
 	standard_wall_run_guide(batch.layer(MeshKit.solid()), side, face_x, start, end, lit,
