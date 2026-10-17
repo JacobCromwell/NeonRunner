@@ -1,7 +1,18 @@
 {
 	"version": 1,
-	"_note": "DESIGN-TBD: prices and most tier counts are placeholders (OPEN_QUESTIONS §4), except the owner's dash upgrades (USER_REQUESTS.md): four total tiers, the existing base price and three upgrades at 800 / 1000 / 1200 credits. GDD §8 fixes the weapon's four tiers. R7 laid these prices against tools/measure/economy.gd's reading of the post-playtest economy (G1 pace, G3 free armor, G4 laser tier 1); I7 rebalanced them for all eight zones (GDD §7, the owner's answer of October 14, 2026): each tier is read at its line total (its price and every tier before it, since tiers are bought in order) against the wallet of a typical player who finishes every level once, and test_economy.gd pins the level each tier first fits at (the table is in docs/architecture/economy-platforms.md). A tier that first fits at level N is affordable after finishing N, so usable from N + 1. Held: Armor I 350 (the October 3 early-economy revision), Laser I 1800 (first affordable at the campaign's 4th level, Gangland 1) and the dash's four prices. Moved: Armor IV 6000 to 6500 and Heavy missile 9500 to 7000, which I4's treasure-stash credits had pulled too early; see items 846-850 in docs/OPEN_QUESTIONS*.md.",
+	"_note": "DESIGN-TBD: prices and most tier counts are placeholders (OPEN_QUESTIONS §4), except the dash, whose four total tiers are the owner's prices of October 17, 2026 (USER_REQUESTS.md; no longer placeholders): 300 (tier I), 450 (II), 600 (III) and 700 (IV), so a player can own it before the first boss, and it is the first item in this list and so the first card in the shop. GDD §8 fixes the weapon's four tiers. R7 laid these prices against tools/measure/economy.gd's reading of the post-playtest economy (G1 pace, G3 free armor, G4 laser tier 1); I7 rebalanced them for all eight zones (GDD §7, the owner's answer of October 14, 2026): each tier is read at its line total (its price and every tier before it, since tiers are bought in order) against the wallet of a typical player who finishes every level once, and test_economy.gd pins the level each tier first fits at (the table is in docs/architecture/economy-platforms.md). A tier that first fits at level N is affordable after finishing N, so usable from N + 1. Held: Armor I 350 (the October 3 early-economy revision) and Laser I 1800 (first affordable at the campaign's 4th level, Gangland 1). Moved: Armor IV 6000 to 6500 and Heavy missile 9500 to 7000, which I4's treasure-stash credits had pulled too early; see items 846-850 in docs/OPEN_QUESTIONS*.md.",
 	"items": [
+		{
+			"id": "dash", "kind": "permanent", "icon": "dash",
+			"name": "Juggernaut dash",
+			"description": "Tap to barrel through enemies and obstacles. Recharges in 8 seconds.",
+			"tiers": [
+				{ "name": "Juggernaut dash", "price": 300, "description": "Barrel through enemies and obstacles. Recharges in 8 seconds." },
+				{ "name": "Juggernaut dash II", "price": 450, "description": "Barrel through enemies and obstacles. Recharges in 6 seconds." },
+				{ "name": "Juggernaut dash III", "price": 600, "description": "Barrel through enemies and obstacles. Recharges in 4 seconds." },
+				{ "name": "Juggernaut dash IV", "price": 700, "description": "Barrel through enemies and obstacles. Recharges in 3 seconds." }
+			]
+		},
 		{
 			"id": "weapon", "kind": "permanent", "icon": "weapon",
 			"name": "Weapon",
@@ -19,17 +30,6 @@
 			"description": "Longer wall runs. Kill any enemy on contact, anywhere. Beat spines and tentacles.",
 			"tiers": [
 				{ "name": "Claws", "price": 2600 }
-			]
-		},
-		{
-			"id": "dash", "kind": "permanent", "icon": "dash",
-			"name": "Juggernaut dash",
-			"description": "Tap to barrel through enemies and obstacles. Recharges in 8 seconds.",
-			"tiers": [
-				{ "name": "Juggernaut dash", "price": 1800, "description": "Barrel through enemies and obstacles. Recharges in 8 seconds." },
-				{ "name": "Juggernaut dash II", "price": 800, "description": "Barrel through enemies and obstacles. Recharges in 6 seconds." },
-				{ "name": "Juggernaut dash III", "price": 1000, "description": "Barrel through enemies and obstacles. Recharges in 4 seconds." },
-				{ "name": "Juggernaut dash IV", "price": 1200, "description": "Barrel through enemies and obstacles. Recharges in 3 seconds." }
 			]
 		},
 		{

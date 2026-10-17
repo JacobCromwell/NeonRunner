@@ -18,8 +18,8 @@ const EconomyModel = preload("res://tools/measure/economy_model.gd")
 ##   Gangland 1, III at Marketplace 2 (usable from the Casino's mixed crowd), IV at Beach 3 (usable from the
 ##   Dead Zone, whose Bad Dreams ignore weapons); laser I Gangland 1 (the owner: 1,800, first affordable at the
 ##   campaign's 4th level); laser II Marketplace 1, missile Corporate 1, heavy missile Golden 1 (usable from
-##   Golden 2, the Sentinels' debut); claws Gangland 2; the dash at Gangland 1, its three cheaper upgrades (the
-##   owner's prices) over the next levels, all four by Marketplace 2, before the Corporate zone's dash walls;
+##   Golden 2, the Sentinels' debut); claws Gangland 2; the dash (the owner's prices of October 17, 2026: 300 / 450 /
+##   600 / 700, task L8) at City 1, 2 and 3, so tiers I to III are owned before the City's boss, and IV at Gangland 1;
 ##   magnet I as an early credit boost, II at Gangland 1, III at Marketplace 2; slow time (PC only) as it was.
 ## Where that is later than the enemy it answers debuts (the Octodog in Gangland 2, the Barnacle Turret in
 ## Marketplace 1, Buzz Overdrive in Corporate 1), it is in time only once the boss payouts are counted (IN_TIME).
@@ -28,17 +28,18 @@ const FIRST_FIT: Dictionary = {
 	&"armor:1": "city/1", &"armor:2": "gangland/1", &"armor:3": "marketplace/2", &"armor:4": "beach/3",
 	&"weapon:1": "gangland/1", &"weapon:2": "marketplace/1", &"weapon:3": "corporate/1", &"weapon:4": "golden/1",
 	&"claws:1": "gangland/2",
-	&"dash:1": "gangland/1", &"dash:2": "gangland/2", &"dash:3": "gangland/3", &"dash:4": "marketplace/2",
+	&"dash:1": "city/1", &"dash:2": "city/2", &"dash:3": "city/3", &"dash:4": "gangland/1",
 	&"magnet:1": "city/2", &"magnet:2": "gangland/1", &"magnet:3": "marketplace/2",
 	&"slow_time:1": "gangland/2",
 }
 ## The step by whose end a tier must be affordable once the boss payouts are counted (a boss pays on the win, and
 ## the next zone opens only after it, so every player past a boss has been paid), so it is usable before the enemy
 ## or zone that wants it: claws before the Octodog (Gangland 2), the Enhanced laser before the Barnacle Turret
-## (Marketplace 1), the dash line before the Corporate dash walls (Corporate 1), the Missile before Buzz
+## (Marketplace 1), the dash's tiers I and III before the City's boss, IV by Gangland 1, the Missile before Buzz
 ## Overdrive (Corporate 1), Armor IV before the Dead Zone, the Heavy missile before Golden 1.
 const IN_TIME: Dictionary = {
-	&"claws:1": "gangland/1", &"weapon:2": "gangland/3", &"dash:4": "casino/2", &"weapon:3": "casino/2",
+	&"claws:1": "gangland/1", &"weapon:2": "gangland/3", &"dash:1": "city/3", &"dash:3": "city/3", &"dash:4": "gangland/1",
+	&"weapon:3": "casino/2",
 	&"armor:4": "beach/3", &"weapon:4": "dead_zone/2",
 }
 ## How many levels either side of its place a tier may first fit. The credits a layout holds move as the generator's
@@ -160,12 +161,14 @@ func _test_catalog_and_loadout() -> void:
 func _test_dash_catalog_and_saves() -> void:
 	var catalog: ShopCatalog = ShopCatalog.load_from()
 	var dash: ShopItem = catalog.item(&"dash")
-	var prices: PackedInt32Array = PackedInt32Array([1800, 800, 1000, 1200])
+	var prices: PackedInt32Array = PackedInt32Array([300, 450, 600, 700])
 	var cooldowns: PackedInt32Array = PackedInt32Array([8, 6, 4, 3])
 	check(dash != null and dash.kind == ShopItem.Kind.PERMANENT and dash.tier_count() == 4,
 		"dash has exactly four permanent tiers, not four upgrades after the base tier")
 	if dash == null:
 		return
+	check(catalog.items[0].id == &"dash" and catalog.items_for(false)[0].id == &"dash" and catalog.items_for(true)[0].id == &"dash",
+		"the dash is the first item in the catalog, on PC and mobile (L8; the web demo sells the same catalog)")
 	for tier: int in range(1, 5):
 		check(dash.price_of(tier, false) == prices[tier - 1] and dash.price_of(tier, true) == prices[tier - 1],
 			"dash tier %d keeps the approved PC/mobile price (%d)" % [tier, prices[tier - 1]])
@@ -246,15 +249,15 @@ func _test_dash_shop() -> void:
 	var saved: Profile = App.profile
 	var saved_mobile: bool = App.mobile
 	var dash: ShopItem = App.catalog.item(&"dash")
-	var prices: PackedInt32Array = PackedInt32Array([1800, 800, 1000, 1200])
+	var prices: PackedInt32Array = PackedInt32Array([300, 450, 600, 700])
 	for mobile: bool in [false, true]:
 		App.mobile = mobile
 		App.profile = Profile.new()
-		App.profile.add_earned(800)
-		check(not App.buy(&"dash") and App.profile.tier(&"dash") == 0 and App.profile.credits() == 800,
-			"the cheaper upgrades never bypass the original dash purchase")
-		App.profile.add_earned(4000)
-		var expected_balance: int = 4800
+		App.profile.add_earned(299)
+		check(not App.buy(&"dash") and App.profile.tier(&"dash") == 0 and App.profile.credits() == 299,
+			"the dash's first tier costs 300, and 299 buys nothing")
+		App.profile.add_earned(1751)
+		var expected_balance: int = 2050
 		for tier: int in range(1, 5):
 			check(App.next_price(dash) == prices[tier - 1] and App.buy(&"dash"),
 				"%s buys dash tier %d sequentially for %d credits" % ["mobile" if mobile else "PC", tier, prices[tier - 1]])
@@ -263,22 +266,22 @@ func _test_dash_shop() -> void:
 				and App.make_loadout().tier(&"dash") == tier,
 				"dash tier %d ownership and exact debit reach the next loadout" % tier)
 		check(App.next_price(dash) == -1 and not App.buy(&"dash") and App.profile.tier(&"dash") == 4
-			and App.profile.credits() == 0 and App.profile.lifetime_spent == 4800,
+			and App.profile.credits() == 0 and App.profile.lifetime_spent == 2050,
 			"dash maxes at tier 4 without a fifth purchase or extra spending")
 
 		App.profile = Profile.from_dict({
-			"version": 1, "earned": 3000, "tiers": {"dash": 1}, "equip_off": {"dash": true},
+			"version": 1, "earned": 2050, "tiers": {"dash": 1}, "equip_off": {"dash": true},
 		})
-		App.profile.earned = 799
-		check(App.next_price(dash) == 800 and not App.buy(&"dash")
-			and App.profile.credits() == 799 and App.profile.tier(&"dash") == 1,
-			"a legacy owner cannot buy tier 2 with fewer than 800 credits")
-		App.profile.earned = 3000
+		App.profile.earned = 449
+		check(App.next_price(dash) == 450 and not App.buy(&"dash")
+			and App.profile.credits() == 449 and App.profile.tier(&"dash") == 1,
+			"a legacy owner cannot buy tier 2 with fewer than 450 credits")
+		App.profile.earned = 1750
 		for tier: int in range(2, 5):
 			check(App.buy(&"dash") and App.profile.tier(&"dash") == tier,
 				"a legacy base owner buys only upgrade tier %d, not the base again" % tier)
 		check(App.profile.credits() == 0 and not App.profile.is_equipped(&"dash") and not App.make_loadout().has(&"dash"),
-			"the three upgrades cost 3000 total and preserve a legacy owner's off toggle")
+			"the three upgrades cost 1750 total and preserve a legacy owner's off toggle")
 		App.set_equipped(&"dash", true)
 		check(App.make_loadout().tier(&"dash") == 4, "re-equipping a saved owner carries the final dash tier")
 	App.profile = saved
