@@ -24,11 +24,21 @@ uniform vec3 sheen_color : source_color = vec3(0.32, 0.31, 0.36);
 uniform float sheen_strength = 0.15;
 // The zone's overall brightness for its doodads (DoodadCards; 1 = as painted).
 uniform float brightness = 1.0;
+// The picture's blues (a Marketplace stall's awning and cloths) repainted in recolor.rgb (sRGB), by recolor.a; 0
+// leaves the picture as painted, as in every level. The Marketplace's intro dresses a line of stalls in a few
+// colours with it (MarketplaceIntroSet).
+uniform vec4 recolor = vec4(0.0);
 
 void fragment() {
 	vec4 t = texture(atlas, UV);
 	if (t.a < 0.5) {
 		discard;
+	}
+	if (recolor.a > 0.0) {
+		// The share of blue in it, and its brightness against the awning's own blue (#3861a1, its luma 0.36).
+		float blue = smoothstep(0.06, 0.18, t.b - max(t.r, t.g));
+		float luma = dot(t.rgb, vec3(0.3, 0.59, 0.11)) / 0.36;
+		t.rgb = mix(t.rgb, clamp(recolor.rgb * luma, 0.0, 1.0), blue * recolor.a);
 	}
 	// The card's side toward the camera: lit as the face it shows.
 	vec3 nv = normalize(NORMAL);

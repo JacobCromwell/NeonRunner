@@ -47,6 +47,8 @@ extends SceneTree
 ##                        breach's warning), its jaws snapping shut, a bomb clanging into its jaws (a hit)
 ##   sfx_bank_beach_outro.gd  the Beach outro's: the bartender's cocktail shaker and the two drinks set down
 ##   sfx_bank_city_intro.gd  the City intro's: the billboard bursting, the Floating Head startled, its yell, the feed's surge, the title sting
+##   sfx_bank_marketplace_intro.gd  the Marketplace intro's voices: the stall-keeper's and the cyborg's mumbling (no
+##                        real words, a muted trombone talking)
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -80,6 +82,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_mecha_guppy.gd"),
 	preload("res://tools/asset_gen/sfx_bank_beach_outro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_city_intro.gd"),
+	preload("res://tools/asset_gen/sfx_bank_marketplace_intro.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"
