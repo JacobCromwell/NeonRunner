@@ -119,6 +119,8 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
   - Its outline may dip below the full height at its edges (the rubble heap) as long as its middle stays high, so it still reads as too tall to jump. Doodads are lit like the street around them, with no coloured edge glow.
   - *(Proposed:)* a push never lands the player on a gap or a hazard, and it costs nothing else.
   - **The dash smashes a doodad** (owner, October 8, 2026): dashing into one breaks it apart, and the player keeps their lane with no push and no damage.
+  - **Rows** (owner, October 17, 2026): now and then doodads come in a row of similar ones, such as three plants one right after another, or three market stalls with a space between each. *(Proposed, task L3: three or four, small ones touching, larger ones spaced; open: item 942, how often.)*
+  - **By the side wall** (owner, October 9, 2026): doodads prefer the lane next to a side wall where that wall is open, never where the wall is in use or needed (a sign, a wall enemy, a ramp's wall run, a wall-run gap, a wall fence or a wall gap near). *(Proposed, task L3: a runner low on that wall, or just off it, breaks one as they reach it; beside one, the floor can't step onto that wall; items 943 and 947.)*
 
 ---
 

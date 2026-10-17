@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**942** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5 and L2 so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**948** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2 and L3 so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -33,6 +33,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
+| 942 | Doodad rows (L3) came out rare: about one row every four levels, nearly all small ones touching; the stalls' spaced rows seldom find room. Rows more often (give them room), or as built? |
 
 ## The items in full
 
@@ -120,3 +121,22 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    Golden Palace, and every one in the Golden Zone (whose only baits are Buzz Overdrives). So the request mostly
    changes Corporate 1 (21 of its 36 tanks) and, elsewhere, about one tank in every six builds of a level (12 of the
    143). Should the later zones' tanks get company too where the truck is about but not yet attacking?
+
+**L3, doodads in rows and by an open side wall** (from `docs/questions/l3.md`; the batch of October 17, 2026)
+942. **How often rows come, how long, how spaced.** (GDD §3, Zone doodads.)
+   Placeholder: a doodad starts a row with `doodad_row_chance` 0.5; the row holds `doodad_row_min` to
+   `doodad_row_max` (3 to 4, each count as likely: the owner's examples are three long) of the same size class, in its
+   lane, pushing to its side; spaced by size class, as in the owner's examples (`doodad_row_spaced_small` 0,
+   `doodad_row_spaced_medium` and `doodad_row_spaced_large` 1): small ones (the plants) one right after the other, a
+   sliver apart (`LevelGenerator.DOODAD_ROW_TOUCH`, 5 cm, so the pictures on two boxes' faces never lie in one plane),
+   medium and large ones (the stalls) with a doodad's length between each two. A row is as long as fits where it's
+   drawn, down to three, else one doodad: rows come where a level leaves long stretches free.
+   Counted over the campaign (each level at 3, 5 and 6 lanes on its own seed and two others: 171 builds, 395 minutes),
+   before task L3's review (rows of 2 to 4, half of them spaced whatever their size): 918 doodads, 68 rows (0.17 a
+   minute, 0.40 a level), 41, 19 and 8 of them two, three and four long, 37 touching and 31 spaced, 45 of small ones,
+   17 medium and 6 large; after it: 919 doodads, 41 rows (0.10 a minute, 0.24 a level), 19 three long and 22 four
+   long, 39 of small ones touching and 2 of medium ones spaced, none of large ones (a spaced row of three takes five
+   doodads' lengths, 18 m of medium ones and 32.5 m of large ones, which the levels' free stretches seldom hold; three
+   small ones touching take 4.3 m). Measured by zone in the task's notes (`docs/architecture/generator-track-features.md`,
+   Zone doodads). Should rows come more often, should the stalls' spaced rows get the room they need (they nearly
+   never come now), or should rows wait for a level of their own (City 1 introduces doodads gently)?

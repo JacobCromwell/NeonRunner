@@ -119,7 +119,7 @@ the middle lane at 3 lanes met every doodad (they all stood there); since then a
 
 **Doodads in rows** (task L3; the owner, October 17, 2026: "occasionally ... rows of similar doodads: three plant
 doodads one right after the other, or three market stalls, one followed by a space, followed by another stall";
-`docs/questions/l3.md` 1 and 4). A doodad `_place_doodads` draws is, with `LevelConfig.doodad_row_chance` (0.5), the
+items 942-947 in `docs/OPEN_QUESTIONS*.md` 1 and 4). A doodad `_place_doodads` draws is, with `LevelConfig.doodad_row_chance` (0.5), the
 first of a row (`_row_shape`, from a stream of its own, `rng_for("doodad_rows")`): `doodad_row_min` to
 `doodad_row_max` (3 to 4, the owner's examples being three long; task L3's review) of its size class, in its lane,
 pushing to its side, either one right after the other (`DOODAD_ROW_TOUCH`, 5 cm apart: their boxes' faces, and the
@@ -148,7 +148,7 @@ stretches hold one small doodad at a time, have almost none.
 
 **The lane by a side wall** (task L3; the owner, October 9, 2026, held until the dash smash (H5) and the generator
 work (I4) were done: "doodads prefer the lane next to the side wall when it's open, without costing gameplay: not where
-the generator already has something on that part of the wall or needs it open"; `docs/questions/l3.md` 2, 3, 5 and
+the generator already has something on that part of the wall or needs it open"; items 942-947 in `docs/OPEN_QUESTIONS*.md` 2, 3, 5 and
 6). A doodad (or a row) takes the outermost lane by an open wall with `doodad_wall_lane_share` (0.6; either wall,
 seeded, when both are; the only choice where no inner lane fits), pushing inward (`_add_doodads`, the stream of the
 rows). Open is `wall_lane_keep_outs(side)`: nothing on that wall within `doodad_wall_clear_seconds` (1 s) of it (a

@@ -78,7 +78,7 @@ indoors as well as out.) What a look gets and keeps to:
   own pieces, seeded by its own `seed`). Two of a row one right after the other stand
   `LevelGenerator.DOODAD_ROW_TOUCH` (5 cm) apart, so the cards on their facing faces never lie in one plane
   and never flicker through each other; a look keeps inside its own box, so neighbours never overlap.
-  DESIGN-TBD (`docs/questions/l3.md` 4): whether neighbours of one kind should vary.
+  DESIGN-TBD (items 942-947 in `docs/OPEN_QUESTIONS*.md` 4): whether neighbours of one kind should vary.
 - *Inside the box, filling most of it*: what looks like contact is contact (GDD §3), and it must read
   as too tall to jump (it is) and as wide as it blocks. Every look keeps its silhouette near the box's
   full height (a heap may dip at its edges, its middle stays high). Nothing outside the box (an awning, a

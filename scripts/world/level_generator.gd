@@ -175,10 +175,10 @@ const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
 const DOODAD_CREDIT_MARGIN: float = 1.0
 ## The space between two doodads of a row standing one right after the other (task L3; metres): a sliver, so the
 ## box faces of the two never lie in one plane (their pictures would flicker through each other), far too
-## narrow for a body (MovementTuning.visual_size.z, 0.52 m) to stand in. DESIGN-TBD (docs/questions/l3.md 1).
+## narrow for a body (MovementTuning.visual_size.z, 0.52 m) to stand in. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 1).
 const DOODAD_ROW_TOUCH: float = 0.05
 ## A wall credit this close to a zone doodad by its wall (task L3), beyond the doodad's ends, is dropped (metres):
-## nothing lures a wall run past one. DESIGN-TBD (docs/questions/l3.md 3).
+## nothing lures a wall run past one. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 3).
 const DOODAD_WALL_CREDIT_MARGIN: float = 3.0
 ## A ceiling credit this close to a ceiling fence in its lane (task I4), beyond the fence's own half depth, is
 ## dropped (metres): a credit never lures a rider into a fence.
@@ -1725,7 +1725,7 @@ func _trim_clear_stretches(span: Vector2) -> void:
 ## random stream (rng_for("doodads")), and the rows' and the wall lane's another
 ## (rng_for("doodad_rows")): with doodad_share 0 nothing is drawn and the level is built exactly as before,
 ## and with doodad_row_chance and doodad_wall_lane_share 0 the doodads are exactly as before task L3.
-## DESIGN-TBD (docs/questions/g5.md 1 and 4; docs/questions/l3.md): where doodads stand, how many, the rows.
+## DESIGN-TBD (docs/questions/g5.md 1 and 4; items 942-947 in docs/OPEN_QUESTIONS*.md): where doodads stand, how many, the rows.
 func _place_doodads(patterns: Array) -> void:
 	if config.doodad_share <= 0.0 or layout.lane_count < 3:
 		return

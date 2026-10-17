@@ -5009,3 +5009,56 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
    no threat at all, 6.2 s, now 2.7 s.
    - The 131 tanks an Enforcer Truck comes near and the 15 introductions measure exactly as before, and every level
    built with `buzz_company` off is the same layout as before task L2, byte for byte (the 135 builds' dumps).
+
+### Folded on October 17, 2026 (task L3, doodads in rows and by an open side wall)
+
+943. **A wall runner meeting a doodad by their wall.** (GDD §3, Side walls and Zone doodads.) A wall runner's body
+   reaches into the lane by the wall, and a free entry or the slide down leaves every runner low on the wall, so the
+   generator alone can't keep them apart (the wall hop keeps a runner on a wall as long as they like). Today a runner
+   who meets one would pass through it.
+   Placeholder: it breaks as a runner low on that wall reaches it, as the dash smashes one (its pieces, the crunch, the
+   light shake; no push, no damage, no score), and the wall run goes on; a runner high enough on the wall (a ramp's
+   launch, a jump onto the wall) passes over it, and it stands (`Player._check_wall_doodads`, DESIGN-TBD). The same
+   holds just off the wall (task L3's review): a runner who leaves it just before one (the wall run's end, a wall
+   jump, a move back toward the lanes, a wall gap's drop) comes down in the outer lane in front of it, where its push
+   would aim at the wall, find no lane there and fall back inward through it; so for `lane_switch_time` +
+   `doodad_push_time` after leaving, one by that wall breaks as the body reaches it instead (`Player._off_wall`).
+   Alternatives: the wall run ends in front of it (the runner drops into the outer lane, as at a wall gap, and the
+   doodad pushes them aside), or doodads by a wall stand clear of the wall runner's strip (narrower, or set off the
+   lane's middle, as a dash wall leaves its strip open).
+
+944. **What "open" means, and how strongly doodads prefer that lane.** (GDD §3, Zone doodads and Side walls.)
+   Placeholder: a doodad (or a row) takes the outermost lane by an open wall with `doodad_wall_lane_share` 0.6 (either
+   wall, seeded, when both are open; the only choice where no inner lane fits), pushing inward. Open
+   (`LevelGenerator.wall_lane_keep_outs`): nothing on that wall within `doodad_wall_clear_seconds` (1 s at run speed)
+   of it (a sign, a window cyborg's window, a wall vent, a Gilded Sentinel's wall section, a hover truck's wall, a ramp
+   to the end of the longest wall run it launches, a wall-run gap's lit wall); no dash wall's wall route, no wall
+   fence's drop window and no side wall gap beside it or dropping a wall runner onto it (`doodad_wall_drop`: the fall
+   from the highest wall run and the push's lead); neither wall where a level brings in wall fences (their
+   introduction's 10 s); and every lane clear around it, as for any doodad. Wall fences and side wall gaps come
+   after the doodads and keep off them in turn, so they move a little elsewhere; no wall credit lies within 3 m of
+   one (`DOODAD_WALL_CREDIT_MARGIN`), so the future wall-hop credits keep off them too. Is 0.6 the right strength
+   (55% of the campaign's doodads stand by a wall, 31 to 69% by zone and lane count), and should it differ by zone
+   (the Marketplace's stalls by the walls, the Dead Zone's rubble anywhere)?
+
+945. **A row's look.** (GDD §3, Zone doodads, their look; `docs/architecture/skins.md`, Zone doodads' looks.)
+   Placeholder: a row is one kind: every doodad of it shows its first one's picture (`look`, its seed), so three
+   potted palms, never a palm, a bush and a palm; with one picture per size class in most zones every doodad of a
+   class looks the same anyway. The Beach's doodads, built by code rather than painted, also take their paint from
+   the seed, so a row of its surfboard racks is one paint too. Should neighbours of one kind vary (mirrored, their own
+   paint, or the zone's two small pictures alternating in a row of planters)? That needs the skins to tell a look's
+   kind from its variation (one more number in `ZoneSkin.doodad`).
+
+946. **The Beach's open walls.** (GDD §5, the Beach; task D10b.)
+   Placeholder: a side wall gap keeps off a doodad by its wall like any other wall piece, so on the Beach, whose walls
+   stand only about half the time, the walls stand a little more around the doodads by them (measured in the
+   generator notes). Alternative: let a doodad stand by an open stretch of wall, away from where its start drops a
+   wall runner.
+
+947. **Free entry beside one.** (GDD §3, Side walls: "move past the outermost floor lane to jump onto the wall".)
+   Placeholder: along a doodad by a wall, or a whole row of them, a floor runner can't reach that wall (its front
+   pushes a runner in its lane inward, its side blocks a switch from the next lane); the generator puts one only
+   where nothing else goes on in any lane, from its push's lead to the level's spacing after it, so nothing there
+   needs the wall. But the GDD's free entry ("move past the outermost floor lane to jump onto the wall, unless a sign
+   blocks that section") names only signs as what blocks it: a doodad (or a row) blocking it too needs the owner's
+   word.
