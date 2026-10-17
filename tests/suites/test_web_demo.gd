@@ -93,8 +93,16 @@ func _test_preset() -> void:
 	check(bool(presets.get_value(options, "html/focus_canvas_on_start", false)), "the keyboard works at once")
 	check(not bool(presets.get_value(options, "progressive_web_app/enabled", true)), "no installable web app (a service worker) for the demo")
 	var head: String = String(presets.get_value(options, "html/head_include", ""))
-	check(head.contains("orientation: portrait") and head.contains("pointer: coarse") and head.contains("sideways")
-		and head.contains("DESIGN-TBD"), "a phone held upright is asked to turn sideways (the game is landscape, GDD §2)")
+	check(head.contains("neon-turn") and head.contains("pointer: coarse") and head.contains("sideways")
+		and head.contains("screen.orientation") and head.contains("DESIGN-TBD"),
+		"a phone held upright is asked to turn sideways (the game is landscape, GDD §2), by the device's orientation, not the frame's shape")
+	# A phone's frame that doesn't fit the screen (itch.io's embed of a fixed size, shrunk by the host page) is
+	# offered the game full screen (task L1), and the page hands the game the browser's safe-area insets.
+	check(head.contains("neon-fit") and head.contains("Open full screen") and head.contains("Play here anyway")
+		and head.contains("window.top !== window.self") and head.contains("window.neonPage.onCover"),
+		"a phone's frame that is not the screen's size is offered the game full screen (or play on), and a running level pauses behind the cover")
+	check(head.contains("window.neonPage") and head.contains("env(safe-area-inset-left") and head.contains("insets: function"),
+		"the page gives the game its safe-area insets (WebPage), since the display server's are not the page's")
 	# Sound on an iPhone with its silent switch on (task I3): the page marks its audio 'playback', behind
 	# every guard (a browser without the Audio Session API, or one that refuses, skips it).
 	check(head.contains("<script>") and head.contains("'audioSession' in navigator") and head.contains("navigator.audioSession.type = 'playback'")
