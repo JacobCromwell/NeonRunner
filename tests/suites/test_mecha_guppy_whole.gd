@@ -3,7 +3,7 @@ extends TestSuite
 ## (MechaGuppyBot: it reads the lanes that lead up `REACTION` late and dodges Captain Cogs' bombs and the waves the
 ## planner's dodge_reaction late; no god mode, no loadout), at 3, 5 and 6 lanes and at quick play's 18 m/s and the
 ## Beach's 23.8 m/s, baiting and not:
-## - from its start: phase 1 won by 4 hits, phase 2 by 6 (a baiting runner's every hit a bait into the notch's jaws, a
+## - from its start: phase 1 won by 2 hits, phase 2 by 6 (a baiting runner's every hit a bait into the notch's jaws, a
 ##   runner who never baits every hit Captain Cogs' miss into the chasm, more slowly), then the climb's last steps to the
 ##   top, phase 3's 16 hits (every bomb dodged on the top flies on into Mecha Guppy; its dives, waves and floor bites
 ##   dodged too), the leap and the swim away, and victory_over; the runner never touched; the swim away
@@ -27,7 +27,7 @@ const SPEEDS: Array[float] = [18.0, 23.8]
 const CAMPAIGN_SPEED: float = 23.8
 ## The bot's reaction reading a hut's lanes (the suites' usual 0.35 s; it dodges the planner's dodge_reaction late).
 const REACTION: float = 0.35
-## The whole fight is over well within this (measured 157-170 s baiting and 223-244 s not, with the leap's 7 s after).
+## The whole fight is over well within this (measured 141-158 s baiting and 193-220 s not, with the leap's 7 s after).
 const MAX_SECONDS: float = 480.0
 ## Hostile Takeover's three-star par over its clean fight (corporate_boss.tres: 74 s over 68.6 s).
 const THREE_STAR_OVER: float = 74.0 / 68.6
@@ -199,14 +199,14 @@ func _test_whole(lanes: int, speed: float, baits: bool) -> void:
 	check(p.alive and boss.is_defeated() and boss.victory_over() and used.is_empty() and not p.god_mode,
 		"the bot wins the whole fight untouched, without god mode %s%s" % [tag,
 			"" if p.alive and used.is_empty() else ": %s %s at %.1f s" % [cause[0], used, boss.fight_time()]])
-	check(ends.size() >= 2 and per_phase[0] == 4 and per_phase[1] == 6 and per_phase[2] == def.phases[2].hits,
-		"4 hits end phase 1, 6 phase 2, %d phase 3 (%s) %s" % [def.phases[2].hits, per_phase, tag])
+	check(ends.size() >= 2 and per_phase[0] == 2 and per_phase[1] == 6 and per_phase[2] == def.phases[2].hits,
+		"2 hits end phase 1, 6 phase 2, %d phase 3 (%s) %s" % [def.phases[2].hits, per_phase, tag])
 	var into: Array[Dictionary] = _events(boss, &"shark_hit")
-	var kinds_ok: bool = into.size() == 10
+	var kinds_ok: bool = into.size() == 8
 	for e: Dictionary in into:
 		kinds_ok = kinds_ok and bool(e["counted"]) \
 			and int(e["kind"]) == (MechaGuppyBombs.Kind.BAIT if baits else MechaGuppyBombs.Kind.HIT)
-	check(kinds_ok and (_events(boss, &"fallback").is_empty() if baits else _events(boss, &"fallback").size() == 10),
+	check(kinds_ok and (_events(boss, &"fallback").is_empty() if baits else _events(boss, &"fallback").size() == 8),
 		"every hit %s %s" % ["a bait into the notch's jaws" if baits else "Captain Cogs' miss into the chasm (the fallback)", tag])
 	check(boss.top_reached_at > float(ends[1]["t"]) if ends.size() > 1 else false,
 		"then the climb's last steps to the top, after phase 2 (%.1f s) %s" % [boss.top_reached_at, tag])
@@ -372,7 +372,7 @@ func _campaign_flow() -> void:
 			break
 		bot.step()
 		await tree.physics_frame
-	check(run.world.player.alive and boss.phase_index == 1, "phase 1 falls to four hits, and phase 2 begins")
+	check(run.world.player.alive and boss.phase_index == 1, "phase 1 falls to two hits, and phase 2 begins")
 	var died_at: float = boss.fight_time()
 	var first: String = _fight_log(boss.events, died_at)
 	run.world.player._die("test hazard")

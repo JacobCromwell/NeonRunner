@@ -446,7 +446,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Weapons do nothing; the bombs are the way to hurt the shark. From the second tower on, near each roof's
   end it has bitten away an outer lane and waits below, jaws open. As the runner nears, Captain Cogs' red
   target follows their lane, then locks onto it with the throw: a runner who leads it into the bitten lane
-  and switches out before the edge sends the bomb past the edge into the jaws, a hit (4 end phase 1, 6
+  and switches out before the edge sends the bomb past the edge into the jaws, a hit (2 end phase 1, 6
   phase 2). A runner who doesn't manage it still gets there, more slowly: after a step without a hit,
   Captain Cogs misses into the chasm beside the lanes that lead up and the shark rises to eat the bomb.
   Phase 3 (E5e-c, reworked by the owner in E5e-g): at the top the climb ends on a long flat roof deck, Captain
@@ -460,7 +460,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   crescent out of the deck from the right (the first leaves a lane to switch into, the next crosses every lane:
   jump it), and comes back up. On the last hit Mecha Guppy dives, bursts up beside the deck, gulps the captain
   with the ship's stern and falls back, then leaps out of the sea further out in one long arc and dives away.
-  Three stars under 179 s, two under 210 s
+  Three stars under 159 s, two under 182 s
   (`tools/showcase/mecha_guppy_showcase.tscn` shows the climb, the shark, the ship, the bombs, the bait, phase 3
   and the leap).
 - **Protection:** every level and boss fight starts with free armor: it blocks an enemy attack or an
@@ -471,8 +471,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   in the volleyball match; `docs/architecture/characters-ui-audio.md`, "One hit from death").
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are six permanent
   lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
-  wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 1,800 / 800 / 1,000 /
-  1,200 credits and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
+  wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 300 / 450 / 600 /
+  700 credits (the first card in the shop) and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
   (an item, or a rewarded ad on mobile). Net worth has its own leaderboard.
 - **Campaign density:** more enemies and obstacles, with measured danger gains of about 17-18% in
   early levels, 26-27% in the middle zones and 32-38% in late levels across 3, 5 and 6 lanes. Additional

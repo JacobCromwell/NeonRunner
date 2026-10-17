@@ -11,7 +11,7 @@ see Damage and interactions); the breakables (shield, grapple) are charges on th
 controller's header documents its API: `hud_state()` for the HUD (`charges` -1 for permanent items; the
 armor's hits, with its return as `ready`), `equipment()` for the player model, and `try_dash()` /
 `try_slow_time()`.
-Dash has four permanent tiers: prices 1,800 / 800 / 1,000 / 1,200 credits in the shop catalog, with
+Dash has four permanent tiers: prices 300 / 450 / 600 / 700 credits in the shop catalog (the owner's, October 17, 2026; the dash is the first item in the catalog and so the first card in the shop), with
 cooldowns 8 / 6 / 4 / 3 seconds in the powerup tuning resource. Its module selects the owned tier
 for both runtime readiness and the HUD. The dash also smashes the zone doodads it runs into (GDD §3,
 owner, October 8, 2026; task H5): the Player does that (Damage and interactions, "The dash smashes a zone

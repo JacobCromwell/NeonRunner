@@ -49,11 +49,12 @@ func _ready() -> void:
 	sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sections.add_theme_constant_override(&"separation", roundi(UiTheme.px(8)))
 	scroll.add_child(sections)
-	# Breakable items first: restocking is what most visits are for.
-	var breakable: HFlowContainer = _section(sections, "BREAKABLE ITEMS", &"shield",
-		"Every run takes one of each; they break when used. Revives stay in stock until you need one.")
+	# Permanent items first, so the dash (the first item in the catalog) is the very first card on the screen:
+	# the owner wants it bought early (USER_REQUESTS.md, October 17, 2026). The breakable items follow.
 	var permanent: HFlowContainer = _section(sections, "PERMANENT ITEMS", &"star",
 		"Yours for good. Switch any off for a challenge.")
+	var breakable: HFlowContainer = _section(sections, "BREAKABLE ITEMS", &"shield",
+		"Every run takes one of each; they break when used. Revives stay in stock until you need one.")
 	for item: ShopItem in App.catalog.items_for(App.mobile):
 		var card := ItemCard.new()
 		card.item_id = item.id
@@ -98,7 +99,7 @@ func _ready() -> void:
 	_refresh(false)
 	if play_button == null:
 		# The first thing on show that can be bought.
-		for card: Node in breakable.get_children() + permanent.get_children():
+		for card: Node in permanent.get_children() + breakable.get_children():
 			var buy: NeonButton = (card as ItemCard).buy_button
 			if buy.visible and not buy.disabled:
 				initial_focus = buy

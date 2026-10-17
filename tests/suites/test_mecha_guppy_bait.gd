@@ -10,8 +10,8 @@ extends TestSuite
 ## - a runner who never baits (MechaGuppyBot.baits off, keeping out of the notch's lane while a bait can lock there)
 ##   still wins phases 1 and 2 by the fallback, at 3, 5 and 6 lanes and both speeds: every hit Captain Cogs' miss into
 ##   the chasm, each once fallback_after steps in a row have gone by without one, no bait on a step already hit (a hit
-##   at most one a step), and slower than a runner who baits (SLOWER; both bots' phase times printed), never hurt, never
-##   with a circle in its lane and no floor to switch to;
+##   at most one a step), and slower than a runner who baits (SLOWER, phase by phase; both bots' phase times printed),
+##   never hurt, never with a circle in its lane and no floor to switch to;
 ## - no hit on a step the runner fell, even if the grapple saved them: a runner who lures the bait and then runs off
 ##   the notch's edge (saved) gets no hit from the bomb that falls past it, and a wrong drop (saved) on a step whose
 ##   fallback was due gets none either (it comes at the next step that doesn't lead onto a floor bite: task E5e-f);
@@ -26,9 +26,12 @@ const LANES: Array[int] = [3, 5, 6]
 const SPEEDS: Array[float] = [18.0, 23.8]
 ## A player's reaction (the suites' bots' usual 0.35 s).
 const REACTION: float = 0.35
-## A runner who never baits takes at least this many times as long over each phase (with fallback_after 1: a hit every
-## other step, against a hit a step from the first notch on).
-const SLOWER: float = 1.5
+## A runner who never baits takes at least this many times as long to end each phase (the fight's time at phase 1's end,
+## then at phase 2's; with fallback_after 1: a hit every other step, against a hit a step from the first notch on).
+## Phase 1's 2 hits (task L9, the owner, October 17, 2026: half as long) leave the lead-in up to the first notch a larger
+## share: its end comes with the fallback of step 4 against the bait of step 2, 1.43-1.46 times as long, measured;
+## phase 2's at 1.80-1.81 times.
+const SLOWER: Array[float] = [1.3, 1.5]
 
 var sim: RunSim
 var def: BossDef
@@ -140,16 +143,16 @@ func _test_bait(lanes: int, speed: float) -> void:
 	var seeks: Array[Dictionary] = _events(boss, &"bait_seek")
 	var locks: Array[Dictionary] = _events(boss, &"bait_lock")
 	var into: Array[Dictionary] = _events(boss, &"shark_hit")
-	var ok: bool = seeks.size() == locks.size() and locks.size() >= 4 and int(st["seek_frames"]) > 0
+	var ok: bool = seeks.size() == locks.size() and locks.size() >= 2 and int(st["seek_frames"]) > 0
 	for e: Dictionary in locks:
 		ok = ok and bool(e["baited"]) and absf(float(e["seek"]) - mt.bait_seek) < 0.02 and absf(float(e["warning"]) - mt.lock_seconds) < 0.02
 	check(ok and problems.is_empty(), "each bait's circle follows the runner's lane where the bomb will land for %.2f s, then locks onto their lane with the throw %.2f s before it lands (%d baits) %s%s"
 		% [mt.bait_seek, mt.lock_seconds, locks.size(), tag, "" if problems.is_empty() else ": " + "; ".join(problems.slice(0, 3))])
-	var caught: bool = into.size() == 4
+	var caught: bool = into.size() == 2
 	for e: Dictionary in into:
 		caught = caught and int(e["kind"]) == MechaGuppyBombs.Kind.BAIT and bool(e["counted"]) \
 			and float(e["y"]) >= float(e["floor"]) - 0.1 and float(e["y"]) <= float(e["floor"]) + 1.6
-	check(caught, "every bait locked in the notch's lane goes into the jaws as it passes the roof's top: 4 hits end phase 1 (%s) %s"
+	check(caught, "every bait locked in the notch's lane goes into the jaws as it passes the roof's top: 2 hits end phase 1 (%s) %s"
 		% [into.map(func(e: Dictionary) -> String: return "%.2f m over" % (float(e["y"]) - float(e["floor"]))), tag])
 	await sim.free_world(world)
 
@@ -185,7 +188,8 @@ func _test_both_bots(lanes: int, speed: float) -> void:
 			"the runner wins phases 1 and 2, never hurt, never with a circle in its lane and no floor beside it %s%s"
 			% [tag, "" if p.alive and traps.is_empty() else ": %s %s" % [cause[0], "; ".join(traps)]])
 		var into: Array[Dictionary] = _events(boss, &"shark_hit")
-		var kinds_ok: bool = into.size() == 10
+		# 2 hits end phase 1, 6 phase 2.
+		var kinds_ok: bool = into.size() == 8
 		for e: Dictionary in into:
 			kinds_ok = kinds_ok and int(e["kind"]) == (MechaGuppyBombs.Kind.BAIT if baits else MechaGuppyBombs.Kind.HIT) and bool(e["counted"])
 		var fallbacks: Array[Dictionary] = _events(boss, &"fallback")
@@ -193,10 +197,10 @@ func _test_both_bots(lanes: int, speed: float) -> void:
 		for e: Dictionary in fallbacks:
 			cadence = cadence and int(e["dry"]) >= mt.fallback_after
 		if baits:
-			check(kinds_ok and fallbacks.is_empty() and int(boss.bombs.stats["baited"]) == 10,
+			check(kinds_ok and fallbacks.is_empty() and int(boss.bombs.stats["baited"]) == 8,
 				"every hit a bait, no fallback needed (%d hits) %s" % [into.size(), tag])
 		else:
-			check(kinds_ok and fallbacks.size() == 10 and cadence and int(boss.bombs.stats["baited"]) == 0,
+			check(kinds_ok and fallbacks.size() == 8 and cadence and int(boss.bombs.stats["baited"]) == 0,
 				"every hit Captain Cogs' miss into the chasm, each after %d steps in a row without a hit (%d hits, %d fallbacks) %s"
 				% [mt.fallback_after, into.size(), fallbacks.size(), tag])
 			var hit_steps: Dictionary = {}
@@ -211,11 +215,12 @@ func _test_both_bots(lanes: int, speed: float) -> void:
 		await sim.free_world(world)
 	var bait_t: Array = times[0]
 	var miss_t: Array = times[1]
-	var slower: bool = bait_t.size() >= 2 and miss_t.size() >= 2 and float(miss_t[0]) > float(bait_t[0]) * SLOWER \
-		and float(miss_t[1]) > float(bait_t[1]) * SLOWER
-	check(slower, "a runner who doesn't bait progresses, more slowly: phase 1 ends at %s s against %s s, phase 2 at %s s against %s s (%d lanes, %.1f m/s)"
-		% ["%.1f" % float(miss_t[0]) if miss_t.size() > 0 else "-", "%.1f" % float(bait_t[0]) if bait_t.size() > 0 else "-",
-			"%.1f" % float(miss_t[1]) if miss_t.size() > 1 else "-", "%.1f" % float(bait_t[1]) if bait_t.size() > 1 else "-", lanes, speed])
+	var slower: bool = bait_t.size() >= 2 and miss_t.size() >= 2 and float(miss_t[0]) > float(bait_t[0]) * SLOWER[0] \
+		and float(miss_t[1]) > float(bait_t[1]) * SLOWER[1]
+	check(slower, "a runner who doesn't bait progresses, more slowly: phase 1 ends at %s s against %s s (at least %.1f times as long), phase 2 at %s s against %s s (%.1f times) (%d lanes, %.1f m/s)"
+		% ["%.1f" % float(miss_t[0]) if miss_t.size() > 0 else "-", "%.1f" % float(bait_t[0]) if bait_t.size() > 0 else "-", SLOWER[0],
+			"%.1f" % float(miss_t[1]) if miss_t.size() > 1 else "-", "%.1f" % float(bait_t[1]) if bait_t.size() > 1 else "-", SLOWER[1],
+			lanes, speed])
 	print("  Mecha Guppy's hits (%d lanes, %.1f m/s): baiting, phase 1 ends at %s s, phase 2 at %s s; not baiting, at %s s and %s s"
 		% [lanes, speed, "%.1f" % float(bait_t[0]) if bait_t.size() > 0 else "-", "%.1f" % float(bait_t[1]) if bait_t.size() > 1 else "-",
 			"%.1f" % float(miss_t[0]) if miss_t.size() > 0 else "-", "%.1f" % float(miss_t[1]) if miss_t.size() > 1 else "-"])

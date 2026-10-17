@@ -660,8 +660,8 @@ From `docs/USER_REQUESTS.md` (October 17, 2026), run by one batch orchestrator (
 | L5 | **The wall-run guide only in the zone that introduces wall-run gaps** (GDD §3) | – | S | T2 |
 | L6 | **Doodads more often** (owner's playtest): rows of two to four; the keep-outs cut to what fairness needs (the push's landing lane, an attack's way out); their cost measured (GDD §3). **Core** (generator). | L3 | M | T1 |
 | L7 | **Real citizens in the Marketplace's shops:** the cinematics' low-poly people in place of the flipbook cards if they cost little, watching, a one-off cheer at a big credit pickup or a big enemy's defeat (GDD §5, Citizens) | – | M | T2 |
-| L8 | **The dash first in the shop, at 300 / 450 / 600 / 700 credits** (GDD §7, §8) | – | S | T3 |
-| L9 | **Mecha Guppy's phase 1 half as long:** 2 hits instead of 4 (GDD §10) | – | S | T1 |
+| L8 | **The dash first in the shop, at 300 / 450 / 600 / 700 credits** (GDD §7, §8). **Done.** | – | S | T3 |
+| L9 | **Mecha Guppy's phase 1 half as long:** 2 hits instead of 4 (GDD §10). **Done.** | – | S | T1 |
 
 ---
 
