@@ -244,7 +244,7 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 		out.append({"from": s.x - after, "to": s.y + before, "why": "the outer lane beside it isn't clear to drop off into"})
 	# What runs meanwhile: floor cuts, big attacks, Bad Dream chases. A Buzz Overdrive with company (task L2,
 	# BuzzCompanyPlacement) is the exception: its cut and its rev keep only the drop rule above (its lane window in the
-	# outer lane), so the walls carry their usual share of fences while it's about. DESIGN-TBD (docs/questions/l2.md).
+	# outer lane), so the walls carry their usual share of fences while it's about. DESIGN-TBD (items 933-941 in docs/OPEN_QUESTIONS*.md).
 	var busy: Array[Vector2] = []
 	for c: Dictionary in lay.cuts:
 		if not c.has(BuzzCompanyPlacement.CUT_KEY):

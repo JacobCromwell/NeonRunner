@@ -559,4 +559,4 @@ their visits went from 0.24 threats a second to 0.60 (the rest of a level 0.52 t
 0.44, a cyborg in 67% of them (9% before; 38% on 3 lanes, 83% and 88% on 5 and 6), a row in 61% (42%), and their
 longest stretch with no threat from 6.2 s to 2.7 s; the wall fences' share of it is large (Corporate 1's company visits
 0.28 a second against 0.12 elsewhere). `LayoutChecks.check_buzz_company` (from `check_layout`) holds every layout to
-it; `test_buzz_company` checks it. DESIGN-TBD: `docs/questions/l2.md`.
+it; `test_buzz_company` checks it. DESIGN-TBD: items 933-941 in `docs/OPEN_QUESTIONS*.md`.

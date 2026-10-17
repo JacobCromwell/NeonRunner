@@ -282,7 +282,7 @@ and `cut_problem` refuses a floor cut whose window reaches a wall fence's drop w
 level's wall fences come after its cuts). `LayoutChecks.check_wall_fences` (from `check_layout`) holds every
 generated layout to all of it independently, at 3, 5 and 6 lanes. DESIGN-TBD (`docs/questions/b5.md`): every
 number in `WallFenceTuning`, the bands and the reach, partial ones pulsing too, and keeping off big attacks
-(`docs/questions/l2.md`: running by a Buzz Overdrive with company, where they come about 2.3 times as often as
+(items 933-941 in `docs/OPEN_QUESTIONS*.md`: running by a Buzz Overdrive with company, where they come about 2.3 times as often as
 elsewhere in Corporate 1, the danger density pass's wall half filling the room that opened).
 
 **Wall fences on the track.** `TrackBuilder._build_wall_fence` builds each as a Hazard in the chunk where it

@@ -114,7 +114,7 @@ the player's distance like the cut, so it does the same on every attempt and at 
   Enforcer Truck near it (and not the level's introduction of it) shares its stretch with cyborgs that hold their
   fire through its attack, rows of holes or fences and wall fences, all kept out of its lane and, over its attack,
   out of the escape lane beside it (its cut's `company` key). Nothing it adds is a big attack, so its turn is as
-  before (DESIGN-TBD, `docs/questions/l2.md`).
+  before (DESIGN-TBD, items 933-941 in `docs/OPEN_QUESTIONS*.md`).
 
 **A wall enemy in a niche: the Gilded Sentinels** (C4, GDD §9.11; Golden 2 brings them in, the Golden
 Palace keeps them). `gilded_sentinel.gd` (`GildedSentinel`), its tuning (`GildedSentinelTuning`,

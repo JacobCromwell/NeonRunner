@@ -15,5 +15,4 @@ request that is now in the done file.
 
 ## October 17, 2026 batch
 
-- [ ] **More company for the Buzz Overdrive** (L2). The generator seems hesitant to put other enemies on screen with a Buzz Overdrive. Fine where an Enforcer Truck is likely on the map with it; elsewhere there's often just the Buzz Overdrive and little else, and it isn't a challenging enemy alone. Unless it's held back for performance, put other things on the playfield with it: some cyborgs, maybe an Octodog, extra gaps or laser fences.
 - [ ] **Doodads in rows** (L3). Doodads often stand alone (one plant, one market stall). Occasionally put rows of similar ones: three plants one after another, or three market stalls with a space between each.

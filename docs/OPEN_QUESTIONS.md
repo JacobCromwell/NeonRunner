@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**933** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4 and L5 so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**942** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5 and L2 so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -32,6 +32,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 848 | The economy's payouts: held at 100 + 25 a level and a flat 500 per boss (77% of a City 3 finish, 46% of a Dead Zone 1 finish) while I7 re-placed the prices. Change them, or keep them? |
 | 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
+| 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
 
 ## The items in full
 
@@ -110,3 +111,12 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    other wall too where there's no guide (a core generator task, costing room where gaps already fit fewer than asked,
    `docs/questions/j2.md` item 2; the generator would need to know where the guide shows); or (c) a subtler cue on the
    clear wall than the arrows. Placeholder: (a).
+
+**L2, the Buzz Overdrive's company** (from `docs/questions/l2.md`; the batch of October 17, 2026)
+934. **Where an Enforcer Truck is about.** The owner: sparse is fine where an Enforcer Truck is likely on the map with it.
+   Placeholder: a tank whose visit (from where it comes into view to where it's gone) comes within 2 s of a truck's chase
+   (its arrival until it has dropped back) gets none (`truck_margin_seconds`). From Corporate 2 on that is nearly every
+   tank: over each level's own seed and four others at 3, 5 and 6 lanes, 131 of the 143 tanks from Corporate 2 to the
+   Golden Palace, and every one in the Golden Zone (whose only baits are Buzz Overdrives). So the request mostly
+   changes Corporate 1 (21 of its 36 tanks) and, elsewhere, about one tank in every six builds of a level (12 of the
+   143). Should the later zones' tanks get company too where the truck is about but not yet attacking?
