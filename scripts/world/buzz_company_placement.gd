@@ -56,7 +56,7 @@ extends RefCounted
 ##   beside one clear to drop into, C's lane window too), so the walls carry their usual share there.
 ## No Octodog: its charges and the tank's are both big attacks that take turns (GDD §9), its charge sequence (3 or 4
 ## charges, 9 to 13 s at the Corporate zone's pace) is longer than the tank is in view before it claims its turn
-## (about 5.5 s), and the stretch before that is the patterns' (docs/questions/l2.md).
+## (about 5.5 s), and the stretch before that is the patterns'. DESIGN-TBD (docs/questions/l2.md).
 ## Nothing it adds is a big attack, so the tank's turn is as before. With buzz_company off (quick play, the tests, boss
 ## arenas) or the tuning's `enabled` off, a level is built exactly as before.
 
@@ -364,6 +364,7 @@ static func _add_encounter(gen: LevelGenerator, t: BuzzCompanyTuning, rng: Rando
 				continue
 			var added: Array[Dictionary] = []
 			for l: int in pick:
+				# DESIGN-TBD (docs/questions/l2.md): never the panic variant (a panic run could carry one into E).
 				var entry := {"type": CYBORG, "at": spot, "lane": l, "side": 0,
 					"seed": hash([gen.config.level_seed, PARAM, _company_count(gen.layout)]),
 					"params": {"panic": false, "host": false, "hold_fire": hold, PARAM: float(cut["end"])}}

@@ -18,13 +18,14 @@ const PATH: String = "res://data/tuning/buzz_company.tres"
 @export var on_introduction: bool = false
 ## A tank whose visit (from where it comes into view to where it's gone) comes within this many seconds of an
 ## Enforcer Truck's chase gets no company: where a truck is likely on the map with it, sparse is fine (the owner).
+## DESIGN-TBD (docs/questions/l2.md): how near counts, and whether the later zones' tanks get company too.
 @export_range(0.0, 10.0, 0.5, "suffix:s") var truck_margin_seconds: float = 2.0
 
 @export_group("Where")
 ## Its attack, where company keeps out of its escape lane (the neighbouring lane a runner in its lane leaves into)
 ## and cyborgs stand only beside that lane, starts this long before its warning (its rev), and runs to the end of
 ## its cut's window (FloorCutPlan.window). Before that, while it rolls ahead in view, company keeps out of its own
-## lane only.
+## lane only. DESIGN-TBD (docs/questions/l2.md): a busier or a calmer attack.
 @export_range(0.0, 2.0, 0.05, "suffix:s") var attack_margin_seconds: float = 0.5
 
 @export_group("Rows")
@@ -43,7 +44,8 @@ const PATH: String = "res://data/tuning/buzz_company.tres"
 @export_range(0.0, 1.0, 0.05) var cyborg_chance: float = 0.85
 ## Whether a cyborg may stand where the runner meets it during the attack (in a lane beside the escape lane, never
 ## the tank's own or the escape lane, so a runner beside it can always step into the clear escape lane). Off, they
-## stand only where the runner meets them before the attack, while the tank rolls ahead.
+## stand only where the runner meets them before the attack, while the tank rolls ahead. DESIGN-TBD
+## (docs/questions/l2.md).
 @export var cyborgs_in_attack: bool = true
 ## A company cyborg holds its fire (and no bolt of its arrives) from this long before the tank's warning to this
 ## long after its cut's window ends (Cyborg's hold_fire, as a cyborg in a charge's path holds it): the rev and the
