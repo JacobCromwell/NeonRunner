@@ -1,6 +1,6 @@
 class_name CityIntro
 extends CinematicSequencer
-## The Neon City's intro (task F2g; the owner's story beats, GDD §6 Cinematics, "Zone 1 intro", October 16, 2026): the
+## The Neon City's intro (task F2h; the owner's story beats, GDD §6 Cinematics, "Zone 1 intro", October 16, 2026): the
 ## game's first cinematic, in the City's intro slot in place of the placeholder arrival flyover. About 20 seconds.
 ## 1. A flyby over the busy city at night: people, cars, buses and trucks on the street below, the Floating Head's
 ##    searchlight sweeping it, the camera following the light down into the street in one continuous move.
@@ -19,7 +19,7 @@ extends CinematicSequencer
 ## CityIntroCrowd, CityIntroBillboard, and the Head: CityIntroHead), built on the stage so they hide with it and moved by
 ## the clock (`_on_advance`), so stepping or skipping shows the same. The runner and the cyborgs are the timeline's actors.
 ## The numbers are data: `numbers`, by default data/cinematics/city_intro_tuning.tres (CityIntroTuning).
-## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 897-908): what the owner's beats leave open.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 911-922): what the owner's beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/city_intro_tuning.tres"
 const BOSS_TUNING_PATH: String = "res://data/bosses/city_boss_tuning.tres"

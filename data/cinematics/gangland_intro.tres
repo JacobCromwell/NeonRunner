@@ -5,6 +5,6 @@
 [resource]
 script = ExtResource("1_script")
 id = &"gangland_intro"
-title = "Gangland"
-scene = "res://scenes/cinematics/arrival_flyover.tscn"
-placeholder_text = "DESIGN-TBD: a short scene arriving in the bombed-out streets."
+title = "The fork"
+scene = "res://scenes/cinematics/gangland_intro.tscn"
+placeholder_text = "At a fork in the road the runner looks left: two gangs face off, an Octodog charges, and the runner walks away down the other street."

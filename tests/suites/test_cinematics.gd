@@ -5,15 +5,16 @@ extends TestSuite
 ## skip button asking for it), Reduced flashing, holding while the game is in the background, a
 ## cinematic described in data (the review tool's sampler), the poses that play out over time (the runner lying,
 ## getting up and climbing out with its hands on the edge; cyborgs lying still, crouching and turning their
-## heads), each sound event's own level, every zone's arrival flyover but the City's, the Marketplace's and the Dead Zone's intros, and the City's boss intro
-## at 3, 5 and 6 lanes (the zone's skin from its data, the level's street, a camera that
+## heads), each sound event's own level, every zone's arrival flyover but the City's, Gangland's, the Marketplace's and
+## the Dead Zone's intros, and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from its data, the level's street, a camera that
 ## never flies into a ceiling or out of the street, a runner that never runs over a hole, ending in the
 ## run camera's view), and the App's flow through a built slot: it plays, the next step follows, the
 ## pause action and the skip button skip it, and the web demo plays it too.
 
 const LANES: Array[int] = [3, 5, 6]
 const SAMPLER_PATH: String = "res://tools/showcase/cinematic_sampler.tres"
-## The placeholder arrival flyover's scene; the City's intro and outro and the Marketplace's intro (CityIntro, CityOutro, MarketplaceIntro) have their own suites, test_city_intro, test_city_outro and
+## The placeholder arrival flyover's scene; the City's intro and outro, Gangland's intro and the Marketplace's intro (CityIntro,
+## CityOutro, GanglandIntro, MarketplaceIntro) have their own suites, test_city_intro, test_city_outro, test_gangland_intro and
 ## test_marketplace_intro.
 const FLYOVER_SCENE: String = "res://scenes/cinematics/arrival_flyover.tscn"
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
@@ -464,9 +465,8 @@ func _test_flyovers() -> void:
 	var ids: PackedStringArray = []
 	for s: CampaignStep in slots:
 		ids.append(s.id)
-	check(ids == PackedStringArray(["city/boss_intro", "gangland/intro", "casino/intro", "corporate/intro", "beach/intro",
-		"golden/intro"]),
-		"every zone's intro but the City's, the Marketplace's and the Dead Zone's (their own, test_city_intro, test_marketplace_intro, test_dead_zone_intro) plays its arrival flyover, and the City's boss intro (%s)" % [ids])
+	check(ids == PackedStringArray(["city/boss_intro", "casino/intro", "corporate/intro", "beach/intro", "golden/intro"]),
+		"every zone's intro but the City's, Gangland's, the Marketplace's and the Dead Zone's (their own, test_city_intro, test_gangland_intro, test_marketplace_intro, test_dead_zone_intro) plays its arrival flyover, and the City's boss intro (%s)" % [ids])
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
 		for s: CampaignStep in slots:
@@ -571,7 +571,7 @@ func _test_app_flow() -> void:
 	var saved: Profile = App.profile
 	App.profile = SampleProfiles.fresh()
 
-	# A new player's campaign opens on the City's intro (task F2g), then City 1 follows.
+	# A new player's campaign opens on the City's intro (task F2h), then City 1 follows.
 	App.continue_campaign()
 	await tree.process_frame
 	var c := App.playing_cinematic() as CinematicSequencer

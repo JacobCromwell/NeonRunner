@@ -1162,6 +1162,30 @@ func _build_wall_fx() -> void:
 	_burst_hazard.set_enabled(false)
 
 
+## Its look alone, visual only and at rest, under `parent` (a cinematic's prop): the hull, the front spikes, the
+## weak point, the thrusters and the tail cannon, as `_build_body` lays them out. Faces -z, its origin on the floor
+## under its centre. Returns the model's root.
+static func add_model(parent: Node3D, variant: StringName, t: HoverTruckTuning) -> Node3D:
+	var meshes: Dictionary = _meshes(variant, t)
+	var model := Node3D.new()
+	model.name = "HoverTruck"
+	parent.add_child(model)
+	var parts: Array = [["body", Vector3.ZERO], ["spikes", Vector3.ZERO], ["brake", Vector3.ZERO],
+		["weak", Vector3(0.0, t.cab_roof_height, -t.length * 0.5 + t.cab_length * 0.5)],
+		["thrust", Vector3(0.0, t.hover_clearance + 0.38, t.length * 0.5 + 0.18)],
+		["barrel", Vector3(0.0, t.roof_height - 0.42, t.length * 0.5 + 0.22)]]
+	for part: Array in parts:
+		var m := MeshInstance3D.new()
+		m.name = String(part[0]).capitalize()
+		m.mesh = meshes[part[0]]
+		m.position = part[1]
+		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if part[0] == "barrel":
+			m.rotation.y = PI  # The cannon aims back.
+		model.add_child(m)
+	return model
+
+
 func _mesh_node(parent: Node3D, mesh: Mesh, at: Vector3) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
 	m.mesh = mesh

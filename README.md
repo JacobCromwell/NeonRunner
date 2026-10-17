@@ -125,7 +125,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Beach with three (its second a volleyball mini-game), and the Golden Zone with three.
   Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is
   Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
-  (skippable), but the Dead Zone's, which plays the owner's beats. Each level introduces about one new thing (GDD §5), where
+  (skippable), but Gangland's, the Marketplace's and the Dead Zone's, which play the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
   2. City 2 *Skyway*: ceilings and anti-grav pads.

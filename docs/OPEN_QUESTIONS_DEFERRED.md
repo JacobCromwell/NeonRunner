@@ -4733,18 +4733,72 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
    hitboxes, marks and the red slash are exactly as they were. Is that enough of a swing, or should it reach further out of
    the wall (the cut itself reaches 1.2 m)?
 
-### Folded on October 17, 2026 (task F2g, the Neon City's intro)
+### Folded on October 17, 2026 (task F2g, Gangland's intro)
+
+**F2g, Gangland's intro** (from the task's questions file; it was built as "F2f" until the Marketplace's intro merged under that ID)
+The owner's beats (October 16, 2026; GDD §6, Cinematics, "Gangland intro") are built as given, with the owner's
+follow-up the same day (the Gangland title card as the runner walks away; item 906, answered). These are the choices
+made to fill them in. Each is a placeholder in data (`data/cinematics/gangland_intro_tuning.tres`, `GanglandIntroTuning`)
+or in code marked `DESIGN-TBD` (`scripts/cinematics/gangland_intro/`).
+
+897. **The fork's shape.** Placeholder: a T junction 61 m down the street: both walls open onto side streets 7 lanes
+  wide, and a building across the road closes it ahead, so the road splits left and right. The runner walks the last
+  couple of metres up to it and stops (the beats say they "have come to" the fork). Or a Y-shaped fork, splitting at an
+  angle?
+898. **"Looking to their right."** A gang facing the camera and looking to its own right would look away from where the
+  camera then pans, so it is read as the camera's right, where the other gang stands: the left gang faces the other
+  gang, turned a little toward the camera, and looks at it.
+899. **The left gang's look.** The beats don't say; placeholder: Gangland's own (the zone's look).
+900. **The leader.** The Marketplace and the Casino share one cyborg look (GDD §5), so the leader and the fourth cyborg
+  wear the same look; the leader stands forward in the middle and is 8% taller (`leader_scale`). Should the leader have
+  something of its own (a different face, a hat, a coloured accent)?
+901. **The yelling.** Placeholder: three yells (the left gang, the leader answering, the left gang again), each yeller
+  pointing its arm cannon without charging it, head bobbing; the voices are made-up syllables through a cyborg's speaker
+  (new sounds `gang_taunt`, `gang_retort`, `gang_jeer`), no subtitles.
+902. **The shot that misses.** Placeholder: the leader charges its arm cannon (the red glow and the cyborgs' charge-up
+  sound, their warning in play, since a shot follows) and fires one bolt that zips between a left cyborg and the Octodog
+  and bursts on the street behind them. The left gang flinches and looks at it, then rounds on the leader, faces angry,
+  cannons up, with a roar (`gang_rage`).
+903. **The Octodog's charge.** Placeholder: it rears up first (its wind-up and sound, its warning in play; the red lunge
+  line it lays on the floor in play is left out here), then lunges past the leader, who throws itself aside, bowls over
+  the cyborg in the Marketplace's look (thrown back, out cold, its screen dark) and pounces on one in Gangland's look,
+  mauling it. Nobody dies or vanishes on screen. Should it tackle the leader instead?
+904. **The firefight.** Placeholder: the three right cyborgs left standing fire at the left gang and the left gang fires
+  back, four bolts each over about 1.5 s, about a third hitting (a burst on the body, no damage shown), the rest bursting
+  on the street or a building front beyond, or going on out of sight; after the cut the shots go on round the corner as
+  sound, further off and thinning out, until the fade.
+905. **The runner's turn and hand.** Placeholder: the cut back comes from their left, so at first they face the camera
+  looking toward the fight; they turn slowly to the right (most of the way round in about 1.5 s), their left hand coming
+  up in front of the left side of their face and staying up as they walk off at 1.35 m/s, head down a little. It fades
+  to black as they reach the mouth of the right-hand street; Gangland 1 opens on its own run view.
+907. **The junction's corners.** A level's wall gap carries orange marks that tell a runner the wall stops there; at a
+  story's street corner they read as a hazard, so the corners are covered with concrete piers and a kerb across each side
+  street's mouth (`GanglandIntroSet.corners_mesh`). The City outro's openings still show them.
+908. **Length and timing.** 21.6 s, a little over the owner's 20 s ("it is okay if this goes 20 seconds"): 1.7 s to the
+  stop, the look left at 2 s, the cut at 3.4 s, the pan right at 6 s, both gangs from 8.2 s, the yells at 9.9-12 s, the
+  shot at 12.9 s, the charge at 14.3 s, the cut back at 16.5 s, the walk off at 18.2 s, the title card at 18.5 s, black
+  at 21.6 s.
+909. **One more cut.** The beats have the camera pan back to show both gangs and then cut to the runner. Placeholder: as
+  the Octodog charges (14.05 s) it cuts to low beyond the right gang's flank, looking back at the dog coming in and then at
+  the brawl, so the charge and the tackles read; then the cut to the runner. Or hold the wide shot of both throughout?
+910. **The gangs' layout.** Placeholder: they face each other down the length of the left-hand street (the left gang
+  nearer the junction, 27-29 m in; the right gang 35-37 m in, the truck parked side on behind them), seen from the street's
+  side; the wide shot of both looks past the left gang's shoulder, so both fit a narrow screen too. While the gangs are on
+  screen the runner, round the corner, is not drawn (the side street's mouth lines up with them from the charge's camera,
+  where they would show as a speck far off).
+
+### Folded on October 17, 2026 (task F2h, the Neon City's intro)
 
 The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each placeholder is marked `DESIGN-TBD` in
 `scripts/cinematics/city_intro/city_intro_tuning.gd` (numbers in `data/cinematics/city_intro_tuning.tres`).
 
-897. **Which street is it, and how wide?** (GDD §6: "the street itself, not truck roofs".) The levels run on truck roofs 14 m over the
+911. **Which street is it, and how wide?** (GDD §6: "the street itself, not truck roofs".) The levels run on truck roofs 14 m over the
    City's road; the intro is on the road. Placeholder: the City's own stretch of towers with no floor, lifted so the road far below
    is the ground, 8 lanes wide (19.8 m between the walls) whatever the device's lane count, so the Head fits it as it does in its
    fight; dressed with asphalt and lane paint, crosswalks, sidewalks, shopfronts with lit windows and neon signs, and warm street
    lamps (`CityIntroStreet`). `street_lanes`, `dress_*`.
 
-898. **Which billboard, and how does it burst?** (GDD §6: the light sweeps past, the runner bursts out through "a billboard showing the
+912. **Which billboard, and how does it burst?** (GDD §6: the light sweeps past, the runner bursts out through "a billboard showing the
    feed, the Head's face", mounted "at about first-floor height" so the leap onto the cyborg's head reads.) Placeholder: a 4.4 x 2.8 m
    screen in a grey frame standing 0.45 m out of the left wall, 14 m ahead of the camera's street-level start, its bottom edge 3.7 m up
    (above the shopfronts' signs, a floor up; the leap down onto a cyborg's head is 1.9 m plus the arc). It shows the Head's face under
@@ -4757,21 +4811,21 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
    `shard_count`, `spark_count` (`CityIntroBillboard`). Open: whether the billboard's face should do more than watch (it might startle
    as the runner bursts out of it).
 
-899. **How many cyborgs, where, and how do they march?** Placeholder: seven, in a loose column 13.5 m deep down the middle of the road
+913. **How many cyborgs, where, and how do they march?** Placeholder: seven, in a loose column 13.5 m deep down the middle of the road
    (the traffic keeps to the outer lanes), trudging toward the camera at 1 m/s, their screens calm; the first is the one stomped, the
    runner hops over the second and the fifth. `march_*`, `lead_z`, `stomp_at`, `hop_*`.
 
-900. **How does the stomp read?** (GDD §6: "the cyborg should read as killed the way a stomp kills in game".) Placeholder: the runner lands
+914. **How does the stomp read?** (GDD §6: "the cyborg should read as killed the way a stomp kills in game".) Placeholder: the runner lands
    on its head in the stomp pose and hangs there a tenth of a second (a hit-stop), the screen shakes, and the cyborg is squashed
    flat, its screen showing ERR and going dark, as `CyborgBody.die(&"stomp")` does in play (a new `stomped` pose of the toolkit's
    cyborgs). Its screen stays dark: nothing about what the screens show when a cyborg dies (GDD §5, Cyborg Viewing Devices) is
    different here. `stomp_hold`.
 
-901. **How fast does the runner run?** Placeholder: 8.5 m/s, a hard jog (the levels run at 18-21 m/s), so they are still in front of the
+915. **How fast does the runner run?** Placeholder: 8.5 m/s, a hard jog (the levels run at 18-21 m/s), so they are still in front of the
    Head's face as it is startled and angry and go under its chin at about the time it turns angry; a level's speed would have them
    out of the Head's sight before it had reacted. `run_speed`.
 
-902. **How many people, cars, buses and trucks, and what are they?** (GDD §6: "lots of people, cars, buses and trucks moving on the
+916. **How many people, cars, buses and trucks, and what are they?** (GDD §6: "lots of people, cars, buses and trucks moving on the
    streets below, reusing what assets exist".) Placeholder: 130 people on each sidewalk (a low-poly person of the Marketplace
    citizens' kind: plain, never a hazard's hue, nothing glowing (the palest a pale jacket and a thin pale blue-white neon strip on some shoulders,
    dim beside the cyborgs' screens); the citizens
@@ -4780,18 +4834,18 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
    orange marker lights and edges made headlight white and their red paint left out, since orange reads as a gap's edge). A low-end
    device gets half of each. `vehicles_per_lane`, `people_per_side`, `low_end_share`.
 
-903. **The Head's place and look.** (GDD §6: the face shown, the light cold white.) Placeholder: its face's plane 40 m ahead of the
+917. **The Head's place and look.** (GDD §6: the face shown, the light cold white.) Placeholder: its face's plane 40 m ahead of the
    camera's street-level start, its belly 11 m up (its crown under the towers), its face lit from the first frame, its searchlight
    sweeping the street under the camera's descent, then the cyborgs, then the wall across the billboard; the light is cold white (the
    fight's own beam and spot) and never red. `face_at`, `belly`, `spot_radius`, `CityIntro._plan_light`.
 
-904. **The startled, angry and yelling faces.** (GDD §6: "startled, then angry, and yells".) Placeholder: startled for a second (the
+918. **The startled, angry and yelling faces.** (GDD §6: "startled, then angry, and yells".) Placeholder: startled for a second (the
    eyes wide with small pupils, the brows raised, an "O" drawn on the screen under the nose like the cyborgs' panic face, the jaw a
    little open), angry for a second (the fight's furious brows and lids, the jaw shut), then it yells (the jaw wide open and its
    inside lit, the picture breaking up a little, a long hoarse shout in its propaganda voice, the screen shaking). The new look is
    the face shader's `surprise` (0 in the fight). `startle_at`, `angry_at`, `yell_at`, `yell_glitch`, `startle_jaw`.
 
-905. **What the feed's surge looks like, and the chase.** (GDD §6, §5: "every cyborg's screen face flickers at once and turns angry, and
+919. **What the feed's surge looks like, and the chase.** (GDD §6, §5: "every cyborg's screen face flickers at once and turns angry, and
    they turn and give chase".) Placeholder: they stop where they are as the yell starts, every screen (a few hundredths apart)
    flickers through the corrupted "broken" face and the calm face and the broken one again, then shows the angry face (the
    cannon-charging one; no red glow: nothing is charging); they turn round a moment apart (half a second) and chase down the street
@@ -4802,14 +4856,14 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
    moment, on ordinary cyborgs. With Reduced flashing the screens change once, calm to angry, with no flicker. `flicker_at`,
    `flicker_seconds`, `turn_seconds`, `chase_speed`, `CityIntro.FLICKER_FACES`.
 
-906. **The camera.** (GDD §6: "one continuous move", "a panning shot at street level / human height".) Placeholder: from 46 m up behind
+920. **The camera.** (GDD §6: "one continuous move", "a panning shot at street level / human height".) Placeholder: from 46 m up behind
    the Head's light, down the canyon of towers to street level, following the light's spot, panning down the street and onto the
    billboard and the first cyborg (one move, no cut, 5 s of flyby and 4 s of street, the view swinging left to the billboard
    for the burst, and then with the runner across the street); a cut to the Head's face from the street, tight on
    the startled face, in on the angry one, back and down for the jaw's drop; a cut back to the street, low in front of the cyborgs,
    which drifts on behind the chase under the title cards. `move_*`, `head_*`, `street_*`, `chase_*`.
 
-907. **The title cards and the ending.** (GDD §6: the game's title, then "Zone 1's title card, and play begins"; the total may run a
+921. **The title cards and the ending.** (GDD §6: the game's title, then "Zone 1's title card, and play begins"; the total may run a
    couple of seconds past 20.) Placeholder: after the chase has run for a second, the game's title, "NEON RUNNER" (the title screen's
    working title), on the existing card (no caption, 1.8 s, fading in and out as every card does), with a short deep sting
    (`title_sting`); a tenth of a second after it has gone, the zone's card ("ZONE 1" / "NEON CITY", 2 s), then a half-second fade to
@@ -4818,6 +4872,6 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
    (it is the same size and style), and whether it should be over black rather than the chase. `title_at`, `title_seconds`,
    `title_text`, `card_at`, `card_seconds`, `fade_out`, `music_fade`.
 
-908. **New sounds.** The game's own sounds cover the jump, the land, the stomp and a cyborg's death; five are new, in the game's style
+922. **New sounds.** The game's own sounds cover the jump, the land, the stomp and a cyborg's death; five are new, in the game's style
    (`tools/asset_gen/sfx_bank_city_intro.gd`): `billboard_smash`, `head_startle`, `head_yell` (2.2 s), `feed_surge` and
    `title_sting`.

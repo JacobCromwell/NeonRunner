@@ -89,7 +89,7 @@ keys' position; cyborgs lying still and crouching, turning their heads by `look`
 their own level, every zone's arrival flyover (but the City's and the Dead Zone's intros) and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from
 its data, the level's lanes, a camera that never flies into a ceiling or out of the street, a runner that
 never runs over a hole, ending in the run camera's view), and the App's flow through a built slot (the
-next step follows, skipping, the web demo). `test_city_intro` checks the City's intro (F2g): its slot (the City's boss intro
+next step follows, skipping, the web demo). `test_city_intro` checks the City's intro (F2h): its slot (the City's boss intro
 keeps the flyover); at 3, 5 and 6 lanes its beats in order on a real street (every lane a gap, the road lifted to y = 0), the
 camera's one continuous move down to the street with only two cuts, staying in the street above the road and out of the traffic's
 lanes, the light on the wall at the feed billboard just before its screen bursts and past it as it does, the billboard's
@@ -124,7 +124,18 @@ at first only the hands over the edge, the hands holding the edge as they climb 
 the three cyborgs in view until the medium shot (two lying still with their screens dark, the host crouched), the host
 looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
 zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
-its own sounds; `skip()`; and its setup and step costs. `test_gangland_outro` checks Gangland's outro (F2d): its slot;
+its own sounds; `skip()`; and its setup and step costs. `test_gangland_intro` checks Gangland's intro (F2g): its slot
+(after the City outro, before Gangland 1, which starts when it's skipped); its own sounds in the library; at 3, 5 and 6
+lanes the zone's look and lanes, the fork (both walls open at the junction onto side streets, a building ahead), the
+cast's looks (the zone's, the Marketplace's and the Casino's, from the zones' data), the large Octodog and the truck
+behind the right gang, the leader forward in the middle, three cuts, the first and last shots at human height, the
+runner looking left, the ground-level tilt, the pan right, each gang and then both in view, the leader's charged shot
+missing the left gang, their angry faces, the Octodog's wind-up before its charge, two cyborgs downed and the leader
+not, the firefight's bolts bursting only on a cyborg, the street or a wall, the runner out of the picture while the gangs
+are on screen, the slow turn to the right, the left hand in front of the face throughout, the walk off toward the
+right-hand street, the zone's title card as they walk away, the zone's music, the warnings each before their attacks,
+and its costs; Reduced flashing (smaller bursts,
+nothing flashing); `skip()`. `test_gangland_outro` checks Gangland's outro (F2d): its slot;
 `after_fight` (the fight's look and sky after it, the zone's own without it, so the City outro's look is unchanged);
 the car's shape (a long, low wedge, a scissor door, lights and turning wheels, its cabin lit only while its
 courtesy lights are on); the passenger (the fight's screech, every triangle and colour of it, sitting up); at 3, 5 and 6 lanes its beats in
