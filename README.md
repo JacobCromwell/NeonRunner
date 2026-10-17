@@ -471,8 +471,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   in the volleyball match; `docs/architecture/characters-ui-audio.md`, "One hit from death").
 - **Economy:** credits in four denominations, level score and stars, and a shop. Items are six permanent
   lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
-  wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 1,800 / 800 / 1,000 /
-  1,200 credits and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
+  wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 300 / 450 / 600 /
+  700 credits (the first card in the shop) and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
   (an item, or a rewarded ad on mobile). Net worth has its own leaderboard.
 - **Campaign density:** more enemies and obstacles, with measured danger gains of about 17-18% in
   early levels, 26-27% in the middle zones and 32-38% in late levels across 3, 5 and 6 lanes. Additional

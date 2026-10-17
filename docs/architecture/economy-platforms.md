@@ -59,8 +59,11 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
 - *Levels* are numbered in play order: City 1-3 are 1-3, Gangland 4-6, Marketplace 7-8, Casino 9-10, Corporate
   11-12, Beach 13-15 (the match is 14), Dead Zone 16-17 and Golden 18-20.
 - *Where each tier first fits* (5 lanes, each level's own seed; `test_economy.gd`'s `FIRST_FIT`, give or take one
-  level, and `IN_TIME` for the "+boss" column). Held: everything but two prices (Armor I 350, which fits City 1,
-  the October 3 revision; Laser I 1,800, first affordable at level 4; the dash's four prices, the owner's).
+  level, and `IN_TIME` for the "+boss" column). Held: everything but the dash and two prices (Armor I 350, which fits City 1, the October 3 revision;
+  Laser I 1,800, first affordable at level 4). The dash is the owner's (task L8): its four prices are 300 / 450 /
+  600 / 700 (October 17, 2026), so it first fits at City 1, City 2, City 3 and Gangland 1. It is also the first
+  item in `data/shop/catalog.json`, and the shop lists the permanent items above the breakable ones, so its card
+  is the very first on the screen.
   Moved: **Armor IV 6,000 to 6,500** (it would fit the volleyball match, by 23 credits) and **Heavy missile 9,500 to
   7,000** (it would first fit at Golden 3). Slow time stays 2,400.
 
@@ -70,7 +73,7 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
 | Laser, Enhanced laser | 1,800 / 2,200 | 1,800 / 4,000 | 4 Gangland 1 / 7 Marketplace 1 | 5 / 8 | City boss / Gangland 3 | 4 / 8 |
 | Missile, Heavy missile | 4,800 / 7,000 | 8,800 / 15,800 | 11 Corporate 1 / 18 Golden 1 | 12 / 19 Golden 2 | Casino 2 / Dead Zone 1 | 15 / beyond (17,829 with the bosses) |
 | Claws | 2,600 | 2,600 | 5 Gangland 2 | 6 | Gangland 1 | 6 |
-| Dash I / II / III / IV | 1,800 / 800 / 1,000 / 1,200 | 1,800 / 2,600 / 3,600 / 4,800 | 4 / 5 / 6 / 8 Marketplace 2 | 5 / 6 / 7 / 9 | City boss / Gangland 1 / Gangland 3 / Gangland boss | 4 / 6 / 7 / 9 |
+| Dash I / II / III / IV | 300 / 450 / 600 / 700 | 300 / 750 / 1,350 / 2,050 | 1 City 1 / 2 City 2 / 3 City 3 / 4 Gangland 1 | 2 / 3 / 4 / 5 | City 1 / City 2 / City 3 / Gangland 1 | 1 / 3 / 4 / 5 |
 | Magnet I / II / III | 700 / 1,600 / 3,200 | 700 / 2,300 / 5,500 | 2 City 2 / 4 Gangland 1 / 8 Marketplace 2 | 3 / 5 / 9 | City 2 / Gangland 1 / Marketplace 1 | 2 / 5 / 10 |
 | Slow time (PC) | 2,400 | 2,400 | 5 Gangland 2 | 6 | Gangland 1 | 5 |
 
@@ -82,7 +85,10 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
     on the "+boss" reading (affordable after Gangland 3);
   - the Missile against Buzz Overdrive (Corporate 1, level 11): usable from level 12, or from level 11 on the
     "+boss" reading (affordable after Casino 2);
-  - the dash line (all four by level 8, 9 usable) before the Corporate dash walls (level 11);
+  - the dash (the owner: first in the shop, to be bought early, so a player has it before the first boss): tiers I to
+    III are affordable by the end of City 3, before the City's boss pays, and IV after Gangland 1 (on the typical
+    wallet it is 2,049 with the City boss paid, 1 credit short of the 2,050 line, so it needs Gangland 1's payout),
+    well before the Corporate dash walls (level 11);
   - Armor III from the Casino's mixed crowd, and Armor IV from the Dead Zone, whose Bad Dreams ignore weapons;
   - the Heavy missile from Golden 2, where the Sentinels (17 shots at tier 1) debut with peak difficulty; Golden
     1's Resonator waves come a level earlier. On the "+boss" reading it is in reach after Dead Zone 1;
@@ -95,12 +101,12 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   steeper slope moves only the late tiers: 35 a level puts Heavy missile at level 17, 15 at level 19) and the boss
   payouts stay 500 (1,000 for the last). The prices were placed against them. A boss pays 500 whatever the zone:
   77% of a City 3 finish, 46% of a Dead Zone 1 finish (items 846–850 in `docs/OPEN_QUESTIONS*.md`, question 3).
-- *A menu, not a checklist.* The whole permanent catalog costs 43,050 (PC), 2.3 playthroughs of a typical player
-  (1.9 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
-  along the way owns only part of it after one playthrough. Every completion pays again, so the rest is about 25
-  replays of a level that pays 1,000 (21 if the first playthrough's boss payouts are counted).
+- *A menu, not a checklist.* The whole permanent catalog costs 40,300 (PC), 2.2 playthroughs of a typical player
+  (1.8 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
+  along the way owns only part of it after one playthrough. Every completion pays again, so the rest is about 22
+  replays of a level that pays 1,000 (18 if the first playthrough's boss payouts are counted).
 - *Mobile.* 3 lanes hold no stash and about 20% fewer credits than 5 (14,886 for a typical player's levels, 18,886
-  with the bosses; the mobile catalog is 40,650 without slow time), so a tier first fits up to two levels later
+  with the bosses; the mobile catalog is 37,900 without slow time), so a tier first fits up to two levels later
   (Armor I at City 2, Armor IV at level 17) and the Heavy missile is out of reach on the levels alone, in reach
   after Golden 1 on the "+boss" reading. Nothing is needed to progress (GDD §8), and a $0.99 pack (1,000) is 1.3
   finishes, a $4.99 crate (6,000) 7.9: neither looks forced.
