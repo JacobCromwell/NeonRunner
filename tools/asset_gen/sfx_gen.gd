@@ -51,6 +51,8 @@ extends SceneTree
 ##                        real words, a muted trombone talking)
 ##   sfx_bank_gangland_intro.gd  Gangland intro's: the two gangs yelling at each other (made-up syllables through a
 ##                        cyborg's speaker), the left gang's rage and the Octodog's tackle
+##   sfx_bank_casino_boss_intro.gd  Casino boss intro's: the roulette wheel's ball, a crowd cheering, the floor's
+##                        bustle, the golden door, the wall's tremor and collapse, a cyborg guard's shout
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
 ## build/sfx_review/<name>.png: waveform on top, spectrogram (40 Hz–16 kHz, time left to right) below).
 ## Each line of the report ends with the sound's loudest 400 ms as heard on headphones (K-weighted) and
@@ -86,6 +88,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_city_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_marketplace_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_gangland_intro.gd"),
+	preload("res://tools/asset_gen/sfx_bank_casino_boss_intro.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"
 const REVIEW_DIR: String = "res://build/sfx_review"
