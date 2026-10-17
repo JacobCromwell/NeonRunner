@@ -31,20 +31,20 @@ const FAIRNESS_ONLY: Array[String] = ["dead_zone/2"]
 ## Builds checked for fairness, as {id, lanes, seed}, where a zone doodad placed after the pass would stand
 ## right past a full row in the only lane the pass's rows leave open, so nothing gets past it: built without
 ## DangerDensity.doodad_ok (DoodadsUnchecked) the floor route through the level breaks there, and with it, it
-## holds. Dead Zone 1 at 3 lanes on seed 9021 (a row of holes at 380-389 m leaves lane 1 open, fences across it at
-## 398 m, a fence in each of lanes 0 and 2 at 406 m, then the doodad in lane 1 at 409 m) since task I4's review (found
-## among about 30 seeded builds of Golden 1 to 3 and Dead Zone 1 without DangerDensity.doodad_ok, seeds 9000 on). The
-## cases before it no longer build that way, so each was re-found rather than dropped: golden/1 at 5 lanes on seed
-## 9002 (task I4's: a row of holes leaving lane 2 open, a full fence row, the doodad in lane 2) lost it with the
-## review's longer treasure stashes, golden/3 at 3 lanes on seed 9019
-## (the H series': rows of holes leaving lane 1 open, a fence in each of lanes 0 and 2, then the doodad in lane 1) lost
-## it with task I4, golden/2 at 3 lanes on seed 9004 (task K5's: a row of holes, a full fence row, the doodad) with
-## the H series' changes, golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling) on the
-## 15-level curve before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row the pass touched, a
-## full fence row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case
-## checks it still shows its scenario. Built without its `without` features: since task J2 the level's wall-run gaps
-## take the stretch of its case, so the case is that level without them.
-const ROUTE_CASES: Array[Dictionary] = [{"id": "dead_zone/1", "lanes": 3, "seed": 9021, "without": ["wall_run_gaps"]}]
+## holds. Corporate 1 at 3 lanes on seed 9015 since task L6 (a row of fences across every lane at 3080 m, jumped,
+## then the doodad in lane 0 at 3089 m, where the jump from that lane comes down; the one such build among 630 on
+## seeds 9000-9029 at 3, 5 and 6 lanes: Dead Zone 1 and the Golden Zone's levels without their wall-run gaps, Corporate
+## 1 and 2 and Marketplace 2 with every feature). Since task L6 a doodad keeps the lanes beside it clear from a lane switch's
+## room before its push, which leaves most rows a way around it, so the cases before it no longer build that way;
+## each was re-found rather than dropped: dead_zone/1 at 3 lanes on seed 9021 without its wall-run gaps (task I4's
+## review: a row of holes leaving lane 1 open, fences across it, a fence in each of lanes 0 and 2, then the doodad in
+## lane 1), golden/1 at 5 lanes on seed 9002 (task I4's) lost it with the review's longer treasure stashes, golden/3
+## at 3 lanes on seed 9019 (the H series') with task I4, golden/2 at 3 lanes on seed 9004 (task K5's) with the H
+## series' changes, golden/1 at 6 lanes on seed 9003 on the 15-level curve before the Casino, dead_zone/1 at 6 lanes
+## on seed 9007 (task K2's) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case checks
+## it still shows its scenario. A case may be built without features (`without`), as task J2's was: a level's
+## wall-run gaps may take the stretch of its case.
+const ROUTE_CASES: Array[Dictionary] = [{"id": "corporate/1", "lanes": 3, "seed": 9015}]
 ## The request, as the actual increase of a band's summed counts with the dial over those without it,
 ## for enemies and for obstacles alike, at each lane count: about 15% in the first levels, about 35%
 ## in the final ones.
