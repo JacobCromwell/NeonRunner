@@ -5,8 +5,8 @@ extends TestSuite
 ## skip button asking for it), Reduced flashing, holding while the game is in the background, a
 ## cinematic described in data (the review tool's sampler), the poses that play out over time (the runner lying,
 ## getting up and climbing out with its hands on the edge; cyborgs lying still, crouching and turning their
-## heads), each sound event's own level, every zone's arrival flyover but the Dead Zone's and the City's
-## boss intro at 3, 5 and 6 lanes (the zone's skin from its data, the level's street, a camera that
+## heads), each sound event's own level, every zone's arrival flyover but Gangland's, the Marketplace's and the Dead
+## Zone's, and the City's boss intro at 3, 5 and 6 lanes (the zone's skin from its data, the level's street, a camera that
 ## never flies into a ceiling or out of the street, a runner that never runs over a hole, ending in the
 ## run camera's view), and the App's flow through a built slot: it plays, the next step follows, the
 ## pause action and the skip button skip it, and the web demo plays it too.
@@ -463,9 +463,9 @@ func _test_flyovers() -> void:
 	var ids: PackedStringArray = []
 	for s: CampaignStep in slots:
 		ids.append(s.id)
-	check(ids == PackedStringArray(["city/intro", "city/boss_intro", "gangland/intro", "casino/intro",
+	check(ids == PackedStringArray(["city/intro", "city/boss_intro", "casino/intro",
 		"corporate/intro", "beach/intro", "golden/intro"]),
-		"every zone's intro but the Marketplace's and the Dead Zone's (their own, test_marketplace_intro, test_dead_zone_intro) plays its arrival flyover, and the City's boss intro (%s)" % [ids])
+		"every zone's intro but Gangland's, the Marketplace's and the Dead Zone's (their own, test_gangland_intro, test_marketplace_intro, test_dead_zone_intro) plays its arrival flyover, and the City's boss intro (%s)" % [ids])
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
 		for s: CampaignStep in slots:
