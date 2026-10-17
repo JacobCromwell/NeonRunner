@@ -647,6 +647,7 @@ From `docs/USER_REQUESTS.md` (October 17, 2026), run by one batch orchestrator (
 | L3 | **Doodads in rows** (runs of similar doodads), with the held side-wall-lane preference (October 9 request) (GDD §3). **Core** (generator). | L2 | M | T1 |
 | L4 | **Backgrounds seen through side wall gaps** built out where a gap shows them, in every zone's skin | – | M | T2 |
 | L5 | **The wall-run guide only in the zone that introduces wall-run gaps** (GDD §3) | – | S | T2 |
+| L6 | **Doodads more often** (owner's playtest): rows of two to four; the keep-outs cut to what fairness needs (the push's landing lane, an attack's way out); their cost measured (GDD §3). **Core** (generator). | L3 | M | T1 |
 
 ---
 
