@@ -109,7 +109,7 @@ at first only the hands over the edge, the hands holding the edge as they climb 
 the three cyborgs in view until the medium shot (two lying still with their screens dark, the host crouched), the host
 looking over only as the runner gets up, the close-up of its grinning, glitching screen facing the camera, the
 zone's music, the medium shot as the host turns, the whole face filling the close-up, the title card held on the black,
-its own sounds; `skip()`; and its setup and step costs. `test_gangland_intro` checks Gangland's intro (F2f): its slot
+its own sounds; `skip()`; and its setup and step costs. `test_gangland_intro` checks Gangland's intro (F2g): its slot
 (after the City outro, before Gangland 1, which starts when it's skipped); its own sounds in the library; at 3, 5 and 6
 lanes the zone's look and lanes, the fork (both walls open at the junction onto side streets, a building ahead), the
 cast's looks (the zone's, the Marketplace's and the Casino's, from the zones' data), the large Octodog and the truck

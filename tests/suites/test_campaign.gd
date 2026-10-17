@@ -309,7 +309,10 @@ func _test_slots(campaign: Campaign) -> void:
 				"Gangland's boss intro plays its own scene, the owner's beat (task F2b)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "gangland/intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/gangland_intro.tscn" and s.cinematic.is_built(),
-				"Gangland's intro plays its own scene, the owner's beats (task F2f)")
+				"Gangland's intro plays its own scene, the owner's beats (task F2g)")
+		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "marketplace/intro":
+			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/marketplace_intro.tscn" and s.cinematic.is_built(),
+				"the Marketplace's intro plays its own scene, the owner's beats (task F2f)")
 		elif s.kind == CampaignStep.Kind.CINEMATIC and s.id == "dead_zone/intro":
 			check(s.cinematic != null and s.cinematic.scene == "res://scenes/cinematics/dead_zone_intro.tscn" and s.cinematic.is_built(),
 				"the Dead Zone's intro plays its own scene, the owner's beats (task F2d)")

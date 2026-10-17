@@ -4733,9 +4733,9 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
    hitboxes, marks and the red slash are exactly as they were. Is that enough of a swing, or should it reach further out of
    the wall (the cut itself reaches 1.2 m)?
 
-### Folded on October 17, 2026 (task F2f, Gangland's intro)
+### Folded on October 17, 2026 (task F2g, Gangland's intro)
 
-**F2f, Gangland's intro** (from `docs/questions/f2f.md`)
+**F2g, Gangland's intro** (from the task's questions file; it was built as "F2f" until the Marketplace's intro merged under that ID)
 The owner's beats (October 16, 2026; GDD §6, Cinematics, "Gangland intro") are built as given, with the owner's
 follow-up the same day (the Gangland title card as the runner walks away; item 906, answered). These are the choices
 made to fill them in. Each is a placeholder in data (`data/cinematics/gangland_intro_tuning.tres`, `GanglandIntroTuning`)

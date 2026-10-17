@@ -46,6 +46,8 @@ extends SceneTree
 ##   sfx_bank_mecha_guppy.gd  Mecha Guppy and Captain Cogs: the captain's throw, the shark coming up (a bite's and a
 ##                        breach's warning), its jaws snapping shut, a bomb clanging into its jaws (a hit)
 ##   sfx_bank_beach_outro.gd  the Beach outro's: the bartender's cocktail shaker and the two drinks set down
+##   sfx_bank_marketplace_intro.gd  the Marketplace intro's voices: the stall-keeper's and the cyborg's mumbling (no
+##                        real words, a muted trombone talking)
 ##   sfx_bank_gangland_intro.gd  Gangland intro's: the two gangs yelling at each other (made-up syllables through a
 ##                        cyborg's speaker), the left gang's rage and the Octodog's tackle
 ## Run: tools/godot.sh sfx   (--only=jump,land renders just those; --review also writes
@@ -80,6 +82,7 @@ const BANKS: Array = [
 	preload("res://tools/asset_gen/sfx_bank_minigames.gd"),
 	preload("res://tools/asset_gen/sfx_bank_mecha_guppy.gd"),
 	preload("res://tools/asset_gen/sfx_bank_beach_outro.gd"),
+	preload("res://tools/asset_gen/sfx_bank_marketplace_intro.gd"),
 	preload("res://tools/asset_gen/sfx_bank_gangland_intro.gd"),
 ]
 const OUT_DIR: String = "res://assets/sfx"

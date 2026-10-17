@@ -1534,7 +1534,7 @@ Captain Cogs).
    the defeat plays as before (it bursts up under the ship and eats the captain); the results wait 0.45 s longer.
   **Answered (owner, October 16, 2026):** Good as built.
 
-### Folded on October 17, 2026 (task F2f, Gangland's intro)
+### Folded on October 17, 2026 (task F2g, Gangland's intro)
 
 906. **A title card in Gangland's intro?** The arrival flyover it replaced showed the zone's card; the beats didn't
   mention one. **Answered by the owner (October 16, 2026):** "add the Gangland title card as the player character walks
