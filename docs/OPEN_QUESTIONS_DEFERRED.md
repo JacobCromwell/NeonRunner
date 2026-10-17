@@ -4875,3 +4875,17 @@ The owner's beats and answers are GDD §6, Cinematics, "Zone 1 intro". Each plac
 922. **New sounds.** The game's own sounds cover the jump, the land, the stomp and a cyborg's death; five are new, in the game's style
    (`tools/asset_gen/sfx_bank_city_intro.gd`): `billboard_smash`, `head_startle`, `head_yell` (2.2 s), `feed_surge` and
    `title_sting`.
+
+### Folded on October 17, 2026 (task L1, the demo's menus on an iPhone)
+
+924. **How small a page may a phone be taken to show?** (`UiStyle.phone_min_embed_scale`, 0.4.) When a host page
+   shrinks a fixed embed to the phone's width, the game estimates how small it looks from the page's width and the
+   screen's long side, and sizes the menus for that, never assuming a page is shown at less than this fraction of
+   its own size. A wrong guess only makes the menus a little bigger or smaller than the 0.65-CSS-pixel target
+   (`phone_min_scale`), and the cover above is the real answer for such a frame. No owner decision
+   needed unless the 0.4 floor is wrong for a real device.
+
+925. **What does a phone held upright in a frame that looks landscape do?** (GDD §2.) The page's cover says "Turn
+   your phone sideways" when the browser reports the phone upright, even if the frame's own shape is landscape (a
+   fixed embed). It is the "Play it full screen" card with a different heading, so "Play here anyway" is there if a
+   browser misreports its orientation. A top-level page (not framed) goes by its own shape alone, as before.
