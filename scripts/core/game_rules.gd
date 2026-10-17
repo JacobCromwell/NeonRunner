@@ -7,7 +7,7 @@ extends Resource
 @export_group("Lanes")
 ## GDD §3: 3 lanes on mobile, 5–6 on PC. DESIGN-TBD: the exact PC count is open (OPEN_QUESTIONS §8).
 @export_range(3, 8) var lanes_pc: int = 5
-@export_range(3, 8) var lanes_mobile: int = 3
+@export_range(3, 8) var lanes_mobile: int = 5
 
 @export_group("Death & revive")
 ## GDD §4: on death the player keeps 20% of the credits collected during that attempt.

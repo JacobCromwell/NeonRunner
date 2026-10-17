@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_rules")
 lanes_pc = 5
-lanes_mobile = 3
+lanes_mobile = 5
 death_credit_keep_fraction = 0.2
 hit_invulnerability = 1.0
 revive_invulnerability = 2.0
