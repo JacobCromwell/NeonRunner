@@ -133,7 +133,8 @@ never a palm, a bush and a palm; each keeps a `seed` of its own, which its piece
 `LevelLayout.doodad_extent()` gives a doodad's row's stretch, and every check that counts doodads counts a row whole,
 the spaces between them too (no runner goes in there, between a side that blocks the switch and a front that pushes):
 `doodad_between()` (every enemy's runtime check, the floor credits), `CyborgRules.obstacle_spans`, `EnforcerTruckRoom`,
-`FloorRoute`, the wall fences and the side wall gaps, and `BossArena.shifted` moves a row's stretch with it. A row is
+`FloorRoute`, the wall fences and the side wall gaps; `BossArena.shifted` moves a row's stretch with it, and a dash
+wall's last resort (`DashWallRules._take_out`, the zone doodads in its way going) takes a row out whole. A row is
 never a slalom or a wall of doodads (one lane, a lane always free beside it), and the dash smashes along it as far as
 it lasts, the next one pushing as usual (`test_doodads`). Most doodads are small ones (a level's stretches leave room
 for little more, about nine in ten before the task too), so most rows are two or three small ones; the City's levels,
@@ -149,16 +150,19 @@ sign, a wall enemy as the fill pass keeps for it or a window cyborg's window, a 
 from its foot to the end of the longest wall run it launches, `WallFencePlacement.ramp_run_end`, a wall-run gap's lit
 wall); no dash wall's wall route (in its footprint, which every doodad keeps from), no wall fence's drop window and no
 side wall gap beside it or starting within `doodad_wall_drop()` before it (the fall from the highest wall run and the
-push's lead: a wall runner dropped off comes down in front of it); and every lane around it clear, as for every
-doodad, so no wall run is launched by it or needed there, and free entry from its lane only waits until it's past. The
-wall fences and side wall gaps come after the doodads and keep off them in turn (`WallFencePlacement.keep_outs`' drop
-windows, `WallGapPlacement.keep_outs`), and no wall credit lies within `DOODAD_WALL_CREDIT_MARGIN` (3 m) of one
-(`_drop_unsafe_credits`; the wall-hop credits to come, GDD §7, keep off them the same way). A wall runner's body
-reaches into that lane, and a free entry or the slide down leaves every runner low on the wall, so placement alone
-can't keep them apart (the wall hop keeps a runner on a wall as long as they like): one low enough to meet it breaks it
-as they reach it, as the dash smashes one, and runs on (`Player._check_wall_doodads`; Damage and interactions), while
-one high enough (a ramp's launch) passes over it standing. `LayoutChecks.check_wall_lane_doodad` holds every doodad by
-a wall to all of this, and `check_wall_fences` keeps the drop windows off them.
+push's lead: a wall runner dropped off comes down in front of it); on neither wall where the level brings in wall
+fences, from their feature's start to `intro_seconds` past it with the drop windows there (the introduction comes on
+either wall within that, `test_wall_fences`, and a doodad by a wall there would push it late); and every lane around
+it clear, as for every doodad, so no wall run is launched by it or needed there, and free entry from its lane only
+waits until it's past. The wall fences and side wall gaps come after the doodads and keep off them in turn
+(`WallFencePlacement.keep_outs`' drop windows, `WallGapPlacement.keep_outs`), and no wall credit lies within
+`DOODAD_WALL_CREDIT_MARGIN` (3 m) of one (`_drop_unsafe_credits`; the wall-hop credits to come, GDD §7, keep off them
+the same way). A wall runner's body reaches into that lane, and a free entry or the slide down leaves every runner
+low on the wall, so placement alone can't keep them apart (the wall hop keeps a runner on a wall as long as they
+like): one low enough to meet it breaks it as they reach it, as the dash smashes one, and runs on
+(`Player._check_wall_doodads`; Damage and interactions), while one high enough (a ramp's launch) passes over it
+standing. `LayoutChecks.check_wall_lane_doodad` holds every doodad by a wall to all of this, and `check_wall_fences`
+keeps the drop windows off them.
 
 Measured (`tools/measure/level_pace.gd --doodads`, each level's own seed and four others at 3, 5 and 6 lanes, against
 `--set=doodad_row_chance:0;doodad_wall_lane_share:0`, which builds all 405 layouts, quick play's too, byte for byte as

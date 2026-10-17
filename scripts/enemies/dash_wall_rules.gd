@@ -658,7 +658,12 @@ static func _take_out(gen: LevelGenerator, going: Array, before: Dictionary) -> 
 	var doodads: Array[Dictionary] = lay.doodads.duplicate()
 	for e: Dictionary in going:
 		if lay.doodads.has(e):
-			lay.doodads.erase(e)
+			# A row of doodads (task L3: LevelLayout.doodads `row`) goes whole: none of it is left alone or with a gap
+			# where another stood.
+			for d: Dictionary in doodads:
+				if is_same(d, e) or (e.has("row") and d.has("row") and var_to_str(d["row"]) == var_to_str(e["row"])
+						and int(d["lane"]) == int(e["lane"])):
+					lay.doodads.erase(d)
 			continue
 		if String(e.get("type", "")) == BUZZ:
 			var cut: Dictionary = BuzzRules.cut_of(lay, e)

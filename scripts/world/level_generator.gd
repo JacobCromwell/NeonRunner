@@ -169,10 +169,10 @@ const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
 const DOODAD_CREDIT_MARGIN: float = 1.0
 ## The space between two doodads of a row standing one right after the other (task L3; metres): a sliver, so the
 ## box faces of the two never lie in one plane (their pictures would flicker through each other), far too
-## narrow for a body (MovementTuning.visual_size.z, 0.52 m) to stand in.
+## narrow for a body (MovementTuning.visual_size.z, 0.52 m) to stand in. DESIGN-TBD (docs/questions/l3.md 1).
 const DOODAD_ROW_TOUCH: float = 0.05
 ## A wall credit this close to a zone doodad by its wall (task L3), beyond the doodad's ends, is dropped (metres):
-## nothing lures a wall run past one.
+## nothing lures a wall run past one. DESIGN-TBD (docs/questions/l3.md 3).
 const DOODAD_WALL_CREDIT_MARGIN: float = 3.0
 ## A ceiling credit this close to a ceiling fence in its lane (task I4), beyond the fence's own half depth, is
 ## dropped (metres): a credit never lures a rider into a fence.
@@ -1923,9 +1923,12 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = [], calm:
 ## wall-run gap's lit wall (WallRunGapPlacement.wall_keep_outs_for: the way across), a wall fence's drop window
 ## (WallFencePlacement.drop_window: a wall runner who drops off before it lands there), and a side wall gap from its
 ## start to doodad_wall_drop() past it or its end, whichever is later (a wall runner drops off at its start into
-## the outer lane: never onto a doodad, and no doodad stands by a missing wall); and, with no margin of its own, a
-## dash wall's wall route on either wall (DashWallRules.wall_keep_outs: a runner on a side wall passes it; it lies in
-## the wall's footprint, which every doodad keeps its push's lead and the level's spacing from). The rest of the doodad's rules keep
+## the outer lane: never onto a doodad, and no doodad stands by a missing wall); where a level brings in wall
+## fences (its feature_starts give `wall_fences` or `wall_fences_partial` a start), from that start to
+## WallFenceTuning.intro_seconds past it with the drop windows there, on both walls (the introduction comes there,
+## on either wall: WallFencePlacement._introduce); and, with no margin of its own, a dash wall's wall route on
+## either wall (DashWallRules.wall_keep_outs: a runner on a side wall passes it; it lies in the wall's footprint,
+## which every doodad keeps its push's lead and the level's spacing from). The rest of the doodad's rules keep
 ## every lane clear around it already (doodad_keep_outs), so no wall run is launched by it and none is needed
 ## there: free entry from its lane only waits until it's past. A level's wall fences and side wall gaps come after
 ## the doodads and keep off it in turn (WallFencePlacement.keep_outs, WallGapPlacement.keep_outs).
@@ -1960,6 +1963,13 @@ func wall_lane_keep_outs(side: int) -> Array[Vector2]:
 		if int(w["side"]) == side:
 			var drop: Vector2 = WallFencePlacement.drop_window(self, float(w["at"]))
 			out.append(Vector2(drop.x - clear, drop.y + clear))
+	var fences: WallFenceTuning = WallFencePlacement.tuning()
+	for feature: String in [WallFencePlacement.FEATURE, WallFencePlacement.PARTIAL]:
+		if config.has_feature(feature) and config.feature_starts.has(feature):
+			var from: float = feature_start(feature)
+			var by: float = from + fences.intro_seconds * speed
+			out.append(Vector2(WallFencePlacement.drop_window(self, from, fences).x - clear,
+				WallFencePlacement.drop_window(self, by, fences).y + clear))
 	var reach: float = doodad_wall_drop()
 	for g: Dictionary in layout.wall_gaps:
 		if int(g["side"]) == side:

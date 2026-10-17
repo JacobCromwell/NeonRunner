@@ -713,10 +713,12 @@ static func check_row(suite: TestSuite, row: Array, config: LevelConfig, tuning:
 ## over its own stretch (a row's whole stretch, LevelLayout.doodad_extent) on the wall beside it: nothing stands on
 ## that wall within LevelConfig.doodad_wall_clear_seconds (no sign, no wall enemy, nor where the fill pass keeps for
 ## one or a window cyborg's window or a Gilded Sentinel's wall section; no ramp from its foot to the end of the
-## longest wall run it launches; no wall-run gap's lit wall), no dash wall's wall route on either wall reaches it, no
-## wall fence's drop window reaches it, no side wall gap stands beside it or starts within LevelGenerator.doodad_wall_drop
-## before it (a wall runner dropping off never comes down on it), and no wall credit lies within
-## LevelGenerator.DOODAD_WALL_CREDIT_MARGIN of it on that wall. Every lane around it is clear already (check_doodads).
+## longest wall run it launches; no wall-run gap's lit wall; not where the level brings in wall fences, from their
+## feature's start to WallFenceTuning.intro_seconds past it with the drop windows there), no dash wall's wall route
+## on either wall reaches it, no wall fence's drop window reaches it, no side wall gap stands beside it or starts
+## within LevelGenerator.doodad_wall_drop before it (a wall runner dropping off never comes down on it), and no wall
+## credit lies within LevelGenerator.DOODAD_WALL_CREDIT_MARGIN of it on that wall. Every lane around it is clear
+## already (check_doodads).
 static func check_wall_lane_doodad(suite: TestSuite, layout: LevelLayout, config: LevelConfig, gen: LevelGenerator,
 		d: Dictionary, t: String) -> void:
 	var wall: int = -1 if int(d["lane"]) == 0 else 1
@@ -748,6 +750,13 @@ static func check_wall_lane_doodad(suite: TestSuite, layout: LevelLayout, config
 				"no ramp launches a wall run past a doodad by its wall (ramp at %.1f) %s" % [r["at"], x])
 	for k: Vector2 in WallRunGapPlacement.wall_keep_outs_for(layout, speed, wall, false):
 		suite.check(not near.call(k.x, k.y, clear), "no wall-run gap's lit wall beside a doodad by it " + x)
+	var fences: WallFenceTuning = WallFencePlacement.tuning()
+	for feature: String in [WallFencePlacement.FEATURE, WallFencePlacement.PARTIAL]:
+		if config.has_feature(feature) and config.feature_starts.has(feature):
+			var from: float = gen.feature_start(feature)
+			suite.check(not near.call(WallFencePlacement.drop_window(gen, from, fences).x,
+				WallFencePlacement.drop_window(gen, from + fences.intro_seconds * speed, fences).y, clear),
+				"no doodad by a wall where the level brings in `%s` (from %.0f m) %s" % [feature, from, x])
 	for k: Vector2 in DashWallRulesScript.wall_keep_outs(gen):
 		suite.check(not near.call(k.x, k.y, 0.0), "no dash wall's wall route beside a doodad by a wall " + x)
 	for w: Dictionary in layout.wall_fences:
