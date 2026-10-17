@@ -831,8 +831,10 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 ##   floor (a caught corner's too), a runner beside it never has to dodge into its lane, and one further out keeps
 ##   a free lane on their side of it. Lanes further out may hold anything;
 ## - nothing kept in every lane reaches it from its push's lead to `room` past its end: a ceiling or its landing
-##   zone, a pad's zone, an enemy's attack as the fill pass keeps it (its own checks hold it back near a doodad), a
-##   Bad Dream's chase, a drone wave until its first pad, a hover truck's shortest stay, a floor cut's window, a
+##   zone, a pad's zone, an enemy's attack as the fill pass keeps it (its own checks hold it back near a doodad) or
+##   as its rules keep doodads off it (LevelGenerator.doodad_enemy_keep_out: a Resonator's visit and the waits its
+##   rules leave it after), a Bad Dream's chase, a drone wave until its first pad, a hover truck's shortest stay, a
+##   floor cut's window, a
 ##   dash wall's footprint, a wider gap's zone, a quiet stretch, what the rules keep in every lane; and no calm
 ##   stretch reaches it or its push's lead;
 ## - it doesn't stand in a hover truck's lane while the truck is around (to the level's spacing past it), nor push
@@ -903,7 +905,8 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 	var trucks: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
 		var at: float = float(e["at"])
-		var k: Vector2 = gen.enemy_keep_out(e)
+		# What the doodads keep off around it (a Resonator's visit and the waits its rules leave it after, task L6).
+		var k: Vector2 = gen.doodad_enemy_keep_out(e)
 		if k.y >= k.x:
 			every.append(["an enemy's attack (%s at %.0f)" % [e["type"], at], k])
 		match String(e["type"]):

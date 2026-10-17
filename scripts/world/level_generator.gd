@@ -1987,7 +1987,8 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 ## keeps it (_enemy_keep_out: its attack as the runner closes in, which its own fairness checks hold back while a
 ## doodad stands anywhere along it, CyborgGun.path_clear, Octodog.window_clear, Resonator.pulse_clear, the drone's
 ## barrage, the hover truck's cannon; or what its rules keep for it: a drone wave until its first pad, a hover
-## truck's shortest stay, a Resonator's visit, a Gilded Sentinel's window), every floor cut's window
+## truck's shortest stay, a Resonator's visit, a Gilded Sentinel's window; or what its rules keep doodads off,
+## doodad_enemy_keep_out: a Resonator's visit and the waits its rules leave it after), every floor cut's window
 ## (FloorCutPlan.window: GDD §9.9, nothing else goes on meanwhile), every dash wall's footprint (DashWallRules
 ## .footprint), every ceiling from its start to the end of its landing zone (the chase camera rides below a
 ## ceiling, lower than a doodad's top) and every pad's zone, the level's quiet stretches, each wider gap's zone
@@ -2004,7 +2005,7 @@ func doodad_keep_outs(_patterns: Array = [], lane_keeps: Array[Dictionary] = [],
 	var out: Array[Vector2] = []
 	var hooks: Dictionary = {}
 	for e: Dictionary in layout.enemies:
-		var k: Vector2 = _enemy_keep_out(e, hooks)
+		var k: Vector2 = doodad_enemy_keep_out(e, hooks)
 		if k.y >= k.x:
 			out.append(k)
 	for c: Dictionary in layout.cuts:
@@ -2428,6 +2429,23 @@ func wall_fence_problem(entry: Dictionary, p_layout: LevelLayout = null) -> Stri
 ## from FILL_ENEMY_LEAD_SECONDS before it to the end of the floor it uses), for rules that keep off
 ## enemies the same way (WallFencePlacement: big attacks). `hooks` caches each type's rules script.
 func enemy_keep_out(e: Dictionary, hooks: Dictionary = {}) -> Vector2:
+	return _enemy_keep_out(e, hooks)
+
+
+## What zone doodads keep off around enemy entry `e` in every lane (doodad_keep_outs; task L6): its rules script's
+## `static func doodad_keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2` where it has one (a Resonator's: its
+## visit and the waits its rules leave it after, ResonatorRules.doodad_keep_out), else what the fill pass keeps
+## (enemy_keep_out). Only the doodads ask it: every other pass keeps what the fill pass keeps. `hooks` caches each
+## type's rules script.
+func doodad_enemy_keep_out(e: Dictionary, hooks: Dictionary = {}) -> Vector2:
+	var type: String = String(e.get("type", ""))
+	var key: String = "doodad:" + type
+	if not hooks.has(key):
+		var path: String = RULES_DIR.path_join("%s_rules.gd" % type)
+		var script: GDScript = load(path) as GDScript if ResourceLoader.exists(path) else null
+		hooks[key] = script if script != null and script.has_method("doodad_keep_out") else null
+	if hooks[key] != null:
+		return (hooks[key] as GDScript).call("doodad_keep_out", self, e)
 	return _enemy_keep_out(e, hooks)
 
 
