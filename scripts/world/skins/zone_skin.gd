@@ -474,7 +474,7 @@ func wall_gap_marks(batch: MeshBatch, side: int, face_x: float, start: float, en
 ## the facade layer), so it costs a gap part at most the facade and solid surfaces (one or two draw calls) and a few
 ## quads. The default (standard_wall_gap_recess) is plain, in the skin's gap_inside_color lifted toward grey; a skin
 ## with a look of its own overrides this (the Marketplace's draws its buildings' own colours and window grids).
-## DESIGN-TBD (docs/questions/l4.md): that a gap shows an alley, its depth and where its ground lies.
+## DESIGN-TBD (items 926-928 in docs/OPEN_QUESTIONS*.md): that a gap shows an alley, its depth and where its ground lies.
 func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var inside: Variant = get("gap_inside_color")
 	var base: Color = inside if inside is Color else CUT_INSIDE_COLOR

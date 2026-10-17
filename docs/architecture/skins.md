@@ -49,7 +49,7 @@ street) draws its track with a copy of the skin that has it off, which also brin
 sets build in the openings is exactly what it was. `test_wall_gaps` checks it with software rays (`TriangleMesh`) from where a runner's camera is: every
 ray through the opening and at least 3 degrees below the horizontal, along the track, meets a face that faces it; none
 escapes to the sky's skyline. Review it with `tools/showcase/wall_gap_review.tscn -- --skin=<zone>` (Review tools).
-DESIGN-TBD (`docs/questions/l4.md`): that a gap shows an alley, its depth and its ground.
+DESIGN-TBD (items 926-928 in `docs/OPEN_QUESTIONS*.md`): that a gap shows an alley, its depth and its ground.
 
 In a run, a chunk's hooks come over the few frames after its gameplay nodes are built, in order, each
 side's `note_wall_enemies` and `wall_section` in one go (`TrackBuilder.dress_budget_usec`, task PERF1;
