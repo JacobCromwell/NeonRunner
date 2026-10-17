@@ -160,7 +160,8 @@ share of 0 changes nothing (every piece, enemy, pick and fill stays with a share
 doodad go; City 1's extra gaps, which FIX4 may send elsewhere around a doodad, keep its own gaps and their
 count, task G7; dash walls past an introduction, which come after the doodads, left out of the comparison,
 task H7a), placement over 216 levels at 3, 5 and 6 lanes (every difficulty, with and without every
-built feature, at the highest share: `check_doodads`, `check_layout` and `check_rules`, deterministic),
+built feature, at the highest share: `check_doodads`, lane by lane since task L6 with the floor routes taking the
+pushes, `check_layout` and `check_rules`, deterministic),
 every campaign level's doodads and City 1's gentle start, the rules' keep-outs (a Bad Dream's chase, a
 hover truck's lane) and the enemies' own checks, the track's bodies (never a hazard, a standable top,
 the skin's hook) and every skin's default look (inside its box, never glowing, muted colours); then the
@@ -183,13 +184,13 @@ retry builds the same level with it whole, pushing a runner who doesn't dash); e
 colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes; and the
 fairness measure for a runner who dashes through (The generator, Zone doodads). `RunSim` takes a `&"dash"`
 action. Task L3 added rows and the lane by a side wall: rows placed over quick play's level at 3, 5 and 6 lanes
-with every doodad the first of a row (three and four long, never two; small ones touching and medium and large ones
+with every doodad the first of a row (two, three and four long since task L6; small ones touching and medium and large ones
 spaced, every size class, inner lanes and by the walls, `check_row`; none with the chance at 0); the lane by a side
 wall in quick play's level with
 everything that stands on or by a wall (ramps, signs, window cyborgs, vents, hover trucks, wall fences, side wall
 gaps, wall-run gaps, dash walls), `check_wall_lane_doodad` and the wall fences' drop windows, the share drawing
-(none at 0, most at 1); the campaign's rows and doodads by a wall counted (rows now and then, never most of the
-doodads); a spaced row seen whole by the enemies' checks; the track dressing a row in its one look, 5 cm between
+(none at 0, most at 1); the campaign's rows and doodads by a wall counted (task L6: a few rows a level from Gangland
+on, most of what a level places still a doodad alone); a spaced row seen whole by the enemies' checks; the track dressing a row in its one look, 5 cm between
 two boxes one right after the other, one shared mesh in the Marketplace's cards; and on real physics a row pushing
 once and blocking a switch all along it (a runner switching into a space pushed back out), the dash along a row
 (every one it reaches smashed, the next pushing where it ends), a wall runner low on the wall breaking a doodad by
@@ -207,8 +208,10 @@ append, a wall a doodad in every lane, broken or not); the generator over every 
 and 6 lanes on its own seed and two others (the level's count on its own seed, at least one on any, no warning,
 every wall fair by `LayoutChecks.check_dash_walls`, the same every build); Corporate 1's introduction right
 after its start at every lane count, alone, and no other level introducing them; past an introduction the walls
-standing after the danger density pass and the doodads (its report, the fillers, the enemies and the doodads as
-with no walls, only the pieces in their way taken out); The Hush's walls out of its quiet stretches; a level without
+standing after the danger density pass and the doodads (its report, the fillers and the enemies as with no walls,
+only the pieces in their way taken out, and, task L6, the zone doodads in their way: `_clear_doodads`); the last
+resort (`LAST_RESORT_CASE`, Corporate 2 at 3 lanes on seed 7056 since task L6: a Buzz Overdrive and a doodad go
+together) both ways; The Hush's walls out of its quiet stretches; a level without
 the feature or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
 armor absorbs and that breaks it, across the floor lanes and short of the side walls, taller than any jump, the
 skin's hook and colours, a broken one never built); the damage rules (the dash, armor, the shield, a kill, god

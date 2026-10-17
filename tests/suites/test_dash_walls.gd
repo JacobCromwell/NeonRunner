@@ -48,13 +48,13 @@ const OTHER_SEEDS: int = 2
 const LATE_INTRODUCTION_LANES: Array[int] = [5]
 ## The build where only the last resort gives a level its wall (DashWallRules.after_doodads: the enemies and the zone
 ## doodads in the way go together): checked both ways. Corporate 2 at 3 lanes on seed 7056 since task L6 (a Buzz
-## Overdrive and a doodad stand in the way of its one fair spot; @@LR_SEARCH@@). Since task L6 the zone
-## doodads in a wall's way go first, before any feature gives way (DashWallRules._clear_doodads), so the last resort is
-## left for a level where enemies and doodads both stand in every wall's way: Golden 1 at 3 lanes on seed 7294 without
-## its wall-run gaps (task I4's case, where only doodads stood in the way) no longer needs it, nor does Corporate 2 on
-## seed 7101 (the H merge's). A case may leave out features (`without`), as task J2's did: a level's later wall-run
-## gaps give way to its walls before the last resort (WallRunGapPlacement.set_aside). DESIGN-TBD
-## (docs/OPEN_QUESTIONS.md item 677).
+## Overdrive and a doodad stand in the way of its one fair spot; the one such build among seeds 7000-7059 of Corporate
+## 2, the Dead Zone's and the Golden Zone's levels at 3 lanes). Since task L6 the zone doodads in a wall's way go first,
+## before any feature gives way (DashWallRules._clear_doodads), so the last resort is left for a level where enemies and
+## doodads both stand in every wall's way: Golden 1 at 3 lanes on seed 7294 without its wall-run gaps (task I4's case,
+## where only doodads stood in the way) no longer needs it. A case may leave out features (`without`), as task J2's
+## did: a level's later wall-run gaps give way to its walls before the last resort (WallRunGapPlacement.set_aside).
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 677).
 const LAST_RESORT_CASE: Dictionary = {"id": "corporate/2", "lanes": 3, "seed": 7056}
 ## A wall's look is one small mesh: at most this many surfaces and vertices, built (the first time, in a skin whose
 ## materials already exist) in under these milliseconds on average and at most (DESIGN-TBD: measured about 1 ms and
