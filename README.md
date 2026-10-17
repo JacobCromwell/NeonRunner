@@ -576,7 +576,8 @@ jumped and an Enforcer Truck wrecked in one (`wide_gap_review`, `--scenario=jump
 runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls smashed, crashed through with the
 armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`),
 wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a still of the lit wall in any zone's
-look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), a
+look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
+them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
 `--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
 Octodog's lunge and a

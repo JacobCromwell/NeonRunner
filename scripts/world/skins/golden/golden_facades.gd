@@ -35,6 +35,8 @@ const STYLE_DEEP: int = 6
 const STOREY: float = 3.6
 ## How far buildings reach back from the street (their near ends show above lower neighbours).
 const DEPTH: float = 22.0
+## How far back a wall gap's recess reaches from the wall face (recess(), task L4).
+const RECESS_DEPTH: float = 20.0
 ## The palaces' statue ledge: how far it juts out and how thick it is (its top at frieze_top + LEDGE_UP).
 const LEDGE_OUT: float = 0.9
 const LEDGE_UP: float = 0.2
@@ -187,6 +189,57 @@ func building(side: int, span: Vector2i) -> Building:
 			b.screen = _hung_screen(b)
 	_buildings[key] = b
 	return b
+
+
+## What a wall gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the
+## background"): the gap's part [start, end] of a canal-side lane between the two buildings it cuts: their end faces
+## (RECESS_DEPTH deep: the plinth, the calm band, the frieze, then the palace's or gallery's windows or the tower's
+## glass, in their own stone and window grid), the face of a palace across it, and the canal running on from the
+## one under the walkways (PAT_CANAL, flowing toward the runner, STYLE_DEEP's shade below the walkways). Everything
+## goes in the facade and solid layers the walls draw with: no surface of its own.
+func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var facade: MeshLayer = batch.layer(skin.facade_material())
+	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var floor_y: float = -skin.canal_depth
+	var x_back: float = face_x + side * RECESS_DEPTH
+	var x_min: float = minf(face_x, x_back)
+	solid.rect(Vector3(x_min, floor_y, -start), Vector3(RECESS_DEPTH, 0.0, 0.0), Vector3(0.0, 0.0, -(end - start)),
+		skin.canal_color, 0.0, MeshKit.PAT_CANAL)
+	# The palace across: its foot below the walkways in deep shade, then the stone to its parapet.
+	var lot: float = skin.lot_length
+	var across: Building = building(side, MeshKit.lot_run(side, floori((gap.x + gap.y) * 0.5 / lot), 0.45, 3, 5))
+	var back_h: float = lerpf(skin.palace_min_height, skin.palace_max_height, MeshKit.hash01(side, across.id, 26))
+	var back_wall: Color = across.wall.darkened(0.12)
+	_face(facade, side, x_back, start, end, floor_y, 0.0, skin.gap_inside_color, 0.0, STYLE_DEEP, across.seed + 7)
+	_face(facade, side, x_back, start, end, 0.0, skin.plinth_top, back_wall, 0.0, STYLE_PLINTH, across.seed + 7)
+	_face(facade, side, x_back, start, end, skin.plinth_top, skin.band_top, back_wall, 0.0, STYLE_BAND, across.seed + 7)
+	_face(facade, side, x_back, start, end, skin.band_top, skin.frieze_top, back_wall, 0.0, STYLE_FRIEZE, across.seed + 7)
+	_face(facade, side, x_back, start, end, skin.frieze_top, back_h, back_wall, across.lit, STYLE_UPPER, across.seed + 7)
+	# The two buildings' end faces: the one before the gap looks on down the street, the one after it faces the runner.
+	for end_at: float in [gap.x, gap.y]:
+		if end_at < start - 0.001 or end_at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(end_at, gap.x)
+		var d: float = end_at - 0.01 if leading else end_at + 0.01
+		var b: Building = building(side, MeshKit.lot_run(side, floori(d / lot), 0.45, 3, 5))
+		var seed: float = float(b.seed + 3)
+		var x1: float = x_min + RECESS_DEPTH
+		MeshKit.end_quad(facade, x_min, x1, end_at, floor_y, 0.0, leading, skin.gap_inside_color, 0.0, STYLE_DEEP, seed)
+		MeshKit.end_quad(facade, x_min, x1, end_at, 0.0, skin.plinth_top, leading, b.wall, 0.0, STYLE_PLINTH, seed)
+		MeshKit.end_quad(facade, x_min, x1, end_at, skin.plinth_top, skin.band_top, leading, b.wall, 0.0, STYLE_BAND, seed)
+		MeshKit.end_quad(facade, x_min, x1, end_at, skin.band_top, skin.frieze_top, leading, b.wall, 0.0, STYLE_FRIEZE, seed)
+		if b.kind == Kind.TOWER:
+			var body_top: float = b.height - b.crown_h
+			var step: float = b.setback_y if b.setback > 0.0 else body_top
+			var tower_x: float = face_x + side * b.setback
+			var t_min: float = minf(tower_x, x_back)
+			var t_max: float = maxf(tower_x, x_back)
+			MeshKit.end_quad(facade, x_min, x1, end_at, skin.frieze_top, step, leading, b.wall, b.lit, STYLE_TOWER, seed)
+			if b.setback > 0.0:
+				MeshKit.end_quad(facade, t_min, t_max, end_at, step, body_top, leading, b.wall, b.lit, STYLE_TOWER, seed)
+			MeshKit.end_quad(facade, t_min, t_max, end_at, body_top, b.height, leading, b.wall, b.lit, STYLE_CROWN, seed)
+		else:
+			MeshKit.end_quad(facade, x_min, x1, end_at, skin.frieze_top, b.height, leading, b.wall, b.lit, STYLE_UPPER, seed)
 
 
 ## The statues on a palace facade: a place every statue_spacing metres clear of its ends, statue_share

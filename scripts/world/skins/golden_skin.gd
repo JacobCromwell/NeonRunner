@@ -367,6 +367,14 @@ func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float
 		batch.commit(parent)
 
 
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): a canal-side lane between the two buildings
+## it cuts, their end faces, the palace across it and the canal running on (GoldenFacades.recess).
+func wall_gap_recess(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var batch := MeshBatch.new()
+	facades().recess(batch, side, face_x, start, end, gap)
+	batch.commit(parent)
+
+
 ## The wall enemies TrackBuilder is about to build on `side` (ZoneSkin.note_wall_enemies): each Gilded
 ## Sentinel's niche (GildedSentinel.niche_rect, task C4; GDD §9.11: a live one stands in a niche at
 ## wall-run height) is left out of the wall face here (niches(), open_rects()) and its recess appended

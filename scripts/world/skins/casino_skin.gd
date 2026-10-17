@@ -263,6 +263,7 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	_wall_x = absf(face_x)
 	wall_gap_marks(parent, side, face_x, start, end, gap)
+	wall_gap_recess(parent, side, face_x, start, end, gap)
 	if side < 0:
 		var batch := MeshBatch.new()
 		_left_wall_extras(batch, face_x, start, end)

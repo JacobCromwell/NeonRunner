@@ -16,6 +16,11 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   is drawn with `PAT_UNDER` in the skin's `gap_inside_color`, a deep shade that only darkens with
   depth, and nothing under the roofs is lit or glows but the orange edge strip. The suite pins it
   (far darker than any roof, no roof in the edge colour).
+- *Wall gaps open onto an alley* (task L4, `MarketFacades.recess`; `docs/architecture/skins.md`, What a side wall gap
+  shows behind it): the two buildings a gap cuts show their own end faces (their colour, plinth and window grid,
+  `RECESS_DEPTH` 20 m back, up to their own height), a building across the alley stands 22-38 m behind the wall line,
+  and the market floor runs on from the plane under the stall roofs, everything under the roofs in the same deep
+  `PAT_UNDER` shade (a gap still reads as a hole). Built per gap part in the facade and solid layers the walls use.
 - *Shop windows for the citizens (task D3).* Every shopfront has a row of real window openings with
   lit displays at the low part of the wall (0.85-2.8 m above the floor, above the wall vents' zone).
   `MarketplaceSkin.shop_windows(side, face_x, start, end)` lists the windows whose centres lie
@@ -74,6 +79,10 @@ template) and `CorporateProps` (fences and signs); its building faces use their 
   (runs of express or olive freight cars) comes from hashing its grid cell (`carriage()`).
   `carriage_plan()` lays out a floor piece's roofs and joints: no joint within `GAP_MARGIN` of a gap's
   edge, and a thin seam instead of a gangway where one would cross a chunk cut.
+- *Wall gaps open onto a service alley* (task L4, `CorporateTowers.recess`): the cut buildings' end faces (the
+  podium's cladding, a tower's glass and service crown, a compound's blast walls, a low building's roof line) 24 m
+  back, a tower across (60-130 m) and the trench floor, below the street in the trench's own `PAT_CORP_UNDER` shade
+  (the trench walls at the faces still hide most of it from the street).
 - *Gaps read as holes.* Everything below the running surface (the carriages' sides and ends, the
   guideways, the trench, the plaza deck's edges) is drawn with `PAT_CORP_UNDER` in `gap_inside_color`, a
   deep shade that only darkens with depth, with the guideways and the trench floor deeper than a fall
@@ -102,6 +111,9 @@ kit's solid shader (`kit_dead_zone.gdshaderinc`), the drift shader and one shade
 `dead_smoke.gdshader` (columns of smoke: one billboarded column per six vertices, lit by
 `scenery_light`). Dark black, dark grey and ash grey at night (GDD §5); the ash-grey street is its
 lightest surface.
+- *Wall gaps open onto where a tower was burnt away* (task L4, `DeadTowers.recess`): the two ruins' end faces
+  (`PAT_DZ_TOWER`, their own style, up to their broken tops, nothing lit or smouldering), a ruin across (40-80 m,
+  broken against the haze like the stumps' far rows) and the void floor, the part below the street in `PAT_DZ_UNDER`.
 - *Gaps read as holes.* The street (`PAT_DZ_STREET`, laid out from world position) is broken plates under
   pale ash with rubble drawn flat, never built, so nothing on the running surface stands up like an
   obstacle, and nothing round lies on it (a manhole is a screech's lair). Everything below it (the cut,
@@ -167,6 +179,9 @@ paved street, warm lamplight and haze.
   arrival flyover's rule) and stand out of the face by under a metre (the flyover's camera keeps a metre
   inside the walls); flat decoration (decorative signs, banners, wall lamps, marquee bulbs) never sits lower
   than `decor_min_height` (8 m) and is never framed in a hazard's stripes.
+- *Wall gaps* (task L4): the Marketplace's alley (`MarketFacades.recess`, through `CasinoFacades._under_depth` and
+  `_under_pattern`), in the Casino's iron, brass and arched windows down to the trench in `PAT_CASINO_UNDER`; the roof
+  overhead stays (the left wall's call).
 - *The glass vault is background* (never a ceiling the player can use). `CasinoVault` springs it from the
   facades' top (`eave_height`, 22 m) and arches it over the street (higher over a wider one: `arch_of()`),
   in bays (`bay_length`) built from one cached template per street width: iron ribs and purlins, and the

@@ -296,6 +296,14 @@ func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float
 		batch.commit(parent)
 
 
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): where a tower was burnt away between two
+## ruins, their end faces, the ruin across and the void's floor (DeadTowers.recess).
+func wall_gap_recess(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var batch := MeshBatch.new()
+	towers().recess(batch, side, face_x, start, end, gap)
+	batch.commit(parent)
+
+
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:
 	props().fence(hazard, size, ground_y, gapped)
 

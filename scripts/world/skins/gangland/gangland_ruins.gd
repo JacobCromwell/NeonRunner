@@ -21,6 +21,8 @@ extends RefCounted
 
 ## How far the buildings reach back from the street (their near ends show across side streets).
 const DEPTH: float = 24.0
+## How far back a wall gap's recess reaches from the wall face (recess(), task L4).
+const RECESS_DEPTH: float = 22.0
 const STEP: float = 2.0
 const LOW_SHARE: float = 0.25
 ## Every face stays at least this far above the boarded-up band.
@@ -137,6 +139,51 @@ func ruin_for(side: int, span: Vector2i) -> Ruin:
 			var depth: float = (r.height - r.floor_top) * (0.35 + 0.6 * MeshKit.hash01(side, id, 37 + i))
 			r.bites.append(Vector3(c, half, depth))
 	return r
+
+
+## What a wall gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the
+## background"): the gap's part [start, end] of a collapsed stretch between the two ruins it cuts: their end faces
+## (RECESS_DEPTH deep, in their own colours, windows and broken tops, down to the crater floor `crater_depth`
+## below the street), the broken face of a ruin across it, and that dark floor, running on from the plane under
+## the street (GanglandStreet.below). All in the facade layer the walls draw with: no surface of its own.
+func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var facade: MeshLayer = batch.layer(skin.facade_material())
+	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var bottom: float = -skin.crater_depth
+	var x_back: float = face_x + side * RECESS_DEPTH
+	var x_min: float = minf(face_x, x_back)
+	solid.rect(Vector3(x_min, bottom, -start), Vector3(RECESS_DEPTH, 0.0, 0.0), Vector3(0.0, 0.0, -(end - start)),
+		skin.crater_floor_color)
+	# The ruin across: tall and broken like the far rows behind low buildings, a shade darker.
+	var lot: float = skin.lot_length
+	var mid: float = (gap.x + gap.y) * 0.5
+	var mid_span: Vector2i = MeshKit.lot_run(side, floori(mid / lot), 0.4, 3, 2)
+	var back := Ruin.new()
+	back.side = side * 3
+	back.height = 26.0 + 14.0 * MeshKit.hash01(side, mid_span.x, 26)
+	back.floor_top = back.height * 0.6
+	var back_wall: Color = skin.facade_colors[MeshKit.hash_i(side, mid_span.x, 27) % skin.facade_colors.size()].darkened(0.15)
+	var back_style: int = STYLES[MeshKit.hash_i(side, mid_span.x, 28) % STYLES.size()]
+	var us := PackedFloat32Array()
+	var tops := PackedFloat32Array()
+	back.outline(start, end, us, tops)
+	MeshKit.facade_strip(facade, side, x_back, us, tops, bottom, back_wall, 0.12, back_style,
+		float(MeshKit.hash_i(side, mid_span.x, 29) % 997))
+	# The two ruins' end faces: the one before the gap looks on down the street, the one after it faces the runner.
+	for end_at: float in [gap.x, gap.y]:
+		if end_at < start - 0.001 or end_at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(end_at, gap.x)
+		var d: float = end_at - 0.01 if leading else end_at + 0.01
+		var span: Vector2i = MeshKit.lot_run(side, floori(d / lot), 0.4, 3, 2)
+		var r: Ruin = ruin_for(side, span)
+		var id: int = span.x
+		var style: int = STYLES[MeshKit.hash_i(side, id, 7) % STYLES.size()]
+		var lit: float = lerpf(skin.ruin_lit_min, skin.ruin_lit_max, MeshKit.hash01(side, id, 8))
+		var wall: Color = skin.facade_colors[MeshKit.hash_i(side, id, 9) % skin.facade_colors.size()]
+		var seed: float = float(MeshKit.hash_i(side, id, 11) % 997)
+		var top: float = r.top(clampf(d, r.t0, r.b1))
+		MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, bottom, top, leading, wall, lit, style, seed + 3.0)
 
 
 ## The height of the wall's top at track distance u on this side (0 across a side street).

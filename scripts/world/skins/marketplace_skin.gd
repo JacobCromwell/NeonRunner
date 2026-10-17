@@ -319,6 +319,14 @@ func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float
 		batch.commit(parent)
 
 
+## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): an alley between the two buildings it cuts,
+## their end faces in their own colours and window grids, the face across, the market floor (MarketFacades.recess).
+func wall_gap_recess(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var batch := MeshBatch.new()
+	facades().recess(batch, side, face_x, start, end, gap)
+	batch.commit(parent)
+
+
 ## The wall gaps near the wall TrackBuilder is about to draw (ZoneSkin hook): a shop window reaching
 ## into one is left out (MarketFacades), its pier running on instead, so no window floats in a gap.
 func note_wall_gaps(side: int, gaps: Array[Vector2]) -> void:
