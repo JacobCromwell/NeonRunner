@@ -289,7 +289,8 @@ Guppy eats chasms between them, and the backdrop is anchored at world heights:
   the nearest lane with floor where they come down (`_nearest_covered`), in practice past the gap in their own lane.
 - **Hits** (GDD §10, the owner, October 11, 2026: by baiting): each phase's hits are counted
   (`weapons_can_end_phase` off, `weapon_share_cap` 0: weapons do nothing). `register_hit(cause)` lands one while the
-  climb's pattern runs (4 end phase 1, 6 phase 2), but not in an intro or in phase 3. Captain Cogs' bombs call it:
+  climb's pattern runs (2 end phase 1, 6 phase 2; phase 1 had 4 until task L9, the owner's October 17, 2026 request
+  to make it half as long), but not in an intro or in phase 3. Captain Cogs' bombs call it:
   the bait's, locked onto a runner in the notch's lane who switched out before its edge, or the fallback's (below).
 - **Mecha Guppy** (`MechaGuppyShark`, its look `MechaGuppySharkModel`; E5e-b2, DESIGN-TBD): a building-sized
   mechanical shark, code-built and flat-shaded on the skin's solid material (riveted steel plates, rows of steel
@@ -503,7 +504,7 @@ bombs keep the Floating Head's bomb_whistle and bomb_blast. Hints: `enemy:beach_
 nothing), `boss:beach_boss/climb` (how to read the lanes that lead up), `/floor_bite` (the red crescent and the knocking
 under the deck: switch into the lane it leaves; in phase 2 jump a gap across every lane), `/bombs` (the circles, the
 whistle) and `/hits` (the bait: lead Captain Cogs' red target into the notch's lane, switch out before the edge; Captain
-Cogs only sometimes misses for you; 4 and 6 hits), `/barrage` (the red line at the bomb's height: jump a low one, slide under a
+Cogs only sometimes misses for you; 2 and 6 hits), `/barrage` (the red line at the bomb's height: jump a low one, slide under a
 high one; each one dodged flies into Mecha Guppy) and `/waves` (the dive, the splash, the swell and the roar: jump the
 surge; then the bite). Suites: `test_mecha_guppy`
 (the data, the plan and its notches, the built climb, the

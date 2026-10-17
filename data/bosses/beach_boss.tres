@@ -10,7 +10,7 @@
 script = ExtResource("2_phase")
 display_name = "The Climb"
 health_share = 1.0
-hits = 4
+hits = 2
 pace = 1.0
 intro_seconds = 3.0
 
