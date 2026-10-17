@@ -9,7 +9,7 @@ extends SceneTree
 ##   godot --headless -s res://tools/measure/economy.gd -- [options]
 ## Options:
 ##   --levels=city/1,gangland/2   campaign steps (levels and bosses; default: all of them)
-##   --lanes=3,5,6                lane counts (default 3,5,6; 3 with --mobile=true)
+##   --lanes=3,5,6                lane counts (default 3,5,6; with --mobile=true, GameRules.lanes_mobile: 5)
 ##   --seeds=N                    each level's own seed and N others (default 2)
 ##   --share=0.7                  the share of a level's credits the typical player collects (GDD §7 names
 ##                                no number, so this stands in for "a good, not perfect, clean run with no
@@ -302,4 +302,4 @@ func _parse_args() -> void:
 		elif arg == "--packs":
 			_packs = true
 	if _mobile and not _lanes_set:
-		_lanes = [3]
+		_lanes = [(load(RULES_PATH) as GameRules).lanes_mobile]
