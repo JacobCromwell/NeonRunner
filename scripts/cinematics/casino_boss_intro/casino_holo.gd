@@ -9,7 +9,7 @@ extends Node3D
 ## Violet, blue and cold white only (the Casino's sign colours; GDD §5: never a hazard's hue). Moved from the
 ## cinematic's clock (update()), so stepping shows the same.
 ## Its space: the hall's (CasinoHall: track space with z flipped); `setup` takes each pedestal's foot there.
-## DESIGN-TBD (docs/questions/casino_boss_intro.md): what the games are and how they look.
+## DESIGN-TBD (docs/questions/f2i.md): what the games are and how they look.
 
 const VIOLET := Color(0.66, 0.45, 1.0)
 const BLUE := Color(0.42, 0.6, 1.0)

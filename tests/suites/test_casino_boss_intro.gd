@@ -44,6 +44,7 @@ func run() -> void:
 	_music_before = music.current() if music != null else &""
 	_test_slot()
 	_test_sounds()
+	_test_looks()
 	var lanes_pc: int = App.rules.lanes_pc
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
@@ -100,6 +101,40 @@ func _test_sounds() -> void:
 		if stream != null:
 			check(stream.get_length() > 0.3 and stream.get_length() < MAX_SOUND_SECONDS,
 				"%s is %.2f s (under %.1f s)" % [v, stream.get_length(), MAX_SOUND_SECONDS])
+
+
+## The people's looks (CasinoPeople, from the owner's reference): built, each its own; nothing on anyone glows but the
+## Chairman's tech, in the Corporate brand's blue (never a hazard's colour, never the reference's cyan); his height the
+## tallest; the two women beside him built like the woman in red.
+func _test_looks() -> void:
+	var keys := {}
+	for look: int in CasinoPeople.Look.values():
+		var parts: HumanoidParts = CasinoPeople.parts(look)
+		check(parts != null and not parts.pieces.is_empty() and not keys.has(parts.cache_key),
+			"the %s look is built, with its own meshes" % CasinoPeople.look_name(look))
+		keys[parts.cache_key] = true
+		var glowing: Array[Color] = []
+		var all: Array[HumanoidPiece] = parts.pieces.duplicate()
+		for panel: HumanoidPanel in parts.panels:
+			all.append_array(panel.pieces)
+		for piece: HumanoidPiece in all:
+			if piece.glow > 0.0:
+				glowing.append(piece.color)
+		if look == CasinoPeople.Look.CHAIRMAN:
+			var blue: bool = not glowing.is_empty()
+			for c: Color in glowing:
+				blue = blue and c.h > 0.58 and c.h < 0.72
+			check(blue, "the Chairman's tech glows the brand's blue, nothing else on him")
+		else:
+			check(glowing.is_empty(), "nothing on the %s look glows (%s)" % [CasinoPeople.look_name(look), glowing])
+	for look: int in CasinoPeople.Look.values():
+		if look != CasinoPeople.Look.CHAIRMAN:
+			check(CasinoPeople.design_height(look) <= CasinoPeople.design_height(CasinoPeople.Look.CHAIRMAN),
+				"the Chairman stands tallest (%s)" % CasinoPeople.look_name(look))
+	for look: int in [CasinoPeople.Look.ESCORT_BLACK, CasinoPeople.Look.ESCORT_BLONDE]:
+		check(CasinoPeople.has_panels(look) == CasinoPeople.has_panels(CasinoPeople.Look.LADY_IN_RED)
+			and CasinoPeople.parts(look).panels.size() == CasinoPeople.parts(CasinoPeople.Look.LADY_IN_RED).panels.size(),
+			"%s wears the woman in red's gown" % CasinoPeople.look_name(look))
 
 
 # --- The beats -----------------------------------------------------------------------------------

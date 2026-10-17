@@ -11,7 +11,7 @@ extends Node3D
 ## cinematic's clock (update()): a breath and a sway each, the roulette's onlookers cheering with its players; as the
 ## wall trembles they turn to it, and as it bursts they shrink back from it.
 ## Its space: the hall's (CasinoHall: track space with z flipped).
-## DESIGN-TBD (docs/questions/casino_boss_intro.md): who stands where, their looks and their poses.
+## DESIGN-TBD (docs/questions/f2i.md): who stands where, their looks and their poses.
 
 ## The looks: [base look, recolour (from hue, hue window, minimum saturation, to colour), or none].
 enum Variant { HIGH_ROLLER, HIGH_ROLLER_NAVY, HIGH_ROLLER_CHARCOAL, GRIMY, GRIMY_BROWN, LADY_LUCK, GOWN_SAPPHIRE, GOWN_VIOLET,

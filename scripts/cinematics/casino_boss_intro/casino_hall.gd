@@ -21,7 +21,7 @@ extends Node3D
 ## mapped to this node by z -> -z (the node sits at the stage's origin, so a point here is stage.point() of its track
 ## point). Colour rule (GDD §5): only the lamps, the slot machines' screens and the holograms glow, in warm and cold
 ## white, violet and blue; red cloth, green felt and gold stay unlit.
-## DESIGN-TBD (docs/questions/casino_boss_intro.md): the hall's look, its size and what stands where.
+## DESIGN-TBD (docs/questions/f2i.md): the hall's look, its size and what stands where.
 
 ## The hall: half its width, its depth (the back wall's z), its height.
 const HALF_WIDTH: float = 17.0

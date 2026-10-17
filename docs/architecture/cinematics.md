@@ -14,7 +14,7 @@ events, played on a stretch of the slot's zone.
 the cinematic knows its `step`, `zone` and `slot` (`&"intro"`, `&"boss_intro"`, `&"outro"`; played on its
 own, it finds the campaign step whose slot holds its def). At its end it emits `finished` once, and the App
 marks the step done and seen and moves on (`advance_from`), so the next step's first frame follows at once.
-**Empty slots:** a def with `skip_while_empty` and no scene (the five boss intros besides the City's and Gangland's,
+**Empty slots:** a def with `skip_while_empty` and no scene (the four boss intros besides the City's, Gangland's and the Casino's,
 item 395) gets no campaign step at all, so none of this runs for it; setting its `scene` is all that fills it
 (`docs/architecture/campaign.md`, Empty boss-intro slots).
 **Skipping:** the pause action (Esc / P) or the cinematic's Skip button emits `skip_requested`, the App
@@ -42,6 +42,7 @@ never ends, and a level never starts, unattended.
 | `dead_zone_intro/` (`DeadZoneIntro`, `DeadZoneIntroTuning`, `DeadZoneCrater`), `scenes/cinematics/dead_zone_intro.tscn`, `data/cinematics/dead_zone_intro_tuning.tres`, `tools/asset_gen/sfx_bank_cinematics.gd` | the Dead Zone's intro, the owner's story beat (below), and its sounds |
 | `marketplace_intro/` (`MarketplaceIntro`, `MarketplaceIntroTuning`, `MarketplaceIntroSet`, `MarketplaceIntroVendor`, `marketplace_intro_card.gdshader`), `scenes/cinematics/marketplace_intro.tscn`, `data/cinematics/marketplace_intro_tuning.tres`, `tools/asset_gen/sfx_bank_marketplace_intro.gd` | the Marketplace's intro, the owner's beats (below), its props, the stall-keeper, the photo card and the voices |
 | `beach_outro/` (`BeachOutro`, `BeachOutroTuning`, `BeachOutroBar`, `BeachOutroScreech`, `BeachOutroPalace`, `BeachOutroRaid`), `scenes/cinematics/beach_outro.tscn`, `data/cinematics/beach_outro_tuning.tres`, `tools/asset_gen/sfx_bank_beach_outro.gd` | the Beach's outro, the owner's beats (below), its props and its two sounds |
+| `casino_boss_intro/` (`CasinoBossIntro`, `CasinoBossIntroTuning`, `CasinoHall`, `CasinoRoulette`, `CasinoHolo`, `CasinoGoldenDoor`, `CasinoWallBreak`, `CasinoCrowd`, `CasinoPeople`, `CasinoPerson`, `casino_carpet.gdshader`, `casino_holo.gdshader`, `casino_dust.gdshader`), `scenes/cinematics/casino_boss_intro.tscn`, `data/cinematics/casino_boss_intro_tuning.tres`, `tools/asset_gen/sfx_bank_casino_boss_intro.gd`, `tools/showcase/casino_people_showcase.tscn` | the Casino's boss intro, the owner's beats (below): the casino hall, its patrons and crowd, the Chairman, the golden door and The House bursting through the wall |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -480,3 +481,37 @@ bun, an eyepiece over one eye, a striped neck scarf, a work apron, a bracer on h
 script (`pose()`: her head easing toward whoever she looks at, talking, waving, pointing; her hands on the counter
 otherwise). The shots looking back down the street keep it built behind them (`_stage_near`). Everything is worked out
 from the time, so stepping or skipping shows the same. Cost and checks: `test_marketplace_intro`.
+**The Casino's boss intro** (`CasinoBossIntro`, task F2i; the owner's beats, October 17, 2026, GDD §10 The House, "Intro
+cinematic"; what they leave open is DESIGN-TBD, `docs/questions/f2i.md`; numbers in `data/cinematics/casino_boss_intro_tuning.tres`):
+34.8 s before The House, wholly inside a casino hall (`CasinoHall`), a closed set standing on the stage: the street's track is
+hidden (`stage.track.visible`), the fog is off, and the scenery's light and tint are set to the hall's warm lamplight while it
+plays (set back as it ends); the hall adds its own lights for the people on the rig (a warm key and a lamp at each
+chandelier, the bar and the door). Its space is track space with z flipped (`CasinoHall.L`): the near wall at z = 0, the back
+wall at 40, 34 m wide, 16 m high. Its still parts are two merged meshes on the Casino skin's solid and glow materials (the
+shell: walls, pillars, ceiling, chandeliers; the furniture: the tables with their cards and chips, the slot machines, the
+bar and its shelves, the holograms' pedestals, the velvet ropes) and a carpet on its own shader; what moves is worked out
+from the clock (`update`): the roulette (`CasinoRoulette`: the rotor turning, the ball running the other way, dropping and
+settling in a pocket, close-up worthy), three holographic games (`CasinoHolo`, additive light on `casino_holo.gdshader`:
+bright edges, faint faces, slow scanlines on the cinematic's clock; violet, blue and white only), the golden door
+(`CasinoGoldenDoor`: two hinged leaves, `openness()`), and the stretch of back wall left of the door that bursts
+(`CasinoWallBreak`: blocks in running bond, flush with the wall until they shiver, then flying out from the middle in closed
+form, tumbling and settling flat on a rising heap; cracks, grit and dust, `casino_dust.gdshader`, each a MultiMesh). The
+House behind it is the fight's own machine (`TheHouseModel`, sized by `TheHouseModel.shape_for` to the fight's street, in a
+holder since its `animate()` sets its own position), the hole cut round it; its lights come on after the wall falls and its
+reels stop on a cherry, a BAR and a lightning bolt. The people: the roulette's four players, its croupier, the bartender,
+the Chairman and the two women are `CasinoPerson`s (the shared rig with `CasinoPeople`'s looks from the owner's reference,
+posed by the clock: `stand`, `walk` with the runner's walk cycle, overlays for cheering, clapping, drinking, holding a glass,
+looking, the Chairman's flick); the Chairman and the women walk a Catmull-Rom path through time (`path_at`), the women
+beside him in his frame, his cane placed in his left hand each step. The crowd (`CasinoCrowd`) is about sixty people, each
+posed once on the rig and baked into one mesh (panels turned as the rig turned them), everyone sharing a look and a pose one
+MultiMesh; some looks repainted (`CasinoCrowd.repaint`) so the heroes keep their colours; they sway, the roulette's onlookers
+swap to a cheering bake with its players, and as the wall trembles they turn to it and draw back as it bursts. The runner
+and the two guards (the Casino's cyborgs) are actors: the runner leans back on the bar (its arms and chest posed over the
+idle by the script), the screech (`BeachOutroScreech`) sits on the counter beside them, then they jog through the crowd and
+dive right and left (jump arcs) past the guards' lunges (the guards' arms posed by the script), stopping short of the door.
+Each person on the rig shows only in the shots that need it, so its props stay under about 150 draw calls. Cost and checks:
+`test_casino_boss_intro` (the slot, the looks' glow, the hall and the hole round the fight's machine, the ball before the
+cheer, the lean and the screech, the women either side of him, the paths clear of the tables and the crowd, the dives
+clear of the lunges, the door open as he passes and shut after, the wall flush until it trembles and down by the end, the
+camera inside the hall, its sounds, its cost, skipping and the App's flow). Render frames at 60 fps (`--fixed-fps 60`):
+at a lower fixed rate the avatar's own physics step can override the runner's posed arms between frames.

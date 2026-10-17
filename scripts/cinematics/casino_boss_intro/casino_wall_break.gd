@@ -23,6 +23,7 @@ const GRAVITY: float = 13.0
 const HEAP_HEIGHT: float = 1.4
 const HEAP_REACH: float = 5.0
 const PLASTER := Color(0.44, 0.38, 0.34)
+const SEAM_OVERLAP := Vector3(0.03, 0.03, 0.0)
 const CRACK := Color(0.07, 0.04, 0.05)
 
 var hall: CasinoHall
@@ -194,7 +195,8 @@ func block_transform(b: Dictionary, t: float, n: CasinoBossIntroTuning) -> Trans
 		var amp: float = shiver(t, n)
 		var j := Vector3(sin(t * 47.0 + float(i) * 1.7), sin(t * 53.0 + float(i) * 2.9) * 0.6, 0.0) * amp
 		var rot := Basis(Vector3.BACK, sin(t * 39.0 + float(i)) * amp * 0.25)
-		return Transform3D(rot * sized, c0 + j)
+		# Whole, the blocks overlap a hair and stand a hair proud of the wall, so no seam between them shows.
+		return Transform3D(rot * Basis.from_scale(size + SEAM_OVERLAP), c0 + j + Vector3(0.0, 0.0, -0.004))
 	var v: Vector3 = b["v"]
 	sized = Basis.from_scale(size * (b["broken"] as Vector3))
 	var t_land: float = b["t_land"]

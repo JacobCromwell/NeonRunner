@@ -18,7 +18,7 @@ extends CinematicSequencer
 ## A script on the toolkit, its numbers data (`numbers`, by default data/cinematics/casino_boss_intro_tuning.tres,
 ## CasinoBossIntroTuning). It plays wholly in the hall, a closed set on the stage (the street's track hidden under it);
 ## everything is worked out from the time (_on_advance), so stepping or skipping shows the same.
-## DESIGN-TBD (docs/questions/casino_boss_intro.md): the staging the beats leave open, the hall and the people's looks.
+## DESIGN-TBD (docs/questions/f2i.md): the staging the beats leave open, the hall and the people's looks.
 
 const NUMBERS_PATH: String = "res://data/cinematics/casino_boss_intro_tuning.tres"
 ## The fight's numbers, for The House's size (the hole is cut to fit the fight's own machine).
@@ -373,7 +373,7 @@ func _camera(t: CineTimeline) -> void:
 	for i: int in steps + 1:
 		var at: float = lerpf(n.chairman_shot_at, n.resolve_shot_at - 0.004, float(i) / float(steps))
 		var key: CineCameraKey = t.shot(at, over + Vector3(0.0, 0.0, 0.05 * float(i)), chairman_at(at) + Vector3(0.0, 0.85, 0.0),
-			CinePath.Move.CUT if i == 0 else CinePath.Move.SMOOTH, 15.0)
+			CinePath.Move.CUT if i == 0 else CinePath.Move.SMOOTH, 10.0)
 	# Cut: close on the runner's face as they make up their mind and push off the bar.
 	t.shot(n.resolve_shot_at, lean + Vector3(-1.05, 1.08, 0.95), head + Vector3(0.0, -0.04, 0.0), CinePath.Move.CUT, 38.0)
 	t.shot(n.crowd_shot_at - 0.004, lean + Vector3(-1.2, 1.08, 1.05), head + Vector3(-0.4, -0.06, 0.5), CinePath.Move.SMOOTH, 40.0)
@@ -387,7 +387,7 @@ func _camera(t: CineTimeline) -> void:
 	# Cut: the Chairman, from ahead of him: he looks back over his shoulder, sees them and flicks his hand.
 	var c0: Vector3 = chairman_at(n.notice_shot_at)
 	var h0: float = chairman_heading(n.notice_shot_at)
-	var cam0: Vector3 = in_frame(c0, h0, Vector2(-0.9, 3.0)) + Vector3(0.0, 1.25, 0.0)
+	var cam0: Vector3 = in_frame(c0, h0, Vector2(1.4, 2.7)) + Vector3(0.0, 1.25, 0.0)
 	t.shot(n.notice_shot_at, cam0, c0 + Vector3(0.0, 1.05, 0.0), CinePath.Move.CUT, 40.0)
 	var c1: Vector3 = chairman_at(n.guards_shot_at)
 	t.shot(n.guards_shot_at - 0.004, cam0 + (c1 - c0) * 0.7, c1 + Vector3(0.0, 1.05, 0.0), CinePath.Move.SMOOTH, 40.0)
@@ -397,8 +397,8 @@ func _camera(t: CineTimeline) -> void:
 	t.shot(n.door_shot_at - 0.004, Vector3(10.6, 2.5, 32.4), Vector3(6.4, 0.75, 29.4), CinePath.Move.SMOOTH, 46.0)
 	# Cut: the golden door, the Chairman and the women going through it, the runner coming up behind; it bangs shut.
 	var door: Vector3 = CasinoHall.door_point()
-	t.shot(n.door_shot_at, Vector3(door.x - 2.7, 1.5, door.z - 6.9), door + Vector3(0.2, 1.7, 0.0), CinePath.Move.CUT, 46.0)
-	t.shot(n.pull_back_at, Vector3(door.x - 2.9, 1.55, door.z - 7.3), door + Vector3(-1.0, 1.9, 0.0), CinePath.Move.SMOOTH, 46.0)
+	t.shot(n.door_shot_at, Vector3(door.x - 3.9, 1.65, door.z - 9.2), door + Vector3(0.0, 1.6, 0.0), CinePath.Move.CUT, 44.0)
+	t.shot(n.pull_back_at, Vector3(door.x - 4.1, 1.7, door.z - 9.6), door + Vector3(-1.2, 1.9, 0.0), CinePath.Move.SMOOTH, 44.0)
 	# Pulling back (and over to the left, rising) to show the whole wall as it trembles; holding as it bursts and The
 	# House is revealed, easing in.
 	var hole: Vector3 = hall.hole_point()
