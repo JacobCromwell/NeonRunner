@@ -36,8 +36,8 @@ extends RefCounted
 ##    cyborgs and rows of holes or fences in its stretch, which every pass before it keeps clear, out of its own
 ##    lane and, over its attack, out of the neighbouring lane its runner escapes into; the passes after it keep
 ##    off them as off anything.
-## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, in the stretches where
-##    nothing else goes on (_place_doodads). After them, the rules' `static func after_doodads(gen:
+## 4. Zone doodads (LevelConfig.doodad_share): scenery standing in lanes, where they're fair lane by lane
+##    (_place_doodads; task L6). After them, the rules' `static func after_doodads(gen:
 ##    LevelGenerator)` (_after_doodad_rules): the rest of the level's dash walls, in the room the passes
 ##    before them left, so those passes measure and fill the level as they would without them.
 ## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
@@ -100,12 +100,13 @@ extends RefCounted
 ## rules and ceilings keep (fill_keep_outs), spaced like the pattern pass: busier, never tighter.
 ##
 ## Zone doodads (GDD §3, same playtest): scenery pieces standing in lanes that never hurt; running into
-## one pushes the player into a neighbouring lane. After the fill pass, a level's doodad_share of the
-## stretches where nothing else goes on (doodad_keep_outs) get one, in an inner lane or by a side wall
-## that's open there (task L3: wall_lane_keep_outs), with room to push into and the level's spacing after
-## it, now and then the first of a row of its kind (task L3): they add to what the patterns, the rules and
-## the fill pass put there (nothing moves or goes for them, and nothing comes after them to undo or crowd
-## them), so a level looks busier without needing a reaction or narrowing one.
+## one pushes the player into a neighbouring lane. After the fill pass, a level's doodad_share of the spots
+## along it (LevelConfig.doodad_spot_seconds apart) get one where it's fair lane by lane (task L6: its own lane
+## and the lanes beside it clear around it, nothing kept in every lane near it: doodad_keep_outs,
+## doodad_lane_busy), in an inner lane or by a side wall that's open there (task L3: wall_lane_keep_outs), now
+## and then the first of a row of its kind (task L3): they add to what the patterns, the rules and the fill pass
+## put there (nothing moves or goes for them, and nothing comes after them to undo or crowd them), so a level
+## looks busier without needing a reaction or narrowing one.
 ##
 ## Floor cuts (task B4; GDD §9.9, the Buzz Overdrive's): floors that turn into gaps during play are
 ## planned in advance as data (LevelLayout.cuts; FloorCutPlan: lane, start, end, and when it runs,
@@ -177,6 +178,11 @@ const DOODAD_CREDIT_MARGIN: float = 1.0
 ## box faces of the two never lie in one plane (their pictures would flicker through each other), far too
 ## narrow for a body (MovementTuning.visual_size.z, 0.52 m) to stand in. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 1).
 const DOODAD_ROW_TOUCH: float = 0.05
+## The room a zone doodad keeps in the lanes beside it (task L6; metres), beyond a lane switch at run speed
+## (doodad_lane_room): a runner beside it switches into its lane right after it with this to spare, and one in its
+## lane out of it right before its push (FloorRoute keeps 1.5 m off a doodad's lane either side of it, 0.6 m off a
+## hole's edge, and a switch's length rounded up to its 0.5 m steps). DESIGN-TBD (docs/questions/l6.md 1).
+const DOODAD_LANE_MARGIN: float = 3.0
 ## A wall credit this close to a zone doodad by its wall (task L3), beyond the doodad's ends, is dropped (metres):
 ## nothing lures a wall run past one. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 3).
 const DOODAD_WALL_CREDIT_MARGIN: float = 3.0
@@ -1684,48 +1690,76 @@ func _trim_clear_stretches(span: Vector2) -> void:
 
 # --- Zone doodads (GDD §3, owner's playtest September 30, 2026) -----------------------------------
 
-## Puts the level's zone doodads (LevelConfig.doodad_share; LevelLayout.doodads) where nothing else
-## goes on, after the rules and the fill pass: they add to the level, and nothing after them can undo or
-## crowd them (only the credits come later, and keep out of them). A doodad never hurts: a player who
-## runs into its front is pushed into the neighbouring lane on its side (Player), and its sides block a
-## lane switch like a solid side. It's fair wherever it stands (LayoutChecks.check_doodads, at 3, 5 and 6
-## lanes):
-## - nothing else goes on in any lane from doodad_lead() before its front (so the push lands on clear
-##   floor, whichever lane it's in) until the level's spacing after its end (the player can cross its
-##   lane again before whatever comes next, as between two patterns): no piece, no enemy's stretch, no
-##   ramp's wall run, no pad's zone, no ceiling from its start to the end of its landing zone (the
-##   chase camera rides below a ceiling, lower than a doodad's top), no quiet stretch, nothing a
-##   rule keeps (doodad_keep_outs: the fill pass's keep-outs and the rules' own, a Bad Dream's chase);
-## - neither its lane nor the lane it pushes into is one a rule keeps for an enemy there (the rules'
-##   doodad_keep_outs with a lane: a hover truck's, for its whole stay); it pushes into a side with
-##   room, a seeded choice when both have it;
+## What the zone doodads keep off, worked out once a build (_place_doodads; task L6): what every lane keeps, and
+## what each lane holds.
+class DoodadRoom:
+	## The stretches of the track, in order, that nothing kept in every lane reaches (doodad_keep_outs): where a
+	## doodad, its push's lead and the room around it may lie.
+	var regions: Array[Vector2] = []
+	## The rules' calm stretches (an Enforcer Truck's showing window): no doodad nor its push's lead in one.
+	var calm: Array[Vector2] = []
+	## {lane, from, to}: a lane no doodad stands in or pushes into there (doodad_keep_outs: a hover truck's for its
+	## whole stay, a floor cut's over its lane window).
+	var keeps: Array[Dictionary] = []
+	## Per lane, an Array[Vector2] of what it holds (doodad_lane_busy).
+	var lanes: Array = []
+	## What each side wall keeps a doodad by it off ([left, right]: wall_lane_keep_outs).
+	var walls: Array = []
+
+
+## Puts the level's zone doodads (LevelConfig.doodad_share; LevelLayout.doodads) where they're fair lane by lane
+## (task L6, the owner's playtest, October 17, 2026: "the doodads are too rare ... they do not add much extra
+## difficulty, if any at all, so we shouldn't have a rule there for fairness' sake"), after the rules and the fill
+## pass: they add to the level, and nothing after them can undo or crowd them (only the credits come later, and
+## keep out of them). A doodad never hurts: a player who runs into its front is pushed into the neighbouring lane on
+## its side (Player; one who catches its front corner mid-switch, back the way they came), and its sides block a
+## lane switch like a solid side. What fairness needs of one (or of a row, as one from its first front to its last
+## end), at any lane count (LayoutChecks.check_doodads, at 3, 5 and 6 lanes), its push's lead before its front
+## (doodad_lead_for) and doodad_lane_room() (a lane switch at run speed with DOODAD_LANE_MARGIN to spare) around it:
+## - its own lane holds nothing from that room before its push to the level's spacing past its end (doodad_after:
+##   what it hides behind it from the chase camera, which a runner the dash brings through it sees only at the
+##   smash, comes no sooner than between two patterns), another doodad included;
+## - the lanes beside it hold nothing (no hole, fence, pad, speed pad, ramp or the wall run it launches, floor cut,
+##   floor enemy: doodad_lane_busy) from that room before its push to that room past its end, and the lane it
+##   pushes into until its landing's reaction (doodad_landing): the push lands on clear floor (a caught corner's
+##   too), a runner beside it never has to dodge into its lane, and a runner further out keeps a free lane on their
+##   side of it, so it never takes away the only way past a row of holes or fences. Lanes further out may hold
+##   anything (task L6: a hole in a far lane);
+## - nothing the rules keep in every lane reaches it (doodad_keep_outs: an enemy's attack as the fill pass keeps
+##   it, which the enemies' own checks hold back while a doodad stands anywhere along it, a floor cut's window, a
+##   ceiling to the end of its landing zone, a pad's zone, a quiet stretch, a dash wall's footprint, a wider gap's
+##   zone, a wall-run gap's clear stretch, a treasure stash's floor, a Bad Dream's chase, a Gilded Sentinel's
+##   strike), from its push's lead before its front to that room past its end (doodad_reach); nor does a calm
+##   stretch reach it or its push's lead (an Enforcer Truck's showing window);
+## - neither its lane nor the lane it pushes into is one a rule keeps (doodad_keep_outs' lane keeps: a hover
+##   truck's for its whole stay, a floor cut's lane over its lane window); it pushes into a side with room, a
+##   seeded choice when both have it;
 ## - in an inner lane, or in an outermost one by an open side wall (task L3, the owner, October 9, 2026:
 ##   "doodads prefer the lane next to the side wall when it's open, without costing gameplay"; with
 ##   LevelConfig.doodad_wall_lane_share of them where one may): nothing stands on that wall beside it or the
 ##   level needs it open there (wall_lane_keep_outs: no sign, wall enemy or ramp's longest wall run, no
 ##   wall-run gap's lit wall, doodad_wall_clear_seconds of wall clear around each; no dash wall's wall route, no
 ##   wall fence whose drop-off lands by it, no wall gap beside it or dropping a wall runner onto it, not where
-##   the level brings in wall fences), and the
-##   wall fences and side wall gaps placed after keep off it too (WallFencePlacement, WallGapPlacement). Such a doodad
-##   pushes inward; a runner on that wall low enough to meet it breaks it as they reach it instead
-##   (Player._check_wall_doodads), so the wall stays theirs;
-## - one at a time: doodad_gap_seconds from one's end to the next one's front, so a few in a row never
-##   make a slalom; a row (below) counts as one, from its last one's end;
+##   the level brings in wall fences), and the wall fences and side wall gaps placed after keep off it too
+##   (WallFencePlacement, WallGapPlacement). Such a doodad pushes inward; a runner on that wall low enough to meet
+##   it breaks it as they reach it instead (Player._check_wall_doodads), so the wall stays theirs;
+## - doodad_gap_seconds from one's end (a row's last one's) to the next one's front: the next clears the last
+##   one's push; and closer than the level's spacing they stand two lanes apart at least (never in the lane beside,
+##   where its push lands: no slalom; nor in its lane, which it hides);
 ## - where the danger density pass ran, never in the only lane its pieces leave a player to come to it
-##   in (DangerDensity.doodad_ok: a doodad is neither jumped nor stood beside in its lane); with the
-##   level's danger_density_increase 0 there's no such check and the doodads are as before.
-## Each stretch with room for one gets one with the level's doodad_share, at a seeded spot in it, and
-## the next spot in a long stretch another with the same chance; a size class (doodad_*_weight) that
-## fits. With LevelConfig.doodad_row_chance it's the first of a row (task L3, the owner, October 17, 2026:
-## "occasionally ... rows of similar doodads"; _row_shape): doodad_row_min to doodad_row_max of them, of its
-## size class and look, in its lane, pushing to its side, one right after the other (DOODAD_ROW_TOUCH apart)
-## or with a doodad's length between each two (by size class, LevelConfig.doodad_row_spaced: small ones touch,
-## medium and large ones stand apart), the whole row kept by every rule above as one doodad from its first front
-## to its last end (LevelLayout.doodad_extent), as long as fits there (never shorter than doodad_row_min). Its own
-## random stream (rng_for("doodads")), and the rows' and the wall lane's another
-## (rng_for("doodad_rows")): with doodad_share 0 nothing is drawn and the level is built exactly as before,
-## and with doodad_row_chance and doodad_wall_lane_share 0 the doodads are exactly as before task L3.
-## DESIGN-TBD (docs/questions/g5.md 1 and 4; items 942-947 in docs/OPEN_QUESTIONS*.md): where doodads stand, how many, the rows.
+##   in (DangerDensity.doodad_ok: a doodad is neither jumped nor stood beside in its lane).
+## The level's doodads are drawn spot by spot (LevelConfig.doodad_spot_seconds apart, from doodad_start): each spot
+## with room for one gets one with the level's doodad_share, its front at a seeded place in the spot, in a size class
+## (doodad_*_weight) that fits there. With LevelConfig.doodad_row_chance it's the first of a row (task L3, the owner,
+## October 17, 2026: "occasionally ... rows of similar doodads"; _row_shape): doodad_row_min to doodad_row_max of
+## them (task L6: from two), of its size class and look, in its lane, pushing to its side, one right after the other
+## (DOODAD_ROW_TOUCH apart) or with a doodad's length between each two (by size class, LevelConfig.doodad_row_spaced:
+## small ones touch, medium and large ones stand apart), the whole row kept by every rule above as one doodad from
+## its first front to its last end (LevelLayout.doodad_extent), as long as fits there (never shorter than
+## doodad_row_min). Its own random stream (rng_for("doodads")), and the rows' and the wall lane's another
+## (rng_for("doodad_rows")): with doodad_share 0 nothing is drawn and the level is built exactly as before.
+## DESIGN-TBD (docs/questions/g5.md 1 and 4; items 942-947 in docs/OPEN_QUESTIONS*.md; docs/questions/l6.md): where
+## doodads stand, how many, the rows.
 func _place_doodads(patterns: Array) -> void:
 	if config.doodad_share <= 0.0 or layout.lane_count < 3:
 		return
@@ -1737,49 +1771,61 @@ func _place_doodads(patterns: Array) -> void:
 	if smallest == INF:
 		return
 	var rng: RandomNumberGenerator = rng_for("doodads")
-	# Task L3: the rows and the lane by a side wall draw from a stream of their own, so with doodad_row_chance and
-	# doodad_wall_lane_share 0 the doodads draw exactly as before.
+	# Task L3: the rows and the lane by a side wall draw from a stream of their own.
 	var row_rng: RandomNumberGenerator = rng_for("doodad_rows")
-	var lane_keeps: Array[Dictionary] = []
-	var calm: Array[Vector2] = []
-	var busy: Array[Vector2] = doodad_keep_outs(patterns, lane_keeps, calm)
+	var room := DoodadRoom.new()
+	room.regions = free_stretches(doodad_keep_outs(patterns, room.keeps, room.calm), 0.0, layout.length)
+	room.lanes = doodad_lane_busy()
 	# What each side wall keeps a doodad by it off ([left, right]), worked out once: nothing the doodads add changes it.
 	var no_keeps: Array[Vector2] = []
-	var walls: Array = [no_keeps, no_keeps]
+	room.walls = [no_keeps, no_keeps]
 	if config.doodad_wall_lane_share > 0.0:
-		walls = [wall_lane_keep_outs(-1), wall_lane_keep_outs(1)]
+		room.walls = [wall_lane_keep_outs(-1), wall_lane_keep_outs(1)]
 	var lead: float = doodad_lead_for(tuning)
+	var spot: float = maxf(config.doodad_spot_seconds * speed, 1.0)
 	var gap: float = config.doodad_gap_seconds * speed
 	var from: float = maxf(config.start_clear_distance, config.doodad_start * layout.length)
 	var to: float = layout.length - config.end_clear_distance
 	var last_end: float = -INF
-	for region: Vector2 in free_stretches(busy, from, to):
-		var cursor: float = maxf(region.x + lead, last_end + gap)
-		while true:
-			# The spacing after it, taken where it may start: no less than at its end, as the
-			# difficulty only rises along a level.
-			var room: float = region.y - doodad_after(cursor) - cursor
-			if room < smallest or rng.randf() >= config.doodad_share:
-				break
-			var size: StringName = _pick_doodad_size(rng, weights, room)
-			var length: float = tuning.doodad_size(size).z
-			# A row (task L3): how many, and from one's front to the next one's; Vector2(1, 0) for one doodad.
-			var row: Vector2 = _row_shape(row_rng, size, length, room)
-			var extent: float = (row.x - 1.0) * row.y + length
-			var start: float = cursor + rng.randf() * (room - extent)
-			# A calm stretch (an Enforcer Truck's showing window, task C6c) takes no doodad, nor its push's lead; it
-			# shapes no stretch here, so elsewhere the doodads draw as they would without it.
-			if _hits_any(calm, start - lead, start + extent):
-				break
-			var placed: Array[Dictionary] = _add_doodads(rng, row_rng, size, start, int(row.x), row.y, lane_keeps,
-				walls)
-			# A row with no lane to stand in along its whole stretch gives way to one doodad where it would start.
-			if placed.is_empty() and row.x > 1.0:
-				placed = _add_doodads(rng, row_rng, size, start, 1, 0.0, lane_keeps, walls)
-			if placed.is_empty():
-				break
+	var r: int = 0
+	var a: float = from
+	while a < to:
+		var b: float = minf(a + spot, to)
+		var lo: float = maxf(a, last_end + gap)
+		a += spot
+		# Where this spot's doodad may have its front: in the first stretch every lane leaves free that holds the
+		# smallest one with its push's lead before it and its reach past its front (doodad_reach), from `lo` on.
+		var window := Vector2(INF, -INF)
+		while r < room.regions.size():
+			var region: Vector2 = room.regions[r]
+			var first: float = region.x + lead
+			var latest: float = minf(region.y - doodad_reach(smallest), to - smallest)
+			if latest < lo or latest < first:
+				# No front here from this spot on, nor for any later spot: the next stretch.
+				r += 1
+				continue
+			if first < b:
+				window = Vector2(maxf(lo, first), minf(b, latest))
+			break
+		if window.y < window.x or rng.randf() >= config.doodad_share:
+			continue
+		var start: float = window.x + rng.randf() * (window.y - window.x)
+		# The longest a doodad (or a row) from `start` may be: what every lane keeps stays clear of its reach.
+		var fits: float = minf(room.regions[r].y - start - doodad_lane_room(), to - start)
+		var size: StringName = _pick_doodad_size(rng, weights, fits)
+		var length: float = tuning.doodad_size(size).z
+		# A row (task L3): how many, and from one's front to the next one's; Vector2(1, 0) for one doodad.
+		var row: Vector2 = _row_shape(row_rng, size, length, fits)
+		var extent: float = (row.x - 1.0) * row.y + length
+		# A calm stretch (an Enforcer Truck's showing window, task C6c) takes no doodad, nor its push's lead.
+		if _hits_any(room.calm, start - lead, start + extent):
+			continue
+		var placed: Array[Dictionary] = _add_doodads(rng, row_rng, size, start, int(row.x), row.y, room)
+		# A row with no lane to stand in along its whole stretch gives way to one doodad where it would start.
+		if placed.is_empty() and row.x > 1.0:
+			placed = _add_doodads(rng, row_rng, size, start, 1, 0.0, room)
+		if not placed.is_empty():
 			last_end = float(placed[-1]["end"])
-			cursor = last_end + gap
 
 
 ## A doodad's size class, drawn by `weights` (LevelConfig.doodad_*_weight, smallest first) among the
@@ -1824,52 +1870,39 @@ func _row_shape(row_rng: RandomNumberGenerator, size: StringName, length: float,
 
 
 ## Adds `count` doodads of `size` (one, or a row: task L3), the first from `start`, each `step` metres on from the
-## one before, in one lane, pushing to one side, off every lane `lane_keeps` keeps (doodad_keep_outs) along the whole
-## row (from the first one's push's lead to the spacing past the last one's end): an inner lane (a seeded pick among
-## those it fits in) pushing into a side with room (seeded when both have it), or, with
-## LevelConfig.doodad_wall_lane_share (`row_rng`), the outermost lane by an open side wall (`walls`: each wall's
-## wall_lane_keep_outs, [left, right]; a seeded one when both are open; the only choice when no inner lane fits),
-## pushing inward. Returns the entries in order, or [] (adding nothing) when no lane fits, or when the row's push's
-## lead would reach a wider gap's landing margin (task G7, WideGapPlacement.doodad_keep_outs: a doodad keeps the
-## level's spacing before a piece already). Left out there rather than kept off in doodad_keep_outs, so the
-## doodads stand where they would without the wider gaps' margins, and City 1's extra gaps after them too.
+## one before, in one lane, pushing to one side, where `room` (_place_doodads) says the whole row fits lane by lane
+## (_doodad_lane_fits, _doodad_push_fits): an inner lane (a seeded pick among those it fits in) pushing into a side
+## with room (seeded when both have it), or, with LevelConfig.doodad_wall_lane_share (`row_rng`), the outermost lane
+## by an open side wall (room.walls: each wall's wall_lane_keep_outs; a seeded one when both are open; the only choice
+## when no inner lane fits), pushing inward. Returns the entries in order, or [] (adding nothing) when no lane fits.
 ## Each doodad's seed counts the zone doodads before it; a row's share its first one's as their look (`look`), and
 ## its stretch (`row`: LevelLayout.doodad_extent).
 func _add_doodads(rng: RandomNumberGenerator, row_rng: RandomNumberGenerator, size: StringName, start: float,
-		count: int, step: float, lane_keeps: Array[Dictionary], walls: Array) -> Array[Dictionary]:
+		count: int, step: float, room: DoodadRoom) -> Array[Dictionary]:
 	var none: Array[Dictionary] = []
 	var length: float = tuning.doodad_size(size).z
 	var end: float = start + (count - 1) * step + length
-	var span := Vector2(start - doodad_lead_for(tuning), end + doodad_after(end))
-	for k: Vector2 in WideGapPlacement.doodad_keep_outs(self):
-		if k.x < span.y and k.y > span.x:
-			return none
 	var lanes: Array[int] = []
 	var sides: Array[Array] = []
 	for lane: int in range(1, layout.lane_count - 1):
-		if _lane_kept(lane_keeps, lane, span):
+		if not _doodad_lane_fits(room, lane, start, end):
 			continue
-		if danger_density_plan != null and not DangerDensity.doodad_ok(self, lane, start, end):
-			continue
-		var room: Array[int] = []
+		var room_sides: Array[int] = []
 		for side: int in [-1, 1]:
-			if not _lane_kept(lane_keeps, lane + side, span):
-				room.append(side)
-		if not room.is_empty():
+			if _doodad_push_fits(room, lane, side, start, end):
+				room_sides.append(side)
+		if not room_sides.is_empty():
 			lanes.append(lane)
-			sides.append(room)
+			sides.append(room_sides)
 	# Task L3: the outermost lanes by an open side wall, pushing inward.
 	var open: Array[int] = []
 	if config.doodad_wall_lane_share > 0.0:
 		for wall: int in [-1, 1]:
 			var lane: int = layout.outer_lane(wall)
-			if _lane_kept(lane_keeps, lane, span) or _lane_kept(lane_keeps, lane - wall, span):
+			if _hits_any(room.walls[0 if wall < 0 else 1], start, end):
 				continue
-			if danger_density_plan != null and not DangerDensity.doodad_ok(self, lane, start, end):
-				continue
-			if _hits_any(walls[0 if wall < 0 else 1], start, end):
-				continue
-			open.append(wall)
+			if _doodad_lane_fits(room, lane, start, end) and _doodad_push_fits(room, lane, -wall, start, end):
+				open.append(wall)
 	var lane_at: int = -1
 	var push: int = 0
 	if not open.is_empty() and (lanes.is_empty() or row_rng.randf() < config.doodad_wall_lane_share):
@@ -1900,6 +1933,47 @@ func _add_doodads(rng: RandomNumberGenerator, row_rng: RandomNumberGenerator, si
 	return out
 
 
+## True if a doodad (or a row) from `start` to `end` may stand in `lane` whichever way it pushes (task L6;
+## _place_doodads' rules, `room` its keep-outs): its own lane holds nothing from doodad_lane_room() before its push
+## to the level's spacing past its end (doodad_after: what it hides), no other doodad either, nor is it one a rule
+## keeps; the lanes beside it hold nothing from that room before its push to that room past its end; no doodad that
+## ends closer than the level's spacing before it stands in its lane or a lane beside it (no slalom); and, where the
+## danger density pass ran, it keeps the ground route that pass's pieces left (DangerDensity.doodad_ok).
+func _doodad_lane_fits(room: DoodadRoom, lane: int, start: float, end: float) -> bool:
+	var lead: float = doodad_lead_for(tuning)
+	var from: float = start - lead - doodad_lane_room()
+	var hidden: float = end + doodad_after(end)
+	if _hits_any(room.lanes[lane], from, hidden) or _lane_kept(room.keeps, lane, Vector2(start - lead, hidden)):
+		return false
+	var beside: float = end + doodad_lane_room()
+	for other: int in [lane - 1, lane + 1]:
+		if other >= 0 and other < layout.lane_count and _hits_any(room.lanes[other], from, beside):
+			return false
+	for d: Dictionary in layout.doodads:
+		# A treasure stash's doodads stand under its ceiling, which every doodad keeps off in every lane.
+		if d.has("stash") or absi(int(d["lane"]) - lane) > 1:
+			continue
+		var span: Vector2 = LevelLayout.doodad_extent(d)
+		if (span.y <= start and start - span.y < doodad_after(span.y)) \
+				or (span.x >= end and span.x - end < doodad_after(end)) or (span.x < end and span.y > start):
+			return false
+	return danger_density_plan == null or DangerDensity.doodad_ok(self, lane, start, end)
+
+
+## True if a doodad (or a row) from `start` to `end` in `lane` may push into the lane on `side` (task L6): a lane of
+## the track that holds nothing from doodad_lane_room() before its push to that room past its end and its landing's
+## reaction (doodad_landing), and that no rule keeps there (a hover truck's, a floor cut's).
+func _doodad_push_fits(room: DoodadRoom, lane: int, side: int, start: float, end: float) -> bool:
+	var into: int = lane + side
+	if into < 0 or into >= layout.lane_count:
+		return false
+	var lead: float = doodad_lead_for(tuning)
+	var landed: float = maxf(end + doodad_lane_room(), doodad_landing(start))
+	if _hits_any(room.lanes[into], start - lead - doodad_lane_room(), landed):
+		return false
+	return not _lane_kept(room.keeps, into, Vector2(start - lead, landed))
+
+
 ## True if one of `lane_keeps` ({lane, from, to}) keeps `lane` anywhere in `span`.
 static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) -> bool:
 	for k: Dictionary in lane_keeps:
@@ -1908,27 +1982,43 @@ static func _lane_kept(lane_keeps: Array[Dictionary], lane: int, span: Vector2) 
 	return false
 
 
-## What doodads keep off, in every lane: the fill pass's keep-outs as they stand (fill_keep_outs,
-## without its margins: every piece, the fillers' too, each ramp's wall run, each pad's zone, every
-## enemy's stretch or what its rules keep, a level's quiet stretches), every ceiling whole from its
-## start to the end of its landing zone (the chase camera rides below a ceiling, lower than a doodad's
-## top), and what the rules keep from doodads in every lane: `static func doodad_keep_outs(gen:
-## LevelGenerator) -> Array[Dictionary]` on a feature's rules script, entries {from, to} (a Bad
-## Dream's chase). Entries that also name a lane ({lane, from, to}: a hover truck's, for its whole
-## stay) go into `lane_keeps`: no doodad stands in that lane there, nor pushes into it. A floor cut's
-## lane is kept that way over its lane window (FloorCutPlan.lane_window), so a push never lands the
-## player in a cut (and its whole window is a fill keep-out, in every lane, already). The rules' calm
-## stretches ({from, to, calm: true}: an Enforcer Truck's showing window, task C6c) go into `calm`
-## instead: no doodad nor its push's lead stands in one, but they shape no stretch (_place_doodads).
-func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = [], calm: Array[Vector2] = []) -> Array[Vector2]:
+## What zone doodads keep off in every lane (task L6: what the enemies' and the level's own rules keep there; the
+## rest they keep lane by lane, doodad_lane_busy), as stretches of the track: every enemy's stretch as the fill pass
+## keeps it (_enemy_keep_out: its attack as the runner closes in, which its own fairness checks hold back while a
+## doodad stands anywhere along it, CyborgGun.path_clear, Octodog.window_clear, Resonator.pulse_clear, the drone's
+## barrage, the hover truck's cannon; or what its rules keep for it: a drone wave until its first pad, a hover
+## truck's shortest stay, a Resonator's visit, a Gilded Sentinel's window), every floor cut's window
+## (FloorCutPlan.window: GDD §9.9, nothing else goes on meanwhile), every dash wall's footprint (DashWallRules
+## .footprint), every ceiling from its start to the end of its landing zone (the chase camera rides below a
+## ceiling, lower than a doodad's top) and every pad's zone, the level's quiet stretches, each wider gap's zone
+## (WideGapPlacement.keep_outs: from its take-off margin to its landing margin, the only demand there), and what
+## the rules keep from doodads in every lane: `static func doodad_keep_outs(gen: LevelGenerator) ->
+## Array[Dictionary]` on a feature's rules script, entries {from, to} (a Bad Dream's chase, a Gilded Sentinel's
+## strike, a dash wall's footprint, a wall-run gap's clear stretch, a treasure stash's floor). Entries that also
+## name a lane ({lane, from, to}: a hover truck's, for its whole stay) go into `lane_keeps`, with each floor cut's
+## lane over its lane window (FloorCutPlan.lane_window): no doodad stands in that lane there, nor pushes into it.
+## The rules' calm stretches ({from, to, calm: true}: an Enforcer Truck's showing window, task C6c) go into `calm`
+## instead: no doodad nor its push's lead stands in one, but they keep no room around them.
+func doodad_keep_outs(_patterns: Array = [], lane_keeps: Array[Dictionary] = [], calm: Array[Vector2] = []) \
+		-> Array[Vector2]:
 	var out: Array[Vector2] = []
-	for k: Vector4 in fill_keep_outs(patterns, false)["keep"]:
-		out.append(Vector2(k.x, k.y))
-	for h: Dictionary in layout.hulls:
-		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
+	var hooks: Dictionary = {}
+	for e: Dictionary in layout.enemies:
+		var k: Vector2 = _enemy_keep_out(e, hooks)
+		if k.y >= k.x:
+			out.append(k)
 	for c: Dictionary in layout.cuts:
+		out.append(FloorCutPlan.window(c, speed))
 		var span: Vector2 = FloorCutPlan.lane_window(c)
 		lane_keeps.append({"lane": int(c["lane"]), "from": span.x, "to": span.y})
+	for dw: Dictionary in layout.dash_walls:
+		out.append(DashWallRules.footprint(self, dw))
+	for h: Dictionary in layout.hulls:
+		out.append(Vector2(float(h["start"]), zones.landing_zone(h).y))
+	for p: Dictionary in layout.pads:
+		out.append(zones.pad_zone(float(p["at"])))
+	out.append_array(quiet_stretches())
+	out.append_array(WideGapPlacement.keep_outs(self))
 	for k: Dictionary in rules_doodad_keep_outs():
 		if k.has("lane"):
 			lane_keeps.append(k)
@@ -1937,6 +2027,67 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = [], calm:
 		else:
 			out.append(Vector2(float(k["from"]), float(k["to"])))
 	return out
+
+
+## What each lane holds that a zone doodad keeps off in that lane (task L6; _place_doodads), one Array[Vector2] of
+## stretches a lane, in lane order: its holes and fences, its speed pads and anti-grav pads, a ramp in the outermost
+## lane on its side from its foot to where the wall run it launches drops the runner back (RampLaunch), a floor
+## cut's lane window (FloorCutPlan.lane_window), and the floor its enemies use (enemy_floor_span: a floor enemy's in
+## its lane, a wall enemy's that uses the floor in the outermost lane by its wall).
+func doodad_lane_busy() -> Array:
+	var out: Array = []
+	for lane: int in layout.lane_count:
+		var spans: Array[Vector2] = []
+		out.append(spans)
+	var add := func(lane: int, span: Vector2) -> void:
+		if lane >= 0 and lane < layout.lane_count and span.y >= span.x:
+			var spans: Array[Vector2] = out[lane]
+			spans.append(span)
+	var half: float = tuning.fence_depth * 0.5
+	for g: Dictionary in layout.gaps:
+		add.call(int(g["lane"]), Vector2(float(g["start"]), float(g["end"])))
+	for f: Dictionary in layout.fences:
+		add.call(int(f["lane"]), Vector2(float(f["at"]) - half, float(f["at"]) + half))
+	for p: Dictionary in layout.speed_pads:
+		add.call(int(p["lane"]), Vector2(float(p["at"]), float(p["at"]) + tuning.speed_pad_length))
+	for p: Dictionary in layout.pads:
+		add.call(int(p["lane"]), Vector2(float(p["at"]), float(p["at"]) + tuning.pad_length))
+	for r: Dictionary in layout.ramps:
+		add.call(layout.outer_lane(int(r["side"])), Vector2(float(r["at"]),
+			maxf(ramp_launch(r).end(), float(r["at"]) + tuning.ramp_length)))
+	for c: Dictionary in layout.cuts:
+		add.call(int(c["lane"]), FloorCutPlan.lane_window(c))
+	for e: Dictionary in layout.enemies:
+		if not enemy_uses_floor(e):
+			continue
+		var lane: int = int(e.get("lane", -1))
+		if (lane < 0 or lane >= layout.lane_count) and int(e.get("side", 0)) != 0:
+			lane = layout.outer_lane(int(e["side"]))
+		add.call(lane, enemy_floor_span(e, pace))
+	return out
+
+
+## The room a zone doodad keeps in the lanes beside it before its push's lead and past its end, and in its own
+## lane before its push's lead (metres, at run speed; task L6): a lane switch (MovementTuning.lane_switch_time) and
+## DOODAD_LANE_MARGIN, so a runner beside it can switch into its lane right after it, or a runner in its lane out of
+## it right before its push, with clear floor on both lanes.
+func doodad_lane_room() -> float:
+	return tuning.lane_switch_time * speed + DOODAD_LANE_MARGIN
+
+
+## Where the reaction ends that a runner a zone doodad with its front at `start` pushes gets after landing in the lane
+## beside it (task L6): the push (MovementTuning.doodad_push_time) and LevelConfig.doodad_reaction_seconds past its
+## front, at run speed. That lane stays clear until then (_doodad_push_fits).
+func doodad_landing(start: float) -> float:
+	return start + (tuning.doodad_push_time + config.doodad_reaction_seconds) * speed
+
+
+## How far past its front a zone doodad (or a row) `extent` metres long keeps what the rules keep in every lane off
+## (task L6; doodad_keep_outs): doodad_lane_room() past its end, so a runner beside it can switch into its lane before
+## any of it; an attack beginning there comes with its own warning, and the enemies' own checks hold it back while
+## the doodad is in its reach.
+func doodad_reach(extent: float) -> float:
+	return extent + doodad_lane_room()
 
 
 ## Where a zone doodad by side wall `side` (in its outermost lane; task L3, the owner, October 9, 2026: "doodads
@@ -1954,10 +2105,11 @@ func doodad_keep_outs(patterns: Array, lane_keeps: Array[Dictionary] = [], calm:
 ## WallFenceTuning.intro_seconds past it with the drop windows there, on both walls (the introduction comes there,
 ## on either wall: WallFencePlacement._introduce); and, with no margin of its own, a dash wall's wall route on
 ## either wall (DashWallRules.wall_keep_outs: a runner on a side wall passes it; it lies in the wall's footprint,
-## which every doodad keeps its push's lead and the level's spacing from). The rest of the doodad's rules keep
-## every lane clear around it already (doodad_keep_outs), so no wall run is launched by it and none is needed
-## there: free entry from its lane only waits until it's past. A level's wall fences and side wall gaps come after
-## the doodads and keep off it in turn (WallFencePlacement.keep_outs, WallGapPlacement.keep_outs).
+## which every doodad keeps off in every lane, doodad_keep_outs). The rest of the doodad's rules keep its own lane
+## and the lane beside it clear around it (task L6: _doodad_lane_fits, _doodad_push_fits; no ramp in its lane, the
+## lane beside it free), so no wall run is launched by it and none is needed there: free entry from its lane only
+## waits until it's past. A level's wall fences and side wall gaps come after the doodads and keep off it in turn
+## (WallFencePlacement.keep_outs, WallGapPlacement.keep_outs).
 func wall_lane_keep_outs(side: int) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	var clear: float = config.doodad_wall_clear_seconds * speed
@@ -2055,14 +2207,16 @@ func wall_section_rules() -> Array[GDScript]:
 	return out
 
 
-## How far before a doodad's front nothing else goes on (_place_doodads): the stretch its push
-## crosses into the neighbouring lane, the doodad_push_time at the level's run speed (`t`'s).
+## How far before a doodad's front its push begins (_place_doodads): the stretch its push crosses into the
+## neighbouring lane, the doodad_push_time at the level's run speed (`t`'s).
 static func doodad_lead_for(t: MovementTuning) -> float:
 	return t.doodad_push_time * t.run_speed
 
 
-## How far after a doodad that ends at `at` nothing else goes on (_place_doodads): the level's spacing
-## there, as between two patterns, so the player can cross its lane again before what comes next.
+## The level's spacing between two patterns at `at` (metres, at run speed). After a doodad that ends at `at`
+## its own lane holds nothing for this long (_place_doodads, task L6: what it hides behind it comes no sooner than
+## between two patterns), and the next doodad that close stands two lanes away at least. The danger density pass
+## and a treasure stash take their spacing from it too.
 func doodad_after(at: float) -> float:
 	return _spacing_seconds(at, difficulty_at(clampf(at / layout.length, 0.0, 1.0))) * speed
 

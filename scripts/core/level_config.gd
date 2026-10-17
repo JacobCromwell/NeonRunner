@@ -295,12 +295,16 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## Zone doodads (GDD §3, owner's playtest September 30, 2026: "levels felt barren"): scenery pieces
 ## standing in lanes that never hurt; running into one pushes the player into a neighbouring lane.
 ## They take a lane rather than needing a reaction, so they make a level look busier without
-## tightening its reaction windows. The generator puts them only where nothing else goes on
-## (LevelGenerator: doodads): this is the chance that each stretch with room for one gets one (and
-## the next spot in a long stretch, doodad_gap_seconds on, another). 0: none, and the level is built
-## exactly as before (quick play, the tests, boss arenas). DESIGN-TBD (docs/questions/g5.md): each
-## level's value.
+## tightening its reaction windows. The generator puts them where they're fair lane by lane (task L6,
+## the owner's playtest, October 17, 2026: "too rare"; LevelGenerator: doodads), a spot every
+## doodad_spot_seconds along the level: this is the chance that each spot with room for one gets one.
+## 0: none, and the level is built exactly as before (quick play, the tests, boss arenas).
+## DESIGN-TBD (docs/questions/g5.md, docs/questions/l6.md): each level's value.
 @export_range(0.0, 1.0, 0.05) var doodad_share: float = 0.0
+## How far apart the spots lie that may each get a zone doodad (or a row), at run speed (task L6): with
+## doodad_share, how often doodads come where the level has room for them, the doodad's front at a seeded
+## place in its spot. DESIGN-TBD (docs/questions/l6.md 2).
+@export_range(0.5, 10.0, 0.1, "suffix:s") var doodad_spot_seconds: float = 1.0
 ## Share of the level (0–1) from which doodads stand (City 1 introduces them a little way in).
 @export_range(0.0, 1.0, 0.05) var doodad_start: float = 0.0
 ## How often each size class is picked (LevelLayout.DOODAD_SIZES; MovementTuning has their sizes); 0
@@ -308,10 +312,16 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0.0, 1.0, 0.05) var doodad_small_weight: float = 1.0
 @export_range(0.0, 1.0, 0.05) var doodad_medium_weight: float = 1.0
 @export_range(0.0, 1.0, 0.05) var doodad_large_weight: float = 1.0
-## The least time between one doodad's end and the next one's front, at run speed, so a few in a row
-## never make a slalom. DESIGN-TBD. A row of doodads (doodad_row_chance) counts as one: from its last
-## one's end to the next doodad's front.
-@export_range(0.5, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 2.5
+## The least time between one doodad's end and the next one's front, at run speed: the next one clears the
+## last one's push (task L6; 2.5 s before it). Closer than the level's spacing between two patterns
+## (LevelGenerator.doodad_after) the next one stands two lanes away at least, never in the lane beside the last
+## one, where its push lands (no slalom), nor in its lane, which it hides behind it. A row of doodads
+## (doodad_row_chance) counts as one: from its last one's end to the next doodad's front. DESIGN-TBD
+## (docs/questions/l6.md 3).
+@export_range(0.2, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 0.6
+## The reaction a runner gets after a zone doodad's push lands them in the lane beside it (task L6): that lane
+## stays clear this long past the push, at run speed. DESIGN-TBD (docs/questions/l6.md 1).
+@export_range(0.1, 2.0, 0.05, "suffix:s") var doodad_reaction_seconds: float = 0.5
 ## Doodads in rows (the owner, October 17, 2026, task L3: "occasionally ... rows of similar doodads: three plant
 ## doodads one right after the other, or three market stalls, one followed by a space ..."): the chance that a
 ## doodad is the first of a row, the rest of the same size class and look, in its lane, pushing to its side, all
@@ -319,9 +329,10 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## shorter, down to doodad_row_min, else one doodad (so rows come where a level leaves long stretches free). 0: no
 ## rows, and the doodads are exactly as before. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 1).
 @export_range(0.0, 1.0, 0.05) var doodad_row_chance: float = 0.5
-## How many doodads a row has (each count as likely; the owner's examples are three long). DESIGN-TBD
-## (items 942-947 in docs/OPEN_QUESTIONS*.md 1).
-@export_range(2, 4) var doodad_row_min: int = 3
+## How many doodads a row has (each count as likely; the owner's examples are three long, and task L6, the owner,
+## October 17, 2026: "could it be two in a row so it doesn't take up as much room?"). DESIGN-TBD (items 942-947 in
+## docs/OPEN_QUESTIONS*.md 1).
+@export_range(2, 4) var doodad_row_min: int = 2
 @export_range(2, 4) var doodad_row_max: int = 4
 ## Of the rows of small doodads, the share with a doodad's length of space between each two; the others stand one
 ## right after the other (LevelGenerator.DOODAD_ROW_TOUCH, a sliver apart). The owner's examples by size class:

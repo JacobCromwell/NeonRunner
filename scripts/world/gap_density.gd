@@ -66,9 +66,9 @@ static func apply(gen: LevelGenerator) -> Dictionary:
 			if gen.layout.gaps.size() >= lane_target:
 				break
 			var span := Vector2(row["start"], row["end"])
-			# A widening leaves the row where it stands, and every zone doodad already keeps its window
-			# clear of every row (LevelGenerator._place_doodads), so it keeps off the doodads' windows,
-			# with the margin only in a doodad's own lane, never left the open one (_available's
+			# A widening leaves the row where it stands: a row a zone doodad's window reaches (task L6: a doodad
+			# may stand beside a row in a far lane, LevelGenerator._place_doodads) never widens, and one clear of
+			# every window keeps the margin only in a doodad's own lane, never left the open one (_available's
 			# doodads_exact). With the margin in every lane, a doodad decided which rows widen: the
 			# doodads moved a gap (City 1 at 5 lanes), when they only add to a level (FIX4).
 			# DESIGN-TBD (docs/questions/fix4.md): a row widened to full width (a jump, below) and a new
@@ -146,14 +146,15 @@ static func _protected(gen: LevelGenerator, with_doodads: bool = true) -> Array[
 	return out
 
 
-## Each zone doodad's window (only those standing in `lane`, if given): from its push's lead before it
-## to the level's spacing after it, which the doodads keep every piece out of, in every lane
-## (LevelGenerator._place_doodads).
+## Each zone doodad's window (only those standing in `lane`, if given): from the room its rules keep before its
+## push's lead (LevelGenerator.doodad_lane_room, task L6) to the level's spacing after it, all a doodad keeps clear in
+## its own lane and more than it keeps in the lanes beside it (LevelGenerator._place_doodads), kept here in every
+## lane.
 static func _doodad_windows(gen: LevelGenerator, lane: int = -1) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for d: Dictionary in gen.layout.doodads:
 		if lane < 0 or int(d["lane"]) == lane:
-			out.append(Vector2(float(d["start"]) - gen.doodad_lead_for(gen.tuning),
+			out.append(Vector2(float(d["start"]) - gen.doodad_lead_for(gen.tuning) - gen.doodad_lane_room(),
 				float(d["end"]) + gen.doodad_after(float(d["end"]))))
 	return out
 

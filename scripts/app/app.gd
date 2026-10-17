@@ -17,7 +17,7 @@ extends Node
 ##   --speed=25              quick play at another run speed (a zone's: 21 in the City to 25 in the
 ##                           Golden Zone, GDD §3); the level keeps its timing in seconds
 ##   --doodads=0.6           quick play with zone doodads (GDD §3; LevelConfig.doodad_share: the chance
-##                           each stretch with room for one gets one)
+##                           each spot along the level with room for one gets one, task L6)
 ##   --thief                 quick play with stand-in thieves, one after another: a gold block that
 ##                           crosses the lanes and robs a runner who touches it (GDD §9.12; StandInThief)
 ##   --level=city/2          a campaign level, with the full flow (also takes --lanes=N, --god,
