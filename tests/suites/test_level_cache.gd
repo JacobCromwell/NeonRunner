@@ -50,8 +50,9 @@ const DASH_LEAD: float = 8.0
 const SMASH_LANES: int = 3
 ## The levels _test_smashed_stand_again may play: the first whose own build at SMASH_LANES has a lone doodad in the
 ## runner's starting lane well before its first dash wall (_smash_targets). Which one has moves with the generator
-## (task L3 put Golden 1's by a side wall), so the next stand in.
-const SMASH_LEVELS: Array[String] = ["golden/1", "corporate/2", "golden/2"]
+## (task L3 put Golden 1's by a side wall; task L6's doodads, placed lane by lane, left none of the first three one),
+## so the next stand in.
+const SMASH_LEVELS: Array[String] = ["golden/1", "corporate/2", "golden/2", "dead_zone/1", "golden/3"]
 
 var main: Node
 
