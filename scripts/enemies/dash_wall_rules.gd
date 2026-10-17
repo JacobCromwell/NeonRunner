@@ -840,7 +840,11 @@ static func _place(gen: LevelGenerator, plan: Plan, face: float, faces: Array[fl
 	_keep(lay.gaps, func(g: Dictionary) -> bool: return not (float(g["start"]) <= fp.y and float(g["end"]) >= fp.x))
 	_keep(lay.fences, func(f: Dictionary) -> bool:
 		return not (float(f["at"]) - half <= fp.y and float(f["at"]) + half >= fp.x))
-	var window := Vector2(face - plan.route, face + plan.depth)
+	# With the slack Plan.mark_faces gives a grid face, so a sign that only touches the window (its end exactly the wall
+	# route's length before the face) counts here as it counted when the plan closed that side (task L3's sweep found
+	# one: a wall standing where both routes stayed closed, its signs never taken out).
+	var slack: float = plan.step * 0.0001
+	var window := Vector2(face - plan.route - slack, face + plan.depth + slack)
 	var closed: Array[int] = []
 	for side: int in [-1, 1]:
 		var n: int = 0
