@@ -169,7 +169,7 @@ zone's floor pieces. It sets up in about 15-40 ms and costs about 0.3 ms a frame
 cheap on the web, where the demo plays the City's two.
 
 **The City's intro** (`CityIntro`, task F2g; the owner's beats, October 16, 2026, GDD §6 Cinematics, "Zone 1 intro"; what they
-leave open is DESIGN-TBD, `docs/questions/f2g.md`; numbers in `data/cinematics/city_intro_tuning.tres`): the game's first
+leave open is DESIGN-TBD, `docs/OPEN_QUESTIONS_DEFERRED.md` items 897–908; numbers in `data/cinematics/city_intro_tuning.tres`): the game's first
 cinematic, 21.7 s (20 s of story and the game's title), in the City's intro slot (the City's boss intro keeps the arrival flyover). **The set.** The stage is the
 City's own stretch of towers with *no floor* (every lane a gap, 8 lanes wide whatever the device's), so only the road far below
 shows, and the stage is lifted (`stage.position.y = road_depth`) so that road is y = 0: the runner and the cyborgs stand on the

@@ -582,7 +582,7 @@ the light (glass and cold-white sparks; Reduced flashing: fewer sparks, a slow g
 and hopping over two more, the light whipping back to catch them; the Head startled (a new `surprise` look on its face shader),
 angry and yelling, every cyborg's screen flickering at once and turning angry (once, with Reduced flashing), the cyborgs
 turning and chasing; the game's title, "NEON RUNNER", then Zone 1's title card, over the chase. Five new sounds
-(`tools/asset_gen/sfx_bank_city_intro.gd`), `test_city_intro`. The staging choices are in `docs/questions/f2g.md`; the
+(`tools/asset_gen/sfx_bank_city_intro.gd`), `test_city_intro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md` items 897–908; the
 owner's two later answers (the billboard, the game's title first) are built.
 
 ### H. The owner's requests (October 8, 2026)
