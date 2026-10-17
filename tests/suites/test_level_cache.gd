@@ -48,6 +48,10 @@ const DASH_LEAD: float = 8.0
 ## The smashed-and-retried attempts' lane count (_test_smashed_stand_again; with REVIEW_ARGS' no deaths and no
 ## falls).
 const SMASH_LANES: int = 3
+## The levels _test_smashed_stand_again may play: the first whose own build at SMASH_LANES has a lone doodad in the
+## runner's starting lane well before its first dash wall (_smash_targets). Which one has moves with the generator
+## (task L3 put Golden 1's by a side wall), so the next stand in.
+const SMASH_LEVELS: Array[String] = ["golden/1", "corporate/2", "golden/2"]
 
 var main: Node
 
@@ -70,7 +74,7 @@ func run() -> void:
 	await _test_retries_play_the_same("corporate/2", CORPORATE_2_LANES, 44.0, ["credits", "kills", "cuts"])
 	App._review_args = _review_args(5)
 	await _test_nothing_leaks("corporate/2")
-	await _test_smashed_stand_again("golden/1")
+	await _test_smashed_stand_again(SMASH_LEVELS)
 	await _test_builds_again()
 	await _test_endless()
 	App._review_args = saved_args
@@ -488,8 +492,9 @@ func _spoil(world: RunWorld) -> Dictionary:
 ## Tasks H5 and H7a meet PERF2 (the H merge): the dash smashes a zone doodad, and a dash wall breaks as the runner
 ## reaches it, each marked in the attempt's own copy of the layout ("smashed", a wall's "broken_by") and never built
 ## again in that attempt's world (TrackBuilder). A retry plays a fresh copy of the kept build in a world built anew, so
-## both stand again. At campaign level `id` (SMASH_LANES: a doodad stands in the runner's starting lane, well
-## before its first wall; god mode and no falls, every item, the dash at its top tier), each from PLAY:
+## both stand again. At the first campaign level of `ids` whose build has a lone doodad in the runner's starting lane
+## well before its first wall (SMASH_LANES, SMASH_LEVELS; god mode and no falls, every item, the dash at its top tier),
+## each from PLAY:
 ## - an attempt that never dashes, the cache off (a fresh build, as before PERF2), past the wall: pushed by the doodad,
 ##   crashing through the wall (god mode);
 ## - the first run with the cache: it dashes through the doodad and the wall (each smashed, the wall broken by the
@@ -501,17 +506,25 @@ func _spoil(world: RunWorld) -> Dictionary:
 ##   trace and events (the doodad's push, the wall's crash);
 ## - the results screen's retry (App.retry) reuses the build too, from its layout exactly, with both built whole as the
 ##   track is built ahead.
-func _test_smashed_stand_again(id: String) -> void:
+func _test_smashed_stand_again(ids: Array[String]) -> void:
 	var saved_args: PackedStringArray = App._review_args
 	App._review_args = _review_args(SMASH_LANES)
-	var step: CampaignStep = App.campaign.step(id)
-	# An attempt that never dashes, on a fresh build.
+	# An attempt that never dashes, on a fresh build: of the first level of `ids` with what it needs.
 	LevelCache.enabled = false
-	_restock()
-	App.start_level(step)
-	await tree.process_frame
-	var pick: Dictionary = _smash_targets(App.run.world)
-	check(not pick.is_empty(), "%s at %d lanes has a doodad in the runner's lane well before its first dash wall" % [id, SMASH_LANES])
+	var id: String = ""
+	var step: CampaignStep = null
+	var pick: Dictionary = {}
+	for each: String in ids:
+		id = each
+		step = App.campaign.step(id)
+		_restock()
+		App.start_level(step)
+		await tree.process_frame
+		pick = _smash_targets(App.run.world)
+		if not pick.is_empty():
+			break
+	check(not pick.is_empty(), "one of %s at %d lanes has a doodad in the runner's lane well before its first dash wall"
+		% [ids, SMASH_LANES])
 	if pick.is_empty():
 		LevelCache.enabled = true
 		App._review_args = saved_args
@@ -581,7 +594,8 @@ func _test_smashed_stand_again(id: String) -> void:
 
 ## The targets for _test_smashed_stand_again in `world`'s layout: the level's first dash wall, and the last zone doodad
 ## in the runner's starting lane from 20 m past the run-up's end to 120 m before the wall's face (the dash is back by
-## then), by their indices ({doodad, wall}); {} if there's none.
+## then), by their indices ({doodad, wall}); {} if there's none. A lone one, not one of a row (task L3), whose
+## others would meet the runner first or after.
 func _smash_targets(world: RunWorld) -> Dictionary:
 	var lay: LevelLayout = world.layout
 	if lay.dash_walls.is_empty():
@@ -590,8 +604,8 @@ func _smash_targets(world: RunWorld) -> Dictionary:
 	var best: int = -1
 	for i: int in lay.doodads.size():
 		var d: Dictionary = lay.doodads[i]
-		if int(d["lane"]) == world.player.lane and float(d["start"]) > world.config.start_clear_distance + 20.0 \
-				and float(d["end"]) < face - 120.0:
+		if int(d["lane"]) == world.player.lane and not d.has("row") \
+				and float(d["start"]) > world.config.start_clear_distance + 20.0 and float(d["end"]) < face - 120.0:
 			best = i
 	return {} if best < 0 else {"doodad": best, "wall": 0}
 

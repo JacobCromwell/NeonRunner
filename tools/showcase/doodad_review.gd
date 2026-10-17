@@ -20,6 +20,11 @@ extends Node3D
 ##     --hitboxes            show the doodads' bodies (the hitbox view)
 ##     --dash                the runner smashes them with the dash (above)
 ##     --reduced-flashing    with --dash: the Reduced flashing setting on
+##     --rows                rows of doodads instead (task L3): by the right side wall, three small ones one right
+##                           after the other, three medium ones a doodad's length apart and two large ones; in the
+##                           first lane, three small ones spaced; the runner runs past them in the middle lane
+##     --wall                with --rows: the runner steps onto the right wall before the rows by it and runs along
+##                           it low, breaking each doodad by the wall as they reach it (Player._check_wall_doodads)
 ## Each scripted action and movement event is printed with its time and distance, to find the frames
 ## (frame = time × render fps).
 
@@ -32,6 +37,8 @@ var camera: Camera3D
 var lanes: int = 3
 var close: bool = false
 var dash: bool = false
+var rows: bool = false
+var wall: bool = false
 var _pending: Array = []
 
 
@@ -53,6 +60,10 @@ func _ready() -> void:
 			dash = true
 		elif arg == "--reduced-flashing":
 			reduced_flashing = true
+		elif arg == "--rows":
+			rows = true
+		elif arg == "--wall":
+			wall = true
 	var skin: ZoneSkin = GreyboxSkin.new()
 	var skin_path: String = "res://data/skins/%s_skin.tres" % skin_id
 	if ResourceLoader.exists(skin_path):
@@ -64,7 +75,9 @@ func _ready() -> void:
 	layout.lane_count = lanes
 	var mid: int = lanes / 2
 	var at: float = 60.0
-	if dash:
+	if rows:
+		at = _plan_rows(layout, mid)
+	elif dash:
 		at = _plan_dash(layout, mid)
 	else:
 		# Head-on into a small one that pushes right, back to the middle, into a medium one that pushes
@@ -152,6 +165,41 @@ func _plan_dash(layout: LevelLayout, mid: int) -> float:
 	var short: Dictionary = _add(layout, mid, at, &"small", -1)
 	_pending.append([float(short["start"]) - dash_length - 4.0, &"dash"])
 	return float(short["end"]) + 30.0
+
+
+## The --rows plan (task L3): rows by the right side wall (three small ones one right after the other, three medium
+## ones a doodad's length apart, two large ones one right after the other) and, in the first lane (the left wall's
+## at three lanes), three small ones spaced; the runner keeps to the middle lane, or with --wall moves out to the
+## right wall's lane and steps onto the wall before each row by it, running past it low. Returns where the last ends.
+func _plan_rows(layout: LevelLayout, mid: int) -> float:
+	var outer: int = lanes - 1
+	var other: int = 1 if lanes > 3 else 0
+	_add_row(layout, outer, 70.0, &"small", -1, 3, false)
+	_add_row(layout, other, 90.0, &"small", 1 if other == 0 else -1, 3, true)
+	_add_row(layout, outer, 110.0, &"medium", -1, 3, true)
+	var last: Array[Dictionary] = _add_row(layout, outer, 160.0, &"large", -1, 2, false)
+	if wall:
+		for i: int in range(mid, outer):
+			_pending.append([40.0 + 6.0 * (i - mid), &"move_right"])
+		for at: float in [58.0, 98.0, 148.0]:
+			_pending.append([at, &"move_right"])
+	return float(last[-1]["end"]) + 30.0
+
+
+## A row of `count` doodads of `size` (task L3) in `lane` from `start`, pushing to `side`, a doodad's length apart
+## (`spaced`) or one right after the other, sharing their first one's look as the generator's do.
+func _add_row(layout: LevelLayout, lane: int, start: float, size: StringName, side: int, count: int,
+		spaced: bool) -> Array[Dictionary]:
+	var length: float = tuning.doodad_size(size).z
+	var step: float = length + (length if spaced else LevelGenerator.DOODAD_ROW_TOUCH)
+	var look: int = layout.doodads.size()
+	var out: Array[Dictionary] = []
+	for i: int in count:
+		var d := {"lane": lane, "start": start + i * step, "end": start + i * step + length, "size": size, "side": side,
+			"seed": layout.doodads.size(), "look": look, "row": [start, start + (count - 1) * step + length]}
+		layout.doodads.append(d)
+		out.append(d)
+	return out
 
 
 func _add(layout: LevelLayout, lane: int, start: float, size: StringName, side: int) -> Dictionary:

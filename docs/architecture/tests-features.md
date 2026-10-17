@@ -182,7 +182,24 @@ sides still blocking a dash); a LevelRun of City 2 (it stays smashed through a d
 retry builds the same level with it whole, pushing a runner who doesn't dash); every skin's pieces'
 colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes; and the
 fairness measure for a runner who dashes through (The generator, Zone doodads). `RunSim` takes a `&"dash"`
-action. The simulated runs of
+action. Task L3 added rows and the lane by a side wall: rows placed over quick play's level at 3, 5 and 6 lanes
+with every doodad the first of a row (three and four long, never two; small ones touching and medium and large ones
+spaced, every size class, inner lanes and by the walls, `check_row`; none with the chance at 0); the lane by a side
+wall in quick play's level with
+everything that stands on or by a wall (ramps, signs, window cyborgs, vents, hover trucks, wall fences, side wall
+gaps, wall-run gaps, dash walls), `check_wall_lane_doodad` and the wall fences' drop windows, the share drawing
+(none at 0, most at 1); the campaign's rows and doodads by a wall counted (rows now and then, never most of the
+doodads); a spaced row seen whole by the enemies' checks; the track dressing a row in its one look, 5 cm between
+two boxes one right after the other, one shared mesh in the Marketplace's cards; and on real physics a row pushing
+once and blocking a switch all along it (a runner switching into a space pushed back out), the dash along a row
+(every one it reaches smashed, the next pushing where it ends), a wall runner low on the wall breaking a doodad by
+it as they reach it and one a ramp launched passing over it standing (swept over free entries and ramps 3 to 35 m
+before it: never a push, never the body inside a standing one), a runner leaving the wall just before one (a wall
+jump or a move back toward the lanes 0.25 to 4 m before a lone one or a spaced row's next one, the wall run's own
+end from 5 m before one, at the base speed and 25 m/s: it breaks as the body reaches it, never a push back through
+it), a floor runner by a wall pushed inward and blocked
+from its side, and the campaign's first row and first doodad by a wall of every level run into, dashed into and
+met from the wall. `RunSim` reports `doodad_passes`. The simulated runs of
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
 back after a doodad's push (`AttackWatch.keep_lane`).
 `test_dash_walls` checks dash walls (task H7a; GDD §9.14): the layout data (no key without them, copy and
@@ -451,7 +468,8 @@ every campaign level with them (own seed and others, 3, 5 and 6 lanes) placing t
 1's introductions (first of their kind, alone, off long, within `intro_seconds` on the levels' own seeds and on
 most others, mostly where no enemy is about); Marketplace 2 at 18 and 25 m/s (the margins in seconds); every
 campaign level exactly the same without the features but for its wall fences (pattern picks, fillers and
-guarantee builds too), and the levels without them having none; quick play with them among every rule's pieces
+guarantee builds too; compared without wall gaps and without doodads by a side wall, which move with them, task
+L3), and the levels without them having none; quick play with them among every rule's pieces
 (`LayoutChecks.check_layout`); `wall_fence_problem` naming each rule; the hints; every skin's look; and a boss
 arena carrying them.
 `test_fireballs` checks the shared explosion (task H6; A run, Speed effects): the pool is bounded and reused

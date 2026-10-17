@@ -2101,7 +2101,7 @@ static func _routes_ok(plan: Plan, span: Vector2, lanes: Array[int], own: int, r
 
 
 ## True if a zone doodad from `start` to `end` in `lane` keeps the ground route the pass's pieces left
-## (LevelGenerator._add_doodad asks, with the obstacle half's plan kept for it, gen.danger_density_plan).
+## (LevelGenerator._add_doodads asks, with the obstacle half's plan kept for it, gen.danger_density_plan).
 ## Doodads come after the pass, where nothing else goes on in any lane, but a doodad is never jumped or
 ## stood beside in its lane: where the pass's pieces route the player into a lane (a full row passed in
 ## the lane they come to it in), a doodad right after them in that lane would leave no way on. So

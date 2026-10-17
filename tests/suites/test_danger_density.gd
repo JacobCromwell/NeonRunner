@@ -80,17 +80,17 @@ const MAX_DIAL: float = 0.40
 var _dd_tuning: Resource
 
 
-## A generator whose zone doodads skip DangerDensity.doodad_ok (ROUTE_CASES): LevelGenerator._add_doodad asks it
-## only while the pass's plan is there, so without the plan for the call it places the doodad as if the pass
+## A generator whose zone doodads skip DangerDensity.doodad_ok (ROUTE_CASES): LevelGenerator._add_doodads asks it
+## only while the pass's plan is there, so without the plan for the call it places the doodads as if the pass
 ## hadn't run; everything else is built as usual.
 class DoodadsUnchecked extends LevelGenerator:
-	func _add_doodad(rng: RandomNumberGenerator, size: StringName, start: float, end: float,
-			lane_keeps: Array[Dictionary]) -> Dictionary:
+	func _add_doodads(rng: RandomNumberGenerator, row_rng: RandomNumberGenerator, size: StringName, start: float,
+			count: int, step: float, lane_keeps: Array[Dictionary], walls: Array) -> Array[Dictionary]:
 		var plan: RefCounted = danger_density_plan
 		danger_density_plan = null
-		var entry: Dictionary = super(rng, size, start, end, lane_keeps)
+		var entries: Array[Dictionary] = super(rng, row_rng, size, start, count, step, lane_keeps, walls)
 		danger_density_plan = plan
-		return entry
+		return entries
 
 
 func run() -> void:

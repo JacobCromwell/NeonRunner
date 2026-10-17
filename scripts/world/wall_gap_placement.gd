@@ -21,7 +21,10 @@ extends RefCounted
 ##   WideGapPlacement.wall_keep_outs), so a wall runner is never dropped into one; and both walls stay whole
 ##   beside every dash wall (task H7a, DashWallRules.wall_keep_outs: a runner on a side wall passes it).
 ## - Deliberately NOT kept: the outer lane's floor beside a gap. The owner decided players should see
-##   gaps coming, so a drop may land the runner in front of whatever the outer lane holds.
+##   gaps coming, so a drop may land the runner in front of whatever the outer lane holds. The one
+##   exception is a zone doodad standing by the wall (task L3, LevelGenerator.wall_lane_keep_outs): the
+##   wall stands beside it, and from LevelGenerator.doodad_wall_drop before it, so a drop never lands on one
+##   (it comes down in front of it, which pushes the runner aside as on any floor).
 ##
 ## A level may have its own numbers (LevelConfig.wall_gap_tuning, tuning_for; task D10b), and with them open
 ## walls (coverage mode, WallGapTuning.coverage_target above 0; the owner, October 9, 2026, on the Beach: "much
@@ -371,6 +374,13 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 	for h: Dictionary in lay.hulls:
 		if lay.hull_covers(h, outer):
 			raw.append(Vector2(float(h["start"]), float(h["end"])))
+	# Task L3: a zone doodad by this wall (a row's whole stretch) keeps its wall standing beside it, and from where a
+	# wall runner dropping off would come down onto it (LevelGenerator.doodad_wall_drop). DESIGN-TBD
+	# (docs/questions/l3.md 5): the Beach's open walls stand a little more around them.
+	for d: Dictionary in lay.doodads:
+		if int(d["lane"]) == outer:
+			var span: Vector2 = LevelLayout.doodad_extent(d)
+			raw.append(Vector2(span.x - gen.doodad_wall_drop(), span.y))
 	var out: Array[Vector2] = []
 	for k: Vector2 in raw:
 		out.append(Vector2(k.x - clear, k.y + clear))

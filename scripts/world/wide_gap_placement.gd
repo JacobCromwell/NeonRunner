@@ -339,7 +339,7 @@ static func keep_outs(gen: LevelGenerator, within: float = 0.0) -> Array[Vector2
 	return out
 
 
-## What a zone doodad's window keeps off around each wider gap (LevelGenerator._add_doodad), as Vector2(from,
+## What a zone doodad's window keeps off around each wider gap (LevelGenerator._add_doodads), as Vector2(from,
 ## to): from its take-off to the end of its landing margin. Before a piece a doodad keeps the level's spacing
 ## already (LevelGenerator._place_doodads: the take-off margin, zone_of), after one only its push's lead.
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Vector2]:

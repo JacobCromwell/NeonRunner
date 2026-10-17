@@ -71,7 +71,14 @@ indoors as well as out.) What a look gets and keeps to:
   default 1.3 × 1.4 m, 1.9 × 3.6 m and 2.0 × 6.5 m (width × length), all 2.6 m tall (DESIGN-TBD). Map
   each class to the zone's pieces of that size. `side` is the side it pushes to (-1 left, +1 right) and
   `look_seed` a number to vary the look by, hashed (`MeshKit.hash_i`), never a random number generator,
-  so a doodad looks the same wherever and whenever it is built.
+  so a doodad looks the same wherever and whenever it is built. A row of doodads (task L3: "rows of similar
+  doodads") is one kind: the track builder hands every doodad of it the row's `look` (its first one's seed)
+  as `look_seed`, so a row of the Marketplace's small ones is three potted palms or three flowering bushes,
+  never mixed, and in a zone's cards every one of them is the same shared mesh (each still breaks into its
+  own pieces, seeded by its own `seed`). Two of a row one right after the other stand
+  `LevelGenerator.DOODAD_ROW_TOUCH` (5 cm) apart, so the cards on their facing faces never lie in one plane
+  and never flicker through each other; a look keeps inside its own box, so neighbours never overlap.
+  DESIGN-TBD (`docs/questions/l3.md` 4): whether neighbours of one kind should vary.
 - *Inside the box, filling most of it*: what looks like contact is contact (GDD §3), and it must read
   as too tall to jump (it is) and as wide as it blocks. Every look keeps its silhouette near the box's
   full height (a heap may dip at its edges, its middle stays high). Nothing outside the box (an awning, a

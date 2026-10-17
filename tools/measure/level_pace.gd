@@ -21,6 +21,11 @@ extends SceneTree
 ##   --set=key:value;key:value     set LevelConfig properties on every level's copy before generating
 ##                                 (numbers), e.g. --set=fill_empty_seconds:2.5;spacing_seconds_easy:1.3,
 ##                                 to try values before putting them in the level files
+##   --doodads                     also print the zone doodads by zone and lane count (task L3): doodads a
+##                                 minute (a treasure stash's left out), rows a level, the share of doodads
+##                                 in a row and in an outermost lane (by a side wall), events a minute, the
+##                                 wall fences a level and the metres of open side wall a level (wall gaps);
+##                                 --set=doodad_row_chance:0;doodad_wall_lane_share:0 builds them as before
 ##
 ## Per level (the average over its lane counts and seeds) it prints the run speed, the level's length,
 ## and per minute of play: obstacle rows (a row of holes or fences at one spot, and each sign), of which
@@ -57,6 +62,9 @@ var _dump: String = ""
 var _measure_on: bool = true
 var _patterns_dir: String = ""
 var _set: Dictionary = {}
+var _doodads: bool = false
+## The --doodads table's sums, by "<zone> <lanes>" (task L3).
+var _doodad_sums: Dictionary = {}
 ## The live resources --old-data changed: held so the resource cache keeps them (a resource nothing
 ## holds is freed, and the next load() would read the new file again).
 var _kept: Array[Resource] = []
@@ -104,8 +112,12 @@ func _run() -> void:
 					dump["%s lanes=%d seed=%d" % [id, lanes, config.level_seed]] = layout.to_dict()
 				if _measure_on:
 					rows.append(_measure(gen, layout, config))
+					if _doodads:
+						_add_doodads(id.get_slice("/", 0), lanes, gen, layout, config, rows[-1])
 		if _measure_on:
 			_print_level(id, rows)
+	if _doodads and _measure_on:
+		_print_doodads()
 	if _dump != "":
 		_dump_quick_play(tuning, dump)
 		var file := FileAccess.open(_dump, FileAccess.WRITE)
@@ -135,6 +147,8 @@ func _parse_args() -> void:
 			_dump = value
 		elif arg == "--no-measure":
 			_measure_on = false
+		elif arg == "--doodads":
+			_doodads = true
 		elif arg.begins_with("--set="):
 			for pair: String in arg.trim_prefix("--set=").split(";", false):
 				_set[pair.get_slice(":", 0)] = float(pair.get_slice(":", 1))
@@ -365,3 +379,52 @@ func _print_level(id: String, rows: Array[Dictionary]) -> void:
 		sums["pushes_mid"] / n, sums["events"] / n, sums["longest"] / n, worst,
 		mean_gap, sums["credits"] / n, sums["count"] / n,
 		("  (bursts: longest empty %.2f s)" % burst_worst) if burst_worst > 0.0 else ""])
+
+
+## Adds one layout to the --doodads table (task L3), under `zone` and `lanes`: its minutes of play (as _measure
+## counts them), zone doodads (a treasure stash's left out), rows (LevelLayout.doodads `row`) and the doodads in
+## them, the doodads in an outermost lane, its events (from `measured`, _measure's), wall fences and open side wall.
+func _add_doodads(zone: String, lanes: int, gen: LevelGenerator, layout: LevelLayout, config: LevelConfig,
+		measured: Dictionary) -> void:
+	var key: String = "%s %d" % [zone, lanes]
+	var s: Dictionary = _doodad_sums.get(key, {})
+	var minutes: float = (layout.length - config.end_clear_distance - config.start_clear_distance) / gen.speed / 60.0
+	var rows: Dictionary = {}
+	var doodads: int = 0
+	var outer: int = 0
+	for d: Dictionary in layout.doodads:
+		if d.has("stash"):
+			continue
+		doodads += 1
+		if int(d["lane"]) == 0 or int(d["lane"]) == layout.lane_count - 1:
+			outer += 1
+		if d.has("row"):
+			var row: String = var_to_str(d["row"])
+			rows[row] = int(rows.get(row, 0)) + 1
+	var in_rows: int = 0
+	for k: String in rows:
+		in_rows += int(rows[k])
+	var open: float = 0.0
+	for g: Dictionary in layout.wall_gaps:
+		open += float(g["end"]) - float(g["start"])
+	var add: Dictionary = {"layouts": 1.0, "minutes": minutes, "doodads": doodads, "rows": rows.size(),
+		"in_rows": in_rows, "outer": outer, "events": float(measured["events"]) * minutes,
+		"wall_fences": layout.wall_fences.size(), "open_wall": open}
+	for k: String in add:
+		s[k] = float(s.get(k, 0.0)) + float(add[k])
+	_doodad_sums[key] = s
+
+
+## The --doodads table (task L3): by zone and lane count, over its levels and seeds.
+func _print_doodads() -> void:
+	print("")
+	print("%-12s %5s %4s | %8s %8s %7s %7s %8s | %8s %9s" % ["zone", "lanes", "n", "dood/min", "rows/lvl", "in row",
+		"outer", "evts/min", "wfence/l", "open m/l"])
+	for key: String in _doodad_sums:
+		var s: Dictionary = _doodad_sums[key]
+		var n: float = maxf(float(s["layouts"]), 1.0)
+		var d: float = maxf(float(s["doodads"]), 1.0)
+		print("%-12s %5s %4d | %8.2f %8.2f %6.0f%% %6.0f%% %8.1f | %8.1f %9.0f" % [key.get_slice(" ", 0),
+			key.get_slice(" ", 1), int(n), float(s["doodads"]) / float(s["minutes"]), float(s["rows"]) / n,
+			100.0 * float(s["in_rows"]) / d, 100.0 * float(s["outer"]) / d, float(s["events"]) / float(s["minutes"]),
+			float(s["wall_fences"]) / n, float(s["open_wall"]) / n])

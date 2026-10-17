@@ -11,7 +11,8 @@ extends Area3D
 ##   which the Player's approach check finds), with a Hazard child, its forgiving hitbox (solid, armor
 ##   absorbs it: Hazard.armor_blocks_solid; and it breaks this at any contact: Hazard.breakable).
 ## The Player decides when the dash reaches it and calls smash() (and for a dash wall also on a crash or as a
-## wall runner passes it); what the break looks and sounds like is the run's: Player.smashed (RunEffects
+## wall runner passes it; for a doodad by a side wall as a wall runner low on that wall, or one just off it, reaches
+## it, task L3, Player._pass_doodad); what the break looks and sounds like is the run's: Player.smashed (RunEffects
 ## flings its pieces in `debris_colors`: a doodad's rubble, a wall's bigger crumble and dust) and the
 ## `<kind>_smash` movement event (its sound: `doodad_smash.wav`, `dash_wall_smash.wav`; and a shake).
 ##
@@ -32,7 +33,8 @@ signal smashed
 ## What it is: &"doodad" (Player emits `doodad_smash` for it) or &"dash_wall" (`dash_wall_smash`).
 var kind: StringName = &"doodad"
 ## Its layout entry (a LevelLayout.doodads or LevelLayout.dash_walls dictionary), marked "smashed" when it
-## breaks (and, for a dash wall, "broken_by": &"dash", &"crash" or &"pass").
+## breaks (and, for a dash wall, "broken_by": &"dash", &"crash" or &"pass"; for a doodad by a side wall a
+## wall runner reached, &"pass", task L3).
 var entry: Dictionary = {}
 ## Its collision box (width, height, length along the track), centred on this node: a dash wall's is the
 ## box its look fills (its hitbox is a Hazard child, a little smaller).
@@ -48,7 +50,8 @@ func is_smashed() -> bool:
 	return bool(entry.get("smashed", false))
 
 
-## How it broke: &"dash", &"crash" or &"pass" (a dash wall's), or &"" if it stands or nothing said.
+## How it broke: &"dash", &"crash" or &"pass" (a dash wall's; a doodad's &"pass" when a wall runner reached
+## it), or &"" if it stands or nothing said.
 func broken_by() -> StringName:
 	return StringName(entry.get("broken_by", ""))
 

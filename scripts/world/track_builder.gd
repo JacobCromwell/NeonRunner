@@ -686,7 +686,9 @@ func _build_doodad(root: Node3D, d: Dictionary) -> void:
 	debug.add_to_group(&"debug_hitbox")
 	debug.visible = show_hitboxes
 	var side: int = int(d["side"])
-	var look_seed: int = int(d.get("seed", 0))
+	# A row's doodads share one look (task L3: LevelLayout.doodads `look`, its first one's seed): one kind along it.
+	# DESIGN-TBD (docs/questions/l3.md 4): whether neighbours of one kind should vary.
+	var look_seed: int = int(d.get("look", d.get("seed", 0)))
 	_dress(func() -> void:
 		skin.doodad(area, size, size_class, side, look_seed)
 		area.debris_colors = skin.doodad_debris_colors(area, size_class, side, look_seed))

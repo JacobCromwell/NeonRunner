@@ -41,6 +41,8 @@ func run() -> void:
 	check(wall_lines.x * 2 > wall_lines.y, "most ramps have credits along their wall run (%d of %d)" % [wall_lines.x, wall_lines.y])
 	print("  ramps with credits along their wall run: %d of %d, in %d levels" % [wall_lines.x, wall_lines.y, levels])
 
+	# Task L3: zone doodads in rows and by the side walls.
+	_test_doodad_rows_and_walls(base)
 	_test_pattern_ceilings(base)
 	_test_narrow_landing(base)
 	_test_narrow_ceilings(base)
@@ -92,6 +94,53 @@ func _test_wall_run_gaps(base: LevelConfig) -> void:
 				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
 				counts.append(a.wall_run_gaps.size())
 	print("  wall-run gaps in quick play's level with the feature: %s" % [counts])
+
+
+## Zone doodads in rows and by the side walls (task L3; docs/ARCHITECTURE.md, The generator, Zone doodads), in quick
+## play's level with everything that stands on or by a side wall (ramps and the patterns' signs, window cyborgs, wall
+## vents, hover trucks, wall fences full and partial, side wall gaps, wall-run gaps, dash walls) and floor enemies, at 3,
+## 5 and 6 lanes over seeds and difficulties, with a doodad in every stretch with room, every one the first of a row
+## and every one by an open wall where one may be: every doodad, row and doodad by a wall keeps its rules
+## (check_layout's check_doodads, check_row and check_wall_lane_doodad, and the wall fences' and wall gaps' own,
+## which keep off them; check_rules), no warnings, the same seed the same level, and some rows and doodads by a wall
+## in every lane count's builds.
+func _test_doodad_rows_and_walls(base: LevelConfig) -> void:
+	for lanes: int in [3, 5, 6]:
+		var rows: int = 0
+		var by_wall: int = 0
+		for difficulty: float in [0.2, 0.6, 1.0]:
+			for level_seed: int in range(1, 6):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.enemy_scaling = difficulty
+				config.level_seed = level_seed
+				config.features = PackedStringArray(["ramps", "ceilings", "pulsing", "cyborg", "window_cyborg", "screech",
+					"screech_vents", "hover_truck", "octodog", "drone", "wall_fences", "wall_fences_partial", "wall_gaps",
+					WallRunGapPlacement.FEATURE, "dash_wall"])
+				config.dash_walls = 2
+				config.doodad_share = 1.0
+				config.doodad_row_chance = 1.0
+				config.doodad_wall_lane_share = 1.0
+				var tag: String = "(doodad rows and walls) lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var patterns: Array = LevelGenerator.load_for(config)
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				LayoutChecks.check_layout(self, a, config, tag)
+				LayoutChecks.check_rules(self, a, config, tag)
+				if level_seed <= 2:
+					var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+					check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				var seen: Dictionary = {}
+				for d: Dictionary in a.doodads:
+					if d.has("row"):
+						seen[var_to_str(d["row"])] = true
+					if not d.has("stash") and (int(d["lane"]) == 0 or int(d["lane"]) == lanes - 1):
+						by_wall += 1
+				rows += seen.size()
+		check(rows > 0 and by_wall > 0, "at %d lanes rows (%d) and doodads by a wall (%d) stand, each where it's fair"
+			% [lanes, rows, by_wall])
 
 
 ## GDD §3 and §7: the credits along each ramp's wall run are the ones LevelGenerator.wall_run_credits

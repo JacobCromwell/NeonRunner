@@ -205,6 +205,18 @@ var _push_lane: int = -1
 var pushes: int = 0
 ## How many zone doodads and dash walls the dash has smashed this run (tests and tools).
 var smashes: int = 0
+## How many zone doodads by a side wall broke as a wall runner low on that wall reached them, or a runner just off
+## that wall did, this run (task L3, _check_wall_doodads, _check_doodads; tests and tools).
+var doodad_passes: int = 0
+## A runner who has just left a side wall (its run's end, a wall jump, a move back toward the lanes, a wall gap's drop:
+## _leave_wall) comes down in the outer lane beside it, where a doodad by that wall may stand ahead (task L3). Its
+## push would aim at the wall, find no lane there and fall back inward through it, so for
+## MovementTuning.lane_switch_time + doodad_push_time after leaving (`_off_wall_left`) a doodad in that wall's
+## (`_off_wall`, -1 or 1) outer lane is claimed instead (`_off_wall_claims`, by instance id, until the next leave)
+## and breaks as the body reaches it, as it does for a wall runner low on the wall (_check_doodads); never pushed.
+var _off_wall: int = 0
+var _off_wall_left: float = 0.0
+var _off_wall_claims: Dictionary = {}
 ## How many times a return pad (task I4) dropped the player off a ceiling this run (tests and tools).
 var return_drops: int = 0
 ## How many dash walls the runner crashed through without the dash (one hit each, GDD §9.14), and passed on a
@@ -314,6 +326,10 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_push_lane = -1
 	pushes = 0
 	smashes = 0
+	doodad_passes = 0
+	_off_wall = 0
+	_off_wall_left = 0.0
+	_off_wall_claims.clear()
 	return_drops = 0
 	crashes = 0
 	wall_passes = 0
@@ -524,6 +540,7 @@ func _physics_process(delta: float) -> void:
 	_coyote -= delta
 	_slide_left -= delta
 	_push_ignore_left -= delta
+	_off_wall_left -= delta
 	invulnerable_left = maxf(invulnerable_left - delta, 0.0)
 	theft_immune_left = maxf(theft_immune_left - delta, 0.0)
 	# Broken armor comes back on the run's clock (GDD §4): it waits while the game is paused or the
@@ -1151,6 +1168,11 @@ func _update_wall(delta: float) -> void:
 
 
 func _leave_wall(velocity: float, kind: StringName) -> void:
+	# Task L3: a doodad by this wall just ahead breaks as the body reaches it, never pushing it back through it
+	# (_off_wall, _check_doodads).
+	_off_wall = wall_side
+	_off_wall_left = tuning.lane_switch_time + tuning.doodad_push_time
+	_off_wall_claims.clear()
 	surface = Surface.FLOOR
 	_start_switch(geo.lane_count - 1 if wall_side > 0 else 0)
 	vh = velocity
@@ -1178,8 +1200,10 @@ func repel_from_wall() -> bool:
 ## the body never sinks into it. In the air it's the same: a jump into one is pushed too (doodads are
 ## too tall to jump). The push (_start_push) goes to the doodad's side, or back the way the player came
 ## if they caught its front corner mid-switch; a side without room (another lane blocker there) gives
-## way to the other. Ceiling riders and wall runners never meet one (TrackBuilder; the generator keeps
-## doodads off ceilings and out of the outermost lanes).
+## way to the other. Ceiling riders never meet one (the generator keeps doodads off ceilings), and a wall
+## runner never meets one standing by their wall: it breaks as they reach it (_check_wall_doodads, task L3), and so
+## does one by that wall a runner who has just left it comes down in front of (`_off_wall`: its push would aim at
+## the wall, with no lane there, and fall back inward through it).
 ## The dash smashes one instead (GDD §3, owner, October 8, 2026: "dashing into one breaks it apart, and
 ## the player keeps their lane with no push and no damage"; _dash_claims): a doodad the dash reaches
 ## before it ends is claimed when it comes within the push's reach, and breaks (_smash) when the body
@@ -1187,6 +1211,9 @@ func repel_from_wall() -> bool:
 ## the player runs on in their lane, at their speed. A dash that ends short of one leaves it unclaimed,
 ## and it pushes as usual, at the push's usual time.
 func _check_doodads(motion: float) -> void:
+	if surface == Surface.WALL:
+		_check_wall_doodads(motion)
+		return
 	if surface != Surface.FLOOR or in_pit:
 		return
 	var half: float = tuning.visual_size.x * 0.5
@@ -1218,6 +1245,15 @@ func _check_doodads(motion: float) -> void:
 			if gap <= motion:
 				_smash(area as DashBreakable)
 			continue
+		# Task L3: just off a side wall, a doodad by that wall (_off_wall) breaks as the body reaches it, never pushing them
+		# back through it (its push would aim at the wall, with no lane there).
+		var id: int = area.get_instance_id()
+		if area is DashBreakable and (_off_wall_claims.has(id) or (_off_wall_left > 0.0
+				and int(d["lane"]) == (geo.lane_count - 1 if _off_wall > 0 else 0))):
+			_off_wall_claims[id] = true
+			if gap <= motion:
+				_pass_doodad(area as DashBreakable)
+			continue
 		var width: float = tuning.doodad_size(StringName(d["size"])).x
 		var centre: float = geo.lane_x(int(d["lane"]))
 		var off: float = _x - centre
@@ -1229,6 +1265,49 @@ func _check_doodads(motion: float) -> void:
 			continue
 		_start_push(area, int(d["lane"]), dir, int(d["side"]))
 		return
+
+
+## A wall runner never meets a zone doodad standing by their wall (task L3: the generator puts doodads in the lane
+## by a side wall where nothing needs that part of the wall, LevelGenerator.wall_lane_keep_outs, and a wall
+## runner's body reaches into that lane): one their body would reach by the next frame breaks as they reach it, the
+## way the dash smashes one (DashBreakable.smash, its pieces and the crunch; no push, no damage, no score), and the
+## wall run goes on. The body is its visual size (what looks like contact is contact), from the wall's face out to
+## its head and, for the entry's first moments while it turns onto the wall, as it stood: so a runner high enough
+## on the wall passes over one, which stands. Only doodads in the outermost lane on their side count (no other
+## lane reaches the wall). DESIGN-TBD (docs/questions/l3.md 2): what a wall runner meeting one does.
+func _check_wall_doodads(motion: float) -> void:
+	var outer: int = geo.lane_count - 1 if wall_side > 0 else 0
+	var half: float = tuning.visual_size.x * 0.5
+	var head: float = _x - wall_side * tuning.visual_size.y
+	var feet: float = _x + wall_side * half
+	var x0: float = minf(head, feet)
+	var x1: float = maxf(head, feet)
+	var y0: float = h - half
+	var y1: float = h + tuning.visual_size.y
+	var back: float = distance - tuning.visual_size.z * 0.5
+	var front: float = distance + tuning.visual_size.z * 0.5 + maxf(motion, 0.0) + 0.05
+	_doodad_shape.size = Vector3(x1 - x0, y1 - y0, front - back)
+	_doodad_query.transform = Transform3D(Basis.IDENTITY, Vector3((x0 + x1) * 0.5, (y0 + y1) * 0.5,
+		TrackGeometry.world_z((back + front) * 0.5)))
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_doodad_query, 4):
+		var b := hit["collider"] as DashBreakable
+		if b == null or b.kind != &"doodad" or b.is_smashed() or int(b.entry.get("lane", -1)) != outer:
+			continue
+		_pass_doodad(b)
+
+
+## A doodad by a side wall breaks as a runner on that wall, or just off it, reaches it (task L3; _check_wall_doodads,
+## _check_doodads' `_off_wall`): DashBreakable.smash with &"pass", its pieces and the crunch (Player.smashed, the
+## `doodad_smash` event), no push, no damage, no score. DESIGN-TBD (docs/questions/l3.md 2).
+func _pass_doodad(b: DashBreakable) -> void:
+	if b == null:
+		return
+	_smash_claims.erase(b.get_instance_id())
+	_off_wall_claims.erase(b.get_instance_id())
+	if b.smash(&"pass"):
+		doodad_passes += 1
+		smashed.emit(b)
+		_event(&"doodad_smash")
 
 
 ## True if the dash takes doodad `area` (GDD §3: dashing into one smashes it), whose front is `gap` metres

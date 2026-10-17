@@ -23,7 +23,10 @@ zone doodads (`doodad_review`: the runner pushed by a small, a medium and a larg
 switch into one's side blocked, with others standing in the other inner lanes at five lanes or more, in
 any zone's look, through the game camera or a close one, `--hitboxes` for their bodies; `--dash` smashes
 them instead, task H5: a small and a medium one head-on, a large one from the side, then a dash that ends
-short of a fourth and pushes, `--reduced-flashing`), dash walls (`dash_wall_review`, task H7a: three walls in
+short of a fourth and pushes, `--reduced-flashing`; `--rows` shows rows instead, task L3: by the right side wall
+three small ones one right after the other, three medium ones spaced and two large ones, and three small ones spaced
+in the first lane, the runner passing them in the middle lane, and with `--wall` stepping onto the right wall before
+each row by it and breaking them as they reach them), dash walls (`dash_wall_review`, task H7a: three walls in
 any zone's look at its speed, `--take=smash` (the dash), `crash` (the armor, then the shield, then a kill),
 `pass` (on the side wall) or `look` (a still in front of one, for task H7b's looks), `--hitboxes`,
 `--reduced-flashing`, `--god`), wall-run gaps (`wall_run_gap_review`, task J2: two shaped as the generator shapes
@@ -230,7 +233,10 @@ charges and Resonator pulses as planned, drone waves, hover trucks), mechanics, 
 pushes a runner who keeps to a lane and ignores them takes (averaged over the lanes, and in the middle
 one), and all events, doodads among them; its
 empty stretches in seconds (the longest and the mean; what counts as going on is in its header); and
-its credits. `--old-data=DIR` builds the levels with another version's data (the .tres files of
+its credits. `--doodads` adds a table by zone and lane count (task L3): zone doodads a minute, rows a level, the
+share of doodads in rows and by a side wall, events a minute, wall fences a level and metres of open side wall a level
+(`--set=doodad_row_chance:0;doodad_wall_lane_share:0` builds the doodads as before the task, byte for byte).
+`--old-data=DIR` builds the levels with another version's data (the .tres files of
 `data/tuning`, `enemies`, `levels`, `zones`, `campaign` and the patterns, e.g. main's exported with
 `git archive`), `--dump=FILE` writes every layout as JSON, so the new code with the old data can be
 compared byte for byte with the old build's dump, and `--set=key:value` tries level values before they go
