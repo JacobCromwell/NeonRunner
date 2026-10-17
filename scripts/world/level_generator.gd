@@ -1684,7 +1684,8 @@ func _trim_clear_stretches(span: Vector2) -> void:
 ##   LevelConfig.doodad_wall_lane_share of them where one may): nothing stands on that wall beside it or the
 ##   level needs it open there (wall_lane_keep_outs: no sign, wall enemy or ramp's longest wall run, no
 ##   wall-run gap's lit wall, doodad_wall_clear_seconds of wall clear around each; no dash wall's wall route, no
-##   wall fence whose drop-off lands by it, no wall gap beside it or dropping a wall runner onto it), and the
+##   wall fence whose drop-off lands by it, no wall gap beside it or dropping a wall runner onto it, not where
+##   the level brings in wall fences), and the
 ##   wall fences and side wall gaps placed after keep off it too (WallFencePlacement, WallGapPlacement). Such a doodad
 ##   pushes inward; a runner on that wall low enough to meet it breaks it as they reach it instead
 ##   (Player._check_wall_doodads), so the wall stays theirs;
@@ -1749,7 +1750,8 @@ func _place_doodads(patterns: Array) -> void:
 			# shapes no stretch here, so elsewhere the doodads draw as they would without it.
 			if _hits_any(calm, start - lead, start + extent):
 				break
-			var placed: Array[Dictionary] = _add_doodads(rng, row_rng, size, start, int(row.x), row.y, lane_keeps, walls)
+			var placed: Array[Dictionary] = _add_doodads(rng, row_rng, size, start, int(row.x), row.y, lane_keeps,
+				walls)
 			# A row with no lane to stand in along its whole stretch gives way to one doodad where it would start.
 			if placed.is_empty() and row.x > 1.0:
 				placed = _add_doodads(rng, row_rng, size, start, 1, 0.0, lane_keeps, walls)
