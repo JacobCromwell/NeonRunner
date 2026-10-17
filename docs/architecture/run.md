@@ -445,10 +445,11 @@ death, R, F6's Restart level) alike. A boss fight's arena never comes here: its 
   `DashBreakable`), a boss arena's next lap or endless mode's next stretch joins it, and an enemy's entry is
   its own one level deep only). So a retry's world, built anew (`RunWorld.build`) from a fresh copy, has every
   doodad and wall standing whole: an attempt that smashed or broke them marked only its own copy (the H merge;
-  `test_level_cache`'s `_test_smashed_stand_again` dashes through a doodad and a wall at Golden 1, dies, and
-  checks both retries: the build's layout exactly, both built whole with the same node, place, layers, shapes and
-  look, and an attempt without the dash playing exactly as on a fresh build; `_test_nothing_leaks` smashes and
-  marks every one). A generated layout holds plain data only, no Object and no
+  `test_level_cache`'s `_test_smashed_stand_again` dashes through a doodad and a wall at the first of Golden 1,
+  Corporate 2 and Golden 2 with a lone doodad in the runner's lane before its first wall (Corporate 2 since task
+  L3), dies, and checks both retries: the build's layout exactly, both built whole with the same node, place,
+  layers, shapes and look, and an attempt without the dash playing exactly as on a fresh build;
+  `_test_nothing_leaks` smashes and marks every one). A generated layout holds plain data only, no Object and no
   list or dictionary in two places (a copy would make two of it): `test_level_cache` checks two levels, and a
   probe found neither in any campaign level at 3, 5 and 6 lanes. So **`LevelLayout.copy()` must copy every
   field a layout has**: a list added to LevelLayout must join `copy()`, or every run would play without it

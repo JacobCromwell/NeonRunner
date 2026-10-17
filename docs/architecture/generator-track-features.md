@@ -168,14 +168,14 @@ Measured (`tools/measure/level_pace.gd --doodads`, each level's own seed and fou
 `--set=doodad_row_chance:0;doodad_wall_lane_share:0`, which builds all 405 layouts, quick play's too, byte for byte as
 before the task): every row of holes or fences, enemy, big attack and mechanic as before; doodads a minute up (rows add
 doodads, and the wall lane gives a spot where no inner lane fitted): the City 4.0–4.7 to 4.0–5.1, Gangland 3.0–3.5 to
-3.8–4.0, the Marketplace 2.6–3.1 to 3.4–3.7, the Casino 1.8–2.5 to 2.4–2.6, Corporate 1.6–1.9 to 1.8–2.5, the Beach
-1.3–1.5 to 1.6–2.0, the Dead Zone 0.5–0.8 to 0.7–1.1, the Golden Zone 1.1–1.3 to 1.5–1.7; rows a level 0 to 0.3–0.9
-outside the City (0 to 0.07 there), holding 11 to 38% of the doodads (69% at the Dead Zone's 5 lanes, whose few doodads
-make two rows a large share); 31 to 69% of the doodads by a side wall (about 55% in most zones); events a minute up
-by 0 to 0.9 (1–2%); wall fences a level as before (at most 0.3 fewer); open side wall as before but on the Beach,
-whose open walls stand 1 to 3% more around its doodads by them. A runner who keeps to the middle lane takes about
-half the pushes it took (the tool's middle-lane pushes, over 3, 5 and 6 lanes: the City 1.4–2.6 a minute to 0.5–1.1,
-the Marketplace 1.3–1.5 to 0.7–0.8, the Golden Zone 0.7–1.2 to 0.5–0.8).
+3.8–4.0, the Marketplace 2.6–3.1 to 3.3–3.8, the Casino 1.8–2.5 to 2.4–2.6, Corporate 1.6–1.9 to 1.8–2.5, the Beach
+1.3–1.5 to 1.6–2.0, the Dead Zone 0.5–0.8 to 0.7–1.1, the Golden Zone 1.1–1.3 to 1.5–1.7; rows a level 0 to 0.2–0.9
+outside the City (0 to 0.07 there), holding 9 to 40% of the doodads (63 and 69% at the Golden Zone's 6 lanes and the
+Dead Zone's 5, whose few doodads make a few rows a large share; 21% over all); 31 to 69% of the doodads by a side wall
+(55% over all); events a minute up by 0 to 0.9 (1–2%); wall fences a level as before (at most 0.3 fewer); open side
+wall as before but on the Beach, whose open walls stand 1 to 3% more around its doodads by them. A runner who keeps to
+the middle lane takes about half the pushes it took (the tool's middle-lane pushes, over 3, 5 and 6 lanes: the City
+1.4–2.6 a minute to 0.5–1.1, the Marketplace 1.3–1.5 to 0.7, the Golden Zone 0.7–1.2 to 0.5–0.8).
 
 **A runner who dashes through a doodad** (task H5; the dash smashes one: Damage and interactions, "The
 dash smashes a zone doodad"): a doodad is 2.6 m tall and hides its own lane right behind it from the
