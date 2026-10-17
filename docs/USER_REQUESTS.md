@@ -13,6 +13,3 @@ request that is now in the done file.
 
 - [ ] **Doodads more often** (L6). The rows are too rare to see in playtesting. Rows of two count (two take less room than three). Doodads add little or no difficulty, so they shouldn't need the wide berth they get (nothing in any lane around them, a pattern's spacing after, 2.5 s apart): keep only what fairness needs (a push never lands the player in a hole or hazard; a doodad never blocks the only way out of an attack). Check the cost of more of them isn't a performance problem.
 
-## Citizens, the dash and the Beach's boss (October 17, 2026, after playtesting)
-
-- [ ] **Real citizens in the Marketplace's shops** (L7). The owner doesn't notice the citizens moving behind the shop windows, only what look like TV-screen faces (black rectangles with crude faces) that don't look good. Use the game's newer rendered human people instead (the 3D low-poly people of the cinematics) if they cost little; they're scenery only and must never cost the game's performance: if they would be a real drag, don't add them and tell the owner what was decided. They needn't move much: watching from the sidelines. When the runner takes a really high-value credit pickup, or beats a big enemy such as the Hover Truck Enforcer or the heli drone, they jump up once in a little cheer (no sound).
