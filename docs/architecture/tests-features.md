@@ -379,7 +379,9 @@ Golden 2 at 3 lanes with every wider gap and its wall-run gap moved by its own l
 lit wall early, midway or late on the lit stretch crosses onto the landing floor; with claws too; a jump, a jump with
 the dash or the dash alone falls in, as does a step onto the wall well before the lit stretch; the grapple's save and a
 revive after a fall put the runner on the lit wall and across, and a save at the gap's far edge off the wall over the
-landing floor. Every zone skin lights the lit wall in green chevrons over exactly the stretch to step on and the gap,
+landing floor. Only the Marketplace's skin of the zones with wall-run gaps lights the lit wall (`ZoneSkin.show_wall_run_guide`, task L5;
+the later zones' skins draw none of it, and `test_hints` checks that only the Marketplace's hint points at the green
+arrows); a skin that does draws it in green chevrons over exactly the stretch to step on and the gap,
 on the wall face, facing the street, seamless across chunks; and a heli drone's barrage, a Bad Dream's slash, an
 Enforcer Truck's volley and an Octodog's wind-up hold off only while a crossing is in their reach. `test_campaign`'s sweep
 of The Hush lists the builds crowded past any wall-run gap (`WALL_RUN_GAP_CROWDED`: they warn of that and nothing

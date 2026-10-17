@@ -15,6 +15,8 @@ extends RefCounted
 
 ## How far buildings reach back from the street (their end faces show across alleys).
 const DEPTH: float = 28.0
+## How far back a wall gap's recess reaches from the wall face (recess(), task L4); more than the tallest setback.
+const RECESS_DEPTH: float = 24.0
 const SETBACKS: Array[float] = [0.0, 0.0, 4.0, 8.0, 12.0, 16.0]
 ## Share of buildings that stay low (podium only).
 const LOW_SHARE: float = 0.22
@@ -84,6 +86,42 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 		var w: float = absf(face_x)
 		batch.layer(skin.road_material()).rect(Vector3(-w, -skin.road_depth, -start), Vector3(w * 2.0, 0, 0),
 			Vector3(0, 0, -(end - start)), skin.road_color)
+
+
+## What a wall gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the
+## background"): the gap's part [start, end] of an alley between the two buildings it cuts: their end faces
+## (RECESS_DEPTH deep, from the road far below up their podium and their tower, in their own colours and window
+## grids), the face of a tower across it and the road running on from the one under the street (the City has no wall
+## gaps in its levels, but quick play and the review tools can have them). Everything goes into the gap's batch, in the
+## facade and solid layers the walls draw with: no material or shader of its own (at most those two surfaces).
+func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var facade: MeshLayer = batch.layer(skin.facade_material())
+	var road_y: float = -skin.road_depth
+	var x_back: float = face_x + side * RECESS_DEPTH
+	var x_min: float = minf(face_x, x_back)
+	batch.layer(skin.road_material()).rect(Vector3(x_min, road_y, -start), Vector3(RECESS_DEPTH, 0.0, 0.0),
+		Vector3(0.0, 0.0, -(end - start)), skin.road_color)
+	var lot: float = skin.lot_length
+	var across: Building = building(side, building_at(side, floori((gap.x + gap.y) * 0.5 / lot)))
+	var back_style: int = MeshKit.hash_i(side, across.id, 27) % 4
+	var back_seed: float = float(MeshKit.hash_i(side, across.id, 28) % 997)
+	_facade(facade, side, x_back, start, end, road_y, 40.0 + 60.0 * MeshKit.hash01(side, across.id, 26),
+		_pick(skin.facade_colors, side, across.id, 25).darkened(0.12), 0.4, back_style, back_seed)
+	for end_at: float in [gap.x, gap.y]:
+		if end_at < start - 0.001 or end_at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(end_at, gap.x)
+		var b: Building = building(side, building_at(side, floori((end_at - 0.01 if leading else end_at + 0.01) / lot)))
+		var style: int = MeshKit.hash_i(side, b.id, 7) % 4
+		var lit: float = 0.3 + 0.4 * MeshKit.hash01(side, b.id, 8)
+		var wall: Color = _pick(skin.facade_colors, side, b.id, 9)
+		var seed: float = float(MeshKit.hash_i(side, b.id, 11) % 997 + 3)
+		var split_y: float = b.podium_top if b.split else b.height
+		MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, road_y, split_y, leading, wall, lit, style, seed)
+		if b.split and not b.low:
+			var tower_x: float = face_x + side * b.setback
+			MeshKit.end_quad(facade, minf(tower_x, x_back), maxf(tower_x, x_back), end_at, b.podium_top, b.height, leading,
+				wall, lit, style, seed)
 
 
 ## The first and last lot of the building covering `lot_index` on this side.

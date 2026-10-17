@@ -29,6 +29,8 @@ extends RefCounted
 ## How far the buildings reach back from the street (their near ends show across alleys and side
 ## streets).
 const DEPTH: float = 26.0
+## How far back a wall gap's recess reaches from the wall face (recess(), task L4).
+const RECESS_DEPTH: float = 22.0
 const SETBACKS: Array[float] = [0.0, 0.0, 0.0, 4.0, 8.0, 12.0]
 ## Share of buildings burnt down to a stump.
 const LOW_SHARE: float = 0.28
@@ -147,6 +149,51 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 	# Below the street, seen through holes in the outer lanes: the walls in deep shade.
 	MeshKit.facade_quad(solid, side, face_x, start, end, -skin.void_depth, 0.0, 0.0, skin.gap_inside_color, 0.0,
 		MeshKit.PAT_DZ_UNDER, 1.0)
+
+
+## What a wall gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the
+## background"): the gap's part [start, end] of the place where a tower was burnt away between the two ruins it
+## cuts: their end faces (RECESS_DEPTH deep, burnt out like their faces, up to their broken tops), the face of a
+## ruin across it, and the void's floor running on from the street's own (PAT_DZ_UNDER below the street, as the
+## walls' foot is). Everything goes into the gap's batch, in the solid layer the walls draw with (one surface, no
+## material or shader of its own), and nothing in it is lit or smoulders.
+func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var floor_y: float = -skin.void_depth
+	var shade: Color = skin.gap_inside_color
+	var x_back: float = face_x + side * RECESS_DEPTH
+	var x_min: float = minf(face_x, x_back)
+	solid.rect(Vector3(x_min, floor_y, -start), Vector3(RECESS_DEPTH, 0.0, 0.0), Vector3(0.0, 0.0, -(end - start)),
+		skin.void_floor_color, 0.0, MeshKit.PAT_DZ_UNDER, Vector2.ZERO, Vector2.ONE, 2.0)
+	# The ruin across: broken against the haze like the stumps' far rows, its foot in the void's shade.
+	var lot: float = skin.lot_length
+	var mid: float = (gap.x + gap.y) * 0.5
+	var across: Ruin = ruin(side, building_at(side, floori(mid / lot)))
+	var far := Ruin.new()
+	far.side = side * 3
+	far.height = 40.0 + 40.0 * MeshKit.hash01(side, across.id, 26)
+	far.floor_top = far.height * 0.55
+	far.bites.append(Vector3(mid, 6.0, far.height * 0.25))
+	var us := PackedFloat32Array()
+	var tops := PackedFloat32Array()
+	far.outline(start, end, us, tops)
+	MeshKit.facade_quad(solid, side, x_back, start, end, floor_y, 0.0, 0.0, shade, 0.0, MeshKit.PAT_DZ_UNDER, 1.0)
+	MeshKit.facade_strip(solid, side, x_back, us, tops, 0.0, skin.facade_colors[MeshKit.hash_i(side, across.id, 27) %
+		skin.facade_colors.size()].darkened(0.2), 0.0, MeshKit.PAT_DZ_TOWER,
+		MeshKit.dz_tower_param(MeshKit.hash_i(side, across.id, 29) % 4, (across.seed + 17) % 997))
+	# The two ruins' end faces: the one before the gap looks on down the street, the one after it faces the runner.
+	for end_at: float in [gap.x, gap.y]:
+		if end_at < start - 0.001 or end_at > end + 0.001:
+			continue
+		var leading: bool = is_equal_approx(end_at, gap.x)
+		var d: float = end_at - 0.01 if leading else end_at + 0.01
+		var r: Ruin = ruin(side, building_at(side, floori(d / lot)))
+		var param: float = MeshKit.dz_tower_param(r.style, r.seed) + 12.0
+		# Where the wall is a side street's rubble (before the ruin's own face starts), the end is no taller than it.
+		var top: float = r.top(clampf(d, r.f0, r.b1)) if d >= r.f0 else skin.band_top + 2.3
+		MeshKit.end_quad(solid, x_min, x_min + RECESS_DEPTH, end_at, floor_y, 0.0, leading, shade, 0.0, MeshKit.PAT_DZ_UNDER, 0.0)
+		MeshKit.end_quad(solid, x_min, x_min + RECESS_DEPTH, end_at, 0.0, top, leading, r.wall.darkened(0.12), 0.0,
+			MeshKit.PAT_DZ_TOWER, param)
 
 
 ## The first and last lot of the building covering `lot_index` on this side.

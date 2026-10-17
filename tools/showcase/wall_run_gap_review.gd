@@ -16,6 +16,8 @@ extends Node3D
 ##     --take=<cross|grapple|fall|look>   what the runner does (above; default cross)
 ##     --skin=<zone id>       the zone's look (data/skins/<id>_skin.tres; default marketplace), at its zone's run
 ##                            speed (data/zones/<id>.tres) where it has one
+##     --guide=<on|off>       the lit wall (ZoneSkin.show_wall_run_guide, task L5: only the Marketplace's skin shows
+##                            it) on or off whatever the skin says, to compare the two
 ##     --lanes=N              lane count (default 5)
 ##     --close                a close camera low behind the runner
 ##     --god                  god mode
@@ -42,12 +44,15 @@ func _ready() -> void:
 	tuning = load(TUNING_PATH) as MovementTuning
 	var skin_id: String = "marketplace"
 	var god: bool = false
+	var guide: String = ""
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--take="):
 			take = v
 		elif arg.begins_with("--skin="):
 			skin_id = v
+		elif arg.begins_with("--guide="):
+			guide = v
 		elif arg.begins_with("--lanes="):
 			lanes = clampi(int(v), 3, 8)
 		elif arg == "--close":
@@ -62,6 +67,9 @@ func _ready() -> void:
 		skin = load(skin_path) as ZoneSkin
 	else:
 		push_warning("wall_run_gap_review: no skin at %s; using the grey box" % skin_path)
+	if guide == "on" or guide == "off":
+		skin = skin.duplicate() as ZoneSkin
+		skin.show_wall_run_guide = guide == "on"
 
 	var config := LevelConfig.new()
 	config.lane_count = lanes

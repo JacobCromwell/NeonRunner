@@ -8,7 +8,7 @@ extends RefCounted
 ## umbrellas and loungers, surfboards stuck in the sand and a low beach hut or two scattered over it. The
 ## standard gap marks stay (ZoneSkin.standard_wall_gap: the orange stripes at the cut wall's ends and the lip
 ## along the floor's edge across the gap: the cross-zone language), and a shack the gap cuts is closed with its
-## end (BeachShacks.gap_end_cap) where the wall starts again.
+## end (BeachShacks.gap_end_cap) where the wall stops and where it starts again.
 ## Everything is built chunk by chunk over any length, from absolute track distances only (the shoreline is a
 ## smooth function of the distance; scenery is hashed from 12 m cells and belongs to the chunk holding its
 ## middle), so a chunk looks the same whenever it is built and neighbours join exactly. It is all one solid
@@ -107,6 +107,8 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float,
 	shore_side(batch, side, face_x, start, end, gap)
 	if gap.y >= start - 0.001 and gap.y <= end + 0.001:
 		skin.shacks().gap_end_cap(batch, side, face_x, gap.y, -skin.beach_drop)
+	if skin.wall_gap_recess_on and gap.x >= start - 0.001 and gap.x <= end + 0.001:
+		skin.shacks().gap_end_cap(batch, side, face_x, gap.x, -skin.beach_drop, true)
 
 
 ## The open shore beside the street on `side` over [start, end] within the opening `gap` (build's look without the

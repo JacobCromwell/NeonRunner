@@ -258,15 +258,12 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	citizens().build(parent, side, face_x, start, end)
 
 
-## A wall gap (ZoneSkin.wall_gap): with the left wall, the street below and the roof overhead are still
+## With the left wall of a wall gap (ZoneSkin.wall_gap_extras): the street below and the roof overhead are still
 ## there (the roof doesn't care that the building under it is cut away).
-func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+func wall_gap_extras(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
-	wall_gap_marks(parent, side, face_x, start, end, gap)
 	if side < 0:
-		var batch := MeshBatch.new()
 		_left_wall_extras(batch, face_x, start, end)
-		batch.commit(parent)
 
 
 ## What isn't a lane's or a wall's, built with the left wall: the shade far below the street with the

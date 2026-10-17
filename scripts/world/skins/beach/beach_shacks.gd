@@ -385,21 +385,31 @@ func _near_end(solid: MeshLayer, b: Shack, face_x: float) -> void:
 ## where the gap cut it: its end facing the runner from `y0` (the open beach below) up to its roofline and, under
 ## a thatched roof, the gable, END_DEPTH back from the face. It stands 0.02 m into the gap, over the standard
 ## gap mark's dark slab (ZoneSkin.standard_wall_gap), so the cut reads as a shack's end, not a black block.
-func gap_end_cap(batch: MeshBatch, side: int, face_x: float, at: float, y0: float) -> void:
+## With `leading` it is the other end instead (task L4): the end of the shack the wall stops with at `at`, facing on
+## down the street, which a view across the opening or from the beach sees (the runner's camera looks down the track
+## and never does, but a black block there was the one unrendered end left). DESIGN-TBD (item 928 in docs/OPEN_QUESTIONS*.md):
+## that end cap.
+func gap_end_cap(batch: MeshBatch, side: int, face_x: float, at: float, y0: float, leading: bool = false) -> void:
+	# DESIGN-TBD: the leading end's cap (item 928 in docs/OPEN_QUESTIONS*.md); the trailing one is task D10b's.
 	_prepare()
-	var b: Shack = shack(side, lot_run(side, floori((at + 0.01) / skin.lot_length)))
+	var b: Shack = shack(side, lot_run(side, floori((at - 0.01 if leading else at + 0.01) / skin.lot_length)))
 	var solid: MeshLayer = batch.layer(_solid)
 	var x_back: float = face_x + side * END_DEPTH
 	var x0: float = minf(face_x, x_back)
-	var z: float = -(at - 0.02)
-	solid.rect(Vector3(x0, y0, z), Vector3(END_DEPTH, 0, 0), Vector3(0, b.height - y0, 0), b.bamboo, 0.0, MeshKit.PAT_BEACH_WALL,
-		Vector2(x0, y0), Vector2(x0 + END_DEPTH, b.height), float(b.seed * 8))
+	var z: float = -(at + 0.02) if leading else -(at - 0.02)
+	var toward: float = -1.0 if leading else 1.0
+	if leading:
+		solid.rect(Vector3(x0 + END_DEPTH, y0, z), Vector3(-END_DEPTH, 0, 0), Vector3(0, b.height - y0, 0), b.bamboo, 0.0,
+			MeshKit.PAT_BEACH_WALL, Vector2(x0 + END_DEPTH, y0), Vector2(x0, b.height), float(b.seed * 8))
+	else:
+		solid.rect(Vector3(x0, y0, z), Vector3(END_DEPTH, 0, 0), Vector3(0, b.height - y0, 0), b.bamboo, 0.0,
+			MeshKit.PAT_BEACH_WALL, Vector2(x0, y0), Vector2(x0 + END_DEPTH, b.height), float(b.seed * 8))
 	if b.roof == Roof.THATCH:
 		var ridge_x: float = face_x + side * ROOF_DEPTH
 		var eave_x: float = face_x - side * (EAVE_OUT if b.height >= OVER_STREET_MIN else 0.0)
 		var fringe: float = 0.3 if b.height >= OVER_STREET_MIN else 0.0
 		_quad(solid, Vector3(eave_x, b.height, z), Vector3(eave_x, b.height + fringe, z), Vector3(ridge_x, b.height + ROOF_RISE, z),
-			Vector3(ridge_x, b.height, z), Vector3(0, 0, 1), skin.thatch_color, MeshKit.PAT_BEACH_THATCH, 0.0)
+			Vector3(ridge_x, b.height, z), Vector3(0, 0, toward), skin.thatch_color, MeshKit.PAT_BEACH_THATCH, 0.0)
 
 
 ## A shack's roof between track distances u0 and u1: a thatched slope up to the ridge, with the eave's fringe

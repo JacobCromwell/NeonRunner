@@ -27,6 +27,15 @@ extends SkinSuite
 ##   narrows the keep-outs around signs, wall fences and ceilings, never the margins that time a wall run around
 ##   ramps and wall enemies (task D10c review; test_beach_levels checks the Beach's real levels).
 
+## - what a gap shows behind it (task L4; the owner: "these holes leave an ugly unrendered section in the background"):
+##   every zone skin closes the opening with a recess (ZoneSkin.wall_gap_recess), checked by software rays: from where a
+##   runner's camera is (the middle and outer lanes and the wall, at floor, wall-run and ceiling heights, before, at and
+##   in the gap) through the opening and out at least 3 degrees below the horizontal, going on along the track (the
+##   camera looks ahead), every ray meets a front-facing face of the solid kit or a facade shader (the surfaces cull
+##   their backs, so the back of a face is nothing) before it leaves; none escapes to the sky's skyline below the
+##   horizon; each cut end's face faces into the opening and rises past the 7 m the dark slabs once stood to. (The skin
+##   suites check that a skin adds no collision; the recess is a mesh only.)
+
 ## The levels with the shared numbers' few, rare gaps (the Beach's open their walls by their own numbers: task D10b,
 ## test_beach_levels).
 const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "casino/1", "casino/2",
@@ -34,6 +43,13 @@ const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", 
 ## The Beach's open walls (task D10b), the one campaign zone with numbers of its own.
 const BEACH_WALL_GAPS: String = "res://data/tuning/beach_wall_gaps.tres"
 const WITHOUT: Array = ["city/1", "city/2", "city/3"]
+## The shaders whose surfaces are not opaque scenery (glows add light, drift and smoke are particles, the feed is a
+## screen): a ray through a gap meeting only these has met no background.
+const NOT_SCENERY: Array[String] = ["kit_glow.gdshader", "drift.gdshader", "dead_smoke.gdshader", "cult_feed.gdshader",
+	"energy_field.gdshader"]
+## How far below the horizontal (the slope's tangent) a ray through an opening must go to be asked for a face: a ray
+## nearer the horizon leaves over the roofs or out to sea, which is the sky's or the sea's business.
+const MIN_DEPRESSION: float = 0.0524
 
 
 ## Records the wall calls TrackBuilder makes.
@@ -155,11 +171,16 @@ func _test_skins() -> void:
 			var face: float = TrackGeometry.new(lanes, tuning).wall_x()
 			var lead := {-1: false, 1: false}
 			var ghosts: Array[String] = []
+			# The faces beyond each wall line (world space, triangles) the recess check casts rays at, and the height of
+			# each gap end's face.
+			var beyond := {-1: PackedVector3Array(), 1: PackedVector3Array()}
+			var end_tops: Dictionary = {}
 			start_error_count()
-			await visit_level(layout, skins[i], func(m: MeshInstance3D, arrays: Array, _mat: Material) -> void:
+			await visit_level(layout, skins[i], func(m: MeshInstance3D, arrays: Array, mat: Material) -> void:
 				var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 				var colors: Variant = arrays[Mesh.ARRAY_COLOR]
 				var xf: Transform3D = m.global_transform
+				_collect_beyond(beyond, end_tops, layout, face, m, arrays, mat)
 				for k: int in verts.size():
 					var p: Vector3 = xf * verts[k]
 					var along: float = -p.z
@@ -179,6 +200,126 @@ func _test_skins() -> void:
 			stop_error_count("building wall gaps " + tag)
 			check(lead[-1] and lead[1], "an orange leading edge on the face at each gap's start %s" % tag)
 			check(ghosts.is_empty(), "no wall face inside a gap %s: %s" % [tag, ghosts.slice(0, 3)])
+			_check_recess(layout, beyond, end_tops, face, tag + " " + names[i])
+
+
+## Adds the triangles of a surface that lie beyond a wall line (to `beyond[side]`: world space, opaque scenery only,
+## within reach of a gap on that wall) and records, for each gap end (key: side, track distance) the highest a vertex
+## standing on that end's plane and more than 2 m behind the wall line reaches (`end_tops`).
+func _collect_beyond(beyond: Dictionary, end_tops: Dictionary, layout: LevelLayout, face: float, m: MeshInstance3D,
+		arrays: Array, mat: Material) -> void:
+	var shader: Shader = (mat as ShaderMaterial).shader if mat is ShaderMaterial else null
+	if shader == null or NOT_SCENERY.has(shader.resource_path.get_file()):
+		return
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var index: Variant = arrays[Mesh.ARRAY_INDEX]
+	var xf: Transform3D = m.global_transform
+	var count: int = (index as PackedInt32Array).size() if index is PackedInt32Array else verts.size()
+	# What the gaps on each wall reach: a window of track distance from a little before the first to well after the last.
+	var reach: Dictionary = {}
+	for g: Dictionary in layout.wall_gaps:
+		var side: int = int(g["side"])
+		var r: Vector2 = reach.get(side, Vector2(INF, -INF))
+		reach[side] = Vector2(minf(r.x, float(g["start"]) - 30.0), maxf(r.y, float(g["end"]) + 250.0))
+	for t: int in range(0, count - 2, 3):
+		var tri := PackedVector3Array()
+		for k: int in 3:
+			tri.append(xf * verts[(index as PackedInt32Array)[t + k] if index is PackedInt32Array else t + k])
+		for side: int in reach:
+			var window: Vector2 = reach[side]
+			var near: bool = false
+			for p: Vector3 in tri:
+				near = near or ((p.x - side * face) * side >= -0.05 and -p.z >= window.x and -p.z <= window.y)
+			if near:
+				var kept: PackedVector3Array = beyond[side]
+				kept.append_array(tri)
+				beyond[side] = kept
+		for g: Dictionary in layout.wall_gaps:
+			var side: int = int(g["side"])
+			for key: float in [float(g["start"]), float(g["end"])]:
+				for p: Vector3 in tri:
+					if absf(-p.z - key) < 0.05 and (p.x - side * face) * side > 2.0:
+						var id := Vector2(side, key)
+						end_tops[id] = maxf(float(end_tops.get(id, -INF)), p.y)
+
+
+## What a gap shows behind it: no ray from a runner's camera through the opening and down past the horizon escapes
+## (see the suite's header), and each cut end's face rises over what the dark slabs stood to.
+func _check_recess(layout: LevelLayout, beyond: Dictionary, end_tops: Dictionary, face: float, tag: String) -> void:
+	var half_lane: float = tuning.lane_width * 0.5
+	var outer: float = face - tuning.wall_margin - half_lane
+	for side: int in [-1, 1]:
+		var tris: PackedVector3Array = beyond[side]
+		check(tris.size() >= 3, "faces beyond the wall line of a gap on wall %d %s" % [side, tag])
+		if tris.size() < 3:
+			continue
+		var mesh := ArrayMesh.new()
+		var arrays: Array = []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = tris
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var shape: TriangleMesh = mesh.generate_triangle_mesh()
+		for g: Dictionary in layout.wall_gaps:
+			if int(g["side"]) != side:
+				continue
+			var a: float = float(g["start"])
+			var b: float = float(g["end"])
+			# Both cut ends reach past the old slabs' 7 m (a wall run's band is 7 m; the owner saw the building's
+			# end open above it).
+			for key: float in [a, b]:
+				check(float(end_tops.get(Vector2(side, key), 0.0)) > 7.5, "the end face at %.0f m on wall %d rises past 7.5 m: %.1f %s" % [
+					key, side, float(end_tops.get(Vector2(side, key), 0.0)), tag])
+			var escaped: Array[String] = []
+			var cast: int = 0
+			# The camera looks down the track, so only rays that go on along it count; the sample points are off the
+			# round numbers a face's seams lie on.
+			for px: float in [0.07, side * outer + 0.05, side * (face - 0.6)]:
+				for py: float in [1.13, 2.47, 5.41]:
+					for pz: float in [a - 10.0, a - 3.0, (a + b) * 0.5 - 4.0]:
+						var eye := Vector3(px, py, -pz)
+						for fz: float in [0.11, 0.37, 0.61, 0.89]:
+							for ty: float in [0.31, 0.97, 2.03, 3.47, 4.93]:
+								var target := Vector3(side * face, ty, -(a + (b - a) * fz))
+								var flat: float = Vector2(target.x - eye.x, target.z - eye.z).length()
+								if flat < 0.5 or ty > py - MIN_DEPRESSION * flat or target.z > eye.z:
+									continue
+								cast += 1
+								if not _meets_face(shape, tris, target, (target - eye).normalized()):
+									escaped.append("eye %s through %s" % [eye, target])
+			# Both ends' faces face into the opening, whichever way the ray runs: along the track and back along it.
+			var inside := Vector3(side * (face + 4.0), 3.0, 0.0)
+			check(_meets_face(shape, tris, Vector3(inside.x, inside.y, -(b - 3.0)), Vector3(0.0, 0.0, -1.0)),
+				"the face at the gap's far end (%.0f m, wall %d) faces the runner %s" % [b, side, tag])
+			check(_meets_face(shape, tris, Vector3(inside.x, inside.y, -(a + 3.0)), Vector3(0.0, 0.0, 1.0)),
+				"the face at the gap's near end (%.0f m, wall %d) faces down the street %s" % [a, side, tag])
+			check(cast > 100, "rays cast through the gap at %.0f m on wall %d: %d %s" % [a, side, cast, tag])
+			check(escaped.is_empty(), "%d of %d rays through the gap at %.0f m on wall %d escape to the sky %s: %s" % [
+				escaped.size(), cast, a, side, tag, escaped.slice(0, 2)])
+
+
+## Whether a ray from `from` along `dir` meets a face that faces it (the surfaces cull their backs: a back face
+## is nothing, the ray goes on through it) within 400 m. A ray that finds nothing is tried again a hair either side,
+## so it never slips through the seam between two faces.
+func _meets_face(shape: TriangleMesh, tris: PackedVector3Array, from: Vector3, dir: Vector3) -> bool:
+	for nudge: Vector3 in [Vector3.ZERO, Vector3(0.0015, 0.0, 0.0), Vector3(-0.0015, 0.0, 0.0), Vector3(0.0, 0.0015, 0.0),
+			Vector3(0.0, -0.0015, 0.0)]:
+		if _meets_front(shape, tris, from, (dir + nudge).normalized()):
+			return true
+	return false
+
+
+func _meets_front(shape: TriangleMesh, tris: PackedVector3Array, from: Vector3, dir: Vector3) -> bool:
+	var origin: Vector3 = from + dir * 0.02
+	for step: int in 12:
+		var hit: Dictionary = shape.intersect_ray(origin, dir)
+		if hit.is_empty() or origin.distance_to(hit["position"]) > 400.0:
+			return false
+		var f: int = int(hit["face_index"]) * 3
+		var normal: Vector3 = (tris[f + 1] - tris[f]).cross(tris[f + 2] - tris[f])
+		if normal.dot(dir) > 0.0:
+			return true
+		origin = (hit["position"] as Vector3) + dir * 0.02
+	return false
 
 
 func _test_wall_runner() -> void:
