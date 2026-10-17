@@ -826,10 +826,12 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 ## - its own lane holds nothing (no hole, fence, pad, speed pad, ramp or the wall run it launches, floor cut's
 ##   lane window, floor enemy's stretch, other doodad) from `room` before its push to the level's spacing past its
 ##   end: what it hides behind it comes no sooner than between two patterns;
-## - the lanes beside it hold none of that from `room` before its push to `room` past its end, and the lane it
-##   pushes into holds none until LevelConfig.doodad_reaction_seconds past the push: the push lands on clear
-##   floor (a caught corner's too), a runner beside it never has to dodge into its lane, and one further out keeps
-##   a free lane on their side of it. Lanes further out may hold anything;
+## - both lanes beside it hold none of that from `room` before its push until LevelConfig.doodad_reaction_seconds
+##   after a push from its last front (a row's last one's) lands, on the floor (MovementTuning.doodad_push_time
+##   past it) or in the air (a full jump past it: a runner who jumped at it is pushed in the air, task L6's review),
+##   or `room` past its end if later: every push lands on clear floor with time to react, into the lane on its side
+##   or, for a caught corner, back the way the runner came, a runner beside it never has to dodge into its lane, and
+##   one further out keeps a free lane on their side of it. Lanes further out may hold anything;
 ## - nothing kept in every lane reaches it from its push's lead to `room` past its end: a ceiling or its landing
 ##   zone, a pad's zone, an enemy's attack as the fill pass keeps it (its own checks hold it back near a doodad) or
 ##   as its rules keep doodads off it (LevelGenerator.doodad_enemy_keep_out: a Resonator's visit and the waits its
@@ -866,7 +868,9 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
 	var lead: float = LevelGenerator.doodad_lead_for(tuning)
 	var room: float = tuning.lane_switch_time * speed + LevelGenerator.DOODAD_LANE_MARGIN
-	var reaction: float = (tuning.doodad_push_time + config.doodad_reaction_seconds) * speed
+	# A push's landing past the front it meets, on the floor or in the air (a full jump), and the reaction after it.
+	var reaction: float = maxf(tuning.doodad_push_time * speed, tuning.jump_distance(speed)) \
+		+ config.doodad_reaction_seconds * speed
 	var half: float = tuning.fence_depth * 0.5
 	var n: int = layout.lane_count
 	# What each lane holds: [what, lane, Vector2].
@@ -986,23 +990,23 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 				"two doodads closer than the level's spacing stand two lanes apart (lanes %d and %d, %.2f s) %s"
 				% [int(p.y), lane, (s - p.x) / speed, t])
 		prev.append(Vector2(e, lane))
-		# Lane by lane.
+		# Lane by lane: a push from its last front (a row's last one's, which a runner the dash leaves short of it meets)
+		# lands in either lane beside it.
 		var hidden: float = e + gen.doodad_after(e)
-		var landed: float = maxf(e + room, s + reaction)
+		var last: float = e - (end - start)
+		var landed: float = maxf(e + room, last + reaction)
 		for piece: Array in pieces:
 			var p_lane: int = piece[1]
 			var span: Vector2 = piece[2]
 			var to: float = -INF
 			if p_lane == lane:
 				to = hidden
-			elif p_lane == lane + side:
-				to = landed
 			elif absi(p_lane - lane) == 1:
-				to = e + room
+				to = landed
 			else:
 				continue
 			suite.check(span.x > to or span.y < s - lead - room,
-				"%s (lane %d, %.1f-%.1f) keeps off a doodad's lane, the lane it pushes into and the lane beside it %s"
+				"%s (lane %d, %.1f-%.1f) keeps off a doodad's lane and the lanes beside it, where its pushes land %s"
 				% [piece[0], p_lane, span.x, span.y, t])
 		for o: Dictionary in sorted:
 			if is_same(o, d) or int(o["lane"]) != lane or LevelLayout.doodad_extent(o) == extent:

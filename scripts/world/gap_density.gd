@@ -147,15 +147,19 @@ static func _protected(gen: LevelGenerator, with_doodads: bool = true) -> Array[
 
 
 ## Each zone doodad's window (only those standing in `lane`, if given): from the room its rules keep before its
-## push's lead (LevelGenerator.doodad_lane_room, task L6) to the level's spacing after it, all a doodad keeps clear in
-## its own lane and more than it keeps in the lanes beside it (LevelGenerator._place_doodads), kept here in every
-## lane.
+## push's lead (LevelGenerator.doodad_lane_room, task L6) to the level's spacing after it or, if later, the reaction
+## after a push from its front (LevelGenerator.doodad_landing, task L6's review: a jump at it pushed in the air), all
+## a doodad keeps clear in its own lane and in the lanes beside it (LevelGenerator._place_doodads), kept here in every
+## lane. A treasure stash's doodads (task I4) keep the spacing after them, as they always did.
 static func _doodad_windows(gen: LevelGenerator, lane: int = -1) -> Array[Vector2]:
 	var out: Array[Vector2] = []
 	for d: Dictionary in gen.layout.doodads:
 		if lane < 0 or int(d["lane"]) == lane:
-			out.append(Vector2(float(d["start"]) - gen.doodad_lead_for(gen.tuning) - gen.doodad_lane_room(),
-				float(d["end"]) + gen.doodad_after(float(d["end"]))))
+			var start: float = float(d["start"])
+			var to: float = float(d["end"]) + gen.doodad_after(float(d["end"]))
+			if not d.has("stash"):
+				to = maxf(to, gen.doodad_landing(start))
+			out.append(Vector2(start - gen.doodad_lead_for(gen.tuning) - gen.doodad_lane_room(), to))
 	return out
 
 

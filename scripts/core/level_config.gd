@@ -319,8 +319,10 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## (doodad_row_chance) counts as one: from its last one's end to the next doodad's front. DESIGN-TBD
 ## (docs/questions/l6.md 3).
 @export_range(0.2, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 0.6
-## The reaction a runner gets after a zone doodad's push lands them in the lane beside it (task L6): that lane
-## stays clear this long past the push, at run speed. DESIGN-TBD (docs/questions/l6.md 1).
+## The reaction a runner gets after a zone doodad's push lands them in a lane beside it (task L6, and its review):
+## both lanes beside it stay clear this long, at run speed, past where a push from its last front (a row's last
+## one's) comes down: a push's time past that front on the floor, or a full jump past it for a runner who jumped at
+## it, pushed in the air (LevelGenerator.doodad_landing). DESIGN-TBD (docs/questions/l6.md 1).
 @export_range(0.1, 2.0, 0.05, "suffix:s") var doodad_reaction_seconds: float = 0.5
 ## Doodads in rows (the owner, October 17, 2026, task L3: "occasionally ... rows of similar doodads: three plant
 ## doodads one right after the other, or three market stalls, one followed by a space ..."): the chance that a
