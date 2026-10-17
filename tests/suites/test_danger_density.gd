@@ -85,10 +85,10 @@ var _dd_tuning: Resource
 ## hadn't run; everything else is built as usual.
 class DoodadsUnchecked extends LevelGenerator:
 	func _add_doodads(rng: RandomNumberGenerator, row_rng: RandomNumberGenerator, size: StringName, start: float,
-			count: int, step: float, lane_keeps: Array[Dictionary], walls: Array) -> Array[Dictionary]:
+			count: int, step: float, room: DoodadRoom) -> Array[Dictionary]:
 		var plan: RefCounted = danger_density_plan
 		danger_density_plan = null
-		var entries: Array[Dictionary] = super(rng, row_rng, size, start, count, step, lane_keeps, walls)
+		var entries: Array[Dictionary] = super(rng, row_rng, size, start, count, step, room)
 		danger_density_plan = plan
 		return entries
 

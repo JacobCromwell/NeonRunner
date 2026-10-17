@@ -34,6 +34,9 @@ const FencedCeilingRules = preload("res://scripts/enemies/fenced_ceiling_rules.g
 const DangerDensityScript = preload("res://scripts/world/danger_density.gd")
 ## A floor route under a ceiling is looked for from this far before its pad's run-up.
 const ROUTE_LEAD: float = 5.0
+## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
+## past it can't take away a way on, and check_doodads looks for no floor route around it (task L6).
+const ROUTE_LOOK_BACK: float = 3.0
 
 
 ## The movement tuning `config`'s level runs on (LevelConfig.movement_for: its own run speed, a
@@ -606,9 +609,9 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 ##   window), and over that window with the level's clearance either side at most overlap_max other attack windows,
 ##   all of twin_tolerated_types and none a host's, and min_free_lanes lanes free of them (the floor enemies'), of the
 ##   cut's lane and its own, of holes, fences and lanes a rule keeps;
-## - a floor route (FloorRoute) through its stretch to past its window from every lane: from the clear stretch before
-##   its stretch, and from every lane but the cut's where a player can stand a reaction after its warning (check_cuts
-##   holds the cut's own lane to one);
+## - a floor route (FloorRoute, with the zone doodads' pushes, task L6) through its stretch to past its window from
+##   every lane: from the clear stretch before its stretch, and from every lane but the cut's where a player can stand
+##   a reaction after its warning (check_cuts holds the cut's own lane to one);
 ## - every company cyborg, hole and fence in the layout belongs to a cut with company.
 ## The cut's own rules (check_cuts: its lane, its whole lanes, a floor route out of its lane from its warning) hold
 ## with its company as without.
@@ -645,7 +648,9 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 	var overlap_max: int = maxi(int(dt.get("overlap_max")), 0)
 	var min_free: int = clampi(int(dt.get("min_free_lanes")), 1, maxi(n - 1, 1))
 	var rules_keeps: Array[Dictionary] = gen.rules_doodad_keep_outs()
-	var grid := FloorRoute.new(layout, tuning)
+	# Task L6: a zone doodad may stand by the clear stretch a route starts from; a runner in its lane is pushed into
+	# the lane on its side as they reach it (FloorRoute's pushes).
+	var grid := FloorRoute.new(layout, tuning, true)
 	# Where company cyborgs may stand from: past the cyborgs' start and, in a level that introduces them, its first plain
 	# one (not a host, nor planted in a charge's path, nor company).
 	var cyborgs_from: float = INF
@@ -811,87 +816,136 @@ static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: Le
 
 ## Zone doodads (GDD §3, owner's playtest September 30, 2026): scenery standing in lanes that never
 ## hurts; running into one pushes the player into a neighbouring lane. Wherever one stands
-## (LevelGenerator._place_doodads), at any lane count:
+## (LevelGenerator._place_doodads; task L6: what fairness needs, lane by lane), at any lane count, a row (task L3)
+## as one from its first one's front to its last one's end, `lead` its push's lead before its front
+## (LevelGenerator.doodad_lead_for) and `room` a lane switch at run speed and LevelGenerator.DOODAD_LANE_MARGIN
+## (doodad_lane_room):
 ## - in an inner lane, or in an outermost one by an open side wall (task L3: check_wall_lane_doodad), its size
-##   class's length, pushing to a side (inward from an outermost lane), after the run-up and before the
-##   end-clear stretch;
-## - with nothing else in any lane from its push's lead before its front to the level's hard spacing
-##   after its end: no hole, fence, ramp or the wall run it launches, pad (from its run-up to its
-##   lift's end), speed pad, sign, floor enemy's stretch, ceiling or landing zone. So the push lands
-##   on clear floor whichever lane it goes to, the player moves on clear floor after it, it leaves
-##   every lane but its own to run in, and the player can cross its lane again before what comes
-##   next, as between two patterns;
-## - off every lane-bound attack while it can run: every Octodog's run (its floor stretch), every Bad
-##   Dream chase and drone wave until its first pad, any lane while a hover truck is surely there, and
-##   never in or pushing into a truck's lane until it has left;
-## - one at a time: LevelConfig.doodad_gap_seconds from one's end (a row's last one's) to the next one's front;
+##   class's length, pushing to a side (inward from an outermost one), after the run-up and before the end-clear
+##   stretch;
+## - its own lane holds nothing (no hole, fence, pad, speed pad, ramp or the wall run it launches, floor cut's
+##   lane window, floor enemy's stretch, other doodad) from `room` before its push to the level's spacing past its
+##   end: what it hides behind it comes no sooner than between two patterns;
+## - the lanes beside it hold none of that from `room` before its push to `room` past its end, and the lane it
+##   pushes into holds none until LevelConfig.doodad_reaction_seconds past the push: the push lands on clear
+##   floor (a caught corner's too), a runner beside it never has to dodge into its lane, and one further out keeps
+##   a free lane on their side of it. Lanes further out may hold anything;
+## - nothing kept in every lane reaches it from its push's lead to `room` past its end: a ceiling or its landing
+##   zone, a pad's zone, an enemy's attack as the fill pass keeps it (its own checks hold it back near a doodad), a
+##   Bad Dream's chase, a drone wave until its first pad, a hover truck's shortest stay, a floor cut's window, a
+##   dash wall's footprint, a wider gap's zone, a quiet stretch, what the rules keep in every lane; and no calm
+##   stretch reaches it or its push's lead;
+## - it doesn't stand in a hover truck's lane while the truck is around (to the level's spacing past it), nor push
+##   into it (to its landing's reaction);
+## - LevelConfig.doodad_gap_seconds from one's end to the next one's front, and two closer than the level's
+##   spacing stand two lanes apart at least (no slalom);
+## - it never takes away a way on (GDD §3, task L6: a doodad never takes away the only way out of a row of holes
+##   or fences): from every lane a floor route (FloorRoute) found from the clear stretch before it to past the
+##   level's spacing after it without the zone doodads, one goes with them (a runner in a doodad's lane pushed into
+##   the lane on its side as they reach it: FloorRoute's pushes);
 ## - a row (task L3: doodads sharing a `row`): from doodad_row_min to doodad_row_max of them, never a slalom or a
 ##   wall of doodads: one lane, one size class, one side and one look (`look`, its first one's seed), each one's
 ##   front either DOODAD_ROW_TOUCH or a doodad's length past the one before's end as its size class says
 ##   (LevelConfig.doodad_row_spaced), the same all along the row, and its `row` from its first one's front to its
-##   last one's end; every rule above holds for each of them.
+##   last one's end; every rule above holds for the row as one.
 ## A treasure stash's doodads (task I4) aren't zone doodads standing on their own: check_scenarios checks them.
 static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
-	if layout.doodads.is_empty():
+	var sorted: Array[Dictionary] = []
+	for d: Dictionary in layout.doodads:
+		if not d.has("stash"):
+			sorted.append(d)
+	if sorted.is_empty():
 		return
+	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	var tuning: MovementTuning = level_tuning(suite, config)
 	var speed: float = tuning.run_speed
 	var pace: float = tuning.pace()
 	var zones := CeilingZones.make(config, tuning)
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
 	var lead: float = LevelGenerator.doodad_lead_for(tuning)
-	var after: float = config.spacing_seconds_hard * speed
+	var room: float = tuning.lane_switch_time * speed + LevelGenerator.DOODAD_LANE_MARGIN
+	var reaction: float = (tuning.doodad_push_time + config.doodad_reaction_seconds) * speed
 	var half: float = tuning.fence_depth * 0.5
 	var n: int = layout.lane_count
-	var busy: Array[Array] = []  # [what, Vector2]
+	# What each lane holds: [what, lane, Vector2].
+	var pieces: Array[Array] = []
 	for g: Dictionary in layout.gaps:
-		busy.append(["a hole", Vector2(g["start"], g["end"])])
+		pieces.append(["a hole", int(g["lane"]), Vector2(g["start"], g["end"])])
 	for f: Dictionary in layout.fences:
-		busy.append(["a fence", Vector2(float(f["at"]) - half, float(f["at"]) + half)])
-	for r: Dictionary in layout.ramps:
-		busy.append(["a ramp and its wall run", Vector2(r["at"], maxf(RampLaunch.of(r, tuning, speed).end(),
-			float(r["at"]) + tuning.ramp_length))])
+		pieces.append(["a fence", int(f["lane"]), Vector2(float(f["at"]) - half, float(f["at"]) + half)])
 	for p: Dictionary in layout.pads:
-		busy.append(["a pad's zone", zones.pad_zone(float(p["at"]))])
+		pieces.append(["a pad", int(p["lane"]), Vector2(p["at"], float(p["at"]) + tuning.pad_length)])
 	for p: Dictionary in layout.speed_pads:
-		busy.append(["a speed pad", Vector2(p["at"], float(p["at"]) + tuning.speed_pad_length)])
-	for s: Dictionary in layout.signs:
-		busy.append(["a sign", Vector2(s["start"], s["end"])])
+		pieces.append(["a speed pad", int(p["lane"]), Vector2(p["at"], float(p["at"]) + tuning.speed_pad_length)])
+	for r: Dictionary in layout.ramps:
+		pieces.append(["a ramp and its wall run", layout.outer_lane(int(r["side"])), Vector2(r["at"],
+			maxf(RampLaunch.of(r, tuning, speed).end(), float(r["at"]) + tuning.ramp_length))])
+	for c: Dictionary in layout.cuts:
+		pieces.append(["a floor cut's lane window", int(c["lane"]), FloorCutPlan.lane_window(c)])
+	for e: Dictionary in layout.enemies:
+		if not LevelGenerator.enemy_uses_floor(e):
+			continue
+		var lane: int = int(e.get("lane", -1))
+		if (lane < 0 or lane >= n) and int(e.get("side", 0)) != 0:
+			lane = layout.outer_lane(int(e["side"]))
+		var span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
+		if span.y >= span.x:
+			pieces.append(["a floor enemy's stretch (%s at %.0f)" % [e["type"], float(e["at"])], lane, span])
+	# What every lane keeps: [what, Vector2].
+	var every: Array[Array] = []
 	for h: Dictionary in layout.hulls:
-		busy.append(["a ceiling or its landing zone", Vector2(h["start"], zones.landing_zone(h).y)])
+		every.append(["a ceiling or its landing zone", Vector2(h["start"], zones.landing_zone(h).y)])
+	for p: Dictionary in layout.pads:
+		every.append(["a pad's zone", zones.pad_zone(float(p["at"]))])
 	var bt := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
 	var tt := EnemyDirector.tuning_for("hover_truck") as HoverTruckTuning
 	var dt := EnemyDirector.tuning_for("drone") as DroneTuning
 	var trucks: Array[Dictionary] = []
 	for e: Dictionary in layout.enemies:
 		var at: float = float(e["at"])
-		var span: Vector2 = LevelGenerator.enemy_floor_span(e, pace)
-		if span.y >= span.x:
-			busy.append(["a floor enemy's stretch (%s at %.0f)" % [e["type"], at], span])
+		var k: Vector2 = gen.enemy_keep_out(e)
+		if k.y >= k.x:
+			every.append(["an enemy's attack (%s at %.0f)" % [e["type"], at], k])
 		match String(e["type"]):
 			"cyborg":
 				if bool((e.get("params", {}) as Dictionary).get("host", false)):
-					busy.append(["a Bad Dream's chase", bt.chase_stretch(at, speed)])
+					every.append(["a Bad Dream's chase", bt.chase_stretch(at, speed)])
 			"drone":
 				var first: float = INF
 				for p: Dictionary in layout.pads:
 					if float(p["at"]) > at + 0.01:
 						first = minf(first, float(p["at"]))
-				busy.append(["a drone wave until its first pad", Vector2(at, minf(first, at + dt.first_pad_seconds * speed))])
+				every.append(["a drone wave until its first pad", Vector2(at, minf(first, at + dt.first_pad_seconds * speed))])
 			"hover_truck":
 				trucks.append(e)
-				busy.append(["a hover truck's shortest stay", Vector2(HoverTruckRules.window_start(tt, at, pace),
+				every.append(["a hover truck's shortest stay", Vector2(HoverTruckRules.window_start(tt, at, pace),
 					at + tt.stay_min_seconds * speed)])
-	# A treasure stash's doodads (marked "stash", task I4) stand under its ceiling, side by side: check_scenarios checks
-	# them.
-	var sorted: Array[Dictionary] = []
-	for d: Dictionary in layout.doodads:
-		if not d.has("stash"):
-			sorted.append(d)
-	sorted.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
-	var prev_end: float = -INF
+	for c: Dictionary in layout.cuts:
+		every.append(["a floor cut's window", FloorCutPlan.window(c, speed)])
+	for w: Dictionary in layout.dash_walls:
+		every.append(["a dash wall's footprint", DashWallRulesScript.footprint(gen, w)])
+	for z: Vector2 in WideGapPlacement.keep_outs(gen):
+		every.append(["a wider gap's zone", z])
+	for q: Vector2 in gen.quiet_stretches():
+		every.append(["a quiet stretch", q])
+	var calm: Array[Vector2] = []
+	for k: Dictionary in gen.rules_doodad_keep_outs():
+		if bool(k.get("calm", false)):
+			calm.append(Vector2(float(k["from"]), float(k["to"])))
+		elif not k.has("lane"):
+			every.append(["what a rule keeps in every lane (%s)" % k.get("type", "?"), Vector2(float(k["from"]), float(k["to"]))])
+	# The floor routes with the zone doodads and without them (task L6).
+	var bare: LevelLayout = layout.copy()
+	var stash_only: Array[Dictionary] = []
+	for d: Dictionary in bare.doodads:
+		if d.has("stash"):
+			stash_only.append(d)
+	bare.doodads = stash_only
+	var grid_with: FloorRoute = null
+	var grid_without: FloorRoute = null
+	var prev: Array[Vector2] = []  # Each earlier doodad (a row as one): Vector2(its end, its lane).
 	# The rows (task L3), each its doodads in order, keyed by its stretch.
 	var rows: Dictionary = {}
-	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
 	for d: Dictionary in sorted:
 		var start: float = float(d["start"])
 		var end: float = float(d["end"])
@@ -907,31 +961,85 @@ static func check_doodads(suite: TestSuite, layout: LevelLayout, config: LevelCo
 			"a doodad is as long as its size class " + t)
 		suite.check(start >= config.start_clear_distance - 0.01 and end <= layout.length - config.end_clear_distance + 0.01,
 			"a doodad stands between the run-up and the end-clear stretch " + t)
-		# One at a time: a row (task L3) counts as one, from its first one's front to its last one's end.
 		var key: String = var_to_str(d["row"]) if d.has("row") else ""
-		var first_of_row: bool = key == "" or not rows.has(key)
-		if first_of_row:
-			suite.check(start - prev_end >= config.doodad_gap_seconds * speed - 0.01,
-				"doodads (a row as one) come one at a time (%.2f s apart) %s" % [(start - prev_end) / speed, t])
 		if key != "":
 			if not rows.has(key):
 				rows[key] = []
 			(rows[key] as Array).append(d)
-		prev_end = end
+		# A row (task L3) counts as one, from its first one's front to its last one's end: checked at its first.
+		var extent: Vector2 = LevelLayout.doodad_extent(d)
+		if key != "" and absf(extent.x - start) > 0.01:
+			continue
+		var s: float = extent.x
+		var e: float = extent.y
 		if outer:
 			check_wall_lane_doodad(suite, layout, config, gen, d, t)
-		var zone := Vector2(start - lead, end + after)
-		for b: Array in busy:
+		# One at a time, never a slalom.
+		for p: Vector2 in prev:
+			var spacing: float = gen.doodad_after(p.x)
+			suite.check(s - p.x >= config.doodad_gap_seconds * speed - 0.01,
+				"doodads (a row as one) come doodad_gap_seconds apart (%.2f s) %s" % [(s - p.x) / speed, t])
+			suite.check(absi(int(p.y) - lane) > 1 or s - p.x >= spacing - 0.01,
+				"two doodads closer than the level's spacing stand two lanes apart (lanes %d and %d, %.2f s) %s"
+				% [int(p.y), lane, (s - p.x) / speed, t])
+		prev.append(Vector2(e, lane))
+		# Lane by lane.
+		var hidden: float = e + gen.doodad_after(e)
+		var landed: float = maxf(e + room, s + reaction)
+		for piece: Array in pieces:
+			var p_lane: int = piece[1]
+			var span: Vector2 = piece[2]
+			var to: float = -INF
+			if p_lane == lane:
+				to = hidden
+			elif p_lane == lane + side:
+				to = landed
+			elif absi(p_lane - lane) == 1:
+				to = e + room
+			else:
+				continue
+			suite.check(span.x > to or span.y < s - lead - room,
+				"%s (lane %d, %.1f-%.1f) keeps off a doodad's lane, the lane it pushes into and the lane beside it %s"
+				% [piece[0], p_lane, span.x, span.y, t])
+		for o: Dictionary in sorted:
+			if is_same(o, d) or int(o["lane"]) != lane or LevelLayout.doodad_extent(o) == extent:
+				continue
+			var span: Vector2 = LevelLayout.doodad_extent(o)
+			suite.check(span.x > hidden or span.y < s - lead - room,
+				"no other doodad in a doodad's lane from its push to the spacing past it (%.1f) %s" % [span.x, t])
+		for b: Array in every:
 			var span: Vector2 = b[1]
-			suite.check(span.x > zone.y or span.y < zone.x,
-				"nothing else goes on in any lane from a doodad's push to the spacing after it: %s at %.1f–%.1f %s"
-				% [b[0], span.x, span.y, t])
-		for e: Dictionary in trucks:
-			var at: float = float(e["at"])
-			var truck_lane: int = int(e.get("lane", -1))
-			if HoverTruckRules.window_start(tt, at, pace) <= zone.y and HoverTruckRules.window_end(tt, at, speed) >= zone.x:
-				suite.check(lane != truck_lane and lane + side != truck_lane,
-					"a doodad neither stands in a hover truck's lane nor pushes into it while it's around " + t)
+			suite.check(span.x > e + room or span.y < s - lead,
+				"nothing kept in every lane reaches a doodad: %s at %.1f-%.1f %s" % [b[0], span.x, span.y, t])
+		for c: Vector2 in calm:
+			suite.check(c.x > e or c.y < s - lead, "no calm stretch reaches a doodad or its push (%.1f-%.1f) %s" % [c.x, c.y, t])
+		for tr: Dictionary in trucks:
+			var at: float = float(tr["at"])
+			var truck_lane: int = int(tr.get("lane", -1))
+			var stay := Vector2(HoverTruckRules.window_start(tt, at, pace), HoverTruckRules.window_end(tt, at, speed))
+			suite.check(lane != truck_lane or stay.x > hidden or stay.y < s - lead,
+				"a doodad doesn't stand in a hover truck's lane while it's around " + t)
+			suite.check(lane + side != truck_lane or stay.x > landed or stay.y < s - lead,
+				"a doodad doesn't push into a hover truck's lane while it's around " + t)
+		# It never takes away a way on: wherever something else stands near it in any lane, from every lane.
+		var near: bool = false
+		for piece: Array in pieces:
+			var span: Vector2 = piece[2]
+			near = near or (span.x <= hidden and span.y >= s - lead - room - ROUTE_LOOK_BACK * speed)
+		if not near:
+			continue
+		if grid_with == null:
+			# A runner in a doodad's lane is pushed into the lane on its side as they reach it (FloorRoute's pushes).
+			grid_with = FloorRoute.new(layout, tuning, true)
+			grid_without = FloorRoute.new(bare, tuning)
+		var from: float = grid_with.clear_start(s - lead - room)
+		var i0: int = maxi(int(ceil(from / FloorRoute.STEP)), 0)
+		for l: int in n:
+			if not grid_with._free(0, l, i0, i0) or not bool(grid_without.find(from, hidden, l)["ok"]):
+				continue
+			var route: Dictionary = grid_with.find(from, hidden, l)
+			suite.check(bool(route["ok"]), "a doodad never takes away the way on from lane %d at %.1f (%s) %s"
+				% [l, from, route["reason"], t])
 	for key: String in rows:
 		check_row(suite, rows[key], config, tuning, tag)
 
@@ -981,8 +1089,8 @@ static func check_row(suite: TestSuite, row: Array, config: LevelConfig, tuning:
 ## feature's start to WallFenceTuning.intro_seconds past it with the drop windows there), no dash wall's wall route
 ## on either wall reaches it, no wall fence's drop window reaches it, no side wall gap stands beside it or starts
 ## within LevelGenerator.doodad_wall_drop before it (a wall runner dropping off never comes down on it), and no wall
-## credit lies within LevelGenerator.DOODAD_WALL_CREDIT_MARGIN of it on that wall. Every lane around it is clear
-## already (check_doodads).
+## credit lies within LevelGenerator.DOODAD_WALL_CREDIT_MARGIN of it on that wall. Its own lane and the lane beside it
+## are clear around it already (check_doodads, task L6).
 static func check_wall_lane_doodad(suite: TestSuite, layout: LevelLayout, config: LevelConfig, gen: LevelGenerator,
 		d: Dictionary, t: String) -> void:
 	var wall: int = -1 if int(d["lane"]) == 0 else 1
