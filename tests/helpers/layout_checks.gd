@@ -69,6 +69,7 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 		suite.check(s["end"] <= finish_buffer, "sign before the end-clear stretch " + tag)
 	check_doodads(suite, layout, config, tag)
 	check_cuts(suite, layout, config, tag)
+	check_buzz_company(suite, layout, config, tag)
 	check_wall_fences(suite, layout, config, tag)
 	check_wide_gaps(suite, layout, config, tag)
 	check_dash_walls(suite, layout, config, tag)
@@ -270,7 +271,8 @@ static func check_dash_walls(suite: TestSuite, layout: LevelLayout, config: Leve
 ##   boost carried onto it), and the tuning's margins around it;
 ## - the floor beside it clear to drop off into: over its drop window the outer lane on its side holds
 ##   no hole, fence, floor cut, anti-grav pad or floor enemy, and no hover truck keeps that lane;
-## - nothing running meanwhile: no floor cut's window, drone wave (to its first pad), hover truck's
+## - nothing running meanwhile: no floor cut's window (but a Buzz Overdrive's with company, task L2, which keeps the
+##   drop rule above), drone wave (to its first pad), hover truck's
 ##   stay, Octodog run, Resonator pulse (from its warning until its wave has passed the player), Bad
 ##   Dream chase or Gilded Sentinel's attack (from its eyes' flare to its last swing) reaches its drop
 ##   window; and never on a Gilded Sentinel's wall section (task C4);
@@ -367,8 +369,10 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 		for c: Dictionary in layout.cuts:
 			var lw: Vector2 = FloorCutPlan.lane_window(c)
 			suite.check(int(c["lane"]) != lane or not meets.call(lw.x, lw.y), "no floor cut where a wall runner drops off " + x)
+			# Task L2: a Buzz Overdrive with company (BuzzCompanyPlacement) keeps only the drop rule just above.
 			var cw: Vector2 = FloorCutPlan.window(c, speed)
-			suite.check(not meets.call(cw.x, cw.y), "no floor cut runs by a wall fence (one thing at a time) " + x)
+			suite.check(c.has(BuzzCompanyPlacement.CUT_KEY) or not meets.call(cw.x, cw.y),
+				"no floor cut runs by a wall fence (one thing at a time) but one with company " + x)
 		# Enemies: none on the floor beside it, and no big attack meanwhile.
 		for e: Dictionary in layout.enemies:
 			var e_at: float = float(e["at"])
@@ -440,9 +444,10 @@ static func check_wall_fences(suite: TestSuite, layout: LevelLayout, config: Lev
 ##   warned lane (from the warning on);
 ## - the other lanes whole along its stretch: on 3 lanes no hole in either (GDD §9.9), on more holes in
 ##   at most LevelConfig.cut_holes_beside of them (and two always whole);
-## - nothing else going on meanwhile: no floor enemy's stretch (its own cause aside), Bad Dream chase,
-##   drone wave before its first pad or hover truck's shortest stay reaches its attack window (from the
-##   warning on), nor a truck's whole stay in its lane;
+## - nothing else going on meanwhile: no floor enemy's stretch (its own cause aside, a cyborg planted in a
+##   parked tank's path, and a Buzz Overdrive's own company cyborgs, task L2, which check_buzz_company holds to
+##   their rules), Bad Dream chase, drone wave before its first pad or hover truck's shortest stay reaches its
+##   attack window (from the warning on), nor a truck's whole stay in its lane;
 ## - a floor route (FloorRoute, which keeps out of a cut's lane from where it would reach a player in
 ##   it) from its lane, LevelConfig.cut_reaction_seconds after its warning starts, to past its cause's
 ##   spot: a player who reacts can always leave the lane.
@@ -524,7 +529,10 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 				continue
 			if bool(c.get("park", false)) and int(e.get("lane", -1)) == lane and at > FloorCutPlan.charge_at(c) and at < end \
 					and String((e.get("params", {}) as Dictionary).get(ChargePathPlacement.PARAM, "")) == ChargePathPlacement.TANK:
-				continue  # Task G7: the cyborg planted in its path (check_charge_paths), the one exception.
+				continue  # Task G7: the cyborg planted in its path (check_charge_paths), an exception.
+			if c.has(BuzzCompanyPlacement.CUT_KEY) and BuzzCompanyPlacement.is_company(e) \
+					and absf(float((e["params"] as Dictionary)[BuzzCompanyPlacement.PARAM]) - end) < 0.01:
+				continue  # Task L2: its own company (check_buzz_company), the other exception.
 			var busy: Array[Vector2] = [LevelGenerator.enemy_floor_span(e, pace)]
 			match String(e["type"]):
 				"cyborg":
@@ -544,6 +552,137 @@ static func check_cuts(suite: TestSuite, layout: LevelLayout, config: LevelConfi
 		var route: Dictionary = grid.find(from, span.y + 2.0, lane)
 		suite.check(bool(route["ok"]), "a player in a cut's lane %.2f s into its warning can leave it (%s) %s" % [
 			config.cut_reaction_seconds, route["reason"], t])
+
+
+## Company for the Buzz Overdrive (task L2; the owner, October 17, 2026: other enemies and track hazards on screen
+## with it; BuzzCompanyPlacement), wherever a cut has it (BuzzCompanyPlacement.CUT_KEY), at any lane count, at the
+## level's own run speed:
+## - only on a cut whose cause is a level's Buzz Overdrive (its cut has a lead: not a boss's), in a level that asks
+##   for it (LevelConfig.buzz_company) and isn't a boss arena, never within the tuning's truck margin of an Enforcer
+##   Truck's chase, never the level's introduction of it unless the tuning says so;
+## - its escape lane, if it has one, beside its lane and clear over its attack (BuzzCompanyPlacement.attack_of: from
+##   attack_margin_seconds before its warning to the end of its window, a lane switch's margin either side): no hole,
+##   fence, pad, speed pad, ramp, doodad, other cut, floor enemy (company or not) or lane a rule keeps (lane_clear);
+## - each of its holes and fences (their own PARAM key): in its stretch (stretch_of), never in its lane, never in the
+##   escape lane over the attack (nor in the attack at all without one); a hole over the attack never beside its lane,
+##   and holes over the attack in no more lanes than GDD §9.9's whole lanes allow; each row at least the level's
+##   spacing from every other piece and every enemy's keep-out but its tank's;
+## - each of its cyborgs (PARAM in their params): a plain floor cyborg, never a host, never the panic variant, in
+##   another lane than the cut's, standing in its stretch, holding its fire over hold_of at least, with the cyborg
+##   rules' margin from every piece (CyborgRules); one whose floor reaches the attack only beside the escape lane, never
+##   in it;
+## - every company cyborg, hole and fence in the layout belongs to a cut with company.
+## The cut's own rules (check_cuts: its lane, its whole lanes, a floor route out of its lane from its warning) hold
+## with its company as without.
+static func check_buzz_company(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var marked: Dictionary = {}
+	for c: Dictionary in layout.cuts:
+		if c.has(BuzzCompanyPlacement.CUT_KEY):
+			marked["%.2f" % float(c["end"])] = c
+	for e: Dictionary in layout.enemies:
+		if BuzzCompanyPlacement.is_company(e):
+			suite.check(marked.has("%.2f" % float((e["params"] as Dictionary)[BuzzCompanyPlacement.PARAM])),
+				"a company cyborg (at %.1f) keeps a tank with company %s" % [float(e["at"]), tag])
+	for list: Array[Dictionary] in [layout.gaps, layout.fences]:
+		for piece: Dictionary in list:
+			if piece.has(BuzzCompanyPlacement.PARAM):
+				suite.check(marked.has("%.2f" % float(piece[BuzzCompanyPlacement.PARAM])),
+					"a company piece (lane %d) belongs to a tank with company %s" % [int(piece["lane"]), tag])
+	if marked.is_empty():
+		return
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var v: float = tuning.run_speed
+	var pace: float = tuning.pace()
+	var n: int = layout.lane_count
+	var half: float = tuning.fence_depth * 0.5
+	var t: BuzzCompanyTuning = BuzzCompanyPlacement.tuning()
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var whole: int = gen.whole_lanes_for_cut(n)
+	var zones := CeilingZones.make(config, tuning)
+	var spans: Array[Vector2] = CyborgRules.obstacle_spans(layout, tuning, zones)
+	var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+	var margin: float = CyborgRules.obstacle_margin_at(ct, pace)
+	var first_lead: float = INF
+	for c: Dictionary in layout.cuts:
+		first_lead = minf(first_lead, FloorCutPlan.lead_at(c))
+	suite.check(config.buzz_company and not WallGapPlacement.is_boss_arena(config),
+		"Buzz Overdrive company only in a level that asks for it, never a boss arena " + tag)
+	for c: Dictionary in marked.values():
+		var lane: int = int(c["lane"])
+		var end: float = float(c["end"])
+		var w: String = "(the Buzz Overdrive cutting lane %d to %.1f) %s" % [lane, end, tag]
+		var tank: Dictionary = {}
+		for e: Dictionary in layout.enemies:
+			if String(e.get("type", "")) == "buzz_overdrive" and int(e.get("lane", -1)) == lane and absf(float(e["at"]) - end) < 0.01:
+				tank = e
+		suite.check(not tank.is_empty() and c.has("lead"), "company keeps a level's Buzz Overdrive, not a boss's " + w)
+		suite.check(not BuzzCompanyPlacement.truck_near(gen, t, c), "no Enforcer Truck's chase comes near it " + w)
+		suite.check(t.on_introduction or int(config.feature_ages.get("buzz_overdrive", -1)) != 0
+			or FloorCutPlan.lead_at(c) > first_lead + 0.01, "the level's introduction of it comes alone " + w)
+		var escape: int = int(c[BuzzCompanyPlacement.CUT_KEY])
+		var attack: Vector2 = BuzzCompanyPlacement.attack_of(gen, t, c)
+		var stretch: Vector2 = BuzzCompanyPlacement.stretch_of(gen, t, c)
+		var in_attack := func(s: Vector2) -> bool: return s.y >= attack.x - 1.0 and s.x <= attack.y + 1.0
+		if escape >= 0:
+			suite.check(escape < n and absi(escape - lane) == 1, "its escape lane %d is beside it %s" % [escape, w])
+			suite.check(BuzzCompanyPlacement.lane_clear(gen, escape, attack, tank),
+				"its escape lane %d holds nothing over its attack (%.0f-%.0f) %s" % [escape, attack.x, attack.y, w])
+		# Its holes and fences.
+		var pieces: Array[Dictionary] = BuzzCompanyPlacement.pieces_of(layout, c)
+		var attack_holes: bool = false
+		for piece: Dictionary in pieces:
+			var hole: bool = piece.has("start")
+			var s := Vector2(float(piece["start"]), float(piece["end"])) if hole \
+				else Vector2(float(piece["at"]) - half, float(piece["at"]) + half)
+			var p_lane: int = int(piece["lane"])
+			var where: String = "(%s in lane %d at %.1f) %s" % ["hole" if hole else "fence", p_lane, s.x, w]
+			suite.check(p_lane != lane, "no company piece in its lane " + where)
+			suite.check(s.x >= stretch.x - 0.01 and s.y <= stretch.y + 0.01, "a company piece stands in its stretch " + where)
+			if in_attack.call(s):
+				suite.check(escape >= 0 and p_lane != escape, "none in its attack in the escape lane, nor without one " + where)
+				if hole:
+					attack_holes = true
+					suite.check(absi(p_lane - lane) != 1, "no company hole beside it in its attack " + where)
+			# The level's spacing from every other piece, and every enemy's keep-out but its tank's.
+			var gap_m: float = gen.doodad_after(s.x) - 0.01
+			for other: Dictionary in layout.gaps + layout.fences:
+				var o := Vector2(float(other["start"]), float(other["end"])) if other.has("start") \
+					else Vector2(float(other["at"]) - half, float(other["at"]) + half)
+				if is_same(other, piece) or (absf(o.x - s.x) < 0.01 and absf(o.y - s.y) < 0.01):
+					continue  # Itself, or its own row.
+				suite.check(o.x - s.y >= gap_m or s.x - o.y >= gap_m,
+					"a company row keeps the level's spacing from every other piece (%.1f-%.1f) %s" % [o.x, o.y, where])
+			for e: Dictionary in layout.enemies:
+				if is_same(e, tank):
+					continue
+				var k: Vector2 = gen.enemy_keep_out(e)
+				suite.check(k.x - s.y >= gap_m or s.x - k.y >= gap_m,
+					"a company row keeps the level's spacing from every enemy (%s at %.1f) %s" % [e["type"], float(e["at"]), where])
+		if attack_holes:
+			var holed: Dictionary = {}
+			for g: Dictionary in layout.gaps:
+				if int(g["lane"]) != lane and in_attack.call(Vector2(float(g["start"]), float(g["end"]))):
+					holed[int(g["lane"])] = true
+			suite.check(holed.size() <= n - 1 - whole, "holes over its attack in at most %d lanes besides its own (%s) %s" % [
+				n - 1 - whole, holed.keys(), w])
+		# Its cyborgs.
+		var hold: Vector2 = BuzzCompanyPlacement.hold_of(gen, t, c)
+		for e: Dictionary in BuzzCompanyPlacement.cyborgs_of(layout, c):
+			var params: Dictionary = e["params"]
+			var at: float = float(e["at"])
+			var e_lane: int = int(e["lane"])
+			var where: String = "(company cyborg in lane %d at %.1f) %s" % [e_lane, at, w]
+			suite.check(int(e.get("side", 0)) == 0 and not bool(params.get("host", false)) and not bool(params.get("panic", true)),
+				"a plain floor cyborg, never a host or the panic variant " + where)
+			suite.check(e_lane != lane and e_lane >= 0 and e_lane < n, "never in its lane " + where)
+			suite.check(at >= stretch.x - 0.01 and at <= stretch.y + 0.01, "standing in its stretch " + where)
+			var held: Variant = params.get("hold_fire")
+			suite.check(held is Vector2 and (held as Vector2).x <= hold.x + 0.01 and (held as Vector2).y >= hold.y - 0.01,
+				"holding its fire from before the warning to past the window " + where)
+			suite.check(not CyborgRules.near_any(spans, at, margin), "the cyborg rules' margin from every piece " + where)
+			if in_attack.call(LevelGenerator.enemy_floor_span(e, pace)):
+				suite.check(t.cyborgs_in_attack and escape >= 0 and e_lane != escape and absi(e_lane - escape) == 1,
+					"one the runner meets in its attack stands beside the escape lane, never in it " + where)
 
 
 ## Zone doodads (GDD §3, owner's playtest September 30, 2026): scenery standing in lanes that never

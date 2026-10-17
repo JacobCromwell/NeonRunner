@@ -472,6 +472,12 @@ func _build_debug_tools() -> void:
 		var charge_paths: ChargePathTuning = ChargePathPlacement.tuning()
 		if charge_paths.resource_path != "":
 			sections.append({"title": "Charge paths", "resource": charge_paths, "path": charge_paths.resource_path})
+	# Task L2: the company a Buzz Overdrive gets, in a level that asks for it (LevelConfig.buzz_company); Restart level
+	# rebuilds.
+	if context.config.buzz_company and context.config.has_feature(BuzzCompanyPlacement.TANK):
+		var company: BuzzCompanyTuning = BuzzCompanyPlacement.tuning()
+		if company.resource_path != "":
+			sections.append({"title": "Buzz Overdrive company", "resource": company, "path": company.resource_path})
 	# Task H7a: where dash walls stand and what keeps clear around them, in a level that has them (how many is
 	# the level's LevelConfig.dash_walls, in "Level pacing"; the wall's size is in "Movement"); Restart rebuilds.
 	if context.config.has_feature("dash_wall"):

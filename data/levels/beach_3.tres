@@ -22,6 +22,7 @@ fill_empty_seconds = 2.0
 danger_density_increase = 0.33
 wide_gaps = 2
 charge_path_cyborgs = 1
+buzz_company = true
 wall_gap_tuning = ExtResource("2_wall_gaps")
 credit_trail_chance = 0.6
 credit_trail_min = 5

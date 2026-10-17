@@ -28,7 +28,9 @@ extends RefCounted
 ##   (an enemy keep-out of the drone's, the hover truck's, the Octodog's or a floor cut's cause; each of
 ##   a Resonator's pulses, from its warning until its wave has passed the player) and no Bad Dream chase
 ##   or Gilded Sentinel's attack (both the rules' keep-outs in every lane) reaches its drop window (the
-##   wall is one of their escapes; one big thing at a time);
+##   wall is one of their escapes; one big thing at a time); but a Buzz Overdrive with company (task L2,
+##   BuzzCompanyPlacement: its runner escapes along the floor, into the lane beside its cut, and a wall
+##   runner is safe from it) keeps only the drop rule above, its cut's lane in the outer lane;
 ## - the level: its drop window between the run-up and the end-clear stretch;
 ## - other wall fences: same_side_gap_seconds apart on one wall (a wall run meets one at a time), and
 ##   gap_seconds apart on either.
@@ -239,16 +241,19 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 			drop.append(Vector2(float(k["from"]), float(k["to"])))
 	for s: Vector2 in drop:
 		out.append({"from": s.x - after, "to": s.y + before, "why": "the outer lane beside it isn't clear to drop off into"})
-	# What runs meanwhile: floor cuts, big attacks, Bad Dream chases.
+	# What runs meanwhile: floor cuts, big attacks, Bad Dream chases. A Buzz Overdrive with company (task L2,
+	# BuzzCompanyPlacement) is the exception: its cut and its rev keep only the drop rule above (its lane window in the
+	# outer lane), so the walls carry their usual share of fences while it's about.
 	var busy: Array[Vector2] = []
 	for c: Dictionary in lay.cuts:
-		busy.append(FloorCutPlan.window(c, v))
+		if not c.has(BuzzCompanyPlacement.CUT_KEY):
+			busy.append(FloorCutPlan.window(c, v))
 	var hooks: Dictionary = {}
 	for e: Dictionary in lay.enemies:
 		var pulses: Array[Vector2] = resonator_pulses(gen, e)
 		if not pulses.is_empty():
 			busy.append_array(pulses)
-		elif BIG_ATTACKS.has(String(e.get("type", ""))):
+		elif BIG_ATTACKS.has(String(e.get("type", ""))) and not _with_company(lay, e):
 			busy.append(gen.enemy_keep_out(e, hooks))
 	for k: Dictionary in attacks:
 		if not k.has("lane"):
@@ -257,6 +262,16 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 		if s.y >= s.x:
 			out.append({"from": s.x - after, "to": s.y + before, "why": "a floor cut or a big attack runs meanwhile"})
 	return out
+
+
+## True if enemy entry `e` is a Buzz Overdrive whose cut has company (task L2: BuzzCompanyPlacement.CUT_KEY).
+static func _with_company(lay: LevelLayout, e: Dictionary) -> bool:
+	if String(e.get("type", "")) != BuzzCompanyPlacement.TANK:
+		return false
+	for c: Dictionary in lay.cuts:
+		if int(c["lane"]) == int(e.get("lane", -1)) and absf(float(c["end"]) - float(e["at"])) < 0.01:
+			return c.has(BuzzCompanyPlacement.CUT_KEY)
+	return false
 
 
 ## The wall section a Gilded Sentinel (task C4, GDD §9.11) keeps to itself on its wall: from its wall-run
