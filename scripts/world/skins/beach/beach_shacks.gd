@@ -387,8 +387,10 @@ func _near_end(solid: MeshLayer, b: Shack, face_x: float) -> void:
 ## gap mark's dark slab (ZoneSkin.standard_wall_gap), so the cut reads as a shack's end, not a black block.
 ## With `leading` it is the other end instead (task L4): the end of the shack the wall stops with at `at`, facing on
 ## down the street, which a view across the opening or from the beach sees (the runner's camera looks down the track
-## and never does, but a black block there was the one unrendered end left).
+## and never does, but a black block there was the one unrendered end left). DESIGN-TBD (docs/questions/l4.md, item 3):
+## that end cap.
 func gap_end_cap(batch: MeshBatch, side: int, face_x: float, at: float, y0: float, leading: bool = false) -> void:
+	# DESIGN-TBD: the leading end's cap (docs/questions/l4.md, item 3); the trailing one is task D10b's.
 	_prepare()
 	var b: Shack = shack(side, lot_run(side, floori((at - 0.01 if leading else at + 0.01) / skin.lot_length)))
 	var solid: MeshLayer = batch.layer(_solid)

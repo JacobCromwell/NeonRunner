@@ -107,7 +107,7 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float,
 	shore_side(batch, side, face_x, start, end, gap)
 	if gap.y >= start - 0.001 and gap.y <= end + 0.001:
 		skin.shacks().gap_end_cap(batch, side, face_x, gap.y, -skin.beach_drop)
-	if gap.x >= start - 0.001 and gap.x <= end + 0.001:
+	if skin.wall_gap_recess_on and gap.x >= start - 0.001 and gap.x <= end + 0.001:
 		skin.shacks().gap_end_cap(batch, side, face_x, gap.x, -skin.beach_drop, true)
 
 

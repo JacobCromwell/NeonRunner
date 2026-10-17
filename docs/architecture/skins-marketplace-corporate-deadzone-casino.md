@@ -20,7 +20,7 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   shows behind it): the two buildings a gap cuts show their own end faces (their colour, plinth and window grid,
   `RECESS_DEPTH` 20 m back, up to their own height), a building across the alley stands 22-38 m behind the wall line,
   and the market floor runs on from the plane under the stall roofs, everything under the roofs in the same deep
-  `PAT_UNDER` shade (a gap still reads as a hole). Built per gap part in the facade and solid layers the walls use.
+  `PAT_UNDER` shade (a gap still reads as a hole). Built per gap part into the gap's batch, in the facade and solid layers the walls use (no new material or shader).
 - *Shop windows for the citizens (task D3).* Every shopfront has a row of real window openings with
   lit displays at the low part of the wall (0.85-2.8 m above the floor, above the wall vents' zone).
   `MarketplaceSkin.shop_windows(side, face_x, start, end)` lists the windows whose centres lie

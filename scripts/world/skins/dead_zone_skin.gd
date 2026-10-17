@@ -285,23 +285,17 @@ func wall_section(parent: Node3D, side: int, face_x: float, start: float, end: f
 	batch.commit(parent)
 
 
-## A wall gap (ZoneSkin.wall_gap), and with the left wall the street below (no skybridge from a
-## missing wall).
-func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+## With the left wall of a wall gap (ZoneSkin.wall_gap_extras), the street below (no skybridge from a missing wall).
+func wall_gap_extras(batch: MeshBatch, side: int, face_x: float, start: float, end: float) -> void:
 	_wall_x = absf(face_x)
-	super(parent, side, face_x, start, end, gap)
 	if side < 0:
-		var batch := MeshBatch.new()
 		street().below(batch, absf(face_x), start, end)
-		batch.commit(parent)
 
 
 ## What a wall gap shows behind it (ZoneSkin.wall_gap_recess, task L4): where a tower was burnt away between two
 ## ruins, their end faces, the ruin across and the void's floor (DeadTowers.recess).
-func wall_gap_recess(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
-	var batch := MeshBatch.new()
+func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	towers().recess(batch, side, face_x, start, end, gap)
-	batch.commit(parent)
 
 
 func fence(hazard: Hazard, size: Vector3, ground_y: float, gapped: bool) -> void:

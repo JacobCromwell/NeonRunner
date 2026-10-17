@@ -145,7 +145,8 @@ func ruin_for(side: int, span: Vector2i) -> Ruin:
 ## background"): the gap's part [start, end] of a collapsed stretch between the two ruins it cuts: their end faces
 ## (RECESS_DEPTH deep, in their own colours, windows and broken tops, down to the crater floor `crater_depth`
 ## below the street), the broken face of a ruin across it, and that dark floor, running on from the plane under
-## the street (GanglandStreet.below). All in the facade layer the walls draw with: no surface of its own.
+## the street (GanglandStreet.below). All into the gap's batch, in the facade and solid layers the walls draw with: no
+## material or shader of its own (at most those two surfaces).
 func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var facade: MeshLayer = batch.layer(skin.facade_material())
 	var solid: MeshLayer = batch.layer(skin.solid_material())
@@ -182,7 +183,8 @@ func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float
 		var lit: float = lerpf(skin.ruin_lit_min, skin.ruin_lit_max, MeshKit.hash01(side, id, 8))
 		var wall: Color = skin.facade_colors[MeshKit.hash_i(side, id, 9) % skin.facade_colors.size()]
 		var seed: float = float(MeshKit.hash_i(side, id, 11) % 997)
-		var top: float = r.top(clampf(d, r.t0, r.b1))
+		# Where the wall is a side street's barricade (before the ruin's own face starts), the end is no taller than it.
+		var top: float = r.top(clampf(d, r.t0, r.b1)) if d >= r.t0 else skin.boarded_below + 1.0
 		MeshKit.end_quad(facade, x_min, x_min + RECESS_DEPTH, end_at, bottom, top, leading, wall, lit, style, seed + 3.0)
 
 

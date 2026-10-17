@@ -56,6 +56,10 @@ func run() -> void:
 	for lanes: int in LANES:
 		App.rules.lanes_pc = lanes
 		await _check_intro(lanes)
+		var openings: GanglandIntro = _start()
+		if openings != null:
+			_test_openings(lanes, openings)
+		await _free(openings)
 	App.rules.lanes_pc = lanes_pc
 	await _test_reduced_flashing()
 	await _test_skip()
@@ -83,6 +87,47 @@ func _start() -> GanglandIntro:
 	seq.play(s.cinematic, s)
 	seq.set_process(false)
 	return seq
+
+
+## A stage's openings (task L4; CineStageDef.wall_gaps: where the set looks out of the street and builds what it shows
+## itself) are not closed by the alley a level's wall gaps get: nothing the stage's own track draws stands more than
+## 1 m past a wall line inside an opening's span (the recess is up to 20 m deep), whatever the lane count.
+func _test_openings(lanes: int, seq: GanglandIntro) -> void:
+	var tag: String = "%d lanes" % lanes
+	var stage: CineStage = seq.stage
+	check(not stage.layout.wall_gaps.is_empty(), "%s: the stage has openings" % tag)
+	var beyond: Array[String] = []
+	var seen: int = 0
+	for g: Dictionary in stage.layout.wall_gaps:
+		var side: int = int(g["side"])
+		var a: float = float(g["start"]) + 0.2
+		var b: float = float(g["end"]) - 0.2
+		stage.update(float(g["start"]) - 10.0, 0.0)
+		for chunk: Node in stage.track.get_children():
+			for node: Node in chunk.find_children("*", "MeshInstance3D", true, false):
+				var inst := node as MeshInstance3D
+				if inst.mesh == null:
+					continue
+				for s: int in inst.mesh.get_surface_count():
+					var verts: PackedVector3Array = inst.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+					# By triangle: a floor or a plane under the street has no vertex inside a short span.
+					for t: int in range(0, verts.size() - 2, 3):
+						var lo: float = INF
+						var hi: float = -INF
+						var out: float = -INF
+						for k: int in 3:
+							var p: Vector3 = stage.to_track(inst.global_transform * verts[t + k])
+							lo = minf(lo, p.z)
+							hi = maxf(hi, p.z)
+							out = maxf(out, (p.x - stage.wall_x(side)) * side)
+						if hi < a or lo > b:
+							continue
+						seen += 1
+						if out > 1.0:
+							beyond.append("a triangle %.1f m past the wall line, along %.1f-%.1f m" % [out, lo, hi])
+	check(seen > 0, "%s: the track draws something over its openings (the street's own pieces)" % tag)
+	check(beyond.is_empty(), "%s: nothing the track draws reaches past a wall line inside an opening: %d, %s" % [
+		tag, beyond.size(), beyond.slice(0, 2)])
 
 
 func _free(node: Node) -> void:

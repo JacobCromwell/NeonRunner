@@ -92,8 +92,8 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 ## background"): the gap's part [start, end] of an alley between the two buildings it cuts: their end faces
 ## (RECESS_DEPTH deep, from the road far below up their podium and their tower, in their own colours and window
 ## grids), the face of a tower across it and the road running on from the one under the street (the City has no wall
-## gaps in its levels, but quick play and the review tools can have them). Everything goes in the facade and solid
-## layers the walls draw with: no surface of its own.
+## gaps in its levels, but quick play and the review tools can have them). Everything goes into the gap's batch, in the
+## facade and solid layers the walls draw with: no material or shader of its own (at most those two surfaces).
 func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var facade: MeshLayer = batch.layer(skin.facade_material())
 	var road_y: float = -skin.road_depth

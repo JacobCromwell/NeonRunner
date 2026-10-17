@@ -196,7 +196,7 @@ func building(side: int, span: Vector2i) -> Building:
 ## (RECESS_DEPTH deep: the plinth, the calm band, the frieze, then the palace's or gallery's windows or the tower's
 ## glass, in their own stone and window grid), the face of a palace across it, and the canal running on from the
 ## one under the walkways (PAT_CANAL, flowing toward the runner, STYLE_DEEP's shade below the walkways). Everything
-## goes in the facade and solid layers the walls draw with: no surface of its own.
+## goes into the gap's batch, in the facade and solid layers the walls draw with: no material or shader of its own.
 func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var facade: MeshLayer = batch.layer(skin.facade_material())
 	var solid: MeshLayer = batch.layer(skin.solid_material())

@@ -165,7 +165,8 @@ func building(side: int, span: Vector2i) -> Building:
 ## stand in for up to 7 m), the face of the building across it, and the market floor, running on from the
 ## street's own plane under the stall roofs (the same deep shade, PAT_UNDER, so it reads as the hole it is
 ## and never as a way). The far ends' faces (looking forward: the one at the gap's far end; the other
-## shows from the side) go in the facade and solid layers the walls draw with: no surface of its own.
+## shows from the side) go into the gap's batch, in the facade and solid layers the walls draw with: no material or
+## shader of its own (at most those two surfaces).
 func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var facade: MeshLayer = batch.layer(skin.facade_material())
 	var solid: MeshLayer = batch.layer(skin.solid_material())

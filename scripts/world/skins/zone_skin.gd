@@ -34,6 +34,11 @@ const SCENERY_TINT: StringName = &"scenery_tint"
 ## The scenery tint set last (set_scenery_tint), for tests and tools.
 static var scenery_tint_now: Color = Color.WHITE
 
+## Whether a side wall gap closes its opening with the recess (wall_gap_recess; task L4). A cinematic's stage turns it
+## off on its own copy of the skin (CineStage.build): its openings are where the set looks out of the street (a side
+## street, the skyline), and the recess would wall them off. Not exported: a skin's data never turns it off.
+var wall_gap_recess_on: bool = true
+
 ## The default doodad look's base plinth, body and top (doodad()) take this much of its height.
 const DOODAD_BASE_HEIGHT: float = 0.3
 const DOODAD_TOP_HEIGHT: float = 0.24
@@ -427,23 +432,33 @@ func wall_section(_parent: Node3D, _side: int, _face_x: float, _start: float, _e
 ## brightest, with an orange lip along the floor's edge across the gap; and what lies behind the wall
 ## line is wall_gap_recess()'s (task L4: the opening is closed with an alley between the two cut
 ## buildings, so no background is left unrendered). Nothing flickers, so it needs nothing for reduced
-## flashing. A skin that draws more than the wall itself in wall_section (the street below, things
-## across the street, built with the left wall) draws those here too where they don't hang off the
-## wall.
+## flashing. It is one batch, one mesh: the marks, the recess and wall_gap_extras(), a skin's own additions (the
+## street below, things across the street, built with the left wall: they don't hang off the wall).
 func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
-	wall_gap_marks(parent, side, face_x, start, end, gap)
-	wall_gap_recess(parent, side, face_x, start, end, gap)
+	var batch := MeshBatch.new()
+	wall_gap_marks(batch, side, face_x, start, end, gap)
+	if wall_gap_recess_on:
+		wall_gap_recess(batch, side, face_x, start, end, gap)
+	wall_gap_extras(batch, side, face_x, start, end)
+	batch.commit(parent)
 
 
-## The default wall_gap()'s marks alone (standard_wall_gap in the skin's gap colours: the lip and the edges, but not
-## the ends' faces, which are wall_gap_recess()'s), for a skin whose parent class adds more than it wants.
-func wall_gap_marks(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+## What a skin adds to a wall gap's part besides the marks and the recess (task L4: its own, into the gap's batch, so
+## they share its layers): in most skins, with the left wall, the plane far below the street (`below()`), which the
+## walls draw whole and a gap must not lose, and what the wall's own pieces hold up (no cables across from a missing
+## wall). The default adds nothing.
+func wall_gap_extras(_batch: MeshBatch, _side: int, _face_x: float, _start: float, _end: float) -> void:
+	pass
+
+
+## The default wall_gap()'s marks (standard_wall_gap in the skin's gap colours: the lip and the edges), into the gap's
+## batch. The cut ends' faces are wall_gap_recess()'s, so it draws the old dark slabs there only when the recess is
+## off (wall_gap_recess_on).
+func wall_gap_marks(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var edge: Variant = get("gap_edge_color")
 	var inside: Variant = get("gap_inside_color")
-	var batch := MeshBatch.new()
 	standard_wall_gap(batch.layer(MeshKit.solid()), side, face_x, start, end, gap,
-		edge if edge is Color else CUT_EDGE_COLOR, inside if inside is Color else CUT_INSIDE_COLOR, false)
-	batch.commit(parent)
+		edge if edge is Color else CUT_EDGE_COLOR, inside if inside is Color else CUT_INSIDE_COLOR, not wall_gap_recess_on)
 
 
 ## What a side wall gap shows behind the wall line (task L4; the owner: "there is a hole in the wall, and one of the
@@ -453,19 +468,18 @@ func wall_gap_marks(parent: Node3D, side: int, face_x: float, start: float, end:
 ## track, so the face at the gap's far end is the one in view: it must look like the next building starting, not
 ## like a hole in the world), from the outer lane and from a wall run, through an opening 13-25 m long (or a Beach
 ## stretch of 100 m and more), so it is built only where a gap is, never per chunk. It must stay in the zone's palette
-## and dimmer than the street's walls (it is a background: nothing glows, nothing reads as a hazard), and add no
-## surface of its own: a skin that draws its facades with a facade shader puts the faces in those layers. The default
-## (standard_wall_gap_recess) is plain, in the skin's gap_inside_color lifted toward grey; a skin with a look of its
-## own overrides this (the Marketplace's draws its buildings' own colours and window grids) and calls it from its
-## wall_gap() if that doesn't call super(). DESIGN-TBD (docs/questions/l4.md): that a gap shows an alley, its depth and
-## where its ground lies.
-func wall_gap_recess(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+## and dimmer than the street's walls (it is a background: nothing of it is a glow or reads as a hazard; the
+## buildings' own lit windows and a zone's own street lights stay), and add no shader or material of its own: it goes
+## into `batch` (the gap's), in the layers the skin's walls draw with (a skin with a facade shader puts the faces in
+## the facade layer), so it costs a gap part at most the facade and solid surfaces (one or two draw calls) and a few
+## quads. The default (standard_wall_gap_recess) is plain, in the skin's gap_inside_color lifted toward grey; a skin
+## with a look of its own overrides this (the Marketplace's draws its buildings' own colours and window grids).
+## DESIGN-TBD (docs/questions/l4.md): that a gap shows an alley, its depth and where its ground lies.
+func wall_gap_recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var inside: Variant = get("gap_inside_color")
 	var base: Color = inside if inside is Color else CUT_INSIDE_COLOR
-	var batch := MeshBatch.new()
 	standard_wall_gap_recess(batch.layer(MeshKit.solid()), side, face_x, start, end, gap,
 		base.lerp(CUT_RECESS_GREY, WALL_GAP_RECESS_LIFT), base)
-	batch.commit(parent)
 
 
 ## The standard wall gap look (wall_gap), into `s` (the kit's solid shader): for the part [start, end]

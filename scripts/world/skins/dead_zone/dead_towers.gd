@@ -155,7 +155,8 @@ func build(batch: MeshBatch, side: int, face_x: float, start: float, end: float)
 ## background"): the gap's part [start, end] of the place where a tower was burnt away between the two ruins it
 ## cuts: their end faces (RECESS_DEPTH deep, burnt out like their faces, up to their broken tops), the face of a
 ## ruin across it, and the void's floor running on from the street's own (PAT_DZ_UNDER below the street, as the
-## walls' foot is). Everything goes in the solid layer the walls draw with: no surface of its own, nothing lit.
+## walls' foot is). Everything goes into the gap's batch, in the solid layer the walls draw with (one surface, no
+## material or shader of its own), and nothing in it is lit or smoulders.
 func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
 	var solid: MeshLayer = batch.layer(skin.solid_material())
 	var floor_y: float = -skin.void_depth
@@ -188,7 +189,8 @@ func recess(batch: MeshBatch, side: int, face_x: float, start: float, end: float
 		var d: float = end_at - 0.01 if leading else end_at + 0.01
 		var r: Ruin = ruin(side, building_at(side, floori(d / lot)))
 		var param: float = MeshKit.dz_tower_param(r.style, r.seed) + 12.0
-		var top: float = r.top(clampf(d, r.f0, r.b1))
+		# Where the wall is a side street's rubble (before the ruin's own face starts), the end is no taller than it.
+		var top: float = r.top(clampf(d, r.f0, r.b1)) if d >= r.f0 else skin.band_top + 2.3
 		MeshKit.end_quad(solid, x_min, x_min + RECESS_DEPTH, end_at, floor_y, 0.0, leading, shade, 0.0, MeshKit.PAT_DZ_UNDER, 0.0)
 		MeshKit.end_quad(solid, x_min, x_min + RECESS_DEPTH, end_at, 0.0, top, leading, r.wall.darkened(0.12), 0.0,
 			MeshKit.PAT_DZ_TOWER, param)
