@@ -1176,11 +1176,13 @@ static func add_model(parent: Node3D, variant: StringName, t: HoverTruckTuning) 
 		["barrel", Vector3(0.0, t.roof_height - 0.42, t.length * 0.5 + 0.22)]]
 	for part: Array in parts:
 		var m := MeshInstance3D.new()
+		m.name = String(part[0]).capitalize()
 		m.mesh = meshes[part[0]]
 		m.position = part[1]
 		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if part[0] == "barrel":
+			m.rotation.y = PI  # The cannon aims back.
 		model.add_child(m)
-	(model.get_child(model.get_child_count() - 1) as Node3D).rotation.y = PI  # The cannon aims back.
 	return model
 
 

@@ -6,9 +6,11 @@ extends TestSuite
 ## right to the right gang (three in the zone's look, one in the Marketplace's, the leader in the Casino's, a little
 ## forward in the middle) and their hover truck behind them; the pan back out to both; the leader's warned shot that
 ## misses; the left gang angry; the Octodog's warned charge, bowling one cyborg over and pouncing on another, the
-## leader dodging; the firefight; the cut back to the runner, who turns slowly to the right, their left hand coming up
-## over their face, and walks off down the right-hand street, the zone's title card coming up; its sounds (its own, and the game's warnings each before
-## its attack); what it costs; skipping; and the App's flow (skipping it starts Gangland 1).
+## leader dodging; the firefight (each bolt bursting on its mark, the street or a building front, never in mid-air);
+## the runner out of sight while the gangs are on screen; the cut back to the runner, who turns slowly to the right,
+## their left hand coming up over their face, and walks off down the right-hand street, the zone's title card coming
+## up; its sounds (its own, and the game's warnings each before its attack); what it costs; skipping; and the App's
+## flow (skipping it starts Gangland 1).
 
 const LANES: Array[int] = [3, 5, 6]
 const SFX_PATH: String = "res://data/audio/sfx_library.tres"
@@ -23,8 +25,11 @@ const GROUND: float = 0.3
 const NEAR: float = 8.0
 ## Its own sounds (tools/asset_gen/sfx_bank_gangland_intro.gd: none of them a hazard's warning).
 const OWN_SOUNDS: Array[String] = ["gang_taunt", "gang_retort", "gang_jeer", "gang_rage", "octodog_tackle"]
-## The miss lands at least this far from every one of the left gang (metres, from their middles).
-const MISS_CLEAR: float = 0.6
+## The miss passes at least this far from every one of the left gang (metres, from their bodies' middle line).
+const MISS_CLEAR: float = 0.3
+## A firefight bolt bursting within this of a cyborg's middle (metres) hit it; on the street, at most this high.
+const HIT_NEAR: float = 1.3
+const STREET_BURST: float = 0.1
 ## The hand over the face: the left wrist this near the head (metres), in front of it.
 const HAND_NEAR: float = 0.3
 ## The turn is slow: the runner is most of the way round (this share of it) no sooner than SLOW_TURN after it starts
@@ -125,7 +130,8 @@ func _check_intro(lanes: int) -> void:
 	var n: GanglandIntroTuning = seq.n
 	var stage: CineStage = seq.stage
 	var props: GanglandIntroSet = seq.props
-	check(stage.skin == s.zone.skin and stage.geo.lane_count == lanes, "%s: in the zone's look, on the level's lanes" % tag)
+	check(stage.skin == s.zone.skin and stage.geo.lane_count == lanes,
+		"%s: in the zone's look, on the level's lanes" % tag)
 	check(seq.playing.problems(sfx).is_empty() and seq.duration() >= 15.0 and seq.duration() <= 22.0,
 		"%s: a sound timeline of about 20 s (the owner: 20 s is fine): %.1f s %s" % [tag, seq.duration(),
 		seq.playing.problems(sfx)])
@@ -198,7 +204,8 @@ func _check_intro(lanes: int) -> void:
 	var yaw_at_cut: float = 0.0
 	var yaw_end: float = 0.0
 	var hand_early: bool = false
-	var hand_near: float = INF
+	var hand_far: float = 0.0
+	var runner_seen: String = ""
 	var worst_step: float = 0.0
 	var max_calls: int = 0
 	var steps: int = 0
@@ -280,7 +287,11 @@ func _check_intro(lanes: int) -> void:
 				var hand: Vector3 = runner.avatar.rig.joint(&"hand_l").global_position
 				var ahead: Vector3 = -runner.avatar.global_basis.z
 				var off: Vector3 = hand - head.global_position
-				hand_near = minf(hand_near, off.length()) if off.dot(ahead) > 0.0 else hand_near
+				hand_far = maxf(hand_far, off.length() if off.dot(ahead) > 0.0 else INF)
+		# While the gangs are on screen, the runner (round the corner) is out of the picture.
+		if t > n.gang_at + 0.01 and t < n.back_at - STEP and runner_seen == "" and runner.is_visible_in_tree() \
+				and cam.is_position_in_frustum(runner.global_position + Vector3(0.0, 1.0, 0.0)):
+			runner_seen = "%.2f s" % t
 	var end: Vector3 = runner.track_position
 	check(seq.done and not seq.skipped, "%s: it plays to its end" % tag)
 	check(cuts.size() == 3 and absf(cuts[0] - n.gang_at) < STEP * 1.5 and absf(cuts[1] - n.charge_cut) < STEP * 1.5
@@ -295,12 +306,37 @@ func _check_intro(lanes: int) -> void:
 	check(unseen.is_empty(), "%s: each gang in the picture as the camera comes to it, then both (%s)" % [tag, unseen])
 	check(charged > 0.9 and miss_bolts >= 1 and n.aim_at < n.shot_at,
 		"%s: the leader charges its arm cannon (the red glow, its warning) and fires" % tag)
-	var miss: Vector3 = stage.point(seq.gang(n.miss_at.x, n.miss_at.z, n.miss_at.y))
+	# The leader's shot (the first bolt) misses: its path passes clear of each of the left gang's bodies.
+	var ends: Array = props.bolt_ends()
 	var nearest: float = INF
-	for c: Vector3 in n.left_cyborgs:
-		nearest = minf(nearest, Vector2(miss.x, miss.z).distance_to(_flat(stage.point(seq.gang(c.x, c.y)))))
-	nearest = minf(nearest, Vector2(miss.x, miss.z).distance_to(_flat(home)))
-	check(nearest > MISS_CLEAR, "%s: the shot misses: it bursts %.2f m from the nearest of the left gang" % [tag, nearest])
+	if not ends.is_empty():
+		var bodies: Array[Vector3] = [home + Vector3(0.0, 0.6, 0.0)]
+		for c: CineActorNode in lefts:
+			bodies.append(c.global_position + Vector3(0.0, 0.5, 0.0))
+			bodies.append(c.global_position + Vector3(0.0, 1.2, 0.0))
+		for p: Vector3 in bodies:
+			var on: Vector3 = Geometry3D.get_closest_point_to_segment(p, ends[0][0], ends[0][1])
+			nearest = minf(nearest, _flat(on).distance_to(_flat(p)) if absf(on.y - p.y) < 0.5 else INF)
+	check(nearest > MISS_CLEAR, "%s: the shot misses: it passes %.2f m from the nearest of the left gang" % [tag, nearest])
+	# The firefight's bolts burst on a cyborg (a hit), on the street or on a side street's building front: never in
+	# mid-air.
+	var cyborgs: Array[CineActorNode] = lefts + rights
+	cyborgs.append(leader)
+	var in_air := PackedStringArray()
+	for i: int in range(1, ends.size()):
+		if not bool(ends[i][2]):
+			continue
+		var to: Vector3 = ends[i][1]
+		var on_front: bool = absf(absf(stage.to_track(to).z - j) - seq.side_half()) < 0.15
+		var on_body: bool = false
+		for c: CineActorNode in cyborgs:
+			on_body = on_body or to.distance_to(c.global_position + Vector3(0.0, 1.0, 0.0)) < HIT_NEAR
+		if to.y > STREET_BURST and not on_front and not on_body:
+			in_air.append(str(stage.to_track(to)))
+	check(ends.size() > 5 and in_air.is_empty(),
+		"%s: every firefight bolt bursts on a cyborg, the street or a wall (%s)" % [tag, in_air])
+	check(runner_seen == "", "%s: the runner stays out of the picture while the gangs are on screen (%s)" % [tag,
+		runner_seen])
 	check(angry, "%s: the left gang gets angry (their faces) after the miss" % tag)
 	check(dog_home_held and windup.x > 0.4 and windup.y > 0.9 and n.windup_at < n.charge_at,
 		"%s: their Octodog holds its ground, then rears up (its wind-up, its warning) before it charges (%s)" % [
@@ -312,9 +348,9 @@ func _check_intro(lanes: int) -> void:
 	check(yaw_at_cut > 15.0 and yaw_end < -60.0 and turned_by > SLOW_TURN,
 		"%s: they turn slowly to the right (from %.0f° to %.0f°, most of the way round only after %.2f s)" % [
 		tag, yaw_at_cut, yaw_end, turned_by])
-	check(not hand_early and hand_near < HAND_NEAR and seq.hand_up > 0.99,
-		"%s: their left hand comes up in front of their face as they turn, and stays up (%.2f m from the head)" % [
-		tag, hand_near])
+	check(not hand_early and hand_far < HAND_NEAR,
+		"%s: their left hand comes up in front of their face as they turn, and stays there (at most %.2f m from the head)"
+		% [tag, hand_far])
 	check(end.x > seq.stand.x + 3.0 and end.x > stage.wall_x(1) - 3.0 and absf(end.z - j) < seq.side_half(),
 		"%s: and they walk off toward the right-hand street (%s)" % [tag, end])
 	check(seq.log_lines.has("music %s" % s.zone.music), "%s: the zone's music (%s)" % [tag, seq.log_lines])

@@ -116,8 +116,10 @@ cast's looks (the zone's, the Marketplace's and the Casino's, from the zones' da
 behind the right gang, the leader forward in the middle, three cuts, the first and last shots at human height, the
 runner looking left, the ground-level tilt, the pan right, each gang and then both in view, the leader's charged shot
 missing the left gang, their angry faces, the Octodog's wind-up before its charge, two cyborgs downed and the leader
-not, the firefight, the slow turn to the right, the left hand in front of the face, the walk off toward the right-hand
-street, the zone's music, the warnings each before their attacks, and its costs; Reduced flashing (smaller bursts,
+not, the firefight's bolts bursting only on a cyborg, the street or a wall, the runner out of the picture while the gangs
+are on screen, the slow turn to the right, the left hand in front of the face throughout, the walk off toward the
+right-hand street, the zone's title card as they walk away, the zone's music, the warnings each before their attacks,
+and its costs; Reduced flashing (smaller bursts,
 nothing flashing); `skip()`. `test_gangland_outro` checks Gangland's outro (F2d): its slot;
 `after_fight` (the fight's look and sky after it, the zone's own without it, so the City outro's look is unchanged);
 the car's shape (a long, low wedge, a scissor door, lights and turning wheels, its cabin lit only while its

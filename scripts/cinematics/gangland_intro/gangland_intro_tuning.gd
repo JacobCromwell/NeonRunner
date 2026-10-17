@@ -9,7 +9,7 @@ extends Resource
 ## the gang on the left gets angry; their Octodog charges and tackles the cyborgs on the right, who open fire. A cut
 ## back to the runner, who turns slowly to the right, their left hand up over their face, and walks off down the other
 ## street. 20 s is fine. The rest (timings, distances, the camera's places, the sounds) is DESIGN-TBD
-## (docs/questions/f2f.md).
+## (docs/OPEN_QUESTIONS_DEFERRED.md, items 897-910).
 ##
 ## Times are seconds from the start. Points in the junction's side streets are (u, v): u metres in from the main
 ## street's wall face, v metres along the main street from the junction's middle (+ ahead).
@@ -66,11 +66,10 @@ extends Resource
 @export_range(1.0, 5.0, 0.05, "suffix:s") var card_seconds: float = 2.9
 
 @export_group("The gangs")
-## The left gang (the Octodog's crew): its two cyborgs (u, v, and the degrees their bodies are turned from facing
-## the other gang toward the camera), in Gangland's look (DESIGN-TBD, docs/questions/f2f.md, 2 and 3: they face the
-## other gang, "to their right" read as the camera's right; the beats don't name their look), and their Octodog
-## between them, `dog_scale` times its size
-## in play (the owner: a large one).
+## The left gang (the Octodog's crew): its two cyborgs (u, v, and the degrees their bodies are turned from facing the
+## other gang toward the camera), in Gangland's look (DESIGN-TBD, docs/OPEN_QUESTIONS_DEFERRED.md items 898 and 899:
+## they face the other gang, "to their right" read as the camera's right; the beats don't name their look), and their
+## Octodog between them, `dog_scale` times its size in play (the owner: a large one).
 @export var left_cyborgs: PackedVector3Array = PackedVector3Array([Vector3(27.4, 2.2, 22.0), Vector3(28.9, -2.7, 30.0)])
 @export var dog_at: Vector2 = Vector2(28.2, 0.0)
 @export_range(1.0, 3.0, 0.05) var dog_scale: float = 1.75
@@ -79,8 +78,8 @@ extends Resource
 ## look (its skin's), empty this zone's, anything else a look's own name (CyborgSuit).
 @export var leader_at: Vector3 = Vector3(34.6, -0.3, 24.0)
 @export var leader_look: StringName = &"@casino"
-## The leader stands a little taller than the rest (scale). DESIGN-TBD (docs/questions/f2f.md, 4): the Marketplace and
-## the Casino share one look, so this and its place are all that set it apart.
+## The leader stands a little taller than the rest (scale). DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 900): the
+## Marketplace and the Casino share one look, so this and its place are all that set it apart.
 @export_range(1.0, 1.3, 0.01) var leader_scale: float = 1.08
 @export var right_cyborgs: PackedVector3Array = PackedVector3Array([Vector3(36.2, 2.5, 30.0), Vector3(36.6, 0.9, 24.0),
 	Vector3(36.9, -1.6, 20.0), Vector3(36.4, -3.3, 16.0)])
@@ -98,10 +97,10 @@ extends Resource
 @export_range(0.3, 4.0, 0.05, "suffix:s") var pan_seconds: float = 1.6
 @export_range(1.0, 14.0, 0.05, "suffix:s") var wide_at: float = 8.2
 @export_range(0.3, 4.0, 0.05, "suffix:s") var wide_seconds: float = 1.7
-## The yelling: the left gang first, then the leader answers, then the left gang again, then the leader.
+## The yelling: the left gang first, then the leader answers, then the left gang again.
 @export var yells: PackedFloat32Array = PackedFloat32Array([9.9, 10.8, 11.5])
 ## The leader raises its arm cannon (`aim_at`), charges it (the red glow, a cyborg's warning) and fires one shot
-## that misses: over the left gang's heads, into the building behind them.
+## that misses: between a left cyborg and the Octodog, bursting on the street behind them (`miss_at`).
 @export_range(1.0, 18.0, 0.05, "suffix:s") var aim_at: float = 12.0
 @export_range(1.0, 18.0, 0.05, "suffix:s") var shot_at: float = 12.9
 @export_range(0.05, 1.0, 0.01, "suffix:s") var shot_seconds: float = 0.18

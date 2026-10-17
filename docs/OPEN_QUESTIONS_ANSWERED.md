@@ -1533,3 +1533,10 @@ Captain Cogs).
 896. **The defeat's start.** Placeholder: on the last hit Mecha Guppy dives out of sight from its watch (0.45 s), then
    the defeat plays as before (it bursts up under the ship and eats the captain); the results wait 0.45 s longer.
   **Answered (owner, October 16, 2026):** Good as built.
+
+### Folded on October 17, 2026 (task F2f, Gangland's intro)
+
+906. **A title card in Gangland's intro?** The arrival flyover it replaced showed the zone's card; the beats didn't
+  mention one. **Answered by the owner (October 16, 2026):** "add the Gangland title card as the player character walks
+  away at the end". Built: the zone's card ("ZONE 2", "GANGLAND", from the zone's data) comes up 0.3 s after the runner
+  starts walking away and stays 2.9 s, held on as the picture fades to black.

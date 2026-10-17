@@ -4732,3 +4732,57 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
    peak and 1.01 m in the swing before K2; the 0.54 and 0.78 m of the raised end pose are not its fullest reach). The cut's
    hitboxes, marks and the red slash are exactly as they were. Is that enough of a swing, or should it reach further out of
    the wall (the cut itself reaches 1.2 m)?
+
+### Folded on October 17, 2026 (task F2f, Gangland's intro)
+
+**F2f, Gangland's intro** (from `docs/questions/f2f.md`)
+The owner's beats (October 16, 2026; GDD §6, Cinematics, "Gangland intro") are built as given, with the owner's
+follow-up the same day (the Gangland title card as the runner walks away; item 906, answered). These are the choices
+made to fill them in. Each is a placeholder in data (`data/cinematics/gangland_intro_tuning.tres`, `GanglandIntroTuning`)
+or in code marked `DESIGN-TBD` (`scripts/cinematics/gangland_intro/`).
+
+897. **The fork's shape.** Placeholder: a T junction 61 m down the street: both walls open onto side streets 7 lanes
+  wide, and a building across the road closes it ahead, so the road splits left and right. The runner walks the last
+  couple of metres up to it and stops (the beats say they "have come to" the fork). Or a Y-shaped fork, splitting at an
+  angle?
+898. **"Looking to their right."** A gang facing the camera and looking to its own right would look away from where the
+  camera then pans, so it is read as the camera's right, where the other gang stands: the left gang faces the other
+  gang, turned a little toward the camera, and looks at it.
+899. **The left gang's look.** The beats don't say; placeholder: Gangland's own (the zone's look).
+900. **The leader.** The Marketplace and the Casino share one cyborg look (GDD §5), so the leader and the fourth cyborg
+  wear the same look; the leader stands forward in the middle and is 8% taller (`leader_scale`). Should the leader have
+  something of its own (a different face, a hat, a coloured accent)?
+901. **The yelling.** Placeholder: three yells (the left gang, the leader answering, the left gang again), each yeller
+  pointing its arm cannon without charging it, head bobbing; the voices are made-up syllables through a cyborg's speaker
+  (new sounds `gang_taunt`, `gang_retort`, `gang_jeer`), no subtitles.
+902. **The shot that misses.** Placeholder: the leader charges its arm cannon (the red glow and the cyborgs' charge-up
+  sound, their warning in play, since a shot follows) and fires one bolt that zips between a left cyborg and the Octodog
+  and bursts on the street behind them. The left gang flinches and looks at it, then rounds on the leader, faces angry,
+  cannons up, with a roar (`gang_rage`).
+903. **The Octodog's charge.** Placeholder: it rears up first (its wind-up and sound, its warning in play; the red lunge
+  line it lays on the floor in play is left out here), then lunges past the leader, who throws itself aside, bowls over
+  the cyborg in the Marketplace's look (thrown back, out cold, its screen dark) and pounces on one in Gangland's look,
+  mauling it. Nobody dies or vanishes on screen. Should it tackle the leader instead?
+904. **The firefight.** Placeholder: the three right cyborgs left standing fire at the left gang and the left gang fires
+  back, four bolts each over about 1.5 s, about a third hitting (a burst on the body, no damage shown), the rest bursting
+  on the street or a building front beyond, or going on out of sight; after the cut the shots go on round the corner as
+  sound, further off and thinning out, until the fade.
+905. **The runner's turn and hand.** Placeholder: the cut back comes from their left, so at first they face the camera
+  looking toward the fight; they turn slowly to the right (most of the way round in about 1.5 s), their left hand coming
+  up in front of the left side of their face and staying up as they walk off at 1.35 m/s, head down a little. It fades
+  to black as they reach the mouth of the right-hand street; Gangland 1 opens on its own run view.
+907. **The junction's corners.** A level's wall gap carries orange marks that tell a runner the wall stops there; at a
+  story's street corner they read as a hazard, so the corners are covered with concrete piers and a kerb across each side
+  street's mouth (`GanglandIntroSet.corners_mesh`). The City outro's openings still show them.
+908. **Length and timing.** 21.6 s, a little over the owner's 20 s ("it is okay if this goes 20 seconds"): 1.7 s to the
+  stop, the look left at 2 s, the cut at 3.4 s, the pan right at 6 s, both gangs from 8.2 s, the yells at 9.9-12 s, the
+  shot at 12.9 s, the charge at 14.3 s, the cut back at 16.5 s, the walk off at 18.2 s, the title card at 18.5 s, black
+  at 21.6 s.
+909. **One more cut.** The beats have the camera pan back to show both gangs and then cut to the runner. Placeholder: as
+  the Octodog charges (14.05 s) it cuts to low beyond the right gang's flank, looking back at the dog coming in and then at
+  the brawl, so the charge and the tackles read; then the cut to the runner. Or hold the wide shot of both throughout?
+910. **The gangs' layout.** Placeholder: they face each other down the length of the left-hand street (the left gang
+  nearer the junction, 27-29 m in; the right gang 35-37 m in, the truck parked side on behind them), seen from the street's
+  side; the wide shot of both looks past the left gang's shoulder, so both fit a narrow screen too. While the gangs are on
+  screen the runner, round the corner, is not drawn (the side street's mouth lines up with them from the charge's camera,
+  where they would show as a speck far off).

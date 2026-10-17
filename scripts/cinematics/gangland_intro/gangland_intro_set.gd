@@ -50,7 +50,7 @@ var _bolt_paths: Array = []
 var _truck_base := Vector3.ZERO
 
 
-## DESIGN-TBD (docs/questions/f2f.md, 1): the fork is a T junction, a building across the road ahead.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 897): the fork is a T junction, a building across the road ahead.
 func setup(p_intro: GanglandIntro) -> void:
 	intro = p_intro
 	n = intro.n
@@ -96,7 +96,7 @@ func _side_street(stage: CineStage, side: int, depth: float) -> Node3D:
 ## The junction's four street corners (world space), over the marks a level's wall gap carries (ZoneSkin's
 ## standard_wall_gap: the glowing orange edge up the wall's face, and its lip along the floor's edge), which tell a
 ## runner in play that the wall stops; here they are only street corners: a concrete pier up each corner and a kerb
-## of the street's asphalt across each side street's mouth. DESIGN-TBD (docs/questions/f2f.md, 11).
+## of the street's asphalt across each side street's mouth. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 907).
 static func corners_mesh(stage: CineStage, middle: float, half: float) -> ArrayMesh:
 	var batch := MeshBatch.new()
 	# The skin's own solid material where it has one (its light and tint, as its street's), else the kit's.
@@ -177,8 +177,8 @@ func update(t: float) -> void:
 
 
 ## Fires a bolt (enemy-fire red) from `from` to `to` (world space), launched at `launch` and landing `seconds` later,
-## where it bursts.
-func add_bolt(from: Vector3, to: Vector3, launch: float, seconds: float) -> void:
+## where it bursts if it `lands` there (off: a miss going on out of sight).
+func add_bolt(from: Vector3, to: Vector3, launch: float, seconds: float, lands: bool = true) -> void:
 	var look: Dictionary = ProjectilePool.LOOKS[BOLT_LOOK]
 	var bolt := MeshInstance3D.new()
 	bolt.name = "Bolt%d" % bolts.size()
@@ -201,7 +201,7 @@ func add_bolt(from: Vector3, to: Vector3, launch: float, seconds: float) -> void
 	burst.visible = false
 	add_child(burst)
 	bursts.append(burst)
-	_bolt_paths.append([from, to, launch, maxf(seconds, 0.05)])
+	_bolt_paths.append([from, to, launch, maxf(seconds, 0.05), lands])
 
 
 ## The bolts at time `t`: each in flight between its launch and its landing, a streak along its way, then its burst
@@ -224,14 +224,22 @@ func update_bolts(t: float) -> void:
 			bolt.global_transform = Transform3D(Basis.looking_at(dir, up).scaled_local(size), from.lerp(to, u))
 		var b: float = (t - float(path[2]) - float(path[3])) / burst_time
 		var burst: MeshInstance3D = bursts[i]
-		burst.visible = b >= 0.0 and b < 1.0
+		burst.visible = b >= 0.0 and b < 1.0 and bool(path[4])
 		if burst.visible:
 			burst.global_position = to
 			# Swelling fast and dying away (the material is the shared glow: its size alone fades it).
 			burst.scale = Vector3.ONE * maxf(burst_size * sin(PI * sqrt(b)), 0.01)
 
 
-## Bolts in flight or bursting at time `t` (tests).
+## Each bolt's path and whether it bursts at its end: [from, to (world space), bursts], in the order fired (tests).
+func bolt_ends() -> Array:
+	var out: Array = []
+	for path: Array in _bolt_paths:
+		out.append([path[0], path[1], path[4]])
+	return out
+
+
+## Bolts in flight at time `t` (tests).
 func bolts_shown() -> int:
 	var count: int = 0
 	for bolt: MeshInstance3D in bolts:

@@ -13,15 +13,15 @@ extends CinematicSequencer
 ##    gang gets angry; their Octodog rears up (its wind-up), charges, bowls one cyborg over and pounces on another,
 ##    and the cyborgs left standing open fire.
 ## 4. Cut back to the runner, the fight going on round the corner: they turn slowly to the right, their left hand
-##    coming up over their face (the side toward the fight), and walk off down the right-hand street. Black, and
-##    Gangland 1.
+##    coming up over their face (the side toward the fight), and walk off down the right-hand street, the zone's title
+##    card coming up as they go (the owner's follow-up, the same day). Black, and Gangland 1.
 ##
 ## A script on the toolkit, its numbers data (`numbers`, by default data/cinematics/gangland_intro_tuning.tres,
 ## GanglandIntroTuning). The street is the zone's own look and lanes (CineStage.skin_for); the side streets, the
 ## buildings closing the fork, the Octodog, the hover truck and the shots are this cinematic's props (GanglandIntroSet),
-## built on the stage so they hide with it and moved by the clock. The cyborgs are the timeline's actors, in the
-## looks of the zones' own data (an "@zone" look is that zone's cyborgs'). DESIGN-TBD (docs/questions/f2f.md): what
-## the owner's beats leave open.
+## built on the stage so they hide with it and moved by the clock. The cyborgs are the timeline's actors, in the looks
+## of the zones' own data (an "@zone" look is that zone's cyborgs'). DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md, items
+## 897-910): what the owner's beats leave open.
 
 const NUMBERS_PATH: String = "res://data/cinematics/gangland_intro_tuning.tres"
 ## A yell: how long the yeller's head bobs and how far (degrees up and down), and how often.
@@ -41,8 +41,11 @@ const DOG_REACH: float = 0.55
 const DOG_ON_TOP: float = 0.12
 ## Under the title card the last shot looks this high over the runner's feet (metres), so they walk away below it.
 const CARD_LOOK: float = 1.75
-## The bolts of the firefight: how far past their mark the misses fly (metres), and the share that hit their mark.
-const MISS_RANGE := Vector2(6.0, 11.0)
+## The bolts of the firefight: a miss flies on past its mark until the street or a side street's building front stops
+## it (bursting there, this high over the street), or, stopped by nothing within MISS_MAX metres, goes out of sight
+## with no burst, as a miss does in play; and the share that hit their mark.
+const MISS_MAX: float = 30.0
+const MISS_FLOOR: float = 0.05
 const HIT_SHARE: float = 0.35
 
 ## Its numbers (null: NUMBERS_PATH's).
@@ -64,6 +67,8 @@ var tackle_ends: Array[Vector3] = []
 ## How far the runner's left hand is up over their face now (0-1; tests).
 var hand_up: float = 0.0
 
+## The firefight's shots still to fire, in launch order: [launch, shooter id, mark id, aim offset, whether it hits].
+var _shots: Array = []
 var _dog_last := Vector3.ZERO
 var _dog_started: bool = false
 
@@ -116,8 +121,8 @@ func _make_timeline() -> CineTimeline:
 
 # --- The runner ----------------------------------------------------------------------------------
 
-## DESIGN-TBD (docs/questions/f2f.md, 1 and 9): they walk the last metres up to the fork and stop; later they turn
-## slowly to the right and walk off down the right-hand street, head down a little.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 897 and 905): they walk the last metres up to the fork and stop;
+## later they turn slowly to the right and walk off down the right-hand street, head down a little.
 func _add_runner(t: CineTimeline) -> void:
 	var r: CineActor = t.actor(&"runner")
 	r.turn_rate = n.turn_rate
@@ -193,7 +198,8 @@ func _cyborg(t: CineTimeline, id: StringName, look: StringName, at: Vector3, yaw
 
 
 ## A cyborg's key holding `yaw` and a head turn (`look`), from `time`.
-static func _hold(c: CineActor, time: float, at: Vector3, yaw: float, look: float, pose: StringName = &"") -> CineActorKey:
+static func _hold(c: CineActor, time: float, at: Vector3, yaw: float, look: float,
+		pose: StringName = &"") -> CineActorKey:
 	var k: CineActorKey = c.at(time, at, pose)
 	k.face_path = false
 	k.yaw = yaw
@@ -219,7 +225,7 @@ func resolve_look(look: StringName) -> StringName:
 		for z: ZoneDef in campaign.zones:
 			if String(z.id) == text.substr(1) and z.skin != null:
 				return z.skin.enemy_variant
-	return CyborgSuit.CASINO
+	return &""
 
 
 ## The last key of a cyborg at or before `time` (its place, heading and look go on from there).
@@ -252,8 +258,8 @@ func _yell(c: CineActor, time: float, at_id: StringName, keep_aim: bool = false)
 
 
 ## They yell at each other; the leader charges its arm cannon and fires a shot that misses; the left gang gets angry.
-## DESIGN-TBD (docs/questions/f2f.md, 5 and 6): three yells, each yeller pointing its cannon (no charge); the miss
-## zips between a left cyborg and the Octodog.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md items 901 and 902): three yells, each yeller pointing its cannon (no
+## charge); the miss zips between a left cyborg and the Octodog.
 func _yelling(t: CineTimeline, lefts: Array[CineActor], leader: CineActor, rights: Array[CineActor]) -> void:
 	var y: PackedFloat32Array = n.yells
 	if y.size() > 0:
@@ -285,7 +291,8 @@ func _yelling(t: CineTimeline, lefts: Array[CineActor], leader: CineActor, right
 
 
 ## The Octodog's charge: the leader throws itself out of its way; it bowls the first cyborg over and pounces on the
-## next, who goes down under it. DESIGN-TBD (docs/questions/f2f.md, 7): who it tackles, and that nobody dies on screen.
+## next, who goes down under it. DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 903): who it tackles, and that nobody
+## dies on screen.
 func _charge(_t: CineTimeline, leader: CineActor, rights: Array[CineActor]) -> void:
 	var dodge: CineActorKey = _then(leader, n.charge_at + 0.08, &"cower")
 	dodge.aim_at = &"none"
@@ -323,7 +330,8 @@ func _charge(_t: CineTimeline, leader: CineActor, rights: Array[CineActor]) -> v
 		dog_from = at.position
 
 
-## Those left standing open fire: the right gang at the left, the left gang back. DESIGN-TBD (docs/questions/f2f.md, 8).
+## Those left standing open fire: the right gang at the left, the left gang back. DESIGN-TBD
+## (docs/OPEN_QUESTIONS_DEFERRED.md item 904).
 func _firefight(t: CineTimeline, lefts: Array[CineActor], leader: CineActor, rights: Array[CineActor]) -> void:
 	var shooters: Array[CineActor] = [leader]
 	for c: CineActor in rights:
@@ -375,7 +383,8 @@ func _add_camera(t: CineTimeline) -> void:
 	t.shot(n.gang_at, low, gang(left_mid.x, left_mid.z, 0.2), CinePath.Move.CUT, n.fov)
 	_pan(t.shot(n.tilt_end, low + Vector3(0.0, 0.02, -0.25), gang(left_mid.x, left_mid.z, 1.45), CinePath.Move.LINEAR,
 		n.fov))
-	_still(t.shot(n.pan_at, low + Vector3(0.0, 0.03, -0.3), gang(left_mid.x, left_mid.z, 1.5), CinePath.Move.LINEAR, n.fov))
+	_still(t.shot(n.pan_at, low + Vector3(0.0, 0.03, -0.3), gang(left_mid.x, left_mid.z, 1.5), CinePath.Move.LINEAR,
+		n.fov))
 	# The pan right to the other gang, the truck behind them.
 	var pan_eye: Vector3 = gang(n.pan_eye.x, n.pan_eye.y, n.pan_eye.z)
 	_pan(t.shot(n.pan_at + n.pan_seconds, pan_eye, gang(right_mid.x, right_mid.z, 1.35), CinePath.Move.LINEAR, n.fov))
@@ -476,9 +485,9 @@ func _on_cue(cue_name: StringName) -> void:
 			_open_fire()
 
 
-## The firefight's bolts, from each shooter's arm cannon at its mark (the other gang's cyborg it aims at): some hit,
-## bursting on them, the rest fly past and burst on the street or the walls beyond. Fixed by a seed, so every
-## playing is the same.
+## The firefight's shots, planned when it opens: who fires at whom and when (_launch), where on its mark each is aimed,
+## and whether it hits (bursting on the mark) or misses (flying on past it, bursting on the street or a building front
+## beyond). Fixed by a seed, so every playing is the same. Each bolt leaves its cannon as it fires (_fire_due).
 func _open_fire() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7151
@@ -502,21 +511,44 @@ func _open_fire() -> void:
 	for i: int in ids.size():
 		if String(ids[i]).begins_with("left_"):
 			order.append(i)
+	_shots.clear()
 	for s: int in order.size():
-		var shooter := actors.get(ids[order[s]]) as CineActorNode
-		var mark := actors.get(marks[order[s]]) as CineActorNode
+		for b: int in n.bolts_each:
+			var aim := Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(0.5, 1.6), rng.randf_range(-0.5, 0.5))
+			_shots.append([_launch(s, b), ids[order[s]], marks[order[s]], aim, rng.randf() < HIT_SHARE])
+	_shots.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
+
+
+## The planned shots whose time has come leave their shooters' cannons now, at their marks as they stand now.
+func _fire_due() -> void:
+	while not _shots.is_empty() and float(_shots[0][0]) <= time + 0.0001:
+		var shot: Array = _shots.pop_front()
+		var shooter := actors.get(shot[1]) as CineActorNode
+		var mark := actors.get(shot[2]) as CineActorNode
 		if shooter == null or mark == null or shooter.body == null:
 			continue
 		var from: Vector3 = shooter.body.muzzle_position()
-		for b: int in n.bolts_each:
-			var aim_point: Vector3 = mark.global_position + Vector3(rng.randf_range(-0.5, 0.5), rng.randf_range(0.5, 1.6),
-				rng.randf_range(-0.5, 0.5))
-			var to: Vector3 = aim_point
-			if rng.randf() >= HIT_SHARE:
-				var dir: Vector3 = (aim_point - from).normalized()
-				to = from + dir * rng.randf_range(MISS_RANGE.x, MISS_RANGE.y)
-				to.y = maxf(to.y, 0.05)
-			props.add_bolt(from, to, _launch(s, b), n.bolt_seconds)
+		var aim_point: Vector3 = mark.global_position + (shot[3] as Vector3)
+		var to: Vector3 = aim_point if bool(shot[4]) else miss_end(from, aim_point)
+		var seconds: float = n.bolt_seconds * from.distance_to(to) / maxf(from.distance_to(aim_point), 0.1)
+		props.add_bolt(from, to, float(shot[0]), seconds, bool(shot[4]) or from.distance_to(to) < from.distance_to(aim_point)
+			+ MISS_MAX - 0.01)
+
+
+## Where a bolt aimed from `from` at `aim_point` that misses ends (world space): where it meets the street or a side
+## street's building front beyond its mark, or MISS_MAX metres past the mark if nothing stops it.
+func miss_end(from: Vector3, aim_point: Vector3) -> Vector3:
+	var dir: Vector3 = (aim_point - from).normalized()
+	var reach: float = MISS_MAX
+	if dir.y < -0.001:
+		reach = minf(reach, (MISS_FLOOR - aim_point.y) / dir.y)
+	var fronts: Array[float] = [-(n.junction_at - side_half()), -(n.junction_at + side_half())]
+	for z: float in fronts:
+		if absf(dir.z) > 0.001:
+			var d: float = (z - aim_point.z) / dir.z
+			if d > 0.0:
+				reach = minf(reach, d)
+	return aim_point + dir * maxf(reach, 0.0)
 
 
 # --- The props on the clock ----------------------------------------------------------------------
@@ -524,6 +556,7 @@ func _open_fire() -> void:
 func _on_advance(delta: float) -> void:
 	if props == null:
 		return
+	_fire_due()
 	props.update(time)
 	var leader := actors.get(&"leader") as CineActorNode
 	if leader != null:
@@ -531,6 +564,9 @@ func _on_advance(delta: float) -> void:
 	_place_dog(delta)
 	var runner := actors.get(&"runner") as CineActorNode
 	if runner != null and runner.avatar != null:
+		# Round the corner while the gangs are on screen: the side street's mouth lines up with them from the charge's
+		# camera, where they would be a speck far off, which reads as someone else watching.
+		runner.visible = runner.visible and (time < n.gang_at or time >= n.back_at)
 		_hand_over_face(runner)
 
 
@@ -600,7 +636,7 @@ func _tackle_start(j: int, fallback: Vector3) -> Vector3:
 
 ## The runner's left hand coming up over their face as they turn away, on the side toward the fight, and staying up
 ## as they walk off (on top of their pose: the rig sets every joint afresh each update, so nothing builds up).
-## DESIGN-TBD (docs/questions/f2f.md, 9): the hand in front of the left side of the face.
+## DESIGN-TBD (docs/OPEN_QUESTIONS_DEFERRED.md item 905): the hand in front of the left side of the face.
 func _hand_over_face(runner: CineActorNode) -> void:
 	var k: float = smoothstep(t_turn, t_turn + n.hand_seconds, time)
 	hand_up = k

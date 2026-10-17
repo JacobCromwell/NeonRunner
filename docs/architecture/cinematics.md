@@ -191,6 +191,50 @@ Gangland's. Cost (headless, `test_city_outro`): about 25 ms to set up (about 220
 mesh caches), about 10 ms for the cut (under black), at most about 3 ms a step, and its props add about 65
 draw calls. It adds no asset files.
 
+**Gangland's intro** (`GanglandIntro`, task F2f; the owner's beats, October 16, 2026, GDD §6 Cinematics; what they leave
+open is DESIGN-TBD, `docs/OPEN_QUESTIONS_DEFERRED.md` items 897–910; numbers in `data/cinematics/gangland_intro_tuning.tres`): 21.6 s (the owner:
+20 s is fine) before Gangland 1, after the City outro drops the runner into the zone, on a stretch of the zone's street
+in the level's lanes. The road forks 61 m in: both walls are open there (`wall_gaps`) onto side streets 7 lanes wide,
+and a building across the road closes it ahead. At human height behind the runner, riding along, they walk up to the
+junction, stop and look left (head and a little of the body). Cut down the left-hand street to ground level (0.16 m up),
+tilting up the left gang: two cyborgs in the zone's look and between them its Octodog at 1.75 times its size, standing
+their ground, looking off to the right at the other gang. The camera pans right to it: the leader in the Casino's look
+(an `@casino` look: that zone's cyborgs', from the campaign's data), a little forward in the middle and a little taller,
+and behind it three in the zone's look and one in the Marketplace's (`@marketplace`), a hover truck parked side on behind
+them. It pulls back past the left gang's shoulder to show both, the left gang on the left and the right gang on the
+right at their own depths, so both fit a narrow screen too. They yell at each other (the left gang, the leader, the left
+gang again: each yeller points its arm cannon, no charge, its head bobbing, with a voice of its own); the leader charges
+its cannon (the red glow and `cyborg_charge`, a cyborg's warning, as an attack follows) and fires a bolt that zips
+between a left cyborg and the Octodog and bursts on the street behind them. The left gang flinches, looks round at it,
+then rounds on the leader, faces angry, roaring (`gang_rage`); their Octodog rears up (its wind-up as in play, with
+`octodog_windup`, right before its lunge). Cut low beyond the right gang's flank as it charges: the leader throws itself
+aside, the dog bowls one cyborg over (thrown back off its feet, out cold: the cyborg's `lie`) and pounces on another,
+mauling it, and the cyborgs left standing open fire, the left gang firing back (bolts in enemy-fire red, each leaving its
+cannon as it fires, about a third hitting; a miss flies on past its mark and bursts on the street or a side street's
+building front, or goes on out of sight with no burst, as in play). While the gangs are on screen the runner is not drawn
+(round the corner; from the charge's camera they would be a speck at the far end of the side street). Cut back to the runner, from their left: they face it at first,
+looking toward the fight, then turn slowly to the right (`turn_rate` 2: most of the way round in about 1.5 s), their left
+hand coming up in front of their face on the side toward the fight and staying up (a two-bone reach of the left arm,
+`GanglandIntro.reach_arm`, layered on the walk), and walk off into the right-hand street as the shots go on behind the
+corner, further off, thinning out; as they walk away the zone's title card comes up ("ZONE 2", "GANGLAND", from the
+zone's data; the owner's follow-up, October 16, 2026), held on as it fades to black; then Gangland 1. The zone's music comes in from the start and carries on into
+the level.
+
+`GanglandIntroSet` holds the props, built on the stage: the two side streets (the zone's street pieces and building
+fronts, `ZoneSkin.floor_segment` and `wall_section`, as the City outro's side street, `CityOutroSet._fronts`), a building
+across each one's far end and across the main street past the junction (the zone's building front turned to face the
+way back), the junction's corners (a concrete pier up each corner and a kerb across each side street's mouth, in the
+skin's solid material: a level's wall gap carries the orange marks a runner reads as "the wall stops here", which a
+story's street corner shouldn't), the Octodog (`OctodogModel`, posed by script: holding, the wind-up's crouch and flare,
+the lunge's reach and leap, mauling), the hover truck (`HoverTruck.add_model`: the enemy's own meshes at rest, bobbing)
+and the bolts with their bursts (ProjectilePool's enemy-bolt look; with Reduced flashing the bursts are smaller and
+slower). Everything moves from the clock (`_on_advance`); the firefight's bolts come from a fixed seed, so every playing is
+the same. Its sounds are five of its own (`tools/asset_gen/sfx_bank_gangland_intro.gd`: `gang_taunt`, `gang_retort`,
+`gang_jeer`, `gang_rage`, made-up syllables shouted through a cyborg's TV-head speaker, and `octodog_tackle`) and the
+game's `cyborg_charge`, `cyborg_shot`, `enemy_hit`, `octodog_windup` and `octodog_lunge`. Cost (headless,
+`test_gangland_intro`): about 25-30 ms to set up (about 400 ms the first time, with cold mesh caches), at most about
+3-8 ms a step; its props add about 78 draw calls. It adds nothing to the toolkit.
+
 **Gangland's boss intro** (`SewerSwarmIntro`, task F2b; the owner's story beat, October 9, 2026, GDD §10 Sewer Swarm;
 what it leaves open is DESIGN-TBD, `docs/OPEN_QUESTIONS.md` §D, items 387–395; numbers in `data/cinematics/sewer_swarm_intro.tres`):
 12 s before the Sewer Swarm, on a plain stretch of the fight's arena look in the fight's lanes, the runner
@@ -269,48 +313,6 @@ come on and `car_drive` at the launch) and the
 fight's `host_short` and `swarm_scatter`. Cost (headless, `test_gangland_outro`): about 25 ms to set up (about 350 ms the first time, with
 cold mesh caches), about 20 ms for the cut to the car (under black), about 10 ms on the two hard cuts (the street
 building ahead) and about 0.4 ms a step otherwise; its props add about 22 draw calls (the Host on the rig is 16).
-
-**Gangland's intro** (`GanglandIntro`, task F2f; the owner's beats, October 16, 2026, GDD §6 Cinematics; what they leave
-open is DESIGN-TBD, `docs/questions/f2f.md`; numbers in `data/cinematics/gangland_intro_tuning.tres`): 21.6 s (the owner:
-20 s is fine) before Gangland 1, after the City outro drops the runner into the zone, on a stretch of the zone's street
-in the level's lanes. The road forks 61 m in: both walls are open there (`wall_gaps`) onto side streets 7 lanes wide,
-and a building across the road closes it ahead. At human height behind the runner, riding along, they walk up to the
-junction, stop and look left (head and a little of the body). Cut down the left-hand street to ground level (0.16 m up),
-tilting up the left gang: two cyborgs in the zone's look and between them its Octodog at 1.75 times its size, standing
-their ground, looking off to the right at the other gang. The camera pans right to it: the leader in the Casino's look
-(an `@casino` look: that zone's cyborgs', from the campaign's data), a little forward in the middle and a little taller,
-and behind it three in the zone's look and one in the Marketplace's (`@marketplace`), a hover truck parked side on behind
-them. It pulls back past the left gang's shoulder to show both, the left gang on the left and the right gang on the
-right at their own depths, so both fit a narrow screen too. They yell at each other (the left gang, the leader, the left
-gang again: each yeller points its arm cannon, no charge, its head bobbing, with a voice of its own); the leader charges
-its cannon (the red glow and `cyborg_charge`, a cyborg's warning, as an attack follows) and fires a bolt that zips
-between a left cyborg and the Octodog and bursts on the street behind them. The left gang flinches, looks round at it,
-then rounds on the leader, faces angry, roaring (`gang_rage`); their Octodog rears up (its wind-up as in play, with
-`octodog_windup`, right before its lunge). Cut low beyond the right gang's flank as it charges: the leader throws itself
-aside, the dog bowls one cyborg over (thrown back off its feet, out cold: the cyborg's `lie`) and pounces on another,
-mauling it, and the cyborgs left standing open fire, the left gang firing back (bolts in enemy-fire red, a few hitting,
-the rest bursting on the street and the walls beyond). Cut back to the runner, from their left: they face it at first,
-looking toward the fight, then turn slowly to the right (`turn_rate` 2: most of the way round in about 1.5 s), their left
-hand coming up in front of their face on the side toward the fight and staying up (a two-bone reach of the left arm,
-`GanglandIntro.reach_arm`, layered on the walk), and walk off into the right-hand street as the shots go on behind the
-corner, further off, thinning out; as they walk away the zone's title card comes up ("ZONE 2", "GANGLAND", from the
-zone's data; the owner's follow-up, October 16, 2026), held on as it fades to black; then Gangland 1. The zone's music comes in from the start and carries on into
-the level.
-
-`GanglandIntroSet` holds the props, built on the stage: the two side streets (the zone's street pieces and building
-fronts, `ZoneSkin.floor_segment` and `wall_section`, as the City outro's side street, `CityOutroSet._fronts`), a building
-across each one's far end and across the main street past the junction (the zone's building front turned to face the
-way back), the junction's corners (a concrete pier up each corner and a kerb across each side street's mouth, in the
-skin's solid material: a level's wall gap carries the orange marks a runner reads as "the wall stops here", which a
-story's street corner shouldn't), the Octodog (`OctodogModel`, posed by script: holding, the wind-up's crouch and flare,
-the lunge's reach and leap, mauling), the hover truck (`HoverTruck.add_model`: the enemy's own meshes at rest, bobbing)
-and the bolts with their bursts (ProjectilePool's enemy-bolt look; with Reduced flashing the bursts are smaller and
-slower). Everything moves from the clock (`_on_advance`); the firefight's bolts come from a fixed seed, so every playing is
-the same. Its sounds are five of its own (`tools/asset_gen/sfx_bank_gangland_intro.gd`: `gang_taunt`, `gang_retort`,
-`gang_jeer`, `gang_rage`, made-up syllables shouted through a cyborg's TV-head speaker, and `octodog_tackle`) and the
-game's `cyborg_charge`, `cyborg_shot`, `enemy_hit`, `octodog_windup` and `octodog_lunge`. Cost (headless,
-`test_gangland_intro`): about 25-30 ms to set up (about 400 ms the first time, with cold mesh caches), at most about
-3-8 ms a step; its props add about 78 draw calls. It adds nothing to the toolkit.
 
 **The Dead Zone's intro** (`DeadZoneIntro`, task F2c; the owner's story beats and answers, October 9, 2026, GDD §6
 Cinematics; what they leave open is DESIGN-TBD, `docs/questions/f2c.md`; numbers in
