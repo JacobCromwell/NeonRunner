@@ -225,7 +225,8 @@ stand-in's warning (a red line from the warning point, never before, and a sound
 Reduced flashing); and that the stand-in stays out of the campaign. `test_generator` sweeps the stand-in's cuts over seeds,
 difficulties and lane counts, under narrow ceilings and in busy levels with every built feature
 (`LayoutChecks.check_cuts`), checks each of GDD §9.9's limits by hand and `CutPlacement`'s clearing, and
-shows a level whose rules plan no cut is the same data as one without them.
+shows a level whose rules plan no cut is the same data as one without them; it sweeps the Buzz Overdrive's company
+(task L2) the same way, in quick play's level with the tank, cyborgs and wall fences.
 `test_buzz_overdrive` checks the Buzz Overdrive (C2; GDD §9.9): its numbers (health 20 everywhere, a rev
 a little shorter level by level, its warning and charge in seconds at every zone's speed), its look
 (every variant within an enemy's budget, only hazard colours glowing), its plan, every campaign level
