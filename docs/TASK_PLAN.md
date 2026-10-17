@@ -636,6 +636,18 @@ From `docs/USER_REQUESTS.md` (October 14, 2026), run by one batch orchestrator (
 | I11 | **One street shader per zone** (I1's question 1): `kit_solid.gdshader` carries every zone's patterns in each program; a zone-only variant may cut the web's compile wait substantially (trial: 47–65% in software WebGL, a rough figure). Measure the City variant on a real Windows Chrome or Edge first; choose the variant from data (skin, boss and cinematic definitions), one small shader file per zone; a built-mesh test that every pattern id a zone's levels, boss, cinematics, enemies and doodads use is in its variant; endless and quick-play mixes keep the full shader; pixel-identical frames. **Core** (a hook in the run's build). For the next batch. | I1 | M–L | T1 |
 | I12 | **The cinematics' real lights** (found in I5): the Dead Zone intro's crater (`dead_zone_crater.gd`) and Gangland outro's sports car cabin (`sports_car_model.gd`) each make an `OmniLight3D`, which on Compatibility and Mobile builds a second version of every lit shader in reach the first time it shows (the Hover Truck's was a 6–10 s frame on software GL). Make each a glow mesh as I5 did, and a test that no cinematic or boss stage has a real light. For the next batch. | – | S | T2 |
 
+### L. The owner's batch (October 17, 2026)
+
+From `docs/USER_REQUESTS.md` (October 17, 2026), run by one batch orchestrator (`docs/WORKFLOW.md`). Recorded in the GDD where they change design.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| L1 | **Menus on an iPhone, from itch.io:** the demo's menus read at a phone's size when itch.io embeds the game (UI scale, the web preset's page) | – | M | T2 |
+| L2 | **The Buzz Overdrive has company:** other enemies and track hazards on screen with it, except beside an Enforcer Truck (GDD §9.9). **Core** (generator). | – | M | T1 |
+| L3 | **Doodads in rows** (runs of similar doodads), with the held side-wall-lane preference (October 9 request) (GDD §3). **Core** (generator). | L2 | M | T1 |
+| L4 | **Backgrounds seen through side wall gaps** built out where a gap shows them, in every zone's skin | – | M | T2 |
+| L5 | **The wall-run guide only in the zone that introduces wall-run gaps** (GDD §3) | – | S | T2 |
+
 ---
 
 ## Order at a glance
