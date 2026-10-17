@@ -61,7 +61,7 @@ const WILD_SPIN: float = 2.6
 const COLLAPSE_FIRE_SIZE: float = 7.0
 ## Squatting under a billboard, it stays down until its face is this far past the billboard's end.
 const DUCK_CLEAR: float = 2.0
-## The "market_citizens" group (MarketCitizen.GROUP, task D3).
+## The "market_citizens" group (MarketPeople.GROUP, tasks D3 and L7).
 const CITIZENS: StringName = &"market_citizens"
 
 var body: TheHouseBody
@@ -198,7 +198,7 @@ func sound(sound_name: StringName, pos: Vector3) -> void:
 	log_event(&"sound", {"name": sound_name})
 
 
-## The citizens in the shop windows react (D3: MarketCitizen.react, &"cheer" or &"startled"): GDD §10,
+## The citizens in the shop windows react (D3: MarketCrowd.react, &"cheer" or &"startled"): GDD §10,
 ## "the citizens in the shop windows cheer and duck throughout".
 func react_citizens(kind: StringName) -> void:
 	reactions[kind] = int(reactions.get(kind, 0)) + 1

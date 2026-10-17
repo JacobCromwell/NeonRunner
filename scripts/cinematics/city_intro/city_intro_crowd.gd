@@ -2,8 +2,8 @@ class_name CityIntroCrowd
 extends Node3D
 ## The City intro's pedestrians (CityIntro; the owner's October 16, 2026 beats: "lots of people ... on the streets"):
 ## a few hundred people on both sidewalks, walking both ways, some with a strip of neon on their shoulders. The
-## Marketplace's citizens (CitizenRig) are baked flipbook cards that stand and cheer in shop windows; they never walk, so
-## these are a new low-poly person of the same plain, ordinary kind (skin tones and everyday clothes in muted tones, never
+## Marketplace's citizens (MarketPeople, task L7: one baked person from the shared rig, in the same way, standing in shop
+## windows) never walk, so these are a new low-poly person of the same plain, ordinary kind (skin tones and everyday clothes in muted tones, never
 ## a hazard's hue, nothing glowing: the palest are a pale jacket and a thin pale blue-white neon trim, dim beside the cyborgs' screens), all in one MultiMesh and walked by a vertex shader (city_intro_crowd.gdshader):
 ## the CPU's cost per frame is one uniform, however many there are.
 ##

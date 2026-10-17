@@ -2,7 +2,7 @@ class_name BeachWaterWatch
 extends Node3D
 ## Watches for the runner going into the water of a stretch of the Beach's pools and makes the splash (the owner,
 ## October 9, 2026: "a fall makes a splash"). One goes in with each piece of a chunk's wall that carries the water
-## plane (BeachSkin.wall_section and wall_gap, the left wall's), as MarketCitizen does for the Marketplace: it finds
+## plane (BeachSkin.wall_section and wall_gap, the left wall's), as the Marketplace's citizens (MarketPeople) do: it finds
 ## the RunWorld up the tree and reads the runner's own track distance and position, never touching its gameplay
 ## state in the other direction (CLAUDE.md principle 1: no new collision or gameplay).
 ## The runner enters the water when its height crosses `water_y` going down: the water plane is the only thing

@@ -212,8 +212,8 @@ trucks (CityTrucks, built in a copy of the skin whose gap-edge and marker lights
 paints leave out the reds, since orange reads as a gap's edge) in the road's two outer lanes, one each way, the middle being the
 cyborgs'; a MultiMesh to each look (17), each vehicle placed from the clock on a loop, one speed to a lane so none ever catches
 up with another, and a stretch both lanes keep clear (`traffic_clear`) where the camera looks through them as the screen bursts.
-`CityIntroCrowd`: a few hundred low-poly people (a new person, in the kind of the Marketplace's citizens, which are flipbook cards
-that never walk) on both sidewalks, all one MultiMesh walked by a vertex shader (`city_intro_crowd.gdshader`: the legs and arms
+`CityIntroCrowd`: a few hundred low-poly people (a new person, in the kind of the Marketplace's citizens, which stand in shop windows
+and never walk) on both sidewalks, all one MultiMesh walked by a vertex shader (`city_intro_crowd.gdshader`: the legs and arms
 swing, the body bobs, each wraps round the loop; the CPU's cost per frame is one uniform; the parts are tagged in UV2, since a
 MultiMesh without instance colours zeroes the vertex colour). A low-end device gets half the vehicles and people
 (`DeviceProfile.is_low_end()`, `low_end_share`). `CityIntroBillboard`: the frame (four bars standing out of the wall, a cable box,
