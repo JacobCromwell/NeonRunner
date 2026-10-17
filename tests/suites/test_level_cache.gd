@@ -45,13 +45,14 @@ const CORPORATE_2_LANES: int = 3
 const SPOIL_TO: float = 1600.0
 ## How far before a doodad or a dash wall _drive starts the dash (test_doodads' retry dashes from as far).
 const DASH_LEAD: float = 8.0
-## The smashed-and-retried attempts' lane count (_test_smashed_stand_again; with REVIEW_ARGS' no deaths and no
-## falls).
-const SMASH_LANES: int = 3
-## The levels _test_smashed_stand_again may play: the first whose own build at SMASH_LANES has a lone doodad in the
-## runner's starting lane well before its first dash wall (_smash_targets). Which one has moves with the generator
-## (task L3 put Golden 1's by a side wall; task L6's doodads, placed lane by lane, left none of the first three one),
-## so the next stand in.
+## The smashed-and-retried attempts' lane counts, in order (_test_smashed_stand_again; with REVIEW_ARGS' no deaths and
+## no falls).
+const SMASH_LANES: Array[int] = [3, 5, 6]
+## The levels _test_smashed_stand_again may play: the first whose own build at the first of SMASH_LANES that has one
+## has a lone doodad in the runner's starting lane well before its first dash wall (_smash_targets). Which one has
+## moves with the generator (task L3 put Golden 1's by a side wall; task L6's doodads, placed lane by lane, left none
+## of the first three one; its review, which keeps both lanes beside a doodad clear past a push's landing, none of them
+## at 3 or 5 lanes), so the next stand in.
 const SMASH_LEVELS: Array[String] = ["golden/1", "corporate/2", "golden/2", "dead_zone/1", "golden/3"]
 
 var main: Node
@@ -509,22 +510,28 @@ func _spoil(world: RunWorld) -> Dictionary:
 ##   track is built ahead.
 func _test_smashed_stand_again(ids: Array[String]) -> void:
 	var saved_args: PackedStringArray = App._review_args
-	App._review_args = _review_args(SMASH_LANES)
-	# An attempt that never dashes, on a fresh build: of the first level of `ids` with what it needs.
+	# An attempt that never dashes, on a fresh build: of the first level of `ids` with what it needs, at the first lane
+	# count of SMASH_LANES where one has.
 	LevelCache.enabled = false
 	var id: String = ""
+	var lanes: int = 0
 	var step: CampaignStep = null
 	var pick: Dictionary = {}
-	for each: String in ids:
-		id = each
-		step = App.campaign.step(id)
-		_restock()
-		App.start_level(step)
-		await tree.process_frame
-		pick = _smash_targets(App.run.world)
+	for count: int in SMASH_LANES:
+		lanes = count
+		App._review_args = _review_args(lanes)
+		for each: String in ids:
+			id = each
+			step = App.campaign.step(id)
+			_restock()
+			App.start_level(step)
+			await tree.process_frame
+			pick = _smash_targets(App.run.world)
+			if not pick.is_empty():
+				break
 		if not pick.is_empty():
 			break
-	check(not pick.is_empty(), "one of %s at %d lanes has a doodad in the runner's lane well before its first dash wall"
+	check(not pick.is_empty(), "one of %s at %s lanes has a doodad in the runner's lane well before its first dash wall"
 		% [ids, SMASH_LANES])
 	if pick.is_empty():
 		LevelCache.enabled = true
@@ -545,7 +552,7 @@ func _test_smashed_stand_again(ids: Array[String]) -> void:
 	var w: RunWorld = App.run.world
 	var doodad: Dictionary = w.layout.doodads[int(pick["doodad"])]
 	var wall: Dictionary = w.layout.dash_walls[int(pick["wall"])]
-	var tag: String = "%s (%d lanes; the doodad at %.0f m, the wall at %.0f m)" % [id, SMASH_LANES, float(doodad["start"]),
+	var tag: String = "%s (%d lanes; the doodad at %.0f m, the wall at %.0f m)" % [id, lanes, float(doodad["start"]),
 		float(wall["start"])]
 	check(bool(first["doodad_broke"]) and bool(doodad.get("smashed", false)) and String(first["doodad_sig"]) != "",
 		"%s: the dash smashes the doodad, marked in the run's layout, its look hidden and its collision off (%s)" % [tag, first["events"]])
