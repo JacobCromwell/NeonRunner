@@ -319,7 +319,10 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
   **orange** joint, plated arm, copper pistons front and back, an articulated hand) in place of Echo's gold one; a utility
   belt with hip and back pouches, dark cargo pants with an empty holster and a pocket on each thigh and knee straps,
   buckled combat boots with magenta trim. Echo's head; no skirt panels; the rifle left out. 1,480 triangles, 16 draw calls.
-  The jacket's magenta is near the electric fence's pink: see the frames the M1 report lists.
+  The jacket's magenta is the electric fence's pink hue in every zone (the colour rule doesn't apply to outfits, so that
+  is as drawn): in rendered frames of every zone's skin the fence's crackle, halo and shape and the runner's cyan spine and
+  silhouette keep them apart, closest on the grey ones (the grey box, Corporate's plaza, the Dead Zone), left for the owner
+  to look at. The frames come from `avatar_run_review.tscn -- --outfit=rex --skin=<zone>` (the fences at 80 m and 110 m).
 
 <!-- M2: Camo and Beach Master go here, one paragraph each. -->
 
