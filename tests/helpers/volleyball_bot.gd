@@ -7,8 +7,7 @@ extends RefCounted
 ## - "idle": never moves or jumps (every ball drops or lands on its head);
 ## - "stand": gets under every ball but never jumps (it bounces off its head);
 ## - "wrong": switches to a lane beside the ball's and jumps (every ball drops beside it);
-## - "points:N": plays perfectly until it has won N points, then stands still;
-## - "lose:K": stands still until the rival has K points, then plays perfectly (a 4-K win).
+## - "points:N": plays perfectly until it has won N points, then stands still.
 
 var match_game: VolleyballMatch
 var player: Player
@@ -39,8 +38,6 @@ func step() -> void:
 	var mode: String = skill
 	if skill.begins_with("points:"):
 		mode = "perfect" if match_game.points_won < int(skill.get_slice(":", 1)) else "idle"
-	elif skill.begins_with("lose:"):
-		mode = "idle" if match_game.points_lost < int(skill.get_slice(":", 1)) else "perfect"
 	if mode == "idle":
 		return
 	var target: int = match_game.target_lane

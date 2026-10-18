@@ -267,13 +267,17 @@ func _play(lanes: int, skill: String, lead: float = -1.0, first_ball: bool = fal
 	out["run_speed"] = game.run_speed
 	out["lane_switch"] = App.run.world.tuning.lane_switch_time
 	out["geometry"] = {"run_in_end": game.run_in_end, "stand": game.stand, "net": game.net_at, "rival": game.rival_at}
-	var bot := VolleyballBot.new(game, skill)
+	# "lose:K": stands still until the rival has K points, then plays perfectly (a 4-K win).
+	var lose_k: int = int(skill.get_slice(":", 1)) if skill.begins_with("lose:") else -1
+	var bot := VolleyballBot.new(game, skill if lose_k < 0 else "idle")
 	bot.jump_lead = lead
 	var world: RunWorld = App.run.world
 	var stand_at: float = NAN
 	for i: int in 60 * 150:
 		if not is_instance_valid(game) or App.run == null:
 			break
+		if lose_k >= 0:
+			bot.skill = "idle" if game.points_lost < lose_k else "perfect"
 		bot.step()
 		await tree.physics_frame
 		if not is_instance_valid(game):

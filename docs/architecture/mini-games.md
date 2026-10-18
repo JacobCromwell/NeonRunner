@@ -72,8 +72,7 @@ What the framework touches outside its folder:
   4-1, 4-2 or 4-3 win is two stars, and so is a loss with 2 or 3 points (the runner finishes the level whoever wins). Time and
   the run-in's credits count for nothing. The results screen lists the rule under the stars (`ResultsScreen.star_text` →
   `MiniGameDef.star_text` → `VolleyballTuning.star_text`: three lines, worded from the data, no par times), and
-  `Profile.record_run` keeps the best. `VolleyballBot` plays `lose:K` (stands still until the rival has K points, then plays
-  perfectly: a 4-K win) for the suite.
+  `Profile.record_run` keeps the best. The suite plays a 4-K win by switching `VolleyballBot` from "idle" to "perfect" once the rival has K points.
 - **What it records** (`events`, `lowest_over_net`): every serve, ball (its lane, the runner's lane and its flight),
   hit, bonk, drop, winner, point, the match and the exit, for the suite and the review tool.
 - **Looks**: the court's sand, the net, the posts, the ball and the ring are unshaded in the street's light

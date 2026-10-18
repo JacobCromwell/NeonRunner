@@ -111,7 +111,7 @@ func _open(screen: String) -> void:
 				if arg.begins_with("--score="):
 					score = arg.get_slice("=", 1).split("-")
 			var m := ResultsScreen.new()
-			m.result = SampleProfiles.match_result(int(score[0]), int(score[1]) if score.size() > 1 else 0)
+			m.result = _match_result(int(score[0]), int(score[1]) if score.size() > 1 else 0)
 			App.show_screen(m)
 		"slot":
 			App.play_step(App.campaign.step("city/boss"))
@@ -134,6 +134,32 @@ func _open(screen: String) -> void:
 			await _boss(screen)
 		_:
 			push_warning("screens showcase: unknown screen '%s'" % screen)
+
+
+## The volleyball match's result (Net Gains, beach/2) for the results screen: a match that ended `won` to `lost`, paid 100 a
+## point, its stars by the score (VolleyballTuning.stars_for).
+func _match_result(won: int, lost: int) -> RunResult:
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.CAMPAIGN
+	ctx.step = App.campaign.step("beach/2")
+	ctx.level_index = ctx.step.level_index
+	ctx.config = App.campaign.configure(ctx.step, 5)
+	ctx.tuning = App.tuning
+	ctx.loadout = Loadout.new()
+	var tuning := ctx.config.minigame.tuning as VolleyballTuning
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = true
+	r.stats = {"minigame": "volleyball", "points_won": won, "points_lost": lost, "returns": won * tuning.returns_to_win_point}
+	r.score = 3400 + won * (tuning.point_score + tuning.returns_to_win_point * tuning.return_score)
+	r.credits_collected = 62
+	r.completion_bonus = won * tuning.payout_per_point
+	r.credits_earned = r.credits_collected + r.completion_bonus
+	r.stars = tuning.stars_for(won, lost)
+	r.time = 55.1
+	r.distance = 640.0
+	r.record = {"new_best": true, "stars_gained": r.stars, "first_clear": true}
+	return r
 
 
 ## Starts a campaign level with god mode (so nothing ends it) and lets it run a while.
