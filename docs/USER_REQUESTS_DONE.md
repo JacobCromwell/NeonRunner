@@ -311,6 +311,14 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 
 - [x] **No feed TVs in the shop windows** (L10). The old CRT sets with the feed's face don't really add much to the level: replace them entirely with different things. Some should be screens with random ads, with the cult emblem flashing every once in a while; others billboards that feel like they fit in the world (GDD §5, Cyborg Viewing Devices). DONE (L10): the TVs are gone from the Marketplace's and the Casino's shop windows. The same windows (22 percent) now hold, half and half, ad screens cycling wordless ads (noodles, a drink, tea, a delivery drone, a sale, the market's brand; the Casino's own: sevens, chips, a cocktail, champagne, dice), changing by a quick dip, with the cult emblem fading on for about a second every 14-26 s (slower and steady with Reduced flashing), and lit posters (a shop's sign, a sale, a menu, a product), turned toward the runner as far as they fit the window. They draw with a small material of their own (one more surface in a chunk that has them), so no other zone or the web demo pays for them; frame times unchanged. Gangland's ruin TV and the Beach's bar TVs, not shop windows, are left as they were (item 991). Questions 986-992.
 
+## The Casino's intro (October 18, 2026)
+
+- [x] A new cinematic as the intro to the Casino zone, with a reference image of the casino's front
+  (`docs/art/reference/casino_brass_lotus.webp`): the runner pulls up to the casino in the violet car, gets out and looks up
+  the grand staircase, where the Chairman shakes hands with people and walks into the casino with two beautiful women, one
+  either side of him; then back to the runner and the Casino's title card. DONE: task F2j, `CasinoIntro` (GDD §6, "Casino
+  intro"); the staging choices are `docs/questions/f2j.md`.
+
 ## The owner's batch (October 18, 2026, evening)
 
 - [x] **Shields stack like the armor** (GDD §8): four shields bought, yet one hit took the shield away. Verify, and if so, carry every shield in stock into the run, each blocking one hit. DONE (N3): verified — it was by design (FB 13, one breakable charge per attempt). Now every shield in stock (up to 5) comes into the run, each hit uses one shield and one stock, with the usual second of invulnerability; the HUD shows the count, the runner wears the shield until the last breaks, and the one-hit-from-death siren waits for the last shield. The grapple stays one per attempt. Question 1011 (a boss's granted shield on top of a stack).

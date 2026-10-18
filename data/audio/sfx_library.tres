@@ -26,6 +26,8 @@ volume_db = {
 "buzz_charge": -3.0,
 "buzz_rev": -1.5,
 "casino_bustle": -11.0,
+"car_arrive": -6.0,
+"car_cruise": -8.0,
 "car_door": -7.0,
 "car_drive": -2.0,
 "car_start": -4.0,
