@@ -18,7 +18,7 @@ extends PlayerOutfit
 ## the pink lines over the shoulders and down the right sleeve, and on the left the gunmetal and copper arm with
 ## its orange joint, then the dark pants and the magenta-trimmed boots. The hand and the fingerless glove are
 ## Echo's own shapes, so the cinematics' hand poses (two raised fingers) still work.
-## DESIGN-TBD (docs/questions/m1.md): the circuit patterns, simplified from the sheet, and how worn the leather is.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 984): the circuit patterns, simplified from the sheet, and how worn the leather is.
 
 const JACKET := Color(0.74, 0.09, 0.5)
 const JACKET_DARK := Color(0.58, 0.06, 0.4)

@@ -113,8 +113,8 @@ matching completion sounds are added.
 | Slow time (power-up, PC only) | E | – |
 | Pause (skips a cinematic) | Esc / P | Pause button (a cinematic's Skip button) |
 
-Every key can be rebound in Settings. PC runs use 5 lanes and mobile runs use 3 (the exact PC count is still
-open: 5 or 6).
+Every key can be rebound in Settings. PC and mobile runs both use 5 lanes (separate settings, `lanes_pc` and
+`lanes_mobile` in `data/tuning/game_rules.tres`).
 
 Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2** next seed, **F3** difficulty,
 **F4** god mode, **F5** show hitboxes, **F6** tuning panel, **F7** frame-time graph, **M** mute.
@@ -486,12 +486,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Modes:** the campaign, endless mode, and harder difficulty tiers after the last level.
 - **Look and sound:**
   - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,
-    a gold cybernetic arm and a copper ocular implant; and his outfits from the shop (so far Rex: a magenta
-    leather biker jacket with pink circuit lines and a cyan spine, and a gunmetal and copper cyber-arm; Camo: a
-    long olive military trench coat with camo patches and dark tubing across the back, over a camo plate carrier,
-    and a dull brass armoured cyber-arm; Beach Master: an open dark teal tropical shirt with a glowing green
-    skull across its back, bare tanned legs and a corroded, cloth-wrapped cyber-arm; the other two wear a tinted
-    placeholder until they are built)
+    a gold cybernetic arm and a copper ocular implant; and his outfits from the shop (Rex, Camo,
+    Beach Master, Centurion and Party Wolf; GDD §8, Cosmetics)
   - the cyborgs: ragged, strung-out gangsters whose whole head is a beat-up CRT television, its screen
     their cold white LED face (calm, aiming, a shocked "O", ERR when defeated), with a backpack cabled
     into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins. Each zone has

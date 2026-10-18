@@ -52,6 +52,8 @@ var _equipment: Dictionary = {}
 func _ready() -> void:
 	tuning = load(TUNING_PATH) as MovementTuning
 	var skin: ZoneSkin = GreyboxSkin.new()
+	# Echo's own look unless --outfit says otherwise, whatever the real save wears.
+	PlayerOutfits.worn = PlayerOutfits.ECHO
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--skin="):
 			var path: String = "res://data/skins/%s_skin.tres" % arg.get_slice("=", 1)
