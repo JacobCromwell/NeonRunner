@@ -2,7 +2,7 @@ class_name CosmeticCard
 extends PanelContainer
 ## A cosmetic in the shop (GDD §8, "Cosmetics"): an outfit for the runner, bought once with credits and
 ## kept forever, then worn or taken off. DESIGN-TBD: its icon is a jacket in the outfit's colour, not a
-## preview of the outfit (docs/questions/m1.md, 4). It looks like an ItemCard (the same card, icon, title, caption
+## preview of the outfit (`docs/OPEN_QUESTIONS*.md` item 982). It looks like an ItemCard (the same card, icon, title, caption
 ## and button) with one button that changes with its state, so the focus never has to move:
 ##   AVAILABLE    price <= credits: the price button buys it
 ##   CANT_AFFORD  price > credits: the price button is disabled, the caption says why (in red)

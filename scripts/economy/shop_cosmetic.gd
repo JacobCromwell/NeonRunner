@@ -8,7 +8,7 @@ var id: StringName
 var display_name: String = ""
 var description: String = ""
 ## Credits. The default look (Razor Echo's own) is free.
-## DESIGN-TBD: one price on every platform (docs/questions/m1.md, 7).
+## DESIGN-TBD: one price on every platform (`docs/OPEN_QUESTIONS*.md` item 985).
 var price: int = 0
 ## The outfit's main colour: the card's icon, and the tint of an outfit whose look isn't built yet
 ## (PlayerOutfits.placeholder_parts).
