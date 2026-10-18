@@ -332,8 +332,8 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## rows, and the doodads are exactly as before. DESIGN-TBD (item 942 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.0, 1.0, 0.05) var doodad_row_chance: float = 0.5
 ## How many doodads a row has (each count as likely; the owner's examples are three long, and task L6, the owner,
-## October 17, 2026: "could it be two in a row so it doesn't take up as much room?"). DESIGN-TBD (items 942-947 in
-## docs/OPEN_QUESTIONS*.md 1).
+## October 17, 2026: "could it be two in a row so it doesn't take up as much room?"). DESIGN-TBD (items 942 and
+## 973 in docs/OPEN_QUESTIONS*.md).
 @export_range(2, 4) var doodad_row_min: int = 2
 @export_range(2, 4) var doodad_row_max: int = 4
 ## Of the rows of small doodads, the share with a doodad's length of space between each two; the others stand one
