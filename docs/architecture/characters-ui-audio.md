@@ -307,7 +307,10 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
   weapon's muzzle, and the body and head segments; it needs nothing added) and, for the outfit's own looks, a suite of its
   own, `tests/suites/test_outfit_<id>.gd` (see `test_outfit_rex`); (4) a paragraph here under its marker below, and its
   `DESIGN-TBD` questions in `docs/questions/<task>.md`. The shop's price, name, colour and order are the catalog's
-  (`ShopCosmetic`); its colour is also what the outfit's shop icon and placeholder use.
+  (`ShopCosmetic`); its colour is also what an unbuilt outfit's placeholder uses. **Its shop preview needs nothing:** the
+  card's `OutfitPreview` dresses an avatar from the same file (`docs/architecture/economy-platforms.md`, "The previews"), the
+  runner in a run pose from the front and, on the card the pointer is on, running in place and turning; look at it there
+  too (`tools/showcase/screens_showcase.tscn -- --screen=shop --scroll-end --focus-outfit=<id>`).
 
 ### Built outfits
 

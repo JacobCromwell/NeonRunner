@@ -6,6 +6,7 @@ extends RefCounted
 ## Wallet (GDD §7): credits earned in play and credits bought with real money are kept apart.
 ## Net worth is the earned credits never spent; purchased credits never count toward it.
 ## Purchases spend bought credits first, so buying credits never lowers net worth (FB 12).
+## Credits spent on cosmetics stay in it (owner, October 18, 2026; GDD §6, §8): a look is not an advantage.
 
 ## The save format. Older saves are brought up to date as they load (_migrate).
 ## 2 (September 30, 2026): armor became a permanent upgrade to the free armor (GDD §4, §8).
@@ -27,8 +28,11 @@ const V3_HOUSE_HINTS: String = "hint/casino_boss"
 const V3_SUNSET_STEP: String = "beach/2"
 const V4_SUNSET_STEP: String = "beach/3"
 
-## Credits earned in play and not spent: the net worth (GDD §7).
+## Credits earned in play and not spent (the wallet's part of the net worth, GDD §7).
 var earned: int = 0
+## Earned credits spent on cosmetics (spend_on_cosmetic): gone from the wallet, still counted by net_worth().
+## An older save has no such field: it is read off the outfits it owns when it loads (from_dict).
+var cosmetic_spent: int = 0
 ## Credits bought with real money (mobile) and not spent.
 var purchased: int = 0
 var lifetime_earned: int = 0
@@ -64,8 +68,10 @@ func credits() -> int:
 	return earned + purchased
 
 
+## The leaderboard's score (GDD §6, §7): the credits earned in play and not spent, plus those spent on cosmetics,
+## which never lower it (owner, October 18, 2026). Bought credits never count.
 func net_worth() -> int:
-	return earned
+	return earned + cosmetic_spent
 
 
 func can_afford(price: int) -> bool:
@@ -74,13 +80,29 @@ func can_afford(price: int) -> bool:
 
 ## Spends `price` credits (bought credits first). False, and nothing spent, if unaffordable.
 func spend(price: int) -> bool:
-	if not can_afford(price):
+	return _spend(price) >= 0
+
+
+## Spends `price` credits on a cosmetic (bought credits first, as for an item): the wallet loses the price, the net
+## worth doesn't (the earned credits spent go to `cosmetic_spent`). False, and nothing spent, if unaffordable.
+func spend_on_cosmetic(price: int) -> bool:
+	var from_earned: int = _spend(price)
+	if from_earned < 0:
 		return false
+	cosmetic_spent += from_earned
+	return true
+
+
+## Takes `price` out of the wallet, bought credits first. Returns the part that came out of the earned credits,
+## or -1, with nothing spent, if the wallet is short.
+func _spend(price: int) -> int:
+	if not can_afford(price):
+		return -1
 	var from_purchased: int = mini(purchased, price)
 	purchased -= from_purchased
 	earned -= price - from_purchased
 	lifetime_spent += price
-	return true
+	return price - from_purchased
 
 
 func add_earned(amount: int) -> void:
@@ -218,6 +240,7 @@ func to_dict() -> Dictionary:
 		"purchased": purchased,
 		"lifetime_earned": lifetime_earned,
 		"lifetime_spent": lifetime_spent,
+		"cosmetic_spent": cosmetic_spent,
 		"tiers": tiers,
 		"stocks": stocks,
 		"equip_off": equip_off,
@@ -258,6 +281,10 @@ static func from_dict(d: Dictionary) -> Profile:
 		for k: Variant in dict.keys():
 			dict[k] = int(dict[k])
 	p._migrate(int(d.get("version", 1)))
+	# A save from before cosmetics stopped lowering net worth has no `cosmetic_spent` (the version is unchanged: a
+	# new field with a default, as the outfits were): what its outfits cost is what they took out of its net worth.
+	var spent: Variant = d.get("cosmetic_spent")
+	p.cosmetic_spent = maxi(int(spent), 0) if typeof(spent) in [TYPE_INT, TYPE_FLOAT] else p._owned_outfits_cost()
 	return p
 
 
@@ -302,6 +329,21 @@ func _migrate(from: int) -> void:
 			var prefix: String = key.get_slice("/", 0) + "/"
 			if key.trim_prefix(prefix) == V3_SUNSET_STEP:
 				_move_record(key, prefix + V4_SUNSET_STEP)
+
+
+## What the outfits owned cost at the catalog's prices, never more than was ever spent: the cosmetic spending of a
+## save that didn't count it. Bought credits (mobile) went first and can't be told apart now, so a save that
+## paid part of an outfit with them gets that part credited too, a little in the player's favour.
+func _owned_outfits_cost() -> int:
+	if outfits.is_empty():
+		return 0
+	var catalog: ShopCatalog = ShopCatalog.load_from()
+	var total: int = 0
+	for id: String in outfits:
+		var cosmetic: ShopCosmetic = catalog.cosmetic(StringName(id))
+		if cosmetic != null and cosmetic != catalog.default_cosmetic:
+			total += cosmetic.price
+	return mini(total, maxi(lifetime_spent, 0))
 
 
 ## Moves the record at `from_key` to `to_key` (save versions 3 and 4), unless `to_key` already has one.

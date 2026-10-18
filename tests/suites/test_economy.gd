@@ -70,6 +70,19 @@ func _test_wallet() -> void:
 	check(p.lifetime_earned == 500 and p.lifetime_spent == 400, "lifetime totals")
 	p.add_earned(-50)
 	check(p.earned == 400, "negative earnings are ignored")
+	# A cosmetic leaves the wallet but not the net worth (owner, October 18, 2026; GDD §6, §8): bought credits go first
+	# as for an item, and only the earned part spent is kept in the net worth.
+	var c := Profile.new()
+	c.add_earned(1000)
+	c.add_purchased(300)
+	check(c.spend_on_cosmetic(500) and c.purchased == 0 and c.earned == 800 and c.cosmetic_spent == 200 and c.credits() == 800,
+		"a cosmetic is paid with bought credits first, and the earned part is remembered (%d)" % c.cosmetic_spent)
+	check(c.net_worth() == 1000 and c.lifetime_spent == 500, "…so the net worth is what it was (%d), and the spending counts" % c.net_worth())
+	check(c.spend(300) and c.net_worth() == 700, "an item still lowers it")
+	check(not c.spend_on_cosmetic(501) and c.credits() == 500 and c.cosmetic_spent == 200 and c.net_worth() == 700,
+		"an unaffordable cosmetic changes nothing")
+	c.add_earned(100)
+	check(c.net_worth() == 800, "and what is earned afterwards adds to it")
 
 
 func _test_items_and_records() -> void:
@@ -108,6 +121,7 @@ func _test_save_round_trip() -> void:
 	var q: Profile = SaveService.load_profile(path)
 	check(q.earned == 1234 and q.purchased == 10 and q.tier(&"magnet") == 3 and q.stock(&"revive") == 2,
 		"wallet and items survive a save and load")
+	check(q.cosmetic_spent == 0 and q.net_worth() == 1234, "a profile that bought no outfit has none of its net worth in cosmetics")
 	check(not q.is_equipped(&"magnet") and q.stars("city/1") == 3 and q.has_seen("hint/doghouse"),
 		"toggles, records and flags survive")
 	check(is_equal_approx(float(q.settings["volume_music"]), 0.25), "settings survive")

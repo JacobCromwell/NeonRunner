@@ -1,9 +1,10 @@
 class_name CosmeticCard
 extends PanelContainer
 ## A cosmetic in the shop (GDD §8, "Cosmetics"): an outfit for the runner, bought once with credits and
-## kept forever, then worn or taken off. DESIGN-TBD: its icon is a jacket in the outfit's colour, not a
-## preview of the outfit (`docs/OPEN_QUESTIONS*.md` item 982). It looks like an ItemCard (the same card, icon, title, caption
-## and button) with one button that changes with its state, so the focus never has to move:
+## kept forever, then worn or taken off. Its picture is a preview of the outfit, the runner wearing it
+## (OutfitPreview; owner, October 18, 2026, item 982), where an item's card has its icon. It looks like an ItemCard
+## (the same card, title, caption and button, WIDTH_FACTOR times as wide to give the preview its room) with one button that
+## changes with its state, so the focus never has to move:
 ##   AVAILABLE    price <= credits: the price button buys it
 ##   CANT_AFFORD  price > credits: the price button is disabled, the caption says why (in red)
 ##   OWNED        bought, not worn: WEAR
@@ -13,13 +14,25 @@ extends PanelContainer
 ##       "credits": wallet, "owned": false, "worn": false, "color": Color("#d1198c")})
 ##   card.buy_pressed.connect(_on_buy)
 ##   card.wear_pressed.connect(_on_wear)
+## The preview is a still of the runner; the shop makes it run and turn (`set_preview_live`) on the one card the pointer
+## or the focus is on: `interest_changed` says when this one gains or loses either, `interested` is where it stands.
 
 signal buy_pressed(cosmetic_id: StringName)
 ## Wear the cosmetic, or take it off: `cosmetic_id` is the outfit to put on, so on a worn card (TAKE OFF) it is
 ## the default look's id.
 signal wear_pressed(cosmetic_id: StringName)
+## The pointer or the focus came onto the card or left it (`interested` is the new state).
+signal interest_changed(card: CosmeticCard)
 
 enum State { AVAILABLE, CANT_AFFORD, OWNED, WORN }
+
+## How much wider than an item's card (the theme's ItemCard width) a cosmetic's is: the room for the preview beside
+## the text.
+const WIDTH_FACTOR: float = 1.4
+## The description's lines (the text column is narrower than an item's and the longest text takes four; an item's has three).
+const DESCRIPTION_LINES: int = 4
+## The preview's width as a fraction of its height (the runner stands tall and narrow).
+const PREVIEW_ASPECT: float = 0.7
 
 ## Keys configure() accepts.
 const FIELDS: Array[String] = ["cosmetic_id", "default_id", "title", "description", "price", "credits", "owned",
@@ -34,20 +47,28 @@ var price: int = 0
 var credits: int = 0
 var owned: bool = false
 var worn: bool = false
-## The outfit's main colour: its icon's.
+## The outfit's main colour (the catalog's). The preview shows the outfit itself, so nothing on the card is drawn in it now;
+## it is kept with the card's data.
 var color: Color = Color.WHITE
 ## A line for the caption when there is nothing else to say (an outfit whose look isn't finished).
 var note: String = ""
 
 var state: State = State.AVAILABLE
-var icon_frame: PanelContainer
-var icon: NeonIcon
+## True while the pointer is over the card or the focus is in it.
+var interested: bool = false
+var preview_frame: PanelContainer
+var preview: OutfitPreview
 var title_label: Label
 var status_label: Label
 var description_label: Label
 var action_button: NeonButton
 var _bottom: HBoxContainer
 var _heading: VBoxContainer
+var _text: VBoxContainer
+var _hovered: bool = false
+var _focused: bool = false
+## The id the preview was dressed for (refresh() dresses it again only when the card's cosmetic changes).
+var _previewed: StringName = &""
 var _metrics_queued: bool = false
 
 
@@ -57,16 +78,17 @@ func _init() -> void:
 	add_child(column)
 	var top := HBoxContainer.new()
 	column.add_child(top)
-	icon_frame = PanelContainer.new()
-	icon_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	top.add_child(icon_frame)
-	icon = NeonIcon.new()
-	icon.icon_name = &"outfit"
-	icon_frame.add_child(icon)
+	preview_frame = PanelContainer.new()
+	preview_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	top.add_child(preview_frame)
+	preview = OutfitPreview.new()
+	preview_frame.add_child(preview)
+	_text = VBoxContainer.new()
+	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(_text)
 	_heading = VBoxContainer.new()
-	_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_heading.add_theme_constant_override(&"separation", 4)
-	top.add_child(_heading)
+	_text.add_child(_heading)
 	title_label = Label.new()
 	title_label.theme_type_variation = UiTheme.CARD_TITLE
 	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -78,15 +100,19 @@ func _init() -> void:
 	description_label = Label.new()
 	description_label.theme_type_variation = UiTheme.CAPTION
 	description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	description_label.max_lines_visible = 3
+	description_label.max_lines_visible = DESCRIPTION_LINES
 	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(description_label)
+	_text.add_child(description_label)
 	_bottom = HBoxContainer.new()
 	_bottom.alignment = BoxContainer.ALIGNMENT_END
 	column.add_child(_bottom)
 	action_button = NeonButton.make("", NeonButton.Kind.PRICE)
 	action_button.pressed.connect(_on_action)
 	_bottom.add_child(action_button)
+	mouse_entered.connect(_on_pointer.bind(true))
+	mouse_exited.connect(_on_pointer.bind(false))
+	action_button.focus_entered.connect(_set_interest.bind(true))
+	action_button.focus_exited.connect(_set_interest.bind(false))
 	refresh()
 
 
@@ -113,7 +139,9 @@ func refresh() -> void:
 		title_label.text = title
 		_fit_title()
 	description_label.text = description
-	icon.color = color
+	if _previewed != cosmetic_id:
+		_previewed = cosmetic_id
+		preview.outfit_id = cosmetic_id
 	var is_default: bool = cosmetic_id == default_id
 	match state:
 		State.AVAILABLE, State.CANT_AFFORD:
@@ -164,6 +192,28 @@ func _on_action() -> void:
 			wear_pressed.emit(default_id)
 
 
+## The shop makes the preview of the card the pointer or the focus is on run and turn, and the others stand still.
+func set_preview_live(on: bool) -> void:
+	preview.set_live(on)
+
+
+func _on_pointer(inside: bool) -> void:
+	_hovered = inside
+	_update_interest()
+
+
+func _set_interest(focused: bool) -> void:
+	_focused = focused
+	_update_interest()
+
+
+func _update_interest() -> void:
+	var now: bool = _hovered or _focused
+	if now != interested:
+		interested = now
+		interest_changed.emit(self)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_ENTER_TREE:
 		UiTheme.ensure_later(self)
@@ -176,12 +226,9 @@ func _notification(what: int) -> void:
 
 func _update_metrics() -> void:
 	_metrics_queued = false
-	custom_minimum_size.x = get_theme_constant(&"width", &"ItemCard")
-	# The same height as an item card's, in every state.
+	custom_minimum_size.x = roundf(get_theme_constant(&"width", &"ItemCard") * WIDTH_FACTOR)
+	# The button row is as tall as an item card's, in every state.
 	_bottom.custom_minimum_size.y = get_theme_constant(&"control_height", UiTheme.NEON)
-	var icon_px: float = get_theme_constant(&"icon_size", &"ItemCard")
-	icon.icon_size = icon_px
-	icon_frame.add_theme_stylebox_override(&"panel", get_theme_stylebox(&"icon_frame", &"ItemCard"))
 	var title_h: float = get_theme_font(&"font", UiTheme.CARD_TITLE).get_height(get_theme_font_size(&"font_size", UiTheme.CARD_TITLE))
 	var status_h: float = status_label.get_theme_font(&"font").get_height(status_label.get_theme_font_size(&"font_size"))
 	# As tall as an item card's heading (its tier pips are 10 px), so a row of both lines up.
@@ -189,7 +236,20 @@ func _update_metrics() -> void:
 	var font: Font = description_label.get_theme_font(&"font")
 	var font_size: int = description_label.get_theme_font_size(&"font_size")
 	var line: float = font.get_height(font_size) + description_label.get_theme_constant(&"line_spacing")
-	description_label.custom_minimum_size.y = ceilf(line * 3.0)
+	description_label.custom_minimum_size.y = ceilf(line * float(DESCRIPTION_LINES))
+	# The preview is as tall as the text beside it (the heading and the description), in a frame like an icon's with
+	# less room inside, so the card is no taller than an item's.
+	var text_h: float = _heading.custom_minimum_size.y + description_label.custom_minimum_size.y \
+		+ float(_text.get_theme_constant(&"separation"))
+	var frame: StyleBox = get_theme_stylebox(&"icon_frame", &"ItemCard")
+	var margin: float = roundf(UiTheme.px(3))
+	if frame is StyleBoxFlat:
+		frame = frame.duplicate()
+		for side: Side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+			(frame as StyleBoxFlat).set_content_margin(side, margin)
+	preview_frame.add_theme_stylebox_override(&"panel", frame)
+	var inner_h: float = text_h - 2.0 * margin
+	preview.custom_minimum_size = Vector2(roundf(inner_h * PREVIEW_ASPECT), inner_h)
 
 
 ## Long names shrink a little to fit rather than lose their end.
