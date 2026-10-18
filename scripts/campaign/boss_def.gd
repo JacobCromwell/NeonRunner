@@ -76,7 +76,7 @@ enum StarRule {
 ## earned. TIME (GDD §10, proposed) for a fight whose speed is the player's to improve; HITS for one whose length its
 ## script fixes, where a faster win is not in the player's hands and how cleanly the fight went is.
 @export var star_rule: StarRule = StarRule.TIME
-## HITS: the most protection hits taken (BossEncounter.stats "blocked" via the run's ScoreKeeper: an armor or shield
+## HITS: the most protection hits taken (the run's ScoreKeeper.blocked, RunResult.stats["blocked"]: an armor or shield
 ## absorbing an attack) for three stars (0: none) and for two. Also DESIGN-TBD.
 @export_range(0, 20) var three_star_max_hits: int = 0
 @export_range(0, 20) var two_star_max_hits: int = 2

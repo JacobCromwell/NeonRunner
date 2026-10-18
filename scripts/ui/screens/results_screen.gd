@@ -3,10 +3,10 @@ extends ScreenBase
 ## After a run: level complete (the stars pop in, the score and the credits count up: collected
 ## plus the completion bonus makes what's earned, then the stats and NEW BEST) or the run summary
 ## after a death (what hit the player, the credits kept). A boss fight (GDD §10) shows BOSS DEFEATED,
-## its stars against the par times (listed under them), the boss's payout, and the fight's own stats
-## (time, weak points, the phase reached, the time bonus); a mini-game level its payout and its own stats (the
-## volleyball match: the points won and lost, the returns). Then on to the shop and the next step or
-## a retry (GDD §4, §8), a retry now, or the menu.
+## its stars by its par times or the hits it took (the rule listed under them), the boss's payout, and the fight's
+## own stats (time, weak points, the phase reached, the time bonus); a mini-game level its payout and its own stats
+## (the volleyball match: the points won and lost, the returns, and how its stars are earned under them). Then on
+## to the shop and the next step or a retry (GDD §4, §8), a retry now, or the menu.
 ## The level-complete screen's stats (FB 60): the ScoreKeeper's, and a boss fight's own
 ## (DESIGN-TBD, docs/questions/b8.md).
 
