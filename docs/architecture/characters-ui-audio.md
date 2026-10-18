@@ -327,7 +327,7 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
 - **Camo** (M2; `camo.gd`; brief `docs/art/BRIEF_OUTFIT_CAMO.md`). An aged olive military trench coat (two torso tiers, a
   high collar all round, lapels, an epaulette and a strapped cuff on the right sleeve) with **camo patches** (flat decals in
   dark green, brown, khaki and near-black on the back, the right sleeve, the carrier and every skirt panel, the left and
-  right panels differing), a stained dark-brown hem with a dusty band over it, and eight **dark tubing** pipes across the
+  right panels differing), a stained dark-brown hem, and eight **dark tubing** pipes across the
   upper back (two bent in from the shoulder blades and run down to the belt, tied by two rungs); in its open front a lighter
   camo **plate carrier** (a pouch strip, a harness strap down each side, a patch pattern) over a dark shirt; a belt with a
   pouch each side of the small of the back; the **armoured, dull brass cyber-arm** (Echo's dome for the shoulder, so the
@@ -339,19 +339,20 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
   Echo's implant and the tint), and the coat is lighter than Echo's so the body material's shared rim light keeps its outline
   on dark tracks: in rendered frames of all 11 zone skins on both renderers it reads everywhere, closest against Gangland's
   brown dirt. The long coat's skirt is `panels()`: four stiff panels like Echo's (two behind the legs, split by the vent,
-  two at the open front; 0.47 m, flare 1.28), which test_outfit_camo checks never go through a knee or the ground and trail
-  in a slide. 1,504 triangles, 17 draw calls (1,956 and 18 with every power-up). Left out: the katana, the pistol, the
+  two at the open front; 0.47 m, flare 1.28; their nine patches are bands over single faces of the skirt's oval ring), which
+  test_outfit_camo checks never go through a knee or the ground and trail in a slide. 1,482 triangles, 17 draw calls (1,934 and 18 with every power-up). Left out: the katana, the pistol, the
   grenades and the knife (no weapons) and the skull on the coat's lower back (too small to read). Its patches, the stripes of
   its laces and the shapes on the shoulder blades are `OutfitDecals` (`outfit_decals.gd`), which an outfit can use: a one-sided
   sheet a few millimetres off its surface, so a patch of camo, a flower or a skull costs two to eight triangles where a thin box
   costs twelve (`quad`, `diamond`, `disc`, and `on_prism` for a band over a sleeve, a trouser leg or a boot's shaft; `glow`
-  makes one a glowing print), with no draw call of its own; test_outfit_decals pins how each faces and sits.
+  makes one a glowing print), with no draw call of its own; `face_directions`, `faces_in` and `face_arc` find the faces of a
+  skirt's ring from its shape (see below); test_outfit_decals pins how each faces and sits.
 - **Beach Master** (M2; `beach_master.gd`; brief `docs/art/BRIEF_OUTFIT_BEACH_MASTER.md`). An open, short-sleeved dark teal
   tropical shirt (sleeves rolled to a lighter cuff, a flat open collar, a harness strap over each shoulder) printed with
   coral five-petalled hibiscus and dark palm leaves; over bare skin in the open front the same camo plate carrier as Camo's;
   a belt with two pouches; the **sea-salt corroded cyber-arm** (rusty brass plates round exposed steel joints with Echo's
   dome at the shoulder, seven verdigris patches, five tilted cloth wraps and an articulated hand); on the right a bare tanned
-  arm with a teal and cream bead bracelet and the fingerless glove; dark cargo shorts with a pocket and a strap on each thigh
+  arm with a teal and cream bead bracelet and the fingerless glove; dark cargo shorts with a pocket on each thigh
   and knee pads; bare tanned lower legs and strapped tactical sandals. Echo's head. The signature, which the gameplay camera
   sees all game, is the **glowing green skull** across the shirt's back (a crown, a jaw with three teeth, slanted dark eye
   sockets and a dark nose, with palm fronds fanning from its upper left; flat decals, the holes unlit so bloom keeps the
@@ -359,12 +360,15 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
   which powers down on death and takes the dash's brightening and the invulnerability tint like Echo's conduits (it is body
   glow, so nothing extra flickers: Reduced flashing has nothing to calm). The shirt is short, so `panels()` is four small
   ones for its hem and open front (two tails behind, 9 cm, two flaps at the front edges, 13 cm, following the thighs at
-  35 and 45%), one draw call. 1,525 triangles, 17 draw calls (1,977 and 18 with every power-up). Left out: the katana, the
+  35 and 45%), one draw call. 1,513 triangles, 17 draw calls (1,965 and 18 with every power-up). Left out: the katana, the
   pistol, the grenades and the knife. Frames: `avatar_showcase.tscn -- --shot=poses-back --outfit=beach_master`; test_outfit_beach_master.
 - **Writing an outfit (what M2 learned).** Match Echo's sole: the rig stands on the lowest vertex of the feet, so a sole that
   reaches 1 mm below his (-0.075 m in the foot's space) lifts the whole runner and moves the weapon's muzzle (test_outfits'
   height and muzzle checks catch it; a sandal's sole may be thicker if it ends at the same height). Keep the budget in mind
   when a joint or finger is a prism: `sides: 4` is 12 triangles where the default six sides are 20. Anything that is only
-  paint (a camo patch, a print, a lace) is a decal, not a box.
+  paint (a camo patch, a print, a lace) is a decal, not a box. A skirt's ring is an oval, so its faces sit at 19, 52, 78, 102,
+  128 and 161 degrees and so on, not at tidy angles: a patch aimed at "105 degrees" builds no triangle and draws nothing
+  (M2's first build had 32 such pieces). Ask `OutfitDecals.face_directions` for the faces and `faces_in` for a panel's, and
+  `test_outfits` fails any outfit with a body, head or panel piece that builds no triangle.
 
 <!-- M3: Centurion and Party Wolf go here, one paragraph each. -->

@@ -60,6 +60,7 @@ func run() -> void:
 	_test_catalog()
 	_test_registry()
 	_test_composition()
+	_test_every_piece_builds()
 	_test_head_and_overrides()
 	_test_budgets_and_fit()
 	_test_poses_and_equipment()
@@ -185,6 +186,32 @@ func _test_composition() -> void:
 				untouched = untouched and piece.color == source.color
 		check(changed > 20 and untouched and parts.panels.size() == base.panels.size(),
 			"%s: not built yet, it wears Echo's look washed toward its colour (%d pieces), his head and glows as they are" % [c.id, changed])
+
+
+## Every piece of every built outfit (the body, the head and each skirt panel's) builds at least one triangle. A piece that
+## builds none costs nothing and draws nothing: a decal whose arc matches no face of its ring, a band over a face an oval
+## ring doesn't have, a profile of a single ring.
+func _test_every_piece_builds() -> void:
+	for id: StringName in _ids():
+		var made: PlayerOutfit = PlayerOutfits.outfit(id)
+		if made == null:
+			continue
+		var empty: PackedStringArray = []
+		var total: int = 0
+		var lists: Array = [["body", made.body_pieces(), false], ["head", made.head_pieces(), false]]
+		var panels: Array[HumanoidPanel] = made.panels()
+		for i: int in panels.size():
+			lists.append(["panel %d" % i, panels[i].pieces, panels[i].side < 0])
+		for entry: Array in lists:
+			var pieces: Array = entry[1]
+			for k: int in pieces.size():
+				var piece: HumanoidPiece = pieces[k]
+				var builder := HumanoidMeshBuilder.new()
+				builder.add_piece(piece, bool(entry[2]))
+				total += 1
+				if builder.triangle_count() == 0:
+					empty.append("%s #%d %s" % [entry[0], k, HumanoidPiece.Shape.keys()[piece.shape]])
+		check(empty.is_empty() and total > 0, "%s: all %d pieces build triangles (empty: %s)" % [id, total, ", ".join(empty)])
 
 
 ## An outfit may cover the head or add to it, and refit a power-up's set.

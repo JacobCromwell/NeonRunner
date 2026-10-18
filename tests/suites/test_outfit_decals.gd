@@ -15,6 +15,7 @@ func run() -> void:
 	_test_quad()
 	_test_diamond_and_disc()
 	_test_on_prism()
+	_test_ring_faces()
 	_test_in_the_mesh()
 
 
@@ -123,6 +124,38 @@ func _test_on_prism() -> void:
 	var host_back: float = 0.095 * 0.5 * lerpf(1.0, 1.15, 0.6) * 0.866
 	check(box.end.z - host_back > 0.002 and box.end.z - host_back < 0.008,
 		"…a few millimetres off it (%.1f mm)" % ((box.end.z - host_back) * 1000.0))
+
+
+## The faces of a skirt's ring: an oval ring has its faces at no tidy angle, so a patch asks the shape for them (a decal
+## aimed at 105 degrees on an oval ring built nothing in M2's first build).
+func _test_ring_faces() -> void:
+	var round_faces: PackedFloat32Array = OutfitDecals.face_directions(Vector2(0.3, 0.3), 12, 15.0)
+	var tidy: bool = round_faces.size() == 12
+	for d: float in round_faces:
+		var r: float = fposmod(d - 15.0, 30.0)
+		tidy = tidy and (r < 0.01 or r > 29.99)
+	check(tidy, "a round ring's twelve faces sit at 15, 45, 75 ... degrees")
+	var oval := Vector2(0.308, 0.24)
+	var faces: PackedFloat32Array = OutfitDecals.face_directions(oval, 12, 15.0)
+	var back: PackedFloat32Array = OutfitDecals.faces_in(faces, Vector2(91.0, 179.0))
+	var front: PackedFloat32Array = OutfitDecals.faces_in(faces, Vector2(31.0, 89.0))
+	check(back.size() == 3 and absf(back[0] - 101.8) < 0.2 and absf(back[1] - 127.9) < 0.2 and absf(back[2] - 161.0) < 0.2,
+		"an oval ring's back-right faces are at 101.8, 127.9 and 161.0 degrees, not 105, 135 and 165 (%s)" % [back])
+	check(front.size() == 2 and absf(front[0] - 52.1) < 0.2 and absf(front[1] - 78.2) < 0.2, "...and its front-right ones at 52.1 and 78.2 (%s)" % [front])
+	var built: PackedInt32Array = []
+	for d: float in back:
+		built.append(_ring_band(oval, OutfitDecals.face_arc(d)).triangle_count())
+	for d: float in front:
+		built.append(_ring_band(oval, OutfitDecals.face_arc(d)).triangle_count())
+	check(built == PackedInt32Array([2, 2, 2, 2, 2]), "a band over a face found that way is two triangles on each (%s)" % [built])
+	check(_ring_band(oval, Vector2(104.0, 106.0)).triangle_count() == 0, "...while one aimed at a tidy 105 degrees builds nothing on the oval")
+
+
+func _ring_band(diameter: Vector2, arc: Vector2) -> HumanoidMeshBuilder:
+	var band := PlayerOutfit.piece(&"pelvis", HumanoidPiece.Shape.BAND, Vector3(diameter.x, 0.0, diameter.y), Vector3.ZERO, Color.WHITE, 0.0,
+		{"sides": 12, "section_phase": 15.0, "arc": arc,
+			"profile": PackedVector4Array([Vector4(0.0, 1.0, 1.0, 0.0), Vector4(-0.1, 1.1, 1.1, 0.0)])})
+	return _built(band)
 
 
 ## A decal is one more piece in its segment's mesh: it adds its triangles and no surface, so no draw call.

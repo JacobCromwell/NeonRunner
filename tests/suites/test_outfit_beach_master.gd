@@ -195,6 +195,16 @@ func _test_hem() -> void:
 	var swing: float = INF
 	for i: int in rig.panel_count():
 		swing = minf(swing, rad_to_deg(highest[i] - lowest[i]))
+	var prints: int = 0
+	var bands: int = 0
+	for panel: HumanoidPanel in rig.parts.panels:
+		for piece: HumanoidPiece in panel.pieces:
+			if piece.shape == HumanoidPiece.Shape.BAND:
+				var builder := HumanoidMeshBuilder.new()
+				builder.add_piece(piece, panel.side < 0)
+				prints += 1 if builder.triangle_count() == 2 else 0
+				bands += 1 if builder.triangle_count() >= 4 else 0
+	check(prints == 6 and bands == 4, "the hem panels' 6 prints draw two triangles each and their 4 light bands several (%d, %d)" % [prints, bands])
 	check(swing > 5.0, "running, the tails and flaps move with the stride (at least %.0f°)" % swing)
 	check(through < 0.01 and ground > 0.2, "…a knee never goes through a tail (%.3f rad) and the hems stay well above the ground (%.2f m)" % [through, ground])
 	avatar.free()

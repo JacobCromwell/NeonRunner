@@ -18,19 +18,23 @@ extends PlayerOutfit
 ## Seen from the gameplay camera (behind and above): the long olive coat, its camo patches and the dark tubing
 ## across the shoulder blades, the epaulettes, the belt's two pouches, the brass arm on the left, then the coat's
 ## swinging skirt over the boots. The coat is four stiff panels hinged at the waist like Echo's (HumanoidPanel).
-## DESIGN-TBD (docs/questions/m2.md): the camo pattern (rectangular patches, not the sheet's exact blotches), how
-## stained the hem is, the shape of the tubing.
+## DESIGN-TBD (docs/questions/m2.md, 1 to 4, 9 and 10), each marked where it lives below: 1 the camo pattern, 2 how stained
+## the hem is, 3 how bright the brass is, 4 the shape of the tubing, 9 the sheet's details left out, 10 the coat's
+## lightness standing in for a per-outfit rim light.
 
 ## The coat and its camo patches: aged olive with darker green, brown and khaki patches, and a stained hem.
+## DESIGN-TBD (docs/questions/m2.md, 10): the olive is lighter than Echo's coat so it keeps its outline on dark tracks with
+## the body material's shared rim light; PlayerOutfit has no per-outfit rim to tune instead.
 const OLIVE := Color(0.32, 0.34, 0.18)
 const OLIVE_DARK := Color(0.23, 0.25, 0.13)
 const OLIVE_LIGHT := Color(0.4, 0.41, 0.23)
+## DESIGN-TBD (docs/questions/m2.md, 1): the camo is rectangular patches in these four colours, not the sheet's blotches.
 const PATCH_GREEN := Color(0.15, 0.21, 0.09)
 const PATCH_BROWN := Color(0.43, 0.3, 0.15)
 const PATCH_TAN := Color(0.55, 0.5, 0.31)
 const PATCH_BLACK := Color(0.1, 0.11, 0.07)
+## DESIGN-TBD (docs/questions/m2.md, 2): how stained the hem is, and how worn the coat is otherwise (it is clean olive).
 const STAIN := Color(0.24, 0.18, 0.1)
-const DUST := Color(0.38, 0.33, 0.21)
 ## The dark tubing across the upper back, and the straps and belts.
 const TUBE := Color(0.07, 0.07, 0.08)
 const TUBE_SHINE: float = 0.55
@@ -42,6 +46,7 @@ const CARRIER := Color(0.34, 0.37, 0.24)
 const CARRIER_DARK := Color(0.2, 0.23, 0.14)
 const CARRIER_PATCH := Color(0.46, 0.45, 0.3)
 ## The cyber-arm: worn, dull brass (never Echo's polished gold), dark steel joints, a red and a black cable.
+## DESIGN-TBD (docs/questions/m2.md, 3): how bright the brass is (the sheet's arm is brighter and more polished).
 const BRASS := Color(0.5, 0.43, 0.21)
 const BRASS_DARK := Color(0.28, 0.23, 0.12)
 const BRASS_EDGE := Color(0.62, 0.54, 0.31)
@@ -132,13 +137,14 @@ func _coat(list: Array[HumanoidPiece]) -> void:
 
 
 ## The camo plate carrier in the coat's open front: pouches, a harness strap over each shoulder and a patch pattern.
+## DESIGN-TBD (docs/questions/m2.md, 9): the sheet's radio on the carrier and the sleeve cuffs' buckles are left out.
 func _carrier(list: Array[HumanoidPiece]) -> void:
 	add(list, &"chest", BOX, Vector3(0.17, 0.26, 0.036), Vector3(0.0, 0.1, -0.098), CARRIER, 0.0,
 		{"top_scale": Vector2(1.06, 1.0)})
 	add(list, &"chest", BOX, Vector3(0.15, 0.062, 0.024), Vector3(0.0, 0.03, -0.134), CARRIER_DARK)
 	for x: float in [-0.025, 0.025]:
 		OutfitDecals.quad(list, &"chest", Vector3(x, 0.03, -0.1465), 0.004, 0.06, CARRIER, FRONT)
-	OutfitDecals.quad(list, &"chest", Vector3(0.0, 0.1, -0.1175), 0.12, 0.012, CARRIER_DARK, FRONT)
+	OutfitDecals.quad(list, &"chest", Vector3(0.0, 0.1, -0.1185), 0.12, 0.012, CARRIER_DARK, FRONT)
 	# The patch pattern across the front.
 	for patch: Array in [[-0.055, 0.19, 0.05, 0.04, PATCH_GREEN], [0.04, 0.175, 0.07, 0.035, PATCH_BROWN],
 			[0.062, 0.115, 0.036, 0.05, PATCH_GREEN], [-0.06, 0.12, 0.04, 0.04, CARRIER_PATCH],
@@ -156,12 +162,12 @@ func _back(list: Array[HumanoidPiece]) -> void:
 			[0.098, 0.17, 0.05, 0.075, PATCH_GREEN], [-0.1, 0.155, 0.045, 0.06, PATCH_TAN],
 			[0.005, 0.17, 0.06, 0.04, PATCH_BROWN], [-0.075, 0.062, 0.075, 0.05, PATCH_BROWN],
 			[0.078, 0.035, 0.085, 0.06, PATCH_GREEN], [0.0, -0.025, 0.075, 0.04, PATCH_TAN],
-			[-0.1, -0.03, 0.04, 0.05, PATCH_BLACK], [0.1, 0.095, 0.04, 0.045, PATCH_TAN], [-0.02, 0.1, 0.05, 0.03, PATCH_GREEN]]:
+			[-0.1, -0.03, 0.04, 0.05, PATCH_BLACK], [0.1, 0.095, 0.04, 0.045, PATCH_TAN], [-0.02, 0.103, 0.05, 0.03, PATCH_GREEN]]:
 		var y: float = patch[1]
 		var tilt: float = -3.8 if y > 0.115 else 0.0
 		OutfitDecals.quad(list, &"chest", Vector3(patch[0], y, _back_z(y) + 0.004), patch[2], patch[3], patch[4], BACK,
 			Vector3(tilt, 0.0, 0.0))
-	# The dark tubing: two pipes from the shoulder blades that bend in toward the spine and run down to the belt, tied
+	# The dark tubing (DESIGN-TBD, docs/questions/m2.md, 4: the sheet's tubes are a looser tangle): two pipes from the shoulder blades that bend in toward the spine and run down to the belt, tied
 	# together by two rungs.
 	var at := func(x: float, y: float) -> Vector3: return Vector3(x, y, _back_z(y) + 0.013)
 	var tube := func(a: Vector3, b: Vector3) -> void:
@@ -256,15 +262,13 @@ func _legs(list: Array[HumanoidPiece]) -> void:
 	OutfitDecals.on_prism(list, thigh, Vector2(60.0, 130.0), 0.55, 0.85, PANTS_DARK)
 	add(list, &"thigh", BOX, Vector3(0.032, 0.09, 0.066), Vector3(0.064, -0.19, 0.0), PANTS_DARK)
 	add(list, &"shin", PRISM, Vector3(0.095, 0.18, 0.095), Vector3(0.0, -0.08, 0.0), PANTS, 0.0,
-		{"top_scale": Vector2(1.1, 1.1)})
+		{"sides": 4, "top_scale": Vector2(1.1, 1.1)})
 	add(list, &"shin", BOX, Vector3(0.088, 0.095, 0.04), Vector3(0.0, -0.012, -0.056), PAD, 0.0,
 		{"top_scale": Vector2(0.9, 0.8)})
-	# The boot: a tall shaft with a cuff, laces across its front, then the toe and a thick sole.
+	# The boot: a tall shaft with laces across its front, then the toe and a thick sole.
 	var shaft := piece(&"shin", PRISM, Vector3(0.105, 0.2, 0.105), Vector3(0.0, -0.205, 0.0), BOOT, 0.0,
 		{"top_scale": Vector2(1.05, 1.05), "shine": 0.2})
 	list.append(shaft)
-	add(list, &"shin", BAND, Vector3(0.114, 0.0, 0.114), Vector3(0.0, -0.11, 0.0), BOOT_DARK, 0.0,
-		{"profile": PackedVector4Array([Vector4(-0.014, 1.0, 1.0, 0.0), Vector4(0.014, 1.0, 1.0, 0.0)])})
 	for t: float in [0.2, 0.4, 0.6, 0.8]:
 		OutfitDecals.on_prism(list, shaft, Vector2(-30.0, 30.0), t, t + 0.07, LACE, 0.1)
 	add(list, &"foot", BOX, Vector3(0.098, 0.09, 0.2), Vector3(0.0, -0.025, -0.045), BOOT, 0.0,
@@ -288,40 +292,31 @@ func _skirt_panel(side: int, behind: bool) -> HumanoidPanel:
 	pieces.append(piece(&"pelvis", SHELL, Vector3(SKIRT_HALF.x * 2.0, 0.0, SKIRT_HALF.y * 2.0), Vector3(0.0, SKIRT_HINGE_Y, 0.005),
 		OLIVE, 0.0, {"sides": 12, "section_phase": 15.0, "arc": arc, "thickness": 0.012,
 			"profile": PackedVector4Array([Vector4(0.03, 1.0, 1.0, 0.0), Vector4(-SKIRT_LENGTH, SKIRT_FLARE, SKIRT_FLARE, 0.012)])}))
-	# The camo patches, one 30-degree face wide each: (face angle, from, to, colour), heights below the hinge.
-	var patches: Array = _patches(side, behind)
-	for patch: Array in patches:
-		pieces.append(_ring_patch(float(patch[0]), float(patch[1]), float(patch[2]), patch[3]))
-	# The stained hem and a ragged dusty band above it, on every face.
+	# The camo patches, one face wide each: (the panel's face, from, to, colour), the faces counted from the one nearest
+	# the front (the ring is an oval, so its faces sit at no tidy angle: they come from the shape), heights below the hinge.
+	var faces: PackedFloat32Array = OutfitDecals.faces_in(OutfitDecals.face_directions(SKIRT_HALF * 2.0, 12, 15.0), arc)
+	for patch: Array in _patches(side, behind):
+		pieces.append(_ring_patch_arc(OutfitDecals.face_arc(faces[int(patch[0])]), float(patch[1]), float(patch[2]), patch[3], 0.025))
+	# The stained hem, a dark-brown band on every face (DESIGN-TBD, docs/questions/m2.md, 2).
 	pieces.append(_ring_patch_arc(arc, -SKIRT_LENGTH + HEM_BAND, -SKIRT_LENGTH, STAIN, 0.02))
-	var dust: float = -SKIRT_LENGTH + HEM_BAND
-	for face: float in (PackedFloat32Array([105.0, 165.0]) if behind else PackedFloat32Array([45.0])):
-		pieces.append(_ring_patch(face, dust + 0.05, dust - 0.001, DUST))
 	panel.pieces = pieces
 	return panel
 
 
-## The camo patches of one panel (the right and left ones differ, so the coat isn't a mirror image).
+## The camo patches of one panel, (face, from, to, colour) with the face counted from the one nearest the front (the right
+## and left panels differ, so the coat isn't a mirror image).
 func _patches(side: int, behind: bool) -> Array:
 	if behind and side > 0:
-		return [[105.0, -0.02, -0.11, PATCH_GREEN], [105.0, -0.19, -0.28, PATCH_BROWN], [135.0, -0.07, -0.16, PATCH_TAN],
-			[135.0, -0.24, -0.32, PATCH_GREEN], [165.0, -0.0, -0.08, PATCH_BROWN], [165.0, -0.15, -0.24, PATCH_GREEN],
-			[165.0, -0.3, -0.38, PATCH_TAN]]
+		return [[0, -0.04, -0.12, PATCH_GREEN], [1, -0.18, -0.27, PATCH_BROWN], [2, -0.08, -0.17, PATCH_GREEN],
+			[2, -0.28, -0.36, PATCH_TAN]]
 	if behind:
-		return [[105.0, -0.06, -0.15, PATCH_BROWN], [105.0, -0.24, -0.33, PATCH_TAN], [135.0, -0.0, -0.09, PATCH_GREEN],
-			[135.0, -0.14, -0.23, PATCH_BROWN], [165.0, -0.08, -0.17, PATCH_TAN], [165.0, -0.22, -0.31, PATCH_GREEN],
-			[135.0, -0.3, -0.37, PATCH_BLACK]]
+		return [[0, -0.2, -0.29, PATCH_TAN], [1, -0.05, -0.14, PATCH_BROWN], [2, -0.2, -0.3, PATCH_GREEN]]
 	if side > 0:
-		return [[45.0, -0.04, -0.13, PATCH_GREEN], [75.0, -0.12, -0.22, PATCH_BROWN], [45.0, -0.2, -0.29, PATCH_TAN]]
-	return [[75.0, -0.03, -0.12, PATCH_BROWN], [45.0, -0.1, -0.2, PATCH_GREEN], [75.0, -0.26, -0.34, PATCH_TAN]]
+		return [[1, -0.1, -0.19, PATCH_GREEN]]
+	return [[0, -0.14, -0.23, PATCH_BROWN]]
 
 
-## A patch over one face of the skirt ring (its centre `face` degrees round from the front), `from` to `to`
-## metres below the hinge, a little off the sheet's surface.
-func _ring_patch(face: float, from: float, to: float, color: Color) -> HumanoidPiece:
-	return _ring_patch_arc(Vector2(face - 1.0, face + 1.0), from, to, color, 0.025)
-
-
+## A band over one arc of the skirt ring, `from` to `to` metres below the hinge, `inflate` off the sheet's surface.
 func _ring_patch_arc(arc: Vector2, from: float, to: float, color: Color, inflate: float) -> HumanoidPiece:
 	var rings := PackedVector4Array()
 	for h: float in [from, to]:

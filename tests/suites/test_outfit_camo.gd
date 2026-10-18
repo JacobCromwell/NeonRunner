@@ -129,6 +129,18 @@ func _test_colours() -> void:
 			if piece.shape == HumanoidPiece.Shape.BAND:
 				colours[piece.color] = true
 	check(colours.size() >= 4, "the coat's back and skirt are patched in %d camo colours" % colours.size())
+	# The skirt's patches and stained hems really draw (an oval ring's faces sit at no tidy angle: M2's first build aimed
+	# at tidy ones and built none): nine patches and a hem band on each of the four panels.
+	var patches: int = 0
+	var hems: int = 0
+	for panel: HumanoidPanel in camo.panels():
+		for piece: HumanoidPiece in panel.pieces:
+			if piece.shape == HumanoidPiece.Shape.BAND:
+				var builder := HumanoidMeshBuilder.new()
+				builder.add_piece(piece, panel.side < 0)
+				patches += 1 if builder.triangle_count() == 2 else 0
+				hems += 1 if builder.triangle_count() >= 4 else 0
+	check(patches == 9 and hems == 4, "the skirt's 9 camo patches draw two triangles each and its 4 hem bands several (%d, %d)" % [patches, hems])
 
 
 ## The long coat's skirt: four panels (two behind the legs, two at the open front) in one mesh, hanging from the belt to

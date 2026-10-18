@@ -18,8 +18,9 @@ extends PlayerOutfit
 ##
 ## The shirt is short: no coat skirt, but four small panels (HumanoidPanel) for its hem and open front, which swing a
 ## little with the stride, so the shirt's tails and flaps move as the brief asks.
-## DESIGN-TBD (docs/questions/m2.md): the print's exact shapes (the skull and fronds are simplified from the sheet and
-## the hibiscus are flat coral blooms), how much of the arm the wraps cover.
+## DESIGN-TBD (docs/questions/m2.md, 5 to 9), each marked where it lives below: 5 the skull and fronds (simplified from the
+## sheet), 6 the hibiscus and leaves (flat coral blooms, only on the back, a sleeve and the hem), 7 how much of the arm the
+## wraps and corrosion cover, 8 the four small hem panels, 9 the sheet's details left out.
 
 ## The shirt: dark teal with coral hibiscus and palm-leaf prints.
 const SHIRT := Color(0.09, 0.31, 0.34)
@@ -33,7 +34,7 @@ const LEAF := Color(0.14, 0.56, 0.3)
 const SKULL := Color(0.3, 0.95, 0.45)
 const FROND := Color(0.5, 1.0, 0.5)
 const SOCKET := Color(0.02, 0.07, 0.07)
-## How bright the print is: Rex's circuit lines (test_outfit_beach_master pins it under the outfits' bloom cap).
+## How bright the print is (DESIGN-TBD, docs/questions/m2.md, 5: the skull's exact shape and glow): Rex's circuit lines (test_outfit_beach_master pins it under the outfits' bloom cap).
 const PRINT_GLOW: float = 0.38
 ## The plate carrier (the same lighter camo as Camo's) and the straps.
 const CARRIER := Color(0.34, 0.37, 0.24)
@@ -63,6 +64,8 @@ const BEAD_TEAL := Color(0.15, 0.68, 0.66)
 const BEAD_CREAM := Color(0.9, 0.85, 0.7)
 
 ## The shirt's tails and flaps: the waist ring its four small panels hang from (pelvis joint space).
+## DESIGN-TBD (docs/questions/m2.md, 8): what moves on the short shirt, built as four small panels (9 and 13 cm long, following
+## the thighs at 35 and 45%).
 const HEM_HINGE_Y: float = 0.08
 const HEM_HALF := Vector2(0.15, 0.116)
 const BACK_TAIL: float = 0.09
@@ -102,6 +105,7 @@ func panels() -> Array[HumanoidPanel]:
 # --- The body -----------------------------------------------------------------------------
 
 ## Cargo shorts over the hips, the belt with its buckle and a camo pouch each side of the small of the back.
+## DESIGN-TBD (docs/questions/m2.md, 9): the sheet's carabiner on the back belt and thigh harness loops are left out.
 func _belt(list: Array[HumanoidPiece]) -> void:
 	add(list, &"pelvis", BOX, Vector3(0.25, 0.15, 0.18), Vector3(0.0, -0.05, 0.005), SHORTS, 0.0,
 		{"top_scale": Vector2(1.04, 1.04)})
@@ -137,7 +141,7 @@ func _carrier(list: Array[HumanoidPiece]) -> void:
 	add(list, &"chest", BOX, Vector3(0.15, 0.062, 0.024), Vector3(0.0, 0.03, -0.134), CARRIER_DARK)
 	for x: float in [-0.025, 0.025]:
 		OutfitDecals.quad(list, &"chest", Vector3(x, 0.03, -0.1465), 0.004, 0.06, CARRIER, FRONT)
-	OutfitDecals.quad(list, &"chest", Vector3(0.0, 0.1, -0.1175), 0.12, 0.012, CARRIER_DARK, FRONT)
+	OutfitDecals.quad(list, &"chest", Vector3(0.0, 0.1, -0.1185), 0.12, 0.012, CARRIER_DARK, FRONT)
 	for patch: Array in [[-0.055, 0.19, 0.05, 0.04, CARRIER_DARK], [0.04, 0.175, 0.07, 0.035, CARRIER_PATCH],
 			[0.062, 0.115, 0.036, 0.05, CARRIER_DARK], [-0.06, 0.12, 0.04, 0.04, CARRIER_PATCH],
 			[0.0, 0.215, 0.05, 0.03, CARRIER_PATCH]]:
@@ -168,10 +172,12 @@ func _back_print(list: Array[HumanoidPiece]) -> void:
 		var dir := Vector2(cos(angle), sin(angle))
 		var base := Vector2(float(frond[0]), float(frond[1]))
 		var centre: Vector2 = base + dir * float(frond[3]) * 0.5
-		OutfitDecals.diamond(list, &"chest", Vector3(centre.x, centre.y, z.call(centre.y)), 0.026, float(frond[3]), FROND, BACK,
+		OutfitDecals.diamond(list, &"chest", Vector3(centre.x, centre.y, z.call(centre.y) + 0.001), 0.026, float(frond[3]), FROND, BACK,
 			Vector3(-3.8, 0.0, float(frond[2]) - 90.0), PRINT_GLOW, 0.4)
 
 
+## DESIGN-TBD (docs/questions/m2.md, 6): the hibiscus and leaves are flat blooms, five on the back, three patches on the right
+## sleeve and a print on each hem panel; the sheet prints the whole shirt.
 ## The tropical print on the rest of the shirt's back: coral hibiscus (a five-petalled bloom with a yellow heart) and
 ## dark palm leaves along the lower back under the skull and in its upper right corner. (The front flaps and the
 ## sleeves are printed in patches: see _right_arm and _hem_panel.)
@@ -179,7 +185,7 @@ func _prints(list: Array[HumanoidPiece]) -> void:
 	# (x, y, size, roll): a bloom each, with two leaves.
 	for flower: Array in [[-0.075, 0.036, 0.056, 10.0], [0.0, 0.018, 0.04, 40.0], [0.07, 0.04, 0.056, -25.0],
 			[0.08, 0.215, 0.046, 20.0], [0.086, 0.13, 0.04, -30.0]]:
-		_bloom(list, Vector3(flower[0], flower[1], _back_z(flower[1]) + 0.004), float(flower[2]), float(flower[3]))
+		_bloom(list, Vector3(flower[0], flower[1], _back_z(flower[1]) + 0.0055), float(flower[2]), float(flower[3]))
 
 
 ## A hibiscus bloom `size` across with two leaves beside it, flat on the back of the shirt.
@@ -189,7 +195,7 @@ func _bloom(list: Array[HumanoidPiece], at: Vector3, size: float, roll: float) -
 	OutfitDecals.quad(list, &"chest", at + Vector3(0.0, 0.0, 0.002), size * 0.32, size * 0.32, STAMEN, BACK, tilt)
 	for k: int in 2:
 		var a: float = deg_to_rad(roll + 90.0 + (155.0 if k == 0 else -155.0))
-		var p: Vector3 = at + Vector3(cos(a) * size * 0.9, sin(a) * size * 0.9, 0.0)
+		var p: Vector3 = at + Vector3(cos(a) * size * 0.9, sin(a) * size * 0.9, -0.0005)
 		OutfitDecals.diamond(list, &"chest", p, size * 0.42, size * 0.95, LEAF, BACK,
 			Vector3(tilt.x, 0.0, rad_to_deg(a) - 90.0), 0.0, 0.45)
 
@@ -221,6 +227,7 @@ func _right_arm(list: Array[HumanoidPiece]) -> void:
 	add(list, &"hand", BOX, Vector3(0.054, 0.032, 0.056), Vector3(0.0, -0.082, -0.01), TAN, 0.0, {"side": RIGHT})
 
 
+## DESIGN-TBD (docs/questions/m2.md, 7): five wraps and seven verdigris patches; the sheet binds nearly all of the arm.
 ## The sea-salt corroded cyber-arm on the left, from the shoulder down: rusty brass plates with green corrosion
 ## patches round exposed joints, bound in tan cloth wraps, and an articulated hand. (Authored on the right, placed
 ## on the left.)
@@ -278,7 +285,7 @@ func _wrap(list: Array[HumanoidPiece], segment: StringName, width: float, y: flo
 			"profile": PackedVector4Array([Vector4(-height * 0.5, 1.0, 1.0, 0.0), Vector4(height * 0.5, 1.0, 1.0, 0.0)])})
 
 
-## Dark cargo shorts with a pocket and a strap on each thigh and knee pads over bare, tanned lower legs, and
+## Dark cargo shorts with a pocket on each thigh and knee pads over bare, tanned lower legs, and
 ## strapped tactical sandals.
 func _legs(list: Array[HumanoidPiece]) -> void:
 	var thigh := piece(&"thigh", PRISM, Vector3(0.118, 0.32, 0.118), Vector3(0.0, -0.145, 0.0), SHORTS, 0.0,
@@ -287,8 +294,6 @@ func _legs(list: Array[HumanoidPiece]) -> void:
 	OutfitDecals.on_prism(list, thigh, Vector2(150.0, 210.0), 0.2, 0.62, SHORTS_PATCH)
 	OutfitDecals.on_prism(list, thigh, Vector2(60.0, 130.0), 0.5, 0.82, SHORTS_DARK)
 	add(list, &"thigh", BOX, Vector3(0.036, 0.1, 0.07), Vector3(0.068, -0.17, 0.0), SHORTS_DARK)
-	add(list, &"thigh", BAND, Vector3(0.146, 0.0, 0.146), Vector3(0.0, -0.1, 0.0), STRAP, 0.0,
-		{"sides": 6, "profile": PackedVector4Array([Vector4(-0.011, 1.0, 1.0, 0.0), Vector4(0.011, 1.0, 1.0, 0.0)])})
 	# The bare lower leg, the knee pad strapped on, and the sandal's ankle strap.
 	add(list, &"shin", PRISM, Vector3(0.085, 0.24, 0.085), Vector3(0.0, -0.155, 0.0), TAN, 0.0,
 		{"top_scale": Vector2(1.12, 1.12)})
@@ -323,10 +328,11 @@ func _hem_panel(side: int, behind: bool) -> HumanoidPanel:
 			"profile": PackedVector4Array([Vector4(0.03, 1.0, 1.0, 0.0), Vector4(-length, 1.14, 1.14, 0.008)])}))
 	# A light band at the hem and a print on the faces.
 	pieces.append(_hem_patch(arc, -length + 0.02, -length, SHIRT_LIGHT, length))
-	var faces: PackedFloat32Array = PackedFloat32Array([105.0, 165.0]) if behind else PackedFloat32Array([45.0])
-	for face: float in faces:
-		pieces.append(_hem_patch(Vector2(face - 1.0, face + 1.0), -length * 0.2, -length * 0.65,
-			CORAL if (face > 150.0 or (not behind and side > 0)) else LEAF, length))
+	# The ring is an oval, so its faces sit at no tidy angle: they come from the shape, counted from the one nearest the front.
+	var directions: PackedFloat32Array = OutfitDecals.faces_in(OutfitDecals.face_directions(HEM_HALF * 2.0, 12, 15.0), arc)
+	for face: int in ([0, 2] if behind else [0]):
+		pieces.append(_hem_patch(OutfitDecals.face_arc(directions[face]), -length * 0.2, -length * 0.65,
+			CORAL if (not behind and side > 0) else LEAF, length))
 	panel.pieces = pieces
 	return panel
 

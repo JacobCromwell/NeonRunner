@@ -91,6 +91,37 @@ static func on_prism(list: Array[HumanoidPiece], host: HumanoidPiece, arc: Vecto
 	return p
 
 
+## The directions (degrees: 0 = the front, 90 = the right, 180 = the back, the angle HumanoidMeshBuilder measures a face
+## by) of the faces of a `sides`-sided section of diameters `diameter.x` and `diameter.y` (a skirt's oval ring), turned by
+## `section_phase` degrees, in the order of the section's corners. A ring that is not round has faces at no tidy angle,
+## so a patch must ask for them here (a hard-coded 15, 45, 75 ... builds no triangles on an oval).
+static func face_directions(diameter: Vector2, sides: int, section_phase: float = 0.0) -> PackedFloat32Array:
+	var section: PackedVector2Array = HumanoidMeshBuilder.ngon(sides, diameter * 0.5, deg_to_rad(section_phase))
+	var out := PackedFloat32Array()
+	for i: int in section.size():
+		var middle: Vector2 = (section[i] + section[(i + 1) % section.size()]) * 0.5
+		out.append(rad_to_deg(atan2(middle.x, -middle.y)))
+	return out
+
+
+## The directions in `directions` that lie inside `arc` (as a BAND or SHELL keeps faces), lowest first: the faces of one
+## panel of a skirt, so a patch can be given as "the panel's second face".
+static func faces_in(directions: PackedFloat32Array, arc: Vector2) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	for d: float in directions:
+		for a: float in [d, d + 360.0, d - 360.0]:
+			if a >= arc.x and a <= arc.y:
+				out.append(d)
+				break
+	out.sort()
+	return out
+
+
+## The arc that keeps only the face looking toward `direction` (one of face_directions's).
+static func face_arc(direction: float) -> Vector2:
+	return Vector2(direction - 0.5, direction + 0.5)
+
+
 static func _sheet(list: Array[HumanoidPiece], segment: StringName, at: Vector3, width: float, rings: PackedVector4Array,
 		color: Color, face: Face, rot: Vector3, glow: float, side: HumanoidPiece.Placement) -> HumanoidPiece:
 	var size := Vector3(width * _SIDE, 0.0, _FLAT)
