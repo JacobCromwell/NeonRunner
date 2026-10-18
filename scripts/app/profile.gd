@@ -6,7 +6,9 @@ extends RefCounted
 ## Wallet (GDD §7): credits earned in play and credits bought with real money are kept apart.
 ## Net worth is the earned credits never spent; purchased credits never count toward it.
 ## Purchases spend bought credits first, so buying credits never lowers net worth (FB 12).
-## Credits spent on cosmetics stay in it (owner, October 18, 2026; GDD §6, §8): a look is not an advantage.
+## Credits spent on cosmetics stay in it (owner, October 18, 2026; GDD §6, §8): a look is not an advantage. A cosmetic
+## spends the earned credits first (spend_on_cosmetic), so buying one leaves the net worth exactly as it was, whatever the
+## player goes on to buy: bought credits it left in the wallet are then the ones items spend first.
 
 ## The save format. Older saves are brought up to date as they load (_migrate).
 ## 2 (September 30, 2026): armor became a permanent upgrade to the free armor (GDD §4, §8).
@@ -83,22 +85,25 @@ func spend(price: int) -> bool:
 	return _spend(price) >= 0
 
 
-## Spends `price` credits on a cosmetic (bought credits first, as for an item): the wallet loses the price, the net
-## worth doesn't (the earned credits spent go to `cosmetic_spent`). False, and nothing spent, if unaffordable.
+## Spends `price` credits on a cosmetic, EARNED credits first and then bought ones: the wallet loses the price and the
+## earned part spent goes to `cosmetic_spent`, so the net worth is exactly what it was (owner, October 18, 2026, item 980).
+## Items go the other way (spend: bought credits first), and with an outfit spending bought credits first the credits left
+## would be earned ones that the next item spends, so the outfit would lower the net worth after all. False, and nothing
+## spent, if unaffordable.
 func spend_on_cosmetic(price: int) -> bool:
-	var from_earned: int = _spend(price)
+	var from_earned: int = _spend(price, false)
 	if from_earned < 0:
 		return false
 	cosmetic_spent += from_earned
 	return true
 
 
-## Takes `price` out of the wallet, bought credits first. Returns the part that came out of the earned credits,
-## or -1, with nothing spent, if the wallet is short.
-func _spend(price: int) -> int:
+## Takes `price` out of the wallet, bought credits first (or earned ones first with `bought_first` off). Returns the part
+## that came out of the earned credits, or -1, with nothing spent, if the wallet is short.
+func _spend(price: int, bought_first: bool = true) -> int:
 	if not can_afford(price):
 		return -1
-	var from_purchased: int = mini(purchased, price)
+	var from_purchased: int = mini(purchased, price) if bought_first else maxi(price - earned, 0)
 	purchased -= from_purchased
 	earned -= price - from_purchased
 	lifetime_spent += price
@@ -331,9 +336,12 @@ func _migrate(from: int) -> void:
 				_move_record(key, prefix + V4_SUNSET_STEP)
 
 
-## What the outfits owned cost at the catalog's prices, never more than was ever spent: the cosmetic spending of a
-## save that didn't count it. Bought credits (mobile) went first and can't be told apart now, so a save that
-## paid part of an outfit with them gets that part credited too, a little in the player's favour.
+## What the outfits owned cost at the catalog's prices, capped by what the save could have paid them with: never more than
+## it ever spent (`lifetime_spent`) and never more than the earned credits it has spent (`lifetime_earned - earned`). That
+## is the cosmetic spending of a save that didn't count it. It is exact for a save that paid for its outfits with earned
+## credits (the owner's own), and an outfit paid with bought credits (mobile: they went first, and an old save can't say
+## which were which) is credited only as far as the player's earned spending reaches, so the net worth it gives back never
+## goes past `lifetime_earned`: bought credits never end up in it.
 func _owned_outfits_cost() -> int:
 	if outfits.is_empty():
 		return 0
@@ -343,7 +351,7 @@ func _owned_outfits_cost() -> int:
 		var cosmetic: ShopCosmetic = catalog.cosmetic(StringName(id))
 		if cosmetic != null and cosmetic != catalog.default_cosmetic:
 			total += cosmetic.price
-	return mini(total, maxi(lifetime_spent, 0))
+	return mini(mini(total, maxi(lifetime_spent, 0)), maxi(lifetime_earned - earned, 0))
 
 
 ## Moves the record at `from_key` to `to_key` (save versions 3 and 4), unless `to_key` already has one.

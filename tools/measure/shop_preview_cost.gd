@@ -44,9 +44,15 @@ func _run() -> void:
 			avatar.free()
 			print("%-14s parts %6.1f ms, then an avatar from them %5.1f ms" % [id, float(b1 - b0) / 1000.0, float(b2 - b1) / 1000.0])
 	# Opening the shop: the call itself (the cards), then the frames to the first quiet one.
-	await _open("opening the shop (the first time this session)")
+	await _open("opening the shop (the first time this session)", false)
 	var shop := App.screen as ShopScreen
 	var cards: Array = shop.cosmetic_cards.values()
+	await _settle()
+	var drawn_at_open: Variant = _stills_drawn()
+	if drawn_at_open != null:
+		print("pictures drawn by the time the shop has settled, the Cosmetics below the fold: %d" % drawn_at_open.size())
+	_scroll_to_cosmetics(shop)
+	await _log_frames("scrolling to the Cosmetics (the pictures are drawn now, the first time)", 40)
 	await _settle()
 	var drawn: Variant = _stills_drawn()
 	if drawn != null:
@@ -70,24 +76,43 @@ func _run() -> void:
 	# The shop is shown after every death: the second visit, with the stills kept.
 	App.show_title()
 	await _settle()
-	await _open("opening it again (the stills kept)")
+	await _open("opening it again (the stills kept)", false)
+	await _open("opening it a third time and scrolling to the Cosmetics", true)
 	get_tree().quit()
 
 
-## Opens the shop and prints how long the call took and the first frames after it.
-func _open(label: String) -> void:
-	var frames: Array[float] = []
+## Opens the shop (and, with `scroll`, scrolls its list to the Cosmetics section at once) and prints how long the call took and
+## the first frames after it.
+func _open(label: String, scroll: bool) -> void:
 	var t0: int = Time.get_ticks_usec()
 	App.show_shop()
 	var call_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
-	t0 = Time.get_ticks_usec()
-	for i: int in 12:
+	if scroll:
+		_scroll_to_cosmetics(App.screen as ShopScreen)
+	print("%s: App.show_shop() %.1f ms" % [label, call_ms])
+	await _log_frames("  the frames after it", 30)
+
+
+## Prints the next `count` frame times (ms, wall clock between drawn frames).
+func _log_frames(label: String, count: int) -> void:
+	var frames: Array[float] = []
+	var t0: int = Time.get_ticks_usec()
+	for i: int in count:
 		await RenderingServer.frame_post_draw
 		var t1: int = Time.get_ticks_usec()
 		frames.append(float(t1 - t0) / 1000.0)
 		t0 = t1
-	print("%s: App.show_shop() %.1f ms, then the next 12 frames (ms): %s" % [label, call_ms,
-		frames.map(func(v: float) -> String: return "%.0f" % v)])
+	print("%s (%d frames, ms): %s" % [label, count, frames.map(func(v: float) -> String: return "%.0f" % v)])
+
+
+## Scrolls the shop's list down to its end, where the Cosmetics are.
+func _scroll_to_cosmetics(shop: ShopScreen) -> void:
+	var card: Node = shop.cosmetic_cards.values()[0]
+	var up: Node = card.get_parent()
+	while up != null and not up is ScrollContainer:
+		up = up.get_parent()
+	if up != null:
+		(up as ScrollContainer).scroll_vertical = 100000
 
 
 ## The keys of the pictures drawn so far (OutfitStills, where this build has it).

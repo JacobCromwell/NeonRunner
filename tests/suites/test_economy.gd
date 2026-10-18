@@ -70,19 +70,34 @@ func _test_wallet() -> void:
 	check(p.lifetime_earned == 500 and p.lifetime_spent == 400, "lifetime totals")
 	p.add_earned(-50)
 	check(p.earned == 400, "negative earnings are ignored")
-	# A cosmetic leaves the wallet but not the net worth (owner, October 18, 2026; GDD §6, §8): bought credits go first
-	# as for an item, and only the earned part spent is kept in the net worth.
+	# A cosmetic leaves the wallet but not the net worth (owner, October 18, 2026; GDD §6, §8): it spends EARNED credits
+	# first (bought ones after), and the earned part spent is kept in the net worth.
 	var c := Profile.new()
 	c.add_earned(1000)
 	c.add_purchased(300)
-	check(c.spend_on_cosmetic(500) and c.purchased == 0 and c.earned == 800 and c.cosmetic_spent == 200 and c.credits() == 800,
-		"a cosmetic is paid with bought credits first, and the earned part is remembered (%d)" % c.cosmetic_spent)
+	check(c.spend_on_cosmetic(500) and c.earned == 500 and c.purchased == 300 and c.cosmetic_spent == 500 and c.credits() == 800,
+		"a cosmetic is paid with earned credits first, and what they paid is remembered (%d)" % c.cosmetic_spent)
 	check(c.net_worth() == 1000 and c.lifetime_spent == 500, "…so the net worth is what it was (%d), and the spending counts" % c.net_worth())
-	check(c.spend(300) and c.net_worth() == 700, "an item still lowers it")
-	check(not c.spend_on_cosmetic(501) and c.credits() == 500 and c.cosmetic_spent == 200 and c.net_worth() == 700,
+	check(c.spend(300) and c.purchased == 0 and c.net_worth() == 1000, "an item then spends the bought credits first, and leaves it too")
+	check(c.spend(300) and c.net_worth() == 700, "one more item takes earned credits and lowers it")
+	check(not c.spend_on_cosmetic(501) and c.credits() == 200 and c.cosmetic_spent == 500 and c.net_worth() == 700,
 		"an unaffordable cosmetic changes nothing")
+	check(c.spend_on_cosmetic(200) and c.credits() == 0 and c.net_worth() == 700, "the last credits go on one")
 	c.add_earned(100)
 	check(c.net_worth() == 800, "and what is earned afterwards adds to it")
+	# A cosmetic that takes the bought credits too: earned 2,000 and bought 3,000, an outfit at 3,000 and then a 1,500 item
+	# leave the net worth at 2,000, as that item alone would (an outfit that spent the bought credits first would leave the
+	# earned ones for the item and lower it to 500).
+	var with_outfit := Profile.new()
+	with_outfit.add_earned(2000)
+	with_outfit.add_purchased(3000)
+	var without := Profile.new()
+	without.add_earned(2000)
+	without.add_purchased(3000)
+	check(with_outfit.spend_on_cosmetic(3000) and with_outfit.earned == 0 and with_outfit.purchased == 2000 and with_outfit.cosmetic_spent == 2000,
+		"an outfit bigger than the earned credits takes them all and the rest from the bought ones")
+	check(with_outfit.spend(1500) and without.spend(1500) and with_outfit.net_worth() == 2000 and without.net_worth() == 2000,
+		"…and a 1,500 item after it leaves the net worth at 2,000, as it does without the outfit (%d, %d)" % [with_outfit.net_worth(), without.net_worth()])
 
 
 func _test_items_and_records() -> void:

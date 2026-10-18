@@ -16,10 +16,11 @@ extends SubViewport
 ## The size is the picture's, in pixels (`OutfitPreview.pixel_size_for`).
 
 ## The camera: a narrow lens from the front, aimed at the middle of the runner (metres, the avatar's design size, 1.33 m
-## to the hair tips). The distance fits a figure and its swinging arms in a frame about 0.7 as wide as it is tall, with
-## the pedestal under the feet.
+## to the hair tips). The distance fits the figure turned side-on, with its swinging arms, trailing leg and a long coat's
+## tails, in a frame about 0.7 as wide as it is tall with a margin, and the pedestal under the feet (at 3.25 m a trench
+## coat's tail touched the frame's edge side-on).
 const CAMERA_FOV: float = 30.0
-const CAMERA_POSITION := Vector3(0.0, 0.8, -3.25)
+const CAMERA_POSITION := Vector3(0.0, 0.8, -3.6)
 const CAMERA_TARGET := Vector3(0.0, 0.64, 0.0)
 ## The still's yaw (radians): turned from the camera to show the front and the left (the gold, cyber) arm.
 const STILL_YAW: float = -0.65
@@ -78,7 +79,11 @@ func _init() -> void:
 	msaa_3d = Viewport.MSAA_DISABLED if DeviceProfile.is_low_end() else Viewport.MSAA_2X
 	render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_build_stage()
-	set_physics_process(false)
+
+
+func _ready() -> void:
+	# Godot switches physics processing on when a node with a _physics_process enters the tree: only a live stage uses it.
+	set_physics_process(_live)
 
 
 ## Dresses the runner in `id` (an id from data/shop/catalog.json, or PlayerOutfits.ECHO; any other id is Echo's own look).

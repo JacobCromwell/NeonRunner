@@ -83,6 +83,7 @@ func _ready() -> void:
 			card.interest_changed.connect(_on_cosmetic_interest)
 			cosmetics.add_child(card)
 			cosmetic_cards[look.id] = card
+		_link_cosmetic_cards()
 	if App.mobile and Platform.purchases_available() and not Platform.products().is_empty():
 		var packs: HFlowContainer = _section(sections, "CREDIT PACKS", &"plus", "Bought credits never count toward net worth.")
 		for product: Dictionary in Platform.products():
@@ -250,6 +251,20 @@ func _on_cosmetic_interest(card: CosmeticCard) -> void:
 	for other: Variant in cosmetic_cards.values():
 		if is_instance_valid(other):
 			(other as CosmeticCard).set_preview_live(other == live)
+
+
+## Left and right on a cosmetic card's button go to the previous and next card in shop order, along the row and on to the next
+## one, and stop at the first and the last. The cards are wider than the items' and Godot's own search (the nearest button in
+## that direction) would jump to the items above and below instead. Up and down are left to it: they find the card above or
+## below in the grid, the items above the first row and nothing below the last.
+func _link_cosmetic_cards() -> void:
+	var buttons: Array[NeonButton] = []
+	for card: Variant in cosmetic_cards.values():
+		buttons.append((card as CosmeticCard).action_button)
+	for i: int in buttons.size():
+		var button: NeonButton = buttons[i]
+		button.focus_neighbor_left = button.get_path_to(buttons[maxi(i - 1, 0)])
+		button.focus_neighbor_right = button.get_path_to(buttons[mini(i + 1, buttons.size() - 1)])
 
 
 func _refocus() -> void:

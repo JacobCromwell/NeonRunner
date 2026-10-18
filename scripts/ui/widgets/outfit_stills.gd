@@ -70,15 +70,20 @@ static func _run() -> void:
 	var stage: OutfitStage = null
 	var can_draw: bool = DisplayServer.get_name() != "headless"
 	while not _queue.is_empty():
+		var key: String = _queue.pop_front()
+		# A picture nobody wants (a size the window has left, a shop closed) costs no wait and no draw, so a burst of stale
+		# requests never holds up the ones that count.
+		if not _wanted(key):
+			_forget(key)
+			continue
 		for i: int in FRAMES_BETWEEN:
 			await tree.process_frame
-		var key: String = _queue.pop_front()
+		if not _wanted(key):
+			_forget(key)
+			continue
 		var job: Dictionary = _jobs[key]
 		_jobs.erase(key)
 		var texture: Texture2D = null
-		if not _wanted(key):
-			_waiting.erase(key)
-			continue
 		if can_draw:
 			if stage == null:
 				stage = OutfitStage.new()
@@ -103,6 +108,11 @@ static func _run() -> void:
 	if stage != null:
 		stage.queue_free()
 	_running = false
+
+
+static func _forget(key: String) -> void:
+	_jobs.erase(key)
+	_waiting.erase(key)
 
 
 ## True if some preview waiting for the picture still wants it.
