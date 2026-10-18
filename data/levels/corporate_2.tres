@@ -32,5 +32,6 @@ buzz_company = true
 dash_walls = 1
 credit_trail_chance = 0.6
 credit_trail_min = 5
+wall_hop_lines = 1
 doodad_share = 1.0
 fenced_ceiling_pads = 3

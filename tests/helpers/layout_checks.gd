@@ -8,7 +8,8 @@ extends RefCounted
 ##   stretch, every ceiling keeps GDD §3 (check_ceilings), every zone doodad stands where its push is
 ##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), the level's wider gaps
 ##   keep theirs (check_wide_gaps, task G7), every dash wall stands where it's fair (check_dash_walls,
-##   task H7a), and every ceiling scenario keeps its rules (check_scenarios, task I4).
+##   task H7a), every ceiling scenario keeps its rules (check_scenarios, task I4), every wall-run gap keeps
+##   its (check_wall_run_gaps, task J2), and every line of wall-hop credits keeps its (check_wall_hops, task N1).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -37,6 +38,9 @@ const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
 ## past it can't take away a way on, and check_doodads looks for no floor route around it (task L6).
 const ROUTE_LOOK_BACK: float = 3.0
+## A wall-hop line's high-value credits lie within this many hops of its entry (check_wall_hops; the brief: "within a
+## few hops").
+const MAX_HOPS: int = 3
 
 
 ## The movement tuning `config`'s level runs on (LevelConfig.movement_for: its own run speed, a
@@ -79,6 +83,89 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_dash_walls(suite, layout, config, tag)
 	check_scenarios(suite, layout, config, tag)
 	check_wall_run_gaps(suite, layout, config, tag)
+	check_wall_hops(suite, layout, config, tag)
+
+
+## Wall-hop credits (task N1; GDD §7, "Wall-hop credits": "some long walls carry high-value credits further along than
+## one wall run reaches, so only a player inventive enough to wall hop collects them"; WallHopPlacement), wherever the
+## generator places a line, at the level's own run speed:
+## - only in a level that asks for them (LevelConfig.wall_hop_lines), at most its count, min_gap_seconds apart, and no
+##   credit marked as a line's outside one;
+## - its high-value credits (as many as the tuning's `gems`, of its gem_value): past where one wall run from its entry
+##   drops its runner off the wall (the standard wall run, and reach_margin_seconds), higher than a fresh wall run
+##   carries a pickup without a hop (WallHopPath.fresh_top and pickup_reach), where the reference hopper
+##   (WallHopPath) passes within a pickup's reach, within a few hops (MAX_HOPS); its lead-in along the first wall run;
+## - the stars' best score leaves the high-value credits out and counts the lead-in (LevelLayout.star_credit_value);
+## - the generator's own re-check finds nothing (WallHopPlacement.problem: its credits where its shape puts them, its
+##   stretch inside the level's clear ends, its wall whole, with no side wall gap, and clear of signs, wall enemies,
+##   ramps' runs, wall fences and other wall credits, the outer lane's floor beside it clear of holes, fences, pads,
+##   doodads and floor cuts, and nothing a wall runner can't dodge meanwhile).
+static func check_wall_hops(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var marked: int = 0
+	var gem_values: int = 0
+	var stash_values: int = 0
+	for c: Dictionary in layout.credits:
+		if c.has(WallHopPlacement.GEM) or c.has(WallHopPlacement.LEAD):
+			marked += 1
+		if c.has(WallHopPlacement.GEM):
+			gem_values += int(c["value"])
+		if c.has("stash"):
+			stash_values += int(c["value"])
+	suite.check(layout.star_credit_value() == layout.total_credit_value() - stash_values - gem_values,
+		"the stars' best score is every credit but a stash's and the wall-hop lines' high-value ones %s" % tag)
+	if layout.wall_hops.is_empty():
+		suite.check(marked == 0, "no wall-hop credit without its line (%d) %s" % [marked, tag])
+		return
+	suite.check(layout.wall_hops.size() <= config.wall_hop_lines,
+		"at most the level's %d wall-hop lines (%d) %s" % [config.wall_hop_lines, layout.wall_hops.size(), tag])
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var v: float = tuning.run_speed
+	var t: WallHopTuning = WallHopPlacement.tuning()
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var height: float = WallHopPlacement.gem_height(tuning, t)
+	var reach: float = WallHopPath.pickup_reach(tuning)
+	var lines: Array[Dictionary] = layout.wall_hops.duplicate()
+	lines.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	var own: int = 0
+	var prev_end: float = -INF
+	for w: Dictionary in lines:
+		var side: int = int(w["side"])
+		var entry: float = float(w["entry"])
+		var at: String = "the wall-hop line at %.0f m (%s wall) %s" % [entry, "left" if side < 0 else "right", tag]
+		suite.check(float(w["start"]) - prev_end >= t.min_gap_seconds * v - 0.01, "%s keeps %.0f s from the one before" % [at, t.min_gap_seconds])
+		prev_end = float(w["end"])
+		var problem: String = WallHopPlacement.problem(gen, w)
+		suite.check(problem == "", "%s keeps its rules (%s)" % [at, problem])
+		var path := WallHopPath.of(entry, tuning, v, t.hop_height)
+		var one_run: float = path.distance_at(path.run_end(0))
+		var gems: int = 0
+		var lead: int = 0
+		for c: Dictionary in layout.credits:
+			if not (c.has(WallHopPlacement.GEM) or c.has(WallHopPlacement.LEAD)) or int(c["side"]) != side \
+					or float(c["at"]) < float(w["start"]) or float(c["at"]) > float(w["end"]):
+				continue
+			own += 1
+			var d: float = float(c["at"])
+			var h: float = float(c["height"])
+			if c.has(WallHopPlacement.LEAD):
+				lead += 1
+				suite.check(d < one_run and int(c["value"]) == t.lead_value and absf(path.height_at(path.time_at(d)) - h) < 0.01,
+					"%s: its lead-in (%.1f m) lies along the first wall run from its entry" % [at, d])
+				continue
+			gems += 1
+			var ht: float = path.height_at(path.time_at(d))
+			var run: int = path.run_at(path.time_at(d))
+			suite.check(int(c["value"]) == t.gem_value and absf(h - height) < 0.01, "%s: a high-value credit (%.1f m) is one" % [at, d])
+			suite.check(d >= one_run + t.reach_margin_seconds * v - 0.01,
+				"%s: a high-value credit (%.1f m) lies past one wall run's reach (%.1f m)" % [at, d, one_run])
+			suite.check(h - reach > WallHopPath.fresh_top(tuning),
+				"%s: a high-value credit (%.2f m high) is out of a fresh wall run's reach without a hop (%.2f m and %.2f m)"
+				% [at, h, WallHopPath.fresh_top(tuning), reach])
+			suite.check(absf(ht - h) <= reach and run >= 1 and run <= MAX_HOPS,
+				"%s: the reference hopper passes a high-value credit (%.1f m) within reach (%.2f m high there), after %d hops"
+				% [at, d, ht, run])
+		suite.check(gems == t.gems and lead >= 1, "%s holds its %d high-value credits (%d) and a lead-in (%d)" % [at, t.gems, gems, lead])
+	suite.check(own == marked, "every wall-hop credit belongs to a line (%d of %d) %s" % [own, marked, tag])
 
 
 ## Wall-run gaps (task J2; the owner, October 15, 2026: "a gap over the ENTIRE floor (every lane), and the only way to
