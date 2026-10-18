@@ -176,7 +176,7 @@ const FILL_CEILING_BEFORE_END_SECONDS: float = 0.6
 const DOODAD_CREDIT_MARGIN: float = 1.0
 ## The space between two doodads of a row standing one right after the other (task L3; metres): a sliver, so the
 ## box faces of the two never lie in one plane (their pictures would flicker through each other), far too
-## narrow for a body (MovementTuning.visual_size.z, 0.52 m) to stand in. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 1).
+## narrow for a body (MovementTuning.visual_size.z, 0.52 m) to stand in. DESIGN-TBD (item 942 in docs/OPEN_QUESTIONS*.md).
 const DOODAD_ROW_TOUCH: float = 0.05
 ## The room a zone doodad keeps in the lanes beside it (task L6; metres), beyond a lane switch at run speed
 ## (doodad_lane_room): a runner beside it switches into its lane right after it with this to spare, and one in its
@@ -189,7 +189,7 @@ const DOODAD_LANE_MARGIN: float = 3.0
 ## zone).
 const DOODAD_SPAN_SLACK: float = 0.01
 ## A wall credit this close to a zone doodad by its wall (task L3), beyond the doodad's ends, is dropped (metres):
-## nothing lures a wall run past one. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 3).
+## nothing lures a wall run past one. DESIGN-TBD (item 944 in docs/OPEN_QUESTIONS*.md).
 const DOODAD_WALL_CREDIT_MARGIN: float = 3.0
 ## A ceiling credit this close to a ceiling fence in its lane (task I4), beyond the fence's own half depth, is
 ## dropped (metres): a credit never lures a rider into a fence.

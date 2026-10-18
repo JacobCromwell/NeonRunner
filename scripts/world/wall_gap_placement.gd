@@ -376,7 +376,7 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallG
 			raw.append(Vector2(float(h["start"]), float(h["end"])))
 	# Task L3: a zone doodad by this wall (a row's whole stretch) keeps its wall standing beside it, and from where a
 	# wall runner dropping off would come down onto it (LevelGenerator.doodad_wall_drop). DESIGN-TBD
-	# (items 942-947 in docs/OPEN_QUESTIONS*.md 5): the Beach's open walls stand a little more around them.
+	# (item 946 in docs/OPEN_QUESTIONS*.md): the Beach's open walls stand a little more around them.
 	for d: Dictionary in lay.doodads:
 		if int(d["lane"]) == outer:
 			var span: Vector2 = LevelLayout.doodad_extent(d)

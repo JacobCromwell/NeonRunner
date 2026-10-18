@@ -220,7 +220,7 @@ more draw calls among about 170 to 300 and a few more static bodies among about 
 
 **Doodads in rows** (task L3; the owner, October 17, 2026: "occasionally ... rows of similar doodads: three plant
 doodads one right after the other, or three market stalls, one followed by a space, followed by another stall";
-items 942-947 in `docs/OPEN_QUESTIONS*.md` 1 and 4). A doodad `_place_doodads` draws is, with `LevelConfig.doodad_row_chance` (0.5), the
+items 942 and 945 in `docs/OPEN_QUESTIONS*.md`). A doodad `_place_doodads` draws is, with `LevelConfig.doodad_row_chance` (0.5), the
 first of a row (`_row_shape`, from a stream of its own, `rng_for("doodad_rows")`): `doodad_row_min` to
 `doodad_row_max` (2 to 4 since task L6, the owner: "could it be two in a row so it doesn't take up as much room?";
 3 to 4 before, the owner's examples being three long) of its size class, in its lane,
@@ -254,8 +254,7 @@ above).
 
 **The lane by a side wall** (task L3; the owner, October 9, 2026, held until the dash smash (H5) and the generator
 work (I4) were done: "doodads prefer the lane next to the side wall when it's open, without costing gameplay: not where
-the generator already has something on that part of the wall or needs it open"; items 942-947 in `docs/OPEN_QUESTIONS*.md` 2, 3, 5 and
-6). A doodad (or a row) takes the outermost lane by an open wall with `doodad_wall_lane_share` (0.6; either wall,
+the generator already has something on that part of the wall or needs it open"; items 943, 944, 946 and 947 in `docs/OPEN_QUESTIONS*.md`). A doodad (or a row) takes the outermost lane by an open wall with `doodad_wall_lane_share` (0.6; either wall,
 seeded, when both are; the only choice where no inner lane fits), pushing inward (`_add_doodads`, the stream of the
 rows). The Beach's levels take it less often (0.15, task L6: their open walls, task D10b, come first, and a doodad by a
 wall keeps the wall gaps off it; with L6's doodads at 0.6 the median wall stood on 55.0% of a Beach level, past

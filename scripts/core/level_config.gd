@@ -329,7 +329,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## doodad is the first of a row, the rest of the same size class and look, in its lane, pushing to its side, all
 ## kept by the doodads' rules as one (LevelGenerator._place_doodads). A row that doesn't fit where it's drawn is
 ## shorter, down to doodad_row_min, else one doodad (so rows come where a level leaves long stretches free). 0: no
-## rows, and the doodads are exactly as before. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 1).
+## rows, and the doodads are exactly as before. DESIGN-TBD (item 942 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.0, 1.0, 0.05) var doodad_row_chance: float = 0.5
 ## How many doodads a row has (each count as likely; the owner's examples are three long, and task L6, the owner,
 ## October 17, 2026: "could it be two in a row so it doesn't take up as much room?"). DESIGN-TBD (items 942-947 in
@@ -339,7 +339,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## Of the rows of small doodads, the share with a doodad's length of space between each two; the others stand one
 ## right after the other (LevelGenerator.DOODAD_ROW_TOUCH, a sliver apart). The owner's examples by size class:
 ## "three plant doodads one right after the other" (small ones touch) and "three market stalls, one followed by a
-## space, followed by another stall" (medium and large ones spaced). DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 1).
+## space, followed by another stall" (medium and large ones spaced). DESIGN-TBD (item 942 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.0, 1.0, 0.05) var doodad_row_spaced_small: float = 0.0
 ## The same for rows of medium doodads.
 @export_range(0.0, 1.0, 0.05) var doodad_row_spaced_medium: float = 1.0
@@ -353,7 +353,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_range(0.0, 1.0, 0.05) var doodad_wall_lane_share: float = 0.6
 ## How much wall either side of a doodad by a side wall stays clear of what stands on that wall (a sign, a window
 ## cyborg's window, a wall vent, a Gilded Sentinel's niche, a ramp's longest wall run), at run speed.
-## DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 3).
+## DESIGN-TBD (item 944 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.0, 3.0, 0.1, "suffix:s") var doodad_wall_clear_seconds: float = 1.0
 
 @export_group("Credits")

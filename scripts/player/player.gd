@@ -1274,7 +1274,7 @@ func _check_doodads(motion: float) -> void:
 ## wall run goes on. The body is its visual size (what looks like contact is contact), from the wall's face out to
 ## its head and, for the entry's first moments while it turns onto the wall, as it stood: so a runner high enough
 ## on the wall passes over one, which stands. Only doodads in the outermost lane on their side count (no other
-## lane reaches the wall). DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 2): what a wall runner meeting one does.
+## lane reaches the wall). DESIGN-TBD (item 943 in docs/OPEN_QUESTIONS*.md): what a wall runner meeting one does.
 func _check_wall_doodads(motion: float) -> void:
 	var outer: int = geo.lane_count - 1 if wall_side > 0 else 0
 	var half: float = tuning.visual_size.x * 0.5
@@ -1298,7 +1298,7 @@ func _check_wall_doodads(motion: float) -> void:
 
 ## A doodad by a side wall breaks as a runner on that wall, or just off it, reaches it (task L3; _check_wall_doodads,
 ## _check_doodads' `_off_wall`): DashBreakable.smash with &"pass", its pieces and the crunch (Player.smashed, the
-## `doodad_smash` event), no push, no damage, no score. DESIGN-TBD (items 942-947 in docs/OPEN_QUESTIONS*.md 2).
+## `doodad_smash` event), no push, no damage, no score. DESIGN-TBD (item 943 in docs/OPEN_QUESTIONS*.md).
 func _pass_doodad(b: DashBreakable) -> void:
 	if b == null:
 		return
