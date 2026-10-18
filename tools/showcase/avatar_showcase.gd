@@ -72,6 +72,8 @@ func _ready() -> void:
 
 
 func _parse_args() -> void:
+	# Echo's own look unless --outfit says otherwise, whatever the real save wears.
+	PlayerOutfits.worn = PlayerOutfits.ECHO
 	for arg: String in OS.get_cmdline_user_args():
 		var v: String = arg.get_slice("=", 1)
 		if arg.begins_with("--shot="):

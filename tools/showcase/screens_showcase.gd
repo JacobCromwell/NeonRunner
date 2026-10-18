@@ -58,6 +58,7 @@ func _ready() -> void:
 			SampleProfiles.complete_until(App.profile, App.campaign, arg.get_slice("=", 1))
 	InputMap.load_from_project_settings()
 	Settings.apply(App.profile)
+	App.sync_outfit()  # the sample profile's outfit, not the real save's
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	await get_tree().process_frame

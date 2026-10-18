@@ -814,6 +814,8 @@ func set_equipped(id: StringName, on: bool) -> void:
 ## Buys a cosmetic (GDD §8, "Cosmetics") once, with credits from the wallet, and keeps it forever. It isn't
 ## worn yet: the player picks (wear_outfit). False, nothing spent, for an unknown cosmetic, one already
 ## owned or without enough credits.
+## DESIGN-TBD: the credits spent lower net worth like any item's (docs/questions/m1.md, 2), and the outfit
+## isn't worn on purchase (3).
 func buy_cosmetic(id: StringName) -> bool:
 	var cosmetic: ShopCosmetic = catalog.cosmetic(id)
 	if cosmetic == null or id == catalog.default_cosmetic.id or profile.owns_outfit(id):

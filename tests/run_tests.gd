@@ -66,6 +66,8 @@ func _run() -> void:
 		app.set(&"autosave", false)
 		app.set(&"save_path", "user://test_profile.json")
 		app.set(&"profile", Profile.new())
+	# App._ready() dressed the runner from the real save's worn outfit; suites start in Echo's own look.
+	PlayerOutfits.worn = PlayerOutfits.ECHO
 	var failures: PackedStringArray = []
 	var checks: int = 0
 	var files: PackedStringArray = DirAccess.get_files_at(SUITES_DIR)
