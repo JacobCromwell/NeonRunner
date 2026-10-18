@@ -66,6 +66,13 @@ func show_leaderboard(board: String) -> void:
 	backend.show_leaderboard(board)
 
 
+## The player's place on `board` (1 = first), or 0 when the platform can't say (PlatformBackend.leaderboard_rank).
+func leaderboard_rank(board: String) -> int:
+	if not backend.leaderboards_available():
+		return 0
+	return await backend.leaderboard_rank(board)
+
+
 func unlock_achievement(id: String) -> void:
 	backend.unlock_achievement(id)
 

@@ -48,6 +48,13 @@ func show_leaderboard(_board: String) -> void:
 	pass
 
 
+## The player's place on `board`, 1 for first, or 0 when the platform can't say (no board, offline, no score
+## posted). A coroutine on a real platform: callers `await` it. The weekly challenge's top places earn a reward
+## once the week is over (GDD §6; App.settle_weekly_rewards), which only the platform's board can say.
+func leaderboard_rank(_board: String) -> int:
+	return 0
+
+
 func unlock_achievement(_id: String) -> void:
 	pass
 

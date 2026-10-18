@@ -62,6 +62,16 @@ var seen: Dictionary = {}
 var settings: Dictionary = {}
 ## Totals: runs, deaths, kills, credits, ... (for the stats screen and achievements).
 var stats: Dictionary = {}
+## The weekly challenge (GDD §6, task N5): week index (as a string) -> {attempts, cleared, paid, best}. `cleared` is
+## the week's first clear (the only one that pays), `paid` what it paid, `best` the best score of a clear. One more
+## entry, WEEKLY_HIGH_WATER ("high_water"), is the highest week played so far. A save from before the challenge has none.
+var weekly: Dictionary = {}
+## What the weekly boards may owe the player (the Leader of the Pack hook, WeeklyChallenge.reward_kind; DESIGN-TBD,
+## item 977 in docs/OPEN_QUESTIONS.md): one record per week with a score posted, {week, board, score, kind, state,
+## rank}. `state` is "pending" until the week is over and the platform has said the player's place, then "earned"
+## (in the top places) or "missed". An "earned" record is kept for good: it is what the cosmetic will be granted
+## from once it is designed (App._grant_weekly_reward).
+var weekly_rewards: Array = []
 
 
 # --- Wallet ------------------------------------------------------------------------
@@ -224,6 +234,95 @@ func record_run(step_id: String, difficulty_tier: int, completed: bool, score: i
 	return out
 
 
+# --- The weekly challenge -----------------------------------------------------------------
+
+## The key in `weekly` of the highest week index played (the schedule's weeks count from 0).
+const WEEKLY_HIGH_WATER: String = "high_water"
+
+
+## The highest week played (-1 before any). Weeks only go forward: a device whose clock was moved back must not be
+## paid for a week again, so a week below this is closed (weekly_week_open). DESIGN-TBD (docs/questions/n5.md, 2): the
+## device's clock is all this can go by; a clock moved forward still opens each future week once.
+func weekly_high_water() -> int:
+	return int(weekly.get(WEEKLY_HIGH_WATER, -1))
+
+
+## True if week `week` may be played for credits and a place on the board: a week of the schedule (0 on, never one
+## before its epoch) that isn't below the highest played.
+func weekly_week_open(week: int) -> bool:
+	return week >= 0 and week >= weekly_high_water()
+
+
+## True if a clear of week `week` would be the one that pays: the week is open and not cleared yet.
+func weekly_may_pay(week: int) -> bool:
+	return weekly_week_open(week) and not weekly_cleared(week)
+
+
+## A week's record ({} if it was never played): see `weekly`.
+func weekly_record(week: int) -> Dictionary:
+	return weekly.get(str(week), {})
+
+
+## True if week `week`'s first clear has been made, which is the one clear of the week that pays.
+func weekly_cleared(week: int) -> bool:
+	return bool(weekly_record(week).get("cleared", false))
+
+
+## The best score of a clear of the week (0 if none).
+func weekly_best(week: int) -> int:
+	return int(weekly_record(week).get("best", 0))
+
+
+## Stores a weekly run's outcome. Returns {"new_best": bool, "first_clear": bool}: a clear is the week's first clear
+## when none came before it. `paid` (credits) is stored with it, so the screen can say what the week paid.
+## A run that did not clear counts as an attempt and nothing else. A week before the schedule's first (negative) isn't
+## kept at all. Playing a week raises the high-water mark to it.
+func record_weekly(week: int, completed: bool, score: int, paid: int = 0) -> Dictionary:
+	if week < 0:
+		return {"new_best": false, "first_clear": false}
+	weekly[WEEKLY_HIGH_WATER] = maxi(weekly_high_water(), week)
+	var r: Dictionary = weekly.get(str(week), {"attempts": 0, "cleared": false, "paid": 0, "best": 0})
+	r["attempts"] = int(r.get("attempts", 0)) + 1
+	var out := {"new_best": false, "first_clear": false}
+	if completed:
+		out["first_clear"] = not bool(r.get("cleared", false))
+		r["cleared"] = true
+		if out["first_clear"]:
+			r["paid"] = paid
+		if score > int(r.get("best", 0)):
+			r["best"] = score
+			out["new_best"] = true
+	weekly[str(week)] = r
+	return out
+
+
+## Notes that week `week`'s board holds the player's score, to be asked about once the week is over (see
+## `weekly_rewards`). One record a week: a better score updates it.
+func queue_weekly_reward(week: int, board: String, score: int, kind: String) -> void:
+	for r: Dictionary in weekly_rewards:
+		if int(r.get("week", -1)) == week and String(r.get("board", "")) == board:
+			r["score"] = maxi(int(r.get("score", 0)), score)
+			return
+	weekly_rewards.append({"week": week, "board": board, "score": score, "kind": kind, "state": "pending", "rank": 0})
+
+
+## The records still waiting for a rank whose week is over by `current_week` (a week before it).
+func pending_weekly_rewards(current_week: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for r: Dictionary in weekly_rewards:
+		if String(r.get("state", "")) == "pending" and int(r.get("week", 0)) < current_week:
+			out.append(r)
+	return out
+
+
+## True if the player has earned the weekly reward `kind` in any week.
+func has_weekly_reward(kind: String) -> bool:
+	for r: Dictionary in weekly_rewards:
+		if String(r.get("kind", "")) == kind and String(r.get("state", "")) == "earned":
+			return true
+	return false
+
+
 func stat_add(key: String, amount: int = 1) -> void:
 	stats[key] = int(stats.get(key, 0)) + amount
 
@@ -257,6 +356,8 @@ func to_dict() -> Dictionary:
 		"seen": seen,
 		"settings": settings,
 		"stats": stats,
+		"weekly": weekly,
+		"weekly_rewards": weekly_rewards,
 	}
 
 
@@ -281,6 +382,13 @@ static func from_dict(d: Dictionary) -> Profile:
 	p.seen = _dict(d, "seen")
 	p.settings = _dict(d, "settings")
 	p.stats = _dict(d, "stats")
+	# Saves from before the weekly challenge have neither.
+	p.weekly = _dict(d, "weekly")
+	var rewards: Variant = d.get("weekly_rewards", [])
+	if typeof(rewards) == TYPE_ARRAY:
+		for r: Variant in rewards:
+			if typeof(r) == TYPE_DICTIONARY:
+				p.weekly_rewards.append((r as Dictionary).duplicate(true))
 	# JSON turns every number into a float; counters stay integers.
 	for dict: Dictionary in [p.tiers, p.stocks, p.stats, p.endless_best]:
 		for k: Variant in dict.keys():

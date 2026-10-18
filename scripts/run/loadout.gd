@@ -73,6 +73,21 @@ static func from_profile(profile: Profile, catalog: ShopCatalog, mobile: bool) -
 	return out
 
 
+## The weekly challenge's kit (GDD §6, Replay features; task N5): the same for every player, whatever they own and
+## whatever they have switched on or off: the free armor every run starts with, and the permanent items in `kit`
+## (item id -> tier, WeeklyChallenge.kit: Armor IV and Juggernaut dash IV), no breakable and no other item. A tier
+## is held to the item's own count, and an item the platform doesn't sell (or the catalog doesn't know) is left out.
+static func weekly(catalog: ShopCatalog, kit: Dictionary, mobile: bool) -> Loadout:
+	var out := Loadout.new()
+	out.armor = true
+	for id: Variant in kit:
+		var item: ShopItem = catalog.item(StringName(String(id)))
+		if item == null or item.kind != ShopItem.Kind.PERMANENT or not item.available_on(mobile):
+			continue
+		out.tiers[item.id] = clampi(int(kit[id]), 1, item.tier_count())
+	return out
+
+
 ## Everything, for tests and god-mode play.
 static func full(catalog: ShopCatalog) -> Loadout:
 	var out := Loadout.new()

@@ -29,10 +29,16 @@ extends Node
 ##                           --god, --nofall, --full-loadout, --skin=<zone> (quick play only) and
 ##                           --phase=N (start at phase N, as a checkpoint would)
 ##   --flavor=web_demo       pretend to be another build flavor (full_pc, full_mobile, web_demo)
+##   --weekly[=N]            the weekly challenge (GDD §6) of this week, or of week N of its schedule (any
+##                           zone: `--weekly=3`), whether or not the Floating Head has been beaten; takes
+##                           --god and --nofall for reviews, and ignores --lanes and --full-loadout: the five
+##                           lanes and the uniform kit stay
 ##   --outfit=rex            the runner wears an outfit (any id in the shop's cosmetics, owned or not; not saved)
 ##                           in every run, cinematic and review it is in; alone it implies --quick
 
 signal profile_changed
+## A week's rank earned the weekly reward (settle_weekly_rewards): the Profile.weekly_rewards record.
+signal weekly_reward_earned(record: Dictionary)
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
 const RULES_PATH: String = "res://data/tuning/game_rules.tres"
@@ -54,6 +60,8 @@ var campaign: Campaign
 var catalog: ShopCatalog
 var sfx_library: SfxLibrary
 var profile: Profile
+## The weekly challenge's data (data/weekly/weekly_challenge.tres, GDD §6): its calendar, level, kit and rewards.
+var weekly: WeeklyChallenge
 ## Mobile device (3 lanes, touch, no slow time).
 var mobile: bool = false
 var save_path: String = SaveService.PATH
@@ -68,6 +76,11 @@ var overlay: Control
 var _boss_node: Node
 ## Command-line review aids for --level= runs (see _apply_review_args).
 var _review_args: PackedStringArray = []
+## Tests and review: the time the weekly challenge counts weeks by, in UTC unix seconds (-1: the system's clock).
+var clock_override: int = -1
+## True while settle_weekly_rewards is waiting on the platform, so a second call can't grant a record the first is
+## still deciding.
+var _settling_rewards: bool = false
 
 
 func _ready() -> void:
@@ -77,6 +90,7 @@ func _ready() -> void:
 	powerup_tuning = load(POWERUPS_PATH) as PowerupTuning
 	campaign = load(CAMPAIGN_PATH) as Campaign
 	catalog = ShopCatalog.load_from()
+	weekly = WeeklyChallenge.load_default()
 	sfx_library = load(SFX_PATH) as SfxLibrary
 	mobile = DeviceProfile.is_mobile()
 	for arg: String in OS.get_cmdline_user_args():
@@ -149,6 +163,11 @@ func boot(p_main: Node) -> void:
 				play_step(s)
 				return
 	for arg: String in args:
+		if arg == "--weekly" or arg.begins_with("--weekly="):
+			_review_args = args
+			start_weekly()
+			return
+	for arg: String in args:
 		if arg.begins_with("--boss="):
 			if _start_boss_arg(arg.get_slice("=", 1), args):
 				return
@@ -161,6 +180,7 @@ func boot(p_main: Node) -> void:
 			start_quick(args)
 			return
 	show_title()
+	settle_weekly_rewards.call_deferred()
 
 
 # --- Screens ----------------------------------------------------------------------
@@ -186,6 +206,15 @@ func show_shop(on_close: Callable = Callable(), play_label: String = "") -> void
 	s.on_close = on_close if on_close.is_valid() else show_title
 	s.play_label = play_label
 	show_screen(s)
+
+
+## The weekly challenge's screen (GDD §6): this week's level, its board and what it pays; locked until the Neon
+## City's boss is beaten. It looks for rewards now due (settle_weekly_rewards) as it opens.
+func show_weekly() -> void:
+	_end_run()
+	_play_music(&"menu")
+	show_screen(WeeklyScreen.new())
+	settle_weekly_rewards.call_deferred()
 
 
 func show_settings(on_close: Callable = Callable()) -> void:
@@ -336,6 +365,11 @@ func make_loadout(boss: BossDef = null) -> Loadout:
 	return out
 
 
+## The weekly challenge's kit: the same for every player, whatever they own (GDD §6; Loadout.weekly).
+func make_weekly_loadout() -> Loadout:
+	return Loadout.weekly(catalog, weekly.kit, mobile)
+
+
 # --- Runs --------------------------------------------------------------------------
 
 func start_level(s: CampaignStep, difficulty_tier: int = 0) -> void:
@@ -390,17 +424,21 @@ func start_boss_quick(def: BossDef, args: PackedStringArray = PackedStringArray(
 ## god mode, no falls, a full loadout, and for a boss fight its starting phase (--phase=N) and, in
 ## quick play, its look (--skin=), for every run the session plays.
 func _apply_review_args(ctx: RunContext) -> void:
+	# A weekly run keeps its five lanes and its uniform kit (GDD §6): only --god and --nofall apply.
+	var weekly_run: bool = ctx.mode == RunContext.Mode.WEEKLY
 	for arg: String in _review_args:
 		if arg.begins_with("--lanes="):
-			ctx.config.lane_count = int(arg.get_slice("=", 1))
+			if not weekly_run:
+				ctx.config.lane_count = int(arg.get_slice("=", 1))
 		elif arg == "--god":
 			ctx.god_mode = true
 		elif arg == "--nofall":
 			ctx.no_fall = true
 		elif arg == "--full-loadout":
-			ctx.loadout = Loadout.full(catalog)
-			if ctx.boss != null:
-				ctx.loadout.grant(ctx.boss.granted_items, catalog, mobile)
+			if not weekly_run:
+				ctx.loadout = Loadout.full(catalog)
+				if ctx.boss != null:
+					ctx.loadout.grant(ctx.boss.granted_items, catalog, mobile)
 		elif arg.begins_with("--phase=") and ctx.boss != null:
 			var index: int = clampi(int(arg.get_slice("=", 1)) - 1, 0, ctx.boss.phase_count() - 1)
 			ctx.boss_resume = {"phase": index} if index > 0 else {}
@@ -537,9 +575,188 @@ func start_endless() -> void:
 	_start_run(ctx, zone.music if zone != null else &"city")
 
 
+# --- The weekly challenge (GDD §6, Replay features, "Weekly challenge"; task N5) --------------
+
+## The time weeks are counted by: UTC unix seconds (the system's clock unless a test or review set clock_override).
+func now_unix() -> int:
+	return clock_override if clock_override >= 0 else int(Time.get_unix_time_from_system())
+
+
+## True in builds that have the weekly challenge: every one but the web demo (no leaderboards there, GDD §2).
+func weekly_available() -> bool:
+	return weekly != null and not BuildFlavor.is_demo()
+
+
+## True once the player may play it: the Neon City's boss, the Floating Head, is beaten (WeeklyChallenge.unlock_step).
+func weekly_unlocked() -> bool:
+	return weekly_available() and profile.is_completed(weekly.unlock_step)
+
+
+## Where the weekly challenge stands for this player now: &"unavailable" (this build has none, or no seed list),
+## &"locked" (the Floating Head isn't beaten), &"not_yet" (the schedule's first week hasn't opened by the clock),
+## &"behind" (the clock is behind a week the player has already played: weeks only go forward, so a clock moved back
+## can't pay a week again, Profile.weekly_high_water) or &"open". DESIGN-TBD (docs/questions/n5.md, 2): the device's
+## clock is all this goes by.
+func weekly_state() -> StringName:
+	if not weekly_available():
+		return &"unavailable"
+	if not weekly_unlocked():
+		return &"locked"
+	var w: WeeklyWeek = current_week()
+	if w == null:
+		return &"unavailable"
+	if w.index < 0:
+		return &"not_yet"
+	if w.index < profile.weekly_high_water():
+		return &"behind"
+	return &"open"
+
+
+## The week it is now.
+func current_week() -> WeeklyWeek:
+	return weekly.week_at(now_unix())
+
+
+## The board a clear of `w` is posted to on this device: PC's or mobile's (GDD §6: two boards).
+func weekly_board_id(w: WeeklyWeek) -> String:
+	return weekly.board_id(w.index, mobile)
+
+
+## Starts the week's level (`attempt`: which try this is). The level is the shipped list's entry for the week, built at
+## Sentinel Row's numbers in the week's zone (WeeklyChallenge.build_config) on five lanes whatever the platform, with
+## the uniform kit (make_weekly_loadout). A run is posted to the week's board on a clear, and pays only for the week's
+## first one (_settle_weekly).
+func start_weekly(attempt: int = 1) -> void:
+	var review: bool = _weekly_review()
+	if not weekly_available():
+		show_title()
+		return
+	if not review and weekly_state() != &"open":
+		# Locked, not open yet, or the clock behind: the screen says which.
+		show_weekly()
+		return
+	var w: WeeklyWeek = weekly.week(_review_week()) if review and _review_week() != -1 else current_week()
+	if w == null:
+		# No seed list to play from: nothing to start.
+		show_title()
+		return
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.WEEKLY
+	ctx.weekly = w
+	ctx.weekly_board = weekly_board_id(w)
+	ctx.attempt = attempt
+	ctx.config = weekly.build_config(campaign, w)
+	if ctx.config == null:
+		show_weekly()
+		return
+	ctx.tuning = ctx.config.movement_for(tuning)
+	ctx.loadout = make_weekly_loadout()
+	_apply_review_args(ctx)
+	var zone: ZoneDef = WeeklyChallenge.zone_of(campaign, w.zone_id)
+	_start_run(ctx, zone.music if zone != null else &"city")
+
+
+## True when this session was started with --weekly (debug builds): the challenge is open without the Floating Head
+## beaten, and `--weekly=N` plays week N of the schedule.
+func _weekly_review() -> bool:
+	if not OS.is_debug_build():
+		return false
+	for arg: String in _review_args:
+		if arg == "--weekly" or arg.begins_with("--weekly="):
+			return true
+	return false
+
+
+## The week index --weekly=N names, or -1.
+func _review_week() -> int:
+	for arg: String in _review_args:
+		if arg.begins_with("--weekly=") and arg.get_slice("=", 1).is_valid_int():
+			return int(arg.get_slice("=", 1))
+	return -1
+
+
+## What a weekly run pays and where it stands (GDD §6): called for every weekly result before the wallet is paid.
+## - The credits collected on the way pay nothing, on a clear or not: the layout is the same on every try, so a
+##   memorised one would pay again on every replay. The week's first clear pays `first_clear_credits` once; a clear after
+##   it, a death and a quit pay nothing.
+## - A clear is posted to the week's board (the platform keeps each player's best) and noted for the rank reward
+##   (Profile.queue_weekly_reward); a run that doesn't clear isn't posted. DESIGN-TBD (docs/questions/n5.md, 5).
+## - Nothing is paid or posted for a week the clock has put out of reach (`closed`): one before the schedule's first
+##   week, or below the highest week played (Profile.weekly_week_open), so moving the device's clock back can't pay or
+##   post a week again. DESIGN-TBD (docs/questions/n5.md, 2): a clock moved forward still opens each week once.
+## - `result.record` says what happened, for the results screen: weekly, first_clear, new_best, board, submitted, best,
+##   paid, closed.
+func _settle_weekly(result: RunResult) -> void:
+	var ctx: RunContext = result.context
+	var w: WeeklyWeek = ctx.weekly
+	var open: bool = profile.weekly_week_open(w.index)
+	var first_clear: bool = result.completed and profile.weekly_may_pay(w.index)
+	result.completion_bonus = weekly.first_clear_credits if first_clear else 0
+	result.credits_earned = result.completion_bonus
+	result.stars = 0
+	var recorded: Dictionary = profile.record_weekly(w.index, result.completed, result.score, result.credits_earned)
+	var posted: bool = result.completed and open and Platform.leaderboards_available()
+	if result.completed and open:
+		Platform.submit_score(ctx.leaderboard_id(), result.score)
+		if posted:
+			profile.queue_weekly_reward(w.index, ctx.leaderboard_id(), result.score, String(weekly.reward_kind))
+	result.record = {"weekly": true, "first_clear": first_clear, "new_best": recorded["new_best"],
+		"board": ctx.leaderboard_id(), "submitted": posted, "best": profile.weekly_best(w.index),
+		"paid": result.credits_earned, "closed": not open}
+
+
+## Asks the platform where the player finished in each past week's board they posted a score to, and grants what
+## the place earns (WeeklyChallenge.top_places, reward_kind). A week's rank is only final once it is over, so this runs
+## whenever the game is online and can show it (at start, and when the weekly screen opens), and leaves a week whose
+## rank the platform can't say yet for next time (dropping it after reward_check_weeks).
+func settle_weekly_rewards() -> void:
+	if _settling_rewards or not weekly_available() or profile == null:
+		return
+	# One pass at a time: a second, started while the first waits on the platform, would find the same records still
+	# pending and grant them again. (A backend's leaderboard_rank must always answer, 0 when it can't.)
+	_settling_rewards = true
+	var current: int = weekly.week_index(now_unix())
+	var changed: bool = false
+	for record: Dictionary in profile.pending_weekly_rewards(current):
+		var rank: int = await Platform.leaderboard_rank(String(record["board"]))
+		if String(record["state"]) != "pending":
+			continue
+		if rank > 0:
+			record["rank"] = rank
+			if rank <= weekly.top_places:
+				record["state"] = "earned"
+				_grant_weekly_reward(record)
+			else:
+				record["state"] = "missed"
+			changed = true
+		elif current - int(record["week"]) > weekly.reward_check_weeks:
+			record["state"] = "expired"
+			changed = true
+	_settling_rewards = false
+	if changed:
+		save()
+		profile_changed.emit()
+
+
+## A top place of a week's board was earned (settle_weekly_rewards). DESIGN-TBD (item 977 in docs/OPEN_QUESTIONS.md):
+## the Leader of the Pack cosmetic is still to be designed (a runner skin, a trail, a badge...), whether it can be lost
+## again, and whether it is the Centurion. Placeholder: the record itself is the grant (Profile.has_weekly_reward), the
+## weekly screen lists it, and nothing is added to the wardrobe. This is the one place to give the cosmetic from once
+## it exists (record["kind"], record["week"], record["rank"]); `weekly_reward_earned` says it was granted.
+func _grant_weekly_reward(record: Dictionary) -> void:
+	weekly_reward_earned.emit(record)
+	if screen != null and is_instance_valid(screen):
+		Toast.show_message(screen, "Leader of the Pack: week %d, place %d" % [int(record["week"]) + 1, int(record["rank"])],
+			&"trophy")
+
+
 ## The next attempt at the same level or boss fight (same seed; a boss fight resumes at a checkpoint
 ## it reached, GDD §10), with the loadout as the shop left it.
 func retry(ctx: RunContext) -> void:
+	if ctx.mode == RunContext.Mode.WEEKLY:
+		# The week's level, built the same: unless the week turned over since, then the new week's.
+		start_weekly(ctx.attempt + 1)
+		return
 	var next: RunContext = ctx.retry()
 	next.loadout = make_loadout(ctx.boss)
 	next.revives_used = 0
@@ -575,12 +792,15 @@ func quit_run() -> void:
 		resume_game()
 		return
 	var campaign_run: bool = run.context.is_campaign()
+	var weekly_run: bool = run.context.is_weekly()
 	var result: RunResult = run.quit_result() if run.context.mode != RunContext.Mode.QUICK else null
 	resume_game()
 	if result != null:
 		_apply_result(result, false)
 	if campaign_run:
 		show_level_select()
+	elif weekly_run:
+		show_weekly()
 	else:
 		show_title()
 	if result != null and result.credits_earned > 0:
@@ -668,6 +888,10 @@ func _on_run_died(_run: LevelRun) -> void:
 ## What the revive offer can show (GDD §4: mobile: rewarded ad or revive item; PC: revive item).
 func revive_options() -> Dictionary:
 	var left: bool = run != null and run.context.revives_used < rules.max_revives_per_attempt
+	if run != null and run.context.mode == RunContext.Mode.WEEKLY:
+		# The kit is the same for everyone (GDD §6): no revive from stock, and none for an ad, which would be a way to
+		# buy a better run on the board. DESIGN-TBD (docs/questions/n5.md, 6): whether the ad revive stays on mobile.
+		return {"item": false, "ad": false, "stock": profile.stock(&"revive")}
 	return {
 		"item": left and profile.stock(&"revive") > 0 and profile.is_equipped(&"revive"),
 		"ad": left and Platform.ads_available(),
@@ -714,7 +938,7 @@ func _on_run_finished(result: RunResult) -> void:
 	show_screen(s)
 	if not result.completed:
 		play_ui_sound(&"ui_back")
-	elif ctx.is_campaign() and result.record.get("first_clear", false):
+	elif (ctx.is_campaign() or ctx.is_weekly()) and result.record.get("first_clear", false):
 		play_ui_sound(&"ui_unlock")
 
 
@@ -723,6 +947,8 @@ func _on_run_finished(result: RunResult) -> void:
 ## as a death (GDD §4) without having died.
 func _apply_result(result: RunResult, count_as_death: bool = true) -> void:
 	var ctx: RunContext = result.context
+	if ctx.is_weekly():
+		_settle_weekly(result)
 	profile.add_earned(result.credits_earned)
 	profile.stat_add("runs")
 	profile.stat_add("kills", int(result.stats.get("kills", 0)))
@@ -767,6 +993,8 @@ func continue_after_result(result: RunResult) -> void:
 		show_shop(func() -> void: advance_from(ctx.step), "Next")
 	elif ctx.mode == RunContext.Mode.ENDLESS:
 		show_shop(start_endless, "Play again")
+	elif ctx.is_weekly():
+		show_shop(show_weekly, "Weekly")
 	else:
 		show_shop(func() -> void: retry(ctx), "Retry")
 
@@ -942,6 +1170,9 @@ func _furthest_zone() -> ZoneDef:
 func _music_for(ctx: RunContext) -> StringName:
 	if ctx.is_boss() and ctx.boss.music != &"":
 		return ctx.boss.music
+	if ctx.is_weekly():
+		var zone: ZoneDef = WeeklyChallenge.zone_of(campaign, ctx.weekly.zone_id)
+		return zone.music if zone != null else &"city"
 	return ctx.step.zone.music if ctx.is_campaign() else &"city"
 
 
