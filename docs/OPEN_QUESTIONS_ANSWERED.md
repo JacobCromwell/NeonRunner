@@ -1561,3 +1561,28 @@ Captain Cogs).
    Zone doodads). Should rows come more often, should the stalls' spaced rows get the room they need (they nearly
    never come now), or should rows wait for a level of their own (City 1 introduces doodads gently)?
    **Answered (owner, October 17, 2026):** too rare to see; rows of two count, and doodads need no wide berth, only what a fair push needs. Built in task L6.
+
+**Answered (October 17, 2026, the batch of October 17): Mecha Guppy's phase 1 (L9) and the shop windows' feed TVs (L7)**
+
+960. **Is that half as long?** Placeholder: 2 hits. A runner who baits lands the hits on the baits of steps 1 and 2 (roof
+     2's floor bite then the first bait, roof 3's first volley then a bait); one who never baits on the fallbacks of
+     steps 2 and 4. What is left of phase 1 is mostly its lead-in, which the hit count doesn't touch: the run to the
+     first pads (3.5 s, the 3 s intro within it), the first hut, and the first tower, whose floor bite comes alone (one
+     new thing at a time) before the first notch on roof 2; the first bait's aim shows 16.6-19.2 s into the fight. Both
+     runners still meet the bombs (roof 3's volley), the floor bite that leaves a lane (roofs 1 and 2; roof 4 too without
+     baiting) and the bait in phase 1, in the GDD's teaching order. Getting a runner who baits nearer to half would take
+     1 hit, which ends phase 1 on roof 2 before the climb's first volley (so the bombs would no longer show in phase 1),
+     or a shorter lead-in: the run to the first pads is only 3.5 s (`start_seconds`; the intro, `intro_seconds` 3, runs
+     within it), and the rest is the first hut and the first tower's floor bite coming alone, which the teaching order
+     wants. Proposal: keep 2 hits. Is 37% shorter for a runner who baits, and 45% for one who doesn't, what the owner
+     wanted?
+     **Answered (owner, October 17, 2026):** 37% is close enough; 2 hits stay.
+
+967. **The black rectangles with crude faces.** What the owner saw in the windows (and took to be the citizens) are the cult's
+     feed TVs: an old CRT set in about a fifth of the windows (`MarketplaceSkin.feed_window_share` 0.22) playing the feed's calm
+     cyborg face (two white squares and a line on black), as the GDD's Cyborg Viewing Devices ask (§5: "the same feed playing on
+     billboards and in shop windows"), plus the window cyborgs' screen heads. Nothing was changed: they are design, and the
+     cyborgs are enemies. Do the owner's words mean the feed TVs should be fewer or look different (a picture of static, or
+     the emblem, in the windows, keeping the calm face for the billboards)? Placeholder: unchanged.
+
+     **Answered (owner, October 17, 2026):** the feed TVs don't add much; replace them entirely: some windows get screens with random ads and the cult emblem flashing every once in a while, others billboards that fit the world. Recorded in GDD §5 (Cyborg Viewing Devices); built in task L10.

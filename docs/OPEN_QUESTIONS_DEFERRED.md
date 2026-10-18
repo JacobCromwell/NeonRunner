@@ -4575,7 +4575,6 @@ a placeholder in data (`data/cinematics/beach_outro_tuning.tres`, `BeachOutroTun
   smoking crater. Is the pool's explosion what makes that crater (the Beach outro card's old question: what puts them
   there)?
 
-
 **Wall-run-only gaps** (the owner, October 15, 2026; GDD §3, §5, §9; task J2)
 863. **The section's sizes.** How long should the clear run-in, the lit stretch (the window to step onto the wall), the
    gap's margin past a wall run and the safe landing floor be? (GDD §3, Side walls and Pace.)
@@ -5075,14 +5074,12 @@ These are the choices made to fill them in. Each is a placeholder in data (`data
   with a gold lattice. The cinematic plays wholly inside it (the street is hidden). Is the casino's interior meant to
   look like this, or more like the zone's street (iron, glass vault, neon signs)?
 
-
 949. **The tables and the holographic games.** Placeholder: the roulette table (its wheel spinning, the ball dropping
   into a pocket), two blackjack tables, a poker table and a dice table, their cards and chip stacks, banks of slot
   machines along the left wall and near the back, and the bar along the right wall. Three holographic games, in the
   Casino's sign colours (violet, blue, cold and warm white; never a hazard's): a **dice tower** (three big dice
   tumbling in a column of light), an **orbit wheel** (eight glowing cards wheeling over a table) and a **star sphere**
   (a turning lattice globe, tokens orbiting it). Are these the kind of games the owner had in mind?
-
 
 950. **The patrons' looks** (`CasinoPeople`, simplified from the reference): the woman in red (bun and gold circlet,
   crimson gown with gold trim and red-and-gold pauldrons, gold cybernetic forearms, a blue-grey cocktail); the
@@ -5093,16 +5090,13 @@ These are the choices made to fill them in. Each is a placeholder in data (`data
   colour. The dealers, croupier and bartender (white shirt, black waistcoat, burgundy bow tie) are not in the reference.
   The women share one fair skin tone.
 
-
 951. **The two women beside the Chairman.** Placeholder: the woman in red's build and gown, one in a black gown with long
   straight black hair, the other in a red gown with blonde hair in a high ponytail; no glass. They walk at his sides
   and go through the golden door with him.
 
-
 952. **The Chairman on the rig** (`CasinoPeople.Look.CHAIRMAN`, his new look): the tallest of them (1.42 m), the long black
   coat (its skirt swinging), tall collar, gunmetal shoulder plates, vest and throat brace, the brand's blue lights at a
   low glow (chest, brace, pauldrons, bracers, temple implant), a black cane with a brass head in his left hand.
-
 
 953. **The crowd.** Placeholder (`CasinoCrowd`): about sixty people at the tables, round the holograms, at the slots,
   along the bar and standing about in twos and threes with drinks, using the reference's looks, some repainted (navy
@@ -5110,7 +5104,6 @@ These are the choices made to fill them in. Each is a placeholder in data (`data
   colours. They breathe and sway; the roulette's onlookers cheer with its players; when the wall trembles they turn
   to it and when it bursts they draw back a little. Nobody flees or screams. Should the crowd scatter when The House
   breaks in?
-
 
 954. **The staging and timing.** Placeholder: 34.8 s. Low at the roulette table, panning right along the layout to the
   wheel (0-4.5 s; the ball drops at 3.0 s, settles at 3.8 s, cheers at 3.9 s); tilting up and back to the four players
@@ -5123,22 +5116,18 @@ These are the choices made to fill them in. Each is a placeholder in data (`data
   (22.9-25.9 s); pulling back to the whole wall as it trembles (25.9-28.2 s); the wall bursts (28.3 s), The House's
   lights come on (29.3 s), held to the end; black, and the fight. No title card.
 
-
 955. **The runner.** Placeholder: they jog through the crowd (about 2.5-3.5 m/s); each dive is a low sideways leap (the
   game's jump pose, 0.55 s, 1.4 m to the side), right past the first guard, left past the second; then on toward the
   door, stopping short of it. The screech stays sitting on the bar (it isn't seen again). Should it follow the runner?
-
 
 956. **The guards.** Placeholder: two of the Casino's cyborgs walking behind the Chairman. On his flick they shout (a
   gruff mumble) and rush the runner, each lunging with its arms out through where the runner was and stumbling on as
   the runner dives clear; they turn after the runner and then to the wall. They never shoot (the owner's word was
   "block").
 
-
 957. **The golden door.** Placeholder (`CasinoGoldenDoor`): tall double doors of polished gold with raised panels, sunburst
    bosses and long brass handles, in a gilded surround with a sunburst over it, brass lamps either side, velvet ropes
    marking the way to it. They swing open by themselves as he nears and bang shut about a second after he is through.
-
 
 958. **The wall and the reveal.** Placeholder (`CasinoWallBreak`): the stretch of back wall to the door's left, a hole
    cut to fit the fight's own machine with a metre to spare. It shivers more and more for 2.8 s as cracks spread, grit
@@ -5146,7 +5135,6 @@ These are the choices made to fill them in. Each is a placeholder in data (`data
    lying on a heap of rubble, a dust cloud billowing and settling. The House stands in the hole, dark until its lights
    blaze on a second later, its reels spinning up and stopping on a cherry, a BAR and a lightning bolt (its three
    attacks), never the jackpot's sevens.
-
 
 959. **The sounds** (`tools/asset_gen/sfx_bank_casino_boss_intro.gd`, placeholders): the floor's bustle under it all
    (murmur, chips, a slot's chime), the roulette ball's roll and drop, the players' cheer, the guards' shout, the door's
@@ -5166,19 +5154,6 @@ intro included):
 |---|---|---|---|
 | a runner who baits every step | 41.0-47.2 s | 25.8-29.4 s | 37-38% |
 | a runner who never baits (the fallback) | 67.4-78.5 s | 37.0-42.8 s | 45% |
-
-960. **Is that half as long?** Placeholder: 2 hits. A runner who baits lands the hits on the baits of steps 1 and 2 (roof
-     2's floor bite then the first bait, roof 3's first volley then a bait); one who never baits on the fallbacks of
-     steps 2 and 4. What is left of phase 1 is mostly its lead-in, which the hit count doesn't touch: the run to the
-     first pads (3.5 s, the 3 s intro within it), the first hut, and the first tower, whose floor bite comes alone (one
-     new thing at a time) before the first notch on roof 2; the first bait's aim shows 16.6-19.2 s into the fight. Both
-     runners still meet the bombs (roof 3's volley), the floor bite that leaves a lane (roofs 1 and 2; roof 4 too without
-     baiting) and the bait in phase 1, in the GDD's teaching order. Getting a runner who baits nearer to half would take
-     1 hit, which ends phase 1 on roof 2 before the climb's first volley (so the bombs would no longer show in phase 1),
-     or a shorter lead-in: the run to the first pads is only 3.5 s (`start_seconds`; the intro, `intro_seconds` 3, runs
-     within it), and the rest is the first hut and the first tower's floor bite coming alone, which the teaching order
-     wants. Proposal: keep 2 hits. Is 37% shorter for a runner who baits, and 45% for one who doesn't, what the owner
-     wanted?
 
 961. **Phase 2 may now open with a bite across every lane.** Phase 2 begins two steps sooner (at roof 3's end for a
      runner who baits, on step 4's hut for one who doesn't). The steps in sight at the change stay phase 1's, and those
@@ -5206,7 +5181,7 @@ intro included):
      - The time bonus: 1.24 times two stars, as before, just past the slowest win without baiting.
      Right?
 
-**L7, real citizens in the Marketplace's shops** (from `docs/questions/l7.md`; item 967 is in `docs/OPEN_QUESTIONS.md`)
+**L7, real citizens in the Marketplace's shops** (from `docs/questions/l7.md`; item 967, answered, is in `docs/OPEN_QUESTIONS_ANSWERED.md`)
 
 The owner asked for the newer rendered people in the Marketplace's shop windows in place of the flipbook cards, watching,
 with a silent one-off cheer at a really valuable credit or a big enemy's defeat, if they cost little (they do: the numbers

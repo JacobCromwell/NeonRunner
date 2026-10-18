@@ -33,7 +33,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
-| 967 | The "black rectangles with crude faces" the owner saw in the Marketplace's shop windows are the cult feed's CRT TVs (in about a fifth of the windows, GDD §5) and the window cyborgs' screen heads, not the citizens (L7 left both as they are). Fewer feed TVs, a different look (static or the emblem in the windows, the calm face kept for billboards), or as they are? |
 
 ## The items in full
 
@@ -121,13 +120,3 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    Golden Palace, and every one in the Golden Zone (whose only baits are Buzz Overdrives). So the request mostly
    changes Corporate 1 (21 of its 36 tanks) and, elsewhere, about one tank in every six builds of a level (12 of the
    143). Should the later zones' tanks get company too where the truck is about but not yet attacking?
-
-
-**L7, real citizens in the Marketplace's shops** (from `docs/questions/l7.md`; the batch of October 17, 2026; the other items, 963-966 and 968, are deferred)
-
-967. **The black rectangles with crude faces.** What the owner saw in the windows (and took to be the citizens) are the cult's
-     feed TVs: an old CRT set in about a fifth of the windows (`MarketplaceSkin.feed_window_share` 0.22) playing the feed's calm
-     cyborg face (two white squares and a line on black), as the GDD's Cyborg Viewing Devices ask (§5: "the same feed playing on
-     billboards and in shop windows"), plus the window cyborgs' screen heads. Nothing was changed: they are design, and the
-     cyborgs are enemies. Do the owner's words mean the feed TVs should be fewer or look different (a picture of static, or
-     the emblem, in the windows, keeping the calm face for the billboards)? Placeholder: unchanged.
