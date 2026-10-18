@@ -594,7 +594,8 @@ wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a
 look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
 them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
-`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
+`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), a campaign level's line
+of wall-hop credits ridden by a wall hopper (`wall_hop_review`, `--level=<id> --take=hop|run --camera=game|side`), an
 Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
 explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,
