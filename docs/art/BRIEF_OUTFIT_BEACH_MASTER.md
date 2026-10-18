@@ -31,8 +31,8 @@ scale, hitbox and gameplay sizes stay the same, and owned power-ups are still ad
 - **The back print glows green, as drawn.** Outfits are free of the colour rule (owner, October 18, 2026; GDD §8,
   Cosmetics). Keep it a soft glow so bloom doesn't blur the skull's shape.
 - Nothing else glows except Echo's own copper implant.
-- Effects tied to the suit glow (the invulnerability tint, the death power-down, the dash trail) must still read on
-  an outfit with no glow lines.
+- Effects tied to the suit glow (the invulnerability tint, the death power-down, the dash trail) work on this outfit
+  too: the back print goes dark on death like Echo's conduits.
 
 ## Readability (the gameplay camera sits behind and above)
 - **The back view matters most:** the shirt's back print, the corroded left arm and the bare legs.
