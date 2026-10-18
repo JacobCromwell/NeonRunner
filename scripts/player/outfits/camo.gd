@@ -18,22 +18,22 @@ extends PlayerOutfit
 ## Seen from the gameplay camera (behind and above): the long olive coat, its camo patches and the dark tubing
 ## across the shoulder blades, the epaulettes, the belt's two pouches, the brass arm on the left, then the coat's
 ## swinging skirt over the boots. The coat is four stiff panels hinged at the waist like Echo's (HumanoidPanel).
-## DESIGN-TBD (docs/questions/m2.md, 1 to 4, 9 and 10), each marked where it lives below: 1 the camo pattern, 2 how stained
-## the hem is, 3 how bright the brass is, 4 the shape of the tubing, 9 the sheet's details left out, 10 the coat's
-## lightness standing in for a per-outfit rim light.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` items 993-996, 1001 and 1002), each marked where it lives below: 993 the camo
+## pattern, 994 how stained the hem is, 995 how bright the brass is, 996 the shape of the tubing, 1001 the sheet's details
+## left out, 1002 the coat's lightness standing in for a per-outfit rim light.
 
 ## The coat and its camo patches: aged olive with darker green, brown and khaki patches, and a stained hem.
-## DESIGN-TBD (docs/questions/m2.md, 10): the olive is lighter than Echo's coat so it keeps its outline on dark tracks with
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1002): the olive is lighter than Echo's coat so it keeps its outline on dark tracks with
 ## the body material's shared rim light; PlayerOutfit has no per-outfit rim to tune instead.
 const OLIVE := Color(0.32, 0.34, 0.18)
 const OLIVE_DARK := Color(0.23, 0.25, 0.13)
 const OLIVE_LIGHT := Color(0.4, 0.41, 0.23)
-## DESIGN-TBD (docs/questions/m2.md, 1): the camo is rectangular patches in these four colours, not the sheet's blotches.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 993): the camo is rectangular patches in these four colours, not the sheet's blotches.
 const PATCH_GREEN := Color(0.15, 0.21, 0.09)
 const PATCH_BROWN := Color(0.43, 0.3, 0.15)
 const PATCH_TAN := Color(0.55, 0.5, 0.31)
 const PATCH_BLACK := Color(0.1, 0.11, 0.07)
-## DESIGN-TBD (docs/questions/m2.md, 2): how stained the hem is, and how worn the coat is otherwise (it is clean olive).
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 994): how stained the hem is, and how worn the coat is otherwise (it is clean olive).
 const STAIN := Color(0.24, 0.18, 0.1)
 ## The dark tubing across the upper back, and the straps and belts.
 const TUBE := Color(0.07, 0.07, 0.08)
@@ -46,7 +46,7 @@ const CARRIER := Color(0.34, 0.37, 0.24)
 const CARRIER_DARK := Color(0.2, 0.23, 0.14)
 const CARRIER_PATCH := Color(0.46, 0.45, 0.3)
 ## The cyber-arm: worn, dull brass (never Echo's polished gold), dark steel joints, a red and a black cable.
-## DESIGN-TBD (docs/questions/m2.md, 3): how bright the brass is (the sheet's arm is brighter and more polished).
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 995): how bright the brass is (the sheet's arm is brighter and more polished).
 const BRASS := Color(0.5, 0.43, 0.21)
 const BRASS_DARK := Color(0.28, 0.23, 0.12)
 const BRASS_EDGE := Color(0.62, 0.54, 0.31)
@@ -137,7 +137,7 @@ func _coat(list: Array[HumanoidPiece]) -> void:
 
 
 ## The camo plate carrier in the coat's open front: pouches, a harness strap over each shoulder and a patch pattern.
-## DESIGN-TBD (docs/questions/m2.md, 9): the sheet's radio on the carrier and the sleeve cuffs' buckles are left out.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1001): the sheet's radio on the carrier and the sleeve cuffs' buckles are left out.
 func _carrier(list: Array[HumanoidPiece]) -> void:
 	add(list, &"chest", BOX, Vector3(0.17, 0.26, 0.036), Vector3(0.0, 0.1, -0.098), CARRIER, 0.0,
 		{"top_scale": Vector2(1.06, 1.0)})
@@ -167,7 +167,7 @@ func _back(list: Array[HumanoidPiece]) -> void:
 		var tilt: float = -3.8 if y > 0.115 else 0.0
 		OutfitDecals.quad(list, &"chest", Vector3(patch[0], y, _back_z(y) + 0.004), patch[2], patch[3], patch[4], BACK,
 			Vector3(tilt, 0.0, 0.0))
-	# The dark tubing (DESIGN-TBD, docs/questions/m2.md, 4: the sheet's tubes are a looser tangle): two pipes from the shoulder blades that bend in toward the spine and run down to the belt, tied
+	# The dark tubing (DESIGN-TBD, `docs/OPEN_QUESTIONS*.md` item 996: the sheet's tubes are a looser tangle): two pipes from the shoulder blades that bend in toward the spine and run down to the belt, tied
 	# together by two rungs.
 	var at := func(x: float, y: float) -> Vector3: return Vector3(x, y, _back_z(y) + 0.013)
 	var tube := func(a: Vector3, b: Vector3) -> void:
@@ -297,7 +297,7 @@ func _skirt_panel(side: int, behind: bool) -> HumanoidPanel:
 	var faces: PackedFloat32Array = OutfitDecals.faces_in(OutfitDecals.face_directions(SKIRT_HALF * 2.0, 12, 15.0), arc)
 	for patch: Array in _patches(side, behind):
 		pieces.append(_ring_patch_arc(OutfitDecals.face_arc(faces[int(patch[0])]), float(patch[1]), float(patch[2]), patch[3], 0.025))
-	# The stained hem, a dark-brown band on every face (DESIGN-TBD, docs/questions/m2.md, 2).
+	# The stained hem, a dark-brown band on every face (DESIGN-TBD, `docs/OPEN_QUESTIONS*.md` item 994).
 	pieces.append(_ring_patch_arc(arc, -SKIRT_LENGTH + HEM_BAND, -SKIRT_LENGTH, STAIN, 0.02))
 	panel.pieces = pieces
 	return panel

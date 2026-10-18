@@ -18,9 +18,9 @@ extends PlayerOutfit
 ##
 ## The shirt is short: no coat skirt, but four small panels (HumanoidPanel) for its hem and open front, which swing a
 ## little with the stride, so the shirt's tails and flaps move as the brief asks.
-## DESIGN-TBD (docs/questions/m2.md, 5 to 9), each marked where it lives below: 5 the skull and fronds (simplified from the
-## sheet), 6 the hibiscus and leaves (flat coral blooms, only on the back, a sleeve and the hem), 7 how much of the arm the
-## wraps and corrosion cover, 8 the four small hem panels, 9 the sheet's details left out.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` items 997-1001), each marked where it lives below: 997 the skull and fronds
+## (simplified from the sheet), 998 the hibiscus and leaves (flat coral blooms, only on the back, a sleeve and the hem), 999
+## how much of the arm the wraps and corrosion cover, 1000 the four small hem panels, 1001 the sheet's details left out.
 
 ## The shirt: dark teal with coral hibiscus and palm-leaf prints.
 const SHIRT := Color(0.09, 0.31, 0.34)
@@ -34,7 +34,7 @@ const LEAF := Color(0.14, 0.56, 0.3)
 const SKULL := Color(0.3, 0.95, 0.45)
 const FROND := Color(0.5, 1.0, 0.5)
 const SOCKET := Color(0.02, 0.07, 0.07)
-## How bright the print is (DESIGN-TBD, docs/questions/m2.md, 5: the skull's exact shape and glow): Rex's circuit lines (test_outfit_beach_master pins it under the outfits' bloom cap).
+## How bright the print is (DESIGN-TBD, `docs/OPEN_QUESTIONS*.md` item 997: the skull's exact shape and glow): Rex's circuit lines (test_outfit_beach_master pins it under the outfits' bloom cap).
 const PRINT_GLOW: float = 0.38
 ## The plate carrier (the same lighter camo as Camo's) and the straps.
 const CARRIER := Color(0.34, 0.37, 0.24)
@@ -64,7 +64,7 @@ const BEAD_TEAL := Color(0.15, 0.68, 0.66)
 const BEAD_CREAM := Color(0.9, 0.85, 0.7)
 
 ## The shirt's tails and flaps: the waist ring its four small panels hang from (pelvis joint space).
-## DESIGN-TBD (docs/questions/m2.md, 8): what moves on the short shirt, built as four small panels (9 and 13 cm long, following
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1000): what moves on the short shirt, built as four small panels (9 and 13 cm long, following
 ## the thighs at 35 and 45%).
 const HEM_HINGE_Y: float = 0.08
 const HEM_HALF := Vector2(0.15, 0.116)
@@ -105,7 +105,7 @@ func panels() -> Array[HumanoidPanel]:
 # --- The body -----------------------------------------------------------------------------
 
 ## Cargo shorts over the hips, the belt with its buckle and a camo pouch each side of the small of the back.
-## DESIGN-TBD (docs/questions/m2.md, 9): the sheet's carabiner on the back belt and thigh harness loops are left out.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1001): the sheet's carabiner on the back belt and thigh harness loops are left out.
 func _belt(list: Array[HumanoidPiece]) -> void:
 	add(list, &"pelvis", BOX, Vector3(0.25, 0.15, 0.18), Vector3(0.0, -0.05, 0.005), SHORTS, 0.0,
 		{"top_scale": Vector2(1.04, 1.04)})
@@ -176,7 +176,7 @@ func _back_print(list: Array[HumanoidPiece]) -> void:
 			Vector3(-3.8, 0.0, float(frond[2]) - 90.0), PRINT_GLOW, 0.4)
 
 
-## DESIGN-TBD (docs/questions/m2.md, 6): the hibiscus and leaves are flat blooms, five on the back, three patches on the right
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 998): the hibiscus and leaves are flat blooms, five on the back, three patches on the right
 ## sleeve and a print on each hem panel; the sheet prints the whole shirt.
 ## The tropical print on the rest of the shirt's back: coral hibiscus (a five-petalled bloom with a yellow heart) and
 ## dark palm leaves along the lower back under the skull and in its upper right corner. (The front flaps and the
@@ -227,7 +227,7 @@ func _right_arm(list: Array[HumanoidPiece]) -> void:
 	add(list, &"hand", BOX, Vector3(0.054, 0.032, 0.056), Vector3(0.0, -0.082, -0.01), TAN, 0.0, {"side": RIGHT})
 
 
-## DESIGN-TBD (docs/questions/m2.md, 7): five wraps and seven verdigris patches; the sheet binds nearly all of the arm.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 999): five wraps and seven verdigris patches; the sheet binds nearly all of the arm.
 ## The sea-salt corroded cyber-arm on the left, from the shoulder down: rusty brass plates with green corrosion
 ## patches round exposed joints, bound in tan cloth wraps, and an articulated hand. (Authored on the right, placed
 ## on the left.)
