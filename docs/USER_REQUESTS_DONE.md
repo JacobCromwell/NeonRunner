@@ -322,3 +322,8 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## The owner's batch (October 18, 2026, evening)
 
 - [x] **Shields stack like the armor** (GDD §8): four shields bought, yet one hit took the shield away. Verify, and if so, carry every shield in stock into the run, each blocking one hit. DONE (N3): verified — it was by design (FB 13, one breakable charge per attempt). Now every shield in stock (up to 5) comes into the run, each hit uses one shield and one stock, with the usual second of invulnerability; the HUD shows the count, the runner wears the shield until the last breaks, and the one-hit-from-death siren waits for the last shield. The grapple stays one per attempt. Question 1011 (a boss's granted shield on top of a stack).
+
+## Cosmetics: the owner's answers (October 18, 2026, items 979, 980, 982 and 985)
+
+- [x] **Buying an outfit doesn't lower net worth** (GDD §6, §8 Cosmetics; item 980): credits spent on cosmetics stay in the net-worth score, for old saves too. DONE (task M4): outfits spend earned credits first and those credits stay in net worth (`Profile.cosmetic_spent`); saves that already bought one get it back (capped at what they earned).
+- [x] **The shop shows a preview of each outfit** (GDD §8, Cosmetics; item 982): the runner wearing it on the cosmetic's card (or one preview for the focused card), in place of the jacket icon; it must work on phones and the Compatibility renderer. DONE (task M4): each card shows the runner in the outfit (a still), and the focused or hovered card a live, slowly turning preview; stills are drawn only when the Cosmetics section scrolls into view.

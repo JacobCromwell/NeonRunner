@@ -4,8 +4,8 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
 
 ## Economy and saving
 
-`Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned,
-unspent), item tiers and stock, equip toggles, records per difficulty tier, settings and stats.
+`Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned, unspent,
+plus what was spent on cosmetics, `cosmetic_spent`: an outfit never lowers it), item tiers and stock, equip toggles, records per difficulty tier, settings and stats.
 `SaveService` writes it to `user://profile.json` (with a backup). `Loadout` is what one run carries:
 owned, switched-on items; every shield in stock (they stack, up to its max_stock) and one charge of the other breakables per attempt; and the free armor every run
 starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
@@ -19,8 +19,8 @@ who finish every level once, and the first level each tier is in reach of (the m
 `tools/measure/economy_model.gd`, shared with `test_economy`).
 
 **Cosmetics (task M1, GDD §8, "Cosmetics"; the owner, October 18, 2026).** Looks for the runner sold in their own
-Cosmetics section of the shop, after the power-ups: each is **bought once with credits from the same wallet** (bought
-credits first, as for every item) and **kept forever**, and the player picks **one to wear**; Razor Echo's own look is
+Cosmetics section of the shop, after the power-ups: each is **bought once with credits from the same wallet** (the
+earned credits first, so that it never lowers net worth) and **kept forever**, and the player picks **one to wear**; Razor Echo's own look is
 the free default, always owned, and the way back. They never change gameplay and never reach a run's `Loadout`.
 - *Data:* `data/shop/catalog.json` has `default_cosmetic` (Echo's own look: id, name, text, colour) and `cosmetics`, the
   outfits in shop order (`ShopCatalog.cosmetics`, `default_cosmetic`, `cosmetic(id)`; `ShopCosmetic`: id, name, text,
@@ -33,6 +33,22 @@ the free default, always owned, and the way back. They never change gameplay and
   `add_outfit()`, `wear_outfit()` which refuses an unowned one, `worn()`), written in `to_dict()`. The save version is
   unchanged: an older save has neither field and loads as nothing owned, Echo worn, and a save that wears what it doesn't own
   (edited by hand) or a damaged field loads as Echo's own look.
+- *Net worth* (M4; owner, October 18, 2026, item 980; GDD §6, §8): **buying an outfit doesn't lower it.** `App.buy_cosmetic`
+  pays through `Profile.spend_on_cosmetic()`: the wallet loses the price and the earned part spent is added to
+  `Profile.cosmetic_spent`, so `net_worth()` (the leaderboard's value, what `App` submits after a run and the shop's NET WORTH
+  label) is `earned + cosmetic_spent`; bought credits are never in it. `lifetime_spent` still counts the purchase.
+  **An outfit spends the earned credits first, then bought ones** (an item spends bought credits first): that follows from item
+  980. With the bought credits first, an outfit would leave earned credits in the wallet for the next item to spend, and the
+  outfit would lower the net worth after all (earned 2,000 and bought 3,000: Rex, then a 1,500 item leaves 500, where the item
+  alone leaves 2,000); earned first, the bought credits are what the item spends and both leave 2,000. *Old saves:*
+  `cosmetic_spent` is a new field with a default and the version is unchanged (as the outfits were); a save without it (or with
+  a damaged one) works it out when it loads (`Profile._owned_outfits_cost`): the catalog prices of the outfits it owns, never
+  more than its `lifetime_spent` and never more than the earned credits it has spent (`lifetime_earned - earned`), so the
+  owner's own save, which paid with earned credits, gets exactly what it paid back in its net worth, and the net worth given
+  back never goes past `lifetime_earned`. A save from before the outfits has none and gets 0. The old buy spent bought credits
+  first (mobile) and a save can't say which credits paid what, so an outfit paid with bought credits there gets back only what
+  the earned spending reaches: possibly less than it cost, never bought credits in the net worth. An outfit won rather than
+  bought (later) never reaches `spend_on_cosmetic`, so it adds nothing.
 - *Flow:* screens only call `App.buy_cosmetic(id)` (once, with enough credits, never the free default; plays
   `ui_buy`; it is not worn yet) and `App.wear_outfit(id)` (owned only; `ui_equip`), both saved and followed by
   `profile_changed`. `App.sync_outfit()` makes `PlayerOutfits.worn` (what every new `PlayerAvatar` wears) the profile's
@@ -40,9 +56,48 @@ the free default, always owned, and the way back. They never change gameplay and
 - *The shop:* `ShopScreen` has a COSMETICS section after the breakable items (before the credit packs), a `CosmeticCard`
   (`scripts/ui/widgets/cosmetic_card.gd`, `shop.cosmetic_cards`) for Echo's own look and each outfit. Its one button follows
   the state: the price (disabled, with "NOT ENOUGH CREDITS", when the wallet is short), WEAR once owned, TAKE OFF on the worn
-  one (Echo's own card says WORN and can't be taken off). It is the same card as an item's (the theme's `ItemCard` sizes) with
-  the jacket icon (`IconFactory` `outfit`) in the outfit's colour. The web demo and the mobile shop show it too.
-- *Tests:* `test_cosmetics` (the profile, old saves, the save file, buying, wearing, the shop's cards) and `test_outfits`.
+  one (Echo's own card says WORN and can't be taken off). It is an item card's look (the theme's `ItemCard` frame, fonts and
+  button, about the same height) 1.4 times as wide (`CosmeticCard.WIDTH_FACTOR`), so the picture has its room: **the runner
+  wearing the outfit** (item 982) where an item has its icon, as tall as the text beside it. The web demo and the mobile shop show it too.
+  *Keyboard and D-pad:* left and right on a card's button go to the previous and next card in shop order (along the row, then
+  on to the next one; they stop at Echo and at Party Wolf), set in `ShopScreen._link_cosmetic_cards()`: the cards are wider than
+  the items', and Godot's own nearest-button search jumped to the items above and below. Up and down are left to that search:
+  they find the card above or below, the items above the first row, nothing below the last. `test_cosmetics` drives `ui_left`,
+  `ui_right`, `ui_up` and `ui_down` over the six cards at 1280x720, 1706x720 and a phone held either way.
+- *The previews* (M4; owner, October 18, 2026, item 982; `scripts/ui/widgets/outfit_preview.gd`, `outfit_stage.gd`,
+  `outfit_stills.gd`): the picture is an `OutfitPreview`, the runner in a run pose turned three-quarters to the camera on a
+  little lit stage (a pedestal, a backdrop, two lights, no shadows), no power-ups on. **At rest it is a still**: `OutfitStills`
+  draws each outfit once per pixel size on one shared `OutfitStage` (a `SubViewport` with a world of its own and a
+  `PlayerAvatar` built for the outfit), reads it back as a texture and keeps it for the session, one picture every four frames.
+  **The pictures are drawn lazily:** a preview asks for its still only when it is on show or about to be (within a fifth of
+  the scroll view's height of it, `OutfitPreview.VIEW_MARGIN`, checked when the list scrolls or its content changes), so a shop
+  opened on its power-ups builds no avatar and draws no viewport at all and the Cosmetics' six pictures are drawn as the
+  section scrolls into view; from the second visit they cost nothing (the shop is shown after every death). A request
+  nobody wants when its turn comes (the card closed, a size the window has left) is dropped at once, without the wait between
+  pictures, so a burst of stale ones never holds up the ones that count. **The card the pointer is over or the focus is on runs
+  and turns:** `ShopScreen` keeps the cards that have either (`CosmeticCard.interest_changed`) and makes the latest one's
+  preview live (`set_preview_live`), so there is one live preview at most; it builds its own stage the first time (one
+  avatar, one viewport drawn every frame), and a stopped stage is kept for the next hover only for the latest preview (another
+  one stopping frees the older). The live runner turns all the way round, so the camera is far enough back (3.6 m) for a
+  long coat's tails and the trailing leg to clear the frame side-on. The render is the card's size in pixels times the
+  screen's scale (at most 2x), so a phone's magnified menu stays sharp and a dense screen is no dearer. Where nothing draws (the
+  headless tests) the queue still runs and finishes with no texture, and a stage that is not live does not process.
+  *Cost* (`tools/measure/shop_preview_cost.gd`, measured under Xvfb with Mesa's llvmpipe, a software rasteriser on four CPUs,
+  so read the times against the same run on main, not against a phone; 1280x720, Camo's card focused for the live preview):
+  opening the shop costs what main's does (the call 22 to 39 ms, no picture drawn); the cards at rest add no draw call and no
+  frame time; one live preview adds 20 draw calls and about 1,900 triangles and, in software, about 8 ms a frame on both
+  renderers (all six live at once were 72 to 78 ms against 30, which is why only one runs); when the Cosmetics first scroll
+  into view the six pictures are drawn one every four frames, each about 50 to 95 ms on top of its frame here (the outfit's
+  meshes, the avatar, the draw and the read-back), and the first also pays the body shader's first compile on the 3D side (about
+  1.3 s in software on Forward+, 0.2 s on Compatibility; a real GPU compiles it far faster, and a first run would pay it anyway).
+  Looked at on both renderers at 1280x720 and on phones (844x340 and 390x844): `build/m4/` (not kept in the repo),
+  `tools/showcase/screens_showcase.tscn -- --screen=shop --scroll-end [--focus-outfit=<id>] [--hover-outfit=<id>[:button]]
+  [--phone --flavor=web_demo]`, with `--rendering-method gl_compatibility` for the other renderer.
+- *Tests:* `test_cosmetics` (the profile, old saves and their net worth, the save file, buying and the net worth it keeps,
+  the leaderboard value after a run, wearing, the shop's cards and their previews: one per card in its outfit, a still at rest,
+  none drawn until the section is scrolled to, then each once, one live at most, one stopped stage kept, the stage cheap and
+  power-up-free, stale requests dropped, a late picture fading in; keyboard and D-pad navigation over the cards) and
+  `test_outfits`; `test_economy` covers `spend_on_cosmetic` (earned credits first, net worth neutral).
 
 **Approved early-economy revision (October 3, 2026; pre-density earnings snapshot).** The owner's answers in
 `docs/USER_REQUESTS.md` supersede the historical R7 early-affordability assumption: City 1 stays
