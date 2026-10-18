@@ -5,7 +5,7 @@ extends Resource
 ## Values marked DESIGN-TBD are placeholders, not design decisions (see docs/OPEN_QUESTIONS.md).
 
 @export_group("Lanes")
-## GDD §3: 3 lanes on mobile, 5–6 on PC. DESIGN-TBD: the exact PC count is open (OPEN_QUESTIONS §8).
+## GDD §3: 5 lanes on PC and 5 on mobile (owner, October 18, 2026), kept as two settings so either can change later.
 @export_range(3, 8) var lanes_pc: int = 5
 @export_range(3, 8) var lanes_mobile: int = 5
 

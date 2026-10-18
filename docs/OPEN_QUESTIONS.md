@@ -27,7 +27,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 |---|---|
 | 766 | Ceilings in the levels are too safe (owner, October 10, 2026): should a level keep at least one safe lane where a ceiling ends, and leave the rest free to hold gaps, hazards or enemies? A change to the generator's rules (GDD §3, Safe landing zone). |
 | 828 | The web demo's music on phones: keep it as samples (about 52–60 MB a song in memory, a stop of 0.3–3 s when one starts), stream it (no memory cost, but it may crackle on a slow phone), or ship lighter songs for the web? Needs a try on a real iPhone. |
-| 837 | No treasure stash on 3 or 4 lanes, so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
+| 837 | No treasure stash on 3 or 4 lanes (since October 18, 2026 no platform runs 3, so it matters only if one goes back), so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
 | 838 | GDD §3 calls the return pad the only way into a stash, but the dash smashes in and a wall-jump can land on a stash wall and step down. Allow both as skill routes, or block them? |
 | 848 | The economy's payouts: held at 100 + 25 a level and a flat 500 per boss (77% of a City 3 finish, 46% of a Dead Zone 1 finish) while I7 re-placed the prices. Change them, or keep them? |
 | 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
@@ -58,7 +58,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
   neighbouring lanes alongside) would close every floor lane on 3 lanes, and on 4 it puts a wall in an outermost lane,
   where a wall runner's body reaches and where one dropping off the wall lands.
   **Placeholder:** a stash only in an inner lane with inner lanes either side (`treasure_stash_rules.gd`, `lanes_for`):
-  lane 3 of 5, lane 3 or 4 of 6; none on mobile's 3 lanes. Alternatives: an outermost-lane stash walled on one side by
+  lane 3 of 5, lane 3 or 4 of 6; none on 3 lanes (mobile's count until October 18, 2026, when the owner set it to 5 like PC). Alternatives: an outermost-lane stash walled on one side by
   doodads and on the other by the side wall (with a sign along it, so no wall run drops in), or a shorter stash.
 838. **Other ways into a stash.** GDD §3 calls the return pad "the only way in".
   **Placeholder (nothing blocks these):** the dash (H5) smashes the doodad across the stash's lane and runs in

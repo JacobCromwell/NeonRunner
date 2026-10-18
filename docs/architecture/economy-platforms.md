@@ -105,7 +105,7 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   (1.8 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
   along the way owns only part of it after one playthrough. Every completion pays again, so the rest is about 22
   replays of a level that pays 1,000 (18 if the first playthrough's boss payouts are counted).
-- *Mobile.* 3 lanes hold no stash and about 20% fewer credits than 5 (14,886 for a typical player's levels, 18,886
+- *Mobile* (measured when mobile ran 3 lanes; since October 18, 2026 it runs 5, like PC, so this reading needs a fresh `tools/measure/economy.gd` run). 3 lanes hold no stash and about 20% fewer credits than 5 (14,886 for a typical player's levels, 18,886
   with the bosses; the mobile catalog is 37,900 without slow time), so a tier first fits up to two levels later
   (Armor I at City 2, Armor IV at level 17) and the Heavy missile is out of reach on the levels alone, in reach
   after Golden 1 on the "+boss" reading. Nothing is needed to progress (GDD §8), and a $0.99 pack (1,000) is 1.3
@@ -176,7 +176,7 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
   the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
   resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
-  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints.
+  engine's `web_android` and `web_ios` tags): mobile's lane count (5 since October 18, 2026), the touch layout and hints.
 - *The page's covers* (`html/head_include` in the preset: a style and a script that defines `window.neonPage`;
   DESIGN-TBD, `docs/questions/e2.md` and `l1.md`). Only a phone (a coarse pointer and a screen whose short
   side is 520 CSS pixels or less: a desktop's touch screen is not one) is covered. There are two covers:
