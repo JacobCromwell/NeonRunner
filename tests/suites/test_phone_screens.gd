@@ -62,6 +62,7 @@ func run() -> void:
 				" on a %dx%d screen" % [screen_css.x, screen_css.y] if screen_css != Vector2i.ZERO else ""]
 			await _every_screen(tag, ratio / shown, bool(phone[2]))
 	UiScale.screen_size_override = Vector2.ZERO
+	App.clock_override = -1
 	await _test_lifecycle()
 	await _test_embed_scale()
 	await _test_page_safe_area()
@@ -101,6 +102,21 @@ func _every_screen(tag: String, ratio: float, sideways: bool) -> void:
 		["run summary", func() -> void: _result(SampleProfiles.result(false)), &"continue"],
 		["boss results", func() -> void: _result(SampleProfiles.boss_result(true)), &"continue"],
 		["demo end", func() -> void: App.show_demo_end(), &""],
+		# The weekly challenge isn't in the demo (task N5): its screens are laid out as the full game has them.
+		["title, full game", func() -> void: _full_game(App.show_title), &"continue"],
+		["weekly, locked", func() -> void: _full_game(func() -> void: App.show_weekly()), &"play"],
+		["weekly", func() -> void: _full_game(func() -> void:
+			App.profile.record_run("city/boss", 0, true, 9000, 3, 90.0)
+			App.show_weekly()), &"play"],
+		["weekly, not open yet", func() -> void: _full_game(func() -> void:
+			App.profile.record_run("city/boss", 0, true, 9000, 3, 90.0)
+			App.show_weekly(), App.weekly.epoch_unix - 3 * 86400), &"play"],
+		["weekly, clock behind", func() -> void: _full_game(func() -> void:
+			App.profile.record_run("city/boss", 0, true, 9000, 3, 90.0)
+			App.profile.weekly["high_water"] = 40
+			App.show_weekly()), &"play"],
+		["weekly results", func() -> void: _full_game(func() -> void: _result(_weekly_result(true))), &"continue"],
+		["weekly run summary", func() -> void: _full_game(func() -> void: _result(_weekly_result(false))), &"continue"],
 	]
 	for entry: Array in screens:
 		(entry[1] as Callable).call()
@@ -146,6 +162,43 @@ func _result(r: RunResult) -> void:
 	var s := ResultsScreen.new()
 	s.result = r
 	App.show_screen(s)
+
+
+## Builds a screen the web demo doesn't have as the full game's build would (the weekly challenge, its title
+## button), then goes back to the demo. The weekly challenge counts weeks by `clock` (UTC unix seconds; by default a day
+## into week 3, an open week), not by the real date.
+func _full_game(build: Callable, clock: int = 0) -> void:
+	App.clock_override = clock if clock > 0 else App.weekly.week_start(3) + 86400
+	BuildFlavor.set_override(BuildFlavor.Kind.FULL_PC)
+	Platform.configure_for(BuildFlavor.Kind.FULL_PC)
+	build.call()
+	BuildFlavor.set_override(BuildFlavor.Kind.WEB_DEMO)
+	Platform.configure_for(BuildFlavor.Kind.WEB_DEMO)
+
+
+## A weekly challenge result for the results screen: week 3's first clear (or a death in it).
+func _weekly_result(completed: bool) -> RunResult:
+	var week: WeeklyWeek = App.weekly.week(2)
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.WEEKLY
+	ctx.weekly = week
+	ctx.weekly_board = App.weekly_board_id(week)
+	ctx.config = App.weekly.build_config(App.campaign, week)
+	ctx.tuning = App.tuning
+	ctx.loadout = App.make_weekly_loadout()
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = completed
+	r.time = 121.3 if completed else 47.2
+	r.distance = 3100.0 if completed else 1180.0
+	r.score = 14300 if completed else 3900
+	r.cause = "" if completed else "Cyborg"
+	r.stats = {"kills": 14, "stomps": 6, "blocked": 2, "ramps": 3, "longest_wall_run": 41.0}
+	r.completion_bonus = App.weekly.first_clear_credits if completed else 0
+	r.credits_earned = r.completion_bonus
+	r.record = {"weekly": true, "first_clear": completed, "new_best": completed, "board": ctx.weekly_board,
+		"submitted": completed, "best": r.score if completed else 0, "paid": r.credits_earned}
+	return r
 
 
 # --- One screen -----------------------------------------------------------------------------

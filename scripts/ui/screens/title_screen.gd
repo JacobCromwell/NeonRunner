@@ -46,10 +46,17 @@ func _ready() -> void:
 	if not BuildFlavor.is_demo():
 		# DESIGN-TBD: endless mode isn't part of the web demo (GDD §2: the demo is Zone 1 and its boss).
 		entries.append(["endless", "ENDLESS", &"infinity", App.start_endless])
+		# The weekly challenge (GDD §6): also not in the demo (no leaderboards there). Locked until the Neon City's
+		# boss is beaten; its screen says so rather than the button being dead. DESIGN-TBD (docs/questions/n5.md, 16):
+		# the title is the only way in, and a new week isn't announced.
+		entries.append(["weekly", "WEEKLY", &"lock" if not App.weekly_unlocked() else &"trophy", App.show_weekly])
 	entries.append(["shop", "SHOP", &"store", func() -> void: App.show_shop()])
 	entries.append(["settings", "SETTINGS", &"settings", func() -> void: App.show_settings()])
-	# Two buttons a row (a phone held sideways: all of them in one); a lone last button takes the whole row.
-	var per_row: int = entries.size() if short else 2
+	# Two buttons a row (a phone held sideways: all of them in one, or two rows when there are too many for the
+	# width: the weekly challenge made five); a lone last button takes the whole row.
+	var per_row: int = 2
+	if short:
+		per_row = entries.size() if entries.size() <= 4 else ceili(entries.size() / 2.0)
 	var row: HBoxContainer
 	for i: int in entries.size():
 		if i % per_row == 0:

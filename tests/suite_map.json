@@ -22,7 +22,7 @@
     "resonator", "bad_dream", "buzz_overdrive", "barnacle_turret", "tithe_collector", "enforcer_truck",
     "enforcer_truck_runs", "wide_gaps", "charge_paths", "host_releases", "dash_walls", "beach_levels",
     "mecha_guppy_climb", "mecha_guppy_bait", "mecha_guppy_tunables", "mecha_guppy_top", "mecha_guppy_whole",
-    "wall_run_gaps", "buzz_company"
+    "wall_run_gaps", "buzz_company", "weekly_fairness"
   ],
   "medium": [
     "golden_convergence_magnate", "golden_convergence_slash", "golden_convergence_storm",
@@ -32,9 +32,20 @@
     "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache", "volleyball",
     "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite", "mecha_guppy_bite_water",
-    "zone_shaders"
+    "zone_shaders", "weekly_challenge"
   ],
   "rules": [
+    {"match": "scripts/weekly/*", "suites": ["weekly_challenge", "weekly_fairness", "app_flow", "screens", "phone_screens", "web_demo"]},
+    {"match": "data/weekly/*", "suites": ["weekly_challenge", "weekly_fairness"]},
+    {"match": "tools/measure/weekly_seeds.gd", "suites": ["weekly_challenge", "weekly_fairness"]},
+    {"match": "scripts/ui/screens/weekly_screen.gd", "suites": ["weekly_challenge", "screens", "phone_screens", "app_flow"]},
+    {"match": "scripts/ui/screens/results_screen.gd", "suites": ["weekly_challenge", "screens", "phone_screens", "ui_kit", "app_flow", "hints", "credit_visibility", "cosmetics"]},
+    {"match": "scripts/ui/screens/title_screen.gd", "suites": ["weekly_challenge", "screens", "phone_screens", "ui_kit", "app_flow", "hints", "credit_visibility", "cosmetics"]},
+    {"match": "scripts/run/run_context.gd", "tier": "merge", "suites": ["weekly_challenge", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
+    {"match": "scripts/run/loadout.gd", "tier": "merge", "suites": ["weekly_challenge", "app_flow", "pickups", "credit_visibility", "theft", "armor", "interactions", "hints", "speed_fx", "fireballs", "perf", "frame_times", "charge_contacts", "volleyball"]},
+    {"match": "scripts/app/app.gd", "suites": ["weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
+    {"match": "scripts/app/profile.gd", "suites": ["weekly_challenge", "app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
+    {"match": "scripts/platform/*", "suites": ["weekly_challenge", "web_demo", "app_flow", "screens"]},
     {"match": "scripts/world/level_generator.gd", "tier": "full"},
     {"match": "scripts/world/track_builder.gd", "tier": "full", "suites": ["sign_armor"]},
     {"match": "scripts/world/level_layout.gd", "tier": "full"},
@@ -140,7 +151,6 @@
     {"match": "scripts/minigames/*", "suites": ["volleyball", "app_flow", "hints", "screens", "beach_outro"]},
     {"match": "scripts/cinematics/*", "suites": ["cinematics", "city_outro", "city_intro", "sewer_swarm_intro", "dead_zone_intro", "gangland_outro", "beach_outro", "marketplace_intro", "app_flow", "gangland_intro", "casino_boss_intro", "casino_intro"]},
     {"match": "scripts/audio/*", "suites": ["audio", "web_demo"]},
-    {"match": "scripts/platform/*", "suites": ["web_demo", "app_flow", "screens"]},
     {"match": "scripts/input/*", "suites": ["movement", "screens"]},
     {"match": "scripts/app/*", "suites": ["app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
     {"match": "scripts/ui/*", "suites": ["screens", "phone_screens", "ui_kit", "app_flow", "hints", "credit_visibility", "last_hit_warning", "cosmetics"]},
