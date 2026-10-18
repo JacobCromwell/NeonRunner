@@ -247,10 +247,11 @@ func _test_campaign() -> void:
 
 ## What the passes before the company pass place in `layout`, without its company (and the passes after it: the zone
 ## doodads, which keep their own lane clear the level's spacing past them and so keep off its rows (task L6), the wall
-## fences, which run by a tank with company, the wall gaps, which keep off them, and the credits).
+## fences, which run by a tank with company, the wall gaps, which keep off them, and the credits, with the wall-hop
+## line's record: task N1).
 static func _before_company(layout: LevelLayout) -> Dictionary:
 	var d: Dictionary = layout.to_dict().duplicate(true)
-	for key: String in ["doodads", "wall_fences", "wall_gaps", "credits"]:
+	for key: String in ["doodads", "wall_fences", "wall_gaps", "credits", "wall_hops"]:
 		d.erase(key)
 	for key: String in ["gaps", "fences"]:
 		var kept: Array = []

@@ -162,12 +162,14 @@ enemy takes part like this, opting in for whichever of its attacks count as big:
   Resonator's planned pulses do the same: a pulse held for another type's turn, or for clear floor
   where its wave would meet the player, moves the rest of its visit on; after
   `ResonatorTuning.turn_wait_max` spent waiting for other attacks (waiting for clear floor doesn't
-  count) it drops its remaining pulses and leaves, never before its first. A first pulse overdue by
-  `turn_wait_max` (waiting for either) keeps its place from then on: it also asks while it waits for
-  clear floor (`Resonator._first_overdue`), so another type ready again waits for it and it pulses at
-  the next clear floor (FIX4: before, it lost its place at every floor wait; on Golden 2 at 6 lanes a
-  long Bad Dream chase over a visit's planned pulses, then a drone that stays, took every turn the
-  dense floor left it for 55 s, until the next Resonator's arrival sent it away without a pulse).
+  count) it drops its remaining pulses and leaves, never before its first. A first pulse still owed keeps
+  its place once it has waited `first_pulse_wait_max` (waiting for either; 0, at once): it also asks while
+  it waits for clear floor (`Resonator._first_overdue`), so another type ready again waits for it and it
+  pulses at the next clear floor (FIX4: before, it lost its place at every floor wait; on Golden 2 at 6
+  lanes a long Bad Dream chase over a visit's planned pulses, then a drone that stays, took every turn the
+  dense floor left it for 55 s, until the next Resonator's arrival sent it away without a pulse. Task N1:
+  the threshold was `turn_wait_max`, 8 s, and on Golden 1 at 5 lanes a drone that stays took the turn in
+  every stretch of clear floor a visit had before then, so it left without a pulse; DESIGN-TBD, item 350).
 - **An attack that can't wait** because the player sets it off (the Bad Dream bursts out of a killed
   host, its chase begun by the runner; one shot down ahead lurks first, reporting nothing) or the generator
   planned its moment still reports itself: the others wait for it. It can

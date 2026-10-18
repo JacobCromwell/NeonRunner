@@ -18,10 +18,14 @@ extends TestSuite
 ##   under it, jumping, is never touched; armor gets an unsafe pad's rider through; an EMP switches its fences off; a
 ##   heli drone that outlived its pads holds its barrages through the pick, and its safe pad hurls it;
 ## - a treasure stash, on real physics (excerpts at 5 and 6 lanes): a floor runner switching toward it from every lane,
-##   before it or alongside it, never gets in and takes none of its credits, nor pulls one with the top magnet; the
-##   return pad's rider (switching to its lane on the ceiling) drops in, never pushed, collects every credit (into the
-##   run's credits and score, not the stars' best score) and runs out of its open end; a rider who stays on in another
-##   lane drops beyond it; the dash smashes in (H5; items 836–845 (docs/OPEN_QUESTIONS*.md));
+##   before it, in the space between its two doodads or alongside it, never gets in and takes none of its credits, nor
+##   pulls one with the top magnet; the return pad's rider (switching to its lane on the ceiling) drops in, never
+##   pushed, collects every credit (into the run's credits and score, not the stars' best score) and runs out of its
+##   open end; a rider who stays on in another lane drops beyond it; a dash at it from the floor (head-on, early or
+##   late, or beside its outer doodad steering in near its end) smashes no more than that outer doodad and never gets
+##   in, while a floor runner who goes around the outer doodad and dashes through the second one gets in (the owner,
+##   October 18, 2026: "a doodad, a space, then a second doodad ... a floor runner can still get in that way; it is
+##   just harder"; H5; items 836–845 (docs/OPEN_QUESTIONS*.md));
 ## - the track builds a ceiling fence as an electrical hazard hanging below the underside and a return pad as a
 ##   trigger on it, turned to face the floor; every skin dresses both (the fence's field in the zone's fence
 ##   materials, whose shader honours Reduced flashing; the return pad as its anti-grav pad); the chase camera stays
@@ -114,7 +118,7 @@ static func _excerpt(layout: LevelLayout, h: Dictionary, shift: float, pads: boo
 	var stash: Dictionary = {}
 	if not s.is_empty():
 		stash = s.duplicate(true)
-		for key: String in ["start", "end", "walls_from", "pad", "hull_start", "keep_from", "keep_to"]:
+		for key: String in ["start", "front", "end", "walls_from", "pad", "hull_start", "keep_from", "keep_to"]:
 			stash[key] = float(s[key]) + shift
 		out.stashes.append(stash)
 		out.return_pads.append({"lane": int(s["lane"]), "at": float(s["pad"]) + shift})
@@ -175,6 +179,43 @@ func _drive_world(world: RunWorld, seconds: float, each: Callable) -> Dictionary
 	out["best"] = world.score.max_credit_score
 	out["magnet"] = world.credits.magnet_radius
 	return out
+
+
+## One dash at a treasure stash in excerpt `layout`, on a copy (a smashed doodad stays smashed in the layout it was
+## built from: DashBreakable.smash): from `start_lane`, dashing once (its cooldown is longer than the stash) at track
+## distance `at`, and while it dashes steering toward `lane` when `steer` isn't 0. _drive's result, with outer_smashed
+## and front_smashed: whether the stash's doodads in `lane` starting at `outer_start` and `front_start` were smashed.
+func _stash_dash(layout: LevelLayout, mt: MovementTuning, start_lane: int, seconds: float, at: float, steer: int,
+		lane: int, outer_start: float, front_start: float) -> Dictionary:
+	var copy: LevelLayout = layout.copy()
+	var dashed: Array[bool] = [false]
+	var dash := func(p: Player) -> void:
+		if p.distance >= at and not dashed[0]:
+			dashed[0] = true
+			RunSim.act(p, &"dash")
+		if steer != 0 and p.dashing and p.lane != lane:
+			p.press(&"move_right" if steer > 0 else &"move_left")
+	var r: Dictionary = await _drive(copy, mt, start_lane, seconds, dash)
+	r["outer_smashed"] = false
+	r["front_smashed"] = false
+	for d: Dictionary in copy.doodads:
+		if int(d["lane"]) != lane or not bool(d.get("smashed", false)):
+			continue
+		if absf(float(d["start"]) - outer_start) < 0.01:
+			r["outer_smashed"] = true
+		elif absf(float(d["start"]) - front_start) < 0.01:
+			r["front_smashed"] = true
+	return r
+
+
+## How many frames of `trace` (_drive's) the runner spent on the floor in `lane` between track distances `from` and `to`.
+static func _inside_frames(trace: Array, from: float, to: float, geo: TrackGeometry, lane: int) -> int:
+	var n: int = 0
+	for x: Dictionary in trace:
+		if String(x["surface"]) == "floor" and float(x["d"]) > from and float(x["d"]) < to \
+				and absf(float(x["x"]) - geo.lane_x(lane)) < geo.lane_width * 0.5:
+			n += 1
+	return n
 
 
 ## A driver (_drive's `each`) that does nothing.
@@ -321,8 +362,8 @@ func _test_campaign() -> void:
 
 ## Task I4's review (item 844): a treasure stash's credits never count in the stars' best score
 ## (LevelLayout.star_credit_value, ScoreKeeper.max_credit_score), so every campaign build's three-star line is reached
-## without its stash: the level's other credits alone clear it. (Collected, they count in the run's credits and score:
-## _ride_stash.)
+## without its stash: the level's other credits alone clear it (those of a line of wall-hop credits, task N1, are out of
+## it too). (Collected, they count in the run's credits and score: _ride_stash.)
 func _test_stars() -> void:
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	var shares: Array[float] = []
@@ -330,13 +371,16 @@ func _test_stars() -> void:
 		for pick: Dictionary in (found[STASH] as Dictionary).get(lanes, []):
 			var layout: LevelLayout = pick["layout"]
 			var stash: int = 0
+			# Task N1: a line of wall-hop credits' high-value ones are out of it too (test_wall_hops).
+			var wall_hop: int = 0
 			for c: Dictionary in layout.credits:
 				stash += int(c["value"]) if c.has("stash") else 0
-			var without: int = layout.total_credit_value() - stash
+				wall_hop += int(c["value"]) if c.has(WallHopPlacement.GEM) else 0
+			var without: int = layout.total_credit_value() - stash - wall_hop
 			var tag: String = "%s at %d lanes" % [pick["id"], lanes]
 			check(stash > 0 and layout.star_credit_value() == without,
-				"%s: the stars' best score (%d) is every credit but its stash's (%d of %d)" % [tag, layout.star_credit_value(), stash,
-				layout.total_credit_value()])
+				"%s: the stars' best score (%d) is every credit but its stash's (%d of %d, and %d of wall-hop credits)"
+				% [tag, layout.star_credit_value(), stash, layout.total_credit_value(), wall_hop])
 			check(rules.stars_for(true, without, layout.star_credit_value()) == 3,
 				"%s: every credit but its stash's clears the three-star line (%d of %d, at %.0f%%)" % [tag, without,
 				layout.star_credit_value(), rules.three_star_share * 100.0])
@@ -697,10 +741,17 @@ func _ride_stash(pick: Dictionary, lanes: int, floor_runners: bool) -> void:
 	var count: int = 0
 	for c: Dictionary in (pick["layout"] as LevelLayout).credits:
 		count += 1 if c.has("stash") and float(c["at"]) >= float(s0["start"]) and float(c["at"]) <= float(s0["end"]) else 0
+	# Its two doodads across its lane (the owner, October 18, 2026: "a doodad, a space, then a second doodad, and then
+	# the treasure"): the outer one at its start, the front one before its treasure.
 	var front_end: float = INF
+	var outer_end: float = INF
 	for d: Dictionary in (pick["layout"] as LevelLayout).doodads:
-		if d.has("stash") and int(d["lane"]) == int(s0["lane"]) and absf(float(d["start"]) - float(s0["start"])) < 0.01:
-			front_end = float(d["end"])
+		if d.has("stash") and int(d["lane"]) == int(s0["lane"]):
+			if absf(float(d["start"]) - float(s0["front"])) < 0.01:
+				front_end = float(d["end"])
+			elif absf(float(d["start"]) - float(s0["start"])) < 0.01:
+				outer_end = float(d["end"])
+	check(front_end < INF and outer_end < float(s0["front"]), "its two doodads across its lane, a space between them %s" % tag)
 	var lane: int = int(s0["lane"])
 	if floor_runners:
 		# Floor runners: no pads (nobody rides), the stash RUN_UP metres along.
@@ -711,8 +762,10 @@ func _ride_stash(pick: Dictionary, lanes: int, floor_runners: bool) -> void:
 		var inside_from: float = front_end + shift + 0.3
 		var inside_to: float = float(s["end"]) - 0.3
 		var seconds: float = (float(s["end"]) + 15.0) / v
+		var space_mid: float = (outer_end + shift + float(s["front"])) * 0.5
 		for start: int in lanes:
-			for from: float in [float(s["start"]) - 12.0, float(s["walls_from"]) + 0.5, (float(s["walls_from"]) + float(s["end"])) * 0.5]:
+			for from: float in [float(s["start"]) - 12.0, space_mid, float(s["walls_from"]) + 0.5,
+					(float(s["walls_from"]) + float(s["end"])) * 0.5]:
 				# Pressing toward the stash's lane every frame from `from` to its open end.
 				var driver := func(p: Player) -> void:
 					if p.distance >= from and p.distance <= float(s["end"]) and p.lane != lane:
@@ -742,12 +795,54 @@ func _ride_stash(pick: Dictionary, lanes: int, floor_runners: bool) -> void:
 				check(is_equal_approx(float(r["magnet"]), top) and int(r["pickups"]) == 0 and bool(r["alive"]),
 					"a floor runner with the top magnet (%.1f m) %s lane %d pulls none of its credits (%d) %s"
 					% [float(r["magnet"]), "pressing toward it from" if pressing else "holding", start, r["pickups"], tag])
-		# The dash smashes in (H5; item 838).
-		var dash := func(p: Player) -> void:
-			if p.distance >= float(s["start"]) - 4.0 and not p.dashing and p.smashes == 0:
+		# The owner, October 18, 2026 (a dash from the floor got in): a dash at the stash smashes its outer doodad and ends
+		# in the space, short of the front one, which pushes the runner out. Head-on in its lane, started early or around
+		# the moment the outer one's push would begin: no more than the outer one smashed, the front one never.
+		var outer_at: float = outer_end + shift
+		var front_at: float = float(s["front"])
+		for ahead: float in [4.0, 1.5, 0.9]:
+			var r: Dictionary = await _stash_dash(layout, mt, lane, seconds, float(s["start"]) - ahead, 0, lane,
+				float(s["start"]), front_at)
+			var inside: int = _inside_frames(r["trace"], inside_from, inside_to, geo, lane)
+			check(inside == 0 and int(r["pickups"]) == 0 and bool(r["alive"]) and int(r["smashes"]) <= 1
+				and not bool(r["front_smashed"]),
+				"a dash in its lane, %.1f m before it, smashes no more than its outer doodad and never gets in (%d smashed, front %s, %d frames inside, %d credits) %s"
+				% [ahead, r["smashes"], "smashed" if bool(r["front_smashed"]) else "standing", inside, r["pickups"], tag])
+		# Beside it, steering into its side near its end: the latest dash start that still smashes it (to 0.2 m, found going
+		# back from 1.2 m before its end; about 1.6 m on real physics, task N1's review) smashes it and not the front one,
+		# and never gets in.
+		for spec: Array in [["steering in near its end", lane + 1, -1], ["steering in from the other side", lane - 1, 1]]:
+			var latest: Dictionary = {}
+			var off: float = 1.2
+			while latest.is_empty() and off <= 3.0 + 0.001:
+				var r: Dictionary = await _stash_dash(layout, mt, int(spec[1]), seconds, outer_at - off, int(spec[2]), lane,
+					float(s["start"]), front_at)
+				if bool(r["outer_smashed"]):
+					latest = r
+					latest["off"] = off
+				off += 0.2
+			var found_it: bool = not latest.is_empty()
+			var inside: int = _inside_frames(latest["trace"], inside_from, inside_to, geo, lane) if found_it else 0
+			check(found_it and int(latest["smashes"]) == 1 and not bool(latest["front_smashed"]) and inside == 0
+				and int(latest["pickups"]) == 0 and bool(latest["alive"]),
+				"a dash beside it, %s, the latest that still smashes the outer doodad (%s m before its end), smashes it and not the front one and never gets in (%s smashed, %d frames inside, %s credits) %s"
+				% [spec[0], "%.1f" % float(latest["off"]) if found_it else "none within 3.0", latest.get("smashes", "-"),
+				inside, latest.get("pickups", "-"), tag])
+			if found_it:
+				print("  %s: a dash beside the outer doodad, %s, smashes it when started %.1f m before its end at the latest"
+					% [tag, spec[0], float(latest["off"])])
+		# ... but a floor runner still gets in, the harder way (GDD §3: "a floor runner can still get in that way; it is
+		# just harder"): past the outer doodad in the lane beside it, into the space, then a dash through the front one.
+		var dashed_in: Array[bool] = [false]
+		var harder := func(p: Player) -> void:
+			if p.distance >= outer_at + 1.0 and p.distance < front_at and p.lane != lane:
+				p.press(&"move_left" if lane < p.lane else &"move_right")
+			if p.lane == lane and p.distance >= front_at - 6.0 and p.distance < front_at and not dashed_in[0]:
+				dashed_in[0] = true
 				RunSim.act(p, &"dash")
-		var r: Dictionary = await _drive(layout, mt, lane, seconds, dash)
-		check(int(r["smashes"]) >= 1 and int(r["pickups"]) > 0, "the dash smashes into the stash (%d smashed, %d credits) %s"
+		var r: Dictionary = await _drive(layout.copy(), mt, lane + 1, seconds, harder)
+		check(int(r["smashes"]) == 1 and int(r["pickups"]) > 0 and bool(r["alive"]),
+			"a floor runner who goes around its outer doodad and dashes through the front one gets in (%d smashed, %d credits) %s"
 			% [r["smashes"], r["pickups"], tag])
 	# The return pad's rider, from the ceiling's first pad, switching to the stash's lane on the ceiling.
 	var own: Array[Dictionary] = CeilingScenarios.pads_under(pick["layout"], pick["hull"])

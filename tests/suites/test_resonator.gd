@@ -776,8 +776,8 @@ func _test_takes_turns() -> void:
 ## The floor here is clear only in two short windows, each falling inside one of the other type's long
 ## attacks, which come one right after another. Waiting for clear floor loses a pulse its place in the
 ## turn queue, so before the fix the other went first again and again and the pulse never came; overdue
-## by turn_wait_max, the first pulse keeps its place: the other's next attack waits for it, and it
-## pulses at the first window, which it now finds free.
+## by first_pulse_wait_max (0: as soon as it waits; task N1, it was turn_wait_max), the first pulse keeps its
+## place: the other's next attack waits for it, and it pulses at the first window, which it now finds free.
 func _test_first_pulse_not_starved() -> void:
 	var w: RunWorld = sim.build_world(RunSim.layout(3, 2400.0), null, null, LevelConfig.new())
 	w.player.setup(tuning, w.geo, 1)
@@ -814,7 +814,7 @@ func _test_first_pulse_not_starved() -> void:
 			var waited: float = 0.0
 			for reason: StringName in [&"turn", &"busy", &"floor"]:
 				waited += float(live.waited_for.get(reason, 0.0))
-			if waited > t.turn_wait_max:
+			if waited > t.first_pulse_wait_max:
 				overdue_at = now
 		await tree.physics_frame
 	w.layout.gaps.erase(block)
@@ -828,7 +828,7 @@ func _test_first_pulse_not_starved() -> void:
 	for s: Array in spans:
 		clash = clash or (first_warning >= float(s[0]) - 0.001 and first_warning <= float(s[1]) + 0.001)
 	check(overdue_at > 0.0 and overdue_at < windows[0].x,
-		"its first pulse is overdue (turn_wait_max of waiting) before the first window (at %.2f s)" % overdue_at)
+		"its first pulse is overdue (first_pulse_wait_max of waiting) before the first window (at %.2f s)" % overdue_at)
 	check(warnings.size() == 1 and first_warning >= windows[0].x - 0.001 and first_warning <= windows[0].y,
 		"an overdue first pulse keeps its place in the turn queue while the floor isn't clear: it pulses at the first window (%.2f s)"
 		% first_warning)

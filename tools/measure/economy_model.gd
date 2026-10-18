@@ -21,7 +21,9 @@ extends RefCounted
 ## mid-ceiling return pad) is optional, on 5 and 6 lanes only (3 and 4 have none) and reachable only by taking a
 ## ceiling route, so a level's stash credits are kept apart ("stash" in a row) and a player's "stash" is the
 ## share of them it takes (1.0, or 0.0 for none). DESIGN-TBD (items 846-850 in docs/OPEN_QUESTIONS*.md): the typical player takes them
-## at its usual share, the weaker one none.
+## at its usual share, the weaker one none. The wall-hop lines' high-value credits (task N1, GDD §7: for a runner who
+## wall hops), also out of the stars' best score, are measured with them (total_credit_value() less
+## star_credit_value()) and taken the same way.
 ##
 ## A walk's two wallets: "wallet" counts the levels and the match only, the reading of the owner's October 3
 ## anchors (measured with "no purchases or boss payouts"), which test_economy pins; "wallet_all" also counts the

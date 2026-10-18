@@ -42,7 +42,11 @@ the street and from above; every shot is a PNG of the viewport in `--out=DIR`, s
 work, `--skin=`, `--lanes=`, `--gap=N`, `--shot=a,b`, `--darkness=X`), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
 treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
 `--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`
-for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), floor cuts
+for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), the wall-hop credits
+(`wall_hop_review`, task N1: a campaign level's own line cut out of its build onto a fresh track in its zone's look and
+speed, `--level=id` (default gangland/1), `--lanes=N`, `--take=hop` (the reference hopper, WallHopPath) or `run` (one
+wall run from the entry), `--camera=game|side` (a still across the street at the high-value credits), `--hitboxes`;
+`tools/measure/wall_hops.gd` prints each zone's line shape and counts the lines per campaign build and zone), floor cuts
 (`floor_cut_review`: the stand-in's warning, charge and the gap it leaves beside a runner who switched
 out, in any zone's look at any lane count and speed, through the game camera or a high one; `--stay`
 for an armor block and the floor's hold, `--kill=D` for a cut stopped where its cause dies,
