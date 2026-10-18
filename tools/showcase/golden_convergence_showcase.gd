@@ -13,7 +13,7 @@ extends Node3D
 ##             segments, a shoulder's pipes blown out, the chest plates parting (later steps' states)
 ##   front     the suit from the runner's eye height, still, as the runner sees it at the far end
 ##   face      a close-up of the calm golden face and its dull red tear
-##   entrance  the fight's start through the run camera: it rises at the far end, the cape unfurls, the chime
+##   entrance  the fight's start through the run camera: it rises at the far end, the cape unfurls, the fanfare
 ##   strafe    through the run camera, the first strafe (V, V, H) with the bot dodging and taking cover
 ##             (--still: the runner stands in the middle lane, god mode)
 ##   buttress  a horizontal pass: the gate, the live line, the lines for show (--cam=side: from beside the track)
@@ -47,7 +47,7 @@ extends Node3D
 ## --script=VVHvVHv (the strafe's passes), --cam=run/side/high, --still, --reduced-flashing, --events, --way=...
 ## (prints each of the boss's events with its frame, for picking frames), --burst (front and face: the chest's
 ## plates burst open, both shoulders' pipes blown out: the later steps' damage states).
-## Frames worth a look (at --fixed-fps 10): entrance 0-55 (the chime at 16); strafe (after the phase's intro):
+## Frames worth a look (at --fixed-fps 10): entrance 0-55 (the fanfare at 16); strafe (after the phase's intro):
 ## the squadron out of the cape from about frame 63, the first pass's warning at 79 and its rake 91-99, the
 ## buttress rising at 110, the second pass's warning at 114 and its rake 126-134, the horizontal pass's warning
 ## at 150 and its sweep 161-175, the squadron back into the cape by 198; buttress and wall: the warning at 79,

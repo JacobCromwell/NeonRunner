@@ -29,8 +29,9 @@ extends SceneTree
 ##                        fall, his defeat (the cables tearing, the screens dying, his death and collapse)
 ##   sfx_bank_enforcer.gd  the Enforcer Truck: its siren (its arrival), a volley's rising whine (the warning)
 ##                        and its laser shots, a rider climbing aboard, its crash into a hole
-##   sfx_bank_golden_convergence.gd  the Golden Convergence: its rise and the cult's chime rung huge and slow,
-##                        the Helidrone Strafe (the squadron out of the cape and back, a pass's whine (the
+##   sfx_bank_golden_convergence.gd  the Golden Convergence: its rise, the entrance's fanfare (deep
+##                        brass breaking up into a distorted reverb), the cult's chime rung huge and slow (now the
+##                        Beach outro's), the Helidrone Strafe (the squadron out of the cape and back, a pass's whine (the
 ##                        warning), its rake and sweep, ricochets, a drone hurled by a pad), the Flying
 ##                        Buttress rising and crumbling; the Fist Slam (the grinding wind-up (the warning),
 ##                        the slam, the floor breaking, the tower toppling) and the Missile Barrage (the

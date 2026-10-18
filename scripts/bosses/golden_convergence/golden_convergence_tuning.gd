@@ -28,14 +28,17 @@ extends Resource
 
 @export_group("The entrance")
 ## DESIGN-TBD (GDD §10, the entrance, proposed: "it rises into view at the far end, its cape unfurling into
-## its cloud. The cult's three-note chime rings out, huge and slow"): the first phase's intro
-## (BossPhase.intro_seconds): it rises from this far below its place over rise_seconds; its cape unfurls
-## from unfurl_at over unfurl_seconds; the chime rings at chime_at.
+## its cloud. The cult's three-note chime rings out, huge and slow"; the owner then replaced the chime, October
+## 18, 2026, with a series of bassy, triumphant trumpets whose last call morphs into a distorted reverb):
+## the first phase's intro (BossPhase.intro_seconds): it rises from this far below its place over
+## rise_seconds; its cape unfurls from unfurl_at over unfurl_seconds; the fanfare (gc_fanfare, 2.45 s)
+## sounds at fanfare_at, and is over well before the intro's end (BossPhase.intro_seconds, 5.5 s), so it never
+## runs into the first attack's warnings.
 @export_range(10.0, 150.0, 1.0, "suffix:m") var rise_depth: float = 60.0
 @export_range(0.5, 10.0, 0.1, "suffix:s") var rise_seconds: float = 3.2
 @export_range(0.0, 8.0, 0.1, "suffix:s") var unfurl_at: float = 1.0
 @export_range(0.3, 8.0, 0.1, "suffix:s") var unfurl_seconds: float = 2.6
-@export_range(0.0, 8.0, 0.1, "suffix:s") var chime_at: float = 1.6
+@export_range(0.0, 8.0, 0.1, "suffix:s") var fanfare_at: float = 1.6
 ## A later phase's intro (GDD §10, proposed: "between phases, the suit reels from the blast for a few
 ## seconds"): it lurches back this far (radians) and recovers.
 @export_range(0.0, 0.6, 0.01, "suffix:rad") var reel_tilt: float = 0.22

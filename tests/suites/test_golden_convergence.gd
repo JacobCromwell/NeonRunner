@@ -16,7 +16,7 @@ extends TestSuite
 ##   glowing; nothing on it glows or passes the hazards' saturation; the cape's shader never glows), its
 ##   handles (the arms telescoping, the hatches opening, the pipes blown out, the plates bursting) and its
 ##   draw budget;
-## - the entrance: it rises at the far end, the cape unfurls, the chime rings, nothing attacks, then the
+## - the entrance: it rises at the far end, the cape unfurls, the fanfare sounds, nothing attacks, then the
 ##   strafe begins;
 ## - the squadron: half the lanes rounded up, the heli drone's model never red, never a target;
 ## - the Flying Buttress: it rises in its lane with its sound, leans toward the nearer edge, its sides bump a
@@ -31,10 +31,10 @@ extends TestSuite
 
 const BOSS_PATH: String = "res://data/bosses/golden_boss.tres"
 const LANES: Array[int] = [3, 5, 6]
-const NEW_SOUNDS: Array[StringName] = [&"gc_rise", &"gc_chime", &"gc_emerge", &"gc_whine", &"gc_rake", &"gc_sweep",
+const NEW_SOUNDS: Array[StringName] = [&"gc_rise", &"gc_fanfare", &"gc_emerge", &"gc_whine", &"gc_rake", &"gc_sweep",
 	&"gc_spark", &"gc_buttress", &"gc_crumble", &"gc_hurl", &"gc_return"]
 ## Its warnings and cues, each the same every time (no pitch variation).
-const WARNINGS: Array[StringName] = [&"gc_whine", &"gc_chime", &"gc_buttress", &"gc_rise", &"gc_emerge"]
+const WARNINGS: Array[StringName] = [&"gc_whine", &"gc_fanfare", &"gc_buttress", &"gc_rise", &"gc_emerge"]
 ## Lit (non-glowing) surfaces stay below this chroma (brightest minus darkest channel; GDD §5, as
 ## test_golden_skin checks the zone's own colours).
 const MAX_SURFACE_CHROMA: float = 0.45
@@ -216,6 +216,10 @@ func _test_slot() -> void:
 	check(varied.is_empty(), "its warnings and cues sound the same every time (no pitch variation: %s)" % ", ".join(varied))
 	var whine: AudioStream = sfx.stream(&"gc_whine")
 	var t: GoldenConvergenceTuning = slot.tuning as GoldenConvergenceTuning
+	var fanfare: AudioStream = sfx.stream(&"gc_fanfare")
+	check(fanfare != null and not list.is_empty() and t.fanfare_at + fanfare.get_length() < list[0].intro_seconds - 0.5,
+		"the entrance's fanfare (%.2f s from %.1f s) is over well before the first phase's intro ends (%.1f s), so it never runs over the first attack's warnings" % [
+			fanfare.get_length() if fanfare != null else 0.0, t.fanfare_at, list[0].intro_seconds if not list.is_empty() else 0.0])
 	check(whine != null and absf(whine.get_length() - t.warning_seconds) < 0.05,
 		"the gatlings' whine lasts the pass's warning (%.2f s)" % (whine.get_length() if whine != null else 0.0))
 	var hints: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/hints/hints.json"))
@@ -446,7 +450,7 @@ func _test_entrance() -> void:
 		and _sounds(boss, &"gc_rise") == 1, "the fight opens on the entrance: the suit rising with its sound, the cape furled")
 	var low: float = boss.suit.global_position.y
 	check(low < t.suit_height - t.rise_depth * 0.5, "it starts far below its place (%.0f m)" % low)
-	var seen := {"attack": false, "targetable": false, "chime_t": -1.0, "risen_t": -1.0, "unfurled_t": -1.0}
+	var seen := {"attack": false, "targetable": false, "fanfare_t": -1.0, "risen_t": -1.0, "unfurled_t": -1.0}
 	await _run(world, 12.0, func() -> bool: return boss.is_vulnerable(), func() -> void:
 		if boss.is_vulnerable():
 			return
@@ -458,9 +462,10 @@ func _test_entrance() -> void:
 			seen["risen_t"] = boss.fight_time()
 		if float(seen["unfurled_t"]) < 0.0 and boss.suit.unfurl >= 0.999:
 			seen["unfurled_t"] = boss.fight_time())
-	var chimes: Array[Dictionary] = _events(boss, &"chime")
-	check(chimes.size() == 1 and absf(float(chimes[0]["t"]) - t.chime_at) < 0.05 and _sounds(boss, &"gc_chime") == 1,
-		"the cult's chime rings out once, %.1f s in (GDD §10, proposed)" % t.chime_at)
+	var fanfares: Array[Dictionary] = _events(boss, &"fanfare")
+	check(fanfares.size() == 1 and absf(float(fanfares[0]["t"]) - t.fanfare_at) < 0.05 and _sounds(boss, &"gc_fanfare") == 1
+		and _sounds(boss, &"gc_chime") == 0,
+		"the deep brass fanfare sounds once, %.1f s in, and not the cult's cheery chime (owner, October 18, 2026)" % t.fanfare_at)
 	check(float(seen["risen_t"]) > 0.0 and float(seen["risen_t"]) <= t.rise_seconds + 0.05,
 		"it has risen into its place by %.1f s (%.2f s)" % [t.rise_seconds, seen["risen_t"]])
 	check(float(seen["unfurled_t"]) >= t.unfurl_at and float(seen["unfurled_t"]) <= t.unfurl_at + t.unfurl_seconds + 0.05,
