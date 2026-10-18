@@ -42,9 +42,9 @@ const CARRIER := Color(0.34, 0.37, 0.24)
 const CARRIER_DARK := Color(0.2, 0.23, 0.14)
 const CARRIER_PATCH := Color(0.46, 0.45, 0.3)
 ## The cyber-arm: worn, dull brass (never Echo's polished gold), dark steel joints, a red and a black cable.
-const BRASS := Color(0.47, 0.39, 0.2)
-const BRASS_DARK := Color(0.27, 0.22, 0.12)
-const BRASS_EDGE := Color(0.6, 0.52, 0.3)
+const BRASS := Color(0.5, 0.43, 0.21)
+const BRASS_DARK := Color(0.28, 0.23, 0.12)
+const BRASS_EDGE := Color(0.62, 0.54, 0.31)
 const JOINT_STEEL := Color(0.18, 0.18, 0.2)
 const CABLE_RED := Color(0.5, 0.12, 0.1)
 const BRASS_SHINE: float = 0.25
@@ -70,9 +70,10 @@ const HEM_BAND: float = 0.075
 const FRONT := OutfitDecals.Face.FRONT
 const BACK := OutfitDecals.Face.BACK
 
-## The coat's back surface (chest joint space) at height y: the upper torso leans in a little.
+## The coat's back surface (chest joint space) at height y: the lower tier is a hair deeper than the upper one,
+## which leans in a little.
 static func _back_z(y: float) -> float:
-	return 0.108 - 0.067 * clampf(y - 0.115, 0.0, 0.15)
+	return 0.1105 if y <= 0.115 else 0.108 - 0.067 * clampf(y - 0.115, 0.0, 0.15)
 
 
 func body_pieces() -> Array[HumanoidPiece]:
@@ -143,13 +144,12 @@ func _carrier(list: Array[HumanoidPiece]) -> void:
 			[0.062, 0.115, 0.036, 0.05, PATCH_GREEN], [-0.06, 0.12, 0.04, 0.04, CARRIER_PATCH],
 			[0.0, 0.215, 0.05, 0.03, CARRIER_PATCH], [-0.02, 0.063, 0.04, 0.02, PATCH_BROWN]]:
 		OutfitDecals.quad(list, &"chest", Vector3(patch[0], patch[1], -0.1175), patch[2], patch[3], patch[4], FRONT)
-	# The harness: a strap down each side of the carrier and a diagonal one across.
+	# The harness: a strap down each side of the carrier, from the shoulders.
 	for side: float in [-1.0, 1.0]:
 		pipe(list, &"chest", Vector3(side * 0.075, 0.262, -0.116), Vector3(side * 0.07, 0.05, -0.118), 0.016, Vector3.FORWARD, STRAP)
 
 
-## The back, which the player sees all game: the camo patches, the dark tubing across the shoulder blades, the
-## stained hem's start under the belt.
+## The back, which the player sees all game: the camo patches and the dark tubing across the shoulder blades.
 func _back(list: Array[HumanoidPiece]) -> void:
 	# The patches (x, y, width, height, colour), tilted to the leaning upper back.
 	for patch: Array in [[-0.085, 0.225, 0.075, 0.05, PATCH_GREEN], [0.07, 0.24, 0.085, 0.04, PATCH_BROWN],
@@ -174,7 +174,6 @@ func _back(list: Array[HumanoidPiece]) -> void:
 	tube.call(at.call(0.03, 0.095), at.call(0.03, -0.05))
 	tube.call(at.call(-0.082, 0.2), at.call(0.07, 0.2))
 	tube.call(at.call(-0.03, 0.03), at.call(0.03, 0.03))
-	# The epaulettes' camo and the collar's back are on the shoulders (see _right_arm, _brass_arm).
 
 
 ## The right arm: the coat's sleeve with its camo patches and epaulette, a strapped cuff, the fingerless glove

@@ -487,8 +487,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Look and sound:**
   - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,
     a gold cybernetic arm and a copper ocular implant; and his outfits from the shop (so far Rex: a magenta
-    leather biker jacket with pink circuit lines and a cyan spine, and a gunmetal and copper cyber-arm; the
-    other four wear a tinted placeholder until they are built)
+    leather biker jacket with pink circuit lines and a cyan spine, and a gunmetal and copper cyber-arm; Camo: a
+    long olive military trench coat with camo patches and dark tubing across the back, over a camo plate carrier,
+    and a dull brass armoured cyber-arm; Beach Master: an open dark teal tropical shirt with a glowing green
+    skull across its back, bare tanned legs and a corroded, cloth-wrapped cyber-arm; the other two wear a tinted
+    placeholder until they are built)
   - the cyborgs: ragged, strung-out gangsters whose whole head is a beat-up CRT television, its screen
     their cold white LED face (calm, aiming, a shocked "O", ERR when defeated), with a backpack cabled
     into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins. Each zone has
@@ -904,8 +907,9 @@ spare (see Tools, above). Covered:
   through the platform layer.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour. Every outfit
-  in the shop's catalog within the same budgets, Echo's size and poses, with the power-ups on top, and Rex's glows;
-  buying, wearing and saving them, and old saves.
+  in the shop's catalog within the same budgets, Echo's size and poses, with the power-ups on top, Rex's glows, Camo's
+  unlit coat and swinging skirt, Beach Master's glowing back print and short hem panels, and the decals they are
+  printed with; buying, wearing and saving them, and old saves.
 - **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
   base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
   face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR

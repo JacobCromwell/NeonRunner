@@ -57,7 +57,7 @@ const SHORTS_PATCH := Color(0.2, 0.21, 0.18)
 const PAD := Color(0.1, 0.1, 0.11)
 const SOLE := Color(0.07, 0.07, 0.07)
 ## The sun-tanned skin of the arms and legs (Echo's face stays his own).
-const TAN := Color(0.72, 0.5, 0.37)
+const TAN := Color(0.65, 0.44, 0.31)
 const GLOVE := Color(0.12, 0.11, 0.1)
 const BEAD_TEAL := Color(0.15, 0.68, 0.66)
 const BEAD_CREAM := Color(0.9, 0.85, 0.7)
@@ -162,7 +162,7 @@ func _back_print(list: Array[HumanoidPiece]) -> void:
 	for x: float in [-0.022, 0.0, 0.022]:
 		OutfitDecals.quad(list, &"chest", Vector3(x, 0.098, z.call(0.098) + 0.002), 0.006, 0.04, SOCKET, BACK, tilt)
 	# The palm fronds: a tuft fanning up and out from the crown's upper left, a few lower down.
-	for frond: Array in [[-0.05, 0.205, 100.0, 0.07], [-0.056, 0.2, 128.0, 0.075], [-0.062, 0.19, 156.0, 0.07],
+	for frond: Array in [[-0.05, 0.2, 104.0, 0.06], [-0.056, 0.2, 128.0, 0.07], [-0.062, 0.19, 156.0, 0.07],
 			[-0.066, 0.172, 184.0, 0.06]]:
 		var angle: float = deg_to_rad(float(frond[2]))
 		var dir := Vector2(cos(angle), sin(angle))
@@ -200,8 +200,9 @@ func _right_arm(list: Array[HumanoidPiece]) -> void:
 	var sleeve := piece(&"upper_arm", PRISM, Vector3(0.108, 0.1, 0.1), Vector3(0.0, -0.03, 0.0), SHIRT, 0.0,
 		{"side": RIGHT, "top_scale": Vector2(1.15, 1.15)})
 	list.append(sleeve)
-	OutfitDecals.on_prism(list, sleeve, Vector2(110.0, 210.0), 0.2, 0.62, CORAL_DARK)
-	OutfitDecals.on_prism(list, sleeve, Vector2(60.0, 130.0), 0.55, 0.9, LEAF)
+	OutfitDecals.on_prism(list, sleeve, Vector2(150.0, 210.0), 0.2, 0.6, CORAL)
+	OutfitDecals.on_prism(list, sleeve, Vector2(100.0, 140.0), 0.45, 0.85, LEAF)
+	OutfitDecals.on_prism(list, sleeve, Vector2(60.0, 100.0), 0.1, 0.4, CORAL_DARK)
 	add(list, &"upper_arm", PRISM, Vector3(0.115, 0.07, 0.125), Vector3(0.012, 0.012, 0.0), SHIRT, 0.0,
 		{"side": RIGHT, "top_scale": Vector2(0.78, 0.82)})
 	# The rolled cuff, then the bare arm.
@@ -230,8 +231,8 @@ func _corroded_arm(list: Array[HumanoidPiece]) -> void:
 		merged(worn, {"sides": 6, "profile": PackedVector4Array([Vector4(-0.045, 1.0, 1.0, 0.0),
 			Vector4(0.012, 0.96, 0.96, 0.0), Vector4(0.05, 0.55, 0.55, 0.0)])}))
 	add(list, &"upper_arm", BAND, Vector3(0.13, 0.0, 0.13), Vector3(0.012, 0.0, 0.0), VERDIGRIS, 0.0,
-		merged(worn, {"sides": 6, "arc": Vector2(-30.0, 120.0), "profile": PackedVector4Array([Vector4(0.012, 1.0, 1.0, 0.0), Vector4(0.05, 0.6, 0.6, 0.0)]),
-			"rotation_degrees": Vector3(0.0, 0.0, 0.0)}))
+		merged(worn, {"sides": 6, "arc": Vector2(-30.0, 120.0),
+			"profile": PackedVector4Array([Vector4(0.012, 1.0, 1.0, 0.0), Vector4(0.05, 0.6, 0.6, 0.0)])}))
 	var plate_a := piece(&"upper_arm", PRISM, Vector3(0.078, 0.085, 0.074), Vector3(0.0, -0.06, 0.0), BRASS, 0.0,
 		merged(worn, {"top_scale": Vector2(1.08, 1.08)}))
 	list.append(plate_a)
@@ -273,7 +274,7 @@ func _corroded_arm(list: Array[HumanoidPiece]) -> void:
 ## A ring of cloth round the arm, `width` across and `height` tall at `y`, tilted `roll` degrees.
 func _wrap(list: Array[HumanoidPiece], segment: StringName, width: float, y: float, height: float, roll: float) -> void:
 	add(list, segment, BAND, Vector3(width, 0.0, width * 0.95), Vector3(0.0, y, 0.0), WRAP if roll > 0.0 else WRAP_DARK, 0.0,
-		{"side": LEFT, "sides": 6, "rotation_degrees": Vector3(roll * 0.4, 0.0, roll),
+		{"side": LEFT, "sides": 5, "rotation_degrees": Vector3(roll * 0.4, 0.0, roll),
 			"profile": PackedVector4Array([Vector4(-height * 0.5, 1.0, 1.0, 0.0), Vector4(height * 0.5, 1.0, 1.0, 0.0)])})
 
 
