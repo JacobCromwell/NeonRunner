@@ -12,3 +12,8 @@ request that is now in the done file.
 ## The shop windows' TVs (October 17, 2026, the owner's answer to item 967)
 
 - [ ] **No feed TVs in the shop windows** (L10). The old CRT sets with the feed's face don't really add much to the level: replace them entirely with different things. Some should be screens with random ads, with the cult emblem flashing every once in a while; others billboards that feel like they fit in the world (GDD §5, Cyborg Viewing Devices).
+
+## Cosmetics: the Rex outfit (October 18, 2026)
+
+- [ ] **A Cosmetics section in the shop** (GDD §8, Cosmetics): after the power-ups. Each cosmetic is bought once with credits and kept forever (saved with the wallet); the player picks one to wear, and Razor Echo's own look is the free default. Cosmetics never change gameplay. The price lives in the shop data.
+- [ ] **The Rex outfit, 3,000 credits** (GDD §8, Cosmetics; brief `docs/art/BRIEF_OUTFIT_REX.md`; reference `docs/art/reference/outfit_rex.webp`): an outfit Razor Echo wears, the first item in the Cosmetics section. No rifle; the glows stay as drawn (an owner exception to the colour rule).

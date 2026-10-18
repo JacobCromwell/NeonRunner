@@ -357,6 +357,18 @@ The shop appears between levels and after every death.
 - **Deferred to post-launch:** throwable dog bone (distracts Octodogs).
 - **Ramps** give speed and score. Immunity comes from items, not ramps *(proposed)*.
 
+### Cosmetics (owner, October 18, 2026)
+
+Looks for the runner that the player **buys in the shop or wins** *(how cosmetics are won is still open)*. They **never change gameplay**: the hitbox, the poses and every size stay the same, and owned power-ups are still added on top.
+- **Their own section of the shop,** after the power-ups. Each cosmetic is **bought once with credits** and kept forever; the player then **picks one to wear**. Razor Echo's own look is the free default.
+- **Outfits for Razor Echo:** a cosmetic dresses Echo; the runner stays Razor Echo. *(Proposed)* Echo's head (face, hair and ocular implant) stays his own, and the outfit shows everywhere the runner appears (gameplay, title screen, cinematics).
+- **No weapons on any outfit,** the same rule as the base look: nothing on the runner may look like a power-up.
+- **Rex** (the first cosmetic, **3,000 credits**): an outfit from the owner's concept sheet `docs/art/reference/outfit_rex.webp`. Build brief: `docs/art/BRIEF_OUTFIT_REX.md`.
+  - **Keep:** the **magenta leather biker jacket** (lapels, zips, belted waist) with its **glowing circuit lines** on the sleeves and shoulders and the **glowing spine line** down the back; a dark tank top with a chain necklace; the **gunmetal and copper cybernetic left arm** with its **glowing shoulder joint**; fingerless gloves; a utility belt with pouches and thigh holsters; **dark, worn cargo pants** with knee straps; **buckled combat boots** trimmed in magenta.
+  - **Leave out:** the **rifle** slung across the back.
+  - **Colours as drawn** (owner, October 18, 2026): the circuit lines glow **pink/magenta**, the spine line **cyan**, the shoulder joint **orange**. This is an owner exception to the colour rule (§5) for this outfit only; the base look and every other use of those glows keep the rule.
+  - *(Proposed)* The back patches are plain shapes with no words; words would be too small to read at gameplay size.
+
 ### Damage reference (shots to kill)
 
 **Laser tier 1** (owner's playtest, September 30, 2026): it has a **shorter range**, and every enemy except the sewer screech takes **two more tier-1 shots** than before. Higher tiers keep their numbers. The tier-1 numbers in this table and in §9 include the change.
@@ -894,7 +906,7 @@ Shared interaction rules apply unless stated otherwise:
   
   **Glow colour:** the copper conduits and the ocular implant are the player's signature glow (replacing cyan), kept soft so bloom never pushes them into gap-edge orange. The enemies' LED faces change from amber to **cold white**, so the player and the enemies never share a glow colour.
   
-  The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. Customization is still open.
+  The gameplay camera sits behind the player, so the **back view matters most**: the coat's copper conduits and the gold arm must read from behind. The silhouette must still read clearly differently from the enemy cyborgs' screen heads. **Customization:** outfits bought or won as cosmetics (§8, Cosmetics; owner, October 18, 2026).
 - **Player scale** (owner feedback after the R1 grey box, September 26, 2026): the player looked too big next to the lanes, walls and ceiling. The player (with its hitbox, jump height and fence heights) is about 75% of the grey-box size; the lanes, walls and ceiling keep their size.
 - **Music** (decided September 26, 2026): code-generated placeholder loops in the same crunchy 16-bit / heavy-metal style as the sound effects, one per zone plus the menus. Any track can later be replaced file by file with commissioned or licensed music. **The music dips when the player dies**, and the level-complete riff plays in each zone's key. **No more generated songs** (decided September 28, 2026): the owner will provide the game's songs later; until then the game keeps the generated tracks it already has, and no new music is generated (a place that needs a song it doesn't have reuses an existing track or plays none). This applies to songs only (owner, October 9, 2026): there is no reason not to make **new sound effects where the existing ones don't cover a moment properly** (a cinematic's included), in the same style.
 - **Explosions** (owner, October 8, 2026): every explosion in the game (the heli drone's crash, the trucks, the Buzz Overdrive, generators, missiles and bosses) is a big, visually impressive **yellow and red fireball**. Reduced flashing softens it.
