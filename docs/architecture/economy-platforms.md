@@ -66,15 +66,17 @@ the free default, always owned, and the way back. They never change gameplay and
   keeps it, stopped, for the next time. The render is the card's size in pixels times the screen's scale (at most 2x), so a
   phone's magnified menu stays sharp and a dense screen is no dearer. A picture nobody still wants when its turn comes (the
   card closed, resized) is skipped. Where nothing draws (the headless tests) the queue still runs and finishes with no texture.
-  *Cost* (`tools/measure/shop_preview_cost.gd`, measured under Xvfb with Mesa's llvmpipe, a software rasteriser, so read the
-  times against the same run on main, not against a phone): the cards at rest add no draw call and no frame time; one live
-  preview adds 20 draw calls and about 1,900 triangles and, in software, 6 to 10 ms a frame on both renderers (six live at once
-  were 44 ms, which is why only one runs); the first shop visit of a session draws its six pictures over about 20 frames
-  (40 to 120 ms each on this machine: the outfit's meshes, the avatar, the draw and the read-back; plus the body shader's
-  first compile, the only thing that costs more on the Compatibility renderer's first frame than on a real GPU's), and a second visit
-  opens in the time main's shop does. Looked at on both renderers at 1280x720 and on phones (844x340 and 390x844): `build/m4/`
-  (not kept in the repo), `tools/showcase/screens_showcase.tscn -- --screen=shop --scroll-end [--focus-outfit=<id>]
-  [--hover-outfit=<id>[:button]] [--phone --flavor=web_demo]` with `--rendering-method gl_compatibility` for the other one.
+  *Cost* (`tools/measure/shop_preview_cost.gd`, measured under Xvfb with Mesa's llvmpipe, a software rasteriser on four CPUs,
+  so read the times against the same run on main, not against a phone; 1280x720): the cards at rest add no draw call and no
+  frame time (326 draw calls and 30 ms a frame, as main's shop); one live preview adds 20 draw calls and about 1,900 triangles
+  and, in software, 5 to 8 ms a frame on both renderers (all six live at once were 72 to 75 ms against 30, which is why only one
+  runs); a second shop visit opens in the time main's shop does (the call 28 ms, the first frame 53 ms); the first visit of a
+  session draws its six pictures one every four frames, each about 55 ms on top of its frame here (the outfit's meshes, the avatar,
+  the draw and the read-back), and the first of them also pays the body shader's first compile on the 3D side (about 1.4 s in
+  software on Forward+, 0.26 s on Compatibility; a real GPU compiles it far faster, and a first run would pay it anyway).
+  Looked at on both renderers at 1280x720 and on phones (844x340 and 390x844): `build/m4/` (not kept in the repo),
+  `tools/showcase/screens_showcase.tscn -- --screen=shop --scroll-end [--focus-outfit=<id>] [--hover-outfit=<id>[:button]]
+  [--phone --flavor=web_demo]`, with `--rendering-method gl_compatibility` for the other renderer.
 - *Tests:* `test_cosmetics` (the profile, old saves and their net worth, the save file, buying and the net worth it keeps,
   the leaderboard value after a run, wearing, the shop's cards and their previews: one per card in its outfit, a still at rest,
   one live at most, the stage cheap and power-up-free, the pictures drawn once) and `test_outfits`; `test_economy` covers

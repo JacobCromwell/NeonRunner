@@ -238,7 +238,7 @@ func _update_metrics() -> void:
 	var line: float = font.get_height(font_size) + description_label.get_theme_constant(&"line_spacing")
 	description_label.custom_minimum_size.y = ceilf(line * float(DESCRIPTION_LINES))
 	# The preview is as tall as the text beside it (the heading and the description), in a frame like an icon's with
-	# less room inside, so the card is no taller than an item's.
+	# less room inside, so the picture costs the card no height beyond the description's fourth line.
 	var text_h: float = _heading.custom_minimum_size.y + description_label.custom_minimum_size.y \
 		+ float(_text.get_theme_constant(&"separation"))
 	var frame: StyleBox = get_theme_stylebox(&"icon_frame", &"ItemCard")
