@@ -46,14 +46,16 @@ const OTHER_SEEDS: int = 2
 ## feature, and ceilings and a pad leave the introduction's window no fair spot, nor room to make): checked both
 ## ways, still late, and no wall fits from the feature's start up to it. DESIGN-TBD (docs/OPEN_QUESTIONS.md item 676).
 const LATE_INTRODUCTION_LANES: Array[int] = [5]
-## The build where only the last resort gives a level its wall (DashWallRules.after_doodads: the zone doodads in the
-## way go too): checked both ways. Golden 1 at 3 lanes on seed 7294 since task I4's ceiling scenarios (the one such
-## build among seeds 7000-7449 of Corporate 2 and seeds 7000-7249 of The Hush at 3 lanes, and 7250-7449 of Golden 1),
-## where Corporate 2 at 3 lanes on seed 7101 (the H merge's, with task K4's curve) no longer needs it. DESIGN-TBD
-## (docs/OPEN_QUESTIONS.md item 677). Built without its `without` features: since task J2 a level's later wall-run
-## gaps give way to its walls first (WallRunGapPlacement.set_aside), and none of those seeds needs the last resort with
-## them (Golden 1's own wall-run gaps make the room on seed 7294), so the case is that level without the feature.
-const LAST_RESORT_CASE: Dictionary = {"id": "golden/1", "lanes": 3, "seed": 7294, "without": ["wall_run_gaps"]}
+## The build where only the last resort gives a level its wall (DashWallRules.after_doodads: the enemies and the zone
+## doodads in the way go together): checked both ways. Corporate 2 at 3 lanes on seed 7056 since task L6 (a Buzz
+## Overdrive and a doodad stand in the way of its one fair spot; the one such build among seeds 7000-7059 of Corporate
+## 2, the Dead Zone's and the Golden Zone's levels at 3 lanes). Since task L6 the zone doodads in a wall's way go first,
+## before any feature gives way (DashWallRules._clear_doodads), so the last resort is left for a level where enemies and
+## doodads both stand in every wall's way: Golden 1 at 3 lanes on seed 7294 without its wall-run gaps (task I4's case,
+## where only doodads stood in the way) no longer needs it. A case may leave out features (`without`), as task J2's
+## did: a level's later wall-run gaps give way to its walls before the last resort (WallRunGapPlacement.set_aside).
+## DESIGN-TBD (docs/OPEN_QUESTIONS.md item 677).
+const LAST_RESORT_CASE: Dictionary = {"id": "corporate/2", "lanes": 3, "seed": 7056}
 ## A wall's look is one small mesh: at most this many surfaces and vertices, built (the first time, in a skin whose
 ## materials already exist) in under these milliseconds on average and at most (DESIGN-TBD: measured about 1 ms and
 ## 4000 vertices; the room is for a loaded machine).
@@ -298,12 +300,14 @@ func _test_introduction() -> void:
 				"no other introduction (%s at %.0f m) right at the wall's (%.0f m) %s" % [f, other, first, tag])
 
 
-## The last resort (DashWallRules.after_doodads; item 677): a level that would have no wall at all, even after making
-## room by taking out enemies, gets one by taking out the zone doodads in its way too. LAST_RESORT_CASE, both ways:
-## it has its wall and no warning, every doodad that went stood in the wall's footprint (its push's lead and the
-## spacing past it, DashWallRules.doodad_span), and the rest of the level is as built with no walls (the same enemies,
-## every other doodad); and the other way, on that level with its doodads kept no wall fits anywhere (and no enemy
-## went, so making room with enemies alone found none).
+## The last resort (DashWallRules.after_doodads; item 677): a level that would have no wall at all, even with the zone
+## doodads in the way gone (_clear_doodads, task L6) or after making room by taking out enemies, gets one by taking out
+## the enemies and the zone doodads in its way together. LAST_RESORT_CASE, both ways: it has its wall and no warning,
+## every doodad that went stood in the wall's footprint (its push's lead and a lane switch's room past it,
+## DashWallRules.doodad_span; a row whole), every enemy that went is one the walls may take out (MAKE_ROOM_TYPES) within
+## the walls' spacing of its face, and the rest of the level is as built with no walls (every other enemy and doodad);
+## and the other way, on that level as built with no walls no wall fits anywhere, with its doodads or without them, and
+## taking out enemies alone makes no room.
 func _test_last_resort() -> void:
 	var t: DashWallTuning = DashWallTuning.load_default()
 	var c: Dictionary = LAST_RESORT_CASE
@@ -327,32 +331,56 @@ func _test_last_resort() -> void:
 		tag, gen.warnings])
 	if gen.layout.dash_walls.is_empty():
 		return
+	var face: float = float(gen.layout.dash_walls[0]["start"])
 	var span: Vector2 = DashWallRules.footprint(gen, gen.layout.dash_walls[0], t)
-	var gone: Array[Dictionary] = []
+	var spans: Array[Vector2] = [span]
+	var went: Dictionary = {}
 	for d: Dictionary in plain.layout.doodads:
 		if not gen.layout.doodads.has(d):
-			gone.append(d)
-	var near: bool = not gone.is_empty()
-	for d: Dictionary in gone:
-		var ds: Vector2 = DashWallRules.doodad_span(gen, d)
-		near = near and ds.x <= span.y and ds.y >= span.x
-	check(near and gen.layout.doodads.size() + gone.size() == plain.layout.doodads.size(),
-		"doodads went (%d) and only from the wall's footprint (%.0f-%.0f m) %s" % [gone.size(), span.x, span.y, tag])
-	check(JSON.stringify(gen.layout.enemies) == JSON.stringify(plain.layout.enemies), "the enemies are as built without walls %s" % tag)
+			var key: String = "%d %s" % [int(d["lane"]), var_to_str(d.get("row", d["start"]))]
+			went[key] = bool(went.get(key, false)) or _reaches(spans, DashWallRules.doodad_span(gen, d))
+	var near: bool = not went.is_empty()
+	for key: String in went:
+		near = near and bool(went[key])
+	var kept: bool = true
+	for d: Dictionary in gen.layout.doodads:
+		kept = kept and plain.layout.doodads.has(d)
+	check(near and kept, "doodads went (%d) and only from the wall's footprint (%.0f-%.0f m) %s" % [went.size(), span.x,
+		span.y, tag])
+	var spacing: float = DashWallRules.spacing_for(gen, t)
+	var enemies_went: int = 0
+	var enemies_near: bool = true
+	for e: Dictionary in plain.layout.enemies:
+		if not gen.layout.enemies.has(e):
+			enemies_went += 1
+			enemies_near = enemies_near and DashWallRules.MAKE_ROOM_TYPES.has(String(e.get("type", ""))) \
+				and absf(float(e["at"]) - face) <= spacing
+	var enemies_kept: bool = true
+	for e: Dictionary in gen.layout.enemies:
+		enemies_kept = enemies_kept and plain.layout.enemies.has(e)
+	check(enemies_went > 0 and enemies_near and enemies_kept,
+		"enemies went (%d), each one the walls may take out near the wall, and the rest are as built without walls %s" % [
+		enemies_went, tag])
 	# The other way: on the level as built without walls (the walls draw last, from a stream of their own, so it is
-	# the level the walls met), with its doodads kept no face fits anywhere; and since no enemy went, taking out
-	# enemies alone made no room either: without the last resort the level would have had none.
+	# the level the walls met), no face fits anywhere, with its doodads or with them out of the way (_clear_doodads
+	# found none); and taking out enemies alone (_make_room without the doodads) makes no room: without the last resort
+	# the level would have had none.
 	var plan: DashWallRules.Plan = DashWallRules.plan_for(plain, t, false, false)
-	check(is_nan(plan.best(plan.lo, plan.hi, plan.lo, [])),
-		"with its doodads kept no wall fits anywhere %s; else drop LAST_RESORT_CASE" % tag)
+	var bare: DashWallRules.Plan = DashWallRules.plan_for(plain, t, false, false, false)
+	check(is_nan(plan.best(plan.lo, plan.hi, plan.lo, [])) and is_nan(bare.best(bare.lo, bare.hi, bare.lo, [])),
+		"with its doodads kept or out of the way no wall fits anywhere %s; else drop LAST_RESORT_CASE" % tag)
+	check(not DashWallRules._make_room(plain, plan, plan.lo, plan.hi),
+		"taking out enemies alone makes no room %s; else drop LAST_RESORT_CASE" % tag)
 	LayoutChecks.check_dash_walls(self, gen.layout, config, tag)
 
 
 ## Past an introduction the walls stand after the danger density pass and the zone doodads
 ## (DashWallRules.after_doodads), in the room the passes before them left: in a level that doesn't introduce
-## them, on 3 lanes (the least room) and 5, the danger density pass's report, the fill pass's fillers, the
-## enemies and the doodads are what the level gets with no walls at all (the share of danger the owner asked
-## for holds), and the only pieces the walls cost are holes and fences in their footprints and signs beside them.
+## them, on 3 lanes (the least room) and 5, the danger density pass's report, the fill pass's fillers and the
+## enemies are what the level gets with no walls at all (the share of danger the owner asked for holds), and the
+## only pieces the walls cost are holes and fences in their footprints, signs beside them, and zone doodads in their
+## way (task L6: a level the doodads leave short of its walls takes them out, DashWallRules._clear_doodads; a row
+## goes whole).
 func _test_after_danger_density() -> void:
 	var t: DashWallTuning = DashWallTuning.load_default()
 	for id: String in ["dead_zone/1", "golden/2"]:
@@ -371,12 +399,23 @@ func _test_after_danger_density() -> void:
 				"the danger density pass adds what it adds without them %s" % tag)
 			check(JSON.stringify(gen.fills) == JSON.stringify(plain.fills), "and so does the fill pass %s" % tag)
 			check(JSON.stringify(gen.layout.enemies) == JSON.stringify(plain.layout.enemies), "the enemies are the same %s" % tag)
-			check(JSON.stringify(gen.layout.doodads) == JSON.stringify(plain.layout.doodads), "and the doodads %s" % tag)
 			var spans: Array[Vector2] = []
 			var routes: Array[Vector2] = []
 			for w: Dictionary in gen.layout.dash_walls:
 				spans.append(DashWallRules.footprint(gen, w, t))
 				routes.append(Vector2(float(w["start"]) - t.wall_route_seconds * gen.speed, float(w["end"])))
+			# The doodads: the same but those that went from a wall's way (a row whole: one of its doodads in the way).
+			var doodads_kept: bool = true
+			for d: Dictionary in gen.layout.doodads:
+				doodads_kept = doodads_kept and plain.layout.doodads.has(d)
+			check(doodads_kept, "and the doodads, but those taken out %s" % tag)
+			var went: Dictionary = {}
+			for d: Dictionary in plain.layout.doodads:
+				if not gen.layout.doodads.has(d):
+					var key: String = "%d %s" % [int(d["lane"]), var_to_str(d.get("row", d["start"]))]
+					went[key] = bool(went.get(key, false)) or _reaches(spans, DashWallRules.doodad_span(gen, d))
+			for key: String in went:
+				check(bool(went[key]), "a doodad that went (lane, row or front %s) stood in a wall's way %s" % [key, tag])
 			var kept: Dictionary = {}
 			for g: Dictionary in gen.layout.gaps:
 				kept[["gap", g["start"], g["end"], g["lane"]]] = true
@@ -401,8 +440,8 @@ func _test_after_danger_density() -> void:
 					gone += 1
 					check(_reaches(routes, Vector2(float(s["start"]), float(s["end"]))),
 						"a sign that went (%.1f m) stood beside a wall %s" % [float(s["start"]), tag])
-			print("  dash walls after the danger density pass %s: %d walls, %d pieces taken out" % [tag,
-				gen.layout.dash_walls.size(), gone])
+			print("  dash walls after the danger density pass %s: %d walls, %d pieces and %d doodads taken out" % [tag,
+				gen.layout.dash_walls.size(), gone, plain.layout.doodads.size() - gen.layout.doodads.size()])
 
 
 ## Danger density report `report` (LevelGenerator.danger_density_result) as JSON, without what its wall fence half
@@ -772,7 +811,11 @@ func _test_retry() -> void:
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
 	ctx.config = campaign.configure(campaign.step("corporate/1"), 3)
-	ctx.config.feature_starts["dash_wall"] = 0.0
+	# A copy of its starts: the level resource's own dictionary is shared with every copy of the level (task L6's review:
+	# written into, it moved Corporate 1's walls for every suite after this one in the run, test_campaign's too).
+	var starts: Dictionary[String, float] = ctx.config.feature_starts.duplicate()
+	starts["dash_wall"] = 0.0
+	ctx.config.feature_starts = starts
 	ctx.tuning = tuning
 	ctx.loadout = Loadout.new()
 	ctx.god_mode = true

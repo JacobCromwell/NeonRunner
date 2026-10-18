@@ -31,20 +31,26 @@ const FAIRNESS_ONLY: Array[String] = ["dead_zone/2"]
 ## Builds checked for fairness, as {id, lanes, seed}, where a zone doodad placed after the pass would stand
 ## right past a full row in the only lane the pass's rows leave open, so nothing gets past it: built without
 ## DangerDensity.doodad_ok (DoodadsUnchecked) the floor route through the level breaks there, and with it, it
-## holds. Dead Zone 1 at 3 lanes on seed 9021 (a row of holes at 380-389 m leaves lane 1 open, fences across it at
-## 398 m, a fence in each of lanes 0 and 2 at 406 m, then the doodad in lane 1 at 409 m) since task I4's review (found
-## among about 30 seeded builds of Golden 1 to 3 and Dead Zone 1 without DangerDensity.doodad_ok, seeds 9000 on). The
-## cases before it no longer build that way, so each was re-found rather than dropped: golden/1 at 5 lanes on seed
-## 9002 (task I4's: a row of holes leaving lane 2 open, a full fence row, the doodad in lane 2) lost it with the
-## review's longer treasure stashes, golden/3 at 3 lanes on seed 9019
-## (the H series': rows of holes leaving lane 1 open, a fence in each of lanes 0 and 2, then the doodad in lane 1) lost
-## it with task I4, golden/2 at 3 lanes on seed 9004 (task K5's: a row of holes, a full fence row, the doodad) with
-## the H series' changes, golden/1 at 6 lanes on seed 9003 (a row of holes, the doodad under a ceiling) on the
-## 15-level curve before the Casino, dead_zone/1 at 6 lanes on seed 9007 (task K2's: a fence row the pass touched, a
-## full fence row, the doodad) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case
-## checks it still shows its scenario. Built without its `without` features: since task J2 the level's wall-run gaps
-## take the stretch of its case, so the case is that level without them.
-const ROUTE_CASES: Array[Dictionary] = [{"id": "dead_zone/1", "lanes": 3, "seed": 9021, "without": ["wall_run_gaps"]}]
+## holds. Corporate 1 at 3 lanes on seed 9015 since task L6 (a row of fences across every lane at 3080 m, jumped,
+## then the doodad in lane 0 at 3089 m, where the jump from that lane comes down; the one such build among 630 on
+## seeds 9000-9029 at 3, 5 and 6 lanes: Dead Zone 1 and the Golden Zone's levels without their wall-run gaps, Corporate
+## 1 and 2 and Marketplace 2 with every feature). Since task L6 a doodad keeps the lanes beside it clear from a lane switch's
+## room before its push, which leaves most rows a way around it, so the cases before it no longer build that way;
+## each was re-found rather than dropped: dead_zone/1 at 3 lanes on seed 9021 without its wall-run gaps (task I4's
+## review: a row of holes leaving lane 1 open, fences across it, a fence in each of lanes 0 and 2, then the doodad in
+## lane 1), golden/1 at 5 lanes on seed 9002 (task I4's) lost it with the review's longer treasure stashes, golden/3
+## at 3 lanes on seed 9019 (the H series') with task I4, golden/2 at 3 lanes on seed 9004 (task K5's) with the H
+## series' changes, golden/1 at 6 lanes on seed 9003 on the 15-level curve before the Casino, dead_zone/1 at 6 lanes
+## on seed 9007 (task K2's) on K4's, and golden/1 at 3 lanes on seed 9005 (K4's) with C6e's windows; each case checks
+## it still shows its scenario. A case may be built without features (`without`), as task J2's was: a level's
+## wall-run gaps may take the stretch of its case. Since task L6's review none builds that way: both lanes beside a
+## doodad stay clear from a lane switch's room before its push to well past its end (where a push lands, a jump's
+## included), so a full row just before it keeps it out (Corporate 1's fences at 3080 m reach into that room) and the
+## floor route always has a lane beside it. None among 1,620 builds at 3, 5 and 6 lanes: seeds 9000-9029 of Corporate
+## 1 and 2, Marketplace 1 and 2, the City's 2 and 3, Gangland's, and Dead Zone 1 and the Golden Zone's without their
+## wall-run gaps, and seeds 9030-9059 of Corporate 1 and 2, Marketplace 2 and the Casino's. DangerDensity.doodad_ok
+## stays as the guard; the list is empty until a build shows its case again.
+const ROUTE_CASES: Array[Dictionary] = []
 ## The request, as the actual increase of a band's summed counts with the dial over those without it,
 ## for enemies and for obstacles alike, at each lane count: about 15% in the first levels, about 35%
 ## in the final ones.
@@ -60,9 +66,15 @@ const TOLERANCE: float = 0.05
 ## the track (a row may take two lanes at most), so fewer fit, and there the final band's floor is this much lower: it
 ## lands at about x1.29 for enemies and x1.28 for obstacles over this sample (about x1.33 and x1.30 built without the
 ## feature). By band, then lane count. DESIGN-TBD (docs/questions/j2.md item 12): which request gives way at 3 lanes.
+## The rise from the middle band to the final one may fall short by as much there (task L6's review): the final band
+## lands at its floor's edge and the middle one at about x1.27, a few pieces apart, and the zone doodads, which stand
+## by the side walls more at 3 lanes since the review (the lanes beside a middle-lane doodad are the other two), take
+## a little of the room the wall fences placed after them would have had (x1.260 against the middle band's x1.265;
+## x1.277 against x1.271 before task L6).
 const WALL_RUN_GAP_ROOM: Dictionary = {"late": {3: 0.04}}
 ## The middle zones (the user left them to judgment) land between the first levels' target and the
-## final ones' and above the first band and below the last, at every lane count, for both counts.
+## final ones' and above the first band and below the last (less WALL_RUN_GAP_ROOM), at every lane count, for
+## both counts.
 const MIDDLE_RANGE := Vector2(1.15, 1.35)
 ## The pass adds danger, not pay (its tuning's credit_added_pieces off): a band's credits with the dial
 ## stay within these of those without (measured: x0.92 to x1.01 per band in this sample, the new rows
@@ -85,10 +97,10 @@ var _dd_tuning: Resource
 ## hadn't run; everything else is built as usual.
 class DoodadsUnchecked extends LevelGenerator:
 	func _add_doodads(rng: RandomNumberGenerator, row_rng: RandomNumberGenerator, size: StringName, start: float,
-			count: int, step: float, lane_keeps: Array[Dictionary], walls: Array) -> Array[Dictionary]:
+			count: int, step: float, room: DoodadRoom) -> Array[Dictionary]:
 		var plan: RefCounted = danger_density_plan
 		danger_density_plan = null
-		var entries: Array[Dictionary] = super(rng, row_rng, size, start, count, step, lane_keeps, walls)
+		var entries: Array[Dictionary] = super(rng, row_rng, size, start, count, step, room)
 		danger_density_plan = plan
 		return entries
 
@@ -203,9 +215,11 @@ func _test_density(campaign: Campaign) -> void:
 		var early: Vector2 = ratios["early"][li]
 		var middle: Vector2 = ratios["middle"][li]
 		var late: Vector2 = ratios["late"][li]
-		check(early.x < middle.x and middle.x < late.x, "lanes=%d: enemies rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
+		# Where the final band's floor is lower (WALL_RUN_GAP_ROOM), its rise past the middle band may fall short by as much.
+		var room: float = float((WALL_RUN_GAP_ROOM.get("late", {}) as Dictionary).get(LANES[li], 0.0))
+		check(early.x < middle.x and middle.x < late.x + room, "lanes=%d: enemies rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
 			LANES[li], early.x, middle.x, late.x])
-		check(early.y < middle.y and middle.y < late.y, "lanes=%d: obstacles rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
+		check(early.y < middle.y and middle.y < late.y + room, "lanes=%d: obstacles rise along the campaign (x%.3f, x%.3f, x%.3f)" % [
 			LANES[li], early.y, middle.y, late.y])
 	for id: String in FAIRNESS_ONLY:
 		for lanes: int in LANES:

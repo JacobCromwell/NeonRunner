@@ -17,8 +17,8 @@ extends RefCounted
 ## that aren't the levels' own); the new rows and the rows it clears room for come before it. The fill pass keeps
 ## its spacing from the wider rows as from any piece (more than their margins), the danger density pass's floor
 ## pieces and City 1's extra gaps keep off each one's zone (keep_outs: DangerDensity._index_obstacles,
-## GapDensity._protected), a zone doodad that would reach it is left out (doodad_keep_outs, with the doodads' own
-## spacing before a piece), and the side wall gaps keep off each one on both walls (wall_keep_outs). With
+## GapDensity._protected), the zone doodads keep off each one's zone in every lane (keep_outs, through
+## LevelGenerator.doodad_keep_outs; task L6), and the side wall gaps keep off each one on both walls (wall_keep_outs). With
 ## wide_gaps 0 (quick play, the tests) and in a boss arena it draws nothing and the level is built exactly as
 ## before.
 ##
@@ -336,17 +336,6 @@ static func keep_outs(gen: LevelGenerator, within: float = 0.0) -> Array[Vector2
 	for span: Vector2 in rows_of(gen):
 		var zone: Vector2 = zone_of(gen, t, span)
 		out.append(Vector2(minf(zone.x + within, span.x), maxf(zone.y - within, span.y)))
-	return out
-
-
-## What a zone doodad's window keeps off around each wider gap (LevelGenerator._add_doodads), as Vector2(from,
-## to): from its take-off to the end of its landing margin. Before a piece a doodad keeps the level's spacing
-## already (LevelGenerator._place_doodads: the take-off margin, zone_of), after one only its push's lead.
-static func doodad_keep_outs(gen: LevelGenerator) -> Array[Vector2]:
-	var out: Array[Vector2] = []
-	var t: WideGapTuning = tuning()
-	for span: Vector2 in rows_of(gen):
-		out.append(Vector2(span.x, zone_of(gen, t, span).y))
 	return out
 
 

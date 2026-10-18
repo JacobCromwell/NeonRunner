@@ -160,7 +160,8 @@ share of 0 changes nothing (every piece, enemy, pick and fill stays with a share
 doodad go; City 1's extra gaps, which FIX4 may send elsewhere around a doodad, keep its own gaps and their
 count, task G7; dash walls past an introduction, which come after the doodads, left out of the comparison,
 task H7a), placement over 216 levels at 3, 5 and 6 lanes (every difficulty, with and without every
-built feature, at the highest share: `check_doodads`, `check_layout` and `check_rules`, deterministic),
+built feature, at the highest share: `check_doodads`, lane by lane since task L6 with the floor routes taking the
+pushes, `check_layout` and `check_rules`, deterministic),
 every campaign level's doodads and City 1's gentle start, the rules' keep-outs (a Bad Dream's chase, a
 hover truck's lane) and the enemies' own checks, the track's bodies (never a hazard, a standable top,
 the skin's hook) and every skin's default look (inside its box, never glowing, muted colours); then the
@@ -168,8 +169,15 @@ push on real physics at 3, 5 and 6 lanes (head-on into the lane on its side in e
 ways, quick, with the lean, costing nothing, the body never sinking in; a jump and a slide into one; a
 corner caught mid-switch pushing back the way the player came; a blocked side entry with the clank and
 the bump; landing on its top; a ceiling rider passing over it even mid-jump; a shot passing through it),
-a few of every campaign level's doodads run into at the level's speed and onto safe floor, and a drone
-and a hover truck holding their fire while a doodad is in reach. Then the dash smashing them (task H5),
+a few of every campaign level's doodads run into at the level's speed and onto safe floor (task L6's review: also
+jumped at 0.5 m and 1 m before their fronts, pushed in the air and coming down at least the reaction before the end
+of what the lane beside keeps clear, and one a level and lane count caught at its front corner from the lane on its
+other side, pushed back there), where the generator lets a piece begin beside a doodad or a row (both lanes beside
+it clear until the reaction after a push from its last front), and on real physics at 21 and 25 m/s, with a hole
+there in each lane beside it, every way of being pushed (head-on, jumping 0.5 m and 1 m before it, a caught corner
+on the floor and jumping, a spaced row's last one after the dash ended short of it and past a space) coming down at
+least the reaction (less two physics frames) before the hole, and a drone and a hover truck holding their fire while
+a doodad is in reach. Then the dash smashing them (task H5),
 on real physics: head-on at 3, 5 and 6 lanes in every inner lane, both sides, every size (once, no push,
 the lane kept, no slowdown, broken before the body touches it); a dashing switch into a doodad's side
 (through, no clank; pushed first, then a dash steering back into it, smashed and never sunk into; a dash
@@ -183,13 +191,13 @@ retry builds the same level with it whole, pushing a runner who doesn't dash); e
 colours; two of every campaign level's doodads dashed through at its speed at 3, 5 and 6 lanes; and the
 fairness measure for a runner who dashes through (The generator, Zone doodads). `RunSim` takes a `&"dash"`
 action. Task L3 added rows and the lane by a side wall: rows placed over quick play's level at 3, 5 and 6 lanes
-with every doodad the first of a row (three and four long, never two; small ones touching and medium and large ones
+with every doodad the first of a row (two, three and four long since task L6; small ones touching and medium and large ones
 spaced, every size class, inner lanes and by the walls, `check_row`; none with the chance at 0); the lane by a side
 wall in quick play's level with
 everything that stands on or by a wall (ramps, signs, window cyborgs, vents, hover trucks, wall fences, side wall
 gaps, wall-run gaps, dash walls), `check_wall_lane_doodad` and the wall fences' drop windows, the share drawing
-(none at 0, most at 1); the campaign's rows and doodads by a wall counted (rows now and then, never most of the
-doodads); a spaced row seen whole by the enemies' checks; the track dressing a row in its one look, 5 cm between
+(none at 0, most at 1); the campaign's rows and doodads by a wall counted (task L6: a few rows a level from Gangland
+on, most of what a level places still a doodad alone); a spaced row seen whole by the enemies' checks; the track dressing a row in its one look, 5 cm between
 two boxes one right after the other, one shared mesh in the Marketplace's cards; and on real physics a row pushing
 once and blocking a switch all along it (a runner switching into a space pushed back out), the dash along a row
 (every one it reaches smashed, the next pushing where it ends), a wall runner low on the wall breaking a doodad by
@@ -198,8 +206,8 @@ before it: never a push, never the body inside a standing one), a runner leaving
 jump or a move back toward the lanes 0.25 to 4 m before a lone one or a spaced row's next one, the wall run's own
 end from 5 m before one, at the base speed and 25 m/s: it breaks as the body reaches it, never a push back through
 it), a floor runner by a wall pushed inward and blocked
-from its side, and the campaign's first row and first doodad by a wall of every level run into, dashed into and
-met from the wall. `RunSim` reports `doodad_passes`. The simulated runs of
+from its side, and the campaign's first row and first doodad by a wall of every level run into, dashed into (and,
+task L6's review, jumped at where the dash ended short of one) and met from the wall. `RunSim` reports `doodad_passes`. The simulated runs of
 `test_enemy_director` and `tools/measure/big_attacks.gd` keep their runner in the middle lane: it steps
 back after a doodad's push (`AttackWatch.keep_lane`).
 `test_dash_walls` checks dash walls (task H7a; GDD §9.14): the layout data (no key without them, copy and
@@ -207,8 +215,10 @@ append, a wall a doodad in every lane, broken or not); the generator over every 
 and 6 lanes on its own seed and two others (the level's count on its own seed, at least one on any, no warning,
 every wall fair by `LayoutChecks.check_dash_walls`, the same every build); Corporate 1's introduction right
 after its start at every lane count, alone, and no other level introducing them; past an introduction the walls
-standing after the danger density pass and the doodads (its report, the fillers, the enemies and the doodads as
-with no walls, only the pieces in their way taken out); The Hush's walls out of its quiet stretches; a level without
+standing after the danger density pass and the doodads (its report, the fillers and the enemies as with no walls,
+only the pieces in their way taken out, and, task L6, the zone doodads in their way: `_clear_doodads`); the last
+resort (`LAST_RESORT_CASE`, Corporate 2 at 3 lanes on seed 7056 since task L6: a Buzz Overdrive and a doodad go
+together) both ways; The Hush's walls out of its quiet stretches; a level without
 the feature or with a count of 0 built exactly as without them; the track (the box on its layer, the forgiving hitbox that
 armor absorbs and that breaks it, across the floor lanes and short of the side walls, taller than any jump, the
 skin's hook and colours, a broken one never built); the damage rules (the dash, armor, the shield, a kill, god
@@ -403,7 +413,10 @@ on the wall face, facing the street, seamless across chunks; and a heli drone's 
 Enforcer Truck's volley and an Octodog's wind-up hold off only while a crossing is in their reach. `test_campaign`'s sweep
 of The Hush lists the builds crowded past any wall-run gap (`WALL_RUN_GAP_CROWDED`: they warn of that and nothing
 else), and `test_danger_density` lets the final band land lower at 3 lanes where the wall-run gaps take the pass's room
-(`WALL_RUN_GAP_ROOM`); its route case and `test_gilded_sentinel`'s Sentinel wall case are built without them.
+(`WALL_RUN_GAP_ROOM`, and its rise past the middle band fall short by as much there since task L6's review); its route
+cases (`ROUTE_CASES`: a doodad without `DangerDensity.doodad_ok` leaving no way on; none of 1,620 builds shows one
+since task L6's review, whose lanes beside a doodad keep a way around it) and `test_gilded_sentinel`'s Sentinel wall
+case are built without them.
 `test_ceiling_scenarios` checks the ceiling scenarios (task I4; The generator, Ceiling scenarios): their numbers and
 heights (a ceiling fence above a floor runner's jump, a hover truck roof's, a wall runner's body and the chase
 camera); none in the City's, Gangland's or the Marketplace's levels; in every level that lists them, at 3, 5 and 6
@@ -522,8 +535,9 @@ an EMP in its script) at Gangland 3 (5 lanes) and Corporate 2 (3 lanes) playing 
 its first run, its restart and the results screen's retry (layout, the runner's trace and events, kills, credits,
 the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
 either retry (and the kept build untouched; every zone doodad and dash wall smashed or marked, then all of them
-standing as the retry's track is built), an attempt at Golden 1 at 3 lanes dashing through a doodad and a dash
-wall, then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
+standing as the retry's track is built), an attempt dashing through a doodad and a dash wall (at the first of
+Golden 1, Corporate 2, Golden 2, Dead Zone 1 and Golden 3 with a lone doodad in the runner's lane well before its
+first wall, at 3 lanes, else 5, else 6: Corporate 2 at 6 lanes since task L6's review), then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
 and look; the restart's standing in the physics world) and the restart, not dashing, playing as on a fresh build
 (tasks H5 and H7a, the H merge), the debug keys, F6 edits and another level building again, and endless mode
 building on every run and keeping nothing.

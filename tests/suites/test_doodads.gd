@@ -4,10 +4,11 @@ extends TestSuite
 ## - The layout: a level without doodads is the same data as before (no "doodads" key), and a doodad
 ##   share of 0 builds a level exactly as before; with a share, doodads only add (every piece, enemy,
 ##   pick and fill stays; only credits inside a doodad go).
-## - Placement (LevelGenerator._place_doodads), always fair (LayoutChecks.check_doodads) at 3, 5 and 6
-##   lanes over many seeds, difficulties and every built feature, deterministic; City 1 introduces them
-##   gently; the rules' keep-outs (a Bad Dream's chase, a hover truck's lane) and the enemies' own
-##   fairness checks count them.
+## - Placement (LevelGenerator._place_doodads; task L6: what fairness needs, lane by lane), always fair
+##   (LayoutChecks.check_doodads: its own lane and the lanes beside it clear around it, nothing kept in every lane
+##   near it, never a slalom, never taking away a way on) at 3, 5 and 6 lanes over many seeds, difficulties and every
+##   built feature, deterministic; doodads beside things in far lanes; City 1 introduces them gently; the rules'
+##   keep-outs (a Bad Dream's chase, a hover truck's lane) and the enemies' own fairness checks count them.
 ## - The track: a body on the doodad and lane-blocker layers (never a hazard), a standable top, the
 ##   skin's hook with the doodad's box, class, side and seed; every skin's default look stays inside
 ##   the box, lit and never glowing, in muted colours.
@@ -18,7 +19,13 @@ extends TestSuite
 ##   a player who comes down on its top lands on it; a ceiling rider passes over one even mid-jump;
 ##   shots pass through it.
 ## - A push onto safe floor every time: every campaign level's doodads (a few a level, at 3, 5 and 6
-##   lanes) run into on real physics at the level's speed, landing on clear floor in the lane beside.
+##   lanes) run into on real physics at the level's speed, landing on clear floor in the lane beside and running on
+##   through the reaction it keeps clear; jumped at just before their fronts (task L6's review: pushed in the air, a
+##   jump comes down a full jump on) and caught at a front corner from the lane on the other side (pushed back there),
+##   always coming down on clear floor with the reaction left. The generator keeps both lanes beside a doodad clear
+##   until that reaction after a push from its last front ends, and on real physics at 21 and 25 m/s, with a hole
+##   there in each lane beside it, every way of being pushed (head-on, jumping, a caught corner, a row's later doodad
+##   where the dash ended short of it or past a space) comes down at least the reaction before it.
 ## - Enemies hold back what would come with a doodad in reach (a drone's barrage, the truck's cannon).
 ## - The dash smashes a doodad (GDD §3, owner, October 8, 2026; task H5), on real physics: head-on at 3, 5
 ##   and 6 lanes in every inner lane, both sides, every size (once, no push, the lane kept, no slowdown,
@@ -33,10 +40,10 @@ extends TestSuite
 ##   revive and a retry (LevelRun) rebuilds it whole, the same level as before; every skin names its
 ##   doodads' colours; campaign doodads dashed through on physics at each level's speed.
 ## - Fairness for a runner who dashes through: in every campaign level at 3, 5 and 6 lanes, the first
-##   thing after a doodad (in its lane and in any lane) comes no sooner than a reaction and a lane
-##   switch at the dash's speed from its front, where the smash shows what it hid.
-## - Rows (task L3, the owner, October 17, 2026: "occasionally ... rows of similar doodads"): placed over many seeds
-##   at 3, 5 and 6 lanes with both spacings, every length and size class, each a row of one kind (one look) in one
+##   thing after a doodad in its lane (the lane it hides from the chase camera) comes no sooner than a reaction and
+##   a lane switch at the dash's speed from its front, where the smash shows what it hid, and from its end.
+## - Rows (task L3, the owner, October 17, 2026: "occasionally ... rows of similar doodads"; task L6: from two long):
+##   placed over many seeds at 3, 5 and 6 lanes with both spacings, every length (two to four) and size class, each a row of one kind (one look) in one
 ##   lane checked where it stands (LayoutChecks.check_doodads, check_row); none with their chance at 0; the enemies'
 ##   checks see a row from its first front to its last end; the track dresses a row in its one look; on real physics
 ##   a row pushes once and its sides block a switch all along it, and the dash smashes every one it reaches, the next
@@ -64,6 +71,13 @@ const DASH_RUNS_PER_LEVEL: int = 2
 const REACTION: float = 0.35
 ## Wall runs swept to end just before a doodad by their wall, per lane count, wall and speed (_off_wall_sweep).
 const OFF_WALL_EXITS: int = 12
+## What the physics step may take off a push's reaction on real physics (seconds): a pressed jump begins on the next
+## frame and a landing is seen on the frame after the feet reach the floor, two frames at 60 per second.
+const FRAME_SLACK: float = 2.0 / 60.0
+## A switch into a doodad's lane from the lane beside it begun this long before the body's front reaches its front
+## (seconds) is caught by its front corner mid-switch (a switch takes MovementTuning.lane_switch_time, 0.14 s; every
+## size class is caught from about 0.04 s to 0.11 s at the campaign's speeds, 21 to 25 m/s): _corner_switch.
+const CORNER_SWITCH_SECONDS: float = 0.105
 
 
 ## Records the doodad hook's calls (and dresses nothing).
@@ -88,6 +102,7 @@ func run() -> void:
 	_test_wall_lane()
 	_test_campaign()
 	_test_keep_outs()
+	_test_landing_rule()
 	await _test_track()
 	await _test_row_track()
 	_test_skins()
@@ -101,6 +116,7 @@ func run() -> void:
 	await _test_ceiling_rider()
 	await _test_shots_pass()
 	await _test_safe_floor_every_time()
+	await _test_pushes_land_clear()
 	await _test_drone_waits()
 	await _test_truck_cannon_waits()
 	await _test_dash_head_on()
@@ -392,8 +408,9 @@ static func _rows_of(layout: LevelLayout) -> Array[Array]:
 ## Rows (task L3, the owner, October 17, 2026: "occasionally ... rows of similar doodads: three plant doodads one
 ## right after the other, or three market stalls, one followed by a space ..."; LevelGenerator._row_shape): with every
 ## doodad the first of a row (doodad_row_chance 1), in quick play's level at 3, 5 and 6 lanes over seeds and
-## difficulties, with and without every built feature: rows of three and four (doodad_row_min to doodad_row_max, never
-## two), small ones one right after the other and medium and large ones a doodad's length apart (by size class,
+## difficulties, with and without every built feature: rows of two, three and four (doodad_row_min to doodad_row_max;
+## task L6, the owner: "could it be two in a row so it doesn't take up as much room?"), small ones one right after
+## the other and medium and large ones a doodad's length apart (by size class,
 ## LevelConfig.doodad_row_spaced), in every size class, each where it's fair (check_layout's check_doodads and
 ## check_row), in inner lanes and by the side walls, deterministic, no warnings; with the chance at 0 no doodad is in
 ## a row or carries a row's keys.
@@ -443,8 +460,8 @@ func _test_rows() -> void:
 					var plain: LevelLayout = LevelGenerator.new().generate(off, tuning, patterns)
 					for d: Dictionary in plain.doodads:
 						singles_left = singles_left and not d.has("row") and not d.has("look")
-		check(rows > 0 and lengths.has(3) and lengths.has(4) and not lengths.has(2),
-			"at %d lanes rows of three and four stand, never two (%d rows: %s)" % [lanes, rows, lengths.keys()])
+		check(rows > 0 and lengths.has(2) and lengths.has(3) and lengths.has(4) and not lengths.has(1) and not lengths.has(5),
+			"at %d lanes rows of two, three and four stand (%d rows: %s)" % [lanes, rows, lengths.keys()])
 		check(spacings.size() == 2, "one right after the other and a doodad's length apart (%s)" % [spacings.keys()])
 		check(sizes.size() == LevelLayout.DOODAD_SIZES.size(), "in every size class (%s)" % [sizes.keys()])
 		check(where.size() == 2, "in inner lanes and by the side walls (%s)" % [where.keys()])
@@ -520,6 +537,10 @@ func _test_campaign() -> void:
 	var rows: int = 0
 	var in_rows: int = 0
 	var by_wall: int = 0
+	var stash: int = 0
+	# Task L6: the rows from Gangland on, and the builds they're counted over.
+	var later_rows: int = 0
+	var later_builds: int = 0
 	for s: CampaignStep in campaign.steps():
 		# A mini-game level (the Beach's volleyball match) isn't generated: no doodads.
 		if not s.is_level() or s.is_minigame():
@@ -541,8 +562,11 @@ func _test_campaign() -> void:
 			for row: Array in _rows_of(layout):
 				rows += 1
 				in_rows += row.size()
+				later_rows += 0 if s.id.begins_with("city/") else 1
+			later_builds += 0 if s.id.begins_with("city/") else 1
 			for d: Dictionary in layout.doodads:
 				by_wall += 1 if not d.has("stash") and (int(d["lane"]) == 0 or int(d["lane"]) == lanes - 1) else 0
+				stash += 1 if d.has("stash") else 0
 			if s.id == "city/1":
 				for d: Dictionary in layout.doodads:
 					check(float(d["start"]) >= config.doodad_start * layout.length - 0.01 and StringName(d["size"]) != &"large",
@@ -550,11 +574,15 @@ func _test_campaign() -> void:
 				var minutes: float = layout.length / gen.speed / 60.0
 				check(layout.doodads.size() / minutes <= 6.0, "and a few a minute at most (%.1f) %s" % [layout.doodads.size() / minutes, tag])
 		check(level_total > 0, "%s has doodads over its lane counts (%d)" % [s.id, level_total])
-	print("  %d doodads in the campaign's levels at 3, 5 and 6 lanes: %d rows holding %d of them, %d by a side wall"
-		% [total, rows, in_rows, by_wall])
-	# Task L3: rows come now and then (the owner: "occasionally"), never most of the doodads; and doodads take the
-	# lane by an open side wall.
-	check(rows > 0 and in_rows * 2 < total, "the campaign has rows now and then (%d rows, %d of %d doodads)" % [rows, in_rows, total])
+	var singles: int = total - in_rows - stash
+	print("  %d doodads in the campaign's levels at 3, 5 and 6 lanes: %d rows holding %d of them, %d alone, %d by a side wall; %.1f rows a level from Gangland on"
+		% [total, rows, in_rows, singles, by_wall, later_rows / maxf(later_builds, 1.0)])
+	# Task L3: rows come now and then (the owner: "occasionally"); task L6 (the owner: "could it be two in a row so it
+	# doesn't take up as much room?"): from two long, a few a level from Gangland on, while most of what a level places
+	# is still a doodad alone (a row counted once); and doodads take the lane by an open side wall.
+	check(rows > 0 and rows * 2 < rows + singles, "the campaign has rows, most of what it places a doodad alone (%d rows, %d alone)"
+		% [rows, singles])
+	check(later_rows >= later_builds, "a few rows a level from Gangland on (%d over %d builds)" % [later_rows, later_builds])
 	check(by_wall > 0, "and doodads by the side walls (%d of %d)" % [by_wall, total])
 
 
@@ -1064,13 +1092,22 @@ func _test_shots_pass() -> void:
 	await sim.free_world(w)
 
 
-## A push onto safe floor every time: in every campaign level, at 3, 5 and 6 lanes and its own speed, a
-## few of its doodads are run into head-on on real physics with the level's pieces around them: the
-## player is pushed once, lands in the lane beside on clear floor, and runs on safely to the level's
-## spacing past it, never sinking into it.
+## A push onto safe floor every time: in every campaign level, at 3, 5 and 6 lanes and its own speed (21 m/s in the
+## Neon City to 25 m/s in the Golden Zone), a few of its doodads are run into on real physics with the level's pieces
+## around them (task L6: in far lanes beside it too), through what the lanes beside it keep clear (_push_clear: a
+## lane switch's room past its end, or the reaction after a push lands): head-on, the player is pushed once, lands in
+## the lane on its side on clear floor and runs on safely, never sinking into it; jumping at it 0.5 m and 1 m before
+## its front (task L6's review: pushed in the air, a jump comes down a full jump on), they come down in that lane
+## at least the reaction (LevelConfig.doodad_reaction_seconds, less FRAME_SLACK) before the end of that stretch and
+## run on safely; and the first one of each level and lane count with a lane on its other side has its front corner
+## caught by a switch from there (CORNER_SWITCH_SECONDS), which pushes the runner back the way they came, onto clear
+## floor, running on safely.
 func _test_safe_floor_every_time() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var runs: int = 0
+	var jumps: int = 0
+	var corners: int = 0
+	var least: float = INF
 	sim.trace = true
 	for s: CampaignStep in campaign.steps():
 		if not s.is_level() or s.is_minigame():
@@ -1082,8 +1119,8 @@ func _test_safe_floor_every_time() -> void:
 			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 			var geo := TrackGeometry.new(lanes, fast)
 			var lead: float = LevelGenerator.doodad_lead_for(fast)
-			var after: float = config.spacing_seconds_hard * fast.run_speed
 			var tried: int = 0
+			var cornered: bool = false
 			for d: Dictionary in layout.doodads:
 				# A treasure stash's doodads stand together, under its ceiling (task I4): test_ceiling_scenarios runs them.
 				# A row's (task L3): _test_campaign_rows runs into each row as one.
@@ -1093,27 +1130,229 @@ func _test_safe_floor_every_time() -> void:
 					break
 				tried += 1
 				var tag: String = "(%s lanes=%d, doodad at %.0f in lane %d)" % [s.id, lanes, d["start"], d["lane"]]
-				var r: Dictionary = await _run_into(layout, d, fast, lead, after)
+				var clear: float = _push_clear(config, fast, d)
+				var into: int = int(d["lane"]) + int(d["side"])
+				var r: Dictionary = await _run_into(layout, d, fast, lead, clear)
 				check(r["alive"] and (r["events"] as Array).count(&"doodad_push") == 1 and r["reached"]
-					and int(r["lane"]) == int(d["lane"]) + int(d["side"]),
+					and int(r["lane"]) == into,
 					"pushed once onto clear floor in the lane beside, running on safely (%s, lane %d) %s" % [r["cause"], r["lane"], tag])
 				var moved: Dictionary = d.duplicate()
 				moved["start"] = float(d["start"]) + float(r["offset"])
 				moved["end"] = float(d["end"]) + float(r["offset"])
 				check(_sink(r["trace"], moved, geo, fast) <= SINK_TOLERANCE, "never sinking into it " + tag)
 				runs += 1
+				# Task L6's review: jumping at it, pushed in the air.
+				for before: float in [0.5, 1.0]:
+					var j: Dictionary = await _run_into(layout, d, fast, lead, clear, [[-before, &"jump"]])
+					var down: Vector2 = _touch_down(j["trace"])
+					var left: float = (float(d["end"]) + clear + float(j["offset"]) - down.x) / fast.run_speed
+					least = minf(least, left)
+					check(j["alive"] and int(j["pushes"]) == 1 and j["reached"] and int(j["lane"]) == into and int(down.y) == into
+						and left >= config.doodad_reaction_seconds - FRAME_SLACK,
+						"a jump %.1f m before its front, pushed in the air, comes down in the lane beside %.2f s before the end of what it keeps clear and runs on safely (%s, lane %d) %s"
+						% [before, left, j["cause"], j["lane"], tag])
+					jumps += 1
+				# Task L6's review: its front corner caught from the lane on its other side, pushed back there.
+				var from: int = int(d["lane"]) - int(d["side"])
+				if cornered or from < 0 or from >= lanes:
+					continue
+				cornered = true
+				var toward: StringName = &"move_right" if int(d["side"]) > 0 else &"move_left"
+				var c: Dictionary = await _run_into(layout, d, fast, lead, clear, [[-_corner_switch(fast), toward]], from)
+				check(c["alive"] and int(c["pushes"]) == 1 and c["reached"] and int(c["lane"]) == from,
+					"its front corner caught mid-switch from lane %d pushes the runner back there, onto clear floor, running on safely (%s, lane %d) %s"
+					% [from, c["cause"], c["lane"], tag])
+				corners += 1
 	sim.trace = false
-	check(runs >= 100, "campaign doodads run into on physics: %d" % runs)
+	print("  campaign doodads run into on physics: %d head-on, %d jumped at (the least left after coming down %.2f s), %d corners caught"
+		% [runs, jumps, least, corners])
+	check(runs >= 100 and jumps == runs * 2 and corners >= 25, "campaign doodads run into on physics: %d, jumped at %d, corners %d"
+		% [runs, jumps, corners])
 
 
-## Runs into doodad `d` of `layout` head-on, from its lane, on a cut of the layout: every piece of every
-## lane whose span reaches into the stretch from its push's lead before it to the spacing past it (the
-## stretch the push and the run on after it take; by its rules nothing but the doodad stands there),
-## moved to start 30 m in, at `t`'s speed. `actions` are [metres from the doodad's front (negative before
-## it), action] (RunSim.run's actions, &"dash" too). The result of RunSim.run, with "reached" (the player
-## got to the end of the cut) and "offset" (how far it moved).
+## Where a run's first jump came down (task L6's review): Vector2(the distance, the lane) at the first frame back on
+## the floor after its first frame more than 5 cm up, or Vector2(INF, -1) if it never came down.
+static func _touch_down(trace: Array) -> Vector2:
+	var up: bool = false
+	for s: Dictionary in trace:
+		if float(s["h"]) > 0.05:
+			up = true
+		elif up and absf(float(s["h"])) < 0.001:
+			return Vector2(float(s["d"]), float(s["lane"]))
+	return Vector2(INF, -1.0)
+
+
+## How far before a doodad's front (metres, from the body's middle) a switch into its lane from the lane beside it
+## begins so that its front corner catches the runner mid-switch, at `t`'s run speed (CORNER_SWITCH_SECONDS).
+static func _corner_switch(t: MovementTuning) -> float:
+	return t.visual_size.z * 0.5 + CORNER_SWITCH_SECONDS * t.run_speed
+
+
+## Task L6's review: where the generator lets a piece begin in a lane beside a doodad (LevelGenerator._doodad_lane_fits,
+## _doodad_push_fits), at 21 and 25 m/s and 3, 5 and 6 lanes, for one doodad and for a spaced row of three, whichever
+## way it pushes: both lanes beside it stay clear until the reaction after a push from its last front lands
+## (LevelGenerator.doodad_landing: a full jump past that front, then LevelConfig.doodad_reaction_seconds). A hole in
+## either of them beginning just short of that keeps it out of its lane, and one just past it doesn't; for the row, one
+## just past the reaction after a push from its first front still keeps it out (a runner the dash leaves short of its
+## last one is pushed from there), and so it does where the generator adds a row (_add_doodads).
+func _test_landing_rule() -> void:
+	var cases: int = 0
+	for v: float in [21.0, 25.0]:
+		for lanes: int in [3, 5, 6]:
+			var config := LevelConfig.new()
+			config.lane_count = lanes
+			config.run_speed = v
+			var gen := LevelGenerator.for_layout(config, tuning, RunSim.layout(lanes, 800.0))
+			var reach: float = gen.doodad_landing(100.0) - 100.0
+			var expect: float = maxf(gen.tuning.doodad_push_time * v, gen.tuning.jump_distance(v)) + config.doodad_reaction_seconds * v
+			check(absf(reach - expect) < 0.001 and reach > gen.tuning.jump_distance(v),
+				"a push's reaction ends a full jump and the reaction past the front it met (%.2f m at %.0f m/s)" % [reach, v])
+			var lane: int = 1 if lanes == 3 else 2
+			for spaced: bool in [false, true]:
+				var size: StringName = &"medium" if spaced else &"small"
+				var length: float = gen.tuning.doodad_size(size).z
+				var count: int = 3 if spaced else 1
+				var start: float = 200.0
+				var last: float = start + (count - 1) * length * 2.0
+				var end: float = last + length
+				var limit: float = gen.doodad_landing(last)
+				var spots: Array[float] = [limit - 0.2, limit + 0.2]
+				if spaced:
+					spots.append(gen.doodad_landing(start) + 0.2)
+				for beside: int in [lane - 1, lane + 1]:
+					for at: float in spots:
+						for side: int in [-1, 1]:
+							var room := LevelGenerator.DoodadRoom.new()
+							for l: int in lanes:
+								var spans: Array[Vector2] = []
+								if l == beside:
+									spans.append(Vector2(at, at + 3.0))
+								room.lanes.append(spans)
+							var fits: bool = gen._doodad_lane_fits(room, lane, start, end, last) \
+								and gen._doodad_push_fits(room, lane, side, start, end, last)
+							check(fits == (at > limit),
+								"%s a hole in lane %d from %.1f (a push from its last front's reaction ends at %.1f) %s it (lanes=%d, %.0f m/s, side %+d)"
+								% ["a spaced row of three:" if spaced else "one doodad:", beside, at, limit, "leaves room for" if at > limit
+								else "keeps out", lanes, v, side])
+							cases += 1
+			# And the row as the generator adds it (_add_doodads, its last one's front from its count and step): at 3 lanes
+			# its one inner lane, with a hole in each lane beside it from just past the reaction after a push from its first
+			# front, takes no row; from just past its last front's, it takes it.
+			if lanes == 3:
+				config.doodad_wall_lane_share = 0.0
+				var step: float = gen.tuning.doodad_size(&"medium").z * 2.0
+				var last_front: float = 300.0 + 2.0 * step
+				for at: float in [gen.doodad_landing(300.0) + 0.2, gen.doodad_landing(last_front) + 0.2]:
+					var room := LevelGenerator.DoodadRoom.new()
+					for l: int in lanes:
+						var spans: Array[Vector2] = []
+						if l != 1:
+							spans.append(Vector2(at, at + 3.0))
+						room.lanes.append(spans)
+					gen.layout.doodads.clear()
+					var rng := RandomNumberGenerator.new()
+					rng.seed = 5
+					var placed: Array[Dictionary] = gen._add_doodads(rng, rng, &"medium", 300.0, 3, step, room)
+					var whole: bool = at > gen.doodad_landing(last_front)
+					check(placed.size() == (3 if whole else 0), "a spaced row of three %s with holes beside it from %.1f (%.0f m/s; %d placed)"
+						% ["stands" if whole else "doesn't stand", at, v, placed.size()])
+					cases += 1
+	check(cases == 2 * 3 * 2 * (2 + 3) * 2 + 2 * 2, "landing cases: %d" % cases)
+
+
+## Task L6's review: every push lands on clear floor with time to react, on real physics at 21 m/s and 25 m/s (the
+## Neon City's speed and the Golden Zone's), at 3, 5 and 6 lanes, both ways, every size class. With a hole in each lane
+## beside a doodad from where the generator lets one begin (LevelGenerator.doodad_landing: the reaction after a push
+## from its front lands), a runner who runs into it head-on, jumps at it 0.5 m or 1 m before its front (pushed in the
+## air), or catches its front corner from the lane on its other side (CORNER_SWITCH_SECONDS), on the floor or jumping
+## as they switch (pushed back the way they came), is pushed once and is back on the floor in the middle of the lane
+## the push took them to at least LevelConfig.doodad_reaction_seconds (less FRAME_SLACK) before the hole there, and
+## jumps the hole as it comes; head-on and jumping, the body never sinks into it (a caught corner's sinking is
+## _test_mid_switch's). The same for a spaced row of three medium ones, from its last front: a runner the dash leaves
+## short of its last one who jumps at it 1 m before its front, and one who switches into the space before it from the
+## lane on its other side.
+func _test_pushes_land_clear() -> void:
+	sim.trace = true
+	var runs: int = 0
+	var least: float = INF
+	for v: float in [21.0, 25.0]:
+		var config := LevelConfig.new()
+		config.run_speed = v
+		var t: MovementTuning = config.movement_for(tuning)
+		var hole_length: float = t.jump_distance(v) * 0.4
+		for lanes: int in [3, 5, 6]:
+			config.lane_count = lanes
+			var gen := LevelGenerator.for_layout(config, tuning, RunSim.layout(lanes))
+			var geo := TrackGeometry.new(lanes, t)
+			var lane: int = 1 if lanes == 3 else 2
+			for side: int in [-1, 1]:
+				var from: int = lane - side
+				var toward: StringName = &"move_right" if side > 0 else &"move_left"
+				var groups: Array = []
+				for size: StringName in LevelLayout.DOODAD_SIZES:
+					groups.append([String(size), [_doodad(lane, 60.0, size, side)]])
+				groups.append(["a spaced row of three medium ones", _row(lane, 60.0, &"medium", side, 3, true)])
+				for g: Array in groups:
+					var doodads: Array[Dictionary] = []
+					doodads.assign(g[1])
+					var front: float = float(doodads[-1]["start"])
+					var hole: float = gen.doodad_landing(front)
+					var corner: float = front - _corner_switch(t)
+					# [what, the lane it starts in, its actions before the hole, the lane the push takes it to, dash smashes,
+					# whether the body's sinking is checked here (a caught corner's is _test_mid_switch's)]
+					var cases: Array = []
+					if doodads.size() == 1:
+						cases = [["head-on", lane, [], lane + side, 0, true],
+							["a jump 0.5 m before its front", lane, [[front - 0.5, &"jump"]], lane + side, 0, true],
+							["a jump 1 m before its front", lane, [[front - 1.0, &"jump"]], lane + side, 0, true],
+							["its front corner caught from lane %d" % from, from, [[corner, toward]], from, 0, false],
+							["its front corner caught from lane %d, jumping" % from, from, [[corner, toward], [corner, &"jump"]],
+								from, 0, false]]
+					else:
+						cases = [["the dash ending short of its last one, then a jump 1 m before it", lane,
+								[[52.0, &"dash"], [front - 1.0, &"jump"]], lane + side, 2, true],
+							["a switch from lane %d into the space before its last one" % from, from, [[corner, toward]], from, 0, false]]
+					for c: Array in cases:
+						var tag: String = "(%s, %s, lanes=%d, side %+d, %.0f m/s)" % [g[0], c[0], lanes, side, v]
+						var layout: LevelLayout = _with_doodads(lanes, doodads)
+						for l: int in [lane - 1, lane + 1]:
+							if l >= 0 and l < lanes:
+								layout.gaps.append({"lane": l, "start": hole, "end": hole + hole_length})
+						var actions: Array = (c[2] as Array).duplicate()
+						actions.append([hole - 0.25 * v, &"jump"])
+						var r: Dictionary = await sim.run(layout, int(c[1]), (hole + hole_length + 10.0) / v, actions, [], t)
+						var target: int = int(c[3])
+						var x: float = geo.lane_x(target)
+						var away: bool = false
+						var down: float = INF
+						for s: Dictionary in r["trace"]:
+							away = away or absf(float(s["x"]) - x) > 0.05
+							if away and absf(float(s["x"]) - x) < 0.01 and absf(float(s["h"])) < 0.001:
+								down = float(s["d"])
+								break
+						var left: float = (hole - down) / v
+						least = minf(least, left)
+						check(r["alive"] and int(r["pushes"]) == 1 and int(r["smashes"]) == int(c[4]) and int(r["lane"]) == target
+							and left >= config.doodad_reaction_seconds - FRAME_SLACK,
+							"pushed once, back on the floor of lane %d %.2f s before the hole there, and over it (%s, %d pushes, lane %d) %s"
+							% [target, left, r["cause"], r["pushes"], r["lane"], tag])
+						if bool(c[5]):
+							var sink: float = _row_sink(r["trace"], doodads, int(c[4]), geo, t)
+							check(sink <= SINK_TOLERANCE, "never sinking into a doodad (%.3f m) %s" % [sink, tag])
+						runs += 1
+	sim.trace = false
+	print("  pushes onto clear floor with time to react: %d runs, the least %.2f s before the hole" % [runs, least])
+	check(runs == 2 * 3 * 2 * (3 * 5 + 2), "pushes run: %d" % runs)
+
+
+## Runs into doodad `d` of `layout` head-on, from its lane (or from `start_lane`), on a cut of the layout: every piece
+## of every lane whose span reaches into the stretch from its push's lead before it to `after` past its end (the
+## stretch the push and the run on after it take; by its rules nothing stands in its lane or the lanes beside it
+## there: task L6), moved to start 30 m in, at `t`'s speed. `actions` are [metres from the doodad's front (negative
+## before it), action], in order (RunSim.run's actions, &"dash" too). The result of RunSim.run, with "reached" (the
+## player got to the end of the cut) and "offset" (how far it moved).
 func _run_into(layout: LevelLayout, d: Dictionary, t: MovementTuning, lead: float, after: float,
-		actions: Array = []) -> Dictionary:
+		actions: Array = [], start_lane: int = -1) -> Dictionary:
 	var from: float = float(d["start"]) - lead
 	var to: float = float(d["end"]) + after
 	var offset: float = 30.0 - from
@@ -1145,10 +1384,25 @@ func _run_into(layout: LevelLayout, d: Dictionary, t: MovementTuning, lead: floa
 	var placed: Array = []
 	for a: Array in actions:
 		placed.append([float(d["start"]) + offset + float(a[0]), a[1]])
-	var r: Dictionary = await sim.run(part, int(d["lane"]), (to - from + 30.0 + 2.0) / t.run_speed, placed, [], t)
+	var lane: int = start_lane if start_lane >= 0 else int(d["lane"])
+	var r: Dictionary = await sim.run(part, lane, (to - from + 30.0 + 2.0) / t.run_speed, placed, [], t)
 	r["reached"] = float(r["distance"]) >= to + offset
 	r["offset"] = offset
 	return r
+
+
+## How far past the end of doodad `d` (a row's whole stretch) the lanes beside it stay clear (task L6 and its review;
+## LevelGenerator._doodad_lane_fits, _doodad_push_fits): a lane switch at `t`'s run speed with
+## LevelGenerator.DOODAD_LANE_MARGIN, or to the end of the reaction (LevelConfig.doodad_reaction_seconds) after a push
+## from its last front (a row's last one's) lands, on the floor (the push) or in the air (a full jump at `t`'s run
+## speed), whichever is later. Worked out from the tunings, not the generator's helpers.
+static func _push_clear(config: LevelConfig, t: MovementTuning, d: Dictionary) -> float:
+	var extent: Vector2 = LevelLayout.doodad_extent(d)
+	var room: float = t.lane_switch_time * t.run_speed + LevelGenerator.DOODAD_LANE_MARGIN
+	var last: float = extent.y - (float(d["end"]) - float(d["start"]))
+	var landed: float = last + maxf(t.doodad_push_time * t.run_speed, t.jump_distance(t.run_speed)) \
+		+ config.doodad_reaction_seconds * t.run_speed
+	return maxf(room, landed - extent.y)
 
 
 # --- Enemies hold back --------------------------------------------------------------------------
@@ -1540,7 +1794,7 @@ func _test_dash_world() -> void:
 
 ## It stays smashed for the rest of the attempt, and a retry rebuilds it whole. A quick run of City 2 at
 ## 3 lanes (its own seed, the dash carried; god mode and no falls, since the runner just keeps to the
-## middle lane, where every doodad stands at 3 lanes) dashes into its first doodad. Through a death and a
+## middle lane) dashes into the first doodad standing there. Through a death and a
 ## revive it stays smashed (its entry marked, nothing on its layers where it stood). LevelRun's retry
 ## plays a fresh copy of the level's build (LevelCache, task PERF2; the smash marked only the attempt's own
 ## copy): the very same layout as before the smash, that doodad whole on the track, and a runner who
@@ -1559,12 +1813,20 @@ func _test_dash_retry() -> void:
 	tree.root.add_child(run)
 	run.start(ctx)
 	var before: String = JSON.stringify(run.world.layout.to_dict())
-	check(not run.world.layout.doodads.is_empty(), "City 2 has doodads at 3 lanes")
-	if run.world.layout.doodads.is_empty():
+	# The first doodad in the lane the runner starts and stays in (the middle one; a row's first, if a row stands there
+	# first): since task L6 doodads stand by the side walls and beside things in the far lanes too, so the level's first
+	# may stand elsewhere.
+	var index: int = -1
+	for i: int in run.world.layout.doodads.size():
+		var o: Dictionary = run.world.layout.doodads[i]
+		if index < 0 and int(o["lane"]) == run.world.player.lane and not o.has("stash"):
+			index = i
+	check(index >= 0, "City 2 has a doodad in the middle lane at 3 lanes")
+	if index < 0:
 		run.queue_free()
 		await tree.process_frame
 		return
-	var d: Dictionary = run.world.layout.doodads[0]
+	var d: Dictionary = run.world.layout.doodads[index]
 	var w: RunWorld = run.world
 	var limit: float = float(d["start"]) / w.tuning.run_speed + 6.0
 	await _run_until(w, limit, func() -> bool: return w.player.distance >= float(d["start"]) - 8.0)
@@ -1572,7 +1834,8 @@ func _test_dash_retry() -> void:
 	w.powerups.call(&"try_dash")
 	await _run_until(w, 2.0, func() -> bool: return w.player.smashes > 0)
 	var body: DashBreakable = _breakable_for(w.track, d)
-	check(w.player.smashes == 1 and body != null and body.is_smashed() and not _solid_at(w, d), "the dash smashes it")
+	# A row's next ones break too where the dash still reaches them (task L3).
+	check(w.player.smashes >= 1 and body != null and body.is_smashed() and not _solid_at(w, d), "the dash smashes it")
 	w.player._die("test hazard")
 	await _run_until(w, 0.1, func() -> bool: return false)
 	check(run.state == LevelRun.State.DEAD, "the runner dies")
@@ -1584,7 +1847,7 @@ func _test_dash_retry() -> void:
 	var reused: bool = LevelCache.last_reused
 	await tree.physics_frame
 	w = run.world
-	var again: Dictionary = w.layout.doodads[0]
+	var again: Dictionary = w.layout.doodads[index]
 	check(JSON.stringify(w.layout.to_dict()) == before and not again.has("smashed") and (reused or not LevelCache.enabled),
 		"a retry plays the very same level, a copy of its build (reused: %s), the doodad whole in its data" % reused)
 	await _run_until(w, limit, func() -> bool: return w.player.distance >= float(again["start"]) - 8.0)
@@ -1592,7 +1855,7 @@ func _test_dash_retry() -> void:
 	check(rebuilt != null and not rebuilt.is_smashed() and rebuilt.visible
 		and rebuilt.collision_layer == TrackBuilder.LAYER_DOODAD | TrackBuilder.LAYER_LANE_BLOCKER and _solid_at(w, again),
 		"and on the track: built whole, on its layers")
-	await _run_until(w, 2.0, func() -> bool: return w.player.distance >= float(again["end"]) + 2.0)
+	await _run_until(w, 3.0, func() -> bool: return w.player.distance >= LevelLayout.doodad_extent(again).y + 2.0)
 	check(w.player.pushes == 1 and w.player.smashes == 0, "a runner who doesn't dash is pushed by it (%d pushes)" % w.player.pushes)
 	run.queue_free()
 	await tree.process_frame
@@ -1708,25 +1971,26 @@ static func _first_from(spans: Array[Vector2], d: Dictionary) -> float:
 ## Fairness for a runner who dashes through (task H5). A doodad is 2.6 m tall and hides its own lane right
 ## behind it, which a runner it pushes never reaches in that lane; a dash shows it only at the smash, and
 ## goes on at the dash's speed. For every doodad of every campaign level at 3, 5 and 6 lanes (its own
-## build), the first thing that could catch a runner after it: in its lane (a hole, a wider gap among them,
-## a fence, a pad, a speed pad, a floor cut's lane window, an enemy standing in its lane), and in any lane
-## (what the fill pass counts as going on: every piece, each enemy's stretch as its rules keep it, a floor
-## cut's whole window; a ceiling to the end of its landing zone; what the rules keep doodads off, a Bad
-## Dream's chase, but not their calm stretches: an Enforcer Truck's showing window holds nothing that could catch
-## a runner, task C6c). The seconds from its front (where the smash shows what it hid) to there at the dash's
-## speed (the run's plus the dash's bonus, the fastest a runner comes through it) must leave a reaction
-## (REACTION) and a lane switch (MovementTuning.lane_switch_time); and so must the seconds from its end, for
-## a runner who dashed into its side near its end (_test_dash_sideways), the latest a smash can show it.
-## Prints the spread at each lane count.
+## build; a row as one, from its first front to its last end), the first thing that could catch a runner after it
+## in its lane (a hole, a wider gap among them, a fence, a pad, a speed pad, a floor cut's lane window, an enemy
+## standing in its lane): the seconds from its front (where the smash shows what it hid) to there at the dash's
+## speed (the run's plus the dash's bonus, the fastest a runner comes through it) must leave a reaction (REACTION)
+## and a lane switch (MovementTuning.lane_switch_time); and so must the seconds from its end, for a runner who dashed
+## into its side near its end (_test_dash_sideways), the latest a smash can show it. Since task L6 the lanes
+## further out may hold things beside it (it hides only its own lane), and what every lane keeps (an enemy's
+## attack, a ceiling, a floor cut's window, a Bad Dream's chase) keeps a lane switch's room past its end: printed
+## (the first of it from its end, at the dash's speed), not held to the dash's reaction, as each comes with its own
+## warning and is in full view. Prints the spread at each lane count.
 func _test_dash_fairness() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for lanes: int in [3, 5, 6]:
 		var lane_times: Array[float] = []
-		var any_times: Array[float] = []
 		var side_times: Array[float] = []
+		var every_times: Array[float] = []
 		var worst: String = ""
 		var worst_time: float = INF
 		var need: float = REACTION + tuning.lane_switch_time
+		var measured: int = 0
 		for s: CampaignStep in campaign.steps():
 			if not s.is_level() or s.is_minigame():
 				continue
@@ -1738,19 +2002,14 @@ func _test_dash_fairness() -> void:
 			need = REACTION + fast.lane_switch_time
 			var dash_speed: float = fast.run_speed + powerups.dash_speed_bonus
 			var every: Array[Vector2] = []
-			for k: Vector2 in gen.fill_keep_outs(patterns)["activity"]:
+			for k: Vector2 in gen.doodad_keep_outs():
 				every.append(k)
-			for h: Dictionary in layout.hulls:
-				every.append(Vector2(float(h["start"]), gen.zones.landing_zone(h).y))
-			for k: Dictionary in gen.rules_doodad_keep_outs():
-				# A calm stretch (an Enforcer Truck's showing window, task C6c) holds nothing that could catch a runner.
-				if not k.has("lane") and not bool(k.get("calm", false)):
-					every.append(Vector2(float(k["from"]), float(k["to"])))
 			var half: float = fast.fence_depth * 0.5
 			for d: Dictionary in layout.doodads:
 				# A treasure stash's doodads stand under its ceiling, and what the dash shows behind them is the stash
-				# (task I4: test_ceiling_scenarios).
-				if d.has("stash"):
+				# (task I4: test_ceiling_scenarios). A row's: measured once, from its first one.
+				var extent: Vector2 = LevelLayout.doodad_extent(d)
+				if d.has("stash") or absf(extent.x - float(d["start"])) > 0.01:
 					continue
 				var lane: int = int(d["lane"])
 				var mine: Array[Vector2] = []
@@ -1774,32 +2033,34 @@ func _test_dash_fairness() -> void:
 						var span: Vector2 = LevelGenerator.enemy_floor_span(e, fast.pace())
 						if span.y >= span.x:
 							mine.append(span)
-				var in_lane: float = (_first_from(mine, d) - float(d["start"])) / dash_speed
-				var all: Array[Vector2] = every.duplicate()
-				all.append_array(mine)
-				var anywhere: float = (_first_from(all, d) - float(d["start"])) / dash_speed
-				var from_end: float = (_first_from(all, d) - float(d["end"])) / dash_speed
-				var tag: String = "(%s lanes=%d, doodad at %.0f in lane %d)" % [s.id, lanes, d["start"], lane]
-				check(in_lane >= need and anywhere >= need,
-					"a runner who dashes through has time to see what it hid and move: the next thing in its lane %.2f s on, in any lane %.2f s, at the dash's speed (a reaction and a switch take %.2f s) %s"
-					% [in_lane, anywhere, need, tag])
-				check(from_end >= need, "and one who dashed into its side by its end: %.2f s on %s" % [from_end, tag])
+				var front := {"start": extent.x}
+				var back := {"start": extent.y}
+				var in_lane: float = (_first_from(mine, front) - extent.x) / dash_speed
+				var from_end: float = (_first_from(mine, back) - extent.y) / dash_speed
+				var tag: String = "(%s lanes=%d, doodad at %.0f in lane %d)" % [s.id, lanes, extent.x, lane]
+				check(in_lane >= need and from_end >= need,
+					"a runner who dashes through has time to see what it hid and move: the next thing in its lane %.2f s on from its front, %.2f s from its end, at the dash's speed (a reaction and a switch take %.2f s) %s"
+					% [in_lane, from_end, need, tag])
 				if in_lane < INF:
 					lane_times.append(in_lane)
-				any_times.append(anywhere)
-				side_times.append(from_end)
-				if anywhere < worst_time:
-					worst_time = anywhere
+				if from_end < INF:
+					side_times.append(from_end)
+				var anywhere: float = (_first_from(every, back) - extent.y) / dash_speed
+				if anywhere < INF:
+					every_times.append(anywhere)
+				if from_end < worst_time:
+					worst_time = from_end
 					worst = tag
+				measured += 1
 		lane_times.sort()
-		any_times.sort()
 		side_times.sort()
-		check(not any_times.is_empty() and not lane_times.is_empty(), "campaign doodads measured at %d lanes" % lanes)
-		if any_times.is_empty() or lane_times.is_empty():
+		every_times.sort()
+		check(measured > 0 and not lane_times.is_empty(), "campaign doodads measured at %d lanes (%d)" % [lanes, measured])
+		if lane_times.is_empty() or side_times.is_empty() or every_times.is_empty():
 			continue
-		print("  dashing through doodads at %d lanes (%d doodads): the next thing in its lane %.2f s after its front at the least (median %.2f s), in any lane %.2f s (median %.2f s, %s), from its end %.2f s; a reaction and a switch take %.2f s"
-			% [lanes, any_times.size(), lane_times[0], lane_times[lane_times.size() / 2], any_times[0], any_times[any_times.size() / 2],
-			worst, side_times[0], need])
+		print("  dashing through doodads at %d lanes (%d doodads and rows): the next thing in its lane %.2f s after its front at the least (median %.2f s), %.2f s after its end (median %.2f s, %s); what every lane keeps %.2f s after its end at the least (median %.2f s); a reaction and a switch take %.2f s"
+			% [lanes, measured, lane_times[0], lane_times[lane_times.size() / 2], side_times[0], side_times[side_times.size() / 2],
+			worst, every_times[0], every_times[every_times.size() / 2], need])
 
 
 # --- Rows and the lane by a side wall (task L3) ------------------------------------------------------
@@ -2149,13 +2410,17 @@ func _test_wall_lane_floor() -> void:
 
 ## The campaign's rows and doodads by the side walls on real physics (task L3), at 3, 5 and 6 lanes and each level's
 ## speed, with the level's pieces around them (_run_into's cut, stretched over a whole row): each level's first row
-## run into (pushed once by its first doodad, landing on clear floor in the lane beside, on safely past the row, never
-## inside any of them) and dashed into (every doodad the dash reaches smashed, the next one, if any, pushing as usual,
-## never inside a standing one); and its first doodad by a side wall met by a runner who steps onto that wall just
-## before it (it breaks as the body reaches it, never inside it; a row by the wall all along).
+## run into (pushed once by its first doodad, landing on clear floor in the lane beside, on safely past the row and
+## through what the lane it pushes into keeps clear past it, task L6, never inside any of them) and dashed into (every
+## doodad the dash reaches smashed, the next one, if any, pushing as usual, never inside a standing one; task L6's
+## review: and a jump at that one 1 m before its front, pushed in the air, comes down at least the reaction before
+## the end of what the lane beside keeps clear past a push from the row's last front); and its first doodad by a side
+## wall met by a runner who steps onto that wall just before it (it breaks as the body reaches it, never inside it; a
+## row by the wall all along).
 func _test_campaign_rows() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var rows_run: int = 0
+	var rows_jumped: int = 0
 	var walls_run: int = 0
 	sim.trace = true
 	for s: CampaignStep in campaign.steps():
@@ -2177,7 +2442,11 @@ func _test_campaign_rows() -> void:
 				# The cut reaches past the whole row: its first one's window stretched to the row's end.
 				var whole: Dictionary = first.duplicate()
 				whole["end"] = LevelLayout.doodad_extent(first).y
-				var r: Dictionary = await _run_into(layout, whole, fast, lead, after)
+				# Task L6 and its review: the lanes beside it stay clear until the reaction after a push from its last
+				# front (_push_clear), lanes further out may hold anything, and a runner the dash leaves short of its last
+				# doodads is pushed there too.
+				var clear: float = _push_clear(config, fast, first)
+				var r: Dictionary = await _run_into(layout, whole, fast, lead, clear)
 				var moved: Array[Dictionary] = []
 				for d: Dictionary in typed:
 					var m: Dictionary = d.duplicate()
@@ -2187,13 +2456,26 @@ func _test_campaign_rows() -> void:
 				check(r["alive"] and int(r["pushes"]) == 1 and r["reached"] and int(r["lane"]) == int(first["lane"]) + int(first["side"]),
 					"a row pushes once onto clear floor in the lane beside, on safely past it (%s, lane %d) %s" % [r["cause"], r["lane"], tag])
 				check(_row_sink(r["trace"], moved, 0, geo, fast) <= SINK_TOLERANCE, "never sinking into any of its doodads " + tag)
-				var dash: Dictionary = await _run_into(layout, whole, fast, lead, after, [[-6.0, &"dash"]])
+				var dash: Dictionary = await _run_into(layout, whole, fast, lead, clear, [[-6.0, &"dash"]])
 				check(dash["alive"] and int(dash["smashes"]) >= 1 and int(dash["pushes"]) <= 1 and dash["reached"]
 					and (int(dash["pushes"]) == 0) == (int(dash["smashes"]) == typed.size()),
 					"dashed into: smashed as far as the dash reaches, the next one pushing as usual (%d smashed, %d pushed) %s"
 					% [dash["smashes"], dash["pushes"], tag])
 				check(_row_sink(dash["trace"], moved, int(dash["smashes"]), geo, fast) <= SINK_TOLERANCE, "never inside one while it stands " + tag)
 				rows_run += 1
+				# Task L6's review: where the dash ends short of one, a jump at it 1 m before its front is pushed in the
+				# air, and comes down at least the reaction before the end of what the lane beside keeps clear.
+				var next: int = int(dash["smashes"])
+				if next > 0 and next < typed.size():
+					var front: float = float(typed[next]["start"]) - float(first["start"])
+					var j: Dictionary = await _run_into(layout, whole, fast, lead, clear, [[-6.0, &"dash"], [front - 1.0, &"jump"]])
+					var down: Vector2 = _touch_down(j["trace"])
+					var left: float = (float(whole["end"]) + clear + float(j["offset"]) - down.x) / fast.run_speed
+					check(j["alive"] and int(j["smashes"]) == next and int(j["pushes"]) == 1 and j["reached"]
+						and int(down.y) == int(first["lane"]) + int(first["side"]) and left >= config.doodad_reaction_seconds - FRAME_SLACK,
+						"a jump at the one the dash ended short of, pushed in the air, comes down %.2f s before the end of what the lane beside keeps clear and runs on safely (%s, %d smashed, lane %d) %s"
+						% [left, j["cause"], j["smashes"], j["lane"], tag])
+					rows_jumped += 1
 			for d: Dictionary in layout.doodads:
 				var lane: int = int(d["lane"])
 				if d.has("stash") or (lane != 0 and lane != lanes - 1):
@@ -2214,5 +2496,7 @@ func _test_campaign_rows() -> void:
 				walls_run += 1
 				break
 	sim.trace = false
-	print("  campaign rows run into and dashed into: %d; doodads by a wall met from it: %d" % [rows_run, walls_run])
-	check(rows_run >= 10 and walls_run >= 30, "campaign rows (%d) and doodads by a wall (%d) run on physics" % [rows_run, walls_run])
+	print("  campaign rows run into and dashed into: %d (jumped at where the dash ended short: %d); doodads by a wall met from it: %d"
+		% [rows_run, rows_jumped, walls_run])
+	check(rows_run >= 10 and rows_jumped >= 5 and walls_run >= 30, "campaign rows (%d, %d jumped at past the dash) and doodads by a wall (%d) run on physics"
+		% [rows_run, rows_jumped, walls_run])

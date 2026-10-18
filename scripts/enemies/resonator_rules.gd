@@ -109,6 +109,29 @@ static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 	return Vector2(float(anchors[0]), last.y + PLAN_MARGIN)
 
 
+## What zone doodads keep off around Resonator entry `e`, in every lane (LevelGenerator.doodad_enemy_keep_out; task
+## L6): its planned visit (keep_out) and the stretch its rules leave it after for its waits at run time, to where the
+## next visit may begin (_commit: turn_wait_max and visit_gap_seconds past its last pulse) and a wave's meeting
+## stretch past that. A pulse is held while a doodad stands in any lane between its warning and where its wave meets
+## the player (Resonator.pulse_clear), and a first pulse is never dropped: a wait (another big attack's turn, or
+## floor that isn't clear) may move it on past the plan, and a doodad standing right after the visit could leave it
+## no clear floor before the next Resonator sends it away (Golden 1 at 5 lanes on its own seed, test_resonator).
+## Only the doodads keep this; every other pass keeps the visit (keep_out). DESIGN-TBD (docs/questions/l6.md 4).
+static func doodad_keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
+	var visit: Vector2 = keep_out(gen, e)
+	var params: Dictionary = e.get("params", {})
+	var anchors: Array = params.get("pulse_at", [])
+	if anchors.is_empty():
+		return visit
+	var t: ResonatorTuning = tuning()
+	var doubles: Array = params.get("double", [])
+	var double: bool = doubles.size() == anchors.size() and bool(doubles[-1])
+	var next_visit: float = visit_end(gen, t, float(anchors[-1]), double) \
+		+ (t.turn_wait_max + t.visit_gap_seconds) * gen.speed
+	var wave: Vector2 = t.meeting_stretch(next_visit, double, gen.speed, gen.config.enemy_scaling, gen.pace)
+	return Vector2(visit.x, maxf(visit.y, wave.y + PLAN_MARGIN))
+
+
 ## Every Resonator in the layout, along the track.
 static func resonators_in(layout: LevelLayout) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

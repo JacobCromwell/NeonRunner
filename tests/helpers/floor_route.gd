@@ -8,13 +8,16 @@ extends RefCounted
 ## but a wall-run gap's (task J2, LevelLayout.wall_run_gaps: from its outer lane on its lit stretch, a step
 ## onto the lit wall and a standard wall run across, landing back in that lane past where the run and its
 ## drop end), a lane switch in the air, coyote time or a jump out of a slide, never steps on a pad, ramp or speed
-## pad, treats pulsing fences as always on, keeps out of a zone doodad's lane where it stands (no push,
-## and no jump over it: it's too tall), keeps out of a floor cut's lane from where the cut would reach a
+## pad, treats pulsing fences as always on, keeps out of a zone doodad's lane where it stands (no jump over it: it's
+## too tall; and no push, unless it's made with `pushes`: task L6, a runner who comes into the stretch before its front
+## where its push begins, running, landing or ending a slide there, is pushed into the lane on its side, landing there
+## past its front), keeps out of a floor cut's lane from where the cut would reach a
 ## player still in it (FloorCutPlan, keyed to the player's distance: the floor there is whole only
 ## while the cut is still ahead of them) to past its cause's spot, and keeps a margin at every edge, so
 ## a route it finds is one the real Player can run (test_generator replays some on real physics); it
 ## may miss some that exist. Enemies aren't in it: each keeps to its own fairness rules.
 ##   var floor := FloorRoute.new(layout, tuning)      the layout's grid, built once
+##   FloorRoute.new(layout, tuning, true)             with the zone doodads' pushes
 ##   var route: Dictionary = floor.find(from, to)     (find(from, to, lane): starting in that lane)
 ##   route: {ok, start_lane, end_lane, actions: [[distance, action]], reason, from, to}
 
@@ -46,7 +49,7 @@ const GAPPED: int = 4
 const FULL: int = 8
 const KINDS: Array[int] = [STAND_BAD, SLIDE_BAD, GAPPED, FULL]
 
-enum Move { START, RUN, LEFT, RIGHT, JUMP, SLIDE, WALL }
+enum Move { START, RUN, LEFT, RIGHT, JUMP, SLIDE, WALL, PUSH }
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -69,11 +72,22 @@ var _clear: Vector2i
 ## lit stretch, GAP_MARGIN inside it), and the steps from there to where the run and its drop land the runner.
 var _wall_starts: Dictionary = {}
 var _wall_steps: int = 0
+## Task L6, with `pushes`: the zone doodads' pushes, from each state (lane * size + step) a runner in a doodad's lane
+## stands at in the stretch before its front where its push begins (DOODAD_MARGIN long, free to stand in with
+## pushes) to the state the push lands them at (the lane on its side, the step past its front), each where that lane
+## is free from there to the landing.
+var _push_to: Dictionary = {}
+var _pushes: bool = false
+## Task L6, with `pushes`: per lane, each zone doodad's push as a move in the air or a slide meets it, Vector2i(the
+## first step of the stretch before its front where its push begins, the lane it pushes into), in order: a jump or a
+## slide that comes into that stretch goes on in the lane beside from there (_zone_in).
+var _push_zones: Array = []
 
 
-func _init(p_layout: LevelLayout, p_tuning: MovementTuning) -> void:
+func _init(p_layout: LevelLayout, p_tuning: MovementTuning, pushes: bool = false) -> void:
 	layout = p_layout
 	tuning = p_tuning
+	_pushes = pushes
 	lanes = layout.lane_count
 	size = int(ceil((layout.length + LOOK_PAST) / STEP)) + 1
 	_build_cells()
@@ -104,6 +118,8 @@ func _init(p_layout: LevelLayout, p_tuning: MovementTuning) -> void:
 		for i: int in range(int(ceil((float(w["entry"]) + GAP_MARGIN) / STEP)), int(floor((float(w["start"]) - GAP_MARGIN) / STEP)) + 1):
 			if i >= 0 and i < size:
 				_wall_starts[lane * size + i] = true
+	if _pushes:
+		_build_pushes()
 
 
 ## A floor route from `from` to `to` (track distances), starting in any lane where the player can
@@ -153,6 +169,11 @@ func find(from: float, to: float, start_lane: int = -1) -> Dictionary:
 				var m: int = int(ceil(LANDING_MARGIN / STEP))
 				if land_at + m <= last and sums[b_stand + land_at + m + 1] == sums[b_stand + land_at - m]:
 					_arrive(reach, prev, move, here + _wall_steps, here, Move.WALL + 16 * (1 if lane > 0 else 0))
+			# Task L6: pushed by a zone doodad right ahead in this lane, into the lane on its side.
+			if not _push_to.is_empty() and _push_to.has(lane * size + i):
+				var pushed: int = _push_to[lane * size + i]
+				if pushed % size <= last:
+					_arrive(reach, prev, move, (pushed / size) * span + pushed % size - first, here, Move.PUSH)
 			# Switch a lane: both lanes free to stand in while the player crosses.
 			var j: int = i + _switch_steps
 			if j <= last and sums[b_stand + j + 1] == sums[b_stand + i]:
@@ -177,11 +198,25 @@ func find(from: float, to: float, start_lane: int = -1) -> Dictionary:
 						and sums[b_full + land + 1] == sums[b_full + c1] \
 						and sums[b_stand + land + 1] == sums[b_stand + i + _land_from]:
 					_arrive(reach, prev, move, here + _jump_steps, here, Move.JUMP)
+				elif _pushes:
+					# Task L6: pushed in the air by a zone doodad ahead in this lane, coming down in the lane beside.
+					var z: Vector2i = _zone_in(lane, i, land)
+					if z.x >= 0 and _jump_clear(lane, i, z.x - 1, c0, c1) and _jump_clear(z.y, z.x, land, c0, c1) \
+							and sums[z.y * row + land + 1] == sums[z.y * row + i + _land_from]:
+						_arrive(reach, prev, move, z.y * span + land - first, here, Move.JUMP)
 			# Slide (and slide on): no hole, full fence or trigger, then stand up clear.
 			var b_slide: int = (lanes + lane) * row
 			for n: int in range(1, MAX_SLIDES + 1):
 				var end: int = i + (n - 1) * (_slide_steps - 2) + _slide_steps
-				if end + 1 > last or sums[b_slide + end + 1] != sums[b_slide + i]:
+				if end + 1 > last:
+					break
+				if sums[b_slide + end + 1] != sums[b_slide + i]:
+					# Task L6: pushed mid-slide by a zone doodad ahead in this lane, sliding on in the lane beside.
+					var z: Vector2i = _zone_in(lane, i, end) if _pushes else Vector2i(-1, -1)
+					if z.x >= 0 and sums[b_slide + z.x] == sums[b_slide + i] \
+							and sums[(lanes + z.y) * row + end + 1] == sums[(lanes + z.y) * row + z.x] \
+							and sums[z.y * row + end + 2] == sums[z.y * row + end]:
+						_arrive(reach, prev, move, z.y * span + end - first, here, Move.SLIDE + 16 * n)
 					break
 				if sums[b_stand + end + 2] == sums[b_stand + end]:
 					_arrive(reach, prev, move, here + end - i, here, Move.SLIDE + 16 * n)
@@ -213,6 +248,64 @@ func find(from: float, to: float, start_lane: int = -1) -> Dictionary:
 				actions.append([d, &"move_right" if s.y / 16 == 1 else &"move_left"])
 	return {"ok": true, "start_lane": at / span, "end_lane": found / span, "actions": actions, "reason": "",
 		"from": start_d, "to": to}
+
+
+## Task L6: each zone doodad's push (a row's, at its first front), as _push_to holds them: from each step of the
+## stretch before its front where its push begins (DOODAD_MARGIN long; the Player's push starts its lead before it,
+## MovementTuning.doodad_push_time at run speed, more than that) to the lane on its side (its `side`, inward by a side
+## wall) at the step past its front, where that lane is free to stand in from the one to the other (the generator
+## keeps it clear). A treasure stash's walls aren't zone doodads: their own rules keep a runner out (none is pushed
+## into its lane).
+func _build_pushes() -> void:
+	_push_zones.clear()
+	for lane: int in lanes:
+		_push_zones.append([])
+	var seen: Dictionary = {}
+	for d: Dictionary in layout.doodads:
+		if d.has("stash"):
+			continue
+		var span: Vector2 = LevelLayout.doodad_extent(d)
+		var lane: int = int(d["lane"])
+		var key: String = "%d %.2f" % [lane, span.x]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		var into: int = lane + int(d["side"])
+		var land: int = int(ceil(span.x / STEP)) + 1
+		if into < 0 or into >= lanes or land >= size:
+			continue
+		var zone: int = maxi(int(ceil((span.x - DOODAD_MARGIN) / STEP)), 0)
+		(_push_zones[lane] as Array).append(Vector2i(zone, into))
+		for at: int in range(zone, int(ceil(span.x / STEP))):
+			if _free(0, into, at, land):
+				_push_to[lane * size + at] = into * size + land
+
+
+## The first zone doodad's push (_push_zones) in `lane` whose stretch before its front begins at a step after `a` and
+## no later than `b`: Vector2i(that step, the lane it pushes into), or Vector2i(-1, -1).
+func _zone_in(lane: int, a: int, b: int) -> Vector2i:
+	for z: Vector2i in _push_zones[lane]:
+		if z.x > a and z.x <= b:
+			return z
+	return Vector2i(-1, -1)
+
+
+## True if a jump's arc from step `i` (its take-off; `c0` and `c1` its clear window's ends, as find() works them out)
+## passes over steps `a` to `b` of `lane` (both inside the arc): nothing gapped (a gapped fence, a doodad) and no
+## full-height fence outside the clear window.
+func _jump_clear(lane: int, a: int, b: int, c0: int, c1: int) -> bool:
+	if b < a:
+		return true
+	var row: int = size + 1
+	var b_gapped: int = (2 * lanes + lane) * row
+	var b_full: int = (3 * lanes + lane) * row
+	if sums[b_gapped + b + 1] != sums[b_gapped + a]:
+		return false
+	var low: int = mini(c0, b)
+	if low >= a and sums[b_full + low + 1] != sums[b_full + a]:
+		return false
+	var high: int = maxi(c1, a)
+	return high > b or sums[b_full + b + 1] == sums[b_full + high]
 
 
 ## Where a route may start, at or before `before`: the latest spot inside a clear stretch (every lane
@@ -276,9 +369,11 @@ func _build_cells() -> void:
 			float(r["at"]) + tuning.ramp_length + TRIGGER_MARGIN, STAND_BAD | SLIDE_BAD])
 	for d: Dictionary in layout.doodads:
 		# Nowhere to stand or slide, and no jump over it (GAPPED keeps any arc off it); a row (task L3) from its first
-		# one's front to its last one's end, the space between them too (LevelLayout.doodad_extent).
+		# one's front to its last one's end, the space between them too (LevelLayout.doodad_extent). With `pushes` (task
+		# L6), a zone doodad's stretch before its front is where its push begins instead (_push_to).
 		var span: Vector2 = LevelLayout.doodad_extent(d)
-		marks.append([int(d["lane"]), span.x - DOODAD_MARGIN, span.y + DOODAD_MARGIN, STAND_BAD | SLIDE_BAD | GAPPED])
+		var before: float = 0.0 if _pushes and not d.has("stash") else DOODAD_MARGIN
+		marks.append([int(d["lane"]), span.x - before, span.y + DOODAD_MARGIN, STAND_BAD | SLIDE_BAD | GAPPED])
 	for c: Dictionary in layout.cuts:
 		# A floor cut's lane is whole until the cut reaches the player (keyed to their distance): out of
 		# it from where its front is LevelGenerator.CUT_CONTACT_METRES ahead of them, to past its cause's

@@ -24,5 +24,5 @@ wide_gaps = 2
 charge_path_cyborgs = 1
 credit_trail_chance = 0.6
 credit_trail_min = 5
-doodad_share = 0.6
+doodad_share = 0.7
 sky = ExtResource("2_sky")

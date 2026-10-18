@@ -139,11 +139,12 @@ func _test_constraints() -> void:
 		"reports both no encounter room and impossible mean width, not proxy success")
 
 
-## FIX4: a zone doodad standing just past a row (as the doodads may: they keep only their push's lead
-## clear before them) doesn't stop the row widening in lanes away from it: a widening keeps off the
-## doodad's own lane (never the lane the row leaves open beside it) and its window, not the margin
-## around it in every lane. With that margin, a doodad decided which rows widened, so City 1's doodads
-## moved its extra gaps (test_doodads: doodads only add). A full-width jump still keeps the margin.
+## FIX4: a zone doodad standing just past a row (as the doodads may: since task L6 they keep the lanes beside
+## them clear from a lane switch's room before their push's lead, LevelGenerator.doodad_lane_room) doesn't stop the
+## row widening in lanes away from it: a widening keeps off the doodad's own lane (never the lane the row leaves open
+## beside it) and its window, not the margin around it in every lane. With that margin, a doodad decided which rows
+## widened, so City 1's doodads moved its extra gaps (test_doodads: doodads only add). A full-width jump still keeps
+## the margin.
 func _test_widening_beside_doodads() -> void:
 	var config := LevelConfig.new()
 	config.lane_count = 5
@@ -159,7 +160,7 @@ func _test_widening_beside_doodads() -> void:
 			layout.gaps.append({"lane": lane, "start": row_start, "end": row_end})
 		var gen: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
 		var small: float = gen.tuning.doodad_size(&"small").z
-		var at: float = row_end + LevelGenerator.doodad_lead_for(gen.tuning) + 0.5
+		var at: float = row_end + LevelGenerator.doodad_lead_for(gen.tuning) + gen.doodad_lane_room() + 0.5
 		layout.doodads.append({"lane": 2, "start": at, "end": at + small, "size": "small", "side": -1, "seed": 1})
 		var result: Dictionary = GapDensity.apply(gen)
 		var lanes: Array[int] = []
