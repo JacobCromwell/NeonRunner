@@ -23,18 +23,18 @@ extends RefCounted
 ##   its reach. A jump onto the wall from the floor starts high too (DESIGN-TBD,
 ##   docs/questions/n1.md). They're left out of the stars' best score (LevelLayout.star_credit_value), as a treasure
 ##   stash's are.
-## Its stretch (from run_in_seconds before the entry to landing_seconds past the end of the reference hopper's wall run
-## that holds the last high-value credit, if it hopped no more) is on one side wall, inside the level's clear ends,
-## off everything a wall runner, or one who hops off or stops hopping there, could meet (busy_spans): its wall whole
-## (no side wall gap: GDD §7, "a stretch of wall ... with no wall gap") and clear of what stands on it (signs, wall
-## enemies, ramps' wall runs, wall fences and their drop windows, a wall-run gap's lit wall, a dash wall's wall route,
-## other wall credits: LevelGenerator.wall_lane_keep_outs, with its doodad_wall_clear_seconds); the outer lane's floor
-## beside it clear (no hole, fence, pad, speed pad, ramp, zone doodad, floor cut's window or ceiling fence there:
-## nothing the hop carries a runner into); and nothing attacking in any lane meanwhile (every enemy's keep-out,
-## dash walls, what the rules keep in every lane), so the trick plays out on its own. A level takes up to its count,
-## each a seeded spot among those that fit, min_gap_seconds apart; none where none fits (it is sprinkled, never
-## guaranteed). problem() re-checks a finished layout (LayoutChecks.check_wall_hops). DESIGN-TBD throughout
-## (docs/questions/n1.md).
+## Its stretch (from run_in_seconds before the entry to where a runner who jumps off the wall at the last high-value
+## credit comes down, and landing_seconds after that) is on one side wall, inside the level's clear ends, off
+## everything a wall runner, or one who hops off there, could meet (busy_spans): its wall whole (no side wall gap: GDD
+## §7, "a stretch of wall ... with no wall gap") and clear of what stands on it (signs, wall enemies, ramps' wall runs,
+## wall fences and their drop windows, a wall-run gap's lit wall, a dash wall's wall route, other wall credits:
+## LevelGenerator.wall_lane_keep_outs, with its doodad_wall_clear_seconds); the outer lane's floor beside it clear (no
+## hole, fence, pad, speed pad, ramp, zone doodad, floor cut's window or ceiling fence there: nothing the hop carries a
+## runner into); no enemy in that lane, no hover truck and no attack a wall runner can't dodge (WALL_RUN_ATTACKERS), no
+## dash wall and nothing the rules keep in every lane meanwhile; attacks elsewhere come with their warnings, as on any
+## wall run. A level takes up to its count, each a seeded spot among those that fit, min_gap_seconds apart; none where
+## none fits (it is sprinkled, never guaranteed). problem() re-checks a finished layout (LayoutChecks.check_wall_hops).
+## DESIGN-TBD throughout (docs/questions/n1.md).
 
 ## The high-value credits' mark (LevelLayout.credits): the stars' best score leaves them out
 ## (LevelLayout.star_credit_value).
@@ -65,8 +65,8 @@ static func claws_multiplier() -> float:
 	return maxf((res as PowerupTuning).claws_wall_time_multiplier, 1.0) if res is PowerupTuning else 1.5
 
 
-## The height on the wall the high-value credits hang at (metres): above the highest a fresh wall run from the floor
-## carries a pickup's reach (WallHopPath.fresh_top, pickup_reach), by `t`'s gem_clearance.
+## The height on the wall the high-value credits hang at (metres): above where a pickup reaches from the highest a
+## fresh wall run carries a runner who never hops (WallHopPath.fresh_top, pickup_reach), by `t`'s gem_clearance.
 static func gem_height(mt: MovementTuning, t: WallHopTuning) -> float:
 	return WallHopPath.fresh_top(mt) + WallHopPath.pickup_reach(mt) + t.gem_clearance
 
@@ -200,8 +200,9 @@ static func _build(gen: LevelGenerator, t: WallHopTuning, side: int, entry: floa
 
 ## The stretches a line on wall `side` keeps off (see the header), as the level stands in the credit pass: what stands
 ## on that wall (LevelGenerator.wall_lane_keep_outs, the wall fences themselves and other wall credits on it, each
-## doodad_wall_clear_seconds either side), what stands on the outer lane's floor beside it, and what attacks or keeps
-## every lane meanwhile.
+## doodad_wall_clear_seconds either side), what stands on the outer lane's floor beside it, an enemy in that lane, the
+## attacks a wall runner can't dodge (WALL_RUN_ATTACKERS), dash walls and what the rules keep in every lane or in that
+## lane.
 static func busy_spans(gen: LevelGenerator, side: int) -> Array[Vector2]:
 	var layout: LevelLayout = gen.layout
 	var mt: MovementTuning = gen.tuning

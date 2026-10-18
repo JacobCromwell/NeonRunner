@@ -4,7 +4,7 @@ extends Resource
 ## credits further along than one wall run reaches, so only a player inventive enough to wall hop collects them";
 ## WallHopPlacement): a line of credits along a long, clear stretch of one side wall, from a free entry along the wall
 ## run, and a few high-value ones further along than one wall run from there reaches and higher than a fresh wall run
-## from the floor rises, where a runner who wall hops (GDD §3: jumping off a wall and straight back on starts a fresh
+## rises without a hop, where a runner who wall hops (GDD §3: jumping off a wall and straight back on starts a fresh
 ## wall run) passes them. How many a level gets is its own (LevelConfig.wall_hop_lines, 1 from Gangland 1 on). Edit
 ## data/tuning/wall_hops.tres (F6: "Wall-hop credits", in a level that has them; Restart level rebuilds). Times are
 ## seconds of run at the level's run speed, so a faster zone keeps them. Every number here is a first value for
@@ -14,8 +14,8 @@ const PATH: String = "res://data/tuning/wall_hops.tres"
 
 @export_group("The reference hopper")
 ## The runner the line is laid out for (WallHopPath): steps onto the wall from the outer lane at the line's entry,
-## and wall hops each time its wall run has come down to this height (metres on the wall): low, as a runner hops to
-## stay on a wall that is about to drop them.
+## and wall hops each time its wall run has come down to this height (metres on the wall), partway down the run, as a
+## runner hops to stay on a wall that would drop them.
 @export_range(0.6, 2.0, 0.05, "suffix:m") var hop_height: float = 1.5
 
 @export_group("The line")

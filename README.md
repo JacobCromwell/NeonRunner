@@ -204,8 +204,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   play, `--features=ceilings,treasure_stash,fenced_ceiling --lanes=5 --difficulty=0.7`). A doodad stands a space in
   front of the stash's own (a second of run), so a dash at it from the street smashes the first and runs out short of
   the second; the street way in is harder: around the first, into the space, then dash.
-  Wall-hop credits (from Gangland on, about once a level where a long, clear stretch of wall fits; never on the
-  Beach, whose walls are mostly open): a line of credits leads along a side wall from where to step onto it, and three
+  Wall-hop credits (from Gangland on, about once a level where a long, clear stretch of wall fits; the Beach's mostly
+  open walls leave none long enough): a line of credits leads along a side wall from where to step onto it, and three
   high-value ones hang further along than one wall run reaches and higher than a fresh wall run rises; jump off the
   wall and straight back on (the wall hop) as they come near to reach them (in a campaign level, e.g.
   `--level=gangland/1`).
