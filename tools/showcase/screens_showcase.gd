@@ -4,8 +4,8 @@ extends Node
 ## screen:
 ##   godot --path . res://tools/showcase/screens_showcase.tscn -- --screen=shop
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
-## failed, match_results (the volleyball match's results; --score=4-1), slot, cinematic, demo_end, hud; hud_armor (the HUD's armor through its states, GDD §4: up
-## until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
+## failed, match_results (the volleyball match's results; --score=4-1), slot, cinematic, demo_end, hud; hud_armor (the
+## HUD's armor through its states, GDD §4: up until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
 ## the upgrade's tier N, default 0: the free armor); hud_last_hit (the "one hit from death" cue, GDD §4: the
 ## free armor breaks at 1 s (a shield still held: nothing shows), the shield at 2 s and then the screen's edges
 ## pulse red with the siren and hold a dim edge until the armor is back at 6 s; --reduced-flashing shows the

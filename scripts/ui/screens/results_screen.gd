@@ -229,7 +229,7 @@ func _stats_table() -> Control:
 		["Hits blocked", UiTheme.format_int(int(st.get("blocked", 0)))],
 	]
 	if result.context.is_boss():
-		# A fight's own numbers (GDD §10): the time counts for stars and the time bonus.
+		# A fight's own numbers (GDD §10): the time counts for the time bonus (and for the stars under the TIME rule).
 		rows = [
 			["Time", ResultsScreen.format_time(result.time)],
 			["Phase reached", "%d / %d" % [int(st.get("phase", 1)), int(st.get("phases", 1))]],

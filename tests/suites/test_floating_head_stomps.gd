@@ -30,6 +30,8 @@ const ROUTES: Array[StringName] = [&"ramp", &"wall", &"ceiling"]
 
 var sim: RunSim
 var def: BossDef
+## The clean whole fight's time at each lane count (_test_whole_fight), for the par times.
+var clean_times: Dictionary = {}
 
 
 func run() -> void:
@@ -50,6 +52,7 @@ func run() -> void:
 	await _test_armor_pickups()
 	await _test_ceiling_rules()
 	await _test_whole_fight()
+	await _test_par_times()
 	await _test_plain_fight()
 	await _test_same_every_attempt()
 
@@ -660,7 +663,44 @@ func _test_whole_fight() -> void:
 			"its entrance, the reveal and every bombing run come on the way %s" % tag)
 		print("  Floating Head's whole fight %s: %.0f s, %d pins, %d windows missed" % [tag, head.fight_time(),
 			_events(head, &"pinned").size(), _events(head, &"window_missed").size()])
+		clean_times[lanes] = head.fight_time()
 		await sim.free_world(world)
+
+
+## The par times against the whole fight (task N2; deferred item 202: "a perfect run gets three stars and a run that misses
+## a window or two gets two"). 5 lanes ship on every platform: a clean fight there earns three stars, one that lets the first
+## window go by two, and so does one that lets two go by. The counts that don't ship (3 and 6) take about 13 s longer when
+## clean, and earn two (docs/questions/n2.md).
+func _test_par_times() -> void:
+	for lanes: int in LANES:
+		var clean: float = float(clean_times.get(lanes, INF))
+		var want: int = 3 if lanes == 5 else 2
+		check(def.stars_for(true, clean) == want, "a clean fight at %d lanes earns %d stars (%.1f s, par %.0f / %.0f s)" % [
+			lanes, want, clean, def.three_star_seconds, def.two_star_seconds])
+	var times: Array[float] = []
+	for misses: int in [1, 2]:
+		var pair: Array = _fight(def, 5)
+		var world: RunWorld = pair[0]
+		var head: FloatingHead = pair[1]
+		world.player.god_mode = true
+		world.player.grapples = 1_000_000
+		var bot := FloatingHeadBot.new(head, true)
+		await _until(world, func() -> bool:
+			bot.wrong_route = _events(head, &"window_missed").size() < misses
+			bot.step()
+			return head.is_defeated(), 400.0)
+		var t: float = head.fight_time()
+		times.append(t)
+		check(head.is_defeated() and _events(head, &"window_missed").size() == misses and def.stars_for(true, t) == 2,
+			"%d window%s let go by at 5 lanes: two stars (%.1f s, %d missed)" % [misses, "" if misses == 1 else "s", t,
+			_events(head, &"window_missed").size()])
+		await sim.free_world(world)
+	var clean5: float = float(clean_times.get(5, INF))
+	check(times.size() == 2 and clean5 < times[0] and times[0] < times[1] and times[0] > def.three_star_seconds,
+		"each window let go by costs time: clean %.1f s, one %.1f s, two %.1f s" % [clean5, times[0] if times.size() > 0 else 0.0,
+		times[1] if times.size() > 1 else 0.0])
+	print("  Floating Head, 5 lanes: clean %.1f s, one window missed %.1f s, two %.1f s (par %.0f / %.0f s)" % [clean5,
+		times[0] if times.size() > 0 else 0.0, times[1] if times.size() > 1 else 0.0, def.three_star_seconds, def.two_star_seconds])
 
 
 ## The whole fight on a plain street at every lane count: a runner who reads it is never touched by its

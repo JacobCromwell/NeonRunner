@@ -76,8 +76,9 @@ enum StarRule {
 ## earned. TIME (GDD §10, proposed) for a fight whose speed is the player's to improve; HITS for one whose length its
 ## script fixes, where a faster win is not in the player's hands and how cleanly the fight went is.
 @export var star_rule: StarRule = StarRule.TIME
-## HITS: the most protection hits taken (the run's ScoreKeeper.blocked, RunResult.stats["blocked"]: an armor or shield
-## absorbing an attack) for three stars (0: none) and for two. Also DESIGN-TBD.
+## HITS: the most protection hits taken (RunResult.stats["hits_taken"]: the armor or shield blocks the run's
+## ScoreKeeper counted, plus each revive used, which continues the fight after a hit nothing blocked) for three stars
+## (0: none) and for two. Also DESIGN-TBD.
 @export_range(0, 20) var three_star_max_hits: int = 0
 @export_range(0, 20) var two_star_max_hits: int = 2
 ## DESIGN-TBD (GDD §10, proposed: one star for winning, two and three for beating par times set per
@@ -167,7 +168,7 @@ func checkpoint_phase() -> int:
 
 
 ## Stars for a fight (GDD §10, proposed): none without a win; one for winning, two and three by the star_rule:
-## beating the par times (`seconds` of fight), or taking few enough protection hits (`hits_taken`).
+## beating the par times (`seconds` of fight), or taking few enough protection hits (`hits_taken`: blocks and revives).
 func stars_for(won: bool, seconds: float, hits_taken: int = 0) -> int:
 	if not won:
 		return 0

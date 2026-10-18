@@ -51,9 +51,12 @@ static func from_boss(world: RunWorld, encounter: BossEncounter, context: RunCon
 	if won:
 		r.completion_bonus = def.payout_credits if context.mode != RunContext.Mode.QUICK else 0
 	r._pay(won, rules)
-	# Stars by the fight's time or by the protection hits it took (BossDef.star_rule): the armor or shield blocks the
-	# ScoreKeeper counted, since a hit nothing blocked ends the attempt.
-	r.stars = def.stars_for(won, r.time, int(r.stats.get("blocked", 0)))
+	# Stars by the fight's time or by the protection hits it took (BossDef.star_rule). A hit taken is one the armor or
+	# shield blocked (the ScoreKeeper's `blocked`) or one that ended the attempt and was revived from (a revive continues
+	# the same fight: RunContext.revives_used), so a revived death can't earn three stars.
+	var hits_taken: int = int(r.stats.get("blocked", 0)) + context.revives_used
+	r.stats["hits_taken"] = hits_taken
+	r.stars = def.stars_for(won, r.time, hits_taken)
 	return r
 
 

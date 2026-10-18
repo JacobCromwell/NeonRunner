@@ -1008,9 +1008,29 @@ func _app_hits_stars(step: CampaignStep) -> void:
 			labels.append((node as Label).text)
 		check(labels.has("3 stars: no hits taken · 2 stars: 1 hit or fewer") and not labels.has(
 			"2 stars under 0:01 · 3 stars under 0:00"), "the results list the hits, not par times (hits: %d)" % hits)
-		check(App.profile.stars("city/boss") == want or hits > 0, "the profile records the stars (%d)" % App.profile.stars("city/boss"))
+		var gained: int = int(results.result.record.get("stars_gained", -1))
+		check(gained == (3 if hits == 0 else 0) and App.profile.stars("city/boss") == 3,
+			"the profile records the stars: %d gained, the best stays at three (%d)" % [gained, App.profile.stars("city/boss")])
 		App.show_level_select()
 		await tree.process_frame
+	# A revive continues the same fight after a hit nothing blocked: it counts as a hit, so a revived death can't be three stars.
+	App.profile.add_stock(&"revive", 1)
+	App.play_step(step)
+	App.begin_run()
+	await physics_frames(3)
+	var revived: LevelRun = App.run
+	var revived_context: RunContext = revived.context
+	await _kill_player()
+	App.revive_with_item()
+	await physics_frames(90)
+	await _beat(revived.encounter)
+	var after: ResultsScreen = await _results_after_win()
+	check(after != null and after.result.completed and revived_context.revives_used == 1 and after.result.stars == 2
+		and int(after.result.stats.get("blocked", -1)) == 0 and int(after.result.stats.get("hits_taken", -1)) == 1,
+		"a revive counts as a hit: beaten with none blocked but one revive, two stars (%s)" % [
+		[after.result.stars, after.result.stats.get("blocked"), after.result.stats.get("hits_taken")] if after != null else "no results"])
+	App.show_level_select()
+	await tree.process_frame
 	check(App.profile.stars("city/boss") == 3, "and keeps the best, three stars (%d)" % App.profile.stars("city/boss"))
 	test_def.star_rule = kept[0]
 	test_def.three_star_seconds = kept[1]
