@@ -265,8 +265,8 @@ func _fanfare() -> PackedFloat32Array:
 			var voice := _brass_voice(DSP.midi_hz(float(notes[v])), FANFARE_SECONDS[k], lerpf(8.0, 14.0, rise),
 				5.0 if held else 0.6, 0.2 if held else 0.05, 0.22 if held else 0.06, rng)
 			DSP.mix(dry, voice, FANFARE_AT[k], lerpf(0.8, 1.0, rise) / (1.0 + 0.35 * v))
-	# The break-up: the brass fuzzing and crushing as the tail takes over.
 	DSP.filter(dry, &"peaking", 600.0, 0.8, 4.0)  # the bell's blare
+	# The break-up: the brass fuzzing and crushing as the tail takes over.
 	_break_up(dry, FANFARE_BREAK_FROM, FANFARE_BREAK_TO, 14.0, 5.0, 4500.0)
 	# The hall hears the early calls a little and the last one fully.
 	var send: PackedFloat32Array = dry.duplicate()
