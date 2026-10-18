@@ -14,7 +14,7 @@ extends PanelContainer
 ##   card.wear_pressed.connect(_on_wear)
 
 signal buy_pressed(cosmetic_id: StringName)
-## Wear (or, on a worn card, take off) the cosmetic: `wear` is the outfit to put on, so a take-off carries
+## Wear the cosmetic, or take it off: `cosmetic_id` is the outfit to put on, so on a worn card (TAKE OFF) it is
 ## the default look's id.
 signal wear_pressed(cosmetic_id: StringName)
 
