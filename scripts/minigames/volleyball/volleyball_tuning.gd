@@ -108,9 +108,14 @@ extends Resource
 ## Level score (leaderboards; never spent) for each return, and for each point won.
 @export_range(0, 1000, 5) var return_score: int = 25
 @export_range(0, 5000, 5) var point_score: int = 150
-## The level's stars by the points won (1 star for finishing).
+## The level's stars by how the match went, never how fast (owner, October 18, 2026: "4 points to the rival's 0 is three
+## stars, one point or none is one star, anything in between two stars"): 1 star under two_star_points points won; 2 from
+## there; 3 for three_star_points won with the rival on no more than three_star_rival_points. Read literally, a 4-1, 4-2
+## or 4-3 win is two stars, and so is a 2-4 or 3-4 loss (the runner finishes the level whoever wins the match).
 @export_range(0, 15) var two_star_points: int = 2
 @export_range(0, 15) var three_star_points: int = 4
+## The most points the rival may have for three stars: 0, the owner's "4 points to the rival's 0".
+@export_range(0, 15) var three_star_rival_points: int = 0
 
 
 ## Seconds a ball to the runner flies when it's ball `index` of its rally (0: the serve) and leaves the runner
@@ -133,10 +138,20 @@ func lanes_away(index: int) -> int:
 	return maxi(max_lanes_away[clampi(index, 0, max_lanes_away.size() - 1)], 1)
 
 
-## The level's stars for `points` won (finished: at least 1).
-func stars_for(points: int) -> int:
-	if points >= three_star_points:
+## The level's stars for a finished match that ended `points` to the runner and `rival_points` to the rival (at least 1).
+func stars_for(points: int, rival_points: int) -> int:
+	if points >= three_star_points and rival_points <= three_star_rival_points:
 		return 3
 	if points >= two_star_points:
 		return 2
 	return 1
+
+
+## How the stars are earned, for the results screen (a line each): "3 stars: 4 points to the rival's 0", "2 stars: 2
+## points or more", "1 star: fewer than 2 points".
+func star_text() -> String:
+	var three: String = "%d points to the rival's %d" % [three_star_points, three_star_rival_points]
+	if three_star_rival_points > 0:
+		three += " or fewer"
+	return "3 stars: %s\n2 stars: %d point%s or more\n1 star: fewer than %d point%s" % [three, two_star_points,
+		"" if two_star_points == 1 else "s", two_star_points, "" if two_star_points == 1 else "s"]

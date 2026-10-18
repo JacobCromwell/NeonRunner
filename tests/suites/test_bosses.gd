@@ -937,7 +937,7 @@ func _app_win(step: CampaignStep) -> void:
 	var labels: PackedStringArray = []
 	for node: Node in results.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
-	check(labels.has("BOSS DEFEATED") and labels.has(ResultsScreen.par_text(test_def)), "the results say so, with the par times")
+	check(labels.has("BOSS DEFEATED") and labels.has(ResultsScreen.star_text(results.result.context)) and labels.has(test_def.star_text()), "the results say so, with the par times")
 	App.continue_after_result(r)
 	check(App.screen is ShopScreen and (App.screen as ShopScreen).play_label == "Next", "then the shop")
 	(App.screen as ShopScreen).on_close.call()

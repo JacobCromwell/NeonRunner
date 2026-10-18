@@ -58,9 +58,9 @@ func _ready() -> void:
 		stars.star_size = UiTheme.px(40 if short else 56)
 		stars.star_revealed.connect(_on_star)
 		left.add_child(stars)
-		if boss:
-			left.add_child(ScreenBase.make_label(ResultsScreen.par_text(ctx.boss), UiTheme.CAPTION,
-				HORIZONTAL_ALIGNMENT_CENTER))
+		var star_rule: String = ResultsScreen.star_text(ctx)
+		if star_rule != "":
+			left.add_child(ScreenBase.make_label(star_rule, UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_CENTER))
 	left.add_child(_score_row(short))
 	left.add_child(HSeparator.new())
 	left.add_child(_credit_table())
@@ -127,15 +127,15 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d.%d" % [whole / 60, whole % 60, floori((seconds - whole) * 10.0)]
 
 
-## A boss's par times for its stars (GDD §10, proposed): "2 stars under 1:15 · 3 stars under 0:50".
-static func par_text(def: BossDef) -> String:
-	return "2 stars under %s · 3 stars under %s" % [_clock(def.two_star_seconds), _clock(def.three_star_seconds)]
-
-
-## m:ss
-static func _clock(seconds: float) -> String:
-	var whole: int = floori(seconds)
-	return "%d:%02d" % [whole / 60, whole % 60]
+## How a run's stars are earned, listed under them: a boss's rule (BossDef.star_text: its par times, or the hits taken), a
+## mini-game's (MiniGameDef.star_text: the volleyball match's points). Empty for a level, whose stars are a share of the
+## credits.
+static func star_text(ctx: RunContext) -> String:
+	if ctx.is_boss():
+		return ctx.boss.star_text()
+	if ctx.config != null and ctx.config.minigame != null:
+		return ctx.config.minigame.star_text()
+	return ""
 
 
 func _score_row(short: bool = false) -> Control:

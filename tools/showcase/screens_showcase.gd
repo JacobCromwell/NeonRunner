@@ -4,7 +4,7 @@ extends Node
 ## screen:
 ##   godot --path . res://tools/showcase/screens_showcase.tscn -- --screen=shop
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
-## failed, slot, cinematic, demo_end, hud; hud_armor (the HUD's armor through its states, GDD §4: up
+## failed, match_results (the volleyball match's results; --score=4-1), slot, cinematic, demo_end, hud; hud_armor (the HUD's armor through its states, GDD §4: up
 ## until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
 ## the upgrade's tier N, default 0: the free armor); hud_last_hit (the "one hit from death" cue, GDD §4: the
 ## free armor breaks at 1 s (a shield still held: nothing shows), the shield at 2 s and then the screen's edges
@@ -104,6 +104,15 @@ func _open(screen: String) -> void:
 			var s := ResultsScreen.new()
 			s.result = SampleProfiles.result(screen == "results")
 			App.show_screen(s)
+		"match_results":
+			# The volleyball match's results; --score=4-1 is the runner's points then the rival's (default 4-0).
+			var score: PackedStringArray = PackedStringArray(["4", "0"])
+			for arg: String in OS.get_cmdline_user_args():
+				if arg.begins_with("--score="):
+					score = arg.get_slice("=", 1).split("-")
+			var m := ResultsScreen.new()
+			m.result = SampleProfiles.match_result(int(score[0]), int(score[1]) if score.size() > 1 else 0)
+			App.show_screen(m)
 		"slot":
 			App.play_step(App.campaign.step("city/boss"))
 		"cinematic":

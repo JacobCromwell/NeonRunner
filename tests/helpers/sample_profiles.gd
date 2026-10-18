@@ -70,6 +70,32 @@ static func boss_result(won: bool) -> RunResult:
 	return r
 
 
+## The volleyball match's result for the results screen (Net Gains, beach/2): a match that ended `won` to `lost`, paid
+## 100 a point, its stars by the score (VolleyballTuning.stars_for).
+static func match_result(won: int, lost: int) -> RunResult:
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.CAMPAIGN
+	ctx.step = App.campaign.step("beach/2")
+	ctx.level_index = ctx.step.level_index
+	ctx.config = App.campaign.configure(ctx.step, 5)
+	ctx.tuning = App.tuning
+	ctx.loadout = Loadout.new()
+	var tuning := ctx.config.minigame.tuning as VolleyballTuning
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = true
+	r.stats = {"minigame": "volleyball", "points_won": won, "points_lost": lost, "returns": won * tuning.returns_to_win_point}
+	r.score = 3400 + won * (tuning.point_score + tuning.returns_to_win_point * tuning.return_score)
+	r.credits_collected = 62
+	r.completion_bonus = won * tuning.payout_per_point
+	r.credits_earned = r.credits_collected + r.completion_bonus
+	r.stars = tuning.stars_for(won, lost)
+	r.time = 55.1
+	r.distance = 640.0
+	r.record = {"new_best": true, "stars_gained": r.stars, "first_clear": true}
+	return r
+
+
 ## A campaign result for the results screen: a clear of city/2, or a death in it.
 static func result(completed: bool) -> RunResult:
 	var ctx := RunContext.new()

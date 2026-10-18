@@ -31,8 +31,9 @@ var record: Dictionary = {}
 
 
 ## A boss fight's result (GDD §10): a win pays everything collected plus the boss's payout, with
-## stars from its par times; a death pays the usual share (GDD §4). The score already holds the weak
-## points, the defeat and the time bonus (BossEncounter scores them as they happen).
+## stars from its par times or the hits it took (BossDef.star_rule); a death pays the usual share
+## (GDD §4). The score already holds the weak points, the defeat and the time bonus (BossEncounter
+## scores them as they happen).
 static func from_boss(world: RunWorld, encounter: BossEncounter, context: RunContext, won: bool,
 		death_cause: String, rules: GameRules) -> RunResult:
 	var r := RunResult.new()
@@ -50,7 +51,9 @@ static func from_boss(world: RunWorld, encounter: BossEncounter, context: RunCon
 	if won:
 		r.completion_bonus = def.payout_credits if context.mode != RunContext.Mode.QUICK else 0
 	r._pay(won, rules)
-	r.stars = def.stars_for(won, r.time)
+	# Stars by the fight's time or by the protection hits it took (BossDef.star_rule): the armor or shield blocks the
+	# ScoreKeeper counted, since a hit nothing blocked ends the attempt.
+	r.stars = def.stars_for(won, r.time, int(r.stats.get("blocked", 0)))
 	return r
 
 
