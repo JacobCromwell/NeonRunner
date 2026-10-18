@@ -37,6 +37,7 @@ func _ready() -> void:
 		App.profile.settings["reduced_flashing"] = true
 		Settings.apply_visuals(App.profile)
 	var outfit: String = _opt("outfit", "")
+	PlayerOutfits.worn = PlayerOutfits.ECHO  # whatever the real save wears
 	if outfit != "":
 		# Every runner built from here on wears it (PlayerOutfits.worn); an unknown id is Echo's own look.
 		PlayerOutfits.worn = PlayerOutfits.resolve(StringName(outfit))

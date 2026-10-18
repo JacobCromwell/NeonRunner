@@ -9,7 +9,7 @@ extends SceneTree
 ##   godot --headless -s res://tools/measure/economy.gd -- [options]
 ## Options:
 ##   --levels=city/1,gangland/2   campaign steps (levels and bosses; default: all of them)
-##   --lanes=3,5,6                lane counts (default 3,5,6; 3 with --mobile=true)
+##   --lanes=3,5,6                lane counts (default 3,5,6; with --mobile=true, mobile's own, GameRules.lanes_mobile)
 ##   --seeds=N                    each level's own seed and N others (default 2)
 ##   --share=0.7                  the share of a level's credits the typical player collects (GDD §7 names
 ##                                no number, so this stands in for "a good, not perfect, clean run with no
@@ -17,7 +17,7 @@ extends SceneTree
 ##   --weak-share=0.45            the same for the weaker player (default: the two-star line, GameRules.two_star_share)
 ##   --fails=0, --weak-fails=2    failed attempts a player makes at each level before finishing it
 ##   --points=4, --weak-points=2  points the player wins in the Beach's volleyball match (100 credits each)
-##   --stash=1, --weak-stash=0    the share of the treasure stashes' credits (task I4; PC lanes only) the player
+##   --stash=1, --weak-stash=0    the share of the treasure stashes' credits (task I4; 5 and 6 lanes only) the player
 ##                                takes: they sit on an optional ceiling route (DESIGN-TBD, items 846-850 in docs/OPEN_QUESTIONS*.md)
 ##   --bonus-base=N               what-ifs: GameRules.completion_bonus_base and _per_level, for this run
 ##   --bonus-per-level=N          only (the data is not touched)
@@ -302,4 +302,4 @@ func _parse_args() -> void:
 		elif arg == "--packs":
 			_packs = true
 	if _mobile and not _lanes_set:
-		_lanes = [3]
+		_lanes = [(load(RULES_PATH) as GameRules).lanes_mobile]

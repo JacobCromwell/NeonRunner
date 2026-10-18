@@ -116,7 +116,7 @@ func _test_buying() -> void:
 		"another one comes out of what is left")
 	for id: StringName in [&"nope", PlayerOutfits.ECHO, &""]:
 		check(not App.buy_cosmetic(id) and App.profile.outfits.size() == 2, "'%s' can't be bought (unknown, or the free default look)" % id)
-	# Bought credits go first, so buying a look never lowers net worth.
+	# Bought credits go first; only the earned part spent lowers net worth.
 	App.profile = Profile.new()
 	App.profile.add_earned(1000)
 	App.profile.add_purchased(2500)
