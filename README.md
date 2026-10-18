@@ -667,7 +667,11 @@ calls, vertices drawn, MultiMesh instances), the same tool on any version of the
 `godot --headless -s res://tools/measure/market_people_cost.gd -- [--passes=5] [--levels=marketplace_1] [--lanes=5]
 [--skin=casino]`. `tools/showcase/market_people_review.tscn` shows them from the game's camera or still cameras close to
 one's window, with a cheer, a flinch or the runner walked past one to see the heads turn (`--view=run|window`, `--cheer`,
-`--flinch`, `--sweep=40`; its header lists the options).
+`--flinch`, `--sweep=40`; its header lists the options). `tools/showcase/window_display_review.tscn` shows the shop windows' ad
+screens and posters (task L10) up close, in the Marketplace's or the Casino's look (`--view=close|oblique|posters`,
+`--flash=S` to bring the cult emblem's flash into a short render, `--reduced`, `--skin=casino`; `skin_review`'s shots 18-21
+show the first window with each in the street). `tools/measure/first_draw_time.gd` times a material's first draw, which is where the
+Compatibility renderer compiles its shader (the solid kit's, or `--display` the shop windows'; its header says how to run it).
 
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the

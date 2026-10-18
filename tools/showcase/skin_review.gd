@@ -22,10 +22,11 @@ extends Node3D
 ##                   8 the sky, 9-12 each ceiling's near end from the floor, 13-16 a gap coming up from
 ##                   150, 100, 60 and 30 m away, from the game camera (a gap first shows about 180 m
 ##                   ahead, when its chunk is built). Skins that list their cult feed screens
-##                   (feed_boards(), shop_windows() with "screen") add 17 the first billboard playing
-##                   the feed and 18 the first shop window with a TV playing it, close up, and 19 that
-##                   window from the lanes. After those come, where the skin lists them, the first
-##                   feed screen of each other kind (feed_boards()), the first window with a TV
+##                   (feed_boards(), shop_windows() with "display") add 17 the first billboard playing
+##                   the feed, 18 the first shop window with an ad screen, close up, 19 that window from the
+##                   lanes, and 20 and 21 the same for the first window with a poster (task L10). After those
+##                   come, where the skin lists them, the first feed screen of each other kind
+##                   (feed_boards()), the first window with a TV
 ##                   playing the feed high on a wall (feed_windows()) and the first cult emblem of
 ##                   each kind (cult_emblems()), close up. Each shot's number, frame and subject are
 ##                   printed.
@@ -44,6 +45,8 @@ extends Node3D
 ##   --from=D        the run starts at track distance D (to render only a stretch, such as a drop off
 ##                   a far end)
 ##   --reduced-flashing  Settings > Reduced flashing on (steady warnings instead of flicker)
+##   --flash=S       the Marketplace's and the Casino's shop-window ad screens flash the cult's emblem every S seconds (default:
+##                   each screen's own 14 to 26 s)
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
 ## ship, floating ad), for the Corporate skin one of each of its kinds (glass skyway, tower
 ## bridging the street, viaduct, gunship), and for the Dead Zone two charred bridges and two dead
@@ -92,6 +95,11 @@ func _ready() -> void:
 	var skin_name: String = _opt("skin", "city")
 	var path: String = skin_name if skin_name.begins_with("res://") else "res://data/skins/%s_skin.tres" % skin_name
 	skin = load(path) as ZoneSkin
+	# --flash=S: every shop-window ad screen flashes the cult's emblem every S seconds (task L10), to bring a flash into a
+	# short render (a screen's own period is 14 to 26 s).
+	if _opt("flash", "") != "" and skin.has_method(&"display_material"):
+		var period: float = float(_opt("flash", "0"))
+		(skin.call(&"display_material") as ShaderMaterial).set_shader_parameter(&"wd_flash_period", Vector2(period, period))
 	var env := WorldEnvironment.new()
 	var sky_name: String = _opt("sky", "")
 	var sky: LevelSky = null
@@ -442,7 +450,7 @@ func _shot_list() -> Array:
 		var p: float = FAR_GAP - ahead
 		out.append([p, Vector3(0.0, tuning.camera_height, -(p - tuning.camera_distance)),
 			Vector3(0.0, 1.0, -(p + tuning.camera_look_ahead))])
-	# 17-19: the cult's feed on a billboard and on a shop-window TV.
+	# 17: the cult's feed on a billboard; 18-21: the first shop window with an ad screen and with a poster (task L10).
 	var board: Dictionary = {}
 	if skin.has_method(&"feed_boards"):
 		for side: int in [1, -1]:
@@ -457,18 +465,22 @@ func _shot_list() -> Array:
 			out.append([float(board["at"]) - 30.0, Vector3(c.x - side * across, c.y - 3.0, c.z + 11.0), c,
 				"the first billboard playing the feed (%s)" % board.get("kind", "")])
 	if skin.has_method(&"shop_windows"):
-		var tv: Dictionary = {}
-		for side: int in [1, -1]:
-			for found: Dictionary in skin.call(&"shop_windows", side, side * w, 20.0, LENGTH - 60.0):
-				if found.get("screen", false) and (tv.is_empty() or float(found["at"]) < float(tv["at"])):
-					tv = found
-		if not tv.is_empty():
-			var c: Vector3 = tv["center"]
-			var side: float = float(tv["side"])
+		# The first window with an ad screen and the first with a poster (task L10; shop_windows()'s `display`).
+		for kind: StringName in [&"ad", &"poster"]:
+			var shown: Dictionary = {}
+			for side: int in [1, -1]:
+				for found: Dictionary in skin.call(&"shop_windows", side, side * w, 20.0, LENGTH - 60.0):
+					if found.get("display", &"") == kind and (shown.is_empty() or float(found["at"]) < float(shown["at"])):
+						shown = found
+			if shown.is_empty():
+				continue
+			var c: Vector3 = shown["center"]
+			var side: float = float(shown["side"])
 			var inside := Vector3(c.x + side * 0.45, 1.55, c.z)
-			out.append([float(tv["at"]) - 20.0, Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside,
-				"the first shop window with a TV playing the feed"])
-			out.append([float(tv["at"]) - 30.0, Vector3(0.0, tuning.camera_height, c.z + 12.0), inside,
+			var what: String = "an ad screen" if kind == &"ad" else "a poster"
+			out.append([float(shown["at"]) - 20.0, Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside,
+				"the first shop window with %s" % what])
+			out.append([float(shown["at"]) - 30.0, Vector3(0.0, tuning.camera_height, c.z + 12.0), inside,
 				"that window from the lanes"])
 	# Then the first feed screen of each other kind, the first TV window high on a wall, and the first
 	# cult emblem of each kind, close up from the far side of the street.

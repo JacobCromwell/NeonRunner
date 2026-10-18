@@ -3,7 +3,8 @@ extends RefCounted
 ## The cult's feed (GDD §5, "Cyborg Viewing Devices", decided September 26, 2026): the cult's
 ## philosophy reaches people through their screens, and its order to attack the runner reaches the
 ## screen-head cyborgs the same way. Every zone tells it without words: the same broadcast plays on
-## billboards, ads and TVs in shop windows, alongside the ordinary ads. One shared piece for every
+## billboards and ads, alongside the ordinary ads (not in the shop windows: the owner replaced the TVs there with ad
+## screens and posters, October 17, 2026, task L10). One shared piece for every
 ## skin: a shader-driven material (cult_feed.gdshader, the picture in cult_feed.gdshaderinc) that is
 ## cheap and works on the Compatibility renderer, and a helper that adds a screen to a mesh layer.
 ## Every screen shows the same moment of the same loop (the shader runs on TIME), so the broadcast
