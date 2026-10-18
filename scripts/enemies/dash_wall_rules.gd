@@ -344,7 +344,7 @@ static func after_doodads(gen: LevelGenerator) -> void:
 		_place(gen, plan, at, faces)
 	# Task L6: the zone doodads stand in far more of a level's free room than they did, and they're scenery: a level
 	# they leave short of its walls takes out the ones in the way of the rest before any feature gives way
-	# (_clear_doodads). DESIGN-TBD (docs/questions/l6.md 6).
+	# (_clear_doodads). DESIGN-TBD (item 974 in docs/OPEN_QUESTIONS*.md).
 	while faces.size() < count:
 		var cleared: float = _clear_doodads(gen, t, faces)
 		if is_nan(cleared):

@@ -142,7 +142,7 @@ push from its front, whichever is later. The dash walls after the doodads keep o
 it (`DashWallRules.doodad_span`, as the doodads keep off a wall before them); a level the doodads leave short of its
 walls takes out the ones in the way of the rest (`DashWallRules._clear_doodads`: scenery, before any feature gives way;
 a row goes whole). DESIGN-TBD
-(`docs/questions/g5.md`, `docs/questions/l6.md`): each level's share (City 1 brings them in gently: small and medium
+(`docs/questions/g5.md`, items 969-976 in `docs/OPEN_QUESTIONS*.md`): each level's share (City 1 brings them in gently: small and medium
 ones only, from a fifth of the way in, rows a quarter as often), what a doodad keeps clear, the spots, the gap and the
 sizes.
 
@@ -156,7 +156,7 @@ never land by one (`CyborgGun.path_clear`), a cyborg's walk and panic run keep t
 (`CyborgRules.obstacle_spans`), and a hover truck only lurches at a player who can leave its lane
 (`_escape_ok`). Those checks count a doodad in any lane, so the generator keeps doodads off every enemy's attack in
 every lane (task L6 kept that: letting them stand beside an attack in a far lane needs the checks made lane-aware
-first, or the attacks would be held back more often; `docs/questions/l6.md` 4). Measured at task G5 with the level
+first, or the attacks would be held back more often; item 972 in `docs/OPEN_QUESTIONS*.md`). Measured at task G5 with the level
 data (`tools/measure/level_pace.gd`, each level's own seed and
 four others at 3, 5 and 6 lanes, against the same levels with `--set=doodad_share:0`): every row, enemy
 and big attack as before (a credit inside a doodad goes, one or none a level), 3 to 15% more events a
@@ -187,10 +187,10 @@ from a row's last front) took about a fifth of the doodads away: before them the
 3, 5 and 6 lanes, Gangland 5.8 to 8.7, the Marketplace 6 to 7.2, the Golden Zone 2.9 to 3.6 (3,459 doodads over the
 405 layouts then, 2,757 now). At 3 lanes the City now has fewer than before the task: there the lanes beside a
 middle-lane doodad are the other two, which the fix keeps clear about as long as the old every-lane rule did, and the
-City's shares are low (`docs/questions/l6.md` 2). City 1 went from 2.8 to 3.9 a minute over its lane counts (its share
+City's shares are low (item 970 in `docs/OPEN_QUESTIONS*.md`). City 1 went from 2.8 to 3.9 a minute over its lane counts (its share
 0.15 and rows a quarter as often keep it the gentlest), City 2 and 3 from about 4.8 to 6.5 (their shares as they were).
 The Dead Zone stays the sparest: what every lane keeps (its enemies' attacks, its ceilings, The Hush's quiet
-stretches) covers most of its levels (`docs/questions/l6.md` 4). Every row of holes or fences, enemy, big attack and
+stretches) covers most of its levels (item 972 in `docs/OPEN_QUESTIONS*.md`). Every row of holes or fences, enemy, big attack and
 mechanic is as before (but where a dash wall, placed after the doodads, now stands elsewhere and takes out other plain
 pieces: 0.1 a minute more or fewer rows in five levels); events a minute up by 0 to 3.1 (the doodads), the mean empty
 stretch down by 0 to 0.06 s, the longest about as it was; a runner who ignores them takes 0.8 to 1.5 pushes a minute
@@ -259,7 +259,7 @@ the generator already has something on that part of the wall or needs it open"; 
 seeded, when both are; the only choice where no inner lane fits), pushing inward (`_add_doodads`, the stream of the
 rows). The Beach's levels take it less often (0.15, task L6: their open walls, task D10b, come first, and a doodad by a
 wall keeps the wall gaps off it; with L6's doodads at 0.6 the median wall stood on 55.0% of a Beach level, past
-`test_beach_levels`' 45-55%, and at 0.15 on about 54%; `docs/questions/l6.md` 7). Open is `wall_lane_keep_outs(side)`: nothing on that wall within `doodad_wall_clear_seconds` (1 s) of it (a
+`test_beach_levels`' 45-55%, and at 0.15 on about 54%; item 975 in `docs/OPEN_QUESTIONS*.md`). Open is `wall_lane_keep_outs(side)`: nothing on that wall within `doodad_wall_clear_seconds` (1 s) of it (a
 sign, a wall enemy as the fill pass keeps for it or a window cyborg's window, a Gilded Sentinel's wall section, a ramp
 from its foot to the end of the longest wall run it launches, `WallFencePlacement.ramp_run_end`, a wall-run gap's lit
 wall); no dash wall's wall route (in its footprint, which every doodad keeps from), no wall fence's drop window and no
@@ -720,7 +720,7 @@ F6 "Dash walls"), how many in `LevelConfig.dash_walls` (1 to 3 by level, DESIGN-
   that leaves the level with none (then one stands in a quiet stretch). Where the doodads leave a level short of its
   count (task L6: they stand in far more of its room than they did), the zone doodads in the way of the rest go
   (`_clear_doodads`: the face that fits with them out of the way, the fewest of them in its way; scenery, never a
-  feature, nor a treasure stash's walls; a row goes whole; DESIGN-TBD, `docs/questions/l6.md` 6), before the
+  feature, nor a treasure stash's walls; a row goes whole; DESIGN-TBD, item 974 in `docs/OPEN_QUESTIONS*.md`), before the
   wall-run gaps give way (task J2). A level left with no wall at all even then makes room for one as an
   introduction does (`_make_room` over the whole level; never a planted cyborg or its charger, nor a Buzz Overdrive
   an Enforcer Truck counts among its baits; the spacing of every bait it can't take out stays), and where even that

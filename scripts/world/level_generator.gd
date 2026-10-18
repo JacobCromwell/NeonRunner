@@ -181,7 +181,7 @@ const DOODAD_ROW_TOUCH: float = 0.05
 ## The room a zone doodad keeps in the lanes beside it (task L6; metres), beyond a lane switch at run speed
 ## (doodad_lane_room): a runner beside it switches into its lane right after it with this to spare, and one in its
 ## lane out of it right before its push (FloorRoute keeps 1.5 m off a doodad's lane either side of it, 0.6 m off a
-## hole's edge, and a switch's length rounded up to its 0.5 m steps). DESIGN-TBD (docs/questions/l6.md 1).
+## hole's edge, and a switch's length rounded up to its 0.5 m steps). DESIGN-TBD (item 969 in docs/OPEN_QUESTIONS*.md).
 const DOODAD_LANE_MARGIN: float = 3.0
 ## How far inside a free stretch's ends a zone doodad keeps its push's lead and its reach (_place_doodads; metres):
 ## the stretches are Vector2s (single precision, about 0.25 mm apart 3 km in), so one drawn at the very edge of its
@@ -1765,7 +1765,7 @@ class DoodadRoom:
 ## its first front to its last end (LevelLayout.doodad_extent), as long as fits there (never shorter than
 ## doodad_row_min). Its own random stream (rng_for("doodads")), and the rows' and the wall lane's another
 ## (rng_for("doodad_rows")): with doodad_share 0 nothing is drawn and the level is built exactly as before.
-## DESIGN-TBD (docs/questions/g5.md 1 and 4; items 942-947 in docs/OPEN_QUESTIONS*.md; docs/questions/l6.md): where
+## DESIGN-TBD (docs/questions/g5.md 1 and 4; items 942-947 in docs/OPEN_QUESTIONS*.md; items 969-976 in docs/OPEN_QUESTIONS*.md): where
 ## doodads stand, how many, the rows.
 func _place_doodads(patterns: Array) -> void:
 	if config.doodad_share <= 0.0 or layout.lane_count < 3:

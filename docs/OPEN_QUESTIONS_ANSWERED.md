@@ -1540,3 +1540,24 @@ Captain Cogs).
   mention one. **Answered by the owner (October 16, 2026):** "add the Gangland title card as the player character walks
   away at the end". Built: the zone's card ("ZONE 2", "GANGLAND", from the zone's data) comes up 0.3 s after the runner
   starts walking away and stays 2.9 s, held on as the picture fades to black.
+
+### Answered on October 17, 2026 (the owner's playtest after task L3)
+
+942. **How often rows come, how long, how spaced.** (GDD §3, Zone doodads.)
+   Placeholder: a doodad starts a row with `doodad_row_chance` 0.5; the row holds `doodad_row_min` to
+   `doodad_row_max` (3 to 4, each count as likely: the owner's examples are three long) of the same size class, in its
+   lane, pushing to its side; spaced by size class, as in the owner's examples (`doodad_row_spaced_small` 0,
+   `doodad_row_spaced_medium` and `doodad_row_spaced_large` 1): small ones (the plants) one right after the other, a
+   sliver apart (`LevelGenerator.DOODAD_ROW_TOUCH`, 5 cm, so the pictures on two boxes' faces never lie in one plane),
+   medium and large ones (the stalls) with a doodad's length between each two. A row is as long as fits where it's
+   drawn, down to three, else one doodad: rows come where a level leaves long stretches free.
+   Counted over the campaign (each level at 3, 5 and 6 lanes on its own seed and two others: 171 builds, 395 minutes),
+   before task L3's review (rows of 2 to 4, half of them spaced whatever their size): 918 doodads, 68 rows (0.17 a
+   minute, 0.40 a level), 41, 19 and 8 of them two, three and four long, 37 touching and 31 spaced, 45 of small ones,
+   17 medium and 6 large; after it: 919 doodads, 41 rows (0.10 a minute, 0.24 a level), 19 three long and 22 four
+   long, 39 of small ones touching and 2 of medium ones spaced, none of large ones (a spaced row of three takes five
+   doodads' lengths, 18 m of medium ones and 32.5 m of large ones, which the levels' free stretches seldom hold; three
+   small ones touching take 4.3 m). Measured by zone in the task's notes (`docs/architecture/generator-track-features.md`,
+   Zone doodads). Should rows come more often, should the stalls' spaced rows get the room they need (they nearly
+   never come now), or should rows wait for a level of their own (City 1 introduces doodads gently)?
+   **Answered (owner, October 17, 2026):** too rare to see; rows of two count, and doodads need no wide berth, only what a fair push needs. Built in task L6.

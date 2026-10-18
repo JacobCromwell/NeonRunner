@@ -116,7 +116,7 @@ static func keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 ## the player (Resonator.pulse_clear), and a first pulse is never dropped: a wait (another big attack's turn, or
 ## floor that isn't clear) may move it on past the plan, and a doodad standing right after the visit could leave it
 ## no clear floor before the next Resonator sends it away (Golden 1 at 5 lanes on its own seed, test_resonator).
-## Only the doodads keep this; every other pass keeps the visit (keep_out). DESIGN-TBD (docs/questions/l6.md 4).
+## Only the doodads keep this; every other pass keeps the visit (keep_out). DESIGN-TBD (item 972 in docs/OPEN_QUESTIONS*.md).
 static func doodad_keep_out(gen: LevelGenerator, e: Dictionary) -> Vector2:
 	var visit: Vector2 = keep_out(gen, e)
 	var params: Dictionary = e.get("params", {})

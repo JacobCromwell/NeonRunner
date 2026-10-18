@@ -299,11 +299,11 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## the owner's playtest, October 17, 2026: "too rare"; LevelGenerator: doodads), a spot every
 ## doodad_spot_seconds along the level: this is the chance that each spot with room for one gets one.
 ## 0: none, and the level is built exactly as before (quick play, the tests, boss arenas).
-## DESIGN-TBD (docs/questions/g5.md, docs/questions/l6.md): each level's value.
+## DESIGN-TBD (docs/questions/g5.md, items 969-976 in docs/OPEN_QUESTIONS*.md): each level's value.
 @export_range(0.0, 1.0, 0.05) var doodad_share: float = 0.0
 ## How far apart the spots lie that may each get a zone doodad (or a row), at run speed (task L6): with
 ## doodad_share, how often doodads come where the level has room for them, the doodad's front at a seeded
-## place in its spot. DESIGN-TBD (docs/questions/l6.md 2).
+## place in its spot. DESIGN-TBD (item 970 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.5, 10.0, 0.1, "suffix:s") var doodad_spot_seconds: float = 1.0
 ## Share of the level (0–1) from which doodads stand (City 1 introduces them a little way in).
 @export_range(0.0, 1.0, 0.05) var doodad_start: float = 0.0
@@ -317,12 +317,12 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## (LevelGenerator.doodad_after) the next one stands two lanes away at least, never in the lane beside the last
 ## one, where its push lands (no slalom), nor in its lane, which it hides behind it. A row of doodads
 ## (doodad_row_chance) counts as one: from its last one's end to the next doodad's front. DESIGN-TBD
-## (docs/questions/l6.md 3).
+## (item 971 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.2, 10.0, 0.1, "suffix:s") var doodad_gap_seconds: float = 0.6
 ## The reaction a runner gets after a zone doodad's push lands them in a lane beside it (task L6, and its review):
 ## both lanes beside it stay clear this long, at run speed, past where a push from its last front (a row's last
 ## one's) comes down: a push's time past that front on the floor, or a full jump past it for a runner who jumped at
-## it, pushed in the air (LevelGenerator.doodad_landing). DESIGN-TBD (docs/questions/l6.md 1).
+## it, pushed in the air (LevelGenerator.doodad_landing). DESIGN-TBD (item 969 in docs/OPEN_QUESTIONS*.md).
 @export_range(0.1, 2.0, 0.05, "suffix:s") var doodad_reaction_seconds: float = 0.5
 ## Doodads in rows (the owner, October 17, 2026, task L3: "occasionally ... rows of similar doodads: three plant
 ## doodads one right after the other, or three market stalls, one followed by a space ..."): the chance that a

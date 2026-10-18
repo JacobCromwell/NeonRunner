@@ -43,7 +43,7 @@ obstacles (33% and 30% without them; 5 and 6 lanes 31-36%), and `test_danger_den
 at 3 lanes (`WALL_RUN_GAP_ROOM`; DESIGN-TBD, `docs/questions/j2.md` item 12), and its rise past the middle band fall
 short by as much there: since task L6's review the zone doodads stand by the side walls more at 3 lanes and take a
 little of the room the wall fences placed after them would have (its obstacles x1.260 against the middle band's
-x1.265; `docs/questions/l6.md` 8).
+x1.265; item 976 in `docs/OPEN_QUESTIONS*.md`).
 Prototype and boss arenas stay at 0, which draws nothing and preserves the old layout exactly.
 Numbers and safety margins live in `data/tuning/danger_density.tres`.
 
