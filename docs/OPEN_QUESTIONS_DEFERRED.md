@@ -317,6 +317,7 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     windows in thin aluminium frames with smart glass or roller shutters, metal-clad piers, air-conditioning units,
     delivery-drone racks, glass balconies, cable trays and cables across the street, dishes and masts on the roofs,
     all above the wall-run band. The right kind of future?
+    **Superseded for the Marketplace and the Casino (task L10, the owner's answer to item 967):** the shop windows hold ad screens and posters, not TVs; the feed plays only on the billboards above the street.
 
 **In-run pickups** (from B7; numbers in `data/tuning/pickups.tres`)
 56. **A pickup of an item the player already holds** (GDD §8, §10): does it add a second charge, pay something, or
@@ -392,6 +393,7 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 79. **A TV in a window next to window cyborgs** (GDD §9.2 readability): the feed's loop shows a screen-head face, so a TV
     could look a little like a window cyborg's face. The TVs stay well above the band window cyborgs use, small, dim, in
     a dark room, and the face shows 7 s of the 18 s loop. Distinct enough, or should Gangland's TVs leave the face out?
+    **Superseded for the Marketplace and the Casino (task L10):** no TV and no display stands in a window cyborg's window, and the displays draw no faces. Still stands for Gangland's ruin TVs.
 
 **Ramps' speed boost and the blocked-wall bump** (from R1; numbers in `data/tuning/movement.tres`)
 80. **A ramp's speed boost** (GDD §3): a speed pad's, 6 m/s (`ramp_speed_boost`), fading at their shared 4 m/s every
@@ -5361,3 +5363,99 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 
 985. **Does the owner want the cosmetics' price to differ on mobile?** (GDD §7; items have a `price_mobile`, itself an open
    question.) Placeholder: one price on every platform (`ShopCosmetic.price`).
+
+**L10, no feed TVs in the shop windows** (from `docs/questions/l10.md`; the owner's answer to item 967)
+
+986. **How many of the windows, and how are they split between ad screens and posters?** (GDD §5, "Cyborg Viewing Devices",
+     owner, October 17, 2026: "some windows get screens playing random ads, with the cult emblem flashing on them every once in
+     a while; others get billboards that fit the world", roughly the TVs' share.) Placeholder: `MarketplaceSkin.window_display_share`
+     0.22 (the old TVs' share, and the very same windows) and `window_screen_share` 0.5 (half of them ad screens, half posters),
+     in `data/skins` through the skin's exports; the Casino reads the same two numbers.
+
+987. **What do the ads and posters show, and how often does the emblem flash?** Placeholder, all wordless and in the market's
+     own marks: six ad scenes (the Marketplace's; the Casino's are below) (the market's brand card, a bowl of noodles, a drink, a delivery drone, a sale, a cup of tea), four of
+     them cycling on each screen in a seeded order, each up 5 to 7.5 s (`ad_scene_time`) and changing by a quick dip through the screen's deep indigo (`ad_dip`, never two pictures at once); the cult's emblem flashing onto a screen
+     every 14 to 26 s (`emblem_flash_period`) for under two seconds, in over 0.22 s, held 1.1 s, out over 0.55 s
+     (`emblem_flash_times`; with Reduced flashing 0.9 s, 2 s, 0.9 s, `emblem_flash_times_reduced`); four posters (a shop's own sign,
+     a sale, a menu, a product) in blues, violets, slate and cream. All in `window_display.gdshaderinc` and the skin's exports, so
+     changing a scene, a rate or a colour never touches code that places anything.
+
+988. **Are posters allowed to have citizens in front of them?** Placeholder: no. The citizens skip every window holding an ad
+     screen or a poster (`shop_windows()`'s `screen`), which keeps their numbers and the window cyborgs' apart exactly as with the
+     TVs.
+
+989. **A window cyborg's window gets no display.** (GDD §9.2 readability: a screen-headed cyborg must read apart from anything near
+     it.) Placeholder: a window a window cyborg stands in (within `MarketCitizens.CYBORG_MARGIN` of it) holds no ad screen or poster,
+     as it holds no citizen; `shop_windows()` lists no `display` there either (`MarketFacades.display_at()`). The pictures themselves
+     never draw a face, two eyes or a mouth, so a display never passes for a screen head. If the owner would rather have a poster
+     beside a cyborg, it is one condition.
+
+990. **What do the Casino's screens show?** The task's first answer was the market's goods (noodles, tea, a delivery drone) on the
+     Casino's screens too, since it reuses the Marketplace's windows. Placeholder: the Casino plays its own, cheap, wordless ads
+     (`wd_casino`): the brand card, a slot machine showing sevens, a stack of chips, a cocktail, a champagne bottle and a pair of dice,
+     and its product posters show a cocktail, chips or a bottle. The Marketplace's palette (blue, violet, warm white) is kept, since
+     the colour rule is the same; the poster paint is the Casino's own deeper set.
+
+991. **Gangland's TV and the Beach's bars.** The task named "every zone whose windows hold these TVs": only the Marketplace and
+     the Casino (which reuses its windows) hold them in *shop* windows. Gangland (D9) also plays the feed on a TV glowing in an
+     upper window of some ruins (`GanglandSkin.feed_windows()`, `feed_window_share` 0.3), and the Beach (D10) on TVs behind some
+     upper-deck bars. Neither is a shop window, and the owner's decision speaks of shop windows, so both are left as they were. If the
+     owner meant every TV in every zone, those two are the next place to change (a ruin's window would get a dead screen or an ad
+     screen of its own).
+
+992. **The panels are turned toward the runner, as far as they fit.** A flat panel parallel to a wall is seen almost edge-on from the
+     lanes, so every panel (screens and posters) is turned `window_screen_turn` (28 degrees) toward the end of the street the runner
+     comes from, as the citizens already turn, but never so far that any of it (frame included) leaves the display's 0.9 m: a 1.6 m
+     screen turns about 27 degrees, the 2.1 m sign about 21 (`MarketFacades.fit_turn()`). 0 puts them flat against the wall.
+
+### Folded on October 18, 2026 (task M2, the Camo and Beach Master outfits)
+
+993. **How should Camo's pattern look?** (GDD §8, Cosmetics; brief "Camo patches on the coat".) The sheet's coat carries
+   irregular camo regions; the runner is small and seen from behind, so each region is a flat rectangular patch in one of
+   four colours (dark green, brown, khaki, near-black) on the olive coat: a digital-camo look, on the back, the sleeves,
+   the carrier and each skirt panel (the left and right panels differ). Is that the pattern the owner wants, or the
+   sheet's blotches (more triangles, or a texture the skin kit doesn't have)? Placeholder: `scripts/player/outfits/camo.gd`
+   (`DESIGN-TBD, 1`; the patches are `_back`, `_carrier`, `_patches`).
+
+994. **How worn is Camo's coat, and how stained is its hem?** The hem is a 7.5 cm dark-brown band; the coat is otherwise
+   clean olive with no tears, mud, dust or fraying. The sheet's coat is more weathered.
+   Placeholder: `HEM_BAND` and `STAIN` in `camo.gd`.
+
+995. **How bright is Camo's brass?** The brief asks for a dull, worn metal that doesn't read as gold treasure or as a power-up,
+   so the plates are a dark bronze (value 0.5 against Echo's gold 0.88, shine 0.25 against 0.7). The sheet's arm is a
+   brighter, more polished brass. Placeholder: `BRASS`, `BRASS_EDGE` and `BRASS_SHINE` in `camo.gd`.
+
+996. **The shape of Camo's back tubing.** The sheet's tubes are a loose tangle across the shoulder blades; the build is eight
+   straight dark pipes: two from the shoulder blades that bend in toward the spine and run down to the belt, tied by two
+   rungs. Placeholder: `_back` in `camo.gd`.
+
+997. **Beach Master's back print.** (Brief: "the skull and palm-leaf print across the shirt's back ... glows green, as drawn".)
+   The skull is a flat decal: an eight-sided crown, a jaw with three teeth, slanted dark eye sockets and a dark nose, with
+   four palm fronds fanning from its upper left; the sheet's palm tree (trunk, many leaves, a glow halo) is simplified to
+   those fronds, and the print has no outline ring. It glows at Rex's brightness (`PRINT_GLOW` 0.38), which stays under the
+   outfits' bloom cap. Placeholder: `_back_print` in `beach_master.gd`.
+
+998. **Beach Master's hibiscus and palm leaves.** The prints are flat coral five-petalled blooms with a yellow heart and two dark
+   green leaves, five of them on the back (under and beside the skull), three patches (coral, leaf, dark coral) on the right sleeve, and a
+   print on the hem panels; the sheet has them across the whole shirt, front included. The front is plain because the carrier
+   covers it and the visible strip on each side is a few centimetres wide. Placeholder: `_prints`, `_right_arm` and
+   `_hem_patch` in `beach_master.gd`.
+
+999. **How much of Beach Master's arm is wrapped and corroded.** Five cloth wraps (tan, alternately a darker tan) and seven
+   verdigris patches over rusty brass plates; the sheet binds nearly all of it. Placeholder: `_corroded_arm` in
+   `beach_master.gd`.
+
+1000. **What moves on Beach Master's short shirt.** The brief asks that its "open front and hem move a little". Built as four
+   small panels (two tails behind, two front flaps, 9 and 13 cm long) that follow the thighs at 35% and 45% rather than
+   Echo's 50% and 60%; they cost one draw call and 128 triangles. Placeholder: `_hem_panel` and `HEM_*` in
+   `beach_master.gd`.
+
+1001. **Details of the sheets left out for the budget or the rules.** Camo: the sleeve cuff buckles, the left epaulette (the brass
+   pauldron is there instead), the carrier's radio. Beach Master: the carabiner clipped to the back belt and the harness loops
+   on the thighs. The katana, the pistol, the grenades and the knife are
+   left out on purpose (owner's ruling: no weapons on any outfit). Placeholder: as built.
+
+1002. **A per-outfit rim light.** The body material's rim light (`PlayerSuit.RIM_*`, raised in dark zones by the avatar) is the
+    same for every outfit; Camo's coat is lighter than Echo's so it keeps its outline on the dark tracks without one (frames
+    in every zone), but `PlayerOutfit` has no way to give an outfit its own rim colour or strength. Does the owner want one
+    (an outfit-level override in the base class, a core change)? Placeholder: none needed so far; the shared rim stands.

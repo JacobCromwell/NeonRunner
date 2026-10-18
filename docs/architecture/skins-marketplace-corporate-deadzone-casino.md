@@ -26,20 +26,78 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
   `MarketplaceSkin.shop_windows(side, face_x, start, end)` lists the windows whose centres lie
   between two track distances (position on the glass, width, bottom, top, depth into the building,
   kind), computed from track positions alone, so it can be asked before or after a chunk exists.
-  Citizens stand inside, between the glass plane and `face_x + side * depth`.
+  Citizens stand inside, between the glass plane and `face_x + side * depth`. Each entry also says what the window
+  holds besides: `screen` (true if an ad screen or a poster hangs in it, so no citizen stands there) and `display`
+  (`&"ad"`, `&"poster"` or `&""`), both seeded from the window's own position (`MarketFacades.display_of()`).
+- *Shop-window displays: ad screens and posters (task L10; GDD §5 "Cyborg Viewing Devices", the owner's October 17, 2026
+  decision after playtesting: the old CRT feed TVs "don't really add much", so they are replaced entirely).*
+  `MarketplaceSkin.window_display_share` (0.22, the TVs' share, and the very same windows: salt 43 of the window's
+  hash) of the shop windows hold one, `window_screen_share` (0.5) of those an **ad screen** and the rest a **lit poster**
+  (DESIGN-TBD, `docs/questions/l10.md`). Both are one panel in a dark frame hung in the window behind the glass
+  (`MarketFacades._display()`, `_hang_panel()`; never in the template, whose mirror would flip the picture), with its
+  stand, legs or lintel rod: about 60 vertices, the TV's cost. The frame, stand, legs and rod are in the solid layer the
+  wall already draws; the panel's face is one rectangle in a **material of its own**, `WindowDisplay`
+  (`scripts/world/meshes/window_display.gd`, `window_display.gdshader`, the pictures in `window_display.gdshaderinc`;
+  `MarketplaceSkin.display_material()`, shared with the Casino's), so a chunk with displays draws one more surface, as the
+  feed's TVs did. (It was first a pattern of the solid kit shader. Every zone compiles that shader, and the displays' code
+  made its first compile on the Compatibility renderer about 40% slower, the City-only web demo's too: so the displays'
+  code lives in a small unshaded shader of their own, and `kit_solid` knows nothing of it; `test_window_displays` pins
+  that, and `kit_market_signs.gdshaderinc` holds the market's logos, shop signs and ad that both shaders draw.) The
+  skin's warm-up (`warm_samples()`) draws one face while a level loads, so the material is never first compiled mid-run.
+  Each panel is turned `window_screen_turn` (28 degrees) toward the runner's approach, because a flat panel is seen almost
+  edge-on from the lanes, **as far as the whole of it fits the display** (`fit_turn()`: the frame's box takes
+  `cos(t) * PANEL_DEPTH + sin(t) * (width + 2 * PANEL_BORDER)` of the display's 0.9 m, so a 1.6 m screen turns about 27
+  degrees and the 2.1 m sign about 21; `test_window_displays` checks every vertex of every face and frame, the plinth, legs
+  and rod too, between the glass and the back wall and inside the window's length and height). The ad screen is 1.4 to 1.6 m
+  wide at an aspect of 1.8 on a low plinth; the posters hang from the lintel or, a menu, stand on legs: a shop's own sign
+  (a strip at the top of the window), a sale, a menu board, a product. A window a window cyborg stands in gets none
+  (`display_at()`: `reserved_near()` with `MarketCitizens.CYBORG_MARGIN`, the citizens' own rule, so nothing beside a
+  screen-headed cyborg competes with it; `shop_windows()` lists no `display` there either) and the citizens skip every display
+  window (`screen`), which leaves their share as it was.
+  The pictures are wordless like every sign here: the ad screen cycles four of six scenes in a seeded order, each up
+  `ad_scene_time` (5 to 7.5 s), the Marketplace's own brand card (`mk_ad()`), a bowl of noodles, a bottle, a delivery drone on its
+  route, a sale starburst with a seven-segment number and a cup of tea, and the **Casino's own** (`wd_casino`, set by
+  `CasinoSkin.window_display_params()`): the brand card, a slot machine of sevens, a stack of chips, a cocktail, a champagne
+  bottle and a pair of dice (DESIGN-TBD, `docs/questions/l10.md`). One picture at a time: a change of ad is a **dip** through
+  the screen's deep indigo and back (`ad_dip`: 5% of the ad's time each way, 12% with Reduced flashing), never two scenes
+  mixed, so a pixel draws one scene and the shader's register peak stays that of one scene; a scene is drawn with the seed
+  of its own number, so nothing jumps when it comes in. The screen **flashes the cult's emblem** (the material's
+  `wd_emblem_tex`, the chosen option's coverage with mipmaps, `CultFeed.emblem_texture()`) onto itself every
+  `emblem_flash_period` (14 to 26 s): in over `emblem_flash_times` 0.22 s, held 1.1 s, out over 0.55 s, drawn big (nine
+  tenths of the screen's height) in the emblem's warm white on a deep indigo with a soft halo: never black, and it still
+  reads from the game camera (the mark is thickened below about 50 pixels, so it melts into a blob, not into the dark, and
+  fades only where it is a few pixels across: the solid kit's `cult_mark()` fades at about 24, which left the flash a dark
+  screen from 13 m). Each screen's scene order, scene length, flash period and moment come from its seed (a hash of its
+  window's position; `WindowDisplay.param()`: seed and aspect, small enough to survive the GPU's interpolation, decoded by
+  rounding, as the Beach's `sand_param()`), so no two play in step and a rebuilt chunk shows the same screen at the same
+  moment. **Reduced flashing** (`reduced_flashing`, kit_flash): the flash takes `emblem_flash_times_reduced` instead, in over
+  0.9 s, held 2 s, out over 0.9 s, and the dip is slower, so the emblem fades up and stays a while and nothing pops;
+  nothing else on the screen flashes (the scenes' motion is a slow drift, and the drone's dashes and the posters' grain are
+  filtered away by distance, so nothing shimmers) and a flash is one event seconds apart, never a strobe
+  (`test_window_displays` mirrors the envelope, reads the skin's numbers off the material and the shader's source). The ads'
+  palette (`window_ad_colors`, the shader's `wd_palette`) is blue to violet and warm white, the decorative hues; the posters'
+  paint (`window_poster_colors`) is lit, never glowing, and off every hazard hue too (blues, violets, slate, mauve and cream:
+  no red, orange, yellow, green, cyan or pink, none near a hazard's colour: the owner's rule for these); neither draws a face or
+  two eyes and a mouth, so nothing reads as a window cyborg's screen head. The feed stays on the billboards above the street and
+  on the cyborgs' screen heads. Cost against the TVs: see `docs/architecture/run.md`, Chunk builds (a chunk with displays draws
+  one more surface, the display material's, besides the feed's when a billboard plays it: `SkinSuite`'s tally went from
+  19.3, 25.0 and 28.7 surfaces a chunk (3, 5 and 6 lanes) to 19.7, 25.4 and 29.1 in the Marketplace, the vertices from 8,673, 9,248 and 9,791
+  to 8,656, 9,231 and 9,775, the build time unchanged).
+  `tools/showcase/window_display_review.tscn` shows the screens and the four poster kinds up close (`--view=close|oblique|posters`,
+  `--flash=S`, `--reduced`, `--skin=casino`), and `skin_review`'s shots 18-21 the first window with each in the street.
 - *The Marketplace citizens (tasks D3 and L7, GDD §5 "Citizens"; scenery only, no collision, nothing the player touches).*
   Real low-poly people standing at ease in the shops. (D3 built them as flipbook cards; the owner never noticed them and
   asked for the newer rendered people if they cost little, so L7 measured and replaced the cards: the numbers are
   below and in `docs/architecture/run.md`, Chunk builds. The "black rectangles with crude faces" the owner saw in the
-  windows are not citizens: they are the cult's feed TVs, `feed_window_share` 0.22 of the windows, playing the calm cyborg
-  face, and the window cyborgs' screen heads.) `tools/asset_gen/citizen_person_gen.gd` (`tools/godot.sh citizens`,
+  windows were not citizens: they were the cult's feed TVs playing the calm cyborg face, which task L10 replaced with ad
+  screens and posters, and the window cyborgs' screen heads.) `tools/asset_gen/citizen_person_gen.gd` (`tools/godot.sh citizens`,
   headless) poses the shared `HumanoidRig` (`CitizenRig`) standing at ease and bakes one welded, indexed mesh,
   `assets/models/market_person.res` (288 vertices, 500 triangles, 1.33 m, feet on y = 0, facing -z, two small dark eyes
   so a turning head reads; `CitizenRig`'s limb pieces hang from their joints and its head sits on the shoulders, so nothing
   floats off the figure: a test counts the front silhouette's pieces, one): UV2 tags every vertex with a colour class (trousers, shirt, skin, hair, shoes, eyes) and what
   moves it (the body, the head, the left or right arm), and the mesh's meta holds the neck and shoulder pivots.
   `MarketCitizens` (`scripts/world/skins/marketplace/`), called from `wall_section()`, seeds which eligible `shop_windows()`
-  get one (never a feed window, `screen`; `CITIZEN_SHARE` 0.32) from the window's own track position (`person_for()`:
+  get one (never a window with an ad screen or a poster, `screen`; `CITIZEN_SHARE` 0.32) from the window's own track position (`person_for()`:
   where they stand inside, their height and build (D3's three archetypes as three silhouettes of the one mesh: the tall slim
   shopper, the short wide regular, the vendor between, 1.47 to 1.74 m, a few per cent each of their own), the way they face: the lanes, turned 20 to 50 degrees toward
   the end of the street the runner comes from, and their seeds), so a chunk builds the same citizens every time, and adds one

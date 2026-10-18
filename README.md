@@ -667,7 +667,11 @@ calls, vertices drawn, MultiMesh instances), the same tool on any version of the
 `godot --headless -s res://tools/measure/market_people_cost.gd -- [--passes=5] [--levels=marketplace_1] [--lanes=5]
 [--skin=casino]`. `tools/showcase/market_people_review.tscn` shows them from the game's camera or still cameras close to
 one's window, with a cheer, a flinch or the runner walked past one to see the heads turn (`--view=run|window`, `--cheer`,
-`--flinch`, `--sweep=40`; its header lists the options).
+`--flinch`, `--sweep=40`; its header lists the options). `tools/showcase/window_display_review.tscn` shows the shop windows' ad
+screens and posters (task L10) up close, in the Marketplace's or the Casino's look (`--view=close|oblique|posters`,
+`--flash=S` to bring the cult emblem's flash into a short render, `--reduced`, `--skin=casino`; `skin_review`'s shots 18-21
+show the first window with each in the street). `tools/measure/first_draw_time.gd` times a material's first draw, which is where the
+Compatibility renderer compiles its shader (the solid kit's, or `--display` the shop windows'; its header says how to run it).
 
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the
@@ -903,8 +907,9 @@ spare (see Tools, above). Covered:
   through the platform layer.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
   ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour. Every outfit
-  in the shop's catalog within the same budgets, Echo's size and poses, with the power-ups on top, and Rex's glows;
-  buying, wearing and saving them, and old saves.
+  in the shop's catalog within the same budgets, Echo's size and poses, with the power-ups on top, Rex's glows, Camo's
+  unlit coat and swinging skirt, Beach Master's glowing back print and short hem panels, and the decals they are
+  printed with; buying, wearing and saving them, and old saves.
 - **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
   base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
   face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR

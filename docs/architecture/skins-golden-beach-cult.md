@@ -274,7 +274,11 @@ through the kit shader: the skin sets the `cult_emblem` texture (the option rast
 colours, `GanglandSkin.cult_emblem_texture()`), `cult_emblem_share` puts it on some corporate ads, and
 `MeshKit.stencil_param(..., emblem)` on some crates, container doors and notice boards. The shader picks
 its mip level itself and fades it out before it spans fewer than about 24 pixels, where the three-fold
-mark could read like a radiation trefoil. The Marketplace uses geometry instead: it turns the emblem
+mark could read like a radiation trefoil. The Marketplace's and the Casino's shop-window ad screens flash it (task L10): `window_display.gdshaderinc` samples the
+chosen option's coverage (`CultFeed.emblem_texture()`, on the display material, not the solid kit's) in the option's own warm white, onto a deep
+indigo, every 14 to 26 s for a moment, fading in and out and slower with Reduced flashing; it is drawn big and thickened when
+small so it reads from the game camera instead of fading out at about 24 pixels as `cult_mark()` does.
+The Marketplace's other emblems use geometry instead: it turns the emblem
 into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it where it hides: a
 small warm-white badge on some ads, an unlit bronze mark on some shop signs, never smaller than
 `emblem_min_size` (0.9 m, for the same reason). The Neon City (D9) draws it with `MeshKit.PAT_CULT_MARK`:
@@ -324,8 +328,10 @@ time. Rules for every skin: keep it the same broadcast (vary only how many scree
 play it and where), keep other glows off it, and never tint it (only cold white and the emblem's
 warm white; purple glitching belongs to hosts). It honours Reduced flashing (the static and the
 rolling bar hold still). The Marketplace plays it on some billboards, casino signs and floating ads
-(`feed_share`) and on old TVs in some shop windows (`feed_window_share`; `shop_windows()` marks
-them with `screen`). The Neon City (D9) plays it on some low buildings' roof billboards instead of
+(`feed_share`), and no longer in the shop windows: the old CRT TVs there are gone (the owner, October 17,
+2026), replaced by ad screens and posters (task L10, `docs/architecture/skins-marketplace-corporate-deadzone-casino.md`,
+Shop-window displays), so `CultFeed` has no shop-window use left. Gangland's one TV in an upper window of some
+ruins (below) is not a shop window and stays. The Neon City (D9) plays it on some low buildings' roof billboards instead of
 their ad and on big screens hung out over the street from some flush towers, 12 m up or more and
 facing the oncoming traffic (anything flat on the City's facades is seen almost edge-on from the game
 camera); `CitySkin.feed_boards()` lists both. Gangland plays it on salvaged screens among the posters
