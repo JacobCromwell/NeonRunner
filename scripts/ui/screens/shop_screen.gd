@@ -3,7 +3,9 @@ extends ScreenBase
 ## The shop (GDD §8): permanent items bought tier by tier and kept (among them the armor, an upgrade
 ## to the free armor every run brings: item_text() puts the rules' numbers in its texts), breakable
 ## items bought as stock (up to each item's max_stock: every run takes one of each switched-on item,
-## and revives wait in stock for the death screen), and the equip toggle for everything owned. Shown from the menu,
+## and revives wait in stock for the death screen), and the equip toggle for everything owned. After the
+## power-ups, the Cosmetics: outfits for the runner (GDD §8), each bought once and then worn or taken off
+## (Razor Echo's own look is the free first card). Shown from the menu,
 ## between levels and after every death. On mobile it also sells credit packs when the platform
 ## does (GDD §7). The wallet counts down as items are bought.
 ## Leaving: with a `play_label` the main button ("Next", "Retry", "Play again") runs `on_close` and
@@ -17,6 +19,8 @@ var play_label: String = ""
 var wallet: CreditCounter
 ## Item id -> its ItemCard.
 var cards: Dictionary = {}
+## Cosmetic id -> its CosmeticCard (Razor Echo's own look first).
+var cosmetic_cards: Dictionary = {}
 ## The main way out (only with a play_label) and the way to the title screen.
 var play_button: NeonButton
 var menu_button: NeonButton
@@ -62,6 +66,17 @@ func _ready() -> void:
 		card.equip_toggled.connect(_on_equip)
 		(permanent if item.kind == ShopItem.Kind.PERMANENT else breakable).add_child(card)
 		cards[item.id] = card
+	var looks: Array[ShopCosmetic] = _cosmetics()
+	if looks.size() > 1:
+		var cosmetics: HFlowContainer = _section(sections, "COSMETICS", &"outfit",
+			"Looks for Razor Echo. Buy one once, wear any. They never change how you play.")
+		for look: ShopCosmetic in looks:
+			var card := CosmeticCard.new()
+			card.cosmetic_id = look.id
+			card.buy_pressed.connect(_on_buy_cosmetic)
+			card.wear_pressed.connect(_on_wear)
+			cosmetics.add_child(card)
+			cosmetic_cards[look.id] = card
 	if App.mobile and Platform.purchases_available() and not Platform.products().is_empty():
 		var packs: HFlowContainer = _section(sections, "CREDIT PACKS", &"plus", "Bought credits never count toward net worth.")
 		for product: Dictionary in Platform.products():
@@ -115,6 +130,10 @@ func _refresh(animate: bool = true) -> void:
 		var card: ItemCard = cards.get(item.id)
 		if card != null:
 			card.configure(_card_data(item, p))
+	for look: ShopCosmetic in _cosmetics():
+		var card: CosmeticCard = cosmetic_cards.get(look.id)
+		if card != null:
+			card.configure(_cosmetic_data(look, p))
 	for id: Variant in pack_buttons:
 		(pack_buttons[id] as TileButton).disabled = _buying_pack
 	# A card that just maxed out loses its buy button: keep the focus on the card.
@@ -155,6 +174,29 @@ func _card_data(item: ShopItem, p: Profile) -> Dictionary:
 	return d
 
 
+## The cosmetics in shop order: Razor Echo's own look first, then the outfits for sale.
+func _cosmetics() -> Array[ShopCosmetic]:
+	var out: Array[ShopCosmetic] = [App.catalog.default_cosmetic]
+	out.append_array(App.catalog.cosmetics)
+	return out
+
+
+func _cosmetic_data(look: ShopCosmetic, p: Profile) -> Dictionary:
+	return {
+		"cosmetic_id": look.id,
+		"default_id": App.catalog.default_cosmetic.id,
+		"title": look.display_name,
+		"description": look.description,
+		"price": look.price,
+		"credits": p.credits(),
+		"owned": p.owns_outfit(look.id),
+		"worn": p.worn() == look.id,
+		"color": look.color,
+		# DESIGN-TBD: an outfit sold before its look is built (PlayerOutfits.placeholder_parts) says so.
+		"note": "" if PlayerOutfits.is_built(look.id) else "LOOK IN PROGRESS",
+	}
+
+
 ## A catalog text with the numbers the game rules give its item at `tier`, so the shop always says
 ## what the data does: the armor's {hits} ("2 hits") and {seconds} (the wait before it comes back) at
 ## that upgrade tier (0: the free armor, GDD §4). Other items' texts come back as they are.
@@ -182,6 +224,14 @@ func _on_buy(id: StringName) -> void:
 
 func _on_equip(id: StringName, on: bool) -> void:
 	App.set_equipped(id, on)
+
+
+func _on_buy_cosmetic(id: StringName) -> void:
+	App.buy_cosmetic(id)
+
+
+func _on_wear(id: StringName) -> void:
+	App.wear_outfit(id)
 
 
 func _refocus() -> void:

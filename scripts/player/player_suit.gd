@@ -32,8 +32,16 @@ extends RefCounted
 ##                laser (cyan light), heavier laser (violet), missile pod, heavy four-tube pod (white)
 ##   magnet       a coil with azure windings on the back of the belt
 ## The shield is the bubble mesh below (shield_mesh), unchanged.
+##
+## This is Razor Echo's own look, the free default. The cosmetics (GDD §8, "Cosmetics") are outfits
+## that dress him instead (PlayerOutfits, scripts/player/outfits/): they borrow his head (head_pieces),
+## his power-up sets (attachments) and his skeleton and size from here, so everything below that an
+## outfit doesn't replace stays exactly his.
 
 const CACHE_KEY: String = "player_razor_echo_v1"
+## The runner as modelled, in its run pose: the hair tips average 1.33 m over a stride. Proportional to
+## the grey-box visual_size, so fitting to it scales uniformly. Every outfit keeps it.
+const DESIGN_SIZE := Vector3(0.62, 1.33, 0.54)
 
 ## The signature glow: soft copper (conduits, the ocular implant, the vest's lights).
 ## DESIGN-TBD (docs/questions/p1.md 3): how bright and how deep the copper is.
@@ -169,9 +177,7 @@ static func shield_mesh() -> ArrayMesh:
 static func _build_parts() -> HumanoidParts:
 	var p := HumanoidParts.new()
 	p.cache_key = CACHE_KEY
-	# The runner as modelled, in its run pose: the hair tips average 1.33 m over a stride. Proportional
-	# to the grey-box visual_size, so fitting to it scales uniformly.
-	p.design_size = Vector3(0.62, 1.33, 0.54)
+	p.design_size = DESIGN_SIZE
 	var list: Array[HumanoidPiece] = []
 	_pelvis(list)
 	_torso(list)
@@ -182,7 +188,23 @@ static func _build_parts() -> HumanoidParts:
 	_legs(list)
 	p.pieces = list
 	p.panels = _skirt()
-	p.attachments = {
+	p.attachments = attachments()
+	return p
+
+
+## Echo's neck and head: his face, scars, spiky hair and copper ocular implant. An outfit wears them
+## unless it covers the head (PlayerOutfit.head_pieces); one that only adds to the head (a mask over his
+## face, a hat) starts from this list.
+static func head_pieces() -> Array[HumanoidPiece]:
+	var list: Array[HumanoidPiece] = []
+	_head(list)
+	return list
+
+
+## The power-up sets, by name: claws, armor, weapon_1 to weapon_4 and magnet. Every outfit carries them
+## on top of its own look (PlayerOutfit.attachment_overrides can fit one to its shapes).
+static func attachments() -> Dictionary:
+	return {
 		&"claws": _claws(),
 		&"armor": _armor(),
 		&"weapon_1": _weapon(1),
@@ -191,7 +213,6 @@ static func _build_parts() -> HumanoidParts:
 		&"weapon_4": _weapon(4),
 		&"magnet": _magnet(),
 	}
-	return p
 
 
 static func _pelvis(list: Array[HumanoidPiece]) -> void:
@@ -541,36 +562,20 @@ static func _pipe(list: Array[HumanoidPiece], segment: StringName, a: Vector3, b
 
 static func _pipe_piece(segment: StringName, a: Vector3, b: Vector3, width: float, face: Vector3, color: Color,
 		glow: float) -> HumanoidPiece:
-	var along: Vector3 = b - a
-	var y: Vector3 = along.normalized()
-	var z: Vector3 = (face - y * face.dot(y)).normalized()
-	var basis := Basis(y.cross(z), y, z)
-	return _piece(segment, PRISM, Vector3(width, along.length() + width * 0.5, width), (a + b) * 0.5, color, glow,
-		{"sides": 3, "rotation_degrees": basis.get_euler() * (180.0 / PI)})
+	return PlayerOutfit.pipe_piece(segment, a, b, width, face, color, glow)
 
 
 ## `base` with `more` merged over it (piece options shared by several pieces).
 static func _with(base: Dictionary, more: Dictionary) -> Dictionary:
-	var out: Dictionary = base.duplicate()
-	out.merge(more, true)
-	return out
+	return PlayerOutfit.merged(base, more)
 
 
 static func _add(list: Array[HumanoidPiece], segment: StringName, shape: HumanoidPiece.Shape, size: Vector3,
 		at: Vector3, color: Color, glow: float = 0.0, extra: Dictionary = {}) -> void:
-	list.append(_piece(segment, shape, size, at, color, glow, extra))
+	list.append(PlayerOutfit.piece(segment, shape, size, at, color, glow, extra))
 
 
 ## A piece; `extra` sets any other HumanoidPiece property by name (side, chamfer, profile, ...).
 static func _piece(segment: StringName, shape: HumanoidPiece.Shape, size: Vector3, at: Vector3, color: Color,
 		glow: float = 0.0, extra: Dictionary = {}) -> HumanoidPiece:
-	var piece := HumanoidPiece.new()
-	piece.segment = segment
-	piece.shape = shape
-	piece.size = size
-	piece.offset = at
-	piece.color = color
-	piece.glow = glow
-	for key: String in extra:
-		piece.set(key, extra[key])
-	return piece
+	return PlayerOutfit.piece(segment, shape, size, at, color, glow, extra)
