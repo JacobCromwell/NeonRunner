@@ -373,6 +373,11 @@ Looks for the runner that the player **buys in the shop or wins** *(how cosmetic
   - **Leave out:** the **katana** and its sheath, the **holstered pistol**, and *(proposed)* the **grenades** and **knife** on the plate carrier (weapons too).
   - *(Proposed)* Leave out the **skull on the coat's lower back**, as on Echo's own coat: too small to appreciate at gameplay size.
   - *(Proposed)* Nothing on it glows except what Echo's own look already does (his copper implant); the sheet's arm and coat are unlit.
+- **Beach Master** (the third cosmetic; owner, October 18, 2026): a beach outfit from the owner's concept sheet `docs/art/reference/outfit_beach_master.webp`. Build brief: `docs/art/BRIEF_OUTFIT_BEACH_MASTER.md`.
+  - **Won, not bought:** the player is meant to **earn it by completing challenges**. Challenges aren't designed yet, so **until they are it's sold in the shop for 5,000 credits**, a placeholder so it isn't forgotten.
+  - **Keep:** an **open short-sleeved tropical shirt** (dark teal with coral hibiscus and palm-leaf prints), sleeves rolled, over a **camo plate carrier** with pouches and harness straps; a **sea-salt corroded cyber-arm** on the left, rusty brass bound in worn cloth wraps; fingerless gloves and a bead bracelet; **dark cargo shorts** with knee pads; **strapped tactical sandals**.
+  - **Leave out:** the **katana** and its sheath, the **pistol**, and *(proposed)* the **grenades** and **knife** on the plate carrier.
+  - *(Proposed)* The **skull and palm-leaf print** on the shirt's back stays: it is large enough to read from behind. It is printed, **not glowing** (the sheet draws it glowing green, a hazard colour); the owner may still choose the sheet's glow, as for Rex.
 
 ### Damage reference (shots to kill)
 
