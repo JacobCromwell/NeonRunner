@@ -1,0 +1,53 @@
+{
+	"_comment": [
+		"The weekly challenge's shipped seed list (GDD §6, Replay features; task N5). Week N of the schedule plays entry",
+		"N mod the list's length (WeeklyChallenge.week), so the level a week gives is never worked out from the date: every",
+		"entry was built and checked in advance, at five lanes, by test_weekly_challenge (the campaign levels' fairness checks)",
+		"and test_weekly_fairness (the per-feature checks, a second build).",
+		"HOW THE SEEDS WERE CHOSEN (docs/questions/n5.md, 12): for each zone, in the campaign's order, try the seeds from the",
+		"zone's block upward (9100 for the Neon City, 9200 for Gangland, 9300, ... 9800 for the Golden Zone) and take the first",
+		"four that pass every check and were built in at most three generator builds (a level the generator needed more builds",
+		"for is slow to load, most of all on a phone). Then go round by round: the first pick of every zone, the second pick of",
+		"every zone, and so on. `tools/measure/weekly_seeds.gd --pick=4` remakes this list; with no --pick it lists every seed",
+		"that passes, to add more.",
+		"Keep the list a whole number of rounds of the zones, every seed in it once. After the game has shipped only ever append,",
+		"and read docs/questions/n5.md, 3, first: once the list has wrapped, appending changes what the later weeks map to."
+	],
+	"entries": [
+		{"zone": "city", "seed": 9100},
+		{"zone": "gangland", "seed": 9200},
+		{"zone": "marketplace", "seed": 9300},
+		{"zone": "casino", "seed": 9401},
+		{"zone": "corporate", "seed": 9500},
+		{"zone": "beach", "seed": 9600},
+		{"zone": "dead_zone", "seed": 9700},
+		{"zone": "golden", "seed": 9800},
+
+		{"zone": "city", "seed": 9101},
+		{"zone": "gangland", "seed": 9201},
+		{"zone": "marketplace", "seed": 9301},
+		{"zone": "casino", "seed": 9402},
+		{"zone": "corporate", "seed": 9501},
+		{"zone": "beach", "seed": 9601},
+		{"zone": "dead_zone", "seed": 9701},
+		{"zone": "golden", "seed": 9802},
+
+		{"zone": "city", "seed": 9102},
+		{"zone": "gangland", "seed": 9202},
+		{"zone": "marketplace", "seed": 9302},
+		{"zone": "casino", "seed": 9403},
+		{"zone": "corporate", "seed": 9502},
+		{"zone": "beach", "seed": 9604},
+		{"zone": "dead_zone", "seed": 9703},
+		{"zone": "golden", "seed": 9806},
+
+		{"zone": "city", "seed": 9103},
+		{"zone": "gangland", "seed": 9203},
+		{"zone": "marketplace", "seed": 9303},
+		{"zone": "casino", "seed": 9404},
+		{"zone": "corporate", "seed": 9503},
+		{"zone": "beach", "seed": 9605},
+		{"zone": "dead_zone", "seed": 9704},
+		{"zone": "golden", "seed": 9809}
+	]
+}
