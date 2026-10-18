@@ -43,6 +43,7 @@ never ends, and a level never starts, unattended.
 | `marketplace_intro/` (`MarketplaceIntro`, `MarketplaceIntroTuning`, `MarketplaceIntroSet`, `MarketplaceIntroVendor`, `marketplace_intro_card.gdshader`), `scenes/cinematics/marketplace_intro.tscn`, `data/cinematics/marketplace_intro_tuning.tres`, `tools/asset_gen/sfx_bank_marketplace_intro.gd` | the Marketplace's intro, the owner's beats (below), its props, the stall-keeper, the photo card and the voices |
 | `beach_outro/` (`BeachOutro`, `BeachOutroTuning`, `BeachOutroBar`, `BeachOutroScreech`, `BeachOutroPalace`, `BeachOutroRaid`), `scenes/cinematics/beach_outro.tscn`, `data/cinematics/beach_outro_tuning.tres`, `tools/asset_gen/sfx_bank_beach_outro.gd` | the Beach's outro, the owner's beats (below), its props and its two sounds |
 | `casino_boss_intro/` (`CasinoBossIntro`, `CasinoBossIntroTuning`, `CasinoHall`, `CasinoRoulette`, `CasinoHolo`, `CasinoGoldenDoor`, `CasinoWallBreak`, `CasinoCrowd`, `CasinoPeople`, `CasinoPerson`, `casino_carpet.gdshader`, `casino_holo.gdshader`, `casino_dust.gdshader`), `scenes/cinematics/casino_boss_intro.tscn`, `data/cinematics/casino_boss_intro_tuning.tres`, `tools/asset_gen/sfx_bank_casino_boss_intro.gd`, `tools/showcase/casino_people_showcase.tscn` | the Casino's boss intro, the owner's beats (below): the casino hall, its patrons and crowd, the Chairman, the golden door and The House bursting through the wall |
+| `casino_intro/` (`CasinoIntro`, `CasinoIntroTuning`, `CasinoIntroLotus`), `scenes/cinematics/casino_intro.tscn`, `data/cinematics/casino_intro_tuning.tres`, `tools/asset_gen/sfx_bank_casino_intro.gd` | the Casino's intro, the owner's beats (below): the Brass Lotus's front and grand staircase, the violet car pulling up, the Chairman greeting people at the top |
 
 **Track space.** Every point is `(x, y, z)`: x metres right of the start lane's centre (the lane a level's
 runner starts in, `lane_count / 2`), y metres up from the floor, z metres along the track. So a point
@@ -161,7 +162,7 @@ id>`, `--sampler`, `--lanes=N`, `--reduced-flashing`, `--once`, `--from=S` to st
 each event with its frame.
 
 **The arrival flyover** (DESIGN-TBD, `docs/questions/f1.md`; `ArrivalFlyover`, a short script with its
-numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the City's, Gangland's, the Marketplace's and the Dead Zone's,
+numbers in `data/cinematics/arrival_flyover.tres`): every zone's intro slot (but the City's, Gangland's, the Marketplace's, the Casino's and the Dead Zone's,
 which have the owner's beats) and the City's boss intro play it until the owner describes the story beats. It opens low in the street looking up at the zone's skyline
 and tilts down as the runner runs in beneath it, glides over the street behind the runner, and settles into
 the run camera's view as they run under one of the zone's ceilings; a card names the zone ("ZONE 1", "NEON
@@ -515,3 +516,33 @@ cheer, the lean and the screech, the women either side of him, the paths clear o
 clear of the lunges, the door open as he passes and shut after, the wall flush until it trembles and down by the end, the
 camera inside the hall, its sounds, its cost, skipping and the App's flow). Render frames at 60 fps (`--fixed-fps 60`):
 at a lower fixed rate the avatar's own physics step can override the runner's posed arms between frames.
+
+**The Casino's intro** (`CasinoIntro`, task F2j; the owner's beats and reference image, October 18, 2026, GDD §6 Cinematics,
+"Casino intro"; what they leave open is DESIGN-TBD, `docs/questions/f2j.md`; numbers in `data/cinematics/casino_intro_tuning.tres`):
+25.8 s before Casino 1, on one stretch of the zone's street in the level's lanes, the zone's music fading in. **The set.**
+`CasinoIntroLotus` is the Brass Lotus (the reference's casino, one of the street's two named casinos) built in an opening of the
+left wall (`CineStageDef.wall_gaps`, the frontage long): a pavement over the gap's lip with a kerb, a grand staircase (its steps,
+a burgundy carpet held by brass rods, stepped cheek walls with balusters and handrails, a lamp post at each corner) up to a
+terrace on a podium, and the front standing back behind it: riveted iron banded in brass, tall arched windows lit warm, fluted
+brass columns, the boss intro's golden doors (`CasinoGoldenDoor`) open on a vestibule lit warm, a marquee studded with bulbs and
+the name on a board (`CasinoLettering`'s board, the street's own letters), a deco crest of stepped violet neon round a gold
+lotus, a blade sign with the name stacked down it, a cornice, and a soffit at the eaves where the street's glass vault springs;
+the opening's side walls, and a brass-banded pier over each cut end of the street's wall (over the orange marks a level's wall
+gap carries there, which mean "the wall stops" to a runner). One merged mesh on the Casino skin's solid and glow materials, plus
+the door's two leaves, and five warm lights for the people on the rig. Its space is the wall's line and the front's middle with
+z flipped (`CasinoIntroLotus.L`); `CasinoIntro.lp()` turns its points into track space, and `step_height()` gives the steps'
+surface. **The beats.** Low behind the car (`SportsCarModel`, its size, paint and accent read from Gangland's outro's numbers,
+so it stays the same car) as it cruises down the street; cut to the front from across the street as the car passes the camera,
+brakes evenly (`car_remaining`) and stops beside the steps, its nose dipping and rocking back; the lights go down as its engine
+stops. Off its front corner: its scissor door swings up, the runner gets out (`CinePoses.get_in` with its `progress` keys run
+from 1 back to 0), the screech on the passenger seat (`CarPassenger`) looks round and nods with a chirp, the door comes down,
+and the runner turns and walks to the foot of the steps. Low behind them, tilting up the staircase. Up it from beside their
+head (a long lens): the Chairman (`CasinoPerson`, the boss intro's look and cane) faces the street at the top, the two women a
+step behind either side of him, shaking hands with the businessman and then Lady Luck (`CasinoPerson.shake_hand`, new: the
+right hand reached to where the hands meet, pumped by the caller; he looks at each in turn); then he turns by his left and walks
+in through the doorway with the women beside him, past two cyborg guards in the Casino's look (actors, turning their heads),
+into the light, hidden once past it. Back to the runner from a few steps up, looking up after him, the zone's title card over
+them, and black. Its sounds: `car_cruise` and `car_arrive` (`tools/asset_gen/sfx_bank_casino_intro.gd`, the Gangland car's
+engine) and the game's `car_door`, `screech_chirp` and `casino_bustle`. Everything is worked out from the time, so stepping or
+skipping shows the same. Cost (headless, `test_casino_intro`): about 45 ms to set up (about 350 ms the first time, with cold
+mesh caches), about 0.6 ms a step and at most about 3 ms; its props add about 97 draw calls (the people on the rig most of it).

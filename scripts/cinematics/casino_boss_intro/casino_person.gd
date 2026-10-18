@@ -3,8 +3,9 @@ extends Node3D
 ## One person of the Casino's boss intro (CasinoPeople's looks) on the shared HumanoidRig, posed by the cinematic's own
 ## clock: it never moves itself between frames. Each frame the cinematic calls stand() or walk() (they set every joint
 ## afresh, so nothing builds up), then any of the overlays, each blended in by its k (0-1): cheer(), clap(), drink(),
-## hold_glass(), look_at_point(), gesture_flick(), lean_back_elbows(). The Wealthy Woman in Red keeps her cocktail glass
-## upright in her left hand through stand() and walk() (hold_glass(1, -1)), and an overlay only blends away from that.
+## hold_glass(), look_at_point(), gesture_flick(), lean_back_elbows(), shake_hand(). The Wealthy Woman in Red keeps her
+## cocktail glass upright in her left hand through stand() and walk() (hold_glass(1, -1)), and an overlay only blends away
+## from that.
 ## Rig convention (HumanoidPiece): metres at design scale, +y up, -z forward (where the person faces), +x their right.
 ## Every pose is a function of the clock `t` and (for the walk) the phase kept from the distance moved: standing, then
 ## any overlay, on a rig that never walked gives the same pose every time (a pose may be baked into a static mesh).
@@ -155,6 +156,16 @@ func lean_back_elbows(k: float) -> void:
 		_arm(side, Vector3(-38.0, 0.0, 26.0), Vector3(62.0, 0.0, 0.0), k)
 	_tilt(&"chest", 14.0 * k)
 	_tilt(&"head", -7.0 * k)
+
+
+## Shaking hands: the right hand reached out to `meet` (world space: where the two hands meet), the elbow bent down and
+## out; the caller pumps `meet` up and down.
+func shake_hand(meet: Vector3, k: float) -> void:
+	if k <= 0.0:
+		return
+	var upper: Node3D = rig.joint(&"upper_arm_r")
+	var parent := upper.get_parent() as Node3D
+	_reach(1, parent.global_transform.affine_inverse() * meet, Vector3(0.5, -1.0, 0.4), k)
 
 
 ## The head's world position (where a camera or a look aims).

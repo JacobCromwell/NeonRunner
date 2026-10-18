@@ -509,13 +509,14 @@ The fight in short: Mecha Guppy, a building-sized mechanical shark, eats the lev
 | F2g | **Gangland's intro** (the owner's beats, October 16, 2026) | F1 | M | T2 |
 | F2h | **The Neon City's intro**, the game's first cinematic (the owner's beats, October 16, 2026) | F1 | M | T2 |
 | F2i | **The Casino's boss intro**, before The House (the owner's beats and reference, October 17, 2026) | F1 | L | T2 |
+| F2j | **The Casino's intro**, pulling up at the Brass Lotus (the owner's beats and reference, October 18, 2026) | F1 | M | T2 |
 
 **F1: cinematic toolkit.**
 - A code-driven toolkit: camera paths, actors on the humanoid rig, timed events, skippable.
 - It builds on the existing `Cinematic` base.
 - Placeholder "arrival" flyovers per zone until the owner describes the story beats.
 
-**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2i have them so far.
+**F2: cinematic content.** Waiting on the owner's story beats, slot by slot. F2a to F2j have them so far.
 
 **F2a: the Neon City's outro** (owner, October 8, 2026; GDD §6, Cinematics). **Done:** `CityOutro`. The
 Floating Head crashes, a roadblock of the game's own enemies bars a side street, and the runner leaps off the
@@ -607,6 +608,17 @@ the runner leans on the bar with the screech; the Chairman (his new look) crosse
 runner goes after him, dives past his two guards; he leaves by the golden door, which bangs shut; the wall beside it
 trembles and bursts, and The House (the fight's own machine) stands in the hole. Eight new sounds
 (`tools/asset_gen/sfx_bank_casino_boss_intro.gd`), `test_casino_boss_intro`. The staging choices are `docs/OPEN_QUESTIONS_DEFERRED.md` items 948–959.
+
+**F2j: the Casino's intro** (owner, October 18, 2026; GDD §6, Cinematics, "Casino intro"; reference
+`docs/art/reference/casino_brass_lotus.webp`). **Done:** `CasinoIntro` (`scripts/cinematics/casino_intro/`) in the Casino's
+intro slot, which played the arrival flyover: 25.8 s on the zone's street. The violet sports car (Gangland's outro's) cruises
+down the covered street and pulls up at the Brass Lotus (`CasinoIntroLotus`, built in an opening of the left wall from the
+reference: a grand staircase with a burgundy carpet, brass columns, the golden doors open, a bulb-studded marquee with the
+name, a violet deco crest round a gold lotus); the runner gets out (the get-in pose played backwards), the screech nodding
+from the passenger seat, and looks up the steps; at the top the Chairman shakes hands with the businessman and Lady Luck,
+a woman either side of him, and walks in past two cyborg guards; back to the runner and the zone's title card. A handshake
+on `CasinoPerson` (`shake_hand`), two new sounds (`tools/asset_gen/sfx_bank_casino_intro.gd`), `test_casino_intro`. The
+staging choices are `docs/questions/f2j.md`.
 
 ### H. The owner's requests (October 8, 2026)
 
@@ -705,7 +717,7 @@ From `docs/USER_REQUESTS.md` (October 17, 2026), run by one batch orchestrator (
 - E2 (web demo release candidate), after E1, P1 and P2
 - R4 endless mode (after B5), R6 approved placeholders (at a quiet moment), R7 balancing (after the owner's playtest)
 
-**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro, F2e's Beach outro, F2f's Marketplace intro, F2g's Gangland intro, F2h's City intro and F2i's Casino boss intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
+**Blocked on design:** F2 (cinematic content, apart from F2a's City outro, F2b's Gangland boss intro, F2c's Dead Zone intro, F2d's Gangland outro, F2e's Beach outro, F2f's Marketplace intro, F2g's Gangland intro, F2h's City intro, F2i's Casino boss intro and F2j's Casino intro). E5d (designed October 9, 2026) is built. E5e (designed October 10, 2026) is built (E5e-a, E5e-b and E5e-c done; E5e-d, the walls, dropped on October 11, 2026 under the owner's rule, unless the owner overrules). **Blocked on the owner's phone:** E3 (E4 goes ahead first with crowd sizes that scale; owner, October 2, 2026).
 
 **The critical path to the web demo:** B1 → B8 and B7 → E1 → E2. The demo depends on the Floating Head more than on anything else, so keep that path moving first. P1 → P2 (the new player and cyborg looks) must also be done before E2.
 

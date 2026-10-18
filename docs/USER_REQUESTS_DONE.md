@@ -297,3 +297,11 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## Doodads more often (October 17, 2026, after playtesting)
 
 - [x] **Doodads more often** (L6). The rows are too rare to see in playtesting. Rows of two count (two take less room than three). Doodads add little or no difficulty, so they shouldn't need the wide berth they get (nothing in any lane around them, a pattern's spacing after, 2.5 s apart): keep only what fairness needs (a push never lands the player in a hole or hazard; a doodad never blocks the only way out of an attack). Check the cost of more of them isn't a performance problem. DONE (L6): the old rule (from task G5) kept every lane clear around a doodad, a full pattern's spacing after it and 2.5 s between doodads, so they only got leftover street. Now a doodad keeps clear only what a fair push needs: the lanes beside it until the runner has landed (a jump into it included) plus 0.5 s to react, and the way out of any attack; other lanes may hold anything. Rows of two to four. Doodads about 1.3-2.5 times as often from Gangland on (rows now about 1-3 a level); City 1 still gentle; the City at 3 lanes about as before (both lanes beside a middle-lane doodad stay clear there). Performance: no measurable cost (chunk build 1.77 ms against 1.85, at most about 6 doodads on screen). Recorded in GDD §3. Deferred 969-976.
+
+## The Casino's intro (October 18, 2026)
+
+- [x] A new cinematic as the intro to the Casino zone, with a reference image of the casino's front
+  (`docs/art/reference/casino_brass_lotus.webp`): the runner pulls up to the casino in the violet car, gets out and looks up
+  the grand staircase, where the Chairman shakes hands with people and walks into the casino with two beautiful women, one
+  either side of him; then back to the runner and the Casino's title card. DONE: task F2j, `CasinoIntro` (GDD §6, "Casino
+  intro"); the staging choices are `docs/questions/f2j.md`.
