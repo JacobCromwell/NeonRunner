@@ -679,6 +679,18 @@ From `docs/USER_REQUESTS.md` (October 18, 2026, the first five outfits), run by 
 
 - M2 and M3 each add their outfits in their own files, so they run side by side after M1.
 
+### N. The owner's batch (October 18, 2026, evening)
+
+From `docs/USER_REQUESTS.md` (October 18, 2026: the evening batch, the wall hop nudge of October 9 and the weekly challenge), run by one batch orchestrator (`docs/WORKFLOW.md`). Recorded in the GDD where they change design.
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| N1 | **The treasure stash's second doodad** (doodad, space, doodad, then the treasure) **and the wall-hop credits** (GDD §3, §7). **Core** (generator). | – | M | T1 |
+| N2 | **Stars that can be earned:** the volleyball match's stars by the score (4–0 three, 0–1 one); every level and boss checked for a three-star rating that can't be earned, and fixed (GDD §4, §5, §10) | – | M | T2 |
+| N3 | **Shields stack:** every shield in stock comes into the run, one hit each (GDD §8) | – | S | T3 |
+| N4 | **The Golden Convergence's trumpets:** its cheery chime becomes deep, triumphant trumpets, the last one morphing into a distorted reverb (GDD §10) | – | S | T2 |
+| N5 | **The weekly challenge** (GDD §6, Replay features): one fixed level a week, its boards, the uniform kit, the payout. | – | L | T2 |
+
 ## Order at a glance
 
 **Wave 1 (start now):**
