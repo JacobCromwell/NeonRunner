@@ -28,10 +28,9 @@ scale, hitbox and gameplay sizes stay the same, and owned power-ups are still ad
 - *(Proposed)* **The grenades and the knife** on the plate carrier: they are weapons too.
 
 ## Colour rules
-- *(Proposed)* **The back print is printed, not glowing.** The sheet draws it glowing green, and green is a hazard
-  colour; a muted green or teal print on the shirt keeps the design. The owner may still choose the glow, as for Rex.
-- Nothing else glows except Echo's own copper implant. Keep the shirt's coral flowers matte so they don't read as
-  red or orange hazard lights.
+- **The back print glows green, as drawn.** Outfits are free of the colour rule (owner, October 18, 2026; GDD §8,
+  Cosmetics). Keep it a soft glow so bloom doesn't blur the skull's shape.
+- Nothing else glows except Echo's own copper implant.
 - Effects tied to the suit glow (the invulnerability tint, the death power-down, the dash trail) must still read on
   an outfit with no glow lines.
 

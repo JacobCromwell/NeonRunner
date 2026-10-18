@@ -27,7 +27,7 @@ read as added (`docs/art/BRIEF_RAZOR_ECHO.md`, Power-up looks).
 
 ## Colour rules
 - **The glows stay as drawn** (owner, October 18, 2026): the circuit lines **pink/magenta**, the spine line **cyan**,
-  the shoulder joint **orange**. This is an owner exception to the colour rule for this outfit only.
+  the shoulder joint **orange**. Outfits are free of the colour rule (GDD §8, Cosmetics).
 - Keep them soft, thin lines, so bloom doesn't turn them into blobs. The jacket itself is unlit magenta leather.
 - Effects tied to the suit glow (the invulnerability tint, the death power-down, the dash trail) work on this outfit
   too: its glow lines go dark on death like Echo's conduits.
