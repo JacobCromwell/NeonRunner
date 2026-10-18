@@ -4,11 +4,12 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ## read from the fight's tuning (data/bosses/golden_boss_tuning.tres: regenerate them when those change).
 ## Like every sound effect, each is under MAX_SECONDS (test_units).
 ##   gc_rise      the entrance: something enormous rising at the far end of the court, a deep rumble and a
-##                mechanical groan swelling as it rises, tapering as the fanfare comes in, the cape unfurling in
+##                mechanical groan swelling as it rises, fading out under the first moments of the fanfare, the cape unfurling in
 ##                a heavy rush of cloth from unfurl_at
 ##   gc_fanfare   the entrance's call (task N4: the owner found the chime too cheery): a series of low brass
-##                calls, bassy trumpets in the trombone and tuba register, trumpeting triumphantly in D minor
-##                (three short calls climbing D2, A2, D3, then a D minor chord held); the last call breaks up
+##                calls, bassy trumpets in the trombone and tuba register, trumpeting triumphantly in F# minor
+##                (the golden music's key: three short calls climbing F#2, C#3, F#3, then an F# minor chord
+##                held); the last call breaks up
 ##                into a distorted reverb, saturating and bit-crushing as a long tail swells and smears it
 ##                out (at fanfare_at; it ends well before the first attack's warnings)
 ##   gc_chime     the cult's three-note chime (the Resonator's G5, C6, E6, §9.10) rung huge and slow: each
@@ -57,9 +58,10 @@ const TUNING_PATH: String = "res://data/bosses/golden_boss_tuning.tres"
 const CHIME_HZ: Array[float] = [783.99, 1046.5, 1318.51]
 ## The chime's notes rung slow (the Resonator's are 0.42 s apart): seconds from the first.
 const CHIME_AT: Array[float] = [0.0, 0.7, 1.4]
-## The fanfare's calls (D minor, in the low brass): the notes of each call (MIDI: D2, A2, D3, then a D minor
-## chord, its minor third F3 the dark colour) and the seconds it begins and sounds. The last call holds.
-const FANFARE_NOTES: Array = [[38, 50], [45, 57], [50, 62], [38, 45, 50, 53, 57]]
+## The fanfare's calls (F# minor, the golden music's key, in the low brass): the notes of each call (MIDI: F#2,
+## C#3, F#3, then an F# minor chord, its minor third A3 the dark colour) and the seconds it begins and sounds.
+## The last call holds.
+const FANFARE_NOTES: Array = [[42, 54], [49, 61], [54, 66], [42, 49, 54, 57, 61]]
 const FANFARE_AT: Array[float] = [0.0, 0.28, 0.56, 0.86]
 const FANFARE_SECONDS: Array[float] = [0.24, 0.24, 0.24, 0.55]
 ## The last call breaks up into the distorted reverb between these seconds.
@@ -160,8 +162,8 @@ func _round(rng: RandomNumberGenerator) -> PackedFloat32Array:
 
 
 ## The entrance: a sub rumble and a mechanical groan swelling as it rises, a deep hum climbing, and the cape
-## unfurling (a heavy rush of cloth from unfurl_at); it tapers off as the fanfare comes in (MAX_SECONDS: the
-## rise itself goes on a little longer, under the fanfare).
+## unfurling (a heavy rush of cloth from unfurl_at). The sound is MAX_SECONDS long and fades out over its last
+## half second, so the fanfare (at fanfare_at, 2.2 s) begins as the rumble is dying away and is heard clear.
 func _rise() -> PackedFloat32Array:
 	var rng := _rng(1701)
 	var length: float = MAX_SECONDS
@@ -247,7 +249,7 @@ func _chime_note(hz: float, seconds: float, rng: RandomNumberGenerator) -> Packe
 
 
 ## The entrance's call, for the Golden Convergence rising into view: bassy trumpets trumpeting triumphantly at
-## a deeper register (low brass: trombones and tubas, D minor, FANFARE_NOTES). Three short calls climb, each
+## a deeper register (low brass: trombones and tubas, F# minor, FANFARE_NOTES). Three short calls climb, each
 ## swelling brighter than the last, then the fourth, a full chord, holds and crescendos. It then morphs into
 ## a distorted reverb: from FANFARE_BREAK_FROM the brass saturates and bit-crushes coarser and coarser while
 ## its send to a long, drifting hall (the reverb) swells, so the chord smears into a fuzzed wash that rings on

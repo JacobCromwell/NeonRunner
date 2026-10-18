@@ -47,7 +47,7 @@ extends Node3D
 ## --script=VVHvVHv (the strafe's passes), --cam=run/side/high, --still, --reduced-flashing, --events, --way=...
 ## (prints each of the boss's events with its frame, for picking frames), --burst (front and face: the chest's
 ## plates burst open, both shoulders' pipes blown out: the later steps' damage states).
-## Frames worth a look (at --fixed-fps 10): entrance 0-55 (the fanfare at 16); strafe (after the phase's intro):
+## Frames worth a look (at --fixed-fps 10): entrance 0-55 (the fanfare at 22); strafe (after the phase's intro):
 ## the squadron out of the cape from about frame 63, the first pass's warning at 79 and its rake 91-99, the
 ## buttress rising at 110, the second pass's warning at 114 and its rake 126-134, the horizontal pass's warning
 ## at 150 and its sweep 161-175, the squadron back into the cape by 198; buttress and wall: the warning at 79,

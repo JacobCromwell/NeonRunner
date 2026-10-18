@@ -32,13 +32,15 @@ extends Resource
 ## 18, 2026, with a series of bassy, triumphant trumpets whose last call morphs into a distorted reverb):
 ## the first phase's intro (BossPhase.intro_seconds): it rises from this far below its place over
 ## rise_seconds; its cape unfurls from unfurl_at over unfurl_seconds; the fanfare (gc_fanfare, 2.45 s)
-## sounds at fanfare_at, and is over well before the intro's end (BossPhase.intro_seconds, 5.5 s), so it never
-## runs into the first attack's warnings.
+## sounds at fanfare_at, once the rise's rumble (gc_rise, fading out over its last half second, to 2.45 s)
+## has mostly died away, so each of its low calls is heard (the chime it replaced rang at 1.6 s). It is over
+## (4.65 s) well before the intro's end (BossPhase.intro_seconds, 5.5 s) and 1.65 s before the first beat
+## (first_beat_delay after it), so it never runs into the first attack's warnings.
 @export_range(10.0, 150.0, 1.0, "suffix:m") var rise_depth: float = 60.0
 @export_range(0.5, 10.0, 0.1, "suffix:s") var rise_seconds: float = 3.2
 @export_range(0.0, 8.0, 0.1, "suffix:s") var unfurl_at: float = 1.0
 @export_range(0.3, 8.0, 0.1, "suffix:s") var unfurl_seconds: float = 2.6
-@export_range(0.0, 8.0, 0.1, "suffix:s") var fanfare_at: float = 1.6
+@export_range(0.0, 8.0, 0.1, "suffix:s") var fanfare_at: float = 2.2
 ## A later phase's intro (GDD §10, proposed: "between phases, the suit reels from the blast for a few
 ## seconds"): it lurches back this far (radians) and recovers.
 @export_range(0.0, 0.6, 0.01, "suffix:rad") var reel_tilt: float = 0.22
