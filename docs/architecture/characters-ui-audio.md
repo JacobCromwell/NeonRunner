@@ -252,3 +252,78 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
     Godot's web audio code copies a sample's buffer again each time it starts. *Effects:* Music bus effects
     don't apply to samples, so the death dip's low-pass (`MusicDirector.dip_filter`) is silent on the web;
     only its volume dip is heard. Playing music as a stream would change all three (`docs/OPEN_QUESTIONS.md` item 828).
+
+## The runner's outfits (cosmetics)
+
+The cosmetics (GDD §8, "Cosmetics": looks the player buys in the shop and wears; the owner, October 18, 2026) are
+**outfits for Razor Echo**, not other characters: the same rig, poses, 75% scale and hitbox (`PlayerSuit.DESIGN_SIZE`),
+his head unless the outfit covers it, and the owned power-ups on top. They never change gameplay. Task M1 built the
+system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
+
+- **One file per outfit:** `scripts/player/outfits/<id>.gd`, `extends PlayerOutfit`, where `<id>` is the cosmetic's id in
+  `data/shop/catalog.json` (`rex`, `camo`, `beach_master`, `centurion`, `party_wolf`). `PlayerOutfits` finds the file by
+  that name: **there is nothing to register**, and no shared file to edit. An outfit overrides what it changes
+  (`PlayerOutfit` documents them): `body_pieces()` (required: the pelvis, chest, arms, hands, legs and feet, as
+  `HumanoidPiece`s; Echo's coat, arms and boots are *not* kept), `head_pieces()` (Echo's own by default, via
+  `PlayerSuit.head_pieces()`; return your own to cover it, or `super()` plus a mask or hat to add to it, as Party Wolf's
+  mask will), `panels()` (a coat's skirt or tails, `HumanoidPanel`s the rig swings, at most `HumanoidRig.MAX_PANELS`;
+  Echo's skirt is not inherited, so a waist-length jacket has none and costs no extra draw call) and
+  `attachment_overrides()` (a power-up set refitted to the outfit's shapes, by name: `armor`, `claws`, `weapon_1` to
+  `weapon_4`, `magnet`; Echo's sets are used for every one not named, which is what Rex does). `PlayerOutfit` also has
+  the builders `add()`, `pipe()` (a thin three-sided strip: circuit lines, cables, strap edges), `piece()` and
+  `merged()`, which `PlayerSuit` uses too, and the shape and placement constants (`BOX`, `LATHE`, `MIRRORED`, ...).
+  Pieces are in the segment's joint space at design scale, limb pieces authored on the right limb and mirrored with
+  `side`: read `PlayerSuit` and `scripts/player/outfits/rex.gd` for the conventions, and `HumanoidPiece` for the
+  shapes (`glow` and `shine` ride in the mesh, so a segment is still one draw call).
+- **`PlayerOutfits`** (`player_outfits.gd`) keeps `worn` (the outfit every `PlayerAvatar` built from now on wears: the
+  run's, a cinematic's, a review tool's) and `parts_for(id)` (cached: Echo's `PlayerSuit.parts()`; an outfit composed by
+  `compose()` over Echo's skeleton, size and head; or, for a catalog id whose file isn't written yet, `placeholder_parts()`:
+  Echo's look with the coat, arms and boots washed toward the catalog's colour for it, `DESIGN-TBD`, so buying and
+  wearing an unbuilt outfit works end to end and shows. The placeholder, and the shop's "LOOK IN PROGRESS" caption,
+  go when the file arrives). `is_built(id)`, `is_known(id)`, `resolve(id)` (an unknown id is Echo's own look; ids are plain
+  identifiers and can't name another path) and `outfit(id)` (the file's instance) are its other calls.
+- **`PlayerAvatar`** reads `PlayerOutfits.worn` when it is built, so the gameplay model (`Player`, untouched), a
+  cinematic's runner (`CineActorNode`, so the Beach's outro and every other cinematic) and the review tools all wear it
+  with no hook of their own. `set_outfit(id)` / `outfit()` change a live avatar (the rig is built again: do it right after
+  building it; equipment, size fit and pose are kept). The title screen shows no runner. App keeps `worn` current from the
+  profile (`App.sync_outfit()`, at start and after a wear, for a test or tool that swaps `App.profile`); `--outfit=<id>`
+  (debug builds) sets it for a session, owned or not, and `avatar_showcase` / `avatar_run_review` take it too.
+- **The colour rule does not apply to outfits** (owner, October 18, 2026): their glows and colours stay as their sheets
+  draw them, hazard colours included; `test_avatar`'s colour checks are on the base look (`PlayerSuit`). Nothing on an
+  outfit may be a weapon or look like a power-up (the owner's concept sheets all carry swords and guns; every one is left
+  out), and the back view, which the gameplay camera sees, matters most. Keep glows thin and soft (Rex's stay under
+  `test_outfit_rex`'s bloom cap) and the colours as the brief gives them.
+- **The budget is the avatar's, with every power-up on:** `test_avatar`'s 2,000 triangles and 20 draw calls, and the
+  power-ups take 452 of the triangles (claws 72, armor 84, a tier-4 weapon 108, the magnet 68, the shield bubble about 120),
+  so an outfit with Echo's head (278) has about 1,270 for its body. Echo's own look is 1,472 triangles, Rex's 1,480
+  (1,932 with everything). Thin glowing lines cost 8 triangles a piece, a chamfered box 28, a plain box 12, a six-sided
+  prism 20.
+- **Adding an outfit (M2, M3):** (1) write `scripts/player/outfits/<id>.gd` from its brief (`docs/art/BRIEF_OUTFIT_*.md`);
+  (2) look at it: `tools/showcase/avatar_showcase.tscn -- --shot=sheet --outfit=<id>` (shots `sheet`, `sheet-run`, `sheet-close`,
+  `poses`, `poses-back`, `equipment`, `equipment-back`, `turntable`; `--look=all` for every power-up) and
+  `avatar_run_review.tscn -- --outfit=<id> --skin=<zone>` (the real game camera; `--equip=all`), rendered as the task's
+  checklist says; (3) `tools/godot.sh test --suite=outfit` (`test_outfits` already runs every catalog outfit, built or not,
+  through the budgets, Echo's size, the hair-tip height, the feet on the ground, every pose, the power-ups going on top, the
+  weapon's muzzle, and the body and head segments; it needs nothing added) and, for the outfit's own looks, a suite of its
+  own, `tests/suites/test_outfit_<id>.gd` (see `test_outfit_rex`); (4) a paragraph here under its marker below, and its
+  `DESIGN-TBD` questions in `docs/questions/<task>.md`. The shop's price, name, colour and order are the catalog's
+  (`ShopCosmetic`); its colour is also what the outfit's shop icon and placeholder use.
+
+### Built outfits
+
+- **Rex** (M1; `rex.gd`; brief `docs/art/BRIEF_OUTFIT_REX.md`). A magenta leather biker jacket (three box tiers, the tank
+  top and chain between wide lapels, a standing collar, the belted waist, the zip), its **pink circuit lines** (thin
+  strips over the shoulders and down the back of the right sleeve), the **cyan spine** (a line down the back with three
+  vertebrae) and two plain patches on the back (no words); the right forearm bare to the fingerless glove (Echo's own hand
+  shapes, so the Beach outro's two raised fingers still work); the **gunmetal and copper cyber-arm** (dome with the
+  **orange** joint, plated arm, copper pistons front and back, an articulated hand) in place of Echo's gold one; a utility
+  belt with hip and back pouches, dark cargo pants with an empty holster and a pocket on each thigh and knee straps,
+  buckled combat boots with magenta trim. Echo's head; no skirt panels; the rifle left out. 1,480 triangles, 16 draw calls.
+  The jacket's magenta is the electric fence's pink hue in every zone (the colour rule doesn't apply to outfits, so that
+  is as drawn): in rendered frames of every zone's skin the fence's crackle, halo and shape and the runner's cyan spine and
+  silhouette keep them apart, closest on the grey ones (the grey box, Corporate's plaza, the Dead Zone), left for the owner
+  to look at. The frames come from `avatar_run_review.tscn -- --outfit=rex --skin=<zone>` (the fences at 80 m and 110 m).
+
+<!-- M2: Camo and Beach Master go here, one paragraph each. -->
+
+<!-- M3: Centurion and Party Wolf go here, one paragraph each. -->

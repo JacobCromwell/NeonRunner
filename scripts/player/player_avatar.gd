@@ -2,8 +2,10 @@ class_name PlayerAvatar
 extends Node3D
 ## The player's runner model: Razor Echo (GDD §11, look in PlayerSuit) on the shared HumanoidRig,
 ## animated procedurally from the Player's movement state; the rig also swings the coat's skirt
-## panels. Visual only: it never affects movement or collision. Put it under the Player's pivot
-## (which rolls onto walls and the ceiling); its feet are at the origin and it faces -z.
+## panels. It wears the outfit PlayerOutfits.worn names when it is built (the player's cosmetic, GDD §8:
+## Echo's own look by default), whatever builds it: the run, a cinematic, a review tool. Visual only: it
+## never affects movement or collision. Put it under the Player's pivot (which rolls onto walls and the
+## ceiling); its feet are at the origin and it faces -z.
 ##
 ## API
 ##   animate(state: Dictionary, delta: float)
@@ -28,6 +30,10 @@ extends Node3D
 ##       Missing keys keep their current value. The looks are DESIGN-TBD placeholders (PlayerSuit).
 ##       Armor switched off while running (it broke) shatters: its plates burst off in shards.
 ##   get_equipment() -> Dictionary
+##   set_outfit(id: StringName) / outfit() -> StringName
+##       Dresses the runner in another outfit (PlayerOutfits: &"echo" is his own look). The rig is built
+##       again, so any node attached to one of its joints is gone: do it right after building the avatar.
+##       The equipment, the size fit and the pose are kept.
 ##   set_flash(on: bool)
 ##       The invulnerability flicker: the Player toggles it; while on, the whole body is tinted a
 ##       bright pale copper.
@@ -81,6 +87,8 @@ const WEAPON_MUZZLE := PlayerSuit.WEAPON_MUZZLE
 var rig: HumanoidRig
 var anim_tuning: HumanoidAnimTuning
 
+var _outfit: StringName = PlayerOutfits.ECHO
+
 var _material: ShaderMaterial
 var _shield: MeshInstance3D
 var _shards: CPUParticles3D
@@ -106,7 +114,8 @@ func _init() -> void:
 	rig = HumanoidRig.new()
 	rig.name = "Rig"
 	add_child(rig)
-	rig.build(PlayerSuit.parts(), _material, anim_tuning)
+	_outfit = PlayerOutfits.resolve(PlayerOutfits.worn)
+	rig.build(PlayerOutfits.parts_for(_outfit), _material, anim_tuning)
 	_shield = MeshInstance3D.new()
 	_shield.name = "Shield"
 	_shield.mesh = PlayerSuit.shield_mesh()
@@ -115,7 +124,7 @@ func _init() -> void:
 	_shield.visible = false
 	add_child(_shield)
 	_build_shards()
-	fit_to(PlayerSuit.parts().design_size)
+	fit_to(rig.parts.design_size)
 	rig.animate({}, 0.0)  # Stand idle until driven, never in the raw rest pose.
 	reset()
 
@@ -151,6 +160,24 @@ func set_equipment(eq: Dictionary) -> void:
 
 func get_equipment() -> Dictionary:
 	return _equipment.duplicate()
+
+
+func set_outfit(id: StringName) -> void:
+	id = PlayerOutfits.resolve(id)
+	if id == _outfit:
+		return
+	_outfit = id
+	rig.build(PlayerOutfits.parts_for(id), _material, anim_tuning)
+	# The rig kept its scale and its attachment names; an outfit with another design size refits.
+	var size: Vector3 = _size
+	_size = Vector3.ZERO
+	fit_to(size)
+	rig.animate(_last_state, 0.0)
+
+
+## The outfit being worn (PlayerOutfits.ECHO for his own look).
+func outfit() -> StringName:
+	return _outfit
 
 
 func set_flash(on: bool) -> void:

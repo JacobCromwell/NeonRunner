@@ -22,6 +22,7 @@ const NAMES: Array[StringName] = [
 	&"trophy", &"leaderboard", &"store",
 	&"check", &"close", &"plus", &"chevron_left", &"chevron_right", &"chevron_down", &"warning", &"info",
 	&"restart", &"home", &"power", &"infinity", &"map", &"film", &"boss", &"ad", &"volume", &"keyboard", &"eye",
+	&"outfit",
 ]
 ## Credit denominations, in the order of UiStyle.credit_colors.
 const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
@@ -357,6 +358,7 @@ static func _emit(p: Pen, icon: StringName) -> void:
 			p.arc(Vector2(12, 12), 7.8, -0.75, 0.75, 1.7)
 		&"keyboard": _keyboard(p)
 		&"eye": _eye(p)
+		&"outfit": _outfit(p)
 		_:
 			# Unknown name: a crossed box, visible but obviously wrong.
 			p.stroke(pts([4, 4, 20, 4, 20, 20, 4, 20]), true, 1.5)
@@ -608,6 +610,13 @@ static func _eye(p: Pen) -> void:
 	almond.append_array(arc_points(Vector2(12, 12 - d), r, a, PI - a, 14).slice(1, 14))
 	p.shape(almond, 1.8)
 	p.circle(Vector2(12, 12), 3.2)
+
+
+## A jacket: collar and shoulders, the sleeves swung out, and the zip down the front (the cosmetics' icon).
+static func _outfit(p: Pen) -> void:
+	p.shape(pts([9, 3.5, 12, 7, 15, 3.5, 19.5, 5.5, 22, 14, 18.5, 14.8, 17.5, 10.8, 17.5, 20.5, 6.5, 20.5, 6.5, 10.8,
+		5.5, 14.8, 2, 14, 4.5, 5.5]), 1.8)
+	p.stroke(pts([12, 7, 12, 20.5]), false, 1.4)
 
 
 static func _store(p: Pen) -> void:

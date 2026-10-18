@@ -77,5 +77,36 @@
 			"name": "Revive", "price": 600, "max_stock": 3,
 			"description": "Revives you on the spot after a death."
 		}
+	],
+	"_cosmetics_note": "The shop's Cosmetics section (GDD §8, 'Cosmetics'; the owner, October 18, 2026): looks for the runner, bought once with credits from the same wallet and kept forever; the player picks one to wear. They never change gameplay. 'default_cosmetic' is Razor Echo's own look, free and always owned. 'cosmetics' are the outfits in shop order; each id names its outfit file (scripts/player/outfits/<id>.gd, PlayerOutfits), and an id with no file yet wears a tinted placeholder of Echo's base look in 'color' (PlayerOutfits.placeholder_parts). Cosmetics are not in 'items': the economy tools and tests price items only. Rex and Camo (3,000 each) are the owner's prices. DESIGN-TBD: Beach Master (meant to be won by completing challenges), Centurion (the prize for winning the weekly seed) and Party Wolf (the reward for promoting the game) are sold for 5,000 credits for now, a placeholder so they aren't forgotten, until those ways of winning them are designed (docs/OPEN_QUESTIONS*.md item 979).",
+	"default_cosmetic": {
+		"id": "echo", "name": "Razor Echo",
+		"description": "Your own look: the dark trench coat, the gold arm and the copper glow.",
+		"color": "#f5a375"
+	},
+	"cosmetics": [
+		{
+			"id": "rex", "name": "Rex", "price": 3000, "color": "#d1198c",
+			"description": "A magenta leather biker jacket with glowing circuit lines, and a gunmetal and copper cyber-arm."
+		},
+		{
+			"id": "camo", "name": "Camo", "price": 3000, "color": "#6b7041",
+			"description": "A long olive military trench coat over a camo plate carrier, and a brass armoured cyber-arm."
+		},
+		{
+			"id": "beach_master", "name": "Beach Master", "price": 5000, "color": "#1f8a8f",
+			"_note": "DESIGN-TBD: 5,000 is a placeholder price. The outfit is meant to be won by completing challenges, which aren't designed yet.",
+			"description": "A tropical shirt over a camo plate carrier, cargo shorts and a sea-worn cyber-arm."
+		},
+		{
+			"id": "centurion", "name": "Centurion", "price": 5000, "color": "#d9a62e",
+			"_note": "DESIGN-TBD: 5,000 is a placeholder price. The outfit is meant to be the prize for winning the weekly seed, which isn't designed yet.",
+			"description": "A gold and crimson Roman-style outfit: lion-head pauldrons and a golden cyber-arm."
+		},
+		{
+			"id": "party_wolf", "name": "Party Wolf", "price": 5000, "color": "#9a35e0",
+			"_note": "DESIGN-TBD: 5,000 is a placeholder price. The outfit is meant to reward promoting the game (inviting a friend, buying it for a friend, posting about it), which isn't designed yet.",
+			"description": "A neon rave outfit: a cyber wolf mask, a graffiti coat and a glowing purple and cyan arm."
+		}
 	]
 }

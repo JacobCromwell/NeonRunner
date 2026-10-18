@@ -14,6 +14,7 @@ extends Node3D
 ##   --sampler            the toolkit sampler instead, in the zone --zone= names (default city)
 ##   --lanes=N            lanes (default: as many as a level on this device)
 ##   --reduced-flashing   with Settings > Reduced flashing on
+##   --outfit=<id>        the runner wears a cosmetic's outfit (an id from data/shop/catalog.json; default: Razor Echo's own look)
 ##   --once               quits when it ends instead of playing it again
 ##   --from=S             starts S seconds in (steps its clock there first), for renders of a later moment
 ##   --cam=px,py,pz,tx,ty,tz[,fov]  holds the camera there (track space) instead of the cinematic's own, for close-ups of a set
@@ -35,6 +36,11 @@ func _ready() -> void:
 	if _has("reduced-flashing"):
 		App.profile.settings["reduced_flashing"] = true
 		Settings.apply_visuals(App.profile)
+	var outfit: String = _opt("outfit", "")
+	PlayerOutfits.worn = PlayerOutfits.ECHO  # whatever the real save wears
+	if outfit != "":
+		# Every runner built from here on wears it (PlayerOutfits.worn); an unknown id is Echo's own look.
+		PlayerOutfits.worn = PlayerOutfits.resolve(StringName(outfit))
 	_start()
 
 

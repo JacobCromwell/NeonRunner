@@ -3,8 +3,8 @@ extends TestSuite
 ## every pose runs cleanly, the run pose fits MovementTuning.visual_size, the budgets hold, equipment
 ## toggles (the weapon over the gold arm's shoulder, the armor shattering when it breaks), the coat's
 ## skirt panels swing in every pose without going through the legs or the surface, the copper glow
-## stays clear of every hazard colour, the collapse finishes on its own, and a real Player drives it
-## through its moves.
+## stays clear of every hazard colour (the base look only: the outfits are exempt, GDD §8, Cosmetics, and
+## are test_outfits's), the collapse finishes on its own, and a real Player drives it through its moves.
 
 const TRIANGLE_BUDGET: int = 2000
 const DRAW_CALL_BUDGET: int = 20
@@ -581,7 +581,10 @@ func _test_glow_colours() -> void:
 	var brightest: float = PlayerSuit.CONDUIT_GLOW * energy * PlayerAvatar.DASH_GLOW
 	check(energy > 0.0 and brightest <= MAX_GLOW_EMISSION,
 		"its brightest emission (a conduit while dashing) is %.2f× its colour, at the glow threshold" % brightest)
-	# The base model: every glowing piece is the copper.
+	# The base model: every glowing piece is the copper. Only the base look (PlayerSuit): the outfits, the
+	# cosmetics in scripts/player/outfits/, are exempt from the colour rule, their glows and colours staying as
+	# their sheets draw them, hazard colours included (the owner, October 18, 2026; GDD §8, Cosmetics).
+	# test_outfits keeps their glows soft instead.
 	var base: Array = PlayerSuit.parts().pieces.duplicate()
 	for panel: HumanoidPanel in PlayerSuit.parts().panels:
 		base.append_array(panel.pieces)

@@ -672,7 +672,7 @@ From `docs/USER_REQUESTS.md` (October 18, 2026, the first five outfits), run by 
 
 | ID | Task | Needs | Size | Tier |
 |---|---|---|---|---|
-| M1 | **The shop's Cosmetics section, the outfit system and the Rex outfit:** bought once, one worn at a time, saved; outfits shown wherever the runner appears; Rex (`docs/art/BRIEF_OUTFIT_REX.md`) | – | L | T2 |
+| M1 | **The shop's Cosmetics section, the outfit system and the Rex outfit:** bought once, one worn at a time, saved; outfits shown wherever the runner appears; Rex (`docs/art/BRIEF_OUTFIT_REX.md`) **Done.** | – | L | T2 |
 | M2 | **The Camo and Beach Master outfits** (`docs/art/BRIEF_OUTFIT_CAMO.md`, `docs/art/BRIEF_OUTFIT_BEACH_MASTER.md`) | M1 | L | T2 |
 | M3 | **The Centurion and Party Wolf outfits** (`docs/art/BRIEF_OUTFIT_CENTURION.md`, `docs/art/BRIEF_OUTFIT_PARTY_WOLF.md`) | M1 | L | T2 |
 
