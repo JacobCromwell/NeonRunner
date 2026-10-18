@@ -2,7 +2,7 @@ class_name ShopScreen
 extends ScreenBase
 ## The shop (GDD §8): permanent items bought tier by tier and kept (among them the armor, an upgrade
 ## to the free armor every run brings: item_text() puts the rules' numbers in its texts), breakable
-## items bought as stock (up to each item's max_stock: every run takes one of each switched-on item,
+## items bought as stock (up to each item's max_stock: every run takes all your shields and one of each other switched-on item,
 ## and revives wait in stock for the death screen), and the equip toggle for everything owned. After the
 ## power-ups, the Cosmetics: outfits for the runner (GDD §8), each bought once and then worn or taken off
 ## (Razor Echo's own look is the free first card), each card showing the runner in the outfit (a still; the card the

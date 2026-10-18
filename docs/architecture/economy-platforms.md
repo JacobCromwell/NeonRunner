@@ -7,7 +7,7 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
 `Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned, unspent,
 plus what was spent on cosmetics, `cosmetic_spent`: an outfit never lowers it), item tiers and stock, equip toggles, records per difficulty tier, settings and stats.
 `SaveService` writes it to `user://profile.json` (with a backup). `Loadout` is what one run carries:
-owned, switched-on items; one charge of each breakable per attempt; and the free armor every run
+owned, switched-on items; every shield in stock (they stack, up to its max_stock) and one charge of the other breakables per attempt; and the free armor every run
 starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
 items) sells the permanent items tier by tier, among them the armor upgrade (GDD §8: four tiers; hits
 and waits in `GameRules`; prices in the catalog, laid against the campaign's economy by R7 and rebalanced

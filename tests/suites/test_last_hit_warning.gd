@@ -70,6 +70,7 @@ func run() -> void:
 	_test_strips()
 	await _test_warm_up()
 	await _test_state_machine()
+	await _test_stacked_shields()
 	await _test_pulses_and_reduced_flashing()
 	await _test_start_unprotected()
 	await _test_slow_time()
@@ -478,6 +479,27 @@ func _cuts() -> int:
 func _free(world: RunWorld, cue: LastHitWarning) -> void:
 	cue.free()
 	await sim.free_world(world)
+
+
+## Stacked shields (GDD §8): the cue waits for the last shield after the armor, however many there were.
+func _test_stacked_shields() -> void:
+	var shot := _shot()
+	var window: float = cue_tuning.onset_delay + cue_tuning.siren_seconds() + cue_tuning.fade_in_seconds
+	var world: RunWorld = _world(true, 3)
+	var p: Player = world.player
+	var cue: LastHitWarning = _cue(world)
+	p.receive_hit(shot)
+	for left: int in [2, 1]:
+		p.invulnerable_left = 0.0
+		check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_SHIELD and p.shield == left, "a stacked shield breaks (%d left)" % left)
+		_step(cue, window)
+		check(not cue.is_on() and cue.level() == 0.0 and _sirens() == 0, "%d shield(s) in hand: no cue, no siren" % left)
+	p.invulnerable_left = 0.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_SHIELD and p.shield == 0 and p.alive, "the last shield breaks")
+	_step(cue, STEP + cue_tuning.onset_delay + STEP)
+	check(cue.is_on() and _started == 1 and _sirens() == 1, "the cue starts with the last shield's break only")
+	shot.free()
+	await _free(world, cue)
 
 
 func _test_state_machine() -> void:
