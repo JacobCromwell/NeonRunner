@@ -5501,3 +5501,12 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    sheet's mask has fur tufts and a more expressive snarl. Does the owner want a more expressive mask (about 24 triangles are left
    under the 2,000 with every power-up on, so a better mask means trimming elsewhere)?
    Placeholder: as built (`_mask` in `party_wolf.gd`).
+
+### Folded on October 18, 2026 (task N3, shields stack)
+
+1011. **A boss fight's granted shield when the player brings a stack** (GDD §8: a boss's grant "never costs the player's own
+   stock"; shields stack since October 18, 2026). Does the grant add one more shield on top of the player's stack, or is it one
+   free charge inside it? Placeholder: `Loadout.grant` never adds a charge to a breakable the player already brings (a stack of
+   four stays four), and the grant is one free break (`Loadout.costs_stock`: picked-up charges break first, then the granted one,
+   then the player's own stock). A boss fight's shield pickup also adds nothing to a held stack (`PickupTuning.max_charges` 1).
+   Marked `DESIGN-TBD` in `scripts/run/loadout.gd`.

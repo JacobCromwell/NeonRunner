@@ -22,5 +22,4 @@ request that is now in the done file.
 
 - [ ] **The treasure stash harder to dash into** (GDD §3, Ceiling scenarios): a dash from the floor gets into the stash. Add a second doodad in front of the first in the stash's lane, with a space between them ("doodad, space, doodad, then the treasure"), so a floor runner can still get in but it's harder.
 - [ ] **Stars that can be earned** (GDD §4, §5 the Beach, §10): some levels may not allow three stars, at least the volleyball match (Beach 2) and perhaps the Beach's boss. The volleyball match's stars by how the match went, not how fast: 4 points to the rival's 0 is three stars, one point or none is one star, anything in between two stars. Check every level and boss and say where three stars can't be earned.
-- [ ] **Shields stack like the armor** (GDD §8): four shields bought, yet one hit took the shield away. Verify, and if so, carry every shield in stock into the run, each blocking one hit.
 - [ ] **The Golden Convergence's sound less cheery** (GDD §10): a series of bassy trumpets, triumphant but in a deeper register; when the final trumpet sounds, it morphs into a distorted reverb.

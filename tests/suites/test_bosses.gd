@@ -1028,7 +1028,7 @@ func _app_death_and_retry(step: CampaignStep) -> void:
 	App.run.world.player.receive_hit(shot)
 	shot.free()
 	check(App.profile.stock(&"shield") == 2 and App.run.world.player.armor == App.rules.armor_hits_at(1) - 1
-		and App.run.world.player.shield == 1, "a hit on the granted armor costs no stock (the armor is none, GDD §8)")
+		and App.run.world.player.shield == 2, "a hit on the granted armor costs no stock (the armor is none, GDD §8)")
 	await _kill_player()
 	check(App.screen is ResultsScreen and not (App.screen as ResultsScreen).result.completed,
 		"with nothing to revive with, a death shows the run summary")
