@@ -209,13 +209,47 @@ extends ZoneSkin
 @export_group("Cult feed")
 ## DESIGN-TBD: how often the cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays in the
 ## market, alongside the ordinary ads: the share of billboards, casino signs and floating ad screens
-## showing it, and of shop windows with a TV showing it.
+## showing it. The shop windows hold no feed TV (the owner, October 17, 2026): see "Window displays".
 @export_range(0.0, 1.0, 0.01) var feed_share: float = 0.35
-@export_range(0.0, 1.0, 0.01) var feed_window_share: float = 0.22
-## Brightness of the feed (0-1): full on billboards, dimmer on the TVs in shop windows, low on the
-## walls where the player runs.
+## Brightness of the feed (0-1): full on billboards, low on the walls where the player runs.
 @export_range(0.0, 1.0, 0.05) var feed_board_brightness: float = 1.0
-@export_range(0.0, 1.0, 0.05) var feed_window_brightness: float = 0.45
+
+@export_group("Window displays")
+## DESIGN-TBD (docs/questions/l10.md; GDD §5 "Cyborg Viewing Devices", the owner, October 17, 2026: the old CRT feed
+## TVs "don't really add much", so some shop windows get screens playing random ads, with the cult emblem flashing
+## on them every once in a while, and others billboards that fit the world). The share of shop windows holding
+## either (the TVs' 0.22), and how many of those are ad screens (the rest are lit posters). MarketCitizens skips
+## every one of them, and so does a window cyborg's window (MarketFacades.display_of()).
+@export_range(0.0, 1.0, 0.01) var window_display_share: float = 0.22
+@export_range(0.0, 1.0, 0.01) var window_screen_share: float = 0.5
+## An ad screen's glow (COLOR.a: how many times its albedo, at the emissive scale). 0.28 puts its brightest parts
+## where the old TV's feed peaked, so it costs the bloom pass no more.
+@export_range(0.0, 1.0, 0.01) var window_screen_glow: float = 0.28
+## The dark frame of every panel, screens and posters (lit, never glowing).
+@export var window_frame_color: Color = Color(0.13, 0.12, 0.14)
+## How far a panel is turned toward the runner's approach (degrees from the wall's plane): a panel parallel to
+## the wall is seen almost edge-on from the lanes.
+@export_range(0.0, 45.0, 1.0, "suffix:deg") var window_screen_turn: float = 28.0
+## The ads' colours (shader wd_palette; glowing, so only the decorative hues: blue to violet, warm white): blue, violet,
+## deep indigo (backgrounds), warm white, pale blue-white (the drawn things), lavender (accents).
+@export var window_ad_colors: PackedColorArray = PackedColorArray([
+	Color(0.3, 0.5, 0.95), Color(0.5, 0.4, 0.95), Color(0.22, 0.26, 0.66), Color(1.0, 0.93, 0.82),
+	Color(0.85, 0.88, 1.0), Color(0.78, 0.62, 0.92)])
+## The posters' paint: lit, never glowing, and (the colour rule) never a hazard hue (no red, orange, yellow, green,
+## cyan or pink): blues, violets, slate and mauve with a cream.
+@export var window_poster_colors: PackedColorArray = PackedColorArray([
+	Color(0.22, 0.36, 0.62), Color(0.44, 0.34, 0.62), Color(0.26, 0.4, 0.58), Color(0.84, 0.8, 0.7),
+	Color(0.32, 0.42, 0.46), Color(0.56, 0.44, 0.54)])
+## How long an ad stays up before the next, in seconds (each screen picks its own between these).
+@export var ad_scene_time: Vector2 = Vector2(5.0, 7.5)
+## Seconds between the cult emblem's flashes on one screen (each screen picks its own, from its window's position,
+## and its own moment in the cycle, so no two flash together): the shortest and the longest.
+@export var emblem_flash_period: Vector2 = Vector2(14.0, 26.0)
+## One flash, in seconds: fading in, held and fading out. Never a hard cut, and one flash is a single event,
+## never faster than about a third of a second. With Reduced flashing the slower, steadier one: the emblem
+## fades in over most of a second and stays up for two.
+@export var emblem_flash_times: Vector3 = Vector3(0.22, 1.1, 0.55)
+@export var emblem_flash_times_reduced: Vector3 = Vector3(0.9, 2.0, 0.9)
 
 @export_group("Doodads")
 ## The nice plants' pot (GDD §3, task G6: the owner's "plenty of nice plants") and their foliage, kept
@@ -426,8 +460,10 @@ func doodad(body: Node3D, size: Vector3, size_class: StringName, side: int, look
 ##   width     along the track; height: from `bottom` to `top` (world y)
 ##   depth     how far the display reaches into the building (inside is face_x + side * depth)
 ##   kind      &"shop", &"casino" or &"hall"
-##   screen    true if a TV in the display plays the cult's feed (CultFeed): it stands at the back,
-##             in the middle, about 1 m wide, so citizens may gather beside it
+##   screen    true if the window holds an ad screen or a poster (task L10): a panel hung in it, so no
+##             citizen stands there (MarketCitizens skips it)
+##   display   what it holds: &"ad" (a screen playing ads, flashing the cult's emblem now and then), &"poster"
+##             (a lit shop sign, sale, menu or product) or &"" (nothing)
 ## Anything standing inside faces the lanes (toward -side on x). Hazards on the wall (signs, window
 ## cyborgs, wall fences, vents) are the layout's business: the skin doesn't know where they are.
 func shop_windows(side: int, face_x: float, start: float, end: float) -> Array[Dictionary]:
@@ -493,7 +529,10 @@ func carries_emblem(a: int, b: int) -> bool:
 
 func solid_material() -> ShaderMaterial:
 	if not _materials.has(&"solid"):
-		_materials[&"solid"] = MeshKit.solid(_solid_params())
+		var m: ShaderMaterial = MeshKit.solid(_solid_params())
+		# The emblem's coverage the window screens flash (MeshKit.PAT_WINDOW_AD; the owner's pick, drawn by CultEmblem).
+		m.set_shader_parameter(&"cult_emblem", CultFeed.emblem_texture())
+		_materials[&"solid"] = m
 	return _materials[&"solid"]
 
 
@@ -550,11 +589,27 @@ func _solid_params() -> Dictionary:
 	for i: int in 2:
 		var c: Color = awning_colors[i % awning_colors.size()]
 		awnings.append(Vector3(c.r, c.g, c.b))
-	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
+	var params: Dictionary = {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 		"canvas_stripe": awning_stripe_color, "canvas_pole": seam_color,
 		"stall_slot": stall_slot, "stall_awning_share": awning_share, "stall_tin_share": tin_share,
 		"stall_canvas": canvas, "stall_awning": awnings, "stall_tin": Vector3(tin_color.r, tin_color.g, tin_color.b),
 		"market_dust": dust_tint, "market_dust_amount": wear}
+	params.merge(window_display_params())
+	return params
+
+
+## The solid material's uniforms for the shop windows' ad screens (kit_window.gdshaderinc, task L10): the ads' palette
+## (sRGB, as the shader wants it), the emblem's warm white, and the timing of the scenes and of the emblem's flash. The
+## Casino merges these into its own.
+func window_display_params() -> Dictionary:
+	var palette := PackedVector3Array()
+	for i: int in 6:
+		var c: Color = window_ad_colors[i % window_ad_colors.size()]
+		palette.append(Vector3(c.r, c.g, c.b))
+	var emblem: Color = CultFeed.emblem_color()
+	return {"wd_palette": palette, "wd_emblem": Vector3(emblem.r, emblem.g, emblem.b),
+		"wd_flash_period": emblem_flash_period, "wd_flash": emblem_flash_times,
+		"wd_flash_reduced": emblem_flash_times_reduced, "wd_scene_time": ad_scene_time}
 
 
 func dash_walls() -> MarketDashWall:

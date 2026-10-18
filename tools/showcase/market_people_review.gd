@@ -1,7 +1,7 @@
 extends Node3D
 ## The Marketplace citizens' review, for visual review only (not part of the game; task L7): a plain straight street in
 ## the Marketplace (or Casino) skin, seen from the game's camera as a runner passes the shop windows, or from still cameras
-## close to a citizen's window and to a feed TV's. Render it on both renderers:
+## close to a citizen's window and to a window with an ad screen or a poster (task L10). Render it on both renderers:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot4 --path . --resolution 960x540 --fixed-fps 10 \
 ##     --write-movie build/people/f.png --quit-after 120 res://tools/showcase/market_people_review.tscn -- --view=run
 ## (add --rendering-method gl_compatibility before the scene path for the web / low-end renderer).
@@ -11,7 +11,7 @@ extends Node3D
 ##   --view=run      (default) a pseudo-runner at the game's pace from --from=D (default 0) along the street, the game's
 ##                   follow camera; --cheer-at=S has a big pickup's cheer fire S seconds in (and --shot-scale for none)
 ##   --view=window   still cameras, one every --hold frames (default 3): the nearest citizen's window from the lane
-##                   beside it, from the game camera, close up; the nearest feed TV's the same; --shot=N shows one;
+##                   beside it, from the game camera, close up; the nearest display window's the same; --shot=N shows one;
 ##                   --cheer has a cheer begin two frames into each shot (--hold=20 or more, past the cooldown), and
 ##                   --flinch The House's duck instead; --sweep=M walks the runner past the shot's citizen from M metres
 ##                   before it to M metres after over --sweep-frames (default 30), to see the heads turn
@@ -183,8 +183,8 @@ func _shot_list() -> Array:
 		var c: Vector3 = tv["center"]
 		var side: float = float(tv["side"])
 		var inside := Vector3(c.x + side * 0.45, 1.55, c.z)
-		out.append([float(tv["at"]), Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside, "the nearest feed TV, close up"])
-		out.append([float(tv["at"]), Vector3(0.0, tuning.camera_height, c.z + 14.0), inside, "that TV from the game camera"])
+		out.append([float(tv["at"]), Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside, "the nearest window with an ad screen or a poster, close up"])
+		out.append([float(tv["at"]), Vector3(0.0, tuning.camera_height, c.z + 14.0), inside, "that window from the game camera"])
 	return out
 
 

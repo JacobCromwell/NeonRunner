@@ -288,7 +288,7 @@ func _reactions_blend() -> void:
 	MarketPeople.reset()
 
 
-## Never in a feed window (shop_windows()'s `screen`), nor one a window cyborg stands in
+## Never in a window holding an ad screen or a poster (shop_windows()'s `screen`), nor one a window cyborg stands in
 ## (note_wall_enemies(), GDD §9.2: "kept apart").
 func _only_in_free_windows(skin: MarketplaceSkin) -> void:
 	var geo := TrackGeometry.new(5, tuning)
@@ -302,7 +302,7 @@ func _only_in_free_windows(skin: MarketplaceSkin) -> void:
 			screen_ats.append(float(w["at"]))
 		elif free_at < 0.0:
 			free_at = float(w["at"])
-	check(free_at >= 0.0 and not screen_ats.is_empty(), "the test level has both a free and a feed window to check")
+	check(free_at >= 0.0 and not screen_ats.is_empty(), "the test level has both a free and a display window to check")
 	skin.note_wall_enemies(side, 0.0, 120.0, [{"type": "window_cyborg", "at": free_at, "side": side}])
 	var parent := Node3D.new()
 	tree.root.add_child(parent)
@@ -317,7 +317,7 @@ func _only_in_free_windows(skin: MarketplaceSkin) -> void:
 		for sa: float in screen_ats:
 			if is_equal_approx(at, sa):
 				ok = false
-	check(ok and not placed.is_empty(), "citizens avoid the reserved window and every feed window (%d placed)" %
+	check(ok and not placed.is_empty(), "citizens avoid the reserved window and every display window (%d placed)" %
 		placed.size())
 	skin.note_wall_enemies(side, 0.0, 120.0, [])  # Leave the skin as _off_switch() etc. expect it.
 	parent.queue_free()

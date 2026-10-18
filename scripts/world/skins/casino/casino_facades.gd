@@ -5,7 +5,7 @@ extends MarketFacades
 ## (`eave_height`). It builds on the Marketplace's (MarketFacades): the same lots and buildings (a row
 ## of lounges, a casino or an arcade hall: Kind), the same shop windows low on the wall where the
 ## Marketplace citizens play (windows(), task D3: the row of lit lounges 0.85-2.8 m up, above the
-## screech vents' zone), the same piers, TVs playing the cult's feed and billboards (feed_boards()). Only
+## screech vents' zone), the same piers, the windows' ad screens and posters (task L10) and billboards (feed_boards()). Only
 ## the look differs: casino_facade.gdshader draws iron plates, brass bands, arched windows and warm
 ## lounges (its style numbers are shopfront.gdshader's), and the dressing above the calm band is the
 ## reference's: thick brass pipes and risers along the faces, stacked iron balconies with ivy in
@@ -118,7 +118,8 @@ func windows_picked(side: int, face_x: float, start: float, end: float, salt: in
 				out.append({"side": side, "at": at,
 					"center": Vector3(face_x, (skin.gallery_bottom + skin.gallery_top) * 0.5, -at),
 					"width": w.y - w.x, "bottom": skin.gallery_bottom, "top": skin.gallery_top, "depth": skin.shop_depth,
-					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": _has_tv(b, w)})
+					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": display_of(b, w) != Display.NONE,
+					"display": DISPLAY_NAMES[display_of(b, w)]})
 		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
 	return out
 

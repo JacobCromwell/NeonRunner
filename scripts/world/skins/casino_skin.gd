@@ -200,6 +200,11 @@ func _casino_palette() -> void:
 	painted_sign_colors = PackedColorArray([Color(0.2, 0.16, 0.3), Color(0.5, 0.4, 0.22), Color(0.18, 0.22, 0.34),
 		Color(0.4, 0.34, 0.26), Color(0.26, 0.2, 0.3)])
 	ad_colors = PackedColorArray([Color(0.5, 0.4, 0.95), Color(0.3, 0.5, 0.95), Color(0.92, 0.88, 0.8)])
+	# The lounge windows' posters (task L10): deep violet, navy and slate with an aged cream, off every hazard hue (the
+	# ad screens keep the Marketplace's palette: blue, violet, warm white).
+	window_poster_colors = PackedColorArray([Color(0.26, 0.2, 0.4), Color(0.18, 0.22, 0.38), Color(0.3, 0.3, 0.44),
+		Color(0.8, 0.75, 0.66), Color(0.28, 0.24, 0.3), Color(0.4, 0.32, 0.4)])
+	window_frame_color = Color(0.2, 0.15, 0.1)
 	ceiling_lamp_color = Color(1.0, 0.88, 0.7)
 	engine_color = Color(0.45, 0.6, 1.0)
 	wall_mark_color = Color(0.5, 0.4, 0.26)
@@ -314,11 +319,14 @@ func facade_material() -> ShaderMaterial:
 
 ## The solid kit material with the Casino's uniforms (kit_casino.gdshaderinc).
 func _solid_params() -> Dictionary:
-	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
+	var params: Dictionary = {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 		"cas_shine": srgb(brass_shine_color), "cas_inlay": srgb(inlay_color), "cas_lamp": srgb(lamp_light_color),
 		"cas_wet": street_wet, "cas_pane": srgb(pane_color), "cas_pane_lit": srgb(pane_lit_color),
 		"cas_star": srgb(star_color), "cas_pane_len": bay_length / 3.0, "cas_vault_y": eave_height,
 		"cas_vault_rise": vault_rise_max * 0.6, "cas_banner_w": banner_width, "cas_banner_trim": srgb(brass_dim_color)}
+	# The lounge windows' ad screens are the Marketplace's (MeshKit.PAT_WINDOW_AD).
+	params.merge(window_display_params())
+	return params
 
 
 ## A colour as an sRGB Vector3: it reaches a shader unconverted on every renderer, and the shader
