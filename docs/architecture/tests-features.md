@@ -391,6 +391,19 @@ its window is full, at 6 its window comes after its bait), played from its start
 runner leads its first truck over that wider gap, where it's wrecked; and the pass's last way (task K5) on
 `LAST_RESORT_CASES` (the build's one wider gap from it, fair, past every truck's showing, every window holding) and
 on a plain stretch fenced every 15 m (plain fences make way for it, pulsing ones keep it from coming).
+`test_wall_hops` checks the wall-hop credits (task N1; The generator, Wall-hop credits): their numbers (the high-value
+credits above a fresh wall run's reach without a hop, from the floor or straight back on as one drops its runner, and
+below the wall's top; at every zone's speed past one wall run's reach within a few hops, a clawed single run passing
+under them; printed); none in the City's levels, one asked for by every level from Gangland 1, and at 3, 5 and 6 lanes
+on each level's own build `LayoutChecks.check_wall_hops`, at most one a level, most builds outside the Beach with one
+(printed, with the Beach's none), the stars' best score leaving them out and every other credit clearing three stars;
+the same seed the same lines; a level asking for none the same layout but for its line (credits compared in any
+order: two at one distance may swap). On real physics (excerpts of the first and the last line at 5 lanes): the
+reference hopper (WallHopPath's) taking every credit, alive, its fresh runs peaking where the path says within 0.1 m;
+runners hopping at 0.6 and 1.0 m taking none on their own (printed) but all with one more hop 0.15 or 0.35 s before
+them; one wall run from the entry, plain and with claws, taking only the lead-in; a runner stepping straight back on
+each time a run drops it, and runners stepping on from the floor every 4 m from one wall run's reach to the credits,
+taking none (each ride on its own copy of the excerpt).
 `test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
 run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
 leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit

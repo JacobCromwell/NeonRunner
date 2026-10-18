@@ -34,7 +34,8 @@ extends SceneTree
 ## wins two volleyball points (200 credits).
 ##
 ## Per level: run speed, length, credits available (a layout's total_credit_value(), averaged over lane counts
-## and seeds) of which the treasure stashes' (task I4: total_credit_value() less star_credit_value()), a good
+## and seeds) of which the optional ones, the stars leave out ("stash": the treasure stashes', task I4, and the wall-hop
+## lines' high-value ones, task N1: total_credit_value() less star_credit_value()), a good
 ## run's share of them, the completion bonus (GameRules.completion_bonus), the finish payout (both), what a death
 ## or quit pays (death_credit_keep_fraction of the good run's credits, GDD §4), and each player's running wallet.
 ## "wallet" counts levels and the volleyball match only: the reading of the owner's October 3 anchors (measured
