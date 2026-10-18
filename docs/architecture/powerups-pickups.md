@@ -17,6 +17,12 @@ for both runtime readiness and the HUD. The dash also smashes the zone doodads i
 owner, October 8, 2026; task H5): the Player does that (Damage and interactions, "The dash smashes a zone
 doodad"), as it does the dash's speed. Existing tier-1 ownership and equip state need no save migration;
 the generic shop advances sequentially and marks tier 4 maxed.
+Shields stack (GDD §8, owner, October 18, 2026): `Loadout.from_profile` brings every shield in stock
+(up to the catalog's `max_stock`) as charges, each hit uses one (`Player.receive_hit`, with the usual
+invulnerability window), and each break takes one from the profile's stock (`App._on_item_used`). The
+HUD badge counts them, the model keeps its shield until the last breaks, and the "one hit from death" cue
+waits for the last shield. The grapple keeps one charge per attempt. A boss grant is one free charge
+(`Loadout.costs_stock`: picked-up charges break free first, then the granted one, then the player's own).
 The player model shows what the run carries (`PlayerAvatar.set_equipment`, looks in `PlayerSuit`): the
 weapon sits over the gold arm's (left) shoulder, so shots leave from there (`Player.weapon_muzzle()`),
 and armor that breaks in play shatters. Effects tied to the runner's own glow (the dash's shell and
