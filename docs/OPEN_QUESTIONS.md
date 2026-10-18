@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**977** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6 so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**979** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, and the weekly challenge's design session, so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -33,6 +33,8 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
+| 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
+| 978 | The weekly challenge: when it unlocks, and which zone and difficulty each week's level uses. |
 
 ## The items in full
 
@@ -120,3 +122,15 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    Golden Palace, and every one in the Golden Zone (whose only baits are Buzz Overdrives). So the request mostly
    changes Corporate 1 (21 of its 36 tanks) and, elsewhere, about one tank in every six builds of a level (12 of the
    143). Should the later zones' tanks get company too where the truck is about but not yet attacking?
+
+**The weekly challenge** (the owner's design session, October 18, 2026; GDD §6, Replay features, "Weekly challenge")
+977. **The Leader of the Pack cosmetic.** A player who finishes in the **top three** of a week's board (the cut-off is the
+   owner's for now and will be adjusted) earns the Leader of the Pack cosmetic. What it is (a runner skin, a trail, a
+   badge...), how it shows, and whether it can be lost again are to be designed: the owner will come back to it in a
+   later session. The game has no cosmetics yet, so this item also decides whether a cosmetic system is needed.
+   It also needs a rule for when the reward is granted: a week's rank is only final once the week is over, so the game
+   would check it the next time it is online. Placeholder: none yet; work on the reward waits on this item.
+978. **When the weekly challenge unlocks, and what each week's level is.** Not yet decided: (a) when it unlocks
+   (proposed: after the Neon City boss, so a new player has learned the basics), and (b) which zone skin and difficulty a
+   week's level uses (proposed: a rotation through the zones, set in the shipped list of checked seeds, at the difficulty of
+   the zone's last level). The answer decides how the week's level is built, so the build waits on it.

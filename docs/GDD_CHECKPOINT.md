@@ -300,6 +300,15 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
     - Its scenery **cycles through the zones the player has unlocked**, changing every few minutes.
     - It pays **20% of credits collected, like a death, plus a lump sum every 2 minutes survived**, so lasting longer pays off.
     - Not in the web demo.
+  - **Weekly challenge** (owner, October 18, 2026): one fixed level a week, the same for every player, with a leaderboard for that week.
+    - **Five lanes on every platform**, PC and mobile alike (for the weekly level, so both boards play the same layout). **Two boards:** one for PC, one for mobile.
+    - **A uniform kit:** every player runs it with **Armor IV and Juggernaut dash IV** and **no other shop items**, whatever they own.
+    - **Rewards:** credits **equal to a middle-of-the-road level's payout**, plus a place on the board. The **top three** (for now; the owner will adjust it) also earn the **Leader of the Pack** cosmetic, still to be designed (`docs/OPEN_QUESTIONS.md` item 977).
+    - **No anti-cheat for now:** scores are trusted as submitted.
+    - **Attempts are unlimited on every platform:** no ads or purchases for extra tries on mobile.
+    - Not in the web demo (it has no leaderboards).
+    - *(Proposed)* The week's level comes from a list of seeds shipped with the game and checked by the fairness tests in advance, not straight from the date. The credits are paid for the week's first clear only, so a memorised layout can't be farmed.
+    - *(Open: item 978)* When the challenge unlocks, and which zone and difficulty each week's level uses.
   - Leaderboards
 - **Leaderboards:** separate per platform (Steam, Game Center, Google Play Games), per level and per difficulty tier.
   - Plus a **net worth** leaderboard: credits earned in play and never spent. Purchased credits are tracked separately and never count.
