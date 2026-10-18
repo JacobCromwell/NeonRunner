@@ -1586,3 +1586,14 @@ Captain Cogs).
      the emblem, in the windows, keeping the calm face for the billboards)? Placeholder: unchanged.
 
      **Answered (owner, October 17, 2026):** the feed TVs don't add much; replace them entirely: some windows get screens with random ads and the cult emblem flashing every once in a while, others billboards that fit the world. Recorded in GDD §5 (Cyborg Viewing Devices); built in task L10.
+
+**The weekly challenge** (the owner's design session, October 18, 2026; GDD §6, Replay features, "Weekly challenge")
+978. **When the weekly challenge unlocks, and what each week's level is.** Not yet decided: (a) when it unlocks
+   (proposed: after the Neon City boss, so a new player has learned the basics), and (b) which zone skin and difficulty a
+   week's level uses (proposed: a rotation through the zones, set in the shipped list of checked seeds, at the difficulty of
+   the zone's last level). The answer decides how the week's level is built, so the build waits on it.
+
+     **Answered (owner, October 18, 2026):** it unlocks once the player has beaten the Neon City's boss; the weeks rotate
+     through the zones, always at the Golden Zone's difficulty (a zone's own enemies and obstacles, at the Golden Zone's
+     enemy and obstacle density). The shipped list of checked seeds and the first-clear-only payout are approved too.
+     Recorded in GDD §6.
