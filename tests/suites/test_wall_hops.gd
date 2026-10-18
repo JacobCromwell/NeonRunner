@@ -18,7 +18,9 @@ extends TestSuite
 ##   rhythm (hops at 0.6 or 1.0 m) and hops once more as the high-value credits come near (0.15 or 0.35 s before them)
 ##   collects them all; one wall run from the entry collects the lead-in but none of the high-value credits, with claws
 ##   too; a runner who steps straight back onto the wall each time a run drops them, or who steps onto it from the floor
-##   further along, passes under them.
+##   further along, passes under them, with Magnet I too (the magnet leaves them alone: CreditField._in_magnet). A jump
+##   onto the wall from the floor at the right spot starts a run high enough to reach them (docs/questions/n1.md
+##   question 4); nothing here rides that.
 
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const LANE_COUNTS: Array[int] = [3, 5, 6]
@@ -286,10 +288,26 @@ func _ride(pick: Dictionary) -> void:
 		late += int(late_r["gems"])
 		d += 4.0
 	check(late == 0, "a runner who steps onto the wall from the floor past one wall run's reach takes none of them (%d) %s" % [late, tag])
+	# The same with Magnet I, every 2 m up to just past them: the magnet leaves them alone (task N1's review: it pulled all
+	# three from a step on 2-19 m before them in Gangland 1).
+	var magnet := Loadout.new()
+	magnet.tiers[&"magnet"] = 1
+	var pulled: int = 0
+	var radius: float = 0.0
+	var md: float = path.distance_at(path.run_end(0))
+	while md <= gems_from + 2.0:
+		var mr: Dictionary = await _drive(layout, mt, outer, seconds, _late_entry(side, md), magnet)
+		pulled += int(mr["gems"])
+		radius = maxf(radius, float(mr["magnet"]))
+		md += 2.0
+	check(radius > 0.0 and pulled == 0,
+		"with Magnet I (%.1f m), a runner who steps onto the wall from the floor past one wall run's reach, never hopping, takes none of them (%d) %s"
+		% [radius, pulled, tag])
 
 
 ## Runs a full world over a copy of `layout` from `start_lane` for up to `seconds`, calling `each.call(player)` before
-## every physics frame. {trace (d, h, surface), alive, pickups, credits, gems (the high-value credits collected)}.
+## every physics frame. {trace (d, h, surface), alive, pickups, credits, gems (the high-value credits collected),
+## magnet (the pull radius the loadout gave)}.
 func _drive(layout: LevelLayout, mt: MovementTuning, start_lane: int, seconds: float, each: Callable,
 		loadout: Loadout = null) -> Dictionary:
 	var world: RunWorld = sim.build_world(layout.copy(), loadout, mt)
@@ -310,6 +328,7 @@ func _drive(layout: LevelLayout, mt: MovementTuning, start_lane: int, seconds: f
 	out["alive"] = player.alive
 	out["pickups"] = world.score.credit_pickups
 	out["credits"] = world.score.credits
+	out["magnet"] = world.credits.magnet_radius
 	await sim.free_world(world)
 	return out
 

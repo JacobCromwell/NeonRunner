@@ -181,6 +181,43 @@ func _drive_world(world: RunWorld, seconds: float, each: Callable) -> Dictionary
 	return out
 
 
+## One dash at a treasure stash in excerpt `layout`, on a copy (a smashed doodad stays smashed in the layout it was
+## built from: DashBreakable.smash): from `start_lane`, dashing once (its cooldown is longer than the stash) at track
+## distance `at`, and while it dashes steering toward `lane` when `steer` isn't 0. _drive's result, with outer_smashed
+## and front_smashed: whether the stash's doodads in `lane` starting at `outer_start` and `front_start` were smashed.
+func _stash_dash(layout: LevelLayout, mt: MovementTuning, start_lane: int, seconds: float, at: float, steer: int,
+		lane: int, outer_start: float, front_start: float) -> Dictionary:
+	var copy: LevelLayout = layout.copy()
+	var dashed: Array[bool] = [false]
+	var dash := func(p: Player) -> void:
+		if p.distance >= at and not dashed[0]:
+			dashed[0] = true
+			RunSim.act(p, &"dash")
+		if steer != 0 and p.dashing and p.lane != lane:
+			p.press(&"move_right" if steer > 0 else &"move_left")
+	var r: Dictionary = await _drive(copy, mt, start_lane, seconds, dash)
+	r["outer_smashed"] = false
+	r["front_smashed"] = false
+	for d: Dictionary in copy.doodads:
+		if int(d["lane"]) != lane or not bool(d.get("smashed", false)):
+			continue
+		if absf(float(d["start"]) - outer_start) < 0.01:
+			r["outer_smashed"] = true
+		elif absf(float(d["start"]) - front_start) < 0.01:
+			r["front_smashed"] = true
+	return r
+
+
+## How many frames of `trace` (_drive's) the runner spent on the floor in `lane` between track distances `from` and `to`.
+static func _inside_frames(trace: Array, from: float, to: float, geo: TrackGeometry, lane: int) -> int:
+	var n: int = 0
+	for x: Dictionary in trace:
+		if String(x["surface"]) == "floor" and float(x["d"]) > from and float(x["d"]) < to \
+				and absf(float(x["x"]) - geo.lane_x(lane)) < geo.lane_width * 0.5:
+			n += 1
+	return n
+
+
 ## A driver (_drive's `each`) that does nothing.
 static func _idle() -> Callable:
 	return func(_p: Player) -> void: pass
@@ -759,40 +796,43 @@ func _ride_stash(pick: Dictionary, lanes: int, floor_runners: bool) -> void:
 					"a floor runner with the top magnet (%.1f m) %s lane %d pulls none of its credits (%d) %s"
 					% [float(r["magnet"]), "pressing toward it from" if pressing else "holding", start, r["pickups"], tag])
 		# The owner, October 18, 2026 (a dash from the floor got in): a dash at the stash smashes its outer doodad and ends
-		# in the space, short of the front one, which pushes the runner out; started early, around the moment the outer
-		# one's push would begin, or beside it steering into its side near its end (the latest that still smashes it).
+		# in the space, short of the front one, which pushes the runner out. Head-on in its lane, started early or around
+		# the moment the outer one's push would begin: no more than the outer one smashed, the front one never.
 		var outer_at: float = outer_end + shift
-		var dashes: Array = [
-			["in its lane, %.1f m before it" % 4.0, lane, float(s["start"]) - 4.0, 0],
-			["in its lane, %.1f m before it" % 1.5, lane, float(s["start"]) - 1.5, 0],
-			["in its lane, %.1f m before it" % 0.9, lane, float(s["start"]) - 0.9, 0],
-			["beside it, steering in near its end", lane + 1, outer_at - 1.2, -1],
-			["beside it, steering in from the other side", lane - 1, outer_at - 1.2, 1],
-		]
-		for spec: Array in dashes:
-			var at: float = float(spec[2])
-			var steer: int = int(spec[3])
-			# One dash (the cooldown is longer than the stash), on a copy of the excerpt each: a smashed doodad stays
-			# smashed in the layout it was built from (DashBreakable.smash).
-			var dashed: Array[bool] = [false]
-			var dash := func(p: Player) -> void:
-				if p.distance >= at and not dashed[0]:
-					dashed[0] = true
-					RunSim.act(p, &"dash")
-				if steer != 0 and p.dashing and p.lane != lane:
-					p.press(&"move_right" if steer > 0 else &"move_left")
-			var r: Dictionary = await _drive(layout.copy(), mt, int(spec[1]), seconds, dash)
-			var inside: int = 0
-			for x: Dictionary in r["trace"]:
-				if String(x["surface"]) == "floor" and float(x["d"]) > inside_from and float(x["d"]) < inside_to \
-						and absf(float(x["x"]) - geo.lane_x(lane)) < geo.lane_width * 0.5:
-					inside += 1
-			check(inside == 0 and int(r["pickups"]) == 0 and bool(r["alive"]) and int(r["smashes"]) <= 1,
-				"a dash %s smashes no more than its outer doodad and never gets in (%d smashed, %d frames inside, %d credits) %s"
-				% [spec[0], r["smashes"], inside, r["pickups"], tag])
+		var front_at: float = float(s["front"])
+		for ahead: float in [4.0, 1.5, 0.9]:
+			var r: Dictionary = await _stash_dash(layout, mt, lane, seconds, float(s["start"]) - ahead, 0, lane,
+				float(s["start"]), front_at)
+			var inside: int = _inside_frames(r["trace"], inside_from, inside_to, geo, lane)
+			check(inside == 0 and int(r["pickups"]) == 0 and bool(r["alive"]) and int(r["smashes"]) <= 1
+				and not bool(r["front_smashed"]),
+				"a dash in its lane, %.1f m before it, smashes no more than its outer doodad and never gets in (%d smashed, front %s, %d frames inside, %d credits) %s"
+				% [ahead, r["smashes"], "smashed" if bool(r["front_smashed"]) else "standing", inside, r["pickups"], tag])
+		# Beside it, steering into its side near its end: the latest dash start that still smashes it (to 0.2 m, found going
+		# back from 1.2 m before its end; about 1.6 m on real physics, task N1's review) smashes it and not the front one,
+		# and never gets in.
+		for spec: Array in [["steering in near its end", lane + 1, -1], ["steering in from the other side", lane - 1, 1]]:
+			var latest: Dictionary = {}
+			var off: float = 1.2
+			while latest.is_empty() and off <= 3.0 + 0.001:
+				var r: Dictionary = await _stash_dash(layout, mt, int(spec[1]), seconds, outer_at - off, int(spec[2]), lane,
+					float(s["start"]), front_at)
+				if bool(r["outer_smashed"]):
+					latest = r
+					latest["off"] = off
+				off += 0.2
+			var found_it: bool = not latest.is_empty()
+			var inside: int = _inside_frames(latest["trace"], inside_from, inside_to, geo, lane) if found_it else 0
+			check(found_it and int(latest["smashes"]) == 1 and not bool(latest["front_smashed"]) and inside == 0
+				and int(latest["pickups"]) == 0 and bool(latest["alive"]),
+				"a dash beside it, %s, the latest that still smashes the outer doodad (%s m before its end), smashes it and not the front one and never gets in (%s smashed, %d frames inside, %s credits) %s"
+				% [spec[0], "%.1f" % float(latest["off"]) if found_it else "none within 3.0", latest.get("smashes", "-"),
+				inside, latest.get("pickups", "-"), tag])
+			if found_it:
+				print("  %s: a dash beside the outer doodad, %s, smashes it when started %.1f m before its end at the latest"
+					% [tag, spec[0], float(latest["off"])])
 		# ... but a floor runner still gets in, the harder way (GDD §3: "a floor runner can still get in that way; it is
 		# just harder"): past the outer doodad in the lane beside it, into the space, then a dash through the front one.
-		var front_at: float = float(s["front"])
 		var dashed_in: Array[bool] = [false]
 		var harder := func(p: Player) -> void:
 			if p.distance >= outer_at + 1.0 and p.distance < front_at and p.lane != lane:

@@ -208,8 +208,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   the second; the street way in is harder: around the first, into the space, then dash.
   Wall-hop credits (from Gangland on, about once a level where a long, clear stretch of wall fits; the Beach's mostly
   open walls leave none long enough): a line of credits leads along a side wall from where to step onto it, and three
-  high-value ones hang further along than one wall run reaches and higher than a fresh wall run rises; jump off the
-  wall and straight back on (the wall hop) as they come near to reach them (in a campaign level, e.g.
+  high-value ones hang further along than one wall run reaches and higher than a step onto the wall from the floor
+  takes you; jump off the wall and straight back on (the wall hop) as they come near to reach them, or jump onto the
+  wall from the floor at the right spot. The magnet leaves them alone (in a campaign level, e.g.
   `--level=gangland/1`).
 - **Enemies:**
   - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder. Up to two

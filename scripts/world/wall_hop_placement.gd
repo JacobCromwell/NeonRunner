@@ -16,13 +16,14 @@ extends RefCounted
 ## - the high-value credits (`gems` of gem_value, gem_step_seconds apart, marked GEM), together in one of the reference
 ##   hopper's fresh wall runs: the first past where one wall run from the entry (the standard one) has dropped its
 ##   runner off the wall, by reach_margin_seconds; at gem_height(), above the highest a fresh wall run carries a pickup
-##   when its runner never hops (WallHopPath.fresh_top: a step onto the wall from the floor, or straight back onto it
-##   as a wall run drops them; pickup_reach) by gem_clearance, so a runner who stays off the wall and steps on further
-##   along, or one whose single run claws carry on, passes under them, while a hop starts its fresh wall run higher
-##   (MovementTuning.wall_air_entry_factor of the height it hops from); each where the reference hopper passes within
-##   its reach. A jump onto the wall from the floor starts high too (DESIGN-TBD,
-##   docs/questions/n1.md). They're left out of the stars' best score (LevelLayout.star_credit_value), as a treasure
-##   stash's are.
+##   when its runner steps on and never hops (WallHopPath.fresh_top: a step onto the wall from the floor, or straight
+##   back onto it as a wall run drops them; pickup_reach) by gem_clearance, so a runner who stays off the wall and
+##   steps on further along, or one whose single run claws carry on, passes under them, while a hop starts its fresh
+##   wall run higher (MovementTuning.wall_air_entry_factor of the height it hops from); each where the reference hopper
+##   passes within its reach. Not only a hopper reaches them: a jump onto the wall from the floor starts a run high
+##   enough too, all three when it starts about 10 to 23 m before them in Gangland 1 (DESIGN-TBD, docs/questions/n1.md
+##   question 4). The magnet leaves them alone (CreditField._in_magnet). They're left out of the stars' best score
+##   (LevelLayout.star_credit_value), as a treasure stash's are.
 ## Its stretch (from run_in_seconds before the entry to where a runner who jumps off the wall at the last high-value
 ## credit comes down, and landing_seconds after that) is on one side wall, inside the level's clear ends, off
 ## everything a wall runner, or one who hops off there, could meet (busy_spans): its wall whole (no side wall gap: GDD
@@ -30,10 +31,13 @@ extends RefCounted
 ## wall fences and their drop windows, a wall-run gap's lit wall, a dash wall's wall route, other wall credits:
 ## LevelGenerator.wall_lane_keep_outs, with its doodad_wall_clear_seconds); the outer lane's floor beside it clear (no
 ## hole, fence, pad, speed pad, ramp, zone doodad, floor cut's window or ceiling fence there: nothing the hop carries a
-## runner into); no enemy in that lane, no hover truck and no attack a wall runner can't dodge (WALL_RUN_ATTACKERS), no
-## dash wall and nothing the rules keep in every lane meanwhile; attacks elsewhere come with their warnings, as on any
-## wall run. A level takes up to its count, each a seeded spot among those that fit, min_gap_seconds apart; none where
-## none fits (it is sprinkled, never guaranteed). problem() re-checks a finished layout (LayoutChecks.check_wall_hops).
+## runner into); no enemy in that lane, no hover truck, and nothing of WALL_RUN_ATTACKERS' keep-outs (a heli drone
+## wave's arrival until its first pad, an Enforcer Truck's, a Bad Dream chase's), no dash wall and nothing the rules
+## keep in every lane meanwhile. Not kept off: a heli drone that stays past its first pad may still fire at a wall
+## hopper on the line (it holds its barrages only for a wall-run gap's crossing), after its warned wind-up, with the
+## clear outer lane below to jump off into; attacks elsewhere come with their warnings, as on any wall run. A level
+## takes up to its count, each a seeded spot among those that fit, min_gap_seconds apart; none where none fits (it is
+## sprinkled, never guaranteed). problem() re-checks a finished layout (LayoutChecks.check_wall_hops).
 ## DESIGN-TBD throughout (docs/questions/n1.md).
 
 ## The high-value credits' mark (LevelLayout.credits): the stars' best score leaves them out
@@ -48,10 +52,12 @@ const REACH_SLACK: float = 0.1
 const SEARCH_STEP: float = 0.01
 const POWERUPS_PATH: String = "res://data/tuning/powerups.tres"
 const DashWallRules = preload("res://scripts/enemies/dash_wall_rules.gd")
-## The enemies whose attacks a wall runner can't dodge, which hold off while a wall-run gap's crossing lies in their
-## reach (Drone._wall_run_in_reach, BadDream._wall_run_in_reach, EnforcerTruck._wall_run_in_reach; a host's Bad Dream
-## comes at run time, and its chase is the host rules' keep-out), and the hover truck, from whose roof a step onto the
-## wall starts high (GDD §9.3): a line keeps off each one's keep-out (LevelGenerator.enemy_keep_out) in any lane.
+## The enemies whose attacks a runner crossing a wall-run gap can't dodge, which hold off while that crossing lies in
+## their reach (Drone._wall_run_in_reach, BadDream._wall_run_in_reach, EnforcerTruck._wall_run_in_reach; a host's Bad
+## Dream comes at run time, and its chase is the host rules' keep-out), and the hover truck, from whose roof a step onto
+## the wall starts high (GDD §9.3): a line keeps off each one's keep-out (LevelGenerator.enemy_keep_out) in any lane. A
+## heli drone's keep-out is its arrival until its first pad: one that stays past it may still fire at a wall hopper on
+## the line (they hold off for a wall-run gap's crossing only), after its warned wind-up, the outer lane clear below.
 const WALL_RUN_ATTACKERS: Array[String] = ["drone", "bad_dream", "enforcer_truck", "hover_truck"]
 
 
@@ -59,7 +65,8 @@ static func tuning() -> WallHopTuning:
 	return WallHopTuning.load_default()
 
 
-## The longest single wall run's slide, as a multiple of a plain one's: claws' (PowerupTuning.claws_wall_time_multiplier).
+## The longest single wall run's slide, as a multiple of a plain one's: claws'
+## (PowerupTuning.claws_wall_time_multiplier).
 static func claws_multiplier() -> float:
 	var res: Resource = load(POWERUPS_PATH) if ResourceLoader.exists(POWERUPS_PATH) else null
 	return maxf((res as PowerupTuning).claws_wall_time_multiplier, 1.0) if res is PowerupTuning else 1.5
@@ -200,9 +207,8 @@ static func _build(gen: LevelGenerator, t: WallHopTuning, side: int, entry: floa
 
 ## The stretches a line on wall `side` keeps off (see the header), as the level stands in the credit pass: what stands
 ## on that wall (LevelGenerator.wall_lane_keep_outs, the wall fences themselves and other wall credits on it, each
-## doodad_wall_clear_seconds either side), what stands on the outer lane's floor beside it, an enemy in that lane, the
-## attacks a wall runner can't dodge (WALL_RUN_ATTACKERS), dash walls and what the rules keep in every lane or in that
-## lane.
+## doodad_wall_clear_seconds either side), what stands on the outer lane's floor beside it, an enemy in that lane,
+## WALL_RUN_ATTACKERS' keep-outs, dash walls and what the rules keep in every lane or in that lane.
 static func busy_spans(gen: LevelGenerator, side: int) -> Array[Vector2]:
 	var layout: LevelLayout = gen.layout
 	var mt: MovementTuning = gen.tuning
@@ -247,9 +253,10 @@ static func busy_spans(gen: LevelGenerator, side: int) -> Array[Vector2]:
 		if int(f["lane"]) == lane:
 			out.append(Vector2(float(f["at"]) - half, float(f["at"]) + half))
 	# What stands or attacks there meanwhile: an enemy in the outer lane, a hover truck anywhere (from its roof a step
-	# onto the wall starts high, GDD §9.3), an attack a wall runner can't dodge (WALL_RUN_ATTACKERS), and what the
-	# rules keep in every lane or in the outer lane (a Bad Dream's chase, a dash wall's footprint, a Gilded Sentinel's
-	# strike, an Enforcer Truck's showing window, a stash's floor, a wall-run gap's clear stretch, a hover truck's lane).
+	# onto the wall starts high, GDD §9.3), WALL_RUN_ATTACKERS' keep-outs (a heli drone wave's to its first pad), and
+	# what the rules keep in every lane or in the outer lane (a Bad Dream's chase, a dash wall's footprint, a Gilded
+	# Sentinel's strike, an Enforcer Truck's showing window, a stash's floor, a wall-run gap's clear stretch, a hover
+	# truck's lane).
 	var hooks: Dictionary = {}
 	for e: Dictionary in layout.enemies:
 		var type: String = String(e.get("type", ""))

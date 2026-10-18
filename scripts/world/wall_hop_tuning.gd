@@ -3,9 +3,11 @@ extends Resource
 ## Wall-hop credits (task N1; GDD §7, "Wall-hop credits", owner, October 9, 2026: "some long walls carry high-value
 ## credits further along than one wall run reaches, so only a player inventive enough to wall hop collects them";
 ## WallHopPlacement): a line of credits along a long, clear stretch of one side wall, from a free entry along the wall
-## run, and a few high-value ones further along than one wall run from there reaches and higher than a fresh wall run
-## rises without a hop, where a runner who wall hops (GDD §3: jumping off a wall and straight back on starts a fresh
-## wall run) passes them. How many a level gets is its own (LevelConfig.wall_hop_lines, 1 from Gangland 1 on). Edit
+## run, and a few high-value ones further along than one wall run from there reaches and higher than a step onto the
+## wall from the floor carries a pickup, where a runner who wall hops (GDD §3: jumping off a wall and straight back on
+## starts a fresh wall run) passes them. A jump onto the wall from the floor at the right spot starts a run high enough
+## too (DESIGN-TBD, docs/questions/n1.md question 4); the magnet leaves them alone (CreditField._in_magnet). How many a
+## level gets is its own (LevelConfig.wall_hop_lines, 1 from Gangland 1 on). Edit
 ## data/tuning/wall_hops.tres (F6: "Wall-hop credits", in a level that has them; Restart level rebuilds). Times are
 ## seconds of run at the level's run speed, so a faster zone keeps them. Every number here is a first value for
 ## playtesting (DESIGN-TBD, docs/questions/n1.md).
@@ -37,10 +39,11 @@ const PATH: String = "res://data/tuning/wall_hops.tres"
 ## MovementTuning.wall_entry_time + wall_slide_time) has dropped its runner off the wall. One with claws slides on
 ## further, but never above a fresh run's height (gem_clearance), so it passes under them.
 @export_range(0.0, 2.0, 0.05, "suffix:s") var reach_margin_seconds: float = 0.25
-## They hang this far above the highest a fresh wall run carries a credit pickup's reach when its runner never hops
-## (WallHopPath.fresh_top: a step onto the wall from the floor, or straight back onto it as a wall run drops them;
-## WallHopPath.pickup_reach): such a runner passes under them, while a hop's fresh wall run starts higher
-## (MovementTuning.wall_air_entry_factor of the height it hops from).
+## They hang this far above the highest a fresh wall run carries a credit pickup's reach when its runner steps on and
+## never hops (WallHopPath.fresh_top: a step onto the wall from the floor, or straight back onto it as a wall run drops
+## them; WallHopPath.pickup_reach): such a runner passes under them, while a hop's fresh wall run starts higher
+## (MovementTuning.wall_air_entry_factor of the height it hops from), and so does one a jump from the floor starts
+## (docs/questions/n1.md question 4).
 @export_range(0.0, 1.0, 0.025, "suffix:m") var gem_clearance: float = 0.1
 
 @export_group("Its stretch")

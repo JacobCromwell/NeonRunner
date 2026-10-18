@@ -1016,9 +1016,11 @@ throughout (`docs/questions/n1.md`).
   either side; the wall fences themselves and other wall credits too); the outer lane's floor beside it clear (no hole,
   fence, pad, speed pad, ramp, zone doodad within `DOODAD_WALL_CREDIT_MARGIN`, floor cut's lane window or ceiling fence:
   nothing a hop carries a runner into, nor a stopped one comes down on); no enemy in that lane, no hover truck (from its
-  roof a step onto the wall starts high), no attack a wall runner can't dodge (`WALL_RUN_ATTACKERS`: a heli drone's, an
-  Enforcer Truck's; a Bad Dream's chase through the host rules' keep-out), no dash wall's footprint and nothing the rules
-  keep in every lane. Among the entries that fit on either wall a seeded one (weighted by their room), up to the level's
+  roof a step onto the wall starts high), nothing of `WALL_RUN_ATTACKERS`' keep-outs (a heli drone wave's arrival until
+  its first pad, an Enforcer Truck's; a Bad Dream's chase through the host rules' keep-out), no dash wall's footprint
+  and nothing the rules keep in every lane. Not kept off: a heli drone that stays past its first pad may still fire at a
+  wall hopper on the line (it holds its barrages for a wall-run gap's crossing only), after its warned wind-up, with the
+  clear outer lane below to jump off into. Among the entries that fit on either wall a seeded one (weighted by their room), up to the level's
   count `min_gap_seconds` apart; none where none fits, sprinkled as a treasure stash is. `problem()` re-checks a
   finished layout (`LayoutChecks.check_wall_hops`, part of `check_layout`).
 - **The stars**: the high-value credits are out of the stars' best score (`LevelLayout.star_credit_value`, as a treasure
@@ -1034,4 +1036,8 @@ throughout (`docs/questions/n1.md`).
   (hops at 0.6 or 1.0 m) takes none of the high-value ones on its own, but all three with one more hop 0.15 to 0.35 s
   before them (a hop from high on the wall carries a runner over them); one wall run from the entry, plain or with claws,
   takes the lead-in only; one who steps straight back on each time a run drops them, or onto the wall from the floor
-  further along, passes under them. A jump onto the wall from the floor starts a run high enough too (DESIGN-TBD).
+  further along, passes under them, with Magnet I too. The magnet leaves the high-value credits alone
+  (`CreditField._in_magnet`, DESIGN-TBD: Magnet I pulled all three down to a step on 2 to 19 m before them in Gangland
+  1). Not only a hopper reaches them: a jump onto the wall from the floor starts a run high enough, all three when it
+  starts 10 to 23 m before them in Gangland 1 (10 to 26 m in the Golden Zone), some of them from 4 to 29 m (DESIGN-TBD,
+  `docs/questions/n1.md` question 4).

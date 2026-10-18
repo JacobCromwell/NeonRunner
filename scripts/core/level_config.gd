@@ -377,8 +377,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export var credit_ceilings: bool = true
 ## Wall-hop credits (task N1; GDD §7, "Wall-hop credits", owner, October 9, 2026: a gentle nudge toward the wall hop,
 ## GDD §3): up to this many lines a level of credits along a long, clear stretch of a side wall with no wall gap,
-## whose high-value ones lie further along than one wall run reaches and higher than a fresh wall run from the floor
-## rises, so only a runner who wall hops collects them (WallHopPlacement; numbers in data/tuning/wall_hops.tres).
+## whose high-value ones lie further along than one wall run reaches and higher than a step onto the wall from the
+## floor carries a pickup, so a runner who wall hops collects them; so does one who jumps onto the wall from the floor
+## at the right spot, and the magnet leaves them alone (WallHopPlacement; numbers in data/tuning/wall_hops.tres).
 ## Sprinkled where one fits, never guaranteed. 0: none, and the level is built exactly as before (the City's levels,
 ## quick play, the tests' own levels). DESIGN-TBD (docs/questions/n1.md): 1 a level from Gangland 1 on.
 @export_range(0, 4) var wall_hop_lines: int = 0

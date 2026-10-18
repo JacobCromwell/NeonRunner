@@ -403,7 +403,8 @@ reference hopper (WallHopPath's) taking every credit, alive, its fresh runs peak
 runners hopping at 0.6 and 1.0 m taking none on their own (printed) but all with one more hop 0.15 or 0.35 s before
 them; one wall run from the entry, plain and with claws, taking only the lead-in; a runner stepping straight back on
 each time a run drops it, and runners stepping on from the floor every 4 m from one wall run's reach to the credits,
-taking none (each ride on its own copy of the excerpt). The line's spot is a seeded draw among its wall's free
+taking none, and the same every 2 m with Magnet I (the magnet leaves the high-value credits alone; each ride on its
+own copy of the excerpt). The line's spot is a seeded draw among its wall's free
 stretches, so it moves with whatever it keeps off: the suites that compare a level with and without such a thing build
 both without it (`test_wall_fences`, `test_wall_gaps`, `test_enforcer_truck`, `test_barnacle_turret`, `test_doodads`'
 share of 0) or set its record and credits aside (`test_beach_levels`, `test_buzz_company`).
@@ -449,9 +450,11 @@ unsafe pad's rider through, and an EMP switches the fences off; a heli drone tha
 pick, holds its barrages through it, and is hurled by the safe pad; excerpts of the stashes at 5 and 6 lanes (the
 first and the last in campaign order): floor runners from every lane pressing toward the stash every frame, from
 before it, from the space between its two doodads and from alongside it, never inside it and taking no credit, nor
-with the top magnet, holding a lane or pressing toward it; a dash at it (in its lane 4, 1.5 and 0.9 m before its
-outer doodad, or beside that one steering into its side near its end, from either side) smashing no more than the
-outer doodad and never getting in, and a floor runner who goes around the outer doodad and dashes through the second
+with the top magnet, holding a lane or pressing toward it; a dash at it in its lane (4, 1.5 and 0.9 m before its
+outer doodad) smashing no more than the outer doodad, never the front one, and never getting in; beside the outer one
+from either side, steering into its side, the latest dash start that still smashes it (found going back from 1.2 m
+before its end in 0.2 m steps; about 1.6 m) smashing it and not the front one, never getting in; and a floor runner
+who goes around the outer doodad and dashes through the second
 one getting in (task N1: "a floor runner can still get in that way; it is just harder"; each dash on its own copy of
 the excerpt, as a smashed doodad stays smashed in its layout); the return pad's rider landing inside, never pushed, collecting every
 credit (into the run's credits and score, not the stars' best score) and running out; one who stays on in another
