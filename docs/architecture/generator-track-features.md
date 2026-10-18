@@ -805,12 +805,26 @@ DESIGN-TBD throughout (items 836–845 in `docs/OPEN_QUESTIONS*.md`).
   `doodads` and `credits` entries marked `stash`): in an inner lane with inner lanes either side (`lanes_for`: none on
   3 or 4 lanes). Its return pad hangs in that lane `see_seconds` after the ceiling's rider arrives, as late as the
   ceiling allows, and the ceiling runs on `ceiling_after_seconds` past the stash. `stash_offsets` lays it out from the
-  return pad by the drop's physics: a doodad across its lane whose end the dropping rider clears, walls back to back
-  in both neighbouring lanes from `wall_overlap` before that one's end to past the last credit, pushing outward, and
-  2–3 credits of the highest denomination past where the rider lands and past the top magnet's reach from the floor
-  (`magnet_reach`: `CreditField.MAGNET_AHEAD` of the largest `PowerupTuning.magnet_radius`, from the walls' start,
-  as a floor runner the magnet reaches across from is short of them). Its floor (from the front doodad's push to the
-  level's spacing past its open end) holds nothing else in any lane; its holes and fences go. Its doodads join
+  return pad by the drop's physics: a doodad across its lane whose end the dropping rider clears (`front_size`, the
+  record's `front`), walls back to back in both neighbouring lanes from `wall_overlap` before that one's end to past
+  the last credit, pushing outward, and 2–3 credits of the highest denomination past where the rider lands and past
+  the top magnet's reach from the floor (`magnet_reach`: `CreditField.MAGNET_AHEAD` of the largest
+  `PowerupTuning.magnet_radius`, from the walls' start, as a floor runner the magnet reaches across from is short of
+  them). **A second doodad in front** (task N1; the owner, October 18, 2026: a dash from the floor got in, so "a
+  doodad, a space, then a second doodad, and then the treasure"): another across its lane (`outer_size`), the
+  stash's `start`, a space (`dash_space`) before the first: the most a dash that smashes it still carries the runner
+  past its end (`dash_carry`: the dash's 0.6 s at run speed plus its 8 m/s, the same at every tier, and the most a
+  speed pad's or a ramp's fading boost adds; a body's length, as the latest dash that smashes it steers into its side
+  beside its end; a frame; `outer_space_margin`): 23.1 m at the Casino's 23 m/s to 24.4 m at the Golden Zone's 25, a
+  second of run. So a dash at the stash ends in the space, short of the front doodad, which pushes as usual (a claim
+  needs the dash to reach a doodad before it ends, `Player._dash_claims`). The lanes beside the outer doodad and the
+  space stay open (DESIGN-TBD, `docs/questions/n1.md`): a runner it pushes, or one whose dash ended in the space,
+  meets the front doodad's push with room for it; a floor runner still gets in the harder way the owner allowed,
+  around the outer doodad, into the space, then a dash through the front one. The longer floor (about 70 m, 3 s of
+  run) leaves a few builds without one: over the campaign's stash levels on their own and four more seeds at 5 and 6
+  lanes, 96 stashes in 110 builds (101 before), the Dead Zone's quiet stretches the most of it; fenced ceilings 62
+  in 100 (65). Its floor (from the outer doodad's push to the level's spacing past its open end) holds nothing else
+  in any lane; its holes and fences go. Its doodads join
   `layout.doodads` at once, so the rules after it see them; the zone doodads' look seeds count only zone doodads.
   Its credits count in a run's credits and score, never in the stars' best score (`LevelLayout.star_credit_value`,
   `ScoreKeeper.max_credit_score`; DESIGN-TBD item 9).

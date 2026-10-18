@@ -432,8 +432,12 @@ of them) drops off past the ceiling alive; a floor runner jumping under the fenc
 unsafe pad's rider through, and an EMP switches the fences off; a heli drone that outlived its pads fires before the
 pick, holds its barrages through it, and is hurled by the safe pad; excerpts of the stashes at 5 and 6 lanes (the
 first and the last in campaign order): floor runners from every lane pressing toward the stash every frame, from
-before it and from alongside it, never inside it and taking no credit, nor with the top magnet, holding a lane or
-pressing toward it; the dash smashing in; the return pad's rider landing inside, never pushed, collecting every
+before it, from the space between its two doodads and from alongside it, never inside it and taking no credit, nor
+with the top magnet, holding a lane or pressing toward it; a dash at it (in its lane 4, 1.5 and 0.9 m before its
+outer doodad, or beside that one steering into its side near its end, from either side) smashing no more than the
+outer doodad and never getting in, and a floor runner who goes around the outer doodad and dashes through the second
+one getting in (task N1: "a floor runner can still get in that way; it is just harder"; each dash on its own copy of
+the excerpt, as a smashed doodad stays smashed in its layout); the return pad's rider landing inside, never pushed, collecting every
 credit (into the run's credits and score, not the stars' best score) and running out; one who stays on in another
 lane dropping beyond it.
 The track builds the fences (an electrical hazard at its depth and size, dressed) and the return pad (on the
