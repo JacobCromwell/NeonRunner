@@ -3,10 +3,10 @@ extends ScreenBase
 ## After a run: level complete (the stars pop in, the score and the credits count up: collected
 ## plus the completion bonus makes what's earned, then the stats and NEW BEST) or the run summary
 ## after a death (what hit the player, the credits kept). A boss fight (GDD §10) shows BOSS DEFEATED,
-## its stars against the par times (listed under them), the boss's payout, and the fight's own stats
-## (time, weak points, the phase reached, the time bonus); a mini-game level its payout and its own stats (the
-## volleyball match: the points won and lost, the returns). Then on to the shop and the next step or
-## a retry (GDD §4, §8), a retry now, or the menu.
+## its stars by its par times or the hits it took (the rule listed under them), the boss's payout, and the fight's
+## own stats (time, weak points, the phase reached, the time bonus); a mini-game level its payout and its own stats
+## (the volleyball match: the points won and lost, the returns, and how its stars are earned under them). Then on
+## to the shop and the next step or a retry (GDD §4, §8), a retry now, or the menu.
 ## The level-complete screen's stats (FB 60): the ScoreKeeper's, and a boss fight's own
 ## (DESIGN-TBD, docs/questions/b8.md).
 
@@ -58,9 +58,9 @@ func _ready() -> void:
 		stars.star_size = UiTheme.px(40 if short else 56)
 		stars.star_revealed.connect(_on_star)
 		left.add_child(stars)
-		if boss:
-			left.add_child(ScreenBase.make_label(ResultsScreen.par_text(ctx.boss), UiTheme.CAPTION,
-				HORIZONTAL_ALIGNMENT_CENTER))
+		var star_rule: String = ResultsScreen.star_text(ctx)
+		if star_rule != "":
+			left.add_child(ScreenBase.make_label(star_rule, UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_CENTER))
 	left.add_child(_score_row(short))
 	left.add_child(HSeparator.new())
 	left.add_child(_credit_table())
@@ -127,15 +127,15 @@ static func format_time(seconds: float) -> String:
 	return "%d:%02d.%d" % [whole / 60, whole % 60, floori((seconds - whole) * 10.0)]
 
 
-## A boss's par times for its stars (GDD §10, proposed): "2 stars under 1:15 · 3 stars under 0:50".
-static func par_text(def: BossDef) -> String:
-	return "2 stars under %s · 3 stars under %s" % [_clock(def.two_star_seconds), _clock(def.three_star_seconds)]
-
-
-## m:ss
-static func _clock(seconds: float) -> String:
-	var whole: int = floori(seconds)
-	return "%d:%02d" % [whole / 60, whole % 60]
+## How a run's stars are earned, listed under them: a boss's rule (BossDef.star_text: its par times, or the hits taken), a
+## mini-game's (MiniGameDef.star_text: the volleyball match's points). Empty for a level, whose stars are a share of the
+## credits.
+static func star_text(ctx: RunContext) -> String:
+	if ctx.is_boss():
+		return ctx.boss.star_text()
+	if ctx.config != null and ctx.config.minigame != null:
+		return ctx.config.minigame.star_text()
+	return ""
 
 
 func _score_row(short: bool = false) -> Control:
@@ -229,7 +229,7 @@ func _stats_table() -> Control:
 		["Hits blocked", UiTheme.format_int(int(st.get("blocked", 0)))],
 	]
 	if result.context.is_boss():
-		# A fight's own numbers (GDD §10): the time counts for stars and the time bonus.
+		# A fight's own numbers (GDD §10): the time counts for the time bonus (and for the stars under the TIME rule).
 		rows = [
 			["Time", ResultsScreen.format_time(result.time)],
 			["Phase reached", "%d / %d" % [int(st.get("phase", 1)), int(st.get("phases", 1))]],

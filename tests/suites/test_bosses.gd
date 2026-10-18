@@ -96,6 +96,24 @@ func _test_data() -> void:
 	check(d.stars_for(false, 10.0) == 0 and d.stars_for(true, 45.0) == 3 and d.stars_for(true, 60.0) == 2
 		and d.stars_for(true, 200.0) == 1, "one star for a win, two and three for beating the par times")
 	check(d.time_bonus(60.0) == 3000 and d.time_bonus(130.0) == 0, "the time bonus pays for every second under its mark")
+	# The other star rule (task N2, the owner, October 18, 2026: a fight whose length its script fixes can't be won faster by
+	# playing better): by the protection hits taken, the time counting for nothing.
+	check(d.star_rule == BossDef.StarRule.TIME and d.star_text() == "2 stars under 1:15 · 3 stars under 0:50",
+		"a boss's stars go by the par times unless its data says otherwise (%s)" % d.star_text())
+	var h := BossDef.new()
+	h.star_rule = BossDef.StarRule.HITS
+	h.three_star_max_hits = 0
+	h.two_star_max_hits = 2
+	h.three_star_seconds = 1.0
+	h.two_star_seconds = 2.0
+	check(h.stars_for(false, 10.0, 0) == 0 and h.stars_for(true, 999.0, 0) == 3 and h.stars_for(true, 999.0, 1) == 2
+		and h.stars_for(true, 5.0, 2) == 2 and h.stars_for(true, 5.0, 3) == 1,
+		"by hits: no hit three stars, one or two hits two, more one, however long the fight took")
+	check(h.star_text() == "3 stars: no hits taken · 2 stars: 2 hits or fewer", "and the results say so (%s)" % h.star_text())
+	h.three_star_max_hits = 1
+	h.two_star_max_hits = 1
+	check(h.stars_for(true, 5.0, 1) == 3 and h.stars_for(true, 5.0, 2) == 1
+		and h.star_text() == "3 stars: 1 hit or fewer · 2 stars: 1 hit or fewer", "the hits are data (%s)" % h.star_text())
 	# A fight's random choices are seeded by its id, or by the id it had before a move (BossDef.seed_id: The
 	# House keeps marketplace_boss's, test_the_house), so a renamed boss makes the same random choices.
 	var keyed := BossDef.new()
@@ -856,6 +874,8 @@ func _test_app_flow() -> void:
 	App.profile = Profile.new()
 	await _app_win(step)
 	App.profile = Profile.new()
+	await _app_hits_stars(step)
+	App.profile = Profile.new()
 	await _app_death_and_retry(step)
 	App.profile = Profile.new()
 	await _app_revive(step)
@@ -937,7 +957,7 @@ func _app_win(step: CampaignStep) -> void:
 	var labels: PackedStringArray = []
 	for node: Node in results.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
-	check(labels.has("BOSS DEFEATED") and labels.has(ResultsScreen.par_text(test_def)), "the results say so, with the par times")
+	check(labels.has("BOSS DEFEATED") and labels.has(ResultsScreen.star_text(results.result.context)) and labels.has(test_def.star_text()), "the results say so, with the par times")
 	App.continue_after_result(r)
 	check(App.screen is ShopScreen and (App.screen as ShopScreen).play_label == "Next", "then the shop")
 	(App.screen as ShopScreen).on_close.call()
@@ -950,6 +970,72 @@ func _app_win(step: CampaignStep) -> void:
 	var tile: TileButton = (App.screen as LevelSelectScreen).tiles.get("city/boss")
 	var stars: Array = tile.find_children("*", "StarRow", true, false) if tile != null else []
 	check(not stars.is_empty() and (stars[0] as StarRow).stars == 3, "the level select shows the boss's stars like a level's")
+
+
+## The hits rule through the real flow: the same fight beaten with 0, 1 and 2 armor hits taken (the granted armor
+## blocks two), far over the par times, earns three, two and one stars (the star rule: two stars up to one hit); the
+## results list the rule, and the profile keeps the best.
+func _app_hits_stars(step: CampaignStep) -> void:
+	var kept: Array = [test_def.star_rule, test_def.three_star_seconds, test_def.two_star_seconds, test_def.two_star_max_hits]
+	test_def.star_rule = BossDef.StarRule.HITS
+	test_def.three_star_seconds = 0.5
+	test_def.two_star_seconds = 1.0
+	test_def.two_star_max_hits = 1
+	for hits: int in 3:
+		App.play_step(step)
+		App.begin_run()
+		await physics_frames(3)
+		var run: LevelRun = App.run
+		var shot := Hazard.new()
+		shot.is_enemy_attack = true
+		for i: int in hits:
+			run.world.player.invulnerable_left = 0.0
+			run.world.player.receive_hit(shot)
+		shot.free()
+		await physics_frames(90)
+		await _beat(run.encounter)
+		var results: ResultsScreen = await _results_after_win()
+		var want: int = 3 - hits
+		check(results != null and results.result.completed and results.result.stars == want
+			and int(results.result.stats.get("blocked", -1)) == hits and results.result.time > test_def.two_star_seconds,
+			"%d hit%s taken is %d star%s, though the time is over both par times (%s)" % [hits, "" if hits == 1 else "s", want,
+			"" if want == 1 else "s", [results.result.stars, results.result.stats.get("blocked"), snappedf(results.result.time, 0.1)]
+			if results != null else "no results"])
+		if results == null:
+			break
+		var labels: PackedStringArray = []
+		for node: Node in results.find_children("*", "Label", true, false):
+			labels.append((node as Label).text)
+		check(labels.has("3 stars: no hits taken · 2 stars: 1 hit or fewer") and not labels.has(
+			"2 stars under 0:01 · 3 stars under 0:00"), "the results list the hits, not par times (hits: %d)" % hits)
+		var gained: int = int(results.result.record.get("stars_gained", -1))
+		check(gained == (3 if hits == 0 else 0) and App.profile.stars("city/boss") == 3,
+			"the profile records the stars: %d gained, the best stays at three (%d)" % [gained, App.profile.stars("city/boss")])
+		App.show_level_select()
+		await tree.process_frame
+	# A revive continues the same fight after a hit nothing blocked: it counts as a hit, so a revived death can't be three stars.
+	App.profile.add_stock(&"revive", 1)
+	App.play_step(step)
+	App.begin_run()
+	await physics_frames(3)
+	var revived: LevelRun = App.run
+	var revived_context: RunContext = revived.context
+	await _kill_player()
+	App.revive_with_item()
+	await physics_frames(90)
+	await _beat(revived.encounter)
+	var after: ResultsScreen = await _results_after_win()
+	check(after != null and after.result.completed and revived_context.revives_used == 1 and after.result.stars == 2
+		and int(after.result.stats.get("blocked", -1)) == 0 and int(after.result.stats.get("hits_taken", -1)) == 1,
+		"a revive counts as a hit: beaten with none blocked but one revive, two stars (%s)" % [
+		[after.result.stars, after.result.stats.get("blocked"), after.result.stats.get("hits_taken")] if after != null else "no results"])
+	App.show_level_select()
+	await tree.process_frame
+	check(App.profile.stars("city/boss") == 3, "and keeps the best, three stars (%d)" % App.profile.stars("city/boss"))
+	test_def.star_rule = kept[0]
+	test_def.three_star_seconds = kept[1]
+	test_def.two_star_seconds = kept[2]
+	test_def.two_star_max_hits = kept[3]
 
 
 func _app_death_and_retry(step: CampaignStep) -> void:

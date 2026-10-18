@@ -15,3 +15,11 @@ extends Resource
 
 func is_built() -> bool:
 	return scene != "" and ResourceLoader.exists(scene)
+
+
+## How the level's stars are earned, for the results screen (the tuning's star_text(), if it has one): empty when the
+## game doesn't say.
+func star_text() -> String:
+	if tuning != null and tuning.has_method(&"star_text"):
+		return String(tuning.call(&"star_text"))
+	return ""

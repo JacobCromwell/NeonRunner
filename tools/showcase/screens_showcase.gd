@@ -4,8 +4,8 @@ extends Node
 ## screen:
 ##   godot --path . res://tools/showcase/screens_showcase.tscn -- --screen=shop
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
-## failed, slot, cinematic, demo_end, hud; hud_armor (the HUD's armor through its states, GDD §4: up
-## until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
+## failed, match_results (the volleyball match's results; --score=4-1), slot, cinematic, demo_end, hud; hud_armor (the
+## HUD's armor through its states, GDD §4: up until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
 ## the upgrade's tier N, default 0: the free armor); hud_last_hit (the "one hit from death" cue, GDD §4: the
 ## free armor breaks at 1 s (a shield still held: nothing shows), the shield at 2 s and then the screen's edges
 ## pulse red with the siren and hold a dim edge until the armor is back at 6 s; --reduced-flashing shows the
@@ -114,6 +114,15 @@ func _open(screen: String) -> void:
 			var s := ResultsScreen.new()
 			s.result = SampleProfiles.result(screen == "results")
 			App.show_screen(s)
+		"match_results":
+			# The volleyball match's results; --score=4-1 is the runner's points then the rival's (default 4-0).
+			var score: PackedStringArray = PackedStringArray(["4", "0"])
+			for arg: String in OS.get_cmdline_user_args():
+				if arg.begins_with("--score="):
+					score = arg.get_slice("=", 1).split("-")
+			var m := ResultsScreen.new()
+			m.result = _match_result(int(score[0]), int(score[1]) if score.size() > 1 else 0)
+			App.show_screen(m)
 		"slot":
 			App.play_step(App.campaign.step("city/boss"))
 		"cinematic":
@@ -135,6 +144,32 @@ func _open(screen: String) -> void:
 			await _boss(screen)
 		_:
 			push_warning("screens showcase: unknown screen '%s'" % screen)
+
+
+## The volleyball match's result (Net Gains, beach/2) for the results screen: a match that ended `won` to `lost`, paid 100 a
+## point, its stars by the score (VolleyballTuning.stars_for).
+func _match_result(won: int, lost: int) -> RunResult:
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.CAMPAIGN
+	ctx.step = App.campaign.step("beach/2")
+	ctx.level_index = ctx.step.level_index
+	ctx.config = App.campaign.configure(ctx.step, 5)
+	ctx.tuning = App.tuning
+	ctx.loadout = Loadout.new()
+	var tuning := ctx.config.minigame.tuning as VolleyballTuning
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = true
+	r.stats = {"minigame": "volleyball", "points_won": won, "points_lost": lost, "returns": won * tuning.returns_to_win_point}
+	r.score = 3400 + won * (tuning.point_score + tuning.returns_to_win_point * tuning.return_score)
+	r.credits_collected = 62
+	r.completion_bonus = won * tuning.payout_per_point
+	r.credits_earned = r.credits_collected + r.completion_bonus
+	r.stars = tuning.stars_for(won, lost)
+	r.time = 55.1
+	r.distance = 640.0
+	r.record = {"new_best": true, "stars_gained": r.stars, "first_clear": true}
+	return r
 
 
 ## Starts a campaign level with god mode (so nothing ends it) and lets it run a while.

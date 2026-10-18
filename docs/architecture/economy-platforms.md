@@ -137,6 +137,18 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   apart: the typical player takes it, the weaker one and 3 lanes have none. It lifts a typical playthrough from
   16,343 to 18,382 and pulled Armor IV and the Heavy missile two levels early, which is why they moved.
   DESIGN-TBD (items 846–850 in `docs/OPEN_QUESTIONS*.md`).
+- *Level stars (task N2's audit, the owner, October 18, 2026: every star has to be earnable).* A level's stars are the
+  run's score against `GameRules.two_star_share` (0.45) and `three_star_share` (0.75) of `max_credit_score`; the score
+  counts kills (a stomped Cyborg 200 + the stomp's 50, `data/enemies/*.tres`) and the ramps' double credits as well as
+  credits, so the line is cleared on more than credits. Measured on every campaign level (the generator's layouts at 3, 5
+  and 6 lanes, two seeds each; a best lane path through the floor credits, a switch of n lanes costing n lane switches' metres,
+  hazards ignored): in City 1 and 2 the best floor line is 81-125% of the three-star line (it reaches it in 6 of the 12
+  builds); from City 3 on it reaches 25-98% (the later levels put more of their credits on ceilings, wall runs and gap and
+  fence arcs than on trails, and a floor line doesn't take the first two). Where the floor line falls short, the line also
+  asks for one or two stomped Cyborgs (every shipped 5-lane build has two or more; the thinnest build of any lane count and
+  seed, one Cyborg, has ceiling and wall credits to make up the rest) or a ceiling or wall run. No level's line is out of reach, and none is only reachable by a stash (left out of the best score, I4). The
+  volleyball match's stars are by the match (`docs/architecture/mini-games.md`), a boss's by its par times or hits
+  (`docs/architecture/bosses.md`, Stars).
 - *Levels* are numbered in play order: City 1-3 are 1-3, Gangland 4-6, Marketplace 7-8, Casino 9-10, Corporate
   11-12, Beach 13-15 (the match is 14), Dead Zone 16-17 and Golden 18-20.
 - *Where each tier first fits* (5 lanes, each level's own seed; `test_economy.gd`'s `FIRST_FIT`, give or take one

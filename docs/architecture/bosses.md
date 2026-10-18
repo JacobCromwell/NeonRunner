@@ -21,7 +21,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 
 | File | What |
 |---|---|
-| `scripts/campaign/boss_def.gd`, `boss_phase.gd` | a boss's data: its slot, health, weapon cap, phases (share of health, big hits, pace, checkpoint, intro), arena, tuning, music, rewards, par times, the armor rule |
+| `scripts/campaign/boss_def.gd`, `boss_phase.gd` | a boss's data: its slot, health, weapon cap, phases (share of health, big hits, pace, checkpoint, intro), arena, tuning, music, rewards, the star rule (`star_rule`: par times, or the hits taken) and its par times, the armor rule |
 | `scripts/bosses/boss_encounter.gd` | the fight: health and phases, damage, the checkpoint, the armor rule, the light; helpers and hooks for boss scripts |
 | `scripts/bosses/boss_part.gd` | a piece of the boss in the world: an Enemy the director runs (claw-immune, the dash passes, weak points, surfaces) |
 | `scripts/bosses/boss_arena.gd` | the fight's track: generator laps joined ahead for as long as the fight lasts; `add_pieces()`; track queries |
@@ -117,9 +117,35 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   holds the results until it's over, at most `LevelRun.BOSS_VICTORY_MAX` seconds) and a short pause
   (`COMPLETE_PAUSE`); the runner keeps running meanwhile, safe (god mode). The win plays the victory
   riff unless the boss's `victory_riff()` says no (the Sleep Taker's defeat ends in silence). `RunResult.from_boss` pays the collected credits plus
-  `payout_credits`, and gives the stars from the par times; the App records it as the step's record
+  `payout_credits`, and gives the stars by the boss's `star_rule` (below); the App records it as the step's record
   (best score, best time, stars) and submits the boss leaderboard, `boss/<boss id>/<tier>` (none in
   the web demo). Its results and level-select tile show the boss's stars and bests like a level's.
+- **Stars** (`BossDef.stars_for(won, seconds, hits_taken)`, `star_text()`; task N2, the owner, October 18, 2026: every star
+  has to be earnable): none without a win, one for winning, then by the boss's `star_rule`: `TIME` (every boss so far; GDD §10,
+  proposed): two and three for a fight under `two_star_seconds` and `three_star_seconds` (`fight_time()`: frozen at the defeat,
+  with what a checkpoint carried); or `HITS` (DESIGN-TBD, `docs/questions/n2.md`; no boss uses it yet, flip it in the def's
+  data): three for at most `three_star_max_hits` (0) protection hits taken in the fight, two for at most `two_star_max_hits`
+  (2), counting the armor and shield blocks the run's `ScoreKeeper.blocked` holds plus each revive used
+  (`RunContext.revives_used`: a revive continues the same fight after a hit nothing blocked, so a revived death can't earn three
+  stars; the sum is `RunResult.stats["hits_taken"]`; a death without one restarts the fight, a fresh count). `RunResult.from_boss` passes both; `ResultsScreen.star_text` lists the rule under the
+  stars (the par times, or "3 stars: no hits taken · 2 stars: 2 hits or fewer"). A `HITS` boss with a checkpoint (the Golden
+  Convergence) would also need the hits so far carried in `RunContext.boss_resume` like the time (`BossEncounter`'s checkpoint
+  and resume: not done, no boss needs it). The par times are the clean fights the suites' bots win (`reaction` 0.35 s, no god
+  mode) plus a margin; measured by task N2 at the campaign's lane count (5) and speed, with every lane count's slowest:
+
+  | Boss | Three stars / two | Clean fight (5 lanes; 3 and 6) | Margin | What the player controls |
+  |---|---|---|---|---|
+  | Floating Head | 110 / 150 s | 100.6 s (113.9; 114.0) | 9.4 s | a missed stomp window costs 13-20 s (5 lanes: one 113.9 s, two 133.9 s); the rest scripted (bombing runs, the face-off's attacks) |
+  | Sewer Swarm | 115 / 150 s | 104.3-104.7 s at every lane count and speed | 10.5 s | nothing but missed chances: 14.6 s each (one a phase 133.8 s) |
+  | Sleep Taker | 150 / 190 s | 139.0 s at both speeds | 11 s | nothing but missed chances: 26.7 s a generator let go |
+  | Mecha Guppy | 159 / 182 s | 141.1 s at 23.8 m/s (141.1-144.7) | 17.9 s | baiting: 6-8 s per missed bait (never baiting 192.9-214.6 s); phase 3's 16 bombs run on the script, 56-61 s |
+  | The House | 86 / 108 s | 81.7 s at 23 m/s (80.4-81.9) | 4.3 s | the script (9 opening spins, 27 strikes): 80.4-81.9 s across lane counts and speeds; its attacks wait while the runner goes for a button |
+  | Hostile Takeover | 74 / 96 s | 68.6 s at every lane count and speed | 5.4 s | nothing but missed chances |
+  | Golden Convergence | 238 / 308 s | 220.2 s at 25 m/s (217.6-220.2) | 17.8 s | the script, a little by the runner's distance (229 s at 18 m/s) |
+
+  So no bar is above what a clean fight wins, at the shipped lane count (the Floating Head's 110 s is under 113.9-114.0 s at 3 and 6 lanes, which
+  don't ship: `docs/questions/n2.md`). For a scripted boss the time can't be beaten, only
+  matched: three stars means no chance let go by, and the margin only covers what the player controls.
 - **Pickups** (see Pickups): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the
   start of the final phase (`&"final_phase"`) and `armor_delay_min`–`max` seconds after the player's
   armor takes a hit (`&"armor_hit"`: the Player's `armor_hit` or `armor_break` event, so a hit the

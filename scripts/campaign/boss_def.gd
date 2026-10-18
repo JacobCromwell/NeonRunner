@@ -56,6 +56,15 @@ extends Resource
 ## Music track; empty = the zone's.
 @export var music: StringName = &""
 
+## How a boss's stars are earned (GDD §10; the owner, October 18, 2026: every star has to be earnable).
+enum StarRule {
+	## One star for winning, two and three for beating the par times (two_star_seconds, three_star_seconds).
+	TIME,
+	## One star for winning, two for taking at most two_star_max_hits protection hits (the armor or the shield
+	## blocking an attack) in the fight, three for at most three_star_max_hits.
+	HITS,
+}
+
 @export_group("Rewards")
 ## DESIGN-TBD: credits paid for a win (GDD §10: beating a boss earns credits and score), on top of any
 ## collected in the fight.
@@ -63,8 +72,17 @@ extends Resource
 ## DESIGN-TBD: score for beating the boss, and for each weak-point stomp.
 @export_range(0, 100000, 100) var defeat_score: int = 5000
 @export_range(0, 10000, 50) var weak_point_score: int = 500
+## DESIGN-TBD (docs/questions/n2.md; the owner, October 18, 2026: "stars that can be earned"): how the stars are
+## earned. TIME (GDD §10, proposed) for a fight whose speed is the player's to improve; HITS for one whose length its
+## script fixes, where a faster win is not in the player's hands and how cleanly the fight went is.
+@export var star_rule: StarRule = StarRule.TIME
+## HITS: the most protection hits taken (RunResult.stats["hits_taken"]: the armor or shield blocks the run's
+## ScoreKeeper counted, plus each revive used, which continues the fight after a hit nothing blocked) for three stars
+## (0: none) and for two. Also DESIGN-TBD.
+@export_range(0, 20) var three_star_max_hits: int = 0
+@export_range(0, 20) var two_star_max_hits: int = 2
 ## DESIGN-TBD (GDD §10, proposed: one star for winning, two and three for beating par times set per
-## boss in data): the par times, in seconds of fight.
+## boss in data): the par times, in seconds of fight (the TIME rule's).
 @export_range(10.0, 900.0, 1.0, "suffix:s") var two_star_seconds: float = 150.0
 @export_range(10.0, 900.0, 1.0, "suffix:s") var three_star_seconds: float = 100.0
 ## DESIGN-TBD (GDD §10, proposed: the boss score includes a time bonus): points for every second the
@@ -149,16 +167,40 @@ func checkpoint_phase() -> int:
 	return -1
 
 
-## Stars for a fight (GDD §10, proposed): none without a win; one for winning, two and three for
-## beating the par times.
-func stars_for(won: bool, seconds: float) -> int:
+## Stars for a fight (GDD §10, proposed): none without a win; one for winning, two and three by the star_rule:
+## beating the par times (`seconds` of fight), or taking few enough protection hits (`hits_taken`: blocks and revives).
+func stars_for(won: bool, seconds: float, hits_taken: int = 0) -> int:
 	if not won:
 		return 0
+	if star_rule == StarRule.HITS:
+		if hits_taken <= three_star_max_hits:
+			return 3
+		if hits_taken <= two_star_max_hits:
+			return 2
+		return 1
 	if seconds <= three_star_seconds:
 		return 3
 	if seconds <= two_star_seconds:
 		return 2
 	return 1
+
+
+## How the stars are earned, for the results screen: "2 stars under 1:15 · 3 stars under 0:50", or "3 stars: no hits
+## taken · 2 stars: 2 hits or fewer".
+func star_text() -> String:
+	if star_rule == StarRule.HITS:
+		var three: String = "no hits taken" if three_star_max_hits <= 0 \
+			else "%d hit%s or fewer" % [three_star_max_hits, "" if three_star_max_hits == 1 else "s"]
+		var two: String = "no hits taken" if two_star_max_hits <= 0 \
+			else "%d hit%s or fewer" % [two_star_max_hits, "" if two_star_max_hits == 1 else "s"]
+		return "3 stars: %s · 2 stars: %s" % [three, two]
+	return "2 stars under %s · 3 stars under %s" % [_clock(two_star_seconds), _clock(three_star_seconds)]
+
+
+## m:ss
+static func _clock(seconds: float) -> String:
+	var whole: int = floori(seconds)
+	return "%d:%02d" % [whole / 60, whole % 60]
 
 
 ## The time bonus in the boss score for a win after `seconds` of fight.
