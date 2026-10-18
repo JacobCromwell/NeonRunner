@@ -232,7 +232,7 @@ A change to the save's format bumps the version and adds its step there, with a 
 
 **The weekly challenge** (task N5; GDD §6, Replay features; the owner, October 18, 2026): one fixed level a week, the same
 for every player, with a leaderboard for that week. Everything about it is in `scripts/weekly/` and `data/weekly/`; the
-questions it leaves open are in `docs/questions/n5.md` (every placeholder is data, and the code that holds one carries a
+questions it leaves open are in items 1025-1041 (every placeholder is data, and the code that holds one carries a
 DESIGN-TBD with its number).
 - *Data* (`WeeklyChallenge`, `data/weekly/weekly_challenge.tres`, `@export_range` on the numbers): the calendar
   (`epoch_unix`, `week_seconds`: weeks open Monday 00:00 UTC, week 0 on October 19, 2026, DESIGN-TBD), the level
@@ -245,7 +245,7 @@ DESIGN-TBD with its number).
   every zone is in from the start. Every entry was built and checked in advance by a written rule (the first four seeds
   of the zone's block that pass every check in at most three generator builds: `tools/measure/weekly_seeds.gd`, which
   also looks for seeds to add; `test_weekly_challenge` and `test_weekly_fairness` check the list). Once the game has
-  shipped, only ever add at the end, and see `docs/questions/n5.md`, 3, for what appending does once the list has wrapped.
+  shipped, only ever add at the end, and see item 1027, for what appending does once the list has wrapped.
 - *The level* (`WeeklyChallenge.build_config`). Every stored property of `LevelConfig` is in exactly one of three lists in
   `WeeklyChallenge`, and `test_weekly_challenge` fails on one that is in none, so a new dial forces a decision about
   whose it is: `ZONE_FIELDS` (from the zone's own level in `source_levels`: its features and their pick weights, patterns,
@@ -271,7 +271,7 @@ DESIGN-TBD with its number).
   posted or kept (the screen says when it opens); and weeks only go forward: `Profile.weekly["high_water"]` is the highest
   week played, a week below it is "behind" (the screen says which week it goes on at, PLAY off) and `_settle_weekly` pays
   and posts nothing for it, whatever started the run. A clock moved **forward** still opens each future week once: that
-  needs a trusted time through the platform layer (`docs/questions/n5.md`, 2).
+  needs a trusted time through the platform layer (item 1026).
 - *The reward hook* (the Leader of the Pack, item 977 in `docs/OPEN_QUESTIONS.md`; the cosmetic is not built): a clear leaves a
   pending record (`Profile.weekly_rewards`: week, board, score, state); `App.settle_weekly_rewards()` runs at start and when the
   weekly screen opens (one pass at a time: a second asks nothing while the first waits on the platform), and for each record

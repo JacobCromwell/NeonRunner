@@ -5654,3 +5654,85 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    may still fire at a wall hopper on the line (it holds its barrages for a wall-run gap's crossing only), after its
    warned wind-up, with the clear outer lane below to jump off into; attacks elsewhere (a cyborg's bolts, an Octodog's
    lunge in another lane) may still come, each with its warning.
+
+### Folded on October 18, 2026 (task N5, the weekly challenge; items 1025-1027 are in `docs/OPEN_QUESTIONS.md`)
+
+1028. **The first-clear payout.** The GDD says "equal to a middle-of-the-road level's payout". Placeholder
+   (`first_clear_credits`): **1,000 credits**, a fixed sum: the typical player's finish payout at the campaign's middle
+   level (credits kept, 70% of what the level holds, plus the completion bonus; the median over the 19 generated levels
+   is 993, Marketplace 2's, with N1's wall-hop credits in, and was 1,023 before them; `tools/measure/economy.gd`; the
+   levels' range is 388 to 1,332). It is paid once a week and goes into the wallet as earned
+   credits, so it counts toward net worth. The credits a weekly run collects on the way pay **nothing**, on a clear or
+   not (the layout is the same every try, so they would be farmable). Is a fixed 1,000 right? It is 1.5 finishes of City 3
+   (648) for a player who has just beaten the Floating Head (whose wallet is about 2,000), and under one finish of a late
+   level (1,100 to 1,300); should it scale with how far the player is?
+
+1029. **What posts to the board, and what a death or quit is worth.** Placeholder (`App._settle_weekly`): only a **clear**
+   posts its score to the week's board (the platform keeps each player's best), like the campaign's level boards; a death
+   or a quit posts nothing and pays nothing, and the pause menu's quit dialog says so. Should a death's score (or the
+   distance reached) count on the board, so a player who can't clear the level yet still has a place?
+
+1030. **No revive.** The kit is "no other shop items", so the weekly offers **no revive at all**: not from stock, and not
+   for a rewarded ad on mobile (a bought or watched second life would be a way to buy a better run on the board; the
+   owner also said extra tries must never be gated behind ads, and a try is free here). Placeholder:
+   `App.revive_options()` returns nothing for a weekly run. Is that the intention, or does the ad revive stay?
+
+1031. **Which level of each zone stands for it.** Placeholder (`source_levels`): the zone's own enemies, their pick weights
+   and its look come from one of its levels: Neon City 3, Gangland 3, Marketplace 2, Casino 2, Corporate 2 (with its
+   heavier military weights), the Beach's Sunset Strip, Dead Zone 1 and Sentinel Row itself for the Golden Zone. Is each
+   the right one?
+
+1032. **Whether The Hush or the Golden Palace is ever a week.** Placeholder: neither. The Hush (Dead Zone 2: quiet stretches,
+   darkness, hosts picked far more often) is left out because its pacing is its own, and the Palace (Golden 3) because it
+   has a skin of its own; `test_weekly_challenge` checks that no source level is paced in bursts.
+   Should either be in the rotation?
+
+1033. **Every feature from the start.** Placeholder: a week has all of its zone's features from its first metre, with no
+   introductions (`feature_starts` empty, as endless mode does) and no recency curve, because a level met alone has no
+   campaign before it to introduce things in. In Gangland's week that is the Octodog, the drone and the generator at
+   once, to a player who has only beaten the Floating Head. Should features come in gradually, as in the campaign?
+
+1034. **The Golden Zone's density in every zone.** "Always at the Golden Zone's difficulty" is built as Sentinel Row's whole
+    shape (`density_step`; every `GOLDEN_FIELDS` dial in `WeeklyChallenge`): difficulty 0.91 and enemy scaling 0.94 (against
+    0.26 and 0.13 for the City's last level), `danger_density_increase` 0.39, its spacing, wide gaps and credit dials, on the
+    zone's own features. The review measured what that means in a City week: **134 to 160 floor pieces a minute against
+    Sentinel Row's 51 to 74, and 8 to 12 enemies against 12 to 13**: the City has few enemy types, so the density pass
+    fills the room with floor pieces (gaps, fences, signs) instead. Is that "as many of them, as dense and as hard as the
+    Golden Zone's" (GDD §6, "otherwise it would be too easy"), or should a zone with fewer types get the Golden Zone's
+    *enemy count* and fewer floor pieces?
+
+1035. **The Golden Zone's speed in every zone.** Every week runs at 25 m/s (Sentinel Row's), whatever the zone's own pace (21 in
+    the Neon City, 22.6 in the Marketplace). The GDD proposed it. Is a Neon City week at 25 m/s right?
+
+1036. **The shipped list and how its seeds were chosen.** Placeholder (`weekly_seeds.json`): **32 weeks**, four seeds for each
+    of the eight zones, the zones in the campaign's order starting with the Neon City, then round again with the second
+    seed of each, and so on; the list then repeats (see 3). The rule that made it, written in the file and in
+    `tools/measure/weekly_seeds.gd`: for each zone try the seeds from its block upward (9100 for the Neon City, 9200 for
+    Gangland, ...) and take the first four that pass every check (`test_weekly_challenge` and `test_weekly_fairness`) and
+    were built in **at most three generator builds** (a build is about 1.3 s on a desktop and several times that on a phone,
+    and a level the guarantee needed five builds for would be a long wait for a week's first load). Is eight months before
+    a repeat enough, should some weeks be hand-picked, or the order different (a showpiece zone first)?
+
+1037. **Which rank earns the reward.** Placeholder (`top_places`, 3): the top three of **each platform's** board, PC's top three
+    and mobile's top three (a player is ranked on the board they posted to). The GDD says "the top three of a week's board".
+    Should it be one combined ranking instead?
+
+1038. **When the reward is granted.** A week's rank is only final once the week is over. Built (the hook, no outfit): a clear
+    leaves a **pending record** (`Profile.weekly_rewards`: week, board, score, state) and `App.settle_weekly_rewards()`,
+    run at start and whenever the weekly screen opens, asks `Platform.leaderboard_rank(board)` for each record whose week
+    is over; a place in the top 3 makes it "earned" (kept for good, `Profile.has_weekly_reward`), another place "missed",
+    and a rank the platform can't say yet (0: offline, or the stub, which says nothing) leaves it pending for
+    `reward_check_weeks` (8) weeks. Is a reward granted the next time the game is online (as built), or must the player
+    claim it from the weekly screen? How long should the game keep asking?
+
+1039. **What the Leader of the Pack is.** Item 977 asks what the cosmetic is and whether it can be lost; this only builds
+    the hook (`App._grant_weekly_reward`, which shows a toast; the weekly screen lists the weeks earned; nothing is added
+    to the wardrobe, and `App.weekly_reward_earned` says one was granted). It also leaves item 977's overlap open: the
+    Centurion is "the prize for winning the weekly seed" (GDD §8, Cosmetics), the Leader of the Pack goes to the top three.
+
+1040. **Where it is.** Placeholder: a **WEEKLY** button on the title screen between ENDLESS and SHOP (not in the web demo),
+    showing a lock until the Floating Head is beaten; its screen says what unlocks it. Nothing on the level select, and no
+    notice when a new week starts. Is the title the right place, and should a new week be announced?
+
+1041. **The harder tiers.** The weekly always plays on the Normal tier's numbers: the Hard and Insane tiers (GDD §6) don't
+    touch it. Placeholder; say if they should.

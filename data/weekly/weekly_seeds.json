@@ -4,14 +4,14 @@
 		"N mod the list's length (WeeklyChallenge.week), so the level a week gives is never worked out from the date: every",
 		"entry was built and checked in advance, at five lanes, by test_weekly_challenge (the campaign levels' fairness checks)",
 		"and test_weekly_fairness (the per-feature checks, a second build).",
-		"HOW THE SEEDS WERE CHOSEN (docs/questions/n5.md, 12): for each zone, in the campaign's order, try the seeds from the",
+		"HOW THE SEEDS WERE CHOSEN (item 1036): for each zone, in the campaign's order, try the seeds from the",
 		"zone's block upward (9100 for the Neon City, 9200 for Gangland, 9300, ... 9800 for the Golden Zone) and take the first",
 		"four that pass every check and were built in at most three generator builds (a level the generator needed more builds",
 		"for is slow to load, most of all on a phone). Then go round by round: the first pick of every zone, the second pick of",
 		"every zone, and so on. `tools/measure/weekly_seeds.gd --pick=4` remakes this list; with no --pick it lists every seed",
 		"that passes, to add more.",
 		"Keep the list a whole number of rounds of the zones, every seed in it once. After the game has shipped only ever append,",
-		"and read docs/questions/n5.md, 3, first: once the list has wrapped, appending changes what the later weeks map to."
+		"and read item 1027, first: once the list has wrapped, appending changes what the later weeks map to."
 	],
 	"entries": [
 		{"zone": "city", "seed": 9100},

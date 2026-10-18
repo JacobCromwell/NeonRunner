@@ -241,7 +241,7 @@ const WEEKLY_HIGH_WATER: String = "high_water"
 
 
 ## The highest week played (-1 before any). Weeks only go forward: a device whose clock was moved back must not be
-## paid for a week again, so a week below this is closed (weekly_week_open). DESIGN-TBD (docs/questions/n5.md, 2): the
+## paid for a week again, so a week below this is closed (weekly_week_open). DESIGN-TBD (item 1026): the
 ## device's clock is all this can go by; a clock moved forward still opens each future week once.
 func weekly_high_water() -> int:
 	return int(weekly.get(WEEKLY_HIGH_WATER, -1))

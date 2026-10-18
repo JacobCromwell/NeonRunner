@@ -61,7 +61,7 @@ const GOLDEN_FIELDS: PackedStringArray = [
 const RESOURCE_PROPERTIES: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script"]
 
 @export_group("Schedule")
-## DESIGN-TBD (docs/questions/n5.md, 1): the moment week 0 opens, UTC unix seconds. The placeholder is a Monday 00:00
+## DESIGN-TBD (item 1025): the moment week 0 opens, UTC unix seconds. The placeholder is a Monday 00:00
 ## UTC (October 19, 2026), so every week opens Monday 00:00 UTC, the same instant for every player. Boards are named
 ## after the week index counted from it, so it must never change once the game has shipped.
 @export var epoch_unix: int = 1792368000
@@ -75,13 +75,13 @@ const RESOURCE_PROPERTIES: PackedStringArray = ["resource_path", "resource_name"
 ## level keeps this even if a platform's campaign lane count (GameRules.lanes_pc, lanes_mobile) changes later.
 @export_range(3, 8) var lanes: int = 5
 ## The campaign level whose difficulty, enemy scaling, density and run speed every week plays at (GDD §6, proposed:
-## the Golden Zone's hardest level, Sentinel Row): a campaign step id. DESIGN-TBD (docs/questions/n5.md, 10 and 11):
+## the Golden Zone's hardest level, Sentinel Row): a campaign step id. DESIGN-TBD (items 1034 and 1035):
 ## a Neon City week is far denser and faster than any Neon City level; whether that is what "Golden Zone difficulty"
 ## means, and whether the pace is the Golden Zone's in every zone.
 @export var density_step: String = "golden/2"
 ## Each zone's own level, whose enemies, obstacles and look the zone's week plays in: zone id -> campaign step id
 ## (the zone's last ordinary level: not the Beach's volleyball match, not The Hush, not the Golden Palace).
-## DESIGN-TBD (docs/questions/n5.md, 7, 8 and 9): which level stands for each zone, and that every feature is there
+## DESIGN-TBD (items 1031, 1032 and 1033): which level stands for each zone, and that every feature is there
 ## from the start.
 @export var source_levels: Dictionary[String, String] = {}
 
@@ -91,21 +91,21 @@ const RESOURCE_PROPERTIES: PackedStringArray = ["resource_path", "resource_name"
 @export var kit: Dictionary[String, int] = {"armor": 4, "dash": 4}
 
 @export_group("Rewards")
-## DESIGN-TBD (docs/questions/n5.md, 4): the credits the week's first clear pays: "equal to a middle-of-the-road
+## DESIGN-TBD (item 1028): the credits the week's first clear pays: "equal to a middle-of-the-road
 ## level's payout" (GDD §6). The placeholder is the typical player's finish payout of the campaign's middle level
 ## (credits kept at 70% of what a level holds, plus its completion bonus: the median over the 19 generated levels is
 ## 993, Marketplace 2's, with N1's wall-hop credits in; 1,023 before; tools/measure/economy.gd), rounded. Paid once a
 ## week: every other run pays nothing.
 @export_range(0, 20000, 50) var first_clear_credits: int = 1000
 ## The places on a week's board that earn the Leader of the Pack cosmetic (GDD §6: the top three "for now; the owner
-## will adjust it"). DESIGN-TBD (docs/questions/n5.md, 13): on each platform's board, or on one combined ranking.
+## will adjust it"). DESIGN-TBD (item 1037): on each platform's board, or on one combined ranking.
 @export_range(1, 100, 1) var top_places: int = 3
 ## What a top place earns (DESIGN-TBD, item 977 in docs/OPEN_QUESTIONS.md: the cosmetic is still to be designed, so the
-## game records the reward under this name and grants nothing yet; App._grant_weekly_reward; docs/questions/n5.md, 15).
+## game records the reward under this name and grants nothing yet; App._grant_weekly_reward; item 1039).
 @export var reward_kind: StringName = &"leader_of_the_pack"
 ## A week's rank is only final once the week is over, so the game asks the platform for it later (App.
 ## settle_weekly_rewards). A week whose rank the platform still can't say after this many weeks is dropped.
-## DESIGN-TBD (docs/questions/n5.md, 14): when a reward is granted and how long the game keeps asking.
+## DESIGN-TBD (item 1038): when a reward is granted and how long the game keeps asking.
 @export_range(1, 52, 1) var reward_check_weeks: int = 8
 
 @export_group("Unlock")
@@ -236,7 +236,7 @@ static func field_owner(field: String) -> StringName:
 ## - *The week's own* (WEEK_FIELDS): the week's seed, `lanes` lanes, every feature from the start (as endless mode does: a
 ##   campaign level's introductions, `feature_starts`, would hold features back in a level the player meets on its own),
 ##   and no recency curve (the campaign's newest-first picks mean nothing for a level outside it).
-## The weekly always plays on the Normal tier's numbers. DESIGN-TBD (docs/questions/n5.md, 17): whether the Hard and
+## The weekly always plays on the Normal tier's numbers. DESIGN-TBD (item 1041): whether the Hard and
 ## Insane tiers (GDD §6) should touch it.
 ## Null if the zone or either level isn't in the campaign.
 func build_config(campaign: Campaign, w: WeeklyWeek) -> LevelConfig:

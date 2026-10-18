@@ -47,7 +47,7 @@ func _ready() -> void:
 		# DESIGN-TBD: endless mode isn't part of the web demo (GDD §2: the demo is Zone 1 and its boss).
 		entries.append(["endless", "ENDLESS", &"infinity", App.start_endless])
 		# The weekly challenge (GDD §6): also not in the demo (no leaderboards there). Locked until the Neon City's
-		# boss is beaten; its screen says so rather than the button being dead. DESIGN-TBD (docs/questions/n5.md, 16):
+		# boss is beaten; its screen says so rather than the button being dead. DESIGN-TBD (item 1040):
 		# the title is the only way in, and a new week isn't announced.
 		entries.append(["weekly", "WEEKLY", &"lock" if not App.weekly_unlocked() else &"trophy", App.show_weekly])
 	entries.append(["shop", "SHOP", &"store", func() -> void: App.show_shop()])

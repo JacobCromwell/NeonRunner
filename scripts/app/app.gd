@@ -595,7 +595,7 @@ func weekly_unlocked() -> bool:
 ## Where the weekly challenge stands for this player now: &"unavailable" (this build has none, or no seed list),
 ## &"locked" (the Floating Head isn't beaten), &"not_yet" (the schedule's first week hasn't opened by the clock),
 ## &"behind" (the clock is behind a week the player has already played: weeks only go forward, so a clock moved back
-## can't pay a week again, Profile.weekly_high_water) or &"open". DESIGN-TBD (docs/questions/n5.md, 2): the device's
+## can't pay a week again, Profile.weekly_high_water) or &"open". DESIGN-TBD (item 1026): the device's
 ## clock is all this goes by.
 func weekly_state() -> StringName:
 	if not weekly_available():
@@ -680,10 +680,10 @@ func _review_week() -> int:
 ##   memorised one would pay again on every replay. The week's first clear pays `first_clear_credits` once; a clear after
 ##   it, a death and a quit pay nothing.
 ## - A clear is posted to the week's board (the platform keeps each player's best) and noted for the rank reward
-##   (Profile.queue_weekly_reward); a run that doesn't clear isn't posted. DESIGN-TBD (docs/questions/n5.md, 5).
+##   (Profile.queue_weekly_reward); a run that doesn't clear isn't posted. DESIGN-TBD (item 1029).
 ## - Nothing is paid or posted for a week the clock has put out of reach (`closed`): one before the schedule's first
 ##   week, or below the highest week played (Profile.weekly_week_open), so moving the device's clock back can't pay or
-##   post a week again. DESIGN-TBD (docs/questions/n5.md, 2): a clock moved forward still opens each week once.
+##   post a week again. DESIGN-TBD (item 1026): a clock moved forward still opens each week once.
 ## - `result.record` says what happened, for the results screen: weekly, first_clear, new_best, board, submitted, best,
 ##   paid, closed.
 func _settle_weekly(result: RunResult) -> void:
@@ -890,7 +890,7 @@ func revive_options() -> Dictionary:
 	var left: bool = run != null and run.context.revives_used < rules.max_revives_per_attempt
 	if run != null and run.context.mode == RunContext.Mode.WEEKLY:
 		# The kit is the same for everyone (GDD §6): no revive from stock, and none for an ad, which would be a way to
-		# buy a better run on the board. DESIGN-TBD (docs/questions/n5.md, 6): whether the ad revive stays on mobile.
+		# buy a better run on the board. DESIGN-TBD (item 1030): whether the ad revive stays on mobile.
 		return {"item": false, "ad": false, "stock": profile.stock(&"revive")}
 	return {
 		"item": left and profile.stock(&"revive") > 0 and profile.is_equipped(&"revive"),

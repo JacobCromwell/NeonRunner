@@ -690,7 +690,7 @@ func _clear_week() -> RunResult:
 
 ## The reviewer's repro of clock farming: clears at weeks 5, 4, 3, -1, -27 and 37 paid 1,000 each, though 5, -27 and 37
 ## are one layout. Weeks only go forward and none comes before the schedule's first, so only 5 and 37 pay (37 is the
-## clock moved forward, which only a trusted time can stop: docs/questions/n5.md, 2).
+## clock moved forward, which only a trusted time can stop: item 1026).
 func _test_clock(stub: StubBackend) -> void:
 	App.profile = Profile.new()
 	App.profile.record_run("city/boss", 0, true, 9000, 3, 90.0)

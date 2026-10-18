@@ -17,7 +17,7 @@ extends SceneTree
 ##   --max-builds=3         with --pick: only a seed whose level the generator built in this many builds or fewer
 ##                          can be chosen (default 3)
 ##   --failures             also print what each failing seed failed
-## THE RULE THE SHIPPED LIST WAS MADE BY (docs/questions/n5.md, 12): for each zone, in the campaign's order, try the
+## THE RULE THE SHIPPED LIST WAS MADE BY (item 1036): for each zone, in the campaign's order, try the
 ## seeds from the zone's block upward (--from=9100 --block=100: the Neon City 9100, Gangland 9200, ...) and take the first
 ## four that pass every check and were built in at most three builds. The generator builds a level again until
 ## every feature appears (the guarantee), so a build count is how hard the level was to make, and a build takes about
