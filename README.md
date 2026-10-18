@@ -63,6 +63,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--god` | Hits don't kill (falls still do) |
 | `--nofall` | The grapple never runs out, so falls never end the run |
 | `--full-loadout` | Every power-up |
+| `--outfit=rex` | The runner wears an outfit (a cosmetic's id from `data/shop/catalog.json`: `rex`, `camo`, `beach_master`, `centurion`, `party_wolf`; `echo` is his own look) in every run and cinematic, owned or not, without touching the save. Alone it starts quick play. The review scenes `avatar_showcase.tscn` and `avatar_run_review.tscn` (under `tools/showcase/`) take it too |
 | `--skin=gangland` | Quick play in another zone's look: `city`, `gangland`, `marketplace`, `casino`, `corporate`, `corporate_plaza` (Corporate's plaza floor), `dead_zone`, `golden`, `golden_palace` (Golden 3's interior) or `beach` (the Beach) |
 | `--speed=25` | Quick play at another run speed (m/s): a zone's pace, from 21 in the Neon City to 25 in the Golden Zone. The level keeps its timing in seconds (campaign levels already run at their zone's speed) |
 | `--doodads=0.6` | Quick play with zone doodads (scenery in lanes that pushes you aside, never hurts; the dash smashes it, with `--full-loadout`): the chance each spot along the level (`doodad_spot_seconds` apart) with room for one gets one. Campaign levels have their own share |
@@ -473,7 +474,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
   wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 300 / 450 / 600 /
   700 credits (the first card in the shop) and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
-  (an item, or a rewarded ad on mobile). Net worth has its own leaderboard.
+  (an item, or a rewarded ad on mobile). Net worth has its own leaderboard. After the items, the shop's
+  Cosmetics section sells outfits for Razor Echo, each bought once with credits and kept (Rex 3,000, Camo 3,000, Beach
+  Master, Centurion and Party Wolf 5,000 for now, until the ways of winning them are designed); the player picks one to wear,
+  Echo's own look is the free default, and an outfit shows in every run and cinematic and never changes how the game plays
+  (`docs/architecture/characters-ui-audio.md`, "The runner's outfits"; `docs/architecture/economy-platforms.md`).
 - **Campaign density:** more enemies and obstacles, with measured danger gains of about 17-18% in
   early levels, 26-27% in the middle zones and 32-38% in late levels across 3, 5 and 6 lanes. Additional
   rows create pressure when there is no room to fill another lane; a reachable route and attack
@@ -481,7 +486,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Modes:** the campaign, endless mode, and harder difficulty tiers after the last level.
 - **Look and sound:**
   - Razor Echo, the runner: a dark-blue trench coat with soft copper conduits and a skirt that swings,
-    a gold cybernetic arm and a copper ocular implant
+    a gold cybernetic arm and a copper ocular implant; and his outfits from the shop (so far Rex: a magenta
+    leather biker jacket with pink circuit lines and a cyan spine, and a gunmetal and copper cyber-arm; the
+    other four wear a tinted placeholder until they are built)
   - the cyborgs: ragged, strung-out gangsters whose whole head is a beat-up CRT television, its screen
     their cold white LED face (calm, aiming, a shocked "O", ERR when defeated), with a backpack cabled
     into the head and a scavenged arm cannon; hosts glitch purple and wear purple veins. Each zone has
@@ -896,7 +903,9 @@ spare (see Tools, above). Covered:
   "get the full game" screen; no ads, purchases or leaderboards on any screen; the store links from data
   through the platform layer.
 - **The runner:** Razor Echo's poses on every surface, the coat's panels (never through the legs or the
-  ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour.
+  ground), the budgets, the power-up looks, and its copper glow kept clear of every hazard colour. Every outfit
+  in the shop's catalog within the same budgets, Echo's size and poses, with the power-ups on top, and Rex's glows;
+  buying, wearing and saving them, and old saves.
 - **The cyborgs' look:** in every zone's look, hitboxes pinned to their sizes and no look bigger than the
   base, the budgets, every weapon ending in the same red charge-up, the colour rules (only the cold white
   face, the red charge-up and a host's purple glow), faces that still differ a few pixels across (the VR
@@ -937,7 +946,7 @@ scenes/bosses/          boss fight scenes (the test boss and the Floating Head s
 scenes/cinematics/      cinematic scenes (the placeholder arrival flyover and the owner-beat cinematics)
 scripts/app/            App (state and flow), Profile, SaveService, Settings, BuildFlavor
 scripts/run/            a run: LevelRun, RunWorld, camera, projectiles, credits, score, effects, hints
-scripts/player/         the Player controller and its avatar
+scripts/player/         the Player controller and its avatar; outfits/ the cosmetics, one file per outfit
 scripts/characters/     the procedural humanoid rig
 scripts/enemies/        one script (plus tuning and generator rules) per enemy type, EnemyDirector
 scripts/powerups/       the permanent power-ups
@@ -948,7 +957,7 @@ scripts/cinematics/     the cinematic toolkit (CinematicSequencer, CineTimeline,
 scripts/bosses/         the boss framework (BossEncounter, BossPart, BossArena, BossProps), the test boss,
                         and one folder per boss (floating_head/, sleep_taker/, the_house/, hostile_takeover/,
                         sewer_swarm/)
-scripts/economy/        the shop catalog
+scripts/economy/        the shop catalog (items and cosmetics)
 scripts/ui/             theme, icons, widgets, screens, HUD, debug tools
 scripts/audio/          sound library, music player, hazard warning sounds
 scripts/platform/       the platform services layer and its stub

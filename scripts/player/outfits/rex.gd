@@ -68,8 +68,9 @@ func _belt(list: Array[HumanoidPiece]) -> void:
 	add(list, &"pelvis", LATHE, Vector3(0.32, 0.0, 0.245), Vector3(0.0, -0.01, 0.005), STRAP, 0.0,
 		{"sides": 8, "profile": PackedVector4Array([Vector4(-0.035, 1.0, 1.0, 0.0), Vector4(0.035, 1.0, 1.0, 0.0)])})
 	add(list, &"pelvis", BOX, Vector3(0.045, 0.034, 0.012), Vector3(0.0, -0.01, -0.127), STEEL, 0.0, {"shine": METAL_SHINE})
-	# A pouch on each hip.
+	# A pouch on each hip, and a pair on the small of the back (the view the player sees).
 	add(list, &"pelvis", BOX, Vector3(0.05, 0.065, 0.06), Vector3(0.12, -0.06, -0.03), PANTS_DARK, 0.0, {"side": MIRRORED})
+	add(list, &"pelvis", BOX, Vector3(0.07, 0.055, 0.04), Vector3(0.068, -0.045, 0.12), PANTS_DARK, 0.0, {"side": MIRRORED})
 
 
 ## The jacket: the body in three tiers (hem to waist, chest, shoulders), the dark tank top and its chain between
@@ -82,9 +83,9 @@ func _jacket(list: Array[HumanoidPiece]) -> void:
 	add(list, &"chest", BOX, Vector3(0.31, 0.07, 0.2), Vector3(0.0, 0.245, 0.008), JACKET, 0.0,
 		{"chamfer": 0.45, "top_scale": Vector2(0.9, 0.85), "shine": LEATHER_SHINE})
 	# The tank top in the open front, between wide lapels turned back, with the chain over it.
-	add(list, &"chest", BOX, Vector3(0.085, 0.2, 0.014), Vector3(0.0, 0.15, FRONT_Z - 0.003), TANK, 0.0,
+	add(list, &"chest", BOX, Vector3(0.085, 0.16, 0.014), Vector3(0.0, 0.17, FRONT_Z - 0.003), TANK, 0.0,
 		{"top_scale": Vector2(1.3, 1.0)})
-	add(list, &"chest", BOX, Vector3(0.058, 0.19, 0.016), Vector3(0.07, 0.15, FRONT_Z - 0.006), JACKET_DARK, 0.0,
+	add(list, &"chest", BOX, Vector3(0.058, 0.17, 0.016), Vector3(0.07, 0.16, FRONT_Z - 0.006), JACKET_DARK, 0.0,
 		{"side": MIRRORED, "top_scale": Vector2(1.45, 1.0), "rotation_degrees": Vector3(0.0, 0.0, -13.0),
 			"shine": LEATHER_SHINE})
 	add(list, &"chest", BAND, Vector3(0.075, 0.0, 0.07), Vector3(0.0, 0.2, -0.066), STEEL, 0.0, {"sides": 6,

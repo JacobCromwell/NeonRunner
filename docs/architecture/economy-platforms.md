@@ -18,6 +18,32 @@ them, the finish payout and what a death or quit pays, the running wallets of a 
 who finish every level once, and the first level each tier is in reach of (the model is
 `tools/measure/economy_model.gd`, shared with `test_economy`).
 
+**Cosmetics (task M1, GDD §8, "Cosmetics"; the owner, October 18, 2026).** Looks for the runner sold in their own
+Cosmetics section of the shop, after the power-ups: each is **bought once with credits from the same wallet** (bought
+credits first, as for every item) and **kept forever**, and the player picks **one to wear**; Razor Echo's own look is
+the free default, always owned, and the way back. They never change gameplay and never reach a run's `Loadout`.
+- *Data:* `data/shop/catalog.json` has `default_cosmetic` (Echo's own look: id, name, text, colour) and `cosmetics`, the
+  outfits in shop order (`ShopCatalog.cosmetics`, `default_cosmetic`, `cosmetic(id)`; `ShopCosmetic`: id, name, text,
+  price, colour). They are **not** in `items`, so `tools/measure/economy.gd` and the economy tests price items only. The
+  prices are the owner's: Rex and Camo 3,000, Beach Master, Centurion and Party Wolf 5,000, the last three `DESIGN-TBD`
+  (they are meant to be won by challenges, the weekly seed and promoting the game, none designed yet; a `_note` on each
+  entry and on the list says so). An id's look is its outfit file (`docs/architecture/characters-ui-audio.md`, The
+  runner's outfits); an id with no file yet wears a tinted placeholder, and its card says "LOOK IN PROGRESS".
+- *Saving:* `Profile.outfits` (id -> true; Echo's own look has no entry) and `Profile.worn_outfit` (`owns_outfit()`,
+  `add_outfit()`, `wear_outfit()` which refuses an unowned one, `worn()`), written in `to_dict()`. The save version is
+  unchanged: an older save has neither field and loads as nothing owned, Echo worn, and a save that wears what it doesn't own
+  (edited by hand) or a damaged field loads as Echo's own look.
+- *Flow:* screens only call `App.buy_cosmetic(id)` (once, with enough credits, never the free default; plays
+  `ui_buy`; it is not worn yet) and `App.wear_outfit(id)` (owned only; `ui_equip`), both saved and followed by
+  `profile_changed`. `App.sync_outfit()` makes `PlayerOutfits.worn` (what every new `PlayerAvatar` wears) the profile's
+  outfit; it runs at start and after a wear, and a test or tool that swaps `App.profile` calls it.
+- *The shop:* `ShopScreen` has a COSMETICS section after the breakable items (before the credit packs), a `CosmeticCard`
+  (`scripts/ui/widgets/cosmetic_card.gd`, `shop.cosmetic_cards`) for Echo's own look and each outfit. Its one button follows
+  the state: the price (disabled, with "NOT ENOUGH CREDITS", when the wallet is short), WEAR once owned, TAKE OFF on the worn
+  one (Echo's own card says WORN and can't be taken off). It is the same card as an item's (the theme's `ItemCard` sizes) with
+  the jacket icon (`IconFactory` `outfit`) in the outfit's colour. The web demo and the mobile shop show it too.
+- *Tests:* `test_cosmetics` (the profile, old saves, the save file, buying, wearing, the shop's cards) and `test_outfits`.
+
 **Approved early-economy revision (October 3, 2026; pre-density earnings snapshot).** The owner's answers in
 `docs/USER_REQUESTS.md` supersede the historical R7 early-affordability assumption: City 1 stays
 55 seconds, its lower earnings are intentional, and tests change instead of rewards or prices.

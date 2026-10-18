@@ -101,7 +101,7 @@
 		{
 			"id": "centurion", "name": "Centurion", "price": 5000, "color": "#d9a62e",
 			"_note": "DESIGN-TBD: 5,000 is a placeholder price. The outfit is meant to be the prize for winning the weekly seed, which isn't designed yet.",
-			"description": "A gold and crimson Roman-style outfit: lion-head pauldrons, a sculpted cuirass and a golden cyber-arm."
+			"description": "A gold and crimson Roman-style outfit: lion-head pauldrons and a golden cyber-arm."
 		},
 		{
 			"id": "party_wolf", "name": "Party Wolf", "price": 5000, "color": "#9a35e0",

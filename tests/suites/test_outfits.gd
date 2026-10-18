@@ -3,22 +3,17 @@ extends TestSuite
 ## prices, PlayerOutfits finds an outfit's file by its id and composes it over Razor Echo's skeleton, head and power-up
 ## sets (an id with no file yet wears a tinted placeholder), the avatar wears the outfit that is worn and can change
 ## it, every outfit in the catalog builds within test_avatar's triangle and draw-call budgets and keeps Echo's size
-## and poses, the owned power-ups still go on top of every one, Rex's looks (the brief's glows, no rifle, Echo's head),
-## and the outfit shows wherever the runner is built: the gameplay model and a cinematic's runner.
-## The cosmetics' shop, wallet and save are test_cosmetics.
+## and poses, the owned power-ups still go on top of every one, and the outfit shows wherever the runner is built: the
+## gameplay model and a cinematic's runner. Each outfit's own looks have a suite of theirs (test_outfit_rex: Rex's
+## glows and jacket); the cosmetics' shop, wallet and save are test_cosmetics.
 
 const AvatarSuite = preload("res://tests/suites/test_avatar.gd")
-const RexLook = preload("res://scripts/player/outfits/rex.gd")
 const DT: float = 1.0 / 60.0
 const RUN_SPEED: float = 18.0
 const BODY_SEGMENTS: Array[StringName] = [&"pelvis", &"chest", &"upper_arm", &"forearm", &"hand", &"thigh", &"shin", &"foot"]
 const HEAD_SEGMENTS: Array[StringName] = [&"neck", &"head"]
 const OWNER_ORDER: Array[StringName] = [&"rex", &"camo", &"beach_master", &"centurion", &"party_wolf"]
 const OWNER_PRICES: Array[int] = [3000, 3000, 5000, 5000, 5000]
-## Outfits are free of the colour rule (GDD §8, Cosmetics), so what they glow in isn't checked against the hazard
-## colours. Their glows are kept soft all the same: the brightest a conduit gets while dashing, as test_avatar measures
-## the base look's (its limit is 1.25), a little more for the outfits' own brighter colours.
-const MAX_OUTFIT_EMISSION: float = 1.4
 
 var catalog: ShopCatalog
 var _worn_before: StringName = &""
@@ -68,7 +63,6 @@ func run() -> void:
 	_test_head_and_overrides()
 	_test_budgets_and_fit()
 	_test_poses_and_equipment()
-	_test_rex()
 	_test_avatar_changes_outfit()
 	await _test_worn_everywhere()
 	_test_base_look_is_untouched()
@@ -315,53 +309,6 @@ func _muzzle_in(id: StringName) -> Vector3:
 	var muzzle: Vector3 = avatar.to_local(avatar.weapon_muzzle())
 	avatar.queue_free()
 	return muzzle
-
-
-# --- Rex ---------------------------------------------------------------------------------
-
-func _test_rex() -> void:
-	var rex: PlayerOutfit = PlayerOutfits.outfit(&"rex")
-	check(rex != null, "Rex's file builds")
-	if rex == null:
-		return
-	var echo_head: Array[HumanoidPiece] = PlayerSuit.head_pieces()
-	var rex_head: Array[HumanoidPiece] = rex.head_pieces()
-	var same_head: bool = echo_head.size() == rex_head.size()
-	for i: int in mini(echo_head.size(), rex_head.size()):
-		same_head = same_head and echo_head[i].color == rex_head[i].color and echo_head[i].offset == rex_head[i].offset \
-			and echo_head[i].glow == rex_head[i].glow
-	check(same_head, "Rex keeps Echo's head: his face, scars, hair and copper implant (%d pieces)" % rex_head.size())
-	check(rex.panels().is_empty() and rex.attachment_overrides().is_empty(),
-		"Rex is a waist-length jacket: no skirt panels, and Echo's power-up sets fit it as they are")
-	# The glows are the brief's three, as drawn, and soft.
-	var glows: Dictionary = {}
-	var energy: float = PlayerSuit.body_material().get_shader_parameter(&"glow_energy")
-	var brightest: float = 0.0
-	for piece: HumanoidPiece in rex.body_pieces():
-		if piece.glow > 0.0:
-			glows[piece.color] = int(glows.get(piece.color, 0)) + 1
-			brightest = maxf(brightest, piece.glow * energy * PlayerAvatar.DASH_GLOW * maxf(piece.color.r, maxf(piece.color.g, piece.color.b)))
-	var expected: Array = [RexLook.CIRCUIT, RexLook.SPINE, RexLook.JOINT]
-	check(glows.size() == 3 and glows.has(expected[0]) and glows.has(expected[1]) and glows.has(expected[2]),
-		"it glows pink (circuit lines), cyan (the spine) and orange (the shoulder joint), as drawn: %d colours" % glows.size())
-	check(int(glows.get(expected[0], 0)) >= 8 and int(glows.get(expected[1], 0)) >= 4 and int(glows.get(expected[2], 0)) == 1,
-		"…many thin pink lines, a spine of several, one joint (%s)" % [glows.values()])
-	check(brightest <= MAX_OUTFIT_EMISSION, "…and soft: the brightest line while dashing is %.2f× its colour (limit %.2f)" % [brightest, MAX_OUTFIT_EMISSION])
-	check(RexLook.JACKET.r > 0.6 and RexLook.JACKET.g < 0.2 and RexLook.JACKET.b > 0.3 and RexLook.JACKET.b < 0.7,
-		"the jacket is magenta leather")
-	# The glow lines go dark on death like Echo's conduits.
-	var avatar: PlayerAvatar = _avatar_in(&"rex")
-	avatar.fit_to(tuning.visual_size)
-	avatar.reset()
-	var s: Dictionary = AvatarSuite._state({"alive": false})
-	for i: int in 120:
-		avatar.animate(s, DT)
-	var material: ShaderMaterial = avatar._material
-	check(float(material.get_shader_parameter(&"glow_boost")) < 0.15, "its glow lines power down on death (%.2f)" % float(material.get_shader_parameter(&"glow_boost")))
-	avatar.set_flash(true)
-	var tint: Color = material.get_shader_parameter(&"tint")
-	check(tint.a > 0.3, "the invulnerability tint covers the outfit too")
-	avatar.free()
 
 
 # --- The avatar and the worn outfit ------------------------------------------------------------
