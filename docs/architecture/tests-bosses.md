@@ -113,7 +113,7 @@ opened, run, its end dropping the runner off, closed again, closing under a runn
 targetable only once the pattern begins, its chest within the upgraded weapons' reach and not the tier-1
 weapon's, a hit chipping the fight; nothing on it glowing or past the hazards' saturation, the dull red
 tear, the cape's shader never glowing; its arms, hatches, torn pipes and plates; its draw budget), the
-entrance (the rise, the chime, the unfurl, nothing attacking or targetable, then the first strafe), the
+entrance (the rise, the deep brass fanfare and not the chime, the unfurl, nothing attacking or targetable, then the first strafe), the
 squadron never red or targeted, the Flying Buttress (its lean, its rise and sound, a lane switch into it
 bumped, its arch run through, smashed and crumbling, back in the pool), Reduced flashing (the muzzle flashes
 and tracers steady, flickering otherwise), the reel of a later phase (its right shoulder's pipes blown out, the

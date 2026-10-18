@@ -383,7 +383,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Golden 3 at the zone's 25 m/s (debug builds: `--level=golden/boss`, or `--boss=golden_boss` at 18 m/s;
   `--phase=4` starts at its halfway checkpoint, stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
   balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
-  a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
+  a billowing cloud, as a fanfare of deep, bassy brass sounds, its last call breaking up into a distorted reverb; its calm golden face, with its
   dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
   out of the cape and makes its passes as one. A vertical pass rakes every other lane after red lines and a
   gatling whine (switch to a lane between them; a jump doesn't clear the fire); a horizontal pass sweeps a
