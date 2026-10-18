@@ -803,11 +803,17 @@ func _test_app() -> void:
 	var wall := Hazard.new()
 	wall.hazard_name = "test wall"
 	wall.is_solid = true
-	check(player.shield == 1, "the run brings one shield from the stock")
+	check(player.shield == 2, "the run brings both shields from the stock (they stack)")
 	player.god_mode = false
 	player.receive_hit(wall)
 	player.god_mode = true
 	check(App.profile.stock(&"shield") == 1, "the player's own shield costs its stock when it breaks")
+	player.god_mode = false
+	player.invulnerable_left = 0.0
+	player.receive_hit(wall)
+	player.god_mode = true
+	check(player.shield == 0 and App.profile.stock(&"shield") == 0, "and the second one too")
+	App.profile.add_stock(&"shield", 1)  # a spare bought meanwhile: the picked-up shield must not touch it
 	var field: PickupField = run.world.pickups
 	var up: bool = false
 	for i: int in 60 * 5:

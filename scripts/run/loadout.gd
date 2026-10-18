@@ -7,6 +7,9 @@ extends RefCounted
 ## upgrade as its tier (tiers[&"armor"]; the equip toggle switches the upgrade off, down to the free
 ## armor). RunWorld makes the run's armor from them (DamageRules.Armor.create).
 
+## The breakable item whose whole stock comes into a run, each charge a hit blocked (GDD §8).
+const STACKING: StringName = &"shield"
+
 ## Permanent items: id -> tier (weapon 1–4, claws, dash, magnet, slow_time, the armor upgrade 1–4).
 var tiers: Dictionary = {}
 ## Breakable items: id -> charges this run (shield, grapple, revive).
@@ -17,6 +20,9 @@ var armor: bool = false
 ## Items a boss fight granted (GDD §8: bosses may grant power-ups before the fight): id -> true.
 ## A granted breakable's charge is the fight's, so using it never takes one from the player's stock.
 var granted: Dictionary = {}
+## Granted breakables already broken once: id -> true. A grant is one free charge, however many the
+## player brought (shields stack), so only the first break of it is free (costs_stock).
+var granted_used: Dictionary = {}
 ## Charges picked up during the current attempt (GDD §10: a fight's pickups) and not broken yet:
 ## id -> charges. Like a granted item's, a picked-up charge is the fight's, so breaking it never takes
 ## one from the player's stock. The run's PickupField counts them in (afresh for each world it
@@ -44,8 +50,10 @@ func has_armor() -> bool:
 
 
 ## Builds the loadout from what the profile owns and has switched on, and the free armor every run
-## starts with (GDD §4; the web demo's too), whatever the profile and the settings. Breakable items
-## bring one charge each (FB 13: one of each breakable per attempt; spares stay in stock).
+## starts with (GDD §4; the web demo's too), whatever the profile and the settings. Shields stack
+## (GDD §8, owner, October 18, 2026): every shield in stock comes into the run, up to the catalog's
+## max_stock, and each hit uses one. The other breakables bring one charge each (FB 13: one grapple
+## per attempt; spares stay in stock).
 ## Revives are used from stock on the death screen, not carried as a charge. Items not sold on this
 ## platform (slow time on mobile, GDD §3) are left out.
 ## DESIGN-TBD (docs/questions/g3.md): the equip toggle switches the armor upgrade off, never the free
@@ -61,7 +69,7 @@ static func from_profile(profile: Profile, catalog: ShopCatalog, mobile: bool) -
 			if t > 0:
 				out.tiers[item.id] = t
 		elif profile.stock(item.id) > 0 and item.id != &"revive":
-			out.charges[item.id] = 1
+			out.charges[item.id] = mini(profile.stock(item.id), item.max_stock) if item.id == STACKING else 1
 	return out
 
 
@@ -108,15 +116,17 @@ func add_picked_up(id: StringName) -> void:
 	picked_up[id] = int(picked_up.get(id, 0)) + 1
 
 
-## A charge of `id` broke: true if it comes out of the player's stock. A granted item's never does,
-## and neither does a picked-up charge, which this counts as used. DESIGN-TBD (docs/questions/b7.md):
-## with more than one charge held, the picked-up ones break first.
+## A charge of `id` broke: true if it comes out of the player's stock. A picked-up charge never does
+## (this counts it as used), and neither does a granted breakable's one free charge (a permanent grant
+## is no stock). DESIGN-TBD (docs/questions/b7.md, n3.md): with more than one charge held, the picked-up ones
+## break first, then the granted one, then the player's own.
 func costs_stock(id: StringName) -> bool:
-	if is_granted(id):
-		return false
 	var free: int = int(picked_up.get(id, 0))
 	if free > 0:
 		picked_up[id] = free - 1
+		return false
+	if is_granted(id) and not granted_used.has(id):
+		granted_used[id] = true
 		return false
 	return true
 

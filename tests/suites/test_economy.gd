@@ -146,7 +146,9 @@ func _test_catalog_and_loadout() -> void:
 	var pc: Loadout = Loadout.from_profile(p, catalog, false)
 	check(pc.tier(&"weapon") == 2 and pc.tier(&"slow_time") == 1, "the loadout carries owned tiers")
 	check(pc.tier(&"claws") == 0, "switched-off items stay home")
-	check(pc.charge(&"shield") == 1, "one shield charge per attempt, spares stay in stock")
+	check(pc.charge(&"shield") == 3, "shields stack: every shield in stock comes into the run")
+	p.add_stock(&"grapple", 2)
+	check(Loadout.from_profile(p, catalog, false).charge(&"grapple") == 1, "one grapple per attempt, spares stay in stock")
 	check(pc.charge(&"revive") == 0, "revives are used from stock on the death screen, not carried")
 	check(pc.has_armor() and pc.armor and pc.tier(&"armor") == 0 and pc.charge(&"armor") == 0,
 		"every run carries the free armor, which is no charge (GDD §4)")
