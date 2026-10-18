@@ -381,7 +381,7 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## floor carries a pickup, so a runner who wall hops collects them; so does one who jumps onto the wall from the floor
 ## at the right spot, and the magnet leaves them alone (WallHopPlacement; numbers in data/tuning/wall_hops.tres).
 ## Sprinkled where one fits, never guaranteed. 0: none, and the level is built exactly as before (the City's levels,
-## quick play, the tests' own levels). DESIGN-TBD (docs/questions/n1.md): 1 a level from Gangland 1 on.
+## quick play, the tests' own levels). DESIGN-TBD (items 1017-1024): 1 a level from Gangland 1 on.
 @export_range(0, 4) var wall_hop_lines: int = 0
 
 

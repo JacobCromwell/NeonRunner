@@ -21,8 +21,8 @@ extends RefCounted
 ##   steps on further along, or one whose single run claws carry on, passes under them, while a hop starts its fresh
 ##   wall run higher (MovementTuning.wall_air_entry_factor of the height it hops from); each where the reference hopper
 ##   passes within its reach. Not only a hopper reaches them: a jump onto the wall from the floor starts a run high
-##   enough too, all three when it starts about 10 to 23 m before them in Gangland 1 (DESIGN-TBD, docs/questions/n1.md
-##   question 4). The magnet leaves them alone (CreditField._in_magnet). They're left out of the stars' best score
+##   enough too, all three when it starts about 10 to 23 m before them in Gangland 1 (DESIGN-TBD,
+##   item 1020). The magnet leaves them alone (CreditField._in_magnet). They're left out of the stars' best score
 ##   (LevelLayout.star_credit_value), as a treasure stash's are.
 ## Its stretch (from run_in_seconds before the entry to where a runner who jumps off the wall at the last high-value
 ## credit comes down, and landing_seconds after that) is on one side wall, inside the level's clear ends, off
@@ -38,7 +38,7 @@ extends RefCounted
 ## clear outer lane below to jump off into; attacks elsewhere come with their warnings, as on any wall run. A level
 ## takes up to its count, each a seeded spot among those that fit, min_gap_seconds apart; none where none fits (it is
 ## sprinkled, never guaranteed). problem() re-checks a finished layout (LayoutChecks.check_wall_hops).
-## DESIGN-TBD throughout (docs/questions/n1.md).
+## DESIGN-TBD throughout (items 1017-1024).
 
 ## The high-value credits' mark (LevelLayout.credits): the stars' best score leaves them out
 ## (LevelLayout.star_credit_value).

@@ -1480,7 +1480,7 @@ static func check_stash(suite: TestSuite, gen: LevelGenerator, t: CeilingScenari
 		"%s: the space between its two doodads (%.1f m) is past the dash's carry from the outer one's end (%.1f m)"
 		% [at, space, need])
 	# The walls start past room for the front doodad's push, and overlap it by wall_overlap (or all it leaves); the
-	# lanes beside the outer doodad and the space hold none of them (DESIGN-TBD, docs/questions/n1.md: room for both
+	# lanes beside the outer doodad and the space hold none of them (DESIGN-TBD, items 1017-1024: room for both
 	# doodads' pushes).
 	var overlap: float = minf(t.wall_overlap, front_end - front_start - TreasureStashRules.PUSH_ROOM)
 	for side: int in [-1, 1]:

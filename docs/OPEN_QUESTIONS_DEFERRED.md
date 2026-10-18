@@ -1928,6 +1928,15 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     past the next visit's arrival, and the arrival still sends the last one away (one on screen at a
     time). The alternative: the next one holds back far ahead until the last one's first pulse has begun
     (two on screen meanwhile, and its own visit may then run out of level).
+    **Changed (task N1, October 18, 2026):** the threshold is now its own tunable,
+    `ResonatorTuning.first_pulse_wait_max` (`data/enemies/resonator.tres`), at 0: a first pulse still owed keeps its
+    place in the turn queue as soon as it waits, so the other types' next big attack waits for it from its second frame
+    of waiting (never overlapping). Why: the treasure stash's longer floor (N1) left Golden 1's third Resonator at 5
+    lanes on its own seed without a pulse (a heli drone that stayed took the turn in both of its short clear stretches).
+    Over Golden 1-3 at 3, 5 and 6 lanes on six seeds (54 builds, 97 Resonators), one still never pulses, as before:
+    Golden 2 at 5 lanes on seed 9102, held by a Bad Dream chase, then sent away by the next arrival (this item's other
+    point). Questions: is "as soon as it waits" right, given the other types wait longer? Should the next arrival still
+    send away one that owes its first pulse?
 
 **The Enforcer Truck** (from C6; numbers in `data/enemies/enforcer_truck.tres`, F6 "Enemy: Enforcer Truck"; play `--level=corporate/2`, review with `tools/showcase/enforcer_truck_showcase.tscn`)
 354. **Its numbers and presentation** (GDD §9.13, proposed values and gaps), all in
@@ -5558,3 +5567,90 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    the same low register as the rise's rumble (`gc_rise`, at full level until about 2 s), which would mask its first calls,
    so it comes in later. Placeholder: `fanfare_at` (was `chime_at`) is 2.2 s in `golden_convergence_tuning.gd`
    (`DESIGN-TBD`, the entrance's group); the fanfare ends at 4.65 s, 1.65 s before the first beat (the intro stays 5.5 s).
+
+### Folded on October 18, 2026 (task N1, the treasure stash's second doodad and the wall-hop credits)
+
+1017. **The space between the stash's two doodads.** How long should it be? (GDD §3, Ceiling scenarios: "a doodad, a
+   space, then a second doodad, and then the treasure".)
+   Placeholder: the most a dash that smashes the outer doodad still carries the runner past its end, so no single
+   dash smashes both (`TreasureStashRules.dash_space`): the dash's 0.6 s at the run speed plus its 8 m/s (the same at
+   every tier), the most a speed pad's or a ramp's fading boost adds (2.9 m), a body's length (the latest dash that
+   still smashes it steers into its side beside its end), a frame, and `outer_space_margin` (0.5 m): 23.1 m at the
+   Casino's 23 m/s to 24.4 m at the Golden Zone's 25 m/s, about a second of run. A shorter space would let a dash
+   started late enough smash both. The outer doodad is a medium one (`outer_size`), as the stash's own.
+
+1018. **The lanes beside the space.** Should the doodads alongside (in the two neighbouring lanes) also run beside the
+   outer doodad and the space, so nobody slips into the space sideways? (GDD §3, the same.)
+   Placeholder: they don't; the walls stand beside the second doodad and the treasure only, as before. A runner the
+   outer doodad pushes, or one whose dash ended in the space, meets the second doodad's push with room beside it, as
+   a runner in the stash's lane always did. So a floor runner still gets in the way the owner allowed ("a floor runner
+   can still get in that way; it is just harder"): around the outer doodad in the next lane, into the space, then a
+   dash through the second one (test_ceiling_scenarios rides it). Walled beside the space instead, a runner whose dash
+   ended there would meet the second doodad's push with no room on either side (the push would carry the body into a
+   wall doodad), unless the walls stopped short of it, leaving the opening right where it matters; and the only way in
+   from the street would be a dashing switch through a wall doodad. Is the open space the "harder" the owner meant?
+
+1019. **Fewer stashes.** The stash's floor is about 27 m longer (about 70 m, 3 s of run), so it fits a few fewer ceilings:
+   over the campaign's stash levels on their own seed and four more at 5 and 6 lanes, 96 stashes in 110 builds (101
+   before), the Dead Zone's quiet stretches losing the most; Dead Zone 2 at 5 lanes on its own seed has none now (21
+   of the 22 campaign builds have one); fenced ceilings 62 in 100 builds (65). Is that acceptable for a scenario that
+   is sprinkled, never guaranteed?
+   Placeholder: as measured.
+
+1020. **Who the wall-hop credits are for.** The GDD says "high-value credits further along than one wall run reaches, so
+   only a player inventive enough to wall hop collects them", but a side wall can be stepped onto anywhere, so a
+   runner who just steps on further along would reach credits that are only further along. (GDD §7, §3 Wall hop.)
+   Placeholder: they also hang higher than a fresh wall run carries a pickup without a hop, 3.11 m
+   (`WallHopPlacement.gem_height`: a step on from the floor tops out at 2.2 m, straight back on as a run drops its runner
+   at 2.44 m, a pickup reaches 0.575 m, and `gem_clearance` 0.1 m), and past one standard wall run's reach (2.16 s,
+   no claws) from the line's entry. A hop starts a fresh run higher (the air entry: 60% of the height it hops from on
+   top), so a hop from anywhere above about half a metre gets there; a single run with claws slides on further but
+   passes under them. Two other ways in were measured (task N1's review; a step or a jump onto the wall from the outer
+   lane, never hopping, every metre from one wall run's reach to the high-value credits):
+   - **A jump onto the wall from the floor** starts a run high enough (up to 3.16 m). With no hop and no magnet it
+     takes all three when it starts 10 to 23 m before them in Gangland 1 (10 to 26 m in Golden 3), and one or two of
+     them from 4 to 29 m (4 to 31 m). This way stays open (as would a ramp's launch or a hover truck's roof, which the
+     line keeps away from).
+   - **The magnet** pulls a credit on the runner's own wall from up to its radius (3 m at most) up or down and 2.5
+     radii ahead (`CreditField._in_magnet`). With Magnet I, a plain step onto the wall from the floor, no hop, took all
+     three when it came 2 to 19 m before them in Gangland 1. Placeholder (the orchestrator's decision, after task I4's
+     stash, whose credits lie past the magnet's reach): the magnet leaves the high-value credits alone (`DESIGN-TBD` in
+     `credit_field.gd`). Now no magnet tier takes them from a step on (test_wall_hops rides Magnet I).
+   Should they hang higher still, above a jump's entry (about 3.8 m), which only a runner who hops early and often
+   reaches, or is distance alone what the owner meant (then stepping back on further along takes them)? And should the
+   magnet leave them alone?
+
+1021. **How many wall-hop credits, how valuable, and where.** (GDD §7, proposed: "from Gangland on, about once a level, on
+   a stretch of wall long enough with no wall gap".)
+   Placeholder: up to one line a level from Gangland 1 (`LevelConfig.wall_hop_lines` 1 in every level from there, 0
+   in the City's), sprinkled where it fits: a lead-in of 3 credits of 1 along the first wall run from where to step on,
+   then 3 credits of 25 (`gems`, `gem_value`) together, 0.12 s apart, after two hops of the reference hopper (who hops
+   each time its run comes down to 1.5 m, `hop_height`): 66 to 71 m past the entry in Gangland, where one wall run
+   reaches 47 m. The line needs 5 s of run of whole, clear wall and a clear outer lane beside it, so it fits 107 of
+   126 builds outside the Beach (the campaign's levels on their own seed and two more at 3, 5 and 6 lanes; every
+   Gangland build) and none on the Beach, whose open walls (`data/tuning/beach_wall_gaps.tres`, task D10b) leave no
+   whole wall longer than about 4 s. Should the Beach get them (its walls more whole somewhere, or a shorter line), and
+   are 3 credits of 25 the right reward?
+
+1022. **Showing where to hop.** The high-value credits sit at the top of the reference hopper's third fresh run; a runner
+   with another rhythm (hops at 0.6 or 1.0 m) passes under them unless it hops once more shortly before them (0.15 to
+   0.35 s, which test_wall_hops rides), and a hop from high on the wall carries a runner over them. Should the line
+   lead the eye there (credits along the hopper's path between the lead-in and them), or is finding the timing part of
+   the nudge?
+   Placeholder: nothing between the lead-in and the high-value credits.
+
+1023. **The stars and the wall-hop credits.** (GDD §4 stars, §7.)
+   Placeholder: the high-value credits are out of the stars' best score (`LevelLayout.star_credit_value`), as a
+   treasure stash's are (item 844's placeholder), so three stars never ask for a move the game never asks for; the
+   lead-in counts like any credit. The economy's model takes them with the stashes' (a typical player at its share, a
+   weaker one none).
+
+1024. **How calm the line's stretch is.** (GDD §3, readability.)
+   Placeholder: from 0.5 s before its entry to 0.5 s after a runner who jumps off at its last high-value credit comes
+   down, its wall is whole and clear (signs, wall enemies, ramps' runs, wall fences and their drop windows, wall gaps,
+   other wall credits, 1 s either side), the outer lane's floor clear (holes, fences, pads, doodads, floor cuts), no
+   enemy in that lane, no hover truck, no dash wall, and none of the keep-outs of a heli drone wave (its arrival until
+   its first pad), an Enforcer Truck or a Bad Dream's chase. Not guaranteed: a heli drone that stays past its first pad
+   may still fire at a wall hopper on the line (it holds its barrages for a wall-run gap's crossing only), after its
+   warned wind-up, with the clear outer lane below to jump off into; attacks elsewhere (a cyborg's bolts, an Octodog's
+   lunge in another lane) may still come, each with its warning.

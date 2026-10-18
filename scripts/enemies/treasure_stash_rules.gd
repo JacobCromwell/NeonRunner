@@ -30,7 +30,7 @@ extends RefCounted
 ##   a space, then a second doodad, and then the treasure": a dash from the floor got in; outer_size): the stash's
 ##   start, with a space between the two as long as the most a dash that smashes the outer one still carries the
 ##   runner past its end (dash_space), so no single dash smashes both. The lanes beside the outer doodad and the space
-##   stay open (DESIGN-TBD, docs/questions/n1.md): a runner it pushes, or one whose dash ended in the space, meets the
+##   stay open (DESIGN-TBD, items 1017-1024): a runner it pushes, or one whose dash ended in the space, meets the
 ##   front doodad's push with room for it, as a runner in the stash's lane always did;
 ## - its floor in every lane, from the outer doodad's push (LevelGenerator.doodad_lead_for) to the level's spacing
 ##   past its open end (doodad_after), off everything another rule keeps (CeilingScenarios.busy_spans), every pad's

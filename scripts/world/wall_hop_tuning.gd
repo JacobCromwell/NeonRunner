@@ -6,11 +6,11 @@ extends Resource
 ## run, and a few high-value ones further along than one wall run from there reaches and higher than a step onto the
 ## wall from the floor carries a pickup, where a runner who wall hops (GDD §3: jumping off a wall and straight back on
 ## starts a fresh wall run) passes them. A jump onto the wall from the floor at the right spot starts a run high enough
-## too (DESIGN-TBD, docs/questions/n1.md question 4); the magnet leaves them alone (CreditField._in_magnet). How many a
+## too (DESIGN-TBD, item 1020); the magnet leaves them alone (CreditField._in_magnet). How many a
 ## level gets is its own (LevelConfig.wall_hop_lines, 1 from Gangland 1 on). Edit
 ## data/tuning/wall_hops.tres (F6: "Wall-hop credits", in a level that has them; Restart level rebuilds). Times are
 ## seconds of run at the level's run speed, so a faster zone keeps them. Every number here is a first value for
-## playtesting (DESIGN-TBD, docs/questions/n1.md).
+## playtesting (DESIGN-TBD, items 1017-1024).
 
 const PATH: String = "res://data/tuning/wall_hops.tres"
 
@@ -43,7 +43,7 @@ const PATH: String = "res://data/tuning/wall_hops.tres"
 ## never hops (WallHopPath.fresh_top: a step onto the wall from the floor, or straight back onto it as a wall run drops
 ## them; WallHopPath.pickup_reach): such a runner passes under them, while a hop's fresh wall run starts higher
 ## (MovementTuning.wall_air_entry_factor of the height it hops from), and so does one a jump from the floor starts
-## (docs/questions/n1.md question 4).
+## (item 1020).
 @export_range(0.0, 1.0, 0.025, "suffix:m") var gem_clearance: float = 0.1
 
 @export_group("Its stretch")

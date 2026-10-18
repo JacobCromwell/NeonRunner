@@ -250,7 +250,7 @@ func _physics_process(delta: float) -> void:
 
 
 ## True if the magnet pulls credit entry `e` now: on the player's own surface (their wall), ahead within its reach, and
-## never further sideways than the lanes next to theirs. DESIGN-TBD (docs/questions/n1.md question 4): it leaves a
+## never further sideways than the lanes next to theirs. DESIGN-TBD (item 1020): it leaves a
 ## wall-hop line's high-value credits alone (WallHopPlacement.GEM, entry "magnet" false): they're for a runner who
 ## wall hops (GDD §7), and Magnet I would pull all three down to a plain step onto the wall from the floor.
 func _in_magnet(e: Dictionary, player: Player) -> bool:

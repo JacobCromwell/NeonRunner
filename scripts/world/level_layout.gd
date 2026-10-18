@@ -286,7 +286,7 @@ func total_credit_value() -> int:
 ## A stash is an optional reward a floor runner can't reach (and there's none on 3 or 4 lanes), and the wall-hop
 ## credits are for a move the game never asks for (GDD §3, the wall hop), so the three-star line never asks for
 ## either; collected, their credits still count in the run's credits (the wallet) and its level score. DESIGN-TBD
-## (item 844; docs/questions/n1.md).
+## (item 844; items 1017-1024).
 func star_credit_value() -> int:
 	var total: int = 0
 	for c: Dictionary in credits:

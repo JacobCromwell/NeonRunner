@@ -80,7 +80,7 @@ extends EnemyTuning
 ## gets to pulse, unless the level ends first (how soon a first pulse still owed keeps its place in the
 ## turn queue: first_pulse_wait_max).
 @export_range(0.0, 30.0, 0.5, "suffix:s") var turn_wait_max: float = 8.0
-## DESIGN-TBD (docs/OPEN_QUESTIONS*.md item 350; docs/questions/n1.md question 9): a first pulse still owed
+## DESIGN-TBD (docs/OPEN_QUESTIONS*.md item 350): a first pulse still owed
 ## keeps its place in the director's turn queue once it has waited this long in all, for other attacks or
 ## for clear floor (Resonator._first_overdue): it also asks while it waits for clear floor, so the other
 ## types' next big attacks wait for it and it comes at the next clear floor. 0: as soon as it waits. It

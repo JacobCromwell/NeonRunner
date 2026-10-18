@@ -818,7 +818,7 @@ DESIGN-TBD throughout (items 836–845 in `docs/OPEN_QUESTIONS*.md`).
   beside its end; a frame; `outer_space_margin`): 23.1 m at the Casino's 23 m/s to 24.4 m at the Golden Zone's 25, a
   second of run. So a dash at the stash ends in the space, short of the front doodad, which pushes as usual (a claim
   needs the dash to reach a doodad before it ends, `Player._dash_claims`). The lanes beside the outer doodad and the
-  space stay open (DESIGN-TBD, `docs/questions/n1.md`): a runner it pushes, or one whose dash ended in the space,
+  space stay open (DESIGN-TBD, items 1017-1024): a runner it pushes, or one whose dash ended in the space,
   meets the front doodad's push with room for it; a floor runner still gets in the harder way the owner allowed,
   around the outer doodad, into the space, then a dash through the front one. The longer floor (about 70 m, 3 s of
   run) leaves a few builds without one: over the campaign's stash levels on their own and four more seeds at 5 and 6
@@ -992,7 +992,7 @@ as before; its numbers are `WallHopTuning`'s (`data/tuning/wall_hops.tres`, F6 "
 gets is `LevelConfig.wall_hop_lines` (1 from Gangland 1 on; 0 elsewhere, and such a level is built as before but for the
 line: `test_wall_hops`). `LevelLayout.wall_hops` holds `{side, entry, start, end, gems_from, gems_to}` (left out of
 `to_dict()` while empty); its credits are ordinary wall `credits` marked `WallHopPlacement.LEAD` and `GEM`. DESIGN-TBD
-throughout (`docs/questions/n1.md`).
+throughout (items 1017-1024).
 - **The reference hopper** (`WallHopPath`, as `RampLaunch` predicts a ramp's run): steps onto the wall from the outer
   lane at the line's entry and wall hops (jump, and back toward the wall `HOP_FRAMES` frames later) each time its run
   has come down to `hop_height` (1.5 m). Each fresh run starts where it hopped, and the Player's air entry carries it to
@@ -1040,4 +1040,4 @@ throughout (`docs/questions/n1.md`).
   (`CreditField._in_magnet`, DESIGN-TBD: Magnet I pulled all three down to a step on 2 to 19 m before them in Gangland
   1). Not only a hopper reaches them: a jump onto the wall from the floor starts a run high enough, all three when it
   starts 10 to 23 m before them in Gangland 1 (10 to 26 m in the Golden Zone), some of them from 4 to 29 m (DESIGN-TBD,
-  `docs/questions/n1.md` question 4).
+  item 1020).

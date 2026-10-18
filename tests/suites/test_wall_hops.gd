@@ -19,8 +19,8 @@ extends TestSuite
 ##   collects them all; one wall run from the entry collects the lead-in but none of the high-value credits, with claws
 ##   too; a runner who steps straight back onto the wall each time a run drops them, or who steps onto it from the floor
 ##   further along, passes under them, with Magnet I too (the magnet leaves them alone: CreditField._in_magnet). A jump
-##   onto the wall from the floor at the right spot starts a run high enough to reach them (docs/questions/n1.md
-##   question 4); nothing here rides that.
+##   onto the wall from the floor at the right spot starts a run high enough to reach them (item
+##   1020); nothing here rides that.
 
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const LANE_COUNTS: Array[int] = [3, 5, 6]

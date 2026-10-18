@@ -697,7 +697,7 @@ From `docs/USER_REQUESTS.md` (October 18, 2026: the evening batch, the wall hop 
 
 | ID | Task | Needs | Size | Tier |
 |---|---|---|---|---|
-| N1 | **The treasure stash's second doodad** (doodad, space, doodad, then the treasure) **and the wall-hop credits** (GDD §3, §7). **Core** (generator). | – | M | T1 |
+| N1 | **The treasure stash's second doodad** (doodad, space, doodad, then the treasure) **and the wall-hop credits** (GDD §3, §7). **Core** (generator). **Done.** | – | M | T1 |
 | N2 | **Stars that can be earned:** the volleyball match's stars by the score (4–0 three, 0–1 one); every level and boss checked for a three-star rating that can't be earned, and fixed (GDD §4, §5, §10) **Done.** | – | M | T2 |
 | N3 | **Shields stack:** every shield in stock comes into the run, one hit each (GDD §8) **Done.** | – | S | T3 |
 | N4 | **The Golden Convergence's trumpets:** its cheery chime becomes deep, triumphant trumpets, the last one morphing into a distorted reverb (GDD §10) **Done.** | – | S | T2 |
