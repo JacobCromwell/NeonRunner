@@ -533,9 +533,7 @@ are the Marketplace's (all in use), in `kit_market.gdshaderinc`, and ids 30-39 t
 `kit_golden.gdshaderinc` (each: one include and one dispatch line in `kit_solid`; the Golden Zone's
 and the Dead Zone's includes follow `cult_mark()`, which their emblems use).
 A new zone takes the next free block of ten in its own include, so zones built in parallel never
-collide on an id. Ids 100-109 are the Marketplace's and the Casino's shop-window displays (task L10, `PAT_WINDOW_AD`
-and `PAT_WINDOW_POSTER`, `kit_window.gdshaderinc`, included after `cult_mark()` and `kit_market` and dispatched by
-`window_surface()`): the ad screens and posters hung in some shop windows. Ids 60-69 are the cult's, shared by every zone, in
+collide on an id. Ids 60-69 are the cult's, shared by every zone, in
 `kit_cult.gdshaderinc` (its include follows `cult_mark()` in `kit_solid`, and its dispatch runs after
 the zones' own): `PAT_CULT_MARK` (60) draws the cult's emblem from the material's `cult_emblem`
 texture as a mark on a dark panel. Ids 70-79 are the Golden Palace's (task D6b, a level's own skin,

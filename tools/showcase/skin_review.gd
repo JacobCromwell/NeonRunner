@@ -45,6 +45,8 @@ extends Node3D
 ##   --from=D        the run starts at track distance D (to render only a stretch, such as a drop off
 ##                   a far end)
 ##   --reduced-flashing  Settings > Reduced flashing on (steady warnings instead of flicker)
+##   --flash=S       the Marketplace's and the Casino's shop-window ad screens flash the cult's emblem every S seconds (default:
+##                   each screen's own 14 to 26 s)
 ## The level's ceilings: for the Marketplace skin, one of each kind (building bridge, overpass,
 ## ship, floating ad), for the Corporate skin one of each of its kinds (glass skyway, tower
 ## bridging the street, viaduct, gunship), and for the Dead Zone two charred bridges and two dead
@@ -93,6 +95,11 @@ func _ready() -> void:
 	var skin_name: String = _opt("skin", "city")
 	var path: String = skin_name if skin_name.begins_with("res://") else "res://data/skins/%s_skin.tres" % skin_name
 	skin = load(path) as ZoneSkin
+	# --flash=S: every shop-window ad screen flashes the cult's emblem every S seconds (task L10), to bring a flash into a
+	# short render (a screen's own period is 14 to 26 s).
+	if _opt("flash", "") != "" and skin.has_method(&"display_material"):
+		var period: float = float(_opt("flash", "0"))
+		(skin.call(&"display_material") as ShaderMaterial).set_shader_parameter(&"wd_flash_period", Vector2(period, period))
 	var env := WorldEnvironment.new()
 	var sky_name: String = _opt("sky", "")
 	var sky: LevelSky = null
@@ -443,7 +450,7 @@ func _shot_list() -> Array:
 		var p: float = FAR_GAP - ahead
 		out.append([p, Vector3(0.0, tuning.camera_height, -(p - tuning.camera_distance)),
 			Vector3(0.0, 1.0, -(p + tuning.camera_look_ahead))])
-	# 17-19: the cult's feed on a billboard and on a shop-window TV.
+	# 17: the cult's feed on a billboard; 18-21: the first shop window with an ad screen and with a poster (task L10).
 	var board: Dictionary = {}
 	if skin.has_method(&"feed_boards"):
 		for side: int in [1, -1]:

@@ -274,9 +274,10 @@ through the kit shader: the skin sets the `cult_emblem` texture (the option rast
 colours, `GanglandSkin.cult_emblem_texture()`), `cult_emblem_share` puts it on some corporate ads, and
 `MeshKit.stencil_param(..., emblem)` on some crates, container doors and notice boards. The shader picks
 its mip level itself and fades it out before it spans fewer than about 24 pixels, where the three-fold
-mark could read like a radiation trefoil. The Marketplace's and the Casino's shop-window ad screens flash it (task L10): `kit_window.gdshaderinc` draws it with
-`cult_mark()` from the solid material's `cult_emblem` texture (`MarketplaceSkin.solid_material()`), in the chosen option's
-own warm white, onto a deep dusk, every 14 to 26 s for a moment, fading in and out and slower with Reduced flashing.
+mark could read like a radiation trefoil. The Marketplace's and the Casino's shop-window ad screens flash it (task L10): `window_display.gdshaderinc` samples the
+chosen option's coverage (`CultFeed.emblem_texture()`, on the display material, not the solid kit's) in the option's own warm white, onto a deep
+indigo, every 14 to 26 s for a moment, fading in and out and slower with Reduced flashing; it is drawn big and thickened when
+small so it reads from the game camera instead of fading out at about 24 pixels as `cult_mark()` does.
 The Marketplace's other emblems use geometry instead: it turns the emblem
 into a mesh-kit template once (`MarketplaceSkin.cult_emblem()`), then appends it where it hides: a
 small warm-white badge on some ads, an unlit bronze mark on some shop signs, never smaller than

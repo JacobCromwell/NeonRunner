@@ -115,11 +115,12 @@ func windows_picked(side: int, face_x: float, start: float, end: float, salt: in
 			var at: float = (w.x + w.y) * 0.5
 			if at >= start and at < end and MeshKit.hash01(side, MeshKit.key(at), salt) < share \
 					and not skin.wall_gap_near(side, w.x, w.y):
+				var shown: int = display_at(b, w)
 				out.append({"side": side, "at": at,
 					"center": Vector3(face_x, (skin.gallery_bottom + skin.gallery_top) * 0.5, -at),
 					"width": w.y - w.x, "bottom": skin.gallery_bottom, "top": skin.gallery_top, "depth": skin.shop_depth,
-					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": display_of(b, w) != Display.NONE,
-					"display": DISPLAY_NAMES[display_of(b, w)]})
+					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": shown != Display.NONE,
+					"display": DISPLAY_NAMES[shown]})
 		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
 	return out
 

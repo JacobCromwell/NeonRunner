@@ -319,13 +319,19 @@ func facade_material() -> ShaderMaterial:
 
 ## The solid kit material with the Casino's uniforms (kit_casino.gdshaderinc).
 func _solid_params() -> Dictionary:
-	var params: Dictionary = {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
+	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 		"cas_shine": srgb(brass_shine_color), "cas_inlay": srgb(inlay_color), "cas_lamp": srgb(lamp_light_color),
 		"cas_wet": street_wet, "cas_pane": srgb(pane_color), "cas_pane_lit": srgb(pane_lit_color),
 		"cas_star": srgb(star_color), "cas_pane_len": bay_length / 3.0, "cas_vault_y": eave_height,
 		"cas_vault_rise": vault_rise_max * 0.6, "cas_banner_w": banner_width, "cas_banner_trim": srgb(brass_dim_color)}
-	# The lounge windows' ad screens are the Marketplace's (MeshKit.PAT_WINDOW_AD).
-	params.merge(window_display_params())
+
+
+## The lounge windows' ad screens (task L10) play the Casino's own ads, in the Marketplace's palette: a slot machine,
+## a stack of chips, a cocktail, a champagne bottle and a pair of dice besides the brand card (DESIGN-TBD,
+## docs/questions/l10.md).
+func window_display_params() -> Dictionary:
+	var params: Dictionary = super()
+	params["wd_casino"] = 1
 	return params
 
 

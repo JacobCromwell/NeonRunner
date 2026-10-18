@@ -1,39 +1,49 @@
-// The Marketplace's and the Casino's shop-window displays for the solid kit shader (task L10; GDD §5,
-// "Cyborg Viewing Devices", the owner's October 17, 2026 decision: no feed TVs in the shop windows): pattern
-// ids 100-109, in their own file so the other zones' patterns don't collide with them. Include after
-// cult_mark() and kit_market.gdshaderinc (kit_solid.gdshader): the screens flash the cult's emblem and reuse
-// the market's logos, shop signs and ad.
-// PAT_WINDOW_AD (100): a screen playing a few cycling, procedurally drawn ads (a brand card, a noodle bowl, a
-//   drink, a delivery drone, a sale and a cup of tea), each shown for a few seconds and cross-faded into the
-//   next, with the cult's emblem flashing onto it every once in a while (wd_flash). Every screen's order and
-//   timing come from its seed alone (the window's own position), so none plays in step with another.
-//   Glowing at COLOR.a (the screen's brightness) times the picture's glow mask; the colours come from the
-//   skin's palette (wd_palette: blue to violet and warm white, the decorative hues, never a hazard's).
-// PAT_WINDOW_POSTER (101): a lit poster, wordless like every sign in this market: a shop's own sign, a sale, a
-//   menu or a product, painted in COLOR (the poster's own colour) and cream. Never glowing.
-// UV.y runs 0-1 up the panel and UV.x in the same units (it ends at the panel's aspect ratio); param =
-// MeshKit.window_param(): seed (0-999) + 1000 * kind + 10000 * aspect in tenths (small, so it survives interpolation).
-// Reduced flashing (kit_flash.gdshaderinc): the emblem fades in and out slowly and stays a while, nothing
-// pops (wd_flash_reduced); nothing else here flashes (the scenes' own motion is a slow drift and the
-// cross-fades are soft).
-// Footprints (fwidth) are taken where every pixel of a 2x2 block runs the same code (the dispatch), and
-// everything below branches only on what a whole face shares (its seed and the time).
+// The Marketplace's and the Casino's shop-window displays (task L10; GDD §5, "Cyborg Viewing Devices", the owner's
+// October 17, 2026 decision: no feed TVs in the shop windows). One small material for both (window_display.gdshader,
+// scripts/world/meshes/window_display.gd), not a pattern of the solid kit shader: the solid kit shader is compiled by every
+// zone, and the displays' code would have cost them all (the City-only web demo too) several seconds of compile time.
+// A display is one rectangle, so a chunk with displays draws one more surface, as the feed's TVs did.
+//   kind 0: an ad screen playing a few cycling, procedurally drawn ads (a brand card, noodles, a drink, a delivery drone, a
+//   sale and a cup of tea; in the Casino a brand card, a slot machine, a stack of chips, a cocktail, a champagne bottle and
+//   a pair of dice), each shown for a few seconds, dipping through the screen's dark between one and the next, with the
+//   cult's emblem flashing onto it every once in a while. Every screen's order, timing and flash moment come from its
+//   seed alone (its window's own position), so none plays in step with another. It glows at COLOR.a (the screen's
+//   brightness) times the picture's glow mask; the colours come from the skin's palette (wd_palette: blue to violet and
+//   warm white, the decorative hues, never a hazard's).
+//   kinds 1-4: a lit poster, wordless like every sign in this market: a shop's own sign, a sale, a menu or a product,
+//   painted in COLOR and cream. Never glowing.
+// DESIGN-TBD (docs/questions/l10.md): what the ads and posters show, how often the emblem flashes, and for how long.
+// UV.y runs 0-1 up the panel and UV.x in the same units (it ends at the panel's aspect ratio); UV2.x = the kind, UV2.y =
+// WindowDisplay.param(): seed (0-999) + 1000 * aspect in tenths (small, so it survives the GPU's interpolation).
+// Reduced flashing (kit_flash.gdshaderinc): the emblem fades in and out slowly and stays a while, and the dip between ads
+// is slower; nothing pops (wd_flash_reduced); nothing else here flashes (the scenes' own motion is a slow drift).
+// Footprints (fwidth) are taken where every pixel of a 2x2 block runs the same code (the main function), and everything
+// below branches only on what a whole face shares (its seed and the time): a pixel draws one scene, never two.
+// Include after kit_common, kit_flash and kit_market_signs.
 
 // The ads' colours (sRGB, set by the skin from window_ad_colors): 0 blue, 1 violet, 2 deep indigo (the screens'
 // backgrounds), 3 warm white, 4 pale blue-white (the drawn things), 5 lavender (the accents).
 uniform vec3 wd_palette[6];
-// The emblem's warm white (CultFeed.emblem_color(): the chosen option's own neon, sRGB).
+// The emblem's warm white (CultFeed.emblem_color(): the chosen option's own neon, sRGB) and its coverage in alpha
+// (CultFeed.emblem_texture(), with mipmaps).
 uniform vec3 wd_emblem = vec3(1.0, 0.93, 0.82);
+uniform sampler2D wd_emblem_tex : filter_linear_mipmap, repeat_disable;
+// 1 for the Casino's set of ads (slots, chips, a cocktail), 0 for the Marketplace's.
+uniform int wd_casino = 0;
 // Seconds between one screen's emblem flashes: the shortest and the longest (each screen picks its own).
 uniform vec2 wd_flash_period = vec2(14.0, 26.0);
 // The emblem's flash: seconds fading in, held and fading out; with Reduced flashing, the slower steadier one.
 uniform vec3 wd_flash = vec3(0.22, 1.1, 0.55);
 uniform vec3 wd_flash_reduced = vec3(0.9, 2.0, 0.9);
-// How long a scene stays up, in seconds: the shortest and the longest (each screen picks its own).
+// How long an ad stays up, in seconds: the shortest and the longest (each screen picks its own).
 uniform vec2 wd_scene_time = vec2(5.0, 7.5);
+// The dip through the dark between two ads, each way, as a share of the ad's time; and with Reduced flashing.
+uniform vec2 wd_dip = vec2(0.05, 0.12);
 
 // A shop sign's height in metres (MarketFacades.SIGN_SIZE.x): its letters scale with it.
 const float WD_SIGN_HEIGHT = 0.5;
+// The Casino's six ads, as scene ids.
+const int WD_CASINO_SCENES[6] = int[6](0, 6, 7, 8, 2, 9);
 
 float wd_cov(float d, float aa) {
 	return 1.0 - smoothstep(-aa, aa, d);
@@ -140,7 +150,9 @@ vec3 wd_bottle(vec2 p, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed,
 vec3 wd_drone(vec2 p, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed, out float lit) {
 	vec3 col = mix(bg * 0.6, bg, p.y + 0.5);
 	vec2 q = p - vec2(-0.1 + 0.05 * sin(t * 0.5), 0.1 + 0.015 * sin(t * 1.3));
-	float dash = step(0.5, fract(p.x * 6.0 - t * 0.35)) * wd_cov(abs(p.y + 0.36) - 0.012, aa) * step(-0.8, p.x) * step(p.x, 0.56);
+	// The dashes scroll: box-filtered, so they average into a plain line (not a shimmer) where they are small.
+	float dash = filtered_pulse(p.x * 6.0 - t * 0.35, aa * 6.0, 0.0, 0.5) * wd_cov(abs(p.y + 0.36) - 0.012, aa)
+		* step(-0.8, p.x) * step(p.x, 0.56);
 	col = mix(col, fg, dash * 0.75);
 	vec2 pin = vec2(0.66, -0.3);
 	float pin_head = wd_cov(length(p - pin - vec2(0.0, 0.1)) - 0.075, aa);
@@ -208,7 +220,97 @@ vec3 wd_cup(vec2 p, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed, bo
 	return side ? wd_side(col, p, aa, fg, ac, seed + 3.0, lit) : col;
 }
 
-// 0: the market's own ad (kit_market.gdshaderinc, mk_ad), a brand mark and lines of text with a slow sweep of light.
+// 6 (the Casino's): a slot machine, three reels showing sevens, and a lever.
+vec3 wd_slot(vec2 p, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed, bool side, out float lit) {
+	vec3 col = mix(bg * 0.55, bg * 0.95, p.y + 0.5);
+	vec2 q = p - vec2(-0.3, 0.0);
+	float cab = wd_cov(wd_rbox(q, vec2(0.4, 0.4), 0.06), aa);
+	col = mix(col, ac, cab);
+	col = mix(col, bg * 0.5, wd_cov(wd_rbox(q - vec2(0.0, 0.03), vec2(0.34, 0.24), 0.03), aa));
+	float reels = 0.0;
+	float sevens = 0.0;
+	for (int i = 0; i < 3; i++) {
+		vec2 r = q - vec2(-0.215 + 0.215 * float(i), 0.03);
+		reels = max(reels, wd_cov(wd_rbox(r, vec2(0.09, 0.2), 0.02), aa));
+		sevens = max(sevens, wd_cov(wd_digit(r / 0.23, 7) * 0.23, aa));
+	}
+	col = mix(col, fg, reels);
+	col = mix(col, bg * 0.6, sevens * reels);
+	col = mix(col, fg, wd_cov(wd_rbox(q + vec2(0.0, 0.3), vec2(0.16, 0.03), 0.02), aa));
+	float lever = wd_cov(wd_seg(q, vec2(0.44, 0.1), vec2(0.5, 0.3)) - 0.012, aa);
+	float knob = wd_cov(length(q - vec2(0.5, 0.31)) - 0.04, aa);
+	col = mix(col, fg, max(lever, knob));
+	lit = max(max(cab * 0.6, reels), max(sevens, knob));
+	return side ? wd_side(col, p, aa, fg, ac, seed + 4.0, lit) : col;
+}
+
+// 7 (the Casino's): three stacks of chips.
+vec3 wd_chips(vec2 p, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed, bool side, out float lit) {
+	vec3 col = mix(bg * 0.55, bg * 0.95, p.y + 0.5);
+	float chips = 0.0;
+	for (int s = 0; s < 3; s++) {
+		float fs = float(s);
+		int count = 3 + (s * 2) % 3;
+		for (int i = 0; i < 5; i++) {
+			if (i >= count) {
+				break;
+			}
+			vec2 q = p - vec2(-0.52 + 0.22 * fs, -0.3 + 0.062 * float(i));
+			float chip = wd_cov(wd_rbox(q, vec2(0.1, 0.026), 0.02), aa);
+			float notch = wd_cov(wd_box(vec2(abs(q.x) - 0.065, q.y), vec2(0.02, 0.02)), aa);
+			vec3 tone = ((i + s) % 2 == 0) ? fg : ac;
+			col = mix(col, tone, chip);
+			col = mix(col, bg * 0.5, notch * chip * 0.8);
+			chips = max(chips, chip);
+		}
+	}
+	lit = chips;
+	return side ? wd_side(col, p, aa, fg, ac, seed + 5.0, lit) : col;
+}
+
+// 8 (the Casino's): a cocktail in a cone glass with an olive on a stick.
+vec3 wd_cocktail(vec2 p, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed, bool side, out float lit) {
+	vec3 col = mix(bg * 0.6, bg, p.y + 0.5);
+	vec2 q = p - vec2(-0.3, -0.04);
+	float half_width = 0.26 * clamp((q.y + 0.02) / 0.34, 0.0, 1.0);
+	float cone = wd_cov(max(abs(q.x) - half_width, max(-(q.y + 0.02), q.y - 0.32)) * 0.8, aa);
+	float liquid = cone * wd_cov(q.y - 0.2, aa);
+	float stem = wd_cov(wd_box(q + vec2(0.0, 0.13), vec2(0.016, 0.11)), aa);
+	float foot = wd_cov(wd_rbox(q + vec2(0.0, 0.25), vec2(0.11, 0.02), 0.015), aa);
+	col = mix(col, fg * 0.9, max(cone, max(stem, foot)));
+	col = mix(col, ac, liquid);
+	float stick = wd_cov(wd_seg(q, vec2(0.02, 0.1), vec2(0.15, 0.44)) - 0.007, aa);
+	float olive = wd_cov(length(q - vec2(0.05, 0.19)) - 0.034, aa);
+	col = mix(col, fg, stick);
+	col = mix(col, bg * 0.5, olive);
+	lit = max(max(cone, max(stem, foot)), max(liquid, stick));
+	return side ? wd_side(col, p, aa, fg, ac, seed + 6.0, lit) : col;
+}
+
+// 9 (the Casino's): a pair of dice.
+vec3 wd_dice(vec2 p, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed, out float lit) {
+	vec3 col = mix(bg * 0.55, bg * 0.95, p.y + 0.5);
+	vec2 a = p - vec2(-0.42, 0.04);
+	vec2 ra = vec2(0.955 * a.x + 0.296 * a.y, -0.296 * a.x + 0.955 * a.y);
+	float die_a = wd_cov(wd_rbox(ra, vec2(0.17, 0.17), 0.04), aa);
+	vec2 b = p - vec2(-0.1, -0.06);
+	vec2 rb = vec2(0.98 * b.x - 0.199 * b.y, 0.199 * b.x + 0.98 * b.y);
+	float die_b = wd_cov(wd_rbox(rb, vec2(0.14, 0.14), 0.035), aa);
+	col = mix(col, fg, die_a);
+	col = mix(col, ac, die_b);
+	float pips_a = wd_cov(length(ra) - 0.026, aa);
+	for (int i = 0; i < 4; i++) {
+		vec2 o = vec2((i % 2 == 0) ? -0.09 : 0.09, (i < 2) ? -0.09 : 0.09);
+		pips_a = max(pips_a, wd_cov(length(ra - o) - 0.026, aa));
+	}
+	float pips_b = max(wd_cov(length(rb - vec2(-0.07, 0.07)) - 0.024, aa), wd_cov(length(rb - vec2(0.07, -0.07)) - 0.024, aa));
+	col = mix(col, bg * 0.5, pips_a * die_a);
+	col = mix(col, fg, pips_b * die_b);
+	lit = max(die_a, die_b);
+	return wd_side(col, p, aa, fg, ac, seed + 7.0, lit);
+}
+
+// 0: the market's own ad (kit_market_signs.gdshaderinc, mk_ad), a brand mark and lines of text with a slow sweep of light.
 vec3 wd_brand(vec2 uv, float t, vec3 bg, float seed, out float lit) {
 	float m;
 	vec3 col = mk_ad(min(bg * 1.3, vec3(1.0)), uv, seed, t, m);
@@ -216,7 +318,7 @@ vec3 wd_brand(vec2 uv, float t, vec3 bg, float seed, out float lit) {
 	return col;
 }
 
-// Scene `id` (0-5) at p, in the colours bg (dark), fg (the drawn things) and ac (the accent); `uv` is the
+// Scene `id` (0-9) at p, in the colours bg (dark), fg (the drawn things) and ac (the accent); `uv` is the
 // screen's own, for the market's ad. lit: 0-1, how much of the picture's glow each pixel takes.
 vec3 wd_scene(int id, vec2 p, vec2 uv, float t, float aa, vec3 bg, vec3 fg, vec3 ac, float seed, out float lit) {
 	if (id == 1) {
@@ -229,6 +331,14 @@ vec3 wd_scene(int id, vec2 p, vec2 uv, float t, float aa, vec3 bg, vec3 fg, vec3
 		return wd_sale(p, t, aa, bg, fg, ac, seed, lit);
 	} else if (id == 5) {
 		return wd_cup(p, t, aa, bg, fg, ac, seed, true, lit);
+	} else if (id == 6) {
+		return wd_slot(p, t, aa, bg, fg, ac, seed, true, lit);
+	} else if (id == 7) {
+		return wd_chips(p, t, aa, bg, fg, ac, seed, true, lit);
+	} else if (id == 8) {
+		return wd_cocktail(p, t, aa, bg, fg, ac, seed, true, lit);
+	} else if (id == 9) {
+		return wd_dice(p, t, aa, bg, fg, ac, seed, lit);
 	}
 	return wd_brand(uv, t, bg, seed, lit);
 }
@@ -241,6 +351,19 @@ void wd_colours(float seed, float k, out vec3 bg, out vec3 fg, out vec3 ac) {
 	ac = ci == 0 ? wd_palette[5] : (ci == 1 ? wd_palette[4] : wd_palette[0]);
 }
 
+// The cult emblem's coverage at e (its square spans -1 to 1, y up), fw a pixel's footprint there: the mip level comes
+// from it, so the mark averages into a soft blob as it shrinks, and below about 50 pixels it is thickened to hold up (its
+// thin arrows would otherwise melt into the dark); it fades out only where it is a few pixels across.
+float wd_mark(vec2 e, float fw) {
+	float size = float(textureSize(wd_emblem_tex, 0).x);
+	float lod = log2(max(fw * 0.5 * size, 1.0));
+	float inside = step(abs(e.x), 1.0) * step(abs(e.y), 1.0);
+	float cov = textureLod(wd_emblem_tex, vec2(e.x, -e.y) * 0.5 + 0.5, lod).a * inside;
+	float pixels = 2.0 / max(fw, 1e-5);
+	cov = min(cov * mix(1.0, 2.4, smoothstep(50.0, 16.0, pixels)), 1.0);
+	return cov * smoothstep(3.0, 7.0, pixels);
+}
+
 // The ad screen's picture (sRGB) at uv (UV.y 0-1 up the screen, UV.x in the same units, `aspect` wide), `seed` its
 // own (0-999), t the time, fw = fwidth(uv). glow_mask (0-1) is how much of the picture's glow each pixel takes.
 vec3 wd_ad(vec2 uv, float aspect, float seed, float t, vec2 fw, out float glow_mask) {
@@ -250,41 +373,40 @@ vec3 wd_ad(vec2 uv, float aspect, float seed, float t, vec2 fw, out float glow_m
 	float tt = (t + hash11(seed * 2.17 + 1.0) * 60.0) / slot;
 	float k = floor(tt);
 	float f = tt - k;
-	// Four scenes of the six, in a seeded order, round and round.
+	// Four scenes of the six, in a seeded order, round and round: one at a time, each drawn by its own number whatever
+	// the moment, so nothing jumps when the next comes in.
 	int first = int(floor(hash11(seed * 0.73 + 5.0) * 6.0));
 	int stride = hash11(seed * 4.1 + 9.0) < 0.5 ? 1 : 5;
-	int s0 = (first + stride * int(mod(k, 4.0))) % 6;
+	int index = (first + stride * int(mod(k, 4.0))) % 6;
+	int id = wd_casino == 1 ? WD_CASINO_SCENES[index] : index;
 	vec3 bg;
 	vec3 fg;
 	vec3 ac;
 	wd_colours(seed, k, bg, fg, ac);
 	float lit;
-	vec3 col = wd_scene(s0, p, uv, t, aa, bg, fg, ac, seed, lit);
-	// A soft cross-fade into the next scene over the last part of the slot.
-	float fade = smoothstep(0.9, 1.0, f);
-	if (fade > 0.001) {
-		int s1 = (first + stride * int(mod(k + 1.0, 4.0))) % 6;
-		wd_colours(seed, k + 1.0, bg, fg, ac);
-		float lit1;
-		vec3 next = wd_scene(s1, p, uv, t, aa, bg, fg, ac, seed + 7.0, lit1);
-		col = mix(col, next, fade);
-		lit = mix(lit, lit1, fade);
-	}
-	// The cult's emblem, flashed onto the screen every once in a while: in quickly (never a hard cut), held,
-	// out more slowly; with Reduced flashing in and out over most of a second and held for two.
+	vec3 col = wd_scene(id, p, uv, t, aa, bg, fg, ac, seed + float(id), lit);
+	// A change of ad is a dip through the screen's deep indigo and back up (never two pictures at once: a pixel draws one
+	// scene), quicker than the picture holds, slower with Reduced flashing.
+	vec3 dusk = wd_palette[2] * 0.55;
+	float dip = mix(wd_dip.x, wd_dip.y, reduced_flashing);
+	float up = smoothstep(0.0, dip, f) * (1.0 - smoothstep(1.0 - dip, 1.0, f));
+	col = mix(dusk, col, up);
+	lit = mix(0.45, lit, up);
+	// The cult's emblem, flashed onto the screen every once in a while: in quickly (never a hard cut), held, out more
+	// slowly; with Reduced flashing in and out over most of a second and held for two. It is drawn big, in the emblem's
+	// warm white on a deep dusk of the screen's own palette (never black: the screen is still on) over a soft halo, so it
+	// still reads from a distance as a bright mark on a panel of its own, not a dark gap in the street.
 	float period = mix(wd_flash_period.x, wd_flash_period.y, hash11(seed * 6.7 + 2.0));
 	float ph = t + hash11(seed * 8.9 + 4.0) * period;
 	ph -= period * floor(ph / period);
 	vec3 times = mix(wd_flash, wd_flash_reduced, reduced_flashing);
 	float env = smoothstep(0.0, times.x, ph) * (1.0 - smoothstep(times.x + times.y, times.x + times.y + times.z, ph));
 	if (env > 0.001) {
-		// On a deep warm dusk of the screen's own palette (never black: the screen is still on), the mark in the
-		// emblem's warm white over a soft halo that carries it when it is too small to resolve.
-		vec4 mark = cult_mark(p / 0.34, max(fw.x, fw.y) / 0.34);
-		vec3 e_col = wd_palette[2] * 0.2 + vec3(0.03, 0.02, 0.02) + wd_emblem * (0.22 * exp(-dot(p, p) * 10.0));
-		e_col = mix(e_col, wd_emblem, mark.a);
+		float mark = wd_mark(p / 0.46, max(fw.x, fw.y) / 0.46);
+		vec3 e_col = wd_palette[2] * 0.55 + wd_emblem * (0.3 * exp(-dot(p, p) * 8.0));
+		e_col = mix(e_col, wd_emblem, mark);
 		col = mix(col, e_col, env);
-		lit = mix(lit, 0.2 + 0.8 * mark.a, env);
+		lit = mix(lit, 0.45 + 0.55 * mark, env);
 	}
 	// A flat panel: a little darker toward its corners.
 	vec2 q = p / vec2(aspect * 0.5, 0.5);
@@ -293,18 +415,18 @@ vec3 wd_ad(vec2 uv, float aspect, float seed, float t, vec2 fw, out float glow_m
 	return col;
 }
 
-// A poster (sRGB) at uv (UV.y 0-1 up the poster, UV.x in the same units, `aspect` wide) of
-// `kind` (MeshKit.WINDOW_*), painted in `base`; seed 0-999.
+// A poster (sRGB) at uv (UV.y 0-1 up the poster, UV.x in the same units, `aspect` wide) of `kind` (1-4: WindowDisplay.SIGN
+// to PRODUCT), painted in `base`; seed 0-999.
 vec3 wd_poster(vec2 uv, float aspect, float seed, int kind, vec3 base, vec2 fw) {
 	vec2 p = vec2(uv.x - aspect * 0.5, uv.y - 0.5);
 	float aa = max(fw.x, fw.y) * 1.5 + 1e-4;
 	vec3 cream = vec3(0.93, 0.9, 0.82);
 	vec3 col;
 	float lit;
-	if (kind == 0) {
-		// A shop's own sign: the market's painted shop-sign face (kit_market.gdshaderinc, mk_shopsign).
+	if (kind == 1) {
+		// A shop's own sign: the market's painted shop-sign face (kit_market_signs.gdshaderinc, mk_shopsign).
 		col = mk_shopsign(base, uv * WD_SIGN_HEIGHT, mod(seed, 100.0) + 100.0 * floor(WD_SIGN_HEIGHT * 10.0 + 0.5));
-	} else if (kind == 1) {
+	} else if (kind == 2) {
 		// A sale: cream paper, a starburst in the poster's colour, a number and a percent sign, a thin border.
 		vec3 paper = mix(cream, base, 0.1);
 		vec3 b = wd_burst((p + vec2(0.0, 0.02)) * 1.1, 0.0, aa * 1.1, seed);
@@ -312,7 +434,7 @@ vec3 wd_poster(vec2 uv, float aspect, float seed, int kind, vec3 base, vec2 fw) 
 		col = mix(col, paper, b.y);
 		col = mix(col, base * 0.45, b.z);
 		col = mix(col, base * 0.6, wd_cov(abs(wd_box(p, vec2(aspect * 0.5 - 0.04, 0.46))) - 0.006, aa));
-	} else if (kind == 2) {
+	} else if (kind == 3) {
 		// A menu board: a dark slate, a logo disc and rows of dishes with their prices.
 		vec3 slate = base * 0.3 + vec3(0.03);
 		col = slate;
@@ -333,13 +455,23 @@ vec3 wd_poster(vec2 uv, float aspect, float seed, int kind, vec3 base, vec2 fw) 
 		vec3 bg = mix(base * 0.55, base * 1.1, uv.y);
 		vec3 ac = mix(base, vec3(1.0), 0.55);
 		vec2 s = p * 0.8 + vec2(-0.3, 0.0);
-		float k = mod(seed, 3.0);
-		if (k < 0.5) {
-			col = wd_bowl(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
-		} else if (k < 1.5) {
-			col = wd_bottle(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+		int k = int(mod(seed, 3.0));
+		if (wd_casino == 1) {
+			if (k == 0) {
+				col = wd_cocktail(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+			} else if (k == 1) {
+				col = wd_chips(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+			} else {
+				col = wd_bottle(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+			}
 		} else {
-			col = wd_cup(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+			if (k == 0) {
+				col = wd_bowl(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+			} else if (k == 1) {
+				col = wd_bottle(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+			} else {
+				col = wd_cup(s, 0.0, aa * 0.8, bg, cream, ac, seed, false, lit);
+			}
 		}
 		vec2 c = vec2(-aspect * 0.5 + 0.12, 0.38);
 		float disc = wd_cov(length(p - c) - 0.075, aa);
@@ -347,29 +479,28 @@ vec3 wd_poster(vec2 uv, float aspect, float seed, int kind, vec3 base, vec2 fw) 
 		col = mix(col, bg, market_logo((p - c) / 0.052, seed + 5.0) * disc);
 		col = mix(col, cream, wd_cov(wd_rbox(p - vec2(0.0, -0.4), vec2(aspect * 0.28, 0.02), 0.018), aa) * 0.9);
 	}
-	// Paper: a little grain and a soft light from above, so it reads as lit, not glowing.
-	return col * (0.95 + 0.1 * value_noise(uv * 40.0 + seed)) * (0.9 + 0.14 * uv.y);
+	// Paper: a little grain (gone where a pixel spans several of its cells, or it would shimmer) and a soft light from
+	// above, so it reads as lit, not glowing.
+	float grain = 1.0 + (value_noise(uv * 40.0 + seed) - 0.5) * 0.1 * (1.0 - smoothstep(0.012, 0.04, max(fw.x, fw.y)));
+	return col * grain * (0.9 + 0.14 * uv.y);
 }
 
-// MeshKit.window_param()'s fields: x the seed, y the kind, z the aspect.
-vec3 wd_params(float param) {
+// WindowDisplay.param()'s fields: x the seed, y the aspect (width over height).
+vec2 wd_params(float param) {
 	float c = floor(param + 0.5);
-	float hi = floor((c + 0.5) / 1000.0);
-	float tenths = floor((hi + 0.5) / 10.0);
-	return vec3(c - hi * 1000.0, hi - tenths * 10.0, tenths * 0.1);
+	float tenths = floor((c + 0.5) / 1000.0);
+	return vec2(c - tenths * 1000.0, tenths * 0.1);
 }
 
-// Dispatches the window displays (ids 100-109) for kit_solid.gdshader: the picture (sRGB), and for the screens the
-// glow mask (a poster never glows).
-vec3 window_surface(int pattern, float param, vec3 base, vec2 uv, vec2 fw, float t, inout float glow) {
-	vec3 q = wd_params(param);
-	if (pattern == 100) {
+// The panel's picture (sRGB) for `kind` (0 an ad screen, 1-4 a poster), and for the screens the glow mask (a poster never
+// glows).
+vec3 window_surface(int kind, float param, vec3 base, vec2 uv, vec2 fw, float t, inout float glow) {
+	vec2 q = wd_params(param);
+	if (kind == 0) {
 		float mask;
-		vec3 c = wd_ad(uv, q.z, q.x, t, fw, mask);
+		vec3 c = wd_ad(uv, q.y, q.x, t, fw, mask);
 		glow *= mask;
 		return c;
-	} else if (pattern == 101) {
-		return wd_poster(uv, q.z, q.x, int(q.y + 0.5), base, fw);
 	}
-	return base;
+	return wd_poster(uv, q.y, q.x, kind, base, fw);
 }

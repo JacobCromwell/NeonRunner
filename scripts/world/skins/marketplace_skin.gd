@@ -240,8 +240,11 @@ extends ZoneSkin
 @export var window_poster_colors: PackedColorArray = PackedColorArray([
 	Color(0.22, 0.36, 0.62), Color(0.44, 0.34, 0.62), Color(0.26, 0.4, 0.58), Color(0.84, 0.8, 0.7),
 	Color(0.32, 0.42, 0.46), Color(0.56, 0.44, 0.54)])
-## How long an ad stays up before the next, in seconds (each screen picks its own between these).
+## How long an ad stays up before the next, in seconds (each screen picks its own between these), and the dip through the
+## screen's dark that changes one for the next (each way, as a share of that time; the second with Reduced flashing).
+## Never two pictures at once, and never faster than a few tenths of a second.
 @export var ad_scene_time: Vector2 = Vector2(5.0, 7.5)
+@export var ad_dip: Vector2 = Vector2(0.05, 0.12)
 ## Seconds between the cult emblem's flashes on one screen (each screen picks its own, from its window's position,
 ## and its own moment in the cycle, so no two flash together): the shortest and the longest.
 @export var emblem_flash_period: Vector2 = Vector2(14.0, 26.0)
@@ -529,10 +532,7 @@ func carries_emblem(a: int, b: int) -> bool:
 
 func solid_material() -> ShaderMaterial:
 	if not _materials.has(&"solid"):
-		var m: ShaderMaterial = MeshKit.solid(_solid_params())
-		# The emblem's coverage the window screens flash (MeshKit.PAT_WINDOW_AD; the owner's pick, drawn by CultEmblem).
-		m.set_shader_parameter(&"cult_emblem", CultFeed.emblem_texture())
-		_materials[&"solid"] = m
+		_materials[&"solid"] = MeshKit.solid(_solid_params())
 	return _materials[&"solid"]
 
 
@@ -589,18 +589,24 @@ func _solid_params() -> Dictionary:
 	for i: int in 2:
 		var c: Color = awning_colors[i % awning_colors.size()]
 		awnings.append(Vector3(c.r, c.g, c.b))
-	var params: Dictionary = {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
+	return {"glow_scale": emissive_scale, "sheen_color": sheen_color, "sheen_strength": sheen_strength,
 		"canvas_stripe": awning_stripe_color, "canvas_pole": seam_color,
 		"stall_slot": stall_slot, "stall_awning_share": awning_share, "stall_tin_share": tin_share,
 		"stall_canvas": canvas, "stall_awning": awnings, "stall_tin": Vector3(tin_color.r, tin_color.g, tin_color.b),
 		"market_dust": dust_tint, "market_dust_amount": wear}
-	params.merge(window_display_params())
-	return params
 
 
-## The solid material's uniforms for the shop windows' ad screens (kit_window.gdshaderinc, task L10): the ads' palette
-## (sRGB, as the shader wants it), the emblem's warm white, and the timing of the scenes and of the emblem's flash. The
-## Casino merges these into its own.
+## The shop windows' ad screens and posters (WindowDisplay, task L10): their own small material, shared by every mesh of
+## the skin and by the Casino's (window_display_params() is where it differs).
+func display_material() -> ShaderMaterial:
+	if not _materials.has(&"display"):
+		_materials[&"display"] = WindowDisplay.material(window_display_params(), emissive_scale)
+	return _materials[&"display"]
+
+
+## The display material's uniforms (window_display.gdshaderinc): the ads' palette (sRGB, as the shader wants it), the emblem's
+## warm white, and the timing of the scenes, of the dip between them and of the emblem's flash. The Casino adds its own set
+## of ads.
 func window_display_params() -> Dictionary:
 	var palette := PackedVector3Array()
 	for i: int in 6:
@@ -609,7 +615,8 @@ func window_display_params() -> Dictionary:
 	var emblem: Color = CultFeed.emblem_color()
 	return {"wd_palette": palette, "wd_emblem": Vector3(emblem.r, emblem.g, emblem.b),
 		"wd_flash_period": emblem_flash_period, "wd_flash": emblem_flash_times,
-		"wd_flash_reduced": emblem_flash_times_reduced, "wd_scene_time": ad_scene_time}
+		"wd_flash_reduced": emblem_flash_times_reduced, "wd_scene_time": ad_scene_time, "wd_dip": ad_dip,
+		"wd_casino": 0}
 
 
 func dash_walls() -> MarketDashWall:
@@ -648,12 +655,19 @@ func citizens() -> MarketCitizens:
 	return _citizens
 
 
-## One citizen for the shader warm-up (ShaderWarmup, task PERF1, calls this on a skin that has it): the people's mesh and
-## shader drawn once while the level loads, so the Compatibility renderer doesn't compile them the first time a window
-## with a citizen comes into view mid-run.
+## One citizen and one display face for the shader warm-up (ShaderWarmup, task PERF1, calls this on a skin that has it): the
+## people's mesh and shader and the shop windows' display material drawn once while the level loads, so the Compatibility
+## renderer doesn't compile them the first time a window with a citizen or a display comes into view mid-run.
 func warm_samples(parent: Node3D) -> void:
 	if Settings.citizens_enabled:
 		citizens().spawn(parent, [MarketCitizens.sample_person()] as Array[Dictionary])
+	# The shop windows' display material (WindowDisplay, task L10), whose first window may come further on than the
+	# level's first chunks: one ad screen's face, so the Compatibility renderer compiles it here, not mid-run.
+	var batch := MeshBatch.new()
+	var color: Color = window_ad_colors[0] if not window_ad_colors.is_empty() else Color(0.3, 0.5, 0.95)
+	WindowDisplay.add(batch.layer(display_material()), Vector3.ZERO, Vector3(1.8, 0.0, 0.0), Vector3(0.0, 1.0, 0.0),
+		WindowDisplay.AD, 0, color, window_screen_glow)
+	batch.commit(parent, "WindowDisplaySample")
 
 
 func doodads() -> MarketDoodads:

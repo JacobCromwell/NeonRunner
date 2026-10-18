@@ -87,9 +87,6 @@ vec4 cult_mark(vec2 p, float fw) {
 
 // The cult's emblem as a mark of its own (ids 60-69).
 #include "res://scripts/world/meshes/shaders/kit_cult.gdshaderinc"
-// The shop windows' displays of the Marketplace and the Casino (ids 100-109, task L10), after cult_mark() and
-// kit_market: the screens flash the cult's emblem, and reuse the market's logos, shop signs and ad.
-#include "res://scripts/world/meshes/shaders/kit_window.gdshaderinc"
 // Golden Zone patterns (ids 50-59), after cult_mark(): its emblems use it.
 #include "res://scripts/world/meshes/shaders/kit_golden.gdshaderinc"
 // Golden Palace patterns (ids 70-79, task D6b), after kit_golden: it reuses golden_metal() and
@@ -402,10 +399,6 @@ void fragment() {
 	if (pattern >= 60 && pattern < 70) {
 		// The cult's emblem (kit_cult.gdshaderinc).
 		base = cult_surface(pattern, base, UV, fwidth(UV), panel_dark, glow);
-	}
-	if (pattern >= 100 && pattern < 110) {
-		// The shop windows' displays (kit_window.gdshaderinc, task L10).
-		base = window_surface(pattern, UV2.y, base, UV, fwidth(UV), TIME, glow);
 	}
 	if (pattern >= 40 && pattern < 50) {
 		// The Dead Zone (kit_dead_zone.gdshaderinc).

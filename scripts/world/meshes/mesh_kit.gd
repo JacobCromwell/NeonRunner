@@ -261,19 +261,6 @@ const PAT_BEACH_PAINT: int = 97
 const PAT_BEACH_NEON: int = 98
 ## Bamboo poles, rails, planks and palm trunks (world position): param = beach_timber_param().
 const PAT_BEACH_TIMBER: int = 99
-## The shop windows' displays of the Marketplace and the Casino (kit_window.gdshaderinc), ids 100-109 (task L10; GDD
-## §5 "Cyborg Viewing Devices": the owner's October 17, 2026 decision, no feed TVs in the shop windows). UV.y runs 0-1
-## up the panel and UV.x in the same units (it ends at the panel's aspect ratio); param = window_param().
-## A screen playing a few cycling, procedurally drawn ads, glowing (COLOR.a is its brightness; COLOR.rgb a blue-to-violet
-## decorative hue), with the cult's emblem flashing on it every once in a while (honouring Reduced flashing).
-const PAT_WINDOW_AD: int = 100
-## A lit poster (a shop's own sign, a sale, a menu or a product), paint in COLOR (the poster's own colour), never glowing.
-const PAT_WINDOW_POSTER: int = 101
-## PAT_WINDOW_POSTER's kinds.
-const WINDOW_SIGN: int = 0
-const WINDOW_SALE: int = 1
-const WINDOW_MENU: int = 2
-const WINDOW_PRODUCT: int = 3
 ## PAT_BEACH_SAND's and PAT_BEACH_BOARDWALK's flags.
 const BEACH_SEAM_LEFT: int = 1
 const BEACH_SEAM_RIGHT: int = 2
@@ -338,14 +325,6 @@ static func pick(values: Array, a: int, b: int = 0, c: int = 0) -> Variant:
 ## A stable integer key for a track distance or a position (to hash on), at centimetre precision.
 static func key(value: float) -> int:
 	return roundi(value * 100.0)
-
-
-## The PAT_WINDOW_AD and PAT_WINDOW_POSTER parameter: a `seed` (0-999) that picks the ads' order and timing or the
-## poster's drawing, the poster's `kind` (WINDOW_*, 0-9; an ad's is 0) and the panel's `aspect` (width over height, to a
-## tenth, up to 5). Kept under about 500,000: the GPU interpolates a vertex value across a face with a float's
-## precision, so a parameter of millions would wander by whole numbers over an oblique face and the seed with it.
-static func window_param(seed: int, kind: int, aspect: float) -> float:
-	return float(posmod(seed, 1000) + 1000 * clampi(kind, 0, 9) + 10000 * clampi(roundi(aspect * 10.0), 1, 50))
 
 
 ## The PAT_STENCIL parameter: `kind` (STENCIL_*), a marking 0.3 m tall per `size` step (0-3, 0.3 to

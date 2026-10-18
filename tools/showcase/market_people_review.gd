@@ -174,17 +174,19 @@ func _shot_list() -> Array:
 			"citizen %d from the game camera 14 m before" % shown])
 		out.append([at, Vector3(0.0, tuning.camera_height, -(at - 7.0)), Vector3(p.x, 1.3, p.z),
 			"citizen %d from the game camera 7 m before" % shown])
-	var tv: Dictionary = {}
+	var display: Dictionary = {}
 	for side: int in [1, -1]:
 		for found: Dictionary in skin.call(&"shop_windows", side, side * w, 40.0, LENGTH - 60.0):
-			if found.get("screen", false) and (tv.is_empty() or float(found["at"]) < float(tv["at"])):
-				tv = found
-	if not tv.is_empty():
-		var c: Vector3 = tv["center"]
-		var side: float = float(tv["side"])
+			if found.get("screen", false) and (display.is_empty() or float(found["at"]) < float(display["at"])):
+				display = found
+	if not display.is_empty():
+		var c: Vector3 = display["center"]
+		var side: float = float(display["side"])
 		var inside := Vector3(c.x + side * 0.45, 1.55, c.z)
-		out.append([float(tv["at"]), Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside, "the nearest window with an ad screen or a poster, close up"])
-		out.append([float(tv["at"]), Vector3(0.0, tuning.camera_height, c.z + 14.0), inside, "that window from the game camera"])
+		out.append([float(display["at"]), Vector3(c.x - side * 2.6, 1.9, c.z + 2.2), inside,
+			"the nearest window with an ad screen or a poster, close up"])
+		out.append([float(display["at"]), Vector3(0.0, tuning.camera_height, c.z + 14.0), inside,
+			"that window from the game camera"])
 	return out
 
 
