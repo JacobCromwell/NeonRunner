@@ -1,6 +1,6 @@
 // The cult's feed (GDD §5, "Cyborg Viewing Devices"): the cult reaches people through their
-// screens, so every zone shows the same wordless broadcast on its billboards, ads and shop-window
-// TVs, in sync everywhere. Shared by every skin (scripts/world/meshes/cult_feed.gd).
+// screens, so every zone shows the same wordless broadcast on its billboards and ads, in sync
+// everywhere. Shared by every skin (scripts/world/meshes/cult_feed.gd).
 // DESIGN-TBD (docs/questions/d2.md): what the feed shows. Placeholder: a beat-up CRT picture in
 // cold white, like the cyborgs' screen heads (task P2), with scanlines, soft static and a slow
 // rolling bar, looping through a screen-head face, the cult's emblem (CultEmblem, the owner's

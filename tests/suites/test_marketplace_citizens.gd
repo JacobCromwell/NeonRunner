@@ -1,7 +1,7 @@
 extends SkinSuite
 ## The Marketplace citizens (GDD §5, "Citizens"; GDD §9.2; tasks D3 and L7): real low-poly people standing in the shop
-## windows, scenery only, seeded from the chunk so the same window always gets the same citizen, never in a feed window or
-## a window a window cyborg stands in, switched off by Settings.citizens_enabled, one MultiMesh of them to a wall section
+## windows, scenery only, seeded from the chunk so the same window always gets the same citizen, never in a window holding an ad screen or
+## a poster (task L10) or a window a window cyborg stands in, switched off by Settings.citizens_enabled, one MultiMesh of them to a wall section
 ## (never a node a person), dressed plainly (muted clothes, nothing glowing, never a hazard's hue) and moved by their shader
 ## alone; and cheering when the run's CreditField or EnemyDirector says something big happened, or The House asks
 ## (CLAUDE.md principle 1: they read the player's position but add no collision or gameplay of their own).
@@ -288,7 +288,7 @@ func _reactions_blend() -> void:
 	MarketPeople.reset()
 
 
-## Never in a feed window (shop_windows()'s `screen`), nor one a window cyborg stands in
+## Never in a window holding an ad screen or a poster (shop_windows()'s `screen`), nor one a window cyborg stands in
 ## (note_wall_enemies(), GDD §9.2: "kept apart").
 func _only_in_free_windows(skin: MarketplaceSkin) -> void:
 	var geo := TrackGeometry.new(5, tuning)
@@ -302,7 +302,7 @@ func _only_in_free_windows(skin: MarketplaceSkin) -> void:
 			screen_ats.append(float(w["at"]))
 		elif free_at < 0.0:
 			free_at = float(w["at"])
-	check(free_at >= 0.0 and not screen_ats.is_empty(), "the test level has both a free and a feed window to check")
+	check(free_at >= 0.0 and not screen_ats.is_empty(), "the test level has both a free and a display window to check")
 	skin.note_wall_enemies(side, 0.0, 120.0, [{"type": "window_cyborg", "at": free_at, "side": side}])
 	var parent := Node3D.new()
 	tree.root.add_child(parent)
@@ -317,7 +317,7 @@ func _only_in_free_windows(skin: MarketplaceSkin) -> void:
 		for sa: float in screen_ats:
 			if is_equal_approx(at, sa):
 				ok = false
-	check(ok and not placed.is_empty(), "citizens avoid the reserved window and every feed window (%d placed)" %
+	check(ok and not placed.is_empty(), "citizens avoid the reserved window and every display window (%d placed)" %
 		placed.size())
 	skin.note_wall_enemies(side, 0.0, 120.0, [])  # Leave the skin as _off_switch() etc. expect it.
 	parent.queue_free()
@@ -501,7 +501,8 @@ func _warm_sample(skin: MarketplaceSkin) -> void:
 	var off := Node3D.new()
 	tree.root.add_child(off)
 	skin.warm_samples(off)
-	check(off.get_child_count() == 0, "with the citizens switched off the warm-up draws none")
+	check(off.get_children().filter(func(n: Node) -> bool: return n is MarketCrowd).is_empty(),
+		"with the citizens switched off the warm-up draws none (its one other sample is the shop windows' display face)")
 	Settings.citizens_enabled = saved
 	parent.queue_free()
 	off.queue_free()

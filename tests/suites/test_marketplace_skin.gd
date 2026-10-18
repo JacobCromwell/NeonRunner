@@ -17,8 +17,8 @@ extends SkinSuite
 ##   underside over exactly its lanes, the orange end band, the lane seams;
 ## - the cult's emblem is the owner's choice (data/world/cult_emblem_choice.tres) in its own colours,
 ##   hidden here and there in ads and shop signs, never smaller than emblem_min_size;
-## - the cult's feed (CultFeed) plays on billboards and ads high up and on TVs in some shop windows,
-##   and nowhere else;
+## - the cult's feed (CultFeed) plays on billboards and ads high up and nowhere else (no TVs in the shop windows: they hold
+##   ad screens and posters, task L10, test_window_displays);
 ## - the still floor carries drifting dust and speed streaks.
 
 const MARKET_SKIN_PATH: String = "res://data/skins/marketplace_skin.tres"
@@ -527,21 +527,22 @@ func _cult_emblem(skin: MarketplaceSkin) -> void:
 
 
 ## The cult's feed (CultFeed, GDD §5 "Cyborg Viewing Devices") plays in the market alongside the
-## ordinary ads: on billboards, casino signs and floating ads high up, and on TVs inside some shop
-## windows, all with the one shared feed material, and nowhere else (never on the wall-run band's
-## faces, never over the lanes below the ceilings). Checked over a whole level.
+## ordinary ads: on billboards, casino signs and floating ads high up, all with the one shared feed
+## material, and nowhere else (never in a shop window, on the wall-run band's faces, or over the lanes below
+## the ceilings). Checked over a whole level.
 func _cult_feed(skin: MarketplaceSkin) -> void:
 	check(skin.feed_material() == CultFeed.material(), "the market plays the shared feed")
 	var geo := TrackGeometry.new(5, tuning)
 	var wall: float = geo.wall_x()
 	var boards: int = 0
-	var tvs: int = 0
+	var displays: int = 0
 	for side: int in [-1, 1]:
 		boards += skin.feed_boards(side, side * wall, 0.0, 3000.0).size()
 		for w: Dictionary in skin.shop_windows(side, side * wall, 0.0, 3000.0):
 			if w["screen"]:
-				tvs += 1
-	check(boards > 0 and tvs > 0, "over 3 km the feed plays on %d billboards and %d shop-window TVs" % [boards, tvs])
+				displays += 1
+	# The shop windows hold ad screens and posters, never the feed's TV (task L10, the owner's October 17, 2026 decision).
+	check(boards > 0 and displays > 0, "over 3 km the feed plays on %d billboards, and %d shop windows hold ad screens or posters instead" % [boards, displays])
 	var layout: LevelLayout = level(MARKET_LEVEL_PATH, 5, 0.6, 5)
 	var world := Node3D.new()
 	tree.root.add_child(world)
@@ -574,8 +575,8 @@ func _cult_feed(skin: MarketplaceSkin) -> void:
 						elif bad.size() < 4:
 							bad.append(str(p))
 		d += TrackBuilder.CHUNK_LENGTH
-	check(bad.is_empty() and shown["display"] > 0 and shown["high"] > 0,
-		"the feed plays only high up (%d screens) and inside shop windows (%d TVs): %s" % [shown["high"], shown["display"],
+	check(bad.is_empty() and shown["display"] == 0 and shown["high"] > 0,
+		"the feed plays only high up (%d screens), never in a shop window (%d there): %s" % [shown["high"], shown["display"],
 		", ".join(bad)])
 	world.queue_free()
 	await tree.process_frame

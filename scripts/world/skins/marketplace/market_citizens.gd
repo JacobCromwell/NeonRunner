@@ -7,7 +7,8 @@ extends RefCounted
 ## position (seeded, like every other piece of this skin: MeshKit.hash_i), so a chunk builds the same citizens
 ## every time; only their watching and cheering depend on the run.
 ##
-## Keeps windows to one use each: never a feed window (shop_windows()'s `screen`), and never a
+## Keeps windows to one use each: never a window holding an ad screen or a poster (shop_windows()'s `screen`, task L10:
+## the displays hang in the window, and a person would stand behind one), and never a
 ## window a window cyborg stands in (MarketplaceSkin.note_wall_enemies(); GDD §9.2 says they must
 ## read apart, see docs/questions/d3.md). Switched off entirely when Settings.citizens_enabled is
 ## false (a low-end device, or the player's own choice): CLAUDE.md, "added only if they don't

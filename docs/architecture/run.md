@@ -297,7 +297,19 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
   to 0.3 ms), all in one frame every 1.6 to 1.9 s, and up 5 to 15% since `a5e691b` in the Marketplace and
   Corporate (the Marketplace's citizens, once flipbook cards (0.7 ms of 3.8 ms a chunk then, 0.4 of 2 measured again in L7), are since task L7 real people in one
   MultiMesh a wall section: 0.2 to 0.3 ms a 40 m chunk for twice as many, 4.5 people and 1.9 draw calls a chunk, and nothing a
-  frame on the CPU but one uniform; `tools/measure/market_people_cost.gd`, `Settings.citizens_enabled` off). `TrackBuilder.dress_budget_usec` (LevelRun sets it from
+  frame on the CPU but one uniform; `tools/measure/market_people_cost.gd`, `Settings.citizens_enabled` off). The Marketplace's and the Casino's shop-window displays (task L10:
+  ad screens and posters in place of the feed TVs, each face one rectangle in a small material of their own, `WindowDisplay`,
+  `docs/architecture/skins-marketplace-corporate-deadzone-casino.md`) cost about what the TVs did: a chunk with displays draws one more surface,
+  the display material's, besides the feed's when a billboard plays it, so a chunk's surfaces (`SkinSuite`'s tally, 69 chunks, 3/5/6 lanes) went from
+  19.3/25.0/28.7 to 19.7/25.4/29.1 in the Marketplace and from 19.8/25.7/29.3 to 20.1/25.9/29.6 in the Casino, the vertices from
+  8,673/9,248/9,791 to 8,656/9,231/9,775 and 9,507/9,925/10,457 to 9,491/9,909/10,441, the build times the same (2.0 to 2.6 ms mean, within the run-to-run
+  noise); played (`tools/measure/frame_times.gd`, 30 s, 5 lanes) the CPU's frame times are unchanged (Marketplace 2 median 1.0 ms, p99 3.0 to 3.2 ms;
+  Casino 1 median 0.9 to 1.0 ms, p99 2.8 to 3.0 ms), and on the Compatibility renderer (software, so counts only; `--session --shaders`) the draw calls a
+  frame are within three of main's (Marketplace 2 278 median and 415 most to 280 and 418, Casino 1 263 and 424 to 265 and 426), primitives about 35 fewer,
+  one material and one shader more (119 and 35 to 120 and 36, 102 and 34 to 103 and 35), none first drawn after the load (the skin's warm-up draws a display face).
+  The displays were first a pattern of the solid kit shader, which every zone compiles: its first compile on the Compatibility renderer took about 936 ms
+  instead of main's 675 (software renderer, a quad drawn after a plain frame), 40% more for every zone and the City-only web demo; it is back to
+  673 ms (the displays' own material takes about 140 ms, drawn only where a Marketplace or Casino level shows one). `TrackBuilder.dress_budget_usec` (LevelRun sets it from
   `PerformanceTuning.chunk_dress_budget_ms`, 1 ms, F6 "Performance") builds a chunk's gameplay nodes in its
   frame as before and queues the skin's calls, which `update()` makes in order, about the budget a frame (at
   least one call), finishing a chunk's whatever the time once the player is `DRESS_BY` (120 m) from it.

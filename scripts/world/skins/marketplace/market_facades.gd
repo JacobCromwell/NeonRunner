@@ -5,7 +5,8 @@ extends RefCounted
 ## casino or a market hall. Every building face is flush with the wall face from the market floor up
 ## past the wall-run band: that plane is the wall-run surface. Low on it, just above a tiled plinth,
 ## runs a row of shop windows: real openings with a display of goods behind them under a warm lamp,
-## where the Marketplace citizens play (task D3, MarketCitizens: windows() lists them). Above them the band
+## where the Marketplace citizens play (task D3, MarketCitizens: windows() lists them) and some hold an ad screen or a
+## lit poster instead (task L10: display_of(), _display()). Above them the band
 ## stays calm (shutters closed, no signs, no lights), and nothing but a hazard sign ever sticks out
 ## of the wall below `decor_min_height`. Higher up the market gets busy and plainly futuristic (GDD
 ## §5: the same future as every zone): lit and frosted smart-glass windows, blue awnings on slim
@@ -43,11 +44,30 @@ const LETTERING_ONLY: int = 10000
 const WINDOW_VARIANTS: int = 6
 ## Cables across the street: one slot per this many metres (some slots stay empty).
 const CABLE_SPACING: float = 11.0
-## A shop-window TV (MarketplaceSkin.feed_window_share): its stand's height, its gap from the
-## display's back wall and its bezel.
-const TV_STAND: float = 0.34
-const TV_BACK: float = 0.06
-const TV_BEZEL: float = 0.07
+## A shop-window display (task L10; MarketplaceSkin.window_display_share): a panel hung in the window, `PANEL_BORDER`
+## of dark frame all round and `PANEL_DEPTH` thick, in one of these sizes (metres; the aspect is a whole tenth, which is how
+## the shader is told, WindowDisplay.param()). Turned toward the runner as far as it fits (_hang_panel()): the whole panel
+## stays `PANEL_MARGIN` clear of the glass and of the display's back wall.
+const PANEL_DEPTH: float = 0.08
+const PANEL_BORDER: float = 0.05
+const PANEL_MARGIN: float = 0.02
+## How far a panel's face stands off its frame, so the two never z-fight.
+const PANEL_LIFT: float = 0.015
+## An ad screen: its aspect, its share of the window's width (and the least and most it is wide), and how high its stand
+## lifts it off the display's floor.
+const SCREEN_ASPECT: float = 1.8
+const SCREEN_SHARE: float = 0.5
+const SCREEN_WIDTH := Vector2(1.4, 1.6)
+const SCREEN_LIFT: float = 0.42
+## The posters (a shop's own sign, a sale, a menu, a product), their height and aspect (the sign's height is the shader's
+## WD_SIGN_HEIGHT).
+const SIGN_SIZE := Vector2(0.5, 4.2)
+const SALE_SIZE := Vector2(1.0, 1.0)
+const MENU_SIZE := Vector2(1.0, 0.7)
+const PRODUCT_SIZE := Vector2(1.0, 1.4)
+## What a window holds (display_of()).
+enum Display { NONE, AD_SCREEN, POSTER }
+const DISPLAY_NAMES: Array[StringName] = [&"", &"ad", &"poster"]
 ## Interior wall colours of the shop displays (lit, never glowing).
 const INTERIORS: Array[Color] = [Color(0.66, 0.6, 0.5), Color(0.5, 0.56, 0.58), Color(0.64, 0.55, 0.47),
 	Color(0.58, 0.55, 0.6), Color(0.7, 0.67, 0.6)]
@@ -253,10 +273,12 @@ func windows(side: int, face_x: float, start: float, end: float) -> Array[Dictio
 		for w: Vector2 in b.windows:
 			var at: float = (w.x + w.y) * 0.5
 			if at >= start and at < end and not skin.wall_gap_near(side, w.x, w.y):
+				var shown: int = display_at(b, w)
 				out.append({"side": side, "at": at,
 					"center": Vector3(face_x, (skin.gallery_bottom + skin.gallery_top) * 0.5, -at),
 					"width": w.y - w.x, "bottom": skin.gallery_bottom, "top": skin.gallery_top, "depth": skin.shop_depth,
-					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": _has_tv(b, w)})
+					"kind": [&"shop", &"casino", &"hall"][b.kind], "screen": shown != Display.NONE,
+					"display": DISPLAY_NAMES[shown]})
 		span = MeshKit.lot_run(side, span.y + 1, 0.45, 3, 3)
 	return out
 
@@ -332,42 +354,151 @@ func _pier(facade: MeshLayer, side: int, face_x: float, p0: float, p1: float, u0
 			STYLE_PIER, b.seed, p0)
 
 
-## Shop window w (start and end distances) of building b: a cached template placed on the wall, and
-## in some a TV playing the cult's feed (its screen is added here, facing the street the right way
-## round on either wall; the template's mirror would flip the picture).
+## Shop window w (start and end distances) of building b: a cached template placed on the wall, and in some a display
+## (task L10): an ad screen or a lit poster. Its panel is added here, facing the street the right way round on either
+## wall (the template's mirror would flip the picture).
 func _shop_window(batch: MeshBatch, b: Building, w: Vector2, face_x: float) -> void:
 	var variant: int = MeshKit.hash_i(b.side, MeshKit.key(w.x), 41) % WINDOW_VARIANTS
-	var tv: bool = _has_tv(b, w)
-	batch.append(window_template(b.kind, w.y - w.x, variant, b.side, tv), Transform3D(Basis.IDENTITY,
-		Vector3(face_x, 0.0, -w.x)))
-	if tv:
-		var size: Vector3 = _tv_size(w.y - w.x)
-		# The TV's front, inside the building (the wall face is at face_x, the display runs back from it).
-		var x: float = face_x + b.side * (skin.shop_depth - TV_BACK - size.x - 0.003)
-		var at: float = (w.x + w.y) * 0.5
-		var screen: Array = _wall_screen(b.side, x, at - size.z * 0.5 + TV_BEZEL, size.z - TV_BEZEL * 2.0,
-			skin.gallery_bottom + TV_STAND + TV_BEZEL, size.y - TV_BEZEL * 2.0)
-		CultFeed.screen(batch.layer(skin.feed_material()), screen[0], screen[1], screen[2], skin.feed_window_brightness,
-			MeshKit.key(w.x))
+	batch.append(window_template(b.kind, w.y - w.x, variant, b.side), Transform3D(Basis.IDENTITY, Vector3(face_x, 0.0, -w.x)))
+	var shown: int = display_at(b, w)
+	if shown != Display.NONE:
+		_display(batch, b, w, face_x, shown)
 
 
-## Whether shop window w of building b has a TV playing the cult's feed (feed_window_share of them).
-func _has_tv(b: Building, w: Vector2) -> bool:
-	return MeshKit.hash01(b.side, MeshKit.key(w.x), 43) < skin.feed_window_share
+## What shop window w of building b holds (Display): window_display_share of the windows hold something, of which
+## window_screen_share an ad screen and the rest a lit poster. Picked from the window's own track position.
+func display_of(b: Building, w: Vector2) -> int:
+	# One number picks both: the lowest window_screen_share of the display share are the screens.
+	var r: float = MeshKit.hash01(b.side, MeshKit.key(w.x), 43)
+	if r >= skin.window_display_share:
+		return Display.NONE
+	return Display.AD_SCREEN if r < skin.window_display_share * skin.window_screen_share else Display.POSTER
 
 
-## A shop-window TV's size (depth, height, width) for a window `width` long: a boxy old CRT set.
-static func _tv_size(width: float) -> Vector3:
-	var tw: float = clampf(width * 0.36, 0.72, 1.05)
-	return Vector3(0.36, tw * 0.78, tw)
+## What the window holds as built and listed (shop_windows()): display_of(), but none in the window of a window cyborg
+## (MarketplaceSkin.note_wall_enemies(), within the citizens' own CYBORG_MARGIN of it), so nothing beside a screen-headed
+## cyborg passes for another or competes with its glass.
+## DESIGN-TBD (docs/questions/l10.md): that a window cyborg's window stays bare of displays, as it does of citizens.
+func display_at(b: Building, w: Vector2) -> int:
+	var shown: int = display_of(b, w)
+	if shown != Display.NONE and skin.reserved_near(b.side, (w.x + w.y) * 0.5, MarketCitizens.CYBORG_MARGIN):
+		return Display.NONE
+	return shown
+
+
+## The poster kind (WindowDisplay.SIGN to PRODUCT) of window w of building b, if it holds one.
+func poster_kind(b: Building, w: Vector2) -> int:
+	return WindowDisplay.SIGN + MeshKit.hash_i(b.side, MeshKit.key(w.x), 53) % WindowDisplay.POSTER_KINDS
+
+
+## Display `shown` in window w of building b: the panel's frame (and its stand, legs or rod) in the solid layer, its face in
+## the display material's (WindowDisplay). The ad screen stands on a low plinth near the glass; the posters hang there
+## from the lintel or, a menu, stand on the floor on a pair of legs.
+## DESIGN-TBD (docs/questions/l10.md): what they are, their sizes and where they hang.
+func _display(batch: MeshBatch, b: Building, w: Vector2, face_x: float, shown: int) -> void:
+	var solid: MeshLayer = batch.layer(skin.solid_material())
+	var faces: MeshLayer = batch.layer(skin.display_material())
+	var key: int = MeshKit.key(w.x)
+	var width: float = w.y - w.x
+	var g0: float = skin.gallery_bottom
+	var g1: float = skin.gallery_top
+	var seed: int = MeshKit.hash_i(b.side, key, 59) % 1000
+	var frame: Color = skin.window_frame_color
+	if shown == Display.AD_SCREEN:
+		var pw: float = clampf(width * SCREEN_SHARE, SCREEN_WIDTH.x, SCREEN_WIDTH.y)
+		var ph: float = pw / SCREEN_ASPECT
+		var yc: float = g0 + SCREEN_LIFT + ph * 0.5
+		var face: Array = _hang_panel(solid, b, w, face_x, 0.45, pw, ph, yc, 0.34, frame)
+		var base: Color = skin.window_ad_colors[0] if not skin.window_ad_colors.is_empty() else Color(0.3, 0.5, 0.95)
+		WindowDisplay.add(faces, face[0], face[1], face[2], WindowDisplay.AD, seed, base, skin.window_screen_glow)
+		# Its plinth, behind its middle on the display's floor.
+		var middle: Vector3 = face[3]
+		var stand: float = SCREEN_LIFT - PANEL_BORDER
+		solid.box(Vector3(middle.x + b.side * (PANEL_DEPTH + 0.02), g0 + stand * 0.5, middle.z), Vector3(0.12, stand, 0.46),
+			frame, 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
+		return
+	var kind: int = poster_kind(b, w)
+	var size: Vector2 = [SIGN_SIZE, SALE_SIZE, MENU_SIZE, PRODUCT_SIZE][kind - WindowDisplay.SIGN]
+	var ph: float = size.x
+	var pw: float = ph * size.y
+	var along: float = 0.5
+	var yc: float = (g0 + g1) * 0.5 + 0.1
+	var depth: float = 0.28
+	match kind:
+		WindowDisplay.SIGN:
+			yc = g1 - PANEL_BORDER - 0.04 - ph * 0.5
+			depth = 0.2
+		WindowDisplay.SALE:
+			along = 0.3 + 0.4 * MeshKit.hash01(b.side, key, 61)
+		WindowDisplay.MENU:
+			along = 0.25 + 0.5 * MeshKit.hash01(b.side, key, 61)
+			yc = g0 + 0.36 + ph * 0.5
+		_:
+			along = 0.35 + 0.3 * MeshKit.hash01(b.side, key, 61)
+	# A whole tenth wide per tenth tall, the aspect the shader is told.
+	pw = ph * WindowDisplay.aspect_of(pw, ph)
+	var face: Array = _hang_panel(solid, b, w, face_x, along, pw, ph, yc, depth, frame)
+	var paint: PackedColorArray = skin.window_poster_colors
+	var base: Color = paint[MeshKit.hash_i(b.side, key, 67) % paint.size()] if not paint.is_empty() else Color(0.44, 0.34, 0.62)
+	WindowDisplay.add(faces, face[0], face[1], face[2], kind, seed, base, 0.0)
+	var centre: Vector3 = face[3]
+	if kind == WindowDisplay.MENU:
+		# A board on a pair of legs.
+		var legs: float = yc - ph * 0.5 - PANEL_BORDER - g0
+		for k: float in [-0.5, 0.5]:
+			solid.box(Vector3(centre.x + b.side * (PANEL_DEPTH + 0.05), g0 + legs * 0.5, centre.z + k * pw * 0.7),
+				Vector3(0.05, legs, 0.05), frame, 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
+	else:
+		# Hung from the lintel by one rod.
+		var top: float = yc + ph * 0.5 + PANEL_BORDER
+		solid.box(Vector3(centre.x + b.side * PANEL_DEPTH * 0.5, (top + g1) * 0.5, centre.z), Vector3(0.04, g1 - top, 0.04),
+			frame, 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~(MeshKit.FACE_PY | MeshKit.FACE_NY))
+
+
+## How far a panel `pw` wide (frame included: `pw` plus its border either side) may turn toward the runner, at most `want`
+## radians, and still sit wholly inside a display `room` deep. The frame's box runs `PANEL_DEPTH` back from its face and
+## `pw + 2 * PANEL_BORDER` across it: turned by t it takes cos(t) * PANEL_DEPTH + sin(t) * (pw + 2 * PANEL_BORDER) of the
+## depth (a face PANEL_LIFT off the frame sits within that), so t is the most that keeps it under `room`.
+static func fit_turn(pw: float, want: float, room: float) -> float:
+	var across: float = pw + PANEL_BORDER * 2.0
+	var reach: float = sqrt(PANEL_DEPTH * PANEL_DEPTH + across * across)
+	if room >= reach:
+		return want
+	return clampf(asin(room / reach) - atan2(PANEL_DEPTH, across), 0.0, want)
+
+
+## Hangs a panel `pw` x `ph` m in window w of building b: its middle `along` (0-1) of the way across the window and at height
+## `yc`, about `depth` m behind the glass, turned window_screen_turn degrees toward the runner's approach (as far as fits:
+## fit_turn(); then its whole frame and face are inside the display, `PANEL_MARGIN` clear of the glass and of the back
+## wall). Adds its dark frame to `solid` and returns what the panel's face needs: [origin, right, up, the middle of the face]
+## for WindowDisplay.add() (right being the viewer's right, so the picture is never mirrored).
+func _hang_panel(solid: MeshLayer, b: Building, w: Vector2, face_x: float, along: float, pw: float, ph: float, yc: float,
+		depth: float, frame: Color) -> Array:
+	var side: int = b.side
+	var turn: float = fit_turn(pw, deg_to_rad(skin.window_screen_turn), skin.shop_depth - PANEL_MARGIN * 2.0 - PANEL_LIFT)
+	var normal := Vector3(-side * cos(turn), 0.0, sin(turn))
+	var right: Vector3 = Vector3.UP.cross(normal)
+	# The face's middle: its frame runs PANEL_DEPTH * cos(turn) deeper and the turned ends reach sin(turn) * half the frame's
+	# width either way (the glass side, the back-wall side).
+	var half: float = sin(turn) * (pw * 0.5 + PANEL_BORDER)
+	var back: float = cos(turn) * PANEL_DEPTH
+	var lowest: float = PANEL_MARGIN + PANEL_LIFT + half
+	var highest: float = skin.shop_depth - PANEL_MARGIN - back - half
+	var d: float = clampf(depth, lowest, maxf(highest, lowest))
+	var middle := Vector3(face_x + side * d, yc, -lerpf(w.x, w.y, along))
+	solid.box_xform(Transform3D(Basis(normal * PANEL_DEPTH, Vector3.UP * (ph + PANEL_BORDER * 2.0),
+		right * (pw + PANEL_BORDER * 2.0)), middle - normal * (PANEL_DEPTH * 0.5)), frame, 0.0, MeshKit.PAT_PLAIN,
+		MeshKit.ALL_FACES & ~(MeshKit.FACE_NX | MeshKit.FACE_NY))
+	var origin: Vector3 = middle - right * (pw * 0.5) - Vector3.UP * (ph * 0.5) + normal * PANEL_LIFT
+	return [origin, right * pw, Vector3.UP * ph, middle]
 
 
 ## A shop window `width` long on the wall on `side` (face at x = 0, the window from z = 0 to
 ## -width): the display behind the opening (a back wall of goods, its floor, top and sides). The
 ## frame around it is painted by the facade shader on the piers, sill and lintel. Built for the left
 ## wall and mirrored once for the right.
-func window_template(kind: int, width: float, variant: int, side: int, tv: bool) -> MeshBatch:
-	var key := Vector4i(kind, roundi(width * 100.0), variant * 2 + (1 if tv else 0), side)
+func window_template(kind: int, width: float, variant: int, side: int) -> MeshBatch:
+	var key := Vector4i(kind, roundi(width * 100.0), variant, side)
 	var found: MeshBatch = _window_templates.get(key)
 	if found != null:
 		return found
@@ -375,7 +506,7 @@ func window_template(kind: int, width: float, variant: int, side: int, tv: bool)
 		_window_templates.clear()
 	var t := MeshBatch.new()
 	if side > 0:
-		t.append(window_template(kind, width, variant, -1, tv), Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)),
+		t.append(window_template(kind, width, variant, -1), Transform3D(Basis.from_scale(Vector3(-1.0, 1.0, 1.0)),
 			Vector3.ZERO))
 		_window_templates[key] = t
 		return t
@@ -396,16 +527,6 @@ func window_template(kind: int, width: float, variant: int, side: int, tv: bool)
 		Vector2(0.0, g0), Vector2(depth, g1), float(seed))
 	facade.rect(Vector3(0.0, g0, 0.0), Vector3(-depth, 0, 0), Vector3(0, h, 0), inside, 0.0, STYLE_REVEAL,
 		Vector2(0.0, g0), Vector2(depth, g1), float(seed))
-	if tv:
-		# An old CRT set on a low stand at the back of the display, facing the street (its screen is
-		# added per window, see _shop_window()).
-		var solid: MeshLayer = t.layer(skin.solid_material())
-		var size: Vector3 = _tv_size(width)
-		var zc: float = -width * 0.5
-		solid.box(Vector3(-depth + 0.28, g0 + TV_STAND * 0.5, zc), Vector3(0.5, TV_STAND, size.z + 0.16),
-			Color(0.24, 0.21, 0.18), 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
-		solid.box(Vector3(-depth + TV_BACK + size.x * 0.5, g0 + TV_STAND + size.y * 0.5, zc), size,
-			Color(0.1, 0.1, 0.11), 0.0, MeshKit.PAT_PLAIN, MeshKit.ALL_FACES & ~MeshKit.FACE_NY)
 	_window_templates[key] = t
 	return t
 
