@@ -126,6 +126,9 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 977. **The Leader of the Pack cosmetic.** A player who finishes in the **top three** of a week's board (the cut-off is the
    owner's for now and will be adjusted) earns the Leader of the Pack cosmetic. What it is (a runner skin, a trail, a
    badge...), how it shows, and whether it can be lost again are to be designed: the owner will come back to it in a
-   later session. The game has no cosmetics yet, so this item also decides whether a cosmetic system is needed.
+   later session. Outfits are the game's cosmetics (GDD §8, Cosmetics, the owner's session of the same day, task M1).
+   **Overlap to settle:** that session made the **Centurion** outfit "the prize for winning the weekly seed"; this one
+   gives the top three Leader of the Pack. Are they one reward (Centurion is Leader of the Pack), or two (Centurion for
+   first place, Leader of the Pack for the top three)?
    It also needs a rule for when the reward is granted: a week's rank is only final once the week is over, so the game
    would check it the next time it is online. Placeholder: none yet; work on the reward waits on this item.
