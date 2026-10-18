@@ -134,7 +134,7 @@ const _RESOURCE_SKIP: PackedStringArray = ["resource_path", "resource_name", "re
 ## of the three -- CLAUDE.md's "gameplay pieces are abstract; zones are skins" -- so two configs that
 ## differ only there still build the same layout); leaving `skin` out of the key also dodges signing a
 ## whole zone skin's resource tree on every call.
-const _CONFIG_SKIP: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script", "skin", "display_name", "id"]
+const _CONFIG_SKIP: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script", "skin", "skin_path", "display_name", "id"]
 
 
 ## A string that identifies everything (config, tuning, patterns) LevelGenerator.generate()'s result

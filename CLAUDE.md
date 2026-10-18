@@ -122,6 +122,8 @@ WSLg use the Compatibility renderer on the GPU through Mesa's D3D12 driver; head
 - Rendered frames for a visual check: `godot --resolution 960x540 --fixed-fps 10 --write-movie build/f.png --quit-after 120 -- --god`
   (add `--rendering-method gl_compatibility` to check the web/low-end renderer, and a scene path such as
   `res://tools/showcase/enemy_showcase.tscn` before `--` for a close-up). `build/` is git-ignored and ignored by Godot.
-- Web demo: export the "Web (demo)" preset to `exports/web/` (git-ignored) with `godot --headless --export-release`.
+- Web demo: `tools/godot.sh web` exports the "Web (demo)" preset to `exports/web/` (git-ignored). The preset uses the
+  patched engine templates in `tools/web/engine_template/` (faster shader loading in browsers); rebuild them with its
+  `build.sh` only when the pinned Godot version changes.
 - Live tuning: F6 in-game. Tunables need an `@export_range` hint to appear in the panel.
 - Anything that flickers or flashes must honour Settings > Reduced flashing (see `docs/ARCHITECTURE.md`, Zone skins).

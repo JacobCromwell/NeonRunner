@@ -193,6 +193,13 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
 - *A build without some sounds:* `SfxLibrary.has_file()`; `PlayerSfx` readies only the sounds the build
   has, and `MusicDirector.level_complete_sound()` falls back to the E riff when a zone's riff isn't in
   the build. A sound asked for by name whose file is missing still warns.
+- *Its engine:* the preset's `custom_template/release` and `custom_template/debug` name patched Godot web templates
+  in `tools/web/engine_template/` (committed, so every export uses them with nothing to do). The patch makes the web
+  build compile each shader variant when something first draws with it, not every variant of a shader at once:
+  from the title to City 1, 54 shader programs instead of 154, the most in one frame 18 instead of 44, the same 48
+  drawn (a playtester's Edge crashed at the intro's start, where the browser compiled them all; October 18, 2026).
+  Rebuild them with `tools/web/engine_template/build.sh` only when the pinned Godot changes (its README);
+  `test_web_demo` fails while they are of another engine version or missing.
 - *Checks:* `test_web_demo` (the preset, the filter from the data and with replaced tracks, everything the
   demo's scenes, scripts and data reference kept by the filter and loading, the walk from the title to the
   end screen with the sound library as the export has it, no ads, purchases or leaderboards on any screen,

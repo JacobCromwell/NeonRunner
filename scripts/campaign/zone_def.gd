@@ -9,8 +9,21 @@ extends Resource
 @export var tagline: String = ""
 ## The zone's visuals (GDD §5: gameplay pieces are abstract; zones are skins). A zone without its own
 ## skin yet uses the grey-box skin (data/skins/greybox_skin.tres); zone skins live at
-## data/skins/<zone id>_skin.tres. A level's own skin wins over this one (Campaign.configure).
-@export var skin: ZoneSkin
+## data/skins/<zone id>_skin.tres. A level's own skin wins over this one (Campaign.configure). Loaded from
+## skin_path the first time it's read, unless set.
+@export var skin: ZoneSkin:
+	get:
+		if _skin == null and skin_path != "":
+			_skin = load(skin_path) as ZoneSkin
+		return _skin
+	set(value):
+		_skin = value
+## Where the zone's skin is. The data names skins by path, not as a loaded resource: the campaign loads every
+## zone at start, and loading a skin compiles its scripts (0.1 to 0.3 s each on a desktop, several times that
+## in a browser or on a phone), so only the skins of the zones a player reaches are loaded, when they're needed
+## (test_campaign checks no zone, level or boss data holds a skin itself).
+@export_file("*.tres") var skin_path: String = ""
+var _skin: ZoneSkin
 ## Music track name in data/audio/music_library.tres, by convention the zone's id. Until a zone's
 ## track is made, the Music player skips the name quietly and the menu music carries on.
 @export var music: StringName = &""

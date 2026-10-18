@@ -743,6 +743,20 @@ func _test_off_curve(campaign: Campaign) -> void:
 ## is then a variant of its zone's skin: either the same script with different values (Corporate 2's
 ## plaza) or a subclass of it reusing its materials (the Golden Palace, Golden 3, task D6b).
 func _test_skins(campaign: Campaign) -> void:
+	# Skins are named by path and loaded on first use (ZoneDef.skin_path): the campaign loads every zone at start,
+	# and a skin held as a resource would load, and compile its scripts, for every zone a player never reaches.
+	var held := PackedStringArray()
+	for dir: String in ["res://data/zones", "res://data/levels", "res://data/bosses"]:
+		for file: String in DirAccess.get_files_at(dir):
+			if file.ends_with(".tres") and FileAccess.get_file_as_string(dir.path_join(file)).contains("\nskin = ExtResource("):
+				held.append(file)
+	check(held.is_empty(), "no zone, level or boss data holds its skin itself, only its skin_path (held: %s)" % ", ".join(held))
+	var lazy := ZoneDef.new()
+	lazy.skin_path = "res://data/skins/greybox_skin.tres"
+	check(lazy.skin is GreyboxSkin and lazy.skin == load(lazy.skin_path), "a zone's skin loads from its skin_path when first read")
+	var assigned := GreyboxSkin.new()
+	lazy.skin = assigned
+	check(lazy.skin == assigned, "and a skin set in code wins over the path")
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			var config: LevelConfig = campaign.configure(s, 3)

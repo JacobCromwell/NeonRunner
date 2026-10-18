@@ -406,8 +406,11 @@ Skins: `CitySkin` (Zone 1, the Neon City), `GanglandSkin` (Zone 2), `Marketplace
 Corporate), `BeachSkin` (Zone 6, the Beach; task D10, in the campaign since D10c), `DeadZoneSkin` (Zone 7, the
 Dead Zone) and `GoldenSkin` (Zone 8, the Golden Zone). `GreyboxSkin` is the fallback for a zone without its own
 look (every zone has one now). A
-zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is set in its
-`data/zones/<zone id>.tres`; a level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
+zone's skin lives at `data/skins/<zone id>_skin.tres` (`--skin=<zone id>` in quick play) and is named in its
+`data/zones/<zone id>.tres` by path (`skin_path`; the same for a level's or a boss arena's own skin): the campaign
+loads every zone at start, so `ZoneDef.skin` and `LevelConfig.skin` load the skin, and compile its scripts, only
+when first read (1.3 s of a desktop's start was the eight zones' skins; `test_campaign` keeps any data from
+holding a skin itself). A level's own `skin` wins over its zone's (the Golden Palace, Golden 3,
 task D6b, has one: `GoldenPalaceSkin`, below). The real skins build on the mesh kit
 (`scripts/world/meshes/`): `MeshKit` has shared builders for hazards, triggers and environments, and
 `MeshLayer` batches a chunk's geometry.

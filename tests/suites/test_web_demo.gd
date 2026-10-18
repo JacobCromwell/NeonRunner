@@ -92,6 +92,15 @@ func _test_preset() -> void:
 		"its canvas follows the window (adaptive), in a page or a portal's frame")
 	check(bool(presets.get_value(options, "html/focus_canvas_on_start", false)), "the keyboard works at once")
 	check(not bool(presets.get_value(options, "progressive_web_app/enabled", true)), "no installable web app (a service worker) for the demo")
+	# The engine templates with the lazy shader compiles (tools/web/engine_template/README.md), built for this engine.
+	var version: Dictionary = Engine.get_version_info()
+	for mode: String in ["release", "debug"]:
+		var template: String = String(presets.get_value(options, "custom_template/" + mode, ""))
+		var want_template: String = "res://tools/web/engine_template/godot-%d.%d.%d-web_nothreads_%s.zip" % [
+			version.major, version.minor, version.patch, mode]
+		check(template == want_template and FileAccess.file_exists(template),
+			"the %s export uses the patched engine template for Godot %d.%d.%d, %s (it names '%s'; rebuild with tools/web/engine_template/build.sh)" % [
+			mode, version.major, version.minor, version.patch, want_template, template])
 	var head: String = String(presets.get_value(options, "html/head_include", ""))
 	check(head.contains("neon-turn") and head.contains("pointer: coarse") and head.contains("sideways")
 		and head.contains("screen.orientation") and head.contains("DESIGN-TBD"),

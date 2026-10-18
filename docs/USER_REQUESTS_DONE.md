@@ -322,3 +322,16 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## The owner's batch (October 18, 2026, evening)
 
 - [x] **Shields stack like the armor** (GDD §8): four shields bought, yet one hit took the shield away. Verify, and if so, carry every shield in stock into the run, each blocking one hit. DONE (N3): verified — it was by design (FB 13, one breakable charge per attempt). Now every shield in stock (up to 5) comes into the run, each hit uses one shield and one stock, with the usual second of invulnerability; the HUD shows the count, the runner wears the shield until the last breaks, and the one-hit-from-death siren waits for the last shield. The grapple stays one per attempt. Question 1011 (a boss's granted shield on top of a stack).
+
+## The itch.io playtest: load times and an Edge crash (October 18, 2026)
+
+- [x] **Find performance improvements and bugs behind two playtest reports** (long load times; Edge on a five-year-old
+  low-end laptop crashing after Play, as the menu music gave way to the City's) without changing the gameplay; then
+  build the engine fix and the all-platform load-time fix. DONE: the likely crash is the browser's shader compiles at
+  the City intro's start (94 programs, 44 in one frame, on Windows each translated to Direct3D first). The web
+  demo now exports with patched Godot templates that compile each shader variant only when it is first drawn
+  (`tools/web/engine_template/`: 154 programs to 54 from the title to City 1, the same 48 drawn). Zone, level and
+  boss data name their skins by path, loaded when first used, so starting the game no longer loads all eight zones'
+  skins (campaign load at start 1.3 s to 0.15 s on a desktop, on every platform). Left for the owner: the web
+  music as streams or shorter (item 828; each song is held decoded, 52 MB for Zone 1's, about 250 MB more memory
+  at a level's start), a shader warm-up spread over frames, a low-graphics setting.
