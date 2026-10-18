@@ -361,7 +361,7 @@ The shop appears between levels and after every death.
 
 Looks for the runner that the player **buys in the shop or wins** *(how cosmetics are won is still open)*. They **never change gameplay**: the hitbox, the poses and every size stay the same, and owned power-ups are still added on top.
 - **Their own section of the shop,** after the power-ups. Each cosmetic is **bought once with credits** and kept forever; the player then **picks one to wear**. Razor Echo's own look is the free default.
-- **Outfits for Razor Echo:** a cosmetic dresses Echo; the runner stays Razor Echo. *(Proposed)* Echo's head (face, hair and ocular implant) stays his own, and the outfit shows everywhere the runner appears (gameplay, title screen, cinematics).
+- **Outfits for Razor Echo:** a cosmetic dresses Echo; the runner stays Razor Echo. *(Proposed)* Echo's head (face, hair and ocular implant) stays his own unless the outfit covers it (Party Wolf's mask), and the outfit shows everywhere the runner appears (gameplay, title screen, cinematics).
 - **No weapons on any outfit,** the same rule as the base look: nothing on the runner may look like a power-up. The owner's concept sheets all carry swords and guns; every one is left out (owner, October 18, 2026).
 - **Outfits are free of the colour rule** (owner, October 18, 2026): their glows and colours stay as drawn, even in hazard colours, because a player who can afford or win one has already mastered the game. The rule still holds for the base look, the zones and everything else.
 - **Rex** (the first cosmetic, **3,000 credits**): an outfit from the owner's concept sheet `docs/art/reference/outfit_rex.webp`. Build brief: `docs/art/BRIEF_OUTFIT_REX.md`.
@@ -383,6 +383,11 @@ Looks for the runner that the player **buys in the shop or wins** *(how cosmetic
   - **Won, not bought:** the prize for **winning the weekly seed** (a seed shared by every player for a week; not designed yet). **Until it is, the shop sells it for 5,000 credits**, a placeholder so it isn't forgotten.
   - **Keep:** a long **crimson and black trench coat trimmed in gold**; a **gold sculpted cuirass** with an emblem on the chest; **lion-head gold pauldrons** with layered scale plates on both shoulders; a crimson sash, a belt and **gold-tipped leather strips** (pteruges) over the hips; the **sleek ornate gold cyber-arm** on the left with crimson accents; gold bracers and fingerless gloves; black pants with **gold knee plates and greaves**; **gold-plated armoured boots**; the **gold skull and laurel** across the coat's back (large enough to read from behind).
   - **Leave out:** the **ceremonial katana** and its sheath, the **heavy pistol**, and *(proposed)* the **dagger** at the hip.
+- **Party Wolf** (the fifth cosmetic; owner, October 18, 2026): a neon rave outfit with a wolf mask, from the owner's concept sheet `docs/art/reference/outfit_party_wolf.webp`. Build brief: `docs/art/BRIEF_OUTFIT_PARTY_WOLF.md`.
+  - **Won, not bought:** the reward for **promoting the game**: inviting a friend, buying the game for a friend, posting about it, and the like (not designed yet). **Until it is, the shop sells it for 5,000 credits**, a placeholder so it isn't forgotten.
+  - **Keep:** the **cyber wolf mask** (grey fur with neon purple and cyan markings, bared teeth, a glowing pink eyepiece) worn over Echo's face, his black hair showing behind it; a long **purple coat covered in neon graffiti**, with **grey faux-fur** collar and cuffs, a **neon wolf in shades** across the upper back and **"PARTY WOLF"** sprayed across the lower back; a T-shirt with a howling-wolf-and-moon print under a pink chest rig; the **glowing purple and cyan rave cyber-arm** on the left; a studded belt with **glow sticks** and a **wolf tail**; rave bracelets and fingerless gloves; dark pants with graffiti and glowing knee pads; **neon-laced combat boots**. Colours and glows as drawn.
+  - **Leave out:** the **neon katana** and its sheath, and the **pistol** at the hip.
+  - *(Proposed)* "PARTY WOLF" stays in words: it's large enough to read from behind, and it's the outfit's name.
 
 ### Damage reference (shots to kill)
 
