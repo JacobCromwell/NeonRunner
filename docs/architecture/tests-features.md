@@ -403,7 +403,10 @@ reference hopper (WallHopPath's) taking every credit, alive, its fresh runs peak
 runners hopping at 0.6 and 1.0 m taking none on their own (printed) but all with one more hop 0.15 or 0.35 s before
 them; one wall run from the entry, plain and with claws, taking only the lead-in; a runner stepping straight back on
 each time a run drops it, and runners stepping on from the floor every 4 m from one wall run's reach to the credits,
-taking none (each ride on its own copy of the excerpt).
+taking none (each ride on its own copy of the excerpt). The line's spot is a seeded draw among its wall's free
+stretches, so it moves with whatever it keeps off: the suites that compare a level with and without such a thing build
+both without it (`test_wall_fences`, `test_wall_gaps`, `test_enforcer_truck`, `test_barnacle_turret`, `test_doodads`'
+share of 0) or set its record and credits aside (`test_beach_levels`, `test_buzz_company`).
 `test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
 run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
 leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit

@@ -295,7 +295,8 @@ func _check_no_hazard_glow(mesh: Mesh, what: String) -> void:
 ## have none. Isolating turret placement from the additive density pass, the same level without the
 ## feature is otherwise identical (bar its introduction ceiling, pad and credits). The Enforcer Truck's
 ## showing windows (task C6c) read the turrets (one its body would hide keeps it from showing there), so
-## that comparison plans none (EnforcerTruckTuning.show_window_planned off).
+## that comparison plans none (EnforcerTruckTuning.show_window_planned off), and a level's wall-hop line (task N1)
+## keeps off an enemy in its outer lane, so that comparison builds none.
 func _test_placement() -> void:
 	var pairs: int = 0
 	var added: int = 0
@@ -346,6 +347,7 @@ func _test_placement() -> void:
 			# Truck's showing windows depend on where the turrets hang: neither build plans them.
 			var isolated_config: LevelConfig = config.duplicate() as LevelConfig
 			isolated_config.danger_density_increase = 0.0
+			isolated_config.wall_hop_lines = 0
 			var truck_tuning: EnforcerTruckTuning = EnforcerRules.tuning()
 			var planned: bool = truck_tuning.show_window_planned
 			truck_tuning.show_window_planned = false

@@ -534,7 +534,7 @@ func _test_pace() -> void:
 ## fences (they come after the doodads, from a stream of their own, and the credits never look at them):
 ## the same pattern picks, fillers, guarantee builds, pieces, enemies and credits. Like the wall gaps, the
 ## zone doodads by a side wall (task L3) keep off the walls where a level brings in wall fences, so they move
-## with them: compared without them on both sides.
+## with them: compared without them on both sides. So does a level's wall-hop line (task N1): compared without it.
 func _test_same_without() -> void:
 	for id: String in WITHOUT:
 		for lanes: int in [3, 5, 6]:
@@ -556,6 +556,10 @@ func _test_same_without() -> void:
 			# with the doodads in the inner lanes on both sides (LayoutChecks.check_wall_lane_doodad holds the ones
 			# by a wall to the introduction's stretch, and _test_introductions sees them keep it open).
 			config.doodad_wall_lane_share = 0.0
+			# Task N1: the wall-hop line keeps off the wall fences (WallHopPlacement.busy_spans) and draws its spot among
+			# the wall's free stretches, so it moves with them: compared without it on both sides (test_wall_hops builds
+			# a level with and without its line).
+			config.wall_hop_lines = 0
 			var bare: LevelConfig = config.duplicate() as LevelConfig
 			var features := PackedStringArray()
 			for f: String in config.features:
