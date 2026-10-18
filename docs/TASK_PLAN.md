@@ -662,7 +662,7 @@ From `docs/USER_REQUESTS.md` (October 17, 2026), run by one batch orchestrator (
 | L7 | **Real citizens in the Marketplace's shops:** the cinematics' low-poly people in place of the flipbook cards if they cost little, watching, a one-off cheer at a big credit pickup or a big enemy's defeat (GDD §5, Citizens). **Done.** | – | M | T2 |
 | L8 | **The dash first in the shop, at 300 / 450 / 600 / 700 credits** (GDD §7, §8). **Done.** | – | S | T3 |
 | L9 | **Mecha Guppy's phase 1 half as long:** 2 hits instead of 4 (GDD §10). **Done.** | – | S | T1 |
-| L10 | **No feed TVs in the shop windows:** ad screens with the cult emblem flashing now and then, and billboards that fit the world, in their place (GDD §5, Cyborg Viewing Devices; item 967) | L7 | M | T2 |
+| L10 | **No feed TVs in the shop windows:** ad screens with the cult emblem flashing now and then, and billboards that fit the world, in their place (GDD §5, Cyborg Viewing Devices; item 967). **Done.** | L7 | M | T2 |
 
 ---
 
