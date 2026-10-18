@@ -317,6 +317,7 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
     windows in thin aluminium frames with smart glass or roller shutters, metal-clad piers, air-conditioning units,
     delivery-drone racks, glass balconies, cable trays and cables across the street, dishes and masts on the roofs,
     all above the wall-run band. The right kind of future?
+    **Superseded for the Marketplace and the Casino (task L10, the owner's answer to item 967):** the shop windows hold ad screens and posters, not TVs; the feed plays only on the billboards above the street.
 
 **In-run pickups** (from B7; numbers in `data/tuning/pickups.tres`)
 56. **A pickup of an item the player already holds** (GDD §8, §10): does it add a second charge, pay something, or
@@ -392,6 +393,7 @@ as each task merged. Each has a placeholder marked `DESIGN-TBD` in code or data.
 79. **A TV in a window next to window cyborgs** (GDD §9.2 readability): the feed's loop shows a screen-head face, so a TV
     could look a little like a window cyborg's face. The TVs stay well above the band window cyborgs use, small, dim, in
     a dark room, and the face shows 7 s of the 18 s loop. Distinct enough, or should Gangland's TVs leave the face out?
+    **Superseded for the Marketplace and the Casino (task L10):** no TV and no display stands in a window cyborg's window, and the displays draw no faces. Still stands for Gangland's ruin TVs.
 
 **Ramps' speed boost and the blocked-wall bump** (from R1; numbers in `data/tuning/movement.tres`)
 80. **A ramp's speed boost** (GDD §3): a speed pad's, 6 m/s (`ramp_speed_boost`), fading at their shared 4 m/s every
@@ -5322,3 +5324,180 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    band at 3 lanes fall short of the middle one by the room it already gives it there (`WALL_RUN_GAP_ROOM`, 0.04).
    Placeholder, DESIGN-TBD. GDD §3 has doodads never stand where the wall is needed ("a wall fence ... near"): should
    a doodad by a wall give way to a wall fence placed after it, as scenery gives way to a dash wall (item 6)?
+
+### Folded on October 18, 2026 (task M1, the cosmetics: the shop's section, the outfit system and Rex)
+
+981. **Is an outfit worn right after it is bought?** (GDD §8: "bought once ... the player then picks one to wear".)
+   Placeholder: no. Buying only owns it; the card's button turns to WEAR (`App.buy_cosmetic`, `CosmeticCard`).
+
+984. **Rex's details the sheet leaves to us.** (`docs/art/BRIEF_OUTFIT_REX.md`.) The circuit patterns on the sleeves, shoulders
+   and spine are simplified from the sheet (pink lines over the shoulders and down the back of the right sleeve, a cyan spine
+   with three vertebrae), the patches on the back are two plain shapes (a round one on the left blade, a small square lower
+   on the right), the leather is clean rather than worn, the thigh holsters are empty (no grip), and the tattoos on the bare
+   right forearm are left out. Placeholder: as built in `scripts/player/outfits/rex.gd` (`DESIGN-TBD` in its header).
+
+**L10, no feed TVs in the shop windows** (from `docs/questions/l10.md`; the owner's answer to item 967)
+
+986. **How many of the windows, and how are they split between ad screens and posters?** (GDD §5, "Cyborg Viewing Devices",
+     owner, October 17, 2026: "some windows get screens playing random ads, with the cult emblem flashing on them every once in
+     a while; others get billboards that fit the world", roughly the TVs' share.) Placeholder: `MarketplaceSkin.window_display_share`
+     0.22 (the old TVs' share, and the very same windows) and `window_screen_share` 0.5 (half of them ad screens, half posters),
+     in `data/skins` through the skin's exports; the Casino reads the same two numbers.
+
+987. **What do the ads and posters show, and how often does the emblem flash?** Placeholder, all wordless and in the market's
+     own marks: six ad scenes (the Marketplace's; the Casino's are below) (the market's brand card, a bowl of noodles, a drink, a delivery drone, a sale, a cup of tea), four of
+     them cycling on each screen in a seeded order, each up 5 to 7.5 s (`ad_scene_time`) and changing by a quick dip through the screen's deep indigo (`ad_dip`, never two pictures at once); the cult's emblem flashing onto a screen
+     every 14 to 26 s (`emblem_flash_period`) for under two seconds, in over 0.22 s, held 1.1 s, out over 0.55 s
+     (`emblem_flash_times`; with Reduced flashing 0.9 s, 2 s, 0.9 s, `emblem_flash_times_reduced`); four posters (a shop's own sign,
+     a sale, a menu, a product) in blues, violets, slate and cream. All in `window_display.gdshaderinc` and the skin's exports, so
+     changing a scene, a rate or a colour never touches code that places anything.
+
+988. **Are posters allowed to have citizens in front of them?** Placeholder: no. The citizens skip every window holding an ad
+     screen or a poster (`shop_windows()`'s `screen`), which keeps their numbers and the window cyborgs' apart exactly as with the
+     TVs.
+
+989. **A window cyborg's window gets no display.** (GDD §9.2 readability: a screen-headed cyborg must read apart from anything near
+     it.) Placeholder: a window a window cyborg stands in (within `MarketCitizens.CYBORG_MARGIN` of it) holds no ad screen or poster,
+     as it holds no citizen; `shop_windows()` lists no `display` there either (`MarketFacades.display_at()`). The pictures themselves
+     never draw a face, two eyes or a mouth, so a display never passes for a screen head. If the owner would rather have a poster
+     beside a cyborg, it is one condition.
+
+990. **What do the Casino's screens show?** The task's first answer was the market's goods (noodles, tea, a delivery drone) on the
+     Casino's screens too, since it reuses the Marketplace's windows. Placeholder: the Casino plays its own, cheap, wordless ads
+     (`wd_casino`): the brand card, a slot machine showing sevens, a stack of chips, a cocktail, a champagne bottle and a pair of dice,
+     and its product posters show a cocktail, chips or a bottle. The Marketplace's palette (blue, violet, warm white) is kept, since
+     the colour rule is the same; the poster paint is the Casino's own deeper set.
+
+991. **Gangland's TV and the Beach's bars.** The task named "every zone whose windows hold these TVs": only the Marketplace and
+     the Casino (which reuses its windows) hold them in *shop* windows. Gangland (D9) also plays the feed on a TV glowing in an
+     upper window of some ruins (`GanglandSkin.feed_windows()`, `feed_window_share` 0.3), and the Beach (D10) on TVs behind some
+     upper-deck bars. Neither is a shop window, and the owner's decision speaks of shop windows, so both are left as they were. If the
+     owner meant every TV in every zone, those two are the next place to change (a ruin's window would get a dead screen or an ad
+     screen of its own).
+
+992. **The panels are turned toward the runner, as far as they fit.** A flat panel parallel to a wall is seen almost edge-on from the
+     lanes, so every panel (screens and posters) is turned `window_screen_turn` (28 degrees) toward the end of the street the runner
+     comes from, as the citizens already turn, but never so far that any of it (frame included) leaves the display's 0.9 m: a 1.6 m
+     screen turns about 27 degrees, the 2.1 m sign about 21 (`MarketFacades.fit_turn()`). 0 puts them flat against the wall.
+
+### Folded on October 18, 2026 (task M2, the Camo and Beach Master outfits)
+
+993. **How should Camo's pattern look?** (GDD §8, Cosmetics; brief "Camo patches on the coat".) The sheet's coat carries
+   irregular camo regions; the runner is small and seen from behind, so each region is a flat rectangular patch in one of
+   four colours (dark green, brown, khaki, near-black) on the olive coat: a digital-camo look, on the back, the sleeves,
+   the carrier and each skirt panel (the left and right panels differ). Is that the pattern the owner wants, or the
+   sheet's blotches (more triangles, or a texture the skin kit doesn't have)? Placeholder: `scripts/player/outfits/camo.gd`
+   (`DESIGN-TBD, 1`; the patches are `_back`, `_carrier`, `_patches`).
+
+994. **How worn is Camo's coat, and how stained is its hem?** The hem is a 7.5 cm dark-brown band; the coat is otherwise
+   clean olive with no tears, mud, dust or fraying. The sheet's coat is more weathered.
+   Placeholder: `HEM_BAND` and `STAIN` in `camo.gd`.
+
+995. **How bright is Camo's brass?** The brief asks for a dull, worn metal that doesn't read as gold treasure or as a power-up,
+   so the plates are a dark bronze (value 0.5 against Echo's gold 0.88, shine 0.25 against 0.7). The sheet's arm is a
+   brighter, more polished brass. Placeholder: `BRASS`, `BRASS_EDGE` and `BRASS_SHINE` in `camo.gd`.
+
+996. **The shape of Camo's back tubing.** The sheet's tubes are a loose tangle across the shoulder blades; the build is eight
+   straight dark pipes: two from the shoulder blades that bend in toward the spine and run down to the belt, tied by two
+   rungs. Placeholder: `_back` in `camo.gd`.
+
+997. **Beach Master's back print.** (Brief: "the skull and palm-leaf print across the shirt's back ... glows green, as drawn".)
+   The skull is a flat decal: an eight-sided crown, a jaw with three teeth, slanted dark eye sockets and a dark nose, with
+   four palm fronds fanning from its upper left; the sheet's palm tree (trunk, many leaves, a glow halo) is simplified to
+   those fronds, and the print has no outline ring. It glows at Rex's brightness (`PRINT_GLOW` 0.38), which stays under the
+   outfits' bloom cap. Placeholder: `_back_print` in `beach_master.gd`.
+
+998. **Beach Master's hibiscus and palm leaves.** The prints are flat coral five-petalled blooms with a yellow heart and two dark
+   green leaves, five of them on the back (under and beside the skull), three patches (coral, leaf, dark coral) on the right sleeve, and a
+   print on the hem panels; the sheet has them across the whole shirt, front included. The front is plain because the carrier
+   covers it and the visible strip on each side is a few centimetres wide. Placeholder: `_prints`, `_right_arm` and
+   `_hem_patch` in `beach_master.gd`.
+
+999. **How much of Beach Master's arm is wrapped and corroded.** Five cloth wraps (tan, alternately a darker tan) and seven
+   verdigris patches over rusty brass plates; the sheet binds nearly all of it. Placeholder: `_corroded_arm` in
+   `beach_master.gd`.
+
+1000. **What moves on Beach Master's short shirt.** The brief asks that its "open front and hem move a little". Built as four
+   small panels (two tails behind, two front flaps, 9 and 13 cm long) that follow the thighs at 35% and 45% rather than
+   Echo's 50% and 60%; they cost one draw call and 128 triangles. Placeholder: `_hem_panel` and `HEM_*` in
+   `beach_master.gd`.
+
+1001. **Details of the sheets left out for the budget or the rules.** Camo: the sleeve cuff buckles, the left epaulette (the brass
+   pauldron is there instead), the carrier's radio. Beach Master: the carabiner clipped to the back belt and the harness loops
+   on the thighs. The katana, the pistol, the grenades and the knife are
+   left out on purpose (owner's ruling: no weapons on any outfit). Placeholder: as built.
+
+1002. **A per-outfit rim light.** The body material's rim light (`PlayerSuit.RIM_*`, raised in dark zones by the avatar) is the
+    same for every outfit; Camo's coat is lighter than Echo's so it keeps its outline on the dark tracks without one (frames
+    in every zone), but `PlayerOutfit` has no way to give an outfit its own rim colour or strength. Does the owner want one
+    (an outfit-level override in the base class, a core change)? Placeholder: none needed so far; the shared rim stands.
+
+### Folded on October 18, 2026 (task M3, the Centurion and Party Wolf outfits)
+
+1003. **Is the armor power-up's refit what the owner wants?** (Centurion brief, Readability: "the player must still see at a glance
+   whether their armor is up and when it shatters. If the two look alike, note it in the summary for the owner, with frames of
+   both.") Echo's own armor is steel-grey plates with a pale edge. Rendered on the Centurion, that steel set is legible against the
+   gold (a cool grey cap on each pauldron and a yoke across the back) but dark and thin beside the polished metal, and on
+   Party Wolf's grey fur it is close to the fur's colour. Both outfits therefore refit the armor set (`attachment_overrides`) to
+   a brighter silver-blue with the same pale glowing edge, standing proud of the shoulders, over the chest and across the back.
+   To compare, comment out `attachment_overrides()` in the outfit's file and render the same `sheet-close --look=armor` shot
+   (Echo's steel) next to the refit's; the run review's `--equip=armor` shows the armor on, shattering (at 95 m) and gone. The
+   shards the armor bursts into when it breaks are still Echo's steel colour (`PlayerAvatar`, shared). **M2's Camo and Beach Master
+   keep Echo's steel armor, so with both tasks merged the armor looks different on two of the five outfits** (the Centurion and
+   Party Wolf). Should the refit stay on these two, or is one armor look on every outfit better, even where it is harder to see?
+   Placeholder: refitted on the Centurion and Party Wolf only (`ARMOR_PLATE` and `attachment_overrides()` in each file).
+
+1004. **Which parts of the owner's "proposed" notes does the owner confirm?** The briefs mark three as *(proposed)*: the Centurion
+   keeps Echo's own head (face, scars, spiky hair, copper implant: the sheet's eyepiece is his); the Centurion leaves the dagger at
+   the hip out with the katana and the pistol (a weapon too); Party Wolf keeps "PARTY WOLF" in words on the back.
+   Placeholder: all three followed as proposed.
+
+## Centurion
+
+1005. **The skull and laurel on the back, the lion heads and the cuirass's relief are simplified from the sheet.** The back is a gold
+   skull (cranium, cheeks, jaw, eye sockets, nose, teeth) inside a wreath of sixteen leaves on the charcoal coat, between crimson
+   borders; the pauldrons are a gold dome with three layered scale plates and a lion's head as two gold diamonds (a mane and a face)
+   on the outer face; the cuirass is a gold chest plate over an abdomen plate with a round emblem (a dark-gold ring round a crimson
+   disc and a gold boss), a line under the pecs across the whole plate, a slanting stroke under each pec and lines across the
+   abdomen (no sculpted relief, no laurel in the emblem). The coat is clean, not worn or dusty, and the gold ornament on the
+   sleeves, the coat's back panels and the arm is left out. Does the owner want any of it closer to the sheet?
+   Placeholder: as built.
+
+1006. **The gold is close to the Golden Zone's and the cult's gold.** The colour rule doesn't apply to outfits (owner, October 18,
+   2026), so the Centurion's gold and crimson stay as drawn. In the run review on the Golden Zone's skin
+   (`avatar_run_review.tscn -- --outfit=centurion --skin=golden --equip=armor`) the bright yellow gold of the pauldrons and boots
+   against the zone's tan and brown floor, and the crimson skirt and charcoal back, keep the runner clear of the track; the gold
+   set pieces and the cult's gold are left for the owner to look at against the runner.
+   Placeholder: as the brief says.
+
+## Party Wolf
+
+1007. **The graffiti, the markings and the shirt print are simplified from the sheet.** The coat's graffiti is ten short coloured
+   strokes down the two sides of the back (cyan, pink, green and yellow), the skirt has a glowing cyan hem line and a pink band,
+   the right sleeve has four small tags and the pants have none of the sheet's, the wolf mask's neon markings are a cyan line
+   across the brow and a violet stripe each side, and the shirt's howling wolf on a moon is a cyan octagon with a small dark
+   wolf shape. Does the owner want more graffiti, and where (each stroke costs two triangles; with every power-up on the outfit
+   is 1,976 of 2,000, so a dozen more strokes fit, and more means trimming elsewhere)?
+   Placeholder: as built.
+
+1008. **"PARTY WOLF" is unreadable from the gameplay camera, and sits on the torso where the sheet has it on the skirt.** From the
+   game camera each cell of the lettering is about one pixel, so there it shows as a band of pink and cyan under the neon wolf; it
+   reads only in close-ups and the avatar showcase (about 9 mm a cell at design scale). The sheet sprays "PARTY WOLF" across the
+   coat's skirt below the belt; here it is built in two lines of block letters (PARTY in pink over WOLF in cyan) on the lower back
+   of the torso above the belt, because the skirt's panels swing apart as the legs move and would break the lettering. The colours
+   (the sheet has pink with cyan splashes) and the size are mine. Would the owner rather have it bigger, say across the whole back
+   with the neon wolf behind it, or on the skirt anyway, or the second line a different colour? A texture on a rigid plate would
+   read better close-up but costs a draw call and doesn't follow the glow effects, so the flat strokes were kept.
+   Placeholder: as built (`GLYPHS`, `_sign` in `party_wolf.gd`).
+
+1009. **The wolf tail.** The sheet hangs it from a carabiner at the front of the belt on the wearer's left, with the glow sticks on
+   his right; it is built that way: a grey fur tail in three tapering sections with a dark tip on a front panel on his left
+   (`side = -1`) that follows his left thigh a little and swings on its own, and four glow sticks on his right. The carabiner is
+   left out and the tail's banding (grey, light grey, dark tip) is ours; the sheet's tail is white and grey with dark streaks.
+   Placeholder: as built (`_tail` in `party_wolf.gd`).
+
+1010. **The mask's face.** The mask is a fur brow, a snout, a jaw with bared fangs, two pointed ears with violet linings, a pink
+   eyepiece over his left eye and a cyan right eye, over Echo's skull with his hair behind it. It is blocky at this budget; the
+   sheet's mask has fur tufts and a more expressive snarl. Does the owner want a more expressive mask (about 24 triangles are left
+   under the 2,000 with every power-up on, so a better mask means trimming elsewhere)?
+   Placeholder: as built (`_mask` in `party_wolf.gd`).

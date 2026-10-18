@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**977** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6 so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**1011** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2 and M3, so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -27,12 +27,13 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 |---|---|
 | 766 | Ceilings in the levels are too safe (owner, October 10, 2026): should a level keep at least one safe lane where a ceiling ends, and leave the rest free to hold gaps, hazards or enemies? A change to the generator's rules (GDD §3, Safe landing zone). |
 | 828 | The web demo's music on phones: keep it as samples (about 52–60 MB a song in memory, a stop of 0.3–3 s when one starts), stream it (no memory cost, but it may crackle on a slow phone), or ship lighter songs for the web? Needs a try on a real iPhone. |
-| 837 | No treasure stash on 3 or 4 lanes, so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
+| 837 | No treasure stash on 3 or 4 lanes (since October 18, 2026 no platform runs 3, so it matters only if one goes back), so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
 | 838 | GDD §3 calls the return pad the only way into a stash, but the dash smashes in and a wall-jump can land on a stash wall and step down. Allow both as skill routes, or block them? |
 | 848 | The economy's payouts: held at 100 + 25 a level and a flat 500 per boss (77% of a City 3 finish, 46% of a Dead Zone 1 finish) while I7 re-placed the prices. Change them, or keep them? |
 | 923 | The web demo on a phone in a fixed-size itch.io frame: send it to a full-screen tab of its own ("Play it full screen" card, with "Play here anyway"), though the tab exposes the game's file address and probably has its own save? Or rely on "Mobile friendly" and drop the card? |
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
+| 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
 
 ## The items in full
 
@@ -57,7 +58,7 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
   neighbouring lanes alongside) would close every floor lane on 3 lanes, and on 4 it puts a wall in an outermost lane,
   where a wall runner's body reaches and where one dropping off the wall lands.
   **Placeholder:** a stash only in an inner lane with inner lanes either side (`treasure_stash_rules.gd`, `lanes_for`):
-  lane 3 of 5, lane 3 or 4 of 6; none on mobile's 3 lanes. Alternatives: an outermost-lane stash walled on one side by
+  lane 3 of 5, lane 3 or 4 of 6; none on 3 lanes (mobile's count until October 18, 2026, when the owner set it to 5 like PC). Alternatives: an outermost-lane stash walled on one side by
   doodads and on the other by the side wall (with a sign along it, so no wall run drops in), or a shorter stash.
 838. **Other ways into a stash.** GDD §3 calls the return pad "the only way in".
   **Placeholder (nothing blocks these):** the dash (H5) smashes the doodad across the stash's lane and runs in
@@ -120,3 +121,14 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    Golden Palace, and every one in the Golden Zone (whose only baits are Buzz Overdrives). So the request mostly
    changes Corporate 1 (21 of its 36 tanks) and, elsewhere, about one tank in every six builds of a level (12 of the
    143). Should the later zones' tanks get company too where the truck is about but not yet attacking?
+
+**The weekly challenge** (the owner's design session, October 18, 2026; GDD §6, Replay features, "Weekly challenge")
+977. **The Leader of the Pack cosmetic.** A player who finishes in the **top three** of a week's board (the cut-off is the
+   owner's for now and will be adjusted) earns the Leader of the Pack cosmetic. What it is (a runner skin, a trail, a
+   badge...), how it shows, and whether it can be lost again are to be designed: the owner will come back to it in a
+   later session. Outfits are the game's cosmetics (GDD §8, Cosmetics, the owner's session of the same day, task M1).
+   **Overlap to settle:** that session made the **Centurion** outfit "the prize for winning the weekly seed"; this one
+   gives the top three Leader of the Pack. Are they one reward (Centurion is Leader of the Pack), or two (Centurion for
+   first place, Leader of the Pack for the top three)?
+   It also needs a rule for when the reward is granted: a week's rank is only final once the week is over, so the game
+   would check it the next time it is online. Placeholder: none yet; work on the reward waits on this item.

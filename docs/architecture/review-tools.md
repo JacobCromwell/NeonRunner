@@ -17,7 +17,8 @@ so it finds the run's `State.READY` through the script's constant map.
 Scenes in `tools/showcase/` show one part of the game up close for visual review (not part of the
 game): the avatar (`avatar_showcase`: every pose, power-up and concept-sheet view, front, back and
 side; `avatar_run_review`: a scripted run through the game camera on any zone's skin, with any
-power-up look), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
+power-up look; both take `--outfit=<id>` to dress the runner in a cosmetic, `docs/architecture/characters-ui-audio.md`,
+The runner's outfits), ramps and walls (`ramp_wall_review`: a ramp launch with the credits along its wall
 run, and blocked wall entries at a low and a high sign, through the game camera or a close one),
 zone doodads (`doodad_review`: the runner pushed by a small, a medium and a large one, both ways, and a
 switch into one's side blocked, with others standing in the other inner lanes at five lanes or more, in

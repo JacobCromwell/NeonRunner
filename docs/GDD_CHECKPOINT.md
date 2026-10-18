@@ -53,7 +53,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Y:** height, meaningful especially on side walls.
 
 ### Floor
-- **Lanes:** 3 on mobile; 5–6 on PC *(exact PC count open)*.
+- **Lanes:** **5 on PC and 5 on mobile** (owner, October 18, 2026; it was 3 on mobile and 5–6 on PC). The two counts stay **separate settings**, one for PC and one for mobile (`lanes_pc` and `lanes_mobile` in `data/tuning/game_rules.tres`), so either can change later; for now the owner wants to try the same count on both. *(To confirm on a real mid-range phone: the frame rate at 5 lanes.)*
 - **Lane switch:** left/right arrow keys (PC) or swipe left/right (mobile). The switch is animated; the player is physically between lanes mid-switch.
 - **Jump:** swipe up on mobile *(PC key open)*.
 - **Slide:** swipe down on mobile; down arrow on PC.
@@ -291,7 +291,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
   - Each level's difficulty can be tuned individually, with an automatic curve making each level slightly harder than the last.
   - **No loading card** (owner, October 14, 2026): a level starts without a card covering its generation, as built.
   - **No level gets easier when levels are added** (owner, October 9, 2026, after adding the Casino): every level is too easy, at least on PC. The Marketplace keeps at least the difficulty it had (a little harder is welcome), and Corporate and the zones after it may get harder.
-  - Because lane counts differ, "level 5" on PC is not identical to "level 5" on mobile. This is intended: PC is harder.
+  - With 5 lanes on both (October 18, 2026), a level is the same on PC and mobile. If the counts ever differ again, "level 5" on PC is not identical to "level 5" on mobile, and that is intended.
   - Handmade set pieces (e.g. boss arenas) are allowed.
 - **Replay features:**
   - Star ratings or grades per level
@@ -301,9 +301,21 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
     - Its scenery **cycles through the zones the player has unlocked**, changing every few minutes.
     - It pays **20% of credits collected, like a death, plus a lump sum every 2 minutes survived**, so lasting longer pays off.
     - Not in the web demo.
+  - **Weekly challenge** (owner, October 18, 2026): one fixed level a week, the same for every player, with a leaderboard for that week.
+    - **Five lanes on every platform**, PC and mobile alike, as in the campaign (§3), so both boards play the same layout. The weekly level keeps five even if a platform's campaign count changes later. **Two boards:** one for PC, one for mobile.
+    - **A uniform kit:** every player runs it with **Armor IV and Juggernaut dash IV** and **no other shop items**, whatever they own.
+    - **Rewards:** credits **equal to a middle-of-the-road level's payout**, plus a place on the board. The **top three** (for now; the owner will adjust it) also earn the **Leader of the Pack** cosmetic, still to be designed (`docs/OPEN_QUESTIONS.md` item 977).
+    - **No anti-cheat for now:** scores are trusted as submitted.
+    - **Attempts are unlimited on every platform:** no ads or purchases for extra tries on mobile.
+    - Not in the web demo (it has no leaderboards).
+    - **The week's level comes from a list of seeds shipped with the game** and checked by the fairness tests in advance, not straight from the date (owner, October 18, 2026).
+    - **The credits are paid for the week's first clear only,** so a memorised layout can't be farmed (owner, October 18, 2026).
+    - **It unlocks once the player has beaten the Neon City's boss** (the Floating Head).
+    - **Every zone is in the rotation from the start,** including zones the player hasn't reached in the campaign yet (owner, October 18, 2026: accepted).
+    - **The weeks rotate through the zones,** each week's level in one zone's skin, **always at the Golden Zone's difficulty**: a week in the Neon City has the Neon City's own enemies and obstacles, but as many of them, as dense and as hard as the Golden Zone's, "otherwise it would be too easy for players" (owner, October 18, 2026). *(Proposed)* The Golden Zone's hardest level sets it (Sentinel Row, `data/levels/golden_2.tres`), with its enemy scaling (fire rate, projectile speed, health) and its run speed of about 25 m/s.
   - Leaderboards
 - **Leaderboards:** separate per platform (Steam, Game Center, Google Play Games), per level and per difficulty tier.
-  - Plus a **net worth** leaderboard: credits earned in play and never spent. Purchased credits are tracked separately and never count.
+  - Plus a **net worth** leaderboard: credits earned in play and never spent. Purchased credits are tracked separately and never count. **Credits spent on cosmetics don't lower it** (owner, October 18, 2026; §8, Cosmetics).
   - No leaderboards in the web demo.
 - **Enemy scaling:** many enemies scale gradually across levels (fire rate, projectile speed, health, extra attackers): barely noticeable early, clearly harder at the end.
 - **Introducing mechanics:** one new object or enemy type at a time. Zone 1 teaches lanes, jump, slide, and walls; ramps and speed pads arrive a few levels later.
@@ -362,6 +374,10 @@ The shop appears between levels and after every death.
 
 Looks for the runner that the player **buys in the shop or wins** *(how cosmetics are won is still open)*. They **never change gameplay**: the hitbox, the poses and every size stay the same, and owned power-ups are still added on top.
 - **Their own section of the shop,** after the power-ups. Each cosmetic is **bought once with credits** and kept forever; the player then **picks one to wear**. Razor Echo's own look is the free default.
+- **The shop shows a preview of each outfit** (owner, October 18, 2026): the runner wearing it, in place of an icon.
+- **Buying an outfit doesn't lower net worth** (owner, October 18, 2026; §6, Leaderboards): it's a look, not an advantage.
+- **One price on every platform** (owner, October 18, 2026): no separate mobile price.
+- **A won outfit leaves the shop** (owner, October 18, 2026): once its real way of being won exists, the shop stops selling it; a player who bought it before keeps it.
 - **Outfits for Razor Echo:** a cosmetic dresses Echo; the runner stays Razor Echo. *(Proposed)* Echo's head (face, hair and ocular implant) stays his own unless the outfit covers it (Party Wolf's mask), and the outfit shows everywhere the runner appears (gameplay, title screen, cinematics).
 - **No weapons on any outfit,** the same rule as the base look: nothing on the runner may look like a power-up. The owner's concept sheets all carry swords and guns; every one is left out (owner, October 18, 2026).
 - **Outfits are free of the colour rule** (owner, October 18, 2026): their glows and colours stay as drawn, even in hazard colours, because a player who can afford or win one has already mastered the game. The rule still holds for the base look, the zones and everything else.

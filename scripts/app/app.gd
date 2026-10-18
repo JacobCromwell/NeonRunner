@@ -29,6 +29,8 @@ extends Node
 ##                           --god, --nofall, --full-loadout, --skin=<zone> (quick play only) and
 ##                           --phase=N (start at phase N, as a checkpoint would)
 ##   --flavor=web_demo       pretend to be another build flavor (full_pc, full_mobile, web_demo)
+##   --outfit=rex            the runner wears an outfit (any id in the shop's cosmetics, owned or not; not saved)
+##                           in every run, cinematic and review it is in; alone it implies --quick
 
 signal profile_changed
 
@@ -84,6 +86,7 @@ func _ready() -> void:
 				Platform.configure_for(BuildFlavor.current())
 	profile = SaveService.load_profile(save_path)
 	Settings.apply(profile)
+	sync_outfit()
 	get_tree().root.size_changed.connect(_on_window_resized)
 	WebPage.watch_cover(_on_page_cover)
 
@@ -131,6 +134,14 @@ func boot(p_main: Node) -> void:
 	# so they can't skip progression or farm credits and leaderboard scores with --god.
 	var args: PackedStringArray = OS.get_cmdline_user_args() if OS.is_debug_build() else PackedStringArray()
 	for arg: String in args:
+		if arg.begins_with("--outfit="):
+			# Review aid: dress the runner in any outfit, owned or not (the profile is left alone).
+			var outfit := StringName(arg.get_slice("=", 1))
+			if PlayerOutfits.is_known(outfit):
+				PlayerOutfits.worn = outfit
+			else:
+				push_warning("App: no outfit '%s'" % outfit)
+	for arg: String in args:
 		if arg.begins_with("--level="):
 			var s: CampaignStep = campaign.step(arg.get_slice("=", 1))
 			if s != null:
@@ -145,7 +156,8 @@ func boot(p_main: Node) -> void:
 		if arg == "--quick" or arg == "--god" or arg.begins_with("--seed=") or arg.begins_with("--lanes=") \
 				or arg.begins_with("--difficulty=") or arg.begins_with("--features=") or arg == "--full-loadout" \
 				or arg == "--nofall" or arg.begins_with("--skin=") or arg.begins_with("--pickups") \
-				or arg.begins_with("--speed=") or arg.begins_with("--doodads=") or arg == "--thief":
+				or arg.begins_with("--speed=") or arg.begins_with("--doodads=") or arg == "--thief" \
+				or arg.begins_with("--outfit="):
 			start_quick(args)
 			return
 	show_title()
@@ -797,6 +809,45 @@ func set_equipped(id: StringName, on: bool) -> void:
 	play_ui_sound(&"ui_equip")
 	save()
 	profile_changed.emit()
+
+
+## Buys a cosmetic (GDD §8, "Cosmetics") once, with credits from the wallet, and keeps it forever. It isn't
+## worn yet: the player picks (wear_outfit). False, nothing spent, for an unknown cosmetic, one already
+## owned or without enough credits.
+## DESIGN-TBD: the credits spent lower net worth like any item's (`docs/OPEN_QUESTIONS*.md` item 980), and the outfit
+## isn't worn on purchase (item 981).
+func buy_cosmetic(id: StringName) -> bool:
+	var cosmetic: ShopCosmetic = catalog.cosmetic(id)
+	if cosmetic == null or id == catalog.default_cosmetic.id or profile.owns_outfit(id):
+		return false
+	if not profile.spend(cosmetic.price):
+		play_ui_sound(&"ui_error")
+		return false
+	profile.add_outfit(id)
+	play_ui_sound(&"ui_buy")
+	save()
+	profile_changed.emit()
+	return true
+
+
+## Wears an owned outfit, from now on in every run and cinematic (Razor Echo's own look is
+## `catalog.default_cosmetic.id`). False if it isn't owned.
+func wear_outfit(id: StringName) -> bool:
+	if catalog.cosmetic(id) == null or not profile.wear_outfit(id):
+		return false
+	sync_outfit()
+	play_ui_sound(&"ui_equip")
+	save()
+	profile_changed.emit()
+	return true
+
+
+## Makes the outfit the profile wears the one new avatars are dressed in (PlayerOutfits.worn): at start,
+## after a wear, and for a test or tool that swaps `profile`. An outfit the catalog no longer lists is
+## Razor Echo's own look.
+func sync_outfit() -> void:
+	var id: StringName = profile.worn()
+	PlayerOutfits.worn = id if PlayerOutfits.is_known(id) else PlayerOutfits.ECHO
 
 
 ## Mobile only: buys a credit pack through the platform (GDD §7: tracked apart from earned credits).

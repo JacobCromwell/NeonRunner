@@ -252,3 +252,176 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
     Godot's web audio code copies a sample's buffer again each time it starts. *Effects:* Music bus effects
     don't apply to samples, so the death dip's low-pass (`MusicDirector.dip_filter`) is silent on the web;
     only its volume dip is heard. Playing music as a stream would change all three (`docs/OPEN_QUESTIONS.md` item 828).
+
+## The runner's outfits (cosmetics)
+
+The cosmetics (GDD §8, "Cosmetics": looks the player buys in the shop and wears; the owner, October 18, 2026) are
+**outfits for Razor Echo**, not other characters: the same rig, poses, 75% scale and hitbox (`PlayerSuit.DESIGN_SIZE`),
+his head unless the outfit covers it, and the owned power-ups on top. They never change gameplay. Task M1 built the
+system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
+
+- **One file per outfit:** `scripts/player/outfits/<id>.gd`, `extends PlayerOutfit`, where `<id>` is the cosmetic's id in
+  `data/shop/catalog.json` (`rex`, `camo`, `beach_master`, `centurion`, `party_wolf`). `PlayerOutfits` finds the file by
+  that name: **there is nothing to register**, and no shared file to edit. An outfit overrides what it changes
+  (`PlayerOutfit` documents them): `body_pieces()` (required: the pelvis, chest, arms, hands, legs and feet, as
+  `HumanoidPiece`s; Echo's coat, arms and boots are *not* kept), `head_pieces()` (Echo's own by default, via
+  `PlayerSuit.head_pieces()`; return your own to cover it, or `super()` plus a mask or hat to add to it, as Party Wolf's
+  mask will), `panels()` (a coat's skirt or tails, `HumanoidPanel`s the rig swings, at most `HumanoidRig.MAX_PANELS`;
+  Echo's skirt is not inherited, so a waist-length jacket has none and costs no extra draw call) and
+  `attachment_overrides()` (a power-up set refitted to the outfit's shapes, by name: `armor`, `claws`, `weapon_1` to
+  `weapon_4`, `magnet`; Echo's sets are used for every one not named, which is what Rex does). `PlayerOutfit` also has
+  the builders `add()`, `pipe()` (a thin three-sided strip: circuit lines, cables, strap edges), `piece()` and
+  `merged()`, which `PlayerSuit` uses too, and the shape and placement constants (`BOX`, `LATHE`, `MIRRORED`, ...).
+  Pieces are in the segment's joint space at design scale, limb pieces authored on the right limb and mirrored with
+  `side`: read `PlayerSuit` and `scripts/player/outfits/rex.gd` for the conventions, and `HumanoidPiece` for the
+  shapes (`glow` and `shine` ride in the mesh, so a segment is still one draw call).
+- **`PlayerOutfits`** (`player_outfits.gd`) keeps `worn` (the outfit every `PlayerAvatar` built from now on wears: the
+  run's, a cinematic's, a review tool's) and `parts_for(id)` (cached: Echo's `PlayerSuit.parts()`; an outfit composed by
+  `compose()` over Echo's skeleton, size and head; or, for a catalog id whose file isn't written yet, `placeholder_parts()`:
+  Echo's look with the coat, arms and boots washed toward the catalog's colour for it, `DESIGN-TBD`, so buying and
+  wearing an unbuilt outfit works end to end and shows. The placeholder, and the shop's "LOOK IN PROGRESS" caption,
+  go when the file arrives). `is_built(id)`, `is_known(id)`, `resolve(id)` (an unknown id is Echo's own look; ids are plain
+  identifiers and can't name another path) and `outfit(id)` (the file's instance) are its other calls.
+- **`PlayerAvatar`** reads `PlayerOutfits.worn` when it is built, so the gameplay model (`Player`, untouched), a
+  cinematic's runner (`CineActorNode`, so the Beach's outro and every other cinematic) and the review tools all wear it
+  with no hook of their own. `set_outfit(id)` / `outfit()` change a live avatar (the rig is built again: do it right after
+  building it; equipment, size fit and pose are kept). The title screen shows no runner. App keeps `worn` current from the
+  profile (`App.sync_outfit()`, at start and after a wear, for a test or tool that swaps `App.profile`); `--outfit=<id>`
+  (debug builds) sets it for a session, owned or not, and `avatar_showcase` / `avatar_run_review` take it too.
+- **The colour rule does not apply to outfits** (owner, October 18, 2026): their glows and colours stay as their sheets
+  draw them, hazard colours included; `test_avatar`'s colour checks are on the base look (`PlayerSuit`). Nothing on an
+  outfit may be a weapon or look like a power-up (the owner's concept sheets all carry swords and guns; every one is left
+  out), and the back view, which the gameplay camera sees, matters most. Keep glows thin and soft (Rex's stay under
+  `test_outfit_rex`'s bloom cap) and the colours as the brief gives them.
+- **The budget is the avatar's, with every power-up on:** `test_avatar`'s 2,000 triangles and 20 draw calls, and the
+  power-ups take 452 of the triangles (claws 72, armor 84, a tier-4 weapon 108, the magnet 68, the shield bubble about 120),
+  so an outfit with Echo's head (278) has about 1,270 for its body. Echo's own look is 1,472 triangles, Rex's 1,480
+  (1,932 with everything). Thin glowing lines cost 8 triangles a piece, a chamfered box 28, a plain box 12, a six-sided
+  prism 20.
+- **Adding an outfit (M2, M3):** (1) write `scripts/player/outfits/<id>.gd` from its brief (`docs/art/BRIEF_OUTFIT_*.md`);
+  (2) look at it: `tools/showcase/avatar_showcase.tscn -- --shot=sheet --outfit=<id>` (shots `sheet`, `sheet-run`, `sheet-close`,
+  `poses`, `poses-back`, `equipment`, `equipment-back`, `turntable`; `--look=all` for every power-up) and
+  `avatar_run_review.tscn -- --outfit=<id> --skin=<zone>` (the real game camera; `--equip=all`), rendered as the task's
+  checklist says; (3) `tools/godot.sh test --suite=outfit` (`test_outfits` already runs every catalog outfit, built or not,
+  through the budgets, Echo's size, the hair-tip height, the feet on the ground, every pose, the power-ups going on top, the
+  weapon's muzzle, and the body and head segments; it needs nothing added) and, for the outfit's own looks, a suite of its
+  own, `tests/suites/test_outfit_<id>.gd` (see `test_outfit_rex`); (4) a paragraph here under its marker below, and its
+  `DESIGN-TBD` questions in `docs/questions/<task>.md`. The shop's price, name, colour and order are the catalog's
+  (`ShopCosmetic`); its colour is also what the outfit's shop icon and placeholder use.
+
+### Built outfits
+
+- **Rex** (M1; `rex.gd`; brief `docs/art/BRIEF_OUTFIT_REX.md`). A magenta leather biker jacket (three box tiers, the tank
+  top and chain between wide lapels, a standing collar, the belted waist, the zip), its **pink circuit lines** (thin
+  strips over the shoulders and down the back of the right sleeve), the **cyan spine** (a line down the back with three
+  vertebrae) and two plain patches on the back (no words); the right forearm bare to the fingerless glove (Echo's own hand
+  shapes, so the Beach outro's two raised fingers still work); the **gunmetal and copper cyber-arm** (dome with the
+  **orange** joint, plated arm, copper pistons front and back, an articulated hand) in place of Echo's gold one; a utility
+  belt with hip and back pouches, dark cargo pants with an empty holster and a pocket on each thigh and knee straps,
+  buckled combat boots with magenta trim. Echo's head; no skirt panels; the rifle left out. 1,480 triangles, 16 draw calls.
+  The jacket's magenta is the electric fence's pink hue in every zone (the colour rule doesn't apply to outfits, so that
+  is as drawn): in rendered frames of every zone's skin the fence's crackle, halo and shape and the runner's cyan spine and
+  silhouette keep them apart, closest on the grey ones (the grey box, Corporate's plaza, the Dead Zone), left for the owner
+  to look at. The frames come from `avatar_run_review.tscn -- --outfit=rex --skin=<zone>` (the fences at 80 m and 110 m).
+
+- **Camo** (M2; `camo.gd`; brief `docs/art/BRIEF_OUTFIT_CAMO.md`). An aged olive military trench coat (two torso tiers, a
+  high collar all round, lapels, an epaulette and a strapped cuff on the right sleeve) with **camo patches** (flat decals in
+  dark green, brown, khaki and near-black on the back, the right sleeve, the carrier and every skirt panel, the left and
+  right panels differing), a stained dark-brown hem, and eight **dark tubing** pipes across the
+  upper back (two bent in from the shoulder blades and run down to the belt, tied by two rungs); in its open front a lighter
+  camo **plate carrier** (a pouch strip, a harness strap down each side, a patch pattern) over a dark shirt; a belt with a
+  pouch each side of the small of the back; the **armoured, dull brass cyber-arm** (Echo's dome for the shoulder, so the
+  weapon's mount still folds out of it, a flared plate over the outer shoulder, two upper-arm plates round an exposed steel
+  joint with a red and a black cable, an elbow disc, two forearm plates and a wrist ring, a three-finger articulated hand;
+  the brass is a dark bronze of value 0.5 and shine 0.25 against Echo's gold 0.88 and 0.7, so it isn't treasure or a
+  power-up) in place of Echo's gold one; the right hand's fingerless glove (Echo's own shapes); dark camo cargo pants with a
+  pocket on each thigh and knee pads; tall laced combat boots. Echo's head. **Nothing glows** (the suit-glow effects act on
+  Echo's implant and the tint), and the coat is lighter than Echo's so the body material's shared rim light keeps its outline
+  on dark tracks: in rendered frames of all 11 zone skins on both renderers it reads everywhere, closest against Gangland's
+  brown dirt. The long coat's skirt is `panels()`: four stiff panels like Echo's (two behind the legs, split by the vent,
+  two at the open front; 0.47 m, flare 1.28; their nine patches are bands over single faces of the skirt's oval ring), which
+  test_outfit_camo checks never go through a knee or the ground and trail in a slide. 1,482 triangles, 17 draw calls (1,934 and 18 with every power-up). Left out: the katana, the pistol, the
+  grenades and the knife (no weapons) and the skull on the coat's lower back (too small to read). Its patches, the stripes of
+  its laces and the shapes on the shoulder blades are `OutfitDecals` (`outfit_decals.gd`), which an outfit can use: a one-sided
+  sheet a few millimetres off its surface, so a patch of camo, a flower or a skull costs two to eight triangles where a thin box
+  costs twelve (`quad`, `diamond`, `disc`, and `on_prism` for a band over a sleeve, a trouser leg or a boot's shaft; `glow`
+  makes one a glowing print), with no draw call of its own; `face_directions`, `faces_in` and `face_arc` find the faces of a
+  skirt's ring from its shape (see below); test_outfit_decals pins how each faces and sits.
+- **Beach Master** (M2; `beach_master.gd`; brief `docs/art/BRIEF_OUTFIT_BEACH_MASTER.md`). An open, short-sleeved dark teal
+  tropical shirt (sleeves rolled to a lighter cuff, a flat open collar, a harness strap over each shoulder) printed with
+  coral five-petalled hibiscus and dark palm leaves; over bare skin in the open front the same camo plate carrier as Camo's;
+  a belt with two pouches; the **sea-salt corroded cyber-arm** (rusty brass plates round exposed steel joints with Echo's
+  dome at the shoulder, seven verdigris patches, five tilted cloth wraps and an articulated hand); on the right a bare tanned
+  arm with a teal and cream bead bracelet and the fingerless glove; dark cargo shorts with a pocket on each thigh
+  and knee pads; bare tanned lower legs and strapped tactical sandals. Echo's head. The signature, which the gameplay camera
+  sees all game, is the **glowing green skull** across the shirt's back (a crown, a jaw with three teeth, slanted dark eye
+  sockets and a dark nose, with palm fronds fanning from its upper left; flat decals, the holes unlit so bloom keeps the
+  shape; Rex's glow of 0.38): the only glow on the outfit, as the sheet draws it (the colour rule doesn't apply to outfits),
+  which powers down on death and takes the dash's brightening and the invulnerability tint like Echo's conduits (it is body
+  glow, so nothing extra flickers: Reduced flashing has nothing to calm). The shirt is short, so `panels()` is four small
+  ones for its hem and open front (two tails behind, 9 cm, two flaps at the front edges, 13 cm, following the thighs at
+  35 and 45%), one draw call. 1,513 triangles, 17 draw calls (1,965 and 18 with every power-up). Left out: the katana, the
+  pistol, the grenades and the knife. Frames: `avatar_showcase.tscn -- --shot=poses-back --outfit=beach_master`; test_outfit_beach_master.
+- **Writing an outfit (what M2 learned).** Match Echo's sole: the rig stands on the lowest vertex of the feet, so a sole that
+  reaches 1 mm below his (-0.075 m in the foot's space) lifts the whole runner and moves the weapon's muzzle (test_outfits'
+  height and muzzle checks catch it; a sandal's sole may be thicker if it ends at the same height). Keep the budget in mind
+  when a joint or finger is a prism: `sides: 4` is 12 triangles where the default six sides are 20. Anything that is only
+  paint (a camo patch, a print, a lace) is a decal, not a box. A skirt's ring is an oval, so its faces sit at 19, 52, 78, 102,
+  128 and 161 degrees and so on, not at tidy angles: a patch aimed at "105 degrees" builds no triangle and draws nothing
+  (M2's first build had 32 such pieces). Ask `OutfitDecals.face_directions` for the faces and `faces_in` for a panel's, and
+  `test_outfits` fails any outfit with a body, head or panel piece that builds no triangle.
+
+<!-- M3: Centurion and Party Wolf go here, one paragraph each. -->
+
+- **Centurion** (M3; `centurion.gd`; brief `docs/art/BRIEF_OUTFIT_CENTURION.md`). A gold-and-crimson Roman outfit on Echo's own
+  head. A charcoal and crimson trench coat (two box tiers, crimson lapels with a gold edge, the high collar with a gold rim, a
+  crimson sash under a black belt with a gold buckle), a gold cuirass in its open front (a chest plate over an abdomen plate: a
+  round emblem of a dark-gold ring round a crimson disc, a line under the pecs right across the plate with a slanting stroke
+  under each, and lines across the abdomen), lion-head pauldrons (a gold dome, three layered scale plates and a lion as two gold
+  diamonds, one mirrored definition for both shoulders), a crimson right sleeve with a gold bracer and a fingerless glove, the
+  sleek gold cyber-arm with crimson joints in place of Echo's, black pants with crimson thigh straps, gold knee plates, greaves and
+  gold-plated boots. **The skirt is six panels:** Echo's four (charcoal behind with the two outer faces crimson and a gold hem,
+  crimson at the front edges), and two *pteruges* panels, a pair of black leather strips with gold tips hanging from the sash at
+  each hip (follow 0.45), all swung by the rig. **The back** is the gold skull inside a sixteen-leaf wreath, 19 flat quads
+  (`flat()` in `party_wolf.gd`'s paragraph below), between crimson borders. The gold is polished metal (`shine` 0.75) and nothing
+  on the outfit glows, so bloom can't wash the armour's shapes out; the katana, the pistol and the dagger are left out.
+  **The armor power-up is refitted** (`attachment_overrides`, `ARMOR_PLATE`): bright silver-blue caps standing above the
+  pauldrons, a plate over the cuirass and a yoke across the upper back, each with Echo's pale glowing edge (96 triangles, Echo's
+  set is 84). Echo's own steel is legible against the gold but dark and thin beside it, and its shards stay his steel colour
+  (`PlayerAvatar`); to see his set on this outfit, comment out `attachment_overrides()` and render the sheet's close-up with
+  the armor on (`godot --path . res://tools/showcase/avatar_showcase.tscn -- --shot=sheet-close --outfit=centurion --look=armor`
+  with `--write-movie`, as in `CLAUDE.md`, Commands; add `--rendering-method gl_compatibility` for the web renderer). The run
+  review shows the armor on, shattering and gone at 95 m (`avatar_run_review.tscn -- --outfit=centurion --skin=<zone>
+  --equip=armor`). 1,506 triangles bare, 1,970 with every power-up, 17 draw calls (18 with the shield, 19 while the broken
+  armor's shards fly). In the run review of the city, the Golden Zone, Gangland, the Beach and the Casino on Forward+ and
+  Compatibility, and of the Dead Zone and Corporate's plaza on Forward+, the gold pauldrons, the wreath and the crimson skirt read
+  against every track and the pink fence is nothing like the crimson. `DESIGN-TBD` (`docs/OPEN_QUESTIONS*.md` items 1003-1006): the armor
+  refit, the skull, wreath, lion heads and cuirass relief are simplified from the sheet, the coat is clean rather than worn.
+- **Party Wolf** (M3; `party_wolf.gd`; brief `docs/art/BRIEF_OUTFIT_PARTY_WOLF.md`). The only outfit that covers Echo's head:
+  `head_pieces()` keeps his neck, skull and spiky hair from `super()` (the boxes of his face, the implant, eye, brow, nose and
+  scar, are dropped under the mask) and adds the **cyber wolf mask**: a fur brow, a snout with a black nose, a jaw with bared
+  fangs, cheek tufts, two pointed ears (tips no higher than his hair's, tested on the built mesh) with violet linings, a glowing
+  pink eyepiece over his left eye (`-x`), a cyan right eye and neon cyan and violet markings. A long purple coat covered in neon
+  graffiti with a grey fur mantle and collar, grey fur cuffs and two rave bracelets, a dark T-shirt with a glowing moon print under
+  a pink chest rig, the glowing purple and cyan rave cyber-arm on the left, a studded belt with four hanging glow sticks **on his
+  right** at the front, dark pants with pink straps, glowing knee pads and neon-laced boots with glowing soles. The skirt is Echo's
+  four panels (a cyan hem line, a pink band behind) and **the tail**, a fifth panel: as the sheet draws it, the grey tail hangs
+  from a carabiner at the front of the belt **on his left** (`side = -1`, authored on the right and mirrored; follow 0.35), in
+  front of the thigh, in three tapering fur sections with a dark tip. That leaves the back of the belt free for the magnet
+  power-up's coil (`test_outfit_party_wolf` checks none of the tail is inside it). **The back** is the neon wolf in shades (a cyan
+  outline, pink lenses, a yellow bridge), "PARTY WOLF" in two lines of block letters (PARTY pink over WOLF cyan, above the belt;
+  `GLYPHS` is the stroke font: 32 strokes) and graffiti tags down both sides in cyan, pink, green and yellow. **How it stays
+  cheap:** the sign, the neon wolf, the graffiti and the markings are *flat quads*: `flat()` / `back_flat()` / `back_line()`
+  (`party_wolf.gd`; `centurion.gd` has the first two for its wreath) make a one-sided `BAND` over a single face of a four-sided
+  section, which is two triangles, 2 mm off the surface it sits on, with its own colour, glow and roll, so none of it is a separate
+  mesh, a texture or a draw call and every glow powers down on death, brightens with the dash and sits under the invulnerability
+  tint like Echo's conduits (`test_outfit_party_wolf` reads the sign back from the pieces and checks the letters). The glows are
+  thin and soft: the brightest line while dashing is under `test_outfit_party_wolf`'s 1.4 cap. **The armor power-up is
+  refitted** like the Centurion's (bright silver-blue plates, over the mantle, the pink rig and across the back under the mantle;
+  Echo's steel is close to the fur's grey). 1,512 triangles bare, 1,976 with every power-up, 17 draw calls (18 with the
+  shield). **The sign is not readable from the gameplay camera:** there it is about one pixel a cell and shows as a band of pink
+  and cyan under the neon wolf; it reads in the showcase's close-ups (`avatar_showcase.tscn -- --shot=sheet-close
+  --outfit=party_wolf`). The sheet sprays the words on the coat's skirt below the belt, not on the torso as built here (the
+  skirt's panels swing apart, which would break the lettering). `DESIGN-TBD` (`docs/OPEN_QUESTIONS*.md` items 1003, 1004 and 1007-1010): the armor
+  refit, the graffiti, the markings and the shirt print are simplified from the sheet, the sign's colours and size, the tail's
+  carabiner, and the mask's expression are ours.

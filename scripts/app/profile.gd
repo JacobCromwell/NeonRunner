@@ -39,6 +39,11 @@ var tiers: Dictionary = {}
 var stocks: Dictionary = {}
 ## Items switched off in the shop's equip toggle: id -> true (GDD §8).
 var equip_off: Dictionary = {}
+## Cosmetics bought (GDD §8, "Cosmetics"): outfit id -> true. Razor Echo's own look is always owned and has
+## no entry.
+var outfits: Dictionary = {}
+## The outfit worn (an id in `outfits`, or PlayerOutfits.ECHO for his own look, the default).
+var worn_outfit: String = String(PlayerOutfits.ECHO)
 ## Campaign records per difficulty tier: "tier/step_id" -> {completed, best_score, stars, best_time, attempts}.
 var records: Dictionary = {}
 ## Highest difficulty tier unlocked (0 = normal; harder tiers open after finishing the game, GDD §6).
@@ -127,6 +132,31 @@ func set_equipped(id: StringName, on: bool) -> void:
 		equip_off[String(id)] = true
 
 
+# --- Cosmetics -----------------------------------------------------------------------
+
+## Razor Echo's own look is always owned; any other outfit once it has been bought.
+func owns_outfit(id: StringName) -> bool:
+	return id == PlayerOutfits.ECHO or outfits.has(String(id))
+
+
+func add_outfit(id: StringName) -> void:
+	if id != PlayerOutfits.ECHO:
+		outfits[String(id)] = true
+
+
+## The outfit worn.
+func worn() -> StringName:
+	return StringName(worn_outfit)
+
+
+## Wears an owned outfit (PlayerOutfits.ECHO for his own look). False, nothing changed, if it isn't owned.
+func wear_outfit(id: StringName) -> bool:
+	if not owns_outfit(id):
+		return false
+	worn_outfit = String(id)
+	return true
+
+
 # --- Campaign records ------------------------------------------------------------------
 
 static func record_key(step_id: String, difficulty_tier: int) -> String:
@@ -191,6 +221,8 @@ func to_dict() -> Dictionary:
 		"tiers": tiers,
 		"stocks": stocks,
 		"equip_off": equip_off,
+		"outfits": outfits,
+		"worn_outfit": worn_outfit,
 		"records": records,
 		"unlocked_tier": unlocked_tier,
 		"endless_best": endless_best,
@@ -209,6 +241,12 @@ static func from_dict(d: Dictionary) -> Profile:
 	p.tiers = _dict(d, "tiers")
 	p.stocks = _dict(d, "stocks")
 	p.equip_off = _dict(d, "equip_off")
+	p.outfits = _dict(d, "outfits")
+	# Saves from before the cosmetics have neither: nothing owned, Echo worn. An outfit worn that isn't owned
+	# (an edited save) is taken off.
+	p.worn_outfit = str(d.get("worn_outfit", PlayerOutfits.ECHO))
+	if not p.owns_outfit(p.worn()):
+		p.worn_outfit = String(PlayerOutfits.ECHO)
 	p.records = _dict(d, "records")
 	p.unlocked_tier = int(d.get("unlocked_tier", 0))
 	p.endless_best = _dict(d, "endless_best")
