@@ -3,8 +3,8 @@ extends PlayerOutfit
 ## win it exists; brief docs/art/BRIEF_OUTFIT_CENTURION.md, after the owner's concept sheet
 ## docs/art/reference/outfit_centurion.webp): a gold-and-crimson Roman-style outfit on Razor Echo's rig and head (his
 ## face, scars, spiky hair and copper ocular implant stay his own). A long charcoal and crimson trench coat trimmed in
-## gold (a high collar, crimson lapels, four stiff skirt panels hinged at the waist and two swinging leather strips,
-## the pteruges, hanging from the sash over the hips), a sculpted gold cuirass with an emblem on the chest, lion-head
+## gold (a high collar, crimson lapels, four stiff skirt panels hinged at the waist and, one a side, two panels of
+## swinging leather strips, the pteruges, hanging from the sash over the hips), a sculpted gold cuirass with an emblem on the chest, lion-head
 ## gold pauldrons with layered scale plates, a crimson sash and a black belt with a gold buckle, a sleek gold cyber-arm
 ## on the left with crimson accents at its joints (it replaces Echo's plain gold one), gold bracers and fingerless
 ## gloves, black pants with gold knee plates and greaves, and gold-plated boots. On the back, large enough to read from
@@ -127,7 +127,7 @@ func _torso(list: Array[HumanoidPiece]) -> void:
 
 
 ## The sculpted gold cuirass in the open front: the chest plate over the abdomen plate, the muscles' lines and the
-## emblem (a crimson disc with a gold star).
+## emblem (a crimson diamond with a gold square).
 func _cuirass(list: Array[HumanoidPiece]) -> void:
 	add(list, &"chest", BOX, Vector3(0.17, 0.2, 0.05), Vector3(0.0, 0.115, -0.1), GOLD, 0.0,
 		{"chamfer": 0.3, "top_scale": Vector2(1.12, 0.85), "shine": GOLD_SHINE})
@@ -255,8 +255,9 @@ func _legs(list: Array[HumanoidPiece]) -> void:
 
 # --- The coat's skirt and the pteruges ---------------------------------------------------
 
-## One of the coat's four skirt panels, knee to mid-calf: charcoal behind the legs (split by the back vent) with a
-## crimson hem and a gold line above it, crimson at the open coat's front edges with a gold hem. (As Echo's.)
+## One of the coat's four skirt panels, knee to mid-calf (as Echo's): charcoal behind the legs (split by the back vent,
+## its two outer faces crimson, with a crimson band above the hem) and crimson at the open coat's front edges, all with a
+## gold line along the hem.
 func _skirt_panel(side: int, behind: bool) -> HumanoidPanel:
 	var panel := HumanoidPanel.new()
 	panel.side = side
