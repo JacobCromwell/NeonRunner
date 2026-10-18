@@ -811,7 +811,11 @@ func _test_retry() -> void:
 	var ctx := RunContext.new()
 	ctx.mode = RunContext.Mode.QUICK
 	ctx.config = campaign.configure(campaign.step("corporate/1"), 3)
-	ctx.config.feature_starts["dash_wall"] = 0.0
+	# A copy of its starts: the level resource's own dictionary is shared with every copy of the level (task L6's review:
+	# written into, it moved Corporate 1's walls for every suite after this one in the run, test_campaign's too).
+	var starts: Dictionary[String, float] = ctx.config.feature_starts.duplicate()
+	starts["dash_wall"] = 0.0
+	ctx.config.feature_starts = starts
 	ctx.tuning = tuning
 	ctx.loadout = Loadout.new()
 	ctx.god_mode = true
