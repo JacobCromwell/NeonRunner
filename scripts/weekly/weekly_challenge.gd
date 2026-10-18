@@ -61,8 +61,8 @@ const GOLDEN_FIELDS: PackedStringArray = [
 const RESOURCE_PROPERTIES: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script"]
 
 @export_group("Schedule")
-## DESIGN-TBD (item 1025): the moment week 0 opens, UTC unix seconds. The placeholder is a Monday 00:00
-## UTC (October 19, 2026), so every week opens Monday 00:00 UTC, the same instant for every player. Boards are named
+## The moment week 0 opens, UTC unix seconds (owner, October 18, 2026, item 1025; GDD §6): Monday 00:00 UTC,
+## October 19, 2026, so every week opens Monday 00:00 UTC, the same instant for every player. Boards are named
 ## after the week index counted from it, so it must never change once the game has shipped.
 @export var epoch_unix: int = 1792368000
 ## The length of a week in seconds (7 days).

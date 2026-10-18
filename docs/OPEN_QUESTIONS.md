@@ -34,9 +34,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
-| 1025 | The weekly challenge's week boundary (Monday 00:00 UTC, week 0 opening October 19, 2026): board names derive from it, so it must be settled before the game ships. |
-| 1026 | The weekly payout trusts the device's clock: moving it forward opens each future week once. A trusted time through the platform layer before launch, and what to do offline? |
-| 1027 | Weekly board and layout versioning: appending seeds after the list wraps, or changing the generator, changes a week's layout under the same board. A content version in the board id, or per-entry start weeks? |
 
 ## The items in full
 
@@ -137,32 +134,3 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    first place, Leader of the Pack for the top three)?
    It also needs a rule for when the reward is granted: a week's rank is only final once the week is over, so the game
    would check it the next time it is online. Placeholder: none yet; work on the reward waits on this item.
-
-**N5, the weekly challenge** (from `docs/questions/n5.md`; the batch of October 18, 2026, evening; the other 14 items are deferred, 1028-1041)
-1025. **Where the week turns over.** Placeholder (`epoch_unix` in `data/weekly/weekly_challenge.tres`): every week opens at
-   **Monday 00:00 UTC**, the same instant for every player, and week 0 is the one opening **October 19, 2026** (the day
-   after this was built). Boards are named after the week index counted from it (`weekly/pc/<week>`), so the epoch must
-   be settled before the game ships and never move after. Is Monday 00:00 UTC right (a player in the Americas gets the
-   new week on Sunday evening, one in Asia on Monday morning), or should it be another day or hour? Which week is the
-   first? Until it opens the weekly screen says "opens on <date>" and PLAY is off, so no week before it can be played.
-1026. **The device's clock is not trusted, and nothing here can make it so.** The payout and the boards are keyed by the week
-   the *device's* clock says. Built (`Profile.weekly_high_water`, `Profile.weekly_week_open`, `App.weekly_state`,
-   `App._settle_weekly`): nothing is paid or posted for a week before the schedule's first; and weeks only go forward, so
-   nothing is paid or posted for a week below the highest the player has played, and the weekly screen says "clock behind"
-   with the date it goes on (PLAY off). That stops the repro in the review (clears at weeks 5, 4, 3, -1, -27 and 37 paid
-   1,000 each, and 5, -27 and 37 are one layout: now only 5 and 37 pay). Not stopped: **moving the clock forward still opens
-   each future week once** (so 37 paid), and a clock set far forward by mistake keeps the player in the "behind" state until
-   real time catches up, with nothing paid or posted meanwhile. Both need a time the device can't change, through the
-   platform layer (the platform's own server time, as a backend method next to `leaderboard_rank`, with the stub saying
-   "trusted: no"). Is that wanted before launch, and what should the game do offline (play unpaid, as now with a clock
-   behind, or pay on the device's word)? The owner said there is no anti-cheat for now (GDD §6); this is the one place
-   where the game's own economy, not the board, is what a clock can change.
-1027. **Board and layout versioning.** A week plays entry `week index mod list size` of the shipped list, and a board is named
-   by the week index alone. Two things follow. (a) Once the list wraps (week 32 plays week 0's level again, on a board of
-   its own), **adding entries changes what every later week maps to**: appending 8 entries to the 32 makes week 32 play
-   entry 32 where it played entry 0, and the weeks already played past 32 would change their layout under the same board
-   name. (b) Changing anything that builds the level (the generator, a zone's level data, Sentinel Row, the pace) changes
-   the layout under a board's name while scores on it were set on the old one. Placeholder: nothing is versioned; the list
-   is append-only and only until the game ships, the data comment says so. Proposed for the owner: a content version in
-   the board id (`weekly/pc/<week>/<version>`) or in the list (each entry says the weeks it starts at, so a played week
-   never remaps), bumped by whoever changes the generator or the list after launch. Which?

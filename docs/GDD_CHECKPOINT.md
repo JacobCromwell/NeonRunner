@@ -311,6 +311,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
     - **The week's level comes from a list of seeds shipped with the game** and checked by the fairness tests in advance, not straight from the date (owner, October 18, 2026).
     - **The credits are paid for the week's first clear only,** so a memorised layout can't be farmed (owner, October 18, 2026).
     - **It unlocks once the player has beaten the Neon City's boss** (the Floating Head).
+    - **The week turns over at Monday 00:00 UTC**, the same instant for every player; week 0 opens on **October 19, 2026** (owner, October 18, 2026, item 1025). The boards are named after the week counted from it, so it doesn't move.
     - **Every zone is in the rotation from the start,** including zones the player hasn't reached in the campaign yet (owner, October 18, 2026: accepted).
     - **The weeks rotate through the zones,** each week's level in one zone's skin, **always at the Golden Zone's difficulty**: a week in the Neon City has the Neon City's own enemies and obstacles, but as many of them, as dense and as hard as the Golden Zone's, "otherwise it would be too easy for players" (owner, October 18, 2026). *(Proposed)* The Golden Zone's hardest level sets it (Sentinel Row, `data/levels/golden_2.tres`), with its enemy scaling (fire rate, projectile speed, health) and its run speed of about 25 m/s.
   - Leaderboards

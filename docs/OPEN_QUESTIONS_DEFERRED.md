@@ -5736,3 +5736,32 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 
 1041. **The harder tiers.** The weekly always plays on the Normal tier's numbers: the Hard and Insane tiers (GDD §6) don't
     touch it. Placeholder; say if they should.
+
+### Deferred by the owner on October 18, 2026 (task N5, the weekly challenge)
+
+1026. **The device's clock is not trusted, and nothing here can make it so.** The payout and the boards are keyed by the week
+   the *device's* clock says. Built (`Profile.weekly_high_water`, `Profile.weekly_week_open`, `App.weekly_state`,
+   `App._settle_weekly`): nothing is paid or posted for a week before the schedule's first; and weeks only go forward, so
+   nothing is paid or posted for a week below the highest the player has played, and the weekly screen says "clock behind"
+   with the date it goes on (PLAY off). That stops the repro in the review (clears at weeks 5, 4, 3, -1, -27 and 37 paid
+   1,000 each, and 5, -27 and 37 are one layout: now only 5 and 37 pay). Not stopped: **moving the clock forward still opens
+   each future week once** (so 37 paid), and a clock set far forward by mistake keeps the player in the "behind" state until
+   real time catches up, with nothing paid or posted meanwhile. Both need a time the device can't change, through the
+   platform layer (the platform's own server time, as a backend method next to `leaderboard_rank`, with the stub saying
+   "trusted: no"). Is that wanted before launch, and what should the game do offline (play unpaid, as now with a clock
+   behind, or pay on the device's word)? The owner said there is no anti-cheat for now (GDD §6); this is the one place
+   where the game's own economy, not the board, is what a clock can change.
+
+   **Deferred (owner, October 18, 2026):** fine as built for now; the owner will come back to it later.
+
+1027. **Board and layout versioning.** A week plays entry `week index mod list size` of the shipped list, and a board is named
+   by the week index alone. Two things follow. (a) Once the list wraps (week 32 plays week 0's level again, on a board of
+   its own), **adding entries changes what every later week maps to**: appending 8 entries to the 32 makes week 32 play
+   entry 32 where it played entry 0, and the weeks already played past 32 would change their layout under the same board
+   name. (b) Changing anything that builds the level (the generator, a zone's level data, Sentinel Row, the pace) changes
+   the layout under a board's name while scores on it were set on the old one. Placeholder: nothing is versioned; the list
+   is append-only and only until the game ships, the data comment says so. Proposed for the owner: a content version in
+   the board id (`weekly/pc/<week>/<version>`) or in the list (each entry says the weeks it starts at, so a played week
+   never remaps), bumped by whoever changes the generator or the list after launch. Which?
+
+   **Deferred (owner, October 18, 2026):** fine as built for now; the owner will come back to it later.
