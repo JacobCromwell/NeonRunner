@@ -496,6 +496,12 @@ func _build_debug_tools() -> void:
 		var wall_run_gaps: WallRunGapTuning = WallRunGapPlacement.tuning()
 		if wall_run_gaps.resource_path != "":
 			sections.append({"title": "Wall-run gaps", "resource": wall_run_gaps, "path": wall_run_gaps.resource_path})
+	# Task N1: the wall-hop credits' line, in a level that asks for them (how many is the level's own, in "Level
+	# pacing"); Restart level rebuilds.
+	if context.config.wall_hop_lines > 0:
+		var wall_hops: WallHopTuning = WallHopPlacement.tuning()
+		if wall_hops.resource_path != "":
+			sections.append({"title": "Wall-hop credits", "resource": wall_hops, "path": wall_hops.resource_path})
 	if context.is_boss():
 		# The boss's numbers (health, rewards, par times) and its script's own tuning.
 		var def: BossDef = context.boss

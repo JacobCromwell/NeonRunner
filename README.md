@@ -203,7 +203,15 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   them (from Corporate, several pads, and you read which are which); and a treasure stash, a stretch of floor walled
   off by doodads with two or three of the richest credits inside, which you can't get into from the street: ride the
   ceiling above it and step on the downward-pointing pad in its lane to drop straight in (on 5 or 6 lanes; quick
-  play, `--features=ceilings,treasure_stash,fenced_ceiling --lanes=5 --difficulty=0.7`).
+  play, `--features=ceilings,treasure_stash,fenced_ceiling --lanes=5 --difficulty=0.7`). A doodad stands a space in
+  front of the stash's own (a second of run), so a dash at it from the street smashes the first and runs out short of
+  the second; the street way in is harder: around the first, into the space, then dash.
+  Wall-hop credits (from Gangland on, about once a level where a long, clear stretch of wall fits; the Beach's mostly
+  open walls leave none long enough): a line of credits leads along a side wall from where to step onto it, and three
+  high-value ones hang further along than one wall run reaches and higher than a step onto the wall from the floor
+  takes you; jump off the wall and straight back on (the wall hop) as they come near to reach them, or jump onto the
+  wall from the floor at the right spot. The magnet leaves them alone (in a campaign level, e.g.
+  `--level=gangland/1`).
 - **Enemies:**
   - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder. Up to two
     bursts of the cyborgs, window cyborgs and Barnacle Turrets fly at once (`GameRules.max_bursts_in_air`,
@@ -590,7 +598,8 @@ wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a
 look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
 them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
-`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
+`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), a campaign level's line
+of wall-hop credits ridden by a wall hopper (`wall_hop_review`, `--level=<id> --take=hop|run --camera=game|side`), an
 Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
 explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,

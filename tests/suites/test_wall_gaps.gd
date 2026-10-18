@@ -418,7 +418,8 @@ func _test_campaign_levels() -> void:
 
 
 ## City (Zone 1) levels have none, and a Zone 2 level is the same without the feature but for its
-## gaps and the wall credits a gap took.
+## gaps and the wall credits a gap took. Both builds leave out the level's wall-hop line (task N1): it keeps off
+## the gaps and draws its spot among the wall's free stretches, so it moves with them.
 func _test_without() -> void:
 	for id: String in WITHOUT:
 		for lanes: int in [3, 5, 6]:
@@ -427,6 +428,7 @@ func _test_without() -> void:
 			check(layout.wall_gaps.is_empty() and not layout.to_dict().has("wall_gaps"), "%s (%d lanes) has no wall gaps" % [id, lanes])
 	for id: String in ["gangland/1", "corporate/2"]:
 		var config: LevelConfig = campaign.configure(campaign.step(id), 5)
+		config.wall_hop_lines = 0
 		var patterns: Array = LevelGenerator.load_for(config)
 		var with_gaps: LevelLayout = LayoutCache.generate(config, tuning, patterns)
 		var bare: LevelConfig = config.duplicate() as LevelConfig
@@ -538,7 +540,7 @@ func _test_opted_in(def: BossDef) -> void:
 ## Task D10b: a level's own numbers (LevelConfig.wall_gap_tuning). Every campaign level has none and places its
 ## gaps by the shared file, as before; a level built with a copy of the shared numbers is the same level; a
 ## level's own numbers are the ones it's built by, and they change nothing but its wall gaps (and the wall
-## credits a gap takes).
+## credits a gap takes). Its builds leave out the level's wall-hop line (task N1), which moves with the gaps.
 func _test_level_tuning() -> void:
 	var shared: WallGapTuning = WallGapPlacement.tuning()
 	check(shared.resource_path == WallGapPlacement.TUNING_PATH and not shared.opens_walls(),
@@ -557,6 +559,7 @@ func _test_level_tuning() -> void:
 				"%s has no wall-gap numbers of its own: the shared ones" % s.id)
 	for id: String in ["gangland/1", "corporate/2"]:
 		var config: LevelConfig = campaign.configure(campaign.step(id), 5)
+		config.wall_hop_lines = 0
 		var patterns: Array = LevelGenerator.load_for(config)
 		var base: LevelLayout = LayoutCache.generate(config, tuning, patterns)
 		var copy: LevelConfig = config.duplicate() as LevelConfig

@@ -47,7 +47,9 @@ extends RefCounted
 ## 7. Additive gaps (GapDensity, enabled only in City 1): more rows and a higher mean row width,
 ##    without replacing obstacles. Independent round-up targets and explicit fairness shortfalls.
 ## 8. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots (none on a wall
-##    where a wall gap leaves no wall).
+##    where a wall gap leaves no wall), and from Gangland 1 on a line of wall-hop credits a level
+##    (LevelConfig.wall_hop_lines; WallHopPlacement, task N1): along a long, clear stretch of a side wall,
+##    its high-value ones further along than one wall run reaches, for a runner who wall hops.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
 ##
 ## Ceilings (GDD §3, changed September 26, 2026): the floor under a ceiling may be dangerous, since the
@@ -2551,6 +2553,8 @@ func _place_credits() -> void:
 	_place_fence_credits(rng)
 	if config.credit_wall_runs:
 		_place_wall_run_credits()
+	# Task N1 (GDD §7, "Wall-hop credits"): from a random stream of its own, so every other credit comes out as before.
+	WallHopPlacement.place(self)
 	if config.credit_ceilings:
 		_place_ceiling_credits(rng)
 	_drop_unsafe_credits()

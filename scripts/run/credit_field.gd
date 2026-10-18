@@ -9,7 +9,7 @@ extends Node3D
 ##
 ## A credit is collected when the player's hitbox, grown by a pickup margin and swept over this
 ## frame's motion, reaches it. The magnet (GDD §8) pulls credits on the player's own surface,
-## never further sideways than the adjacent lanes.
+## never further sideways than the adjacent lanes, and never a wall-hop line's high-value ones (_in_magnet).
 
 signal collected(value: int, position: Vector3)
 
@@ -85,7 +85,8 @@ var world: RunWorld
 var magnet_radius: float = 0.0
 var magnet_pull_speed: float = 30.0
 
-## One per credit: {value, surface, lane, side, pos: Vector3, at, state, mm: MultiMesh, idx}.
+## One per credit: {value, surface, lane, side, pos: Vector3, at, state, magnet (false: the magnet leaves it alone,
+## _in_magnet), mm: MultiMesh, idx}.
 var _entries: Array[Dictionary] = []
 var _pulled: Array[Dictionary] = []
 var _next: int = 0
@@ -115,7 +116,7 @@ func setup(p_world: RunWorld) -> void:
 		var value: int = denomination(int(c["value"]))
 		var e := {"value": value, "surface": String(c["surface"]), "lane": int(c.get("lane", 0)),
 			"side": int(c.get("side", 0)), "at": float(c["at"]), "state": State.IDLE,
-			"pos": _world_pos(c)}
+			"pos": _world_pos(c), "magnet": not c.has(WallHopPlacement.GEM)}
 		_entries.append(e)
 		if not by_value.has(value):
 			by_value[value] = []
@@ -158,7 +159,8 @@ func place(credits: Array[Dictionary]) -> int:
 	for c: Dictionary in credits:
 		var value: int = denomination(int(c["value"]))
 		var e := {"value": value, "surface": String(c.get("surface", "floor")), "lane": int(c.get("lane", 0)),
-			"side": int(c.get("side", 0)), "at": float(c["at"]), "state": State.IDLE, "pos": _world_pos(c)}
+			"side": int(c.get("side", 0)), "at": float(c["at"]), "state": State.IDLE, "pos": _world_pos(c),
+			"magnet": not c.has(WallHopPlacement.GEM)}
 		var mine: Array = _placed_entries.get(value, [])
 		_placed_entries[value] = mine
 		if _reuse_slot(e, mine):
@@ -247,7 +249,13 @@ func _physics_process(delta: float) -> void:
 		_update_pulled(player, box, delta)
 
 
+## True if the magnet pulls credit entry `e` now: on the player's own surface (their wall), ahead within its reach, and
+## never further sideways than the lanes next to theirs. DESIGN-TBD (docs/questions/n1.md question 4): it leaves a
+## wall-hop line's high-value credits alone (WallHopPlacement.GEM, entry "magnet" false): they're for a runner who
+## wall hops (GDD §7), and Magnet I would pull all three down to a plain step onto the wall from the floor.
 func _in_magnet(e: Dictionary, player: Player) -> bool:
+	if not bool(e.get("magnet", true)):
+		return false
 	var surface: String = player.surface_name()
 	if e["surface"] != surface:
 		return false

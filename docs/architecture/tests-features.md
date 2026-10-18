@@ -391,6 +391,23 @@ its window is full, at 6 its window comes after its bait), played from its start
 runner leads its first truck over that wider gap, where it's wrecked; and the pass's last way (task K5) on
 `LAST_RESORT_CASES` (the build's one wider gap from it, fair, past every truck's showing, every window holding) and
 on a plain stretch fenced every 15 m (plain fences make way for it, pulsing ones keep it from coming).
+`test_wall_hops` checks the wall-hop credits (task N1; The generator, Wall-hop credits): their numbers (the high-value
+credits above a fresh wall run's reach without a hop, from the floor or straight back on as one drops its runner, and
+below the wall's top; at every zone's speed past one wall run's reach within a few hops, a clawed single run passing
+under them; printed); none in the City's levels, one asked for by every level from Gangland 1, and at 3, 5 and 6 lanes
+on each level's own build `LayoutChecks.check_wall_hops`, at most one a level, most builds outside the Beach with one
+(printed, with the Beach's none), the stars' best score leaving them out and every other credit clearing three stars;
+the same seed the same lines; a level asking for none the same layout but for its line (credits compared in any
+order: two at one distance may swap). On real physics (excerpts of the first and the last line at 5 lanes): the
+reference hopper (WallHopPath's) taking every credit, alive, its fresh runs peaking where the path says within 0.1 m;
+runners hopping at 0.6 and 1.0 m taking none on their own (printed) but all with one more hop 0.15 or 0.35 s before
+them; one wall run from the entry, plain and with claws, taking only the lead-in; a runner stepping straight back on
+each time a run drops it, and runners stepping on from the floor every 4 m from one wall run's reach to the credits,
+taking none, and the same every 2 m with Magnet I (the magnet leaves the high-value credits alone; each ride on its
+own copy of the excerpt). The line's spot is a seeded draw among its wall's free
+stretches, so it moves with whatever it keeps off: the suites that compare a level with and without such a thing build
+both without it (`test_wall_fences`, `test_wall_gaps`, `test_enforcer_truck`, `test_barnacle_turret`, `test_doodads`'
+share of 0) or set its record and credits aside (`test_beach_levels`, `test_buzz_company`).
 `test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
 run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
 leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit
@@ -432,8 +449,14 @@ of them) drops off past the ceiling alive; a floor runner jumping under the fenc
 unsafe pad's rider through, and an EMP switches the fences off; a heli drone that outlived its pads fires before the
 pick, holds its barrages through it, and is hurled by the safe pad; excerpts of the stashes at 5 and 6 lanes (the
 first and the last in campaign order): floor runners from every lane pressing toward the stash every frame, from
-before it and from alongside it, never inside it and taking no credit, nor with the top magnet, holding a lane or
-pressing toward it; the dash smashing in; the return pad's rider landing inside, never pushed, collecting every
+before it, from the space between its two doodads and from alongside it, never inside it and taking no credit, nor
+with the top magnet, holding a lane or pressing toward it; a dash at it in its lane (4, 1.5 and 0.9 m before its
+outer doodad) smashing no more than the outer doodad, never the front one, and never getting in; beside the outer one
+from either side, steering into its side, the latest dash start that still smashes it (found going back from 1.2 m
+before its end in 0.2 m steps; about 1.6 m) smashing it and not the front one, never getting in; and a floor runner
+who goes around the outer doodad and dashes through the second
+one getting in (task N1: "a floor runner can still get in that way; it is just harder"; each dash on its own copy of
+the excerpt, as a smashed doodad stays smashed in its layout); the return pad's rider landing inside, never pushed, collecting every
 credit (into the run's credits and score, not the stars' best score) and running out; one who stays on in another
 lane dropping beyond it.
 The track builds the fences (an electrical hazard at its depth and size, dressed) and the return pad (on the
@@ -536,8 +559,9 @@ its first run, its restart and the results screen's retry (layout, the runner's 
 the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
 either retry (and the kept build untouched; every zone doodad and dash wall smashed or marked, then all of them
 standing as the retry's track is built), an attempt dashing through a doodad and a dash wall (at the first of
-Golden 1, Corporate 2, Golden 2, Dead Zone 1 and Golden 3 with a lone doodad in the runner's lane well before its
-first wall, at 3 lanes, else 5, else 6: Corporate 2 at 6 lanes since task L6's review), then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
+Golden 1, Corporate 2, Golden 2, Dead Zone 1 and Golden 3 with a lone zone doodad in the runner's lane well before
+its first wall, a treasure stash's aside (task N1), at 3 lanes, else 5, else 6: Corporate 2 at 6 lanes since task L6's
+review), then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
 and look; the restart's standing in the physics world) and the restart, not dashing, playing as on a fresh build
 (tasks H5 and H7a, the H merge), the debug keys, F6 edits and another level building again, and endless mode
 building on every run and keeping nothing.

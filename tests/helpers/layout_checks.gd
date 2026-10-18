@@ -8,7 +8,8 @@ extends RefCounted
 ##   stretch, every ceiling keeps GDD §3 (check_ceilings), every zone doodad stands where its push is
 ##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), the level's wider gaps
 ##   keep theirs (check_wide_gaps, task G7), every dash wall stands where it's fair (check_dash_walls,
-##   task H7a), and every ceiling scenario keeps its rules (check_scenarios, task I4).
+##   task H7a), every ceiling scenario keeps its rules (check_scenarios, task I4), every wall-run gap keeps
+##   its (check_wall_run_gaps, task J2), and every line of wall-hop credits keeps its (check_wall_hops, task N1).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -37,6 +38,9 @@ const ROUTE_LEAD: float = 5.0
 ## A zone doodad with nothing else in any lane from this long before its push (seconds at run speed) to the spacing
 ## past it can't take away a way on, and check_doodads looks for no floor route around it (task L6).
 const ROUTE_LOOK_BACK: float = 3.0
+## A wall-hop line's high-value credits lie within this many hops of its entry (check_wall_hops; the brief: "within a
+## few hops").
+const MAX_HOPS: int = 3
 
 
 ## The movement tuning `config`'s level runs on (LevelConfig.movement_for: its own run speed, a
@@ -79,6 +83,89 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_dash_walls(suite, layout, config, tag)
 	check_scenarios(suite, layout, config, tag)
 	check_wall_run_gaps(suite, layout, config, tag)
+	check_wall_hops(suite, layout, config, tag)
+
+
+## Wall-hop credits (task N1; GDD §7, "Wall-hop credits": "some long walls carry high-value credits further along than
+## one wall run reaches, so only a player inventive enough to wall hop collects them"; WallHopPlacement), wherever the
+## generator places a line, at the level's own run speed:
+## - only in a level that asks for them (LevelConfig.wall_hop_lines), at most its count, min_gap_seconds apart, and no
+##   credit marked as a line's outside one;
+## - its high-value credits (as many as the tuning's `gems`, of its gem_value): past where one wall run from its entry
+##   drops its runner off the wall (the standard wall run, and reach_margin_seconds), higher than a fresh wall run
+##   carries a pickup without a hop (WallHopPath.fresh_top and pickup_reach), where the reference hopper
+##   (WallHopPath) passes within a pickup's reach, within a few hops (MAX_HOPS); its lead-in along the first wall run;
+## - the stars' best score leaves the high-value credits out and counts the lead-in (LevelLayout.star_credit_value);
+## - the generator's own re-check finds nothing (WallHopPlacement.problem: its credits where its shape puts them, its
+##   stretch inside the level's clear ends, its wall whole, with no side wall gap, and clear of signs, wall enemies,
+##   ramps' runs, wall fences and other wall credits, the outer lane's floor beside it clear of holes, fences, pads,
+##   doodads and floor cuts, and nothing a wall runner can't dodge meanwhile).
+static func check_wall_hops(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	var marked: int = 0
+	var gem_values: int = 0
+	var stash_values: int = 0
+	for c: Dictionary in layout.credits:
+		if c.has(WallHopPlacement.GEM) or c.has(WallHopPlacement.LEAD):
+			marked += 1
+		if c.has(WallHopPlacement.GEM):
+			gem_values += int(c["value"])
+		if c.has("stash"):
+			stash_values += int(c["value"])
+	suite.check(layout.star_credit_value() == layout.total_credit_value() - stash_values - gem_values,
+		"the stars' best score is every credit but a stash's and the wall-hop lines' high-value ones %s" % tag)
+	if layout.wall_hops.is_empty():
+		suite.check(marked == 0, "no wall-hop credit without its line (%d) %s" % [marked, tag])
+		return
+	suite.check(layout.wall_hops.size() <= config.wall_hop_lines,
+		"at most the level's %d wall-hop lines (%d) %s" % [config.wall_hop_lines, layout.wall_hops.size(), tag])
+	var tuning: MovementTuning = level_tuning(suite, config)
+	var v: float = tuning.run_speed
+	var t: WallHopTuning = WallHopPlacement.tuning()
+	var gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
+	var height: float = WallHopPlacement.gem_height(tuning, t)
+	var reach: float = WallHopPath.pickup_reach(tuning)
+	var lines: Array[Dictionary] = layout.wall_hops.duplicate()
+	lines.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	var own: int = 0
+	var prev_end: float = -INF
+	for w: Dictionary in lines:
+		var side: int = int(w["side"])
+		var entry: float = float(w["entry"])
+		var at: String = "the wall-hop line at %.0f m (%s wall) %s" % [entry, "left" if side < 0 else "right", tag]
+		suite.check(float(w["start"]) - prev_end >= t.min_gap_seconds * v - 0.01, "%s keeps %.0f s from the one before" % [at, t.min_gap_seconds])
+		prev_end = float(w["end"])
+		var problem: String = WallHopPlacement.problem(gen, w)
+		suite.check(problem == "", "%s keeps its rules (%s)" % [at, problem])
+		var path := WallHopPath.of(entry, tuning, v, t.hop_height)
+		var one_run: float = path.distance_at(path.run_end(0))
+		var gems: int = 0
+		var lead: int = 0
+		for c: Dictionary in layout.credits:
+			if not (c.has(WallHopPlacement.GEM) or c.has(WallHopPlacement.LEAD)) or int(c["side"]) != side \
+					or float(c["at"]) < float(w["start"]) or float(c["at"]) > float(w["end"]):
+				continue
+			own += 1
+			var d: float = float(c["at"])
+			var h: float = float(c["height"])
+			if c.has(WallHopPlacement.LEAD):
+				lead += 1
+				suite.check(d < one_run and int(c["value"]) == t.lead_value and absf(path.height_at(path.time_at(d)) - h) < 0.01,
+					"%s: its lead-in (%.1f m) lies along the first wall run from its entry" % [at, d])
+				continue
+			gems += 1
+			var ht: float = path.height_at(path.time_at(d))
+			var run: int = path.run_at(path.time_at(d))
+			suite.check(int(c["value"]) == t.gem_value and absf(h - height) < 0.01, "%s: a high-value credit (%.1f m) is one" % [at, d])
+			suite.check(d >= one_run + t.reach_margin_seconds * v - 0.01,
+				"%s: a high-value credit (%.1f m) lies past one wall run's reach (%.1f m)" % [at, d, one_run])
+			suite.check(h - reach > WallHopPath.fresh_top(tuning),
+				"%s: a high-value credit (%.2f m high) is out of a fresh wall run's reach without a hop (%.2f m and %.2f m)"
+				% [at, h, WallHopPath.fresh_top(tuning), reach])
+			suite.check(absf(ht - h) <= reach and run >= 1 and run <= MAX_HOPS,
+				"%s: the reference hopper passes a high-value credit (%.1f m) within reach (%.2f m high there), after %d hops"
+				% [at, d, ht, run])
+		suite.check(gems == t.gems and lead >= 1, "%s holds its %d high-value credits (%d) and a lead-in (%d)" % [at, t.gems, gems, lead])
+	suite.check(own == marked, "every wall-hop credit belongs to a line (%d of %d) %s" % [own, marked, tag])
 
 
 ## Wall-run gaps (task J2; the owner, October 15, 2026: "a gap over the ENTIRE floor (every lane), and the only way to
@@ -1254,8 +1341,10 @@ static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) ->
 ##   from it, at most the level's count of each, min_gap_seconds from the scenario before;
 ## - a treasure stash (check_stash): in an inner lane with inner lanes either side; its return pad on its ceiling's
 ##   underside over its lane, see_seconds after the ceiling's rider arrives at the latest; the ceiling running on past
-##   it; one doodad across its lane at its start, its walls back to back alongside in both neighbouring lanes, pushing
-##   outward, from beside that one (room for its push, then overlapping it) to its open end; two or three credits of
+##   it; two doodads across its lane, one at its start and one before its treasure, with a space between them past the
+##   dash's carry (TreasureStashRules.dash_space: no single dash smashes both), its walls back to back alongside in both
+##   neighbouring lanes, pushing outward, from beside the second one (room for its push, then overlapping it) to its
+##   open end, and nothing beside the first one or the space; two or three credits of
 ##   the highest denomination inside, past where the return pad's rider lands, and no other floor credit in it or
 ##   beside it; its floor, from the front doodad's push to the spacing past its open end, holding nothing else in any
 ##   lane (no hole, fence, floor cut's window, floor enemy, pad's zone, speed pad, ramp's run, other doodad, dash wall
@@ -1372,15 +1461,28 @@ static func check_stash(suite: TestSuite, gen: LevelGenerator, t: CeilingScenari
 			left.append(d)
 		elif int(d["lane"]) == lane + 1:
 			right.append(d)
-	suite.check(front.size() == 1, "%s: one doodad across its lane at its start (%d)" % [at, front.size()])
-	if front.size() != 1:
+	# The owner, October 18, 2026: "a doodad, a space, then a second doodad, and then the treasure".
+	suite.check(front.size() == 2, "%s: two doodads across its lane, a space between them (%d)" % [at, front.size()])
+	if front.size() != 2:
 		return
-	var front_end: float = float(front[0]["end"])
-	suite.check(absf(float(front[0]["start"]) - start) < 0.01, "%s: the doodad across its lane stands at its start" % at)
-	suite.check(absf(front_end - start - mt.doodad_size(StringName(front[0]["size"])).z) < 0.01,
-		"%s: the doodad across it is as long as its size class" % at)
-	# The walls start past room for that doodad's push, and overlap it by wall_overlap (or all it leaves).
-	var overlap: float = minf(t.wall_overlap, front_end - start - TreasureStashRules.PUSH_ROOM)
+	front.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	var outer: Dictionary = front[0]
+	var front_start: float = float(front[1]["start"])
+	var front_end: float = float(front[1]["end"])
+	suite.check(absf(float(outer["start"]) - start) < 0.01, "%s: the outer doodad across its lane stands at its start" % at)
+	suite.check(absf(front_start - float(s["front"])) < 0.01, "%s: the doodad before its treasure stands where the record says" % at)
+	for d: Dictionary in front:
+		suite.check(absf(float(d["end"]) - float(d["start"]) - mt.doodad_size(StringName(d["size"])).z) < 0.01,
+			"%s: a doodad across it is as long as its size class" % at)
+	var space: float = front_start - float(outer["end"])
+	var need: float = TreasureStashRules.dash_space(mt, v, t)
+	suite.check(space >= need - 0.01 and need > TreasureStashRules.dash_carry(mt, v),
+		"%s: the space between its two doodads (%.1f m) is past the dash's carry from the outer one's end (%.1f m)"
+		% [at, space, need])
+	# The walls start past room for the front doodad's push, and overlap it by wall_overlap (or all it leaves); the
+	# lanes beside the outer doodad and the space hold none of them (DESIGN-TBD, docs/questions/n1.md: room for both
+	# doodads' pushes).
+	var overlap: float = minf(t.wall_overlap, front_end - front_start - TreasureStashRules.PUSH_ROOM)
 	for side: int in [-1, 1]:
 		var chain: Array[Dictionary] = left if side < 0 else right
 		var w: String = "%s: its wall in lane %d" % [at, lane + side]
@@ -1390,8 +1492,9 @@ static func check_stash(suite: TestSuite, gen: LevelGenerator, t: CeilingScenari
 		chain.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 		var first: float = float(chain[0]["start"])
 		suite.check(absf(first - float(s["walls_from"])) < 0.01, "%s starts where the record says" % w)
-		suite.check(first >= start + TreasureStashRules.PUSH_ROOM - 0.01 and first <= front_end - overlap + 0.01,
-			"%s starts beside the doodad across it (%.2f m past its front, %.2f m before its end)" % [w, first - start, front_end - first])
+		suite.check(first >= front_start + TreasureStashRules.PUSH_ROOM - 0.01 and first <= front_end - overlap + 0.01,
+			"%s starts beside the doodad before its treasure (%.2f m past its front, %.2f m before its end)"
+			% [w, first - front_start, front_end - first])
 		var cursor: float = first
 		for d: Dictionary in chain:
 			suite.check(absf(float(d["start"]) - cursor) < 0.01, "%s runs back to back (%.2f m)" % [w, float(d["start"])])
