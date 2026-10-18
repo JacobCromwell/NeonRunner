@@ -5336,9 +5336,6 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 
 ### Folded on October 18, 2026 (task M1, the cosmetics: the shop's section, the outfit system and Rex)
 
-981. **Is an outfit worn right after it is bought?** (GDD §8: "bought once ... the player then picks one to wear".)
-   Placeholder: no. Buying only owns it; the card's button turns to WEAR (`App.buy_cosmetic`, `CosmeticCard`).
-
 984. **Rex's details the sheet leaves to us.** (`docs/art/BRIEF_OUTFIT_REX.md`.) The circuit patterns on the sleeves, shoulders
    and spine are simplified from the sheet (pink lines over the shoulders and down the back of the right sleeve, a cyan spine
    with three vertebrae), the patches on the back are two plain shapes (a round one on the left blade, a small square lower

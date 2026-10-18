@@ -488,7 +488,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   (an item, or a rewarded ad on mobile). Net worth has its own leaderboard; credits spent on outfits don't lower it. After the
   items, the shop's Cosmetics section sells outfits for Razor Echo, each bought once with credits and kept (Rex 3,000, Camo
   3,000, Beach Master, Centurion and Party Wolf 5,000 for now, until the ways of winning them are designed), each card showing
-  the runner in the outfit (running and turning on the card under the pointer or the focus); the player picks one to wear,
+  the runner in the outfit (running and turning on the card under the pointer or the focus); buying one puts it on, and the cards switch between owned looks,
   Echo's own look is the free default, and an outfit shows in every run and cinematic and never changes how the game plays
   (`docs/architecture/characters-ui-audio.md`, "The runner's outfits"; `docs/architecture/economy-platforms.md`).
 - **Campaign density:** more enemies and obstacles, with measured danger gains of about 17-18% in

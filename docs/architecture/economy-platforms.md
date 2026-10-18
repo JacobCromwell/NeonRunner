@@ -50,7 +50,7 @@ the free default, always owned, and the way back. They never change gameplay and
   the earned spending reaches: possibly less than it cost, never bought credits in the net worth. An outfit won rather than
   bought (later) never reaches `spend_on_cosmetic`, so it adds nothing.
 - *Flow:* screens only call `App.buy_cosmetic(id)` (once, with enough credits, never the free default; plays
-  `ui_buy`; it is not worn yet) and `App.wear_outfit(id)` (owned only; `ui_equip`), both saved and followed by
+  `ui_buy`; it is worn right away, the owner's answer to item 981) and `App.wear_outfit(id)` (owned only; `ui_equip`), both saved and followed by
   `profile_changed`. `App.sync_outfit()` makes `PlayerOutfits.worn` (what every new `PlayerAvatar` wears) the profile's
   outfit; it runs at start and after a wear, and a test or tool that swaps `App.profile` calls it.
 - *The shop:* `ShopScreen` has a COSMETICS section after the breakable items (before the credit packs), a `CosmeticCard`

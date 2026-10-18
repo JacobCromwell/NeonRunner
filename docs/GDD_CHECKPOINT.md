@@ -376,6 +376,7 @@ The shop appears between levels and after every death.
 Looks for the runner that the player **buys in the shop or wins** *(how cosmetics are won is still open)*. They **never change gameplay**: the hitbox, the poses and every size stay the same, and owned power-ups are still added on top.
 - **Their own section of the shop,** after the power-ups. Each cosmetic is **bought once with credits** and kept forever; the player then **picks one to wear**. Razor Echo's own look is the free default.
 - **The shop shows a preview of each outfit** (owner, October 18, 2026): the runner wearing it, in place of an icon.
+- **A bought outfit is worn right away** (owner, October 18, 2026); each owned outfit's card keeps its WEAR / TAKE OFF button, so the player can switch looks in the shop.
 - **Buying an outfit doesn't lower net worth** (owner, October 18, 2026; §6, Leaderboards): it's a look, not an advantage.
 - **One price on every platform** (owner, October 18, 2026): no separate mobile price.
 - **A won outfit leaves the shop** (owner, October 18, 2026): once its real way of being won exists, the shop stops selling it; a player who bought it before keeps it.

@@ -173,7 +173,7 @@ func _test_buying() -> void:
 	check(App.buy_cosmetic(&"rex") and App.profile.owns_outfit(&"rex") and App.profile.credits() == 0 and changes[0] == 1,
 		"with enough, Rex is bought for %d credits from the wallet" % rex.price)
 	check(App.profile.lifetime_spent == rex.price, "…and counts as spent")
-	check(App.profile.worn() == PlayerOutfits.ECHO, "…but isn't worn until the player picks it")
+	check(App.profile.worn() == &"rex" and PlayerOutfits.worn == &"rex", "…and is worn right away (owner, item 981)")
 	check(App.profile.net_worth() == rex.price and App.profile.cosmetic_spent == rex.price,
 		"…and doesn't lower the net worth: still the %d earned (%d)" % [rex.price, App.profile.net_worth()])
 	App.profile.add_earned(10000)
@@ -287,12 +287,13 @@ func _test_saved_by_app() -> void:
 	_fresh(4000)
 	App.buy_cosmetic(&"rex")
 	var after_buy: Profile = SaveService.load_profile(TEST_SAVE)
-	check(after_buy.owns_outfit(&"rex") and after_buy.credits() == 1000 and after_buy.worn() == PlayerOutfits.ECHO, "buying is saved")
+	check(after_buy.owns_outfit(&"rex") and after_buy.credits() == 1000 and after_buy.worn() == &"rex", "buying, and wearing it, is saved")
+	App.wear_outfit(PlayerOutfits.ECHO)
+	check(SaveService.load_profile(TEST_SAVE).worn() == PlayerOutfits.ECHO, "going back to Echo's own look is saved")
 	App.wear_outfit(&"rex")
 	var after_wear: Profile = SaveService.load_profile(TEST_SAVE)
-	check(after_wear.worn() == &"rex" and after_wear.owns_outfit(&"rex"), "wearing is saved")
+	check(after_wear.worn() == &"rex" and after_wear.owns_outfit(&"rex"), "and so is wearing it again")
 	App.wear_outfit(PlayerOutfits.ECHO)
-	check(SaveService.load_profile(TEST_SAVE).worn() == PlayerOutfits.ECHO, "and so is going back to Echo's own look")
 	App.autosave = false
 	App.save_path = _saved_path
 	SaveService.delete_save(TEST_SAVE)
@@ -348,25 +349,24 @@ func _test_shop() -> void:
 	rex.action_button.pressed.emit()
 	await _frames(2)
 	check(camo.state == CosmeticCard.State.CANT_AFFORD, "once Rex is paid for, Camo is out of reach")
-	check(App.profile.owns_outfit(&"rex") and App.profile.credits() == 0 and rex.state == CosmeticCard.State.OWNED
-		and rex.action_button.text == "WEAR" and rex.status_label.text == "OWNED" and echo.state == CosmeticCard.State.WORN,
-		"pressing the price buys it: the credits go, the card is OWNED with WEAR on its button")
+	check(App.profile.owns_outfit(&"rex") and App.profile.credits() == 0 and App.profile.worn() == &"rex" and PlayerOutfits.worn == &"rex"
+		and rex.state == CosmeticCard.State.WORN and rex.action_button.text == "TAKE OFF" and not rex.action_button.disabled
+		and echo.state == CosmeticCard.State.OWNED and echo.action_button.text == "WEAR" and not echo.action_button.disabled,
+		"pressing the price buys it and puts it on (item 981): Rex is WORN with TAKE OFF, Echo's own look can be worn again")
 	check(shop.wallet.value == 0, "the wallet follows")
 	rex.action_button.pressed.emit()
 	await _frames(2)
-	check(App.profile.worn() == &"rex" and PlayerOutfits.worn == &"rex" and rex.state == CosmeticCard.State.WORN
-		and rex.action_button.text == "TAKE OFF" and not rex.action_button.disabled
-		and echo.state == CosmeticCard.State.OWNED and echo.action_button.text == "WEAR" and not echo.action_button.disabled,
-		"WEAR puts it on: Rex is WORN with TAKE OFF, Echo's own look can be worn again")
+	check(App.profile.worn() == PlayerOutfits.ECHO and rex.state == CosmeticCard.State.OWNED and rex.action_button.text == "WEAR"
+		and rex.status_label.text == "OWNED" and echo.state == CosmeticCard.State.WORN,
+		"TAKE OFF puts Echo's own look back on, and Rex is OWNED with WEAR on its button")
+	rex.action_button.pressed.emit()
+	await _frames(2)
+	check(App.profile.worn() == &"rex" and PlayerOutfits.worn == &"rex" and rex.state == CosmeticCard.State.WORN,
+		"WEAR puts it back on")
 	echo.action_button.pressed.emit()
 	await _frames(2)
 	check(App.profile.worn() == PlayerOutfits.ECHO and rex.state == CosmeticCard.State.OWNED and echo.state == CosmeticCard.State.WORN,
 		"Echo's own card goes back to the free look")
-	rex.action_button.pressed.emit()
-	await _frames(2)
-	rex.action_button.pressed.emit()
-	await _frames(2)
-	check(App.profile.worn() == PlayerOutfits.ECHO and rex.state == CosmeticCard.State.OWNED, "TAKE OFF on the worn outfit does the same")
 	# An outfit whose look isn't built yet says so until it is.
 	App.profile.add_earned(5000)
 	App.profile_changed.emit()

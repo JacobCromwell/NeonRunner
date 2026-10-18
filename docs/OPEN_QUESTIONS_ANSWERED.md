@@ -1633,6 +1633,11 @@ Captain Cogs).
 
    **Superseded (October 18, 2026):** every outfit is built (tasks M2 and M3), so no card shows the placeholder any more.
 
+981. **Is an outfit worn right after it is bought?** (GDD §8: "bought once ... the player then picks one to wear".)
+   Placeholder: no. Buying only owns it; the card's button turns to WEAR (`App.buy_cosmetic`, `CosmeticCard`).
+
+   **Answered (owner, October 18, 2026):** yes: a bought outfit is worn right away, and each owned outfit's card keeps its WEAR / TAKE OFF button so the player can switch looks in the shop. Recorded in GDD §8, Cosmetics.
+
 985. **Does the owner want the cosmetics' price to differ on mobile?** (GDD §7; items have a `price_mobile`, itself an open
    question.) Placeholder: one price on every platform (`ShopCosmetic.price`).
 
