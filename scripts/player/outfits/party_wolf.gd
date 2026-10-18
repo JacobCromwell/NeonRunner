@@ -23,11 +23,11 @@ extends PlayerOutfit
 ## the runner may look like a power-up).
 ## The armor power-up is refitted too (`attachment_overrides`): bright silver-blue plates over the fur, so whether armor is
 ## up reads against it. The other power-ups are Echo's sets.
-## DESIGN-TBD (docs/questions/m3.md, 1): the armor refit, whether it stays.
-## DESIGN-TBD (docs/questions/m3.md, 2): "PARTY WOLF" kept in words (the brief's proposal, followed).
-## DESIGN-TBD (docs/questions/m3.md, 5): the graffiti, the markings and the shirt print are simplified from the sheet.
-## DESIGN-TBD (docs/questions/m3.md, 6): the sign's colours and size (about a pixel a cell from the game camera).
-## DESIGN-TBD (docs/questions/m3.md, 7): the tail's carabiner and banding. (8): the mask's expression.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1003): the armor refit, whether it stays.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1004): "PARTY WOLF" kept in words (the brief's proposal, followed).
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1007): the graffiti, the markings and the shirt print are simplified from the sheet.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1008): the sign's colours and size (about a pixel a cell from the game camera).
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1009): the tail's carabiner and banding; (item 1010): the mask's expression.
 
 ## The purple coat and its shade, the dark clothes, and the grey fur.
 const PURPLE := Color(0.36, 0.13, 0.66)
@@ -41,7 +41,7 @@ const FUR_DARK := Color(0.28, 0.28, 0.35)
 const FUR_LIGHT := Color(0.6, 0.6, 0.68)
 ## The armor power-up's plates on this outfit: a bright cool silver-blue, lighter than the fur (its edge glow is Echo's,
 ## PlayerSuit.ARMOR_EDGE).
-## DESIGN-TBD (docs/questions/m3.md, 1): the refit itself.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1003): the refit itself.
 const ARMOR_PLATE := Color(0.76, 0.84, 0.95)
 const TEETH := Color(0.95, 0.95, 0.98)
 const NOSE := Color(0.06, 0.05, 0.08)
@@ -124,7 +124,7 @@ func panels() -> Array[HumanoidPanel]:
 ## close to the fur's grey, so it reads less against the mantle) and with their pale glowing edge, standing proud of the
 ## mantle over the shoulders, over the pink rig in front, and across the back below the mantle (the mantle covers the
 ## spot Echo's yoke sits at).
-## DESIGN-TBD (docs/questions/m3.md, 1): whether the armor is refitted on the outfits at all.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1003): whether the armor is refitted on the outfits at all.
 func attachment_overrides() -> Dictionary:
 	var list: Array[HumanoidPiece] = []
 	var plate := {"shine": 0.5}
@@ -144,7 +144,7 @@ func attachment_overrides() -> Dictionary:
 ## The cyber wolf mask (head joint space; -z is the way he faces): a fur brow over the eyes, the snout and nose, the lower
 ## jaw with its bared teeth, cheek ruffs, two pointed ears, the pink eyepiece over his left eye (-x), a cyan right eye and
 ## the neon markings.
-## DESIGN-TBD (docs/questions/m3.md, 8): the mask's expression, blocky at this budget; (5): its markings.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1010): the mask's expression, blocky at this budget; (item 1007): its markings.
 func _mask(list: Array[HumanoidPiece]) -> void:
 	# The brow: a fur plate over the eyes, a little wider than his face.
 	add(list, &"head", BOX, Vector3(0.18, 0.095, 0.085), Vector3(0.0, 0.09, -0.066), FUR, 0.0,
@@ -206,7 +206,7 @@ func _torso(list: Array[HumanoidPiece]) -> void:
 
 ## The front, in the open coat: the dark T-shirt with the glowing howling-wolf-and-moon print, under the pink chest rig
 ## with its straps and a cyan buckle.
-## DESIGN-TBD (docs/questions/m3.md, 5): the print is a cyan octagon with a small dark wolf, simplified from the sheet.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1007): the print is a cyan octagon with a small dark wolf, simplified from the sheet.
 func _front(list: Array[HumanoidPiece]) -> void:
 	add(list, &"chest", BOX, Vector3(0.15, 0.25, 0.03), Vector3(0.0, 0.1, -0.097), SHIRT, 0.0, {"top_scale": Vector2(1.06, 1.0)})
 	# The print: a cyan moon (two squares, one turned) with the wolf standing on it, howling.
@@ -255,7 +255,7 @@ func _neon_wolf(list: Array[HumanoidPiece]) -> void:
 
 
 ## "PARTY WOLF" across the lower back: PARTY in pink above WOLF in cyan, each line centred, as block letters of flat quads.
-## DESIGN-TBD (docs/questions/m3.md, 6): its colours and size; from the game camera it is about a pixel a cell.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1008): its colours and size; from the game camera it is about a pixel a cell.
 func _sign(list: Array[HumanoidPiece]) -> void:
 	_word(list, "PARTY", 0.094, PINK)
 	_word(list, "WOLF", 0.0385, CYAN)
@@ -284,7 +284,7 @@ static func glyph_width(letter: String) -> float:
 
 
 ## The graffiti on the coat's back: tags in cyan, pink, green and yellow down the sides, a few strokes each.
-## DESIGN-TBD (docs/questions/m3.md, 5): simplified from the sheet.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1007): simplified from the sheet.
 func _tags(list: Array[HumanoidPiece]) -> void:
 	var tags: Array = [
 		[Vector2(-0.12, 0.2), 0.034, 0.008, 30.0, GREEN], [Vector2(-0.122, 0.17), 0.024, 0.008, -20.0, GREEN],
@@ -414,7 +414,7 @@ func _skirt_band(arc: Vector2, top: float, bottom: float, color: Color, glow: fl
 ## the thigh (authored on the right, hinged at +x, and placed on the left as the mirrored copy, `side = -1`). A stiff panel
 ## that follows the left thigh a little and swings on its own: three tapering fur sections, thin at the root, full in the
 ## middle, ending in a dark tip. (The back of the belt is free for the magnet power-up's coil.)
-## DESIGN-TBD (docs/questions/m3.md, 7): the carabiner is left out and the tail's banding is ours.
+## DESIGN-TBD (`docs/OPEN_QUESTIONS*.md` item 1009): the carabiner is left out and the tail's banding is ours.
 func _tail() -> HumanoidPanel:
 	var panel := HumanoidPanel.new()
 	panel.side = -1

@@ -5459,3 +5459,73 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
     same for every outfit; Camo's coat is lighter than Echo's so it keeps its outline on the dark tracks without one (frames
     in every zone), but `PlayerOutfit` has no way to give an outfit its own rim colour or strength. Does the owner want one
     (an outfit-level override in the base class, a core change)? Placeholder: none needed so far; the shared rim stands.
+
+### Folded on October 18, 2026 (task M3, the Centurion and Party Wolf outfits)
+
+1003. **Is the armor power-up's refit what the owner wants?** (Centurion brief, Readability: "the player must still see at a glance
+   whether their armor is up and when it shatters. If the two look alike, note it in the summary for the owner, with frames of
+   both.") Echo's own armor is steel-grey plates with a pale edge. Rendered on the Centurion, that steel set is legible against the
+   gold (a cool grey cap on each pauldron and a yoke across the back) but dark and thin beside the polished metal, and on
+   Party Wolf's grey fur it is close to the fur's colour. Both outfits therefore refit the armor set (`attachment_overrides`) to
+   a brighter silver-blue with the same pale glowing edge, standing proud of the shoulders, over the chest and across the back.
+   To compare, comment out `attachment_overrides()` in the outfit's file and render the same `sheet-close --look=armor` shot
+   (Echo's steel) next to the refit's; the run review's `--equip=armor` shows the armor on, shattering (at 95 m) and gone. The
+   shards the armor bursts into when it breaks are still Echo's steel colour (`PlayerAvatar`, shared). **M2's Camo and Beach Master
+   keep Echo's steel armor, so with both tasks merged the armor looks different on two of the five outfits** (the Centurion and
+   Party Wolf). Should the refit stay on these two, or is one armor look on every outfit better, even where it is harder to see?
+   Placeholder: refitted on the Centurion and Party Wolf only (`ARMOR_PLATE` and `attachment_overrides()` in each file).
+
+1004. **Which parts of the owner's "proposed" notes does the owner confirm?** The briefs mark three as *(proposed)*: the Centurion
+   keeps Echo's own head (face, scars, spiky hair, copper implant: the sheet's eyepiece is his); the Centurion leaves the dagger at
+   the hip out with the katana and the pistol (a weapon too); Party Wolf keeps "PARTY WOLF" in words on the back.
+   Placeholder: all three followed as proposed.
+
+## Centurion
+
+1005. **The skull and laurel on the back, the lion heads and the cuirass's relief are simplified from the sheet.** The back is a gold
+   skull (cranium, cheeks, jaw, eye sockets, nose, teeth) inside a wreath of sixteen leaves on the charcoal coat, between crimson
+   borders; the pauldrons are a gold dome with three layered scale plates and a lion's head as two gold diamonds (a mane and a face)
+   on the outer face; the cuirass is a gold chest plate over an abdomen plate with a round emblem (a dark-gold ring round a crimson
+   disc and a gold boss), a line under the pecs across the whole plate, a slanting stroke under each pec and lines across the
+   abdomen (no sculpted relief, no laurel in the emblem). The coat is clean, not worn or dusty, and the gold ornament on the
+   sleeves, the coat's back panels and the arm is left out. Does the owner want any of it closer to the sheet?
+   Placeholder: as built.
+
+1006. **The gold is close to the Golden Zone's and the cult's gold.** The colour rule doesn't apply to outfits (owner, October 18,
+   2026), so the Centurion's gold and crimson stay as drawn. In the run review on the Golden Zone's skin
+   (`avatar_run_review.tscn -- --outfit=centurion --skin=golden --equip=armor`) the bright yellow gold of the pauldrons and boots
+   against the zone's tan and brown floor, and the crimson skirt and charcoal back, keep the runner clear of the track; the gold
+   set pieces and the cult's gold are left for the owner to look at against the runner.
+   Placeholder: as the brief says.
+
+## Party Wolf
+
+1007. **The graffiti, the markings and the shirt print are simplified from the sheet.** The coat's graffiti is ten short coloured
+   strokes down the two sides of the back (cyan, pink, green and yellow), the skirt has a glowing cyan hem line and a pink band,
+   the right sleeve has four small tags and the pants have none of the sheet's, the wolf mask's neon markings are a cyan line
+   across the brow and a violet stripe each side, and the shirt's howling wolf on a moon is a cyan octagon with a small dark
+   wolf shape. Does the owner want more graffiti, and where (each stroke costs two triangles; with every power-up on the outfit
+   is 1,976 of 2,000, so a dozen more strokes fit, and more means trimming elsewhere)?
+   Placeholder: as built.
+
+1008. **"PARTY WOLF" is unreadable from the gameplay camera, and sits on the torso where the sheet has it on the skirt.** From the
+   game camera each cell of the lettering is about one pixel, so there it shows as a band of pink and cyan under the neon wolf; it
+   reads only in close-ups and the avatar showcase (about 9 mm a cell at design scale). The sheet sprays "PARTY WOLF" across the
+   coat's skirt below the belt; here it is built in two lines of block letters (PARTY in pink over WOLF in cyan) on the lower back
+   of the torso above the belt, because the skirt's panels swing apart as the legs move and would break the lettering. The colours
+   (the sheet has pink with cyan splashes) and the size are mine. Would the owner rather have it bigger, say across the whole back
+   with the neon wolf behind it, or on the skirt anyway, or the second line a different colour? A texture on a rigid plate would
+   read better close-up but costs a draw call and doesn't follow the glow effects, so the flat strokes were kept.
+   Placeholder: as built (`GLYPHS`, `_sign` in `party_wolf.gd`).
+
+1009. **The wolf tail.** The sheet hangs it from a carabiner at the front of the belt on the wearer's left, with the glow sticks on
+   his right; it is built that way: a grey fur tail in three tapering sections with a dark tip on a front panel on his left
+   (`side = -1`) that follows his left thigh a little and swings on its own, and four glow sticks on his right. The carabiner is
+   left out and the tail's banding (grey, light grey, dark tip) is ours; the sheet's tail is white and grey with dark streaks.
+   Placeholder: as built (`_tail` in `party_wolf.gd`).
+
+1010. **The mask's face.** The mask is a fur brow, a snout, a jaw with bared fangs, two pointed ears with violet linings, a pink
+   eyepiece over his left eye and a cyan right eye, over Echo's skull with his hair behind it. It is blocky at this budget; the
+   sheet's mask has fur tufts and a more expressive snarl. Does the owner want a more expressive mask (about 24 triangles are left
+   under the 2,000 with every power-up on, so a better mask means trimming elsewhere)?
+   Placeholder: as built (`_mask` in `party_wolf.gd`).

@@ -395,7 +395,7 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
   --equip=armor`). 1,506 triangles bare, 1,970 with every power-up, 17 draw calls (18 with the shield, 19 while the broken
   armor's shards fly). In the run review of the city, the Golden Zone, Gangland, the Beach and the Casino on Forward+ and
   Compatibility, and of the Dead Zone and Corporate's plaza on Forward+, the gold pauldrons, the wreath and the crimson skirt read
-  against every track and the pink fence is nothing like the crimson. `DESIGN-TBD` (`docs/questions/m3.md`, 1 to 4): the armor
+  against every track and the pink fence is nothing like the crimson. `DESIGN-TBD` (`docs/OPEN_QUESTIONS*.md` items 1003-1006): the armor
   refit, the skull, wreath, lion heads and cuirass relief are simplified from the sheet, the coat is clean rather than worn.
 - **Party Wolf** (M3; `party_wolf.gd`; brief `docs/art/BRIEF_OUTFIT_PARTY_WOLF.md`). The only outfit that covers Echo's head:
   `head_pieces()` keeps his neck, skull and spiky hair from `super()` (the boxes of his face, the implant, eye, brow, nose and
@@ -422,6 +422,6 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
   shield). **The sign is not readable from the gameplay camera:** there it is about one pixel a cell and shows as a band of pink
   and cyan under the neon wolf; it reads in the showcase's close-ups (`avatar_showcase.tscn -- --shot=sheet-close
   --outfit=party_wolf`). The sheet sprays the words on the coat's skirt below the belt, not on the torso as built here (the
-  skirt's panels swing apart, which would break the lettering). `DESIGN-TBD` (`docs/questions/m3.md`, 1, 2 and 5 to 8): the armor
+  skirt's panels swing apart, which would break the lettering). `DESIGN-TBD` (`docs/OPEN_QUESTIONS*.md` items 1003, 1004 and 1007-1010): the armor
   refit, the graffiti, the markings and the shirt print are simplified from the sheet, the sign's colours and size, the tail's
   carabiner, and the mask's expression are ours.
