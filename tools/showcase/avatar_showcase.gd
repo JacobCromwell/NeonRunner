@@ -13,6 +13,10 @@ extends Node3D
 ##                     sheet-close, turntable, game
 ##     --look=a,b      power-up looks on the sheets and the turntable: claws, armor, shield, magnet,
 ##                     weapon1..weapon4, or all
+##     --outfit=rex    every runner wears an outfit (a cosmetic's id from data/shop/catalog.json; the
+##                     default, echo, is Razor Echo's own look): the poses, the special poses and the
+##                     equipment rows, the sheets and the turntable, so one run shows the outfit in
+##                     every pose and with every power-up
 ##     --shot-seconds=S   time per shot while cycling
 
 const LEVEL_PATH: String = "res://data/levels/prototype_level.tres"
@@ -79,6 +83,9 @@ func _parse_args() -> void:
 			shot_seconds = float(v)
 		elif arg.begins_with("--look="):
 			_look = _parse_look(v)
+		elif arg.begins_with("--outfit="):
+			# Every avatar built from here on wears it (PlayerOutfits.worn); unknown ids are Echo's own look.
+			PlayerOutfits.worn = PlayerOutfits.resolve(StringName(v))
 
 
 ## "claws,armor,weapon3" or "all" → the avatar's equipment dictionary.

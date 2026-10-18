@@ -244,7 +244,7 @@ static func from_dict(d: Dictionary) -> Profile:
 	p.outfits = _dict(d, "outfits")
 	# Saves from before the cosmetics have neither: nothing owned, Echo worn. An outfit worn that isn't owned
 	# (an edited save) is taken off.
-	p.worn_outfit = String(d.get("worn_outfit", PlayerOutfits.ECHO))
+	p.worn_outfit = str(d.get("worn_outfit", PlayerOutfits.ECHO))
 	if not p.owns_outfit(p.worn()):
 		p.worn_outfit = String(PlayerOutfits.ECHO)
 	p.records = _dict(d, "records")

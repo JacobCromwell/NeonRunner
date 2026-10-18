@@ -99,12 +99,13 @@ static func pipe_piece(segment: StringName, a: Vector3, b: Vector3, width: float
 		{"sides": 3, "rotation_degrees": basis.get_euler() * (180.0 / PI)})
 
 
-## Adds a pipe to `list` (see `pipe_piece`); `side` places it on one limb or both.
+## Adds a pipe to `list` (see `pipe_piece`) and returns it, to tweak (`shine`); `side` places it on one limb or both.
 static func pipe(list: Array[HumanoidPiece], segment: StringName, a: Vector3, b: Vector3, width: float, face: Vector3,
-		color: Color, glow: float = 0.0, side: HumanoidPiece.Placement = HumanoidPiece.Placement.CENTER) -> void:
+		color: Color, glow: float = 0.0, side: HumanoidPiece.Placement = HumanoidPiece.Placement.CENTER) -> HumanoidPiece:
 	var p: HumanoidPiece = pipe_piece(segment, a, b, width, face, color, glow)
 	p.side = side
 	list.append(p)
+	return p
 
 
 ## `base` with `more` merged over it (piece options shared by several pieces).

@@ -11,6 +11,8 @@ extends Node3D
 ##                        runner reads on every zone's track
 ##     --equip=a,b        power-up looks: claws, armor, shield, magnet, weapon1..weapon4, or all (armor
 ##                        breaks at 95 m, to show the shards)
+##     --outfit=rex       the runner wears an outfit (a cosmetic's id from data/shop/catalog.json; the
+##                        default, echo, is Razor Echo's own look)
 ## Each scripted action and movement event is printed with its time, to find the matching frames
 ## (frame = time × render fps).
 
@@ -59,6 +61,9 @@ func _ready() -> void:
 				push_warning("avatar_run_review: no skin at %s; using the grey box" % path)
 		elif arg.begins_with("--equip="):
 			_equipment = _parse_equipment(arg.get_slice("=", 1))
+		elif arg.begins_with("--outfit="):
+			# The Player builds its avatar from PlayerOutfits.worn; unknown ids are Echo's own look.
+			PlayerOutfits.worn = PlayerOutfits.resolve(StringName(arg.get_slice("=", 1)))
 	var env := WorldEnvironment.new()
 	env.environment = skin.make_environment()
 	add_child(env)
