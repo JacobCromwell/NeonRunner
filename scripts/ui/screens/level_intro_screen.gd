@@ -20,14 +20,18 @@ var _presented: Array[Dictionary] = []
 
 
 func _ready() -> void:
-	title = "BOSS" if context.is_boss() else "LEVEL"
-	back_requested.connect(App.show_level_select if context.is_campaign() else App.show_title)
+	title = "BOSS" if context.is_boss() else ("WEEKLY CHALLENGE" if context.is_weekly() else "LEVEL")
+	back_requested.connect(App.show_level_select if context.is_campaign()
+		else (App.show_weekly if context.is_weekly() else App.show_title))
 	var heading: String = context.step.title() if context.step != null else context.config.display_name
 	var heading_label := make_label(heading.to_upper(), UiTheme.TITLE, HORIZONTAL_ALIGNMENT_CENTER)
 	heading_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	content.add_child(heading_label)
 	if context.step != null and context.step.zone != null:
 		content.add_child(make_label(context.step.zone.display_name, UiTheme.SUBHEADING,
+			HORIZONTAL_ALIGNMENT_CENTER))
+	elif context.is_weekly():
+		content.add_child(make_label("Weekly challenge · one level for every player", UiTheme.SUBHEADING,
 			HORIZONTAL_ALIGNMENT_CENTER))
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

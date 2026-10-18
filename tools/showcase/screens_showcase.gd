@@ -12,6 +12,11 @@ extends Node
 ## steady edge instead of pulses, and --hold stops with the edge steady, for a --shot at a phone's shape);
 ## and a boss fight, with the test boss in the City's
 ## boss slot: boss (the HUD's boss bar at the checkpoint), boss_pause, boss_death, boss_results.
+## The weekly challenge (GDD §6, task N5): weekly (its screen, open: the Floating Head is beaten in the profile),
+## weekly_locked, weekly_results, weekly_failed (the results of a first clear and of a death), weekly_intro (the
+## level's introduction) and weekly_run (the week's level running in god mode); --week=N picks the week of the
+## schedule (its zone: week 0 is the Neon City, 1 Gangland, ...; week 0 without it, whatever the date: the challenge is
+## shut before its first week opens).
 ## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
 ## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
 ## 3 lanes, credit packs, rewarded ads), --phone (a phone's browser: touch sizing and a mobile device, the
@@ -71,6 +76,12 @@ func _ready() -> void:
 			screen = arg.get_slice("=", 1)
 		elif arg.begins_with("--wait="):
 			wait = int(arg.get_slice("=", 1))
+	for arg: String in args:
+		if arg.begins_with("--week="):
+			App.clock_override = App.weekly.week_start(int(arg.get_slice("=", 1))) + 2 * 86400
+	if screen.begins_with("weekly") and App.clock_override < 0:
+		# The weekly challenge counts weeks by the clock, and is shut before its first week opens: week 0 unless told.
+		App.clock_override = App.weekly.week_start(0) + 2 * 86400
 	await _open(screen)
 	for arg: String in args:
 		if arg.begins_with("--focus-outfit=") and App.screen is ShopScreen:
@@ -129,6 +140,23 @@ func _open(screen: String) -> void:
 			App.play_step(App.campaign.step("city/intro"))
 		"demo_end":
 			App.show_demo_end()
+		"weekly", "weekly_locked", "weekly_intro", "weekly_run":
+			if screen != "weekly_locked":
+				App.profile.record_run("city/boss", 0, true, 9000, 3, 90.0)
+			if screen == "weekly_intro" or screen == "weekly_run":
+				# A review's run: nothing ends it (no runner steers it here).
+				App.set(&"_review_args", PackedStringArray(["--god", "--nofall"]))
+				App.start_weekly()
+				if screen == "weekly_run":
+					App.begin_run()
+					App.run.world.player.god_mode = true
+					await _seconds(3.0)
+			else:
+				App.show_weekly()
+		"weekly_results", "weekly_failed":
+			var w := ResultsScreen.new()
+			w.result = _weekly_result(screen == "weekly_results")
+			App.show_screen(w)
 		"hud":
 			await _play("city/1", 2.5)
 			var world: RunWorld = App.run.world
@@ -144,6 +172,31 @@ func _open(screen: String) -> void:
 			await _boss(screen)
 		_:
 			push_warning("screens showcase: unknown screen '%s'" % screen)
+
+
+## A weekly challenge result for the results screen: the week's first clear, or a death in it.
+func _weekly_result(completed: bool) -> RunResult:
+	var week: WeeklyWeek = App.current_week()
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.WEEKLY
+	ctx.weekly = week
+	ctx.weekly_board = App.weekly_board_id(week)
+	ctx.config = App.weekly.build_config(App.campaign, week)
+	ctx.tuning = App.tuning
+	ctx.loadout = App.make_weekly_loadout()
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = completed
+	r.time = 121.3 if completed else 47.2
+	r.distance = 3100.0 if completed else 1180.0
+	r.score = 14300 if completed else 3900
+	r.cause = "" if completed else "Cyborg"
+	r.stats = {"kills": 14, "stomps": 6, "blocked": 2, "ramps": 3, "longest_wall_run": 41.0}
+	r.completion_bonus = App.weekly.first_clear_credits if completed else 0
+	r.credits_earned = r.completion_bonus
+	r.record = {"weekly": true, "first_clear": completed, "new_best": completed, "board": ctx.weekly_board,
+		"submitted": completed, "best": r.score if completed else 0, "paid": r.credits_earned}
+	return r
 
 
 ## The volleyball match's result (Net Gains, beach/2) for the results screen: a match that ended `won` to `lost`, paid 100 a

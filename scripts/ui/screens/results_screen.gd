@@ -5,7 +5,9 @@ extends ScreenBase
 ## after a death (what hit the player, the credits kept). A boss fight (GDD §10) shows BOSS DEFEATED,
 ## its stars by its par times or the hits it took (the rule listed under them), the boss's payout, and the fight's
 ## own stats (time, weak points, the phase reached, the time bonus); a mini-game level its payout and its own stats
-## (the volleyball match: the points won and lost, the returns, and how its stars are earned under them). Then on
+## (the volleyball match: the points won and lost, the returns, and how its stars are earned under them); a run of the
+## weekly challenge (GDD §6) its first-clear payout, if it was the week's first clear, and what happened to its score on
+## the board, with no stars. Then on
 ## to the shop and the next step or a retry (GDD §4, §8), a retry now, or the menu.
 ## The level-complete screen's stats (FB 60): the ScoreKeeper's, and a boss fight's own
 ## (DESIGN-TBD, docs/questions/b8.md).
@@ -36,6 +38,7 @@ func _ready() -> void:
 	var kicker: String = names[0] if names[1] == "" else "%s · %s" % [names[0], names[1].to_upper()]
 	column.add_child(ScreenBase.make_label(kicker, UiTheme.SUBHEADING, HORIZONTAL_ALIGNMENT_CENTER))
 	var boss: bool = ctx.is_boss()
+	var weekly: bool = ctx.is_weekly()
 	var heading := ScreenBase.make_label(("BOSS DEFEATED" if boss else "LEVEL COMPLETE") if result.completed else "RUN OVER",
 		UiTheme.TITLE, HORIZONTAL_ALIGNMENT_CENTER)
 	if not result.completed:
@@ -53,7 +56,7 @@ func _ready() -> void:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override(&"separation", roundi(UiTheme.px(4 if short else 8)))
 	body.add_child(left)
-	if result.completed:
+	if result.completed and not weekly:
 		stars = StarRow.new()
 		stars.star_size = UiTheme.px(40 if short else 56)
 		stars.star_revealed.connect(_on_star)
@@ -63,7 +66,9 @@ func _ready() -> void:
 			left.add_child(ScreenBase.make_label(star_rule, UiTheme.CAPTION, HORIZONTAL_ALIGNMENT_CENTER))
 	left.add_child(_score_row(short))
 	left.add_child(HSeparator.new())
-	left.add_child(_credit_table())
+	left.add_child(_weekly_credit_table() if weekly else _credit_table())
+	if weekly:
+		left.add_child(_board_note())
 	var line := VSeparator.new()
 	body.add_child(line)
 	body.add_child(_stats_table())
@@ -76,7 +81,7 @@ func _ready() -> void:
 	actions.add_theme_constant_override(&"separation", roundi(UiTheme.px(14)))
 	column.add_child(actions)
 	var menu := NeonButton.make("MENU", NeonButton.Kind.FLAT, &"home")
-	menu.pressed.connect(App.show_level_select if ctx.is_campaign() else App.show_title)
+	menu.pressed.connect(App.show_level_select if ctx.is_campaign() else (App.show_weekly if weekly else App.show_title))
 	actions.add_child(menu)
 	buttons["menu"] = menu
 	if not result.completed or ctx.mode != RunContext.Mode.CAMPAIGN:
@@ -111,6 +116,10 @@ static func run_names(ctx: RunContext) -> PackedStringArray:
 				kicker = "CAMPAIGN"
 		RunContext.Mode.ENDLESS:
 			kicker = "ENDLESS"
+		RunContext.Mode.WEEKLY:
+			kicker = "WEEKLY CHALLENGE"
+			if ctx.config != null:
+				level_name = ctx.config.display_name
 		RunContext.Mode.QUICK:
 			if ctx.config != null:
 				level_name = "%s · seed %d" % [ctx.config.display_name, ctx.config.level_seed]
@@ -197,6 +206,48 @@ func _credit_table() -> Control:
 	credits_counter.set_value(0, false)
 	grid.add_child(credits_counter)
 	return grid
+
+
+## The weekly challenge's credits (GDD §6): collected credits pay nothing, so the table says what did: the first clear's
+## payout, or that it was paid already, or that a run that didn't clear pays nothing.
+func _weekly_credit_table() -> Control:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override(&"h_separation", roundi(UiTheme.px(16)))
+	grid.add_theme_constant_override(&"v_separation", roundi(UiTheme.px(4)))
+	if result.completed and bool(result.record.get("first_clear", false)):
+		_table_row(grid, "First clear payout", "+" + UiTheme.format_int(result.completion_bonus), UiTheme.ACCENT_TEXT)
+	elif result.completed:
+		_table_row(grid, "First clear payout", "paid this week")
+	else:
+		_table_row(grid, "Only a clear pays", "no credits")
+	_table_label(grid, "Credits earned")
+	credits_counter = CreditCounter.new()
+	credits_counter.size_flags_horizontal = Control.SIZE_SHRINK_END
+	credits_counter.set_value(0, false)
+	grid.add_child(credits_counter)
+	return grid
+
+
+## What became of a weekly run's score (GDD §6): posted to the week's board, with the best of the week, or why not.
+func _board_note() -> Control:
+	var rec: Dictionary = result.record
+	var board: String = "mobile" if App.mobile else "PC"
+	var text: String
+	if bool(rec.get("closed", false)):
+		text = "This week is closed by this device's clock: nothing was paid or posted."
+	elif not result.completed:
+		text = "Clear the level to post a score to the %s board." % board
+	elif bool(rec.get("submitted", false)):
+		text = "Score posted to the %s board, week %d. Your best: %s." % [board, result.context.weekly.number(),
+			UiTheme.format_int(int(rec.get("best", result.score)))]
+	else:
+		text = "No board here: your best this week, %s, stays on this device." % UiTheme.format_int(int(rec.get("best", result.score)))
+	var label := ScreenBase.make_label(text, UiTheme.CAPTION)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = UiTheme.px(200)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return label
 
 
 func _table_row(grid: GridContainer, label: String, value: String, variation: StringName = UiTheme.VALUE) -> void:
