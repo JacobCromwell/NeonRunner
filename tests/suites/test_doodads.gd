@@ -242,8 +242,9 @@ func _test_layout_data() -> void:
 ## stay, and as many extra gaps come, in as many lanes (_check_extra_gaps); task G7's wider gaps re-rolled City 1
 ## at 3 lanes into that case. Dash walls past an introduction come after the doodads too (task H7a,
 ## DashWallRules.after_doodads) and stand where they leave room, taking out the plain pieces in their way, so
-## both builds leave them out: what's compared is the doodads' own doing. A treasure stash's walls (task I4) come with
-## the stash, whatever the share, in both builds alike.
+## both builds leave them out: what's compared is the doodads' own doing. So do the wall-hop credits (task N1), whose
+## line keeps off a zone doodad by its wall and so may stand elsewhere with doodads than without. A treasure stash's
+## walls (task I4) come with the stash, whatever the share, in both builds alike.
 func _test_share_zero() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	var checked: int = 0
@@ -254,6 +255,7 @@ func _test_share_zero() -> void:
 			check(config.doodad_share > 0.0, "%s has doodads in its data" % tag)
 			check(not config.feature_starts.has("dash_wall"), "%s doesn't introduce dash walls %s" % [id, tag])
 			config.dash_walls = 0
+			config.wall_hop_lines = 0
 			var off: LevelConfig = config.duplicate() as LevelConfig
 			off.doodad_share = 0.0
 			var patterns: Array = LevelGenerator.load_for(config)
@@ -2457,10 +2459,21 @@ func _test_campaign_rows() -> void:
 					"a row pushes once onto clear floor in the lane beside, on safely past it (%s, lane %d) %s" % [r["cause"], r["lane"], tag])
 				check(_row_sink(r["trace"], moved, 0, geo, fast) <= SINK_TOLERANCE, "never sinking into any of its doodads " + tag)
 				var dash: Dictionary = await _run_into(layout, whole, fast, lead, clear, [[-6.0, &"dash"]])
-				check(dash["alive"] and int(dash["smashes"]) >= 1 and int(dash["pushes"]) <= 1 and dash["reached"]
-					and (int(dash["pushes"]) == 0) == (int(dash["smashes"]) == typed.size()),
-					"dashed into: smashed as far as the dash reaches, the next one pushing as usual (%d smashed, %d pushed) %s"
-					% [dash["smashes"], dash["pushes"], tag])
+				# The row's own pushes: a push takes the runner's lane at once (Player._start_push), so each is a lane change
+				# before the row's end (the run goes on past it, where the next doodad in its lane, the level's spacing on,
+				# may push the runner the dash left in it).
+				var row_pushes: int = 0
+				var in_lane: int = int(first["lane"])
+				for x: Dictionary in dash["trace"]:
+					if float(x["d"]) > float(whole["end"]) + float(dash["offset"]):
+						break
+					if int(x["lane"]) != in_lane:
+						row_pushes += 1
+						in_lane = int(x["lane"])
+				check(dash["alive"] and int(dash["smashes"]) >= 1 and row_pushes <= 1 and dash["reached"]
+					and (row_pushes == 0) == (int(dash["smashes"]) == typed.size()),
+					"dashed into: smashed as far as the dash reaches, the next one pushing as usual (%d smashed, %d pushed by the row, %d in all) %s"
+					% [dash["smashes"], row_pushes, dash["pushes"], tag])
 				check(_row_sink(dash["trace"], moved, int(dash["smashes"]), geo, fast) <= SINK_TOLERANCE, "never inside one while it stands " + tag)
 				rows_run += 1
 				# Task L6's review: where the dash ends short of one, a jump at it 1 m before its front is pushed in the
