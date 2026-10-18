@@ -123,7 +123,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
 - **Stars** (`BossDef.stars_for(won, seconds, hits_taken)`, `star_text()`; task N2, the owner, October 18, 2026: every star
   has to be earnable): none without a win, one for winning, then by the boss's `star_rule`: `TIME` (every boss so far; GDD §10,
   proposed): two and three for a fight under `two_star_seconds` and `three_star_seconds` (`fight_time()`: frozen at the defeat,
-  with what a checkpoint carried); or `HITS` (DESIGN-TBD, `docs/questions/n2.md`; no boss uses it yet, flip it in the def's
+  with what a checkpoint carried); or `HITS` (DESIGN-TBD, item 1013; no boss uses it yet, flip it in the def's
   data): three for at most `three_star_max_hits` (0) protection hits taken in the fight, two for at most `two_star_max_hits`
   (2), counting the armor and shield blocks the run's `ScoreKeeper.blocked` holds plus each revive used
   (`RunContext.revives_used`: a revive continues the same fight after a hit nothing blocked, so a revived death can't earn three
@@ -144,7 +144,7 @@ encounter.setup(world, context, arena)   joins the world between the player and 
   | Golden Convergence | 238 / 308 s | 220.2 s at 25 m/s (217.6-220.2) | 17.8 s | the script, a little by the runner's distance (229 s at 18 m/s) |
 
   So no bar is above what a clean fight wins, at the shipped lane count (the Floating Head's 110 s is under 113.9-114.0 s at 3 and 6 lanes, which
-  don't ship: `docs/questions/n2.md`). For a scripted boss the time can't be beaten, only
+  don't ship: item 1014). For a scripted boss the time can't be beaten, only
   matched: three stars means no chance let go by, and the margin only covers what the player controls.
 - **Pickups** (see Pickups): `armor_pickup_due(reason)` follows GDD §10's standard armor rule, at the
   start of the final phase (`&"final_phase"`) and `armor_delay_min`–`max` seconds after the player's

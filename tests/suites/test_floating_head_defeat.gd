@@ -503,7 +503,7 @@ func _campaign_flow(lanes: int, demo: bool) -> void:
 	if result == null:
 		return
 	# 5 lanes ship on every platform: a clean fight there earns three stars (a missed window, two: test_floating_head_stomps);
-	# the counts that don't ship (3 and 6) take about 13 s longer when clean, still two stars (docs/questions/n2.md).
+	# the counts that don't ship (3 and 6) take about 13 s longer when clean, still two stars (item 1014).
 	var stars_ok: bool = result.stars == 3 if lanes == 5 else result.stars >= 2
 	check(result.stars == def.stars_for(true, result.time) and stars_ok,
 		"with stars from the par times: %s for a clean fight (%d for %.1f s) %s" % ["three" if lanes == 5 else "at least two",

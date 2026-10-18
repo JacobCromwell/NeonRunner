@@ -670,7 +670,7 @@ func _test_whole_fight() -> void:
 ## The par times against the whole fight (task N2; deferred item 202: "a perfect run gets three stars and a run that misses
 ## a window or two gets two"). 5 lanes ship on every platform: a clean fight there earns three stars, one that lets the first
 ## window go by two, and so does one that lets two go by. The counts that don't ship (3 and 6) take about 13 s longer when
-## clean, and earn two (docs/questions/n2.md).
+## clean, and earn two (item 1014).
 func _test_par_times() -> void:
 	for lanes: int in LANES:
 		var clean: float = float(clean_times.get(lanes, INF))

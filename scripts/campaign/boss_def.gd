@@ -72,7 +72,7 @@ enum StarRule {
 ## DESIGN-TBD: score for beating the boss, and for each weak-point stomp.
 @export_range(0, 100000, 100) var defeat_score: int = 5000
 @export_range(0, 10000, 50) var weak_point_score: int = 500
-## DESIGN-TBD (docs/questions/n2.md; the owner, October 18, 2026: "stars that can be earned"): how the stars are
+## DESIGN-TBD (items 1012-1015 in docs/OPEN_QUESTIONS_DEFERRED.md; the owner, October 18, 2026: "stars that can be earned"): how the stars are
 ## earned. TIME (GDD §10, proposed) for a fight whose speed is the player's to improve; HITS for one whose length its
 ## script fixes, where a faster win is not in the player's hands and how cleanly the fight went is.
 @export var star_rule: StarRule = StarRule.TIME
