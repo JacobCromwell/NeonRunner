@@ -89,8 +89,9 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   and 6 lanes, two seeds each; a best lane path through the floor credits, a switch of n lanes costing n lane switches' metres,
   hazards ignored): from City 1 to City 2 the best floor line alone reaches the three-star line (81-125%); from City 3 on it
   reaches 25-98% (the later levels put more of their credits on ceilings, wall runs and gap and fence arcs than on trails, and a
-  floor line doesn't take the first two), so the line also asks for one or two stomped Cyborgs (every build has two or
-  more) or a ceiling or wall run. No level's line is out of reach, and none is only reachable by a stash (left out of the best score, I4). The
+  floor line doesn't take the first two), so the line also asks for one or two stomped Cyborgs (every shipped 5-lane build has two or
+  more; the thinnest build of any lane count and seed, one Cyborg, has ceiling and wall credits to make up the rest) or a ceiling
+  or wall run. No level's line is out of reach, and none is only reachable by a stash (left out of the best score, I4). The
   volleyball match's stars are by the match (`docs/architecture/mini-games.md`), a boss's by its par times or hits
   (`docs/architecture/bosses.md`, Stars).
 - *Levels* are numbered in play order: City 1-3 are 1-3, Gangland 4-6, Marketplace 7-8, Casino 9-10, Corporate
