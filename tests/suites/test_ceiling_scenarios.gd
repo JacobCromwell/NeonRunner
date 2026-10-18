@@ -325,8 +325,8 @@ func _test_campaign() -> void:
 
 ## Task I4's review (item 844): a treasure stash's credits never count in the stars' best score
 ## (LevelLayout.star_credit_value, ScoreKeeper.max_credit_score), so every campaign build's three-star line is reached
-## without its stash: the level's other credits alone clear it. (Collected, they count in the run's credits and score:
-## _ride_stash.)
+## without its stash: the level's other credits alone clear it (those of a line of wall-hop credits, task N1, are out of
+## it too). (Collected, they count in the run's credits and score: _ride_stash.)
 func _test_stars() -> void:
 	var rules := load("res://data/tuning/game_rules.tres") as GameRules
 	var shares: Array[float] = []
@@ -334,13 +334,16 @@ func _test_stars() -> void:
 		for pick: Dictionary in (found[STASH] as Dictionary).get(lanes, []):
 			var layout: LevelLayout = pick["layout"]
 			var stash: int = 0
+			# Task N1: a line of wall-hop credits' high-value ones are out of it too (test_wall_hops).
+			var wall_hop: int = 0
 			for c: Dictionary in layout.credits:
 				stash += int(c["value"]) if c.has("stash") else 0
-			var without: int = layout.total_credit_value() - stash
+				wall_hop += int(c["value"]) if c.has(WallHopPlacement.GEM) else 0
+			var without: int = layout.total_credit_value() - stash - wall_hop
 			var tag: String = "%s at %d lanes" % [pick["id"], lanes]
 			check(stash > 0 and layout.star_credit_value() == without,
-				"%s: the stars' best score (%d) is every credit but its stash's (%d of %d)" % [tag, layout.star_credit_value(), stash,
-				layout.total_credit_value()])
+				"%s: the stars' best score (%d) is every credit but its stash's (%d of %d, and %d of wall-hop credits)"
+				% [tag, layout.star_credit_value(), stash, layout.total_credit_value(), wall_hop])
 			check(rules.stars_for(true, without, layout.star_credit_value()) == 3,
 				"%s: every credit but its stash's clears the three-star line (%d of %d, at %.0f%%)" % [tag, without,
 				layout.star_credit_value(), rules.three_star_share * 100.0])

@@ -52,7 +52,8 @@ const SMASH_LANES: Array[int] = [3, 5, 6]
 ## has a lone doodad in the runner's starting lane well before its first dash wall (_smash_targets). Which one has
 ## moves with the generator (task L3 put Golden 1's by a side wall; task L6's doodads, placed lane by lane, left none
 ## of the first three one; its review, which keeps both lanes beside a doodad clear past a push's landing, none of them
-## at 3 or 5 lanes), so the next stand in.
+## at 3 or 5 lanes; task N1 found Golden 3's at 5 lanes a treasure stash's, which isn't a zone doodad: Corporate 2's at
+## 6 lanes since), so the next stand in.
 const SMASH_LEVELS: Array[String] = ["golden/1", "corporate/2", "golden/2", "dead_zone/1", "golden/3"]
 
 var main: Node
@@ -603,7 +604,8 @@ func _test_smashed_stand_again(ids: Array[String]) -> void:
 ## The targets for _test_smashed_stand_again in `world`'s layout: the level's first dash wall, and the last zone doodad
 ## in the runner's starting lane from 20 m past the run-up's end to 120 m before the wall's face (the dash is back by
 ## then), by their indices ({doodad, wall}); {} if there's none. A lone one, not one of a row (task L3), whose
-## others would meet the runner first or after.
+## others would meet the runner first or after, nor a treasure stash's (task I4), whose lane has two since task N1
+## (the outer one meets the runner first) and whose walls stand beside the second.
 func _smash_targets(world: RunWorld) -> Dictionary:
 	var lay: LevelLayout = world.layout
 	if lay.dash_walls.is_empty():
@@ -612,7 +614,7 @@ func _smash_targets(world: RunWorld) -> Dictionary:
 	var best: int = -1
 	for i: int in lay.doodads.size():
 		var d: Dictionary = lay.doodads[i]
-		if int(d["lane"]) == world.player.lane and not d.has("row") \
+		if int(d["lane"]) == world.player.lane and not d.has("row") and not d.has("stash") \
 				and float(d["start"]) > world.config.start_clear_distance + 20.0 and float(d["end"]) < face - 120.0:
 			best = i
 	return {} if best < 0 else {"doodad": best, "wall": 0}
