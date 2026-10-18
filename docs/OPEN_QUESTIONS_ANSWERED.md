@@ -1597,3 +1597,43 @@ Captain Cogs).
      through the zones, always at the Golden Zone's difficulty (a zone's own enemies and obstacles, at the Golden Zone's
      enemy and obstacle density). The shipped list of checked seeds and the first-clear-only payout are approved too.
      Recorded in GDD §6.
+
+**The cosmetics** (task M1; the owner's answers, October 18, 2026; GDD §8, Cosmetics)
+
+979. **How are Beach Master, Centurion and Party Wolf won, and what happens to their sale?** (GDD §8, Cosmetics: won by
+   completing challenges, by winning the weekly seed and by promoting the game; none of the three is designed.) Until
+   they are, the shop sells each for 5,000 credits, a placeholder so they aren't forgotten. When the real way of winning
+   one exists, does the shop stop selling it, or keep selling it as a second way?
+   Placeholder: sold for 5,000 credits from the same wallet (`data/shop/catalog.json`, `cosmetics`: a `DESIGN-TBD` `_note`
+   on each of the three and on the list). Note (M1 review): an owned outfit counts only while it is listed in
+   the catalog (`PlayerOutfits.is_known()`), so taking one off sale must keep it listed (a "not for sale" flag),
+   or players who own it silently lose it.
+
+   **Answered (owner, October 18, 2026):** yes: once an outfit's real way of being won exists, the shop stops selling it. Recorded in GDD §8, Cosmetics. (Players who bought it keep it, so it stays listed in the catalog as not for sale.)
+
+980. **Do cosmetics lower net worth?** (GDD §7: net worth, the leaderboard score, is the credits earned and not spent; GDD §8:
+   a cosmetic is bought "from the same wallet".) A player who spends 3,000 credits on Rex drops 3,000 on the net-worth
+   leaderboard for a look that gives no advantage, as for any item (and bought credits are spent first, so buying credits
+   never lowers it). Should cosmetics be kept out of net worth (a separate count, or spending on them not subtracting)?
+   Placeholder: they count as spending, like every item (`App.buy_cosmetic` uses `Profile.spend`).
+
+   **Answered (owner, October 18, 2026):** no: buying an outfit in the shop does not lower net worth. Recorded in GDD §6 and §8 (task M4).
+
+982. **Should the shop show the outfit, not only a coloured jacket icon?** (GDD §8; a card in the Cosmetics section.) The
+   cards show the outfit's name, text, price and an icon in its main colour, the way the items' cards show an icon. A look
+   the player pays 3,000 credits for would sell better with a preview (a turntable of the runner in it, one viewport for the
+   focused card, say). Placeholder: the icon in the outfit's colour (`ShopCosmetic.color`, `data/shop/catalog.json`).
+
+   **Answered (owner, October 18, 2026):** yes: the shop shows a preview of the outfit instead of the jacket icon. Recorded in GDD §8 (task M4).
+
+983. **What does an outfit that isn't built yet show?** (Camo, Beach Master, Centurion and Party Wolf are built in M2 and M3;
+   the owner wants them in the shop now so they aren't forgotten.) Placeholder: shown and sold like any other; worn, it is
+   Echo's own look with the coat, arms and boots washed toward the catalog's colour for it, and its card says "LOOK IN
+   PROGRESS" (`PlayerOutfits.placeholder_parts`, `ShopScreen._cosmetic_data`; both go when the outfit's file exists).
+
+   **Superseded (October 18, 2026):** every outfit is built (tasks M2 and M3), so no card shows the placeholder any more.
+
+985. **Does the owner want the cosmetics' price to differ on mobile?** (GDD §7; items have a `price_mobile`, itself an open
+   question.) Placeholder: one price on every platform (`ShopCosmetic.price`).
+
+   **Answered (owner, October 18, 2026):** no: one price on every platform. Recorded in GDD §8; the placeholder stands as built.

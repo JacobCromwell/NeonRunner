@@ -12,3 +12,8 @@ request that is now in the done file.
 ## The weekly challenge (October 18, 2026)
 
 - [ ] **A weekly challenge with a leaderboard** (GDD §6, Replay features, "Weekly challenge"): one fixed level a week, the same for everyone; five lanes on PC and mobile alike; one board for PC and one for mobile; a uniform kit (Armor IV and Juggernaut dash IV, no other shop items); a payout equal to a middle-of-the-road level's, and a place on the board; the top three earn the Leader of the Pack cosmetic (to be designed, `docs/OPEN_QUESTIONS.md` item 977); no anti-cheat for now; unlimited attempts, never gated behind ads. Seeds from a shipped list checked by the fairness tests; credits for the week's first clear only. Unlocks after the Neon City's boss; the weeks rotate through the zones, always at the Golden Zone's difficulty (a zone's own enemies and obstacles at the Golden Zone's density). Not in the web demo.
+
+## Cosmetics: the owner's answers (October 18, 2026, items 979, 980, 982 and 985)
+
+- [ ] **Buying an outfit doesn't lower net worth** (GDD §6, §8 Cosmetics; item 980): credits spent on cosmetics stay in the net-worth score, for old saves too.
+- [ ] **The shop shows a preview of each outfit** (GDD §8, Cosmetics; item 982): the runner wearing it on the cosmetic's card (or one preview for the focused card), in place of the jacket icon; it must work on phones and the Compatibility renderer.

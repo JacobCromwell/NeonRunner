@@ -314,7 +314,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
     - **The weeks rotate through the zones,** each week's level in one zone's skin, **always at the Golden Zone's difficulty**: a week in the Neon City has the Neon City's own enemies and obstacles, but as many of them, as dense and as hard as the Golden Zone's, "otherwise it would be too easy for players" (owner, October 18, 2026). *(Proposed)* The Golden Zone's hardest level sets it (Sentinel Row, `data/levels/golden_2.tres`), with its enemy scaling (fire rate, projectile speed, health) and its run speed of about 25 m/s.
   - Leaderboards
 - **Leaderboards:** separate per platform (Steam, Game Center, Google Play Games), per level and per difficulty tier.
-  - Plus a **net worth** leaderboard: credits earned in play and never spent. Purchased credits are tracked separately and never count.
+  - Plus a **net worth** leaderboard: credits earned in play and never spent. Purchased credits are tracked separately and never count. **Credits spent on cosmetics don't lower it** (owner, October 18, 2026; §8, Cosmetics).
   - No leaderboards in the web demo.
 - **Enemy scaling:** many enemies scale gradually across levels (fire rate, projectile speed, health, extra attackers): barely noticeable early, clearly harder at the end.
 - **Introducing mechanics:** one new object or enemy type at a time. Zone 1 teaches lanes, jump, slide, and walls; ramps and speed pads arrive a few levels later.
@@ -373,6 +373,10 @@ The shop appears between levels and after every death.
 
 Looks for the runner that the player **buys in the shop or wins** *(how cosmetics are won is still open)*. They **never change gameplay**: the hitbox, the poses and every size stay the same, and owned power-ups are still added on top.
 - **Their own section of the shop,** after the power-ups. Each cosmetic is **bought once with credits** and kept forever; the player then **picks one to wear**. Razor Echo's own look is the free default.
+- **The shop shows a preview of each outfit** (owner, October 18, 2026): the runner wearing it, in place of an icon.
+- **Buying an outfit doesn't lower net worth** (owner, October 18, 2026; §6, Leaderboards): it's a look, not an advantage.
+- **One price on every platform** (owner, October 18, 2026): no separate mobile price.
+- **A won outfit leaves the shop** (owner, October 18, 2026): once its real way of being won exists, the shop stops selling it; a player who bought it before keeps it.
 - **Outfits for Razor Echo:** a cosmetic dresses Echo; the runner stays Razor Echo. *(Proposed)* Echo's head (face, hair and ocular implant) stays his own unless the outfit covers it (Party Wolf's mask), and the outfit shows everywhere the runner appears (gameplay, title screen, cinematics).
 - **No weapons on any outfit,** the same rule as the base look: nothing on the runner may look like a power-up. The owner's concept sheets all carry swords and guns; every one is left out (owner, October 18, 2026).
 - **Outfits are free of the colour rule** (owner, October 18, 2026): their glows and colours stay as drawn, even in hazard colours, because a player who can afford or win one has already mastered the game. The rule still holds for the base look, the zones and everything else.
