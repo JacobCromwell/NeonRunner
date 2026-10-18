@@ -22,8 +22,11 @@ extends PlayerOutfit
 ## than Echo's steel, which is legible against the gold but dark and thin beside it) standing proud of the pauldrons, over
 ## the cuirass and across the upper back, each with the pale glowing edge the base set has. The shards the armor bursts
 ## into are still Echo's steel colour. The other power-ups are Echo's sets, unchanged.
-## DESIGN-TBD (docs/questions/m3.md): the skull and laurel, simplified from the sheet; the lion heads on the pauldrons;
-## the cuirass's relief; how worn the coat is.
+## DESIGN-TBD (docs/questions/m3.md, 1): whether this refit stays, or one armor look on every outfit.
+## DESIGN-TBD (docs/questions/m3.md, 2): his own head, no dagger at the hip (the brief's proposals, followed).
+## DESIGN-TBD (docs/questions/m3.md, 3): the skull and laurel, the lion heads on the pauldrons and the cuirass's relief are
+## simplified from the sheet, and the coat is clean rather than worn.
+## DESIGN-TBD (docs/questions/m3.md, 4): the gold is close to the Golden Zone's and the cult's.
 
 ## Polished gold and its shade, crimson and its shade, the charcoal of the coat, black leather and pants.
 const GOLD := Color(0.99, 0.79, 0.27)
@@ -36,6 +39,7 @@ const PANTS := Color(0.09, 0.09, 0.1)
 const SKULL_EYE := Color(0.05, 0.04, 0.045)
 ## The armor power-up's plates on this outfit: a bright cool silver-blue, lighter than Echo's steel so it stands out from
 ## the gold and the charcoal (its edge glow is Echo's, PlayerSuit.ARMOR_EDGE).
+## DESIGN-TBD (docs/questions/m3.md, 1): the refit itself.
 const ARMOR_PLATE := Color(0.74, 0.82, 0.93)
 ## How polished the gold is (HumanoidPiece.shine), and the lesser shine of its darker parts.
 const GOLD_SHINE: float = 0.75
@@ -78,6 +82,7 @@ func panels() -> Array[HumanoidPanel]:
 
 ## The armor power-up refitted to the gold outfit (see the header): silver-blue plates over the gold pauldrons, the
 ## cuirass and the upper back, each with its pale glowing edge.
+## DESIGN-TBD (docs/questions/m3.md, 1): whether the armor is refitted on the outfits at all.
 func attachment_overrides() -> Dictionary:
 	var list: Array[HumanoidPiece] = []
 	var plate := {"shine": 0.5}
@@ -127,20 +132,29 @@ func _torso(list: Array[HumanoidPiece]) -> void:
 
 
 ## The sculpted gold cuirass in the open front: the chest plate over the abdomen plate, the muscles' lines and the
-## emblem (a crimson diamond with a gold square).
+## emblem (a round laurel ring in dark gold and crimson).
+## DESIGN-TBD (docs/questions/m3.md, 3): the relief is simplified from the sheet.
 func _cuirass(list: Array[HumanoidPiece]) -> void:
 	add(list, &"chest", BOX, Vector3(0.17, 0.2, 0.05), Vector3(0.0, 0.115, -0.1), GOLD, 0.0,
 		{"chamfer": 0.3, "top_scale": Vector2(1.12, 0.85), "shine": GOLD_SHINE})
 	add(list, &"chest", BOX, Vector3(0.135, 0.095, 0.04), Vector3(0.0, -0.02, -0.098), GOLD, 0.0, GOLD_PIECE)
 	for y: float in [0.0, -0.03, -0.055]:
 		flat(list, &"chest", 0.12, 0.007, Vector3(0.0, y, -0.1195), GOLD_DARK, 0.0, 0.0, true)
-	flat(list, &"chest", 0.007, 0.15, Vector3(0.0, 0.1, -0.1275), GOLD_DARK, 0.0, 0.0, true)
-	flat(list, &"chest", 0.07, 0.007, Vector3(0.0, 0.065, -0.1275), GOLD_DARK, 0.0, 0.0, true)
-	flat(list, &"chest", 0.05, 0.05, Vector3(0.0, 0.155, -0.1285), CRIMSON, 0.0, 45.0, true)
-	flat(list, &"chest", 0.026, 0.026, Vector3(0.0, 0.155, -0.1295), GOLD, 0.0, 0.0, true, {"shine": GOLD_SHINE})
+	# The chest's relief: a line along the underside of the pecs, right across the plate, and a short slanting stroke under
+	# each pec, running down and out from the middle.
+	flat(list, &"chest", 0.168, 0.007, Vector3(0.0, 0.06, -0.1262), GOLD_DARK, 0.0, 0.0, true)
+	for side: float in [-1.0, 1.0]:
+		flat(list, &"chest", 0.068, 0.007, Vector3(side * 0.0325, 0.087, -0.1262), GOLD_DARK, 0.0, side * 17.0, true)
+	# The emblem: a round laurel ring in dark gold (two squares, one turned, make the octagon) round a crimson disc with a
+	# gold boss.
+	for turn: float in [0.0, 45.0]:
+		flat(list, &"chest", 0.064, 0.064, Vector3(0.0, 0.16, -0.1243), GOLD_DARK, 0.0, turn, true)
+		flat(list, &"chest", 0.046, 0.046, Vector3(0.0, 0.16, -0.1249), CRIMSON, 0.0, turn, true)
+	flat(list, &"chest", 0.016, 0.016, Vector3(0.0, 0.16, -0.1257), GOLD, 0.0, 45.0, true, {"shine": GOLD_SHINE})
 
 
 ## The back: the gold skull inside its laurel wreath, across the charcoal coat between the pauldrons.
+## DESIGN-TBD (docs/questions/m3.md, 3): simplified from the sheet.
 func _emblem(list: Array[HumanoidPiece]) -> void:
 	var centre := Vector2(0.0, 0.115)
 	# The wreath: a ring of leaves rising each side of the skull from the bottom, tilted along the ring.
@@ -169,6 +183,7 @@ func _emblem(list: Array[HumanoidPiece]) -> void:
 
 ## The lion-head pauldrons, one on each shoulder (the left over the cyber-arm's shoulder): a gold dome, three layered
 ## scale plates hanging over the upper arm and the lion's head on the outer face.
+## DESIGN-TBD (docs/questions/m3.md, 3): the lion is two gold diamonds.
 func _pauldrons(list: Array[HumanoidPiece]) -> void:
 	add(list, &"upper_arm", LATHE, Vector3(0.15, 0.0, 0.15), Vector3(0.014, 0.0, 0.0), GOLD, 0.0, {"side": MIRRORED,
 		"sides": 6, "shine": GOLD_SHINE, "profile": PackedVector4Array([Vector4(-0.045, 1.0, 1.0, 0.0),

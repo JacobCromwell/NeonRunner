@@ -60,6 +60,25 @@ func _all_pieces(wolf: PlayerOutfit) -> Array[HumanoidPiece]:
 	return out
 
 
+## The highest vertex of the head-segment pieces in `pieces`, as the rig places them (the head joint's space).
+func _top(pieces: Array[HumanoidPiece]) -> float:
+	var builder := HumanoidMeshBuilder.new()
+	for p: HumanoidPiece in pieces:
+		if p.segment == &"head":
+			builder.add_piece(p, false)
+	var top: float = -INF
+	for v: Vector3 in builder.vertices:
+		top = maxf(top, v.y)
+	return top
+
+
+## How many triangles one piece builds (an empty piece, say a band whose arc holds no face, builds none).
+func _triangles(p: HumanoidPiece) -> int:
+	var builder := HumanoidMeshBuilder.new()
+	builder.add_piece(p, false)
+	return builder.triangle_count()
+
+
 func _count(pieces: Array[HumanoidPiece], segment: StringName, color: Color) -> int:
 	var n: int = 0
 	for p: HumanoidPiece in pieces:
@@ -92,7 +111,7 @@ func _test_mask() -> void:
 	check(face == 0, "his face (the copper implant, the eye and the scar) is under the mask: %d of his face pieces are drawn" % face)
 	# Pointed ears, bared teeth, the pink eyepiece over the left eye (-x) and a cyan eye on the right.
 	var ears: int = 0
-	var highest: float = 0.0
+	var ear_pieces: Array[HumanoidPiece] = []
 	var teeth: int = 0
 	var pink_left: bool = false
 	var cyan_right: bool = false
@@ -101,7 +120,7 @@ func _test_mask() -> void:
 			continue
 		if p.shape == PRISM_SHAPE and p.color == Look.FUR and p.offset.y > 0.15:
 			ears += 2 if p.side == HumanoidPiece.Placement.MIRRORED else 1
-			highest = maxf(highest, p.offset.y + p.size.y * 0.5)
+			ear_pieces.append(p)
 		if p.color == Look.TEETH:
 			teeth += 1
 		if p.shape == BOX_SHAPE and p.color == Look.PINK and p.glow > 0.0 and p.offset.x < 0.0:
@@ -109,7 +128,13 @@ func _test_mask() -> void:
 		if p.shape == BOX_SHAPE and p.color == Look.CYAN and p.glow > 0.0 and p.offset.x > 0.0:
 			cyan_right = true
 	check(ears == 2, "pointed ears: two grey cones (%d)" % ears)
-	check(highest <= 0.26, "…no higher than his hair tips (%.3f m above the head joint; the hair tips are at about 0.257)" % highest)
+	var hair: Array[HumanoidPiece] = []
+	for p: HumanoidPiece in echo_head:
+		if p.color == PlayerSuit.HAIR:
+			hair.append(p)
+	var ear_top: float = _top(ear_pieces)
+	var hair_top: float = _top(hair)
+	check(ear_top <= hair_top, "…no higher than his hair tips (the ears' top vertex is %.4f m above the head joint, the hair's %.4f)" % [ear_top, hair_top])
 	check(teeth >= 4, "bared teeth (%d fangs)" % teeth)
 	check(pink_left, "a glowing pink eyepiece over his left eye (the wearer's, so -x)")
 	check(cyan_right, "…and a cyan wolf eye on the other")
@@ -134,10 +159,13 @@ func _test_look() -> void:
 	# The pink chest rig, the howling-wolf print and the studded belt with glow sticks.
 	check(_count(body, &"chest", Look.STRAP) >= 2, "a pink chest rig")
 	var sticks: int = 0
+	var on_right: int = 0
 	for p: HumanoidPiece in body:
 		if p.segment == &"pelvis" and p.glow > 0.0 and p.size.y > 0.1:
 			sticks += 1
-	check(sticks == 4, "four glow sticks hang from the belt (%d)" % sticks)
+			if p.offset.x > 0.0 and p.offset.z < 0.0:
+				on_right += 1
+	check(sticks == 4 and on_right == 4, "four glow sticks hang from the front of the belt on his right (%d, %d on +x)" % [sticks, on_right])
 	# The rave arm on the left: purple with cyan glow, in place of Echo's gold (no gold on the whole outfit).
 	var cyan_arm: int = 0
 	var left_purple: int = 0
@@ -288,6 +316,11 @@ func _test_cost() -> void:
 	for p: HumanoidPiece in _all_pieces(wolf):
 		if p.material != null:
 			own_material += 1
+	var empty: int = 0
+	for p: HumanoidPiece in _all_pieces(wolf):
+		if _triangles(p) == 0:
+			empty += 1
+	check(empty == 0, "every piece builds at least one triangle (%d empty)" % empty)
 	check(own_material == 0, "no piece has a material of its own, so the graffiti, the sign and the neon wolf cost no draw call (%d)" % own_material)
 	# A flat is two triangles.
 	var builder := HumanoidMeshBuilder.new()
@@ -301,7 +334,7 @@ func _test_cost() -> void:
 	var echo: PlayerAvatar = _avatar_in(PlayerOutfits.ECHO)
 	var echo_calls: int = echo.draw_call_count()
 	var tris: int = avatar.triangle_count()
-	check(calls <= echo_calls + 1, "%d draw calls, Echo's own %d (a coat's panels are one)" % [calls, echo_calls])
+	check(calls == echo_calls, "%d draw calls, Echo's own %d (a coat's panels are one)" % [calls, echo_calls])
 	check(tris <= AvatarSuite.TRIANGLE_BUDGET - 452, "%d triangles bare (the budget leaves %d before the power-ups' 452)" % [tris, AvatarSuite.TRIANGLE_BUDGET - 452])
 	avatar.free()
 	echo.free()
@@ -313,8 +346,26 @@ func _test_tail_and_armor() -> void:
 	var wolf: PlayerOutfit = PlayerOutfits.outfit(&"party_wolf")
 	var panels: Array[HumanoidPanel] = wolf.panels()
 	var tail: HumanoidPanel = panels[panels.size() - 1]
-	check(tail.behind and is_zero_approx(tail.hinge.x) and tail.length >= 0.25 and tail.follow <= 0.3,
-		"a tail hinged at the small of the back, mostly swinging on its own (follow %.2f, %.2f m)" % [tail.follow, tail.length])
+	check(not tail.behind and tail.side == -1 and tail.hinge.x > 0.04 and tail.hinge.z < -0.1 and tail.length >= 0.2 and tail.follow <= 0.5,
+		"a tail hanging from the front of the belt on his left, as the sheet draws it (side %d, hinge %s, follow %.2f, %.2f m)" % [tail.side, tail.hinge, tail.follow, tail.length])
+	# The back of the belt is free for the magnet power-up's coil: none of the tail is inside it.
+	var magnet := HumanoidMeshBuilder.new()
+	for p: HumanoidPiece in PlayerSuit.attachments()[&"magnet"]:
+		magnet.add_piece(p, false)
+	var coil := AABB(magnet.vertices[0], Vector3.ZERO)
+	for v: Vector3 in magnet.vertices:
+		coil = coil.expand(v)
+	var tail_mesh := HumanoidMeshBuilder.new()
+	for p: HumanoidPiece in tail.pieces:
+		tail_mesh.add_piece(p, true)
+	var covered: int = 0
+	for v: Vector3 in tail_mesh.vertices:
+		if coil.has_point(v):
+			covered += 1
+	var rearmost: float = -INF
+	for v: Vector3 in tail_mesh.vertices:
+		rearmost = maxf(rearmost, v.z)
+	check(covered == 0 and rearmost < 0.0, "…so it never covers the magnet's coil on the back (%d vertices inside it, the tail's rearmost point z %.3f)" % [covered, rearmost])
 	var grey: bool = true
 	for p: HumanoidPiece in tail.pieces:
 		grey = grey and absf(p.color.r - p.color.g) < 0.02 and p.color.b >= p.color.r

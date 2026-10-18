@@ -19,6 +19,7 @@ var _worn_before: StringName = &""
 func run() -> void:
 	_worn_before = PlayerOutfits.worn
 	_test_centurion()
+	_test_cuirass()
 	_test_back()
 	_test_armor()
 	_test_swing()
@@ -40,6 +41,13 @@ func _all_pieces(outfit: PlayerOutfit) -> Array[HumanoidPiece]:
 	for panel: HumanoidPanel in outfit.panels():
 		out.append_array(panel.pieces)
 	return out
+
+
+## How many triangles one piece builds (an empty piece, say a band whose arc holds no face, builds none).
+func _triangles(p: HumanoidPiece) -> int:
+	var builder := HumanoidMeshBuilder.new()
+	builder.add_piece(p, false)
+	return builder.triangle_count()
 
 
 func _distance(a: Color, b: Color) -> float:
@@ -122,6 +130,11 @@ func _test_centurion() -> void:
 	for p: HumanoidPiece in all:
 		if p.material != null:
 			own += 1
+	var empty: int = 0
+	for p: HumanoidPiece in all:
+		if _triangles(p) == 0:
+			empty += 1
+	check(empty == 0, "every piece builds at least one triangle (%d empty)" % empty)
 	var avatar: PlayerAvatar = _avatar_in(&"centurion")
 	avatar.fit_to(tuning.visual_size)
 	var echo: PlayerAvatar = _avatar_in(PlayerOutfits.ECHO)
@@ -132,6 +145,42 @@ func _test_centurion() -> void:
 		"%d triangles bare, %d with every power-up (budget %d)" % [tris, avatar.triangle_count(), AvatarSuite.TRIANGLE_BUDGET])
 	avatar.free()
 	echo.free()
+
+
+## The cuirass reads as sculpted muscle under a round emblem, not a cross: the gold plate carries a ring of dark gold round a
+## crimson disc with a gold boss, a line right across the plate under the pecs and a slanting stroke under each, and no
+## vertical stroke at all.
+func _test_cuirass() -> void:
+	var cent: PlayerOutfit = PlayerOutfits.outfit(&"centurion")
+	var ring: int = 0
+	var disc: int = 0
+	var boss: int = 0
+	var across: int = 0
+	var slants: int = 0
+	var vertical: int = 0
+	for p: HumanoidPiece in cent.body_pieces():
+		if p.segment != &"chest":
+			continue
+		if p.shape != BAND_SHAPE or p.offset.z > -0.1:
+			continue
+		var w: float = p.size.x / 1.41421
+		var h: float = absf(p.profile[1].x - p.profile[0].x)
+		var turned: float = absf(p.rotation_degrees.z)
+		if p.color == Look.GOLD_DARK and absf(w - h) < 0.001 and w > 0.05 and p.offset.y > 0.12:
+			ring += 1
+		elif p.color == Look.CRIMSON and absf(w - h) < 0.001 and p.offset.y > 0.12:
+			disc += 1
+		elif p.color == Look.GOLD and w < 0.02 and absf(p.offset.x) < 0.001:
+			boss += 1
+		elif p.color == Look.GOLD_DARK and h < 0.01 and w > 0.15 and turned < 1.0:
+			across += 1
+		elif p.color == Look.GOLD_DARK and h < 0.01 and turned > 10.0 and turned < 25.0:
+			slants += 1
+		if p.color == Look.GOLD_DARK and h > w * 2.0 and w < 0.02 and turned < 1.0:
+			vertical += 1
+	check(ring == 2 and disc == 2 and boss == 1, "a round emblem: a dark-gold ring of two squares (an octagon) round a crimson disc and a gold boss (%d, %d, %d)" % [ring, disc, boss])
+	check(across == 1 and slants == 2, "the muscles' lines: one across the whole plate and a slanting stroke under each pec (%d, %d)" % [across, slants])
+	check(vertical == 0, "no vertical stroke under the emblem (it read as a cross): %d" % vertical)
 
 
 ## The back, what the gameplay camera sees: the gold skull in its laurel wreath between the pauldrons, crimson borders.
