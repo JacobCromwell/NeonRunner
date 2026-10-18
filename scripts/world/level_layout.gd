@@ -91,10 +91,13 @@ var ceiling_fences: Array[Dictionary] = []
 ## the way a ceiling's end drops them (Player). The generator places one over each treasure stash
 ## (treasure_stash_rules.gd); the track builder builds it as a trigger, the skin dresses it (ZoneSkin.return_pad).
 var return_pads: Array[Dictionary] = []
-## {lane, start, end, walls_from, pad, hull_start}: a treasure stash (task I4; GDD §3, "Ceiling scenarios"): a
-## stretch of floor in `lane`, walled off by zone doodads, that only a ceiling's return pad (at `pad`, over the
-## ceiling starting at `hull_start`) drops a player into. A doodad stands in its lane from `start`; doodads stand
-## in both neighbouring lanes from `walls_from` to `end`, where it opens onto the track; inside lie its credits.
+## {lane, start, front, end, walls_from, pad, hull_start, keep_from, keep_to}: a treasure stash (task I4; GDD §3,
+## "Ceiling scenarios"): a stretch of floor in `lane`, walled off by zone doodads, that only a ceiling's return pad
+## (at `pad`, over the ceiling starting at `hull_start`) drops a player into. A doodad stands in its lane from
+## `start`, and after a space a second one from `front` (the owner, October 18, 2026: "a doodad, a space, then a
+## second doodad, and then the treasure"); doodads stand in both neighbouring lanes from `walls_from` to `end`, where
+## it opens onto the track; inside lie its credits. Its floor, kept clear in every lane, runs from `keep_from` to
+## `keep_to`.
 ## The pieces are ordinary entries of `doodads` (marked "stash"), `return_pads` and `credits` (marked "stash");
 ## this is the record that ties them together (treasure_stash_rules.gd, the checks and the credit pass).
 var stashes: Array[Dictionary] = []

@@ -213,7 +213,7 @@ func _excerpt(source: LevelLayout, h: Dictionary) -> LevelLayout:
 		if absf(float(s["hull_start"]) - float(h["start"])) > 0.01:
 			continue
 		stash = s.duplicate(true)
-		for key: String in ["start", "end", "walls_from", "pad", "hull_start", "keep_from", "keep_to"]:
+		for key: String in ["start", "front", "end", "walls_from", "pad", "hull_start", "keep_from", "keep_to"]:
 			stash[key] = float(s[key]) + shift
 		out.stashes.append(stash)
 		out.return_pads.append({"lane": int(s["lane"]), "at": float(s["pad"]) + shift})

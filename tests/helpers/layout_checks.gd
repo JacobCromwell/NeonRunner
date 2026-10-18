@@ -1254,8 +1254,10 @@ static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) ->
 ##   from it, at most the level's count of each, min_gap_seconds from the scenario before;
 ## - a treasure stash (check_stash): in an inner lane with inner lanes either side; its return pad on its ceiling's
 ##   underside over its lane, see_seconds after the ceiling's rider arrives at the latest; the ceiling running on past
-##   it; one doodad across its lane at its start, its walls back to back alongside in both neighbouring lanes, pushing
-##   outward, from beside that one (room for its push, then overlapping it) to its open end; two or three credits of
+##   it; two doodads across its lane, one at its start and one before its treasure, with a space between them past the
+##   dash's carry (TreasureStashRules.dash_space: no single dash smashes both), its walls back to back alongside in both
+##   neighbouring lanes, pushing outward, from beside the second one (room for its push, then overlapping it) to its
+##   open end, and nothing beside the first one or the space; two or three credits of
 ##   the highest denomination inside, past where the return pad's rider lands, and no other floor credit in it or
 ##   beside it; its floor, from the front doodad's push to the spacing past its open end, holding nothing else in any
 ##   lane (no hole, fence, floor cut's window, floor enemy, pad's zone, speed pad, ramp's run, other doodad, dash wall
@@ -1372,15 +1374,28 @@ static func check_stash(suite: TestSuite, gen: LevelGenerator, t: CeilingScenari
 			left.append(d)
 		elif int(d["lane"]) == lane + 1:
 			right.append(d)
-	suite.check(front.size() == 1, "%s: one doodad across its lane at its start (%d)" % [at, front.size()])
-	if front.size() != 1:
+	# The owner, October 18, 2026: "a doodad, a space, then a second doodad, and then the treasure".
+	suite.check(front.size() == 2, "%s: two doodads across its lane, a space between them (%d)" % [at, front.size()])
+	if front.size() != 2:
 		return
-	var front_end: float = float(front[0]["end"])
-	suite.check(absf(float(front[0]["start"]) - start) < 0.01, "%s: the doodad across its lane stands at its start" % at)
-	suite.check(absf(front_end - start - mt.doodad_size(StringName(front[0]["size"])).z) < 0.01,
-		"%s: the doodad across it is as long as its size class" % at)
-	# The walls start past room for that doodad's push, and overlap it by wall_overlap (or all it leaves).
-	var overlap: float = minf(t.wall_overlap, front_end - start - TreasureStashRules.PUSH_ROOM)
+	front.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
+	var outer: Dictionary = front[0]
+	var front_start: float = float(front[1]["start"])
+	var front_end: float = float(front[1]["end"])
+	suite.check(absf(float(outer["start"]) - start) < 0.01, "%s: the outer doodad across its lane stands at its start" % at)
+	suite.check(absf(front_start - float(s["front"])) < 0.01, "%s: the doodad before its treasure stands where the record says" % at)
+	for d: Dictionary in front:
+		suite.check(absf(float(d["end"]) - float(d["start"]) - mt.doodad_size(StringName(d["size"])).z) < 0.01,
+			"%s: a doodad across it is as long as its size class" % at)
+	var space: float = front_start - float(outer["end"])
+	var need: float = TreasureStashRules.dash_space(mt, v, t)
+	suite.check(space >= need - 0.01 and need > TreasureStashRules.dash_carry(mt, v),
+		"%s: the space between its two doodads (%.1f m) is past the dash's carry from the outer one's end (%.1f m)"
+		% [at, space, need])
+	# The walls start past room for the front doodad's push, and overlap it by wall_overlap (or all it leaves); the
+	# lanes beside the outer doodad and the space hold none of them (DESIGN-TBD, docs/questions/n1.md: room for both
+	# doodads' pushes).
+	var overlap: float = minf(t.wall_overlap, front_end - front_start - TreasureStashRules.PUSH_ROOM)
 	for side: int in [-1, 1]:
 		var chain: Array[Dictionary] = left if side < 0 else right
 		var w: String = "%s: its wall in lane %d" % [at, lane + side]
@@ -1390,8 +1405,9 @@ static func check_stash(suite: TestSuite, gen: LevelGenerator, t: CeilingScenari
 		chain.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 		var first: float = float(chain[0]["start"])
 		suite.check(absf(first - float(s["walls_from"])) < 0.01, "%s starts where the record says" % w)
-		suite.check(first >= start + TreasureStashRules.PUSH_ROOM - 0.01 and first <= front_end - overlap + 0.01,
-			"%s starts beside the doodad across it (%.2f m past its front, %.2f m before its end)" % [w, first - start, front_end - first])
+		suite.check(first >= front_start + TreasureStashRules.PUSH_ROOM - 0.01 and first <= front_end - overlap + 0.01,
+			"%s starts beside the doodad before its treasure (%.2f m past its front, %.2f m before its end)"
+			% [w, first - front_start, front_end - first])
 		var cursor: float = first
 		for d: Dictionary in chain:
 			suite.check(absf(float(d["start"]) - cursor) < 0.01, "%s runs back to back (%.2f m)" % [w, float(d["start"])])
