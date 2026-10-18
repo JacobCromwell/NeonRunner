@@ -27,7 +27,8 @@ extends Resource
 ## the one the return pad's rider drops past.
 @export_enum("small", "medium", "large") var front_size: int = 1
 ## The size class of the second doodad across the stash's lane, a space before that one, toward the runner (the
-## owner, October 18, 2026: "a doodad, a space, then a second doodad, and then the treasure").
+## owner, October 18, 2026: "a doodad, a space, then a second doodad, and then the treasure"). DESIGN-TBD
+## (docs/questions/n1.md): a medium one, as the stash's own.
 @export_enum("small", "medium", "large") var outer_size: int = 1
 ## Slack added to the space between the two doodads in the stash's lane (metres, not stretched): the space is the
 ## most a dash that smashes the outer doodad still carries the runner past its end (TreasureStashRules.dash_space:
