@@ -307,8 +307,10 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
     - **No anti-cheat for now:** scores are trusted as submitted.
     - **Attempts are unlimited on every platform:** no ads or purchases for extra tries on mobile.
     - Not in the web demo (it has no leaderboards).
-    - *(Proposed)* The week's level comes from a list of seeds shipped with the game and checked by the fairness tests in advance, not straight from the date. The credits are paid for the week's first clear only, so a memorised layout can't be farmed.
-    - *(Open: item 978)* When the challenge unlocks, and which zone and difficulty each week's level uses.
+    - **The week's level comes from a list of seeds shipped with the game** and checked by the fairness tests in advance, not straight from the date (owner, October 18, 2026).
+    - **The credits are paid for the week's first clear only,** so a memorised layout can't be farmed (owner, October 18, 2026).
+    - **It unlocks once the player has beaten the Neon City's boss** (the Floating Head).
+    - **The weeks rotate through the zones,** each week's level in one zone's skin, **always at the Golden Zone's difficulty**: a week in the Neon City has the Neon City's own enemies and obstacles, but as many of them, as dense and as hard as the Golden Zone's, "otherwise it would be too easy for players" (owner, October 18, 2026). *(Proposed)* The Golden Zone's hardest level sets it (Sentinel Row, `data/levels/golden_2.tres`), with its enemy scaling (fire rate, projectile speed, health) and its run speed of about 25 m/s.
   - Leaderboards
 - **Leaderboards:** separate per platform (Steam, Game Center, Google Play Games), per level and per difficulty tier.
   - Plus a **net worth** leaderboard: credits earned in play and never spent. Purchased credits are tracked separately and never count.

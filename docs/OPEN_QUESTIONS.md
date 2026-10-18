@@ -34,7 +34,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | 932 | With the wall-run guide gone after the Marketplace (L5), nothing marks which wall is safe: in 18% of later gaps the other wall has a sign, window cyborg or live Sentinel along the crossing. Accept it ("use their brain"), keep the other wall clear too (generator), or a subtler cue? |
 | 934 | The Buzz Overdrive's company (L2) skips every tank an Enforcer Truck chases for, which is nearly every tank from Corporate 2 on (131 of 143; all of the Golden Zone), so the change shows mostly in Corporate 1 and endless. Give those tanks company too (new truck rules), or keep them sparse? |
 | 977 | The Leader of the Pack cosmetic (the weekly challenge's top-three reward): what it is and how it shows. The owner will design it in a later session. |
-| 978 | The weekly challenge: when it unlocks, and which zone and difficulty each week's level uses. |
 
 ## The items in full
 
@@ -130,7 +129,3 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
    later session. The game has no cosmetics yet, so this item also decides whether a cosmetic system is needed.
    It also needs a rule for when the reward is granted: a week's rank is only final once the week is over, so the game
    would check it the next time it is online. Placeholder: none yet; work on the reward waits on this item.
-978. **When the weekly challenge unlocks, and what each week's level is.** Not yet decided: (a) when it unlocks
-   (proposed: after the Neon City boss, so a new player has learned the basics), and (b) which zone skin and difficulty a
-   week's level uses (proposed: a rotation through the zones, set in the shipped list of checked seeds, at the difficulty of
-   the zone's last level). The answer decides how the week's level is built, so the build waits on it.
