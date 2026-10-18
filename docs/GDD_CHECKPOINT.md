@@ -362,12 +362,17 @@ The shop appears between levels and after every death.
 Looks for the runner that the player **buys in the shop or wins** *(how cosmetics are won is still open)*. They **never change gameplay**: the hitbox, the poses and every size stay the same, and owned power-ups are still added on top.
 - **Their own section of the shop,** after the power-ups. Each cosmetic is **bought once with credits** and kept forever; the player then **picks one to wear**. Razor Echo's own look is the free default.
 - **Outfits for Razor Echo:** a cosmetic dresses Echo; the runner stays Razor Echo. *(Proposed)* Echo's head (face, hair and ocular implant) stays his own, and the outfit shows everywhere the runner appears (gameplay, title screen, cinematics).
-- **No weapons on any outfit,** the same rule as the base look: nothing on the runner may look like a power-up.
+- **No weapons on any outfit,** the same rule as the base look: nothing on the runner may look like a power-up. The owner's concept sheets all carry swords and guns; every one is left out (owner, October 18, 2026).
 - **Rex** (the first cosmetic, **3,000 credits**): an outfit from the owner's concept sheet `docs/art/reference/outfit_rex.webp`. Build brief: `docs/art/BRIEF_OUTFIT_REX.md`.
   - **Keep:** the **magenta leather biker jacket** (lapels, zips, belted waist) with its **glowing circuit lines** on the sleeves and shoulders and the **glowing spine line** down the back; a dark tank top with a chain necklace; the **gunmetal and copper cybernetic left arm** with its **glowing shoulder joint**; fingerless gloves; a utility belt with pouches and thigh holsters; **dark, worn cargo pants** with knee straps; **buckled combat boots** trimmed in magenta.
   - **Leave out:** the **rifle** slung across the back.
   - **Colours as drawn** (owner, October 18, 2026): the circuit lines glow **pink/magenta**, the spine line **cyan**, the shoulder joint **orange**. This is an owner exception to the colour rule (§5) for this outfit only; the base look and every other use of those glows keep the rule.
   - *(Proposed)* The back patches are plain shapes with no words; words would be too small to read at gameplay size.
+- **Camo** (the second cosmetic, **3,000 credits**; owner, October 18, 2026): a military outfit from the owner's concept sheet `docs/art/reference/outfit_camo.webp`. Build brief: `docs/art/BRIEF_OUTFIT_CAMO.md`.
+  - **Keep:** a long, **aged olive military trench coat** with a high collar, worn at the hem, with **camo patches** and dark tubing across the back; a **camo tactical plate carrier** with pouches over a dark shirt, and harness straps; the **armoured brass militarized cyber-arm** on the left, with shoulder and forearm plates; fingerless gloves; **dark camo cargo pants** with knee pads; **tall laced combat boots**.
+  - **Leave out:** the **katana** and its sheath, the **holstered pistol**, and *(proposed)* the **grenades** and **knife** on the plate carrier (weapons too).
+  - *(Proposed)* Leave out the **skull on the coat's lower back**, as on Echo's own coat: too small to appreciate at gameplay size.
+  - *(Proposed)* Nothing on it glows except what Echo's own look already does (his copper implant); the sheet's arm and coat are unlit.
 
 ### Damage reference (shots to kill)
 
