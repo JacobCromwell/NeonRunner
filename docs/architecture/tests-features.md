@@ -547,7 +547,8 @@ Platforms and build flavors). `test_phone_screens` (task I3; Characters, UI and 
 every screen the demo shows out at phone sizes, sideways and upright, in device pixels, and checks what a
 phone's player needs of it: text and finger targets big enough, nothing cut or off the screen, the way on in
 sight, touches passing to the scroll areas, and `UiScale`'s maths and lifecycle (`--verbose` after the suite
-name lists every problem found). The runner frees
+name lists every problem found; the weekly challenge's screens, and the full game's title with its WEEKLY button, are laid
+out too, built as the full game has them, task N5). The runner frees
 anything a suite leaves in the tree, gives suites a fresh, unsaved profile, reports a suite that fails
 to load, and ends a stuck run after 2400 s of real time.
 
@@ -558,3 +559,30 @@ warm-up's stage built) no shader code is in two Shaders, and no two standard mat
 renderer ignores (the emission of an unshaded one: such a look is the glow's with a shader of its own, as the player's
 shadow, a screech lair's recess and the Floating Head's tower cut were). A medium suite; the files that make such looks
 (`greybox_materials.gd`, `shader_warmup.gd`, `screech_lair.gd`, the tower) map to it in `tests/suite_map.json`.
+
+`test_weekly_challenge` (task N5; Economy and saving, The weekly challenge) checks the weekly challenge: every entry of the
+shipped seed list (`data/weekly/weekly_seeds.json`) built at five lanes with the checks the campaign's levels get
+(`check_entry`, which `tools/measure/weekly_seeds.gd` also runs to look for seeds to add: no generator warning, the
+length of 150 s at 25 m/s, `LayoutChecks.check_layout` and `check_rules`, every feature of the zone in the layout), and its
+config field by field (`WeeklyChallenge.config_fields()`: each LevelConfig property is the zone's level's, Sentinel Row's or
+the week's own, and one in none of the three lists fails, so a new dial forces a decision); the calendar (the week from the
+unix time at its edges, negative weeks, the list wrapping round, the two boards' names), the rotation (the campaign's zones
+in order, every zone as often as the others, every run of weeks meets each zone, no seed twice and none a campaign level's),
+the kit (Armor IV and dash IV and nothing else on PC and mobile, whatever the profile owns or has switched off), the profile
+(first clear, best, the payout kept, the JSON round trip, older and damaged saves), the reward hook and its settlement
+(top three earned, the rest missed, an unknown rank waiting then lapsing, two passes at once granting once), and, on the real
+main scene, the whole flow: locked until the Floating Head is beaten, the title's button, a run on five lanes with the kit
+and no revive, the first clear paying once (and not the credits collected), a second clear, a death and a quit paying
+nothing, the score on the PC board and not the mobile one, a new week paying again, a retry after the week turned over, the
+mobile board, a `--weekly` review run keeping its lanes and kit, and the clock (the review's sequence of clears at weeks 5, 4,
+3, -1, -27 and 37 paying twice, the screens for a week not yet open and a clock behind, a run closed by the clock paying and
+posting nothing); then the web demo having none of it. A medium suite (about 45 s), mapped in `tests/suite_map.json` to the
+files that make the challenge.
+
+`test_weekly_fairness` (task N5, the review) holds the same list to what the campaign's feature suites check of a level that
+has the feature: danger density's fairness (`test_danger_density`'s `_check_fair` on a build with the dial and one without),
+the hover trucks' and Enforcer Trucks' rules, the Gilded Sentinels' and Resonators' `problems()`, wall gaps clear of their
+keep-outs, a host's chase kept clear of what the rules keep off it, a way across every wall-run gap, and the same layout from a
+second build. It borrows the other suites' checks rather than copy them (`setup()` says so if one is renamed); a slow suite
+(about 70 s), run when the list or the weekly files change and with the full tier, and by `tools/measure/weekly_seeds.gd` on
+every candidate seed.

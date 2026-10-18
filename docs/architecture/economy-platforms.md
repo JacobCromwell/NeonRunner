@@ -228,6 +228,70 @@ Beach 2 is open (Beach 1 is done) and is the first step not done, so Continue le
 `_test_saves`; `test_campaign` checks the version).
 A change to the save's format bumps the version and adds its step there, with a test.
 
+## The weekly challenge
+
+**The weekly challenge** (task N5; GDD §6, Replay features; the owner, October 18, 2026): one fixed level a week, the same
+for every player, with a leaderboard for that week. Everything about it is in `scripts/weekly/` and `data/weekly/`; the
+questions it leaves open are in `docs/questions/n5.md` (every placeholder is data, and the code that holds one carries a
+DESIGN-TBD with its number).
+- *Data* (`WeeklyChallenge`, `data/weekly/weekly_challenge.tres`, `@export_range` on the numbers): the calendar
+  (`epoch_unix`, `week_seconds`: weeks open Monday 00:00 UTC, week 0 on October 19, 2026, DESIGN-TBD), the level
+  (`lanes` 5 on every platform, `density_step` = `golden/2`, `source_levels`), the kit (`kit`: Armor IV and Juggernaut
+  dash IV), the rewards (`first_clear_credits` 1,000, `top_places` 3, `reward_kind`, `reward_check_weeks`) and the unlock
+  (`unlock_step` = `city/boss`). `App.weekly` holds it; `WeeklyWeek` is one week (its index, entry, zone, seed, dates).
+- *Which level a week plays.* `data/weekly/weekly_seeds.json` is the **shipped seed list**: `{zone, seed}` entries, and week
+  N plays entry `N mod size` (`WeeklyChallenge.week`), never a level worked out from the date. The list is the campaign's
+  eight zones in order, four seeds each (32 weeks, then it goes round again), so the weeks rotate through the zones and
+  every zone is in from the start. Every entry was built and checked in advance by a written rule (the first four seeds
+  of the zone's block that pass every check in at most three generator builds: `tools/measure/weekly_seeds.gd`, which
+  also looks for seeds to add; `test_weekly_challenge` and `test_weekly_fairness` check the list). Once the game has
+  shipped, only ever add at the end, and see `docs/questions/n5.md`, 3, for what appending does once the list has wrapped.
+- *The level* (`WeeklyChallenge.build_config`). Every stored property of `LevelConfig` is in exactly one of three lists in
+  `WeeklyChallenge`, and `test_weekly_challenge` fails on one that is in none, so a new dial forces a decision about
+  whose it is: `ZONE_FIELDS` (from the zone's own level in `source_levels`: its features and their pick weights, patterns,
+  skin, sky, darkness and open walls; a dial about a zone's own mechanic goes here), `WEEK_FIELDS` (the week's own: name,
+  seed, five lanes, no `feature_starts`, no recency curve, not off the curve, no mini-game, every feature must appear) and
+  `GOLDEN_FIELDS` (everything else, from the campaign's own configuration of `golden/2`, Sentinel Row: difficulty 0.91,
+  enemy scaling 0.94 for fire rate, projectile speed and health, 25 m/s, 150 s, `danger_density_increase` and every pacing,
+  density, gap and credit dial). A dial for a feature the zone lacks does nothing (the generator runs a rules script per
+  feature the level lists). Generated and played like any level (`LevelCache` keys it by content, so a retry is instant).
+- *The run* (`RunContext.Mode.WEEKLY`, `ctx.weekly`, `ctx.weekly_board`): `App.start_weekly()` builds it with the uniform kit
+  (`Loadout.weekly(catalog, kit, mobile)`: the free armor under Armor IV, the dash at IV, no breakable and nothing else,
+  whatever the profile owns or has switched off). There is **no revive**, from stock or for an ad (`revive_options`).
+  Retrying (`App.retry`) starts the current week's level again, so a retry after the week turned over plays the new week.
+- *The boards* (`WeeklyChallenge.board_id`): `weekly/pc/<week>` and `weekly/mobile/<week>`, one a week for each platform's
+  players, the device's by `App.mobile`. A clear is posted (`Platform.submit_score`), a death or quit isn't.
+- *The payout* (`App._settle_weekly`, before the wallet is paid): the credits collected on the way pay **nothing**, on a clear
+  or not (a memorised layout would farm them); the week's **first clear** pays `first_clear_credits` once (`Profile.weekly`:
+  `cleared`, `paid`, `best`, `attempts` per week; `record_weekly`); every other run pays nothing. The results screen shows
+  the payout (or "paid this week"), no stars, and what became of the score (`result.record`: weekly, first_clear, new_best,
+  board, submitted, best, paid, closed).
+- *The clock* (`App.weekly_state()`, `Profile.weekly_high_water()`): the week is what the device's clock says, so a clock moved
+  back must not pay or post a week again. A week **before the schedule's first** (negative index) is never played, paid,
+  posted or kept (the screen says when it opens); and weeks only go forward: `Profile.weekly["high_water"]` is the highest
+  week played, a week below it is "behind" (the screen says which week it goes on at, PLAY off) and `_settle_weekly` pays
+  and posts nothing for it, whatever started the run. A clock moved **forward** still opens each future week once: that
+  needs a trusted time through the platform layer (`docs/questions/n5.md`, 2).
+- *The reward hook* (the Leader of the Pack, item 977 in `docs/OPEN_QUESTIONS.md`; the cosmetic is not built): a clear leaves a
+  pending record (`Profile.weekly_rewards`: week, board, score, state); `App.settle_weekly_rewards()` runs at start and when the
+  weekly screen opens (one pass at a time: a second asks nothing while the first waits on the platform), and for each record
+  whose week is over asks `Platform.leaderboard_rank(board)` (a new backend method: 0 until a real platform answers, which
+  the stub does only with `report_ranks` on and `board_entries` to rank against). A place in the top `top_places` makes it
+  "earned" (kept, `Profile.has_weekly_reward`; `App.weekly_reward_earned`; the screen lists the weeks), another "missed", an
+  unknown rank stays pending until `reward_check_weeks` have passed. `App._grant_weekly_reward` is the one place the
+  cosmetic will be given from.
+- *Gating:* `App.weekly_available()` is false in the web demo (no title button, no screen, no board); `App.weekly_state()` says
+  `unavailable`, `locked` (the Floating Head isn't beaten, `unlock_step`), `not_yet`, `behind` or `open`. The title's WEEKLY
+  button shows a lock until the Floating Head is beaten and `WeeklyScreen` says what is wrong (`App.show_weekly`).
+  `App.now_unix()` is the clock (tests and reviews set `App.clock_override`).
+- *Review:* `--weekly` (debug builds) plays this week's level, `--weekly=N` week N's (`--god` and `--nofall` apply; `--lanes` and
+  `--full-loadout` are ignored; open whatever the profile); `tools/showcase/screens_showcase.gd` has `weekly`,
+  `weekly_locked`, `weekly_results`, `weekly_failed`, `weekly_intro` and `weekly_run`, with `--week=N`.
+- *Tests:* `test_weekly_challenge` (every entry of the list generated at five lanes with the campaign levels' fairness checks,
+  the config split, the calendar, the rotation, the kit, the payout, the boards, the clock, the unlock, the demo's exclusion,
+  the reward hook and the save) and `test_weekly_fairness` (a slow suite: the per-feature checks of the campaign's suites on
+  every entry, and each built twice); `test_phone_screens` lays out the weekly screens and the full game's title.
+
 ## Platforms and build flavors
 
 `BuildFlavor` (`full_pc`, `full_mobile`, `web_demo`) comes from export feature tags (or
