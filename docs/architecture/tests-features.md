@@ -553,8 +553,9 @@ its first run, its restart and the results screen's retry (layout, the runner's 
 the enemies' event log, floor cuts, score, EMPs), nothing leaking from an attempt changed every way play can into
 either retry (and the kept build untouched; every zone doodad and dash wall smashed or marked, then all of them
 standing as the retry's track is built), an attempt dashing through a doodad and a dash wall (at the first of
-Golden 1, Corporate 2, Golden 2, Dead Zone 1 and Golden 3 with a lone doodad in the runner's lane well before its
-first wall, at 3 lanes, else 5, else 6: Corporate 2 at 6 lanes since task L6's review), then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
+Golden 1, Corporate 2, Golden 2, Dead Zone 1 and Golden 3 with a lone zone doodad in the runner's lane well before
+its first wall, a treasure stash's aside (task N1), at 3 lanes, else 5, else 6: Corporate 2 at 6 lanes since task L6's
+review), then dying: both retries from the build's layout with both built whole (the same node, place, layers, shapes
 and look; the restart's standing in the physics world) and the restart, not dashing, playing as on a fresh build
 (tasks H5 and H7a, the H merge), the debug keys, F6 edits and another level building again, and endless mode
 building on every run and keeping nothing.
