@@ -21,8 +21,11 @@ extends PlayerOutfit
 ##
 ## Left out on purpose: the neon katana and its sheath and the pistol at the hip (no outfit carries a weapon: nothing on
 ## the runner may look like a power-up).
+## The armor power-up is refitted too (`attachment_overrides`): bright silver-blue plates over the fur, so whether armor is
+## up reads against it. The other power-ups are Echo's sets.
 ## DESIGN-TBD (docs/questions/m3.md): the graffiti's exact tags (simplified from the sheet: a few coloured strokes each
-## side), the wolf's markings, the howling-wolf print on the shirt, and the colour of the two lines of the sign.
+## side and on the sleeve), the wolf's markings, the howling-wolf print on the shirt, the colour and size of the two lines of
+## the sign, and the mask's expression.
 
 ## The purple coat and its shade, the dark clothes, and the grey fur.
 const PURPLE := Color(0.36, 0.13, 0.66)
@@ -114,9 +117,10 @@ func panels() -> Array[HumanoidPanel]:
 	return out
 
 
-## The armor power-up refitted to the grey fur: Echo's plates in a bright silver-blue (lighter than his steel, which sinks
-## into the fur's grey) with their pale glowing edge, standing proud of the mantle over the shoulders, over the pink rig
-## in front, and across the back below the mantle.
+## The armor power-up refitted to the grey fur: Echo's plates in a bright silver-blue, lighter than his steel (which is
+## close to the fur's grey, so it reads less against the mantle) and with their pale glowing edge, standing proud of the
+## mantle over the shoulders, over the pink rig in front, and across the back below the mantle (the mantle covers the
+## spot Echo's yoke sits at).
 func attachment_overrides() -> Dictionary:
 	var list: Array[HumanoidPiece] = []
 	var plate := {"shine": 0.5}
@@ -293,6 +297,11 @@ func _right_arm(list: Array[HumanoidPiece]) -> void:
 		{"side": RIGHT, "top_scale": Vector2(1.15, 1.15)})
 	add(list, &"forearm", PRISM, Vector3(0.085, 0.1, 0.08), Vector3(0.0, -0.05, 0.0), PURPLE, 0.0,
 		{"side": RIGHT, "top_scale": Vector2(1.1, 1.1)})
+	# Tags on the back of the sleeve (the face of its six-sided prism is 0.044 m from the axis).
+	for tag: Array in [[-0.05, 0.03, 30.0, PINK], [-0.092, 0.026, -40.0, GREEN], [-0.135, 0.03, 20.0, YELLOW]]:
+		flat(list, &"upper_arm", tag[1], 0.008, Vector3(0.0, tag[0], 0.0455), tag[3], SOFT_GLOW * 0.8, tag[2], false,
+			{"side": RIGHT})
+	flat(list, &"forearm", 0.03, 0.008, Vector3(0.0, -0.05, 0.0415), CYAN, SOFT_GLOW * 0.8, -25.0, false, {"side": RIGHT})
 	add(list, &"forearm", PRISM, Vector3(0.108, 0.1, 0.104), Vector3(0.0, -0.13, 0.0), FUR, 0.0, {"side": RIGHT, "sides": 8})
 	for ring: Array in [[-0.014, CYAN], [-0.027, GREEN]]:
 		add(list, &"hand", BAND, Vector3(0.074, 0.0, 0.084), Vector3(0.0, ring[0], -0.004), ring[1], SOFT_GLOW,

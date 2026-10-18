@@ -18,9 +18,10 @@ extends PlayerOutfit
 ## carries a weapon: nothing on the runner may look like a power-up).
 ##
 ## The armor power-up: this outfit already wears gold plates on the shoulders and chest, where Echo's steel ones go, so
-## the Centurion refits the set (attachment_overrides): cool silver-blue plates standing proud of the gold, each with
-## the pale glowing edge the base set has, so whether armor is up reads at a glance against the gold and the shards it
-## bursts into are the plates' own colour. The other power-ups are Echo's sets, unchanged.
+## the Centurion refits the set (attachment_overrides) to be sure it reads at a glance: bright silver-blue plates (lighter
+## than Echo's steel, which is legible against the gold but dark and thin beside it) standing proud of the pauldrons, over
+## the cuirass and across the upper back, each with the pale glowing edge the base set has. The shards the armor bursts
+## into are still Echo's steel colour. The other power-ups are Echo's sets, unchanged.
 ## DESIGN-TBD (docs/questions/m3.md): the skull and laurel, simplified from the sheet; the lion heads on the pauldrons;
 ## the cuirass's relief; how worn the coat is.
 
@@ -114,6 +115,9 @@ func _torso(list: Array[HumanoidPiece]) -> void:
 		{"chamfer": 0.45, "top_scale": Vector2(0.97, 0.9)})
 	add(list, &"chest", BOX, Vector3(0.055, 0.17, 0.014), Vector3(0.07, 0.19, -0.106), CRIMSON, 0.0,
 		{"side": MIRRORED, "top_scale": Vector2(1.3, 1.0), "rotation_degrees": Vector3(0.0, 0.0, -12.0)})
+	# The gold edge down the outside of each lapel.
+	flat(list, &"chest", 0.007, 0.17, Vector3(0.1, 0.19, -0.1135), GOLD, 0.0, -12.0, true,
+		{"side": MIRRORED, "shine": GOLD_SHINE})
 	add(list, &"chest", SHELL, Vector3(0.2, 0.0, 0.18), Vector3(0.0, 0.245, 0.012), COAT, 0.0,
 		{"sides": 6, "arc": Vector2(-150.0, 150.0), "thickness": 0.014,
 			"profile": PackedVector4Array([Vector4(0.0, 1.0, 1.0, 0.0), Vector4(0.1, 1.12, 1.15, 0.012)])})

@@ -327,3 +327,47 @@ system and Rex; M2 builds Camo and Beach Master, M3 Centurion and Party Wolf.
 <!-- M2: Camo and Beach Master go here, one paragraph each. -->
 
 <!-- M3: Centurion and Party Wolf go here, one paragraph each. -->
+
+- **Centurion** (M3; `centurion.gd`; brief `docs/art/BRIEF_OUTFIT_CENTURION.md`). A gold-and-crimson Roman outfit on Echo's own
+  head. A charcoal and crimson trench coat (two box tiers, crimson lapels with a gold edge, the high collar with a gold rim, a
+  crimson sash under a black belt with a gold buckle), a gold cuirass in its open front (a chest plate over an abdomen plate, dark
+  relief lines, a crimson diamond emblem), lion-head pauldrons (a gold dome, three layered scale plates and a lion as two gold
+  diamonds, one mirrored definition for both shoulders), a crimson right sleeve with a gold bracer and a fingerless glove, the
+  sleek gold cyber-arm with crimson joints in place of Echo's, black pants with crimson thigh straps, gold knee plates, greaves and
+  gold-plated boots. **The skirt is six panels:** Echo's four (charcoal behind with the two outer faces crimson and a gold hem,
+  crimson at the front edges), and two *pteruges* panels, a pair of black leather strips with gold tips hanging from the sash at
+  each hip (follow 0.45), all swung by the rig. **The back** is the gold skull inside a sixteen-leaf wreath, 19 flat quads
+  (below), between crimson borders. The gold is polished metal (`shine` 0.75) and nothing on the outfit glows, so bloom can't wash
+  the armour's shapes out; the katana, the pistol and the dagger are left out. **The armor power-up is refitted**
+  (`attachment_overrides`, `ARMOR_PLATE`): bright silver-blue caps standing above the pauldrons, a plate over the cuirass and a
+  yoke across the upper back, each with Echo's pale glowing edge (96 triangles, Echo's set is 84). Echo's own steel is legible
+  against the gold but dark and thin beside it; the frames of no armor, his steel and the refit are in `build/m3/` and the
+  run review shows the armor on, shattering and gone (`avatar_run_review.tscn -- --outfit=centurion --skin=<zone> --equip=armor`).
+  The shards stay Echo's steel colour (`PlayerAvatar`). 1,498 triangles bare, 1,962 with every power-up, 17 draw calls (18 with
+  the shield, 19 while the broken armor's shards fly). In rendered frames of the city, the Golden Zone, Gangland, the Beach, the
+  Casino, the Dead Zone and Corporate's plaza, on Forward+ and Compatibility, the gold pauldrons, the wreath and the crimson skirt
+  read against every track and the pink fence is nothing like the crimson. `DESIGN-TBD` (`docs/questions/m3.md`): the skull and
+  wreath, the lion heads and the cuirass's relief are simplified from the sheet, and the coat is clean rather than worn.
+- **Party Wolf** (M3; `party_wolf.gd`; brief `docs/art/BRIEF_OUTFIT_PARTY_WOLF.md`). The only outfit that covers Echo's head:
+  `head_pieces()` keeps his neck, skull and spiky hair from `super()` (the boxes of his face, the implant, eye, brow, nose and
+  scar, are dropped under the mask) and adds the **cyber wolf mask**: a fur brow, a snout with a black nose, a jaw with bared
+  fangs, cheek tufts, two pointed ears (tips no higher than his hair's) with violet linings, a glowing pink eyepiece over his left
+  eye (`-x`), a cyan right eye and neon cyan and violet markings. A long purple coat covered in neon graffiti with a grey fur
+  mantle and collar, grey fur cuffs and two rave bracelets, a dark T-shirt with a glowing moon print under a pink chest rig, the
+  glowing purple and cyan rave cyber-arm on the left, a studded belt with four hanging glow sticks, dark pants with pink straps,
+  glowing knee pads and neon-laced boots with glowing soles. The skirt is Echo's four panels (a cyan hem line, a pink band behind)
+  and **the tail**, a fifth panel hinged at the small of the back (follow 0.15, so it mostly swings on its own): three tapering
+  fur sections with a dark tip. **The back** is the neon wolf in shades (a cyan outline, pink lenses, a yellow bridge), "PARTY WOLF"
+  in two lines of block letters (PARTY pink over WOLF cyan, above the belt, `GLYPHS` is the stroke font: 32 strokes) and
+  graffiti tags down both sides in cyan, pink, green and yellow. **How it stays cheap:** the sign, the neon wolf, the graffiti and
+  the markings are *flat quads*: `flat()` / `back_flat()` / `back_line()` (`party_wolf.gd`; `centurion.gd` has the same two for its
+  wreath) make a one-sided `BAND` over a single face of a four-sided section, which is two triangles, 2 mm off the surface it sits
+  on, with its own colour, glow and roll, so none of it is a separate mesh, a texture or a draw call and every glow powers down
+  on death, brightens with the dash and sits under the invulnerability tint like Echo's conduits (`test_outfit_party_wolf` reads
+  the sign back from the pieces and checks the letters). The glows are thin and soft: the brightest line while dashing is under
+  `test_outfit_party_wolf`'s 1.4 cap. **The armor power-up is refitted** like the Centurion's (bright silver-blue plates, over the
+  mantle, the pink rig and across the back under the mantle; Echo's steel is close to the fur's grey). 1,512 triangles bare, 1,976
+  with every power-up, 17 draw calls (18 with the shield). From the gameplay camera the sign is about a pixel a cell, so there it
+  reads as a band of pink and cyan under the neon wolf; it reads in the showcase's close-ups. `DESIGN-TBD`
+  (`docs/questions/m3.md`): the graffiti, the markings and the shirt print are simplified from the sheet, and the sign's colours
+  and size, and the mask's expression, are ours.
