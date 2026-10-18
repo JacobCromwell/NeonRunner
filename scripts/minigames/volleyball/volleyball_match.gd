@@ -512,7 +512,7 @@ func payout() -> int:
 
 
 func stars(completed: bool) -> int:
-	return tuning.stars_for(points_won) if completed and tuning != null else 0
+	return tuning.stars_for(points_won, points_lost) if completed and tuning != null else 0
 
 
 func stats() -> Dictionary:

@@ -146,7 +146,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   14. Beach 2 *Net Gains*: a mini-game. A couple of seconds of run, then the runner walks up to a volleyball
       court on the open beach and plays a man in swim trunks: get under the ball (a ring marks where it comes
       down, a closing ring when to jump) and jump to hit it back. Three returns win a point, a miss loses one,
-      first to four; each point won pays 100 credits. Then the net sinks and the runner runs to the finish line.
+      first to four; each point won pays 100 credits. Its stars are by the match, not the time: 4 points to the
+      rival's 0 is three stars, one point or none one star, anything between two. Then the net sinks and the runner
+      runs to the finish line.
   15. Beach 3 *Sunset Strip*: Tiki Tides' remix as the sun starts to set. The Beach's levels sit between
       Corporate 2 and Dead Zone 1 in difficulty, off the campaign's curve, so no other level changed.
   16. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
@@ -277,7 +279,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
-  no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
+  no time limit and no escalation, stars from par times (or from the hits taken, by the boss's `star_rule`), a payout, records and a leaderboard per
   boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
   to take, from the standard armor rule (at the start of the final phase, and a while after the
   player's armor takes a hit; a shield break brings none) or offered by the boss itself. A campaign boss fight runs at its
@@ -388,7 +390,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Golden 3 at the zone's 25 m/s (debug builds: `--level=golden/boss`, or `--boss=golden_boss` at 18 m/s;
   `--phase=4` starts at its halfway checkpoint, stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
   balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
-  a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
+  a billowing cloud, as a fanfare of deep, bassy brass sounds, its last call breaking up into a distorted reverb; its calm golden face, with its
   dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
   out of the cape and makes its passes as one. A vertical pass rakes every other lane after red lines and a
   gatling whine (switch to a lane between them; a jump doesn't clear the fire); a horizontal pass sweeps a

@@ -82,7 +82,8 @@ skin, lane count, speed and rider count, through the game camera or one behind o
 kit (`statue_showcase`: every pose, a turnaround, and a statue rigged in the kit's niche and swinging), the bosses (`floating_head_showcase`, `sleep_taker_showcase`, `the_house_showcase`, `sewer_swarm_showcase`),
 the swarm's rendering stress test for the phone test (`swarm_stress`: N clusters of C screeches with a frame-time
 and draw-call readout, sliders, `--seconds=S` for a summary line), the UI kit, the screens (`screens_showcase`;
-its `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
+its `--screen=match_results [--score=4-1]` shows the volleyball match's results (the runner's points, then the rival's; the
+stars and the rule under them); `--screen=hud_armor [--tier=N]` takes the HUD's armor through its states: up, broken, its ring
 filling, back; `--screen=hud_last_hit [--reduced-flashing] [--hold]` the "one hit from death" cue (the armor
 breaks with a shield still held: nothing; the shield breaks: the red edges pulse and settle; the armor returns:
 they fade; `--hold` stops with the edge steady, for a `--shot` at a phone's window size); `--phone --flavor=web_demo` with the engine's `--resolution 844x340` shows a screen as a

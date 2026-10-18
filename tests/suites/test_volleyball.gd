@@ -11,6 +11,9 @@ extends TestSuite
 ##   paid nothing, one star; one who stands under the ball without jumping takes it on the head (and loses); one who
 ##   wins N points is paid N × 100; every match ends at 4 points, the net sinks, and the runner crosses the finish
 ##   line and the level completes (the results: the match's payout as the completion bonus, its stats);
+## - the stars (the owner, October 18, 2026: by how the match went, never how fast): 4 points to the rival's 0 is three
+##   stars, one point or none is one star, anything in between two (a 4-1, 4-2 or 4-3 win, a 3-4 loss too); the profile
+##   records them and the results screen lists the rule under them;
 ## - fairness: every ball to the runner flies at least the fairness floor for the lanes it leaves them to cross; each
 ##   ball in a rally comes a little quicker; every arc clears the net; the runner never dies;
 ## - the jump's timing: a jump within a window of at least MIN_WINDOW seconds around the ring's cue returns the serve,
@@ -42,6 +45,7 @@ func run() -> void:
 		await _test_perfect(lanes)
 	await _test_losers()
 	await _test_paid_by_points()
+	await _test_stars()
 	await _test_timing()
 	await _test_same_match()
 	_test_saves()
@@ -74,11 +78,21 @@ func _test_data() -> void:
 		"first to 4 points, 100 credits a point, a point for 3 or 4 returns (the owner's numbers)")
 	for i: int in 4:
 		check(t.flight_for(i + 1, 1, 0.14) <= t.flight_for(i, 1, 0.14), "each ball of a rally flies no slower (ball %d)" % (i + 1))
-	check(t.stars_for(t.points_to_win) == 3 and t.stars_for(0) == 1, "three stars for a win, one for finishing")
+	check(t.stars_for(4, 0) == 3 and t.stars_for(4, 1) == 2 and t.stars_for(4, 2) == 2 and t.stars_for(4, 3) == 2,
+		"4-0 is three stars, a 4-1, 4-2 or 4-3 win two")
+	check(t.stars_for(3, 4) == 2 and t.stars_for(2, 4) == 2 and t.stars_for(1, 4) == 1 and t.stars_for(0, 4) == 1,
+		"a loss of 3 or 2 points is two stars, of 1 or 0 one star")
+	var lenient := t.duplicate() as VolleyballTuning
+	lenient.three_star_rival_points = 1
+	check(lenient.stars_for(4, 1) == 3 and lenient.stars_for(4, 2) == 2 and t.three_star_rival_points == 0,
+		"the rival's most points for three stars is data (three_star_rival_points, 0: the owner's 4-0)")
+	check(t.star_text() == "3 stars: 4 points to the rival's 0\n2 stars: 2 points or more\n1 star: fewer than 2 points"
+		and s.level.minigame.star_text() == t.star_text(), "and the rule is worded from the data (%s)" % t.star_text().replace("\n", " | "))
 
 
 ## A runner who returns every ball, at `lanes` lanes: the whole level through the App (see the header).
 func _test_perfect(lanes: int) -> void:
+	App.profile = Profile.new()
 	var r: Dictionary = await _play(lanes, "perfect")
 	var tag: String = "(%d lanes)" % lanes
 	var game_tuning: VolleyballTuning = r["tuning"]
@@ -95,6 +109,11 @@ func _test_perfect(lanes: int) -> void:
 		"the results: the match's 400 as the completion bonus, three stars %s" % tag)
 	check(result != null and int(result.stats.get("points_won", -1)) == 4 and String(result.stats.get("minigame", "")) == "volleyball",
 		"and its stats %s" % tag)
+	var rec: Dictionary = App.profile.record(STEP)
+	check(bool(rec.get("completed", false)) and int(rec.get("stars", 0)) == 3 and App.profile.stars(STEP) == 3
+		and result != null and result.record.get("first_clear", false) and int(result.record.get("stars_gained", 0)) == 3,
+		"the profile records the three stars (%s) %s" % [rec, tag])
+	check(r["star_rule_shown"] and not r["par_shown"], "the results list how the stars are earned, not par times %s" % tag)
 	check(result != null and result.credits_collected > 0, "the run-in's credits are collected (%d) %s" % [
 		result.credits_collected if result != null else 0, tag])
 	var duration: float = App.campaign.step(STEP).level.duration_seconds
@@ -132,11 +151,13 @@ func _check_track(r: Dictionary, tag: String) -> void:
 ## A runner who never moves loses 0-4 (paid nothing, one star); one who stands under the ball without jumping takes
 ## it on the head every time.
 func _test_losers() -> void:
+	App.profile = Profile.new()
 	var idle: Dictionary = await _play(5, "idle")
 	check(idle["completed"] and idle["won"] == 0 and idle["lost"] == 4, "never moving loses 0-4 (%d-%d)" % [idle["won"], idle["lost"]])
 	var result: RunResult = idle["result"]
 	check(result != null and result.completed and result.completion_bonus == 0 and result.stars == 1,
 		"paid nothing, one star for finishing")
+	check(App.profile.stars(STEP) == 1, "and the profile records it")
 	var stand: Dictionary = await _play(5, "stand")
 	var bonks: int = 0
 	for e: String in stand["events"]:
@@ -147,12 +168,35 @@ func _test_losers() -> void:
 	check(wrong["completed"] and wrong["lost"] == 4 and wrong["returns"] == 0, "a jump in the wrong lane never reaches it")
 
 
-## Paid by the points won: one point 100, three 300.
+## Paid by the points won: one point 100, three 300. Stars by the same match: one point one star, three points two.
 func _test_paid_by_points() -> void:
 	for n: int in [1, 3]:
 		var r: Dictionary = await _play(5, "points:%d" % n)
 		check(r["completed"] and r["won"] == n and r["lost"] == 4 and r["payout"] == n * 100,
 			"winning %d point%s pays %d (%d-%d, paid %d)" % [n, "" if n == 1 else "s", n * 100, r["won"], r["lost"], r["payout"]])
+		var result: RunResult = r["result"]
+		var want: int = 1 if n <= 1 else 2
+		check(result != null and result.stars == want, "%d-4 is %d star%s (%d)" % [n, want, "" if want == 1 else "s",
+			result.stars if result != null else -1])
+
+
+## The stars by how the match went, through the whole level: a 4-K win (the rival taking K points) is two stars, 4-0 three
+## (_test_perfect), and the profile keeps the best.
+func _test_stars() -> void:
+	App.profile = Profile.new()
+	for k: int in [3, 1]:
+		var r: Dictionary = await _play(5, "lose:%d" % k)
+		var result: RunResult = r["result"]
+		check(r["completed"] and r["won"] == 4 and r["lost"] == k and r["payout"] == 400,
+			"a 4-%d win pays 400 (%d-%d, paid %d)" % [k, r["won"], r["lost"], r["payout"]])
+		check(result != null and result.stars == 2 and App.profile.stars(STEP) == 2,
+			"and is two stars, not three (%d, recorded %d)" % [result.stars if result != null else -1, App.profile.stars(STEP)])
+	var best: Dictionary = await _play(5, "perfect")
+	var best_result: RunResult = best["result"]
+	check(best_result != null and best_result.stars == 3 and int(best_result.record.get("stars_gained", 0)) == 1
+		and App.profile.stars(STEP) == 3, "then a 4-0 raises the record to three")
+	var worse: Dictionary = await _play(5, "lose:2")
+	check((worse["result"] as RunResult).stars == 2 and App.profile.stars(STEP) == 3, "and a worse match keeps it")
 
 
 ## The jump's window: the serve is returned by a jump within at least MIN_WINDOW seconds around the ring's cue.
@@ -209,7 +253,7 @@ func _play(lanes: int, skill: String, lead: float = -1.0, first_ball: bool = fal
 	App.start_level(App.campaign.step(STEP))
 	var out: Dictionary = {"completed": false, "won": 0, "lost": 0, "returns": 0, "payout": 0, "events": PackedStringArray(),
 		"result": null, "died": false, "fair": true, "stop_error": INF, "moved_in_match": 0.0, "balls": 0, "time": 0.0,
-		"lowest_over_net": INF, "net_sunk": false, "first": "", "hint_first": ""}
+		"lowest_over_net": INF, "net_sunk": false, "first": "", "hint_first": "", "star_rule_shown": false, "par_shown": false}
 	var hints: Array[Dictionary] = App.run.intro_hints()
 	out["hint_first"] = String(hints[0]["id"]) if not hints.is_empty() else ""
 	App.begin_run()
@@ -223,13 +267,17 @@ func _play(lanes: int, skill: String, lead: float = -1.0, first_ball: bool = fal
 	out["run_speed"] = game.run_speed
 	out["lane_switch"] = App.run.world.tuning.lane_switch_time
 	out["geometry"] = {"run_in_end": game.run_in_end, "stand": game.stand, "net": game.net_at, "rival": game.rival_at}
-	var bot := VolleyballBot.new(game, skill)
+	# "lose:K": stands still until the rival has K points, then plays perfectly (a 4-K win).
+	var lose_k: int = int(skill.get_slice(":", 1)) if skill.begins_with("lose:") else -1
+	var bot := VolleyballBot.new(game, skill if lose_k < 0 else "idle")
 	bot.jump_lead = lead
 	var world: RunWorld = App.run.world
 	var stand_at: float = NAN
 	for i: int in 60 * 150:
 		if not is_instance_valid(game) or App.run == null:
 			break
+		if lose_k >= 0:
+			bot.skill = "idle" if game.points_lost < lose_k else "perfect"
 		bot.step()
 		await tree.physics_frame
 		if not is_instance_valid(game):
@@ -272,6 +320,12 @@ func _play(lanes: int, skill: String, lead: float = -1.0, first_ball: bool = fal
 	var result: RunResult = (App.screen as ResultsScreen).result if App.screen is ResultsScreen else null
 	out["result"] = result
 	out["completed"] = result != null and result.completed
+	if result != null:
+		var rule: String = (out["tuning"] as VolleyballTuning).star_text()
+		for node: Node in App.screen.find_children("*", "Label", true, false):
+			var text: String = (node as Label).text
+			out["star_rule_shown"] = out["star_rule_shown"] or text == rule
+			out["par_shown"] = out["par_shown"] or text.contains("stars under")
 	var balls: int = 0
 	for e: String in out["events"]:
 		if not e.begins_with("to_runner:"):
