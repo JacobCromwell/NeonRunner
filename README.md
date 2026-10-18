@@ -113,8 +113,8 @@ matching completion sounds are added.
 | Slow time (power-up, PC only) | E | – |
 | Pause (skips a cinematic) | Esc / P | Pause button (a cinematic's Skip button) |
 
-Every key can be rebound in Settings. PC runs use 5 lanes and mobile runs use 3 (the exact PC count is still
-open: 5 or 6).
+Every key can be rebound in Settings. PC and mobile runs both use 5 lanes (separate settings, `lanes_pc` and
+`lanes_mobile` in `data/tuning/game_rules.tres`).
 
 Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2** next seed, **F3** difficulty,
 **F4** god mode, **F5** show hitboxes, **F6** tuning panel, **F7** frame-time graph, **M** mute.

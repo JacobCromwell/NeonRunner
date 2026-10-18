@@ -18,7 +18,7 @@ extends RefCounted
 ## point) instead of the completion bonus; its few run-in credits are left out.
 ##
 ## A treasure stash (task I4, GDD §3 "Ceiling scenarios": two or three of the highest-denomination credits behind a
-## mid-ceiling return pad) is optional, PC-only (5 and 6 lanes: 3 and 4 have none) and reachable only by taking a
+## mid-ceiling return pad) is optional, on 5 and 6 lanes only (3 and 4 have none) and reachable only by taking a
 ## ceiling route, so a level's stash credits are kept apart ("stash" in a row) and a player's "stash" is the
 ## share of them it takes (1.0, or 0.0 for none). DESIGN-TBD (items 846-850 in docs/OPEN_QUESTIONS*.md): the typical player takes them
 ## at its usual share, the weaker one none.

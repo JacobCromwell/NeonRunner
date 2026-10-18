@@ -97,7 +97,7 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
 |---|---|---|---|---|---|---|
 | Armor I / II / III / IV | 350 / 1,700 / 3,400 / 6,500 | 350 / 2,050 / 5,450 / 11,950 | 1 City 1 / 4 Gangland 1 / 8 Marketplace 2 / 15 Beach 3 | 2 / 5 / 9 Casino 1 / 16 Dead Zone 1 | City 1 / Gangland 1 / Marketplace 1 / Beach 1 | 2 / 5 / 10 / 18 |
 | Laser, Enhanced laser | 1,800 / 2,200 | 1,800 / 4,000 | 4 Gangland 1 / 7 Marketplace 1 | 5 / 8 | City boss / Gangland 3 | 4 / 8 |
-| Missile, Heavy missile | 4,800 / 7,000 | 8,800 / 15,800 | 11 Corporate 1 / 18 Golden 1 | 12 / 19 Golden 2 | Casino 2 / Dead Zone 1 | 15 / beyond (17,829 with the bosses) |
+| Missile, Heavy missile | 4,800 / 7,000 | 8,800 / 15,800 | 11 Corporate 1 / 18 Golden 1 | 12 / 19 Golden 2 | Casino 2 / Dead Zone 1 | 15 / beyond (17,805 with the bosses) |
 | Claws | 2,600 | 2,600 | 5 Gangland 2 | 6 | Gangland 1 | 6 |
 | Dash I / II / III / IV | 300 / 450 / 600 / 700 | 300 / 750 / 1,350 / 2,050 | 1 City 1 / 2 City 2 / 3 City 3 / 4 Gangland 1 | 2 / 3 / 4 / 5 | City 1 / City 2 / City 3 / Gangland 1 | 1 / 3 / 4 / 5 |
 | Magnet I / II / III | 700 / 1,600 / 3,200 | 700 / 2,300 / 5,500 | 2 City 2 / 4 Gangland 1 / 8 Marketplace 2 | 3 / 5 / 9 | City 2 / Gangland 1 / Marketplace 1 | 2 / 5 / 10 |
@@ -113,16 +113,17 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
     "+boss" reading (affordable after Casino 2);
   - the dash (the owner: first in the shop, to be bought early, so a player has it before the first boss): tiers I to
     III are affordable by the end of City 3, before the City's boss pays, and IV after Gangland 1 (on the typical
-    wallet it is 2,049 with the City boss paid, 1 credit short of the 2,050 line, so it needs Gangland 1's payout),
+    wallet it is 2,045 with the City boss paid, 5 credits short of the 2,050 line, so it needs Gangland 1's payout),
     well before the Corporate dash walls (level 11);
   - Armor III from the Casino's mixed crowd, and Armor IV from the Dead Zone, whose Bad Dreams ignore weapons;
   - the Heavy missile from Golden 2, where the Sentinels (17 shots at tier 1) debut with peak difficulty; Golden
     1's Resonator waves come a level earlier. On the "+boss" reading it is in reach after Dead Zone 1;
   - Slow time (GDD says only "PC only, cooldown-based") and the magnet are not tied to an enemy.
-- *Wallets at each zone's end* (typical, no boss payouts / with them; weaker, the same): City 1,549 / 2,049 (1,278 /
-  1,778); Gangland 3,804 / 4,804 (3,152 / 4,152); Marketplace 5,650 / 6,650 (4,695 / 5,695); Casino 7,919 / 9,419
-  (6,263 / 7,763); Corporate 9,888 / 11,888 (7,730 / 9,730); Beach 12,530 / 15,030 (9,505 / 12,005); Dead Zone
-  14,935 / 17,935 (11,225 / 14,225); Golden 18,382 / 22,382 (13,829 / 17,829).
+- *Wallets at each zone's end* (typical, no boss payouts / with them; weaker, the same; 5 lanes, re-measured October 18,
+  2026, the same on PC and mobile): City 1,545 / 2,045 (1,275 / 1,775); Gangland 3,798 / 4,798 (3,147 / 4,147);
+  Marketplace 5,644 / 6,644 (4,690 / 5,690); Casino 7,892 / 9,392 (6,243 / 7,743); Corporate 9,851 / 11,851 (7,702 /
+  9,702); Beach 12,479 / 14,979 (9,468 / 11,968); Dead Zone 14,872 / 17,872 (11,177 / 14,177); Golden 18,350 / 22,350
+  (13,805 / 17,805).
 - *Payouts held.* The completion bonus stays 100 + 25 a level (City 1's 100 is the approved early revision, and a
   steeper slope moves only the late tiers: 35 a level puts Heavy missile at level 17, 15 at level 19) and the boss
   payouts stay 500 (1,000 for the last). The prices were placed against them. A boss pays 500 whatever the zone:
@@ -131,11 +132,14 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   (1.8 with the bosses): the first-fit levels say when a tier is in reach if saved for, and a player who buys
   along the way owns only part of it after one playthrough. Every completion pays again, so the rest is about 22
   replays of a level that pays 1,000 (18 if the first playthrough's boss payouts are counted).
-- *Mobile.* 3 lanes hold no stash and about 20% fewer credits than 5 (14,886 for a typical player's levels, 18,886
-  with the bosses; the mobile catalog is 37,900 without slow time), so a tier first fits up to two levels later
-  (Armor I at City 2, Armor IV at level 17) and the Heavy missile is out of reach on the levels alone, in reach
-  after Golden 1 on the "+boss" reading. Nothing is needed to progress (GDD §8), and a $0.99 pack (1,000) is 1.3
-  finishes, a $4.99 crate (6,000) 7.9: neither looks forced.
+- *Mobile* (measured October 18, 2026: `tools/measure/economy.gd --mobile=true --lanes=5 --seeds=0 --packs`). Mobile
+  runs 5 lanes like PC (GDD §3), so its levels, stashes and wallets are PC's to the credit (18,350 for a typical
+  player's levels, 22,350 with the bosses; the weaker player 13,805 / 17,805) and every tier first fits at the same
+  level as on PC. Only the catalog differs: no slow time, so its permanent tiers cost 37,900 (2.1 playthroughs of a
+  typical player, 1.7 with the bosses; the weaker one 2.7 / 2.1). Nothing is needed to progress (GDD §8), and a
+  $0.99 pack (1,000) is 1.1 typical finishes (reached by City 3), a $4.99 crate (6,000) 6.4 (reached by Casino 1):
+  neither looks forced. (At 3 lanes, mobile's count until then, a playthrough paid about 20% less, no stashes, and
+  tiers fit up to two levels later; `test_economy` still checks that 3 lanes reach the early tiers.)
 - *Breakables.* Shield 400, grapple 250 and revive 600 stay under a finish and a half of a typical player from City
   2 on; all three together are 2.4 finishes in the City and 1.0 to 1.7 after.
 
@@ -202,7 +206,7 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   Runner/`), written through after each save, so progress survives a reload. Browsers hold sound back until
   the first click, tap or key: Godot creates its AudioContext at start (Chrome notes it's suspended) and
   resumes it on the first input. A phone's browser is a mobile device (`DeviceProfile.is_mobile()`, from the
-  engine's `web_android` and `web_ios` tags): 3 lanes, the touch layout and hints.
+  engine's `web_android` and `web_ios` tags): mobile's lane count (5 since October 18, 2026), the touch layout and hints.
 - *The page's covers* (`html/head_include` in the preset: a style and a script that defines `window.neonPage`;
   DESIGN-TBD, `docs/questions/e2.md` and `l1.md`). Only a phone (a coarse pointer and a screen whose short
   side is 520 CSS pixels or less: a desktop's touch screen is not one) is covered. There are two covers:
