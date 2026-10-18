@@ -29,8 +29,9 @@
 #   tools/godot.sh doodads [--only=a,b] [--review]   regenerate assets/sprites/doodads/<zone>.png and
 #                                     .json (the zone doodads' picture cards) from
 #                                     tools/asset_gen/doodad_art_gen.gd (--review: atlases to build/doodad_review/)
-#   tools/godot.sh citizens           regenerate assets/sprites/citizens/*.png (the Marketplace
-#                                     citizens' flipbooks) from tools/asset_gen/citizen_sheet_gen.gd
+#   tools/godot.sh citizens           regenerate assets/models/market_person.res (the Marketplace
+#                                     citizens' person, baked from the shared HumanoidRig) from
+#                                     tools/asset_gen/citizen_person_gen.gd
 #   tools/godot.sh web [--debug] [--serve]  export the web demo to exports/web/ (--debug: a debug build to
 #                                     exports/web_debug/) and check its pack; --serve then serves it at
 #                                     http://localhost:8060 (needs python3 and the web export templates)
@@ -424,16 +425,9 @@ case "$command" in
 		run_import
 		;;
 	citizens)
-		# Renders real 3D frames (the Marketplace citizens' flipbooks, task D3), so --headless won't
-		# do: use Xvfb when there's no real display.
+		# Bakes the Marketplace citizens' person (task L7) from the shared HumanoidRig: meshes only, so it runs headless.
 		import_if_stale
-		if [[ -z "${DISPLAY:-}" ]] && command -v xvfb-run >/dev/null 2>&1; then
-			xvfb-run -a -s "-screen 0 320x240x24" "$GODOT_BIN" --path "$PROJECT" --rendering-method gl_compatibility \
-				-s res://tools/asset_gen/citizen_sheet_gen.gd -- "$@" 2>&1 | quiet
-		else
-			"$GODOT_BIN" --path "$PROJECT" --rendering-method gl_compatibility \
-				-s res://tools/asset_gen/citizen_sheet_gen.gd -- "$@" 2>&1 | quiet
-		fi
+		"$GODOT_BIN" --headless --path "$PROJECT" -s res://tools/asset_gen/citizen_person_gen.gd -- "$@" 2>&1 | quiet
 		run_import
 		;;
 	web)

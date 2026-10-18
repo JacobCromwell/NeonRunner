@@ -1,10 +1,11 @@
 class_name MarketCitizens
 extends RefCounted
-## Builds the Marketplace citizens (GDD §5, "Citizens"; task D3) into the shop windows
-## MarketplaceSkin.shop_windows() lists: funny, uplifting scenery seen inside the shops, a warm
-## contrast to the cult's feed. Picked and placed purely from the window's track position (seeded,
-## like every other piece of this skin: MeshKit.hash_i), so a chunk builds the same citizens every
-## time; only the runner-triggered reaction (MarketCitizen) depends on the run.
+## Builds the Marketplace citizens (GDD §5, "Citizens"; tasks D3 and L7) into the shop windows
+## MarketplaceSkin.shop_windows() lists: ordinary people standing at ease in the shops (real low-poly people, one
+## MarketCrowd of them to a wall section: MarketPeople), watching the runner come and go and cheering at a big
+## pickup or a big defeat, a warm contrast to the cult's feed. Picked and placed purely from the window's track
+## position (seeded, like every other piece of this skin: MeshKit.hash_i), so a chunk builds the same citizens
+## every time; only their watching and cheering depend on the run.
 ##
 ## Keeps windows to one use each: never a feed window (shop_windows()'s `screen`), and never a
 ## window a window cyborg stands in (MarketplaceSkin.note_wall_enemies(); GDD §9.2 says they must
@@ -12,15 +13,28 @@ extends RefCounted
 ## false (a low-end device, or the player's own choice): CLAUDE.md, "added only if they don't
 ## noticeably cost performance... and don't add much code complexity."
 
-## Share of eligible windows that get a citizen (DESIGN-TBD, docs/questions/d3.md: kept low so a
-## chunk never builds more cards than its performance budget allows; see test_marketplace_citizens).
-const CITIZEN_SHARE: float = 0.16
+## Share of eligible windows that get a citizen (DESIGN-TBD, docs/questions/d3.md and l7.md: the cards' 0.16 left them
+## unnoticed, one at about every second chunk of wall; doubled for the people, whose cost is measured in
+## tools/measure/market_people_cost.gd: about 4.5 citizens a 40 m chunk of both walls, 0.25 ms to build).
+const CITIZEN_SHARE: float = 0.32
 ## How far past a window cyborg's own position (its track distance) a citizen still keeps clear,
 ## wider than its drawn window (WindowCyborgTuning.window_length / 2) so the two are never close
 ## enough to read as the same thing (DESIGN-TBD, docs/questions/d3.md).
 const CYBORG_MARGIN: float = 2.2
-## The card's share of the window's full height, standing on the window's own floor.
-const CARD_HEIGHT_SHARE: float = 0.86
+## The tallest person's height (metres), and the most of a window's height one may take (heads clear the lintel). D3's three
+## archetypes (CitizenRig.ARCHETYPES: the vendor, the shopper and the regular) give the silhouettes, as one person each: the
+## shopper is the tallest and slimmest, the regular the shortest and widest, the vendor between (each with a few per cent of
+## their own), all from the one mesh (a person's scale), so variety costs no draw call.
+const HEIGHT_TALLEST: float = 1.74
+const HEAD_ROOM_SHARE: float = 0.9
+## How much a person's own height and build differ from their archetype's (the factor's range).
+const OWN_RANGE := Vector2(0.96, 1.04)
+## How deep into the display they stand (the share of its depth, from the glass), and how far they turn from facing the
+## lanes toward the runner's approach (degrees): DESIGN-TBD.
+const DEPTH_RANGE := Vector2(0.42, 0.6)
+const TURN_RANGE := Vector2(20.0, 50.0)
+## A person's width with room to spare, kept clear of a window's piers (metres).
+const PERSON_WIDTH: float = 1.1
 
 ## Weak: the skin owns this builder (MarketStalls and friends do the same).
 var skin: MarketplaceSkin:
@@ -33,11 +47,12 @@ func _init(p_skin: MarketplaceSkin) -> void:
 	_skin = weakref(p_skin)
 
 
-## Adds a MarketCitizen under `parent` for every eligible window on `side` whose centre lies in
+## Adds a MarketCrowd under `parent` of the citizens for every eligible window on `side` whose centre lies in
 ## [start, end) and is chosen (CITIZEN_SHARE of them).
 func build(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
 	if not Settings.citizens_enabled:
 		return
+	var people: Array[Dictionary] = []
 	for w: Dictionary in skin.shop_windows(side, face_x, start, end):
 		if bool(w["screen"]):
 			continue
@@ -47,27 +62,62 @@ func build(parent: Node3D, side: int, face_x: float, start: float, end: float) -
 		var key: int = MeshKit.key(at)
 		if MeshKit.hash01(side, key, 211) >= CITIZEN_SHARE:
 			continue
-		_build_one(parent, w, side, key)
+		people.append(person_for(w, side, key))
+	spawn(parent, people)
 
 
-func _build_one(parent: Node3D, w: Dictionary, side: int, key: int) -> void:
-	var count: int = CitizenRig.archetype_count()
-	var archetype: int = MeshKit.hash_i(side, key, 223) % count
-	var tex: Texture2D = load(CitizenSheet.texture_path(CitizenRig.ARCHETYPES[archetype].name))
-	if tex == null:
-		return  # The sheet hasn't been baked yet (tools/godot.sh citizens): skip rather than crash.
+## One MarketCrowd of `people` (person_for()) under `parent`; none if there are none, or the person hasn't been baked yet
+## (tools/godot.sh citizens): skip rather than crash.
+func spawn(parent: Node3D, people: Array[Dictionary]) -> void:
+	if people.is_empty() or MarketPeople.mesh() == null:
+		return
+	var crowd := MarketCrowd.new()
+	parent.add_child(crowd)
+	crowd.setup(people)
+
+
+## The citizen of window `w` (shop_windows()'s entry) on `side`, `key` the window's seed (MeshKit.key of its track distance):
+## where they stand (inside, a little off the window's middle), their own height and build, the way they face (the lanes,
+## turned a little toward the end of the street the runner comes from), and the seeds the shader dresses and times them by.
+## Everything comes from the window's own track position.
+func person_for(w: Dictionary, side: int, key: int) -> Dictionary:
 	var bottom: float = float(w["bottom"])
 	var top: float = float(w["top"])
-	var height: float = (top - bottom) * CARD_HEIGHT_SHARE
-	var design: Vector3 = CitizenRig.ARCHETYPES[archetype].design_size
-	var width: float = height * (design.x / design.y)
-	width = minf(width, float(w["width"]) * 0.6)
-	var depth: float = float(w["depth"])
+	var archetype: CitizenRig.Archetype = CitizenRig.ARCHETYPES[MeshKit.hash_i(side, key, 223) % CitizenRig.archetype_count()]
+	var design: Vector3 = archetype.design_size
+	var height: float = minf(HEIGHT_TALLEST * design.y / _tallest_design() * lerpf(OWN_RANGE.x, OWN_RANGE.y,
+		MeshKit.hash01(side, key, 225)), (top - bottom) * HEAD_ROOM_SHARE)
+	var stature: float = height / MarketPeople.stature()
+	var build: float = design.x / design.y / _mean_aspect() * lerpf(OWN_RANGE.x, OWN_RANGE.y, MeshKit.hash01(side, key, 227))
 	var center: Vector3 = w["center"]
-	var x: float = center.x + side * (depth * 0.5)
-	var citizen := MarketCitizen.new()
-	citizen.position = Vector3(x, bottom + height * 0.5, center.z)
-	var phase: float = MeshKit.hash01(side, key, 229)
-	var reaction: StringName = &"startled" if MeshKit.hash01(side, key, 233) < 0.5 else &"cheer"
-	citizen.setup(tex, Vector2(width, height), float(w["at"]), phase, reaction)
-	parent.add_child(citizen)
+	var along: float = (MeshKit.hash01(side, key, 229) - 0.5) * maxf(float(w["width"]) - PERSON_WIDTH, 0.0) * 0.8
+	var depth: float = float(w["depth"]) * lerpf(DEPTH_RANGE.x, DEPTH_RANGE.y, MeshKit.hash01(side, key, 231))
+	var turn: float = deg_to_rad(lerpf(TURN_RANGE.x, TURN_RANGE.y, MeshKit.hash01(side, key, 237)))
+	# Facing: toward the lanes (-side on x), and toward +z (the way the runner comes from) by `turn`; the model's front is -z.
+	var front := Vector3(-side * cos(turn), 0.0, sin(turn))
+	return {
+		"pos": Vector3(center.x + side * depth, bottom, center.z + along),
+		"heading": atan2(-front.x, -front.z),
+		"scale": Vector3(stature * build, stature, stature * build),
+		"look": MeshKit.hash01(side, key, 233), "phase": MeshKit.hash01(side, key, 239),
+		"late": MeshKit.hash01(side, key, 241), "at": float(w["at"])}
+
+
+## A person standing at the origin, for the shader warm-up (MarketplaceSkin.warm_samples).
+static func sample_person() -> Dictionary:
+	return {"pos": Vector3.ZERO, "heading": 0.0, "scale": Vector3.ONE, "look": 0.5, "phase": 0.0, "late": 0.0, "at": 0.0}
+
+
+## The tallest archetype's design height, and the archetypes' mean width over height (a person's scale is relative to them).
+static func _tallest_design() -> float:
+	var tallest: float = 0.0
+	for a: CitizenRig.Archetype in CitizenRig.ARCHETYPES:
+		tallest = maxf(tallest, a.design_size.y)
+	return tallest
+
+
+static func _mean_aspect() -> float:
+	var sum: float = 0.0
+	for a: CitizenRig.Archetype in CitizenRig.ARCHETYPES:
+		sum += a.design_size.x / a.design_size.y
+	return sum / float(CitizenRig.archetype_count())

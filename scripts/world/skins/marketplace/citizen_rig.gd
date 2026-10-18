@@ -1,19 +1,20 @@
 class_name CitizenRig
 extends RefCounted
-## The Marketplace citizens' body and poses (GDD §5, "Citizens"; task D3), on the shared
+## The Marketplace citizens' body (GDD §5, "Citizens"; tasks D3 and L7), on the shared
 ## HumanoidRig (scripts/characters/): plain, unarmed, ordinary people, built the same way the player
 ## and the cyborgs are (CLAUDE.md: "one shared body and skeleton with swappable parts"), but simpler
-## (no equipment, no weapon) since they are never seen in 3D at runtime. `tools/asset_gen/
-## citizen_sheet_gen.gd` is the only thing that builds this rig: it poses it through pose_at() and
-## bakes the frames into a flipbook (MarketCitizen plays the baked sheet back as a cheap textured
-## card, never the rig itself).
+## (no equipment, no weapon). The rig itself is never built at runtime: `tools/asset_gen/
+## citizen_person_gen.gd` poses it standing at ease (pose_at(IDLE)) and bakes it into the one mesh
+## every citizen is drawn from (assets/models/market_person.res, MarketPeople), dressed and moved by a
+## shader. Its material() is also the body material the cinematics' people use (CasinoPerson, the
+## Marketplace intro's vendor).
 ##
 ## Colour rule (GDD §5: "they must never read as a threat", kept apart from window cyborgs, GDD
 ## §9.2): skin tones and plain, lit clothing only, never a hazard colour, never glowing (glow is
 ## always 0.0 here) and never the cold white or screen-head look of a cyborg. A few archetypes
 ## (ARCHETYPES) vary height, build and palette; the same poses fit all of them.
 
-enum Clip { IDLE, STARTLED, CHEER }
+enum Clip { IDLE }
 
 const BOX := HumanoidPiece.Shape.BOX
 const PRISM := HumanoidPiece.Shape.PRISM
@@ -65,19 +66,13 @@ static func material() -> ShaderMaterial:
 	return _material
 
 
-## The pose at `t` (0–1) through a clip: IDLE loops a gentle weight shift; STARTLED and CHEER play
-## once (anticipation, the reaction, a settle back toward idle). MarketCitizen drives `t` at runtime
-## from its own baked frame index; the offline tool samples it at each frame's `t` directly.
+## The pose at `t` (0–1) through a clip: IDLE loops a gentle weight shift (the baked person stands in its first pose).
 static func pose_at(clip: Clip, t: float) -> HumanoidPose:
 	var out := HumanoidPose.new()
 	match clip:
 		Clip.IDLE:
 			var b: float = 0.5 - 0.5 * cos(TAU * t)
 			_blend(out, _idle_a(), _idle_b(), b)
-		Clip.STARTLED:
-			_schedule(out, _idle_a(), _startle_peak(), _startle_settle(), t)
-		Clip.CHEER:
-			_schedule(out, _idle_a(), _cheer_peak(), _cheer_settle(), t)
 	return out
 
 
@@ -102,52 +97,6 @@ static func _idle_b() -> HumanoidPose:
 	return p
 
 
-## Startled (GDD §5: funny/uplifting, never threatening): both hands fly up near the face and it
-## leans back a touch -- a reads-from-the-front jump-scare flinch, not a cower.
-static func _startle_peak() -> HumanoidPose:
-	var p := HumanoidPose.new()
-	p.set_deg(HumanoidPose.CHEST, Vector3(-10.0, 0.0, 0.0))
-	p.set_deg(HumanoidPose.HEAD, Vector3(-8.0, 6.0, 0.0))
-	for side: int in [-1, 1]:
-		p.set_limb(HumanoidPose.UPPER_ARM_R, side, Vector3(-120.0, 0.0, 30.0))
-		p.set_limb(HumanoidPose.FOREARM_R, side, Vector3(90.0, 0.0, 0.0))
-	p.pelvis_offset = Vector3(0.0, 0.01, 0.0)
-	return p
-
-
-static func _startle_settle() -> HumanoidPose:
-	var p := HumanoidPose.new()
-	p.set_deg(HumanoidPose.CHEST, Vector3(-3.0, 0.0, 0.0))
-	p.set_deg(HumanoidPose.HEAD, Vector3(-2.0, 2.0, 0.0))
-	for side: int in [-1, 1]:
-		p.set_limb(HumanoidPose.UPPER_ARM_R, side, Vector3(-55.0, 0.0, 20.0))
-		p.set_limb(HumanoidPose.FOREARM_R, side, Vector3(55.0, 0.0, 0.0))
-	return p
-
-
-## Cheering: both arms thrown up and out, a small hop (lift, not root_offset, so the rig's own
-## grounding never cancels it).
-static func _cheer_peak() -> HumanoidPose:
-	var p := HumanoidPose.new()
-	p.set_deg(HumanoidPose.CHEST, Vector3(3.0, 0.0, 0.0))
-	p.set_deg(HumanoidPose.HEAD, Vector3(4.0, 0.0, 0.0))
-	for side: int in [-1, 1]:
-		p.set_limb(HumanoidPose.UPPER_ARM_R, side, Vector3(-10.0, 0.0, 150.0))
-		p.set_limb(HumanoidPose.FOREARM_R, side, Vector3(10.0, 0.0, 0.0))
-	p.lift = 0.045
-	return p
-
-
-static func _cheer_settle() -> HumanoidPose:
-	var p := HumanoidPose.new()
-	p.set_deg(HumanoidPose.CHEST, Vector3(1.0, 0.0, 0.0))
-	for side: int in [-1, 1]:
-		p.set_limb(HumanoidPose.UPPER_ARM_R, side, Vector3(-5.0, 0.0, 95.0))
-		p.set_limb(HumanoidPose.FOREARM_R, side, Vector3(14.0, 0.0, 0.0))
-	p.lift = 0.012
-	return p
-
-
 static func _blend(out: HumanoidPose, a: HumanoidPose, b: HumanoidPose, t: float) -> void:
 	out.clear_sum()
 	out.accumulate(a, 1.0 - t)
@@ -155,43 +104,44 @@ static func _blend(out: HumanoidPose, a: HumanoidPose, b: HumanoidPose, t: float
 	out.finish(1.0)
 
 
-## Anticipation (k0) into the reaction's peak (k1) over the first 45% of the clip, then a settle
-## (k2) over the rest, so the onset eases in rather than cutting straight to the extreme pose.
-static func _schedule(out: HumanoidPose, k0: HumanoidPose, k1: HumanoidPose, k2: HumanoidPose, t: float) -> void:
-	if t < 0.45:
-		_blend(out, k0, k1, smoothstep(0.0, 0.45, t))
-	else:
-		_blend(out, k1, k2, smoothstep(0.45, 1.0, t))
+# --- Body (simple boxes and prisms: cheap to bake) -----------------------------------------
 
-
-# --- Body (simple boxes and prisms: cheap to bake, never seen in 3D at runtime) -------------
+## Every limb piece hangs from its joint (the thigh from the hip, the forearm from the elbow...), as the cinematics' people do
+## (MarketplaceIntroVendor): a piece centred on its joint left a gap below it (the baked person's shoes floated 0.12 m under
+## its trousers, its hands 0.015 m under its forearms). The pieces run a centimetre past the joint they hang from, so a bent
+## joint shows no gap. The head sits on the chest, HEAD_LIFT above its joint (which is the chest's top): a head centred on
+## its joint was half sunk into the collar.
+const HEAD_LIFT: float = 0.08
 
 static func _body(list: Array[HumanoidPiece], a: Archetype) -> void:
 	_add(list, &"pelvis", BOX, Vector3(0.23, 0.16, 0.16), Vector3.ZERO, a.pants_color, {"chamfer": 0.3})
-	_add(list, &"chest", BOX, Vector3(0.27, 0.34, 0.18), Vector3(0.0, 0.17, 0.0), a.shirt_color, {"chamfer": 0.3,
+	_add(list, &"chest", BOX, Vector3(0.27, 0.35, 0.18), Vector3(0.0, 0.165, 0.0), a.shirt_color, {"chamfer": 0.3,
 		"top_scale": Vector2(0.92, 0.95)})
 
 
 static func _head(list: Array[HumanoidPiece], a: Archetype) -> void:
-	_add(list, &"neck", PRISM, Vector3(0.07, 0.07, 0.07), Vector3.ZERO, a.skin_color, {"sides": 8})
-	_add(list, &"head", BOX, Vector3(0.15, 0.17, 0.15), Vector3.ZERO, a.skin_color, {"chamfer": 0.35,
+	_add(list, &"neck", PRISM, Vector3(0.07, 0.07, 0.07), Vector3(0.0, 0.03, 0.0), a.skin_color, {"sides": 8})
+	_add(list, &"head", BOX, Vector3(0.15, 0.17, 0.15), Vector3(0.0, HEAD_LIFT, 0.0), a.skin_color, {"chamfer": 0.35,
 		"top_scale": Vector2(0.9, 0.92)})
-	_add(list, &"head", PRISM, Vector3(0.158, 0.085, 0.158), Vector3(0.0, 0.1, 0.004), a.hair_color,
+	_add(list, &"head", PRISM, Vector3(0.158, 0.085, 0.158), Vector3(0.0, HEAD_LIFT + 0.1, 0.004), a.hair_color,
 		{"sides": 8, "top_scale": Vector2(0.75, 0.75)})
 
 
 static func _arms(list: Array[HumanoidPiece], a: Archetype) -> void:
-	_add(list, &"upper_arm", PRISM, Vector3(0.08, 0.2, 0.08), Vector3.ZERO, a.shirt_color, {"sides": 8,
+	# (The upper arm sits a centimetre in from its joint, toward the body: the joint is just outside the shirt's side, and an
+	# arm tangent to it left a hairline between the two in the front view.)
+	_add(list, &"upper_arm", PRISM, Vector3(0.08, 0.21, 0.08), Vector3(-0.012, -0.095, 0.0), a.shirt_color, {"sides": 8,
 		"top_scale": Vector2(0.9, 0.9), "side": MIRRORED})
-	_add(list, &"forearm", PRISM, Vector3(0.068, 0.18, 0.068), Vector3.ZERO, a.skin_color, {"sides": 8,
+	_add(list, &"forearm", PRISM, Vector3(0.068, 0.19, 0.068), Vector3(0.0, -0.085, 0.0), a.skin_color, {"sides": 8,
 		"top_scale": Vector2(0.88, 0.88), "side": MIRRORED})
-	_add(list, &"hand", BOX, Vector3(0.06, 0.08, 0.05), Vector3.ZERO, a.skin_color, {"chamfer": 0.3, "side": MIRRORED})
+	_add(list, &"hand", BOX, Vector3(0.06, 0.08, 0.05), Vector3(0.0, -0.04, 0.0), a.skin_color, {"chamfer": 0.3,
+		"side": MIRRORED})
 
 
 static func _legs(list: Array[HumanoidPiece], a: Archetype) -> void:
-	_add(list, &"thigh", PRISM, Vector3(0.115, 0.3, 0.115), Vector3.ZERO, a.pants_color, {"sides": 8,
+	_add(list, &"thigh", PRISM, Vector3(0.115, 0.31, 0.115), Vector3(0.0, -0.145, 0.0), a.pants_color, {"sides": 8,
 		"top_scale": Vector2(1.08, 1.08), "side": MIRRORED})
-	_add(list, &"shin", PRISM, Vector3(0.09, 0.3, 0.09), Vector3.ZERO, a.pants_color, {"sides": 8,
+	_add(list, &"shin", PRISM, Vector3(0.09, 0.31, 0.09), Vector3(0.0, -0.145, 0.0), a.pants_color, {"sides": 8,
 		"top_scale": Vector2(1.05, 1.05), "side": MIRRORED})
 	_add(list, &"foot", BOX, Vector3(0.09, 0.08, 0.18), Vector3(0.0, -0.01, -0.03), a.hair_color,
 		{"chamfer": 0.25, "top_scale": Vector2(0.9, 0.8), "side": MIRRORED})

@@ -167,7 +167,7 @@ builders in `scripts/world/skins/beach/`:
   piece's range, which left 18-27% of the Beach's chunks without; `test_beach_skin` checks every chunk).
 - *The splash* (`BeachWaterWatch`, `BeachSplash`; the owner: "a fall makes a splash"): `wall_section` and
   `wall_gap` add a `BeachWaterWatch` beside the left wall's water plane, which finds the `RunWorld` up the
-  tree as `MarketCitizen` does and reads the runner's position and track distance (a read-only visual
+  tree as the Marketplace's citizens (`MarketPeople`) do and reads the runner's position and track distance (a read-only visual
   watcher: no collision, no gameplay state written). When the runner's height crosses the water going down
   inside its stretch of street (a floor or a cut's hole never lets that happen anywhere else), it adds a
   `BeachSplash` on the water, a one-shot that frees itself after 1.2 s (a crown of foam, droplets, two

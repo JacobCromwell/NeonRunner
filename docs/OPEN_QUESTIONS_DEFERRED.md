@@ -5152,3 +5152,94 @@ These are the choices made to fill them in. Each is a placeholder in data (`data
    (murmur, chips, a slot's chime), the roulette ball's roll and drop, the players' cheer, the guards' shout, the door's
    slam, the wall's rumble and collapse; The House's reel spin as it powers on. The zone's (the fight's) music plays
    under it from the start.
+
+**L9, Mecha Guppy's phase 1 half as long** (from `docs/questions/l9.md`)
+
+The owner's request (October 17, 2026, after playtesting): the Beach boss's first phase, The Climb, is a little too
+long; make it 50% shorter, "however that can be achieved, the shark takes maybe 50% less hits before phase two
+starts". GDD §10, Mecha Guppy and Captain Cogs, Phase 1 ("4 hits end it"); the orchestrator records 2 hits. Built:
+`data/bosses/beach_boss.tres`, phase 1's `hits` 2 (was 4). Measured with the suites' bot (`MechaGuppyBot`,
+`test_mecha_guppy_bait`, 3, 5 and 6 lanes at 18 and 23.8 m/s; times are the fight's clock at phase 1's end, its 3 s
+intro included):
+
+| | 4 hits (before) | 2 hits (now) | shorter by |
+|---|---|---|---|
+| a runner who baits every step | 41.0-47.2 s | 25.8-29.4 s | 37-38% |
+| a runner who never baits (the fallback) | 67.4-78.5 s | 37.0-42.8 s | 45% |
+
+960. **Is that half as long?** Placeholder: 2 hits. A runner who baits lands the hits on the baits of steps 1 and 2 (roof
+     2's floor bite then the first bait, roof 3's first volley then a bait); one who never baits on the fallbacks of
+     steps 2 and 4. What is left of phase 1 is mostly its lead-in, which the hit count doesn't touch: the run to the
+     first pads (3.5 s, the 3 s intro within it), the first hut, and the first tower, whose floor bite comes alone (one
+     new thing at a time) before the first notch on roof 2; the first bait's aim shows 16.6-19.2 s into the fight. Both
+     runners still meet the bombs (roof 3's volley), the floor bite that leaves a lane (roofs 1 and 2; roof 4 too without
+     baiting) and the bait in phase 1, in the GDD's teaching order. Getting a runner who baits nearer to half would take
+     1 hit, which ends phase 1 on roof 2 before the climb's first volley (so the bombs would no longer show in phase 1),
+     or a shorter lead-in: the run to the first pads is only 3.5 s (`start_seconds`; the intro, `intro_seconds` 3, runs
+     within it), and the rest is the first hut and the first tower's floor bite coming alone, which the teaching order
+     wants. Proposal: keep 2 hits. Is 37% shorter for a runner who baits, and 45% for one who doesn't, what the owner
+     wanted?
+
+961. **Phase 2 may now open with a bite across every lane.** Phase 2 begins two steps sooner (at roof 3's end for a
+     runner who baits, on step 4's hut for one who doesn't). The steps in sight at the change stay phase 1's, and those
+     past the edge of sight are planned again in phase 2, where item 813's rule makes roofs 4, 8, 12 and so on bite
+     across every lane. At 5 and 6 lanes at the Beach's 23.8 m/s, a runner who baits has roof 4's step past sight then,
+     so phase 2's first floor bite is a full-width one, about 4 s into phase 2 (just after its 2.5 s intro, before
+     phase 2's first higher step). At 3 lanes, at 18 m/s, and for a runner who never baits, roof 4 stays a phase 1 bite
+     that leaves a lane and the first full-width one comes on roof 8, as it did for everyone with 4 hits. Either way the
+     bite that leaves a lane is met at least twice in phase 1 first, and the full-width one is warned and planned with
+     the same margins as everywhere (its warning comes after the intro: none is skipped). Placeholder: as built (item
+     813's rule unchanged). Should phase 2's first floor bite always leave a lane (for example, full-width bites only
+     from the second bitten roof planned in phase 2 on)?
+
+962. **The par times, measured again.** Placeholder (`data/bosses/beach_boss.tres`; item 810's rule, kept by
+     `test_mecha_guppy_whole`, item 824): three stars at 159 s (was 179 s), two at 182 s (was 210 s), the time bonus to
+     225 s (was 260 s). The whole fight now takes 141.1-144.7 s for a runner who baits at 23.8 m/s (was 156.5-164.1 s),
+     144.4-158.3 s at 18 m/s (was 160.5-178.6 s), and 192.9-219.7 s for one who never baits (was 223.4-255.3 s).
+     - Three stars: Hostile Takeover's margin over the slowest clean fight at 23.8 m/s gives 156.1 s; 159 s, within the
+       rule's 3 s, so the slowest clean fight at 18 m/s (158.3 s) still earns them, as task E5e-g raised 177 s to 179 s.
+       159 s is the only whole second that meets both, with little to spare (0.7 s over the slowest at 18 m/s, 0.07 s
+       inside the 3 s), so a later change to the fight's timing may need the par moved again.
+     - Two stars: between 1.2 times the slowest clean fight (173.6 s) and 5 s short of the quickest win without baiting
+       (192.9 s); 182 s sits where the owner's 210 s sat between the old bounds, so two stars still need some baiting and
+       a runner who never baits wins with one star at every lane count and speed.
+     - The time bonus: 1.24 times two stars, as before, just past the slowest win without baiting.
+     Right?
+
+**L7, real citizens in the Marketplace's shops** (from `docs/questions/l7.md`; item 967 is in `docs/OPEN_QUESTIONS.md`)
+
+The owner asked for the newer rendered people in the Marketplace's shop windows in place of the flipbook cards, watching,
+with a silent one-off cheer at a really valuable credit or a big enemy's defeat, if they cost little (they do: the numbers
+are in `docs/architecture/skins-marketplace-corporate-deadzone-casino.md`, "The Marketplace citizens"). The numbers below are
+placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in `data/citizens/market_people.tres`
+(`MarketPeopleTuning`), built so they are cheap to change.
+
+963. **What counts as "a really high-value credit pickup"?** (GDD §5, Citizens.) Placeholder (`cheer_credit_min_value`): 25, the
+     top two of the four denominations (a violet diamond is 25, the tall ice-white gem 100). A level carries about ten 25s and
+     none or a few 100s, so the shops cheer about once in 250 m. Raise it to 100 and they cheer only at the rare gem.
+
+964. **Which enemies are "big"?** (GDD §5, Citizens; §9.) Placeholder (`cheer_enemy_types`, by `Enemy.type_id`): the Hover Truck
+     (`hover_truck`), the Enforcer Truck (`enforcer_truck`), the heli drone (`drone`), the Buzz Overdrive (`buzz_overdrive`)
+     and the Resonator (`resonator`): the owner's two examples and the three others with 15 or more health (or, the Enforcer
+     Truck, that only baiting a charge destroys). Only the player's own defeats count (an enemy another's charge flattened
+     earns nothing, as in the score, unless it declares `charge_bait`). Should the Gilded Sentinel, the Floor Cutter or the
+     bosses count too? (The House already makes the shops cheer at its own jackpot and defeat.)
+
+965. **How big, how far and how often is the cheer?** Placeholder: one hop of 0.28 m over 0.9 s with both arms thrown up, for
+     the citizens within 48 m ahead of the runner and 12 m behind (those in view), a ripple out from the runner (0.012 s a metre
+     and up to 0.18 s of their own lateness), and no more than one cheer in 1.6 s (`cheer_hop`, `cheer_seconds`, `cheer_ahead`,
+     `cheer_behind`, `ripple`, `jitter`, `cheer_cooldown`). From the game's camera a person in a window is 30 to 50 pixels
+     tall at 720p, so the hop shows mostly as the arms: say if it should be bigger.
+
+966. **How many citizens, and what they look like.** Placeholder (`MarketCitizens.CITIZEN_SHARE`): 0.32 of the windows that are
+     free of a feed TV and a window cyborg, twice the cards' 0.16 (the owner did not notice the cards): about 4.5 people in
+     every 40 m of street, standing at ease facing the lanes and turned 20 to 50 degrees toward the runner's approach, their
+     heads following the runner from 52 m away (`look_far`). They are one plain person (the shared rig: a box head with hair
+     and two small dark eyes, a shirt, trousers, shoes) in muted clothes and natural skin tones picked by hash from the
+     palettes in `MarketPeople` (never a hazard's hue, nothing glowing), varied only in height (1.47 to 1.74 m), build and
+     colours, in D3's three silhouettes (the tall slim shopper, the short wide regular, the vendor between). Should they be more varied (hair, hats, bags, a vendor's apron, the owner's casino-patron reference for the
+     Casino's windows)? And should they stand, or sometimes lean, talk to each other or browse the shelves?
+
+968. **The shops' people and "low-end".** Placeholder: `Settings.citizens_enabled` (off on `DeviceProfile.is_low_end()`, and the
+     player's own setting) still switches the citizens off whole, as D3 built it; nothing decides "low-end" project-wide yet
+     (docs/questions/d3.md).

@@ -172,8 +172,8 @@ func _test_climb_through() -> void:
 			var bombed: bool = true
 			for h: Dictionary in hits:
 				bombed = bombed and h["cause"] == &"bomb"
-			check(ends.size() == 2 and hits.size() == 13 and bombed and boss.top.hits == 3,
-				"4 bomb hits end phase 1, 6 more phase 2 (each a bomb into the shark's jaws), and phase 3's bombs past the runner into Mecha Guppy win it (%d phase ends, %d hits; phases end at %s s) %s"
+			check(ends.size() == 2 and hits.size() == 11 and bombed and boss.top.hits == 3,
+				"2 bomb hits end phase 1, 6 more phase 2 (each a bomb into the shark's jaws), and phase 3's bombs past the runner into Mecha Guppy win it (%d phase ends, %d hits; phases end at %s s) %s"
 				% [ends.size(), hits.size(), times, tag])
 			check(hurt[0] == 0, "the clean runner is never hit (no item used) %s" % tag)
 			check(traps.is_empty(), "never a circle in the runner's lane while every lane they could switch to has no floor %s%s"
@@ -181,7 +181,7 @@ func _test_climb_through() -> void:
 			var baited: bool = true
 			for e: Dictionary in _events(boss, &"shark_hit"):
 				baited = baited and int(e["kind"]) == MechaGuppyBombs.Kind.BAIT
-			check(baited and bot.baited >= 10 and _events(boss, &"fallback").is_empty(),
+			check(baited and bot.baited >= 8 and _events(boss, &"fallback").is_empty(),
 				"every hit is a bait: the bomb locked in the notch's lane and dodged before its edge, falling into the jaws (%d baited) %s"
 				% [bot.baited, tag])
 			var census: Dictionary = MechaGuppyBot.census(boss)
@@ -200,8 +200,8 @@ func _test_climb_through() -> void:
 			check(await _phase_rates(lanes, speed), "phase 2's climb is faster as planned %s" % tag)
 
 
-## Phase 2's climb against phase 1's, on physics: eight steps planned in phase 1, landing to landing, then four hits
-## (phase 2), then eight steps planned in phase 2. GDD §10: 15-25% faster (proposed: about 20%). True if it is.
+## Phase 2's climb against phase 1's, on physics: eight steps planned in phase 1, landing to landing, then phase 1's two
+## hits (phase 2), then eight steps planned in phase 2. GDD §10: 15-25% faster (proposed: about 20%). True if it is.
 func _phase_rates(lanes: int, speed: float) -> bool:
 	var tag: String = "(%d lanes, %.1f m/s)" % [lanes, speed]
 	var pair: Array = _fight(lanes, speed)
@@ -220,9 +220,9 @@ func _phase_rates(lanes: int, speed: float) -> bool:
 			var s: MechaGuppyClimb.Step = boss.climb.step_at(p.distance - 15.0)
 			if s != null and s.phase <= 1 and s.index >= 1:
 				(by_phase[s.phase] as Array).append([boss.fight_time(), p.floor_y])
-			# Phase 1's eight steps landed: four hits, phase 2.
+			# Phase 1's eight steps landed: its hits, phase 2.
 			if (by_phase[0] as Array).size() == 9 and boss.phase_index == 0:
-				for i: int in 4:
+				for i: int in boss.phase().hits:
 					boss.register_hit(&"stand_in"))
 	var rate: Array[float] = [0.0, 0.0]
 	for ph: int in 2:
@@ -387,7 +387,7 @@ func _wrong_drop(c: Dictionary) -> void:
 # --- Phase changes --------------------------------------------------------------------------------
 
 ## A phase change reaches the climb with the first step the runner can't see yet: after the third landing in phase 1
-## four hits bring phase 2, after the third in phase 2 six more bring phase 3. Every step in sight at the change stays
+## two hits bring phase 2, after the third in phase 2 six more bring phase 3. Every step in sight at the change stays
 ## as it was (its roofs' notches too), the next one is phase 2's (higher) or phase 3's top, and no step is ever planned
 ## within sight (its hut past
 ## the edge of sight when it's planned). The runner's arrival on the top is logged (top_reached); the waterfall starts

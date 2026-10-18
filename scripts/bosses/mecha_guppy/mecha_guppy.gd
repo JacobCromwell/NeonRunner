@@ -43,8 +43,9 @@ extends BossEncounter
 ## ahead and above, throwing the bombs (MechaGuppyBombs: the Floating Head's warning, a circle at the floor's height
 ## and a whistle); MechaGuppyPattern times them step by step, the same every step. The bombs, the bites and the hits
 ## run only while attacks_enabled (tests turn them off to check the climb alone).
-## Hits (GDD §10: phase 1 ends after 4, phase 2 after 6, phase 3 after 16; BossPhase.hits; the owner, October 11, 2026:
-## by baiting; in phase 3, October 15, 2026: every bomb dodged on the top flies into Mecha Guppy, MechaGuppyTop):
+## Hits (GDD §10: phase 1 ends after 2, phase 2 after 6, phase 3 after 16; BossPhase.hits; the owner, October 11, 2026:
+## by baiting; in phase 3, October 15, 2026: every bomb dodged on the top flies into Mecha Guppy, MechaGuppyTop;
+## October 17, 2026, task L9: phase 1 half as long, 2 hits where it had 4):
 ## register_hit(), which the bombs call when one falls into Mecha Guppy's open jaws (the stretch it has eaten through,
 ## where it's exposed and in the line of fire): the bait's bomb, locked onto a runner in the notch's lane who switched
 ## out before its edge, or the fallback's, Captain Cogs missing into the chasm once fallback_after steps in a row went
@@ -310,7 +311,7 @@ func sound(sound_name: StringName, pos: Vector3) -> void:
 
 
 ## A hit on Mecha Guppy (GDD §10: a bomb that falls through a gap, off a roof's edge or onto the exposed shark; in phase
-## 3, a bomb flying across the top past the runner into its head): one of the phase's BossPhase.hits (4 in phase 1, 6 in
+## 3, a bomb flying across the top past the runner into its head): one of the phase's BossPhase.hits (2 in phase 1, 6 in
 ## phase 2, 16 in phase 3). The bombs call this (MechaGuppyBombs, MechaGuppyTop); the tests too. Only counts while the
 ## climb's pattern runs, or once the runner is on phase 3's top (not in an intro, not on phase 3's last steps of the
 ## climb, not once it's beaten). True if it counted.

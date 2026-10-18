@@ -295,8 +295,9 @@ after, run by run: `frame_times.gd --log`, and `test_perf`).
 - **Chunk builds**: a chunk's build is almost all the zone skin's dressing (1.4 to 3.7 ms a chunk on the dev
   machine, `wall_section` the most; the collision, hazards, triggers, doodads' bodies, wall fences and cuts 0.1
   to 0.3 ms), all in one frame every 1.6 to 1.9 s, and up 5 to 15% since `a5e691b` in the Marketplace and
-  Corporate (the Marketplace's citizens are about 0.7 ms of its 3.8 ms a chunk, `Settings.citizens_enabled`
-  off). `TrackBuilder.dress_budget_usec` (LevelRun sets it from
+  Corporate (the Marketplace's citizens, once flipbook cards (0.7 ms of 3.8 ms a chunk then, 0.4 of 2 measured again in L7), are since task L7 real people in one
+  MultiMesh a wall section: 0.2 to 0.3 ms a 40 m chunk for twice as many, 4.5 people and 1.9 draw calls a chunk, and nothing a
+  frame on the CPU but one uniform; `tools/measure/market_people_cost.gd`, `Settings.citizens_enabled` off). `TrackBuilder.dress_budget_usec` (LevelRun sets it from
   `PerformanceTuning.chunk_dress_budget_ms`, 1 ms, F6 "Performance") builds a chunk's gameplay nodes in its
   frame as before and queues the skin's calls, which `update()` makes in order, about the budget a frame (at
   least one call), finishing a chunk's whatever the time once the player is `DRESS_BY` (120 m) from it.
