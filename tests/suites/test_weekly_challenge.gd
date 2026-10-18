@@ -455,6 +455,8 @@ func _check_config(config: LevelConfig, source: LevelConfig, zone: ZoneDef, gold
 		"%s: every feature from the start, no recency curve" % tag)
 	check(config.guarantee_features and config.minigame == null and not config.off_curve,
 		"%s: an ordinary level that guarantees every feature" % tag)
+	# Wall-hop credits (task N1) are the zone's: none in a City week, a line in the others (GDD §7, from Gangland on).
+	check(config.wall_hop_lines == (0 if zone.id == &"city" else 1), "%s: %d wall-hop lines" % [tag, config.wall_hop_lines])
 	check(config.skin != null, "%s: the zone's look" % tag)
 
 

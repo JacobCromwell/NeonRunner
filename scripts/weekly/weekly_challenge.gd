@@ -25,9 +25,11 @@ const BOARD_MOBILE: String = "mobile"
 ## - The ZONE's: what a week takes from the zone's own level (`source_levels`): its enemies and obstacles (the features,
 ##   their pick weights, the patterns they come from) and its look (skin, sky, darkness), including the Beach's open
 ##   walls (`wall_gap_tuning`, and the wall-lane doodads that go with them). A dial that is about a zone's own mechanic
-##   (N1's `wall_hop_lines`: none in the Neon City, one from Gangland on) belongs here too.
+##   belongs here too: `wall_hop_lines` (task N1, GDD §7 "from Gangland on") is 0 in the Neon City's levels and 1 in every
+##   other zone's, so a City week has no wall-hop credits (and on the Beach its open walls leave no room for a line).
 const ZONE_FIELDS: PackedStringArray = [
 	"features", "feature_weights", "patterns_path", "skin", "sky", "darkness", "wall_gap_tuning", "doodad_wall_lane_share",
+	"wall_hop_lines",
 ]
 ## - The WEEK's: what a week sets itself: which level it is (id, name, seed, lanes), that it is no level of the campaign's
 ##   curve or a mini-game, that every feature is there from the start (no `feature_starts`, as in endless mode) with no
@@ -92,7 +94,8 @@ const RESOURCE_PROPERTIES: PackedStringArray = ["resource_path", "resource_name"
 ## DESIGN-TBD (docs/questions/n5.md, 4): the credits the week's first clear pays: "equal to a middle-of-the-road
 ## level's payout" (GDD §6). The placeholder is the typical player's finish payout of the campaign's middle level
 ## (credits kept at 70% of what a level holds, plus its completion bonus: the median over the 19 generated levels is
-## 1,023, Corporate 2's; tools/measure/economy.gd), rounded. Paid once a week: every other run pays nothing.
+## 993, Marketplace 2's, with N1's wall-hop credits in; 1,023 before; tools/measure/economy.gd), rounded. Paid once a
+## week: every other run pays nothing.
 @export_range(0, 20000, 50) var first_clear_credits: int = 1000
 ## The places on a week's board that earn the Leader of the Pack cosmetic (GDD §6: the top three "for now; the owner
 ## will adjust it"). DESIGN-TBD (docs/questions/n5.md, 13): on each platform's board, or on one combined ranking.

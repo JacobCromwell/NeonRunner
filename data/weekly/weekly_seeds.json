@@ -48,6 +48,6 @@
 		{"zone": "corporate", "seed": 9503},
 		{"zone": "beach", "seed": 9605},
 		{"zone": "dead_zone", "seed": 9704},
-		{"zone": "golden", "seed": 9809}
+		{"zone": "golden", "seed": 9808}
 	]
 }
