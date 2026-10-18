@@ -65,7 +65,7 @@
 		{
 			"id": "shield", "kind": "breakable", "icon": "shield",
 			"name": "Shield", "price": 400, "max_stock": 5,
-			"description": "Blocks one hit of anything except a fall."
+			"description": "Blocks one hit of anything except a fall. Shields stack."
 		},
 		{
 			"id": "grapple", "kind": "breakable", "icon": "grapple",

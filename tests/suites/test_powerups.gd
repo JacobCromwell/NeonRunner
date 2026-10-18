@@ -31,6 +31,7 @@ func run() -> void:
 	await _test_slow_time_mobile()
 	await _test_slow_time_through_app()
 	await _test_hud_state()
+	await _test_shield_stack()
 	# Never leak a slowed engine into the next suite, even after a failed check.
 	Engine.time_scale = 1.0
 
@@ -641,6 +642,88 @@ func _test_slow_time_through_app() -> void:
 	App.main = null
 	await tree.process_frame
 	Engine.time_scale = 1.0
+
+
+# --- Stacked shields ----------------------------------------------------------------------
+
+## Shields stack (GDD §8): every shield in stock comes into the run, each hit uses exactly one (with the
+## usual invulnerability between), the HUD counts them and the model wears the shield until the last
+## breaks, the fifth hit with four shields kills, and the stock goes 4 -> 0 through the App.
+func _test_shield_stack() -> void:
+	var catalog: ShopCatalog = ShopCatalog.load_from()
+	var profile := Profile.new()
+	profile.add_stock(&"shield", 4)
+	profile.add_stock(&"grapple", 3)
+	var loadout: Loadout = Loadout.from_profile(profile, catalog, false)
+	check(loadout.charge(&"shield") == 4 and loadout.charge(&"grapple") == 1,
+		"4 shields in stock: 4 charges; the grapple stays at 1 per attempt")
+	profile.add_stock(&"shield", 9)
+	check(Loadout.from_profile(profile, catalog, false).charge(&"shield") == catalog.item(&"shield").max_stock,
+		"never more than the catalog's max stock")
+	profile.set_equipped(&"shield", false)
+	check(Loadout.from_profile(profile, catalog, false).charge(&"shield") == 0, "switched off: none come along")
+
+	# A boss grant adds no charge to a stack, and is one free break.
+	var granted: Loadout = Loadout.from_profile(Profile.new(), catalog, false)
+	granted.charges[&"shield"] = 4
+	granted.grant(PackedStringArray(["shield"]), catalog, false)
+	check(granted.charge(&"shield") == 4, "a grant adds nothing to a stack of four")
+	var costs: Array[bool] = []
+	for i: int in 4:
+		costs.append(granted.costs_stock(&"shield"))
+	check(costs == [false, true, true, true], "a grant is one free charge only, the rest cost stock (%s)" % [costs])
+
+	profile.set_equipped(&"shield", true)
+	while profile.stock(&"shield") > 4:
+		profile.use_stock(&"shield")
+	check(profile.stock(&"shield") == 4, "(4 shields left in stock)")
+	loadout = Loadout.from_profile(profile, catalog, false)
+	loadout.armor = false  # the free armor would take the first hit; this tests the shields alone
+	var layout := RunSim.layout(5, 1500.0)
+	var w: RunWorld = sim.build_world(layout, loadout)
+	var p: Player = w.player
+	var c: PowerupController = _controller(w)
+	var shield_entry: Dictionary = _entry(c.hud_state(), &"shield")
+	check(p.shield == 4 and shield_entry["charges"] == 4 and shield_entry["active"], "the run starts with 4 shields, the HUD says 4")
+	var used: Array[StringName] = []
+	p.item_used.connect(func(item: StringName) -> void: used.append(item))
+	var shot := Hazard.new()
+	shot.hazard_name = "test shot"
+	shot.is_enemy_attack = true
+	for left: int in [3, 2, 1, 0]:
+		p.invulnerable_left = 0.0
+		check(p.receive_hit(shot) == DamageRules.Outcome.BLOCKED_SHIELD and p.shield == left and p.alive,
+			"a hit is blocked and uses exactly one shield (%d left)" % left)
+		check(p.is_invulnerable() and p.receive_hit(shot) != DamageRules.Outcome.KILL and p.shield == left and p.alive,
+			"and the invulnerability window after it takes no second shield")
+		check(_entry(c.hud_state(), &"shield")["charges"] == left and _entry(c.hud_state(), &"shield")["active"] == (left > 0),
+			"the HUD shows %d" % left)
+		check(c.equipment()["shield"] == (left > 0), "the model wears the shield %s" % ("still" if left > 0 else "no more"))
+	check(used == [&"shield", &"shield", &"shield", &"shield"], "item_used fired once per shield (%s)" % [used])
+	p.invulnerable_left = 0.0
+	check(p.receive_hit(shot) == DamageRules.Outcome.KILL and not p.alive, "the fifth hit kills")
+	shot.free()
+	await sim.free_world(w)
+
+	# Through the App: each break takes exactly one from the stock.
+	var main: Node = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	tree.root.add_child(main)
+	await tree.process_frame
+	var saved: Profile = App.profile
+	App.profile = Profile.new()
+	App.profile.add_stock(&"shield", 4)
+	App.start_quick(PackedStringArray())
+	await physics_frames(10)
+	check(App.run.context.loadout.charge(&"shield") == 4 and App.run.world.player.shield == 4, "app: four shields in the run")
+	for left: int in [3, 2, 1, 0]:
+		App._on_item_used(&"shield")
+		check(App.profile.stock(&"shield") == left, "app: a break leaves %d in stock" % left)
+	App.show_title()
+	await tree.process_frame
+	App.profile = saved
+	main.queue_free()
+	App.main = null
+	await tree.process_frame
 
 
 # --- HUD and player model -----------------------------------------------------------------

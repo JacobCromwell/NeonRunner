@@ -2,10 +2,11 @@ class_name ShopScreen
 extends ScreenBase
 ## The shop (GDD §8): permanent items bought tier by tier and kept (among them the armor, an upgrade
 ## to the free armor every run brings: item_text() puts the rules' numbers in its texts), breakable
-## items bought as stock (up to each item's max_stock: every run takes one of each switched-on item,
+## items bought as stock (up to each item's max_stock: every run takes all your shields and one of each other switched-on item,
 ## and revives wait in stock for the death screen), and the equip toggle for everything owned. After the
 ## power-ups, the Cosmetics: outfits for the runner (GDD §8), each bought once and then worn or taken off
-## (Razor Echo's own look is the free first card). Shown from the menu,
+## (Razor Echo's own look is the free first card), each card showing the runner in the outfit (a still; the card the
+## pointer or the focus is on runs and turns, one at a time). Shown from the menu,
 ## between levels and after every death. On mobile it also sells credit packs when the platform
 ## does (GDD §7). The wallet counts down as items are bought.
 ## Leaving: with a `play_label` the main button ("Next", "Retry", "Play again") runs `on_close` and
@@ -28,6 +29,8 @@ var menu_button: NeonButton
 var pack_buttons: Dictionary = {}
 var _net_worth: Label
 var _buying_pack: bool = false
+## The cosmetic cards the pointer or the focus is on, the latest last: the last one's preview is the live one.
+var _interested: Array[CosmeticCard] = []
 
 
 func _ready() -> void:
@@ -37,7 +40,9 @@ func _ready() -> void:
 	_net_worth.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_net_worth.size_flags_vertical = Control.SIZE_FILL
 	# The web demo has no leaderboards (GDD §2).
-	_net_worth.tooltip_text = "Earned credits you haven't spent." + (" Leaderboards rank it." if BuildFlavor.has_leaderboards() else "")
+	# Credits spent on outfits count as unspent (owner, October 18, 2026; Profile.net_worth).
+	_net_worth.tooltip_text = "Earned credits you haven't spent. Outfits don't lower it." \
+		+ (" Leaderboards rank it." if BuildFlavor.has_leaderboards() else "")
 	_net_worth.mouse_filter = Control.MOUSE_FILTER_PASS
 	header_right.add_child(_net_worth)
 	wallet = CreditCounter.new()
@@ -75,8 +80,10 @@ func _ready() -> void:
 			card.cosmetic_id = look.id
 			card.buy_pressed.connect(_on_buy_cosmetic)
 			card.wear_pressed.connect(_on_wear)
+			card.interest_changed.connect(_on_cosmetic_interest)
 			cosmetics.add_child(card)
 			cosmetic_cards[look.id] = card
+		_link_cosmetic_cards()
 	if App.mobile and Platform.purchases_available() and not Platform.products().is_empty():
 		var packs: HFlowContainer = _section(sections, "CREDIT PACKS", &"plus", "Bought credits never count toward net worth.")
 		for product: Dictionary in Platform.products():
@@ -232,6 +239,32 @@ func _on_buy_cosmetic(id: StringName) -> void:
 
 func _on_wear(id: StringName) -> void:
 	App.wear_outfit(id)
+
+
+## The pointer or the focus moved onto or off a cosmetic card: only the latest one's preview runs and turns, so the
+## shop draws one live runner whatever the pointer and the focus do (the other cards keep their stills).
+func _on_cosmetic_interest(card: CosmeticCard) -> void:
+	_interested.erase(card)
+	if card.interested:
+		_interested.append(card)
+	var live: CosmeticCard = _interested.back() if not _interested.is_empty() else null
+	for other: Variant in cosmetic_cards.values():
+		if is_instance_valid(other):
+			(other as CosmeticCard).set_preview_live(other == live)
+
+
+## Left and right on a cosmetic card's button go to the previous and next card in shop order, along the row and on to the next
+## one, and stop at the first and the last. The cards are wider than the items' and Godot's own search (the nearest button in
+## that direction) would jump to the items above and below instead. Up and down are left to it: they find the card above or
+## below in the grid, the items above the first row and nothing below the last.
+func _link_cosmetic_cards() -> void:
+	var buttons: Array[NeonButton] = []
+	for card: Variant in cosmetic_cards.values():
+		buttons.append((card as CosmeticCard).action_button)
+	for i: int in buttons.size():
+		var button: NeonButton = buttons[i]
+		button.focus_neighbor_left = button.get_path_to(buttons[maxi(i - 1, 0)])
+		button.focus_neighbor_right = button.get_path_to(buttons[mini(i + 1, buttons.size() - 1)])
 
 
 func _refocus() -> void:

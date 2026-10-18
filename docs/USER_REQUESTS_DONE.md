@@ -310,3 +310,20 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## The shop windows' TVs (October 17, 2026, the owner's answer to item 967)
 
 - [x] **No feed TVs in the shop windows** (L10). The old CRT sets with the feed's face don't really add much to the level: replace them entirely with different things. Some should be screens with random ads, with the cult emblem flashing every once in a while; others billboards that feel like they fit in the world (GDD §5, Cyborg Viewing Devices). DONE (L10): the TVs are gone from the Marketplace's and the Casino's shop windows. The same windows (22 percent) now hold, half and half, ad screens cycling wordless ads (noodles, a drink, tea, a delivery drone, a sale, the market's brand; the Casino's own: sevens, chips, a cocktail, champagne, dice), changing by a quick dip, with the cult emblem fading on for about a second every 14-26 s (slower and steady with Reduced flashing), and lit posters (a shop's sign, a sale, a menu, a product), turned toward the runner as far as they fit the window. They draw with a small material of their own (one more surface in a chunk that has them), so no other zone or the web demo pays for them; frame times unchanged. Gangland's ruin TV and the Beach's bar TVs, not shop windows, are left as they were (item 991). Questions 986-992.
+
+## The Casino's intro (October 18, 2026)
+
+- [x] A new cinematic as the intro to the Casino zone, with a reference image of the casino's front
+  (`docs/art/reference/casino_brass_lotus.webp`): the runner pulls up to the casino in the violet car, gets out and looks up
+  the grand staircase, where the Chairman shakes hands with people and walks into the casino with two beautiful women, one
+  either side of him; then back to the runner and the Casino's title card. DONE: task F2j, `CasinoIntro` (GDD §6, "Casino
+  intro"); the staging choices are `docs/questions/f2j.md`.
+
+## The owner's batch (October 18, 2026, evening)
+
+- [x] **Shields stack like the armor** (GDD §8): four shields bought, yet one hit took the shield away. Verify, and if so, carry every shield in stock into the run, each blocking one hit. DONE (N3): verified — it was by design (FB 13, one breakable charge per attempt). Now every shield in stock (up to 5) comes into the run, each hit uses one shield and one stock, with the usual second of invulnerability; the HUD shows the count, the runner wears the shield until the last breaks, and the one-hit-from-death siren waits for the last shield. The grapple stays one per attempt. Question 1011 (a boss's granted shield on top of a stack).
+
+## Cosmetics: the owner's answers (October 18, 2026, items 979, 980, 982 and 985)
+
+- [x] **Buying an outfit doesn't lower net worth** (GDD §6, §8 Cosmetics; item 980): credits spent on cosmetics stay in the net-worth score, for old saves too. DONE (task M4): outfits spend earned credits first and those credits stay in net worth (`Profile.cosmetic_spent`); saves that already bought one get it back (capped at what they earned).
+- [x] **The shop shows a preview of each outfit** (GDD §8, Cosmetics; item 982): the runner wearing it on the cosmetic's card (or one preview for the focused card), in place of the jacket icon; it must work on phones and the Compatibility renderer. DONE (task M4): each card shows the runner in the outfit (a still), and the focused or hovered card a live, slowly turning preview; stills are drawn only when the Cosmetics section scrolls into view.

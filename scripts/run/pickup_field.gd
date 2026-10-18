@@ -78,6 +78,7 @@ func setup(p_world: RunWorld) -> void:
 	clear()
 	if world.loadout != null:
 		world.loadout.picked_up.clear()
+		world.loadout.granted_used.clear()
 	_query.shape = _box
 	_query.collide_with_areas = true
 	_query.collide_with_bodies = false

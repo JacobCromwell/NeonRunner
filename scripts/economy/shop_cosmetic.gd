@@ -10,7 +10,7 @@ var description: String = ""
 ## Credits. The default look (Razor Echo's own) is free.
 ## One price on every platform (the owner, October 18, 2026; `docs/OPEN_QUESTIONS*.md` item 985).
 var price: int = 0
-## The outfit's main colour: the card's icon, and the tint of an outfit whose look isn't built yet
+## The outfit's main colour: the tint of an outfit whose look isn't built yet
 ## (PlayerOutfits.placeholder_parts).
 var color: Color = Color(0.6, 0.6, 0.65)
 
