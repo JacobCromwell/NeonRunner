@@ -13,14 +13,8 @@ request that is now in the done file.
 
 - [ ] **A weekly challenge with a leaderboard** (GDD §6, Replay features, "Weekly challenge"): one fixed level a week, the same for everyone; five lanes on PC and mobile alike; one board for PC and one for mobile; a uniform kit (Armor IV and Juggernaut dash IV, no other shop items); a payout equal to a middle-of-the-road level's, and a place on the board; the top three earn the Leader of the Pack cosmetic (to be designed, `docs/OPEN_QUESTIONS.md` item 977); no anti-cheat for now; unlimited attempts, never gated behind ads. Seeds from a shipped list checked by the fairness tests; credits for the week's first clear only. Unlocks after the Neon City's boss; the weeks rotate through the zones, always at the Golden Zone's difficulty (a zone's own enemies and obstacles at the Golden Zone's density). Not in the web demo.
 
-## Cosmetics: the owner's answers (October 18, 2026, items 979, 980, 982 and 985)
-
-- [ ] **Buying an outfit doesn't lower net worth** (GDD §6, §8 Cosmetics; item 980): credits spent on cosmetics stay in the net-worth score, for old saves too.
-- [ ] **The shop shows a preview of each outfit** (GDD §8, Cosmetics; item 982): the runner wearing it on the cosmetic's card (or one preview for the focused card), in place of the jacket icon; it must work on phones and the Compatibility renderer.
-
 ## The owner's batch (October 18, 2026, evening)
 
 - [ ] **The treasure stash harder to dash into** (GDD §3, Ceiling scenarios): a dash from the floor gets into the stash. Add a second doodad in front of the first in the stash's lane, with a space between them ("doodad, space, doodad, then the treasure"), so a floor runner can still get in but it's harder.
 - [ ] **Stars that can be earned** (GDD §4, §5 the Beach, §10): some levels may not allow three stars, at least the volleyball match (Beach 2) and perhaps the Beach's boss. The volleyball match's stars by how the match went, not how fast: 4 points to the rival's 0 is three stars, one point or none is one star, anything in between two stars. Check every level and boss and say where three stars can't be earned.
-- [ ] **Shields stack like the armor** (GDD §8): four shields bought, yet one hit took the shield away. Verify, and if so, carry every shield in stock into the run, each blocking one hit.
 - [ ] **The Golden Convergence's sound less cheery** (GDD §10): a series of bassy trumpets, triumphant but in a deeper register; when the final trumpet sounds, it morphs into a distorted reverb.

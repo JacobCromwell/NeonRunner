@@ -66,7 +66,7 @@ tune after playtesting, later design rounds, and every item from build phase 2).
 | FB 8 | Credit denominations: look, colours, sound | 3 |
 | FB 9 | Credit placement (trails, risky-spot big credits) | 1 |
 | FB 12 | Purchases spend bought credits first | 1 |
-| FB 13 | One breakable charge per attempt | 1 |
+| FB 13 | One breakable charge per attempt (superseded for the shield on October 18, 2026: shields stack, GDD §8) | 1 |
 | FB 16 | Revives: one per attempt, 2 s invulnerability | 1 |
 | FB 17 | Juggernaut dash: duration/cooldown/speed, passes every hazard but falls | 3 |
 | FB 18 | Grapple hook pull velocity | 1 |

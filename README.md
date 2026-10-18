@@ -481,9 +481,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
   wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 300 / 450 / 600 /
   700 credits (the first card in the shop) and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
-  (an item, or a rewarded ad on mobile). Net worth has its own leaderboard. After the items, the shop's
-  Cosmetics section sells outfits for Razor Echo, each bought once with credits and kept (Rex 3,000, Camo 3,000, Beach
-  Master, Centurion and Party Wolf 5,000 for now, until the ways of winning them are designed); the player picks one to wear,
+  (an item, or a rewarded ad on mobile). Net worth has its own leaderboard; credits spent on outfits don't lower it. After the
+  items, the shop's Cosmetics section sells outfits for Razor Echo, each bought once with credits and kept (Rex 3,000, Camo
+  3,000, Beach Master, Centurion and Party Wolf 5,000 for now, until the ways of winning them are designed), each card showing
+  the runner in the outfit (running and turning on the card under the pointer or the focus); the player picks one to wear,
   Echo's own look is the free default, and an outfit shows in every run and cinematic and never changes how the game plays
   (`docs/architecture/characters-ui-audio.md`, "The runner's outfits"; `docs/architecture/economy-platforms.md`).
 - **Campaign density:** more enemies and obstacles, with measured danger gains of about 17-18% in
@@ -680,6 +681,12 @@ screens and posters (task L10) up close, in the Marketplace's or the Casino's lo
 `--flash=S` to bring the cult emblem's flash into a short render, `--reduced`, `--skin=casino`; `skin_review`'s shots 18-21
 show the first window with each in the street). `tools/measure/first_draw_time.gd` times a material's first draw, which is where the
 Compatibility renderer compiles its shader (the solid kit's, or `--display` the shop windows'; its header says how to run it).
+
+`tools/measure/shop_preview_cost.gd` measures what the shop's outfit previews cost (task M4): the shop's frame times and draw
+calls with every preview a still, with one live (the card the pointer is on), and with all six live for scale, and how long the
+shop takes to open the first time and again; it needs a real renderer, software or not, and a run on main beside it:
+`xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --resolution 1280x720 [--rendering-method gl_compatibility]
+res://tools/measure/shop_preview_cost.tscn -- [--frames=120] [--phone] [--build-times]`.
 
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the

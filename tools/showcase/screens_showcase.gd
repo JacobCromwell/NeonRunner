@@ -21,7 +21,9 @@ extends Node
 ## pixels, a page shown smaller than its own, like itch.io's 960x540 frame shrunk to the phone's width: `--resolution
 ## 960x540 ... -- --phone --screen-size=667x375`; and --insets=l,t,r,b, the page's safe-area insets in the page's
 ## pixels, for a notch: `--insets=47,0,47,21`), --flavor=web_demo (read by App), --scroll-end (scrolls the
-## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
+## screen's list to its end), --focus-outfit=<id> (the shop only: the focus goes to that outfit's card, so its
+## preview runs and turns), --hover-outfit=<id>[:button] (the shop only: a mouse motion event over that card's
+## description, or its button with :button, so the preview runs as it does for a real pointer), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
 
 var main: Node
@@ -70,10 +72,18 @@ func _ready() -> void:
 		elif arg.begins_with("--wait="):
 			wait = int(arg.get_slice("=", 1))
 	await _open(screen)
+	for arg: String in args:
+		if arg.begins_with("--focus-outfit=") and App.screen is ShopScreen:
+			var card: CosmeticCard = (App.screen as ShopScreen).cosmetic_cards.get(StringName(arg.get_slice("=", 1)))
+			if card != null:
+				card.action_button.grab_focus()
 	if args.has("--scroll-end"):
 		await get_tree().process_frame
 		for node: Node in App.screen.find_children("*", "ScrollContainer", true, false):
 			(node as ScrollContainer).scroll_vertical = 100000
+	for arg: String in args:
+		if arg.begins_with("--hover-outfit=") and App.screen is ShopScreen:
+			await _hover_outfit(arg.get_slice("=", 1))
 	for arg: String in args:
 		if arg.begins_with("--shot="):
 			_screenshot(arg.get_slice("=", 1), wait)
@@ -222,6 +232,21 @@ func _boss(screen: String) -> void:
 					encounter.damage(encounter.max_health, &"showcase")
 				await get_tree().physics_frame
 			await _seconds(LevelRun.COMPLETE_PAUSE + 1.0)
+
+
+## A mouse motion over the shop's card for `spec` ("camo", or "camo:button" to land on its button).
+func _hover_outfit(spec: String) -> void:
+	var card: CosmeticCard = (App.screen as ShopScreen).cosmetic_cards.get(StringName(spec.get_slice(":", 0)))
+	if card == null:
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var target: Control = card.action_button if spec.ends_with(":button") else card.description_label
+	var motion := InputEventMouseMotion.new()
+	motion.position = target.get_global_rect().get_center()
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await get_tree().process_frame
 
 
 func _seconds(seconds: float) -> void:
