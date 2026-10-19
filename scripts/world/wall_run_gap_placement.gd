@@ -565,15 +565,15 @@ static func pad_skip(gen: LevelGenerator, kept: Vector2, pad_ceiling_seconds: fl
 
 
 ## How much of the track from `from` to `to` an anti-grav pad schedule skips for `gen`'s layout's extended wall runs
-## (pad_skip of each one's kept_of lying wholly inside): what a gap between two pads there counts without.
+## (as much of each one's pad_skip of its kept_of as lies inside): what a gap between two pads there, or between a pad
+## and a Bad Dream chase's end, counts without.
 static func pad_skips_between(gen: LevelGenerator, from: float, to: float, pad_ceiling_seconds: float) -> float:
 	var out: float = 0.0
 	for w: Dictionary in gen.layout.wall_run_gaps:
 		if runs_of(w) < 2:
 			continue
 		var skip: Vector2 = pad_skip(gen, kept_of(gen, w), pad_ceiling_seconds)
-		if skip.x >= from - EPSILON and skip.y <= to + EPSILON:
-			out += skip.y - skip.x
+		out += maxf(minf(skip.y, to) - maxf(skip.x, from), 0.0)
 	return out
 
 
