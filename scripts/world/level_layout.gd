@@ -269,7 +269,13 @@ func wall_run_between(from: float, to: float) -> bool:
 func wall_run_guides(side: int, from: float, to: float) -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	for w: Dictionary in wall_run_gaps:
-		if not WallRunGapPlacement.sides_of(w).has(side) or float(w["entry"]) >= to or float(w["end"]) <= from:
+		if float(w["entry"]) >= to or float(w["end"]) <= from:
+			continue
+		if not w.has("runs"):
+			if int(w["side"]) == side:
+				out.append(Vector3(float(w["entry"]), float(w["start"]), float(w["end"])))
+			continue
+		if not WallRunGapPlacement.sides_of(w).has(side):
 			continue
 		for c: Vector3 in WallRunGapPlacement.crossings_of(w):
 			if c.x < to and c.z > from:
