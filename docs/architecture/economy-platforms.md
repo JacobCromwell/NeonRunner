@@ -433,8 +433,8 @@ window or a portal's frame (`html/canvas_resize_policy` adaptive). `tools/godot.
   throws; `test_web_demo` keeps the script in the preset). Godot itself resumes the AudioContext on a
   touch's start and end, a key and a mouse press (`DisplayServerWeb`), which iOS accepts at `touchend`. What
   only a real iPhone can say: that Safari applies the type to Web Audio (the likeliest cause of a silent
-  phone), and how the demo's memory fares on an older one (a track is held decoded: Characters, UI and
-  audio, Audio, On the web). An iPad that asks for desktop sites reports a Mac, so Godot's `web_ios` tag, and
+  phone), and whether the streamed music keeps up on an older one (Characters, UI and audio, Audio, On the
+  web). An iPad that asks for desktop sites reports a Mac, so Godot's `web_ios` tag, and
   with it `DeviceProfile.is_mobile()`, is false there: it gets the desktop layout.
 - *Touch words:* `DeviceProfile.has_touch()` means a phone, a tablet or a real touch screen. The project lets
   the mouse stand in for touch (`input_devices/pointing/emulate_touch_from_mouse`), which makes

@@ -89,6 +89,12 @@ func play(track: StringName, fade: float = 1.0) -> void:
 		voice.player.name = "Track_%s" % track
 		voice.player.stream = stream
 		voice.player.bus = MusicLibrary.BUS
+		# A stream, on the web too (whose default is "sample": the whole song decoded into the browser's memory when
+		# it starts, 52 MB for Zone 1's, a stop of the page while it decodes, and a full copy at every loop). Native
+		# builds stream already. On the web the engine mixes it on the page's one thread, so it plays from a buffer
+		# (project.godot, audio/driver/output_latency.web) that rides out a slow frame; the owner chose streaming over
+		# shorter songs (item 828, October 19, 2026). Sound effects stay samples: short, and played at once.
+		voice.player.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 		add_child(voice.player)
 		_voices.append(voice)
 		started = true

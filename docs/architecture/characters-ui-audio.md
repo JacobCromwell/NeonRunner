@@ -242,16 +242,20 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
       rolling in (a double pulse's second wave has only this), with no pitched hum under the crash.
     - *Shot down in its warning,* a Resonator cuts the sound off before its crash (`PlayerSfx.stop()`):
       with no wave coming, the crash must not land.
-  - **On the web** (task I3; `docs/architecture/economy-platforms.md`, The web demo): every `AudioStreamPlayer`
-    plays with Godot's web default, "Sample" (`audio/general/default_playback_type.web`), so music and effects
-    both go through the browser's Web Audio, not the engine's own mixer. Three things follow. *The silent
-    switch:* Safari mutes Web Audio while an iPhone's ring/silent switch is on (a video isn't muted), so the web
-    preset's head include sets `navigator.audioSession.type = 'playback'` (guarded; the demo then plays through
-    the switch). *Memory:* a sample is a whole decoded track (`AudioDriverWeb::register_sample` decodes it in
-    one go on the page's thread), kept as 32-bit stereo: the Zone 1 song is 52 MB, the Boss 1 song 60 MB, and
-    Godot's web audio code copies a sample's buffer again each time it starts. *Effects:* Music bus effects
-    don't apply to samples, so the death dip's low-pass (`MusicDirector.dip_filter`) is silent on the web;
-    only its volume dip is heard. Playing music as a stream would change all three (`docs/OPEN_QUESTIONS.md` item 828).
+  - **On the web** (task I3; `docs/architecture/economy-platforms.md`, The web demo): sound effects play with
+    Godot's web default, "Sample" (`audio/general/default_playback_type.web`): each a short buffer the browser's Web
+    Audio plays at once. **Music streams** (`MusicDirector.play()` sets every music player's `playback_type` to
+    Stream; the owner's choice over shorter songs, item 828, October 19, 2026). As a sample a song was decoded whole
+    on the page's thread when it first played (`AudioDriverWeb::register_sample`, at the output's rate whatever the
+    file's bitrate: the Zone 1 song 52 MB, the Boss 1 song 60 MB, twice while it started, a full copy at every
+    loop, never freed): City 1's start added about 250 MB to the tab and stopped the page while it decoded. A stream
+    is decoded as it plays, but without threads the engine mixes it on the page's thread, into a buffer the browser
+    plays from: `audio/driver/output_latency.web` (150 ms, project.godot; the engine's default is 50) rides out a
+    slow frame, and a freeze longer than that is a gap in the music. The death dip's low-pass
+    (`MusicDirector.dip_filter`, a Music bus effect) works on the web now; bus effects don't apply to samples.
+    *The silent switch:* Safari mutes Web Audio, streams and samples alike, while an iPhone's ring/silent switch is
+    on (a video isn't muted), so the web preset's head include sets `navigator.audioSession.type = 'playback'`
+    (guarded; the demo then plays through the switch).
 
 ## The runner's outfits (cosmetics)
 

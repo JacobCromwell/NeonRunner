@@ -1654,3 +1654,21 @@ Captain Cogs).
 
    **Answered (owner, October 18, 2026):** agreed: the week turns over at Monday 00:00 UTC, and week 0 opens October 19,
    2026. Recorded in GDD §6 (Weekly challenge); the placeholder stands as built.
+
+**I3, sound on an iPhone** (from `docs/questions/i3.md`; the batch of October 14, 2026)
+828. **Should the web demo's music be played as a stream, or lighter, on phones?** (GDD §11; §2, the web demo.) On the
+    web Godot plays every sound as a "sample" by default: a song is decoded whole when it first plays and kept raw
+    (the Zone 1 song 52 MB, the Boss 1 song 60 MB, copied again each time it starts), and decoding stops the game's one
+    thread (0.3 s on a desktop, likely 1–3 s on a phone). A phone short of memory could drop the music or reload the
+    page, a second possible cause of the playtester's silent iPhone (item 827, the silent switch, is the likelier).
+    "Stream" playback (music only) has none of that memory and makes the death dip's low-pass work on the web, but
+    without threads it mixes on the page's thread, so a phone under about 20 fps could crackle. A third way: smaller
+    songs for the web build (mono, or 22 kHz). It needs a try on a real iPhone. Placeholder: none; music stays as samples.
+   **Answered (owner, October 19, 2026):** stream it; don't shorten the songs. After the itch.io playtest (long loads,
+   an Edge crash on a low-end laptop) a measurement in Chromium found each song held decoded at the output rate whatever
+   its file's bitrate (about 0.34 MB a second of song, twice while it starts), City 1's start adding about 250 MB and a
+   decode that stopped the page, and a full copy at every loop. Every music player now streams (`MusicDirector.play()`),
+   from a 150 ms web buffer (`audio/driver/output_latency.web`, project.godot) that rides out a slow frame; sound effects
+   stay samples. In Chromium the browser tab held about 250 MB less at City 1's start, with no decode stop. What only
+   a real device can say: whether the music stutters in a long frame on a slow phone or laptop (a load's freeze longer than
+   the buffer is a gap). The death dip's low-pass, a Music bus effect, now works on the web too. Not a design change.

@@ -26,7 +26,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
 | Item | Question |
 |---|---|
 | 766 | Ceilings in the levels are too safe (owner, October 10, 2026): should a level keep at least one safe lane where a ceiling ends, and leave the rest free to hold gaps, hazards or enemies? A change to the generator's rules (GDD §3, Safe landing zone). |
-| 828 | The web demo's music on phones: keep it as samples (about 52–60 MB a song in memory, a stop of 0.3–3 s when one starts), stream it (no memory cost, but it may crackle on a slow phone), or ship lighter songs for the web? Needs a try on a real iPhone. |
 | 837 | No treasure stash on 3 or 4 lanes (since October 18, 2026 no platform runs 3, so it matters only if one goes back), so phone players never see one (the owner's shape would wall every floor lane on 3). Keep, or an outer-lane stash walled by the side wall, or a shorter one? |
 | 838 | GDD §3 calls the return pad the only way into a stash, but the dash smashes in and a wall-jump can land on a stash wall and step down. Allow both as skill routes, or block them? |
 | 848 | The economy's payouts: held at 100 + 25 a level and a flat 500 per boss (77% of a City 3 finish, 46% of a Dead Zone 1 finish) while I7 re-placed the prices. Change them, or keep them? |
@@ -42,16 +41,6 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
     way too safe", to be revisited for the game itself). In the Beach's boss fight one safe place to drop to is enough.
     Should the levels follow: at least one safe lane where a ceiling ends, and the rest free to hold gaps, hazards or
     enemies? It is a change to the level generator's rules (a core task), so it waits for the owner's word.
-
-**I3, sound on an iPhone** (from `docs/questions/i3.md`; the batch of October 14, 2026)
-828. **Should the web demo's music be played as a stream, or lighter, on phones?** (GDD §11; §2, the web demo.) On the
-    web Godot plays every sound as a "sample" by default: a song is decoded whole when it first plays and kept raw
-    (the Zone 1 song 52 MB, the Boss 1 song 60 MB, copied again each time it starts), and decoding stops the game's one
-    thread (0.3 s on a desktop, likely 1–3 s on a phone). A phone short of memory could drop the music or reload the
-    page, a second possible cause of the playtester's silent iPhone (item 827, the silent switch, is the likelier).
-    "Stream" playback (music only) has none of that memory and makes the death dip's low-pass work on the web, but
-    without threads it mixes on the page's thread, so a phone under about 20 fps could crackle. A third way: smaller
-    songs for the web build (mono, or 22 kHz). It needs a try on a real iPhone. Placeholder: none; music stays as samples.
 
 **I4, ceiling scenarios** (from `docs/questions/i4.md`; GDD §3, "Ceiling scenarios"; numbers in `data/tuning/ceiling_scenarios.tres`, F6 "Ceiling scenarios", or the level data)
 837. **No treasure stash on 3 or 4 lanes.** The owner's shape (a doodad across the stash's lane, doodads in both

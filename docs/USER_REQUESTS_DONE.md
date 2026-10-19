@@ -351,3 +351,8 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   skins (campaign load at start 1.3 s to 0.15 s on a desktop, on every platform). Left for the owner: the web
   music as streams or shorter (item 828; each song is held decoded, 52 MB for Zone 1's, about 250 MB more memory
   at a level's start), a shader warm-up spread over frames, a low-graphics setting.
+- [x] **Stream the web demo's music; keep the songs whole** (the owner, October 19, 2026; item 828). DONE: every music
+  player streams (`MusicDirector.play()`) from a 150 ms web audio buffer (`audio/driver/output_latency.web`); sound
+  effects stay samples. In Chromium no song is decoded whole any more (City 1's start about 250 MB lighter, no decode
+  stop) and the music streams at its full level. Whether it stutters in a long frame on a slow phone or laptop needs a
+  listen on one.
