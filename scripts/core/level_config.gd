@@ -145,7 +145,9 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 			_skin = load(skin_path) as ZoneSkin
 		return _skin
 	set(value):
+		# Setting it replaces the path too (null: no skin of its own), as a plain property would.
 		_skin = value
+		skin_path = value.resource_path if value != null else ""
 ## Where the level's own skin is, loaded on first use (ZoneDef.skin_path says why the data names a skin by its path).
 @export_file("*.tres") var skin_path: String = ""
 var _skin: ZoneSkin

@@ -17,7 +17,9 @@ extends Resource
 			_skin = load(skin_path) as ZoneSkin
 		return _skin
 	set(value):
+		# Setting it replaces the path too (null: no skin of its own), as a plain property would.
 		_skin = value
+		skin_path = value.resource_path if value != null else ""
 ## Where the zone's skin is. The data names skins by path, not as a loaded resource: the campaign loads every
 ## zone at start, and loading a skin compiles its scripts (0.1 to 0.3 s each on a desktop, several times that
 ## in a browser or on a phone), so only the skins of the zones a player reaches are loaded, when they're needed

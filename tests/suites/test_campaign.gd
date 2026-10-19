@@ -756,7 +756,9 @@ func _test_skins(campaign: Campaign) -> void:
 	check(lazy.skin is GreyboxSkin and lazy.skin == load(lazy.skin_path), "a zone's skin loads from its skin_path when first read")
 	var assigned := GreyboxSkin.new()
 	lazy.skin = assigned
-	check(lazy.skin == assigned, "and a skin set in code wins over the path")
+	check(lazy.skin == assigned and lazy.skin_path == "", "and a skin set in code wins over the path")
+	lazy.skin = null
+	check(lazy.skin == null, "and setting it to null leaves the zone without one, as before skins were named by path")
 	for s: CampaignStep in campaign.steps():
 		if s.is_level():
 			var config: LevelConfig = campaign.configure(s, 3)
