@@ -237,6 +237,10 @@ func _test_music_api() -> void:
 	check(music.current() == &"city" and is_equal_approx(music.fade_level(&"city"), 1.0), "play() with no fade starts at full level")
 	check(players.size() == 1 and players[0].bus == MusicLibrary.BUS and players[0].stream != null, "music plays on the Music bus")
 	check(players.size() == 1 and not players[0].playing, "headless runs never start a player")
+	check(players.size() == 1 and players[0].playback_type == AudioServer.PLAYBACK_TYPE_STREAM,
+		"music plays as a stream, on the web too (not a sample decoded whole into the browser's memory; item 828)")
+	check(int(ProjectSettings.get_setting("audio/driver/output_latency.web", 0)) >= 100,
+		"the web's audio buffer rides out a slow frame (the music streams from it, mixed on the page's one thread)")
 	music.play(&"city")
 	check(_players(music).size() == 1 and is_equal_approx(music.fade_level(&"city"), 1.0), "play() of the playing track does nothing")
 
