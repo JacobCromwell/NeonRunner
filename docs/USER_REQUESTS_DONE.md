@@ -356,3 +356,15 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   effects stay samples. In Chromium no song is decoded whole any more (City 1's start about 250 MB lighter, no decode
   stop) and the music streams at its full level. Whether it stutters in a long frame on a slow phone or laptop needs a
   listen on one.
+
+## Extended wall runs in The Hush (October 19, 2026)
+
+- [x] **Three sections in the Dead Zone's second level where the extended wall run is required**, double and triple
+  wide: a double as long as two standard wall runs with one small platform (a little area of the ground lane) to land
+  on and recharge the wall run before starting again straight away; a triple as long as three with two, for players who
+  don't know the wall hop; the platforms small and by the wall; one section with a wall and platforms on both sides,
+  the others with a wall on one side only and its platforms on that side, so the player has to look ahead to pick the
+  right side. DONE (O1): The Hush has a double with both walls, then a double and a triple with one wall each (on a
+  seeded side, the other wall open over the crossing). Each hole is an ordinary wall-run gap's; each platform is about
+  1.2 s of run in the outer lane by the lit wall, its last half second the place to step back on. Every build at 3, 5
+  and 6 lanes has all three. Questions in `docs/questions/o1.md`.

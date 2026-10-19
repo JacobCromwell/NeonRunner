@@ -984,6 +984,50 @@ stretch is readable without the guide. Where the guide is shown it is by default
 (where to step on) and a strip at running height over the gap, streaming ahead, never in a hazard colour, never
 flickering (Reduced flashing leaves it as it is). Visual only, no collision.
 
+**Extended wall runs** (task O1; the owner, October 19, 2026, GDD §3 "Extended wall runs in The Hush": three sections
+in The Hush that take a double or a triple wall run, a small platform by the wall between two to recharge on, one with
+both walls and the others with one). `LevelConfig.extended_wall_runs` lists them, `[{runs, walls}]` in the level's order
+(`runs` 2 or 3, `walls` "one" or "both"); only `data/levels/dead_zone_2.tres` has any (a double with both walls, a
+double and a triple with one), endless mode leaves them out (`App.start_endless`) and the weekly challenge takes Sentinel
+Row's (none: `GOLDEN_FIELDS`). Every level without them is built exactly as before. DESIGN-TBD (`docs/questions/o1.md`).
+- **Its shape** (`WallRunGapPlacement.shape_for(..., runs)`, `Shape.runs`, `platform`, `span()`): the ordinary run-in,
+  lit stretch and landing floor, and between them `runs` holes, each an ordinary wall-run gap's (a standard wall run less
+  the lit stretch and the exit margin), with a platform between two: as long as the latest standard wall run over the hole
+  before it takes to drop the runner on it (`platform_seconds`: `latest_drop_seconds` plus
+  `WallRunGapTuning.platform_slack_seconds`, about 1.2 s of run), whose last `entry_window_seconds` is the stretch to step
+  back onto the wall from, so each run is an ordinary crossing from there (`crossings_of`: `Vector3(from, to, over)` for
+  each). From the lit stretch to the far edge a double is 2.2 standard wall runs, a triple 3.3. Its entry keeps `runs`,
+  `sides` (its lit walls) and `platforms` (`{start, end}`); its holes are every lane's `[start, end]` but in the outer lane
+  by each lit wall, cut between the platforms (`lane_holes`, `holes_of`, `_set_holes`). With one lit wall the other wall
+  opens over its crossing, from its run-in to its far edge (`open_wall_of`; `WallGapPlacement.place` adds it to the
+  level's wall gaps after its own), so the runner reads from the run-in which way to go. Its walls (`wall_path`: both, from
+  `wall_clear_seconds` before its run-in) keep everything wall-side off, as an ordinary one's lit wall does
+  (`wall_keep_outs_for`, `on_wall_section`). `problem()` checks its shape, its platforms, its holes lane by lane, both
+  walls but its own open one. Guides (`LevelLayout.wall_run_guides`) are drawn for each wall run on each lit wall; the
+  Dead Zone's skin draws none.
+- **Room for it**: The Hush leaves no 7 to 10 s stretch free once the rules have planned (hosts, drone pads every 8 to 10 s,
+  hover truck stays, Octodog charges, Enforcer Truck chases), so the pattern pass keeps its stretch (`Shape.kept`: its
+  clear stretch and its walls', `RESERVE_MARGIN_SECONDS` more; `WallRunGapPlacement.extended_plan`,
+  `LevelGenerator.extended_wall_run_reserve`). Each is due at a seeded spot early in its share of the level
+  (`rng_for("extended_wall_runs")`), kept at the first spot from there that nothing placed before reaches, min_spacing_seconds
+  from the one before; patterns whose pieces or enemies reach into a kept stretch, or past their own end once one is due,
+  are taken back and the cursor moves on `EXTENDED_SKIP_SECONDS` (`_pattern_reach`: each enemy's keep-out and floor, a
+  hover truck's whole stay and the ramp it gets, a cyborg's margin, ceilings' landing zones, ramps' wall runs). The rules
+  keep off it: no ceiling, pad or landing zone (`add_hull_with_pad`), no floor cut (`cut_problem`), no Octodog charge
+  (its rules count it with the Bad Dream's chases), no hover truck stays over it (`HoverTruckRules._in_extended`), no
+  Enforcer Truck chases into it before its showing (`EnforcerRules._arrival_order`, `_option`), no guaranteed host stands
+  in it, and the dash walls' introduction and the Gilded Sentinels keep off it (`wall_run_gaps_rules.doodad_keep_outs`,
+  before the pass). A drone's pad schedule and a Bad Dream chase's pads skip it (`pad_skip`: the stretch with a pad's
+  run-up and its ceiling's landing): the gap that holds it counts without it (`pad_skips_between`; `LayoutChecks`,
+  `test_bad_dream`, `tools/measure/host_watch.gd` count the same), as both hold their attacks over a crossing
+  (`Drone._wall_run_in_reach`, `BadDream._wall_run_in_reach`). `_place_extended` then places each just where it was
+  kept, before the level's ordinary wall-run gaps (which fit around them; a level with extended ones needs no ordinary
+  one), and it never gives way (`set_aside`). Over the campaign's seed and four more at 3, 5 and 6 lanes, every build has
+  all three with no warning, in 2 to 8 builds of the guarantee (1 to 5 before).
+- **At run time**: a crossing is `approach` to `end`, so the attacks that hold off for one hold off for the whole
+  section. The grapple's save and a revive over a hole put the runner on the lit wall nearer them (`grapple_save`) and
+  leave the wall where the next platform's stretch to step back on begins, or over the landing floor after the last.
+
 **Wall-hop credits** (task N1; GDD §7, "Wall-hop credits", the owner, October 9, 2026: "some long walls carry high-value
 credits further along than one wall run reaches, so only a player inventive enough to wall hop collects them"; the wall
 hop itself, GDD §3, is the Player's and nothing here touches it). `WallHopPlacement` (`scripts/world/`) runs in the
