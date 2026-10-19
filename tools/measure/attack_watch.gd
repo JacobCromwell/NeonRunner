@@ -290,7 +290,7 @@ func charges() -> int:
 
 
 ## Resonators that came to pace the player and never pulsed (none should: GDD §9's turns never
-## starve one, Resonator.turn_wait_max).
+## starve one, ResonatorTuning.first_pulse_wait_max).
 func resonators_without_a_pulse() -> int:
 	var n: int = 0
 	for key: int in resonator_pulses:

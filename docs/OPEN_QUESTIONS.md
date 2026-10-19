@@ -16,7 +16,7 @@ To find a cited item, search the three files: `grep -n "^628\. " docs/OPEN_QUEST
 no prefix; "GB n" and "FB n" are in their own sections). **Don't read these files whole.**
 
 **New questions** from a task go in `docs/questions/<task-id>.md` (see `CLAUDE.md`). When the task merges, the
-orchestrator gives each one the next free number (**1012** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3 and N3, so far; raise it here when you use one) and files it
+orchestrator gives each one the next free number (**1042** after task E5e, I1–I9, F2e, E5e-g, J2, J3, K1, K2, K3, F2g, F2h, L1, L4, L5, L2, L3, F2i, L9, L7 and L6, the weekly challenge's design session, M1, L10, M2, M3, N3, N2, N4, N1 and N5, so far; raise it here when you use one) and files it
 here only if work waits on it or its placeholder will be costly to change later; otherwise in
 `docs/OPEN_QUESTIONS_DEFERRED.md`. When the owner answers an item, record the answer in the GDD and move the item
 to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
@@ -61,8 +61,10 @@ to `docs/OPEN_QUESTIONS_ANSWERED.md` with the answer.
   lane 3 of 5, lane 3 or 4 of 6; none on 3 lanes (mobile's count until October 18, 2026, when the owner set it to 5 like PC). Alternatives: an outermost-lane stash walled on one side by
   doodads and on the other by the side wall (with a sign along it, so no wall run drops in), or a shorter stash.
 838. **Other ways into a stash.** GDD §3 calls the return pad "the only way in".
-  **Placeholder (nothing blocks these):** the dash (H5) smashes the doodad across the stash's lane and runs in
-  (test_ceiling_scenarios checks it does); proposed: keep, as the dash's reward. A floor runner can't jump a doodad
+  **Placeholder (nothing blocks these):** the dash (H5) smashes the doodad across the stash's lane and runs in;
+  **since October 18, 2026 (owner; task N1) the stash's lane has a second doodad in front, a dash's carry apart**, so one
+  dash never smashes both (test_ceiling_scenarios checks it), and a floor runner gets in only the harder way, around the
+  outer doodad and then a dash through the front one (item 1018). A floor runner can't jump a doodad
   (2.6 m tall, a jump's feet reach 1.6 m) and is pushed out of the stash's lane at its front and out of its walls'
   lanes alongside, and no magnet reaches a stash's credits from the floor: they lie past the top tier's pull from
   wherever a runner is still close enough beside the stash to pull from (`treasure_stash_rules.gd`, `magnet_reach`;

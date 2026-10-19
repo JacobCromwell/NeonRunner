@@ -93,7 +93,9 @@ static func reopen() -> void:
 
 func _ask_quit() -> void:
 	var share: int = roundi((App.rules.death_credit_keep_fraction if App.rules != null else 0.0) * 100.0)
-	_quit_dialog = ConfirmDialog.ask(self, "QUIT THIS RUN?",
-		"You'll keep %d%% of the credits picked up in this run, like a death." % share,
-		"QUIT", "KEEP PLAYING", true)
+	var weekly: bool = App.run != null and App.run.context != null and App.run.context.is_weekly()
+	# The weekly challenge pays only for the week's first clear (GDD §6), so there are no credits to keep.
+	var text: String = "This run won't count for the board, and the weekly challenge pays only for a clear." if weekly \
+		else "You'll keep %d%% of the credits picked up in this run, like a death." % share
+	_quit_dialog = ConfirmDialog.ask(self, "QUIT THIS RUN?", text, "QUIT", "KEEP PLAYING", true)
 	_quit_dialog.confirmed.connect(App.quit_run)

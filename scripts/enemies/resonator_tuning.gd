@@ -77,9 +77,16 @@ extends EnemyTuning
 ## the floor where its wave would meet the player isn't clear) waits and moves the visit's other
 ## pulses on with it. After this long waiting for other attacks in all (waiting for clear floor
 ## doesn't count) it drops its remaining pulses and leaves, but never before its first: a visit always
-## gets to pulse, unless the level ends first. A first pulse this long overdue (waiting for either)
-## keeps its place in the turn queue from then on, so it comes at the next clear floor.
+## gets to pulse, unless the level ends first (how soon a first pulse still owed keeps its place in the
+## turn queue: first_pulse_wait_max).
 @export_range(0.0, 30.0, 0.5, "suffix:s") var turn_wait_max: float = 8.0
+## DESIGN-TBD (docs/OPEN_QUESTIONS*.md item 350): a first pulse still owed
+## keeps its place in the director's turn queue once it has waited this long in all, for other attacks or
+## for clear floor (Resonator._first_overdue): it also asks while it waits for clear floor, so the other
+## types' next big attacks wait for it and it comes at the next clear floor. 0: as soon as it waits. It
+## was turn_wait_max (8 s) until task N1: a heli drone that stays took the turn in every stretch of clear
+## floor a Golden 1 visit had before then, and the visit left without a pulse.
+@export_range(0.0, 30.0, 0.5, "suffix:s") var first_pulse_wait_max: float = 0.0
 
 @export_group("Wave")
 ## DESIGN-TBD: the wave's speed along the floor toward the player (the player closes in at this plus

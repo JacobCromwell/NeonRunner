@@ -805,12 +805,26 @@ DESIGN-TBD throughout (items 836–845 in `docs/OPEN_QUESTIONS*.md`).
   `doodads` and `credits` entries marked `stash`): in an inner lane with inner lanes either side (`lanes_for`: none on
   3 or 4 lanes). Its return pad hangs in that lane `see_seconds` after the ceiling's rider arrives, as late as the
   ceiling allows, and the ceiling runs on `ceiling_after_seconds` past the stash. `stash_offsets` lays it out from the
-  return pad by the drop's physics: a doodad across its lane whose end the dropping rider clears, walls back to back
-  in both neighbouring lanes from `wall_overlap` before that one's end to past the last credit, pushing outward, and
-  2–3 credits of the highest denomination past where the rider lands and past the top magnet's reach from the floor
-  (`magnet_reach`: `CreditField.MAGNET_AHEAD` of the largest `PowerupTuning.magnet_radius`, from the walls' start,
-  as a floor runner the magnet reaches across from is short of them). Its floor (from the front doodad's push to the
-  level's spacing past its open end) holds nothing else in any lane; its holes and fences go. Its doodads join
+  return pad by the drop's physics: a doodad across its lane whose end the dropping rider clears (`front_size`, the
+  record's `front`), walls back to back in both neighbouring lanes from `wall_overlap` before that one's end to past
+  the last credit, pushing outward, and 2–3 credits of the highest denomination past where the rider lands and past
+  the top magnet's reach from the floor (`magnet_reach`: `CreditField.MAGNET_AHEAD` of the largest
+  `PowerupTuning.magnet_radius`, from the walls' start, as a floor runner the magnet reaches across from is short of
+  them). **A second doodad in front** (task N1; the owner, October 18, 2026: a dash from the floor got in, so "a
+  doodad, a space, then a second doodad, and then the treasure"): another across its lane (`outer_size`), the
+  stash's `start`, a space (`dash_space`) before the first: the most a dash that smashes it still carries the runner
+  past its end (`dash_carry`: the dash's 0.6 s at run speed plus its 8 m/s, the same at every tier, and the most a
+  speed pad's or a ramp's fading boost adds; a body's length, as the latest dash that smashes it steers into its side
+  beside its end; a frame; `outer_space_margin`): 23.1 m at the Casino's 23 m/s to 24.4 m at the Golden Zone's 25, a
+  second of run. So a dash at the stash ends in the space, short of the front doodad, which pushes as usual (a claim
+  needs the dash to reach a doodad before it ends, `Player._dash_claims`). The lanes beside the outer doodad and the
+  space stay open (DESIGN-TBD, items 1017-1024): a runner it pushes, or one whose dash ended in the space,
+  meets the front doodad's push with room for it; a floor runner still gets in the harder way the owner allowed,
+  around the outer doodad, into the space, then a dash through the front one. The longer floor (about 70 m, 3 s of
+  run) leaves a few builds without one: over the campaign's stash levels on their own and four more seeds at 5 and 6
+  lanes, 96 stashes in 110 builds (101 before), the Dead Zone's quiet stretches the most of it; fenced ceilings 62
+  in 100 (65). Its floor (from the outer doodad's push to the level's spacing past its open end) holds nothing else
+  in any lane; its holes and fences go. Its doodads join
   `layout.doodads` at once, so the rules after it see them; the zone doodads' look seeds count only zone doodads.
   Its credits count in a run's credits and score, never in the stars' best score (`LevelLayout.star_credit_value`,
   `ScoreKeeper.max_credit_score`; DESIGN-TBD item 9).
@@ -969,3 +983,61 @@ stretch is readable without the guide. Where the guide is shown it is by default
 (`ramp_color`, as the Floating Head's wall marks show a wall run), a tall, bright, framed panel over the lit stretch
 (where to step on) and a strip at running height over the gap, streaming ahead, never in a hazard colour, never
 flickering (Reduced flashing leaves it as it is). Visual only, no collision.
+
+**Wall-hop credits** (task N1; GDD §7, "Wall-hop credits", the owner, October 9, 2026: "some long walls carry high-value
+credits further along than one wall run reaches, so only a player inventive enough to wall hop collects them"; the wall
+hop itself, GDD §3, is the Player's and nothing here touches it). `WallHopPlacement` (`scripts/world/`) runs in the
+generator's credit pass after the ramps' wall-run credits, from `rng_for("wall_hops")`, so every other credit comes out
+as before; its numbers are `WallHopTuning`'s (`data/tuning/wall_hops.tres`, F6 "Wall-hop credits"), how many a level
+gets is `LevelConfig.wall_hop_lines` (1 from Gangland 1 on; 0 elsewhere, and such a level is built as before but for the
+line: `test_wall_hops`). `LevelLayout.wall_hops` holds `{side, entry, start, end, gems_from, gems_to}` (left out of
+`to_dict()` while empty); its credits are ordinary wall `credits` marked `WallHopPlacement.LEAD` and `GEM`. DESIGN-TBD
+throughout (items 1017-1024).
+- **The reference hopper** (`WallHopPath`, as `RampLaunch` predicts a ramp's run): steps onto the wall from the outer
+  lane at the line's entry and wall hops (jump, and back toward the wall `HOP_FRAMES` frames later) each time its run
+  has come down to `hop_height` (1.5 m). Each fresh run starts where it hopped, and the Player's air entry carries it to
+  `wall_entry_height` plus `wall_air_entry_factor` of that (3.16 m), where a run from the floor tops out at 2.2 m.
+  `test_wall_hops` holds its peaks to the real Player's within 0.1 m.
+- **The line** (`shape_for`): a lead-in (3 credits of 1, 0.3 s apart) along the first wall run, where to get on, then 3
+  credits of 25, 0.12 s apart, at `gem_height()`, 3.11 m: above the highest a fresh run reaches a pickup when its runner
+  never hops (`WallHopPath.fresh_top`: a step on from the floor, 2.2 m, or straight back on as a run drops its runner at
+  `wall_exit_height`, an air entry, 2.44 m; `pickup_reach`, the hitbox's half width and `CreditField.PICKUP_MARGIN`,
+  0.575 m; `gem_clearance` 0.1 m), together in the first of the reference hopper's fresh runs that passes within reach
+  of them past one wall run's reach (the standard run, 2.16 s, as the wall-run gaps measure it, and
+  `reach_margin_seconds`). At every zone's speed that is its third run, after two hops, 3.0 to 3.3 s after the entry:
+  one wall run reaches 47 m in Gangland and the high-value credits lie 66 to 71 m on (54 m, and 76 to 82 m, in the
+  Golden Zone). A single run with claws slides on to 69 m there, but 0.5 m up the wall where they pass, out of reach.
+  The stretch runs from `run_in_seconds` before the entry to where a runner who jumps off the wall at the last of them
+  comes down (`wall_jump_seconds`) and `landing_seconds` after that: 5 s of run, 109 m in Gangland to 125 m in the
+  Golden Zone.
+- **Where** (`busy_spans`, `place`): one side wall, inside the level's clear ends, whole (no side wall gap: GDD §7) and
+  clear of what stands on it (`LevelGenerator.wall_lane_keep_outs`: signs, wall enemies, ramps' runs, a wall-run gap's
+  lit wall, a dash wall's route, wall fences' drop windows and introductions, wall gaps, each `doodad_wall_clear_seconds`
+  either side; the wall fences themselves and other wall credits too); the outer lane's floor beside it clear (no hole,
+  fence, pad, speed pad, ramp, zone doodad within `DOODAD_WALL_CREDIT_MARGIN`, floor cut's lane window or ceiling fence:
+  nothing a hop carries a runner into, nor a stopped one comes down on); no enemy in that lane, no hover truck (from its
+  roof a step onto the wall starts high), nothing of `WALL_RUN_ATTACKERS`' keep-outs (a heli drone wave's arrival until
+  its first pad, an Enforcer Truck's; a Bad Dream's chase through the host rules' keep-out), no dash wall's footprint
+  and nothing the rules keep in every lane. Not kept off: a heli drone that stays past its first pad may still fire at a
+  wall hopper on the line (it holds its barrages for a wall-run gap's crossing only), after its warned wind-up, with the
+  clear outer lane below to jump off into. Among the entries that fit on either wall a seeded one (weighted by their room), up to the level's
+  count `min_gap_seconds` apart; none where none fits, sprinkled as a treasure stash is. `problem()` re-checks a
+  finished layout (`LayoutChecks.check_wall_hops`, part of `check_layout`).
+- **The stars**: the high-value credits are out of the stars' best score (`LevelLayout.star_credit_value`, as a treasure
+  stash's are), so three stars never ask for a move the game never asks for; collected, they count in the run's credits
+  and score. The economy's model takes them with the stashes' (`tools/measure/economy_model.gd`: optional credits a
+  typical player takes at its share and a weaker one doesn't).
+- **How many** (`tools/measure/wall_hops.gd`, the campaign's levels on their own seed and two more at 3, 5 and 6 lanes):
+  every Gangland build has one, the Marketplace 14 of 18, the Casino 15 of 18, Corporate 17 of 18, the Dead Zone 13 of
+  18, the Golden Zone 21 of 27 (its busiest builds leave no 5-second stretch): 107 of 126 outside the Beach, and none on
+  the Beach, whose open walls (task D10b) leave no whole wall longer than about 4 s. Of the campaign's own builds, 35 of
+  42 outside the Beach (`test_wall_hops`).
+- **On real physics** (`test_wall_hops`): the reference hopper takes every credit; a runner who keeps a lower rhythm
+  (hops at 0.6 or 1.0 m) takes none of the high-value ones on its own, but all three with one more hop 0.15 to 0.35 s
+  before them (a hop from high on the wall carries a runner over them); one wall run from the entry, plain or with claws,
+  takes the lead-in only; one who steps straight back on each time a run drops them, or onto the wall from the floor
+  further along, passes under them, with Magnet I too. The magnet leaves the high-value credits alone
+  (`CreditField._in_magnet`, DESIGN-TBD: Magnet I pulled all three down to a step on 2 to 19 m before them in Gangland
+  1). Not only a hopper reaches them: a jump onto the wall from the floor starts a run high enough, all three when it
+  starts 10 to 23 m before them in Gangland 1 (10 to 26 m in the Golden Zone), some of them from 4 to 29 m (DESIGN-TBD,
+  item 1020).

@@ -71,6 +71,7 @@ Options for testing (debug builds only, the same with `play.cmd`):
 | `--thief` | Quick play with stand-in thieves, one after another: a gold block that crosses the lanes and robs 25% of the run's credits from a runner who touches it (it doesn't kill, even without `--god`); catch it (stomp it, shoot it, dash or claw through it) for what it took plus a jackpot. The runner starts with 400 credits, so the first theft has something to take. A review aid for the Tithe Collector's mechanism; no level has one |
 | `--level=city/2` | A campaign level with the full game flow (also takes `--lanes`, `--god`, `--nofall`, `--full-loadout`). Any campaign step works: `--level=gangland/intro` plays Gangland's arrival flyover, then its first level, `--level=gangland/boss_intro` its boss intro (the swarm rising), then the Sewer Swarm, `--level=casino/1` the Casino's first level, and `--level=beach/1`, `beach/2` (the volleyball match) and `beach/3` the Beach's levels, `beach/boss` its boss (`tools/godot.sh smoke --level=beach/1` smoke-runs one) |
 | `--boss=test_boss` | A boss fight by its id: the test boss (or any boss outside the campaign) as quick play, starting over after a death or a win; a zone's boss (`city_boss`: the Floating Head; `dead_zone_boss`: the Sleep Taker; `casino_boss`: The House; `corporate_boss`: Hostile Takeover; `gangland_boss`: the Sewer Swarm; `golden_boss`: The Golden Convergence; `beach_boss`: Mecha Guppy and Captain Cogs) with the full game flow (a fight still being built plays as quick play). Takes `--lanes`, `--god`, `--nofall`, `--full-loadout`, `--skin=<zone>` and `--phase=N` (start at phase N, as a checkpoint would) |
+| `--weekly[=N]` | The weekly challenge (`docs/architecture/economy-platforms.md`, The weekly challenge): this week's level, or week N of its schedule (`--weekly=3` is Casino's; 0 is the Neon City's, then Gangland, Marketplace, ...), open whether or not the Floating Head is beaten and before week 0's date. Only `--god` and `--nofall` apply: `--lanes` and `--full-loadout` are ignored, since a weekly run keeps its five lanes and its uniform kit |
 | `--flavor=web_demo` | Behave like another build: `full_pc`, `full_mobile` or `web_demo` |
 | `--frame-graph` | Show the frame-time graph (F7, see Smooth frames) from the start of every run |
 
@@ -146,7 +147,9 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   14. Beach 2 *Net Gains*: a mini-game. A couple of seconds of run, then the runner walks up to a volleyball
       court on the open beach and plays a man in swim trunks: get under the ball (a ring marks where it comes
       down, a closing ring when to jump) and jump to hit it back. Three returns win a point, a miss loses one,
-      first to four; each point won pays 100 credits. Then the net sinks and the runner runs to the finish line.
+      first to four; each point won pays 100 credits. Its stars are by the match, not the time: 4 points to the
+      rival's 0 is three stars, one point or none one star, anything between two. Then the net sinks and the runner
+      runs to the finish line.
   15. Beach 3 *Sunset Strip*: Tiki Tides' remix as the sun starts to set. The Beach's levels sit between
       Corporate 2 and Dead Zone 1 in difficulty, off the campaign's curve, so no other level changed.
   16. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
@@ -201,7 +204,15 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   them (from Corporate, several pads, and you read which are which); and a treasure stash, a stretch of floor walled
   off by doodads with two or three of the richest credits inside, which you can't get into from the street: ride the
   ceiling above it and step on the downward-pointing pad in its lane to drop straight in (on 5 or 6 lanes; quick
-  play, `--features=ceilings,treasure_stash,fenced_ceiling --lanes=5 --difficulty=0.7`).
+  play, `--features=ceilings,treasure_stash,fenced_ceiling --lanes=5 --difficulty=0.7`). A doodad stands a space in
+  front of the stash's own (a second of run), so a dash at it from the street smashes the first and runs out short of
+  the second; the street way in is harder: around the first, into the space, then dash.
+  Wall-hop credits (from Gangland on, about once a level where a long, clear stretch of wall fits; the Beach's mostly
+  open walls leave none long enough): a line of credits leads along a side wall from where to step onto it, and three
+  high-value ones hang further along than one wall run reaches and higher than a step onto the wall from the floor
+  takes you; jump off the wall and straight back on (the wall hop) as they come near to reach them, or jump onto the
+  wall from the floor at the right spot. The magnet leaves them alone (in a campaign level, e.g.
+  `--level=gangland/1`).
 - **Enemies:**
   - cyborgs, with the panic variant and hosts; their laser firing sound is about 30% louder. Up to two
     bursts of the cyborgs, window cyborgs and Barnacle Turrets fly at once (`GameRules.max_bursts_in_air`,
@@ -270,7 +281,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 - **Bosses:** a framework for runner-style boss fights (GDD §10): the fight plays in the normal run on
   an arena track that keeps going for as long as it lasts, with the boss's health bar and phase
   markers on the HUD, weak points to stomp and weapon chip damage, a checkpoint for the final fight,
-  no time limit and no escalation, stars from par times, a payout, records and a leaderboard per
+  no time limit and no escalation, stars from par times (or from the hits taken, by the boss's `star_rule`), a payout, records and a leaderboard per
   boss, and pickups: armor, shield and grapple pickups on the floor ahead, placed where they're fair
   to take, from the standard armor rule (at the start of the final phase, and a while after the
   player's armor takes a hit; a shield break brings none) or offered by the boss itself. A campaign boss fight runs at its
@@ -381,7 +392,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   Golden 3 at the zone's 25 m/s (debug builds: `--level=golden/boss`, or `--boss=golden_boss` at 18 m/s;
   `--phase=4` starts at its halfway checkpoint, stage 2). In the Grand Court, a golden causeway through the palace's vast hall with low
   balustrades instead of walls, a giant golden suit rises at the far end, its burgundy cape unfurling into
-  a billowing cloud, as the cult's three-note chime rings out huge and slow; its calm golden face, with its
+  a billowing cloud, as a fanfare of deep, bassy brass sounds, its last call breaking up into a distorted reverb; its calm golden face, with its
   dull red tear, looks down the causeway. Its Helidrone Strafe: a squadron of heli drones (never red) comes
   out of the cape and makes its passes as one. A vertical pass rakes every other lane after red lines and a
   gatling whine (switch to a lane between them; a jump doesn't clear the fire); a horizontal pass sweeps a
@@ -474,9 +485,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   lines (weapon, claws, juggernaut dash, magnet, slow time, and armor upgrades: one more hit or a shorter
   wait, tier by tier) and two breakables (shield, grapple hook). Dash tiers cost 300 / 450 / 600 /
   700 credits (the first card in the shop) and recharge in 8 / 6 / 4 / 3 seconds, respectively. After a death you're offered a revive
-  (an item, or a rewarded ad on mobile). Net worth has its own leaderboard. After the items, the shop's
-  Cosmetics section sells outfits for Razor Echo, each bought once with credits and kept (Rex 3,000, Camo 3,000, Beach
-  Master, Centurion and Party Wolf 5,000 for now, until the ways of winning them are designed); the player picks one to wear,
+  (an item, or a rewarded ad on mobile). Net worth has its own leaderboard; credits spent on outfits don't lower it. After the
+  items, the shop's Cosmetics section sells outfits for Razor Echo, each bought once with credits and kept (Rex 3,000, Camo
+  3,000, Beach Master, Centurion and Party Wolf 5,000 for now, until the ways of winning them are designed), each card showing
+  the runner in the outfit (running and turning on the card under the pointer or the focus); buying one puts it on, and the cards switch between owned looks,
   Echo's own look is the free default, and an outfit shows in every run and cinematic and never changes how the game plays
   (`docs/architecture/characters-ui-audio.md`, "The runner's outfits"; `docs/architecture/economy-platforms.md`).
 - **Campaign density:** more enemies and obstacles, with measured danger gains of about 17-18% in
@@ -587,7 +599,8 @@ wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a
 look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
 them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
-`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), an
+`--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), a campaign level's line
+of wall-hop credits ridden by a wall hopper (`wall_hop_review`, `--level=<id> --take=hop|run --camera=game|side`), an
 Octodog's lunge and a
 Buzz Overdrive's charge flattening a cyborg planted in its path (`charge_path_review`, `--scenario=octodog|buzz`), the
 explosions (`fireball_showcase`: the shared fireball at each size and through each enemy's own death,
@@ -672,6 +685,12 @@ screens and posters (task L10) up close, in the Marketplace's or the Casino's lo
 `--flash=S` to bring the cult emblem's flash into a short render, `--reduced`, `--skin=casino`; `skin_review`'s shots 18-21
 show the first window with each in the street). `tools/measure/first_draw_time.gd` times a material's first draw, which is where the
 Compatibility renderer compiles its shader (the solid kit's, or `--display` the shop windows'; its header says how to run it).
+
+`tools/measure/shop_preview_cost.gd` measures what the shop's outfit previews cost (task M4): the shop's frame times and draw
+calls with every preview a still, with one live (the card the pointer is on), and with all six live for scale, and how long the
+shop takes to open the first time and again; it needs a real renderer, software or not, and a run on main beside it:
+`xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --resolution 1280x720 [--rendering-method gl_compatibility]
+res://tools/measure/shop_preview_cost.tscn -- [--frames=120] [--phone] [--build-times]`.
 
 `tools/measure/level_builds.gd` measures how long a run takes to build its level (task PERF2): every campaign
 level's first build at 3, 5 and 6 lanes, the boss arenas' plans, where one build's time goes pass by pass, and the

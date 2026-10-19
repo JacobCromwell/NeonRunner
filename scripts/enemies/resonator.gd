@@ -38,9 +38,10 @@ extends Enemy
 ## (EnemyDirector.major_attack_blocked); while it's held, or the floor isn't clear, it hovers and moves
 ## its pulses on with the player. After turn_wait_max of waiting for other attacks in all it drops the
 ## pulses left, but never its first: every visit pulses, unless the level ends first. A first pulse
-## overdue by turn_wait_max (any wait) keeps its place in the director's queue while it waits for
-## clear floor, so other types' next attacks wait for it (_first_overdue). One Resonator pulses at a
-## time, and one arriving to pace the player sends the last one away after its pulse.
+## still owed keeps its place in the director's queue while it waits for clear floor once it has waited
+## first_pulse_wait_max (any wait; 0, at once), so other types' next attacks wait for it (_first_overdue).
+## One Resonator pulses at a time, and one arriving to pace the player sends the last one away after its
+## pulse.
 ## Spawned without a plan (tests, quick experiments), it pulses as soon as it can, with the same checks.
 ## Spawn params: {"pulses": n, "pulse_at": [player distances], "double": bool or [bool per pulse]}.
 
@@ -386,20 +387,20 @@ func _why_not_ready() -> StringName:
 	return &"turn" if world.director.major_attack_blocked(self) else &""
 
 
-## Never its first (FIX4): a first pulse that has waited longer than turn_wait_max since it was due, for
-## other attacks or for clear floor, can't be dropped, so from then on it keeps its place in the turn
-## queue while it waits for clear floor (_why_not_ready). Otherwise it loses its place at every floor
-## wait, and an enemy that attacks again and again (a drone that stays) can take every turn the floor
-## leaves it, until the next Resonator's arrival sends it away without a pulse. DESIGN-TBD
-## (docs/questions/fix4.md): the threshold, and the next one's arrival still sending away one that owes
-## its first pulse.
+## Never its first (FIX4): a first pulse that has waited longer than first_pulse_wait_max since it was due
+## (0: as soon as it waits), for other attacks or for clear floor, can't be dropped, so from then on it keeps
+## its place in the turn queue while it waits for clear floor (_why_not_ready). Otherwise it loses its place
+## at every floor wait, and an enemy that attacks again and again (a drone that stays) can take every turn
+## the floor leaves it, until the next Resonator's arrival sends it away or the level ends without a pulse.
+## DESIGN-TBD (docs/OPEN_QUESTIONS*.md item 350): the threshold (8 s,
+## turn_wait_max, until task N1), and the next one's arrival still sending away one that owes its first pulse.
 func _first_overdue() -> bool:
 	if pulses_done > 0:
 		return false
 	var waited: float = 0.0
 	for reason: StringName in [&"turn", &"busy", &"floor"]:
 		waited += float(waited_for.get(reason, 0.0))
-	return waited > tune.turn_wait_max
+	return waited > tune.first_pulse_wait_max
 
 
 ## True while the next pulse could still meet the player before the level's end-clear stretch.

@@ -803,7 +803,7 @@ func _test_guarantee() -> void:
 ## hides no enemy (EnforcerTruckRoom.layout_lane), and no other big attack, floor cut, hover truck or Gilded Sentinel
 ## comes meanwhile. Every pass after the trucks kept off it: no zone doodad, filler, wider gap or row the danger
 ## density pass made or widened stands in it, nor any enemy that pass added or cyborg planted in a charge path
-## (where it stands or attacks). Corporate 2 at 3 lanes has its first truck's arrival showing. Each level's windows
+## (where it stands or attacks). A treasure stash's doodads come before the trucks, which plan around them. Corporate 2 at 3 lanes has its first truck's arrival showing. Each level's windows
 ## are printed (gen.show_window_result: why a chase has none).
 func _test_show_windows() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
@@ -839,6 +839,10 @@ func _test_show_windows() -> void:
 					if why != "":
 						faults.append("%s: %s" % [where, why])
 					for d: Dictionary in gen.layout.doodads:
+						# A treasure stash's doodads (its outer one too, task N1) come before the trucks, whose planning
+						# reads them (EnforcerTruckRoom: every doodad): only the zone doodads come after.
+						if d.has("stash"):
+							continue
 						if float(d["start"]) <= w.y and float(d["end"]) >= w.x:
 							faults.append("%s: a zone doodad at %.0f m" % [where, float(d["start"])])
 					for f: Dictionary in gen.fills:
@@ -1229,7 +1233,8 @@ static func _fits_beside(span: Vector2, spans: Array[Vector2], skip: int, room: 
 ## takes out what's in its way and keeps the later passes off it, _test_show_windows), Corporate 2 and Golden 2 are the
 ## same level with or without the feature but for the trucks. With the company on, they differ only by the trucks and
 ## the company the trucks withhold (the company's cyborgs, holes and fences, its cut keys, and the wall fences that run
-## by a tank with company, with the wall gaps and credits that move with them).
+## by a tank with company, with the wall gaps and credits that move with them). Both builds leave out the level's
+## wall-hop line (task N1): it keeps off a truck's attack (WallHopPlacement.WALL_RUN_ATTACKERS), so it moves with them.
 func _test_only_its_trucks() -> void:
 	t.show_window_planned = false
 	_only_its_trucks()
@@ -1244,6 +1249,7 @@ func _only_its_trucks() -> void:
 			config.danger_density_increase = 0.0
 			config.wide_gaps = 0
 			config.buzz_company = company
+			config.wall_hop_lines = 0
 			var m: MovementTuning = config.movement_for(tuning)
 			var patterns: Array = LevelGenerator.load_for(config)
 			var with_it: LevelLayout = LevelGenerator.new().generate(config, m, patterns)

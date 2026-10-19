@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="WeeklyChallenge" format=3]
+
+[ext_resource type="Script" path="res://scripts/weekly/weekly_challenge.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+epoch_unix = 1792368000
+week_seconds = 604800
+seeds_path = "res://data/weekly/weekly_seeds.json"
+lanes = 5
+density_step = "golden/2"
+source_levels = Dictionary[String, String]({
+"beach": "beach/3",
+"casino": "casino/2",
+"city": "city/3",
+"corporate": "corporate/2",
+"dead_zone": "dead_zone/1",
+"gangland": "gangland/3",
+"golden": "golden/2",
+"marketplace": "marketplace/2"
+})
+kit = Dictionary[String, int]({
+"armor": 4,
+"dash": 4
+})
+first_clear_credits = 1000
+top_places = 3
+reward_kind = &"leader_of_the_pack"
+reward_check_weeks = 8
+unlock_step = "city/boss"

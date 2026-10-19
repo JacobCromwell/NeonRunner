@@ -20,9 +20,10 @@ extends BossEncounter
 ## The suit (GoldenConvergenceSuit, the fight's body: weapons chip it, aimed at its chest) floats
 ## suit_ahead in front of the runner, pacing them, swaying gently. Each phase:
 ## 1. Its intro. The first phase's is the entrance (GDD §10, proposed): it rises into view at the far end
-##    from the depths beside the causeway, its cape unfurling into its cloud, and the cult's three-note
-##    chime (the Resonator's notes, gc_chime) rings out huge and slow; the calm golden face looks down the
-##    causeway at the runner. A later stage 1 phase's: it reels back from the blast and recovers (reel), its
+##    from the depths beside the causeway, its cape unfurling into its cloud, and a fanfare of deep brass
+##    (gc_fanfare: three bassy calls, the last held, breaking up into a distorted reverb; the owner's
+##    replacement, October 18, 2026, for the cult's three-note chime) sounds out; the calm golden face looks
+##    down the causeway at the runner. A later stage 1 phase's: it reels back from the blast and recovers (reel), its
 ##    shoulders showing the ships' damage so far (one shoulder's pipes blown out in phase 2, both in phase 3).
 ##    Stage 2's (phases 4-6, The Magnate, E5d-d: the block at the end): phase 4's the transition (on a retry
 ##    from the checkpoint too; the arena dims to stage_two_light through it, E5d-e), phases 5 and 6's his hurl
@@ -94,7 +95,7 @@ var beats_played: int = 0
 var stubs_skipped: int = 0
 
 var _hinted: Dictionary = {}
-var _chimed: bool = false
+var _fanfared: bool = false
 var _idle_logged: bool = false
 var _t: float = 0.0
 var _solid: ShaderMaterial
@@ -342,7 +343,7 @@ func _on_phase_started(index: int) -> void:
 	if index == 0 and fresh:
 		# The entrance: it rises at the far end from the depths beside the causeway, its cape furled.
 		_set_step(Step.ENTER)
-		_chimed = false
+		_fanfared = false
 		suit.unfurl = 0.0
 		sound(&"gc_rise", sound_point(suit.head_point()))
 		log_event(&"entrance")
@@ -384,10 +385,10 @@ func _intro_tick(delta: float) -> void:
 		Step.ENTER:
 			var t: GoldenConvergenceTuning = tuning
 			suit.unfurl = clampf((step_time - t.unfurl_at) / maxf(t.unfurl_seconds, 0.05), 0.0, 1.0)
-			if not _chimed and step_time >= t.chime_at:
-				_chimed = true
-				sound(&"gc_chime", sound_point(suit.head_point()))
-				log_event(&"chime")
+			if not _fanfared and step_time >= t.fanfare_at:
+				_fanfared = true
+				sound(&"gc_fanfare", sound_point(suit.head_point()))
+				log_event(&"fanfare")
 		Step.REEL:
 			var k: float = clampf(step_time / maxf(phase().intro_seconds, 0.05), 0.0, 1.0)
 			suit.reel = sin(PI * k) * (1.0 - k * 0.3)

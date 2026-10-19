@@ -4,14 +4,19 @@ extends Node
 ## screen:
 ##   godot --path . res://tools/showcase/screens_showcase.tscn -- --screen=shop
 ## Screens: title, levels, shop, shop_next, settings, pause, pause_settings, death, results,
-## failed, slot, cinematic, demo_end, hud; hud_armor (the HUD's armor through its states, GDD §4: up
-## until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
+## failed, match_results (the volleyball match's results; --score=4-1), slot, cinematic, demo_end, hud; hud_armor (the
+## HUD's armor through its states, GDD §4: up until 2 s, broken at 2 s, its ring filling with the wait sped up, back at about 4.3 s; --tier=N wears
 ## the upgrade's tier N, default 0: the free armor); hud_last_hit (the "one hit from death" cue, GDD §4: the
 ## free armor breaks at 1 s (a shield still held: nothing shows), the shield at 2 s and then the screen's edges
 ## pulse red with the siren and hold a dim edge until the armor is back at 6 s; --reduced-flashing shows the
 ## steady edge instead of pulses, and --hold stops with the edge steady, for a --shot at a phone's shape);
 ## and a boss fight, with the test boss in the City's
 ## boss slot: boss (the HUD's boss bar at the checkpoint), boss_pause, boss_death, boss_results.
+## The weekly challenge (GDD §6, task N5): weekly (its screen, open: the Floating Head is beaten in the profile),
+## weekly_locked, weekly_results, weekly_failed (the results of a first clear and of a death), weekly_intro (the
+## level's introduction) and weekly_run (the week's level running in god mode); --week=N picks the week of the
+## schedule (its zone: week 0 is the Neon City, 1 Gangland, ...; week 0 without it, whatever the date: the challenge is
+## shut before its first week opens).
 ## Options: --fresh (a new profile), --progress=<step id> (every campaign step before that one
 ## completed, e.g. --progress=golden/1), --touch (phone/tablet sizing), --mobile (a mobile build:
 ## 3 lanes, credit packs, rewarded ads), --phone (a phone's browser: touch sizing and a mobile device, the
@@ -21,7 +26,9 @@ extends Node
 ## pixels, a page shown smaller than its own, like itch.io's 960x540 frame shrunk to the phone's width: `--resolution
 ## 960x540 ... -- --phone --screen-size=667x375`; and --insets=l,t,r,b, the page's safe-area insets in the page's
 ## pixels, for a notch: `--insets=47,0,47,21`), --flavor=web_demo (read by App), --scroll-end (scrolls the
-## screen's list to its end), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
+## screen's list to its end), --focus-outfit=<id> (the shop only: the focus goes to that outfit's card, so its
+## preview runs and turns), --hover-outfit=<id>[:button] (the shop only: a mouse motion event over that card's
+## description, or its button with :button, so the preview runs as it does for a real pointer), --wait=N (frames before a shot), --shot=<png> (saves a screenshot and
 ## quits: any window size, unlike --write-movie).
 
 var main: Node
@@ -69,11 +76,25 @@ func _ready() -> void:
 			screen = arg.get_slice("=", 1)
 		elif arg.begins_with("--wait="):
 			wait = int(arg.get_slice("=", 1))
+	for arg: String in args:
+		if arg.begins_with("--week="):
+			App.clock_override = App.weekly.week_start(int(arg.get_slice("=", 1))) + 2 * 86400
+	if screen.begins_with("weekly") and App.clock_override < 0:
+		# The weekly challenge counts weeks by the clock, and is shut before its first week opens: week 0 unless told.
+		App.clock_override = App.weekly.week_start(0) + 2 * 86400
 	await _open(screen)
+	for arg: String in args:
+		if arg.begins_with("--focus-outfit=") and App.screen is ShopScreen:
+			var card: CosmeticCard = (App.screen as ShopScreen).cosmetic_cards.get(StringName(arg.get_slice("=", 1)))
+			if card != null:
+				card.action_button.grab_focus()
 	if args.has("--scroll-end"):
 		await get_tree().process_frame
 		for node: Node in App.screen.find_children("*", "ScrollContainer", true, false):
 			(node as ScrollContainer).scroll_vertical = 100000
+	for arg: String in args:
+		if arg.begins_with("--hover-outfit=") and App.screen is ShopScreen:
+			await _hover_outfit(arg.get_slice("=", 1))
 	for arg: String in args:
 		if arg.begins_with("--shot="):
 			_screenshot(arg.get_slice("=", 1), wait)
@@ -104,12 +125,38 @@ func _open(screen: String) -> void:
 			var s := ResultsScreen.new()
 			s.result = SampleProfiles.result(screen == "results")
 			App.show_screen(s)
+		"match_results":
+			# The volleyball match's results; --score=4-1 is the runner's points then the rival's (default 4-0).
+			var score: PackedStringArray = PackedStringArray(["4", "0"])
+			for arg: String in OS.get_cmdline_user_args():
+				if arg.begins_with("--score="):
+					score = arg.get_slice("=", 1).split("-")
+			var m := ResultsScreen.new()
+			m.result = _match_result(int(score[0]), int(score[1]) if score.size() > 1 else 0)
+			App.show_screen(m)
 		"slot":
 			App.play_step(App.campaign.step("city/boss"))
 		"cinematic":
 			App.play_step(App.campaign.step("city/intro"))
 		"demo_end":
 			App.show_demo_end()
+		"weekly", "weekly_locked", "weekly_intro", "weekly_run":
+			if screen != "weekly_locked":
+				App.profile.record_run("city/boss", 0, true, 9000, 3, 90.0)
+			if screen == "weekly_intro" or screen == "weekly_run":
+				# A review's run: nothing ends it (no runner steers it here).
+				App.set(&"_review_args", PackedStringArray(["--god", "--nofall"]))
+				App.start_weekly()
+				if screen == "weekly_run":
+					App.begin_run()
+					App.run.world.player.god_mode = true
+					await _seconds(3.0)
+			else:
+				App.show_weekly()
+		"weekly_results", "weekly_failed":
+			var w := ResultsScreen.new()
+			w.result = _weekly_result(screen == "weekly_results")
+			App.show_screen(w)
 		"hud":
 			await _play("city/1", 2.5)
 			var world: RunWorld = App.run.world
@@ -125,6 +172,57 @@ func _open(screen: String) -> void:
 			await _boss(screen)
 		_:
 			push_warning("screens showcase: unknown screen '%s'" % screen)
+
+
+## A weekly challenge result for the results screen: the week's first clear, or a death in it.
+func _weekly_result(completed: bool) -> RunResult:
+	var week: WeeklyWeek = App.current_week()
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.WEEKLY
+	ctx.weekly = week
+	ctx.weekly_board = App.weekly_board_id(week)
+	ctx.config = App.weekly.build_config(App.campaign, week)
+	ctx.tuning = App.tuning
+	ctx.loadout = App.make_weekly_loadout()
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = completed
+	r.time = 121.3 if completed else 47.2
+	r.distance = 3100.0 if completed else 1180.0
+	r.score = 14300 if completed else 3900
+	r.cause = "" if completed else "Cyborg"
+	r.stats = {"kills": 14, "stomps": 6, "blocked": 2, "ramps": 3, "longest_wall_run": 41.0}
+	r.completion_bonus = App.weekly.first_clear_credits if completed else 0
+	r.credits_earned = r.completion_bonus
+	r.record = {"weekly": true, "first_clear": completed, "new_best": completed, "board": ctx.weekly_board,
+		"submitted": completed, "best": r.score if completed else 0, "paid": r.credits_earned}
+	return r
+
+
+## The volleyball match's result (Net Gains, beach/2) for the results screen: a match that ended `won` to `lost`, paid 100 a
+## point, its stars by the score (VolleyballTuning.stars_for).
+func _match_result(won: int, lost: int) -> RunResult:
+	var ctx := RunContext.new()
+	ctx.mode = RunContext.Mode.CAMPAIGN
+	ctx.step = App.campaign.step("beach/2")
+	ctx.level_index = ctx.step.level_index
+	ctx.config = App.campaign.configure(ctx.step, 5)
+	ctx.tuning = App.tuning
+	ctx.loadout = Loadout.new()
+	var tuning := ctx.config.minigame.tuning as VolleyballTuning
+	var r := RunResult.new()
+	r.context = ctx
+	r.completed = true
+	r.stats = {"minigame": "volleyball", "points_won": won, "points_lost": lost, "returns": won * tuning.returns_to_win_point}
+	r.score = 3400 + won * (tuning.point_score + tuning.returns_to_win_point * tuning.return_score)
+	r.credits_collected = 62
+	r.completion_bonus = won * tuning.payout_per_point
+	r.credits_earned = r.credits_collected + r.completion_bonus
+	r.stars = tuning.stars_for(won, lost)
+	r.time = 55.1
+	r.distance = 640.0
+	r.record = {"new_best": true, "stars_gained": r.stars, "first_clear": true}
+	return r
 
 
 ## Starts a campaign level with god mode (so nothing ends it) and lets it run a while.
@@ -222,6 +320,21 @@ func _boss(screen: String) -> void:
 					encounter.damage(encounter.max_health, &"showcase")
 				await get_tree().physics_frame
 			await _seconds(LevelRun.COMPLETE_PAUSE + 1.0)
+
+
+## A mouse motion over the shop's card for `spec` ("camo", or "camo:button" to land on its button).
+func _hover_outfit(spec: String) -> void:
+	var card: CosmeticCard = (App.screen as ShopScreen).cosmetic_cards.get(StringName(spec.get_slice(":", 0)))
+	if card == null:
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var target: Control = card.action_button if spec.ends_with(":button") else card.description_label
+	var motion := InputEventMouseMotion.new()
+	motion.position = target.get_global_rect().get_center()
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await get_tree().process_frame
 
 
 func _seconds(seconds: float) -> void:

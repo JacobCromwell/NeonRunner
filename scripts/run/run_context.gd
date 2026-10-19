@@ -3,7 +3,7 @@ extends RefCounted
 ## Everything needed to start (or retry) one run: which level, how many lanes, the difficulty
 ## tier, the loadout and the attempt number.
 
-enum Mode { CAMPAIGN, ENDLESS, QUICK }
+enum Mode { CAMPAIGN, ENDLESS, QUICK, WEEKLY }
 
 var mode: Mode = Mode.QUICK
 ## Campaign runs: the step being played.
@@ -25,6 +25,9 @@ var review_pickups: PackedStringArray = []
 ## Quick play review aid (--thief): stand-in thieves (a gold block that robs, GDD §9.12) come one after
 ## another (StandInThief.start_review). Levels never have one.
 var review_thief: bool = false
+## Weekly challenge runs (GDD §6, task N5): the week being played, and the board a clear of it is posted to.
+var weekly: WeeklyWeek
+var weekly_board: String = ""
 ## Campaign position for the completion bonus (0-based level index), -1 outside the campaign.
 var level_index: int = -1
 ## A boss fight (GDD §10): the boss, whose arena `config` describes (BossArena.base_config). Null for
@@ -45,6 +48,11 @@ func is_boss() -> bool:
 	return boss != null
 
 
+## A run of the weekly challenge (its level is the week's: weekly).
+func is_weekly() -> bool:
+	return mode == Mode.WEEKLY and weekly != null
+
+
 ## The leaderboard a finished run counts for (GDD §6: per level and difficulty tier; GDD §10:
 ## bosses have their own, ranking the boss score).
 func leaderboard_id() -> String:
@@ -54,6 +62,8 @@ func leaderboard_id() -> String:
 		return "level/%s/%d" % [step.id, difficulty_tier]
 	if mode == Mode.ENDLESS:
 		return "endless/%d/%d" % [config.lane_count, difficulty_tier]
+	if is_weekly():
+		return weekly_board
 	return ""
 
 
@@ -63,6 +73,8 @@ func record_id() -> String:
 		return step.id
 	if mode == Mode.ENDLESS:
 		return "endless"
+	if is_weekly():
+		return "weekly/%d" % weekly.index
 	return "quick/%d" % config.level_seed
 
 
@@ -83,4 +95,6 @@ func retry() -> RunContext:
 	next.level_index = level_index
 	next.boss = boss
 	next.boss_resume = boss_resume.duplicate()
+	next.weekly = weekly
+	next.weekly_board = weekly_board
 	return next

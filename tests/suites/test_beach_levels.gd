@@ -251,20 +251,22 @@ func _check_level(config: LevelConfig, tag: String, own: bool, stats: Dictionary
 		return
 	var again: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
 	check(JSON.stringify(again.wall_gaps) == JSON.stringify(layout.wall_gaps), "the same gaps every attempt " + tag)
-	# The wall features stay: with the shared tuning, the level is the same level but for its gaps.
+	# The wall features stay: with the shared tuning, the level is the same level but for its gaps. A wall-hop line
+	# (task N1) keeps off the gaps and draws its spot among the wall's free stretches, so the open walls move it or
+	# leave it no room: its record and credits aside.
 	var shared_config: LevelConfig = config.duplicate() as LevelConfig
 	shared_config.wall_gap_tuning = null
 	var shared: LevelLayout = LayoutCache.generate(shared_config, tuning, patterns)
 	var a: Dictionary = layout.to_dict()
 	var b: Dictionary = shared.to_dict()
-	for key: String in ["wall_gaps", "credits"]:
+	for key: String in ["wall_gaps", "credits", "wall_hops"]:
 		a.erase(key)
 		b.erase(key)
 	check(JSON.stringify(a) == JSON.stringify(b),
 		"the open walls change nothing but the gaps: the signs, wall fences, ramps and wall enemies stay %s" % tag)
 	var kept: bool = true
 	for c: Dictionary in layout.credits:
-		kept = kept and shared.credits.has(c)
+		kept = kept and (shared.credits.has(c) or c.has(WallHopPlacement.GEM) or c.has(WallHopPlacement.LEAD))
 	check(kept, "the open walls only take wall credits away %s" % tag)
 
 

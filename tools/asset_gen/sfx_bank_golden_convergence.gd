@@ -4,11 +4,18 @@ extends "res://tools/asset_gen/sfx_bank.gd"
 ## read from the fight's tuning (data/bosses/golden_boss_tuning.tres: regenerate them when those change).
 ## Like every sound effect, each is under MAX_SECONDS (test_units).
 ##   gc_rise      the entrance: something enormous rising at the far end of the court, a deep rumble and a
-##                mechanical groan swelling as it rises, tapering as the chime comes in, the cape unfurling in
+##                mechanical groan swelling as it rises, fading out under the first moments of the fanfare, the cape unfurling in
 ##                a heavy rush of cloth from unfurl_at
+##   gc_fanfare   the entrance's call (task N4: the owner found the chime too cheery): a series of low brass
+##                calls, bassy trumpets in the trombone and tuba register, trumpeting triumphantly in F# minor
+##                (the golden music's key: three short calls climbing F#2, C#3, F#3, then an F# minor chord
+##                held); the last call breaks up
+##                into a distorted reverb, saturating and bit-crushing as a long tail swells and smears it
+##                out (at fanfare_at; it ends well before the first attack's warnings)
 ##   gc_chime     the cult's three-note chime (the Resonator's G5, C6, E6, §9.10) rung huge and slow: each
 ##                note doubled an octave and two below, further apart than the Resonator's, ringing on under
-##                the next, echoing round the court
+##                the next, echoing round the court (the Beach outro's palace shot; the boss no longer
+##                plays it)
 ##   gc_emerge    the squadron coming out of the cape: a rustle of cloth, three rotors spinning up
 ##   gc_whine     a pass's warning (as long as warning_seconds): the squadron's gatlings spinning up as one, a
 ##                motor climbing in three voices over barrel clicks speeding into a rattle and a rising whine
@@ -51,6 +58,15 @@ const TUNING_PATH: String = "res://data/bosses/golden_boss_tuning.tres"
 const CHIME_HZ: Array[float] = [783.99, 1046.5, 1318.51]
 ## The chime's notes rung slow (the Resonator's are 0.42 s apart): seconds from the first.
 const CHIME_AT: Array[float] = [0.0, 0.7, 1.4]
+## The fanfare's calls (F# minor, the golden music's key, in the low brass): the notes of each call (MIDI: F#2,
+## C#3, F#3, then an F# minor chord, its minor third A3 the dark colour) and the seconds it begins and sounds.
+## The last call holds.
+const FANFARE_NOTES: Array = [[42, 54], [49, 61], [54, 66], [42, 49, 54, 57, 61]]
+const FANFARE_AT: Array[float] = [0.0, 0.28, 0.56, 0.86]
+const FANFARE_SECONDS: Array[float] = [0.24, 0.24, 0.24, 0.55]
+## The last call breaks up into the distorted reverb between these seconds.
+const FANFARE_BREAK_FROM: float = 1.2
+const FANFARE_BREAK_TO: float = 1.85
 ## A sound effect's longest (test_units: every sound is under 2.5 s).
 const MAX_SECONDS: float = 2.45
 
@@ -58,6 +74,7 @@ const MAX_SECONDS: float = 2.45
 func sounds() -> Dictionary:
 	return {
 		"gc_rise": _rise,
+		"gc_fanfare": _fanfare,
 		"gc_chime": _chime,
 		"gc_emerge": _emerge,
 		"gc_whine": _whine,
@@ -145,8 +162,8 @@ func _round(rng: RandomNumberGenerator) -> PackedFloat32Array:
 
 
 ## The entrance: a sub rumble and a mechanical groan swelling as it rises, a deep hum climbing, and the cape
-## unfurling (a heavy rush of cloth from unfurl_at); it tapers off as the chime comes in (MAX_SECONDS: the
-## rise itself goes on a little longer, under the chime).
+## unfurling (a heavy rush of cloth from unfurl_at). The sound is MAX_SECONDS long and fades out over its last
+## half second, so the fanfare (at fanfare_at, 2.2 s) begins as the rumble is dying away and is heard clear.
 func _rise() -> PackedFloat32Array:
 	var rng := _rng(1701)
 	var length: float = MAX_SECONDS
@@ -229,6 +246,156 @@ func _chime_note(hz: float, seconds: float, rng: RandomNumberGenerator) -> Packe
 	DSP.envelope(knock, 0.0005, 0.006)
 	DSP.mix(b, knock, 0.0, 0.25)
 	return b
+
+
+## The entrance's call, for the Golden Convergence rising into view: bassy trumpets trumpeting triumphantly at
+## a deeper register (low brass: trombones and tubas, F# minor, FANFARE_NOTES). Three short calls climb, each
+## swelling brighter than the last, then the fourth, a full chord, holds and crescendos. It then morphs into
+## a distorted reverb: from FANFARE_BREAK_FROM the brass saturates and bit-crushes coarser and coarser while
+## its send to a long, drifting hall (the reverb) swells, so the chord smears into a fuzzed wash that rings on
+## after the horns stop and fades out by MAX_SECONDS.
+func _fanfare() -> PackedFloat32Array:
+	var rng := _rng(1730)
+	var length: float = MAX_SECONDS
+	var dry := DSP.buffer(length)
+	var calls: int = FANFARE_AT.size()
+	for k: int in calls:
+		var notes: Array = FANFARE_NOTES[k]
+		var rise: float = float(k) / float(calls - 1)
+		var held: bool = k == calls - 1
+		for v: int in notes.size():
+			var voice := _brass_voice(DSP.midi_hz(float(notes[v])), FANFARE_SECONDS[k], lerpf(8.0, 14.0, rise),
+				5.0 if held else 0.6, 0.2 if held else 0.05, 0.22 if held else 0.06, rng)
+			DSP.mix(dry, voice, FANFARE_AT[k], lerpf(0.8, 1.0, rise) / (1.0 + 0.35 * v))
+	DSP.filter(dry, &"peaking", 600.0, 0.8, 4.0)  # the bell's blare
+	# The break-up: the brass fuzzing and crushing as the tail takes over.
+	_break_up(dry, FANFARE_BREAK_FROM, FANFARE_BREAK_TO, 14.0, 5.0, 4500.0)
+	# The hall hears the early calls a little and the last one fully.
+	var send: PackedFloat32Array = dry.duplicate()
+	for i: int in send.size():
+		send[i] *= lerpf(0.2, 1.0, smoothstep(0.6, 1.4, float(i) / RATE))
+	var wet := _hall(send, 0.965, 3000.0)
+	DSP.drive(wet, 3.0)
+	DSP.crush_sweep(wet, 10.0, 5.0, 20000.0, 4500.0)
+	for i: int in wet.size():
+		wet[i] *= lerpf(0.12, 1.0, smoothstep(0.55, 1.6, float(i) / RATE))
+	DSP.mix(dry, wet, 0.0, 1.0)
+	DSP.filter(dry, &"highpass", 40.0)
+	_fade_out(dry, 0.95)
+	DSP.crush(dry, 11, 26000.0)
+	return dry
+
+
+## One voice of the low brass (a trombone or a tuba): two band-limited saws a few cents apart, the pitch
+## scooping up into the note as the lips catch it, the slow, blatting attack with a breath of lip buzz, a
+## vibrato that settles in on long notes (`vibrato` semitones), and a low-pass that opens with the swell
+## (`swell`: how many harmonics it lets through) and keeps opening through the note (`crescendo`).
+func _brass_voice(hz: float, seconds: float, swell: float, crescendo: float, vibrato: float, release: float,
+		rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var b := DSP.buffer(seconds + release)
+	var n: int = b.size()
+	for cents: float in [-5.0, 4.0]:
+		var p: float = rng.randf()
+		for i: int in n:
+			var t: float = float(i) / RATE
+			var semitones: float = cents / 100.0 - 0.55 * exp(-t / 0.05) + vibrato * sin(TAU * 5.1 * t) * smoothstep(0.12, 0.45, t)
+			var dt: float = hz * pow(2.0, semitones / 12.0) / RATE
+			p += dt
+			if p >= 1.0:
+				p -= 1.0
+			b[i] += (2.0 * p - 1.0 - _blep(p, dt)) * 0.5
+	var f := DSP.Biquad.new()
+	for i: int in n:
+		var t: float = float(i) / RATE
+		if i % 16 == 0:
+			var open: float = swell * (1.0 - exp(-t / 0.09)) * (0.6 + 0.4 * exp(-t / 0.3)) + crescendo * smoothstep(0.1, seconds, t)
+			f.set_filter(&"lowpass", hz * (2.0 + open), 1.8)
+		# The blat: a slow-ish attack with an accent on the front, then steady, then the release.
+		var a: float = (1.0 - exp(-t / 0.035)) * (1.0 + 0.4 * exp(-t / 0.1))
+		if t > seconds:
+			a *= maxf(0.0, 1.0 - (t - seconds) / release)
+		b[i] = f.process(b[i]) * a
+	var buzz := DSP.noise(0.09, rng)
+	DSP.filter(buzz, &"bandpass", hz * 4.0, 1.5)
+	DSP.envelope(buzz, 0.012, 0.025, 0.01)
+	DSP.mix(b, buzz, 0.0, 0.18)
+	return b
+
+
+## PolyBLEP: smooths a sawtooth's jump so it doesn't alias into fizz (as the music's instruments do).
+static func _blep(t: float, dt: float) -> float:
+	if t < dt:
+		t /= dt
+		return t + t - t * t - 1.0
+	if t > 1.0 - dt:
+		t = (t - 1.0) / dt
+		return t * t + t + t + 1.0
+	return 0.0
+
+
+## The tone breaking up: from `from_s` to `to_s` `b` saturates harder (up to `drive_to` times the gain) and
+## bit-crushes coarser (down to `bits_to` bits, its sample-and-hold rate down to `hold_to` Hz), the level
+## kept even-ish so it swells rather than jumps.
+func _break_up(b: PackedFloat32Array, from_s: float, to_s: float, drive_to: float, bits_to: float, hold_to: float) -> void:
+	var first: int = int(from_s * RATE)
+	var span: float = maxf((to_s - from_s) * RATE, 1.0)
+	var held: float = 0.0
+	var acc: float = 1.0
+	for i: int in range(first, b.size()):
+		var u: float = clampf(float(i - first) / span, 0.0, 1.0)
+		var gain: float = pow(drive_to, u)
+		var x: float = tanh(gain * b[i]) / pow(gain, 0.45)
+		acc += DSP.sweep(float(RATE), hold_to, u) / RATE
+		if acc >= 1.0:
+			acc -= floorf(acc)
+			var step: float = 2.0 / pow(2.0, lerpf(14.0, bits_to, u))
+			held = roundf(x / step) * step
+		b[i] = held
+
+
+## A big hall's reverb (the Schroeder / Freeverb design): eight feedback combs, their lengths drifting a
+## little so the tail smears and shimmers, then four all-passes to blur it. `feedback` sets how long it
+## rings, `damp_hz` how fast it darkens.
+func _hall(src: PackedFloat32Array, feedback: float, damp_hz: float) -> PackedFloat32Array:
+	var n: int = src.size()
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var damp: float = exp(-TAU * damp_hz / RATE)
+	var comb_lengths: Array[int] = [1301, 1399, 1493, 1579, 1663, 1753, 1847, 1951]
+	for c: int in comb_lengths.size():
+		var length: int = comb_lengths[c]
+		var size: int = length + 16
+		var line := PackedFloat32Array()
+		line.resize(size)
+		var write: int = 0
+		var damped: float = 0.0
+		var drift: float = TAU * (0.31 + 0.083 * c) / RATE
+		var phase: float = c * 0.9
+		for i: int in n:
+			var read: float = float(write) - (float(length) + 6.0 * sin(phase + drift * i))
+			if read < 0.0:
+				read += size
+			var i0: int = int(read)
+			var i1: int = i0 + 1 if i0 + 1 < size else 0
+			var frac: float = read - i0
+			var y: float = line[i0] * (1.0 - frac) + line[i1] * frac
+			damped = y * (1.0 - damp) + damped * damp
+			line[write] = src[i] + damped * feedback
+			write = write + 1 if write + 1 < size else 0
+			out[i] += y
+	for allpass_length: int in [556, 441, 341, 225]:
+		var line := PackedFloat32Array()
+		line.resize(allpass_length)
+		var at: int = 0
+		for i: int in n:
+			var buffered: float = line[at]
+			var y: float = buffered - 0.5 * out[i]
+			line[at] = out[i] + 0.5 * y
+			out[i] = y
+			at = at + 1 if at + 1 < allpass_length else 0
+	for i: int in n:
+		out[i] *= 0.12
+	return out
 
 
 ## The squadron out of the cape: a rustle of cloth, then three rotors spinning up, a little apart.

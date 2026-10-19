@@ -26,13 +26,21 @@ extends RefCounted
 ##   in its lane past where the rider lands at the latest (CeilingScenarios.flip_late, a frame's slack) and past the
 ##   top magnet's reach from the floor (magnet_reach), two or three of the highest denomination
 ##   (LevelGenerator.DENOMINATIONS), the last credit_end_margin inside the open end;
-## - its floor in every lane, from the front doodad's push (LevelGenerator.doodad_lead_for) to the level's spacing
+## - a second doodad across its lane in front of that one, toward the runner (the owner, October 18, 2026: "a doodad,
+##   a space, then a second doodad, and then the treasure": a dash from the floor got in; outer_size): the stash's
+##   start, with a space between the two as long as the most a dash that smashes the outer one still carries the
+##   runner past its end (dash_space), so no single dash smashes both. The lanes beside the outer doodad and the space
+##   stay open (DESIGN-TBD, items 1017-1024): a runner it pushes, or one whose dash ended in the space, meets the
+##   front doodad's push with room for it, as a runner in the stash's lane always did;
+## - its floor in every lane, from the outer doodad's push (LevelGenerator.doodad_lead_for) to the level's spacing
 ##   past its open end (doodad_after), off everything another rule keeps (CeilingScenarios.busy_spans), every pad's
 ##   zone, ramp's wall run, speed pad and other ceiling; the holes and fences there go (CeilingScenarios.clear_floor).
-## A floor runner meets the front doodad's push into a neighbouring lane, then the wall's push further out: the walls
-## push outward (their side), and every push finds room (Player._start_push), as the walls start only past where the
-## front doodad's push lands. The walls' sides keep a runner beside them out; the dash smashes into the stash (H5;
-## items 836–845 (docs/OPEN_QUESTIONS*.md)). The stash's doodads join LevelLayout.doodads at once (marked "stash"), so the rules after it
+## A floor runner meets the outer doodad's push into a neighbouring lane or, in the space, the front doodad's, then the
+## wall's push further out: the walls push outward (their side), and every push finds room (Player._start_push), as
+## the walls start only past where the front doodad's push lands. The walls' sides keep a runner beside them out. A
+## dash at the outer doodad smashes it and ends in the space, short of the front one, which pushes as usual; a floor
+## runner still gets in, the harder way the owner allowed: around the outer doodad, into the space, then a dash through
+## the front one (H5; items 836–845 (docs/OPEN_QUESTIONS*.md)). The stash's doodads join LevelLayout.doodads at once (marked "stash"), so the rules after it
 ## see them (the Resonator's pulses keep off them, the Enforcer Truck's showing reads them), and the zone doodads'
 ## look seeds don't count them; everything after the rules keeps off its floor (doodad_keep_outs, fill_keep_outs).
 ## DESIGN-TBD throughout (items 836–845 (docs/OPEN_QUESTIONS*.md)).
@@ -115,7 +123,7 @@ static func plan_on(gen: LevelGenerator, t: CeilingScenarioTuning, h: Dictionary
 	var end: float = maxf(float(h["end"]), pad + tail)
 	var lead: float = LevelGenerator.doodad_lead_for(gen.tuning)
 	var walls_end: float = pad + float(offsets["end"])
-	var area := Vector2(pad + float(offsets["front_start"]) - lead, walls_end + gen.doodad_after(walls_end))
+	var area := Vector2(pad + float(offsets["outer_start"]) - lead, walls_end + gen.doodad_after(walls_end))
 	if area.y > layout.length - gen.config.end_clear_distance or area.x <= float(h["start"]):
 		return {}
 	if CeilingScenarios.hits(busy, area.x, area.y) or not _floor_free(gen, h, area):
@@ -128,18 +136,23 @@ static func plan_on(gen: LevelGenerator, t: CeilingScenarioTuning, h: Dictionary
 
 
 ## Where a stash's pieces lie, in metres from its return pad's start, at `gen`'s run speed, with `credits` credits
-## (see the header): {front (its size class), front_start, front_end, land (where the return pad's rider lands at
-## the latest), credits (Array[float]), walls_from, chain (the walls' size classes, back to back), end (its open
-## end)}.
+## (see the header): {front (the size class of the doodad right before its treasure), front_start, front_end, outer
+## (the outer doodad's size class), outer_start, outer_end (the stash's start and that doodad's end, the space
+## before front_start), land (where the return pad's rider lands at the latest), credits (Array[float]), walls_from,
+## chain (the walls' size classes, back to back), end (its open end)}.
 static func stash_offsets(gen: LevelGenerator, t: CeilingScenarioTuning, credits: int) -> Dictionary:
 	var mt: MovementTuning = gen.tuning
 	var v: float = gen.speed
 	var front: StringName = LevelLayout.DOODAD_SIZES[clampi(t.front_size, 0, LevelLayout.DOODAD_SIZES.size() - 1)]
+	var outer: StringName = LevelLayout.DOODAD_SIZES[clampi(t.outer_size, 0, LevelLayout.DOODAD_SIZES.size() - 1)]
 	# The return pad's rider, flipped as early as can be, still has their feet drop_clearance above the front
 	# doodad's top (and a foot's reach: Player._support_top) as they pass its end: they never land on it.
 	var front_end: float = CeilingScenarios.flip_early(0.0) \
 		+ v * CeilingScenarios.drop_seconds(mt, mt.doodad_height + t.drop_clearance) - mt.foot_half_depth
 	var front_start: float = front_end - mt.doodad_size(front).z
+	# The owner, October 18, 2026: the second doodad, a space before that one (dash_space).
+	var outer_end: float = front_start - dash_space(mt, v, t)
+	var outer_start: float = outer_end - mt.doodad_size(outer).z
 	# ... and lands at the latest a frame after the fall alone takes them to the floor.
 	var land: float = CeilingScenarios.flip_late(0.0, v) \
 		+ v * (CeilingScenarios.drop_seconds(mt, 0.0) + CeilingScenarios.frame_seconds())
@@ -158,8 +171,32 @@ static func stash_offsets(gen: LevelGenerator, t: CeilingScenarioTuning, credits
 	var length: float = 0.0
 	for s: StringName in chain:
 		length += mt.doodad_size(s).z
-	return {"front": front, "front_start": front_start, "front_end": front_end, "land": land, "credits": spots,
-		"walls_from": walls_from, "chain": chain, "end": walls_from + length}
+	return {"front": front, "front_start": front_start, "front_end": front_end, "outer": outer,
+		"outer_start": outer_start, "outer_end": outer_end, "land": land, "credits": spots, "walls_from": walls_from,
+		"chain": chain, "end": walls_from + length}
+
+
+## How far the juggernaut dash carries a runner at run speed `v` (metres): its time at its speed bonus (PowerupTuning:
+## the same at every tier, only its cooldown changes), plus the most a speed pad's or a ramp's fading boost adds over
+## that time (MovementTuning.boost_distance). A doodad whose front lies further than that ahead of a dasher's body is
+## one the dash can't claim (Player._dash_claims: a claim needs the dash to reach it before it ends).
+static func dash_carry(mt: MovementTuning, v: float) -> float:
+	var pt := load(POWERUPS_PATH) as PowerupTuning if ResourceLoader.exists(POWERUPS_PATH) else null
+	var duration: float = pt.dash_duration if pt != null else 0.6
+	var bonus: float = pt.dash_speed_bonus if pt != null else 8.0
+	return (v + bonus) * duration + mt.boost_distance(maxf(mt.speed_pad_boost, mt.ramp_speed_boost), duration)
+
+
+## The space between a stash's two doodads in its lane, from the outer one's end to the front one's front (metres, at
+## run speed `v`): no single dash smashes both (the owner, October 18, 2026: "a dash from the floor got into the
+## stash"). The latest dash that still smashes the outer doodad starts with the body beside its end (a dashing switch
+## into its side: its front a body's length past the end, MovementTuning.visual_size), and carries the runner
+## dash_carry on; a frame of the dash's speed covers the physics' frame steps, and outer_space_margin more. At the
+## Casino's 23 m/s it is 23.1 m (1.0 s of run), at the Golden Zone's 25 m/s 24.4 m.
+static func dash_space(mt: MovementTuning, v: float, t: CeilingScenarioTuning) -> float:
+	var pt := load(POWERUPS_PATH) as PowerupTuning if ResourceLoader.exists(POWERUPS_PATH) else null
+	var fastest: float = v + (pt.dash_speed_bonus if pt != null else 8.0) + maxf(mt.speed_pad_boost, mt.ramp_speed_boost)
+	return dash_carry(mt, v) + mt.visual_size.z + fastest * CeilingScenarios.frame_seconds() + t.outer_space_margin
 
 
 ## How far ahead of a player's middle the top tier of the magnet pulls a credit (CreditField._in_magnet:
@@ -232,9 +269,10 @@ static func _floor_free(gen: LevelGenerator, h: Dictionary, area: Vector2) -> bo
 
 
 ## Turns plan `plan` (plan_on) into the stash: clears its floor, runs its ceiling on where it must, marks the
-## ceiling, and adds its return pad, its record (LevelLayout.stashes), its doodads (marked "stash": the one
-## across its lane at its start, its walls alongside in both neighbouring lanes, pushing outward, back to back to
-## its open end; each with a look seed of its own, and the zone doodads' seeds don't count them) and its credits.
+## ceiling, and adds its return pad, its record (LevelLayout.stashes), its doodads (marked "stash": the outer one
+## across its lane at its start, the space, the front one across its lane before its treasure, its walls alongside in
+## both neighbouring lanes, pushing outward, back to back to its open end; each with a look seed of its own, and the
+## zone doodads' seeds don't count them) and its credits.
 static func _build(gen: LevelGenerator, plan: Dictionary) -> void:
 	var layout: LevelLayout = gen.layout
 	var h: Dictionary = plan["hull"]
@@ -248,11 +286,15 @@ static func _build(gen: LevelGenerator, plan: Dictionary) -> void:
 	h[CeilingScenarios.KEY] = FEATURE
 	layout.return_pads.append({"lane": lane, "at": pad})
 	var seed: int = hash([gen.config.level_seed, FEATURE, layout.stashes.size()])
-	var start: float = pad + float(o["front_start"])
+	var start: float = pad + float(o["outer_start"])
+	var front: float = pad + float(o["front_start"])
 	var walls_from: float = pad + float(o["walls_from"])
-	layout.stashes.append({"lane": lane, "start": start, "end": pad + float(o["end"]), "walls_from": walls_from,
-		"pad": pad, "hull_start": float(h["start"]), "keep_from": area.x, "keep_to": area.y})
-	layout.doodads.append({"lane": lane, "start": start, "end": pad + float(o["front_end"]), "size": o["front"],
+	layout.stashes.append({"lane": lane, "start": start, "front": front, "end": pad + float(o["end"]),
+		"walls_from": walls_from, "pad": pad, "hull_start": float(h["start"]), "keep_from": area.x, "keep_to": area.y})
+	var outer_seed: int = hash([seed, "outer"])
+	layout.doodads.append({"lane": lane, "start": start, "end": pad + float(o["outer_end"]), "size": o["outer"],
+		"side": -1 if posmod(outer_seed, 2) == 0 else 1, "seed": outer_seed, "stash": true})
+	layout.doodads.append({"lane": lane, "start": front, "end": pad + float(o["front_end"]), "size": o["front"],
 		"side": -1 if posmod(seed, 2) == 0 else 1, "seed": hash([seed, "front"]), "stash": true})
 	for side: int in [-1, 1]:
 		var cursor: float = walls_from
@@ -279,7 +321,7 @@ static func positions(layout: LevelLayout) -> Array[float]:
 
 ## What the passes after the rules keep off in every lane (LevelGenerator.rules_doodad_keep_outs: the zone doodads,
 ## the danger density pass, the wider gaps, the cyborgs planted in charge paths, the other scenarios): each stash's
-## floor, from its front doodad's push to the level's spacing past its open end.
+## floor, from its outer doodad's push to the level's spacing past its open end.
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for s: Dictionary in gen.layout.stashes:

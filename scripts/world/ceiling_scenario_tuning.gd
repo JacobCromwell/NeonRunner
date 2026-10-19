@@ -23,8 +23,18 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var stash_min_difficulty: float = 0.5
 ## The return pad comes this long after the ceiling's rider arrives on it, so they see it and can reach its lane.
 @export_range(0.5, 5.0, 0.1, "suffix:s") var see_seconds: float = 1.5
-## The size class of the doodad across the stash's own lane at its start (LevelLayout.DOODAD_SIZES).
+## The size class of the doodad across the stash's own lane right before its treasure (LevelLayout.DOODAD_SIZES):
+## the one the return pad's rider drops past.
 @export_enum("small", "medium", "large") var front_size: int = 1
+## The size class of the second doodad across the stash's lane, a space before that one, toward the runner (the
+## owner, October 18, 2026: "a doodad, a space, then a second doodad, and then the treasure"). DESIGN-TBD
+## (items 1017-1024): a medium one, as the stash's own.
+@export_enum("small", "medium", "large") var outer_size: int = 1
+## Slack added to the space between the two doodads in the stash's lane (metres, not stretched): the space is the
+## most a dash that smashes the outer doodad still carries the runner past its end (TreasureStashRules.dash_space:
+## the dash's time at its speed, the most a speed pad's or a ramp's fading boost adds, a body's length and a
+## frame), so no single dash smashes both. DESIGN-TBD (items 1017-1024).
+@export_range(0.0, 5.0, 0.25, "suffix:m") var outer_space_margin: float = 0.5
 ## How far the doodads alongside the stash reach back beside the one across its start (metres): a runner beside
 ## it can't switch into the stash where the one ends and the others begin.
 @export_range(0.6, 3.0, 0.1, "suffix:m") var wall_overlap: float = 1.0

@@ -4,8 +4,8 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
 
 ## Economy and saving
 
-`Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned,
-unspent), item tiers and stock, equip toggles, records per difficulty tier, settings and stats.
+`Profile` (`scripts/app/profile.gd`) keeps earned and purchased credits apart (net worth = earned, unspent,
+plus what was spent on cosmetics, `cosmetic_spent`: an outfit never lowers it), item tiers and stock, equip toggles, records per difficulty tier, settings and stats.
 `SaveService` writes it to `user://profile.json` (with a backup). `Loadout` is what one run carries:
 owned, switched-on items; every shield in stock (they stack, up to its max_stock) and one charge of the other breakables per attempt; and the free armor every run
 starts with (GDD §4), whatever the profile, settings or flavor. The shop (`ShopScreen`, the catalog's
@@ -19,8 +19,8 @@ who finish every level once, and the first level each tier is in reach of (the m
 `tools/measure/economy_model.gd`, shared with `test_economy`).
 
 **Cosmetics (task M1, GDD §8, "Cosmetics"; the owner, October 18, 2026).** Looks for the runner sold in their own
-Cosmetics section of the shop, after the power-ups: each is **bought once with credits from the same wallet** (bought
-credits first, as for every item) and **kept forever**, and the player picks **one to wear**; Razor Echo's own look is
+Cosmetics section of the shop, after the power-ups: each is **bought once with credits from the same wallet** (the
+earned credits first, so that it never lowers net worth) and **kept forever**, and the player picks **one to wear**; Razor Echo's own look is
 the free default, always owned, and the way back. They never change gameplay and never reach a run's `Loadout`.
 - *Data:* `data/shop/catalog.json` has `default_cosmetic` (Echo's own look: id, name, text, colour) and `cosmetics`, the
   outfits in shop order (`ShopCatalog.cosmetics`, `default_cosmetic`, `cosmetic(id)`; `ShopCosmetic`: id, name, text,
@@ -33,16 +33,71 @@ the free default, always owned, and the way back. They never change gameplay and
   `add_outfit()`, `wear_outfit()` which refuses an unowned one, `worn()`), written in `to_dict()`. The save version is
   unchanged: an older save has neither field and loads as nothing owned, Echo worn, and a save that wears what it doesn't own
   (edited by hand) or a damaged field loads as Echo's own look.
+- *Net worth* (M4; owner, October 18, 2026, item 980; GDD §6, §8): **buying an outfit doesn't lower it.** `App.buy_cosmetic`
+  pays through `Profile.spend_on_cosmetic()`: the wallet loses the price and the earned part spent is added to
+  `Profile.cosmetic_spent`, so `net_worth()` (the leaderboard's value, what `App` submits after a run and the shop's NET WORTH
+  label) is `earned + cosmetic_spent`; bought credits are never in it. `lifetime_spent` still counts the purchase.
+  **An outfit spends the earned credits first, then bought ones** (an item spends bought credits first): that follows from item
+  980. With the bought credits first, an outfit would leave earned credits in the wallet for the next item to spend, and the
+  outfit would lower the net worth after all (earned 2,000 and bought 3,000: Rex, then a 1,500 item leaves 500, where the item
+  alone leaves 2,000); earned first, the bought credits are what the item spends and both leave 2,000. *Old saves:*
+  `cosmetic_spent` is a new field with a default and the version is unchanged (as the outfits were); a save without it (or with
+  a damaged one) works it out when it loads (`Profile._owned_outfits_cost`): the catalog prices of the outfits it owns, never
+  more than its `lifetime_spent` and never more than the earned credits it has spent (`lifetime_earned - earned`), so the
+  owner's own save, which paid with earned credits, gets exactly what it paid back in its net worth, and the net worth given
+  back never goes past `lifetime_earned`. A save from before the outfits has none and gets 0. The old buy spent bought credits
+  first (mobile) and a save can't say which credits paid what, so an outfit paid with bought credits there gets back only what
+  the earned spending reaches: possibly less than it cost, never bought credits in the net worth. An outfit won rather than
+  bought (later) never reaches `spend_on_cosmetic`, so it adds nothing.
 - *Flow:* screens only call `App.buy_cosmetic(id)` (once, with enough credits, never the free default; plays
-  `ui_buy`; it is not worn yet) and `App.wear_outfit(id)` (owned only; `ui_equip`), both saved and followed by
+  `ui_buy`; it is worn right away, the owner's answer to item 981) and `App.wear_outfit(id)` (owned only; `ui_equip`), both saved and followed by
   `profile_changed`. `App.sync_outfit()` makes `PlayerOutfits.worn` (what every new `PlayerAvatar` wears) the profile's
   outfit; it runs at start and after a wear, and a test or tool that swaps `App.profile` calls it.
 - *The shop:* `ShopScreen` has a COSMETICS section after the breakable items (before the credit packs), a `CosmeticCard`
   (`scripts/ui/widgets/cosmetic_card.gd`, `shop.cosmetic_cards`) for Echo's own look and each outfit. Its one button follows
   the state: the price (disabled, with "NOT ENOUGH CREDITS", when the wallet is short), WEAR once owned, TAKE OFF on the worn
-  one (Echo's own card says WORN and can't be taken off). It is the same card as an item's (the theme's `ItemCard` sizes) with
-  the jacket icon (`IconFactory` `outfit`) in the outfit's colour. The web demo and the mobile shop show it too.
-- *Tests:* `test_cosmetics` (the profile, old saves, the save file, buying, wearing, the shop's cards) and `test_outfits`.
+  one (Echo's own card says WORN and can't be taken off). It is an item card's look (the theme's `ItemCard` frame, fonts and
+  button, about the same height) 1.4 times as wide (`CosmeticCard.WIDTH_FACTOR`), so the picture has its room: **the runner
+  wearing the outfit** (item 982) where an item has its icon, as tall as the text beside it. The web demo and the mobile shop show it too.
+  *Keyboard and D-pad:* left and right on a card's button go to the previous and next card in shop order (along the row, then
+  on to the next one; they stop at Echo and at Party Wolf), set in `ShopScreen._link_cosmetic_cards()`: the cards are wider than
+  the items', and Godot's own nearest-button search jumped to the items above and below. Up and down are left to that search:
+  they find the card above or below, the items above the first row, nothing below the last. `test_cosmetics` drives `ui_left`,
+  `ui_right`, `ui_up` and `ui_down` over the six cards at 1280x720, 1706x720 and a phone held either way.
+- *The previews* (M4; owner, October 18, 2026, item 982; `scripts/ui/widgets/outfit_preview.gd`, `outfit_stage.gd`,
+  `outfit_stills.gd`): the picture is an `OutfitPreview`, the runner in a run pose turned three-quarters to the camera on a
+  little lit stage (a pedestal, a backdrop, two lights, no shadows), no power-ups on. **At rest it is a still**: `OutfitStills`
+  draws each outfit once per pixel size on one shared `OutfitStage` (a `SubViewport` with a world of its own and a
+  `PlayerAvatar` built for the outfit), reads it back as a texture and keeps it for the session, one picture every four frames.
+  **The pictures are drawn lazily:** a preview asks for its still only when it is on show or about to be (within a fifth of
+  the scroll view's height of it, `OutfitPreview.VIEW_MARGIN`, checked when the list scrolls or its content changes), so a shop
+  opened on its power-ups builds no avatar and draws no viewport at all and the Cosmetics' six pictures are drawn as the
+  section scrolls into view; from the second visit they cost nothing (the shop is shown after every death). A request
+  nobody wants when its turn comes (the card closed, a size the window has left) is dropped at once, without the wait between
+  pictures, so a burst of stale ones never holds up the ones that count. **The card the pointer is over or the focus is on runs
+  and turns:** `ShopScreen` keeps the cards that have either (`CosmeticCard.interest_changed`) and makes the latest one's
+  preview live (`set_preview_live`), so there is one live preview at most; it builds its own stage the first time (one
+  avatar, one viewport drawn every frame), and a stopped stage is kept for the next hover only for the latest preview (another
+  one stopping frees the older). The live runner turns all the way round, so the camera is far enough back (3.6 m) for a
+  long coat's tails and the trailing leg to clear the frame side-on. The render is the card's size in pixels times the
+  screen's scale (at most 2x), so a phone's magnified menu stays sharp and a dense screen is no dearer. Where nothing draws (the
+  headless tests) the queue still runs and finishes with no texture, and a stage that is not live does not process.
+  *Cost* (`tools/measure/shop_preview_cost.gd`, measured under Xvfb with Mesa's llvmpipe, a software rasteriser on four CPUs,
+  so read the times against the same run on main, not against a phone; 1280x720, Camo's card focused for the live preview):
+  opening the shop costs what main's does (the call 22 to 39 ms, no picture drawn); the cards at rest add no draw call and no
+  frame time; one live preview adds 20 draw calls and about 1,900 triangles and, in software, about 8 ms a frame on both
+  renderers (all six live at once were 72 to 78 ms against 30, which is why only one runs); when the Cosmetics first scroll
+  into view the six pictures are drawn one every four frames, each about 50 to 95 ms on top of its frame here (the outfit's
+  meshes, the avatar, the draw and the read-back), and the first also pays the body shader's first compile on the 3D side (about
+  1.3 s in software on Forward+, 0.2 s on Compatibility; a real GPU compiles it far faster, and a first run would pay it anyway).
+  Looked at on both renderers at 1280x720 and on phones (844x340 and 390x844): `build/m4/` (not kept in the repo),
+  `tools/showcase/screens_showcase.tscn -- --screen=shop --scroll-end [--focus-outfit=<id>] [--hover-outfit=<id>[:button]]
+  [--phone --flavor=web_demo]`, with `--rendering-method gl_compatibility` for the other renderer.
+- *Tests:* `test_cosmetics` (the profile, old saves and their net worth, the save file, buying and the net worth it keeps,
+  the leaderboard value after a run, wearing, the shop's cards and their previews: one per card in its outfit, a still at rest,
+  none drawn until the section is scrolled to, then each once, one live at most, one stopped stage kept, the stage cheap and
+  power-up-free, stale requests dropped, a late picture fading in; keyboard and D-pad navigation over the cards) and
+  `test_outfits`; `test_economy` covers `spend_on_cosmetic` (earned credits first, net worth neutral).
 
 **Approved early-economy revision (October 3, 2026; pre-density earnings snapshot).** The owner's answers in
 `docs/USER_REQUESTS.md` supersede the historical R7 early-affordability assumption: City 1 stays
@@ -82,6 +137,18 @@ items 846–850 in `docs/OPEN_QUESTIONS*.md`).** The prices and payouts were set
   apart: the typical player takes it, the weaker one and 3 lanes have none. It lifts a typical playthrough from
   16,343 to 18,382 and pulled Armor IV and the Heavy missile two levels early, which is why they moved.
   DESIGN-TBD (items 846–850 in `docs/OPEN_QUESTIONS*.md`).
+- *Level stars (task N2's audit, the owner, October 18, 2026: every star has to be earnable).* A level's stars are the
+  run's score against `GameRules.two_star_share` (0.45) and `three_star_share` (0.75) of `max_credit_score`; the score
+  counts kills (a stomped Cyborg 200 + the stomp's 50, `data/enemies/*.tres`) and the ramps' double credits as well as
+  credits, so the line is cleared on more than credits. Measured on every campaign level (the generator's layouts at 3, 5
+  and 6 lanes, two seeds each; a best lane path through the floor credits, a switch of n lanes costing n lane switches' metres,
+  hazards ignored): in City 1 and 2 the best floor line is 81-125% of the three-star line (it reaches it in 6 of the 12
+  builds); from City 3 on it reaches 25-98% (the later levels put more of their credits on ceilings, wall runs and gap and
+  fence arcs than on trails, and a floor line doesn't take the first two). Where the floor line falls short, the line also
+  asks for one or two stomped Cyborgs (every shipped 5-lane build has two or more; the thinnest build of any lane count and
+  seed, one Cyborg, has ceiling and wall credits to make up the rest) or a ceiling or wall run. No level's line is out of reach, and none is only reachable by a stash (left out of the best score, I4). The
+  volleyball match's stars are by the match (`docs/architecture/mini-games.md`), a boss's by its par times or hits
+  (`docs/architecture/bosses.md`, Stars).
 - *Levels* are numbered in play order: City 1-3 are 1-3, Gangland 4-6, Marketplace 7-8, Casino 9-10, Corporate
   11-12, Beach 13-15 (the match is 14), Dead Zone 16-17 and Golden 18-20.
 - *Where each tier first fits* (5 lanes, each level's own seed; `test_economy.gd`'s `FIRST_FIT`, give or take one
@@ -160,6 +227,70 @@ the Casino (`test_campaign`, `_test_old_saves`).
 Beach 2 is open (Beach 1 is done) and is the first step not done, so Continue leads to it (`test_volleyball`,
 `_test_saves`; `test_campaign` checks the version).
 A change to the save's format bumps the version and adds its step there, with a test.
+
+## The weekly challenge
+
+**The weekly challenge** (task N5; GDD §6, Replay features; the owner, October 18, 2026): one fixed level a week, the same
+for every player, with a leaderboard for that week. Everything about it is in `scripts/weekly/` and `data/weekly/`; the
+questions it leaves open are in items 1025-1041 (every placeholder is data, and the code that holds one carries a
+DESIGN-TBD with its number).
+- *Data* (`WeeklyChallenge`, `data/weekly/weekly_challenge.tres`, `@export_range` on the numbers): the calendar
+  (`epoch_unix`, `week_seconds`: weeks open Monday 00:00 UTC, week 0 on October 19, 2026, DESIGN-TBD), the level
+  (`lanes` 5 on every platform, `density_step` = `golden/2`, `source_levels`), the kit (`kit`: Armor IV and Juggernaut
+  dash IV), the rewards (`first_clear_credits` 1,000, `top_places` 3, `reward_kind`, `reward_check_weeks`) and the unlock
+  (`unlock_step` = `city/boss`). `App.weekly` holds it; `WeeklyWeek` is one week (its index, entry, zone, seed, dates).
+- *Which level a week plays.* `data/weekly/weekly_seeds.json` is the **shipped seed list**: `{zone, seed}` entries, and week
+  N plays entry `N mod size` (`WeeklyChallenge.week`), never a level worked out from the date. The list is the campaign's
+  eight zones in order, four seeds each (32 weeks, then it goes round again), so the weeks rotate through the zones and
+  every zone is in from the start. Every entry was built and checked in advance by a written rule (the first four seeds
+  of the zone's block that pass every check in at most three generator builds: `tools/measure/weekly_seeds.gd`, which
+  also looks for seeds to add; `test_weekly_challenge` and `test_weekly_fairness` check the list). Once the game has
+  shipped, only ever add at the end, and see item 1027, for what appending does once the list has wrapped.
+- *The level* (`WeeklyChallenge.build_config`). Every stored property of `LevelConfig` is in exactly one of three lists in
+  `WeeklyChallenge`, and `test_weekly_challenge` fails on one that is in none, so a new dial forces a decision about
+  whose it is: `ZONE_FIELDS` (from the zone's own level in `source_levels`: its features and their pick weights, patterns,
+  skin, sky, darkness and open walls; a dial about a zone's own mechanic goes here), `WEEK_FIELDS` (the week's own: name,
+  seed, five lanes, no `feature_starts`, no recency curve, not off the curve, no mini-game, every feature must appear) and
+  `GOLDEN_FIELDS` (everything else, from the campaign's own configuration of `golden/2`, Sentinel Row: difficulty 0.91,
+  enemy scaling 0.94 for fire rate, projectile speed and health, 25 m/s, 150 s, `danger_density_increase` and every pacing,
+  density, gap and credit dial). A dial for a feature the zone lacks does nothing (the generator runs a rules script per
+  feature the level lists). Generated and played like any level (`LevelCache` keys it by content, so a retry is instant).
+- *The run* (`RunContext.Mode.WEEKLY`, `ctx.weekly`, `ctx.weekly_board`): `App.start_weekly()` builds it with the uniform kit
+  (`Loadout.weekly(catalog, kit, mobile)`: the free armor under Armor IV, the dash at IV, no breakable and nothing else,
+  whatever the profile owns or has switched off). There is **no revive**, from stock or for an ad (`revive_options`).
+  Retrying (`App.retry`) starts the current week's level again, so a retry after the week turned over plays the new week.
+- *The boards* (`WeeklyChallenge.board_id`): `weekly/pc/<week>` and `weekly/mobile/<week>`, one a week for each platform's
+  players, the device's by `App.mobile`. A clear is posted (`Platform.submit_score`), a death or quit isn't.
+- *The payout* (`App._settle_weekly`, before the wallet is paid): the credits collected on the way pay **nothing**, on a clear
+  or not (a memorised layout would farm them); the week's **first clear** pays `first_clear_credits` once (`Profile.weekly`:
+  `cleared`, `paid`, `best`, `attempts` per week; `record_weekly`); every other run pays nothing. The results screen shows
+  the payout (or "paid this week"), no stars, and what became of the score (`result.record`: weekly, first_clear, new_best,
+  board, submitted, best, paid, closed).
+- *The clock* (`App.weekly_state()`, `Profile.weekly_high_water()`): the week is what the device's clock says, so a clock moved
+  back must not pay or post a week again. A week **before the schedule's first** (negative index) is never played, paid,
+  posted or kept (the screen says when it opens); and weeks only go forward: `Profile.weekly["high_water"]` is the highest
+  week played, a week below it is "behind" (the screen says which week it goes on at, PLAY off) and `_settle_weekly` pays
+  and posts nothing for it, whatever started the run. A clock moved **forward** still opens each future week once: that
+  needs a trusted time through the platform layer (item 1026).
+- *The reward hook* (the Leader of the Pack, item 977 in `docs/OPEN_QUESTIONS.md`; the cosmetic is not built): a clear leaves a
+  pending record (`Profile.weekly_rewards`: week, board, score, state); `App.settle_weekly_rewards()` runs at start and when the
+  weekly screen opens (one pass at a time: a second asks nothing while the first waits on the platform), and for each record
+  whose week is over asks `Platform.leaderboard_rank(board)` (a new backend method: 0 until a real platform answers, which
+  the stub does only with `report_ranks` on and `board_entries` to rank against). A place in the top `top_places` makes it
+  "earned" (kept, `Profile.has_weekly_reward`; `App.weekly_reward_earned`; the screen lists the weeks), another "missed", an
+  unknown rank stays pending until `reward_check_weeks` have passed. `App._grant_weekly_reward` is the one place the
+  cosmetic will be given from.
+- *Gating:* `App.weekly_available()` is false in the web demo (no title button, no screen, no board); `App.weekly_state()` says
+  `unavailable`, `locked` (the Floating Head isn't beaten, `unlock_step`), `not_yet`, `behind` or `open`. The title's WEEKLY
+  button shows a lock until the Floating Head is beaten and `WeeklyScreen` says what is wrong (`App.show_weekly`).
+  `App.now_unix()` is the clock (tests and reviews set `App.clock_override`).
+- *Review:* `--weekly` (debug builds) plays this week's level, `--weekly=N` week N's (`--god` and `--nofall` apply; `--lanes` and
+  `--full-loadout` are ignored; open whatever the profile); `tools/showcase/screens_showcase.gd` has `weekly`,
+  `weekly_locked`, `weekly_results`, `weekly_failed`, `weekly_intro` and `weekly_run`, with `--week=N`.
+- *Tests:* `test_weekly_challenge` (every entry of the list generated at five lanes with the campaign levels' fairness checks,
+  the config split, the calendar, the rotation, the kit, the payout, the boards, the clock, the unlock, the demo's exclusion,
+  the reward hook and the save) and `test_weekly_fairness` (a slow suite: the per-feature checks of the campaign's suites on
+  every entry, and each built twice); `test_phone_screens` lays out the weekly screens and the full game's title.
 
 ## Platforms and build flavors
 

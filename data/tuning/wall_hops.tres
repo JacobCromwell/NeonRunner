@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WallHopTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/wall_hop_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+hop_height = 1.5
+lead_step_seconds = 0.3
+lead_value = 1
+gems = 3
+gem_value = 25
+gem_step_seconds = 0.12
+reach_margin_seconds = 0.25
+gem_clearance = 0.1
+run_in_seconds = 0.5
+landing_seconds = 0.5
+min_gap_seconds = 30.0

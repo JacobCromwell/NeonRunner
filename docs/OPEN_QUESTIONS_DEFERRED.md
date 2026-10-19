@@ -1928,6 +1928,15 @@ through it in `tools/showcase/bad_dream_showcase.tscn -- --skin=dead_zone`)
     past the next visit's arrival, and the arrival still sends the last one away (one on screen at a
     time). The alternative: the next one holds back far ahead until the last one's first pulse has begun
     (two on screen meanwhile, and its own visit may then run out of level).
+    **Changed (task N1, October 18, 2026):** the threshold is now its own tunable,
+    `ResonatorTuning.first_pulse_wait_max` (`data/enemies/resonator.tres`), at 0: a first pulse still owed keeps its
+    place in the turn queue as soon as it waits, so the other types' next big attack waits for it from its second frame
+    of waiting (never overlapping). Why: the treasure stash's longer floor (N1) left Golden 1's third Resonator at 5
+    lanes on its own seed without a pulse (a heli drone that stayed took the turn in both of its short clear stretches).
+    Over Golden 1-3 at 3, 5 and 6 lanes on six seeds (54 builds, 97 Resonators), one still never pulses, as before:
+    Golden 2 at 5 lanes on seed 9102, held by a Bad Dream chase, then sent away by the next arrival (this item's other
+    point). Questions: is "as soon as it waits" right, given the other types wait longer? Should the next arrival still
+    send away one that owes its first pulse?
 
 **The Enforcer Truck** (from C6; numbers in `data/enemies/enforcer_truck.tres`, F6 "Enemy: Enforcer Truck"; play `--level=corporate/2`, review with `tools/showcase/enforcer_truck_showcase.tscn`)
 354. **Its numbers and presentation** (GDD §9.13, proposed values and gaps), all in
@@ -5327,9 +5336,6 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
 
 ### Folded on October 18, 2026 (task M1, the cosmetics: the shop's section, the outfit system and Rex)
 
-981. **Is an outfit worn right after it is bought?** (GDD §8: "bought once ... the player then picks one to wear".)
-   Placeholder: no. Buying only owns it; the card's button turns to WEAR (`App.buy_cosmetic`, `CosmeticCard`).
-
 984. **Rex's details the sheet leaves to us.** (`docs/art/BRIEF_OUTFIT_REX.md`.) The circuit patterns on the sleeves, shoulders
    and spine are simplified from the sheet (pink lines over the shoulders and down the back of the right sleeve, a cyan spine
    with three vertebrae), the patches on the back are two plain shapes (a round one on the left blade, a small square lower
@@ -5510,3 +5516,249 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    four stays four), and the grant is one free break (`Loadout.costs_stock`: picked-up charges break first, then the granted one,
    then the player's own stock). A boss fight's shield pickup also adds nothing to a held stack (`PickupTuning.max_charges` 1).
    Marked `DESIGN-TBD` in `scripts/run/loadout.gd`.
+
+### Folded on October 18, 2026 (task N2, stars that can be earned)
+
+1012. **Is a lost match with 2 or 3 points two stars?** (GDD §5, the volleyball match.) By the letter of the owner's rule ("4
+   points to the rival's 0 is three stars, one point or none is one star, anything in between two stars") a 2-4 or 3-4 loss is
+   two stars, as a 4-1, 4-2 or 4-3 win is; the runner finishes the level and is paid by the points won either way.
+   Placeholder: the letter of the rule, in `data/minigames/volleyball_tuning.tres` (defaults of `VolleyballTuning`:
+   `two_star_points` 2, `three_star_points` 4, `three_star_rival_points` 0).
+
+1013. **Should the bosses' stars stay by par times, or go by the hits taken?** (GDD §10, Stars and leaderboards: par times are a
+   proposal.) Four bosses' clean fights are scripted so tightly that their time doesn't change with the lane count or the
+   speed: Hostile Takeover 68.6 s, Sleep Taker 139.0 s, Sewer Swarm 104.3-104.7 s, The House 80.4-81.9 s. Their time can be
+   matched but not beaten, so "three stars" means no chance let go by (a missed chance costs 14.6 s at the Sewer Swarm, 26.7 s
+   at the Sleep Taker), and each is earnable that way. Placeholder, used by no boss: `BossDef.star_rule` `HITS` (set
+   `star_rule = 1` in `data/bosses/<id>.tres`): three stars for no protection hit taken (an armor or shield block, or a revive
+   used), two for one or two, else one (`three_star_max_hits` 0, `two_star_max_hits` 2). Is that wanted for any boss, and are
+   those numbers right? It is stricter than an error-free fight: with par times the armor can absorb a mistake and still
+   earn three stars. The par times themselves are the earlier items 28, 202, 313, 348, 743, 810 and 962.
+
+1014. **Should a clean Floating Head fight at 3 and 6 lanes earn three stars?** (GDD §10; par times, item 202: "a perfect run
+   gets three and a run that misses a window or two gets two".) Only 5 lanes ship, on every platform. The par is 110 s (two
+   stars 150 s), so a clean fight at 5 lanes is three stars and a run that misses a stomp window is two, but a clean fight
+   at the lane counts that don't ship takes 113.9 s and 114.0 s, so it is two. Raising the par past 114 s would let a run
+   that misses one window at 5 lanes (113.9 s) earn three. Fight times in seconds (the bot, as `test_floating_head_stomps`
+   plays it):
+
+   | Lanes | Clean | 1 window missed | 2 missed |
+   |---|---|---|---|
+   | 3 | 113.9 | 133.9 | 147.3 |
+   | 5 | 100.6 | 113.9 | 133.9 |
+   | 6 | 114.0 | 134.0 | 147.3 |
+
+   Placeholder: 110 s (only clean 5-lane fights get three stars), `data/bosses/city_boss.tres`.
+
+1015. **Should kills count toward a level's stars?** (GDD §7: the level score is credits plus bonuses for kills and ramps, and it
+   feeds the stars.) Three stars are 75% of the level's credits, but a stomped Cyborg scores 250 and a Hover Truck 800 against
+   a credit's 1, 5 or 25. A runner who takes only the floor credits reaches the three-star line in City 1 and 2, then 25-98%
+   of it; one or two stomped Cyborgs close the gap in every level (every shipped 5-lane build has two or more; the thinnest of
+   any lane count and seed, one, has ceiling and wall credits for the rest). No line is out of reach, but from Gangland 1 on
+   the stars are as much a kill count as a credit count. Placeholder: unchanged, `data/tuning/game_rules.tres`.
+
+### Folded on October 18, 2026 (task N4, the Golden Convergence's trumpets)
+
+1016. **The entrance's timing for the fanfare** (GDD §10, the entrance; item 441, "the chime rings at 1.6 s"). The 1.6 s was
+   set for the chime, which is high and bright. The deep brass fanfare that replaced it (owner, October 18, 2026) sits in
+   the same low register as the rise's rumble (`gc_rise`, at full level until about 2 s), which would mask its first calls,
+   so it comes in later. Placeholder: `fanfare_at` (was `chime_at`) is 2.2 s in `golden_convergence_tuning.gd`
+   (`DESIGN-TBD`, the entrance's group); the fanfare ends at 4.65 s, 1.65 s before the first beat (the intro stays 5.5 s).
+
+### Folded on October 18, 2026 (task N1, the treasure stash's second doodad and the wall-hop credits)
+
+1017. **The space between the stash's two doodads.** How long should it be? (GDD §3, Ceiling scenarios: "a doodad, a
+   space, then a second doodad, and then the treasure".)
+   Placeholder: the most a dash that smashes the outer doodad still carries the runner past its end, so no single
+   dash smashes both (`TreasureStashRules.dash_space`): the dash's 0.6 s at the run speed plus its 8 m/s (the same at
+   every tier), the most a speed pad's or a ramp's fading boost adds (2.9 m), a body's length (the latest dash that
+   still smashes it steers into its side beside its end), a frame, and `outer_space_margin` (0.5 m): 23.1 m at the
+   Casino's 23 m/s to 24.4 m at the Golden Zone's 25 m/s, about a second of run. A shorter space would let a dash
+   started late enough smash both. The outer doodad is a medium one (`outer_size`), as the stash's own.
+
+1018. **The lanes beside the space.** Should the doodads alongside (in the two neighbouring lanes) also run beside the
+   outer doodad and the space, so nobody slips into the space sideways? (GDD §3, the same.)
+   Placeholder: they don't; the walls stand beside the second doodad and the treasure only, as before. A runner the
+   outer doodad pushes, or one whose dash ended in the space, meets the second doodad's push with room beside it, as
+   a runner in the stash's lane always did. So a floor runner still gets in the way the owner allowed ("a floor runner
+   can still get in that way; it is just harder"): around the outer doodad in the next lane, into the space, then a
+   dash through the second one (test_ceiling_scenarios rides it). Walled beside the space instead, a runner whose dash
+   ended there would meet the second doodad's push with no room on either side (the push would carry the body into a
+   wall doodad), unless the walls stopped short of it, leaving the opening right where it matters; and the only way in
+   from the street would be a dashing switch through a wall doodad. Is the open space the "harder" the owner meant?
+
+1019. **Fewer stashes.** The stash's floor is about 27 m longer (about 70 m, 3 s of run), so it fits a few fewer ceilings:
+   over the campaign's stash levels on their own seed and four more at 5 and 6 lanes, 96 stashes in 110 builds (101
+   before), the Dead Zone's quiet stretches losing the most; Dead Zone 2 at 5 lanes on its own seed has none now (21
+   of the 22 campaign builds have one); fenced ceilings 62 in 100 builds (65). Is that acceptable for a scenario that
+   is sprinkled, never guaranteed?
+   Placeholder: as measured.
+
+1020. **Who the wall-hop credits are for.** The GDD says "high-value credits further along than one wall run reaches, so
+   only a player inventive enough to wall hop collects them", but a side wall can be stepped onto anywhere, so a
+   runner who just steps on further along would reach credits that are only further along. (GDD §7, §3 Wall hop.)
+   Placeholder: they also hang higher than a fresh wall run carries a pickup without a hop, 3.11 m
+   (`WallHopPlacement.gem_height`: a step on from the floor tops out at 2.2 m, straight back on as a run drops its runner
+   at 2.44 m, a pickup reaches 0.575 m, and `gem_clearance` 0.1 m), and past one standard wall run's reach (2.16 s,
+   no claws) from the line's entry. A hop starts a fresh run higher (the air entry: 60% of the height it hops from on
+   top), so a hop from anywhere above about half a metre gets there; a single run with claws slides on further but
+   passes under them. Two other ways in were measured (task N1's review; a step or a jump onto the wall from the outer
+   lane, never hopping, every metre from one wall run's reach to the high-value credits):
+   - **A jump onto the wall from the floor** starts a run high enough (up to 3.16 m). With no hop and no magnet it
+     takes all three when it starts 10 to 23 m before them in Gangland 1 (10 to 26 m in Golden 3), and one or two of
+     them from 4 to 29 m (4 to 31 m). This way stays open (as would a ramp's launch or a hover truck's roof, which the
+     line keeps away from).
+   - **The magnet** pulls a credit on the runner's own wall from up to its radius (3 m at most) up or down and 2.5
+     radii ahead (`CreditField._in_magnet`). With Magnet I, a plain step onto the wall from the floor, no hop, took all
+     three when it came 2 to 19 m before them in Gangland 1. Placeholder (the orchestrator's decision, after task I4's
+     stash, whose credits lie past the magnet's reach): the magnet leaves the high-value credits alone (`DESIGN-TBD` in
+     `credit_field.gd`). Now no magnet tier takes them from a step on (test_wall_hops rides Magnet I).
+   Should they hang higher still, above a jump's entry (about 3.8 m), which only a runner who hops early and often
+   reaches, or is distance alone what the owner meant (then stepping back on further along takes them)? And should the
+   magnet leave them alone?
+
+1021. **How many wall-hop credits, how valuable, and where.** (GDD §7, proposed: "from Gangland on, about once a level, on
+   a stretch of wall long enough with no wall gap".)
+   Placeholder: up to one line a level from Gangland 1 (`LevelConfig.wall_hop_lines` 1 in every level from there, 0
+   in the City's), sprinkled where it fits: a lead-in of 3 credits of 1 along the first wall run from where to step on,
+   then 3 credits of 25 (`gems`, `gem_value`) together, 0.12 s apart, after two hops of the reference hopper (who hops
+   each time its run comes down to 1.5 m, `hop_height`): 66 to 71 m past the entry in Gangland, where one wall run
+   reaches 47 m. The line needs 5 s of run of whole, clear wall and a clear outer lane beside it, so it fits 107 of
+   126 builds outside the Beach (the campaign's levels on their own seed and two more at 3, 5 and 6 lanes; every
+   Gangland build) and none on the Beach, whose open walls (`data/tuning/beach_wall_gaps.tres`, task D10b) leave no
+   whole wall longer than about 4 s. Should the Beach get them (its walls more whole somewhere, or a shorter line), and
+   are 3 credits of 25 the right reward?
+
+1022. **Showing where to hop.** The high-value credits sit at the top of the reference hopper's third fresh run; a runner
+   with another rhythm (hops at 0.6 or 1.0 m) passes under them unless it hops once more shortly before them (0.15 to
+   0.35 s, which test_wall_hops rides), and a hop from high on the wall carries a runner over them. Should the line
+   lead the eye there (credits along the hopper's path between the lead-in and them), or is finding the timing part of
+   the nudge?
+   Placeholder: nothing between the lead-in and the high-value credits.
+
+1023. **The stars and the wall-hop credits.** (GDD §4 stars, §7.)
+   Placeholder: the high-value credits are out of the stars' best score (`LevelLayout.star_credit_value`), as a
+   treasure stash's are (item 844's placeholder), so three stars never ask for a move the game never asks for; the
+   lead-in counts like any credit. The economy's model takes them with the stashes' (a typical player at its share, a
+   weaker one none).
+
+1024. **How calm the line's stretch is.** (GDD §3, readability.)
+   Placeholder: from 0.5 s before its entry to 0.5 s after a runner who jumps off at its last high-value credit comes
+   down, its wall is whole and clear (signs, wall enemies, ramps' runs, wall fences and their drop windows, wall gaps,
+   other wall credits, 1 s either side), the outer lane's floor clear (holes, fences, pads, doodads, floor cuts), no
+   enemy in that lane, no hover truck, no dash wall, and none of the keep-outs of a heli drone wave (its arrival until
+   its first pad), an Enforcer Truck or a Bad Dream's chase. Not guaranteed: a heli drone that stays past its first pad
+   may still fire at a wall hopper on the line (it holds its barrages for a wall-run gap's crossing only), after its
+   warned wind-up, with the clear outer lane below to jump off into; attacks elsewhere (a cyborg's bolts, an Octodog's
+   lunge in another lane) may still come, each with its warning.
+
+### Folded on October 18, 2026 (task N5, the weekly challenge; items 1025-1027 are in `docs/OPEN_QUESTIONS.md`)
+
+1028. **The first-clear payout.** The GDD says "equal to a middle-of-the-road level's payout". Placeholder
+   (`first_clear_credits`): **1,000 credits**, a fixed sum: the typical player's finish payout at the campaign's middle
+   level (credits kept, 70% of what the level holds, plus the completion bonus; the median over the 19 generated levels
+   is 993, Marketplace 2's, with N1's wall-hop credits in, and was 1,023 before them; `tools/measure/economy.gd`; the
+   levels' range is 388 to 1,332). It is paid once a week and goes into the wallet as earned
+   credits, so it counts toward net worth. The credits a weekly run collects on the way pay **nothing**, on a clear or
+   not (the layout is the same every try, so they would be farmable). Is a fixed 1,000 right? It is 1.5 finishes of City 3
+   (648) for a player who has just beaten the Floating Head (whose wallet is about 2,000), and under one finish of a late
+   level (1,100 to 1,300); should it scale with how far the player is?
+
+1029. **What posts to the board, and what a death or quit is worth.** Placeholder (`App._settle_weekly`): only a **clear**
+   posts its score to the week's board (the platform keeps each player's best), like the campaign's level boards; a death
+   or a quit posts nothing and pays nothing, and the pause menu's quit dialog says so. Should a death's score (or the
+   distance reached) count on the board, so a player who can't clear the level yet still has a place?
+
+1030. **No revive.** The kit is "no other shop items", so the weekly offers **no revive at all**: not from stock, and not
+   for a rewarded ad on mobile (a bought or watched second life would be a way to buy a better run on the board; the
+   owner also said extra tries must never be gated behind ads, and a try is free here). Placeholder:
+   `App.revive_options()` returns nothing for a weekly run. Is that the intention, or does the ad revive stay?
+
+1031. **Which level of each zone stands for it.** Placeholder (`source_levels`): the zone's own enemies, their pick weights
+   and its look come from one of its levels: Neon City 3, Gangland 3, Marketplace 2, Casino 2, Corporate 2 (with its
+   heavier military weights), the Beach's Sunset Strip, Dead Zone 1 and Sentinel Row itself for the Golden Zone. Is each
+   the right one?
+
+1032. **Whether The Hush or the Golden Palace is ever a week.** Placeholder: neither. The Hush (Dead Zone 2: quiet stretches,
+   darkness, hosts picked far more often) is left out because its pacing is its own, and the Palace (Golden 3) because it
+   has a skin of its own; `test_weekly_challenge` checks that no source level is paced in bursts.
+   Should either be in the rotation?
+
+1033. **Every feature from the start.** Placeholder: a week has all of its zone's features from its first metre, with no
+   introductions (`feature_starts` empty, as endless mode does) and no recency curve, because a level met alone has no
+   campaign before it to introduce things in. In Gangland's week that is the Octodog, the drone and the generator at
+   once, to a player who has only beaten the Floating Head. Should features come in gradually, as in the campaign?
+
+1034. **The Golden Zone's density in every zone.** "Always at the Golden Zone's difficulty" is built as Sentinel Row's whole
+    shape (`density_step`; every `GOLDEN_FIELDS` dial in `WeeklyChallenge`): difficulty 0.91 and enemy scaling 0.94 (against
+    0.26 and 0.13 for the City's last level), `danger_density_increase` 0.39, its spacing, wide gaps and credit dials, on the
+    zone's own features. The review measured what that means in a City week: **134 to 160 floor pieces a minute against
+    Sentinel Row's 51 to 74, and 8 to 12 enemies against 12 to 13**: the City has few enemy types, so the density pass
+    fills the room with floor pieces (gaps, fences, signs) instead. Is that "as many of them, as dense and as hard as the
+    Golden Zone's" (GDD §6, "otherwise it would be too easy"), or should a zone with fewer types get the Golden Zone's
+    *enemy count* and fewer floor pieces?
+
+1035. **The Golden Zone's speed in every zone.** Every week runs at 25 m/s (Sentinel Row's), whatever the zone's own pace (21 in
+    the Neon City, 22.6 in the Marketplace). The GDD proposed it. Is a Neon City week at 25 m/s right?
+
+1036. **The shipped list and how its seeds were chosen.** Placeholder (`weekly_seeds.json`): **32 weeks**, four seeds for each
+    of the eight zones, the zones in the campaign's order starting with the Neon City, then round again with the second
+    seed of each, and so on; the list then repeats (see 3). The rule that made it, written in the file and in
+    `tools/measure/weekly_seeds.gd`: for each zone try the seeds from its block upward (9100 for the Neon City, 9200 for
+    Gangland, ...) and take the first four that pass every check (`test_weekly_challenge` and `test_weekly_fairness`) and
+    were built in **at most three generator builds** (a build is about 1.3 s on a desktop and several times that on a phone,
+    and a level the guarantee needed five builds for would be a long wait for a week's first load). Is eight months before
+    a repeat enough, should some weeks be hand-picked, or the order different (a showpiece zone first)?
+
+1037. **Which rank earns the reward.** Placeholder (`top_places`, 3): the top three of **each platform's** board, PC's top three
+    and mobile's top three (a player is ranked on the board they posted to). The GDD says "the top three of a week's board".
+    Should it be one combined ranking instead?
+
+1038. **When the reward is granted.** A week's rank is only final once the week is over. Built (the hook, no outfit): a clear
+    leaves a **pending record** (`Profile.weekly_rewards`: week, board, score, state) and `App.settle_weekly_rewards()`,
+    run at start and whenever the weekly screen opens, asks `Platform.leaderboard_rank(board)` for each record whose week
+    is over; a place in the top 3 makes it "earned" (kept for good, `Profile.has_weekly_reward`), another place "missed",
+    and a rank the platform can't say yet (0: offline, or the stub, which says nothing) leaves it pending for
+    `reward_check_weeks` (8) weeks. Is a reward granted the next time the game is online (as built), or must the player
+    claim it from the weekly screen? How long should the game keep asking?
+
+1039. **What the Leader of the Pack is.** Item 977 asks what the cosmetic is and whether it can be lost; this only builds
+    the hook (`App._grant_weekly_reward`, which shows a toast; the weekly screen lists the weeks earned; nothing is added
+    to the wardrobe, and `App.weekly_reward_earned` says one was granted). It also leaves item 977's overlap open: the
+    Centurion is "the prize for winning the weekly seed" (GDD §8, Cosmetics), the Leader of the Pack goes to the top three.
+
+1040. **Where it is.** Placeholder: a **WEEKLY** button on the title screen between ENDLESS and SHOP (not in the web demo),
+    showing a lock until the Floating Head is beaten; its screen says what unlocks it. Nothing on the level select, and no
+    notice when a new week starts. Is the title the right place, and should a new week be announced?
+
+1041. **The harder tiers.** The weekly always plays on the Normal tier's numbers: the Hard and Insane tiers (GDD §6) don't
+    touch it. Placeholder; say if they should.
+
+### Deferred by the owner on October 18, 2026 (task N5, the weekly challenge)
+
+1026. **The device's clock is not trusted, and nothing here can make it so.** The payout and the boards are keyed by the week
+   the *device's* clock says. Built (`Profile.weekly_high_water`, `Profile.weekly_week_open`, `App.weekly_state`,
+   `App._settle_weekly`): nothing is paid or posted for a week before the schedule's first; and weeks only go forward, so
+   nothing is paid or posted for a week below the highest the player has played, and the weekly screen says "clock behind"
+   with the date it goes on (PLAY off). That stops the repro in the review (clears at weeks 5, 4, 3, -1, -27 and 37 paid
+   1,000 each, and 5, -27 and 37 are one layout: now only 5 and 37 pay). Not stopped: **moving the clock forward still opens
+   each future week once** (so 37 paid), and a clock set far forward by mistake keeps the player in the "behind" state until
+   real time catches up, with nothing paid or posted meanwhile. Both need a time the device can't change, through the
+   platform layer (the platform's own server time, as a backend method next to `leaderboard_rank`, with the stub saying
+   "trusted: no"). Is that wanted before launch, and what should the game do offline (play unpaid, as now with a clock
+   behind, or pay on the device's word)? The owner said there is no anti-cheat for now (GDD §6); this is the one place
+   where the game's own economy, not the board, is what a clock can change.
+
+   **Deferred (owner, October 18, 2026):** fine as built for now; the owner will come back to it later.
+
+1027. **Board and layout versioning.** A week plays entry `week index mod list size` of the shipped list, and a board is named
+   by the week index alone. Two things follow. (a) Once the list wraps (week 32 plays week 0's level again, on a board of
+   its own), **adding entries changes what every later week maps to**: appending 8 entries to the 32 makes week 32 play
+   entry 32 where it played entry 0, and the weeks already played past 32 would change their layout under the same board
+   name. (b) Changing anything that builds the level (the generator, a zone's level data, Sentinel Row, the pace) changes
+   the layout under a board's name while scores on it were set on the old one. Placeholder: nothing is versioned; the list
+   is append-only and only until the game ships, the data comment says so. Proposed for the owner: a content version in
+   the board id (`weekly/pc/<week>/<version>`) or in the list (each entry says the weeks it starts at, so a played week
+   never remaps), bumped by whoever changes the generator or the list after launch. Which?
+
+   **Deferred (owner, October 18, 2026):** fine as built for now; the owner will come back to it later.

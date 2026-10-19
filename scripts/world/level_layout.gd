@@ -91,10 +91,13 @@ var ceiling_fences: Array[Dictionary] = []
 ## the way a ceiling's end drops them (Player). The generator places one over each treasure stash
 ## (treasure_stash_rules.gd); the track builder builds it as a trigger, the skin dresses it (ZoneSkin.return_pad).
 var return_pads: Array[Dictionary] = []
-## {lane, start, end, walls_from, pad, hull_start}: a treasure stash (task I4; GDD §3, "Ceiling scenarios"): a
-## stretch of floor in `lane`, walled off by zone doodads, that only a ceiling's return pad (at `pad`, over the
-## ceiling starting at `hull_start`) drops a player into. A doodad stands in its lane from `start`; doodads stand
-## in both neighbouring lanes from `walls_from` to `end`, where it opens onto the track; inside lie its credits.
+## {lane, start, front, end, walls_from, pad, hull_start, keep_from, keep_to}: a treasure stash (task I4; GDD §3,
+## "Ceiling scenarios"): a stretch of floor in `lane`, walled off by zone doodads, that only a ceiling's return pad
+## (at `pad`, over the ceiling starting at `hull_start`) drops a player into. A doodad stands in its lane from
+## `start`, and after a space a second one from `front` (the owner, October 18, 2026: "a doodad, a space, then a
+## second doodad, and then the treasure"); doodads stand in both neighbouring lanes from `walls_from` to `end`, where
+## it opens onto the track; inside lie its credits. Its floor, kept clear in every lane, runs from `keep_from` to
+## `keep_to`.
 ## The pieces are ordinary entries of `doodads` (marked "stash"), `return_pads` and `credits` (marked "stash");
 ## this is the record that ties them together (treasure_stash_rules.gd, the checks and the credit pass).
 var stashes: Array[Dictionary] = []
@@ -107,13 +110,22 @@ var stashes: Array[Dictionary] = []
 ## (WallRunGapPlacement), the track builder builds the holes like any and the skin lights the wall
 ## (ZoneSkin.wall_run_guide). Sorted by start.
 var wall_run_gaps: Array[Dictionary] = []
+## {side, entry, start, end, gems_from, gems_to}: a line of wall-hop credits (task N1; GDD §7, "Wall-hop credits",
+## owner, October 9, 2026: "some long walls carry high-value credits further along than one wall run reaches, so only
+## a player inventive enough to wall hop collects them"): on wall `side` (-1 left, 1 right), laid out for a runner who
+## steps onto it at `entry` and wall hops (WallHopPath); its high-value credits lie from `gems_from` to `gems_to`, and
+## the wall and the outer lane beside it are clear from `start` to `end`. Its credits are ordinary `credits` entries
+## marked WallHopPlacement.LEAD (along the first wall run) and WallHopPlacement.GEM (the high-value ones, left out of
+## the stars' best score: star_credit_value). The generator places them (WallHopPlacement, in its credit pass).
+var wall_hops: Array[Dictionary] = []
 
 
 ## Every list of pieces, by name. A level without doodads has no "doodads" key, one without floor
 ## cuts no "cuts" key, one without wall fences no "wall_fences" key, one without wall gaps no
 ## "wall_gaps" key, one without dash walls no "dash_walls" key, one without ceiling scenarios (task I4)
-## no "ceiling_fences", "return_pads" or "stashes" key, and one without wall-run gaps (task J2) no
-## "wall_run_gaps" key, so its dictionary (and every hash or dump of it) is the same as before those existed.
+## no "ceiling_fences", "return_pads" or "stashes" key, one without wall-run gaps (task J2) no "wall_run_gaps" key,
+## and one without wall-hop credits (task N1) no "wall_hops" key, so its dictionary (and every hash or dump of it) is
+## the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -146,11 +158,14 @@ func to_dict() -> Dictionary:
 		out["stashes"] = stashes
 	if not wall_run_gaps.is_empty():
 		out["wall_run_gaps"] = wall_run_gaps
+	if not wall_hops.is_empty():
+		out["wall_hops"] = wall_hops
 	return out
 
 
 ## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps,
-## dash walls, the ceiling scenarios' pieces and wall-run gaps included, whether or not this layout has any yet),
+## dash walls, the ceiling scenarios' pieces, wall-run gaps and wall-hop lines included, whether or not this layout
+## has any yet),
 ## and moves its end to other's if that's further.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
@@ -177,6 +192,8 @@ func append_pieces(other: LevelLayout) -> void:
 		stashes.append_array(other.stashes)
 	if not lists.has("wall_run_gaps"):
 		wall_run_gaps.append_array(other.wall_run_gaps)
+	if not lists.has("wall_hops"):
+		wall_hops.append_array(other.wall_hops)
 	length = maxf(length, other.length)
 
 
@@ -202,6 +219,7 @@ func copy() -> LevelLayout:
 	out.return_pads = return_pads.duplicate(true)
 	out.stashes = stashes.duplicate(true)
 	out.wall_run_gaps = wall_run_gaps.duplicate(true)
+	out.wall_hops = wall_hops.duplicate(true)
 	return out
 
 
@@ -254,8 +272,8 @@ func wall_run_guides(side: int, from: float, to: float) -> Array[Vector3]:
 	return out
 
 
-## Total value of every credit, a treasure stash's too: what a run can collect (the economy's tools and tests). The
-## stars count star_credit_value().
+## Total value of every credit, a treasure stash's and the wall-hop credits' too: what a run can collect (the
+## economy's tools and tests). The stars count star_credit_value().
 func total_credit_value() -> int:
 	var total: int = 0
 	for c: Dictionary in credits:
@@ -264,13 +282,15 @@ func total_credit_value() -> int:
 
 
 ## The best credit score the stars count (ScoreKeeper.max_credit_score, GameRules.stars_for): every credit but a
-## treasure stash's (task I4). A stash is an optional reward a floor runner can't reach (and there's none on 3 or 4
-## lanes), so the three-star line never asks for it; collected, its credits still count in the run's credits (the
-## wallet) and its level score. DESIGN-TBD (item 844).
+## treasure stash's (task I4) and the high-value ones of a line of wall-hop credits (task N1, WallHopPlacement.GEM).
+## A stash is an optional reward a floor runner can't reach (and there's none on 3 or 4 lanes), and the wall-hop
+## credits are for a move the game never asks for (GDD §3, the wall hop), so the three-star line never asks for
+## either; collected, their credits still count in the run's credits (the wallet) and its level score. DESIGN-TBD
+## (item 844; items 1017-1024).
 func star_credit_value() -> int:
 	var total: int = 0
 	for c: Dictionary in credits:
-		if not c.has("stash"):
+		if not c.has("stash") and not c.has(WallHopPlacement.GEM):
 			total += int(c["value"])
 	return total
 

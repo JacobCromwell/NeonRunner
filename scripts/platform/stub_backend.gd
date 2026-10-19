@@ -18,6 +18,12 @@ var simulate_leaderboards: bool = false
 var fake_ad_seconds: float = 1.0
 ## Scores submitted, by board (simulated leaderboards).
 var scores: Dictionary = {}
+## Other players' scores, by board, for a simulated board to rank the player against (tests, development): the stub
+## has no other players of its own. Only used while `report_ranks` is on.
+var board_entries: Dictionary = {}
+## Off: the stub can't say where the player stands (leaderboard_rank gives 0, as an offline platform does), so a
+## build on it never grants a rank reward. On: the player's place among `board_entries`.
+var report_ranks: bool = false
 var achievements: PackedStringArray = []
 ## Pages asked for through open_url(), oldest first.
 var opened_urls: PackedStringArray = []
@@ -68,6 +74,17 @@ func leaderboards_available() -> bool:
 func submit_score(board: String, score: int) -> void:
 	if simulate_leaderboards:
 		scores[board] = maxi(int(scores.get(board, 0)), score)
+
+
+func leaderboard_rank(board: String) -> int:
+	if not simulate_leaderboards or not report_ranks or not scores.has(board):
+		return 0
+	var mine: int = int(scores[board])
+	var rank: int = 1
+	for other: Variant in board_entries.get(board, []):
+		if int(other) > mine:
+			rank += 1
+	return rank
 
 
 func unlock_achievement(id: String) -> void:

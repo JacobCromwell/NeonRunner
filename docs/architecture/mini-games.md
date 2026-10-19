@@ -19,7 +19,7 @@ game.setup(world, context)        joins the world right after the player (it act
 
 | File | What |
 |---|---|
-| `scripts/minigames/minigame_def.gd`, `minigame.gd` | the slot (id, scene, tuning) and the base: `create`, `of(world)` (the world's meta), `plan_layout`, `setup`, `payout()`, `stars()`, `stats()`, `hint_trigger()` (`minigame:<id>`) |
+| `scripts/minigames/minigame_def.gd`, `minigame.gd` | the slot (id, scene, tuning; `star_text()`: the tuning's wording of how the stars are earned, for the results screen) and the base: `create`, `of(world)` (the world's meta), `plan_layout`, `setup`, `payout()`, `stars()`, `stats()`, `hint_trigger()` (`minigame:<id>`) |
 | `scripts/minigames/volleyball/volleyball_match.gd` (`VolleyballMatch`), `scenes/minigames/volleyball.tscn` | the volleyball match (below) |
 | `volleyball_tuning.gd`, `data/minigames/volleyball_tuning.tres` | its numbers (F6 in the level: "Mini-game: Beach Volleyball") |
 | `volleyball_court.gd` and its shaders | the court: raked sand over the street with the boundary tapes, the net and its padded posts, which sink into the sand (`sink`) |
@@ -65,8 +65,14 @@ What the framework touches outside its folder:
 - **The match**: first to `points_to_win`; then `payout_per_point` × points won, shown (the jackpot sound when
   there is one), the rival's goodbye, and after `payout_seconds` the net sinks (`net_sink_seconds`), the rival steps
   aside to the kerb and waves, and the runner speeds back up to the run speed over `exit_accel_seconds` and runs on
-  to the finish. Scoring: `return_score` a return and `point_score` a point won (score bonuses), stars by the points
-  won (`two_star_points`, `three_star_points`).
+  to the finish. Scoring: `return_score` a return and `point_score` a point won (score bonuses).
+- **The stars** (owner, October 18, 2026, task N2: by how the match went, never how fast; `VolleyballTuning.stars_for(won,
+  lost)`, `VolleyballMatch.stars`): 4 points to the rival's 0 is three stars (`three_star_points` 4 with the rival on at most
+  `three_star_rival_points`, 0), under `two_star_points` (2) points won one star, anything in between two. Read literally, a
+  4-1, 4-2 or 4-3 win is two stars, and so is a loss with 2 or 3 points (the runner finishes the level whoever wins). Time and
+  the run-in's credits count for nothing. The results screen lists the rule under the stars (`ResultsScreen.star_text` →
+  `MiniGameDef.star_text` → `VolleyballTuning.star_text`: three lines, worded from the data, no par times), and
+  `Profile.record_run` keeps the best. The suite plays a 4-K win by switching `VolleyballBot` from "idle" to "perfect" once the rival has K points.
 - **What it records** (`events`, `lowest_over_net`): every serve, ball (its lane, the runner's lane and its flight),
   hit, bonk, drop, winner, point, the match and the exit, for the suite and the review tool.
 - **Looks**: the court's sand, the net, the posts, the ball and the ring are unshaded in the street's light
