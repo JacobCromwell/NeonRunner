@@ -131,7 +131,7 @@ const SPACED_FROM_START: Array = ["wall_gaps", "wall_run_gaps"]
 ## and have none (WallRunGapPlacement: nothing may go that the drone or a feature counts on). Every campaign build has
 ## its wall-run gaps (test_wall_run_gaps). Each is checked to still warn so (else take it out of the list).
 ## DESIGN-TBD (docs/questions/j2.md item 12).
-const WALL_RUN_GAP_CROWDED: PackedStringArray = ["The Hush without the remix lanes=3 seed=9206", "Dead Zone 1 lanes=3 seed=9208"]
+const WALL_RUN_GAP_CROWDED: PackedStringArray = ["Dead Zone 1 lanes=3 seed=9208"]
 ## The warning a build in WALL_RUN_GAP_CROWDED gives (WallRunGapPlacement.place).
 const WALL_RUN_GAP_WARNING: String = "wall-run gaps: no fair room anywhere for one (every feature should appear, GDD §5)"
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the

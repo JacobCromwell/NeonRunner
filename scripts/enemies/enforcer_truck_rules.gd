@@ -66,9 +66,6 @@ const RUN_AFTER: Array[String] = ["ramps", "ceilings", "pulsing", "speed_pads", 
 	"hover_truck", "octodog", "screech", "screech_vents", "drone", "generator", "wall_fences", "wall_fences_partial",
 	"buzz_overdrive", "barnacle_turret", "tithe_collector", "resonator", "gilded_sentinel", "treasure_stash", "fenced_ceiling"]
 const BuzzRules = preload("res://scripts/enemies/buzz_overdrive_rules.gd")
-## How many times a chase's showing is planned again without an arrival whose chase before it reaches a stretch kept
-## for the level's extended wall runs (_option).
-const EXTENDED_REPLANS: int = 6
 ## The features whose charges are its baits. A build with none of its trucks (no bait its chase could take:
 ## the only baits' arrivals all fall during another bait's attack, say) has the generator's guarantee move
 ## their picks in the next build (LevelGenerator.dependent_features, task K4), as for any feature missed,
@@ -256,13 +253,8 @@ static func _option(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPl
 		return {}
 	var plan: Dictionary = planner.plan(spots, 0, calm)
 	# Its chase before its showing (wide_gap_keep_outs) reaches no stretch kept for the level's extended wall runs
-	# (LevelGenerator.kept_for_extended): planned again without an arrival whose does, a few times at most.
-	var tries: int = EXTENDED_REPLANS
-	while not plan.is_empty() and tries > 0 and _reaches_extended(gen, plan):
-		spots.erase(float(plan["arrive"]))
-		calm.erase(float(plan["arrive"]))
-		plan = planner.plan(spots, 0, calm) if not (spots.is_empty() and calm.is_empty()) else {}
-		tries -= 1
+	# (LevelGenerator.kept_for_extended): such a chase isn't one (its arrivals keep off them up to its bait already,
+	# _arrival_order, _calm_spots).
 	if not plan.is_empty() and _reaches_extended(gen, plan):
 		return {}
 	if plan.is_empty() and spots.is_empty():
@@ -308,7 +300,10 @@ static func _calm_spots(gen: LevelGenerator, t: EnforcerTruckTuning, b: Dictiona
 		o += OFFSET_STEP
 	spots.append(earliest)
 	for at: float in spots:
-		if at < run_up - 0.001 and in_chase(gen, t, b, at) and arrival_problem(gen, t, at, keep_outs, chases, true) == "":
+		# Its chase up to its bait keeps off the stretches kept for the level's extended wall runs (_arrival_order).
+		var kept: Vector2 = gen.kept_for_extended(at, float(b["at"]))
+		if at < run_up - 0.001 and in_chase(gen, t, b, at) and arrival_problem(gen, t, at, keep_outs, chases, true) == "" \
+				and kept.y <= kept.x:
 			out.append(at)
 	return out
 

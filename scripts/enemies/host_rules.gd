@@ -169,14 +169,15 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 
 
 ## How far past `to` the next pad after one at `from` may come for the stretches kept for the level's extended wall runs
-## (LevelGenerator.extended_wall_run_reserve) that pads skip (WallRunGapPlacement.pad_skip) from `from` on: the gap
+## (LevelGenerator.extended_wall_run_reserve) that pads skip (WallRunGapPlacement.pad_skip), as much of each as lies
+## past `from`: the gap
 ## counts without them, as the Bad Dream holds its slash over the crossing (BadDream._wall_run_in_reach). 0 without.
 static func _skipped(gen: LevelGenerator, t: BadDreamTuning, from: float, to: float) -> float:
 	var out: float = 0.0
 	for kept: Vector2 in gen.extended_wall_run_reserve:
 		var skip: Vector2 = WallRunGapPlacement.pad_skip(gen, kept, t.pad_ceiling_seconds)
-		if skip.x >= from and skip.x < to + out:
-			out += skip.y - skip.x
+		if skip.y > from and skip.x < to + out:
+			out += skip.y - maxf(skip.x, from)
 	return out
 
 

@@ -897,8 +897,8 @@ throughout (`docs/questions/j2.md`).
   report's constraints name it), and where that leaves no room either, with the signs on its lit wall's stretch taken
   off (`_signs_go`: a sign blocks the step onto the wall and hurts a wall runner; Marketplace 1 at 5 lanes on seed
   7301, one sign), else a warning (Marketplace 1 on seeds 9003 at 3 lanes and 9004 at 5, whose hover truck in the way
-  is the level's first; and at 3 lanes The Hush without its remix on seed 9206 and Dead Zone 1 on seed 9208, in
-  `test_campaign`'s sweep, whose drone pad schedule, its ceilings every 8 to 10 s, and its only hover truck and
+  is the level's first; and at 3 lanes Dead Zone 1 on seed 9208, in `test_campaign`'s sweep (The Hush without its
+  remix on seed 9206 was one until its extended wall runs kept room), whose drone pad schedule, its ceilings every 8 to 10 s, and its only hover truck and
   Octodog leave no 4-second stretch: `test_campaign`'s `WALL_RUN_GAP_CROWDED`; no campaign build has one).
   `min_spacing_seconds` between one's landing floor and the next one's run-in.
 - **What it keeps off** (`floor_keep_outs`, `keep_outs_by_part`, `wall_keep_outs`): from its run-in to the end of its

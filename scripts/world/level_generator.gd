@@ -151,6 +151,9 @@ const CyborgRules := preload("res://scripts/enemies/cyborg_rules.gd")
 ## Seconds of run the pattern pass moves on past a pattern it takes back for an extended wall run's stretch
 ## (extended_wall_run_reserve) before it picks again.
 const EXTENDED_SKIP_SECONDS: float = 1.0
+## Seconds of run past its own end a pattern may reach once an extended wall run's stretch is due (a cyborg's margin, a
+## host's): the stretch waits that long for it rather than lose the pattern.
+const EXTENDED_WAIT_SECONDS: float = 2.0
 const RULES_DIR: String = "res://scripts/enemies"
 ## The most builds generate() makes to have every feature appear (guarantee_features). Past it the
 ## level keeps the build that missed the fewest, with a warning. Most levels take one to three; The
@@ -452,13 +455,13 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 			break
 		if not extended.is_empty():
 			# What the pattern's pieces and enemies reach (an enemy's attack, a hover truck's stay) may not reach an
-			# extended wall run's stretch, nor, once one is due, past the pattern's own end (so the stretch can be kept
-			# soon): the pattern goes and the cursor moves on a little.
+			# extended wall run's stretch, nor, once one is due, more than EXTENDED_WAIT_SECONDS past the pattern's own
+			# end (so the stretch can be kept soon): the pattern goes and the cursor moves on a little.
 			var reach: Vector2 = _pattern_reach(pattern_start_counts, cursor, cursor + used)
 			var due_now: bool = extended_wall_run_reserve.size() < extended.size() \
 				and cursor >= float(extended[extended_wall_run_reserve.size()]["due"])
 			var kept: Vector2 = kept_for_extended(reach.x, reach.y)
-			if kept.y > kept.x or (due_now and reach.y > maxf(cursor + used, reach_end)):
+			if kept.y > kept.x or (due_now and reach.y > maxf(cursor + used + EXTENDED_WAIT_SECONDS * speed, reach_end)):
 				_rollback(pattern_start_counts)
 				var on: float = cursor + EXTENDED_SKIP_SECONDS * speed
 				_clear_stretches.append(Vector2(cursor, on))
