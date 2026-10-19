@@ -48,6 +48,8 @@ static func apply(gen: LevelGenerator) -> void:
 	var rng: RandomNumberGenerator = gen.rng_for("octodog")
 	var stop: float = t.stop_distance(gen.speed, gen.config.enemy_scaling, gen.pace)
 	var chases: Array[Vector2] = HostRules.chase_stretches(gen)
+	# The stretches kept for the level's extended wall runs (LevelGenerator.extended_wall_run_reserve) the same.
+	chases.append_array(gen.extended_wall_run_reserve)
 	var busy_until: float = -INF
 	var dropped: Array[Dictionary] = []
 	for e: Dictionary in dogs_in(layout):

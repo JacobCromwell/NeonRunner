@@ -127,9 +127,9 @@ func check(gen: LevelGenerator) -> Dictionary:
 		r["planned"] = plan
 		r["early"] = maxf(plan.x - begin, 0.0)
 		r["late"] = maxf(end - plan.y, 0.0)
-		r["pad_gap"] = pad_gap(pads, begin, end) / speed
+		r["pad_gap"] = pad_gap(pads, begin, end, gen, t.pad_ceiling_seconds) / speed
 		var claws: float = float(c["claws_d"])
-		r["pad_gap_claws"] = pad_gap(pads, claws, end) / speed if claws >= 0.0 else 0.0
+		r["pad_gap_claws"] = pad_gap(pads, claws, end, gen, t.pad_ceiling_seconds) / speed if claws >= 0.0 else 0.0
 		var met: PackedStringArray = []
 		for k: Dictionary in kept:
 			var span: Vector2 = k["span"]
@@ -147,7 +147,10 @@ func check(gen: LevelGenerator) -> Dictionary:
 
 ## The longest stretch of track (metres) between `from` and `to` with no anti-grav pad (`pads`: their spots,
 ## sorted), counting from `from` to the first and from the last to `to`.
-static func pad_gap(pads: Array[float], from: float, to: float) -> float:
+## With `gen`, each gap counts without what the pads skip for its layout's extended wall runs
+## (WallRunGapPlacement.pad_skips_between, pads `pad_ceiling_seconds` long).
+static func pad_gap(pads: Array[float], from: float, to: float, gen: LevelGenerator = null,
+		pad_ceiling_seconds: float = 0.0) -> float:
 	var longest: float = 0.0
 	var last: float = from
 	for at: float in pads:
@@ -155,9 +158,13 @@ static func pad_gap(pads: Array[float], from: float, to: float) -> float:
 			continue
 		if at >= to:
 			break
-		longest = maxf(longest, at - last)
+		longest = maxf(longest, at - last - _skipped(gen, last, at, pad_ceiling_seconds))
 		last = at
-	return maxf(longest, to - last)
+	return maxf(longest, to - last - _skipped(gen, last, to, pad_ceiling_seconds))
+
+
+static func _skipped(gen: LevelGenerator, from: float, to: float, pad_ceiling_seconds: float) -> float:
+	return WallRunGapPlacement.pad_skips_between(gen, from, to, pad_ceiling_seconds) if gen != null else 0.0
 
 
 ## What the generator keeps off every planned chase for reasons of its own (see the header), as

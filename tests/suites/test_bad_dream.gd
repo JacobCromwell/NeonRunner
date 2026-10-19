@@ -1451,11 +1451,13 @@ func _check_hosts(layout: LevelLayout, config: LevelConfig, tag: String) -> int:
 		prev_end = s.y
 		var cursor: float = s.x
 		var worst: float = 0.0
+		# An extended wall run's stretch counts out of the gap it lies in (WallRunGapPlacement.pad_skips_between).
+		var skips: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
 		for p: float in pads:
 			if p > s.x and p <= s.y:
-				worst = maxf(worst, p - cursor)
+				worst = maxf(worst, p - cursor - WallRunGapPlacement.pad_skips_between(skips, cursor, p, t.pad_ceiling_seconds))
 				cursor = p
-		worst = maxf(worst, s.y - cursor)
+		worst = maxf(worst, s.y - cursor - WallRunGapPlacement.pad_skips_between(skips, cursor, s.y, t.pad_ceiling_seconds))
 		check(worst <= t.pad_gap_seconds * speed + 0.01,
 			"anti-grav pads through the whole chase: at most %.1f s apart (%.1f s) %s" % [t.pad_gap_seconds, worst / speed, tag])
 		check(not bool(e["params"].get("panic", true)), "hosts don't panic " + tag)
@@ -1491,10 +1493,12 @@ func _check_drone_pads(layout: LevelLayout, config: LevelConfig, dt: DroneTuning
 		if p > drones[0] + 0.01:
 			schedule_start = p
 			break
+	var skips: LevelGenerator = LevelGenerator.for_layout(config, tuning, layout)
 	for i: int in pads.size() - 1:
 		if pads[i] < schedule_start - 0.01:
 			continue
-		var gap: float = (pads[i + 1] - pads[i]) / speed
+		var gap: float = (pads[i + 1] - pads[i]
+			- WallRunGapPlacement.pad_skips_between(skips, pads[i], pads[i + 1], dt.pad_ceiling_seconds)) / speed
 		check(gap >= dt.pad_repeat_min_seconds - 0.001 and gap <= dt.pad_repeat_max_seconds + 0.001,
 			"the drone's pads stay 8–10 s apart (%.2f s at %.0f m) %s" % [gap, pads[i], tag])
 

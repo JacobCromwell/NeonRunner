@@ -192,8 +192,18 @@ static func check_wall_run_gaps(suite: TestSuite, layout: LevelLayout, config: L
 		return
 	suite.check(config.has_feature(WallRunGapPlacement.FEATURE) and not WallGapPlacement.is_boss_arena(config),
 		"wall-run gaps only in a level with the feature, never in a boss arena " + tag)
-	suite.check(holes == layout.wall_run_gaps.size() * layout.lane_count,
-		"every wall-run gap's hole belongs to one, one in each lane (%d holes, %d gaps) %s" % [holes, layout.wall_run_gaps.size(), tag])
+	var want: int = 0
+	for w: Dictionary in layout.wall_run_gaps:
+		for lane: int in layout.lane_count:
+			want += WallRunGapPlacement.lane_holes(layout, w, lane).size()
+	suite.check(holes == want,
+		"every wall-run gap's hole belongs to one, one in each lane, between its platforms by a lit wall (%d holes, %d gaps) %s"
+		% [holes, layout.wall_run_gaps.size(), tag])
+	var extended: int = 0
+	for w: Dictionary in layout.wall_run_gaps:
+		extended += 1 if WallRunGapPlacement.runs_of(w) > 1 else 0
+	suite.check(extended == config.extended_wall_runs.size(),
+		"the level has each of its extended wall runs (%d of %d) %s" % [extended, config.extended_wall_runs.size(), tag])
 	var tuning: MovementTuning = level_tuning(suite, config)
 	var v: float = tuning.run_speed
 	var t: WallRunGapTuning = WallRunGapPlacement.tuning()
@@ -213,13 +223,30 @@ static func check_wall_run_gaps(suite: TestSuite, layout: LevelLayout, config: L
 		var end: float = float(w["end"])
 		var entry: float = float(w["entry"])
 		var landing: float = float(w["landing"])
-		var where: String = "(wall-run gap %.1f-%.1f, lit wall %s) %s" % [start, end, "left" if int(w["side"]) < 0 else "right", tag]
-		suite.check(end - start > reach and end - start > max_gap,
-			"no jump crosses it, nor a jump and the dash (%.1f m against %.1f m) %s" % [end - start, reach, where])
-		suite.check(entry + wall_run >= end + t.exit_margin_seconds * v - 0.01,
-			"a standard wall run from the lit stretch's first metre leaves the wall past its far edge " + where)
-		suite.check(start + tuning.coyote_time * v + wall_run + drop <= landing + 0.01,
-			"a standard wall run from the lit stretch's last metre drops the runner onto the landing floor " + where)
+		var where: String = "(wall-run gap %.1f-%.1f, lit wall %s, %d runs) %s" % [start, end,
+			"left" if int(w["side"]) < 0 else "right", WallRunGapPlacement.runs_of(w), tag]
+		# Each wall run across it: an ordinary one's from its lit stretch, an extended one's from its lit stretch and
+		# then each platform's last stretch, over the next hole, onto the next platform or the landing floor.
+		var crossings: Array[Vector3] = WallRunGapPlacement.crossings_of(w)
+		var platforms: Array[Vector2] = WallRunGapPlacement.platforms_of(w)
+		suite.check(platforms.size() == crossings.size() - 1 and absf(crossings[0].x - entry) < 0.01
+			and absf(crossings[0].y - start) < 0.01 and absf(crossings[-1].z - end) < 0.01, "its wall runs and platforms add up " + where)
+		for k: int in crossings.size():
+			var c: Vector3 = crossings[k]
+			var floor_end: float = platforms[k].y if k < platforms.size() else landing
+			suite.check(c.z - c.y > reach and c.z - c.y > max_gap,
+				"no jump crosses hole %d, nor a jump and the dash (%.1f m against %.1f m) %s" % [k + 1, c.z - c.y, reach, where])
+			suite.check(c.x + wall_run >= c.z + t.exit_margin_seconds * v - 0.01,
+				"a standard wall run from stretch %d's first metre leaves the wall past its hole's far edge %s" % [k + 1, where])
+			suite.check(c.y + tuning.coyote_time * v + wall_run + drop <= floor_end + 0.01,
+				"a standard wall run from stretch %d's last metre drops the runner onto the floor after it %s" % [k + 1, where])
+		var open: Dictionary = WallRunGapPlacement.open_wall_of(w)
+		if not open.is_empty():
+			var found: bool = false
+			for g: Dictionary in layout.wall_gaps:
+				found = found or (int(g["side"]) == int(open["side"]) and absf(float(g["start"]) - float(open["start"])) < 0.01
+					and absf(float(g["end"]) - float(open["end"])) < 0.01)
+			suite.check(found, "its other wall is open over its crossing " + where)
 		suite.check(float(w["approach"]) - prev_landing >= t.min_spacing_seconds * v - 0.01,
 			"wall-run gaps keep their spacing " + where)
 		prev_landing = landing
@@ -1702,10 +1729,14 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 			if not p.has("added") and not schedule.has(float(p["at"])):
 				schedule.append(float(p["at"]))
 		schedule.sort()
+		# An extended wall run's stretch counts out of the gap it lies in (WallRunGapPlacement.pad_skips_between: the
+		# drone holds its barrages over the crossing, and no pad fits there).
+		var skip_gen: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
 		for i: int in schedule.size() - 1:
 			if schedule[i] < schedule_start - 0.01:
 				continue
-			var gap: float = (schedule[i + 1] - schedule[i]) / speed
+			var gap: float = (schedule[i + 1] - schedule[i]
+				- WallRunGapPlacement.pad_skips_between(skip_gen, schedule[i], schedule[i + 1], dt.pad_ceiling_seconds)) / speed
 			suite.check(gap >= dt.pad_repeat_min_seconds - 0.001 and gap <= dt.pad_repeat_max_seconds + 0.001,
 				"a drone's pads stay 8–10 s apart (%.2f s at %.0f m) %s" % [gap, schedule[i], tag])
 	# Bad Dream chases (GDD §9.7).
@@ -1725,11 +1756,12 @@ static func check_rules(suite: TestSuite, layout: LevelLayout, config: LevelConf
 		prev_end = s.y
 		var cursor: float = s.x
 		var worst: float = 0.0
+		var skips: LevelGenerator = LevelGenerator.for_layout(config, suite.tuning, layout)
 		for p: float in pads:
 			if p > s.x and p <= s.y:
-				worst = maxf(worst, p - cursor)
+				worst = maxf(worst, p - cursor - WallRunGapPlacement.pad_skips_between(skips, cursor, p, bt.pad_ceiling_seconds))
 				cursor = p
-		worst = maxf(worst, s.y - cursor)
+		worst = maxf(worst, s.y - cursor - WallRunGapPlacement.pad_skips_between(skips, cursor, s.y, bt.pad_ceiling_seconds))
 		suite.check(worst <= bt.pad_gap_seconds * speed + 0.01,
 			"anti-grav pads through a whole chase, at most %.0f s apart (%.1f s) %s" % [bt.pad_gap_seconds, worst / speed, tag])
 		# The Bad Dream's chase and an Octodog's charges never overlap (GDD §9.7): the Octodog rules,

@@ -63,6 +63,15 @@ const PATH: String = "res://data/tuning/wall_run_gaps.tres"
 ## the way).
 @export_range(0.0, 3.0, 0.05, "suffix:s") var other_wall_clear_seconds: float = 0.5
 
+@export_group("Extended wall runs")
+## DESIGN-TBD (docs/questions/o1.md): an extended wall run (LevelConfig.extended_wall_runs; the owner, October 19,
+## 2026: double and triple sections, a small platform by the wall between two wall runs to recharge on) has a platform
+## in the outer lane by each lit wall between two of its holes. Each platform is as long as the latest standard wall
+## run over the hole before it takes to drop the runner onto it (entry_window_seconds + exit_margin_seconds + the jump
+## grace + the drop) plus this, and its last entry_window_seconds is the stretch to step back onto the wall from:
+## about 1.2 s of run with the shipped numbers.
+@export_range(0.0, 1.0, 0.05, "suffix:s") var platform_slack_seconds: float = 0.2
+
 @export_group("Saves")
 ## DESIGN-TBD: metres either side of a wall-run gap's holes where a runner pulled up out of a fall (the grapple's save,
 ## GDD §8, or a revive's, GDD §4) is put on its lit wall instead (WallRunGapPlacement.grapple_save): one falling in at

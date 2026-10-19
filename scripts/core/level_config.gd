@@ -203,6 +203,16 @@ var _skin: ZoneSkin
 ## wrecked. Uncommon: "a couple of times each level" (WideGapPlacement). 0 turns it off: the level is
 ## built exactly as before (quick play, the tests, boss arenas). DESIGN-TBD: 2 in every campaign level.
 @export_range(0, 6) var wide_gaps: int = 0
+## Extended wall runs (the owner, October 19, 2026, for The Hush: "three sections where the extended wall run is
+## required ... double and triple wide sections"; WallRunGapPlacement): wall-run gaps, one per entry and in this order
+## along the level, that take `runs` standard wall runs (2 or 3) to cross, with a small platform in the outer lane by
+## the wall between two of their holes to land on and step back onto the wall from (a wall hop skips it). `walls`:
+## "one" stands only the lit wall, on a seeded side, with its platforms on that side and the other wall open over the
+## crossing, so the runner reads ahead which side to take; "both" stands both walls with platforms on both sides. They
+## need the `wall_run_gaps` feature and come with the level's ordinary ones. Empty: none, and the level is built
+## exactly as before. DESIGN-TBD (docs/questions/o1.md): The Hush's three, a double with both walls, then a double
+## and a triple with one wall each.
+@export var extended_wall_runs: Array[Dictionary] = []
 ## Cyborgs in charge paths (owner, October 7, 2026, GDD §9.13 "Teaching"; task G7): up to this many of the
 ## level's Octodog lunges and Buzz Overdrive charges get a plain cyborg standing in their path, so the
 ## player sees a charge flatten another enemy (ChargePathPlacement; numbers in data/tuning/charge_paths.tres).

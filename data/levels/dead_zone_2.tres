@@ -24,6 +24,16 @@ narrow_ceiling_share = 0.5
 fill_empty_seconds = 2.0
 danger_density_increase = 0.37
 wide_gaps = 2
+extended_wall_runs = Array[Dictionary]([{
+"runs": 2,
+"walls": "both"
+}, {
+"runs": 2,
+"walls": "one"
+}, {
+"runs": 3,
+"walls": "one"
+}])
 charge_path_cyborgs = 1
 buzz_company = true
 dash_walls = 1
