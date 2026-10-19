@@ -28,7 +28,7 @@ const BOARD_MOBILE: String = "mobile"
 ##   belongs here too: `wall_hop_lines` (task N1, GDD §7 "from Gangland on") is 0 in the Neon City's levels and 1 in every
 ##   other zone's, so a City week has no wall-hop credits (and on the Beach its open walls leave no room for a line).
 const ZONE_FIELDS: PackedStringArray = [
-	"features", "feature_weights", "patterns_path", "skin", "sky", "darkness", "wall_gap_tuning", "doodad_wall_lane_share",
+	"features", "feature_weights", "patterns_path", "skin", "skin_path", "sky", "darkness", "wall_gap_tuning", "doodad_wall_lane_share",
 	"wall_hop_lines",
 ]
 ## - The WEEK's: what a week sets itself: which level it is (id, name, seed, lanes), that it is no level of the campaign's

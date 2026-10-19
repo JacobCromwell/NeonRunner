@@ -138,8 +138,19 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 @export_storage var feature_recency: FeatureRecency
 ## The core pattern file. Every other .json file in its folder is loaded too (LevelGenerator.load_for).
 @export_file("*.json") var patterns_path: String = "res://data/patterns/prototype_patterns.json"
-## The zone's visuals. Gameplay never depends on it.
-@export var skin: ZoneSkin
+## The zone's visuals. Gameplay never depends on it. Loaded from skin_path the first time it's read, unless set.
+@export var skin: ZoneSkin:
+	get:
+		if _skin == null and skin_path != "":
+			_skin = load(skin_path) as ZoneSkin
+		return _skin
+	set(value):
+		# Setting it replaces the path too (null: no skin of its own), as a plain property would.
+		_skin = value
+		skin_path = value.resource_path if value != null else ""
+## Where the level's own skin is, loaded on first use (ZoneDef.skin_path says why the data names a skin by its path).
+@export_file("*.tres") var skin_path: String = ""
+var _skin: ZoneSkin
 ## How much darker than its zone's normal light the level's scenery is (GDD §5: The Hush's darker
 ## lighting): 0 = the zone's own light, 1 = the darkest the skin allows (never pitch black,
 ## ZoneSkin.MIN_SCENERY_LIGHT). Only the scenery darkens: the sky, the distance fog and the skin's lit

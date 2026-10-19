@@ -38,9 +38,9 @@ const TUNING_DIRS: PackedStringArray = ["res://data/tuning", "res://data/enemies
 ## Stored properties that name a resource rather than hold its data.
 const RESOURCE_SKIP: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script"]
 ## The level config's: RESOURCE_SKIP and its look, which the generator never reads (and which would take a
-## whole zone skin's tree of meshes and materials to sign).
+## whole zone skin's tree of meshes and materials to sign, and load it to sign it).
 const CONFIG_SKIP: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script",
-	"skin"]
+	"skin", "skin_path"]
 ## Sub-resources nested deeper than this are named by their path alone (no tuning nests so deep: a guard).
 const MAX_DEPTH: int = 6
 

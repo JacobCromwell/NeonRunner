@@ -338,3 +338,16 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
 ## The weekly challenge (October 18, 2026)
 
 - [x] **A weekly challenge with a leaderboard** (GDD §6, Replay features, "Weekly challenge"): one fixed level a week, the same for everyone; five lanes on PC and mobile alike; one board for PC and one for mobile; a uniform kit (Armor IV and Juggernaut dash IV, no other shop items); a payout equal to a middle-of-the-road level's, and a place on the board; the top three earn the Leader of the Pack cosmetic (to be designed, `docs/OPEN_QUESTIONS.md` item 977); no anti-cheat for now; unlimited attempts, never gated behind ads. Seeds from a shipped list checked by the fairness tests; credits for the week's first clear only. Unlocks after the Neon City's boss; the weeks rotate through the zones, always at the Golden Zone's difficulty (a zone's own enemies and obstacles at the Golden Zone's density). Not in the web demo. DONE (N5): a WEEKLY button on the title (locked until the Floating Head is beaten; not in the web demo). Each week plays one entry of a shipped list of 32 seeds (4 per zone, in campaign order, each checked by the fairness suites), in that zone's skin with its own enemies and obstacles at Sentinel Row's difficulty, density and 25 m/s, always 5 lanes. Kit: Armor IV and Juggernaut dash IV only, no revive. The week's first clear pays 1,000 credits (a middle-of-the-road level's payout); only clears post, to a PC or a mobile board. Weeks only go forward, so setting the clock back pays nothing. A top-three finish records a pending Leader of the Pack reward (a placeholder toast; the cosmetic is item 977). Week 0 opens Monday, October 19, 2026 (`--weekly` plays it now in a debug build). Questions 1025-1027 (open: the week boundary, the device's clock, board versioning) and 1028-1041.
+
+## The itch.io playtest: load times and an Edge crash (October 18, 2026)
+
+- [x] **Find performance improvements and bugs behind two playtest reports** (long load times; Edge on a five-year-old
+  low-end laptop crashing after Play, as the menu music gave way to the City's) without changing the gameplay; then
+  build the engine fix and the all-platform load-time fix. DONE: the likely crash is the browser's shader compiles at
+  the City intro's start (94 programs, 44 in one frame, on Windows each translated to Direct3D first). The web
+  demo now exports with patched Godot templates that compile each shader variant only when it is first drawn
+  (`tools/web/engine_template/`: 154 programs to 54 from the title to City 1, the same 48 drawn). Zone, level and
+  boss data name their skins by path, loaded when first used, so starting the game no longer loads all eight zones'
+  skins (campaign load at start 1.3 s to 0.15 s on a desktop, on every platform). Left for the owner: the web
+  music as streams or shorter (item 828; each song is held decoded, 52 MB for Zone 1's, about 250 MB more memory
+  at a level's start), a shader warm-up spread over frames, a low-graphics setting.

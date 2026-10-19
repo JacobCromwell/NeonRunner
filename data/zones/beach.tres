@@ -5,7 +5,6 @@
 [ext_resource type="Resource" path="res://data/levels/beach_1.tres" id="lvl_beach_1"]
 [ext_resource type="Resource" path="res://data/levels/beach_2.tres" id="lvl_beach_2"]
 [ext_resource type="Resource" path="res://data/levels/beach_3.tres" id="lvl_beach_3"]
-[ext_resource type="Resource" path="res://data/skins/beach_skin.tres" id="skin"]
 [ext_resource type="Resource" path="res://data/cinematics/beach_intro.tres" id="c_intro"]
 [ext_resource type="Resource" path="res://data/cinematics/beach_outro.tres" id="c_outro"]
 [ext_resource type="Resource" path="res://data/cinematics/beach_boss_intro.tres" id="c_bintro"]
@@ -17,7 +16,7 @@ id = &"beach"
 display_name = "Beach"
 tagline = "Bamboo tiki bars and surf shops on a sandy lane down to the sea."
 music = &"beach"
-skin = ExtResource("skin")
+skin_path = "res://data/skins/beach_skin.tres"
 levels = Array[ExtResource("2_levelscript")]([ExtResource("lvl_beach_1"), ExtResource("lvl_beach_2"), ExtResource("lvl_beach_3")])
 run_speed = 23.8
 intro = ExtResource("c_intro")

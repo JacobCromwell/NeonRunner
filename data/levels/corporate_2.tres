@@ -1,7 +1,6 @@
 [gd_resource type="Resource" script_class="LevelConfig" format=3]
 
 [ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
-[ext_resource type="Resource" path="res://data/skins/corporate_plaza_skin.tres" id="2_skin"]
 
 [resource]
 script = ExtResource("1_level")
@@ -11,7 +10,7 @@ level_seed = 402
 duration_seconds = 150.0
 difficulty_bias = 0.0
 features = PackedStringArray("cyborg", "ceilings", "pulsing", "window_cyborg", "hover_truck", "ramps", "wall_gaps", "octodog", "speed_pads", "generator", "drone", "barnacle_turret", "wall_run_gaps", "wall_fences", "screech_vents", "treasure_stash", "fenced_ceiling", "buzz_overdrive", "wall_fences_partial", "dash_wall", "tithe_collector", "enforcer_truck")
-skin = ExtResource("2_skin")
+skin_path = "res://data/skins/corporate_plaza_skin.tres"
 guarantee_features = true
 feature_starts = Dictionary[String, float]({
 "enforcer_truck": 0.05,

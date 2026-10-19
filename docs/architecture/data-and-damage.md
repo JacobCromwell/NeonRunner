@@ -22,7 +22,7 @@ One part of the architecture notes; `docs/ARCHITECTURE.md` is the index of every
 | `data/bosses/*.tres` | bosses (`BossDef`: slot, health, phases, arena, rewards, par times, armor rule), and a boss script's own tuning (`<id>_tuning.tres`) |
 | `data/cinematics/*.tres` | cinematic slots (`CinematicDef`: each slot's scene), the arrival flyover's numbers (`arrival_flyover.tres`, `ArrivalFlyoverTuning`), the City intro's (`city_intro_tuning.tres`, `CityIntroTuning`), the City outro's (`city_outro_tuning.tres`, `CityOutroTuning`), the Gangland boss intro's (`sewer_swarm_intro.tres`, `SewerSwarmIntroTuning`), the Gangland outro's (`gangland_outro_tuning.tres`, `GanglandOutroTuning`) and the Dead Zone intro's (`dead_zone_intro_tuning.tres`, `DeadZoneIntroTuning`) |
 | `data/patterns/*.json` | generator patterns (every file in the folder is loaded) |
-| `data/skins/*.tres` | zone looks |
+| `data/skins/*.tres` | zone looks, named by zones, levels and boss arenas by path (`skin_path`) and loaded when first used (Zone skins) |
 | `data/audio/*.tres` | sound and music libraries |
 
 Any `@export_range` number or bool on a resource registered with the tuning panel shows up under F6.
