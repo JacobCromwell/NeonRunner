@@ -445,6 +445,8 @@ func _check_config(config: LevelConfig, source: LevelConfig, zone: ZoneDef, gold
 				var expected: Variant = source.get(field)
 				if field == "skin" and expected == null:
 					expected = zone.skin
+				elif field == "skin_path" and expected == "":
+					expected = zone.skin_path  # The zone's skin taken, and with it its path (LevelConfig.skin).
 				check(config.get(field) == expected, "%s: %s is the zone's" % [tag, field])
 			&"golden":
 				check(config.get(field) == golden.get(field), "%s: %s is Sentinel Row's (%s, not %s)" % [tag, field,
