@@ -210,8 +210,8 @@ var _skin: ZoneSkin
 ## "one" stands only the lit wall, on a seeded side, with its platforms on that side and the other wall open over the
 ## crossing, so the runner reads ahead which side to take; "both" stands both walls with platforms on both sides. They
 ## need the `wall_run_gaps` feature and come with the level's ordinary ones. Empty: none, and the level is built
-## exactly as before. DESIGN-TBD (docs/questions/o1.md): The Hush's three, a double with both walls, then a double
-## and a triple with one wall each.
+## exactly as before. The Hush's three: a double with both walls, then a double and a triple with one wall each (items
+## 1042-1049 in docs/OPEN_QUESTIONS*.md, approved as built).
 @export var extended_wall_runs: Array[Dictionary] = []
 ## Features of its zone a level leaves out to make room for its own set pieces (the owner, October 20, 2026: The Hush
 ## may drop the heli drone, or the Enforcer Truck and the Buzz Overdrive, for its extended wall runs; it drops the

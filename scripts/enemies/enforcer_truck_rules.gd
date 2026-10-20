@@ -265,7 +265,7 @@ static func _option(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPl
 
 ## True if a truck showing itself by window `plan` (ShowPlanner.plan) would reach a stretch kept for the level's extended
 ## wall runs (LevelGenerator.kept_for_extended) on its chase before its showing, as wide_gap_keep_outs counts it.
-## DESIGN-TBD (docs/questions/o1.md).
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md).
 static func _reaches_extended(gen: LevelGenerator, plan: Dictionary) -> bool:
 	if gen.extended_wall_run_reserve.is_empty():
 		return false

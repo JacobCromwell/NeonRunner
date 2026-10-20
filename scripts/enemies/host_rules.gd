@@ -172,7 +172,7 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 ## (LevelGenerator.extended_wall_run_clear) that pads skip (WallRunGapPlacement.pad_skip), as much of each as lies past
 ## `from`: the gap counts without them, as the Bad Dream holds its slash over the crossing (BadDream._wall_run_in_reach;
 ## the rest of the skip, the run-in's margin, the landing floor and a pad's reach, is ordinary chase time without a pad).
-## DESIGN-TBD (docs/questions/o1.md). 0 without.
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md). 0 without.
 static func _skipped(gen: LevelGenerator, t: BadDreamTuning, from: float, to: float) -> float:
 	var out: float = 0.0
 	for kept: Vector2 in gen.extended_wall_run_clear:
@@ -183,7 +183,7 @@ static func _skipped(gen: LevelGenerator, t: BadDreamTuning, from: float, to: fl
 
 
 ## True if a host at `at` would stand, its obstacle margin with it, in a stretch kept for the level's extended wall runs
-## (LevelGenerator.kept_for_extended). DESIGN-TBD (docs/questions/o1.md).
+## (LevelGenerator.kept_for_extended). DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md).
 static func _near_extended(gen: LevelGenerator, at: float) -> bool:
 	if gen.extended_wall_run_reserve.is_empty():
 		return false

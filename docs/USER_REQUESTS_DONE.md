@@ -366,5 +366,6 @@ Task H11 in `docs/TASK_PLAN.md`. Open points: `docs/questions/h11.md`.
   the others with a wall on one side only and its platforms on that side, so the player has to look ahead to pick the
   right side. DONE (O1): The Hush has a double with both walls, then a double and a triple with one wall each (on a
   seeded side, the other wall open over the crossing). Each hole is an ordinary wall-run gap's; each platform is about
-  1.2 s of run in the outer lane by the lit wall, its last half second the place to step back on. Every build at 3, 5
-  and 6 lanes has all three. Questions in `docs/questions/o1.md`.
+  1.2 s of run in the outer lane by the lit wall, its last half second the place to step back on; a short notch in the
+  wall at each platform drops a runner with claws or the dash onto it. With the owner's leave (October 20, 2026), The
+  Hush leaves out the heli drone to make room (endless keeps it). Every build at 3, 5 and 6 lanes has all three. Questions in items 1042-1050 in `docs/OPEN_QUESTIONS*.md`.

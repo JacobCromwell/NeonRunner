@@ -5762,3 +5762,13 @@ placeholders, marked DESIGN-TBD in `scripts/world/skins/marketplace/` and set in
    never remaps), bumped by whoever changes the generator or the list after launch. Which?
 
    **Deferred (owner, October 18, 2026):** fine as built for now; the owner will come back to it later.
+
+**O1, The Hush's extended wall runs** (from `docs/questions/o1.md`; items 1042-1049, answered, are in
+`docs/OPEN_QUESTIONS_ANSWERED.md`)
+1050. **The notch at each platform.** A wall run with claws (half as long again) or the dash on the wall would carry the
+   runner past a platform and into the next hole, the step back on lost (a press on the wall does nothing). Placeholder:
+   the lit wall opens for `platform_notch_seconds` (0.1 s of run, about 2.4 m) at each platform's near end, so a runner
+   still on the wall there drops onto the platform (`WallRunGapPlacement.openings_of`), shorter than the drop off the
+   wall so a step back on as soon as the runner lands is never refused. It shows as a short break in the wall (the Dead
+   Zone's wall-gap look). Is a visible notch the right cue, or should the platform hold a clawed runner some other way?
+   (GDD §3, §8 Claws.)

@@ -350,7 +350,7 @@ static func _is_opening(openings: Array[Dictionary], side: int, k: Vector2) -> b
 ## The side wall gap (LevelLayout.wall_gaps' {side, start, end}) an extended wall run with one lit wall opens on the
 ## other wall, from its clear run-in to its far edge, so a runner reads from the run-in which wall carries them; {}
 ## for one with both walls lit and for an ordinary wall-run gap (WallGapPlacement.place adds them to the level's).
-## DESIGN-TBD (docs/questions/o1.md): whether the open wall shows early enough.
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md): whether the open wall shows early enough.
 static func open_wall_of(w: Dictionary) -> Dictionary:
 	if runs_of(w) < 2 or sides_of(w).size() > 1:
 		return {}
@@ -500,7 +500,7 @@ static func place(gen: LevelGenerator) -> Dictionary:
 ## search_seconds of it, the spot that takes the least out of its way), else anywhere after the one before it, else
 ## with the last resorts (_make_room, _signs_go); one that finds no room at all is a warning. Returns how many it placed.
 ## The level's ordinary wall-run gaps fit around them, and a level with extended ones needs none of its own (place).
-## DESIGN-TBD (docs/questions/o1.md).
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md).
 static func _place_extended(p: _Pass, rng: RandomNumberGenerator, from: float, constraints: PackedStringArray) -> int:
 	var gen: LevelGenerator = p.gen
 	var specs: Array[Dictionary] = gen.config.extended_wall_runs
@@ -557,8 +557,8 @@ static func _place_extended(p: _Pass, rng: RandomNumberGenerator, from: float, c
 ## clear stretch and its walls' (Shape.kept).
 ## The pass keeps it at the first spot from `due` on that nothing placed before reaches (a hover truck's stay, an
 ## enemy's attack), and every pattern, ceiling, floor cut, charge and chase keeps off it, so _place_extended finds it
-## clear. [] in a level without them, a boss arena or one without the feature. DESIGN-TBD (docs/questions/o1.md): where
-## they come in the level.
+## clear. [] in a level without them, a boss arena or one without the feature. DESIGN-TBD (item 1045 in
+## docs/OPEN_QUESTIONS*.md): where they come in the level.
 static func extended_plan(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var specs: Array[Dictionary] = gen.config.extended_wall_runs
@@ -588,7 +588,7 @@ static func extended_plan(gen: LevelGenerator) -> Array[Dictionary]:
 ## and 14 s for a triple, of which the crossing itself (its run-in to its far edge) is 5.3 s and 7.9 s. A drone's
 ## schedule (drone_rules.gd) and a Bad Dream chase's pads (host_rules.gd) count their gaps without it: both hold their
 ## attacks while the runner crosses (Drone._wall_run_in_reach, BadDream._wall_run_in_reach), and no pad fits in it.
-## DESIGN-TBD (docs/questions/o1.md).
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md).
 static func pad_skip(gen: LevelGenerator, kept: Vector2, pad_ceiling_seconds: float) -> Vector2:
 	var before: float = maxf(gen.zones.run_up, gen.config.hull_lead_in)
 	var after: float = (pad_ceiling_seconds + gen.config.hull_landing_seconds) * gen.speed + 1.0
