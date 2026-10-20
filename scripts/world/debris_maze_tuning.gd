@@ -10,9 +10,12 @@ extends Resource
 ## (docs/questions/o2.md).
 
 @export_group("Stretches")
-## The share of the level, from the feature's start to its end-clear stretch, the maze's blocks cover: most of Rubble
-## Line ("the debris maze"), a few stretches of Last Stop ("a normal run with stretches of maze"). The level is cut into
-## as many equal slots as blocks of block_seconds fill that share, each slot ending in a block and its breather.
+## How much of the level, from the feature's start to its end-clear stretch, is maze: most of Rubble Line ("the debris
+## maze"), a few stretches of Last Stop ("a normal run with stretches of maze"). The level is cut into as many equal
+## slots as blocks of block_seconds fill this share of it, each slot ending in a block's run-in, the block and its
+## breather; a slot too short for all three takes a shorter block, so the blocks cover less than this share where the
+## run-ins and breathers are long (Rubble Line's 0.85: eight blocks over about two thirds of the level; Last Stop's
+## 0.35: four over about a third).
 @export_range(0.05, 1.0, 0.05) var level_share: float = 0.5
 ## The longest a block (one stretch of maze, from its first wall's front to its last wall's back) lasts. A slot too short
 ## for one this long, its run-in and its breather takes a shorter one.
@@ -21,7 +24,9 @@ extends Resource
 @export_range(0.5, 4.0, 0.1, "suffix:s") var run_in_seconds: float = 1.0
 ## Track after a block's last wall before the next slot: first its breather (a dash's carry and exit_clear_seconds,
 ## open in every lane, where a ceiling over the block's last wall lets its rider down), then normal track, where a
-## level's holes may go (a wider gap's zone, about 2.3 s with its margins, fits past a 3.6 s one).
+## level's holes may go. In a level that asks for wider gaps, a slot too tight to leave one's zone (with the level's
+## spacing either side, about 2.3 s in the Terminal) between its block and the next takes a shorter block
+## (DebrisMaze.gap_room).
 @export_range(1.0, 10.0, 0.1, "suffix:s") var breather_seconds: float = 2.4
 ## Clear floor past where a dash through a block's last wall ends (the dash's carry), before anything else may stand or
 ## open in any lane (a hole, a doodad): the runner who breaks out of the maze has this long to see what's next, and a

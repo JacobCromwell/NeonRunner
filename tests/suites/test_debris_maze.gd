@@ -23,6 +23,8 @@ extends TestSuite
 ## - The bot on real physics: a block of each Terminal level at 3, 5 and 6 lanes run by the route MazeRoute finds, the
 ##   dash at its slowest recharge (8 s), dashing where the route does and waiting for it: it gets through alive, never
 ##   refused a switch, in about the route's time.
+## - The first-encounter hint (data/hints/hints.json, trigger debris_maze): it says debris stops the runner and names the
+##   lane switch and the dash, and is picked for a level with a maze, at its first wall (HintDirector), not without one.
 
 ## Seeds besides each level's own the generator sweep builds.
 const OTHER_SEEDS: Array[int] = [8911, 8912, 8913]
@@ -49,6 +51,42 @@ func run() -> void:
 	_test_generator()
 	_test_without_feature()
 	await _test_bot()
+	_test_hint()
+
+
+## The first-encounter hint (see the header).
+func _test_hint() -> void:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/hints/hints.json"))
+	var hint: Dictionary = {}
+	for h: Dictionary in (parsed as Dictionary).get("hints", []):
+		if String(h.get("id", "")) == "debris_maze":
+			hint = h
+	var text: String = String(hint.get("text", ""))
+	check(String(hint.get("trigger", "")) == "debris_maze" and text.to_lower().contains("stops you")
+		and text.contains("{dash}") and text.contains("{move_left}") and text.contains("{move_right}"),
+		"the hint says debris stops the runner, and names the lane switch and the dash (%s)" % [hint])
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var config: LevelConfig = campaign.configure(campaign.step("terminal/1"), 5)
+	var maze: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
+	for with_maze: bool in [true, false]:
+		var world := RunWorld.new()
+		world.config = config if with_maze else LevelConfig.new()
+		world.layout = maze if with_maze else RunSim.layout(5)
+		world.director = EnemyDirector.new()
+		world.add_child(world.director)
+		var director := HintDirector.new()
+		director.setup(world, Profile.new(), false)
+		var ids: Array = director.intro_hints.map(func(entry: Dictionary) -> String: return entry["id"])
+		check(ids.has("debris_maze") == with_maze, "the hint is picked %s (%s)" % ["for a maze" if with_maze else "only with a maze",
+			ids])
+		if with_maze:
+			check(is_equal_approx(float(director.call(&"_first_at", "debris_maze")), float(maze.maze[0]["start"])),
+				"at the maze's first wall")
+			for entry: Dictionary in director.intro_hints:
+				if entry["id"] == "debris_maze":
+					check(not String(entry["text"]).contains("{"), "its text names the keys (%s)" % entry["text"])
+		director.free()
+		world.free()
 
 
 # --- The stop on real physics -------------------------------------------------------------------

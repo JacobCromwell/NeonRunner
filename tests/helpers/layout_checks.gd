@@ -144,12 +144,14 @@ static func check_boundary_walls(suite: TestSuite, layout: LevelLayout, config: 
 ##   and, where breaks_min is 1 or more, no way through without a dash (MazeRoute.dash_free, optimistic);
 ## - finishable with the dash at its slowest recharge (maze_recharge(): 8 s), waits included, from any lane at its run-in with
 ##   the dash just used (MazeRoute.find);
-## - its ceilings (hulls marked "maze"): one lane wide, their pad in an open cell of its last room in a lane its last wall
-##   closes, a way to it from the run-in (MazeRoute.find, into the pad's lane), the pad's lane clear of debris from a
-##   lane switch and DebrisMaze.PAD_LEAD before it to DebrisMaze.pad_rise past it, the hull reaching past its last wall,
-##   and no debris in any lane from the hull's end to DebrisMaze.drop_room past it; no other ceiling (the patterns')
-##   reaching into a block's keep-out with its drop.
-## The floor route under a maze ceiling takes the dash, so check_ceilings leaves it to this (MazeRoute.find without pads).
+## - its ceilings (hulls marked "maze"): one lane wide, their pad in an open cell of its last room two lanes wide or more
+##   in a lane its last wall closes, a way from the run-in into the pad's lane before it (MazeRoute.find), the pad's
+##   lane clear of debris from a lane switch and DebrisMaze.PAD_LEAD before it to DebrisMaze.pad_rise past it and
+##   DebrisMaze.hidden_reach past the debris before it, the hull reaching past its last wall, and no debris in any lane
+##   from the hull's end to DebrisMaze.drop_room past it; no other ceiling (the patterns') reaching into a block's
+##   keep-out with its drop.
+## The floor route under a maze ceiling takes the dash, so check_ceilings leaves it to this (MazeRoute, which never steps
+## on a pad: a floor runner passes it in its cell).
 static func check_debris_maze(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	suite.check(layout.doodads_stop == config.doodads_stop, "the layout says whether its doodads stop the runner, as its level does " + tag)
 	var pieces: Array[Dictionary] = []
@@ -347,6 +349,14 @@ static func _check_maze_ceiling(suite: TestSuite, layout: LevelLayout, tuning: M
 	var before: float = pad_at - tuning.lane_switch_time * tuning.run_speed - DebrisMaze.PAD_LEAD
 	suite.check(route.clear(lane, minf(before, reach), pad_at + DebrisMaze.pad_rise(gen), false),
 		"its pad's lane is clear of debris from a lane switch before it to its rise past it %s" % y)
+	# A dash through the debris before it in its lane shows it in time (DebrisMaze.hidden_reach).
+	var hid: float = -INF
+	for v: Vector2 in route.pieces[lane]:
+		if v.y <= pad_at:
+			hid = maxf(hid, v.y)
+	suite.check(pad_at - hid >= DebrisMaze.hidden_reach(gen) - 0.01,
+		"its pad lies far enough past the debris before it in its lane to be seen after a dash through it (%.1f m, %.1f m) %s"
+		% [pad_at - hid, DebrisMaze.hidden_reach(gen), y])
 	suite.check(float(h["end"]) >= float(last["end"]) + tuning.visual_size.z,
 		"the ceiling reaches past the last wall (%.1f, %.1f) %s" % [h["end"], last["end"], y])
 	var drop: float = float(h["end"]) + DebrisMaze.drop_room(gen)

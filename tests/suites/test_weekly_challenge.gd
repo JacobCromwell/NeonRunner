@@ -490,10 +490,10 @@ func _test_fields() -> void:
 			check(not seen.has(field), "%s is in more than one of the week's lists" % field)
 			seen[field] = true
 	# What a zone's week takes from the zone is its identity: its enemies and its look, and the Terminal's rules (task
-	# O1; GDD §5, Zone 8: no wall running, every ceiling one lane wide), which every other zone's level has as Sentinel
-	# Row does.
+	# O1; GDD §5, Zone 8: no wall running, every ceiling one lane wide; task O2: its debris stops the runner, stands lower,
+	# and its maze has its numbers), which every other zone's level has as Sentinel Row does.
 	for field: String in ["features", "feature_weights", "skin", "sky", "darkness", "wall_gap_tuning", "wall_running",
-			"narrow_ceiling_share", "one_lane_ceiling_share"]:
+			"narrow_ceiling_share", "one_lane_ceiling_share", "doodads_stop", "doodad_height", "debris_maze_tuning"]:
 		check(WeeklyChallenge.field_owner(field) == &"zone", "%s is the zone's" % field)
 	# What makes a week as dense and hard as Sentinel Row is the Golden Zone's.
 	for field: String in ["difficulty", "enemy_scaling", "run_speed", "danger_density_increase", "spacing_seconds_easy",
@@ -506,7 +506,8 @@ func _test_fields() -> void:
 		if zone_id == "terminal":
 			continue
 		var level: LevelConfig = campaign.step(def.source_levels[zone_id]).level
-		for field: String in ["wall_running", "narrow_ceiling_share", "one_lane_ceiling_share"]:
+		for field: String in ["wall_running", "narrow_ceiling_share", "one_lane_ceiling_share", "doodads_stop", "doodad_height",
+				"debris_maze_tuning"]:
 			check(level.get(field) == golden.get(field), "%s's week has Sentinel Row's %s as before (%s)" % [zone_id, field,
 				level.get(field)])
 

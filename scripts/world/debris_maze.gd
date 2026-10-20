@@ -8,8 +8,9 @@ extends RefCounted
 ##
 ## The model. The maze comes in blocks, one to a slot of the level (DebrisMazeTuning: as many equal slots from the
 ## feature's start to the end-clear stretch as blocks of block_seconds fill level_share of it; each slot normal track,
-## then the block's run-in, the block and its breather, open floor in every lane before and after it). A block is a row
-## of walls with rooms between them, rows of debris across the track with openings, cells and corridors:
+## then the block's run-in, the block and its breather, open floor in every lane before and after it; in a level that
+## asks for wider gaps, room for one between each two blocks: gap_room). A block is a row of walls with rooms between
+## them, rows of debris across the track with openings, cells and corridors:
 ## - a wall: debris across every lane but its openings, one size class deep (medium or large: WALL_SIZES, wide enough
 ##   that a body never slips between two side by side), its pieces' fronts level, so a stopped runner moves along its
 ##   face (Player._lane_blocked) to an opening, or dashes through it;
@@ -70,6 +71,8 @@ const DROP_MARGIN: float = 2.0
 ## Seconds of run a ceiling's lift keeps its pad's lane clear past the pad, beyond the time the lift takes to carry its
 ## rider over the debris's top (pad_rise: the rider is on the ceiling's surface then, which no doodad stops).
 const RISE_MARGIN: float = 0.15
+## Seconds of run on top of a wider gap's zone kept free between two blocks (place, gap_room).
+const GAP_ROOM_MARGIN: float = 0.25
 
 
 ## The maze's numbers for `config`: its own (LevelConfig.debris_maze_tuning), else data/tuning/debris_maze.tres.
@@ -83,10 +86,26 @@ static func tuning_for(config: LevelConfig) -> DebrisMazeTuning:
 ## The dash's carry (metres at `gen`'s run speed): how far a dash takes the runner, at its speed, from where it starts
 ## (PowerupTuning.dash_duration and dash_speed_bonus).
 static func dash_carry(gen: LevelGenerator) -> float:
+	return dash_speed(gen) * _powerups().dash_duration
+
+
+## The dash's speed at `gen`'s run speed (m/s: the run's and PowerupTuning.dash_speed_bonus).
+static func dash_speed(gen: LevelGenerator) -> float:
+	return gen.speed + _powerups().dash_speed_bonus
+
+
+static func _powerups() -> PowerupTuning:
 	var pt := load(POWERUPS_PATH) as PowerupTuning
-	if pt == null:
-		pt = PowerupTuning.new()
-	return (gen.speed + pt.dash_speed_bonus) * pt.dash_duration
+	return pt if pt != null else PowerupTuning.new()
+
+
+## How far past a piece of debris's back its lane shows nothing that could catch a runner (metres at `gen`'s run
+## speed): a runner whose dash brings them through it sees what it hid only at the smash, so the next thing comes no
+## sooner than the reaction after a push (LevelConfig.doodad_reaction_seconds) and a lane switch at the dash's speed,
+## as what any doodad hides does (LevelGenerator._place_doodads; test_doodads' dash fairness). A maze ceiling's pad
+## keeps it from the wall before it in its lane.
+static func hidden_reach(gen: LevelGenerator) -> float:
+	return (gen.config.doodad_reaction_seconds + gen.tuning.lane_switch_time) * dash_speed(gen)
 
 
 ## The stretch every pass after the rules keeps off around block `b` (a LevelLayout.maze record), in every lane: from its
@@ -95,6 +114,16 @@ static func dash_carry(gen: LevelGenerator) -> float:
 static func keep_out(gen: LevelGenerator, b: Dictionary, t: DebrisMazeTuning = null) -> Vector2:
 	var tun: DebrisMazeTuning = t if t != null else tuning_for(gen.config)
 	return Vector2(float(b["entry"]), float(b["end"]) + dash_carry(gen) + tun.exit_clear_seconds * gen.speed)
+
+
+## How long a wider gap's zone is at track distance `at` (metres): the gap at the level's speed and the stretches
+## clear of anything before and after it (WideGapPlacement.zone_of, the level's spacing there at the least). place()
+## leaves this free between two blocks in a level that asks for wider gaps, so its couple of holes (GDD §5, Zone 8)
+## always find room.
+static func gap_room(gen: LevelGenerator, at: float) -> float:
+	var t: WideGapTuning = WideGapPlacement.tuning()
+	var zone: Vector2 = WideGapPlacement.zone_of(gen, t, Vector2(at, at + WideGapPlacement.length_for(gen, t)))
+	return zone.y - zone.x
 
 
 ## Every block's keep_out in `gen`'s layout, in order.
@@ -127,11 +156,16 @@ static func place(gen: LevelGenerator) -> Dictionary:
 		return report
 	var count: int = maxi(1, roundi(seconds * t.level_share / t.block_seconds))
 	var slot: float = seconds / count
-	var block_seconds: float = minf(t.block_seconds, slot - t.run_in_seconds - t.breather_seconds)
 	report["slots"] = count
 	var keep_more: float = dash_carry(gen) + t.exit_clear_seconds * v
 	for k: int in count:
 		var slot_end: float = from + (k + 1) * slot * v
+		# Between this block's keep-out and the next slot's run-in, room for one of the level's wider gaps with its clear
+		# stretches (gap_room) where the level asks for them: a block in a slot too tight for it is that much shorter.
+		var room: float = t.breather_seconds
+		if config.wide_gaps > 0:
+			room = maxf(room, (keep_more + gap_room(gen, slot_end)) / v + GAP_ROOM_MARGIN)
+		var block_seconds: float = minf(t.block_seconds, slot - t.run_in_seconds - room)
 		var start: float = slot_end - (t.breather_seconds + block_seconds) * v
 		var entry: float = start - t.run_in_seconds * v
 		var block: Dictionary = _plan_block(gen, t, rng, start, slot_end - t.breather_seconds * v)
@@ -582,9 +616,10 @@ static func _place_ceilings(gen: LevelGenerator, t: DebrisMazeTuning, report: Di
 ## A one-lane ceiling over block `index`'s last wall (see the header), or why there's none: its pad in a lane of a cell
 ## of the last room the runner can reach (a dead end first) that the last wall closes, the cell two lanes wide or more
 ## (a runner who'd rather stay on the floor passes the pad beside it), PAD_LEAD and a lane switch clear before the pad
-## and pad_rise past it, its rider's drop past the last wall clear of debris in every lane until the next block's first
-## wall (drop_room), and everything add_hull_with_pad asks (a pad that can be stepped on, a safe landing, no other
-## ceiling near). "" once it's added.
+## and pad_rise past it, hidden_reach past the wall before it where that wall is closed in its lane (a dash through it
+## never brings a runner onto a pad they couldn't see), its rider's drop past the last wall clear of debris in every
+## lane until the next block's first wall (drop_room), and everything add_hull_with_pad asks (a pad that can be stepped
+## on, a safe landing, no other ceiling near). "" once it's added.
 static func _add_ceiling(gen: LevelGenerator, rng: RandomNumberGenerator, index: int) -> String:
 	var lay: LevelLayout = gen.layout
 	var b: Dictionary = lay.maze[index]
@@ -620,9 +655,13 @@ static func _add_ceiling(gen: LevelGenerator, rng: RandomNumberGenerator, index:
 		for lane: int in range(cell.x, cell.y + 1):
 			if not (last["open"] as Array).has(lane):
 				(other if exits else dead).append(lane)
+	var before: Dictionary = walls[-2]
+	var seen: float = float(room["start"]) + hidden_reach(gen)
 	for lanes: Array[int] in [dead, other]:
 		while not lanes.is_empty():
 			var lane: int = lanes.pop_at(rng.randi_range(0, lanes.size() - 1))
+			if at < seen and not (before["open"] as Array).has(lane):
+				continue
 			if gen.add_hull_with_pad(lane, at, length / gen.speed, Vector2i(lane, lane)):
 				lay.hulls[-1]["maze"] = index
 				return ""

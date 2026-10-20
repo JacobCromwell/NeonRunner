@@ -10,7 +10,8 @@ extends TestSuite
 ## floors that turn into gaps during play (task B4; GDD §9.9): cuts planned only where its limits allow
 ## (sweeps at 3, 5 and 6 lanes, under narrow ceilings and with every built feature, each limit by hand,
 ## the clearing, and nothing changed without cuts); wall-run gaps in quick play's level with the feature (task J2);
-## the Buzz Overdrive's company over seeds, difficulties and lane counts (task L2).
+## the Buzz Overdrive's company over seeds, difficulties and lane counts (task L2); the debris maze (task O2) over
+## seeds, difficulties, run speeds and lane counts.
 
 const HostRules := preload("res://scripts/enemies/host_rules.gd")
 
@@ -64,7 +65,54 @@ func run() -> void:
 	_test_buzz_company(base)
 	_test_wall_run_gaps(base)
 	_test_arched_walls(base)
+	_test_debris_maze(base)
 	await _test_floor_routes_on_physics(base)
+
+
+## The debris maze (task O2; docs/ARCHITECTURE.md, The generator, The debris maze), on quick play's level made like a
+## Terminal one (its patterns and arches, no wall running, one-lane ceilings, doodads that stop the runner and stand
+## lower) with each set of maze numbers (the default and both Terminal levels'), at 3, 5 and 6 lanes over seeds,
+## difficulties and two run speeds: no warnings, the same seed the same level, every fairness check (check_layout: its
+## check_debris_maze proves each block finishable with the dash at its slowest recharge, waits included, through the
+## dashes its numbers ask, with no dead end a dash can't open, no hole where a stop or a dash lands, and its ceilings'
+## pads reachable) and the rules (check_rules), and a block in every build.
+func _test_debris_maze(base: LevelConfig) -> void:
+	var tunings: Array[DebrisMazeTuning] = [load(DebrisMaze.TUNING_PATH) as DebrisMazeTuning,
+		load("res://data/tuning/terminal_maze_1.tres") as DebrisMazeTuning,
+		load("res://data/tuning/terminal_maze_2.tres") as DebrisMazeTuning]
+	var blocks: Array[int] = []
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.0, 0.5, 1.0]:
+			for k: int in tunings.size():
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = 40 + k
+				config.run_speed = 24.6 if (k + int(difficulty * 2.0)) % 2 == 0 else 0.0
+				config.features = PackedStringArray(["ceilings", WallGapPlacement.FEATURE, DebrisMaze.FEATURE])
+				config.patterns_path = "res://data/patterns/terminal/terminal_patterns.json"
+				config.wall_gap_tuning = load("res://data/tuning/terminal_wall_gaps.tres") as WallGapTuning
+				config.wall_running = false
+				config.narrow_ceiling_share = 1.0
+				config.one_lane_ceiling_share = 1.0
+				config.wide_gaps = 2
+				config.doodad_share = 1.0
+				config.doodads_stop = true
+				config.doodad_height = 1.9
+				config.debris_maze_tuning = tunings[k]
+				var tag: String = "(debris maze %d) lanes=%d diff=%.1f speed=%.1f" % [k, lanes, difficulty, config.run_speed]
+				var patterns: Array = LevelGenerator.load_for(config)
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				check(a.doodads_stop and not a.maze.is_empty(), "its doodads stop the runner, and it has a maze (%s) %s"
+					% [gen.debris_maze_result.get("constraints", []), tag])
+				LayoutChecks.check_layout(self, a, config, tag)
+				LayoutChecks.check_rules(self, a, config, tag)
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				blocks.append(a.maze.size())
+	print("  debris maze blocks in quick play's level made like a Terminal one: %s" % [blocks])
 
 
 ## Walls without wall running, standing in narrow arches (task O1; GDD §5 Zone 8, the Terminal: LevelConfig.wall_running
