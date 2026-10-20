@@ -611,6 +611,54 @@ dash wall's look (`dash_wall_material`, `WALL_STUMP_*`). The Terminal's skin (ta
 `test_generator` (`_test_arched_walls`) the generator at 3, 5 and 6 lanes over difficulties and seeds. DESIGN-TBD
 (`docs/questions/o1.md`): every number.
 
+**The debris maze (the Terminal)** (task O2; the owner, October 20, 2026, GDD §5, Zone 8: debris "so thickly that the
+empty space between them forms a maze, and the runner can't get through without dashing"; Rubble Line "the debris
+maze", Last Stop "a normal run with stretches of maze"). The `debris_maze` feature's rules
+(`scripts/enemies/debris_maze_rules.gd`, after the wall-run gaps) run `DebrisMaze.place` (`scripts/world/debris_maze.gd`,
+whose header is the full model; numbers in `DebrisMazeTuning`, each Terminal level's own:
+`data/tuning/terminal_maze_1.tres`, `terminal_maze_2.tres`; F6 shows the level's). Where doodads stop the runner is
+Damage and interactions, "Where doodads stop the runner".
+- **Structure.** The stretch from the feature's start to the end-clear one is cut into equal slots, each ending in a
+  block: open floor in every lane (its run-in), then a row of walls with rooms between them, then open floor again
+  (its breather), then normal track to the next slot. A wall is medium or large debris across every lane but its
+  openings, fronts level; a room runs from one wall's back to the next one's front, open but for its dividers (debris
+  along a lane its whole length, pieces `TOUCH` apart), so its open lanes are cells joined through the walls'
+  openings (an opening: a lane open on both sides of its wall). Never two dividers side by side nor a divider in every
+  lane; never an opening in every lane of a wall, but a wall may have none (every way through dashes it).
+- **Breaks.** `DebrisMaze.search` is a 0-1 search over a block's cells (an opening costs nothing, a dash through a
+  wall from any lane of a cell costs one, into the next room's cell in that lane or, through a divider's lane, the
+  cells beside it). Each block draws its target in `breaks_min`..`breaks_max` and redraws its dividers and openings
+  (`DRAWS`), opening the first dash of a best way or closing a wall (`_repair`) until its least dashes hit it. No
+  spacing rule: the dash recharges as usual and a runner may stand and wait (GDD §5).
+- **Keep-outs.** Every pass after the rules keeps off a block from its run-in to `exit_clear_seconds` past a dash's
+  carry out of its last wall (`keep_out`; the rules' `doodad_keep_outs` and `fill_keep_outs`): no hole, zone doodad,
+  ceiling of the patterns' or anything else there, so a stop or a dash never lands a runner in a hole. In a level that
+  asks for wider gaps a slot too tight to leave one's zone between its block's keep-out and the next run-in
+  (`gap_room`: `WideGapPlacement.zone_of` at the level's speed and spacing) takes a shorter block, so the level's couple
+  of holes always fit in the normal track between blocks. A slot with something of the level's own in the way
+  (`_in_way`) gets no block; the patterns' ceilings in the way go.
+- **Ceilings.** A block, with `ceiling_share`, gets a one-lane ceiling over its last wall (`_add_ceiling`): its pad in a
+  reachable cell of the last room two lanes wide or more (a dead end first, so it saves a dash; a floor runner passes
+  beside it), `hidden_reach` past the wall before it where that wall is closed in its lane (a dash through it shows the
+  pad in time, as for any doodad), `pad_rise` clear past it, its rider's drop past the last wall clear of debris in
+  every lane (`drop_room`) through the breather.
+- **For what lives in it (task O3's centipedes).** `LevelLayout.maze` holds each block's record ({entry, start, end,
+  exit, walls [{start, end, size, open}], rooms [{start, end, dividers}], breaks}); its debris are `LevelLayout.doodads`
+  entries marked `maze` (the block), `part` ("wall" or "divider") and `index` (`LevelLayout.is_maze_debris`), its
+  ceilings hulls marked `maze`. `DebrisMaze.sections(layout)` lists every open section (each block's run-in, each
+  room's cells, its breather: {block, room, first, last, start, end}); `links(layout, secs, broken)` where they join
+  without a dash (through an opening; with `broken`, also where this attempt's dash smashed a piece: its entry's
+  `smashed`); `open_group(links, id)` the sections one reaches from another along them; `section_at(secs, lane, at)`
+  and `section_id(secs, block, room, lane)` find one; `min_breaks(b, lanes)`, `shape_of(b)`, `cells_of`, `search`.
+- **Checks.** `LayoutChecks.check_debris_maze` (in `check_layout`): each block's debris exactly its walls and dividers,
+  nothing else of the level's in its keep-out, its least dashes on the Player's moves (`MazeRoute`,
+  `tests/helpers/maze_route.gd`: a search over lanes and 0.5 m steps with the dash's charge, a conservative model of
+  the stop, the switch and the dash) equal to its record and in range, no way through without a dash, finishable with
+  the dash at its slowest recharge (8 s) with waits, and its ceilings' rules. `test_debris_maze` replays routes on real
+  physics (`MazeBot`), sweeps the Terminal's levels at 3, 5 and 6 lanes and checks the API; `test_generator`
+  (`_test_debris_maze`) quick play's level made like a Terminal one over seeds, difficulties and two run speeds.
+  DESIGN-TBD (`docs/questions/o2.md`): the model and every number.
+
 **Wider gaps** (task G7; the owner's answer to open question 352, October 7, 2026, GDD §9.13 "Holes": "every
 level has a couple of wider gaps. They're uncommon, still jumpable by the player, and wide enough that an
 Enforcer following the player into one is wrecked"). `WideGapPlacement` (`scripts/world/wide_gap_placement.gd`;

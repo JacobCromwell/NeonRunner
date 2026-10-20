@@ -20,6 +20,10 @@ extends RefCounted
 ##    to jump, one side wall lit as the way across, where nothing the rules planned is in the way (plain pieces of
 ##    the patterns and a few small enemies go), its clear run-in and landing floor kept by every pass after the
 ##    rules as a dash wall's footprint is, its lit wall by the wall fences and the side wall gaps.
+##    The debris maze (the `debris_maze` feature, the Terminal's; task O2, GDD §5 Zone 8; debris_maze_rules.gd,
+##    DebrisMaze) is one of the rules too: blocks of debris walls and dividers whose open floor is a maze the runner
+##    breaks through with the dash, a few one-lane ceilings over their last walls, every block (its run-in to past
+##    a dash's carry out of it) kept by every pass after the rules as a dash wall's footprint is.
 ## 3. The fill pass (LevelConfig.fill_empty_seconds): more plain obstacle patterns in long empty
 ##    stretches. Around it, danger density (LevelConfig.danger_density_increase; DangerDensity,
 ##    scripts/world/danger_density.gd): before it a share more enemies (twins and single encounters
@@ -106,7 +110,9 @@ extends RefCounted
 ## rules and ceilings keep (fill_keep_outs), spaced like the pattern pass: busier, never tighter.
 ##
 ## Zone doodads (GDD §3, same playtest): scenery pieces standing in lanes that never hurt; running into
-## one pushes the player into a neighbouring lane. After the fill pass, a level's doodad_share of the spots
+## one pushes the player into a neighbouring lane (or, in a level with LevelConfig.doodads_stop, the Terminal's, stops
+## them: task O2; the rules below keep a stop's way out as they keep a push's landing, both lanes beside it clear).
+## After the fill pass, a level's doodad_share of the spots
 ## along it (LevelConfig.doodad_spot_seconds apart) get one where it's fair lane by lane (task L6: its own lane
 ## and the lanes beside it clear around it, nothing kept in every lane near it: doodad_keep_outs,
 ## doodad_lane_busy), in an inner lane or by a side wall that's open there (task L3: wall_lane_keep_outs), now
@@ -268,6 +274,9 @@ var wall_run_gap_result: Dictionary = {}
 ## The Buzz Overdrives' company in the last build (BuzzCompanyPlacement.place, task L2: each tank's escape lane, rows,
 ## pieces and cyborgs, and why the others got none); empty in a level that asks for none (LevelConfig.buzz_company).
 var buzz_company_result: Dictionary = {}
+## The debris maze in the last build (DebrisMaze.place, task O2: its slots, blocks, debris, ceilings, each block's least
+## dashes, and why a slot got no block or a block no ceiling); empty in a level without the `debris_maze` feature.
+var debris_maze_result: Dictionary = {}
 ## Stretches of track (Vector2) no wall-run gap's clear stretch may reach in the build being made (task J2; set only
 ## for the wider gaps' rebuild, _make_wide_gap_room; WallRunGapPlacement.place keeps off them). Empty otherwise.
 var wall_run_gap_reserve: Array[Vector2] = []
@@ -415,6 +424,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	layout.lane_count = config.lane_count
 	# Task O1: a level whose walls are a boundary (the Terminal's) says so in its layout, for the player and the track.
 	layout.wall_running = config.wall_running
+	# Task O2: and one whose doodads stop the runner (the Terminal's debris), for the player.
+	layout.doodads_stop = config.doodads_stop
 	_clear_stretches.clear()
 	_enemy_count = 0
 	warnings.clear()
@@ -427,6 +438,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	show_window_result = {}
 	wall_run_gap_result = {}
 	buzz_company_result = {}
+	debris_maze_result = {}
 	danger_density_plan = null
 	_intro_burst = -1
 	var accel: float = tuning.speed_gain_per_minute / 60.0

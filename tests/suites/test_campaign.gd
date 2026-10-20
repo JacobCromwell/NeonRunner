@@ -63,7 +63,8 @@ const FIRST_LEVEL: Dictionary = {
 	"buzz_overdrive": "corporate/1", "wall_fences_partial": "corporate/1", "dash_wall": "corporate/1",
 	"tithe_collector": "corporate/2", "enforcer_truck": "corporate/2",
 	"host": "dead_zone/1",
-	# Task O1 (GDD §5, Zone 8): the debris maze (task O2) and the Cybernetic Centipede (task O3, GDD §9.15), planned.
+	# Task O1 (GDD §5, Zone 8): the debris maze (built by task O2) and the Cybernetic Centipede (task O3, GDD §9.15,
+	# planned).
 	"debris_maze": "terminal/1", "centipede": "terminal/1",
 	"resonator": "golden/1",
 	"gilded_sentinel": "golden/2",

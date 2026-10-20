@@ -565,7 +565,8 @@ func _on_player_event(kind: StringName) -> void:
 			_block_fx(PlayerSuit.GLOW, tuning.block_break_shake_strength)
 		&"shield_break":
 			_block_fx(PlayerSuit.SHIELD, tuning.block_break_shake_strength)
-		&"doodad_push":
+		&"doodad_push", &"doodad_stop":
+			# Task O2: a doodad's stop (where doodads stop the runner) reads as the same bump, never as a hit.
 			shake(tuning.push_shake_strength, tuning.push_shake_time)
 
 

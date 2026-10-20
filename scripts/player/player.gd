@@ -14,7 +14,8 @@ signal died(cause: String)
 ## wall_jump, wall_exit, wall_blocked, ramp, pad, hull_end, died, stomp, lane_blocked,
 ## ceiling_blocked, speed_pad, grapple, armor_hit (a blocked hit the armor survives), armor_break,
 ## armor_back (broken armor came back), shield_break, revive, dash, dash_end, doodad_push (a zone
-## doodad shoved the player into a neighbouring lane), doodad_smash (the dash broke a zone doodad apart:
+## doodad shoved the player into a neighbouring lane), doodad_stop (a zone doodad brought the runner to a stop, where
+## doodads stop the runner: doodads_stop, task O2), doodad_smash (the dash broke a zone doodad apart:
 ## `<kind>_smash` for a DashBreakable of another kind: dash_wall_smash, a dash wall crumbling, task H7a,
 ## whether the dash smashed it, the runner crashed through it or passed it on a side wall),
 ## robbed (a thief's touch took credits, GDD §9.12),
@@ -57,6 +58,20 @@ const PUSH_HEAD_ON_SHARE: float = 0.15
 ## The doodad contact starts this far above the feet, so a player standing on a doodad's top (it's
 ## solid) isn't pushed by it (metres).
 const DOODAD_FEET_CLEARANCE: float = 0.05
+## Where doodads stop the runner (doodads_stop, task O2): how far short of the front of the one ahead the body's front
+## comes to rest (metres), a hair, so the body never touches it.
+const STOP_CLEARANCE: float = 0.02
+## Where doodads stop the runner: a doodad whose front is more than this behind the body's front is beside the body,
+## not ahead of it (metres). The stop never holds the runner at one beside them; one whose side the body has come into
+## moves the body back out (_check_stopping_doodads).
+const STOP_SIDE_SLACK: float = 0.05
+## Where doodads stop the runner: the margin a lane switch looks past the body's front for one in the lane it goes to
+## (_stop_switch_ahead; metres), beyond the track the body runs before it comes in line with that doodad's side.
+const STOP_SWITCH_MARGIN: float = 0.1
+## Where doodads stop the runner: how far past the front of the doodad holding a stopped runner another doodad's front
+## may lie and still be level with it (metres): a wall of debris across both lanes, whose face the runner moves along
+## (_lane_blocked, _face_level_in).
+const STOP_FACE_SLACK: float = 0.05
 ## A doodad the dash has claimed (_smash_claims: the dash reaches its front before it ends, or a switch
 ## into its side began while dashing) still breaks on contact this long after the dash ends (seconds):
 ## the contact may come a frame or two after the dash's last one (frame steps; the claim already counts a
@@ -90,6 +105,13 @@ var dash_walls: Array[Dictionary] = []
 ## are a boundary): a move past the outer lane, or a ramp, never puts the runner on a wall; it bumps them back with
 ## the blocked wall entry's clank (wall_blocked) and no damage, as a sign does (_try_enter_wall).
 var wall_running: bool = true
+## Whether zone doodads stop the runner instead of pushing (LevelLayout.doodads_stop, set by RunWorld; task O2, the
+## owner, October 20, 2026, GDD §5 Zone 8: "running into a Terminal doodad brings the runner to a complete stop, facing
+## it"). On: running into one's front holds the runner at it, standing (_stop_motion: `stopped`, the `doodad_stop`
+## event), with no damage; they set off again by switching into a lane open beside them, or by dashing, which smashes
+## it as anywhere. A switch into a lane looks further ahead there for one (_lane_blocked), and a body that comes into
+## one's side all the same moves back out the way it came (_check_stopping_doodads). Off: doodads push, as before.
+var doodads_stop: bool = false
 ## Game-wide rules (stomp bounce, invulnerability windows, ...). A default copy if none is set.
 var rules: GameRules
 var god_mode: bool = false
@@ -208,6 +230,16 @@ var _push_ignore_left: float = 0.0
 var _push_lane: int = -1
 ## How many times zone doodads have pushed the player this run (tests and tools).
 var pushes: int = 0
+## Where doodads stop the runner (doodads_stop, task O2): true while one holds them up, their forward motion held at its
+## front (_stop_motion; `speed` then reads 0: they stand). Read it; the Player sets it.
+var stopped: bool = false
+## How many times doodads have stopped the runner this run (doodads_stop; tests and tools): each stop once, however
+## long it lasts.
+var stops: int = 0
+## A lane switch begun while `stopped` into a lane whose doodad's front is level with the one holding the runner (a wall
+## of debris across both lanes, _face_level_in): they move along its face and stay stopped until the switch is done
+## (_stop_motion), so the body never runs on between the two (task O2).
+var _slide_hold: bool = false
 ## How many zone doodads and dash walls the dash has smashed this run (tests and tools).
 var smashes: int = 0
 ## How many zone doodads by a side wall broke as a wall runner low on that wall reached them, or a runner just off
@@ -330,6 +362,9 @@ func setup(p_tuning: MovementTuning, p_geo: TrackGeometry, start_lane: int) -> v
 	_push_ignore_left = 0.0
 	_push_lane = -1
 	pushes = 0
+	stopped = false
+	stops = 0
+	_slide_hold = false
 	smashes = 0
 	doodad_passes = 0
 	_off_wall = 0
@@ -570,6 +605,11 @@ func _physics_process(delta: float) -> void:
 	if speed_override >= 0.0:
 		speed = speed_override
 	var motion: float = speed * delta
+	# Task O2: where doodads stop the runner, the one ahead holds them at its front; `speed` then reads what they run.
+	if doodads_stop:
+		motion = _stop_motion(motion)
+		if stopped and delta > 0.0:
+			speed = motion / delta
 	distance += motion
 
 	_consume_input()
@@ -666,6 +706,8 @@ func _start_switch(target: int) -> void:
 		return
 	_bumping = false
 	_pushing = false
+	# Task O2: a stopped runner moving along the face of the doodad holding them stays stopped until they're across.
+	_slide_hold = doodads_stop and stopped and _face_level_in(target)
 	lane = target
 	_switch_from = _x
 	_switch_to = geo.lane_x(target)
@@ -679,6 +721,7 @@ func _start_switch(target: int) -> void:
 func _start_bump(dir: int, reach: float, seconds: float, off_wall: bool) -> void:
 	_bumping = true
 	_pushing = false
+	_slide_hold = false
 	_bump_dir = dir
 	_bump_reach = dir * maxf(reach, 0.0)
 	_bump_time = seconds
@@ -700,6 +743,7 @@ func _update_lane_switch(delta: float) -> void:
 	if _switch_t >= 1.0:
 		_bumping = false
 		_pushing = false
+		_slide_hold = false
 
 
 ## Where a lane switch or a bump puts the player at progress t (0–1): from `from` to `to`, easing out,
@@ -734,14 +778,38 @@ func _into_pushed_from(target: int) -> bool:
 ## `dash_through` (the player is dashing: GDD §3, the dash smashes a zone doodad) a zone doodad's side
 ## doesn't count: it's claimed (_smash_claims) and breaks when the body reaches it (_check_doodads).
 ## Any other solid side (a hover truck's, a boss's prop) blocks a dashing player too.
+## Where doodads stop the runner (doodads_stop, task O2) on the floor, two more things: a doodad in that lane just ahead
+## blocks the switch too, up to _stop_switch_ahead() past the body's front (one starting there would meet the body's
+## side before its front as the body came across: a stop holds a body only at a doodad's front); and a stopped runner
+## moves along the face of what holds them: beside them only what's level with the body counts, and a doodad in that
+## lane whose front is level with the one holding them (within STOP_FACE_SLACK: a wall of debris across both lanes) is
+## no obstacle, they stop at it the moment they're in its lane (_start_switch holds them meanwhile, _slide_hold).
+## DESIGN-TBD (docs/questions/o2.md, questions 2 and 4): a stopped runner's switch into debris refused with the clank, the
+## slide along a wall's face, and the look ahead that refuses a switch which would meet a doodad's side.
 func _lane_blocked(target: int, dash_through: bool = false) -> bool:
 	if target < 0 or target >= geo.lane_count:
 		return false
 	var height: float = _hurtbox_height()
 	var y: float = position.y + height * 0.5 if surface != Surface.CEILING else position.y - height * 0.5
-	_blocker_shape.size = Vector3(geo.lane_width * 0.5, height, tuning.hurtbox_size.z + 0.6)
-	_blocker_query.transform = Transform3D(Basis.IDENTITY, Vector3(geo.lane_x(target), y, TrackGeometry.world_z(distance)))
-	var hits: Array[Dictionary] = get_world_3d().direct_space_state.intersect_shape(_blocker_query, 4 if dash_through else 1)
+	var x: float = geo.lane_x(target)
+	var half: float = (tuning.hurtbox_size.z + 0.6) * 0.5
+	var most: int = 4 if dash_through else 1
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var hits: Array[Dictionary] = []
+	if doodads_stop and surface == Surface.FLOOR:
+		var front: float = distance + tuning.visual_size.z * 0.5
+		# Beside the body: for a stopped runner only what's level with it; else the usual reach, a little past its front.
+		var near: float = front - 0.01 if stopped else distance + half
+		hits = _blockers_in(space, x, y, height, distance - half, near, TrackBuilder.LAYER_LANE_BLOCKER, most)
+		# Ahead, by their fronts: for a stopped runner, one whose front is level with what holds them is no obstacle.
+		var level: float = front + STOP_CLEARANCE + STOP_FACE_SLACK if stopped else -INF
+		for hit: Dictionary in _blockers_in(space, x, y, height, near, front + _stop_switch_ahead(), TrackBuilder.LAYER_DOODAD, 8):
+			var area := hit["collider"] as Area3D
+			if area != null and area.has_meta(&"doodad") and float((area.get_meta(&"doodad") as Dictionary)["start"]) <= level:
+				continue
+			hits.append(hit)
+	else:
+		hits = _blockers_in(space, x, y, height, distance - half, distance + half, TrackBuilder.LAYER_LANE_BLOCKER, most)
 	if not dash_through or hits.is_empty():
 		return not hits.is_empty()
 	var claims: Array[int] = []
@@ -752,6 +820,31 @@ func _lane_blocked(target: int, dash_through: bool = false) -> bool:
 	for id: int in claims:
 		_smash_claims[id] = true
 	return false
+
+
+## What stands on the physics layers `mask` across half a lane around x (a lane's middle), `height` tall around `y`, from
+## track distance `from` to `to` (_lane_blocked's queries): up to `most` hits; none for an empty stretch.
+func _blockers_in(space: PhysicsDirectSpaceState3D, x: float, y: float, height: float, from: float, to: float,
+		mask: int, most: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if to <= from:
+		return out
+	_blocker_shape.size = Vector3(geo.lane_width * 0.5, height, to - from)
+	_blocker_query.collision_mask = mask
+	_blocker_query.transform = Transform3D(Basis.IDENTITY, Vector3(x, y, TrackGeometry.world_z((from + to) * 0.5)))
+	out = space.intersect_shape(_blocker_query, most)
+	_blocker_query.collision_mask = TrackBuilder.LAYER_LANE_BLOCKER
+	return out
+
+
+## Where doodads stop the runner (task O2): true if a doodad in lane `target` has its front level with the body's front,
+## within STOP_CLEARANCE and STOP_FACE_SLACK past it: the face of a wall of debris across both lanes, which a stopped
+## runner moves along (_start_switch, _slide_hold).
+func _face_level_in(target: int) -> bool:
+	var front: float = distance + tuning.visual_size.z * 0.5
+	var height: float = _hurtbox_height()
+	return not _blockers_in(get_world_3d().direct_space_state, geo.lane_x(target), position.y + height * 0.5, height,
+		front - 0.01, front + STOP_CLEARANCE + STOP_FACE_SLACK, TrackBuilder.LAYER_DOODAD, 1).is_empty()
 
 
 # --- Floor & ceiling -------------------------------------------------------
@@ -876,6 +969,7 @@ func _pull_into_lane(target: int) -> void:
 		return
 	_bumping = false
 	_pushing = false
+	_slide_hold = false
 	lane = target
 	_switch_from = _x
 	_switch_to = geo.lane_x(target)
@@ -1077,6 +1171,7 @@ func _try_enter_wall(side: int, from_ramp: bool, ramp: int = 0) -> bool:
 	_switch_t = 1.0
 	_bumping = false
 	_pushing = false
+	_slide_hold = false
 	if from_ramp:
 		# GDD §3: a ramp adds speed, which fades away like a speed pad's (boost_left).
 		_boost += tuning.ramp_speed_boost
@@ -1230,6 +1325,10 @@ func _check_doodads(motion: float) -> void:
 		return
 	if surface != Surface.FLOOR or in_pit:
 		return
+	# Task O2: where doodads stop the runner, the stop (_stop_motion) has held the body at the front of the one ahead.
+	if doodads_stop:
+		_check_stopping_doodads(motion)
+		return
 	var half: float = tuning.visual_size.x * 0.5
 	var depth: float = tuning.visual_size.z
 	var height: float = _hurtbox_height() * tuning.visual_size.y / maxf(tuning.hurtbox_size.y, 0.01)
@@ -1279,6 +1378,133 @@ func _check_doodads(motion: float) -> void:
 			continue
 		_start_push(area, int(d["lane"]), dir, int(d["side"]))
 		return
+
+
+# --- Doodads that stop the runner (task O2) -----------------------------------------------------
+
+## Task O2 (the owner, October 20, 2026, GDD §5 Zone 8: "running into a Terminal doodad brings the runner to a complete
+## stop, facing it"; (proposed) "a stop costs nothing but time; the runner sets off again by switching into an open lane
+## or by dashing through"), where doodads stop the runner (doodads_stop): how far the runner may run on this frame, at
+## most `motion`. The body (its visual size, as it is now: what looks like contact is contact; sliding, its slide
+## height; from just above the feet, so one standing on a doodad's top runs on along it) comes to rest STOP_CLEARANCE
+## short of the front of the nearest doodad ahead of it, across and up, in the air too (doodads are too tall to jump:
+## a jump at one comes down in front of it), and `stopped` says so while one holds them (the `doodad_stop` event as each
+## stop begins). A doodad the dash takes (_dash_claims: claimed already, or the dash lasts until the body gets there)
+## never holds them: one the body would meet this frame breaks now (_smash), before they touch, and they run on. One
+## whose front is behind the body's front (more than STOP_SIDE_SLACK) is beside the body, not ahead: the stop leaves it
+## to _check_stopping_doodads. Only on the floor and out of a pit. A stop costs nothing but time: the level clock goes
+## on (elapsed), the distance waits, and the run speed comes back as soon as the way ahead is clear (a switch out, the
+## dash). A stopped runner moving along the face of what holds them (_slide_hold) stays held until they're across.
+## DESIGN-TBD (docs/questions/o2.md, questions 1 and 3): the stop and the setting off are instant, and a jump or a slide
+## while stopped plays out where the runner stands.
+func _stop_motion(motion: float) -> float:
+	if surface != Surface.FLOOR or in_pit or motion <= 0.0:
+		_slide_hold = false
+		_set_stopped(false)
+		return motion
+	if _slide_hold and not dashing:
+		_set_stopped(true)
+		return 0.0
+	var half: float = tuning.visual_size.x * 0.5
+	var height: float = _hurtbox_height() * tuning.visual_size.y / maxf(tuning.hurtbox_size.y, 0.01)
+	var front: float = distance + tuning.visual_size.z * 0.5
+	var from: float = front - STOP_SIDE_SLACK
+	var to: float = front + motion + STOP_CLEARANCE + 0.05
+	_doodad_shape.size = Vector3(half * 2.0, maxf(height - DOODAD_FEET_CLEARANCE, 0.05), to - from)
+	_doodad_query.transform = Transform3D(Basis.IDENTITY, Vector3(_x, h + DOODAD_FEET_CLEARANCE + _doodad_shape.size.y * 0.5,
+		TrackGeometry.world_z((from + to) * 0.5)))
+	var nearest: float = INF
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_doodad_query, 8):
+		var area := hit["collider"] as Area3D
+		if area == null or not area.has_meta(&"doodad"):
+			continue
+		var gap: float = float((area.get_meta(&"doodad") as Dictionary)["start"]) - front
+		if gap < -STOP_SIDE_SLACK:
+			continue
+		if _dash_claims(area, gap):
+			if gap <= motion + STOP_CLEARANCE:
+				_smash(area as DashBreakable)
+			continue
+		nearest = minf(nearest, gap)
+	var allowed: float = motion if nearest == INF else clampf(nearest - STOP_CLEARANCE, 0.0, motion)
+	_set_stopped(allowed < motion)
+	return allowed
+
+
+## Starts or ends a stop (_stop_motion): the count and the `doodad_stop` event as one begins (its thud, a small shake).
+func _set_stopped(on: bool) -> void:
+	if on and not stopped:
+		stops += 1
+		_event(&"doodad_stop")
+	stopped = on
+
+
+## Task O2: where doodads stop the runner, what _check_doodads does once the stop (_stop_motion) has held the body at the
+## front of the one ahead: a doodad the dash claimed from the side (a dashing switch into it, _lane_blocked) breaks as
+## the body reaches it, as in every level; and one whose side the body has come into (a switch begun just as it came
+## alongside: _lane_blocked looks ahead for one in the lane a switch goes to and refuses it, so only an odd frame's timing
+## gets here) moves the body back out the way it came (_start_bounce): never into it. One ahead of the body is the stop's.
+func _check_stopping_doodads(motion: float) -> void:
+	var half: float = tuning.visual_size.x * 0.5
+	var height: float = _hurtbox_height() * tuning.visual_size.y / maxf(tuning.hurtbox_size.y, 0.01)
+	var front: float = distance + tuning.visual_size.z * 0.5
+	var back: float = distance - tuning.visual_size.z * 0.5
+	var reach: float = maxf(motion, 0.0) + 0.05
+	_doodad_shape.size = Vector3(half * 2.0, maxf(height - DOODAD_FEET_CLEARANCE, 0.05), front + reach - back)
+	_doodad_query.transform = Transform3D(Basis.IDENTITY, Vector3(_x, h + DOODAD_FEET_CLEARANCE + _doodad_shape.size.y * 0.5,
+		TrackGeometry.world_z((back + front + reach) * 0.5)))
+	for hit: Dictionary in get_world_3d().direct_space_state.intersect_shape(_doodad_query, 4):
+		var area := hit["collider"] as Area3D
+		if area == null or not area.has_meta(&"doodad"):
+			continue
+		var d: Dictionary = area.get_meta(&"doodad")
+		var gap: float = float(d["start"]) - front
+		if _dash_claims(area, gap):
+			if gap <= motion:
+				_smash(area as DashBreakable)
+			continue
+		if gap >= -STOP_SIDE_SLACK:
+			continue
+		# Already on the way back out of this one.
+		if area.get_instance_id() == _push_doodad and (_pushing or _push_ignore_left > 0.0):
+			continue
+		if _start_bounce(area, int(d["lane"])):
+			return
+
+
+## Moves the body back out of the side of doodad `area`, standing in `doodad_lane` (task O2; _check_stopping_doodads):
+## into the lane beside it on the body's side, the one it came from, with the push's quick shove (the lane switch
+## machinery over doodad_push_time, _push_x) and the blocked move's clank (`lane_blocked`); the doodad is left alone
+## while the shove carries them (it moves them once). False (nothing done) if there's no lane on that side.
+## DESIGN-TBD (docs/questions/o2.md, question 4): the shove back out, and its clank.
+func _start_bounce(area: Area3D, doodad_lane: int) -> bool:
+	var target: int = doodad_lane + (1 if _x > geo.lane_x(doodad_lane) else -1)
+	if target < 0 or target >= geo.lane_count:
+		return false
+	_bumping = false
+	_pushing = true
+	_slide_hold = false
+	_push_doodad = area.get_instance_id()
+	_push_ignore_left = tuning.doodad_push_time
+	_push_lane = doodad_lane
+	lane = target
+	_switch_from = _x
+	_switch_to = geo.lane_x(target)
+	_switch_t = 0.0
+	_event(&"lane_blocked")
+	return true
+
+
+## How far past the body's front a lane switch looks for a doodad that stops the runner in the lane it goes to (task O2;
+## _lane_blocked; metres): the track the body runs (at the run speed at least: a stopped runner sets off as soon as it's
+## clear of the doodad ahead) before its side comes in line with the narrowest doodad's side in that lane, as a switch
+## eases across (_switch_x), and STOP_SWITCH_MARGIN. A doodad starting nearer would meet the body's side, not its front.
+## DESIGN-TBD (docs/questions/o2.md, question 4): refusing such a switch rather than letting it play out.
+func _stop_switch_ahead() -> float:
+	var narrowest: float = minf(tuning.doodad_small_width, minf(tuning.doodad_medium_width, tuning.doodad_large_width))
+	var across: float = geo.lane_width - narrowest * 0.5 - tuning.visual_size.x * 0.5
+	var k: float = clampf(across / maxf(geo.lane_width, 0.01), 0.0, 1.0)
+	return maxf(speed, tuning.run_speed) * (1.0 - sqrt(1.0 - k)) * tuning.lane_switch_time + STOP_SWITCH_MARGIN
 
 
 ## A wall runner never meets a zone doodad standing by their wall (task L3: the generator puts doodads in the lane
@@ -1385,6 +1611,7 @@ func _start_push(area: Area3D, doodad_lane: int, dir: int, own_side: int) -> voi
 	target = clampi(target, 0, geo.lane_count - 1)
 	_bumping = false
 	_pushing = true
+	_slide_hold = false
 	_push_doodad = area.get_instance_id()
 	_push_ignore_left = tuning.doodad_push_time
 	_push_lane = doodad_lane

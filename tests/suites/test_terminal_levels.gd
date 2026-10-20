@@ -7,12 +7,14 @@ extends TestSuite
 ##   Line and Last Stop, its music track `terminal` still to come, an intro and an outro slot, no boss slot, outside the
 ##   web demo); its levels: off the curve, their own seeds and patterns (data/patterns/terminal/), the arches' numbers
 ##   (data/tuning/terminal_wall_gaps.tres), no wall running, every ceiling one lane wide, two wider gaps, no dash walls,
-##   none of the usual enemies' features, the debris maze and the centipede listed (planned: tasks O2 and O3);
+##   none of the usual enemies' features, the debris maze (task O2) and the centipede (planned: task O3) listed; its
+##   doodads stop the runner and stand lower than other zones' and still too tall to jump (task O2), and each level has
+##   its own maze numbers;
 ## - every build at 3, 5 and 6 lanes, on the levels' own seeds and OTHER_SEEDS, as the campaign configures it: no
-##   warnings, the campaign's fairness checks (LayoutChecks.check_layout and check_rules), the same level on a second
-##   build, and the Terminal's rules: no enemies at all, no dash walls, a couple of holes (its wider gaps, rows in every
-##   lane but one) and nothing else in its floor, few ceilings and every one a single lane wide and short, nothing on
-##   its walls (check_boundary_walls);
+##   warnings, the campaign's fairness checks (LayoutChecks.check_layout and check_rules: the debris maze's among them,
+##   check_debris_maze), the same level on a second build, and the Terminal's rules: no enemies at all, no dash walls, a
+##   couple of holes (its wider gaps, rows in every lane but one) and nothing else in its floor, its debris maze, few
+##   ceilings and every one a single lane wide and short, nothing on its walls (check_boundary_walls);
 ## - its walls: each a row of narrow arches over the whole stretch the track draws walls along, arch_length long and
 ##   arch_spacing (give or take its jitter) apart, mostly in pairs, a missing one a broken stump opposite the other
 ##   wall's arch, about arch_stump_share of the places;
@@ -34,10 +36,11 @@ const STEPS: Array[String] = ["terminal/intro", "terminal/1", "terminal/2", "ter
 const NAMES: Array[String] = ["Rubble Line", "Last Stop"]
 ## Seeds besides each level's own that every check also runs on.
 const OTHER_SEEDS: Array[int] = [8901, 8902, 8903]
-## "Very few" ceilings (GDD §5, Zone 8): at most this many in one level, in any build checked. DESIGN-TBD
-## (docs/questions/o1.md): the open stretch's pick weight against the ceiling's sets how many.
+## "Very few" ceilings (GDD §5, Zone 8): at most this many in one level, in any build checked, the debris maze's own
+## among them. DESIGN-TBD (docs/questions/o1.md, o2.md): the open stretch's pick weight against the ceiling's, and the
+## maze's ceiling_share (DebrisMazeTuning), set how many.
 const MOST_CEILINGS: int = 10
-## Features the Terminal's levels list: its ceilings and its walls' open space, and its own two (planned).
+## Features the Terminal's levels list: its ceilings and its walls' open space, and its own two (the centipede planned).
 const FEATURES: PackedStringArray = ["ceilings", "wall_gaps", "debris_maze", "centipede"]
 
 
@@ -129,8 +132,20 @@ func _test_data() -> void:
 			"%s: its danger density dial (%.2f) between Dead Zone 2's and Golden 1's" % [tag, level.danger_density_increase])
 		check(level.features == FEATURES, "%s lists only its ceilings, its walls' open space, the debris maze and the centipede (%s)"
 			% [tag, level.features])
-		for f: String in ["debris_maze", "centipede"]:
-			check(LevelConfig.PLANNED_FEATURES.has(f) and not LayoutChecks.can_locate(f), "`%s` is planned (tasks O2, O3)" % f)
+		check(not LevelConfig.PLANNED_FEATURES.has("debris_maze") and LayoutChecks.can_locate("debris_maze"),
+			"`debris_maze` is built (task O2)")
+		check(LevelConfig.PLANNED_FEATURES.has("centipede") and not LayoutChecks.can_locate("centipede"),
+			"`centipede` is planned (task O3)")
+		# Its debris (task O2; GDD §5, Zone 8): doodads stop the runner rather than push them, and stand lower than other
+		# zones' but still too tall to jump: over a jump's theoretical peak (jump_height) and the feet's clearance by a margin
+		# (test_debris_maze runs the jumps on physics).
+		var own: MovementTuning = level.movement_for(tuning)
+		check(level.doodads_stop and level.doodad_height > 0.0 and own.doodad_height < tuning.doodad_height
+			and own.doodad_height >= tuning.jump_height + Player.DOODAD_FEET_CLEARANCE + 0.04,
+			"%s: its doodads stop the runner, lower than other zones' (%.2f m against %.2f m) and too tall to jump (%.2f m)"
+				% [tag, own.doodad_height, tuning.doodad_height, tuning.jump_height])
+		check(level.debris_maze_tuning != null and level.debris_maze_tuning.resource_path != DebrisMaze.TUNING_PATH,
+			"%s has its own debris maze numbers" % tag)
 	check(zone.levels[0].feature_starts.has("debris_maze") and zone.levels[0].feature_starts.has("centipede")
 		and zone.levels[1].feature_starts.is_empty(), "Rubble Line introduces the debris maze and the centipede, each at a start of its own")
 	# The Terminal's own patterns: nothing but its open stretches and its plain one-lane ceilings.
