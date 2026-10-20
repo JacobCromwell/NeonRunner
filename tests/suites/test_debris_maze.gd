@@ -14,7 +14,8 @@ extends TestSuite
 ##   one before contact; with the flag off the same doodad pushes, as before; in a full world the stop plays the push's
 ##   thud and the score is untouched.
 ## - The lower doodads (LevelConfig.doodad_height through movement_for): the Terminal's levels' boxes on the track are
-##   their height, still out of a jump's reach, and every other level's as before.
+##   their height, still out of a jump's reach (jumps from running, from a stop and from the buffer, at every size, on
+##   physics), and every other level's as before.
 ## - The generator (DebrisMaze, debris_maze_rules.gd) over the Terminal's levels and other seeds at 3, 5 and 6 lanes:
 ##   every build passes LayoutChecks.check_debris_maze (the blocks' structure, a dash needed, finishable at the dash's
 ##   slowest recharge with waits, no hole near, the ceilings over the maze), the same level every time, the maze over
@@ -37,6 +38,9 @@ const OTHER_SEEDS: Array[int] = [8911, 8912, 8913]
 const SINK_TOLERANCE: float = 0.03
 ## The dash's slowest recharge (PowerupTuning.dash_cooldown, tier I; GDD §8: 8, 6, 4 and 3 seconds).
 const SLOWEST_RECHARGE: float = 8.0
+## The least a stopping doodad stands over a jump's theoretical peak (MovementTuning.jump_height) and the feet's clearance
+## (Player.DOODAD_FEET_CLEARANCE), in metres; on the game's 60 Hz physics the feet peak about 7 cm lower still.
+const JUMP_MARGIN: float = 0.04
 
 var sim: RunSim
 
@@ -54,6 +58,7 @@ func run() -> void:
 	await _test_pushes_without_flag()
 	await _test_full_world()
 	await _test_lower_doodads()
+	await _test_jump_reach()
 	_test_generator()
 	_test_endless()
 	_test_without_feature()
@@ -367,6 +372,44 @@ func _test_bounce() -> void:
 			% [r["cause"], r["lane"], r["events"], lanes])
 
 
+## The Terminal's lower debris is still out of a jump's reach, on real physics at its level's tuning (its height and
+## speed): a running jump pressed anywhere from 8 m before a doodad's front to the front, a jump pressed again as the last
+## one comes down (the buffer), and a jump from a stop at its front, at every size: none gets the runner past its front,
+## each comes down in front of it, alive; the feet's highest point in all of them stays under its top by more than the
+## feet's clearance (printed with the margin).
+func _test_jump_reach() -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var config: LevelConfig = campaign.configure(campaign.step("terminal/1"), 3)
+	var t: MovementTuning = config.movement_for(tuning)
+	var ahead: float = t.visual_size.z * 0.5
+	var air: float = 2.0 * t.jump_time_to_apex * t.run_speed
+	var peak: float = 0.0
+	var past: Array[String] = []
+	var runs: int = 0
+	for size: StringName in [&"small", &"medium", &"large"]:
+		var d: Dictionary = _doodad(1, 40.0, size)
+		var cases: Array = [["from a stop", [[40.0 - ahead - 0.01, &"jump"]]],
+			["pressed again as it comes down", [[40.0 - ahead - air - 1.0, &"jump"], [40.0 - ahead - 1.6, &"jump"]]]]
+		for k: int in 17:
+			var before: float = k * 0.5
+			cases.append(["pressed %.1f m before its front" % before, [[40.0 - ahead - before, &"jump"]]])
+		for c: Array in cases:
+			var r: Dictionary = await sim.run(_stop_layout(3, [d]), 1, 3.0, c[1], [], t)
+			runs += 1
+			for s: Dictionary in r["trace"]:
+				peak = maxf(peak, float(s["h"]))
+			var last: Dictionary = (r["trace"] as Array)[-1]
+			if not r["alive"] or float(r["distance"]) + ahead > 40.0 + 0.01 or float(last["h"]) > 0.001:
+				past.append("%s, %s (%.2f m, h %.2f)" % [size, c[0], r["distance"], last["h"]])
+	check(past.is_empty(), "no jump gets the runner over the Terminal's %.2f m debris (%d jumps): %s" % [t.doodad_height, runs,
+		past.slice(0, 3)])
+	check(peak + Player.DOODAD_FEET_CLEARANCE < t.doodad_height - 0.1,
+		"the feet's highest point (%.3f m) and their clearance stay a tenth of a metre under its top (%.2f m)" % [peak,
+			t.doodad_height])
+	print("  jumps at the Terminal's %.2f m debris: %d, the feet's highest %.3f m (theory %.2f m), %.3f m under the top past their clearance"
+		% [t.doodad_height, runs, peak, t.jump_height, t.doodad_height - peak - Player.DOODAD_FEET_CLEARANCE])
+
+
 ## With the flag off (every other level), the same doodad pushes as before.
 func _test_pushes_without_flag() -> void:
 	for lanes: int in [3, 5, 6]:
@@ -395,8 +438,9 @@ func _test_full_world() -> void:
 # --- The lower doodads -------------------------------------------------------------------------
 
 ## The Terminal's levels' doodads stand at their own height (LevelConfig.doodad_height, through movement_for: the
-## generator's, the track's and the runner's tuning), lower than the standard ones and still out of a jump's reach (a
-## jump's feet reach jump_height); every other level's are the movement tuning's.
+## generator's, the track's and the runner's tuning), lower than the standard ones and still out of a jump's reach (over
+## the feet's theoretical peak, jump_height, and Player.DOODAD_FEET_CLEARANCE by JUMP_MARGIN; _test_jump_reach runs the
+## jumps); every other level's are the movement tuning's.
 func _test_lower_doodads() -> void:
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for s: CampaignStep in campaign.steps():
@@ -405,7 +449,7 @@ func _test_lower_doodads() -> void:
 		var level_tuning: MovementTuning = s.level.movement_for(tuning)
 		if s.zone.id == &"terminal":
 			check(s.level.doodads_stop and level_tuning.doodad_height < tuning.doodad_height
-				and level_tuning.doodad_height > tuning.jump_height + Player.DOODAD_FEET_CLEARANCE + 0.1
+				and level_tuning.doodad_height >= tuning.jump_height + Player.DOODAD_FEET_CLEARANCE + JUMP_MARGIN
 				and is_equal_approx(level_tuning.doodad_height, s.level.doodad_height),
 				"%s's doodads stop the runner and stand lower (%.2f m), out of a jump's reach (%.2f m)" % [s.id,
 					level_tuning.doodad_height, tuning.jump_height])

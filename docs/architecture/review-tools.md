@@ -47,7 +47,8 @@ it prints the walls' layout), the Terminal's debris maze (`debris_maze_review`, 
 of its maze blocks, in its zone's look or another, seen from the game camera 60, 35 and 15 m before its first wall,
 stopped at that wall and just inside its first room, and from high behind, to judge what the runner reads of its
 openings and cells over the lower debris; a PNG per shot in `--out=DIR`, `--level=terminal/1`, `--skin=`, `--lanes=N`,
-`--block=N`, `--shot=a,b`; it prints the block's walls and rooms), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
+`--block=N`, `--shot=a,b`, and what-ifs that leave the data alone: `--doodad_height=M`, `--camera_height=M`,
+`--camera_distance=M`; it prints the block's walls and rooms), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
 treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
 `--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`
 for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), the wall-hop credits

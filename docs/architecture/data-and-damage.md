@@ -304,8 +304,10 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   `_dash_claims`, breaks as the body reaches it, as everywhere). Stopped against a wall of debris whose piece in the
   next lane has its front level with this one's (`STOP_FACE_SLACK`), a switch moves the body along the wall's face and
   keeps it stopped (`_slide_hold`), so a runner works along a wall to its opening. A jump or a slide while stopped
-  plays out in place; a jump into debris stops in the air at its front and comes down there (the Terminal's 1.9 m
-  debris is out of a jump's reach). A body that still ends up in a doodad's side (an odd frame's timing) is moved
+  plays out in place; a jump into debris stops in the air at its front and comes down there (the Terminal's 1.7 m
+  debris is out of a jump's reach: the feet peak at 1.53 m on the 60 Hz physics, 1.6 m in theory, and a doodad stops a
+  body whose feet are within `DOODAD_FEET_CLEARANCE` of its top). A body that still ends up in a doodad's side (an odd
+  frame's timing) is moved
   back out the way it came (`_check_stopping_doodads`, `_start_bounce`: the push's machinery, the clank). With the
   flag off every doodad pushes, exactly as before. The Terminal's doodads also stand lower (`LevelConfig.doodad_height`,
   through `movement_for`, so the track builds their boxes at it). `test_debris_maze` runs it all on real physics;

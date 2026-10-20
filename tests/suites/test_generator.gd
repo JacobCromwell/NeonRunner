@@ -98,7 +98,7 @@ func _test_debris_maze(base: LevelConfig) -> void:
 				config.wide_gaps = 2
 				config.doodad_share = 1.0
 				config.doodads_stop = true
-				config.doodad_height = 1.9
+				config.doodad_height = 1.7
 				config.debris_maze_tuning = tunings[k]
 				var tag: String = "(debris maze %d) lanes=%d diff=%.1f speed=%.1f" % [k, lanes, difficulty, config.run_speed]
 				var patterns: Array = LevelGenerator.load_for(config)

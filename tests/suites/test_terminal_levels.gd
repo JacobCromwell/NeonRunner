@@ -137,10 +137,11 @@ func _test_data() -> void:
 		check(LevelConfig.PLANNED_FEATURES.has("centipede") and not LayoutChecks.can_locate("centipede"),
 			"`centipede` is planned (task O3)")
 		# Its debris (task O2; GDD §5, Zone 8): doodads stop the runner rather than push them, and stand lower than other
-		# zones' but still too tall to jump.
+		# zones' but still too tall to jump: over a jump's theoretical peak (jump_height) and the feet's clearance by a margin
+		# (test_debris_maze runs the jumps on physics).
 		var own: MovementTuning = level.movement_for(tuning)
 		check(level.doodads_stop and level.doodad_height > 0.0 and own.doodad_height < tuning.doodad_height
-			and own.doodad_height > tuning.jump_height + Player.DOODAD_FEET_CLEARANCE + 0.1,
+			and own.doodad_height >= tuning.jump_height + Player.DOODAD_FEET_CLEARANCE + 0.04,
 			"%s: its doodads stop the runner, lower than other zones' (%.2f m against %.2f m) and too tall to jump (%.2f m)"
 				% [tag, own.doodad_height, tuning.doodad_height, tuning.jump_height])
 		check(level.debris_maze_tuning != null and level.debris_maze_tuning.resource_path != DebrisMaze.TUNING_PATH,

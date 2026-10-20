@@ -16,6 +16,8 @@ extends Node3D
 ##   --block=N       around the level's Nth maze block (default 0, the first)
 ##   --out=DIR       where the PNGs go, under the project (default build/maze), named <skin>_<n>_<shot>.png
 ##   --shot=a,b      only the shots whose short name is listed (default all: see _shot_list())
+##   --doodad_height=M, --camera_height=M, --camera_distance=M   what-ifs for review: the level's debris at another
+##                   height, the game camera higher or further back (MovementTuning's camera_height, camera_distance)
 ## Each shot's number, file and label are printed, and the block's walls and rooms.
 
 const TUNING_PATH: String = "res://data/tuning/movement.tres"
@@ -46,7 +48,14 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	var config: LevelConfig = campaign.configure(step, lanes)
-	tuning = config.movement_for(tuning)
+	# What-ifs for review only (the data is not touched): another debris height, another camera.
+	if _opt("doodad_height", "") != "":
+		config.doodad_height = float(_opt("doodad_height", "0"))
+	tuning = (config.movement_for(tuning) as MovementTuning).duplicate() as MovementTuning
+	if _opt("camera_height", "") != "":
+		tuning.camera_height = float(_opt("camera_height", "0"))
+	if _opt("camera_distance", "") != "":
+		tuning.camera_distance = float(_opt("camera_distance", "0"))
 	layout = LevelGenerator.new().generate(config, load(TUNING_PATH) as MovementTuning, LevelGenerator.load_for(config))
 	if layout.maze.is_empty():
 		push_error("debris_maze_review: %s has no debris maze" % step.id)
