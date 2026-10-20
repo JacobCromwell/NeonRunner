@@ -45,8 +45,8 @@ const SPEEDS: Array[float] = [23.4, 23.8, 24.2, 25.0]
 ## Dead Zone 2 at 5 and 6. Corporate 2 at 5 lanes and Dead Zone 1 at 3 now have item 402's case instead: one truck,
 ## showing itself before its bait, where a second truck's chase would overlap its own.) The Beach (zone 6, task D10d,
 ## seeds 801 and 802): Tiki Tides at 5 lanes, and with the H series (merged with D10) Sunset Strip at 5 lanes too.
-## (Task O1: Dead Zone 2 at 5 and 6 lanes, with its extended wall runs, now has one truck: the second's chase would reach
-## one's stretch before it showed itself.)
+## (Task O1: Dead Zone 2 at 5 and 6 lanes no longer has that case: its extended wall runs keep each chase off their
+## stretches until the truck has shown itself.)
 const BOTH_TRUCKS: Array = [["corporate/2", 6], ["beach/1", 5], ["beach/3", 5]]
 const VARIANTS: Array[StringName] = [&"city", &"vr_runner", &"burned", &"scavenger", &"golden", &"casino"]
 
