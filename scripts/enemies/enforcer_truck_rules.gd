@@ -252,10 +252,26 @@ static func _option(gen: LevelGenerator, t: EnforcerTruckTuning, planner: ShowPl
 	if spots.is_empty() and calm.is_empty():
 		return {}
 	var plan: Dictionary = planner.plan(spots, 0, calm)
+	# Its chase before its showing (wide_gap_keep_outs) reaches no stretch kept for the level's extended wall runs
+	# (LevelGenerator.kept_for_extended): such a chase isn't one (its arrivals keep off them up to its bait already,
+	# _arrival_order, _calm_spots).
+	if not plan.is_empty() and _reaches_extended(gen, plan):
+		return {}
 	if plan.is_empty() and spots.is_empty():
 		return {}
 	var at: float = float(plan["arrive"]) if not plan.is_empty() else spots[0]
 	return {"spots": spots, "plan": plan, "at": at, "span": chase_span(gen, t, at), "why": planner.why_none}
+
+
+## True if a truck showing itself by window `plan` (ShowPlanner.plan) would reach a stretch kept for the level's extended
+## wall runs (LevelGenerator.kept_for_extended) on its chase before its showing, as wide_gap_keep_outs counts it.
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md).
+static func _reaches_extended(gen: LevelGenerator, plan: Dictionary) -> bool:
+	if gen.extended_wall_run_reserve.is_empty():
+		return false
+	var kept: Vector2 = gen.kept_for_extended(minf(float(plan["arrive"]), float(plan["from"]) - WINDOW_EDGE),
+		float(plan["to"]) + WINDOW_EDGE)
+	return kept.y > kept.x
 
 
 ## True if option `o` (_option) arrives inside the level's calm start (its window planned there, task C6e).
@@ -285,7 +301,10 @@ static func _calm_spots(gen: LevelGenerator, t: EnforcerTruckTuning, b: Dictiona
 		o += OFFSET_STEP
 	spots.append(earliest)
 	for at: float in spots:
-		if at < run_up - 0.001 and in_chase(gen, t, b, at) and arrival_problem(gen, t, at, keep_outs, chases, true) == "":
+		# Its chase up to its bait keeps off the stretches kept for the level's extended wall runs (_arrival_order).
+		var kept: Vector2 = gen.kept_for_extended(at, float(b["at"]))
+		if at < run_up - 0.001 and in_chase(gen, t, b, at) and arrival_problem(gen, t, at, keep_outs, chases, true) == "" \
+				and kept.y <= kept.x:
 			out.append(at)
 	return out
 
@@ -444,7 +463,12 @@ static func _arrival_order(gen: LevelGenerator, t: EnforcerTruckTuning, rng: Ran
 	offsets.push_front(prefer)
 	var spots: Array[float] = []
 	for off: float in offsets:
-		spots.append(hold - off * gen.speed)
+		# Its chase up to its bait (where it shows itself, then may be baited) reaches no stretch kept for the level's
+		# extended wall runs (LevelGenerator.kept_for_extended): one that followed the runner into its holes there would
+		# be wrecked before it showed itself, as in a wider gap.
+		var kept: Vector2 = gen.kept_for_extended(hold - off * gen.speed, float(b["at"]))
+		if kept.y <= kept.x:
+			spots.append(hold - off * gen.speed)
 	for pool: Array[float] in gen.pacing_pools(spots, TYPE):
 		for at: float in pool:
 			if not out.has(at):

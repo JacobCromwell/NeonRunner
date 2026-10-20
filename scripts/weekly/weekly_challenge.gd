@@ -55,7 +55,7 @@ const GOLDEN_FIELDS: PackedStringArray = [
 	"doodad_large_weight", "doodad_gap_seconds", "doodad_reaction_seconds", "doodad_row_chance", "doodad_row_min",
 	"doodad_row_max", "doodad_row_spaced_small", "doodad_row_spaced_medium", "doodad_row_spaced_large",
 	"doodad_wall_clear_seconds", "credit_trail_spacing", "credit_trail_count", "credit_trail_min", "credit_trail_chance",
-	"credit_gap_chance", "credit_fence_chance", "credit_wall_runs", "credit_ceilings",
+	"credit_gap_chance", "credit_fence_chance", "credit_wall_runs", "credit_ceilings", "extended_wall_runs", "features_left_out",
 ]
 ## Properties every Resource has that are no part of a level's config (as LevelCache.CONFIG_SKIP).
 const RESOURCE_PROPERTIES: PackedStringArray = ["resource_path", "resource_name", "resource_local_to_scene", "script"]

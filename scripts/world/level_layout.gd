@@ -263,12 +263,23 @@ func wall_run_between(from: float, to: float) -> bool:
 
 
 ## The lit walls (ZoneSkin.wall_run_guide) on wall `side` of the wall-run gaps whose lit wall reaches into [from, to):
-## each Vector3(entry, start, end), the stretch to step on and the gap (wall_run_gaps).
+## each Vector3(entry, start, end), the stretch to step on and the gap (wall_run_gaps); one for each wall run of an
+## extended wall run, on each of its lit walls (WallRunGapPlacement.crossings_of: from its lit stretch, then from each
+## platform's last stretch, over the hole after it).
 func wall_run_guides(side: int, from: float, to: float) -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	for w: Dictionary in wall_run_gaps:
-		if int(w["side"]) == side and float(w["entry"]) < to and float(w["end"]) > from:
-			out.append(Vector3(float(w["entry"]), float(w["start"]), float(w["end"])))
+		if float(w["entry"]) >= to or float(w["end"]) <= from:
+			continue
+		if not w.has("runs"):
+			if int(w["side"]) == side:
+				out.append(Vector3(float(w["entry"]), float(w["start"]), float(w["end"])))
+			continue
+		if not WallRunGapPlacement.sides_of(w).has(side):
+			continue
+		for c: Vector3 in WallRunGapPlacement.crossings_of(w):
+			if c.x < to and c.z > from:
+				out.append(c)
 	return out
 
 

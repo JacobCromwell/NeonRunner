@@ -257,9 +257,12 @@ func _test_endless() -> void:
 	App.begin_run()
 	await physics_frames(3)
 	var dead: RunContext = App.run.context if App.run != null else null
-	check(dead != null and dead.config.features == hush.features
+	# Task O1: with the zone's features The Hush leaves out for its extended wall runs (the heli drone) put back.
+	var zone_features: PackedStringArray = hush.features.duplicate()
+	zone_features.append_array(hush.features_left_out)
+	check(dead != null and dead.config.features == zone_features and dead.config.extended_wall_runs.is_empty()
 		and not dead.config.paced_in_bursts() and dead.config.darkness == 0.0,
-		"endless in the Dead Zone plays The Hush's features, evenly paced, in the zone's own light")
+		"endless in the Dead Zone plays The Hush's features and the drone it leaves out, evenly paced, in the zone's own light")
 	check(dead != null and dead.config.feature_weight("host") == 1.0 and dead.config.quiet_features.is_empty()
 		and hush.feature_weight("host") > 1.0 and hush.quiet_features == PackedStringArray(["host"]),
 		"with hosts as often as elsewhere, and The Hush keeps its own")

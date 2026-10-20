@@ -703,6 +703,14 @@ From `docs/USER_REQUESTS.md` (October 18, 2026: the evening batch, the wall hop 
 | N4 | **The Golden Convergence's trumpets:** its cheery chime becomes deep, triumphant trumpets, the last one morphing into a distorted reverb (GDD §10) **Done.** | – | S | T2 |
 | N5 | **The weekly challenge** (GDD §6, Replay features): one fixed level a week, its boards, the uniform kit, the payout. **Done.** | – | L | T2 |
 
+### O. The owner's request (October 19, 2026)
+
+Recorded in the GDD (§3, "Extended wall runs in The Hush").
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| O1 | **The Hush's extended wall runs:** three sections that take a double or a triple wall run, small platforms by the wall to recharge on, one with walls on both sides and the others with a wall on one side only (GDD §3). **Core** (generator, The Hush's data). **Done.** | – | M | T1 |
+
 ## Order at a glance
 
 **Wave 1 (start now):**

@@ -44,8 +44,15 @@ static func positions(layout: LevelLayout) -> Array[float]:
 ## without its margin) and the zone doodads keep off it as it stands, the wider gaps, the planted cyborgs and the dash
 ## walls with their own zones' margins, so what they add may stand close past its ends, as the patterns placed before
 ## it may (the landing floor's landing_slack_seconds is the room after the latest step onto the wall).
+##
+## Before the pass has run, the stretches the pattern pass kept for the level's extended wall runs
+## (LevelGenerator.extended_wall_run_reserve) instead, so the rules that read these (a dash wall's introduction, a
+## Gilded Sentinel's strike) keep off them too.
 static func doodad_keep_outs(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if gen.wall_run_gap_result.is_empty():
+		for r: Vector2 in gen.extended_wall_run_reserve:
+			out.append({"from": r.x, "to": r.y, "type": FEATURE})
 	for w: Dictionary in gen.layout.wall_run_gaps:
 		var k: Vector2 = WallRunGapPlacement.keep_out(w)
 		out.append({"from": k.x, "to": k.y, "type": FEATURE})
@@ -70,7 +77,8 @@ static func on_wall_section(gen: LevelGenerator, _type: String, side: int, at: f
 		return false
 	var reach: float = WallGapPlacement.tuning().wall_enemy_seconds * gen.speed
 	for w: Dictionary in gen.layout.wall_run_gaps:
-		if int(w["side"]) != side:
+		# An extended wall run keeps both walls (WallRunGapPlacement.wall_path).
+		if int(w["side"]) != side and WallRunGapPlacement.runs_of(w) < 2:
 			continue
 		var path: Vector2 = WallRunGapPlacement.wall_path(w, gen.speed)
 		if at + reach > path.x and at - reach < path.y:

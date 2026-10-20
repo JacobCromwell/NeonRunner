@@ -73,11 +73,14 @@ and do nothing until their code and patterns exist. The wall fences' `wall_fence
 chases, darker lighting, and long silent stretches broken by sudden threats") brings nothing new; its
 remix is its own data, which no other level uses: quiet stretches and bursts (`quiet_seconds` and the
 rest, with its hosts as its quiet feature), hosts picked more often (`feature_weights`), and its
-`darkness`. A Bad Dream chase starts only when the player kills a host (GDD §9.7), so more chases come
+`darkness`, and its three extended wall runs, for which it leaves out the heli drone (the owner, October 19 and 20,
+2026: The generator, Extended wall runs). A Bad Dream
+chase starts only when the player kills a host (GDD §9.7), so more chases come
 from more hosts, standing alone in the quiet stretches where one is easy to reach; the host rules
 still fit one chase at a time. All DESIGN-TBD (`docs/questions/r5.md`). Endless mode, which copies the
 furthest zone's last level, leaves the remix out (`App.start_endless`: no quiet stretches, no quiet
-features or their weights, no darkness), so endless in the Dead Zone plays as it did before.
+features or their weights, no extended wall runs and the drone back, no darkness), so endless in the Dead Zone plays
+as it did before.
 
 **The Beach** (task D10c; the owner, October 9, 2026: "put the beach between the corporate and dead zone", a boss
 battle to come, "do not worry about any new enemies at this time"; GDD §5). `data/zones/beach.tres` (id `beach`, the

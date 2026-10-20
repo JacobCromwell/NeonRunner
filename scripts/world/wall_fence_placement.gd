@@ -264,6 +264,15 @@ static func keep_outs(gen: LevelGenerator, lay: LevelLayout, side: int, t: WallF
 	for k: Dictionary in attacks:
 		if not k.has("lane"):
 			busy.append(Vector2(float(k["from"]), float(k["to"])))
+	# A Bad Dream's chase may begin before its stretch: its host walks up to walk_max toward the runner, and one shot
+	# down ahead lurks until the runner is within hover_ahead of it (test_host_releases holds the layouts to it).
+	if gen.config.has_feature("host"):
+		var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+		var bt := EnemyDirector.tuning_for("bad_dream") as BadDreamTuning
+		var early: float = (ct.walk_max if ct != null else 0.0) + (bt.hover_ahead if bt != null else 0.0)
+		for e: Dictionary in lay.enemies:
+			if String(e.get("type", "")) == "cyborg" and bool((e.get("params", {}) as Dictionary).get("host", false)):
+				busy.append(Vector2(float(e["at"]) - early, float(e["at"])))
 	for s: Vector2 in busy:
 		if s.y >= s.x:
 			out.append({"from": s.x - after, "to": s.y + before, "why": "a floor cut or a big attack runs meanwhile"})
