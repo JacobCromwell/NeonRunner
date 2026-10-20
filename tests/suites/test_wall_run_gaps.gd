@@ -139,10 +139,13 @@ func _test_campaign() -> void:
 				var from: float = grid.clear_start(float(w["entry"]))
 				var route: Dictionary = grid.find(from, float(w["landing"]))
 				check(bool(route["ok"]), "a way across it %s: %s" % [where, route.get("reason", "")])
-				var toward: StringName = &"move_left" if int(w["side"]) < 0 else &"move_right"
+				# Onto a lit wall: an extended wall run with both walls lit (task O1) may be crossed on either.
+				var towards: Array[StringName] = []
+				for side: int in WallRunGapPlacement.sides_of(w):
+					towards.append(&"move_left" if side < 0 else &"move_right")
 				var stepped: bool = false
 				for a: Array in route.get("actions", []):
-					if StringName(a[1]) == toward and float(a[0]) >= float(w["entry"]) - 0.01 and float(a[0]) <= float(w["start"]):
+					if towards.has(StringName(a[1])) and float(a[0]) >= float(w["entry"]) - 0.01 and float(a[0]) <= float(w["start"]):
 						stepped = true
 				check(stepped, "the way across is a step onto its lit wall from the lit stretch " + where)
 			var key: String = String(s.zone.id)

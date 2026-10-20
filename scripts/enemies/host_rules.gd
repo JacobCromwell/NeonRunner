@@ -148,6 +148,8 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 	for pool: Array[float] in gen.pacing_pools(spots, "host"):
 		while not pool.is_empty():
 			var spot: float = pool.pop_at(pick.randi_range(0, pool.size() - 1))
+			if _near_extended(gen, spot):
+				continue
 			var plan: Dictionary = plan_pads(gen, t, rng, t.chase_stretch(spot, speed), pads_before)
 			if not bool(plan["ok"]):
 				continue
@@ -164,6 +166,40 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 				PadPlacement.place(gen, rng, pad_at, t.pad_ceiling_seconds)
 			return host
 	return {}
+
+
+## How far past `to` the next pad after one at `from` may come for the level's extended wall runs' clear stretches
+## (LevelGenerator.extended_wall_run_clear) that pads skip (WallRunGapPlacement.pad_skip), as much of each as lies past
+## `from`: the gap counts without them, as the Bad Dream holds its slash over the crossing (BadDream._wall_run_in_reach;
+## the rest of the skip, the run-in's margin, the landing floor and a pad's reach, is ordinary chase time without a pad).
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md). 0 without.
+static func _skipped(gen: LevelGenerator, t: BadDreamTuning, from: float, to: float) -> float:
+	var out: float = 0.0
+	for kept: Vector2 in gen.extended_wall_run_clear:
+		var skip: Vector2 = WallRunGapPlacement.pad_skip(gen, kept, t.pad_ceiling_seconds)
+		if skip.y > from and skip.x < to + out:
+			out += skip.y - maxf(skip.x, from)
+	return out
+
+
+## True if a host at `at` would stand, its obstacle margin with it, in a stretch kept for the level's extended wall runs
+## (LevelGenerator.kept_for_extended). DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md).
+static func _near_extended(gen: LevelGenerator, at: float) -> bool:
+	if gen.extended_wall_run_reserve.is_empty():
+		return false
+	var ct := load(CyborgRules.TUNING_PATH) as CyborgTuning
+	var margin: float = CyborgRules.obstacle_margin_at(ct, gen.pace) if ct != null else gen.metres(10.0)
+	var kept: Vector2 = gen.kept_for_extended(at - margin, at + margin)
+	return kept.y > kept.x
+
+
+## True if a pad at `at` would reach a stretch kept for the level's extended wall runs (WallRunGapPlacement.pad_skip).
+static func _in_skip(gen: LevelGenerator, t: BadDreamTuning, at: float) -> bool:
+	for kept: Vector2 in gen.extended_wall_run_clear:
+		var skip: Vector2 = WallRunGapPlacement.pad_skip(gen, kept, t.pad_ceiling_seconds)
+		if at > skip.x and at < skip.y:
+			return true
+	return false
 
 
 ## True if an enemy of any kind stands within `clearance` of the track distance `at`.
@@ -199,7 +235,9 @@ static func plan_pads(gen: LevelGenerator, t: BadDreamTuning, rng: RandomNumberG
 	var added: Array[float] = []
 	var cursor: float = stretch.x
 	while cursor + gap < stretch.y:
-		var reach: float = cursor + gap
+		var reach: float = cursor + gap + _skipped(gen, t, cursor, cursor + gap)
+		if reach >= stretch.y:
+			break
 		var next: float = -INF
 		for at: float in existing:
 			if at > cursor + 0.01 and at <= reach:
@@ -233,6 +271,8 @@ static func _free_spot(gen: LevelGenerator, t: BadDreamTuning, want: float, lowe
 		for p: float in planned:
 			if start <= p + length + 1.0 and end >= p - gen.config.hull_lead_in - 1.0:
 				free = false
+		if free and _in_skip(gen, t, at):
+			free = false
 		if free:
 			return at
 		at -= PAD_SEARCH_STEP

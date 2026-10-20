@@ -155,6 +155,15 @@ const DENOMINATIONS: Array[int] = [1, 5, 25, 100]
 const DangerDensity := preload("res://scripts/world/danger_density.gd")
 ## The dash walls' rules (task H7a), whose footprints the fill pass and the doodads keep off.
 const DashWallRules := preload("res://scripts/enemies/dash_wall_rules.gd")
+## A hover truck's stay and a cyborg's margin, for what a pattern reaches (_pattern_reach).
+const HoverTruckRules := preload("res://scripts/enemies/hover_truck_rules.gd")
+const CyborgRules := preload("res://scripts/enemies/cyborg_rules.gd")
+## Seconds of run the pattern pass moves on past a pattern it takes back for an extended wall run's stretch
+## (extended_wall_run_reserve) before it picks again.
+const EXTENDED_SKIP_SECONDS: float = 1.0
+## Seconds of run past its own end a pattern may reach once an extended wall run's stretch is due (a cyborg's margin, a
+## host's): the stretch waits that long for it rather than lose the pattern.
+const EXTENDED_WAIT_SECONDS: float = 2.0
 const RULES_DIR: String = "res://scripts/enemies"
 ## The most builds generate() makes to have every feature appear (guarantee_features). Past it the
 ## level keeps the build that missed the fewest, with a warning. Most levels take one to three; The
@@ -271,6 +280,15 @@ var debris_maze_result: Dictionary = {}
 ## Stretches of track (Vector2) no wall-run gap's clear stretch may reach in the build being made (task J2; set only
 ## for the wider gaps' rebuild, _make_wide_gap_room; WallRunGapPlacement.place keeps off them). Empty otherwise.
 var wall_run_gap_reserve: Array[Vector2] = []
+## The clear stretches the pattern pass keeps for the level's extended wall runs in the build being made
+## (LevelConfig.extended_wall_runs; WallRunGapPlacement.extended_plan: the owner, October 19, 2026), each
+## Vector2(from, to), in the level's order; WallRunGapPlacement places each where it was kept. Empty in every level
+## without them, which is built exactly as before.
+var extended_wall_run_reserve: Array[Vector2] = []
+## Each kept stretch's clear stretch (the run-in to the end of the landing floor, WallRunGapPlacement.keep_out of the
+## wall-run gap placed there), in the same order: what ceilings, pads and their landing zones keep off
+## (clear_for_extended), and what the anti-grav pad schedules skip (WallRunGapPlacement.pad_skip).
+var extended_wall_run_clear: Array[Vector2] = []
 ## The floor pieces the danger density pass added in the last build that the credit pass gives no
 ## risky credit (DangerDensity, its tuning's credit_added_pieces off): more danger, not more pay.
 var uncredited: Dictionary = {}
@@ -426,10 +444,27 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	var accel: float = tuning.speed_gain_per_minute / 60.0
 	layout.length = speed * config.duration_seconds + 0.5 * accel * config.duration_seconds * config.duration_seconds
 	_due = _due_picks(forced)
+	# The level's extended wall runs (WallRunGapPlacement.extended_plan): each one's stretch is kept as the cursor
+	# reaches its due spot and what the patterns before it reach has ended (extended_wall_run_reserve).
+	extended_wall_run_reserve.clear()
+	extended_wall_run_clear.clear()
+	var extended: Array[Dictionary] = WallRunGapPlacement.extended_plan(self)
+	var reach_end: float = -INF
 
 	_clear_stretches.append(Vector2(20.0, config.start_clear_distance))
 	var cursor: float = config.start_clear_distance
 	while cursor < layout.length - config.end_clear_distance:
+		var next_kept: int = extended_wall_run_reserve.size()
+		if next_kept < extended.size() and cursor >= float(extended[next_kept]["due"]) and cursor >= reach_end \
+				and (next_kept == 0 or cursor >= extended_wall_run_reserve[-1].y + float(extended[next_kept]["spacing"])):
+			var kept_to: float = cursor + float(extended[next_kept]["length"])
+			if kept_to <= layout.length - config.end_clear_distance:
+				extended_wall_run_reserve.append(Vector2(cursor, kept_to))
+				extended_wall_run_clear.append(Vector2(cursor + float(extended[next_kept]["clear_from"]),
+					cursor + float(extended[next_kept]["clear_to"])))
+				_clear_stretches.append(Vector2(cursor, kept_to))
+				cursor = kept_to
+				continue
 		var progress: float = cursor / layout.length
 		var difficulty: float = difficulty_at(progress)
 		var pattern: Dictionary = _pick_due(patterns, difficulty, cursor)
@@ -443,6 +478,28 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 		if cursor + used > layout.length - config.end_clear_distance:
 			_rollback(pattern_start_counts)
 			break
+		if not extended.is_empty():
+			# What the pattern's pieces and enemies reach (an enemy's attack, a hover truck's stay) may not reach an
+			# extended wall run's stretch, nor, once one is due, more than EXTENDED_WAIT_SECONDS past the pattern's own
+			# end (so the stretch can be kept soon): the pattern goes and the cursor moves on a little.
+			var reach: Vector2 = _pattern_reach(pattern_start_counts, cursor, cursor + used)
+			var pending: int = extended_wall_run_reserve.size()
+			var due_now: bool = pending < extended.size() and cursor >= float(extended[pending]["due"])
+			var kept: Vector2 = kept_for_extended(reach.x, reach.y)
+			# Nor past where the next one must start for it and the rest to fit before the end-clear stretch.
+			var latest: float = INF
+			if pending < extended.size():
+				latest = layout.length - config.end_clear_distance
+				for j: int in range(pending, extended.size()):
+					latest -= float(extended[j]["length"]) + (float(extended[j]["spacing"]) if j > pending else 0.0)
+			if kept.y > kept.x or reach.y > latest \
+					or (due_now and reach.y > maxf(cursor + used + EXTENDED_WAIT_SECONDS * speed, reach_end)):
+				_rollback(pattern_start_counts)
+				var on: float = cursor + EXTENDED_SKIP_SECONDS * speed
+				_clear_stretches.append(Vector2(cursor, on))
+				cursor = on
+				continue
+			reach_end = maxf(reach_end, reach.y)
 		if layout.hulls.size() > int(pattern_start_counts["hulls"]):
 			_secure_ceilings(pattern, pattern_start_counts)
 		_settle_due(pattern, cursor)
@@ -730,6 +787,10 @@ func add_hull_with_pad(lane: int, at: float, length_seconds: float, lanes: Vecto
 		layout.lane_count)
 	var landing: Vector2 = zones.landing_zone(hull)
 	if landing.y > layout.length - config.end_clear_distance:
+		return false
+	# No ceiling, pad or landing zone over an extended wall run's clear stretch (extended_wall_run_clear).
+	var kept: Vector2 = clear_for_extended(minf(float(hull["start"]), zones.pad_zone(at).x), landing.y)
+	if kept.y > kept.x:
 		return false
 	if not zones.pad_clear(layout, lane, at) or not zones.landing_clear(layout, landing, span):
 		return false
@@ -1335,6 +1396,57 @@ func _secure_ceilings(pattern: Dictionary, counts: Dictionary) -> void:
 			if not warnings.has(line):
 				warnings.append(line)
 			return
+
+
+## What the pattern just placed (its pieces and enemies since `counts`, _counts, from `from` to `to`) reaches along the
+## track: its own stretch, each enemy's keep-out and the floor it uses (enemy_keep_out, enemy_floor_span), a hover
+## truck's whole stay with the ramp its rules give it (HoverTruckRules.window_start, window_end), a cyborg's obstacle
+## margin, each ceiling's landing zone, each ramp's longest wall run. For the extended wall runs' stretches
+## (extended_wall_run_reserve).
+func _pattern_reach(counts: Dictionary, from: float, to: float) -> Vector2:
+	var out := Vector2(from, to)
+	var hooks: Dictionary = {}
+	for i: int in range(int(counts["enemies"]), layout.enemies.size()):
+		var e: Dictionary = layout.enemies[i]
+		var at: float = float(e["at"])
+		var spans: Array[Vector2] = [enemy_keep_out(e, hooks), enemy_floor_span(e, pace), Vector2(at, at)]
+		match String(e.get("type", "")):
+			"hover_truck":
+				var ht: HoverTruckTuning = HoverTruckRules.tuning()
+				spans.append(Vector2(HoverTruckRules.window_start(ht, at, pace),
+					maxf(HoverTruckRules.window_end(ht, at, speed), at + ht.ramp_after_seconds * speed + tuning.ramp_length
+					+ (tuning.wall_entry_time + tuning.wall_slide_time) * speed)))
+			"cyborg":
+				var ct := EnemyDirector.tuning_for("cyborg") as CyborgTuning
+				var margin: float = CyborgRules.obstacle_margin_at(ct, pace) if ct != null else metres(10.0)
+				spans.append(Vector2(at - margin, at + margin))
+		for k: Vector2 in spans:
+			if k.y >= k.x:
+				out = Vector2(minf(out.x, k.x), maxf(out.y, k.y))
+	for i: int in range(int(counts["hulls"]), layout.hulls.size()):
+		var landing: Vector2 = zones.landing_zone(layout.hulls[i])
+		out = Vector2(minf(out.x, float(layout.hulls[i]["start"])), maxf(out.y, landing.y))
+	for i: int in range(int(counts["ramps"]), layout.ramps.size()):
+		out.y = maxf(out.y, WallFencePlacement.ramp_run_end(self, layout.ramps[i]))
+	return out
+
+
+## The stretch the pattern pass keeps for an extended wall run (extended_wall_run_reserve) that [from, to] reaches,
+## or Vector2.ZERO if none. Rules whose pieces reach far from their entry (a drone's pads, a hover truck's stay) ask it
+## too, so the stretch stays clear for the wall-run gaps' pass.
+func kept_for_extended(from: float, to: float) -> Vector2:
+	for r: Vector2 in extended_wall_run_reserve:
+		if r.x < to and r.y > from:
+			return r
+	return Vector2.ZERO
+
+
+## The clear stretch of an extended wall run (extended_wall_run_clear) that [from, to] reaches, or Vector2.ZERO if none.
+func clear_for_extended(from: float, to: float) -> Vector2:
+	for r: Vector2 in extended_wall_run_clear:
+		if r.x < to and r.y > from:
+			return r
+	return Vector2.ZERO
 
 
 ## Size of every piece list, so a pattern that doesn't fit can be taken back out.
@@ -2345,6 +2457,9 @@ func cut_problem(cut: Dictionary, p_layout: LevelLayout = null) -> String:
 		return "its warning, charge, stretch and meeting point don't line up"
 	if lane_span.x < config.start_clear_distance or span.y > lay.length - config.end_clear_distance:
 		return "it doesn't fit between the run-up and the end-clear stretch"
+	var kept: Vector2 = kept_for_extended(minf(span.x, attack.x), maxf(span.y, attack.y))
+	if kept.y > kept.x:
+		return "an extended wall run's stretch is kept there"
 	for other: Dictionary in lay.cuts:
 		if is_same(other, cut):
 			continue

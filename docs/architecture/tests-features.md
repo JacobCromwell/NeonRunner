@@ -423,6 +423,16 @@ own copy of the excerpt). The line's spot is a seeded draw among its wall's free
 stretches, so it moves with whatever it keeps off: the suites that compare a level with and without such a thing build
 both without it (`test_wall_fences`, `test_wall_gaps`, `test_enforcer_truck`, `test_barnacle_turret`, `test_doodads`'
 share of 0) or set its record and credits aside (`test_beach_levels`, `test_buzz_company`).
+`test_extended_wall_runs` checks The Hush's extended wall runs (task O1; The generator, Extended wall runs): their
+numbers (each hole an ordinary wall-run gap's, each platform long enough for the latest standard wall run to land on,
+under three quarters of a wall run, the double and the triple about two and three wall runs long); The Hush at 3, 5 and
+6 lanes on its own build (`LayoutCache`): no warnings, its three in order, `LayoutChecks.check_wall_run_gaps` (each wall
+run across, its platforms, its open wall), the other wall open over a one-walled one's crossing and its lit wall whole,
+a floor route that steps onto the wall from each stretch; none in any other level. On real physics at 3, 5 and 6 lanes:
+a triple on either wall and a double with both lit (on each wall), stepping on early, midway or late in each stretch,
+cross on as many wall runs and land on the landing floor; staying on the platform, jumping from its end and heading for
+the open wall all fall in; the grapple's save over a triple's second hole leaves the runner on the platform after it,
+to cross.
 `test_wall_run_gaps` checks the wall-run gaps (task J2; The generator, Wall-run gaps): their numbers at every zone's
 run speed (longer than any jump with every boost and the dash; a standard wall run from the lit stretch's first metre
 leaves the wall past the far edge, one from its last lands on the landing floor; the run-in crosses 6 lanes; the lit

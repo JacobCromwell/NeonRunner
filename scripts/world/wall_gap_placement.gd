@@ -82,6 +82,19 @@ static func is_boss_arena(config: LevelConfig) -> bool:
 ## group (the Terminal's, task O1), the open space between its arches, and its broken stumps into
 ## gen.layout.wall_stumps (_arches).
 static func place(gen: LevelGenerator) -> void:
+	_place(gen)
+	# The open walls of the level's extended wall runs with one lit wall and the notches at their platforms
+	# (WallRunGapPlacement.openings_of: the owner, October 19, 2026), whatever its own: its gaps above keep off them
+	# (keep_outs, WallRunGapPlacement.wall_keep_outs_for).
+	var open: Array[Dictionary] = WallRunGapPlacement.open_walls(gen.layout, gen.speed)
+	if open.is_empty():
+		return
+	gen.layout.wall_gaps.append_array(open)
+	gen.layout.wall_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a["start"]) < float(b["start"]) or (float(a["start"]) == float(b["start"]) and int(a["side"]) < int(b["side"])))
+
+
+static func _place(gen: LevelGenerator) -> void:
 	var lay: LevelLayout = gen.layout
 	lay.wall_gaps.clear()
 	lay.wall_stumps.clear()
