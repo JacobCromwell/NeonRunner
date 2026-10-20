@@ -465,10 +465,17 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 			# extended wall run's stretch, nor, once one is due, more than EXTENDED_WAIT_SECONDS past the pattern's own
 			# end (so the stretch can be kept soon): the pattern goes and the cursor moves on a little.
 			var reach: Vector2 = _pattern_reach(pattern_start_counts, cursor, cursor + used)
-			var due_now: bool = extended_wall_run_reserve.size() < extended.size() \
-				and cursor >= float(extended[extended_wall_run_reserve.size()]["due"])
+			var pending: int = extended_wall_run_reserve.size()
+			var due_now: bool = pending < extended.size() and cursor >= float(extended[pending]["due"])
 			var kept: Vector2 = kept_for_extended(reach.x, reach.y)
-			if kept.y > kept.x or (due_now and reach.y > maxf(cursor + used + EXTENDED_WAIT_SECONDS * speed, reach_end)):
+			# Nor past where the next one must start for it and the rest to fit before the end-clear stretch.
+			var latest: float = INF
+			if pending < extended.size():
+				latest = layout.length - config.end_clear_distance
+				for j: int in range(pending, extended.size()):
+					latest -= float(extended[j]["length"]) + (float(extended[j]["spacing"]) if j > pending else 0.0)
+			if kept.y > kept.x or reach.y > latest \
+					or (due_now and reach.y > maxf(cursor + used + EXTENDED_WAIT_SECONDS * speed, reach_end)):
 				_rollback(pattern_start_counts)
 				var on: float = cursor + EXTENDED_SKIP_SECONDS * speed
 				_clear_stretches.append(Vector2(cursor, on))
