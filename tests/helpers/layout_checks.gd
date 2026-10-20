@@ -1615,7 +1615,15 @@ static func floor_route(grid: FloorRoute, zones: CeilingZones, h: Dictionary) ->
 	for p: Dictionary in grid.layout.pads:
 		if float(p["at"]) >= float(h["start"]) and float(p["at"]) <= float(h["end"]):
 			from = minf(from, zones.pad_zone(float(p["at"])).x)
-	return grid.find(grid.clear_start(from - ROUTE_LEAD), zones.landing_zone(h).y)
+	var before: float = from - ROUTE_LEAD
+	# Task O2: the start's search never goes back into a debris maze's block, whose way through takes the dash
+	# (check_debris_maze proves it, and no ceiling of the patterns' reaches into a block): from past its last wall at
+	# the most, where every lane is open.
+	var search: float = 300.0
+	for b: Dictionary in grid.layout.maze:
+		if float(b["entry"]) < before:
+			search = minf(search, maxf(before - float(b["end"]), 0.0))
+	return grid.find(grid.clear_start(before, search), zones.landing_zone(h).y)
 
 
 ## The ceiling scenarios (task I4; GDD §3, "Ceiling scenarios"; CeilingScenarios), wherever the generator makes one,
