@@ -72,7 +72,9 @@ func _test_speed_data() -> void:
 			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
 			check(is_equal_approx(layout.length, config.run_speed * config.duration_seconds),
 				"%s lasts %.0f s: %.0f m at %.1f m/s" % [s.id, config.duration_seconds, layout.length, config.run_speed])
-			check(config.fill_empty_seconds > 0.0, "%s fills its long empty stretches" % s.id)
+			# The Terminal has no plain obstacles to fill with (task O1; GDD §5, Zone 8: a couple of holes, no fences): its
+			# own patterns hold none, and its levels ask for no fill pass.
+			check(config.fill_empty_seconds > 0.0 or s.zone.id == &"terminal", "%s fills its long empty stretches" % s.id)
 		elif s.kind == CampaignStep.Kind.BOSS and s.boss != null:
 			# E1f: a boss fight runs at its zone's speed, like the zone's levels; quick play's keeps the base.
 			var arena: LevelConfig = campaign.configure_boss(s, 3)

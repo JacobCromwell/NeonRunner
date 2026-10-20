@@ -27,9 +27,13 @@ const BOARD_MOBILE: String = "mobile"
 ##   walls (`wall_gap_tuning`, and the wall-lane doodads that go with them). A dial that is about a zone's own mechanic
 ##   belongs here too: `wall_hop_lines` (task N1, GDD §7 "from Gangland on") is 0 in the Neon City's levels and 1 in every
 ##   other zone's, so a City week has no wall-hop credits (and on the Beach its open walls leave no room for a line).
+##   The Terminal's rules (task O1; GDD §5, Zone 8) are its zone's too: no wall running (`wall_running`, with its
+##   arches, `wall_gap_tuning`, and its own patterns, `patterns_path`) and every ceiling one lane wide
+##   (`narrow_ceiling_share` and `one_lane_ceiling_share`, which every other zone's level has as Sentinel Row does, so
+##   their weeks are as before).
 const ZONE_FIELDS: PackedStringArray = [
 	"features", "feature_weights", "patterns_path", "skin", "skin_path", "sky", "darkness", "wall_gap_tuning", "doodad_wall_lane_share",
-	"wall_hop_lines",
+	"wall_hop_lines", "wall_running", "narrow_ceiling_share", "one_lane_ceiling_share",
 ]
 ## - The WEEK's: what a week sets itself: which level it is (id, name, seed, lanes), that it is no level of the campaign's
 ##   curve or a mini-game, that every feature is there from the start (no `feature_starts`, as in endless mode) with no
@@ -49,8 +53,8 @@ const GOLDEN_FIELDS: PackedStringArray = [
 	"gap_encounter_increase", "gap_lane_increase", "danger_density_increase", "wide_gaps", "charge_path_cyborgs",
 	"buzz_company", "dash_walls", "treasure_stashes", "fenced_ceilings", "fenced_ceiling_pads", "quiet_seconds",
 	"burst_seconds", "quiet_spacing_seconds", "burst_spacing_seconds", "quiet_features", "max_gap_jump_fraction",
-	"hull_lead_in", "hull_landing_seconds", "cut_holes_beside", "cut_reaction_seconds", "narrow_ceiling_share",
-	"narrow_ceiling_start", "one_lane_ceiling_share", "narrow_ceiling_max_lanes", "one_lane_ceiling_seconds",
+	"hull_lead_in", "hull_landing_seconds", "cut_holes_beside", "cut_reaction_seconds",
+	"narrow_ceiling_start", "narrow_ceiling_max_lanes", "one_lane_ceiling_seconds",
 	"doodad_share", "doodad_spot_seconds", "doodad_start", "doodad_small_weight", "doodad_medium_weight",
 	"doodad_large_weight", "doodad_gap_seconds", "doodad_reaction_seconds", "doodad_row_chance", "doodad_row_min",
 	"doodad_row_max", "doodad_row_spaced_small", "doodad_row_spaced_medium", "doodad_row_spaced_large",
@@ -232,7 +236,8 @@ static func field_owner(field: String) -> StringName:
 ##   the zone or set by the week stays as it is (GOLDEN_FIELDS): difficulty, enemy scaling (fire rate, projectile speed,
 ##   health), run speed, length and every pacing, density, gap and credit dial.
 ## - *The zone's, from its level in `source_levels`* (ZONE_FIELDS): its features and their pick weights, its skin
-##   (the zone's own where the level has none), sky and darkness, its open walls.
+##   (the zone's own where the level has none), sky and darkness, its open walls or arches, whether its walls can be
+##   run on, and its ceilings' widths.
 ## - *The week's own* (WEEK_FIELDS): the week's seed, `lanes` lanes, every feature from the start (as endless mode does: a
 ##   campaign level's introductions, `feature_starts`, would hold features back in a level the player meets on its own),
 ##   and no recency curve (the campaign's newest-first picks mean nothing for a level outside it).

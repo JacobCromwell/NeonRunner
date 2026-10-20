@@ -70,8 +70,22 @@ var wall_fences: Array[Dictionary] = []
 ## `side` (-1 left, 1 right) has no wall-running surface from track distance `start` to `end`. The
 ## track builder leaves the wall out there and marks its edges (ZoneSkin.wall_gap), a runner can't
 ## get onto the wall there, and one on it drops off at the gap (Player.wall_supported). Sorted by
-## start; both walls may have one over the same stretch.
+## start; both walls may have one over the same stretch. In a level whose walls are a row of narrow arches (task O1,
+## the Terminal: WallGapTuning's Arches group) they are the open space between the arches, from before the track's
+## first chunk to past its run-out, so the arches are exactly the walls' solid pieces (wall_solid_pieces).
 var wall_gaps: Array[Dictionary] = []
+## Whether a runner can step onto the side walls (LevelConfig.wall_running, which the generator copies here): false in a
+## level whose walls are a boundary everywhere (task O1; GDD §5, Zone 8: the Terminal has no wall running). The player
+## bumps off them there (Player.wall_running, which RunWorld sets from this), and the track builder draws each solid
+## piece of wall whole and the open space between them without a wall gap's marks (ZoneSkin.wall_opening). Left out of
+## to_dict() while true, so every other level's dictionary is the same as before.
+var wall_running: bool = true
+## {side, start, end}: a broken stump of a side wall's section (task O1; GDD §5, Zone 8: where one side's arch is
+## missing, that side shows a section "cut off about halfway up", a crumbled ruin): wall `side` has a stump from track
+## distance `start` to `end`, inside one of its wall gaps, opposite the other wall's arch. Scenery only: nobody runs on
+## those walls. The generator places them with the arches (WallGapPlacement, the tuning's Arches group), the track
+## builder has the skin draw each whole (ZoneSkin.wall_stump), after the opening it stands in. Sorted by start.
+var wall_stumps: Array[Dictionary] = []
 ## {start, end, seed}: a dash wall (task H7a; GDD §9.14, owner, October 8, 2026): a building standing
 ## across every floor lane from track distance `start` (its face, toward the runner) to `end`, leaving the
 ## side walls open. The runner dashes through it, crashes through it without the dash (one hit: the armor
@@ -124,8 +138,9 @@ var wall_hops: Array[Dictionary] = []
 ## cuts no "cuts" key, one without wall fences no "wall_fences" key, one without wall gaps no
 ## "wall_gaps" key, one without dash walls no "dash_walls" key, one without ceiling scenarios (task I4)
 ## no "ceiling_fences", "return_pads" or "stashes" key, one without wall-run gaps (task J2) no "wall_run_gaps" key,
-## and one without wall-hop credits (task N1) no "wall_hops" key, so its dictionary (and every hash or dump of it) is
-## the same as before those existed.
+## one without wall-hop credits (task N1) no "wall_hops" key, one without wall stumps (task O1) no "wall_stumps" key,
+## and one whose walls can be run on (every level but the Terminal's) no "wall_running" key, so its dictionary (and
+## every hash or dump of it) is the same as before those existed.
 func to_dict() -> Dictionary:
 	var out := {
 		"lane_count": lane_count,
@@ -160,13 +175,17 @@ func to_dict() -> Dictionary:
 		out["wall_run_gaps"] = wall_run_gaps
 	if not wall_hops.is_empty():
 		out["wall_hops"] = wall_hops
+	if not wall_running:
+		out["wall_running"] = false
+	if not wall_stumps.is_empty():
+		out["wall_stumps"] = wall_stumps
 	return out
 
 
 ## Appends every list of `other`'s pieces to this layout's (doodads, floor cuts, wall fences, wall gaps,
-## dash walls, the ceiling scenarios' pieces, wall-run gaps and wall-hop lines included, whether or not this layout
-## has any yet),
-## and moves its end to other's if that's further.
+## dash walls, the ceiling scenarios' pieces, wall-run gaps, wall-hop lines and wall stumps included, whether or not
+## this layout has any yet), and moves its end to other's if that's further. Whether its walls can be run on stays this
+## layout's own.
 func append_pieces(other: LevelLayout) -> void:
 	var lists: Dictionary = to_dict()
 	var more: Dictionary = other.to_dict()
@@ -194,6 +213,8 @@ func append_pieces(other: LevelLayout) -> void:
 		wall_run_gaps.append_array(other.wall_run_gaps)
 	if not lists.has("wall_hops"):
 		wall_hops.append_array(other.wall_hops)
+	if not lists.has("wall_stumps"):
+		wall_stumps.append_array(other.wall_stumps)
 	length = maxf(length, other.length)
 
 
@@ -220,6 +241,8 @@ func copy() -> LevelLayout:
 	out.stashes = stashes.duplicate(true)
 	out.wall_run_gaps = wall_run_gaps.duplicate(true)
 	out.wall_hops = wall_hops.duplicate(true)
+	out.wall_running = wall_running
+	out.wall_stumps = wall_stumps.duplicate(true)
 	return out
 
 
@@ -424,8 +447,19 @@ func wall_gap_pieces(side: int, from: float, to: float) -> Array[Vector2]:
 
 ## The whole wall gaps on wall `side` that overlap [from, to), in order, as Vector2(start, end).
 func wall_gap_spans(side: int, from: float, to: float) -> Array[Vector2]:
+	return _spans_of(wall_gaps, side, from, to)
+
+
+## The whole wall stumps (wall_stumps; task O1) on wall `side` that overlap [from, to), in order, as Vector2(start, end).
+func wall_stump_spans(side: int, from: float, to: float) -> Array[Vector2]:
+	return _spans_of(wall_stumps, side, from, to)
+
+
+## The entries of `entries` ({side, start, end}) on wall `side` that overlap [from, to), in order, as
+## Vector2(start, end).
+static func _spans_of(entries: Array[Dictionary], side: int, from: float, to: float) -> Array[Vector2]:
 	var out: Array[Vector2] = []
-	for g: Dictionary in wall_gaps:
+	for g: Dictionary in entries:
 		var s: float = float(g["start"])
 		var e: float = float(g["end"])
 		if int(g["side"]) == side and s < to and e > from:

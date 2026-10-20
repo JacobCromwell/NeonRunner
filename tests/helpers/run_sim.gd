@@ -62,6 +62,7 @@ func run(p_layout: LevelLayout, start_lane: int, seconds: float, actions: Array,
 	player.setup(t, TrackGeometry.new(p_layout.lane_count, t), start_lane)
 	player.wall_gaps = p_layout.wall_gaps
 	player.dash_walls = p_layout.dash_walls
+	player.wall_running = p_layout.wall_running
 	var result := {"cause": "", "max_wall_h": 0.0, "events": [], "at": {}, "trace": []}
 	player.died.connect(func(cause: String) -> void: result["cause"] = cause)
 	player.movement_event.connect(func(kind: StringName) -> void: result["events"].append(kind))

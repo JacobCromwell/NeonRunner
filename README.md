@@ -92,7 +92,8 @@ The owner-supplied MP3s are copied unmodified into `assets/music/`:
 | Zone 5 - Corporate | Concrete Fever |
 | Zone 6 - Beach | Palms at Terminal Speed |
 | Zone 7 - Dead Zone | Beneath the Cracks |
-| Zone 8 - Golden Zone | View from the Zenith |
+| Zone 8 - The Terminal | the Dead Zone's song (no new songs are generated; the owner may supply one) |
+| Zone 9 - Golden Zone | View from the Zenith |
 | Boss 1 - Floating Head | Apex Combat Maneuver |
 
 Menus, cutscenes (including the Boss 1 intro), and unmatched bosses keep their generated default
@@ -122,11 +123,11 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
 
 ## What's in the game
 
-- **Campaign:** 20 levels in eight zones, about 45 minutes of flawless running: the Neon City (the web demo's
+- **Campaign:** 22 levels in nine zones, about 50 minutes of flawless running: the Neon City (the web demo's
   zone) and Gangland with three levels each, the Marketplace, the Casino, Corporate and the Dead Zone with two, the
-  Beach with three (its second a volleyball mini-game), and the Golden Zone with three.
-  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino; the Beach's is
-  Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
+  Beach with three (its second a volleyball mini-game), the Terminal with two, and the Golden Zone with three.
+  Each zone has a boss slot (but the Marketplace, which leads straight into the Casino, and the Terminal, which
+  leads straight into the Golden Zone; the Beach's is Mecha Guppy and Captain Cogs) and cinematic slots; its intro plays a placeholder arrival flyover over the zone in its own look
   (skippable), but Gangland's, the Marketplace's and the Dead Zone's, which play the owner's beats. Each level introduces about one new thing (GDD §5), where
   its data says (`feature_starts`):
   1. City 1 *Rooftop Rush*: gaps, fences, walls and signs, then cyborgs late in the level.
@@ -155,9 +156,16 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   16. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
   17. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
       bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
-  18. Golden 1 *Gilded Canals*: the Resonator.
-  19. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
-  20. Golden 3 *The Golden Palace*, then the final boss.
+  18. Terminal 1 *Rubble Line*: an abandoned subway under the city, in its own look (task O4).
+      None of the usual enemies, no dash walls, a couple of holes and a few one-lane ceilings; its side walls
+      are narrow arches (now and then one side's a broken stump) with open space between them, and there is no wall
+      running: a move past the outer lane bumps you back with the clank. Its debris maze and the Cybernetic
+      Centipede are still to come. Like the Beach's, its levels sit between their neighbours in difficulty, off the
+      campaign's curve.
+  19. Terminal 2 *Last Stop*: the same rules, then straight on to the Golden Zone (no boss).
+  20. Golden 1 *Gilded Canals*: the Resonator.
+  21. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
+  22. Golden 3 *The Golden Palace*, then the final boss.
 
   Everything introduced keeps appearing later (the Buzz Overdrive from Corporate 1 through the Golden Zone),
   and a level's newest things get the most of its picks, taken from older things of their kind (enemies from
@@ -509,7 +517,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - supplied music for all eight zones and Boss 1 (The House shares the Casino song), generated defaults
+  - supplied music for every zone (the Terminal plays the Dead Zone's song)
+    and Boss 1 (The House shares the Casino song), generated defaults
     for menus/cutscenes/unmatched bosses
     (music dips when the runner dies), and 76 sound
     effects, among them the level-complete riff in each zone's key

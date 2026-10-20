@@ -415,7 +415,17 @@ func check_entry(w: WeeklyWeek, tag: String, stats: Dictionary, density_config: 
 	stats["builds"] = int(stats["builds"]) + gen.attempts
 	stats["levels"] = int(stats["levels"]) + 1
 	check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
-	check(layout.gaps.size() + layout.fences.size() > 8, "has content " + tag)
+	if zone.id == &"terminal":
+		# The Terminal (task O1; GDD §5, Zone 8): a couple of holes and no fences; its content is its debris (the zone
+		# doodads, task O2's maze) and its few one-lane ceilings, with no wall running.
+		var one_lane: bool = true
+		for h: Dictionary in layout.hulls:
+			one_lane = one_lane and layout.hull_width(h) == 1
+		check(layout.doodads.size() > 8 and layout.fences.is_empty() and not layout.wall_running and one_lane,
+			"has the Terminal's content: %d doodads, no fences, no wall running, %d ceilings each one lane wide %s"
+			% [layout.doodads.size(), layout.hulls.size(), tag])
+	else:
+		check(layout.gaps.size() + layout.fences.size() > 8, "has content " + tag)
 	check(layout.credits.size() > 20, "has credits " + tag + " (%d)" % layout.credits.size())
 	for c: Dictionary in layout.credits:
 		if c["surface"] != "wall":
@@ -457,8 +467,11 @@ func _check_config(config: LevelConfig, source: LevelConfig, zone: ZoneDef, gold
 		"%s: every feature from the start, no recency curve" % tag)
 	check(config.guarantee_features and config.minigame == null and not config.off_curve,
 		"%s: an ordinary level that guarantees every feature" % tag)
-	# Wall-hop credits (task N1) are the zone's: none in a City week, a line in the others (GDD §7, from Gangland on).
-	check(config.wall_hop_lines == (0 if zone.id == &"city" else 1), "%s: %d wall-hop lines" % [tag, config.wall_hop_lines])
+	# Wall-hop credits (task N1) are the zone's: none in a City week, a line in the others (GDD §7, from Gangland on) but
+	# the Terminal's, which has no wall running (task O1; GDD §5, Zone 8).
+	check(config.wall_hop_lines == (0 if zone.id == &"city" or zone.id == &"terminal" else 1),
+		"%s: %d wall-hop lines" % [tag, config.wall_hop_lines])
+	check(config.wall_running == (zone.id != &"terminal"), "%s: wall running but in the Terminal" % tag)
 	check(config.skin != null, "%s: the zone's look" % tag)
 
 
@@ -476,13 +489,26 @@ func _test_fields() -> void:
 			check(fields.has(field), "%s is no stored property of LevelConfig any more" % field)
 			check(not seen.has(field), "%s is in more than one of the week's lists" % field)
 			seen[field] = true
-	# What a zone's week takes from the zone is its identity: its enemies and its look.
-	for field: String in ["features", "feature_weights", "skin", "sky", "darkness", "wall_gap_tuning"]:
+	# What a zone's week takes from the zone is its identity: its enemies and its look, and the Terminal's rules (task
+	# O1; GDD §5, Zone 8: no wall running, every ceiling one lane wide), which every other zone's level has as Sentinel
+	# Row does.
+	for field: String in ["features", "feature_weights", "skin", "sky", "darkness", "wall_gap_tuning", "wall_running",
+			"narrow_ceiling_share", "one_lane_ceiling_share"]:
 		check(WeeklyChallenge.field_owner(field) == &"zone", "%s is the zone's" % field)
 	# What makes a week as dense and hard as Sentinel Row is the Golden Zone's.
 	for field: String in ["difficulty", "enemy_scaling", "run_speed", "danger_density_increase", "spacing_seconds_easy",
-			"fill_empty_seconds", "duration_seconds", "wide_gaps", "narrow_ceiling_share", "doodad_share"]:
+			"fill_empty_seconds", "duration_seconds", "wide_gaps", "narrow_ceiling_start", "doodad_share"]:
 		check(WeeklyChallenge.field_owner(field) == &"golden", "%s is Sentinel Row's" % field)
+	# The Terminal's rules are its own: in every other zone's level they are Sentinel Row's, so moving them to the zone
+	# changed no other zone's week.
+	var golden: LevelConfig = campaign.step(def.density_step).level
+	for zone_id: String in def.source_levels:
+		if zone_id == "terminal":
+			continue
+		var level: LevelConfig = campaign.step(def.source_levels[zone_id]).level
+		for field: String in ["wall_running", "narrow_ceiling_share", "one_lane_ceiling_share"]:
+			check(level.get(field) == golden.get(field), "%s's week has Sentinel Row's %s as before (%s)" % [zone_id, field,
+				level.get(field)])
 
 
 # --- The flow --------------------------------------------------------------------------------

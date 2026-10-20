@@ -363,3 +363,117 @@ paved street, warm lamplight and haze.
   citizens and the wall pieces' faces). Review it with `skin_review --skin=casino` (it asks the Casino for its
   ceiling kinds before the Marketplace, which it builds on) and a boss quick play with the arena skin on both
   renderers.
+
+**The Terminal** (`scripts/world/skins/terminal/`; task O4, GDD §5 Zone 8, the owner's reference image
+`docs/art/reference/terminal_zone.jpg`): `TerminalTrack` (the floor), `TerminalHall` (everything beyond the street's
+walls, and the vault), `TerminalArches` (the wall sections and stumps), `TerminalCeilings`, `TerminalProps` (fences and
+signs) and `TerminalDoodads` (picture cards, `tools/asset_gen/doodad_art/terminal_art.gd`); its surfaces are the kit's
+patterns 100-108 in `kit_terminal.gdshaderinc` (`MeshKit.PAT_TERMINAL_*`), drawn with the kit's one solid and one glow
+material, the drift shader and the Dead Zone's smoke shader (`dead_smoke.gdshader`, for the steam), so the zone adds no shader
+and `test_zone_shaders` is unchanged. An abandoned subway under
+the city: wet black stone, rust and verdigris, vine green, sodium lamplight through haze, and no sky (the vault is whole).
+- *The floor* (`TerminalTrack`, adapted from `DeadStreet`): every lane but the outer two is track bed
+  (`PAT_TERMINAL_TRACK`: gravel, a sleeper every 0.64 m, a pair of rails 1.44 m apart in every lane, cables, puddles, a dark
+  seam between lanes so the lanes read), the outer two are the platform along each wall (`PAT_TERMINAL_PLATFORM`, with a
+  strip of pale studs on the edge facing the track): it needs no lane count, an outer lane being the one whose floor box
+  runs on to the wall (the gutter). A gap is a hole in the track bed: the orange lip and strip right on the collision
+  edge and the halo on the far side, as in every zone, and below it deep shade (`PAT_TERMINAL_UNDER`) to a service
+  level; the floor cut's hole is the same with a few bent slabs hanging. Rails and cables are the only things near the
+  track that are not dark: kept dull steel and black, never an orange that reads as a gap edge. **The lane's width is
+  never fixed in the shader** (the skin is not given the tuning): each floor piece's pattern parameter carries the half
+  width of what it is drawn on, in centimetres times 8 over the platform's flags (`TerminalTrack.half_width_param`, the
+  width read off the floor box by `TerminalTrack.half_lane`, the nearer side of an outer lane's box counting; the shader's
+  `tm_half_width`), and the hall's second track is drawn with the same lane width, so a level with other lane widths
+  needs nothing changed.
+- *The hall is drawn by the floor, not the walls* (`TerminalHall.ensure`): the arches are a few lengths wide with about six
+  lengths of open space between them (O1), so nothing may depend on a wall hook running in every chunk. Each floor piece
+  asks the hall to cover the 10 m cells its stretch overlaps, **once per chunk**: under the chunk's root
+  (`TerminalSkin.chunk_root`: the child of the `TrackBuilder` that the piece's node is or lies under, so the slices of a
+  floor cut, each under a node of its own that the cut hides or shortens as it runs, never hold the hall; Godot's names for
+  the slices after the first are no mark to go by). The chunk root remembers the covered cells (`terminal_cells` meta) and
+  the 40 m slices of drifting dust and steam (`terminal_slices`), so a piece cut short by a hole only adds what nothing
+  has drawn, and every chunk holds its whole hall once, in one `Hall` mesh per run of uncovered cells (usually one).
+  **The wall hooks draw no hall**: O1 draws each arch and stump whole, in the chunk where it starts, so an arch across a
+  chunk's edge adds nothing to the next chunk's hall. The street's wall distance comes from the outer lane's own floor box
+  (`TerminalTrack.build` returns it). What a cell holds, from the street out on each side: a kerb along the wall line (the
+  street's boundary, since the zone has no wall running), a second track `track_drop` below with subway cars on it in trains
+  (`PAT_TERMINAL_CAR`: flaking paint over rust, a band of windows every 2 m bay, a door pair every fourth, vine draped over
+  the roof and hanging down; stretches picked by hash of 90 m blocks, `train_share`, `train_cars`, each car built once by the
+  cell its near end is in), a few scavengers' camps (a fire barrel with dim embers and three dark hunched silhouettes,
+  scenery only; `camp_share`), the far wall at `hall_extra` beyond the wall line (old white tile under black ashlar, two
+  rusted pipes, a work lamp every `lamp_pitch`), plumes of steam leaking from the old pipes (`jet_share`: soft smoke, the
+  kit's `dead_smoke.gdshader`, alpha-blended and unbanded, `jet_opacity`, stronger on the Compatibility renderer because it
+  blends in sRGB space: `jet_opacity_compat`), and the vault: an ellipse from the far
+  walls at `spring_height` up to `crown_height`, on steel ribs every `lamp_pitch` with a work lamp hung from each, dead
+  departure boards hung from some (wordless, matte) and cables strung between them. Under the street, for the holes: the
+  service level's floor and each side's pit wall. `wall_gap_marks` and `wall_gap_recess` draw nothing (no wall running, so a
+  missing arch is not a hazard; the hall is already there), and neither does `wall_opening(parent, side, face_x, start, end,
+  gap)`, O1's hook for the open space between arches, called once per chunk it reaches (the base's default draws a plain
+  wall behind the arches, which would hide the hall).
+- *The arches* (`TerminalArches`): `wall_section(parent, side, face_x, start, end)` draws a riveted steel pier from the floor
+  into the vault (a street face in `PAT_TERMINAL_STEEL`, angle irons and straps 4.5 cm proud, the only thing in the wall-run
+  band, sometimes a rust-red enamel plate (a pale painted border and four bolts: no symbol; the first draft's ring and bar read as
+  a transport operator's roundel, so it was dropped), a flared capital above 10 m, a half-rib springing from it
+  along the vault to the street's middle so a pair closes an arch and a lone one is a broken arch, vines hanging from the
+  capital to no lower than 7.4 m (over every ceiling), a bush of vine at its foot beyond the kerb). A section a space long
+  (up to `pier_width` x 1.6) gets one pier, a longer one (the wall every other zone has) several `pier_pitch` apart, so
+  the skin also works with the track builder as it is. `wall_stump(parent, side, face_x, start, end)` is the hook task O1
+  adds to `ZoneSkin` (the skin defines it first, so its override takes over when the base declares it): the same pier broken
+  off at about half its height in three uneven columns (0.42-0.56 of the arch's height), the paint gone from the top of each
+  and the concrete core showing, rebar bristling out, rubble heaped at its foot beyond the kerb, nothing inside the wall
+  line.
+- *The light.* The kit has no real lights, so the zone paints its own (`tm_burn`, `tm_pool`, `tm_wall_pool`, `tm_lit`): a
+  work lamp hangs from every rib (lamp k at z = -(k + 0.5) x `lamp_pitch`, `lamp_height` up, in the middle of the street) and
+  one on the far wall half a pitch off; each is dead (a fifth), failing (a third: dim, with one slow smooth brownout every
+  few seconds, never a strobe) or burning, by a hash of its index, decided in the shader from where the fixture stands
+  (`PAT_TERMINAL_LAMP`), so a fixture and the pool of warm light under it always agree and the skin places fixtures without
+  hashing anything. Every lit pattern calls `tm_lit(albedo, light)`; the lamps' own glow is a dim warm white (`lamp_glow`
+  0.22: under the bloom threshold and far under a gap edge's). **Reduced flashing**: `tm_burn` mixes the brownout with a
+  steady dim level by the global `reduced_flashing`, so a failing lamp holds still (`test_terminal_skin` checks the shader
+  source: the include never reads `TIME` itself, `tm_burn` reads `reduced_flashing`, the dip is a 0.31 Hz function of the time
+  it is passed).
+- *The colour rule* (GDD §5): nothing glows but the work lamps (and the scavengers' dim embers, the same pattern), the
+  hazards, triggers and the orange ends of gaps and ceilings; the lamps are warm white or sodium (never a hazard's orange or
+  yellow), the red-orange enamel plates are matte and dull, dead boards are matte glass in a worn frame, nothing carries
+  words, nothing is striped but a hazard sign's frame. The steam plumes are soft alpha-blended smoke and glow not at all (the
+  first draft's additive columns read as the anti-grav pads' light beams, which the pads must keep to themselves).
+- *Ceilings* (`TerminalCeilings`): a GIRDER (a plate girder fallen across the street: the underside its bottom flange, a web
+  with stiffeners, the near end torn open with the flange bent up), a WALKWAY (a maintenance walkway hanging from the vault
+  on rods, rails along both sides, one rod given way at the near end) or a CAR (a stranded subway car's body over the
+  street: its belly the underside, sides with a band of windows, a rounded roof under vine, the near end a blank cab front).
+  Every one builds from the lanes it covers (the shared suites sweep every range at 3, 5 and 6 lanes), keeps nothing below
+  its flat underside and the orange end band across its far end, and rises no more than `TOP_LIMIT` (1.9 m) over it (a
+  walkway's rods go on up to the vault), so the lamps (8.4 m) are clear.
+- *Doodads* (`TerminalDoodads`, GDD §3): picture cards (`DoodadCards.for_zone("terminal")`, atlas
+  `assets/sprites/doodads/terminal.png`): small a stack of cable drums or a stack of crates under a rusted drum, medium a
+  toppled ticket kiosk (its window an open frame with bars), a toppled vending machine (its empty shelves open) or a heap of
+  broken concrete with rebar and a little vine, large a pile of fallen ceiling slabs (the gaps between open) or a long heap
+  with a bent girder in it. They are drawn to whatever boxes `MovementTuning.doodad_size` gives them, every shape a share of
+  the box's height. **Task O2 sets the zone's lower boxes**: until then the pictures are painted for the standard 2.6 m and
+  a lower box squashes them; rerun `tools/godot.sh doodads --only=terminal` when O2 lands (`DoodadArtSet` reads the boxes
+  from the tuning, and `test_doodads`' `_test_cards` compares each manifest with the boxes it is given).
+- *No dash walls* (GDD §9.14: the Terminal's debris is enough): the skin keeps the base's default dash wall look, which no level
+  of the zone asks for, and `test_dash_walls` lists `terminal_skin.tres` among the default-look skins (as the Beach's).
+- *Environment*: no sky (the sky shader with stars, moon and skyline off, its horizon the fog's colour), the fog the warm
+  sodium haze the street's far end fades into, the ambient a dim warm grey for the runner and enemies.
+- *Music*: no song of its own (GDD §11 and the task plan: no more generated songs). `music = &"terminal"` in O1's zone
+  resolves through `data/audio/music_library.tres` to the Dead Zone's, the way the Casino and the Beach reuse the
+  Marketplace's generated loop: `files["terminal"]` is the Dead Zone's generated loop (cinematics, a fight with no song
+  of its own), `zone_tracks["terminal"]` its supplied song (`zone_5`), `riff_tracks` keeps the level-complete riff in the
+  Dead Zone's key (`level_complete_dead_zone`, for `zone_5` and for `terminal`), and `bpm` and `volume_db` are its. A song of
+  its own later: add its file, level and tempo, point `zone_tracks["terminal"]` at it, and make its riff in its key.
+- *Cost* (`test_terminal_skin`, 69 chunks of a level): build mean 1.9-2.9 ms a chunk at 3-6 lanes, 15-28 surfaces and 5-6.5k
+  vertices a chunk (5 lanes: 21.9 against the budget of 32). Kept down by quads and a few thin boxes instead of detail (the
+  detail is in the patterns, which cost nothing to build), one mesh per run of cells, trains and camps built only where
+  hashed, and no faces nobody sees.
+- *Tested and reviewed*: `test_terminal_skin` (the shared skin checks; the palette and colour rule; the lamps' glow; no sky;
+  the shaders and Reduced flashing; holes read as holes, `hole_share` 0.70; the hall over a stretch with no wall at all and
+  with holes in the outer lanes, and once per chunk over a floor cut and with arches crossing a chunk's edge (`_hall_once`:
+  as many lamps, cars and dust as one fresh run of the hall draws, all hung from the chunk's root); the steam is smoke and
+  the lane's width comes from the floor boxes; arches and stumps on both sides at 3, 5 and 6 lanes: inside the wall line, 5 cm proud at
+  most, a stump about half the height with rubble; the play space; the ceilings; the doodads), and the shared suites that
+  sweep every skin (`test_doodads`, `ceilings`, `floor_cuts`, `skin_budget`, `zone_shaders`). Review it with
+  `tools/showcase/terminal_review.tscn` (a stretch dressed as O1's track builder will dress it: arches a space long with the
+  open space between as wall gaps, stumps through the hook, holes, one ceiling of each kind, doodads, fences, signs; 19
+  shots, `--shot=N`, `--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`) and `skin_review --skin=terminal`, on both
+  renderers.

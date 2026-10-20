@@ -180,8 +180,11 @@ func _first_at(trigger: String) -> float:
 				if String(w["band"]) == band:
 					found.append(float(w["at"]))
 		"wall_gap":
-			for wg: Dictionary in layout.wall_gaps:
-				found.append(float(wg["start"]))
+			# Task O1: no wall is run on in a level without wall running (the Terminal), so the open space between its
+			# arches needs no word on dropping off a wall.
+			if layout.wall_running:
+				for wg: Dictionary in layout.wall_gaps:
+					found.append(float(wg["start"]))
 		"wall_run_gap":
 			# Task J2: the first wall-run gap's holes.
 			for wr: Dictionary in layout.wall_run_gaps:

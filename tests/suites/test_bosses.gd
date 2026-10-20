@@ -139,12 +139,14 @@ func _test_data() -> void:
 
 	# The campaign's boss slots carry the standard armor rule (GDD §10: 15–17 s; the Floating Head 10–15; the
 	# Golden Convergence the longest, 22). The Marketplace has none (GDD §10: it leads straight into the Casino,
-	# whose boss The House now is).
+	# whose boss The House now is), and nor has the Terminal (GDD §5, Zone 8; the owner, October 20, 2026: it leads
+	# straight into the Golden Zone).
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
 	for zone: ZoneDef in campaign.zones:
 		var b: BossDef = zone.boss
 		if b == null:
-			check(zone.id == &"marketplace", "only the Marketplace has no boss slot (%s)" % zone.id)
+			check(zone.id == &"marketplace" or zone.id == &"terminal",
+				"only the Marketplace and the Terminal have no boss slot (%s)" % zone.id)
 			continue
 		var delay := Vector2(15.0, 17.0)
 		if zone.id == &"city":

@@ -15,7 +15,7 @@ extends RefCounted
 const DIR: String = "res://assets/sprites/doodads"
 const SHADER_PATH: String = "res://scripts/world/meshes/shaders/doodad_card.gdshader"
 ## The zones with cards (tools/asset_gen/doodad_art_gen.gd paints one atlas for each).
-const ZONES: Array[String] = ["city", "gangland", "marketplace", "corporate", "dead_zone", "golden"]
+const ZONES: Array[String] = ["city", "gangland", "marketplace", "corporate", "dead_zone", "terminal", "golden"]
 ## The metadata a look's mesh carries its main colours in, as every doodad look's mesh does for its
 ## pieces' colours when the dash smashes it (task H5; ZoneSkin.DEBRIS_COLORS_META where it's defined).
 const COLORS_META: StringName = &"debris_colors"

@@ -9,7 +9,9 @@ extends RefCounted
 ##   fair (check_doodads), every floor cut keeps GDD §9.9's limits (check_cuts), the level's wider gaps
 ##   keep theirs (check_wide_gaps, task G7), every dash wall stands where it's fair (check_dash_walls,
 ##   task H7a), every ceiling scenario keeps its rules (check_scenarios, task I4), every wall-run gap keeps
-##   its (check_wall_run_gaps, task J2), and every line of wall-hop credits keeps its (check_wall_hops, task N1).
+##   its (check_wall_run_gaps, task J2), every line of wall-hop credits keeps its (check_wall_hops, task N1), and a
+##   level without wall running has nothing on its walls, every broken stump standing opposite an arch
+##   (check_boundary_walls, task O1).
 ## - check_ceilings: the floor under a ceiling may be dangerous (GDD §3, changed September 26, 2026),
 ##   but every pad lies under a ceiling and can be stepped on, every landing zone is safe to land on,
 ##   floor enemies keep off both (CeilingZones), and a floor route runs under every ceiling without
@@ -84,6 +86,41 @@ static func check_layout(suite: TestSuite, layout: LevelLayout, config: LevelCon
 	check_scenarios(suite, layout, config, tag)
 	check_wall_run_gaps(suite, layout, config, tag)
 	check_wall_hops(suite, layout, config, tag)
+	check_boundary_walls(suite, layout, config, tag)
+
+
+## A level whose walls are a boundary (task O1; LevelConfig.wall_running off, which its layout carries: the Terminal,
+## GDD §3 and §5 Zone 8: "no wall running", and nothing there may need a wall run): nothing stands on a wall or asks the
+## runner onto one (no ramp, sign, wall fence, wall-run gap, line of wall-hop credits, wall enemy or credit on a wall).
+## In any layout, every broken stump of a wall's section (LevelLayout.wall_stumps) stands where its wall has no
+## standing section (inside one of its wall gaps) and the other wall has its own (GDD §5: "where one side's section is
+## missing, that side shows a section cut off about halfway up").
+static func check_boundary_walls(suite: TestSuite, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
+	suite.check(layout.wall_running == config.wall_running, "the layout says whether its walls can be run on, as its level does " + tag)
+	if not layout.wall_running:
+		var wall_enemies: int = 0
+		for e: Dictionary in layout.enemies:
+			wall_enemies += 1 if int(e.get("side", 0)) != 0 else 0
+		var wall_credits: int = 0
+		for c: Dictionary in layout.credits:
+			wall_credits += 1 if String(c["surface"]) == "wall" else 0
+		suite.check(layout.ramps.is_empty() and layout.signs.is_empty() and layout.wall_fences.is_empty()
+			and layout.wall_run_gaps.is_empty() and layout.wall_hops.is_empty() and wall_enemies == 0 and wall_credits == 0,
+			"no wall running: nothing stands on a wall or needs a wall run (%d ramps, %d signs, %d wall fences, %d wall-run gaps, %d wall-hop lines, %d wall enemies, %d wall credits) %s"
+			% [layout.ramps.size(), layout.signs.size(), layout.wall_fences.size(), layout.wall_run_gaps.size(),
+				layout.wall_hops.size(), wall_enemies, wall_credits, tag])
+	for s: Dictionary in layout.wall_stumps:
+		var side: int = int(s["side"])
+		var start: float = float(s["start"])
+		var end: float = float(s["end"])
+		# One of its wall's gaps spans it whole (wall_gap_spans, not wall_solid_pieces: a stretch clipped at a bound
+		# that isn't a whole float32 can leave a solid piece a millionth of a metre long).
+		var in_gap: bool = false
+		for g: Vector2 in layout.wall_gap_spans(side, start, end):
+			in_gap = in_gap or (g.x <= start + 0.001 and g.y >= end - 0.001)
+		suite.check(in_gap and not layout.wall_gap_between(start + 0.001, end - 0.001, -side),
+			"a broken stump (wall %+d, %.1f-%.1f m) stands where its wall has no section, opposite the other wall's %s"
+			% [side, start, end, tag])
 
 
 ## Wall-hop credits (task N1; GDD §7, "Wall-hop credits": "some long walls carry high-value credits further along than
@@ -1211,9 +1248,10 @@ static func check_row(suite: TestSuite, row: Array, config: LevelConfig, tuning:
 ## longest wall run it launches; no wall-run gap's lit wall; not where the level brings in wall fences, from their
 ## feature's start to WallFenceTuning.intro_seconds past it with the drop windows there), no dash wall's wall route
 ## on either wall reaches it, no wall fence's drop window reaches it, no side wall gap stands beside it or starts
-## within LevelGenerator.doodad_wall_drop before it (a wall runner dropping off never comes down on it), and no wall
-## credit lies within LevelGenerator.DOODAD_WALL_CREDIT_MARGIN of it on that wall. Its own lane and the lane beside it
-## are clear around it already (check_doodads, task L6).
+## within LevelGenerator.doodad_wall_drop before it (a wall runner dropping off never comes down on it; not in a level
+## without wall running, task O1: the Terminal's walls stand only in narrow arches, and nobody runs along them), and no
+## wall credit lies within LevelGenerator.DOODAD_WALL_CREDIT_MARGIN of it on that wall. Its own lane and the lane beside
+## it are clear around it already (check_doodads, task L6).
 static func check_wall_lane_doodad(suite: TestSuite, layout: LevelLayout, config: LevelConfig, gen: LevelGenerator,
 		d: Dictionary, t: String) -> void:
 	var wall: int = -1 if int(d["lane"]) == 0 else 1
@@ -1261,7 +1299,7 @@ static func check_wall_lane_doodad(suite: TestSuite, layout: LevelLayout, config
 				"no wall fence's drop-off lands by a doodad by its wall (fence at %.1f) %s" % [w["at"], x])
 	var reach: float = gen.doodad_wall_drop()
 	for g: Dictionary in layout.wall_gaps:
-		if int(g["side"]) == wall:
+		if int(g["side"]) == wall and layout.wall_running:
 			suite.check(not near.call(float(g["start"]), maxf(float(g["end"]), float(g["start"]) + reach), 0.0),
 				"no side wall gap beside a doodad by its wall, nor one dropping a wall runner onto it (gap %.1f-%.1f) %s"
 				% [g["start"], g["end"], x])
@@ -1925,7 +1963,10 @@ static func check_wide_gaps(suite: TestSuite, layout: LevelLayout, config: Level
 		suite.check(not layout.doodad_between(zone.x + 0.01, zone.y + lead - 0.01),
 			"no zone doodad (nor its push's lead) at a wider gap's take-off or landing " + w)
 		var clear: float = t.wall_gap_clear_seconds * speed
-		suite.check(not layout.wall_gap_between(start - clear, end + clear), "no side wall gap beside a wider gap " + w)
+		# Task O1: a level without wall running (the Terminal) has its walls' open space all along, and no wall runner to
+		# drop into one.
+		suite.check(not layout.wall_running or not layout.wall_gap_between(start - clear, end + clear),
+			"no side wall gap beside a wider gap " + w)
 
 
 ## Cyborgs in charge paths (task G7; owner, October 7, 2026, GDD §9.13 "Teaching"; ChargePathPlacement), at the

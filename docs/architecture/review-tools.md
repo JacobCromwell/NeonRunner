@@ -39,7 +39,11 @@ an open street in any zone's look with side wall gaps as the generator places th
 one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
 the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across
 the street and from above; every shot is a PNG of the viewport in `--out=DIR`, so either renderer and any window size
-work, `--skin=`, `--lanes=`, `--gap=N`, `--shot=a,b`, `--darkness=X`), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
+work, `--skin=`, `--lanes=`, `--gap=N`, `--shot=a,b`, `--darkness=X`), the Terminal's arches (`arch_wall_review`, task O1:
+a level's walls as its build places them, arches, the open space between them and a broken stump, in any skin, seen on
+the approach, from the outer lane, across the track, from the side and from above; a PNG per shot in `--out=DIR`,
+`--level=terminal/1`, `--skin=greybox|<zone>|<res path>`, `--lanes=N`, `--stump=N` (which stump to frame), `--shot=a,b`;
+it prints the walls' layout), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
 treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
 `--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`
 for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), the wall-hop credits
@@ -87,7 +91,9 @@ stars and the rule under them); `--screen=hud_armor [--tier=N]` takes the HUD's 
 filling, back; `--screen=hud_last_hit [--reduced-flashing] [--hold]` the "one hit from death" cue (the armor
 breaks with a shield still held: nothing; the shield breaks: the red edges pulse and settle; the armor returns:
 they fade; `--hold` stops with the edge steady, for a `--shot` at a phone's window size); `--phone --flavor=web_demo` with the engine's `--resolution 844x340` shows a screen as a
-phone's browser does, the menus magnified, and `--shot=<png>` saves it), a zone skin
+phone's browser does, the menus magnified, and `--shot=<png>` saves it), the Terminal's skin (`terminal_review`: a stretch dressed as task O1's track builder will dress it, arches a space
+long with the open space between and stumps, holes, one ceiling of each kind, debris, fences, signs, in 19 shots; `--shot=N`,
+`--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`, `--lanes`), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost

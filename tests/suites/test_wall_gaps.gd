@@ -40,8 +40,10 @@ extends SkinSuite
 ## test_beach_levels).
 const WITH: Array = ["gangland/1", "gangland/2", "gangland/3", "marketplace/1", "marketplace/2", "casino/1", "casino/2",
 	"corporate/1", "corporate/2", "dead_zone/1", "dead_zone/2", "golden/1", "golden/2", "golden/3"]
-## The Beach's open walls (task D10b), the one campaign zone with numbers of its own.
+## The Beach's open walls (task D10b), the one campaign zone with numbers of its own that run on its walls.
 const BEACH_WALL_GAPS: String = "res://data/tuning/beach_wall_gaps.tres"
+## The Terminal's arches (task O1; its walls are a boundary, test_terminal_levels).
+const TERMINAL_WALL_GAPS: String = "res://data/tuning/terminal_wall_gaps.tres"
 const WITHOUT: Array = ["city/1", "city/2", "city/3"]
 ## The shaders whose surfaces are not opaque scenery (glows add light, drift and smoke are particles, the feed is a
 ## screen): a ray through a gap meeting only these has met no background.
@@ -559,6 +561,11 @@ func _test_level_tuning() -> void:
 			check(s.level.wall_gap_tuning != null and s.level.wall_gap_tuning.resource_path == BEACH_WALL_GAPS
 				and WallGapPlacement.tuning_for(campaign.configure(s, 5)) == s.level.wall_gap_tuning,
 				"%s opens its walls by the Beach's numbers" % s.id)
+		elif s.zone.id == &"terminal":
+			# Task O1: the Terminal's walls are a row of narrow arches (WallGapTuning's Arches group; test_terminal_levels).
+			check(s.level.wall_gap_tuning != null and s.level.wall_gap_tuning.resource_path == TERMINAL_WALL_GAPS
+				and s.level.wall_gap_tuning.arches() and WallGapPlacement.tuning_for(campaign.configure(s, 5)) == s.level.wall_gap_tuning,
+				"%s stands its walls in arches by the Terminal's numbers" % s.id)
 		else:
 			check(s.level.wall_gap_tuning == null and WallGapPlacement.tuning_for(campaign.configure(s, 5)) == shared,
 				"%s has no wall-gap numbers of its own: the shared ones" % s.id)

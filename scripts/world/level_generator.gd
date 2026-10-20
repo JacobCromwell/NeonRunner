@@ -43,7 +43,9 @@ extends RefCounted
 ## 5. Wall fences (the `wall_fences` and `wall_fences_partial` features; WallFencePlacement): electric
 ##    fences across the wall-run path, only where they're fair (_place_wall_fences).
 ## 6. Side wall gaps (the `wall_gaps` feature, Zone 2 on; WallGapPlacement): stretches of a side wall
-##    with no wall-running surface, rare, clear of every wall piece, ramp run and ceiling on that wall.
+##    with no wall-running surface, rare, clear of every wall piece, ramp run and ceiling on that wall. In the
+##    Terminal (task O1, its own WallGapTuning's Arches group) the open space between its narrow arches instead, with a
+##    broken stump where one side's arch is missing.
 ## 7. Additive gaps (GapDensity, enabled only in City 1): more rows and a higher mean row width,
 ##    without replacing obstacles. Independent round-up targets and explicit fairness shortfalls.
 ## 8. Credits (GDD §7): trails in the clear stretches, rich credits in risky spots (none on a wall
@@ -51,6 +53,8 @@ extends RefCounted
 ##    (LevelConfig.wall_hop_lines; WallHopPlacement, task N1): along a long, clear stretch of a side wall,
 ##    its high-value ones further along than one wall run reaches, for a runner who wall hops.
 ## Fairness rules (longest gap, hull lead-in and landing) come from LevelConfig, so they are data.
+## A level whose walls are a boundary (LevelConfig.wall_running off: the Terminal, task O1) has its layout say so
+## (LevelLayout.wall_running), and a build that put anything on a wall there warns (_check_walls_unused).
 ##
 ## Ceilings (GDD §3, changed September 26, 2026): the floor under a ceiling may be dangerous, since the
 ## ceiling is the way to escape it: a pattern may put gaps, fences and enemies under its own ceiling
@@ -409,6 +413,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	_ceiling_rng.seed = hash([config.level_seed, "narrow_ceilings"])
 	layout = LevelLayout.new()
 	layout.lane_count = config.lane_count
+	# Task O1: a level whose walls are a boundary (the Terminal's) says so in its layout, for the player and the track.
+	layout.wall_running = config.wall_running
 	_clear_stretches.clear()
 	_enemy_count = 0
 	warnings.clear()
@@ -513,7 +519,33 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	gap_density_result = GapDensity.apply(self)
 	_place_credits()
 	layout.enemies.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["at"] < b["at"])
+	_check_walls_unused()
 	return layout
+
+
+## Task O1 (GDD §3 and §5 Zone 8: "the Terminal has no wall running", and nothing there may need a wall run): in a level
+## whose walls are a boundary (LevelConfig.wall_running off) a warning for each kind of piece that stands on a wall or
+## asks the runner onto one, which its patterns and rules shouldn't have placed: a ramp, a sign, a wall fence, a
+## wall-run gap, a line of wall-hop credits, a wall enemy or a credit on a wall. A level with wall running is never
+## checked.
+func _check_walls_unused() -> void:
+	if config.wall_running:
+		return
+	var found: PackedStringArray = []
+	var wall_enemies: int = 0
+	for e: Dictionary in layout.enemies:
+		wall_enemies += 1 if int(e.get("side", 0)) != 0 else 0
+	var wall_credits: int = 0
+	for c: Dictionary in layout.credits:
+		wall_credits += 1 if String(c.get("surface", "")) == "wall" else 0
+	for item: Array in [["ramps", layout.ramps.size()], ["signs", layout.signs.size()], ["wall fences",
+			layout.wall_fences.size()], ["wall-run gaps", layout.wall_run_gaps.size()], ["wall-hop lines",
+			layout.wall_hops.size()], ["wall enemies", wall_enemies], ["wall credits", wall_credits]]:
+		if int(item[1]) > 0:
+			found.append("%d %s" % [item[1], item[0]])
+	if not found.is_empty():
+		warnings.append("no wall running here (LevelConfig.wall_running), but the level has %s (GDD §5, Zone 8)"
+			% ", ".join(found))
 
 
 ## `reference_metres` (a distance written for MovementTuning.REFERENCE_SPEED: a pattern's, a rule's
@@ -774,12 +806,15 @@ func ceiling_lanes(pads: Array[int], at: float, one_lane_ok: bool) -> Vector2i:
 	if config.narrow_ceiling_share <= 0.0 or n < 2 or pads.is_empty() \
 			or at < config.narrow_ceiling_start * layout.length:
 		return full
-	if _ceiling_rng.randf() >= config.narrow_ceiling_share:
+	# A share of 1 (the Terminal's, task O1: every ceiling one lane wide, GDD §5 Zone 8) draws nothing for it, so
+	# randf()'s inclusive top end never leaves one out; a share below 1 draws exactly as before.
+	if config.narrow_ceiling_share < 1.0 and _ceiling_rng.randf() >= config.narrow_ceiling_share:
 		return full
 	var lo_pad: int = pads.min()
 	var hi_pad: int = pads.max()
 	var width: int = 1
-	if not (one_lane_ok and lo_pad == hi_pad and _ceiling_rng.randf() < config.one_lane_ceiling_share):
+	if not (one_lane_ok and lo_pad == hi_pad
+			and (config.one_lane_ceiling_share >= 1.0 or _ceiling_rng.randf() < config.one_lane_ceiling_share)):
 		var widest: int = n - 1
 		if config.narrow_ceiling_max_lanes > 0:
 			widest = clampi(config.narrow_ceiling_max_lanes, 1, n - 1)

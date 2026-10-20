@@ -24,8 +24,9 @@ extends TestSuite
 
 const CAMPAIGN_PATH: String = "res://data/campaign/campaign.tres"
 const LANE_COUNTS: Array[int] = [3, 5, 6]
-## The zones whose levels ask for no wall-hop credits (GDD §7, proposed: "from Gangland on").
-const WITHOUT: Array[StringName] = [&"city"]
+## The zones whose levels ask for no wall-hop credits (GDD §7, proposed: "from Gangland on"), and the Terminal, whose
+## walls can't be run on (task O1; GDD §5, Zone 8).
+const WITHOUT: Array[StringName] = [&"city", &"terminal"]
 ## The zone whose open walls (task D10b: half of each wall's length) leave no stretch long enough for a line.
 const OPEN_WALLS: StringName = &"beach"
 ## An excerpt's line steps onto the wall this far along its fresh track.

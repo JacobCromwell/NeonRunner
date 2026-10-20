@@ -72,7 +72,9 @@ func run_track(default_track: StringName, boss_id: StringName = &"") -> StringNa
 	var overrides: Dictionary = zone_tracks if boss_id == &"" else boss_tracks
 	var key: String = String(default_track if boss_id == &"" else boss_id)
 	var track := StringName(overrides.get(key, default_track))
-	if not has(track):
+	# A supplied song the library names but doesn't have is a mistake; a zone whose own track isn't made yet (task O1:
+	# the Terminal's, until task O4's) is skipped quietly by the Music player, as ZoneDef.music says.
+	if not has(track) and overrides.has(key):
 		push_error("MusicLibrary: run track '%s' for '%s' is not in the library" % [track, key])
 	return track
 
