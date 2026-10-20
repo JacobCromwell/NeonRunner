@@ -1,9 +1,10 @@
 extends Node3D
 ## The Terminal's skin, for visual review only (task O4; not part of the game): a hand-built stretch of track dressed in
-## the Terminal's skin (or any skin, --skin=), seen from fixed spots, one after another. It stands in for what task O1's
-## track builder gives the skin: wall sections one space long (arches) with about six lengths of open space between them
-## (the rest of the wall left out as wall gaps), mostly in left/right pairs, and a stump (`wall_stump`) where a side's
-## section is missing; plus holes, single-lane ceilings of each kind, doodads, fences and signs. Render it on both renderers:
+## the Terminal's skin (or any skin, --skin=), seen from fixed spots, one after another. It lays a stretch out as task O1's
+## levels have it (no wall running): wall sections one space long (arches) with about six lengths of open space between them
+## (the rest of the wall left out as wall gaps, which the track builder draws with `wall_opening`), mostly in left/right
+## pairs, and a stump (`wall_stump`, LevelLayout.wall_stumps) where a side's section is missing; plus holes, single-lane
+## ceilings of each kind, doodads, fences and signs. Render it on both renderers:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot4 --path . --resolution 960x540 --fixed-fps 10 \
 ##     --write-movie build/terminal/f.png --quit-after 60 res://tools/showcase/terminal_review.tscn -- --skin=terminal
 ## (add --rendering-method gl_compatibility before the scene path for the web / low-end renderer).
@@ -105,7 +106,9 @@ func _layout() -> LevelLayout:
 	out.gaps.append({"lane": maxi(mid - 1, 0), "start": 62.0, "end": 69.0})
 	out.gaps.append({"lane": mid, "start": 86.0, "end": 92.0})
 	out.gaps.append({"lane": 0, "start": 104.0, "end": 111.0})
-	# The arches, as O1 will give them: a wall section a space long, the open space a wall gap, mostly in pairs.
+	# The arches, as O1's levels have them (no wall running): a wall section a space long over each piece of wall, the open
+	# space a wall gap that the track builder draws with wall_opening, mostly in pairs, a stump (wall_stumps) in some.
+	out.wall_running = false
 	var k: int = 0
 	var at: float = ARCH_FIRST
 	while at < LENGTH - 30.0:
@@ -128,6 +131,7 @@ func _layout() -> LevelLayout:
 			a += ARCH_PITCH
 		if cursor < LENGTH + 80.0:
 			out.wall_gaps.append({"side": side, "start": cursor, "end": LENGTH + 80.0})
+	out.wall_stumps = _stumps.duplicate(true)
 	# Fences and signs.
 	var pulsing := _fence(mid, 130.0, "full")
 	pulsing["pulsing"] = true
@@ -246,18 +250,6 @@ func _show_shot(index: int) -> void:
 	# The track only builds forward: start it over for every shot.
 	track.set_layout(layout, tuning, skin)
 	track.update(float(shot[0]), float(shot[0]) / tuning.run_speed)
-	_draw_stumps()
 	camera.position = shot[1]
 	camera.look_at(shot[2])
 	print("shot %d at frame %d: %s" % [index, _frame, String(shot[3])])
-
-
-## The stumps (O1's track builder will call wall_stump itself): on the chunk each lies in, if it is built.
-func _draw_stumps() -> void:
-	if not skin.has_method(&"wall_stump"):
-		return
-	for st: Dictionary in _stumps:
-		var index: int = maxi(0, int(floor(float(st["start"]) / TrackBuilder.CHUNK_LENGTH)))
-		var root: Node = track.get_node_or_null("Chunk%d" % index)
-		if root != null:
-			skin.call(&"wall_stump", root, int(st["side"]), int(st["side"]) * geo.wall_x(), float(st["start"]), float(st["end"]))
