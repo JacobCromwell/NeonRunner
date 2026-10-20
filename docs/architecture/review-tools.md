@@ -91,7 +91,9 @@ stars and the rule under them); `--screen=hud_armor [--tier=N]` takes the HUD's 
 filling, back; `--screen=hud_last_hit [--reduced-flashing] [--hold]` the "one hit from death" cue (the armor
 breaks with a shield still held: nothing; the shield breaks: the red edges pulse and settle; the armor returns:
 they fade; `--hold` stops with the edge steady, for a `--shot` at a phone's window size); `--phone --flavor=web_demo` with the engine's `--resolution 844x340` shows a screen as a
-phone's browser does, the menus magnified, and `--shot=<png>` saves it), a zone skin
+phone's browser does, the menus magnified, and `--shot=<png>` saves it), the Terminal's skin (`terminal_review`: a stretch dressed as task O1's track builder will dress it, arches a space
+long with the open space between and stumps, holes, one ceiling of each kind, debris, fences, signs, in 19 shots; `--shot=N`,
+`--cam=px,py,pz,tx,ty,tz[,d]`, `--reduced-flashing`, `--lanes`), a zone skin
 (`skin_review`: any skin from fixed spots, including close-ups of the cult's feed screens and emblems a
 skin lists, or a scripted run with a ceiling ride and a wall run, in a level's darker lighting with
 `--darkness=X` and under a level's own sky with `--sky=name`; `--narrow` makes three of its ceilings narrow, one lane in the middle, the two leftmost

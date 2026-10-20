@@ -26,7 +26,9 @@ const SONGS: Dictionary = {
 	&"beach_boss_song": "Zone_Beach_Boss_Teeth_in_the_Surf.mp3",
 	&"boss_1": "Boss_1_Apex_Combat_Maneuver.mp3",
 }
-const GENERATED_ZONE_DEFAULTS: Dictionary = {&"casino": &"marketplace", &"beach": &"marketplace"}
+## Zones without a generated loop of their own: the Terminal (task O4) plays the Dead Zone's song and ends on its riff.
+## DESIGN-TBD (docs/questions/o4.md item 10): whether the Terminal gets a song of its own (no more generated songs, GDD §11).
+const GENERATED_ZONE_DEFAULTS: Dictionary = {&"casino": &"marketplace", &"beach": &"marketplace", &"terminal": &"dead_zone"}
 const ZONE_SONGS: Dictionary = {
 	&"city": &"zone_1",
 	&"gangland": &"zone_2",
@@ -36,11 +38,14 @@ const ZONE_SONGS: Dictionary = {
 	&"beach": &"beach_song",
 	&"dead_zone": &"zone_5",
 	&"golden": &"zone_6",
+	&"terminal": &"zone_5",
 }
+## A zone that plays another zone's song ends its levels on that zone's riff, the one in the song's key.
+const SHARED_SONG_RIFFS: Dictionary = {&"terminal": &"dead_zone"}
 const BOSS_SONGS: Dictionary = {&"city_boss": &"boss_1", &"casino_boss": &"casino_song", &"beach_boss": &"beach_boss_song"}
-## Zones whose track isn't made yet (task O1: the Terminal's is task O4's): the Music player skips it quietly, so a
-## run there keeps whatever plays (ZoneDef.music). Every other zone has its track, its song and its riff.
-const MUSIC_TO_COME: Array[StringName] = [&"terminal"]
+## Zones whose track isn't made yet: the Music player skips it quietly, so a run there keeps whatever plays
+## (ZoneDef.music). None now (the Terminal plays the Dead Zone's song, task O4); every zone has its track, song and riff.
+const MUSIC_TO_COME: Array[StringName] = []
 const ZONES_WITHOUT_RIFFS: Array[StringName] = [&"casino_song", &"beach_song"]
 const SONG_BUDGET_BYTES: int = 40 * 1024 * 1024
 ## Generated defaults must stay under this in the repo (about 3 MB per 40–60 s loop of 32 kHz PCM).
@@ -101,8 +106,21 @@ func _test_supplied_songs() -> void:
 			"'%s' keeps playing across the end of the song" % track)
 		playback.stop()
 	check(total_bytes <= SONG_BUDGET_BYTES, "supplied MP3s fit in 40 MB (%.2f MB)" % (total_bytes / 1048576.0))
-	check(library.zone_tracks.size() == App.campaign.zones.size() - MUSIC_TO_COME.size(),
-		"a supplied song for every campaign zone but the ones whose music is still to come")
+	# A zone's song may be listed before the zone joins the campaign (the Terminal's, task O4, before task O1).
+	var songs_ahead: int = 0
+	for zone_music: StringName in ZONE_SONGS:
+		var in_campaign: bool = false
+		for campaign_zone: ZoneDef in App.campaign.zones:
+			in_campaign = in_campaign or campaign_zone.music == zone_music
+		songs_ahead += 0 if in_campaign else 1
+	check(library.zone_tracks.size() == App.campaign.zones.size() + songs_ahead,
+		"a supplied song for every campaign zone (and for the zones about to join: %d)" % songs_ahead)
+	check(library.run_track(&"terminal") == &"zone_5" and library.path(&"terminal") == library.path(&"dead_zone"),
+		"the Terminal plays the Dead Zone's song, and its cinematics the Dead Zone's loop")
+	check(MusicDirector.level_complete_sound(library.riff_track(library.run_track(&"terminal")), App.sfx_library)
+		== &"level_complete_dead_zone", "and its levels end on the Dead Zone's riff, in the song's key")
+	check(MusicDirector.level_complete_sound(library.riff_track(&"terminal"), App.sfx_library) == &"level_complete_dead_zone",
+		"so do its fights that keep the generated loop")
 	for index: int in App.campaign.zones.size():
 		var zone: ZoneDef = App.campaign.zones[index]
 		if MUSIC_TO_COME.has(zone.music):
@@ -113,7 +131,8 @@ func _test_supplied_songs() -> void:
 		check(library.run_track(zone.music) == expected,
 			"zone %d (%s) uses its supplied song (%s)" % [index + 1, zone.id, expected])
 		if not ZONES_WITHOUT_RIFFS.has(expected):
-			check(library.riff_track(expected) == zone.music, "zone %d retains its original completion sound" % (index + 1))
+			check(library.riff_track(expected) == SHARED_SONG_RIFFS.get(zone.music, zone.music),
+				"zone %d retains its original completion sound" % (index + 1))
 		else:
 			check(library.riff_track(expected) == expected, "%s uses the safe fallback completion sound" % expected)
 		check(library.stream(zone.music) is AudioStreamWAV, "%s cinematics keep the generated default" % zone.id)
@@ -401,6 +420,7 @@ func _test_level_complete_riffs() -> void:
 	var sfx := load(SFX_LIBRARY_PATH) as SfxLibrary
 	var library := load(MUSIC_LIBRARY_PATH) as MusicLibrary
 	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var distinct: Dictionary = {}
 	for zone: ZoneDef in campaign.zones:
 		if MUSIC_TO_COME.has(zone.music):
 			# No track yet: its levels end on the E riff, as any track without a riff of its own does.
@@ -410,6 +430,7 @@ func _test_level_complete_riffs() -> void:
 		var track: StringName = library.run_track(zone.music)
 		var riff_track: StringName = library.riff_track(track)
 		var riff: StringName = MusicDirector.level_complete_sound(riff_track, sfx)
+		distinct[riff] = true
 		var expected: StringName = MusicDirector.LEVEL_COMPLETE if track == &"zone_1" \
 			or ZONES_WITHOUT_RIFFS.has(track) else StringName("%s_%s" % [MusicDirector.LEVEL_COMPLETE, riff_track])
 		check(riff == expected, "%s's levels and boss end on %s (%s)" % [zone.id, expected, riff])
@@ -431,8 +452,9 @@ func _test_level_complete_riffs() -> void:
 			"'%s' is over before the results replace the run and its sounds (%.2f s)" % [sound, seconds])
 		check(float(sfx.pitch_variation.get(sound, 0.0)) == 0.0, "'%s' always plays in its key (no pitch variation)" % sound)
 		check(sound == prefix or library.has(StringName(sound.trim_prefix(prefix + "_"))), "'%s' belongs to a music track" % sound)
-	check(riffs == campaign.zones.size() - MUSIC_TO_COME.size() - ZONES_WITHOUT_RIFFS.size(),
-		"one riff per zone with a dedicated riff, including the E fallback (%d)" % riffs)
+	# Zones that share a song (the Terminal plays the Dead Zone's) share its riff.
+	check(riffs == distinct.size(),
+		"one riff per song with a dedicated riff, including the E fallback (%d)" % riffs)
 
 
 ## Through the App on the real main scene: a death dips the zone's music at once, a pause before the

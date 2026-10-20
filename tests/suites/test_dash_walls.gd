@@ -64,8 +64,9 @@ const WALL_VERTICES_MAX: int = 8000
 const WALL_BUILD_MEAN_MS: float = 12.0
 const WALL_BUILD_MAX_MS: float = 60.0
 ## The skins that keep the default wall look (ZoneSkin.dash_wall): the grey box, its skin file, and the Beach's (no
-## dash walls there for now, its open side walls and no wall look: docs/OPEN_QUESTIONS.md item 680).
-const DEFAULT_LOOK_SKINS: Array[String] = ["grey box", "greybox_skin.tres", "beach_skin.tres"]
+## dash walls there for now, its open side walls and no wall look: docs/OPEN_QUESTIONS.md item 680) and the Terminal's (no
+## dash walls there at all, GDD §5 Zone 8 and §9.14: its debris is enough; task O4).
+const DEFAULT_LOOK_SKINS: Array[String] = ["grey box", "greybox_skin.tres", "beach_skin.tres", "terminal_skin.tres"]
 ## Seeds a skin's walls are built with: all 12 layouts and tones (DashWallKit.look_of, tone_of), at 3, 5 and 6 lanes.
 const LOOK_SEEDS: int = 12
 const LANE_COUNTS: Array[int] = [3, 5, 6]

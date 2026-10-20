@@ -278,6 +278,39 @@ const GLYPH_COCKTAIL: int = 5
 const GLYPH_TIKI: int = 6
 const GLYPH_COUNT: int = 7
 
+## The Terminal's surface patterns of the solid kit shader (kit_terminal.gdshaderinc), ids 100-108 (task O4): an
+## abandoned subway under the city (GDD §5, Zone 8). Only PAT_TERMINAL_LAMP glows (a work lamp's tube, warm-white sodium,
+## burning as that lamp does: dead, failing or steady, and holding still with Reduced flashing); give every other
+## pattern's vertices COLOR.a = 0.
+## A lane of track bed (world position; UV.x -1 to 1 across the lane): ballast, sleepers, a pair of rails, cables,
+## puddles, the dark seam between lanes, the lamps' pools. param = the lane's half width in centimetres times 8 (the
+## skin reads it off the floor piece's box: TerminalTrack.half_width_param).
+const PAT_TERMINAL_TRACK: int = 100
+## A platform's concrete (the outer lanes): slabs, joints, stains, a strip of studs along the edge that faces the
+## track (param = TERMINAL_STRIP_* flags plus the lane's half width in centimetres times 8, as for the track bed).
+const PAT_TERMINAL_PLATFORM: int = 101
+## Everything under the track bed, seen only through the holes: deep shade darkening with depth (darkens COLOR):
+## param 0 a face across the lane, 1 a face along it, 2 the pit's floor.
+const PAT_TERMINAL_UNDER: int = 102
+## Wet black stone: param 0 the hall's far wall (old tile under black ashlar), 1 the vault (UV: metres along the
+## arch and along the track), 2 old concrete (world position).
+const PAT_TERMINAL_WALL: int = 103
+## Old painted steel flaking to rust: param 0 plating, 1 an underside ridden upside down, 2 bare rust.
+const PAT_TERMINAL_STEEL: int = 104
+## The side of a rusted subway car (UV in metres: along the car, up from its floor; param = its seed 0-99).
+const PAT_TERMINAL_CAR: int = 105
+## A work lamp's tube, glowing as that lamp burns (param 0 a crown lamp, 1 one of the far walls', 2 the embers of a fire barrel: always on).
+const PAT_TERMINAL_LAMP: int = 106
+## A dead departure board or a rust-red plate (a painted border and four bolts, no symbol, no word), matte and unlit
+## (UV in metres; param = seed 0-99, + 100 a plate).
+const PAT_TERMINAL_BOARD: int = 107
+## Foliage: vines hanging and draped, opaque (world position).
+const PAT_TERMINAL_VINE: int = 108
+## PAT_TERMINAL_PLATFORM's flags.
+const TERMINAL_STRIP_LEFT: int = 1
+const TERMINAL_STRIP_RIGHT: int = 2
+const TERMINAL_GUTTER: int = 4
+
 const SHADER_DIR: String = "res://scripts/world/meshes/shaders/"
 ## How far the glow under a ceiling's end band (ceiling_end) reaches back from the band, under the
 ## ceiling. It never reaches past the far end.

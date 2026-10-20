@@ -92,7 +92,7 @@ The owner-supplied MP3s are copied unmodified into `assets/music/`:
 | Zone 5 - Corporate | Concrete Fever |
 | Zone 6 - Beach | Palms at Terminal Speed |
 | Zone 7 - Dead Zone | Beneath the Cracks |
-| Zone 8 - The Terminal | none yet (task O4); its levels keep the music already playing |
+| Zone 8 - The Terminal | the Dead Zone's song (no new songs are generated; the owner may supply one) |
 | Zone 9 - Golden Zone | View from the Zenith |
 | Boss 1 - Floating Head | Apex Combat Maneuver |
 
@@ -156,8 +156,8 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   16. Dead Zone 1 *Ashfall*: hosts and the Cyborg's Bad Dream.
   17. Dead Zone 2 *The Hush*: a quiet, eerie remix with nothing new: long silent stretches broken by short
       bursts of threats, fewer enemies but more hosts (standing alone in the silence), and darker lighting.
-  18. Terminal 1 *Rubble Line*: an abandoned subway under the city, still in the Dead Zone's look until its own
-      comes. None of the usual enemies, no dash walls, a couple of holes and a few one-lane ceilings; its side walls
+  18. Terminal 1 *Rubble Line*: an abandoned subway under the city, in its own look (task O4).
+      None of the usual enemies, no dash walls, a couple of holes and a few one-lane ceilings; its side walls
       are narrow arches (now and then one side's a broken stump) with open space between them, and there is no wall
       running: a move past the outer lane bumps you back with the clank. Its debris maze and the Cybernetic
       Centipede are still to come. Like the Beach's, its levels sit between their neighbours in difficulty, off the
@@ -517,7 +517,7 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   - the City, Gangland and Marketplace zone looks, with the cult's feed on screens and its emblem hidden
     in ads in all three
   - neon UI screens and HUD
-  - supplied music for eight of the nine zones (the Terminal's is still to come; its levels keep the music playing)
+  - supplied music for every zone (the Terminal plays the Dead Zone's song)
     and Boss 1 (The House shares the Casino song), generated defaults
     for menus/cutscenes/unmatched bosses
     (music dips when the runner dies), and 76 sound

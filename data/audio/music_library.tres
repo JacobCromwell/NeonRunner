@@ -14,6 +14,7 @@ files = {
 "golden": "res://assets/music/golden.wav",
 "marketplace": "res://assets/music/marketplace.wav",
 "menu": "res://assets/music/menu.wav",
+"terminal": "res://assets/music/dead_zone.wav",
 "zone_1": "res://assets/music/Zone_1_Under_The_Iron_Sky.mp3",
 "zone_2": "res://assets/music/Zone_2_Alleyway_Ambush.mp3",
 "zone_3": "res://assets/music/Zone_3_Jackpot_Plaza.mp3",
@@ -35,6 +36,7 @@ volume_db = {
 "golden": -10.5,
 "marketplace": -11.0,
 "menu": -11.0,
+"terminal": -10.5,
 "zone_1": -10.5,
 "zone_2": -10.0,
 "zone_3": -11.0,
@@ -55,7 +57,8 @@ bpm = {
 "gangland": 120.0,
 "golden": 132.0,
 "marketplace": 144.0,
-"menu": 100.0
+"menu": 100.0,
+"terminal": 84.0
 }
 zone_tracks = {
 "city": "zone_1",
@@ -65,7 +68,8 @@ zone_tracks = {
 "corporate": "zone_4",
 "beach": "beach_song",
 "dead_zone": "zone_5",
-"golden": "zone_6"
+"golden": "zone_6",
+"terminal": "zone_5"
 }
 boss_tracks = {
 "city_boss": "boss_1",
@@ -79,7 +83,8 @@ riff_tracks = {
 "zone_4": "corporate",
 "zone_5": "dead_zone",
 "zone_6": "golden",
-"boss_1": "city"
+"boss_1": "city",
+"terminal": "dead_zone"
 }
 duck_db = -8.0
 duck_time = 0.3

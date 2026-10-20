@@ -24,9 +24,8 @@ extends TestSuite
 ## tracks named after them.
 const ZONES: Array = [["city", 3], ["gangland", 3], ["marketplace", 2], ["casino", 2], ["corporate", 2], ["beach", 3],
 	["dead_zone", 2], ["terminal", 2], ["golden", 3]]
-## Zones whose music track isn't made yet (the Music player skips a missing track quietly, ZoneDef.music): the
-## Terminal's is task O4's.
-const MUSIC_TO_COME: Array = ["terminal"]
+## Zones whose music track isn't made yet (the Music player skips a missing track quietly, ZoneDef.music): none now.
+const MUSIC_TO_COME: Array = []
 ## The Terminal (task O1; GDD §5, Zone 8: none of the usual enemies, no dash walls, no wall running, a couple of
 ## holes, a few one-lane ceilings) keeps only these of the features introduced before it: its ceilings, and the side
 ## walls' open space between its narrow arches (the `wall_gaps` feature with its own numbers, WallGapTuning's Arches
