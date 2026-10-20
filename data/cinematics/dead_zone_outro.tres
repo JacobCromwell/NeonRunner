@@ -6,4 +6,4 @@
 script = ExtResource("1_script")
 id = &"dead_zone_outro"
 title = "Out of the ashes"
-placeholder_text = "DESIGN-TBD: a short scene after the Dead Zone boss, heading for the Golden Zone."
+placeholder_text = "DESIGN-TBD: a short scene after the Dead Zone boss, heading down into the Terminal (since October 20, 2026; before, the Golden Zone)."

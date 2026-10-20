@@ -10,6 +10,9 @@ extends Resource
 ## EnemyDirector. So those tasks add their own files and never edit level data.
 ## - barnacle_turret: the Barnacle Turret, a ceiling hazard (GDD §9.8), from Marketplace 1
 ## - resonator: the Resonator (GDD §9.10), from Golden 1
+## - debris_maze: the Terminal's debris maze (GDD §5, Zone 8; task O2), from Terminal 1: doodads that stop the runner,
+##   standing so thickly that the dash breaks the way through
+## - centipede: the Cybernetic Centipede (GDD §9.15; task O3), the Terminal's only enemy, from Terminal 1
 ## tithe_collector (GDD §9.12, Corporate 2, then the Golden Zone) is built (task C5): its own script,
 ## tuning and pattern (data/patterns/tithe_collector.json) place it, so it's out of this list. So are the
 ## wall fences, `wall_fences` and `wall_fences_partial` (task B5: the generator places them,
@@ -17,7 +20,7 @@ extends Resource
 ## its pattern, data/patterns/buzz_overdrive.json, and its rules, buzz_overdrive_rules.gd, place it), and
 ## gilded_sentinel (GDD §9.11, Golden 2 and the Golden Palace; task C4: data/patterns/gilded_sentinel.json
 ## and its rules, gilded_sentinel_rules.gd).
-const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
+const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator", "debris_maze", "centipede"]
 
 @export var id: StringName = &"prototype"
 ## DESIGN-TBD: campaign level names are placeholders (GDD §5 names only the Golden Palace).
@@ -102,8 +105,20 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## feature only then). The Sleep Taker's arena opts in (owner, October 8, 2026: "the walls aren't safe": many
 ## gaps). A level may take its own too (task D10b; the owner, October 9, 2026, on the Beach: "I want this zone to
 ## feel more open ... have them appear about 50% of the time that they are now currently appearing"): the Beach's
-## levels take data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length.
+## levels take data/tuning/beach_wall_gaps.tres, whose open walls stand about half of each wall's length, and the
+## Terminal's data/tuning/terminal_wall_gaps.tres, whose walls are a row of narrow arches with open space between them
+## (task O1; GDD §5, Zone 8: WallGapTuning's Arches group).
 @export var wall_gap_tuning: WallGapTuning
+## Whether a runner can step onto the side walls and run along them (GDD §3, Side walls). Off: the walls are a boundary
+## everywhere (task O1; the owner, October 20, 2026, GDD §3 and §5 Zone 8: "the Terminal has no wall running", its
+## narrow arches and the tunnel wall behind them stand between the track and the rest of the subway): a move past the
+## outer lane bumps the runner back with a blocked wall entry's clank and no damage, as a sign's does
+## (Player.wall_running), the track builder draws the walls as standing sections with open space between them
+## (TrackBuilder, ZoneSkin.wall_opening: without a wall gap's orange marks, which tell a wall runner the wall stops),
+## the wall gap hint never shows, and nothing may need a wall run: the generator warns if the level's patterns or
+## rules still put a ramp, a sign, a wall fence, a wall-run gap, a wall enemy or a wall credit there
+## (LevelGenerator._check_walls_unused). The level's own rule (the Terminal's levels), never its skin's.
+@export var wall_running: bool = true
 ## Features that start partway into the level (GDD §5: City 1 meets its cyborgs late in the level):
 ## feature name → share of the level (0–1). Nothing of that feature is placed before its start,
 ## by patterns or by rules scripts, and the first pattern picked from there uses it (as soon as one
@@ -136,7 +151,10 @@ const PLANNED_FEATURES: PackedStringArray = ["barnacle_turret", "resonator"]
 ## recently the campaign introduced it (LevelGenerator, FeatureRecency). Null: every feature on equal
 ## terms (plus feature_weights).
 @export_storage var feature_recency: FeatureRecency
-## The core pattern file. Every other .json file in its folder is loaded too (LevelGenerator.load_for).
+## The core pattern file. Every other .json file in its folder is loaded too (LevelGenerator.load_for). A level with
+## a set of its own names a file in another folder, and picks only that folder's patterns: the Terminal's
+## (data/patterns/terminal/, task O1; GDD §5, Zone 8: none of the usual enemies, a couple of holes, a few one-lane
+## ceilings), which never get the core patterns' holes, fences, signs and enemies.
 @export_file("*.json") var patterns_path: String = "res://data/patterns/prototype_patterns.json"
 ## The zone's visuals. Gameplay never depends on it. Loaded from skin_path the first time it's read, unless set.
 @export var skin: ZoneSkin:

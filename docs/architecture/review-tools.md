@@ -39,7 +39,11 @@ an open street in any zone's look with side wall gaps as the generator places th
 one) and, with `--long`, the Beach's open stretches, each seen from the runner's camera on the approach, in the gap, from
 the outer lane and on the wall, out through the opening at floor, wall-run and ceiling heights, back at it from across
 the street and from above; every shot is a PNG of the viewport in `--out=DIR`, so either renderer and any window size
-work, `--skin=`, `--lanes=`, `--gap=N`, `--shot=a,b`, `--darkness=X`), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
+work, `--skin=`, `--lanes=`, `--gap=N`, `--shot=a,b`, `--darkness=X`), the Terminal's arches (`arch_wall_review`, task O1:
+a level's walls as its build places them, arches, the open space between them and a broken stump, in any skin, seen on
+the approach, from the outer lane, across the track, from the side and from above; a PNG per shot in `--out=DIR`,
+`--level=terminal/1`, `--skin=greybox|<zone>|<res path>`, `--lanes=N`, `--stump=N` (which stump to frame), `--shot=a,b`;
+it prints the walls' layout), the ceiling scenarios (`ceiling_scenario_review`, task I4: a campaign level's own
 treasure stash or fenced ceiling cut out of its build onto a fresh track in its zone's look and speed,
 `--scenario=stash|fenced`, `--level=id`, `--lanes=N`, `--take=return|floor|stay` for a stash and `safe|unsafe|floor`
 for a fenced ceiling, `--camera=game|look|side`, `--hitboxes`, `--reduced-flashing`, `--god`), the wall-hop credits

@@ -91,6 +91,17 @@ const WALL_GAP_RECESS_FLOOR: float = -8.0
 ## The default recess's faces, as a share of the way from the skin's gap_inside_color to a dim grey (CUT_RECESS_GREY).
 const WALL_GAP_RECESS_LIFT: float = 0.35
 const CUT_RECESS_GREY := Color(0.34, 0.34, 0.38)
+## The default broken stump of a side wall's section (wall_stump; task O1, the Terminal's arches): its top for a skin
+## with no `wall_height` (half the grey box's 9 m walls), how far back from the wall line it reaches and how far below
+## the street it goes (metres; the grey box's walls go as far down).
+const WALL_STUMP_HEIGHT: float = 4.5
+const WALL_STUMP_DEPTH: float = 1.0
+const WALL_STUMP_BOTTOM: float = -6.0
+## The default open space between a boundary wall's sections (wall_opening; task O1): a plain wall this far behind the
+## wall line, this tall, over a ground this far below the street (metres).
+const WALL_OPENING_DEPTH: float = 5.0
+const WALL_OPENING_TOP: float = 14.0
+const WALL_OPENING_FLOOR: float = -1.0
 ## A wall-run gap's lit wall's standard look (standard_wall_run_guide, task J2; metres, glow), the ramps' green
 ## chevrons as the Floating Head's wall marks show a wall run (FloatingHeadWallMarks): the stretch to step on is a tall
 ## panel (WALL_RUN_STEP_LOW to _HIGH), the wall over the gap a strip at running height (WALL_RUN_STRIP_LOW to _HIGH,
@@ -428,9 +439,35 @@ static func _commit_part(batch: MeshBatch, parent: Node3D, node_name: String) ->
 	return batch.commit(parent, node_name)
 
 
-## One side wall between two track distances. face_x is the wall face's signed world x.
+## One side wall between two track distances. face_x is the wall face's signed world x. In a level without wall
+## running (task O1; LevelLayout.wall_running off: the Terminal, whose walls are a row of narrow arches, GDD §5 Zone 8)
+## each call is one whole standing piece of wall, an arch, about a doodad's length (WallGapTuning.arch_length), drawn
+## once in the chunk where it starts (TrackBuilder._build_boundary_wall); in every other level the wall comes in pieces
+## cut at the chunks' edges and the gaps' ends, which must join seamlessly.
 func wall_section(_parent: Node3D, _side: int, _face_x: float, _start: float, _end: float) -> void:
 	pass
+
+
+## A broken stump of a side wall's section, from track distance `start` to `end` on wall `side` (`face_x` the wall
+## face's signed world x), in `parent`'s (world) space: task O1, GDD §5 Zone 8, the Terminal's arches, "where one side's
+## section is missing, that side shows a section cut off about halfway up, as if it had deteriorated over time or fallen
+## in an earthquake, a crumbled ruin". TrackBuilder calls it once for each stump (LevelLayout.wall_stumps), whole, in the
+## chunk where it starts, after the opening it stands in (wall_opening), opposite the other wall's arch. Visual only,
+## like every hook: no collision (the walls are a boundary there, and the runner never reaches them). It stands at the
+## wall line and back from it (never toward the lanes), and nothing on it glows or reads as a hazard. The default is a
+## plain box half the walls' height (half the skin's `wall_height` where it has one, else WALL_STUMP_HEIGHT), in the
+## zone's side-wall colour and lit material (dash_wall_colors()[0], dash_wall_material(), as the default dash wall
+## takes them), from below the street; a zone draws its own ruin (task O4, the Terminal's skin).
+func wall_stump(parent: Node3D, side: int, face_x: float, start: float, end: float) -> void:
+	var colors: PackedColorArray = dash_wall_colors()
+	var color: Color = colors[0] if not colors.is_empty() else CUT_RECESS_GREY
+	var height: Variant = get("wall_height")
+	var top: float = float(height) * 0.5 if height is float and float(height) > 0.0 else WALL_STUMP_HEIGHT
+	var batch := MeshBatch.new()
+	batch.layer(dash_wall_material()).box(
+		Vector3(face_x + side * WALL_STUMP_DEPTH * 0.5, (top + WALL_STUMP_BOTTOM) * 0.5, -(start + end) * 0.5),
+		Vector3(WALL_STUMP_DEPTH, top - WALL_STUMP_BOTTOM, end - start), color)
+	batch.commit(parent, "WallStump")
 
 
 ## A side wall gap's part between two track distances (LevelLayout.wall_gaps; the whole gap is
@@ -448,6 +485,31 @@ func wall_gap(parent: Node3D, side: int, face_x: float, start: float, end: float
 	wall_gap_marks(batch, side, face_x, start, end, gap)
 	if wall_gap_recess_on:
 		wall_gap_recess(batch, side, face_x, start, end, gap)
+	wall_gap_extras(batch, side, face_x, start, end)
+	batch.commit(parent)
+
+
+## The open space between two standing pieces of a side wall in a level without wall running (task O1;
+## LevelLayout.wall_running off: the Terminal, GDD §5 Zone 8: "the arches and the tunnel wall behind them are a
+## boundary"), its part between two track distances; the whole opening (a wall gap of the layout) is `gap`,
+## Vector2(start, end). TrackBuilder draws it instead of wall_gap() there (TrackBuilder._build_boundary_wall), once per
+## chunk it reaches, like any wall gap's part: no wall-running surface stops anywhere in such a level, so it has none of
+## wall_gap()'s orange marks. Visual only. What it shows is what lies behind the wall line (a tunnel wall, in the
+## Terminal), and with the left wall what a skin draws chunk by chunk below the street (the plane the walls carry).
+## A wall gap's recess (wall_gap_recess: an alley between two cut buildings, their end faces at the gap's ends) would
+## stand a building's end at every arch, so the default draws a plain wall instead, WALL_OPENING_DEPTH behind the wall
+## line all along the opening and WALL_OPENING_TOP tall, with no ends (the arches stand in front of it), over a ground
+## a little below the street (standard_wall_gap_recess, in the skin's gap_inside_color lifted toward grey as the
+## default recess is), and the skin's extras (wall_gap_extras), in one batch. A broken stump may stand in it
+## (wall_stump, drawn after it). The Terminal's skin draws its own (task O4).
+func wall_opening(parent: Node3D, side: int, face_x: float, start: float, end: float, gap: Vector2) -> void:
+	var batch := MeshBatch.new()
+	if wall_gap_recess_on:
+		var inside: Variant = get("gap_inside_color")
+		var base: Color = inside if inside is Color else CUT_INSIDE_COLOR
+		# The gap given past both ends of the part: no end faces.
+		standard_wall_gap_recess(batch.layer(MeshKit.solid()), side, face_x, start, end, Vector2(gap.x - 1.0, gap.y + 1.0),
+			base.lerp(CUT_RECESS_GREY, WALL_GAP_RECESS_LIFT), base, WALL_OPENING_TOP, WALL_OPENING_FLOOR, WALL_OPENING_DEPTH)
 	wall_gap_extras(batch, side, face_x, start, end)
 	batch.commit(parent)
 

@@ -14,7 +14,8 @@ extends RefCounted
 ## 2 (September 30, 2026): armor became a permanent upgrade to the free armor (GDD §4, §8).
 ## 3 (October 8, 2026): The House moved from the Marketplace to the new Casino zone (GDD §5, §10).
 ## 4 (October 10, 2026): a new Beach 2, the volleyball match, came in before Sunset Strip, now Beach 3 (GDD §5).
-const VERSION: int = 4
+## 5 (October 20, 2026): the Terminal came in between the Dead Zone and the Golden Zone, now zone 9 (GDD §5).
+const VERSION: int = 5
 ## What one unit of armor cost while it was a breakable item (save version 1; the shop never priced it
 ## otherwise): a version 1 save's armor stock is paid back at this price. A record of the past, not a
 ## tunable.
@@ -29,6 +30,10 @@ const V3_HOUSE_HINTS: String = "hint/casino_boss"
 ## The step id save version 4 moved (Sunset Strip's, from Beach 2 to Beach 3; _migrate): records of the past.
 const V3_SUNSET_STEP: String = "beach/2"
 const V4_SUNSET_STEP: String = "beach/3"
+## The outro save version 5 counts again (the Dead Zone's, which led to the Golden Zone, as the Terminal's, whose
+## place before the Golden Zone it was; _migrate): records of the past.
+const V4_GOLDEN_GATE: String = "dead_zone/outro"
+const V5_GOLDEN_GATE: String = "terminal/outro"
 
 ## Credits earned in play and not spent (the wallet's part of the net worth, GDD §7).
 var earned: int = 0
@@ -417,6 +422,14 @@ static func from_dict(d: Dictionary) -> Profile:
 ##   Beach 2 to Beach 3. Its records (every tier's "beach/2": stars, best score and time) become "beach/3"'s, so a
 ##   player who finished it keeps it, and the new Beach 2 stays to play: open, since Beach 1 is done
 ##   (App.step_unlocked), and the first step not done, so Continue leads to it.
+## - 4 → 5: the Terminal came in as zone 8, between the Dead Zone and the Golden Zone (owner, October 20, 2026), with
+##   no boss: its intro, two levels and outro. The Golden Zone's step ids stay as they were, so its records are kept as
+##   they are; but its intro's step before is now the Terminal's outro, no longer the Dead Zone's outro. The Dead Zone's
+##   old outro came after its boss and led to the Golden Zone, the Terminal's outro's place now, as the Marketplace's did
+##   to Corporate when the Casino came in: a finished one also counts as the Terminal's outro finished (the Dead Zone's
+##   own stays finished too), so the Golden Zone's intro stays open to a player who had reached it (App.step_unlocked).
+##   The Terminal's intro is open too (the Dead Zone's outro is done) and is the first step not done, so Continue leads
+##   into the Terminal. DESIGN-TBD (docs/questions/o1.md): that a save keeps the Golden Zone open.
 func _migrate(from: int) -> void:
 	if from < 2:
 		var refund: int = stock(&"armor") * V1_ARMOR_PRICE
@@ -442,6 +455,12 @@ func _migrate(from: int) -> void:
 			var prefix: String = key.get_slice("/", 0) + "/"
 			if key.trim_prefix(prefix) == V3_SUNSET_STEP:
 				_move_record(key, prefix + V4_SUNSET_STEP)
+	if from < 5:
+		for key: String in records.keys():
+			var tier_prefix: String = key.get_slice("/", 0) + "/"
+			if key.trim_prefix(tier_prefix) == V4_GOLDEN_GATE and bool((records[key] as Dictionary).get("completed", false)) \
+					and not records.has(tier_prefix + V5_GOLDEN_GATE):
+				records[tier_prefix + V5_GOLDEN_GATE] = (records[key] as Dictionary).duplicate()
 
 
 ## What the outfits owned cost at the catalog's prices, capped by what the save could have paid them with: never more than
