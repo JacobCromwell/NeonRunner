@@ -519,7 +519,8 @@ func _arches(skin: TerminalSkin) -> void:
 			check(skin.arches().piers(80.0, 120.0).size() >= 2, "a long wall section gets several arches (%s)" % tag)
 			check(skin.arches().piers(100.0, 103.6).size() == 1, "a section a space long gets one (%s)" % tag)
 			long_root.queue_free()
-			# A wall gap: no marks (no wall running), nothing glowing.
+			# A wall gap (called only in a level with wall running: this skin on another zone's level) keeps the base
+			# look: the orange marks where the wall-running surface stops. The Terminal's own openings are wall_opening, below.
 			var gap_root := Node3D.new()
 			tree.root.add_child(gap_root)
 			skin.wall_gap(gap_root, side, side * wall, 103.6, 126.0, Vector2(103.6, 126.0))
@@ -528,7 +529,7 @@ func _arches(skin: TerminalSkin) -> void:
 				for s: int in (node as MeshInstance3D).mesh.get_surface_count():
 					for c: Color in (node as MeshInstance3D).mesh.surface_get_arrays(s)[Mesh.ARRAY_COLOR]:
 						glow += int(c.a > 0.0)
-			check(glow == 0, "a missing arch is not marked: no wall-gap glow (%d, %s)" % [glow, tag])
+			check(glow > 0, "a wall gap in a wall-running level keeps its orange marks (%d, %s)" % [glow, tag])
 			gap_root.queue_free()
 			# The open space between two arches (O1's wall_opening hook, once per chunk it reaches) draws nothing: the hall shows.
 			var opening_root := Node3D.new()
