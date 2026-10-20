@@ -280,15 +280,10 @@ func wall_opening(_parent: Node3D, _side: int, face_x: float, _start: float, _en
 	_wall_x = absf(face_x)
 
 
-## A wall gap draws no orange marks here: the Terminal has no wall running (GDD §5), so a missing arch is not a hazard
-## and nothing marks it. The open space shows the hall beyond, which the floor draws (TerminalHall).
-func wall_gap_marks(_batch: MeshBatch, _side: int, _face_x: float, _start: float, _end: float, _gap: Vector2) -> void:
-	pass
-
-
-## What a wall gap shows behind it: the hall, drawn with the floor, so nothing more.
-func wall_gap_recess(_batch: MeshBatch, _side: int, face_x: float, _start: float, _end: float, _gap: Vector2) -> void:
-	_wall_x = absf(face_x)
+# Wall gaps keep the base look (wall_gap_marks, wall_gap_recess): the TrackBuilder calls wall_gap only in a level
+# with wall running, where a gap's orange marks are the warning that the wall-running surface stops (this skin on any
+# other level, e.g. quick play's --skin=terminal). The Terminal's own levels have no wall running and call
+# wall_opening instead, above.
 
 
 # --- Hazards, ceilings, triggers ------------------------------------------------------------------
