@@ -69,6 +69,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Wall hop** (owner's playtest, October 9, 2026): jumping off a wall and straight back onto it starts a fresh wall run, so a skilled player can stay on a wall **as long as they like**. The owner likes it: it's a move players are meant to discover for themselves, and it **must not be patched out**.
 - **Signs:** block wall entry, and colliding with one causes damage. A blocked entry plays a metallic clank **and a small sideways bump**, so the player sees why they didn't get onto the wall (decided September 26, 2026).
 - **Vents** exist **only at the bottom of walls**, which punishes lingering (see Sewer Screech).
+- **The Terminal has no wall running** (owner, October 20, 2026): its side walls are narrow arches, and they and the tunnel wall behind them are a boundary (§5, Zone 8).
 - **Wall-run gaps** (owner, October 15, 2026): some sections, especially in later zones and levels, have a gap over **every floor lane**, and the only way across is a **wall run**. Here the wall is an accepted, safe path. They begin in the Marketplace.
   - **The guide only where they're introduced** (owner, October 17, 2026): the green lit wall that shows the way is right for the zone that brings wall-run gaps in (the Marketplace), but too easy later. **Later zones show no guide**, so the player has to work it out, unless a zone made a speed boost necessary to cross (none does). *(Open: item 932, whether the safe wall needs another cue.)*
 
@@ -78,7 +79,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
 - **Duration:** the player stays on the ceiling until the ship's hull ends, then drops back down.
 - **The floor beneath may be dangerous** (changed September 26, 2026, replacing the September 25 rule that kept it clear). The ceiling is a way to **escape the danger on the floor**, so the floor under a ceiling may hold gaps, hazards and enemies.
 - **Safe landing zone:** wherever the player drops from a ceiling back to the floor, the floor is always safe to land on. **Exception:** the Beach's boss fight, where a ceiling may end over floor Mecha Guppy has eaten, and one safe place to drop to is enough (owner, October 10, 2026; §10). The owner wants this rule revisited for the levels too: "often the ceiling is way too safe" (October 10, 2026; `docs/OPEN_QUESTIONS.md` item 766).
-- **Every zone has ceilings** (decided September 26, 2026). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
+- **Every zone has ceilings** (decided September 26, 2026). The Terminal's are few and all one lane wide: short cuts over its debris maze (owner, October 20, 2026; §5, Zone 8). What forms them changes from zone to zone (see §5). The in-world reason for a ceiling is up to each zone's skin: anything that makes sense in that zone's fiction (ships, building undersides, bridges, elevated roads, floating ads, archways).
 - **Ceilings don't have to cover every lane** (decided September 26, 2026). The player can switch lanes only within the ceiling's width. A **one-lane ceiling** is simply ridden out, so it must be **very short and relatively safe**.
 - **The ceiling is never required:** the floor route under a ceiling is always survivable without taking the pad. The ceiling is the easier route (decided September 26, 2026).
 - **Ceiling hazards** (decided September 26, 2026): ceilings may carry hazards of their own, but none in zones 1–2 *(proposed; owner agreed)*. The first is the **Barnacle Turret** (§9.8), introduced in the Marketplace.
@@ -114,6 +115,7 @@ A 3D endless-runner-style action game set in a neon cyberpunk future. The player
     - The Marketplace: a potted palm or a flowering bush (small), a vendor's stall with a wooden base, a post in each corner, a striped little roof and its goods in the open middle (medium), a bank of slot machines back to back (large).
     - Corporate: a steel planter with a trimmed shrub (small), a glass security booth (medium), a military supply container (large).
     - The Dead Zone: a broken concrete column (small), a rubble heap (medium), a burned-out bus (large).
+    - The Terminal: debris, lower than other zones' doodads, which stops the runner instead of pushing (owner, October 20, 2026; §5, Zone 8).
     - The Golden Zone, outdoors and in the Golden Palace: a robed statue on a plinth or a gilded urn with a shrub (small), a wall fountain (medium), a colonnade with red drapes (large).
   - A doodad doesn't show which way it will push (owner, October 9, 2026: no hint needed).
   - Its outline may dip below the full height at its edges (the rubble heap) as long as its middle stays high, so it still reads as too tall to jump. Doodads are lit like the street around them, with no coloured edge glow.
@@ -156,7 +158,7 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 ### Zone roster (decided September 26, 2026)
 **Every zone is set in the same future, vaguely cyberpunk world.** No zone looks historical: the Marketplace is not a medieval market. Zones may be dustier or dirtier than the Neon City, but they stay futuristic.
 
-**Eight zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section. The **Casino** was added as Zone 4 by the owner on October 8, 2026, between the Marketplace and Corporate; the zones after it moved down one place. The **Beach** was added by the owner on October 9, 2026, between Corporate and the Dead Zone (zone 6 since the Casino joined).
+**Nine zones** at launch, in the order below. Each zone has 1–3 levels, never more than 3; see the schedule at the end of this section. The **Casino** was added as Zone 4 by the owner on October 8, 2026, between the Marketplace and Corporate; the zones after it moved down one place. The **Beach** was added by the owner on October 9, 2026, between Corporate and the Dead Zone (zone 6 since the Casino joined). **The Terminal** was added by the owner on October 20, 2026, between the Dead Zone and the Golden Zone, which moved to zone 9.
 
 | # | Zone | Mood (reference) | Palette |
 |---|---|---|---|
@@ -167,7 +169,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | 5 | **Corporate** | A more oppressive Blade Runner, with corporate and military themes | Steel and gunmetal grey, military olive, cold and sterile white light, and one harsh brand colour (chosen by the art agent, away from the hazard colours) |
 | 6 | **Beach** (owner, October 9, 2026) | A festive cyberpunk party beach: bamboo tiki bars, surf shops and lounges by the sea *(proposed, from the owner's reference image)* | Warm sand, honey bamboo and timber, straw thatch, a turquoise sea, black rust-streaked steel; decorative neon in violet, blue and warm white *(proposed)* |
 | 7 | **Dead Zone** | Eerie, quiet, haunting | Dark black, dark grey and ash grey |
-| 8 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
+| 8 | **The Terminal** (owner, October 20, 2026) | An abandoned, half-flooded subway station choked with debris: rusted trains overgrown with vines, dripping water, steam, dead departure boards, tangled cables, a few failing orange work lamps (reference: `docs/art/reference/terminal_zone.jpg`) | Rust, verdigris and wet black stone, sodium-orange lamplight through haze and steam, vine green *(proposed, from the reference image)* |
+| 9 | **Golden Zone** | Decadent opulence | A white and slightly creamy base with red and gold accents. There must be some gold to show the wealth, but it isn't the only colour. |
 
 **Zone 1: Neon City.** Floor: roofs of trucks driving toward the player; gaps between trucks. Walls: building facades with signs. Ceilings: undersides of low-flying ships.
 
@@ -202,7 +205,25 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 **Zone 7: Dead Zone.** A blackened, bombed-out husk of the city: rubble, embers, smoke and silence, with not much life. Fires are kept minimal. Floor: a rubble street *(proposed; owner agreed)*. Ceilings: only the remains of the destroyed city, such as the undersides of dead buildings and crumbling, charred grey bridges. **The Cyborg's Bad Dream first appears here.**
 
-**Zone 8: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
+**Zone 8: the Terminal** (owner, October 20, 2026; reference image `docs/art/reference/terminal_zone.jpg`). An **abandoned subway** under the city, now used only by **a few scavengers** and the **cybernetic centipedes** that hunt there.
+- **Look:** the reference image: vaulted tunnels and platforms, rusted and vine-covered subway cars, dead departure boards, cables strung everywhere, puddles and dripping water, steam, and failing orange work lamps. **Full of debris.**
+- **Floor and gaps:** the track bed and platforms *(proposed)*. Gaps in the floor: *(open)* whether the Terminal has any.
+- **Scavengers:** scenery only, like the Marketplace's citizens *(proposed)*.
+- **Enemies:** **only the cybernetic centipedes**, a new enemy the owner will describe later. **None of the usual enemies** appear in the Terminal (no cyborgs, drones, trucks, screeches or the rest).
+- **The debris maze** (owner, October 20, 2026): the Terminal's first level brings in **a new way to play**. Doodads (§3, Zone doodads) stand so thickly that **the empty space between them forms a maze**, and the runner **can't get through without dashing**. The player has to **look and think ahead** to choose where to **break through with the dash** to reach the end.
+  - **A doodad stops the runner** here instead of pushing them aside (with doodads on both sides, a push would usually land in another one): running into a Terminal doodad brings the runner to **a complete stop**, facing it. *(Proposed)* A stop costs nothing but time; the runner sets off again by switching into an open lane or by dashing through.
+  - **The dash recharges as usual** (owner, October 20, 2026): a runner who meets a wall of debris before the dash is ready **stands and waits**, and the waiting costs time. No faster recharge and no spacing rule in the maze.
+  - **The dash is required.** A player without it can't finish a maze level and has to go back and buy it. The owner accepts this: nearly every player owns the dash by then (it is the shop's first item, §8).
+  - **Shorter doodads** (owner, October 20, 2026): the Terminal's doodads are **lower than standard doodads**, so the player can see the maze's open paths over them. *(Proposed)* still too tall to jump, and they read so.
+  - **Looks:** debris that fits the reference image *(proposed: a heap of broken concrete and rebar, a toppled ticket kiosk or vending machine, fallen ceiling slabs, a tangle of cable drums and crates)*.
+- **Ceilings: few, single-lane shortcuts** (owner, October 20, 2026). Anti-grav pads and ceilings remain, but **every ceiling is one lane wide** and there are **very few** of them. They are **little shortcuts** over part of the maze, not a way to be safe or to fight enemies as in earlier zones. *(Proposed)* the underside of a fallen girder, a hanging walkway or a stranded subway car's roof.
+- **Side walls: narrow arches** (owner, October 20, 2026). To read as the old subway's tunnel arches or structural supports, each **wall section is one space wide** (about a standard doodad's width), with **about six lengths of open space** before the next one.
+  - **Mostly symmetrical:** the arches stand in pairs, left and right.
+  - **A missing one is a broken stump:** where one side's section is missing, that side shows a section **cut off about halfway up**, as if it had deteriorated over time or fallen in an earthquake, a **crumbled ruin**.
+  - **No wall running** (owner, October 20, 2026): the arches and the tunnel wall behind them are a boundary, so the maze can't be bypassed along a wall. *(Proposed)* moving past the outer lane bumps the runner back, like a sign's blocked entry, without damage.
+- **Two levels, no boss** (owner, October 20, 2026): level 1 is **the debris maze**; level 2 is **a normal run with stretches of maze**. The Terminal has **no boss fight**; it leads straight into the Golden Zone. Level names *(open)*.
+
+**Zone 9: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
 - **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
 - **Final level: the Golden Palace.** The player runs **inside** the palace, which is so huge and grand that its interior is basically the size of a city. It plays like any other level; only the skin is an interior (floors, walls and ceilings are the palace's own halls, galleries and arches). The final boss follows it.
 
@@ -238,7 +259,9 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 3 · Sunset Strip | The same remix as Tiki Tides as the sun starts to set |
 | 7. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
 | | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
-| 8. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
+| 8. The Terminal | 1 · *(name open)* | The **debris maze** and the **cybernetic centipedes** (owner, October 20, 2026; the centipedes to be described): doodads stop the runner, and the dash breaks the way through |
+| | 2 · *(name open)* | A normal run with stretches of the debris maze; centipedes only. **No boss** |
+| 9. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
 
@@ -252,7 +275,7 @@ Level names approved by the owner (September 26, 2026; the Casino's on October 9
 - **The boss fight after a level keeps that level's sky** (the Sewer Swarm under Gangland 3's; The House, which follows Casino 2 since the Casino was added, under the Casino's own sky). *(Proposed)* So does the boss's intro between them (the Sewer Swarm's), so the sky holds from the level to the fight.
 - **The street's light follows the sky** (dimmer and pinker under the sunset, redder under the blood-red sky, a touch of pink at dawn). The sky, the distant haze and the scenery's light change; hazards, the runner and the enemies keep their colours and light, and the sky never glows. *(Proposed)* A boss built like the street (The House's cabinet, the Swarm Host's body and pipe) is lit like it, as a level's darkness already lights it; its glowing parts (weak points, reels, buttons, warnings) keep theirs.
 
-**20 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Beach's, Mecha Guppy and Captain Cogs, designed on October 10, 2026, §10; the Beach's volleyball match is its second level since October 10, 2026). A flawless run through every level takes about 45 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
+**22 levels plus 7 bosses** (the Marketplace has no boss since the Casino was added, owner, October 8, 2026; the Terminal's two levels have none, owner, October 20, 2026; the Beach's, Mecha Guppy and Captain Cogs, designed on October 10, 2026, §10; the Beach's volleyball match is its second level since October 10, 2026). A flawless run through every level takes about 45 minutes. With retries and bosses, a first playthrough is estimated at 60–90 minutes.
 
 **Rules:**
 - Identical gameplay behavior under every skin.
