@@ -160,9 +160,10 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
       None of the usual enemies, no dash walls, a couple of holes and a few one-lane ceilings; its side walls
       are narrow arches (now and then one side's a broken stump) with open space between them, and there is no wall
       running: a move past the outer lane bumps you back with the clank. The debris maze over most of the level
-      (task O2): lower debris that stops you dead rather than pushing you aside, standing in walls and corridors you
-      get through by switching into an open lane or dashing through, waiting for the dash where it isn't back yet;
-      a few one-lane ceilings are shortcuts over a block's last wall. The Cybernetic Centipede is still to come.
+      (task O2): lower debris that stops you in your tracks rather than pushing you aside, standing in walls and
+      corridors you get through by switching into an open lane or dashing through, waiting for the dash where it isn't
+      back yet; a few one-lane ceilings are shortcuts over a block's last wall. The Cybernetic Centipede is still to
+      come.
       Like the Beach's, its levels sit between their neighbours in difficulty, off the campaign's curve.
   19. Terminal 2 *Last Stop*: the same rules, a normal run with stretches of the maze, then straight on to the Golden
       Zone (no boss).

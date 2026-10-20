@@ -45,10 +45,11 @@ extends RefCounted
 ##
 ## For what lives in the maze (task O3's centipedes, GDD §9.15: they wait "in the open sections between the debris",
 ## move along its open paths and "can't pass debris"): sections() lists every open section (a block's run-in, each
-## room's cells, its breather), links() which of them join without a dash (through an opening; with `broken`, also
-## where a dash has smashed a wall's or a divider's piece on this attempt), open_group() the sections one can reach
-## from another along them, section_at() the section a spot of the track is in, and min_breaks() the least dashes a
-## block takes. DESIGN-TBD (docs/questions/o2.md): every number (DebrisMazeTuning), the model, the ceilings.
+## room's cells, its breather, and with `broken` each stretch of a divider that dashes have smashed on this attempt),
+## links() which of them join without a dash (through an opening; with `broken`, also through the wall pieces and divider
+## stretches smashed on this attempt), open_group() the sections one can reach from another along them, section_at()
+## the section a spot of the track is in, and min_breaks() the least dashes a block takes. DESIGN-TBD
+## (docs/questions/o2.md): every number (DebrisMazeTuning), the model, the ceilings.
 
 const FEATURE: String = "debris_maze"
 const TUNING_PATH: String = "res://data/tuning/debris_maze.tres"
@@ -73,6 +74,9 @@ const DROP_MARGIN: float = 2.0
 const RISE_MARGIN: float = 0.15
 ## Seconds of run on top of a wider gap's zone kept free between two blocks (place, gap_room).
 const GAP_ROOM_MARGIN: float = 0.25
+## How far before a wall's front and past its back links() looks for what a smashed piece of it opens onto (metres):
+## less than the sliver (TOUCH) between a wall and a divider's first piece.
+const LINK_EPSILON: float = 0.01
 
 
 ## The maze's numbers for `config`: its own (LevelConfig.debris_maze_tuning), else data/tuning/debris_maze.tres.
@@ -690,8 +694,11 @@ static func min_breaks(b: Dictionary, lanes: int) -> int:
 ## Every open section of `layout`'s debris maze, in order of the track: for each block its run-in, each room's cells
 ## left to right, and its breather, each {block, room, first, last, start, end} (lanes `first` to `last` open from track
 ## distance `start` to `end`; `room` -1 for the run-in, the room's index for a cell, the block's room count for the
-## breather). An index into this list is a section's id for links(), open_group() and section_at().
-static func sections(layout: LevelLayout) -> Array[Dictionary]:
+## breather). An index into this list is a section's id for links(), open_group(), section_id() and section_at(). With
+## `broken`, after all of those (so their ids stay as they are), each stretch of a divider that dashes have smashed on
+## this attempt (broken_stretches(): its pieces' layout entries marked "smashed") as a section of its own, marked
+## `broken`.
+static func sections(layout: LevelLayout, broken: bool = false) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var lanes: int = layout.lane_count
 	for i: int in layout.maze.size():
@@ -706,72 +713,153 @@ static func sections(layout: LevelLayout) -> Array[Dictionary]:
 					"end": float(room["end"])})
 		out.append({"block": i, "room": rooms.size(), "first": 0, "last": lanes - 1, "start": float(b["end"]),
 			"end": float(b["exit"])})
+	if broken:
+		out.append_array(broken_stretches(layout))
+	return out
+
+
+## Each stretch of a divider that dashes have smashed on this attempt (its pieces' layout entries marked "smashed", as
+## DashBreakable.smash marks them), in order of block, room and lane, as a section: {block, room, first, last (both its
+## lane), start, end, broken: true}. Pieces next to each other (TOUCH apart) make one stretch, which runs on to the room's
+## start or end where it holds the room's first or last piece in its lane (the sliver by the wall is open floor with it).
+static func broken_stretches(layout: LevelLayout) -> Array[Dictionary]:
+	var pieces: Dictionary = {}  # Vector3i(block, room, lane) -> the divider's pieces
+	for d: Dictionary in layout.doodads:
+		if LevelLayout.is_maze_debris(d) and String(d["part"]) == "divider":
+			var key := Vector3i(int(d["maze"]), int(d["index"]), int(d["lane"]))
+			if not pieces.has(key):
+				pieces[key] = []
+			(pieces[key] as Array).append(d)
+	var out: Array[Dictionary] = []
+	for i: int in layout.maze.size():
+		var rooms: Array = layout.maze[i]["rooms"]
+		for r: int in rooms.size():
+			var room: Dictionary = rooms[r]
+			for lane: Variant in room["dividers"]:
+				var list: Array = pieces.get(Vector3i(i, r, int(lane)), [])
+				list.sort_custom(func(a: Dictionary, c: Dictionary) -> bool: return float(a["start"]) < float(c["start"]))
+				var k: int = 0
+				while k < list.size():
+					if not bool((list[k] as Dictionary).get("smashed", false)):
+						k += 1
+						continue
+					var first: int = k
+					while k + 1 < list.size() and bool((list[k + 1] as Dictionary).get("smashed", false)):
+						k += 1
+					out.append({"block": i, "room": r, "first": int(lane), "last": int(lane),
+						"start": float(room["start"]) if first == 0 else float((list[first] as Dictionary)["start"]),
+						"end": float(room["end"]) if k == list.size() - 1 else float((list[k] as Dictionary)["end"]),
+						"broken": true})
+					k += 1
 	return out
 
 
 ## Where the sections of `layout`'s maze (`secs`, as sections() gives them) join without a dash, each {from, to, lane,
-## at, kind} (section ids, `from` the earlier along the track): an opening of a wall joins the sections either side of it
-## in its lane (`at` the wall's front, kind "opening"). With `broken`, also where a dash has smashed a piece on this
-## attempt (its layout entry marked "smashed"): a wall's piece joins the sections either side in its lane like an
-## opening, where its lane is open there (kind "broken"); a divider's piece joins the cells either side of it in its room
-## over its stretch (`at` its front, kind "broken"; the smashed lane between them is open there). A runner goes only
-## forward along them; anything else may go either way.
+## at, kind} (section ids): an opening of a wall joins the sections either side of it in its lane (`from` the earlier
+## along the track, `at` the wall's front, kind "opening"). With `broken`, also what dashes have opened on this attempt
+## (the smashed pieces' entries), kind "broken": lanes side by side open through a wall (its openings and smashed pieces)
+## with a smashed piece among them are one breach, open floor across those lanes, which joins everything open right before
+## its front and right past its back in them (a cell, the run-in, the breather, or a smashed stretch of a divider there;
+## `from` one before the wall where there is one, `at` the wall's front); and a smashed stretch of a divider joins each
+## cell beside it in its room (`from` the stretch, `at` its start; one in an edge lane has one cell beside it). `secs` may
+## be sections(layout) or, taken after the smashes, sections(layout, true): a smashed stretch has the same id either way
+## (after the plain sections, in broken_stretches()' order), so open_group() over these links groups the plain sections
+## the same with either. Links say which open floor meets which: a runner goes only forward along them (and needs room
+## for a lane switch: MazeRoute's to judge), anything else may go either way.
 static func links(layout: LevelLayout, secs: Array[Dictionary], broken: bool = false) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	var lanes: int = layout.lane_count
-	var smashed_walls: Dictionary = {}  # "block:wall" -> lanes
-	var smashed_dividers: Array[Dictionary] = []
+	var all: Array[Dictionary] = secs
+	var smashed_walls: Dictionary = {}  # Vector2i(block, wall) -> its smashed pieces' lanes
 	if broken:
+		var stretches: bool = false
+		for s: Dictionary in secs:
+			stretches = stretches or bool(s.get("broken", false))
+		if not stretches:
+			all = secs.duplicate()
+			all.append_array(broken_stretches(layout))
 		for d: Dictionary in layout.doodads:
-			if not LevelLayout.is_maze_debris(d) or not bool(d.get("smashed", false)):
-				continue
-			if String(d["part"]) == "wall":
-				var key: String = "%d:%d" % [int(d["maze"]), int(d["index"])]
+			if LevelLayout.is_maze_debris(d) and String(d["part"]) == "wall" and bool(d.get("smashed", false)):
+				var key := Vector2i(int(d["maze"]), int(d["index"]))
 				if not smashed_walls.has(key):
 					smashed_walls[key] = []
 				(smashed_walls[key] as Array).append(int(d["lane"]))
-			else:
-				smashed_dividers.append(d)
 	for i: int in layout.maze.size():
-		var b: Dictionary = layout.maze[i]
-		var walls: Array = b["walls"]
+		var walls: Array = layout.maze[i]["walls"]
 		for w: int in walls.size():
 			var wall: Dictionary = walls[w]
-			var lanes_through: Array = (wall["open"] as Array).duplicate()
-			var kinds: Dictionary = {}
-			for lane: Variant in lanes_through:
-				kinds[int(lane)] = "opening"
-			for lane: Variant in smashed_walls.get("%d:%d" % [i, w], []):
-				if not kinds.has(int(lane)):
-					kinds[int(lane)] = "broken"
-			for lane: int in kinds:
-				var before: int = section_id(secs, i, w - 1, lane)
-				var after: int = section_id(secs, i, w, lane)
+			for lane: Variant in wall["open"]:
+				var before: int = section_id(all, i, w - 1, int(lane))
+				var after: int = section_id(all, i, w, int(lane))
 				if before >= 0 and after >= 0:
-					out.append({"from": before, "to": after, "lane": lane, "at": float(wall["start"]), "kind": kinds[lane]})
-	for d: Dictionary in smashed_dividers:
-		var block: int = int(d["maze"])
-		var room: int = int(d["index"])
-		var lane: int = int(d["lane"])
-		var left: int = section_id(secs, block, room, lane - 1)
-		var right: int = section_id(secs, block, room, lane + 1)
-		if left >= 0 and right >= 0 and lane > 0 and lane < lanes - 1:
-			out.append({"from": left, "to": right, "lane": lane, "at": float(d["start"]), "kind": "broken"})
+					out.append({"from": before, "to": after, "lane": int(lane), "at": float(wall["start"]), "kind": "opening"})
+			var smashed: Array = smashed_walls.get(Vector2i(i, w), [])
+			if not smashed.is_empty():
+				out.append_array(_breach_links(all, wall, smashed, layout.lane_count))
+	if broken:
+		for id: int in all.size():
+			var s: Dictionary = all[id]
+			if not bool(s.get("broken", false)):
+				continue
+			var lane: int = int(s["first"])
+			for side: int in [lane - 1, lane + 1]:
+				var cell: int = section_id(all, int(s["block"]), int(s["room"]), side)
+				if cell >= 0:
+					out.append({"from": id, "to": cell, "lane": lane, "at": float(s["start"]), "kind": "broken"})
+	return out
+
+
+## The "broken" links through wall `wall` (a block record's) whose pieces in lanes `smashed` dashes have smashed (links()):
+## each run of lanes side by side open through it, its openings and smashed pieces, with a smashed one among them, joins
+## the sections of `secs` open right before its front and right past its back in those lanes, all to the first of them
+## (one before the wall where there is one).
+static func _breach_links(secs: Array[Dictionary], wall: Dictionary, smashed: Array, lanes: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var lane: int = 0
+	while lane < lanes:
+		if not (smashed.has(lane) or (wall["open"] as Array).has(lane)):
+			lane += 1
+			continue
+		var breached: bool = false
+		var before: Array[Vector2i] = []  # Vector2i(section id, lane)
+		var after: Array[Vector2i] = []
+		while lane < lanes and (smashed.has(lane) or (wall["open"] as Array).has(lane)):
+			breached = breached or smashed.has(lane)
+			var near: int = section_at(secs, lane, float(wall["start"]) - LINK_EPSILON)
+			var far: int = section_at(secs, lane, float(wall["end"]) + LINK_EPSILON)
+			if near >= 0:
+				before.append(Vector2i(near, lane))
+			if far >= 0:
+				after.append(Vector2i(far, lane))
+			lane += 1
+		if not breached:
+			continue
+		var ends: Array[Vector2i] = before.duplicate()
+		ends.append_array(after)
+		if ends.is_empty():
+			continue
+		var hub: int = ends[0].x
+		var joined: Array[int] = [hub]
+		for e: Vector2i in ends:
+			if not joined.has(e.x):
+				joined.append(e.x)
+				out.append({"from": hub, "to": e.x, "lane": e.y, "at": float(wall["start"]), "kind": "broken"})
 	return out
 
 
 ## The id of the section of block `block`'s room `room` (-1 the run-in, the room count the breather) holding `lane`, in
-## `secs` (sections()), or -1 (a divider there, or no such room).
+## `secs` (sections()), or -1 (a divider there, or no such room). Never a smashed stretch of a divider: section_at() finds
+## those by where they are.
 static func section_id(secs: Array[Dictionary], block: int, room: int, lane: int) -> int:
 	for id: int in secs.size():
 		var s: Dictionary = secs[id]
-		if int(s["block"]) == block and int(s["room"]) == room and lane >= int(s["first"]) and lane <= int(s["last"]):
+		if int(s["block"]) == block and int(s["room"]) == room and lane >= int(s["first"]) and lane <= int(s["last"]) \
+				and not bool(s.get("broken", false)):
 			return id
 	return -1
 
 
-## The id of the section of `secs` (sections() of `layout`) holding track distance `at` in `lane`, or -1 (debris there,
-## or no maze).
+## The id of the section of `secs` (sections() of `layout`) holding track distance `at` in `lane`, or -1 (standing debris
+## there, or no maze). With sections(layout, true), a spot in a smashed stretch of a divider is in that stretch's section.
 static func section_at(secs: Array[Dictionary], lane: int, at: float) -> int:
 	for id: int in secs.size():
 		var s: Dictionary = secs[id]

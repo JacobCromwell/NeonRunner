@@ -784,6 +784,8 @@ func _into_pushed_from(target: int) -> bool:
 ## moves along the face of what holds them: beside them only what's level with the body counts, and a doodad in that
 ## lane whose front is level with the one holding them (within STOP_FACE_SLACK: a wall of debris across both lanes) is
 ## no obstacle, they stop at it the moment they're in its lane (_start_switch holds them meanwhile, _slide_hold).
+## DESIGN-TBD (docs/questions/o2.md, questions 3 and 5): a stopped runner's switch into debris refused with the clank, the
+## slide along a wall's face, and the look ahead that refuses a switch which would meet a doodad's side.
 func _lane_blocked(target: int, dash_through: bool = false) -> bool:
 	if target < 0 or target >= geo.lane_count:
 		return false
@@ -1393,7 +1395,8 @@ func _check_doodads(motion: float) -> void:
 ## to _check_stopping_doodads. Only on the floor and out of a pit. A stop costs nothing but time: the level clock goes
 ## on (elapsed), the distance waits, and the run speed comes back as soon as the way ahead is clear (a switch out, the
 ## dash). A stopped runner moving along the face of what holds them (_slide_hold) stays held until they're across.
-## DESIGN-TBD (docs/questions/o2.md): the stop and the setting off are instant.
+## DESIGN-TBD (docs/questions/o2.md, questions 2 and 4): the stop and the setting off are instant, and a jump or a slide
+## while stopped plays out where the runner stands.
 func _stop_motion(motion: float) -> float:
 	if surface != Surface.FLOOR or in_pit or motion <= 0.0:
 		_slide_hold = false
@@ -1473,6 +1476,7 @@ func _check_stopping_doodads(motion: float) -> void:
 ## into the lane beside it on the body's side, the one it came from, with the push's quick shove (the lane switch
 ## machinery over doodad_push_time, _push_x) and the blocked move's clank (`lane_blocked`); the doodad is left alone
 ## while the shove carries them (it moves them once). False (nothing done) if there's no lane on that side.
+## DESIGN-TBD (docs/questions/o2.md, question 5): the shove back out, and its clank.
 func _start_bounce(area: Area3D, doodad_lane: int) -> bool:
 	var target: int = doodad_lane + (1 if _x > geo.lane_x(doodad_lane) else -1)
 	if target < 0 or target >= geo.lane_count:
@@ -1495,6 +1499,7 @@ func _start_bounce(area: Area3D, doodad_lane: int) -> bool:
 ## _lane_blocked; metres): the track the body runs (at the run speed at least: a stopped runner sets off as soon as it's
 ## clear of the doodad ahead) before its side comes in line with the narrowest doodad's side in that lane, as a switch
 ## eases across (_switch_x), and STOP_SWITCH_MARGIN. A doodad starting nearer would meet the body's side, not its front.
+## DESIGN-TBD (docs/questions/o2.md, question 5): refusing such a switch rather than letting it play out.
 func _stop_switch_ahead() -> float:
 	var narrowest: float = minf(tuning.doodad_small_width, minf(tuning.doodad_medium_width, tuning.doodad_large_width))
 	var across: float = geo.lane_width - narrowest * 0.5 - tuning.visual_size.x * 0.5

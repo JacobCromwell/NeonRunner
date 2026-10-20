@@ -408,12 +408,13 @@ var _skin: ZoneSkin
 ## damage; they set off again by switching into a lane open beside them or by dashing through it, and a stop costs only
 ## time (Player.doodads_stop, which RunWorld sets from LevelLayout.doodads_stop). Every doodad of the level stops, the
 ## debris maze's (debris_maze) and the scattered ones alike. The level's own rule (the Terminal's), never its skin's.
-## Off: every doodad pushes, as before.
+## Off: every doodad pushes, as before. DESIGN-TBD (docs/questions/o2.md, question 14): whether the scattered ones in the
+## normal track between the maze's blocks should stop the runner too, or push as elsewhere.
 @export var doodads_stop: bool = false
 ## How tall this level's zone doodads stand (task O2; GDD §5 Zone 8: the Terminal's are "lower than standard doodads, so
 ## the player can see the maze's open paths over them", (proposed) still too tall to jump, and they read so): 0 takes the
 ## movement tuning's (MovementTuning.doodad_height). It reaches the generator, the track, the runner and the camera
-## through movement_for(), and the zone's doodad pictures are painted to it (DoodadArtSet.zone_box). Keep it above a
+## through movement_for(), and the zone's doodad pictures are painted to it (DoodadArtSet.zone_tuning). Keep it above a
 ## jump's reach (MovementTuning.jump_height, 1.6 m, and the feet's clearance). DESIGN-TBD (docs/questions/o2.md).
 @export_range(0.0, 3.0, 0.05, "suffix:m") var doodad_height: float = 0.0
 ## The `debris_maze` feature's numbers (task O2; DebrisMaze): null takes data/tuning/debris_maze.tres. The Terminal's

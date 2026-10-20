@@ -9,9 +9,10 @@ extends TestSuite
 ##   with a doodad beside them is a blocked move (the clank), and they stay stopped; a stopped runner moves along the face
 ##   of a wall of debris to its opening and runs through it; a jump or a slide while stopped plays out in place; a jump
 ##   into one comes down in front of it; a switch toward a lane with a doodad just ahead is refused (it would meet its
-##   side), one further ahead stops them at its front; a front corner caught mid-switch stops them, never sinking in;
-##   the dash smashes one before contact; with the flag off the same doodad pushes, as before; in a full world the stop
-##   plays the push's thud and the score is untouched.
+##   side), one further ahead stops them at its front; a front corner caught mid-switch stops them, never sinking in; a
+##   body caught in a doodad's side all the same moves back out with the clank (Player._start_bounce); the dash smashes
+##   one before contact; with the flag off the same doodad pushes, as before; in a full world the stop plays the push's
+##   thud and the score is untouched.
 ## - The lower doodads (LevelConfig.doodad_height through movement_for): the Terminal's levels' boxes on the track are
 ##   their height, still out of a jump's reach, and every other level's as before.
 ## - The generator (DebrisMaze, debris_maze_rules.gd) over the Terminal's levels and other seeds at 3, 5 and 6 lanes:
@@ -19,7 +20,10 @@ extends TestSuite
 ##   slowest recharge with waits, no hole near, the ceilings over the maze), the same level every time, the maze over
 ##   most of Rubble Line and in stretches of Last Stop, both one and two breaks in Rubble Line's blocks, dead ends and
 ##   cells walled in; the API for what lives in the maze (sections, links, open_group, section_at) consistent with the
-##   debris; a level without the feature has none of it.
+##   debris, and with what dashes smash (a wall broken into a divider's lane, a divider's end into the next wall, an edge
+##   lane's divider, and random smashes against a flood fill of the free floor); endless mode's 20-minute copy of Last
+##   Stop on arbitrary seeds, without warnings and keeping every rule of the maze; a level without the feature has none
+##   of it.
 ## - The bot on real physics: a block of each Terminal level at 3, 5 and 6 lanes run by the route MazeRoute finds, the
 ##   dash at its slowest recharge (8 s), dashing where the route does and waiting for it: it gets through alive, never
 ##   refused a switch, in about the route's time; and each whole level the same way, from its start to its end-clear
@@ -46,10 +50,12 @@ func run() -> void:
 	await _test_dash()
 	await _test_jump_and_slide()
 	await _test_switch_ahead()
+	await _test_bounce()
 	await _test_pushes_without_flag()
 	await _test_full_world()
 	await _test_lower_doodads()
 	_test_generator()
+	_test_endless()
 	_test_without_feature()
 	await _test_bot()
 	await _test_bot_levels()
@@ -342,6 +348,25 @@ func _test_switch_ahead() -> void:
 				"a front corner caught mid-switch never sinks the body in (%s, %d stops) %s" % [size, k["stops"], tag])
 
 
+## The fallback for a body that ends up in a doodad's side all the same (Player._start_bounce; here the run begins with
+## the body's front already past a doodad's front in its lane, so it stands beside the body, not ahead): the body moves
+## back out into the lane beside with the blocked move's clank (lane_blocked), alive, never stopped by it, never pushed,
+## and runs on there.
+func _test_bounce() -> void:
+	for lanes: int in [3, 5, 6]:
+		var geo := TrackGeometry.new(lanes, tuning)
+		var lane: int = 1
+		var d: Dictionary = _doodad(lane, 0.0, &"medium")
+		var r: Dictionary = await sim.run(_stop_layout(lanes, [d]), lane, 1.5, [])
+		var trace: Array = r["trace"]
+		var last: Dictionary = trace[-1] if not trace.is_empty() else {}
+		check(r["alive"] and int(r["lane"]) == lane - 1 and (r["events"] as Array).has(&"lane_blocked") and int(r["stops"]) == 0
+			and int(r["pushes"]) == 0 and not last.is_empty() and absf(float(last["x"]) - geo.lane_x(lane - 1)) < 0.01
+			and float(r["distance"]) > float(d["end"]),
+			"a body caught in a doodad's side moves back out into the lane beside with the clank, and runs on (%s, lane %d, %s) (lanes=%d)"
+			% [r["cause"], r["lane"], r["events"], lanes])
+
+
 ## With the flag off (every other level), the same doodad pushes as before.
 func _test_pushes_without_flag() -> void:
 	for lanes: int in [3, 5, 6]:
@@ -499,7 +524,8 @@ func _cells_of(b: Dictionary, lanes: int) -> Vector3i:
 ## section open floor (no doodad in its lanes over its stretch), every spot of a cell found in its section and a spot
 ## in a divider in none; every opening link joins sections of the rooms either side of its wall through an open lane;
 ## a cell with no opening on either side is a group of its own; smashing a wall's piece joins the sections either side
-## of it (links with `broken`).
+## of it (links with `broken`); what a dash opens onto a divider's lane (_check_broken_cases); and, after random smashes,
+## the groups links make are the real floor's (_check_broken_flood).
 func _check_sections(layout: LevelLayout, tag: String) -> void:
 	var secs: Array[Dictionary] = DebrisMaze.sections(layout)
 	var lanes: int = layout.lane_count
@@ -554,19 +580,270 @@ func _check_sections(layout: LevelLayout, tag: String) -> void:
 				and not (b0["rooms"][1]["dividers"] as Array).has(l):
 			lane = l
 			break
-	if lane < 0:
-		return
+	if lane >= 0:
+		for d: Dictionary in copy.doodads:
+			if int(d.get("maze", -1)) == 0 and String(d["part"]) == "wall" and int(d["index"]) == w and int(d["lane"]) == lane:
+				d["smashed"] = true
+		var secs_b: Array[Dictionary] = DebrisMaze.sections(copy, true)
+		var before: int = DebrisMaze.section_id(secs_b, 0, 0, lane)
+		var after: int = DebrisMaze.section_id(secs_b, 0, 1, lane)
+		var broken: Array[Dictionary] = DebrisMaze.links(copy, secs_b, true)
+		var joined: bool = false
+		for k: Dictionary in broken:
+			joined = joined or (String(k["kind"]) == "broken" and (int(k["from"]) == after or int(k["to"]) == after))
+		check(joined and DebrisMaze.open_group(broken, before).has(after) and secs_b.size() == secs.size(),
+			"a smashed wall piece joins the sections either side of it %s" % tag)
+	_check_broken_cases(layout, tag)
+	_check_broken_flood(layout, tag)
+
+
+## The pieces of maze block `block`'s `part` ("wall" or "divider") number `index` in `lane`, in `layout`, in order along
+## the track.
+static func _maze_pieces(layout: LevelLayout, block: int, part: String, index: int, lane: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for d: Dictionary in layout.doodads:
+		if int(d.get("maze", -1)) == block and String(d["part"]) == part and int(d["index"]) == index and int(d["lane"]) == lane:
+			out.append(d)
+	out.sort_custom(func(a: Dictionary, c: Dictionary) -> bool: return float(a["start"]) < float(c["start"]))
+	return out
+
+
+## The cases where a dash opens a way through debris onto a divider's lane (links with `broken`, task O2's review): the
+## first such case of each kind in `layout`, on a copy of it with those pieces smashed.
+## - A wall broken in a lane that's a divider past it (the wall's piece and the divider's first piece smashed, as a dash
+##   from the wall's face does): the stretch is a section of its own (section_at finds it), and the section before the
+##   wall reaches it and the cells beside it.
+## - A divider's last piece and the next wall's piece in its lane smashed: the cells beside the stretch reach what's open
+##   past that wall in its lane.
+## - A divider in an edge lane, one of its pieces smashed: the stretch joins the one cell beside it.
+func _check_broken_cases(layout: LevelLayout, tag: String) -> void:
+	var lanes: int = layout.lane_count
+	var seen: Dictionary = {}
+	for bi: int in layout.maze.size():
+		var b: Dictionary = layout.maze[bi]
+		var walls: Array = b["walls"]
+		var rooms: Array = b["rooms"]
+		for r: int in rooms.size():
+			for lane_v: Variant in rooms[r]["dividers"]:
+				var lane: int = int(lane_v)
+				var pieces: Array[Dictionary] = _maze_pieces(layout, bi, "divider", r, lane)
+				# Into it: wall r, closed in its lane, open before it (the run-in, or a cell of room r - 1).
+				if not seen.has("into") and not (walls[r]["open"] as Array).has(lane) \
+						and (r == 0 or not (rooms[r - 1]["dividers"] as Array).has(lane)):
+					seen["into"] = true
+					var copy: LevelLayout = layout.copy()
+					_smash_like(copy, _maze_pieces(layout, bi, "wall", r, lane)[0])
+					_smash_like(copy, pieces[0])
+					var secs: Array[Dictionary] = DebrisMaze.sections(copy, true)
+					var links: Array[Dictionary] = DebrisMaze.links(copy, secs, true)
+					var before: int = DebrisMaze.section_id(secs, bi, r - 1, lane)
+					var stretch: int = DebrisMaze.section_at(secs, lane, (float(pieces[0]["start"]) + float(pieces[0]["end"])) * 0.5)
+					var group: PackedInt32Array = DebrisMaze.open_group(links, before)
+					var beside: bool = stretch >= 0 and bool(secs[stretch].get("broken", false)) and group.has(stretch)
+					for side: int in [lane - 1, lane + 1]:
+						var cell: int = DebrisMaze.section_id(secs, bi, r, side)
+						beside = beside and (cell < 0 or group.has(cell))
+					check(beside, "a wall broken into a divider's lane leads into the smashed stretch and the cells beside it (block %d, wall %d, lane %d) %s"
+						% [bi, r, lane, tag])
+				# Out of it: its last piece and wall r + 1's piece in its lane, open past that wall.
+				if not seen.has("out") and not (walls[r + 1]["open"] as Array).has(lane) \
+						and (r + 1 == rooms.size() or not (rooms[r + 1]["dividers"] as Array).has(lane)):
+					seen["out"] = true
+					var copy: LevelLayout = layout.copy()
+					_smash_like(copy, pieces[-1])
+					_smash_like(copy, _maze_pieces(layout, bi, "wall", r + 1, lane)[0])
+					var secs: Array[Dictionary] = DebrisMaze.sections(copy, true)
+					var links: Array[Dictionary] = DebrisMaze.links(copy, secs, true)
+					var past: int = DebrisMaze.section_id(secs, bi, r + 1, lane)
+					var reached: bool = past >= 0
+					for side: int in [lane - 1, lane + 1]:
+						var cell: int = DebrisMaze.section_id(secs, bi, r, side)
+						reached = reached and (cell < 0 or DebrisMaze.open_group(links, cell).has(past))
+					check(reached, "a divider's smashed end and the wall after it lead from the cells beside it on past the wall (block %d, room %d, lane %d) %s"
+						% [bi, r, lane, tag])
+				# An edge lane's divider.
+				if not seen.has("edge") and (lane == 0 or lane == lanes - 1) and pieces.size() >= 2:
+					seen["edge"] = true
+					var copy: LevelLayout = layout.copy()
+					var piece: Dictionary = pieces[pieces.size() / 2]
+					_smash_like(copy, piece)
+					var secs: Array[Dictionary] = DebrisMaze.sections(copy, true)
+					var links: Array[Dictionary] = DebrisMaze.links(copy, secs, true)
+					var stretch: int = DebrisMaze.section_at(secs, lane, (float(piece["start"]) + float(piece["end"])) * 0.5)
+					var cell: int = DebrisMaze.section_id(secs, bi, r, 1 if lane == 0 else lanes - 2)
+					check(stretch >= 0 and cell >= 0 and DebrisMaze.open_group(links, cell).has(stretch),
+						"a smashed piece of an edge lane's divider joins the cell beside it (block %d, room %d, lane %d) %s"
+						% [bi, r, lane, tag])
+
+
+## Marks the entry of `copy` that is `piece` (the same block, part, index, lane and start) smashed, as a dash's smash does.
+static func _smash_like(copy: LevelLayout, piece: Dictionary) -> void:
 	for d: Dictionary in copy.doodads:
-		if int(d.get("maze", -1)) == 0 and String(d["part"]) == "wall" and int(d["index"]) == w and int(d["lane"]) == lane:
+		if int(d.get("maze", -1)) == int(piece["maze"]) and String(d["part"]) == String(piece["part"]) \
+				and int(d["index"]) == int(piece["index"]) and int(d["lane"]) == int(piece["lane"]) \
+				and absf(float(d["start"]) - float(piece["start"])) < 0.001:
 			d["smashed"] = true
-	var before: int = DebrisMaze.section_id(secs, 0, 0, lane)
-	var after: int = DebrisMaze.section_id(secs, 0, 1, lane)
-	var broken: Array[Dictionary] = DebrisMaze.links(copy, secs, true)
-	var joined: bool = false
-	for k: Dictionary in broken:
-		joined = joined or (int(k["from"]) == before and int(k["to"]) == after and String(k["kind"]) == "broken")
-	check(joined and DebrisMaze.open_group(broken, before).has(after),
-		"a smashed wall piece joins the sections either side of it %s" % tag)
+
+
+## Metres of track per step of the flood fill (_check_broken_flood): more than the sliver between two pieces of debris.
+const FLOOD_STEP: float = 0.25
+## The share of a block's pieces the flood fill's trials smash.
+const FLOOD_SMASH_SHARE: float = 0.35
+
+
+## Links with `broken` agree with the real floor (task O2's review): for each block of `layout`, two trials smashing a
+## random share of its pieces (FLOOD_SMASH_SHARE, a stream of the layout's seed), the block's free floor (lanes by
+## FLOOD_STEP steps from its run-in to its breather's end, a step blocked where a standing piece of its debris reaches
+## into it) split into the groups a flood fill joins, across lanes and along them; then every section's group by
+## open_group(links) is exactly the sections whose floor the same flood reaches, and every free spot's section_at is one
+## of those (or none: inside a wall's opening or a smashed piece of it).
+func _check_broken_flood(layout: LevelLayout, tag: String) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([layout.length, layout.lane_count, layout.doodads.size()])
+	var lanes: int = layout.lane_count
+	var agree: bool = true
+	var spots_ok: bool = true
+	var where: String = ""
+	var spot_where: String = ""
+	for bi: int in layout.maze.size():
+		var b: Dictionary = layout.maze[bi]
+		var from: float = float(b["entry"])
+		var steps: int = int(ceil((float(b["exit"]) - from) / FLOOD_STEP))
+		for trial: int in 2:
+			var copy: LevelLayout = layout.copy()
+			for d: Dictionary in copy.doodads:
+				if int(d.get("maze", -1)) == bi and rng.randf() < FLOOD_SMASH_SHARE:
+					d["smashed"] = true
+			var blocked := PackedByteArray()
+			blocked.resize(lanes * steps)
+			for d: Dictionary in copy.doodads:
+				if int(d.get("maze", -1)) != bi or bool(d.get("smashed", false)):
+					continue
+				var k0: int = maxi(int(floor((float(d["start"]) - from) / FLOOD_STEP)), 0)
+				var k1: int = mini(int(ceil((float(d["end"]) - from) / FLOOD_STEP)), steps)
+				for k: int in range(k0, k1):
+					blocked[int(d["lane"]) * steps + k] = 1
+			# The groups of free floor: a flood across lanes and along them.
+			var group := PackedInt32Array()
+			group.resize(lanes * steps)
+			group.fill(-1)
+			var groups: int = 0
+			for start: int in lanes * steps:
+				if blocked[start] == 1 or group[start] >= 0:
+					continue
+				var todo: Array[int] = [start]
+				group[start] = groups
+				while not todo.is_empty():
+					var at: int = todo.pop_back()
+					var lane: int = at / steps
+					var k: int = at % steps
+					for next: int in [at - 1 if k > 0 else -1, at + 1 if k + 1 < steps else -1,
+							at - steps if lane > 0 else -1, at + steps if lane + 1 < lanes else -1]:
+						if next >= 0 and blocked[next] == 0 and group[next] < 0:
+							group[next] = groups
+							todo.append(next)
+				groups += 1
+			var secs: Array[Dictionary] = DebrisMaze.sections(copy, true)
+			var links: Array[Dictionary] = DebrisMaze.links(copy, secs, true)
+			# Each section of this block: the flood group of the spot at its middle.
+			var of: Dictionary = {}
+			for id: int in secs.size():
+				var s: Dictionary = secs[id]
+				if int(s["block"]) != bi:
+					continue
+				var k: int = clampi(int(floor(((float(s["start"]) + float(s["end"])) * 0.5 - from) / FLOOD_STEP)), 0, steps - 1)
+				of[id] = group[int(s["first"]) * steps + k]
+			for id: Variant in of:
+				var want: Array[int] = []
+				for other: Variant in of:
+					if int(of[other]) == int(of[id]) and int(of[id]) >= 0:
+						want.append(int(other))
+				want.sort()
+				var got: Array[int] = []
+				for g: int in DebrisMaze.open_group(links, int(id)):
+					got.append(g)
+				if want != got and agree:
+					agree = false
+					where = "block %d, trial %d, section %d %s: flood %s, links %s" % [bi, trial, int(id), secs[int(id)], want, got]
+			# Each section's floor is free and in one flood group, section_at finds the section by its ends and its middle,
+			# and the sections cover the free floor but inside the walls (their openings and smashed pieces).
+			var sec_of := PackedInt32Array()
+			sec_of.resize(lanes * steps)
+			sec_of.fill(-1)
+			for id: Variant in of:
+				var s: Dictionary = secs[int(id)]
+				# The steps wholly inside it are its floor; any step it reaches into counts as covered.
+				var k0: int = clampi(int(ceil((float(s["start"]) - from) / FLOOD_STEP)), 0, steps)
+				var k1: int = clampi(int(floor((float(s["end"]) - from) / FLOOD_STEP)), 0, steps)
+				var c0: int = clampi(int(floor((float(s["start"]) - from) / FLOOD_STEP)), 0, steps)
+				var c1: int = clampi(int(ceil((float(s["end"]) - from) / FLOOD_STEP)), 0, steps)
+				for lane: int in range(int(s["first"]), int(s["last"]) + 1):
+					for k: int in range(c0, c1):
+						sec_of[lane * steps + k] = int(id)
+					for k: int in range(k0, k1):
+						var c: int = lane * steps + k
+						if spots_ok and (blocked[c] == 1 or group[c] != int(of[id])):
+							spots_ok = false
+							spot_where = "section %s's spot at %.2f in lane %d" % [s, from + k * FLOOD_STEP, lane]
+				for at: float in [float(s["start"]) + 0.05, (float(s["start"]) + float(s["end"])) * 0.5, float(s["end"]) - 0.05]:
+					if spots_ok and DebrisMaze.section_at(secs, int(s["first"]), at) != int(id):
+						spots_ok = false
+						spot_where = "section_at(%d, %.2f) for section %s" % [int(s["first"]), at, s]
+			for c: int in lanes * steps:
+				if blocked[c] == 1 or sec_of[c] >= 0:
+					continue
+				var mid: float = from + ((c % steps) + 0.5) * FLOOD_STEP
+				# The block's floor only (the flood's last step may reach past its breather's end).
+				var in_wall: bool = mid > float(b["exit"]) - FLOOD_STEP
+				for wall: Dictionary in b["walls"]:
+					in_wall = in_wall or (mid >= float(wall["start"]) - FLOOD_STEP and mid <= float(wall["end"]) + FLOOD_STEP)
+				if spots_ok and not in_wall:
+					spots_ok = false
+					spot_where = "free floor in no section at %.2f in lane %d" % [mid, c / steps]
+	check(agree, "open_group over links with what's smashed is the real floor's flood fill, section by section %s %s" % [tag, where])
+	check(spots_ok, "the sections are the free floor (but inside the walls), each in one flood group, section_at finding them %s %s"
+		% [tag, spot_where])
+
+
+## Endless mode in the Terminal (App.start_endless: the zone's last level, Last Stop, made a 20-minute level of everything
+## the zone has from the start, at the zone's speed, on a random seed), here on two arbitrary seeds at 5 lanes: it builds
+## without warnings, with the maze along the whole of it, and keeps every rule of the maze (check_debris_maze).
+func _test_endless() -> void:
+	var zone := load("res://data/zones/terminal.tres") as ZoneDef
+	for level_seed: int in [7310, 424242]:
+		var config: LevelConfig = (zone.levels[zone.levels.size() - 1] as LevelConfig).duplicate() as LevelConfig
+		# As App.start_endless makes it.
+		config.id = &"endless"
+		config.level_seed = level_seed
+		config.lane_count = 5
+		config.duration_seconds = App.ENDLESS_SECONDS
+		config.difficulty = 0.2
+		config.difficulty_ramp = 0.8
+		config.enemy_scaling = 1.0
+		var starts: Dictionary[String, float] = {}
+		config.feature_starts = starts
+		config.guarantee_features = false
+		config.quiet_seconds = 0.0
+		config.extended_wall_runs = []
+		var features: PackedStringArray = config.features.duplicate()
+		for f: String in config.features_left_out:
+			if not features.has(f):
+				features.append(f)
+		config.features = features
+		config.features_left_out = PackedStringArray()
+		config.darkness = 0.0
+		config.sky = null
+		if config.run_speed <= 0.0:
+			config.run_speed = zone.run_speed
+		var tag: String = "(endless in the Terminal, seed %d)" % level_seed
+		var gen := LevelGenerator.new()
+		var layout: LevelLayout = gen.generate(config, tuning, LevelGenerator.load_for(config))
+		check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+		var last_end: float = float(layout.maze[-1]["end"]) if not layout.maze.is_empty() else 0.0
+		check(layout.maze.size() >= 20 and last_end > layout.length * 0.8,
+			"the maze along the whole of it (%d blocks, the last ending at %.0f of %.0f m) %s" % [layout.maze.size(), last_end,
+				layout.length, tag])
+		LayoutChecks.check_debris_maze(self, layout, config, tag)
 
 
 ## A level without the feature has no maze, and its doodads push (the Dead Zone's last level and the Golden Zone's first,
