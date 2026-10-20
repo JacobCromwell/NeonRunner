@@ -233,6 +233,7 @@
     {"match": "tools/godot.sh", "suites": ["smoke_play"]},
     {"match": "tools/asset_gen/citizen_person_gen.gd", "suites": ["marketplace_citizens"]},
     {"match": "tools/showcase/arch_wall_review*", "suites": ["terminal_levels"]},
+    {"match": "tools/showcase/debris_maze_review*", "suites": ["debris_maze"]},
     {"match": "tools/*", "suites": []},
     {"match": "project.godot", "tier": "full"},
     {"match": "export_presets.cfg", "suites": ["web_demo"]},

@@ -290,6 +290,27 @@ Any `@export_range` number or bool on a resource registered with the tuning pane
   broke: the same on every attempt. An attempt without a dash is exactly as before. Task H7a's dash walls
   share the path: a `DashBreakable` of another `kind` (with its own `<kind>_smash` event and sound),
   `Player.smashed` and the run's effects.
+- **Where doodads stop the runner** (task O2; GDD §5, Zone 8: "a doodad stops the runner here instead of pushing
+  them aside", the debris maze). A level flag, never a skin check: `LevelConfig.doodads_stop` (the Terminal's two
+  levels), copied to `LevelLayout.doodads_stop` and, by `RunWorld` and `RunSim`, to `Player.doodads_stop`. Every
+  frame on the floor `Player._stop_motion` sweeps the body's box ahead over the frame's motion on the doodad layer
+  and lets the runner come only to `STOP_CLEARANCE` short of the nearest doodad's front: a complete stop facing it
+  (`stopped`, `stops`, the `doodad_stop` event once a stop begins: the push's thud through `RunWorld.EVENT_SOUNDS`
+  and the push's shake; `speed` reads 0 while stopped, so the speed effects ease off, the level clock runs on and
+  the distance waits). It costs nothing: no damage, no push, the score untouched (DamageRules never sees it). The
+  runner sets off by a lane switch into a lane open beside them (`_lane_blocked`: the lane blockers beside the body
+  as always, and that lane's doodads from the body's front to `_stop_switch_ahead()` ahead, so a switch that would
+  meet a doodad's side mid-way is refused as a blocked move: the clank and bump), or by the dash (a doodad it claims,
+  `_dash_claims`, breaks as the body reaches it, as everywhere). Stopped against a wall of debris whose piece in the
+  next lane has its front level with this one's (`STOP_FACE_SLACK`), a switch moves the body along the wall's face and
+  keeps it stopped (`_slide_hold`), so a runner works along a wall to its opening. A jump or a slide while stopped
+  plays out in place; a jump into debris stops in the air at its front and comes down there (the Terminal's 1.9 m
+  debris is out of a jump's reach). A body that still ends up in a doodad's side (an odd frame's timing) is moved
+  back out the way it came (`_check_stopping_doodads`, `_start_bounce`: the push's machinery, the clank). With the
+  flag off every doodad pushes, exactly as before. The Terminal's doodads also stand lower (`LevelConfig.doodad_height`,
+  through `movement_for`, so the track builds their boxes at it). `test_debris_maze` runs it all on real physics;
+  `test_doodads` runs the campaign's Terminal doodads into stops (`_check_stop`). DESIGN-TBD
+  (`docs/questions/o2.md`).
 - **Dash walls: dash through, or take a hit** (GDD §9.14, owner, October 8, 2026; task H7a). A building
   standing across every floor lane (the generator, the track and the look below). The track builds each as a
   `DashBreakable` of kind `dash_wall` on a layer of its own (`TrackBuilder.LAYER_DASH_WALL`: the box its look

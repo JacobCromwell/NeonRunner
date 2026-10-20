@@ -159,10 +159,13 @@ Debug keys (debug builds): **R** restart, **F1** lane count 3 → 5 → 6, **F2*
   18. Terminal 1 *Rubble Line*: an abandoned subway under the city, in its own look (task O4).
       None of the usual enemies, no dash walls, a couple of holes and a few one-lane ceilings; its side walls
       are narrow arches (now and then one side's a broken stump) with open space between them, and there is no wall
-      running: a move past the outer lane bumps you back with the clank. Its debris maze and the Cybernetic
-      Centipede are still to come. Like the Beach's, its levels sit between their neighbours in difficulty, off the
-      campaign's curve.
-  19. Terminal 2 *Last Stop*: the same rules, then straight on to the Golden Zone (no boss).
+      running: a move past the outer lane bumps you back with the clank. The debris maze over most of the level
+      (task O2): lower debris that stops you dead rather than pushing you aside, standing in walls and corridors you
+      get through by switching into an open lane or dashing through, waiting for the dash where it isn't back yet;
+      a few one-lane ceilings are shortcuts over a block's last wall. The Cybernetic Centipede is still to come.
+      Like the Beach's, its levels sit between their neighbours in difficulty, off the campaign's curve.
+  19. Terminal 2 *Last Stop*: the same rules, a normal run with stretches of the maze, then straight on to the Golden
+      Zone (no boss).
   20. Golden 1 *Gilded Canals*: the Resonator.
   21. Golden 2 *Sentinel Row*: the Gilded Sentinels, and the hardest level.
   22. Golden 3 *The Golden Palace*, then the final boss.
@@ -606,7 +609,9 @@ runner and, with `--dash`, the dash smashing them (`doodad_review`), dash walls 
 armor or passed on a side wall, and each zone's look (`dash_wall_review`, `--take=smash|crash|pass|look`),
 wall-run gaps crossed on their lit wall, a grapple's save onto it, a fall, and a still of the lit wall in any zone's
 look (`wall_run_gap_review`, `--take=cross|grapple|fall|look`), side wall gaps and what they show behind
-them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), a
+them (`wall_gap_review`, `--skin=<zone> --out=build/wallgap [--long]`), the Terminal's arches (`arch_wall_review`) and
+debris maze seen from the game camera on the way in, stopped at a wall and inside it (`debris_maze_review`,
+`--level=terminal/1 --block=N --out=build/maze`), a
 campaign level's treasure stash or fenced ceiling played on its own (`ceiling_scenario_review`,
 `--scenario=stash|fenced --take=return|floor|stay|safe|unsafe --camera=game|look|side`), a campaign level's line
 of wall-hop credits ridden by a wall hopper (`wall_hop_review`, `--level=<id> --take=hop|run --camera=game|side`), an
