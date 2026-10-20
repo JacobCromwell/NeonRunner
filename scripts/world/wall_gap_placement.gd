@@ -74,10 +74,10 @@ static func is_boss_arena(config: LevelConfig) -> bool:
 ## Places the level's wall gaps (see the header) into gen.layout.wall_gaps, sorted by start.
 static func place(gen: LevelGenerator) -> void:
 	_place(gen)
-	# The open walls of the level's extended wall runs with one lit wall (WallRunGapPlacement.open_wall_of: the owner,
-	# October 19, 2026), whatever its own: its gaps above keep off them (keep_outs, WallRunGapPlacement
-	# .wall_keep_outs_for).
-	var open: Array[Dictionary] = WallRunGapPlacement.open_walls(gen.layout)
+	# The open walls of the level's extended wall runs with one lit wall and the notches at their platforms
+	# (WallRunGapPlacement.openings_of: the owner, October 19, 2026), whatever its own: its gaps above keep off them
+	# (keep_outs, WallRunGapPlacement.wall_keep_outs_for).
+	var open: Array[Dictionary] = WallRunGapPlacement.open_walls(gen.layout, gen.speed)
 	if open.is_empty():
 		return
 	gen.layout.wall_gaps.append_array(open)

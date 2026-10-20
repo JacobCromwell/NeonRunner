@@ -105,9 +105,7 @@ func _ready() -> void:
 			for h: Vector2 in WallRunGapPlacement.lane_holes(layout, w, lane):
 				layout.gaps.append({"lane": lane, "start": h.x, "end": h.y, LevelLayout.WALL_RUN_HOLE: true})
 		layout.wall_run_gaps.append(w)
-		var open: Dictionary = WallRunGapPlacement.open_wall_of(w)
-		if not open.is_empty():
-			layout.wall_gaps.append(open)
+		layout.wall_gaps.append_array(WallRunGapPlacement.openings_of(w, t.run_speed))
 		if take == "cross":
 			# Across to the lit wall's outer lane in the run-in, one lane a beat, then onto the wall midway along the lit
 			# stretch.

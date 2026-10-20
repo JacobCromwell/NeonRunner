@@ -227,6 +227,7 @@ static func _add_guaranteed(gen: LevelGenerator, t: HoverTruckTuning, latest: fl
 
 ## True if a truck at `at` would be around (its lane's window, and the ramp its rules give it) over a stretch kept for
 ## the level's extended wall runs (LevelGenerator.kept_for_extended): it holds the outer lane the platforms are in.
+## DESIGN-TBD (docs/questions/o1.md).
 static func _in_extended(gen: LevelGenerator, t: HoverTruckTuning, at: float) -> bool:
 	if gen.extended_wall_run_reserve.is_empty():
 		return false

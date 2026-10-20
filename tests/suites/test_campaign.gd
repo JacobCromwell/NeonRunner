@@ -72,6 +72,9 @@ const LEFT_OUT: Dictionary = {
 	# No dash walls in the Beach for now (GDD §9.14 has them in every zone after Corporate, but the Beach's side walls
 	# stand open on about half of a level and it has no wall look): docs/OPEN_QUESTIONS.md item 680.
 	"dash_wall": ["beach/1", "beach/3"],
+	# The owner, October 20, 2026 (task O1): The Hush leaves out the heli drone, whose anti-grav pad every 8 to 10 s left
+	# its extended wall runs no room (LevelConfig.features_left_out; endless mode puts it back).
+	"drone": ["dead_zone/2"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
@@ -1134,6 +1137,7 @@ func _test_hush(campaign: Campaign) -> void:
 					config.level_seed = 9200 + k
 				if which == 1:
 					config.quiet_seconds = 0.0
+					config.extended_wall_runs = []
 					config.quiet_features = PackedStringArray()
 					var none: Dictionary[String, float] = {}
 					config.feature_weights = none

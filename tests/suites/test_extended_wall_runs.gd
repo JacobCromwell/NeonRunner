@@ -29,11 +29,13 @@ func run() -> void:
 	_test_hush()
 	await _test_crossings()
 	await _test_falls()
+	await _test_claws_and_dash()
 	await _test_save()
 
 
 ## A track of `lanes` lanes with one extended wall run of `runs` wall runs (WallRunGapPlacement.make) whose clear run-in
-## starts at APPROACH_AT, its lit wall on `side` (and the other too with `both`): its holes, and its open wall.
+## starts at APPROACH_AT, its lit wall on `side` (and the other too with `both`): its holes, its open wall and its
+## platforms' notches (WallRunGapPlacement.openings_of).
 func _track(lanes: int, runs: int, side: int, both: bool) -> LevelLayout:
 	var l := RunSim.layout(lanes, 700.0)
 	var w: Dictionary = WallRunGapPlacement.make(WallRunGapPlacement.shape_for(tuning, tuning.run_speed, null, null, runs),
@@ -42,9 +44,8 @@ func _track(lanes: int, runs: int, side: int, both: bool) -> LevelLayout:
 	for lane: int in lanes:
 		for h: Vector2 in WallRunGapPlacement.lane_holes(l, w, lane):
 			l.gaps.append({"lane": lane, "start": h.x, "end": h.y, LevelLayout.WALL_RUN_HOLE: true})
-	var open: Dictionary = WallRunGapPlacement.open_wall_of(w)
-	if not open.is_empty():
-		l.wall_gaps.append(open)
+	l.wall_gaps.append_array(WallRunGapPlacement.openings_of(w, tuning.run_speed))
+	l.wall_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["start"]) < float(b["start"]))
 	return l
 
 
@@ -107,9 +108,20 @@ func _test_hush() -> void:
 			var where: String = "(%d runs at %.0f m) %s" % [WallRunGapPlacement.runs_of(w), float(w["start"]), tag]
 			var open: Dictionary = WallRunGapPlacement.open_wall_of(w)
 			if not open.is_empty():
-				check(layout.wall_gap_between(float(w["approach"]) + 0.5, float(w["end"]) - 0.5, int(open["side"]))
-					and not layout.wall_gap_between(float(w["approach"]), float(w["wall_to"]), int(w["side"])),
-					"its other wall is open over its crossing, its lit wall whole " + where)
+				check(layout.wall_gap_between(float(w["approach"]) + 0.5, float(w["end"]) - 0.5, int(open["side"])),
+					"its other wall is open over its crossing " + where)
+			# Its lit walls stand over each stretch to step on and each hole, but for the platforms' notches.
+			var whole: bool = true
+			for s: int in WallRunGapPlacement.sides_of(w):
+				for c: Vector3 in WallRunGapPlacement.crossings_of(w):
+					var d: float = c.x
+					while d < c.z:
+						var notch: bool = false
+						for p: Vector2 in WallRunGapPlacement.platforms_of(w):
+							notch = notch or (d >= p.x - 0.01 and d <= p.x + 3.0)
+						whole = whole and (notch or layout.wall_supported(s, d))
+						d += 1.0
+			check(whole, "its lit walls stand where it is crossed, but for its platforms' notches " + where)
 			var route: Dictionary = grid.find(grid.clear_start(float(w["entry"])), float(w["landing"]))
 			check(bool(route["ok"]), "a way across it %s: %s" % [where, route.get("reason", "")])
 			var steps: int = 0
@@ -165,6 +177,51 @@ func _test_falls() -> void:
 		r = await sim.run(layout, 0, seconds, [[first, &"move_left"]])
 		check(not bool(r["alive"]) and (r["events"] as Array).has(&"wall_missing"),
 			"a runner who heads for the open wall falls in %s: %s %s" % [tag, r["cause"], r["events"]])
+
+
+## A wall run longer than the standard one (claws, PowerupTuning.claws_wall_time_multiplier; the dash on the wall) still
+## comes down on each platform: the notch at its near end drops the runner off (WallRunGapPlacement.openings_of), and
+## a step back on from it carries them over the next hole. And a step back on as soon as the runner lands works too.
+func _test_claws_and_dash() -> void:
+	for lanes: int in [3, 5, 6]:
+		for side: int in [-1, 1]:
+			var layout: LevelLayout = _track(lanes, 3, side, false)
+			var w: Dictionary = layout.wall_run_gaps[0]
+			var c: Array[Vector3] = WallRunGapPlacement.crossings_of(w)
+			var p: Array[Vector2] = WallRunGapPlacement.platforms_of(w)
+			var toward: StringName = &"move_left" if side < 0 else &"move_right"
+			var landing: float = float(w["landing"])
+			var tag: String = "(%d lanes, %s wall)" % [lanes, "left" if side < 0 else "right"]
+			for k: float in [0.15, 0.9]:
+				var loadout := Loadout.new()
+				loadout.tiers[&"claws"] = 1
+				var world: RunWorld = sim.build_world(layout, loadout)
+				world.player.setup(tuning, world.geo, layout.outer_lane(side))
+				world.player.apply_loadout(DamageRules.Armor.create(world.rules, 0, false), 0, 0, true,
+					world.powerup_tuning.claws_wall_time_multiplier)
+				var actions: Array = []
+				for x: Vector3 in c:
+					actions.append([lerpf(x.x + 0.3, x.y - 0.8, k), toward])
+				var r: Dictionary = await sim.step_world(world, (landing + 20.0) / tuning.run_speed, actions, [landing])
+				check(bool(r["alive"]) and float(r["distance"]) > landing and (r["events"] as Array).count(&"wall_enter") == 3,
+					"with claws, stepping on %d%% into each stretch, a runner crosses on three wall runs %s: %s at %.0f m, %s"
+					% [roundi(k * 100.0), tag, r["cause"], float(r["distance"]), r["events"]])
+				await sim.free_world(world)
+			# The dash on each wall run, midway along it; and a step back on just after landing on each platform.
+			var dashed: Array = []
+			var eager: Array = [[(c[0].x + c[0].y) * 0.5, toward]]
+			for x: Vector3 in c:
+				dashed.append([(x.x + x.y) * 0.5, toward])
+				dashed.append([x.y + 12.0, &"dash"])
+			for q: Vector2 in p:
+				eager.append([q.x + 0.3 * tuning.run_speed, toward])
+			for case: Array in [["with the dash on each wall run", dashed], ["stepping back on as soon as it lands", eager]]:
+				var acts: Array = case[1]
+				acts.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+				var r: Dictionary = await sim.run(layout, layout.outer_lane(side), (landing + 20.0) / tuning.run_speed, acts,
+					[landing])
+				check(bool(r["alive"]) and float(r["distance"]) > landing and (r["events"] as Array).count(&"wall_enter") == 3,
+					"%s, a runner crosses %s: %s at %.0f m, %s" % [case[0], tag, r["cause"], float(r["distance"]), r["events"]])
 
 
 ## The grapple's save in the triple's second hole puts the runner on its lit wall, whose run ends over the platform

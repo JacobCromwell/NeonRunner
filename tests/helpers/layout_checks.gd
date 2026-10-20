@@ -240,13 +240,15 @@ static func check_wall_run_gaps(suite: TestSuite, layout: LevelLayout, config: L
 				"a standard wall run from stretch %d's first metre leaves the wall past its hole's far edge %s" % [k + 1, where])
 			suite.check(c.y + tuning.coyote_time * v + wall_run + drop <= floor_end + 0.01,
 				"a standard wall run from stretch %d's last metre drops the runner onto the floor after it %s" % [k + 1, where])
-		var open: Dictionary = WallRunGapPlacement.open_wall_of(w)
-		if not open.is_empty():
+		# An extended wall run's other wall open over its crossing where it has one lit wall, and a notch in each lit wall
+		# at each platform's near end (WallRunGapPlacement.openings_of).
+		for open: Dictionary in WallRunGapPlacement.openings_of(w, v, t):
 			var found: bool = false
 			for g: Dictionary in layout.wall_gaps:
 				found = found or (int(g["side"]) == int(open["side"]) and absf(float(g["start"]) - float(open["start"])) < 0.01
 					and absf(float(g["end"]) - float(open["end"])) < 0.01)
-			suite.check(found, "its other wall is open over its crossing " + where)
+			suite.check(found, "its opening on the %s wall at %.1f-%.1f m is open %s" % ["left" if int(open["side"]) < 0
+				else "right", float(open["start"]), float(open["end"]), where])
 		suite.check(float(w["approach"]) - prev_landing >= t.min_spacing_seconds * v - 0.01,
 			"wall-run gaps keep their spacing " + where)
 		prev_landing = landing

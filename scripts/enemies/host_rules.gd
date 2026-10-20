@@ -168,13 +168,14 @@ static func _add_guaranteed(gen: LevelGenerator, t: BadDreamTuning, rng: RandomN
 	return {}
 
 
-## How far past `to` the next pad after one at `from` may come for the stretches kept for the level's extended wall runs
-## (LevelGenerator.extended_wall_run_reserve) that pads skip (WallRunGapPlacement.pad_skip), as much of each as lies
-## past `from`: the gap
-## counts without them, as the Bad Dream holds its slash over the crossing (BadDream._wall_run_in_reach). 0 without.
+## How far past `to` the next pad after one at `from` may come for the level's extended wall runs' clear stretches
+## (LevelGenerator.extended_wall_run_clear) that pads skip (WallRunGapPlacement.pad_skip), as much of each as lies past
+## `from`: the gap counts without them, as the Bad Dream holds its slash over the crossing (BadDream._wall_run_in_reach;
+## the rest of the skip, the run-in's margin, the landing floor and a pad's reach, is ordinary chase time without a pad).
+## DESIGN-TBD (docs/questions/o1.md). 0 without.
 static func _skipped(gen: LevelGenerator, t: BadDreamTuning, from: float, to: float) -> float:
 	var out: float = 0.0
-	for kept: Vector2 in gen.extended_wall_run_reserve:
+	for kept: Vector2 in gen.extended_wall_run_clear:
 		var skip: Vector2 = WallRunGapPlacement.pad_skip(gen, kept, t.pad_ceiling_seconds)
 		if skip.y > from and skip.x < to + out:
 			out += skip.y - maxf(skip.x, from)
@@ -182,7 +183,7 @@ static func _skipped(gen: LevelGenerator, t: BadDreamTuning, from: float, to: fl
 
 
 ## True if a host at `at` would stand, its obstacle margin with it, in a stretch kept for the level's extended wall runs
-## (LevelGenerator.kept_for_extended).
+## (LevelGenerator.kept_for_extended). DESIGN-TBD (docs/questions/o1.md).
 static func _near_extended(gen: LevelGenerator, at: float) -> bool:
 	if gen.extended_wall_run_reserve.is_empty():
 		return false
@@ -194,7 +195,7 @@ static func _near_extended(gen: LevelGenerator, at: float) -> bool:
 
 ## True if a pad at `at` would reach a stretch kept for the level's extended wall runs (WallRunGapPlacement.pad_skip).
 static func _in_skip(gen: LevelGenerator, t: BadDreamTuning, at: float) -> bool:
-	for kept: Vector2 in gen.extended_wall_run_reserve:
+	for kept: Vector2 in gen.extended_wall_run_clear:
 		var skip: Vector2 = WallRunGapPlacement.pad_skip(gen, kept, t.pad_ceiling_seconds)
 		if at > skip.x and at < skip.y:
 			return true

@@ -71,6 +71,11 @@ const PATH: String = "res://data/tuning/wall_run_gaps.tres"
 ## grace + the drop) plus this, and its last entry_window_seconds is the stretch to step back onto the wall from:
 ## about 1.2 s of run with the shipped numbers.
 @export_range(0.0, 1.0, 0.05, "suffix:s") var platform_slack_seconds: float = 0.2
+## DESIGN-TBD (docs/questions/o1.md): the lit wall opens for this many seconds of run at each platform's near end (a
+## notch), so a runner still on the wall there drops onto the platform (Player: a wall gap drops a wall runner off): with
+## claws (a longer wall run) or the dash a wall run would otherwise carry them past the platform and into the next hole.
+## Shorter than the drop off the wall (about 0.16 s), so a step back on as soon as the runner lands is never refused.
+@export_range(0.03, 0.15, 0.01, "suffix:s") var platform_notch_seconds: float = 0.1
 
 @export_group("Saves")
 ## DESIGN-TBD: metres either side of a wall-run gap's holes where a runner pulled up out of a fall (the grapple's save,

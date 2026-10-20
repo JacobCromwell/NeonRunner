@@ -272,6 +272,10 @@ var wall_run_gap_reserve: Array[Vector2] = []
 ## Vector2(from, to), in the level's order; WallRunGapPlacement places each where it was kept. Empty in every level
 ## without them, which is built exactly as before.
 var extended_wall_run_reserve: Array[Vector2] = []
+## Each kept stretch's clear stretch (the run-in to the end of the landing floor, WallRunGapPlacement.keep_out of the
+## wall-run gap placed there), in the same order: what ceilings, pads and their landing zones keep off
+## (clear_for_extended), and what the anti-grav pad schedules skip (WallRunGapPlacement.pad_skip).
+var extended_wall_run_clear: Array[Vector2] = []
 ## The floor pieces the danger density pass added in the last build that the credit pass gives no
 ## risky credit (DangerDensity, its tuning's credit_added_pieces off): more danger, not more pay.
 var uncredited: Dictionary = {}
@@ -425,6 +429,7 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 	# The level's extended wall runs (WallRunGapPlacement.extended_plan): each one's stretch is kept as the cursor
 	# reaches its due spot and what the patterns before it reach has ended (extended_wall_run_reserve).
 	extended_wall_run_reserve.clear()
+	extended_wall_run_clear.clear()
 	var extended: Array[Dictionary] = WallRunGapPlacement.extended_plan(self)
 	var reach_end: float = -INF
 
@@ -437,6 +442,8 @@ func _build(patterns: Array, forced: Dictionary) -> LevelLayout:
 			var kept_to: float = cursor + float(extended[next_kept]["length"])
 			if kept_to <= layout.length - config.end_clear_distance:
 				extended_wall_run_reserve.append(Vector2(cursor, kept_to))
+				extended_wall_run_clear.append(Vector2(cursor + float(extended[next_kept]["clear_from"]),
+					cursor + float(extended[next_kept]["clear_to"])))
 				_clear_stretches.append(Vector2(cursor, kept_to))
 				cursor = kept_to
 				continue
@@ -730,8 +737,8 @@ func add_hull_with_pad(lane: int, at: float, length_seconds: float, lanes: Vecto
 	var landing: Vector2 = zones.landing_zone(hull)
 	if landing.y > layout.length - config.end_clear_distance:
 		return false
-	# No ceiling, pad or landing zone in an extended wall run's stretch (extended_wall_run_reserve).
-	var kept: Vector2 = kept_for_extended(minf(float(hull["start"]), zones.pad_zone(at).x), landing.y)
+	# No ceiling, pad or landing zone over an extended wall run's clear stretch (extended_wall_run_clear).
+	var kept: Vector2 = clear_for_extended(minf(float(hull["start"]), zones.pad_zone(at).x), landing.y)
 	if kept.y > kept.x:
 		return false
 	if not zones.pad_clear(layout, lane, at) or not zones.landing_clear(layout, landing, span):
@@ -1375,6 +1382,14 @@ func _pattern_reach(counts: Dictionary, from: float, to: float) -> Vector2:
 ## too, so the stretch stays clear for the wall-run gaps' pass.
 func kept_for_extended(from: float, to: float) -> Vector2:
 	for r: Vector2 in extended_wall_run_reserve:
+		if r.x < to and r.y > from:
+			return r
+	return Vector2.ZERO
+
+
+## The clear stretch of an extended wall run (extended_wall_run_clear) that [from, to] reaches, or Vector2.ZERO if none.
+func clear_for_extended(from: float, to: float) -> Vector2:
+	for r: Vector2 in extended_wall_run_clear:
 		if r.x < to and r.y > from:
 			return r
 	return Vector2.ZERO

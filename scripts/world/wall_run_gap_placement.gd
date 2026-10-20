@@ -57,6 +57,11 @@ extends RefCounted
 ## one (anywhere past its start; as a last resort with one big encounter taken out of its way, _make_room, and then
 ## with the signs on its lit wall's stretch taken off, _signs_go), or a warning.
 ##
+## Extended wall runs (LevelConfig.extended_wall_runs; the owner, October 19, 2026, for The Hush): wall-run gaps of two
+## or three standard wall runs, a small platform by each lit wall between two holes (shape_for's `runs`, make,
+## openings_of), placed first where the pattern pass kept their stretches (extended_plan, _place_extended). See
+## docs/ARCHITECTURE.md, The generator, Extended wall runs.
+##
 ## Never in a boss arena, quick play's prototype level or a level without the feature: those draw nothing and are built
 ## exactly as before. DESIGN-TBD (docs/questions/j2.md): every number, the lit wall's look, where the feature starts,
 ## what may make way, a grapple's or a revive's save onto the lit wall (grapple_save).
@@ -334,22 +339,51 @@ static func crossings_of(w: Dictionary) -> Array[Vector3]:
 	return out
 
 
+## True if wall gap span `k` on wall `side` is one of `openings` (openings_of).
+static func _is_opening(openings: Array[Dictionary], side: int, k: Vector2) -> bool:
+	for o: Dictionary in openings:
+		if int(o["side"]) == side and absf(k.x - float(o["start"])) < 0.01 and absf(k.y - float(o["end"])) < 0.01:
+			return true
+	return false
+
+
 ## The side wall gap (LevelLayout.wall_gaps' {side, start, end}) an extended wall run with one lit wall opens on the
 ## other wall, from its clear run-in to its far edge, so a runner reads from the run-in which wall carries them; {}
 ## for one with both walls lit and for an ordinary wall-run gap (WallGapPlacement.place adds them to the level's).
+## DESIGN-TBD (docs/questions/o1.md): whether the open wall shows early enough.
 static func open_wall_of(w: Dictionary) -> Dictionary:
 	if runs_of(w) < 2 or sides_of(w).size() > 1:
 		return {}
 	return {"side": -int(w["side"]), "start": float(w["approach"]), "end": float(w["end"])}
 
 
-## Every open wall of `lay`'s extended wall runs (open_wall_of).
-static func open_walls(lay: LevelLayout) -> Array[Dictionary]:
+## The side wall gaps (LevelLayout.wall_gaps' {side, start, end}) an extended wall run makes at run speed `speed`: its
+## open wall (open_wall_of), and on each lit wall a notch platform_notch_seconds long at each platform's near end, so a
+## runner whose wall run would carry them past the platform (claws, the dash) drops onto it (Player: a wall gap drops a
+## wall runner off into the outer lane). [] for an ordinary wall-run gap.
+static func openings_of(w: Dictionary, speed: float, t: WallRunGapTuning = null) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
+	if runs_of(w) < 2:
+		return out
+	var tt: WallRunGapTuning = t if t != null else tuning()
+	var open: Dictionary = open_wall_of(w)
+	if not open.is_empty():
+		out.append(open)
+	for side: int in sides_of(w):
+		for p: Vector2 in platforms_of(w):
+			out.append({"side": side, "start": p.x, "end": p.x + tt.platform_notch_seconds * speed})
+	return out
+
+
+## Every side wall gap of `lay`'s extended wall runs at run speed `speed` (openings_of; WallGapPlacement.place adds them
+## to the level's).
+static func open_walls(lay: LevelLayout, speed: float) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if lay.wall_run_gaps.is_empty():
+		return out
+	var t: WallRunGapTuning = tuning()
 	for w: Dictionary in lay.wall_run_gaps:
-		var o: Dictionary = open_wall_of(w)
-		if not o.is_empty():
-			out.append(o)
+		out.append_array(openings_of(w, speed, t))
 	return out
 
 
@@ -465,6 +499,8 @@ static func place(gen: LevelGenerator) -> Dictionary:
 ## seeded spot of its share of the level, in the list's order, and placed as an ordinary one is (_fit within
 ## search_seconds of it, the spot that takes the least out of its way), else anywhere after the one before it, else
 ## with the last resorts (_make_room, _signs_go); one that finds no room at all is a warning. Returns how many it placed.
+## The level's ordinary wall-run gaps fit around them, and a level with extended ones needs none of its own (place).
+## DESIGN-TBD (docs/questions/o1.md).
 static func _place_extended(p: _Pass, rng: RandomNumberGenerator, from: float, constraints: PackedStringArray) -> int:
 	var gen: LevelGenerator = p.gen
 	var specs: Array[Dictionary] = gen.config.extended_wall_runs
@@ -521,7 +557,8 @@ static func _place_extended(p: _Pass, rng: RandomNumberGenerator, from: float, c
 ## clear stretch and its walls' (Shape.kept).
 ## The pass keeps it at the first spot from `due` on that nothing placed before reaches (a hover truck's stay, an
 ## enemy's attack), and every pattern, ceiling, floor cut, charge and chase keeps off it, so _place_extended finds it
-## clear. [] in a level without them, a boss arena or one without the feature.
+## clear. [] in a level without them, a boss arena or one without the feature. DESIGN-TBD (docs/questions/o1.md): where
+## they come in the level.
 static func extended_plan(gen: LevelGenerator) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var specs: Array[Dictionary] = gen.config.extended_wall_runs
@@ -540,21 +577,15 @@ static func extended_plan(gen: LevelGenerator) -> Array[Dictionary]:
 		# its spot (a hover truck's stay, EXTENDED_WAIT) still fits before the end.
 		out.append({"due": lerpf(from, last - (kept.y - kept.x),
 				(float(k) + rng.randf_range(0.1, 0.4)) / (float(specs.size()) + 0.5)),
-			"length": kept.y - kept.x, "spacing": maxf(t.min_spacing_seconds * gen.speed + kept.x, 0.0)})
+			"length": kept.y - kept.x, "spacing": maxf(t.min_spacing_seconds * gen.speed + kept.x, 0.0),
+			"clear_from": -kept.x - KEEP_MARGIN, "clear_to": -kept.x + shape.zone() + KEEP_MARGIN})
 	return out
 
 
-## The stretch kept for extended wall run `w` in `gen`'s level (LevelGenerator.extended_wall_run_reserve, Shape.kept,
-## where _place_extended places it); Vector2.ZERO for an ordinary wall-run gap.
-static func kept_of(gen: LevelGenerator, w: Dictionary) -> Vector2:
-	if runs_of(w) < 2:
-		return Vector2.ZERO
-	var kept: Vector2 = shape_for(gen.tuning, gen.speed, tuning(), null, runs_of(w)).kept()
-	return Vector2(float(w["approach"]) + kept.x, float(w["approach"]) + kept.y)
-
-
-## The stretch an anti-grav pad's schedule skips for `kept` (a stretch kept for an extended wall run): every spot a
-## pad's run-up or lead-in, its `pad_ceiling_seconds` ceiling and its landing zone would reach it from. A drone's
+## The stretch an anti-grav pad's schedule skips for `kept` (an extended wall run's clear stretch, keep_out;
+## LevelGenerator.extended_wall_run_clear): every spot a pad's run-up or lead-in, its `pad_ceiling_seconds` ceiling and
+## its landing zone would reach it from: with the shipped numbers, at The Hush's speed, about 11 s of run for a double
+## and 14 s for a triple, of which the crossing itself (its run-in to its far edge) is 5.3 s and 7.9 s. A drone's
 ## schedule (drone_rules.gd) and a Bad Dream chase's pads (host_rules.gd) count their gaps without it: both hold their
 ## attacks while the runner crosses (Drone._wall_run_in_reach, BadDream._wall_run_in_reach), and no pad fits in it.
 ## DESIGN-TBD (docs/questions/o1.md).
@@ -565,14 +596,14 @@ static func pad_skip(gen: LevelGenerator, kept: Vector2, pad_ceiling_seconds: fl
 
 
 ## How much of the track from `from` to `to` an anti-grav pad schedule skips for `gen`'s layout's extended wall runs
-## (as much of each one's pad_skip of its kept_of as lies inside): what a gap between two pads there, or between a pad
+## (as much of each one's pad_skip of its clear stretch as lies inside): what a gap between two pads there, or between a pad
 ## and a Bad Dream chase's end, counts without.
 static func pad_skips_between(gen: LevelGenerator, from: float, to: float, pad_ceiling_seconds: float) -> float:
 	var out: float = 0.0
 	for w: Dictionary in gen.layout.wall_run_gaps:
 		if runs_of(w) < 2:
 			continue
-		var skip: Vector2 = pad_skip(gen, kept_of(gen, w), pad_ceiling_seconds)
+		var skip: Vector2 = pad_skip(gen, keep_out(w), pad_ceiling_seconds)
 		out += maxf(minf(skip.y, to) - maxf(skip.x, from), 0.0)
 	return out
 
@@ -1157,12 +1188,11 @@ static func problem(gen: LevelGenerator, w: Dictionary) -> String:
 			if k.x < at.y and k.y > at.x:
 				return "something it keeps off (%s: %.1f-%.1f m) reaches it (%.1f-%.1f m)" % [name, k.x, k.y, at.x, at.y]
 	var path: Vector2 = wall_path(w, gen.speed, t)
-	var open: Dictionary = open_wall_of(w)
+	var openings: Array[Dictionary] = openings_of(w, gen.speed, t)
 	for s: int in ([-1, 1] if runs > 1 else [side]):
 		for keep: Dictionary in wall_keeps(gen, s, t):
 			var k: Vector2 = keep["span"]
-			if not open.is_empty() and s == int(open["side"]) and String(keep["what"]) == "a wall gap" \
-					and absf(k.x - float(open["start"])) < 0.01 and absf(k.y - float(open["end"])) < 0.01:
+			if String(keep["what"]) == "a wall gap" and _is_opening(openings, s, k):
 				continue
 			if k.x < path.y - TOUCH and k.y > path.x + TOUCH:
 				return "its %s wall isn't clear over its wall run (%s, %.1f-%.1f m)" % ["lit" if s == side else "other",
@@ -1186,11 +1216,13 @@ static func wide_gap_reserve(gen: LevelGenerator) -> Array[Vector2]:
 	if gen.config.wide_gaps <= 0 or lay.wall_run_gaps.is_empty() or gen.config.feature_starts.has(FEATURE) \
 			or WideGapPlacement.rows_of(gen).size() >= gen.config.wide_gaps:
 		return out
-	var first: Dictionary = lay.wall_run_gaps[0]
+	# Its first ordinary one: an extended wall run stays where the pattern pass kept its stretch (_place_extended).
+	var first: Dictionary = {}
 	for w: Dictionary in lay.wall_run_gaps:
-		if float(w["start"]) < float(first["start"]):
+		if runs_of(w) < 2 and (first.is_empty() or float(w["start"]) < float(first["start"])):
 			first = w
-	out.append(keep_out(first))
+	if not first.is_empty():
+		out.append(keep_out(first))
 	return out
 
 

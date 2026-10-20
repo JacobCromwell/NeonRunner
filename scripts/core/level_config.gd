@@ -213,6 +213,11 @@ var _skin: ZoneSkin
 ## exactly as before. DESIGN-TBD (docs/questions/o1.md): The Hush's three, a double with both walls, then a double
 ## and a triple with one wall each.
 @export var extended_wall_runs: Array[Dictionary] = []
+## Features of its zone a level leaves out to make room for its own set pieces (the owner, October 20, 2026: The Hush
+## may drop the heli drone, or the Enforcer Truck and the Buzz Overdrive, for its extended wall runs; it drops the
+## drone, whose anti-grav pad every 8 to 10 s left them no room). Endless mode, which plays the zone rather than the
+## level, puts them back (App.start_endless). Empty in every other level.
+@export var features_left_out: PackedStringArray = []
 ## Cyborgs in charge paths (owner, October 7, 2026, GDD §9.13 "Teaching"; task G7): up to this many of the
 ## level's Octodog lunges and Buzz Overdrive charges get a plain cyborg standing in their path, so the
 ## player sees a charge flatten another enemy (ChargePathPlacement; numbers in data/tuning/charge_paths.tres).

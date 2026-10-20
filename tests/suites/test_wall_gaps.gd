@@ -382,9 +382,9 @@ func _test_campaign_levels() -> void:
 				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 				check(not layout.wall_gaps.is_empty(), "every Zone 2+ level has a wall gap %s" % tag)
 				var starts: Dictionary = {}
-				# Task O1: an extended wall run's open wall (WallRunGapPlacement.open_walls) is its own, not one of the
-				# feature's gaps (test_extended_wall_runs checks it).
-				var open: Array[Dictionary] = WallRunGapPlacement.open_walls(layout)
+				# Task O1: an extended wall run's open wall and its platforms' notches (WallRunGapPlacement.open_walls) are
+				# its own, not the feature's gaps (test_extended_wall_runs checks them).
+				var open: Array[Dictionary] = WallRunGapPlacement.open_walls(layout, gen.speed)
 				for g: Dictionary in layout.wall_gaps:
 					if open.has(g):
 						continue

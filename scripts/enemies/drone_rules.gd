@@ -172,11 +172,11 @@ static func _place_pad(gen: LevelGenerator, t: DroneTuning, rng: RandomNumberGen
 
 
 ## `at`, or, where a pad there would reach a stretch kept for the level's extended wall runs (LevelGenerator
-## .extended_wall_run_reserve; the owner, October 19, 2026), that much further on as the schedule skips for it
+## .extended_wall_run_clear; the owner, October 19, 2026), that much further on as the schedule skips for it
 ## (WallRunGapPlacement.pad_skip): the gap counts without it, as the drone holds its barrages over the crossing
 ## (Drone._wall_run_in_reach), and goes on after it. `at` itself in every level without them.
 static func _past_extended(gen: LevelGenerator, t: DroneTuning, at: float) -> float:
-	for kept: Vector2 in gen.extended_wall_run_reserve:
+	for kept: Vector2 in gen.extended_wall_run_clear:
 		var skip: Vector2 = WallRunGapPlacement.pad_skip(gen, kept, t.pad_ceiling_seconds)
 		if at > skip.x and at < skip.y:
 			at += skip.y - skip.x
