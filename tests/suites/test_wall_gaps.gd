@@ -384,7 +384,12 @@ func _test_campaign_levels() -> void:
 				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
 				check(not layout.wall_gaps.is_empty(), "every Zone 2+ level has a wall gap %s" % tag)
 				var starts: Dictionary = {}
+				# Task O1: an extended wall run's open wall and its platforms' notches (WallRunGapPlacement.open_walls) are
+				# its own, not the feature's gaps (test_extended_wall_runs checks them).
+				var open: Array[Dictionary] = WallRunGapPlacement.open_walls(layout, gen.speed)
 				for g: Dictionary in layout.wall_gaps:
+					if open.has(g):
+						continue
 					var key: float = float(g["start"])
 					starts[key] = int(starts.get(key, 0)) + 1
 					var secs: float = (float(g["end"]) - float(g["start"])) / gen.speed
@@ -398,7 +403,7 @@ func _test_campaign_levels() -> void:
 				for side: int in [-1, 1]:
 					var keeps: Array[Vector2] = WallGapPlacement.keep_outs(gen, layout, side, t)
 					for g: Dictionary in layout.wall_gaps:
-						if int(g["side"]) != side:
+						if int(g["side"]) != side or open.has(g):
 							continue
 						for kp: Vector2 in keeps:
 							check(not (float(g["start"]) < kp.y - 0.01 and float(g["end"]) > kp.x + 0.01),

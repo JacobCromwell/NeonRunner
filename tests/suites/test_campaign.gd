@@ -92,6 +92,9 @@ const LEFT_OUT: Dictionary = {
 	# docs/questions/o1.md: GDD §5 says anything introduced keeps appearing, but the maze is the Terminal's own).
 	"debris_maze": ["golden/1", "golden/2", "golden/3"],
 	"centipede": ["golden/1", "golden/2", "golden/3"],
+	# The owner, October 20, 2026 (task O1): The Hush leaves out the heli drone, whose anti-grav pad every 8 to 10 s left
+	# its extended wall runs no room (LevelConfig.features_left_out; endless mode puts it back).
+	"drone": ["dead_zone/2"],
 }
 ## GDD §9.9 (corrected September 26, 2026): the Buzz Overdrive appears in the Corporate zone and the
 ## two zones after it, the Dead Zone and the Golden Zone (the Golden Palace plays like any level), and in the
@@ -153,7 +156,7 @@ const SPACED_FROM_START: Array = ["wall_gaps", "wall_run_gaps"]
 ## and have none (WallRunGapPlacement: nothing may go that the drone or a feature counts on). Every campaign build has
 ## its wall-run gaps (test_wall_run_gaps). Each is checked to still warn so (else take it out of the list).
 ## DESIGN-TBD (docs/questions/j2.md item 12).
-const WALL_RUN_GAP_CROWDED: PackedStringArray = ["The Hush without the remix lanes=3 seed=9206", "Dead Zone 1 lanes=3 seed=9208"]
+const WALL_RUN_GAP_CROWDED: PackedStringArray = ["Dead Zone 1 lanes=3 seed=9208"]
 ## The warning a build in WALL_RUN_GAP_CROWDED gives (WallRunGapPlacement.place).
 const WALL_RUN_GAP_WARNING: String = "wall-run gaps: no fair room anywhere for one (every feature should appear, GDD §5)"
 ## The campaign's first steps before the Casino (save version 2), in their old order: The House was the
@@ -1264,6 +1267,7 @@ func _test_hush(campaign: Campaign) -> void:
 					config.level_seed = 9200 + k
 				if which == 1:
 					config.quiet_seconds = 0.0
+					config.extended_wall_runs = []
 					config.quiet_features = PackedStringArray()
 					var none: Dictionary[String, float] = {}
 					config.feature_weights = none

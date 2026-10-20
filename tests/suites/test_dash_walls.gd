@@ -469,7 +469,8 @@ func _reaches(spans: Array[Vector2], span: Vector2) -> bool:
 
 ## The Hush (Dead Zone 2; GDD §5: "long silent stretches broken by sudden threats") keeps its quiet stretches free of
 ## walls as the fill and danger density passes do (DashWallRules.plan_for, `quiet`): on its own seed at 3, 5 and 6
-## lanes every wall stands in a burst.
+## lanes every wall stands in a burst, but where its extended wall runs (task O1) leave its bursts no room for its only
+## wall, which then stands in a quiet stretch rather than none at all (DashWallRules' fallback): 5 lanes.
 func _test_hush() -> void:
 	for lanes: int in [3, 5, 6]:
 		var config: LevelConfig = campaign.configure(campaign.step("dead_zone/2"), lanes)
@@ -481,8 +482,12 @@ func _test_hush() -> void:
 			var quiet: bool = false
 			for q: Vector2 in gen.quiet_stretches():
 				quiet = quiet or (q.x <= fp.y and q.y >= fp.x)
-			check(not quiet, "the wall at %.0f m stands in a burst, out of every quiet stretch (%d lanes)" % [
+			var fallback: bool = gen.layout.dash_walls.size() == 1 and not config.extended_wall_runs.is_empty()
+			check(not quiet or fallback, "the wall at %.0f m stands in a burst, out of every quiet stretch (%d lanes)" % [
 				float(w["start"]), lanes])
+			if quiet:
+				print("  The Hush at %d lanes: its only dash wall stands in a quiet stretch (%.0f m), its bursts full" % [lanes,
+					float(w["start"])])
 
 
 ## A level without the feature draws nothing: no walls and no dash_walls key (a level of every zone before the

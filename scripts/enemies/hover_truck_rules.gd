@@ -43,7 +43,8 @@ static func apply(gen: LevelGenerator) -> void:
 	var most: int = t.max_per_level_at(gen.config.enemy_scaling)
 	for e: Dictionary in trucks:
 		var at: float = e["at"]
-		if at > latest or at < earliest or window_start(t, at, gen.pace) < free_from or kept.size() >= most:
+		if at > latest or at < earliest or window_start(t, at, gen.pace) < free_from or kept.size() >= most \
+				or _in_extended(gen, t, at):
 			removed.append(e)
 			continue
 		kept.append(e)
@@ -214,7 +215,26 @@ static func _add_guaranteed(gen: LevelGenerator, t: HoverTruckTuning, latest: fl
 	var at: float = gen.burst_spot(rng, lo, hi, TYPE)
 	if is_nan(at):
 		at = rng.randf_range(lo, hi)
+	if _in_extended(gen, t, at):
+		# The first spot from `lo` whose stay reaches no stretch kept for an extended wall run.
+		at = lo
+		while at <= hi and _in_extended(gen, t, at):
+			at += gen.speed
+		if at > hi:
+			return {}
 	return gen.add_enemy(TYPE, at, gen.layout.outer_lane(side), side, {})
+
+
+## True if a truck at `at` would be around (its lane's window, and the ramp its rules give it) over a stretch kept for
+## the level's extended wall runs (LevelGenerator.kept_for_extended): it holds the outer lane the platforms are in.
+## DESIGN-TBD (items 1042-1050 in docs/OPEN_QUESTIONS*.md).
+static func _in_extended(gen: LevelGenerator, t: HoverTruckTuning, at: float) -> bool:
+	if gen.extended_wall_run_reserve.is_empty():
+		return false
+	var to: float = maxf(window_end(t, at, gen.speed), at + t.ramp_after_seconds * gen.speed + gen.tuning.ramp_length
+		+ (gen.tuning.wall_entry_time + gen.tuning.wall_slide_time) * gen.speed)
+	var kept: Vector2 = gen.kept_for_extended(window_start(t, at, gen.pace), to)
+	return kept.y > kept.x
 
 
 static func _remove_entries(layout: LevelLayout, entries: Array[Dictionary]) -> void:

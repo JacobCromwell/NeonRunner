@@ -16,3 +16,5 @@ landing_slack_seconds = 0.3
 wall_clear_seconds = 0.5
 other_wall_clear_seconds = 0.5
 save_margin = 6.0
+platform_slack_seconds = 0.2
+platform_notch_seconds = 0.1

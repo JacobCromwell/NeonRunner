@@ -32,7 +32,7 @@
     "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache", "volleyball",
     "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite", "mecha_guppy_bite_water",
-    "zone_shaders", "weekly_challenge", "terminal_levels"
+    "zone_shaders", "weekly_challenge", "extended_wall_runs", "terminal_levels"
   ],
   "rules": [
     {"match": "scripts/weekly/*", "suites": ["weekly_challenge", "weekly_fairness", "app_flow", "screens", "phone_screens", "web_demo"]},
@@ -55,9 +55,10 @@
     {"match": "scripts/world/floor_cut*.gd", "tier": "full"},
     {"match": "scripts/world/gap_density.gd", "tier": "full"},
     {"match": "scripts/world/danger_density*.gd", "tier": "full", "suites": ["danger_density"]},
-    {"match": "scripts/world/wall_run_gap_*.gd", "tier": "full", "suites": ["wall_run_gaps", "campaign", "wall_fences", "wall_gaps"]},
-    {"match": "scripts/enemies/wall_run_gaps_rules.gd", "tier": "full", "suites": ["wall_run_gaps", "campaign"]},
-    {"match": "data/tuning/wall_run_gaps.tres", "tier": "full", "suites": ["wall_run_gaps", "campaign"]},
+    {"match": "scripts/world/wall_run_gap_*.gd", "tier": "full", "suites": ["wall_run_gaps", "extended_wall_runs", "campaign", "wall_fences", "wall_gaps"]},
+    {"match": "scripts/enemies/wall_run_gaps_rules.gd", "tier": "full", "suites": ["wall_run_gaps", "extended_wall_runs", "campaign"]},
+    {"match": "data/tuning/wall_run_gaps.tres", "tier": "full", "suites": ["wall_run_gaps", "extended_wall_runs", "campaign"]},
+    {"match": "data/levels/dead_zone_2.tres", "tier": "full", "suites": ["extended_wall_runs", "wall_run_gaps", "campaign", "host_releases", "bad_dream"]},
     {"match": "scripts/world/wall_hop_*.gd", "tier": "full", "suites": ["wall_hops", "campaign", "economy"]},
     {"match": "data/tuning/wall_hops.tres", "tier": "full", "suites": ["wall_hops", "campaign", "economy"]},
     {"match": "scripts/world/wall_*_placement.gd", "tier": "full"},

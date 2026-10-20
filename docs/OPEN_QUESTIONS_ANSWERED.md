@@ -1672,3 +1672,42 @@ Captain Cogs).
    stay samples. In Chromium the browser tab held about 250 MB less at City 1's start, with no decode stop. What only
    a real device can say: whether the music stutters in a long frame on a slow phone or laptop (a load's freeze longer than
    the buffer is a gap). The death dip's low-pass, a Music bus effect, now works on the web too. Not a design change.
+
+**O1, The Hush's extended wall runs** (from `docs/questions/o1.md`; the owner's request, October 19, 2026; GDD §3,
+"Extended wall runs in The Hush")
+1042. **"As long as the default wall run time."** The request says the double "will be as long as the default wall run
+   time is" and the triple "as long as three default wall runs". Read as two and three standard wall runs, from the lit
+   stretch to the far edge: 2.1 and 3.3 standard wall runs (4.5 s and 7.1 s of run), the rest being the platforms' room
+   to land. Placeholder: each hole an ordinary wall-run gap's (1.41 s of run), a platform between two.
+   **Answered (owner, October 20, 2026):** approved as built ("This all seems good").
+1043. **The platforms' size.** Placeholder: one lane wide (the outer lane by the lit wall), as long as the latest standard
+   wall run over the hole before it takes to drop the runner on it plus `platform_slack_seconds` (0.2 s): about 1.2 s of
+   run (29 m at The Hush's 24.2 m/s), its last half second the place to step back on.
+   **Answered (owner, October 20, 2026):** approved as built.
+1044. **Which section has both walls, and the order.** Placeholder: a double with both walls first, then a double and a
+   triple with one wall each, on seeded sides (`data/levels/dead_zone_2.tres`).
+   **Answered (owner, October 20, 2026):** approved as built.
+1045. **Where they come in the level.** Placeholder: each due at a seeded spot early in its share of the level, kept at
+   the first spot from there that nothing placed before reaches (a hover truck's stay can put it off by up to about
+   35 s), at least `min_spacing_seconds` (15 s) apart (`WallRunGapPlacement.extended_plan`).
+   **Answered (owner, October 20, 2026):** approved as built.
+1046. **The open wall.** With one lit wall the other is open from the section's clear run-in to its far edge (the Dead
+   Zone's wall-gap look), so the runner sees which way to go from the run-in (0.8 s plus the lit stretch's 0.5 s). Enough
+   warning? (Related: item 932.)
+   **Answered (owner, October 20, 2026):** approved as built.
+1047. **Pads skipped over them.** A Bad Dream chase needs an anti-grav pad at least every 10 s (GDD §9.7; a drone's every
+   8–10 s, §9.6), but none fits over a section's clear stretch. Placeholder: the pads skip it (with a pad's run-up and
+   its ceiling's landing: about 11.6 s of run for a double and 14.2 s for a triple at The Hush's speed), the gap that
+   holds it counting without it; the Bad Dream holds its slash over the crossing itself (5.3 s and 7.9 s).
+   **Answered (owner, October 20, 2026):** approved as built. The Hush leaves out the heli drone (item 1048), so only the
+   Bad Dream's pads skip them.
+1048. **What else keeps off them.** The Hush's patterns, ceilings, floor cuts, Octodog charges, hover truck stays,
+   Enforcer Truck chases before their showing and guaranteed hosts keep off them, so The Hush had less of those, and
+   needed 2 to 16 builds to fit every feature (1 to 5 before).
+   **Answered (owner, October 20, 2026):** where everything doesn't fit, The Hush may leave out one of the more
+   space-hungry enemies: the heli drone encounter, or the Enforcer Truck and the Buzz Overdrive. It leaves out the heli
+   drone (`LevelConfig.features_left_out`; endless mode puts it back): 3 to 6 builds, every section in every build
+   measured. Recorded in GDD §3.
+1049. **Ordinary wall-run gaps beside them.** The Hush keeps its ordinary wall-run gaps where they fit around the extended
+   ones (0 or 1 a build), and needs none of its own.
+   **Answered (owner, October 20, 2026):** approved as built.

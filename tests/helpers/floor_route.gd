@@ -7,7 +7,7 @@ extends RefCounted
 ## arc clears them), and slides under gapped fences (pressed again to slide on). It never uses a wall
 ## but a wall-run gap's (task J2, LevelLayout.wall_run_gaps: from its outer lane on its lit stretch, a step
 ## onto the lit wall and a standard wall run across, landing back in that lane past where the run and its
-## drop end), a lane switch in the air, coyote time or a jump out of a slide, never steps on a pad, ramp or speed
+## drop end; an extended wall run's the same from each platform's last stretch), a lane switch in the air, coyote time or a jump out of a slide, never steps on a pad, ramp or speed
 ## pad, treats pulsing fences as always on, keeps out of a zone doodad's lane where it stands (no jump over it: it's
 ## too tall; and no push, unless it's made with `pushes`: task L6, a runner who comes into the stretch before its front
 ## where its push begins, running, landing or ending a slide there, is pushed into the lane on its side, landing there
@@ -113,11 +113,15 @@ func _init(p_layout: LevelLayout, p_tuning: MovementTuning, pushes: bool = false
 	_clear = _clear_window()
 	var wall_run: float = (tuning.wall_entry_time + tuning.wall_slide_time + WallRunGapPlacement.drop_seconds(tuning)) * speed
 	_wall_steps = int(ceil(wall_run / STEP))
+	# An extended wall run (the owner, October 19, 2026): from each of its lit walls' outer lane, on its lit stretch and
+	# on each platform's last stretch (WallRunGapPlacement.crossings_of).
 	for w: Dictionary in layout.wall_run_gaps:
-		var lane: int = layout.outer_lane(int(w["side"]))
-		for i: int in range(int(ceil((float(w["entry"]) + GAP_MARGIN) / STEP)), int(floor((float(w["start"]) - GAP_MARGIN) / STEP)) + 1):
-			if i >= 0 and i < size:
-				_wall_starts[lane * size + i] = true
+		for side: int in WallRunGapPlacement.sides_of(w):
+			var lane: int = layout.outer_lane(side)
+			for c: Vector3 in WallRunGapPlacement.crossings_of(w):
+				for i: int in range(int(ceil((c.x + GAP_MARGIN) / STEP)), int(floor((c.y - GAP_MARGIN) / STEP)) + 1):
+					if i >= 0 and i < size:
+						_wall_starts[lane * size + i] = true
 	if _pushes:
 		_build_pushes()
 

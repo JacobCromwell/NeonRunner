@@ -714,6 +714,13 @@ Cybernetic Centipede (GDD §5 Zone 8, §9.15). Core tasks run one at a time: O1 
 | O2 | **The debris maze:** Terminal doodads (lower) **stop the runner** instead of pushing; the maze pattern (level 1 a maze that needs the dash, level 2 normal with stretches of maze), always finishable with the dash at its slowest recharge; stars stay time-based. **Core** (generator, player). | O1 | L | T1 |
 | O3 | **The Cybernetic Centipede** (GDD §9.15): waits in open maze sections, chases a nearby runner along open paths, can't pass debris, released by a dash, can't follow onto a ceiling; bite on contact is one hit; two dashes kill it, a dash passes through it; immune to weapons, claws and stomps; its warnings; its placement keeps every maze escapable. Its own files, plus a **core** hook for placement. | O2 | L | T1 |
 | O4 | **The Terminal's skin:** the subway (track bed and platforms, rusted trains, cables, dead boards, steam, failing orange lamps, scavengers as scenery), the arch wall sections and their broken stumps, low debris doodads, single-lane ceiling pieces, its lighting (no sky: a tunnel vault), placeholder music (reference `docs/art/reference/terminal_zone.jpg`). | – (hooks into O1's zone when both are in) | L | T2 |
+### O. The owner's request (October 19, 2026)
+
+Recorded in the GDD (§3, "Extended wall runs in The Hush").
+
+| ID | Task | Needs | Size | Tier |
+|---|---|---|---|---|
+| O1 | **The Hush's extended wall runs:** three sections that take a double or a triple wall run, small platforms by the wall to recharge on, one with walls on both sides and the others with a wall on one side only (GDD §3). **Core** (generator, The Hush's data). **Done.** | – | M | T1 |
 
 ## Order at a glance
 

@@ -555,10 +555,18 @@ func start_endless() -> void:
 	# (every feature at least once, which may rebuild the level) would only cost load time.
 	ctx.config.guarantee_features = false
 	# The zone's play, not one level's own shape: The Hush's quiet stretches and bursts, the hosts it
-	# picks more often for them (its quiet features' weights) and its darker lighting stay in The Hush
-	# (GDD §5), and a last level's own sky (a dawn, a sunset) in that level. (A new dictionary: the copy
-	# shares the level's.)
+	# picks more often for them (its quiet features' weights), its extended wall runs (and the zone's features
+	# it leaves out for them, put back) and its darker lighting stay in The Hush (GDD §5), and a last level's
+	# own sky (a dawn, a sunset) in that level.
+	# (A new dictionary: the copy shares the level's.)
 	ctx.config.quiet_seconds = 0.0
+	ctx.config.extended_wall_runs = []
+	var features: PackedStringArray = ctx.config.features.duplicate()
+	for f: String in ctx.config.features_left_out:
+		if not features.has(f):
+			features.append(f)
+	ctx.config.features = features
+	ctx.config.features_left_out = PackedStringArray()
 	ctx.config.darkness = 0.0
 	ctx.config.sky = null
 	var weights: Dictionary[String, float] = ctx.config.feature_weights.duplicate()
