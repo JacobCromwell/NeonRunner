@@ -207,21 +207,23 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 
 **Zone 8: the Terminal** (owner, October 20, 2026; reference image `docs/art/reference/terminal_zone.jpg`). An **abandoned subway** under the city, now used only by **a few scavengers** and the **cybernetic centipedes** that hunt there.
 - **Look:** the reference image: vaulted tunnels and platforms, rusted and vine-covered subway cars, dead departure boards, cables strung everywhere, puddles and dripping water, steam, and failing orange work lamps. **Full of debris.**
-- **Floor and gaps:** the track bed and platforms *(proposed)*. Gaps in the floor: *(open)* whether the Terminal has any.
+- **Floor and gaps:** the track bed and platforms *(proposed)*. **A couple of holes, not many** (owner, October 20, 2026).
 - **Scavengers:** scenery only, like the Marketplace's citizens *(proposed)*.
-- **Enemies:** **only the cybernetic centipedes**, a new enemy the owner will describe later. **None of the usual enemies** appear in the Terminal (no cyborgs, drones, trucks, screeches or the rest).
+- **Enemies:** **only the cybernetic centipedes** (§9.15), which haunt the maze. **None of the usual enemies** appear in the Terminal (no cyborgs, drones, trucks, screeches or the rest).
 - **The debris maze** (owner, October 20, 2026): the Terminal's first level brings in **a new way to play**. Doodads (§3, Zone doodads) stand so thickly that **the empty space between them forms a maze**, and the runner **can't get through without dashing**. The player has to **look and think ahead** to choose where to **break through with the dash** to reach the end.
   - **A doodad stops the runner** here instead of pushing them aside (with doodads on both sides, a push would usually land in another one): running into a Terminal doodad brings the runner to **a complete stop**, facing it. *(Proposed)* A stop costs nothing but time; the runner sets off again by switching into an open lane or by dashing through.
   - **The dash recharges as usual** (owner, October 20, 2026): a runner who meets a wall of debris before the dash is ready **stands and waits**, and the waiting costs time. No faster recharge and no spacing rule in the maze.
+  - **Stars stay time-based** (owner, October 20, 2026), so a stop and a wait for the dash cost stars.
+  - **No dash walls** (§9.14) in the Terminal (owner, October 20, 2026): its debris is enough.
   - **The dash is required.** A player without it can't finish a maze level and has to go back and buy it. The owner accepts this: nearly every player owns the dash by then (it is the shop's first item, §8).
   - **Shorter doodads** (owner, October 20, 2026): the Terminal's doodads are **lower than standard doodads**, so the player can see the maze's open paths over them. *(Proposed)* still too tall to jump, and they read so.
   - **Looks:** debris that fits the reference image *(proposed: a heap of broken concrete and rebar, a toppled ticket kiosk or vending machine, fallen ceiling slabs, a tangle of cable drums and crates)*.
-- **Ceilings: few, single-lane shortcuts** (owner, October 20, 2026). Anti-grav pads and ceilings remain, but **every ceiling is one lane wide** and there are **very few** of them. They are **little shortcuts** over part of the maze, not a way to be safe or to fight enemies as in earlier zones. *(Proposed)* the underside of a fallen girder, a hanging walkway or a stranded subway car's roof.
+- **Ceilings: few, single-lane shortcuts** (owner, October 20, 2026). Anti-grav pads and ceilings remain, but **every ceiling is one lane wide** and there are **very few** of them. They are **little shortcuts** over part of the maze, not a way to be safe or to fight enemies as in earlier zones; a pad is also **a way to escape a centipede** (§9.15), which can't follow onto a ceiling. *(Proposed)* the underside of a fallen girder, a hanging walkway or a stranded subway car's roof.
 - **Side walls: narrow arches** (owner, October 20, 2026). To read as the old subway's tunnel arches or structural supports, each **wall section is one space wide** (about a standard doodad's width), with **about six lengths of open space** before the next one.
   - **Mostly symmetrical:** the arches stand in pairs, left and right.
   - **A missing one is a broken stump:** where one side's section is missing, that side shows a section **cut off about halfway up**, as if it had deteriorated over time or fallen in an earthquake, a **crumbled ruin**.
   - **No wall running** (owner, October 20, 2026): the arches and the tunnel wall behind them are a boundary, so the maze can't be bypassed along a wall. *(Proposed)* moving past the outer lane bumps the runner back, like a sign's blocked entry, without damage.
-- **Two levels, no boss** (owner, October 20, 2026): level 1 is **the debris maze**; level 2 is **a normal run with stretches of maze**. The Terminal has **no boss fight**; it leads straight into the Golden Zone. Level names *(open)*.
+- **Two levels, no boss** (owner, October 20, 2026): level 1 is **the debris maze**; level 2 is **a normal run with stretches of maze**. The Terminal has **no boss fight**; it leads straight into the Golden Zone. Level names *(proposed, at the owner's request)*: **Rubble Line** and **Last Stop**.
 
 **Zone 9: Golden Zone.** The city strictly for the elites and corporate bosses, and home of the final boss. The cult is felt everywhere, alongside an extravagant show of opulence and wealth. Floor: golden walkways over water *(proposed; owner agreed)*. Ceilings: undersides of golden bridges, golden archways and other decadent structures.
 - **Water:** flows off the sides of the ceilings as waterfalls or fountains. It is **scenery only**, kept sparse, and thinned out if it clutters the view.
@@ -259,8 +261,8 @@ Gameplay uses **abstract pieces**; each zone supplies a **skin** that decides ho
 | | 3 · Sunset Strip | The same remix as Tiki Tides as the sun starts to set |
 | 7. Dead Zone | 1 · Ashfall | Hosts and the **Cyborg's Bad Dream** |
 | | 2 · The Hush | A quiet, eerie remix: **fewer enemies but more hosts and Bad Dream chases, darker lighting, and long silent stretches broken by sudden threats** (decided September 26, 2026) |
-| 8. The Terminal | 1 · *(name open)* | The **debris maze** and the **cybernetic centipedes** (owner, October 20, 2026; the centipedes to be described): doodads stop the runner, and the dash breaks the way through |
-| | 2 · *(name open)* | A normal run with stretches of the debris maze; centipedes only. **No boss** |
+| 8. The Terminal | 1 · Rubble Line *(proposed name)* | The **debris maze** and the **cybernetic centipede** (§9.15) (owner, October 20, 2026): doodads stop the runner, and the dash breaks the way through |
+| | 2 · Last Stop *(proposed name)* | A normal run with stretches of the debris maze; centipedes only. **No boss** |
 | 9. Golden Zone | 1 · Gilded Canals | The **Resonator** (§9.10) |
 | | 2 · Sentinel Row | **Gilded Sentinels** (§9.11) and peak difficulty *(proposed)* |
 | | 3 · Golden Palace | The **Golden Palace**, then the final boss |
@@ -696,6 +698,16 @@ Shared interaction rules apply unless stated otherwise:
 - **Walls stay open:** it blocks only the floor. A player running on a side wall passes it. **No ceiling overlaps a dash wall.**
 - **Introduced in the Corporate zone** *(proposed: Corporate 1, after the Buzz Overdrive's introduction)*, and in the zones after it, **except the Beach**, whose open side walls stay as they are (owner, October 14, 2026).
 - *(Proposed)* Fairness: walls are spaced so the dash's longest cooldown (8 s) is always over before the next wall, and nothing else that needs the dash comes just before one.
+### 9.15 Cybernetic Centipede (owner, October 20, 2026; the Terminal's only enemy, first appears in Terminal 1)
+- **Look:** the owner's reference image `docs/art/reference/centipede.jpg`: a long, segmented body of riveted brass and steel bands, many sharp jointed steel legs, a welder-mask head with hooked mandibles and glowing green lenses, and green glass tubes and canisters of glowing fluid on its back, trailing a little steam. *(Proposed)* its green glow stays as drawn: it is a hazard, so a hazard colour fits.
+- **Where:** it **haunts the debris maze**, waiting in the open sections between the debris.
+- **Chase:** when the runner enters a section of the maze **close to it**, it **wakes and chases**. It moves along the maze's open paths and **can't pass debris**. The runner is **slightly faster**, but the maze's walls (and the stops at debris) let it catch a careless runner.
+  - **Trapped behind debris:** some centipedes are walled in, and a dash that opens their debris can **release one by accident**.
+  - **In the only way through:** sometimes a centipede sits in the one section the runner must cross, and the player has to work out quickly which path to take and which dashes to make to escape it.
+  - **Escape, don't fight:** the player is strongly encouraged to run from it. An **anti-grav pad** to a short ceiling is one way out: it **can't follow onto a ceiling** *(proposed)*.
+- **Attack: a bite.** It hurts only on **contact**. **One bite is one hit** (owner, October 20, 2026): armor or a shield absorbs it, with the usual invulnerability after; with neither, it kills. *(Proposed)* a hiss and a clatter of legs when it wakes, and the head rearing with its mandibles opening just before each bite, so every bite is seen and heard first.
+- **Tough: two dashes kill it** (owner, October 20, 2026). A trapped runner will likely take two or more bites before killing it with dashes alone. **A dash passes through it safely** and wounds it; met head-on in a path, the runner dashes through it, and it **turns and chases from behind** (owner, October 20, 2026). *(Proposed)* a wounded centipede shows it: a cracked tube leaking green, sparks.
+- **Only the dash hurts it** (owner, October 20, 2026): **immune to weapons, claws and stomps**. Auto-fire ignores it *(proposed)*, and claws give no contact kill (a claw runner is bitten like anyone).
 
 ---
 

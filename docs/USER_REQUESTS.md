@@ -13,6 +13,9 @@ request that is now in the done file.
   work lamps; scavengers as scenery); **narrow arch side walls** (one space wide, about six lengths apart, mostly
   in pairs, a missing one shown as a stump broken off about halfway up) with **no wall running**; **lower debris doodads
   that stop the runner** instead of pushing; **the debris maze** pattern (level 1 a maze that needs the dash to finish,
-  level 2 a normal run with stretches of maze); **few, single-lane ceilings** as shortcuts. **Enemies: only the
-  cybernetic centipedes**, which the owner will describe later, so the enemy waits for that design; until then the
-  levels run with no enemies. Core work (generator, player, campaign data): split into tasks by the orchestrator.
+  level 2 a normal run with stretches of maze); **few, single-lane ceilings** as shortcuts. **A couple of holes**, **no dash
+  walls**, time-based stars. **Enemies: only the Cybernetic Centipede** (GDD §9.15, reference
+  `docs/art/reference/centipede.jpg`): waits in open maze sections, wakes and chases along open paths when the runner
+  comes near, can't pass debris (a dash can release a trapped one), slightly slower than the runner, can't follow onto
+  a ceiling; a bite on contact is one hit; two dashes kill it, a dash passes through it safely; immune to weapons,
+  claws and stomps. The maze generator must place centipedes so every layout stays escapable. Core work (generator, player, campaign data): split into tasks by the orchestrator.
