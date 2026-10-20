@@ -23,6 +23,7 @@ feature_starts = Dictionary[String, float]({
 guarantee_features = true
 patterns_path = "res://data/patterns/terminal/terminal_patterns.json"
 spacing_seconds_easy = 1.1
+danger_density_increase = 0.37
 wide_gaps = 2
 dash_walls = 0
 narrow_ceiling_share = 1.0

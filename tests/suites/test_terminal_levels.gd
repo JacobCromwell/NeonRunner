@@ -119,8 +119,14 @@ func _test_data() -> void:
 		check(is_equal_approx(level.narrow_ceiling_share, 1.0) and is_equal_approx(level.one_lane_ceiling_share, 1.0),
 			"%s: every ceiling one lane wide" % tag)
 		check(level.wide_gaps == 2 and level.dash_walls == 0 and level.wall_hop_lines == 0 and level.fill_empty_seconds == 0.0
-			and level.danger_density_increase == 0.0 and level.charge_path_cyborgs == 0 and not level.buzz_company,
+			and level.charge_path_cyborgs == 0 and not level.buzz_company,
 			"%s: a couple of holes (its two wider gaps), no dash walls, no wall-hop credits, nothing filled in" % tag)
+		# The danger density dial follows the campaign's (test_danger_density): Dead Zone 2's to Golden 1's. Until the
+		# maze and the centipede come in, the pass has none of the level's own enemies or fillers to add.
+		var dz2: float = campaign.step("dead_zone/2").level.danger_density_increase
+		var g1: float = campaign.step("golden/1").level.danger_density_increase
+		check(level.danger_density_increase >= dz2 - 0.001 and level.danger_density_increase <= g1 + 0.001,
+			"%s: its danger density dial (%.2f) between Dead Zone 2's and Golden 1's" % [tag, level.danger_density_increase])
 		check(level.features == FEATURES, "%s lists only its ceilings, its walls' open space, the debris maze and the centipede (%s)"
 			% [tag, level.features])
 		for f: String in ["debris_maze", "centipede"]:

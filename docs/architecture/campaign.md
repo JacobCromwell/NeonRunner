@@ -117,7 +117,8 @@ completion bonus, Continue for old saves, its boss, cinematics and music.
 Zone: its intro (the arrival flyover), Rubble Line and Last Stop (`data/levels/terminal_1.tres` and `terminal_2.tres`:
 seeds 901 and 902, 140 and 145 s) and its outro (a card), **no boss** (the Marketplace's way: no boss or boss-intro
 slot). Its levels are off the curve like the Beach's, strictly between Dead Zone 2 and Golden 1 (difficulty 0.79 and
-0.805, enemy scaling 0.83 and 0.85, completion bonus Dead Zone 2's), so every other level plays exactly as before.
+0.805, enemy scaling 0.83 and 0.85, completion bonus Dead Zone 2's; danger density dials 0.37 and 0.38, which add
+nothing there yet: none of the usual enemies and no fillers), so every other level plays exactly as before.
 The Terminal's rules are level data: its own pattern folder (`patterns_path` = `data/patterns/terminal/`: open track
 with credits and a one-lane ceiling, none of the core patterns' holes, fences, signs or enemies), two wider gaps for
 its couple of holes (`wide_gaps`), no dash walls, every ceiling one lane wide (`narrow_ceiling_share` and
