@@ -32,7 +32,7 @@
     "golden_convergence_barrage",
     "sewer_swarm_host", "sewer_swarm_walls", "smoke_play", "web_demo", "level_cache", "volleyball",
     "mecha_guppy", "mecha_guppy_bombs", "mecha_guppy_bites", "mecha_guppy_floor_bite", "mecha_guppy_bite_water",
-    "zone_shaders", "weekly_challenge"
+    "zone_shaders", "weekly_challenge", "terminal_levels"
   ],
   "rules": [
     {"match": "scripts/weekly/*", "suites": ["weekly_challenge", "weekly_fairness", "app_flow", "screens", "phone_screens", "web_demo"]},
@@ -155,10 +155,14 @@
     {"match": "scripts/app/*", "suites": ["app_flow", "screens", "main_scene", "web_demo", "hints", "level_cache", "beach_levels", "volleyball", "cosmetics", "outfits"]},
     {"match": "scripts/ui/*", "suites": ["screens", "phone_screens", "ui_kit", "app_flow", "hints", "credit_visibility", "last_hit_warning", "cosmetics"]},
     {"match": "scenes/*", "suites": ["main_scene", "bosses", "cinematics"]},
+    {"match": "data/levels/terminal_*", "tier": "full", "suites": ["terminal_levels", "danger_density"]},
     {"match": "data/levels/*", "tier": "full", "suites": ["danger_density"]},
+    {"match": "data/patterns/terminal/*", "tier": "full", "suites": ["terminal_levels", "campaign"]},
     {"match": "data/patterns/*", "tier": "full", "suites": ["sign_armor"]},
+    {"match": "data/tuning/terminal_wall_gaps.tres", "tier": "full", "suites": ["terminal_levels", "wall_gaps", "campaign"]},
     {"match": "data/tuning/danger_density.tres", "tier": "full", "suites": ["danger_density"]},
     {"match": "data/tuning/*", "tier": "full"},
+    {"match": "data/zones/terminal.tres", "tier": "full", "suites": ["terminal_levels", "campaign", "weekly_challenge"]},
     {"match": "data/zones/*", "tier": "full"},
     {"match": "data/campaign/*", "tier": "full"},
     {"match": "data/skins/casino_skin*", "suites": ["casino_skin", "skin_budget"]},
@@ -219,6 +223,7 @@
     {"match": "tools/smoke/*", "suites": ["smoke_play"]},
     {"match": "tools/godot.sh", "suites": ["smoke_play"]},
     {"match": "tools/asset_gen/citizen_person_gen.gd", "suites": ["marketplace_citizens"]},
+    {"match": "tools/showcase/arch_wall_review*", "suites": ["terminal_levels"]},
     {"match": "tools/*", "suites": []},
     {"match": "project.godot", "tier": "full"},
     {"match": "export_presets.cfg", "suites": ["web_demo"]},

@@ -63,7 +63,66 @@ func run() -> void:
 	_test_cut_placement(base)
 	_test_buzz_company(base)
 	_test_wall_run_gaps(base)
+	_test_arched_walls(base)
 	await _test_floor_routes_on_physics(base)
+
+
+## Walls without wall running, standing in narrow arches (task O1; GDD §5 Zone 8, the Terminal: LevelConfig.wall_running
+## off, WallGapTuning's Arches group, its own patterns, every ceiling one lane wide), on quick play's level at 3, 5 and 6
+## lanes over seeds and difficulties, with a doodad in every stretch with room and by the walls where one may stand: no
+## warnings, the same seed the same level, every fairness check (check_layout, its check_boundary_walls included:
+## nothing on the walls, every stump opposite an arch) and the rules (check_rules), the walls in arches, every ceiling
+## one lane wide; and in a level whose patterns still put something on a wall (quick play's own, with ramps and signs),
+## the generator says so.
+func _test_arched_walls(base: LevelConfig) -> void:
+	var arches := load("res://data/tuning/terminal_wall_gaps.tres") as WallGapTuning
+	for lanes: int in [3, 5, 6]:
+		for difficulty: float in [0.0, 0.5, 1.0]:
+			for level_seed: int in range(1, 5):
+				var config: LevelConfig = base.duplicate() as LevelConfig
+				config.lane_count = lanes
+				config.difficulty = difficulty
+				config.level_seed = level_seed
+				config.features = PackedStringArray(["ceilings", WallGapPlacement.FEATURE])
+				config.patterns_path = "res://data/patterns/terminal/terminal_patterns.json"
+				config.wall_gap_tuning = arches
+				config.wall_running = false
+				config.narrow_ceiling_share = 1.0
+				config.one_lane_ceiling_share = 1.0
+				config.wide_gaps = 2
+				config.doodad_share = 1.0
+				config.doodad_wall_lane_share = 1.0
+				var tag: String = "(arched walls) lanes=%d diff=%.1f seed=%d" % [lanes, difficulty, level_seed]
+				var patterns: Array = LevelGenerator.load_for(config)
+				var gen := LevelGenerator.new()
+				var a: LevelLayout = gen.generate(config, tuning, patterns)
+				check(gen.warnings.is_empty(), "no warnings %s %s" % [tag, gen.warnings])
+				LayoutChecks.check_layout(self, a, config, tag)
+				LayoutChecks.check_rules(self, a, config, tag)
+				var b: LevelLayout = LevelGenerator.new().generate(config, tuning, patterns)
+				check(JSON.stringify(a.to_dict()) == JSON.stringify(b.to_dict()), "deterministic " + tag)
+				check(not a.wall_running and a.to_dict().get("wall_running", true) == false, "its layout says no wall running " + tag)
+				var span: Vector2 = TrackBuilder.wall_span(a.length)
+				var arched: bool = true
+				for side: int in [-1, 1]:
+					var pieces: Array[Vector2] = a.wall_solid_pieces(side, span.x, span.y)
+					arched = arched and pieces.size() > 10
+					for p: Vector2 in pieces:
+						arched = arched and absf(p.y - p.x - arches.arch_length) < 0.01
+				check(arched, "both walls stand in arches %s" % tag)
+				var one_lane: bool = not a.hulls.is_empty()
+				for h: Dictionary in a.hulls:
+					one_lane = one_lane and a.hull_width(h) == 1
+				check(one_lane, "every ceiling one lane wide (%d) %s" % [a.hulls.size(), tag])
+	var bare: LevelConfig = base.duplicate() as LevelConfig
+	bare.lane_count = 5
+	bare.wall_running = false
+	var gen := LevelGenerator.new()
+	gen.generate(bare, tuning, LevelGenerator.load_for(bare))
+	var warned: bool = false
+	for w: String in gen.warnings:
+		warned = warned or w.begins_with("no wall running here")
+	check(warned, "quick play's level without wall running warns of its ramps and signs (%s)" % [gen.warnings])
 
 
 ## Wall-run gaps (task J2; docs/ARCHITECTURE.md, The generator, Wall-run gaps) in quick play's level with the feature

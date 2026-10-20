@@ -85,6 +85,11 @@ var wall_gaps: Array[Dictionary] = []
 ## The level's dash walls (LevelLayout.dash_walls, the world's own list; task H7a): without any, the approach
 ## check (_check_dash_walls) never queries the physics world.
 var dash_walls: Array[Dictionary] = []
+## Whether the level's side walls can be run on (LevelLayout.wall_running, set by RunWorld). Off (task O1; the owner,
+## October 20, 2026, GDD §3 and §5 Zone 8: the Terminal has no wall running, its arches and the tunnel wall behind them
+## are a boundary): a move past the outer lane, or a ramp, never puts the runner on a wall; it bumps them back with
+## the blocked wall entry's clank (wall_blocked) and no damage, as a sign does (_try_enter_wall).
+var wall_running: bool = true
 ## Game-wide rules (stomp bounce, invulnerability windows, ...). A default copy if none is set.
 var rules: GameRules
 var god_mode: bool = false
@@ -1026,14 +1031,23 @@ func _hold_to_pad_lane(pad: Area3D) -> void:
 # --- Walls -----------------------------------------------------------------
 
 ## Enters the wall on `side` (a move past the outer lane, or a ramp: `from_ramp`, `ramp` its trigger's
-## instance id). Refused while falling into a gap, where a wall gap leaves no wall (wall_missing, a
-## ramp's only once), and where the wall is blocked (a sign, or a wall a boss takes away), which clanks
-## and bumps instead (_bump_wall; a ramp only once).
+## instance id). Refused while falling into a gap; in a level without wall running (wall_running off: task O1, the
+## Terminal), where every wall entry clanks and bumps as a blocked one does, without damage (_bump_wall; a ramp only
+## once); where a wall gap leaves no wall (wall_missing, a ramp's only once); and where the wall is blocked (a sign, or
+## a wall a boss takes away), which clanks and bumps instead (_bump_wall; a ramp only once).
 func _try_enter_wall(side: int, from_ramp: bool, ramp: int = 0) -> bool:
 	if surface != Surface.FLOOR or in_pit:
 		return false
 	if not grounded and h < 0.0 and _coyote <= 0.0:
 		return false  # Already dropping into a gap; like a jump, the wall is out of reach.
+	if not wall_running:
+		# GDD §5, Zone 8 (proposed): the arches and the tunnel wall behind them are a boundary, so the move bumps the
+		# runner back like a sign's blocked entry, open space between the arches or not.
+		if ramp == 0 or ramp != _blocked_ramp:
+			if ramp != 0:
+				_blocked_ramp = ramp
+			_bump_wall(side)
+		return false
 	if not wall_supported(side, distance):
 		# DESIGN-TBD (docs/questions/wall_gaps.md): no bump or clank, since nothing is there to hit.
 		if ramp == 0 or ramp != _blocked_ramp:

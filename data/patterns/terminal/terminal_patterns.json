@@ -1,0 +1,22 @@
+{
+  "_comment": [
+    "The Terminal's own patterns (task O1; GDD §5, Zone 8). Its levels name this file as their patterns_path, so the",
+    "generator picks from this folder only: none of the core patterns' holes, fences and signs, and none of the usual",
+    "enemies (the owner, October 20, 2026: only the Cybernetic Centipede, GDD §9.15, still to be built). Its couple of",
+    "holes are the levels' wider gaps (LevelConfig.wide_gaps 2: rows in every lane but one), and its ceilings are few",
+    "and one lane wide (the levels' narrow_ceiling_share and one_lane_ceiling_share 1; a plain ceiling pattern, so a",
+    "one-lane ceiling may come of it). open_track is a stretch of the track the pattern pass leaves to the doodads,",
+    "with a trail of credits along one lane; its weight against the ceiling's sets how few ceilings come.",
+    "DESIGN-TBD (docs/questions/o1.md): the weights, the open stretch's length and its credits. Tasks O2 (the debris",
+    "maze) and O3 (the centipede) add their patterns here, requiring `debris_maze` and `centipede`.",
+    "Metres are at the reference speed (18 m/s), stretched by the level's pace, as in data/patterns/README.md."
+  ],
+  "patterns": [
+    {"id": "open_track", "min_difficulty": 0.0, "weight": 13, "length": 24, "elements": [
+      {"kind": "credits", "at": 0, "surface": "floor", "lanes": {"mode": "random", "count": 1}, "count": 6, "spacing": 3, "value": 1}
+    ]},
+    {"id": "terminal_ceiling", "min_difficulty": 0.0, "weight": 1, "requires": ["ceilings"], "length": 10, "elements": [
+      {"kind": "hull", "at": 0, "lanes": {"mode": "random", "count": 1}, "length_seconds": 1.6}
+    ]}
+  ]
+}

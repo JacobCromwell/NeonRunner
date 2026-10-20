@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="LevelConfig" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/level_config.gd" id="1_level"]
+[ext_resource type="Resource" path="res://data/tuning/terminal_wall_gaps.tres" id="2_wall_gaps"]
+
+[resource]
+script = ExtResource("1_level")
+id = &"terminal_2"
+display_name = "Last Stop"
+level_seed = 902
+duration_seconds = 145.0
+difficulty = 0.805
+difficulty_bias = 0.0
+enemy_scaling = 0.85
+off_curve = true
+features = PackedStringArray("ceilings", "wall_gaps", "debris_maze", "centipede")
+wall_gap_tuning = ExtResource("2_wall_gaps")
+wall_running = false
+guarantee_features = true
+patterns_path = "res://data/patterns/terminal/terminal_patterns.json"
+spacing_seconds_easy = 1.1
+wide_gaps = 2
+dash_walls = 0
+narrow_ceiling_share = 1.0
+one_lane_ceiling_share = 1.0
+doodad_share = 1.0
+doodad_row_chance = 0.7
+credit_trail_chance = 0.6
+credit_trail_min = 5
+credit_wall_runs = false

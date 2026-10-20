@@ -543,11 +543,17 @@ func _test_campaign() -> void:
 	# Task L6: the rows from Gangland on, and the builds they're counted over.
 	var later_rows: int = 0
 	var later_builds: int = 0
+	# Task O1: the Terminal's levels, counted apart (GDD §5, Zone 8: "full of debris", doodads standing "so thickly that
+	# the empty space between them forms a maze", task O2). Its open track leaves the doodads every spot they can take,
+	# so most stand in rows there: the campaign's "now and then" holds for the other zones.
+	var terminal_doodads: int = 0
+	var terminal_rows: int = 0
 	for s: CampaignStep in campaign.steps():
 		# A mini-game level (the Beach's volleyball match) isn't generated: no doodads.
 		if not s.is_level() or s.is_minigame():
 			continue
 		var level_total: int = 0
+		var terminal: bool = s.zone.id == &"terminal"
 		for lanes: int in [3, 5, 6]:
 			var config: LevelConfig = campaign.configure(s, lanes)
 			var tag: String = "%s lanes=%d" % [s.id, lanes]
@@ -558,9 +564,13 @@ func _test_campaign() -> void:
 			# A level paced in bursts keeps its quiet stretches empty, as the fill pass does, and its
 			# dense bursts leave little room: it may have none at one lane count.
 			check(not layout.doodads.is_empty() or config.paced_in_bursts(), "%s has doodads (%d)" % [tag, layout.doodads.size()])
-			total += layout.doodads.size()
 			level_total += layout.doodads.size()
 			LayoutChecks.check_doodads(self, layout, config, tag)
+			if terminal:
+				terminal_doodads += layout.doodads.size()
+				terminal_rows += _rows_of(layout).size()
+				continue
+			total += layout.doodads.size()
 			for row: Array in _rows_of(layout):
 				rows += 1
 				in_rows += row.size()
@@ -579,6 +589,7 @@ func _test_campaign() -> void:
 	var singles: int = total - in_rows - stash
 	print("  %d doodads in the campaign's levels at 3, 5 and 6 lanes: %d rows holding %d of them, %d alone, %d by a side wall; %.1f rows a level from Gangland on"
 		% [total, rows, in_rows, singles, by_wall, later_rows / maxf(later_builds, 1.0)])
+	print("  and in the Terminal's two (counted apart): %d doodads, %d rows" % [terminal_doodads, terminal_rows])
 	# Task L3: rows come now and then (the owner: "occasionally"); task L6 (the owner: "could it be two in a row so it
 	# doesn't take up as much room?"): from two long, a few a level from Gangland on, while most of what a level places
 	# is still a doodad alone (a row counted once); and doodads take the lane by an open side wall.
@@ -2491,7 +2502,8 @@ func _test_campaign_rows() -> void:
 					rows_jumped += 1
 			for d: Dictionary in layout.doodads:
 				var lane: int = int(d["lane"])
-				if d.has("stash") or (lane != 0 and lane != lanes - 1):
+				# Task O1: no runner steps onto a wall in a level without wall running (the Terminal).
+				if d.has("stash") or (lane != 0 and lane != lanes - 1) or not layout.wall_running:
 					continue
 				var toward: StringName = &"move_left" if lane == 0 else &"move_right"
 				var whole: Dictionary = d.duplicate()

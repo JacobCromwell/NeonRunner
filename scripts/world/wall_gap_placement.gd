@@ -35,6 +35,13 @@ extends RefCounted
 ## (_open_walls). Every keep-out above holds there as anywhere, so a wall whose keep-outs leave less free stands
 ## more. The shared tuning has it off, so every other level is built exactly as before.
 ##
+## A level whose walls are a row of narrow arches (task O1; the owner, October 20, 2026, GDD §5 Zone 8: the Terminal's,
+## WallGapTuning.arches, its Arches group) gets neither: each wall stands only in sections arch_length long, about
+## arch_spacing apart, mostly in pairs left and right, a missing one shown as a broken stump (LevelLayout.wall_stumps),
+## and its wall gaps are the open space between them, over the whole stretch the track draws walls along
+## (TrackBuilder.wall_span), its feature's start aside (_arches). Its walls are a boundary (LevelConfig.wall_running
+## off): nothing on them and nobody running along them, so the arches keep clear of nothing.
+##
 ## Its own random stream (LevelGenerator.rng_for), so every other pass places exactly what it did
 ## before; a level without the feature is unchanged.
 
@@ -71,14 +78,22 @@ static func is_boss_arena(config: LevelConfig) -> bool:
 	return String(config.id).ends_with("_arena")
 
 
-## Places the level's wall gaps (see the header) into gen.layout.wall_gaps, sorted by start.
+## Places the level's wall gaps (see the header) into gen.layout.wall_gaps, sorted by start; with the tuning's Arches
+## group (the Terminal's, task O1), the open space between its arches, and its broken stumps into
+## gen.layout.wall_stumps (_arches).
 static func place(gen: LevelGenerator) -> void:
 	var lay: LevelLayout = gen.layout
 	lay.wall_gaps.clear()
+	lay.wall_stumps.clear()
 	if not gen.config.has_feature(FEATURE) or (is_boss_arena(gen.config) and gen.config.wall_gap_tuning == null):
 		return
 	var t: WallGapTuning = tuning_for(gen.config)
 	var rng: RandomNumberGenerator = gen.rng_for(FEATURE)
+	if t.arches():
+		_arches(lay, t, rng)
+		_sort_by_start(lay.wall_gaps)
+		_sort_by_start(lay.wall_stumps)
+		return
 	var v: float = gen.speed
 	var lo_len: float = minf(t.length_seconds_min, t.length_seconds_max)
 	var hi_len: float = maxf(t.length_seconds_min, t.length_seconds_max)
@@ -108,8 +123,49 @@ static func place(gen: LevelGenerator) -> void:
 		# the first spot that fits anywhere past the feature's start.
 		_fit(lay, keeps, -1 if rng.randf() < 0.5 else 1, false, from, last,
 			rng.randf_range(lo_len, hi_len) * v)
-	lay.wall_gaps.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+	_sort_by_start(lay.wall_gaps)
+
+
+## Sorts wall entries ({side, start, end}: wall gaps, wall stumps) by start, the left wall's first where two start
+## together.
+static func _sort_by_start(entries: Array[Dictionary]) -> void:
+	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["start"]) < float(b["start"]) or (float(a["start"]) == float(b["start"]) and int(a["side"]) < int(b["side"])))
+
+
+## The Arches group (WallGapTuning.arches: the Terminal's, task O1; GDD §5 Zone 8): each wall a row of narrow arches
+## over the whole stretch the track draws walls along (TrackBuilder.wall_span), into `lay`. The first stands a seeded
+## part of a spacing in; each is arch_length long, and the next stands arch_spacing (give or take arch_spacing_jitter,
+## seeded) of open space on. At each place both walls have their arch (a pair), or with arch_stump_share one wall
+## (either, seeded) has a broken stump there instead (LevelLayout.wall_stumps), inside its open space, opposite the
+## other wall's arch. Each wall's wall gaps are the open space between its arches, from the stretch's start to its end.
+## Nothing is kept clear: the walls are a boundary (LevelConfig.wall_running off), with nothing on them. Every draw
+## happens at every place, so one number changed never reshuffles the rest.
+static func _arches(lay: LevelLayout, t: WallGapTuning, rng: RandomNumberGenerator) -> void:
+	var span: Vector2 = TrackBuilder.wall_span(lay.length)
+	var spacing: float = maxf(t.arch_spacing, EPSILON)
+	# Where each wall's current open space began (left, right).
+	var open_from: Array[float] = [span.x, span.x]
+	var at: float = span.x + rng.randf() * spacing
+	while true:
+		var jitter: float = rng.randf_range(-t.arch_spacing_jitter, t.arch_spacing_jitter)
+		var stump: bool = rng.randf() < t.arch_stump_share
+		var stump_side: int = -1 if rng.randf() < 0.5 else 1
+		var end: float = at + t.arch_length
+		if end > span.y:
+			break
+		for i: int in 2:
+			var side: int = -1 if i == 0 else 1
+			if stump and side == stump_side:
+				lay.wall_stumps.append({"side": side, "start": at, "end": end})
+				continue
+			if at > open_from[i] + EPSILON:
+				lay.wall_gaps.append({"side": side, "start": open_from[i], "end": at})
+			open_from[i] = end
+		at = end + spacing * (1.0 + jitter)
+	for i: int in 2:
+		if span.y > open_from[i] + EPSILON:
+			lay.wall_gaps.append({"side": -1 if i == 0 else 1, "start": open_from[i], "end": span.y})
 
 
 ## Coverage mode (WallGapTuning.opens_walls, the Beach's; task D10b): opens each wall wherever it may and stands

@@ -105,10 +105,12 @@ func check_deep(w: WeeklyWeek, tag: String) -> void:
 		check(false, "hover truck: " + message)
 
 
-## Wall gaps clear of their keep-outs, and no wall credit in a gap (test_wall_gaps' rules).
+## Wall gaps clear of their keep-outs, and no wall credit in a gap (test_wall_gaps' rules). A level without wall running
+## (the Terminal's, task O1) has nothing on its walls to keep them standing: its arches keep clear of nothing
+## (WallGapPlacement._arches; LayoutChecks.check_boundary_walls checks there is nothing).
 func _check_wall_gaps(gen: LevelGenerator, layout: LevelLayout, config: LevelConfig, tag: String) -> void:
 	var tuning_gaps: WallGapTuning = WallGapPlacement.tuning_for(config)
-	for side: int in [-1, 1]:
+	for side: int in ([-1, 1] if layout.wall_running else []):
 		var keeps: Array[Vector2] = WallGapPlacement.keep_outs(gen, layout, side, tuning_gaps)
 		for gap: Dictionary in layout.wall_gaps:
 			if int(gap["side"]) != side:

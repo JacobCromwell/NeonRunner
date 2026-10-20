@@ -9,6 +9,8 @@ const BUILD_AHEAD: float = 180.0
 const KEEP_BEHIND: float = 30.0
 ## Floor is built this far past the finish line so the level end doesn't drop into the void.
 const RUN_OUT: float = 80.0
+## Where the first chunk starts: KEEP_BEHIND and a little more behind the start line, so the run begins on built track.
+const TRACK_START: float = -KEEP_BEHIND - 10.0
 const FLOOR_THICKNESS: float = 1.0
 const HULL_THICKNESS: float = 0.8
 
@@ -42,6 +44,8 @@ const CUT_SLICE: float = 4.0
 ## player is this close to its start: built BUILD_AHEAD ahead, it has the time of BUILD_AHEAD - DRESS_BY
 ## metres of running to be dressed a little at a time.
 const DRESS_BY: float = 120.0
+## Two wall piece ends closer than this are the same point (metres; _build_boundary_wall).
+const WALL_PIECE_EPSILON: float = 0.001
 
 var layout: LevelLayout
 var tuning: MovementTuning
@@ -126,6 +130,14 @@ func extend_layout(extra: LevelLayout) -> void:
 ## Track distance up to which chunks are built.
 func built_until() -> float:
 	return _next_chunk * CHUNK_LENGTH
+
+
+## The stretch of track [start, end] whose walls the builder draws for a layout `length` metres long: from the first
+## chunk's start (TRACK_START) to the end of the last chunk it builds, past the run-out (RUN_OUT). A wall layout meant
+## to cover every wall the track shows spans it (task O1: the Terminal's arches, WallGapPlacement._arches).
+static func wall_span(length: float) -> Vector2:
+	var last: int = int(ceil((length + RUN_OUT) / CHUNK_LENGTH))
+	return Vector2(TRACK_START, (last + 1) * CHUNK_LENGTH)
 
 
 ## The skin's calls still waiting to dress built chunks (dress_budget_usec; 0 without a budget).
@@ -364,7 +376,7 @@ func _build_chunk(index: int) -> void:
 	var c0: float = index * CHUNK_LENGTH
 	var c1: float = c0 + CHUNK_LENGTH
 	if index == 0:
-		c0 = -KEEP_BEHIND - 10.0
+		c0 = TRACK_START
 	var bucket: Dictionary = _buckets.get(index, {})
 	_chunks[index] = {"node": root, "max_end": maxf(c1, float(bucket.get("max_end", 0.0)))}
 	_dress_start = c0
@@ -381,6 +393,11 @@ func _build_chunk(index: int) -> void:
 				_build_cut_slices(root, c, c0, c1)
 	var wall_enemies: Array[Dictionary] = _enemies_between(c0, c1)
 	for side: int in [-1, 1]:
+		# Task O1: a level whose walls are a boundary (the Terminal's arches) draws them as standing pieces with open
+		# space between them.
+		if not layout.wall_running:
+			_build_boundary_wall(root, index, side, c0, c1, wall_enemies)
+			continue
 		# The skin notes a side's wall enemies just before it draws that side (one call, so nothing comes
 		# between them in the queue). A wall gap (LevelLayout.wall_gaps) leaves the wall out: the skin
 		# draws the solid stretches only, and the gap's look (its edges) where it is.
@@ -461,6 +478,52 @@ func _enemies_between(c0: float, c1: float) -> Array[Dictionary]:
 		if at >= c0 and at < c1:
 			out.append(e)
 	return out
+
+
+## Wall `side` of a level without wall running (task O1; LevelLayout.wall_running off: the Terminal, whose walls are a
+## row of narrow arches and a boundary everywhere, GDD §5 Zone 8) for chunk `index`, [c0, c1), under `root`. No
+## wall-running surface stops anywhere there, so the open space between its standing pieces (its wall gaps) has none of
+## a wall gap's orange marks: the skin draws each opening's part in the chunk with ZoneSkin.wall_opening (the whole
+## opening as `gap`). Each standing piece of wall (a solid piece: an arch) and each broken stump (LevelLayout
+## .wall_stumps) is drawn whole, with ZoneSkin.wall_section and ZoneSkin.wall_stump, in the chunk where it starts (its
+## far end keeps the chunk built), so a skin draws an arch's look once and never cut in two at a chunk's edge; a piece
+## longer than a chunk (none in the Terminal) is drawn chunk by chunk, as every level's walls are. Before drawing, the
+## skin notes the side's openings near the chunk and its wall enemies, as it does for any wall. The order: the
+## sections, the openings, then the stumps standing in them.
+func _build_boundary_wall(root: Node3D, index: int, side: int, c0: float, c1: float, wall_enemies: Array[Dictionary]) -> void:
+	var reach: float = CHUNK_LENGTH
+	var near_gaps: Array[Vector2] = layout.wall_gap_spans(side, c0 - reach, c1 + reach)
+	var openings: Array[Vector2] = layout.wall_gap_spans(side, c0, c1)
+	var sections: Array[Vector2] = []
+	for piece: Vector2 in layout.wall_solid_pieces(side, c0 - reach, c1 + reach):
+		if piece.x > c0 - reach + WALL_PIECE_EPSILON and piece.y < c1 + reach - WALL_PIECE_EPSILON:
+			# Whole within the stretch looked at: drawn by the chunk it starts in.
+			if piece.x >= c0 and piece.x < c1:
+				sections.append(piece)
+		else:
+			var part := Vector2(maxf(piece.x, c0), minf(piece.y, c1))
+			if part.y > part.x + WALL_PIECE_EPSILON:
+				sections.append(part)
+	var stumps: Array[Vector2] = []
+	for s: Vector2 in layout.wall_stump_spans(side, c0, c1 + reach):
+		if s.x >= c0 and s.x < c1:
+			stumps.append(s)
+	var far: float = float(_chunks[index]["max_end"])
+	for piece: Vector2 in sections:
+		far = maxf(far, piece.y)
+	for stump: Vector2 in stumps:
+		far = maxf(far, stump.y)
+	_chunks[index]["max_end"] = far
+	var face_x: float = side * geo.wall_x()
+	_dress(func() -> void:
+		skin.note_wall_gaps(side, near_gaps)
+		skin.note_wall_enemies(side, c0, c1, wall_enemies)
+		for piece: Vector2 in sections:
+			skin.wall_section(root, side, face_x, piece.x, piece.y)
+		for gap: Vector2 in openings:
+			skin.wall_opening(root, side, face_x, maxf(gap.x, c0), minf(gap.y, c1), gap)
+		for stump: Vector2 in stumps:
+			skin.wall_stump(root, side, face_x, stump.x, stump.y))
 
 
 ## The ranges of one lane's floor within [c0, c1) the chunk builds as pieces: Vector4(start, end,

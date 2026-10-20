@@ -11,18 +11,18 @@ save migration follows: Economy and saving, Saves from before the Casino). A cin
 (Gangland's boss intro, F2b) counts as done when the step after it is (`App.step_done`), so the save keeps what it
 unlocked and Continue doesn't go back over it. Difficulty comes from a campaign-wide curve
 plus each level's `difficulty_bias`; `enemy_scaling` runs 0 → 1 across the campaign. A level off the curve
-(`LevelConfig.off_curve`: the Beach's, below) plays at its own.
+(`LevelConfig.off_curve`: the Beach's and the Terminal's, below) plays at its own.
 
-The campaign (GDD §5) has seven zones, with ids other tasks rely on: `city`, `gangland`,
-`marketplace`, `casino`, `corporate`, `beach`, `dead_zone` and `golden`, with 3, 3, 2, 2, 2, 3, 2 and 3 levels in
-`data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
+The campaign (GDD §5) has nine zones, with ids other tasks rely on: `city`, `gangland`,
+`marketplace`, `casino`, `corporate`, `beach`, `dead_zone`, `terminal` and `golden`, with 3, 3, 2, 2, 2, 3, 2, 2 and 3
+levels in `data/levels/<zone id>_<n>.tres` (Golden 3 is the Golden Palace). Every zone has intro and outro
 cinematic slots (every boss also an intro slot: built for the City's, Gangland's and the Casino's, empty and skipped
 for the rest, Empty boss-intro slots below) and a boss slot from GDD §10's roster, but the
 Marketplace, which leads straight into the Casino (owner, October 8, 2026): its steps run from
 Marketplace 2 to its outro, and The House is the Casino's boss (`casino_boss`); the Beach's boss is Mecha Guppy and
-Captain Cogs (`beach_boss`, Bosses below). A zone's music
+Captain Cogs (`beach_boss`, Bosses below). The Terminal has no boss either (owner, October 20, 2026). A zone's music
 track is named after its id, and every zone has one (a track the music library doesn't list is skipped
-quietly and the menu music carries on). Only the City is in the web demo. The curve runs 0.1 → 0.9
+quietly and the music already playing carries on: the Terminal's until task O4 adds it). Only the City is in the web demo. The curve runs 0.1 → 0.9
 over the 17 levels on it (FB 4, FB 5; the Beach's three, task D10c and its volleyball match, D10e, are off it, so the Beach moved no other
 level). When the Casino's two came in, task K2 re-spaced it linearly (each
 existing level's difficulty and `enemy_scaling` moved, Marketplace 2 from 0.50 to 0.45 and Corporate 1 from
@@ -44,7 +44,8 @@ and distance-based completion use that value without changing speed, difficulty,
 or the fractional starts of cyborgs and doodads. These are running times without speed-changing
 power-ups or pauses, excluding cinematics and the completion delay. The levels then totalled 34.1 minutes;
 with the Casino's 145 and 150 seconds they total 39.0, with the Beach's 145 and 150 seconds 43.9, and with its
-volleyball match's 55 (a flawless match, task D10e) 44.8 (GDD §5: about 45).
+volleyball match's 55 (a flawless match, task D10e) 44.8 (GDD §5: about 45), and with the Terminal's 140 and 145
+seconds 49.6 (task O1, DESIGN-TBD, `docs/questions/o1.md`; `test_campaign` allows 47-52).
 
 **The schedule** (GDD §5) is each level's `features` list, in the order the campaign introduces them:
 a feature once introduced stays in every later level, bar the exceptions the design gives (screeches
@@ -94,7 +95,8 @@ plays exactly as before:
   `difficulty_bias` isn't read) and `enemy_scaling`: the Beach's 0.71 and 0.72, 0.71 and 0.73, strictly between
   Corporate 2's (0.695, 0.6875) and Dead Zone 1's (0.737, 0.75) on the curve as task K4 bent it for the Casino;
 - the curve spans the levels on it (`curve_level_count()`: 17 of `level_count()`'s 20, against
-  `planned_level_count()`'s 20), and a level off it takes the place of the level on it before it
+  `planned_level_count()`'s 20; 17 of 22 since the Terminal), and a level off it takes the place of the level on it
+  before it
   (`CampaignStep.level_index`: Corporate 2's, so its completion bonus too);
 - a level off the curve counts every level before it, in the order they're played, for its feature ages, and a level
   on it only the levels on it, so the Dead Zone and the Golden Zone keep their ages and recency
@@ -109,6 +111,22 @@ campaign without the volleyball match (task D10e: every level and boss, Sunset S
 as done once the Dead Zone's intro is), and its Continue offers the Beach's intro. DESIGN-TBD
 (`docs/OPEN_QUESTIONS.md` items 569–577): whether the curve is later re-spread over all its levels (19, the volleyball match aside), the Beach's numbers, its
 completion bonus, Continue for old saves, its boss, cinematics and music.
+
+**The Terminal** (task O1; the owner, October 20, 2026; GDD §5, Zone 8). `data/zones/terminal.tres` (id `terminal`,
+24.6 m/s, music `terminal`, the Dead Zone's skin until task O4's) is zone 8, between the Dead Zone and the Golden
+Zone: its intro (the arrival flyover), Rubble Line and Last Stop (`data/levels/terminal_1.tres` and `terminal_2.tres`:
+seeds 901 and 902, 140 and 145 s) and its outro (a card), **no boss** (the Marketplace's way: no boss or boss-intro
+slot). Its levels are off the curve like the Beach's, strictly between Dead Zone 2 and Golden 1 (difficulty 0.79 and
+0.805, enemy scaling 0.83 and 0.85, completion bonus Dead Zone 2's), so every other level plays exactly as before.
+The Terminal's rules are level data: its own pattern folder (`patterns_path` = `data/patterns/terminal/`: open track
+with credits and a one-lane ceiling, none of the core patterns' holes, fences, signs or enemies), two wider gaps for
+its couple of holes (`wide_gaps`), no dash walls, every ceiling one lane wide (`narrow_ceiling_share` and
+`one_lane_ceiling_share` 1), its arch walls (`wall_gap_tuning` = `data/tuning/terminal_wall_gaps.tres`, Arches) and
+**no wall running** (`LevelConfig.wall_running` off: The generator, Side wall gaps, Arches and boundary walls). Its
+`debris_maze` (task O2) and `centipede` (task O3) are planned features that do nothing yet; the Golden Zone leaves
+both out. A save from before the Terminal keeps the Golden Zone open (Economy and saving, Saves from before the
+Terminal). `test_campaign` checks the Terminal's steps, numbers and content, and `test_terminal_levels` its levels at
+3, 5 and 6 lanes (arches, stumps, no wall running in the run). DESIGN-TBD (`docs/questions/o1.md`): all the numbers.
 
 **Empty boss-intro slots** (task I8; the owner, October 14, 2026, item 395: every boss gets a slot for an intro
 cinematic, to fill when the owner adds the beats). The City's, Gangland's and the Casino's (The House's, task F2i,

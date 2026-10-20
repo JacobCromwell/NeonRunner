@@ -11,8 +11,9 @@ extends Resource
 ##
 ## A level may have its own (LevelConfig.wall_gap_tuning; task D10b): the Beach's levels use
 ## data/tuning/beach_wall_gaps.tres, whose Open walls group (coverage_target above 0) turns the rare short
-## gaps into long open stretches over about half of each wall. Every other level uses the shared file, where
-## that group is off.
+## gaps into long open stretches over about half of each wall, and the Terminal's (task O1) use
+## data/tuning/terminal_wall_gaps.tres, whose Arches group (arch_length above 0) makes each wall a row of narrow
+## arches with open space between them. Every other level uses the shared file, where both groups are off.
 
 @export_group("Frequency")
 ## Seconds of run from the end of one wall gap to the next (either wall), at difficulty 0 and 1. Kept
@@ -68,6 +69,30 @@ extends Resource
 ## again there. 1: no limit. DESIGN-TBD (docs/OPEN_QUESTIONS.md, item 561): the Beach's 0.3.
 @export_range(0.0, 1.0, 0.01) var both_open_max: float = 1.0
 
+@export_group("Arches")
+## Task O1 (the owner, October 20, 2026, GDD §5 Zone 8: the Terminal's side walls are "narrow arches", to read as the
+## old subway's tunnel arches or structural supports: "each wall section is one space wide (about a standard doodad's
+## width), with about six lengths of open space before the next one", mostly in pairs left and right, and "where one
+## side's section is missing, that side shows a section cut off about halfway up"): above 0, each wall is a row of
+## narrow sections this long along the track, from before the track's first chunk to past its run-out, with open
+## space (wall gaps) between them, and the rare short gaps above and the Open walls group are off
+## (WallGapPlacement._arches). For a level whose walls are a boundary (LevelConfig.wall_running off): no wall-running
+## surface anywhere means nothing on its walls needs a wall to stand or a gap kept off, so the arches keep no
+## clearance from anything. Metres, not seconds: the arches are the tunnel's structure, the same at any speed.
+## DESIGN-TBD (docs/questions/o1.md): 3.6 m, a standard (medium) doodad's length (MovementTuning.doodad_medium_length).
+## 0 (the shared file, the Beach's): off.
+@export_range(0.0, 12.0, 0.1, "suffix:m") var arch_length: float = 0.0
+## Metres of open space from one arch's end to the next one's start. DESIGN-TBD (docs/questions/o1.md): 21.6 m, six
+## arch lengths.
+@export_range(2.0, 60.0, 0.1, "suffix:m") var arch_spacing: float = 21.6
+## Each spacing varies by up to this share of it, either way (seeded), so the rhythm is "about" six lengths.
+## DESIGN-TBD (docs/questions/o1.md).
+@export_range(0.0, 0.5, 0.01) var arch_spacing_jitter: float = 0.15
+## The share of the arches' places where one side's arch is missing and stands as a broken stump
+## (LevelLayout.wall_stumps), that side picked at random; the others are pairs, an arch on each wall over the same
+## stretch. DESIGN-TBD (docs/questions/o1.md): 0.15 ("mostly symmetrical").
+@export_range(0.0, 0.5, 0.01) var arch_stump_share: float = 0.15
+
 
 ## `easy` at difficulty 0 to `hard` at 1.
 static func by_difficulty(easy: float, hard: float, difficulty: float) -> float:
@@ -78,3 +103,9 @@ static func by_difficulty(easy: float, hard: float, difficulty: float) -> float:
 ## rather than the rare short ones.
 func opens_walls() -> bool:
 	return coverage_target > 0.0
+
+
+## True if each wall is a row of narrow arches with open space between them (arch_length above 0, the Terminal's; task
+## O1): WallGapPlacement places the arches' openings and stumps instead of any other gaps.
+func arches() -> bool:
+	return arch_length > 0.0

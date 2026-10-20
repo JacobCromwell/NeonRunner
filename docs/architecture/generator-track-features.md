@@ -574,6 +574,41 @@ layout of `tools/measure/level_pace.gd --dump` (every campaign level at 3, 5 and
 others, and quick play) is byte-identical. DESIGN-TBD (`docs/OPEN_QUESTIONS.md` items 560–564): the target, the share open on
 both walls, the shortest stretches and the narrower clearance.
 
+**Arches and boundary walls (the Terminal)** (task O1; the owner, October 20, 2026, GDD §5, Zone 8: the side walls are
+"narrow arches", each "one space wide ... with about six lengths of open space before the next one", mostly in pairs,
+a missing one "a section cut off about halfway up", and **no wall running**). Two pieces of level data, independent of
+each other and of the skin:
+- *The arches* (`WallGapTuning` group Arches, `arch_length` above 0: `data/tuning/terminal_wall_gaps.tres`, the
+  Terminal's levels only). `WallGapPlacement._arches` (same stream, `rng_for("wall_gaps")`) replaces every other wall
+  gap: from `TrackBuilder.wall_span(length)` (the track's first chunk to past its run-out) it steps along both walls
+  at once, an arch place `arch_length` (3.6 m) long every `arch_spacing` (21.6 m) of open wall, varied by
+  `arch_spacing_jitter`; at an `arch_stump_share` of the places one side (random) gets a broken stump instead
+  (`LevelLayout.wall_stumps`, {side, start, end}, left out of `to_dict()` when empty; `wall_stump_spans`). The open
+  wall between arches is ordinary `wall_gaps`, so every wall-gap query works on it (an arch is a solid piece, a stump
+  a gap). Metres, not seconds (the tunnel's structure); no keep-outs, since nothing in such a level needs a wall.
+- *No wall running* (`LevelConfig.wall_running` off, copied to `LevelLayout.wall_running` and, by `RunWorld` and
+  `RunSim`, to `Player.wall_running`). The walls are a boundary: `Player._try_enter_wall` refuses every entry and
+  bumps the runner back with the sign's clank (`_bump_wall`, no damage; a ramp's entry once per ramp), the wall-gap
+  hint stays out (`HintDirector`), and the generator warns (`_check_walls_unused`) if the level still has ramps, signs,
+  wall fences, wall-run gaps, wall-hop lines, wall enemies or wall credits; `LayoutChecks.check_boundary_walls` fails
+  the same in every suite that checks layouts. The Terminal gets none of them anyway: its own patterns
+  (`patterns_path`) have no signs or ramps, and its levels turn off `credit_wall_runs`.
+
+On the track (`TrackBuilder._build_boundary_wall`, a level with `wall_running` off; a level with it on is built
+exactly as before), each chunk, for each side: `note_wall_gaps(side, gaps within 40 m of the chunk)`,
+`note_wall_enemies`, then `skin.wall_section(root, side, face_x, start, end)` once per **whole** arch (a solid piece of
+`wall_solid_pieces`), in the chunk where it starts even when it runs past the chunk's end (the chunk is kept until
+its far end has passed); `skin.wall_opening(root, side, face_x, part_start, part_end, whole_gap)` per opening's part
+in the chunk, never `wall_gap` (no cut edges or lips: nothing to read, the gap can't be run into); then
+`skin.wall_stump(root, side, face_x, start, end)` once per whole stump, where it starts. The defaults
+(`ZoneSkin`): `wall_section` the skin's own wall over the arch's length, `wall_opening` a plain dark back wall
+(`standard_wall_gap_recess` without end faces, `WALL_OPENING_*`), `wall_stump` a box half the wall's height in the
+dash wall's look (`dash_wall_material`, `WALL_STUMP_*`). The Terminal's skin (task O4) overrides `wall_section` and
+`wall_stump`. Review: `tools/showcase/arch_wall_review.tscn` (`-- --level=terminal/1 --skin=greybox --stump=0
+--shot=approach`). `test_terminal_levels` covers the arches, stumps, the hooks in every skin and the physics;
+`test_generator` (`_test_arched_walls`) the generator at 3, 5 and 6 lanes over difficulties and seeds. DESIGN-TBD
+(`docs/questions/o1.md`): every number.
+
 **Wider gaps** (task G7; the owner's answer to open question 352, October 7, 2026, GDD §9.13 "Holes": "every
 level has a couple of wider gaps. They're uncommon, still jumpable by the player, and wide enough that an
 Enforcer following the player into one is wrecked"). `WideGapPlacement` (`scripts/world/wide_gap_placement.gd`;

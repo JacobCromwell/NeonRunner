@@ -1,7 +1,7 @@
 extends TestSuite
 ## Wallet, items, records, saving, the shop catalog, loadouts and the App's buy flow. Also the
 ## balancing passes (task R7, after the owner's playtest: G1's pace, G3's free armor, G4's weaker laser
-## tier 1; task I7, the rebalance for all eight zones): the catalog's prices laid against what
+## tier 1; task I7, the rebalance for all eight zones; the Terminal, task O1, the ninth): the catalog's prices laid against what
 ## `tools/measure/economy.gd` reads from the campaign (the reasoning is in items 846-850 in docs/OPEN_QUESTIONS*.md and
 ## docs/architecture/economy-platforms.md).
 
@@ -13,12 +13,15 @@ const EconomyModel = preload("res://tools/measure/economy_model.gd")
 ## price and every tier before it: tiers are bought in order). "First fits at N" means affordable after finishing
 ## N, so usable from N + 1. Campaign levels, with the volleyball match counted: City 1-3 are levels 1-3, Gangland
 ## 1-3 4-6, Marketplace 1-2 7-8, Casino 1-2 9-10, Corporate 1-2 11-12, Beach 1-3 13-15, Dead Zone 1-2 16-17,
-## Golden 1-3 18-20. Where each is placed (GDD §5's schedule; the reasoning is in items 846-850 in docs/OPEN_QUESTIONS*.md):
+## the Terminal 1-2 18-19 (task O1), Golden 1-3 20-22. Where each is placed (GDD §5's schedule; the reasoning is in
+## items 846-850 in docs/OPEN_QUESTIONS*.md):
 ##   armor I the owner's "died a lot" note (GDD §4, the October 3 early-economy revision: it fits City 1); II at
 ##   Gangland 1, III at Marketplace 2 (usable from the Casino's mixed crowd), IV at Beach 3 (usable from the
 ##   Dead Zone, whose Bad Dreams ignore weapons); laser I Gangland 1 (the owner: 1,800, first affordable at the
 ##   campaign's 4th level); laser II Marketplace 1, missile Corporate 1, heavy missile Golden 1 (usable from
-##   Golden 2, the Sentinels' debut); claws Gangland 2; the dash (the owner's prices of October 17, 2026: 300 / 450 /
+##   Golden 2, the Sentinels' debut; since the Terminal's two levels came in before the Golden Zone, task O1, it first
+##   fits at Terminal 1, two levels earlier and still before the Sentinels: DESIGN-TBD, docs/questions/o1.md);
+##   claws Gangland 2; the dash (the owner's prices of October 17, 2026: 300 / 450 /
 ##   600 / 700, task L8) at City 1, 2 and 3, so tiers I to III are owned before the City's boss, and IV at Gangland 1;
 ##   magnet I as an early credit boost, II at Gangland 1, III at Marketplace 2; slow time (PC only) as it was.
 ## Where that is later than the enemy it answers debuts (the Octodog in Gangland 2, the Barnacle Turret in
@@ -26,7 +29,7 @@ const EconomyModel = preload("res://tools/measure/economy_model.gd")
 ## DESIGN-TBD (items 846-850 in docs/OPEN_QUESTIONS*.md): the placements the GDD says nothing about.
 const FIRST_FIT: Dictionary = {
 	&"armor:1": "city/1", &"armor:2": "gangland/1", &"armor:3": "marketplace/2", &"armor:4": "beach/3",
-	&"weapon:1": "gangland/1", &"weapon:2": "marketplace/1", &"weapon:3": "corporate/1", &"weapon:4": "golden/1",
+	&"weapon:1": "gangland/1", &"weapon:2": "marketplace/1", &"weapon:3": "corporate/1", &"weapon:4": "terminal/1",
 	&"claws:1": "gangland/2",
 	&"dash:1": "city/1", &"dash:2": "city/2", &"dash:3": "city/3", &"dash:4": "gangland/1",
 	&"magnet:1": "city/2", &"magnet:2": "gangland/1", &"magnet:3": "marketplace/2",
