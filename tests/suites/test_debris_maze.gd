@@ -22,7 +22,8 @@ extends TestSuite
 ##   debris; a level without the feature has none of it.
 ## - The bot on real physics: a block of each Terminal level at 3, 5 and 6 lanes run by the route MazeRoute finds, the
 ##   dash at its slowest recharge (8 s), dashing where the route does and waiting for it: it gets through alive, never
-##   refused a switch, in about the route's time.
+##   refused a switch, in about the route's time; and each whole level the same way, from its start to its end-clear
+##   stretch (a real run: the maze, the normal track's doodads and holes and all).
 ## - The first-encounter hint (data/hints/hints.json, trigger debris_maze): it says debris stops the runner and names the
 ##   lane switch and the dash, and is picked for a level with a maze, at its first wall (HintDirector), not without one.
 
@@ -51,6 +52,7 @@ func run() -> void:
 	_test_generator()
 	_test_without_feature()
 	await _test_bot()
+	await _test_bot_levels()
 	_test_hint()
 
 
@@ -624,3 +626,39 @@ func _test_bot() -> void:
 					% [run["cause"], run["moves_left"], run["blocked"], run["dashes"], plan["dashes"], tag])
 				check(float(run["seconds"]) <= planned + 1.0 + planned * 0.05,
 					"in about the route's time (%.2f s, planned %.2f s, waits %.1f s) %s" % [run["seconds"], planned, plan["waits"], tag])
+
+
+## Each Terminal level (its own seed) at 3, 5 and 6 lanes run whole on real physics, from its start to its end-clear
+## stretch, by the way MazeRoute finds with the dash at its slowest recharge (just used as the run begins): through
+## alive, every route move made, never refused a switch nor pushed, dashing as often as the route, in about its time.
+## Prints each run's time against the level's own length, and its waits for the dash.
+func _test_bot_levels() -> void:
+	var campaign := load("res://data/campaign/campaign.tres") as Campaign
+	var recharge: float = LayoutChecks.maze_recharge()
+	var lines: PackedStringArray = []
+	for id: String in ["terminal/1", "terminal/2"]:
+		for lanes: int in [3, 5, 6]:
+			var config: LevelConfig = campaign.configure(campaign.step(id), lanes)
+			var level_tuning: MovementTuning = config.movement_for(tuning)
+			var layout: LevelLayout = LayoutCache.generate(config, tuning, LevelGenerator.load_for(config))
+			var tag: String = "(%s lanes=%d, the whole level)" % [id, lanes]
+			var route := MazeRoute.new(layout, level_tuning)
+			var from: float = 20.0
+			var to: float = layout.length - config.end_clear_distance
+			var plan: Dictionary = route.find(from, to, recharge)
+			check(bool(plan["ok"]), "a way through the whole level (%s) %s" % [plan["reason"], tag])
+			if not bool(plan["ok"]):
+				continue
+			var bot := MazeBot.new(tree, level_tuning)
+			var run: Dictionary = await bot.run(layout.copy(), plan, from, to, recharge)
+			var planned: float = float(plan["seconds"])
+			check(run["alive"] and run["reached"] and int(run["moves_left"]) == 0 and int(run["blocked"]) == 0
+				and int(run["pushes"]) == 0 and int(run["dashes"]) == int(plan["dashes"]),
+				"the bot runs the whole level alive, every move made, never refused nor pushed (%s at %.0f m, %d moves left, %d refused, %d of %d dashes) %s"
+				% [run["cause"], run["distance"], run["moves_left"], run["blocked"], run["dashes"], plan["dashes"], tag])
+			check(float(run["seconds"]) <= planned + 1.0 + planned * 0.02,
+				"in about the route's time (%.1f s, planned %.1f s) %s" % [run["seconds"], planned, tag])
+			lines.append("%s at %d lanes %.0f s for %.0f s of track (%.0f s waiting, %d dashes, %d stops)" % [id, lanes,
+				float(run["seconds"]), (to - from) / level_tuning.run_speed, float(plan["waits"]), int(run["dashes"]),
+				int(run["stops"])])
+	print("  the bot through whole Terminal levels, the dash at %.0f s: %s" % [recharge, "; ".join(lines)])

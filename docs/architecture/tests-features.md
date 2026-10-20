@@ -362,9 +362,9 @@ debris beside the body or just ahead refused with the clank; along a wall's face
 place, a jump into debris coming down before it; a caught corner backing out; pushes as before without the flag; a
 full world's thud and untouched score), the Terminal's lower doodads; the generator over the Terminal's levels and
 other seeds at 3, 5 and 6 lanes (`check_layout`'s `check_debris_maze`, determinism, the maze's share of each level,
-breaks, dead ends, ceilings, the O3 API's sections and links against the debris); a block of each level run by
-`MazeBot` on the route `MazeRoute` finds with the dash at 8 s (`tests/helpers/maze_route.gd`, `maze_bot.gd`); the
-first-encounter hint.
+breaks, dead ends, ceilings, the O3 API's sections and links against the debris); a block of each level, and each
+whole level at 3, 5 and 6 lanes, run by `MazeBot` on the route `MazeRoute` finds with the dash at 8 s
+(`tests/helpers/maze_route.gd`, `maze_bot.gd`); the first-encounter hint.
 `test_beach_levels` checks the Beach's levels (tasks D10b and D10c; Campaign, The Beach; The generator, Side wall
 gaps): the zone and level data and its place in the campaign (zone 6, its steps, slots and music stand-in, its
 volleyball match second); both generated levels (Tiki Tides and Sunset Strip, beach/1 and beach/3) at 3, 5 and 6 lanes
