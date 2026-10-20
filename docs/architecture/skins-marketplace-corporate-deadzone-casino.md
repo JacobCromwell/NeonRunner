@@ -406,10 +406,11 @@ the city: wet black stone, rust and verdigris, vine green, sodium lamplight thro
   blends in sRGB space: `jet_opacity_compat`), and the vault: an ellipse from the far
   walls at `spring_height` up to `crown_height`, on steel ribs every `lamp_pitch` with a work lamp hung from each, dead
   departure boards hung from some (wordless, matte) and cables strung between them. Under the street, for the holes: the
-  service level's floor and each side's pit wall. `wall_gap_marks` and `wall_gap_recess` draw nothing (no wall running, so a
-  missing arch is not a hazard; the hall is already there), and neither does `wall_opening(parent, side, face_x, start, end,
-  gap)`, O1's hook for the open space between arches, called once per chunk it reaches (the base's default draws a plain
-  wall behind the arches, which would hide the hall).
+  service level's floor and each side's pit wall. `wall_opening(parent, side, face_x, start, end, gap)` draws nothing (a missing
+  arch is not a hazard; the hall is already there): O1's hook for the open space between arches, called once per chunk it reaches (the base's default draws a plain
+  wall behind the arches, which would hide the hall). Wall gaps keep the base's look (`wall_gap_marks`, `wall_gap_recess`):
+  the track builder calls `wall_gap` only in a level with wall running (this skin on another zone's level), where a gap's
+  orange marks are the warning that the wall-running surface stops (`test_wall_gaps` checks every skin).
 - *The arches* (`TerminalArches`): `wall_section(parent, side, face_x, start, end)` draws a riveted steel pier from the floor
   into the vault (a street face in `PAT_TERMINAL_STEEL`, angle irons and straps 4.5 cm proud, the only thing in the wall-run
   band, sometimes a rust-red enamel plate (a pale painted border and four bolts: no symbol; the first draft's ring and bar read as
